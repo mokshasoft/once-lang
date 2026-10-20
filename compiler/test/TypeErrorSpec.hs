@@ -229,6 +229,14 @@ scopeErrorTests = testGroup "Scope errors"
       , "main : Eff Unit Unit"
       , "main = nope@S"
       ]
+    -- plan 0.121 R10: a type signature is immediately followed by its
+    -- definition, as written; an import between them separates them even
+    -- when the imported module has no signatures (Derived.Nat has none).
+  , rejects "an import between a type signature and its definition"
+      [ "f : Int -> Int"
+      , "import Derived.Nat"
+      , "f x = x"
+      ]
   ]
 
 ------------------------------------------------------------------------

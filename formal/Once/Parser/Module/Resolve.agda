@@ -377,9 +377,11 @@ ownerOf (mkImport path nothing)  = just (showPath (expandPath path))
 -- resolveImports
 ------------------------------------------------------------------------
 
--- | For each DImport in `ds`, substitute the imported module's
--- primitives (owner-tagged by the import's canonical path). Drop the
--- DImport itself. Non-import decls pass through, with `RQualified`
+-- | For each DImport in `ds`, add the imported module's primitives
+-- (owner-tagged by the import's canonical path) after it. The DImport
+-- itself STAYS where it was written (R10, plan 0.121): a type signature
+-- separated from its definition by an import is still separated, as the
+-- Spec's walk reads it. Non-import decls pass through, with `RQualified`
 -- refs in function bodies rewritten to `RResolved` via `am`.
 --
 -- Returns `inj₁ err` only if a referenced module path is missing from
@@ -416,7 +418,7 @@ resolveDecls-import-aux polys um am mm imp rest nothing _ _ _ =
 resolveDecls-import-aux polys um am mm imp rest (just (mkModule impDs)) _ (inj₁ err) _ =
   inj₁ err
 resolveDecls-import-aux polys um am mm imp rest (just (mkModule impDs)) _ (inj₂ tailDs) _ =
-  inj₂ (signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
+  inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
 
 resolveDecls-cons-aux polys um am d (inj₁ err)    = inj₁ err
 resolveDecls-cons-aux polys um am d (inj₂ tailDs) = inj₂ (canonDecl polys um am d ∷ tailDs)

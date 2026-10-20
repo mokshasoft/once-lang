@@ -257,13 +257,15 @@ data ResolvesDecls (mm : ModuleMap) (polys : List String)
            → ResolvesDecl polys um am d d'
            → ResolvesDecls mm polys um am ds ds'
            → ResolvesDecls mm polys um am (d ∷ ds) (d' ∷ ds')
-  -- An import is REPLACED by the imported module's signatures, owned by the
-  -- importing site. The module table is consulted by first match.
+  -- An import is FOLLOWED by the imported module's signatures, owned by the
+  -- importing site; it stays where it was written (R10: a type signature an
+  -- import separates from its definition is still separated). The module table
+  -- is consulted by first match.
   rds-import : ∀ {imp impDs ds ds'}
              → FirstAt (Import.path imp) (mkModule impDs) mm
              → ResolvesDecls mm polys um am ds ds'
              → ResolvesDecls mm polys um am (DImport imp ∷ ds)
-                             (signaturesWithOwner (ownerOf imp) impDs ++ ds')
+                             (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ ds')
 
 data ResolvesModule (mm : ModuleMap) (polys : List String) : Module → Module → Set where
   rm : ∀ {ds ds'}

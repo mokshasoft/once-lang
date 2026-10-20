@@ -335,13 +335,13 @@ import-red : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
            → lookupModule mm (Import.path imp) ≡ just (mkModule impDs)
            → resolveDecls polys um am mm rest ≡ inj₂ tailDs
            → resolveDecls polys um am mm (DImport imp ∷ rest)
-               ≡ inj₂ (signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
+               ≡ inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
 import-red polys um am mm imp rest impDs tailDs elm err = go _ refl _ refl
   where
     go : ∀ (lm : Maybe Module) (e1 : lookupModule mm (Import.path imp) ≡ lm)
            (rr : String ⊎ List Decl) (e2 : resolveDecls polys um am mm rest ≡ rr)
        → resolveDecls-import-aux polys um am mm imp rest lm e1 rr e2
-           ≡ inj₂ (signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
+           ≡ inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
     go lm e1 rr e2 with trans (sym e1) elm | trans (sym e2) err
     ... | refl | refl = refl
 
