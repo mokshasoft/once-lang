@@ -27,7 +27,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
 open import Once.Lang.Contract using (ISig)
 open import Once.Lang.Name using (showCanonical)
@@ -74,7 +74,7 @@ module Once.Adequacy.SpecFront.Def
   (b-name : ∀ d → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []))
   (b-sig : ∀ {m} (Δ : ST.KCtx m) {c t} → NotGenerator c → (c ∶ t) ∈ Σ
          → Σ[ T ∈ LT.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ T ⌜ t ⌝ᵈ)
-  (b-mono : ∀ {m} (Δ : ST.KCtx m) {d x} → nm d ≡ canonical (x ∷ []) → ¬ (x ∈ ps)
+  (b-mono : ∀ {m} (Δ : ST.KCtx m) {d x} → nm d ≡ canonical (x ∷ []) → ¬ (x ∈ ps) → x ≢ "main"
           → (lookupImport sg x ≡ nothing)
             × Σ[ T ∈ LT.Type ] (lookupImport imps x ≡ just T) × LW.IsConcrete T
               × (∀ τ → TyR Δ T (SC.Schema.type (defsS S SC.!! d) ST.⟨ τ ⟩)))
