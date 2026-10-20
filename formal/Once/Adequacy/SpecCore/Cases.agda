@@ -19,7 +19,7 @@ open import Once.Lang.Name using (showCanonical)
 import Once.Lang.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Adequacy.SpecCore.Poly using (declS; declS-S)
+open import Once.Adequacy.SpecCore.Poly using (declS; declS-S; ptyS-⟦⟧; wfS)
 
 module Once.Adequacy.SpecCore.Cases
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
@@ -43,7 +43,10 @@ import Once.Lang.Core.Syntax S as L
 import Once.Lang.Core.Typing S as GT
 import Once.Lang.Core.Meaning S as GM
 import Once.Spec.Core.Syntax as SC
-open import Once.Adequacy.SpecCore.Schema using (kindsS; defsS; castSub; ptyS)
+open import Once.Adequacy.SpecCore.Schema using (kindsS; defsS; castSub; ptyS; pfunS)
+open import Once.Adequacy.SpecGrammar.Conv using (φS)
+import Once.Spec.Grade as SG
+import Once.Spec.Effect Σ as SE
 open import Once.Adequacy.SpecCore.Context using (uS-zero)
 open import Once.Adequacy.SpecCore.Prim S using (primS; primDom-S; primCod-S)
 open import Once.Adequacy.SpecCore.Poly using (module Translate)
@@ -57,6 +60,7 @@ open import Once.Adequacy.SpecCore.Monad Σ
 open import Once.Adequacy.SpecCore.Env S Σ fmt
 open import Once.Adequacy.SpecCore.Fundamental S Σ sigop-S fmt
 open import Once.Adequacy.SpecCore.Conv S Σ using (conv-R)
+open import Once.Adequacy.SpecCore.Layer Σ
 
 ------------------------------------------------------------------------
 -- Primitive operations: the same function of the same words
@@ -256,3 +260,43 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) (defsR : DefsR ρ ρ′) (sigR : S
     where
       gX = subst (λ Z → GR Z _) (LP.⌈⌉-⟪⟫ A σ) (GR-inst (ptr LP.⌈ A ⌉) g)
       gs = subst (λ Z → GR A (Z ST.⟨ σ′ ⟩)) (sym (declS-S k h rf)) gX
+
+------------------------------------------------------------------------
+-- Recursive types
+------------------------------------------------------------------------
+
+module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
+
+  roll : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π F t} (wf : LP.WFFun Δ F)
+         (d : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t (LP.⟦ F ⟧F (LP.μ-type F)) π) → Fund ρ ρ′ d → Fund ρ ρ′ (PT.⊢roll wf d)
+  roll {Γ = Γ} {Ψ} {π} {F} wf d ih {σ} {σ′} r r′ g e =
+    fmap-R (pr π)
+      (L-at ρ ρ′ (LP.⟦⟧F-⟪⟫ F (LP.μ-type F) σ) (PT.instantiate σ r d) (pr π) gIn (GR-⟦⟧ g (pfr F) gμ)
+         (S-at ρ ρ′ g refl (ptyS-⟦⟧ F (LP.μ-type F)) refl (trD d) (crΓ Γ) (ur Ψ) (ur Ψ)
+               (GR-inst (ptr (LP.⟦ F ⟧F (LP.μ-type F))) g) gIn (pr π) (pr π) _ (ih r r′ g) e))
+      (λ rx → inR (in-R (GF-inst (pfr F) g) (cf-R g (pfr F) (LP.wf-⟪⟫ r wf) gμ rx)))
+    where
+      gμ = GR-inst (ptr (LP.μ-type F)) g
+      gIn = subst (λ Z → GR Z _) (sym (LP.⟦⟧F-⟪⟫ F (LP.μ-type F) σ)) (GR-⟦⟧ g (pfr F) gμ)
+
+  private
+    -- one layer of a stream, read on both sides
+    outν-R : ∀ {m} {F : LP.Fun m} {σ σ′} (g : InstG σ σ′) (wf : LW.WellFormedF (F LP.⟪ σ ⟫F)) φ {v w}
+           → ValR (GR-inst (ptr (LP.ν-type F φ)) g) v w
+           → MR (pr-fin φ) (ValR (GR-⟦⟧ g (pfr F) (GR-inst (ptr (LP.ν-type F φ)) g)))
+                (LOps.out-semᵛ φ wf v) (SE.fmap (SG.fin (φS φ)) (SD.fromL σ′ (pfunS F) (ST.ν (pfunS F) (φS φ))) (SE.νM.outν w))
+    outν-R {F = F} g wf LG.pure rv = cf⁻¹-R g (pfr F) wf _ (out-R (GF-inst (pfr F) g) wf (forceᵖR rv))
+    outν-R {F = F} g wf LG.act  rv =
+      bindT-R (forceᵈR rv) (λ rl → ret (cf⁻¹-R g (pfr F) wf _ (out-R (GF-inst (pfr F) g) wf rl)))
+
+  out : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ φ π₁ F t} (wf : LP.WFFun Δ F)
+        (d : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t (LP.ν-type F φ) π₁) → Fund ρ ρ′ d → Fund ρ ρ′ (PT.⊢out wf d)
+  out {Γ = Γ} {Ψ} {φ} {π₁} {F} wf d ih {σ} {σ′} r r′ g e =
+    L-at ρ ρ′ (sym (LP.⟦⟧F-⟪⟫ F (LP.ν-type F φ) σ)) (GT.⊢out (LP.wf-⟪⟫ r wf) (PT.instantiate σ r d)) (pr _) gX gY
+      (S-at ρ ρ′ g refl (sym (ptyS-⟦⟧ F (LP.ν-type F φ))) (eqᵍ-out π₁ φ) (S⊢.⊢out (wfS wf) (trD d)) (crΓ Γ) (ur Ψ) (ur Ψ)
+            (GR-⟦⟧ g (pfr F) (GR-inst (ptr (LP.ν-type F φ)) g)) gX (pr-· (pr π₁) (pr-fin φ)) (pr _) _
+            (λ e₀ → bindᵍ-R (pr π₁) (pr-fin φ) (ih r r′ g e₀) (outν-R g (LP.wf-⟪⟫ r wf) φ))
+            e)
+    where
+      gY = GR-inst (ptr (LP.⟦ F ⟧F (LP.ν-type F φ))) g
+      gX = subst (λ Z → GR Z _) (LP.⟦⟧F-⟪⟫ F (LP.ν-type F φ) σ) gY

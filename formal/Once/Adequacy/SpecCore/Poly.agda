@@ -275,6 +275,9 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   eqᵍ-3 : ∀ π₁ π₂ π → πS π₁ SG.·p πS π₂ SG.·p πS π ≡ πS (π₁ LG.·p π₂ LG.·p π)
   eqᵍ-3 π₁ π₂ π = sym (trans (·p-S π₁ _) (cong (πS π₁ SG.·p_) (·p-S π₂ π)))
 
+  eqᵍ-out : ∀ π₁ φ → πS π₁ SG.·p SG.fin (φS φ) ≡ πS (π₁ LG.·p LG.fin φ)
+  eqᵍ-out π₁ φ = sym (trans (·p-S π₁ (LG.fin φ)) (cong (πS π₁ SG.·p_) (πS-fin φ)))
+
   -- The Spec's typing of a translated term.
   trD : ∀ {a n} {Δ : LP.KCtx a} {Γ : PT.PCtx a n} {Ψ t A π}
       → PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π
@@ -310,7 +313,7 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
       arr-fin LG.pure refl = refl
       arr-fin LG.act  refl = refl
   trD (PT.⊢out {φ = φ} {π₁} {F} wf d) =
-    atS refl (sym (ptyS-⟦⟧ F (LP.ν-type F φ))) (sym (trans (·p-S π₁ (LG.fin φ)) (cong (πS π₁ SG.·p_) (πS-fin φ))))
+    atS refl (sym (ptyS-⟦⟧ F (LP.ν-type F φ))) (eqᵍ-out π₁ φ)
        (S⊢.⊢out (wfS wf) (trD d))
   trD (PT.⊢iter {Ψf = Ψf} {Ψs} {π₁} {π₂} df ds) =
     atS (eqᵘ-many Ψf Ψs) refl (eqᵍ-3 π₁ π₂ LG.eff)
