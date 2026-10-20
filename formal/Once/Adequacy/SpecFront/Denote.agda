@@ -81,9 +81,9 @@ import Once.Adequacy.SpecFront.Resolve as Res
 import Once.Adequacy.SpecFront.SigOf as SigOf
 open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-distinct; uniq-of; one-name; h-sig-of)
 open import Once.Adequacy.SpecFront.SigWF using (wf-of)
-open import Once.Adequacy.SpecFront.Prefix using (Past; past; prefix; ffi-facts)
+open import Once.Adequacy.SpecFront.Prefix using (Past; past; prefix; ffi-facts; main-entry)
 open import Once.Adequacy.SpecFront.Start using (names; distinct-rest; nosig-rest; fresh-start; not-sig)
-open import Once.Adequacy.SpecFront.Polys using (Adj; adj-of; pdn-res; pdn-xa; polyNames; poly-names; kinds-of; defs-of)
+open import Once.Adequacy.SpecFront.Polys using (Adj; adj-of; pdn-res; pdn-xa; polyNames; poly-names; kinds-of; defs-of; poly-not-fun)
 import Once.Adequacy.SpecFront.Align as Al
 import Once.Adequacy.SpecFront.WalkState as WS
 import Once.Adequacy.SpecFront.Walk as Wk
@@ -130,12 +130,12 @@ record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele e
                           (toProgram {S = LP.[] {Fs = toISig Σₛ}} TL.[] [] [] [] noCF mt mi (λ m → subst (_ ∈_) sig-eq m))
 
 denote : ∀ {mm mm′ dsU dsR ds′ es}
-       → ModRel mm mm′ → ¬ ("main" ∈ polyDefNames dsU)
+       → ModRel mm mm′
        → LR.ResolvesDecls mm (polyDefNames dsU) (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
        → Pointwise DEmb dsU ds′
        → Parser.extractFunctions (Parser.extractAliases (mkModule dsR)) (mkModule dsR) ≡ inj₂ es
        → (mt : ModTele emptyScope es) (mi : MainIn mt) → Denoted mm′ ds′ mt mi
-denote {mm} {mm′} {dsU} {dsR} {ds′} {es} mr main∉ rds pw ef mt mi =
+denote {mm} {mm′} {dsU} {dsR} {ds′} {es} mr rds pw ef mt mi =
   go fs es′ ees mt mi guard xn ffiE sigk
   where
     ps = polyDefNames dsU
@@ -177,6 +177,11 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} mr main∉ rds pw ef mt mi =
         guard′ = distinct-rest fs es′ guard
         pdn-eq : ps ≡ polyNames es′
         pdn-eq = trans (pdn-res rds adj) (pdn-xa adj xn)
+        -- `main` is a monomorphic entry, so not a telescope one
+        main∉ : ¬ ("main" ∈ ps)
+        main∉ m =
+          let (fi , mfi , e) = main-entry (Past.mt′ P) (Past.mi′ P)
+          in poly-not-fun es′ guard′ mfi (subst (_∈ polyNames es′) (sym e) (subst ("main" ∈_) pdn-eq m))
         h-sig = λ {m} Δ {c} {t} (_ : Once.Spec.Name.NotGenerator c) M → h-sig-of Σₛ fs tf ukeys facts {m} Δ {c} {t} M
         h-own : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σₛ)
         h-own {x} x∈ps M = not-sig Σₛ fs es′ tf guard (poly-names es′ (subst (x ∈_) pdn-eq x∈ps)) M

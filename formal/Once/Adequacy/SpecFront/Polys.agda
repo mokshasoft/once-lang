@@ -217,6 +217,10 @@ private
   fun≢poly : ∀ {fi pfi} → Parser.e-fun fi ≢ Parser.e-poly pfi
   fun≢poly ()
 
+-- a definition is not named as a telescope entry
+poly-not-fun : ∀ es → AllPairs _≢_ (map Parser.entryNameOf es) → ∀ {fi} → Parser.e-fun fi ∈ es → ¬ (funName fi ∈ polyNames es)
+poly-not-fun es u m n = let (q , mq , e) = poly-mem es n in fun≢poly (one-of u m mq (sym e))
+
 kinds-of : ∀ es → AllPairs _≢_ (map Parser.entryNameOf es) → All DefEntry es → All (EntryKind (polyNames es)) es
 kinds-of es u de = All.tabulate at
   where

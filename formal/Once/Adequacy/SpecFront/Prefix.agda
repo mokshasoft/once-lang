@@ -19,6 +19,8 @@ open import Data.List using (List; []; _∷_; _++_; _ʳ++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -65,3 +67,12 @@ ffi-facts [] [] mt = []
 ffi-facts (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) (ffi {ty = ty} refl refl c h g rest) = (refl , ty , refl , c , h , g) ∷ ffi-facts fs fa rest
 ffi-facts (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) (mono ep _ _ _ _ _) = ⊥-elim (t≢f (trans (sym fe) ep))
 ffi-facts (Parser.e-poly _ ∷ fs) (() ∷ fa) mt
+
+-- (`main`: a monomorphic entry)
+main-entry : ∀ {sc es} (mt : ModTele sc es) → MainIn mt
+           → Σ[ fi ∈ Parser.FunInfo ] (Parser.e-fun fi ∈ es) × (funName fi ≡ "main")
+main-entry [] ()
+main-entry (ffi _ _ _ _ _ rest) mi = let (fi , m , e) = main-entry rest mi in fi , there m , e
+main-entry (poly _ _ rest) mi = let (fi , m , e) = main-entry rest mi in fi , there m , e
+main-entry (mono {fi = fi} _ _ _ _ _ rest) (inj₁ (e , _)) = fi , here refl , e
+main-entry (mono _ _ _ _ _ rest) (inj₂ mi) = let (fi , m , e) = main-entry rest mi in fi , there m , e
