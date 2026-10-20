@@ -24,6 +24,14 @@
 -- produces (codomains, grades, `Void` for a whole type). A term is a morphism
 -- out of a given object: its domains are annotations, and its principal type
 -- is the least codomain over them (`Spec.Surface.Program.Principal`).
+--
+-- `A ⊔ B ≔ C`: `C` is the join of `A` and `B`, the least type both convert
+-- into. Two branches of one `case` meet at their join, each composed with
+-- its conversion (`Spec.Surface.Typing`), so the `case` keeps its least
+-- type. `Void` is the unit (`Void ⊔ X = X`); sums and products join
+-- componentwise; arrows join codomains and grades and meet domains (a meet
+-- always exists: `Void` is the bottom). There is no top: `μ` and a type
+-- variable join only with themselves, and `Int` and `Unit` have no join.
 ------------------------------------------------------------------------
 
 module Once.Spec.Sub where
@@ -31,7 +39,7 @@ module Once.Spec.Sub where
 open import Once.Spec.Grade using (mk-kind; fin; _⊑π_)
 open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 
-infix 4 _<:_ _<:ᶜ_
+infix 4 _<:_ _<:ᶜ_ _⊔_≔_
 
 data _<:_ {m} : Ty m → Ty m → Set where
   sub-void  : ∀ {B} → Void <: B
@@ -60,3 +68,9 @@ data _<:ᶜ_ {m} : Ty m → Ty m → Set where
   subᶜ-+     : ∀ {A A′ B B′} → A <:ᶜ A′ → B <:ᶜ B′ → (A + B) <:ᶜ (A′ + B′)
   subᶜ-μ     : ∀ {F} → μ F <:ᶜ μ F
   subᶜ-ν     : ∀ {F f f′} → fin f ⊑π fin f′ → ν F f <:ᶜ ν F f′
+
+record _⊔_≔_ {m} (A B C : Ty m) : Set where
+  field
+    left  : A <: C
+    right : B <: C
+    least : ∀ {D} → A <: D → B <: D → C <: D

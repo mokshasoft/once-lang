@@ -10,7 +10,8 @@
 -- if one cannot be proved, the language is wrong.
 --
 --   * types       — subtyping and the effect order are partial orders with
---                   one derivation per pair (a conversion has one meaning);
+--                   one derivation per pair (a conversion has one meaning;
+--                   a join, where it exists, is unique);
 --   * surface     — the surface judgment's modes agree: a synthesized type is
 --                   unique, the domain-given mode is exact and agrees with
 --                   synthesis;
@@ -83,9 +84,11 @@ record Types : Set where
   field
     <:-refl   : ∀ {m} (A : Ty m) → A <: A
     <:-trans  : ∀ {m} {A B C : Ty m} → A <: B → B <: C → A <: C
+    <:-antisym : ∀ {m} {A B : Ty m} → A <: B → B <: A → A ≡ B
     <:-unique : ∀ {m} {A B : Ty m} (p q : A <: B) → p ≡ q
     ⊑π-refl   : ∀ π → π ⊑π π
     ⊑π-trans  : ∀ {π₁ π₂ π₃} → π₁ ⊑π π₂ → π₂ ⊑π π₃ → π₁ ⊑π π₃
+    ⊑π-antisym : ∀ {π π′} → π ⊑π π′ → π′ ⊑π π → π ≡ π′
     ⊑π-unique : ∀ {π π′} (g h : π ⊑π π′) → g ≡ h
 
 ------------------------------------------------------------------------

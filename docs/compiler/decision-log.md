@@ -18983,3 +18983,57 @@ Wells 2002), which fails or explodes with subtyping and a bottom.
   synthesizes); `Bridges.sound` needs the checker to compare a signature with that type exactly.
 * Most programs' `main` signature becomes its principal type (e.g. `Act Unit Void` when the body ends in
   `exit`), used at `Eff Unit Unit` by `<:` (D315).
+
+## D322 — A CASE IS AT THE JOIN OF ITS BRANCHES; A DEFINITION'S TYPE IS ITS BODY'S, IN THE CONTEXT ITS DOMAINS DECLARE (2026-10-20)
+
+**Proposed 2026-10-20** (discussion of the D321 note `principal-types-inl.md`); pending the user's approval of
+the Spec patch. **Keeps**: D314/D321 (option B: a signature confirms the body's principal type). **Relates**:
+D226 (subtyping), D316 (bidirectional typing), GOAL.md (the Spec read by a categorical mathematician, the
+surface written by a programmer).
+
+### The principle, stated exactly
+A definition's type is determined by its body, **in the context its domains declare**. A term is a morphism
+out of a given object (D321): the domains are its context — given by the signature (or inferred, without
+one) — and the body determines everything it produces (codomains, grades). A signature never changes the
+body's type: a type moves only by composition, and by composition with a canonical conversion (`Spec.Sub`),
+either written in the body (an annotation `(e : T)`) or inserted where a value is used (`c-sub`).
+
+### Problem
+Under D314/D321 two branches of one `case`/`destruct` that leave different summands open synthesize
+different codomains (`stop : … -> Int + Void`, `next : … -> Void + (Int * Int)`), and `d-case`/`s-case`
+asked for one: the program needed an annotation although its least type exists (3 of 81 exit tests).
+
+### Decision
+1. **Joins** (`Spec.Sub`): `A ⊔ B ≔ C` — `C` is the least type both convert into, stated by its universal
+   property (`left`, `right`, `least`). Full join: arrows join codomains and grades and meet domains (a meet
+   always exists, `Void` the bottom); there is no top, so some pairs have no join and are rejected as before.
+2. **`d-case` and `s-case` are at the join** of their branches' types, each branch composed with its
+   conversion (`coerce`). A `case` keeps its least type, as D321 asks of every definition.
+3. **`Spec.Metatheory.Types` claims antisymmetry** of `<:` and `⊑π` (the header already said "partial
+   orders"); a join is therefore unique (`Once.Metatheory.Types.join-unique`), and `synth-unique` /
+   `domain-exact` hold for the new rules (`Once.Metatheory.Surface`).
+4. **An annotation is the body's own widening** (comment on `s-annot`): the only way a definition states a
+   type above its principal one; a signature only confirms.
+5. **Domains: option 1** — the domains are the context, declared by the signature (`k : Int -> Int` for
+   `k x = 3` is accepted: it declares the context, the body determines `Int`). Rejected: option 2 (domains
+   also from the body): it needs principal TYPINGS with subtyping, which Once's order lacks (`twice f =
+   f (f 3)` has the incomparable types `(Int -> Int) -> Int` and `(Int -> Void) -> Void`; only the
+   constrained `∀b. b <: Int ⇒ (Int -> b) -> b` is least — bounded quantification, or algebraic
+   subtyping with a top).
+6. **Compiler diagnostics** (not Spec):
+   * a WARNING (not an error) when a joined domain is uninhabited: both arms are converted to the unique
+     map out of an empty type, so the `case` throws both away; any real call of it is already a type error
+     (GOAL.md: almost always a bug, the language does not forbid it);
+   * the "not its principal type" error teaches both fixes: write the principal type, or annotate the body
+     (`(inl 2 : Int + Unit)`) to state the wider one.
+
+### Future extension (not decided)
+Option 2's capability can come later without breaking programs: binder annotations (`\(x : Int) -> …`) and a
+richer inference (constrained schemas) for sig-less definitions only ADD ways to state a domain in the body.
+Option 2's restriction — rejecting a signature that declares a domain — would break programs, and with
+option 1 nothing needs it.
+
+### Consequences
+* The checker (`Lang`), elaboration and the Spec bridges follow the new `d-case`/`s-case` (the coercions are
+  identities when the branches agree: coherence, `coerce` along `refl`).
+* `loop-sum`, `loop-emit` and `layer2-initial` drop their `case` annotations.

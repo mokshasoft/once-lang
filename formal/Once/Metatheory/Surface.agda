@@ -48,6 +48,8 @@ open import Once.Spec.Metatheory using (Surface)
 
 open Distinct dist
 open import Once.Metatheory.OneName using (decl-unique)
+open import Once.Metatheory.Types using (join-unique)
+open import Once.Spec.Sub using (_⊔_≔_)
 
 ------------------------------------------------------------------------
 -- Names
@@ -264,8 +266,11 @@ module Modes {m} (Δ : KCtx m) where
             → Syn (L ▹ x ∶ A) e B t → Syn (L ▹ x ∶ A′) e B′ t′ → B ≡ B′
     domUnder : ∀ {n} {L : Locals m n} {e A A′ π B B′ t t′} → A ≡ A′
              → Dom L e A π B t → Dom L e A′ π B′ t′ → B ≡ B′
+    -- two joins of equal pairs are equal
+    joinUnder : ∀ {A A′ B B′ C C′ : Ty m} → A ≡ A′ → B ≡ B′ → A ⊔ B ≔ C → A′ ⊔ B′ ≔ C′ → C ≡ C′
 
   under refl d d′ = synth-unique d d′
+  joinUnder refl refl j j′ = join-unique j j′
   domUnder refl d d′ = domain-exact d d′
 
   -- Synthesis.
@@ -289,8 +294,9 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-neg-float _ _ _) (s-neg ())
   synth-unique (s-neg-float _ _ _) (s-neg-float _ _ _) = refl
   synth-unique (s-let q d₁ d₂) (s-let q′ d₁′ d₂′) = under (synth-unique d₁ d₁′) d₂ d₂′
-  synth-unique (s-case ql qr ds dl dr) (s-case ql′ qr′ ds′ dl′ dr′) =
-    under (proj₁ (+-inj (synth-unique ds ds′))) dl dl′
+  synth-unique (s-case ql qr ds dl dr j) (s-case ql′ qr′ ds′ dl′ dr′ j′) =
+    joinUnder (under (proj₁ (+-inj (synth-unique ds ds′))) dl dl′)
+              (under (proj₂ (+-inj (synth-unique ds ds′))) dr dr′) j j′
   -- arithmetic: the operand types decide the rule
   synth-unique (s-arith _ _ _)          (s-arith _ _ _)          = refl
   synth-unique (s-arith _ a _)          (s-arith-float _ a′ _)   = ⊥-elim (Int≢Float (synth-unique a a′))
@@ -419,7 +425,7 @@ module Modes {m} (Δ : KCtx m) where
   domain-exact (d-infer dg _ _) d-snd          = ⊥-elim (noSyn-gen snd∈ (λ ()) dg)
   domain-exact (d-infer dg _ _) d-terminal     = ⊥-elim (noSyn-gen terminal∈ (λ ()) dg)
   domain-exact (d-infer dg _ _) d-initial      = ⊥-elim (noSyn-gen initial∈ (λ ()) dg)
-  domain-exact (d-infer dg _ _) (d-case _ _)       = ⊥-elim (noSyn-case dg)
+  domain-exact (d-infer dg _ _) (d-case _ _ _)       = ⊥-elim (noSyn-case dg)
   domain-exact (d-infer dg _ _) (d-pair _ _)       = ⊥-elim (noSyn-pair dg)
   domain-exact (d-infer dg _ _) (d-cata _ _)     = ⊥-elim (noSyn-cata dg)
   domain-exact (d-poly d e lt _ _ _ _ _ _ _) (d-infer dg _ _) = ⊥-elim (noSyn-poly d e lt dg)
@@ -449,8 +455,8 @@ module Modes {m} (Δ : KCtx m) where
   domain-exact d-terminal (d-infer dg _ _)   = ⊥-elim (noSyn-gen terminal∈ (λ ()) dg)
   domain-exact d-initial  d-initial      = refl
   domain-exact d-initial  (d-infer dg _ _)   = ⊥-elim (noSyn-gen initial∈ (λ ()) dg)
-  domain-exact (d-case df _)  (d-case df′ _)     = domain-exact df df′
-  domain-exact (d-case _ _)   (d-infer dg _ _)   = ⊥-elim (noSyn-case dg)
+  domain-exact (d-case df dg j) (d-case df′ dg′ j′) = joinUnder (domain-exact df df′) (domain-exact dg dg′) j j′
+  domain-exact (d-case _ _ _)   (d-infer dg _ _)   = ⊥-elim (noSyn-case dg)
   domain-exact (d-pair df dg) (d-pair df′ dg′)   = cong₂ _*_ (domain-exact df df′) (domain-exact dg dg′)
   domain-exact (d-pair _ _)   (d-infer dg _ _)   = ⊥-elim (noSyn-pair dg)
   domain-exact (d-cata _ da) (d-cata _ da′)  = proj₂ (proj₂ (⇒-inj (synth-unique da da′)))
@@ -466,7 +472,7 @@ module Modes {m} (Δ : KCtx m) where
   agree d-snd       s = ⊥-elim (noSyn-gen snd∈ (λ ()) s)
   agree d-terminal  s = ⊥-elim (noSyn-gen terminal∈ (λ ()) s)
   agree d-initial   s = ⊥-elim (noSyn-gen initial∈ (λ ()) s)
-  agree (d-case _ _)    s = ⊥-elim (noSyn-case s)
+  agree (d-case _ _ _)    s = ⊥-elim (noSyn-case s)
   agree (d-pair _ _)    s = ⊥-elim (noSyn-pair s)
   agree (d-cata _ _)  s = ⊥-elim (noSyn-cata s)
 

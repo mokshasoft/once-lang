@@ -5,6 +5,7 @@
 ------------------------------------------------------------------------
 -- Once.Metatheory.Types — subtyping and the effect order are partial
 -- orders with one derivation per pair (`Spec.Metatheory.Types`).
+-- A join is unique: two least upper bounds lie below each other.
 ------------------------------------------------------------------------
 
 module Once.Metatheory.Types where
@@ -38,6 +39,14 @@ open import Once.Spec.Metatheory using (Types)
 ⊑π-unique ⊑-ae   ⊑-ae   = refl
 ⊑π-unique ⊑-eff  ⊑-eff  = refl
 
+⊑π-antisym : ∀ {π π′} → π ⊑π π′ → π′ ⊑π π → π ≡ π′
+⊑π-antisym ⊑-pure _     = refl
+⊑π-antisym ⊑-act  _     = refl
+⊑π-antisym ⊑-eff  _     = refl
+⊑π-antisym ⊑-pa   ()
+⊑π-antisym ⊑-pe   ()
+⊑π-antisym ⊑-ae   ()
+
 <:-refl : ∀ {m} (A : Ty m) → A <: A
 <:-refl (var i)      = sub-var
 <:-refl Unit         = sub-unit
@@ -62,6 +71,26 @@ open import Once.Spec.Metatheory using (Types)
 <:-trans sub-μ           q               = q
 <:-trans (sub-ν g)       (sub-ν g′)      = sub-ν (⊑π-trans g g′)
 
+private
+  arr-≡ : ∀ {m} {A A′ B B′ : Ty m} {q π π′} → A ≡ A′ → π ≡ π′ → B ≡ B′
+        → (A ⇒[ mk-kind q π ] B) ≡ (A′ ⇒[ mk-kind q π′ ] B′)
+  arr-≡ refl refl refl = refl
+
+  ν-≡ : ∀ {m F f f′} → fin f ≡ fin f′ → _≡_ {A = Ty m} (ν F f) (ν F f′)
+  ν-≡ refl = refl
+
+<:-antisym : ∀ {m} {A B : Ty m} → A <: B → B <: A → A ≡ B
+<:-antisym sub-void        sub-void          = refl
+<:-antisym sub-var         _                 = refl
+<:-antisym sub-unit        _                 = refl
+<:-antisym sub-int         _                 = refl
+<:-antisym sub-float       _                 = refl
+<:-antisym (sub-arr a b g) (sub-arr a′ b′ g′) = arr-≡ (<:-antisym a′ a) (⊑π-antisym g g′) (<:-antisym b b′)
+<:-antisym (sub-* a b)     (sub-* a′ b′)     = cong₂ _*_ (<:-antisym a a′) (<:-antisym b b′)
+<:-antisym (sub-+ a b)     (sub-+ a′ b′)     = cong₂ _+_ (<:-antisym a a′) (<:-antisym b b′)
+<:-antisym sub-μ           _                 = refl
+<:-antisym (sub-ν g)       (sub-ν g′)        = ν-≡ (⊑π-antisym g g′)
+
 <:-unique : ∀ {m} {A B : Ty m} (p q : A <: B) → p ≡ q
 <:-unique sub-void        sub-void          = refl
 <:-unique sub-var         sub-var           = refl
@@ -79,8 +108,14 @@ types : Types
 types = record
   { <:-refl   = <:-refl
   ; <:-trans  = <:-trans
+  ; <:-antisym = <:-antisym
   ; <:-unique = <:-unique
   ; ⊑π-refl   = ⊑π-refl
   ; ⊑π-trans  = ⊑π-trans
+  ; ⊑π-antisym = ⊑π-antisym
   ; ⊑π-unique = ⊑π-unique
   }
+
+join-unique : ∀ {m} {A B C C′ : Ty m} → A ⊔ B ≔ C → A ⊔ B ≔ C′ → C ≡ C′
+join-unique j j′ = <:-antisym (least j (left j′) (right j′)) (least j′ (left j) (right j))
+  where open _⊔_≔_

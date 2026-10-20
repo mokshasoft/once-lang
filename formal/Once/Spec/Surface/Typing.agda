@@ -40,7 +40,7 @@ open import Once.Spec.Name using (gen; NotGenerator)
 open import Once.Spec.Type
   using (Ty; Type; Fun; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; K; Id; _⊕_; _⊗_;
          WFFun; Respects; _⟨_⟩; _⟨_⟩F; Occurs)
-open import Once.Spec.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝; ⌜_⌝ᵈ)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
 open import Once.Spec.Surface.Syntax
@@ -142,6 +142,10 @@ module _ {m : ℕ} (Δ : KCtx m) where
     s-def : ∀ {c} (d : Fin s) → defName d ≡ c → (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0
           → L ⊢ RResolved c ⇒ type (S !! d) ⟨ τ ⟩ ↝ ref d τ
 
+    -- An annotation: `e` checked at `T`, which may lie above `e`'s own
+    -- type. It is how a definition states a wider type for itself: the
+    -- widening is written in the body, along conversions; a signature only
+    -- confirms the body's type (`Spec.Surface.Program.Principal`).
     s-annot : ∀ {e T t} → L ⊢ e ⇐ ↑ T ↝ t → L ⊢ RAnnot e T ⇒ ↑ T ↝ t
 
     s-pair : ∀ {a b A B ta tb} → L ⊢ a ⇒ A ↝ ta → L ⊢ b ⇒ B ↝ tb → L ⊢ RPair a b ⇒ A * B ↝ pair ta tb
@@ -153,10 +157,12 @@ module _ {m : ℕ} (Δ : KCtx m) where
     s-let : ∀ {x e₁ e₂ A B t₁ t₂} (q : Quantity)
           → L ⊢ e₁ ⇒ A ↝ t₁ → (L ▹ x ∶ A) ⊢ e₂ ⇒ B ↝ t₂
           → L ⊢ RLet x e₁ e₂ ⇒ B ↝ let′ q t₁ t₂
-    s-case : ∀ {e xl el xr er A B C ts tl tr} (ql qr : Quantity)
+    -- The branches meet at the join of their types, each composed with its
+    -- conversion.
+    s-case : ∀ {e xl el xr er A B Cl Cr C ts tl tr} (ql qr : Quantity)
            → L ⊢ e ⇒ A + B ↝ ts
-           → (L ▹ xl ∶ A) ⊢ el ⇒ C ↝ tl → (L ▹ xr ∶ B) ⊢ er ⇒ C ↝ tr
-           → L ⊢ RDestruct e xl el xr er ⇒ C ↝ case ql qr ts tl tr
+           → (L ▹ xl ∶ A) ⊢ el ⇒ Cl ↝ tl → (L ▹ xr ∶ B) ⊢ er ⇒ Cr ↝ tr → Cl ⊔ Cr ≔ C
+           → L ⊢ RDestruct e xl el xr er ⇒ C ↝ case ql qr ts (coerce Cl C tl) (coerce Cr C tr)
 
     s-arith : ∀ {op p e₁ e₂ t₁ t₂} → IntArith op p
             → L ⊢ e₁ ⇒ Int ↝ t₁ → L ⊢ e₂ ⇒ Int ↝ t₂ → L ⊢ RBinOp op e₁ e₂ ⇒ Int ↝ prim p (pair t₁ t₂)
@@ -291,9 +297,12 @@ module _ {m : ℕ} (Δ : KCtx m) where
     d-snd      : ∀ {A B π} → L ⊢ RResolved (gen "snd") ⇐ (A * B) ⇒[ π ]↦ B ↝ sndᶜ A B π
     d-terminal : ∀ {A π} → L ⊢ RResolved (gen "terminal") ⇐ A ⇒[ π ]↦ Unit ↝ terminalᶜ A π
     d-initial  : ∀ {π} → L ⊢ RResolved (gen "initial") ⇐ Void ⇒[ π ]↦ Void ↝ initialᶜ Void π
-    d-case : ∀ {f g A B C π tf tg}
-           → L ⊢ f ⇐ A ⇒[ π ]↦ C ↝ tf → L ⊢ g ⇐ B ⇒[ π ]↦ C ↝ tg
-           → L ⊢ RApp (RApp (RResolved (gen "case")) f) g ⇐ (A + B) ⇒[ π ]↦ C ↝ caseᶜ A B π tf tg
+    -- The copairing's codomain is the join of the branches' codomains, each
+    -- branch composed with its conversion.
+    d-case : ∀ {f g A B Cf Cg C π tf tg}
+           → L ⊢ f ⇐ A ⇒[ π ]↦ Cf ↝ tf → L ⊢ g ⇐ B ⇒[ π ]↦ Cg ↝ tg → Cf ⊔ Cg ≔ C
+           → L ⊢ RApp (RApp (RResolved (gen "case")) f) g ⇐ (A + B) ⇒[ π ]↦ C
+               ↝ caseᶜ A B π (coerce (A ⇒⟨ π ⟩ Cf) (A ⇒⟨ π ⟩ C) tf) (coerce (B ⇒⟨ π ⟩ Cg) (B ⇒⟨ π ⟩ C) tg)
     d-pair : ∀ {f g A B C π tf tg}
            → L ⊢ f ⇐ A ⇒[ π ]↦ B ↝ tf → L ⊢ g ⇐ A ⇒[ π ]↦ C ↝ tg
            → L ⊢ RApp (RApp (RResolved (gen "pair")) f) g ⇐ A ⇒[ π ]↦ (B * C) ↝ pairᶜ A π tf tg

@@ -240,6 +240,11 @@ entry updates the rule it changes here, in the same commit.
   sits where a value is USED (an argument, a branch at a join, `main`'s
   entry, D315) — never between a definition and its signature; in the core it is the
   term `coerce A B t`. `A <: Unit` and `Int <: Float` are not subtyping. (D226)
+- **Joins**: two branches of one `case`/`destruct` meet at the least type
+  both convert into (`A ⊔ B ≔ C`, stated by its universal property), each
+  composed with its conversion. Arrows join codomains and grades and meet
+  domains; with no top type, `Int` and `Unit` have no join. A joined domain
+  that is uninhabited draws a warning, not an error. (D322)
 - **Eliminators consume their principal argument up to `<:`**; grades are
   never narrowed. (D229, its Void rules withdrawn by D251)
 - **Int widens to Float** only in mixed binary operations (two local rules);
@@ -255,6 +260,11 @@ entry updates the rule it changes here, in the same commit.
   whose output its input does not determine needs an annotation. (D230)
 - **`let` and a top-level definition are interderivable**; a defined name
   unfolds to its definiens and folds back. (D284)
+- **A definition's type is its body's, in the context its domains declare**:
+  the domains are the context (given by the signature, or inferred); the body
+  determines what it produces. A type moves only by composition, and by
+  composition with a conversion — written in the body (`(e : T)`) or inserted
+  at a use. (D322)
 - **Signatures are optional assertions that confirm the principal type**: a
   definition's type IS its body's principal type — the least type over the
   signature's domains (domains are annotations; smaller only in codomains,
@@ -394,5 +404,8 @@ with the code:
    module's path. The Spec cannot yet state this.
 5. **D048, D050, D051, D052** have no entries (D050 is cited as "canonical
    names").
-6. **D317 in flight**: the implementation follows the new Spec in plan 0.119
+6. **Domains from the body** (D322's option 2): binder annotations and
+   constrained schemas for sig-less definitions would let a body state its
+   own domains — an extension, not decided.
+7. **D317 in flight**: the implementation follows the new Spec in plan 0.119
    §7 D; until then the compiler's proofs are red against it.
