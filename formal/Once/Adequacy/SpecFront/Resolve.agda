@@ -1,0 +1,117 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Adequacy.SpecFront.Resolve — the compiler's resolution of a body is
+-- the Spec's (plan 0.121 §3.6, F2).
+--
+-- The two resolutions take the same decisions, in the same order — a binder,
+-- a generator, an unaliased import, the own module (D136); `name@this`,
+-- `name@alias` — over the same tables. They write one case differently: the
+-- compiler keeps a reference to an own POLYMORPHIC definition bare, where the
+-- Spec writes `canonical [x]` (`RX`'s `x-own`). Given a body as written in
+-- both grammars (`Emb`), its resolution by the compiler, and the resolved
+-- body good (`ResolvedRefs`: it names neither `main` nor an own polymorphic
+-- definition canonically, and its annotations are surface types), the Spec
+-- resolves the body too, to an expression `RX`-related to the compiler's
+-- (`res-expr`).
+------------------------------------------------------------------------
+
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.String using (String)
+open import Relation.Nullary using (¬_)
+
+module Once.Adequacy.SpecFront.Resolve
+  (ps : List String)
+  -- the entry is not a polymorphic definition
+  (main∉ps : ¬ ("main" ∈ ps))
+  where
+
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Data.Empty using (⊥-elim)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong)
+
+open import Once.Spec.Name using (CanonicalName; canonical; gen)
+open import Once.Lang.Syntax as O using (RawExpr)
+import Once.Spec.Surface.Syntax as S
+open import Once.Lang.Resolution as LR
+  using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own-poly; rv-own;
+         ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
+         re-binop; re-unop; re-ana; re-unit; re-int; re-float; ExpandsTo; ex-nil; ex-I; ex-other)
+open import Once.Spec.Surface.Resolution as SR
+  using (Env; env; Resolves; ResolvesName; rn-gen; rn-import; rn-own;
+         r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
+         r-annot; r-binop; r-neg; Expands; fa-here; fa-there)
+import Once.Spec.Surface.Resolution
+open import Once.Lang.ResolvedRefs using (GoodName; GoodRefs)
+open import Once.Adequacy.SpecGrammar.Expr using (Emb; e-var; e-qual; e-res; e-app; e-lam; e-let; e-pair; e-destruct; e-unit;
+  e-int; e-float; e-annot; e-binop; e-neg)
+open import Once.Adequacy.SpecFront.Expr
+  using (RX; NotOwnPoly; x-local; x-own; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
+
+------------------------------------------------------------------------
+-- The tables
+------------------------------------------------------------------------
+
+private
+  fa→ : ∀ {K V : Set} {x : K} {v : V} {t} → LR.FirstAt x v t → SR.FirstAt x v t
+  fa→ LR.fa-here         = fa-here
+  fa→ (LR.fa-there ne f) = fa-there ne (fa→ f)
+
+  ex→ : ∀ {p p′} → ExpandsTo p p′ → Expands p p′
+  ex→ ex-nil       = SR.ex-nil
+  ex→ ex-I         = SR.ex-I
+  ex→ (ex-other n) = SR.ex-other n
+
+  -- a good name is no own polymorphic definition's, and not `main`
+  good-nop : ∀ {c} → GoodName ps c → NotOwnPoly ps c
+  good-nop g e = proj₂ (g e)
+
+  good-main : ∀ {c} → GoodName ps c → c ≢ canonical ("main" ∷ [])
+  good-main g e = proj₁ (g e) refl
+
+  -- a generator is a good name
+  gen-good : ∀ x → GoodName ps (gen x)
+  gen-good x ()
+
+  x-good : ∀ {bound c} → GoodName ps c → RX ps bound (O.RResolved c) (S.RResolved c)
+  x-good g = x-res (good-nop g) (good-main g)
+
+------------------------------------------------------------------------
+-- An expression
+------------------------------------------------------------------------
+
+res-expr : ∀ {um am bound eU eC eU′} → ResolvesExpr ps um am bound eU eC → Emb eU eU′ → GoodRefs ps eC
+         → Σ[ eS ∈ S.Expr ] Resolves (env um am) bound eU′ eS × RX ps bound eC eS
+res-expr (re-var (rv-binder m)) e-var g = _ , r-local m , x-local m
+res-expr (re-var (rv-gen nb gw)) e-var g = _ , r-name nb (rn-gen gw) , x-good (gen-good _)
+res-expr (re-var (rv-import nb ngw fa ex)) e-var g = _ , r-name nb (rn-import ngw (fa→ fa) (ex→ ex)) , x-good g
+res-expr {bound = bound} (re-var (rv-own-poly {x = x} nb ngw ab x∈)) e-var g =
+  _ , r-name nb (rn-own ngw ab (λ e → main∉ps (subst′ e x∈))) , x-own nb x∈
+  where
+    subst′ : x ≡ "main" → x ∈ ps → "main" ∈ ps
+    subst′ refl m = m
+res-expr (re-var (rv-own {x = x} nb ngw ab x∉)) e-var g = _ , r-name nb (rn-own ngw ab (proj₁ (g refl))) , x-good g
+res-expr re-this e-qual g = _ , r-this (proj₁ (g refl)) , x-good g
+res-expr (re-qual na fa ex) e-qual g = _ , r-qual na (fa→ fa) (ex→ ex) , x-good g
+res-expr (re-qual-path na ab) e-qual g = _ , r-qual-path na ab , x-good g
+res-expr re-res e-res g = _ , r-res , x-good g
+res-expr (re-app f a) (e-app ef ea) (gf , ga) =
+  let (f′ , rf , xf) = res-expr f ef gf ; (a′ , ra , xa) = res-expr a ea ga in _ , r-app rf ra , x-app xf xa
+res-expr (re-lam b) (e-lam eb) g = let (b′ , rb , xb) = res-expr b eb g in _ , r-lam rb , x-lam xb
+res-expr (re-let e b) (e-let ee eb) (ge , gb) =
+  let (e′ , re′ , xe) = res-expr e ee ge ; (b′ , rb , xb) = res-expr b eb gb in _ , r-let re′ rb , x-let xe xb
+res-expr (re-pair a b) (e-pair ea eb) (ga , gb) =
+  let (a′ , ra , xa) = res-expr a ea ga ; (b′ , rb , xb) = res-expr b eb gb in _ , r-pair ra rb , x-pair xa xb
+res-expr (re-destruct s l r) (e-destruct es el er) (gs , gl , gr) =
+  let (s′ , rs , xs) = res-expr s es gs ; (l′ , rl , xl) = res-expr l el gl ; (r′ , rr , xr) = res-expr r er gr
+  in _ , r-destruct rs rl rr , x-destruct xs xl xr
+res-expr (re-annot e) (e-annot ee) (rf , g) = let (e′ , re′ , xe) = res-expr e ee g in _ , r-annot re′ , x-annot rf xe
+res-expr (re-binop a b) (e-binop ea eb) (ga , gb) =
+  let (a′ , ra , xa) = res-expr a ea ga ; (b′ , rb , xb) = res-expr b eb gb in _ , r-binop ra rb , x-binop xa xb
+res-expr (re-unop e) (e-neg ee) g = let (e′ , re′ , xe) = res-expr e ee g in _ , r-neg re′ , x-neg xe
+res-expr re-unit e-unit g = _ , r-unit , x-unit
+res-expr re-int e-int g = _ , r-int , x-int
+res-expr re-float e-float g = _ , r-float , x-float
