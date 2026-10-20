@@ -353,3 +353,24 @@ decl-R (LW.con-base LW.base-rigid) () _
 eff-S : ∀ {π} → LG.EffGrade π → SG.EffGrade (πS π)
 eff-S LG.eg-act = SG.eg-act
 eff-S LG.eg-eff = SG.eg-eff
+
+-- The Spec's join of related types is the compiler's join of them: the
+-- compiler decides it (`Join.join?`), and where there is no join the Spec's
+-- upper bound, read back, would be one.
+join-L : ∀ {A B A′ B′ C′} → A′ SS.⊔ B′ ≔ C′ → TyR Δ A A′ → TyR Δ B B′
+       → Σ[ C ∈ LT.Type ] (TyR Δ C C′ × A LS.⊔ B ≔ C)
+join-L {A} {B} {C′ = C′} J ra rb = from (Once.Lang.Type.Join.join? A B)
+  where
+    open import Once.Lang.Type.Join using (Join?; joined; apart; sound; <:ᶜ-antisym)
+    from : Join? A B → Σ[ C ∈ LT.Type ] (TyR Δ C C′ × A LS.⊔ B ≔ C)
+    from (apart n) =
+      let (D₀ , rd) = back C′ in
+      ⊥-elim (n (D₀ , subᶜ-L (SS._⊔_≔_.left J) ra rd , subᶜ-L (SS._⊔_≔_.right J) rb rd))
+    from (joined C j) =
+      let J₀  = sound j
+          (C″ , rc , J′) = join-S J₀ ra rb
+          (D₀ , rd) = back C′
+          -- the two Spec joins are one: each below the other
+          up  = subᶜ-L (SS._⊔_≔_.least J′ (SS._⊔_≔_.left J) (SS._⊔_≔_.right J)) rc rd
+          dn  = subᶜ-L (SS._⊔_≔_.least J (SS._⊔_≔_.left J′) (SS._⊔_≔_.right J′)) rd rc
+      in C , subst (TyR Δ C) (TyR-uniqueˢ (subst (λ Z → TyR Δ Z C″) (<:ᶜ-antisym up dn) rc) rd) rc , J₀
