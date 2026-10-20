@@ -12,7 +12,7 @@
 -- walk (`Walk`, from the FFI declarations' scope, `Prefix`/`Start`), its
 -- names (`EndNames`, `SigFacts`), its entry (`End`); the program is the
 -- compiler's core program translated (`programS`), the one `toProgram`
--- builds (`same`).
+-- builds (`built`).
 --
 -- One parameter is still owed (plan 0.121 R13): a generator the compiler
 -- finds by its RENDERED name is the Spec declaration of that name.
@@ -79,7 +79,9 @@ open import Once.Adequacy.SpecFront.ModRel using (ModRel)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; extract-align; nonSigs-none)
 import Once.Adequacy.SpecFront.Resolve as Res
 import Once.Adequacy.SpecFront.SigOf as SigOf
-open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-distinct; uniq-of; one-name; h-sig-of)
+open import Once.Adequacy.SpecFront.SigFacts using (keys; rname; keys-distinct; uniq-of; one-name; h-sig-of)
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
+open import Data.List using (map)
 open import Once.Adequacy.SpecFront.SigWF using (wf-of)
 open import Once.Adequacy.SpecFront.Prefix using (Past; past; prefix; ffi-facts; main-entry)
 open import Once.Adequacy.SpecFront.Start using (names; distinct-rest; nosig-rest; fresh-start; not-sig)
@@ -123,11 +125,18 @@ record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele e
   field
     Σₛ      : Signature
     wf      : WellFormed Σₛ
+    uniq    : Unique (map rname Σₛ)
     sig-eq  : Once.Lang.Module.teleSig mt ≡ toISig Σₛ
-    program : CoreProgram.Program Σₛ
-    denotes : SPr.Denotes mm′ (S.mkModule ds′) Σₛ program
-    same    : program ≡ PG.programS Σₛ (sigop-R13 Σₛ) fmt wf
-                          (toProgram {S = LP.[] {Fs = toISig Σₛ}} TL.[] [] [] [] noCF mt mi (λ m → subst (_ ∈_) sig-eq m))
+    -- the compiler's core program, built over Σ's table
+    {size}  : ℕ
+    {sig}   : LP.Sig (toISig Σₛ) size
+    tele    : TL.Tele sig
+    entry   : Fin size
+    isMain  : TL.MainEntry (sig LP.!! entry)
+    built   : toProgram {S = LP.[] {Fs = toISig Σₛ}} TL.[] [] [] [] noCF mt mi (λ m → subst (_ ∈_) sig-eq m)
+              ≡ TL.program tele entry isMain
+    -- …which the module denotes, translated
+    denotes : SPr.Denotes mm′ (S.mkModule ds′) Σₛ (PG.programS Σₛ (sigop-R13 Σₛ) fmt wf (TL.program tele entry isMain))
 
 denote : ∀ {mm mm′ dsU dsR ds′ es}
        → ModRel mm mm′
@@ -159,8 +168,8 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} mr rds pw ef mt mi =
             × (toISig Σₛ ≡ entrySig fs) × (entrySig es ≡ entrySig fs))
        → Denoted mm′ ds′ mt mi
     go fs es′ refl mt mi guard xn ffiE sigk = record
-      { Σₛ = Σₛ ; wf = wf ; sig-eq = eqT ; program = p ; denotes = den
-      ; same = cong (PG.programS Σₛ (sigop-R13 Σₛ) fmt wf) (sym (trans (Past.same P) eqP)) }
+      { Σₛ = Σₛ ; wf = wf ; uniq = uniq-of Σₛ (fs ++ es′) (trans tf (sym te)) guard ; sig-eq = eqT
+      ; tele = En.End.tl e ; entry = d ; isMain = me ; built = trans (Past.same P) eqP ; denotes = den }
       where
         facts = ffi-facts fs ffiE mt
         Σₛ = proj₁ (sigk facts)
