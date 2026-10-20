@@ -46,9 +46,6 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.Adequacy.CPU.Interface using (Byte)
 open import Once.Target.Arch using (arch-numerics)
-open import Once.Parser using (parseStrict)
-open import Once.Parser.Module.Resolve using (ModuleMap)
-open import Once.Denotation.Behavior using (mkSource)
 import Once.Denotation.Behavior as B
 open import Once.Lang.Trace using (interp)
 open import Once.Lang.Contract using (Impl)
@@ -63,22 +60,13 @@ import Once.Spec.Source as SP
 open SP using (Source; Typed; _⊢_; behaviour; Admissible)
 open SP.Typed using (signature; program)
 open import Once.Adequacy.SpecInterp using (toInterp; wellFormed?)
+open import Once.Adequacy.SpecSource using (parseModules; toSource)
 
 module VC = Compile.WithCPU arch-correct
 
 ------------------------------------------------------------------------
 -- The compiler's reading of a Spec source
 ------------------------------------------------------------------------
-
--- Each module text, parsed by the compiler's parser, at its path.
-parseModules : List (List String × String) → Maybe ModuleMap
-parseModules []                = just []
-parseModules ((p , txt) ∷ ms) with parseStrict txt
-... | inj₁ _ = nothing
-... | inj₂ m = parseModules ms >>= λ mm → just ((p , m) ∷ mm)
-
-toSource : Source → Maybe B.Source
-toSource src = parseModules (SP.Source.modules src) >>= λ mm → just (mkSource mm (SP.Source.text src))
 
 compile : Arch → Bool → Source → Maybe (List Byte)
 compile arch doOpt src = toSource src >>= VC.compile arch doOpt
