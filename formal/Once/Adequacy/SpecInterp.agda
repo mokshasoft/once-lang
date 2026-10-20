@@ -164,6 +164,13 @@ module _ (Σ : Signature) (J : Obs.Interp Σ) where
   pureStep Σ′ inj (dc-op-answer _ _) k p x         = pureAt Σ′ (λ m → inj (there m)) k p x
   pureStep Σ′ inj dc-op-effect       k p x         = pureAt Σ′ (λ m → inj (there m)) k p x
 
+  -- An operation's answer, at the inhabitant its answer type is decided to
+  -- have (the one the Spec's trace asks the world at, `Observation.after`).
+  answerAt-dec : ∀ (o : S.Op Σ) → Obs.History Σ → S.⟦ S.arg o ⟧ᵇ → Dec (NotEmpty (S.Op.ans o)) → NotEmpty (S.Op.ans o)
+               → S.⟦ S.Op.ans o ⟧ᵇ
+  answerAt-dec o h x (yes p) _  = answer o h x p
+  answerAt-dec o h x (no ¬p) ne = ⊥-elim (¬p ne)
+
   answerAt : ∀ (Σ′ : Signature) → (∀ {d} → d ∈ Σ′ → d ∈ Σ) → WellFormed Σ′
            → List SigOpEvent → (k : Key) → k ∈ answerKeys (toISig Σ′) → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
   answerStep : ∀ {c t ct} (Σ′ : Signature) → (∀ {d} → d ∈ ((c ∶ t) ∷ Σ′) → d ∈ Σ)
@@ -173,7 +180,8 @@ module _ (Σ : Signature) (J : Obs.Interp Σ) where
   answerAt []              inj wf       h k ()
   answerAt ((c ∶ t) ∷ Σ′) inj (w S.∷ wf) h k p = answerStep Σ′ inj w wf (declContract (showCanonical c) t) h k p
   answerStep {t = operation a q b} Σ′ inj w wf (dc-op-answer ¬v ¬u) h k (here refl) x =
-    fromB b (answer (op (inj (here refl))) (map toEvent h) (toB (argAt q a) x) (answer-inhabited {a = a} {q = q} w ¬v ¬u))
+    fromB b (answerAt-dec (op (inj (here refl))) (map toEvent h) (toB (argAt q a) x) (S.notEmpty? b)
+                          (answer-inhabited {a = a} {q = q} w ¬v ¬u))
   answerStep Σ′ inj w wf (dc-op-answer _ _) h k (there p) x = answerAt Σ′ (λ m → inj (there m)) wf h k p x
   answerStep Σ′ inj w wf dc-const           h k p x = answerAt Σ′ (λ m → inj (there m)) wf h k p x
   answerStep Σ′ inj w wf dc-value           h k p x = answerAt Σ′ (λ m → inj (there m)) wf h k p x

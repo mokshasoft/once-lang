@@ -50,8 +50,8 @@ import Once.Lang.Stream as LSt
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
-open import Once.Adequacy.SpecCore.Poly using (toB)
 open import Once.Adequacy.SpecCore.Index
+import Once.Adequacy.SpecInterp as SI
 
 ------------------------------------------------------------------------
 -- Base values
@@ -72,22 +72,6 @@ BR (g-⇒ _ _) _ _ = ⊤
 BR (g-μ _)   _ _ = ⊤
 BR (g-ν _)   _ _ = ⊤
 BR g-rigid   _ _ = ⊤
-
--- A value an operation takes or answers, as each side passes it.
-BV : (A : LT.Type) → V.⟦ A ⟧ → ⟦ toB A ⟧ᵇ → Set
-BV LT.Unit  _ _ = ⊤
-BV LT.Void  _ _ = ⊤
-BV LT.Int   x y = x ≡ y
-BV LT.Float x y = x ≡ y
-BV (A LT.* B) (x , x′) (y , y′) = BV A x y × BV B x′ y′
-BV (A LT.+ B) (inj₁ x) (inj₁ y) = BV A x y
-BV (A LT.+ B) (inj₂ x) (inj₂ y) = BV B x y
-BV (A LT.+ B) (inj₁ _) (inj₂ _) = ⊥
-BV (A LT.+ B) (inj₂ _) (inj₁ _) = ⊥
-BV (_ LT.⇒[ _ ] _) _ _ = ⊥
-BV (LT.μ-type _)   _ _ = ⊥
-BV (LT.ν-type _ _) _ _ = ⊥
-BV (LT.rigid _ _)  _ _ = ⊥
 
 ------------------------------------------------------------------------
 -- Layers and data
@@ -110,22 +94,24 @@ data μR {F F′} (f : GF F F′) : LPoly.μS (translateF Carrier Carrier F) →
 -- Calls and blocks
 ------------------------------------------------------------------------
 
--- A compiler call is the Spec call of the declaration of its name, at its types.
+-- A compiler call is the Spec call of the declaration of its name, at the
+-- declaration's types read as the compiler's (`⌞_⌟`); its argument and its
+-- answer cross by the base conversions.
 data CallR : LTr.CallOp → Op Σ → Set where
-  cr : ∀ {cn A bA B} (m : (cn ∶ operation (toB A) SG.Many (toB B)) ∈ Σ) → CallR (LTr.callOp cn A bA B) (op m)
+  cr : ∀ {cn a b bA} (m : (cn ∶ operation a SG.Many b) ∈ Σ) → SSig.NotEmpty b → CallR (LTr.callOp cn SI.⌞ a ⌟ bA SI.⌞ b ⌟) (op m)
 
 argR : ∀ {o o′} → CallR o o′ → V.⟦ LTr.CallOp.cdom o ⟧ → ⟦ SSig.arg o′ ⟧ᵇ → Set
-argR (cr {A = A} m) x y = BV A x y
+argR (cr {a = a} m _) x y = SI.toB a x ≡ y
 
 ansR : ∀ {o o′} → CallR o o′ → V.⟦ LTr.CallOp.ccod o ⟧ → ⟦ Op.ans o′ ⟧ᵇ → Set
-ansR (cr {B = B} m) x y = BV B x y
+ansR (cr {b = b} m _) x y = x ≡ SI.fromB b y
 
 -- A halt is the Spec call of a declaration answering `void`.
 data HaltR : LTr.HaltOp → Op Σ → Set where
-  hr : ∀ {cn A bA} (m : (cn ∶ operation (toB A) SG.Many SSig.void) ∈ Σ) → HaltR (LTr.haltOp cn A bA) (op m)
+  hr : ∀ {cn a bA} (m : (cn ∶ operation a SG.Many SSig.void) ∈ Σ) → HaltR (LTr.haltOp cn SI.⌞ a ⌟ bA) (op m)
 
 hargR : ∀ {o o′} → HaltR o o′ → V.⟦ LTr.HaltOp.hdom o ⟧ → ⟦ SSig.arg o′ ⟧ᵇ → Set
-hargR (hr {A = A} m) x y = BV A x y
+hargR (hr {a = a} m) x y = SI.toB a x ≡ y
 
 data TR {X Y : Set} (R : X → Y → Set) : LTr.T X → SE.T Y → Set where
   ret  : ∀ {x y} → R x y → TR R (LTr.ret x) (SE.roll (SE.done y))

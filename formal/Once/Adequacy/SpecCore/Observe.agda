@@ -56,10 +56,13 @@ open T∞R
 
 record Agree (ι : LTr.Interp) (w : World) : Set where
   field
-    -- a related call is answered, by related answers
+    -- a related call has an answer, and is answered by the related one: the
+    -- world's at the inhabitant its answer type is decided to have
     answered : ∀ {o o′} (c : CallR o o′) {a a′} → argR c a a′ → ∀ h
-             → Σ[ b ∈ V.⟦ LTr.CallOp.ccod o ⟧ ] (LTr.callAnswer ι h o a ≡ just b) × NotEmpty (ans o′)
-               × (∀ p → ansR c b (World.answer w o′ (map toEvent h) a′ p))
+             → NotEmpty (ans o′)
+               × (∀ p → notEmpty? (ans o′) ≡ yes p
+                  → Σ[ b ∈ V.⟦ LTr.CallOp.ccod o ⟧ ] (LTr.callAnswer ι h o a ≡ just b)
+                      × ansR c b (World.answer w o′ (map toEvent h) a′ p))
     -- and shows the same event
     call-event : ∀ {o o′} (c : CallR o o′) {a a′} → argR c a a′ → toEvent (LTr.callEvent o a) ≡ eventOf o′ a′
     -- a halt shows its call, and the Spec's call answers nothing
@@ -150,8 +153,8 @@ module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : X → �
                     (inj₁ (inj₂ (eventOf o′ a′ , after w h′ o′ a′ k′ (notEmpty? (ans o′)))))
   afterR  : ∀ {h h′ o o′ a a′ k k′ b} (c : CallR o o′) → map toEvent h ≡ h′ → argR c a a′
           → (∀ {b b′} → ansR c b b′ → TR (SumR R (T∞R R)) (k b) (k′ b′))
-          → NotEmpty (ans o′) → (∀ p → ansR c b (World.answer w o′ h′ a′ p))
-          → ∀ dec → TLS (M.tr [] (h ++ [ LTr.callEvent o a ] , k b)) (after w h′ o′ a′ k′ dec)
+          → NotEmpty (ans o′) → (∀ p → notEmpty? (ans o′) ≡ yes p → ansR c b (World.answer w o′ h′ a′ p))
+          → ∀ dec → notEmpty? (ans o′) ≡ dec → TLS (M.tr [] (h ++ [ LTr.callEvent o a ] , k b)) (after w h′ o′ a′ k′ dec)
   haltR   : ∀ {h′ o o′ a a′ k′} (hh : HaltR o o′) → hargR hh a a′
           → ∀ dec → TLS (listTr [] halted) (after w h′ o′ a′ k′ dec)
 
@@ -161,23 +164,26 @@ module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : X → �
   ls (blockLS e (halt hh ra)) = nowCall (halt-event hh ra) (haltR hh ra (notEmpty? _))
 
   callStep {h} {k = kk} {k′ = kk′} c e ra k (just b′) q =
-    nowCall (call-event c ra) (afterR {k = kk} {k′ = kk′} c e ra k (ne₀ (answered c ra h)) (ans₀ (answered c ra h)) (notEmpty? _))
+    nowCall (call-event c ra) (afterR {k = kk} {k′ = kk′} c e ra k (proj₁ (answered c ra h)) ans₀ (notEmpty? _) refl)
     where
-      ne₀ : _ → _
-      ne₀ (b , eq , ne , hans) = ne
-      ans₀ : _ → ∀ p → ansR c b′ (World.answer w _ _ _ p)
-      ans₀ (b , eq , ne , hans) =
-        subst (λ x → ∀ p → ansR c x (World.answer w _ _ _ p)) (just-inj (trans (sym eq) q))
-              (subst (λ hh → ∀ p → ansR c b (World.answer w _ hh _ p)) e hans)
-  callStep {h} c e ra k nothing q = ⊥-elim (no-answer (answered c ra h))
+      ans₀ : ∀ p → notEmpty? _ ≡ yes p → ansR c b′ (World.answer w _ _ _ p)
+      ans₀ p d = from (proj₂ (answered c ra h) p d)
+        where
+          from : _ → _
+          from (b , eq , r) = subst (λ x → ansR c x (World.answer w _ _ _ p)) (just-inj (trans (sym eq) q))
+                                    (subst (λ hh → ansR c b (World.answer w _ hh _ p)) e r)
+  callStep {h} {h′} {o} {o′} {a} {a′} {kk} {kk′} c e ra k nothing q = no-answer (notEmpty? (ans o′)) refl
     where
-      no-answer : _ → _
-      no-answer (b , eq , _) = just≢nothing (trans (sym eq) q)
-        where just≢nothing : ∀ {A : Set} {x : A} → just x ≡ nothing → Data.Empty.⊥
-              just≢nothing ()
+      just≢nothing : ∀ {A : Set} {x : A} → just x ≡ nothing → Data.Empty.⊥
+      just≢nothing ()
+      no-answer : ∀ dec → notEmpty? (ans o′) ≡ dec
+                → StepLS (step (M.go (TT.answer ι h o a kk nothing)))
+                         (inj₁ (inj₂ (eventOf o′ a′ , after w h′ o′ a′ kk′ (notEmpty? (ans o′)))))
+      no-answer (yes p) d = ⊥-elim (just≢nothing (trans (sym (proj₁ (proj₂ (proj₂ (answered c ra h) p d)))) q))
+      no-answer (no ¬p) d = ⊥-elim (¬p (proj₁ (answered c ra h)))
 
-  tls (afterR {o = o} {a = a} c e ra k ne hans (yes p)) = blockLS (hist e (LTr.callEvent o a) (call-event c ra)) (k (hans p))
-  afterR c e ra k ne hans (no ¬p) = ⊥-elim (¬p ne)
+  tls (afterR {o = o} {a = a} c e ra k ne hans (yes p) d) = blockLS (hist e (LTr.callEvent o a) (call-event c ra)) (k (hans p d))
+  afterR c e ra k ne hans (no ¬p) d = ⊥-elim (¬p ne)
 
   haltR hh ra (yes p) = ⊥-elim (halt-void hh p)
   tls (haltR hh ra (no _)) = tls haltLS
