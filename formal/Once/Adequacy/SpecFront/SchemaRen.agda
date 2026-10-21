@@ -233,3 +233,33 @@ schemaOf-ren {T} {sc₁} {sc₂} so₁ so₂ = record
         -- the namesake of a namesake is the variable
         back : ∀ j → ρ′ (ρ j) ≡ j
         back j = SchemaOf.distinct so₂ (trans (hρ′ (ρ j)) (hρ j))
+
+-- The two renumberings are inverse…
+ρ-inv : ∀ {T sc₁ sc₂} (so₁ : SchemaOf T sc₁) (so₂ : SchemaOf T sc₂) j → ρ-of so₂ so₁ (ρ-of so₁ so₂ j) ≡ j
+ρ-inv so₁ so₂ j =
+  SchemaOf.distinct so₂
+    (trans (proj₂ (namesake (SchemaOf.reads so₂) (SchemaOf.reads so₁) (SchemaOf.used so₁ (ρ-of so₁ so₂ j))))
+           (proj₂ (namesake (SchemaOf.reads so₁) (SchemaOf.reads so₂) (SchemaOf.used so₂ j))))
+
+-- …and keep the kinds.
+kinds-ren : ∀ {T sc₁ sc₂} (so₁ : SchemaOf T sc₁) (so₂ : SchemaOf T sc₂) j → kinds sc₁ (ρ-of so₁ so₂ j) ≡ kinds sc₂ j
+kinds-ren {T} {sc₁} {sc₂} so₁ so₂ j = kind-eq to from
+  where
+    ρ = ρ-of so₁ so₂
+    ρ′ = ρ-of so₂ so₁
+    module R = Readings (SchemaOf.names so₁) (SchemaOf.names so₂) (SchemaOf.distinct so₁) ρ
+                        (λ j′ → proj₂ (namesake (SchemaOf.reads so₁) (SchemaOf.reads so₂) (SchemaOf.used so₂ j′)))
+    module R′ = Readings (SchemaOf.names so₂) (SchemaOf.names so₁) (SchemaOf.distinct so₂) ρ′
+                         (λ i → proj₂ (namesake (SchemaOf.reads so₂) (SchemaOf.reads so₁) (SchemaOf.used so₁ i)))
+    to : kinds sc₂ j ≡ base → kinds sc₁ (ρ j) ≡ base
+    to kb = proj₁ (SchemaOf.kinded so₁ (ρ j))
+              (R.uk-map (SchemaOf.reads so₁) (SchemaOf.reads so₂) (proj₂ (SchemaOf.kinded so₂ j) kb))
+    from : kinds sc₁ (ρ j) ≡ base → kinds sc₂ j ≡ base
+    from kb = proj₁ (SchemaOf.kinded so₂ j)
+                (subst (λ k → UnderK k (type sc₂)) (ρ-inv so₁ so₂ j)
+                  (R′.uk-map (SchemaOf.reads so₂) (SchemaOf.reads so₁) (proj₂ (SchemaOf.kinded so₁ (ρ j)) kb)))
+    kind-eq : ∀ {a b : Kind} → (b ≡ base → a ≡ base) → (a ≡ base → b ≡ base) → a ≡ b
+    kind-eq {base} {base} _ _ = refl
+    kind-eq {base} {any}  _ g = sym (g refl)
+    kind-eq {any}  {base} f _ = f refl
+    kind-eq {any}  {any}  _ _ = refl

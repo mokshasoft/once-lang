@@ -218,6 +218,16 @@ eok-poly {sc} {pfi} o =
 -- The walk
 ------------------------------------------------------------------------
 
+-- a ground type, at its (variable-free) schema's type
+ground-A : ∀ {ty} → LW.RigidFree ty → TyR (kindsS TL.noKinds) ty (ptyS (LP.⌈_⌉ {0} ty))
+ground-A {ty} g =
+  subst (λ X → TyR (kindsS TL.noKinds) ty (ptyS X)) (absTy-ground TL.noKinds g)
+        (cf-R TL.noKinds ty (subst ConstFree (sym (absTy-ground TL.noKinds g)) (ground-cf g)))
+
+-- `kindsS noKinds` is the Spec's empty kinds
+noKinds-S : kindsS TL.noKinds ≡ ST.∅ₖ
+noKinds-S = extensionality (λ ())
+
 private
   fin0 : Fin 0 → ⊥
   fin0 ()
@@ -229,15 +239,6 @@ private
   head-poly : ∀ {pfi es} → All EntryKind (Parser.e-poly pfi ∷ es) → pfunName pfi ∈ ps
   head-poly (h ∷ _) = h
 
-  -- a ground type, at its (variable-free) schema's type
-  ground-A : ∀ {ty} → LW.RigidFree ty → TyR (kindsS TL.noKinds) ty (ptyS (LP.⌈_⌉ {0} ty))
-  ground-A {ty} g =
-    subst (λ X → TyR (kindsS TL.noKinds) ty (ptyS X)) (absTy-ground TL.noKinds g)
-          (cf-R TL.noKinds ty (subst ConstFree (sym (absTy-ground TL.noKinds g)) (ground-cf g)))
-
-  -- `kindsS noKinds` is the Spec's empty kinds
-  noKinds-S : kindsS TL.noKinds ≡ ST.∅ₖ
-  noKinds-S = extensionality (λ ())
 
   -- a definition without a signature, at kinds equal to the empty ones
   nosig-at : ∀ {s′} {S′ : SC.Defs s′} {nm : Fin s′ → CanonicalName} {tl : SP.Tele S′} {x e′ ds s″} {S″ : SC.Defs s″} {nm″ tl″}
