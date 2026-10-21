@@ -7,26 +7,17 @@
 --
 -- The two resolutions take the same decisions, in the same order — a binder,
 -- a generator, an unaliased import, the own module (D136); `name@this`,
--- `name@alias` — over the same tables. They write one case differently: the
--- compiler keeps a reference to an own POLYMORPHIC definition bare, where the
--- Spec writes `canonical [x]` (`RX`'s `x-own`). Given a body as written in
--- both grammars (`Emb`), its resolution by the compiler, and the resolved
--- body good (`ResolvedRefs`: it names neither `main` nor an own polymorphic
--- definition canonically, and its annotations are surface types), the Spec
--- resolves the body too, to an expression `RX`-related to the compiler's
--- (`res-expr`).
+-- `name@alias` — over the same tables, and write every name alike (R11,
+-- D330). Given a body as written in both grammars (`Emb`), its resolution by
+-- the compiler, and the resolved body good (`ResolvedRefs`: it does not name
+-- `main`, and its annotations are surface types), the Spec resolves the body
+-- too, to an expression `RX`-related to the compiler's (`res-expr`).
 ------------------------------------------------------------------------
 
-open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.String using (String)
-open import Relation.Nullary using (¬_)
+module Once.Adequacy.SpecFront.Resolve where
 
-module Once.Adequacy.SpecFront.Resolve
-  (ps : List String)
-  -- the entry is not a polymorphic definition
-  (main∉ps : ¬ ("main" ∈ ps))
-  where
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.String using (String)
 
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
@@ -37,7 +28,7 @@ open import Once.Spec.Name using (CanonicalName; canonical; gen)
 open import Once.Lang.Syntax as O using (RawExpr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Lang.Resolution as LR
-  using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own-poly; rv-own;
+  using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own;
          ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
          re-binop; re-unop; re-ana; re-unit; re-int; re-float; ExpandsTo; ex-nil; ex-I; ex-other)
 open import Once.Spec.Surface.Resolution as SR
@@ -49,7 +40,7 @@ open import Once.Lang.ResolvedRefs using (GoodName; GoodRefs)
 open import Once.Adequacy.SpecGrammar.Expr using (Emb; e-var; e-qual; e-res; e-app; e-lam; e-let; e-pair; e-destruct; e-unit;
   e-int; e-float; e-annot; e-binop; e-neg)
 open import Once.Adequacy.SpecFront.Expr
-  using (RX; NotOwnPoly; x-local; x-own; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
+  using (RX; x-local; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
 
 ------------------------------------------------------------------------
 -- The tables
@@ -65,36 +56,28 @@ private
   ex→ ex-I         = SR.ex-I
   ex→ (ex-other n) = SR.ex-other n
 
-  -- a good name is no own polymorphic definition's, and not `main`
-  good-nop : ∀ {c} → GoodName ps c → NotOwnPoly ps c
-  good-nop g e = proj₂ (g e)
-
-  good-main : ∀ {c} → GoodName ps c → c ≢ canonical ("main" ∷ [])
-  good-main g e = proj₁ (g e) refl
+  -- a good name is not `main`
+  good-main : ∀ {c} → GoodName c → c ≢ canonical ("main" ∷ [])
+  good-main g e = g e refl
 
   -- a generator is a good name
-  gen-good : ∀ x → GoodName ps (gen x)
+  gen-good : ∀ x → GoodName (gen x)
   gen-good x ()
 
-  x-good : ∀ {bound c} → GoodName ps c → RX ps bound (O.RResolved c) (S.RResolved c)
-  x-good g = x-res (good-nop g) (good-main g)
+  x-good : ∀ {bound c} → GoodName c → RX bound (O.RResolved c) (S.RResolved c)
+  x-good g = x-res (good-main g)
 
 ------------------------------------------------------------------------
 -- An expression
 ------------------------------------------------------------------------
 
-res-expr : ∀ {um am bound eU eC eU′} → ResolvesExpr ps um am bound eU eC → Emb eU eU′ → GoodRefs ps eC
-         → Σ[ eS ∈ S.Expr ] Resolves (env um am) bound eU′ eS × RX ps bound eC eS
+res-expr : ∀ {um am bound eU eC eU′} → ResolvesExpr um am bound eU eC → Emb eU eU′ → GoodRefs eC
+         → Σ[ eS ∈ S.Expr ] Resolves (env um am) bound eU′ eS × RX bound eC eS
 res-expr (re-var (rv-binder m)) e-var g = _ , r-local m , x-local m
 res-expr (re-var (rv-gen nb gw)) e-var g = _ , r-name nb (rn-gen gw) , x-good (gen-good _)
 res-expr (re-var (rv-import nb ngw fa ex)) e-var g = _ , r-name nb (rn-import ngw (fa→ fa) (ex→ ex)) , x-good g
-res-expr {bound = bound} (re-var (rv-own-poly {x = x} nb ngw ab x∈)) e-var g =
-  _ , r-name nb (rn-own ngw ab (λ e → main∉ps (subst′ e x∈))) , x-own nb x∈
-  where
-    subst′ : x ≡ "main" → x ∈ ps → "main" ∈ ps
-    subst′ refl m = m
-res-expr (re-var (rv-own {x = x} nb ngw ab x∉)) e-var g = _ , r-name nb (rn-own ngw ab (proj₁ (g refl))) , x-good g
-res-expr re-this e-qual g = _ , r-this (proj₁ (g refl)) , x-good g
+res-expr (re-var (rv-own {x = x} nb ngw ab)) e-var g = _ , r-name nb (rn-own ngw ab (g refl)) , x-good g
+res-expr re-this e-qual g = _ , r-this (g refl) , x-good g
 res-expr (re-qual na fa ex) e-qual g = _ , r-qual na (fa→ fa) (ex→ ex) , x-good g
 res-expr (re-qual-path na ab) e-qual g = _ , r-qual-path na ab , x-good g
 res-expr re-res e-res g = _ , r-res , x-good g
@@ -136,7 +119,7 @@ private
 
 -- The resolved declarations: the Spec's, related to the compiler's.
 module Decls (Σ : Signature) where
-  open import Once.Adequacy.SpecFront.Align Σ ps using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias; ImportedSig)
+  open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias; ImportedSig)
 
   private
     -- an import's signatures are owned by it
@@ -149,7 +132,7 @@ module Decls (Σ : Signature) where
     owned o (DImport _ ∷ ds) = owned o ds
 
   -- the definitions' resolved bodies are good (the resolver's check)
-  res-decls : ∀ {mm um am dsU dsR ds′} → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+  res-decls : ∀ {mm um am dsU dsR ds′} → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
             → Σ[ dsR′ ∈ List S.Decl ] SPr.ResolvesDecls (env um am) ds′ dsR′ × DR dsR′ dsR
   res-decls LR.rds-nil [] = [] , SPr.rd-nil , dr-nil
   res-decls (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb g) rds) (d-fundef em ∷ pw) =
@@ -209,7 +192,7 @@ aliases-eq (d-import {a = nothing} ∷ pw) = aliases-eq pw
 
 -- The unaliased imports: every module an import names is found (the
 -- compiler's resolution looked it up).
-unaliased-of : ∀ {mm mm′ um am dsU dsR ds′} → ModRel mm mm′ → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+unaliased-of : ∀ {mm mm′ um am dsU dsR ds′} → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
              → SR.Unaliased mm′ ds′ (collectUnaliased mm dsU)
 unaliased-of mr LR.rds-nil [] = SR.un-nil
 unaliased-of mr (LR.rds-cons LR.nim-fundef _ rds) (d-fundef _ ∷ pw) = SR.un-other SR.nu-def (unaliased-of mr rds pw)

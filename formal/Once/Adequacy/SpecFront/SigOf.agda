@@ -16,10 +16,10 @@
 -- R12) at the same types (`SigTypes.decl-eq`).
 ------------------------------------------------------------------------
 
+module Once.Adequacy.SpecFront.SigOf where
+
 open import Data.List using (List)
 open import Data.String using (String)
-
-module Once.Adequacy.SpecFront.SigOf (ps : List String) where
 
 open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
@@ -58,7 +58,7 @@ open import Once.Adequacy.SpecInterp using (toISig; declTy)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts; nonSigs-none; FFIEntry; ffi-of)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-of; decl-eq)
-open import Once.Adequacy.SpecFront.Align Data.List.[] ps using (expand-id)
+open import Once.Adequacy.SpecFront.Align Data.List.[] using (expand-id)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
 
 private
@@ -139,7 +139,7 @@ private
   own-owned o (DImport _ ∷ ds) rest = own-owned o ds rest
 
   -- resolution keeps the module's own signatures
-  own-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm ps um am dsU dsR → Parser.ownSigs dsR ≡ Parser.ownSigs dsU
+  own-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR → Parser.ownSigs dsR ≡ Parser.ownSigs dsU
   own-res LR.rds-nil = refl
   own-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) = own-res rds
   own-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) = own-res rds
@@ -156,7 +156,7 @@ private
   ... | no ne    = SR.ex-other ne
 
 
-imp-part : ∀ {al mm mm′ um am dsU dsR ds′ fs} → ModRel mm mm′ → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+imp-part : ∀ {al mm mm′ um am dsU dsR ds′ fs} → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
          → XAlign al (Parser.importedSigs dsR) fs → All FFIFacts fs
          → Σ[ Σᵢ ∈ Signature ] Imported mm′ ds′ Σᵢ × (toISig Σᵢ ≡ entrySig fs)
 imp-part mr LR.rds-nil [] xa-nil [] = [] , im-nil , refl
@@ -208,7 +208,7 @@ private
 
 -- The extractor's signature prefix (own `signature`s, then the imports') is
 -- the Spec's `SignatureOf`, whose table is the prefix's.
-signature-of : ∀ {al mm mm′ um am dsU dsR ds′ es} → ModRel mm mm′ → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+signature-of : ∀ {al mm mm′ um am dsU dsR ds′ es} → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
              → XAlign al (Parser.sigsFirst dsR) es
              → Σ[ fs ∈ List Parser.Entry ] Σ[ es′ ∈ List Parser.Entry ] (es ≡ fs ++ es′) × XAlign al (Parser.nonSigs dsR) es′ × All FFIEntry fs
                × (All FFIFacts fs → Σ[ Σₛ ∈ Signature ] SignatureOf mm′ ds′ Σₛ × (toISig Σₛ ≡ entrySig fs) × (entrySig es ≡ entrySig fs))

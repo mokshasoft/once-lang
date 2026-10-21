@@ -244,13 +244,14 @@ mutual
   agree-ii (t-var-local l) (t-var-local l′) with trans (sym l) l′
   ... | refl = refl , refl
   agree-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-local l) (t-var-poly-instantiate-infer ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
   agree-ii (t-var-import _ ln _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
   agree-ii (t-var-import _ _ i _) (t-var-import _ _ i′ _) with trans (sym i) i′
   ... | refl = refl , refl
-  agree-ii (t-var-import _ _ i _) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-ii (t-var-poly-instantiate-infer ln _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ii (t-var-own _ i) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-own _ i) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  {-# CATCHALL #-}
+  agree-ii (t-var-resolved _ _ l _) (t-var-poly-instantiate-infer ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  agree-ii (t-var-poly-instantiate-infer ns _ _ _ _) (t-var-resolved _ _ l _) = ⊥-elim (just≢nothing (trans (sym l) ns))
   agree-ii (t-var-poly-instantiate-infer {schema = s} {g = g} _ _ p _ refl)
            (t-var-poly-instantiate-infer {g = g′} _ _ p′ _ refl) with trans (sym p) p′
   ... | refl = extractGround-irr s g g′ , refl
@@ -478,8 +479,8 @@ mutual
   agree-ic (t-app () _ _) (t-apply-check _)
   agree-ic (t-effApp () _ _) (t-apply-check _)
   agree-ic (t-app-spine () _ _) (t-apply-check _)
-  agree-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ic (t-var-import _ _ i _) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ic (t-var-resolved _ _ l _) (t-var-poly-instantiate ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  agree-ic (t-var-own _ i) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
   agree-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
   agree-ic () (t-lam _ _)
@@ -539,8 +540,8 @@ mutual
   agree-di (d-pair _ _) d = ⊥-elim (noinf-pair d)
   agree-di (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
   -- Plan 0.103 phase 2b: a non-ground telescope entry does not infer.
-  agree-di (d-poly ln _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-di (d-poly _ inn _ _ _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-di (d-poly ns _ _ _ _ _ _ _) (t-var-resolved _ _ l _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  agree-di (d-poly _ inn _ _ _ _ _ _) (t-var-own _ i) = ⊥-elim (just≢nothing (trans (sym i) inn))
   agree-di (d-poly _ _ p ¬g _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
 

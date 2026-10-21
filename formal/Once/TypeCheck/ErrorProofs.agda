@@ -245,8 +245,7 @@ var-unbound-is-UnboundVariable :
 -- D136: the `¬ (x ≡ "unit")` premise is gone — `unit` is `RResolved (gen
 -- "unit")` now, so a bare `unit` is an ordinary variable that CAN be unbound.
 var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
-  = goPolyLp eqLoc eqImp (lookupPoly (Classify.NamedCtx.polys ctx) x) refl
-      (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
+  = go (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
     helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Surface.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
@@ -262,24 +261,6 @@ var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
     go : ∀ {err} → failure (UnboundVariable x) ≡ failure err
        → err ≡ UnboundVariable x
     go refl = refl
-    -- Plan 0.58 / D071: the nothing/nothing branch is now the POLY FALLBACK.
-    -- Every FAILURE leaf of the fallback is `UnboundVariable x` (the ground
-    -- success leaf contradicts the failure equation), so the normalization
-    -- still holds — proved by casing the three de-withed fallback stages.
-    goPolyIg : ∀ eL eI (schema : T.PolyType) body eqLp (ig : (T.Ground schema) ⊎ ⊤)
-                 (eqG : T.isGround schema ≡ ig) {err'}
-             → proj₁ (inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp ig eqG) ≡ failure err'
-             → err' ≡ UnboundVariable x
-    goPolyIg eL eI schema body eqLp (inj₂ tt) _ eqF = go eqF
-    goPolyIg eL eI schema body eqLp (inj₁ g) _ ()
-    goPolyLp : ∀ eL eI (lp : Maybe (T.PolyType × Raw.RawExpr))
-                 (eqLp : lookupPoly (Classify.NamedCtx.polys ctx) x ≡ lp) {err'}
-             → proj₁ (inferElabV-RVar-poly-lookup-aux ctx x eL eI lp eqLp) ≡ failure err'
-             → err' ≡ UnboundVariable x
-    goPolyLp eL eI nothing _ eqF = go eqF
-    goPolyLp eL eI (just (schema , body)) eqLp eqF = goPolyIg eL eI schema body eqLp (T.isGround schema) refl eqF
-    -- D136: `goPolyCls` is GONE. The fallback no longer splits on
-    -- `classifyBareBuiltin`, so the poly LOOKUP is the whole dispatch.
 check-RInt-type-mismatch :
   ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
   → ¬ (T ≡ Int)

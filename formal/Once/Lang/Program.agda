@@ -21,10 +21,9 @@
 --
 -- NOTE on `ModuleTyped` (plan 0.59): it is DEFINED by running the front end —
 -- `ModuleTyped m = ModuleTyped-ef m (extractFunctions (extractAliases m) m)` —
--- so the spec's notion of "well-typed" depends on an executable, and
--- transitively on the principality oracle. That is a real hole, larger than
--- anything plan 0.81 touches, and it is why `_⊢R_` may use `polyDefNames`
--- without making things worse: the dependency is already there, one field over.
+-- so the spec's notion of "well-typed" depends on an executable. (The
+-- principality oracle is gone, D323; resolution no longer needs the module's
+-- polymorphic names, D330.)
 --
 -- NOTE on `ParsesText`: it is the independent GRAMMAR relation, but its leaves
 -- still mention executable helpers (`skipNewlines toks ≡ just …`,
@@ -45,7 +44,6 @@ open import Once.Lang.Parsing public using (ParsesText)
 open import Once.Lang.Module public using (ModuleTyped; HasValidMain)
 open import Once.Denotation.Behavior     public using (Source)
 open import Once.Lang.Resolution         public using (ResolvesModule; rm)
-open import Once.Parser.Module.Resolve   using (polyDefNames)
 open Once.Denotation.Behavior.Source public using (srcText; srcImports)
 
 ------------------------------------------------------------------------
@@ -85,16 +83,10 @@ Typed = Σ-syntax P.Module (λ m → Σ-syntax (ModuleTyped m) (λ mt → HasVal
 -- `ModuleTyped` over the UN-resolved module is underivable for such a program:
 -- with `Typed` holding `mU`, both conjuncts would be silent about essentially
 -- every real Once program.
---
--- The scope argument is `polyDefNames`, the same classification `ModuleTyped`
--- already reaches through `extractFunctions` — they share `siglessSchema` BY
--- CONSTRUCTION — so the principality oracle enters this boundary once, not
--- twice. Making that classification independent is plan 0.59's subject; see
--- the note on `ModuleTyped` below.
 ------------------------------------------------------------------------
 
 _⊢R_ : Source → Typed → Set
 src ⊢R (mR , _ , _) =
   Σ-syntax P.Module (λ mU →
     ParsesText (Source.srcText src) mU
-    × ResolvesModule (Source.srcImports src) (polyDefNames (P.Module.decls mU)) mU mR)
+    × ResolvesModule (Source.srcImports src) mU mR)

@@ -53,7 +53,7 @@ open import Once.Parser.Module.Resolve
 open import Once.Lang.Resolution
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser.Module.Core using (Module; mkModule; Import)
-open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames;
+open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports;
   resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux; consDecl; consDecl-at;
   lookupModule; _path≟_; signaturesWithOwner; ownerOf;
   collectAliases; collectUnaliased)
@@ -163,172 +163,166 @@ GenWord-isBuiltinName x gw with isBuiltinName x in eb
 -- THE BRIDGE, at a bare reference. Four arms, one per rule.
 ------------------------------------------------------------------------
 
-resolvesVar-sound : ∀ (ps bound : List String) (um : UnaliasedMap) (x : String) (e : RawExpr)
-                  → ResolvesVar ps bound um x e
-                  → canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) (does (x ∈? ps)) x ≡ e
-resolvesVar-sound ps bound um x _ (rv-binder i)
+resolvesVar-sound : ∀ (bound : List String) (um : UnaliasedMap) (x : String) (e : RawExpr)
+                  → ResolvesVar bound um x e
+                  → canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x ≡ e
+resolvesVar-sound bound um x _ (rv-binder i)
   rewrite dec-true (x ∈? bound) i = refl
-resolvesVar-sound ps bound um x _ (rv-gen ∉ gw)
+resolvesVar-sound bound um x _ (rv-gen ∉ gw)
   rewrite dec-false (x ∈? bound) ∉ | GenWord-isBuiltinName x gw = refl
-resolvesVar-sound ps bound um x _ (rv-import ∉ ¬gw fa ex)
+resolvesVar-sound bound um x _ (rv-import ∉ ¬gw fa ex)
   rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
         | lookupUn-complete um x _ fa | expandPath-complete _ _ ex = refl
-resolvesVar-sound ps bound um x _ (rv-own-poly ∉ ¬gw ab ∈ps)
+resolvesVar-sound bound um x _ (rv-own ∉ ¬gw ab)
   rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
-        | lookupUn-absent um x ab | dec-true (x ∈? ps) ∈ps = refl
-resolvesVar-sound ps bound um x _ (rv-own ∉ ¬gw ab ∉ps)
-  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
-        | lookupUn-absent um x ab | dec-false (x ∈? ps) ∉ps = refl
+        | lookupUn-absent um x ab = refl
 
-resolvesVar-complete : ∀ (ps bound : List String) (um : UnaliasedMap) (x : String)
-                     → ResolvesVar ps bound um x
-                         (canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) (does (x ∈? ps)) x)
-resolvesVar-complete ps bound um x with does (x ∈? bound) in eb
+resolvesVar-complete : ∀ (bound : List String) (um : UnaliasedMap) (x : String)
+                     → ResolvesVar bound um x
+                         (canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x)
+resolvesVar-complete bound um x with does (x ∈? bound) in eb
 ... | true  = rv-binder (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound))))
 ... | false with isBuiltinName x in eg
 ...   | true  = rv-gen (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-sound x eg)
 ...   | false with lookupUnaliased um x in eu
 ...     | just p  = rv-import (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
                               (lookupUn-sound um x p eu) (expandPath-sound p)
-...     | nothing with does (x ∈? ps) in ep
-...       | true  = rv-own-poly (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
-                                (lookupUn-nothing um x eu) (invert (subst (Reflects (x ∈ ps)) ep (proof (x ∈? ps))))
-...       | false = rv-own (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
-                           (lookupUn-nothing um x eu) (invert (subst (Reflects (x ∈ ps)) ep (proof (x ∈? ps))))
+...     | nothing = rv-own (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
+                           (lookupUn-nothing um x eu)
 
 ------------------------------------------------------------------------
 -- THE BRIDGE, at an expression. Congruence throughout; the two interesting
 -- leaves are `RVar` (above) and `RQualified`.
 ------------------------------------------------------------------------
 
-resolves-sound : ∀ (ps : List String) (um : UnaliasedMap) (am : AliasMap) (bound : List String)
+resolves-sound : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String)
                  (e e' : RawExpr)
-               → ResolvesExpr ps um am bound e e' → canonExpr ps bound um am e ≡ e'
-resolves-sound ps um am bound _ _ (re-var rv) = resolvesVar-sound ps bound um _ _ rv
-resolves-sound ps um am bound _ _ (re-this {name = n}) with "this" ≟ "this"
+               → ResolvesExpr um am bound e e' → canonExpr bound um am e ≡ e'
+resolves-sound um am bound _ _ (re-var rv) = resolvesVar-sound bound um _ _ rv
+resolves-sound um am bound _ _ (re-this {name = n}) with "this" ≟ "this"
 ... | yes _ = refl
 ... | no ¬e = ⊥-elim (¬e refl)
-resolves-sound ps um am bound _ _ (re-qual {alias = a} a≢ fa ex) with a ≟ "this"
+resolves-sound um am bound _ _ (re-qual {alias = a} a≢ fa ex) with a ≟ "this"
 ... | yes e = ⊥-elim (a≢ e)
 ... | no  _ rewrite lookupAl-complete am a _ fa | expandPath-complete _ _ ex = refl
-resolves-sound ps um am bound _ _ (re-qual-path {alias = a} a≢ ab) with a ≟ "this"
+resolves-sound um am bound _ _ (re-qual-path {alias = a} a≢ ab) with a ≟ "this"
 ... | yes e = ⊥-elim (a≢ e)
 ... | no  _ rewrite lookupAl-absent am a ab = refl
-resolves-sound ps um am bound _ _ re-res = refl
-resolves-sound ps um am bound _ _ (re-app rf ra) =
-  cong₂ RApp (resolves-sound ps um am bound _ _ rf) (resolves-sound ps um am bound _ _ ra)
-resolves-sound ps um am bound _ _ (re-lam {x = x} rb) =
-  cong (RLam x) (resolves-sound ps um am (x ∷ bound) _ _ rb)
-resolves-sound ps um am bound _ _ (re-let {x = x} r₁ r₂) =
-  cong₂ (RLet x) (resolves-sound ps um am bound _ _ r₁)
-                 (resolves-sound ps um am (x ∷ bound) _ _ r₂)
-resolves-sound ps um am bound _ _ (re-pair ra rb) =
-  cong₂ RPair (resolves-sound ps um am bound _ _ ra) (resolves-sound ps um am bound _ _ rb)
-resolves-sound ps um am bound _ _ (re-destruct {xl = xl} {xr = xr} rs rl rr) =
+resolves-sound um am bound _ _ re-res = refl
+resolves-sound um am bound _ _ (re-app rf ra) =
+  cong₂ RApp (resolves-sound um am bound _ _ rf) (resolves-sound um am bound _ _ ra)
+resolves-sound um am bound _ _ (re-lam {x = x} rb) =
+  cong (RLam x) (resolves-sound um am (x ∷ bound) _ _ rb)
+resolves-sound um am bound _ _ (re-let {x = x} r₁ r₂) =
+  cong₂ (RLet x) (resolves-sound um am bound _ _ r₁)
+                 (resolves-sound um am (x ∷ bound) _ _ r₂)
+resolves-sound um am bound _ _ (re-pair ra rb) =
+  cong₂ RPair (resolves-sound um am bound _ _ ra) (resolves-sound um am bound _ _ rb)
+resolves-sound um am bound _ _ (re-destruct {xl = xl} {xr = xr} rs rl rr) =
   cong₃ (λ a b c → RDestruct a xl b xr c)
-        (resolves-sound ps um am bound _ _ rs)
-        (resolves-sound ps um am (xl ∷ bound) _ _ rl)
-        (resolves-sound ps um am (xr ∷ bound) _ _ rr)
+        (resolves-sound um am bound _ _ rs)
+        (resolves-sound um am (xl ∷ bound) _ _ rl)
+        (resolves-sound um am (xr ∷ bound) _ _ rr)
   where
     cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a' b b' c c'}
           → a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
     cong₃ f refl refl refl = refl
-resolves-sound ps um am bound _ _ (re-annot {t = t} r) =
-  cong (λ z → RAnnot z t) (resolves-sound ps um am bound _ _ r)
-resolves-sound ps um am bound _ _ (re-binop {op = op} ra rb) =
-  cong₂ (RBinOp op) (resolves-sound ps um am bound _ _ ra) (resolves-sound ps um am bound _ _ rb)
-resolves-sound ps um am bound _ _ (re-unop {op = op} r) =
-  cong (RUnaryOp op) (resolves-sound ps um am bound _ _ r)
-resolves-sound ps um am bound _ _ (re-ana {F = F} r) =
-  cong (RAna F) (resolves-sound ps um am bound _ _ r)
-resolves-sound ps um am bound _ _ re-unit  = refl
-resolves-sound ps um am bound _ _ re-int   = refl
-resolves-sound ps um am bound _ _ re-float = refl
+resolves-sound um am bound _ _ (re-annot {t = t} r) =
+  cong (λ z → RAnnot z t) (resolves-sound um am bound _ _ r)
+resolves-sound um am bound _ _ (re-binop {op = op} ra rb) =
+  cong₂ (RBinOp op) (resolves-sound um am bound _ _ ra) (resolves-sound um am bound _ _ rb)
+resolves-sound um am bound _ _ (re-unop {op = op} r) =
+  cong (RUnaryOp op) (resolves-sound um am bound _ _ r)
+resolves-sound um am bound _ _ (re-ana {F = F} r) =
+  cong (RAna F) (resolves-sound um am bound _ _ r)
+resolves-sound um am bound _ _ re-unit  = refl
+resolves-sound um am bound _ _ re-int   = refl
+resolves-sound um am bound _ _ re-float = refl
 
-resolves-complete : ∀ (ps : List String) (um : UnaliasedMap) (am : AliasMap) (bound : List String)
+resolves-complete : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String)
                     (e : RawExpr)
-                  → ResolvesExpr ps um am bound e (canonExpr ps bound um am e)
-resolves-complete ps um am bound (RVar x) = re-var (resolvesVar-complete ps bound um x)
-resolves-complete ps um am bound (RQualified n a) with a ≟ "this"
+                  → ResolvesExpr um am bound e (canonExpr bound um am e)
+resolves-complete um am bound (RVar x) = re-var (resolvesVar-complete bound um x)
+resolves-complete um am bound (RQualified n a) with a ≟ "this"
 ... | yes refl = re-this
 ... | no a≢ with lookupImportAlias am a in ea
 ...   | just p  = re-qual a≢ (lookupAl-sound am a p ea) (expandPath-sound p)
 ...   | nothing = re-qual-path a≢ (lookupAl-nothing am a ea)
-resolves-complete ps um am bound (RResolved cn) = re-res
-resolves-complete ps um am bound (RApp f a) =
-  re-app (resolves-complete ps um am bound f) (resolves-complete ps um am bound a)
-resolves-complete ps um am bound (RLam x b) = re-lam (resolves-complete ps um am (x ∷ bound) b)
-resolves-complete ps um am bound (RLet x e₁ e₂) =
-  re-let (resolves-complete ps um am bound e₁) (resolves-complete ps um am (x ∷ bound) e₂)
-resolves-complete ps um am bound (RPair a b) =
-  re-pair (resolves-complete ps um am bound a) (resolves-complete ps um am bound b)
-resolves-complete ps um am bound (RDestruct s xl el xr er) =
-  re-destruct (resolves-complete ps um am bound s)
-              (resolves-complete ps um am (xl ∷ bound) el)
-              (resolves-complete ps um am (xr ∷ bound) er)
-resolves-complete ps um am bound (RAnnot e t) = re-annot (resolves-complete ps um am bound e)
-resolves-complete ps um am bound (RBinOp op a b) =
-  re-binop (resolves-complete ps um am bound a) (resolves-complete ps um am bound b)
-resolves-complete ps um am bound (RUnaryOp op e) = re-unop (resolves-complete ps um am bound e)
-resolves-complete ps um am bound (RAna F c) = re-ana (resolves-complete ps um am bound c)
-resolves-complete ps um am bound RUnit           = re-unit
-resolves-complete ps um am bound (RInt n)        = re-int
-resolves-complete ps um am bound (RFloat i f l p) = re-float
+resolves-complete um am bound (RResolved cn) = re-res
+resolves-complete um am bound (RApp f a) =
+  re-app (resolves-complete um am bound f) (resolves-complete um am bound a)
+resolves-complete um am bound (RLam x b) = re-lam (resolves-complete um am (x ∷ bound) b)
+resolves-complete um am bound (RLet x e₁ e₂) =
+  re-let (resolves-complete um am bound e₁) (resolves-complete um am (x ∷ bound) e₂)
+resolves-complete um am bound (RPair a b) =
+  re-pair (resolves-complete um am bound a) (resolves-complete um am bound b)
+resolves-complete um am bound (RDestruct s xl el xr er) =
+  re-destruct (resolves-complete um am bound s)
+              (resolves-complete um am (xl ∷ bound) el)
+              (resolves-complete um am (xr ∷ bound) er)
+resolves-complete um am bound (RAnnot e t) = re-annot (resolves-complete um am bound e)
+resolves-complete um am bound (RBinOp op a b) =
+  re-binop (resolves-complete um am bound a) (resolves-complete um am bound b)
+resolves-complete um am bound (RUnaryOp op e) = re-unop (resolves-complete um am bound e)
+resolves-complete um am bound (RAna F c) = re-ana (resolves-complete um am bound c)
+resolves-complete um am bound RUnit           = re-unit
+resolves-complete um am bound (RInt n)        = re-int
+resolves-complete um am bound (RFloat i f l p) = re-float
 
 ------------------------------------------------------------------------
 -- THE BRIDGE, at a declaration. Only a function body carries references.
 ------------------------------------------------------------------------
 
-resolvesDecl-sound : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
+resolvesDecl-sound : ∀ (um : UnaliasedMap) (am : AliasMap)
                      (d d' : Decl)
-                   → ResolvesDecl polys um am d d' → canonDecl polys um am d ≡ d'
-resolvesDecl-sound polys um am _ _ (rd-fundef {name = n} rb _) =
-  cong (DFunDef n) (resolves-sound polys um am [] _ _ rb)
-resolvesDecl-sound polys um am _ _ rd-typesig   = refl
-resolvesDecl-sound polys um am _ _ rd-signature = refl
-resolvesDecl-sound polys um am _ _ rd-typealias = refl
-resolvesDecl-sound polys um am _ _ rd-import    = refl
+                   → ResolvesDecl um am d d' → canonDecl um am d ≡ d'
+resolvesDecl-sound um am _ _ (rd-fundef {name = n} rb _) =
+  cong (DFunDef n) (resolves-sound um am [] _ _ rb)
+resolvesDecl-sound um am _ _ rd-typesig   = refl
+resolvesDecl-sound um am _ _ rd-signature = refl
+resolvesDecl-sound um am _ _ rd-typealias = refl
+resolvesDecl-sound um am _ _ rd-import    = refl
 
 -- R11: a definition's resolved body is good (the resolver's check).
-DeclGood : List String → Decl → Set
-DeclGood polys (DFunDef _ b) = GoodRefs polys b
+DeclGood : Decl → Set
+DeclGood (DFunDef _ b) = GoodRefs b
 {-# CATCHALL #-}
-DeclGood polys _             = ⊤
+DeclGood _             = ⊤
 
-resolvesDecl-complete : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
-                        (d : Decl) → DeclGood polys (canonDecl polys um am d)
-                      → ResolvesDecl polys um am d (canonDecl polys um am d)
-resolvesDecl-complete polys um am (DFunDef n b) g =
-  rd-fundef (resolves-complete polys um am [] b) g
-resolvesDecl-complete polys um am (DTypeSig n t)      _ = rd-typesig
-resolvesDecl-complete polys um am (DSignature n o t)  _ = rd-signature
-resolvesDecl-complete polys um am (DTypeAlias n ps t) _ = rd-typealias
-resolvesDecl-complete polys um am (DImport imp)       _ = rd-import
+resolvesDecl-complete : ∀ (um : UnaliasedMap) (am : AliasMap)
+                        (d : Decl) → DeclGood (canonDecl um am d)
+                      → ResolvesDecl um am d (canonDecl um am d)
+resolvesDecl-complete um am (DFunDef n b) g =
+  rd-fundef (resolves-complete um am [] b) g
+resolvesDecl-complete um am (DTypeSig n t)      _ = rd-typesig
+resolvesDecl-complete um am (DSignature n o t)  _ = rd-signature
+resolvesDecl-complete um am (DTypeAlias n ps t) _ = rd-typealias
+resolvesDecl-complete um am (DImport imp)       _ = rd-import
 
 -- The resolver's check, either way.
-consDecl-ok : ∀ (polys : List String) {um am d d'} (tl : List Decl) → ResolvesDecl polys um am d d'
-            → consDecl polys d' tl ≡ inj₂ (d' ∷ tl)
-consDecl-ok polys tl (rd-fundef {name = n} {body' = b′} rb g) = at (goodRefs? polys b′)
+consDecl-ok : ∀ {um am d d'} (tl : List Decl) → ResolvesDecl um am d d'
+            → consDecl d' tl ≡ inj₂ (d' ∷ tl)
+consDecl-ok tl (rd-fundef {name = n} {body' = b′} rb g) = at (goodRefs? b′)
   where
-    at : (dg : Dec (GoodRefs polys b′)) → consDecl-at polys n b′ dg tl ≡ inj₂ (DFunDef n b′ ∷ tl)
+    at : (dg : Dec (GoodRefs b′)) → consDecl-at n b′ dg tl ≡ inj₂ (DFunDef n b′ ∷ tl)
     at (yes _) = refl
     at (no ¬g) = ⊥-elim (¬g g)
-consDecl-ok polys tl rd-typesig   = refl
-consDecl-ok polys tl rd-signature = refl
-consDecl-ok polys tl rd-typealias = refl
-consDecl-ok polys tl rd-import    = refl
+consDecl-ok tl rd-typesig   = refl
+consDecl-ok tl rd-signature = refl
+consDecl-ok tl rd-typealias = refl
+consDecl-ok tl rd-import    = refl
 
-consDecl-inv : ∀ (polys : List String) (d : Decl) (tl ds' : List Decl) → consDecl polys d tl ≡ inj₂ ds'
-             → (ds' ≡ d ∷ tl) × DeclGood polys d
-consDecl-inv polys (DFunDef n b) tl ds' eq = at (goodRefs? polys b) eq
+consDecl-inv : ∀ (d : Decl) (tl ds' : List Decl) → consDecl d tl ≡ inj₂ ds'
+             → (ds' ≡ d ∷ tl) × DeclGood d
+consDecl-inv (DFunDef n b) tl ds' eq = at (goodRefs? b) eq
   where
-    at : (dg : Dec (GoodRefs polys b)) → consDecl-at polys n b dg tl ≡ inj₂ ds' → (ds' ≡ DFunDef n b ∷ tl) × GoodRefs polys b
+    at : (dg : Dec (GoodRefs b)) → consDecl-at n b dg tl ≡ inj₂ ds' → (ds' ≡ DFunDef n b ∷ tl) × GoodRefs b
     at (yes g) refl = refl , g
     at (no _) ()
-consDecl-inv polys (DTypeSig n t)      tl _ refl = refl , tt
-consDecl-inv polys (DSignature n o t)  tl _ refl = refl , tt
-consDecl-inv polys (DTypeAlias n ps t) tl _ refl = refl , tt
-consDecl-inv polys (DImport imp)       tl _ refl = refl , tt
+consDecl-inv (DTypeSig n t)      tl _ refl = refl , tt
+consDecl-inv (DSignature n o t)  tl _ refl = refl , tt
+consDecl-inv (DTypeAlias n ps t) tl _ refl = refl , tt
+consDecl-inv (DImport imp)       tl _ refl = refl , tt
 
 ------------------------------------------------------------------------
 -- THE BRIDGE, at a module. Covers IMPORTS: `resolveDecls` replaces a
@@ -362,57 +356,50 @@ lookupMod-complete ((p , q) ∷ rest) path m (fa-there p≢ fa) with p path≟ p
 -- (it would have to rewrite the `refl` proof alongside). Generalise over both
 -- (scrutinee, equation) pairs and match — the J-style bridge the codebase uses
 -- wherever a de-withed aux has to be driven from outside.
-import-red : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
+import-red : ∀ (um : UnaliasedMap) (am : AliasMap)
                (mm : ModuleMap) (imp : Import) (rest : List Decl)
                (impDs tailDs : List Decl)
            → lookupModule mm (Import.path imp) ≡ just (mkModule impDs)
-           → resolveDecls polys um am mm rest ≡ inj₂ tailDs
-           → resolveDecls polys um am mm (DImport imp ∷ rest)
+           → resolveDecls um am mm rest ≡ inj₂ tailDs
+           → resolveDecls um am mm (DImport imp ∷ rest)
                ≡ inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
-import-red polys um am mm imp rest impDs tailDs elm err = go _ refl _ refl
+import-red um am mm imp rest impDs tailDs elm err = go _ refl _ refl
   where
     go : ∀ (lm : Maybe Module) (e1 : lookupModule mm (Import.path imp) ≡ lm)
-           (rr : String ⊎ List Decl) (e2 : resolveDecls polys um am mm rest ≡ rr)
-       → resolveDecls-import-aux polys um am mm imp rest lm e1 rr e2
+           (rr : String ⊎ List Decl) (e2 : resolveDecls um am mm rest ≡ rr)
+       → resolveDecls-import-aux um am mm imp rest lm e1 rr e2
            ≡ inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
     go lm e1 rr e2 with trans (sym e1) elm | trans (sym e2) err
     ... | refl | refl = refl
 
-resolvesDecls-sound : ∀ (mm : ModuleMap) (polys : List String)
+resolvesDecls-sound : ∀ (mm : ModuleMap)
                       (um : UnaliasedMap) (am : AliasMap) (ds ds' : List Decl)
-                    → ResolvesDecls mm polys um am ds ds'
-                    → resolveDecls polys um am mm ds ≡ inj₂ ds'
-resolvesDecls-sound mm polys um am _ _ rds-nil = refl
-resolvesDecls-sound mm polys um am _ _ (rds-cons nim-typesig rd rds)
-  rewrite resolvesDecls-sound mm polys um am _ _ rds
-        | resolvesDecl-sound polys um am _ _ rd = refl
-resolvesDecls-sound mm polys um am _ _ (rds-cons {d = d} {d' = d'} {ds' = ds'} nim-fundef rd rds) =
-  trans (cong (resolveDecls-cons-aux polys um am d) (resolvesDecls-sound mm polys um am _ _ rds))
-        (trans (cong (λ d″ → consDecl polys d″ ds') (resolvesDecl-sound polys um am _ _ rd)) (consDecl-ok polys ds' rd))
-resolvesDecls-sound mm polys um am _ _ (rds-cons nim-sig rd rds)
-  rewrite resolvesDecls-sound mm polys um am _ _ rds
-        | resolvesDecl-sound polys um am _ _ rd = refl
-resolvesDecls-sound mm polys um am _ _ (rds-cons nim-alias rd rds)
-  rewrite resolvesDecls-sound mm polys um am _ _ rds
-        | resolvesDecl-sound polys um am _ _ rd = refl
-resolvesDecls-sound mm polys um am _ _
+                    → ResolvesDecls mm um am ds ds'
+                    → resolveDecls um am mm ds ≡ inj₂ ds'
+resolvesDecls-sound mm um am _ _ rds-nil = refl
+resolvesDecls-sound mm um am _ _ (rds-cons nim-typesig rd rds)
+  rewrite resolvesDecls-sound mm um am _ _ rds
+        | resolvesDecl-sound um am _ _ rd = refl
+resolvesDecls-sound mm um am _ _ (rds-cons {d = d} {d' = d'} {ds' = ds'} nim-fundef rd rds) =
+  trans (cong (resolveDecls-cons-aux um am d) (resolvesDecls-sound mm um am _ _ rds))
+        (trans (cong (λ d″ → consDecl d″ ds') (resolvesDecl-sound um am _ _ rd)) (consDecl-ok ds' rd))
+resolvesDecls-sound mm um am _ _ (rds-cons nim-sig rd rds)
+  rewrite resolvesDecls-sound mm um am _ _ rds
+        | resolvesDecl-sound um am _ _ rd = refl
+resolvesDecls-sound mm um am _ _ (rds-cons nim-alias rd rds)
+  rewrite resolvesDecls-sound mm um am _ _ rds
+        | resolvesDecl-sound um am _ _ rd = refl
+resolvesDecls-sound mm um am _ _
   (rds-import {imp = imp} {impDs = impDs} {ds = ds} {ds' = ds'} fa rds) =
-  import-red polys um am mm imp ds impDs ds'
+  import-red um am mm imp ds impDs ds'
     (lookupMod-complete mm (Import.path imp) (mkModule impDs) fa)
-    (resolvesDecls-sound mm polys um am ds ds' rds)
+    (resolvesDecls-sound mm um am ds ds' rds)
 
--- The scope premise is a BRIDGE fact, not a spec one: `ResolvesModule` is
--- parameterised by the scope precisely so the SPEC never has to decide which
--- definitions are polymorphic (that question bottoms out in the principality
--- oracle — plan 0.59). Saying HERE that the resolver used its own scope is
--- exactly right, and `_⊢R_` uses the same `polyDefNames` that `ModuleTyped`
--- already reaches through `extractFunctions`, so the oracle enters the
--- boundary ONCE rather than twice.
 resolvesModule-sound : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
-                     → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR
+                     → ResolvesModule mm (mkModule ds) mR
                      → resolveImports mm (mkModule ds) ≡ inj₂ mR
 resolvesModule-sound mm ds _ (rm rds)
-  rewrite resolvesDecls-sound mm (polyDefNames ds) (collectUnaliased mm ds)
+  rewrite resolvesDecls-sound mm (collectUnaliased mm ds)
                               (collectAliases ds) ds _ rds = refl
 
 path≟-false⇒≢ : ∀ (p q : List String) → (p path≟ q) ≡ false → p ≢ q
@@ -433,78 +420,78 @@ lookupMod-sound ((p , q) ∷ rest) path .q refl | true
 -- `with` could never make that happen — the hypothesis mentions neither
 -- scrutinee, so nothing abstracts it and no `rewrite` fires.
 mutual
-  resolvesDecls-complete : ∀ (mm : ModuleMap) (polys : List String)
+  resolvesDecls-complete : ∀ (mm : ModuleMap)
                            (um : UnaliasedMap) (am : AliasMap) (ds ds' : List Decl)
-                         → resolveDecls polys um am mm ds ≡ inj₂ ds'
-                         → ResolvesDecls mm polys um am ds ds'
-  resolvesDecls-complete mm polys um am [] _ refl = rds-nil
-  resolvesDecls-complete mm polys um am (DImport imp ∷ rest) ds' eq =
-    rdc-import mm polys um am imp rest ds'
+                         → resolveDecls um am mm ds ≡ inj₂ ds'
+                         → ResolvesDecls mm um am ds ds'
+  resolvesDecls-complete mm um am [] _ refl = rds-nil
+  resolvesDecls-complete mm um am (DImport imp ∷ rest) ds' eq =
+    rdc-import mm um am imp rest ds'
       (lookupModule mm (Import.path imp)) refl
-      (resolveDecls polys um am mm rest) refl eq
-  resolvesDecls-complete mm polys um am (DTypeSig n t ∷ rest) ds' eq =
-    rdc-cons mm polys um am (DTypeSig n t) nim-typesig rest ds'
-      (resolveDecls polys um am mm rest) refl eq
-  resolvesDecls-complete mm polys um am (DFunDef n b ∷ rest) ds' eq =
-    rdc-cons mm polys um am (DFunDef n b) nim-fundef rest ds'
-      (resolveDecls polys um am mm rest) refl eq
-  resolvesDecls-complete mm polys um am (DSignature n o t ∷ rest) ds' eq =
-    rdc-cons mm polys um am (DSignature n o t) nim-sig rest ds'
-      (resolveDecls polys um am mm rest) refl eq
-  resolvesDecls-complete mm polys um am (DTypeAlias n ps t ∷ rest) ds' eq =
-    rdc-cons mm polys um am (DTypeAlias n ps t) nim-alias rest ds'
-      (resolveDecls polys um am mm rest) refl eq
+      (resolveDecls um am mm rest) refl eq
+  resolvesDecls-complete mm um am (DTypeSig n t ∷ rest) ds' eq =
+    rdc-cons mm um am (DTypeSig n t) nim-typesig rest ds'
+      (resolveDecls um am mm rest) refl eq
+  resolvesDecls-complete mm um am (DFunDef n b ∷ rest) ds' eq =
+    rdc-cons mm um am (DFunDef n b) nim-fundef rest ds'
+      (resolveDecls um am mm rest) refl eq
+  resolvesDecls-complete mm um am (DSignature n o t ∷ rest) ds' eq =
+    rdc-cons mm um am (DSignature n o t) nim-sig rest ds'
+      (resolveDecls um am mm rest) refl eq
+  resolvesDecls-complete mm um am (DTypeAlias n ps t ∷ rest) ds' eq =
+    rdc-cons mm um am (DTypeAlias n ps t) nim-alias rest ds'
+      (resolveDecls um am mm rest) refl eq
 
-  rdc-import : ∀ (mm : ModuleMap) (polys : List String) (um : UnaliasedMap)
+  rdc-import : ∀ (mm : ModuleMap) (um : UnaliasedMap)
                  (am : AliasMap) (imp : Import) (rest : List Decl) (ds' : List Decl)
              → (lm : Maybe Module) (elm : lookupModule mm (Import.path imp) ≡ lm)
-             → (rr : String ⊎ List Decl) (err : resolveDecls polys um am mm rest ≡ rr)
-             → resolveDecls-import-aux polys um am mm imp rest lm elm rr err ≡ inj₂ ds'
-             → ResolvesDecls mm polys um am (DImport imp ∷ rest) ds'
-  rdc-import mm polys um am imp rest ds' nothing elm rr err ()
-  rdc-import mm polys um am imp rest ds' (just (mkModule impDs)) elm (inj₁ e) err ()
-  rdc-import mm polys um am imp rest _ (just (mkModule impDs)) elm (inj₂ tailDs) err refl =
+             → (rr : String ⊎ List Decl) (err : resolveDecls um am mm rest ≡ rr)
+             → resolveDecls-import-aux um am mm imp rest lm elm rr err ≡ inj₂ ds'
+             → ResolvesDecls mm um am (DImport imp ∷ rest) ds'
+  rdc-import mm um am imp rest ds' nothing elm rr err ()
+  rdc-import mm um am imp rest ds' (just (mkModule impDs)) elm (inj₁ e) err ()
+  rdc-import mm um am imp rest _ (just (mkModule impDs)) elm (inj₂ tailDs) err refl =
     rds-import (lookupMod-sound mm (Import.path imp) (mkModule impDs) elm)
-               (resolvesDecls-complete mm polys um am rest tailDs err)
+               (resolvesDecls-complete mm um am rest tailDs err)
 
-  rdc-cons : ∀ (mm : ModuleMap) (polys : List String) (um : UnaliasedMap)
+  rdc-cons : ∀ (mm : ModuleMap) (um : UnaliasedMap)
                (am : AliasMap) (d : Decl) → NotImport d
            → ∀ (rest : List Decl) (ds' : List Decl)
-           → (rr : String ⊎ List Decl) (err : resolveDecls polys um am mm rest ≡ rr)
-           → resolveDecls-cons-aux polys um am d rr ≡ inj₂ ds'
-           → ResolvesDecls mm polys um am (d ∷ rest) ds'
-  rdc-cons mm polys um am d nim rest ds' (inj₁ e) err ()
-  rdc-cons mm polys um am d nim rest ds' (inj₂ tailDs) err eq =
-    let (e , g) = consDecl-inv polys (canonDecl polys um am d) tailDs ds' eq
-    in subst (ResolvesDecls mm polys um am (d ∷ rest)) (sym e)
-             (rds-cons nim (resolvesDecl-complete polys um am d g)
-                       (resolvesDecls-complete mm polys um am rest tailDs err))
+           → (rr : String ⊎ List Decl) (err : resolveDecls um am mm rest ≡ rr)
+           → resolveDecls-cons-aux um am d rr ≡ inj₂ ds'
+           → ResolvesDecls mm um am (d ∷ rest) ds'
+  rdc-cons mm um am d nim rest ds' (inj₁ e) err ()
+  rdc-cons mm um am d nim rest ds' (inj₂ tailDs) err eq =
+    let (e , g) = consDecl-inv (canonDecl um am d) tailDs ds' eq
+    in subst (ResolvesDecls mm um am (d ∷ rest)) (sym e)
+             (rds-cons nim (resolvesDecl-complete um am d g)
+                       (resolvesDecls-complete mm um am rest tailDs err))
 
 resolveImports-ok : ∀ (mm : ModuleMap) (ds ds' : List Decl)
-                  → resolveDecls (polyDefNames ds) (collectUnaliased mm ds)
+                  → resolveDecls (collectUnaliased mm ds)
                                  (collectAliases ds) mm ds ≡ inj₂ ds'
                   → resolveImports mm (mkModule ds) ≡ inj₂ (mkModule ds')
 resolveImports-ok mm ds ds' err rewrite err = refl
 
 resolveImports-bad : ∀ (mm : ModuleMap) (ds : List Decl) (e : String)
-                   → resolveDecls (polyDefNames ds) (collectUnaliased mm ds)
+                   → resolveDecls (collectUnaliased mm ds)
                                   (collectAliases ds) mm ds ≡ inj₁ e
                    → resolveImports mm (mkModule ds) ≡ inj₁ e
 resolveImports-bad mm ds e err rewrite err = refl
 
 resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
                         → resolveImports mm (mkModule ds) ≡ inj₂ mR
-                        → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR
+                        → ResolvesModule mm (mkModule ds) mR
 resolvesModule-complete mm ds mR eqR =
-  go (resolveDecls (polyDefNames ds) (collectUnaliased mm ds) (collectAliases ds) mm ds) refl
+  go (resolveDecls (collectUnaliased mm ds) (collectAliases ds) mm ds) refl
   where
     go : ∀ (rr : String ⊎ List Decl)
-       → resolveDecls (polyDefNames ds) (collectUnaliased mm ds)
+       → resolveDecls (collectUnaliased mm ds)
                       (collectAliases ds) mm ds ≡ rr
-       → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR
+       → ResolvesModule mm (mkModule ds) mR
     go (inj₁ e)   err with trans (sym eqR) (resolveImports-bad mm ds e err)
     ...               | ()
     go (inj₂ ds') err with trans (sym eqR) (resolveImports-ok mm ds ds' err)
     ...               | refl =
-      rm (resolvesDecls-complete mm (polyDefNames ds) (collectUnaliased mm ds)
+      rm (resolvesDecls-complete mm (collectUnaliased mm ds)
                                  (collectAliases ds) ds ds' err)

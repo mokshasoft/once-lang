@@ -20,7 +20,7 @@ open import Data.List using (List)
 open import Data.String using (String)
 open import Once.Spec.Signature using (Signature)
 
-module Once.Adequacy.SpecFront.Align (Σ : Signature) (ps : List String) where
+module Once.Adequacy.SpecFront.Align (Σ : Signature) where
 
 open import Once.Adequacy.SpecFront.Polys using (Adj; adj-nil; adj-sig; adj-other)
 
@@ -65,11 +65,11 @@ open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-m
 data Align : List SX.Decl → List Parser.Entry → Set where
   al-nil   : Align [] []
   al-skip  : ∀ {d ds es} → NotDefinition Σ d → Align ds es → Align (d ∷ ds) es
-  al-mono  : ∀ {x T′ e e′ ty ds es} → SchemaOf T′ (schS (monoSchema ty)) → RX ps [] e e′ → Align ds es
+  al-mono  : ∀ {x T′ e e′ ty ds es} → SchemaOf T′ (schS (monoSchema ty)) → RX [] e e′ → Align ds es
            → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x (just ty) e false) ∷ es)
-  al-nosig : ∀ {x e e′ ds es} → RX ps [] e e′ → Align ds es
+  al-nosig : ∀ {x e e′ ds es} → RX [] e e′ → Align ds es
            → Align (SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x nothing e false) ∷ es)
-  al-poly  : ∀ {x T T′ e e′ ds es} → SchemaOf T′ (schS (schemaOf T)) → RX ps [] e e′ → Align ds es
+  al-poly  : ∀ {x T T′ e e′ ds es} → SchemaOf T′ (schS (schemaOf T)) → RX [] e e′ → Align ds es
            → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-poly (Parser.mkPolyFunInfo x T e) ∷ es)
 
 ------------------------------------------------------------------------
@@ -83,7 +83,7 @@ ImportedSig d = Σ[ x ∈ String ] Σ[ o ∈ List String ] Σ[ T ∈ PolyType ] 
 data DR : List SX.Decl → List Decl → Set where
   dr-nil    : DR [] []
   dr-tsig   : ∀ {x T ds dc} → DR ds dc → DR (SX.DTypeSig x (toPoly T) ∷ ds) (DTypeSig x T ∷ dc)
-  dr-def    : ∀ {x e e′ ds dc} → RX ps [] e e′ → DR ds dc → DR (SX.DFunDef x e′ ∷ ds) (DFunDef x e ∷ dc)
+  dr-def    : ∀ {x e e′ ds dc} → RX [] e e′ → DR ds dc → DR (SX.DFunDef x e′ ∷ ds) (DFunDef x e ∷ dc)
   dr-sig    : ∀ {x T′ T ds dc} → DR ds dc → DR (SX.DSignature x T′ ∷ ds) (DSignature x nothing T ∷ dc)
   dr-import : ∀ {i i′ sigs ds dc} → All ImportedSig sigs → DR ds dc → DR (SX.DImport i′ ∷ ds) (DImport i ∷ sigs ++ dc)
   dr-alias  : ∀ {x ps′ t x′ ps″ t′ ds dc} → DR ds dc → DR (SX.DTypeAlias x′ ps″ t′ ∷ ds) (DTypeAlias x ps′ t ∷ dc)

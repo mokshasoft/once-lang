@@ -228,7 +228,7 @@ mutual
   subst-i′ {Γ = Γ} {D = D} ir (t-var-import {x = x} gw ln li c) =
     sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-import gw (lk-nothing x Γ D ln) li c
   subst-i′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} ln li lp gr refl) =
-    sym (ρ̂-rf (extractGround-rf s g)) ⇝ᵢ t-var-poly-instantiate-infer {g = g} (lk-nothing x Γ D ln) li lp gr refl
+    sym (ρ̂-rf (extractGround-rf s g)) ⇝ᵢ t-var-poly-instantiate-infer {g = g} ln li lp gr refl
   subst-i′ ir (t-annot {T = T} rf d) = sym (ρ̂-rf rf) ⇝ᵢ t-annot rf (ρ̂-rf rf ⇝ᶜ subst-c′ ir d)
   subst-i′ ir (t-pair a b)         = t-pair (subst-i′ ir a) (subst-i′ ir b)
   subst-i′ ir (t-neg d)            = t-neg (subst-i′ ir d)
@@ -286,14 +286,14 @@ mutual
   subst-c′ ir (t-inr-app-check d)   = t-inr-app-check (subst-c′ ir d)
   subst-c′ ir (t-initial-app-check d) = t-initial-app-check (subst-c′ ir d)
   subst-c′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate {x = x} {schema = sch} ln li lp ng ki) =
-    t-var-poly-instantiate (lk-nothing x Γ D ln) li lp ng (ρ̂-ki {sch} ki)
+    t-var-poly-instantiate ln li lp ng (ρ̂-ki {sch} ki)
 
   subst-d′ : ∀ {n Γ D imps polys sg e A π B Ψ} → TopRF imps sg
            → mkCtx n Γ D imps polys sg ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
            → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg ⊢ᵈ e ∶ ρ̂ A ⇒[ π ]↦ ρ̂ B ⨾ Ψ
   subst-d′ ir (d-infer w p g)      = d-infer (subst-i′ ir w) (ρ̂-<: p) g
   subst-d′ {Γ = Γ} {D = D} ir (d-poly {x = x} {schema = sch} ln li lp ng as cv ki g) =
-    d-poly (lk-nothing x Γ D ln) li lp ng as cv (ρ̂-ki {sch} ki) g
+    d-poly ln li lp ng as cv (ρ̂-ki {sch} ki) g
   subst-d′ ir (d-lam {u = u} d)            = d-lam {u = u} (subst-i′ ir d)
   subst-d′ ir (d-compose dg df)    = d-compose (subst-d′ ir dg) (subst-d′ ir df)
   subst-d′ ir (d-id {u = u})                 = d-id {u = u}

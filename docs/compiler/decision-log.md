@@ -19246,3 +19246,34 @@ names), and the Spec's lexer makes a word by `fromList`.
 * Retiring them: key the front end and core by `CanonicalName` throughout (rendering only at run time), so
   that no rendered name is compared inside the verified loop (plan 0.121 R13 option (b), after the merge).
 
+## D330 — AN OWN POLYMORPHIC DEFINITION IS REFERRED TO BY ITS CANONICAL NAME (2026-10-21)
+
+**Follows** D136 (generators win the bare name; `name@this`), D328 (R11 recorded as a `complete` gap) and plan
+0.121 §3.2 R11. **Supersedes** plan 0.51's "Fix B" (`36c1cafb7`, 2026-06-27). **Relates**: D324, D329.
+**Approved** by the user 2026-10-21 (option 1: "all names should be transformed to canonical names as fast as
+possible").
+
+### Context
+The compiler kept a reference to the module's own POLYMORPHIC definition bare (`RVar x`; `rv-own-poly`), while
+every other own reference — and every own reference in the Spec (`rn-own`, `r-this`) — is `canonical [x]`.
+The bare form dates from "Fix B": the resolver had canonicalized all own references (as D136 describes), the
+polymorphic typing rules matched only `RVar x`, and the polymorphic names were threaded in as if they were
+local binders, because that changed no signatures. Consequences: `poly@this`, which the Spec accepts, had no
+typing rule (a `complete` gap, R11); the resolver needed the module's polymorphic names (`polyDefNames`, the
+oracle-era classification) inside `_⊢R_`; and the bridges carried a bare-vs-canonical case split (`x-own`).
+
+### Decision
+* The resolver writes every own reference as its canonical name, polymorphic or not (`rv-own`; `rv-own-poly`
+  and `polyDefNames` deleted). `ResolvesModule`, `ResolvesDecls`, `ResolvesExpr`, `GoodRefs` lose the `ps`
+  parameter; `GoodName` is just "not `main`" (D324). `_⊢R_` no longer mentions the polymorphic names.
+* The three polymorphic reference rules (`t-var-poly-instantiate-infer`, `t-var-poly-instantiate`, `d-poly`)
+  type `RResolved (own x)`, with "not a declaration of Σ" (`lookupImport sig x ≡ nothing`) in place of "not a
+  local". The checker reaches them from the resolved-reference path (`inferElabV-RResolved-own-aux`,
+  `checkElabV-RResolved-other`, `given-res`).
+* `poly@this` is accepted (`TypeCheckSpec`: `id@this 5`).
+
+### Consequences
+* The bridges lose the case split (`RX`'s `x-own`, `NotOwnPoly`, the `pdn-*` lemmas): the program's
+  polymorphic names are just the telescope's (`polyNames`), and `Back` gains `h-psig` (a telescope entry is no
+  FFI declaration — the extractor's guard).
+

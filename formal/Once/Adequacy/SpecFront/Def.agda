@@ -81,6 +81,8 @@ module Once.Adequacy.SpecFront.Def
   (b-ps : ∀ {d x} → nm d ≡ canonical (x ∷ []) → 0 < SC.Schema.arity (defsS S SC.!! d) → x ∈ ps)
   (b-poly : ∀ {m} (Δ : ST.KCtx m) {d x} → nm d ≡ canonical (x ∷ []) → x ∈ ps → Sc.PolyAt (defsS S) imps polys Δ d x)
   (b-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
+  -- …nor an FFI declaration's (R11, D330)
+  (b-psig : ∀ {x} → x ∈ ps → lookupImport sg x ≡ nothing)
   -- …and every declaration of Σ has a word name (D329)
   (b-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
   where
@@ -130,7 +132,7 @@ module _ {m} (κ : LP.KCtx m) where
 
   open import Once.Adequacy.SpecFront.Check S Σ sigop-S nm clean V h-imp h-poly h-ground h-open h-occ h-arrow Δ
     using (fwdᶜ; fwdᵢ; Chk; Syn)
-  open import Once.Adequacy.SpecFront.Back Σ S′ nm {imps} {sg} {polys} {ps} Δ b-name (b-sig Δ) (b-mono Δ) b-ps (b-poly Δ) b-own-sig b-word
+  open import Once.Adequacy.SpecFront.Back Σ S′ nm {imps} {sg} {polys} {ps} Δ b-name (b-sig Δ) (b-mono Δ) b-ps (b-poly Δ) b-own-sig b-psig b-word
     using (bwdᶜ; BChk)
   open import Once.Adequacy.SpecFront.Locals Σ S′ nm Δ using (LR; lr-∅)
   open import Once.Adequacy.SpecFront.Types Δ using (back; subᶜ-L)
@@ -139,20 +141,20 @@ module _ {m} (κ : LP.KCtx m) where
   module EV = E S
 
   -- The body checks at its type, naming the term the compiler's telescope holds.
-  body-check : ∀ {e e′ A A′ Ψ} (D : C₀ ⊢ᶜ e ∶ A ⨾ Ψ) → RX ps [] e e′ → TyR Δ A A′
+  body-check : ∀ {e e′ A A′ Ψ} (D : C₀ ⊢ᶜ e ∶ A ⨾ Ψ) → RX [] e e′ → TyR Δ A A′
              → SU._⊢_⇐_↝_ Δ SU.∅ e′ A′ (ptmS (A.absTm κ (proj₁ (EV.elabᶜ V D))))
   body-check D rx rA =
     let c = fwdᶜ D lr-∅ rx rA in subst (SU._⊢_⇐_↝_ Δ SU.∅ _ _) (sym (tm-abs κ (Chk.rt c))) (Chk.der c)
 
   -- R8: a body without a signature synthesizes its type, naming the term the
   -- compiler's telescope holds.
-  body-synth : ∀ {e e′ A Ψ} (D : C₀ ⊢ᵢ e ∶ A ⨾ Ψ) → RX ps [] e e′
+  body-synth : ∀ {e e′ A Ψ} (D : C₀ ⊢ᵢ e ∶ A ⨾ Ψ) → RX [] e e′
              → Σ[ A′ ∈ ST.Ty m ] TyR Δ A A′ × SU._⊢_⇒_↝_ Δ SU.∅ e′ A′ (ptmS (A.absTm κ (proj₁ (EV.elabᵢ V D))))
   body-synth D rx =
     let c = fwdᵢ D lr-∅ rx in Syn.A′ c , Syn.ra c , subst (SU._⊢_⇒_↝_ Δ SU.∅ _ _) (sym (tm-abs κ (Syn.rt c))) (Syn.der c)
 
   -- The type is the body's principal one.
-  principal : ∀ {e e′ A A′} → PrincipalAt C₀ e A → RX ps [] e e′ → TyR Δ A A′
+  principal : ∀ {e e′ A A′} → PrincipalAt C₀ e A → RX [] e e′ → TyR Δ A A′
             → ∀ {X t} → X SS.<:ᶜ A′ → SU._⊢_⇐_↝_ Δ SU.∅ e′ X t → Δ ⊩ SCx.∅ ⊢[ SCx.[] ] t ∷ X ! SG.pure → X ≡ A′
   principal {A = A} pr rx rA {X} sub chk T = at (X₀ ≟T A)
     where

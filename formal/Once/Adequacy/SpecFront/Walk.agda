@@ -51,6 +51,8 @@ module Once.Adequacy.SpecFront.Walk
          → Σ[ T ∈ LT.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ T ⌜ t ⌝ᵈ)
   -- …and no polymorphic definition's name is a declaration's
   (h-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
+  -- …nor an FFI declaration's (R11, D330)
+  (h-psig : ∀ {x} → x ∈ ps → lookupImport sg x ≡ nothing)
   -- …and every declaration of Σ has a word name (D329)
   (h-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
   where
@@ -102,7 +104,7 @@ open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; sc
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps
 open import Once.Adequacy.SpecFront.End {Fs} Σ ps using (EntryKind; End; end; endOf; no-ffi; all-tail)
 import Once.Adequacy.SpecFront.Def as Def
-open import Once.Adequacy.SpecFront.Align Σ ps using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
+open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 open import Once.Adequacy.SpecFront.AbsR using (cf-R)
 import Once.Lang.Type.Instance
 
@@ -159,7 +161,7 @@ module AtState {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSi
       (λ {x} {sc} lp ng → subst (0 <_) (sym (cong LP.Schema.arity (proj₂ (telFind ts lp)))) (open-arity sc ng))
       (λ {x} {sc} lp → occ-at {sc} _ (proj₂ (telFind ts lp)))
       (λ {x} {sc} lp → arrow-at {sc} _ (proj₂ (telFind ts lp)))
-      (WInv.named w) h-sig (WInv.mono-at w) (WInv.ps-at w) (WInv.poly-at w) h-own-sig h-word
+      (WInv.named w) h-sig (WInv.mono-at w) (WInv.ps-at w) (WInv.poly-at w) h-own-sig h-psig h-word
 
 ------------------------------------------------------------------------
 -- The declarations and the entries

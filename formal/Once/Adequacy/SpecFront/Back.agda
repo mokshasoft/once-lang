@@ -59,6 +59,8 @@ module Once.Adequacy.SpecFront.Back
   (h-poly : ∀ {d x} → nm d ≡ canonical (x ∷ []) → x ∈ ps → Sc.PolyAt S′ imps polys Δ d x)
   -- a polymorphic definition's name is no declaration's
   (h-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
+  -- …nor an FFI declaration's (R11, D330)
+  (h-psig : ∀ {x} → x ∈ ps → lookupImport sg x ≡ nothing)
   -- …and every declaration of Σ has a word name (D329)
   (h-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
   where
@@ -73,6 +75,7 @@ open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Relation.Unary.Any
 import Data.List.Membership.Propositional.Properties
 import Data.String
+open import Data.List.Membership.DecPropositional Data.String._≟_ using (_∈?_)
 import Data.Fin
 import Data.List
 
@@ -142,6 +145,11 @@ record BDom {n} (Γn : List Binding) (Γd : LC.Ctx n) (e : RawExpr) (A : LT.Type
     der : C n Γn Γd ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
     use : uS Ψ SCx.⊑ᵘ Φ
 
+-- (a resolved name, read by another equal name)
+bdom-at : ∀ {n Γn Γd c c′ A π B′ Φ} → c ≡ c′
+        → BDom {n} Γn Γd (Once.Lang.Syntax.RResolved c′) A π B′ Φ → BDom Γn Γd (Once.Lang.Syntax.RResolved c) A π B′ Φ
+bdom-at refl b = b
+
 ------------------------------------------------------------------------
 -- Locals, read back
 ------------------------------------------------------------------------
@@ -188,23 +196,23 @@ private
   gen∈ : (k : Fin (Data.List.length SU.specialGenerators)) → Data.List.lookup SU.specialGenerators k ∈ SU.specialGenerators
   gen∈ k = Data.List.Membership.Propositional.Properties.∈-lookup {xs = SU.specialGenerators} k
 
-special⁻ : ∀ {bound f f′} (v : AppHeadView f) → RX ps bound f f′ → ¬ SU.SpecialHead f′ → viewToPba v ≡ nothing
-special⁻ LTS.ahv-id       (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.here refl)))
-special⁻ LTS.ahv-fst      (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl))))
-special⁻ LTS.ahv-snd      (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl)))))
-special⁻ LTS.ahv-terminal (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl))))))
-special⁻ LTS.ahv-inl      (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 4))))
-special⁻ LTS.ahv-inr      (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 5))))
-special⁻ LTS.ahv-initial  (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 6))))
-special⁻ LTS.ahv-curry    (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 7))))
-special⁻ LTS.ahv-apply    (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 8))))
-special⁻ LTS.ahv-In       (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 9))))
-special⁻ LTS.ahv-cata     (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 10))))
-special⁻ LTS.ahv-ana      (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 11))))
-special⁻ LTS.ahv-Out      (x-res _ _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 12))))
-special⁻ LTS.ahv-pair-applied    (x-app (x-res _ _) _) ns = ⊥-elim (ns SU.sh-pair)
-special⁻ LTS.ahv-compose-applied (x-app (x-res _ _) _) ns = ⊥-elim (ns SU.sh-compose)
-special⁻ LTS.ahv-case-applied    (x-app (x-res _ _) _) ns = ⊥-elim (ns SU.sh-case)
+special⁻ : ∀ {bound f f′} (v : AppHeadView f) → RX bound f f′ → ¬ SU.SpecialHead f′ → viewToPba v ≡ nothing
+special⁻ LTS.ahv-id       (x-res _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.here refl)))
+special⁻ LTS.ahv-fst      (x-res _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl))))
+special⁻ LTS.ahv-snd      (x-res _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl)))))
+special⁻ LTS.ahv-terminal (x-res _) ns = ⊥-elim (ns (SU.sh-gen (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl))))))
+special⁻ LTS.ahv-inl      (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 4))))
+special⁻ LTS.ahv-inr      (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 5))))
+special⁻ LTS.ahv-initial  (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 6))))
+special⁻ LTS.ahv-curry    (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 7))))
+special⁻ LTS.ahv-apply    (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 8))))
+special⁻ LTS.ahv-In       (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 9))))
+special⁻ LTS.ahv-cata     (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 10))))
+special⁻ LTS.ahv-ana      (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 11))))
+special⁻ LTS.ahv-Out      (x-res _) ns = ⊥-elim (ns (SU.sh-gen (gen∈ (Data.Fin.# 12))))
+special⁻ LTS.ahv-pair-applied    (x-app (x-res _) _) ns = ⊥-elim (ns SU.sh-pair)
+special⁻ LTS.ahv-compose-applied (x-app (x-res _) _) ns = ⊥-elim (ns SU.sh-compose)
+special⁻ LTS.ahv-case-applied    (x-app (x-res _) _) ns = ⊥-elim (ns SU.sh-case)
 special⁻ LTS.ahv-other x ns = refl
 
 ------------------------------------------------------------------------
@@ -416,24 +424,42 @@ private
     cmp-syn ok u (bsyn r-int {Ψ₁} d₁ u₁) (bsyn r-int {Ψ₂} d₂ u₂) =
       bsyn (r-+ r-unit r-unit) (t-binop-cmp ok d₁ d₂) (⊑ᵘ-trans (sum-use Ψ₁ Ψ₂ u₁ u₂) u)
 
-    -- a reference to a definition with no type variables
-    def-res : ∀ {c Φ} (d : Fin s) (τ : ST.TySub (SC.Schema.arity (S′ SC.!! d)) m) → nm d ≡ c → NotOwnPoly ps c
-            → c ≢ canonical ("main" ∷ [])
+    -- a reference to a definition with no type variables: a monomorphic
+    -- definition, or a ground telescope entry (R11, D330)
+    def-ref : ∀ {c Φ} (d : Fin s) (τ : ST.TySub (SC.Schema.arity (S′ SC.!! d)) m) → nm d ≡ c
+            → c ≢ canonical ("main" ∷ []) → SC.Schema.arity (S′ SC.!! d) ≡ 0
             → BSyn Γn Γd (Once.Lang.Syntax.RResolved c) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
-    def-res d τ e nop nm′ = at (h-name d) e nop nm′
+    def-ref d τ e nm′ ar = at (h-name d) e nm′
       where
-        at : ∀ {c Φ} → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []) → nm d ≡ c → NotOwnPoly ps c
-           → c ≢ canonical ("main" ∷ [])
+        at : ∀ {c Φ} → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []) → nm d ≡ c → c ≢ canonical ("main" ∷ [])
            → BSyn Γn Γd (Once.Lang.Syntax.RResolved c) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
-        at (x , ex) refl nop nm′ =
-          let (lks , T , lki , rT) = h-mono ex (nop ex) (λ x≡ → nm′ (trans ex (cong (λ y → canonical (y ∷ [])) x≡))) in bsyn (rT τ) (subst (λ c → C _ Γn Γd ⊢ᵢ Once.Lang.Syntax.RResolved c ∶ T ⨾ _) (sym ex) (t-var-own lks lki)) zero-use
+        at (x , ex) refl nm′ = pick (x ∈? ps)
+          where
+            at-own : ∀ {T Ψ} → C _ Γn Γd ⊢ᵢ Once.Lang.Syntax.RResolved (canonical (x ∷ [])) ∶ T ⨾ Ψ
+                   → C _ Γn Γd ⊢ᵢ Once.Lang.Syntax.RResolved (nm d) ∶ T ⨾ Ψ
+            at-own = subst (λ c → C _ Γn Γd ⊢ᵢ Once.Lang.Syntax.RResolved c ∶ _ ⨾ _) (sym ex)
+            pick : Dec (x ∈ ps) → BSyn Γn Γd (Once.Lang.Syntax.RResolved (nm d)) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) _
+            pick (no x∉) =
+              let (lks , T , lki , rT) = h-mono ex x∉ (λ x≡ → nm′ (trans ex (cong (λ y → canonical (y ∷ [])) x≡)))
+              in bsyn (rT τ) (at-own (t-var-own lks lki)) zero-use
+            pick (yes x∈) =
+              let pa = h-poly ex x∈ ; (g , rT) = Sc.PolyAt.ground pa ar
+              in bsyn (rT τ) (at-own (t-var-poly-instantiate-infer (h-psig x∈) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) g refl)) zero-use
 
-    def-own : ∀ {x Φ} (d : Fin s) (τ : ST.TySub (SC.Schema.arity (S′ SC.!! d)) m) → ¬ (x ∈ names Γn) → x ∈ ps
-            → nm d ≡ canonical (x ∷ []) → SC.Schema.arity (S′ SC.!! d) ≡ 0
-            → BSyn Γn Γd (Once.Lang.Syntax.RVar x) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
-    def-own d τ ∉ x∈ e ar =
-      let pa = h-poly e x∈ ; (g , rT) = Sc.PolyAt.ground pa ar
-      in bsyn (rT τ) (t-var-poly-instantiate-infer (lk-none Γn ∉) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) g refl) zero-use
+    -- a reference to a definition with type variables: a telescope entry at an instance
+    poly-chk : ∀ {c A Φ} (d : Fin s) → nm d ≡ c → 0 < SC.Schema.arity (S′ SC.!! d)
+             → (τ : ST.TySub (SC.Schema.arity (S′ SC.!! d)) m) → ST.Respects (SC.Schema.kinds (S′ SC.!! d)) Δ τ
+             → TyR Δ A (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩)
+             → BChk Γn Γd (Once.Lang.Syntax.RResolved c) A Φ
+    poly-chk d e pos τ resp rA = at (h-name d) e
+      where
+        at : ∀ {c Φ} → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []) → nm d ≡ c → BChk Γn Γd (Once.Lang.Syntax.RResolved c) _ Φ
+        at (x , ex) refl =
+          let x∈ = h-ps ex pos ; pa = h-poly ex x∈
+          in bchk (subst (λ c → C _ Γn Γd ⊢ᶜ Once.Lang.Syntax.RResolved c ∶ _ ⨾ _) (sym ex)
+                    (t-var-poly-instantiate (h-psig x∈) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) (Sc.PolyAt.open′ pa pos)
+                                            (Sc.PolyAt.inst pa τ resp rA)))
+                  zero-use
 
   -- a compiler type related to a `Many` arrow is one
   record ArrMany (A : LT.Type) (X Y : ST.Ty m) (π : SG.Purity) : Set where
@@ -618,8 +644,6 @@ private
   one-use′ : ∀ {n} (Ψ : LC.Usage n) {Φ₁ Φ : SCx.Usage n} → uS Ψ SCx.⊑ᵘ Φ₁ → SG.One SCx.*ᵘ Φ₁ SCx.⊑ᵘ Φ → uS Ψ SCx.⊑ᵘ Φ
   one-use′ Ψ {Φ₁} u w = ⊑ᵘ-trans u (subst (SCx._⊑ᵘ _) (One*ᵘ Φ₁) w)
 
-  poly-res : ∀ {c} (d : Fin s) → nm d ≡ c → 0 < SC.Schema.arity (S′ SC.!! d) → NotOwnPoly ps c → ⊥
-  poly-res d e pos nop = let (x , ex) = h-name d in nop (trans (sym e) ex) (h-ps ex pos)
 
   module _ {n} {Γn : List Binding} {Γd : LC.Ctx n} where
 
@@ -671,13 +695,13 @@ private
 
 mutual
   bwdᵢ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e e′ A′ t′}
-       → SU._⊢_⇒_↝_ Δ L e′ A′ t′ → RX ps (names Γn) e e′ → LR Γn Γd L
+       → SU._⊢_⇒_↝_ Δ L e′ A′ t′ → RX (names Γn) e e′ → LR Γn Γd L
        → ∀ {Φ X π} → Δ ⊩ ctxL L ⊢[ Φ ] t′ ∷ X ! π → (X ≡ A′) × BSyn Γn Γd e A′ Φ
   bwdᶜ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e e′ A A′ t′}
-       → SU._⊢_⇐_↝_ Δ L e′ A′ t′ → RX ps (names Γn) e e′ → LR Γn Γd L → TyR Δ A A′
+       → SU._⊢_⇐_↝_ Δ L e′ A′ t′ → RX (names Γn) e e′ → LR Γn Γd L → TyR Δ A A′
        → ∀ {Φ X π} → Δ ⊩ ctxL L ⊢[ Φ ] t′ ∷ X ! π → (X ≡ A′) × BChk Γn Γd e A Φ
   bwdᵈ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e e′ A A′ π′ B′ t′}
-       → SU._⊢_⇐_⇒[_]↦_↝_ Δ L e′ A′ π′ B′ t′ → RX ps (names Γn) e e′ → LR Γn Γd L → TyR Δ A A′
+       → SU._⊢_⇐_⇒[_]↦_↝_ Δ L e′ A′ π′ B′ t′ → RX (names Γn) e e′ → LR Γn Γd L → TyR Δ A A′
        → ∀ π → πS π ≡ π′
        → ∀ {Φ X π₀} → Δ ⊩ ctxL L ⊢[ Φ ] t′ ∷ X ! π₀ → (X ≡ A′ SU.⇒⟨ π′ ⟩ B′) × BDom Γn Γd e A π B′ Φ
 
@@ -688,15 +712,13 @@ mutual
   bwdᵢ (SU.s-int i) x-int lr T = inv-lit-int T , bsyn r-int (t-int i) zero-use
   bwdᵢ (SU.s-float i f l) (x-float {p = p}) lr T = inv-lit-float T , bsyn r-float (t-float i f l p) zero-use
   bwdᵢ SU.s-unit x-unit lr T = inv-unit T , bsyn r-unit t-unit zero-use
-  bwdᵢ SU.s-unit-g (x-res _ _) lr T = inv-unit T , bsyn r-unit t-unit-var zero-use
+  bwdᵢ SU.s-unit-g (x-res _) lr T = inv-unit T , bsyn r-unit t-unit-var zero-use
   bwdᵢ (SU.s-var mem) (x-local _) lr T =
     trans (proj₁ (inv-var T)) (ctx-lookup mem)
     , bsyn (proj₂ (lk⁻ lr mem)) (t-var-local (proj₁ (lk⁻ lr mem))) (subst (SCx._⊑ᵘ _) (sym (uS-single _ LG.One)) (proj₂ (inv-var T)))
-  bwdᵢ (SU.s-sigop ng mem) (x-res _ _) lr T =
+  bwdᵢ (SU.s-sigop ng mem) (x-res _) lr T =
     let (T₀ , lk , k , r) = h-sig ng mem in inv-sigop T , bsyn r (t-var-resolved ng (h-word mem) lk k) zero-use
-  bwdᵢ (SU.s-sigop ng mem) (x-own _ x∈) lr T = ⊥-elim (h-own-sig x∈ mem)
-  bwdᵢ (SU.s-def d e τ ar) (x-res nop nm′) lr T = inv-ref T , def-res d τ e nop nm′
-  bwdᵢ (SU.s-def d e τ ar) (x-own ∉ x∈) lr T = inv-ref T , def-own d τ ∉ x∈ e ar
+  bwdᵢ (SU.s-def d e τ ar) (x-res nm′) lr T = inv-ref T , def-ref d τ e nm′ ar
   bwdᵢ (SU.s-annot d) (x-annot rf x) lr T =
     let (eq , bchk der u) = bwdᶜ d x lr (annot-R _ rf) T in eq , bsyn (annot-R _ rf) (t-annot rf der) u
   bwdᵢ (SU.s-pair da db) (x-pair xa xb) lr T =
@@ -758,28 +780,28 @@ mutual
         (e₁ , e₂) = prod-inj (sym (IPair.ty p))
         (_ , s₁) = bwdᵢ d₁ x₁ lr (ty-at e₁ (IPair.da p)) ; (_ , s₂) = bwdᵢ d₂ x₂ lr (ty-at e₂ (IPair.db p))
     in trans (IPrim.ty r) cod , cmp-syn ok (⊑ᵘ-trans (IPair.use p) (IPrim.use r)) s₁ s₂
-  bwdᵢ (SU.s-id-app d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-id-app d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (idᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , id-gen (IApp.use a) eq s
-  bwdᵢ (SU.s-fst-app d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-fst-app d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (fstᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , fst-gen (IApp.use a) eq s
-  bwdᵢ (SU.s-snd-app d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-snd-app d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (sndᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , snd-gen (IApp.use a) eq s
-  bwdᵢ (SU.s-terminal-app d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-terminal-app d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (terminalᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , terminal-gen (IApp.use a) eq s
-  bwdᵢ (SU.s-apply-app d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-apply-app d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (applyᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , apply-gen (IApp.use a) eq s
-  bwdᵢ (SU.s-apply-eff-app eg d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-apply-eff-app eg d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (applyEffᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , applyEff-gen (IApp.use a) eq eg s
-  bwdᵢ (SU.s-Out-app wf d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-Out-app wf d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (outᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , out-gen (IApp.use a) eq wf s
-  bwdᵢ (SU.s-Out-act-app wf d) (x-app (x-res _ _) x) lr T =
+  bwdᵢ (SU.s-Out-act-app wf d) (x-app (x-res _) x) lr T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (outActᶜ-ty (IApp.df a)) ; (_ , s) = bwdᵢ d x lr (IApp.dx a)
     in eX , outAct-gen (IApp.use a) eq wf s
   bwdᵢ {Γn = Γn} {Γd} (SU.s-app {A = Ax} {B = Bx} {q = qx} nsh df dx) (x-app {f = f} xf xx) lr T =
@@ -825,33 +847,33 @@ mutual
   -- Checking
   ----------------------------------------------------------------------
 
-  bwdᶜ SU.c-id (x-res _ _) lr rA T =
+  bwdᶜ SU.c-id (x-res _) lr rA T =
     on-arr rA λ _ r₁ r₂ → idᶜ-ty T
       , ≡-chk (cong (λ Z → _ LT.⇒[ _ ] Z) (TyR-uniqueˡ r₁ r₂)) (bchk (t-id-check {u = pure-⊑ _}) zero-use)
-  bwdᶜ SU.c-fst (x-res _ _) lr rA T =
+  bwdᶜ SU.c-fst (x-res _) lr rA T =
     on-arr rA λ { _ (r-* ra rb) r₂ → fstᶜ-ty T
       , ≡-chk (cong (λ Z → _ LT.⇒[ _ ] Z) (TyR-uniqueˡ ra r₂)) (bchk (t-fst-check {u = pure-⊑ _}) zero-use) }
-  bwdᶜ SU.c-snd (x-res _ _) lr rA T =
+  bwdᶜ SU.c-snd (x-res _) lr rA T =
     on-arr rA λ { _ (r-* ra rb) r₂ → sndᶜ-ty T
       , ≡-chk (cong (λ Z → _ LT.⇒[ _ ] Z) (TyR-uniqueˡ rb r₂)) (bchk (t-snd-check {u = pure-⊑ _}) zero-use) }
-  bwdᶜ SU.c-terminal (x-res _ _) lr rA T =
+  bwdᶜ SU.c-terminal (x-res _) lr rA T =
     on-arr rA λ { _ r₁ r-unit → terminalᶜ-ty T , bchk (t-terminal-morph-check {u = pure-⊑ _}) zero-use }
-  bwdᶜ SU.c-initial (x-res _ _) lr rA T =
+  bwdᶜ SU.c-initial (x-res _) lr rA T =
     on-arr rA λ { _ r-void r₂ → initialᶜ-ty T , bchk (t-initial-morph-check {u = pure-⊑ _}) zero-use }
-  bwdᶜ SU.c-inl (x-res _ _) lr rA T =
+  bwdᶜ SU.c-inl (x-res _) lr rA T =
     on-arr rA λ { _ r₁ (r-+ ra rb) → inlᶜ-ty T
       , ≡-chk (cong (λ Z → Z LT.⇒[ _ ] _) (TyR-uniqueˡ ra r₁)) (bchk (t-inl-morph-check {u = pure-⊑ _}) zero-use) }
-  bwdᶜ SU.c-inr (x-res _ _) lr rA T =
+  bwdᶜ SU.c-inr (x-res _) lr rA T =
     on-arr rA λ { _ r₁ (r-+ ra rb) → inrᶜ-ty T
       , ≡-chk (cong (λ Z → Z LT.⇒[ _ ] _) (TyR-uniqueˡ rb r₁)) (bchk (t-inr-morph-check {u = pure-⊑ _}) zero-use) }
-  bwdᶜ (SU.c-compose-g dg df) (x-app (x-app (x-res _ _) xf) xg) lr rA T =
+  bwdᶜ (SU.c-compose-g dg df) (x-app (x-app (x-res _) xf) xg) lr rA T =
     let (r , M , q , πa , C₀ , eF , eX) = compose-inv T
     in on-arr rA λ pe r₁ r₂ →
          let (_ , bdom rb {Ψ₂} derG uG) = bwdᵈ dg xg lr r₁ _ pe (Two.dg r)
              (ef , bchk {Ψ₁} derF uF) = bwdᶜ df xf lr (r-⇒ (kM pe) rb r₂) (Two.df r)
          in trans eX (cod-cong (cod-eq eF ef))
             , bchk (t-compose-check-g derG derF) (⊑ᵘ-trans (app-use Ψ₁ Ψ₂ LG.Many uF uG SG.ω≤ω) (Two.use r))
-  bwdᶜ (SU.c-compose-f df sub dg) (x-app (x-app (x-res _ _) xf) xg) lr rA T =
+  bwdᶜ (SU.c-compose-f df sub dg) (x-app (x-app (x-res _) xf) xg) lr rA T =
     let (r , M , q , πa , C₀ , eF , eX) = compose-inv T ; cf = inv-coerce (Two.df r)
         (_ , bsyn rf {Ψ₁} derF uF) = bwdᵢ df xf lr (ICoerce.dt cf)
         (π₁ , B₁ , C₁ , pe₁ , rB₁ , rC₁ , derF′) = syn-arr rf derF
@@ -860,41 +882,41 @@ mutual
          in trans eX (cod-cong (cod-eq eF (ICoerce.ty cf)))
             , bchk (t-compose-check-f derF′ (sub-L sub (r-⇒ (kM pe₁) rB₁ rC₁) (r-⇒ (kM pe) rB₁ r₂)) derG)
                    (⊑ᵘ-trans (app-use Ψ₁ Ψ₂ LG.Many (⊑ᵘ-trans uF (ICoerce.use cf)) uG SG.ω≤ω) (Two.use r))
-  bwdᶜ (SU.c-case df dg) (x-app (x-app (x-res _ _) xf) xg) lr rA T =
+  bwdᶜ (SU.c-case df dg) (x-app (x-app (x-res _) xf) xg) lr rA T =
     let (r , C₀ , (_ , _ , _ , eF) , _ , eX) = case-inv T
     in on-arr rA λ { pe (r-+ ra rb) r₂ →
          let (ef , bchk {Ψ₁} derF uF) = bwdᶜ df xf lr (r-⇒ (kM pe) ra r₂) (Two.df r)
              (_ , bchk {Ψ₂} derG uG) = bwdᶜ dg xg lr (r-⇒ (kM pe) rb r₂) (Two.dg r)
          in trans eX (cod-cong (cod-eq eF ef))
             , bchk (t-case-copair-check derF derG) (one-use Ψ₁ Ψ₂ uF uG (Two.use r)) }
-  bwdᶜ (SU.c-pair df dg) (x-app (x-app (x-res _ _) xf) xg) lr rA T =
+  bwdᶜ (SU.c-pair df dg) (x-app (x-app (x-res _) xf) xg) lr rA T =
     let (r , B₀ , C₀ , (_ , _ , _ , eF) , (_ , _ , _ , eG) , eX) = pair-inv T
     in on-arr rA λ { pe r₁ (r-* rb rc) →
          let (ef , bchk {Ψ₁} derF uF) = bwdᶜ df xf lr (r-⇒ (kM pe) r₁ rb) (Two.df r)
              (eg , bchk {Ψ₂} derG uG) = bwdᶜ dg xg lr (r-⇒ (kM pe) r₁ rc) (Two.dg r)
          in trans eX (cod-cong (cong₂ ST._*_ (cod-eq eF ef) (cod-eq eG eg)))
             , bchk (t-pair-morph-check derF derG) (one-use Ψ₁ Ψ₂ uF uG (Two.use r)) }
-  bwdᶜ (SU.c-curry df) (x-app (x-res _ _) xf) lr rA T =
+  bwdᶜ (SU.c-curry df) (x-app (x-res _) xf) lr rA T =
     let (r , M , q , πa , C₀ , eF , eX) = curry-inv T
     in on-arr rA λ pe₀ r₁ r₂ →
          let (πi , Bc , Cc , pei , eqi , rb , rc) = split-arr r₂
              (ef , bchk {Ψ} derF uF) = bwdᶜ df xf lr (r-⇒ (kM pei) (r-* r₁ rb) rc) (One′.df r)
          in trans eX (cong (λ Z → _ SU.⇒⟨ _ ⟩ (_ SU.⇒⟨ _ ⟩ Z)) (cod-eq eF ef))
             , ≡-chk (cong (λ Z → _ LT.⇒[ _ ] Z) (sym eqi)) (bchk (t-curry-check {u = pure-⊑ _} derF) (one-use′ Ψ uF (One′.use r)))
-  bwdᶜ (SU.c-cata wf dalg) (x-app (x-res _ _) xa) lr rA T =
+  bwdᶜ (SU.c-cata wf dalg) (x-app (x-res _) xa) lr rA T =
     let (r , A₀ , π₁ , eF , eX) = cata-inv T
     in on-arr rA λ { pe (r-μ fr) r₂ →
          let (ef , bchk {Ψ} derA uA) = bwdᶜ dalg xa lr (r-⇒ (kM pe) (⟦⟧-R fr r₂) r₂) (One′.df r)
          in trans eX (cod-cong (cod-eq eF ef))
             , bchk (t-cata-check {u = pure-⊑ _} (wf-L wf fr) derA) (many-use Ψ uA (One′.use r)) }
-  bwdᶜ (SU.c-ana le wf dc) (x-app (x-res _ _) xc) lr rA T =
+  bwdᶜ (SU.c-ana le wf dc) (x-app (x-res _) xc) lr rA T =
     let (f₀ , A₁ , πc , Φc , dc′ , use , eX) = ana-inv T
     in on-arr rA λ { pe r₁ (r-ν {φ = φ} eφ fr) →
          let (ec , bchk {Ψ} derC uC) = bwdᶜ dc xc lr (r-⇒ (kM (trans (πS-fin φ) (cong SG.fin eφ))) r₁ (⟦⟧-R fr r₁)) dc′
          in trans eX (cong (λ g → _ SU.⇒⟨ _ ⟩ ST.ν _ g) (fin-inj (grd-eq ec)))
             , bchk (t-ana-check {u = pure-⊑ _} {ua = ⊑π-L _ LG.act (subst (SG._⊑π SG.act) (sym pe) le)} (wf-L wf fr) derC)
                    (many-use Ψ uC use) }
-  bwdᶜ (SU.c-loop dc) (x-app (x-res _ _) xc) lr rA T =
+  bwdᶜ (SU.c-loop dc) (x-app (x-res _) xc) lr rA T =
     let (r , A₁ , B₀ , eF , eX) = loop-inv T
     in on-arr rA λ pe r₁ r₂ →
          let (ef , bchk {Ψ} derC uC) = bwdᶜ dc xc lr (r-⇒ refl r₁ (r-+ r₂ r₁)) (One′.df r)
@@ -914,33 +936,27 @@ mutual
         (ea , bchk {Ψ₁} dA uA) = bwdᶜ da xa lr ra (IPair.da p)
         (eb , bchk {Ψ₂} dB uB) = bwdᶜ db xb lr rb (IPair.db p)
     in trans (IPair.ty p) (cong₂ ST._*_ ea eb) , bchk (t-pair-lit-check dA dB) (⊑ᵘ-trans (sum-use Ψ₁ Ψ₂ uA uB) (IPair.use p))
-  bwdᶜ (SU.c-In-app wf d) (x-app (x-res _ _) x) lr (r-μ fr) T =
+  bwdᶜ (SU.c-In-app wf d) (x-app (x-res _) x) lr (r-μ fr) T =
     let a = inv-app T ; (eA , eq , _ , eX) = arr-inj (inᶜ-ty (IApp.df a))
         (_ , bchk {Ψ} der u) = bwdᶜ d x lr (⟦⟧-R fr (r-μ fr)) (ty-at eA (IApp.dx a))
     in eX , bchk (t-In-app-check (wf-L wf fr) der) (gen-use Ψ u eq (IApp.use a))
-  bwdᶜ (SU.c-apply-app d) (x-app (x-res _ _) x) lr rB T =
+  bwdᶜ (SU.c-apply-app d) (x-app (x-res _) x) lr rB T =
     let a = inv-app T ; (eA , eq , _ , eX) = arr-inj (applyᶜ-ty (IApp.df a))
         (_ , s) = bwdᵢ d x lr (ty-at eA (IApp.dx a))
     in eX , apply-chk s rB eq (IApp.use a)
-  bwdᶜ (SU.c-inl-app d) (x-app (x-res _ _) x) lr (r-+ ra rb) T =
+  bwdᶜ (SU.c-inl-app d) (x-app (x-res _) x) lr (r-+ ra rb) T =
     let a = inv-app T ; (eA , eq , _ , eX) = arr-inj (inlᶜ-ty (IApp.df a))
         (_ , bchk {Ψ} der u) = bwdᶜ d x lr ra (ty-at eA (IApp.dx a))
     in eX , bchk (t-inl-app-check der) (gen-use Ψ u eq (IApp.use a))
-  bwdᶜ (SU.c-inr-app d) (x-app (x-res _ _) x) lr (r-+ ra rb) T =
+  bwdᶜ (SU.c-inr-app d) (x-app (x-res _) x) lr (r-+ ra rb) T =
     let a = inv-app T ; (eA , eq , _ , eX) = arr-inj (inrᶜ-ty (IApp.df a))
         (_ , bchk {Ψ} der u) = bwdᶜ d x lr rb (ty-at eA (IApp.dx a))
     in eX , bchk (t-inr-app-check der) (gen-use Ψ u eq (IApp.use a))
-  bwdᶜ (SU.c-initial-app d) (x-app (x-res _ _) x) lr rA T =
+  bwdᶜ (SU.c-initial-app d) (x-app (x-res _) x) lr rA T =
     let a = inv-app T ; (eA , eq , _ , eX) = arr-inj (initialᶜ-ty (IApp.df a))
         (_ , bchk {Ψ} der u) = bwdᶜ d x lr r-void (ty-at eA (IApp.dx a))
     in eX , bchk (t-initial-app-check der) (gen-use Ψ u eq (IApp.use a))
-  bwdᶜ {Γn = Γn} (SU.c-poly d e pos τ resp) (x-own ∉ x∈) lr rA T =
-    let pa = h-poly e x∈
-    in inv-ref T
-       , bchk (t-var-poly-instantiate (lk-none Γn ∉) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) (Sc.PolyAt.open′ pa pos)
-                                      (Sc.PolyAt.inst pa τ resp rA))
-              zero-use
-  bwdᶜ (SU.c-poly d e pos τ resp) (x-res nop _) lr rA T = ⊥-elim (poly-res d e pos nop)
+  bwdᶜ (SU.c-poly d e pos τ resp) (x-res _) lr rA T = inv-ref T , poly-chk d e pos τ resp rA
 
   ----------------------------------------------------------------------
   -- An arrow out of a given domain
@@ -951,31 +967,31 @@ mutual
         (π₁ , A₁ , B₁ , pe₁ , r₁ , r₂ , der′) = syn-arr rf der
     in ICoerce.ty c
        , bdom r₂ (d-infer der′ (sub-L sub rA r₁) (⊑π-L π₁ π (subst₂ SG._⊑π_ (sym pe₁) (sym pe) le))) (⊑ᵘ-trans u (ICoerce.use c))
-  bwdᵈ {Γn = Γn} (SU.d-poly d e pos {π′ = π₁} {B = B} eT occ τ resp eA eB le) (x-own ∉ x∈) lr rA π pe T =
-    let pa = h-poly e x∈ ; (B₀ , rB) = back B
+  bwdᵈ (SU.d-poly d e pos {π′ = π₁} {B = B} eT occ τ resp eA eB le) (x-res _) lr rA π pe T =
+    let (x , ex) = h-name d ; x∈ = h-ps ex pos ; pa = h-poly ex x∈ ; (B₀ , rB) = back B
         (sd₀ , sc₀ , ar , cv) = Sc.PolyAt.arrow pa eT occ (πL π₁) (πS-πL π₁)
         rT = subst (λ Z → TyR Δ _ (Z ST.⟨ τ ⟩)) (sym eT)
                    (r-⇒ (kM (πS-πL π₁)) (subst (TyR Δ _) (sym eA) rA) (subst (TyR Δ _) (sym eB) rB))
     in ICoerce.ty (inv-coerce T)
-       , bdom rB (d-poly (lk-none Γn ∉) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) (Sc.PolyAt.open′ pa pos) ar cv
-                         (Sc.PolyAt.inst pa τ resp rT) (⊑π-L (πL π₁) π (subst₂ SG._⊑π_ (sym (πS-πL π₁)) (sym pe) le)))
-              zero-use
-  bwdᵈ (SU.d-poly d e pos eT occ τ resp eA eB le) (x-res nop _) lr rA π pe T = ⊥-elim (poly-res d e pos nop)
+       , bdom-at (trans (sym e) ex)
+           (bdom rB (d-poly (h-psig x∈) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) (Sc.PolyAt.open′ pa pos) ar cv
+                            (Sc.PolyAt.inst pa τ resp rT) (⊑π-L (πL π₁) π (subst₂ SG._⊑π_ (sym (πS-πL π₁)) (sym pe) le)))
+                 zero-use)
   bwdᵈ (SU.d-lam db) (x-lam xb) lr rA π pe T =
     let l = inv-lam T ; (eB , sb) = bwdᵢ db xb (lr-▸ lr rA) (ILam.body l)
     in trans (ILam.ty l) (cong (λ Z → _ ST.⇒[ _ ] Z) eB) , lam-dom sb (ILam.use l)
-  bwdᵈ (SU.d-compose dg df) (x-app (x-app (x-res _ _) xf) xg) lr rA π pe T =
+  bwdᵈ (SU.d-compose dg df) (x-app (x-app (x-res _) xf) xg) lr rA π pe T =
     let (r , M , q , πa , C₀ , eF , eX) = compose-inv T
         (_ , bdom rM {Ψ₂} derG uG) = bwdᵈ dg xg lr rA π pe (Two.dg r)
         (ef , bdom rB {Ψ₁} derF uF) = bwdᵈ df xf lr rM π pe (Two.df r)
     in trans eX (cod-cong (cod-eq eF ef))
        , bdom rB (d-compose derG derF) (⊑ᵘ-trans (app-use Ψ₁ Ψ₂ LG.Many uF uG SG.ω≤ω) (Two.use r))
-  bwdᵈ SU.d-id (x-res _ _) lr rA π pe T = idᶜ-ty T , bdom rA (d-id {u = pure-⊑ π}) zero-use
-  bwdᵈ SU.d-fst (x-res _ _) lr (r-* ra rb) π pe T = fstᶜ-ty T , bdom ra (d-fst {u = pure-⊑ π}) zero-use
-  bwdᵈ SU.d-snd (x-res _ _) lr (r-* ra rb) π pe T = sndᶜ-ty T , bdom rb (d-snd {u = pure-⊑ π}) zero-use
-  bwdᵈ SU.d-terminal (x-res _ _) lr rA π pe T = terminalᶜ-ty T , bdom r-unit (d-terminal {u = pure-⊑ π}) zero-use
-  bwdᵈ SU.d-initial (x-res _ _) lr r-void π pe T = initialᶜ-ty T , bdom r-void (d-initial {u = pure-⊑ π}) zero-use
-  bwdᵈ (SU.d-case df dg J) (x-app (x-app (x-res _ _) xf) xg) lr (r-+ ra rb) π pe T =
+  bwdᵈ SU.d-id (x-res _) lr rA π pe T = idᶜ-ty T , bdom rA (d-id {u = pure-⊑ π}) zero-use
+  bwdᵈ SU.d-fst (x-res _) lr (r-* ra rb) π pe T = fstᶜ-ty T , bdom ra (d-fst {u = pure-⊑ π}) zero-use
+  bwdᵈ SU.d-snd (x-res _) lr (r-* ra rb) π pe T = sndᶜ-ty T , bdom rb (d-snd {u = pure-⊑ π}) zero-use
+  bwdᵈ SU.d-terminal (x-res _) lr rA π pe T = terminalᶜ-ty T , bdom r-unit (d-terminal {u = pure-⊑ π}) zero-use
+  bwdᵈ SU.d-initial (x-res _) lr r-void π pe T = initialᶜ-ty T , bdom r-void (d-initial {u = pure-⊑ π}) zero-use
+  bwdᵈ (SU.d-case df dg J) (x-app (x-app (x-res _) xf) xg) lr (r-+ ra rb) π pe T =
     let (r , C₀ , (_ , _ , _ , eF) , _ , eX) = case-inv T
         cf = inv-coerce (Two.df r) ; cg = inv-coerce (Two.dg r)
         (_ , bdom rCf {Ψ₁} derF uF) = bwdᵈ df xf lr ra π pe (ICoerce.dt cf)
@@ -984,13 +1000,13 @@ mutual
     in trans eX (cod-cong (cod-eq eF (ICoerce.ty cf)))
        , bdom rC (d-case derF derG J₀)
               (one-use Ψ₁ Ψ₂ (⊑ᵘ-trans uF (ICoerce.use cf)) (⊑ᵘ-trans uG (ICoerce.use cg)) (Two.use r))
-  bwdᵈ (SU.d-pair df dg) (x-app (x-app (x-res _ _) xf) xg) lr rA π pe T =
+  bwdᵈ (SU.d-pair df dg) (x-app (x-app (x-res _) xf) xg) lr rA π pe T =
     let (r , B₀ , C₀ , (_ , _ , _ , eF) , (_ , _ , _ , eG) , eX) = pair-inv T
         (ef , bdom rB {Ψ₁} derF uF) = bwdᵈ df xf lr rA π pe (Two.df r)
         (eg , bdom rC {Ψ₂} derG uG) = bwdᵈ dg xg lr rA π pe (Two.dg r)
     in trans eX (cod-cong (cong₂ ST._*_ (cod-eq eF ef) (cod-eq eG eg)))
        , bdom (r-* rB rC) (d-pair derF derG) (one-use Ψ₁ Ψ₂ uF uG (Two.use r))
-  bwdᵈ (SU.d-cata wf da) (x-app (x-res _ _) xa) lr (r-μ fr) π pe T =
+  bwdᵈ (SU.d-cata wf da) (x-app (x-res _) xa) lr (r-μ fr) π pe T =
     let (r , A₀ , π₁ , eF , eX) = cata-inv T
         (ef , bsyn ralg {Ψ} der u) = bwdᵢ da xa lr (One′.df r)
         (π₂ , A₁ , A₂ , pe₂ , r₁ , r₂ , der′) = syn-arr ralg der

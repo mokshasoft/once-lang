@@ -53,7 +53,7 @@ import Once.Lang.Core.PolyTy as LP
 import Once.Lang.Core.Telescope as TL
 import Once.Parser as Parser
 open import Once.Parser.Module.Core using (Decl; mkModule)
-open import Once.Parser.Module.Resolve using (ModuleMap; polyDefNames; collectUnaliased; collectAliases)
+open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases)
 import Once.Lang.Resolution as LR
 open import Once.Lang.Module using (ModTele; MainIn; emptyScope; entrySig)
 open import Once.Lang.Core.Translate using (toProgram; []; noCF)
@@ -62,6 +62,7 @@ import Data.Empty
 open import Once.Postulates using (extensionality)
 import Once.Spec.Core.Syntax
 import Data.List.Relation.Unary.All
+import Once.Lang.Typing.Scope
 import Once.Spec.Name
 import Once.Adequacy.SpecFront.Polys
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
@@ -79,7 +80,7 @@ open import Data.List using (map)
 open import Once.Adequacy.SpecFront.SigWF using (wf-of)
 open import Once.Adequacy.SpecFront.Prefix using (Past; past; prefix; ffi-facts; main-entry)
 open import Once.Adequacy.SpecFront.Start using (names; distinct-rest; nosig-rest; fresh-start; not-sig)
-open import Once.Adequacy.SpecFront.Polys using (Adj; adj-of; pdn-res; pdn-xa; polyNames; poly-names; kinds-of; defs-of; poly-not-fun)
+open import Once.Adequacy.SpecFront.Polys using (Adj; adj-of; polyNames; poly-names; kinds-of; defs-of; poly-not-fun)
 import Once.Adequacy.SpecFront.Align as Al
 import Once.Adequacy.SpecFront.WalkState as WS
 import Once.Adequacy.SpecFront.Walk as Wk
@@ -134,20 +135,19 @@ record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele e
 denote : ∀ {mm mm′ dsU dsR ds′ es}
        → ModsW mm′ → All DeclW ds′
        → ModRel mm mm′
-       → LR.ResolvesDecls mm (polyDefNames dsU) (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
+       → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
        → Pointwise DEmb dsU ds′
        → Parser.extractFunctions (Parser.extractAliases (mkModule dsR)) (mkModule dsR) ≡ inj₂ es
        → (mt : ModTele emptyScope es) (mi : MainIn mt) → Denoted mm′ ds′ mt mi
 denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
   go fs es′ ees mt mi guard xn ffiE sigk
   where
-    ps = polyDefNames dsU
     al = Parser.extractAliases (mkModule dsR)
     r₀ = Parser.thenExtract (Parser.sigsAdjacent dsR nothing) (Parser.extractFunctions-go al (Parser.sigsFirst dsR) nothing)
     adjE = proj₁ (then-ok _ _ (guard-ok r₀ ef))
     goE  = proj₂ (then-ok _ _ (guard-ok r₀ ef))
     guard = NC.guard-entries r₀ ef
-    sp = SigOf.signature-of ps mr rds pw (extract-align al (Parser.sigsFirst dsR) goE)
+    sp = SigOf.signature-of mr rds pw (extract-align al (Parser.sigsFirst dsR) goE)
     fs = proj₁ sp
     es′ = proj₁ (proj₂ sp)
     ees = proj₁ (proj₂ (proj₂ sp))
@@ -180,25 +180,21 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         ukeys : AllPairs _≢_ (keys (entrySig fs))
         ukeys = subst (λ l → AllPairs _≢_ (keys l)) te (keys-distinct (fs ++ es′) guard)
         guard′ = distinct-rest fs es′ guard
-        pdn-eq : ps ≡ polyNames es′
-        pdn-eq = trans (pdn-res rds adj) (pdn-xa adj xn)
-        -- `main` is a monomorphic entry, so not a telescope one
-        main∉ : ¬ ("main" ∈ ps)
-        main∉ m =
-          let (fi , mfi , e) = main-entry (Past.mt′ P) (Past.mi′ P)
-          in poly-not-fun es′ guard′ mfi (subst (_∈ polyNames es′) (sym e) (subst ("main" ∈_) pdn-eq m))
+        ps = polyNames es′
         h-sig = λ {m} Δ {c} {t} (_ : Once.Spec.Name.NotGenerator c) M → h-sig-of Σₛ fs tf ukeys facts {m} Δ {c} {t} M
+        -- a telescope entry is no FFI declaration (the extractor's guard)
+        h-psig : ∀ {x} → x ∈ ps → Once.Lang.Typing.Scope.lookupImport sg x ≡ nothing
+        h-psig x∈ = Data.List.Relation.Unary.All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
         h-own : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σₛ)
-        h-own {x} x∈ps M = not-sig Σₛ fs es′ tf guard (poly-names es′ (subst (x ∈_) pdn-eq x∈ps)) M
-        rd = Res.Decls.res-decls ps main∉ Σₛ rds pw
+        h-own {x} x∈ps M = not-sig Σₛ fs es′ tf guard (poly-names es′ x∈ps) M
+        rd = Res.Decls.res-decls Σₛ rds pw
         dsR′ = proj₁ rd
-        align = Al.align-of Σₛ ps (proj₂ (proj₂ rd)) adj xn
-        module W = Wk Σₛ r13 fmt ps sg h-sig h-own (key-word kw)
+        align = Al.align-of Σₛ (proj₂ (proj₂ rd)) adj xn
+        module W = Wk Σₛ r13 fmt ps sg h-sig h-own h-psig (key-word kw)
         eok : W.EntriesOK (Once.Lang.Module.scope sg [] []) es′
         eok = record
           { distinct = guard′ ; fresh = fresh-start es′ ; nosig = nosig-rest fs es′ guard
-          ; kinds = subst (λ q → All (Once.Adequacy.SpecFront.Polys.EntryKind q) es′) (sym pdn-eq)
-                          (kinds-of es′ guard′ (defs-of (nonSigs-none dsR) xn)) }
+          ; kinds = kinds-of es′ guard′ (defs-of (nonSigs-none dsR) xn) }
         ks = W.EntriesOK.kinds eok
         e = En.endOf Σₛ ps TL.[] (Past.ss′ P) [] [] noCF noNames (Past.mt′ P) ks
         pe = En.prog-end Σₛ ps TL.[] (Past.ss′ P) [] [] noCF noNames (Past.mt′ P) (Past.mi′ P) (Past.u′ P) ks
@@ -211,9 +207,9 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         den = record
           { signature = sig
           ; unaliased = collectUnaliased mm dsU
-          ; unaliases = Res.unaliased-of ps main∉ mr rds pw
+          ; unaliases = Res.unaliased-of mr rds pw
           ; resolved  = dsR′
-          ; resolves  = subst (λ a → SPr.ResolvesDecls (SR.env (collectUnaliased mm dsU) a) ds′ dsR′) (Res.aliases-eq ps main∉ pw)
+          ; resolves  = subst (λ a → SPr.ResolvesDecls (SR.env (collectUnaliased mm dsU) a) ds′ dsR′) (Res.aliases-eq pw)
                               (proj₁ (proj₂ rd))
           ; names     = En.End.nm e
           ; walk      = subst (λ n → SPr.Walk Σₛ (defsS (LP.[] {Fs = toISig Σₛ})) n (PG.teleS Σₛ r13 fmt TL.[]) dsR′

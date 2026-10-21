@@ -91,33 +91,43 @@ open import Once.TypeCheck.Completeness.Rules
 -- domain-given mode takes apart. The generator leaves it could name are
 -- exactly the ones `NotGenerator` rules out.
 private
+  -- (a resolved head that infers is given through its inference)
+  res-route : ∀ (ctx : NamedCtx) (cn : CanonicalName) (A : Type) (π : T.Purity)
+                (r : VerifiedInferResult ctx (RResolved cn)) {B Ψ eE d f}
+            → proj₁ r ≡ success B Ψ eE d f
+            → E.given-res ctx cn A π r ≡ given-infer ctx (RResolved cn) A π r
+  res-route ctx cn A π (success _ _ _ _ _ , _) _ = refl
+  res-route ctx cn A π (failure _ , _) ()
+
   leaf-route : ∀ (ctx : NamedCtx) (cn : CanonicalName) (A : Type) (π : T.Purity)
                  (r : VerifiedInferResult ctx (RResolved cn))
              → NotGenerator cn → (vw : AppHeadView (RResolved cn))
+             → ∀ {B Ψ eE d f} → proj₁ r ≡ success B Ψ eE d f
              → elabGivenLeaf ctx cn A π vw r ≡ given-infer ctx (RResolved cn) A π r
-  leaf-route ctx ._ A π r (¬id ∷ᴬ _) Classify.ahv-id = ⊥-elim (¬id refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ ¬fst ∷ᴬ _) Classify.ahv-fst = ⊥-elim (¬fst refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ ¬snd ∷ᴬ _) Classify.ahv-snd = ⊥-elim (¬snd refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬t ∷ᴬ _) Classify.ahv-terminal = ⊥-elim (¬t refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬i ∷ᴬ _) Classify.ahv-initial = ⊥-elim (¬i refl)
+  leaf-route ctx ._ A π r (¬id ∷ᴬ _) Classify.ahv-id _ = ⊥-elim (¬id refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ ¬fst ∷ᴬ _) Classify.ahv-fst _ = ⊥-elim (¬fst refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ ¬snd ∷ᴬ _) Classify.ahv-snd _ = ⊥-elim (¬snd refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬t ∷ᴬ _) Classify.ahv-terminal _ = ⊥-elim (¬t refl)
+  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬i ∷ᴬ _) Classify.ahv-initial _ = ⊥-elim (¬i refl)
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-inl = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-inl ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-inr = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-inr ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-curry = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-curry ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-apply = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-apply ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-In = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-In ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-cata = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-cata ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-ana = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-ana ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ Classify.ahv-Out = refl
+  leaf-route ctx ._ A π r _ Classify.ahv-Out ok = res-route ctx _ A π r ok
   {-# CATCHALL #-}
-  leaf-route ctx cn A π r _ ahv-other = refl
+  leaf-route ctx cn A π r _ ahv-other ok = res-route ctx cn A π r ok
+
 
   app-other-route : ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) (π : T.Purity)
                       (r : VerifiedInferResult ctx (Raw.RApp f x))
@@ -155,10 +165,10 @@ module DPoly where
   arrow-parts θ T.as-act  e = ⇒-parts e
 
   gp-eq : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err ll eL li eI lp eP
-    → given-poly ctx x A π err (lookupLocal ctx x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
+    → given-poly ctx x A π err (lookupImport (Classify.NamedCtx.sig ctx) x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
         (lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl
       ≡ given-poly ctx x A π err ll eL li eI lp eP
-  gp-eq ctx x A π err .(lookupLocal ctx x) refl .(lookupImport (Classify.NamedCtx.imports ctx) x) refl
+  gp-eq ctx x A π err .(lookupImport (Classify.NamedCtx.sig ctx) x) refl .(lookupImport (Classify.NamedCtx.imports ctx) x) refl
     .(lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl = refl
 
   gg-eq : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err schema {body prefix} eL eI
@@ -223,12 +233,12 @@ module DPoly where
   -- The whole chain, from the lookups (the head's inference has failed).
   from-lookups : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err
     {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix}
-    (eL : lookupLocal ctx x ≡ nothing) (eI : lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing)
+    (eL : lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing) (eI : lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing)
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) (¬g : ¬ T.Ground schema)
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
     (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        proj₁ (given-poly ctx x A π err (lookupLocal ctx x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
+        proj₁ (given-poly ctx x A π err (lookupImport (Classify.NamedCtx.sig ctx) x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
                  (lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl) ≡ success B Surface.zeroUsage eE d f
   from-lookups ctx x A π err {schema = schema} eL eI eP ¬g as inc θ eθ g ki =
     let eG = ¬Ground-isGround-inj₂ schema ¬g
@@ -239,22 +249,14 @@ module DPoly where
 
 -- A non-ground telescope entry does not infer.
 poly-head-fails : ∀ (ctx : NamedCtx) (x : String) {schema body prefix}
-  → lookupLocal ctx x ≡ nothing → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
+  → lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
   → Once.Lang.Typing.Scope.lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ T.Ground schema
-  → inferElabV ctx (RVar x) ≡ (failure (Error.UnboundVariable x) , Data.Unit.tt)
-poly-head-fails ctx x {schema} eL eI eP ¬g =
-  Once.TypeCheck.ElaborateProofs.inferElabV-RVar-fail-bridge ctx x eL eI
-    (Once.TypeCheck.ElaborateProofs.inferElabV-RVar-poly-aux-fail-nonground ctx x eL eI
+  → inferElabV ctx (RResolved (own x)) ≡ (failure (Error.UnboundVariable x) , Data.Unit.tt)
+poly-head-fails ctx x {schema} eS eI eP ¬g =
+  Once.TypeCheck.ElaborateProofs.inferElabV-own-fail-bridge ctx x eS eI
+    (Once.TypeCheck.ElaborateProofs.inferElabV-RVar-poly-aux-fail-nonground ctx x eS eI
        (Once.TypeCheck.Classify.lookupPolyPrefix⇒lookupPoly (Classify.NamedCtx.polys ctx) x eP) (¬Ground-isGround-inj₂ schema ¬g))
-
--- Plan 0.103 phase 2b: a variable head that INFERS is given through `d-infer`.
-var-route : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity)
-  (r : VerifiedInferResult ctx (RVar x)) {B Ψ eE d f}
-  → proj₁ r ≡ success B Ψ eE d f
-  → E.given-var ctx x A π r ≡ given-infer ctx (RVar x) A π r
-var-route ctx x A π (success _ _ _ _ _ , _) _ = refl
-var-route ctx x A π (failure _ , _) ()
 
 given-infer-route : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -265,13 +267,14 @@ given-infer-route (t-int _) A π _ = refl
 given-infer-route (t-float _ _ _ _) A π _ = refl
 given-infer-route t-unit A π _ = refl
 given-infer-route t-unit-var A π _ = refl
-given-infer-route {ctx} (t-var-local {x = x} _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
-given-infer-route {ctx} (t-var-resolved {cn = cn} ng wn _ _) A π _ =
-  leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
-given-infer-route {ctx} (t-var-own {x = x} _ _) A π _ =
-  leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x)))
-given-infer-route {ctx} (t-var-import {x = x} _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
-given-infer-route {ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
+given-infer-route (t-var-local _) A π _ = refl
+given-infer-route {ctx} (t-var-resolved {cn = cn} ng wn _ _) A π (_ , _ , _ , ok) =
+  leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn)) ok
+given-infer-route {ctx} (t-var-own {x = x} _ _) A π (_ , _ , _ , ok) =
+  leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
+given-infer-route (t-var-import _ _ _ _) A π _ = refl
+given-infer-route {ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) =
+  leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
 given-infer-route (t-annot _ _) A π _ = refl
 given-infer-route (t-pair _ _) A π _ = refl
 given-infer-route (t-neg _) A π _ = refl
@@ -637,7 +640,7 @@ mutual
   -- t-var-import (infer at the declared type, embed at the same type).
   iFromInferSub {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
     let (_ , _ , _ , eqI) = infer-complete dd
-    in checkElab-fallback-RVar {ctx} x T eqI sb
+    in checkElab-fallback-RResolved {ctx} (own x) T eqI sb
   iFromInferSub (t-annot {e = e} {T = T} rf d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-annot rf d)
     in checkElab-fallback-RAnnot e T eqI sb

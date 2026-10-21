@@ -168,11 +168,11 @@ private
   gen-head (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there ()))))))))))))) _
 
 -- A head the compiler's general application rules take is one the Spec's take.
-not-special : ∀ {ps bound f f′} → classifyAppHead f ≡ nothing → RX ps bound f f′ → ¬ SU.SpecialHead f′
-not-special e (x-res _ _) (SU.sh-gen g) = gen-head g e
-not-special () (x-app (x-res _ _) _) SU.sh-pair
-not-special () (x-app (x-res _ _) _) SU.sh-compose
-not-special () (x-app (x-res _ _) _) SU.sh-case
+not-special : ∀ {bound f f′} → classifyAppHead f ≡ nothing → RX bound f f′ → ¬ SU.SpecialHead f′
+not-special e (x-res _) (SU.sh-gen g) = gen-head g e
+not-special () (x-app (x-res _) _) SU.sh-pair
+not-special () (x-app (x-res _) _) SU.sh-compose
+not-special () (x-app (x-res _) _) SU.sh-case
 
 -- A reference to a definition with no type variables.
 ref0 : ∀ {n} {L : SU.Locals m n} {T} (d : Fin s) {c} → nm d ≡ c → LP.Schema.arity (S LP.!! d) ≡ 0
@@ -335,12 +335,12 @@ private
   cmp {p = p} c (syn r-int rt₁ d₁) (syn r-int rt₂ d₂) = syn (r-+ r-unit r-unit) (r-prim p (r-pair rt₁ rt₂)) (SU.s-compare c d₁ d₂)
 
 mutual
-  fwdᵢ : ∀ {ps n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᵢ e ∶ A ⨾ Ψ)
-       → LR Γn Γd L → ∀ {e′} → RX ps (names Γn) e e′ → Syn L e′ A (proj₁ (EV.elabᵢ V D))
-  fwdᶜ : ∀ {ps n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᶜ e ∶ A ⨾ Ψ)
-       → LR Γn Γd L → ∀ {e′} → RX ps (names Γn) e e′ → ∀ {A′} → TyR Δ A A′ → Chk L e′ A′ (proj₁ (EV.elabᶜ V D))
-  fwdᵈ : ∀ {ps n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A B π Ψ} (D : C n Γn Γd ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
-       → LR Γn Γd L → ∀ {e′} → RX ps (names Γn) e e′ → ∀ {A′} → TyR Δ A A′ → Dom L e′ A′ π B (proj₁ (EV.elabᵈ V D))
+  fwdᵢ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᵢ e ∶ A ⨾ Ψ)
+       → LR Γn Γd L → ∀ {e′} → RX (names Γn) e e′ → Syn L e′ A (proj₁ (EV.elabᵢ V D))
+  fwdᶜ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᶜ e ∶ A ⨾ Ψ)
+       → LR Γn Γd L → ∀ {e′} → RX (names Γn) e e′ → ∀ {A′} → TyR Δ A A′ → Chk L e′ A′ (proj₁ (EV.elabᶜ V D))
+  fwdᵈ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A B π Ψ} (D : C n Γn Γd ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+       → LR Γn Γd L → ∀ {e′} → RX (names Γn) e e′ → ∀ {A′} → TyR Δ A A′ → Dom L e′ A′ π B (proj₁ (EV.elabᵈ V D))
 
   ----------------------------------------------------------------------
   -- Synthesis
@@ -349,22 +349,18 @@ mutual
   fwdᵢ (t-int n) lr x-int = syn r-int (r-lit _) (SU.s-int n)
   fwdᵢ (t-float i f l p) lr x-float = syn r-float (r-lit _) (SU.s-float i f l)
   fwdᵢ t-unit lr x-unit = syn r-unit r-unit SU.s-unit
-  fwdᵢ t-unit-var lr (x-res _ _) = syn r-unit r-unit SU.s-unit-g
+  fwdᵢ t-unit-var lr (x-res _) = syn r-unit r-unit SU.s-unit-g
   fwdᵢ (t-var-local {eV = svar i} lk) lr (x-local _) =
     let (A′ , ra , mem) = lk-R lr i lk in syn ra (r-var i) (SU.s-var mem)
-  fwdᵢ {Γn = Γn} (t-var-local {eV = svar i} lk) lr (x-own ∉ _) = ⊥-elim (∉ (lk-in Γn lk))
-  fwdᵢ {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k) lr (x-res _ _) = res (E.View.declares V lk)
+  fwdᵢ {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k) lr (x-res _) = res (E.View.declares V lk)
     where
       res : EV.Declared (showCanonical cn) T → Syn L (SX.RResolved cn) T (L.sigop cn T)
       res (EV.declared h g mem) = syn (decl-R k h g) (r-sigop (decl-R k h g)) (SU.s-sigop ng (sigop-S wn mem))
-  fwdᵢ (t-var-own _ lk) lr (x-res _ _) =
-    ref0 (E.ImportAt.entryOf (E.View.imported V lk)) (proj₁ (h-imp lk)) (proj₂ (h-imp lk)) (E.ImportAt.instOf (E.View.imported V lk))
-  fwdᵢ (t-var-import _ _ lk k) lr (x-own _ _) =
+  fwdᵢ (t-var-own _ lk) lr (x-res _) =
     ref0 (E.ImportAt.entryOf (E.View.imported V lk)) (proj₁ (h-imp lk)) (proj₂ (h-imp lk)) (E.ImportAt.instOf (E.View.imported V lk))
   fwdᵢ (t-var-import _ lkl _ _) lr (x-local inb) = ⊥-elim (lk-out lr inb lkl)
-  fwdᵢ (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) lr (x-own _ _) =
+  fwdᵢ (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) lr (x-res _) =
     ref0 (E.View.entry V lp) (h-poly lp) (h-ground lp g) (E.View.ground V lp g)
-  fwdᵢ (t-var-poly-instantiate-infer lkl _ _ _ refl) lr (x-local inb) = ⊥-elim (lk-out lr inb lkl)
   fwdᵢ (t-annot rf d) lr (x-annot _ x) =
     let chk rt der = fwdᶜ d lr x (annot-R _ rf) in syn (annot-R _ rf) rt (SU.s-annot der)
   fwdᵢ (t-pair da db) lr (x-pair xa xb) =
@@ -437,36 +433,36 @@ mutual
   fwdᵢ (t-binop-cmp {op = OpMul} () _ _) lr _
   fwdᵢ (t-binop-cmp {op = OpDiv} () _ _) lr _
   fwdᵢ (t-binop-cmp {op = OpMod} () _ _) lr _
-  fwdᵢ (t-id-app d) lr (x-app (x-res _ _) x) =
+  fwdᵢ (t-id-app d) lr (x-app (x-res _) x) =
     let syn ra rt der = fwdᵢ d lr x in syn ra (r-app (idᶜ-R LG.pure ra) rt) (SU.s-id-app der)
-  fwdᵢ (t-fst-app d) lr (x-app (x-res _ _) x) = fst-step (fwdᵢ d lr x)
+  fwdᵢ (t-fst-app d) lr (x-app (x-res _) x) = fst-step (fwdᵢ d lr x)
     where
       fst-step : Syn _ _ _ _ → Syn _ _ _ _
       fst-step (syn (r-* ra rb) rt der) = syn ra (r-app (fstᶜ-R LG.pure ra rb) rt) (SU.s-fst-app der)
-  fwdᵢ (t-snd-app d) lr (x-app (x-res _ _) x) = snd-step (fwdᵢ d lr x)
+  fwdᵢ (t-snd-app d) lr (x-app (x-res _) x) = snd-step (fwdᵢ d lr x)
     where
       snd-step : Syn _ _ _ _ → Syn _ _ _ _
       snd-step (syn (r-* ra rb) rt der) = syn rb (r-app (sndᶜ-R LG.pure ra rb) rt) (SU.s-snd-app der)
-  fwdᵢ (t-terminal-app d) lr (x-app (x-res _ _) x) =
+  fwdᵢ (t-terminal-app d) lr (x-app (x-res _) x) =
     let syn ra rt der = fwdᵢ d lr x in syn r-unit (r-app (terminalᶜ-R LG.pure ra) rt) (SU.s-terminal-app der)
-  fwdᵢ (t-apply-app-infer d) lr (x-app (x-res _ _) x) = apply-step (fwdᵢ d lr x)
+  fwdᵢ (t-apply-app-infer d) lr (x-app (x-res _) x) = apply-step (fwdᵢ d lr x)
     where
       apply-step : Syn _ _ _ _ → Syn _ _ _ _
       apply-step (syn (r-* (r-⇒ {A′ = A₁} {B′ = B₁} refl ra rb) ra′) rt der) =
         syn rb (r-app (applyᶜ-R ra rb) rt)
             (SU.s-apply-app (subst (λ Z → SU._⊢_⇒_↝_ Δ _ _ ((A₁ SU.⇒⟨ SG.pure ⟩ B₁) ST.* Z) _) (TyR-uniqueˢ ra′ ra) der))
-  fwdᵢ (t-apply-eff-app-infer {π = π} {g = g} d) lr (x-app (x-res _ _) x) = applyEff-step (fwdᵢ d lr x)
+  fwdᵢ (t-apply-eff-app-infer {π = π} {g = g} d) lr (x-app (x-res _) x) = applyEff-step (fwdᵢ d lr x)
     where
       applyEff-step : Syn _ _ _ _ → Syn _ _ _ _
       applyEff-step (syn (r-* (r-⇒ {A′ = A₁} {B′ = B₁} refl ra rb) ra′) rt der) =
         syn (r-⇒ refl r-unit rb) (r-app (applyEffᶜ-R π ra rb) rt)
             (SU.s-apply-eff-app (eff-S g) (subst (λ Z → SU._⊢_⇒_↝_ Δ _ _ ((A₁ SU.⇒⟨ πS π ⟩ B₁) ST.* Z) _) (TyR-uniqueˢ ra′ ra) der))
-  fwdᵢ (t-Out-app-infer wf refl d) lr (x-app (x-res _ _) x) = out-step (fwdᵢ d lr x)
+  fwdᵢ (t-Out-app-infer wf refl d) lr (x-app (x-res _) x) = out-step (fwdᵢ d lr x)
     where
       out-step : Syn _ _ _ _ → Syn _ _ _ _
       out-step (syn (r-ν refl f) rt der) =
         syn (⟦⟧-R f (r-ν refl f)) (r-app (outᶜ-R f) rt) (SU.s-Out-app (wf-S wf f) der)
-  fwdᵢ (t-Out-eff-app-infer wf refl d) lr (x-app (x-res _ _) x) = out-step (fwdᵢ d lr x)
+  fwdᵢ (t-Out-eff-app-infer wf refl d) lr (x-app (x-res _) x) = out-step (fwdᵢ d lr x)
     where
       out-step : Syn _ _ _ _ → Syn _ _ _ _
       out-step (syn (r-ν refl f) rt der) =
@@ -490,44 +486,44 @@ mutual
   -- Checking
   ----------------------------------------------------------------------
 
-  fwdᶜ (t-id-check {π = π}) lr (x-res _ _) (r-⇒ refl ra ra′) =
+  fwdᶜ (t-id-check {π = π}) lr (x-res _) (r-⇒ refl ra ra′) =
     chk (idᶜ-R π ra) (subst (λ Z → SU._⊢_⇐_↝_ Δ _ _ (_ SU.⇒⟨ πS π ⟩ Z) _) (TyR-uniqueˢ ra ra′) SU.c-id)
-  fwdᶜ (t-fst-check {π = π}) lr (x-res _ _) (r-⇒ refl (r-* ra rb) ra′) =
+  fwdᶜ (t-fst-check {π = π}) lr (x-res _) (r-⇒ refl (r-* ra rb) ra′) =
     chk (fstᶜ-R π ra rb) (subst (λ Z → SU._⊢_⇐_↝_ Δ _ _ (_ SU.⇒⟨ πS π ⟩ Z) _) (TyR-uniqueˢ ra ra′) SU.c-fst)
-  fwdᶜ (t-snd-check {π = π}) lr (x-res _ _) (r-⇒ refl (r-* ra rb) rb′) =
+  fwdᶜ (t-snd-check {π = π}) lr (x-res _) (r-⇒ refl (r-* ra rb) rb′) =
     chk (sndᶜ-R π ra rb) (subst (λ Z → SU._⊢_⇐_↝_ Δ _ _ (_ SU.⇒⟨ πS π ⟩ Z) _) (TyR-uniqueˢ rb rb′) SU.c-snd)
-  fwdᶜ (t-terminal-morph-check {π = π}) lr (x-res _ _) (r-⇒ refl ra r-unit) = chk (terminalᶜ-R π ra) SU.c-terminal
-  fwdᶜ (t-initial-morph-check {π = π}) lr (x-res _ _) (r-⇒ refl r-void ra) = chk (initialᶜ-R π ra) SU.c-initial
-  fwdᶜ (t-inl-morph-check {π = π}) lr (x-res _ _) (r-⇒ refl ra (r-+ ra′ rb)) =
+  fwdᶜ (t-terminal-morph-check {π = π}) lr (x-res _) (r-⇒ refl ra r-unit) = chk (terminalᶜ-R π ra) SU.c-terminal
+  fwdᶜ (t-initial-morph-check {π = π}) lr (x-res _) (r-⇒ refl r-void ra) = chk (initialᶜ-R π ra) SU.c-initial
+  fwdᶜ (t-inl-morph-check {π = π}) lr (x-res _) (r-⇒ refl ra (r-+ ra′ rb)) =
     chk (inlᶜ-R π ra rb) (subst (λ Z → SU._⊢_⇐_↝_ Δ _ _ (_ SU.⇒⟨ πS π ⟩ (Z ST.+ _)) _) (TyR-uniqueˢ ra ra′) SU.c-inl)
-  fwdᶜ (t-inr-morph-check {π = π}) lr (x-res _ _) (r-⇒ refl rb (r-+ ra rb′)) =
+  fwdᶜ (t-inr-morph-check {π = π}) lr (x-res _) (r-⇒ refl rb (r-+ ra rb′)) =
     chk (inrᶜ-R π ra rb) (subst (λ Z → SU._⊢_⇐_↝_ Δ _ _ (_ SU.⇒⟨ πS π ⟩ (_ ST.+ Z)) _) (TyR-uniqueˢ rb rb′) SU.c-inr)
-  fwdᶜ (t-compose-check-g {π = π} dg df) lr (x-app (x-app (x-res _ _) xf) xg) (r-⇒ refl ra rc) =
+  fwdᶜ (t-compose-check-g {π = π} dg df) lr (x-app (x-app (x-res _) xf) xg) (r-⇒ refl ra rc) =
     let dom rb rtg dg′ = fwdᵈ dg lr xg ra ; chk rtf df′ = fwdᶜ df lr xf (r-⇒ refl rb rc)
     in chk (composeᶜ-R π ra rtf rtg) (SU.c-compose-g dg′ df′)
-  fwdᶜ (t-compose-check-f {π = π} {π′} wf p dg) lr (x-app (x-app (x-res _ _) xf) xg) (r-⇒ refl ra rc) = comp-step (fwdᵢ wf lr xf)
+  fwdᶜ (t-compose-check-f {π = π} {π′} wf p dg) lr (x-app (x-app (x-res _) xf) xg) (r-⇒ refl ra rc) = comp-step (fwdᵢ wf lr xf)
     where
       comp-step : Syn _ _ _ _ → Chk _ _ _ _
       comp-step (syn (r-⇒ refl rb rc′) rtf df′) =
         let chk rtg dg′ = fwdᶜ dg lr xg (r-⇒ refl ra rb)
         in chk (composeᶜ-R π ra (r-coerce (r-⇒ refl rb rc′) (r-⇒ refl rb rc) rtf) rtg)
                (SU.c-compose-f df′ (sub-S p (r-⇒ refl rb rc′) (r-⇒ refl rb rc)) dg′)
-  fwdᶜ (t-case-copair-check {π = π} df dg) lr (x-app (x-app (x-res _ _) xf) xg) (r-⇒ refl (r-+ ra rb) rc) =
+  fwdᶜ (t-case-copair-check {π = π} df dg) lr (x-app (x-app (x-res _) xf) xg) (r-⇒ refl (r-+ ra rb) rc) =
     let chk rtf df′ = fwdᶜ df lr xf (r-⇒ refl ra rc) ; chk rtg dg′ = fwdᶜ dg lr xg (r-⇒ refl rb rc)
     in chk (caseᶜ-R π ra rb rtf rtg) (SU.c-case df′ dg′)
-  fwdᶜ (t-pair-morph-check {π = π} df dg) lr (x-app (x-app (x-res _ _) xf) xg) (r-⇒ refl ra (r-* rb rc)) =
+  fwdᶜ (t-pair-morph-check {π = π} df dg) lr (x-app (x-app (x-res _) xf) xg) (r-⇒ refl ra (r-* rb rc)) =
     let chk rtf df′ = fwdᶜ df lr xf (r-⇒ refl ra rb) ; chk rtg dg′ = fwdᶜ dg lr xg (r-⇒ refl ra rc)
     in chk (pairᶜ-R π ra rtf rtg) (SU.c-pair df′ dg′)
-  fwdᶜ (t-curry-check {π₀ = π₀} {π} df) lr (x-app (x-res _ _) xf) (r-⇒ refl ra (r-⇒ refl rb rc)) =
+  fwdᶜ (t-curry-check {π₀ = π₀} {π} df) lr (x-app (x-res _) xf) (r-⇒ refl ra (r-⇒ refl rb rc)) =
     let chk rtf df′ = fwdᶜ df lr xf (r-⇒ refl (r-* ra rb) rc)
     in chk (curryᶜ-R π₀ π ra rb rtf) (SU.c-curry df′)
-  fwdᶜ (t-cata-check {π = π} wf dalg) lr (x-app (x-res _ _) xa) (r-⇒ refl (r-μ f) ra) =
+  fwdᶜ (t-cata-check {π = π} wf dalg) lr (x-app (x-res _) xa) (r-⇒ refl (r-μ f) ra) =
     let chk rt dalg′ = fwdᶜ dalg lr xa (r-⇒ refl (⟦⟧-R f ra) ra)
     in chk (cataᶜ-R π f rt) (SU.c-cata (wf-S wf f) dalg′)
-  fwdᶜ (t-ana-check {π₀ = π₀} {φ = φ} {ua = ua} wf dc) lr (x-app (x-res _ _) xc) (r-⇒ refl ra (r-ν refl f)) =
+  fwdᶜ (t-ana-check {π₀ = π₀} {φ = φ} {ua = ua} wf dc) lr (x-app (x-res _) xc) (r-⇒ refl ra (r-ν refl f)) =
     let chk rt dc′ = fwdᶜ dc lr xc (r-⇒ (cong (SG.mk-kind SG.Many) (πS-fin φ)) ra (⟦⟧-R f ra))
     in chk (anaᶜ-R π₀ f ra rt) (SU.c-ana (⊑π-S ua) (wf-S wf f) dc′)
-  fwdᶜ (t-loop-check dc) lr (x-app (x-res _ _) xc) (r-⇒ refl ra rb) =
+  fwdᶜ (t-loop-check dc) lr (x-app (x-res _) xc) (r-⇒ refl ra rb) =
     let chk rt dc′ = fwdᶜ dc lr xc (r-⇒ refl ra (r-+ rb ra)) in chk (loopᶜ-R ra rt) (SU.c-loop dc′)
   fwdᶜ (t-sub d p) lr x rB =
     let syn rA rt d′ = fwdᵢ d lr x in chk (r-coerce rA rB rt) (SU.c-sub d′ (sub-S p rA rB))
@@ -535,24 +531,23 @@ mutual
     let chk rt d′ = fwdᶜ d (lr-▸ lr ra) x rb in chk (r-lam ra rt) (SU.c-lam d′)
   fwdᶜ (t-pair-lit-check da db) lr (x-pair xa xb) (r-* ra rb) =
     let chk rta da′ = fwdᶜ da lr xa ra ; chk rtb db′ = fwdᶜ db lr xb rb in chk (r-pair rta rtb) (SU.c-pair-lit da′ db′)
-  fwdᶜ (t-In-app-check wf d) lr (x-app (x-res _ _) x) (r-μ f) =
+  fwdᶜ (t-In-app-check wf d) lr (x-app (x-res _) x) (r-μ f) =
     let chk rt d′ = fwdᶜ d lr x (⟦⟧-R f (r-μ f)) in chk (r-app (inᶜ-R f) rt) (SU.c-In-app (wf-S wf f) d′)
-  fwdᶜ (t-apply-check dp) lr (x-app (x-res _ _) x) rB = apply-step (fwdᵢ dp lr x)
+  fwdᶜ (t-apply-check dp) lr (x-app (x-res _) x) rB = apply-step (fwdᵢ dp lr x)
     where
       apply-step : Syn _ _ _ _ → Chk _ _ _ _
       apply-step (syn (r-* (r-⇒ {A′ = A₁} {B′ = B₁} refl ra rb) ra′) rt der) =
         subst (λ Z → Chk _ _ Z _) (TyR-uniqueˢ rb rB)
           (chk (r-app (applyᶜ-R ra rb) rt)
                (SU.c-apply-app (subst (λ Z → SU._⊢_⇒_↝_ Δ _ _ ((A₁ SU.⇒⟨ SG.pure ⟩ B₁) ST.* Z) _) (TyR-uniqueˢ ra′ ra) der)))
-  fwdᶜ (t-inl-app-check d) lr (x-app (x-res _ _) x) (r-+ ra rb) =
+  fwdᶜ (t-inl-app-check d) lr (x-app (x-res _) x) (r-+ ra rb) =
     let chk rt d′ = fwdᶜ d lr x ra in chk (r-app (inlᶜ-R LG.pure ra rb) rt) (SU.c-inl-app d′)
-  fwdᶜ (t-inr-app-check d) lr (x-app (x-res _ _) x) (r-+ ra rb) =
+  fwdᶜ (t-inr-app-check d) lr (x-app (x-res _) x) (r-+ ra rb) =
     let chk rt d′ = fwdᶜ d lr x rb in chk (r-app (inrᶜ-R LG.pure ra rb) rt) (SU.c-inr-app d′)
-  fwdᶜ (t-initial-app-check d) lr (x-app (x-res _ _) x) rT =
+  fwdᶜ (t-initial-app-check d) lr (x-app (x-res _) x) rT =
     let chk rt d′ = fwdᶜ d lr x r-void in chk (r-app (initialᶜ-R LG.pure rT) rt) (SU.c-initial-app d′)
-  fwdᶜ (t-var-poly-instantiate _ _ lp ng ins) lr (x-own _ _) rT =
+  fwdᶜ (t-var-poly-instantiate _ _ lp ng ins) lr (x-res _) rT =
     polyC (E.View.entry V lp) (h-poly lp) (h-open lp ng) (h-occ lp) (E.View.inst V lp ng ins) rT
-  fwdᶜ (t-var-poly-instantiate lkl _ _ _ _) lr (x-local inb) rT = ⊥-elim (lk-out lr inb lkl)
 
   ----------------------------------------------------------------------
   -- An arrow out of a given domain
@@ -563,29 +558,28 @@ mutual
       infer-step : Syn _ _ _ _ → Dom _ _ _ _ _ _
       infer-step (syn (r-⇒ refl rA′ rb) rt der) =
         dom rb (r-coerce (r-⇒ refl rA′ rb) (r-⇒ refl rA rb) rt) (SU.d-infer der (sub-S a rA rA′) (⊑π-S g))
-  fwdᵈ (d-poly _ _ lp ng arr cvd ins g) lr (x-own _ _) rA =
+  fwdᵈ (d-poly _ _ lp ng arr cvd ins g) lr (x-res _) rA =
     let (X , Y , te , incl) = h-arrow lp arr cvd
     in polyD (E.View.entry V lp) (h-poly lp) (h-open lp ng) (h-occ lp) X Y te incl (E.View.inst V lp ng ins) rA g
-  fwdᵈ (d-poly lkl _ _ _ _ _ _ _) lr (x-local inb) rA = ⊥-elim (lk-out lr inb lkl)
   fwdᵈ (d-lam d) lr (x-lam x) rA =
     let syn rb rt d′ = fwdᵢ d (lr-▸ lr rA) x in dom rb (r-lam rA rt) (SU.d-lam d′)
-  fwdᵈ (d-compose {π = π} dg df) lr (x-app (x-app (x-res _ _) xf) xg) rA =
+  fwdᵈ (d-compose {π = π} dg df) lr (x-app (x-app (x-res _) xf) xg) rA =
     let dom rm rtg dg′ = fwdᵈ dg lr xg rA ; dom rb rtf df′ = fwdᵈ df lr xf rm
     in dom rb (composeᶜ-R π rA rtf rtg) (SU.d-compose dg′ df′)
-  fwdᵈ (d-id {π = π}) lr (x-res _ _) rA = dom rA (idᶜ-R π rA) SU.d-id
-  fwdᵈ (d-fst {π = π}) lr (x-res _ _) (r-* ra rb) = dom ra (fstᶜ-R π ra rb) SU.d-fst
-  fwdᵈ (d-snd {π = π}) lr (x-res _ _) (r-* ra rb) = dom rb (sndᶜ-R π ra rb) SU.d-snd
-  fwdᵈ (d-terminal {π = π}) lr (x-res _ _) rA = dom r-unit (terminalᶜ-R π rA) SU.d-terminal
-  fwdᵈ (d-initial {π = π}) lr (x-res _ _) r-void = dom r-void (initialᶜ-R π r-void) SU.d-initial
-  fwdᵈ (d-case {π = π} df dg J) lr (x-app (x-app (x-res _ _) xf) xg) (r-+ ra rb) =
+  fwdᵈ (d-id {π = π}) lr (x-res _) rA = dom rA (idᶜ-R π rA) SU.d-id
+  fwdᵈ (d-fst {π = π}) lr (x-res _) (r-* ra rb) = dom ra (fstᶜ-R π ra rb) SU.d-fst
+  fwdᵈ (d-snd {π = π}) lr (x-res _) (r-* ra rb) = dom rb (sndᶜ-R π ra rb) SU.d-snd
+  fwdᵈ (d-terminal {π = π}) lr (x-res _) rA = dom r-unit (terminalᶜ-R π rA) SU.d-terminal
+  fwdᵈ (d-initial {π = π}) lr (x-res _) r-void = dom r-void (initialᶜ-R π r-void) SU.d-initial
+  fwdᵈ (d-case {π = π} df dg J) lr (x-app (x-app (x-res _) xf) xg) (r-+ ra rb) =
     let dom rcf rtf df′ = fwdᵈ df lr xf ra ; dom rcg rtg dg′ = fwdᵈ dg lr xg rb
         (C′ , rc , J′) = join-S J rcf rcg
     in dom rc (caseᶜ-R π ra rb (r-coerce (r-⇒ refl ra rcf) (r-⇒ refl ra rc) rtf) (r-coerce (r-⇒ refl rb rcg) (r-⇒ refl rb rc) rtg))
            (SU.d-case df′ dg′ J′)
-  fwdᵈ (d-pair {π = π} df dg) lr (x-app (x-app (x-res _ _) xf) xg) rA =
+  fwdᵈ (d-pair {π = π} df dg) lr (x-app (x-app (x-res _) xf) xg) rA =
     let dom rb rtf df′ = fwdᵈ df lr xf rA ; dom rc rtg dg′ = fwdᵈ dg lr xg rA
     in dom (r-* rb rc) (pairᶜ-R π rA rtf rtg) (SU.d-pair df′ dg′)
-  fwdᵈ (d-cata {π = π} wf dalg) lr (x-app (x-res _ _) xa) (r-μ f) = cata-step (fwdᵢ dalg lr xa)
+  fwdᵈ (d-cata {π = π} wf dalg) lr (x-app (x-res _) xa) (r-μ f) = cata-step (fwdᵢ dalg lr xa)
     where
       cata-step : Syn _ _ _ _ → Dom _ _ _ _ _ _
       cata-step (syn (r-⇒ refl rl ra) rt der) =

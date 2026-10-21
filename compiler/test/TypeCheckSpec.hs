@@ -250,6 +250,20 @@ builtinShadowingTests = testGroup "Generator names (D136)"
       -- USER's `fst : Int -> Int` and `fst@this 5` is well-typed.
       result @?= Right ()
 
+  , testCase "R11 (D330): 'id@this' reaches the user's own POLYMORPHIC definition" $ do
+      let source = T.unlines
+            [ "id : a -> a"
+            , "id x = x"
+            , ""
+            , "test : Int"
+            , "test = id@this 5"
+            ]
+      result <- typeCheckSource source
+      -- An own polymorphic definition is referred to by its canonical name,
+      -- like every own definition, so `@this` reaches it too (the Spec's
+      -- `r-this`).
+      result @?= Right ()
+
   , testCase "D136: bare 'fst' is the GENERATOR, not the user's def" $ do
       let source = T.unlines
             [ "fst : Int -> Int"

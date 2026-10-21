@@ -40,15 +40,14 @@ open import Once.Target.Arch using (Arch; arch-numerics)
 ------------------------------------------------------------------------
 
 private
-  var-lits : ∀ {ps bound um x e} → LR.ResolvesVar ps bound um x e → rawIntLits e ≡ [] × negLits e ≡ []
+  var-lits : ∀ {bound um x e} → LR.ResolvesVar bound um x e → rawIntLits e ≡ [] × negLits e ≡ []
   var-lits (LR.rv-binder _)          = refl , refl
   var-lits (LR.rv-gen _ _)           = refl , refl
   var-lits (LR.rv-import _ _ _ _)    = refl , refl
-  var-lits (LR.rv-own-poly _ _ _ _)  = refl , refl
-  var-lits (LR.rv-own _ _ _ _)       = refl , refl
+  var-lits (LR.rv-own _ _ _)         = refl , refl
 
 mutual
-  res-lits : ∀ {ps um am bound e e′} → LR.ResolvesExpr ps um am bound e e′ → rawIntLits e′ ≡ rawIntLits e
+  res-lits : ∀ {um am bound e e′} → LR.ResolvesExpr um am bound e e′ → rawIntLits e′ ≡ rawIntLits e
   res-lits (LR.re-var rv) = Data.Product.proj₁ (var-lits rv)
   res-lits LR.re-this = refl
   res-lits (LR.re-qual _ _ _) = refl
@@ -67,7 +66,7 @@ mutual
   res-lits LR.re-int = refl
   res-lits LR.re-float = refl
 
-  res-neg : ∀ {ps um am bound e e′} → LR.ResolvesExpr ps um am bound e e′ → negLits e′ ≡ negLits e
+  res-neg : ∀ {um am bound e e′} → LR.ResolvesExpr um am bound e e′ → negLits e′ ≡ negLits e
   res-neg (LR.re-var rv) = Data.Product.proj₂ (var-lits rv)
   res-neg LR.re-this = refl
   res-neg (LR.re-qual _ _ _) = refl
@@ -100,7 +99,7 @@ private
   go-owned o (DImport _ ∷ ds) rest = go-owned o ds rest
 
 -- (`moduleIntLits`' walk, on the resolved declarations)
-decls-res : ∀ {mm ps um am dsU dsR} → LR.ResolvesDecls mm ps um am dsU dsR → go dsR ≡ go dsU
+decls-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR → go dsR ≡ go dsU
 decls-res LR.rds-nil = refl
 decls-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb _) rds) = cong₂ _++_ (res-lits rb) (decls-res rds)
 decls-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) = decls-res rds
@@ -157,7 +156,7 @@ decls-emb (d-import ∷ pw) = decls-emb pw
 -- The checks agree
 ------------------------------------------------------------------------
 
-lits-eq : ∀ {mm ps um am dsU dsR ds′} → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+lits-eq : ∀ {mm um am dsU dsR ds′} → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
         → moduleIntLits (mkModule dsR) ≡ SP.declLits ds′
 lits-eq {dsR = dsR} rds pw = trans (mil dsR) (trans (decls-res rds) (sym (decls-emb pw)))
   where
@@ -165,6 +164,6 @@ lits-eq {dsR = dsR} rds pw = trans (mil dsR) (trans (decls-res rds) (sym (decls-
     mil [] = refl
     mil (d ∷ ds) = cong (declIntLits d ++_) (mil ds)
 
-admissible-of : ∀ {mm ps um am dsU dsR ds′} (arch : Arch) → LR.ResolvesDecls mm ps um am dsU dsR → Pointwise DEmb dsU ds′
+admissible-of : ∀ {mm um am dsU dsR ds′} (arch : Arch) → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
               → AdmissibleM arch (mkModule dsR) → Data.List.Relation.Unary.All.All _ (SP.declLits ds′)
 admissible-of arch rds pw a = subst (Data.List.Relation.Unary.All.All _) (lits-eq rds pw) a

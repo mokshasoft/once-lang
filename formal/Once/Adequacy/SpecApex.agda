@@ -67,7 +67,7 @@ open import Once.Lang.Contract using (ISig)
 import Once.Lang.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM
-open import Once.Parser.Module.Resolve using (polyDefNames; collectUnaliased; collectAliases)
+open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases)
 import Once.Lang.Parsing as LPa
 import Once.Lang.Resolution as LR
 import Once.Lang.Module as LM
@@ -229,7 +229,7 @@ private
   sound-ef : ∀ arch (src : Source) {mm dsU dsR}
            → parseModules (SP.Source.modules src) ≡ just mm
            → LPa.ParsesText (SP.Source.text src) (PM.mkModule dsU)
-           → LR.ResolvesDecls mm (polyDefNames dsU) (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
+           → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
            → AdmissibleM arch (PM.mkModule dsR)
            → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (Parser.extractAliases (PM.mkModule dsR)) (PM.mkModule dsR) ≡ ef
            → (mt : LM.ModuleTyped-ef (PM.mkModule dsR) ef) (hvm : LM.HasValidMain-ef (PM.mkModule dsR) ef mt)
@@ -265,7 +265,7 @@ sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
   where
     at : ∀ {mm} → B.mkSource mm (SP.Source.text src) ≡ srcC → parseModules (SP.Source.modules src) ≡ just mm
        → LPa.ParsesText (B.Source.srcText srcC) mU
-       → LR.ResolvesModule (B.Source.srcImports srcC) (polyDefNames (PM.Module.decls mU)) mU mR
+       → LR.ResolvesModule (B.Source.srcImports srcC) mU mR
        → _
     at refl pm pt (LR.rm rds) =
       sound-ef arch src pm pt rds adm (Parser.extractFunctions (Parser.extractAliases mR) mR) refl mt hvm

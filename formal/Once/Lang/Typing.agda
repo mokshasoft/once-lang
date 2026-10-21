@@ -182,12 +182,10 @@ mutual
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Lang.Type.Poly.PolyType}
         {body : RawExpr} {prefix : PolyCtx}
         {g : Once.Lang.Type.Poly.Ground schema}
-      -- D136: the `classifyBareBuiltin x ≡ bbc-other` premise is GONE. It was
-      -- a decider's answer standing in for "x is not a generator" (D134), and
-      -- under D136 it is WRONG, not merely redundant: a generator arrives as
-      -- `RResolved (gen g)`, so a bare `x` never is one — while the premise
-      -- would have rejected a user's own POLYMORPHIC `id`, which D136 allows.
-      → lookupLocal ctx x ≡ nothing
+      -- R11 (D330): an own polymorphic definition is referred to by its
+      -- canonical name, like every own definition; it is neither a
+      -- declaration of Σ nor a monomorphic definition.
+      → lookupImport (NamedCtx.sig ctx) x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
       -- PLAN 0.80 A2: the schema IS ground — the property, not `isGround
@@ -200,7 +198,7 @@ mutual
       -- at its declaration (`Spec.Module.PolysTyped`); a reference is a
       -- variable of the telescope at its declared type, and its meaning is
       -- read from the telescope's environment (`Denotation.DefEnv`).
-      → ctx ⊢ᵢ RVar x ∶ T ⨾ zeroUsage
+      → ctx ⊢ᵢ RResolved (own x) ∶ T ⨾ zeroUsage
 
     ----------------------------------------------------------------
     -- Annotation — bridges into check mode for the sub-expression.
@@ -828,12 +826,7 @@ mutual
     t-var-poly-instantiate :
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Lang.Type.Poly.PolyType} {body : RawExpr}
         {prefix : PolyCtx}
-      -- D136: the `classifyBareBuiltin x ≡ bbc-other` premise is GONE. It was
-      -- a decider's answer standing in for "x is not a generator" (D134), and
-      -- under D136 it is WRONG, not merely redundant: a generator arrives as
-      -- `RResolved (gen g)`, so a bare `x` never is one — while the premise
-      -- would have rejected a user's own POLYMORPHIC `id`, which D136 allows.
-      → lookupLocal ctx x ≡ nothing
+      → lookupImport (NamedCtx.sig ctx) x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       -- Plan 0.58 (telescope): the lookup returns the def's PREFIX (a
       -- structural sub-list); the body is typed there. No `removePoly` — a
@@ -862,7 +855,7 @@ mutual
       -- projection from the definition context Γ (its body's meaning), NOT an
       -- FFI boundary — so the FFI concreteness gate does not apply, and refs at
       -- non-concrete types (`μNat → Int`, …) are well-typed.
-      → ctx ⊢ᶜ RVar x ∶ T ⨾ Surface.zeroUsage
+      → ctx ⊢ᶜ RResolved (own x) ∶ T ⨾ Surface.zeroUsage
 
 ------------------------------------------------------------------------
 -- Backward-compatible alias
@@ -896,7 +889,7 @@ mutual
     d-poly : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {π π′ : Once.Lang.Type.Grade.Purity}
                {schema sd sc : Once.Lang.Type.Poly.PolyType} {body : RawExpr}
                {prefix : PolyCtx}
-           → lookupLocal ctx x ≡ nothing
+           → lookupImport (NamedCtx.sig ctx) x ≡ nothing
            → lookupImport (NamedCtx.imports ctx) x ≡ nothing
            → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
            → ¬ (Once.Lang.Type.Poly.Ground schema)
@@ -904,7 +897,7 @@ mutual
            → Once.Lang.Type.Poly.CodVarsInDom sd sc
            → KindedInstance schema (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π′ ] B)
            → π′ ⊑π π
-           → ctx ⊢ᵈ RVar x ∶ A ⇒[ π ]↦ B ⨾ zeroUsage
+           → ctx ⊢ᵈ RResolved (own x) ∶ A ⇒[ π ]↦ B ⨾ zeroUsage
     -- A lambda whose body synthesizes once its binder has the given type.
     d-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr} {A B : Type} {q' : Quantity}
               {π : Once.Lang.Type.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Lang.Type.Grade.pure ⊑π π}

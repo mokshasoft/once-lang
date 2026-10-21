@@ -159,12 +159,13 @@ mutual
   route-ii (t-var-resolved _ wn l _) (t-var-own n _) = ⊥-elim (just≢nothing (trans (sym l) n))
   route-ii (t-var-local _) (t-var-local _) = ii-local
   route-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  route-ii (t-var-local l) (t-var-poly-instantiate-infer ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
   route-ii (t-var-import _ ln _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
   route-ii (t-var-import _ _ _ _) (t-var-import _ _ _ _) = ii-import
-  route-ii (t-var-import _ _ i _) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  route-ii (t-var-poly-instantiate-infer ln _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  route-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  route-ii (t-var-own _ i) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  route-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-own _ i) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  {-# CATCHALL #-}
+  route-ii (t-var-resolved _ _ l _) (t-var-poly-instantiate-infer ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  route-ii (t-var-poly-instantiate-infer ns _ _ _ _) (t-var-resolved _ _ l _) = ⊥-elim (just≢nothing (trans (sym l) ns))
   route-ii (t-var-poly-instantiate-infer _ _ _ _ _) (t-var-poly-instantiate-infer _ _ _ _ _) = ii-poly-infer
   route-ii (t-annot _ c) (t-annot _ c′) = ii-annot (route-cc c c′)
   route-ii (t-pair a b) (t-pair a′ b′) = ii-pair (route-ii a a′) (route-ii b b′)
@@ -313,8 +314,8 @@ mutual
   route-ic (t-app () _ _) (t-apply-check _)
   route-ic (t-effApp () _ _) (t-apply-check _)
   route-ic (t-app-spine () _ _) (t-apply-check _)
-  route-ic (t-var-local l) (t-var-poly-instantiate ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  route-ic (t-var-import _ _ i _) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  route-ic (t-var-resolved _ _ l _) (t-var-poly-instantiate ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  route-ic (t-var-own _ i) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
   route-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _) = ⊥-elim (ex (trans (sym p) p′) λ { refl → (¬g g) })
   route-ic () (t-lam _ _)
   route-ic d t-id-check = ⊥-elim (noinf-id d)
@@ -362,8 +363,8 @@ mutual
   route-di (d-case _ _ _) d = ⊥-elim (noinf-case d)
   route-di (d-pair _ _) d = ⊥-elim (noinf-pair d)
   route-di (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
-  route-di (d-poly ln _ _ _ _ _ _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  route-di (d-poly _ inn _ _ _ _ _ _) (t-var-import _ _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  route-di (d-poly ns _ _ _ _ _ _ _) (t-var-resolved _ _ l _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  route-di (d-poly _ inn _ _ _ _ _ _) (t-var-own _ i) = ⊥-elim (just≢nothing (trans (sym i) inn))
   route-di (d-poly _ _ p ¬g _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) = ⊥-elim (ex (trans (sym p) p′) λ { refl → (¬g g) })
   route-dd (d-infer w _ _) dd′ = dd-infer-l (route-di dd′ w)
   {-# CATCHALL #-}

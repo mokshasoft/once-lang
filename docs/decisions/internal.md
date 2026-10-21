@@ -31,8 +31,8 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **The front end follows the Spec's**: the resolver keeps an import in
   place; a resolved body names neither `main` nor an own polymorphic
   definition canonically; a signature-less definition is compiled from its
-  synthesis; an imported operation's key is its canonical name rendered.
-  (D328)
+  synthesis; an imported operation's key is its canonical name rendered;
+  an own reference, polymorphic or not, is its canonical name. (D330, D328)
 - **The server loop needs no new IR construct**: an effectful IR arrow means
   `T∞`, and the existing `Ana` against the effect type is the loop; what is
   new is its compilation (a back-edge) and its machine proof. (D313)
