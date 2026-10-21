@@ -18,6 +18,10 @@
 --     compiler's `PrincipalAt` rules out unless the two are the same
 --     (`below-complete`).
 -- What either bridge asks of the scope is a parameter (`h-…`), the walk's.
+-- Conversely (`complete`): a Spec check or synthesis of the body gives the
+-- compiler's (`body-check←`, `body-synth←`, by `Back`), and a type principal
+-- in the Spec is principal in the compiler (`principal←`): a compiler check at
+-- a type strictly below (`Below.below-sound`) is the Spec's, by `Check`.
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ; _<_)
@@ -103,6 +107,7 @@ open import Once.Lang.Type.DecEq using (_≟T_; _≟tk_)
 open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Lang.Typing.Scope using (NamedCtx; mkCtx)
 open import Once.Lang.Principal using (PrincipalAt; below-complete)
+open import Once.Adequacy.SpecFront.Below using (below-sound)
 open import Once.Lang.Core.AbsTy using (absTy; absF; ar-bound; ar-kind; ConstFree; ConstFreeF; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)
 import Once.Lang.Core.Abstract S as A
 open import Once.Adequacy.SpecCore.Type
@@ -133,10 +138,10 @@ module _ {m} (κ : LP.KCtx m) where
   open import Once.Adequacy.SpecFront.Check S Σ sigop-S nm clean V h-imp h-poly h-ground h-open h-occ h-arrow Δ
     using (fwdᶜ; fwdᵢ; Chk; Syn)
   open import Once.Adequacy.SpecFront.Back Σ S′ nm {imps} {sg} {polys} {ps} Δ b-name (b-sig Δ) (b-mono Δ) b-ps (b-poly Δ) b-own-sig b-psig b-word
-    using (bwdᶜ; BChk)
+    using (bwdᶜ; bwdᵢ; BChk; BSyn)
   open import Once.Adequacy.SpecFront.Locals Σ S′ nm Δ using (LR; lr-∅)
-  open import Once.Adequacy.SpecFront.Types Δ using (back; subᶜ-L)
-  open import Once.Adequacy.SpecFront.Abs S Σ sigop-S using (tm-abs)
+  open import Once.Adequacy.SpecFront.Types Δ using (back; subᶜ-L; subᶜ-S; below-R)
+  open import Once.Adequacy.SpecFront.Abs S Σ sigop-S using (tm-abs; ty-abs)
   import Once.Spec.Surface.Typing Σ S′ nm as SU
   module EV = E S
 
@@ -163,3 +168,32 @@ module _ {m} (κ : LP.KCtx m) where
       at : Dec (X₀ ≡ A) → X ≡ _
       at (yes refl) = TyR-uniqueˢ rX rA
       at (no ne)    = ⊥-elim (pr (below-complete (subᶜ-L sub rX rA) ne) (BChk.der (proj₂ (bwdᶜ chk rx lr-∅ rX T))))
+
+  ----------------------------------------------------------------------
+  -- Conversely (plan 0.121 `complete`)
+  ----------------------------------------------------------------------
+
+  -- A Spec check of the body gives the compiler's…
+  body-check← : ∀ {e e′ A A′ t} → SU._⊢_⇐_↝_ Δ SU.∅ e′ A′ t → Δ ⊩ SCx.∅ ⊢[ SCx.[] ] t ∷ A′ ! SG.pure
+              → RX [] e e′ → TyR Δ A A′ → Σ[ Ψ ∈ LC.Usage 0 ] C₀ ⊢ᶜ e ∶ A ⨾ Ψ
+  body-check← chk T rx rA = _ , BChk.der (proj₂ (bwdᶜ chk rx lr-∅ rA T))
+
+  -- …as does a synthesis, at a related type…
+  body-synth← : ∀ {e e′ A′ t} → SU._⊢_⇒_↝_ Δ SU.∅ e′ A′ t → Δ ⊩ SCx.∅ ⊢[ SCx.[] ] t ∷ A′ ! SG.pure
+              → RX [] e e′ → Σ[ A ∈ LT.Type ] TyR Δ A A′ × Σ[ Ψ ∈ LC.Usage 0 ] C₀ ⊢ᵢ e ∶ A ⨾ Ψ
+  body-synth← syn T rx = let b = proj₂ (bwdᵢ syn rx lr-∅ T) in BSyn.A b , BSyn.ra b , _ , BSyn.der b
+
+  -- …and a type principal in the Spec is principal in the compiler: a check
+  -- strictly below is the Spec's (`Check`), at a type strictly below.
+  principal← : ∀ {e e′ A A′} → RX [] e e′ → TyR Δ A A′
+             → (∀ {X Ψ} (D : C₀ ⊢ᶜ e ∶ X ⨾ Ψ)
+                → Δ ⊩ SCx.∅ ⊢[ SCx.[] ] ptmS (A.absTm κ (proj₁ (EV.elabᶜ V D))) ∷ ptyS (absTy κ X) ! SG.pure)
+             → (∀ {X t} → X SS.<:ᶜ A′ → SU._⊢_⇐_↝_ Δ SU.∅ e′ X t → Δ ⊩ SCx.∅ ⊢[ SCx.[] ] t ∷ X ! SG.pure → X ≡ A′)
+             → PrincipalAt C₀ e A
+  principal← {A = A} rx rA typed pr {X} m D =
+    let (sX , nX) = below-sound A m
+        (X′ , rX) = below-R sX rA
+        eq = pr (subᶜ-S sX rX rA) (body-check D rx rX)
+                (subst (λ Y → Δ ⊩ SCx.∅ ⊢[ SCx.[] ] _ ∷ Y ! SG.pure) (ty-abs κ rX) (typed D))
+    in nX (TyR-uniqueˡ rX (subst (TyR Δ A) (sym eq) rA))
+
