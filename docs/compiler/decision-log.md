@@ -19306,3 +19306,32 @@ proof only needs the encoding not to start with a digit, and an own name to diff
   `SymbolValid`, `SymbolFresh`, `Adequacy.LabelSymbols`, `ImageUnique`) imported them from
   `Data.String.Unsafe` (`trustMe`) since plan 0.50. They now import the named postulates (`Once.Postulates`).
 
+
+## D332 — THE THEOREM IS THE SPEC'S: BOTH BRIDGES PROVED, THE APEX SWAPPED (2026-10-21)
+
+**Follows** plan 0.121 items 1–3, plan 0.119 D6 (`SpecApex`, the bridges as a parameter), D329–D331.
+**Approved** by the user 2026-10-21: the Spec keeps a schema's variable order free ("is option 2 more
+principled?" — answered no: a schema's variables are a set, the order is the encoding's; option 1 kept).
+
+### Context
+`SpecApex` derived `Spec.Correct`'s claim, over the Spec's source, typing and behaviour, from the compiler's
+own (`Compile.correctᵈ`, over `Once.Lang`) and a `Bridges` record taken as a parameter: `sound` (what the
+compiler types is a Spec program, meaning the same) and `complete` (what the Spec types, the compiler reads,
+resolves and types). `Once.Compiler` stayed on the old source until both were proved.
+
+### Decision
+* `SpecApex.bridges : Bridges` (`sound-of`, `complete-of`). `complete` builds the compiler's typed telescope
+  alongside the Spec's walk (`SpecFront.WalkBack`), after the extractor's success (`ExtractOk`, its name
+  guard by `render-inj` on identifier keys) and the resolution back (`ResolveBack`); `main` is a monomorphic
+  entry because an entry's written type is concrete and ground (`WalkMain`).
+* The Spec's `SchemaOf` leaves the numbering of a schema's variables free. The bridge does not narrow it:
+  the Spec's typing is shown not to depend on the numbering (`SchemaRen`: two readings of one written type
+  agree up to renumbering by name; `DefsRen`: typing over two definitions tables that agree so; `TyRen`:
+  surface typing under a kind-keeping bijection of the type variables).
+* `Once.Compiler.once-compiler = SpecApex.spec-compiler SpecApex.bridges`: the shipped `CorrectCompiler` is
+  stated over `Spec.Source`, `Spec.Typed`/`_⊢_`, the Spec's behaviour and its Interpretations.
+
+### Consequences
+* No new trust: the bridges use P1 (as before) and T1/T2 (D329).
+* `Once.Lang.Program`'s `Typed`/`_⊢R_` are now internal to the proof (the statement `correctᵈ` is proved
+  against), no longer the theorem's.
