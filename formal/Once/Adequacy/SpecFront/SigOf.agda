@@ -111,49 +111,48 @@ imp-module (d-fundef _ ∷ pw) xa fa = let (Σ₁ , so , ti) = imp-module pw xa 
 imp-module (d-alias ∷ pw)    xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-alias so , ti
 imp-module (d-import ∷ pw)   xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-import so , ti
 
-private
-  owned-sigs : ∀ (o : List String) ds → All IsSig (signaturesWithOwner (just o) ds)
-  owned-sigs o [] = []
-  owned-sigs o (DSignature _ _ _ ∷ ds) = is-sig ∷ owned-sigs o ds
-  owned-sigs o (DTypeSig _ _ ∷ ds) = owned-sigs o ds
-  owned-sigs o (DFunDef _ _ ∷ ds) = owned-sigs o ds
-  owned-sigs o (DTypeAlias _ _ _ ∷ ds) = owned-sigs o ds
-  owned-sigs o (DImport _ ∷ ds) = owned-sigs o ds
+owned-sigs : ∀ (o : List String) ds → All IsSig (signaturesWithOwner (just o) ds)
+owned-sigs o [] = []
+owned-sigs o (DSignature _ _ _ ∷ ds) = is-sig ∷ owned-sigs o ds
+owned-sigs o (DTypeSig _ _ ∷ ds) = owned-sigs o ds
+owned-sigs o (DFunDef _ _ ∷ ds) = owned-sigs o ds
+owned-sigs o (DTypeAlias _ _ _ ∷ ds) = owned-sigs o ds
+owned-sigs o (DImport _ ∷ ds) = owned-sigs o ds
 
-  imported-owned : ∀ (o : List String) ds rest
-                 → Parser.importedSigs (signaturesWithOwner (just o) ds ++ rest) ≡ signaturesWithOwner (just o) ds ++ Parser.importedSigs rest
-  imported-owned o [] rest = refl
-  imported-owned o (DSignature _ _ _ ∷ ds) rest = cong (_ ∷_) (imported-owned o ds rest)
-  imported-owned o (DTypeSig _ _ ∷ ds) rest = imported-owned o ds rest
-  imported-owned o (DFunDef _ _ ∷ ds) rest = imported-owned o ds rest
-  imported-owned o (DTypeAlias _ _ _ ∷ ds) rest = imported-owned o ds rest
-  imported-owned o (DImport _ ∷ ds) rest = imported-owned o ds rest
+imported-owned : ∀ (o : List String) ds rest
+               → Parser.importedSigs (signaturesWithOwner (just o) ds ++ rest) ≡ signaturesWithOwner (just o) ds ++ Parser.importedSigs rest
+imported-owned o [] rest = refl
+imported-owned o (DSignature _ _ _ ∷ ds) rest = cong (_ ∷_) (imported-owned o ds rest)
+imported-owned o (DTypeSig _ _ ∷ ds) rest = imported-owned o ds rest
+imported-owned o (DFunDef _ _ ∷ ds) rest = imported-owned o ds rest
+imported-owned o (DTypeAlias _ _ _ ∷ ds) rest = imported-owned o ds rest
+imported-owned o (DImport _ ∷ ds) rest = imported-owned o ds rest
 
-  own-owned : ∀ (o : List String) ds rest
-            → Parser.ownSigs (signaturesWithOwner (just o) ds ++ rest) ≡ Parser.ownSigs rest
-  own-owned o [] rest = refl
-  own-owned o (DSignature _ _ _ ∷ ds) rest = own-owned o ds rest
-  own-owned o (DTypeSig _ _ ∷ ds) rest = own-owned o ds rest
-  own-owned o (DFunDef _ _ ∷ ds) rest = own-owned o ds rest
-  own-owned o (DTypeAlias _ _ _ ∷ ds) rest = own-owned o ds rest
-  own-owned o (DImport _ ∷ ds) rest = own-owned o ds rest
+own-owned : ∀ (o : List String) ds rest
+          → Parser.ownSigs (signaturesWithOwner (just o) ds ++ rest) ≡ Parser.ownSigs rest
+own-owned o [] rest = refl
+own-owned o (DSignature _ _ _ ∷ ds) rest = own-owned o ds rest
+own-owned o (DTypeSig _ _ ∷ ds) rest = own-owned o ds rest
+own-owned o (DFunDef _ _ ∷ ds) rest = own-owned o ds rest
+own-owned o (DTypeAlias _ _ _ ∷ ds) rest = own-owned o ds rest
+own-owned o (DImport _ ∷ ds) rest = own-owned o ds rest
 
-  -- resolution keeps the module's own signatures
-  own-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR → Parser.ownSigs dsR ≡ Parser.ownSigs dsU
-  own-res LR.rds-nil = refl
-  own-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) = own-res rds
-  own-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) = own-res rds
-  own-res (LR.rds-cons LR.nim-sig (LR.rd-signature {o = nothing}) rds) = cong (_ ∷_) (own-res rds)
-  own-res (LR.rds-cons LR.nim-sig (LR.rd-signature {o = just _}) rds) = own-res rds
-  own-res (LR.rds-cons LR.nim-alias LR.rd-typealias rds) = own-res rds
-  own-res (LR.rds-import {imp = mkImport p (just _)} {impDs = impDs} {ds' = dsR′} _ rds) = trans (own-owned (expandPath p) impDs dsR′) (own-res rds)
-  own-res (LR.rds-import {imp = mkImport p nothing} {impDs = impDs} {ds' = dsR′} _ rds) = trans (own-owned (expandPath p) impDs dsR′) (own-res rds)
+-- resolution keeps the module's own signatures
+own-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR → Parser.ownSigs dsR ≡ Parser.ownSigs dsU
+own-res LR.rds-nil = refl
+own-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) = own-res rds
+own-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) = own-res rds
+own-res (LR.rds-cons LR.nim-sig (LR.rd-signature {o = nothing}) rds) = cong (_ ∷_) (own-res rds)
+own-res (LR.rds-cons LR.nim-sig (LR.rd-signature {o = just _}) rds) = own-res rds
+own-res (LR.rds-cons LR.nim-alias LR.rd-typealias rds) = own-res rds
+own-res (LR.rds-import {imp = mkImport p (just _)} {impDs = impDs} {ds' = dsR′} _ rds) = trans (own-owned (expandPath p) impDs dsR′) (own-res rds)
+own-res (LR.rds-import {imp = mkImport p nothing} {impDs = impDs} {ds' = dsR′} _ rds) = trans (own-owned (expandPath p) impDs dsR′) (own-res rds)
 
-  expands-of : ∀ p → SR.Expands p (expandPath p)
-  expands-of [] = SR.ex-nil
-  expands-of (c ∷ rest) with c Data.String.≟ "I"
-  ... | yes refl = SR.ex-I
-  ... | no ne    = SR.ex-other ne
+expands-of : ∀ p → SR.Expands p (expandPath p)
+expands-of [] = SR.ex-nil
+expands-of (c ∷ rest) with c Data.String.≟ "I"
+... | yes refl = SR.ex-I
+... | no ne    = SR.ex-other ne
 
 
 imp-part : ∀ {al mm mm′ um am dsU dsR ds′ fs} → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
