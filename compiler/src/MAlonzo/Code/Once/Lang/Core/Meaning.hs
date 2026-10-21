@@ -1284,14 +1284,14 @@ du_'10214'_'10215'_502 v0 v1 v2 v3 v4 v5 v6
                             (coe MAlonzo.Code.Once.Lang.Core.Syntax.du_primDom_56 (coe v14)) v5
                             v13 v16 v17 v18))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'sigop_620 v11 v12 v13 v14
+      MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'sigop_620 v11 v12 v13 v14 v15
         -> case coe v3 of
-             MAlonzo.Code.Once.Lang.Core.Syntax.C_sigop_106 v15 v16
+             MAlonzo.Code.Once.Lang.Core.Syntax.C_sigop_106 v16 v17
                -> coe
-                    (\ v17 v18 v19 ->
+                    (\ v18 v19 v20 ->
                        coe
                          MAlonzo.Code.Once.Lang.GradedOps.du_sigOpRef'7515'_606 (coe v4)
-                         (coe v0) (coe d_impl_376 (coe v18)) (coe v15) (coe v11))
+                         (coe v0) (coe d_impl_376 (coe v19)) (coe v16) (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'ref_630 v11
         -> case coe v3 of

@@ -145,7 +145,7 @@ data T__'8866''91'_'93'_'8759'_'33'__248
     C_'8866'prim_608 T__'8866''91'_'93'_'8759'_'33'__248 |
     C_'8866'sigop_620 MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34
                       AgdaAny MAlonzo.Code.Once.Lang.Type.WellFormed.T_RigidFree_68
-                      MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 |
+                      AgdaAny MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 |
     C_'8866'ref_630 (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
                      MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                      MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8) |

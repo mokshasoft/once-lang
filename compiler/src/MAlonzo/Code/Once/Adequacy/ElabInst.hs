@@ -207,7 +207,7 @@ d_elab'7580'_272 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_elab'7580'_272 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_792 (coe v0)
+      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_794 (coe v0)
       (coe v1) (coe v2)
 -- Once.Adequacy.ElabInst._.View.declares
 d_declares_276 ::

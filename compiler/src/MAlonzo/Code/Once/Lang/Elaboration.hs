@@ -492,26 +492,27 @@ d_sigE_752 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  T_Declared_470 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_sigE_752 ~v0 ~v1 ~v2 v3 ~v4 ~v5 v6 v7 v8
-  = du_sigE_752 v3 v6 v7 v8
+  AgdaAny -> T_Declared_470 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_sigE_752 ~v0 ~v1 ~v2 v3 ~v4 ~v5 v6 v7 v8 v9
+  = du_sigE_752 v3 v6 v7 v8 v9
 du_sigE_752 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
-  T_Declared_470 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_sigE_752 v0 v1 v2 v3
-  = case coe v3 of
-      C_declared_488 v4 v5 v6
+  AgdaAny -> T_Declared_470 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_sigE_752 v0 v1 v2 v3 v4
+  = case coe v4 of
+      C_declared_488 v5 v6 v7
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 MAlonzo.Code.Once.Lang.Core.Syntax.C_sigop_106 (coe v1) (coe v0))
              (coe
-                MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'sigop_620 v2 v4 v5 v6)
+                MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'sigop_620 v2 v5 v6 v3
+                v7)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Elaboration.importE
-d_importE_768 ::
+d_importE_770 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -520,15 +521,15 @@ d_importE_768 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   T_ImportAt_494 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_importE_768 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 = du_importE_768 v7
-du_importE_768 ::
+d_importE_770 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 = du_importE_770 v7
+du_importE_770 ::
   T_ImportAt_494 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_importE_768 v0
+du_importE_770 v0
   = case coe v0 of
       C_def_508 v1 v2 -> coe du_refE_736 (coe v1) (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Elaboration.closeE
-d_closeE_774 ::
+d_closeE_776 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -537,24 +538,24 @@ d_closeE_774 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_closeE_774 ~v0 ~v1 ~v2 v3 ~v4 v5 v6 = du_closeE_774 v3 v5 v6
-du_closeE_774 ::
+d_closeE_776 ~v0 ~v1 ~v2 v3 ~v4 v5 v6 = du_closeE_776 v3 v5 v6
+du_closeE_776 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_closeE_774 v0 v1 v2
+du_closeE_776 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.Lang.Core.Rename.du_close_986 v3)
+             (coe MAlonzo.Code.Once.Lang.Core.Rename.du_close_988 v3)
              (coe
-                MAlonzo.Code.Once.Lang.Core.Rename.du_'8866'close_998 (coe v1)
+                MAlonzo.Code.Once.Lang.Core.Rename.du_'8866'close_1000 (coe v1)
                 (coe v3) (coe v0) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Elaboration.subE
-d_subE_780 ::
+d_subE_782 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -566,13 +567,13 @@ d_subE_780 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_subE_780 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 = du_subE_780 v9
-du_subE_780 ::
+d_subE_782 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 = du_subE_782 v9
+du_subE_782 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_subE_780 v0 = coe v0
+du_subE_782 v0 = coe v0
 -- Once.Lang.Elaboration.elabᶜ
-d_elab'7580'_792 ::
+d_elab'7580'_794 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -583,7 +584,7 @@ d_elab'7580'_792 ::
   T_View_516 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7580'_'8758'_'10814'__16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_elab'7580'_794 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       MAlonzo.Code.Once.Lang.Typing.C_t'45'id'45'check_432 v12
         -> case coe v5 of
@@ -780,7 +781,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                     MAlonzo.Code.Once.Lang.Type.Sub.d_'183'p'45'diag_24
                                                     (coe v28))))
                                          (coe
-                                            d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe v23)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -792,7 +793,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                (coe v26))
                                             (coe v16) (coe v7) (coe v19))
                                          (coe
-                                            d_elab'7496'_816 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_elab'7496'_818 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe v21) (coe v24) (coe v13) (coe v28) (coe v17)
                                             (coe v7) (coe v18))
                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -847,7 +848,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                   (coe v31))
                                                (coe v29))
                                             v21
-                                            (d_elab'7522'_802
+                                            (d_elab'7522'_804
                                                (coe v0) (coe v1) (coe v2) (coe v3) (coe v26)
                                                (coe
                                                   MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -860,7 +861,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                   (coe v15))
                                                (coe v18) (coe v7) (coe v20)))
                                          (coe
-                                            d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe v24)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -903,7 +904,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                      (coe v16) (coe v17) (coe v27) (coe v28)
                                                      (coe v26) (coe v30) v32 v33 v34)
                                                 (coe
-                                                   d_elab'7580'_792 (coe v0) (coe v1) (coe v2)
+                                                   d_elab'7580'_794 (coe v0) (coe v1) (coe v2)
                                                    (coe v3) (coe v23)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -916,7 +917,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                       (coe v26))
                                                    (coe v16) (coe v7) (coe v18))
                                                 (coe
-                                                   d_elab'7580'_792 (coe v0) (coe v1) (coe v2)
+                                                   d_elab'7580'_794 (coe v0) (coe v1) (coe v2)
                                                    (coe v3) (coe v21)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -965,7 +966,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                            MAlonzo.Code.Once.Lang.Type.Sub.d_'183'p'45'diag_24
                                                            (coe v28))))
                                                 (coe
-                                                   d_elab'7580'_792 (coe v0) (coe v1) (coe v2)
+                                                   d_elab'7580'_794 (coe v0) (coe v1) (coe v2)
                                                    (coe v3) (coe v23)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -978,7 +979,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                       (coe v29))
                                                    (coe v16) (coe v7) (coe v18))
                                                 (coe
-                                                   d_elab'7580'_792 (coe v0) (coe v1) (coe v2)
+                                                   d_elab'7580'_794 (coe v0) (coe v1) (coe v2)
                                                    (coe v3) (coe v21)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -1059,7 +1060,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                         (coe v6) (coe v21) (coe v26) (coe v28)
                                                         (coe v30) (coe v17)))
                                                 (coe
-                                                   d_elab'7580'_792 (coe v0) (coe v1) (coe v2)
+                                                   d_elab'7580'_794 (coe v0) (coe v1) (coe v2)
                                                    (coe v3) (coe v20)
                                                    (coe
                                                       MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -1124,7 +1125,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                  (coe v14) (coe v23) (coe v22) (coe v25) (coe v15)
                                                  (coe v16)))
                                          (coe
-                                            d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe v19)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -1168,7 +1169,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                  (coe v15) (coe v27) (coe v22) (coe v28) (coe v29)
                                                  (coe v16) (coe v18)))
                                          (coe
-                                            d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3)
+                                            d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3)
                                             (coe v21)
                                             (coe
                                                MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -1219,7 +1220,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                 (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v3))
                                 (coe v13) (coe v17) (coe v19) v21)
                            (coe
-                              d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3) (coe v16)
+                              d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3) (coe v16)
                               (coe
                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v17)
                                  (coe
@@ -1233,7 +1234,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
       MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_664 v11 v14 v15
         -> coe
              du_coerceE_726 v11 v5 v15
-             (d_elab'7522'_802
+             (d_elab'7522'_804
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v11) (coe v6)
                 (coe v7) (coe v14))
       MAlonzo.Code.Once.Lang.Typing.C_t'45'lam_686 v15 v18 v20
@@ -1251,7 +1252,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                         (coe
-                                           d_elab'7580'_792 (coe v0) (coe v1) (coe v2)
+                                           d_elab'7580'_794 (coe v0) (coe v1) (coe v2)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                               (coe
@@ -1290,7 +1291,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) v18
                                         (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                            (coe
-                                              d_elab'7580'_792 (coe v0) (coe v1) (coe v2)
+                                              d_elab'7580'_794 (coe v0) (coe v1) (coe v2)
                                               (coe
                                                  MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                                  (coe
@@ -1341,10 +1342,10 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34)
                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) v24 v25)
                            (coe
-                              d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
+                              d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
                               (coe v20) (coe v14) (coe v7) (coe v16))
                            (coe
-                              d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
+                              d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe v21) (coe v15) (coe v7) (coe v17))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1366,7 +1367,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                               (coe
                                  MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'roll_476 v13
                                  (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256)))
-                           (d_elab'7580'_792
+                           (d_elab'7580'_794
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v16)
                               (coe
                                  MAlonzo.Code.Once.Lang.Type.d_'10214'_'10215'T_62 (coe v17)
@@ -1421,7 +1422,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.Lang.Core.DerivedTyping.du_'8866'apply'7580'_846
                        (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v3))
                        (coe v11) (coe v5))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v16)
                        (coe
                           MAlonzo.Code.Once.Lang.Type.C__'42'__24
@@ -1456,7 +1457,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  (coe
                                     MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'inl_402
                                     (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256))))
-                           (d_elab'7580'_792
+                           (d_elab'7580'_794
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v16) (coe v17) (coe v13)
                               (coe v7) (coe v14))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -1482,7 +1483,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                  (coe
                                     MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'inr_418
                                     (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256))))
-                           (d_elab'7580'_792
+                           (d_elab'7580'_794
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v16) (coe v18) (coe v13)
                               (coe v7) (coe v14))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -1514,7 +1515,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe
                              MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'absurd_462
                              (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256))))
-                    (d_elab'7580'_792
+                    (d_elab'7580'_794
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v15)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Void_22) (coe v12) (coe v7)
                        (coe v13))
@@ -1528,7 +1529,7 @@ d_elab'7580'_792 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Elaboration.elabᵢ
-d_elab'7522'_802 ::
+d_elab'7522'_804 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -1539,7 +1540,7 @@ d_elab'7522'_802 ::
   T_View_516 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7522'_'8758'_'10814'__10 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
+d_elab'7522'_804 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = case coe v8 of
       MAlonzo.Code.Once.Lang.Typing.C_t'45'int_30
         -> case coe v4 of
@@ -1583,14 +1584,14 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_var_66 (coe v17))
                     (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v12 v14
+      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v12 v13 v15
         -> case coe v4 of
-             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v15
+             MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v16
                -> coe
-                    du_sigE_752 (coe v5) (coe v15) (coe v14)
+                    du_sigE_752 (coe v5) (coe v16) (coe v15) (coe v13)
                     (coe
                        d_declares_584 v7
-                       (MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v15)) v5
+                       (MAlonzo.Code.Once.Lang.Name.d_showCanonical_6 (coe v16)) v5
                        erased)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
@@ -1600,14 +1601,14 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     MAlonzo.Code.Once.Spec.Name.C_canonical_12 v15
                       -> case coe v15 of
                            (:) v16 v17
-                             -> coe du_importE_768 (coe d_imported_578 v7 v16 v5 erased)
+                             -> coe du_importE_770 (coe d_imported_578 v7 v16 v5 erased)
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v15
         -> case coe v4 of
              MAlonzo.Code.Once.Lang.Syntax.C_RVar_36 v16
-               -> coe du_importE_768 (coe d_imported_578 v7 v16 v5 erased)
+               -> coe du_importE_770 (coe d_imported_578 v7 v16 v5 erased)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v12 v13 v14 v15 v19
         -> case coe v4 of
@@ -1620,7 +1621,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
         -> case coe v4 of
              MAlonzo.Code.Once.Lang.Syntax.C_RAnnot_58 v15 v16
                -> coe
-                    d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3) (coe v15)
+                    d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3) (coe v15)
                     (coe v5) (coe v6) (coe v7) (coe v14)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'pair_128 v14 v15 v16 v17
@@ -1636,10 +1637,10 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34)
                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) v24 v25)
                            (coe
-                              d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
+                              d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
                               (coe v20) (coe v14) (coe v7) (coe v16))
                            (coe
-                              d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
+                              d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe v21) (coe v15) (coe v7) (coe v17))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1654,7 +1655,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe
                        (\ v15 -> coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'prim_608))
                     (coe
-                       d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v14)
+                       d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v14)
                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v6) (coe v7)
                        (coe v12))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1687,12 +1688,12 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
+                             d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
                              (coe v13) (coe v16) (coe v7) (coe v18)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                             d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                              (coe
                                 MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                 (coe
@@ -1720,12 +1721,12 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
+                             d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
                              (coe v13) (coe v16) (coe v7) (coe v18)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                             d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                              (coe
                                 MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                 (coe
@@ -1756,7 +1757,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v29)
+                             d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v29)
                              (coe MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v15) (coe v16))
                              (coe v22) (coe v7) (coe v25)))
                        (coe
@@ -1764,7 +1765,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                              (coe
-                                d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                                d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                                 (coe
                                    MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                    (coe
@@ -1789,7 +1790,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                              (coe
-                                d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                                d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                                 (coe
                                    MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                    (coe
@@ -1818,7 +1819,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v29)
+                             d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v29)
                              (coe MAlonzo.Code.Once.Lang.Type.C__'43'__26 (coe v15) (coe v16))
                              (coe v22) (coe v7) (coe v25)))
                        (coe
@@ -1828,7 +1829,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v28)))
                           (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                                d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                                 (coe
                                    MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                    (coe
@@ -1855,7 +1856,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe MAlonzo.Code.Once.Lang.Type.Sub.d_right_258 (coe v28)))
                           (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                                d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                                 (coe
                                    MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                    (coe
@@ -1884,11 +1885,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'add_22)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -1896,11 +1897,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'sub_24)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -1908,11 +1909,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'mul_26)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -1920,11 +1921,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'div_28)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -1932,11 +1933,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'mod_30)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -1950,11 +1951,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fadd_46)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -1962,11 +1963,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fsub_48)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -1974,11 +1975,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fmul_50)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -1986,11 +1987,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fdiv_52)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -2006,11 +2007,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fadd_46)
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                                  (coe v16)))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -2020,11 +2021,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fsub_48)
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                                  (coe v16)))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -2034,11 +2035,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fmul_50)
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                                  (coe v16)))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -2048,11 +2049,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fdiv_52)
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                                  (coe v16)))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v14) (coe v7)
                               (coe v17))
@@ -2066,13 +2067,13 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fadd_46)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                                  (coe v17)))
@@ -2080,13 +2081,13 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fsub_48)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                                  (coe v17)))
@@ -2094,13 +2095,13 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fmul_50)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                                  (coe v17)))
@@ -2108,13 +2109,13 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'fdiv_52)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Float_36) (coe v13) (coe v7)
                               (coe v16))
                            (coe
                               du_i2f_724
-                              (d_elab'7522'_802
+                              (d_elab'7522'_804
                                  (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                                  (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                                  (coe v17)))
@@ -2128,11 +2129,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'lt_34)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -2140,11 +2141,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'le_36)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -2152,11 +2153,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'gt_38)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -2164,11 +2165,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'ge_40)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -2176,11 +2177,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'eq_42)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -2188,11 +2189,11 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       -> coe
                            du_bin_708 v13 v14
                            (coe MAlonzo.Code.Once.Lang.Core.Syntax.C_p'45'ne_44)
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v13) (coe v7)
                               (coe v16))
-                           (d_elab'7522'_802
+                           (d_elab'7522'_804
                               (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                               (coe MAlonzo.Code.Once.Lang.Type.C_Int_34) (coe v14) (coe v7)
                               (coe v17))
@@ -2215,7 +2216,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34)
                           (coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10)
                           (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256)))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v15) (coe v5) (coe v12)
                        (coe v7) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2240,7 +2241,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe
                              MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'fst_370 v12
                              (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256))))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v16)
                        (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v5) (coe v12))
                        (coe v13) (coe v7) (coe v14))
@@ -2266,7 +2267,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe
                              MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'snd_386 v11
                              (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256))))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v16)
                        (coe MAlonzo.Code.Once.Lang.Type.C__'42'__24 (coe v11) (coe v5))
                        (coe v13) (coe v7) (coe v14))
@@ -2288,7 +2289,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34)
                           (coe MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10)
                           (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'unit_332)))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v15) (coe v11) (coe v12)
                        (coe v7) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2339,7 +2340,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        MAlonzo.Code.Once.Lang.Core.DerivedTyping.du_'8866'apply'7580'_846
                        (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v3))
                        (coe v11) (coe v5))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v16)
                        (coe
                           MAlonzo.Code.Once.Lang.Type.C__'42'__24
@@ -2413,7 +2414,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                      MAlonzo.Code.Once.Lang.Core.DerivedTyping.du_'8866'applyEff'7580'_882
                                      (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v3))
                                      (coe v23) (coe v11) (coe v21))
-                                  (d_elab'7522'_802
+                                  (d_elab'7522'_804
                                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
                                      (coe
                                         MAlonzo.Code.Once.Lang.Type.C__'42'__24
@@ -2450,7 +2451,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_42)
                           (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) v11 v14
                           (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256)))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
                        (coe
                           MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 (coe v11)
@@ -2499,7 +2500,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                              (coe MAlonzo.Code.Once.Lang.Type.Grade.C_act_44)
                              (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) v11 v14
                              (coe MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'var_256))))
-                    (d_elab'7522'_802
+                    (d_elab'7522'_804
                        (coe v0) (coe v1) (coe v2) (coe v3) (coe v18)
                        (coe
                           MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 (coe v11)
@@ -2519,7 +2520,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                             (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) (coe v12)
                             (coe v14)))
                     (coe
-                       d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
+                       d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                        (coe
                           MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
                           (coe
@@ -2528,7 +2529,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                           (coe v5))
                        (coe v15) (coe v7) (coe v18))
                     (coe
-                       d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
+                       d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
                        (coe v12) (coe v16) (coe v7) (coe v19))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'effApp_406 v12 v14 v15 v17 v19 v20
@@ -2549,7 +2550,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         MAlonzo.Code.Once.Lang.Typing.Scope.d_debruijn_122 (coe v3))
                                      (coe v14) (coe v15) (coe v27) (coe v12) (coe v25))
                                   (coe
-                                     d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
+                                     d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
                                      (coe
                                         MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v12)
                                         (coe
@@ -2559,7 +2560,7 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         (coe v25))
                                      (coe v14) (coe v7) (coe v19))
                                   (coe
-                                     d_elab'7580'_792 (coe v0) (coe v1) (coe v2) (coe v3) (coe v22)
+                                     d_elab'7580'_794 (coe v0) (coe v1) (coe v2) (coe v3) (coe v22)
                                      (coe v12) (coe v15) (coe v7) (coe v20))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -2577,17 +2578,17 @@ d_elab'7522'_802 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34)
                          (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) v12 v23 v24)
                     (coe
-                       d_elab'7496'_816 (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
+                       d_elab'7496'_818 (coe v0) (coe v1) (coe v2) (coe v3) (coe v19)
                        (coe v12) (coe v5)
                        (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) (coe v14)
                        (coe v7) (coe v18))
                     (coe
-                       d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
+                       d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v20)
                        (coe v12) (coe v15) (coe v7) (coe v17))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Elaboration.elabᵈ
-d_elab'7496'_816 ::
+d_elab'7496'_818 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -2600,7 +2601,7 @@ d_elab'7496'_816 ::
   T_View_516 ->
   MAlonzo.Code.Once.Lang.Typing.T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
+d_elab'7496'_818 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v10 of
       MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_790 v14 v17 v19 v20 v21
         -> coe
@@ -2621,7 +2622,7 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                 MAlonzo.Code.Once.Lang.Type.Sub.C_sub'45'arr_52 v20
                 (MAlonzo.Code.Once.Lang.Type.Sub.d_'60''58''45'refl_98 (coe v6))
                 v21)
-             (d_elab'7522'_802
+             (d_elab'7522'_804
                 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe
                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v14)
@@ -2675,7 +2676,7 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                             d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                              (coe
                                 MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                 (coe
@@ -2702,7 +2703,7 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                           (coe MAlonzo.Code.Once.Lang.Type.Grade.C_pure_34) v19
                           (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                d_elab'7522'_802 (coe v0) (coe v1) (coe v2)
+                                d_elab'7522'_804 (coe v0) (coe v1) (coe v2)
                                 (coe
                                    MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
                                    (coe
@@ -2745,10 +2746,10 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                       MAlonzo.Code.Once.Lang.Type.Sub.d_'183'p'45'diag_24
                                       (coe v7))))
                            (coe
-                              d_elab'7496'_816 (coe v0) (coe v1) (coe v2) (coe v3) (coe v25)
+                              d_elab'7496'_818 (coe v0) (coe v1) (coe v2) (coe v3) (coe v25)
                               (coe v15) (coe v6) (coe v7) (coe v18) (coe v9) (coe v21))
                            (coe
-                              d_elab'7496'_816 (coe v0) (coe v1) (coe v2) (coe v3) (coe v23)
+                              d_elab'7496'_818 (coe v0) (coe v1) (coe v2) (coe v3) (coe v23)
                               (coe v5) (coe v15) (coe v7) (coe v19) (coe v9) (coe v20))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2883,7 +2884,7 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                               MAlonzo.Code.Once.Lang.Type.Sub.d_left_256 (coe v24)))
                                         (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94
                                            (coe v7)))
-                                     (d_elab'7496'_816
+                                     (d_elab'7496'_818
                                         (coe v0) (coe v1) (coe v2) (coe v3) (coe v28) (coe v29)
                                         (coe v16) (coe v7) (coe v20) (coe v9) (coe v22)))
                                   (coe
@@ -2913,7 +2914,7 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                               (coe v24)))
                                         (MAlonzo.Code.Once.Lang.Type.Sub.d_'8849'π'45'refl_94
                                            (coe v7)))
-                                     (d_elab'7496'_816
+                                     (d_elab'7496'_818
                                         (coe v0) (coe v1) (coe v2) (coe v3) (coe v26) (coe v30)
                                         (coe v17) (coe v7) (coe v21) (coe v9) (coe v23)))
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -2947,10 +2948,10 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                              MAlonzo.Code.Once.Lang.Type.Sub.d_'183'p'45'diag_24
                                              (coe v7))))
                                   (coe
-                                     d_elab'7496'_816 (coe v0) (coe v1) (coe v2) (coe v3) (coe v25)
+                                     d_elab'7496'_818 (coe v0) (coe v1) (coe v2) (coe v3) (coe v25)
                                      (coe v5) (coe v26) (coe v7) (coe v18) (coe v9) (coe v20))
                                   (coe
-                                     d_elab'7496'_816 (coe v0) (coe v1) (coe v2) (coe v3) (coe v23)
+                                     d_elab'7496'_818 (coe v0) (coe v1) (coe v2) (coe v3) (coe v23)
                                      (coe v5) (coe v27) (coe v7) (coe v19) (coe v9) (coe v21))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -2987,7 +2988,7 @@ d_elab'7496'_816 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                    (coe MAlonzo.Code.Once.Lang.Typing.Scope.d_size_118 (coe v3))
                                    (coe v16) (coe v22) (coe v6) (coe v7) (coe v17) (coe v18)))
                            (coe
-                              d_elab'7522'_802 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
+                              d_elab'7522'_804 (coe v0) (coe v1) (coe v2) (coe v3) (coe v21)
                               (coe
                                  MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
                                  (coe

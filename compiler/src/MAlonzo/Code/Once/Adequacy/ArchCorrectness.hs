@@ -27670,7 +27670,7 @@ du_LK_388 v0 v1
          (coe MAlonzo.Code.Once.Compile.d_moduleTable_1328 (coe v0))
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Adequacy.ProgramLinked.du_moduleToProgram'45'linked_2868
+         MAlonzo.Code.Once.Adequacy.ProgramLinked.du_moduleToProgram'45'linked_2870
          (coe v0) (coe v1))
 -- Once.Adequacy.ArchCorrectness.BlockRunsHyp-x86-64
 d_BlockRunsHyp'45'x86'45'64_396 ::

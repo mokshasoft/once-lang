@@ -707,10 +707,10 @@ du_abs'45''8866'_934 v0 v1 v2 v3 v4
                        (coe MAlonzo.Code.Once.Lang.Core.Syntax.du_primDom_56 (coe v12))
                        (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'sigop_620 v9 v10 v11 v12
+      MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'sigop_620 v9 v10 v11 v12 v13
         -> coe
              MAlonzo.Code.Once.Lang.Core.PolyTyping.C_'8866'sigop_1026 v9 v10
-             v11 v12
+             v11 v12 v13
       MAlonzo.Code.Once.Lang.Core.Typing.C_'8866'ref_630 v9
         -> case coe v2 of
              MAlonzo.Code.Once.Lang.Core.Syntax.C_ref_110 v10 v11

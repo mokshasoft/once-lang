@@ -770,7 +770,7 @@ d_E_1414 ::
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_E_1414 = erased
 -- Once.Lang.Laws.CoreRenameSem._.wk-⊢′
-d_wk'45''8866''8242'_1550 ::
+d_wk'45''8866''8242'_1552 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -783,8 +783,8 @@ d_wk'45''8866''8242'_1550 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__248 ->
   MAlonzo.Code.Once.Lang.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__248
-d_wk'45''8866''8242'_1550 ~v0 ~v1 ~v2 = du_wk'45''8866''8242'_1550
-du_wk'45''8866''8242'_1550 ::
+d_wk'45''8866''8242'_1552 ~v0 ~v1 ~v2 = du_wk'45''8866''8242'_1552
+du_wk'45''8866''8242'_1552 ::
   Integer ->
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
@@ -794,12 +794,12 @@ du_wk'45''8866''8242'_1550 ::
   MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
   MAlonzo.Code.Once.Lang.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__248 ->
   MAlonzo.Code.Once.Lang.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__248
-du_wk'45''8866''8242'_1550 v0 v1 v2 v3 v4 v5 v6 v7
+du_wk'45''8866''8242'_1552 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.Lang.Core.DerivedTyping.du_wk'45''8866''8242'_562
       v1 v2 v3 v4 v6 v7
 -- Once.Lang.Laws.CoreRenameSem.thin-refl
-d_thin'45'refl_1568 ::
+d_thin'45'refl_1570 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -808,9 +808,9 @@ d_thin'45'refl_1568 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_thin'45'refl_1568 = erased
+d_thin'45'refl_1570 = erased
 -- Once.Lang.Laws.CoreRenameSem._.peel0'
-d_peel0''_1596 ::
+d_peel0''_1598 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -825,9 +825,9 @@ d_peel0''_1596 ::
   MAlonzo.Code.Once.Lang.Context.T_Usage_46 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_peel0''_1596 = erased
+d_peel0''_1598 = erased
 -- Once.Lang.Laws.CoreRenameSem._.peel1'
-d_peel1''_1646 ::
+d_peel1''_1648 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -844,9 +844,9 @@ d_peel1''_1646 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_peel1''_1646 = erased
+d_peel1''_1648 = erased
 -- Once.Lang.Laws.CoreRenameSem._.peelm'
-d_peelm''_1706 ::
+d_peelm''_1708 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -863,9 +863,9 @@ d_peelm''_1706 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_peelm''_1706 = erased
+d_peelm''_1708 = erased
 -- Once.Lang.Laws.CoreRenameSem.⟦⟧-substΨ0
-d_'10214''10215''45'substΨ0_1766 ::
+d_'10214''10215''45'substΨ0_1768 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -882,9 +882,9 @@ d_'10214''10215''45'substΨ0_1766 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_360 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'10214''10215''45'substΨ0_1766 = erased
+d_'10214''10215''45'substΨ0_1768 = erased
 -- Once.Lang.Laws.CoreRenameSem.wk-sem
-d_wk'45'sem_1798 ::
+d_wk'45'sem_1800 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Lang.Core.PolyTy.T_Sig_826 ->
@@ -899,4 +899,4 @@ d_wk'45'sem_1798 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Lang.Core.Meaning.T_DefSem_360 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_wk'45'sem_1798 = erased
+d_wk'45'sem_1800 = erased

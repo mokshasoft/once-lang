@@ -362,7 +362,7 @@ du_closeE_218 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_closeE_218 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Lang.Elaboration.du_closeE_774 v0 v2 v3
+  = coe MAlonzo.Code.Once.Lang.Elaboration.du_closeE_776 v0 v2 v3
 -- Once.Lang.Core.Translate._.ES.coerceE
 d_coerceE_220 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -404,7 +404,7 @@ d_elab'7496'_226 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_elab'7496'_226 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7496'_816 (coe v0)
+      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7496'_818 (coe v0)
       (coe v1) (coe v2)
 -- Once.Lang.Core.Translate._.ES.elabᵢ
 d_elab'7522'_228 ::
@@ -420,7 +420,7 @@ d_elab'7522'_228 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_elab'7522'_228 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7522'_802 (coe v0)
+      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7522'_804 (coe v0)
       (coe v1) (coe v2)
 -- Once.Lang.Core.Translate._.ES.elabᶜ
 d_elab'7580'_230 ::
@@ -436,7 +436,7 @@ d_elab'7580'_230 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_elab'7580'_230 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_792 (coe v0)
+      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_794 (coe v0)
       (coe v1) (coe v2)
 -- Once.Lang.Core.Translate._.ES.i2f
 d_i2f_232 ::
@@ -477,7 +477,7 @@ du_importE_234 ::
   MAlonzo.Code.Once.Lang.Elaboration.T_ImportAt_494 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_importE_234 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Lang.Elaboration.du_importE_768 v4
+  = coe MAlonzo.Code.Once.Lang.Elaboration.du_importE_770 v4
 -- Once.Lang.Core.Translate._.ES.lift1
 d_lift1_236 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -591,6 +591,7 @@ d_sigE_242 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
+  AgdaAny ->
   MAlonzo.Code.Once.Lang.Elaboration.T_Declared_470 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_sigE_242 ~v0 ~v1 ~v2 = du_sigE_242
@@ -600,10 +601,11 @@ du_sigE_242 ::
   MAlonzo.Code.Once.Lang.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsConcrete_34 ->
+  AgdaAny ->
   MAlonzo.Code.Once.Lang.Elaboration.T_Declared_470 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_sigE_242 v0 v1 v2 v3 v4 v5
-  = coe MAlonzo.Code.Once.Lang.Elaboration.du_sigE_752 v0 v3 v4 v5
+du_sigE_242 v0 v1 v2 v3 v4 v5 v6
+  = coe MAlonzo.Code.Once.Lang.Elaboration.du_sigE_752 v0 v3 v4 v5 v6
 -- Once.Lang.Core.Translate._.ES.subE
 d_subE_244 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -964,12 +966,12 @@ d_elabM_628 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = case coe v3 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
         -> coe
-             MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_792 (coe v0)
+             MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_794 (coe v0)
              (coe v1) (coe v2) (coe v4) (coe v5) (coe v6) (coe v7) (coe v8)
              (coe v9)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
-             MAlonzo.Code.Once.Lang.Elaboration.d_elab'7522'_802 (coe v0)
+             MAlonzo.Code.Once.Lang.Elaboration.d_elab'7522'_804 (coe v0)
              (coe v1) (coe v2) (coe v4) (coe v5) (coe v6) (coe v7) (coe v8)
              (coe v9)
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -1151,7 +1153,7 @@ d_polyElab_750 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_polyElab_750 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_792 (coe v0)
+      MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_794 (coe v0)
       (coe v1) (coe v2)
       (coe
          MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130
@@ -1217,7 +1219,7 @@ du_polyBody_770 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
             (coe
-               MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_792 (coe v0)
+               MAlonzo.Code.Once.Lang.Elaboration.d_elab'7580'_794 (coe v0)
                (coe v1) (coe v2)
                (coe
                   MAlonzo.Code.Once.Lang.Typing.Scope.C_mkCtx_130

@@ -140,7 +140,7 @@ du_di'45'dom_100 v0 v1 v2 v3 v4 v5 v6 v7
         -> coe
              du_dom'45'along_128
              (coe
-                MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'ii_494
+                MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'ii_508
                 (coe v0) (coe v1)
                 (coe
                    MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 (coe v11)
@@ -379,7 +379,7 @@ du_ic'45'sub_284 v0 v1 v2 v3 v4 v5
         -> coe
              du_sub'45'along_182
              (coe
-                MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'ii_494
+                MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'ii_508
                 (coe v0) (coe v1) (coe v2) (coe v8) (coe v4) (coe v11))
              (coe v12)
       MAlonzo.Code.Once.Lang.Typing.C_t'45'pair'45'lit'45'check_702 v11 v12 v13 v14
@@ -413,7 +413,7 @@ du_ic'45'sub_284 v0 v1 v2 v3 v4 v5
                       -> coe
                            du_apply'45'sub_196 (coe v2)
                            (coe
-                              MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'ii_494
+                              MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'ii_508
                               (coe v0) (coe v13)
                               (coe
                                  MAlonzo.Code.Once.Lang.Type.C__'42'__24
@@ -491,7 +491,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v31) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15 v16 v17 v18 v19
@@ -507,7 +507,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          -> coe
                               du_di'45'cod_214
                               (coe
-                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                  (coe v0) (coe v1) (coe v3) (coe v33) (coe v6) (coe v7)
                                  (coe
                                     MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15 v16 v17 v18
@@ -533,7 +533,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v22) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_834 v15 v18 v19)
                                (coe v25))
@@ -547,7 +547,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          -> coe
                               du_di'45'cod_214
                               (coe
-                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                  (coe v0) (coe v1) (coe v3) (coe v25) (coe v6) (coe v7)
                                  (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_834 v15 v18 v19)
                                  (coe v28))
@@ -568,7 +568,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v23) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_854 v14 v17 v18 v19
@@ -585,7 +585,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_214
                                       (coe
-                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                          (coe v0) (coe v1) (coe v3) (coe v26) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_854 v14 v17
@@ -605,7 +605,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    -> coe
                                         du_di'45'cod_214
                                         (coe
-                                           MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                           MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                            (coe v0) (coe v26) (coe v3)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
@@ -621,7 +621,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    -> coe
                                         du_di'45'cod_214
                                         (coe
-                                           MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                           MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                            (coe v0) (coe v1) (coe v3) (coe v29) (coe v6) (coe v7)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Typing.C_d'45'compose_854 v14
@@ -640,7 +640,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                -> coe
                     du_di'45'cod_214
                     (coe
-                       MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                       MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                        (coe v0) (coe v1) (coe v3) (coe v16) (coe v6) (coe v7)
                        (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'id_864 v13) (coe v19))
                     (coe v20)
@@ -652,7 +652,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v17) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'fst_876 v14) (coe v20))
                             (coe v21)
@@ -668,7 +668,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          -> coe
                               du_di'45'cod_214
                               (coe
-                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                  (coe v0) (coe v1) (coe v3) (coe v20) (coe v6) (coe v7)
                                  (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'fst_876 v14) (coe v23))
                               (coe v24)
@@ -681,7 +681,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v17) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'snd_888 v14) (coe v20))
                             (coe v21)
@@ -697,7 +697,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                          -> coe
                               du_di'45'cod_214
                               (coe
-                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                  (coe v0) (coe v1) (coe v3) (coe v20) (coe v6) (coe v7)
                                  (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'snd_888 v14) (coe v23))
                               (coe v24)
@@ -713,7 +713,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                -> coe
                     du_di'45'cod_214
                     (coe
-                       MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                       MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                        (coe v0) (coe v1) (coe v3) (coe v16) (coe v6) (coe v7)
                        (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'terminal_898 v13)
                        (coe v19))
@@ -727,7 +727,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                -> coe
                     du_di'45'cod_214
                     (coe
-                       MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                       MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                        (coe v0) (coe v1) (coe v3) (coe v15) (coe v6) (coe v7)
                        (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'initial_906 v12)
                        (coe v18))
@@ -740,7 +740,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v26) (coe v6) (coe v7)
                                (coe
                                   MAlonzo.Code.Once.Lang.Typing.C_d'45'case_930 v15 v16 v19 v20 v21
@@ -757,7 +757,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_214
                                       (coe
-                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                          (coe v0) (coe v1) (coe v3) (coe v29) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.Lang.Typing.C_d'45'case_930 v15 v16
@@ -774,7 +774,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                            -> coe
                                                 du_di'45'cod_214
                                                 (coe
-                                                   MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                                   MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                                    (coe v0) (coe v1) (coe v3) (coe v32) (coe v6)
                                                    (coe v7)
                                                    (coe
@@ -803,7 +803,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                              -> coe
                                                   du_di'45'cod_214
                                                   (coe
-                                                     MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                                     MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                                      (coe v0) (coe v1) (coe v3) (coe v35) (coe v6)
                                                      (coe v7)
                                                      (coe
@@ -822,7 +822,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v23) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'pair_950 v17 v18 v19 v20)
                                (coe v26))
@@ -837,7 +837,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_214
                                       (coe
-                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                          (coe v0) (coe v1) (coe v3) (coe v26) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.Lang.Typing.C_d'45'pair_950 v17 v18
@@ -854,7 +854,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                            -> coe
                                                 du_di'45'cod_214
                                                 (coe
-                                                   MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                                   MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                                    (coe v0) (coe v1) (coe v3) (coe v29) (coe v6)
                                                    (coe v7)
                                                    (coe
@@ -885,7 +885,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                              -> coe
                                                   du_di'45'cod_214
                                                   (coe
-                                                     MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                                     MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                                      (coe v0) (coe v1) (coe v3) (coe v32) (coe v6)
                                                      (coe v7)
                                                      (coe
@@ -904,7 +904,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                        -> coe
                             du_di'45'cod_214
                             (coe
-                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                               MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                (coe v0) (coe v1) (coe v3) (coe v21) (coe v6) (coe v7)
                                (coe MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_966 v15 v16 v17 v18)
                                (coe v24))
@@ -919,7 +919,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                  -> coe
                                       du_di'45'cod_214
                                       (coe
-                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                         MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                          (coe v0) (coe v1) (coe v3) (coe v24) (coe v6) (coe v7)
                                          (coe
                                             MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_966 v15 v16
@@ -961,7 +961,7 @@ d_dc'45'sub_302 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    -> coe
                                         du_di'45'cod_214
                                         (coe
-                                           MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_560
+                                           MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
                                            (coe v0) (coe v1) (coe v3) (coe v26) (coe v6) (coe v7)
                                            (coe
                                               MAlonzo.Code.Once.Lang.Typing.C_d'45'cata_966 v15 v16

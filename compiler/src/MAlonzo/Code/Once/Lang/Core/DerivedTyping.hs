@@ -547,7 +547,7 @@ du_wk'45''8866''8242'_562 ::
   MAlonzo.Code.Once.Lang.Core.Typing.T__'8866''91'_'93'_'8759'_'33'__248
 du_wk'45''8866''8242'_562 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Lang.Core.Rename.du_wk'45''8866'_962 (coe v0)
+      MAlonzo.Code.Once.Lang.Core.Rename.du_wk'45''8866'_964 (coe v0)
       (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
 -- Once.Lang.Core.DerivedTyping.⊢composeᶜ
 d_'8866'compose'7580'_598 ::
