@@ -766,7 +766,7 @@ d_p'45'eq_688 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_412 ->
+  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_p'45'eq_688 = erased
 -- Once.Adequacy.Compile.WithCPU._.res-eq
@@ -788,7 +788,7 @@ d_res'45'eq_690 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_412 ->
+  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_res'45'eq_690 = erased
 -- Once.Adequacy.Compile.WithCPU._.stm-eq
@@ -810,7 +810,7 @@ d_stm'45'eq_692 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_412 ->
+  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_stm'45'eq_692 = erased
 -- Once.Adequacy.Compile.WithCPU._.c≡j
@@ -832,7 +832,7 @@ d_c'8801'j_694 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Source_44 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_412 ->
+  MAlonzo.Code.Once.Lang.Resolution.T_ResolvesModule_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_c'8801'j_694 = erased
 -- Once.Adequacy.Compile.WithCPU.accept-typed-aux
@@ -1978,7 +1978,7 @@ du_sound_1398 v0 v1 v2 v3
                                                              MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
                                                              (coe v3)))
                                                        (coe
-                                                          MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2388
+                                                          MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2116
                                                           (coe
                                                              MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_50
                                                              (coe v3))
@@ -2136,7 +2136,7 @@ du_sound_1398 v0 v1 v2 v3
                                                                        MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
                                                                        (coe v3)))
                                                                  (coe
-                                                                    MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2388
+                                                                    MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2116
                                                                     (coe
                                                                        MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_50
                                                                        (coe v3))

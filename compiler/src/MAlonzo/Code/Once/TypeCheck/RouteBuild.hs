@@ -123,8 +123,6 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe MAlonzo.Code.Once.TypeCheck.Route.C_ii'45'local_222
              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v20
                -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
-             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v17 v18 v19 v20 v24
-               -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v11 v12 v14
         -> case coe v1 of
@@ -134,6 +132,8 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v19 v20 v22
                               -> coe MAlonzo.Code.Once.TypeCheck.Route.C_ii'45'resolved_194
                             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
+                              -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                            MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v19 v20 v21 v22 v26
                               -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                             _ -> MAlonzo.RTE.mazUnreachableError in
                   coe
@@ -149,6 +149,15 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                              MAlonzo.Code.Once.Spec.Name.C_canonical_12 v26
                                                -> case coe v26 of
                                                     (:) v27 v28
+                                                      -> coe
+                                                           MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                    _ -> coe v16
+                                             _ -> MAlonzo.RTE.mazUnreachableError
+                                      MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v24 v25 v26 v27 v31
+                                        -> case coe v15 of
+                                             MAlonzo.Code.Once.Spec.Name.C_canonical_12 v33
+                                               -> case coe v33 of
+                                                    (:) v34 v35
                                                       -> coe
                                                            MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                     _ -> coe v16
@@ -171,6 +180,15 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                                                      MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                               _ -> coe v21
                                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                                MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v29 v30 v31 v32 v36
+                                                  -> case coe v15 of
+                                                       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v38
+                                                         -> case coe v38 of
+                                                              (:) v39 v40
+                                                                -> coe
+                                                                     MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                              _ -> coe v21
+                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                 _ -> MAlonzo.RTE.mazUnreachableError in
                                       coe
                                         (case coe v25 of
@@ -185,6 +203,15 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                                                  MAlonzo.Code.Once.Spec.Name.C_canonical_12 v36
                                                                    -> case coe v36 of
                                                                         (:) v37 v38
+                                                                          -> coe
+                                                                               MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                                        _ -> coe v26
+                                                                 _ -> MAlonzo.RTE.mazUnreachableError
+                                                          MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v34 v35 v36 v37 v41
+                                                            -> case coe v15 of
+                                                                 MAlonzo.Code.Once.Spec.Name.C_canonical_12 v43
+                                                                   -> case coe v43 of
+                                                                        (:) v44 v45
                                                                           -> coe
                                                                                MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                         _ -> coe v26
@@ -207,6 +234,15 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                          MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                   _ -> coe v31
                                                                            _ -> MAlonzo.RTE.mazUnreachableError
+                                                                    MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v39 v40 v41 v42 v46
+                                                                      -> case coe v15 of
+                                                                           MAlonzo.Code.Once.Spec.Name.C_canonical_12 v48
+                                                                             -> case coe v48 of
+                                                                                  (:) v49 v50
+                                                                                    -> coe
+                                                                                         MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                                                  _ -> coe v31
+                                                                           _ -> MAlonzo.RTE.mazUnreachableError
                                                                     _ -> MAlonzo.RTE.mazUnreachableError in
                                                           coe
                                                             (case coe v35 of
@@ -222,6 +258,17 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                        -> case coe
                                                                                                  v46 of
                                                                                             (:) v47 v48
+                                                                                              -> coe
+                                                                                                   MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                                                            _ -> coe
+                                                                                                   v36
+                                                                                     _ -> MAlonzo.RTE.mazUnreachableError
+                                                                              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v44 v45 v46 v47 v51
+                                                                                -> case coe v15 of
+                                                                                     MAlonzo.Code.Once.Spec.Name.C_canonical_12 v53
+                                                                                       -> case coe
+                                                                                                 v53 of
+                                                                                            (:) v54 v55
                                                                                               -> coe
                                                                                                    MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                             _ -> coe
@@ -248,6 +295,18 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                                       _ -> coe
                                                                                                              v41
                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                        MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v49 v50 v51 v52 v56
+                                                                                          -> case coe
+                                                                                                    v15 of
+                                                                                               MAlonzo.Code.Once.Spec.Name.C_canonical_12 v58
+                                                                                                 -> case coe
+                                                                                                           v58 of
+                                                                                                      (:) v59 v60
+                                                                                                        -> coe
+                                                                                                             MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                                                                      _ -> coe
+                                                                                                             v41
+                                                                                               _ -> MAlonzo.RTE.mazUnreachableError
                                                                                         _ -> MAlonzo.RTE.mazUnreachableError in
                                                                               coe
                                                                                 (case coe v45 of
@@ -265,6 +324,18 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                                            -> case coe
                                                                                                                      v56 of
                                                                                                                 (:) v57 v58
+                                                                                                                  -> coe
+                                                                                                                       MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                                                                                _ -> coe
+                                                                                                                       v46
+                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                  MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v54 v55 v56 v57 v61
+                                                                                                    -> case coe
+                                                                                                              v15 of
+                                                                                                         MAlonzo.Code.Once.Spec.Name.C_canonical_12 v63
+                                                                                                           -> case coe
+                                                                                                                     v63 of
+                                                                                                                (:) v64 v65
                                                                                                                   -> coe
                                                                                                                        MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
                                                                                                                 _ -> coe
@@ -295,6 +366,18 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                                                                                                                   _ -> coe
                                                                                                                          v51
                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                    MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v59 v60 v61 v62 v66
+                                                                                                      -> case coe
+                                                                                                                v15 of
+                                                                                                           MAlonzo.Code.Once.Spec.Name.C_canonical_12 v68
+                                                                                                             -> case coe
+                                                                                                                       v68 of
+                                                                                                                  (:) v69 v70
+                                                                                                                    -> coe
+                                                                                                                         MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                                                                                                                  _ -> coe
+                                                                                                                         v51
+                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError
                                                                                              _ -> coe
                                                                                                     v51)
@@ -312,6 +395,8 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                -> coe MAlonzo.Code.Once.TypeCheck.Route.C_ii'45'own_206
+             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v16 v17 v18 v19 v23
+               -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v14
         -> case coe v7 of
@@ -319,14 +404,12 @@ d_route'45'ii_62 v0 v1 v2 v3 v4 v5 v6 v7
                -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v21
                -> coe MAlonzo.Code.Once.TypeCheck.Route.C_ii'45'import_242
-             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v18 v19 v20 v21 v25
-               -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v11 v12 v13 v14 v18
         -> case coe v7 of
-             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'local_62 v24
+             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'resolved_70 v23 v24 v26
                -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
-             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'import_86 v26
+             MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'own_78
                -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
              MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate'45'infer_102 v23 v24 v25 v26 v30
                -> coe MAlonzo.Code.Once.TypeCheck.Route.C_ii'45'poly'45'infer_282
@@ -2127,18 +2210,38 @@ d_route'45'cc_78 v0 v1 v2 v3 v4 v5 v6
                      _ -> MAlonzo.RTE.mazUnreachableError in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.Lang.Syntax.C_RVar_36 v19
-                  -> case coe v6 of
-                       MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_664 v22 v25 v26
-                         -> coe
-                              MAlonzo.Code.Once.TypeCheck.Route.C_cc'45'sub'45'r_766
-                              (d_route'45'ic_96
-                                 (coe v0) (coe v1) (coe v22) (coe v2) (coe v4) (coe v3) (coe v25)
-                                 (coe
-                                    MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_772
-                                    v10 v11 v12 v17))
-                       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_772 v23 v24 v25 v30
-                         -> coe MAlonzo.Code.Once.TypeCheck.Route.C_cc'45'poly_1128
+                MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v19
+                  -> case coe v19 of
+                       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v20
+                         -> let v21
+                                  = case coe v6 of
+                                      MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_664 v23 v26 v27
+                                        -> coe
+                                             MAlonzo.Code.Once.TypeCheck.Route.C_cc'45'sub'45'r_766
+                                             (d_route'45'ic_96
+                                                (coe v0) (coe v1) (coe v23) (coe v2) (coe v4)
+                                                (coe v3) (coe v26)
+                                                (coe
+                                                   MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_772
+                                                   v10 v11 v12 v17))
+                                      _ -> MAlonzo.RTE.mazUnreachableError in
+                            coe
+                              (case coe v20 of
+                                 (:) v22 v23
+                                   -> case coe v6 of
+                                        MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_664 v26 v29 v30
+                                          -> coe
+                                               MAlonzo.Code.Once.TypeCheck.Route.C_cc'45'sub'45'r_766
+                                               (d_route'45'ic_96
+                                                  (coe v0) (coe v1) (coe v26) (coe v2) (coe v4)
+                                                  (coe v3) (coe v29)
+                                                  (coe
+                                                     MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_772
+                                                     v10 v11 v12 v17))
+                                        MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_772 v27 v28 v29 v34
+                                          -> coe MAlonzo.Code.Once.TypeCheck.Route.C_cc'45'poly_1128
+                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                 _ -> coe v21)
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v18)
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -2312,24 +2415,52 @@ d_route'45'dc_118 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                      _ -> MAlonzo.RTE.mazUnreachableError in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.Lang.Syntax.C_RVar_36 v30
-                  -> case coe v9 of
-                       MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_664 v33 v36 v37
-                         -> coe
-                              du_dcsub'45'r_506 (coe v0) (coe v1) (coe v3) (coe v6) (coe v7)
-                              (coe
-                                 MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15 v16 v17 v18 v19
-                                 v20 v25 v26 v27 v28)
-                              (coe v36)
-                              (coe
-                                 MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
-                                 (coe v0) (coe v1) (coe v3) (coe v33) (coe v6) (coe v7)
-                                 (coe
-                                    MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15 v16 v17 v18
-                                    v19 v20 v25 v26 v27 v28)
-                                 (coe v36))
-                       MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_772 v34 v35 v36 v41
-                         -> coe MAlonzo.Code.Once.TypeCheck.Route.C_dc'45'poly_1392
+                MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v30
+                  -> case coe v30 of
+                       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v31
+                         -> let v32
+                                  = case coe v9 of
+                                      MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_664 v34 v37 v38
+                                        -> coe
+                                             du_dcsub'45'r_506 (coe v0) (coe v1) (coe v3) (coe v6)
+                                             (coe v7)
+                                             (coe
+                                                MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15
+                                                v16 v17 v18 v19 v20 v25 v26 v27 v28)
+                                             (coe v37)
+                                             (coe
+                                                MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
+                                                (coe v0) (coe v1) (coe v3) (coe v34) (coe v6)
+                                                (coe v7)
+                                                (coe
+                                                   MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15
+                                                   v16 v17 v18 v19 v20 v25 v26 v27 v28)
+                                                (coe v37))
+                                      _ -> MAlonzo.RTE.mazUnreachableError in
+                            coe
+                              (case coe v31 of
+                                 (:) v33 v34
+                                   -> case coe v9 of
+                                        MAlonzo.Code.Once.Lang.Typing.C_t'45'sub_664 v37 v40 v41
+                                          -> coe
+                                               du_dcsub'45'r_506 (coe v0) (coe v1) (coe v3) (coe v6)
+                                               (coe v7)
+                                               (coe
+                                                  MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15
+                                                  v16 v17 v18 v19 v20 v25 v26 v27 v28)
+                                               (coe v40)
+                                               (coe
+                                                  MAlonzo.Code.Once.Lang.Laws.ModeAgreement.du_agree'45'di_574
+                                                  (coe v0) (coe v1) (coe v3) (coe v37) (coe v6)
+                                                  (coe v7)
+                                                  (coe
+                                                     MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814
+                                                     v15 v16 v17 v18 v19 v20 v25 v26 v27 v28)
+                                                  (coe v40))
+                                        MAlonzo.Code.Once.Lang.Typing.C_t'45'var'45'poly'45'instantiate_772 v38 v39 v40 v45
+                                          -> coe MAlonzo.Code.Once.TypeCheck.Route.C_dc'45'poly_1392
+                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                 _ -> coe v32)
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v29)
       MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_834 v15 v18 v19
@@ -2932,21 +3063,44 @@ d_route'45'dd_168 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                      _ -> MAlonzo.RTE.mazUnreachableError in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.Lang.Syntax.C_RVar_36 v30
-                  -> case coe v9 of
-                       MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_790 v34 v37 v39 v40 v41
-                         -> coe
-                              MAlonzo.Code.Once.TypeCheck.Route.C_dd'45'infer'45'r_1434
-                              (coe
-                                 du_route'45'di_146 (coe v0) (coe v1) (coe v34) (coe v3) (coe v4)
-                                 (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v37)
-                                 (coe v6) (coe v7)
-                                 (coe
-                                    MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15 v16 v17 v18
-                                    v19 v20 v25 v26 v27 v28)
-                                 (coe v39))
-                       MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v36 v37 v38 v39 v40 v41 v46 v47 v48 v49
-                         -> coe MAlonzo.Code.Once.TypeCheck.Route.C_dd'45'poly_1626
+                MAlonzo.Code.Once.Lang.Syntax.C_RResolved_40 v30
+                  -> case coe v30 of
+                       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v31
+                         -> let v32
+                                  = case coe v9 of
+                                      MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_790 v35 v38 v40 v41 v42
+                                        -> coe
+                                             MAlonzo.Code.Once.TypeCheck.Route.C_dd'45'infer'45'r_1434
+                                             (coe
+                                                du_route'45'di_146 (coe v0) (coe v1) (coe v35)
+                                                (coe v3) (coe v4)
+                                                (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                (coe v38) (coe v6) (coe v7)
+                                                (coe
+                                                   MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v15
+                                                   v16 v17 v18 v19 v20 v25 v26 v27 v28)
+                                                (coe v40))
+                                      _ -> MAlonzo.RTE.mazUnreachableError in
+                            coe
+                              (case coe v31 of
+                                 (:) v33 v34
+                                   -> case coe v9 of
+                                        MAlonzo.Code.Once.Lang.Typing.C_d'45'infer_790 v38 v41 v43 v44 v45
+                                          -> coe
+                                               MAlonzo.Code.Once.TypeCheck.Route.C_dd'45'infer'45'r_1434
+                                               (coe
+                                                  du_route'45'di_146 (coe v0) (coe v1) (coe v38)
+                                                  (coe v3) (coe v4)
+                                                  (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                  (coe v41) (coe v6) (coe v7)
+                                                  (coe
+                                                     MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814
+                                                     v15 v16 v17 v18 v19 v20 v25 v26 v27 v28)
+                                                  (coe v43))
+                                        MAlonzo.Code.Once.Lang.Typing.C_d'45'poly_814 v40 v41 v42 v43 v44 v45 v50 v51 v52 v53
+                                          -> coe MAlonzo.Code.Once.TypeCheck.Route.C_dd'45'poly_1626
+                                        _ -> MAlonzo.RTE.mazUnreachableError
+                                 _ -> coe v32)
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v29)
       MAlonzo.Code.Once.Lang.Typing.C_d'45'lam_834 v15 v18 v19
