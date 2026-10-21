@@ -19242,7 +19242,10 @@ names), and the Spec's lexer makes a word by `fromList`.
   hypothesis left.
 
 ### Consequences
-* The trust base grows by two postulates (P1's module), both proof-only and erased.
+* The trust base does not grow: since plan 0.50 five modules (`Target.SymbolInjective`, `SymbolValid`,
+  `SymbolFresh`, `Adequacy.LabelSymbols`, `ImageUnique`) imported these two facts from `Data.String.Unsafe`,
+  proved there by `trustMe`, uncounted by the postulate gates. They now import the named postulates instead,
+  so the assumption is stated once, in `Once.Postulates` (found 2026-10-21, with R14).
 * Retiring them: key the front end and core by `CanonicalName` throughout (rendering only at run time), so
   that no rendered name is compared inside the verified loop (plan 0.121 R13 option (b), after the merge).
 
@@ -19276,4 +19279,30 @@ oracle-era classification) inside `_⊢R_`; and the bridges carried a bare-vs-ca
 * The bridges lose the case split (`RX`'s `x-own`, `NotOwnPoly`, the `pdn-*` lemmas): the program's
   polymorphic names are just the telescope's (`polyNames`), and `Back` gains `h-psig` (a telescope entry is no
   FFI declaration — the extractor's guard).
+
+## D331 — AN OPERATOR MAY NAME A DEFINITION (R14) (2026-10-21)
+
+**Follows** plan 0.121 (`complete`, extractor success), D275 (the symbol encoding is total), D330.
+Compiler-side fix of a divergence from the Spec, as R1–R13.
+
+### Context
+The Spec's grammar accepts a definition named by an operator, `(<+>) x = e` (`decl-op`), and a reference
+`(<+>)` (`atom-op`); the compiler parsed both but its extractor rejected the definition ("ill-formed top-level
+definition name … not an identifier"): the guard required every emitted definition name to be a lexer
+identifier, the precondition of the symbol mangling's injectivity proof (`once-symbol-path-injective`). The
+encoding itself was already total (D275: every character encodes to something the assembler accepts); the
+proof only needs the encoding not to start with a digit, and an own name to differ from an arith block's.
+
+### Decision
+* A definition's name is a name the lexer makes: an identifier, or an operator's name — one or more of
+  `. + - * / % < > | & @` (`Lexer.isOpNameChar`, the grammar's `OpChar`). The guard checks it
+  (`Parser.validNameB`/`allValidNameB`); the proof's predicate is `NameChars = ValidIdentChars ⊎ OpNameChars`
+  (`ValidName`). An operator character encodes to an escape starting with `z`, never a digit; an operator's
+  name has no letter, so it is no `arith.block.<d>`.
+* Test: `compiler/test/operator-def.once` (`(<+>)`, `(.->)`; exit code 9).
+
+### Recorded with it
+* The String facts T1/T2 of D329 were already assumed, uncounted: five modules (`Target.SymbolInjective`,
+  `SymbolValid`, `SymbolFresh`, `Adequacy.LabelSymbols`, `ImageUnique`) imported them from
+  `Data.String.Unsafe` (`trustMe`) since plan 0.50. They now import the named postulates (`Once.Postulates`).
 

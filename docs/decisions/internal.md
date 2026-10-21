@@ -148,9 +148,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   traces. (D326)
 - **Two tool hypotheses about `String`** (`Once.Postulates` T1, T2:
   `toList-++`, `toList∘fromList`, the standard library's own): facts about the
-  primitives Agda does not export. With them a word name renders apart from
-  every other, and a generator — carrying `WordName` in its typing rule — is
-  found by its rendered key. (D329)
+  primitives Agda does not export (before, `Data.String.Unsafe`'s `trustMe`,
+  uncounted). With them a word name renders apart from every other, and a
+  generator — carrying `WordName` in its typing rule — is found by its
+  rendered key. (D329)
 - **There is no global program bound**: a closure carries its own body bound.
   (D214)
 - **Dataflow disciplines are discharged by type-indexed shape correctness**,

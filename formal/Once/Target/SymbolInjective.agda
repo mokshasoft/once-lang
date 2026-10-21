@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Target.SymbolInjective
 --
--- Plan 0.50. INJECTIVITY of `once-symbol-path` under the `ValidIdent`
+-- Plan 0.50. INJECTIVITY of `once-symbol-path` under the `ValidName`
 -- precondition: two resolved identities whose components are all genuine
 -- lexer identifiers get DISTINCT assembly symbols. This is the clash-free
 -- guarantee the mangling scheme was designed to give, proved (not assumed).
@@ -18,11 +18,11 @@
 -- unambiguous, the length pins the component's char-count, and the whole
 -- thing decodes uniquely.
 --
--- The proof bottoms out at ONE primitive postulate, `alpha⇒¬digit` — the
+-- The proof bottoms out at primitive facts: `alpha⇒¬digit` — the
 -- disjointness of the opaque Unicode predicates `isAlpha`/`isDigit` — which
--- cannot be derived (both are `prim…` black boxes), exactly the kind of
--- char-primitive fact the stdlib itself discharges with `trustMe`
--- (`Data.String.Unsafe`). Everything else is proved.
+-- cannot be derived (both are `prim…` black boxes), and the String tool
+-- hypotheses T1/T2 (`Once.Postulates`, D329), the facts the stdlib's
+-- `Data.String.Unsafe` states by `trustMe`. Everything else is proved.
 ------------------------------------------------------------------------
 
 module Once.Target.SymbolInjective where
@@ -52,9 +52,10 @@ open import Data.List.Relation.Unary.All.Properties using (map⁺)
 import Data.String as Str
 open import Data.String using (String; toList)
 open import Data.String.Properties using (toList-injective)
-open import Data.String.Unsafe using (toList-++; toList∘fromList)
+open import Once.Postulates using (toList-++; toList∘fromList)
 
-open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat)
+open import Once.Parser.Lexer using (isIdentStart; isIdentContinue; toNat; opNameChars; isOpNameChar)
+import Data.Bool.ListAction
 open import Once.Target.Symbol
   using (z-encode-char; z-encode-char-aux; z-encode; showNat; symbol-char?;
          mangle-component; join-us; once-prefix; once-symbol-path; once-symbol-own)
@@ -252,9 +253,9 @@ len-prefix-cancel (a ∷ A') (b ∷ B') s t leq eq =
 ------------------------------------------------------------------------
 -- Component lists → the joined symbol body, and its injectivity.
 --
--- A `ValidIdentChars` is a non-empty char list whose head is a lexer
--- `isIdentStart` (so, by the length-prefix argument, its z-encoding starts
--- non-digit). `mangL` is the per-component mangling at the char-list level
+-- A `NameChars` is a lexer identifier (its head `isIdentStart`) or an
+-- operator name; either way, by the length-prefix argument, its z-encoding
+-- starts non-digit. `mangL` is the per-component mangling at the char-list level
 -- (matches `toList ∘ mangle-component`); `joinUsL'`/`withSep` the `_`-join
 -- (matches `toList ∘ join-us`). `joinL-inj` is the core: the list of
 -- components is recovered from the joined body.
@@ -320,22 +321,49 @@ ValidIdentChars [] = ⊥
 ValidIdentChars (c ∷ cs) =
   (isIdentStart c ≡ true) × All (λ d → isIdentContinue d ≡ true) cs
 
+-- An operator's name (`(<+>)`): one or more operator characters (R14).
+OpNameChars : List Char → Set
+OpNameChars []       = ⊥
+OpNameChars (c ∷ cs) = All (λ d → isOpNameChar d ≡ true) (c ∷ cs)
+
+-- A name the lexer makes for a definition: an identifier or an operator.
+NameChars : List Char → Set
+NameChars cs = ValidIdentChars cs ⊎ OpNameChars cs
+
+private
+  -- an operator character is no digit
+  opName⇒¬digit : ∀ {c} → isOpNameChar c ≡ true → isDigit c ≡ false
+  opName⇒¬digit {c} = go opNameChars (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    where
+      go : ∀ ks → All (λ k → isDigit k ≡ false) ks → Data.Bool.ListAction.any (λ k → toNat c ≡ᵇ toNat k) ks ≡ true → isDigit c ≡ false
+      go []       []       ()
+      go (k ∷ ks) (nk ∷ a) h = at (toNat c ≡ᵇ toNat k) refl h
+        where
+          at : ∀ b → (toNat c ≡ᵇ toNat k) ≡ b → (b ∨ Data.Bool.ListAction.any (λ k → toNat c ≡ᵇ toNat k) ks) ≡ true → isDigit c ≡ false
+          at true  e _  = trans (cong isDigit (charToℕ-injective c k (≡ᵇ⇒≡ (toNat c) (toNat k) (subst T (sym e) tt)))) nk
+          at false _ h′ = go ks a h′
+
 mangL : List Char → List Char
 mangL cs = charsInBase 10 (length (zencL cs)) ++ zencL cs
 
 -- z-encoding of a valid identifier: a cons cell with a non-digit head.
-zencL-vic : ∀ {cs} → ValidIdentChars cs
+zencL-vic : ∀ {cs} → NameChars cs
   → Σ[ h ∈ Char ] Σ[ t ∈ List Char ] (zencL cs ≡ h ∷ t) × (isDigit h ≡ false)
-zencL-vic {c0 ∷ cs'} (isC0 , _) = go (zec-class c0)
+zencL-vic {[]} (inj₁ ())
+zencL-vic {[]} (inj₂ ())
+zencL-vic {c0 ∷ cs'} n = go (zec-class c0)
   where
+    head¬digit : NameChars (c0 ∷ cs') → isDigit c0 ≡ false
+    head¬digit (inj₁ (isC0 , _)) = identStart⇒¬digit {c0} isC0
+    head¬digit (inj₂ (o ∷ _))    = opName⇒¬digit {c0} o
     go : ZClass c0 (z-encode-char c0)
        → Σ[ h ∈ Char ] Σ[ t ∈ List Char ] (zencL (c0 ∷ cs') ≡ h ∷ t) × (isDigit h ≡ false)
     go (inj₁ (tag , ex , _)) = 'z' , tag ∷ zencL cs' , cong (_++ zencL cs') ex , refl
     go (inj₂ (inj₁ ex))      = 'z' , _ , cong (_++ zencL cs') ex , refl
-    go (inj₂ (inj₂ (ex , _))) = c0 , zencL cs'        , cong (_++ zencL cs') ex , identStart⇒¬digit {c0} isC0
+    go (inj₂ (inj₂ (ex , _))) = c0 , zencL cs'        , cong (_++ zencL cs') ex , head¬digit n
 
 zencL-suffix-headND : ∀ {cs} (suffix : List Char)
-                    → ValidIdentChars cs → HeadNotDigit (zencL cs ++ suffix)
+                    → NameChars cs → HeadNotDigit (zencL cs ++ suffix)
 zencL-suffix-headND {cs} suffix vic =
   let (h , t , zceq , hnd) = zencL-vic vic
   in subst (λ z → HeadNotDigit (z ++ suffix)) (sym zceq) hnd
@@ -344,7 +372,7 @@ zencL-suffix-headND {cs} suffix vic =
 ++-cons-≢[] [] ()
 ++-cons-≢[] (a ∷ A') ()
 
-mangL-nonempty : ∀ {d} → ValidIdentChars d → ¬ (mangL d ≡ [])
+mangL-nonempty : ∀ {d} → NameChars d → ¬ (mangL d ≡ [])
 mangL-nonempty {d} vic eq =
   let (h , t , zceq , _) = zencL-vic vic
   in ++-cons-≢[] (charsInBase 10 (length (zencL d)))
@@ -359,7 +387,7 @@ withSep (x ∷ xs) = '_' ∷ (x ++ withSep xs)
 
 -- Peel one mangled component (+ its arbitrary suffix) off both sides.
 peel : ∀ {c d} (wc wd : List Char)
-  → ValidIdentChars c → ValidIdentChars d
+  → NameChars c → NameChars d
   → mangL c ++ wc ≡ mangL d ++ wd
   → (c ≡ d) × (wc ≡ wd)
 peel {c} {d} wc wd vc vd eq =
@@ -377,7 +405,7 @@ peel {c} {d} wc wd vc vd eq =
 
 withSep-inj : ∀ (css dss : List (List Char))
   → withSep (map mangL css) ≡ withSep (map mangL dss)
-  → All ValidIdentChars css → All ValidIdentChars dss → css ≡ dss
+  → All NameChars css → All NameChars dss → css ≡ dss
 withSep-inj [] [] eq vc vd = refl
 withSep-inj [] (d ∷ dss') eq vc vd = ⊥-elim (cons≢[] (sym eq))
 withSep-inj (c ∷ css') [] eq vc vd = ⊥-elim (cons≢[] eq)
@@ -388,7 +416,7 @@ withSep-inj (c ∷ css') (d ∷ dss') eq (vc0 ∷ vcs) (vd0 ∷ vds) =
 
 joinL-inj : ∀ (css dss : List (List Char))
   → joinUsL' (map mangL css) ≡ joinUsL' (map mangL dss)
-  → All ValidIdentChars css → All ValidIdentChars dss → css ≡ dss
+  → All NameChars css → All NameChars dss → css ≡ dss
 joinL-inj [] [] eq vc vd = refl
 joinL-inj [] (d ∷ dss') eq vc (vd0 ∷ _) =
   ⊥-elim (mangL-nonempty vd0 (++-conicalˡ (mangL d) (withSep (map mangL dss')) (sym eq)))
@@ -408,8 +436,9 @@ joinL-inj (c ∷ css') (d ∷ dss') eq (vc0 ∷ vcs) (vd0 ∷ vds) =
 -- injectivity then recovers the component strings, and record-η the name.
 ------------------------------------------------------------------------
 
-ValidIdent : String → Set
-ValidIdent s = ValidIdentChars (toList s)
+-- A name the lexer makes for a definition, as a string.
+ValidName : String → Set
+ValidName s = NameChars (toList s)
 
 toList-showNat : ∀ (n : ℕ) → toList (showNat n) ≡ charsInBase 10 n
 toList-showNat n = toList∘fromList (charsInBase 10 n)
@@ -441,7 +470,7 @@ body-rel p = trans (sym (map-∘ p)) (trans (map-cong toList-mangle p) (map-∘ 
 
 once-symbol-path-injective :
   ∀ (cn₁ cn₂ : CanonicalName)
-  → All ValidIdent (parts cn₁) → All ValidIdent (parts cn₂)
+  → All ValidName (parts cn₁) → All ValidName (parts cn₂)
   → once-symbol-path cn₁ ≡ once-symbol-path cn₂ → cn₁ ≡ cn₂
 once-symbol-path-injective cn₁ cn₂ v1 v2 eq =
   cong canonical
@@ -468,12 +497,12 @@ once-symbol-path-injective cn₁ cn₂ v1 v2 eq =
 ------------------------------------------------------------------------
 -- Plan 0.50 — the BARE-name corollary. `once-symbol-own` (the symbol of a
 -- single top-level definition name, = `once-symbol-path (canonical [name])`)
--- is injective on ValidIdent names; its ≢-form is what `program-no-clash`
+-- is injective on ValidName names; its ≢-form is what `program-no-clash`
 -- uses to lift distinct DEFINITION names to distinct emitted SYMBOLS.
 ------------------------------------------------------------------------
 
 once-symbol-own-injective : ∀ (x y : String)
-  → ValidIdent x → ValidIdent y
+  → ValidName x → ValidName y
   → once-symbol-own x ≡ once-symbol-own y → x ≡ y
 once-symbol-own-injective x y vx vy eq =
   proj₁ (∷-injective (cong parts
@@ -481,6 +510,6 @@ once-symbol-own-injective x y vx vy eq =
       (vx ∷ []) (vy ∷ []) eq)))
 
 once-symbol-own-≢ : ∀ (x y : String)
-  → ValidIdent x → ValidIdent y
+  → ValidName x → ValidName y
   → x ≢ y → once-symbol-own x ≢ once-symbol-own y
 once-symbol-own-≢ x y vx vy x≢y eq = x≢y (once-symbol-own-injective x y vx vy eq)

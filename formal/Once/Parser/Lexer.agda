@@ -19,6 +19,7 @@
 module Once.Parser.Lexer where
 
 open import Data.List using (List; []; _∷_; length)
+import Data.Bool.ListAction
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
@@ -62,6 +63,14 @@ isIdentContinue c =
   (toNat c ≡ᵇ toNat '*') ∨
   (toNat c ≡ᵇ toNat '!') ∨
   (toNat c ≡ᵇ toNat '?')
+
+-- | The characters an operator's name is made of (`(<+>)`; the grammar's
+-- `OpChar`): `. + - * / % < > | & @`.
+opNameChars : List Char
+opNameChars = '.' ∷ '+' ∷ '-' ∷ '*' ∷ '/' ∷ '%' ∷ '<' ∷ '>' ∷ '|' ∷ '&' ∷ '@' ∷ []
+
+isOpNameChar : Char → Bool
+isOpNameChar c = Data.Bool.ListAction.any (λ k → toNat c ≡ᵇ toNat k) opNameChars
 
 ------------------------------------------------------------------------
 -- Bounded-consumption helpers.

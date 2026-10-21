@@ -302,6 +302,8 @@ entry updates the rule it changes here, in the same commit.
   `main`. (D328, D324)
 - **All names in a module are distinct**, signatures included; importing a
   module twice is rejected. (D249)
+- **An operator may name a definition**: `(<+>) x = e`, referred to as
+  `(<+>)`. (D331)
 - **No implicit imports, no prelude**; generators are always in scope.
   `import I.X as M` / `import D.X as M`; qualified references `name@M`; no
   cyclic imports. (D027, D033)

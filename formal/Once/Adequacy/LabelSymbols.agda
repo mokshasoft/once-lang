@@ -30,7 +30,7 @@ open import Data.Nat.Show.Properties using (charsInBase-injective)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
-open import Data.String.Unsafe using (toList-++)
+open import Once.Postulates using (toList-++)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (Dec; yes; no)
 

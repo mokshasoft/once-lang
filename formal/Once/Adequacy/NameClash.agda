@@ -17,14 +17,14 @@
 --                                      encoding injectivity)
 --
 -- It is UNCONDITIONAL in the module: `extractFunctions` only yields `inj₂`
--- when its well-formedness guard (`namesDistinct ∧ allValidIdentB`) passes, so
+-- when its well-formedness guard (`namesDistinct ∧ allValidNameB`) passes, so
 -- the `inj₁` branch contributes an empty symbol list (trivially distinct) and
 -- the `inj₂` branch carries the guard evidence.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.NameClash where
 
-open import Data.Bool using (Bool; true; false; not; _∧_)
+open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map; _++_)
 open import Data.Maybe using (nothing; just)
 open import Data.String using (String; toList)
@@ -45,13 +45,13 @@ open import Data.Sum.Properties using (inj₂-injective)
 open import Once.Parser using
   ( FunInfo; PolyFunInfo; Entry; e-fun; e-poly; funsOf; polysOf
   ; extractFunctions; extractFunctions-go; extractAliases; thenExtract; sigsAdjacent; sigsFirst
-  ; namesDistinct; allValidIdentB; validIdentB; validCharsB
+  ; namesDistinct; allValidNameB; validNameB; validCharsB; allOpNameChars; opCharsB
   ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
 open import Once.Parser.Module.Core using (Module; mkModule)
-open import Once.Parser.Lexer using (isIdentContinue)
+open import Once.Parser.Lexer using (isIdentContinue; isOpNameChar)
 open import Once.Target.Symbol using (once-symbol-own)
-open import Once.Target.SymbolInjective using (ValidIdent; ValidIdentChars; once-symbol-own-≢)
+open import Once.Target.SymbolInjective using (ValidName; ValidIdentChars; OpNameChars; NameChars; once-symbol-own-≢)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -83,7 +83,7 @@ T≢F : true ≢ false
 T≢F ()
 
 ------------------------------------------------------------------------
--- Bool checks → Prop witnesses (`ValidIdent`).
+-- Bool checks → Prop witnesses (`ValidName`).
 ------------------------------------------------------------------------
 
 allIdentContinue-sound : ∀ cs → allIdentContinue cs ≡ true
@@ -95,13 +95,26 @@ validCharsB-sound : ∀ cs → validCharsB cs ≡ true → ValidIdentChars cs
 validCharsB-sound []       ()
 validCharsB-sound (c ∷ cs) eq = ∧-elimˡ eq , allIdentContinue-sound cs (∧-elimʳ eq)
 
-validIdentB-sound : ∀ s → validIdentB s ≡ true → ValidIdent s
-validIdentB-sound s eq = validCharsB-sound (toList s) eq
+allOpNameChars-sound : ∀ cs → allOpNameChars cs ≡ true → All (λ d → isOpNameChar d ≡ true) cs
+allOpNameChars-sound []       _  = []
+allOpNameChars-sound (c ∷ cs) eq = ∧-elimˡ eq ∷ allOpNameChars-sound cs (∧-elimʳ eq)
 
-allValidIdentB-sound : ∀ names → allValidIdentB names ≡ true → All ValidIdent names
-allValidIdentB-sound []       _  = []
-allValidIdentB-sound (x ∷ xs) eq =
-  validIdentB-sound x (∧-elimˡ eq) ∷ allValidIdentB-sound xs (∧-elimʳ eq)
+opCharsB-sound : ∀ cs → opCharsB cs ≡ true → OpNameChars cs
+opCharsB-sound []       ()
+opCharsB-sound (c ∷ cs) eq = allOpNameChars-sound (c ∷ cs) eq
+
+-- (an identifier, else an operator's name)
+nameChars-sound : ∀ cs → (b : Bool) → validCharsB cs ≡ b → (b ∨ opCharsB cs) ≡ true → NameChars cs
+nameChars-sound cs true  e _  = inj₁ (validCharsB-sound cs e)
+nameChars-sound cs false _ eq = inj₂ (opCharsB-sound cs eq)
+
+validNameB-sound : ∀ s → validNameB s ≡ true → ValidName s
+validNameB-sound s eq = nameChars-sound (toList s) (validCharsB (toList s)) refl eq
+
+allValidNameB-sound : ∀ names → allValidNameB names ≡ true → All ValidName names
+allValidNameB-sound []       _  = []
+allValidNameB-sound (x ∷ xs) eq =
+  validNameB-sound x (∧-elimˡ eq) ∷ allValidNameB-sound xs (∧-elimʳ eq)
 
 ------------------------------------------------------------------------
 -- Bool distinctness → `AllPairs _≢_`.
@@ -117,14 +130,14 @@ namesDistinct-sound names eq =
 ------------------------------------------------------------------------
 
 allpairs-head : ∀ (x : String) (xs : List String)
-  → All (λ y → x ≢ y) xs → ValidIdent x → All ValidIdent xs
+  → All (λ y → x ≢ y) xs → ValidName x → All ValidName xs
   → All (λ s → once-symbol-own x ≢ s) (map once-symbol-own xs)
 allpairs-head x []       []          vx []          = []
 allpairs-head x (y ∷ ys) (x≢y ∷ rest) vx (vy ∷ vys) =
   once-symbol-own-≢ x y vx vy x≢y ∷ allpairs-head x ys rest vx vys
 
 map-allpairs-own : ∀ (names : List String)
-  → AllPairs _≢_ names → All ValidIdent names
+  → AllPairs _≢_ names → All ValidName names
   → AllPairs _≢_ (map once-symbol-own names)
 map-allpairs-own []       []        []          = []
 map-allpairs-own (x ∷ xs) (px ∷ ap) (vx ∷ vxs) =
@@ -151,7 +164,7 @@ distinctOrErr-true false ()
 -- every definition name — monomorphic and telescope together — is distinct.
 -- D249: the whole guard, one more conjunct — every entry name is distinct.
 GuardB : List Entry → Bool
-GuardB es = ((namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es)))
+GuardB es = ((namesDistinct (emittedNames (funsOf es)) ∧ allValidNameB (emittedNames (funsOf es)))
               ∧ namesDistinct (emittedNames (funsOf es) ++ map PolyFunInfo.pfunName (polysOf es)))
             ∧ namesDistinct (map entryNameOf es)
 
@@ -164,7 +177,7 @@ guard-whole (inj₂ es₀) eq with GuardB es₀ in beq
 
 guard-all : (r : String ⊎ List Entry) {es : List Entry}
   → guardDistinct r ≡ inj₂ es
-  → ((namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es)))
+  → ((namesDistinct (emittedNames (funsOf es)) ∧ allValidNameB (emittedNames (funsOf es)))
       ∧ namesDistinct (emittedNames (funsOf es) ++ map PolyFunInfo.pfunName (polysOf es))) ≡ true
 guard-all r eq = ∧-elimˡ (guard-whole r eq)
 
@@ -175,7 +188,7 @@ guard-entries r eq = namesDistinct-sound _ (∧-elimʳ (guard-whole r eq))
 
 guard-true : (r : String ⊎ List Entry) {es : List Entry}
   → guardDistinct r ≡ inj₂ es
-  → (namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es))) ≡ true
+  → (namesDistinct (emittedNames (funsOf es)) ∧ allValidNameB (emittedNames (funsOf es))) ≡ true
 guard-true r eq = ∧-elimˡ (guard-all r eq)
 
 -- The telescope walk emits exactly the monomorphic definitions' symbols.
@@ -240,9 +253,9 @@ program-no-clash (mkModule ds)
         subst (AllPairs _≢_) (sym bridge)
           (map-allpairs-own (emittedNames (funsOf es))
             (namesDistinct-sound  _ (∧-elimˡ guard))
-            (allValidIdentB-sound _ (∧-elimʳ guard)))
+            (allValidNameB-sound _ (∧-elimʳ guard)))
       where
-        guard : (namesDistinct (emittedNames (funsOf es)) ∧ allValidIdentB (emittedNames (funsOf es))) ≡ true
+        guard : (namesDistinct (emittedNames (funsOf es)) ∧ allValidNameB (emittedNames (funsOf es))) ≡ true
         guard = guard-true (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (extractAliases (mkModule ds)) (sigsFirst ds) nothing)) efeq
         bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf es))
         bridge = ce-syms false C.emptyCScope es cfs caeq

@@ -438,8 +438,8 @@ import Data.List.Relation.Unary.Any.Properties
 open import Once.Parser using (extractFunctions-go; funsOf; emittedNames)
 open import Once.Parser.Module.Core using (Module; mkModule)
 open import Once.Target.Symbol using (once-symbol-own)
-open import Once.Target.SymbolInjective using (ValidIdent)
-open import Once.Adequacy.NameClash using (guard-true; namesDistinct-sound; allValidIdentB-sound; map-allpairs-own; ce-syms; ∧-elimˡ; ∧-elimʳ)
+open import Once.Target.SymbolInjective using (ValidName)
+open import Once.Adequacy.NameClash using (guard-true; namesDistinct-sound; allValidNameB-sound; map-allpairs-own; ce-syms; ∧-elimˡ; ∧-elimʳ)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
@@ -449,7 +449,7 @@ record TableNames (T : List IRFun) : Set where
     names : List String
     syms≡ : Data.List.map (λ e → once-symbol-path (fname e)) T ≡ reverse (Data.List.map once-symbol-own names)
     dist  : AllPairs _≢_ (Data.List.map once-symbol-own names)
-    valid : All ValidIdent names
+    valid : All ValidName names
 
 private
   sym-of : IRFun → String
@@ -474,8 +474,8 @@ table-names (mkModule ds) with Parser.extractFunctions (Parser.extractAliases (m
 ...   | inj₂ cfs = record
         { names = emittedNames (funsOf es)
         ; syms≡ = trans (trans (tbl-go cfs []) (++-identityʳ _)) (cong reverse (ce-syms false C.emptyCScope es cfs caeq))
-        ; dist  = map-allpairs-own _ (namesDistinct-sound _ (∧-elimˡ guard)) (allValidIdentB-sound _ (∧-elimʳ guard))
-        ; valid = allValidIdentB-sound _ (∧-elimʳ guard)
+        ; dist  = map-allpairs-own _ (namesDistinct-sound _ (∧-elimˡ guard)) (allValidNameB-sound _ (∧-elimʳ guard))
+        ; valid = allValidNameB-sound _ (∧-elimʳ guard)
         }
   where
     guard = guard-true (Parser.thenExtract (Parser.sigsAdjacent ds nothing) (extractFunctions-go (Parser.extractAliases (mkModule ds)) (Parser.sigsFirst ds) nothing)) efeq
@@ -501,7 +501,7 @@ ap-reverse {x ∷ xs} (px ∷ pxs) =
 
 open import Data.Char using (Char; isDigit)
 open import Data.String using (toList) renaming (_++_ to _++ˢ_)
-open import Data.String.Unsafe using (toList-++)
+open import Once.Postulates using (toList-++)
 import Data.String.Properties as Str
 open import Data.Nat.Show using (charsInBase)
 open import Data.Digit using (toDigits)
@@ -511,7 +511,7 @@ open import Data.Product using (Σ-syntax)
 open import Once.CCC.Label using (showLabelId)
 open import Once.Target.Symbol using (once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective
-  using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; toList-mangle; ValidIdentChars)
+  using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; toList-mangle; NameChars)
 open import Once.CCC.Codegen.ImageSymbols using (heap-symbol)
 open import Once.Target.SymbolFresh using (letter≢osp)
 
@@ -540,9 +540,9 @@ private
 heap≢osp : ∀ (cn : CanonicalName) → heap-symbol ≢ once-symbol-path cn
 heap≢osp = letter≢osp heap-symbol 'h' (toList "eap_base") refl refl
 
--- an identifier's symbol is no arith block's (a block name has a `.`)
-own≢block : ∀ (x d : String) → ValidIdent x → once-symbol-own x ≢ once-symbol-own ("arith.block." ++ˢ d)
-own≢block x d vx eq = not-valid (subst ValidIdentChars tl≡ vx)
+-- a definition's symbol is no arith block's (a block name has a `.` and a letter)
+own≢block : ∀ (x d : String) → ValidName x → once-symbol-own x ≢ once-symbol-own ("arith.block." ++ˢ d)
+own≢block x d vx eq = not-valid (subst NameChars tl≡ vx)
   where
     bn = "arith.block." ++ˢ d
     ∷-inj : ∀ {a b : Char} {as bs : List Char} → a ∷ as ≡ b ∷ bs → as ≡ bs
@@ -566,11 +566,12 @@ own≢block x d vx eq = not-valid (subst ValidIdentChars tl≡ vx)
     tl≡ = zencL-inj (toList x) (toList bn)
             (proj₂ (digit-prefix-unique (charsInBase 10 Lx) (charsInBase 10 Lb) (zencL (toList x)) (zencL (toList bn))
                       (charsInBase-all-digits Lx) (charsInBase-all-digits Lb) hnd-x hnd-bn body≡))
-    not-valid : ValidIdentChars (toList bn) → ⊥
-    not-valid v = dot (subst ValidIdentChars bn-chars v)
+    not-valid : NameChars (toList bn) → ⊥
+    not-valid v = dot (subst NameChars bn-chars v)
       where
-        dot : ValidIdentChars ('a' ∷ 'r' ∷ 'i' ∷ 't' ∷ 'h' ∷ '.' ∷ 'b' ∷ 'l' ∷ 'o' ∷ 'c' ∷ 'k' ∷ '.' ∷ toList d) → ⊥
-        dot (_ , (_ ∷ _ ∷ _ ∷ _ ∷ () ∷ _))
+        dot : NameChars ('a' ∷ 'r' ∷ 'i' ∷ 't' ∷ 'h' ∷ '.' ∷ 'b' ∷ 'l' ∷ 'o' ∷ 'c' ∷ 'k' ∷ '.' ∷ toList d) → ⊥
+        dot (inj₁ (_ , (_ ∷ _ ∷ _ ∷ _ ∷ () ∷ _)))
+        dot (inj₂ (() ∷ _))
 
 ------------------------------------------------------------------------
 -- The block table: distinct (deduplicated), and every symbol a block name's.
@@ -707,7 +708,7 @@ private
     EF≡ = trans (cong (Data.List.map once-symbol-path) (rt-names T)) (trans (sym (map-∘ T)) syms≡)
     EF-dist : AllPairs _≢_ EF
     EF-dist = subst (AllPairs _≢_) (sym EF≡) (ap-reverse dist)
-    EF-own : ∀ {s} → s ∈ EF → Σ[ x ∈ String ] (ValidIdent x × s ≡ once-symbol-own x)
+    EF-own : ∀ {s} → s ∈ EF → Σ[ x ∈ String ] (ValidName x × s ≡ once-symbol-own x)
     EF-own {s} s∈ with ∈-map⁻ once-symbol-own (AnyP.reverse⁻ {xs = Data.List.map once-symbol-own names} (subst (s ∈_) EF≡ s∈))
     ... | x , x∈ , refl = x , lookup valid x∈ , refl
 

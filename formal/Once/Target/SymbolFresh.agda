@@ -27,7 +27,7 @@ import Data.Nat
 open import Data.Nat.Show using (charsInBase)
 open import Data.Product using (proj₁; proj₂)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
-open import Data.String.Unsafe using (toList-++)
+open import Once.Postulates using (toList-++)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Name using (CanonicalName)

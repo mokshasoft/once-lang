@@ -1,0 +1,22 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- R14 (plan 0.121, D331): a definition named by an operator. The Spec's
+-- grammar accepts `(op) x = e` and `(op)` as a reference; the compiler used to
+-- reject the definition ("not an identifier"), because a definition's name
+-- becomes an assembly symbol. The symbol encoding escapes operator characters,
+-- so the two operators below — one with `.`, one with `-` and `>` — get
+-- distinct, assembler-safe symbols.
+--
+-- Expected: exit code 9.
+
+import I.Linux.Syscalls as S
+
+(<+>) : Int -> Int
+(<+>) x = x + 1
+
+(.->) : Int -> Int
+(.->) x = x * 2
+
+main : Act Unit Void
+main = exit@S ((<+>) ((.->) 4))

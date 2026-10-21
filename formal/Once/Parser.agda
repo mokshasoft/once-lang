@@ -35,7 +35,7 @@ open import Once.Functor.Decide using (isConcrete?)
 open import Once.Lang.Syntax using (RawExpr; RVar)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
 open import Once.Parser.Token
-open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
+open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue; isOpNameChar)
 open import Once.Parser.Type using (isUpperWord)
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
@@ -387,12 +387,13 @@ namesDistinct : List String → Bool
 namesDistinct xs = does (allPairs? (λ x y → ¬? (x ≟ y)) xs)
 
 -- Plan 0.50 (clash-freedom, validity half): each top-level definition name must
--- be a genuine lexer identifier — head `isIdentStart`, tail `isIdentContinue` —
--- the SAME predicates the lexer tokenises with. This is the precondition the
--- symbol mangling needs to be INJECTIVE (`once-symbol-path-injective`): the
--- self-delimiting length prefix only works because an identifier never starts
--- with a digit. Checked HERE (no `with`), so `extractFunctions` success carries
--- it; `program-no-clash` reads it back off via `validIdentB-sound`.
+-- be a name the lexer makes — an identifier (head `isIdentStart`, tail
+-- `isIdentContinue`) or an operator's (`isOpNameChar`, R14) — the SAME
+-- predicates the lexer tokenises with. This is the precondition the symbol
+-- mangling needs to be INJECTIVE (`once-symbol-path-injective`): the
+-- self-delimiting length prefix only works because such a name's encoding never
+-- starts with a digit. Checked HERE (no `with`), so `extractFunctions` success
+-- carries it; `program-no-clash` reads it back off via `validNameB-sound`.
 allIdentContinue : List Char → Bool
 allIdentContinue []       = true
 allIdentContinue (c ∷ cs) = isIdentContinue c ∧ allIdentContinue cs
@@ -401,12 +402,20 @@ validCharsB : List Char → Bool
 validCharsB []       = false
 validCharsB (c ∷ cs) = isIdentStart c ∧ allIdentContinue cs
 
-validIdentB : String → Bool
-validIdentB s = validCharsB (toList s)
+allOpNameChars : List Char → Bool
+allOpNameChars []       = true
+allOpNameChars (c ∷ cs) = isOpNameChar c ∧ allOpNameChars cs
 
-allValidIdentB : List String → Bool
-allValidIdentB []       = true
-allValidIdentB (x ∷ xs) = validIdentB x ∧ allValidIdentB xs
+opCharsB : List Char → Bool
+opCharsB []       = false
+opCharsB (c ∷ cs) = allOpNameChars (c ∷ cs)
+
+validNameB : String → Bool
+validNameB s = validCharsB (toList s) ∨ opCharsB (toList s)
+
+allValidNameB : List String → Bool
+allValidNameB []       = true
+allValidNameB (x ∷ xs) = validNameB x ∧ allValidNameB xs
 
 -- The names that actually get EMITTED as symbols: only NON-primitive defs get a
 -- `functionPrologue`/`.globl` label (primitives are external Strata symbols,
@@ -444,7 +453,7 @@ guardDistinct (inj₁ err)            = inj₁ err
 -- D249: and so is every ENTRY name, FFI declarations included — the function
 -- table holds them all, and a call is resolved by name.
 guardDistinct (inj₂ es) =
-  distinctOrErr (((namesDistinct nms ∧ allValidIdentB nms) ∧ namesDistinct (nms ++ₗ map PolyFunInfo.pfunName (polysOf es)))
+  distinctOrErr (((namesDistinct nms ∧ allValidNameB nms) ∧ namesDistinct (nms ++ₗ map PolyFunInfo.pfunName (polysOf es)))
                  ∧ namesDistinct (map entryNameOf es))
                 (inj₂ es)
   where nms = emittedNames (funsOf es)
