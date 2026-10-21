@@ -227,6 +227,17 @@ open import Once.Adequacy.SpecFront.SchemaRen using (ren-0)
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps using (winv-mono; winv-poly; _∷ⁿ_)
 open import Once.Adequacy.SpecFront.Walk Σ sigop-S fmt ps sg h-sig h-own-sig h-psig h-word using (EntriesOK; eok-mono; eok-poly)
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
+open import Once.Adequacy.SpecFront.WalkMain Σ using (MainsW; MainW; entry-concrete)
+open import Once.Spec.Core.Program Σ using (Entry; entry; EffUU)
+open import Once.Lang.Module using (MainsEffUU; MainIn)
+import Once.Lang.Type.Sub as LS
+import Once.Lang.Type.Grade as LG
+open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
+open import Once.Adequacy.SpecCore.Type using (sub-L)
+open import Once.Functor.Decide using (isConcrete?-complete)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (tt)
+open import Data.Sum using (inj₁)
 open EntriesOK
 
 private
@@ -258,6 +269,22 @@ private
            → C.inferType ctx polys body ≡ inj₂ A
   infer-ok ctx polys body eq rewrite eq = refl
 
+  r-EffUU : ∀ {Δ : ST.KCtx 0} → TyR Δ (LT.Unit LT.⇒[ LG.mk-kind LG.Many LG.eff ] LT.Unit) EffUU
+  r-EffUU = r-⇒ refl r-unit r-unit
+
+  nothing≢just : ∀ {A : Set} {a : A} → nothing ≡ just a → ⊥
+  nothing≢just ()
+
+  module TR0 = TyRen Σ SC.[] (λ ())
+
+  -- an entry's type, read by the compiler
+  entry-eff : ∀ {ty sc ρ} → SchRen (schS (monoSchema ty)) sc ρ → LW.RigidFree ty → Entry sc
+            → ty LS.<: LT.Unit LT.⇒[ LG.mk-kind LG.Many LG.eff ] LT.Unit
+  entry-eff {ty} {ρ = ρ} R g (entry {A = A} p) =
+    let eqA = trans (sym (TR0.⟨⟩-id A)) (trans (TR0.⟨⟩-pt A {τ = ST.var} {τ′ = λ i → ST.var (ρ i)} (λ ()))
+                                               (trans (SchRen.ty R ST.var) (TR0.⟨⟩-id _)))
+    in sub-L p (subst (TyR _ ty) (sym eqA) (ground-A g)) r-EffUU
+
 -- A definition without variables extends the relation.
 rel-▷0 : ∀ {s} {S′ S₂ : SC.Defs s} {k₁ k₂ : ST.KCtx 0} {A A₂} → Rel S′ S₂ → A ≡ A₂
        → Rel (S′ SC.▷ SC.schema 0 k₁ A) (S₂ SC.▷ SC.schema 0 k₂ A₂)
@@ -268,35 +295,40 @@ rel-▷0 r refl = record
   ; ren⇐ = λ { zero → ren-0 ; (suc d) → ren⇐ r d }
   }
 
--- The Spec's walk, as the compiler's telescope.
+-- The Spec's walk, as the compiler's telescope; where the walk's steps
+-- defining `main` define entries, so do the telescope's, and where some
+-- step does, some entry is `main`.
 walk← : ∀ {s} {S : LP.Sig Fs s} {imps tele es ds}
           (tl : TL.Tele S) (ss : SigSig Fs sg) (is : ImpSig S imps) (ts : TeleSig S tele) (sgcf : SigCF S) (nm : Fin s → CanonicalName)
           {S′ : SC.Defs s} {tl′ s″} {S″ : SC.Defs s″} {nm″ tl″}
-        → Rel S′ (defsS S) → SPr.Walk Σ S′ nm tl′ ds S″ nm″ tl″ → Align ds es
+        → Rel S′ (defsS S) → (wk : SPr.Walk Σ S′ nm tl′ ds S″ nm″ tl″) → Align ds es
         → WInv S (scope sg imps tele) is ts nm → EntriesOK (scope sg imps tele) es
-        → ModTele (scope sg imps tele) es
-walk← tl ss is ts sgcf nm r SPr.w-end al-nil w o = []
+        → Σ[ mt ∈ ModTele (scope sg imps tele) es ] (MainsW wk → MainsEffUU mt) × (MainW wk → MainIn mt)
+walk← tl ss is ts sgcf nm r SPr.w-end al-nil w o = [] , (λ _ → tt) , (λ ())
 walk← tl ss is ts sgcf nm r (SPr.w-skip _ wk) (al-skip SPr.nd-sig al)    w o = walk← tl ss is ts sgcf nm r wk al w o
 walk← tl ss is ts sgcf nm r (SPr.w-skip _ wk) (al-skip SPr.nd-alias al)  w o = walk← tl ss is ts sgcf nm r wk al w o
 walk← tl ss is ts sgcf nm r (SPr.w-skip _ wk) (al-skip SPr.nd-import al) w o = walk← tl ss is ts sgcf nm r wk al w o
 -- a monomorphic definition with a signature
-walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-sig so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ g rx al) w o =
-  mono refl refl P g D
-    (walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D) ss
-           (impDefs (x Data.String.== "main") is) (wkT ts) (monoSg sgcf g) (canonical (x ∷ []) ∷ⁿ nm) (rel-▷ r so so₂) wk al
-           (winv-mono w g (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))
+walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-sig {sc = sc} so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ g rx al) w o =
+  mono refl refl P g D mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
   where
     fi = Parser.mkFunInfo x (just ty) e false
     st = Step.step ss is ts sgcf nm w r TL.noKinds (ground-A g) so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
     D = proj₂ (proj₁ st)
     P = proj₂ st
+    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D) ss
+                 (impDefs (x Data.String.== "main") is) (wkT ts) (monoSg sgcf g) (canonical (x ∷ []) ∷ⁿ nm) (rel-▷ r so so₂) wk al
+                 (winv-mono w g (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o)
+    mt = proj₁ rest
+    ms = proj₁ (proj₂ rest)
+    mi = proj₂ (proj₂ rest)
+    -- an entry's type, the compiler's
+    eff-at : Entry sc → ty LS.<: LT.Unit LT.⇒[ LG.mk-kind LG.Many LG.eff ] LT.Unit
+    eff-at = entry-eff (schemaOf-ren so₂ so) g
 -- a telescope definition
-walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-sig so b pr wk) (al-poly {x = x} {T = T} {e = e} so₂ rx al) w o =
-  poly P D
-    (walk← (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts sgcf D) ss (wkI is) (t-def zero refl (wkT ts))
-           (polySg sgcf pfi) (canonical (x ∷ []) ∷ⁿ nm) (rel-▷ r so so₂) wk al
-           (winv-poly pfi w (all-head (kinds o)) (all-head (fresh o))) (eok-poly o))
+walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-sig so b pr wk) (al-poly {x = x} {T = T} {e = e} so₂ nmono rx al) w o =
+  poly P D mt , (λ { (_ , hs) → ms hs }) , (λ { (inj₁ (_ , en)) → ⊥-elim (not-entry en) ; (inj₂ m) → mi m })
   where
     pfi = Parser.mkPolyFunInfo x T e
     κ = kindsOf T
@@ -304,13 +336,22 @@ walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-sig so b pr wk) (al-p
     Ψ = proj₁ (proj₁ st)
     D = proj₂ (proj₁ st)
     P = proj₂ st
+    rest = walk← (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts sgcf D) ss (wkI is) (t-def zero refl (wkT ts))
+                 (polySg sgcf pfi) (canonical (x ∷ []) ∷ⁿ nm) (rel-▷ r so so₂) wk al
+                 (winv-poly pfi w (all-head (kinds o)) (all-head (fresh o))) (eok-poly o)
+    mt = proj₁ rest
+    ms = proj₁ (proj₂ rest)
+    mi = proj₂ (proj₂ rest)
+    -- `main` is no telescope definition: its type is a concrete ground one
+    not-entry : Entry _ → ⊥
+    not-entry en =
+      let (g′ , c) = entry-concrete T so en
+          (c′ , eq) = isConcrete?-complete c
+      in nothing≢just (trans (sym (nmono g′)) eq)
 -- one without a signature: the type its body synthesizes
 walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-nosig syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
-  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P g D
-    (walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D) ss
-           (impDefs (x Data.String.== "main") is) (wkT ts) (monoSg sgcf g) (canonical (x ∷ []) ∷ⁿ nm)
-           (rel-▷0 r (TyR-uniqueˢ rA (ground-A g))) wk al
-           (winv-mono w g (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))
+  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P g D mt
+  , (λ { (h , hs) → (λ m → sub-L (h m) rA r-EffUU) , ms hs }) , (λ { (inj₁ (m , p)) → inj₁ (m , sub-L p rA r-EffUU) ; (inj₂ m) → inj₂ (mi m) })
   where
     st = Step.step-nosig ss is ts sgcf nm w r syn typ pr rx
     ty = proj₁ st
@@ -320,3 +361,10 @@ walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-nosig syn typ pr wk) 
     P = proj₂ (proj₂ (proj₂ st))
     g = tyR0-rf rA
     fi = Parser.mkFunInfo x nothing e false
+    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D) ss
+                 (impDefs (x Data.String.== "main") is) (wkT ts) (monoSg sgcf g) (canonical (x ∷ []) ∷ⁿ nm)
+                 (rel-▷0 r (TyR-uniqueˢ rA (ground-A g))) wk al
+                 (winv-mono w g (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o)
+    mt = proj₁ rest
+    ms = proj₁ (proj₂ rest)
+    mi = proj₂ (proj₂ rest)

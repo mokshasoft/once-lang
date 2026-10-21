@@ -34,11 +34,14 @@ open import Data.Bool using (false; true)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym; trans)
 
 import Once.Lang.Type as LT
 import Once.Lang.Type.WellFormed as LW
 open import Once.Type.Rigid using (extractGround-rf)
+open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)
+open import Once.Functor.Decide using (isConcrete?)
+import Data.Sum
 open import Once.Lang.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
   PolyFunctor; PK; PId; _P⊕_; _P⊗_; Ground; GroundF; extractGround; extractGroundF)
 import Once.Lang.Core.PolyTy as LP
@@ -62,6 +65,11 @@ open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-m
 -- What the walk is given
 ------------------------------------------------------------------------
 
+-- Why a signature makes a telescope definition: no ground reading of it is
+-- concrete.
+NotMono : PolyType → Set
+NotMono T = ∀ (g : Ground T) → isConcrete? (extractGround T g) ≡ nothing
+
 -- A definition with a signature (monomorphic or telescope), one without, and
 -- the other declarations skipped; each body related.
 data Align : List SX.Decl → List Parser.Entry → Set where
@@ -71,8 +79,8 @@ data Align : List SX.Decl → List Parser.Entry → Set where
            → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x (just ty) e false) ∷ es)
   al-nosig : ∀ {x e e′ ds es} → RX [] e e′ → Align ds es
            → Align (SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x nothing e false) ∷ es)
-  al-poly  : ∀ {x T T′ e e′ ds es} → SchemaOf T′ (schS (schemaOf T)) → RX [] e e′ → Align ds es
-           → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-poly (Parser.mkPolyFunInfo x T e) ∷ es)
+  al-poly  : ∀ {x T e e′ ds es} → SchemaOf (toPoly T) (schS (schemaOf T)) → NotMono T → RX [] e e′ → Align ds es
+           → Align (SX.DTypeSig x (toPoly T) ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-poly (Parser.mkPolyFunInfo x T e) ∷ es)
 
 ------------------------------------------------------------------------
 -- The two resolved declaration lists
@@ -161,6 +169,13 @@ private
   mono-schema : ∀ {al T ty} → SigReading al T (just ty) → SchemaOf (toPoly T) (schS (monoSchema ty))
   mono-schema {al} {T} (sr-mono g c _ _) = ground-schemaOf al T g
 
+  poly-why : ∀ {al T} → SigReading al T nothing → NotMono T
+  poly-why {T = T} (sr-open ig) g = ⊥-elim (inj≢ (trans (sym (isGround-complete-at T g)) ig))
+    where
+      inj≢ : ∀ {A B : Set} {a : A} {b : B} → _≡_ {A = A Data.Sum.⊎ B} (inj₁ a) (inj₂ b) → ⊥
+      inj≢ ()
+  poly-why {T = T} (sr-nonc g₀ ig ic) g = subst (λ h → isConcrete? (extractGround T h) ≡ nothing) (Ground-irrelevant T g₀ g) ic
+
   mono-rf : ∀ {al T ty} → SigReading al T (just ty) → LW.RigidFree ty
   mono-rf {al} {T} (sr-mono g c _ _) = subst LW.RigidFree (sym (expand-id al (extractGround T g))) (extractGround-rf T g)
 
@@ -176,5 +191,5 @@ align-of {al} (dr-import {sigs = sigs} {dc = dc} as r) (adj-other _ a) (xa-pass 
 align-of (dr-alias r) (adj-other _ a) (xa-pass pa-alias xa) = al-skip nd-alias (align-of r a xa)
 align-of (dr-def rx r) (adj-other _ a) (xa-nosig xa) = al-nosig rx (align-of r a xa)
 align-of (dr-tsig (dr-def rx r)) (adj-sig a) (xa-mono sr xa) = al-mono (mono-schema sr) (mono-rf sr) rx (align-of r a xa)
-align-of (dr-tsig {T = T} (dr-def rx r)) (adj-sig a) (xa-poly sr xa) = al-poly (schemaOf-S T) rx (align-of r a xa)
+align-of (dr-tsig {T = T} (dr-def rx r)) (adj-sig a) (xa-poly sr xa) = al-poly (schemaOf-S T) (poly-why sr) rx (align-of r a xa)
 align-of (dr-tsig r) (adj-other () a) xa

@@ -261,7 +261,7 @@ walk tl ss is ts sgcf nm [] al-nil w o = w-end
 {-# CATCHALL #-}
 walk tl ss is ts sgcf nm (ffi ep _ _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
 -- a telescope definition
-walk {S = S} {imps} {tele} tl ss is ts sgcf nm (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D rest) (al-poly so rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts sgcf nm (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D rest) (al-poly so _ rx al) w o =
   w-sig so b (AtState.principal ss is ts sgcf nm w κ pr rx rA)
     (walk (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts sgcf D) ss (wkI is) (t-def zero refl (wkT ts))
           (polySg sgcf pfi) (canonical (x ∷ []) ∷ⁿ nm) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
