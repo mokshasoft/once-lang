@@ -30,7 +30,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Lang.Type as LT
@@ -49,7 +49,7 @@ import Once.Adequacy.SpecFront.Scope as Sc
 
 module Once.Adequacy.SpecFront.Def
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
   (nm : Fin s → CanonicalName) (clean : CleanSig S)
   {imps sg : Imports} {polys : PolyCtx} {ps : List String} (V : E.View S imps sg polys)
   -- what the compiler's typing asks of the scope (`Check`)
@@ -81,6 +81,8 @@ module Once.Adequacy.SpecFront.Def
   (b-ps : ∀ {d x} → nm d ≡ canonical (x ∷ []) → 0 < SC.Schema.arity (defsS S SC.!! d) → x ∈ ps)
   (b-poly : ∀ {m} (Δ : ST.KCtx m) {d x} → nm d ≡ canonical (x ∷ []) → x ∈ ps → Sc.PolyAt (defsS S) imps polys Δ d x)
   (b-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
+  -- …and every declaration of Σ has a word name (D329)
+  (b-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
   where
 
 open import Data.Fin using (toℕ; fromℕ<)
@@ -128,7 +130,7 @@ module _ {m} (κ : LP.KCtx m) where
 
   open import Once.Adequacy.SpecFront.Check S Σ sigop-S nm clean V h-imp h-poly h-ground h-open h-occ h-arrow Δ
     using (fwdᶜ; fwdᵢ; Chk; Syn)
-  open import Once.Adequacy.SpecFront.Back Σ S′ nm {imps} {sg} {polys} {ps} Δ b-name (b-sig Δ) (b-mono Δ) b-ps (b-poly Δ) b-own-sig
+  open import Once.Adequacy.SpecFront.Back Σ S′ nm {imps} {sg} {polys} {ps} Δ b-name (b-sig Δ) (b-mono Δ) b-ps (b-poly Δ) b-own-sig b-word
     using (bwdᶜ; BChk)
   open import Once.Adequacy.SpecFront.Locals Σ S′ nm Δ using (LR; lr-∅)
   open import Once.Adequacy.SpecFront.Types Δ using (back; subᶜ-L)

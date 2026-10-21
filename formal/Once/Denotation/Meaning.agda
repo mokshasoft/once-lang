@@ -321,7 +321,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- implementation (`decl-*`: the world declares it).
 -- D274: a resolved reference names a generator of Σ — own or not, its meaning
 -- is that declaration's implementation.
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ lk conc) fmt ρ dγ =
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ wn lk conc) fmt ρ dγ =
   sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} lk)
 -- D248: an own-module DEFINITION's reference is a call of it, and means it.
 ⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} _ lk) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk

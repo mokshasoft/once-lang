@@ -18,7 +18,7 @@ open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 import Once.Lang.Core.PolyTy as LP
 import Once.Spec.Type as ST
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
@@ -28,7 +28,7 @@ module Once.Adequacy.SpecCore.Term
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   -- an FFI declaration of the compiler's is the Spec's declaration at the
   -- related type
-  (sigop-S : ∀ {m} {Δ : ST.KCtx m} {c A t} → (showCanonical c , A) ∈ Fs → TyR Δ A (⌜_⌝ᵈ {m} t) → (c ∶ t) ∈ Σ)
+  (sigop-S : ∀ {m} {Δ : ST.KCtx m} {c A t} → WordName c → (showCanonical c , A) ∈ Fs → TyR Δ A (⌜_⌝ᵈ {m} t) → (c ∶ t) ∈ Σ)
   where
 
 open import Data.Fin using (Fin; zero; suc)
@@ -223,6 +223,6 @@ module _ {m} {Δ : ST.KCtx m} where
   ⊢-S c g (r-lit (L.lit-float d)) L⊢.⊢lit-float = _ , r-float , at (sym uS-zero) refl S⊢.⊢lit-float
   ⊢-S c g (r-prim p rt) (L⊢.⊢prim .p dt) =
     _ , primCod-R p , S⊢.⊢prim (primS p) (typed-at (primDom-R p) (⊢-S c g rt dt))
-  ⊢-S c g (r-sigop rA) (L⊢.⊢sigop _ _ _ _ mem) = _ , rA , at (sym uS-zero) refl (S⊢.⊢sigop (sigop-S mem rA))
+  ⊢-S c g (r-sigop rA) (L⊢.⊢sigop _ _ _ _ wn mem) = _ , rA , at (sym uS-zero) refl (S⊢.⊢sigop (sigop-S wn mem rA))
   ⊢-S c g (r-ref d r) (L⊢.⊢ref .d τ rs) =
     _ , ref-type S d (c d) r , at (sym uS-zero) refl (S⊢.⊢ref d (castSub S d _) (ref-respects S d rs r))

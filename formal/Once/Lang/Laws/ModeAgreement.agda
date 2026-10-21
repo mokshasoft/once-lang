@@ -102,25 +102,25 @@ mutual
 ------------------------------------------------------------------------
 noinf-id : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "id") ∶ S ⨾ Ψ → ⊥
-noinf-id (t-var-resolved (¬g ∷ _) _ _) = ¬g refl
+noinf-id (t-var-resolved (¬g ∷ _) wn _ _) = ¬g refl
 noinf-fst : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "fst") ∶ S ⨾ Ψ → ⊥
-noinf-fst (t-var-resolved (_ ∷ ¬g ∷ _) _ _) = ¬g refl
+noinf-fst (t-var-resolved (_ ∷ ¬g ∷ _) wn _ _) = ¬g refl
 noinf-snd : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "snd") ∶ S ⨾ Ψ → ⊥
-noinf-snd (t-var-resolved (_ ∷ _ ∷ ¬g ∷ _) _ _) = ¬g refl
+noinf-snd (t-var-resolved (_ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
 noinf-terminal : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "terminal") ∶ S ⨾ Ψ → ⊥
-noinf-terminal (t-var-resolved (_ ∷ _ ∷ _ ∷ ¬g ∷ _) _ _) = ¬g refl
+noinf-terminal (t-var-resolved (_ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
 noinf-initial : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "initial") ∶ S ⨾ Ψ → ⊥
-noinf-initial (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) _ _) = ¬g refl
+noinf-initial (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
 noinf-inl : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "inl") ∶ S ⨾ Ψ → ⊥
-noinf-inl (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) _ _) = ¬g refl
+noinf-inl (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
 noinf-inr : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "inr") ∶ S ⨾ Ψ → ⊥
-noinf-inr (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) _ _) = ¬g refl
+noinf-inr (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
 noinf-curry-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "curry")) a ∶ S ⨾ Ψ → ⊥
 noinf-curry-app (t-app () _ _)
@@ -231,16 +231,16 @@ mutual
   agree-ii (t-float _ _ _ _) (t-float _ _ _ _) = refl , refl
   agree-ii t-unit t-unit = refl , refl
   agree-ii t-unit-var t-unit-var = refl , refl
-  agree-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) = ⊥-elim (¬u refl)
-  agree-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) t-unit-var = ⊥-elim (¬u refl)
+  agree-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _) = ⊥-elim (¬u refl)
+  agree-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _) t-unit-var = ⊥-elim (¬u refl)
   {-# CATCHALL #-}
-  agree-ii (t-var-resolved _ l _) (t-var-resolved _ l′ _) with trans (sym l) l′
+  agree-ii (t-var-resolved _ wn l _) (t-var-resolved _ wn′ l′ _) with trans (sym l) l′
   ... | refl = refl , refl
   agree-ii (t-var-own _ l) (t-var-own _ l′) with trans (sym l) l′
   ... | refl = refl , refl
-  agree-ii (t-var-own n _) (t-var-resolved _ l _) = ⊥-elim (just≢nothing (trans (sym l) n))
+  agree-ii (t-var-own n _) (t-var-resolved _ wn l _) = ⊥-elim (just≢nothing (trans (sym l) n))
   {-# CATCHALL #-}
-  agree-ii (t-var-resolved _ l _) (t-var-own n _) = ⊥-elim (just≢nothing (trans (sym l) n))
+  agree-ii (t-var-resolved _ wn l _) (t-var-own n _) = ⊥-elim (just≢nothing (trans (sym l) n))
   agree-ii (t-var-local l) (t-var-local l′) with trans (sym l) l′
   ... | refl = refl , refl
   agree-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))

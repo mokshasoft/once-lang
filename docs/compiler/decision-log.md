@@ -19212,3 +19212,37 @@ Each divergence was fixed COMPILER-side: the compiler accepts only Spec programs
   Spec's canonical name needs `showCanonical` injective on lexed names, which Agda cannot prove without a
   fact about `primStringAppend`. The user decides between the options in the plan.
 
+## D329 — TWO TOOL HYPOTHESES ABOUT `String`; A GENERATOR'S NAME IS A WORD NAME (2026-10-21)
+
+**Follows** D328 (R13 open) and plan 0.121 §3.2 R13. **Relates**: D175 (every assumption is a named postulate),
+D279 (the trust base grows only by a decision), D274 (a generator is keyed by its rendered name). **Approved**
+by the user 2026-10-21 ("Yes, lets do like that, but lets not update GOAL.md"; the second fact likewise).
+
+### Context
+The compiler finds a generator by its RENDERED name (`showCanonical`: the parts joined by `.`), the Spec by
+its canonical name. Relating them needs `showCanonical` injective on the names that occur, which holds for
+lexed names (their parts are words: nonempty, no `.`) but which Agda cannot prove: `String` is a primitive,
+and of `primStringAppend`/`primStringToList`/`primStringFromList` only the injectivity of `toList` and
+`fromList` is exported. `complete` needs the same fact the other way (the extractor's guard compares rendered
+names), and the Spec's lexer makes a word by `fromList`.
+
+### Decision
+* **Two tool hypotheses**, category T of `Once.Postulates` (beside P1): `toList-++` (`toList (s ++ t) ≡
+  toList s ++ toList t`) and `toList∘fromList`. Both are the standard library's own
+  (`Data.String.Unsafe`, by `trustMe`): facts about the tools — the String primitives and their compiled
+  `Data.Text` implementation — not axioms of the logic. GOAL.md is unchanged.
+* **`WordName`** (`Lang.Name`): every part of a canonical name is nonempty and has no `.`. A resolved
+  generator reference (`t-var-resolved`) and a core SigOp (`⊢sigop`) carry it; the checker decides it
+  (`inferElabV-RResolved-word`; a name that is no word is bound to nothing written, `UnboundVariable`) and
+  its completeness proof discharges it. Acceptance is unchanged: every name the lexer makes is a word.
+* **R13 is a theorem**: `render-inj` (two word names that render alike are equal, by T1) and
+  `SpecFront.Words` (every word the Spec's lexer makes is a word, by T2; a parse reads tokens off the front,
+  `SpecGrammar.Suffix`; so every key of a Spec program's signature is a word name, `signature-words`); then
+  `r13-at`: the rendered key of a word name finds Σ's declaration of that name. `SpecApex.sound-of` has no
+  hypothesis left.
+
+### Consequences
+* The trust base grows by two postulates (P1's module), both proof-only and erased.
+* Retiring them: key the front end and core by `CanonicalName` throughout (rendering only at run time), so
+  that no rendered name is compared inside the verified loop (plan 0.121 R13 option (b), after the merge).
+

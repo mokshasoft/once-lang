@@ -266,7 +266,7 @@ given-infer-route (t-float _ _ _ _) A π _ = refl
 given-infer-route t-unit A π _ = refl
 given-infer-route t-unit-var A π _ = refl
 given-infer-route {ctx} (t-var-local {x = x} _) A π (_ , _ , _ , ok) = var-route ctx x A π (inferElabV ctx (RVar x)) ok
-given-infer-route {ctx} (t-var-resolved {cn = cn} ng _ _) A π _ =
+given-infer-route {ctx} (t-var-resolved {cn = cn} ng wn _ _) A π _ =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn))
 given-infer-route {ctx} (t-var-own {x = x} _ _) A π _ =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x)))
@@ -624,8 +624,8 @@ mutual
   iFromInferSub {ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-local eqLocal)
     in checkElab-fallback-RVar {ctx} x T eqI sb
-  iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc)
+  iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng wn eqImp conc) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng wn eqImp conc)
     in checkElab-fallback-RResolved {ctx} cn T eqI sb
   iFromInferSub {ctx} (t-var-own {x = x} {T = T} ns eqImp) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-own ns eqImp)
@@ -731,8 +731,8 @@ mutual
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
   infer-complete {ctx} (t-var-local {x = x} eqLocal) =
     infer-complete-RVar-local {ctx} x eqLocal
-  infer-complete {ctx} (t-var-resolved {cn = cn} ng eqImp conc) =
-    infer-complete-RResolved {ctx} {cn} ng eqImp conc
+  infer-complete {ctx} (t-var-resolved {cn = cn} ng wn eqImp conc) =
+    infer-complete-RResolved {ctx} {cn} ng wn eqImp conc
   infer-complete {ctx} (t-var-own ns eqImp) =
     infer-complete-RResolved-own {ctx} ns eqImp
   infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc) =

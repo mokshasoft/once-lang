@@ -21,7 +21,7 @@ open import Data.List using (map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Product using (_,_)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl; _∶_)
 import Once.Spec.Observation as Obs
@@ -31,7 +31,7 @@ open import Once.Adequacy.SpecCore.Poly using (declS)
 module Once.Adequacy.SpecCore.Sound
   (Σ : Signature) (wf : WellFormed Σ) (J : Obs.Interp Σ)
   (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ))
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ toISig Σ → (c ∶ declS A) ∈ Σ)
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ toISig Σ → (c ∶ declS A) ∈ Σ)
   (fmt : TargetNum) where
 
 open import Data.List using ([])

@@ -461,7 +461,7 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag t-unit dγ = refl
   bridge-i V ag t-unit-var dγ = refl
   bridge-i V ag (t-var-local {eV = Once.Lang.Context.svar i} _) dγ = refl
-  bridge-i V ag (t-var-resolved {cn = cn} _ lk k) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
+  bridge-i V ag (t-var-resolved {cn = cn} _ wn lk k) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
   bridge-i V ag (t-var-own _ lk) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
   bridge-i V ag (t-var-import _ _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
   bridge-i V ag (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) dγ =

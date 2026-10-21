@@ -28,7 +28,7 @@ open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Lang.Type as LT
@@ -59,6 +59,8 @@ module Once.Adequacy.SpecFront.Back
   (h-poly : ∀ {d x} → nm d ≡ canonical (x ∷ []) → x ∈ ps → Sc.PolyAt S′ imps polys Δ d x)
   -- a polymorphic definition's name is no declaration's
   (h-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
+  -- …and every declaration of Σ has a word name (D329)
+  (h-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
   where
 
 open import Data.Fin using (zero; suc)
@@ -691,7 +693,7 @@ mutual
     trans (proj₁ (inv-var T)) (ctx-lookup mem)
     , bsyn (proj₂ (lk⁻ lr mem)) (t-var-local (proj₁ (lk⁻ lr mem))) (subst (SCx._⊑ᵘ _) (sym (uS-single _ LG.One)) (proj₂ (inv-var T)))
   bwdᵢ (SU.s-sigop ng mem) (x-res _ _) lr T =
-    let (T₀ , lk , k , r) = h-sig ng mem in inv-sigop T , bsyn r (t-var-resolved ng lk k) zero-use
+    let (T₀ , lk , k , r) = h-sig ng mem in inv-sigop T , bsyn r (t-var-resolved ng (h-word mem) lk k) zero-use
   bwdᵢ (SU.s-sigop ng mem) (x-own _ x∈) lr T = ⊥-elim (h-own-sig x∈ mem)
   bwdᵢ (SU.s-def d e τ ar) (x-res nop nm′) lr T = inv-ref T , def-res d τ e nop nm′
   bwdᵢ (SU.s-def d e τ ar) (x-own ∉ x∈) lr T = inv-ref T , def-own d τ ∉ x∈ e ar

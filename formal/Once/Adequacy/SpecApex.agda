@@ -61,12 +61,7 @@ open SP using (Source; Typed; _⊢_; behaviour; Admissible)
 open SP.Typed using (signature; program)
 open import Once.Adequacy.SpecInterp using (toInterp; wellFormed?)
 open import Once.Adequacy.SpecSource using (parseModules; toSource)
-open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Sum using (_⊎_)
-open import Once.Spec.Signature using (_∶_)
-open import Once.Lang.Name using (showCanonical)
-import Once.Adequacy.SpecInterp as SI
-open import Once.Adequacy.SpecCore.Poly using (declS)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Lang.Contract using (ISig)
 import Once.Lang.Core.Telescope as TL
@@ -85,6 +80,7 @@ import Once.Adequacy.SpecFront.Modules as Modules
 import Once.Adequacy.SpecFront.Lits as Lits
 import Once.Adequacy.SpecFront.Denote
 import Once.Adequacy.SpecFront.Meaning
+import Once.Adequacy.SpecFront.Words as Words
 
 module VC = Compile.WithCPU arch-correct
 
@@ -203,77 +199,73 @@ module _ (br : Bridges) where
     }
 
 ------------------------------------------------------------------------
--- The soundness bridge, up to R13 (plan 0.121)
+-- The soundness bridge (plan 0.121)
 ------------------------------------------------------------------------
 
--- What `sound` still owes (plan 0.121 R13): a generator the compiler finds by
--- its rendered name is Σ's declaration of that name.
-R13 : Set
-R13 = ∀ (Σ : Signature) {c A} → (showCanonical c , A) ∈ SI.toISig Σ → (c ∶ declS A) ∈ Σ
+-- A generator the compiler finds by its rendered name is Σ's declaration of
+-- that name, for Σ's names are word names (`SpecFront.Words`, R13).
+private
+  bind-just′ : ∀ {A B : Set} (m : Maybe A) (f : A → Maybe B) {b}
+             → (m >>= f) ≡ just b → Σ[ a ∈ A ] (m ≡ just a) × (f a ≡ just b)
+  bind-just′ (just a) f eq = a , refl , eq
 
-module _ (r13 : R13) where
-  private
-    bind-just′ : ∀ {A B : Set} (m : Maybe A) (f : A → Maybe B) {b}
-               → (m >>= f) ≡ just b → Σ[ a ∈ A ] (m ≡ just a) × (f a ≡ just b)
-    bind-just′ (just a) f eq = a , refl , eq
+  just-inj : ∀ {A : Set} {a b : A} → just a ≡ just b → a ≡ b
+  just-inj refl = refl
 
-    just-inj : ∀ {A : Set} {a b : A} → just a ≡ just b → a ≡ b
-    just-inj refl = refl
+  -- `sound`'s conclusion, over the extractor's result (so the compiler's readings reduce)
+  Goal-ef : Arch → Source → (m : PM.Module) (ef : String ⊎ List Parser.Entry)
+          → (mt : LM.ModuleTyped-ef m ef) → LM.HasValidMain-ef m ef mt → Set
+  Goal-ef arch src m ef mt hvm =
+    Σ[ tp′ ∈ Typed ]
+      (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
+      × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
+         → Σ[ I ∈ Impl (LM.moduleSig-ef ef) ]
+             (∀ bytes → VC.exec (toInterp (signature tp′) wf J) arch bytes
+                        ≡ VC.exec (interp (LM.moduleSig-ef ef) I) arch bytes)
+             × (trT∞ (interp (LM.moduleSig-ef ef) I) [] (TL.runCore (arch-numerics arch) (CB.typedProgram-ef (arch-numerics arch) m ef mt hvm)
+                                                            (subst Impl (sym (CB.typed-sig-ef (arch-numerics arch) m ef mt)) I))
+                ≈ behaviour (arch-numerics arch) tp′ J))
 
-    -- `sound`'s conclusion, over the extractor's result (so the compiler's readings reduce)
-    Goal-ef : Arch → Source → (m : PM.Module) (ef : String ⊎ List Parser.Entry)
-            → (mt : LM.ModuleTyped-ef m ef) → LM.HasValidMain-ef m ef mt → Set
-    Goal-ef arch src m ef mt hvm =
-      Σ[ tp′ ∈ Typed ]
-        (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
-        × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
-           → Σ[ I ∈ Impl (LM.moduleSig-ef ef) ]
-               (∀ bytes → VC.exec (toInterp (signature tp′) wf J) arch bytes
-                          ≡ VC.exec (interp (LM.moduleSig-ef ef) I) arch bytes)
-               × (trT∞ (interp (LM.moduleSig-ef ef) I) [] (TL.runCore (arch-numerics arch) (CB.typedProgram-ef (arch-numerics arch) m ef mt hvm)
-                                                              (subst Impl (sym (CB.typed-sig-ef (arch-numerics arch) m ef mt)) I))
-                  ≈ behaviour (arch-numerics arch) tp′ J))
-
-    sound-ef : ∀ arch (src : Source) {mm dsU dsR}
-             → parseModules (SP.Source.modules src) ≡ just mm
-             → LPa.ParsesText (SP.Source.text src) (PM.mkModule dsU)
-             → LR.ResolvesDecls mm (polyDefNames dsU) (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
-             → AdmissibleM arch (PM.mkModule dsR)
-             → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (Parser.extractAliases (PM.mkModule dsR)) (PM.mkModule dsR) ≡ ef
-             → (mt : LM.ModuleTyped-ef (PM.mkModule dsR) ef) (hvm : LM.HasValidMain-ef (PM.mkModule dsR) ef mt)
-             → Goal-ef arch src (PM.mkModule dsR) ef mt hvm
-    sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (_ , mi) =
-      tp′ , (mm′ , GD.parses→ {SP.Source.text src} pt em , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds em adm ,
-      λ wf J → Mn.implOf D wf J , (λ bytes → cong (λ ι → VC.exec ι arch bytes) (Mn.interp-eq D wf J)) , Mn.same-trace D wf J
-      where
-        module Dn = Once.Adequacy.SpecFront.Denote (arch-numerics arch) r13
-        module Mn = Once.Adequacy.SpecFront.Meaning (arch-numerics arch) r13
-        mods = Modules.modules-of (SP.Source.modules src) pm
-        mm′ = proj₁ mods
-        pms = proj₁ (proj₂ mods)
-        mr = proj₂ (proj₂ mods)
-        ds′ = proj₁ (EmbOf.parses-emb {SP.Source.text src} pt)
-        em = proj₂ (EmbOf.parses-emb {SP.Source.text src} pt)
-        D = Dn.denote mr rds em eq mt mi
-        tp′ : Typed
-        tp′ = record { module′ = SS.mkModule ds′ ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
-
-  sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
-           → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
-           → Σ[ tp′ ∈ Typed ]
-               (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
-               × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
-                  → Σ[ I ∈ Impl (VC.sigOfT tp) ]
-                      (∀ bytes → VC.exec (toInterp (signature tp′) wf J) arch bytes
-                                 ≡ VC.exec (interp (VC.sigOfT tp) I) arch bytes)
-                      × (VC.⟦ arch ⟧ᵈᴵ tp I ≈ behaviour (arch-numerics arch) tp′ J))
-  sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
-    let (mm , pm , e) = bind-just′ (parseModules (SP.Source.modules src)) _ ts
-    in at (just-inj e) pm pt rmod
+  sound-ef : ∀ arch (src : Source) {mm dsU dsR}
+           → parseModules (SP.Source.modules src) ≡ just mm
+           → LPa.ParsesText (SP.Source.text src) (PM.mkModule dsU)
+           → LR.ResolvesDecls mm (polyDefNames dsU) (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
+           → AdmissibleM arch (PM.mkModule dsR)
+           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (Parser.extractAliases (PM.mkModule dsR)) (PM.mkModule dsR) ≡ ef
+           → (mt : LM.ModuleTyped-ef (PM.mkModule dsR) ef) (hvm : LM.HasValidMain-ef (PM.mkModule dsR) ef mt)
+           → Goal-ef arch src (PM.mkModule dsR) ef mt hvm
+  sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (_ , mi) =
+    tp′ , (mm′ , GD.parses→ {SP.Source.text src} pt em , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds em adm ,
+    λ wf J → Mn.implOf D wf J , (λ bytes → cong (λ ι → VC.exec ι arch bytes) (Mn.interp-eq D wf J)) , Mn.same-trace D wf J
     where
-      at : ∀ {mm} → B.mkSource mm (SP.Source.text src) ≡ srcC → parseModules (SP.Source.modules src) ≡ just mm
-         → LPa.ParsesText (B.Source.srcText srcC) mU
-         → LR.ResolvesModule (B.Source.srcImports srcC) (polyDefNames (PM.Module.decls mU)) mU mR
-         → _
-      at refl pm pt (LR.rm rds) =
-        sound-ef arch src pm pt rds adm (Parser.extractFunctions (Parser.extractAliases mR) mR) refl mt hvm
+      module Dn = Once.Adequacy.SpecFront.Denote (arch-numerics arch)
+      module Mn = Once.Adequacy.SpecFront.Meaning (arch-numerics arch)
+      mods = Modules.modules-of (SP.Source.modules src) pm
+      mm′ = proj₁ mods
+      pms = proj₁ (proj₂ mods)
+      mr = proj₂ (proj₂ mods)
+      ds′ = proj₁ (EmbOf.parses-emb {SP.Source.text src} pt)
+      em = proj₂ (EmbOf.parses-emb {SP.Source.text src} pt)
+      D = Dn.denote (Words.mods-words pms) (Words.decls-words {SP.Source.text src} (GD.parses→ {SP.Source.text src} pt em)) mr rds em eq mt mi
+      tp′ : Typed
+      tp′ = record { module′ = SS.mkModule ds′ ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
+
+sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
+         → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
+         → Σ[ tp′ ∈ Typed ]
+             (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
+             × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
+                → Σ[ I ∈ Impl (VC.sigOfT tp) ]
+                    (∀ bytes → VC.exec (toInterp (signature tp′) wf J) arch bytes
+                               ≡ VC.exec (interp (VC.sigOfT tp) I) arch bytes)
+                    × (VC.⟦ arch ⟧ᵈᴵ tp I ≈ behaviour (arch-numerics arch) tp′ J))
+sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
+  let (mm , pm , e) = bind-just′ (parseModules (SP.Source.modules src)) _ ts
+  in at (just-inj e) pm pt rmod
+  where
+    at : ∀ {mm} → B.mkSource mm (SP.Source.text src) ≡ srcC → parseModules (SP.Source.modules src) ≡ just mm
+       → LPa.ParsesText (B.Source.srcText srcC) mU
+       → LR.ResolvesModule (B.Source.srcImports srcC) (polyDefNames (PM.Module.decls mU)) mU mR
+       → _
+    at refl pm pt (LR.rm rds) =
+      sound-ef arch src pm pt rds adm (Parser.extractFunctions (Parser.extractAliases mR) mR) refl mt hvm

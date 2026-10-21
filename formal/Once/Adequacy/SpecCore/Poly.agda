@@ -22,7 +22,7 @@ open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 import Once.Lang.Core.PolyTy as LP
 import Once.Lang.Type as LT
 import Once.Lang.Type.Grade as LG
@@ -187,7 +187,7 @@ module SubS {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) where
   subS (PS.sub-ν {φ = φ} {φ′} g) = SSub.sub-ν (⊑φ-S φ φ′ g)
 
 module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where
 
   import Once.Lang.Core.PolyTyping S as PT
   import Once.Lang.Core.PolySub as PS
@@ -324,7 +324,7 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   trD PT.⊢lit-int = atS (sym uS-zero) refl refl S⊢.⊢lit-int
   trD PT.⊢lit-float = atS (sym uS-zero) refl refl S⊢.⊢lit-float
   trD (PT.⊢prim p d) = atS refl (sym (primCod-S p)) refl (S⊢.⊢prim (primS p) (atS refl (primDom-S p) refl (trD d)))
-  trD (PT.⊢sigop c k h r mem) = atS (sym uS-zero) (declS-S k h r) refl (S⊢.⊢sigop (sigop-S mem))
+  trD (PT.⊢sigop c k h r wn mem) = atS (sym uS-zero) (declS-S k h r) refl (S⊢.⊢sigop (sigop-S wn mem))
   trD (PT.⊢sub-eff g d) = S⊢.⊢sub-eff (⊑π-S g) (trD d)
   trD (PT.⊢sub-use p d) = S⊢.⊢sub-use (⊑ᵘ-S p) (trD d)
   trD (PT.⊢ref d τ rs) = atS (sym uS-zero) (sym (ref-ty S d τ)) refl (S⊢.⊢ref d _ (ref-resp S d τ rs))

@@ -15,7 +15,7 @@ open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 import Once.Lang.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
@@ -23,7 +23,7 @@ open import Once.Adequacy.SpecCore.Poly using (declS; declS-S; ptyS-⟦⟧; wfS)
 
 module Once.Adequacy.SpecCore.Cases
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
   (fmt : TargetNum) where
 
 open import Data.Unit using (tt)
@@ -212,8 +212,8 @@ DefsR ρ ρ′ = ∀ d τ r τ′ r′ (i : InstD S d τ τ′) → ValR (GR-def
 -- The signature's declarations mean related values.
 SigR : GM.DefSem → SM.DefSem → Set
 SigR ρ ρ′ = ∀ {m} (σ′ : ST.TySub m 0) {c A} (k : LW.IsConcrete A) (h : LH.HonestFFI A) (rf : LW.RigidFree A)
-            (mem : (showCanonical c , A) ∈ Fs) (gs : GR A (⌜ declS A ⌝ᵈ ST.⟨ σ′ ⟩))
-          → ValR gs (LOps.sigOpRefᵛ fmt Fs (GM.DefSem.impl ρ) c k mem) (SM.sigopᵛ σ′ c (declS A) (sigop-S mem) (SM.DefSem.model ρ′))
+            (wn : WordName c) (mem : (showCanonical c , A) ∈ Fs) (gs : GR A (⌜ declS A ⌝ᵈ ST.⟨ σ′ ⟩))
+          → ValR gs (LOps.sigOpRefᵛ fmt Fs (GM.DefSem.impl ρ) c k mem) (SM.sigopᵛ σ′ c (declS A) (sigop-S wn mem) (SM.DefSem.model ρ′))
 
 -- (a Spec value moved along an equation of its type)
 ValR-substʳ : ∀ {X A′ A″} (e : A′ ≡ A″) (g′ : GR X A′) (g″ : GR X A″) {x y}
@@ -239,13 +239,13 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) (defsR : DefsR ρ ρ′) (sigR : S
                  (GR-def S d (inst-ref S d τ g))
       gX = subst (λ Z → GR Z _) (LP.⟨⟩-⟪⟫ (LP.Schema.type (S LP.!! d)) τ σ) (GR-inst (ptr (LP.Schema.type (S LP.!! d) LP.⟨ τ ⟩)) g)
 
-  sigop : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {A} c k h rf mem
-        → Fund ρ ρ′ (PT.⊢sigop {Δ = Δ} {Γ = Γ} {A = A} c k h rf mem)
-  sigop {n = n} {Δ} {Γ} {A} c k h rf mem {σ} {σ′} r r′ g e =
-    L-at ρ ρ′ (sym (LP.⌈⌉-⟪⟫ A σ)) (GT.⊢sigop {Γ = Γ PT.⟪ σ ⟫ᶜ} c k h rf mem) pr-pure gX (GR-inst (ptr LP.⌈ A ⌉) g)
+  sigop : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {A} c k h rf wn mem
+        → Fund ρ ρ′ (PT.⊢sigop {Δ = Δ} {Γ = Γ} {A = A} c k h rf wn mem)
+  sigop {n = n} {Δ} {Γ} {A} c k h rf wn mem {σ} {σ′} r r′ g e =
+    L-at ρ ρ′ (sym (LP.⌈⌉-⟪⟫ A σ)) (GT.⊢sigop {Γ = Γ PT.⟪ σ ⟫ᶜ} c k h rf wn mem) pr-pure gX (GR-inst (ptr LP.⌈ A ⌉) g)
       (S-at ρ ρ′ g {Γ = Γ} (sym (uS-zero {n})) (declS-S k h rf) refl
-            (S⊢.⊢sigop {Δ = kindsS Δ} {Γ = pctxS Γ} (sigop-S mem))
-            (crΓ Γ) ur-zero (ur _) gs gX pr-pure pr-pure _ (λ _ → sigR σ′ k h rf mem gs) e)
+            (S⊢.⊢sigop {Δ = kindsS Δ} {Γ = pctxS Γ} (sigop-S wn mem))
+            (crΓ Γ) ur-zero (ur _) gs gX pr-pure pr-pure _ (λ _ → sigR σ′ k h rf wn mem gs) e)
     where
       gX = subst (λ Z → GR Z _) (LP.⌈⌉-⟪⟫ A σ) (GR-inst (ptr LP.⌈ A ⌉) g)
       gs = subst (λ Z → GR A (Z ST.⟨ σ′ ⟩)) (sym (declS-S k h rf)) gX

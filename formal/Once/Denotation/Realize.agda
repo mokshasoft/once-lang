@@ -149,7 +149,7 @@ realize-infer (t-var-local {eV = eV} _) = svar→expr eV
 -- the elaborator's `SigOpInfo.name` by construction.
 -- D274: a reference to a generator of Σ (an FFI declaration, own or not) is
 -- the SigOp; a reference to an own DEFINITION is a call of it (D246/D248).
-realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
+realize-infer (t-var-resolved {cn = cn} _ wn _ conc) = sigOp cn conc
 realize-infer (t-var-own {x = x} _ _) = closure x
 -- D246: a module entry's reference is a call of the entry.
 realize-infer (t-var-import {x = x} _ _ _ conc) = closure x

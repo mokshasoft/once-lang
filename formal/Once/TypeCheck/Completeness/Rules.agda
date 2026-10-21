@@ -41,7 +41,7 @@ open import Once.Lang.Type.Grade as T using (Quantity; _≤q_; Zero; One; Many)
 open import Once.Lang.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
 open import Once.Lang.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
@@ -61,7 +61,8 @@ open import Once.Lang.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
-open import Data.Bool using (true)
+open import Data.Bool using (Bool; true)
+import Data.Bool
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 open import Once.Lang.Type.Sub using (_⊑π_)
@@ -118,7 +119,7 @@ infer-complete-RVar-unit = _ , _ , _ , refl
 -- carries, so the aux applications below match definitionally.
 infer-complete-RResolved :
   ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
-  → (ng : NotGenerator cn)
+  → (ng : NotGenerator cn) → WordName cn
   → lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
   → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -142,20 +143,20 @@ inferElabV-RResolved-J ctx cn .(classifyGen cn) refl = refl
 infer-complete-RResolved-view :
   ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
   → (gv : GenView cn) → classifyGen cn ≡ gv
-  → NotGenerator cn
+  → NotGenerator cn → WordName cn
   → lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just T
   → IsConcrete T
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
-infer-complete-RResolved-view gv-id       _ (e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-fst      _ (_ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-snd      _ (_ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-terminal _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-initial  _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-inl      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-inr      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view gv-unit     _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ = ⊥-elim (e refl)
-infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
+infer-complete-RResolved-view gv-id       _ (e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-fst      _ (_ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-snd      _ (_ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-terminal _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-initial  _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-inl      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-inr      _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view gv-unit     _ (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ e ∷ᴬ _) _ _ _ = ⊥-elim (e refl)
+infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ wn eq conc =
   go T conc eq
   where
     open Once.TypeCheck.ElaborateProofs using ()
@@ -179,47 +180,65 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ eq conc =
               → inferElabV-RResolved-value-aux ctx cn ng' ty eq' (isConcrete? ty) refl
                 ≡ inferElabV-RResolved-value-aux ctx cn ng' ty eq' mc eqc
     helperVal _ _ refl = refl
+    helperW : ∀ (k : WordName cn → E.VerifiedInferResult ctx (RResolved cn)) (b : Bool) (e : wordNameB cn ≡ b)
+            → E.inferElabV-RResolved-word ctx cn k (wordNameB cn) refl ≡ E.inferElabV-RResolved-word ctx cn k b e
+    helperW _ _ refl = refl
+    wt : wordNameB cn ≡ true
+    wt = T-true (wordNameB cn) wn
+      where
+        T-true : ∀ b → Data.Bool.T b → b ≡ true
+        T-true true _ = refl
     go : ∀ (T' : Type) → IsConcrete T'
        → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RResolved cn) ≡ success T' zeroUsage eE d f
     go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv)
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperArr eq' _ (proj₂ (isBaseType?-complete bA))
-                                      _ (proj₂ (isBaseType?-complete cB)))))
+                                      _ (proj₂ (isBaseType?-complete cB))))))
+      (cong proj₁ (helperW _ _ wt))
     go (A ⇒[ T.mk-kind One  π ] B) conc' eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv)
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      (cong proj₁ (helperW _ _ wt))
     go (A ⇒[ T.mk-kind Zero π ] B) conc' eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv)
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      (cong proj₁ (helperW _ _ wt))
     go Unit          _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
+      (cong proj₁ (helperW _ _ wt))
     go Void          _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
+      (cong proj₁ (helperW _ _ wt))
     go Int           _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
+      (cong proj₁ (helperW _ _ wt))
     go Float         _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
+      (cong proj₁ (helperW _ _ wt))
     go (T.rigid T.k-base _) _ eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq'))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
+      (cong proj₁ (helperW _ _ wt))
     go (T.rigid T.k-any _) (con-base ()) eq'
     go (A * B) conc' eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv)
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      (cong proj₁ (helperW _ _ wt))
     go (A + B) conc' eq' = _ , _ , _ ,
-      trans (inferElabV-RResolved-J ctx cn _ eqv)
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc')))))
+            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      (cong proj₁ (helperW _ _ wt))
     go (T.μ-type F)  (con-base ()) eq'
     go (T.ν-type F _)  (con-base ()) eq'
 
-infer-complete-RResolved {ctx} {cn} {T} ng eq conc =
-  infer-complete-RResolved-view (classifyGen cn) refl ng eq conc
+infer-complete-RResolved {ctx} {cn} {T} ng wn eq conc =
+  infer-complete-RResolved-view (classifyGen cn) refl ng wn eq conc
 
 -- D274: an OWN reference not in Σ that names a monomorphic definition — the
 -- elaborator reads Σ first, finds nothing, and calls the definition.

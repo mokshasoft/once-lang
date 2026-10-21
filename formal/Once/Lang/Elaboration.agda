@@ -153,8 +153,8 @@ refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] 
 
 -- A generator's reference is the SigOp; its rendered path IS the key it was
 -- looked up under in Σ (D274).
-sigE : (c : Once.Spec.Name.CanonicalName) → IsConcrete A → Declared (Once.Lang.Name.showCanonical c) A → Elab Γ zeroUsage A
-sigE {A = A} c k (declared h g m) = sigop c A , ⊢sigop c k h g m
+sigE : (c : Once.Spec.Name.CanonicalName) → IsConcrete A → Once.Lang.Name.WordName c → Declared (Once.Lang.Name.showCanonical c) A → Elab Γ zeroUsage A
+sigE {A = A} c k w (declared h g m) = sigop c A , ⊢sigop c k h g w m
 
 -- A definition's reference is the entry, at its instance.
 importE : ∀ {x} → ImportAt x A → Elab Γ zeroUsage A
@@ -206,7 +206,7 @@ elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = Once.Lang.Context.svar i} _) = var i , ⊢var i
-elabᵢ V (t-var-resolved {cn = cn} _ lk k) = sigE cn k (declares V lk)
+elabᵢ V (t-var-resolved {cn = cn} _ w lk k) = sigE cn k w (declares V lk)
 elabᵢ V (t-var-own _ lk)                   = importE (imported V lk)
 elabᵢ V (t-var-import _ _ lk k)            = importE (imported V lk)
 elabᵢ V (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) = refE (entry V lp) (ground V lp g)

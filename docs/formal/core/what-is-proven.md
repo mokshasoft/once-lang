@@ -211,6 +211,17 @@ grep -r "import Once.Postulates" formal/
 
 **Justification**: Function extensionality is consistent with Agda's type theory and holds in most models (setoid model, cubical type theory). It's a standard assumption in formalized mathematics.
 
+### T1, T2: the String primitives (tool hypotheses, D329)
+
+| Property | Value |
+|----------|-------|
+| **Type** | `toList (s ++ t) ≡ toList s ++ toList t`; `toList (fromList cs) ≡ cs` |
+| **Location** | `Once/Postulates.agda` |
+| **Needed by** | `Once/Adequacy/SpecFront/Render.agda`, `Once/Adequacy/SpecFront/Words.agda` (plan 0.121 R13) |
+| **Runtime effect** | None (erased during extraction) |
+
+**Justification**: facts about the tools, not the logic: `String` is an Agda primitive whose operations the type checker evaluates only on literals, and only the injectivity of `toList`/`fromList` is exported. Both facts are the standard library's own (`Data.String.Unsafe`, by `trustMe`), true of the model (a string is a list of characters) and of the compiled `Data.Text` implementation.
+
 ### P2: x86-64 Encoding Axioms
 
 | Property | Value |

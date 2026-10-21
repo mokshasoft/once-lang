@@ -40,7 +40,7 @@ open import Once.Lang.Type.WellFormed using (IsConcrete)
 open import Once.Lang.Type.Honest using (HonestFFI)
 open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Lang.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
@@ -221,7 +221,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → PCtx m n → Usage n →
   -- An FFI contract is GROUND (D061/D071): it is not generic in the module's
   -- type variables.
   ⊢sigop : ∀ {n} {Γ : PCtx m n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A → RigidFree A
-         → (showCanonical c ,ᵈ A) ∈ sigOf S
+         → WordName c → (showCanonical c ,ᵈ A) ∈ sigOf S
          → Δ ⊩ Γ ⊢[ zeroUsage ] sigop c A ∷ ⌈ A ⌉ ! pure
   ⊢sub-eff : ∀ {n} {Γ : PCtx m n} {Ψ : Usage n} {π π′ : Purity} {A t}
            → π ⊑π π′ → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π′
@@ -281,8 +281,8 @@ instantiate σ r ⊢lit-float = GT.⊢lit-float
 instantiate {Γ = Γ} {Ψ = Ψ} {π = π} σ r (⊢prim {t = t} p d) =
   subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] G.prim p (t ⟪ σ ⟫ₜ) ∷ X ! π) (sym (⌈⌉-⟪⟫ (primCod p) σ))
     (GT.⊢prim p (subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ X ! π) (⌈⌉-⟪⟫ (primDom p) σ) (instantiate σ r d)))
-instantiate {Γ = Γ} σ r (⊢sigop {A = A} c k h g m) =
-  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.sigop c A ∷ X ! pure) (sym (⌈⌉-⟪⟫ A σ)) (GT.⊢sigop c k h g m)
+instantiate {Γ = Γ} σ r (⊢sigop {A = A} c k h g wn m) =
+  subst (λ X → Γ ⟪ σ ⟫ᶜ GT.⊢[ zeroUsage ] G.sigop c A ∷ X ! pure) (sym (⌈⌉-⟪⟫ A σ)) (GT.⊢sigop c k h g wn m)
 instantiate σ r (⊢sub-eff g d) = GT.⊢sub-eff g (instantiate σ r d)
 instantiate σ r (⊢sub-use p d) = GT.⊢sub-use p (instantiate σ r d)
 instantiate {Γ = Γ} σ r (⊢ref d τ k) =

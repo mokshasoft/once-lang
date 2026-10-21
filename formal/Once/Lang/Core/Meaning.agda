@@ -179,7 +179,7 @@ primSem p-i2f  fmt a       = FA.i2f (float-format fmt) (OnceWord.Width.toℤ (in
 
 ⟦ ⊢prim {π = π} p d ⟧ fmt ρ dγ = fmapM π (primSem p fmt) (⟦ d ⟧ fmt ρ dγ)
 
-⟦ ⊢sigop {A = A} c k _ _ m ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt (sigOf S) (impl ρ) c k m
+⟦ ⊢sigop {A = A} c k _ _ wn m ⟧ fmt ρ dγ = sigOpRefᵛ {A = A} fmt (sigOf S) (impl ρ) c k m
 
 ⟦ ⊢sub-eff g d ⟧ fmt ρ dγ = subM g (⟦ d ⟧ fmt ρ dγ)
 

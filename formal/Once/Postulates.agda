@@ -12,6 +12,8 @@
 -- Categories:
 --   P (Postulate): Explicit axiom assumed without proof
 --   S (Semantic Gap): Limitation in the semantic model itself
+--   T (Tool hypothesis): a fact about the tools (Agda's primitives and
+--     their compiled implementation) that Agda does not export (D329)
 --
 -- When adding new assumptions (P2, P3, ... or S2, S3, ...):
 --   1. NEEDED BY: Which modules depend on it
@@ -27,6 +29,10 @@
 module Once.Postulates where
 
 open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Data.List using (List)
+import Data.List as List
+open import Data.Char using (Char)
+open import Data.String using (String; toList; fromList; _++_)
 
 
 ------------------------------------------------------------------------
@@ -55,6 +61,40 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 postulate
   extensionality : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} →
                    (∀ x → f x ≡ g x) → f ≡ g
+
+------------------------------------------------------------------------
+-- Tool hypotheses T1, T2: the String primitives (D329)
+------------------------------------------------------------------------
+--
+-- `primStringAppend`, `primStringToList` and `primStringFromList` are opaque
+-- to Agda's conversion checker: of their properties only the injectivity of
+-- `toList` and `fromList` is exported (`Agda.Builtin.String.Properties`).
+-- The two facts below are the standard library's own
+-- (`Data.String.Unsafe.toList-++`, `toList∘fromList`, there by `trustMe`,
+-- which `--safe` rejects).
+--
+-- NEEDED BY: Once.Adequacy.SpecFront.Render — `showCanonical` is injective
+--   on word names (plan 0.121 R13): the compiler finds a generator by its
+--   rendered name, the Spec by its canonical name; and the Spec's lexer
+--   builds a word by `fromList`.
+--
+-- JUSTIFICATION:
+--   A hypothesis about the tools, not an axiom of the logic: a String is a
+--   list of characters (the model the primitives are specified against),
+--   and the compiled implementation (MAlonzo's `Data.Text`: `append`,
+--   `unpack`, `pack`) satisfies both. Testable on the extracted code.
+--
+-- IMPACT:
+--   If either failed, two distinct canonical names could render alike, and
+--   the front-end bridges (`sound`, `complete`) would not hold as stated.
+--
+-- RUNTIME EFFECT: None (erased; proofs only)
+--
+------------------------------------------------------------------------
+
+postulate
+  toList-++      : ∀ (s t : String) → toList (s ++ t) ≡ toList s List.++ toList t
+  toList∘fromList : ∀ (cs : List Char) → toList (fromList cs) ≡ cs
 
 ------------------------------------------------------------------------
 -- P2, P3, P5 (retired): the fold's universal property (`fold-unique`,

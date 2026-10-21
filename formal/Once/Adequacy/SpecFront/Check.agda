@@ -29,7 +29,7 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature; _∶_)
 import Once.Lang.Type.Grade as LG
@@ -43,7 +43,7 @@ open import Once.Adequacy.SpecCore.Schema using (CleanSig; ptyS)
 
 module Once.Adequacy.SpecFront.Check
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
   (nm : Fin s → CanonicalName) (clean : CleanSig S)
   {imps sg : Imports} {polys : PolyCtx} (V : E.View S imps sg polys)
   -- a monomorphic definition in scope: its name, and no type variables
@@ -353,10 +353,10 @@ mutual
   fwdᵢ (t-var-local {eV = svar i} lk) lr (x-local _) =
     let (A′ , ra , mem) = lk-R lr i lk in syn ra (r-var i) (SU.s-var mem)
   fwdᵢ {Γn = Γn} (t-var-local {eV = svar i} lk) lr (x-own ∉ _) = ⊥-elim (∉ (lk-in Γn lk))
-  fwdᵢ {L = L} (t-var-resolved {cn = cn} {T = T} ng lk k) lr (x-res _ _) = res (E.View.declares V lk)
+  fwdᵢ {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k) lr (x-res _ _) = res (E.View.declares V lk)
     where
       res : EV.Declared (showCanonical cn) T → Syn L (SX.RResolved cn) T (L.sigop cn T)
-      res (EV.declared h g mem) = syn (decl-R k h g) (r-sigop (decl-R k h g)) (SU.s-sigop ng (sigop-S mem))
+      res (EV.declared h g mem) = syn (decl-R k h g) (r-sigop (decl-R k h g)) (SU.s-sigop ng (sigop-S wn mem))
   fwdᵢ (t-var-own _ lk) lr (x-res _ _) =
     ref0 (E.ImportAt.entryOf (E.View.imported V lk)) (proj₁ (h-imp lk)) (proj₂ (h-imp lk)) (E.ImportAt.instOf (E.View.imported V lk))
   fwdᵢ (t-var-import _ _ lk k) lr (x-own _ _) =

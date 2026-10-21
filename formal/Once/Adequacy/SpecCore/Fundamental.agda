@@ -25,7 +25,7 @@ open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 import Once.Lang.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature; _∶_)
 open import Once.Spec.Numerics using (TargetNum)
@@ -33,7 +33,7 @@ open import Once.Adequacy.SpecCore.Poly using (declS)
 
 module Once.Adequacy.SpecCore.Fundamental
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
   (fmt : TargetNum) where
 
 open import Data.Unit using (⊤; tt)
@@ -145,8 +145,8 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
       c-lit-float : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {d} → Fund (PT.⊢lit-float {Δ = Δ} {Γ = Γ} {d = d})
       c-prim   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π t} (p : _)
                  (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ LP.⌈ _ ⌉ ! π) → Fund d → Fund (PT.⊢prim {Δ = Δ} {Γ = Γ} {Ψ = Ψ} {π = π} {t = t} p d)
-      c-sigop  : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {A} c k h rf mem
-                 → Fund (PT.⊢sigop {Δ = Δ} {Γ = Γ} {A = A} c k h rf mem)
+      c-sigop  : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {A} c k h rf wn mem
+                 → Fund (PT.⊢sigop {Δ = Δ} {Γ = Γ} {A = A} c k h rf wn mem)
       c-ref    : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} d τ rs → Fund (PT.⊢ref {Δ = Δ} {Γ = Γ} d τ rs)
 
   ----------------------------------------------------------------------
@@ -265,5 +265,5 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
     fund PT.⊢lit-int                = c-lit-int
     fund PT.⊢lit-float              = c-lit-float
     fund (PT.⊢prim p d)             = c-prim p d (fund d)
-    fund (PT.⊢sigop c k h rf mem)   = c-sigop c k h rf mem
+    fund (PT.⊢sigop c k h rf wn mem)   = c-sigop c k h rf wn mem
     fund (PT.⊢ref d τ rs)           = c-ref d τ rs

@@ -50,7 +50,7 @@ open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
 open import Once.Lang.Type.Honest using (HonestFFI)
 open import Once.Lang.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Lang.Context using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊔ᵘ_; _⊑∷_; z≤z; o≤o; m≤m; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
@@ -175,9 +175,10 @@ data _⊢[_]_∷_!_ : ∀ {n} → Ctx n → Usage n → Tm n → Type → Purity
   -- referencing it is pure.
   -- Plan 0.105 (D257 amendment 2): an FFI reference names a SigOp the program
   -- is compiled against — a declaration of the interpretation signatures
-  -- `sigOf S`, identified at that boundary by its rendered path.
+  -- `sigOf S`, identified at that boundary by its rendered path — of a word
+  -- name, which renders apart from every other (D329).
   ⊢sigop : ∀ {n} {Γ : Ctx n} {A} (c : CanonicalName) (k : IsConcrete A) → HonestFFI A → RigidFree A
-         → (showCanonical c ,ᵈ A) ∈ sigOf S
+         → WordName c → (showCanonical c ,ᵈ A) ∈ sigOf S
          → Γ ⊢[ zeroUsage ] sigop c A ∷ A ! pure
 
   -- Plan 0.103 phase 4: a definition at a kind-respecting ground instance of

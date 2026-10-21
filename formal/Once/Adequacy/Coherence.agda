@@ -70,7 +70,7 @@ mutual
   coh-ii ii-float = ≅-refl
   coh-ii ii-unit = ≅-refl
   coh-ii ii-unit-var = ≅-refl
-  coh-ii {ctx = ctx} (ii-resolved {n = n} {n′ = n′} {l = l} {l′ = l′} {c = c} {c′ = c′}) = resolved-h {ctx = ctx} n l c n′ l′ c′
+  coh-ii {ctx = ctx} (ii-resolved {n = n} {n′ = n′} {wn = wn} {wn′ = wn′} {l = l} {l′ = l′} {c = c} {c′ = c′}) = resolved-h {ctx = ctx} n wn l c n′ wn′ l′ c′
   coh-ii {ctx = ctx} (ii-own {ns = ns} {ns′ = ns′} {l = l} {l′ = l′}) = own-h {ctx = ctx} {ns = ns} {ns′ = ns′} l l′
   coh-ii {ctx = ctx} (ii-local {l = l} {l′ = l′}) = local-h {ctx = ctx} l l′
   coh-ii {ctx = ctx} (ii-import {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {i = i} {i′ = i′} {c = c} {c′ = c′}) = import-h {ctx = ctx} {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {c = c} {c′ = c′} i i′

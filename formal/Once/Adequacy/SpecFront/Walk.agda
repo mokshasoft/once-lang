@@ -31,7 +31,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
@@ -44,13 +44,15 @@ open import Once.Adequacy.SpecCore.Poly using (declS)
 
 module Once.Adequacy.SpecFront.Walk
   (Σ : Signature) {Fs : ISig}
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
   (fmt : TargetNum) (ps : List String) (sg : Imports)
   -- the program's signature is the scope's FFI table (`Back`'s `h-sig`)…
   (h-sig : ∀ {m} (Δ : ST.KCtx m) {c t} → NotGenerator c → (c ∶ t) ∈ Σ
          → Σ[ T ∈ LT.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ T ⌜ t ⌝ᵈ)
   -- …and no polymorphic definition's name is a declaration's
   (h-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
+  -- …and every declaration of Σ has a word name (D329)
+  (h-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
   where
 
 open import Data.Nat using (zero; suc; _<_)
@@ -157,7 +159,7 @@ module AtState {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSi
       (λ {x} {sc} lp ng → subst (0 <_) (sym (cong LP.Schema.arity (proj₂ (telFind ts lp)))) (open-arity sc ng))
       (λ {x} {sc} lp → occ-at {sc} _ (proj₂ (telFind ts lp)))
       (λ {x} {sc} lp → arrow-at {sc} _ (proj₂ (telFind ts lp)))
-      (WInv.named w) h-sig (WInv.mono-at w) (WInv.ps-at w) (WInv.poly-at w) h-own-sig
+      (WInv.named w) h-sig (WInv.mono-at w) (WInv.ps-at w) (WInv.poly-at w) h-own-sig h-word
 
 ------------------------------------------------------------------------
 -- The declarations and the entries

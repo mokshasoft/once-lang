@@ -40,7 +40,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Lang.Type.Sub using (_<:_; _⊑π_; _⊔_≔_)
 open import Once.Lang.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Lang.Typing.Scope using (NamedCtx; PolyCtx; lookupLocal; lookupImport; lookupPolyPrefix; extendNamedCtx; classifyAppHead)
 
 open import Data.String using (_++_)
@@ -134,9 +134,10 @@ mutual
     -- it is never a user import. Stated as a PROPERTY of the name (D134), not
     -- as `classifyGen cn ≡ gv-other`.
     -- D274: a resolved reference to a GENERATOR of the program's signature Σ
-    -- (an FFI declaration, of another module or of this one) — a SigOp.
+    -- (an FFI declaration, of another module or of this one) — a SigOp. Its
+    -- name is a word name, so its rendered key names it alone (D329).
     t-var-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
-                   → NotGenerator cn
+                   → NotGenerator cn → WordName cn
                    → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T
                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                    → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage

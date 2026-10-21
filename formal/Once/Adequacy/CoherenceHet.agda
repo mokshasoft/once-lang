@@ -37,7 +37,7 @@ open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Lang.Type.Join using (join-unique)
 open import Once.Lang.Syntax as Raw using (RawExpr)
 open import Once.Spec.Name using (NotGenerator)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
 open import Once.Lang.Typing
@@ -367,16 +367,16 @@ module _ {ctx : NamedCtx} where
 
   -- A resolved reference's derivation is determined by its name and type.
   private
-    resolved-go : ∀ {cn T T′} (eT : just T ≡ just T′) (n n′ : NotGenerator cn)
+    resolved-go : ∀ {cn T T′} (eT : just T ≡ just T′) (n n′ : NotGenerator cn) (wn wn′ : WordName cn)
                     (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T)
                     (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c : IsConcrete T) (c′ : IsConcrete T′)
-                → RI (t-var-resolved {ctx = ctx} n l c) ≅ RI (t-var-resolved {ctx = ctx} n′ l′ c′)
-    resolved-go refl n n′ l l′ c c′ rewrite IsConcrete-irrelevant c c′ = ≅-refl
+                → RI (t-var-resolved {ctx = ctx} n wn l c) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′)
+    resolved-go refl n n′ wn wn′ l l′ c c′ rewrite IsConcrete-irrelevant c c′ = ≅-refl
 
-  resolved-h : ∀ {cn T T′} (n : NotGenerator cn) (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T) (c : IsConcrete T)
-                 (n′ : NotGenerator cn) (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c′ : IsConcrete T′)
-             → RI (t-var-resolved {ctx = ctx} n l c) ≅ RI (t-var-resolved {ctx = ctx} n′ l′ c′)
-  resolved-h {cn = cn} n l c n′ l′ c′ = resolved-go {cn = cn} (trans (sym l) l′) n n′ l l′ c c′
+  resolved-h : ∀ {cn T T′} (n : NotGenerator cn) (wn : WordName cn) (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T) (c : IsConcrete T)
+                 (n′ : NotGenerator cn) (wn′ : WordName cn) (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c′ : IsConcrete T′)
+             → RI (t-var-resolved {ctx = ctx} n wn l c) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′)
+  resolved-h {cn = cn} n wn l c n′ wn′ l′ c′ = resolved-go {cn = cn} (trans (sym l) l′) n n′ wn wn′ l l′ c c′
 
   private
     own-go : ∀ {x T T′ ns ns′} (eT : just T ≡ just T′)

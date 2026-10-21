@@ -223,7 +223,7 @@ mutual
   subst-i′ ir t-unit-var           = t-unit-var
   subst-i′ {Γ = Γ} {D = D} ir (t-var-local {x = x} {eV = svar i} eq) =
     lookup-ρ̂ D i ⇝ᵢ t-var-local (lk-just x Γ D i eq)
-  subst-i′ ir (t-var-resolved ng li c) = sym (ρ̂-rf (proj₂ ir li)) ⇝ᵢ t-var-resolved ng li c
+  subst-i′ ir (t-var-resolved ng wn li c) = sym (ρ̂-rf (proj₂ ir li)) ⇝ᵢ t-var-resolved ng wn li c
   subst-i′ ir (t-var-own ns li) = sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-own ns li
   subst-i′ {Γ = Γ} {D = D} ir (t-var-import {x = x} gw ln li c) =
     sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-import gw (lk-nothing x Γ D ln) li c

@@ -18,15 +18,10 @@
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Signature using (Signature; _∶_)
-open import Once.Lang.Name using (showCanonical)
-open import Once.Adequacy.SpecInterp using (toISig)
-open import Once.Adequacy.SpecCore.Poly using (declS)
 
-module Once.Adequacy.SpecFront.Meaning
-  (fmt : TargetNum)
-  (sigop-R13 : ∀ (Σ : Signature) {c A} → (showCanonical c , A) ∈ toISig Σ → (c ∶ declS A) ∈ Σ)
-  where
+module Once.Adequacy.SpecFront.Meaning (fmt : TargetNum) where
+
+open import Once.Adequacy.SpecInterp using (toISig)
 
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_)
@@ -49,14 +44,15 @@ open import Once.Adequacy.SpecInterp using (toImpl; toInterp)
 import Once.Adequacy.SpecCore.Program as PG
 import Once.Adequacy.SpecCore.Sound as Sound
 open import Once.Adequacy.SpecFront.ImplWF using (toImpl-wf)
-open import Once.Adequacy.SpecFront.Denote fmt sigop-R13 using (Denoted)
+open import Once.Adequacy.SpecFront.Denote fmt using (Denoted)
+open import Once.Adequacy.SpecFront.Words using (r13-at)
 
 module _ {mm′ ds′ es} {mt : ModTele emptyScope es} {mi : MainIn mt} (D : Denoted mm′ ds′ mt mi) where
   open Denoted D
 
   -- the Spec program the module denotes
   progS : CoreProgram.Program Σₛ
-  progS = PG.programS Σₛ (sigop-R13 Σₛ) fmt wf (TL.program tele entry isMain)
+  progS = PG.programS Σₛ (r13-at keysW) fmt wf (TL.program tele entry isMain)
 
   private
     eS : toISig Σₛ ≡ entrySig es
@@ -93,4 +89,4 @@ module _ {mm′ ds′ es} {mt : ModTele emptyScope es} {mi : MainIn mt} (D : Den
                  (subst (λ X → trT∞ (interp (toISig Σₛ) X) [] (TL.runCore fmt (TL.program tele entry isMain) X)
                                ≈ᵗ⟨ _≡_ ⟩ CoreProgram.behaviour Σₛ fmt progS J)
                         (toImpl-wf Σₛ J wf wf′)
-                        (Sound.core-sound Σₛ wf J uniq (sigop-R13 Σₛ) fmt (TL.program tele entry isMain))))
+                        (Sound.core-sound Σₛ wf J uniq (r13-at keysW) fmt (TL.program tele entry isMain))))

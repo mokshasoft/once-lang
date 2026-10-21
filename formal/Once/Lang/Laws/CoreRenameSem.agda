@@ -331,7 +331,7 @@ ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d 
 ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x
 ren-sem {Δ = Δ} θ ⊢lit-float fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-float fmt δ x
 ren-sem θ (⊢prim {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
-ren-sem {Δ = Δ} θ (⊢sigop c k h g m) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g m) fmt δ x
+ren-sem {Δ = Δ} θ (⊢sigop c k h g wn m) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g wn m) fmt δ x
 ren-sem θ (⊢sub-eff g d) fmt δ x = cong (subM g) (ren-sem θ d fmt δ x)
 -- D276: sub-usaging is a restriction, and restriction commutes with thinning.
 ren-sem θ (⊢sub-use p d) fmt δ x =

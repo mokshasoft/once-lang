@@ -146,6 +146,11 @@ decision-log entry updates the rule it changes here, in the same commit.
   are gone (the claim is weak bisimilarity of traces), `BlockRuns` says a
   stopped callee has not left the program, `opt-trace` is restated over
   traces. (D326)
+- **Two tool hypotheses about `String`** (`Once.Postulates` T1, T2:
+  `toList-++`, `toList∘fromList`, the standard library's own): facts about the
+  primitives Agda does not export. With them a word name renders apart from
+  every other, and a generator — carrying `WordName` in its typing rule — is
+  found by its rendered key. (D329)
 - **There is no global program bound**: a closure carries its own body bound.
   (D214)
 - **Dataflow disciplines are discharged by type-indexed shape correctness**,

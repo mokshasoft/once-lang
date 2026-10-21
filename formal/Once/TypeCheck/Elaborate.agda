@@ -22,7 +22,7 @@ open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc)
 open import Data.Fin using (zero; suc)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
@@ -47,7 +47,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.SigOp.Info using (SigOpSem; mk-info'; emitsV; haltsV; ffiV; callsV; SigOpInfo)
 open import Once.Spec.Name using (CanonicalName; own; bare; gen; NotGenerator; GenWord)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?)
 open import Once.Lang.Syntax using (RawExpr)
 open import Once.Lang.Syntax as Raw
@@ -1319,6 +1319,14 @@ resolvedArrowTerm : ∀ {A B} (ctx : NamedCtx) → CanonicalName → (π : Purit
 resolvedArrowTerm ctx cn π bA cB =
   Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB))
 
+-- D329: a generator is keyed by its rendered name, which names it alone only
+-- for a word name; a name that is no word is bound to nothing written.
+inferElabV-RResolved-word :
+  ∀ (ctx : NamedCtx) (cn : CanonicalName) → (WordName cn → VerifiedInferResult ctx (Raw.RResolved cn))
+  → (b : Bool) → wordNameB cn ≡ b → VerifiedInferResult ctx (Raw.RResolved cn)
+inferElabV-RResolved-word ctx cn k false _ = failure (UnboundVariable (showCanonical cn)) , tt
+inferElabV-RResolved-word ctx cn k true  e = k (subst T (sym e) tt)
+
 inferElabV-RResolved-arrow-aux :
   ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → ∀ {A B : Type} {π : Once.Lang.Type.Grade.Purity}
   → lookupImport (NamedCtx.sig ctx) (showCanonical cn)
@@ -1328,10 +1336,11 @@ inferElabV-RResolved-arrow-aux :
   → VerifiedInferResult ctx (Raw.RResolved cn)
 -- Concreteness-driven arrow value emission (de-withed for Completeness).
 inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
-  success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B) _
-    (resolvedArrowTerm ctx cn π bA cB)
-    0 0
-  , t-var-resolved ng eq (con-fun bA cB)
+  inferElabV-RResolved-word ctx cn (λ wn →
+    success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B) _
+      (resolvedArrowTerm ctx cn π bA cB)
+      0 0
+    , t-var-resolved ng wn eq (con-fun bA cB)) (wordNameB cn) refl
 inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq nothing _ _ _ =
   failure (NonConcreteSigOpType (showCanonical cn)
             (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π ] B)) , tt
@@ -1348,7 +1357,8 @@ inferElabV-RResolved-value-aux :
   → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
   → VerifiedInferResult ctx (Raw.RResolved cn)
 inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
-  success ty _ (resolvedValueTerm cn conc) 0 0 , t-var-resolved ng eq conc
+  inferElabV-RResolved-word ctx cn (λ wn → success ty _ (resolvedValueTerm cn conc) 0 0 , t-var-resolved ng wn eq conc)
+    (wordNameB cn) refl
 inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ =
   failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
 

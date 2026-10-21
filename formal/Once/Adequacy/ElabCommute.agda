@@ -103,13 +103,13 @@ private
       (H.trans (≅ref h) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e₀) (rmA (λ X → X) (sym (ρ̂-ref d τ₀))))))
 
   -- A generator's reference: its contract is ground (D274).
-  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Lang.Name.showCanonical cn) T)
-         → proj₁ (sigE {Γ = ρ̂S Γ} cn k dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k dc))
-  sig-tm cn k dc = refl
+  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Lang.Name.showCanonical cn) T)
+         → proj₁ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k wn dc))
+  sig-tm cn k wn dc = refl
 
-  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k (dc : Declared (Once.Lang.Name.showCanonical cn) T)
-         → proj₂ (sigE {Γ = ρ̂S Γ} cn k dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k dc))
-  sig-dr cn k dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
+  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Lang.Name.showCanonical cn) T)
+         → proj₂ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k wn dc))
+  sig-dr cn k wn dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
 
   -- D313: a generator at its guard — the guarded arrow is ground too.
 
@@ -174,7 +174,7 @@ mutual
   tm-i t-unit             = refl
   tm-i t-unit-var         = refl
   tm-i {D = D} (t-var-local {eV = C.svar i} eq) = ⇝ᵢ-tm (lookup-ρ̂ D i) _
-  tm-i {D = D} (t-var-resolved {cn = cn} ng li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} cn c (declares li))
+  tm-i {D = D} (t-var-resolved {cn = cn} ng wn li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} cn c wn (declares li))
   tm-i {D = D} (t-var-own {x = x} ns li) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
   tm-i {D = D} (t-var-import {x = x} gw ln li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
   tm-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =
@@ -320,7 +320,7 @@ mutual
   dr-i t-unit-var         = H.refl
   dr-i {D = D} (t-var-local {eV = C.svar i} eq) =
     H.trans (⇝ᵢ-dr (lookup-ρ̂ D i) _) (H.sym (rmA (λ X → X) (lookup-ρ̂ D i)))
-  dr-i {D = D} (t-var-resolved {cn = cn} ng li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} cn c (declares li))
+  dr-i {D = D} (t-var-resolved {cn = cn} ng wn li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} cn c wn (declares li))
   dr-i {D = D} (t-var-own {x = x} ns li) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
   dr-i {D = D} (t-var-import {x = x} gw ln li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
   dr-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =

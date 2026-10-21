@@ -19,14 +19,14 @@ open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; _∶_)
 import Once.Lang.Core.PolyTy as LP
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
 module Once.Adequacy.SpecFront.Abs
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where
 
 open import Data.Nat using (_<_; _<?_)
 open import Data.Fin using (Fin; toℕ; fromℕ<)

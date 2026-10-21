@@ -149,14 +149,14 @@ mutual
   route-ii (t-float _ _ _ _) (t-float _ _ _ _) = ii-float
   route-ii t-unit t-unit = ii-unit
   route-ii t-unit-var t-unit-var = ii-unit-var
-  route-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) = ⊥-elim (¬u refl)
-  route-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) _ _) t-unit-var = ⊥-elim (¬u refl)
+  route-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _) = ⊥-elim (¬u refl)
+  route-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _) t-unit-var = ⊥-elim (¬u refl)
   {-# CATCHALL #-}
-  route-ii (t-var-resolved _ _ _) (t-var-resolved _ _ _) = ii-resolved
+  route-ii (t-var-resolved _ wn _ _) (t-var-resolved _ wn′ _ _) = ii-resolved
   route-ii (t-var-own _ _) (t-var-own _ _) = ii-own
-  route-ii (t-var-own n _) (t-var-resolved _ l _) = ⊥-elim (just≢nothing (trans (sym l) n))
+  route-ii (t-var-own n _) (t-var-resolved _ wn l _) = ⊥-elim (just≢nothing (trans (sym l) n))
   {-# CATCHALL #-}
-  route-ii (t-var-resolved _ l _) (t-var-own n _) = ⊥-elim (just≢nothing (trans (sym l) n))
+  route-ii (t-var-resolved _ wn l _) (t-var-own n _) = ⊥-elim (just≢nothing (trans (sym l) n))
   route-ii (t-var-local _) (t-var-local _) = ii-local
   route-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
   route-ii (t-var-local l) (t-var-poly-instantiate-infer ln _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))

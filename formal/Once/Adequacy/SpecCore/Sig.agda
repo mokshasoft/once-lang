@@ -21,7 +21,7 @@
 
 open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 import Once.Spec.Observation as Obs
@@ -391,8 +391,8 @@ module _ {s₀} (S₀ : SC.Defs s₀) {m} (σ′ : ST.TySub m 0) where
 -- The compiler's implementation and the Spec's model agree on every
 -- declaration (`Program.SigG`), whichever way the compiler's declarations are
 -- matched to Σ's.
-sig-G : (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ toISig Σ → (c ∶ declS A) ∈ Σ) → PG.SigG Σ sigop-S fmt I mo
-sig-G sigop-S S₀ σ′ k h rf mem gs = sig-v S₀ σ′ k h mem gs (sigop-S mem) refl (mem-view mem)
+sig-G : (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ toISig Σ → (c ∶ declS A) ∈ Σ) → PG.SigG Σ sigop-S fmt I mo
+sig-G sigop-S S₀ σ′ k h rf wn mem gs = sig-v S₀ σ′ k h mem gs (sigop-S wn mem) refl (mem-view mem)
 
 ------------------------------------------------------------------------
 -- The calls: answered and observed alike

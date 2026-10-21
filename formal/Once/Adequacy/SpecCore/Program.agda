@@ -17,14 +17,14 @@
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Lang.Contract using (ISig; Impl)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Lang.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; _∶_; WellFormed)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
 module Once.Adequacy.SpecCore.Program
   {Fs : ISig} (Σ : Signature)
-  (sigop-S : ∀ {c A} → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
+  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
   (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
@@ -83,8 +83,8 @@ programS wf (TL.program {sig = S} defs d e) = record
 -- An implementation and a model agree on every declaration of the signature.
 SigG : Impl Fs → Model → Set
 SigG I mo = ∀ {s₀} (S₀ : SC.Defs s₀) {m} (σ′ : ST.TySub m 0) {c A} (k : LW.IsConcrete A) (h : LH.HonestFFI A) (rf : LW.RigidFree A)
-            (mem : (showCanonical c , A) ∈ Fs) (gs : GR A (Once.Spec.Signature.⌜_⌝ᵈ (declS A) ST.⟨ σ′ ⟩))
-          → ValR gs (LOps.sigOpRefᵛ fmt Fs I c k mem) (SM.sigopᵛ Σ fmt S₀ σ′ c (declS A) (sigop-S mem) mo)
+            (wn : WordName c) (mem : (showCanonical c , A) ∈ Fs) (gs : GR A (Once.Spec.Signature.⌜_⌝ᵈ (declS A) ST.⟨ σ′ ⟩))
+          → ValR gs (LOps.sigOpRefᵛ fmt Fs I c k mem) (SM.sigopᵛ Σ fmt S₀ σ′ c (declS A) (sigop-S wn mem) mo)
 
 ------------------------------------------------------------------------
 -- The definitions environments
@@ -102,6 +102,6 @@ module _ (I : Impl Fs) (mo : Model) (sg : SigG I mo) where
   teleR TL.[] ()
   teleR (TL.def {S = S} tl sc body D) zero τ r τ′ r′ i =
     Cases.fundamental S Σ sigop-S fmt (TL.teleSem fmt I tl) (SP.teleSem fmt mo (teleS tl)) (teleR tl)
-                      (λ σ′ k h rf mem gs → subst (λ mo′ → ValR gs _ (SM.sigopᵛ Σ fmt _ σ′ _ (declS _) (sigop-S mem) mo′))
-                                                  (sym (model-tele mo (teleS tl))) (sg _ σ′ k h rf mem gs)) D r r′ i tt
+                      (λ σ′ k h rf wn mem gs → subst (λ mo′ → ValR gs _ (SM.sigopᵛ Σ fmt _ σ′ _ (declS _) (sigop-S wn mem) mo′))
+                                                  (sym (model-tele mo (teleS tl))) (sg _ σ′ k h rf wn mem gs)) D r r′ i tt
   teleR (TL.def tl sc body D) (suc d) τ r τ′ r′ i = teleR tl d τ r τ′ r′ i
