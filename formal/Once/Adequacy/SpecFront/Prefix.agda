@@ -31,7 +31,7 @@ import Once.Lang.Core.PolyTy as LP
 import Once.Lang.Core.Telescope as TL
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funIsPrimitive)
-open import Once.Lang.Module using (Scope; scope; ModTele; []; ffi; mono; poly; MainIn; entrySig)
+open import Once.Lang.Module using (Scope; scope; ModTele; []; ffi; mono; poly; MainIn; MainsEffUU; entrySig)
 open import Once.Lang.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; SigCF; SigIn; toProgram)
 open import Once.Adequacy.SpecFront.Extract using (FFIEntry; FFIFacts)
 
@@ -76,3 +76,15 @@ main-entry (ffi _ _ _ _ _ rest) mi = let (fi , m , e) = main-entry rest mi in fi
 main-entry (poly _ _ rest) mi = let (fi , m , e) = main-entry rest mi in fi , there m , e
 main-entry (mono {fi = fi} _ _ _ _ _ rest) (inj₁ (e , _)) = fi , here refl , e
 main-entry (mono _ _ _ _ _ rest) (inj₂ mi) = let (fi , m , e) = main-entry rest mi in fi , there m , e
+
+-- Conversely (plan 0.121 `complete`): FFI entries with the telescope's facts
+-- head a telescope of the rest, in the scope past them; `main` is as the
+-- rest has it.
+prefix← : ∀ {sc} (fs : List Parser.Entry) {es} → All FFIFacts fs
+        → (mt : ModTele (scope (entrySig fs ʳ++ Scope.sig sc) (Scope.imps sc) (Scope.tele sc)) es)
+        → Σ[ mt′ ∈ ModTele sc (fs ++ es) ] (MainsEffUU mt → MainsEffUU mt′) × (MainIn mt → MainIn mt′)
+prefix← [] [] mt = mt , (λ m → m) , (λ m → m)
+prefix← {sc} (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) ((refl , ty , refl , c , h , g) ∷ fa) mt =
+  let (mt′ , ms , mi) = prefix← {sc = scope ((x , ty) ∷ Scope.sig sc) (Scope.imps sc) (Scope.tele sc)} fs fa mt
+  in ffi refl refl c h g mt′ , ms , mi
+prefix← (Parser.e-poly _ ∷ fs) (() ∷ fa) mt

@@ -43,10 +43,10 @@ open import Once.Lang.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-sig; xa-isig; IsSig; is-sig; own-sigs; imported-sigs; nonSigs-none; ffi-of)
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-sig; xa-isig; IsSig; is-sig; own-sigs; imported-sigs; nonSigs-none; ffi-of; FFIFacts)
 open import Once.Adequacy.SpecFront.ExtractBack using (align-extract; adj-ok; walk-adj; dr-adj; nonSigs-adj; xalign-of)
 open import Once.Adequacy.SpecFront.SigOf using (own-res)
-open import Once.Adequacy.SpecFront.SigOfBack using (xa-++; sigs-table-++; toISig-++; wf-++; own-part←; imp-part←)
+open import Once.Adequacy.SpecFront.SigOfBack using (xa-++; sigs-table-++; toISig-++; wf-++; own-part←; imp-part←; all-++)
 open import Once.Adequacy.SpecFront.SigFacts using (keys; rname; toISig-keys)
 open import Once.Adequacy.SpecFront.Words using (ModsW; DeclW; signature-idents; signature-words; key-word)
 open import Once.Adequacy.SpecFront.GuardBack
@@ -82,6 +82,7 @@ record Extracted (al : TypeAliasEnv) (dsR : List Decl) (Σ : Signature) : Set wh
     sigs      : XAlign al (Parser.ownSigs dsR ++ Parser.importedSigs dsR) fs
     defs      : XAlign al (Parser.nonSigs dsR) esN
     table     : toISig Σ ≡ entrySig fs
+    facts     : All FFIFacts fs
     distinct  : AllPairs _≢_ (names (fs ++ esN))
 
 extract-ok : ∀ {mm mm′ um am dsU dsR ds′ dsR′ Σ E s′} {S′ : _} {nm′ : Fin s′ → CanonicalName} {tl′}
@@ -96,7 +97,7 @@ extract-ok {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} al wm wd mr rds pw rd dr sig@
     { fs = fs ; esN = esN
     ; extracted = trans (cong₂ (λ a r → Parser.guardDistinct (Parser.thenExtract a r)) (adj-ok adj) (align-extract xw))
                         (guard← fs esN (ffi-of isF xs) (proj₁ xn) distinct (subst (All _) (sym eN) vN))
-    ; sigs = xs ; defs = xN ; table = table ; distinct = distinct }
+    ; sigs = xs ; defs = xN ; table = table ; facts = all-++ (proj₂ (proj₂ (proj₂ p₀))) (proj₂ (proj₂ (proj₂ pᵢ))) ; distinct = distinct }
   where
     w₀ = proj₁ (wf-++ Σ₀ wf)
     wᵢ = proj₂ (wf-++ Σ₀ wf)
@@ -118,7 +119,7 @@ extract-ok {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} al wm wd mr rds pw rd dr sig@
     isF = AllP.++⁺ (own-sigs dsR) (imported-sigs dsR)
     table : toISig Σ ≡ entrySig fs
     table = trans (toISig-++ Σ₀ Σᵢ)
-                  (trans (cong₂ _++_ (proj₂ (proj₂ p₀)) (proj₂ (proj₂ pᵢ))) (sym (sigs-table-++ (own-sigs dsR) x₀ fsᵢ)))
+                  (trans (cong₂ _++_ (proj₁ (proj₂ (proj₂ p₀))) (proj₁ (proj₂ (proj₂ pᵢ)))) (sym (sigs-table-++ (own-sigs dsR) x₀ fsᵢ)))
     -- the names
     L = defNamesS dsR′
     xn = xa-names xN (nonSigs-none dsR)
