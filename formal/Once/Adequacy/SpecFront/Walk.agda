@@ -275,7 +275,7 @@ walk {S = S} {imps} {tele} tl ss is ts sgcf nm (poly {pfi = pfi@(Parser.mkPolyFu
       ; typed = TP′.trD S Σ sigop-S (polyBody {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} ss is ts sgcf D)
       }
 -- a monomorphic definition with a signature
-walk {S = S} {imps} {tele} tl ss is ts sgcf nm (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr g D rest) (al-mono so rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts sgcf nm (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr g D rest) (al-mono so _ rx al) w o =
   w-sig so b (AtState.principal ss is ts sgcf nm w TL.noKinds pr rx (ground-A g))
     (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D) ss (impDefs (x Data.String.== "main") is) (wkT ts)
           (monoSg sgcf g) (canonical (x ∷ []) ∷ⁿ nm) rest al

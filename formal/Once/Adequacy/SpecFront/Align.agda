@@ -37,6 +37,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym)
 
 import Once.Lang.Type as LT
+import Once.Lang.Type.WellFormed as LW
+open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Lang.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
   PolyFunctor; PK; PId; _P⊕_; _P⊗_; Ground; GroundF; extractGround; extractGroundF)
 import Once.Lang.Core.PolyTy as LP
@@ -65,7 +67,7 @@ open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-m
 data Align : List SX.Decl → List Parser.Entry → Set where
   al-nil   : Align [] []
   al-skip  : ∀ {d ds es} → NotDefinition Σ d → Align ds es → Align (d ∷ ds) es
-  al-mono  : ∀ {x T′ e e′ ty ds es} → SchemaOf T′ (schS (monoSchema ty)) → RX [] e e′ → Align ds es
+  al-mono  : ∀ {x T′ e e′ ty ds es} → SchemaOf T′ (schS (monoSchema ty)) → LW.RigidFree ty → RX [] e e′ → Align ds es
            → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x (just ty) e false) ∷ es)
   al-nosig : ∀ {x e e′ ds es} → RX [] e e′ → Align ds es
            → Align (SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x nothing e false) ∷ es)
@@ -159,6 +161,9 @@ private
   mono-schema : ∀ {al T ty} → SigReading al T (just ty) → SchemaOf (toPoly T) (schS (monoSchema ty))
   mono-schema {al} {T} (sr-mono g c _ _) = ground-schemaOf al T g
 
+  mono-rf : ∀ {al T ty} → SigReading al T (just ty) → LW.RigidFree ty
+  mono-rf {al} {T} (sr-mono g c _ _) = subst LW.RigidFree (sym (expand-id al (extractGround T g))) (extractGround-rf T g)
+
 align-of : ∀ {al ds dc es} → DR ds dc → Adj dc → XAlign al (Parser.nonSigs dc) es → Align ds es
 align-of dr-nil adj-nil xa-nil = al-nil
 align-of (dr-sig r) (adj-other _ a) xa = al-skip nd-sig (align-of r a xa)
@@ -170,6 +175,6 @@ align-of {al} (dr-import {sigs = sigs} {dc = dc} as r) (adj-other _ a) (xa-pass 
     adj-rest (_ ∷ sigs) ((x , o , T , refl) ∷ as′) (adj-other _ a′) = adj-rest sigs as′ a′
 align-of (dr-alias r) (adj-other _ a) (xa-pass pa-alias xa) = al-skip nd-alias (align-of r a xa)
 align-of (dr-def rx r) (adj-other _ a) (xa-nosig xa) = al-nosig rx (align-of r a xa)
-align-of (dr-tsig (dr-def rx r)) (adj-sig a) (xa-mono sr xa) = al-mono (mono-schema sr) rx (align-of r a xa)
+align-of (dr-tsig (dr-def rx r)) (adj-sig a) (xa-mono sr xa) = al-mono (mono-schema sr) (mono-rf sr) rx (align-of r a xa)
 align-of (dr-tsig {T = T} (dr-def rx r)) (adj-sig a) (xa-poly sr xa) = al-poly (schemaOf-S T) rx (align-of r a xa)
 align-of (dr-tsig r) (adj-other () a) xa
