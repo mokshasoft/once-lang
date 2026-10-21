@@ -149,19 +149,15 @@ private
   arrow-at {sc} .(schemaOf sc) refl = schema-arrow sc
 
 module AtState {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSig S imps) (ts : TeleSig S tele)
-               (sgcf : SigCF S) (nm : Fin s → CanonicalName) (w : WInv S (scope sg imps tele) is ts nm) where
-
-  V = viewOf {S = S} ss is ts
-
-  open Def S Σ sigop-S nm (λ d → cf→clean (sgcf d)) {imps} {sg} {C.buildPolyCtx tele} {ps} V
-         (h-imp-of S nm is (WInv.imp-named w))
-         (h-poly-of S nm ts (WInv.tele-named w))
-         (λ {x} {sc} lp g → trans (cong LP.Schema.arity (proj₂ (telFind ts lp))) (ground-arity sc g))
-         (λ {x} {sc} lp ng → subst (0 <_) (sym (cong LP.Schema.arity (proj₂ (telFind ts lp)))) (open-arity sc ng))
-         (λ {x} {sc} lp → occ-at {sc} _ (proj₂ (telFind ts lp)))
-         (λ {x} {sc} lp → arrow-at {sc} _ (proj₂ (telFind ts lp)))
-         (WInv.named w) h-sig (WInv.mono-at w) (WInv.ps-at w) (WInv.poly-at w) h-own-sig
-    public
+               (sgcf : SigCF S) (nm : Fin s → CanonicalName) (w : WInv S (scope sg imps tele) is ts nm) =
+  Def S Σ sigop-S nm (λ d → cf→clean (sgcf d)) {imps} {sg} {C.buildPolyCtx tele} {ps} (viewOf {S = S} ss is ts)
+      (h-imp-of S nm is (WInv.imp-named w))
+      (h-poly-of S nm ts (WInv.tele-named w))
+      (λ {x} {sc} lp g → trans (cong LP.Schema.arity (proj₂ (telFind ts lp))) (ground-arity sc g))
+      (λ {x} {sc} lp ng → subst (0 <_) (sym (cong LP.Schema.arity (proj₂ (telFind ts lp)))) (open-arity sc ng))
+      (λ {x} {sc} lp → occ-at {sc} _ (proj₂ (telFind ts lp)))
+      (λ {x} {sc} lp → arrow-at {sc} _ (proj₂ (telFind ts lp)))
+      (WInv.named w) h-sig (WInv.mono-at w) (WInv.ps-at w) (WInv.poly-at w) h-own-sig
 
 ------------------------------------------------------------------------
 -- The declarations and the entries
