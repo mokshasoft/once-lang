@@ -768,11 +768,45 @@ d_zencL'45'inj_608 = erased
 d_ValidIdentChars_638 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> ()
 d_ValidIdentChars_638 = erased
+-- Once.Target.SymbolInjective.OpNameChars
+d_OpNameChars_646 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> ()
+d_OpNameChars_646 = erased
+-- Once.Target.SymbolInjective.NameChars
+d_NameChars_654 :: [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> ()
+d_NameChars_654 = erased
+-- Once.Target.SymbolInjective.opName⇒¬digit
+d_opName'8658''172'digit_660 ::
+  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_opName'8658''172'digit_660 = erased
+-- Once.Target.SymbolInjective._.go
+d_go_674 ::
+  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_go_674 = erased
+-- Once.Target.SymbolInjective._._.at
+d_at_694 ::
+  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
+  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  Bool ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_at_694 = erased
 -- Once.Target.SymbolInjective.mangL
-d_mangL_646 ::
+d_mangL_700 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_mangL_646 v0
+d_mangL_700 v0
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
       (coe
@@ -781,31 +815,42 @@ d_mangL_646 v0
             MAlonzo.Code.Data.List.Base.du_length_268 (coe d_zencL_142 v0)))
       (coe d_zencL_142 v0)
 -- Once.Target.SymbolInjective.zencL-vic
-d_zencL'45'vic_656 ::
+d_zencL'45'vic_710 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_zencL'45'vic_656 v0 v1
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_zencL'45'vic_710 v0 ~v1 = du_zencL'45'vic_710 v0
+du_zencL'45'vic_710 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_zencL'45'vic_710 v0
   = case coe v0 of
-      (:) v2 v3
+      (:) v1 v2
         -> coe
-             seq (coe v1)
-             (coe du_go_672 (coe v2) (coe v3) (coe d_zec'45'class_138 (coe v2)))
+             du_go_732 (coe v1) (coe v2) (coe d_zec'45'class_138 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Target.SymbolInjective._.head¬digit
+d_head'172'digit_722 ::
+  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_head'172'digit_722 = erased
 -- Once.Target.SymbolInjective._.go
-d_go_672 ::
-  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_go_672 v0 v1 ~v2 ~v3 v4 = du_go_672 v0 v1 v4
-du_go_672 ::
+d_go_732 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_go_672 v0 v1 v2
+d_go_732 v0 v1 ~v2 v3 = du_go_732 v0 v1 v3
+du_go_732 ::
+  MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_go_732 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3
         -> case coe v3 of
@@ -854,53 +899,54 @@ du_go_672 v0 v1 v2
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.SymbolInjective.zencL-suffix-headND
-d_zencL'45'suffix'45'headND_692 ::
+d_zencL'45'suffix'45'headND_752 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> AgdaAny -> AgdaAny
-d_zencL'45'suffix'45'headND_692 v0 ~v1 v2
-  = du_zencL'45'suffix'45'headND_692 v0 v2
-du_zencL'45'suffix'45'headND_692 ::
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> AgdaAny -> AgdaAny
-du_zencL'45'suffix'45'headND_692 v0 v1
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> AgdaAny
+d_zencL'45'suffix'45'headND_752 v0 ~v1 ~v2
+  = du_zencL'45'suffix'45'headND_752 v0
+du_zencL'45'suffix'45'headND_752 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> AgdaAny
+du_zencL'45'suffix'45'headND_752 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-            (coe d_zencL'45'vic_656 (coe v0) (coe v1))))
+            (coe du_zencL'45'vic_710 (coe v0))))
 -- Once.Target.SymbolInjective.++-cons-≢[]
-d_'43''43''45'cons'45''8802''91''93'_716 ::
+d_'43''43''45'cons'45''8802''91''93'_776 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_'43''43''45'cons'45''8802''91''93'_716 = erased
+d_'43''43''45'cons'45''8802''91''93'_776 = erased
 -- Once.Target.SymbolInjective.mangL-nonempty
-d_mangL'45'nonempty_724 ::
+d_mangL'45'nonempty_784 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  AgdaAny ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_mangL'45'nonempty_724 = erased
+d_mangL'45'nonempty_784 = erased
 -- Once.Target.SymbolInjective.joinUsL'
-d_joinUsL''_740 ::
+d_joinUsL''_800 ::
   [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_joinUsL''_740 v0
+d_joinUsL''_800 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32 (coe v1)
-             (coe d_withSep_742 (coe v2))
+             (coe d_withSep_802 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.SymbolInjective.withSep
-d_withSep_742 ::
+d_withSep_802 ::
   [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_withSep_742 v0
+d_withSep_802 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
@@ -908,24 +954,24 @@ d_withSep_742 v0
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe '_')
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32 (coe v1)
-                (coe d_withSep_742 (coe v2)))
+                (coe d_withSep_802 (coe v2)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Target.SymbolInjective.peel
-d_peel_760 ::
+d_peel_820 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  AgdaAny ->
-  AgdaAny ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_peel_760 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 = du_peel_760 v0 v1
-du_peel_760 ::
+d_peel_820 v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 = du_peel_820 v0 v1
+du_peel_820 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_peel_760 v0 v1
+du_peel_820 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
       (coe
@@ -934,70 +980,70 @@ du_peel_760 v0 v1
             du_len'45'prefix'45'cancel_280 (coe d_zencL_142 v0)
             (coe d_zencL_142 v1) erased))
 -- Once.Target.SymbolInjective.withSep-inj
-d_withSep'45'inj_792 ::
+d_withSep'45'inj_852 ::
   [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
   [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_withSep'45'inj_792 = erased
+d_withSep'45'inj_852 = erased
 -- Once.Target.SymbolInjective.joinL-inj
-d_joinL'45'inj_846 ::
+d_joinL'45'inj_906 ::
   [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
   [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_joinL'45'inj_846 = erased
--- Once.Target.SymbolInjective.ValidIdent
-d_ValidIdent_896 ::
+d_joinL'45'inj_906 = erased
+-- Once.Target.SymbolInjective.ValidName
+d_ValidName_956 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()
-d_ValidIdent_896 = erased
+d_ValidName_956 = erased
 -- Once.Target.SymbolInjective.toList-showNat
-d_toList'45'showNat_902 ::
+d_toList'45'showNat_962 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toList'45'showNat_902 = erased
+d_toList'45'showNat_962 = erased
 -- Once.Target.SymbolInjective.toList-zencode
-d_toList'45'zencode_908 ::
+d_toList'45'zencode_968 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toList'45'zencode_908 = erased
+d_toList'45'zencode_968 = erased
 -- Once.Target.SymbolInjective.toList-mangle
-d_toList'45'mangle_914 ::
+d_toList'45'mangle_974 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toList'45'mangle_914 = erased
+d_toList'45'mangle_974 = erased
 -- Once.Target.SymbolInjective._.L
-d_L_922 :: MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Integer
-d_L_922 v0
+d_L_982 :: MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Integer
+d_L_982 v0
   = coe
       MAlonzo.Code.Data.List.Base.du_length_268
       (coe
          MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12
          (MAlonzo.Code.Once.Target.Symbol.d_z'45'encode_40 (coe v0)))
 -- Once.Target.SymbolInjective.toList-joinUs
-d_toList'45'joinUs_926 ::
+d_toList'45'joinUs_986 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_toList'45'joinUs_926 = erased
+d_toList'45'joinUs_986 = erased
 -- Once.Target.SymbolInjective.body-rel
-d_body'45'rel_946 ::
+d_body'45'rel_1006 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_body'45'rel_946 = erased
+d_body'45'rel_1006 = erased
 -- Once.Target.SymbolInjective.once-symbol-path-injective
-d_once'45'symbol'45'path'45'injective_954 ::
+d_once'45'symbol'45'path'45'injective_1014 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_once'45'symbol'45'path'45'injective_954 = erased
+d_once'45'symbol'45'path'45'injective_1014 = erased
 -- Once.Target.SymbolInjective._.M
-d_M_970 ::
+d_M_1030 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
@@ -1005,11 +1051,11 @@ d_M_970 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_M_970 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_M_970 v5
-du_M_970 ::
+d_M_1030 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_M_1030 v5
+du_M_1030 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-du_M_970 v0
+du_M_1030 v0
   = coe
       MAlonzo.Code.Once.Target.Symbol.d_join'45'us_48
       (coe
@@ -1017,40 +1063,40 @@ du_M_970 v0
          (coe MAlonzo.Code.Once.Target.Symbol.d_mangle'45'component_44)
          (coe MAlonzo.Code.Once.Spec.Name.d_parts_10 (coe v0)))
 -- Once.Target.SymbolInjective._.teq
-d_teq_974 ::
+d_teq_1034 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_teq_974 = erased
+d_teq_1034 = erased
 -- Once.Target.SymbolInjective._.bodyEq
-d_bodyEq_976 ::
+d_bodyEq_1036 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_bodyEq_976 = erased
+d_bodyEq_1036 = erased
 -- Once.Target.SymbolInjective.once-symbol-own-injective
-d_once'45'symbol'45'own'45'injective_986 ::
+d_once'45'symbol'45'own'45'injective_1046 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  AgdaAny ->
-  AgdaAny ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_once'45'symbol'45'own'45'injective_986 = erased
+d_once'45'symbol'45'own'45'injective_1046 = erased
 -- Once.Target.SymbolInjective.once-symbol-own-≢
-d_once'45'symbol'45'own'45''8802'_1002 ::
+d_once'45'symbol'45'own'45''8802'_1062 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  AgdaAny ->
-  AgdaAny ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_once'45'symbol'45'own'45''8802'_1002 = erased
+d_once'45'symbol'45'own'45''8802'_1062 = erased

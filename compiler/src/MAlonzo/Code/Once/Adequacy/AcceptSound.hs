@@ -974,7 +974,7 @@ du_crm'45'sound_830 v0 v1 v2
   = coe
       du_crm'45'aux'45'sound_808 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_640
+         MAlonzo.Code.Once.Parser.d_extractFunctions_652
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
       (coe v2)

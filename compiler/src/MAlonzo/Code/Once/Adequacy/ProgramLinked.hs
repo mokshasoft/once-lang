@@ -4230,18 +4230,18 @@ du_moduleToProgram'45'linked_2870 v0 v1
           = coe
               MAlonzo.Code.Once.Adequacy.FunBundle.du_node'45'ef_1442
               (coe
-                 MAlonzo.Code.Once.Parser.d_guardDistinct_542
+                 MAlonzo.Code.Once.Parser.d_guardDistinct_554
                  (coe
-                    MAlonzo.Code.Once.Parser.d_thenExtract_634
+                    MAlonzo.Code.Once.Parser.d_thenExtract_646
                     (coe
-                       MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
+                       MAlonzo.Code.Once.Parser.d_sigsAdjacent_566
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                     (coe
                        MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                        (coe
-                          MAlonzo.Code.Once.Parser.d_sigsFirst_630
+                          MAlonzo.Code.Once.Parser.d_sigsFirst_642
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in
     coe

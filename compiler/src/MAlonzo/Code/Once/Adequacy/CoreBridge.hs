@@ -81,7 +81,7 @@ du_typedSig_24 v0
                -> coe
                     du_typedSig'45'ef_14
                     (coe
-                       MAlonzo.Code.Once.Parser.d_extractFunctions_640
+                       MAlonzo.Code.Once.Parser.d_extractFunctions_652
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
                        (coe v1))
                     (coe v3)
@@ -127,7 +127,7 @@ du_typedProgram_52 v0
                -> coe
                     du_typedProgram'45'ef_38
                     (coe
-                       MAlonzo.Code.Once.Parser.d_extractFunctions_640
+                       MAlonzo.Code.Once.Parser.d_extractFunctions_652
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
                        (coe v1))
                     (coe v3) (coe v4)
@@ -409,18 +409,18 @@ du_program'45'core'45'tr_222 v0 v1 v2 v3 v4 v5
           = coe
               MAlonzo.Code.Once.Adequacy.FunBundle.du_node'45'ef_1442
               (coe
-                 MAlonzo.Code.Once.Parser.d_guardDistinct_542
+                 MAlonzo.Code.Once.Parser.d_guardDistinct_554
                  (coe
-                    MAlonzo.Code.Once.Parser.d_thenExtract_634
+                    MAlonzo.Code.Once.Parser.d_thenExtract_646
                     (coe
-                       MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
+                       MAlonzo.Code.Once.Parser.d_sigsAdjacent_566
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v1))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                     (coe
                        MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
                        (coe
-                          MAlonzo.Code.Once.Parser.d_sigsFirst_630
+                          MAlonzo.Code.Once.Parser.d_sigsFirst_642
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v1)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in
     coe

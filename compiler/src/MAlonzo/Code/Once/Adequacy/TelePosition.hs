@@ -137,7 +137,7 @@ du_irf'45'defs_72 v0 v1 v2 v3 v4 v5
 d_entryName_94 ::
   MAlonzo.Code.Once.Parser.T_Entry_132 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_entryName_94 = coe MAlonzo.Code.Once.Parser.d_entryNameOf_536
+d_entryName_94 = coe MAlonzo.Code.Once.Parser.d_entryNameOf_548
 -- Once.Adequacy.TelePosition.scopeNames
 d_scopeNames_96 ::
   MAlonzo.Code.Once.Compile.T_CScope_622 ->
@@ -528,7 +528,7 @@ du_entries'45'distinct_486 v0 v1
   = coe
       seq (coe v0)
       (coe
-         MAlonzo.Code.Once.Adequacy.NameClash.du_guard'45'entries_188
+         MAlonzo.Code.Once.Adequacy.NameClash.du_guard'45'entries_224
          (coe v1))
 -- Once.Adequacy.TelePosition.none-in-empty
 d_none'45'in'45'empty_498 ::

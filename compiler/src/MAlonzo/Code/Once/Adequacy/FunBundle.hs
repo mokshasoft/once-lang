@@ -1347,6 +1347,6 @@ du_program'45'node_1466 v0
   = coe
       du_node'45'ef_1442
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_640
+         MAlonzo.Code.Once.Parser.d_extractFunctions_652
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
          (coe v0))

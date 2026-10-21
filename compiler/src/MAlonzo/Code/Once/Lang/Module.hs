@@ -231,7 +231,7 @@ d_moduleSig_152 v0
   = coe
       d_moduleSig'45'ef_148
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_640
+         MAlonzo.Code.Once.Parser.d_extractFunctions_652
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
          (coe v0))
 -- Once.Lang.Module.ModuleTyped-ef

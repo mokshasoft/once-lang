@@ -19299,7 +19299,7 @@ proof only needs the encoding not to start with a digit, and an own name to diff
   (`Parser.validNameB`/`allValidNameB`); the proof's predicate is `NameChars = ValidIdentChars ⊎ OpNameChars`
   (`ValidName`). An operator character encodes to an escape starting with `z`, never a digit; an operator's
   name has no letter, so it is no `arith.block.<d>`.
-* Test: `compiler/test/operator-def.once` (`(<+>)`, `(.->)`; exit code 9).
+* Test: `compiler/test/operator-def.once` (`(<+>)`, `(.+.)`; exit code 9).
 
 ### Recorded with it
 * The String facts T1/T2 of D329 were already assumed, uncounted: five modules (`Target.SymbolInjective`,
