@@ -35,6 +35,9 @@ The analysis must cover each of the following.
   implementation meets the claim; it is not part of the claim. A proof added to the Spec stops
   the merge. Properties of the language go in `Once.Spec.Metatheory` as statements, proved under
   `Once/Metatheory`.
+  The one exemption is `Once.Spec.Type.Substitution` (D335): substitution is functorial, and the
+  meaning of a reference to a polymorphic definition is not well-typed without it. Nothing may be
+  added to it, and no other Spec module may prove anything.
 - A meaning clause may omit or repeat a premise's meaning only if the premise is pure; an
   effectful premise is bound exactly once, left to right (plan 0.116). Its effects then happen once,
   in the order written, which the Spec's coherence and Freyd theorems rely on.

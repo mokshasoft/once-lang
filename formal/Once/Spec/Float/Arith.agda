@@ -57,14 +57,13 @@ module Once.Spec.Float.Arith where
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 open import Data.Nat.DivMod using (_/_; _%_)
-open import Data.Nat.Properties using (m^n≢0; ≡ᵇ⇒≡)
+open import Data.Nat.Properties using (m^n≢0)
 open import Data.Integer using (ℤ; +_; ∣_∣)
 import Data.Integer as ℤ
-import Data.Integer.Properties as ℤ
 open import Data.Bool using (Bool; true; false; if_then_else_; T)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.Spec.Float.Dyadic
   using (FloatFormat; bias; bitLen; signBit; modPow; binary32; binary64)

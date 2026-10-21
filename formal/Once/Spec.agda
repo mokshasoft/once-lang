@@ -24,6 +24,7 @@ module Once.Spec where
 -- The objects.
 import Once.Spec.Grade           -- usage and effect grades
 import Once.Spec.Type            -- the types, over type variables
+import Once.Spec.Type.Substitution  -- substitution is functorial (the one proof, D335)
 import Once.Spec.Sub             -- subtyping
 import Once.Spec.Name            -- canonical names
 import Once.Spec.Word            -- `Int`: the target's machine word

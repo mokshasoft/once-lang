@@ -35,13 +35,14 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Finite; fin; Purity; pure; act; eff; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
-open import Once.Spec.Type using (Ty; KCtx; ∅ₖ; TySub; _⟨_⟩; _⟨_⟩F; Respects; respects-∘; ⟨⟩-∘; μ; ν)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_; Finite; fin; Purity; pure; act; eff; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Once.Spec.Type using (Ty; KCtx; ∅ₖ; TySub; _⟨_⟩; _⟨_⟩F; Respects; μ; ν)
+open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature
   using (DeclType; constant; value; operation; _∶_; Op; op; Layer; call; ⌜_⌝)
 open import Once.Spec.Context
-  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum fmt using (int-bits; float-format)
 import Once.Spec.Word as Word
@@ -98,6 +99,45 @@ module _ {m : ℕ} (σ : TySub m 0) where
   restrict {Γ = Γ ▸ A} (1≤1 ⊑∷ ps) (ρ , v) = restrict ps ρ , v
   restrict {Γ = Γ ▸ A} (1≤ω ⊑∷ ps) (ρ , v) = restrict ps ρ , v
   restrict {Γ = Γ ▸ A} (ω≤ω ⊑∷ ps) (ρ , v) = restrict ps ρ , v
+
+  -- The values each part of a term uses: either summand of a usage, and a
+  -- usage scaled by `One` or `Many`.
+  slotˡ : ∀ p q {X} → Slot (p +q q) X → Slot p X
+  slotˡ Zero q    _ = tt
+  slotˡ One  Zero x = x
+  slotˡ One  One  x = x
+  slotˡ One  Many x = x
+  slotˡ Many q    x = x
+
+  slotʳ : ∀ p q {X} → Slot (p +q q) X → Slot q X
+  slotʳ Zero q    x = x
+  slotʳ One  Zero _ = tt
+  slotʳ One  One  x = x
+  slotʳ One  Many x = x
+  slotʳ Many Zero _ = tt
+  slotʳ Many One  x = x
+  slotʳ Many Many x = x
+
+  slot*Many : ∀ q {X} → Slot (Many *q q) X → Slot q X
+  slot*Many Zero _ = tt
+  slot*Many One  x = x
+  slot*Many Many x = x
+
+  envˡ : ∀ {n} {Γ : Ctx m n} (Ψ₁ Ψ₂ : Usage n) → Env Γ (Ψ₁ +ᵘ Ψ₂) → Env Γ Ψ₁
+  envˡ {Γ = ∅}     []       []       tt      = tt
+  envˡ {Γ = Γ ▸ A} (p ∷ Ψ₁) (q ∷ Ψ₂) (ρ , v) = envˡ Ψ₁ Ψ₂ ρ , slotˡ p q v
+
+  envʳ : ∀ {n} {Γ : Ctx m n} (Ψ₁ Ψ₂ : Usage n) → Env Γ (Ψ₁ +ᵘ Ψ₂) → Env Γ Ψ₂
+  envʳ {Γ = ∅}     []       []       tt      = tt
+  envʳ {Γ = Γ ▸ A} (p ∷ Ψ₁) (q ∷ Ψ₂) (ρ , v) = envʳ Ψ₁ Ψ₂ ρ , slotʳ p q v
+
+  env*One : ∀ {n} {Γ : Ctx m n} (Ψ : Usage n) → Env Γ (One *ᵘ Ψ) → Env Γ Ψ
+  env*One {Γ = ∅}     []      tt      = tt
+  env*One {Γ = Γ ▸ A} (q ∷ Ψ) (ρ , v) = env*One Ψ ρ , v
+
+  env*Many : ∀ {n} {Γ : Ctx m n} (Ψ : Usage n) → Env Γ (Many *ᵘ Ψ) → Env Γ Ψ
+  env*Many {Γ = ∅}     []      tt      = tt
+  env*Many {Γ = Γ ▸ A} (q ∷ Ψ) (ρ , v) = env*Many Ψ ρ , slot*Many q v
 
   lookupᵛ : ∀ {n} (Γ : Ctx m n) (i : Fin n) → Env Γ (Once.Spec.Context.singleUse i One) → ⟦ lookup Γ i ⟨ σ ⟩ ⟧ᵛ
   lookupᵛ (Γ ▸ A) zero    (ρ , v) = v
@@ -158,59 +198,59 @@ module _ {m : ℕ} (σ : TySub m 0) where
 
 -- The function, then the argument, then the call.
 ⟦ ⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Zero} {π} {π₁} df dx ⟧ ρ σ r γ =
-  bindᵍ π₁ π (⟦ df ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) γ)) λ f → f tt
+  bindᵍ π₁ π (⟦ df ⟧ ρ σ r (envˡ σ Ψ₁ (Zero *ᵘ Ψ₂) γ)) λ f → f tt
 ⟦ ⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = One} {π} {π₁} {π₂} df dx ⟧ ρ σ r γ =
-  bindᵍ π₁ _ (⟦ df ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) γ)) λ f →
-  bindᵍ π₂ π (⟦ dx ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) γ)) λ x → f x
+  bindᵍ π₁ _ (⟦ df ⟧ ρ σ r (envˡ σ Ψ₁ (One *ᵘ Ψ₂) γ)) λ f →
+  bindᵍ π₂ π (⟦ dx ⟧ ρ σ r (env*One σ Ψ₂ (envʳ σ Ψ₁ (One *ᵘ Ψ₂) γ))) λ x → f x
 ⟦ ⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Many} {π} {π₁} {π₂} df dx ⟧ ρ σ r γ =
-  bindᵍ π₁ _ (⟦ df ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) γ)) λ f →
-  bindᵍ π₂ π (⟦ dx ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) γ)) λ x → f x
+  bindᵍ π₁ _ (⟦ df ⟧ ρ σ r (envˡ σ Ψ₁ (Many *ᵘ Ψ₂) γ)) λ f →
+  bindᵍ π₂ π (⟦ dx ⟧ ρ σ r (env*Many σ Ψ₂ (envʳ σ Ψ₁ (Many *ᵘ Ψ₂) γ))) λ x → f x
 
 -- An erased right-hand side is not evaluated.
 ⟦ ⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = Zero} d₁ d₂ ⟧ ρ σ r γ =
-  ⟦ d₂ ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) γ , tt)
+  ⟦ d₂ ⟧ ρ σ r (envˡ σ Ψ₂ (Zero *ᵘ Ψ₁) γ , tt)
 ⟦ ⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = One} {π₁} {π₂} d₁ d₂ ⟧ ρ σ r γ =
-  bindᵍ π₁ π₂ (⟦ d₁ ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) γ)) λ v →
-  ⟦ d₂ ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) γ , v)
+  bindᵍ π₁ π₂ (⟦ d₁ ⟧ ρ σ r (env*One σ Ψ₁ (envʳ σ Ψ₂ (One *ᵘ Ψ₁) γ))) λ v →
+  ⟦ d₂ ⟧ ρ σ r (envˡ σ Ψ₂ (One *ᵘ Ψ₁) γ , v)
 ⟦ ⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = Many} {π₁} {π₂} d₁ d₂ ⟧ ρ σ r γ =
-  bindᵍ π₁ π₂ (⟦ d₁ ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) γ)) λ v →
-  ⟦ d₂ ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) γ , v)
+  bindᵍ π₁ π₂ (⟦ d₁ ⟧ ρ σ r (env*Many σ Ψ₁ (envʳ σ Ψ₂ (Many *ᵘ Ψ₁) γ))) λ v →
+  ⟦ d₂ ⟧ ρ σ r (envˡ σ Ψ₂ (Many *ᵘ Ψ₁) γ , v)
 
 ⟦ ⊢unit ⟧ ρ σ r γ = tt
 
 ⟦ ⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} da db ⟧ ρ σ r γ =
-  bindᵍ π₁ π₂ (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) γ)) λ a →
-  fmap π₂ (λ b → a , b) (⟦ db ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) γ))
+  bindᵍ π₁ π₂ (⟦ da ⟧ ρ σ r (envˡ σ Ψ₁ Ψ₂ γ)) λ a →
+  fmap π₂ (λ b → a , b) (⟦ db ⟧ ρ σ r (envʳ σ Ψ₁ Ψ₂ γ))
 ⟦ ⊢fst {π = π} d ⟧ ρ σ r γ = fmap π proj₁ (⟦ d ⟧ ρ σ r γ)
 ⟦ ⊢snd {π = π} d ⟧ ρ σ r γ = fmap π proj₂ (⟦ d ⟧ ρ σ r γ)
 
 ⟦ ⊢inl {π = π} d ⟧ ρ σ r γ = fmap π inj₁ (⟦ d ⟧ ρ σ r γ)
 ⟦ ⊢inr {π = π} d ⟧ ρ σ r γ = fmap π inj₂ (⟦ d ⟧ ρ σ r γ)
 ⟦ ⊢case {Ψs = Ψs} {Ψ} {qℓ} {qr} {π₁} {π₂} ds dl dr ⟧ ρ σ r γ =
-  bindᵍ π₁ π₂ (⟦ ds ⟧ ρ σ r (restrict σ (⊑ᵘ-+ˡ Ψs Ψ) γ))
-    [ (λ a → ⟦ dl ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ Ψs Ψ) γ , slot qℓ a))
-    , (λ b → ⟦ dr ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ Ψs Ψ) γ , slot qr b)) ]′
+  bindᵍ π₁ π₂ (⟦ ds ⟧ ρ σ r (envˡ σ Ψs Ψ γ))
+    [ (λ a → ⟦ dl ⟧ ρ σ r (envʳ σ Ψs Ψ γ , slot qℓ a))
+    , (λ b → ⟦ dr ⟧ ρ σ r (envʳ σ Ψs Ψ γ , slot qr b)) ]′
 
 ⟦ ⊢absurd {π = π} d ⟧ ρ σ r γ = bind π (⟦ d ⟧ ρ σ r γ) ⊥-elim
 
 ⟦ ⊢roll {π = π} {F = F} wf d ⟧ ρ σ r γ = fmap π (λ l → inS (toL σ F (μ F) l)) (⟦ d ⟧ ρ σ r γ)
 ⟦ ⊢fold {Ψa = Ψa} {Ψt} {π} {π₁} {π₂} {F} {A} wf da dt ⟧ ρ σ r γ =
-  bindᵍ π₁ _ (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) γ)) λ alg →
-  bindᵍ π₂ π (⟦ dt ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) γ)) λ v →
+  bindᵍ π₁ _ (⟦ da ⟧ ρ σ r (env*Many σ Ψa (envˡ σ (Many *ᵘ Ψa) Ψt γ))) λ alg →
+  bindᵍ π₂ π (⟦ dt ⟧ ρ σ r (envʳ σ (Many *ᵘ Ψa) Ψt γ)) λ v →
   foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v
 
 ⟦ ⊢unfold {Ψc = Ψc} {Ψs} {f} {π₁} {π₂} {F} {A} wf dc da ⟧ ρ σ r γ =
-  bindᵍ π₁ π₂ (⟦ dc ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) γ)) λ c →
+  bindᵍ π₁ π₂ (⟦ dc ⟧ ρ σ r (env*Many σ Ψc (envˡ σ (Many *ᵘ Ψc) Ψs γ))) λ c →
   fmap π₂ (ana f (code (F ⟨ σ ⟩F)) (λ x → fmap (fin f) (toL σ F A) (c x)))
-          (⟦ da ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) γ))
+          (⟦ da ⟧ ρ σ r (envʳ σ (Many *ᵘ Ψc) Ψs γ))
 ⟦ ⊢out {f = f} {π₁} {F} wf d ⟧ ρ σ r γ =
   bindᵍ π₁ (fin f) (⟦ d ⟧ ρ σ r γ) λ v → fmap (fin f) (fromL σ F (ν F f)) (outν v)
 
 -- The server: the round is evaluated once, then the seed; the loop is the
 -- anamorphism over the round.
 ⟦ ⊢iter {Ψf = Ψf} {Ψs} {π₁} {π₂} d ds ⟧ ρ σ r γ =
-  bindᵍ π₁ _ (⟦ d ⟧ ρ σ r (restrict σ (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) γ)) λ f →
-  bindᵍ π₂ eff (⟦ ds ⟧ ρ σ r (restrict σ (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) γ)) λ a →
+  bindᵍ π₁ _ (⟦ d ⟧ ρ σ r (env*Many σ Ψf (envˡ σ (Many *ᵘ Ψf) Ψs γ))) λ f →
+  bindᵍ π₂ eff (⟦ ds ⟧ ρ σ r (envʳ σ (Many *ᵘ Ψf) Ψs γ)) λ a →
   loop f a
 
 ⟦ ⊢coerce {π = π} p d ⟧ ρ σ r γ = fmap π (conv σ p) (⟦ d ⟧ ρ σ r γ)

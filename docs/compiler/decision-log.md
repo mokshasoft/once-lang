@@ -19385,6 +19385,14 @@ the code so as little as possible makes it into the compiler?").
    hold proofs; Spec modules are proof-free (MERGE.md §1). Not a move alone: `Spec.Core.Meaning` uses
    `respects-∘`, `⟨⟩-∘` and the five usage-order lemmas, so the meaning must be restated not to need them.
    A Spec patch, drafted whole and shown for approval before it lands (plan 0.121 §6).
+   **As landed:** the usage-order lemmas move to `Metatheory.TermModel.Usage`, and the meaning instead
+   uses Spec-defined environment operations (`envˡ`, `envʳ`, `env*One`, `env*Many`), which restrict an
+   environment by definition. The substitution lemmas CANNOT leave: a reference to a polymorphic
+   definition, inside a body read at an instance, has the definition's value at the composed instance,
+   whose type agrees with the reference's only by `⟨⟩-∘` — every formulation of the meaning of
+   polymorphism needs functoriality of substitution. The user chose to **isolate and exempt** them:
+   `Once.Spec.Type.Substitution` holds `base-⟨⟩`, `respects-∘`, `⟨⟩-∘`, `⟨⟩F-∘` and nothing else, and is
+   the one written exemption to "the Spec is proof-free" (MERGE.md §1).
 2. **`Once.Spike.RelSpike`'s gate raises are accepted** (`backstop.islands` +1, `public-gate.baseline` +1;
    plan 0.93 S3, recorded in D328).
 3. **The unused imports in `Spec/Float/{Arith,Decimal,Dyadic}` are removed** — a Spec patch, with item 1's.

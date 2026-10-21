@@ -286,3 +286,63 @@ infixl 65 _·ᵐ_
 ·ᵐ-mono : ∀ {n n′} {Ψ Ψ′ : Usage n′} (Φ : Fin n′ → Usage n) → Ψ ⊑ᵘ Ψ′ → Ψ ·ᵐ Φ ⊑ᵘ Ψ′ ·ᵐ Φ
 ·ᵐ-mono Φ []        = ⊑ᵘ-refl zeroUsage
 ·ᵐ-mono Φ (a ⊑∷ as) = ⊑ᵘ-+ (⊑ᵘ-*ˡ (Φ zero) a) (·ᵐ-mono (λ i → Φ (suc i)) as)
+
+------------------------------------------------------------------------
+-- The order facts (moved from `Spec.Context`, D335): a part of a term uses
+-- at most what the whole does
+------------------------------------------------------------------------
+
+private
+  ≤q-+ˡ : ∀ p q → p ≤q (p +q q)
+  ≤q-+ˡ Zero q    = 0≤q
+  ≤q-+ˡ One Zero  = 1≤1
+  ≤q-+ˡ One One   = 1≤ω
+  ≤q-+ˡ One Many  = 1≤ω
+  ≤q-+ˡ Many q    = ω≤ω
+
+  ≤q-+ʳ : ∀ p q → q ≤q (p +q q)
+  ≤q-+ʳ Zero Zero = 0≤q
+  ≤q-+ʳ Zero One  = 1≤1
+  ≤q-+ʳ Zero Many = ω≤ω
+  ≤q-+ʳ One Zero  = 0≤q
+  ≤q-+ʳ One One   = 1≤ω
+  ≤q-+ʳ One Many  = ω≤ω
+  ≤q-+ʳ Many Zero = 0≤q
+  ≤q-+ʳ Many One  = 1≤ω
+  ≤q-+ʳ Many Many = ω≤ω
+
+  ≤q-trans : ∀ {a b c} → a ≤q b → b ≤q c → a ≤q c
+  ≤q-trans 0≤q _   = 0≤q
+  ≤q-trans 1≤1 b≤c = b≤c
+  ≤q-trans 1≤ω ω≤ω = 1≤ω
+  ≤q-trans ω≤ω ω≤ω = ω≤ω
+
+  ≤q-*One : ∀ q → q ≤q (One *q q)
+  ≤q-*One Zero = 0≤q
+  ≤q-*One One  = 1≤1
+  ≤q-*One Many = ω≤ω
+
+  ≤q-*Many : ∀ q → q ≤q (Many *q q)
+  ≤q-*Many Zero = 0≤q
+  ≤q-*Many One  = 1≤ω
+  ≤q-*Many Many = ω≤ω
+
+⊑ᵘ-+ˡ : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ ⊑ᵘ Ψ₁ +ᵘ Ψ₂
+⊑ᵘ-+ˡ []       []       = []
+⊑ᵘ-+ˡ (p ∷ Ψ₁) (q ∷ Ψ₂) = ≤q-+ˡ p q ⊑∷ ⊑ᵘ-+ˡ Ψ₁ Ψ₂
+
+⊑ᵘ-+ʳ : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₂ ⊑ᵘ Ψ₁ +ᵘ Ψ₂
+⊑ᵘ-+ʳ []       []       = []
+⊑ᵘ-+ʳ (p ∷ Ψ₁) (q ∷ Ψ₂) = ≤q-+ʳ p q ⊑∷ ⊑ᵘ-+ʳ Ψ₁ Ψ₂
+
+⊑ᵘ-trans : ∀ {n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} → Ψ₁ ⊑ᵘ Ψ₂ → Ψ₂ ⊑ᵘ Ψ₃ → Ψ₁ ⊑ᵘ Ψ₃
+⊑ᵘ-trans []       []       = []
+⊑ᵘ-trans (a ⊑∷ as) (b ⊑∷ bs) = ≤q-trans a b ⊑∷ ⊑ᵘ-trans as bs
+
+⊑ᵘ-*One : ∀ {n} (Ψ : Usage n) → Ψ ⊑ᵘ One *ᵘ Ψ
+⊑ᵘ-*One []      = []
+⊑ᵘ-*One (q ∷ Ψ) = ≤q-*One q ⊑∷ ⊑ᵘ-*One Ψ
+
+⊑ᵘ-*Many : ∀ {n} (Ψ : Usage n) → Ψ ⊑ᵘ Many *ᵘ Ψ
+⊑ᵘ-*Many []      = []
+⊑ᵘ-*Many (q ∷ Ψ) = ≤q-*Many q ⊑∷ ⊑ᵘ-*Many Ψ
