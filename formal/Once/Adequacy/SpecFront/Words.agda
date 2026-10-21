@@ -30,7 +30,7 @@ import Data.Nat.Properties as NatP
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₂)
 open import Data.String using (String; toList; fromList)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Signature using (Signature; Decl; _∶_)
@@ -145,7 +145,7 @@ lex-words (lex-skip _ _ _ l)         = lex-words l
 -- What a declaration says of the signature's names.
 DeclW : SX.Decl → Set
 DeclW (DSignature x _)          = Word x
-DeclW (DImport (mkImport p _))  = All Word p
+DeclW (DImport (mkImport p _))  = All Word p × p ≢ []
 DeclW (DTypeSig _ _)            = ⊤
 DeclW (DFunDef _ _)             = ⊤
 DeclW (DTypeAlias _ _ _)        = ⊤
@@ -160,8 +160,13 @@ private
   path-words ws p = path-words′ p ws
 
   import-words : ∀ {ts d r} → All TokW ts → ParsesImport ts d r → DeclW d
-  import-words ws (import-as p)      = path-words ws p
-  import-words ws (import-plain p _) = path-words ws p
+  path-ne : ∀ {ts p r} → ParsesModulePath ts p r → p ≢ []
+  path-ne (path-cons _)    ()
+  path-ne (path-dotstop _) ()
+  path-ne (path-end _)     ()
+
+  import-words ws (import-as p)      = path-words ws p , path-ne p
+  import-words ws (import-plain p _) = path-words ws p , path-ne p
 
   alias-words : ∀ {x ps ts d r} → G.ParsesTypeAlias x ps ts d r → DeclW d
   alias-words (G.alias-eq _)    = tt
@@ -235,7 +240,7 @@ private
 
   imp-words : ∀ {mm ds Σ} → ModsW mm → All DeclW ds → Imported mm ds Σ → KeysW Σ
   imp-words wm _        im-nil                  = []
-  imp-words wm (wp ∷ ws) (im-import f ex so im) =
+  imp-words wm ((wp , _) ∷ ws) (im-import f ex so im) =
     ++-all (sigs-words (expand-words wp ex) (first-words wm f) so) (imp-words wm ws im)
   imp-words wm (_ ∷ ws) (im-other _ im)         = imp-words wm ws im
 

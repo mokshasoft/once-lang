@@ -91,7 +91,7 @@ res-expr (re-pair a b) (e-pair ea eb) (ga , gb) =
 res-expr (re-destruct s l r) (e-destruct es el er) (gs , gl , gr) =
   let (s′ , rs , xs) = res-expr s es gs ; (l′ , rl , xl) = res-expr l el gl ; (r′ , rr , xr) = res-expr r er gr
   in _ , r-destruct rs rl rr , x-destruct xs xl xr
-res-expr (re-annot e) (e-annot ee) (rf , g) = let (e′ , re′ , xe) = res-expr e ee g in _ , r-annot re′ , x-annot rf xe
+res-expr (re-annot e) (e-annot _ ee) (rf , g) = let (e′ , re′ , xe) = res-expr e ee g in _ , r-annot re′ , x-annot rf xe
 res-expr (re-binop a b) (e-binop ea eb) (ga , gb) =
   let (a′ , ra , xa) = res-expr a ea ga ; (b′ , rb , xb) = res-expr b eb gb in _ , r-binop ra rb , x-binop xa xb
 res-expr (re-unop e) (e-neg ee) g = let (e′ , re′ , xe) = res-expr e ee g in _ , r-neg re′ , x-neg xe
@@ -112,24 +112,23 @@ open import Once.Parser.Module.Resolve using (signaturesWithOwner; ownerOf)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 import Once.Spec.Surface.Program as SPr
 
-private
-  owner-just : ∀ (i : Import) → Σ[ o ∈ List String ] ownerOf i ≡ just o
-  owner-just (mkImport p (just _)) = _ , refl
-  owner-just (mkImport p nothing)  = _ , refl
+-- an import's signatures have an owner
+owner-just : ∀ (i : Import) → Σ[ o ∈ List String ] ownerOf i ≡ just o
+owner-just (mkImport p (just _)) = _ , refl
+owner-just (mkImport p nothing)  = _ , refl
 
 -- The resolved declarations: the Spec's, related to the compiler's.
 module Decls (Σ : Signature) where
   open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias; ImportedSig)
 
-  private
-    -- an import's signatures are owned by it
-    owned : ∀ (o : List String) (ds : List Decl) → All ImportedSig (signaturesWithOwner (just o) ds)
-    owned o [] = []
-    owned o (DSignature x _ T ∷ ds) = (x , o , T , refl) ∷ owned o ds
-    owned o (DTypeSig _ _ ∷ ds) = owned o ds
-    owned o (DFunDef _ _ ∷ ds) = owned o ds
-    owned o (DTypeAlias _ _ _ ∷ ds) = owned o ds
-    owned o (DImport _ ∷ ds) = owned o ds
+  -- an import's signatures are owned by it
+  owned : ∀ (o : List String) (ds : List Decl) → All ImportedSig (signaturesWithOwner (just o) ds)
+  owned o [] = []
+  owned o (DSignature x _ T ∷ ds) = (x , o , T , refl) ∷ owned o ds
+  owned o (DTypeSig _ _ ∷ ds) = owned o ds
+  owned o (DFunDef _ _ ∷ ds) = owned o ds
+  owned o (DTypeAlias _ _ _ ∷ ds) = owned o ds
+  owned o (DImport _ ∷ ds) = owned o ds
 
   -- the definitions' resolved bodies are good (the resolver's check)
   res-decls : ∀ {mm um am dsU dsR ds′} → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
@@ -166,19 +165,18 @@ open import Relation.Binary.PropositionalEquality using (trans; cong₂; subst)
 
 open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
 
-private
-  -- its exported names
-  names-eq : ∀ {ds ds′} → Pointwise DEmb ds ds′ → sigNames ds ≡ SR.exports ds′
-  names-eq [] = refl
-  names-eq (d-typesig ∷ pw)   = names-eq pw
-  names-eq (d-fundef _ ∷ pw)  = names-eq pw
-  names-eq (d-signature ∷ pw) = cong (_ ∷_) (names-eq pw)
-  names-eq (d-alias ∷ pw)     = names-eq pw
-  names-eq (d-import ∷ pw)    = names-eq pw
+-- its exported names
+names-eq : ∀ {ds ds′} → Pointwise DEmb ds ds′ → sigNames ds ≡ SR.exports ds′
+names-eq [] = refl
+names-eq (d-typesig ∷ pw)   = names-eq pw
+names-eq (d-fundef _ ∷ pw)  = names-eq pw
+names-eq (d-signature ∷ pw) = cong (_ ∷_) (names-eq pw)
+names-eq (d-alias ∷ pw)     = names-eq pw
+names-eq (d-import ∷ pw)    = names-eq pw
 
-  map-path : ∀ (p : List String) xs → Data.List.map (λ n → (n , p)) xs ≡ SR.mapPath p xs
-  map-path p []       = refl
-  map-path p (x ∷ xs) = cong (_ ∷_) (map-path p xs)
+map-path : ∀ (p : List String) xs → Data.List.map (λ n → (n , p)) xs ≡ SR.mapPath p xs
+map-path p []       = refl
+map-path p (x ∷ xs) = cong (_ ∷_) (map-path p xs)
 
 -- The aliased imports.
 aliases-eq : ∀ {dsU ds′} → Pointwise DEmb dsU ds′ → collectAliases dsU ≡ SR.aliases ds′

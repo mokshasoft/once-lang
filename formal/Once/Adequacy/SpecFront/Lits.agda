@@ -124,7 +124,7 @@ mutual
   emb-lits e-unit = refl
   emb-lits e-int = refl
   emb-lits e-float = refl
-  emb-lits (e-annot e) = emb-lits e
+  emb-lits (e-annot _ e) = emb-lits e
   emb-lits (e-binop a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
   emb-lits (e-neg e) = emb-neg e
 
@@ -140,7 +140,7 @@ mutual
   emb-neg e-unit = refl
   emb-neg e-int = refl
   emb-neg e-float = refl
-  emb-neg (e-annot e) = emb-lits e
+  emb-neg (e-annot _ e) = emb-lits e
   emb-neg (e-binop a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
   emb-neg (e-neg e) = emb-neg e
 
