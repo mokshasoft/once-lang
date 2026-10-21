@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.SpecGrammar.Decl — the compiler's declaration and module
--- grammar (`Once.Lang.Grammar.*`, `Once.Lang.Parsing`) against the Spec's.
+-- grammar (`Once.Internal.Grammar.*`, `Once.Internal.Parsing`) against the Spec's.
 --
 --   * `parses→` : a text the compiler parses, into declarations that embed
 --     (`DEmb`), is one the Spec parses into their images;
@@ -28,7 +28,7 @@ open import Data.String.Properties using (_≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; yes; no)
 
-open import Once.Lang.Syntax using (RawExpr)
+open import Once.Internal.Syntax using (RawExpr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Lexing using (Token; TString; TWord; TLParen; TRParen; TColon; TEquals; TDot; TNewline; TEOF; Lexes)
 open import Once.Spec.Surface.Grammar as G
@@ -45,14 +45,14 @@ open import Once.Parser.Module.DeclTail using (colonHead)
 open import Once.Parser.Module.OpName using (opTokClass)
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 import Once.Parser.Module.FunDef.Params as LPar
-import Once.Lang.Grammar.Decl as LD
-import Once.Lang.Grammar.Import as LI
-import Once.Lang.Grammar.TypeAlias as LT
-import Once.Lang.Grammar.Signature as LS
-import Once.Lang.Grammar.FunDef as LF
-import Once.Lang.Grammar.OpDecl as LO
-import Once.Lang.Parsing as LP
-import Once.Lang.Lexing as LL
+import Once.Internal.Grammar.Decl as LD
+import Once.Internal.Grammar.Import as LI
+import Once.Internal.Grammar.TypeAlias as LT
+import Once.Internal.Grammar.Signature as LS
+import Once.Internal.Grammar.FunDef as LF
+import Once.Internal.Grammar.OpDecl as LO
+import Once.Internal.Parsing as LP
+import Once.Internal.Lexing as LL
 import Once.Parser
 import Once.Parser.Module.Core
 import Once.Parser.Module.Import

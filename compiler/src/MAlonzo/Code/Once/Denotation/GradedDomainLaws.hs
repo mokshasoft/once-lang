@@ -19,8 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Once.Denotation.TraceMonadInfLaws
-import qualified MAlonzo.Code.Once.Lang.Type.Grade
-import qualified MAlonzo.Code.Once.Lang.Type.Sub
+import qualified MAlonzo.Code.Once.Spec.Grade
 
 -- Once.Denotation.GradedDomainLaws.>>=ᵖ-β
 d_'62''62''61''7510''45'β_14 ::
@@ -46,20 +45,20 @@ d_'62''62''61''7510''45'id'691'_48 ::
 d_'62''62''61''7510''45'id'691'_48 = erased
 -- Once.Denotation.GradedDomainLaws.bindM-idˡ
 d_bindM'45'id'737'_64 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Purity_32 ->
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
+  MAlonzo.Code.Once.Spec.Grade.T_Purity_40 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8849'π__50 ->
   () -> () -> AgdaAny -> (AgdaAny -> AgdaAny) -> AgdaAny
 d_bindM'45'id'737'_64 ~v0 v1 ~v2 ~v3 v4 v5
   = du_bindM'45'id'737'_64 v1 v4 v5
 du_bindM'45'id'737'_64 ::
-  MAlonzo.Code.Once.Lang.Type.Sub.T__'8849'π__8 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8849'π__50 ->
   AgdaAny -> (AgdaAny -> AgdaAny) -> AgdaAny
 du_bindM'45'id'737'_64 v0 v1 v2
   = case coe v0 of
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pure_10 -> erased
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pe_14
+      MAlonzo.Code.Once.Spec.Grade.C_'8849''45'pure_52 -> erased
+      MAlonzo.Code.Once.Spec.Grade.C_'8849''45'pa_54 -> erased
+      MAlonzo.Code.Once.Spec.Grade.C_'8849''45'pe_56
         -> coe
              MAlonzo.Code.Once.Denotation.TraceMonadInfLaws.du_'8776''8734''45'id'737'_126
              (coe v1) (coe v2)
-      MAlonzo.Code.Once.Lang.Type.Sub.C_'8849''45'pa_18 -> erased
       _ -> MAlonzo.RTE.mazUnreachableError

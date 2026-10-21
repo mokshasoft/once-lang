@@ -17,13 +17,15 @@
 open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
-import Once.Lang.Core.PolyTy as LP
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 
+import Once.Spec.Grade
+import Once.Type.Grade
 module Once.Adequacy.SpecCore.Term
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   -- an FFI declaration of the compiler's is the Spec's declaration at the
@@ -36,16 +38,16 @@ open import Data.Product using (Σ-syntax; _×_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Data.Bool using (true)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Type.Sub as LS
-import Once.Lang.Type.WellFormed as LW
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+import Once.Internal.Type.Sub as LS
+import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Grade as SG
-import Once.Lang.Context as LC
+import Once.Internal.Context as LC
 import Once.Spec.Context as SCx
 import Once.Spec.Core.Syntax as SC
-import Once.Lang.Core.Syntax S as L
-import Once.Lang.Core.Typing S as L⊢
+import Once.Internal.Core.Syntax S as L
+import Once.Internal.Core.Typing S as L⊢
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
 open import Once.Adequacy.SpecCore.Type
 open import Once.Adequacy.SpecCore.Context
@@ -62,6 +64,8 @@ open S⊢ using (_⊩_⊢[_]_∷_!_)
 ------------------------------------------------------------------------
 
 module _ {m} {Δ : ST.KCtx m} where
+
+
 
   private
     at : ∀ {n} {Γ : SCx.Ctx m n} {Ψ Ψ′ t A π π′} → Ψ ≡ Ψ′ → π ≡ π′
@@ -95,7 +99,7 @@ module _ {m} {Δ : ST.KCtx m} where
   ------------------------------------------------------------------------
   -- Each rule's step, from its premises' typings
 
-  lam-S : ∀ {n} {Γ′ : SCx.Ctx m n} {Ψ q q′ π A A′ B t′} → (q′ LG.≤q q) ≡ true → TyR Δ A A′
+  lam-S : ∀ {n} {Γ′ : SCx.Ctx m n} {Ψ q q′ π A A′ B t′} → (q′ Once.Type.Grade.≤qᵇ q) ≡ true → TyR Δ A A′
         → Typed (Γ′ SCx.▸ A′) (q′ LC.∷ Ψ) t′ B π
         → Typed Γ′ Ψ (SC.lam A′ (qS q) (πS π) t′) (A LT.⇒[ LG.mk-kind q π ] B) LG.pure
   lam-S {q = q} {q′} le ra (B′ , rb , d) = _ , r-⇒ refl ra rb , S⊢.⊢lam (≤q-S q′ q le) d
@@ -170,8 +174,8 @@ module _ {m} {Δ : ST.KCtx m} where
     where
       arr-fin : ∀ {A′ X Y} φ → X ≡ Y
               → (A′ ST.⇒[ SG.mk-kind SG.Many (πS (LG.fin φ)) ] X) ≡ (A′ ST.⇒[ SG.mk-kind SG.Many (SG.fin (φS φ)) ] Y)
-      arr-fin LG.pure refl = refl
-      arr-fin LG.act  refl = refl
+      arr-fin LG.pureᶠ refl = refl
+      arr-fin LG.actᶠ  refl = refl
 
   out-S : ∀ {n} {Γ′ : SCx.Ctx m n} {Ψ φ π₁ F t′} → LW.WellFormedF F
         → Typed Γ′ Ψ t′ (LT.ν-type F φ) π₁ → Typed Γ′ Ψ (SC.out t′) (LT.⟦ F ⟧T (LT.ν-type F φ)) (π₁ LG.·p LG.fin φ)
@@ -189,7 +193,7 @@ module _ {m} {Δ : ST.KCtx m} where
   sub-use-S : ∀ {n} {Γ′ : SCx.Ctx m n} {Ψ Ψ′ π A t′} → Ψ LC.⊑ᵘ Ψ′ → Typed Γ′ Ψ t′ A π → Typed Γ′ Ψ′ t′ A π
   sub-use-S s (A′ , ra , d) = A′ , ra , S⊢.⊢sub-use (⊑ᵘ-S s) d
 
-  sub-eff-S : ∀ {n} {Γ′ : SCx.Ctx m n} {Ψ π π′ A t′} → π LS.⊑π π′ → Typed Γ′ Ψ t′ A π → Typed Γ′ Ψ t′ A π′
+  sub-eff-S : ∀ {n} {Γ′ : SCx.Ctx m n} {Ψ π π′ A t′} → π Once.Spec.Grade.⊑π π′ → Typed Γ′ Ψ t′ A π → Typed Γ′ Ψ t′ A π′
   sub-eff-S p (A′ , ra , d) = A′ , ra , S⊢.⊢sub-eff (⊑π-S p) d
 
   ------------------------------------------------------------------------

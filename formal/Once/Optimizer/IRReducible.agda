@@ -12,12 +12,13 @@
 
 module Once.Optimizer.IRReducible where
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IR
-open import Once.Lang.Type.DecEq using () renaming (_≟T_ to _≟Type_)
+open import Once.Internal.Type.DecEq using () renaming (_≟T_ to _≟Type_)
 open import Once.Optimize using (_≟IR_)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)

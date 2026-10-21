@@ -24,7 +24,7 @@ open import Data.Unit using (tt)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Syntax using (RVar)
+open import Once.Internal.Syntax using (RVar)
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser
   using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; sigsAdjacent; sigsAdjacent-def)
@@ -79,10 +79,10 @@ adj-ok (adj-other nt-import a) = adj-ok a
 open import Data.Empty using (⊥-elim)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Relation.Nullary using (¬_)
-import Once.Lang.Type as LT
+import Once.Internal.Type as LT
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Lang.Type.Poly using (PolyType)
+open import Once.Internal.Type.Poly using (PolyType)
 open import Once.Spec.Signature using (Signature)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr
@@ -144,7 +144,7 @@ nonSigs-adj (adj-other nt-import a) = adj-other nt-import (nonSigs-adj a)
 sig-reading : ∀ al (T : PolyType) → Σ[ m ∈ Maybe LT.Type ] SigReading al T m
 sig-reading al T with isGround T in ig
 ... | inj₂ _ = nothing , sr-open ig
-... | inj₁ g with isConcrete? (Once.Lang.Type.Poly.extractGround T g) in ic
+... | inj₁ g with isConcrete? (Once.Internal.Type.Poly.extractGround T g) in ic
 ...   | just c  = _ , sr-mono g c ig ic
 ...   | nothing = nothing , sr-nonc g ig ic
 

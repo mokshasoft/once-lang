@@ -4,18 +4,19 @@
 ------------------------------------------------------------------------
 -- Once.Surface.Context — deciders on usages.
 --
--- Contexts and usages are the Spec's (`Once.Lang.Context`). The elaborator
+-- Contexts and usages are the Spec's (`Once.Internal.Context`). The elaborator
 -- decides two things about them here.
 ------------------------------------------------------------------------
 
+open import Once.Type.Grade using (_≤qᵇ_)
 module Once.Surface.Context where
 
 open import Data.Bool using (Bool; true; _∧_)
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Lang.Type.Grade using (Zero; One; Many; _≤q_)
-open import Once.Lang.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; zeroUsage)
+open import Once.Spec.Grade using (Zero; One; Many)
+open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; zeroUsage)
 
 -- | Is this usage vector all zero, i.e. does the expression read no local
 -- variable? Returns the proof the closed-expression lift needs.
@@ -37,4 +38,4 @@ zeroUsage?-just {ℕ.suc n} rewrite zeroUsage?-just {n} = refl
 -- | Does a usage respect the context's declared quantities?
 _≤ᵘ?_ : ∀ {n} → Usage n → Ctx n → Bool
 [] ≤ᵘ? ∅ = true
-(q ∷ ψ) ≤ᵘ? (Γ , A ^ q') = (q ≤q q') ∧ (ψ ≤ᵘ? Γ)
+(q ∷ ψ) ≤ᵘ? (Γ , A ^ q') = (q ≤qᵇ q') ∧ (ψ ≤ᵘ? Γ)

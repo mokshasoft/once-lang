@@ -22,7 +22,7 @@
 
 module Once.Compile where
 
-import Once.Lang.Context as Srf
+import Once.Internal.Context as Srf
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
@@ -36,9 +36,10 @@ open import Data.Unit using (⊤; tt)
 open import Function using (case_of_)
 
 -- Re-export types
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
 
 -- Re-export Core IR
@@ -97,8 +98,8 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 open import Once.Parser
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Module)
-open import Once.Lang.Syntax using (RawExpr)
-open import Once.Lang.Type using (Type)
+open import Once.Internal.Syntax using (RawExpr)
+open import Once.Internal.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (no; yes)
 open FunInfo
@@ -112,19 +113,19 @@ open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.Lang.Typing.Scope using (NamedCtx; PolyCtx)
-open import Once.Lang.Typing using (_⊢ᵢ_∶_⨾_)
+open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx)
+open import Once.Internal.Typing using (_⊢ᵢ_∶_⨾_)
 open import Once.TypeCheck.Classify using (TopCtx; topCtx; emptyTopCtx; ctxWithImportsAndPolys; emptyPolyCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
-open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Lang.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type.Instance using (rigidOf)
+open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?)
-open import Once.Lang.Type.WellFormed using (IsConcrete)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Lang.Type.Honest using (HonestFFI; honest?)
-open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Internal.Type.Honest using (HonestFFI; honest?)
+open import Once.Internal.Type.DecEq using (_≟T_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
 
@@ -132,8 +133,8 @@ import Data.Nat
 open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.Surface.LoopWarn using (silentLoops)
-open import Once.Lang.Principal using (below)
-open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-unit; sub-void)
+open import Once.Internal.Principal using (below)
+open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-unit; sub-void)
 open import Once.Type.Sub using (_<:?_)
 open import Data.Nat using (_<ᵇ_)
 
@@ -159,7 +160,7 @@ validateMain : Type → String ⊎ ⊤
 validateMain ty = validateMain-at ty (ty <:? mainType)
 
 -- | D314/D321 (plan 0.119 D6): the first LOWERING of a definition's type at
--- which its body also checks (`Once.Lang.Principal`); none means the type is
+-- which its body also checks (`Once.Internal.Principal`); none means the type is
 -- the body's principal type.
 firstChecking : (ctx : NamedCtx) (e : RawExpr) → List Type → Maybe Type
 fc-step : (ctx : NamedCtx) (e : RawExpr) (X : Type) → List Type → TE.VerifiedCheckResult ctx e X → Maybe Type

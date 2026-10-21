@@ -50,7 +50,7 @@ open import Once.Spec.Surface.Grammar as G
 open import Once.Spec.Surface.Resolution using (ModuleMap; FirstAt; fa-here; fa-there; Expands; ex-nil; ex-I; ex-other)
 open import Once.Spec.Surface.Program using (SignatureOf; SignaturesOf; so-nil; so-sig; so-other; Imported; im-nil; im-import; im-other)
 open import Once.Spec.Source using (ParsesModules)
-open import Once.Lang.Name using (showCanonical; noDotB; wordCharsB; wordB; wordsB; WordName)
+open import Once.Internal.Name using (showCanonical; noDotB; wordCharsB; wordB; wordsB; WordName)
 open import Once.Adequacy.SpecInterp using (toISig; declTy)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)

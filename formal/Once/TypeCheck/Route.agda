@@ -25,20 +25,20 @@
 
 module Once.TypeCheck.Route where
 
-import Once.Lang.Name
-open import Once.Lang.Type.Sub using (_⊔_≔_)
+import Once.Internal.Name
+open import Once.Internal.Type.Sub using (_⊔_≔_)
 open import Relation.Binary.PropositionalEquality using (refl)
 import Relation.Binary.PropositionalEquality
 import Data.Maybe
 import Once.Spec.Name
-import Once.Lang.Typing.Scope
-open import Once.Lang.Type.Grade as T using (Purity; Quantity)
-import Once.Lang.Type.Poly as T
-open import Once.Lang.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type)
-open import Once.Lang.Syntax as Raw using (RawExpr)
-open import Once.Lang.Typing.Scope using (NamedCtx; extendNamedCtx)
-open import Once.Lang.Typing
-import Once.Lang.Context as Surface
+import Once.Internal.Typing.Scope
+open import Once.Spec.Grade as T using (Purity; Quantity)
+import Once.Internal.Type.Poly as T
+open import Once.Internal.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Internal.Syntax as Raw using (RawExpr)
+open import Once.Internal.Typing.Scope using (NamedCtx; extendNamedCtx)
+open import Once.Internal.Typing
+import Once.Internal.Context as Surface
 
 private
   variable
@@ -98,10 +98,10 @@ mutual
     ii-apply-eff : ∀ {Ψ Ψ′ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
                      {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many π ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many π′ ] B′) * A′) ⨾ Ψ′}
                  → Rii d d′ → Rii (t-apply-eff-app-infer {g = g} d) (t-apply-eff-app-infer {g = g′} d′)
-    ii-Out : ∀ {F F′ w w′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ν-type F T.pure ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pure ⨾ Ψ′}
+    ii-Out : ∀ {F F′ w w′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ν-type F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pureᶠ ⨾ Ψ′}
            → Rii d d′ → Rii (t-Out-app-infer w refl d) (t-Out-app-infer w′ refl d′)
     ii-Out-eff : ∀ {F F′ w w′ Ψ Ψ′}
-                   {d : ctx ⊢ᵢ e ∶ ν-type F T.act ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.act ⨾ Ψ′}
+                   {d : ctx ⊢ᵢ e ∶ ν-type F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.actᶠ ⨾ Ψ′}
                → Rii d d′ → Rii (t-Out-eff-app-infer w refl d) (t-Out-eff-app-infer w′ refl d′)
     -- `t-app` / `t-effApp`: the argument is CHECKED at the head's domain, so the
     -- two heads' types are aligned (the argument's context does not depend on it,

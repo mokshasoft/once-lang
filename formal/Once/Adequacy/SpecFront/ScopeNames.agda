@@ -17,9 +17,9 @@
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 open import Once.Spec.Name using (CanonicalName)
-import Once.Lang.Core.PolyTy as LP
+import Once.Internal.Core.PolyTy as LP
 
 module Once.Adequacy.SpecFront.ScopeNames
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (nm : Fin s → CanonicalName) where
@@ -37,9 +37,9 @@ import Once.Compile as C
 import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (canonical)
-open import Once.Lang.Typing.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.Lang.Core.Translate using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
-import Once.Lang.Elaboration as E
+open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
+open import Once.Internal.Core.Translate using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
+import Once.Internal.Elaboration as E
 
 private
   module ES = E S

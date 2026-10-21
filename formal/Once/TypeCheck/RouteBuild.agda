@@ -17,22 +17,23 @@
 
 module Once.TypeCheck.RouteBuild where
 
-open import Once.Lang.Type.Sub using (_⊔_≔_)
+open import Once.Internal.Type.Sub using (_⊔_≔_)
 open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List.Relation.Unary.All using (_∷_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
-open import Once.Lang.Type as T using (Type; _+_; _⇒[_]_)
-import Once.Lang.Type.Grade as T
-open import Once.Lang.Type.Sub using (_<:_; _⊑π_)
-open import Once.Lang.Syntax as Raw using (BinOp; isArithmeticOp; isComparisonOp)
-open import Once.Lang.Typing.Scope using (NamedCtx; extendNamedCtx; classifyAppHead)
-open import Once.Lang.Typing
-open import Once.Lang.Laws.ModeAgreement
+open import Once.Internal.Type as T using (Type; _+_; _⇒[_]_)
+import Once.Spec.Grade as T
+open import Once.Internal.Type.Sub using (_<:_)
+open import Once.Spec.Grade using (_⊑π_)
+open import Once.Internal.Syntax as Raw using (BinOp; isArithmeticOp; isComparisonOp)
+open import Once.Internal.Typing.Scope using (NamedCtx; extendNamedCtx; classifyAppHead)
+open import Once.Internal.Typing
+open import Once.Internal.Laws.ModeAgreement
 open import Once.TypeCheck.Route
-import Once.Lang.Context as Surface
+import Once.Internal.Context as Surface
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥

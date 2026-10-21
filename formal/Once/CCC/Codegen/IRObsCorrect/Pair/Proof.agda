@@ -52,7 +52,7 @@ open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; restore-input; store-at-slot; readReg; Input1; Output; writeReg-same; module LocState; module AllocState)
 open AllocState using (next-heap-ref; next-slot)
 open LocState using (halted; regs)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Event using (SigOpEvent)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
@@ -69,10 +69,10 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.Lang.Trace as TM
+import Once.Internal.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; NotCut; thenAp; run-approx-bind)
-open import Once.Lang.Iterative using (T∞; _>>=∞_; return∞)
-open import Once.Lang.Res using (Res; returns; is-stopped)
+open import Once.Internal.Iterative using (T∞; _>>=∞_; return∞)
+open import Once.Internal.Res using (Res; returns; is-stopped)
 
 module PairProofC {FS : FrameSemantics} where
 

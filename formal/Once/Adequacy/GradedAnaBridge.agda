@@ -24,24 +24,24 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Type.Grade using (mk-kind; Many; Purity; pure; act; eff; Finite; fin)
-open import Once.Lang.Type using (Type; Functor; ⟦_⟧T; ν-type; _⇒[_]_)
-open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Spec.Grade using (mk-kind; Many; Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
+open import Once.Internal.Type using (Type; Functor; ⟦_⟧T; ν-type; _⇒[_]_)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Lang.Stream using (νᵈ; anaᵈ; anaTree; mapAnaᵈ)
-open import Once.Lang.StreamInf using (νᴵ; anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
+open import Once.Internal.Stream using (νᵈ; anaᵈ; anaTree; mapAnaᵈ)
+open import Once.Internal.StreamInf using (νᴵ; anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; coerce-functor-D)
-open import Once.Lang.Trace using (T; ret; call; halt; fmapT; _>>=T_)
-open import Once.Lang.Graded using (⟦_⟧ᵛ)
-open import Once.Lang.GradedOps using (cfᵛ; anaᵖ; mapAnaᵖ; ana-semᵛ)
+open import Once.Internal.Trace using (T; ret; call; halt; fmapT; _>>=T_)
+open import Once.Internal.Graded using (⟦_⟧ᵛ)
+open import Once.Internal.GradedOps using (cfᵛ; anaᵖ; mapAnaᵖ; ana-semᵛ)
 open import Once.Adequacy.GradedRelation fmt
   using (RelGV; RelGT; RelGM; _∼ᵖᵈ_; _∼ᵈ_; prjB-rel; module _∼ᵖᵈ_; module _∼ᵈ_)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼ᵈ_ using (force-∼)
-open import Once.Lang.Iterative using (T∞; fmap∞; return∞; _>>=∞_; embed; embedBlock; bindBlock)
+open import Once.Internal.Iterative using (T∞; fmap∞; return∞; _>>=∞_; embed; embedBlock; bindBlock)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-≈ˡ; embed-bind)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel using (RelS-fmapˡ; RelS-fmapʳ; retargetˡ)
@@ -138,14 +138,14 @@ ana-bridgeᵍ : ∀ (φ : Finite) {A : Type} {F : Functor} (wfF : WellFormedF F)
             → RelGV (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c₁ c₂
             → ∀ {a b} → RelGV A a b
             → RelGV (ν-type F φ) (ana-semᵛ φ wfF c₁ a) (anaFᴵ F (λ a′ → fmap∞ (coerce-functor-D wfF A) (c₂ a′)) b)
-ana-bridgeᵍ pure {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵖ-∼ (translateF Carrier Carrier F) cr rab
+ana-bridgeᵍ pureᶠ {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵖ-∼ (translateF Carrier Carrier F) cr rab
   where
     cr : ∀ {x y} → RelGV A x y → RelS (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV A))
                                        (return∞ (coerce-ν-in F _ (cfᵛ A wfF (c₁ x))))
                                        (fmap∞ (coerce-ν-in F ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wfF A) (c₂ y)))
     cr {x} r = retargetˡ refl (RelS-fmapˡ {f = λ l → coerce-ν-in F _ (cfᵛ A wfF l)}
                                           (in-run wfF (λ l → l) (λ s → s) (rc r)) (λ z → z))
-ana-bridgeᵍ act {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵈ-∼ (translateF Carrier Carrier F) cr rab
+ana-bridgeᵍ actᶠ {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵈ-∼ (translateF Carrier Carrier F) cr rab
   where
     g : ⟦ ⟦ F ⟧T A ⟧ᵛ → ⟦ translateF Carrier Carrier F ⟧SF ⟦ A ⟧ᵛ
     g l = coerce-ν-in F _ (cfᵛ A wfF l)

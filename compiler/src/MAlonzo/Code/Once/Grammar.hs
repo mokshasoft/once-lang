@@ -19,7 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
-import qualified MAlonzo.Code.Once.Lang.Type.Grade
+import qualified MAlonzo.Code.Once.Spec.Grade
 
 -- Once.Grammar.LowerIdent
 d_LowerIdent_4 :: ()
@@ -32,7 +32,7 @@ d_GType_8 = ()
 data T_GType_8
   = C_TUnit_12 | C_TVoid_14 | C_TInt_16 | C_TFloat_18 |
     C__'8658''91'_'93'__20 T_GType_8
-                           MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 T_GType_8 |
+                           MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 T_GType_8 |
     C__'8855'__22 T_GType_8 T_GType_8 |
     C__'8853'__24 T_GType_8 T_GType_8 | C_TEff_26 T_GType_8 T_GType_8 |
     C_TAct_28 T_GType_8 T_GType_8 | C_GMu_30 T_GFunctor_10 |
@@ -49,7 +49,7 @@ d__'8658'__46 :: T_GType_8 -> T_GType_8 -> T_GType_8
 d__'8658'__46 v0 v1
   = coe
       C__'8658''91'_'93'__20 (coe v0)
-      (coe MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14) (coe v1)
+      (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v1)
 -- Once.Grammar.BinOp
 d_BinOp_52 = ()
 data T_BinOp_52

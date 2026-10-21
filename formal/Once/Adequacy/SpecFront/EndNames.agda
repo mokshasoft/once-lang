@@ -13,7 +13,7 @@
 
 open import Data.List using (List)
 open import Data.String using (String)
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 open import Once.Spec.Signature using (Signature)
 
 module Once.Adequacy.SpecFront.EndNames {Fs : ISig} (Σ : Signature) (ps : List String) where
@@ -32,15 +32,15 @@ open import Data.Empty using (⊥-elim)
 open import Function using (Injective)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong)
 
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Name
-open import Once.Lang.Module using (Scope; ModTele; []; ffi; mono; poly)
-open import Once.Lang.Core.Translate using (SigSig; ImpSig; TeleSig; SigCF; t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSg; polySg)
+open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly)
+open import Once.Internal.Core.Translate using (SigSig; ImpSig; TeleSig; SigCF; t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSg; polySg)
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps using (_∷ⁿ_)
 open import Once.Adequacy.SpecFront.End {Fs} Σ ps using (EntryKind; End; endOf; no-ffi; all-tail)
 import Data.String

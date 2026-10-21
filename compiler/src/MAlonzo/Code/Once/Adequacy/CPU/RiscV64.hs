@@ -34,7 +34,7 @@ import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace
 import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceMachine
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.File
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Spec.Trace
 
 -- Once.Adequacy.CPU.RiscV64.ev-riscv64
@@ -67,7 +67,7 @@ d_block'45'env_12 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.RiscV64.run-trace-riscv64
 d_run'45'trace'45'riscv64_22 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.File.T_Image_12 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_422 ->
   MAlonzo.Code.Once.Spec.Trace.T_Tr_18

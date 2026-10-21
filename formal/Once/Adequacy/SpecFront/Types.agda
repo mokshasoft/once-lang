@@ -18,7 +18,9 @@
 open import Data.Nat using (ℕ)
 import Once.Spec.Type as ST
 
+import Once.Spec.Grade
 module Once.Adequacy.SpecFront.Types {m : ℕ} (Δ : ST.KCtx m) where
+
 
 open import Data.Fin using (Fin; toℕ)
 open import Data.Fin.Properties using (toℕ-injective)
@@ -28,12 +30,12 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-import Once.Lang.Type.Grade as LG
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-import Once.Lang.Type as LT
-import Once.Lang.Type.Sub as LS
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Type.Honest as LH
+import Once.Internal.Type as LT
+import Once.Internal.Type.Sub as LS
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Type.Honest as LH
 import Once.Spec.Sub as SS
 open import Once.Spec.Signature using (⌜_⌝; ⌜_⌝ᵈ)
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS; toTy; toFun)
@@ -70,8 +72,8 @@ private
   kS-kL (SG.mk-kind SG.Many SG.eff)  = refl
 
   φL : SG.Finite → LG.Finite
-  φL SG.pureᶠ = LG.pure
-  φL SG.actᶠ  = LG.act
+  φL SG.pureᶠ = LG.pureᶠ
+  φL SG.actᶠ  = LG.actᶠ
 
   φS-φL : ∀ f → φS (φL f) ≡ f
   φS-φL SG.pureᶠ = refl
@@ -135,7 +137,7 @@ subᶜ-L (SS.subᶜ-arr b p) (r-⇒ {k = LG.mk-kind q π} e ra rb) (r-⇒ {k = L
   where
     grade : ∀ {x y x′ y′} → x ≡ x′ → y ≡ y′ → x′ SG.⊑π y′ → x SG.⊑π y
     grade refl refl p = p
-    arr : ∀ {A A′ B B′} → q ≡ q′ → π LS.⊑π π′ → A ≡ A′ → B LS.<:ᶜ B′
+    arr : ∀ {A A′ B B′} → q ≡ q′ → π Once.Spec.Grade.⊑π π′ → A ≡ A′ → B LS.<:ᶜ B′
         → (A LT.⇒[ LG.mk-kind q π ] B) LS.<:ᶜ (A′ LT.⇒[ LG.mk-kind q′ π′ ] B′)
     arr refl p refl b = LS.subᶜ-arr b p
 subᶜ-L (SS.subᶜ-* a b) (r-* ra rb) (r-* ra′ rb′) = LS.subᶜ-prod (subᶜ-L a ra ra′) (subᶜ-L b rb rb′)
@@ -359,9 +361,9 @@ eff-S LG.eg-eff = SG.eg-eff
 -- upper bound, read back, would be one.
 join-L : ∀ {A B A′ B′ C′} → A′ SS.⊔ B′ ≔ C′ → TyR Δ A A′ → TyR Δ B B′
        → Σ[ C ∈ LT.Type ] (TyR Δ C C′ × A LS.⊔ B ≔ C)
-join-L {A} {B} {C′ = C′} J ra rb = from (Once.Lang.Type.Join.join? A B)
+join-L {A} {B} {C′ = C′} J ra rb = from (Once.Internal.Type.Join.join? A B)
   where
-    open import Once.Lang.Type.Join using (Join?; joined; apart; sound; <:ᶜ-antisym)
+    open import Once.Internal.Type.Join using (Join?; joined; apart; sound; <:ᶜ-antisym)
     from : Join? A B → Σ[ C ∈ LT.Type ] (TyR Δ C C′ × A LS.⊔ B ≔ C)
     from (apart n) =
       let (D₀ , rd) = back C′ in

@@ -18,15 +18,15 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
-open import Once.Lang.Type using (Functor)
-open import Once.Lang.Type.WellFormed using (WellFormedF)
-open import Once.Lang.FunctorMeaning using (translateF)
-open import Once.Lang.Polynomial
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS; cataS)
+open import Once.Internal.Type using (Functor)
+open import Once.Internal.Type.WellFormed using (WellFormedF)
+open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.Internal.Polynomial
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS; cataS)
 open import Once.Semantics.Functor using (cataS-In-id)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq; unfoldS-∼)
-open import Once.Lang.Value IntRep FloatRep
+open import Once.Internal.Value IntRep FloatRep
 open import Once.Semantics.Value IntRep FloatRep
 
 -- | Function extensionality (used only by `sem-cata-In-id`). A valid axiom

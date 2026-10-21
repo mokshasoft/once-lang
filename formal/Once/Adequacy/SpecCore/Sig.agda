@@ -21,7 +21,7 @@
 
 open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 import Once.Spec.Observation as Obs
@@ -46,16 +46,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Value Carrier Carrier as M
-import Once.Lang.Type as T
-import Once.Lang.Type.Grade as G
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Type.Honest as LH
-import Once.Lang.GradedOps as LOps
-import Once.Lang.Trace as LTr
-open import Once.Lang.Event using (SigOpEvent; toEvent; baseOf; valOf)
-open import Once.Lang.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf; valueOf-at; _∈K?_; Impl)
-open import Once.Lang.ContractLaws using (value-∈; base-contract)
+import Once.Internal.Value Carrier Carrier as M
+import Once.Internal.Type as T
+import Once.Spec.Grade as G
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Type.Honest as LH
+import Once.Internal.GradedOps as LOps
+import Once.Internal.Trace as LTr
+open import Once.Internal.Event using (SigOpEvent; toEvent; baseOf; valOf)
+open import Once.Internal.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf; valueOf-at; _∈K?_; Impl)
+open import Once.Internal.ContractLaws using (value-∈; base-contract)
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST
 import Once.Spec.Signature as S
@@ -399,13 +399,13 @@ sig-G sigop-S S₀ σ′ k h rf wn mem gs = sig-v S₀ σ′ k h mem gs (sigop-S
 ------------------------------------------------------------------------
 
 private
-  answer-there : ∀ {k ks} (ct : Once.Lang.Contract.Contract) → k ∈ ks → k ∈ answer-step ct ks
-  answer-there (Once.Lang.Contract.value _)   m = m
-  answer-there (Once.Lang.Contract.answers _) m = there m
-  answer-there Once.Lang.Contract.effect      m = m
+  answer-there : ∀ {k ks} (ct : Once.Internal.Contract.Contract) → k ∈ ks → k ∈ answer-step ct ks
+  answer-there (Once.Internal.Contract.value _)   m = m
+  answer-there (Once.Internal.Contract.answers _) m = there m
+  answer-there Once.Internal.Contract.effect      m = m
 
   eff-in : ∀ s A B (dv : Dec (B ≡ T.Void)) (du : Dec (B ≡ T.Unit)) → B ≢ T.Void → B ≢ T.Unit → ∀ ks
-         → key s A B ∈ answer-step (Once.Lang.Contract.contract-eff s A B dv du) ks
+         → key s A B ∈ answer-step (Once.Internal.Contract.contract-eff s A B dv du) ks
   eff-in s A B (yes e) du      ¬v ¬u ks = ⊥-elim (¬v e)
   eff-in s A B (no _)  (yes e) ¬v ¬u ks = ⊥-elim (¬u e)
   eff-in s A B (no _)  (no _)  ¬v ¬u ks = here refl
@@ -413,7 +413,7 @@ private
   -- an answering operation's key is one of the signature's
   ans-in : ∀ {Σ′ : Signature} {c a q b} (m : (c ∶ operation a q b) ∈ Σ′) → ⌞ b ⌟ ≢ T.Void → ⌞ b ⌟ ≢ T.Unit
          → key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟ ∈ answerKeys (toISig Σ′)
-  ans-in {(c′ ∶ t) ∷ Σ′} (there m) ¬v ¬u = answer-there (Once.Lang.Contract.contractOf (showCanonical c′) (declTy t)) (ans-in m ¬v ¬u)
+  ans-in {(c′ ∶ t) ∷ Σ′} (there m) ¬v ¬u = answer-there (Once.Internal.Contract.contractOf (showCanonical c′) (declTy t)) (ans-in m ¬v ¬u)
   ans-in {(c ∶ operation a SG.Zero b) ∷ Σ′} (here refl) ¬v ¬u = eff-in _ _ _ (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟) ¬v ¬u _
   ans-in {(c ∶ operation a SG.One b)  ∷ Σ′} (here refl) ¬v ¬u = eff-in _ _ _ (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟) ¬v ¬u _
   ans-in {(c ∶ operation a SG.Many b) ∷ Σ′} (here refl) ¬v ¬u = eff-in _ _ _ (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟) ¬v ¬u _
@@ -437,7 +437,7 @@ private
   ans-at {b = b} M ne ra h p d (no ¬u) (no ¬k) = ⊥-elim (¬k (ans-in M (λ e → ne-void ne (⌞⌟-void b e)) ¬u))
 
   ev-eq : ∀ {cn} a .(bA : LW.IsBaseType ⌞ a ⌟) {x y} → SI.toB a x ≡ y
-        → toEvent (Once.Lang.Event.mk-event cn ⌞ a ⌟ bA x) ≡ S.event cn a y
+        → toEvent (Once.Internal.Event.mk-event cn ⌞ a ⌟ bA x) ≡ S.event cn a y
   ev-eq {cn} a bA {x} ra = cong (λ { (b , v) → S.event cn b v }) (trans (ev-val a bA x) (cong (a ,_) ra))
 
 -- The compiler's interpretation of `J` and `J`'s world agree on every

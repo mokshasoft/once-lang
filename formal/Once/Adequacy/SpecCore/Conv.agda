@@ -15,11 +15,13 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Lang.Contract using (ISig)
-import Once.Lang.Core.PolyTy as LP
+open import Once.Internal.Contract using (ISig)
+import Once.Internal.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature)
 
+import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Conv {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature) where
+
 
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)
@@ -27,24 +29,24 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Type.Sub as LS
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+import Once.Internal.Type.Sub as LS
 import Once.Spec.Type as ST
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SSub
-import Once.Lang.Graded as LGr
-import Once.Lang.GradedOps as LOps
-import Once.Lang.Trace as LTr
-import Once.Lang.Iterative as LI
-import Once.Lang.Stream as LSt
+import Once.Internal.Graded as LGr
+import Once.Internal.GradedOps as LOps
+import Once.Internal.Trace as LTr
+import Once.Internal.Iterative as LI
+import Once.Internal.Stream as LSt
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
-import Once.Lang.Polynomial as LPoly
+import Once.Internal.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
-open import Once.Lang.FunctorMeaning using (translateF)
-import Once.Lang.Core.PolyTyping S as PT
-import Once.Lang.Core.PolySub as PS
+open import Once.Internal.FunctorMeaning using (translateF)
+import Once.Internal.Core.PolyTyping S as PT
+import Once.Internal.Core.PolySub as PS
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open T∞R
@@ -128,8 +130,8 @@ refl-R (g-⇒ {q = LG.Zero} {π} a b) r = subM-refl-R (pr π) (fmapˡ-R (refl-R 
 refl-R (g-⇒ {q = LG.One}  {π} a b) r = λ rx → subM-refl-R (pr π) (fmapˡ-R (refl-R b) (pr π) (r (refl-R a rx)))
 refl-R (g-⇒ {q = LG.Many} {π} a b) r = λ rx → subM-refl-R (pr π) (fmapˡ-R (refl-R b) (pr π) (r (refl-R a rx)))
 refl-R (g-μ f) r = r
-refl-R (g-ν {φ = LG.pure} f) r = r
-refl-R (g-ν {φ = LG.act}  f) r = r
+refl-R (g-ν {φ = LG.pureᶠ} f) r = r
+refl-R (g-ν {φ = LG.actᶠ}  f) r = r
 refl-R g-rigid {()} r
 
 ------------------------------------------------------------------------
@@ -160,7 +162,7 @@ conv-R (PS.sub-sum a b) g {inj₂ _} {inj₂ _} r = conv-R b g r
 conv-R (PS.sub-sum a b) g {inj₁ _} {inj₂ _} ()
 conv-R (PS.sub-sum a b) g {inj₂ _} {inj₁ _} ()
 conv-R PS.sub-μ g r = r
-conv-R (PS.sub-ν {φ = LG.pure} {LG.pure} x) g r = r
-conv-R (PS.sub-ν {φ = LG.act}  {LG.act}  x) g r = r
-conv-R (PS.sub-ν {F = F} {φ = LG.pure} {LG.act} x) g r = embν-R (GF-inst (pfr F) g) r
-conv-R (PS.sub-ν {φ = LG.act} {LG.pure} ()) g r
+conv-R (PS.sub-ν {φ = LG.pureᶠ} {LG.pureᶠ} x) g r = r
+conv-R (PS.sub-ν {φ = LG.actᶠ}  {LG.actᶠ}  x) g r = r
+conv-R (PS.sub-ν {F = F} {φ = LG.pureᶠ} {LG.actᶠ} x) g r = embν-R (GF-inst (pfr F) g) r
+conv-R (PS.sub-ν {φ = LG.actᶠ} {LG.pureᶠ} ()) g r

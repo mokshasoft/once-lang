@@ -19,8 +19,8 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
-import Once.Lang.Type as LT
-import Once.Lang.Core.PolyTy as LP
+import Once.Internal.Type as LT
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SS
 open import Once.Adequacy.SpecGrammar.Conv using (kS; φS)

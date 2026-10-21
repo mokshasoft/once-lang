@@ -18,12 +18,13 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Lang.Type.DecEq using (_≟q_; _≟p_; _≟k_)
-open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Internal.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Internal.Type.DecEq using (_≟T_)
 open import Once.Type.Match
 
 lookup-head : ∀ x t s → lookupSubst x ((x , t) ∷ s) ≡ just t
@@ -81,8 +82,8 @@ mutual
   inst-ok θ (PAct A B) s c =
     bind-ok θ (instantiateAcc A (substPoly θ A) s) (instantiateAcc B (substPoly θ B)) (inst-ok θ A s c) (λ s′ c′ → inst-ok θ B s′ c′)
   inst-ok θ (Pμ-type F) s c = instF-ok θ F s c
-  inst-ok θ (Pν-type F pure) s c = instF-ok θ F s c
-  inst-ok θ (Pν-type F act) s c = instF-ok θ F s c
+  inst-ok θ (Pν-type F pureᶠ) s c = instF-ok θ F s c
+  inst-ok θ (Pν-type F actᶠ) s c = instF-ok θ F s c
 
   instF-ok : ∀ θ (F : PolyFunctor) s → Consistent θ s → Matches θ (instantiateFunctor F (substPolyF θ F) s)
   instF-ok θ (PK A) s c = inst-ok θ A s c
@@ -260,15 +261,15 @@ mutual
   inst-sound (Pμ-type F) (_ + _) s ()
   inst-sound (Pμ-type F) (_ ⇒[ _ ] _) s ()
   inst-sound (Pμ-type F) (ν-type _ _) s ()
-  inst-sound (Pν-type F pure) (ν-type f pure) s eq = map-sound (λ g → ν-type g pure) (instF-sound F f s eq)
-  inst-sound (Pν-type F pure) Unit s ()
-  inst-sound (Pν-type F pure) Void s ()
-  inst-sound (Pν-type F pure) Int s ()
-  inst-sound (Pν-type F pure) Float s ()
-  inst-sound (Pν-type F pure) (_ * _) s ()
-  inst-sound (Pν-type F pure) (_ + _) s ()
-  inst-sound (Pν-type F pure) (_ ⇒[ _ ] _) s ()
-  inst-sound (Pν-type F pure) (μ-type _) s ()
+  inst-sound (Pν-type F pureᶠ) (ν-type f pureᶠ) s eq = map-sound (λ g → ν-type g pureᶠ) (instF-sound F f s eq)
+  inst-sound (Pν-type F pureᶠ) Unit s ()
+  inst-sound (Pν-type F pureᶠ) Void s ()
+  inst-sound (Pν-type F pureᶠ) Int s ()
+  inst-sound (Pν-type F pureᶠ) Float s ()
+  inst-sound (Pν-type F pureᶠ) (_ * _) s ()
+  inst-sound (Pν-type F pureᶠ) (_ + _) s ()
+  inst-sound (Pν-type F pureᶠ) (_ ⇒[ _ ] _) s ()
+  inst-sound (Pν-type F pureᶠ) (μ-type _) s ()
   inst-sound (A P⇒[ q ] B) (a ⇒[ mk-kind q′ act ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind Zero act ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind Zero eff ] b) s ()
@@ -276,17 +277,17 @@ mutual
   inst-sound (PAct A B) (a ⇒[ mk-kind One eff ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind Many act ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind Many eff ] b) s ()
-  inst-sound (Pν-type F act) (ν-type f act) s eq = map-sound (λ g → ν-type g act) (instF-sound F f s eq)
-  inst-sound (Pν-type F pure) (ν-type f act) s ()
-  inst-sound (Pν-type F act) (ν-type f pure) s ()
-  inst-sound (Pν-type F act) Unit s ()
-  inst-sound (Pν-type F act) Void s ()
-  inst-sound (Pν-type F act) Int s ()
-  inst-sound (Pν-type F act) Float s ()
-  inst-sound (Pν-type F act) (_ * _) s ()
-  inst-sound (Pν-type F act) (_ + _) s ()
-  inst-sound (Pν-type F act) (_ ⇒[ _ ] _) s ()
-  inst-sound (Pν-type F act) (μ-type _) s ()
+  inst-sound (Pν-type F actᶠ) (ν-type f actᶠ) s eq = map-sound (λ g → ν-type g actᶠ) (instF-sound F f s eq)
+  inst-sound (Pν-type F pureᶠ) (ν-type f actᶠ) s ()
+  inst-sound (Pν-type F actᶠ) (ν-type f pureᶠ) s ()
+  inst-sound (Pν-type F actᶠ) Unit s ()
+  inst-sound (Pν-type F actᶠ) Void s ()
+  inst-sound (Pν-type F actᶠ) Int s ()
+  inst-sound (Pν-type F actᶠ) Float s ()
+  inst-sound (Pν-type F actᶠ) (_ * _) s ()
+  inst-sound (Pν-type F actᶠ) (_ + _) s ()
+  inst-sound (Pν-type F actᶠ) (_ ⇒[ _ ] _) s ()
+  inst-sound (Pν-type F actᶠ) (μ-type _) s ()
 
   instF-sound : ∀ (F : PolyFunctor) (f : Functor) (s : Subst) {s′} → instantiateFunctor F f s ≡ just s′
     → Extends s′ s × (∀ s″ → Extends s″ s′ → substPolyF (θof s″) F ≡ f)

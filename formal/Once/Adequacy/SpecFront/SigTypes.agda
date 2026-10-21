@@ -20,12 +20,12 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-open import Once.Lang.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+open import Once.Internal.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
   Ground; extractGround)
-open import Once.Lang.Type.WellFormed using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; con-base; con-fun)
-open import Once.Lang.Type.Honest using (HonestFFI)
+open import Once.Internal.Type.WellFormed using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; con-base; con-fun)
+open import Once.Internal.Type.Honest using (HonestFFI)
 import Once.Spec.Grade as SG
 open import Once.Spec.Signature using (BTy; unit; void; int; float; DeclType; constant; value; operation)
 import Once.Spec.Signature as SSig

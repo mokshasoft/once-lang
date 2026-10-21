@@ -23,7 +23,7 @@
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Internal.Trace using (FFIAnswers)
 
 -- Plan 0.105: over the interpretation's FFI half `φ`.
 module Once.Adequacy.TeleEnvLemmas (fmt : TargetNum) (φ : FFIAnswers) where
@@ -41,16 +41,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Induction.WellFounded using (Acc; acc)
 
 open import Once.Postulates using (extensionality)
-open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
-open import Once.Lang.Type.Poly using (PolyType)
+open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Internal.Type.Poly using (PolyType)
 open import Once.IRTy using (IRTy)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)
-import Once.Lang.Context as Srf
+import Once.Internal.Context as Srf
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.EvalRel using (RelEnv; liftFn-rel; table-self)
 open import Once.Adequacy.SourceRefl using (RelDefs; SD-rel)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; module CallEnv)
@@ -59,8 +59,8 @@ open CallEnv using (callsE)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
-open import Once.Lang.Syntax using (RawExpr)
-open import Once.Lang.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
+open import Once.Internal.Syntax using (RawExpr)
+open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
 open import Once.TypeCheck.Elaborate using (success; failure; checkElabV; VerifiedCheckResult)
@@ -69,7 +69,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; re
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
 open import Once.Adequacy.GradedRelation fmt using (RelGM)
-open import Once.Lang.Type.Grade using (pure)
+open import Once.Spec.Grade using (pure)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip)
 
 ------------------------------------------------------------------------

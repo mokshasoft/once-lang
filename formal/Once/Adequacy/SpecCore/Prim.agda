@@ -8,15 +8,15 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Lang.Contract using (ISig)
-import Once.Lang.Core.PolyTy as LP
+open import Once.Internal.Contract using (ISig)
+import Once.Internal.Core.PolyTy as LP
 
 module Once.Adequacy.SpecCore.Prim {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
-import Once.Lang.Core.Syntax S as L
+import Once.Internal.Core.Syntax S as L
 open import Once.Adequacy.SpecCore.Schema using (ptyS)
 
 litS : L.Lit → SC.Lit

@@ -34,22 +34,22 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 import Data.String.Properties as StrProp
 
-open import Once.Lang.Contract using (ISig)
-import Once.Lang.Type as LT
-open import Once.Lang.Type.WellFormed using (IsConcrete; RigidFree)
-open import Once.Lang.Type.Honest using (HonestFFI)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Internal.Contract using (ISig)
+import Once.Internal.Type as LT
+open import Once.Internal.Type.WellFormed using (IsConcrete; RigidFree)
+open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Internal.Name using (showCanonical)
 open import Once.Spec.Signature using (Signature; Decl; _∶_; OneName; ⌜_⌝ᵈ)
 import Once.Spec.Type as ST
 import Once.Parser as Parser
-open import Once.Lang.Module using (entrySig)
-open import Once.Lang.Typing.Scope using (Imports; lookupImport)
+open import Once.Internal.Module using (entrySig)
+open import Once.Internal.Typing.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecInterp using (toISig; declTy)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts)
 import Once.Adequacy.SpecFront.Types
-import Once.Lang.Module
+import Once.Internal.Module
 
 keys : ISig → List String
 keys = map proj₁
@@ -63,14 +63,14 @@ rname d = showCanonical (Decl.name d)
 
 private
   fun-keys : ∀ {P : String → Set} n ft b p {rest : ISig} → P n → All P (keys rest)
-           → All P (keys (Once.Lang.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
+           → All P (keys (Once.Internal.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
   fun-keys n (just _) b true  h a = h ∷ a
   fun-keys n nothing  b true  h a = a
   fun-keys n (just _) b false h a = a
   fun-keys n nothing  b false h a = a
 
   fun-distinct : ∀ n ft b p {rest : ISig} → All (n ≢_) (keys rest) → AllPairs _≢_ (keys rest)
-               → AllPairs _≢_ (keys (Once.Lang.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
+               → AllPairs _≢_ (keys (Once.Internal.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
   fun-distinct n (just _) b true  h a = h ∷ a
   fun-distinct n nothing  b true  h a = a
   fun-distinct n (just _) b false h a = a

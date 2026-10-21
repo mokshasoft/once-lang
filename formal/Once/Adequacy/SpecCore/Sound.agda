@@ -21,7 +21,7 @@ open import Data.List using (map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.Product using (_,_)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl; _∶_)
 import Once.Spec.Observation as Obs
@@ -39,16 +39,16 @@ open import Data.Fin using (zero; suc)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
-import Once.Lang.Core.Meaning as GM
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
+import Once.Internal.Core.Meaning as GM
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Program Σ as SP
 import Once.Spec.Core.Meaning as SM
 import Once.Spec.Domain Σ as SD
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
-open import Once.Lang.Trace using (Interp)
+open import Once.Internal.Trace using (Interp)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Adequacy.SpecInterp using (toImpl; toInterp)
 open import Once.Adequacy.SpecCore.Schema using (defsS)

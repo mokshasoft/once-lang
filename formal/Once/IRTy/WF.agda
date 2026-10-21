@@ -15,7 +15,7 @@
 module Once.IRTy.WF where
 
 open import Once.IRTy
-import Once.Lang.Type.WellFormed as Tr
+import Once.Internal.Type.WellFormed as Tr
 
 -- Base-type witness transports along `⌈_⌉`.
 base-⌈⌉ : ∀ {A} → IsBaseTypeI A → Tr.IsBaseType ⌈ A ⌉

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Type — the implementation's operations on types.
 --
--- The types themselves are the Spec's (`Once.Lang.Type`, `.Grade`, `.Poly`).
+-- The types themselves are the Spec's (`Once.Internal.Type`, `.Grade`, `.Poly`).
 -- This module holds what the compiler needs beyond them: decidable equality,
 -- Boolean equality, the groundness decider, printing for error messages, the
 -- register-resident classification and a few example functors.
@@ -25,12 +25,11 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
-open import Once.Lang.Type.Grade
-  using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind)
-open import Once.Lang.Type
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind; pureᶠ; actᶠ)
+open import Once.Internal.Type
   using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any;
          Functor; K; Id; _⊕_; _⊗_)
-open import Once.Lang.Type.Poly
+open import Once.Internal.Type.Poly
   using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
 
@@ -54,7 +53,7 @@ showArrowKind : ArrowKind → String
 showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
 
 
--- The deciders on quantities, purities and kinds are `Once.Lang.Type.DecEq`'s.
+-- The deciders on quantities, purities and kinds are `Once.Internal.Type.DecEq`'s.
 
 ------------------------------------------------------------------------
 -- Common Functor Patterns
@@ -124,8 +123,8 @@ mutual
   showType (A ⇒[ mk-kind _ eff ] B)  = "Eff " ++ showType A ++ " " ++ showType B
   showType (A ⇒[ mk-kind _ act ] B) = "Act " ++ showType A ++ " " ++ showType B
   showType (μ-type F) = "μ " ++ showFunctor F
-  showType (ν-type F pure) = "ν " ++ showFunctor F
-  showType (ν-type F act) = "ν (Act " ++ showFunctor F ++ ")"
+  showType (ν-type F pureᶠ) = "ν " ++ showFunctor F
+  showType (ν-type F actᶠ) = "ν (Act " ++ showFunctor F ++ ")"
   showType Int = "Int"
   showType Float = "Float"
   showType (rigid k-base i) = "'b" ++ Data.Nat.Show.show i
@@ -191,8 +190,8 @@ mutual
   showPolyType (PEff A B)       = "Eff " ++ showPolyType A ++ " " ++ showPolyType B
   showPolyType (PAct A B)       = "Act " ++ showPolyType A ++ " " ++ showPolyType B
   showPolyType (Pμ-type F)      = "μ " ++ showPolyFunctor F
-  showPolyType (Pν-type F pure) = "ν " ++ showPolyFunctor F
-  showPolyType (Pν-type F act) = "ν (Act " ++ showPolyFunctor F ++ ")"
+  showPolyType (Pν-type F pureᶠ) = "ν " ++ showPolyFunctor F
+  showPolyType (Pν-type F actᶠ) = "ν (Act " ++ showPolyFunctor F ++ ")"
   showPolyType PInt             = "Int"
   showPolyType PFloat           = "Float"
   showPolyType (PTVar x)        = x

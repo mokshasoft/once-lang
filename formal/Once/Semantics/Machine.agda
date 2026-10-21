@@ -30,7 +30,7 @@ open import Once.Spec.Word using (Carrier)
 --
 -- `Dyadic` keeps the role ℤ has for `Int`: the literal payload and the parked
 -- exact spec, living in the frontend — NOT what a `Float` expression means.
-open import Once.Lang.Value Carrier Carrier public
+open import Once.Internal.Value Carrier Carrier public
 -- Plan 0.52 M2: the IR-object value domain `⟦_⟧ᴵ` (over ungraded `IRTy`) and
 -- its coherence `coh : ⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧` with the surface domain above.
 open import Once.Semantics.ValueIR Carrier Carrier public

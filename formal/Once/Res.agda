@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Res — the laws of a computation's result (`Once.Lang.Res`).
+-- Once.Res — the laws of a computation's result (`Once.Internal.Res`).
 ------------------------------------------------------------------------
 
 module Once.Res where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Lang.Res using (Res; returns)
+open import Once.Internal.Res using (Res; returns)
 
 -- | `returns` is injective — it is a constructor. Needed wherever an
 --   obligation BINDS the returned value and a proof knows what it was.

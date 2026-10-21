@@ -32,7 +32,7 @@ open import Once.Parser.Expr using (parseExprWF)
 open import Once.Grammar.ExprBridge using (complete-exprWFraw)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Grammar.ImportBridge using (anyWordB-inv; ij-false)
-open import Once.Lang.Grammar.FunDef
+open import Once.Internal.Grammar.FunDef
   using (ParsesParams; pp-eq; pp-cons; pp-stop; pp-noword;
          ParsesFunBody; pfb-mk;
          ParsesFunDef; pfd-mk)

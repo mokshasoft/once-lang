@@ -18,10 +18,10 @@
 open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; _∶_)
-import Once.Lang.Core.PolyTy as LP
+import Once.Internal.Core.PolyTy as LP
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
 module Once.Adequacy.SpecFront.Abs
@@ -35,18 +35,18 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-open import Once.Lang.Type.DecEq using (_≟tk_)
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+open import Once.Internal.Type.DecEq using (_≟tk_)
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 open import Once.Spec.Signature using (BTy; unit; void; int; float; DeclType; constant; value; operation; ⌜_⌝; ⌜_⌝ᵈ)
 import Once.Spec.Signature as SSig
 open import Once.Postulates using (extensionality)
-open import Once.Lang.Core.AbsTy using (absTy; absF; ar-bound; ar-kind)
-import Once.Lang.Core.Abstract S as A
-import Once.Lang.Core.Syntax S as L
+open import Once.Internal.Core.AbsTy using (absTy; absF; ar-bound; ar-kind)
+import Once.Internal.Core.Abstract S as A
+import Once.Internal.Core.Syntax S as L
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
 open import Once.Adequacy.SpecCore.Type
 open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS; kindsS; castSub)

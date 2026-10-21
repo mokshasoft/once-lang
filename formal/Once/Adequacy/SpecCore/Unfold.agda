@@ -20,12 +20,12 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Grade as SG
-import Once.Lang.GradedOps as LOps
-import Once.Lang.Stream as LSt
-import Once.Lang.Trace as LTr
-import Once.Lang.Polynomial as LPoly
+import Once.Internal.GradedOps as LOps
+import Once.Internal.Stream as LSt
+import Once.Internal.Trace as LTr
+import Once.Internal.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
-open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Internal.FunctorMeaning using (translateF)
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
 open import Once.Adequacy.SpecCore.Index

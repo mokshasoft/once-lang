@@ -26,8 +26,12 @@
 ------------------------------------------------------------------------
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
+open import Once.Type.Grade using (_≤qᵇ_)
+import Once.Type.Grade
 module Once.TypeCheck.Completeness.Rules where
-import Once.Lang.Context as Srf
+
+
+import Once.Internal.Context as Srf
 open import Data.Nat using (ℕ)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
@@ -37,27 +41,27 @@ open import Data.Product using (∃; ∃-syntax; _,_; proj₁; proj₂)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Data.String.Properties as StrProp using ()
-open import Once.Lang.Type.Grade as T using (Quantity; _≤q_; Zero; One; Many)
-open import Once.Lang.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
-open import Once.Lang.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
+open import Once.Spec.Grade as T using (Quantity; _≤q_; Zero; One; Many)
+open import Once.Internal.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
-open import Once.Lang.Name using (showCanonical; WordName; wordNameB)
+open import Once.Internal.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
 open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
-import Once.Lang.Typing.Scope as Classify
+import Once.Internal.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
-open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
+open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (wellFormedF?-complete-at)
-open import Once.Lang.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
-open import Once.Lang.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
@@ -65,14 +69,14 @@ open import Data.Bool using (Bool; true)
 import Data.Bool
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
-open import Once.Lang.Type.Sub using (_⊑π_)
+open import Once.Spec.Grade using (_⊑π_)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Lang.Type.DecEq using (_≟T_)
-open import Once.Lang.Type.Sub using (_⊔_≔_)
-open import Once.Lang.Type.Join using (join?-complete)
-open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
+open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Internal.Type.Sub using (_⊔_≔_)
+open import Once.Internal.Type.Join using (join?-complete)
+open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
 open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J)
@@ -402,13 +406,13 @@ infer-complete-RApp-terminal {ctx} arg eqArg
 infer-complete-RApp-Out :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.pure)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.pureᶠ)}
     {d' f' : ℕ}
     (wfF : WellFormedF F)
-  → inferElab ctx arg ≡ success (T.ν-type F T.pure) Ψ argE d' f'
+  → inferElab ctx arg ≡ success (T.ν-type F T.pureᶠ) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-        ≡ success (T.⟦ F ⟧T (T.ν-type F T.pure)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+        ≡ success (T.⟦ F ⟧T (T.ν-type F T.pureᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 -- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
@@ -416,20 +420,20 @@ infer-complete-RApp-Out :
 infer-complete-RApp-Out {ctx} arg {F} wfF eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ Ψ' argE' d' fr' , w' | refl
-      rewrite inferOutGo-J ctx arg F T.pure Ψ' argE' d' fr' w'
+      rewrite inferOutGo-J ctx arg F T.pureᶠ Ψ' argE' d' fr' w'
                 (just wfF) (wellFormedF?-complete-at wfF)
       = _ , _ , _ , refl
 
 infer-complete-RApp-Out-act :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.act)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.actᶠ)}
     {d' f' : ℕ}
     (wfF : WellFormedF F)
-  → inferElab ctx arg ≡ success (T.ν-type F T.act) Ψ argE d' f'
+  → inferElab ctx arg ≡ success (T.ν-type F T.actᶠ) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧T (T.ν-type F T.act)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧T (T.ν-type F T.actᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 -- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
@@ -437,7 +441,7 @@ infer-complete-RApp-Out-act :
 infer-complete-RApp-Out-act {ctx} arg {F} wfF eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ Ψ' argE' d' fr' , w' | refl
-      rewrite inferOutGo-J ctx arg F T.act Ψ' argE' d' fr' w'
+      rewrite inferOutGo-J ctx arg F T.actᶠ Ψ' argE' d' fr' w'
                 (just wfF) (wellFormedF?-complete-at wfF)
       = _ , _ , _ , refl
 
@@ -728,8 +732,8 @@ infer-complete-RBinOp-cmp {ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-R
 -- RLam check mode
 ------------------------------------------------------------------------
 
-decideLeq-just : ∀ q' q → (q' ≤q q) ≡ true
-               → ∃ λ (eq : (q' ≤q q) ≡ true)
+decideLeq-just : ∀ q' q → (q' ≤qᵇ q) ≡ true
+               → ∃ λ (eq : (q' ≤qᵇ q) ≡ true)
                → E.decideLeq q' q ≡ just eq
 decideLeq-just Zero Zero refl = refl , refl
 decideLeq-just Zero One  refl = refl , refl
@@ -745,7 +749,7 @@ check-complete-RLam :
     {eE' : SExpr (Classify.NamedCtx.debruijn (Classify.extendNamedCtx ctx x A))
                  (q' Surface.Usage.∷ Ψ') B}
     {d' f' : ℕ} {π : T.Purity}
-  → (q' T.≤q q) ≡ true
+  → (q' Once.Type.Grade.≤qᵇ q) ≡ true
   → T.pure ⊑π π
   → checkElab (Classify.extendNamedCtx ctx x A) body B
       ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'

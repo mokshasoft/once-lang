@@ -8,7 +8,7 @@
 
 module Once.Adequacy.SpecGrammar.TypeRF where
 
-open import Once.Lang.Type.WellFormed using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν;
+open import Once.Internal.Type.WellFormed using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν;
   rf-K; rf-Id; rf-⊕; rf-⊗)
 open import Once.Parser.TypeRelation
 

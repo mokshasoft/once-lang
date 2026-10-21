@@ -16,8 +16,8 @@
 
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
-open import Once.Lang.Contract using (ISig; Impl)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Contract using (ISig; Impl)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; _∶_; WellFormed)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Adequacy.SpecCore.Poly using (declS)
@@ -32,13 +32,13 @@ open import Data.Fin using (zero; suc)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Type.Honest as LH
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Type.Honest as LH
 import Once.Spec.Type as ST
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
-import Once.Lang.Core.Meaning as GM
-import Once.Lang.GradedOps as LOps
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
+import Once.Internal.Core.Meaning as GM
+import Once.Internal.GradedOps as LOps
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Program Σ as SP
 import Once.Spec.Core.Meaning as SM

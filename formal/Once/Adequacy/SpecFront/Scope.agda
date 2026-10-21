@@ -20,14 +20,14 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Signature using (Signature)
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Type.Poly as TP
-import Once.Lang.Type.Instance as LI
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+import Once.Internal.Type.Poly as TP
+import Once.Internal.Type.Instance as LI
 import Once.Spec.Type as ST
 import Once.Spec.Grade as SG
 import Once.Spec.Core.Syntax as SC
-open import Once.Lang.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecGrammar.Conv using (πS)
 

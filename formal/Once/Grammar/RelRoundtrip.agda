@@ -26,8 +26,8 @@ open import Data.List.Properties using (++-assoc)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; mk-kind; pure)
-open import Once.Lang.Type using (_*_; _+_; _⇒[_]_)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure)
+open import Once.Internal.Type using (_*_; _+_; _⇒[_]_)
 open import Once.Parser.Token
 import Once.Grammar as G
 open G using (GType)

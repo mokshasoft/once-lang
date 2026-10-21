@@ -30,9 +30,9 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Polynomial
-import qualified MAlonzo.Code.Once.Lang.Type
-import qualified MAlonzo.Code.Once.Lang.Type.WellFormed
+import qualified MAlonzo.Code.Once.Internal.Polynomial
+import qualified MAlonzo.Code.Once.Internal.Type
+import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Machine.ReadTypedAdequate._.readReg-typed
@@ -40,12 +40,12 @@ d_readReg'45'typed_108 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   Maybe AgdaAny
 d_readReg'45'typed_108 ~v0 ~v1 ~v2 = du_readReg'45'typed_108
 du_readReg'45'typed_108 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   Maybe AgdaAny
 du_readReg'45'typed_108
@@ -55,13 +55,13 @@ d_readTyped_110 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   Maybe AgdaAny
 d_readTyped_110 ~v0 ~v1 ~v2 = du_readTyped_110
 du_readTyped_110 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   Maybe AgdaAny
@@ -72,7 +72,7 @@ d_readTyped'45'cell_112 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    Maybe AgdaAny) ->
   (MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
@@ -81,7 +81,7 @@ d_readTyped'45'cell_112 ::
   Maybe AgdaAny
 d_readTyped'45'cell_112 ~v0 ~v1 ~v2 = du_readTyped'45'cell_112
 du_readTyped'45'cell_112 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    Maybe AgdaAny) ->
   (MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
@@ -188,40 +188,40 @@ d_readable'45'base_564 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   T_Readable_534
 d_readable'45'base_564 ~v0 ~v1 ~v2 v3 v4
   = du_readable'45'base_564 v3 v4
 du_readable'45'base_564 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   T_Readable_534
 du_readable'45'base_564 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Unit_10
+      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Unit_10
         -> coe C_r'45'unit_536
-      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Void_12
+      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Void_12
         -> coe C_r'45'void_554
-      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14
+      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14
         -> coe C_r'45'int_538
-      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Float_16
+      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Float_16
         -> coe C_r'45'float_546
-      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v4 v5
+      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Lang.Type.C__'42'__24 v6 v7
+             MAlonzo.Code.Once.Internal.Type.C__'42'__24 v6 v7
                -> coe
                     C_r'45'pair_544 (coe du_readable'45'base_564 (coe v6) (coe v4))
                     (coe du_readable'45'base_564 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Sum_28 v4 v5
+      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Sum_28 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Lang.Type.C__'43'__26 v6 v7
+             MAlonzo.Code.Once.Internal.Type.C__'43'__26 v6 v7
                -> coe
                     C_r'45'sum_552 (coe du_readable'45'base_564 (coe v6) (coe v4))
                     (coe du_readable'45'base_564 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'rigid_32
+      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'rigid_32
         -> coe C_r'45'rigid_560
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ReadTypedAdequate.readable?
@@ -229,21 +229,21 @@ d_readable'63'_576 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> Maybe T_Readable_534
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 -> Maybe T_Readable_534
 d_readable'63'_576 ~v0 ~v1 ~v2 v3 = du_readable'63'_576 v3
 du_readable'63'_576 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> Maybe T_Readable_534
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 -> Maybe T_Readable_534
 du_readable'63'_576 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Lang.Type.C_Unit_20
+         MAlonzo.Code.Once.Internal.Type.C_Unit_20
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'unit_536)
-         MAlonzo.Code.Once.Lang.Type.C_Void_22
+         MAlonzo.Code.Once.Internal.Type.C_Void_22
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'void_554)
-         MAlonzo.Code.Once.Lang.Type.C__'42'__24 v2 v3
+         MAlonzo.Code.Once.Internal.Type.C__'42'__24 v2 v3
            -> let v4 = coe du_readable'63'_576 (coe v2) in
               coe
                 (let v5 = coe du_readable'63'_576 (coe v3) in
@@ -257,7 +257,7 @@ du_readable'63'_576 v0
                                     (coe C_r'45'pair_544 v6 v7)
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                       _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
-         MAlonzo.Code.Once.Lang.Type.C__'43'__26 v2 v3
+         MAlonzo.Code.Once.Internal.Type.C__'43'__26 v2 v3
            -> let v4 = coe du_readable'63'_576 (coe v2) in
               coe
                 (let v5 = coe du_readable'63'_576 (coe v3) in
@@ -271,13 +271,13 @@ du_readable'63'_576 v0
                                     (coe C_r'45'sum_552 v6 v7)
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                       _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
-         MAlonzo.Code.Once.Lang.Type.C_Int_34
+         MAlonzo.Code.Once.Internal.Type.C_Int_34
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'int_538)
-         MAlonzo.Code.Once.Lang.Type.C_Float_36
+         MAlonzo.Code.Once.Internal.Type.C_Float_36
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'float_546)
-         MAlonzo.Code.Once.Lang.Type.C_rigid_38 v2 v3
+         MAlonzo.Code.Once.Internal.Type.C_rigid_38 v2 v3
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'rigid_560)
          _ -> coe v1)
@@ -337,9 +337,9 @@ d_readTyped'45'cell'45'adequate_706 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   T_Readable_534 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
@@ -352,9 +352,9 @@ d_readTyped'45'adequate_724 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   T_Readable_534 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->

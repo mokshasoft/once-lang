@@ -414,9 +414,10 @@ with the code:
 5. **Domains from the body** (D322's option 2): binder annotations
    (`f (x : Int) = …`) would let a body declare its own context, so a λ could
    go without a signature (D323) — an extension, not decided.
-6. **The bridges to the Spec** (plan 0.121): the compiler follows the current
-   Spec; the proof that it is correct against it (the core meaning, the
-   telescope and the observation are proved; the front end is in progress)
-   replaces the proof against `Once.Lang` at the merge.
+6. **The compiler's internal language** (plan 0.122): the theorem is the
+   Spec's (D332, both bridges proved); the compiler still types, elaborates
+   and means programs in an internal language of its own (`Once.Internal`),
+   proved faithful to the Spec. Collapsing it onto the Spec — one language
+   instead of two, the bridges gone, the same theorem — is after the merge.
 7. **Lexing leniency** (D325): a stray `"` ends the tokens and a character
    that starts no token is skipped; making either an error is a Spec change.

@@ -31,10 +31,10 @@ import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Iterative
-import qualified MAlonzo.Code.Once.Lang.Polynomial
-import qualified MAlonzo.Code.Once.Lang.Trace
-import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Internal.Iterative
+import qualified MAlonzo.Code.Once.Internal.Polynomial
+import qualified MAlonzo.Code.Once.Internal.Trace
+import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Type
@@ -47,7 +47,7 @@ d_eval'7472'_24 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 d_eval'7472'_24 ~v0 v1 v2 v3 v4 = du_eval'7472'_24 v1 v2 v3 v4
 du_eval'7472'_24 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
@@ -55,7 +55,7 @@ du_eval'7472'_24 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 du_eval'7472'_24 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_120
@@ -73,11 +73,11 @@ d_ι'7584'_26 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182
 d_ι'7584'_26 ~v0 ~v1 v2 = du_ι'7584'_26 v2
 du_ι'7584'_26 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182
 du_ι'7584'_26 v0
   = coe
       MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'interp_120 (coe v0)
@@ -195,12 +195,12 @@ du_prim'45'sv_548 v0 v1
       MAlonzo.Code.Once.IRTy.C_fits'45'int_512
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
              (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe v1)
       MAlonzo.Code.Once.IRTy.C_fits'45'float_514
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Internal.Type.C_Float_36)
              (coe MAlonzo.Code.Once.Type.C_fits'45'float_28) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.InlineRep
@@ -446,7 +446,7 @@ d_decomposeClosureWF_1076 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   T_ValidAtWF_582 -> T_ClosureValidWF_1006
@@ -832,7 +832,7 @@ du_validityWF'45'mem'45'only_1524 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v4
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
@@ -1316,7 +1316,7 @@ du_validityWF'45'write'45'at'45'frontier_1912 v0 v1 v2 v3 v4 v5 v6
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v4
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
@@ -1794,7 +1794,7 @@ du_validityWF'45'write'45'at'45'suc'45'frontier_2284 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v4
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
@@ -2277,7 +2277,7 @@ du_validityWF'45'write'45'sv'45'at'45'frontier_2656 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v4
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
@@ -2760,7 +2760,7 @@ du_validityWF'45'write'45'sv'45'at'45'suc'45'frontier_3028 v0 v1 v2
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v4
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
@@ -3273,7 +3273,7 @@ du_validityWF'45'alloc'45'advance_3402 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v18) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v4
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v18) (coe v4))
@@ -3869,7 +3869,7 @@ du_validityWF'45'frontier'45'advance_3742 v0 v1 v2 v3 v4 v5 v6 v7
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v20) (coe v5))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v5
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v20) (coe v5))
@@ -4514,7 +4514,7 @@ du_validityWF'45'with'45'bf'45'transfer_4158 v0 v1 v2 v3 v4 v5 v6
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v19) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v3
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v19) (coe v3))
@@ -4735,7 +4735,7 @@ du_validityWF'45'mem'45'preserved_4494 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              du_eval'7472'_24 v1 v2 v4
                              (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))

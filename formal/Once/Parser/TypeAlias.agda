@@ -16,7 +16,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Lang.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Internal.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 -- TVar removed: Type variables only exist in PolyType (for type inference).
 -- User-written types must be concrete. Type aliases without parameters
 -- are still supported via name lookup in the alias environment.

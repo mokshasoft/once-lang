@@ -23,9 +23,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 import Data.Product
 import Data.List.Relation.Binary.Subset.DecPropositional as SubDec
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
 
 ------------------------------------------------------------------------

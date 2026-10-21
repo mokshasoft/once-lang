@@ -21,7 +21,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 
-import Once.Lang.Type.Grade as LG
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW; TStar; TPlus)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; Starts; starts; GradeToken; g0; g1; gw)

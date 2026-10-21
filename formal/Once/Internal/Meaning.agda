@@ -1,0 +1,87 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Internal.Meaning — the DYNAMIC semantics (OCP-0006, spec).
+--
+-- SPEC (trust boundary): what a program MEANS. The reference meaning is
+-- the DERIVATION DENOTATION `⟦_⟧ᵈ` (Plan 0.58 P5):
+--   * `Once.Denotation.ValueDomain` — the semantic domain `⟦_⟧ᴰ` (types
+--     as sets, `emit-D`, `inject`/`forget`, the functor coercion).
+--   * `Once.Denotation.Admissible` — `AdmissibleM`: WHICH PROGRAMS A TARGET
+--     OWES AN ANSWER FOR. `Typed` is target-free; this is the target-relative
+--     half, and it is what makes rejecting an out-of-range `Int` literal legal
+--     without making "reject everything" legal.
+--   * `Once.Internal.Event` — `SigOpEvent`: WHAT AN
+--     OBSERVATION IS. Which part of a SigOp invocation the outside world can
+--     see, and therefore which two programs count as behaviourally equal.
+--     This is a CHOICE, not a consequence — the same status `Behavior`'s own
+--     header claims for itself — so it is reviewed here rather than left in a
+--     module the spec merely reaches through. See D114 for what it currently
+--     observes, which is LESS than it should.
+--   * `Once.Denotation.Behavior` — `Behavior`: a program's observable is its
+--     SigOp trace (programs do not return). D179: a RECORD — the depth-indexed
+--     family PLUS the three laws that make it canonical (`extends`, `bounded`,
+--     `saturates`), so pointwise equality of behaviours IS trace equality.
+--   * THE GRADED MEANING (D250, plan 0.113 B4): `M π` / `⟦_⟧ᵛ`
+--     (`Denotation.GradedDomain`), the schemes (`Denotation.GradedOps`), the
+--     interaction-tree monad `T` with `Interp`/`run` (`Denotation.TraceMonad`,
+--     D257), and the core derivation meaning `⟦_⟧` (`Spec.Core.Meaning`).
+--   * PLAN 0.103 6a — THE PROGRAM MEANING IS THE CORE'S. A typed module IS a
+--     core program (`Once.Internal.Core.Translate.toProgram`: the module telescope,
+--     every definition typed once, a reference meaning its entry — D239, D243,
+--     D246), and its meaning is `Once.Internal.Core.Telescope.runCore`: its
+--     `main` entry — an entry like any other (D253) — run in the telescope's
+--     environment. (The surface direct meaning
+--     `MainMeaning.meaningᵈ` is retired: it could not give a polymorphic
+--     entry, typed once at rigid parameters, a meaning at an instance.)
+--
+-- NOT spec (implementation, checked against this): `realize` (the
+-- derivation→IR-morphism bridge), `evalᴰ` (`Once.Denotation.DenotTrace`,
+-- the IR-expression trace evaluator), `SD.⟦_⟧ˢ` (`SourceDenote`, related
+-- to the core meaning entry by entry by the proven telescope walk), and the
+-- elaborator.
+--
+-- `Once.IR` stays OUTSIDE the spec (OCP option a): it is a pure syntax
+-- vocabulary tier (no machine behaviour), shared by spec and implementation
+-- like `Once.Type`, so it may appear in leaf imports but is NOT re-exported.
+------------------------------------------------------------------------
+
+module Once.Internal.Meaning where
+
+-- The observation vocabulary: an event (`Spec.Event`).
+-- D115/D116: which programs a target owes an answer for. In the spec for the
+-- same reason the observable is: without it, a compiler that rejects every
+-- program satisfies soundness vacuously.
+-- EXPLICIT re-exports throughout: `admissibleM?` is the DECIDER and
+-- `outOfRange`/`firstBadLit` are error reporting — neither is part of what
+-- admissibility MEANS (D115/D134).
+open import Once.Denotation.Admissible public
+  using ( AdmissibleM
+        ; rawIntLits ; negLits ; declIntLits ; moduleIntLits )
+
+open import Once.Internal.Event public
+  using ( SigOpEvent )
+
+open import Once.Denotation.Behavior public
+  using (Behavior; Source)
+-- Plan 0.113 B4: THE MEANING IS THE GRADED ONE (D250), so that is what the Spec
+-- exports. A computation at grade `π` lives in `M π` — the value itself when
+-- `pure` (referentially transparent), an interaction tree `T` when `eff` (D257:
+-- calls answered by an interpretation `Interp`, observed through `run`); a type
+-- denotes `⟦_⟧ᵛ`. The core derivation meaning `⟦_⟧` (one clause per rule) and the
+-- recursion schemes are stated over them. The purity-blind Kleisli domain
+-- (`ValueDomain.⟦_⟧ᴰ`, every arrow `A → T B`) and the surface derivation meaning
+-- over it are implementation (the IR side's), no longer exported as the Spec's.
+open import Once.Internal.Trace public
+  using ( T ; returnT ; _>>=T_ ; Interp ; Run ; run ; then ; projTrace )
+open import Once.Internal.Graded public
+  using ( M ; ⟦_⟧ᵛ ; returnM ; bindM ; subM ; toT∞ ; bindᵍ ; EqM )
+open import Once.Internal.GradedOps public
+  using ( fmapM ; seqM ; in-valueᵛ ; cata-semᵛ ; mapLayerᵛ ; ana-semᵛ ; out-semᵛ ; sigOpRefᵛ )
+open import Once.Internal.Core.Meaning public
+  using ( ⟦_⟧ )
+open import Once.Internal.Core.Telescope public
+  using ( Program ; program ; Tele ; teleSem )
+open import Once.Internal.Core.Translate public
+  using ( toProgram ; toProgram₀ )

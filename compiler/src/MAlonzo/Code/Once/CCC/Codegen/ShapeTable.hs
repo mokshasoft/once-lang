@@ -37,7 +37,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Machine.ShapeAt
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Type
@@ -492,7 +492,7 @@ d_load'45'snd_298 v0
          _ -> coe v1)
 -- Once.CCC.Codegen.ShapeTable.claim-at
 d_claim'45'at_318 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   Maybe MAlonzo.Code.Once.Type.T_FitsInReg_24 -> T_RegExpect_8
 d_claim'45'at_318 ~v0 v1 v2 = du_claim'45'at_318 v1 v2
@@ -513,12 +513,12 @@ du_claim'45'at_318 v0 v1
          _ -> coe v2)
 -- Once.CCC.Codegen.ShapeTable.sigop-claim
 d_sigop'45'claim_324 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 -> T_RegExpect_8
 d_sigop'45'claim_324 ~v0 v1 v2 = du_sigop'45'claim_324 v1 v2
 du_sigop'45'claim_324 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 -> T_RegExpect_8
 du_sigop'45'claim_324 v0 v1
   = coe

@@ -19,10 +19,10 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
-import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Parser.Generic.Parser
 import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Token
+import qualified MAlonzo.Code.Once.Spec.Grade
 
 -- Once.Parser.Generic.Complete.Make._.ParsesArrowTailG
 d_ParsesArrowTailG_78 a0 a1 a2 a3 a4 = ()

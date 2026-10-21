@@ -28,19 +28,20 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature; _∶_)
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Core.PolyTy as LP
+import Once.Spec.Grade as LG
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
-import Once.Lang.Elaboration as E
-import Once.Lang.Type.Poly as TP
-open import Once.Lang.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+import Once.Internal.Elaboration as E
+import Once.Internal.Type.Poly as TP
+open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 open import Once.Adequacy.SpecCore.Schema using (CleanSig; ptyS)
 
+import Once.Spec.Grade
 module Once.Adequacy.SpecFront.Check
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
@@ -77,20 +78,20 @@ open import Data.Maybe using (nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Sub as LS
-import Once.Lang.Type.WellFormed as LW
+import Once.Internal.Type as LT
+import Once.Internal.Type.Sub as LS
+import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SS
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Syntax as SX
-import Once.Lang.Context as LC
-open import Once.Lang.Context using (svar)
-open import Once.Lang.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Lang.Typing
-open import Once.Lang.Typing.Scope using (NamedCtx; mkCtx; classifyAppHead; Binding)
+import Once.Internal.Context as LC
+open import Once.Internal.Context using (svar)
+open import Once.Internal.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Internal.Typing
+open import Once.Internal.Typing.Scope using (NamedCtx; mkCtx; classifyAppHead; Binding)
 import Data.List.Relation.Unary.Any
-import Once.Lang.Core.Syntax S as L
+import Once.Internal.Core.Syntax S as L
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
 open import Once.Adequacy.SpecCore.Type
 open import Once.Adequacy.SpecCore.Schema using (defsS; castSub; schS; !!-defsS; InstR; TyR-inst; respects-S; Clean; c-⇒)
@@ -151,7 +152,7 @@ record Dom {n} (L : SU.Locals m n) (e′ : SX.Expr) (A′ : ST.Ty m) (π : LG.Pu
 ------------------------------------------------------------------------
 
 private
-  gen-head : ∀ {g} → g ∈ SU.specialGenerators → classifyAppHead (Once.Lang.Syntax.RResolved (Once.Spec.Name.gen g)) ≡ nothing → ⊥
+  gen-head : ∀ {g} → g ∈ SU.specialGenerators → classifyAppHead (Once.Internal.Syntax.RResolved (Once.Spec.Name.gen g)) ≡ nothing → ⊥
   gen-head (Data.List.Relation.Unary.Any.here refl) ()
   gen-head (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl)) ()
   gen-head (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl))) ()
@@ -256,7 +257,7 @@ polyD : ∀ {n} {L : SU.Locals m n} {A B A₀ π π′} (d : Fin s) {c} → nm d
       → (∀ i → ST.Occurs i (ptyS (LP.Schema.type (S LP.!! d))))
       → (X Y : LP.Ty (LP.Schema.arity (S LP.!! d))) → LP.Schema.type (S LP.!! d) ≡ X LP.⇒[ LG.mk-kind LG.Many π′ ] Y
       → (∀ i → ST.Occurs i (ptyS Y) → ST.Occurs i (ptyS X))
-      → (i : EV.InstanceOf d (A LT.⇒[ LG.mk-kind LG.Many π′ ] B)) → TyR Δ A A₀ → π′ LS.⊑π π
+      → (i : EV.InstanceOf d (A LT.⇒[ LG.mk-kind LG.Many π′ ] B)) → TyR Δ A A₀ → π′ Once.Spec.Grade.⊑π π
       → Dom L (SX.RResolved c) A₀ π B
             (L.coerce (A LT.⇒[ LG.mk-kind LG.Many π′ ] B) (A LT.⇒[ LG.mk-kind LG.Many π ] B) (L.ref d (proj₁ i)))
 polyD {L = L} {A} {B} {A₀} {π} {π′} d {c} e pos occ X Y te incl (τ , r , eq) rA g =

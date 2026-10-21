@@ -36,15 +36,15 @@ open import Data.Fin using (Fin)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym; trans)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.WellFormed as LW
+import Once.Internal.Type as LT
+import Once.Internal.Type.WellFormed as LW
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)
 open import Once.Functor.Decide using (isConcrete?)
 import Data.Sum
-open import Once.Lang.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
+open import Once.Internal.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
   PolyFunctor; PK; PId; _P⊕_; _P⊗_; Ground; GroundF; extractGround; extractGroundF)
-import Once.Lang.Core.PolyTy as LP
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Program
   using (SchemaOf; TypeOf; FunOf; NotDefinition; nd-sig; nd-alias; nd-import;
@@ -52,8 +52,8 @@ open import Once.Spec.Surface.Program
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser.TypeAlias using (TypeAliasEnv; expandAliases; expandAliasesF)
 import Once.Parser as Parser
-open import Once.Lang.Core.Schema using (schemaOf)
-open import Once.Lang.Core.Translate using (monoSchema)
+open import Once.Internal.Core.Schema using (schemaOf)
+open import Once.Internal.Core.Translate using (monoSchema)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open import Once.Adequacy.SpecCore.Schema using (schS; ptyS; pfunS)
 open import Once.Adequacy.SpecFront.Expr using (RX)

@@ -36,16 +36,16 @@ open import Data.List.Membership.DecPropositional Data.String._≟_ using (_∈?
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-open import Once.Lang.Type.Grade using (mk-kind; Many; pure; act; eff)
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Type.Poly as TP
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Type.Poly as TP
 open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
                PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; Ground; extractGround; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
-open import Once.Lang.Type.Instance using (params; nubFrom; arityOf; ftvK; KindedInstance; RespectsKinds)
-import Once.Lang.Core.PolyTy as LP
-open import Once.Lang.Core.Schema using (schemaOf)
+open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; ftvK; KindedInstance; RespectsKinds)
+import Once.Internal.Core.PolyTy as LP
+open import Once.Internal.Core.Schema using (schemaOf)
 import Once.Spec.Grade as SG
 import Once.Spec.Core.Syntax as SC
 open import Once.Type.Rigid using (subst-ground; ftvK⊆ftv)

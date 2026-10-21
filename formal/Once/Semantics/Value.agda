@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Semantics.Value — the laws of the value domain (`Once.Lang.Value`):
+-- Once.Semantics.Value — the laws of the value domain (`Once.Internal.Value`):
 -- coercion round trips, Lambek, the fold's computation law; the IR-mirroring
 -- operations (`sem-fst`, …) and the optimizer's fusion (`sem-fuseNat`).
 --
@@ -58,11 +58,12 @@ open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Function using (_∘_)
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Lang.Res using (Res; stopped; returns; mapRes)
+open import Once.Internal.Res using (Res; stopped; returns; mapRes)
 
 
 -- OCP-0003: ⟦Fix⟧ wrapper removed. μ/ν come from Once.Semantics.Functor.
@@ -90,16 +91,16 @@ open import Once.Lang.Res using (Res; stopped; returns; mapRes)
 -- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Type.WellFormed using (IsBaseType; WellFormedF)
-open import Once.Lang.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
-open import Once.Lang.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Lang.Polynomial
+open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF)
+open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
+open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Internal.Polynomial
 open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)
-open Once.Lang.Polynomial.νS using (unfoldS)
+open Once.Internal.Polynomial.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /
 -- `Once.Semantics.Value.Laws`, so this module holds definitions only.
-open import Once.Lang.Value IntRep FloatRep
+open import Once.Internal.Value IntRep FloatRep
 ------------------------------------------------------------------------
 -- Type/Set Functor Coherence
 --

@@ -21,20 +21,20 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.Grammar
-import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Parser.Token
+import qualified MAlonzo.Code.Once.Spec.Grade
 
 -- Once.Grammar.Printer.quantityToken
 d_quantityToken_6 ::
-  MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 ->
+  MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Once.Parser.Token.T_Token_6
 d_quantityToken_6 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Lang.Type.Grade.C_Zero_10
+      MAlonzo.Code.Once.Spec.Grade.C_Zero_8
         -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret0_32
-      MAlonzo.Code.Once.Lang.Type.Grade.C_One_12
+      MAlonzo.Code.Once.Spec.Grade.C_One_10
         -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret1_30
-      MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14
+      MAlonzo.Code.Once.Spec.Grade.C_Many_12
         -> coe MAlonzo.Code.Once.Parser.Token.C_TCaretW_34
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Printer.printGType

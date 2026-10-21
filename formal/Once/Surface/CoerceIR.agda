@@ -24,11 +24,12 @@ module Once.Surface.CoerceIR where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Lang.Type.Grade as T using (Zero; One; Many)
-import Once.Lang.Type as T
-open import Once.Lang.Type.Sub
+open import Once.Spec.Grade as T using (Zero; One; Many)
+import Once.Internal.Type as T
+open import Once.Internal.Type.Sub
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
-open import Once.Lang.Laws.SubLaws
+open import Once.Internal.Laws.SubLaws
 open import Once.IR
 open import Once.IRTy using (_⇛_; Unit; ⌊_⌋; _*_; _+_)
 

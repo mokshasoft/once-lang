@@ -33,20 +33,20 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Grade as SG
 open import Once.Spec.Signature using (BTy; ⟦_⟧ᵇ; Op; op; _∶_; operation)
 import Once.Spec.Signature as SSig
-import Once.Lang.Value Carrier Carrier as V
-import Once.Lang.Graded as LGr
-import Once.Lang.Polynomial as LPoly
+import Once.Internal.Value Carrier Carrier as V
+import Once.Internal.Graded as LGr
+import Once.Internal.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
-open import Once.Lang.FunctorMeaning using (translateF; ⟦_,_⟧-base)
-import Once.Lang.Trace as LTr
-import Once.Lang.Iterative as LI
-import Once.Lang.Stream as LSt
+open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+import Once.Internal.Trace as LTr
+import Once.Internal.Iterative as LI
+import Once.Internal.Stream as LSt
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
@@ -165,6 +165,6 @@ ValR (g-⇒ {q = LG.Zero} {π} a b) f g = MR (pr π) (ValR b) (f _) (g _)
 ValR (g-⇒ {q = LG.One}  {π} a b) f g = ∀ {x y} → ValR a x y → MR (pr π) (ValR b) (f x) (g y)
 ValR (g-⇒ {q = LG.Many} {π} a b) f g = ∀ {x y} → ValR a x y → MR (pr π) (ValR b) (f x) (g y)
 ValR (g-μ f) x y = μR f x y
-ValR (g-ν {φ = LG.pure} f) v w = νpR f v w
-ValR (g-ν {φ = LG.act}  f) v w = νdR f v w
+ValR (g-ν {φ = LG.pureᶠ} f) v w = νpR f v w
+ValR (g-ν {φ = LG.actᶠ}  f) v w = νdR f v w
 ValR g-rigid _ _ = ⊤

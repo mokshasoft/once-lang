@@ -10,14 +10,15 @@
 
 module Once.Surface.Syntax where
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Lang.Type.Sub using (_<:_)
+open import Once.Internal.Type.Sub using (_<:_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Lang.Type.WellFormed using (WellFormedF; IsConcrete)
+open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete)
 
 open import Data.Fin using (Fin)
 open import Data.Bool using (true)
@@ -36,7 +37,7 @@ open import Once.Spec.Name using (CanonicalName)
 -- Plan 0.58 (OCP-0006): the IR-FREE context/usage core moved to
 -- `Once.Surface.Context` and re-exported here (consumers unchanged), so the
 -- typing judgment / direct denotation can use it without `Once.IR`.
-open import Once.Lang.Context
+open import Once.Internal.Context
 open import Once.Surface.Context
 
 -- | Surface expressions (well-typed AND well-used by construction)
@@ -59,7 +60,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- The explicit proof argument is the linearity-by-construction witness:
   -- no term violating its declared usage discipline can be built.
   lam   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {q' : Quantity} {π : Purity} {A B} (q : Quantity)
-        → (q' ≤q q) ≡ true
+        → (q' ≤qᵇ q) ≡ true
         → Expr (Γ , A) (q' ∷ Ψ) B
         → Expr Γ Ψ (A ⇒[ mk-kind q π ] B)
 

@@ -30,12 +30,12 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-call-fn; module LocStat
 open LocState using (halted)
 import Once.IRTy
 import Once.IR
-open import Once.Lang.Res using (is-stopped)
+open import Once.Internal.Res using (is-stopped)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
 open import Data.Nat.Properties using (+-monoʳ-≤)
 open import Once.Denotation.Program using (tableCalls)
 import Once.Denotation.DenotTrace as DT
-import Once.Lang.Trace as TM
+import Once.Internal.Trace as TM
 
 module CallC {FS : FrameSemantics} where
 

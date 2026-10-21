@@ -41,47 +41,48 @@ open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst)
 
-open import Once.Lang.Type.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; act; eff; Finite; fin)
+open import Once.Spec.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; relS-ret; RelS-bind; RelS-embed; RelS-≈ˡ; embed-bind; RelS-loop; RelS-iter∞)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; RelS-fmapʳ; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (liftFn-rel)
 open import Once.Adequacy.SourceRefl fmt using (SD-rel; <:-rel; cata-clo-rel; ana-clo-rel)
-open import Once.Lang.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
-open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
+open import Once.Internal.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
 open import Once.Semantics.Machine using (sem-In; sem-cata)
 open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
 import Once.Denotation.Meaning
-open import Once.Lang.Context using (Ctx; ∅; _,_^_; lookup; svar; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _∷_; []; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Lang.Context using (Usage)
+open import Once.Internal.Context using (Ctx; ∅; _,_^_; lookup; svar; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _∷_; []; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Internal.Context using (Usage)
 open import Once.Surface.Syntax using (sigOp)
 import Once.Surface.Syntax as Surface
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
-import Once.Lang.Stream
-open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; fmapT; rel-ret; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
+import Once.Internal.Stream
+open import Once.Internal.Trace using (T; ret; returnT; _>>=T_; fmapT; rel-ret; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
 open import Once.Denotation.TraceMonadLaws using (RelT′-fmap; RelT′-refl)
 open Interp using (impl; sig)
-import Once.Lang.Trace as TM
-open import Once.Lang.Contract using (key; valueOf-at; _∈K?_)
-open import Once.Lang.ContractLaws using (value-∈)
+import Once.Internal.Trace as TM
+open import Once.Internal.Contract using (key; valueOf-at; _∈K?_)
+open import Once.Internal.ContractLaws using (value-∈)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; sigOpSemT; module CallEnv)
 open CallEnv using (ffiE)
-open import Once.Lang.Typing.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
+open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
 open import Once.IR.Ref using (refIR)
-open import Once.Lang.Type.Instance using (KindedInstance)
+open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Lang.Type.Poly using (extractGround)
+open import Once.Internal.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
-open import Once.Lang.Type.Sub
+open import Once.Internal.Type.Sub
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
-open import Once.Lang.Laws.SubLaws
+open import Once.Internal.Laws.SubLaws
 open import Once.Denotation.Sub using (⟦_⟧<:)
-open import Once.Lang.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
+open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
   t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd;
@@ -97,8 +98,8 @@ open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-initial-app-check; t-app-spine; t-var-poly-instantiate;
   t-var-poly-instantiate-infer; d-poly)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Lang.Environment using (lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0) renaming (env0 to env0ᵛ)
-open import Once.Lang.Graded using (⟦_⟧ᵛ; M; _>>=ᵖ_; returnM; bindM; subM)
+open import Once.Internal.Environment using (lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0) renaming (env0 to env0ᵛ)
+open import Once.Internal.Graded using (⟦_⟧ᵛ; M; _>>=ᵖ_; returnM; bindM; subM)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; DefMeanings; ImpMeanings; MeaningsOf; EnvRun; sigOpValᴰ; sigOpRefᴰ)
 open Once.Denotation.Meaning.Meanings using (decl-res; defs; entries; world)
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
@@ -111,26 +112,26 @@ open import Once.Arith.SigOp.Builders using (value-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 import Data.List as L
 open import Once.Spec.Name using (CanonicalName; bare)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation fmt
   using (RelGV; RelGT; RelGM; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret; RelGM-fmap; prjB-rel; injB-rel; module _∼ᵖᵈ_; embνᵃ-∼;
          right-self; GM-D; RelS-embed-fmap; RelGᵖ-app)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
-open import Once.Lang.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCallᵀ)
+open import Once.Internal.GradedOps using (prjB; injB; cfᵛ; cf⁻¹ᵛ; in-valueᵛ; sigOpRefᵛ; out-semᵛ; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; opCallᵀ)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
-open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Lang.Polynomial using (⟦_⟧SF)
+open import Once.Internal.Polynomial using (⟦_⟧SF)
 open import Once.SigOp.Info using (semP; int-prim; mk-info')
-open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Internal.Trace using (FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed)
 open T∞ using (force)
-open import Once.Lang.Type using (isVoid?; isUnit?)
+open import Once.Internal.Type using (isVoid?; isUnit?)
 import Once.Semantics.Machine as Val
 open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.Adequacy.GradedCataBridge fmt using (cata-bridgeᵍ)
@@ -138,7 +139,7 @@ open import Once.Adequacy.GradedAnaBridge fmt using (ana-bridgeᵍ)
 open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out)
 open import Once.Adequacy.GradedRelation fmt using (module _∼ᵈ_)
 open _∼ᵈ_ using (force-∼)
-open Once.Lang.Stream.νᵈ using (forceᵈ)
+open Once.Internal.Stream.νᵈ using (forceᵈ)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.
 -- Match-to-refl.  (`realize-global (g-In) = In ∘ subst(⌊⟧T)(rg) = In-ir ∘ rg`.)
@@ -393,7 +394,7 @@ val-rel ι s bC x p (no ¬p)  = ⊥-elim (¬p p)
 -- D313: at `act` the call is a finite tree, the IR's own (the same decisions
 -- on the codomain), mapped into the two value domains.
 opCallᵀ-sem : ∀ {A B} (h : FFIAnswers) (cn : CanonicalName) (bA : IsBaseType A) (bB : IsBaseType B)
-                (dv : Dec (B ≡ Once.Lang.Type.Void)) (du : Dec (B ≡ Unit)) (x : Val.⟦ A ⟧)
+                (dv : Dec (B ≡ Once.Internal.Type.Void)) (du : Dec (B ≡ Unit)) (x : Val.⟦ A ⟧)
             → opCallᵀ cn bA dv du x ≡ sigOpSemT fmt h (mk-info' cn (arrow-sem-eff dv du) bA bB) (arrow-sem-eff dv du) x
 opCallᵀ-sem h cn bA bB (yes refl) du         x = refl
 opCallᵀ-sem h cn bA bB (no _)     (yes refl) x = refl
@@ -563,18 +564,18 @@ out-app-bridge : ∀ {F : Functor} {π : Finite} {wfF : WellFormedF F}
 -- is related to `out-sem` (`liftFn-Out`) at the stream's self-relation — so
 -- the relation transfers to it (`GM-D`).
 -- D250: at `pure` the Spec's force is a plain layer, always there and silent.
-out-app-bridge {F} {pure} {wfF} {vᴸ} {vᴿ} rel =
-  GM-D pure (⟦ F ⟧T (ν-type F pure))
-    (retargetˡ refl (RelS-fmap {f = λ l → cf⁻¹ᵛ (ν-type F pure) wfF (coerce-ν-out wfF _ l)}
-                               {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F pure) (coerce-ν-out wfF _ layer)}
-                               (force-∼ᵖᵈ rel) (λ r → out-relᵍ {A = ν-type F pure} wfF r)))
-    (liftFn-Out {π = pure} wfF (right-self (ν-type F pure) rel))
-out-app-bridge {F} {act} {wfF} {vᴸ} {vᴿ} rel =
-  GM-D act (⟦ F ⟧T (ν-type F act))
+out-app-bridge {F} {pureᶠ} {wfF} {vᴸ} {vᴿ} rel =
+  GM-D pure (⟦ F ⟧T (ν-type F pureᶠ))
+    (retargetˡ refl (RelS-fmap {f = λ l → cf⁻¹ᵛ (ν-type F pureᶠ) wfF (coerce-ν-out wfF _ l)}
+                               {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F pureᶠ) (coerce-ν-out wfF _ layer)}
+                               (force-∼ᵖᵈ rel) (λ r → out-relᵍ {A = ν-type F pureᶠ} wfF r)))
+    (liftFn-Out {π = pureᶠ} wfF (right-self (ν-type F pureᶠ) rel))
+out-app-bridge {F} {actᶠ} {wfF} {vᴸ} {vᴿ} rel =
+  GM-D act (⟦ F ⟧T (ν-type F actᶠ))
     (RelS-embed-fmap (forceᵈ vᴸ)
-      (RelS-fmapʳ {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F act) (coerce-ν-out wfF _ layer)}
-                  (force-∼ rel) (λ r → out-relᵍ {A = ν-type F act} wfF r)))
-    (liftFn-Out {π = act} wfF (right-self (ν-type F act) rel))
+      (RelS-fmapʳ {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F actᶠ) (coerce-ν-out wfF _ layer)}
+                  (force-∼ rel) (λ r → out-relᵍ {A = ν-type F actᶠ} wfF r)))
+    (liftFn-Out {π = actᶠ} wfF (right-self (ν-type F actᶠ) rel))
 
 in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F}
                 {vᴸ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ} {vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
@@ -660,10 +661,10 @@ mutual
   RelGV-sub sub-int    r = r
   RelGV-sub sub-float  r = r
   RelGV-sub sub-μ      r = r
-  RelGV-sub (sub-ν {φ = pure} {pure} _) r = r
-  RelGV-sub (sub-ν {φ = act}  {act}  _) r = r
-  RelGV-sub (sub-ν {φ = pure} {act}  _) r = embνᵃ-∼ r
-  RelGV-sub (sub-ν {φ = act}  {pure} ())
+  RelGV-sub (sub-ν {φ = pureᶠ} {pureᶠ} _) r = r
+  RelGV-sub (sub-ν {φ = actᶠ}  {actᶠ}  _) r = r
+  RelGV-sub (sub-ν {φ = pureᶠ} {actᶠ}  _) r = embνᵃ-∼ r
+  RelGV-sub (sub-ν {φ = actᶠ}  {pureᶠ} ())
   RelGV-sub p@(sub-arr {q = Zero} a b g) (r , s) = RelGM-sub g b r , <:-rel p s
   RelGV-sub p@(sub-arr {q = One}  a b g) (r , s) = (λ ra → RelGM-sub g b (r (RelGV-sub a ra))) , <:-rel p s
   RelGV-sub p@(sub-arr {q = Many} a b g) (r , s) = (λ ra → RelGM-sub g b (r (RelGV-sub a ra))) , <:-rel p s
@@ -861,7 +862,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
   -- D322: each arm converted into the join, on both sides.
   bridge-i {ctx = ctx} (t-case {A = A} {B = B} {C = C} {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr J)
            {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-    RelGᵖ-bind {A = A Once.Lang.Type.+ B} {B = C}
+    RelGᵖ-bind {A = A Once.Internal.Type.+ B} {B = C}
       {m = (⟦ ds ⟧ᵢ fmt _) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₁)}
       {t₂ = (SD.⟦ realize-infer ds ⟧ˢ fmt σ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₂)}
       {k = λ v → [ (λ a → ⟦ <:ᶜ⇒<: (_⊔_≔_.left J) ⟧<:ᵛ ((⟦ dl ⟧ᵢ fmt _) (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} qL
@@ -1012,29 +1013,29 @@ module _ (σ-self : RelDefs fmt σ σ) where
 
   -- Comparison binops — bind both, pure `semM <op>-info` (Unit+Unit value).
   bridge-i (t-binop-cmp {op = OpLt} _ d₁ d₂) {ρ = ρ} re er =
-    bind2-rel {A = Int} {B = Int} {C = Unit Once.Lang.Type.+ Unit} (λ a b → semP lt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ lt-info (a , b))
+    bind2-rel {A = Int} {B = Int} {C = Unit Once.Internal.Type.+ Unit} (λ a b → semP lt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ lt-info (a , b))
               (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-              (λ ra rb → step-≡ {C = Unit Once.Lang.Type.+ Unit} (semP lt-info int-prim fmt) (SD.sigOpˢ fmt σ lt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+              (λ ra rb → step-≡ {C = Unit Once.Internal.Type.+ Unit} (semP lt-info int-prim fmt) (SD.sigOpˢ fmt σ lt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
   bridge-i (t-binop-cmp {op = OpLe} _ d₁ d₂) {ρ = ρ} re er =
-    bind2-rel {A = Int} {B = Int} {C = Unit Once.Lang.Type.+ Unit} (λ a b → semP le-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ le-info (a , b))
+    bind2-rel {A = Int} {B = Int} {C = Unit Once.Internal.Type.+ Unit} (λ a b → semP le-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ le-info (a , b))
               (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-              (λ ra rb → step-≡ {C = Unit Once.Lang.Type.+ Unit} (semP le-info int-prim fmt) (SD.sigOpˢ fmt σ le-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+              (λ ra rb → step-≡ {C = Unit Once.Internal.Type.+ Unit} (semP le-info int-prim fmt) (SD.sigOpˢ fmt σ le-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
   bridge-i (t-binop-cmp {op = OpGt} _ d₁ d₂) {ρ = ρ} re er =
-    bind2-rel {A = Int} {B = Int} {C = Unit Once.Lang.Type.+ Unit} (λ a b → semP gt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ gt-info (a , b))
+    bind2-rel {A = Int} {B = Int} {C = Unit Once.Internal.Type.+ Unit} (λ a b → semP gt-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ gt-info (a , b))
               (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-              (λ ra rb → step-≡ {C = Unit Once.Lang.Type.+ Unit} (semP gt-info int-prim fmt) (SD.sigOpˢ fmt σ gt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+              (λ ra rb → step-≡ {C = Unit Once.Internal.Type.+ Unit} (semP gt-info int-prim fmt) (SD.sigOpˢ fmt σ gt-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
   bridge-i (t-binop-cmp {op = OpGe} _ d₁ d₂) {ρ = ρ} re er =
-    bind2-rel {A = Int} {B = Int} {C = Unit Once.Lang.Type.+ Unit} (λ a b → semP ge-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ge-info (a , b))
+    bind2-rel {A = Int} {B = Int} {C = Unit Once.Internal.Type.+ Unit} (λ a b → semP ge-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ge-info (a , b))
               (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-              (λ ra rb → step-≡ {C = Unit Once.Lang.Type.+ Unit} (semP ge-info int-prim fmt) (SD.sigOpˢ fmt σ ge-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+              (λ ra rb → step-≡ {C = Unit Once.Internal.Type.+ Unit} (semP ge-info int-prim fmt) (SD.sigOpˢ fmt σ ge-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
   bridge-i (t-binop-cmp {op = OpEq} _ d₁ d₂) {ρ = ρ} re er =
-    bind2-rel {A = Int} {B = Int} {C = Unit Once.Lang.Type.+ Unit} (λ a b → semP eq-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ eq-info (a , b))
+    bind2-rel {A = Int} {B = Int} {C = Unit Once.Internal.Type.+ Unit} (λ a b → semP eq-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ eq-info (a , b))
               (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-              (λ ra rb → step-≡ {C = Unit Once.Lang.Type.+ Unit} (semP eq-info int-prim fmt) (SD.sigOpˢ fmt σ eq-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+              (λ ra rb → step-≡ {C = Unit Once.Internal.Type.+ Unit} (semP eq-info int-prim fmt) (SD.sigOpˢ fmt σ eq-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
   bridge-i (t-binop-cmp {op = OpNe} _ d₁ d₂) {ρ = ρ} re er =
-    bind2-rel {A = Int} {B = Int} {C = Unit Once.Lang.Type.+ Unit} (λ a b → semP ne-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ne-info (a , b))
+    bind2-rel {A = Int} {B = Int} {C = Unit Once.Internal.Type.+ Unit} (λ a b → semP ne-info int-prim fmt (a , b)) (λ a b → SD.sigOpˢ fmt σ ne-info (a , b))
               (bridge-i d₁ (reˡ re) er) (bridge-i d₂ (reʳ re) er)
-              (λ ra rb → step-≡ {C = Unit Once.Lang.Type.+ Unit} (semP ne-info int-prim fmt) (SD.sigOpˢ fmt σ ne-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
+              (λ ra rb → step-≡ {C = Unit Once.Internal.Type.+ Unit} (semP ne-info int-prim fmt) (SD.sigOpˢ fmt σ ne-info) (λ _ → ⊎⊤-rel _) (cong₂ _,_ ra rb))
   bridge-i (t-binop-cmp {op = OpAdd} () _ _)
   bridge-i (t-binop-cmp {op = OpSub} () _ _)
   bridge-i (t-binop-cmp {op = OpMul} () _ _)
@@ -1053,24 +1054,24 @@ module _ (σ-self : RelDefs fmt σ σ) where
     RelGᵖ-bind {A = A * B} {B = B} {g = liftFn fmt (calls σ) {A * B} {B} IR.snd} (bridge-i d (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-snd {A} {B}) b) (relS-ret (proj₂ rv)))
   bridge-i (t-Out-app-infer {F = F} wfF refl d) re er =
-    RelGᵖ-bind {A = ν-type F pure} {B = ⟦ F ⟧T (ν-type F pure)}
-              (bridge-i d (reᵐ re) er) (λ rv → out-app-bridge {π = pure} {wfF = wfF} rv)
+    RelGᵖ-bind {A = ν-type F pureᶠ} {B = ⟦ F ⟧T (ν-type F pureᶠ)}
+              (bridge-i d (reᵐ re) er) (λ rv → out-app-bridge {π = pureᶠ} {wfF = wfF} rv)
   -- D233: at an EFFECTFUL stream both sides evaluate the stream, then return the
   -- suspension of the force (`curry (Out ∘ fst)` on the IR side).
   bridge-i {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF refl d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-    RelGᵖ-bind {A = ν-type F act} {B = Unit ⇒[ mk-kind Many act ] ⟦ F ⟧T (ν-type F act)}
-               {g = liftFn fmt (calls σ) {ν-type F act} {Unit ⇒[ mk-kind Many act ] ⟦ F ⟧T (ν-type F act)} (IR.curry (Out-ir wfF IR.∘ IR.fst))}
+    RelGᵖ-bind {A = ν-type F actᶠ} {B = Unit ⇒[ mk-kind Many act ] ⟦ F ⟧T (ν-type F actᶠ)}
+               {g = liftFn fmt (calls σ) {ν-type F actᶠ} {Unit ⇒[ mk-kind Many act ] ⟦ F ⟧T (ν-type F actᶠ)} (IR.curry (Out-ir wfF IR.∘ IR.fst))}
       (bridge-i d (reᵐ re) er)
       (λ {v} {v′} rv →
-         ≡ʳ (cong-app (liftFn-curry {ν-type F act} {Unit} {⟦ F ⟧T (ν-type F act)} {act} (Out-ir wfF IR.∘ IR.fst)) v′)
-            (relS-ret ((λ {u} {u′} _ → retargetʳ (out-fst v′ u′) (out-app-bridge {F = F} {π = act} {wfF = wfF} rv))
+         ≡ʳ (cong-app (liftFn-curry {ν-type F actᶠ} {Unit} {⟦ F ⟧T (ν-type F actᶠ)} {act} (Out-ir wfF IR.∘ IR.fst)) v′)
+            (relS-ret ((λ {u} {u′} _ → retargetʳ (out-fst v′ u′) (out-app-bridge {F = F} {π = actᶠ} {wfF = wfF} rv))
                       , (λ {u} {u′} _ → retargetˡ (out-fst v′ u) (retargetʳ (out-fst v′ u′)
-                            (liftFn-rel fmt (proj₁ σ-self) {ν-type F act} {⟦ F ⟧T (ν-type F act)} (Out-ir wfF) (right-self (ν-type F act) rv)))))))
+                            (liftFn-rel fmt (proj₁ σ-self) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) (right-self (ν-type F actᶠ) rv)))))))
     where
-      out-fst : ∀ (v : ⟦ ν-type F act ⟧ᴰ) (u : ⟦ Unit ⟧ᴰ)
-              → force (liftFn fmt (calls σ) {ν-type F act * Unit} {⟦ F ⟧T (ν-type F act)} (Out-ir wfF IR.∘ IR.fst) (v , u))
-                ≡ force (liftFn fmt (calls σ) {ν-type F act} {⟦ F ⟧T (ν-type F act)} (Out-ir wfF) v)
-      out-fst v u = force-∘ {ν-type F act} {⟦ F ⟧T (ν-type F act)} {ν-type F act * Unit} {Out-ir wfF} {IR.fst} (now-fst {ν-type F act} {Unit} (v , u))
+      out-fst : ∀ (v : ⟦ ν-type F actᶠ ⟧ᴰ) (u : ⟦ Unit ⟧ᴰ)
+              → force (liftFn fmt (calls σ) {ν-type F actᶠ * Unit} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
+                ≡ force (liftFn fmt (calls σ) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) v)
+      out-fst v u = force-∘ {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} {ν-type F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {ν-type F actᶠ} {Unit} (v , u))
   bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {ρ = ρ} {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
     RelGᵖ-bind {A = T} {B = Unit} {g = liftFn fmt (calls σ) {T} {Unit} IR.terminal} (bridge-i d {ρ = ρ} (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-terminal {T}) b) (relS-ret tt))
@@ -1140,8 +1141,8 @@ module _ (σ-self : RelDefs fmt σ σ) where
     relS-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM u (proj₂ ab)))
                  (sym (liftFn-snd {A} {B})) ((λ rv → RelGM-return u {B} (proj₂ rv)) , (λ ra → relS-ret (proj₂ ra))))
   bridge-c (t-terminal-morph-check {A = A} {π = π} {u = u}) re er =
-    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Lang.Type.Unit) (λ _ → returnM u tt))
-                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Lang.Type.Unit} tt) , (λ _ → relS-ret tt)))
+    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Internal.Type.Unit) (λ _ → returnM u tt))
+                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Internal.Type.Unit} tt) , (λ _ → relS-ret tt)))
   bridge-c (t-initial-morph-check) re er = relS-ret ((λ { {a = ()} }) , (λ { {()} }))
   -- D313: a generator at its guard — the generic effect on both sides.
   bridge-c (t-inl-morph-check {A = A} {B = B} {π = π} {u = u}) re er =
@@ -1272,7 +1273,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
   -- The old clause read that value unconditionally; `RelGᵖ-bind` puts the ⊥ where
   -- it is actually bound, and the stopped branch closes on its own.
   bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) {ρ = ρ} re er =
-    RelGᵖ-bind {A = Once.Lang.Type.Void} {B = A} (bridge-c d {ρ = ρ} (reᵐ re) er) (λ {a} _ → ⊥-elim a)
+    RelGᵖ-bind {A = Once.Internal.Type.Void} {B = A} (bridge-c d {ρ = ρ} (reᵐ re) er) (λ {a} _ → ⊥-elim a)
   -- D243: a polymorphic reference is the definition variable at its kinded
   -- instance on both sides — the environments' families at that instance.
   bridge-c {ctx = ctx} {A = U} (t-var-poly-instantiate {x = x} _ _ lp _ ki) re er =
@@ -1307,8 +1308,8 @@ module _ (σ-self : RelDefs fmt σ σ) where
     relS-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM u (proj₂ ab)))
                  (sym (liftFn-snd {A} {B})) ((λ rv → RelGM-return u {B} (proj₂ rv)) , (λ ra → relS-ret (proj₂ ra))))
   bridge-d (d-terminal {A = A} {π = π} {u = u}) re er =
-    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Lang.Type.Unit) (λ _ → returnM u tt))
-                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Lang.Type.Unit} tt) , (λ _ → relS-ret tt)))
+    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Internal.Type.Unit) (λ _ → returnM u tt))
+                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Internal.Type.Unit} tt) , (λ _ → relS-ret tt)))
   bridge-d d-initial re er = relS-ret ((λ { {a = ()} }) , (λ { {()} }))
   -- D322: each arm converted into the join first.
   bridge-d (d-case {A = A} {B = B} {C = C} {π = π} df dg J) re er =

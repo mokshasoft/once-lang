@@ -24,7 +24,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Lang.Syntax as O
+open import Once.Internal.Syntax as O
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
          RAnnot; RBinOp; RUnaryOp; OpNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 import Once.Spec.Surface.Syntax as S
@@ -46,7 +46,7 @@ open import Once.Adequacy.SpecGrammar.ExprHeads
 open import Once.Adequacy.SpecGrammar.Conv using (toTy)
 open import Once.Adequacy.SpecGrammar.GroundTypes using (annot→; annot←)
 open import Once.Adequacy.SpecGrammar.TypeRF using (type-rf)
-open import Once.Lang.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type.WellFormed using (RigidFree)
 
 private
   F : List P.Token → List Token

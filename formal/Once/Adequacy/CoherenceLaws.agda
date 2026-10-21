@@ -25,6 +25,7 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
+open import Once.Type.Grade using (_≤qᵇ_)
 module Once.Adequacy.CoherenceLaws (fmt : TargetNum) where
 
 open import Data.Bool using (true)
@@ -33,21 +34,22 @@ open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Lang.Type.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; _≤q_; fin; act)
-open import Once.Lang.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T; K; Id; _⊕_; _⊗_)
-open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_)
-open import Once.Lang.Laws.SubLaws using (<:-trans; <:-unique)
-open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Lang.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Spec.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; fin; act)
+open import Once.Internal.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ⟦_⟧T; K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
+open import Once.Spec.Grade using (_⊑π_)
+open import Once.Internal.Laws.SubLaws using (<:-trans; <:-unique)
+open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Internal.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
 open import Once.Semantics.Machine using (sem-cata; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Lang.FunctorMeaning using (translateF)
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; ⟦_⟧ᴰ)
 open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
@@ -164,7 +166,7 @@ module _ {n} {Γ : Ctx n} where
   morph-app-congˢ {Ψ} {A} {B} ir ea σ rσ r =
     RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
 
-  app-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Lang.Type.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A}
+  app-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Spec.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A}
            → f ≈ˢ f′ → x ≈ˢ x′ → app f x ≈ˢ app f′ x′
   app-congˢ {q = Zero} ef ex σ rσ r = RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) (λ rf → rf)
   app-congˢ {q = One} ef ex σ rσ r =
@@ -172,7 +174,7 @@ module _ {n} {Γ : Ctx n} where
   app-congˢ {q = Many} ef ex σ rσ r =
     RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
 
-  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Lang.Type.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
+  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Spec.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
               → f ≈ˢ f′ → x ≈ˢ x′ → effApp {g = g} f x ≈ˢ effApp {g = g} f′ x′
   effApp-congˢ ef ex σ rσ r =
     relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
@@ -236,7 +238,7 @@ module _ {n} {Γ : Ctx n} where
         ; {inj₁ _} {inj₂ _} ()
         ; {inj₂ _} {inj₁ _} () }
 
-  lam-congˢ : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤q q) ≡ true) {b b′ : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B}
+  lam-congˢ : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤qᵇ q) ≡ true) {b b′ : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B}
            → b ≈ˢ b′ → lam {π = π} q ≤p b ≈ˢ lam q ≤p b′
   lam-congˢ {q' = Zero} Zero ≤p eb σ rσ r = relS-ret (eb σ rσ r)
   lam-congˢ {q' = Zero} One  ≤p eb σ rσ r = relS-ret (λ _ → eb σ rσ r)
@@ -273,8 +275,8 @@ module _ {n} {Γ : Ctx n} where
         retargetˡ refl (retargetʳ refl (relS-ret (<:-rel pa ra , <:-rel pb rb))))
 
   -- Converting the head's domain is converting the argument.
-  app-coerceˢ : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Lang.Type.Grade.pure ⊑π Once.Lang.Type.Grade.pure)
-                 (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Lang.Type.Grade.pure ] B)) (x : Expr Γ Ψ₂ X)
+  app-coerceˢ : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Spec.Grade.pure ⊑π Once.Spec.Grade.pure)
+                 (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Spec.Grade.pure ] B)) (x : Expr Γ Ψ₂ X)
              → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ˢ app f (coerce a x)
   app-coerceˢ {B = B} a g f x σ rσ r =
     RelS-assocˡ (SD-rel rσ f (restrict-rel {Γ = Γ} _ r)) λ rf →
@@ -303,7 +305,7 @@ module _ {n} {Γ : Ctx n} where
           RelS-assocʳ (rh (<:-refl-relʳ A ra)) λ rb → retargetʳ refl (RelS-fmap (rf (<:-refl-relʳ B′ (<:-rel q rb))) (<:-rel c)))))
 
   -- Converting a lambda's body is converting the lambda.
-  lam-coerceˢ : ∀ {Ψ q' π A B B′} (≤p : (q' ≤q Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
+  lam-coerceˢ : ∀ {Ψ q' π A B B′} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
              → lam {π = π} Many ≤p (coerce p b) ≈ˢ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
   lam-coerceˢ {q' = Zero} ≤p p b σ rσ r = retargetʳ refl (relS-ret (λ _ → RelS-fmap (SD-rel rσ b r) (<:-rel p)))
   lam-coerceˢ {q' = One} {A = A} ≤p p b σ rσ r =
@@ -415,10 +417,10 @@ layer-rel wf-Id {A} d p {l₁} {l₂} (ra , rb) = RelD-trans A (<:-rel d ra) bac
     back : RelD A (⟦ d ⟧<: (⟦ p ⟧<: l₂)) l₂
     back with <:-trans-rel p d rb
     ... | t rewrite <:-unique (<:-trans p d) (<:-refl A) = RelD-trans A t (<:-refl-rel A rb)
-layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₁ _} r = layer-rel w₁ d₁ p r
-layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₂ _} r = layer-rel w₂ d₂ p r
-layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₂ _} ()
-layer-rel (wf-Sum w₁ w₂) (Once.Lang.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₁ _} ()
+layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₁ _} r = layer-rel w₁ d₁ p r
+layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₂ _} r = layer-rel w₂ d₂ p r
+layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₂ _} ()
+layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₁ _} ()
 layer-rel (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
 
 cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}

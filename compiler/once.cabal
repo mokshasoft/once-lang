@@ -99,7 +99,7 @@ library
       MAlonzo.Code.Once.Adequacy.CPU.RiscV64
       MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32
       MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64
-      MAlonzo.Code.Once.Lang.ResolvedRefs
+      MAlonzo.Code.Once.Internal.ResolvedRefs
       MAlonzo.Code.Once.Adequacy.CataErased
       MAlonzo.Code.Once.Adequacy.CataRel
       MAlonzo.Code.Once.Adequacy.CoerceFaithful
@@ -330,8 +330,8 @@ library
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.IterShape
       MAlonzo.Code.Once.CCC.Machine.FlatLeft
       MAlonzo.Code.Once.Denotation.TraceTr
-      MAlonzo.Code.Once.Lang.Out
-      MAlonzo.Code.Once.Lang.Principal
+      MAlonzo.Code.Once.Internal.Out
+      MAlonzo.Code.Once.Internal.Principal
       MAlonzo.Code.Once.Metatheory.Trace
       MAlonzo.Code.Once.Spec.Delay
       MAlonzo.Code.Once.Spec.Grade
@@ -390,66 +390,66 @@ library
       MAlonzo.Code.Once.IR.Size
       MAlonzo.Code.Once.IRTy
       MAlonzo.Code.Once.IRTy.WF
-      MAlonzo.Code.Once.Lang.Context
-      MAlonzo.Code.Once.Lang.Contract
-      MAlonzo.Code.Once.Lang.ContractLaws
-      MAlonzo.Code.Once.Lang.Core.AbsTy
-      MAlonzo.Code.Once.Lang.Core.Abstract
-      MAlonzo.Code.Once.Lang.Core.Derived
-      MAlonzo.Code.Once.Lang.Core.DerivedTyping
-      MAlonzo.Code.Once.Lang.Core.Meaning
-      MAlonzo.Code.Once.Lang.Core.PolyTy
-      MAlonzo.Code.Once.Lang.Core.PolySub
-      MAlonzo.Code.Once.Lang.Core.PolyTyping
-      MAlonzo.Code.Once.Lang.Core.Rename
-      MAlonzo.Code.Once.Lang.Core.Schema
-      MAlonzo.Code.Once.Lang.Core.Syntax
-      MAlonzo.Code.Once.Lang.Core.Telescope
-      MAlonzo.Code.Once.Lang.Core.Translate
-      MAlonzo.Code.Once.Lang.Core.TySubst
-      MAlonzo.Code.Once.Lang.Core.Typing
-      MAlonzo.Code.Once.Lang.Elaboration
-      MAlonzo.Code.Once.Lang.Environment
-      MAlonzo.Code.Once.Lang.Event
-      MAlonzo.Code.Once.Lang.FunctorMeaning
-      MAlonzo.Code.Once.Lang.Graded
-      MAlonzo.Code.Once.Lang.GradedOps
-      MAlonzo.Code.Once.Lang.Grammar.Decl
-      MAlonzo.Code.Once.Lang.Grammar.FunDef
-      MAlonzo.Code.Once.Lang.Grammar.Import
-      MAlonzo.Code.Once.Lang.Grammar.OpDecl
-      MAlonzo.Code.Once.Lang.Grammar.Signature
-      MAlonzo.Code.Once.Lang.Grammar.TypeAlias
-      MAlonzo.Code.Once.Lang.Iterative
-      MAlonzo.Code.Once.Lang.Laws.CoreRenameSem
-      MAlonzo.Code.Once.Lang.Laws.Grade
-      MAlonzo.Code.Once.Lang.Laws.ModeAgreement
-      MAlonzo.Code.Once.Lang.Laws.Order
-      MAlonzo.Code.Once.Lang.Laws.SubLaws
-      MAlonzo.Code.Once.Lang.Lexing
-      MAlonzo.Code.Once.Lang.Module
-      MAlonzo.Code.Once.Lang.Name
-      MAlonzo.Code.Once.Lang.Parsing
-      MAlonzo.Code.Once.Lang.Polynomial
-      MAlonzo.Code.Once.Lang.Program
-      MAlonzo.Code.Once.Lang.Res
-      MAlonzo.Code.Once.Lang.Resolution
-      MAlonzo.Code.Once.Lang.Stream
-      MAlonzo.Code.Once.Lang.StreamInf
-      MAlonzo.Code.Once.Lang.Syntax
-      MAlonzo.Code.Once.Lang.Trace
-      MAlonzo.Code.Once.Lang.Type
-      MAlonzo.Code.Once.Lang.Type.DecEq
-      MAlonzo.Code.Once.Lang.Type.Grade
-      MAlonzo.Code.Once.Lang.Type.Honest
-      MAlonzo.Code.Once.Lang.Type.Join
-      MAlonzo.Code.Once.Lang.Type.Instance
-      MAlonzo.Code.Once.Lang.Type.Poly
-      MAlonzo.Code.Once.Lang.Type.Sub
-      MAlonzo.Code.Once.Lang.Type.WellFormed
-      MAlonzo.Code.Once.Lang.Typing
-      MAlonzo.Code.Once.Lang.Typing.Scope
-      MAlonzo.Code.Once.Lang.Value
+      MAlonzo.Code.Once.Internal.Context
+      MAlonzo.Code.Once.Internal.Contract
+      MAlonzo.Code.Once.Internal.ContractLaws
+      MAlonzo.Code.Once.Internal.Core.AbsTy
+      MAlonzo.Code.Once.Internal.Core.Abstract
+      MAlonzo.Code.Once.Internal.Core.Derived
+      MAlonzo.Code.Once.Internal.Core.DerivedTyping
+      MAlonzo.Code.Once.Internal.Core.Meaning
+      MAlonzo.Code.Once.Internal.Core.PolyTy
+      MAlonzo.Code.Once.Internal.Core.PolySub
+      MAlonzo.Code.Once.Internal.Core.PolyTyping
+      MAlonzo.Code.Once.Internal.Core.Rename
+      MAlonzo.Code.Once.Internal.Core.Schema
+      MAlonzo.Code.Once.Internal.Core.Syntax
+      MAlonzo.Code.Once.Internal.Core.Telescope
+      MAlonzo.Code.Once.Internal.Core.Translate
+      MAlonzo.Code.Once.Internal.Core.TySubst
+      MAlonzo.Code.Once.Internal.Core.Typing
+      MAlonzo.Code.Once.Internal.Elaboration
+      MAlonzo.Code.Once.Internal.Environment
+      MAlonzo.Code.Once.Internal.Event
+      MAlonzo.Code.Once.Internal.FunctorMeaning
+      MAlonzo.Code.Once.Internal.Graded
+      MAlonzo.Code.Once.Internal.GradedOps
+      MAlonzo.Code.Once.Internal.Grammar.Decl
+      MAlonzo.Code.Once.Internal.Grammar.FunDef
+      MAlonzo.Code.Once.Internal.Grammar.Import
+      MAlonzo.Code.Once.Internal.Grammar.OpDecl
+      MAlonzo.Code.Once.Internal.Grammar.Signature
+      MAlonzo.Code.Once.Internal.Grammar.TypeAlias
+      MAlonzo.Code.Once.Internal.Iterative
+      MAlonzo.Code.Once.Internal.Laws.CoreRenameSem
+      MAlonzo.Code.Once.Internal.Laws.Grade
+      MAlonzo.Code.Once.Internal.Laws.ModeAgreement
+      MAlonzo.Code.Once.Internal.Laws.Order
+      MAlonzo.Code.Once.Internal.Laws.SubLaws
+      MAlonzo.Code.Once.Internal.Lexing
+      MAlonzo.Code.Once.Internal.Module
+      MAlonzo.Code.Once.Internal.Name
+      MAlonzo.Code.Once.Internal.Parsing
+      MAlonzo.Code.Once.Internal.Polynomial
+      MAlonzo.Code.Once.Internal.Program
+      MAlonzo.Code.Once.Internal.Res
+      MAlonzo.Code.Once.Internal.Resolution
+      MAlonzo.Code.Once.Internal.Stream
+      MAlonzo.Code.Once.Internal.StreamInf
+      MAlonzo.Code.Once.Internal.Syntax
+      MAlonzo.Code.Once.Internal.Trace
+      MAlonzo.Code.Once.Internal.Type
+      MAlonzo.Code.Once.Internal.Type.DecEq
+      MAlonzo.Code.Once.Type.Grade
+      MAlonzo.Code.Once.Internal.Type.Honest
+      MAlonzo.Code.Once.Internal.Type.Join
+      MAlonzo.Code.Once.Internal.Type.Instance
+      MAlonzo.Code.Once.Internal.Type.Poly
+      MAlonzo.Code.Once.Internal.Type.Sub
+      MAlonzo.Code.Once.Internal.Type.WellFormed
+      MAlonzo.Code.Once.Internal.Typing
+      MAlonzo.Code.Once.Internal.Typing.Scope
+      MAlonzo.Code.Once.Internal.Value
       MAlonzo.Code.Once.Memory.FrameOps
       MAlonzo.Code.Once.Memory.HeapAddress
       MAlonzo.Code.Once.Memory.Memory

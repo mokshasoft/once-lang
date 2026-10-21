@@ -36,15 +36,15 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Lang.Type using (Type)
-open import Once.Lang.Syntax using (RawExpr)
+open import Once.Internal.Type using (Type)
+open import Once.Internal.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
-open import Once.Lang.Typing.Scope using (NamedCtx)
+open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Error using (TypeError)
 
-open import Once.Lang.Context as Surface using () renaming (Ctx to SCtx)
+open import Once.Internal.Context as Surface using () renaming (Ctx to SCtx)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
 ------------------------------------------------------------------------

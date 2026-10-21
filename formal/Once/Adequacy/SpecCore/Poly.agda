@@ -21,11 +21,11 @@
 open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
 open import Once.Spec.Signature using (Signature; DeclType; BTy; constant; value; operation; _∶_; ⌜_⌝; ⌜_⌝ᵈ)
 import Once.Spec.Signature as SSig
 open import Once.Adequacy.SpecGrammar.Conv using (qS)
@@ -36,10 +36,10 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-import Once.Lang.Type.Sub as LS
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Type.Honest as LH
-import Once.Lang.Context as LC
+import Once.Internal.Type.Sub as LS
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Type.Honest as LH
+import Once.Internal.Context as LC
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST
 import Once.Spec.Sub as SSub
@@ -170,8 +170,8 @@ kindS-base LT.k-any  ()
 
 -- Subtyping, over the definitions signature's terms' types.
 module SubS {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) where
-  import Once.Lang.Core.PolyTyping S as PT
-  import Once.Lang.Core.PolySub as PS
+  import Once.Internal.Core.PolyTyping S as PT
+  import Once.Internal.Core.PolySub as PS
 
   subS : ∀ {a} {A B : LP.Ty a} → A PS.<:ₚ B → ptyS A SSub.<: ptyS B
   subS PS.sub-var         = SSub.sub-var
@@ -189,9 +189,9 @@ module SubS {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) where
 module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where
 
-  import Once.Lang.Core.PolyTyping S as PT
-  import Once.Lang.Core.PolySub as PS
-  import Once.Lang.Core.Syntax S as L
+  import Once.Internal.Core.PolyTyping S as PT
+  import Once.Internal.Core.PolySub as PS
+  import Once.Internal.Core.Syntax S as L
   open SubS S using (subS)
   open import Once.Adequacy.SpecCore.Prim S using (litS; primS; primDom-S; primCod-S)
 
@@ -282,8 +282,8 @@ module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
 
   arr-fin : ∀ {a} {A′ X Y : ST.Ty a} φ → X ≡ Y
           → (A′ ST.⇒[ SG.mk-kind SG.Many (πS (LG.fin φ)) ] X) ≡ (A′ ST.⇒[ SG.mk-kind SG.Many (SG.fin (φS φ)) ] Y)
-  arr-fin LG.pure refl = refl
-  arr-fin LG.act  refl = refl
+  arr-fin LG.pureᶠ refl = refl
+  arr-fin LG.actᶠ  refl = refl
 
   -- The Spec's typing of a translated term.
   trD : ∀ {a n} {Δ : LP.KCtx a} {Γ : PT.PCtx a n} {Ψ t A π}

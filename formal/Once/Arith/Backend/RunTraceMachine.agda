@@ -33,8 +33,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Target.SymbolFresh using (host-leave-symbol)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Lang.Event using (SigOpEvent; toEvent)
-open import Once.Lang.Out using (Out; _▹_)
+open import Once.Internal.Event using (SigOpEvent; toEvent)
+open import Once.Internal.Out using (Out; _▹_)
 open import Once.Spec.Trace using (End)
 import Once.Spec.Trace as ST
 import Once.Arith.Backend.RunTraceCore as Core
@@ -97,8 +97,8 @@ module RunMachine
       reach   : ∀ M h s {e} → proj₂ (run-events ev env h M prog s) ≡ just e
               → Reaches (h , s) (calls (run-events ev env h M prog s)) e
       reach-h : ∀ M h s (b : Bool) → halted s ≡ b → ∀ {e}
-              → proj₂ (if b then Once.Lang.Out.stop else run-events-fetch ev env h M prog s (fetch prog (pc s))) ≡ just e
-              → Reaches (h , s) (calls (if b then Once.Lang.Out.stop else run-events-fetch ev env h M prog s (fetch prog (pc s)))) e
+              → proj₂ (if b then Once.Internal.Out.stop else run-events-fetch ev env h M prog s (fetch prog (pc s))) ≡ just e
+              → Reaches (h , s) (calls (if b then Once.Internal.Out.stop else run-events-fetch ev env h M prog s (fetch prog (pc s)))) e
       reach-f : ∀ M h s (mi : Maybe Instr) → fetch prog (pc s) ≡ mi → halted s ≡ false → ∀ {e}
               → proj₂ (run-events-fetch ev env h M prog s mi) ≡ just e
               → Reaches (h , s) (calls (run-events-fetch ev env h M prog s mi)) e
@@ -178,7 +178,7 @@ module RunMachine
 
     runN-events : ∀ n h s → runN n (h , s) ≡ outObs (run-events ev env h n prog s)
     private
-      rn-h : ∀ n h s (b : Bool) → runS n (δ-h b h s) ≡ outObs (if b then Once.Lang.Out.stop else run-events-fetch ev env h n prog s (fetch prog (pc s)))
+      rn-h : ∀ n h s (b : Bool) → runS n (δ-h b h s) ≡ outObs (if b then Once.Internal.Out.stop else run-events-fetch ev env h n prog s (fetch prog (pc s)))
       rn-f : ∀ n h s (mi : Maybe Instr) → runS n (δ-f mi h s) ≡ outObs (run-events-fetch ev env h n prog s mi)
       rn-i : ∀ n h s i (ml : Maybe String) → runS n (δ-i i ml h s) ≡ outObs (run-events-instr ev env h n prog s i ml)
       rn-s : ∀ n h s lbl (d : Dec (lbl ≡ host-leave-symbol)) → runS n (δ-s lbl d h s) ≡ outObs (run-events-site ev env h n prog s lbl d)

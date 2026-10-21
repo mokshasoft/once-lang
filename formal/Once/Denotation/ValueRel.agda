@@ -22,14 +22,14 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong)
 
-open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many)
-open import Once.Lang.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
+open import Once.Internal.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Value Carrier Carrier using (⟦_⟧F)
-open import Once.Lang.Iterative using (T∞)
-open import Once.Lang.StreamInf using (νᴵ; module νᴵ)
+open import Once.Internal.Value Carrier Carrier using (⟦_⟧F)
+open import Once.Internal.Iterative using (T∞)
+open import Once.Internal.StreamInf using (νᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
@@ -105,10 +105,10 @@ SRel R (F S⊗ G) (x , y)  (x′ , y′) = SRel R F x x′ × SRel R G y y′
 -- Base types: related is equal, and equal is related.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
                                              WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
-open import Once.Lang.Type using (⟦_⟧T)
+open import Once.Internal.Type using (⟦_⟧T)
 
 base-eq : ∀ {A} → IsBaseType A → ∀ {x y : ⟦ A ⟧ᴰ} → RelD A x y → x ≡ y
 base-eq base-Unit       _ = refl
@@ -137,9 +137,9 @@ base-refl base-rigid      ()
 -- Runs: the monad's operations preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
 open T∞ using (force)
-open import Once.Lang.Trace using (ret; call; halt)
+open import Once.Internal.Trace using (ret; call; halt)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
 
@@ -289,7 +289,7 @@ cfD⁻¹-rel (wf-Prod wf wg) C (fr-pair r s) = cfD⁻¹-rel wf C r , cfD⁻¹-re
 -- The source-functor ↔ semantic-functor coercions preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
+open import Once.Internal.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
 
 cμin-rel : ∀ (F : Functor) {X : Set} {R : X → X → Set} {x y : ⟦ F ⟧F X}
          → FRel R F x y → SRel R (translateF Carrier Carrier F) (coerce-μ-in F X x) (coerce-μ-in F X y)
@@ -313,7 +313,7 @@ cμout-rel (wf-Prod wf wg) {x = x₁ , x₂} {y₁ , y₂} (r , s) = fr-pair (c�
 -- The fold: related algebras fold the same value to related results.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Polynomial using (μS; ⟨_⟩; cataS; sfmapCata)
+open import Once.Internal.Polynomial using (μS; ⟨_⟩; cataS; sfmapCata)
 
 module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF A → A} {alg₂ : ⟦ G ⟧SF B → B}
          (h : ∀ {l₁ l₂} → SRel R G l₁ l₂ → R (alg₁ l₁) (alg₂ l₂)) where
@@ -330,8 +330,8 @@ module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF 
 -- The unfold: related coalgebras unfold related seeds to related streams.
 ------------------------------------------------------------------------
 
-open import Once.Lang.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
-open import Once.Lang.Trace using (T)
+open import Once.Internal.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
+open import Once.Internal.Trace using (T)
 open StreamRel
 
 module _ {H : SFunctor} {A B : Set} {RA : A → B → Set} {c₁ : A → T∞ (⟦ H ⟧SF A)} {c₂ : B → T∞ (⟦ H ⟧SF B)}
@@ -358,8 +358,8 @@ module _ {H : SFunctor} {A B : Set} {RA : A → B → Set} {c₁ : A → T∞ (�
 -- The fold of a source functor (`sem-cata`), and the stream constructor.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Value Carrier Carrier using (sem-cata)
-open import Once.Lang.StreamInf using (in-νᴵ)
+open import Once.Internal.Value Carrier Carrier using (sem-cata)
+open import Once.Internal.StreamInf using (in-νᴵ)
 
 sem-cata-rel : ∀ {F} (wf : WellFormedF F) {A : Set} {R : A → A → Set} {alg₁ alg₂ : ⟦ F ⟧F A → A}
              → (∀ {l₁ l₂} → FRel R F l₁ l₂ → R (alg₁ l₁) (alg₂ l₂))

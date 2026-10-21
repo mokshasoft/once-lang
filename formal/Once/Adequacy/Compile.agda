@@ -32,7 +32,7 @@
 module Once.Adequacy.Compile where
 
 
-open import Once.Lang.Module using (ModuleTyped; moduleSig)
+open import Once.Internal.Module using (ModuleTyped; moduleSig)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Lang.Type using (Unit)
+open import Once.Internal.Type using (Unit)
 
 open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
 -- D320: what a program does is its TRACE (`Spec.Trace.Tr ⊤`): its calls and how
@@ -51,13 +51,13 @@ open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Metatheory.Trace using (WB-trans)
-open import Once.Lang.Core.Telescope using (runCore)
+open import Once.Internal.Core.Telescope using (runCore)
 import Data.Unit
-open import Once.Lang.Trace using (PrefixFamily)
-open Once.Lang.Trace.PrefixFamily using (bnd; sat; coh)
+open import Once.Internal.Trace using (PrefixFamily)
+open Once.Internal.Trace.PrefixFamily using (bnd; sat; coh)
 
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Lang.Core.Telescope using (Program; program)
+open import Once.Internal.Core.Telescope using (Program; program)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 import Once.IR as IR
@@ -72,10 +72,10 @@ open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 -- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
 -- `check-complete` (the proven typechecker-completeness witness).
 import Once.Denotation.SourceDenote as SD
-open import Once.Lang.Trace using (Interp; interp; module Interp)
+open import Once.Internal.Trace using (Interp; interp; module Interp)
 open Interp using (sig)
-open import Once.Lang.Contract using (ISig; Impl)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Contract using (ISig; Impl)
+open import Once.Internal.Event using (SigOpEvent)
 -- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.
@@ -276,7 +276,7 @@ open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed)
 -- Plan 0.52: the NAMED front-end (lexer+parser) obligations. `_⊢R_` anchors on
 -- the INDEPENDENT `ParsesText` (the grammar/relational spec), so completeness is
 -- not front-end-vacuous; `compile` runs the executable `parseStrict`.
-import Once.Lang.Program
+import Once.Internal.Program
 import Once.Adequacy.ResolveBridge as RBR
 import Once.Adequacy.FrontEndBridge as FB
 
@@ -383,7 +383,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   -- The typed program and its parse relation are the Spec's (plan 0.81), and
   -- world-free: typing does not run anything.
-  open Once.Lang.Program public using (Typed; _⊢R_)
+  open Once.Internal.Program public using (Typed; _⊢R_)
 
   -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
   -- below are exactly proofs at this relation.
@@ -731,7 +731,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- is DERIVED from these by `MC.moduleToIR-complete` (which routes through the
     -- proven `check-complete` — so completeness now forces row-1b), and the
     -- predicate is PRODUCED for soundness by `MC.moduleToIR-sound`.
-    -- Plan 0.81: `Typed` and `_⊢R_` MOVED to `Once.Lang.Program`. They fill
+    -- Plan 0.81: `Typed` and `_⊢R_` MOVED to `Once.Internal.Program`. They fill
     -- `CorrectCompiler`'s abstract `Typed`/`_⊢_`, so they ARE the statement of
     -- the theorem and belong inside the trust boundary, not in a proof module.
     -- Neither mentions the architecture, so neither belonged in `WithCPU`

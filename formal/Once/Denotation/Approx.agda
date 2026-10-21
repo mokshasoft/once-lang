@@ -20,8 +20,8 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Once.Lang.Trace using (T; ret; call; halt)
-open import Once.Lang.Iterative using (T∞)
+open import Once.Internal.Trace using (T; ret; call; halt)
+open import Once.Internal.Iterative using (T∞)
 open T∞ using (force)
 
 -- What a budgeted observation ends with: a result and the budget left, or a
@@ -44,7 +44,7 @@ approxBlock r       (halt o a)     = halt o a
 ------------------------------------------------------------------------
 
 open import Data.Empty using (⊥)
-open import Once.Lang.Res using (Res; stopped; returns)
+open import Once.Internal.Res using (Res; stopped; returns)
 
 -- The run was not cut: it stopped, or returned.
 NotCut : ∀ {X} → Res (Ap X) → Set
@@ -71,11 +71,11 @@ open import Data.Product using (proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Lang.Res using (mapRes; is-stopped)
-open import Once.Lang.Event using (SigOpEvent)
-open import Once.Lang.Iterative using (embed; embedBlock)
-open import Once.Lang.Trace using (Interp; Run; run; run-call; consE; callAnswer; callEvent; haltEvent; unlinkedOp; CallOp)
-open import Once.Lang.Trace using (module CallOp)
+open import Once.Internal.Res using (mapRes; is-stopped)
+open import Once.Internal.Event using (SigOpEvent)
+open import Once.Internal.Iterative using (embed; embedBlock)
+open import Once.Internal.Trace using (Interp; Run; run; run-call; consE; callAnswer; callEvent; haltEvent; unlinkedOp; CallOp)
+open import Once.Internal.Trace using (module CallOp)
 open CallOp using (cdom; ccod)
 import Once.Semantics.Machine as M
 
@@ -124,8 +124,8 @@ done-tag (returns x) refl = refl
 open import Data.List using (_∷_)
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Relation.Binary.PropositionalEquality using (sym; trans)
-open import Once.Lang.Iterative using (_>>=∞_; bindBlock)
-open import Once.Lang.Trace using (appE)
+open import Once.Internal.Iterative using (_>>=∞_; bindBlock)
+open import Once.Internal.Trace using (appE)
 
 thenAp : ∀ {X Y} → Interp → List SigOpEvent → List SigOpEvent → Res (Ap X) → (X → T∞ Y) → Run (Ap Y)
 thenAp ι h es stopped              f = es , stopped
@@ -172,7 +172,7 @@ run-approx-bind ι h r m f = run-approx-bindB ι h r (force m) f
 -- unit of budget) and the loop from the next round `f a`.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Iterative using (iterRun; iterBlock)
+open import Once.Internal.Iterative using (iterRun; iterBlock)
 
 thenIter : ∀ {A B} → Interp → List SigOpEvent → List SigOpEvent → Res (Ap (B ⊎ A))
          → (A → T∞ (B ⊎ A)) → Run (Ap B)

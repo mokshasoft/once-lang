@@ -57,11 +57,11 @@ import Once.Compile as C
 import Once.IR as IR
 import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.Classify as Classify
-open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Lang.Principal using (below)
+open import Once.Internal.Type.Instance using (rigidOf)
+open import Once.Internal.Principal using (below)
 open import Once.Type.Rigid using (rigidFree?)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Lang.Type.Honest using (honest?)
+open import Once.Internal.Type.Honest using (honest?)
 
 ------------------------------------------------------------------------
 -- Boolean elimination helpers.

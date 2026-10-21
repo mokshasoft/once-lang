@@ -55,7 +55,7 @@ open import Once.CCC.Machine.SMCore
 open LocState using (halted)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Event using (SigOpEvent)
 open import Once.CCC.Machine.FlatLog using (LogFree)
 open import Once.CCC.Machine.FlatLeft using (LeftFree)
 import Once.CCC.Machine.FlatLeft
@@ -64,7 +64,7 @@ import Once.CCC.Machine.SMCore as SMC
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; proj₁)
-open import Once.Lang.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
+open import Once.Internal.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}
@@ -88,7 +88,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   event-of i fs = ev-of-loc i (floc fs)
 
   -- The SigOp-event trace, mirroring `exec-flat`'s fuel/fetch dispatch.
-  -- D320: the calls AND how the run ended (`Once.Lang.Out`): a halted machine
+  -- D320: the calls AND how the run ended (`Once.Internal.Out`): a halted machine
   -- ends it — `returned` if it left by the Host's `leave` (`c-leave`), `halted`
   -- otherwise — and so does a pc off the code; running out of fuel says nothing.
   flat-events       : ℕ → AbstractTrace → FlatState → Out

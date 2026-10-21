@@ -32,15 +32,16 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; sym; trans; subst)
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.Lang.Type.Grade as Ty using (Zero; One; Many; mk-kind)
-open import Once.Lang.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
-open import Once.Lang.Type.Sub
+open import Once.Spec.Grade as Ty using (Zero; One; Many; mk-kind)
+open import Once.Internal.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
+open import Once.Internal.Type.Sub
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
-open import Once.Lang.Laws.SubLaws
+open import Once.Internal.Laws.SubLaws
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
 open import Once.Denotation.ValueRel using (RelD; RelS-fmapʳ; retargetˡ; retargetʳ; RelS-substˡ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)

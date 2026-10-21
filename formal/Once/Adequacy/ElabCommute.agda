@@ -13,18 +13,18 @@
 -- (`CoreInst.c-*`), and a reference's is the view's naturality.
 ------------------------------------------------------------------------
 
-import Once.Lang.Name
-import Once.Lang.Type.Sub
-open import Once.Lang.Type.Sub using (·p-diag)
+import Once.Internal.Name
+import Once.Internal.Type.Sub
+open import Once.Internal.Type.Sub using (·p-diag)
 open import Data.Nat using (ℕ)
-open import Once.Lang.Core.PolyTy using (Sig; KCtx; GSub; Respects)
-import Once.Lang.Core.Abstract as Abs
-import Once.Lang.Elaboration as El
+open import Once.Internal.Core.PolyTy using (Sig; KCtx; GSub; Respects)
+import Once.Internal.Core.Abstract as Abs
+import Once.Internal.Elaboration as El
 import Once.TypeCheck.RigidSubst as RSm
 import Once.Adequacy.ViewNatural as VN
-open import Once.Lang.Typing.Scope using (Imports; PolyCtx)
+open import Once.Internal.Typing.Scope using (Imports; PolyCtx)
 
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ)
   (sg : Abs.SigGround S) {imps sigs : Imports} {polys : PolyCtx} (V : El.View S imps sigs polys)
   (nat : VN.Natural S Δ τ r V) (ir : RSm.TopRF Δ τ r imps sigs) where
@@ -32,7 +32,7 @@ module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} 
 import Once.Spec.Name
 import Data.String
 import Data.Maybe
-import Once.Lang.Typing.Scope
+import Once.Internal.Typing.Scope
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -40,27 +40,27 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
-import Once.Lang.Type as T
+import Once.Internal.Type as T
 import Once.Type as T
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; positionGrade; EffGrade; Purity)
-open import Once.Lang.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
+open import Once.Spec.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; positionGrade; EffGrade; Purity; pureᶠ)
+open import Once.Internal.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
 open import Once.Spec.Name using (NotGenerator)
-open import Once.Lang.Type using (μ-type; ν-type)
-open import Once.Lang.Laws.SubLaws using (<:-unique)
+open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Internal.Laws.SubLaws using (<:-unique)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)
-import Once.Lang.Context as C
-open import Once.Lang.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Lang.Typing.Scope using (mkCtx)
-open import Once.Lang.Typing
-import Once.Lang.Core.Syntax S as G
-import Once.Lang.Core.Typing S as GT
+import Once.Internal.Context as C
+open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Internal.Typing.Scope using (mkCtx)
+open import Once.Internal.Typing
+import Once.Internal.Core.Syntax S as G
+import Once.Internal.Core.Typing S as GT
 open GT using (_⊢[_]_∷_!_)
-open import Once.Lang.Core.PolyTy using (_!!_; module Schema)
+open import Once.Internal.Core.PolyTy using (_!!_; module Schema)
 open Schema using (arity)
-import Once.Lang.Core.Rename S as RN
-import Once.Lang.Core.DerivedTyping S as DT
+import Once.Internal.Core.Rename S as RN
+import Once.Internal.Core.DerivedTyping S as DT
 open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; declared; def; importE; sigE; refE; InstanceOf)
 open RSm Δ τ r using (ρ̂; ρ̂F; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
 import Once.Adequacy.CoreInst S Δ τ r as CI
@@ -103,11 +103,11 @@ private
       (H.trans (≅ref h) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e₀) (rmA (λ X → X) (sym (ρ̂-ref d τ₀))))))
 
   -- A generator's reference: its contract is ground (D274).
-  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Lang.Name.showCanonical cn) T)
+  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
          → proj₁ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k wn dc))
   sig-tm cn k wn dc = refl
 
-  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Lang.Name.showCanonical cn) T)
+  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
          → proj₂ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k wn dc))
   sig-dr cn k wn dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
 
@@ -157,7 +157,7 @@ private
   closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
   closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
 
-  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Lang.Type.Sub.<: B}
+  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Internal.Type.Sub.<: B}
               {d₁ : Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ ] t₂ ∷ A ! π}
           → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢coerce p₁ d₁ ≅ GT.⊢coerce p₂ d₂
   ≅coerce {p₁ = p₁} {p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl
@@ -249,9 +249,9 @@ mutual
   tm-i (t-terminal-app d)    = cong (G.app _) (tm-i d)
   tm-i (t-apply-app-infer d) = cong (G.app _) (tm-i d)
   tm-i (t-apply-eff-app-infer d) = cong (G.app _) (tm-i d)
-  tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pure))) _) (cong (G.app _) (tm-i d))
+  tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ))) _) (cong (G.app _) (tm-i d))
   tm-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Lang.Type.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Lang.Type.Grade.act)))) _) (cong (G.app _) (tm-i d))
+    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Spec.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Spec.Grade.actᶠ)))) _) (cong (G.app _) (tm-i d))
   tm-i (t-app h df dx)       = cong₂ G.app (tm-i df) (tm-c dx)
   tm-i (t-effApp h df dx) =
     cong₂ (λ a b → G.lam _ _ _ (G.app a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
@@ -277,7 +277,7 @@ mutual
     cong (λ u → G.let′ _ u _) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
   tm-c (t-ana-check {F = F} {A = A} {φ = π} wf dc) =
     cong (λ u → G.lam _ _ _ (G.unfold _ u (G.var zero)))
-         (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
+         (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Spec.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
                 (sym (ρ̂ₜ-ren suc _)))
   tm-c (t-loop-check dr)    = cong (λ u → G.let′ _ u _) (tm-c dr)
   tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
@@ -428,11 +428,11 @@ mutual
   dr-i (t-apply-app-infer d) = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl (H.sym c-apply) refl (tm-i d) (dr-i d)
   dr-i (t-apply-eff-app-infer d) = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl (H.sym c-applyEff) refl (tm-i d) (dr-i d)
   dr-i (t-Out-app-infer {F = F} wf refl d) =
-    H.trans (⇝ᵢ-dr (sym (ρ̂-⟦⟧ F (ν-type F pure))) _)
-            (≅app refl (sym (ρ̂-⟦⟧ F (ν-type F pure))) refl (H.sym (c-out wf)) (tm-i d) (dr-i d))
+    H.trans (⇝ᵢ-dr (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ))) _)
+            (≅app refl (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ))) refl (H.sym (c-out wf)) (tm-i d) (dr-i d))
   dr-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Lang.Type.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Lang.Type.Grade.act)))) _)
-            (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Lang.Type.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Lang.Type.Grade.act))))
+    H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Spec.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Spec.Grade.actᶠ)))) _)
+            (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Spec.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Spec.Grade.actᶠ))))
                   refl (H.sym (c-outEff wf)) (tm-i d) (dr-i d))
   dr-i (t-app h df dx)       =
     H.trans (≅app-pure refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.≡-to-≅ (sym (ρ̂ᶜ-app-pure _ _ _)))
@@ -475,10 +475,10 @@ mutual
   dr-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} wf dc) =
     H.trans (≅1 _ _ (DT.⊢anaᶜ u (ρ̂-wf wf)) refl TE
                 (H.trans (H.trans (⇝ᶜ-dr q _) (dr-c dc))
-                         (H.sym (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)))))
+                         (H.sym (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Spec.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)))))
             (H.sym (c-ana u wf (proj₂ (elabᶜ V dc))))
     where
-      q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Lang.Type.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)
+      q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Spec.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)
       TE = trans (⇝ᶜ-tm q _) (tm-c dc)
   dr-c (t-loop-check dr)     =
     H.trans (≅1 _ _ DT.⊢loopᶜ refl (tm-c dr) (dr-c dr)) (H.sym (c-loop (proj₂ (elabᶜ V dr))))

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.TypeCheck.Raw — the elaborator's decisions on written terms.
 --
--- The terms are the Spec's (`Once.Lang.Syntax`). This module decides
+-- The terms are the Spec's (`Once.Internal.Syntax`). This module decides
 -- `ClosedLiftShape`, the side condition of the closed-expression lift.
 ------------------------------------------------------------------------
 
@@ -12,7 +12,7 @@ module Once.TypeCheck.Raw where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Lang.Syntax
+open import Once.Internal.Syntax
   using ( RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt
         ; RFloat; RAnnot; RBinOp; RUnaryOp; RAna
         ; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit

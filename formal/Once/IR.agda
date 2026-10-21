@@ -35,7 +35,7 @@ open import Once.IRTy
 -- IRTy (`IR ⌊ A ⌋ ⌊ B ⌋`) while the contract `SigOpInfo A B` is surface-typed
 -- (the value semantics lives on `Type`). Aliased `T` to avoid the shared
 -- constructor names (`Unit`, `_*_`, `μ-type`, …).
-open import Once.Lang.Type as T using (Type)
+open import Once.Internal.Type as T using (Type)
 
 -- HeapRef: the `free-heap` constructor's payload (a heap reference). From the
 -- lightweight shared HeapAddress module (stdlib-only), NOT the machine.

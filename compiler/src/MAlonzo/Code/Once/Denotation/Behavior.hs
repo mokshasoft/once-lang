@@ -22,19 +22,19 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Nat.Base
-import qualified MAlonzo.Code.Once.Lang.Event
+import qualified MAlonzo.Code.Once.Internal.Event
 
 -- Once.Denotation.Behavior.Behavior
 d_Behavior_6 = ()
 data T_Behavior_6
   = C_mkBehavior_40 (Integer ->
-                     [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56])
+                     [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56])
                     (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                     (Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22)
 -- Once.Denotation.Behavior.Behavior.at
 d_at_24 ::
   T_Behavior_6 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_at_24 v0
   = case coe v0 of
       C_mkBehavior_40 v1 v2 v3 -> coe v1

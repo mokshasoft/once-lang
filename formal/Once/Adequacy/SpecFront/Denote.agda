@@ -49,20 +49,20 @@ import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr
 import Once.Spec.Surface.Resolution as SR
 import Once.Spec.Core.Program as CoreProgram
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 open import Once.Parser.Module.Core using (Decl; mkModule)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases)
-import Once.Lang.Resolution as LR
-open import Once.Lang.Module using (ModTele; MainIn; emptyScope; entrySig)
-open import Once.Lang.Core.Translate using (toProgram; []; noCF)
-import Once.Lang.Core.Translate
+import Once.Internal.Resolution as LR
+open import Once.Internal.Module using (ModTele; MainIn; emptyScope; entrySig)
+open import Once.Internal.Core.Translate using (toProgram; []; noCF)
+import Once.Internal.Core.Translate
 import Data.Empty
 open import Once.Postulates using (extensionality)
 import Once.Spec.Core.Syntax
 import Data.List.Relation.Unary.All
-import Once.Lang.Typing.Scope
+import Once.Internal.Typing.Scope
 import Once.Spec.Name
 import Once.Adequacy.SpecFront.Polys
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
@@ -120,7 +120,7 @@ record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele e
     wf      : WellFormed Σₛ
     uniq    : Unique (map rname Σₛ)
     keysW   : KeysW Σₛ
-    sig-eq  : Once.Lang.Module.teleSig mt ≡ toISig Σₛ
+    sig-eq  : Once.Internal.Module.teleSig mt ≡ toISig Σₛ
     -- the compiler's core program, built over Σ's table
     {size}  : ℕ
     {sig}   : LP.Sig (toISig Σₛ) size
@@ -173,7 +173,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         wf = wf-of Σₛ fs tf facts
         kw = signature-words wm wd sig
         r13 = r13-at {Σₛ} kw
-        eqT : Once.Lang.Module.teleSig mt ≡ toISig Σₛ
+        eqT : Once.Internal.Module.teleSig mt ≡ toISig Σₛ
         eqT = trans (teleSig≡entrySig mt) (trans te (sym tf))
         P = prefix {S = LP.[] {Fs = toISig Σₛ}} fs ffiE TL.[] [] [] [] noCF mt mi (λ m → subst (_ ∈_) eqT m)
         sg = entrySig fs ʳ++ []
@@ -183,7 +183,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         ps = polyNames es′
         h-sig = λ {m} Δ {c} {t} (_ : Once.Spec.Name.NotGenerator c) M → h-sig-of Σₛ fs tf ukeys facts {m} Δ {c} {t} M
         -- a telescope entry is no FFI declaration (the extractor's guard)
-        h-psig : ∀ {x} → x ∈ ps → Once.Lang.Typing.Scope.lookupImport sg x ≡ nothing
+        h-psig : ∀ {x} → x ∈ ps → Once.Internal.Typing.Scope.lookupImport sg x ≡ nothing
         h-psig x∈ = Data.List.Relation.Unary.All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
         h-own : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σₛ)
         h-own {x} x∈ps M = not-sig Σₛ fs es′ tf guard (poly-names es′ x∈ps) M
@@ -191,7 +191,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         dsR′ = proj₁ rd
         align = Al.align-of Σₛ (proj₂ (proj₂ rd)) adj xn
         module W = Wk Σₛ r13 fmt ps sg h-sig h-own h-psig (key-word kw)
-        eok : W.EntriesOK (Once.Lang.Module.scope sg [] []) es′
+        eok : W.EntriesOK (Once.Internal.Module.scope sg [] []) es′
         eok = record
           { distinct = guard′ ; fresh = fresh-start es′ ; nosig = nosig-rest fs es′ guard
           ; kinds = kinds-of es′ guard′ (defs-of (nonSigs-none dsR) xn) }

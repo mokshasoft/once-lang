@@ -40,7 +40,7 @@ import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Spec.Float.Arith
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
@@ -773,7 +773,7 @@ d_block'45'env_388 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.X86-64.run-trace-x86-64
 d_run'45'trace'45'x86'45'64_398 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.T_Image_12 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_384 ->
   MAlonzo.Code.Once.Spec.Trace.T_Tr_18

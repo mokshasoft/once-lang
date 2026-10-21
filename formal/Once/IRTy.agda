@@ -20,7 +20,9 @@
 -- single object once `IR` is re-indexed over `IRTy` (Plan 0.52 M2 / S1).
 ------------------------------------------------------------------------
 
+import Once.Type.Grade
 module Once.IRTy where
+
 
 open import Relation.Binary.Definitions using (DecidableEquality)
 
@@ -33,8 +35,8 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
-open import Once.Lang.Type.Grade as T using (Quantity; Zero; One; Many; Purity)
-open import Once.Lang.Type as T using (Type; Functor)
+open import Once.Spec.Grade as T using (Quantity; Zero; One; Many; Purity; actᶠ)
+open import Once.Internal.Type as T using (Type; Functor)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)
@@ -310,9 +312,9 @@ mutual
   ⌈ Void     ⌉ = T.Void
   ⌈ A * B    ⌉ = ⌈ A ⌉ T.* ⌈ B ⌉
   ⌈ A + B    ⌉ = ⌈ A ⌉ T.+ ⌈ B ⌉
-  ⌈ A ⇛ B    ⌉ = ⌈ A ⌉ T.⇒[ T.effK ] ⌈ B ⌉   -- canonical grade
+  ⌈ A ⇛ B    ⌉ = ⌈ A ⌉ T.⇒[ Once.Type.Grade.effK ] ⌈ B ⌉   -- canonical grade
   ⌈ μ-type F ⌉ = T.μ-type ⌈ F ⌉F
-  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F T.act   -- canonical grade (the top finite one, D318)
+  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F T.actᶠ   -- canonical grade (the top finite one, D318)
   ⌈ Int      ⌉ = T.Int
   ⌈ Float    ⌉ = T.Float
 

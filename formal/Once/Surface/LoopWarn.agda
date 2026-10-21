@@ -19,9 +19,9 @@ module Once.Surface.LoopWarn where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat using (ℕ; _+_)
-open import Once.Lang.Type.Grade using (mk-kind; pure)
-open import Once.Lang.Type using (Type; _⇒[_]_)
-open import Once.Lang.Context using (Ctx; Usage)
+open import Once.Spec.Grade using (mk-kind; pure)
+open import Once.Internal.Type using (Type; _⇒[_]_)
+open import Once.Internal.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr)
 open Once.Surface.Syntax.Expr
 

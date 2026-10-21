@@ -45,11 +45,11 @@ import qualified MAlonzo.Code.Once.Denotation.Approx
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Event
-import qualified MAlonzo.Code.Once.Lang.Iterative
-import qualified MAlonzo.Code.Once.Lang.Res
-import qualified MAlonzo.Code.Once.Lang.Trace
-import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Internal.Event
+import qualified MAlonzo.Code.Once.Internal.Iterative
+import qualified MAlonzo.Code.Once.Internal.Res
+import qualified MAlonzo.Code.Once.Internal.Trace
+import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
@@ -177,7 +177,7 @@ d_chain'45'events_480 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_336 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_chain'45'events_480 ~v0 ~v1 v2 = du_chain'45'events_480 v2
 du_chain'45'events_480 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -186,7 +186,7 @@ du_chain'45'events_480 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_336 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_chain'45'events_480 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Adequacy.FlatEvents.du_chain'45'events_650
@@ -246,7 +246,7 @@ d_eval'7472'_562 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 d_eval'7472'_562 ~v0 v1 = du_eval'7472'_562 v1
 du_eval'7472'_562 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
@@ -254,7 +254,7 @@ du_eval'7472'_562 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 du_eval'7472'_562 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_eval'7472'_866
@@ -266,15 +266,15 @@ d_eventsAt_566 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_eventsAt_566 ~v0 ~v1 = du_eventsAt_566
 du_eventsAt_566 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_eventsAt_566 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_eventsAt_878
@@ -305,15 +305,15 @@ d_resultAt_850 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8
 d_resultAt_850 ~v0 ~v1 = du_resultAt_850
 du_resultAt_850 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8
 du_resultAt_850 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_resultAt_886
@@ -325,14 +325,14 @@ d_runAt_854 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_runAt_854 ~v0 ~v1 = du_runAt_854
 du_runAt_854 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_runAt_854 v0 v1 v2 v3
   = coe
@@ -345,13 +345,13 @@ d_stopsAt_902 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 -> Bool
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 -> Bool
 d_stopsAt_902 ~v0 ~v1 = du_stopsAt_902
 du_stopsAt_902 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 -> Bool
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 -> Bool
 du_stopsAt_902 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_stopsAt_894
@@ -362,14 +362,14 @@ d_'10218'_'10219'__954 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
-  Integer -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
+  Integer -> MAlonzo.Code.Once.Internal.Trace.T_T_110
 d_'10218'_'10219'__954 ~v0 ~v1 = du_'10218'_'10219'__954
 du_'10218'_'10219'__954 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
-  Integer -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
+  Integer -> MAlonzo.Code.Once.Internal.Trace.T_T_110
 du_'10218'_'10219'__954 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_'10218'_'10219'__942
@@ -8422,7 +8422,7 @@ d_esF_2690 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_esF_2690 ~v0 v1 = du_esF_2690 v1
 du_esF_2690 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
@@ -8505,7 +8505,7 @@ du_esF_2690 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_esF_2690 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
             v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26
   = coe
@@ -8979,7 +8979,7 @@ d_esG_2896 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_esG_2896 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
            v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30
   = coe
@@ -16963,7 +16963,7 @@ d_chain'45'events_3280 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_336 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_chain'45'events_3280 ~v0 ~v1 v2 = du_chain'45'events_3280 v2
 du_chain'45'events_3280 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -16972,7 +16972,7 @@ du_chain'45'events_3280 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_336 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_chain'45'events_3280 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Adequacy.FlatEvents.du_chain'45'events_650
@@ -17029,7 +17029,7 @@ d_eval'7472'_3362 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 d_eval'7472'_3362 ~v0 v1 v2 = du_eval'7472'_3362 v1 v2
 du_eval'7472'_3362 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
@@ -17037,7 +17037,7 @@ du_eval'7472'_3362 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 du_eval'7472'_3362 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_eval'7472'_866
@@ -17049,15 +17049,15 @@ d_eventsAt_3366 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_eventsAt_3366 ~v0 ~v1 v2 = du_eventsAt_3366 v2
 du_eventsAt_3366 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_eventsAt_3366 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_eventsAt_878
@@ -17088,15 +17088,15 @@ d_resultAt_3650 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8
 d_resultAt_3650 ~v0 ~v1 v2 = du_resultAt_3650 v2
 du_resultAt_3650 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8
 du_resultAt_3650 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_resultAt_886
@@ -17108,14 +17108,14 @@ d_runAt_3654 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_runAt_3654 ~v0 ~v1 v2 = du_runAt_3654 v2
 du_runAt_3654 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_runAt_3654 v0 v1 v2 v3
   = coe
@@ -17128,13 +17128,13 @@ d_stopsAt_3702 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 -> Bool
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 -> Bool
 d_stopsAt_3702 ~v0 ~v1 v2 = du_stopsAt_3702 v2
 du_stopsAt_3702 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 -> Bool
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 -> Bool
 du_stopsAt_3702 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_stopsAt_894
@@ -17145,13 +17145,13 @@ d_'10218'_'10219'__3754 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
-  Integer -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
+  Integer -> MAlonzo.Code.Once.Internal.Trace.T_T_110
 d_'10218'_'10219'__3754 ~v0 ~v1 ~v2 = du_'10218'_'10219'__3754
 du_'10218'_'10219'__3754 ::
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
-  Integer -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
+  Integer -> MAlonzo.Code.Once.Internal.Trace.T_T_110
 du_'10218'_'10219'__3754 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_'10218'_'10219'__942
@@ -25125,7 +25125,7 @@ d_esF_5092 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_esF_5092 ~v0 v1 v2 = du_esF_5092 v1 v2
 du_esF_5092 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
@@ -25208,7 +25208,7 @@ du_esF_5092 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_esF_5092 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
             v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26
   = coe
@@ -25682,7 +25682,7 @@ d_esG_5298 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_esG_5298 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
            v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30
   = coe
@@ -33779,7 +33779,7 @@ d_esF_5638 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_esF_5638 ~v0 v1 v2 v3 v4 ~v5 v6 ~v7 ~v8 ~v9 v10 ~v11 ~v12 v13
            ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 v20 v21 v22 v23 ~v24 ~v25 ~v26 v27
   = du_esF_5638 v1 v2 v3 v4 v6 v10 v13 v20 v21 v22 v23 v27
@@ -33795,7 +33795,7 @@ du_esF_5638 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_esF_5638 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair.Proof.du_esF_4914
@@ -34407,7 +34407,7 @@ d_esG_5844 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_esG_5844 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9 v10 v11 v12 v13 v14 v15
            ~v16 v17 ~v18 v19 v20 v21 v22 v23 v24 ~v25 v26 v27
   = du_esG_5844
@@ -34465,7 +34465,7 @@ du_esG_5844 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_esG_5844 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
             v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26
   = coe
@@ -42766,7 +42766,7 @@ d_esG_6136 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_esG_6136 v0 v1 v2 v3 v4 v5 v6 v7 v8 ~v9 v10 v11 v12 v13 v14 v15
            ~v16 v17 ~v18 v19 v20 v21 v22 v23 v24 ~v25 v26 v27 ~v28 v29 ~v30
   = du_esG_6136
@@ -42821,7 +42821,7 @@ du_esG_6136 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
   Integer ->
-  Integer -> [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56]
+  Integer -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_esG_6136 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
             v16 v17 v18 v19 v20 v21 v22 v23 v24
   = coe
@@ -81018,7 +81018,7 @@ d_E_6912 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110
+  MAlonzo.Code.Once.Internal.Trace.T_T_110
 d_E_6912 ~v0 v1 v2 v3 v4 v5 v6 v7 ~v8 ~v9 ~v10 ~v11 ~v12 ~v13 ~v14
          ~v15 ~v16 ~v17 ~v18 ~v19 v20 ~v21 ~v22 ~v23 ~v24 ~v25 ~v26 v27 ~v28
          ~v29 ~v30 ~v31 ~v32 ~v33
@@ -81031,7 +81031,7 @@ du_E_6912 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> Integer -> MAlonzo.Code.Once.Lang.Trace.T_T_110
+  AgdaAny -> Integer -> MAlonzo.Code.Once.Internal.Trace.T_T_110
 du_E_6912 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.du_'10218'_'10219'__942
@@ -82443,7 +82443,7 @@ d_dispatch'45'g_6968 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2216
 d_dispatch'45'g_6968 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
@@ -82528,13 +82528,13 @@ du_dispatch'45'g_6968 ::
   Integer ->
   AgdaAny ->
   Integer ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2216
 du_dispatch'45'g_6968 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                       v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27
   = case coe v27 of
-      MAlonzo.Code.Once.Lang.Res.C_stopped_12
+      MAlonzo.Code.Once.Internal.Res.C_stopped_12
         -> coe
              (\ v28 ->
                 coe
@@ -82623,7 +82623,7 @@ du_dispatch'45'g_6968 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                              (coe v15) (coe v16) (coe v17) (coe v18) (coe v19) (coe v20)
                              (coe v21) (coe v22) (coe v23) (coe v24) (coe v26))
                           (coe du_ncG_6976))))
-      MAlonzo.Code.Once.Lang.Res.C_returns_14 v28
+      MAlonzo.Code.Once.Internal.Res.C_returns_14 v28
         -> case coe v28 of
              MAlonzo.Code.Once.Denotation.Approx.C_done_12 v29 v30
                -> coe
@@ -91109,7 +91109,7 @@ d_dispatch_7208 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
   Integer ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2216
 d_dispatch_7208 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
@@ -91191,13 +91191,13 @@ du_dispatch_7208 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_InputAt_2262 ->
   Integer ->
-  MAlonzo.Code.Once.Lang.Res.T_Res_8 ->
+  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface.T_MachineRefinesObsF_2216
 du_dispatch_7208 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                  v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25
   = case coe v25 of
-      MAlonzo.Code.Once.Lang.Res.C_stopped_12
+      MAlonzo.Code.Once.Internal.Res.C_stopped_12
         -> coe
              (\ v26 ->
                 coe
@@ -91274,7 +91274,7 @@ du_dispatch_7208 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
                              (coe v16) (coe v17) (coe v18) (coe v19) (coe v20) (coe v21)
                              (coe v22) (coe v23) (coe v24))
                           (coe du_ncF_7216))))
-      MAlonzo.Code.Once.Lang.Res.C_returns_14 v26
+      MAlonzo.Code.Once.Internal.Res.C_returns_14 v26
         -> case coe v26 of
              MAlonzo.Code.Once.Denotation.Approx.C_done_12 v27 v28
                -> coe

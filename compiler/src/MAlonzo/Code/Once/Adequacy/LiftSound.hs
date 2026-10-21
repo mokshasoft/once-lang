@@ -37,11 +37,11 @@ import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Iterative
-import qualified MAlonzo.Code.Once.Lang.Trace
-import qualified MAlonzo.Code.Once.Lang.Type
-import qualified MAlonzo.Code.Once.Lang.Type.WellFormed
-import qualified MAlonzo.Code.Once.Lang.Value
+import qualified MAlonzo.Code.Once.Internal.Iterative
+import qualified MAlonzo.Code.Once.Internal.Trace
+import qualified MAlonzo.Code.Once.Internal.Type
+import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
+import qualified MAlonzo.Code.Once.Internal.Value
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Name
@@ -53,7 +53,7 @@ import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 d_'10214'_'10215'_50 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 -> ()
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 -> ()
 d_'10214'_'10215'_50 = erased
 -- Once.Adequacy.LiftSound.W._%ˢ_
 d__'37''738'__64 ::
@@ -1074,20 +1074,20 @@ d_now'45'inv_792 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   () ->
   () ->
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
+  (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_now'45'inv_792 ~v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 v7
   = du_now'45'inv_792 v4 v7
 du_now'45'inv_792 ::
-  MAlonzo.Code.Once.Lang.Trace.T_T_110 ->
+  MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_now'45'inv_792 v0 v1
   = case coe v0 of
-      MAlonzo.Code.Once.Lang.Trace.C_ret_114 v2
+      MAlonzo.Code.Once.Internal.Trace.C_ret_114 v2
         -> case coe v2 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3
                -> coe
@@ -1102,9 +1102,9 @@ d_now'45'assoc_834 ::
   () ->
   () ->
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
-  (AgdaAny -> MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58) ->
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
+  (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
+  (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -1133,8 +1133,8 @@ du_'60''45''8804'_900 v0 v1
 d_sz'45'sigop_916 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -1142,7 +1142,7 @@ d_sz'45'sigop_916 ::
 d_sz'45'sigop_916 ~v0 ~v1 v2 ~v3 ~v4 ~v5 v6
   = du_sz'45'sigop_916 v2 v6
 du_sz'45'sigop_916 ::
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_sz'45'sigop_916 v0 v1
@@ -1583,12 +1583,12 @@ d_sig'45'at_1268 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
@@ -1603,8 +1603,8 @@ du_sig'45'at_1268 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -1614,7 +1614,7 @@ du_sig'45'at_1268 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v10 of
              MAlonzo.Code.Once.Arith.Prim.C_p'45'add_210
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -1641,7 +1641,7 @@ du_sig'45'at_1268 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Arith.Prim.C_p'45'sub_212
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -1668,7 +1668,7 @@ du_sig'45'at_1268 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Arith.Prim.C_p'45'mul_214
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -1695,7 +1695,7 @@ du_sig'45'at_1268 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Arith.Prim.C_p'45'div_216
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -1722,7 +1722,7 @@ du_sig'45'at_1268 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Arith.Prim.C_p'45'mod_218
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -1765,7 +1765,7 @@ du_sig'45'at_1268 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    (coe v3)))
                              (coe
                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
-                                (coe MAlonzo.Code.Once.Lang.Type.C_Int_34))
+                                (coe MAlonzo.Code.Once.Internal.Type.C_Int_34))
                              (coe v7))))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -1829,25 +1829,26 @@ du_bin'45'case_1294 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                        (coe
                                           MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_200
-                                          (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
+                                          (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
                                           (coe
-                                             MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14)
+                                             MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14)
                                           (coe
-                                             MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
-                                             (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
+                                             MAlonzo.Code.Once.Internal.Value.du_erase'7501'_104
+                                             (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
                                              (coe
                                                 MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v4 v0
                                                 (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_170
                                                    (coe
-                                                      MAlonzo.Code.Once.Lang.Type.C__'42'__24
-                                                      (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
-                                                      (coe MAlonzo.Code.Once.Lang.Type.C_Int_34))
+                                                      MAlonzo.Code.Once.Internal.Type.C__'42'__24
+                                                      (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
+                                                      (coe
+                                                         MAlonzo.Code.Once.Internal.Type.C_Int_34))
                                                    (coe
-                                                      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22
+                                                      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22
                                                       (coe
-                                                         MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14)
+                                                         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14)
                                                       (coe
-                                                         MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14))
+                                                         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14))
                                                    (coe v11)))))
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
@@ -2154,7 +2155,7 @@ du_neg_1618 v0 v1 v2 v3 v4 v5 v6 v7
                  = coe
                      d_body'45'sound_1228 v0 v1 v2 v3
                      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
-                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34))
+                        (coe MAlonzo.Code.Once.Internal.Type.C_Int_34))
                      v4 v5 v8 erased v6 in
            coe
              (case coe v9 of
@@ -2165,17 +2166,18 @@ du_neg_1618 v0 v1 v2 v3 v4 v5 v6 v7
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
                              MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_200
-                             (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
-                             (coe MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14)
+                             (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
+                             (coe MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14)
                              (coe
-                                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
-                                (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
+                                MAlonzo.Code.Once.Internal.Value.du_erase'7501'_104
+                                (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
                                 (coe
                                    MAlonzo.Code.Once.Arith.Prim.du_primSem_238
                                    (coe MAlonzo.Code.Once.Arith.Prim.C_p'45'neg_220) v0
                                    (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_170
-                                      (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
-                                      (coe MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14)
+                                      (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
+                                      (coe
+                                         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14)
                                       (coe v10)))))
                           (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased))
                 _ -> MAlonzo.RTE.mazUnreachableError)
@@ -2637,12 +2639,12 @@ d_fsig'45'at_1960 ::
   MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6 ->
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
@@ -2657,8 +2659,8 @@ du_fsig'45'at_1960 ::
   Integer ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
-  MAlonzo.Code.Once.Lang.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -2668,7 +2670,7 @@ du_fsig'45'at_1960 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> case coe v10 of
              MAlonzo.Code.Once.Arith.Prim.C_p'45'fadd_222
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -2695,7 +2697,7 @@ du_fsig'45'at_1960 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Arith.Prim.C_p'45'fsub_224
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -2722,7 +2724,7 @@ du_fsig'45'at_1960 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Arith.Prim.C_p'45'fmul_226
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -2749,7 +2751,7 @@ du_fsig'45'at_1960 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Arith.Prim.C_p'45'fdiv_228
                -> case coe v5 of
-                    MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22 v13 v14
+                    MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22 v13 v14
                       -> coe
                            seq (coe v13)
                            (coe
@@ -2792,7 +2794,7 @@ du_fsig'45'at_1960 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                    (coe v3)))
                              (coe
                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
-                                (coe MAlonzo.Code.Once.Lang.Type.C_Int_34))
+                                (coe MAlonzo.Code.Once.Internal.Type.C_Int_34))
                              (coe v7))))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -2856,25 +2858,27 @@ du_fbin'45'case_1986 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                        (coe
                                           MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_200
-                                          (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
+                                          (coe MAlonzo.Code.Once.Internal.Type.C_Float_36)
                                           (coe
-                                             MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Float_16)
+                                             MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Float_16)
                                           (coe
-                                             MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
-                                             (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
+                                             MAlonzo.Code.Once.Internal.Value.du_erase'7501'_104
+                                             (coe MAlonzo.Code.Once.Internal.Type.C_Float_36)
                                              (coe
                                                 MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v4 v0
                                                 (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_170
                                                    (coe
-                                                      MAlonzo.Code.Once.Lang.Type.C__'42'__24
-                                                      (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
-                                                      (coe MAlonzo.Code.Once.Lang.Type.C_Float_36))
+                                                      MAlonzo.Code.Once.Internal.Type.C__'42'__24
+                                                      (coe
+                                                         MAlonzo.Code.Once.Internal.Type.C_Float_36)
+                                                      (coe
+                                                         MAlonzo.Code.Once.Internal.Type.C_Float_36))
                                                    (coe
-                                                      MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Prod_22
+                                                      MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Prod_22
                                                       (coe
-                                                         MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Float_16)
+                                                         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Float_16)
                                                       (coe
-                                                         MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Float_16))
+                                                         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Float_16))
                                                    (coe v11)))))
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
@@ -3182,7 +3186,7 @@ du_conv_2290 v0 v1 v2 v3 v4 v5 v6 v7
                  = coe
                      d_body'45'sound_1228 v0 v1 v2 v3
                      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_48
-                        (coe MAlonzo.Code.Once.Lang.Type.C_Int_34))
+                        (coe MAlonzo.Code.Once.Internal.Type.C_Int_34))
                      v4 v5 v8 erased v6 in
            coe
              (case coe v9 of
@@ -3193,17 +3197,18 @@ du_conv_2290 v0 v1 v2 v3 v4 v5 v6 v7
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
                              MAlonzo.Code.Once.Denotation.ValueDomain.d_inject'7495'_200
-                             (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
-                             (coe MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Float_16)
+                             (coe MAlonzo.Code.Once.Internal.Type.C_Float_36)
+                             (coe MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Float_16)
                              (coe
-                                MAlonzo.Code.Once.Lang.Value.du_erase'7501'_104
-                                (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
+                                MAlonzo.Code.Once.Internal.Value.du_erase'7501'_104
+                                (coe MAlonzo.Code.Once.Internal.Type.C_Float_36)
                                 (coe
                                    MAlonzo.Code.Once.Arith.Prim.du_primSem_238
                                    (coe MAlonzo.Code.Once.Arith.Prim.C_p'45'i2f_230) v0
                                    (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget'7495'_170
-                                      (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
-                                      (coe MAlonzo.Code.Once.Lang.Type.WellFormed.C_base'45'Int_14)
+                                      (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
+                                      (coe
+                                         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14)
                                       (coe v10)))))
                           (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased))
                 _ -> MAlonzo.RTE.mazUnreachableError)

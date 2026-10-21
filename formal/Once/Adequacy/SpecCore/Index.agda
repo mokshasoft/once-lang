@@ -17,10 +17,10 @@ module Once.Adequacy.SpecCore.Index where
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Context as LC
-import Once.Lang.Core.PolyTy as LP
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+import Once.Internal.Context as LC
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
 import Once.Spec.Grade as SG
 import Once.Spec.Context as SCx
@@ -41,8 +41,8 @@ pr LG.act  = pr-act
 pr LG.eff  = pr-eff
 
 pr-fin : ∀ φ → PR (LG.fin φ) (SG.fin (φS φ))
-pr-fin LG.pure = pr-pure
-pr-fin LG.act  = pr-act
+pr-fin LG.pureᶠ = pr-pure
+pr-fin LG.actᶠ  = pr-act
 
 pr-· : ∀ {π₁ π₁′ π₂ π₂′} → PR π₁ π₁′ → PR π₂ π₂′ → PR (π₁ LG.·p π₂) (π₁′ SG.·p π₂′)
 pr-· pr-pure p       = p
@@ -154,7 +154,7 @@ mutual
 ------------------------------------------------------------------------
 
 module _ {Fs} {s} (S : LP.Sig Fs s) where
-  import Once.Lang.Core.PolyTyping S as PT
+  import Once.Internal.Core.PolyTyping S as PT
 
   data CR {m} : ∀ {n} → PT.PCtx m n → SCx.Ctx m n → Set where
     cr-∅ : CR PT.∅ SCx.∅

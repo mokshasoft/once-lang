@@ -35,20 +35,20 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Lang.Type using (Unit)
+open import Once.Internal.Type using (Unit)
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
-open import Once.Lang.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig)
+open import Once.Internal.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
-open import Once.Lang.Contract using (ISig; Impl)
-open import Once.Lang.Trace using (Interp; interp; pureHalf)
-open import Once.Lang.Program using (Typed)
-open import Once.Lang.Core.Telescope using (Program; runCore)
-import Once.Lang.Core.Translate as TR
-import Once.Lang.Core.Telescope as Tele
-import Once.Lang.Core.PolyTyping as PT
-import Once.Lang.Core.Meaning as GM
+open import Once.Internal.Contract using (ISig; Impl)
+open import Once.Internal.Trace using (Interp; interp; pureHalf)
+open import Once.Internal.Program using (Typed)
+open import Once.Internal.Core.Telescope using (Program; runCore)
+import Once.Internal.Core.Translate as TR
+import Once.Internal.Core.Telescope as Tele
+import Once.Internal.Core.PolyTyping as PT
+import Once.Internal.Core.Meaning as GM
 import Once.Denotation.Behavior
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
@@ -60,14 +60,14 @@ import Once.Denotation.Behavior
 open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Denotation.DenotTrace using (evalᴰ)
-open import Once.Lang.Trace using (projTrace)
+open import Once.Internal.Trace using (projTrace)
 open import Data.Maybe using (Maybe; just)
 import Once.Adequacy.TeleWalk as TW
 import Once.Adequacy.TeleWalk.Invariant as TWI
 import Once.Adequacy.TelePosition as TP
-import Once.Lang.Core.Translate as TR
+import Once.Internal.Core.Translate as TR
 open import Once.Denotation.Program using (tableEnv; IRFun)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Event using (SigOpEvent)
 open import Data.List using (List; []; map)
 open import Data.List.Relation.Unary.All using ([])
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)

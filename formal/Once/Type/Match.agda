@@ -19,12 +19,13 @@ open import Data.String using (String)
 import Data.String as Str
 open import Relation.Nullary using (Dec; yes; no)
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Lang.Type.DecEq using (_≟q_; _≟p_; _≟k_)
-open import Once.Lang.Type.DecEq using (_≟T_)
+open import Once.Internal.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Internal.Type.DecEq using (_≟T_)
 
 -- Plan 0.6.2 Phase 1 (load-bearing POC for Option C of D044's
 -- follow-up). Given a PolyType schema with `PTVar` type variables
@@ -102,11 +103,11 @@ mutual
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff ] _)   _ = nothing
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind One act ] _)   _ = nothing
   instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
-  instantiateAcc (Pν-type F pure) (ν-type f pure) s = instantiateFunctor F f s
+  instantiateAcc (Pν-type F pureᶠ) (ν-type f pureᶠ) s = instantiateFunctor F f s
   -- D311: no schema writes a `prod` arrow yet (plan 0.117 F).
-  instantiateAcc (Pν-type F act) (ν-type f act) s = instantiateFunctor F f s
-  instantiateAcc (Pν-type _ pure) (ν-type _ act) _ = nothing
-  instantiateAcc (Pν-type _ act) (ν-type _ pure) _ = nothing
+  instantiateAcc (Pν-type F actᶠ) (ν-type f actᶠ) s = instantiateFunctor F f s
+  instantiateAcc (Pν-type _ pureᶠ) (ν-type _ actᶠ) _ = nothing
+  instantiateAcc (Pν-type _ actᶠ) (ν-type _ pureᶠ) _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ act ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero act ] _) _ = nothing
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero eff ] _) _ = nothing

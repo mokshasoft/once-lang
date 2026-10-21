@@ -27,24 +27,24 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many)
-open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
-open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 import Once.Semantics.Machine as Val
-open import Once.Lang.GradedOps using (fmapM; prjB; injB; embνᵃ; mapEmbνᵃ)
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Internal.GradedOps using (fmapM; prjB; injB; embνᵃ; mapEmbνᵃ)
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Lang.Trace using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
-open import Once.Lang.Stream using (νᵈ; module νᵈ)
-open import Once.Lang.StreamInf using (νᴵ; module νᴵ)
+open import Once.Internal.Trace using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
+open import Once.Internal.Stream using (νᵈ; module νᵈ)
+open import Once.Internal.StreamInf using (νᴵ; module νᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forgetᵇ; injectᵇ)
 open νᵈ using (forceᵈ)
 open νᴵ using (forceᴵ)
-open import Once.Lang.Graded using (M; ⟦_⟧ᵛ; νᵖ; bindM; returnM; _>>=ᵖ_; toT∞)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; TreeEq∞; BlockEq; ret≈; StepEq; done≈)
+open import Once.Internal.Graded using (M; ⟦_⟧ᵛ; νᵖ; bindM; returnM; _>>=ᵖ_; toT∞)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; TreeEq∞; BlockEq; ret≈; StepEq; done≈)
 open TreeEq∞ using (force≈)
-open Once.Lang.Iterative.T∞ using (force)
+open Once.Internal.Iterative.T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws
   using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; relS-ret; RelS-bind; RelS-≈ˡ; embed-bind)
 open RelS using (forceS)
@@ -52,7 +52,7 @@ open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
 open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel; RelS-mono)
 open import Once.Denotation.ValueRelPER using (RelD-sym; RelD-trans; RelD-leftself; RelD-rightself; RelS-meet)
 open StreamRel using (forceR)
-open Once.Lang.Graded.νᵖ using (forceᵖ)
+open Once.Internal.Graded.νᵖ using (forceᵖ)
 
 ------------------------------------------------------------------------
 -- Codata: the Spec's streams against the IR's (whose layers are `T∞` runs).
@@ -96,8 +96,8 @@ RelGV Void        () _
 RelGV Int         x y = x ≡ y
 RelGV Float       x y = x ≡ y
 RelGV (μ-type F)  x y = x ≡ y
-RelGV (ν-type F pure) x y = x ∼ᵖᵈ y
-RelGV (ν-type F act)  x y = x ∼ᵈ y
+RelGV (ν-type F pureᶠ) x y = x ∼ᵖᵈ y
+RelGV (ν-type F actᶠ)  x y = x ∼ᵈ y
 RelGV (rigid _ _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
 RelGV (A + B) (inj₁ a₁) (inj₁ a₂) = RelGV A a₁ a₂
@@ -153,9 +153,9 @@ RelGᵖᵉ-bind : ∀ {A B} {X : Set} {P : X → T∞ ⟦ B ⟧ᴰ → Set} {m :
             → P (m >>=ᵖ k) (t₂ >>=∞ g)
 RelGᵖᵉ-bind {A} {B} {P = P} {m} {t₂} {k} {g} rt rk tr = go (force t₂) refl (forceS rt)
   where
-    go : ∀ (b : _) → force t₂ ≡ b → RelSB (RelGV A) (Once.Lang.Trace.ret (inj₁ m)) b → P (m >>=ᵖ k) (t₂ >>=∞ g)
-    go .(Once.Lang.Trace.ret (inj₁ _)) e (s-ret {y = y} r) =
-      tr (cong (λ bl → Once.Lang.Iterative.bindBlock bl g) e)
+    go : ∀ (b : _) → force t₂ ≡ b → RelSB (RelGV A) (Once.Internal.Trace.ret (inj₁ m)) b → P (m >>=ᵖ k) (t₂ >>=∞ g)
+    go .(Once.Internal.Trace.ret (inj₁ _)) e (s-ret {y = y} r) =
+      tr (cong (λ bl → Once.Internal.Iterative.bindBlock bl g) e)
          (subst (λ x → P x (g y)) (sym (>>=ᵖ-β m k)) (rk r))
 
 -- The two, at any grade.
@@ -246,7 +246,7 @@ RelS-embed-fmap {g = g} t h = RelS-≈ˡ (embed-bind t (λ l → ret (g l))) (em
   where
     emb-fmap  : ∀ {S : _ → _ → Set} {m n} → RelS (λ l r → S (g l) r) m n → RelS S (m >>=∞ λ l → embed (ret (g l))) n
     emb-fmapB : ∀ {S : _ → _ → Set} {b b′} → RelSB (λ l r → S (g l) r) b b′
-              → RelSB S (Once.Lang.Iterative.bindBlock b λ l → embed (ret (g l))) b′
+              → RelSB S (Once.Internal.Iterative.bindBlock b λ l → embed (ret (g l))) b′
     forceS (emb-fmap h) = emb-fmapB (forceS h)
     emb-fmapB (s-ret r)  = s-ret r
     emb-fmapB (s-next h) = s-next (emb-fmap h)
@@ -361,8 +361,8 @@ right-self Void {()}
 right-self Int r = refl
 right-self Float r = refl
 right-self (μ-type F) r = refl
-right-self (ν-type F pure) r = pd-self r
-right-self (ν-type F act) r = ad-self r
+right-self (ν-type F pureᶠ) r = pd-self r
+right-self (ν-type F actᶠ) r = ad-self r
 right-self (rigid _ _) {()}
 right-self (A * B) {_ , _} {_ , _} (r , s) = right-self A r , right-self B s
 right-self (A + B) {inj₁ _} {inj₁ _} r = right-self A r
@@ -381,8 +381,8 @@ mutual
   GV-D Int r d = trans r (sym d)
   GV-D Float r d = trans r (sym d)
   GV-D (μ-type F) r d = trans r (sym d)
-  GV-D (ν-type F pure) r d = pd-D r d
-  GV-D (ν-type F act) r d = ad-D r d
+  GV-D (ν-type F pureᶠ) r d = pd-D r d
+  GV-D (ν-type F actᶠ) r d = ad-D r d
   GV-D (rigid _ _) {()}
   GV-D (A * B) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = GV-D A r d , GV-D B s d′
   GV-D (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r d = GV-D A r d

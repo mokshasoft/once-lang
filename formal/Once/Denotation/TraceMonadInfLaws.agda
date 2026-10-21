@@ -12,8 +12,8 @@ module Once.Denotation.TraceMonadInfLaws where
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Lang.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
-open import Once.Lang.Iterative
+open import Once.Internal.Trace using (T; ret; call; halt; _>>=T_; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.Internal.Iterative
 open T∞ using (force)
 open TreeEq∞ using (force≈)
 

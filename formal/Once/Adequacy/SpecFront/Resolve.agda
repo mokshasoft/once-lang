@@ -25,9 +25,9 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong)
 
 open import Once.Spec.Name using (CanonicalName; canonical; gen)
-open import Once.Lang.Syntax as O using (RawExpr)
+open import Once.Internal.Syntax as O using (RawExpr)
 import Once.Spec.Surface.Syntax as S
-open import Once.Lang.Resolution as LR
+open import Once.Internal.Resolution as LR
   using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own;
          ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
          re-binop; re-unop; re-ana; re-unit; re-int; re-float; ExpandsTo; ex-nil; ex-I; ex-other)
@@ -36,7 +36,7 @@ open import Once.Spec.Surface.Resolution as SR
          r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
          r-annot; r-binop; r-neg; Expands; fa-here; fa-there)
 import Once.Spec.Surface.Resolution
-open import Once.Lang.ResolvedRefs using (GoodName; GoodRefs)
+open import Once.Internal.ResolvedRefs using (GoodName; GoodRefs)
 open import Once.Adequacy.SpecGrammar.Expr using (Emb; e-var; e-qual; e-res; e-app; e-lam; e-let; e-pair; e-destruct; e-unit;
   e-int; e-float; e-annot; e-binop; e-neg)
 open import Once.Adequacy.SpecFront.Expr

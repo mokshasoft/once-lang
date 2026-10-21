@@ -23,7 +23,7 @@ open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Target.RiscV64.PhysReg using (Reg; a0)
 open import Once.CCC.Target.RiscV64.Syntax using (Program; Instr; call-sym)
 open import Once.CCC.Target.RiscV64.Semantics using (State; fetch; execInstr; Word; writeReg)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Event using (SigOpEvent)
 open State using (halted; pc; regs)
 open import Once.Arith.Backend.RiscV64.Dispatch using (dispatch-arith)
 import Once.Arith.Backend.RunTraceCore as Core

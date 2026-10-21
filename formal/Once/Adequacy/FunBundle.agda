@@ -22,9 +22,9 @@
 module Once.Adequacy.FunBundle where
 
 
-open import Once.Lang.Typing.Scope using (PolyCtx)
+open import Once.Internal.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
-open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoBody)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoBody)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -43,37 +43,37 @@ open import Function using (case_of_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Lang.Type.Grade using (mk-kind; Many; eff)
-open import Once.Lang.Type using (Unit; Type; _⇒[_]_)
+open import Once.Spec.Grade using (mk-kind; Many; eff)
+open import Once.Internal.Type using (Unit; Type; _⇒[_]_)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Lang.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type.Instance using (rigidOf)
+open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?)
-open import Once.Lang.Type.WellFormed using (IsConcrete)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Lang.Type.Honest using (HonestFFI; honest?)
+open import Once.Internal.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
-open import Once.Lang.Context using (Usage)
+open import Once.Internal.Context using (Usage)
 open import Once.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
-open import Once.Lang.Typing.Scope using (NamedCtx)
-open import Once.Lang.Syntax using (RawExpr)
+open import Once.Internal.Typing.Scope using (NamedCtx)
+open import Once.Internal.Syntax using (RawExpr)
 open import Once.TypeCheck.Soundness using (check-sound; infer-soundV)
-open import Once.Lang.Principal using (below)
+open import Once.Internal.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
 import Data.String as String
-import Once.Lang.Typing
-import Once.Lang.Type.DecEq
+import Once.Internal.Typing
+import Once.Internal.Type.DecEq
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; mainEntry; moduleToIR; moduleToIR-aux)
-open import Once.Lang.Type.Sub using (_<:_)
+open import Once.Internal.Type.Sub using (_<:_)
 open import Once.Type.Sub using (_<:?_)
 open import Once.Adequacy.MainIRForm using (bare-injective)
 import Once.Adequacy.ModuleComplete as MC
@@ -193,7 +193,7 @@ compileFunI-ce polys impsOf ctx ty fi irFun eq =
         main (inj₁ _) ()
         main (inj₂ _) e′ = e′
     body false e = e
-    at : ∀ {T Ψ} (w : nctx Once.Lang.Typing.⊢ᵢ funBody fi ∶ T ⨾ Ψ) (dd : Dec (T ≡ ty))
+    at : ∀ {T Ψ} (w : nctx Once.Internal.Typing.⊢ᵢ funBody fi ∶ T ⨾ Ψ) (dd : Dec (T ≡ ty))
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf (funName fi) ty refl w dd ≡ inj₂ irFun → T ≡ ty
     at w (yes e) _ = e
     at w (no _) ()
@@ -202,7 +202,7 @@ compileFunI-ce polys impsOf ctx ty fi irFun eq =
         → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ ty) (λ se →
             Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → proj₁ cr ≡ TE.success ty Ψ se d f))))
     aux (TE.failure _ , _) ()
-    aux (TE.success T Ψ se d f , w) e = fix (at w (T Once.Lang.Type.DecEq.≟T ty) e) se
+    aux (TE.success T Ψ se d f , w) e = fix (at w (T Once.Internal.Type.DecEq.≟T ty) e) se
       where
         fix : (eq′ : T ≡ ty) (se′ : Expr (NamedCtx.debruijn nctx) Ψ T)
             → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ′ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ′ ty) (λ se″ →

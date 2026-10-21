@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Resolution as SR
-import Once.Lang.Resolution as LR
+import Once.Internal.Resolution as LR
 open import Once.Parser.Module.Core using (Module; mkModule)
 open import Once.Parser.Module.Resolve using (ModuleMap)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb)

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.ModuleLaws — the lemmas about `Once.Lang.Module`, moved out so that module
+-- Once.Adequacy.ModuleLaws — the lemmas about `Once.Internal.Module`, moved out so that module
 -- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
 ------------------------------------------------------------------------
 
@@ -17,20 +17,20 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Type.Grade using (mk-kind; Many; eff)
-open import Once.Lang.Type using (Type; Unit; _⇒[_]_)
-open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Lang.Type.WellFormed using (RigidFree)
-open import Once.Lang.Type.WellFormed using (IsConcrete)
-open import Once.Lang.Type.Honest using (HonestFFI)
+open import Once.Internal.Contract using (ISig)
+open import Once.Spec.Grade using (mk-kind; Many; eff)
+open import Once.Internal.Type using (Type; Unit; _⇒[_]_)
+open import Once.Internal.Type.Instance using (rigidOf)
+open import Once.Internal.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Internal.Type.Honest using (HonestFFI)
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
-open import Once.Lang.Typing.Scope using (NamedCtx)
+open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Lang.Module
+open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Internal.Module
 open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunType; pfunBody)
 

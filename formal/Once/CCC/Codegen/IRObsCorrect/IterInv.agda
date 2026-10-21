@@ -37,8 +37,8 @@ open AllocState using (next-slot; current-frame; next-heap-ref)
 open LocState using (halted; regs)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
-open import Once.Lang.Iterative using (T∞; iterRun)
-open import Once.Lang.Res using (Res; stopped; returns)
+open import Once.Internal.Iterative using (T∞; iterRun)
+open import Once.Internal.Res using (Res; stopped; returns)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 
 module IterInvC {FS : FrameSemantics} where

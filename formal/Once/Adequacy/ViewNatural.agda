@@ -8,21 +8,21 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Lang.Core.PolyTy using (Sig)
+open import Once.Internal.Core.PolyTy using (Sig)
 
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 module Once.Adequacy.ViewNatural {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Product using (_,_; proj₁)
 import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Type.Poly using (Ground)
-open import Once.Lang.Type.Instance using (KindedInstance)
-open import Once.Lang.Core.PolyTy using (KCtx; GSub; Respects)
-open import Once.Lang.Typing.Scope using (Imports; PolyCtx; lookupPolyPrefix)
+open import Once.Internal.Type.Poly using (Ground)
+open import Once.Internal.Type.Instance using (KindedInstance)
+open import Once.Internal.Core.PolyTy using (KCtx; GSub; Respects)
+open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupPolyPrefix)
 import Once.TypeCheck.RigidSubst as RS
-open import Once.Lang.Elaboration S using (View; ImportAt; def)
+open import Once.Internal.Elaboration S using (View; ImportAt; def)
 
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   -- An imported definition is used at a ground instance, so it is fixed.
@@ -36,5 +36,5 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
                → proj₁ (View.inst V lp ng (RS.ρ̂-ki Δ τ r {sc} ki)) ≡ (λ i → RS.ρ̂ Δ τ r (proj₁ (View.inst V lp ng ki) i))
       nat-ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ Data.Maybe.just (sc , body , prefix)) (g : Ground sc)
                  → (λ i → RS.ρ̂ Δ τ r (proj₁ (View.ground V lp g) i)) ≡ proj₁ (View.ground V lp g)
-      nat-imp : ∀ {x T} (lk : Once.Lang.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T) → NatImp (View.imported V lk)
+      nat-imp : ∀ {x T} (lk : Once.Internal.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T) → NatImp (View.imported V lk)
 

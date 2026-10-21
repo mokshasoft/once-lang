@@ -31,11 +31,11 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Functor.Decide
-import qualified MAlonzo.Code.Once.Lang.Name
-import qualified MAlonzo.Code.Once.Lang.Syntax
-import qualified MAlonzo.Code.Once.Lang.Type
-import qualified MAlonzo.Code.Once.Lang.Type.Honest
-import qualified MAlonzo.Code.Once.Lang.Type.Poly
+import qualified MAlonzo.Code.Once.Internal.Name
+import qualified MAlonzo.Code.Once.Internal.Syntax
+import qualified MAlonzo.Code.Once.Internal.Type
+import qualified MAlonzo.Code.Once.Internal.Type.Honest
+import qualified MAlonzo.Code.Once.Internal.Type.Poly
 import qualified MAlonzo.Code.Once.Parser.Lexer
 import qualified MAlonzo.Code.Once.Parser.Module
 import qualified MAlonzo.Code.Once.Parser.Module.Core
@@ -317,8 +317,8 @@ du_go_84 v0
 d_FunInfo_96 = ()
 data T_FunInfo_96
   = C_mkFunInfo_114 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                    (Maybe MAlonzo.Code.Once.Lang.Type.T_Type_8)
-                    MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 Bool
+                    (Maybe MAlonzo.Code.Once.Internal.Type.T_Type_8)
+                    MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 Bool
 -- Once.Parser.FunInfo.funName
 d_funName_106 ::
   T_FunInfo_96 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
@@ -328,14 +328,14 @@ d_funName_106 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.FunInfo.funType
 d_funType_108 ::
-  T_FunInfo_96 -> Maybe MAlonzo.Code.Once.Lang.Type.T_Type_8
+  T_FunInfo_96 -> Maybe MAlonzo.Code.Once.Internal.Type.T_Type_8
 d_funType_108 v0
   = case coe v0 of
       C_mkFunInfo_114 v1 v2 v3 v4 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.FunInfo.funBody
 d_funBody_110 ::
-  T_FunInfo_96 -> MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34
+  T_FunInfo_96 -> MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
 d_funBody_110 v0
   = case coe v0 of
       C_mkFunInfo_114 v1 v2 v3 v4 -> coe v3
@@ -350,8 +350,8 @@ d_funIsPrimitive_112 v0
 d_PolyFunInfo_116 = ()
 data T_PolyFunInfo_116
   = C_mkPolyFunInfo_130 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                        MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10
-                        MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34
+                        MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
+                        MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
 -- Once.Parser.PolyFunInfo.pfunName
 d_pfunName_124 ::
   T_PolyFunInfo_116 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
@@ -361,14 +361,15 @@ d_pfunName_124 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.PolyFunInfo.pfunType
 d_pfunType_126 ::
-  T_PolyFunInfo_116 -> MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10
+  T_PolyFunInfo_116 ->
+  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
 d_pfunType_126 v0
   = case coe v0 of
       C_mkPolyFunInfo_130 v1 v2 v3 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.PolyFunInfo.pfunBody
 d_pfunBody_128 ::
-  T_PolyFunInfo_116 -> MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34
+  T_PolyFunInfo_116 -> MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
 d_pfunBody_128 v0
   = case coe v0 of
       C_mkPolyFunInfo_130 v1 v2 v3 -> coe v3
@@ -408,7 +409,7 @@ d_polysOf_146 v0
 -- Once.Parser.honestSig
 d_honestSig_156 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
   Maybe AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_honestSig_156 v0 v1 v2
   = case coe v2 of
@@ -444,7 +445,7 @@ d_honestSig_156 v0 v1 v2
 d_projectSig_166 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_projectSig_166 v0 v1 v2
   = let v3 = MAlonzo.Code.Once.Type.d_isGround_96 (coe v2) in
@@ -456,14 +457,14 @@ d_projectSig_166 v0 v1 v2
                 (coe
                    MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
                    (coe
-                      MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88 (coe v2)
+                      MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88 (coe v2)
                       (coe v4)))
                 (coe
-                   MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_202
+                   MAlonzo.Code.Once.Internal.Type.Honest.d_honest'63'_202
                    (coe
                       MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
                       (coe
-                         MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88 (coe v2)
+                         MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88 (coe v2)
                          (coe v4))))
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
            -> coe
@@ -517,8 +518,8 @@ d_extractFunctions'45'consFun_196 v0 v1
 d_extractFunctions'45'consPoly_204 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_extractFunctions'45'consPoly_204 v0 v1 v2 v3
   = case coe v0 of
@@ -596,7 +597,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                    -> let v10
                                             = MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63'_52
                                                 (coe
-                                                   MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
+                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88
                                                    (coe v7) (coe v9)) in
                                       coe
                                         (case coe v10 of
@@ -614,7 +615,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                               MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                               (coe v0)
                                                               (coe
-                                                                 MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
+                                                                 MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88
                                                                  (coe v7) (coe v9))))))
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                              -> coe
@@ -739,7 +740,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                 -> let v10 = MAlonzo.Code.Once.Type.d_isGround_96 (coe v8) in
                                    coe
                                      (let v11
-                                            = MAlonzo.Code.Once.Lang.Name.d_showCanonical_6
+                                            = MAlonzo.Code.Once.Internal.Name.d_showCanonical_6
                                                 (coe
                                                    MAlonzo.Code.Once.Spec.Name.C_canonical_12
                                                    (coe
@@ -760,15 +761,15 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                              MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                              (coe v0)
                                                              (coe
-                                                                MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
+                                                                MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88
                                                                 (coe v8) (coe v12)))
                                                           (coe
-                                                             MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_202
+                                                             MAlonzo.Code.Once.Internal.Type.Honest.d_honest'63'_202
                                                              (coe
                                                                 MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                                 (coe v0)
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
+                                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88
                                                                    (coe v8) (coe v12)))) in
                                                 coe
                                                   (case coe v13 of
@@ -783,7 +784,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                             (coe
                                                                C_mkFunInfo_114
                                                                (coe
-                                                                  MAlonzo.Code.Once.Lang.Name.d_showCanonical_6
+                                                                  MAlonzo.Code.Once.Internal.Name.d_showCanonical_6
                                                                   (coe
                                                                      MAlonzo.Code.Once.Spec.Name.C_canonical_12
                                                                      (coe
@@ -798,9 +799,9 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                   (coe v14))
                                                                (coe
-                                                                  MAlonzo.Code.Once.Lang.Syntax.C_RVar_36
+                                                                  MAlonzo.Code.Once.Internal.Syntax.C_RVar_36
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Lang.Name.d_showCanonical_6
+                                                                     MAlonzo.Code.Once.Internal.Name.d_showCanonical_6
                                                                      (coe
                                                                         MAlonzo.Code.Once.Spec.Name.C_canonical_12
                                                                         (coe
@@ -858,15 +859,15 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                           MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                           (coe v0)
                                                           (coe
-                                                             MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
+                                                             MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88
                                                              (coe v8) (coe v10)))
                                                        (coe
-                                                          MAlonzo.Code.Once.Lang.Type.Honest.d_honest'63'_202
+                                                          MAlonzo.Code.Once.Internal.Type.Honest.d_honest'63'_202
                                                           (coe
                                                              MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                              (coe v0)
                                                              (coe
-                                                                MAlonzo.Code.Once.Lang.Type.Poly.d_extractGround_88
+                                                                MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_88
                                                                 (coe v8) (coe v10)))) in
                                              coe
                                                (case coe v11 of
@@ -884,7 +885,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                (coe v12))
                                                             (coe
-                                                               MAlonzo.Code.Once.Lang.Syntax.C_RVar_36
+                                                               MAlonzo.Code.Once.Internal.Syntax.C_RVar_36
                                                                (coe v6))
                                                             (coe
                                                                MAlonzo.Code.Agda.Builtin.Bool.C_true_10))
@@ -929,7 +930,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
 d_extractFunctions'45'sigless_224 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20] ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
@@ -938,7 +939,7 @@ d_extractFunctions'45'sigless_224 v0 v1 v2 v3 ~v4
 du_extractFunctions'45'sigless_224 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20] ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 du_extractFunctions'45'sigless_224 v0 v1 v2 v3

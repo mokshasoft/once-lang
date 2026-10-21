@@ -1,0 +1,400 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Internal.Laws.CoreRenameSem — plan 0.103 6b, step B.1: the core meaning is
+-- STABLE UNDER RENAMING.
+--
+--   ⟦ ren-⊢ θ d ⟧ fmt δ dΔ ≡ ⟦ d ⟧ fmt δ (thinᴰ θ Ψ dΔ)
+--
+-- The derived combinators weaken an arm (`wk g`) and the elaboration closes
+-- combinators (`close`), so the 6b bridge (surface meaning = core meaning of
+-- the elaboration) needs to know what renaming MEANS. The core meaning runs
+-- over the RUNTIME environment `Γ ↾ Ψ` (D143), whose shape depends on the
+-- usage, and `ren-⊢` transports the usage; so besides the environment
+-- thinning `thinᴰ` the proof needs:
+--   * `_⊑ᵘ_` is proof-irrelevant, so `restrictᵛ` does not see its witness;
+--   * `restrictᵛ` commutes with `thinᴰ`;
+--   * the transports `ren-⊢` wraps its clauses in move to the environment.
+-- (A formulation over FULL environments would avoid the usage transports, but
+-- is false to state: an erased binder of an empty type has no value to put in
+-- its slot.)
+------------------------------------------------------------------------
+
+open import Data.Nat using (ℕ)
+open import Once.Internal.Core.PolyTy using (Sig)
+
+open import Once.Internal.Contract using (ISig)
+module Once.Internal.Laws.CoreRenameSem {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+
+open import Data.Fin using (Fin; zero; suc)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Data.Sum using (inj₁; inj₂)
+open import Once.Postulates using (extensionality)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst-sym-subst)
+
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; fin; eff)
+open import Once.Internal.Type using (Type)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup; thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)
+open import Once.Internal.Core.Rename S using (ren-⊢; ren-cong; keep-extR)
+open import Once.Internal.Graded using (⟦_⟧ᵛ; M; bindM; subM; bindᵍ)
+open import Once.Internal.Environment using (restrictᵛ; bindᵛ; lookupᵛUsed)
+open import Once.Denotation.EnvAlgebraV using (⊑ᵘ-unique)
+open import Once.Internal.GradedOps using (ana-semᵛ; fmapM)
+open import Once.Internal.Core.Typing S
+open import Once.Internal.Type.WellFormed using (con-fun)
+import Once.Internal.Core.Meaning S as GM
+
+Env : ∀ {n} → Ctx n → Usage n → Set
+Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
+
+------------------------------------------------------------------------
+-- The environment a thinning induces
+------------------------------------------------------------------------
+
+-- `skip` drops the slot the thinning added (its usage is `Zero`, so the
+-- runtime environment has no slot for it); `keep` keeps a slot iff it is live.
+thinᴰ : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) (Ψ : Usage n)
+      → Env Δ (thin-usage θ Ψ) → Env Γ Ψ
+thinᴰ done     []         dΔ = dΔ
+thinᴰ (skip θ) Ψ          dΔ = thinᴰ θ Ψ dΔ
+thinᴰ (keep θ) (Zero ∷ Ψ) dΔ = thinᴰ θ Ψ dΔ
+thinᴰ (keep θ) (One  ∷ Ψ) dΔ = thinᴰ θ Ψ (proj₁ dΔ) , proj₂ dΔ
+thinᴰ (keep θ) (Many ∷ Ψ) dΔ = thinᴰ θ Ψ (proj₁ dΔ) , proj₂ dΔ
+
+------------------------------------------------------------------------
+-- The usage order is proof-irrelevant
+------------------------------------------------------------------------
+
+restrictᵛ-irr : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (u v : Ψ' ⊑ᵘ Ψ) (x : Env Γ Ψ)
+              → restrictᵛ {Γ = Γ} u x ≡ restrictᵛ {Γ = Γ} v x
+restrictᵛ-irr {Γ = Γ} u v x = cong (λ w → restrictᵛ {Γ = Γ} w x) (⊑ᵘ-unique u v)
+
+------------------------------------------------------------------------
+-- Thinning and restriction commute
+------------------------------------------------------------------------
+
+-- The thinned order, from the original one.
+thin-⊑ : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+       → Ψ' ⊑ᵘ Ψ → thin-usage θ Ψ' ⊑ᵘ thin-usage θ Ψ
+thin-⊑ = thin-usage-⊑ᵘ
+
+thin-restrict : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+                (u : Ψ' ⊑ᵘ Ψ) (x : Env Δ (thin-usage θ Ψ))
+              → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} (thin-⊑ θ u) x) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ x)
+thin-restrict done     ⊑[]        x = refl
+thin-restrict (skip θ) u          x = thin-restrict θ u x
+thin-restrict (keep θ) (z≤z ⊑∷ u) x = thin-restrict θ u x
+thin-restrict (keep θ) (z≤o ⊑∷ u) x = thin-restrict θ u (proj₁ x)
+thin-restrict (keep θ) (z≤m ⊑∷ u) x = thin-restrict θ u (proj₁ x)
+thin-restrict (keep θ) (o≤o ⊑∷ u) x = cong (_, proj₂ x) (thin-restrict θ u (proj₁ x))
+thin-restrict (keep θ) (o≤m ⊑∷ u) x = cong (_, proj₂ x) (thin-restrict θ u (proj₁ x))
+thin-restrict (keep θ) (m≤m ⊑∷ u) x = cong (_, proj₂ x) (thin-restrict θ u (proj₁ x))
+
+-- …at ANY pair of witnesses (the order is proof-irrelevant).
+thin-restrict′ : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+                 (u : Ψ' ⊑ᵘ Ψ) (u' : thin-usage θ Ψ' ⊑ᵘ thin-usage θ Ψ) (x : Env Δ (thin-usage θ Ψ))
+               → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} u' x) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ x)
+thin-restrict′ {Δ = Δ} θ u u' x = trans (cong (thinᴰ θ _) (restrictᵛ-irr {Γ = Δ} u' (thin-⊑ θ u) x)) (thin-restrict θ u x)
+
+-- A binder under `keep`.
+thin-bind : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {A : Type} (q : Quantity) (Ψ : Usage n)
+            (x : Env Δ (thin-usage θ Ψ)) (a : ⟦ A ⟧ᵛ)
+          → thinᴰ (keep {A = A} {q = Many} θ) (q ∷ Ψ) (bindᵛ {Γ = Δ} {A = A} q x a) ≡ bindᵛ {Γ = Γ} {A = A} q (thinᴰ θ Ψ x) a
+thin-bind θ Zero Ψ x a = refl
+thin-bind θ One  Ψ x a = refl
+thin-bind θ Many Ψ x a = refl
+
+------------------------------------------------------------------------
+-- Transports move to the environment
+------------------------------------------------------------------------
+
+-- A usage transport on a derivation is a transport on its environment.
+⟦⟧-substΨ : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} {t A π} (e : Ψ ≡ Ψ')
+              (d : Γ ⊢[ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ')
+          → GM.⟦ subst (λ U → Γ ⊢[ U ] t ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (subst (Env Γ) (sym e) x)
+⟦⟧-substΨ refl d fmt δ x = refl
+
+-- …a term transport is invisible…
+⟦⟧-substt : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t t' A π} (e : t ≡ t')
+              (d : Γ ⊢[ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ)
+          → GM.⟦ subst (λ u → Γ ⊢[ Ψ ] u ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ x
+⟦⟧-substt refl d fmt δ x = refl
+
+-- …and a type transport transports the result.
+⟦⟧-substA : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A A' π} (e : A ≡ A')
+              (d : Γ ⊢[ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ)
+          → GM.⟦ subst (λ X → Γ ⊢[ Ψ ] t ∷ X ! π) e d ⟧ fmt δ x ≡ subst (λ X → M π ⟦ X ⟧ᵛ) e (GM.⟦ d ⟧ fmt δ x)
+⟦⟧-substA refl d fmt δ x = refl
+
+------------------------------------------------------------------------
+-- The general move: restriction after a usage transport, thinned.
+------------------------------------------------------------------------
+
+thin-restr : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+               (u : Ψ' ⊑ᵘ Ψ) {U : Usage m} (e : thin-usage θ Ψ ≡ U)
+               (u' : thin-usage θ Ψ' ⊑ᵘ U) (x : Env Δ U)
+           → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} u' x) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ (subst (Env Δ) (sym e) x))
+thin-restr θ u refl u' x = thin-restrict′ θ u u' x
+
+-- Binds, pointwise in the continuation.
+bindC : ∀ {π} {X Y : Set} {a a' : M π X} {f g : X → M π Y} → a ≡ a' → (∀ v → f v ≡ g v) → bindM π a f ≡ bindM π a' g
+bindC {π} {a = a} refl h = cong (bindM π a) (extensionality h)
+
+-- … and the graded bind (D311).
+bindCᵍ : ∀ {π₁ π₂} {X Y : Set} {a a' : M π₁ X} {f g : X → M π₂ Y} → a ≡ a' → (∀ v → f v ≡ g v) → bindᵍ π₁ π₂ a f ≡ bindᵍ π₁ π₂ a' g
+bindCᵍ {π₁} {π₂} {a = a} refl h = cong (bindᵍ π₁ π₂ a) (extensionality h)
+
+-- Undo a transport.
+back : ∀ {m} {Δ : Ctx m} {U V : Usage m} (e : U ≡ V) (x : Env Δ U) → subst (Env Δ) (sym e) (subst (Env Δ) e x) ≡ x
+back e x = subst-sym-subst e
+
+------------------------------------------------------------------------
+-- The variable: thinning preserves lookup, at the level of environments.
+------------------------------------------------------------------------
+
+-- UIP-style peeling of a usage equation at a cons (K is available).
+tail≡ : ∀ {n} {q : Quantity} {A B : Usage n} → (Once.Internal.Context._∷_ q A) ≡ (q ∷ B) → A ≡ B
+tail≡ refl = refl
+
+peel0 : ∀ {n} {Δ : Ctx n} {X : Type} {r : Quantity} {A B : Usage n} (e : Zero ∷ A ≡ Zero ∷ B) (x : Env Δ A)
+      → subst (Env (Δ , X ^ r)) e x ≡ subst (Env Δ) (tail≡ e) x
+peel0 e x with tail≡ e
+... | refl with e
+...   | refl = refl
+
+peel1 : ∀ {n} {Δ : Ctx n} {X : Type} {r : Quantity} {A B : Usage n} (e : One ∷ A ≡ One ∷ B) (x : Env Δ A) (a : ⟦ X ⟧ᵛ)
+      → subst (Env (Δ , X ^ r)) e (x , a) ≡ (subst (Env Δ) (tail≡ e) x , a)
+peel1 e x a with tail≡ e
+... | refl with e
+...   | refl = refl
+
+lookup-thin : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) (i : Fin n)
+                (e' : thin-usage θ (singleUse i One) ≡ singleUse (thin-var θ i) One)
+                (x : Env Δ (thin-usage θ (singleUse i One)))
+            → subst ⟦_⟧ᵛ (sym (thin-var-lookup θ i)) (lookupᵛUsed Δ (thin-var θ i) (subst (Env Δ) e' x))
+              ≡ lookupᵛUsed Γ i (thinᴰ θ (singleUse i One) x)
+lookup-thin {Δ = Δ , X ^ r} (skip θ) i e' x =
+  trans (cong (λ z → subst ⟦_⟧ᵛ (sym (thin-var-lookup θ i)) (lookupᵛUsed Δ (thin-var θ i) z))
+              (peel0 {Δ = Δ} {X = X} {r = r} e' x))
+        (lookup-thin θ i (tail≡ e') x)
+lookup-thin {Δ = Δ , X ^ r} (keep θ) zero e' x =
+  cong proj₂ (peel1 {Δ = Δ} {X = X} {r = r} e' (proj₁ x) (proj₂ x))
+lookup-thin {Δ = Δ , X ^ r} (keep θ) (suc i) e' x =
+  trans (cong (λ z → subst ⟦_⟧ᵛ (sym (thin-var-lookup θ i)) (lookupᵛUsed Δ (thin-var θ i) z))
+              (peel0 {Δ = Δ} {X = X} {r = r} e' x))
+        (lookup-thin θ i (tail≡ e') x)
+
+-- The environment of a subterm, after `ren-⊢`'s usage transport, thinned.
+envEq : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n} {U : Usage m}
+          (u : Ψ' ⊑ᵘ Ψ) (e : thin-usage θ Ψ ≡ U) (u' : thin-usage θ Ψ' ⊑ᵘ U) (x : Env Δ (thin-usage θ Ψ))
+      → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} u' (subst (Env Δ) e x)) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ x)
+envEq {Γ = Γ} {Δ = Δ} θ {Ψ = Ψ} u e u' x =
+  trans (thin-restr θ u e u' (subst (Env Δ) e x)) (cong (λ z → restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ z)) (back {Δ = Δ} e x))
+
+------------------------------------------------------------------------
+-- THE RENAMING LEMMA
+------------------------------------------------------------------------
+
+ren-sem : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} {Ψ t A π} (θ : Γ ⊆ Δ) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
+            (fmt : TargetNum) (δ : GM.DefSem) (x : Env Δ (thin-usage θ Ψ))
+        → GM.⟦ ren-⊢ θ d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (thinᴰ θ Ψ x)
+
+ren-sem {Δ = Δ} θ (⊢var {Γ = Γ} i) fmt δ x =
+  trans (⟦⟧-substΨ (sym (thin-usage-singleUse θ i One)) _ fmt δ x)
+  (trans (⟦⟧-substA (sym (thin-var-lookup θ i)) (⊢var (thin-var θ i)) fmt δ _)
+         (lookup-thin θ i (sym (sym (thin-usage-singleUse θ i One))) x))
+
+ren-sem θ (⊢lam {q = Zero} {q' = Zero} {t = t} le d) fmt δ x =
+  extensionality λ a → trans (⟦⟧-substt (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d) fmt δ _) (ren-sem (keep θ) d fmt δ _)
+ren-sem θ (⊢lam {q = Zero} {q' = One}  () _) fmt δ x
+ren-sem θ (⊢lam {q = Zero} {q' = Many} () _) fmt δ x
+ren-sem θ (⊢lam {q = One} {q' = Zero} {t = t} le d) fmt δ x =
+  extensionality λ a → trans (⟦⟧-substt (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d) fmt δ _) (ren-sem (keep θ) d fmt δ _)
+ren-sem θ (⊢lam {q = One} {q' = One} {t = t} le d) fmt δ x =
+  extensionality λ a → trans (⟦⟧-substt (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d) fmt δ _) (ren-sem (keep θ) d fmt δ _)
+ren-sem θ (⊢lam {q = One} {q' = Many} () _) fmt δ x
+ren-sem θ (⊢lam {q = Many} {q' = Zero} {t = t} le d) fmt δ x =
+  extensionality λ a → trans (⟦⟧-substt (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d) fmt δ _) (ren-sem (keep θ) d fmt δ _)
+ren-sem θ (⊢lam {q = Many} {q' = One} {t = t} le d) fmt δ x =
+  extensionality λ a → trans (⟦⟧-substt (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d) fmt δ _) (ren-sem (keep θ) d fmt δ _)
+ren-sem θ (⊢lam {q = Many} {q' = Many} {t = t} le d) fmt δ x =
+  extensionality λ a → trans (⟦⟧-substt (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d) fmt δ _) (ren-sem (keep θ) d fmt δ _)
+
+ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {π = π} {π₁ = π₁} df dx) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) (⊢app (ren-⊢ θ df) (ren-⊢ θ dx)) fmt δ x)
+        (bindCᵍ {π₁} {π} (trans (ren-sem θ df fmt δ _)
+                      (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) (sym (sym E)) _ x)))
+               (λ vf → refl))
+  where E = trans (thin-usage-+ᵘ θ Ψ₁ (Zero *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ Zero Ψ₂))
+ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π = π} {π₁ = π₁} {π₂ = π₂} df dx) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) (⊢app (ren-⊢ θ df) (ren-⊢ θ dx)) fmt δ x)
+        (bindCᵍ {π₁} (trans (ren-sem θ df fmt δ _)
+                      (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) (sym (sym E)) _ x)))
+               (λ vf → bindCᵍ {π₂} {π} (trans (ren-sem θ dx fmt δ _)
+                                    (cong (GM.⟦ dx ⟧ fmt δ)
+                                      (envEq θ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) (sym (sym E)) _ x)))
+                             (λ vx → refl)))
+  where E = trans (thin-usage-+ᵘ θ Ψ₁ (One *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ One Ψ₂))
+ren-sem θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π = π} {π₁ = π₁} {π₂ = π₂} df dx) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) (⊢app (ren-⊢ θ df) (ren-⊢ θ dx)) fmt δ x)
+        (bindCᵍ {π₁} (trans (ren-sem θ df fmt δ _)
+                      (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) (sym (sym E)) _ x)))
+               (λ vf → bindCᵍ {π₂} {π} (trans (ren-sem θ dx fmt δ _)
+                                    (cong (GM.⟦ dx ⟧ fmt δ)
+                                      (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) (sym (sym E)) _ x)))
+                             (λ vx → refl)))
+  where E = trans (thin-usage-+ᵘ θ Ψ₁ (Many *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ Many Ψ₂))
+
+ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} {b = b} de db) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (trans (⟦⟧-substt (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db) fmt δ _)
+        (trans (ren-sem (keep θ) db fmt δ _)
+               (cong (GM.⟦ db ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) (sym (sym E)) _ x))))
+  where E = trans (thin-usage-+ᵘ θ Ψ₂ (Zero *ᵘ Ψ₁)) (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ Zero Ψ₁))
+ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {π₁ = π₁} {π₂ = π₂} {b = b} de db) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ de fmt δ _)
+                      (cong (GM.⟦ de ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) (sym (sym E)) _ x)))
+               (λ v → trans (⟦⟧-substt (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db) fmt δ _)
+                      (trans (ren-sem (keep θ) db fmt δ _)
+                             (cong (λ z → GM.⟦ db ⟧ fmt δ (z , v)) (envEq θ (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) (sym (sym E)) _ x)))))
+  where E = trans (thin-usage-+ᵘ θ Ψ₂ (One *ᵘ Ψ₁)) (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ One Ψ₁))
+ren-sem θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {π₁ = π₁} {π₂ = π₂} {b = b} de db) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ de fmt δ _)
+                      (cong (GM.⟦ de ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) (sym (sym E)) _ x)))
+               (λ v → trans (⟦⟧-substt (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db) fmt δ _)
+                      (trans (ren-sem (keep θ) db fmt δ _)
+                             (cong (λ z → GM.⟦ db ⟧ fmt δ (z , v)) (envEq θ (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) (sym (sym E)) _ x)))))
+  where E = trans (thin-usage-+ᵘ θ Ψ₂ (Many *ᵘ Ψ₁)) (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ Many Ψ₁))
+
+ren-sem {Δ = Δ} θ ⊢unit fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢unit fmt δ x
+
+ren-sem θ (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {π₂ = π₂} da db) fmt δ x =
+  trans (⟦⟧-substΨ (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) _ fmt δ x)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ da fmt δ _)
+                      (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) (sym (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))) _ x)))
+               (λ a → cong (fmapM π₂ _) (trans (ren-sem θ db fmt δ _)
+                                   (cong (GM.⟦ db ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) (sym (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))) _ x)))))
+ren-sem θ (⊢fst {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem θ (⊢snd {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem θ (⊢inl {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem θ (⊢inr {π = π} d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {qℓ = qℓ} {qr = qr} {π₁ = π₁} {π₂ = π₂} {l = l} {r = r} ds dl dr) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ ds fmt δ _)
+                      (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ˡ Ψs Ψ) (sym (sym E)) _ x)))
+               (λ { (inj₁ a) → trans (⟦⟧-substt (ren-cong (keep-extR θ) l) (ren-⊢ (keep θ) dl) fmt δ _)
+                                (trans (ren-sem (keep θ) dl fmt δ _)
+                                (trans (cong (GM.⟦ dl ⟧ fmt δ) (thin-bind θ qℓ Ψ _ a))
+                                       (cong (λ z → GM.⟦ dl ⟧ fmt δ (bindᵛ qℓ z a))
+                                             (envEq θ (⊑ᵘ-+ʳ Ψs Ψ) (sym (sym E)) _ x))))
+                  ; (inj₂ b) → trans (⟦⟧-substt (ren-cong (keep-extR θ) r) (ren-⊢ (keep θ) dr) fmt δ _)
+                                (trans (ren-sem (keep θ) dr fmt δ _)
+                                (trans (cong (GM.⟦ dr ⟧ fmt δ) (thin-bind θ qr Ψ _ b))
+                                       (cong (λ z → GM.⟦ dr ⟧ fmt δ (bindᵛ qr z b))
+                                             (envEq θ (⊑ᵘ-+ʳ Ψs Ψ) (sym (sym E)) _ x)))) }))
+  where E = thin-usage-+ᵘ θ Ψs Ψ
+ren-sem θ (⊢absurd {π = π} d) fmt δ x = bindC {π} (ren-sem θ d fmt δ x) (λ _ → refl)
+ren-sem θ (⊢roll {π = π} wf d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+-- plan 0.113 B1: the algebra's part is ω-scaled (left of the sum), as `app`'s
+-- argument is (right of its sum) — the same transport, mirrored.
+ren-sem θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {π = π} {π₁ = π₁} {π₂ = π₂} u wf da dt) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} (trans (ren-sem θ da fmt δ _)
+                      (cong (GM.⟦ da ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt)) (sym (sym E)) _ x)))
+               (λ valg → bindCᵍ {π₂} {π} (trans (ren-sem θ dt fmt δ _)
+                                      (cong (GM.⟦ dt ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) (sym (sym E)) _ x)))
+                               (λ _ → refl)))
+  where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψa) Ψt) (cong (_+ᵘ thin-usage θ Ψt) (thin-usage-*ᵘ θ Many Ψa))
+ren-sem θ (⊢unfold {Ψc = Ψc} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} wf dc ds) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} {π₂} (trans (ren-sem θ dc fmt δ _)
+                       (cong (GM.⟦ dc ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs)) (sym (sym E)) _ x)))
+               (λ clo → cong (fmapM π₂ _) (trans (ren-sem θ ds fmt δ _)
+                                      (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (sym (sym E)) _ x)))))
+  where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψc) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψc))
+ren-sem θ (⊢iter {Ψf = Ψf} {Ψs = Ψs} {π₁ = π₁} {π₂ = π₂} df ds) fmt δ x =
+  trans (⟦⟧-substΨ (sym E) _ fmt δ x)
+        (bindCᵍ {π₁} (trans (ren-sem θ df fmt δ _)
+                      (cong (GM.⟦ df ⟧ fmt δ) (envEq θ (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs)) (sym (sym E)) _ x)))
+               (λ f → bindCᵍ {π₂} {eff} (trans (ren-sem θ ds fmt δ _)
+                                      (cong (GM.⟦ ds ⟧ fmt δ) (envEq θ (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) (sym (sym E)) _ x)))
+                               (λ _ → refl)))
+  where E = trans (thin-usage-+ᵘ θ (Many *ᵘ Ψf) Ψs) (cong (_+ᵘ thin-usage θ Ψs) (thin-usage-*ᵘ θ Many Ψf))
+ren-sem θ (⊢out {φ = φ} {π₁ = π₁} wf d) fmt δ x = bindCᵍ {π₁} {fin φ} (ren-sem θ d fmt δ x) (λ _ → refl)
+ren-sem θ (⊢coerce {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem {Δ = Δ} θ ⊢lit-int fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-int fmt δ x
+ren-sem {Δ = Δ} θ ⊢lit-float fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) ⊢lit-float fmt δ x
+ren-sem θ (⊢prim {π = π} p d) fmt δ x = cong (fmapM π _) (ren-sem θ d fmt δ x)
+ren-sem {Δ = Δ} θ (⊢sigop c k h g wn m) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢sigop c k h g wn m) fmt δ x
+ren-sem θ (⊢sub-eff g d) fmt δ x = cong (subM g) (ren-sem θ d fmt δ x)
+-- D276: sub-usaging is a restriction, and restriction commutes with thinning.
+ren-sem θ (⊢sub-use p d) fmt δ x =
+  trans (ren-sem θ d fmt δ _)
+        (cong (GM.⟦ d ⟧ fmt δ)
+          (thin-restrict θ p x))
+ren-sem {Δ = Δ} θ (⊢ref d τ r) fmt δ x = ⟦⟧-substΨ {Γ = Δ} (sym (thin-usage-zeroUsage θ)) (⊢ref d τ r) fmt δ x
+
+------------------------------------------------------------------------
+-- Weakening by one unused variable (`wk-⊢′`, what the derived combinators use).
+------------------------------------------------------------------------
+
+open import Once.Surface.Thinning using (⊆-refl; thin-usage-refl)
+open import Once.Internal.Core.DerivedTyping S using (wk-⊢′)
+open import Once.Internal.Core.Rename S using (wk-⊢; thin-var-refl)
+
+-- The identity thinning is the identity, across its usage transport.
+thin-refl : ∀ {n} {Γ : Ctx n} (Ψ : Usage n) (e : thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ) (y : Env Γ Ψ)
+          → thinᴰ (⊆-refl {Γ = Γ}) Ψ (subst (Env Γ) (sym e) y) ≡ y
+thin-refl {Γ = ∅} [] refl y = refl
+thin-refl {Γ = Γ , X ^ r} (Zero ∷ Ψ) e y = trans (cong (thinᴰ (⊆-refl {Γ = Γ}) Ψ) (peel0' e y)) (thin-refl {Γ = Γ} Ψ (tail≡ e) y)
+  where
+    peel0' : ∀ {A B : Usage _} (e : Zero ∷ A ≡ Zero ∷ B) (y : Env Γ B)
+           → subst (Env (Γ , X ^ r)) (sym e) y ≡ subst (Env Γ) (sym (tail≡ e)) y
+    peel0' e y with tail≡ e
+    ... | refl with e
+    ...   | refl = refl
+thin-refl {Γ = Γ , X ^ r} (One ∷ Ψ) e (y , a) =
+  trans (cong (λ z → thinᴰ (⊆-refl {Γ = Γ}) Ψ (proj₁ z) , proj₂ z) (peel1' e y a)) (cong (_, a) (thin-refl {Γ = Γ} Ψ (tail≡ e) y))
+  where
+    peel1' : ∀ {A B : Usage _} (e : One ∷ A ≡ One ∷ B) (y : Env Γ B) (a : ⟦ X ⟧ᵛ)
+           → subst (Env (Γ , X ^ r)) (sym e) (y , a) ≡ (subst (Env Γ) (sym (tail≡ e)) y , a)
+    peel1' e y a with tail≡ e
+    ... | refl with e
+    ...   | refl = refl
+thin-refl {Γ = Γ , X ^ r} (Many ∷ Ψ) e (y , a) =
+  trans (cong (λ z → thinᴰ (⊆-refl {Γ = Γ}) Ψ (proj₁ z) , proj₂ z) (peelm' e y a)) (cong (_, a) (thin-refl {Γ = Γ} Ψ (tail≡ e) y))
+  where
+    peelm' : ∀ {A B : Usage _} (e : Many ∷ A ≡ Many ∷ B) (y : Env Γ B) (a : ⟦ X ⟧ᵛ)
+           → subst (Env (Γ , X ^ r)) (sym e) (y , a) ≡ (subst (Env Γ) (sym (tail≡ e)) y , a)
+    peelm' e y a with tail≡ e
+    ... | refl with e
+    ...   | refl = refl
+
+-- `wk-⊢′`'s usage transport sits under `Zero ∷_`.
+⟦⟧-substΨ0 : ∀ {n} {Γ : Ctx n} {B : Type} {Ψ Ψ' : Usage n} {t A π} (e : Ψ ≡ Ψ')
+               (d : (Γ , B ^ Many) ⊢[ Zero ∷ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ')
+           → GM.⟦ subst (λ U → (Γ , B ^ Many) ⊢[ Zero ∷ U ] t ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (subst (Env Γ) (sym e) x)
+⟦⟧-substΨ0 refl d fmt δ x = refl
+
+-- THE WEAKENING LEMMA: a term weakened by one unused variable means what it meant.
+wk-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A π} (B : Type) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
+           (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ)
+       → GM.⟦ wk-⊢′ B d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ x
+wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =
+  trans (⟦⟧-substΨ0 (thin-usage-refl {Γ = Γ} Ψ) (wk-⊢ B d) fmt δ x)
+  (trans (⟦⟧-substt (ren-cong (λ i → cong suc (thin-var-refl {Γ = Γ} i)) t) (ren-⊢ (skip {A = B} {q = Many} ⊆-refl) d) fmt δ _)
+  (trans (ren-sem (skip ⊆-refl) d fmt δ _)
+         (cong (GM.⟦ d ⟧ fmt δ) (thin-refl {Γ = Γ} Ψ (thin-usage-refl {Γ = Γ} Ψ) x))))
+
+------------------------------------------------------------------------
+-- A closed term, embedded in any context (`⊢close`), means what it meant.
+------------------------------------------------------------------------
+
+open import Once.Internal.Core.Rename S using (⊢close; ∅⊆)
+

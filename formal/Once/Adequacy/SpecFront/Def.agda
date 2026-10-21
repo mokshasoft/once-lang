@@ -33,19 +33,19 @@ open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Type.Poly as TP
-import Once.Lang.Elaboration as E
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Type.Poly as TP
+import Once.Internal.Elaboration as E
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
-open import Once.Lang.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 open import Once.Adequacy.SpecCore.Schema using (CleanSig; ptyS; defsS; kindsS)
@@ -99,17 +99,17 @@ open import Data.Product using (proj₁; proj₂)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (refl; sym; cong; subst)
 
-import Once.Lang.Context as LC
+import Once.Internal.Context as LC
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SS
 import Once.Spec.Context as SCx
-open import Once.Lang.Type.DecEq using (_≟T_; _≟tk_)
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
-open import Once.Lang.Typing.Scope using (NamedCtx; mkCtx)
-open import Once.Lang.Principal using (PrincipalAt; below-complete)
+open import Once.Internal.Type.DecEq using (_≟T_; _≟tk_)
+open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
+open import Once.Internal.Typing.Scope using (NamedCtx; mkCtx)
+open import Once.Internal.Principal using (PrincipalAt; below-complete)
 open import Once.Adequacy.SpecFront.Below using (below-sound)
-open import Once.Lang.Core.AbsTy using (absTy; absF; ar-bound; ar-kind; ConstFree; ConstFreeF; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)
-import Once.Lang.Core.Abstract S as A
+open import Once.Internal.Core.AbsTy using (absTy; absF; ar-bound; ar-kind; ConstFree; ConstFreeF; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)
+import Once.Internal.Core.Abstract S as A
 open import Once.Adequacy.SpecCore.Type
 open import Once.Adequacy.SpecCore.Poly using (module Translate)
 open Translate S Σ sigop-S using (ptmS)

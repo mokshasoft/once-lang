@@ -28,14 +28,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.Lang.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type; ⟦_⟧T; _+_; _*_)
-open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType)
+open import Once.Internal.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type; ⟦_⟧T; _+_; _*_)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 -- Import semantic operations
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Float.Decimal using (Decimal)
-open import Once.Lang.Value Carrier Carrier using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
+open import Once.Internal.Value Carrier Carrier using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
 
 -- Import SigOpSem for Validity module
 

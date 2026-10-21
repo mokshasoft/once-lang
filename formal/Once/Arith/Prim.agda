@@ -15,7 +15,7 @@
 module Once.Arith.Prim where
 
 open import Data.Product using (_,_)
-open import Once.Lang.Type using (Type; Int; Float; Unit; _*_; _+_)
+open import Once.Internal.Type using (Type; Int; Float; Unit; _*_; _+_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -27,7 +27,7 @@ import Once.Spec.Word as OnceWord
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Spec.Float.Arith as FA
-import Once.Lang.Value Carrier Carrier as M
+import Once.Internal.Value Carrier Carrier as M
 
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 

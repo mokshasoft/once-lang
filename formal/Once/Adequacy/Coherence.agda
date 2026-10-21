@@ -21,31 +21,34 @@
 -- related at all is `ModeSub`.
 ------------------------------------------------------------------------
 
-open import Once.Lang.Type.Sub using (_⊔_≔_; <:ᶜ⇒<:)
-open import Once.Lang.Laws.SubLaws using (<:-trans)
+open import Once.Internal.Type.Sub using (_⊔_≔_; <:ᶜ⇒<:)
+open import Once.Internal.Laws.SubLaws using (<:-trans)
 open import Once.Spec.Numerics using (TargetNum)
 
+import Once.Type.Grade
 module Once.Adequacy.Coherence (fmt : TargetNum) where
+
 
 open import Data.Product using (_,_)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Once.Lang.Type.WellFormed using (con-fun)
+open import Once.Internal.Type.WellFormed using (con-fun)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong-app)
 
-open import Once.Lang.Type as T using (Type; _⇒[_]_)
+open import Once.Internal.Type as T using (Type; _⇒[_]_)
 
-import Once.Lang.Type.Grade as T
-open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void; _⊑π_; ⊑-pure)
-open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Lang.Syntax using (RawExpr)
-open import Once.Lang.Typing.Scope using (NamedCtx)
-open import Once.Lang.Typing
+import Once.Spec.Grade as T
+open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
+open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Internal.Syntax using (RawExpr)
+open import Once.Internal.Typing.Scope using (NamedCtx)
+open import Once.Internal.Typing
 import Once.TypeCheck.ModeSub as MS
 open import Once.TypeCheck.Route
 open import Once.TypeCheck.RouteBuild using (route-cc; route-ii)
-import Once.Lang.Context as Surface
+import Once.Internal.Context as Surface
 open import Once.Surface.Syntax using (coerce)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
@@ -152,7 +155,7 @@ mutual
   coh-dc (dc-infer {a = a} {g = g} {w = w} {c = c} r) p =
     twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (MS.ic-sub w c) (coh-ic r (MS.ic-sub w c))
   coh-dc (dc-sub {p = sub-arr a₀ b₀ g₀} r) p = dcsub-h p a₀ b₀ g₀ (coh-di r a₀ g₀)
-  coh-dc (dc-lam {q₁ = q₁} {≤p′ = ≤p′} r) p = lamc-h (T.≤q-Many q₁) ≤p′ p (coh-ic r p)
+  coh-dc (dc-lam {q₁ = q₁} {≤p′ = ≤p′} r) p = lamc-h (Once.Type.Grade.≤q-Many q₁) ≤p′ p (coh-ic r p)
   coh-dc (dc-cg r₁ r₂) p = cg-h p (coh-dc r₂ p) (coh-dd r₁)
   coh-dc (dc-cf {s = s@(sub-arr _ _ g′)} {df = df} {wf = wf} rdi rdc) p =
     cf-h (MS.di-dom df wf) p g′ s (coh-di rdi (MS.di-dom df wf) g′) (coh-dc rdc (MS.di-dom df wf))
@@ -183,7 +186,7 @@ mutual
          → Rdd dd dd′ → RD dd ≅ RD dd′
   coh-dd (dd-infer-l {a = a} {g = g} r) = ≅-sym (coh-di r a g)
   coh-dd (dd-infer-r {a = a} {g = g} r) = coh-di r a g
-  coh-dd (dd-lam {q₁ = q₁} {q₁′ = q₁′} r) = lamd-h (T.≤q-Many q₁) (T.≤q-Many q₁′) (coh-ii r)
+  coh-dd (dd-lam {q₁ = q₁} {q₁′ = q₁′} r) = lamd-h (Once.Type.Grade.≤q-Many q₁) (Once.Type.Grade.≤q-Many q₁′) (coh-ii r)
   coh-dd (dd-compose r₁ r₂) = comp-h (coh-dd r₂) (coh-dd r₁)
   coh-dd dd-id = ≅-refl
   coh-dd dd-fst = ≅-refl

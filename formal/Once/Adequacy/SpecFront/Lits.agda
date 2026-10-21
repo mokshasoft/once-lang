@@ -23,13 +23,13 @@ import Data.List.Relation.Unary.All
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Lang.Syntax
+open import Once.Internal.Syntax
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
 open import Once.Denotation.Admissible using (rawIntLits; negLits; declIntLits; moduleIntLits; AdmissibleM)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
 open import Once.Parser.Module.Resolve using (signaturesWithOwner)
-import Once.Lang.Resolution as LR
+import Once.Internal.Resolution as LR
 open import Once.Adequacy.SpecGrammar.Expr
   using (Emb; e-var; e-qual; e-res; e-app; e-lam; e-let; e-pair; e-destruct; e-unit; e-int; e-float; e-annot; e-binop; e-neg)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)

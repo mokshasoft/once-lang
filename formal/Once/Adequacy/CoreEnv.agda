@@ -18,10 +18,10 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 open import Data.Nat using (ℕ)
-open import Once.Lang.Core.PolyTy using (Sig; sigOf)
-open import Once.Lang.Trace using (interp)
+open import Once.Internal.Core.PolyTy using (Sig; sigOf)
+open import Once.Internal.Trace using (interp)
 
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 module Once.Adequacy.CoreEnv (fmt : TargetNum) {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.List using (_∷_)
@@ -36,15 +36,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Compile as C
 import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunType)
-open import Once.Lang.Type.Instance using (KindedInstance)
+open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Lang.Typing.Scope using (lookupImport; lookupPolyPrefix)
+open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings)
-import Once.Lang.Core.Meaning S as GM
-import Once.Lang.Core.Translate as TR
+import Once.Internal.Core.Meaning S as GM
+import Once.Internal.Core.Translate as TR
 open TR using (SigSig; ImpSig; TeleSig; mono-inst; poly-inst; telFind; viewOf) renaming (impAt to impView; sigAt to sigView)
-open import Once.Lang.Elaboration S using (Declared)
+open import Once.Internal.Elaboration S using (Declared)
 open import Once.Adequacy.CoreMeaningBridge fmt S using (refSem; impSem; Agree)
 
 ------------------------------------------------------------------------

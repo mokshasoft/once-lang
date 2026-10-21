@@ -14,13 +14,14 @@
 open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
-import Once.Lang.Core.PolyTy as LP
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
+import Once.Internal.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Adequacy.SpecCore.Poly using (declS; declS-S; ptyS-⟦⟧; wfS)
 
+import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Cases
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
@@ -31,18 +32,18 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Type.Honest as LH
-import Once.Lang.GradedOps as LOps
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Type.Honest as LH
+import Once.Internal.GradedOps as LOps
 import Once.Spec.Type as ST
-import Once.Lang.Graded as LGr
-import Once.Lang.Core.PolyTyping S as PT
-import Once.Lang.Core.PolySub as PS
-import Once.Lang.Core.Syntax S as L
-import Once.Lang.Core.Typing S as GT
-import Once.Lang.Core.Meaning S as GM
+import Once.Internal.Graded as LGr
+import Once.Internal.Core.PolyTyping S as PT
+import Once.Internal.Core.PolySub as PS
+import Once.Internal.Core.Syntax S as L
+import Once.Internal.Core.Typing S as GT
+import Once.Internal.Core.Meaning S as GM
 import Once.Spec.Core.Syntax as SC
 open import Once.Adequacy.SpecCore.Schema using (kindsS; defsS; castSub; ptyS; pfunS)
 open import Once.Adequacy.SpecGrammar.Conv using (φS)
@@ -66,8 +67,8 @@ open import Once.Adequacy.SpecCore.Conv S Σ using (conv-R)
 open import Once.Adequacy.SpecCore.Layer Σ
 import Once.Adequacy.SpecCore.Fold as Fold
 import Once.Adequacy.SpecCore.Unfold as Unfold
-import Once.Lang.Context as LC
-import Once.Lang.Type.Sub as LS
+import Once.Internal.Context as LC
+import Once.Internal.Type.Sub as LS
 
 ------------------------------------------------------------------------
 -- Primitive operations: the same function of the same words
@@ -86,6 +87,7 @@ private
   bb = g-+ g-unit g-unit
 
 module _ {m} (σ′ : ST.TySub m 0) where
+
 
   gDom : ∀ p → GR (L.primDom p) (SC.primDom (primS p) ST.⟨ σ′ ⟩)
   gDom L.p-add  = ii
@@ -274,8 +276,8 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
            → ValR (GR-inst (ptr (LP.ν-type F φ)) g) v w
            → MR (pr-fin φ) (ValR (GR-⟦⟧ g (pfr F) (GR-inst (ptr (LP.ν-type F φ)) g)))
                 (LOps.out-semᵛ φ wf v) (SE.fmap (SG.fin (φS φ)) (SD.fromL σ′ (pfunS F) (ST.ν (pfunS F) (φS φ))) (SE.νM.outν w))
-    outν-R {F = F} g wf LG.pure rv = cf⁻¹-R g (pfr F) wf _ (out-R (GF-inst (pfr F) g) wf (forceᵖR rv))
-    outν-R {F = F} g wf LG.act  rv =
+    outν-R {F = F} g wf LG.pureᶠ rv = cf⁻¹-R g (pfr F) wf _ (out-R (GF-inst (pfr F) g) wf (forceᵖR rv))
+    outν-R {F = F} g wf LG.actᶠ  rv =
       bindT-R (forceᵈR rv) (λ rl → ret (cf⁻¹-R g (pfr F) wf _ (out-R (GF-inst (pfr F) g) wf rl)))
 
   out : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ φ π₁ F t} (wf : LP.WFFun Δ F)
@@ -298,7 +300,7 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
   L-at′ h refl d p gX gY r = subst (λ x → MR p (ValR x) (GM.⟦ d ⟧ fmt ρ _) _) (GR-unique gX gY) r
 
   fold : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψa Ψt π π₁ π₂ F A alg t}
-         (u : LG.pure LS.⊑π π) (wf : LP.WFFun Δ F)
+         (u : LG.pure Once.Spec.Grade.⊑π π) (wf : LP.WFFun Δ F)
          (da : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψa alg (LP.⟦ F ⟧F A LP.⇒[ LG.mk-kind LG.Many π ] A) π₁)
          (dt : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψt t (LP.μ-type F) π₂)
        → Fund ρ ρ′ da → Fund ρ ρ′ dt → Fund ρ ρ′ (PT.⊢fold u wf da dt)
@@ -323,14 +325,14 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
   unfold : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψc Ψs φ π₁ π₂ F A c x} (wf : LP.WFFun Δ F)
            (dc : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψc c (A LP.⇒[ LG.mk-kind LG.Many (LG.fin φ) ] LP.⟦ F ⟧F A) π₁)
            (dx : PT._⊩_⊢[_]_∷_!_ Δ Γ Ψs x A π₂) → Fund ρ ρ′ dc → Fund ρ ρ′ dx → Fund ρ ρ′ (PT.⊢unfold wf dc dx)
-  unfold {Γ = Γ} {Ψc} {Ψs} {LG.pure} {π₁} {π₂} {F} {A} wf dc dx ihc ihx {σ} {σ′} r r′ g e =
+  unfold {Γ = Γ} {Ψc} {Ψs} {LG.pureᶠ} {π₁} {π₂} {F} {A} wf dc dx ihc ihx {σ} {σ′} r r′ g e =
     S-at ρ ρ′ g (eqᵘ-many Ψc Ψs) refl (eqᵍ-· π₁ π₂)
-         (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin LG.pure (ptyS-⟦⟧ F A)) refl (trD dc)) (trD dx)) (crΓ Γ)
+         (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin LG.pureᶠ (ptyS-⟦⟧ F A)) refl (trD dc)) (trD dx)) (crΓ Γ)
          (ur-+ (ur-* qr-many (ur Ψc)) (ur Ψs)) (ur _) gν gν (pr-· (pr π₁) (pr π₂)) (pr _) _
          (λ e₀ → bindᵍ-R (pr π₁) (pr π₂)
                    (L-at′ (λ X → A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.pure ] X) (LP.⟦⟧F-⟪⟫ F A σ)
                           (PT.instantiate σ r dc) (pr π₁) gCX gC
-                          (S-at ρ ρ′ g refl (arr-fin LG.pure (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
+                          (S-at ρ ρ′ g refl (arr-fin LG.pureᶠ (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
                                 (GR-inst (ptr (A LP.⇒[ LG.mk-kind LG.Many LG.pure ] LP.⟦ F ⟧F A)) g) gCX (pr π₁) (pr π₁) _
                                 (ihc r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψc) e₀)))
                    (λ rc → fmap-R (pr π₂) (ihx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
@@ -339,17 +341,17 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
          e
     where
       gA  = GR-inst (ptr A) g
-      gν  = GR-inst (ptr (LP.ν-type F LG.pure)) g
+      gν  = GR-inst (ptr (LP.ν-type F LG.pureᶠ)) g
       gC  = g-⇒ {q = LG.Many} {π = LG.pure} gA (GR-⟦⟧ g (pfr F) gA)
       gCX = subst (λ Z → GR (A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.pure ] Z) _) (sym (LP.⟦⟧F-⟪⟫ F A σ)) gC
-  unfold {Γ = Γ} {Ψc} {Ψs} {LG.act} {π₁} {π₂} {F} {A} wf dc dx ihc ihx {σ} {σ′} r r′ g e =
+  unfold {Γ = Γ} {Ψc} {Ψs} {LG.actᶠ} {π₁} {π₂} {F} {A} wf dc dx ihc ihx {σ} {σ′} r r′ g e =
     S-at ρ ρ′ g (eqᵘ-many Ψc Ψs) refl (eqᵍ-· π₁ π₂)
-         (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin LG.act (ptyS-⟦⟧ F A)) refl (trD dc)) (trD dx)) (crΓ Γ)
+         (S⊢.⊢unfold (wfS wf) (atS refl (arr-fin LG.actᶠ (ptyS-⟦⟧ F A)) refl (trD dc)) (trD dx)) (crΓ Γ)
          (ur-+ (ur-* qr-many (ur Ψc)) (ur Ψs)) (ur _) gν gν (pr-· (pr π₁) (pr π₂)) (pr _) _
          (λ e₀ → bindᵍ-R (pr π₁) (pr π₂)
                    (L-at′ (λ X → A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.act ] X) (LP.⟦⟧F-⟪⟫ F A σ)
                           (PT.instantiate σ r dc) (pr π₁) gCX gC
-                          (S-at ρ ρ′ g refl (arr-fin LG.act (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
+                          (S-at ρ ρ′ g refl (arr-fin LG.actᶠ (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
                                 (GR-inst (ptr (A LP.⇒[ LG.mk-kind LG.Many LG.act ] LP.⟦ F ⟧F A)) g) gCX (pr π₁) (pr π₁) _
                                 (ihc r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψc) e₀)))
                    (λ rc → fmap-R (pr π₂) (ihx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
@@ -359,7 +361,7 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
          e
     where
       gA  = GR-inst (ptr A) g
-      gν  = GR-inst (ptr (LP.ν-type F LG.act)) g
+      gν  = GR-inst (ptr (LP.ν-type F LG.actᶠ)) g
       gC  = g-⇒ {q = LG.Many} {π = LG.act} gA (GR-⟦⟧ g (pfr F) gA)
       gCX = subst (λ Z → GR (A LP.⟪ σ ⟫ LT.⇒[ LG.mk-kind LG.Many LG.act ] Z) _) (sym (LP.⟦⟧F-⟪⟫ F A σ)) gC
 

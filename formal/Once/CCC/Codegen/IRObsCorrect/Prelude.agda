@@ -44,7 +44,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_) public
 
 -- SigOpInfo is over SURFACE Type (`SigOp : SigOpInfo A B → IR ⌊A⌋ ⌊B⌋`), so the
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
-open import Once.Lang.Type using (Type) renaming (Int to Intˢ) public
+open import Once.Internal.Type using (Type) renaming (Int to Intˢ) public
 open import Once.Type using (FitsInReg; fits-in-reg?) renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ) public
 open import Data.Integer using (ℤ) public
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧) public
@@ -91,7 +91,7 @@ open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable) 
 open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef) public
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
-open import Once.Lang.Trace using ()
-import Once.Lang.Trace as TM
+open import Once.Internal.Trace using ()
+import Once.Internal.Trace as TM
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace) public
 

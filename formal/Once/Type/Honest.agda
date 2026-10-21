@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Type.Honest — completeness of the honesty deciders
--- (`Once.Lang.Type.Honest`): an honest type is decided honest.
+-- (`Once.Internal.Type.Honest`): an honest type is decided honest.
 ------------------------------------------------------------------------
 
 module Once.Type.Honest where
@@ -13,10 +13,11 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
-open import Once.Lang.Type.Honest
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
+open import Once.Internal.Type.Honest
 
 ------------------------------------------------------------------------
 -- Completeness of the deciders: an honest type is decided honest.

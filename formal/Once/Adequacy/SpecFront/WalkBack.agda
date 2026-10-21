@@ -23,15 +23,15 @@ open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
-import Once.Lang.Type as LT
-import Once.Lang.Type.WellFormed as LW
+import Once.Internal.Type as LT
+import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
-open import Once.Lang.Typing.Scope using (Imports; lookupImport)
+open import Once.Internal.Typing.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
@@ -50,22 +50,22 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
-import Once.Lang.Context as LCx
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
+import Once.Internal.Context as LCx
 import Once.Spec.Core.Syntax as SC
 open SC.Schema using (arity; kinds; type)
 import Once.Spec.Surface.Program as SPr
 import Once.Spec.Grade as SG
 import Once.Spec.Context as SCx
 import Once.Spec.Sub as SS
-import Once.Lang.Elaboration as E
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
-open import Once.Lang.Principal using (PrincipalAt)
-open import Once.Lang.Module using (Scope; scope; ctxOf)
-open import Once.Lang.Core.Translate using (SigSig; ImpSig; TeleSig; SigCF; viewOf)
-import Once.Lang.Core.Abstract as A
-import Once.Lang.Core.PolyTyping
+import Once.Internal.Elaboration as E
+open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
+open import Once.Internal.Principal using (PrincipalAt)
+open import Once.Internal.Module using (Scope; scope; ctxOf)
+open import Once.Internal.Core.Translate using (SigSig; ImpSig; TeleSig; SigCF; viewOf)
+import Once.Internal.Core.Abstract as A
+import Once.Internal.Core.PolyTyping
 import Once.Spec.Surface.Typing
 import Once.Spec.Core.Typing
 open import Once.Adequacy.SpecCore.Schema using (defsS; kindsS)
@@ -117,7 +117,7 @@ module Step {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSig S
     module DR⇒ = DefsRen Σ S′ (defsS S) nm (ρ⇒ r)
     module DR⇐ = DefsRen Σ (defsS S) S′ nm (ρ⇐ r)
     module TP′ = Translate S Σ sigop-S
-    module PT  = Once.Lang.Core.PolyTyping S
+    module PT  = Once.Internal.Core.PolyTyping S
     module SU₂ = Once.Spec.Surface.Typing Σ (defsS S) nm
     module SC₂ = Once.Spec.Core.Typing Σ (defsS S)
 
@@ -210,10 +210,10 @@ module Step {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSig S
 open import Data.List.Relation.Unary.All using (All; _∷_)
 open import Data.Sum using (inj₂)
 open import Data.Bool using (false)
-open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
-open import Once.Lang.Core.Translate using (t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSg; polySg; monoSchema)
-open import Once.Lang.Core.Schema using (schemaOf; kindsOf; schemaOf-cf)
-import Once.Lang.Type.Instance
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
+open import Once.Internal.Core.Translate using (t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSg; polySg; monoSchema)
+open import Once.Internal.Core.Schema using (schemaOf; kindsOf; schemaOf-cf)
+import Once.Internal.Type.Instance
 import Once.Parser as Parser
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
@@ -229,9 +229,9 @@ open import Once.Adequacy.SpecFront.Walk Σ sigop-S fmt ps sg h-sig h-own-sig h-
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 open import Once.Adequacy.SpecFront.WalkMain Σ using (MainsW; MainW; entry-concrete)
 open import Once.Spec.Core.Program Σ using (Entry; entry; EffUU)
-open import Once.Lang.Module using (MainsEffUU; MainIn)
-import Once.Lang.Type.Sub as LS
-import Once.Lang.Type.Grade as LG
+open import Once.Internal.Module using (MainsEffUU; MainIn)
+import Once.Internal.Type.Sub as LS
+import Once.Spec.Grade as LG
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
 open import Once.Adequacy.SpecCore.Type using (sub-L)
 open import Once.Functor.Decide using (isConcrete?-complete)
@@ -332,7 +332,7 @@ walk← {S = S} {imps} {tele} tl ss is ts sgcf nm r (SPr.w-sig so b pr wk) (al-p
   where
     pfi = Parser.mkPolyFunInfo x T e
     κ = kindsOf T
-    st = Step.step ss is ts sgcf nm w r κ (cf-R κ (Once.Lang.Type.Instance.rigidOf T) (schemaOf-cf T)) so₂ so b pr rx
+    st = Step.step ss is ts sgcf nm w r κ (cf-R κ (Once.Internal.Type.Instance.rigidOf T) (schemaOf-cf T)) so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
     D = proj₂ (proj₁ st)
     P = proj₂ st

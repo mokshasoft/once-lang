@@ -50,7 +50,7 @@ open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature; Decl; _∶_; OneName)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Name using (showCanonical; WordName)
 import Once.Parser as Parser
 open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo; FunInfo; PolyFunInfo; guardDistinct; namesDistinct; allValidNameB;
                                validNameB; validCharsB; opCharsB; allOpNameChars; emittedNames; funsOf; polysOf; entryNameOf)

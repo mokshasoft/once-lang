@@ -46,7 +46,7 @@ open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_; proj₁; proj₂; Σ)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Event using (SigOpEvent)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 

@@ -18,7 +18,7 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Internal.Trace using (FFIAnswers)
 
 -- Plan 0.105: over the interpretation's FFI half `φ`, which the table's call
 -- environment carries.
@@ -32,15 +32,15 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans)
 
 open import Once.Postulates using (extensionality)
-open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR.Ref using (refIR)
 import Once.Compile as C
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_)
 open T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; relS-ret)
 open import Once.Denotation.ValueRel using (RelD; RelS-assocˡ; retargetˡ)

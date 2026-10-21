@@ -30,15 +30,15 @@ open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
-import Once.Lang.Type as LT
-import Once.Lang.Type.WellFormed as LW
+import Once.Internal.Type as LT
+import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
-open import Once.Lang.Typing.Scope using (Imports; lookupImport)
+open import Once.Internal.Typing.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
@@ -70,11 +70,11 @@ open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans
 import Data.String.Properties as StrProp
 
 open import Once.Postulates using (extensionality)
-import Once.Lang.Type.Poly as TP
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
-open import Once.Lang.Core.AbsTy using (ConstFree; ConstFreeF; absTy-ground; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)
-import Once.Lang.Core.Abstract as A
+import Once.Internal.Type.Poly as TP
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
+open import Once.Internal.Core.AbsTy using (ConstFree; ConstFreeF; absTy-ground; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)
+import Once.Internal.Core.Abstract as A
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Syntax as SX
 import Once.Spec.Surface.Program as SPr
@@ -83,15 +83,15 @@ import Once.Spec.Surface.Typing
 import Once.Spec.Core.Typing
 import Once.Spec.Context
 import Once.Spec.Grade
-import Once.Lang.Type.Grade
+import Once.Spec.Grade
 import Data.String
 import Once.Compile as C
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
-open import Once.Lang.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly; ctxOf; MonoBody)
-open import Once.Lang.Core.Schema using (schemaOf; kindsOf; schemaOf-cf)
-open import Once.Lang.Core.Translate
+open import Once.Internal.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly; ctxOf; MonoBody)
+open import Once.Internal.Core.Schema using (schemaOf; kindsOf; schemaOf-cf)
+open import Once.Internal.Core.Translate
   using (SigSig; ImpSig; TeleSig; SigCF; i-def; t-def; wkI; wkT; impDefs; monoSchema; monoDef; polyDef; monoSg; polySg; viewOf; telFind;
          monoElab; monoBody; polyElab; polyBody; ground-cf)
 open import Once.Adequacy.SpecCore.Schema using (Clean; CleanF; CleanSig; c-var; c-Unit; c-Void; c-Int; c-Float; c-*; c-+; c-⇒; c-μ; c-ν; c-K; c-Id; c-⊕; c-⊗; defsS; schS; ptyS; kindsS)
@@ -106,7 +106,7 @@ open import Once.Adequacy.SpecFront.End {Fs} Σ ps using (EntryKind; End; end; e
 import Once.Adequacy.SpecFront.Def as Def
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 open import Once.Adequacy.SpecFront.AbsR using (cf-R)
-import Once.Lang.Type.Instance
+import Once.Internal.Type.Instance
 
 open SPr using (SchemaOf; Body; Principal; NotDefinition; Walk; w-end; w-skip; w-sig; w-nosig)
 
@@ -148,7 +148,7 @@ private
 
   arrow-at : ∀ {sc} (sch : LP.Schema) → sch ≡ schemaOf sc → ∀ {sd sco π′} → TP.ArrowSchema sc sd sco π′ → TP.CodVarsInDom sd sco
            → Σ[ X ∈ LP.Ty (LP.Schema.arity sch) ] Σ[ Y ∈ LP.Ty (LP.Schema.arity sch) ]
-               (LP.Schema.type sch ≡ X LP.⇒[ Once.Lang.Type.Grade.mk-kind Once.Lang.Type.Grade.Many π′ ] Y)
+               (LP.Schema.type sch ≡ X LP.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] Y)
                × (∀ i → ST.Occurs i (ptyS Y) → ST.Occurs i (ptyS X))
   arrow-at {sc} .(schemaOf sc) refl = schema-arrow sc
 
@@ -267,7 +267,7 @@ walk {S = S} {imps} {tele} tl ss is ts sgcf nm (poly {pfi = pfi@(Parser.mkPolyFu
           (polySg sgcf pfi) (canonical (x ∷ []) ∷ⁿ nm) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
   where
     κ = kindsOf T
-    rA = cf-R κ (Once.Lang.Type.Instance.rigidOf T) (schemaOf-cf T)
+    rA = cf-R κ (Once.Internal.Type.Instance.rigidOf T) (schemaOf-cf T)
     b : Body Σ (defsS S) nm (schS (schemaOf T)) _
     b = record
       { term  = TP′.ptmS S Σ sigop-S (A.absTm S κ (proj₁ (polyElab {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} ss is ts D)))

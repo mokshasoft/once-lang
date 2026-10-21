@@ -24,7 +24,7 @@ open import Data.Integer using (+_)
 
 import Once.Grammar as G
 open G using (GExpr)
-open import Once.Lang.Syntax
+open import Once.Internal.Syntax
 open import Once.TypeCheck.Raw
 open import Once.Grammar.ExprPrinter using
   (ConcreteExpr; c-e-unit; c-e-int; c-e-var; c-e-qual;

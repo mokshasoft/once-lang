@@ -12,10 +12,10 @@
 
 module Once.Adequacy.SpecGrammar.Conv where
 
-import Once.Lang.Type.Grade as LG
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-import Once.Lang.Type as LT
-import Once.Lang.Type.Poly as LP
+import Once.Internal.Type as LT
+import Once.Internal.Type.Poly as LP
 import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
 
@@ -31,8 +31,8 @@ qS LG.Many = SG.Many
 
 -- A ν's grade is finite on both sides (D318 item 13).
 φS : LG.Finite → SG.Finite
-φS LG.pure = SG.pureᶠ
-φS LG.act  = SG.actᶠ
+φS LG.pureᶠ = SG.pureᶠ
+φS LG.actᶠ  = SG.actᶠ
 
 kS : LG.ArrowKind → SG.ArrowKind
 kS (LG.mk-kind q π) = SG.mk-kind (qS q) (πS π)

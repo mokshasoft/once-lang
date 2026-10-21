@@ -26,11 +26,11 @@ import Once.Parser as Parser
 open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo)
 open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; signaturesWithOwner; expandPath)
-import Once.Lang.Resolution as LR
-open import Once.Lang.Module using (entrySig)
+import Once.Internal.Resolution as LR
+open import Once.Internal.Module using (entrySig)
 open import Once.Spec.Name using (canonical)
-open import Once.Lang.Name using (showCanonical)
-open import Once.Lang.Syntax using (RVar)
+open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Syntax using (RVar)
 open import Once.Spec.Signature using (Signature; WellFormed; []; _∷_)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Resolution as SR

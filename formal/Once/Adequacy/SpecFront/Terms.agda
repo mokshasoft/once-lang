@@ -12,8 +12,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Lang.Contract using (ISig)
-import Once.Lang.Core.PolyTy as LP
+open import Once.Internal.Contract using (ISig)
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
 
 module Once.Adequacy.SpecFront.Terms {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) {m : ℕ} {Δ : ST.KCtx m} where
@@ -21,13 +21,13 @@ module Once.Adequacy.SpecFront.Terms {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) {m 
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Derived as SD
-import Once.Lang.Core.Syntax S as L
-import Once.Lang.Core.Derived S as LD
+import Once.Internal.Core.Syntax S as L
+import Once.Internal.Core.Derived S as LD
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
 open import Once.Adequacy.SpecCore.Type
 open import Once.Adequacy.SpecCore.TermR S
@@ -116,7 +116,7 @@ module _ {n : ℕ} where
   outᶜ-R : ∀ {F F′} → FunR Δ F F′ → TmR Δ (LD.outᶜ {n} F) (SD.outᶜ F′)
   outᶜ-R f = r-lam (r-ν refl f) (r-out (r-var zero))
 
-  outActᶜ-R : ∀ {F F′} → FunR Δ F F′ → TmR Δ (LD.outEffᶜ {n} LG.act F) (SD.outActᶜ F′)
+  outActᶜ-R : ∀ {F F′} → FunR Δ F F′ → TmR Δ (LD.outEffᶜ {n} LG.actᶠ F) (SD.outActᶜ F′)
   outActᶜ-R f = r-lam (r-ν refl f) (r-lam r-unit (r-out (r-var (suc zero))))
 
   composeᶜ-R : ∀ {A A′} π {f g : L.Tm n} {f′ g′} → TyR Δ A A′ → TmR Δ f f′ → TmR Δ g g′

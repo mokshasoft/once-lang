@@ -25,8 +25,8 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Lang.Trace using (Interp; pureHalf; interp)
-open import Once.Lang.Contract using (ISig; Impl)
+open import Once.Internal.Trace using (Interp; pureHalf; interp)
+open import Once.Internal.Contract using (ISig; Impl)
 
 -- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
 -- run against the same one.
@@ -54,9 +54,9 @@ open import Data.Bool using (false)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
-open import Once.Lang.Type using (Type)
-open import Once.Lang.Type.DecEq using (_≟T_)
-open import Once.Lang.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type using (Type)
+open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -65,34 +65,35 @@ open Parser.FunInfo using (funName)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
-import Once.Lang.Context as Ctx
+import Once.Internal.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_)
+open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoBody)
-open import Once.Lang.Principal using (PrincipalAt)
-open import Once.Lang.Core.PolyTy using (Sig)
-open import Once.Lang.Core.Telescope using (Tele; Program; runCore; program; noKinds; noVars; noResp; MainEntry)
-open import Once.Lang.Core.PolyTy using (⌈⌉-⟪⟫)
-open import Once.Lang.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid; _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoBody)
+open import Once.Internal.Principal using (PrincipalAt)
+open import Once.Internal.Core.PolyTy using (Sig)
+open import Once.Internal.Core.Telescope using (Tele; Program; runCore; program; noKinds; noVars; noResp; MainEntry)
+open import Once.Internal.Core.PolyTy using (⌈⌉-⟪⟫)
+open import Once.Internal.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub using (_<:?_)
-open import Once.Lang.GradedOps using (⟦_⟧<:ᵛ; fmapM)
-open import Once.Lang.Graded using (M; subM)
+open import Once.Internal.GradedOps using (⟦_⟧<:ᵛ; fmapM)
+open import Once.Internal.Graded using (M; subM)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
 open import Once.Denotation.ValueDomain using (cohᴰ)
 open import Once.Denotation.ValueRel using (RelS-fmapˡ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; RelS-≈ˡ; embed-bind)
-open import Once.Lang.Iterative using (_>>=∞_)
-open import Once.Lang.Iterative using (T∞)
+open import Once.Internal.Iterative using (_>>=∞_)
+open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Lang.Core.Translate using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
-import Once.Lang.Core.Abstract as A
-import Once.Lang.Core.Translate as TR
-import Once.Lang.Core.PolySub
+open import Once.Internal.Core.Translate using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigCF; SigIn; toProgram; monoHere; monoSchema; monoSg; polySg)
+import Once.Internal.Core.Abstract as A
+import Once.Internal.Core.Translate as TR
+import Once.Internal.Core.PolySub
 open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
@@ -101,25 +102,25 @@ import Once.Adequacy.MeaningBridge as MB
 import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.CoreAbsSem as CAS
-import Once.Lang.Elaboration as ElabM
-import Once.Lang.Core.Meaning as GM
-import Once.Lang.Core.PolyTyping as PT
+import Once.Internal.Elaboration as ElabM
+import Once.Internal.Core.Meaning as GM
+import Once.Internal.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
-open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Internal.Trace using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
 φ = pureHalf ι
 
 open import Once.Adequacy.GradedRelation fmt using (RelGV; RelGM; GM-D; RelS-embed-fmap)
-open import Once.Lang.Iterative using (T∞; return∞)
+open import Once.Internal.Iterative using (T∞; return∞)
 open T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel using (retargetˡ)
 open import Once.Denotation.EvalRel using (eval-rel; table-self)
-open import Once.Lang.Type.Grade using (eff)
-open import Once.Lang.Trace using (projTrace)
+open import Once.Spec.Grade using (eff)
+open import Once.Internal.Trace using (projTrace)
 import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
@@ -130,12 +131,12 @@ import Once.TypeCheck.Elaborate
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; uncurry-app; abiT)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Event using (SigOpEvent)
 import Data.Fin
 import Relation.Nullary
-open import Once.Lang.Graded using (⟦_⟧ᵛ)
+open import Once.Internal.Graded using (⟦_⟧ᵛ)
 open import Once.Adequacy.TelePosition
-open import Once.Lang.Trace using ()
+open import Once.Internal.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (RelT′-events)
 open import Once.Denotation.Program using (tableCalls)
 open import Data.List using (take)
@@ -153,11 +154,11 @@ open import Once.Adequacy.TeleWalk.Invariant fmt Fs Ip hiding (φ; ι)
 -- program's run are RELATED, step for step — which gives their traces
 -- (`TraceTr.RelS-tr`). The compiled program runs its entry `ir` (`mainEntry`:
 -- the call of `main`, converted to `Eff Unit Unit`, D315).
-Agree : List IRFun → IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Unit ⌋ → Program Fs → Set
-Agree tbl ir P = RelS (RelGV Once.Lang.Type.Unit) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) ir tt)
+Agree : List IRFun → IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋ → Program Fs → Set
+Agree tbl ir P = RelS (RelGV Once.Internal.Type.Unit) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) ir tt)
 
 -- …at the entry the bundle finds, if any.
-AgreeM : List IRFun → Maybe (IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Unit ⌋) → Program Fs → Set
+AgreeM : List IRFun → Maybe (IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋) → Program Fs → Set
 AgreeM tbl (just ir) P = Agree tbl ir P
 AgreeM tbl nothing   P = ⊥
 
@@ -165,7 +166,7 @@ private
   -- A run related to a returned value, against a returned value.
   ret-inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelS R (return∞ a) (return∞ b) → R a b
   ret-inv h = inv (forceS h)
-    where inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelSB R (Once.Lang.Trace.ret (inj₁ a)) (Once.Lang.Trace.ret (inj₁ b)) → R a b
+    where inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelSB R (Once.Internal.Trace.ret (inj₁ a)) (Once.Internal.Trace.ret (inj₁ b)) → R a b
           inv (s-ret r) = r
 
   -- A subtyping has one proof.
@@ -197,40 +198,40 @@ private
   conv-subst refl q p x = cong (λ r → ⟦ r ⟧<:ᵛ x) (<:-irr q p)
 
   -- `main`'s result, converted to `Unit` at grade `eff`: the run is unchanged…
-  conv-unit : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Lang.Type.Unit ⟧ᵛ} {t}
-            → RelGM π Once.Lang.Type.Unit m t
-            → RelS (RelGV Once.Lang.Type.Unit) (subM g (fmapM π ⟦ sub-unit ⟧<:ᵛ m)) t
+  conv-unit : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Internal.Type.Unit ⟧ᵛ} {t}
+            → RelGM π Once.Internal.Type.Unit m t
+            → RelS (RelGV Once.Internal.Type.Unit) (subM g (fmapM π ⟦ sub-unit ⟧<:ᵛ m)) t
   conv-unit ⊑-eff r     = RelS-fmapˡ r (λ _ → tt)
   conv-unit ⊑-pe  r     = r
   conv-unit ⊑-ae  {m} r = RelS-embed-fmap m r
 
   -- …and a run that never returns (`Void`) is related to any continuation of
   -- a run it is related to.
-  conv-void : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Lang.Type.Void ⟧ᵛ} {t} {Y} {k : ⟦ Once.Lang.Type.Void ⟧ᴰ → T∞ Y}
-              {R : ⟦ Once.Lang.Type.Unit ⟧ᵛ → Y → Set}
-            → RelGM π Once.Lang.Type.Void m t
-            → RelS R (subM g (fmapM π ⟦ sub-void {B = Once.Lang.Type.Unit} ⟧<:ᵛ m)) (t >>=∞ k)
+  conv-void : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Internal.Type.Void ⟧ᵛ} {t} {Y} {k : ⟦ Once.Internal.Type.Void ⟧ᴰ → T∞ Y}
+              {R : ⟦ Once.Internal.Type.Unit ⟧ᵛ → Y → Set}
+            → RelGM π Once.Internal.Type.Void m t
+            → RelS R (subM g (fmapM π ⟦ sub-void {B = Once.Internal.Type.Unit} ⟧<:ᵛ m)) (t >>=∞ k)
   conv-void ⊑-eff      r = RelS-bind r (λ {a} _ → ⊥-elim a)
   conv-void ⊑-pe  {()} r
-  conv-void ⊑-ae  {m}  r = RelS-≈ˡ (embed-bind m (λ l → Once.Lang.Trace.ret (⟦ sub-void {B = Once.Lang.Type.Unit} ⟧<:ᵛ l))) (RelS-bind r (λ {a} _ → ⊥-elim a))
+  conv-void ⊑-ae  {m}  r = RelS-≈ˡ (embed-bind m (λ l → Once.Internal.Trace.ret (⟦ sub-void {B = Once.Internal.Type.Unit} ⟧<:ᵛ l))) (RelS-bind r (λ {a} _ → ⊥-elim a))
 
   -- `main`'s run, converted (D315), against the compiled entry: the call of
   -- `main`, which the table answers with its entry's direct-call form.
-  main-run : ∀ {ty} (p : ty <: EffUU) (pre tbl : List IRFun) {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋} {v : ⟦ ty ⟧ᵛ}
+  main-run : ∀ {ty} (p : ty <: EffUU) (pre tbl : List IRFun) {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋} {v : ⟦ ty ⟧ᵛ}
            → (∀ A B a → tableCalls fmt φ tbl (bare "main") A B a
                         ≡ tableCalls fmt φ (irFunOf (C.mkCompiledFun (bare "main") ty irFun) ∷ pre) (bare "main") A B a)
-           → RelGM Once.Lang.Type.Grade.pure ty v (subst T∞ (cohᴰ ty) (abiT ty (evalᴰ fmt (tableEnv fmt φ pre) irFun tt)))
-           → RelS (RelGV Once.Lang.Type.Unit) (⟦ p ⟧<:ᵛ v tt) (evalᴰ fmt (tableEnv fmt φ tbl) (C.mainEntry p) tt)
+           → RelGM Once.Spec.Grade.pure ty v (subst T∞ (cohᴰ ty) (abiT ty (evalᴰ fmt (tableEnv fmt φ pre) irFun tt)))
+           → RelS (RelGV Once.Internal.Type.Unit) (⟦ p ⟧<:ᵛ v tt) (evalᴰ fmt (tableEnv fmt φ tbl) (C.mainEntry p) tt)
   main-run sub-void pre tbl {v = ()} sk r
   main-run (sub-arr {π = π} sub-unit sub-unit g) pre tbl {irFun} {v} sk r =
-    conv-unit g {m = v tt} (GM-D π Once.Lang.Type.Unit (proj₁ (ret-inv r) {tt} {tt} tt)
-      (retargetˡ (cong force (trans (sk ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Unit ⌋ tt)
-                                    (tableEnv-hit (bare "main") ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Unit ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
+    conv-unit g {m = v tt} (GM-D π Once.Internal.Type.Unit (proj₁ (ret-inv r) {tt} {tt} tt)
+      (retargetˡ (cong force (trans (sk ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋ tt)
+                                    (tableEnv-hit (bare "main") ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
         (uncurry-app (tableEnv fmt φ pre) irFun (eval-rel fmt (table-self fmt φ pre) irFun {tt} {tt} tt) {tt} {tt} tt)))
   main-run (sub-arr {π = π} sub-unit sub-void g) pre tbl {irFun} {v} sk r =
-    conv-void g {m = v tt} (GM-D π Once.Lang.Type.Void (proj₁ (ret-inv r) {tt} {tt} tt)
-      (retargetˡ (cong force (trans (sk ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Void ⌋ tt)
-                                    (tableEnv-hit (bare "main") ⌊ Once.Lang.Type.Unit ⌋ ⌊ Once.Lang.Type.Void ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
+    conv-void g {m = v tt} (GM-D π Once.Internal.Type.Void (proj₁ (ret-inv r) {tt} {tt} tt)
+      (retargetˡ (cong force (trans (sk ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Void ⌋ tt)
+                                    (tableEnv-hit (bare "main") ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Void ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
         (uncurry-app (tableEnv fmt φ pre) irFun (eval-rel fmt (table-self fmt φ pre) irFun {tt} {tt} tt) {tt} {tt} tt)))
 
   -- Any two proofs that `main` is usable as `Eff Unit Unit` give one entry.
@@ -258,9 +259,9 @@ private
       un (_ ∷ es) ((h ∷ []) ∷ hs) = h ∷ un es hs
 
 -- The entries after `main` extend the telescope; the program still names `main`.
-from-sem : ∀ {s} {S : Sig Fs s} {sc es} (tl : Tele S) (ss : SigSig Fs (Once.Lang.Module.Scope.sig sc)) (is : ImpSig S (Once.Lang.Module.Scope.imps sc))
-             (ts : TeleSig S (Once.Lang.Module.Scope.tele sc)) (sg : SigCF S)
-             (d : Data.Fin.Fin s) (e : MainEntry (S Once.Lang.Core.PolyTy.!! d)) (rest : ModTele sc es) (u : SigIn rest S)
+from-sem : ∀ {s} {S : Sig Fs s} {sc es} (tl : Tele S) (ss : SigSig Fs (Once.Internal.Module.Scope.sig sc)) (is : ImpSig S (Once.Internal.Module.Scope.imps sc))
+             (ts : TeleSig S (Once.Internal.Module.Scope.tele sc)) (sg : SigCF S)
+             (d : Data.Fin.Fin s) (e : MainEntry (S Once.Internal.Core.PolyTy.!! d)) (rest : ModTele sc es) (u : SigIn rest S)
          → runCore fmt (TR.toProgramFrom tl ss is ts sg d e rest u) Ip ≡ runCore fmt (program tl d e) Ip
 from-sem tl ss is ts sg d e [] u = refl
 from-sem tl ss is ts sg d e (ffi _ _ c h g rest) u = from-sem tl (s-ffi h g (u (here refl)) ss) is ts sg d e rest (λ m → u (there m))
@@ -272,7 +273,7 @@ from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep 
 -- `main` (D315): its run at its own type, converted, against the compiled
 -- entry the bundle finds — whichever proofs of the conversion each side holds.
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd ty} (p : ty <: EffUU) (g : RigidFree ty)
-              (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[]) {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
+              (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[]) {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
               (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" ty bd ≡ Data.Sum.inj₂ irFun)
               {es} (rest : ModTele (AS.scopeOf (C.extendScope csc "main" ty)) es)
@@ -289,7 +290,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} {ty} p g D {irFun
   -- Plan 0.105 / D320: the entry's compile chain relates the core entry to the
   -- compiled call (`relM`); the compiled program's tree IS that call,
   -- converted, and the core program's run IS that entry, converted.
-  subst₂ (λ c ir → RelS (RelGV Once.Lang.Type.Unit) c (evalᴰ fmt (tableEnv fmt φ tbl) ir tt))
+  subst₂ (λ c ir → RelS (RelGV Once.Internal.Type.Unit) c (evalᴰ fmt (tableEnv fmt φ tbl) ir tt))
          (sym core-eq) (entry-irr p q)
          (main-run p pre tbl
             (λ A B a → trans (cong (λ t → tableCalls fmt φ t (bare "main") A B a) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))
@@ -307,7 +308,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} {ty} p g D {irFun
             ≡ ⟦ p ⟧<:ᵛ (GM.⟦_⟧ S Dc fmt δ tt) tt
     core-eq =
       trans (from-sem tl′ ss (impDefs ("main" Str.== "main") {x = "main"} {T = ty} is) (wkT ts) (monoSg sg g) zero (TR.mainEntry p) rest u)
-        (trans (cong (λ f → f tt) (conv-subst (⌈⌉-⟪⟫ ty noVars) (Once.Lang.Core.PolySub.<:ₚ-⟪⟫ noVars (TR.⌈⌉-<: p)) p _))
+        (trans (cong (λ f → f tt) (conv-subst (⌈⌉-⟪⟫ ty noVars) (Once.Internal.Core.PolySub.<:ₚ-⟪⟫ noVars (TR.⌈⌉-<: p)) p _))
                (cong (λ v → ⟦ p ⟧<:ᵛ v tt) (CAS.mono-entry-sem S noKinds noVars noResp sg g Dc fmt δ)))
 
 mutual
@@ -364,7 +365,7 @@ mutual
                 → (nd : Dec (x ≡ "main")) (tc : Dec (ty <: EffUU)) (nd′ : Dec (bare x ≡ bare "main")) (td : Dec (ty <: EffUU))
               → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
                        (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
-                       (Once.Lang.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo x ft bd false}
+                       (Once.Internal.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo x ft bd false}
                                         {ty = ty} {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest mi′ nd tc u)
   -- `main`, found by the dispatch
   walk-mono-d {csc} {es} {ft = ft} {bd} g D rest cf rest-b mi′ {S = S} tl ss is ts sg pre inv u ((hd ∷ _) , _) (yes refl) (yes p) nd′ td =

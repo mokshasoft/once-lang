@@ -32,10 +32,10 @@ open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (refl)
 
-open import Once.Lang.Trace using (T; ret; call; halt; RelT′; rel-ret; rel-call; rel-halt)
-open import Once.Lang.Stream using (νᵈ; anaᵈ; mapAnaᵈ; anaTree; module νᵈ)
+open import Once.Internal.Trace using (T; ret; call; halt; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.Internal.Stream using (νᵈ; anaᵈ; mapAnaᵈ; anaTree; module νᵈ)
 open νᵈ using (forceᵈ)
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 
 ------------------------------------------------------------------------

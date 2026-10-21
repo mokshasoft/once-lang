@@ -44,15 +44,15 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 
 open import Once.Parser.Module.Core
-open import Once.Lang.Syntax using (RLam; RawExpr)
-open import Once.Lang.ResolvedRefs using (GoodRefs; goodRefs?)
-open import Once.Lang.Type.Poly using (extractGround)
+open import Once.Internal.Syntax using (RLam; RawExpr)
+open import Once.Internal.ResolvedRefs using (GoodRefs; goodRefs?)
+open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
 open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.CanonicalName using (genWord?)
-open import Once.Lang.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
+open import Once.Internal.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
 
 ------------------------------------------------------------------------
 -- ModuleMap: path → resolved Module

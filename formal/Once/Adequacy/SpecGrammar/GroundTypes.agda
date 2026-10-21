@@ -18,9 +18,9 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
 
-import Once.Lang.Type.Grade as LG
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Spec.Surface.Lexing using (Token; TRParen)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; NoExtra; module Annot; module AliasType; GradeToken; g0; g1; gw)
 import Once.Spec.Type as ST
@@ -190,9 +190,9 @@ module Bridge {R′ RF′ : Set} (salg : TypeAlg R′ RF′) (h : Type → R′)
   act₁ (A , toks₂ , dA , hA , e₂) dB = act₂ dA hA (atom← dB toks₂ e₂)
   act₂ {A = A} dA hA (B , rest , dB , hB , er) = _ , rest , pa-act dA dB , trans (h-act A B) (cong₂ S.aAct hA hB) , er
   mu₁ (f , rest , dF , hf , er) = _ , rest , pa-mu dF , trans (h-mu f) (cong S.aMu hf) , er
-  nu₁ (f , rest , dF , hf , er) = _ , rest , pa-nu dF , trans (h-nu f LG.pure) (cong (S.aNu SG.pureᶠ) hf) , er
+  nu₁ (f , rest , dF , hf , er) = _ , rest , pa-nu dF , trans (h-nu f LG.pureᶠ) (cong (S.aNu SG.pureᶠ) hf) , er
   nuact₁ (f , rest , dF , hf , er) = nuact₂ dF hf (peel refl er)
-  nuact₂ {f = f} dF hf (rest′ , refl , er) = _ , rest′ , pa-nu-act dF , trans (h-nu f LG.act) (cong (S.aNu SG.actᶠ) hf) , er
+  nuact₂ {f = f} dF hf (rest′ , refl , er) = _ , rest′ , pa-nu-act dF , trans (h-nu f LG.actᶠ) (cong (S.aNu SG.actᶠ) hf) , er
   paren₁ (a , rest , dT , ha , er) = paren₂ dT ha (peel refl er)
   paren₂ dT ha (rest′ , refl , er) = _ , rest′ , pa-paren dT refl , ha , er
 

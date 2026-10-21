@@ -10,13 +10,14 @@
 
 module Once.Surface.Properties where
 
-import Once.Lang.Laws.Grade as G
+import Once.Internal.Laws.Grade as G
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Lang.Context
+open import Once.Internal.Context
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 
@@ -29,16 +30,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 ------------------------------------------------------------------------
 
 -- | Subusaging is reflexive
-≤q-refl : ∀ (q : Quantity) → q ≤q q ≡ true
+≤q-refl : ∀ (q : Quantity) → q ≤qᵇ q ≡ true
 ≤q-refl Zero = refl
 ≤q-refl One  = refl
 ≤q-refl Many = refl
 
 -- | Subusaging is transitive
 ≤q-trans : ∀ {q₁ q₂ q₃ : Quantity}
-         → q₁ ≤q q₂ ≡ true
-         → q₂ ≤q q₃ ≡ true
-         → q₁ ≤q q₃ ≡ true
+         → q₁ ≤qᵇ q₂ ≡ true
+         → q₂ ≤qᵇ q₃ ≡ true
+         → q₁ ≤qᵇ q₃ ≡ true
 ≤q-trans {Zero} {q₂} {q₃} p₁₂ p₂₃ = refl
 ≤q-trans {One} {Zero} {q₃} () p₂₃
 ≤q-trans {One} {One} {Zero} p₁₂ ()

@@ -34,12 +34,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature; WellFormed; OneName; _∶_)
 import Once.Spec.Surface.Program as SPr
-import Once.Lang.Resolution as LR
+import Once.Internal.Resolution as LR
 import Once.Parser as Parser
 open import Once.Parser using (Entry; entryNameOf)
 open import Once.Parser.Module.Core using (Decl; mkModule)
 open import Once.Parser.TypeAlias using (TypeAliasEnv)
-open import Once.Lang.Module using (entrySig)
+open import Once.Internal.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel)

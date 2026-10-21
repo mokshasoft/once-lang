@@ -61,7 +61,7 @@ open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 
-open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
 open import Once.Parser.Token
 open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
 

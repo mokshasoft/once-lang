@@ -22,7 +22,7 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Lang.Trace using (Interp; module Interp)
+open import Once.Internal.Trace using (Interp; module Interp)
 open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.X86-64
   (o : CanonicalName) (tbl : List IRFun)
@@ -55,14 +55,14 @@ open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
 open import Once.Adequacy.BudgetApex using (budget-apex)
 open import Once.Denotation.Program using (runIR)
-open import Once.Lang.Trace using (pureHalf)
-import Once.Lang.Trace as LT
+open import Once.Internal.Trace using (pureHalf)
+import Once.Internal.Trace as LT
 open import Once.Denotation.Approx using (approx)
 open import Once.Denotation.TraceTr using (obsAp)
 open import Once.Adequacy.FuelTrace using (module Fuel)
 open import Data.Product using (Σ-syntax)
 open import Data.Nat using (suc; _≤_)
-open import Once.Lang.Event using (toEvent)
+open import Once.Internal.Event using (toEvent)
 open import Once.Denotation.TraceTr using (endOf)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
@@ -83,7 +83,7 @@ open import Once.Adequacy.CPU.X86-64 using (call-at-x86-64; ev-x86-64; block-env
 import Once.CCC.Target.X86-64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.Lang.Event using (SigOpEvent)
+open import Once.Internal.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit)
 open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Codegen.ProgramImage using (program-image)

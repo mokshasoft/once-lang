@@ -24,7 +24,7 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.Grammar.PolyTypeBridge
-import qualified MAlonzo.Code.Once.Lang.Grammar.Signature
+import qualified MAlonzo.Code.Once.Internal.Grammar.Signature
 import qualified MAlonzo.Code.Once.Parser.Generic.Parser
 import qualified MAlonzo.Code.Once.Parser.Generic.PolyInst
 import qualified MAlonzo.Code.Once.Parser.Module.Core
@@ -39,12 +39,12 @@ d_sound'45'signature_14 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Lang.Grammar.Signature.T_ParsesSignature_8
+  MAlonzo.Code.Once.Internal.Grammar.Signature.T_ParsesSignature_8
 d_sound'45'signature_14 v0 ~v1 ~v2 ~v3 ~v4
   = du_sound'45'signature_14 v0
 du_sound'45'signature_14 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Grammar.Signature.T_ParsesSignature_8
+  MAlonzo.Code.Once.Internal.Grammar.Signature.T_ParsesSignature_8
 du_sound'45'signature_14 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0) in
@@ -304,7 +304,7 @@ du_sound'45'signature_14 v0
                                                 -> coe
                                                      seq (coe v11)
                                                      (coe
-                                                        MAlonzo.Code.Once.Lang.Grammar.Signature.C_psig'45'mk_18
+                                                        MAlonzo.Code.Once.Internal.Grammar.Signature.C_psig'45'mk_18
                                                         (coe
                                                            MAlonzo.Code.Once.Grammar.PolyTypeBridge.du_parsePolyTypeB'45'sound_42
                                                            (coe
@@ -320,13 +320,13 @@ d_complete'45'signature_100 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Grammar.Signature.T_ParsesSignature_8 ->
+  MAlonzo.Code.Once.Internal.Grammar.Signature.T_ParsesSignature_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_complete'45'signature_100 v0 ~v1 ~v2 v3
   = du_complete'45'signature_100 v0 v3
 du_complete'45'signature_100 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Grammar.Signature.T_ParsesSignature_8 ->
+  MAlonzo.Code.Once.Internal.Grammar.Signature.T_ParsesSignature_8 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_complete'45'signature_100 v0 v1
   = coe

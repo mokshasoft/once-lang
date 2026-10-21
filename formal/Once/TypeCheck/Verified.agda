@@ -31,29 +31,31 @@
 -- Reference: plans/0.3-frontend-verification-gaps.md.
 ------------------------------------------------------------------------
 
+open import Once.Type.Grade using (_≤qᵇ_)
+import Once.Spec.Grade
 module Once.TypeCheck.Verified where
 
-import Once.Lang.Context as Surface
+
+import Once.Internal.Context as Surface
 
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_; _×_; ∃-syntax)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Lang.Type using (Type)
-open import Once.Lang.Type.WellFormed using (IsConcrete)
-import Once.Lang.Type.Grade
-import Once.Lang.Type.Sub
-import Once.Lang.Type.Join
-import Once.Lang.Type
+open import Once.Internal.Type using (Type)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
+import Once.Internal.Type.Sub
+import Once.Internal.Type.Join
+import Once.Internal.Type
 import Once.Type
-import Once.Lang.Context
-open import Once.Lang.Syntax using (RawExpr)
+import Once.Internal.Context
+open import Once.Internal.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
-open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
-import Once.Lang.Typing.Scope as Classify
+open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
+import Once.Internal.Typing.Scope as Classify
 
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
@@ -68,18 +70,18 @@ import Once.TypeCheck.Completeness as Cmp
 import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
-import Once.Lang.Laws.Grade as Grade
-import Once.Lang.Laws.Order as Ord
-import Once.Lang.Type.Sub
+import Once.Internal.Laws.Grade as Grade
+import Once.Internal.Laws.Order as Ord
+import Once.Internal.Type.Sub
 import Once.Surface.GradeMatrix as GM
 import Algebra.Structures
 import Algebra.Module.Structures
 import Relation.Binary.Structures
-open import Once.Lang.Typing using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
+open import Once.Internal.Typing using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
-open import Once.Lang.Type.WellFormed using (RigidFree)
-open import Once.Lang.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
+open import Once.Internal.Type.WellFormed using (RigidFree)
+open import Once.Internal.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Once.Spec.Name using (gen; GenWord)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -283,14 +285,14 @@ record VerifiedTypeChecker : Set₁ where
     tc-err-fst-non-pair-Unit :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Lang.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Internal.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-fst-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Lang.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Internal.Type.Int Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
@@ -298,9 +300,9 @@ record VerifiedTypeChecker : Set₁ where
     tc-err-neg-non-Int-Unit :
       ∀ (ctx : NamedCtx) (e : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx e ≡ success Once.Lang.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx e ≡ success Once.Internal.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ TypeMismatch Once.Lang.Type.Int Once.Lang.Type.Unit
+      → err ≡ TypeMismatch Once.Internal.Type.Int Once.Internal.Type.Unit
 
 
     -- D136: a bare name not in local/import scope. No `unit` exception any
@@ -317,14 +319,14 @@ record VerifiedTypeChecker : Set₁ where
     tc-err-snd-non-pair-Unit :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Lang.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Internal.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-snd-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Lang.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Internal.Type.Int Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
@@ -333,7 +335,7 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Lang.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx scrut ≡ success Once.Internal.Type.Unit Ψ' eE' d' f'
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
@@ -341,23 +343,23 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
         {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Lang.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx scrut ≡ success Once.Internal.Type.Int Ψ' eE' d' f'
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
     -- Check-mode RInt at non-Int target → TypeMismatch
     tc-err-check-RInt-type-mismatch :
       ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
-      → ¬ (T ≡ Once.Lang.Type.Int)
+      → ¬ (T ≡ Once.Internal.Type.Int)
       → tcCheck ctx (Raw.RInt n) T ≡ failure err
-      → err ≡ (TypeMismatch T Once.Lang.Type.Int)
+      → err ≡ (TypeMismatch T Once.Internal.Type.Int)
 
     -- Check-mode RUnit at non-Unit target → TypeMismatch
     tc-err-check-RUnit-type-mismatch :
       ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
-      → ¬ (T ≡ Once.Lang.Type.Unit)
+      → ¬ (T ≡ Once.Internal.Type.Unit)
       → tcCheck ctx Raw.RUnit T ≡ failure err
-      → err ≡ (TypeMismatch T Once.Lang.Type.Unit)
+      → err ≡ (TypeMismatch T Once.Internal.Type.Unit)
 
     -- RDestruct branches with no common upper bound (no join, D322) →
     -- CaseBranchMismatch.
@@ -368,12 +370,12 @@ record VerifiedTypeChecker : Set₁ where
         {Ψs scrutE ds fs}
         (C₁ C₂ : Type) {qℓ qr}
         {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
-      → tcInfer ctx scrut ≡ success (A Once.Lang.Type.+ B) Ψs scrutE ds fs
+      → tcInfer ctx scrut ≡ success (A Once.Internal.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
-          ≡ success C₁ (qℓ Once.Lang.Context.Usage.∷ Ψₗ) eLE dL fL
+          ≡ success C₁ (qℓ Once.Internal.Context.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
-          ≡ success C₂ (qr Once.Lang.Context.Usage.∷ Ψᵣ) eRE dR fR
-      → ¬ Once.Lang.Type.Join.UB C₁ C₂
+          ≡ success C₂ (qr Once.Internal.Context.Usage.∷ Ψᵣ) eRE dR fR
+      → ¬ Once.Internal.Type.Join.UB C₁ C₂
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseBranchMismatch
 
@@ -393,9 +395,9 @@ record VerifiedTypeChecker : Set₁ where
         (A : Type) (q : _) (B : Type)
         (q' : _) {Ψ' eE' d' f' err}
       → tcCheck (extendNamedCtx ctx x A) body B
-          ≡ success (q' Once.Lang.Context.Usage.∷ Ψ') eE' d' f'
+          ≡ success (q' Once.Internal.Context.Usage.∷ Ψ') eE' d' f'
       → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
-      → tcCheck ctx (RLam x body) (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.pure ] B) ≡ failure err
+      → tcCheck ctx (RLam x body) (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) ≡ failure err
       → err ≡ UsageViolation x q q'
 
     -- Previously-blocked: BinOp's operand sub-error is wrapped in
@@ -430,26 +432,26 @@ record VerifiedTypeChecker : Set₁ where
     -- Exhaustive per-Type G4 wiring (Float, Buffer, Sum, Product, Fun).
     tc-err-fst-non-pair-Float :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Lang.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Internal.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-snd-non-pair-Float :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx arg ≡ success Once.Lang.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx arg ≡ success Once.Internal.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-neg-non-Int-Float :
       ∀ (ctx : NamedCtx) (e : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx e ≡ success Once.Lang.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx e ≡ success Once.Internal.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
-      → err ≡ TypeMismatch Once.Lang.Type.Int Once.Lang.Type.Float
+      → err ≡ TypeMismatch Once.Internal.Type.Int Once.Internal.Type.Float
 
     tc-err-case-scrut-Float :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr) {Ψ' eE' d' f' err}
-      → tcInfer ctx scrut ≡ success Once.Lang.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx scrut ≡ success Once.Internal.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
@@ -556,13 +558,13 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
         (A : Type) (q : _) (B : Type)
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.pure ] B)}
+        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B)}
         {d f : _}
       → (IH : ∀ {Ψ' eE' d' f'}
             → tcCheck (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
             → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
-      → tcCheck ctx (RLam x body) (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.pure ] B) ≡ success Ψ eE d f
-      → ctx ⊢ᶜ RLam x body ∶ (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.pure ] B) ⨾ Ψ
+      → tcCheck ctx (RLam x body) (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) ≡ success Ψ eE d f
+      → ctx ⊢ᶜ RLam x body ∶ (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) ⨾ Ψ
 
     tcInfer-sound-RLet :
       ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
@@ -587,18 +589,18 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-complete-RInt :
       ∀ (ctx : NamedCtx) (n : ℤ)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RInt n) ≡ success Once.Lang.Type.Int Surface.zeroUsage eE d f
+          tcInfer ctx (RInt n) ≡ success Once.Internal.Type.Int Surface.zeroUsage eE d f
 
     tcInfer-complete-RUnit :
       ∀ (ctx : NamedCtx)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx RUnit ≡ success Once.Lang.Type.Unit Surface.zeroUsage eE d f
+          tcInfer ctx RUnit ≡ success Once.Internal.Type.Unit Surface.zeroUsage eE d f
 
 
     tcInfer-complete-RVar-unit :
       ∀ (ctx : NamedCtx)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RResolved (gen "unit")) ≡ success Once.Lang.Type.Unit Surface.zeroUsage eE d f
+          tcInfer ctx (RResolved (gen "unit")) ≡ success Once.Internal.Type.Unit Surface.zeroUsage eE d f
 
     -- RPair: both subs infer → outer succeeds.
     tcInfer-complete-RPair :
@@ -610,17 +612,17 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx a ≡ success A Ψ₁ aE dA fA
       → tcInfer ctx b ≡ success B Ψ₂ bE dB fB
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RPair a b) ≡ success (A Once.Lang.Type.* B) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+          tcInfer ctx (RPair a b) ≡ success (A Once.Internal.Type.* B) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
     -- RUnaryOp OpNeg: sub at Int → outer success at Int.
     tcInfer-complete-RUnaryOp-neg :
       ∀ (ctx : NamedCtx) (e : RawExpr)
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Once.Lang.Type.Int}
+        {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Once.Internal.Type.Int}
         {d' f' : _}
-      → tcInfer ctx e ≡ success Once.Lang.Type.Int Ψ eE' d' f'
+      → tcInfer ctx e ≡ success Once.Internal.Type.Int Ψ eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RUnaryOp OpNeg e) ≡ success Once.Lang.Type.Int Ψ eE d f
+          tcInfer ctx (RUnaryOp OpNeg e) ≡ success Once.Internal.Type.Int Ψ eE d f
 
     -- RAnnot: check-mode sub success → infer-mode success.
     tcInfer-complete-RAnnot :
@@ -640,11 +642,11 @@ record VerifiedTypeChecker : Set₁ where
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ A}
         {e₂E : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
-                     (q Once.Lang.Context.Usage.∷ Ψ₂) B}
+                     (q Once.Internal.Context.Usage.∷ Ψ₂) B}
         {d₁ d₂ f₁ f₂ : _}
       → tcInfer ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
       → tcInfer (extendNamedCtx ctx x A) e₂
-          ≡ success B (q Once.Lang.Context.Usage.∷ Ψ₂) e₂E d₂ f₂
+          ≡ success B (q Once.Internal.Context.Usage.∷ Ψ₂) e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RLet x e₁ e₂)
             ≡ success B (Ψ₂ Surface.+ᵘ (q Surface.*ᵘ Ψ₁)) eE d f
@@ -658,27 +660,27 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "id")) arg)
-            ≡ success T (Surface.zeroUsage Surface.+ᵘ (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success T (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-fst :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {A B : Type}
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Lang.Type.* B)}
+        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Internal.Type.* B)}
         {d' f' : _}
-      → tcInfer ctx arg ≡ success (A Once.Lang.Type.* B) Ψ argE d' f'
+      → tcInfer ctx arg ≡ success (A Once.Internal.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "fst")) arg)
-            ≡ success A (Surface.zeroUsage Surface.+ᵘ (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success A (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-snd :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {A B : Type}
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Lang.Type.* B)}
+        {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Internal.Type.* B)}
         {d' f' : _}
-      → tcInfer ctx arg ≡ success (A Once.Lang.Type.* B) Ψ argE d' f'
+      → tcInfer ctx arg ≡ success (A Once.Internal.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "snd")) arg)
-            ≡ success B (Surface.zeroUsage Surface.+ᵘ (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success B (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-terminal :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {T : Type}
@@ -688,7 +690,7 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RApp (RResolved (gen "terminal")) arg)
-            ≡ success Once.Lang.Type.Unit (Surface.zeroUsage Surface.+ᵘ (Once.Lang.Type.Grade.Many Surface.*ᵘ Ψ)) eE d f
+            ≡ success Once.Internal.Type.Unit (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     -- RVar local and import
     tcInfer-complete-RVar-local :
@@ -715,48 +717,48 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (op : BinOp) (arithEq : Raw.isArithmeticOp op ≡ Data.Bool.true)
         (e₁ e₂ : RawExpr)
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Lang.Type.Int}
-        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Lang.Type.Int}
+        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Internal.Type.Int}
+        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Internal.Type.Int}
         {d₁ d₂ f₁ f₂ : _}
-      → tcInfer ctx e₁ ≡ success Once.Lang.Type.Int Ψ₁ e₁E d₁ f₁
-      → tcInfer ctx e₂ ≡ success Once.Lang.Type.Int Ψ₂ e₂E d₂ f₂
+      → tcInfer ctx e₁ ≡ success Once.Internal.Type.Int Ψ₁ e₁E d₁ f₁
+      → tcInfer ctx e₂ ≡ success Once.Internal.Type.Int Ψ₂ e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RBinOp op e₁ e₂) ≡ success Once.Lang.Type.Int (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+          tcInfer ctx (RBinOp op e₁ e₂) ≡ success Once.Internal.Type.Int (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
     tcInfer-complete-RBinOp-cmp :
       ∀ (ctx : NamedCtx) (op : BinOp) (cmpEq : Raw.isComparisonOp op ≡ Data.Bool.true)
         (e₁ e₂ : RawExpr)
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Lang.Type.Int}
-        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Lang.Type.Int}
+        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Internal.Type.Int}
+        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Internal.Type.Int}
         {d₁ d₂ f₁ f₂ : _}
-      → tcInfer ctx e₁ ≡ success Once.Lang.Type.Int Ψ₁ e₁E d₁ f₁
-      → tcInfer ctx e₂ ≡ success Once.Lang.Type.Int Ψ₂ e₂E d₂ f₂
+      → tcInfer ctx e₁ ≡ success Once.Internal.Type.Int Ψ₁ e₁E d₁ f₁
+      → tcInfer ctx e₂ ≡ success Once.Internal.Type.Int Ψ₂ e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RBinOp op e₁ e₂)
-            ≡ success (Once.Lang.Type.Unit Once.Lang.Type.+ Once.Lang.Type.Unit) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+            ≡ success (Once.Internal.Type.Unit Once.Internal.Type.+ Once.Internal.Type.Unit) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
     -- RDestruct (case/sum elim)
     tcInfer-complete-RDestruct :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr) {A B : Type}
         {Ψs : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A Once.Lang.Type.+ B)}
+        {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A Once.Internal.Type.+ B)}
         {ds fs : _}
-        (C₁ C₂ C : Type) (J : Once.Lang.Type.Sub._⊔_≔_ C₁ C₂ C) {qℓ qr : _}
+        (C₁ C₂ C : Type) (J : Once.Internal.Type.Sub._⊔_≔_ C₁ C₂ C) {qℓ qr : _}
         {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eLE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xL A))
-                     (qℓ Once.Lang.Context.Usage.∷ Ψₗ) C₁}
+                     (qℓ Once.Internal.Context.Usage.∷ Ψₗ) C₁}
         {dL fL : _}
         {Ψᵣ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eRE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xR B))
-                     (qr Once.Lang.Context.Usage.∷ Ψᵣ) C₂}
+                     (qr Once.Internal.Context.Usage.∷ Ψᵣ) C₂}
         {dR fR : _}
-      → tcInfer ctx scrut ≡ success (A Once.Lang.Type.+ B) Ψs scrutE ds fs
+      → tcInfer ctx scrut ≡ success (A Once.Internal.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
-          ≡ success C₁ (qℓ Once.Lang.Context.Usage.∷ Ψₗ) eLE dL fL
+          ≡ success C₁ (qℓ Once.Internal.Context.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
-          ≡ success C₂ (qr Once.Lang.Context.Usage.∷ Ψᵣ) eRE dR fR
+          ≡ success C₂ (qr Once.Internal.Context.Usage.∷ Ψᵣ) eRE dR fR
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (Raw.RDestruct scrut xL eL xR eR)
             ≡ success C (Ψs Surface.+ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
@@ -767,13 +769,13 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-complete-RApp-generic :
       ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) {B : Type} {q : _}
         {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.pure ] B)}
+        {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B)}
         {df ff : _}
         {Ψx : Surface.Usage (Classify.NamedCtx.size ctx)}
         {xE : SExpr (Classify.NamedCtx.debruijn ctx) Ψx A}
         {dx fx : _}
       → Classify.classifyAppHead f ≡ nothing
-      → tcInfer ctx f ≡ success (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q Once.Lang.Type.Grade.pure ] B) Ψf fE df ff
+      → tcInfer ctx f ≡ success (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) Ψf fE df ff
       → tcCheck ctx x A ≡ success Ψx xE dx fx
       → ∃[ eE ] ∃[ d ] ∃[ f' ]
           tcInfer ctx (RApp f x) ≡ success B (Ψf Surface.+ᵘ (q Surface.*ᵘ Ψx)) eE d f'
@@ -784,14 +786,14 @@ record VerifiedTypeChecker : Set₁ where
         (A : Type) (q q' : _) (B : Type)
         {Ψ' : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE' : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
-                     (q' Once.Lang.Context.Usage.∷ Ψ') B}
-        {d' f' : _} {π : Once.Lang.Type.Grade.Purity}
-      → (q' Once.Lang.Type.Grade.≤q q) ≡ Data.Bool.true
-      → Once.Lang.Type.Sub._⊑π_ Once.Lang.Type.Grade.pure π
+                     (q' Once.Internal.Context.Usage.∷ Ψ') B}
+        {d' f' : _} {π : Once.Spec.Grade.Purity}
+      → (q' Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true
+      → Once.Spec.Grade._⊑π_ Once.Spec.Grade.pure π
       → tcCheck (extendNamedCtx ctx x A) body B
-          ≡ success (q' Once.Lang.Context.Usage.∷ Ψ') eE' d' f'
+          ≡ success (q' Once.Internal.Context.Usage.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcCheck ctx (RLam x body) (A Once.Lang.Type.⇒[ Once.Lang.Type.Grade.mk-kind q π ] B) ≡ success Ψ' eE d f
+          tcCheck ctx (RLam x body) (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B) ≡ success Ψ' eE d f
 
     ----------------------------------------------------------------
     -- G7 (first pass): algebraic identities
@@ -799,10 +801,10 @@ record VerifiedTypeChecker : Set₁ where
 
     id-decideLeq-iff :
       ∀ (q' q : _)
-      → ((q' Once.Lang.Type.Grade.≤q q) ≡ Data.Bool.true
+      → ((q' Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true
           → ∃[ p ] Once.TypeCheck.Elaborate.decideLeq q' q ≡ just p)
       × (∀ {p} → Once.TypeCheck.Elaborate.decideLeq q' q ≡ just p
-             → (q' Once.Lang.Type.Grade.≤q q) ≡ Data.Bool.true)
+             → (q' Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true)
 
     id-binop-classification-exhaustive :
       ∀ (op : BinOp)
@@ -815,64 +817,64 @@ record VerifiedTypeChecker : Set₁ where
       → Raw.isComparisonOp op ≡ Data.Bool.true
       → Data.Empty.⊥
 
-    id-≤q-refl : ∀ (q : _) → (q Once.Lang.Type.Grade.≤q q) ≡ Data.Bool.true
+    id-≤q-refl : ∀ (q : _) → (q Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true
 
     id-≤q-trans :
       ∀ (q₁ q₂ q₃ : _)
-      → (q₁ Once.Lang.Type.Grade.≤q q₂) ≡ Data.Bool.true
-      → (q₂ Once.Lang.Type.Grade.≤q q₃) ≡ Data.Bool.true
-      → (q₁ Once.Lang.Type.Grade.≤q q₃) ≡ Data.Bool.true
+      → (q₁ Once.Type.Grade.≤qᵇ q₂) ≡ Data.Bool.true
+      → (q₂ Once.Type.Grade.≤qᵇ q₃) ≡ Data.Bool.true
+      → (q₁ Once.Type.Grade.≤qᵇ q₃) ≡ Data.Bool.true
 
-    id-Zero-≤q-all : ∀ (q : _) → (Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.≤q q) ≡ Data.Bool.true
+    id-Zero-≤q-all : ∀ (q : _) → (Once.Spec.Grade.Zero Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true
 
-    id-all-≤q-Many : ∀ (q : _) → (q Once.Lang.Type.Grade.≤q Once.Lang.Type.Grade.Many) ≡ Data.Bool.true
+    id-all-≤q-Many : ∀ (q : _) → (q Once.Type.Grade.≤qᵇ Once.Spec.Grade.Many) ≡ Data.Bool.true
 
     -- Quantity algebra
-    id-+q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Lang.Type.Grade.+q q₂ ≡ q₂ Once.Lang.Type.Grade.+q q₁
+    id-+q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Spec.Grade.+q q₂ ≡ q₂ Once.Spec.Grade.+q q₁
     id-+q-assoc : ∀ (q₁ q₂ q₃ : _)
-                → q₁ Once.Lang.Type.Grade.+q (q₂ Once.Lang.Type.Grade.+q q₃)
-                  ≡ (q₁ Once.Lang.Type.Grade.+q q₂) Once.Lang.Type.Grade.+q q₃
+                → q₁ Once.Spec.Grade.+q (q₂ Once.Spec.Grade.+q q₃)
+                  ≡ (q₁ Once.Spec.Grade.+q q₂) Once.Spec.Grade.+q q₃
     id-*q-distrib-+q :
-      ∀ (q₁ q₂ q₃ : _) → q₁ Once.Lang.Type.Grade.*q (q₂ Once.Lang.Type.Grade.+q q₃)
-                        ≡ (q₁ Once.Lang.Type.Grade.*q q₂) Once.Lang.Type.Grade.+q (q₁ Once.Lang.Type.Grade.*q q₃)
-    id-⊔q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Lang.Type.Grade.⊔q q₂ ≡ q₂ Once.Lang.Type.Grade.⊔q q₁
-    id-⊔q-idem : ∀ (q : _) → q Once.Lang.Type.Grade.⊔q q ≡ q
+      ∀ (q₁ q₂ q₃ : _) → q₁ Once.Spec.Grade.*q (q₂ Once.Spec.Grade.+q q₃)
+                        ≡ (q₁ Once.Spec.Grade.*q q₂) Once.Spec.Grade.+q (q₁ Once.Spec.Grade.*q q₃)
+    id-⊔q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Type.Grade.⊔q q₂ ≡ q₂ Once.Type.Grade.⊔q q₁
+    id-⊔q-idem : ∀ (q : _) → q Once.Type.Grade.⊔q q ≡ q
 
     -- Usage-vector algebra
-    id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Lang.Context.Usage n)
+    id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Internal.Context.Usage n)
                 → Ψ₁ Surface.+ᵘ Ψ₂ ≡ Ψ₂ Surface.+ᵘ Ψ₁
-    id-+ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Once.Lang.Context.Usage n)
+    id-+ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Once.Internal.Context.Usage n)
                  → Ψ₁ Surface.+ᵘ (Ψ₂ Surface.+ᵘ Ψ₃)
                    ≡ (Ψ₁ Surface.+ᵘ Ψ₂) Surface.+ᵘ Ψ₃
-    id-⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Lang.Context.Usage n)
+    id-⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Internal.Context.Usage n)
                 → Ψ₁ Surface.⊔ᵘ Ψ₂ ≡ Ψ₂ Surface.⊔ᵘ Ψ₁
-    id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Lang.Context.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
-    id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Lang.Context.Usage n)
-                       → Once.Lang.Type.Grade.One Surface.*ᵘ Ψ ≡ Ψ
-    id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Lang.Context.Usage n)
+    id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Internal.Context.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
+    id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Internal.Context.Usage n)
+                       → Once.Spec.Grade.One Surface.*ᵘ Ψ ≡ Ψ
+    id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Internal.Context.Usage n)
                         → Surface.zeroUsage Surface.+ᵘ Ψ ≡ Ψ
 
     -- The grade algebra as the structures it is (plan 0.112 B2–B4): the
     -- identities above are instances of these laws.
-    grade-semiring   : Algebra.Structures.IsCommutativeSemiring {A = Once.Lang.Type.Grade.Quantity} _≡_
-                         Once.Lang.Type.Grade._+q_ Once.Lang.Type.Grade._*q_
-                         Once.Lang.Type.Grade.Zero Once.Lang.Type.Grade.One
-    grade-join       : Algebra.Structures.IsCommutativeBand {A = Once.Lang.Type.Grade.Quantity} _≡_
-                         Once.Lang.Type.Grade._⊔q_
-    grade-order      : Relation.Binary.Structures.IsDecTotalOrder {A = Once.Lang.Type.Grade.Quantity} _≡_
-                         Once.Lang.Context._≤q'_
-    effect-monoid    : Algebra.Structures.IsCommutativeMonoid {A = Once.Lang.Type.Grade.Purity} _≡_
-                         Once.Lang.Type.Grade._·p_ Once.Lang.Type.Grade.pure
+    grade-semiring   : Algebra.Structures.IsCommutativeSemiring {A = Once.Spec.Grade.Quantity} _≡_
+                         Once.Spec.Grade._+q_ Once.Spec.Grade._*q_
+                         Once.Spec.Grade.Zero Once.Spec.Grade.One
+    grade-join       : Algebra.Structures.IsCommutativeBand {A = Once.Spec.Grade.Quantity} _≡_
+                         Once.Type.Grade._⊔q_
+    grade-order      : Relation.Binary.Structures.IsDecTotalOrder {A = Once.Spec.Grade.Quantity} _≡_
+                         Once.Internal.Context._≤q'_
+    effect-monoid    : Algebra.Structures.IsCommutativeMonoid {A = Once.Spec.Grade.Purity} _≡_
+                         Once.Spec.Grade._·p_ Once.Spec.Grade.pure
     usage-semimodule : ∀ {n} → Algebra.Module.Structures.IsLeftSemimodule GM.quantity-semiring _≡_
-                         (Once.Lang.Context._+ᵘ_ {n}) Once.Lang.Context.zeroUsage Once.Lang.Context._*ᵘ_
-    usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Lang.Context.Usage n} _≡_
-                         Once.Lang.Context._⊔ᵘ_
+                         (Once.Internal.Context._+ᵘ_ {n}) Once.Internal.Context.zeroUsage Once.Internal.Context._*ᵘ_
+    usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Internal.Context.Usage n} _≡_
+                         Once.Internal.Context._⊔ᵘ_
     -- The orders are partial orders (plan 0.112 B6).
-    subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Type} _≡_ Once.Lang.Type.Sub._<:_
-    effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Lang.Type.Grade.Purity} _≡_
-                         Once.Lang.Type.Sub._⊑π_
-    usage-order      : ∀ {n} → Relation.Binary.Structures.IsPartialOrder {A = Once.Lang.Context.Usage n} _≡_
-                         Once.Lang.Context._⊑ᵘ_
+    subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Type} _≡_ Once.Internal.Type.Sub._<:_
+    effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Grade.Purity} _≡_
+                         Once.Spec.Grade._⊑π_
+    usage-order      : ∀ {n} → Relation.Binary.Structures.IsPartialOrder {A = Once.Internal.Context.Usage n} _≡_
+                         Once.Internal.Context._⊑ᵘ_
 
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips

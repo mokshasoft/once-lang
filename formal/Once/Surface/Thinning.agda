@@ -20,12 +20,13 @@ open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym)
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Lang.Context using (_⊑ᵘ_; ⊑[]; _⊑∷_; z≤z)
-open import Once.Lang.Context as Surface renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Internal.Context using (_⊑ᵘ_; ⊑[]; _⊑∷_; z≤z)
+open import Once.Internal.Context as Surface renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open import Once.Surface.Context as Surface
 
 ------------------------------------------------------------------------

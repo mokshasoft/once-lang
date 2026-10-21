@@ -10,15 +10,16 @@
 
 module Once.Surface.Elaborate where
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.IR
 open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; μ-type; ⌊⟧T-commute; ν-type; base-Unit)
 open import Once.IR.Ref using (refIR)
-open import Once.Lang.Context
+open import Once.Internal.Context
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 open import Once.Surface.CoerceIR using (runCoe)
@@ -46,7 +47,7 @@ open import Data.Integer using (ℤ)
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
 open import Once.Arith.SigOp.Builders
 open import Once.Spec.Name using (bare)
-open import Once.Lang.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
+open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
 
 -- Literals: constant morphisms that ignore input environment.
 --

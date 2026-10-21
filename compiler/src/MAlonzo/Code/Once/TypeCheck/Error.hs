@@ -19,8 +19,8 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Base
-import qualified MAlonzo.Code.Once.Lang.Type
-import qualified MAlonzo.Code.Once.Lang.Type.Grade
+import qualified MAlonzo.Code.Once.Internal.Type
+import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.TypeCheck.Error.TypeError
@@ -30,26 +30,26 @@ data T_TypeError_6
     C_UnboundQualified_14 MAlonzo.Code.Agda.Builtin.String.T_String_6
                           MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_NonConcreteSigOpType_20 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                              MAlonzo.Code.Once.Lang.Type.T_Type_8 |
+                              MAlonzo.Code.Once.Internal.Type.T_Type_8 |
     C_FloatLiteralUnsupported_22 | C_LambdaInInferMode_24 |
     C_LambdaRequiresFunctionType_26 | C_InlInInferMode_28 |
     C_InrInInferMode_30 | C_InitialInInferMode_32 |
     C_InlNeedsSumType_34 | C_InrNeedsSumType_36 | C_FstNeedsPair_38 |
     C_SndNeedsPair_40 | C_ArrNeedsFunction_42 | C_NegationNotInt_44 |
     C_CaseScrutineeNotSum_46 | C_CaseBranchMismatch_48 |
-    C_ApplicationTypeMismatch_54 MAlonzo.Code.Once.Lang.Type.T_Type_8
-                                 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
-    C_TypeMismatch_60 MAlonzo.Code.Once.Lang.Type.T_Type_8
-                      MAlonzo.Code.Once.Lang.Type.T_Type_8 |
-    C_NotFunction_64 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
+    C_ApplicationTypeMismatch_54 MAlonzo.Code.Once.Internal.Type.T_Type_8
+                                 MAlonzo.Code.Once.Internal.Type.T_Type_8 |
+    C_TypeMismatch_60 MAlonzo.Code.Once.Internal.Type.T_Type_8
+                      MAlonzo.Code.Once.Internal.Type.T_Type_8 |
+    C_NotFunction_64 MAlonzo.Code.Once.Internal.Type.T_Type_8 |
     C_UsageViolation_72 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                        MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8
-                        MAlonzo.Code.Once.Lang.Type.Grade.T_Quantity_8 |
+                        MAlonzo.Code.Once.Spec.Grade.T_Quantity_6
+                        MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 |
     C_BuiltinTypeMismatch_76 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_ComposeMiddleUndetermined_78 |
     C_BinOpLeftError_80 T_TypeError_6 |
     C_BinOpRightError_82 T_TypeError_6 |
-    C_AnnotationMentionsParameter_86 MAlonzo.Code.Once.Lang.Type.T_Type_8 |
+    C_AnnotationMentionsParameter_86 MAlonzo.Code.Once.Internal.Type.T_Type_8 |
     C_UnclassifiedError_88 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.TypeCheck.Error.renderError
 d_renderError_90 ::

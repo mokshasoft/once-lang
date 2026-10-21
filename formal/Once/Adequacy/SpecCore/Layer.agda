@@ -26,16 +26,16 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Type as LT
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Core.PolyTy as LP
+import Once.Internal.Type as LT
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
-import Once.Lang.Value Carrier Carrier as V
-import Once.Lang.Graded as LGr
-import Once.Lang.GradedOps as LOps
+import Once.Internal.Value Carrier Carrier as V
+import Once.Internal.Graded as LGr
+import Once.Internal.GradedOps as LOps
 import Once.Spec.Polynomial as SPoly
 import Once.Spec.Domain Σ as SD
-open import Once.Lang.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 

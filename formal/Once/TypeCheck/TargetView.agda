@@ -17,11 +17,12 @@
 
 module Once.TypeCheck.TargetView where
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pa; ⊑-act)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pa; ⊑-act)
 
 -- `cata alg` : μ F ⇒ A
 data CataTarget : Type → Set where

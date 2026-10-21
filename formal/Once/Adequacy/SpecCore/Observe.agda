@@ -31,10 +31,10 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Value Carrier Carrier as V
-open import Once.Lang.Event using (SigOpEvent; toEvent)
-import Once.Lang.Trace as LTr
-import Once.Lang.Iterative as LI
+import Once.Internal.Value Carrier Carrier as V
+open import Once.Internal.Event using (SigOpEvent; toEvent)
+import Once.Internal.Trace as LTr
+import Once.Internal.Iterative as LI
 open import Once.Denotation.TraceTr using (trT∞; δ∞; Conf)
 import Once.Denotation.TraceTr as TT
 open import Once.Adequacy.MachineTrace using (module Machine; listTr)

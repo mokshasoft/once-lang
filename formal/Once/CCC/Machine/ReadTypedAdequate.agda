@@ -36,10 +36,10 @@ import Once.IR
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Function using (id)
 
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; rigid)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; rigid)
 import Once.Type
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
-open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}

@@ -22,24 +22,25 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; cong; sym; subst)
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
-open import Once.Lang.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
+open import Once.Internal.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
 
-open import Once.Lang.Stream using (νᵈ; module νᵈ; in-νᵈ; seqF; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ)
+open import Once.Internal.Stream using (νᵈ; module νᵈ; in-νᵈ; seqF; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ)
 open νᵈ
-open import Once.Lang.Iterative using (T∞)
-open import Once.Lang.StreamInf using (νᴵ)
+open import Once.Internal.Iterative using (T∞)
+open import Once.Internal.StreamInf using (νᴵ)
 
 -- SFunctor and the `⟦_⟧F → ⟦_⟧SF` coercion sits outside it.
 anaᵈ-erase : ∀ {H₁ H₂ : SFunctor} (heq : H₁ ≡ H₂) {A : Set}

@@ -12,16 +12,17 @@
 --   * `classifyAppHead`-determinism: classifying the same RawExpr
 --     twice yields the same result (trivially `refl`, but stated as
 --     a citable theorem).
---   * `decideLeq` returns `just _` exactly when `q' ≤q q ≡ true`
+--   * `decideLeq` returns `just _` exactly when `q' ≤qᵇ q ≡ true`
 --     (both directions).
 --   * `GType ↔ Type` round-trip is injective.
 --   * `isArithmeticOp` and `isComparisonOp` are mutually exclusive
 --     and exhaustive.
 ------------------------------------------------------------------------
 
+open import Once.Type.Grade using (_≤qᵇ_)
 module Once.TypeCheck.Identities where
 
-import Once.Lang.Laws.Grade as G
+import Once.Internal.Laws.Grade as G
 import Once.Surface.Properties as P
 import Relation.Binary.PropositionalEquality as Eq
 
@@ -34,14 +35,14 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _≤q_)
-open import Once.Lang.Type using (Type)
-open import Once.Lang.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many)
+open import Once.Internal.Type using (Type)
+open import Once.Internal.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
-open import Once.Lang.Typing.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
-import Once.Lang.Typing.Scope as Classify
+open import Once.Internal.Typing.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
+import Once.Internal.Typing.Scope as Classify
 
 ------------------------------------------------------------------------
 -- classifyAppHead determinism
@@ -60,7 +61,7 @@ classifyAppHead-deterministic _ = refl
 -- Forward: if the Bool decision is true, decideLeq returns `just refl`.
 decideLeq-correct-true :
   ∀ (q' q : Quantity)
-  → (q' ≤q q) ≡ true
+  → (q' ≤qᵇ q) ≡ true
   → ∃[ p ] decideLeq q' q ≡ just p
 decideLeq-correct-true Zero Zero _ = refl , refl
 decideLeq-correct-true Zero One  _ = refl , refl
@@ -76,7 +77,7 @@ decideLeq-correct-true Many One  ()
 decideLeq-correct-just :
   ∀ (q' q : Quantity) {p}
   → decideLeq q' q ≡ just p
-  → (q' ≤q q) ≡ true
+  → (q' ≤qᵇ q) ≡ true
 decideLeq-correct-just Zero Zero _ = refl
 decideLeq-correct-just Zero One  _ = refl
 decideLeq-correct-just Zero Many _ = refl
@@ -90,7 +91,7 @@ decideLeq-correct-just Many One  ()
 -- Forward: Bool decision false → decideLeq returns nothing.
 decideLeq-correct-false :
   ∀ (q' q : Quantity)
-  → (q' ≤q q) ≡ false
+  → (q' ≤qᵇ q) ≡ false
   → decideLeq q' q ≡ nothing
 decideLeq-correct-false Zero Zero ()
 decideLeq-correct-false Zero One  ()
@@ -106,7 +107,7 @@ decideLeq-correct-false Many One  _ = refl
 decideLeq-correct-nothing :
   ∀ (q' q : Quantity)
   → decideLeq q' q ≡ nothing
-  → (q' ≤q q) ≡ false
+  → (q' ≤qᵇ q) ≡ false
 decideLeq-correct-nothing One  Zero _ = refl
 decideLeq-correct-nothing Many Zero _ = refl
 decideLeq-correct-nothing Many One  _ = refl
@@ -191,18 +192,18 @@ classifyAppHead-initial = refl
 -- QTT quantity order: reflexivity and transitivity
 ------------------------------------------------------------------------
 
--- Reflexivity: q ≤q q always.
-≤q-refl : ∀ (q : Quantity) → (q ≤q q) ≡ true
+-- Reflexivity: q ≤qᵇ q always.
+≤q-refl : ∀ (q : Quantity) → (q ≤qᵇ q) ≡ true
 ≤q-refl Zero = refl
 ≤q-refl One  = refl
 ≤q-refl Many = refl
 
--- Transitivity: chain of quantity ≤q relations.
+-- Transitivity: chain of quantity ≤qᵇ relations.
 ≤q-trans : ∀ (q₁ q₂ q₃ : Quantity)
-         → (q₁ ≤q q₂) ≡ true
-         → (q₂ ≤q q₃) ≡ true
-         → (q₁ ≤q q₃) ≡ true
--- q₁ = Zero: Zero ≤q anything is true definitionally.
+         → (q₁ ≤qᵇ q₂) ≡ true
+         → (q₂ ≤qᵇ q₃) ≡ true
+         → (q₁ ≤qᵇ q₃) ≡ true
+-- q₁ = Zero: Zero ≤qᵇ anything is true definitionally.
 ≤q-trans Zero _    _    _  _  = refl
 -- q₁ = One: q₂ must be One or Many (else first premise is false).
 ≤q-trans One  Zero _    () _
@@ -220,11 +221,11 @@ classifyAppHead-initial = refl
 ≤q-trans Many Many Many _  _  = refl
 
 -- Zero is the minimum.
-Zero-≤q-all : ∀ (q : Quantity) → (Zero ≤q q) ≡ true
+Zero-≤q-all : ∀ (q : Quantity) → (Zero ≤qᵇ q) ≡ true
 Zero-≤q-all _ = refl
 
 -- Many is the maximum.
-all-≤q-Many : ∀ (q : Quantity) → (q ≤q Many) ≡ true
+all-≤q-Many : ∀ (q : Quantity) → (q ≤qᵇ Many) ≡ true
 all-≤q-Many Zero = refl
 all-≤q-Many One  = refl
 all-≤q-Many Many = refl
@@ -252,7 +253,8 @@ typeToGType-injective {t₁} {t₂} {g} eq₁ eq₂ =
 -- QTT quantity algebra: commutativity, associativity, identity
 ------------------------------------------------------------------------
 
-open import Once.Lang.Type.Grade using (_+q_; _*q_; _⊔q_)
+open import Once.Spec.Grade using (_+q_; _*q_)
+open import Once.Type.Grade using (_⊔q_)
 
 -- Quantity addition is commutative.
 +q-comm : ∀ (q₁ q₂ : Quantity) → q₁ +q q₂ ≡ q₂ +q q₁
@@ -361,10 +363,10 @@ open import Once.Lang.Type.Grade using (_+q_; _*q_; _⊔q_)
 ------------------------------------------------------------------------
 
 open import Data.Nat using (zero; suc)
-open import Once.Lang.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
-open Once.Lang.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
+open import Once.Internal.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open Once.Internal.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 
--- Note: Once.Lang.Context.Usage is an indexed vector of Quantity.
+-- Note: Once.Internal.Context.Usage is an indexed vector of Quantity.
 -- Pattern matching exposes its per-position structure; the identities
 -- lift the quantity identities pointwise.
 
@@ -419,14 +421,14 @@ open Once.Lang.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 *ᵘ-Zero = P.*ᵘ-zeroˡ
 
 ------------------------------------------------------------------------
--- ≤q monotonicity w.r.t. quantity operators
+-- ≤qᵇ monotonicity w.r.t. quantity operators
 ------------------------------------------------------------------------
 
--- If q₁ ≤q q₂ and q₃ ≤q q₄, then q₁ +q q₃ ≤q q₂ +q q₄.
+-- If q₁ ≤qᵇ q₂ and q₃ ≤qᵇ q₄, then q₁ +q q₃ ≤qᵇ q₂ +q q₄.
 +q-mono : ∀ (q₁ q₂ q₃ q₄ : Quantity)
-        → (q₁ ≤q q₂) ≡ true
-        → (q₃ ≤q q₄) ≡ true
-        → (q₁ +q q₃ ≤q q₂ +q q₄) ≡ true
+        → (q₁ ≤qᵇ q₂) ≡ true
+        → (q₃ ≤qᵇ q₄) ≡ true
+        → (q₁ +q q₃ ≤qᵇ q₂ +q q₄) ≡ true
 +q-mono Zero Zero Zero Zero _ _ = refl
 +q-mono Zero Zero Zero One  _ _ = refl
 +q-mono Zero Zero Zero Many _ _ = refl

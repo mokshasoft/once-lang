@@ -19,41 +19,41 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Lang.Polynomial
+import qualified MAlonzo.Code.Once.Internal.Polynomial
 
 -- Once.Adequacy.CataRel.RelSF
 d_RelSF_14 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () -> () -> (AgdaAny -> AgdaAny -> ()) -> AgdaAny -> AgdaAny -> ()
 d_RelSF_14 = erased
 -- Once.Adequacy.CataRel.cataS-rel
 d_cataS'45'rel_94 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () ->
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
+  MAlonzo.Code.Once.Internal.Polynomial.T_μS_82 -> AgdaAny
 d_cataS'45'rel_94 v0 ~v1 ~v2 ~v3 v4 v5 v6 v7
   = du_cataS'45'rel_94 v0 v4 v5 v6 v7
 du_cataS'45'rel_94 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_μS_82 -> AgdaAny
+  MAlonzo.Code.Once.Internal.Polynomial.T_μS_82 -> AgdaAny
 du_cataS'45'rel_94 v0 v1 v2 v3 v4
   = case coe v4 of
-      MAlonzo.Code.Once.Lang.Polynomial.C_'10216'_'10217'_86 v5
+      MAlonzo.Code.Once.Internal.Polynomial.C_'10216'_'10217'_86 v5
         -> coe
              v3
              (coe
-                MAlonzo.Code.Once.Lang.Polynomial.du_sfmapCata_120 (coe v0)
+                MAlonzo.Code.Once.Internal.Polynomial.du_sfmapCata_120 (coe v0)
                 (coe v0) (coe v1) (coe v5))
              (coe
-                MAlonzo.Code.Once.Lang.Polynomial.du_sfmapCata_120 (coe v0)
+                MAlonzo.Code.Once.Internal.Polynomial.du_sfmapCata_120 (coe v0)
                 (coe v0) (coe v2) (coe v5))
              (coe
                 du_sfmapCata'45'rel_116 (coe v0) (coe v0) (coe v1) (coe v2)
@@ -61,8 +61,8 @@ du_cataS'45'rel_94 v0 v1 v2 v3 v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CataRel.sfmapCata-rel
 d_sfmapCata'45'rel_116 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () ->
   () ->
   (AgdaAny -> AgdaAny -> ()) ->
@@ -72,18 +72,18 @@ d_sfmapCata'45'rel_116 ::
 d_sfmapCata'45'rel_116 v0 v1 ~v2 ~v3 ~v4 v5 v6 v7 v8
   = du_sfmapCata'45'rel_116 v0 v1 v5 v6 v7 v8
 du_sfmapCata'45'rel_116 ::
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Lang.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny) ->
   (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
 du_sfmapCata'45'rel_116 v0 v1 v2 v3 v4 v5
   = case coe v0 of
-      MAlonzo.Code.Once.Lang.Polynomial.C_SK_8 -> erased
-      MAlonzo.Code.Once.Lang.Polynomial.C_SId_10
+      MAlonzo.Code.Once.Internal.Polynomial.C_SK_8 -> erased
+      MAlonzo.Code.Once.Internal.Polynomial.C_SId_10
         -> coe
              du_cataS'45'rel_94 (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
-      MAlonzo.Code.Once.Lang.Polynomial.C__S'8853'__12 v6 v7
+      MAlonzo.Code.Once.Internal.Polynomial.C__S'8853'__12 v6 v7
         -> case coe v5 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8
                -> coe
@@ -94,7 +94,7 @@ du_sfmapCata'45'rel_116 v0 v1 v2 v3 v4 v5
                     du_sfmapCata'45'rel_116 (coe v7) (coe v1) (coe v2) (coe v3)
                     (coe v4) (coe v8)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Lang.Polynomial.C__S'8855'__14 v6 v7
+      MAlonzo.Code.Once.Internal.Polynomial.C__S'8855'__14 v6 v7
         -> case coe v5 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
                -> coe

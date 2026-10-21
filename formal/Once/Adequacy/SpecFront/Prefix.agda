@@ -26,13 +26,13 @@ open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
-open import Once.Lang.Contract using (ISig)
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
+open import Once.Internal.Contract using (ISig)
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funIsPrimitive)
-open import Once.Lang.Module using (Scope; scope; ModTele; []; ffi; mono; poly; MainIn; MainsEffUU; entrySig)
-open import Once.Lang.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; SigCF; SigIn; toProgram)
+open import Once.Internal.Module using (Scope; scope; ModTele; []; ffi; mono; poly; MainIn; MainsEffUU; entrySig)
+open import Once.Internal.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; SigCF; SigIn; toProgram)
 open import Once.Adequacy.SpecFront.Extract using (FFIEntry; FFIFacts)
 
 private

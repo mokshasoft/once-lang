@@ -11,16 +11,18 @@
 -- a binder was introduced at, which the Spec's do not.
 ------------------------------------------------------------------------
 
+import Once.Type.Grade
 module Once.Adequacy.SpecCore.Context where
+
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-import Once.Lang.Type.Grade as LG
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-import Once.Lang.Context as LC
+import Once.Internal.Context as LC
 import Once.Spec.Context as SC
 import Once.Spec.Type as ST
 open import Once.Adequacy.SpecGrammar.Conv using (qS)
@@ -46,7 +48,7 @@ open import Once.Adequacy.SpecCore.Type using (TyR; qS-injective)
 *q-S LG.Many LG.One  = refl
 *q-S LG.Many LG.Many = refl
 
-≤q-S : ∀ p q → (p LG.≤q q) ≡ true → qS p SG.≤q qS q
+≤q-S : ∀ p q → (p Once.Type.Grade.≤qᵇ q) ≡ true → qS p SG.≤q qS q
 ≤q-S LG.Zero q       _ = SG.0≤q
 ≤q-S LG.One  LG.One  _ = SG.1≤1
 ≤q-S LG.One  LG.Many _ = SG.1≤ω
@@ -55,7 +57,7 @@ open import Once.Adequacy.SpecCore.Type using (TyR; qS-injective)
 ≤q-S LG.Many LG.Zero ()
 ≤q-S LG.Many LG.One  ()
 
-≤q-L : ∀ p q → qS p SG.≤q qS q → (p LG.≤q q) ≡ true
+≤q-L : ∀ p q → qS p SG.≤q qS q → (p Once.Type.Grade.≤qᵇ q) ≡ true
 ≤q-L LG.Zero q       _ = refl
 ≤q-L LG.One  LG.One  _ = refl
 ≤q-L LG.One  LG.Many _ = refl

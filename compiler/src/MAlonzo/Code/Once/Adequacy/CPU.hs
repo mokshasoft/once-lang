@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Once.Adequacy.CPU.Interface
 import qualified MAlonzo.Code.Once.Adequacy.CPU.RiscV64
 import qualified MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32
 import qualified MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Spec.Trace
 import qualified MAlonzo.Code.Once.Target.Arch
 
@@ -45,7 +45,7 @@ d_arch'45'semantics_6 v0
 -- Once.Adequacy.CPU.exec
 d_exec_8 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_exec_8 v0 v1 v2

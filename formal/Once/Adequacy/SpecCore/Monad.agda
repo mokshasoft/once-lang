@@ -16,18 +16,20 @@
 
 open import Once.Spec.Signature using (Signature)
 
+import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Monad (Σ : Signature) where
+
 
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Type.Sub as LS
+import Once.Spec.Grade as LG
+import Once.Internal.Type.Sub as LS
 import Once.Spec.Grade as SG
-import Once.Lang.Graded as LGr
-import Once.Lang.GradedOps as LOps
-import Once.Lang.Trace as LTr
-import Once.Lang.Iterative as LI
+import Once.Internal.Graded as LGr
+import Once.Internal.GradedOps as LOps
+import Once.Internal.Trace as LTr
+import Once.Internal.Iterative as LI
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Polynomial as SPoly
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
@@ -108,14 +110,14 @@ module _ {X X′ Y Y′ : Set} {R : X → X′ → Set} {S : Y → Y′ → Set}
 
 module _ {X X′ : Set} {R : X → X′ → Set} where
 
-  sub-R : ∀ {π π′ π₀ π₀′} (g : π LS.⊑π π₀) (g′ : π′ SG.⊑π π₀′) (p : PR π π′) (p₀ : PR π₀ π₀′) {m m′}
+  sub-R : ∀ {π π′ π₀ π₀′} (g : π Once.Spec.Grade.⊑π π₀) (g′ : π′ SG.⊑π π₀′) (p : PR π π′) (p₀ : PR π₀ π₀′) {m m′}
         → MR p R m m′ → MR p₀ R (LGr.subM g m) (SE.sub g′ m′)
-  sub-R LS.⊑-pure SG.⊑-pure pr-pure pr-pure r = r
-  sub-R LS.⊑-eff  SG.⊑-eff  pr-eff  pr-eff  r = r
-  sub-R LS.⊑-pe   SG.⊑-pe   pr-pure pr-eff  r = return∞-R r
-  sub-R LS.⊑-act  SG.⊑-act  pr-act  pr-act  r = r
-  sub-R LS.⊑-pa   SG.⊑-pa   pr-pure pr-act  r = ret r
-  sub-R LS.⊑-ae   SG.⊑-ae   pr-act  pr-eff  r = embed-R r
+  sub-R Once.Spec.Grade.⊑-pure SG.⊑-pure pr-pure pr-pure r = r
+  sub-R Once.Spec.Grade.⊑-eff  SG.⊑-eff  pr-eff  pr-eff  r = r
+  sub-R Once.Spec.Grade.⊑-pe   SG.⊑-pe   pr-pure pr-eff  r = return∞-R r
+  sub-R Once.Spec.Grade.⊑-act  SG.⊑-act  pr-act  pr-act  r = r
+  sub-R Once.Spec.Grade.⊑-pa   SG.⊑-pa   pr-pure pr-act  r = ret r
+  sub-R Once.Spec.Grade.⊑-ae   SG.⊑-ae   pr-act  pr-eff  r = embed-R r
 
 ------------------------------------------------------------------------
 -- The loop

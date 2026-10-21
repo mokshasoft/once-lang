@@ -24,13 +24,13 @@ module Once.Arith.SigOp.Builders where
 import Data.Integer as ℤ
 import Data.Nat as ℕ
 
-open import Once.Lang.Type.Grade using (ArrowKind; mk-kind; pure; act; eff)
-open import Once.Lang.Type using (Unit; Void; Int; _*_; _+_; isUnit?; isVoid?)
+open import Once.Spec.Grade using (ArrowKind; mk-kind; pure; act; eff)
+open import Once.Internal.Type using (Unit; Void; Int; _*_; _+_; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Prim using (p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
-open import Once.Lang.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -45,7 +45,7 @@ open TargetNum using (int-bits)
 -- | This target's modular arithmetic. The ONLY place the width is read.
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 import Once.Spec.Float.Arith as FA
-import Once.Lang.Value Carrier Carrier as M
+import Once.Internal.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 
 ------------------------------------------------------------------------
@@ -134,22 +134,22 @@ neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) base-Int base-Int
 -- Float arithmetic (plan 0.75 F4). Distinct NAMES, not overloads: the SigOp
 -- name is the identity the backend dispatches on, and `arith.add.int` and
 -- `arith.add.float` are different instructions on every target.
-base-F×F : IsBaseType (Once.Lang.Type.Float * Once.Lang.Type.Float)
+base-F×F : IsBaseType (Once.Internal.Type.Float * Once.Internal.Type.Float)
 base-F×F = base-Prod base-Float base-Float
 
-fadd-info : SigOpInfo (Once.Lang.Type.Float * Once.Lang.Type.Float) Once.Lang.Type.Float
+fadd-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
 fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F base-Float
 
-fsub-info : SigOpInfo (Once.Lang.Type.Float * Once.Lang.Type.Float) Once.Lang.Type.Float
+fsub-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
 fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F base-Float
 
-fmul-info : SigOpInfo (Once.Lang.Type.Float * Once.Lang.Type.Float) Once.Lang.Type.Float
+fmul-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
 fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F base-Float
 
-fdiv-info : SigOpInfo (Once.Lang.Type.Float * Once.Lang.Type.Float) Once.Lang.Type.Float
+fdiv-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
 fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F base-Float
 
-i2f-info : SigOpInfo Int Once.Lang.Type.Float
+i2f-info : SigOpInfo Int Once.Internal.Type.Float
 i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int base-Float
 
 -- Comparisons

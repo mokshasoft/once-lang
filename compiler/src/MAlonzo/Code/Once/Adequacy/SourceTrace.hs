@@ -32,7 +32,7 @@ import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.Denotation.TraceTr
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve
@@ -333,7 +333,7 @@ du_rewrite'45'program'45'linked_234 v0 v1
 d_'10214'_'10215'IR'7511'_242 ::
   Maybe MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_'10214'_'10215'IR'7511'_242 v0 v1 v2
   = case coe v0 of
@@ -343,7 +343,7 @@ d_'10214'_'10215'IR'7511'_242 v0 v1 v2
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              (coe
                 MAlonzo.Code.Once.Denotation.Program.d_runIR_398 (coe v1)
-                (coe MAlonzo.Code.Once.Lang.Trace.d_pureHalf_262 (coe v2))
+                (coe MAlonzo.Code.Once.Internal.Trace.d_pureHalf_262 (coe v2))
                 (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe MAlonzo.Code.Once.Adequacy.MachineTrace.d_silentTr_34

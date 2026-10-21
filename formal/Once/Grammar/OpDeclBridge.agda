@@ -29,7 +29,7 @@ open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB; tryOpDeclAfterB)
 open import Once.Parser.PolyType using (parsePolyTypeB)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
 open import Once.Grammar.FunDefBridge using (sound-fundef; complete-fundef)
-open import Once.Lang.Grammar.OpDecl
+open import Once.Internal.Grammar.OpDecl
   using (ParsesOpChars; poc-close; poc-char; ParsesOpAfter; poa-sig; poa-fun;
          ParsesOpDecl; pod-mk)
 

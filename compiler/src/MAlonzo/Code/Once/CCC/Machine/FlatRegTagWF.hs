@@ -26,7 +26,7 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.Lang.Event
+import qualified MAlonzo.Code.Once.Internal.Event
 
 -- Once.CCC.Machine.FlatRegTagWF._.writeLoc
 d_writeLoc_28 ::
@@ -540,7 +540,7 @@ d_regtag'45'write'45'nc'45'halt_656 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   Bool ->
-  [MAlonzo.Code.Once.Lang.Event.T_SigOpEvent_56] ->
+  [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56] ->
   T_RegTagWF_524 -> T_RegTagWF_524
 d_regtag'45'write'45'nc'45'halt_656 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 v7
   = du_regtag'45'write'45'nc'45'halt_656 v2 v7

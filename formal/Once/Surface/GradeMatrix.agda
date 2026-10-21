@@ -18,13 +18,13 @@
 
 module Once.Surface.GradeMatrix where
 
-import Once.Lang.Laws.Grade as G
+import Once.Internal.Laws.Grade as G
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
-open import Once.Lang.Context using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
+open import Once.Internal.Context using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroˡ; *ᵘ-zeroʳ; *ᵘ-identityˡ; +q-identityʳ)
 
 ------------------------------------------------------------------------

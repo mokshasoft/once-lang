@@ -35,10 +35,10 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Context as LC
-open import Once.Lang.Context using (svar)
-open import Once.Lang.Typing.Scope using (Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
+import Once.Spec.Grade as LG
+import Once.Internal.Context as LC
+open import Once.Internal.Context using (svar)
+open import Once.Internal.Typing.Scope using (Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
 open Binding using (name)
 import Once.Spec.Surface.Typing Σ S′ nm as SU
 open SU using (Locals; ∅; _▹_∶_)

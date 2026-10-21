@@ -33,16 +33,16 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical)
 open import Data.String using (String)
 
-open import Once.Lang.Type using (Type; Int; Float)
+open import Once.Internal.Type using (Type; Int; Float)
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Value Carrier Carrier as M
-open import Once.Lang.Event using (SigOpEvent)
-open import Once.Lang.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
-open Once.Lang.Trace.CallOp using (ccod; cdom)
-open import Once.Lang.Contract using (Key; key; kdom; kcod; _∈K?_)
+import Once.Internal.Value Carrier Carrier as M
+open import Once.Internal.Event using (SigOpEvent)
+open import Once.Internal.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
+open Once.Internal.Trace.CallOp using (ccod; cdom)
+open import Once.Internal.Contract using (Key; key; kdom; kcod; _∈K?_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 

@@ -43,15 +43,15 @@ open import Function using (Injective)
 open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-import Once.Lang.Type as LT
-open import Once.Lang.Type.Grade using (mk-kind; Many; pure; act; eff)
-import Once.Lang.Type.Poly as TP
+import Once.Internal.Type as LT
+open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
+import Once.Internal.Type.Poly as TP
 open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
                PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; Ground; GroundF; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
-open import Once.Lang.Type.Instance using (params; nubFrom; arityOf; kindOf; indexOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
-import Once.Lang.Core.PolyTy as LP
-open import Once.Lang.Core.AbsTy using (absTy; absF)
-open import Once.Lang.Core.Schema using (schemaOf; kindsOf; module Var; memberB-sound; memberB-complete; lookup-∈)
+open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; kindOf; indexOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
+import Once.Internal.Core.PolyTy as LP
+open import Once.Internal.Core.AbsTy using (absTy; absF)
+open import Once.Internal.Core.Schema using (schemaOf; kindsOf; module Var; memberB-sound; memberB-complete; lookup-∈)
 import Once.Spec.Type as ST
 open ST using (Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
 import Once.Spec.Surface.Syntax as SS

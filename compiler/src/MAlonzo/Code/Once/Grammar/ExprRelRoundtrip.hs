@@ -28,7 +28,7 @@ import qualified MAlonzo.Code.Once.Grammar.ExprConvert
 import qualified MAlonzo.Code.Once.Grammar.ExprPrinter
 import qualified MAlonzo.Code.Once.Grammar.Printer
 import qualified MAlonzo.Code.Once.Grammar.RelRoundtrip
-import qualified MAlonzo.Code.Once.Lang.Syntax
+import qualified MAlonzo.Code.Once.Internal.Syntax
 import qualified MAlonzo.Code.Once.Parser.ExprRelation
 import qualified MAlonzo.Code.Once.Parser.Token
 
@@ -141,7 +141,7 @@ du_quiet'45'of_110 = coe C_q'45'word'45'res_14
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→app
 d_atomExpr'8594'app_118 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -149,7 +149,7 @@ d_atomExpr'8594'app_118 ::
 d_atomExpr'8594'app_118 ~v0 v1 v2 v3 v4
   = du_atomExpr'8594'app_118 v1 v2 v3 v4
 du_atomExpr'8594'app_118 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -163,7 +163,7 @@ du_atomExpr'8594'app_118 v0 v1 v2 v3
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→unary
 d_atomExpr'8594'unary_132 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -171,7 +171,7 @@ d_atomExpr'8594'unary_132 ::
 d_atomExpr'8594'unary_132 ~v0 v1 v2 v3 v4
   = du_atomExpr'8594'unary_132 v1 v2 v3 v4
 du_atomExpr'8594'unary_132 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -183,7 +183,7 @@ du_atomExpr'8594'unary_132 v0 v1 v2 v3
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→mul
 d_atomExpr'8594'mul_146 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -191,7 +191,7 @@ d_atomExpr'8594'mul_146 ::
 d_atomExpr'8594'mul_146 ~v0 v1 v2 v3 v4
   = du_atomExpr'8594'mul_146 v1 v2 v3 v4
 du_atomExpr'8594'mul_146 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -207,7 +207,7 @@ du_atomExpr'8594'mul_146 v0 v1 v2 v3
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→add
 d_atomExpr'8594'add_160 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -215,7 +215,7 @@ d_atomExpr'8594'add_160 ::
 d_atomExpr'8594'add_160 ~v0 v1 v2 v3 v4
   = du_atomExpr'8594'add_160 v1 v2 v3 v4
 du_atomExpr'8594'add_160 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -230,7 +230,7 @@ du_atomExpr'8594'add_160 v0 v1 v2 v3
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→cmp
 d_atomExpr'8594'cmp_174 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -238,7 +238,7 @@ d_atomExpr'8594'cmp_174 ::
 d_atomExpr'8594'cmp_174 ~v0 v1 v2 v3 v4
   = du_atomExpr'8594'cmp_174 v1 v2 v3 v4
 du_atomExpr'8594'cmp_174 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -251,7 +251,7 @@ du_atomExpr'8594'cmp_174 v0 v1 v2 v3
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→comp
 d_atomExpr'8594'comp_188 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -259,7 +259,7 @@ d_atomExpr'8594'comp_188 ::
 d_atomExpr'8594'comp_188 ~v0 v1 v2 v3 v4
   = du_atomExpr'8594'comp_188 v1 v2 v3 v4
 du_atomExpr'8594'comp_188 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -274,7 +274,7 @@ du_atomExpr'8594'comp_188 v0 v1 v2 v3
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→expr
 d_atomExpr'8594'expr_202 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -282,7 +282,7 @@ d_atomExpr'8594'expr_202 ::
 d_atomExpr'8594'expr_202 ~v0 v1 v2 v3 v4
   = du_atomExpr'8594'expr_202 v1 v2 v3 v4
 du_atomExpr'8594'expr_202 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_Quiet_6 ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_ParsesAtomExpr_516 ->
@@ -294,7 +294,7 @@ du_atomExpr'8594'expr_202 v0 v1 v2 v3
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→mul'
 d_atomExpr'8594'mul''_216 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_NotAtomStart_18 ->
   AgdaAny ->
@@ -303,7 +303,7 @@ d_atomExpr'8594'mul''_216 ::
 d_atomExpr'8594'mul''_216 ~v0 v1 v2 v3 v4 v5
   = du_atomExpr'8594'mul''_216 v1 v2 v3 v4 v5
 du_atomExpr'8594'mul''_216 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_NotAtomStart_18 ->
   AgdaAny ->
@@ -321,7 +321,7 @@ du_atomExpr'8594'mul''_216 v0 v1 v2 v3 v4
 -- Once.Grammar.ExprRelRoundtrip.atomExpr→add'
 d_atomExpr'8594'add''_230 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_NotAtomStart_18 ->
   AgdaAny ->
@@ -331,7 +331,7 @@ d_atomExpr'8594'add''_230 ::
 d_atomExpr'8594'add''_230 ~v0 v1 v2 v3 v4 v5 v6
   = du_atomExpr'8594'add''_230 v1 v2 v3 v4 v5 v6
 du_atomExpr'8594'add''_230 ::
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.ExprRelation.T_NotAtomStart_18 ->
   AgdaAny ->
@@ -452,7 +452,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                     (coe
-                       MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 (coe v7)
+                       MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 (coe v7)
                        (coe
                           MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v8)
                           (coe v6)))
@@ -464,7 +464,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                              (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                           (coe
-                             MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 (coe v7)
+                             MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 (coe v7)
                              (coe
                                 MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v8)
                                 (coe v6)))
@@ -476,7 +476,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                 (coe
-                                   MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 (coe v7)
+                                   MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 (coe v7)
                                    (coe
                                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v8)
                                       (coe v6)))
@@ -486,7 +486,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                    (coe
-                                      MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 (coe v7)
+                                      MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 (coe v7)
                                       (coe
                                          MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                          (coe v8) (coe v6)))
@@ -499,7 +499,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                             (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                             (coe v2))
                                          (coe
-                                            MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 (coe v7)
+                                            MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 (coe v7)
                                             (coe
                                                MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                                (coe v8) (coe v6)))
@@ -544,7 +544,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                     (coe
-                       MAlonzo.Code.Once.Lang.Syntax.C_RApp_42
+                       MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
                        (coe
                           MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v8)
                           (coe v6))
@@ -650,7 +650,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                     (coe
-                       MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
+                       MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
                        (coe
                           MAlonzo.Code.Once.Grammar.ExprConvert.d_gBinOpToRaw_6 (coe v9))
                        (coe
@@ -672,7 +672,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                     (coe
-                       MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62
+                       MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62
                        (MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                           (coe v8) (coe v6)))
                     (coe
@@ -683,7 +683,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                              (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                           (coe
-                             MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62
+                             MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62
                              (MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                 (coe v8) (coe v6)))
                           (coe
@@ -694,7 +694,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                 (coe
-                                   MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62
+                                   MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62
                                    (MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                       (coe v8) (coe v6)))
                                 (coe
@@ -703,7 +703,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                    (coe
-                                      MAlonzo.Code.Once.Lang.Syntax.C_RUnaryOp_62
+                                      MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62
                                       (MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                          (coe v8) (coe v6)))
                                    (coe
@@ -747,11 +747,11 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                     (coe
-                       MAlonzo.Code.Once.Lang.Syntax.C_RApp_42
+                       MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
                        (coe
-                          MAlonzo.Code.Once.Lang.Syntax.C_RApp_42
+                          MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
                           (coe
-                             MAlonzo.Code.Once.Lang.Syntax.C_RVar_36
+                             MAlonzo.Code.Once.Internal.Syntax.C_RVar_36
                              (coe ("compose" :: Data.Text.Text)))
                           (coe
                              MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v8)
@@ -776,7 +776,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                      (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                   (coe
-                                     MAlonzo.Code.Once.Lang.Syntax.C_RLet_46 (coe v13)
+                                     MAlonzo.Code.Once.Internal.Syntax.C_RLet_46 (coe v13)
                                      (coe
                                         MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                         (coe v14) (coe v7))
@@ -792,7 +792,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                            (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                            (coe v2))
                                         (coe
-                                           MAlonzo.Code.Once.Lang.Syntax.C_RLet_46 (coe v13)
+                                           MAlonzo.Code.Once.Internal.Syntax.C_RLet_46 (coe v13)
                                            (coe
                                               MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                               (coe v14) (coe v7))
@@ -808,7 +808,8 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                                  (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                  (coe v2))
                                               (coe
-                                                 MAlonzo.Code.Once.Lang.Syntax.C_RLet_46 (coe v13)
+                                                 MAlonzo.Code.Once.Internal.Syntax.C_RLet_46
+                                                 (coe v13)
                                                  (coe
                                                     MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                                     (coe v14) (coe v7))
@@ -823,7 +824,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                                        MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                     (coe v2))
                                                  (coe
-                                                    MAlonzo.Code.Once.Lang.Syntax.C_RLet_46
+                                                    MAlonzo.Code.Once.Internal.Syntax.C_RLet_46
                                                     (coe v13)
                                                     (coe
                                                        MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
@@ -841,7 +842,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                                              MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                           (coe v2))
                                                        (coe
-                                                          MAlonzo.Code.Once.Lang.Syntax.C_RLet_46
+                                                          MAlonzo.Code.Once.Internal.Syntax.C_RLet_46
                                                           (coe v13)
                                                           (coe
                                                              MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
@@ -930,7 +931,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                     (coe
-                       MAlonzo.Code.Once.Lang.Syntax.C_RDestruct_50
+                       MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50
                        (coe
                           MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v12)
                           (coe v9))
@@ -950,7 +951,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                              (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                           (coe
-                             MAlonzo.Code.Once.Lang.Syntax.C_RDestruct_50
+                             MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50
                              (coe
                                 MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v12)
                                 (coe v9))
@@ -970,7 +971,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                 (coe
-                                   MAlonzo.Code.Once.Lang.Syntax.C_RDestruct_50
+                                   MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50
                                    (coe
                                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                       (coe v12) (coe v9))
@@ -988,7 +989,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                    (coe
-                                      MAlonzo.Code.Once.Lang.Syntax.C_RDestruct_50
+                                      MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50
                                       (coe
                                          MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                          (coe v12) (coe v9))
@@ -1009,7 +1010,7 @@ d_rt'45'atom'45'expr_266 v0 v1 v2 v3
                                             (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                             (coe v2))
                                          (coe
-                                            MAlonzo.Code.Once.Lang.Syntax.C_RDestruct_50
+                                            MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50
                                             (coe
                                                MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12
                                                (coe v12) (coe v9))
@@ -1300,7 +1301,7 @@ d_rt'45'expr'45'app'45'body_286 v0 v1 v2 v3 v4 v5 v6
       (coe
          MAlonzo.Code.Once.Parser.ExprRelation.C_pc'45'mk_556 v4
          (coe
-            MAlonzo.Code.Once.Lang.Syntax.C_RApp_42
+            MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
             (coe
                MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                (coe v2))
@@ -1312,7 +1313,7 @@ d_rt'45'expr'45'app'45'body_286 v0 v1 v2 v3 v4 v5 v6
             (coe
                MAlonzo.Code.Once.Parser.ExprRelation.C_pa'45'mk_668 v4
                (coe
-                  MAlonzo.Code.Once.Lang.Syntax.C_RApp_42
+                  MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
                   (coe
                      MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                      (coe v2))
@@ -1322,7 +1323,7 @@ d_rt'45'expr'45'app'45'body_286 v0 v1 v2 v3 v4 v5 v6
                (coe
                   MAlonzo.Code.Once.Parser.ExprRelation.C_pm'45'mk_714 v4
                   (coe
-                     MAlonzo.Code.Once.Lang.Syntax.C_RApp_42
+                     MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
                      (coe
                         MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                         (coe v2))
@@ -1385,8 +1386,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpAdd_8)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpAdd_8)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -1476,8 +1477,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpSub_10)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpSub_10)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -1567,8 +1568,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpMul_12)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpMul_12)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -1583,8 +1584,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                       (coe
-                         MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                         (coe MAlonzo.Code.Once.Lang.Syntax.C_OpMul_12)
+                         MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                         (coe MAlonzo.Code.Once.Internal.Syntax.C_OpMul_12)
                          (coe
                             MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                             (coe v3))
@@ -1686,8 +1687,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpDiv_14)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpDiv_14)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -1702,8 +1703,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                       (coe
-                         MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                         (coe MAlonzo.Code.Once.Lang.Syntax.C_OpDiv_14)
+                         MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                         (coe MAlonzo.Code.Once.Internal.Syntax.C_OpDiv_14)
                          (coe
                             MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                             (coe v3))
@@ -1805,8 +1806,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpMod_16)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpMod_16)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -1821,8 +1822,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                       (coe
-                         MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                         (coe MAlonzo.Code.Once.Lang.Syntax.C_OpMod_16)
+                         MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                         (coe MAlonzo.Code.Once.Internal.Syntax.C_OpMod_16)
                          (coe
                             MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                             (coe v3))
@@ -1925,8 +1926,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpLt_18)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpLt_18)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -1999,8 +2000,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpLe_20)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpLe_20)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -2073,8 +2074,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpGt_22)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpGt_22)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -2147,8 +2148,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpGe_24)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpGe_24)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -2221,8 +2222,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpEq_26)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpEq_26)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))
@@ -2295,8 +2296,8 @@ d_rt'45'expr'45'binop'45'body_300 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v5))
                 (coe
-                   MAlonzo.Code.Once.Lang.Syntax.C_RBinOp_60
-                   (coe MAlonzo.Code.Once.Lang.Syntax.C_OpNe_28)
+                   MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                   (coe MAlonzo.Code.Once.Internal.Syntax.C_OpNe_28)
                    (coe
                       MAlonzo.Code.Once.Grammar.ExprConvert.d_gexprToRaw_12 (coe v0)
                       (coe v3))

@@ -24,7 +24,7 @@
 
 module Once.TypeCheck.ErrorProofs where
 
-import Once.Lang.Context as Surface
+import Once.Internal.Context as Surface
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using ()
@@ -34,27 +34,27 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Lang.Type using (Type; Unit; Void; Int)
+open import Once.Internal.Type using (Type; Unit; Void; Int)
 open import Once.Spec.Name using (gen)
-import Once.Lang.Type.Grade as T
-import Once.Lang.Type as T
-import Once.Lang.Type.Poly as T
+import Once.Spec.Grade as T
+import Once.Internal.Type as T
+import Once.Internal.Type.Poly as T
 import Once.Type as T
-open import Once.Lang.Syntax as Raw using (RawExpr; RLam; RQualified)
-open import Once.Lang.Type.DecEq using (_≟T_)
-open import Once.Lang.Type.Join using (UB; join?-apart)
-open import Once.Lang.Type.Sub using (sub-int; sub-unit)
+open import Once.Internal.Syntax as Raw using (RawExpr; RLam; RQualified)
+open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Internal.Type.Join using (UB; join?-apart)
+open import Once.Internal.Type.Sub using (sub-int; sub-unit)
 open import Once.Type.Sub using (_<:?_)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
-open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal)
+open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal)
 open import Once.TypeCheck.Classify using (lookupPoly)
-import Once.Lang.Typing.Scope as Classify
+import Once.Internal.Typing.Scope as Classify
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error
   using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; InlNeedsSumType; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UnboundVariable; UnboundQualified)
-import Once.Lang.Context
+import Once.Internal.Context
 
 ------------------------------------------------------------------------
 -- Unconditional-failure paths (now trivial after refactor)
@@ -196,9 +196,9 @@ case-branch-mismatch-is-CaseBranchMismatch :
     {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
   → inferElab ctx scrut ≡ success (A T.+ B) Ψs scrutE ds fs
   → inferElab (Classify.extendNamedCtx ctx xL A) eL
-      ≡ success C₁ (qℓ Once.Lang.Context.Usage.∷ Ψₗ) eLE dL fL
+      ≡ success C₁ (qℓ Once.Internal.Context.Usage.∷ Ψₗ) eLE dL fL
   → inferElab (Classify.extendNamedCtx ctx xR B) eR
-      ≡ success C₂ (qr Once.Lang.Context.Usage.∷ Ψᵣ) eRE dR fR
+      ≡ success C₂ (qr Once.Internal.Context.Usage.∷ Ψᵣ) eRE dR fR
   → ¬ UB C₁ C₂
   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
   → err ≡ CaseBranchMismatch
@@ -206,9 +206,9 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
   with inferElabV ctx scrut | eqS
 ... | success (_ T.+ _) _ _ _ _ , _ | refl
     with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
-...   | success _ (_ Once.Lang.Context.Usage.∷ _) _ _ _ , _ | refl
+...   | success _ (_ Once.Internal.Context.Usage.∷ _) _ _ _ , _ | refl
       with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
-...     | success _ (_ Once.Lang.Context.Usage.∷ _) _ _ _ , _ | refl =
+...     | success _ (_ Once.Internal.Context.Usage.∷ _) _ _ _ , _ | refl =
   -- D322: branches with no upper bound have no join.
   sym (failure-inj (trans (sym (cong proj₁ (cong (Once.TypeCheck.Elaborate.inferElabV-RDestruct-join _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
                                                 (proj₂ (join?-apart ¬eq)))))
@@ -298,14 +298,14 @@ lam-usage-violation-is-UsageViolation :
     (q' : _) {Ψ' eE' d' f' err}
   → Once.TypeCheck.Elaborate.checkElab
       (Classify.extendNamedCtx ctx x A) body B
-      ≡ success (q' Once.Lang.Context.Usage.∷ Ψ') eE' d' f'
+      ≡ success (q' Once.Internal.Context.Usage.∷ Ψ') eE' d' f'
   → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
   → Once.TypeCheck.Elaborate.checkElab ctx (Raw.RLam x body)
       (A T.⇒[ T.mk-kind q T.pure ] B) ≡ failure err
   → err ≡ Once.TypeCheck.Error.UsageViolation x q q'
 lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
   with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqInner
-... | success (_ Once.Lang.Context.Usage.∷ _) _ _ _ , _ | refl
+... | success (_ Once.Internal.Context.Usage.∷ _) _ _ _ , _ | refl
     with Once.TypeCheck.Elaborate.decideLeq q' q | eqLeq
 ...   | nothing | refl with eqOuter
 ...     | refl = refl

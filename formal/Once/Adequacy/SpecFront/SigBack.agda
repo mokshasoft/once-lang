@@ -21,12 +21,12 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Type.Honest as LH
-import Once.Lang.Type.Grade as LG
+import Once.Internal.Type as LT
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Type.Honest as LH
+import Once.Spec.Grade as LG
 open import Data.List using ([])
-open import Once.Lang.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
+open import Once.Internal.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
   Ground; extractGround)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S

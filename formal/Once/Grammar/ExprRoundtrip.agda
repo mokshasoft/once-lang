@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Grammar as G
 open G using (GExpr)
-open import Once.Lang.Syntax
+open import Once.Internal.Syntax
 open import Once.TypeCheck.Raw
 open import Once.Parser.Expr using (parseExpr)
 open import Once.Grammar.ExprPrinter using (printGExpr; ConcreteExpr; c-e-unit; c-e-int)

@@ -11,14 +11,13 @@
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Lang.Trace using (Interp; pureHalf; interp)
-open import Once.Lang.Contract using (ISig; Impl)
+open import Once.Internal.Trace using (Interp; pureHalf; interp)
+open import Once.Internal.Contract using (ISig; Impl)
 
 -- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
 -- run against the same one.
+import Once.Spec.Grade
 module Once.Adequacy.TeleWalk.Invariant (fmt : TargetNum) (Fs : ISig) (Ip : Impl Fs) where
-
-import Once.Lang.Type.Grade
 
 -- The world: the program's signatures with the implementation `Ip`.
 ι : Interp
@@ -41,10 +40,10 @@ open import Data.Empty using (⊥)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Lang.Type using (Type)
-open import Once.Lang.Type.Instance using (KindedInstance)
-open import Once.Lang.Type.WellFormed using (RigidFree)
-open import Once.Lang.Type.Honest using (HonestFFI)
+open import Once.Internal.Type using (Type)
+open import Once.Internal.Type.Instance using (KindedInstance)
+open import Once.Internal.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -54,22 +53,22 @@ open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
-import Once.Lang.Context as Ctx
+import Once.Internal.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.Lang.Typing.Scope using (Imports)
-open import Once.Lang.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
-open import Once.Lang.Type.Instance using (rigidOf)
+open import Once.Internal.Typing.Scope using (Imports)
+open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
+open import Once.Internal.Type.Instance using (rigidOf)
 open import Once.Denotation.Realize using (realize; realize-infer)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Lang.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; MonoBody)
-open import Once.Lang.Core.PolyTy using (Sig)
-open import Once.Lang.Core.Telescope using (Tele; def; teleSem; noKinds)
-open import Once.Lang.Core.Schema using (schemaOf; kindsOf)
-open import Once.Lang.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; SigCF; viewOf; monoElab; monoBody; monoSchema; polyElab; polyBody)
-import Once.Lang.Core.Abstract as A
-import Once.Lang.Core.Translate as TR
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; MonoBody)
+open import Once.Internal.Core.PolyTy using (Sig)
+open import Once.Internal.Core.Telescope using (Tele; def; teleSem; noKinds)
+open import Once.Internal.Core.Schema using (schemaOf; kindsOf)
+open import Once.Internal.Core.Translate using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; SigCF; viewOf; monoElab; monoBody; monoSchema; polyElab; polyBody)
+import Once.Internal.Core.Abstract as A
+import Once.Internal.Core.Translate as TR
 open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
@@ -78,18 +77,18 @@ import Once.Adequacy.MeaningBridge as MB
 import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.CoreAbsSem as CAS
-import Once.Lang.Elaboration as ElabM
-import Once.Lang.Core.Meaning as GM
-import Once.Lang.Core.PolyTyping as PT
+import Once.Internal.Elaboration as ElabM
+import Once.Internal.Core.Meaning as GM
+import Once.Internal.Core.PolyTyping as PT
 import Once.Denotation.Meaning as MeaningM
-open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Internal.Trace using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
 φ = pureHalf ι
 
 open import Once.Adequacy.GradedRelation fmt using (RelGM; GM-D)
-open import Once.Lang.Iterative using (T∞)
+open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueRel using (RelD)
 open import Once.Denotation.ValueRelPER using (RelS-trans; RelD-trans)
@@ -193,7 +192,7 @@ inv-sig {csc = csc} {x = x} {ty = ty} {g = g} inv = record
 
 private
   -- The splice of a telescope body is its derivation's realization, resolved.
-  splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.Lang.Typing.Scope.PolyCtx) (y : String)
+  splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.Internal.Typing.Scope.PolyCtx) (y : String)
                   {Xs : TopCtx} {b : _} {A : Type} {se : _} {d f : ℕ}
                   (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
                   (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
@@ -201,12 +200,12 @@ private
   splice-form I uf pre y (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
 impEnv-wk : ∀ {s} {S : Sig Fs s} {sc} {tl : Tele S} {body : _} {D : _} {imps} (is : ImpSig S imps)
-          → CE.impEnv fmt (S Once.Lang.Core.PolyTy.▷ sc) (teleSem fmt Ip (def tl sc body D)) (wkI is) ≡ CE.impEnv fmt S (teleSem fmt Ip tl) is
+          → CE.impEnv fmt (S Once.Internal.Core.PolyTy.▷ sc) (teleSem fmt Ip (def tl sc body D)) (wkI is) ≡ CE.impEnv fmt S (teleSem fmt Ip tl) is
 impEnv-wk TR.[]              = refl
 impEnv-wk {sc = sc} {tl} {body} {D} (TR.i-def d e is) = cong₂ _,_ refl (impEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} is)
 
 defEnv-wk : ∀ {s} {S : Sig Fs s} {sc} {tl : Tele S} {body : _} {D : _} {ps} (ts : TeleSig S ps)
-          → CE.defEnv fmt (S Once.Lang.Core.PolyTy.▷ sc) (teleSem fmt Ip (def tl sc body D)) (wkT ts) ≡ CE.defEnv fmt S (teleSem fmt Ip tl) ts
+          → CE.defEnv fmt (S Once.Internal.Core.PolyTy.▷ sc) (teleSem fmt Ip (def tl sc body D)) (wkT ts) ≡ CE.defEnv fmt S (teleSem fmt Ip tl) ts
 defEnv-wk TR.[]              = refl
 defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def d e ts) = cong₂ _,_ refl (defEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} ts)
 
@@ -216,13 +215,13 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
                 (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} (g : RigidFree ty)
                 (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ctx.Usage.[])
-                {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
+                {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
                 (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
                 (inv : Inv {S = S} csc tl ss is ts pre) where
   x    = funName fi
   δ    = teleSem fmt Ip tl
-  S′   = S Once.Lang.Core.PolyTy.▷ monoSchema ty
+  S′   = S Once.Internal.Core.PolyTy.▷ monoSchema ty
   bodyT = A.absTm S noKinds (proj₁ (monoElab {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts D))
   bodyD = monoBody {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts sg g D
   tl′  = def tl (monoSchema ty) bodyT bodyD
@@ -242,11 +241,11 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
   -- equation), then coherence.
   relC : (D′ : ctx ⊢ᶜ funBody fi ∶ ty ⨾ Ctx.Usage.[])
        → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-       → RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+       → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relC D′ cf′ =
     TE.abi-rel ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S V D′)) fmt δ tt) M
-      (GM-D Once.Lang.Type.Grade.pure ty
-            (subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (SD.⟦ realize D′ ⟧ˢ fmt σx tt))
+      (GM-D Once.Spec.Grade.pure ty
+            (subst (λ m → RelGM Once.Spec.Grade.pure ty m (SD.⟦ realize D′ ⟧ˢ fmt σx tt))
                    (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D′ tt) relA)
             chain)
     where
@@ -261,18 +260,18 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
              (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″) tt)
                  (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″))))
              (realize-invariant D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
-      relA : RelGM Once.Lang.Type.Grade.pure ty (MeaningM.⟦_⟧ᶜ D′ fmt ρ tt) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
+      relA : RelGM Once.Spec.Grade.pure ty (MeaningM.⟦_⟧ᶜ D′ fmt ρ tt) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
       relA = MB.bridge-c fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   -- R8, without a signature: the same chain, through the synthesis.
   relI : (D′ : ctx ⊢ᵢ funBody fi ∶ ty ⨾ Ctx.Usage.[])
        → C.compileFunI IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-       → RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᵢ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+       → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᵢ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relI D′ cf′ =
     TE.abi-rel ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᵢ S V D′)) fmt δ tt) M
-      (GM-D Once.Lang.Type.Grade.pure ty
-            (subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt))
+      (GM-D Once.Spec.Grade.pure ty
+            (subst (λ m → RelGM Once.Spec.Grade.pure ty m (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt))
                    (CMB.bridge-i fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D′ tt) relA)
             chain)
     where
@@ -287,26 +286,26 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
              (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″) tt)
                  (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″))))
              (realize-invariant-i D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
-      relA : RelGM Once.Lang.Type.Grade.pure ty (MeaningM.⟦_⟧ᵢ D′ fmt ρ tt) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
+      relA : RelGM Once.Spec.Grade.pure ty (MeaningM.⟦_⟧ᵢ D′ fmt ρ tt) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
       relA = MB.bridge-i fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   relM-at : ∀ (ft : Data.Maybe.Maybe Type) (D′ : MonoBody ft ctx (funBody fi) ty Ctx.Usage.[])
           → C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-          → RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S (proj₂ (TR.elabM ft V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+          → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S (proj₂ (TR.elabM ft V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relM-at (Data.Maybe.just _) D′ cf′ = relC D′ cf′
   relM-at Data.Maybe.nothing  D′ cf′ = relI D′ cf′
 
   entry≡ : GM.⟦_⟧ S Dc fmt δ tt ≡ CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)
   entry≡ = sym (CAS.mono-entry-sem S noKinds _ _ sg g Dc fmt δ)
 
-  relM : RelGM Once.Lang.Type.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+  relM : RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S Dc fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relM = relM-at (funType fi) D cf
 
 -- D324: `main` joins the telescope and the table, not the definitions' scope.
 inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
-             {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
+             {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
@@ -318,7 +317,7 @@ inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigC
 
 inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
-             {irFun : IR ⌊ Once.Lang.Type.Unit ⌋ ⌊ ty ⌋}
+             {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
@@ -386,9 +385,9 @@ inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.
         callRel : RelS (RelD ty) (MB.callSD fmt σ x ty) (subst T∞ (cohᴰ ty) (abiT ty M))
         callRel = ≡ˡ (callSD-later later (e ∷ pre) (C.cpolys csc) I uf′ x ty (ns-head later (C.CScope.cimps csc) ns))
                      (coh-runs ty (abi ty x pre irFun))
-        new : RelGM Once.Lang.Type.Grade.pure ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
-        new = subst (λ m → RelGM Once.Lang.Type.Grade.pure ty m (MB.callSD fmt σ x ty)) entry≡
-                    (GM-D Once.Lang.Type.Grade.pure ty relM callRel)
+        new : RelGM Once.Spec.Grade.pure ty (CMB.refSem fmt S′ δ′ {d = zero} {U = ty} (TR.mono-inst {S = S′} {d = zero} {T′ = ty} refl)) (MB.callSD fmt σ x ty)
+        new = subst (λ m → RelGM Once.Spec.Grade.pure ty m (MB.callSD fmt σ x ty)) entry≡
+                    (GM-D Once.Spec.Grade.pure ty relM callRel)
 
 ------------------------------------------------------------------------
 -- A telescope entry: typed once at its rigid schema; each reference to it is
@@ -418,7 +417,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
     scT   = pfunType pfi
     bodyT = A.absTm S (kindsOf scT) (proj₁ (polyElab {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ctx.Usage.[]} ss is ts D))
     bodyD = polyBody {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ctx.Usage.[]} ss is ts sg D
-    S′    = S Once.Lang.Core.PolyTy.▷ schemaOf scT
+    S′    = S Once.Internal.Core.PolyTy.▷ schemaOf scT
     δ     = teleSem fmt Ip tl
     δ′    = teleSem fmt Ip (def tl (schemaOf scT) bodyT bodyD)
     ctx   = ctxOf (AS.scopeOf csc)
@@ -458,14 +457,14 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
 
         -- the new entry: its splice at an instance is its core instance (6e)
         head : ∀ (U : Type) (ki : KindedInstance scT U)
-             → RelGM Once.Lang.Type.Grade.pure U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
+             → RelGM Once.Spec.Grade.pure U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
                       (SD.DefsSem.refs σ y U)
         head U ki =
-          subst (λ m → RelGM Once.Lang.Type.Grade.pure U m (SD.DefsSem.refs σ y U))
+          subst (λ m → RelGM Once.Spec.Grade.pure U m (SD.DefsSem.refs σ y U))
                 (trans (CMB.bridge-c fmt S {δ = δ} V (CE.agree fmt S δ ss is ts) D-U tt)
                        (EI.poly-instance-sem S (viewOf {S = S} ss is ts) sg fmt δ scT
                          (λ ki′ → EI.viewOf-natural S (kindsOf scT) _ _ ss is ts) (Inv.irf inv , Inv.irs inv) D ki))
-                (GM-D Once.Lang.Type.Grade.pure U
+                (GM-D Once.Spec.Grade.pure U
                        (MB.bridge-c fmt σo (σW-self tbl (C.cpolys csc) I uf) D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old)
                        relSD)
           where

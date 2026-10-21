@@ -37,11 +37,11 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-import Once.Lang.Type.Grade as T
-import Once.Lang.Type as T
+import Once.Spec.Grade as T
+import Once.Internal.Type as T
 import Once.Type as T
-open import Once.Lang.Type.Grade using (One)
-open import Once.Lang.Type using (Type)
+open import Once.Spec.Grade using (One)
+open import Once.Internal.Type using (Type)
 import Once.Grammar as G
 open G using (GType)
 
@@ -86,10 +86,10 @@ mutual
   ... | just F  = just (T.μ-type F)
   ... | nothing = nothing
   gtypeToType (G.GNu gf) with gfunctorToFunctor gf
-  ... | just F  = just (T.ν-type F T.pure)
+  ... | just F  = just (T.ν-type F T.pureᶠ)
   ... | nothing = nothing
   gtypeToType (G.GNuAct gf) with gfunctorToFunctor gf
-  ... | just F  = just (T.ν-type F T.act)
+  ... | just F  = just (T.ν-type F T.actᶠ)
   ... | nothing = nothing
   gtypeToType (G.TVar _) = nothing
 
@@ -151,10 +151,10 @@ mutual
   typeToGType (T.μ-type F) with functorToGFunctor F
   ... | just gf = just (G.GMu gf)
   ... | nothing = nothing
-  typeToGType (T.ν-type F T.pure) with functorToGFunctor F
+  typeToGType (T.ν-type F T.pureᶠ) with functorToGFunctor F
   ... | just gf = just (G.GNu gf)
   ... | nothing = nothing
-  typeToGType (T.ν-type F T.act) with functorToGFunctor F
+  typeToGType (T.ν-type F T.actᶠ) with functorToGFunctor F
   ... | just gf = just (G.GNuAct gf)
   ... | nothing = nothing
 
@@ -217,11 +217,11 @@ typeToGType-gtypeToType (T.μ-type F) g eq with functorToGFunctor F in eqF
 typeToGType-gtypeToType (T.μ-type F) .(G.GMu gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
 -- D191: the ν row, the μ row's mirror.
-typeToGType-gtypeToType (T.ν-type F T.pure) g eq with functorToGFunctor F in eqF
-typeToGType-gtypeToType (T.ν-type F T.pure) .(G.GNu gf) refl | just gf
+typeToGType-gtypeToType (T.ν-type F T.pureᶠ) g eq with functorToGFunctor F in eqF
+typeToGType-gtypeToType (T.ν-type F T.pureᶠ) .(G.GNu gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
-typeToGType-gtypeToType (T.ν-type F T.act) g eq with functorToGFunctor F in eqF
-typeToGType-gtypeToType (T.ν-type F T.act) .(G.GNuAct gf) refl | just gf
+typeToGType-gtypeToType (T.ν-type F T.actᶠ) g eq with functorToGFunctor F in eqF
+typeToGType-gtypeToType (T.ν-type F T.actᶠ) .(G.GNuAct gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
 
 functorToGFunctor-gfunctorToFunctor (T.K t) g eq with typeToGType t in eqt
@@ -274,10 +274,10 @@ gtypeToType-typeToGType (G.GMu gf) t eq with gfunctorToFunctor gf in eqG
 gtypeToType-typeToGType (G.GMu gf) .(T.μ-type F) refl | just F
   rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
 gtypeToType-typeToGType (G.GNu gf) t eq with gfunctorToFunctor gf in eqG
-gtypeToType-typeToGType (G.GNu gf) .(T.ν-type F T.pure) refl | just F
+gtypeToType-typeToGType (G.GNu gf) .(T.ν-type F T.pureᶠ) refl | just F
   rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
 gtypeToType-typeToGType (G.GNuAct gf) t eq with gfunctorToFunctor gf in eqG
-gtypeToType-typeToGType (G.GNuAct gf) .(T.ν-type F T.act) refl | just F
+gtypeToType-typeToGType (G.GNuAct gf) .(T.ν-type F T.actᶠ) refl | just F
   rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
 
 gfunctorToFunctor-functorToGFunctor (G.GFK g) F eq with gtypeToType g in eqg
@@ -365,11 +365,11 @@ _ = refl
 -- D191: ν-type is expressible too, via `GNu` — the line above used to read
 -- "ν-type is still rejected (no surface syntax)", and that absence is what
 -- made an `ana` unwritable and so the ν path untestable (D189).
-_ : typeToGType (T.ν-type (T.K T.Int) T.pure) ≡ just (G.GNu (G.GFK G.TInt))
+_ : typeToGType (T.ν-type (T.K T.Int) T.pureᶠ) ≡ just (G.GNu (G.GFK G.TInt))
 _ = refl
 
 -- A stream, `ν (K Int ⊗ Id)`, round-trips:
-_ : typeToGType (T.ν-type (T.K T.Int T.⊗ T.Id) T.pure)
+_ : typeToGType (T.ν-type (T.K T.Int T.⊗ T.Id) T.pureᶠ)
       ≡ just (G.GNu (G.GFProd (G.GFK G.TInt) G.GFId))
 _ = refl
 
@@ -404,9 +404,9 @@ mutual
     ex-fun    : ∀ {A B q} → Expressible A → Expressible B → Expressible (A T.⇒[ T.mk-kind q T.pure ] B)
     ex-eff    : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.⇒[ T.mk-kind T.Many T.eff ] B)
     ex-mu     : ∀ {F} → ExpressibleF F → Expressible (T.μ-type F)
-    ex-nu     : ∀ {F} → ExpressibleF F → Expressible (T.ν-type F T.pure)
+    ex-nu     : ∀ {F} → ExpressibleF F → Expressible (T.ν-type F T.pureᶠ)
     ex-act    : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.⇒[ T.mk-kind T.Many T.act ] B)
-    ex-nu-act : ∀ {F} → ExpressibleF F → Expressible (T.ν-type F T.act)
+    ex-nu-act : ∀ {F} → ExpressibleF F → Expressible (T.ν-type F T.actᶠ)
 
   data ExpressibleF : T.Functor → Set where
     exf-k    : ∀ {t} → Expressible t → ExpressibleF (T.K t)

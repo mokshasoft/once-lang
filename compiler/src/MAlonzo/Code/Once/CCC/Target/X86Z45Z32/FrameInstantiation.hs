@@ -26,7 +26,7 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Layout
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.StackGrowth
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Memory.StackSlots
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Relation.Binary.Definitions
@@ -379,7 +379,7 @@ d_x86'45'32'45'shift'45'frame_240 v0 v1
             MAlonzo.Code.Once.Memory.StackSlots.d_in'45'stack_22 (coe v0)))
 -- Once.CCC.Target.X86-32.FrameInstantiation.x86-32-frame-semantics
 d_x86'45'32'45'frame'45'semantics_246 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6
 d_x86'45'32'45'frame'45'semantics_246 v0
   = coe

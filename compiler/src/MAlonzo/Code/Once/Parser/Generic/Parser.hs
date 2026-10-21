@@ -20,9 +20,9 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.Lang.Type.Grade
 import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Token
+import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Parser.Generic.Parser.actHead?
@@ -1807,7 +1807,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                                  MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                                  v0
                                                                                                  (coe
-                                                                                                    MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                                    MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                                  v1
                                                                                                  v21)
                                                                                               (coe
@@ -1830,7 +1830,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                        MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                        v0
                                                                                        (coe
-                                                                                          MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                          MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                        v1 v17)
                                                                                     (coe v18))
                                                                           _ -> MAlonzo.RTE.mazUnreachableError
@@ -1861,7 +1861,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                        MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                        v0
                                                                                        (coe
-                                                                                          MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                          MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                        v1 v17)
                                                                                     (coe v18))
                                                                           _ -> MAlonzo.RTE.mazUnreachableError
@@ -1882,7 +1882,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                              MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                              v0
                                                                              (coe
-                                                                                MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                              v1 v13)
                                                                           (coe v14))
                                                                 _ -> MAlonzo.RTE.mazUnreachableError
@@ -1932,7 +1932,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                                     MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                                     v0
                                                                                                     (coe
-                                                                                                       MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                                       MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                                     v1
                                                                                                     v20)
                                                                                                  (coe
@@ -1955,7 +1955,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                           MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                           v0
                                                                                           (coe
-                                                                                             MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                             MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                           v1 v16)
                                                                                        (coe v17))
                                                                              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1986,7 +1986,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                           MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                           v0
                                                                                           (coe
-                                                                                             MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                             MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                           v1 v16)
                                                                                        (coe v17))
                                                                              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2007,7 +2007,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                 MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                 v0
                                                                                 (coe
-                                                                                   MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                   MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                 v1 v12)
                                                                              (coe v13))
                                                                    _ -> MAlonzo.RTE.mazUnreachableError
@@ -2046,7 +2046,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                           MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                           v0
                                                                                           (coe
-                                                                                             MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                             MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                           v1 v16)
                                                                                        (coe v17))
                                                                              _ -> MAlonzo.RTE.mazUnreachableError
@@ -2067,7 +2067,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                 MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                 v0
                                                                                 (coe
-                                                                                   MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                   MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                 v1 v12)
                                                                              (coe v13))
                                                                    _ -> MAlonzo.RTE.mazUnreachableError
@@ -2097,7 +2097,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                                 MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                                 v0
                                                                                 (coe
-                                                                                   MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                                   MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                                 v1 v12)
                                                                              (coe v13))
                                                                    _ -> MAlonzo.RTE.mazUnreachableError
@@ -2118,7 +2118,7 @@ du_atGo_500 v0 v1 v2 v3
                                                                       MAlonzo.Code.Once.Parser.Generic.Relation.d_aArrow_168
                                                                       v0
                                                                       (coe
-                                                                         MAlonzo.Code.Once.Lang.Type.Grade.C_Many_14)
+                                                                         MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                                                       v1 v8)
                                                                    (coe v9))
                                                          _ -> MAlonzo.RTE.mazUnreachableError

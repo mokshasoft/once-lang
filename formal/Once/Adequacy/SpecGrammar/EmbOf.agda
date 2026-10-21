@@ -19,7 +19,7 @@ open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Syntax using (RawExpr; RVar; RApp; RBinOp; RLam; RLet; RPair; RDestruct; RAnnot; RUnaryOp; OpNeg)
+open import Once.Internal.Syntax using (RawExpr; RVar; RApp; RBinOp; RLam; RLet; RPair; RDestruct; RAnnot; RUnaryOp; OpNeg)
 import Once.Spec.Surface.Syntax as S
 open import Once.Parser.ExprRelation as E
 open import Once.Adequacy.SpecGrammar.Expr
@@ -28,13 +28,13 @@ open import Once.Adequacy.SpecGrammar.TypeRF using (type-rf)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import; emb-wrap)
 open import Once.Parser.Module.Core using (Decl; DImport; mkImport)
 import Once.Parser.Module.Core
-import Once.Lang.Grammar.Decl as LD
-import Once.Lang.Grammar.Import as LI
-import Once.Lang.Grammar.TypeAlias as LT
-import Once.Lang.Grammar.Signature as LS
-import Once.Lang.Grammar.FunDef as LF
-import Once.Lang.Grammar.OpDecl as LO
-import Once.Lang.Parsing as LP
+import Once.Internal.Grammar.Decl as LD
+import Once.Internal.Grammar.Import as LI
+import Once.Internal.Grammar.TypeAlias as LT
+import Once.Internal.Grammar.Signature as LS
+import Once.Internal.Grammar.FunDef as LF
+import Once.Internal.Grammar.OpDecl as LO
+import Once.Internal.Parsing as LP
 
 -- An expression's Spec image.
 Has : RawExpr → Set

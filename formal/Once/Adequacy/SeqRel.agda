@@ -22,12 +22,12 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Lang.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Semantics.Machine using (⟦_⟧F)
-open import Once.Lang.Trace
+open import Once.Internal.Trace
   using (T; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
-open import Once.Lang.Stream using (seqF)
+open import Once.Internal.Stream using (seqF)
 
 ------------------------------------------------------------------------
 -- A relation lifted over a functor layer. `K` holds data neither side

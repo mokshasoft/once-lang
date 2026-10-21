@@ -44,8 +44,8 @@ open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Type.Grade using (Zero; One; Many; mk-kind; pure; act; eff)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; act; eff; pureᶠ; actᶠ)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.TypeRelation
@@ -281,7 +281,7 @@ parseTypeAtomWF (TEOF       ∷ _) _ = nothing
 -- only needs "the functor parser rejects `( Act`".
 nuAct : ∀ {r} → ParseFunctorSumD r → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ r)
 nuAct nothing                          = nothing
-nuAct (just (F , TRParen ∷ r2 , dF))   = just (ν-type F act , r2 , pa-nu-act dF)
+nuAct (just (F , TRParen ∷ r2 , dF))   = just (ν-type F actᶠ , r2 , pa-nu-act dF)
 {-# CATCHALL #-}
 nuAct (just (F , _ , dF))              = nothing
 
@@ -299,7 +299,7 @@ parseNuActWF _ _ = nothing
 
 nuTry : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest))
       → ParseFunctorSumD rest → ParseAtomD (TWord "Nu" ∷ rest)
-nuTry rest rec (just (F , r , dF)) = just (ν-type F pure , r , pa-nu dF)
+nuTry rest rec (just (F , r , dF)) = just (ν-type F pureᶠ , r , pa-nu dF)
 nuTry rest rec nothing             = parseNuActWF rest rec
 
 parseNuWF rest rec = nuTry rest rec (parseFunctorSumWF rest (rec (s≤s ≤-refl)))

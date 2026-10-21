@@ -18,7 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
 
@@ -45,7 +45,7 @@ data T_IR_16
     C_Ana_122 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 T_IR_16 |
     C_Iter_130 T_IR_16 |
     C_const_134 MAlonzo.Code.Once.IRTy.T_FitsInRegI_510 AgdaAny |
-    C_SigOp_140 MAlonzo.Code.Once.Lang.Type.T_Type_8
-                MAlonzo.Code.Once.Lang.Type.T_Type_8
+    C_SigOp_140 MAlonzo.Code.Once.Internal.Type.T_Type_8
+                MAlonzo.Code.Once.Internal.Type.T_Type_8
                 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 |
     C_Call_146 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6

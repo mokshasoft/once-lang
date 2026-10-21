@@ -25,7 +25,7 @@ open import Once.Parser.Token
 open import Once.Parser.Module.Core using (anyWordB)
 open import Once.Parser.Module.DeclTail
   using (goTypeAliasB; goTypeAliasWF; parseTypeAliasB; taEqHead; taDrop1)
-open import Once.Lang.Grammar.TypeAlias
+open import Once.Internal.Grammar.TypeAlias
   using (ParsesTypeAlias; gta-eq-r; gta-word-r; ParsesTypeAliasDecl; pta-mk)
 open import Once.Parser.Type using (parseTypeWF)
 open import Once.Grammar.ParserBridge using (complete-typeWFraw)
@@ -35,7 +35,7 @@ open import Once.Grammar.ImportBridge using (anyWordB-inv; ij-false)
 -- Param scanner `param* = Type` (params accumulator). Bottoms at `ParsesType`.
 ------------------------------------------------------------------------
 
--- The relation is in `Once.Lang.Grammar.TypeAlias` (plan 0.84).
+-- The relation is in `Once.Internal.Grammar.TypeAlias` (plan 0.84).
 
 sound-gtaWF : ∀ (name : String) (toks : List Token) (params : List String) (a : Acc _<_ (length toks))
   {d rest bnd} → goTypeAliasWF name toks params a ≡ just (d , rest , bnd) →
@@ -74,7 +74,7 @@ complete-gta {toks = toks} d = complete-gtaWF (<-wellFounded (length toks)) d
 -- `type Name param* = Type` (consume the alias name, then the scanner).
 ------------------------------------------------------------------------
 
--- The relation is in `Once.Lang.Grammar.TypeAlias` (plan 0.84).
+-- The relation is in `Once.Internal.Grammar.TypeAlias` (plan 0.84).
 
 sound-typealias : ∀ {toks d rest bnd} → parseTypeAliasB toks ≡ just (d , rest , bnd) →
   ParsesTypeAliasDecl toks d rest

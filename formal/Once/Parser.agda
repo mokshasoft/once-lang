@@ -10,12 +10,12 @@
 
 module Once.Parser where
 
-open import Once.Lang.Type.Honest using (HonestFFI; honest?)
+open import Once.Internal.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
 open import Once.Spec.Name using (canonical)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -27,12 +27,12 @@ open import Relation.Nullary.Decidable using (¬?)
 open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Lang.Type.Grade using (mk-kind; Many; eff)
-open import Once.Lang.Type using (Type; Unit; _⇒[_]_)
-open import Once.Lang.Type.Poly using (PolyType; extractGround)
+open import Once.Spec.Grade using (mk-kind; Many; eff)
+open import Once.Internal.Type using (Type; Unit; _⇒[_]_)
+open import Once.Internal.Type.Poly using (PolyType; extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Lang.Syntax using (RawExpr; RVar)
+open import Once.Internal.Syntax using (RawExpr; RVar)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue; isOpNameChar)

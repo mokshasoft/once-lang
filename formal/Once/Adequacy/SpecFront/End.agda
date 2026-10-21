@@ -14,7 +14,7 @@
 
 open import Data.List using (List)
 open import Data.String using (String)
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 open import Once.Spec.Signature using (Signature)
 
 module Once.Adequacy.SpecFront.End {Fs : ISig} (Σ : Signature) (ps : List String) where
@@ -32,23 +32,23 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 import Data.String
 
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Lang.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; MonoBody)
+open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; MonoBody)
 open import Once.TypeCheck.Classify using (topCtx)
 import Once.Compile as C
-open import Once.Lang.Type.WellFormed using (RigidFree)
-open import Once.Lang.Principal using (PrincipalAt)
-open import Once.Lang.Core.Translate
+open import Once.Internal.Type.WellFormed using (RigidFree)
+open import Once.Internal.Principal using (PrincipalAt)
+open import Once.Internal.Core.Translate
   using (SigSig; ImpSig; TeleSig; SigCF; SigIn; t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSg; polySg; mainEntry;
          toProgram; toProgramFrom)
-open import Once.Lang.Type.Sub using (_<:_)
+open import Once.Internal.Type.Sub using (_<:_)
 import Once.Type.Sub
-import Once.Lang.Core.Translate
+import Once.Internal.Core.Translate
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps using (_∷ⁿ_)
 import Once.Adequacy.SpecFront.Polys
 
@@ -121,7 +121,7 @@ mono-end : ∀ {s} {S : LP.Sig Fs s} {sc es fi ty Ψ} (tl : TL.Tele S) (ss : Sig
            (rest : ModTele (addImp sc (funName fi) ty) es) (mi′ : MainIn rest)
          → (dm : Dec (funName fi ≡ "main")) (de : Dec (ty <: EffUU)) (u : SigIn rest S) (ks : All EntryKind (Parser.e-fun fi ∷ es))
          → EndsAt (endOf tl ss is ts sgcf nm (mono {sc = sc} {fi = fi} {ty = ty} {es = es} {Ψ = Ψ} ep er pr g D rest) ks)
-                  (Once.Lang.Core.Translate.monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D rest mi′ dm de u)
+                  (Once.Internal.Core.Translate.monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sgcf g D rest mi′ dm de u)
 
 prog-end tl ss is ts sgcf nm [] () u ks
 prog-end tl ss is ts sgcf nm (ffi ep _ _ _ _ _) mi u ks = ⊥-elim (no-ffi ep ks)

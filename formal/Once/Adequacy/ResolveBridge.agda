@@ -5,7 +5,7 @@
 -- Once.Adequacy.ResolveBridge — the executable resolver IMPLEMENTS the
 -- resolution spec. Plan 0.81 step 2.
 --
--- PROOF (not trusted). `Once.Lang.Resolution` says which `CanonicalName` each
+-- PROOF (not trusted). `Once.Internal.Resolution` says which `CanonicalName` each
 -- written reference denotes, as rules over PROPERTIES. This module proves that
 -- `Once.Parser.Module.Resolve.canonExpr` computes exactly that:
 --
@@ -36,21 +36,21 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no; ¬_; does; proof)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
-open import Once.Lang.ResolvedRefs using (GoodRefs; goodRefs?)
+open import Once.Internal.ResolvedRefs using (GoodRefs; goodRefs?)
 open import Relation.Nullary.Reflects using (Reflects; invert)
 open import Relation.Nullary.Decidable using (dec-true; dec-false)
 open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Name using (GenWord)
-open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature;
   DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; canonDecl; isBuiltinName; expandPath;
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
-open import Once.Lang.Resolution
+open import Once.Internal.Resolution
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser.Module.Core using (Module; mkModule; Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports;

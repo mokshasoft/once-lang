@@ -29,10 +29,10 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; subst)
 import Data.String.Properties as StrProp
 
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 import Once.Parser as Parser
-open import Once.Lang.Module using (entrySig)
-open import Once.Lang.Typing.Scope using (lookupImport)
+open import Once.Internal.Module using (entrySig)
+open import Once.Internal.Typing.Scope using (lookupImport)
 open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-all; mem-toISig)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺)

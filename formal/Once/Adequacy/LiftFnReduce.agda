@@ -32,10 +32,10 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
-open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many)
-open import Once.Lang.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
+open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
+open import Once.Internal.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.IR as IR
 import Once.IRTy as IRTy
@@ -257,8 +257,8 @@ liftFn-case-inj₂ {A} {B} {C} f g b =
 ------------------------------------------------------------------------
 
 open import Data.Sum using () renaming (inj₁ to left)
-open import Once.Lang.Trace using (ret)
-open import Once.Lang.Iterative using (T∞; bindBlock)
+open import Once.Internal.Trace using (ret)
+open import Once.Internal.Iterative using (T∞; bindBlock)
 open T∞ using (force)
 
 Now : ∀ {X : Set} → T∞ X → X → Set

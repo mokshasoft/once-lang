@@ -14,7 +14,9 @@
 -- types both ways — what the core judgments are built from.
 ------------------------------------------------------------------------
 
+import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Type where
+
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; toℕ)
@@ -22,11 +24,11 @@ open import Data.Fin.Properties using (toℕ-injective)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
-import Once.Lang.Type.Grade as LG
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-import Once.Lang.Type as LT
-import Once.Lang.Type.Sub as LS
-import Once.Lang.Type.WellFormed as LW
+import Once.Internal.Type as LT
+import Once.Internal.Type.Sub as LS
+import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
 import Once.Spec.Sub as SS
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
@@ -47,10 +49,10 @@ qS-injective {LG.Many} {LG.Zero} ()
 qS-injective {LG.Many} {LG.One}  ()
 
 φS-injective : ∀ {φ φ′} → φS φ ≡ φS φ′ → φ ≡ φ′
-φS-injective {LG.pure} {LG.pure} _ = refl
-φS-injective {LG.act}  {LG.act}  _ = refl
-φS-injective {LG.pure} {LG.act}  ()
-φS-injective {LG.act}  {LG.pure} ()
+φS-injective {LG.pureᶠ} {LG.pureᶠ} _ = refl
+φS-injective {LG.actᶠ}  {LG.actᶠ}  _ = refl
+φS-injective {LG.pureᶠ} {LG.actᶠ}  ()
+φS-injective {LG.actᶠ}  {LG.pureᶠ} ()
 
 πS-injective : ∀ {π π′} → πS π ≡ πS π′ → π ≡ π′
 πS-injective {LG.pure} {LG.pure} _ = refl
@@ -71,40 +73,40 @@ kS-injective {LG.mk-kind q π} {LG.mk-kind q′ π′} e =
     mk refl refl = refl
 
 πS-fin : ∀ φ → πS (LG.fin φ) ≡ SG.fin (φS φ)
-πS-fin LG.pure = refl
-πS-fin LG.act  = refl
+πS-fin LG.pureᶠ = refl
+πS-fin LG.actᶠ  = refl
 
-⊑π-S : ∀ {π π′} → π LS.⊑π π′ → πS π SG.⊑π πS π′
-⊑π-S LS.⊑-pure = SG.⊑-pure
-⊑π-S LS.⊑-eff  = SG.⊑-eff
-⊑π-S LS.⊑-pe   = SG.⊑-pe
-⊑π-S LS.⊑-act  = SG.⊑-act
-⊑π-S LS.⊑-pa   = SG.⊑-pa
-⊑π-S LS.⊑-ae   = SG.⊑-ae
+⊑π-S : ∀ {π π′} → π Once.Spec.Grade.⊑π π′ → πS π SG.⊑π πS π′
+⊑π-S Once.Spec.Grade.⊑-pure = SG.⊑-pure
+⊑π-S Once.Spec.Grade.⊑-eff  = SG.⊑-eff
+⊑π-S Once.Spec.Grade.⊑-pe   = SG.⊑-pe
+⊑π-S Once.Spec.Grade.⊑-act  = SG.⊑-act
+⊑π-S Once.Spec.Grade.⊑-pa   = SG.⊑-pa
+⊑π-S Once.Spec.Grade.⊑-ae   = SG.⊑-ae
 
-⊑π-L : ∀ π π′ → πS π SG.⊑π πS π′ → π LS.⊑π π′
-⊑π-L LG.pure LG.pure _ = LS.⊑-pure
-⊑π-L LG.pure LG.act  _ = LS.⊑-pa
-⊑π-L LG.pure LG.eff  _ = LS.⊑-pe
-⊑π-L LG.act  LG.act  _ = LS.⊑-act
-⊑π-L LG.act  LG.eff  _ = LS.⊑-ae
-⊑π-L LG.eff  LG.eff  _ = LS.⊑-eff
+⊑π-L : ∀ π π′ → πS π SG.⊑π πS π′ → π Once.Spec.Grade.⊑π π′
+⊑π-L LG.pure LG.pure _ = Once.Spec.Grade.⊑-pure
+⊑π-L LG.pure LG.act  _ = Once.Spec.Grade.⊑-pa
+⊑π-L LG.pure LG.eff  _ = Once.Spec.Grade.⊑-pe
+⊑π-L LG.act  LG.act  _ = Once.Spec.Grade.⊑-act
+⊑π-L LG.act  LG.eff  _ = Once.Spec.Grade.⊑-ae
+⊑π-L LG.eff  LG.eff  _ = Once.Spec.Grade.⊑-eff
 ⊑π-L LG.act  LG.pure ()
 ⊑π-L LG.eff  LG.pure ()
 ⊑π-L LG.eff  LG.act  ()
 
 -- a stream's grade, compared as a grade
-⊑φ-S : ∀ φ φ′ → LG.fin φ LS.⊑π LG.fin φ′ → SG.fin (φS φ) SG.⊑π SG.fin (φS φ′)
-⊑φ-S LG.pure LG.pure _ = SG.⊑-pure
-⊑φ-S LG.pure LG.act  _ = SG.⊑-pa
-⊑φ-S LG.act  LG.act  _ = SG.⊑-act
-⊑φ-S LG.act  LG.pure ()
+⊑φ-S : ∀ φ φ′ → LG.fin φ Once.Spec.Grade.⊑π LG.fin φ′ → SG.fin (φS φ) SG.⊑π SG.fin (φS φ′)
+⊑φ-S LG.pureᶠ LG.pureᶠ _ = SG.⊑-pure
+⊑φ-S LG.pureᶠ LG.actᶠ  _ = SG.⊑-pa
+⊑φ-S LG.actᶠ  LG.actᶠ  _ = SG.⊑-act
+⊑φ-S LG.actᶠ  LG.pureᶠ ()
 
-⊑φ-L : ∀ φ φ′ → SG.fin (φS φ) SG.⊑π SG.fin (φS φ′) → LG.fin φ LS.⊑π LG.fin φ′
-⊑φ-L LG.pure LG.pure _ = LS.⊑-pure
-⊑φ-L LG.pure LG.act  _ = LS.⊑-pa
-⊑φ-L LG.act  LG.act  _ = LS.⊑-act
-⊑φ-L LG.act  LG.pure ()
+⊑φ-L : ∀ φ φ′ → SG.fin (φS φ) SG.⊑π SG.fin (φS φ′) → LG.fin φ Once.Spec.Grade.⊑π LG.fin φ′
+⊑φ-L LG.pureᶠ LG.pureᶠ _ = Once.Spec.Grade.⊑-pure
+⊑φ-L LG.pureᶠ LG.actᶠ  _ = Once.Spec.Grade.⊑-pa
+⊑φ-L LG.actᶠ  LG.actᶠ  _ = Once.Spec.Grade.⊑-act
+⊑φ-L LG.actᶠ  LG.pureᶠ ()
 
 ·p-S : ∀ π π′ → πS (π LG.·p π′) ≡ πS π SG.·p πS π′
 ·p-S LG.pure π′      = refl
@@ -278,7 +280,7 @@ module _ {m} {Δ : ST.KCtx m} where
     where
       grade : ∀ {x y x′ y′} → x ≡ x′ → y ≡ y′ → x′ SG.⊑π y′ → x SG.⊑π y
       grade refl refl p = p
-      arr : ∀ {A A′ B B′} → q ≡ q′ → π LS.⊑π π′ → A′ LS.<: A → B LS.<: B′
+      arr : ∀ {A A′ B B′} → q ≡ q′ → π Once.Spec.Grade.⊑π π′ → A′ LS.<: A → B LS.<: B′
           → (A LT.⇒[ LG.mk-kind q π ] B) LS.<: (A′ LT.⇒[ LG.mk-kind q′ π′ ] B′)
       arr refl p a b = LS.sub-arr a b p
   sub-L (SS.sub-*  a b) (r-* ra rb) (r-* ra′ rb′) = LS.sub-prod (sub-L a ra ra′) (sub-L b rb rb′)

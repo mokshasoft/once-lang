@@ -32,13 +32,13 @@ open import Once.Spec.Signature using (WellFormed)
 import Once.Spec.Observation as Obs
 import Once.Spec.Core.Program as CoreProgram
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
-open import Once.Lang.Contract using (ISig; Impl)
-open import Once.Lang.Trace using (Interp; interp)
+open import Once.Internal.Contract using (ISig; Impl)
+open import Once.Internal.Trace using (Interp; interp)
 open import Once.Denotation.TraceTr using (trT∞)
-import Once.Lang.Core.PolyTy as LP
-import Once.Lang.Core.Telescope as TL
-open import Once.Lang.Module using (ModTele; MainIn; emptyScope; entrySig; teleSig)
-open import Once.Lang.Core.Translate using (toProgram; toProgram₀; []; noCF)
+import Once.Internal.Core.PolyTy as LP
+import Once.Internal.Core.Telescope as TL
+open import Once.Internal.Module using (ModTele; MainIn; emptyScope; entrySig; teleSig)
+open import Once.Internal.Core.Translate using (toProgram; toProgram₀; []; noCF)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.SpecInterp using (toImpl; toInterp)
 import Once.Adequacy.SpecCore.Program as PG

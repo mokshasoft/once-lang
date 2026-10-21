@@ -5,19 +5,19 @@
 -- Once.Type.Sub — deciding subtyping.
 --
 -- The judgment `A <: B` and the effect order `_⊑π_` are the Spec's
--- (`Once.Lang.Type.Sub`). This module decides them.
+-- (`Once.Internal.Type.Sub`). This module decides them.
 ------------------------------------------------------------------------
 
 module Once.Type.Sub where
 
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; fin)
-open import Once.Lang.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
-open import Once.Lang.Type.Sub
-  using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; _<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
-open import Once.Lang.Type.DecEq using (_≟q_)
-open import Once.Lang.Type.DecEq using (_≟F_; _≟T_)
+open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
+open import Once.Internal.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Internal.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Internal.Type.DecEq using (_≟q_)
+open import Once.Internal.Type.DecEq using (_≟F_; _≟T_)
 
 ------------------------------------------------------------------------
 -- The effect order.

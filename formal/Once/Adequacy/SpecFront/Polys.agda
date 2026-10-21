@@ -29,14 +29,14 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 
-open import Once.Lang.Type.Poly using (extractGround)
+open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport)
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName)
-import Once.Lang.Resolution as LR
+import Once.Internal.Resolution as LR
 import Data.List.Relation.Unary.All as All
 open import Data.Product using (Σ-syntax)
 open import Once.Adequacy.SpecFront.Extract

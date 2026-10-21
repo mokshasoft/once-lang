@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Bool using (Bool; true; false)
 
-open import Once.Lang.Syntax using (RVar; RApp; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
+open import Once.Internal.Syntax using (RVar; RApp; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
 open import Once.Parser.Token
 open import Once.Parser.Expr
 open import Once.Parser.ExprRelation

@@ -19,7 +19,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Lang.Core.PolyTy using (KCtx; GSub; Respects)
+open import Once.Internal.Core.PolyTy using (KCtx; GSub; Respects)
 
 module Once.TypeCheck.RigidSubst {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
 
@@ -32,32 +32,33 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Lang.Type.Grade
-open import Once.Lang.Type
-open import Once.Lang.Type.Poly
+open import Once.Spec.Grade
+open import Once.Type.Grade
+open import Once.Internal.Type
+open import Once.Internal.Type.Poly
 open import Once.Type
 open ArrowKind using (quantity)
-open import Once.Lang.Type.Sub using (_<:_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
-open import Once.Lang.Type.Sub using (<:-refl)
-open import Once.Lang.Type.Join using (Joins; j-refl; j-voidˡ; j-voidʳ; j-prod; j-sum; j-arr; j-ν; sound; complete)
-open import Once.Lang.Type.Instance using (KindedInstance)
-open import Once.Lang.Type.WellFormed using (RigidFree; rf-⇒)
+open import Once.Internal.Type.Sub using (_<:_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Internal.Type.Sub using (<:-refl)
+open import Once.Internal.Type.Join using (Joins; j-refl; j-voidˡ; j-voidʳ; j-prod; j-sum; j-arr; j-ν; sound; complete)
+open import Once.Internal.Type.Instance using (KindedInstance)
+open import Once.Internal.Type.WellFormed using (RigidFree; rf-⇒)
 open import Once.Type.Rigid using (extractGround-rf)
-open import Once.Lang.Type.WellFormed using (IsBaseType; WellFormedF; IsConcrete)
+open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF; IsConcrete)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
-open import Once.Lang.Name using (showCanonical)
-open import Once.Lang.Syntax using (RResolved)
-open import Once.Lang.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
-open import Once.Lang.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
-import Once.Lang.Context as Surface
-open import Once.Lang.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
-open import Once.Lang.Typing.Scope using (mkBinding)
-open Once.Lang.Typing.Scope.Binding using (quantity)
-open Once.Lang.Typing.Scope.Binding using (name; type)
-import Once.Lang.Typing.Scope as NC
-open import Once.Lang.Typing.Scope
+open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Syntax using (RResolved)
+open import Once.Internal.Core.PolyTy using (_⟪_⟫; _⟪_⟫F; ⟦⟧F-⟪⟫; base-⟪⟫; wf-⟪⟫; ⌈⌉-⟪⟫)
+open import Once.Internal.Core.AbsTy using (absTy; absF; absTy-⟦⟧; abs-base; abs-wf; absTy-ground)
+import Once.Internal.Context as Surface
+open import Once.Internal.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
+open import Once.Internal.Typing.Scope using (mkBinding)
+open Once.Internal.Typing.Scope.Binding using (quantity)
+open Once.Internal.Typing.Scope.Binding using (name; type)
+import Once.Internal.Typing.Scope as NC
+open import Once.Internal.Typing.Scope
 open import Once.TypeCheck.Classify
-open import Once.Lang.Typing
+open import Once.Internal.Typing
 
 ------------------------------------------------------------------------
 -- The substitution on types.
@@ -247,9 +248,9 @@ mutual
   subst-i′ ir (t-apply-app-infer d)  = t-apply-app-infer (subst-i′ ir d)
   subst-i′ ir (t-apply-eff-app-infer {g = g} d) = t-apply-eff-app-infer {g = g} (subst-i′ ir d)
   subst-i′ ir (t-Out-app-infer {F = F} wf refl d) =
-    sym (ρ̂-⟦⟧ F (ν-type F pure)) ⇝ᵢ t-Out-app-infer (ρ̂-wf wf) refl (subst-i′ ir d)
+    sym (ρ̂-⟦⟧ F (ν-type F pureᶠ)) ⇝ᵢ t-Out-app-infer (ρ̂-wf wf) refl (subst-i′ ir d)
   subst-i′ ir (t-Out-eff-app-infer {F = F} wf refl d) =
-    cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (ρ̂-⟦⟧ F (ν-type F act)))
+    cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (ρ̂-⟦⟧ F (ν-type F actᶠ)))
       ⇝ᵢ t-Out-eff-app-infer (ρ̂-wf wf) refl (subst-i′ ir d)
   subst-i′ ir (t-app h df dx)        = t-app h (subst-i′ ir df) (subst-c′ ir dx)
   subst-i′ ir (t-effApp {g = g} h df dx) = t-effApp {g = g} h (subst-i′ ir df) (subst-c′ ir dx)

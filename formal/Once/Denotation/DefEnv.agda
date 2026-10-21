@@ -28,10 +28,10 @@ open import Data.Unit using (⊤)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Type using (Type)
-open import Once.Lang.Type.Poly using (PolyType)
-open import Once.Lang.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
-open import Once.Lang.Syntax using (RawExpr)
+open import Once.Internal.Type using (Type)
+open import Once.Internal.Type.Poly using (PolyType)
+open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
+open import Once.Internal.Syntax using (RawExpr)
 
 DefEnvOf : (PolyType → Set) → PolyCtx → Set
 DefEnvOf F []                    = ⊤

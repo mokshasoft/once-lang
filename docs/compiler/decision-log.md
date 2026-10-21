@@ -19336,3 +19336,25 @@ resolves and types). `Once.Compiler` stayed on the old source until both were pr
 * No new trust: the bridges use P1 (as before) and T1/T2 (D329).
 * `Once.Lang.Program`'s `Typed`/`_⊢R_` are now internal to the proof (the statement `correctᵈ` is proved
   against), no longer the theorem's.
+
+## D333 — `Once.Lang` REMOVED: SPEC COPIES DELETED, THE INTERNAL LANGUAGE TO `Once.Internal` (2026-10-21)
+
+**Follows** D332, plan 0.121 item 3 and §5. **Approved** by the user 2026-10-21: the full collapse (the
+compiler retargeted onto the Spec) measured at weeks of type-checking; the user chose the path that removes
+`Once.Lang` before the merge with the same theorem and trust base, the collapse being plan 0.122.
+
+### Decision
+* Where `Once.Lang` restated the Spec, the Spec's definition is used: the grades (`Once.Spec.Grade`; `Purity`
+  is `fin Finite | eff`, `Finite`'s constructors `pureᶠ`/`actᶠ`) and the effect order `⊑π`. What the compiler
+  computes beyond them — the usage order as a Boolean (`_≤qᵇ_`), the joins `_⊔q_`/`_⊔p_`, `pureK`/`effK` —
+  is compiler code over the Spec's grades (`Once.Type.Grade`).
+* The rest of `Once.Lang` — types with rigid parameters, the checker's usage-tracking judgment, the
+  elaboration, the core it elaborates to, its meaning, contracts, deciders — is the compiler's internal
+  language, under `Once.Internal`. It is not a definition of the language: the theorem (D332) does not
+  mention it, and the bridges prove it faithful to the Spec.
+
+### Consequences
+* The grade conversions in the bridges (`qS`, `πS`, `φS`, `kS`) are now identities by cases; they go with
+  the bridges in plan 0.122.
+* `scripts/agda-keepgoing.py`: type-checks a module's whole cone in one Agda process and reports every
+  independent error in one pass (`make -k` for Agda); used for this change and for plan 0.122.

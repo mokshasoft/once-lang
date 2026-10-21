@@ -28,9 +28,9 @@ open import Data.Integer using (ℤ)
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.String using (String; _++_)
 
-open import Once.Lang.Type using (Unit; Int)
+open import Once.Internal.Type using (Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
-open import Once.Lang.Type.WellFormed using (base-Unit; base-Int)
+open import Once.Internal.Type.WellFormed using (base-Unit; base-Int)
 open import Once.Spec.Name using (bare)
 import Once.Spec.Word as OnceWord
 open import Once.Spec.Numerics using (module TargetNum)

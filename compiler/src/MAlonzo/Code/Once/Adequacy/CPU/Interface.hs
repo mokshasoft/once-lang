@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Adequacy.MachineTrace
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Spec.Trace
 
 -- Once.Adequacy.CPU.Interface.Byte
@@ -33,7 +33,7 @@ d_ArchSemantics_10 = ()
 data T_ArchSemantics_10
   = C_constructor_90 (AgdaAny -> AgdaAny)
                      (AgdaAny -> AgdaAny -> Maybe AgdaAny)
-                     (MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+                     (MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
                       AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Spec.Trace.T_Tr_18)
                      ([MAlonzo.Code.Data.Fin.Base.T_Fin_10] -> Maybe AgdaAny)
                      (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -62,7 +62,7 @@ d_run_44 v0
 -- Once.Adequacy.CPU.Interface.ArchSemantics.run-trace
 d_run'45'trace_46 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_run'45'trace_46 v0
   = case coe v0 of
@@ -114,7 +114,7 @@ d_as'45'faithful_62 = erased
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-dec
 d_exec'45'dec_64 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   Maybe AgdaAny -> MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_exec'45'dec_64 v0 v1 v2
   = case coe v2 of
@@ -126,7 +126,7 @@ d_exec'45'dec_64 v0 v1 v2
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-bytes
 d_exec'45'bytes_72 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   [MAlonzo.Code.Data.Fin.Base.T_Fin_10] ->
   MAlonzo.Code.Once.Spec.Trace.T_Tr_18
 d_exec'45'bytes_72 v0 v1 v2
@@ -134,7 +134,7 @@ d_exec'45'bytes_72 v0 v1 v2
 -- Once.Adequacy.CPU.Interface.ArchSemantics.exec-print
 d_exec'45'print_82 ::
   T_ArchSemantics_10 ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_exec'45'print_82 = erased

@@ -19,7 +19,7 @@
 
 open import Data.List using (List)
 open import Data.String using (String)
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 
 open import Once.Spec.Signature using (Signature)
 
@@ -43,9 +43,9 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 import Data.String.Properties as StrProp
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.WellFormed as LW
-import Once.Lang.Core.PolyTy as LP
+import Once.Internal.Type as LT
+import Once.Internal.Type.WellFormed as LW
+import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Compile as C
@@ -53,10 +53,10 @@ import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Surface.Program
-open import Once.Lang.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
-open import Once.Lang.Module using (Scope; scope; emptyScope; addImp; addPoly)
-open import Once.Lang.Core.Schema using (schemaOf)
-open import Once.Lang.Core.Translate using (ImpSig; TeleSig; []; i-def; t-def; wkI; wkT; impDefs; monoSchema)
+open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.Internal.Module using (Scope; scope; emptyScope; addImp; addPoly)
+open import Once.Internal.Core.Schema using (schemaOf)
+open import Once.Internal.Core.Translate using (ImpSig; TeleSig; []; i-def; t-def; wkI; wkT; impDefs; monoSchema)
 open import Once.Adequacy.SpecCore.Type
 open import Once.Adequacy.SpecCore.Schema using (defsS; schS; ptyS; pfunS)
 open import Once.Adequacy.SpecFront.ScopeNames using (ImpNamed; TeleNamed)

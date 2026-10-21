@@ -18,13 +18,13 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Once.Lang.Module
+import qualified MAlonzo.Code.Once.Internal.Module
 import qualified MAlonzo.Code.Once.Parser
 
 -- Once.Adequacy.ModuleLaws.teleSig≡entrySig
 d_teleSig'8801'entrySig_12 ::
-  MAlonzo.Code.Once.Lang.Module.T_Scope_6 ->
+  MAlonzo.Code.Once.Internal.Module.T_Scope_6 ->
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
-  MAlonzo.Code.Once.Lang.Module.T_ModTele_70 ->
+  MAlonzo.Code.Once.Internal.Module.T_ModTele_70 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_teleSig'8801'entrySig_12 = erased

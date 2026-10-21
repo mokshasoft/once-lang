@@ -22,23 +22,24 @@
 module Once.TypeCheck.ModeSub where
 
 import Once.TypeCheck.Classify
-open import Once.Lang.Type.Join using (least-<:)
+open import Once.Internal.Type.Join using (least-<:)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
-open import Once.Lang.Type as T using (Type; _*_; _⇒[_]_)
-import Once.Lang.Type.Poly as T
-import Once.Lang.Type.Grade as T
-open import Once.Lang.Type.Sub using (_<:_; _⊑π_; sub-arr; sub-prod; sub-void)
+open import Once.Internal.Type as T using (Type; _*_; _⇒[_]_)
+import Once.Internal.Type.Poly as T
+import Once.Spec.Grade as T
+open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
+open import Once.Spec.Grade using (_⊑π_)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-open import Once.Lang.Type.Sub using (<:-refl)
-open import Once.Lang.Syntax using (RawExpr)
-open import Once.Lang.Typing.Scope using (NamedCtx)
-import Once.Lang.Typing.Scope
-open import Once.Lang.Typing
-open import Once.Lang.Laws.ModeAgreement
-import Once.Lang.Context as Surface
+open import Once.Internal.Type.Sub using (<:-refl)
+open import Once.Internal.Syntax using (RawExpr)
+open import Once.Internal.Typing.Scope using (NamedCtx)
+import Once.Internal.Typing.Scope
+open import Once.Internal.Typing
+open import Once.Internal.Laws.ModeAgreement
+import Once.Internal.Context as Surface
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥
@@ -107,7 +108,7 @@ private
   di-cod (_ , _ , refl , _) p = sub-cod p
 
 
-  poly-sub : ∀ {s s′ sd sc : T.PolyType} {b b′ : RawExpr} {pr pr′ : Once.Lang.Typing.Scope.PolyCtx} {A B B′ : Type} {π π′ : T.Purity}
+  poly-sub : ∀ {s s′ sd sc : T.PolyType} {b b′ : RawExpr} {pr pr′ : Once.Internal.Typing.Scope.PolyCtx} {A B B′ : Type} {π π′ : T.Purity}
              (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′)) (as : T.ArrowSchema s sd sc π′) (inc : T.CodVarsInDom sd sc)
              (θ : _) (e : T.substPoly θ s ≡ (A ⇒[ T.mk-kind T.Many π′ ] B))
              (θ′ : _) (e′ : T.substPoly θ′ s′ ≡ (A ⇒[ T.mk-kind T.Many π ] B′))

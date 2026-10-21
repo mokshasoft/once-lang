@@ -37,24 +37,24 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Lang.Type as TT using (Functor; _*_; _+_)
-open import Once.Lang.FunctorMeaning using (translateF)
+open import Once.Internal.Type as TT using (Functor; _*_; _+_)
+open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
-open import Once.Lang.Polynomial
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; anaS; sfmapAna; anaLayerS)
+open import Once.Internal.Polynomial
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; anaS; sfmapAna; anaLayerS)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel)
 open Once.Semantics.Functor.Laws._∼S_ using (unfoldS-∼)
 open import Once.Semantics.Machine
   using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; tF-coh; coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
-open import Once.Lang.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Lang.Iterative using (T∞; return∞)
-open import Once.Lang.Stream
+open import Once.Internal.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
+open import Once.Internal.Iterative using (T∞; return∞)
+open import Once.Internal.Stream
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
-open import Once.Lang.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 
 ------------------------------------------------------------------------

@@ -42,7 +42,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
-import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
@@ -8339,7 +8339,7 @@ du_block'45'step'45'load'45'const_1606 v0 v1 v2 v3 v4 v5
       du_block'45'step'45'li_1118 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2304
-         (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
+         (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
          (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe v4))
       (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_a0_18)
       (coe
@@ -9466,7 +9466,7 @@ du_block'45'step'45'load'45'const'45'float_1898 v0 v1 v2 v3 v4 v5
       du_block'45'step'45'li_1118 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2304
-         (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
+         (coe MAlonzo.Code.Once.Internal.Type.C_Float_36)
          (coe MAlonzo.Code.Once.Type.C_fits'45'float_28) (coe v4))
       (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_a0_18)
       (coe

@@ -29,8 +29,8 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Iterative
-import qualified MAlonzo.Code.Once.Lang.Polynomial
+import qualified MAlonzo.Code.Once.Internal.Iterative
+import qualified MAlonzo.Code.Once.Internal.Polynomial
 import qualified MAlonzo.Code.Once.Spec.Name
 
 -- Once.CCC.Machine.ValidAtWFHalted._.ClosureWellFormedDef.CellAt
@@ -181,7 +181,7 @@ du_validAtWF'45'set'45'halted_624 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_eval'7472'_24 v1
                              v2 v4

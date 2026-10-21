@@ -115,10 +115,10 @@ module _ where
 -- An entry's written type is a concrete ground type
 ------------------------------------------------------------------------
 
-open import Once.Lang.Type.Poly as LP using (PolyType; PolyFunctor; Ground; GroundF; extractGround)
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-open import Once.Lang.Type.WellFormed using (IsConcrete; IsBaseType; con-base; con-fun; base-Unit; base-Void)
+open import Once.Internal.Type.Poly as LP using (PolyType; PolyFunctor; Ground; GroundF; extractGround)
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+open import Once.Internal.Type.WellFormed using (IsConcrete; IsBaseType; con-base; con-fun; base-Unit; base-Void)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open SPr using (TypeOf; FunOf; SchemaOf; to-var; to-unit; to-void; to-int; to-float; to-*; to-+; to-⇒; to-act; to-eff; to-μ; to-ν;
                 fo-K; fo-Id; fo-⊕; fo-⊗)

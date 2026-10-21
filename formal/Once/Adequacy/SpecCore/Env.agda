@@ -13,8 +13,8 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Lang.Contract using (ISig)
-import Once.Lang.Core.PolyTy as LP
+open import Once.Internal.Contract using (ISig)
+import Once.Internal.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -24,14 +24,14 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Fin using (Fin; zero; suc)
 
-import Once.Lang.Type.Grade as LG
+import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-import Once.Lang.Context as LC
+import Once.Internal.Context as LC
 import Once.Spec.Context as SCx
 import Once.Spec.Type as ST
-import Once.Lang.Environment as LEnv
-import Once.Lang.Core.PolyTyping S as PT
-import Once.Lang.Core.Meaning S as GM
+import Once.Internal.Environment as LEnv
+import Once.Internal.Core.PolyTyping S as PT
+import Once.Internal.Core.Meaning S as GM
 open import Once.Adequacy.SpecCore.Schema using (defsS)
 import Once.Spec.Core.Meaning Σ fmt (defsS S) as SM
 open import Once.Adequacy.SpecCore.Index

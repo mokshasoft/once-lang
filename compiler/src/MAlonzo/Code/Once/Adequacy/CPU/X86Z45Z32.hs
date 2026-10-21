@@ -34,7 +34,7 @@ import qualified MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.RunTrace
 import qualified MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Spec.Trace
 
 -- Once.Adequacy.CPU.X86-32.ev-x86-32
@@ -69,7 +69,7 @@ d_block'45'env_12 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.X86-32.run-trace-x86-32
 d_run'45'trace'45'x86'45'32_22 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.T_Image_12 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_304 ->
   MAlonzo.Code.Once.Spec.Trace.T_Tr_18

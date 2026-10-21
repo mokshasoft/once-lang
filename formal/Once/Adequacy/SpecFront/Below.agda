@@ -21,12 +21,12 @@ open import Data.Product using (Σ-syntax; ∃₂; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
 
-open import Once.Lang.Type.Grade using (Purity; pure; act; eff; mk-kind; fin)
-import Once.Lang.Type.Grade as G
-open import Once.Lang.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
-open import Once.Lang.Type.Sub using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; _<:ᶜ_; <:ᶜ-refl;
-  subᶜ-void; subᶜ-arr; subᶜ-prod; subᶜ-sum; subᶜ-ν)
-open import Once.Lang.Principal using (below; gradesBelow; finBelow)
+open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
+import Once.Spec.Grade as G
+open import Once.Internal.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
+open import Once.Internal.Type.Sub using (_<:ᶜ_; <:ᶜ-refl; subᶜ-void; subᶜ-arr; subᶜ-prod; subᶜ-sum; subᶜ-ν)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Internal.Principal using (below; gradesBelow; finBelow)
 
 private
   ⊑π-refl : ∀ π → π ⊑π π
@@ -40,7 +40,7 @@ private
   grade-below eff (there (here refl)) = ⊑-ae , λ ()
 
   fin-below : ∀ {φ′} φ → φ′ ∈ finBelow φ → (fin φ′ ⊑π fin φ) × (φ′ ≢ φ)
-  fin-below G.act (here refl) = ⊑-pa , λ ()
+  fin-below G.actᶠ (here refl) = ⊑-pa , λ ()
 
   -- a grade at or below
   at-or-below : ∀ {π′} π → π′ ∈ π ∷ gradesBelow π → π′ ⊑π π

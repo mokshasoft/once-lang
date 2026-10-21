@@ -33,16 +33,16 @@ open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (_++_)
 
-open import Once.Lang.Type.Grade using (Purity; mk-kind; Zero; One; Many)
-open import Once.Lang.Type using (Type; Unit; _⇒[_]_; μ-type; Functor; ⟦_⟧T)
-open import Once.Lang.Type.Poly using (extractGround)
+open import Once.Spec.Grade using (Purity; mk-kind; Zero; One; Many)
+open import Once.Internal.Type using (Type; Unit; _⇒[_]_; μ-type; Functor; ⟦_⟧T)
+open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Spec.Name using (CanonicalName; bare)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Data.Maybe using (just)
-open import Once.Lang.Trace using (T; fmapT; Interp; module Interp)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; loop)
-open import Once.Lang.StreamInf using (anaFᴵ; module νᴵ)
+open import Once.Internal.Trace using (T; fmapT; Interp; module Interp)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; loop)
+open import Once.Internal.StreamInf using (anaFᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
 open Interp using (sig; impl)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -53,32 +53,32 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ;
 
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (lookupᴰUsed)
-open import Once.Lang.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Lang.Graded using (⟦_⟧ᵛ; M; returnM; bindM; _>>=ᵖ_)
-open import Once.Lang.GradedOps
+open import Once.Internal.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
+open import Once.Internal.Graded using (⟦_⟧ᵛ; M; returnM; bindM; _>>=ᵖ_)
+open import Once.Internal.GradedOps
   using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
-open import Once.Lang.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
+open import Once.Internal.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 import Data.List as L
-open import Once.Lang.Context using (Ctx; _,_^_; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
-open import Once.Lang.Typing.Scope using (NamedCtx; PolyCtx; Imports; lookupImport)
+open import Once.Internal.Context using (Ctx; _,_^_; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
+open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
-open import Once.Lang.Type.Instance using (KindedInstance)
+open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Lang.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semP; int-prim)
-open import Once.Lang.Type.Sub using (sub-arr)
-open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:; _⊔_≔_)
+open import Once.Internal.Type.Sub using (sub-arr)
+open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:; _⊔_≔_)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
-open import Once.Lang.Trace using (FFIAnswers)
+open import Once.Internal.Trace using (FFIAnswers)
 open SigOpInfo using (conB)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
          fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
-open import Once.Lang.Typing
+open import Once.Internal.Typing
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_;
          t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
          t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
@@ -123,10 +123,10 @@ cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 -- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
 -- other side of `⌈_⌉`).
-out-sem : ∀ {F : Functor} {π : Once.Lang.Type.Grade.Finite} → WellFormedF F
-        → ⟦ Once.Lang.Type.ν-type F π ⟧ᴰ → T∞ ⟦ ⟦ F ⟧T (Once.Lang.Type.ν-type F π) ⟧ᴰ
+out-sem : ∀ {F : Functor} {π : Once.Spec.Grade.Finite} → WellFormedF F
+        → ⟦ Once.Internal.Type.ν-type F π ⟧ᴰ → T∞ ⟦ ⟦ F ⟧T (Once.Internal.Type.ν-type F π) ⟧ᴰ
 out-sem {F} {π} wf v =
-  fmap∞ (λ layer → coerce-functor⁻¹-D wf (Once.Lang.Type.ν-type F π)
+  fmap∞ (λ layer → coerce-functor⁻¹-D wf (Once.Internal.Type.ν-type F π)
                      (coerce-ν-out wf _ layer))
         (forceᴵ v)
 
@@ -167,14 +167,14 @@ sigOpRefᴰ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcr
 sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
 -- D143: at an ERASED arrow the symbol never receives its argument, so the
 -- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Lang.Type.Grade.pure} bDom bCod) =
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.pure} bDom bCod) =
   return∞ (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
 -- plan 0.113 A3: only a PURE erased arrow is a value; an effectful one is a call
 -- with the erased slot `tt` (as `Elaborate` and `SourceDenote`).
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Lang.Type.Grade.eff} bDom bCod) =
-  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.eff) cn base-Unit bCod) tt)))
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Lang.Type.Grade.act} bDom bCod) =
-  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Lang.Type.Grade.act) cn base-Unit bCod) tt)))
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.eff} bDom bCod) =
+  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) cn base-Unit bCod) tt)))
+sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.act} bDom bCod) =
+  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) cn base-Unit bCod) tt)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
   return∞ (λ arg → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg))))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =
@@ -189,7 +189,7 @@ fmapᵖ f x = f x
 svarᵛRun : ∀ {n} {Γ : Ctx n} {Ψ A} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ → ⟦ A ⟧ᵛ
 svarᵛRun {Γ = Γ} (svar i) dγ = lookupᵛUsed Γ i dγ
 
-DefFamily : Once.Lang.Type.Poly.PolyType → Set
+DefFamily : Once.Internal.Type.Poly.PolyType → Set
 DefFamily s = (U : Type) → KindedInstance s U → ⟦ U ⟧ᵛ
 
 DefMeanings : PolyCtx → Set
@@ -440,13 +440,13 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
   subst (λ Z → ⟦ Z ⟧ᵛ) ceq
     ((⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx}
                     (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)
-       >>=ᵖ out-semᵛ Once.Lang.Type.Grade.pure wfF)
+       >>=ᵖ out-semᵛ Once.Spec.Grade.pureᶠ wfF)
 -- D233: forcing an EFFECTFUL stream at the surface — the stream is evaluated
 -- now, the force runs when the suspension is applied (as `t-apply-eff-app-infer`).
 ⟦_⟧ᵢ {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) fmt ρ dγ =
   (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx}
                   (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ v →
-  returnᵖ (λ _ → subst (λ Z → M Once.Lang.Type.Grade.act ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Lang.Type.Grade.act wfF v))
+  returnᵖ (λ _ → subst (λ Z → M Once.Spec.Grade.act ⟦ Z ⟧ᵛ) ceq (out-semᵛ Once.Spec.Grade.actᶠ wfF v))
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ _ → returnᵖ tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=ᵖ λ fa → proj₁ fa (proj₂ fa)
 -- D222 / plan 0.95 A′: the EFF closure's elimination is a SUSPENSION — but only

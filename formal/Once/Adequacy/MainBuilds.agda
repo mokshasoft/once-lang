@@ -15,7 +15,7 @@
 
 module Once.Adequacy.MainBuilds where
 
-import Once.Lang.Context as Srf
+import Once.Internal.Context as Srf
 
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
@@ -27,9 +27,9 @@ open import Data.Product using (Σ-syntax; _,_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Lang.Type.Honest using (honest?)
-open import Once.Lang.Type.Instance using (rigidOf)
-open import Once.Lang.Principal using (below)
+open import Once.Internal.Type.Honest using (honest?)
+open import Once.Internal.Type.Instance using (rigidOf)
+open import Once.Internal.Principal using (below)
 open import Once.Type.Rigid using (rigidFree?)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
@@ -38,20 +38,20 @@ open import Function using (case_of_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Lang.Type using (Unit)
+open import Once.Internal.Type using (Unit)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-import Once.Lang.Type as Type
+import Once.Internal.Type as Type
 import Once.Spec.Name
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
-import Once.Lang.Typing.Scope as Classify
-import Once.Lang.Typing
-open import Once.Lang.Type.DecEq using (_≟T_)
+import Once.Internal.Typing.Scope as Classify
+import Once.Internal.Typing
+open import Once.Internal.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Classify as Classify
-open import Once.Lang.Syntax using (RawExpr)
+open import Once.Internal.Syntax using (RawExpr)
 open import Once.Target.Arch using (Arch)
 import Once.Parser.Module.Core as P
 import Data.String as String
@@ -113,7 +113,7 @@ cfbI-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsO
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfbI-doOpt doOpt ctx polys impsOf name ty expr eq = aux (TE.inferElabV (Classify.ctxWithImportsAndPolys ctx polys) expr) eq
   where
-    at : ∀ {T Ψ} (w : Classify.ctxWithImportsAndPolys ctx polys Once.Lang.Typing.⊢ᵢ expr ∶ T ⨾ Ψ) (d : Dec (T ≡ ty)) {ir}
+    at : ∀ {T Ψ} (w : Classify.ctxWithImportsAndPolys ctx polys Once.Internal.Typing.⊢ᵢ expr ∶ T ⨾ Ψ) (d : Dec (T ≡ ty)) {ir}
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ ir
        → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty refl w d ≡ inj₂ ir')
     at w (yes refl) _ = _ , refl

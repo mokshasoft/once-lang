@@ -25,8 +25,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Lang.Polynomial
-open import Once.Lang.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩)
+open import Once.Internal.Polynomial
+open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩)
 
 ------------------------------------------------------------------------
 -- Predicate lifting over one polynomial-functor layer.

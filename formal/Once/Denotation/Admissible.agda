@@ -5,7 +5,7 @@
 -- Once.Denotation.Admissible — WHICH PROGRAMS A TARGET OWES AN ANSWER FOR
 -- (plan 0.74, D115/D116).
 --
--- SPEC. `Once.Lang.Meaning` re-exports it, for the reason D114 gives for the
+-- SPEC. `Once.Internal.Meaning` re-exports it, for the reason D114 gives for the
 -- observable: a statement that decides what counts as correct belongs in the
 -- reviewed spec, not in a module the spec merely reaches through.
 --
@@ -52,7 +52,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Spec.Word as OnceWord
-open import Once.Lang.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; OpNeg)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; OpNeg)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
    DImport)

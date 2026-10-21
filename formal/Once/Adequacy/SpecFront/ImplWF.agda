@@ -23,10 +23,10 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Value Carrier Carrier as M
-open import Once.Lang.Name using (showCanonical)
-open import Once.Lang.Contract using (Impl; Key; kdom; kcod; answerKeys; answer-step)
-open import Once.Lang.Event using (SigOpEvent; toEvent)
+import Once.Internal.Value Carrier Carrier as M
+open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Contract using (Impl; Key; kdom; kcod; answerKeys; answer-step)
+open import Once.Internal.Event using (SigOpEvent; toEvent)
 import Once.Spec.Signature as S
 open S using (Signature; WellFormed; _∶_; operation; NotEmpty)
 import Once.Spec.Observation as Obs

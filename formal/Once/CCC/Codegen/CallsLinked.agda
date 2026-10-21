@@ -14,7 +14,7 @@
 open import Once.Spec.Name using (CanonicalName)
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; Linked)
-open import Once.Lang.Contract using (ISig)
+open import Once.Internal.Contract using (ISig)
 
 module Once.CCC.Codegen.CallsLinked (o : CanonicalName) (tbl : List IRFun) where
 
@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Lang.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap; blocks-layout; blocks-layout-++; LabelId; link-top; restore-input; load-indirect-suc; store-at-slot; mov-to-input; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)

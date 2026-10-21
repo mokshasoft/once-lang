@@ -18,10 +18,10 @@ open import Data.Fin using (Fin; toℕ; fromℕ<)
 open import Data.Fin.Properties using (toℕ-fromℕ<)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-import Once.Lang.Type as LT
-import Once.Lang.Core.PolyTy as LP
-open import Once.Lang.Type.DecEq using (_≟tk_)
-open import Once.Lang.Core.AbsTy using (absTy; absF; ar-bound; ar-kind; ConstFree; ConstFreeF; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)
+import Once.Internal.Type as LT
+import Once.Internal.Core.PolyTy as LP
+open import Once.Internal.Type.DecEq using (_≟tk_)
+open import Once.Internal.Core.AbsTy using (absTy; absF; ar-bound; ar-kind; ConstFree; ConstFreeF; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)
 open import Once.Adequacy.SpecCore.Type
 open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS; kindsS)
 

@@ -16,8 +16,8 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Lang.Trace using (FFIAnswers)
-open import Once.Lang.Trace using (Interp; pureHalf)
+open import Once.Internal.Trace using (FFIAnswers)
+open import Once.Internal.Trace using (Interp; pureHalf)
 
 -- Plan 0.105 (D257 amendment 2): in a world `ι` — its signatures and their
 -- implementation; the IR reads its pure half.
@@ -31,17 +31,17 @@ open import Data.Sum using (inj₁)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Lang.Type.Grade using (mk-kind; Zero; One; Many; pure)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Lang.Trace using (ret)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
+open import Once.Internal.Trace using (ret)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
 open T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; relS-ret)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel using (retargetˡ; retargetʳ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Lang.Graded using (⟦_⟧ᵛ)
+open import Once.Internal.Graded using (⟦_⟧ᵛ)
 open import Once.Adequacy.GradedRelation fmt using (RelGV; RelGM)
 open import Once.Adequacy.TableCall fmt φ using (abiT)
 

@@ -15,7 +15,9 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
+open import Once.Type.Grade using (_≤qᵇ_)
 module Once.Adequacy.CoherenceHet (fmt : TargetNum) where
+
 
 open import Data.Bool using (true)
 open import Data.Empty using (⊥-elim)
@@ -28,25 +30,26 @@ open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
-open import Once.Lang.Type.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
-import Once.Lang.Type.Poly as T
-open import Once.Lang.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
-open import Once.Lang.Type.Sub using (_<:_; sub-arr; sub-prod; _⊑π_; ⊑-pure)
-open import Once.Lang.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:; _⊔_≔_)
+open import Once.Spec.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
+import Once.Internal.Type.Poly as T
+open import Once.Internal.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
+open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-prod)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
+open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:; _⊔_≔_)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
-open import Once.Lang.Type.Join using (join-unique)
-open import Once.Lang.Syntax as Raw using (RawExpr)
+open import Once.Internal.Type.Join using (join-unique)
+open import Once.Internal.Syntax as Raw using (RawExpr)
 open import Once.Spec.Name using (NotGenerator)
-open import Once.Lang.Name using (showCanonical; WordName)
-open import Once.Lang.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
+open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
-open import Once.Lang.Typing
-open import Once.Lang.Laws.ModeAgreement using (extractGround-irr; dpoly-det)
+open import Once.Internal.Typing
+open import Once.Internal.Laws.ModeAgreement using (extractGround-irr; dpoly-det)
 open import Once.TypeCheck.ModeSub using (arrow-at)
-open import Once.Lang.Type.WellFormed using (IsConcrete; WellFormedF)
+open import Once.Internal.Type.WellFormed using (IsConcrete; WellFormedF)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)
-import Once.Lang.Context as Surface
-open import Once.Lang.Context using (Ctx; Usage; _∷_; _,_^_)
+import Once.Internal.Context as Surface
+open import Once.Internal.Context using (Ctx; Usage; _∷_; _,_^_)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
@@ -169,13 +172,13 @@ module _ {Γ : Ctx n} where
   coerce-h p p′ (≅i refl refl h) = ≅i refl refl (≈-trans (coerce-cong p h) (coerce-uniq p p′ _))
 
   lam-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B}
-            (≤p : (q₁ ≤q q) ≡ true) (≤p′ : (q₁′ ≤q q) ≡ true)
+            (≤p : (q₁ ≤qᵇ q) ≡ true) (≤p′ : (q₁′ ≤qᵇ q) ≡ true)
         → x ≅ x′ → lam {π = π} q ≤p x ≅ lam q ≤p′ x′
   lam-h {q = q} {π = π} {x′ = x′} ≤p ≤p′ (≅i refl refl h) = ≅i refl refl (≈-trans (lam-cong q ≤p h) (≡→≈ (cong (λ z → lam {π = π} q z x′) (uip ≤p ≤p′))))
 
   -- Domain-given lambdas: the body's type is an output, so it may differ.
   lamd-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B′}
-             (≤p : (q₁ ≤q Many) ≡ true) (≤p′ : (q₁′ ≤q Many) ≡ true)
+             (≤p : (q₁ ≤qᵇ Many) ≡ true) (≤p′ : (q₁′ ≤qᵇ Many) ≡ true)
          → x ≅ x′ → lam {π = π} Many ≤p x ≅ lam Many ≤p′ x′
   lamd-h ≤p ≤p′ (≅i refl refl h) = lam-h ≤p ≤p′ (≅i refl refl h)
 
@@ -255,7 +258,7 @@ module _ {Γ : Ctx n} where
     ≅i refl refl (≈-trans (coerce-cong _ h) (≈-trans (coerce-trans _ _ Y) (coerce-uniq _ _ Y)))
 
   lamc-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B′}
-             (≤p : (q₁ ≤q Many) ≡ true) (≤p′ : (q₁′ ≤q Many) ≡ true) (p : B <: B′)
+             (≤p : (q₁ ≤qᵇ Many) ≡ true) (≤p′ : (q₁′ ≤qᵇ Many) ≡ true) (p : B <: B′)
          → coerce p x ≅ x′ → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam {π = π} Many ≤p x) ≅ lam Many ≤p′ x′
   lamc-h {π = π} {x = x} {x′ = x′} ≤p ≤p′ p (≅i refl refl h) =
     ≅i refl refl (≈-trans (≈-sym (lam-coerce ≤p p x))
@@ -529,13 +532,13 @@ module _ {ctx : NamedCtx} where
   applyeff-h (≅i refl refl h) = ≅i refl refl (morph-app-cong (IR.curry (IR.apply IR.∘ IR.fst)) h)
 
   out-h : ∀ {F F′} {Ψ Ψ′ : U} (w : WellFormedF F) (w′ : WellFormedF F′)
-            {d : ctx ⊢ᵢ e ∶ ν-type F T.pure ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pure ⨾ Ψ′}
+            {d : ctx ⊢ᵢ e ∶ ν-type F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pureᶠ ⨾ Ψ′}
         → RI d ≅ RI d′ → RI (t-Out-app-infer w refl d) ≅ RI (t-Out-app-infer w′ refl d′)
   out-h w w′ {d′ = d′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-app-infer v refl d′)) (WellFormedF-irrelevant w w′))))
 
   outeff-h : ∀ {F F′} {Ψ Ψ′ : U} (w : WellFormedF F) (w′ : WellFormedF F′)
-               {d : ctx ⊢ᵢ e ∶ ν-type F T.act ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.act ⨾ Ψ′}
+               {d : ctx ⊢ᵢ e ∶ ν-type F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.actᶠ ⨾ Ψ′}
            → RI d ≅ RI d′ → RI (t-Out-eff-app-infer w refl d) ≅ RI (t-Out-eff-app-infer w′ refl d′)
   outeff-h w w′ {d′ = d′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-eff-app-infer v refl d′)) (WellFormedF-irrelevant w w′))))

@@ -25,21 +25,21 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Induction.WellFounded
-import qualified MAlonzo.Code.Once.Lang.Syntax
+import qualified MAlonzo.Code.Once.Internal.Syntax
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Token
 
 -- Once.Parser.Module.FunDef.Params.wrapLams
 d_wrapLams_10 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
 d_wrapLams_10 v0 v1
   = case coe v0 of
       [] -> coe v1
       (:) v2 v3
         -> coe
-             MAlonzo.Code.Once.Lang.Syntax.C_RLam_44 (coe v2)
+             MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 (coe v2)
              (coe d_wrapLams_10 (coe v3) (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.FunDef.Params.SepK

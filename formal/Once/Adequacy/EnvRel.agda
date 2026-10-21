@@ -16,9 +16,9 @@ module Once.Adequacy.EnvRel where
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
 
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many)
-open import Once.Lang.Type using (Type)
-open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many)
+open import Once.Internal.Type using (Type)
+open import Once.Internal.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.ValueRel using (RelD)

@@ -35,15 +35,15 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Function using (_∋_)
 
-import Once.Lang.Type as LT
-open import Once.Lang.Type.Poly using (PolyType; Ground; extractGround)
-open import Once.Lang.Type.WellFormed using (IsConcrete; RigidFree)
-open import Once.Lang.Type.Honest using (HonestFFI)
+import Once.Internal.Type as LT
+open import Once.Internal.Type.Poly using (PolyType; Ground; extractGround)
+open import Once.Internal.Type.WellFormed using (IsConcrete; RigidFree)
+open import Once.Internal.Type.Honest using (HonestFFI)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Lang.Syntax using (RawExpr; RVar)
+open import Once.Internal.Syntax using (RawExpr; RVar)
 open import Once.Spec.Name using (canonical)
-open import Once.Lang.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical)
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser.TypeAlias using (TypeAliasEnv; expandAliases)
 open import Once.Parser

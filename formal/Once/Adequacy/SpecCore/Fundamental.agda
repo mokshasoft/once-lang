@@ -24,13 +24,14 @@
 open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
-open import Once.Lang.Contract using (ISig)
-open import Once.Lang.Name using (showCanonical; WordName)
-import Once.Lang.Core.PolyTy as LP
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical; WordName)
+import Once.Internal.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature; _∶_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
+import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Fundamental
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
@@ -43,18 +44,18 @@ open import Data.Sum using (inj₁; inj₂) renaming ([_,_]′ to [_,_]′′)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-import Once.Lang.Type as LT
-import Once.Lang.Type.Grade as LG
-import Once.Lang.Type.Sub as LS
-import Once.Lang.Context as LC
+import Once.Internal.Type as LT
+import Once.Spec.Grade as LG
+import Once.Internal.Type.Sub as LS
+import Once.Internal.Context as LC
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST
 import Once.Spec.Context as SCx
-import Once.Lang.Graded as LGr
-import Once.Lang.Core.PolyTyping S as PT
-import Once.Lang.Core.PolySub as PS
-import Once.Lang.Core.Typing S as GT
-import Once.Lang.Core.Meaning S as GM
+import Once.Internal.Graded as LGr
+import Once.Internal.Core.PolyTyping S as PT
+import Once.Internal.Core.PolySub as PS
+import Once.Internal.Core.Typing S as GT
+import Once.Internal.Core.Meaning S as GM
 open import Once.Adequacy.SpecCore.Schema using (defsS; kindsS)
 open import Once.Adequacy.SpecCore.Context using (uS-zero)
 open import Once.Adequacy.SpecCore.Type using (⊑π-S)
@@ -80,6 +81,7 @@ crΓ (Γ PT., A ^ q) = cr-▸ (crΓ Γ) (ptr A)
 ------------------------------------------------------------------------
 
 module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
+
 
   -- `D` and `trD D` mean related computations.
   Fund : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ t A π} → PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π → Set
@@ -128,7 +130,7 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
       c-roll   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π F t} (wf : LP.WFFun Δ F)
                  (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ LP.⟦ F ⟧F (LP.μ-type F) ! π) → Fund d → Fund (PT.⊢roll wf d)
       c-fold   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψa Ψt π π₁ π₂ F A alg t}
-                 (u : LG.pure LS.⊑π π) (wf : LP.WFFun Δ F)
+                 (u : LG.pure Once.Spec.Grade.⊑π π) (wf : LP.WFFun Δ F)
                  (da : Δ ⊩ Γ ⊢[ Ψa ] alg ∷ LP.⟦ F ⟧F A LP.⇒[ LG.mk-kind LG.Many π ] A ! π₁)
                  (dt : Δ ⊩ Γ ⊢[ Ψt ] t ∷ LP.μ-type F ! π₂) → Fund da → Fund dt → Fund (PT.⊢fold u wf da dt)
       c-unfold : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψc Ψs φ π₁ π₂ F A c x} (wf : LP.WFFun Δ F)

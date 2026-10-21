@@ -10,7 +10,7 @@
 -- (the constants and pure functions) and a WORLD (an operation's answer, from
 -- the calls it has seen, whenever one exists). The compiler's `ISig` keys a
 -- declaration by its rendered name and its compiler type, and its `Impl`
--- answers by contract key (`Once.Lang.Contract`). This module translates the
+-- answers by contract key (`Once.Internal.Contract`). This module translates the
 -- first into the second, so a binary can be run against a Spec
 -- Interpretation: each value key is read from the model, each answer key from
 -- the world, with the history read as the Spec's events (`toEvent`).
@@ -34,17 +34,17 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Value Carrier Carrier as M
-import Once.Lang.Type as T
-import Once.Lang.Type.Grade as G
-open import Once.Lang.Name using (showCanonical)
+import Once.Internal.Value Carrier Carrier as M
+import Once.Internal.Type as T
+import Once.Spec.Grade as G
+open import Once.Internal.Name using (showCanonical)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Lang.Contract
+open import Once.Internal.Contract
   using (Key; key; kdom; kcod; ISig; Contract; answers; effect; contract-eff; contractOf;
          value-step; answer-step; valueKeys; answerKeys; Impl)
-import Once.Lang.Contract as C
-open import Once.Lang.Event using (SigOpEvent; toEvent)
-open import Once.Lang.Trace using (Interp; interp)
+import Once.Internal.Contract as C
+open import Once.Internal.Event using (SigOpEvent; toEvent)
+open import Once.Internal.Trace using (Interp; interp)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open S using (BTy; DeclType; constant; operation; _∶_; Signature; WellFormed; argAt; NotEmpty; op)

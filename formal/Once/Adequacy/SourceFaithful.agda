@@ -47,18 +47,18 @@ open import Data.Empty using (⊥-elim)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst; subst-subst-sym)
 
-open import Once.Lang.Type.Grade using (mk-kind; pure; eff; act; Quantity; Zero; One; Many; fin)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
-open import Once.Lang.Type.WellFormed using (con-base; con-fun; base-Unit)
-open import Once.Lang.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; _∷_)
+open import Once.Spec.Grade using (mk-kind; pure; eff; act; Quantity; Zero; One; Many; fin)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; ⟦_⟧T)
+open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit)
+open import Once.Internal.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; _∷_)
 open import Once.Surface.Syntax using (Expr)
-open import Once.Lang.Context using () renaming (_,_ to _,ᶜ_)
-import Once.Lang.Context as SrfS
+open import Once.Internal.Context using () renaming (_,_ to _,ᶜ_)
+import Once.Internal.Context as SrfS
 open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull; projUsed; distribute; distribIR; compIR; copairIR; forkIR; curryIR; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Lang.Trace using (ret)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; fmap∞; bindBlock)
+open import Once.Internal.Trace using (ret)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; bindBlock)
 open T∞ using (force)
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial)
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info;
@@ -626,7 +626,7 @@ mutual
   faithful {Γ = Γ} (sigOp {A = Void}  name (con-base ib)) {dγ} r = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
   faithful {Γ = Γ} (sigOp {A = Int}   name (con-base ib)) {dγ} r = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
   faithful {Γ = Γ} (sigOp {A = Float} name (con-base ib)) {dγ} r = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
-  faithful {Γ = Γ} (sigOp {A = Once.Lang.Type.rigid _ _} name (con-base ib)) {dγ} r = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
+  faithful {Γ = Γ} (sigOp {A = Once.Internal.Type.rigid _ _} name (con-base ib)) {dγ} r = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
   faithful {Γ = Γ} (sigOp {A = _ * _} name (con-base ib)) {dγ} r = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
   faithful {Γ = Γ} (sigOp {A = _ + _} name (con-base ib)) {dγ} r = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
   faithful (sigOp {A = μ-type _} name (con-base ())) r

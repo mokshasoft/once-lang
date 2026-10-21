@@ -25,8 +25,8 @@ import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.Adequacy.FuelTrace
 import qualified MAlonzo.Code.Once.Adequacy.MachineTrace
 import qualified MAlonzo.Code.Once.Denotation.TraceTr
-import qualified MAlonzo.Code.Once.Lang.Iterative
-import qualified MAlonzo.Code.Once.Lang.Trace
+import qualified MAlonzo.Code.Once.Internal.Iterative
+import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Spec.Trace
 
 -- Once.Adequacy.BudgetApex.budget-apex
@@ -34,9 +34,9 @@ d_budget'45'apex_22 ::
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Adequacy.MachineTrace.T_Step_8) ->
   AgdaAny ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   MAlonzo.Code.Once.Spec.Trace.T__'8776''7511''10216'_'10217'__86
 d_budget'45'apex_22 ~v0 v1 v2 v3 ~v4 v5 v6
@@ -44,8 +44,8 @@ d_budget'45'apex_22 ~v0 v1 v2 v3 ~v4 v5 v6
 du_budget'45'apex_22 ::
   (AgdaAny -> MAlonzo.Code.Once.Adequacy.MachineTrace.T_Step_8) ->
   AgdaAny ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   MAlonzo.Code.Once.Spec.Trace.T__'8776''7511''10216'_'10217'__86
 du_budget'45'apex_22 v0 v1 v2 v3 v4
@@ -57,22 +57,22 @@ du_budget'45'apex_22 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         (coe MAlonzo.Code.Once.Lang.Iterative.d_force_64 (coe v3)))
+         (coe MAlonzo.Code.Once.Internal.Iterative.d_force_64 (coe v3)))
       (coe du_ag_40 (coe v2) (coe v3) (coe v4))
 -- Once.Adequacy.BudgetApex._.ag
 d_ag_40 ::
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Adequacy.MachineTrace.T_Step_8) ->
   AgdaAny ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_ag_40 ~v0 ~v1 ~v2 v3 ~v4 v5 v6 v7 = du_ag_40 v3 v5 v6 v7
 du_ag_40 ::
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_ag_40 v0 v1 v2 v3
@@ -83,7 +83,7 @@ du_ag_40 v0 v1 v2 v3
                  MAlonzo.Code.Once.Denotation.TraceTr.du_approx'45'runB_268 (coe v0)
                  (coe addInt (coe (1 :: Integer)) (coe v3))
                  (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                 (coe MAlonzo.Code.Once.Lang.Iterative.d_force_64 (coe v1)) in
+                 (coe MAlonzo.Code.Once.Internal.Iterative.d_force_64 (coe v1)) in
        coe
          (case coe v4 of
             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
@@ -118,9 +118,9 @@ d_'8804''45'pred'8242'_70 ::
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Adequacy.MachineTrace.T_Step_8) ->
   AgdaAny ->
-  MAlonzo.Code.Once.Lang.Trace.T_Interp_182 ->
+  MAlonzo.Code.Once.Internal.Trace.T_Interp_182 ->
   () ->
-  MAlonzo.Code.Once.Lang.Iterative.T_T'8734'_58 ->
+  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   Integer ->
   Integer ->

@@ -32,19 +32,19 @@ open import Once.IR
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 import Once.IRTy as II
 open import Once.Spec.Word using (Carrier)
-import Once.Lang.Value Carrier Carrier as M
+import Once.Internal.Value Carrier Carrier as M
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ; ⟦_⟧ᴰᴵ)
 -- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
-open import Once.Lang.Type.WellFormed using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)
+open import Once.Internal.Type.WellFormed using () renaming (base-Prod to b-Prod; base-Int to b-Int; base-Float to b-Float)
 open import Once.Arith.Machine.IR using (MArithIR; shape-as-type; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.SigOp.Block using (block-semM; readLeafM; block-info; shape-as-type-base)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (try-lift; shape-of; has-op; block-as-ir)
 open import Data.Maybe using () renaming (map to mapᴹ)
-open import Once.Lang.Trace using (T; ret)
+open import Once.Internal.Trace using (T; ret)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Lang.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
 open T∞ using (force)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Fst; Snd; InputPath; Path; here-int; here-flt; go-fst; go-snd; typePath?)
@@ -55,14 +55,14 @@ open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-throug
   lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-other; pair-of)
 open import Once.SigOp.Info using (SigOpSem; mk-info'; primV; SigOpInfo)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
-import Once.Lang.Type as Ty
+import Once.Internal.Type as Ty
 import Once.Type as Ty
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Spec.Word as OnceWord
 import Once.Spec.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-open import Once.Lang.Trace using ()
+open import Once.Internal.Trace using ()
 
 ------------------------------------------------------------------------
 -- (a) Plumbing means a value and no event.
@@ -224,8 +224,8 @@ private
            → bindBlock l k ≡ ret (inj₁ v) → Σ X (λ x → (l ≡ ret (inj₁ x)) × (force (k x) ≡ ret (inj₁ v)))
   now-inv (ret (inj₁ x)) k e = x , refl , e
   now-inv (ret (inj₂ m)) k ()
-  now-inv (Once.Lang.Trace.call o a c) k ()
-  now-inv (Once.Lang.Trace.halt o a)   k ()
+  now-inv (Once.Internal.Trace.call o a c) k ()
+  now-inv (Once.Internal.Trace.halt o a)   k ()
 
   -- …so re-association, which is not `≡` on runs, is on runs that return at once.
   now-assoc : ∀ {X Y Z : Set} (m : T∞ X) (g : X → T∞ Y) (f : Y → T∞ Z) {v : Z}

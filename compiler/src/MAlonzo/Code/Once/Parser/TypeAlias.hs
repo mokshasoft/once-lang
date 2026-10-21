@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Parser.TypeAlias.TypeAlias
@@ -68,59 +68,59 @@ d_lookupAlias_10 v0 v1
 -- Once.Parser.TypeAlias.expandAliasesF
 d_expandAliasesF_46 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Lang.Type.T_Functor_6 ->
-  MAlonzo.Code.Once.Lang.Type.T_Functor_6
+  MAlonzo.Code.Once.Internal.Type.T_Functor_6 ->
+  MAlonzo.Code.Once.Internal.Type.T_Functor_6
 d_expandAliasesF_46 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Lang.Type.C_K_12 v2
+      MAlonzo.Code.Once.Internal.Type.C_K_12 v2
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C_K_12
+             MAlonzo.Code.Once.Internal.Type.C_K_12
              (coe d_expandAliases_48 (coe v0) (coe v2))
-      MAlonzo.Code.Once.Lang.Type.C_Id_14 -> coe v1
-      MAlonzo.Code.Once.Lang.Type.C__'8853'__16 v2 v3
+      MAlonzo.Code.Once.Internal.Type.C_Id_14 -> coe v1
+      MAlonzo.Code.Once.Internal.Type.C__'8853'__16 v2 v3
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C__'8853'__16
+             MAlonzo.Code.Once.Internal.Type.C__'8853'__16
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
              (coe d_expandAliasesF_46 (coe v0) (coe v3))
-      MAlonzo.Code.Once.Lang.Type.C__'8855'__18 v2 v3
+      MAlonzo.Code.Once.Internal.Type.C__'8855'__18 v2 v3
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C__'8855'__18
+             MAlonzo.Code.Once.Internal.Type.C__'8855'__18
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
              (coe d_expandAliasesF_46 (coe v0) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.TypeAlias.expandAliases
 d_expandAliases_48 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Lang.Type.T_Type_8
+  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Internal.Type.T_Type_8
 d_expandAliases_48 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Lang.Type.C_Unit_20 -> coe v1
-      MAlonzo.Code.Once.Lang.Type.C_Void_22 -> coe v1
-      MAlonzo.Code.Once.Lang.Type.C__'42'__24 v2 v3
+      MAlonzo.Code.Once.Internal.Type.C_Unit_20 -> coe v1
+      MAlonzo.Code.Once.Internal.Type.C_Void_22 -> coe v1
+      MAlonzo.Code.Once.Internal.Type.C__'42'__24 v2 v3
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C__'42'__24
+             MAlonzo.Code.Once.Internal.Type.C__'42'__24
              (coe d_expandAliases_48 (coe v0) (coe v2))
              (coe d_expandAliases_48 (coe v0) (coe v3))
-      MAlonzo.Code.Once.Lang.Type.C__'43'__26 v2 v3
+      MAlonzo.Code.Once.Internal.Type.C__'43'__26 v2 v3
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C__'43'__26
+             MAlonzo.Code.Once.Internal.Type.C__'43'__26
              (coe d_expandAliases_48 (coe v0) (coe v2))
              (coe d_expandAliases_48 (coe v0) (coe v3))
-      MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28 v2 v3 v4
+      MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28 v2 v3 v4
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C__'8658''91'_'93'__28
+             MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28
              (coe d_expandAliases_48 (coe v0) (coe v2)) (coe v3)
              (coe d_expandAliases_48 (coe v0) (coe v4))
-      MAlonzo.Code.Once.Lang.Type.C_μ'45'type_30 v2
+      MAlonzo.Code.Once.Internal.Type.C_μ'45'type_30 v2
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C_μ'45'type_30
+             MAlonzo.Code.Once.Internal.Type.C_μ'45'type_30
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
-      MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32 v2 v3
+      MAlonzo.Code.Once.Internal.Type.C_ν'45'type_32 v2 v3
         -> coe
-             MAlonzo.Code.Once.Lang.Type.C_ν'45'type_32
+             MAlonzo.Code.Once.Internal.Type.C_ν'45'type_32
              (coe d_expandAliasesF_46 (coe v0) (coe v2)) (coe v3)
-      MAlonzo.Code.Once.Lang.Type.C_Int_34 -> coe v1
-      MAlonzo.Code.Once.Lang.Type.C_Float_36 -> coe v1
-      MAlonzo.Code.Once.Lang.Type.C_rigid_38 v2 v3 -> coe v1
+      MAlonzo.Code.Once.Internal.Type.C_Int_34 -> coe v1
+      MAlonzo.Code.Once.Internal.Type.C_Float_36 -> coe v1
+      MAlonzo.Code.Once.Internal.Type.C_rigid_38 v2 v3 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

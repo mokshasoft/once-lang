@@ -19,7 +19,7 @@ open import Data.String using (String)
 open import Data.Unit using (⊤)
 open import Once.Spec.Trace using (Tr)
 open import Once.Adequacy.MachineTrace using (silentTr)
-open import Once.Lang.Trace using (Interp)
+open import Once.Internal.Trace using (Interp)
 
 -- Bytes
 Byte : Set

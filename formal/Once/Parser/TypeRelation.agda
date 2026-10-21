@@ -26,8 +26,8 @@ open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
                                         n≤1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Lang.Type.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; eff)
-open import Once.Lang.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; eff; pureᶠ; actᶠ)
+open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------
@@ -126,13 +126,13 @@ mutual
     -- sub-grammar, so the shrink and bridge lemmas are `pa-mu`'s verbatim.
     pa-nu : ∀ {toks rest} {F : Functor}
           → ParsesFunctorSum toks F rest
-          → ParsesAtom (TWord "Nu" ∷ toks) (ν-type F pure) rest
+          → ParsesAtom (TWord "Nu" ∷ toks) (ν-type F pureᶠ) rest
 
     -- D313: 'Nu (Act F)' — the stream whose layers RETURN, ν(T ∘ F) over the
     -- finite trees. `Act` is not a functor keyword either.
     pa-nu-act : ∀ {toks rest} {F : Functor}
               → ParsesFunctorSum toks F (TRParen ∷ rest)
-              → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ toks) (ν-type F act) rest
+              → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ toks) (ν-type F actᶠ) rest
 
   -- prod ::= atom ('*' atom)*
   data ParsesProd : List Token → Type → List Token → Set where

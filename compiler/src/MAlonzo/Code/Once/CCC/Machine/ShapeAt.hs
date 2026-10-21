@@ -30,9 +30,9 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Lang.Iterative
-import qualified MAlonzo.Code.Once.Lang.Polynomial
-import qualified MAlonzo.Code.Once.Lang.Type
+import qualified MAlonzo.Code.Once.Internal.Iterative
+import qualified MAlonzo.Code.Once.Internal.Polynomial
+import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Type
@@ -84,12 +84,12 @@ du_prim'45'sv'45'at_68 v0 v1
       MAlonzo.Code.Once.IRTy.C_fits'45'int_512
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Lang.Type.C_Int_34)
+             (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
              (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe v1)
       MAlonzo.Code.Once.IRTy.C_fits'45'float_514
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Lang.Type.C_Float_36)
+             (coe MAlonzo.Code.Once.Internal.Type.C_Float_36)
              (coe MAlonzo.Code.Once.Type.C_fits'45'float_28) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ShapeAt.InlineRepAt
@@ -379,7 +379,7 @@ du_valid'8594'shape_448 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v17) (coe v4))
                        (coe
-                          MAlonzo.Code.Once.Lang.Iterative.du_valueNow_202
+                          MAlonzo.Code.Once.Internal.Iterative.du_valueNow_202
                           (coe
                              MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_eval'7472'_24 v2
                              v0 v4

@@ -21,7 +21,7 @@ open import Once.Parser.Module.Core using (anyWordB)
 open import Once.Parser.Module.DeclTail
   using (parseSignatureB; colonHead; colDrop1)
 open import Once.Parser.PolyType using (parsePolyTypeB)
-open import Once.Lang.Grammar.Signature
+open import Once.Internal.Grammar.Signature
   using (ParsesSignature; psig-mk)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
 open import Once.Grammar.ImportBridge using (anyWordB-inv)
@@ -30,7 +30,7 @@ open import Once.Grammar.ImportBridge using (anyWordB-inv)
 -- `name : polytype`.
 ------------------------------------------------------------------------
 
--- The relation is in `Once.Lang.Grammar.Signature` (plan 0.84).
+-- The relation is in `Once.Internal.Grammar.Signature` (plan 0.84).
 
 sound-signature : ∀ {toks d rest'' bnd} → parseSignatureB toks ≡ just (d , rest'' , bnd) →
   ParsesSignature toks d rest''
