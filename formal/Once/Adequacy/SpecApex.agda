@@ -81,6 +81,8 @@ import Once.Adequacy.SpecFront.Lits as Lits
 import Once.Adequacy.SpecFront.Denote
 import Once.Adequacy.SpecFront.Meaning
 import Once.Adequacy.SpecFront.Words as Words
+import Once.Adequacy.SpecGrammar.Written as Written
+import Once.Adequacy.SpecFront.TypedBack
 
 module VC = Compile.WithCPU arch-correct
 
@@ -269,3 +271,35 @@ sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
        → _
     at refl pm pt (LR.rm rds) =
       sound-ef arch src pm pt rds adm (Parser.extractFunctions (Parser.extractAliases mR) mR) refl mt hvm
+
+------------------------------------------------------------------------
+-- The completeness bridge (plan 0.121)
+------------------------------------------------------------------------
+
+-- What the Spec types, the compiler reads (`Modules.source-of←`), parses
+-- (`Decl.parses←`), resolves and types (`TypedBack`), within its target's
+-- range (`Lits.admissible←`).
+complete-of : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
+            → src ⊢ tp′ → Admissible (arch-numerics arch) tp′
+            → Σ[ srcC ∈ B.Source ] (toSource src ≡ just srcC)
+              × Σ[ tp ∈ VC.Typed ] (srcC VC.⊢R tp) × VC.Admissible arch tp
+complete-of arch src tp′ (mm′ , pt′ , pms , den) adm =
+  B.mkSource mm (SP.Source.text src) , ts
+  , (PM.mkModule (TC.dsR T) , TC.mt T , TC.hvm T) , (mU , ptU , LR.rm (TC.rds T)) , Lits.admissible← arch (TC.rds T) pwU adm
+  where
+    module TB = Once.Adequacy.SpecFront.TypedBack (arch-numerics arch)
+    module TC = TB.TypedC
+    src← = Modules.source-of← src pms
+    mm = proj₁ src←
+    ts = proj₁ (proj₂ src←)
+    mr = proj₂ (proj₂ src←)
+    p← = GD.parses← {SP.Source.text src} pt′
+    mU = proj₁ p←
+    ptU = proj₁ (proj₂ p←)
+    pwU = proj₂ (proj₂ p←)
+    T = TB.typed← (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′)
+                  (Written.decls-written {SP.Source.text src} pt′) mr pwU den
+
+-- The bridges, proved.
+bridges : Bridges
+bridges = record { sound = sound-of ; complete = complete-of }

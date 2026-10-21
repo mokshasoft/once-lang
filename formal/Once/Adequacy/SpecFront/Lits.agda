@@ -167,3 +167,8 @@ lits-eq {dsR = dsR} rds pw = trans (mil dsR) (trans (decls-res rds) (sym (decls-
 admissible-of : ∀ {mm um am dsU dsR ds′} (arch : Arch) → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
               → AdmissibleM arch (mkModule dsR) → Data.List.Relation.Unary.All.All _ (SP.declLits ds′)
 admissible-of arch rds pw a = subst (Data.List.Relation.Unary.All.All _) (lits-eq rds pw) a
+
+-- …and conversely (plan 0.121 `complete`).
+admissible← : ∀ {mm um am dsU dsR ds′} (arch : Arch) → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
+            → Data.List.Relation.Unary.All.All _ (SP.declLits ds′) → AdmissibleM arch (mkModule dsR)
+admissible← arch rds pw a = subst (Data.List.Relation.Unary.All.All _) (sym (lits-eq rds pw)) a
