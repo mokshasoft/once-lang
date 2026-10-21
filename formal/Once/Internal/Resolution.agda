@@ -2,9 +2,9 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Resolution — NAME RESOLUTION (OCP-0006, spec). Plan 0.81.
---
--- SPEC (trust boundary): which `CanonicalName` each written reference denotes.
+-- Once.Internal.Resolution — NAME RESOLUTION, in the compiler's internal
+-- language. Plan 0.81. Which `CanonicalName` each written reference denotes;
+-- the Spec's is `Once.Spec.Surface.Resolution`, related by `SpecFront.Resolve`.
 --
 -- Until this module existed, resolution was constrained only by three
 -- "something survives it" facts (`resolver-preserves-typing`,

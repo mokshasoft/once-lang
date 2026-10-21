@@ -19358,3 +19358,20 @@ compiler retargeted onto the Spec) measured at weeks of type-checking; the user 
   the bridges in plan 0.122.
 * `scripts/agda-keepgoing.py`: type-checks a module's whole cone in one Agda process and reports every
   independent error in one pass (`make -k` for Agda); used for this change and for plan 0.122.
+
+## D334 — THE EXTRACTION IS WHAT THE CLI RUNS (2026-10-21)
+
+**Follows** D162 (the Haskell bridge), D332. **Asked** by the user 2026-10-21 ("is there a way to structure
+the code so as little as possible makes it into the compiler?").
+
+### Decision
+* The MAlonzo extraction root is `Once.Extract.Root`, which imports only what the CLI calls: `Once.Compile`
+  (the CLI calls `compileFromModule` directly), the parser and resolver, `Once.Type`'s printers, the
+  warnings, the arithmetic IR, `Once.Extract.Names`. The correctness theorem (`Once.Certified`) and its
+  proofs are type-checked, never extracted.
+* `Once.Compiler` is the per-arch assembly only; `Adequacy.Compile`'s CLI wrappers are gone.
+
+### Consequences
+* 180 modules extracted instead of 496; 317 proof modules leave the cabal build. A proof module the bridges
+  add can no longer exhaust the extraction's memory (it did, at `Grammar.FunDefBridge`, before this).
+* `make pragma-gate` checks the closure of `Once.Certified` and `Once.Extract.Root`.

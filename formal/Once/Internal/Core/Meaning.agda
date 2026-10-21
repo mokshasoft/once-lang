@@ -5,7 +5,7 @@
 -- Once.Internal.Core.Meaning — the CORE's meaning (plan 0.102 A; graded by D250,
 -- plan 0.104 A.3).
 --
--- SPEC. One clause per typing rule. A derivation at grade `π` denotes
+-- INTERNAL (D333). One clause per typing rule. A derivation at grade `π` denotes
 --
 --     ⟦ Γ ⊢[ Ψ ] t ∷ A ! π ⟧ : ⟦ Γ ↾ Ψ ⟧ → M π ⟦ A ⟧ᵛ
 --

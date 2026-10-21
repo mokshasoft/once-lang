@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Res
 --
--- SPEC.
+-- INTERNAL (D333).
 -- THE RESULT OF A COMPUTATION: a value, or the program ended.
 --
 -- Plan 0.98. A SigOp declared `halts` ends the program, so it has no

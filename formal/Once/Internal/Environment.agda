@@ -5,7 +5,7 @@
 -- Once.Internal.Environment — the runtime environment of a derivation and its
 -- operations.
 --
--- SPEC. A term at usage `Ψ` reads `⟦ Γ ↾ Ψ ⟧ᶜ`: exactly the variables it uses,
+-- INTERNAL (D333). A term at usage `Ψ` reads `⟦ Γ ↾ Ψ ⟧ᶜ`: exactly the variables it uses,
 -- as a nested product. `restrictᵛ` narrows it to a smaller usage, `bindᵛ`
 -- extends it for a binder used `q` times (an erased binder adds nothing),
 -- `lookupᵛUsed` reads a variable, and `eraseᵛ` projects a full environment

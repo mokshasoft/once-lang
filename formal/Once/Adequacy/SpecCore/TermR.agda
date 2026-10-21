@@ -9,7 +9,7 @@
 -- compiler's). `TmR Δ t t′`: the compiler's term `t` is the Spec's `t′`,
 -- former by former, its annotations related by `TyR`. It concerns the terms
 -- alone, so it is stated over the compiler's signature only; their typings
--- are related in `SpecCore.Term`.
+-- are related former by former.
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)

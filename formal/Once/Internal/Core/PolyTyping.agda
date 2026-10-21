@@ -5,7 +5,7 @@
 -- Once.Internal.Core.PolyTyping — plan 0.103 phase 3: the core judgment over
 -- TYPE VARIABLES, `Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π`.
 --
--- SPEC. The ground core (`Once.Internal.Core.Typing`) with its types generalized
+-- INTERNAL (D333). The ground core (`Once.Internal.Core.Typing`) with its types generalized
 -- to `Ty m` (`Once.Internal.Core.PolyTy`) under a kinding context `Δ` — a
 -- PARAMETER of the judgment, so the rules do not double: one rule per former,
 -- the same rule as the ground core with `Type` read as `Ty m`. Terms carry the

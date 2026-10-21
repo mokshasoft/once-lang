@@ -167,10 +167,19 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **Checking a definition against its signature is equality with the
   synthesized principal type**; subsumption only at a use. Mode agreement is
   plain "inferred ⊑ checked". (D314; F3a's `_≼_` and guard rules withdrawn)
-- **The checker decides the Spec's bidirectional judgment**: proved SOUND and
-  COMPLETE against it; the judgment's elaboration is its own (each rule
+- **The checker decides the compiler's bidirectional judgment**: proved SOUND
+  and COMPLETE against it; the judgment's elaboration is its own (each rule
   produces its core term), so the checker's output is a derivation of it.
   (D316 amended, D305, D256)
+- **The theorem is the Spec's**: `once-compiler` is stated over the Spec's
+  source, typing and behaviour; the compiler's own proof is carried there by
+  two proved bridges (`SpecApex.bridges`: what the compiler types is a Spec
+  program meaning the same; every Spec program the compiler types). (D332)
+- **The compiler has an internal language** (`Once.Internal`: types with
+  rigid parameters, the usage-tracking judgment, elaboration, core, meaning,
+  contracts), compiler code, not a language definition; where it restated
+  the Spec (grades, `⊑π`) the Spec's is used. Collapsing it onto the Spec is
+  plan 0.122. (D333)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering
@@ -202,10 +211,12 @@ decision-log entry updates the rule it changes here, in the same commit.
   (D220, D221, D199)
 - **Measuring Agda**: `touch` does not force a recheck; confirm a `Checking`
   line. (D200)
-- **The Spec imports no implementation module.** Until plan 0.118's new
-  Spec lands, the Spec on disk still borrows compiler functions (D300's
-  places and the parser relations); review treats those functions as Spec.
-  (D316 ← D300)
+- **The Spec imports no implementation module**: it imports only itself
+  (`make spec-gate`). (D306, D316 ← D300)
+- **The extraction is what the CLI runs** (`Once.Extract.Root`); the
+  correctness proofs are type-checked, not extracted. (D334)
+- **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
+  one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`
   override. (D008)
 - **Nix flakes** configure projects; **fourmolu defaults** format Haskell;

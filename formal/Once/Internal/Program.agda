@@ -3,16 +3,13 @@
 
 ------------------------------------------------------------------------
 -- Once.Internal.Program — WHAT A TYPED PROGRAM IS, and WHEN A SOURCE DENOTES ONE
--- (OCP-0006, spec). Plan 0.81.
+-- in the compiler's internal language. Plan 0.81.
 --
--- SPEC (trust boundary). `Once.Spec.Correct` exports `CorrectCompiler`, whose
--- `Typed` and `_⊢_` are ABSTRACT FIELDS — so the record alone does not say what
--- the theorem claims. The instance's filling of those fields does, and until
--- this module existed it lived in `Once.Adequacy.Compile`, OUTSIDE the boundary
--- it constitutes. `Spec/Correct.agda`'s own header names the risk: "a
--- wrong/vacuous statement here would make every instance proof worthless".
--- This module closes that gap: the two definitions live here, and the four
--- predicates they are built from are NAMED here.
+-- The compiler's own correctness (`Compile.correctᵈ`) is stated over these:
+-- `Typed` and `_⊢R_`. They are no longer the shipped theorem's — that is the
+-- Spec's (`Once.Certified.once-compiler`, D332), reached from this one by the
+-- proved bridges (`Once.Adequacy.SpecApex`). The four predicates they are
+-- built from are named here.
 --
 -- `Typed` and `_⊢R_` were also inside `Compile.WithCPU`, an ARCH-PARAMETERISED
 -- module, though neither mentions the architecture. `CorrectCompiler`'s comment

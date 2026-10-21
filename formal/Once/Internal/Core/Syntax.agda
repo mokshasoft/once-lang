@@ -4,8 +4,8 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Core.Syntax — the CORE CALCULUS's raw terms (plan 0.102 A).
 --
--- SPEC. The core is the language definition; the bidirectional judgment is a
--- surface that elaborates into it. Shaped as the non-dependent fragment of
+-- The compiler's internal core (D333; the Spec's is `Once.Spec.Core`); the
+-- bidirectional judgment is a surface that elaborates into it. Shaped as the non-dependent fragment of
 -- OCP-0009's `Spec/Kernel` (`NbEPDirDBType`): well-scoped de Bruijn raw terms
 -- and a separate EXTRINSIC judgment (`Once.Internal.Core.Typing`). The dependent
 -- kernel lands by adding formers here, never by introducing a second syntax.
@@ -18,8 +18,8 @@
 -- `fst`, `out`, …) are determined by their parts. The grade is determined up
 -- to `⊢sub-eff`, which changes no type. The meaning is defined on derivations,
 -- and this is what makes it a function of the judgment
--- (`Once.Internal.Core.Coherence`): two derivations differ only in where the
--- structural rules sit.
+-- (the Spec's `Coherence`, `Once.Metatheory.Coherence`): two derivations differ
+-- only in where the structural rules sit.
 --
 -- What is NOT a former: the categorical combinators (`id`, `compose`, `fst`
 -- as a morphism, `pair`/`case` of arrows, `curry`, `apply`, `terminal`,

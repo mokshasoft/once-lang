@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Core.Telescope — plan 0.103 phase 4: THE CORE TELESCOPE WITH ∀.
 --
--- SPEC. A module is a telescope of definitions `d : ∀ Δ. T = e`; each body is
+-- INTERNAL (D333). A module is a telescope of definitions `d : ∀ Δ. T = e`; each body is
 -- typed ONCE, over its kinds `Δ`, in its PREFIX's signature (a reference
 -- reaches only earlier definitions, so acyclicity is manifest). A program is a
 -- telescope and its `main : Eff Unit Unit`, a term over it (D253: a reference to an entry).

@@ -5,7 +5,7 @@
 -- Once.Internal.Elaboration — plan 0.103 phase 6b (plan 0.102 C): THE SURFACE
 -- ELABORATES INTO THE CORE.
 --
--- SPEC. Every surface derivation (`⊢ᶜ`/`⊢ᵢ`/`⊢ᵈ`) elaborates to a core term and
+-- INTERNAL (D333). Every surface derivation (`⊢ᶜ`/`⊢ᵢ`/`⊢ᵈ`) elaborates to a core term and
 -- a core derivation of it at the SAME context, usage and type, at grade `pure`
 -- (a surface expression's effects live on its arrows). Soundness is by
 -- construction: the output IS a core derivation.

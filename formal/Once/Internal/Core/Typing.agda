@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Core.Typing — the CORE's typing judgment (plan 0.102 A).
 --
--- SPEC. `Γ ⊢[ Ψ ] t ∷ A ! π`:
+-- INTERNAL (D333). `Γ ⊢[ Ψ ] t ∷ A ! π`:
 --   * EXTRINSIC over the raw `Tm n` (OCP-0009's `_⊢_∷_` shape), one rule per
 --     former, no modes, no algorithm;
 --   * GRADED by a usage vector `Ψ` — variable-based QTT over the ORDERED

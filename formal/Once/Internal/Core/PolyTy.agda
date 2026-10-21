@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Core.PolyTy — plan 0.103 phase 3: TYPE VARIABLES IN THE CORE.
 --
--- SPEC. The core's types over `m` type variables (de Bruijn, `Fin m`), the
+-- INTERNAL (D333). The core's types over `m` type variables (de Bruijn, `Fin m`), the
 -- non-dependent fragment of OCP-0009's `Π (A : U)`:
 --
 --   * a variable has a KIND — the universe it ranges over. `base` ranges over

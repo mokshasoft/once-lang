@@ -5,7 +5,7 @@
 -- Once.Internal.FunctorMeaning — a functor code, read as a polynomial functor
 -- on sets.
 --
--- SPEC. A code's constant positions hold BASE types (`WellFormedF`), so they
+-- INTERNAL (D333). A code's constant positions hold BASE types (`WellFormedF`), so they
 -- are read by `⟦_,_⟧-base` — over the carriers chosen for `Int` and `Float` —
 -- without the full meaning of types; `translateF` is the code's polynomial,
 -- and `μ-sem`/`ν-sem` its initial algebra and final coalgebra.

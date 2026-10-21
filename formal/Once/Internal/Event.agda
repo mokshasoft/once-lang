@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Event — what is observed: one call of a generator.
 --
--- SPEC. An event is the call of a generator of the signature — its resolved
+-- INTERNAL (D333). An event is the call of a generator of the signature — its resolved
 -- name, its argument type (a base type: a value the ABI can pass) and the
 -- argument. A program's behaviour is the sequence of its events.
 ------------------------------------------------------------------------

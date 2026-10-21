@@ -5,7 +5,7 @@
 -- Once.Internal.Value — what a value of each type is, over the carriers chosen
 -- for `Int` and `Float`.
 --
--- SPEC. `⟦ A ⟧` is the value space of `A`: products and sums are products and
+-- INTERNAL (D333). `⟦ A ⟧` is the value space of `A`: products and sums are products and
 -- sums of sets; an arrow is a function that may stop (`Res`), and an erased
 -- (`Zero`) arrow takes no argument; `μ F` and `ν F` are the initial algebra and
 -- the final coalgebra of `F`'s polynomial (`Spec.FunctorMeaning`). `⟦ A ⟧ᵍ`

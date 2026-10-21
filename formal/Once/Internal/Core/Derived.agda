@@ -5,7 +5,7 @@
 -- Once.Internal.Core.Derived — the categorical combinators AS DEFINITIONS
 -- (plan 0.102 A, D231).
 --
--- SPEC. Each combinator the surface writes is a λ-term of the core; its
+-- INTERNAL (D333). Each combinator the surface writes is a λ-term of the core; its
 -- meaning is DERIVED from the formers', never listed. Call-by-value with the
 -- evaluation order of today's meaning: a combinator's ARMS are evaluated
 -- once, eagerly, left to right (`let`), and the resulting arrow runs them per

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Stream — effectful streams: the final coalgebra of `T ∘ F`.
 --
--- SPEC. A stream `νᵈ F` is forced to a computation of a layer; `anaᵈ` unfolds
+-- INTERNAL (D333). A stream `νᵈ F` is forced to a computation of a layer; `anaᵈ` unfolds
 -- a Kleisli coalgebra `A → T (F A)`, running it once per forced layer;
 -- `in-νᵈ` wraps a layer already at hand; `seqF` sequences a layer of
 -- computations (what a fold runs). Every corecursive call sits under the

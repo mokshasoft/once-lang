@@ -5,7 +5,7 @@
 -- Once.Internal.Polynomial — the polynomial functors on sets, their initial
 -- algebras and their final coalgebras.
 --
--- SPEC. A code `SFunctor` is a polynomial: constants (a set), the identity,
+-- INTERNAL (D333). A code `SFunctor` is a polynomial: constants (a set), the identity,
 -- sums and products; `⟦ F ⟧SF` is the functor it denotes and `sfmap` its
 -- action. `μS F` is the initial algebra (`⟨_⟩`, `outS`) with its fold
 -- `cataS`; `νS F` is the final coalgebra of `Res ∘ ⟦ F ⟧SF` — a stream that

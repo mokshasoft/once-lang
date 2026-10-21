@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Core.Translate — plan 0.103 phase 6c: MODULES → PROGRAMS.
 --
--- SPEC. A well-typed module (the surface telescope, D241) IS a core program
+-- INTERNAL (D333). A well-typed module (the surface telescope, D241) IS a core program
 -- (D239): walking it in declaration order,
 --   * an FFI declaration extends the signature Σ in scope, never the
 --     definitions (D274): a reference to it is a `sigop`;

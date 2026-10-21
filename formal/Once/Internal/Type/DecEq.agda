@@ -5,7 +5,7 @@
 -- Once.Internal.Type.DecEq — decidable equality of the grades, kinds, functors
 -- and types.
 --
--- SPEC (decision procedures).
+-- INTERNAL (D333): decision procedures.
 ------------------------------------------------------------------------
 
 module Once.Internal.Type.DecEq where

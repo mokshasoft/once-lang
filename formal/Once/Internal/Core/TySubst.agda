@@ -8,8 +8,8 @@
 --     Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π   ⟹   Δ′ ⊩ Γ⟨σ⟩ ⊢[ Ψ ] t⟨σ⟩ₜ ∷ A⟨σ⟩ ! π
 --
 -- for every substitution `σ` that respects the kinds (`KSub`). The lemma is
--- STATED in `Once.Internal.Core.TermModel` (`ty-subst-⊢`, part of the
--- Spec's metatheory, `Once.Spec.Metatheory`) and PROVED in `Once.Metatheory.TySubst`;
+-- the internal core's counterpart of the Spec's (`Once.Spec.Metatheory`,
+-- proved in `Once.Metatheory.TermModel.TySubst`);
 -- this module holds the definitions the statement needs, plus one small fact
 -- `Spec.Core.Abstract` reads (`<:ₚ-refl`).
 ------------------------------------------------------------------------
