@@ -62,15 +62,15 @@ sigs-table-++ (is-sig ∷ a) (xa-pass () _)
 sigs-table-++ (is-sig ∷ a) (xa-sig _ x)  es = cong (_ ∷_) (sigs-table-++ a x es)
 sigs-table-++ (is-sig ∷ a) (xa-isig _ x) es = cong (_ ∷_) (sigs-table-++ a x es)
 
+toISig-++ : ∀ (Σ₁ Σ₂ : Signature) → toISig (Σ₁ ++ Σ₂) ≡ toISig Σ₁ ++ toISig Σ₂
+toISig-++ []        Σ₂ = refl
+toISig-++ (d ∷ Σ₁) Σ₂ = cong (_ ∷_) (toISig-++ Σ₁ Σ₂)
+
+wf-++ : ∀ (Σ₁ : Signature) {Σ₂} → WellFormed (Σ₁ ++ Σ₂) → WellFormed Σ₁ × WellFormed Σ₂
+wf-++ []       w       = [] , w
+wf-++ (d ∷ Σ₁) (w ∷ ws) = let (w₁ , w₂) = wf-++ Σ₁ ws in w ∷ w₁ , w₂
+
 private
-  toISig-++ : ∀ (Σ₁ Σ₂ : Signature) → toISig (Σ₁ ++ Σ₂) ≡ toISig Σ₁ ++ toISig Σ₂
-  toISig-++ []        Σ₂ = refl
-  toISig-++ (d ∷ Σ₁) Σ₂ = cong (_ ∷_) (toISig-++ Σ₁ Σ₂)
-
-  wf-++ : ∀ (Σ₁ : Signature) {Σ₂} → WellFormed (Σ₁ ++ Σ₂) → WellFormed Σ₁ × WellFormed Σ₂
-  wf-++ []       w       = [] , w
-  wf-++ (d ∷ Σ₁) (w ∷ ws) = let (w₁ , w₂) = wf-++ Σ₁ ws in w ∷ w₁ , w₂
-
   -- the module a path names is found once
   first-unique : ∀ {p : List String} {ds ds′} {mm : SR.ModuleMap} → SR.FirstAt p (S.mkModule ds) mm → SR.FirstAt p (S.mkModule ds′) mm → ds ≡ ds′
   first-unique SR.fa-here          SR.fa-here          = refl

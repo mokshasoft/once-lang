@@ -6,11 +6,13 @@
 -- declares are word names, so the compiler's rendered keys find them
 -- (plan 0.121 R13, D329).
 --
--- The Spec's lexer makes a word of identifier characters, none of them `.`
--- (`lex-words`, by T2); a parse only reads tokens off the front
--- (`SpecGrammar.Suffix`), so every `signature` name and import path it
--- reads is made of words (`decls-words`), and so is every key of the
--- signature (`signature-words`). A generator the compiler finds by the
+-- The Spec's lexer makes a word token of an identifier (`lex-words`, by
+-- T2), and an identifier has no `.`, so it is a word; a parse only reads
+-- tokens off the front (`SpecGrammar.Suffix`), so every `signature` name and
+-- import path it reads is made of identifiers, and every definition it reads
+-- is named by an identifier or an operator's characters (`decls-words`); so
+-- every key of the signature is made of identifiers (`signature-idents`),
+-- and of words (`signature-words`). A generator the compiler finds by the
 -- rendered name of a word name is then Σ's declaration of that name
 -- (`r13-at`, by `render-inj`).
 ------------------------------------------------------------------------
@@ -27,8 +29,12 @@ open import Data.List.Relation.Binary.Pointwise using ([]; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.Any using (here; there)
 import Data.Nat.Properties as NatP
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String; toList; fromList)
+open import Data.List using (reverse; _ʳ++_)
+open import Data.Bool using (_∨_)
+open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Parser using (validCharsB; allIdentContinue; validNameB; opCharsB; allOpNameChars)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
@@ -50,6 +56,7 @@ open import Once.Adequacy.SpecCore.Poly using (declS)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecGrammar.Suffix using (All-⊒)
 import Once.Adequacy.SpecGrammar.Suffix as Suf
+import Once.Parser.Lexer
 open import Once.Adequacy.SpecFront.Render using (render-inj)
 
 ------------------------------------------------------------------------
@@ -59,9 +66,17 @@ open import Once.Adequacy.SpecFront.Render using (render-inj)
 Word : String → Set
 Word w = T (wordB w)
 
--- What a token says of its names: a word token is a word.
+-- An identifier, as the compiler's lexer makes one.
+Ident : String → Set
+Ident w = T (validCharsB (toList w))
+
+-- A definition's name: an identifier or an operator's characters.
+DefName : String → Set
+DefName x = T (validNameB x)
+
+-- What a token says of its names: a word token is an identifier.
 TokW : Token → Set
-TokW (TWord w) = Word w
+TokW (TWord w) = Ident w
 {-# CATCHALL #-}
 TokW _         = ⊤
 
@@ -82,14 +97,48 @@ private
           true≢false : true ≡ false → ⊥
           true≢false ()
 
-  rest-nd : ∀ {cs i r} → IdentRest cs i r → T (noDotB i)
-  rest-nd id-end         = tt
-  rest-nd (id-stop _)    = tt
-  rest-nd (id-more {c = ch} c p) = ∧-intro (not-dot isIdentContinue refl ch c) (rest-nd p)
+  ∨-introˡ : ∀ {a} b → T a → T (a ∨ b)
+  ∨-introˡ {true} _ t = t
 
-  ident-word : ∀ {c cs i r} → isIdentStart c ≡ true → IdentRest cs i r → Word (fromList (c ∷ i))
-  ident-word {c} {i = i} s p =
-    subst (λ l → T (wordCharsB l)) (sym (toList∘fromList (c ∷ i))) (∧-intro (not-dot isIdentStart refl c s) (rest-nd p))
+  ∨-introʳ : ∀ a {b} → T b → T (a ∨ b)
+  ∨-introʳ true  _ = tt
+  ∨-introʳ false t = t
+
+  ∧-l : ∀ {a b} → T (a ∧ b) → T a
+  ∧-l {true} _ = tt
+
+  ∧-r : ∀ {a b} → T (a ∧ b) → T b
+  ∧-r {true} t = t
+
+  T-≡ : ∀ {b} → b ≡ true → T b
+  T-≡ refl = tt
+
+  rest-ident : ∀ {cs i r} → IdentRest cs i r → T (allIdentContinue i)
+  rest-ident id-end         = tt
+  rest-ident (id-stop _)    = tt
+  rest-ident (id-more c p)  = ∧-intro (T-≡ c) (rest-ident p)
+
+  ident-tok : ∀ {c cs i r} → isIdentStart c ≡ true → IdentRest cs i r → Ident (fromList (c ∷ i))
+  ident-tok {c} {i = i} s p =
+    subst (λ l → T (validCharsB l)) (sym (toList∘fromList (c ∷ i))) (∧-intro (T-≡ s) (rest-ident p))
+
+  conts-nd : ∀ cs → T (allIdentContinue cs) → T (noDotB cs)
+  conts-nd []       _ = tt
+  conts-nd (c ∷ cs) a = ∧-intro (not-dot isIdentContinue refl c (T⇒≡ (∧-l a))) (conts-nd cs (∧-r a))
+    where
+      T⇒≡ : ∀ {b} → T b → b ≡ true
+      T⇒≡ {true} _ = refl
+
+-- An identifier is a word.
+ident-word : ∀ {w} → Ident w → Word w
+ident-word {w} i = go (toList w) i
+  where
+    go : ∀ cs → T (validCharsB cs) → T (wordCharsB cs)
+    go []       ()
+    go (c ∷ cs) a = ∧-intro (not-dot isIdentStart refl c (T⇒≡ (∧-l a))) (conts-nd cs (∧-r a))
+      where
+        T⇒≡ : ∀ {b} → T b → b ≡ true
+        T⇒≡ {true} _ = refl
 
 -- Every word the Spec's lexer makes is a word.
 lex-words : ∀ {cs ts} → LexesChars cs ts → All TokW ts
@@ -135,7 +184,7 @@ lex-words (lex-string _ l)           = tt ∷ lex-words l
 lex-words (lex-string-end _)         = []
 lex-words (lex-int _ _ _ l)          = tt ∷ lex-words l
 lex-words (lex-float _ _ _ l)        = tt ∷ lex-words l
-lex-words (lex-ident _ _ s p l)      = ident-word s p ∷ lex-words l
+lex-words (lex-ident _ _ s p l)      = ident-tok s p ∷ lex-words l
 lex-words (lex-skip _ _ _ l)         = lex-words l
 
 ------------------------------------------------------------------------
@@ -144,19 +193,19 @@ lex-words (lex-skip _ _ _ l)         = lex-words l
 
 -- What a declaration says of the signature's names.
 DeclW : SX.Decl → Set
-DeclW (DSignature x _)          = Word x
-DeclW (DImport (mkImport p _))  = All Word p × p ≢ []
+DeclW (DSignature x _)          = Ident x
+DeclW (DImport (mkImport p _))  = All Ident p × p ≢ []
 DeclW (DTypeSig _ _)            = ⊤
-DeclW (DFunDef _ _)             = ⊤
+DeclW (DFunDef x _)             = DefName x
 DeclW (DTypeAlias _ _ _)        = ⊤
 
 private
-  path-words′ : ∀ {ts p r} → ParsesModulePath ts p r → All TokW ts → All Word p
+  path-words′ : ∀ {ts p r} → ParsesModulePath ts p r → All TokW ts → All Ident p
   path-words′ (path-cons p)    (w ∷ _ ∷ ws) = w ∷ path-words′ p ws
   path-words′ (path-dotstop _) (w ∷ _)      = w ∷ []
   path-words′ (path-end _)     (w ∷ _)      = w ∷ []
 
-  path-words : ∀ {ts p r} → All TokW ts → ParsesModulePath ts p r → All Word p
+  path-words : ∀ {ts p r} → All TokW ts → ParsesModulePath ts p r → All Ident p
   path-words ws p = path-words′ p ws
 
   import-words : ∀ {ts d r} → All TokW ts → ParsesImport ts d r → DeclW d
@@ -172,17 +221,47 @@ private
   alias-words (G.alias-eq _)    = tt
   alias-words (G.alias-param p) = alias-words p
 
-  fundef-words : ∀ {x ts d r} → G.ParsesFunDef x ts d r → DeclW d
-  fundef-words (G.fundef _ _) = tt
+  fundef-words : ∀ {x ts d r} → DefName x → G.ParsesFunDef x ts d r → DeclW d
+  fundef-words n (G.fundef _ _) = n
+
+  -- an operator's characters
+  oc-op : ∀ {t ch} → G.OpChar t ch → T (Once.Parser.Lexer.isOpNameChar ch)
+  oc-op G.oc-dot   = tt
+  oc-op G.oc-plus  = tt
+  oc-op G.oc-minus = tt
+  oc-op G.oc-star  = tt
+  oc-op G.oc-slash = tt
+  oc-op G.oc-pct   = tt
+  oc-op G.oc-lt    = tt
+  oc-op G.oc-gt    = tt
+  oc-op G.oc-pipe  = tt
+  oc-op G.oc-amp   = tt
+  oc-op G.oc-at    = tt
+
+  ops-ʳ++ : ∀ xs {acc} → T (allOpNameChars xs) → T (allOpNameChars acc) → T (allOpNameChars (xs ʳ++ acc))
+  ops-ʳ++ []       _ a = a
+  ops-ʳ++ (x ∷ xs) o a = ops-ʳ++ xs (∧-r o) (∧-intro (∧-l o) a)
+
+  op-name : ∀ {ts cs x r} → G.ParsesOpChars ts cs x r → T (allOpNameChars cs) → DefName x
+  op-name (G.op-close {c} {cs}) o =
+    ∨-introʳ (validCharsB (toList (fromList (reverse (c ∷ cs)))))
+      (subst (λ l → T (opCharsB l)) (sym (toList∘fromList (reverse (c ∷ cs))))
+        (ops-ne cs (ops-ʳ++ cs (∧-r o) (∧-intro (∧-l o) tt))))
+    where
+      -- (`reverse (c ∷ cs)` is `cs ʳ++ (c ∷ [])`, a cons)
+      ops-ne : ∀ ys {a as} → T (allOpNameChars (ys ʳ++ (a ∷ as))) → T (opCharsB (ys ʳ++ (a ∷ as)))
+      ops-ne []       t = t
+      ops-ne (y ∷ ys) t = ops-ne ys t
+  op-name (G.op-char oc p) o = op-name p (∧-intro (oc-op oc) o)
 
   decl-words′ : ∀ {ts d r} → ParsesDecl ts d r → All TokW ts → DeclW d
   decl-words′ (decl-import p)            (_ ∷ ws)    = import-words ws p
   decl-words′ (decl-alias p)             _           = alias-words p
   decl-words′ (decl-signature _)         (_ ∷ w ∷ _) = w
   decl-words′ (decl-typesig _ _ _)       _           = tt
-  decl-words′ (decl-fundef _ _ p)        _           = fundef-words p
+  decl-words′ (decl-fundef _ _ p)        (w ∷ _)     = fundef-words (∨-introˡ _ w) p
   decl-words′ (decl-op _ (G.op-sig _))   _           = tt
-  decl-words′ (decl-op _ (G.op-def _ p)) _           = fundef-words p
+  decl-words′ (decl-op o (G.op-def _ p)) _           = fundef-words (op-name o tt) p
 
   decl-words : ∀ {ts d r} → All TokW ts → ParsesDecl ts d r → DeclW d
   decl-words ws d = decl-words′ d ws
@@ -209,44 +288,63 @@ mods-words {(_ , txt) ∷ _} {(_ , m) ∷ _} ((_ , pm) ∷ pms) = decls-words {t
 -- The signature's keys
 ------------------------------------------------------------------------
 
+-- A name made of identifiers.
+IdentName : CanonicalName → Set
+IdentName (canonical xs) = All Ident xs × xs ≢ []
+
+KeysI : Signature → Set
+KeysI = All (λ d → IdentName (Decl.name d))
+
 KeysW : Signature → Set
 KeysW = All (λ d → WordName (Decl.name d))
 
 private
-  words-++ : ∀ (p q : List String) → All Word p → T (wordsB q) → T (wordsB (p ++ q))
-  words-++ []      q []       wq = wq
-  words-++ (x ∷ p) q (w ∷ wp) wq = ∧-intro w (words-++ p q wp wq)
-
-  ++-all : ∀ {Σ₁ Σ₂ : Signature} → KeysW Σ₁ → KeysW Σ₂ → KeysW (Σ₁ ++ Σ₂)
+  ++-all : ∀ {Σ₁ Σ₂ : Signature} → KeysI Σ₁ → KeysI Σ₂ → KeysI (Σ₁ ++ Σ₂)
   ++-all []       k₂ = k₂
   ++-all (k ∷ k₁) k₂ = k ∷ ++-all k₁ k₂
 
-  sigs-words : ∀ {path ds Σ} → All Word path → All DeclW ds → SignaturesOf path ds Σ → KeysW Σ
-  sigs-words wp _        so-nil                    = []
-  sigs-words {path} wp (w ∷ ws) (so-sig {x = x} _ so) = words-++ path (x ∷ []) wp (∧-intro w tt) ∷ sigs-words wp ws so
-  sigs-words wp (_ ∷ ws) (so-other _ so)            = sigs-words wp ws so
+  idents-++ : ∀ (p : List String) {x} → All Ident p → Ident x → IdentName (canonical (p ++ x ∷ []))
+  idents-++ []      []       i = i ∷ [] , λ ()
+  idents-++ (y ∷ p) (j ∷ jp) i = j ∷ proj₁ (idents-++ p jp i) , λ ()
+
+  sigs-idents : ∀ {path ds Σ} → All Ident path → All DeclW ds → SignaturesOf path ds Σ → KeysI Σ
+  sigs-idents wp _        so-nil                    = []
+  sigs-idents {path} wp (w ∷ ws) (so-sig {x = x} _ so) = idents-++ path wp w ∷ sigs-idents wp ws so
+  sigs-idents wp (_ ∷ ws) (so-other _ so)            = sigs-idents wp ws so
 
   first-words : ∀ {p m mm} → ModsW mm → FirstAt p m mm → All DeclW (Module.decls m)
   first-words (w ∷ _)  fa-here        = w
   first-words (_ ∷ ws) (fa-there _ f) = first-words ws f
 
-  expand-words′ : ∀ {p p′} → Expands p p′ → All Word p → All Word p′
-  expand-words′ ex-nil       []       = []
-  expand-words′ ex-I         (_ ∷ ws) = tt ∷ ws
-  expand-words′ (ex-other _) ws       = ws
+  expand-idents′ : ∀ {p p′} → Expands p p′ → All Ident p → All Ident p′
+  expand-idents′ ex-nil       []       = []
+  expand-idents′ ex-I         (_ ∷ ws) = tt ∷ ws
+  expand-idents′ (ex-other _) ws       = ws
 
-  expand-words : ∀ {p p′} → All Word p → Expands p p′ → All Word p′
-  expand-words ws ex = expand-words′ ex ws
+  expand-idents : ∀ {p p′} → All Ident p → Expands p p′ → All Ident p′
+  expand-idents ws ex = expand-idents′ ex ws
 
-  imp-words : ∀ {mm ds Σ} → ModsW mm → All DeclW ds → Imported mm ds Σ → KeysW Σ
-  imp-words wm _        im-nil                  = []
-  imp-words wm ((wp , _) ∷ ws) (im-import f ex so im) =
-    ++-all (sigs-words (expand-words wp ex) (first-words wm f) so) (imp-words wm ws im)
-  imp-words wm (_ ∷ ws) (im-other _ im)         = imp-words wm ws im
+  imp-idents : ∀ {mm ds Σ} → ModsW mm → All DeclW ds → Imported mm ds Σ → KeysI Σ
+  imp-idents wm _        im-nil                  = []
+  imp-idents wm ((wp , _) ∷ ws) (im-import f ex so im) =
+    ++-all (sigs-idents (expand-idents wp ex) (first-words wm f) so) (imp-idents wm ws im)
+  imp-idents wm (_ ∷ ws) (im-other _ im)         = imp-idents wm ws im
 
--- Every key of the program's signature is a word name.
+  idents-words : ∀ xs → All Ident xs → T (wordsB xs)
+  idents-words []       []       = tt
+  idents-words (x ∷ xs) (i ∷ is) = ∧-intro (ident-word {x} i) (idents-words xs is)
+
+  keys-words : ∀ {Σ} → KeysI Σ → KeysW Σ
+  keys-words []                                    = []
+  keys-words {(canonical xs ∶ _) ∷ _} ((is , _) ∷ ks) = idents-words xs is ∷ keys-words ks
+
+-- Every key of the program's signature is made of identifiers…
+signature-idents : ∀ {mm ds Σ} → ModsW mm → All DeclW ds → SignatureOf mm ds Σ → KeysI Σ
+signature-idents wm wd (_ , _ , so , im , refl) = ++-all (sigs-idents [] wd so) (imp-idents wm wd im)
+
+-- …so it is a word name.
 signature-words : ∀ {mm ds Σ} → ModsW mm → All DeclW ds → SignatureOf mm ds Σ → KeysW Σ
-signature-words wm wd (_ , _ , so , im , refl) = ++-all (sigs-words [] wd so) (imp-words wm wd im)
+signature-words wm wd s = keys-words (signature-idents wm wd s)
 
 ------------------------------------------------------------------------
 -- R13: the rendered key of a word name finds its declaration
