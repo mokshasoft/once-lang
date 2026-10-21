@@ -494,7 +494,7 @@ du_accept'45'mir_436 v0 v1 v2
       (coe
          du_accept'45'ef_406 (coe v0) (coe v1)
          (coe
-            MAlonzo.Code.Once.Parser.d_extractFunctions_632
+            MAlonzo.Code.Once.Parser.d_extractFunctions_640
             (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
             (coe v1)))
 -- Once.Adequacy.Compile.WithCPU.accept-gm
@@ -551,7 +551,7 @@ du_compile'45'just'45'ir_490 v0
                  (coe
                     MAlonzo.Code.Once.Parser.d_guardDistinct_542
                     (coe
-                       MAlonzo.Code.Once.Parser.d_thenExtract_626
+                       MAlonzo.Code.Once.Parser.d_thenExtract_634
                        (coe
                           MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0))
@@ -560,7 +560,7 @@ du_compile'45'just'45'ir_490 v0
                           MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                           (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                           (coe
-                             MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                             MAlonzo.Code.Once.Parser.d_sigsFirst_630
                              (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0)))
                           (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))))) in
     coe
@@ -616,7 +616,7 @@ du_correctR'45'complete_566 v0 v1 v2 v3
                                   = let v10
                                           = MAlonzo.Code.Once.Parser.d_guardDistinct_542
                                               (coe
-                                                 MAlonzo.Code.Once.Parser.d_thenExtract_626
+                                                 MAlonzo.Code.Once.Parser.d_thenExtract_634
                                                  (coe
                                                     MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                                                     (coe
@@ -630,7 +630,7 @@ du_correctR'45'complete_566 v0 v1 v2 v3
                                                        MAlonzo.Code.Once.Parser.d_extractAliases_76
                                                        (coe v4))
                                                     (coe
-                                                       MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                                                       MAlonzo.Code.Once.Parser.d_sigsFirst_630
                                                        (coe
                                                           MAlonzo.Code.Once.Parser.Module.Core.d_decls_36
                                                           (coe v4)))
@@ -673,7 +673,7 @@ du_correctR'45'complete_566 v0 v1 v2 v3
                                             (coe
                                                MAlonzo.Code.Once.Parser.d_guardDistinct_542
                                                (coe
-                                                  MAlonzo.Code.Once.Parser.d_thenExtract_626
+                                                  MAlonzo.Code.Once.Parser.d_thenExtract_634
                                                   (coe
                                                      MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                                                      (coe
@@ -687,7 +687,7 @@ du_correctR'45'complete_566 v0 v1 v2 v3
                                                         MAlonzo.Code.Once.Parser.d_extractAliases_76
                                                         (coe v4))
                                                      (coe
-                                                        MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                                                        MAlonzo.Code.Once.Parser.d_sigsFirst_630
                                                         (coe
                                                            MAlonzo.Code.Once.Parser.Module.Core.d_decls_36
                                                            (coe v4)))
@@ -716,7 +716,7 @@ du_correctR'45'complete_566 v0 v1 v2 v3
                                                      (coe
                                                         MAlonzo.Code.Once.Parser.d_guardDistinct_542
                                                         (coe
-                                                           MAlonzo.Code.Once.Parser.d_thenExtract_626
+                                                           MAlonzo.Code.Once.Parser.d_thenExtract_634
                                                            (coe
                                                               MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                                                               (coe
@@ -730,7 +730,7 @@ du_correctR'45'complete_566 v0 v1 v2 v3
                                                                  MAlonzo.Code.Once.Parser.d_extractAliases_76
                                                                  (coe v4))
                                                               (coe
-                                                                 MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                                                                 MAlonzo.Code.Once.Parser.d_sigsFirst_630
                                                                  (coe
                                                                     MAlonzo.Code.Once.Parser.Module.Core.d_decls_36
                                                                     (coe v4)))
@@ -1845,7 +1845,7 @@ du_sound_1398 v0 v1 v2 v3
                                   (coe
                                      MAlonzo.Code.Once.Parser.d_guardDistinct_542
                                      (coe
-                                        MAlonzo.Code.Once.Parser.d_thenExtract_626
+                                        MAlonzo.Code.Once.Parser.d_thenExtract_634
                                         (coe
                                            MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                                            (coe
@@ -1857,7 +1857,7 @@ du_sound_1398 v0 v1 v2 v3
                                            (coe
                                               MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v5))
                                            (coe
-                                              MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                                              MAlonzo.Code.Once.Parser.d_sigsFirst_630
                                               (coe
                                                  MAlonzo.Code.Once.Parser.Module.Core.d_decls_36
                                                  (coe v5)))
@@ -1978,7 +1978,7 @@ du_sound_1398 v0 v1 v2 v3
                                                              MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
                                                              (coe v3)))
                                                        (coe
-                                                          MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2252
+                                                          MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2388
                                                           (coe
                                                              MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_50
                                                              (coe v3))
@@ -2136,7 +2136,7 @@ du_sound_1398 v0 v1 v2 v3
                                                                        MAlonzo.Code.Once.Denotation.Behavior.d_srcText_52
                                                                        (coe v3)))
                                                                  (coe
-                                                                    MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2252
+                                                                    MAlonzo.Code.Once.Adequacy.ResolveBridge.du_resolvesModule'45'complete_2388
                                                                     (coe
                                                                        MAlonzo.Code.Once.Denotation.Behavior.d_srcImports_50
                                                                        (coe v3))

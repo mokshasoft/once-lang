@@ -4232,7 +4232,7 @@ du_moduleToProgram'45'linked_2868 v0 v1
               (coe
                  MAlonzo.Code.Once.Parser.d_guardDistinct_542
                  (coe
-                    MAlonzo.Code.Once.Parser.d_thenExtract_626
+                    MAlonzo.Code.Once.Parser.d_thenExtract_634
                     (coe
                        MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0))
@@ -4241,7 +4241,7 @@ du_moduleToProgram'45'linked_2868 v0 v1
                        MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                        (coe
-                          MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                          MAlonzo.Code.Once.Parser.d_sigsFirst_630
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in
     coe

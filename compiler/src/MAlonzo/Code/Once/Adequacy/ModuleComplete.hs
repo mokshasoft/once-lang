@@ -1246,7 +1246,7 @@ d_moduleToIR'45'complete_684 v0 v1 v2
   = let v3
           = MAlonzo.Code.Once.Parser.d_guardDistinct_542
               (coe
-                 MAlonzo.Code.Once.Parser.d_thenExtract_626
+                 MAlonzo.Code.Once.Parser.d_thenExtract_634
                  (coe
                     MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                     (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0))
@@ -1255,7 +1255,7 @@ d_moduleToIR'45'complete_684 v0 v1 v2
                     MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                     (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                     (coe
-                       MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                       MAlonzo.Code.Once.Parser.d_sigsFirst_630
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0)))
                     (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))) in
     coe
@@ -1632,7 +1632,7 @@ du_moduleToIR'45'sound_984 v0 v1 v2
   = let v3
           = MAlonzo.Code.Once.Parser.d_guardDistinct_542
               (coe
-                 MAlonzo.Code.Once.Parser.d_thenExtract_626
+                 MAlonzo.Code.Once.Parser.d_thenExtract_634
                  (coe
                     MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                     (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0))
@@ -1641,7 +1641,7 @@ du_moduleToIR'45'sound_984 v0 v1 v2
                     MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                     (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
                     (coe
-                       MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                       MAlonzo.Code.Once.Parser.d_sigsFirst_630
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v0)))
                     (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))) in
     coe

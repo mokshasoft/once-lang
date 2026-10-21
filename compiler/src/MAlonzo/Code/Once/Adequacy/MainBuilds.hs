@@ -988,7 +988,7 @@ du_crm'45'doOpt_816 v0 v1 v2
   = coe
       du_crm'45'aux'45'doOpt_792 (coe v0)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_632
+         MAlonzo.Code.Once.Parser.d_extractFunctions_640
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
       (coe v2)
@@ -1074,7 +1074,7 @@ du_cfm'45'built'45'from'45'crm_914 v0 v1 v2
   = coe
       du_cfm'45'built'45'aux_880 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_632
+         MAlonzo.Code.Once.Parser.d_extractFunctions_640
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
          (coe v1))
       (coe v2)

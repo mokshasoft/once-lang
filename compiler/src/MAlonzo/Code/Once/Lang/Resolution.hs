@@ -81,8 +81,9 @@ data T_ResolvesExpr_108
 -- Once.Lang.Resolution.ResolvesDecl
 d_ResolvesDecl_296 a0 a1 a2 a3 a4 = ()
 data T_ResolvesDecl_296
-  = C_rd'45'fundef_310 T_ResolvesExpr_108 | C_rd'45'typesig_316 |
-    C_rd'45'signature_324 | C_rd'45'typealias_332 | C_rd'45'import_336
+  = C_rd'45'fundef_310 T_ResolvesExpr_108 AgdaAny |
+    C_rd'45'typesig_316 | C_rd'45'signature_324 |
+    C_rd'45'typealias_332 | C_rd'45'import_336
 -- Once.Lang.Resolution.NotImport
 d_NotImport_338 a0 = ()
 data T_NotImport_338

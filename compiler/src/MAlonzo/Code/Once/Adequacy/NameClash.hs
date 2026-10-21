@@ -326,14 +326,14 @@ d_program'45'no'45'clash_644 v0
         -> let v2
                  = MAlonzo.Code.Once.Parser.d_guardDistinct_542
                      (coe
-                        MAlonzo.Code.Once.Parser.d_thenExtract_626
+                        MAlonzo.Code.Once.Parser.d_thenExtract_634
                         (coe
                            MAlonzo.Code.Once.Parser.d_sigsAdjacent_554 (coe v1)
                            (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                         (coe
                            MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                            (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
-                           (coe MAlonzo.Code.Once.Parser.d_sigsFirst_622 (coe v1))
+                           (coe MAlonzo.Code.Once.Parser.d_sigsFirst_630 (coe v1))
                            (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))) in
            coe
              (case coe v2 of

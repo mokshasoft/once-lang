@@ -1984,12 +1984,20 @@ du_toProgramFrom_1062 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Lang.Core.Translate.noCF
+d_noCF_1488 ::
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
+  MAlonzo.Code.Once.Lang.Core.AbsTy.T_ConstFree_374
+d_noCF_1488 ~v0 ~v1 = du_noCF_1488
+du_noCF_1488 :: MAlonzo.Code.Once.Lang.Core.AbsTy.T_ConstFree_374
+du_noCF_1488 = MAlonzo.RTE.mazUnreachableError
 -- Once.Lang.Core.Translate.toProgram₀
-d_toProgram'8320'_1490 ::
+d_toProgram'8320'_1494 ::
   [MAlonzo.Code.Once.Parser.T_Entry_132] ->
   MAlonzo.Code.Once.Lang.Module.T_ModTele_70 ->
   AgdaAny -> MAlonzo.Code.Once.Lang.Core.Telescope.T_Program_106
-d_toProgram'8320'_1490 v0 v1 v2
+d_toProgram'8320'_1494 v0 v1 v2
   = coe
       d_toProgram_942
       (coe
@@ -2002,5 +2010,5 @@ d_toProgram'8320'_1490 v0 v1 v2
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       (coe v0) (coe MAlonzo.Code.Once.Lang.Core.Telescope.C_'91''93'_16)
-      (coe C_'91''93'_68) (coe C_'91''93'_92) (coe C_'91''93'_118) erased
-      (coe v1) (coe v2) (coe (\ v3 v4 -> v4))
+      (coe C_'91''93'_68) (coe C_'91''93'_92) (coe C_'91''93'_118)
+      (\ v3 -> coe du_noCF_1488) (coe v1) (coe v2) (coe (\ v3 v4 -> v4))

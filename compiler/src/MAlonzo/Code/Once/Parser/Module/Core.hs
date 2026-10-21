@@ -60,7 +60,7 @@ data T_Decl_20
     C_DFunDef_24 MAlonzo.Code.Agda.Builtin.String.T_String_6
                  MAlonzo.Code.Once.Lang.Syntax.T_RawExpr_34 |
     C_DSignature_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                    (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
+                    (Maybe [MAlonzo.Code.Agda.Builtin.String.T_String_6])
                     MAlonzo.Code.Once.Lang.Type.Poly.T_PolyType_10 |
     C_DTypeAlias_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]

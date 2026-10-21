@@ -1549,7 +1549,7 @@ d_compileResolvedModule_1060 v0 v1 v2
   = coe
       du_compileResolvedModule'45'aux_1042 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_632
+         MAlonzo.Code.Once.Parser.d_extractFunctions_640
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v2))
          (coe v2))
 -- Once.Compile.lw-entries
@@ -1733,7 +1733,7 @@ d_silentRoundDefs_1198 v0
   = coe
       d_silentRoundDefs'45'aux_1194
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_632
+         MAlonzo.Code.Once.Parser.d_extractFunctions_640
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v0))
          (coe v0))
 -- Once.Compile.compileModule
@@ -1754,7 +1754,7 @@ d_compileModule_1202 v0 v1 v2
                        MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1014 (coe v2)))) in
     coe
       (let v4
-             = MAlonzo.Code.Once.Parser.d_extractFunctions_632
+             = MAlonzo.Code.Once.Parser.d_extractFunctions_640
                  (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v3))
                  (coe v3) in
        coe
@@ -2744,7 +2744,7 @@ d_compile_1598 v0 v1 v2 v3 v4
            -> coe C_Error_1550 (coe v6)
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v6
            -> let v7
-                    = MAlonzo.Code.Once.Parser.d_extractFunctions_632
+                    = MAlonzo.Code.Once.Parser.d_extractFunctions_640
                         (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v6))
                         (coe v6) in
               coe
@@ -2943,7 +2943,7 @@ d_compileFileFromModule_1734 v0 v1 v2 v3
   = coe
       d_cfm'45'file'45'ef_1710 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_632
+         MAlonzo.Code.Once.Parser.d_extractFunctions_640
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v3))
          (coe v3))
 -- Once.Compile.cfm-stage-aux
@@ -3006,6 +3006,6 @@ d_compileFromModule_1802 v0 v1 v2 v3 v4
       d_cfm'45'ef'45'aux_1776 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe v4)
       (coe
-         MAlonzo.Code.Once.Parser.d_extractFunctions_632
+         MAlonzo.Code.Once.Parser.d_extractFunctions_640
          (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v4))
          (coe v4))

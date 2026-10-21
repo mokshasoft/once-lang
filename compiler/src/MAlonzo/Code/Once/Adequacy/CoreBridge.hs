@@ -81,7 +81,7 @@ du_typedSig_24 v0
                -> coe
                     du_typedSig'45'ef_14
                     (coe
-                       MAlonzo.Code.Once.Parser.d_extractFunctions_632
+                       MAlonzo.Code.Once.Parser.d_extractFunctions_640
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
                        (coe v1))
                     (coe v3)
@@ -106,7 +106,7 @@ du_typedProgram'45'ef_38 v0 v1 v2
         -> case coe v2 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
-                    MAlonzo.Code.Once.Lang.Core.Translate.d_toProgram'8320'_1490
+                    MAlonzo.Code.Once.Lang.Core.Translate.d_toProgram'8320'_1494
                     (coe v3) (coe v1) (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -127,7 +127,7 @@ du_typedProgram_52 v0
                -> coe
                     du_typedProgram'45'ef_38
                     (coe
-                       MAlonzo.Code.Once.Parser.d_extractFunctions_632
+                       MAlonzo.Code.Once.Parser.d_extractFunctions_640
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
                        (coe v1))
                     (coe v3) (coe v4)
@@ -268,7 +268,8 @@ du_core'45'ef'45'tr_146 v0 v1 v2 v3 v4 v5 v6
                       (coe v3) (coe MAlonzo.Code.Once.Lang.Core.Telescope.C_'91''93'_16)
                       (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_68)
                       (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_92)
-                      (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_118) erased
+                      (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_118)
+                      (\ v9 -> coe MAlonzo.Code.Once.Lang.Core.Translate.du_noCF_1488)
                       (coe v1) (coe v8) (coe (\ v9 v10 -> v10)))
                    (coe v6))
                 (coe
@@ -349,7 +350,8 @@ du_P_170 v0 v1 v2
       (coe v0) (coe MAlonzo.Code.Once.Lang.Core.Telescope.C_'91''93'_16)
       (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_68)
       (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_92)
-      (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_118) erased
+      (coe MAlonzo.Code.Once.Lang.Core.Translate.C_'91''93'_118)
+      (\ v3 -> coe MAlonzo.Code.Once.Lang.Core.Translate.du_noCF_1488)
       (coe v1) (coe v2) (coe (\ v3 v4 -> v4))
 -- Once.Adequacy.CoreBridge._.inv₀
 d_inv'8320'_194 ::
@@ -409,7 +411,7 @@ du_program'45'core'45'tr_222 v0 v1 v2 v3 v4 v5
               (coe
                  MAlonzo.Code.Once.Parser.d_guardDistinct_542
                  (coe
-                    MAlonzo.Code.Once.Parser.d_thenExtract_626
+                    MAlonzo.Code.Once.Parser.d_thenExtract_634
                     (coe
                        MAlonzo.Code.Once.Parser.d_sigsAdjacent_554
                        (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v1))
@@ -418,7 +420,7 @@ du_program'45'core'45'tr_222 v0 v1 v2 v3 v4 v5
                        MAlonzo.Code.Once.Parser.d_extractFunctions'45'go_220
                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_76 (coe v1))
                        (coe
-                          MAlonzo.Code.Once.Parser.d_sigsFirst_622
+                          MAlonzo.Code.Once.Parser.d_sigsFirst_630
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_36 (coe v1)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in
     coe
