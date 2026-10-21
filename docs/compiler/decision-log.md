@@ -18872,8 +18872,8 @@ findings; two POCs (plans/0.120-poc) showed the mechanization goes through.
 ## D319 — THE SPEC AFTER AN ULTRAREVIEW: A TRACE MENTIONS NO SIGNATURE, ONE NOTION PER NAME (2026-10-18)
 
 **Decided by the user, 2026-10-18** (an ultrareview of the Spec's changes since plan 0.119 A, branch
-`spec-review-85a2c50a7`; every finding applied there, reviewed with the user, moved here); approval by
-`make spec-approve` pending. **Amends**: D318 item 1 (the trace's type); D249 (the surface claim's
+`spec-review-85a2c50a7`; every finding applied there, reviewed with the user, moved here); approved by
+`make spec-approve` in `94dd87f79`. **Amends**: D318 item 1 (the trace's type); D249 (the surface claim's
 premise). **Relates**: D317, D318, plan-ref (`origin/plan-ref`, PLAN-REF).
 
 ### Decision
@@ -19173,3 +19173,42 @@ signature's declarations (`t-var-resolved`) and the bare-name import rule.
   `ModeAgreement`, `Meaning`, `Realize`, the meaning and coherence bridges); none used it.
 * Extracted cone: the typechecker now accepts a reference to a definition at a non-concrete type. The
   emitted code is the same `closure x` it emits for a concrete one; the exit suites confirm it.
+
+## D328 — THE COMPILER FOLLOWS THE SPEC'S FRONT END: PLAN 0.121'S DIVERGENCES (2026-10-21)
+
+**Follows** D314–D324 (the Spec's front end) and plan 0.121 §3.2 (R1–R13), found while bridging the
+compiler's front end to the Spec's (`SpecApex.Bridges`). **Relates**: D323, D324, D327 (R9), D326.
+Each divergence was fixed COMPILER-side: the compiler accepts only Spec programs, and means the same.
+
+### Decision
+* **R1** a type signature is immediately followed by its definition (the Spec's `w-sig`); a dangling or
+  duplicate signature is rejected (`sigsAdjacent`, "The signature of `x` is not followed by its definition").
+* **R3** a bare name resolves to a generator, then an import, then the module's own definition; an own
+  polymorphic definition stays bare (`rv-own-poly`).
+* **R4** the program's signature is its own `signature` declarations, then its imports' (`sigsFirst`), the
+  Spec's `Σ₀ ++ Σᵢ`.
+* **R5** string-literal expressions leave the grammar (`EString`/`RStringLit`): the Spec has none. A string
+  literal is now a parse error.
+* **R7** `main` is an ordinary definition used at `Eff Unit Unit` up to `<:` (D315): the core program carries
+  `MainEntry`, the binary's entry is `Compile.mainEntry`.
+* **R8** a definition without a signature is typed by its SYNTHESIS and compiled from that derivation
+  (`MonoBody`, `compileFunI`, `realize-infer`) — the Spec's `w-nosig` takes the synthesized term (D323).
+* **R10** the resolver keeps an import where it was written, followed by its module's signatures
+  (`rds-import`), so an import between a signature and its definition is rejected, as by `w-sig`.
+* **R11** a resolved body names neither `main` nor an own polymorphic definition canonically
+  (`Lang.ResolvedRefs.GoodRefs`, checked by the resolver). Acceptance is unchanged (the typing rejected
+  both); the error now comes from the resolver. `poly@this`, which the Spec accepts, stays a gap of
+  `complete` (plan 0.121).
+* **R12** an imported operation's owner is its module's expanded path and its key is
+  `showCanonical (canonical (path ++ [name]))`, the Spec's rendering (the same strings at run time).
+
+### Recorded with it (MERGE.md §1 findings)
+* **`Once.Spike.RelSpike` returns** (`745b77de4`, `15e568512`): `backstop.islands` +1 and
+  `public-gate.baseline` +1. It is plan 0.93's S3 work toward discharging `BlockRunsHyp` ×3 (an unwired
+  prize), wrongly deleted in `318e29b37`. The raises go when it is wired or deleted.
+* **`Once.SPF` deleted** (`c59c6c661`, D307 item 6): its `bisim-to-eq` postulate and two `TERMINATING`
+  pragmas leave the trust base with it (complements D326).
+* **R13 is open** (plan 0.121 §3.2): the compiler finds a generator by its rendered name; relating it to the
+  Spec's canonical name needs `showCanonical` injective on lexed names, which Agda cannot prove without a
+  fact about `primStringAppend`. The user decides between the options in the plan.
+

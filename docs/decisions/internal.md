@@ -28,6 +28,11 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **The IR is grade-erased**; its objects are ungraded. (D046)
 - **Ana is parameterized by its environment**: the coalgebra is read at a
   fixed environment per layer. (D273)
+- **The front end follows the Spec's**: the resolver keeps an import in
+  place; a resolved body names neither `main` nor an own polymorphic
+  definition canonically; a signature-less definition is compiled from its
+  synthesis; an imported operation's key is its canonical name rendered.
+  (D328)
 - **The server loop needs no new IR construct**: an effectful IR arrow means
   `T∞`, and the existing `Ana` against the effect type is the loop; what is
   new is its compilation (a back-edge) and its machine proof. (D313)
@@ -137,6 +142,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   discharges `BlockRunsHyp`; a `data` index cannot pin the function a closure
   denotes (D217). In progress: `Once/Spike/RelSpike.agda`, plan 0.93 S3,
   8 of 13 clauses, no postulates. (D283 ← D213, D216, D217)
+- **The trust base on `freyd-spec`**: the step-budget and fuel postulates
+  are gone (the claim is weak bisimilarity of traces), `BlockRuns` says a
+  stopped callee has not left the program, `opt-trace` is restated over
+  traces. (D326)
 - **There is no global program bound**: a closure carries its own body bound.
   (D214)
 - **Dataflow disciplines are discharged by type-indexed shape correctness**,

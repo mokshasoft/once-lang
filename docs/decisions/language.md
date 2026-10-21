@@ -276,6 +276,9 @@ entry updates the rule it changes here, in the same commit.
   a definition's type is the one its body synthesizes; a body that only checks
   (a λ, a bare polymorphic reference) needs a signature to declare its context.
   (D323, D321, D314, D007)
+- **A type signature is immediately followed by its definition**; a module's
+  `signature` declarations come before its imports' in the program's
+  signature; there are no string-literal expressions. (D328)
 
 ## 8. Polymorphism and modules
 
@@ -292,7 +295,11 @@ entry updates the rule it changes here, in the same commit.
 - **A module is a telescope**: every definition typed once, at its
   declaration, in its prefix. (D234, D241, D239)
 - **A reference to a definition is a call that means its callee** (not a
-  SigOp). (D246 ← D235, D244, D245, D071)
+  SigOp), at the definition's type, whatever it is — concreteness gates only
+  the FFI. (D327, D246 ← D235, D244, D245, D071)
+- **Name resolution**: a bare name is a generator, then an import, then the
+  module's own definition; `name@this` names an own definition other than
+  `main`. (D328, D324)
 - **All names in a module are distinct**, signatures included; importing a
   module twice is rejected. (D249)
 - **No implicit imports, no prelude**; generators are always in scope.
