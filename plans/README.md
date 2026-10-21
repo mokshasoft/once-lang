@@ -24,7 +24,6 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 |---|---|---|
 | 0.121 before the merge | open, top-down | bridges proved and the apex on the Spec (D332); `Once.Lang` removed (Spec copies deleted, the rest to `Once.Internal`); docs; then the merge |
 | 0.122 collapse the internal language | after the merge | retarget the compiler onto the Spec layer by layer (types, core, meaning, surface); delete `Once.Internal` and the bridges |
-| 0.119 the server loop | D5 done; D6 in 0.121 | the Spec bridges and the apex swap, carried by 0.121 |
 | 0.50 named defs are morphisms | ABI landed | retire `classifyAppHead` from the judgment (moved here by D293) |
 | 0.96 `IO` is not a language construct | not started | decide (§3), remove the parser sites |
 | 0.79 categorical laws | not started | decide whether source-level laws are Spec metatheory |
