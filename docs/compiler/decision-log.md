@@ -19328,8 +19328,9 @@ resolves and types). `Once.Compiler` stayed on the old source until both were pr
   the Spec's typing is shown not to depend on the numbering (`SchemaRen`: two readings of one written type
   agree up to renumbering by name; `DefsRen`: typing over two definitions tables that agree so; `TyRen`:
   surface typing under a kind-keeping bijection of the type variables).
-* `Once.Compiler.once-compiler = SpecApex.spec-compiler SpecApex.bridges`: the shipped `CorrectCompiler` is
-  stated over `Spec.Source`, `Spec.Typed`/`_⊢_`, the Spec's behaviour and its Interpretations.
+* `Once.Certified.once-compiler = SpecApex.spec-compiler SpecApex.bridges`: the shipped `CorrectCompiler` is
+  stated over `Spec.Source`, `Spec.Typed`/`_⊢_`, the Spec's behaviour and its Interpretations. `Once.Compiler`
+  stays the per-arch assembly and the extraction root; the bridges are proofs and are not extracted.
 
 ### Consequences
 * No new trust: the bridges use P1 (as before) and T1/T2 (D329).
