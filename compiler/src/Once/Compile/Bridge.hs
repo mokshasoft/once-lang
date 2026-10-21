@@ -46,7 +46,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
 import qualified MAlonzo.Code.Once.IR as MCIR
-import qualified MAlonzo.Code.Once.Adequacy.Compile as MVC
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Warnings as MW
 import qualified MAlonzo.Code.Once.Parser as MP
@@ -254,5 +253,5 @@ toMAllocMode AllocHeap  = MCIR.C_Heap_8
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =
   fromMResult
-    (MVC.d_compile'45'cli'45'asm_26
+    (MC.d_compileFromModule_1802
        (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))

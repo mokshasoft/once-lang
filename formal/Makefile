@@ -248,10 +248,9 @@ malonzo:
 	fi
 	@echo "Extracting compiler via MAlonzo..."
 	@mkdir -p _build/malonzo
-	@# Extract from Once/Compiler.agda (the verified instance) which
-	@# transitively reaches Once.Compile + the Verified hierarchy. Bridge.hs
-	@# imports the verified entry point from this extraction.
-	@sh -c '$(AGDA_CMD) -c --no-main --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Compiler.agda'
+	@# Extract from Once/Extract/Root.agda: what the CLI runs, and nothing else
+	@# (the correctness theorem, Once/Certified.agda, is proved, not run).
+	@sh -c '$(AGDA_CMD) -c --no-main --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Extract/Root.agda'
 	@echo "Copying extracted modules to compiler..."
 	@rm -rf ../compiler/src/MAlonzo/Code/Once
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once

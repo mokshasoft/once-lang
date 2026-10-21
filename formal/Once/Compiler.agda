@@ -2,15 +2,12 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Compiler — ASSEMBLY POINT, and the extraction root
+-- Once.Compiler — ASSEMBLY POINT
 --
--- This module wires together:
---   - the trusted CPU base  (`Once.Adequacy.CPU`)
---   - the per-arch backend correctness (`Once.Adequacy.ArchCorrectness`)
---   - the proof + compile   (`Once.Adequacy.Compile`)
---
--- The CLI is extracted from here. The correctness theorem built from these
--- (`once-compiler`, over the Spec) is in `Once.Certified`.
+-- This module wires together the trusted CPU base (`Once.Adequacy.CPU`) and
+-- the per-arch backend correctness (`Once.Adequacy.ArchCorrectness`). The
+-- correctness theorem built from them (`once-compiler`, over the Spec) is in
+-- `Once.Certified`.
 ------------------------------------------------------------------------
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
@@ -74,22 +71,5 @@ open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86
 -- `arch-correctness` rides along on the same `using` list; splitting the import
 -- to avoid that would duplicate the telescope for one name.
        public
-import Once.Adequacy.Compile
-
--- D162: the Haskell-facing surface. Imported HERE because `make malonzo`
--- extracts from this module, and `Once.Extract.Names` must be in that cone to
--- be extracted. It contributes nothing to the theorem (`Once.Certified`) — it is stable
--- extracted NAMES plus two predicates the hand-written bridge used to compute
--- by pattern-matching MAlonzo constructors. The same holds for the warnings
--- (`Once.Warnings`, the CLI's) and the arithmetic IR the Haskell evaluator
--- reads (`Once.Arith.IR`). No name of these is used here, so a dead-import
--- pruning drops them — plan 0.92 did, and nothing failed until the next
--- extraction.
-import Once.Extract.Names
-import Once.Warnings
-import Once.Arith.IR
-
--- The CLI's entry points (`Once.Adequacy.Compile`, called by Bridge.hs) are
--- extracted from here; the correctness theorem over them is stated on the
--- Spec, in `Once.Certified` (plan 0.121, D332), whose bridges are proofs and
--- are not extracted.
+-- The CLI is extracted from `Once.Extract.Root`; the correctness theorem over
+-- what it runs is `Once.Certified` (plan 0.121, D332).

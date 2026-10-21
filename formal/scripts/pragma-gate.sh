@@ -5,7 +5,7 @@
 # Once has structured recursion only (OCP-0003). Agda enforces that for us —
 # termination and strict positivity — unless a pragma switches the check off.
 # This gate fails if any module in the import closure of the apex
-# (Once/Certified.agda) or of the extracted compiler (Once/Compiler.agda)
+# (Once/Certified.agda) or of the extracted compiler (Once/Extract/Root.agda)
 # carries a pragma that disables termination, positivity, coverage or universe
 # checking.
 #
@@ -13,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-roots=(Once/Certified.agda Once/Compiler.agda)
+roots=(Once/Certified.agda Once/Extract/Root.agda)
 # The pragma names are assembled so this script does not itself contain them.
 P='{-#[[:space:]]*('"TERMIN"'ATING|NON_'"TERMIN"'ATING|NO_POSITIVITY_'"CHECK"'|NON_'"COVER"'ING|NO_UNIVERSE_'"CHECK"')'
 
