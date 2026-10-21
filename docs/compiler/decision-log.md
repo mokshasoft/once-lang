@@ -19375,3 +19375,17 @@ the code so as little as possible makes it into the compiler?").
 * 180 modules extracted instead of 496; 317 proof modules leave the cabal build. A proof module the bridges
   add can no longer exhaust the extraction's memory (it did, at `Grammar.FunDefBridge`, before this).
 * `make pragma-gate` checks the closure of `Once.Certified` and `Once.Extract.Root`.
+
+## D335 — MERGE REVIEW DECISIONS FOR `freyd-spec` (2026-10-21)
+
+**Follows** the merge analysis (MERGE.md §1–2) of 2026-10-21. **Decided** by the user the same day.
+
+1. **The Spec's infrastructure lemmas move out of the Spec.** `Spec/Type.agda` (`⟨⟩-∘`, `⟨⟩F-∘`,
+   `base-⟨⟩`, `respects-∘`) and `Spec/Context.agda` (`⊑ᵘ-+ˡ`, `⊑ᵘ-+ʳ`, `⊑ᵘ-trans`, `⊑ᵘ-*One`, `⊑ᵘ-*Many`)
+   hold proofs; Spec modules are proof-free (MERGE.md §1). Not a move alone: `Spec.Core.Meaning` uses
+   `respects-∘`, `⟨⟩-∘` and the five usage-order lemmas, so the meaning must be restated not to need them.
+   A Spec patch, drafted whole and shown for approval before it lands (plan 0.121 §6).
+2. **`Once.Spike.RelSpike`'s gate raises are accepted** (`backstop.islands` +1, `public-gate.baseline` +1;
+   plan 0.93 S3, recorded in D328).
+3. **The unused imports in `Spec/Float/{Arith,Decimal,Dyadic}` are removed** — a Spec patch, with item 1's.
+4. **Plan 0.122** (the internal language collapsed onto the Spec) **is done after the merge** (D333).
