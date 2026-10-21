@@ -496,7 +496,6 @@ library
       MAlonzo.Code.Once.Semantics.ValueIR
       MAlonzo.Code.Once.SigOp.Info
       MAlonzo.Code.Once.Spec.Bool
-      MAlonzo.Code.Once.Spec.Correct
       MAlonzo.Code.Once.Spec.Float.Arith
       MAlonzo.Code.Once.Spec.Float.Decimal
       MAlonzo.Code.Once.Spec.Float.Dyadic

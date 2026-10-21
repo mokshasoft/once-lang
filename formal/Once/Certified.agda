@@ -14,7 +14,7 @@
 -- But we still want those properties GUARANTEED and drift-proof. This module
 -- conjoins the two concerns as a single product whose inhabitant cannot be
 -- constructed unless BOTH hold:
---   • `correctness` — the apex `CorrectCompiler` (`Once.Compiler`);
+--   • `correctness` — the apex `CorrectCompiler`, on the Spec (`once-compiler`);
 --   • `typechecker` — the `VerifiedTypeChecker` bundle (determinism ∧ totality
 --     ∧ error-preservation ∧ frontend identities, stated over the REAL
 --     `inferElab`/`checkElab`, so it cannot drift from the live elaborator).
@@ -86,12 +86,22 @@ open import Once.Compiler x86-64-heap-room x86-64-stack-room x86-64-call-room
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-heap-room x86-32-stack-room x86-32-call-room
        x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
-       using (once-compiler; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
+       using (arch-correctness; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
+import Once.Adequacy.SpecApex as SpecApex
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 -- Plan 0.102 phase B (D276, D304): the language's own metatheory, stated in the
 -- Spec (`Once.Spec.Metatheory`), proved under `Once.Metatheory`.
 open import Once.Metatheory using (metatheory)
 open import Once.Certified.Models using (NonVacuous; models)
+
+-- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
+-- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
+-- typing and behaviour by the two bridges, both proved (`SpecApex.bridges`).
+once-compiler : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
+              → CorrectCompiler
+once-compiler b64 b32 brv = SA.spec-compiler SA.bridges
+  where
+    module SA = SpecApex (arch-correctness b64 b32 brv)
 
 record CertifiedBuild : Set₁ where
   field

@@ -2,18 +2,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Compiler — ASSEMBLY POINT
+-- Once.Compiler — ASSEMBLY POINT, and the extraction root
 --
 -- This module wires together:
---   - the abstract spec     (`Once.Spec.Correct`)
---   - the meaning           (`Once.Denotation.Behavior`)
 --   - the trusted CPU base  (`Once.Adequacy.CPU`)
+--   - the per-arch backend correctness (`Once.Adequacy.ArchCorrectness`)
 --   - the proof + compile   (`Once.Adequacy.Compile`)
 --
--- and constructs a single `CorrectCompiler` value the CLI consumes.
--- This file should be one record literal: assembly only, with every
--- ingredient proved elsewhere. If the assembly typechecks, the compiler
--- is correct (modulo the postulates listed in the participating modules).
+-- The CLI is extracted from here. The correctness theorem built from these
+-- (`once-compiler`, over the Spec) is in `Once.Certified`.
 ------------------------------------------------------------------------
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
@@ -22,8 +19,6 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 
 
-open import Once.Lang.Trace using (interp)
-open import Once.Lang.Contract using (ISig; Impl)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
@@ -56,22 +51,12 @@ module Once.Compiler
   (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap entry-owner ι)
   (x86-32-lit-fits : ∀ ι → RB32.LitFits entry-owner ι) where
 
-open import Data.List using (List)
-open import Data.Nat using (ℕ)
-open import Relation.Binary.PropositionalEquality using (_≡_)
-
-open import Once.Spec.Correct using (CorrectCompiler)
-open import Once.Denotation.Behavior using (Source)
-open import Data.Unit using (⊤)
-open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
 -- wired-not-imported). Importing `Once.Adequacy.CPU` here pulls in the
 -- per-arch instance postulates; that is intentional and confined to
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Adequacy.CPU using ()
-open import Once.Adequacy.CPU.Interface using (Byte)
-open import Once.Target.Arch using (Arch)
 open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-heap-room riscv64-stack-room riscv64-call-room
@@ -89,11 +74,11 @@ open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86
 -- `arch-correctness` rides along on the same `using` list; splitting the import
 -- to avoid that would duplicate the telescope for one name.
        public
-import Once.Adequacy.Compile as VCompile
+import Once.Adequacy.Compile
 
 -- D162: the Haskell-facing surface. Imported HERE because `make malonzo`
 -- extracts from this module, and `Once.Extract.Names` must be in that cone to
--- be extracted. It contributes nothing to the theorem below — it is stable
+-- be extracted. It contributes nothing to the theorem (`Once.Certified`) — it is stable
 -- extracted NAMES plus two predicates the hand-written bridge used to compute
 -- by pattern-matching MAlonzo constructors. The same holds for the warnings
 -- (`Once.Warnings`, the CLI's) and the arithmetic IR the Haskell evaluator
@@ -104,52 +89,7 @@ import Once.Extract.Names
 import Once.Warnings
 import Once.Arith.IR
 
--- Instantiate the verified pipeline with the concrete per-arch
--- semantics AND the per-arch backend-correctness witnesses. `VC.compile` /
--- `VC.exec` / `VC.correct` are the compiler, the injected execution, and the
--- grand theorem proved against them. `arch-correctness` forces every target
--- to supply its `ArchCorrect` (proof or postulate) — the assembly point for
--- the per-arch trusted base.
--- plan 0.91 parallel track: `VC` is now scoped INSIDE `once-compiler`, because
--- it depends on the three block-table coherence hypotheses. They were the FALSE
--- postulate `block-runs` (D213); making them visible in the statement is what
--- turns a vacuous theorem into a conditional one. Plan 0.93 discharges them.
-
-once-compiler : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
-              → CorrectCompiler
-once-compiler b64 b32 brv = record
-  { Arch     = Arch
-  ; Source   = Source
-  ; Bytes    = List Byte
-  -- D320: what a program does is its TRACE — its calls and how the run ended.
-  ; Behavior = Tr ⊤
-  -- Plan 0.105 (D257, D061): an interpretation's declared signatures and an
-  -- implementation of them in the compiler's contract form (`Once.Lang.Contract`).
-  ; Signature      = ISig
-  ; Implementation = Impl
-  -- Plan 0.49: the INDEPENDENT meaning is RELATIONAL. `Typed` = an executable
-  -- declaratively-well-typed module; `_⊢_` links a source to it by PARSE (not
-  -- the elaborator); `⟦_⟧ˢ` is the surface denotation `SD.⟦_⟧ˢ` of `main` (so
-  -- `faithful` is load-bearing — typecheck + elaborate + codegen are forced).
-  ; Typed    = VC.Typed
-  ; _⊢_      = VC._⊢R_
-  -- the signatures a typed module is compiled against: its FFI declarations
-  ; sigOf    = VC.sigOfT
-  -- Plan 0.58 (OCP-0006): the reference meaning is now the DIRECT, IR-free
-  -- derivation denotation `VC.⟦_⟧ᵈ` (was `VC.⟦_⟧ˢ` = SD∘realize); `correctᵈ`
-  -- re-composes the grand theorem with the observational bridge.
-  -- …relative to an implementation of the program's signatures; the bytes run
-  -- in the world those signatures and that implementation make.
-  ; ⟦_⟧ˢ     = VC.⟦_⟧ᵈᴵ
-  ; exec     = λ arch S I → VC.exec (interp S I) arch
-  -- Behavioural equivalence = the Spec's `SameBehaviour`: weak bisimilarity
-  -- of traces (D317, D320) — the same calls, the same end, the production rate
-  -- unobserved.
-  ; _≈_      = λ b₁ b₂ → b₁ ≈ᵗ⟨ _≡_ ⟩ b₂
-  -- Plan 0.48: `compile` carries the optimizer flag.
-  ; compile  = VC.compile
-  -- Plan 0.49: the two-conjunct (sound+trace / complete) relational claim.
-  ; correct  = VC.correctᵈ
-  }
-  where
-    module VC = VCompile.WithCPU (arch-correctness b64 b32 brv)
+-- The CLI's entry points (`Once.Adequacy.Compile`, called by Bridge.hs) are
+-- extracted from here; the correctness theorem over them is stated on the
+-- Spec, in `Once.Certified` (plan 0.121, D332), whose bridges are proofs and
+-- are not extracted.
