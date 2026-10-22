@@ -37,7 +37,7 @@ module Once.Internal.Elaboration (Σ : Signature) {s : ℕ} (S : Defs s) where
 
 open import Data.Fin using (Fin)
 open import Data.Maybe using (just)
-open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
@@ -162,8 +162,9 @@ module _ {m : ℕ} {Δ : KCtx m} {n : ℕ} {Γ : Ctx m n} where
   polyE : ∀ {imps sg polys} → View imps sg polys → ∀ {x sc body prefix} {U : Ty m}
         → (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) → KindedInstance Δ sc U
         → Elab Δ Γ zeroUsage U
-  polyE V {sc = sc} lp ki with kinded-instance sc ki
-  ... | τ , r , e = retypeE e (refAt (entry V lp) (entryIs V lp) τ r)
+  polyE V {sc = sc} lp ki =
+    retypeE (proj₂ (proj₂ (kinded-instance sc ki)))
+            (refAt (entry V lp) (entryIs V lp) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))))
 
 ------------------------------------------------------------------------
 -- The elaboration

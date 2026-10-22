@@ -2,39 +2,27 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.ElabCommute — plan 0.104 E.2 (ii): ELABORATION COMMUTES WITH
--- THE RIGID SUBSTITUTION.
+-- Once.Adequacy.ElabCommute — plan 0.104 E.2 (ii), plan 0.122: ELABORATION
+-- COMMUTES WITH TYPE SUBSTITUTION.
 --
 -- Elaborating the surface substitution instance of a derivation
--- (`RigidSubst.subst-c′`) gives the core substitution of its elaboration
--- (`CoreInst.ρ̂ᶜ`): the same term up to `ρ̂ₜ`, the same derivation up to index
--- transports. By induction on the surface derivation, clause by clause with
--- the elaboration; each combinator's case is its commutation lemma
--- (`CoreInst.c-*`), and a reference's is the view's naturality.
+-- (`TySubst.subst-c′`) gives the Spec core's substitution of its elaboration
+-- (`ty-subst-⊢`): the same term up to `_⟪ τ ⟫ₜ`, the same derivation up to
+-- index transports (`Comm`). By induction on the surface derivation, clause by
+-- clause with the elaboration; each combinator's case is its commutation lemma
+-- (`Core.DerivedSubst`), and a reference's is the instance the view computes.
 ------------------------------------------------------------------------
 
-import Once.Internal.Name
-import Once.Internal.Type.Sub
-import Once.Spec.Sub
-open import Once.Spec.Type using (Ty; KCtx)
-open import Once.Internal.Type.Sub using (·p-diag)
 open import Data.Nat using (ℕ)
-open import Once.Internal.Core.PolyTy using (Sig; KCtx; GSub; Respects)
-import Once.Internal.Core.Abstract as Abs
-import Once.Internal.Elaboration as El
-import Once.TypeCheck.RigidSubst as RSm
-import Once.Adequacy.ViewNatural as VN
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Core.Syntax using (Defs)
+open import Once.Spec.Type using (KCtx; TySub; Respects)
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx)
+import Once.Internal.Elaboration as El
 
-open import Once.Internal.Contract using (ISig)
-module Once.Adequacy.ElabCommute {Fs : ISig} {s : ℕ} (S : Sig Fs s) {m : ℕ} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ)
-  (sg : Abs.SigGround S) {imps sigs : Imports} {polys : PolyCtx} (V : El.View S imps sigs polys)
-  (nat : VN.Natural S Δ τ r V) (ir : RSm.TopRF Δ τ r imps sigs) where
-
-import Once.Spec.Name
-import Data.String
-import Data.Maybe
-import Once.Internal.Typing.Scope
+module Once.Adequacy.ElabCommute (Σ : Signature) {s : ℕ} (S : Defs s)
+  {m k : ℕ} (Δ : KCtx m) (Δ′ : KCtx k) (τ : TySub m k) (r : Respects Δ Δ′ τ)
+  {imps sigs : Imports} {polys : PolyCtx} (V : El.View Σ S imps sigs polys) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -42,505 +30,587 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
-import Once.Internal.Type as T
-
-import Once.Spec.Type as T
-import Once.Type as T
-open import Once.Spec.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; positionGrade; EffGrade; Purity; pureᶠ)
-open import Once.Internal.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
-open import Once.Spec.Name using (NotGenerator)
-open import Once.Internal.Type using (μ-type; ν-type)
-open import Once.Internal.Laws.SubLaws using (<:-unique)
-open import Once.Functor.Translate using (Base-irrelevant)
-open import Once.Type.Rigid using (extractGround-rf)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; eff; Purity; pureᶠ; actᶠ; positionGrade)
+open import Once.Spec.Type using (Ty; Fun; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; _⟨_⟩; _⟨_⟩F; base)
+open import Once.Spec.Type.Substitution using (⟨⟩-∘; respects-∘)
+open import Once.Spec.Sub using (_<:_)
+open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Spec.Context using (Ctx; _▸_; _⟨_⟩ᶜ; Usage; _∷_)
+open import Once.Spec.Core.Syntax
+open Schema using (arity; kinds; type)
+open import Once.Spec.Core.Derived
+open import Once.Spec.Core.Typing Σ S
 open import Once.Postulates using (extensionality)
-import Once.Internal.Context as C
-import Once.Spec.Context as SCx
-open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Functor.Translate using (Base-irrelevant)
+open import Once.Internal.Laws.SubLaws using (<:-unique)
 open import Once.Internal.Typing.Scope using (mkCtx)
 open import Once.Internal.Typing
-import Once.Internal.Core.Syntax S as G
-import Once.Internal.Core.Typing S as GT
-open GT using (_⊢[_]_∷_!_)
-open import Once.Internal.Core.PolyTy using (_!!_; module Schema)
-open Schema using (arity)
-import Once.Internal.Core.Rename S as RN
-import Once.Internal.Core.DerivedTyping S as DT
-open El S using (View; elabᶜ; elabᵢ; elabᵈ; ImportAt; Declared; declared; def; importE; sigE; refE; InstanceOf)
-open RSm Δ τ r using (ρ̂; ρ̂F; ρ̂S; ρ̂-<:; ρ̂-wf; ρ̂-⟦⟧; ρ̂-rf; ρ̂-ki; lookup-ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
-import Once.Adequacy.CoreInst S Δ τ r as CI
-open CI using (ρ̂ₜ)
-open CI.WithSG sg
-open VN.Natural nat
-
+open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+import Once.Metatheory.TermModel.TySubst Σ S as TS
+open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk; module Deriv)
+open Deriv τ r
+import Once.Internal.Core.DerivedTyping Σ S as DT
+open import Once.Internal.Core.DerivedSubst Σ S τ r
+open El Σ S using (Elab; View; elabᶜ; elabᵢ; elabᵈ; retypeD; retypeE; refAt)
 open View V
+import Once.TypeCheck.TySubst Δ Δ′ τ r as RS
+open RS using (ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
 
 ------------------------------------------------------------------------
--- Transports, references, closing.
+-- What commuting means
+------------------------------------------------------------------------
+
+record Comm {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
+            (x : Elab Δ′ (Γ ⟨ τ ⟩ᶜ) Ψ (A ⟨ τ ⟩)) (y : Elab Δ Γ Ψ A) : Set where
+  constructor comm
+  field
+    tm : proj₁ x ≡ proj₁ y ⟪ τ ⟫ₜ
+    dr : proj₂ x ≅ ty (proj₂ y)
+open Comm
+
+------------------------------------------------------------------------
+-- Transports erase
 ------------------------------------------------------------------------
 
 private
-  ⇝ᵢ-tm : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
-  ⇝ᵢ-tm refl d = refl
-  ⇝ᵢ-dr : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
-  ⇝ᵢ-dr refl d = H.refl
-  ⇝ᶜ-tm : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
-  ⇝ᶜ-tm refl d = refl
-  ⇝ᶜ-dr : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
-  ⇝ᶜ-dr refl d = H.refl
+  module _ {n′} {N} {D : Ctx k n′} {e Ψ} where
+    private ctx′ = mkCtx n′ N D imps polys sigs Δ′
+    ⇝ᵢ-tm : ∀ {A B : Ty k} (q : A ≡ B) (d : ctx′ ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
+    ⇝ᵢ-tm refl d = refl
+    ⇝ᵢ-dr : ∀ {A B : Ty k} (q : A ≡ B) (d : ctx′ ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
+    ⇝ᵢ-dr refl d = H.refl
+    ⇝ᶜ-tm : ∀ {A B : Ty k} (q : A ≡ B) (d : ctx′ ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
+    ⇝ᶜ-tm refl d = refl
+    ⇝ᶜ-dr : ∀ {A B : Ty k} (q : A ≡ B) (d : ctx′ ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
+    ⇝ᶜ-dr refl d = H.refl
 
-  ≅ref : ∀ {m} {n} {Γ : C.Ctx m n} {d} {τ₁ τ₂ : GSub (arity (S !! d))} {r₁ r₂} → τ₁ ≡ τ₂
-       → GT.⊢ref {Γ = Γ} d τ₁ r₁ ≅ GT.⊢ref {Γ = Γ} d τ₂ r₂
-  ≅ref {r₁ = r₁} {r₂ = r₂} refl
-    rewrite extensionality (λ i → extensionality (λ e → Base-irrelevant (r₁ i e) (r₂ i e))) = H.refl
+  rE-tm : ∀ {a n} {Δ₀ : KCtx a} {Γ : Ctx a n} {Ψ A B} (e : A ≡ B) (x : Elab Δ₀ Γ Ψ A) → proj₁ (retypeE e x) ≡ proj₁ x
+  rE-tm refl x = refl
+  rE-dr : ∀ {a n} {Δ₀ : KCtx a} {Γ : Ctx a n} {Ψ A B} (e : A ≡ B) (x : Elab Δ₀ Γ Ψ A) → proj₂ (retypeE e x) ≅ proj₂ x
+  rE-dr refl x = H.refl
+  ty-rE : ∀ {n} {Γ : Ctx m n} {Ψ A B} (e : A ≡ B) (x : Elab Δ Γ Ψ A) → ty (proj₂ (retypeE e x)) ≅ ty (proj₂ x)
+  ty-rE refl x = H.refl
 
-  -- A reference: the instance the substituted use finds is the substituted one.
-  refE-tm : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A : Ty m} (d : Fin s) (i₁ : InstanceOf d A₁) (i₀ : InstanceOf d A)
-          → proj₁ i₁ ≡ (λ j → ρ̂ (proj₁ i₀ j))
-          → proj₁ (refE {Γ = ρ̂S Γ} d i₁) ≡ ρ̂ₜ (proj₁ (refE {Γ = Γ} d i₀))
-  refE-tm d i₁ i₀ h = cong (G.ref d) h
+  rD-≅ : ∀ {a n} {Δ₀ : KCtx a} {Γ : Ctx a n} {Ψ t A B π} (e : A ≡ B) (d : Δ₀ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → retypeD e d ≅ d
+  rD-≅ refl d = H.refl
+  ty-rD : ∀ {n} {Γ : Ctx m n} {Ψ t A B π} (e : A ≡ B) (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → ty (retypeD e d) ≅ ty d
+  ty-rD refl d = H.refl
 
-  refE-dr : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A : Ty m} (d : Fin s) (i₁ : InstanceOf d A₁) (i₀ : InstanceOf d A)
-          → proj₁ i₁ ≡ (λ j → ρ̂ (proj₁ i₀ j))
-          → proj₂ (refE {Γ = ρ̂S Γ} d i₁) ≅ ρ̂ᶜ (proj₂ (refE {Γ = Γ} d i₀))
-  refE-dr d (τ₁ , r₁ , e₁) (τ₀ , r₀ , e₀) h =
-    H.trans (rmA (λ X → X) e₁)
-      (H.trans (≅ref h) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e₀) (rmA (λ X → X) (sym (ρ̂-ref d τ₀))))))
+  -- Kind-respect is a proposition.
+  respects-irr : ∀ {a b} {Δ₀ : KCtx a} {Δ₁ : KCtx b} {σ : TySub a b} (r₁ r₂ : Respects Δ₀ Δ₁ σ) → r₁ ≡ r₂
+  respects-irr r₁ r₂ = extensionality λ i → extensionality λ e → Base-irrelevant (r₁ i e) (r₂ i e)
 
-  -- A generator's reference: its contract is ground (D274).
-  sig-tm : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
-         → proj₁ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k wn dc))
-  sig-tm cn k wn dc = refl
+------------------------------------------------------------------------
+-- References: an entry at the substituted instance
+------------------------------------------------------------------------
 
-  sig-dr : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
-         → proj₂ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k wn dc))
-  sig-dr cn k wn dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
+private
+  ref-tm : ∀ {n} {Γ : Ctx m n} (d : Fin s) {sc : Schema} (e : S !! d ≡ sc)
+             (τ₀ : TySub (arity sc) m) (r₀ : Respects (kinds sc) Δ τ₀) (τ₁ : TySub (arity sc) k) (r₁ : Respects (kinds sc) Δ′ τ₁)
+         → τ₁ ≡ (λ i → τ₀ i ⟨ τ ⟩)
+         → proj₁ (refAt {Γ = Γ ⟨ τ ⟩ᶜ} d e τ₁ r₁) ≡ proj₁ (refAt {Γ = Γ} d e τ₀ r₀) ⟪ τ ⟫ₜ
+  ref-tm d refl τ₀ r₀ τ₁ r₁ refl = refl
 
-  -- D313: a generator at its guard — the guarded arrow is ground too.
+  ref-dr : ∀ {n} {Γ : Ctx m n} (d : Fin s) {sc : Schema} (e : S !! d ≡ sc)
+             (τ₀ : TySub (arity sc) m) (r₀ : Respects (kinds sc) Δ τ₀) (τ₁ : TySub (arity sc) k) (r₁ : Respects (kinds sc) Δ′ τ₁)
+         → τ₁ ≡ (λ i → τ₀ i ⟨ τ ⟩)
+         → proj₂ (refAt {Γ = Γ ⟨ τ ⟩ᶜ} d e τ₁ r₁) ≅ ty (proj₂ (refAt {Γ = Γ} d e τ₀ r₀))
+  ref-dr d refl τ₀ r₀ τ₁ r₁ refl
+    rewrite respects-irr r₁ (respects-∘ r₀ r) = H.sym (rtᵗ-≅ _ _)
 
-  -- A definition's reference, at its ground instance, is fixed.
-  imp-tm : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} {x} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
-         → proj₁ (importE {Γ = ρ̂S Γ} ia) ≡ ρ̂ₜ (proj₁ (importE {Γ = Γ} ia))
-  imp-tm (def d i) ni = cong (G.ref d) (sym ni)
+------------------------------------------------------------------------
+-- Congruences of the instance's derivations (index equations explicit)
+------------------------------------------------------------------------
 
-  imp-dr : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} {x} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
-         → proj₂ (importE {Γ = ρ̂S Γ} ia) ≅ ρ̂ᶜ (proj₂ (importE {Γ = Γ} ia))
-  imp-dr {Γ = Γ} (def d (τ′ , r′ , e′)) ni =
-    H.trans (rmA (λ X → X) e′)
-      (H.trans (≅ref (sym ni)) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e′) (rmA (λ X → X) (sym (ρ̂-ref d τ′))))))
+private
+  ≅1 : ∀ {n₁ n} {Γ₁ : Ctx k n₁} {Γ : Ctx k n} {A₁ B : Ty k} {π₁ π Ψ₁ Ψ₂ t₁ t₂}
+         (W : Usage n₁ → Usage n) (Vt : Tm S k n₁ → Tm S k n)
+         (f : ∀ {Ψ t} → Δ′ ⊩ Γ₁ ⊢[ Ψ ] t ∷ A₁ ! π₁ → Δ′ ⊩ Γ ⊢[ W Ψ ] Vt t ∷ B ! π)
+         {d₁ : Δ′ ⊩ Γ₁ ⊢[ Ψ₁ ] t₁ ∷ A₁ ! π₁} {d₂ : Δ′ ⊩ Γ₁ ⊢[ Ψ₂ ] t₂ ∷ A₁ ! π₁}
+     → Ψ₁ ≡ Ψ₂ → t₁ ≡ t₂ → d₁ ≅ d₂ → f d₁ ≅ f d₂
+  ≅1 W Vt f refl refl H.refl = H.refl
 
-  closeH : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A₂ : Ty m} {t₁ t₂ π} {D₁ : C.∅ ⊢[ C.zeroUsage ] t₁ ∷ A₁ ! π} {D₂ : C.∅ ⊢[ C.zeroUsage ] t₂ ∷ A₂ ! π}
-         → t₁ ≡ t₂ → A₁ ≡ A₂ → D₁ ≅ D₂ → RN.⊢close {Γ = Γ} D₁ ≅ RN.⊢close {Γ = Γ} D₂
-  closeH refl refl H.refl = H.refl
+  ≅2 : ∀ {n₁ n₂ n} {Γ₁ : Ctx k n₁} {Γ₂ : Ctx k n₂} {Γ : Ctx k n} {A₁ A₂ B : Ty k} {π₁ π₂ π Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ t₁ t₁′ t₂ t₂′}
+         (W : Usage n₁ → Usage n₂ → Usage n) (Vt : Tm S k n₁ → Tm S k n₂ → Tm S k n)
+         (f : ∀ {Ψ Ψ′ t t′} → Δ′ ⊩ Γ₁ ⊢[ Ψ ] t ∷ A₁ ! π₁ → Δ′ ⊩ Γ₂ ⊢[ Ψ′ ] t′ ∷ A₂ ! π₂ → Δ′ ⊩ Γ ⊢[ W Ψ Ψ′ ] Vt t t′ ∷ B ! π)
+         {a₁ : Δ′ ⊩ Γ₁ ⊢[ Ψ₁ ] t₁ ∷ A₁ ! π₁} {a₂ : Δ′ ⊩ Γ₁ ⊢[ Ψ₂ ] t₂ ∷ A₁ ! π₁}
+         {b₁ : Δ′ ⊩ Γ₂ ⊢[ Ψ₁′ ] t₁′ ∷ A₂ ! π₂} {b₂ : Δ′ ⊩ Γ₂ ⊢[ Ψ₂′ ] t₂′ ∷ A₂ ! π₂}
+     → Ψ₁ ≡ Ψ₂ → t₁ ≡ t₂ → a₁ ≅ a₂ → Ψ₁′ ≡ Ψ₂′ → t₁′ ≡ t₂′ → b₁ ≅ b₂ → f a₁ b₁ ≅ f a₂ b₂
+  ≅2 W Vt f refl refl H.refl refl refl H.refl = H.refl
 
-  ≅app : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A₂ B₁ B₂ : Ty m} {Ψ₁ Ψ₂ q π π₁ π₂ f₁ f₂ x₁ x₂}
-           {df₁ : Γ ⊢[ Ψ₁ ] f₁ ∷ A₁ T.⇒[ mk-kind q π ] B₁ ! π₁} {df₂ : Γ ⊢[ Ψ₁ ] f₂ ∷ A₂ T.⇒[ mk-kind q π ] B₂ ! π₁}
-           {dx₁ : Γ ⊢[ Ψ₂ ] x₁ ∷ A₁ ! positionGrade q π₂} {dx₂ : Γ ⊢[ Ψ₂ ] x₂ ∷ A₂ ! positionGrade q π₂}
-       → A₁ ≡ A₂ → B₁ ≡ B₂ → f₁ ≡ f₂ → df₁ ≅ df₂ → x₁ ≡ x₂ → dx₁ ≅ dx₂ → GT.⊢app df₁ dx₁ ≅ GT.⊢app df₂ dx₂
-  ≅app refl refl refl H.refl refl H.refl = H.refl
+  -- Application, where the function's domain or codomain is equal but not
+  -- the same expression (a layer type, substituted).
+  ≅appAB : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ q π π₁ π₂ A A′ B B′ f f′ x x′}
+             {df : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π₁} {df′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f′ ∷ A′ ⇒[ mk-kind q π ] B′ ! π₁}
+             {dx : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π₂} {dx′ : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x′ ∷ A′ ! positionGrade q π₂}
+         → A ≡ A′ → B ≡ B′ → f ≡ f′ → x ≡ x′ → df ≅ df′ → dx ≅ dx′ → ⊢app df dx ≅ ⊢app df′ dx′
+  ≅appAB refl refl refl refl H.refl H.refl = H.refl
 
-  -- Binding or passing a pure part (plan 0.116) preserves `≅`.
-  ≅let-pure : ∀ {m} {n} {Γ : C.Ctx m n} {A B : Ty m} {q π Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ e₁ e₂ b₁ b₂}
-                {de₁ : Γ ⊢[ Ψ₁ ] e₁ ∷ A ! pure} {de₂ : Γ ⊢[ Ψ₁′ ] e₂ ∷ A ! pure}
-                {db₁ : (Γ C., A) ⊢[ q SCx.∷ Ψ₂ ] b₁ ∷ B ! π} {db₂ : (Γ C., A) ⊢[ q SCx.∷ Ψ₂′ ] b₂ ∷ B ! π}
-            → Ψ₁ ≡ Ψ₁′ → e₁ ≡ e₂ → de₁ ≅ de₂ → Ψ₂ ≡ Ψ₂′ → b₁ ≡ b₂ → db₁ ≅ db₂
-            → GT.⊢let-pure q de₁ db₁ ≅ GT.⊢let-pure q de₂ db₂
-  ≅let-pure refl refl H.refl refl refl H.refl = H.refl
-
-  ≅app-pure : ∀ {m} {n} {Γ : C.Ctx m n} {A B : Ty m} {q π Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ f₁ f₂ x₁ x₂}
-                {df₁ : Γ ⊢[ Ψ₁ ] f₁ ∷ A T.⇒[ mk-kind q π ] B ! pure} {df₂ : Γ ⊢[ Ψ₁′ ] f₂ ∷ A T.⇒[ mk-kind q π ] B ! pure}
-                {dx₁ : Γ ⊢[ Ψ₂ ] x₁ ∷ A ! pure} {dx₂ : Γ ⊢[ Ψ₂′ ] x₂ ∷ A ! pure}
-            → Ψ₁ ≡ Ψ₁′ → f₁ ≡ f₂ → df₁ ≅ df₂ → Ψ₂ ≡ Ψ₂′ → x₁ ≡ x₂ → dx₁ ≅ dx₂
-            → GT.⊢app-pure q df₁ dx₁ ≅ GT.⊢app-pure q df₂ dx₂
-  ≅app-pure refl refl H.refl refl refl H.refl = H.refl
-
-  -- The arm combinators' terms: `let′ f (let′ (wk g) B)`.
-  arms : ∀ {n} {q₁ q₂ : Quantity} {f₁ f g₁ g : G.Tm n} {B : G.Tm (suc (suc n))} → f₁ ≡ ρ̂ₜ f → g₁ ≡ ρ̂ₜ g
-       → G.let′ q₁ f₁ (G.let′ q₂ (G.wk g₁) B) ≡ G.let′ q₁ (ρ̂ₜ f) (G.let′ q₂ (ρ̂ₜ (G.wk g)) B)
-  arms ef eg = cong₂ (λ a b → G.let′ _ a (G.let′ _ b _)) ef (trans (cong G.wk eg) (sym (ρ̂ₜ-ren suc _)))
-
-  closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
-  closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
-
-  ≅coerce : ∀ {m} {n} {Γ : C.Ctx m n} {A B : Ty m} {Ψ π t₁ t₂} {p₁ p₂ : A Once.Spec.Sub.<: B}
-              {d₁ : Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ ] t₂ ∷ A ! π}
-          → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢coerce p₁ d₁ ≅ GT.⊢coerce p₂ d₂
+  -- A conversion is one derivation (subtyping proofs are unique).
+  ≅coerce : ∀ {n} {Γ : Ctx k n} {A B : Ty k} {Ψ π t₁ t₂} {p₁ p₂ : A <: B}
+              {d₁ : Δ′ ⊩ Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Δ′ ⊩ Γ ⊢[ Ψ ] t₂ ∷ A ! π}
+          → t₁ ≡ t₂ → d₁ ≅ d₂ → ⊢coerce p₁ d₁ ≅ ⊢coerce p₂ d₂
   ≅coerce {p₁ = p₁} {p₂ = p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl
 
-------------------------------------------------------------------------
--- THE INDUCTION.
-------------------------------------------------------------------------
+  -- The pure binding and application, by their quantity.
+  ty-letp : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ π A B e b} (q : Quantity)
+              (d₁ : Δ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! pure) (d₂ : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π)
+          → ty (DT.⊢let-pure q d₁ d₂) ≅ DT.⊢let-pure {Δ = Δ′} q (ty d₁) (ty d₂)
+  ty-letp Zero d₁ d₂ = H.refl
+  ty-letp One  d₁ d₂ = H.refl
+  ty-letp Many d₁ d₂ = H.refl
 
-mutual
-  tm-i : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
-       → proj₁ (elabᵢ V (subst-i′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵢ V d))
-  tm-i (t-int k)          = refl
-  tm-i (t-float i f l p)  = refl
-  tm-i t-unit             = refl
-  tm-i t-unit-var         = refl
-  tm-i {D = D} (t-var-local {eV = C.svar i} eq) = ⇝ᵢ-tm (lookup-ρ̂ D i) _
-  tm-i {D = D} (t-var-resolved {cn = cn} ng wn li c refl) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} cn c wn (declares li))
-  tm-i {D = D} (t-var-own {x = x} ns li refl) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
-  tm-i {D = D} (t-var-import {x = x} gw ln li c refl) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
-  tm-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =
-    trans (⇝ᵢ-tm (sym (ρ̂-rf (extractGround-rf sc g))) _) (cong (G.ref (entry lp)) (sym (nat-ground lp g)))
-  tm-i (t-annot rf d _)     = trans (⇝ᵢ-tm (sym (ρ̂-rf rf)) _) (trans (⇝ᶜ-tm (ρ̂-rf rf) _) (tm-c d))
-  tm-i (t-pair a b)       = cong₂ G.pair (tm-i a) (tm-i b)
-  tm-i (t-neg d)          = cong (G.prim G.p-neg) (tm-i d)
-  tm-i (t-neg-float i f l p) = refl
-  tm-i (t-let d₁ d₂)      = cong₂ (G.let′ _) (tm-i d₁) (tm-i d₂)
-  tm-i (t-case {Cₗ = Cₗ} {Cᵣ = Cᵣ} {C = C} {qL = qL} {qR = qR} ds dl dr _) =
-    trans (cong₂ (λ a b → G.case qL qR a b (G.coerce (ρ̂ Cᵣ) (ρ̂ C) (proj₁ (elabᵢ V (subst-i′ ir dr)))))
-                 (tm-i ds) (cong (G.coerce (ρ̂ Cₗ) (ρ̂ C)) (tm-i dl)))
-          (cong (G.case qL qR _ _) (cong (G.coerce (ρ̂ Cᵣ) (ρ̂ C)) (tm-i dr)))
-  tm-i (t-binop-arith {op = OpAdd} o d₁ d₂) = cong (G.prim G.p-add) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith {op = OpSub} o d₁ d₂) = cong (G.prim G.p-sub) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith {op = OpMul} o d₁ d₂) = cong (G.prim G.p-mul) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith {op = OpDiv} o d₁ d₂) = cong (G.prim G.p-div) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith {op = OpMod} o d₁ d₂) = cong (G.prim G.p-mod) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith {op = OpLt} () _ _)
-  tm-i (t-binop-arith {op = OpLe} () _ _)
-  tm-i (t-binop-arith {op = OpGt} () _ _)
-  tm-i (t-binop-arith {op = OpGe} () _ _)
-  tm-i (t-binop-arith {op = OpEq} () _ _)
-  tm-i (t-binop-arith {op = OpNe} () _ _)
-  tm-i (t-binop-arith-float {op = OpAdd} o d₁ d₂) = cong (G.prim G.p-fadd) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith-float {op = OpSub} o d₁ d₂) = cong (G.prim G.p-fsub) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith-float {op = OpMul} o d₁ d₂) = cong (G.prim G.p-fmul) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith-float {op = OpDiv} o d₁ d₂) = cong (G.prim G.p-fdiv) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-arith-float {op = OpMod} () _ _)
-  tm-i (t-binop-arith-float {op = OpLt} () _ _)
-  tm-i (t-binop-arith-float {op = OpLe} () _ _)
-  tm-i (t-binop-arith-float {op = OpGt} () _ _)
-  tm-i (t-binop-arith-float {op = OpGe} () _ _)
-  tm-i (t-binop-arith-float {op = OpEq} () _ _)
-  tm-i (t-binop-arith-float {op = OpNe} () _ _)
-  tm-i (t-binop-arith-float-il {op = OpAdd} o d₁ d₂) = cong (G.prim G.p-fadd) (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-  tm-i (t-binop-arith-float-il {op = OpSub} o d₁ d₂) = cong (G.prim G.p-fsub) (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-  tm-i (t-binop-arith-float-il {op = OpMul} o d₁ d₂) = cong (G.prim G.p-fmul) (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-  tm-i (t-binop-arith-float-il {op = OpDiv} o d₁ d₂) = cong (G.prim G.p-fdiv) (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-  tm-i (t-binop-arith-float-il {op = OpMod} () _ _)
-  tm-i (t-binop-arith-float-il {op = OpLt} () _ _)
-  tm-i (t-binop-arith-float-il {op = OpLe} () _ _)
-  tm-i (t-binop-arith-float-il {op = OpGt} () _ _)
-  tm-i (t-binop-arith-float-il {op = OpGe} () _ _)
-  tm-i (t-binop-arith-float-il {op = OpEq} () _ _)
-  tm-i (t-binop-arith-float-il {op = OpNe} () _ _)
-  tm-i (t-binop-arith-float-ir {op = OpAdd} o d₁ d₂) = cong (G.prim G.p-fadd) (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-  tm-i (t-binop-arith-float-ir {op = OpSub} o d₁ d₂) = cong (G.prim G.p-fsub) (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-  tm-i (t-binop-arith-float-ir {op = OpMul} o d₁ d₂) = cong (G.prim G.p-fmul) (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-  tm-i (t-binop-arith-float-ir {op = OpDiv} o d₁ d₂) = cong (G.prim G.p-fdiv) (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-  tm-i (t-binop-arith-float-ir {op = OpMod} () _ _)
-  tm-i (t-binop-arith-float-ir {op = OpLt} () _ _)
-  tm-i (t-binop-arith-float-ir {op = OpLe} () _ _)
-  tm-i (t-binop-arith-float-ir {op = OpGt} () _ _)
-  tm-i (t-binop-arith-float-ir {op = OpGe} () _ _)
-  tm-i (t-binop-arith-float-ir {op = OpEq} () _ _)
-  tm-i (t-binop-arith-float-ir {op = OpNe} () _ _)
-  tm-i (t-binop-cmp {op = OpLt} o d₁ d₂) = cong (G.prim G.p-lt) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-cmp {op = OpLe} o d₁ d₂) = cong (G.prim G.p-le) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-cmp {op = OpGt} o d₁ d₂) = cong (G.prim G.p-gt) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-cmp {op = OpGe} o d₁ d₂) = cong (G.prim G.p-ge) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-cmp {op = OpEq} o d₁ d₂) = cong (G.prim G.p-eq) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-cmp {op = OpNe} o d₁ d₂) = cong (G.prim G.p-ne) (cong₂ G.pair (tm-i d₁) (tm-i d₂))
-  tm-i (t-binop-cmp {op = OpAdd} () _ _)
-  tm-i (t-binop-cmp {op = OpSub} () _ _)
-  tm-i (t-binop-cmp {op = OpMul} () _ _)
-  tm-i (t-binop-cmp {op = OpDiv} () _ _)
-  tm-i (t-binop-cmp {op = OpMod} () _ _)
-  tm-i (t-id-app d)          = cong (G.app _) (tm-i d)
-  tm-i (t-fst-app d)         = cong (G.app _) (tm-i d)
-  tm-i (t-snd-app d)         = cong (G.app _) (tm-i d)
-  tm-i (t-terminal-app d)    = cong (G.app _) (tm-i d)
-  tm-i (t-apply-app-infer d) = cong (G.app _) (tm-i d)
-  tm-i (t-apply-eff-app-infer d) = cong (G.app _) (tm-i d)
-  tm-i (t-Out-app-infer {F = F} wf refl d) = trans (⇝ᵢ-tm (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ))) _) (cong (G.app _) (tm-i d))
-  tm-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    trans (⇝ᵢ-tm (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Spec.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Spec.Grade.actᶠ)))) _) (cong (G.app _) (tm-i d))
-  tm-i (t-app h df dx)       = cong₂ G.app (tm-i df) (tm-c dx)
-  tm-i (t-effApp h df dx) =
-    cong₂ (λ a b → G.lam _ _ _ (G.app a b)) (trans (cong G.wk (tm-i df)) (sym (ρ̂ₜ-ren suc _)))
-                                      (trans (cong G.wk (tm-c dx)) (sym (ρ̂ₜ-ren suc _)))
-  tm-i (t-app-spine h da df) = cong₂ G.app (tm-d df) (tm-i da)
+  ≅letp : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ π A B e e′ b b′} (q : Quantity)
+            {d₁ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! pure} {d₁′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] e′ ∷ A ! pure}
+            {d₂ : Δ′ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π} {d₂′ : Δ′ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b′ ∷ B ! π}
+        → e ≡ e′ → b ≡ b′ → d₁ ≅ d₁′ → d₂ ≅ d₂′ → DT.⊢let-pure q d₁ d₂ ≅ DT.⊢let-pure q d₁′ d₂′
+  ≅letp q refl refl H.refl H.refl = H.refl
 
-  tm-c : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
-       → proj₁ (elabᶜ V (subst-c′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᶜ V d))
-  tm-c t-id-check             = refl
-  tm-c t-fst-check            = refl
-  tm-c t-snd-check            = refl
-  tm-c t-terminal-morph-check = refl
-  tm-c t-initial-morph-check  = refl
-  tm-c t-inl-morph-check      = refl
-  tm-c t-inr-morph-check      = refl
-  tm-c (t-compose-check-g dg df) = arms (tm-c df) (tm-d dg)
-  tm-c (t-compose-check-f {B = B} {C = C′′} {C′ = C′} {π = π} {π′ = π′} wf p dg) =
-    arms {f = G.coerce (B T.⇒[ mk-kind Many π′ ] C′) (B T.⇒[ mk-kind Many π ] C′′) _} (cong (G.coerce _ _) (tm-i wf)) (tm-c dg)
-  tm-c (t-case-copair-check df dg) = arms (tm-c df) (tm-c dg)
-  tm-c (t-pair-morph-check df dg)  = arms (tm-c df) (tm-c dg)
-  tm-c (t-curry-check df)          = cong (λ u → G.let′ _ u _) (tm-c df)
-  tm-c (t-cata-check {F = F} {A = A} {π = π} wf da) =
-    cong (λ u → G.let′ _ u _) (trans (⇝ᶜ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-c da))
-  tm-c (t-ana-check {F = F} {A = A} {φ = π} wf dc) =
-    cong (λ u → G.lam _ _ _ (G.unfold _ u (G.var zero)))
-         (trans (cong G.wk (trans (⇝ᶜ-tm (cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Spec.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)) _) (tm-c dc)))
-                (sym (ρ̂ₜ-ren suc _)))
-  tm-c (t-loop-check dr)    = cong (λ u → G.let′ _ u _) (tm-c dr)
-  tm-c (t-sub d p)          = cong (G.coerce _ _) (tm-i d)
-  tm-c (t-lam le d)         = cong (G.lam _ _ _) (tm-c d)
-  tm-c (t-pair-lit-check a b) = cong₂ G.pair (tm-c a) (tm-c b)
-  tm-c (t-In-app-check {F = F} wf d) = cong₂ (λ X u → G.app (G.lam X Many pure (G.roll (ρ̂F F) (G.var zero))) u) (sym (ρ̂-⟦⟧ F (μ-type F))) (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d))
-  tm-c (t-apply-check d)      = cong (G.app _) (tm-i d)
-  tm-c (t-inl-app-check d)    = cong (G.app _) (tm-c d)
-  tm-c (t-inr-app-check d)    = cong (G.app _) (tm-c d)
-  tm-c (t-initial-app-check d) = cong (G.app _) (tm-c d)
-  tm-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
-    cong (G.ref (entry lp)) (nat-inst lp ng ki)
+  ty-appp : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ π A B f x} (q : Quantity)
+              (df : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! pure) (dx : Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
+          → ty (DT.⊢app-pure q df dx) ≅ DT.⊢app-pure {Δ = Δ′} q (ty df) (ty dx)
+  ty-appp Zero df dx = H.refl
+  ty-appp One  df dx = H.refl
+  ty-appp Many df dx = H.refl
 
-  tm-d : ∀ {m} {D A B : Ty m} {n Γ e π Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
-       → proj₁ (elabᵈ V (subst-d′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵈ V d))
-  tm-d (d-infer w p g)     = cong (G.coerce _ _) (tm-i w)
-  tm-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
-    cong (G.coerce _ _) (cong (G.ref (entry lp)) (nat-inst lp ng ki))
-  tm-d (d-lam d)           = cong (G.lam _ _ _) (tm-i d)
-  tm-d (d-compose dg df)   = arms (tm-d df) (tm-d dg)
-  tm-d d-id                = refl
-  tm-d d-fst               = refl
-  tm-d d-snd               = refl
-  tm-d d-terminal          = refl
-  tm-d d-initial           = refl
-  tm-d (d-case {A = A} {B = B} {Cf = Cf} {Cg = Cg} {C = C} {π = π} df dg _) =
-    arms {f = G.coerce (A T.⇒[ mk-kind Many π ] Cf) (A T.⇒[ mk-kind Many π ] C) _}
-         {g = G.coerce (B T.⇒[ mk-kind Many π ] Cg) (B T.⇒[ mk-kind Many π ] C) _}
-         (cong (G.coerce (ρ̂ (A T.⇒[ mk-kind Many π ] Cf)) (ρ̂ (A T.⇒[ mk-kind Many π ] C))) (tm-d df))
-         (cong (G.coerce (ρ̂ (B T.⇒[ mk-kind Many π ] Cg)) (ρ̂ (B T.⇒[ mk-kind Many π ] C))) (tm-d dg))
-  tm-d (d-pair df dg)      = arms (tm-d df) (tm-d dg)
-  tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
-    cong (λ u → G.let′ _ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
+  ≅appp : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ π A B f f′ x x′} (q : Quantity)
+            {df : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! pure} {df′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f′ ∷ A ⇒[ mk-kind q π ] B ! pure}
+            {dx : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! pure} {dx′ : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x′ ∷ A ! pure}
+        → f ≡ f′ → x ≡ x′ → df ≅ df′ → dx ≅ dx′ → DT.⊢app-pure q df dx ≅ DT.⊢app-pure q df′ dx′
+  ≅appp q refl refl H.refl H.refl = H.refl
 
-  dr-i : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
-       → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))
-  dr-i (t-int k)          = H.refl
-  dr-i (t-float i f l p)  = H.refl
-  dr-i t-unit             = H.refl
-  dr-i t-unit-var         = H.refl
-  dr-i {D = D} (t-var-local {eV = C.svar i} eq) =
-    H.trans (⇝ᵢ-dr (lookup-ρ̂ D i) _) (H.sym (rmA (λ X → X) (lookup-ρ̂ D i)))
-  dr-i {D = D} (t-var-resolved {cn = cn} ng wn li c refl) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} cn c wn (declares li))
-  dr-i {D = D} (t-var-own {x = x} ns li refl) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
-  dr-i {D = D} (t-var-import {x = x} gw ln li c refl) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
-  dr-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =
-    H.trans (⇝ᵢ-dr (sym (ρ̂-rf (extractGround-rf sc g))) _)
-            (refE-dr (entry lp) (ground lp g) (ground lp g) (sym (nat-ground lp g)))
-  dr-i (t-annot rf d _)     = H.trans (⇝ᵢ-dr (sym (ρ̂-rf rf)) _) (H.trans (⇝ᶜ-dr (ρ̂-rf rf) _) (dr-c d))
-  dr-i (t-pair a b)       = ≅2 _ _ GT.⊢pair refl (tm-i a) (dr-i a) refl (tm-i b) (dr-i b)
-  dr-i (t-neg d)          = ≅1 _ _ (GT.⊢prim G.p-neg) refl (tm-i d) (dr-i d)
-  dr-i (t-neg-float i f l p) = H.refl
-  dr-i (t-let d₁ d₂)      =
-    H.trans (≅let-pure refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂)) (H.≡-to-≅ (sym (ρ̂ᶜ-let-pure _ _ _)))
-  dr-i (t-case {Cₗ = Cₗ} {Cᵣ = Cᵣ} {C = C} ds dl dx _) =
-    ≅case⊔ refl (tm-i ds) (dr-i ds) refl (cong (G.coerce (ρ̂ Cₗ) (ρ̂ C)) (tm-i dl)) (≅coerce (tm-i dl) (dr-i dl))
-                                    refl (cong (G.coerce (ρ̂ Cᵣ) (ρ̂ C)) (tm-i dx)) (≅coerce (tm-i dx) (dr-i dx))
-  dr-i (t-binop-arith {op = OpAdd} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-add) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith {op = OpSub} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-sub) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith {op = OpMul} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-mul) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith {op = OpDiv} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-div) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith {op = OpMod} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-mod) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith {op = OpLt} () _ _)
-  dr-i (t-binop-arith {op = OpLe} () _ _)
-  dr-i (t-binop-arith {op = OpGt} () _ _)
-  dr-i (t-binop-arith {op = OpGe} () _ _)
-  dr-i (t-binop-arith {op = OpEq} () _ _)
-  dr-i (t-binop-arith {op = OpNe} () _ _)
-  dr-i (t-binop-arith-float {op = OpAdd} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fadd) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float {op = OpSub} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fsub) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float {op = OpMul} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fmul) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float {op = OpDiv} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fdiv) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float {op = OpMod} () _ _)
-  dr-i (t-binop-arith-float {op = OpLt} () _ _)
-  dr-i (t-binop-arith-float {op = OpLe} () _ _)
-  dr-i (t-binop-arith-float {op = OpGt} () _ _)
-  dr-i (t-binop-arith-float {op = OpGe} () _ _)
-  dr-i (t-binop-arith-float {op = OpEq} () _ _)
-  dr-i (t-binop-arith-float {op = OpNe} () _ _)
-  dr-i (t-binop-arith-float-il {op = OpAdd} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fadd) refl (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-      (≅2 _ _ GT.⊢pair refl (cong (G.prim G.p-i2f) (tm-i d₁)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₁) (dr-i d₁)) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float-il {op = OpSub} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fsub) refl (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-      (≅2 _ _ GT.⊢pair refl (cong (G.prim G.p-i2f) (tm-i d₁)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₁) (dr-i d₁)) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float-il {op = OpMul} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fmul) refl (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-      (≅2 _ _ GT.⊢pair refl (cong (G.prim G.p-i2f) (tm-i d₁)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₁) (dr-i d₁)) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float-il {op = OpDiv} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fdiv) refl (cong₂ G.pair (cong (G.prim G.p-i2f) (tm-i d₁)) (tm-i d₂))
-      (≅2 _ _ GT.⊢pair refl (cong (G.prim G.p-i2f) (tm-i d₁)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₁) (dr-i d₁)) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-arith-float-il {op = OpMod} () _ _)
-  dr-i (t-binop-arith-float-il {op = OpLt} () _ _)
-  dr-i (t-binop-arith-float-il {op = OpLe} () _ _)
-  dr-i (t-binop-arith-float-il {op = OpGt} () _ _)
-  dr-i (t-binop-arith-float-il {op = OpGe} () _ _)
-  dr-i (t-binop-arith-float-il {op = OpEq} () _ _)
-  dr-i (t-binop-arith-float-il {op = OpNe} () _ _)
-  dr-i (t-binop-arith-float-ir {op = OpAdd} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fadd) refl (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-      (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (cong (G.prim G.p-i2f) (tm-i d₂)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₂) (dr-i d₂)))
-  dr-i (t-binop-arith-float-ir {op = OpSub} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fsub) refl (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-      (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (cong (G.prim G.p-i2f) (tm-i d₂)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₂) (dr-i d₂)))
-  dr-i (t-binop-arith-float-ir {op = OpMul} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fmul) refl (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-      (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (cong (G.prim G.p-i2f) (tm-i d₂)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₂) (dr-i d₂)))
-  dr-i (t-binop-arith-float-ir {op = OpDiv} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-fdiv) refl (cong₂ G.pair (tm-i d₁) (cong (G.prim G.p-i2f) (tm-i d₂)))
-      (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (cong (G.prim G.p-i2f) (tm-i d₂)) (≅1 _ _ (GT.⊢prim G.p-i2f) refl (tm-i d₂) (dr-i d₂)))
-  dr-i (t-binop-arith-float-ir {op = OpMod} () _ _)
-  dr-i (t-binop-arith-float-ir {op = OpLt} () _ _)
-  dr-i (t-binop-arith-float-ir {op = OpLe} () _ _)
-  dr-i (t-binop-arith-float-ir {op = OpGt} () _ _)
-  dr-i (t-binop-arith-float-ir {op = OpGe} () _ _)
-  dr-i (t-binop-arith-float-ir {op = OpEq} () _ _)
-  dr-i (t-binop-arith-float-ir {op = OpNe} () _ _)
-  dr-i (t-binop-cmp {op = OpLt} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-lt) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-cmp {op = OpLe} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-le) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-cmp {op = OpGt} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-gt) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-cmp {op = OpGe} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-ge) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-cmp {op = OpEq} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-eq) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-cmp {op = OpNe} o d₁ d₂) =
-    ≅1 _ _ (GT.⊢prim G.p-ne) refl (cong₂ G.pair (tm-i d₁) (tm-i d₂)) (≅2 _ _ GT.⊢pair refl (tm-i d₁) (dr-i d₁) refl (tm-i d₂) (dr-i d₂))
-  dr-i (t-binop-cmp {op = OpAdd} () _ _)
-  dr-i (t-binop-cmp {op = OpSub} () _ _)
-  dr-i (t-binop-cmp {op = OpMul} () _ _)
-  dr-i (t-binop-cmp {op = OpDiv} () _ _)
-  dr-i (t-binop-cmp {op = OpMod} () _ _)
-  dr-i (t-id-app d)          = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl H.refl refl (tm-i d) (dr-i d)
-  dr-i (t-fst-app d)         = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl H.refl refl (tm-i d) (dr-i d)
-  dr-i (t-snd-app d)         = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl H.refl refl (tm-i d) (dr-i d)
-  dr-i (t-terminal-app d)    = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl H.refl refl (tm-i d) (dr-i d)
-  dr-i (t-apply-app-infer d) = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl (H.sym c-apply) refl (tm-i d) (dr-i d)
-  dr-i (t-apply-eff-app-infer d) = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl (H.sym c-applyEff) refl (tm-i d) (dr-i d)
-  dr-i (t-Out-app-infer {F = F} wf refl d) =
-    H.trans (⇝ᵢ-dr (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ))) _)
-            (≅app refl (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ))) refl (H.sym (c-out wf)) (tm-i d) (dr-i d))
-  dr-i (t-Out-eff-app-infer {F = F} wf refl d) =
-    H.trans (⇝ᵢ-dr (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Spec.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Spec.Grade.actᶠ)))) _)
-            (≅app refl (cong (λ X → T.Unit T.⇒[ mk-kind Many Once.Spec.Grade.act ] X) (sym (ρ̂-⟦⟧ F (ν-type F Once.Spec.Grade.actᶠ))))
-                  refl (H.sym (c-outEff wf)) (tm-i d) (dr-i d))
-  dr-i (t-app h df dx)       =
-    H.trans (≅app-pure refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.≡-to-≅ (sym (ρ̂ᶜ-app-pure _ _ _)))
-  dr-i (t-effApp h df dx)    =
-    H.trans (≅2 _ _ DT.⊢effAppᶜ refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.sym (c-effApp (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx))))
-  dr-i (t-app-spine h da df) = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl (tm-d df) (dr-d df) refl (tm-i da) (dr-i da)
+  -- The case join, by the arms' quantities.
+  ty-case⊔ : ∀ {n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ qℓ qr π₁ π₂ A B C s l r′}
+               (ds : Δ ⊩ Γ ⊢[ Ψs ] s ∷ A + B ! π₁) (dl : Δ ⊩ (Γ ▸ A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π₂) (dr′ : Δ ⊩ (Γ ▸ B) ⊢[ qr ∷ Ψᵣ ] r′ ∷ C ! π₂)
+           → ty (DT.⊢case⊔ ds dl dr′) ≅ DT.⊢case⊔ {Δ = Δ′} (ty ds) (ty dl) (ty dr′)
+  ty-case⊔ {qℓ = Zero} {qr = Zero} ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = Zero} {qr = One}  ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = Zero} {qr = Many} ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = One}  {qr = Zero} ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = One}  {qr = One}  ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = One}  {qr = Many} ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = Many} {qr = Zero} ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = Many} {qr = One}  ds dl dr′ = H.refl
+  ty-case⊔ {qℓ = Many} {qr = Many} ds dl dr′ = H.refl
 
-  dr-c : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
-       → proj₂ (elabᶜ V (subst-c′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᶜ V d))
-  dr-c t-id-check             = H.refl
-  dr-c t-fst-check            = H.refl
-  dr-c t-snd-check            = H.refl
-  dr-c t-terminal-morph-check = H.refl
-  dr-c t-initial-morph-check  = H.refl
-  dr-c t-inl-morph-check      = H.refl
-  dr-c t-inr-morph-check      = H.refl
-  dr-c (t-compose-check-g dg df) =
-    H.trans (≅2 _ _ (DT.⊢composeᶜ (·p-diag _)) refl (tm-c df) (dr-c df) refl (tm-d dg) (dr-d dg)) (H.sym (c-compose (·p-diag _) (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg))))
-  dr-c (t-compose-check-f {B = B} {C = C′′} {C′ = C′} {π = π} {π′ = π′} wf p dg) =
-    H.trans (≅2 _ _ (DT.⊢composeᶜ (·p-diag _)) refl
-                 (cong (G.coerce (ρ̂ (B T.⇒[ mk-kind Many π′ ] C′)) (ρ̂ (B T.⇒[ mk-kind Many π ] C′′))) (tm-i wf))
-                 (≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) refl (tm-i wf) (dr-i wf))
-                 refl (tm-c dg) (dr-c dg))
-            (H.sym (c-compose (·p-diag _) (GT.⊢coerce p (proj₂ (elabᵢ V wf))) (proj₂ (elabᶜ V dg))))
-  dr-c (t-case-copair-check df dg) =
-    H.trans (≅2 _ _ DT.⊢caseᶜ refl (tm-c df) (dr-c df) refl (tm-c dg) (dr-c dg)) (H.sym (c-case (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg))))
-  dr-c (t-pair-morph-check df dg) =
-    H.trans (≅2 _ _ (DT.⊢pairᶜ (·p-diag _)) refl (tm-c df) (dr-c df) refl (tm-c dg) (dr-c dg)) (H.sym (c-pair (·p-diag _) (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg))))
-  dr-c (t-curry-check {u = u} df) =
-    H.trans (≅1 _ _ (DT.⊢curryᶜ u) refl (tm-c df) (dr-c df)) (H.sym (c-curry u (proj₂ (elabᶜ V df))))
-  dr-c (t-cata-check {F = F} {A = A} {π = π} {u = u} wf da) =
-    H.trans (≅1 _ _ (DT.⊢cataᶜ u (ρ̂-wf wf)) refl TE
-                (H.trans (H.trans (⇝ᶜ-dr q _) (dr-c da))
-                         (H.sym (rmA (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)))))
-            (H.sym (c-cata u wf (proj₂ (elabᶜ V da))))
-    where
-      q  = cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)
-      TE = trans (⇝ᶜ-tm q _) (tm-c da)
-  -- D273: `cata`'s shape — the coalgebra lives in the context, no `close`.
-  dr-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} wf dc) =
-    H.trans (≅1 _ _ (DT.⊢anaᶜ u (ρ̂-wf wf)) refl TE
-                (H.trans (H.trans (⇝ᶜ-dr q _) (dr-c dc))
-                         (H.sym (rmA (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Spec.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)))))
-            (H.sym (c-ana u wf (proj₂ (elabᶜ V dc))))
-    where
-      q  = cong (λ X → ρ̂ A T.⇒[ mk-kind Many (Once.Spec.Grade.fin π) ] X) (ρ̂-⟦⟧ F A)
-      TE = trans (⇝ᶜ-tm q _) (tm-c dc)
-  dr-c (t-loop-check dr)     =
-    H.trans (≅1 _ _ DT.⊢loopᶜ refl (tm-c dr) (dr-c dr)) (H.sym (c-loop (proj₂ (elabᶜ V dr))))
-  dr-c (t-sub d p)           = ≅1 _ _ (GT.⊢coerce (ρ̂-<: p)) refl (tm-i d) (dr-i d)
-  dr-c (t-lam {u = u} le d)  =
-    ≅lam refl (tm-c d) (≅1 _ _ (GT.⊢sub-eff u) refl (tm-c d) (dr-c d))
-  dr-c (t-pair-lit-check a b) = ≅2 _ _ GT.⊢pair refl (tm-c a) (dr-c a) refl (tm-c b) (dr-c b)
-  dr-c (t-In-app-check {F = F} wf d) =
-    ≅app (sym (ρ̂-⟦⟧ F (μ-type F))) refl (cong (λ X → G.lam X Many pure (G.roll (ρ̂F F) (G.var zero))) (sym (ρ̂-⟦⟧ F (μ-type F)))) (H.sym (c-in wf))
-         (trans (⇝ᶜ-tm (ρ̂-⟦⟧ F (μ-type F)) _) (tm-c d)) (H.trans (⇝ᶜ-dr (ρ̂-⟦⟧ F (μ-type F)) _) (dr-c d))
-  dr-c (t-apply-check d)     = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl (H.sym c-apply) refl (tm-i d) (dr-i d)
-  dr-c (t-inl-app-check d)   = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl H.refl refl (tm-c d) (dr-c d)
-  dr-c (t-inr-app-check d)   = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl H.refl refl (tm-c d) (dr-c d)
-  dr-c (t-initial-app-check d) = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl refl H.refl refl (tm-c d) (dr-c d)
-  dr-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
-    refE-dr (entry lp) (inst lp ng (ρ̂-ki {sc} ki)) (inst lp ng ki) (nat-inst lp ng ki)
-
-  dr-d : ∀ {m} {D A B : Ty m} {n Γ e π Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
-       → proj₂ (elabᵈ V (subst-d′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵈ V d))
-  dr-d (d-infer w p g)     = ≅coerce (tm-i w) (dr-i w)
-  dr-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
-    ≅coerce (cong (G.ref (entry lp)) (nat-inst lp ng ki))
-            (refE-dr (entry lp) (inst lp ng (ρ̂-ki {sc} ki)) (inst lp ng ki) (nat-inst lp ng ki))
-  dr-d (d-lam {u = u} d) =
-    ≅lam refl (tm-i d) (≅1 _ _ (GT.⊢sub-eff u) refl (tm-i d) (dr-i d))
-  dr-d (d-compose dg df)   =
-    H.trans (≅2 _ _ (DT.⊢composeᶜ (·p-diag _)) refl (tm-d df) (dr-d df) refl (tm-d dg) (dr-d dg)) (H.sym (c-compose (·p-diag _) (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg))))
-  dr-d d-id                = H.refl
-  dr-d d-fst               = H.refl
-  dr-d d-snd               = H.refl
-  dr-d d-terminal          = H.refl
-  dr-d d-initial           = H.refl
-  dr-d (d-case {A = A} {B = B} {Cf = Cf} {Cg = Cg} {C = C} {π = π} df dg _) =
-    H.trans (≅2 _ _ DT.⊢caseᶜ refl (cong (G.coerce (ρ̂ (A T.⇒[ mk-kind Many π ] Cf)) (ρ̂ (A T.⇒[ mk-kind Many π ] C))) (tm-d df)) (≅coerce {A = ρ̂ (A T.⇒[ mk-kind Many π ] Cf)} {B = ρ̂ (A T.⇒[ mk-kind Many π ] C)} (tm-d df) (dr-d df))
-                              refl (cong (G.coerce (ρ̂ (B T.⇒[ mk-kind Many π ] Cg)) (ρ̂ (B T.⇒[ mk-kind Many π ] C))) (tm-d dg)) (≅coerce {A = ρ̂ (B T.⇒[ mk-kind Many π ] Cg)} {B = ρ̂ (B T.⇒[ mk-kind Many π ] C)} (tm-d dg) (dr-d dg)))
-            (H.sym (c-case (GT.⊢coerce _ (proj₂ (elabᵈ V df))) (GT.⊢coerce _ (proj₂ (elabᵈ V dg)))))
-  dr-d (d-pair df dg)      =
-    H.trans (≅2 _ _ (DT.⊢pairᶜ (·p-diag _)) refl (tm-d df) (dr-d df) refl (tm-d dg) (dr-d dg)) (H.sym (c-pair (·p-diag _) (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg))))
-  dr-d (d-cata {F = F} {A = A} {π = π} {u = u} wf da) =
-    H.trans (≅1 _ _ (DT.⊢cataᶜ u (ρ̂-wf wf)) refl TE
-                (H.trans (H.trans (⇝ᵢ-dr q _) (dr-i da))
-                         (H.sym (rmA (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)))))
-            (H.sym (c-cata u wf (proj₂ (elabᵢ V da))))
-    where
-      q  = cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)
-      TE = trans (⇝ᵢ-tm q _) (tm-i da)
+  ≅case⊔ : ∀ {n} {Γ : Ctx k n} {Ψs Ψₗ Ψᵣ qℓ qr π₁ π₂ A B C s s′ l l′ r₁ r₂}
+             {ds : Δ′ ⊩ Γ ⊢[ Ψs ] s ∷ A + B ! π₁} {ds′ : Δ′ ⊩ Γ ⊢[ Ψs ] s′ ∷ A + B ! π₁}
+             {dl : Δ′ ⊩ (Γ ▸ A) ⊢[ qℓ ∷ Ψₗ ] l ∷ C ! π₂} {dl′ : Δ′ ⊩ (Γ ▸ A) ⊢[ qℓ ∷ Ψₗ ] l′ ∷ C ! π₂}
+             {dr₁ : Δ′ ⊩ (Γ ▸ B) ⊢[ qr ∷ Ψᵣ ] r₁ ∷ C ! π₂} {dr₂ : Δ′ ⊩ (Γ ▸ B) ⊢[ qr ∷ Ψᵣ ] r₂ ∷ C ! π₂}
+         → s ≡ s′ → l ≡ l′ → r₁ ≡ r₂ → ds ≅ ds′ → dl ≅ dl′ → dr₁ ≅ dr₂ → DT.⊢case⊔ ds dl dr₁ ≅ DT.⊢case⊔ ds′ dl′ dr₂
+  ≅case⊔ refl refl refl H.refl H.refl H.refl = H.refl
 
 ------------------------------------------------------------------------
--- THE RESULT: the substituted derivation elaborates to the substituted
--- elaboration.
+-- References
 ------------------------------------------------------------------------
 
 private
-  Σ≅ : ∀ {X : Set} {P : X → Set} {a₁ a₂ : X} {b₁ : P a₁} {b₂ : P a₂} → a₁ ≡ a₂ → b₁ ≅ b₂ → (a₁ , b₁) ≡ (a₂ , b₂)
-  Σ≅ refl H.refl = refl
+  open import Data.Maybe using (just)
+  open import Once.Internal.Typing.Scope using (lookupPolyPrefix)
+  open import Once.Internal.Type.Instance using (KindedInstance)
+  open import Once.Internal.Type.Schema using (kinded-instance)
+  open El Σ S using (polyE; ImportAt; def; importE)
+  open import Once.Internal.Type using (none)
+  open import Once.Spec.Type using (Type)
 
-elab-ρ̂ᶜ : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
-        → elabᶜ V (subst-c′ ir d) ≡ (ρ̂ₜ (proj₁ (elabᶜ V d)) , ρ̂ᶜ (proj₂ (elabᶜ V d)))
-elab-ρ̂ᶜ d = Σ≅ (tm-c d) (dr-c d)
+  poly-tm : ∀ {n} {Γ : Ctx m n} {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
+              {U₀ : Ty m} {U₁ : Ty k} (ki₀ : KindedInstance Δ sc U₀) (ki₁ : KindedInstance Δ′ sc U₁)
+          → proj₁ (kinded-instance sc ki₁) ≡ (λ i → proj₁ (kinded-instance sc ki₀) i ⟨ τ ⟩)
+          → proj₁ (polyE {Γ = Γ ⟨ τ ⟩ᶜ} V lp ki₁) ≡ proj₁ (polyE {Γ = Γ} V lp ki₀) ⟪ τ ⟫ₜ
+  poly-tm {Γ = Γ} {sc = sc} lp ki₀ ki₁ e =
+    trans (rE-tm (proj₂ (proj₂ K₁)) (refAt (entry lp) (entryIs lp) (proj₁ K₁) (proj₁ (proj₂ K₁))))
+      (trans (ref-tm {Γ = Γ} (entry lp) (entryIs lp) (proj₁ K₀) (proj₁ (proj₂ K₀)) (proj₁ K₁) (proj₁ (proj₂ K₁)) e)
+             (cong (_⟪ τ ⟫ₜ) (sym (rE-tm (proj₂ (proj₂ K₀)) (refAt {Γ = Γ} (entry lp) (entryIs lp) (proj₁ K₀) (proj₁ (proj₂ K₀)))))))
+    where K₀ = kinded-instance sc ki₀
+          K₁ = kinded-instance sc ki₁
 
+  poly-dr : ∀ {n} {Γ : Ctx m n} {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
+              {U₀ : Ty m} {U₁ : Ty k} (ki₀ : KindedInstance Δ sc U₀) (ki₁ : KindedInstance Δ′ sc U₁)
+          → proj₁ (kinded-instance sc ki₁) ≡ (λ i → proj₁ (kinded-instance sc ki₀) i ⟨ τ ⟩)
+          → proj₂ (polyE {Γ = Γ ⟨ τ ⟩ᶜ} V lp ki₁) ≅ ty (proj₂ (polyE {Γ = Γ} V lp ki₀))
+  poly-dr {Γ = Γ} {sc = sc} lp ki₀ ki₁ e =
+    H.trans (rE-dr (proj₂ (proj₂ K₁)) (refAt (entry lp) (entryIs lp) (proj₁ K₁) (proj₁ (proj₂ K₁))))
+      (H.trans (ref-dr {Γ = Γ} (entry lp) (entryIs lp) (proj₁ K₀) (proj₁ (proj₂ K₀)) (proj₁ K₁) (proj₁ (proj₂ K₁)) e)
+               (H.sym (ty-rE (proj₂ (proj₂ K₀)) (refAt {Γ = Γ} (entry lp) (entryIs lp) (proj₁ K₀) (proj₁ (proj₂ K₀))))))
+    where K₀ = kinded-instance sc ki₀
+          K₁ = kinded-instance sc ki₁
+
+  imp-tm : ∀ {n} {Γ : Ctx m n} {x} {T : Type} (ia : ImportAt x T) {A₀ : Ty m} {A₁ : Ty k} (e₀ : A₀ ≡ _) (e₁ : A₁ ≡ _)
+         → proj₁ (importE {Γ = Γ ⟨ τ ⟩ᶜ} ia e₁) ≡ proj₁ (importE {Γ = Γ} ia e₀) ⟪ τ ⟫ₜ
+  imp-tm {Γ = Γ} (def d mono) e₀ e₁ =
+    trans (rE-tm (sym e₁) (refAt d mono none (λ ())))
+      (trans (ref-tm {Γ = Γ} d mono none (λ ()) none (λ ()) (extensionality λ ()))
+             (cong (_⟪ τ ⟫ₜ) (sym (rE-tm (sym e₀) (refAt {Γ = Γ} d mono none (λ ()))))))
+
+  imp-dr : ∀ {n} {Γ : Ctx m n} {x} {T : Type} (ia : ImportAt x T) {A₀ : Ty m} {A₁ : Ty k} (e₀ : A₀ ≡ _) (e₁ : A₁ ≡ _)
+         → proj₂ (importE {Γ = Γ ⟨ τ ⟩ᶜ} ia e₁) ≅ ty (proj₂ (importE {Γ = Γ} ia e₀))
+  imp-dr {Γ = Γ} (def d mono) e₀ e₁ =
+    H.trans (rE-dr (sym e₁) (refAt d mono none (λ ())))
+      (H.trans (ref-dr {Γ = Γ} d mono none (λ ()) none (λ ()) (extensionality λ ()))
+               (H.sym (ty-rE (sym e₀) (refAt {Γ = Γ} d mono none (λ ())))))
+
+------------------------------------------------------------------------
+-- THE INDUCTION
+------------------------------------------------------------------------
+
+open import Once.Spec.Grade using (⊑-pure)
+open import Once.Internal.Type.Sub using (·p-diag; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Spec.Sub using (_⊔_≔_; sub-arr)
+open _⊔_≔_ using (left; right)
+open import Once.Type.Rigid using (ground-kinded)
+open import Once.Spec.Context using (zeroUsage; _+ᵘ_; _*ᵘ_)
+import Once.Internal.Context
+
+private
+  -- An applied closed combinator whose typing is fixed by substitution.
+  appc : ∀ {n} {Γ : Ctx m n} {Ψ A B c x} {x₁}
+           (dc₁ : Δ′ ⊩ Γ ⟨ τ ⟩ᶜ ⊢[ zeroUsage ] c ⟪ τ ⟫ₜ ∷ A ⟨ τ ⟩ ⇒[ mk-kind Many pure ] B ⟨ τ ⟩ ! pure)
+           (dc : Δ ⊩ Γ ⊢[ zeroUsage ] c ∷ A ⇒[ mk-kind Many pure ] B ! pure)
+           {X : Δ′ ⊩ Γ ⟨ τ ⟩ᶜ ⊢[ Ψ ] x₁ ∷ A ⟨ τ ⟩ ! pure} {a : Δ ⊩ Γ ⊢[ Ψ ] x ∷ A ! pure}
+       → dc₁ ≅ ty dc → x₁ ≡ x ⟪ τ ⟫ₜ → X ≅ ty a
+       → Comm {Γ = Γ} {A = B} (app (c ⟪ τ ⟫ₜ) x₁ , ⊢app dc₁ X) (app c x , ⊢app dc a)
+  appc dc₁ dc h e hx = comm (cong (app _) e) (≅appAB refl refl refl e h hx)
+
+  i2f1 : ∀ {n} {Γ : Ctx m n} {Ψ} {x : Elab Δ′ (Γ ⟨ τ ⟩ᶜ) Ψ (Once.Spec.Type.Int)} {y : Elab Δ Γ Ψ Once.Spec.Type.Int}
+       → Comm x y → Comm (El.i2f Σ S x) (El.i2f Σ S y)
+  i2f1 c = comm (cong (prim p-i2f) (tm c)) (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl (tm c) (dr c))
+
+mutual
+  cm-i : ∀ {n′ N} {D : Ctx m n′} {A e Ψ} (d : mkCtx n′ N D imps polys sigs Δ ⊢ᵢ e ∶ A ⨾ Ψ)
+       → Comm (elabᵢ V (subst-i′ d)) (elabᵢ V d)
+  cm-i (t-int k)             = comm refl H.refl
+  cm-i (t-float i f l p)     = comm refl H.refl
+  cm-i t-unit                = comm refl H.refl
+  cm-i t-unit-var            = comm refl H.refl
+  cm-i (t-neg-float i f l p) = comm refl H.refl
+  cm-i {D = D} (t-var-local {eV = Once.Internal.Context.svar i} eq) =
+    comm (⇝ᵢ-tm (RS.lookup-ρ̂ D i) _)
+         (H.trans (⇝ᵢ-dr (RS.lookup-ρ̂ D i) _) (H.sym (rtᵗ-≅ (TS.lookup-⟨⟩ τ D i) (⊢var i))))
+  cm-i {D = D} (t-var-resolved {cn = cn} {T = T} ng wn lk k eq) =
+    comm refl (H.trans (rD-≅ (trans (⌜declS⌝ k h) (sym (RS.ρ̂-ground T eq))) (⊢sigop (mem refl)))
+                       (H.sym (H.trans (ty-rD {Γ = D} (trans (⌜declS⌝ k h) (sym eq)) (⊢sigop (mem refl)))
+                                       (rtᵗ-≅ (sym (TS.⌜⌝ᵈ-⟨⟩ τ (declS T))) (⊢sigop (mem refl))))))
+    where h   = El.Declared.honest (declares lk)
+          mem = El.Declared.member (declares lk)
+  cm-i {D = D} (t-var-own {T = T} ns lk eq) =
+    comm (imp-tm {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq)) (imp-dr {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq))
+  cm-i {D = D} (t-var-import {T = T} gw ln lk c eq) =
+    comm (imp-tm {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq)) (imp-dr {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq))
+  cm-i {D = D} (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr eq) =
+    comm (trans (rE-tm e₁ X₁) (trans (poly-tm {Γ = D} lp (ground-kinded sc g) (ground-kinded sc g) refl) (cong (_⟪ τ ⟫ₜ) (sym (rE-tm (sym eq) X₀)))))
+         (H.trans (rE-dr e₁ X₁) (H.trans (poly-dr {Γ = D} lp (ground-kinded sc g) (ground-kinded sc g) refl) (H.sym (ty-rE (sym eq) X₀))))
+    where e₁ = sym (trans (cong ρ̂ eq) (RS.extractGround-⟨⟩ sc g))
+          X₁ = polyE {Γ = D ⟨ τ ⟩ᶜ} V lp (ground-kinded sc g)
+          X₀ = polyE {Γ = D} V lp (ground-kinded sc g)
+  cm-i (t-annot rf d eq) = cm-c d
+  cm-i (t-pair a b) =
+    comm (cong₂ pair (tm A) (tm B)) (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl (tm A) (dr A) refl (tm B) (dr B))
+    where A = cm-i a
+          B = cm-i b
+  cm-i (t-neg d) = comm (cong (prim p-neg) (tm D)) (≅1 (λ Ψ → Ψ) (prim p-neg) (⊢prim p-neg) refl (tm D) (dr D))
+    where D = cm-i d
+  cm-i (t-let {q = q} d₁ d₂) =
+    comm (cong₂ (let′ _) (tm A) (tm B)) (H.trans (≅letp q (tm A) (tm B) (dr A) (dr B)) (H.sym (ty-letp q _ _)))
+    where A = cm-i d₁
+          B = cm-i d₂
+  cm-i {D = D} (t-case {Cₗ = Cₗ} {Cᵣ = Cᵣ} {C = C} {qL = qL} {qR = qR} ds dl dr′ J) =
+    comm (trans (cong₂ (λ a b → case qL qR a (coerce (ρ̂ Cₗ) (ρ̂ C) b) (coerce (ρ̂ Cᵣ) (ρ̂ C) (proj₁ (elabᵢ V (subst-i′ dr′))))) (tm Cs) (tm Cl))
+                (cong (λ c → case qL qR _ _ (coerce (ρ̂ Cᵣ) (ρ̂ C) c)) (tm Cr)))
+         (H.trans (≅case⊔ (tm Cs) (cong (coerce _ _) (tm Cl)) (cong (coerce _ _) (tm Cr)) (dr Cs) (≅coerce (tm Cl) (dr Cl)) (≅coerce (tm Cr) (dr Cr)))
+                  (H.sym (ty-case⊔ (proj₂ (elabᵢ V ds)) (⊢coerce (<:ᶜ⇒<: (left J)) (proj₂ (elabᵢ V dl)))
+                                                 (⊢coerce (<:ᶜ⇒<: (right J)) (proj₂ (elabᵢ V dr′))))))
+    where Cs = cm-i ds
+          Cl = cm-i dl
+          Cr = cm-i dr′
+  cm-i (t-binop-arith {op = OpAdd} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-add (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-add (pair t u)) (λ x y → ⊢prim p-add (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith {op = OpSub} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-sub (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-sub (pair t u)) (λ x y → ⊢prim p-sub (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith {op = OpMul} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-mul (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-mul (pair t u)) (λ x y → ⊢prim p-mul (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith {op = OpDiv} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-div (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-div (pair t u)) (λ x y → ⊢prim p-div (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith {op = OpMod} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-mod (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-mod (pair t u)) (λ x y → ⊢prim p-mod (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith {op = OpLt} () _ _)
+  cm-i (t-binop-arith {op = OpLe} () _ _)
+  cm-i (t-binop-arith {op = OpGt} () _ _)
+  cm-i (t-binop-arith {op = OpGe} () _ _)
+  cm-i (t-binop-arith {op = OpEq} () _ _)
+  cm-i (t-binop-arith {op = OpNe} () _ _)
+  cm-i (t-binop-arith-float {op = OpAdd} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fadd (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fadd (pair t u)) (λ x y → ⊢prim p-fadd (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float {op = OpSub} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fsub (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fsub (pair t u)) (λ x y → ⊢prim p-fsub (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float {op = OpMul} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fmul (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fmul (pair t u)) (λ x y → ⊢prim p-fmul (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float {op = OpDiv} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fdiv (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fdiv (pair t u)) (λ x y → ⊢prim p-fdiv (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float {op = OpMod} () _ _)
+  cm-i (t-binop-arith-float {op = OpLt} () _ _)
+  cm-i (t-binop-arith-float {op = OpLe} () _ _)
+  cm-i (t-binop-arith-float {op = OpGt} () _ _)
+  cm-i (t-binop-arith-float {op = OpGe} () _ _)
+  cm-i (t-binop-arith-float {op = OpEq} () _ _)
+  cm-i (t-binop-arith-float {op = OpNe} () _ _)
+  cm-i (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fadd (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fadd (pair t u)) (λ x y → ⊢prim p-fadd (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = i2f1 (cm-i d₁)
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fsub (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fsub (pair t u)) (λ x y → ⊢prim p-fsub (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = i2f1 (cm-i d₁)
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fmul (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fmul (pair t u)) (λ x y → ⊢prim p-fmul (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = i2f1 (cm-i d₁)
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fdiv (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fdiv (pair t u)) (λ x y → ⊢prim p-fdiv (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = i2f1 (cm-i d₁)
+          c₂ = cm-i d₂
+  cm-i (t-binop-arith-float-il {op = OpMod} () _ _)
+  cm-i (t-binop-arith-float-il {op = OpLt} () _ _)
+  cm-i (t-binop-arith-float-il {op = OpLe} () _ _)
+  cm-i (t-binop-arith-float-il {op = OpGt} () _ _)
+  cm-i (t-binop-arith-float-il {op = OpGe} () _ _)
+  cm-i (t-binop-arith-float-il {op = OpEq} () _ _)
+  cm-i (t-binop-arith-float-il {op = OpNe} () _ _)
+  cm-i (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fadd (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fadd (pair t u)) (λ x y → ⊢prim p-fadd (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = i2f1 (cm-i d₂)
+  cm-i (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fsub (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fsub (pair t u)) (λ x y → ⊢prim p-fsub (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = i2f1 (cm-i d₂)
+  cm-i (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fmul (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fmul (pair t u)) (λ x y → ⊢prim p-fmul (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = i2f1 (cm-i d₂)
+  cm-i (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-fdiv (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fdiv (pair t u)) (λ x y → ⊢prim p-fdiv (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = i2f1 (cm-i d₂)
+  cm-i (t-binop-arith-float-ir {op = OpMod} () _ _)
+  cm-i (t-binop-arith-float-ir {op = OpLt} () _ _)
+  cm-i (t-binop-arith-float-ir {op = OpLe} () _ _)
+  cm-i (t-binop-arith-float-ir {op = OpGt} () _ _)
+  cm-i (t-binop-arith-float-ir {op = OpGe} () _ _)
+  cm-i (t-binop-arith-float-ir {op = OpEq} () _ _)
+  cm-i (t-binop-arith-float-ir {op = OpNe} () _ _)
+  cm-i (t-binop-cmp {op = OpLt} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-lt (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-lt (pair t u)) (λ x y → ⊢prim p-lt (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-cmp {op = OpLe} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-le (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-le (pair t u)) (λ x y → ⊢prim p-le (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-cmp {op = OpGt} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-gt (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-gt (pair t u)) (λ x y → ⊢prim p-gt (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-cmp {op = OpGe} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-ge (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-ge (pair t u)) (λ x y → ⊢prim p-ge (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-cmp {op = OpEq} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-eq (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-eq (pair t u)) (λ x y → ⊢prim p-eq (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-cmp {op = OpNe} _ d₁ d₂) =
+    comm (cong₂ (λ t u → prim p-ne (pair t u)) (tm c₁) (tm c₂))
+         (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-ne (pair t u)) (λ x y → ⊢prim p-ne (⊢pair x y)) refl (tm c₁) (dr c₁) refl (tm c₂) (dr c₂))
+    where c₁ = cm-i d₁
+          c₂ = cm-i d₂
+  cm-i (t-binop-cmp {op = OpAdd} () _ _)
+  cm-i (t-binop-cmp {op = OpSub} () _ _)
+  cm-i (t-binop-cmp {op = OpMul} () _ _)
+  cm-i (t-binop-cmp {op = OpDiv} () _ _)
+  cm-i (t-binop-cmp {op = OpMod} () _ _)
+  cm-i (t-id-app d)          = appc _ _ H.refl (tm D) (dr D) where D = cm-i d
+  cm-i (t-fst-app d)         = appc _ _ H.refl (tm D) (dr D) where D = cm-i d
+  cm-i (t-snd-app d)         = appc _ _ H.refl (tm D) (dr D) where D = cm-i d
+  cm-i (t-terminal-app d)    = appc _ _ H.refl (tm D) (dr D) where D = cm-i d
+  cm-i (t-apply-app-infer d) = appc _ _ (H.sym dc-apply) (tm D) (dr D) where D = cm-i d
+  cm-i (t-apply-eff-app-infer d) = appc _ _ (H.sym dc-applyEff) (tm D) (dr D) where D = cm-i d
+  cm-i (t-Out-app-infer {F = F} wf refl d) =
+    comm (trans (⇝ᵢ-tm q x) (cong (app _) (tm D)))
+         (H.trans (⇝ᵢ-dr q x) (≅appAB refl (sym (TS.⟦⟧F-⟨⟩ τ F (ν F pureᶠ))) refl (tm D) (H.sym (dc-out wf)) (dr D)))
+    where D = cm-i d
+          q = sym (RS.ρ̂-⟦⟧ F (ν F pureᶠ))
+          x = t-Out-app-infer (RS.ρ̂-wf wf) refl (subst-i′ d)
+  cm-i (t-Out-eff-app-infer {F = F} wf refl d) =
+    comm (trans (⇝ᵢ-tm q x) (cong (app _) (tm D)))
+         (H.trans (⇝ᵢ-dr q x) (≅appAB refl (cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (TS.⟦⟧F-⟨⟩ τ F (ν F actᶠ)))) refl (tm D) (H.sym (dc-outAct wf)) (dr D)))
+    where D = cm-i d
+          q = cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (RS.ρ̂-⟦⟧ F (ν F actᶠ)))
+          x = t-Out-eff-app-infer (RS.ρ̂-wf wf) refl (subst-i′ d)
+  cm-i (t-app {q = q} h df dx) =
+    comm (cong₂ app (tm Cf) (tm Cx)) (H.trans (≅appp q (tm Cf) (tm Cx) (dr Cf) (dr Cx)) (H.sym (ty-appp q _ _)))
+    where Cf = cm-i df
+          Cx = cm-c dx
+  cm-i (t-effApp {π = π} h df dx) =
+    comm (trans (cong₂ (effAppᶜ π) (tm Cf) (tm Cx)) (cong₂ (λ a b → lam _ Many π (app a b)) (sym (⟪⟫-wk τ _)) (sym (⟪⟫-wk τ _))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (effAppᶜ π) DT.⊢effAppᶜ refl (tm Cf) (dr Cf) refl (tm Cx) (dr Cx))
+                  (H.sym (dc-effApp (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx)))))
+    where Cf = cm-i df
+          Cx = cm-c dx
+  cm-i (t-app-spine h dx df) =
+    comm (cong₂ app (tm Cf) (tm Cx)) (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) app ⊢app refl (tm Cf) (dr Cf) refl (tm Cx) (dr Cx))
+    where Cf = cm-d df
+          Cx = cm-i dx
+
+  cm-c : ∀ {n′ N} {D : Ctx m n′} {A e Ψ} (d : mkCtx n′ N D imps polys sigs Δ ⊢ᶜ e ∶ A ⨾ Ψ)
+       → Comm (elabᶜ V (subst-c′ d)) (elabᶜ V d)
+  cm-c (t-id-check {u = u})             = comm refl H.refl
+  cm-c (t-fst-check {u = u})            = comm refl H.refl
+  cm-c (t-snd-check {u = u})            = comm refl H.refl
+  cm-c (t-terminal-morph-check {u = u}) = comm refl H.refl
+  cm-c (t-initial-morph-check {u = u})  = comm refl H.refl
+  cm-c (t-inl-morph-check {u = u})      = comm refl H.refl
+  cm-c (t-inr-morph-check {u = u})      = comm refl H.refl
+  cm-c (t-compose-check-g {π = π} dg df) =
+    comm (trans (cong₂ (composeᶜ _ _) (tm Cf) (tm Cg)) (cong (λ x → let′ One _ (let′ Many x _)) (sym (⟪⟫-wk τ _))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (composeᶜ _ _) (DT.⊢composeᶜ (·p-diag _)) refl (tm Cf) (dr Cf) refl (tm Cg) (dr Cg))
+                  (H.sym (dc-compose (·p-diag _) (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)))))
+    where Cf = cm-c df
+          Cg = cm-d dg
+  cm-c (t-compose-check-f wf p dg) =
+    comm (trans (cong₂ (composeᶜ _ _) (cong (coerce _ _) (tm Cf)) (tm Cg)) (cong (λ x → let′ One _ (let′ Many x _)) (sym (⟪⟫-wk τ _))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (composeᶜ _ _) (DT.⊢composeᶜ (·p-diag _)) refl (cong (coerce _ _) (tm Cf))
+                      (≅1 (λ Ψ → Ψ) (coerce _ _) (⊢coerce _) refl (tm Cf) (dr Cf)) refl (tm Cg) (dr Cg))
+                  (H.sym (dc-compose (·p-diag _) (⊢coerce p (proj₂ (elabᵢ V wf))) (proj₂ (elabᶜ V dg)))))
+    where Cf = cm-i wf
+          Cg = cm-c dg
+  cm-c (t-case-copair-check df dg) =
+    comm (trans (cong₂ (caseᶜ _ _ _) (tm Cf) (tm Cg)) (cong (λ x → let′ One _ (let′ One x _)) (sym (⟪⟫-wk τ _))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (caseᶜ _ _ _) DT.⊢caseᶜ refl (tm Cf) (dr Cf) refl (tm Cg) (dr Cg))
+                  (H.sym (dc-case (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg)))))
+    where Cf = cm-c df
+          Cg = cm-c dg
+  cm-c (t-pair-morph-check df dg) =
+    comm (trans (cong₂ (pairᶜ _ _) (tm Cf) (tm Cg)) (cong (λ x → let′ One _ (let′ One x _)) (sym (⟪⟫-wk τ _))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (pairᶜ _ _) (DT.⊢pairᶜ (·p-diag _)) refl (tm Cf) (dr Cf) refl (tm Cg) (dr Cg))
+                  (H.sym (dc-pair (·p-diag _) (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg)))))
+    where Cf = cm-c df
+          Cg = cm-c dg
+  cm-c (t-curry-check {u = u} df) =
+    comm (cong (curryᶜ _ _ _ _) (tm Cf)) (H.trans (≅1 (λ Ψ → Ψ) (curryᶜ _ _ _ _) (DT.⊢curryᶜ u) refl (tm Cf) (dr Cf)) (H.sym (dc-curry u _)))
+    where Cf = cm-c df
+  cm-c (t-cata-check {F = F} {A = A} {π = π} wf da) =
+    comm (cong (cataᶜ _ _) (trans (⇝ᶜ-tm E (subst-c′ da)) (tm Ca)))
+         (H.sym (dc-cata wf (proj₂ (elabᶜ V da)) (trans (⇝ᶜ-tm E (subst-c′ da)) (tm Ca)) (H.trans (⇝ᶜ-dr E (subst-c′ da)) (dr Ca))))
+    where Ca = cm-c da
+          E = cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (RS.ρ̂-⟦⟧ F A)
+  cm-c (t-ana-check {F = F} {A = A} {φ = φ} {u = u} wf dc) =
+    comm (cong (λ x → lam _ Many _ (unfold _ x (var zero))) (trans (cong wk (trans (⇝ᶜ-tm E (subst-c′ dc)) (tm Cc))) (sym (⟪⟫-wk τ (proj₁ (elabᶜ V dc))))))
+         (H.sym (dc-ana u wf (proj₂ (elabᶜ V dc)) (trans (⇝ᶜ-tm E (subst-c′ dc)) (tm Cc)) (H.trans (⇝ᶜ-dr E (subst-c′ dc)) (dr Cc))))
+    where Cc = cm-c dc
+          E = cong (λ X → ρ̂ A ⇒[ mk-kind Many (Once.Spec.Grade.fin φ) ] X) (RS.ρ̂-⟦⟧ F A)
+  cm-c (t-loop-check dc) =
+    comm (cong (loopᶜ _) (tm Cc)) (H.trans (≅1 (Many *ᵘ_) (loopᶜ _) DT.⊢loopᶜ refl (tm Cc) (dr Cc)) (H.sym (dc-loop _)))
+    where Cc = cm-c dc
+  cm-c (t-sub d p) = comm (cong (coerce _ _) (tm D)) (≅1 (λ Ψ → Ψ) (coerce _ _) (⊢coerce _) refl (tm D) (dr D))
+    where D = cm-i d
+  cm-c (t-lam {u = u} le d) = comm (cong (lam _ _ _) (tm D)) (c-lam (tm D) (c-sub-eff (tm D) (dr D)))
+    where D = cm-c d
+  cm-c (t-pair-lit-check da db) =
+    comm (cong₂ pair (tm A) (tm B)) (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl (tm A) (dr A) refl (tm B) (dr B))
+    where A = cm-c da
+          B = cm-c db
+  cm-c (t-In-app-check {F = F} wf d) =
+    comm (cong₂ app (cong (λ X → lam X Many pure (roll (F ⟨ τ ⟩F) (var zero))) (sym (TS.⟦⟧F-⟨⟩ τ F (μ F)))) (trans (⇝ᶜ-tm (RS.ρ̂-⟦⟧ F (μ F)) (subst-c′ d)) (tm D)))
+         (≅appAB (sym (TS.⟦⟧F-⟨⟩ τ F (μ F))) refl (cong (λ X → lam X Many pure (roll (F ⟨ τ ⟩F) (var zero))) (sym (TS.⟦⟧F-⟨⟩ τ F (μ F))))
+                 (trans (⇝ᶜ-tm (RS.ρ̂-⟦⟧ F (μ F)) (subst-c′ d)) (tm D)) (H.sym (dc-in wf)) (H.trans (⇝ᶜ-dr (RS.ρ̂-⟦⟧ F (μ F)) (subst-c′ d)) (dr D)))
+    where D = cm-c d
+  cm-c (t-apply-check d)        = appc _ _ (H.sym dc-apply) (tm D) (dr D) where D = cm-i d
+  cm-c (t-inl-app-check d)      = appc _ _ H.refl (tm D) (dr D) where D = cm-c d
+  cm-c (t-inr-app-check d)      = appc _ _ H.refl (tm D) (dr D) where D = cm-c d
+  cm-c (t-initial-app-check d)  = appc _ _ H.refl (tm D) (dr D) where D = cm-c d
+  cm-c {D = D} (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
+    comm (poly-tm {Γ = D} lp ki (RS.ρ̂-ki {sc} ki) refl) (poly-dr {Γ = D} lp ki (RS.ρ̂-ki {sc} ki) refl)
+
+  cm-d : ∀ {n′ N} {D : Ctx m n′} {A B e π Ψ} (d : mkCtx n′ N D imps polys sigs Δ ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+       → Comm (elabᵈ V (subst-d′ d)) (elabᵈ V d)
+  cm-d (d-infer w p g) = comm (cong (coerce _ _) (tm W′)) (≅coerce (tm W′) (dr W′))
+    where W′ = cm-i w
+  cm-d {D = D} (d-poly {schema = sc} ln li lp ng as cv ki g) =
+    comm (cong (coerce _ _) (poly-tm {Γ = D} lp ki (RS.ρ̂-ki {sc} ki) refl)) (≅coerce (poly-tm {Γ = D} lp ki (RS.ρ̂-ki {sc} ki) refl) (poly-dr {Γ = D} lp ki (RS.ρ̂-ki {sc} ki) refl))
+  cm-d (d-lam {u = u} d) = comm (cong (lam _ _ _) (tm D′)) (c-lam (tm D′) (c-sub-eff (tm D′) (dr D′)))
+    where D′ = cm-i d
+  cm-d (d-compose dg df) =
+    comm (trans (cong₂ (composeᶜ _ _) (tm Cf) (tm Cg)) (cong (λ x → let′ One _ (let′ Many x _)) (sym (⟪⟫-wk τ _))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (composeᶜ _ _) (DT.⊢composeᶜ (·p-diag _)) refl (tm Cf) (dr Cf) refl (tm Cg) (dr Cg))
+                  (H.sym (dc-compose (·p-diag _) (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)))))
+    where Cf = cm-d df
+          Cg = cm-d dg
+  cm-d (d-id {u = u})       = comm refl H.refl
+  cm-d (d-fst {u = u})      = comm refl H.refl
+  cm-d (d-snd {u = u})      = comm refl H.refl
+  cm-d (d-terminal {u = u}) = comm refl H.refl
+  cm-d (d-initial {u = u})  = comm refl H.refl
+  cm-d (d-case {A = A} {B = B} {Cf = Cf′} {Cg = Cg′} {C = C} {π = π} df dg J) =
+    comm (trans (cong₂ (caseᶜ _ _ _) (cong cf (tm Cf)) (cong cg (tm Cg)))
+                (cong (λ x → let′ One (cf (proj₁ (elabᵈ V df) ⟪ τ ⟫ₜ)) (let′ One x body)) (sym (⟪⟫-wk τ (proj₁ (El.coerceE Σ S (sub-arr (<:-refl B) (<:ᶜ⇒<: (right J)) (⊑π-refl π)) (elabᵈ V dg)))))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (caseᶜ _ _ _) DT.⊢caseᶜ refl (cong cf (tm Cf)) (≅coerce (tm Cf) (dr Cf))
+                      refl (cong cg (tm Cg)) (≅coerce (tm Cg) (dr Cg)))
+                  (H.sym (dc-case (proj₂ (El.coerceE Σ S (sub-arr (<:-refl A) (<:ᶜ⇒<: (left J)) (⊑π-refl π)) (elabᵈ V df)))
+                                  (proj₂ (El.coerceE Σ S (sub-arr (<:-refl B) (<:ᶜ⇒<: (right J)) (⊑π-refl π)) (elabᵈ V dg))))))
+    where Cf = cm-d df
+          Cg = cm-d dg
+          body = lam ((A + B) ⟨ τ ⟩) Many π (case Many Many (var zero) (app (var (suc (suc (suc zero)))) (var zero)) (app (var (suc (suc zero))) (var zero)))
+          cf = coerce (ρ̂ (A ⇒[ mk-kind Many π ] Cf′)) (ρ̂ (A ⇒[ mk-kind Many π ] C))
+          cg = coerce (ρ̂ (B ⇒[ mk-kind Many π ] Cg′)) (ρ̂ (B ⇒[ mk-kind Many π ] C))
+  cm-d (d-pair df dg) =
+    comm (trans (cong₂ (pairᶜ _ _) (tm Cf) (tm Cg)) (cong (λ x → let′ One _ (let′ One x _)) (sym (⟪⟫-wk τ _))))
+         (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (pairᶜ _ _) (DT.⊢pairᶜ (·p-diag _)) refl (tm Cf) (dr Cf) refl (tm Cg) (dr Cg))
+                  (H.sym (dc-pair (·p-diag _) (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)))))
+    where Cf = cm-d df
+          Cg = cm-d dg
+  cm-d (d-cata {F = F} {A = A} {π = π} wf da) =
+    comm (cong (cataᶜ _ _) (trans (⇝ᵢ-tm E (subst-i′ da)) (tm Ca)))
+         (H.sym (dc-cata wf (proj₂ (elabᵢ V da)) (trans (⇝ᵢ-tm E (subst-i′ da)) (tm Ca)) (H.trans (⇝ᵢ-dr E (subst-i′ da)) (dr Ca))))
+    where Ca = cm-i da
+          E = cong (λ X → X ⇒[ mk-kind Many π ] ρ̂ A) (RS.ρ̂-⟦⟧ F A)
