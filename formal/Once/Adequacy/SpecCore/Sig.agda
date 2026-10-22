@@ -68,13 +68,13 @@ import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Meaning as SM
 open Obs Σ using (Model; World; module Model; module World)
 import Once.Adequacy.SpecInterp as SI
-open SI using (toISig; declTy; ⌞_⌟; qL; toImpl; toInterp)
-open import Once.Adequacy.SpecCore.Poly using (declS)
-open import Once.Adequacy.SpecCore.DeclType using (toB-⌞⌟; declS-declTy)
+open SI using (declTy; ⌞_⌟; qL; toImpl; toInterp)
+open import Once.Internal.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open import Once.Adequacy.SpecCore.Observe Σ using (Agree)
 import Once.Adequacy.SpecCore.Program as PG
+import Once.Adequacy.SpecCore.Cases as Cases
 
 private
   sname : Decl → String
@@ -273,19 +273,19 @@ ans-step Σ′ inj w′ wf′ SI.dc-value           h k p         = ans-G Σ′ 
 ans-step Σ′ inj w′ wf′ SI.dc-op-effect       h k p         = ans-G Σ′ (λ m → inj (there m)) wf′ h k p
 
 -- …so an operation's answer key reads that operation, at the decided inhabitant.
-ans-op : ∀ {h k f} → AnsG h k f → ∀ {c a b} (m : (c ∶ operation a SG.Many b) ∈ Σ) (e : k ≡ key (showCanonical c) ⌞ a ⌟ ⌞ b ⌟)
+ans-op : ∀ {h k f} → AnsG h k f → ∀ {c a q b} (m : (c ∶ operation a q b) ∈ Σ) (e : k ≡ key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟)
        → ∀ p → notEmpty? b ≡ yes p → ∀ x
-       → subst Fn e f x ≡ SI.fromB b (World.answer w (op m) (map toEvent h) (SI.toB a x) p)
+       → subst Fn e f x ≡ SI.fromB b (World.answer w (op m) (map toEvent h) (SI.toB (argAt q a) x) p)
 ans-op {h} (ag m′ ne) m e p d x = ao (one-decl uniq m′ m (cong kname e)) e x p d
   where
-    ao : ∀ {c c′ a a′ q′ b b′} {m : (c ∶ operation a SG.Many b) ∈ Σ} {m′ : (c′ ∶ operation a′ q′ b′) ∈ Σ} {ne : NotEmpty b′}
-       → _≡_ {A = Σ[ d ∈ Decl ] d ∈ Σ} ((c′ ∶ operation a′ q′ b′) , m′) ((c ∶ operation a SG.Many b) , m)
-       → (e : key (showCanonical c′) ⌞ argAt q′ a′ ⌟ ⌞ b′ ⌟ ≡ key (showCanonical c) ⌞ a ⌟ ⌞ b ⌟) → ∀ x p
+    ao : ∀ {c c′ a a′ q q′ b b′} {m : (c ∶ operation a q b) ∈ Σ} {m′ : (c′ ∶ operation a′ q′ b′) ∈ Σ} {ne : NotEmpty b′}
+       → _≡_ {A = Σ[ d ∈ Decl ] d ∈ Σ} ((c′ ∶ operation a′ q′ b′) , m′) ((c ∶ operation a q b) , m)
+       → (e : key (showCanonical c′) ⌞ argAt q′ a′ ⌟ ⌞ b′ ⌟ ≡ key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟) → ∀ x p
        → notEmpty? b ≡ yes p
        → subst Fn e (λ x → SI.fromB b′ (SI.answerAt-dec Σ J (op m′) (map toEvent h) (SI.toB (argAt q′ a′) x) (notEmpty? b′) ne)) x
-         ≡ SI.fromB b (World.answer w (op m) (map toEvent h) (SI.toB a x) p)
-    ao {a = a} {b = b} {m = m} {ne = ne} refl refl x p d′ =
-      cong (λ dd → SI.fromB b (SI.answerAt-dec Σ J (op m) (map toEvent h) (SI.toB a x) dd ne)) d′
+         ≡ SI.fromB b (World.answer w (op m) (map toEvent h) (SI.toB (argAt q a) x) p)
+    ao {a = a} {q = q} {b = b} {m = m} {ne = ne} refl refl x p d′ =
+      cong (λ dd → SI.fromB b (SI.answerAt-dec Σ J (op m) (map toEvent h) (SI.toB (argAt q a) x) dd ne)) d′
 
 ------------------------------------------------------------------------
 -- The declarations: the compiler's reference means the Spec's
@@ -323,35 +323,36 @@ private
 module _ {s₀} (S₀ : SC.Defs s₀) {m} (σ′ : ST.TySub m 0) where
 
   private
-    -- an operation's call, by the form its answer type decides
-    sig-halt : ∀ {c a b} (M : (c ∶ operation a SG.Many b) ∈ Σ) (bDom : LW.IsBaseType ⌞ a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
-               (ga : GR ⌞ a ⌟ (S.⌜ a ⌝ ST.⟨ σ′ ⟩)) (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → ValR ga x y
+    -- an operation's call, by the form its answer type decides (an argument
+    -- used zero times is `unit`, `argAt`)
+    sig-halt : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
+               (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → SI.toB (argAt q a) x ≡ y
              → b ≡ S.void → (e : ⌞ b ⌟ ≡ T.Void) → ∀ du
-             → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom (yes e) du (LOps.prjB bDom x)))
-                            (SE.performT (S.call (op M) (SD.toB σ′ a y) (SD.fromB σ′ b)))
-    sig-halt {a = a} M bDom bCod ga gb r refl refl du = halt (hr M) (toB-R σ′ a bDom ga r)
+             → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom (yes e) du x))
+                            (SE.performT (S.call (op M) y (SD.fromB σ′ b)))
+    sig-halt M bDom bCod gb ra refl refl du = halt (hr M) ra
 
-    sig-unit : ∀ {c a b} (M : (c ∶ operation a SG.Many b) ∈ Σ) (bDom : LW.IsBaseType ⌞ a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
-               (ga : GR ⌞ a ⌟ (S.⌜ a ⌝ ST.⟨ σ′ ⟩)) (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → ValR ga x y
+    sig-unit : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
+               (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → SI.toB (argAt q a) x ≡ y
              → (¬v : ¬ (⌞ b ⌟ ≡ T.Void)) → b ≡ S.unit → (e : ⌞ b ⌟ ≡ T.Unit)
-             → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom (no ¬v) (yes e) (LOps.prjB bDom x)))
-                            (SE.performT (S.call (op M) (SD.toB σ′ a y) (SD.fromB σ′ b)))
-    sig-unit {a = a} M bDom bCod ga gb r ¬v refl refl =
-      call (cr M tt) (toB-R σ′ a bDom ga r) (λ {v} {v′} _ → ret (base-R σ′ S.unit bCod gb v′))
+             → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom (no ¬v) (yes e) x))
+                            (SE.performT (S.call (op M) y (SD.fromB σ′ b)))
+    sig-unit M bDom bCod gb ra ¬v refl refl =
+      call (cr M tt) ra (λ {v} {v′} _ → ret (base-R σ′ S.unit bCod gb v′))
 
-    sig-op : ∀ {c a b} (M : (c ∶ operation a SG.Many b) ∈ Σ) (bDom : LW.IsBaseType ⌞ a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
-             (ga : GR ⌞ a ⌟ (S.⌜ a ⌝ ST.⟨ σ′ ⟩)) (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → ValR ga x y
+    sig-op : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
+             (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → SI.toB (argAt q a) x ≡ y
            → ∀ dv du
-           → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom dv du (LOps.prjB bDom x)))
-                          (SE.performT (S.call (op M) (SD.toB σ′ a y) (SD.fromB σ′ b)))
-    sig-op {b = b} M bDom bCod ga gb r (yes e) du      = sig-halt M bDom bCod ga gb r (⌞⌟-void b e) e du
-    sig-op {b = b} M bDom bCod ga gb r (no ¬v) (yes e) = sig-unit M bDom bCod ga gb r ¬v (⌞⌟-unit b e) e
-    sig-op {a = a} {b} M bDom bCod ga gb r (no ¬v) (no ¬u) =
-      call (cr M (data-ne b (wf-at wf M) ¬v ¬u)) (toB-R σ′ a bDom ga r)
+           → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom dv du x))
+                          (SE.performT (S.call (op M) y (SD.fromB σ′ b)))
+    sig-op {b = b} M bDom bCod gb ra (yes e) du      = sig-halt M bDom bCod gb ra (⌞⌟-void b e) e du
+    sig-op {b = b} M bDom bCod gb ra (no ¬v) (yes e) = sig-unit M bDom bCod gb ra ¬v (⌞⌟-unit b e) e
+    sig-op {b = b} M bDom bCod gb ra (no ¬v) (no ¬u) =
+      call (cr M (data-ne b (wf-at wf M) ¬v ¬u)) ra
            (λ {v} {v′} e → ret (subst (λ z → ValR gb (LOps.injB bCod z) (SD.fromB σ′ b v′)) (sym e) (base-R σ′ b bCod gb v′)))
 
   -- At each form of declaration.
-  sig-t : ∀ {c} t (k : LW.IsConcrete (declTy t)) (h : LH.HonestFFI (declTy t)) (mem : (showCanonical c , declTy t) ∈ toISig Σ)
+  sig-t : ∀ {c} t (k : LW.IsConcrete (declTy t)) (mem : (showCanonical c , declTy t) ∈ toISig Σ)
           (gs : GR (declTy t) (⌜ t ⌝ᵈ ST.⟨ σ′ ⟩)) (M : (c ∶ t) ∈ Σ)
         → ValR gs (LOps.sigOpRefᵛ fmt (toISig Σ) I c k mem) (SM.sigopᵛ Σ fmt S₀ σ′ c t M mo)
   sig-c : ∀ {c} b (k : LW.IsConcrete ⌞ b ⌟) → Σ[ ib ∈ LW.IsBaseType ⌞ b ⌟ ] (k ≡ LW.con-base ib)
@@ -360,41 +361,30 @@ module _ {s₀} (S₀ : SC.Defs s₀) {m} (σ′ : ST.TySub m 0) where
   sig-c b .(LW.con-base ib) (ib , refl) mem gs M =
     subst (λ v → ValR gs (LOps.injB ib v) (SD.fromB σ′ b (Model.constantᵐ mo M))) (sym (read-const M (_ ∈K? valueKeys (toISig Σ)))) (base-R σ′ b ib gs _)
 
-  sig-t (constant b) k h mem gs M = sig-c b k (const-k b k) mem gs M
-  sig-t (value a SG.Zero b) (LW.con-fun bDom bCod) h mem (g-⇒ ga gb) M =
+  sig-t (constant b) k mem gs M = sig-c b k (const-k b k) mem gs M
+  sig-t (value a SG.Zero b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M =
     subst (λ v → ValR gb (LOps.injB bCod v) (SD.fromB σ′ b (Model.valueᵐ mo M tt))) (sym (read-value M (_ ∈K? valueKeys (toISig Σ)) tt)) (base-R σ′ b bCod gb _)
-  sig-t (value a SG.One b) (LW.con-fun bDom bCod) h mem (g-⇒ ga gb) M {x} {y} r =
+  sig-t (value a SG.One b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
     subst (λ v → ValR gb (LOps.injB bCod v) (SD.fromB σ′ b (Model.valueᵐ mo M (SD.toB σ′ a y))))
           (sym (trans (read-value M (_ ∈K? valueKeys (toISig Σ)) (LOps.prjB bDom x)) (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R σ′ a bDom ga r))))
           (base-R σ′ b bCod gb _)
-  sig-t (value a SG.Many b) (LW.con-fun bDom bCod) h mem (g-⇒ ga gb) M {x} {y} r =
+  sig-t (value a SG.Many b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
     subst (λ v → ValR gb (LOps.injB bCod v) (SD.fromB σ′ b (Model.valueᵐ mo M (SD.toB σ′ a y))))
           (sym (trans (read-value M (_ ∈K? valueKeys (toISig Σ)) (LOps.prjB bDom x)) (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R σ′ a bDom ga r))))
           (base-R σ′ b bCod gb _)
-  sig-t (value a q b) (LW.con-base ()) h mem gs M
-  sig-t (operation a SG.Zero b) k () mem gs M
-  sig-t (operation a SG.One b)  k () mem gs M
-  sig-t (operation a SG.Many b) (LW.con-fun bDom bCod) h mem (g-⇒ ga gb) M {x} {y} r =
-    sig-op M bDom bCod ga gb r (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
-  sig-t (operation a SG.Many b) (LW.con-base ()) h mem gs M
-
-  -- From the compiler's declaration to the Spec's.
-  sig-w : ∀ {c} t (k : LW.IsConcrete (declTy t)) (h : LH.HonestFFI (declTy t)) (mem : (showCanonical c , declTy t) ∈ toISig Σ)
-          {T} (gs : GR (declTy t) (⌜ T ⌝ᵈ ST.⟨ σ′ ⟩)) (M : (c ∶ T) ∈ Σ) → T ≡ t
-        → ValR gs (LOps.sigOpRefᵛ fmt (toISig Σ) I c k mem) (SM.sigopᵛ Σ fmt S₀ σ′ c T M mo)
-  sig-w t k h mem gs M refl = sig-t t k h mem gs M
-
-  sig-v : ∀ {c A} (k : LW.IsConcrete A) (h : LH.HonestFFI A) (mem : (showCanonical c , A) ∈ toISig Σ)
-          {T} (gs : GR A (⌜ T ⌝ᵈ ST.⟨ σ′ ⟩)) (M : (c ∶ T) ∈ Σ) → T ≡ declS A
-        → (Σ[ d ∈ Decl ] (d ∈ Σ) × (sname d ≡ showCanonical c) × (declTy (Decl.type d) ≡ A))
-        → ValR gs (LOps.sigOpRefᵛ fmt (toISig Σ) I c k mem) (SM.sigopᵛ Σ fmt S₀ σ′ c T M mo)
-  sig-v k h mem gs M eT ((_ ∶ t) , _ , _ , refl) = sig-w t k h mem gs M (trans eT (declS-declTy t))
+  sig-t (value a q b) (LW.con-base ()) mem gs M
+  sig-t (operation a SG.Zero b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M =
+    sig-op M LW.base-Unit bCod gb refl (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
+  sig-t (operation a SG.One b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
+    sig-op M bDom bCod gb (toB-R σ′ a bDom ga r) (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
+  sig-t (operation a SG.Many b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
+    sig-op M bDom bCod gb (toB-R σ′ a bDom ga r) (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
+  sig-t (operation a q b) (LW.con-base ()) mem gs M
 
 -- The compiler's implementation and the Spec's model agree on every
--- declaration (`Program.SigG`), whichever way the compiler's declarations are
--- matched to Σ's.
-sig-G : (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ toISig Σ → (c ∶ declS A) ∈ Σ) → PG.SigG Σ sigop-S fmt I mo
-sig-G sigop-S S₀ σ′ k h rf wn mem gs = sig-v S₀ σ′ k h mem gs (sigop-S wn mem) refl (mem-view mem)
+-- declaration of Σ (`Program.SigG`).
+sig-G : PG.SigG Σ fmt I mo
+sig-G S₀ σ {c} {t} mem = sig-t S₀ σ t (⌜⌝ᵈ-concrete t) (∈-toISig mem) (Cases.gS Σ S₀ fmt σ t) mem
 
 ------------------------------------------------------------------------
 -- The calls: answered and observed alike
@@ -423,17 +413,17 @@ private
   ι : LTr.Interp
   ι = toInterp Σ wf J
 
-  unit-ans : ∀ {cn a b bA x} (M : (cn ∶ operation a SG.Many b) ∈ Σ) h p (eb : b ≡ S.unit) (u : ⌞ b ⌟ ≡ T.Unit) dk {y}
-           → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (LTr.callAnswer-at ι h (LTr.callOp cn ⌞ a ⌟ bA ⌞ b ⌟) x (yes u) dk ≡ just v)
+  unit-ans : ∀ {cn a q b bA x} (M : (cn ∶ operation a q b) ∈ Σ) h p (eb : b ≡ S.unit) (u : ⌞ b ⌟ ≡ T.Unit) dk {y}
+           → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (LTr.callAnswer-at ι h (LTr.callOp cn ⌞ argAt q a ⌟ bA ⌞ b ⌟) x (yes u) dk ≡ just v)
                × (v ≡ SI.fromB b (World.answer w (op M) (map toEvent h) y p))
   unit-ans M h p refl refl dk = tt , refl , refl
 
-  ans-at : ∀ {cn a b bA} (M : (cn ∶ operation a SG.Many b) ∈ Σ) (ne : NotEmpty b) {x y} (ra : SI.toB a x ≡ y) h p
-         → notEmpty? b ≡ yes p → (du : Dec (⌞ b ⌟ ≡ T.Unit)) (dk : Dec (key (showCanonical cn) ⌞ a ⌟ ⌞ b ⌟ ∈ answerKeys (toISig Σ)))
-         → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (LTr.callAnswer-at ι h (LTr.callOp cn ⌞ a ⌟ bA ⌞ b ⌟) x du dk ≡ just v)
+  ans-at : ∀ {cn a q b bA} (M : (cn ∶ operation a q b) ∈ Σ) (ne : NotEmpty b) {x y} (ra : SI.toB (argAt q a) x ≡ y) h p
+         → notEmpty? b ≡ yes p → (du : Dec (⌞ b ⌟ ≡ T.Unit)) (dk : Dec (key (showCanonical cn) ⌞ argAt q a ⌟ ⌞ b ⌟ ∈ answerKeys (toISig Σ)))
+         → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (LTr.callAnswer-at ι h (LTr.callOp cn ⌞ argAt q a ⌟ bA ⌞ b ⌟) x du dk ≡ just v)
              × (v ≡ SI.fromB b (World.answer w (op M) (map toEvent h) y p))
   ans-at {b = b} {bA} M ne {x} {y} ra h p d (yes u) dk = unit-ans {bA = bA} {x = x} M h p (⌞⌟-unit b u) u dk {y}
-  ans-at {a = a} {b} M ne {x} ra h p d (no ¬u) (yes p₁) =
+  ans-at {a = a} {b = b} M ne {x} ra h p d (no ¬u) (yes p₁) =
     _ , refl , trans (ans-op (ans-G Σ (λ m → m) wf h _ p₁) M refl p d x)
                      (cong (λ z → SI.fromB b (World.answer w (op M) (map toEvent h) z p)) ra)
   ans-at {b = b} M ne ra h p d (no ¬u) (no ¬k) = ⊥-elim (¬k (ans-in M (λ e → ne-void ne (⌞⌟-void b e)) ¬u))
@@ -446,9 +436,9 @@ private
 -- related call (`Observe.Agree`).
 agree : Agree ι w
 agree = record
-  { answered   = λ { (cr {a = a} {b} {bA} M ne) {x} {y} ra h →
-                     ne , λ p d → ans-at {bA = bA} M ne ra h p d (T.isUnit? ⌞ b ⌟) (key _ ⌞ a ⌟ ⌞ b ⌟ ∈K? answerKeys (toISig Σ)) }
-  ; call-event = λ { (cr {a = a} M ne) ra → ev-eq a _ ra }
-  ; halt-event = λ { (hr {a = a} M) ra → ev-eq a _ ra }
+  { answered   = λ { (cr {a = a} {q} {b} {bA} M ne) {x} {y} ra h →
+                     ne , λ p d → ans-at {bA = bA} M ne ra h p d (T.isUnit? ⌞ b ⌟) (key _ ⌞ argAt q a ⌟ ⌞ b ⌟ ∈K? answerKeys (toISig Σ)) }
+  ; call-event = λ { (cr {a = a} {q} M ne) ra → ev-eq (argAt q a) _ ra }
+  ; halt-event = λ { (hr {a = a} {q} M) ra → ev-eq (argAt q a) _ ra }
   ; halt-void  = λ { (hr M) () }
   }

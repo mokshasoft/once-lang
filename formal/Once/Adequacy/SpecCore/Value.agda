@@ -92,23 +92,25 @@ data μR {F F′} (f : GF F F′) : LPoly.μS (translateF Carrier Carrier F) →
 ------------------------------------------------------------------------
 
 -- A compiler call is the Spec call of the declaration of its name, at the
--- declaration's types read as the compiler's (`⌞_⌟`); its argument and its
--- answer cross by the base conversions.
+-- declaration's types read as the compiler's (`⌞_⌟`) — an argument used zero
+-- times is `unit` (`argAt`); its argument and its answer cross by the base
+-- conversions.
 data CallR : LTr.CallOp → Op Σ → Set where
-  cr : ∀ {cn a b bA} (m : (cn ∶ operation a SG.Many b) ∈ Σ) → SSig.NotEmpty b → CallR (LTr.callOp cn SI.⌞ a ⌟ bA SI.⌞ b ⌟) (op m)
+  cr : ∀ {cn a q b bA} (m : (cn ∶ operation a q b) ∈ Σ) → SSig.NotEmpty b
+     → CallR (LTr.callOp cn SI.⌞ SSig.argAt q a ⌟ bA SI.⌞ b ⌟) (op m)
 
 argR : ∀ {o o′} → CallR o o′ → V.⟦ LTr.CallOp.cdom o ⟧ → ⟦ SSig.arg o′ ⟧ᵇ → Set
-argR (cr {a = a} m _) x y = SI.toB a x ≡ y
+argR (cr {a = a} {q} m _) x y = SI.toB (SSig.argAt q a) x ≡ y
 
 ansR : ∀ {o o′} → CallR o o′ → V.⟦ LTr.CallOp.ccod o ⟧ → ⟦ Op.ans o′ ⟧ᵇ → Set
 ansR (cr {b = b} m _) x y = x ≡ SI.fromB b y
 
 -- A halt is the Spec call of a declaration answering `void`.
 data HaltR : LTr.HaltOp → Op Σ → Set where
-  hr : ∀ {cn a bA} (m : (cn ∶ operation a SG.Many SSig.void) ∈ Σ) → HaltR (LTr.haltOp cn SI.⌞ a ⌟ bA) (op m)
+  hr : ∀ {cn a q bA} (m : (cn ∶ operation a q SSig.void) ∈ Σ) → HaltR (LTr.haltOp cn SI.⌞ SSig.argAt q a ⌟ bA) (op m)
 
 hargR : ∀ {o o′} → HaltR o o′ → V.⟦ LTr.HaltOp.hdom o ⟧ → ⟦ SSig.arg o′ ⟧ᵇ → Set
-hargR (hr {a = a} m) x y = SI.toB a x ≡ y
+hargR (hr {a = a} {q} m) x y = SI.toB (SSig.argAt q a) x ≡ y
 
 data TR {X Y : Set} (R : X → Y → Set) : LTr.T X → SE.T Y → Set where
   ret  : ∀ {x y} → R x y → TR R (LTr.ret x) (SE.roll (SE.done y))
