@@ -96,4 +96,3 @@ abi-rel (μ-type F)   v M rel = rel
 abi-rel (ν-type F π) v M rel = rel
 abi-rel Int          v M rel = rel
 abi-rel Float        v M rel = rel
-abi-rel (rigid k i)  v M rel = rel

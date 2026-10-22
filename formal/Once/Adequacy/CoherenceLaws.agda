@@ -23,6 +23,9 @@
 -- naturality, by associativity on either side.
 ------------------------------------------------------------------------
 
+open import Data.Nat using (ℕ)
+open import Once.Internal.Weaken using (RelD-bool)
+open import Once.Denotation.ValueRel using (RelS-mono)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -103,7 +106,7 @@ record _≈_ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (a b : Expr Γ Ψ 
 -- Congruence
 ------------------------------------------------------------------------
 
-module _ {n} {Γ : Ctx n} where
+module _ {m n} {Γ : Ctx m n} where
 
   pair-congˢ : ∀ {Ψ₁ Ψ₂ A B} {a a′ : Expr Γ Ψ₁ A} {b b′ : Expr Γ Ψ₂ B}
             → a ≈ˢ a′ → b ≈ˢ b′ → pair a b ≈ˢ pair a′ b′
@@ -140,22 +143,22 @@ module _ {n} {Γ : Ctx n} where
     RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fdiv-info (ra , rb)
   lt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → lt a b ≈ˢ lt a′ b′
   lt-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ lt-info (ra , rb)
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ lt-info (ra , rb))
   le-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → le a b ≈ˢ le a′ b′
   le-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ le-info (ra , rb)
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ le-info (ra , rb))
   gt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → gt a b ≈ˢ gt a′ b′
   gt-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ gt-info (ra , rb)
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ gt-info (ra , rb))
   ge-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ge a b ≈ˢ ge a′ b′
   ge-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ ge-info (ra , rb)
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ ge-info (ra , rb))
   eq-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → eq a b ≈ˢ eq a′ b′
   eq-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ eq-info (ra , rb)
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ eq-info (ra , rb))
   ne-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ne a b ≈ˢ ne a′ b′
   ne-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ ne-info (ra , rb)
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ ne-info (ra , rb))
 
   neg-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → neg a ≈ˢ neg a′
   neg-congˢ ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ neg-info)
@@ -163,7 +166,7 @@ module _ {n} {Γ : Ctx n} where
   i2f-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → i2f a ≈ˢ i2f a′
   i2f-congˢ ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ i2f-info)
 
-  coerce-congˢ : ∀ {m} {A B : Ty m} {Ψ} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
+  coerce-congˢ : ∀ {A B : Ty m} {Ψ} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
   coerce-congˢ p ea σ rσ r = RelS-fmap (ea σ rσ r) (<:-rel p)
 
   morph-app-congˢ : ∀ {Ψ A B} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → morph-app {A = A} {B = B} ir a ≈ˢ morph-app {A = A} {B = B} ir a′
@@ -205,16 +208,16 @@ module _ {n} {Γ : Ctx n} where
              → f ≈ˢ f′ → curry' {π₀ = π₀} f ≈ˢ curry' f′
   curry-congˢ ef σ rσ r = RelS-bind (ef σ rσ r) λ rf → relS-ret (λ ra → relS-ret (λ rb → rf (ra , rb)))
 
-  cata-congˢ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  cata-congˢ : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
   cata-congˢ {A = A} {F = F} {π = π} wf eg σ rσ r =
-    RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {F} {A} {π} wf ralg)
+    RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {A = A} {F = F} {π = π} wf ralg)
 
   -- D273: the coalgebra lives in the context and is bound once, as `cata`'s.
-  ana-congˢ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)}
+  ana-congˢ : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)}
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ˢ ana wf g′
   ana-congˢ {A = A} {F = F} {φ = φ} wf eg σ rσ r =
-    RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
+    RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {A = A} {F = F} {φ = φ} wf rc ra))
 
   -- the loop: related rounds, bound once, iterate to related loops.
   loop-congˢ : ∀ {Ψ A B} {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many act ] (B + A))}
@@ -258,20 +261,20 @@ module _ {n} {Γ : Ctx n} where
 -- Coercion
 ------------------------------------------------------------------------
 
-module _ {n} {Γ : Ctx n} where
+module _ {m n} {Γ : Ctx m n} where
 
-  coerce-reflˢ : ∀ {m} {A : Ty m} {Ψ} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ˢ e
+  coerce-reflˢ : ∀ {A : Ty m} {Ψ} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ˢ e
   coerce-reflˢ {A = A} e σ rσ r = RelS-fmapˡ (SD-rel rσ e r) (<:-refl-rel A)
 
-  coerce-transˢ : ∀ {m} {A B C : Ty m} {Ψ} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A)
+  coerce-transˢ : ∀ {A B C : Ty m} {Ψ} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A)
                → coerce q (coerce p e) ≈ˢ coerce (<:-trans p q) e
   coerce-transˢ {C = C} p q e σ rσ r =
     RelS-fmapˡ (RelS-fmap {R′ = λ u v → RelD C (⟦ q ⟧<: u) v} (SD-rel rσ e r) (<:-trans-rel p q)) (λ z → z)
 
-  coerce-uniqˢ : ∀ {m} {A B : Ty m} {Ψ} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ˢ coerce q e
+  coerce-uniqˢ : ∀ {A B : Ty m} {Ψ} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ˢ coerce q e
   coerce-uniqˢ p q e rewrite <:-unique p q = λ σ rσ r → SD-rel rσ (coerce q e) r
 
-  pair-coerceˢ : ∀ {m} {A A′ B B′ : Ty m} {Ψ₁ Ψ₂} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
+  pair-coerceˢ : ∀ {A A′ B B′ : Ty m} {Ψ₁ Ψ₂} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
               → pair (coerce pa a) (coerce pb b) ≈ˢ coerce (sub-prod pa pb) (pair a b)
   pair-coerceˢ pa pb a b σ rσ r =
     RelS-assoc₂ (SD-rel rσ a (restrict-rel {Γ = Γ} _ r)) λ ra →
@@ -279,7 +282,7 @@ module _ {n} {Γ : Ctx n} where
         retargetˡ refl (retargetʳ refl (relS-ret (<:-rel pa ra , <:-rel pb rb))))
 
   -- Converting the head's domain is converting the argument.
-  app-coerceˢ : ∀ {m} {A′ B : Ty m} {Ψ₁ Ψ₂ X} (a : X <: A′) (g : Once.Spec.Grade.pure ⊑π Once.Spec.Grade.pure)
+  app-coerceˢ : ∀ {A′ B : Ty m} {Ψ₁ Ψ₂ X} (a : X <: A′) (g : Once.Spec.Grade.pure ⊑π Once.Spec.Grade.pure)
                  (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Spec.Grade.pure ] B)) (x : Expr Γ Ψ₂ X)
              → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ˢ app f (coerce a x)
   app-coerceˢ {B = B} a g f x σ rσ r =
@@ -288,7 +291,7 @@ module _ {n} {Γ : Ctx n} where
         retargetʳ refl (RelS-fmapˡ (rf (<:-rel a rx)) (<:-refl-rel B)))
 
   -- Converting the outer arm's codomain is converting the composite's.
-  comp-postˢ : ∀ {m} {A B B′ : Ty m} {Ψ₁ Ψ₂ M π} (p : B <: B′) (r r′ : π ⊑π π)
+  comp-postˢ : ∀ {A B B′ : Ty m} {Ψ₁ Ψ₂ M π} (p : B <: B′) (r r′ : π ⊑π π)
                 (f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M))
             → comp' (coerce (sub-arr (<:-refl M) p r) f) g ≈ˢ coerce (sub-arr (<:-refl A) p r′) (comp' f g)
   comp-postˢ {A = A} {M = M} p r r′ f g σ rσ re =
@@ -298,7 +301,7 @@ module _ {n} {Γ : Ctx n} where
           RelS-assocʳ (rg (<:-refl-relʳ A ra)) λ rm → retargetʳ refl (RelS-fmap (rf (<:-refl-rel M rm)) (<:-rel p))))
 
   -- Converting the outer arm's domain is converting the inner arm's codomain.
-  comp-preˢ : ∀ {m} {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π)
+  comp-preˢ : ∀ {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π)
                (f : Expr Γ Ψ₁ (B′ ⇒[ mk-kind Many π′ ] C′)) (h : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B))
            → comp' (coerce (sub-arr q c g) f) h
              ≈ˢ comp' (coerce (sub-arr (<:-refl B′) c g) f) (coerce (sub-arr (<:-refl A) q (⊑π-refl π)) h)
@@ -309,7 +312,7 @@ module _ {n} {Γ : Ctx n} where
           RelS-assocʳ (rh (<:-refl-relʳ A ra)) λ rb → retargetʳ refl (RelS-fmap (rf (<:-refl-relʳ B′ (<:-rel q rb))) (<:-rel c)))))
 
   -- Converting a lambda's body is converting the lambda.
-  lam-coerceˢ : ∀ {m} {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
+  lam-coerceˢ : ∀ {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
              → lam {π = π} Many ≤p (coerce p b) ≈ˢ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
   lam-coerceˢ {q' = Zero} ≤p p b σ rσ r = retargetʳ refl (relS-ret (λ _ → RelS-fmap (SD-rel rσ b r) (<:-rel p)))
   lam-coerceˢ {A = A} {q' = One} ≤p p b σ rσ r =
@@ -317,7 +320,7 @@ module _ {n} {Γ : Ctx n} where
   lam-coerceˢ {A = A} {q' = Many} ≤p p b σ rσ r =
     retargetʳ refl (relS-ret (λ ra → RelS-fmap (SD-rel rσ b (r , <:-refl-relʳ A ra)) (<:-rel p)))
 
-  copair-coerceˢ : ∀ {m} {A B C C′ : Ty m} {Ψ₁ Ψ₂ π} (p : C <: C′) (r : π ⊑π π)
+  copair-coerceˢ : ∀ {A B C C′ : Ty m} {Ψ₁ Ψ₂ π} (p : C <: C′) (r : π ⊑π π)
                     (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C))
                 → copair' (coerce (sub-arr (<:-refl A) p r) f) (coerce (sub-arr (<:-refl B) p r) g)
                   ≈ˢ coerce (sub-arr (<:-refl (A + B)) p r) (copair' f g)
@@ -330,7 +333,7 @@ module _ {n} {Γ : Ctx n} where
             ; {inj₁ _} {inj₂ _} ()
             ; {inj₂ _} {inj₁ _} () })))
 
-  fork-coerceˢ : ∀ {m} {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π)
+  fork-coerceˢ : ∀ {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π)
                   (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C))
               → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g)
                 ≈ˢ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
@@ -360,7 +363,7 @@ module _ {n} {Γ : Ctx n} where
 ------------------------------------------------------------------------
 
 -- The functor-lifted relation on `⟦ F ⟧F`.
-RelF : ∀ F {X₁ X₂ : Set} (R : X₁ → X₂ → Set) → ⟦ F ⟧F X₁ → ⟦ F ⟧F X₂ → Set
+RelF : ∀ {m} (F : Fun m) {X₁ X₂ : Set} (R : X₁ → X₂ → Set) → ⟦ F ⟧F X₁ → ⟦ F ⟧F X₂ → Set
 RelF (K A)   R x y = x ≡ y
 RelF Id      R x y = R x y
 RelF (F ⊕ G) R (inj₁ x) (inj₁ y) = RelF F R x y
@@ -369,7 +372,7 @@ RelF (F ⊕ G) R (inj₁ _) (inj₂ _) = ⊥
 RelF (F ⊕ G) R (inj₂ _) (inj₁ _) = ⊥
 RelF (F ⊗ G) R (x₁ , y₁) (x₂ , y₂) = RelF F R x₁ x₂ × RelF G R y₁ y₂
 
-out-rel : ∀ {F} (wf : WellFormedF F) {X₁ X₂ : Set} (R : X₁ → X₂ → Set) {y₁ y₂}
+out-rel : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {X₁ X₂ : Set} (R : X₁ → X₂ → Set) {y₁ y₂}
         → RelSF (translateF Carrier Carrier F) R y₁ y₂
         → RelF F R (coerce-μ-out wf X₁ y₁) (coerce-μ-out wf X₂ y₂)
 out-rel (wf-K pA) R refl = refl
@@ -380,17 +383,17 @@ out-rel (wf-Sum wfF wfG) R {inj₁ _} {inj₂ _} ()
 out-rel (wf-Sum wfF wfG) R {inj₂ _} {inj₁ _} ()
 out-rel (wf-Prod wfF wfG) R {_ , _} {_ , _} (r₁ , r₂) = out-rel wfF R r₁ , out-rel wfG R r₂
 
-module _ {A A′ : Type} (p : A <: A′) where
+module _ {m : ℕ} {A A′ : Ty m} (p : A <: A′) where
   -- The carrier relation: converted fold against the original fold mapped,
   -- and the original fold related to itself.
   Rc : T∞ ⟦ A′ ⟧ᴰ → T∞ ⟦ A ⟧ᴰ → Set
   Rc t₁ t₂ = RelS (RelD A′) t₁ (fmap∞ ⟦ p ⟧<: t₂) × RelS (RelD A) t₂ t₂
 
   -- …and on a sequenced layer.
-  Rl : ∀ {m} (F : Fun m) → ⟦ F ⟧F ⟦ A′ ⟧ᴰ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
+  Rl : ∀ (F : Fun m) → ⟦ F ⟧F ⟦ A′ ⟧ᴰ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
   Rl F = RelF F (λ a b → RelD A′ a (⟦ p ⟧<: b) × RelD A b b)
 
-  seq-rel : ∀ F {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)}
+  seq-rel : ∀ (F : Fun m) {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)}
           → RelF F Rc fc₁ fc₂ → RelS (Rl F) (seqF∞ F fc₁) (seqF∞ F fc₂)
   seq-rel (K B) e = relS-ret e
   seq-rel Id (r , s) = RelS-pairʳ (RelS-unfmapʳ r) s
@@ -402,7 +405,7 @@ module _ {A A′ : Type} (p : A <: A′) where
     RelS-bind (seq-rel F r₁) λ ru → RelS-bind (seq-rel G r₂) λ rv → relS-ret (ru , rv)
 
   -- The original layer's own relation, read off the paired one.
-  seq-self : ∀ F {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)} → RelF F Rc fc₁ fc₂ → FRel (RelS (RelD A)) F fc₂ fc₂
+  seq-self : ∀ (F : Fun m) {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)} → RelF F Rc fc₁ fc₂ → FRel (RelS (RelD A)) F fc₂ fc₂
   seq-self (K B) e = fr-K
   seq-self Id (r , s) = fr-Id s
   seq-self (F ⊕ G) {inj₁ _} {inj₁ _} r = fr-inl (seq-self F r)
@@ -412,10 +415,10 @@ module _ {A A′ : Type} (p : A <: A′) where
   seq-self (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) = fr-pair (seq-self F r₁) (seq-self G r₂)
 
 -- A layer converted up by `p` and back down by `d` relates to the layer.
-layer-rel : ∀ {F} (wf : WellFormedF F) {A A′ : Type} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
+layer-rel : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
               {l₁ : ⟦ F ⟧F ⟦ A′ ⟧ᴰ} {l₂ : ⟦ F ⟧F ⟦ A ⟧ᴰ}
           → Rl p F l₁ l₂ → RelD (⟦ F ⟧T A) (⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ l₁)) (coerce-functor⁻¹-D wf A l₂)
-layer-rel {K B} (wf-K b) d p {l₁} refl rewrite <:-unique d (<:-refl B) = <:-refl-rel B (base-refl b _)
+layer-rel {F = K B} (wf-K b) d p {l₁} refl rewrite <:-unique d (<:-refl B) = <:-refl-rel B (base-refl b _)
 layer-rel wf-Id {A} d p {l₁} {l₂} (ra , rb) = RelD-trans A (<:-rel d ra) back
   where
     back : RelD A (⟦ d ⟧<: (⟦ p ⟧<: l₂)) l₂
@@ -427,7 +430,7 @@ layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj�
 layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₁ _} ()
 layer-rel (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
 
-cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}
+cata-core : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} {π π′ : Purity}
               (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π′)
               {valg valg′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
           → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) valg valg′
@@ -447,9 +450,9 @@ cata-core {F = F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
       , RelS-bind (seqF∞-rel F (seq-self p F (out-rel wf _ r)))
           (λ fl → retargetˡ refl (retargetʳ refl (self′ (cfD⁻¹-rel wf A fl))))
 
-module _ {n} {Γ : Ctx n} where
+module _ {m n} {Γ : Ctx m n} where
 
-  cata-coerceˢ : ∀ {m} {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π)
+  cata-coerceˢ : ∀ {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π)
                   (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
               → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
                 ≈ˢ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)

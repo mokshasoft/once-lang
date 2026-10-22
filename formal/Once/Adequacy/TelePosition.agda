@@ -12,7 +12,6 @@
 
 module Once.Adequacy.TelePosition where
 
-open import Once.Spec.Type using (Ty)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
@@ -71,13 +70,13 @@ IAgree I tele = All (λ q → I (pfunName (proj₁ q)) ≡ proj₂ q) tele
 ImportsRF : Imports → Set
 ImportsRF imps = ∀ {x T} → Once.Internal.Typing.Scope.lookupImport imps x ≡ just T → RigidFree T
 
-irf-cons : ∀ {m} {imps : Imports} {y : String} {ty : Ty m} → RigidFree ty → ImportsRF imps → ImportsRF ((y , ty) ∷ imps)
+irf-cons : ∀ {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps → ImportsRF ((y , ty) ∷ imps)
 irf-cons {y = y} g old {x} lk with y Str.≟ x
 ... | yes _ = subst RigidFree (just-injective lk) g
 ... | no _  = old lk
 
 -- D324: the definitions' context, `main` left out (`C.extendDefs`).
-irf-defs : ∀ {m} (b : Bool) {imps : Imports} {y : String} {ty : Ty m} → RigidFree ty → ImportsRF imps
+irf-defs : ∀ (b : Bool) {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps
          → ImportsRF (C.extendDefs-at b imps y ty)
 irf-defs true  {imps} {y} {ty} g old = old
 irf-defs false {imps} {y} {ty} g old = irf-cons {imps} {y} {ty} g old
@@ -155,13 +154,13 @@ fresh-poly {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) =
                   (map entryName es) hd hs
 
 -- The checker's derivation, read off its verified result.
-sound-of : ∀ {m} {ctx : Once.Internal.Typing.Scope.NamedCtx} {e : _} {T : Ty m} {Ψ se d f}
+sound-of : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
          → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → ctx ⊢ᶜ e ∶ T ⨾ Ψ
 sound-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = w
 
 -- R8: the synthesizer's derivation, read off its verified result.
-sound-of-i : ∀ {m} {ctx : Once.Internal.Typing.Scope.NamedCtx} {e : _} {T : Ty m} {Ψ se d f}
+sound-of-i : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
                (cr : Once.TypeCheck.Elaborate.VerifiedInferResult ctx e)
            → proj₁ cr ≡ Once.TypeCheck.Elaborate.success T Ψ se d f → ctx ⊢ᵢ e ∶ T ⨾ Ψ
 sound-of-i (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w) refl = w
@@ -212,30 +211,30 @@ tableOf-go-++ (cf ∷ cfs) xs pre = tableOf-go-++ cfs (irFunOf cf ∷ xs) pre
 
 -- A definition compiles to its resolved body's elaboration (D253: `main`
 -- too — its type check passes, and it is not rewritten).
-irFun-main : ∀ {m} (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
-               (x : String) (ty : Ty m) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋} {r : _}
+irFun-main : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋} {r : _}
                (v : _) → C.compileFun-main-aux IR.Heap false ctx polys impsOf x ty body v ≡ inj₂ irFun
            → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ r → r ≡ inj₂ irFun
 irFun-main ctx polys impsOf x ty body (inj₁ _) () _
 irFun-main ctx polys impsOf x ty body (inj₂ _) cf eq = trans (sym eq) cf
 
-irFun-body : ∀ {m} (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
-               (x : String) (ty : Ty m) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋} (b : Bool)
+irFun-body : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋} (b : Bool)
            → C.compileFun-aux IR.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
            → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
 irFun-body ctx polys impsOf x ty body true  cf = irFun-main ctx polys impsOf x ty body (C.validateMain ty) cf refl
 irFun-body ctx polys impsOf x ty body false cf = cf
 
-aux-form : ∀ {m} (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
-             (x : String) (ty : Ty m) {body : _} {se : _} {d f : ℕ}
+aux-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+             (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty)
              (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
          → C.compileFunBody-aux IR.Heap false ctx polys impsOf x ty refl cr
            ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize (sound-of cr ce))))
 aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
-irFun-form : ∀ {m} (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
-               (x : String) (ty : Ty m) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
+irFun-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+               (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
                {se : _} {d f : ℕ}
            → C.compileFun IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
            → (ce : Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty
@@ -248,8 +247,8 @@ irFun-form ctx polys impsOf x ty body cf ce =
 
 -- R8: a definition without a signature compiles to its synthesized body's
 -- elaboration.
-irFunI-body : ∀ {m} (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
-                (x : String) (ty : Ty m) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋} (b : Bool)
+irFunI-body : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋} (b : Bool)
             → C.compileFunI-aux IR.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
             → C.compileFunBodyI IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
 irFunI-body ctx polys impsOf x ty body {irFun} true  cf = main (C.validateMain ty) cf
@@ -260,8 +259,8 @@ irFunI-body ctx polys impsOf x ty body {irFun} true  cf = main (C.validateMain t
     main (inj₂ _) e = e
 irFunI-body ctx polys impsOf x ty body false cf = cf
 
-auxI-form : ∀ {m} (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
-              (x : String) (ty : Ty m) {body : _} {se : _} {d f : ℕ}
+auxI-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+              (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
               (cr : Once.TypeCheck.Elaborate.VerifiedInferResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body)
               (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success ty Ctx.Usage.[] se d f)
           → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf x ty refl cr
@@ -274,8 +273,8 @@ auxI-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w)
     at (yes refl) = refl
     at (no ¬p)    = ⊥-elim (¬p refl)
 
-irFun-formI : ∀ {m} (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
-                (x : String) (ty : Ty m) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
+irFun-formI : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
                 {se : _} {d f : ℕ}
             → C.compileFunI IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
             → (ce : Once.TypeCheck.Elaborate.inferElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body

@@ -264,3 +264,8 @@ mutual
 RelS-wk₀ : ∀ {m} (A : Type) {s s′ : T∞ ⟦ A ⟧ᴰ} → RelS (RelD A) s s′
          → RelS (RelD (wk₀ {m} A)) (subst T∞ (sym (⟦wk₀⟧ᴰ A)) s) (subst T∞ (sym (⟦wk₀⟧ᴰ A)) s′)
 RelS-wk₀ A = RelS-tr (sym (⟦wk₀⟧ᴰ A)) (RelD-up A)
+
+-- A comparison's result type `Unit + Unit` is closed: related at one index, at any.
+RelD-bool : ∀ {m m′} {x y} → RelD {m} (Unit + Unit) x y → RelD {m′} (Unit + Unit) x y
+RelD-bool {x = inj₁ _} {inj₁ _} r = r
+RelD-bool {x = inj₂ _} {inj₂ _} r = r

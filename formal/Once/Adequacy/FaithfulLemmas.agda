@@ -158,8 +158,8 @@ cataM-fold {F = F} {A = A} {π = π} wfF {c} {c′} r =
      (relS-ret λ { {x} refl →
         ≡ˢ (cong (λ W → subst T∞ (cohᴰ A) (evalᴰ fmt ρ innerCata W))
                  (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ (μ-type F)) c x)))
-           (cata-erased-rel {A} {F} {Arr} wfF applyIR c (λ z → return∞ c′ >>=∞ λ k → k z)
-              (λ {z} {z′} rz → retargetʳ {n′ = c′ z′} refl (apply-rel {⟦ F ⟧T A} {A} {π} {c} {c′} r rz)) x) })
+           (cata-erased-rel {A' = A} {F = F} {Eˢ = Arr} wfF applyIR c (λ z → return∞ c′ >>=∞ λ k → k z)
+              (λ {z} {z′} rz → retargetʳ {n′ = c′ z′} refl (apply-rel {A = ⟦ F ⟧T A} {B = A} {π = π} {c = c} {c′ = c′} r rz)) x) })
   where
     Arr = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A
     c₀ = subst (λ z → z) (sym (cohᴰ Arr)) c
