@@ -23,7 +23,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
 open import Once.Internal.Type using (k-base; k-any; μ-type; ν-type; Functor)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (wf-K; wf-Id)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun; WellFormedF; wf-Sum; wf-Prod)
 
 -- | Decide whether a type is a base type (no functions / μ / ν).
 isBaseType? : (A : Type) → Maybe (IsBaseType A)

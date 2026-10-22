@@ -9,17 +9,22 @@
 
 module Once.Internal.Type.WellFormed where
 
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Base; WFFun; ∅ₖ; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
 open import Once.Internal.Type using (μ-type; ν-type; Functor)
 
-data IsBaseType : Type → Set where
-  base-Unit   : IsBaseType Unit
-  base-Void   : IsBaseType Void
-  base-Int    : IsBaseType Int
-  base-Float  : IsBaseType Float
-  base-Prod   : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A * B)
-  base-Sum    : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A + B)
+-- The base types and the well-formed functors are the Spec's (`Base`, `WFFun`), here at
+-- the ground kinding context; the compiler's older constructor names stay while plan 0.122
+-- renames their users.
+IsBaseType : Type → Set
+IsBaseType = Base ∅ₖ
+
+pattern base-Unit = b-Unit
+pattern base-Void = b-Void
+pattern base-Int = b-Int
+pattern base-Float = b-Float
+pattern base-Prod a b = b-* a b
+pattern base-Sum a b = b-+ a b
 
 -- | The types an external operation may have: a base type, or a first-order
 -- arrow between base types. An external operation takes and returns base
@@ -29,11 +34,11 @@ data IsConcrete : Type → Set where
   con-fun  : ∀ {A B k} → IsBaseType A → IsBaseType B → IsConcrete (A ⇒[ k ] B)
 
 -- | A functor is well formed when every constant in it is a base type.
-data WellFormedF : Functor → Set where
-  wf-K   : ∀ {A} → IsBaseType A → WellFormedF (K A)
-  wf-Id  : WellFormedF Id
-  wf-Sum : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊕ G)
-  wf-Prod : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊗ G)
+WellFormedF : Functor → Set
+WellFormedF = WFFun ∅ₖ
+
+pattern wf-Sum f g = wf-⊕ f g
+pattern wf-Prod f g = wf-⊗ f g
 
 -- | A type with no type parameter in it. Every ground `Type` is one (plan
 -- 0.122: a parameter is a `var` of `Ty m`, never part of a `Type`); the

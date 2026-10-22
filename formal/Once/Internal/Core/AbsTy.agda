@@ -22,6 +22,7 @@ open import Once.Internal.Type.DecEq using (_≟tk_)
 open import Once.Internal.Type.WellFormed using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
 open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 import Once.Internal.Type.WellFormed as Tr
+import Once.Spec.Type as Tr
 open import Once.Internal.Core.PolyTy
 
 ------------------------------------------------------------------------

@@ -72,6 +72,7 @@ open import Once.Surface.Elaborate as Elab using ()
 open import Once.Internal.Typing.Scope
 open import Once.TypeCheck.Classify
 import Once.Internal.Type.WellFormed
+import Once.Spec.Type
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun; IsBaseType)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)
 open import Once.Spec.Float.Decimal using (decimalOf)

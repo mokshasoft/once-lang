@@ -32,6 +32,7 @@ open import Once.Type
 open import Once.Internal.Polynomial
 open import Once.Semantics.Functor
 open import Once.Internal.Type.WellFormed
+open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.FunctorMeaning
 -- | Translation preserves interpretation
 translate-coherence : ∀ IntRep FloatRep F X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X

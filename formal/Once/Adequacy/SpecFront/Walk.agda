@@ -38,6 +38,7 @@ open import Once.Spec.Numerics using (TargetNum)
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Spec.Type as ST
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecCore.Type using (TyR)

@@ -28,7 +28,8 @@ open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Flo
 open import Once.Internal.Res using (Res; stopped; returns; mapRes)
 open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (wf-K; wf-Id)
+open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-Sum; wf-Prod)
 open import Once.Internal.Polynomial
 open Once.Internal.Polynomial.νS using (unfoldS)
 

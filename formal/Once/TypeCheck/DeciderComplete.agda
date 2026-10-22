@@ -36,7 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; s
 
 open import Once.Internal.Type.Poly using (PolyType; PolyFunctor; Ground; GroundF; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type using (isGround; isGroundF)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (wf-K; wf-Id)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod)
 open import Once.Functor.Translate using (WellFormedF-irrelevant)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete)
 

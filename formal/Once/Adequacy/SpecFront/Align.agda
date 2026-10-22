@@ -40,6 +40,7 @@ import Once.Internal.Type as LT
 
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)
 open import Once.Functor.Decide using (isConcrete?)

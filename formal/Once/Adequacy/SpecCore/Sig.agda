@@ -51,6 +51,7 @@ import Once.Internal.Type as T
 import Once.Spec.Type as T
 import Once.Spec.Grade as G
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Internal.Type.Honest as LH
 import Once.Internal.GradedOps as LOps
 import Once.Internal.Trace as LTr

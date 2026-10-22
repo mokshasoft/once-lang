@@ -13,6 +13,8 @@
 module Once.TypeCheck.Instance where
 
 import Once.Internal.Type.WellFormed
+
+import Once.Spec.Type
 open import Data.Product using (_×_; proj₁; proj₂)
 import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)

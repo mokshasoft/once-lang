@@ -84,6 +84,7 @@ import Once.Spec.Type as LT
 import Once.Internal.Type.Sub as LS
 import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SS
 import Once.Spec.Core.Syntax as SC

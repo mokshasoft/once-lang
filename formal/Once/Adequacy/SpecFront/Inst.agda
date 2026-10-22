@@ -42,6 +42,7 @@ import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Internal.Type.Poly as TP
 open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
                PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; Ground; extractGround; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)

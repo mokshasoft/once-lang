@@ -31,6 +31,7 @@ import Once.Spec.Type as LT
 import Once.Internal.Type.Sub as LS
 import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Spec.Type as ST
 import Once.Spec.Sub as SS
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)

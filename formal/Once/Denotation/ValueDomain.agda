@@ -34,7 +34,8 @@ open import Once.Internal.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (wf-K; wf-Id)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedF; wf-Sum; wf-Prod)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
 

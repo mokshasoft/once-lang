@@ -57,6 +57,7 @@ open νᴵ using (forceᴵ)
 open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.FunctorMeaning using (translateF)
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
 open import Once.Semantics.Machine using (sem-cata; sem-In; sem-Out; coerce-ν-out; coerce-ν-in)

@@ -106,7 +106,8 @@ SRel R (F S⊗ G) (x , y)  (x′ , y′) = SRel R F x x′ × SRel R G y y′
 ------------------------------------------------------------------------
 
 open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum;
-                                             WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+                                             WellFormedF; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Internal.Type using (⟦_⟧T)
 

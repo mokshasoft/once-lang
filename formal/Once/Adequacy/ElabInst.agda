@@ -15,6 +15,8 @@
 ------------------------------------------------------------------------
 
 import Once.Internal.Type.WellFormed
+
+import Once.Spec.Type
 import Once.Type.Rigid
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig)

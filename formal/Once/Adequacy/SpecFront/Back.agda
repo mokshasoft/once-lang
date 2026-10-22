@@ -34,6 +34,7 @@ open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)

@@ -29,6 +29,7 @@ open import Once.Spec.Word using (Carrier)
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
 import Once.Internal.Value Carrier Carrier as V

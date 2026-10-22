@@ -30,7 +30,8 @@ import Once.Internal.Type as T
 import Once.Spec.Type as T
 open import Once.Internal.Contract using (ISig)
 open import Once.Spec.Grade using (Purity; Finite; ArrowKind)
-open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (wf-K; wf-Id)
+open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-Sum; wf-Prod)
 
 ------------------------------------------------------------------------
 -- Kinds

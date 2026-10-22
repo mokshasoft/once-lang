@@ -33,6 +33,8 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Internal.Type.WellFormed as LW
+
+import Once.Spec.Type as LW
 import Once.Internal.Type.Honest as LH
 import Once.Spec.Type as ST
 import Once.Internal.Core.PolyTy as LP

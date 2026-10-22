@@ -49,6 +49,7 @@ open import Once.Internal.Type as Ty using (μ-type; ν-type)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Internal.FunctorMeaning using (translateF)
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
 

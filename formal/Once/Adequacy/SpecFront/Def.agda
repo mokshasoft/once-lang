@@ -41,6 +41,7 @@ import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Internal.Core.PolyTy as LP
 import Once.Internal.Type.Poly as TP
 import Once.Internal.Elaboration as E

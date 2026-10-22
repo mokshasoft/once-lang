@@ -20,6 +20,7 @@ import Once.Spec.Grade as LG
 import Once.Internal.Type.Sub as LS
 import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Spec.Type as ST
 open import Once.Adequacy.SpecCore.Index using (InstG)
 

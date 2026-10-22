@@ -41,6 +41,7 @@ import Once.Internal.Type.Sub as LS
 
 import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
+import Once.Spec.Type as LW
 import Once.Internal.Type.Honest as LH
 import Once.Internal.Context as LC
 import Once.Spec.Grade as SG
