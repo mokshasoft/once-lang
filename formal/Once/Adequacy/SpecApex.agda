@@ -59,7 +59,9 @@ import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Source as SP
 open SP using (Source; Typed; _⊢_; behaviour; Admissible)
 open SP.Typed using (signature; program)
-open import Once.Adequacy.SpecInterp using (toInterp; wellFormed?)
+open import Once.Adequacy.SpecInterp using (toInterp; toImpl; wellFormed?)
+open import Once.Internal.Core.Decl using (toISig)
+open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.SpecSource using (parseModules; toSource)
 open import Data.Sum using (_⊎_)
 open import Once.Denotation.TraceTr using (trT∞)
@@ -112,15 +114,15 @@ record Bridges : Set₁ where
   field
     -- The front end and the meaning, soundly: what the compiler types is a
     -- Spec program, and the compiler's meaning of it is the Spec's behaviour.
+    -- (plan 0.122: over the program's own signature, which declares the
+    -- compiler's FFI words, run with the implementation `J` gives it)
     sound : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
           → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
           → Σ[ tp′ ∈ Typed ]
               (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
-              × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
-                 → Σ[ I ∈ Impl (VC.sigOfT tp) ]
-                     (∀ bytes → VC.exec (toInterp (signature tp′) wf J) arch bytes
-                                ≡ VC.exec (interp (VC.sigOfT tp) I) arch bytes)
-                     × (VC.⟦ arch ⟧ᵈᴵ tp I ≈ behaviour (arch-numerics arch) tp′ J))
+              × Σ[ u ∈ VC.SigOf tp (signature tp′) ]
+                  (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
+                   → VC.⟦ arch ⟧ᵈᴵ tp (signature tp′) u (toImpl (signature tp′) J wf) ≈ behaviour (arch-numerics arch) tp′ J)
     -- The front end, completely: what the Spec types, the compiler parses and types.
     complete : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
              → src ⊢ tp′ → Admissible (arch-numerics arch) tp′
@@ -164,12 +166,12 @@ module _ (br : Bridges) where
       soundness bytes eq with bind-just (toSource src) (VC.compile arch doOpt) eq
       ... | srcC , eqS , eqC with proj₁ (VC.correctᵈ arch doOpt srcC) bytes eqC
       ...   | tp , ⊢tp , adm , runs with sound arch src srcC tp eqS ⊢tp adm
-      ...     | tp′ , ⊢tp′ , adm′ , means = tp′ , ⊢tp′ , adm′ , λ J → behaves J
+      ...     | tp′ , ⊢tp′ , adm′ , u , means = tp′ , ⊢tp′ , adm′ , λ J → behaves J
         where
           behaves : ∀ J → exec arch (signature tp′) J bytes ≈ behaviour (arch-numerics arch) tp′ J
           behaves J with exec-wf arch tp′ J bytes
-          ... | wf , eqE with means wf J
-          ...   | I , same , agrees rewrite eqE | same bytes = WB-trans trans (runs I) agrees
+          ... | wf , eqE rewrite eqE =
+            WB-trans trans (runs (signature tp′) u (toImpl (signature tp′) J wf)) (means wf J)
 
       completeness : ∀ tp → src ⊢ tp → Admissible (arch-numerics arch) tp →
           Σ[ bytes ∈ List Byte ] (compile arch doOpt src ≡ just bytes)
@@ -220,13 +222,12 @@ private
   Goal-ef arch src m ef mt hvm =
     Σ[ tp′ ∈ Typed ]
       (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
-      × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
-         → Σ[ I ∈ Impl (LM.moduleSig-ef ef) ]
-             (∀ bytes → VC.exec (toInterp (signature tp′) wf J) arch bytes
-                        ≡ VC.exec (interp (LM.moduleSig-ef ef) I) arch bytes)
-             × (trT∞ (interp (LM.moduleSig-ef ef) I) [] (TL.runCore (arch-numerics arch) (CB.typedProgram-ef (arch-numerics arch) m ef mt hvm)
-                                                            (subst Impl (sym (CB.typed-sig-ef (arch-numerics arch) m ef mt)) I))
-                ≈ behaviour (arch-numerics arch) tp′ J))
+      × Σ[ u ∈ CB.SigView-ef m ef mt (signature tp′) ] (toISig (signature tp′) ≡ LM.moduleSig-ef ef)
+          × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
+             → trT∞ (toInterp (signature tp′) wf J) []
+                    (TL.runCore (signature tp′) (arch-numerics arch) (CB.typedProgram-ef m ef mt hvm (signature tp′) u)
+                                (toImpl (signature tp′) J wf))
+               ≈ behaviour (arch-numerics arch) tp′ J)
 
   sound-ef : ∀ arch (src : Source) {mm dsU dsR}
            → parseModules (SP.Source.modules src) ≡ just mm
@@ -238,7 +239,7 @@ private
            → Goal-ef arch src (PM.mkModule dsR) ef mt hvm
   sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (_ , mi) =
     tp′ , (mm′ , GD.parses→ {SP.Source.text src} pt em , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds em adm ,
-    λ wf J → Mn.implOf D wf J , (λ bytes → cong (λ ι → VC.exec ι arch bytes) (Mn.interp-eq D wf J)) , Mn.same-trace D wf J
+    Mn.view D , trans (sym (Dn.Denoted.sig-eq D)) (teleSig≡entrySig mt) , Mn.same-trace D
     where
       module Dn = Once.Adequacy.SpecFront.Denote (arch-numerics arch)
       module Mn = Once.Adequacy.SpecFront.Meaning (arch-numerics arch)
@@ -256,11 +257,9 @@ sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
          → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
          → Σ[ tp′ ∈ Typed ]
              (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
-             × (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
-                → Σ[ I ∈ Impl (VC.sigOfT tp) ]
-                    (∀ bytes → VC.exec (toInterp (signature tp′) wf J) arch bytes
-                               ≡ VC.exec (interp (VC.sigOfT tp) I) arch bytes)
-                    × (VC.⟦ arch ⟧ᵈᴵ tp I ≈ behaviour (arch-numerics arch) tp′ J))
+             × Σ[ u ∈ VC.SigOf tp (signature tp′) ]
+                 (∀ (wf : WellFormed (signature tp′)) (J : Obs.Interp (signature tp′))
+                  → VC.⟦ arch ⟧ᵈᴵ tp (signature tp′) u (toImpl (signature tp′) J wf) ≈ behaviour (arch-numerics arch) tp′ J)
 sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
   let (mm , pm , e) = bind-just′ (parseModules (SP.Source.modules src)) _ ts
   in at (just-inj e) pm pt rmod
@@ -270,7 +269,9 @@ sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
        → LR.ResolvesModule (B.Source.srcImports srcC) mU mR
        → _
     at refl pm pt (LR.rm rds) =
-      sound-ef arch src pm pt rds adm (Parser.extractFunctions (Parser.extractAliases mR) mR) refl mt hvm
+      let (tp′ , ⊢tp′ , adm′ , u , same , means) =
+            sound-ef arch src pm pt rds adm (Parser.extractFunctions (Parser.extractAliases mR) mR) refl mt hvm
+      in tp′ , ⊢tp′ , adm′ , record { view = u ; same = same } , means
 
 ------------------------------------------------------------------------
 -- The completeness bridge (plan 0.121)
