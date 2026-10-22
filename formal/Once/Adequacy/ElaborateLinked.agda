@@ -35,7 +35,7 @@ open import Once.Internal.Name using (showCanonical)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR using (IR)
 import Once.IR as IR
-open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
+open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_; ⌊wk₀⌋)
 import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
@@ -160,7 +160,7 @@ linkedAt-[] ()
 
 -- `Refs Ps Pc Pp e`: every `closure x : A` in `e` satisfies `Pc x A`, every
 -- `poly x A` satisfies `Pp x A`, and every embedded IR morphism is call-free.
-Refs : ∀ {m} → (Ps : CanonicalName → Ty m → Set) (Pc Pp : String → Ty m → Set) → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → Set
+Refs : ∀ {m} → (Ps : CanonicalName → Type → Set) (Pc Pp : String → Ty m → Set) → ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → Set
 Refs Ps Pc Pp (var _)             = ⊤
 Refs Ps Pc Pp (lam _ _ b)         = Refs Ps Pc Pp b
 Refs Ps Pc Pp (app f x)           = Refs Ps Pc Pp f × Refs Ps Pc Pp x
@@ -196,7 +196,7 @@ Refs Ps Pc Pp (ne a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
 Refs Ps Pc Pp (coerce _ e)        = Refs Ps Pc Pp e
 -- plan 0.105: every FFI reference satisfies `Ps` (in the end: it is declared in
 -- the signatures the program is compiled against, D257 amendment 2).
-Refs Ps Pc Pp {A = A} (sigOp name _) = Ps name A
+Refs Ps Pc Pp (sigOp {A = A} name _) = Ps name A
 Refs Ps Pc Pp {A = A} (closure x) = Pc x A
 Refs Ps Pc Pp (poly x T)          = Pp x T
 Refs Ps Pc Pp (closed e)          = Refs Ps Pc Pp e
@@ -213,15 +213,15 @@ Refs Ps Pc Pp (loop round)        = Refs Ps Pc Pp round
 -- A reference elaborates to a call (`refIR`); it is linked when the call is.
 -- An FFI reference declared in the signatures, at its declared type: the call
 -- links against the declaration (`contractOf`).
-DeclIn : ∀ {m} → ISig → CanonicalName → Ty m → Set
+DeclIn : ISig → CanonicalName → Type → Set
 DeclIn σ c A = (showCanonical c , A) ∈ σ
 
 RefLinked : ∀ {m} → ISig → List IRFun → String → Ty m → Set
 RefLinked σ tbl x A = Linked σ tbl (refIR A (bare x))
 
-Refs-map : ∀ {m} {Ps Ps′ : CanonicalName → Ty m → Set} {Pc Pp Pc′ Pp′ : String → Ty m → Set}
-         → (∀ {A : Ty m} {c} → Ps c A → Ps′ c A) → (∀ {A : Ty m} {x} → Pc x A → Pc′ x A) → (∀ {A : Ty m} {x} → Pp x A → Pp′ x A)
-         → ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Refs Ps Pc Pp e → Refs Ps′ Pc′ Pp′ e
+Refs-map : ∀ {m} {Ps Ps′ : CanonicalName → Type → Set} {Pc Pp Pc′ Pp′ : String → Ty m → Set}
+         → (∀ {A : Type} {c} → Ps c A → Ps′ c A) → (∀ {A : Ty m} {x} → Pc x A → Pc′ x A) → (∀ {A : Ty m} {x} → Pp x A → Pp′ x A)
+         → ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Refs Ps Pc Pp e → Refs Ps′ Pc′ Pp′ e
 Refs-map hs hc hp (var _)             r = tt
 Refs-map hs hc hp (lam _ _ b)         r = Refs-map hs hc hp b r
 Refs-map hs hc hp (app f x)           (a , b) = Refs-map hs hc hp f a , Refs-map hs hc hp x b
@@ -283,7 +283,7 @@ linked-[] : ∀ {tbl : List IRFun} {A B} (ir : IR A B) → Linked σ [] ir → L
 
 linked-[] {tbl = tbl} = linked-mono (λ {f} {A} {B} → linkedAt-[] {tbl} {f} {A} {B})
 
-restrictEnv-cf : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} (m : _) (ule : Ψ′ ⊑ᵘ Ψ) → Linked σ [] (restrictEnv {Γ = Γ} m ule)
+restrictEnv-cf : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ Ψ′ : Usage n} (m : _) (ule : Ψ′ ⊑ᵘ Ψ) → Linked σ [] (restrictEnv {Γ = Γ} m ule)
 restrictEnv-cf {Γ = ∅}         m ⊑[]          = tt
 restrictEnv-cf {Γ = Γ , A ^ q} m (z≤z ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule
 restrictEnv-cf {Γ = Γ , A ^ q} m (z≤o ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule , tt
@@ -292,17 +292,17 @@ restrictEnv-cf {Γ = Γ , A ^ q} m (o≤o ⊑∷ ule) = (restrictEnv-cf {Γ = Γ
 restrictEnv-cf {Γ = Γ , A ^ q} m (o≤m ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
 restrictEnv-cf {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
 
-projUsed-cf : ∀ {n} {Γ : Ctx n} (i : Fin n) → Linked σ [] (projUsed {Γ = Γ} i)
+projUsed-cf : ∀ {m} {n} {Γ : Ctx m n} (i : Fin n) → Linked σ [] (projUsed {Γ = Γ} i)
 projUsed-cf {Γ = Γ , A ^ q} Fin.zero    = tt
 projUsed-cf {Γ = Γ , A ^ q} (Fin.suc i) = projUsed-cf {Γ = Γ} i
 
-eraseCtx-cf : ∀ {n} {Γ : Ctx n} (m : _) (Ψ : Usage n) → Linked σ [] (eraseCtx {Γ = Γ} m Ψ)
+eraseCtx-cf : ∀ {mₜ} {n} {Γ : Ctx mₜ n} (m : _) (Ψ : Usage n) → Linked σ [] (eraseCtx {Γ = Γ} m Ψ)
 eraseCtx-cf {Γ = ∅}         m []         = tt
 eraseCtx-cf {Γ = Γ , A ^ q} m (Zero ∷ Ψ) = eraseCtx-cf {Γ = Γ} m Ψ , tt
 eraseCtx-cf {Γ = Γ , A ^ q} m (One  ∷ Ψ) = (eraseCtx-cf {Γ = Γ} m Ψ , tt) , tt
 eraseCtx-cf {Γ = Γ , A ^ q} m (Many ∷ Ψ) = (eraseCtx-cf {Γ = Γ} m Ψ , tt) , tt
 
-bindEnv-cf : ∀ {mₜ} {n} {Γ : Ctx n} {Ψ′ : Usage n} {A : Ty mₜ} (m : _) (q : _) → Linked σ [] (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q)
+bindEnv-cf : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ′ : Usage n} {A : Ty mₜ} (m : _) (q : _) → Linked σ [] (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q)
 bindEnv-cf m Zero = tt
 bindEnv-cf m One  = tt
 bindEnv-cf m Many = tt
@@ -342,30 +342,38 @@ private
   eff-decl si (no _)     (yes refl) d ce = tt
   eff-decl si (no _)     (no _)     d ce = answer-∈ d ce
 
-sigOp-linked : ∀ {mₜ} {tbl} {n} {Γ : Ctx n} {A : Ty mₜ} (m : _) (name : CanonicalName) (conc : IsConcrete A)
-             → (showCanonical name , A) ∈ σ → Linked σ tbl (elaborate {Γ = Γ} m (sigOp name conc))
-sigOp-linked m name (con-fun {k = mk-kind Zero Ty.pure} bDom cCod) d = value-∈ d refl , tt
+-- A transport of the codomain links as the morphism does.
+Linked-substᶜ : ∀ {tbl} {X Y Y′} (e : Y ≡ Y′) {f : IR X Y} → Linked σ tbl f → Linked σ tbl (subst (IR X) e f)
+Linked-substᶜ refl l = l
+
+sigOpIR-linked : ∀ {tbl} {X} {A : Type} (name : CanonicalName) (conc : IsConcrete A)
+               → (showCanonical name , A) ∈ σ → Linked σ tbl (sigOpIR {X = X} A name conc)
+sigOpIR-linked name (con-fun {k = mk-kind Zero Ty.pure} bDom cCod) d = value-∈ d refl , tt
 -- plan 0.113 A3: an effectful erased arrow is a call with a `Unit` slot.
-sigOp-linked m name (con-fun {B = Cod} {k = mk-kind Zero Ty.eff} bDom cCod) d =
+sigOpIR-linked name (con-fun {B = Cod} {k = mk-kind Zero Ty.eff} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Zero Ty.eff) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {k = mk-kind One  Ty.pure} bDom cCod) d = value-∈ d refl , tt
-sigOp-linked m name (con-fun {k = mk-kind Many Ty.pure} bDom cCod) d = value-∈ d refl , tt
-sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff} bDom cCod) d =
+sigOpIR-linked name (con-fun {k = mk-kind One  Ty.pure} bDom cCod) d = value-∈ d refl , tt
+sigOpIR-linked name (con-fun {k = mk-kind Many Ty.pure} bDom cCod) d = value-∈ d refl , tt
+sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff} bDom cCod) d =
   eff-decl (arrow-info (mk-kind One Ty.eff) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff} bDom cCod) d =
+sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Many Ty.eff) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {B = Cod} {k = mk-kind Zero Ty.act} bDom cCod) d =
+sigOpIR-linked name (con-fun {B = Cod} {k = mk-kind Zero Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Zero Ty.act) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.act} bDom cCod) d =
+sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind One Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.act} bDom cCod) d =
+sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Many Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOp-linked m name (con-base base-Unit) d = value-∈ d refl , tt
-sigOp-linked m name (con-base base-Void) d = value-∈ d refl , tt
-sigOp-linked m name (con-base base-Int) d = value-∈ d refl , tt
-sigOp-linked m name (con-base base-Float) d = value-∈ d refl , tt
-sigOp-linked m name (con-base (base-Prod a b)) d = value-∈ d refl , tt
-sigOp-linked m name (con-base (base-Sum a b)) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base base-Unit) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base base-Void) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base base-Int) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base base-Float) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base (base-Prod a b)) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base (base-Sum a b)) d = value-∈ d refl , tt
+
+sigOp-linked : ∀ {mₜ} {tbl} {n} {Γ : Ctx mₜ n} {A : Type} (m : _) (name : CanonicalName) (conc : IsConcrete A)
+             → (showCanonical name , A) ∈ σ → Linked σ tbl (elaborate {Γ = Γ} m (sigOp name conc))
+sigOp-linked {A = A} m name conc d = Linked-substᶜ (sym (⌊wk₀⌋ A)) (sigOpIR-linked name conc d)
 
 ------------------------------------------------------------------------
 -- (D) THE LEMMA
@@ -373,21 +381,22 @@ sigOp-linked m name (con-base (base-Sum a b)) d = value-∈ d refl , tt
 
 module _ {σ : ISig} (tbl : List IRFun) where
   private
+    L : ∀ {m} → String → Ty m → Set
     L = RefLinked σ tbl
     cf : ∀ {A B} (ir : IR A B) → Linked σ [] ir → Linked σ tbl ir
     cf = linked-[]
 
-    rE : ∀ {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} (m : _) (ule : Ψ′ ⊑ᵘ Ψ) → Linked σ tbl (restrictEnv {Γ = Γ} m ule)
+    rE : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ Ψ′ : Usage n} (m : _) (ule : Ψ′ ⊑ᵘ Ψ) → Linked σ tbl (restrictEnv {Γ = Γ} m ule)
     rE {Γ = Γ} m ule = cf (restrictEnv {Γ = Γ} m ule) (restrictEnv-cf {Γ = Γ} m ule)
 
-    bE : ∀ {mₜ} {n} {Γ : Ctx n} {Ψ′ : Usage n} {A : Ty mₜ} (m : _) (q : _) → Linked σ tbl (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q)
+    bE : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ′ : Usage n} {A : Ty mₜ} (m : _) (q : _) → Linked σ tbl (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q)
     bE {Γ = Γ} {Ψ′ = Ψ′} {A = A} m q = cf (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q) (bindEnv-cf {Γ = Γ} {Ψ′ = Ψ′} {A = A} m q)
 
-  elaborate-linked′ : ∀ {mₜ} (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A : Ty mₜ} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
+  elaborate-linked′ : ∀ {mₜ} (m : _) {n} {Γ : Ctx mₜ n} {Ψ : Usage n} {A : Ty mₜ} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
                     → Linked σ tbl (elaborate m e)
 
   -- the binary operators' shared shape
-  bin : ∀ (m : _) {n} {Γ : Ctx n} (Ψ₁ Ψ₂ : Usage n) {X Y} (a : Expr Γ Ψ₁ X) (b : Expr Γ Ψ₂ Y) → Refs (DeclIn σ) L L a → Refs (DeclIn σ) L L b
+  bin : ∀ {mₜ} (m : _) {n} {Γ : Ctx mₜ n} (Ψ₁ Ψ₂ : Usage n) {X Y} (a : Expr Γ Ψ₁ X) (b : Expr Γ Ψ₂ Y) → Refs (DeclIn σ) L L a → Refs (DeclIn σ) L L b
       → Linked σ tbl (IR.⟨ elaborate m a IR.∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m b IR.∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩)
   bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb =
     (elaborate-linked′ m a ra , cf (envˡ {Γ = Γ} m Ψ₁ Ψ₂) (restrictEnv-cf {Γ = Γ} m _))
@@ -484,6 +493,6 @@ module _ {σ : ISig} (tbl : List IRFun) where
   elaborate-linked′ m {Γ = Γ} (loop {Ψ = Ψ} round) r =
     (tt , (tt , tt)) , (elaborate-linked′ m round r , rE {Γ = Γ} m (⊑ᵘ-*Many Ψ))
 
-  elaborate-linked : ∀ {mₜ} (m : _) {n} {Γ : Ctx n} {Ψ : Usage n} {A : Ty mₜ} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
+  elaborate-linked : ∀ {mₜ} (m : _) {n} {Γ : Ctx mₜ n} {Ψ : Usage n} {A : Ty mₜ} (e : Expr Γ Ψ A) → Refs (DeclIn σ) L L e
                    → Linked σ tbl (elaborateFull m e)
   elaborate-linked m {Γ = Γ} {Ψ = Ψ} e r = elaborate-linked′ m e r , cf (eraseCtx {Γ = Γ} m Ψ) (eraseCtx-cf {Γ = Γ} m Ψ)

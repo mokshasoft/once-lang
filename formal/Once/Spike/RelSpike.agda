@@ -947,7 +947,7 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   ----------------------------------------------------------------------
 
   -- `Void` — FINAL, not a placeholder, and nothing to fill in.
-  -- `⟦ Void ⟧ᴰᴵ = ⟦ ⌈ Void ⌉ ⟧ᴰ` (ValueDomain.agda:222-223) `= ⟦ T.Void ⟧ᴰ`
+  -- `⟦ Void ⟧ᴰᴵ = ⟦ ⌈ Void ⌉ ⟧ᴰ` (ValueDomain.agda:222-223) `= ⟦ T.Void {0} ⟧ᴰ`
   -- (IRTy.agda:303) `= ⊥` (ValueDomain.agda:184): the value domain is
   -- EMPTY, so any obligation at `Void` is discharged from its own value.
   -- That is already how the tree does it — `obs-correct-initial … ()`

@@ -27,6 +27,7 @@
 
 module Once.Denotation.DenotTrace where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
@@ -220,5 +221,5 @@ cata-ev-algᴰ fmt ρ {F} {E} {C} wf alg env fc =
     evalᴰ fmt ρ alg (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C))
                              (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ C ⌉ layer))
 
-liftFn : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+liftFn : ∀ {m} (fmt : TargetNum) → CallEnv → ∀ {A B : Ty m} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 liftFn fmt ρ {A} {B} ir v = subst T∞ (cohᴰ B) (evalᴰ fmt ρ ir (subst (λ z → z) (sym (cohᴰ A)) v))

@@ -235,7 +235,7 @@ module SigOpC {FS : FrameSemantics} where
   forget-reg : ∀ (bt : IsBaseType Intˢ) (x : EvV.⟦ Intˢ ⟧) → x ≡ forgetᵇ bt x
   forget-reg base-Int x = refl
 
-  forget-reg-float : ∀ (bt : IsBaseType SpecTy.Float) (x : EvV.⟦ SpecTy.Float ⟧) → x ≡ forgetᵇ bt x
+  forget-reg-float : ∀ (bt : IsBaseType SpecTy.Float) (x : EvV.⟦ SpecTy.Float {0} ⟧) → x ≡ forgetᵇ bt x
   forget-reg-float base-Float x = refl
 
   -- THE INPUT A CALL-FREE CONTRACT READS is the denotation's argument, in

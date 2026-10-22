@@ -58,7 +58,7 @@ open import Once.Internal.Value Carrier Carrier using () renaming (⟦_⟧F to �
 -- IR base types: related is equal, and equal is related.
 ------------------------------------------------------------------------
 
-base-eqI : ∀ {m} {A : Ty m} → IsBaseTypeI A → ∀ {x y : ⟦ A ⟧ᴰᴵ} → RelD ⌈ A ⌉ x y → x ≡ y
+base-eqI : ∀ {A : IRTy} → IsBaseTypeI A → ∀ {x y : ⟦ A ⟧ᴰᴵ} → RelD ⌈ A ⌉ x y → x ≡ y
 base-eqI II.base-Unit       _ = refl
 base-eqI II.base-Void {()}
 base-eqI II.base-Int        r = r
@@ -70,7 +70,7 @@ base-eqI (II.base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eqI b r)
 base-eqI (II.base-Sum a b) {inj₁ _} {inj₂ _} ()
 base-eqI (II.base-Sum a b) {inj₂ _} {inj₁ _} ()
 
-base-reflI : ∀ {m} {A : Ty m} → IsBaseTypeI A → ∀ (x : ⟦ A ⟧ᴰᴵ) → RelD ⌈ A ⌉ x x
+base-reflI : ∀ {A : IRTy} → IsBaseTypeI A → ∀ (x : ⟦ A ⟧ᴰᴵ) → RelD ⌈ A ⌉ x x
 base-reflI II.base-Unit       x = tt
 base-reflI II.base-Void       ()
 base-reflI II.base-Int        x = refl
@@ -80,7 +80,7 @@ base-reflI (II.base-Sum a b)  (inj₁ x) = base-reflI a x
 base-reflI (II.base-Sum a b)  (inj₂ y) = base-reflI b y
 
 -- A first-order layer over μ: related is equal, and equal is related.
-fo-eq : ∀ {m} {F G : Fun m} → WellFormedFI F → ∀ {x y : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ} → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x y → x ≡ y
+fo-eq : ∀ {F G : II.IRFunctor} → WellFormedFI F → ∀ {x y : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ} → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x y → x ≡ y
 fo-eq (II.wf-K b)       r = base-eqI b r
 fo-eq II.wf-Id          r = r
 fo-eq (II.wf-Sum f g) {inj₁ x} {inj₁ y} r = cong inj₁ (fo-eq f r)
@@ -90,7 +90,7 @@ fo-eq (II.wf-Sum f g) {inj₂ _} {inj₁ _} ()
 fo-eq (II.wf-Prod f g) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with fo-eq f r₁ | fo-eq g r₂
 ... | refl | refl = refl
 
-fo-refl : ∀ {m} {F G : Fun m} → WellFormedFI F → ∀ (x : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ) → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x x
+fo-refl : ∀ {F G : II.IRFunctor} → WellFormedFI F → ∀ (x : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ) → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x x
 fo-refl (II.wf-K b)      x        = base-reflI b x
 fo-refl II.wf-Id         x        = refl
 fo-refl (II.wf-Sum f g)  (inj₁ x) = fo-refl f x
@@ -129,7 +129,7 @@ module _ (fmt : TargetNum) where
     private
       E  : ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
       E  = evalᴰ fmt ρ
-      E′ : ∀ {m} {A B : Ty m} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
+      E′ : ∀ {A B : IRTy} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
       E′ = evalᴰ fmt ρ′
 
     -- A SigOp's block is a finite tree of first-order values.

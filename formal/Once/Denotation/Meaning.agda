@@ -23,6 +23,7 @@ module Once.Denotation.Meaning where
 
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
+open import Once.Spec.Type using (∅ₖ; KCtx)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
 open import Once.Spec.Float.Decimal using (decimalOf; round; negate)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
@@ -120,7 +121,7 @@ cata-ev-algᴰ-D {F = F} {A = A} wf dalg fc =
 -- as it is.
 cata-sem : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F
          → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
-cata-sem {F = F} {A = A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
+cata-sem {F = F} {A = A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F = F} {A = A} wf dalg) v
 
 -- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
 -- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
@@ -142,7 +143,7 @@ in-value {F = F} wf x = sem-In F (coerce-functor-D wf (μ-type F) x)
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free — a pure
 -- FFI contract (`value-info` is `ffiV`, plan 0.105), so its value is the
 -- interpretation's pure half at the argument.
-named-sem : ∀ {m} {Δₖ : KCtx m} {A B : Ty m} → TargetNum → FFIAnswers → CanonicalName → Base Δₖ A → Base Δₖ B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → IsBaseType A → IsBaseType B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 named-sem {A = A} {B = B} fmt φ cn bA bB a =
   embed (fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a)))
 
@@ -159,14 +160,14 @@ svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 
 -- A closed named/sigop value reference, IR-free: the contract's computation
 -- (`sigOpT`, the IR's own dispatch), read into the value domain.
-sigOpValᴰ : ∀ {m} {B : Ty m} → TargetNum → FFIAnswers → SigOpInfo Unit B → T∞ ⟦ B ⟧ᴰ
+sigOpValᴰ : ∀ {B : Type} → TargetNum → FFIAnswers → SigOpInfo Unit B → T∞ ⟦ B ⟧ᴰ
 sigOpValᴰ fmt φ si = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt))
 
 -- An EXTERNAL sigop reference (`t-var-resolved/import`). At an ARROW
 -- type the reference is a first-order function POINTER whose effect fires on
 -- APPLICATION (`arrow-info` respects the arrow's `Purity`). Split on the
 -- WITNESS (not `A`'s shape) so `con-base` reduces at an abstract base `A`.
-sigOpRefᴰ : ∀ {m} {A : Ty m} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T∞ ⟦ A ⟧ᴰ
+sigOpRefᴰ : ∀ {A : Type} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T∞ ⟦ A ⟧ᴰ
 sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
 -- D143: at an ERASED arrow the symbol never receives its argument, so the
 -- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
@@ -193,7 +194,7 @@ svarᵛRun : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ} (v : SVar Γ Ψ A) → �
 svarᵛRun {Γ = Γ} (svar i) dγ = lookupᵛUsed Γ i dγ
 
 DefFamily : Once.Internal.Type.Poly.PolyType → Set
-DefFamily s = (U : Type) → KindedInstance s U → ⟦ U ⟧ᵛ
+DefFamily s = ∀ {m} {Δ : KCtx m} (U : Ty m) → KindedInstance Δ s U → ⟦ U ⟧ᵛ
 
 DefMeanings : PolyCtx → Set
 DefMeanings = DefEnvOf DefFamily
@@ -234,10 +235,10 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- IR-free: morphisms via `⟦_⟧ᵐ`, values via `⟦_⟧ᵍ`, locals via `lookupᴰ`.
 ------------------------------------------------------------------------
 
-⟦_⟧ᶜ : ∀ {m} {A : Ty m} {ctx e Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
-⟦_⟧ᵢ : ∀ {m} {A : Ty m} {ctx e Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
+⟦_⟧ᶜ : ∀ {m} {ctx e} {A : Ty m} {Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
+⟦_⟧ᵢ : ∀ {m} {ctx e} {A : Ty m} {Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
 
-⟦_⟧ᵈ : ∀ {m} {A B : Ty m} {ctx e π Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
+⟦_⟧ᵈ : ∀ {m} {ctx e} {A B : Ty m} {π Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
      → ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ
 
 ------------------------------------------------------------------------

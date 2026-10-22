@@ -153,10 +153,10 @@ realize-infer (t-var-local {eV = eV} _) = svar→expr eV
 -- the elaborator's `SigOpInfo.name` by construction.
 -- D274: a reference to a generator of Σ (an FFI declaration, own or not) is
 -- the SigOp; a reference to an own DEFINITION is a call of it (D246/D248).
-realize-infer (t-var-resolved {cn = cn} _ wn _ conc _) = sigOp cn conc
-realize-infer (t-var-own {x = x} _ _ _) = closure x
+realize-infer (t-var-resolved {cn = cn} _ wn _ conc refl) = sigOp cn conc
+realize-infer (t-var-own {x = x} _ _ refl) = closure x
 -- D246: a module entry's reference is a call of the entry.
-realize-infer (t-var-import {x = x} _ _ _ conc _) = closure x
+realize-infer (t-var-import {x = x} _ _ _ conc refl) = closure x
 -- Plan 0.103 phase 1c: a ground telescope reference is a VARIABLE of the
 -- definitions context, so its reference elaboration is the open term
 -- `poly x T` — exactly what the elaborator emits. Its meaning is read from the

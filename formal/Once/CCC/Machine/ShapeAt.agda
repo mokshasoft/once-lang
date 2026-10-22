@@ -224,7 +224,7 @@ data ShapeAt where
   shape-int : ∀ {m}
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
-    {n : ⟦ SpecTy.Int ⟧} →
+    {n : ⟦ SpecTy.Int {0} ⟧} →
     BeforeFrontier alloc loc →
     readLoc s loc ≡ just (SV-Lit fits-intˢ n) →
     ShapeAt m alloc Int loc s
@@ -232,7 +232,7 @@ data ShapeAt where
   shape-float : ∀ {m}
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
-    {x : ⟦ SpecTy.Float ⟧} →
+    {x : ⟦ SpecTy.Float {0} ⟧} →
     BeforeFrontier alloc loc →
     readLoc s loc ≡ just (SV-Lit fits-floatˢ x) →
     ShapeAt m alloc Float loc s
