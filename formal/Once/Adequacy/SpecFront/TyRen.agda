@@ -36,6 +36,7 @@ open Schema using (arity; kinds; type)
 import Once.Spec.Surface.Syntax as SX
 import Once.Spec.Surface.Typing Σ S nm as U
 open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; ⌜⌝ᵈ-⟨⟩)
+open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk)
 
 ------------------------------------------------------------------------
 -- Types
@@ -110,37 +111,10 @@ mutual
 -- Terms
 ------------------------------------------------------------------------
 
-module _ {m k : ℕ} where
-  -- Moving a term under a binder commutes with an instance.
-  ren-⟪⟫ : ∀ {n n′} (ρ : Fin n → Fin n′) (σ : TySub m k) (t : Tm S m n) → (ren ρ t) ⟪ σ ⟫ₜ ≡ ren ρ (t ⟪ σ ⟫ₜ)
-  ren-⟪⟫ ρ σ (var i)             = refl
-  ren-⟪⟫ ρ σ (lam A q π t)       = cong (lam _ q π) (ren-⟪⟫ (ext {S = S} {m = m} ρ) σ t)
-  ren-⟪⟫ ρ σ (app f x)           = cong₂ app (ren-⟪⟫ ρ σ f) (ren-⟪⟫ ρ σ x)
-  ren-⟪⟫ ρ σ (let′ q e b)        = cong₂ (let′ q) (ren-⟪⟫ ρ σ e) (ren-⟪⟫ (ext {S = S} {m = m} ρ) σ b)
-  ren-⟪⟫ ρ σ unit                = refl
-  ren-⟪⟫ ρ σ (pair a b)          = cong₂ pair (ren-⟪⟫ ρ σ a) (ren-⟪⟫ ρ σ b)
-  ren-⟪⟫ ρ σ (fst p)             = cong fst (ren-⟪⟫ ρ σ p)
-  ren-⟪⟫ ρ σ (snd p)             = cong snd (ren-⟪⟫ ρ σ p)
-  ren-⟪⟫ ρ σ (inl B a)           = cong (inl _) (ren-⟪⟫ ρ σ a)
-  ren-⟪⟫ ρ σ (inr A b)           = cong (inr _) (ren-⟪⟫ ρ σ b)
-  ren-⟪⟫ ρ σ (case qℓ qr e l r)  =
-    trans (cong₂ (λ x y → case qℓ qr x y ((ren (ext {S = S} {m = m} ρ) r) ⟪ σ ⟫ₜ)) (ren-⟪⟫ ρ σ e) (ren-⟪⟫ (ext {S = S} {m = m} ρ) σ l))
-          (cong (case qℓ qr _ _) (ren-⟪⟫ (ext {S = S} {m = m} ρ) σ r))
-  ren-⟪⟫ ρ σ (absurd A e)        = cong (absurd _) (ren-⟪⟫ ρ σ e)
-  ren-⟪⟫ ρ σ (roll F t)          = cong (roll _) (ren-⟪⟫ ρ σ t)
-  ren-⟪⟫ ρ σ (fold F alg t)      = cong₂ (fold _) (ren-⟪⟫ ρ σ alg) (ren-⟪⟫ ρ σ t)
-  ren-⟪⟫ ρ σ (unfold F c a)      = cong₂ (unfold _) (ren-⟪⟫ ρ σ c) (ren-⟪⟫ ρ σ a)
-  ren-⟪⟫ ρ σ (out t)             = cong out (ren-⟪⟫ ρ σ t)
-  ren-⟪⟫ ρ σ (iter f a)          = cong₂ iter (ren-⟪⟫ ρ σ f) (ren-⟪⟫ ρ σ a)
-  ren-⟪⟫ ρ σ (coerce A B t)      = cong (coerce _ _) (ren-⟪⟫ ρ σ t)
-  ren-⟪⟫ ρ σ (lit l)             = refl
-  ren-⟪⟫ ρ σ (prim p t)          = cong (prim p) (ren-⟪⟫ ρ σ t)
-  ren-⟪⟫ ρ σ (sigop c t)         = refl
-  ren-⟪⟫ ρ σ (ref d τ)           = refl
-
+-- (moving a term under a binder commutes with an instance: `TySubstRen`)
 private
   wk-⟪⟫ : ∀ {m k n} (σ : TySub m k) (t : Tm S m n) → (wk t) ⟪ σ ⟫ₜ ≡ wk (t ⟪ σ ⟫ₜ)
-  wk-⟪⟫ σ = ren-⟪⟫ suc σ
+  wk-⟪⟫ σ = ⟪⟫-wk σ
 
 module _ {m k : ℕ} (σ : TySub m k) where
   ⟪compose⟫ : ∀ {n} A π (f g : Tm S m n) → (composeᶜ A π f g) ⟪ σ ⟫ₜ ≡ composeᶜ (A ⟨ σ ⟩) π (f ⟪ σ ⟫ₜ) (g ⟪ σ ⟫ₜ)
