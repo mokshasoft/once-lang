@@ -47,7 +47,6 @@ open import Once.Functor.Decide using (isConcrete?)
 import Data.Sum
 open import Once.Internal.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
   PolyFunctor; PK; PId; _P⊕_; _P⊗_; Ground; GroundF; extractGround; extractGroundF)
-import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Program
   using (SchemaOf; TypeOf; FunOf; NotDefinition; nd-sig; nd-alias; nd-import;
@@ -55,8 +54,8 @@ open import Once.Spec.Surface.Program
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser.TypeAlias using (TypeAliasEnv; expandAliases; expandAliasesF)
 import Once.Parser as Parser
-open import Once.Internal.Core.Schema using (schemaOf)
-open import Once.Internal.Core.Translate using (monoSchema)
+open import Once.Internal.Type.Schema using (schemaOf)
+open import Once.Internal.Core.Translate Σ using (monoSchema)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open import Once.Adequacy.SpecCore.Schema using (schS; ptyS; pfunS)
 open import Once.Adequacy.SpecFront.Expr using (RX)
@@ -111,7 +110,7 @@ mutual
   expand-id al LT.Void        = refl
   expand-id al LT.Int         = refl
   expand-id al LT.Float       = refl
-  expand-id al (LT.rigid k i) = refl
+  expand-id al (LT.var ())
   expand-id al (a LT.* b)     = cong₂ LT._*_ (expand-id al a) (expand-id al b)
   expand-id al (a LT.+ b)     = cong₂ LT._+_ (expand-id al a) (expand-id al b)
   expand-id al (a LT.⇒[ k ] b) = cong₂ (λ x y → x LT.⇒[ k ] y) (expand-id al a) (expand-id al b)
@@ -132,7 +131,7 @@ private
   no-names ()
 
   mutual
-    reads-ground : ∀ (T : PolyType) (g : Ground T) → TypeOf no-names (toPoly T) (ptyS (LP.⌈_⌉ {0} (extractGround T g)))
+    reads-ground : ∀ (T : PolyType) (g : Ground T) → TypeOf no-names (toPoly T) (ptyS (extractGround {0} T g))
     reads-ground PUnit _  = to-unit
     reads-ground PVoid _  = to-void
     reads-ground PInt _   = to-int
@@ -146,7 +145,7 @@ private
     reads-ground (Pμ-type F) g = to-μ (readsF-ground F g)
     reads-ground (Pν-type F φ) g = to-ν (readsF-ground F g)
 
-    readsF-ground : ∀ (F : PolyFunctor) (g : GroundF F) → FunOf no-names (toPolyF F) (Once.Adequacy.SpecCore.Schema.pfunS (LP.⌈_⌉F {0} (extractGroundF F g)))
+    readsF-ground : ∀ (F : PolyFunctor) (g : GroundF F) → FunOf no-names (toPolyF F) (Once.Adequacy.SpecCore.Schema.pfunS (extractGroundF {0} F g))
     readsF-ground (PK A) g = fo-K (reads-ground A g)
     readsF-ground PId _ = fo-Id
     readsF-ground (F P⊕ G) (gf , gg) = fo-⊕ (readsF-ground F gf) (readsF-ground G gg)
