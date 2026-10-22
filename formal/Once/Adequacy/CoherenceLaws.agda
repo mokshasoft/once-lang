@@ -207,13 +207,13 @@ module _ {n} {Γ : Ctx n} where
 
   cata-congˢ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
-  cata-congˢ {F = F} {A = A} {π = π} wf eg σ rσ r =
+  cata-congˢ {A = A} {F = F} {π = π} wf eg σ rσ r =
     RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {F} {A} {π} wf ralg)
 
   -- D273: the coalgebra lives in the context and is bound once, as `cata`'s.
   ana-congˢ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)}
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ˢ ana wf g′
-  ana-congˢ {F = F} {A = A} {φ = φ} wf eg σ rσ r =
+  ana-congˢ {A = A} {F = F} {φ = φ} wf eg σ rσ r =
     RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
 
   -- the loop: related rounds, bound once, iterate to related loops.
@@ -312,9 +312,9 @@ module _ {n} {Γ : Ctx n} where
   lam-coerceˢ : ∀ {m} {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
              → lam {π = π} Many ≤p (coerce p b) ≈ˢ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
   lam-coerceˢ {q' = Zero} ≤p p b σ rσ r = retargetʳ refl (relS-ret (λ _ → RelS-fmap (SD-rel rσ b r) (<:-rel p)))
-  lam-coerceˢ {q' = One} {A = A} ≤p p b σ rσ r =
+  lam-coerceˢ {A = A} {q' = One} ≤p p b σ rσ r =
     retargetʳ refl (relS-ret (λ ra → RelS-fmap (SD-rel rσ b (r , <:-refl-relʳ A ra)) (<:-rel p)))
-  lam-coerceˢ {q' = Many} {A = A} ≤p p b σ rσ r =
+  lam-coerceˢ {A = A} {q' = Many} ≤p p b σ rσ r =
     retargetʳ refl (relS-ret (λ ra → RelS-fmap (SD-rel rσ b (r , <:-refl-relʳ A ra)) (<:-rel p)))
 
   copair-coerceˢ : ∀ {m} {A B C C′ : Ty m} {Ψ₁ Ψ₂ π} (p : C <: C′) (r : π ⊑π π)

@@ -35,8 +35,9 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Grade as Ty using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
+import Once.Internal.Type as Ty
 open import Once.Internal.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Laws.SubLaws
@@ -111,32 +112,32 @@ mutual
   coeIR-rel : ∀ {m} {A B : Ty m} (p : A <: B) {v v′ : ⟦ A ⟧ᴰ} → RelD A v v′
             → RelS (RelD B) (liftFn fmt ρ {A} {B} (coeIR p) v) (return∞ (⟦ p ⟧<: v′))
   coeIR-rel sub-void {()}
-  coeIR-rel sub-unit  {v} r = ≡ˡ (cong-app (liftFn-id {A = Unit}) v) (relS-ret r)
-  coeIR-rel sub-int   {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Int}) v) (relS-ret r)
-  coeIR-rel sub-float {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Float}) v) (relS-ret r)
+  coeIR-rel sub-unit  {v} r = ≡ˡ (cong-app (liftFn-id {A = Unit {0}}) v) (relS-ret r)
+  coeIR-rel sub-int   {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Int {0}}) v) (relS-ret r)
+  coeIR-rel sub-float {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Float {0}}) v) (relS-ret r)
   coeIR-rel (sub-μ {F = F}) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.μ-type F}) v) (relS-ret r)
   coeIR-rel (sub-ν {F = F} {f = π} _) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.ν-type F π}) v) (relS-ret r)
   coeIR-rel (sub-arr {A = A} {A′ = A′} {B = B} {B′ = B′} {q = Zero} {π = π} {π′ = π′} a b _) {f} r =
     ≡ˡ (cong-app (liftFn-curry₀ {A = A ⇒[ mk-kind Zero π ] B} {B = A′} {C = B′} {π = π′} (coeIR b ∘ apply)) f)
-       (relS-ret (arr₀ {A} {A′} {B} {B′} {π} a b r))
+       (relS-ret (arr₀ {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b r))
   coeIR-rel (sub-arr {A = A} {A′ = A′} {B = B} {B′ = B′} {q = One} {π = π} {π′ = π′} a b _) {f} r =
     ≡ˡ (cong-app (liftFn-curry₁ {A = A ⇒[ mk-kind One π ] B} {B = A′} {C = B′} {π = π′}
                                 (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩))) f)
-       (relS-ret (λ rx → arr₁ {A} {A′} {B} {B′} {π} a b r rx))
+       (relS-ret (λ rx → arr₁ {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b r rx))
   coeIR-rel (sub-arr {A = A} {A′ = A′} {B = B} {B′ = B′} {q = Many} {π = π} {π′ = π′} a b _) {f} r =
     ≡ˡ (cong-app (liftFn-curry {A = A ⇒[ mk-kind Many π ] B} {B = A′} {C = B′} {π = π′}
                                (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩))) f)
-       (relS-ret (λ rx → arrω {A} {A′} {B} {B′} {π} a b r rx))
-  coeIR-rel (sub-prod {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {x , y} {x′ , y′} (rx , ry) =
+       (relS-ret (λ rx → arrω {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b r rx))
+  coeIR-rel (sub-* {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {x , y} {x′ , y′} (rx , ry) =
     ≡ˡ (cong-app (liftFn-pair {A = A * B} {B = A′} {C = B′} (coeIR a ∘ fst) (coeIR b ∘ snd)) (x , y))
        (retargetʳ {n′ = return∞ (⟦ a ⟧<: x′) >>=∞ λ u → return∞ (⟦ b ⟧<: y′) >>=∞ λ w → return∞ (u , w)} refl
-         (RelS-bind (comp-fst {A} {A′} {B} a rx) λ ru → RelS-bind (comp-snd {A} {B} {B′} b ry) λ rw → relS-ret (ru , rw)))
-  coeIR-rel (sub-sum {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {inj₁ x} {inj₁ x′} r =
+         (RelS-bind (comp-fst {A = A} {A′ = A′} {B = B} a rx) λ ru → RelS-bind (comp-snd {A = A} {B = B} {B′ = B′} b ry) λ rw → relS-ret (ru , rw)))
+  coeIR-rel (sub-+ {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {inj₁ x} {inj₁ x′} r =
     ≡ˡ (trans (liftFn-case-inj₁ {A = A} {B = B} {C = A′ + B′} (inl ∘ coeIR a) (inr ∘ coeIR b) x)
               (cong-app (liftFn-∘ {B = A′} {C = A′ + B′} {A = A} inl (coeIR a)) x))
        (retargetʳ {n′ = return∞ (⟦ a ⟧<: x′) >>=∞ λ u → return∞ (inj₁ u)} refl
          (RelS-bind (coeIR-rel a r) λ {u} {u′} ru → ≡ˡ (cong-app (liftFn-inl {A = A′} {B = B′}) u) (relS-ret ru)))
-  coeIR-rel (sub-sum {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {inj₂ y} {inj₂ y′} r =
+  coeIR-rel (sub-+ {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {inj₂ y} {inj₂ y′} r =
     ≡ˡ (trans (liftFn-case-inj₂ {A = A} {B = B} {C = A′ + B′} (inl ∘ coeIR a) (inr ∘ coeIR b) y)
               (cong-app (liftFn-∘ {B = B′} {C = A′ + B′} {A = B} inr (coeIR b)) y))
        (retargetʳ {n′ = return∞ (⟦ b ⟧<: y′) >>=∞ λ u → return∞ (inj₂ u)} refl
@@ -164,7 +165,7 @@ mutual
   -- converted backwards, then convert the result forwards.
   arr₀ : ∀ {m} {A A′ B B′ : Ty m} {π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ}
        → RelD (A ⇒[ mk-kind Zero π ] B) f f′
-       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B′ : Ty m} (coeIR b ∘ apply) (f , tt))
+       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B′} (coeIR b ∘ apply) (f , tt))
                         (fmap∞ ⟦ b ⟧<: (f′ tt))
   arr₀ {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b {f} r =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = B} {C = B′} {A = (A ⇒[ mk-kind Zero π ] B) * Unit} (coeIR b) apply) (f , tt))
@@ -188,7 +189,7 @@ mutual
                     (RelS-bind {R = RelD (AB * A)} (retargetʳ {n′ = return∞ f′ >>=∞ λ u → return∞ (⟦ a ⟧<: x′) >>=∞ λ w → return∞ (u , w)} refl
                                  (RelS-bind {R = RelD AB}
                                    (≡ˡ (cong-app (liftFn-fst {A = AB} {B = A′}) (f , x)) (relS-ret r))
-                                   (λ ru → RelS-bind (comp-snd {AB} {A′} {A} a {f} rx) (λ rw → relS-ret (ru , rw)))))
+                                   (λ ru → RelS-bind (comp-snd {A = AB} {B = A′} {B′ = A} a {f} rx) (λ rw → relS-ret (ru , rw)))))
                                (λ { {u , w} {u′ , w′} (ru , rw) → ru rw })))
                   (coeIR-rel b))
     where AB = A ⇒[ mk-kind One π ] B
@@ -210,7 +211,7 @@ mutual
                     (RelS-bind {R = RelD (AB * A)} (retargetʳ {n′ = return∞ f′ >>=∞ λ u → return∞ (⟦ a ⟧<: x′) >>=∞ λ w → return∞ (u , w)} refl
                                  (RelS-bind {R = RelD AB}
                                    (≡ˡ (cong-app (liftFn-fst {A = AB} {B = A′}) (f , x)) (relS-ret r))
-                                   (λ ru → RelS-bind (comp-snd {AB} {A′} {A} a {f} rx) (λ rw → relS-ret (ru , rw)))))
+                                   (λ ru → RelS-bind (comp-snd {A = AB} {B = A′} {B′ = A} a {f} rx) (λ rw → relS-ret (ru , rw)))))
                                (λ { {u , w} {u′ , w′} (ru , rw) → ru rw })))
                   (coeIR-rel b))
     where AB = A ⇒[ mk-kind Many π ] B
@@ -227,7 +228,7 @@ record VfSem {m} {A B : Ty m} (p : A <: B) : Set₁ where
 open VfSem
 
 private
-  ≡ʳᴰ : ∀ B {u u′ w : ⟦ B ⟧ᴰ} → u ≡ u′ → RelD B u′ w → RelD B u w
+  ≡ʳᴰ : ∀ {m} (B : Ty m) {u u′ w : ⟦ B ⟧ᴰ} → u ≡ u′ → RelD B u′ w → RelD B u w
   ≡ʳᴰ B refl r = r
 
   vf-arr₁ : ∀ {m} {A A′ B B′ : Ty m} (a : A′ <: A) (b : B <: B′) (sa : VfSem a) (sb : VfSem b) {f f′ : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
@@ -245,8 +246,7 @@ vf-sem _ vf-int    = record { D = refl ; pt = λ r → r }
 vf-sem _ vf-float  = record { D = refl ; pt = λ r → r }
 vf-sem _ vf-μ      = record { D = refl ; pt = λ r → r }
 vf-sem _ vf-ν      = record { D = refl ; pt = λ r → r }
-vf-sem _ vf-rigid  = record { D = refl ; pt = λ { {()} } }
-vf-sem _ vf-rigid  = record { D = refl ; pt = λ { {()} } }
+vf-sem _ vf-var    = record { D = refl ; pt = λ { {()} } }
 vf-sem (sub-arr {q = Zero} a b _) (vf-arr va vb) =
   let sb = vf-sem b vb in
   record { D  = cong (λ V → ⊤ → T∞ V) (D sb)
@@ -257,12 +257,12 @@ vf-sem (sub-arr {q = One} a b _) (vf-arr va vb) =
 vf-sem (sub-arr {q = Many} a b _) (vf-arr va vb) =
   record { D  = cong₂ (λ U V → U → T∞ V) (sym (D (vf-sem a va))) (D (vf-sem b vb))
          ; pt = λ r rx → vf-arr₁ a b (vf-sem a va) (vf-sem b vb) r rx }
-vf-sem (sub-prod {A′ = A′} {B′ = B′} a b) (vf-prod va vb) =
+vf-sem (sub-* {A′ = A′} {B′ = B′} a b) (vf-prod va vb) =
   let sa = vf-sem a va ; sb = vf-sem b vb in
   record { D  = cong₂ _×_ (D sa) (D sb)
          ; pt = λ { {x , y} {x′ , y′} (rx , ry) →
                     ≡ʳᴰ (A′ * B′) (subst-pair (D sa) (D sb) x y) (pt sa rx , pt sb ry) } }
-vf-sem (sub-sum {A′ = A′} {B′ = B′} a b) (vf-sum va vb) =
+vf-sem (sub-+ {A′ = A′} {B′ = B′} a b) (vf-sum va vb) =
   let sa = vf-sem a va ; sb = vf-sem b vb in
   record { D  = cong₂ _⊎_ (D sa) (D sb)
          ; pt = λ { {inj₁ x} {inj₁ x′} r → ≡ʳᴰ (A′ + B′) (subst-inj₁ (D sa) (D sb) x) (pt sa r)
@@ -271,9 +271,9 @@ vf-sem (sub-sum {A′ = A′} {B′ = B′} a b) (vf-sum va vb) =
                   ; {inj₂ _} {inj₁ _} () } }
 
 coerce-lift-yes : ∀ {m} {A B : Ty m} {Δ} (p : A <: B) (vf : VoidFree p) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
-  → RelS (RelD A) (liftFn fmt ρ {Δ} {A : Ty m} f x) n
-  → RelS (RelD B) (liftFn fmt ρ {Δ} {B : Ty m} (subst (IR ⌊ Δ ⌋) (erase-eq p vf) f) x) (fmap∞ ⟦ p ⟧<: n)
-coerce-lift-yes {Δ = Δ} {A = A} {B = B} p vf f x h =
+  → RelS (RelD A) (liftFn fmt ρ {Δ} {A} f x) n
+  → RelS (RelD B) (liftFn fmt ρ {Δ} {B} (subst (IR ⌊ Δ ⌋) (erase-eq p vf) f) x) (fmap∞ ⟦ p ⟧<: n)
+coerce-lift-yes {A = A} {B = B} {Δ = Δ} p vf f x h =
   ≡ˡ (trans (cong (subst T∞ (cohᴰ B)) (eval-subst E f x₀))
        (trans (cong (subst T∞ (cohᴰ B)) (subst-⟦⟧ E m))
          (trans (subst-T-∘ (cong ⟦_⟧ᴰᴵ E) (cohᴰ B) m)
@@ -291,13 +291,13 @@ coerce-lift-yes {Δ = Δ} {A = A} {B = B} p vf f x h =
 ------------------------------------------------------------------------
 
 coerce-lift-dec : ∀ {m} {A B : Ty m} {Δ} (p : A <: B) (dv : Dec (VoidFree p)) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
-  → RelS (RelD A) (liftFn fmt ρ {Δ} {A : Ty m} f x) n
-  → RelS (RelD B) (liftFn fmt ρ {Δ} {B : Ty m} (runCoe-dec p dv f) x) (fmap∞ ⟦ p ⟧<: n)
-coerce-lift-dec {Δ = Δ} p (yes vf) f x h = coerce-lift-yes {Δ} p vf f x h
-coerce-lift-dec {Δ = Δ} {A = A} {B = B} p (no _) f x h =
+  → RelS (RelD A) (liftFn fmt ρ {Δ} {A} f x) n
+  → RelS (RelD B) (liftFn fmt ρ {Δ} {B} (runCoe-dec p dv f) x) (fmap∞ ⟦ p ⟧<: n)
+coerce-lift-dec {Δ = Δ} p (yes vf) f x h = coerce-lift-yes {Δ = Δ} p vf f x h
+coerce-lift-dec {A = A} {B = B} {Δ = Δ} p (no _) f x h =
   ≡ˡ (cong-app (liftFn-∘ {B = A} {C = B} {A = Δ} (coeIR p) f) x) (RelS-bind h (coeIR-rel p))
 
 coerce-lift : ∀ {m} {A B : Ty m} {Δ} (p : A <: B) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
-  → RelS (RelD A) (liftFn fmt ρ {Δ} {A : Ty m} f x) n
-  → RelS (RelD B) (liftFn fmt ρ {Δ} {B : Ty m} (runCoe p f) x) (fmap∞ ⟦ p ⟧<: n)
-coerce-lift {Δ = Δ} p f x = coerce-lift-dec {Δ} p (voidFree? p) f x
+  → RelS (RelD A) (liftFn fmt ρ {Δ} {A} f x) n
+  → RelS (RelD B) (liftFn fmt ρ {Δ} {B} (runCoe p f) x) (fmap∞ ⟦ p ⟧<: n)
+coerce-lift {Δ = Δ} p f x = coerce-lift-dec {Δ = Δ} p (voidFree? p) f x

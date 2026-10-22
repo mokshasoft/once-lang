@@ -36,7 +36,7 @@ open import Once.Denotation.ValueDomain using (coerce-functor-D)
 open import Once.Internal.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Internal.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
@@ -66,7 +66,7 @@ cata-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {π} (wf : WFFun 
              → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) va vb
              → RelD (μ-type F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ va)) x)
                                                        (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ vb)) x)
-cata-clo-rel {F = F} {A = A} wf {va} {vb} ralg {x} refl =
+cata-clo-rel {A = A} {F = F} wf {va} {vb} ralg {x} refl =
   sem-cata-rel wf {R = RelS (RelD A)} {SD.cata-ev-algˢ wf (return∞ va)} {SD.cata-ev-algˢ wf (return∞ vb)}
     (λ fr → RelS-bind (seqF∞-rel F fr) λ fl → retargetˡ refl (retargetʳ refl (ralg (cfD⁻¹-rel wf A fl)))) x
 
@@ -76,7 +76,7 @@ ana-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {φ} (wf : WFFun �
             → ∀ {a a′} → RelD A a a′
             → RelD (ν-type F φ) (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c a')) a)
                                 (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′)
-ana-clo-rel {F = F} {A = A} wf rc ra = anaᴵ-rel (λ ra′ → RelS-fmap (RelS-fmap (rc ra′) (cfD-rel wf A)) (cμin-rel F)) ra
+ana-clo-rel {A = A} {F = F} wf rc ra = anaᴵ-rel (λ ra′ → RelS-fmap (RelS-fmap (rc ra′) (cfD-rel wf A)) (cμin-rel F)) ra
 
 -- Related definitions environments: related calls, related references.
 RelDefs : DefsSem → DefsSem → Set

@@ -129,32 +129,32 @@ private
   ret≈ˡ : ∀ {X} {x y : X} → x ≡ y → TreeEq∞ _≡_ (return∞ x) (return∞ y)
   force≈ (ret≈ˡ e) = ret≈ (done≈ e)
 
-RelGT-return : ∀ {A} {x y} → RelGV A x y → RelGT A (returnT x) (return∞ y)
+RelGT-return : ∀ {mₜ} {A : Ty mₜ} {x y} → RelGV A x y → RelGT A (returnT x) (return∞ y)
 forceS (RelGT-return rv) = s-ret rv
 
-RelGT-bind : ∀ {A B} {t₁ : T ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → T ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+RelGT-bind : ∀ {mₜ} {A B : Ty mₜ} {t₁ : T ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → T ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
            → RelGT A t₁ t₂
            → (∀ {a b} → RelGV A a b → RelGT B (f a) (g b))
            → RelGT B (t₁ >>=T f) (t₂ >>=∞ g)
-RelGT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk = RelS-≈ˡ (embed-bind t₁ f) (RelS-bind rt rk)
+RelGT-bind {A = A} {B = B} {t₁} {t₂} {f} {g} rt rk = RelS-≈ˡ (embed-bind t₁ f) (RelS-bind rt rk)
 
 -- The PURE bind against the IR's: the pure side's value is its continuation's
 -- (`>>=ᵖ-β`).
-RelGᵖ-bind : ∀ {A B} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+RelGᵖ-bind : ∀ {mₜ} {A B : Ty mₜ} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
            → RelGM pure A m t₂
            → (∀ {a b} → RelGV A a b → RelGM pure B (k a) (g b))
            → RelGM pure B (m >>=ᵖ k) (t₂ >>=∞ g)
-RelGᵖ-bind {A} {B} {m} {t₂} {k} {g} rt rk =
+RelGᵖ-bind {A = A} {B = B} {m} {t₂} {k} {g} rt rk =
   RelS-≈ˡ (ret≈ˡ (>>=ᵖ-β m k)) (sameˡ refl (RelS-bind rt rk))
 
 -- A pure bind feeding any continuation: the IR's run returns a related value at
 -- once, which the continuation receives.
-RelGᵖᵉ-bind : ∀ {A B} {X : Set} {P : X → T∞ ⟦ B ⟧ᴰ → Set} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → X} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+RelGᵖᵉ-bind : ∀ {mₜ} {A B : Ty mₜ} {X : Set} {P : X → T∞ ⟦ B ⟧ᴰ → Set} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → X} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
             → RelGM pure A m t₂
             → (∀ {a b} → RelGV A a b → P (k a) (g b))
             → (∀ {x t t′} → force t ≡ force t′ → P x t′ → P x t)
             → P (m >>=ᵖ k) (t₂ >>=∞ g)
-RelGᵖᵉ-bind {A} {B} {P = P} {m} {t₂} {k} {g} rt rk tr = go (force t₂) refl (forceS rt)
+RelGᵖᵉ-bind {A = A} {B = B} {P = P} {m} {t₂} {k} {g} rt rk tr = go (force t₂) refl (forceS rt)
   where
     go : ∀ (b : _) → force t₂ ≡ b → RelSB (RelGV A) (Once.Internal.Trace.ret (inj₁ m)) b → P (m >>=ᵖ k) (t₂ >>=∞ g)
     go .(Once.Internal.Trace.ret (inj₁ _)) e (s-ret {y = y} r) =
@@ -162,30 +162,30 @@ RelGᵖᵉ-bind {A} {B} {P = P} {m} {t₂} {k} {g} rt rk tr = go (force t₂) re
          (subst (λ x → P x (g y)) (sym (>>=ᵖ-β m k)) (rk r))
 
 -- The two, at any grade.
-RelGM-bind : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+RelGM-bind : ∀ {mₜ} π {A B : Ty mₜ} {m : M π ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
            → RelGM π A m t₂
            → (∀ {a b} → RelGV A a b → RelGM π B (k a) (g b))
            → RelGM π B (bindM π m k) (t₂ >>=∞ g)
-RelGM-bind pure {A} {B} {m} {t₂} {k} {g} = RelGᵖ-bind {A} {B} {m} {t₂} {k} {g}
-RelGM-bind act  {A} {B} {m} {t₂} {k} {g} = RelGT-bind {A} {B} {m} {t₂} {k} {g}
+RelGM-bind pure {A = A} {B = B} rm rk = RelGᵖ-bind {A = A} {B = B} rm rk
+RelGM-bind act  {A = A} {B = B} rm rk = RelGT-bind {A = A} {B = B} rm rk
 RelGM-bind eff  rm rk = RelS-bind rm rk
 
 -- The graded map: both sides map their result along related functions.
-RelGM-fmap : ∀ π {A B} {m : M π ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
+RelGM-fmap : ∀ {mₜ} π {A B : Ty mₜ} {m : M π ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
            → RelGM π A m t
            → (∀ {a b} → RelGV A a b → RelGV B (f a) (g b))
            → RelGM π B (fmapM π f m) (fmap∞ g t)
-RelGM-fmap pure {A} {B} {m} rm h = sameˡ refl (RelS-bind rm (λ r → relS-ret (h r)))
-RelGM-fmap act  {A} {B} {m} {f = f} rm h =
+RelGM-fmap pure {A = A} {B = B} {m} rm h = sameˡ refl (RelS-bind rm (λ r → relS-ret (h r)))
+RelGM-fmap act  {A = A} {B = B} {m} {f = f} rm h =
   RelS-≈ˡ (embed-bind m (λ x → ret (f x))) (RelS-bind rm (λ r → embed-ret (h r)))
   where
     embed-ret : ∀ {x y} → RelGV B (f x) y → RelS (RelGV B) (embed (ret (f x))) (return∞ y)
     forceS (embed-ret r) = s-ret r
 RelGM-fmap eff  rm h = RelS-bind rm (λ r → relS-ret (h r))
 
-RelGM-return : ∀ {π} (u : pure ⊑π π) {A} {x y} → RelGV A x y → RelGM π A (returnM u x) (return∞ y)
+RelGM-return : ∀ {mₜ} {π} (u : pure ⊑π π) {A : Ty mₜ} {x y} → RelGV A x y → RelGM π A (returnM u x) (return∞ y)
 RelGM-return ⊑-pure rv = relS-ret rv
-RelGM-return ⊑-pa {A} rv = RelGT-return {A} rv
+RelGM-return ⊑-pa {A = A} rv = RelGT-return {A = A} rv
 RelGM-return ⊑-pe   rv = relS-ret rv
 
 ------------------------------------------------------------------------
@@ -257,14 +257,14 @@ RelS-embed-fmap {g = g} t h = RelS-≈ˡ (embed-bind t (λ l → ret (g l))) (em
     emb-fmapB s-halt     = s-halt
 
 -- A pure meaning fed to a continuation directly, against the IR's bind.
-RelGᵖ-app : ∀ {A B} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+RelGᵖ-app : ∀ {mₜ} {A B : Ty mₜ} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
           → RelGM pure A m t₂
           → (∀ {a b} → RelGV A a b → RelGM pure B (k a) (g b))
           → RelGM pure B (k m) (t₂ >>=∞ g)
-RelGᵖ-app {A} {B} {m} {t₂} {k} {g} rt rk = subst (λ z → RelGM pure B z (t₂ >>=∞ g)) (>>=ᵖ-β m k) (RelGᵖ-bind {A} {B} {m} {t₂} {k} {g} rt rk)
+RelGᵖ-app {A = A} {B = B} {m} {t₂} {k} {g} rt rk = subst (λ z → RelGM pure B z (t₂ >>=∞ g)) (>>=ᵖ-β m k) (RelGᵖ-bind {A = A} {B = B} {m} {t₂} {k} {g} rt rk)
 
 -- A pure meaning, embedded at any grade (what a lambda's body is, D250).
-RelGM-ret : ∀ {π} (u : pure ⊑π π) {B} {v : ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
+RelGM-ret : ∀ {mₜ} {π} (u : pure ⊑π π) {B : Ty mₜ} {v : ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
 RelGM-ret ⊑-pure r = r
 RelGM-ret ⊑-pa   r = sameˡ refl r
 RelGM-ret ⊑-pe   r = r

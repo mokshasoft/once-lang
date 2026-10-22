@@ -522,7 +522,7 @@ module WithSG (sg : SigGround) where
     c-compose : ∀ {m} {A B C′ : Ty m} {Ψ₁ Ψ₂ π₁ π₂ π f g} (le : (π₂ T.·p π₁) Once.Spec.Grade.⊑π π)
                   (a : Γ ⊢[ Ψ₁ ] f ∷ B T.⇒[ mk-kind Many π₁ ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π₂ ] B ! pure)
               → ρ̂ᶜ (DT.⊢composeᶜ le a b) ≅ DT.⊢composeᶜ le (ρ̂ᶜ a) (ρ̂ᶜ b)
-    c-compose {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {B = B} {C′ = C′} {π₁ = π₁} {g = g} le a b =
+    c-compose {B = B} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {g = g} le a b =
       H.trans (ρ̂ᶜ-sU (DT.arms Many Ψ₁ Ψ₂ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (DT.z+qz Many))) (DT.z+qz Many))))
         (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ _ u _) (ρ̂ₜ-ren suc g))
                        (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (B T.⇒[ mk-kind Many π₁ ] C′) b) refl refl H.refl))
@@ -531,7 +531,7 @@ module WithSG (sg : SigGround) where
     c-pair : ∀ {m} {A B C′ : Ty m} {Ψ₁ Ψ₂ π₁ π₂ π f g} (le : (π₁ T.·p π₂) Once.Spec.Grade.⊑π π)
                (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π₁ ] B ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π₂ ] C′ ! pure)
            → ρ̂ᶜ (DT.⊢pairᶜ le a b) ≅ DT.⊢pairᶜ le (ρ̂ᶜ a) (ρ̂ᶜ b)
-    c-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {π₁ = π₁} {g = g} le a b =
+    c-pair {A = A} {B = B} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π₁ = π₁} {g = g} le a b =
       H.trans (ρ̂ᶜ-sU E)
         (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ _ u _) (ρ̂ₜ-ren suc g))
                        (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (A T.⇒[ mk-kind Many π₁ ] B) b) refl refl H.refl))
@@ -542,7 +542,7 @@ module WithSG (sg : SigGround) where
     c-case : ∀ {m} {A B C′ : Ty m} {Ψ₁ Ψ₂ π f g}
                (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ B T.⇒[ mk-kind Many π ] C′ ! pure)
            → ρ̂ᶜ (DT.⊢caseᶜ a b) ≅ DT.⊢caseᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
-    c-case {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {C′ = C′} {π = π} {g = g} a b =
+    c-case {A = A} {B = B} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} {g = g} a b =
       H.trans (ρ̂ᶜ-sU E)
         (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ _ u _) (ρ̂ₜ-ren suc g))
                        (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (A T.⇒[ mk-kind Many π ] C′) b) refl refl H.refl))
@@ -625,7 +625,7 @@ module WithSG (sg : SigGround) where
     c-cata : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π alg} (u : Once.Spec.Grade._⊑π_ T.pure π) (wf : WFFun Δₖ F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A T.⇒[ mk-kind Many π ] A ! pure)
            → ρ̂ᶜ (DT.⊢cataᶜ u wf da)
              ≅ DT.⊢cataᶜ u (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ alg ∷ X T.⇒[ mk-kind Many π ] ρ̂ A ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ da))
-    c-cata {Ψ = Ψ} {F = F} {A = A} u wf da =
+    c-cata {A = A} {F = F} {Ψ = Ψ} u wf da =
       H.trans (ρ̂ᶜ-sU E) (H.trans (cata-gen u (ρ̂-wf wf) (ρ̂-⟦⟧ F A) (ρ̂ᶜ da)) (H.sym (rmU E)))
       where
         open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
@@ -644,7 +644,7 @@ module WithSG (sg : SigGround) where
     c-ana : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀} {π : T.Finite} {c} (u₀ : Once.Spec.Grade._⊑π_ T.pure π₀) (wf : WFFun Δₖ F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many (T.fin π) ] ⟦ F ⟧T A ! pure)
           → ρ̂ᶜ (DT.⊢anaᶜ u₀ wf dc)
             ≅ DT.⊢anaᶜ u₀ (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many (T.fin π) ] X ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))
-    c-ana {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {π = π} {c = c} u₀ wf dc =
+    c-ana {A = A} {F = F} {Ψ = Ψ} {π₀ = π₀} {π = π} {c = c} u₀ wf dc =
       ≅lam refl (cong (λ u → G.unfold _ u (G.var zero)) (ρ̂ₜ-ren suc c))
         (H.trans (ρ̂ᶜ-sUf (T.One C.∷_) (+ᵘ-identityʳ (Many C.*ᵘ Ψ)))
           (H.trans (≅1 _ _ (GT.⊢sub-eff u₀) refl

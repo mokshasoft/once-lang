@@ -225,13 +225,13 @@ mutual
   subst-i′ ir (t-float i f l p)    = t-float i f l p
   subst-i′ ir t-unit               = t-unit
   subst-i′ ir t-unit-var           = t-unit-var
-  subst-i′ {Γ = Γ} {D = D} ir (t-var-local {x = x} {eV = svar i} eq) =
+  subst-i′ {D = D} {Γ = Γ} ir (t-var-local {x = x} {eV = svar i} eq) =
     lookup-ρ̂ D i ⇝ᵢ t-var-local (lk-just x Γ D i eq)
   subst-i′ ir (t-var-resolved ng wn li c _) = sym (ρ̂-rf (proj₂ ir li)) ⇝ᵢ t-var-resolved ng wn li c refl
   subst-i′ ir (t-var-own ns li _) = sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-own ns li refl
-  subst-i′ {Γ = Γ} {D = D} ir (t-var-import {x = x} gw ln li c refl) =
+  subst-i′ {D = D} {Γ = Γ} ir (t-var-import {x = x} gw ln li c refl) =
     sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-import gw (lk-nothing x Γ D ln) li c refl
-  subst-i′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} ln li lp gr refl) =
+  subst-i′ {D = D} {Γ = Γ} ir (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} ln li lp gr refl) =
     sym (ρ̂-rf (extractGround-rf s g)) ⇝ᵢ t-var-poly-instantiate-infer {g = g} ln li lp gr refl
   subst-i′ ir (t-annot {T = T} rf d _) = sym (ρ̂-rf rf) ⇝ᵢ t-annot rf (ρ̂-rf rf ⇝ᶜ subst-c′ ir d) refl
   subst-i′ ir (t-pair a b)         = t-pair (subst-i′ ir a) (subst-i′ ir b)
@@ -289,14 +289,14 @@ mutual
   subst-c′ ir (t-inl-app-check d)   = t-inl-app-check (subst-c′ ir d)
   subst-c′ ir (t-inr-app-check d)   = t-inr-app-check (subst-c′ ir d)
   subst-c′ ir (t-initial-app-check d) = t-initial-app-check (subst-c′ ir d)
-  subst-c′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate {x = x} {schema = sch} ln li lp ng ki) =
+  subst-c′ {D = D} {Γ = Γ} ir (t-var-poly-instantiate {x = x} {schema = sch} ln li lp ng ki) =
     t-var-poly-instantiate ln li lp ng (ρ̂-ki {sch} ki)
 
   subst-d′ : ∀ {m} {D A B : Ty m} {n Γ imps polys sg e π Ψ} → TopRF imps sg
            → mkCtx n Γ D imps polys sg ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
            → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg ⊢ᵈ e ∶ ρ̂ A ⇒[ π ]↦ ρ̂ B ⨾ Ψ
   subst-d′ ir (d-infer w p g)      = d-infer (subst-i′ ir w) (ρ̂-<: p) g
-  subst-d′ {Γ = Γ} {D = D} ir (d-poly {x = x} {schema = sch} ln li lp ng as cv ki g) =
+  subst-d′ {D = D} {Γ = Γ} ir (d-poly {x = x} {schema = sch} ln li lp ng as cv ki g) =
     d-poly ln li lp ng as cv (ρ̂-ki {sch} ki) g
   subst-d′ ir (d-lam {u = u} d)            = d-lam {u = u} (subst-i′ ir d)
   subst-d′ ir (d-compose dg df)    = d-compose (subst-d′ ir dg) (subst-d′ ir df)

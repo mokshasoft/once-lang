@@ -80,7 +80,7 @@ open import Once.Type.Rigid using (ground-kinded)
 open import Once.Internal.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Internal.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Laws.SubLaws
@@ -1072,7 +1072,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
                             (liftFn-rel fmt (proj₁ σ-self) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) (right-self (ν-type F actᶠ) rv)))))))
     where
       out-fst : ∀ (v : ⟦ ν-type F actᶠ ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
-              → force (liftFn fmt (calls σ) {F : Fun _} {ν-type actᶠ * Unit} {F F : Fun _} {⟦ ⟧T (ν-type actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
+              → force (liftFn fmt (calls σ) {ν-type F actᶠ * Unit} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
                 ≡ force (liftFn fmt (calls σ) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) v)
       out-fst v u = force-∘ {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} {ν-type F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {ν-type F actᶠ} {Unit} (v , u))
   bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {ρ = ρ} {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =

@@ -241,9 +241,9 @@ private
 -- application — the source's two binds.
 app-rel : ∀ {m} {X : Ty m} {A B : Ty m} {π} (ef : IR ⌊ X ⌋ ⌊ A ⇒[ mk-kind Many π ] B ⌋) (ex : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ)
             {sf : T∞ ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ} {sx : T∞ ⟦ A ⟧ᴰ}
-        → RelS (RelD (A ⇒[ mk-kind Many π ] B)) (liftFn fmt ρ {X} {A B : Ty m} {⇒[ mk-kind Many π ]} ef dγ) sf
-        → RelS (RelD A) (liftFn fmt ρ {X} {A : Ty m} ex dγ) sx
-        → RelS (RelD B) (liftFn fmt ρ {X} {B : Ty m} (apply ∘ ⟨ ef , ex ⟩) dγ) (sf >>=∞ λ vf → sx >>=∞ λ vx → vf vx)
+        → RelS (RelD (A ⇒[ mk-kind Many π ] B)) (liftFn fmt ρ {X} {A ⇒[ mk-kind Many π ] B} ef dγ) sf
+        → RelS (RelD A) (liftFn fmt ρ {X} {A} ex dγ) sx
+        → RelS (RelD B) (liftFn fmt ρ {X} {B} (apply ∘ ⟨ ef , ex ⟩) dγ) (sf >>=∞ λ vf → sx >>=∞ λ vx → vf vx)
 app-rel {X = X} {A = A} {B = B} {π = π} ef ex dγ hf hx =
   ≡ˡ (trans (cong-app (liftFn-∘ {(A ⇒[ mk-kind Many π ] B) * A} {B} {X} apply ⟨ ef , ex ⟩) dγ)
             (trans (cong (_>>=∞ liftFn fmt ρ {(A ⇒[ mk-kind Many π ] B) * A} {B} apply)
@@ -255,9 +255,9 @@ app-rel {X = X} {A = A} {B = B} {π = π} ef ex dγ hf hx =
 
 app-rel₁ : ∀ {m} {X : Ty m} {A B : Ty m} {π} (ef : IR ⌊ X ⌋ ⌊ A ⇒[ mk-kind One π ] B ⌋) (ex : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ)
              {sf : T∞ ⟦ A ⇒[ mk-kind One π ] B ⟧ᴰ} {sx : T∞ ⟦ A ⟧ᴰ}
-         → RelS (RelD (A ⇒[ mk-kind One π ] B)) (liftFn fmt ρ {X} {A B : Ty m} {⇒[ mk-kind One π ]} ef dγ) sf
-         → RelS (RelD A) (liftFn fmt ρ {X} {A : Ty m} ex dγ) sx
-         → RelS (RelD B) (liftFn fmt ρ {X} {B : Ty m} (apply ∘ ⟨ ef , ex ⟩) dγ) (sf >>=∞ λ vf → sx >>=∞ λ vx → vf vx)
+         → RelS (RelD (A ⇒[ mk-kind One π ] B)) (liftFn fmt ρ {X} {A ⇒[ mk-kind One π ] B} ef dγ) sf
+         → RelS (RelD A) (liftFn fmt ρ {X} {A} ex dγ) sx
+         → RelS (RelD B) (liftFn fmt ρ {X} {B} (apply ∘ ⟨ ef , ex ⟩) dγ) (sf >>=∞ λ vf → sx >>=∞ λ vx → vf vx)
 app-rel₁ {X = X} {A = A} {B = B} {π = π} ef ex dγ hf hx =
   ≡ˡ (trans (cong-app (liftFn-∘ {(A ⇒[ mk-kind One π ] B) * A} {B} {X} apply ⟨ ef , ex ⟩) dγ)
             (trans (cong (_>>=∞ liftFn fmt ρ {(A ⇒[ mk-kind One π ] B) * A} {B} apply)
@@ -271,9 +271,9 @@ app-rel₁ {X = X} {A = A} {B = B} {π = π} ef ex dγ hf hx =
 -- and its `sigOpˢ`.
 arith-rel : ∀ {m} {X : Ty m} {A₁ A₂ C : Ty m} (si : SigOpInfo (A₁ * A₂) C)
               (ea : IR ⌊ X ⌋ ⌊ A₁ ⌋) (eb : IR ⌊ X ⌋ ⌊ A₂ ⌋) (dγ : ⟦ X ⟧ᴰ) {sa : T∞ ⟦ A₁ ⟧ᴰ} {sb : T∞ ⟦ A₂ ⟧ᴰ}
-          → RelS (RelD A₁) (liftFn fmt ρ {X} {A₁ : Ty m} ea dγ) sa
-          → RelS (RelD A₂) (liftFn fmt ρ {X} {A₂ : Ty m} eb dγ) sb
-          → RelS (RelD C) (liftFn fmt ρ {X} {C : Ty m} (SigOp si ∘ ⟨ ea , eb ⟩) dγ)
+          → RelS (RelD A₁) (liftFn fmt ρ {X} {A₁} ea dγ) sa
+          → RelS (RelD A₂) (liftFn fmt ρ {X} {A₂} eb dγ) sb
+          → RelS (RelD C) (liftFn fmt ρ {X} {C} (SigOp si ∘ ⟨ ea , eb ⟩) dγ)
                           (sa >>=∞ λ va → sb >>=∞ λ vb → SD.sigOpˢ fmt σ₀ si (va , vb))
 arith-rel {X = X} {A₁ = A₁} {A₂ = A₂} {C = C} si ea eb dγ ha hb =
   ≡ˡ (trans (cong-app (liftFn-∘ {A₁ * A₂} {C} {X} (SigOp si) ⟨ ea , eb ⟩) dγ)
@@ -284,8 +284,8 @@ arith-rel {X = X} {A₁ = A₁} {A₂ = A₂} {C = C} si ea eb dγ ha hb =
 
 -- One operand, then a SigOp.
 unop-rel : ∀ {m} {X : Ty m} {A C : Ty m} (si : SigOpInfo A C) (ea : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ) {sa : T∞ ⟦ A ⟧ᴰ}
-         → RelS (RelD A) (liftFn fmt ρ {X} {A : Ty m} ea dγ) sa
-         → RelS (RelD C) (liftFn fmt ρ {X} {C : Ty m} (SigOp si ∘ ea) dγ) (sa >>=∞ λ va → SD.sigOpˢ fmt σ₀ si va)
+         → RelS (RelD A) (liftFn fmt ρ {X} {A} ea dγ) sa
+         → RelS (RelD C) (liftFn fmt ρ {X} {C} (SigOp si ∘ ea) dγ) (sa >>=∞ λ va → SD.sigOpˢ fmt σ₀ si va)
 unop-rel {X = X} {A = A} {C = C} si ea dγ ha =
   ≡ˡ (trans (cong-app (liftFn-∘ {A} {C} {X} (SigOp si) ea) dγ)
             (cong (liftFn fmt ρ {X} {A} ea dγ >>=∞_) (liftFn-SigOp si)))
@@ -295,8 +295,8 @@ unop-rel {X = X} {A = A} {C = C} si ea dγ ha =
 post-rel : ∀ {m} {X A B : Ty m} (p : IR ⌊ A ⌋ ⌊ B ⌋) (g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ)
              (hp : liftFn fmt ρ {A} {B} p ≡ (λ v → return∞ (g v))) (e : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ) {s : T∞ ⟦ A ⟧ᴰ}
          → (∀ {a a′} → RelD A a a′ → RelD B (g a) (g a′))
-         → RelS (RelD A) (liftFn fmt ρ {X} {A : Ty m} e dγ) s
-         → RelS (RelD B) (liftFn fmt ρ {X} {B : Ty m} (p ∘ e) dγ) (s >>=∞ λ v → return∞ (g v))
+         → RelS (RelD A) (liftFn fmt ρ {X} {A} e dγ) s
+         → RelS (RelD B) (liftFn fmt ρ {X} {B} (p ∘ e) dγ) (s >>=∞ λ v → return∞ (g v))
 post-rel {X = X} {A = A} {B = B} p g hp e dγ hg h =
   ≡ˡ (trans (cong-app (liftFn-∘ {A} {B} {X} p e) dγ) (cong (liftFn fmt ρ {X} {A} e dγ >>=∞_) hp))
      (RelS-bind h (λ r → relS-ret (hg r)))
@@ -305,11 +305,11 @@ post-rel {X = X} {A = A} {B = B} p g hp e dγ hg h =
 -- body: `apply ∘ ⟨ path , y ⟩` where the path returns the closure at once.
 apply-path : ∀ {m} {X A B : Ty m} {π} {f : IR ⌊ X ⌋ ⌊ A ⇒[ mk-kind Many π ] B ⌋} {y : IR ⌊ X ⌋ ⌊ A ⌋} {F : Fun m} {x}
                {V : Set} {R₀ : ⟦ A ⟧ᴰ → V → Set} {n : T∞ V} {W : Set} {R : ⟦ B ⟧ᴰ → W → Set} {k : V → T∞ W}
-           → Now (liftFn fmt ρ {X} {A B : Ty m} {⇒[ mk-kind Many π ]} f x) F
-           → RelS R₀ (liftFn fmt ρ {X} {A : Ty m} y x) n
+           → Now (liftFn fmt ρ {X} {A ⇒[ mk-kind Many π ] B} f x) F
+           → RelS R₀ (liftFn fmt ρ {X} {A} y x) n
            → (∀ {b c} → R₀ b c → RelS R (F b) (k c))
-           → RelS R (liftFn fmt ρ {X} {B : Ty m} (apply ∘ ⟨ f , y ⟩) x) (n >>=∞ k)
-apply-path {X = X} {A = A} {B = B} {π = π} {f = f} {y = y} {x = x} {F = F} hf hy c =
+           → RelS R (liftFn fmt ρ {X} {B} (apply ∘ ⟨ f , y ⟩) x) (n >>=∞ k)
+apply-path {X = X} {A = A} {B = B} {π = π} {f = f} {y = y} {F = F} {x = x} hf hy c =
   ≡ˡ (trans (cong-app (liftFn-∘ {(A ⇒[ mk-kind Many π ] B) * A} {B} {X} apply ⟨ f , y ⟩) x)
             (trans (cong (_>>=∞ liftFn fmt ρ {(A ⇒[ mk-kind Many π ] B) * A} {B} apply)
                          (cong-app (liftFn-pair {X} {A ⇒[ mk-kind Many π ] B} {A} f y) x))

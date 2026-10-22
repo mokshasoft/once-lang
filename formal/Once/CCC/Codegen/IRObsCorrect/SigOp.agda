@@ -232,7 +232,7 @@ module SigOpC {FS : FrameSemantics} where
   res-reg fits-floatˢ base-Float v = refl
 
   -- A register-fitting input crosses unchanged.
-  forget-reg : ∀ (bt : IsBaseType Intˢ) (x : EvV.⟦ Intˢ ⟧) → x ≡ forgetᵇ bt x
+  forget-reg : ∀ (bt : IsBaseType Intˢ) (x : EvV.⟦ Intˢ {0} ⟧) → x ≡ forgetᵇ bt x
   forget-reg base-Int x = refl
 
   forget-reg-float : ∀ (bt : IsBaseType SpecTy.Float) (x : EvV.⟦ SpecTy.Float {0} ⟧) → x ≡ forgetᵇ bt x

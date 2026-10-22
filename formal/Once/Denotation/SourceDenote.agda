@@ -98,7 +98,7 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- the full `n` and having their traces concatenated.
 cata-ev-algˢ : ∀ {m} {Δₖ : KCtx m} {C : Ty m} {F : Fun m} → WFFun Δₖ F → T∞ (⟦ ⟦ F ⟧T C ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
              → ⟦ F ⟧F (T∞ ⟦ C ⟧ᴰ) → T∞ ⟦ C ⟧ᴰ
-cata-ev-algˢ {F = F} {C = C} wf algComp fc =
+cata-ev-algˢ {C = C} {F = F} wf algComp fc =
   seqF∞ F fc >>=∞ λ layer →
     algComp >>=∞ λ algClo → algClo (coerce-functor⁻¹-D wf C layer)
 
