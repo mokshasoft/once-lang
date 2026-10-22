@@ -19,6 +19,7 @@
 --     layer maps agree on a layer (`νout-erase-D`).
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Denotation.DenotTrace using (CallEnv)
@@ -58,8 +59,8 @@ import Once.IR as IR
 -- The transported `Out` morphism `realize-infer` uses
 ------------------------------------------------------------------------
 
-Out-ir : ∀ {F : Functor} {π : Finite} → WellFormedF F → IR.IR ⌊ ν-type F π ⌋ ⌊ ⟦ F ⟧T (ν-type F π) ⌋
-Out-ir {F} {π} wfF = subst (λ o → IR.IR ⌊ ν-type F π ⌋ o)
+Out-ir : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} → WFFun Δₖ F → IR.IR ⌊ ν-type F π ⌋ ⌊ ⟦ F ⟧T (ν-type F π) ⌋
+Out-ir {F = F} {π = π} wfF = subst (λ o → IR.IR ⌊ ν-type F π ⌋ o)
                        (sym (⌊⟧T-commute F (ν-type F π)))
                        (IR.Out (wf-⌊⌋ wfF))
 
@@ -124,17 +125,17 @@ pushS⊗⁻ refl refl a b = refl
 -- The `sym` forms. `sym (cong₂ f p q)` is not definitionally `cong₂ f (sym p)
 -- (sym q)`, so the inverse direction needs its own statements rather than a
 -- rewrite of the forward ones.
-push-+ᴰ₁⁻ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (z : ⟦ A' ⟧ᴰ)
+push-+ᴰ₁⁻ : ∀ {m} {A A' B B' : Ty m} (p : A ≡ A') (q : B ≡ B') (z : ⟦ A' ⟧ᴰ)
   → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Spec.Type._+_ p q)) (inj₁ z)
     ≡ inj₁ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym p) z)
 push-+ᴰ₁⁻ refl refl z = refl
 
-push-+ᴰ₂⁻ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (z : ⟦ B' ⟧ᴰ)
+push-+ᴰ₂⁻ : ∀ {m} {A A' B B' : Ty m} (p : A ≡ A') (q : B ≡ B') (z : ⟦ B' ⟧ᴰ)
   → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Spec.Type._+_ p q)) (inj₂ z)
     ≡ inj₂ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym q) z)
 push-+ᴰ₂⁻ refl refl z = refl
 
-push-*ᴰ⁻ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (a : ⟦ A' ⟧ᴰ) (b : ⟦ B' ⟧ᴰ)
+push-*ᴰ⁻ : ∀ {m} {A A' B B' : Ty m} (p : A ≡ A') (q : B ≡ B') (a : ⟦ A' ⟧ᴰ) (b : ⟦ B' ⟧ᴰ)
   → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Spec.Type._*_ p q)) (a , b)
     ≡ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym p) a , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym q) b)
 push-*ᴰ⁻ refl refl a b = refl
@@ -156,7 +157,7 @@ push-*ᴵ⁻ refl refl a b = refl
 -- The layer map, CARRIER-GENERIC. `out-layerᴵ` above is it at `A := ν-type G`,
 -- which is all `evalᴰ (Out …)` ever needs; the induction needs the carrier
 -- free, because at `⊕` the sub-functor changes while the carrier does not.
-out-layer-gen : ∀ (G : Functor) (wfG : WellFormedF G) (A : Type)
+out-layer-gen : ∀ {m} {Δₖ : KCtx m} (G : Fun m) (wfG : WFFun Δₖ G) (A : Ty m)
     (layer : ⟦ translateF Carrier Carrier ⌈ eraseF G ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
   → ⟦ IT.⟦ eraseF G ⟧TI ⌊ A ⌋ ⟧ᴰᴵ
 out-layer-gen G wfG A layer =
@@ -179,22 +180,22 @@ pushSK⁻ refl v = refl
 -- The layer map splits across an injection / pair: `coerce-ν-out` and
 -- `coerce-functor⁻¹-D` are both structural there, so all that is left is
 -- pushing the `⌈⟧TI-commute` transport through, which is `push-+ᴰ₁⁻`.
-out-layer-gen-⊕₁ : ∀ (G₁ G₂ : Functor) (wfA : WellFormedF G₁) (wfB : WellFormedF G₂)
-    (A : Type) (w : ⟦ translateF Carrier Carrier ⌈ eraseF G₁ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+out-layer-gen-⊕₁ : ∀ {m} {Δₖ : KCtx m} (G₁ G₂ : Fun m) (wfA : WFFun Δₖ G₁) (wfB : WFFun Δₖ G₂)
+    (A : Ty m) (w : ⟦ translateF Carrier Carrier ⌈ eraseF G₁ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
   → out-layer-gen (G₁ Once.Spec.Type.⊕ G₂) (wf-Sum wfA wfB) A (inj₁ w)
     ≡ inj₁ (out-layer-gen G₁ wfA A w)
 out-layer-gen-⊕₁ G₁ G₂ wfA wfB A w =
   push-+ᴰ₁⁻ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋) _
 
-out-layer-gen-⊕₂ : ∀ (G₁ G₂ : Functor) (wfA : WellFormedF G₁) (wfB : WellFormedF G₂)
-    (A : Type) (w : ⟦ translateF Carrier Carrier ⌈ eraseF G₂ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+out-layer-gen-⊕₂ : ∀ {m} {Δₖ : KCtx m} (G₁ G₂ : Fun m) (wfA : WFFun Δₖ G₁) (wfB : WFFun Δₖ G₂)
+    (A : Ty m) (w : ⟦ translateF Carrier Carrier ⌈ eraseF G₂ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
   → out-layer-gen (G₁ Once.Spec.Type.⊕ G₂) (wf-Sum wfA wfB) A (inj₂ w)
     ≡ inj₂ (out-layer-gen G₂ wfB A w)
 out-layer-gen-⊕₂ G₁ G₂ wfA wfB A w =
   push-+ᴰ₂⁻ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋) _
 
-out-layer-gen-⊗ : ∀ (G₁ G₂ : Functor) (wfA : WellFormedF G₁) (wfB : WellFormedF G₂)
-    (A : Type) (a : ⟦ translateF Carrier Carrier ⌈ eraseF G₁ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+out-layer-gen-⊗ : ∀ {m} {Δₖ : KCtx m} (G₁ G₂ : Fun m) (wfA : WFFun Δₖ G₁) (wfB : WFFun Δₖ G₂)
+    (A : Ty m) (a : ⟦ translateF Carrier Carrier ⌈ eraseF G₁ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
                 (b : ⟦ translateF Carrier Carrier ⌈ eraseF G₂ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
   → out-layer-gen (G₁ Once.Spec.Type.⊗ G₂) (wf-Prod wfA wfB) A (a , b)
     ≡ (out-layer-gen G₁ wfA A a , out-layer-gen G₂ wfB A b)
@@ -204,7 +205,7 @@ out-layer-gen-⊗ G₁ G₂ wfA wfB A a b =
 -- The K-leaf coherence — `AnaErased.base-in` read the other way, with
 -- `coerce-base-to-full`/`inject` where that one has `coerce-full-to-base`/
 -- `forget`. Induction on the base witness.
-base-out : ∀ (B : Type) (ib : IsBaseType B) (A : Type)
+base-out : ∀ {m} {Δₖ : KCtx m} (B : Ty m) (ib : Base Δₖ B) (A : Ty m)
     (ℓ : ⟦ translateF Carrier Carrier (Once.Spec.Type.K B) ⟧SF ⟦ A ⟧ᴰ)
   → subst id (cohᴰ (⟦ Once.Spec.Type.K B ⟧T A))
       (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K B) A))
@@ -241,7 +242,7 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
 -- THE ONE REMAINING OBLIGATION, over an abstract layer AND an abstract
 -- carrier — `AnaErased.coerce-νin-erase-D` inverted. Five clauses on `wfG`
 -- (not on the raw functor: `coerce-ν-out` is indexed by the witness).
-νout-erase-D : ∀ (G : Functor) (wfG : WellFormedF G) (A : Type)
+νout-erase-D : ∀ {m} {Δₖ : KCtx m} (G : Fun m) (wfG : WFFun Δₖ G) (A : Ty m)
     (ℓ : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᴰ)
   → subst id (cohᴰ (⟦ G ⟧T A))
       (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A))
@@ -322,10 +323,10 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
 -- forced runs are related (`StreamRel.forceR`); on a layer the IR's map, read
 -- back, IS the meaning's (`νout-erase-D`), and the meaning's map takes related
 -- layers to related values.
-liftFn-Out : ∀ {F : Functor} {π : Finite} (wfF : WellFormedF F) {v v′ : ⟦ ν-type F π ⟧ᴰ}
+liftFn-Out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} (wfF : WFFun Δₖ F) {v v′ : ⟦ ν-type F π ⟧ᴰ}
   → RelD (ν-type F π) v v′
   → RelS (RelD (⟦ F ⟧T (ν-type F π))) (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) (out-sem {π = π} wfF v′)
-liftFn-Out {F} {π} wfF {v} {v′} r =
+liftFn-Out {F = F} {π = π} wfF {v} {v′} r =
   ≡ˢ (cong (subst T∞ (cohᴰ X))
         (trans (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF)) v₀)
                (cong (λ m → subst (λ o → T∞ ⟦ o ⟧ᴰᴵ) (sym (⌊⟧T-commute F (ν-type F π))) (fmap∞ g₀ m))

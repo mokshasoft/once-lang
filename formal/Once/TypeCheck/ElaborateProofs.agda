@@ -1131,7 +1131,7 @@ checkElab-fallback-RApp-snd {ctx = ctx} {τ = τ} arg T eqInf sb
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 private
   open import Data.Product using () renaming (proj₁ to checkProj₁)
-  checkViewBridge : ∀ {ctx f x T} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
+  checkViewBridge : ∀ {m} {ctx : NamedCtx m} {f x T} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
                   → checkElabV-RApp-dispatch ctx f x T (classifyAppHeadView f) refl
                     ≡ checkElabV-RApp-dispatch ctx f x T vw eq
   checkViewBridge _ refl = refl
@@ -1146,7 +1146,7 @@ checkElab-fallback-RApp-generic : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (f x : 
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
       checkElab ctx (Raw.RApp f x) τ ≡ success Ψ eE' d' f'')))
 checkElab-fallback-RApp-generic {ctx = ctx} {τ = τ} f x T eqAH eqInf sb
-  rewrite cong checkProj₁ (checkViewBridge {ctx} {f} {x} {τ} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+  rewrite cong checkProj₁ (checkViewBridge {ctx = ctx} {f = f} {x = x} {T = τ} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
   with inferElabV ctx (Raw.RApp f x) | eqInf
 ... | success _ _ _ _ _ , _ | refl
     with T <:? τ
@@ -1172,7 +1172,7 @@ inferOutGo-J ctx arg F π Ψ argE d fr w .(wfFun? (NamedCtx.kinds ctx) F) refl =
 -- singleton contractibility (mirrors compose's `go-canonical`). Used to bridge
 -- the `(wfFun? (NamedCtx.kinds ctx) F, refl)` form that `checkElabV`/`checkCata` actually produce
 -- to the `(just wfF, eqW)` form that `checkCataGo-just-success` concludes at.
-cata-go-canonical : ∀ {m} {ctx : NamedCtx m} {alg : RawExpr} {F : Once.Internal.Type.Functor} {A : Ty m}
+cata-go-canonical : ∀ {m} {ctx : NamedCtx m} {alg : RawExpr} {F : Once.Spec.Type.Fun m} {A : Ty m}
     {π : Once.Spec.Grade.Purity} {mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)}
     (p : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
   → checkCataGo ctx alg F A π mw p ≡ checkCataGo ctx alg F A π (wfFun? (NamedCtx.kinds ctx) F) refl
@@ -1384,7 +1384,7 @@ checkElab-fallback-RBinOp {ctx = ctx} {τ = τ} op e₁ e₂ T eqInf sb
 -- | Compile with type signature. Plan 0.14 follow-up: uses Heap as
 -- the default AllocMode for backwards compatibility with callers that
 -- don't supply one via CLI.
-compileExprTyped : ∀ {m} → RawExpr → (A : Ty m) → Maybe (IR ⌊ Unit {0} ⌋ ⌊ A ⌋)
+compileExprTyped : RawExpr → (A : Type) → Maybe (IR ⌊ Unit {0} ⌋ ⌊ A ⌋)
 compileExprTyped e A with checkElab emptyCtx e A
 ... | failure _                 = nothing
 ... | success Ψ se _ _          = just (Elab.elaborate-default se)

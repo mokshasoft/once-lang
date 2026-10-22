@@ -149,7 +149,7 @@ cataM-fold : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {π : Purity} (wfF 
            → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) c c′
            → RelS (RelD (μ-type F ⇒[ mk-kind Many π ] A))
                   (liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {μ-type F ⇒[ mk-kind Many π ] A}
-                          (cataM {F} {A} wfF IR.Heap) c)
+                          (cataM {F = F} {A = A} wfF IR.Heap) c)
                   (return∞ (λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c′)) x))
 cataM-fold {F = F} {A = A} {π = π} wfF {c} {c′} r =
   ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ (μ-type F)) (cohᴰ A))
@@ -184,7 +184,7 @@ cata-body : ∀ {mₜ} {Δₖ : KCtx mₜ} {m} {Γ : Ctx mₜ m} {Ψ : Usage m} 
                    (SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
 cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ dγ′ ih =
   ≡ˢ (cong-app (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A}
-                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (cataM {F} {A} wf IR.Heap)
+                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (cataM {F = F} {A = A} wf IR.Heap)
                          (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
      (RelS-bind ih (cataM-fold {F} {A} {π} wf))
 
@@ -198,7 +198,7 @@ anaM-unfold : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {π₀ : Purity} {
             → RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c c′
             → RelS (RelD (A ⇒[ mk-kind Many π₀ ] ν-type F φ))
                    (liftFn fmt ρ {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
-                           (anaM {F} {A} {φ} wf IR.Heap) c)
+                           (anaM {F = F} {A = A} {φ = φ} wf IR.Heap) c)
                    (return∞ (λ a → return∞ (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a)))
 anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {c} {c′} r =
   ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ (ν-type F φ))) (λ b → evalᴰ fmt ρ Ana-IR (c₀ , b)))
@@ -306,7 +306,7 @@ ana-body : ∀ {mₜ} {Δₖ : KCtx mₜ} {m} {Γ : Ctx mₜ m} {Ψ : Usage m} {
                   (SD.⟦ ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
 ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg dγ dγ′ ih =
   ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {C = A ⇒[ mk-kind Many π₀ ] ν-type F φ}
-                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (anaM {F} {A} {φ} wf IR.Heap)
+                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (anaM {F = F} {A = A} {φ = φ} wf IR.Heap)
                          (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
      (RelS-bind ih (anaM-unfold {F} {A} {π₀} {φ} wf))
 
@@ -320,7 +320,7 @@ loopM-iter : ∀ {m} {A B : Ty m} {c c′ : ⟦ A ⇒[ mk-kind Many act ] (B TT.
            → RelD (A ⇒[ mk-kind Many act ] (B TT.+ A)) c c′
            → RelS (RelD (A ⇒[ mk-kind Many eff ] B))
                   (liftFn fmt ρ {A ⇒[ mk-kind Many act ] (B TT.+ A)} {A ⇒[ mk-kind Many eff ] B}
-                          (loopM {A} {B} IR.Heap) c)
+                          (loopM {A = A} {B = B} IR.Heap) c)
                   (return∞ (iter∞ c′))
 loopM-iter {A = A} {B = B} {c = c} {c′ = c′} r =
   ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) QA QB) (λ b → evalᴰ fmt ρ (IR.Iter applyIR) (c₀ , b)))
@@ -375,6 +375,6 @@ loop-body : ∀ {mₜ} {m} {Γ : Ctx mₜ m} {Ψ : Usage m} {A B : Ty mₜ}
                    (SD.⟦ loop {Γ = Γ} round ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
 loop-body {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} round dγ dγ′ ih =
   ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many act ] (B TT.+ A)} {C = A ⇒[ mk-kind Many eff ] B}
-                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (loopM {A} {B} IR.Heap)
+                         {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (loopM {A = A} {B = B} IR.Heap)
                          (elaborate IR.Heap round IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
      (RelS-bind ih (loopM-iter {A} {B}))

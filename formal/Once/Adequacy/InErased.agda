@@ -14,6 +14,7 @@
 -- `sem-In = ⟨_⟩∘coerce-μ-in`).
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -48,7 +49,7 @@ import Once.IR as IR
 
 -- `coerce-μ-in G X x` computes structurally, IGNORING the carrier `X`, so it
 -- commutes with a carrier subst.  Match-to-refl.
-coerce-μ-in-subst : ∀ (G : Functor) {X X' : Set} (p : X ≡ X') (x : ⟦ G ⟧F X)
+coerce-μ-in-subst : ∀ {m} (G : Fun m) {X X' : Set} (p : X ≡ X') (x : ⟦ G ⟧F X)
   → coerce-μ-in G X' (subst (λ Y → ⟦ G ⟧F Y) p x)
     ≡ subst (λ Y → ⟦ translateF Carrier Carrier G ⟧SF Y) p (coerce-μ-in G X x)
 coerce-μ-in-subst G refl x = refl
@@ -61,8 +62,8 @@ subst-diag : ∀ {H₁ H₂ : Once.Internal.Polynomial.SFunctor} (eq : H₁ ≡ 
 subst-diag refl z = refl
 
 -- The transported `In` morphism `realize` uses (Realize:156 / :104).
-In-ir : ∀ {F : Functor} → WellFormedF F → IR.IR ⌊ ⟦ F ⟧T (μ-type F) ⌋ ⌊ μ-type F ⌋
-In-ir {F} wfF = subst (λ o → IR.IR o ⌊ μ-type F ⌋)
+In-ir : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → IR.IR ⌊ ⟦ F ⟧T (μ-type F) ⌋ ⌊ μ-type F ⌋
+In-ir {F = F} wfF = subst (λ o → IR.IR o ⌊ μ-type F ⌋)
                       (sym (⌊⟧T-commute F (μ-type F)))
                       (IR.In (wf-⌊⌋ wfF))
 
@@ -91,9 +92,9 @@ subst-⟦⟧ᴰᴵ-fix refl x = refl
 -- trees — the domain transport peels (`evalᴰ-subst-dom`), the result
 -- transport moves into the `ret` leaf, and what remains is the μ-twin of
 -- `AnaErased.coerce-νin-erase-D` at the value.
-liftFn-In : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
+liftFn-In : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wfF : WFFun Δₖ F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
   → liftFn fmt ρ {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ return∞ (in-value wfF v)
-liftFn-In {F} wfF v =
+liftFn-In {F = F} wfF v =
   trans (cong (subst T∞ (cohᴰ (μ-type F)))
               (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF)) v′))
   (trans (cong (λ arg → subst T∞ (cohᴰ (μ-type F)) (evalᴰ fmt ρ (IR.In (wf-⌊⌋ wfF)) arg))

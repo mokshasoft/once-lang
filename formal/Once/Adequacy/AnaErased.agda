@@ -19,6 +19,7 @@
 -- Uses the codebase's accepted `bisimS-to-eq` axiom (as `sem-ana-Out-id` does).
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Fun; KCtx; WFFun; Base; b-var)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -72,13 +73,13 @@ open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 -- for the same reason `anaLayerS` is: a partial application handed to a
 -- higher-order function is opaque to the guardedness checker.
 mutual
-  sem-ana-anaS-bisim : ∀ {F : Functor} {A : Set} (coalg : A → Res (⟦ F ⟧F A)) (a : A)
+  sem-ana-anaS-bisim : ∀ {m} {F : Fun m} {A : Set} (coalg : A → Res (⟦ F ⟧F A)) (a : A)
     → sem-ana F coalg a
       ∼S anaS {translateF Carrier Carrier F} (λ x → mapRes (coerce-ν-in F A) (coalg x)) a
-  unfoldS-∼ (sem-ana-anaS-bisim {F} {A} coalg a) =
-    anaLayer-rel {F} {A} coalg (coalg a)
+  unfoldS-∼ (sem-ana-anaS-bisim {F = F} {A = A} coalg a) =
+    anaLayer-rel {F = F} {A = A} coalg (coalg a)
 
-  anaLayer-rel : ∀ {F : Functor} {A : Set} (coalg : A → Res (⟦ F ⟧F A))
+  anaLayer-rel : ∀ {m} {F : Fun m} {A : Set} (coalg : A → Res (⟦ F ⟧F A))
                    (r : Res (⟦ F ⟧F A))
     → Res-rel (⟦ translateF Carrier Carrier F ⟧SF-rel
                  (_∼S_ {translateF Carrier Carrier F}))
@@ -87,10 +88,10 @@ mutual
                    (λ y → mapRes (coerce-ν-in F A) (coalg y))
                    (mapRes (coerce-ν-in F A) r))
   anaLayer-rel coalg stopped     = rel-stopped
-  anaLayer-rel {F} {A} coalg (returns l) =
+  anaLayer-rel {F = F} {A = A} coalg (returns l) =
     rel-returns (sem-ana-anaS-rel coalg (translateF Carrier Carrier F) (coerce-ν-in F A l))
 
-  sem-ana-anaS-rel : ∀ {F : Functor} {A : Set} (coalg : A → Res (⟦ F ⟧F A))
+  sem-ana-anaS-rel : ∀ {m} {F : Fun m} {A : Set} (coalg : A → Res (⟦ F ⟧F A))
                        (H : SFunctor) (x : ⟦ H ⟧SF A)
     → ⟦ H ⟧SF-rel (_∼S_ {translateF Carrier Carrier F})
         (sfmapSemAna F H coalg x)
@@ -196,7 +197,7 @@ pushS⊗ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor} (p : H₁ ≡ H₁')
 pushS⊗ refl refl a b = refl
 
 -- surface-side layer value splits (mirror `ve-split`)
-VE0ᴰ : ∀ (G : Functor) (A : TT.Type) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
+VE0ᴰ : ∀ {m} (G : Fun m) (A : TT.Ty m) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
      → ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧T ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ
 VE0ᴰ G A v0 = subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF G) ⌊ A ⌋)
                     (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G A)) v0)
@@ -217,7 +218,7 @@ pushᴰ* refl refl u w = refl
 
 -- `VE0ᴰ` distributes over the constructors. The Val-level `ve-split*` had to
 -- commute a `forget` past both transports as well; here there is none.
-ve-split⊕₁ᴰ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ)
+ve-split⊕₁ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ)
   → VE0ᴰ (G₁ TT.⊕ G₂) A (inj₁ x0) ≡ inj₁ (VE0ᴰ G₁ A x0)
 ve-split⊕₁ᴰ G₁ G₂ A x0 =
   trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋))
@@ -225,7 +226,7 @@ ve-split⊕₁ᴰ G₁ G₂ A x0 =
         (pushᴰ+₁ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
                  (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0))
 
-ve-split⊕₂ᴰ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+ve-split⊕₂ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
   → VE0ᴰ (G₁ TT.⊕ G₂) A (inj₂ y0) ≡ inj₂ (VE0ᴰ G₂ A y0)
 ve-split⊕₂ᴰ G₁ G₂ A y0 =
   trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋))
@@ -233,7 +234,7 @@ ve-split⊕₂ᴰ G₁ G₂ A y0 =
         (pushᴰ+₂ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
                  (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0))
 
-ve-split⊗ᴰ : ∀ (G₁ G₂ : Functor) (A : TT.Type)
+ve-split⊗ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m)
                (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
   → VE0ᴰ (G₁ TT.⊗ G₂) A (x0 , y0) ≡ (VE0ᴰ G₁ A x0 , VE0ᴰ G₂ A y0)
 ve-split⊗ᴰ G₁ G₂ A x0 y0 =
@@ -250,13 +251,14 @@ private
 
 -- At a base leaf the two coercions are `forgetᵇ` at the erased and at the
 -- surface witness; `base-coh` and `cohᴰ` transport between them.
-base-in-D : ∀ {B : TT.Type} (b : IsBaseType B) (v0 : ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
+base-in-D : ∀ {m} {Δ : KCtx m} {B : TT.Ty m} (b : Base Δ B) (v0 : ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
   → subst id (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ b)) v0))
     ≡ coerce-full-to-base B (forgetᵇ b (subst id (cohᴰ B) v0))
 base-in-D base-Unit   v0 = refl
 base-in-D base-Int    v0 = refl
 base-in-D base-Float  v0 = refl
 base-in-D base-Void   ()
+base-in-D (b-var _)   ()
 base-in-D (b-* {A = A} {B = B} ba bb) (a , b) =
   trans (push× (base-coh A) (base-coh B)
                (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ ba)) a))
@@ -275,21 +277,21 @@ base-in-D (b-+ {A = A} {B = B} ba bb) (inj₂ b) =
 -- The erased and the surface ν introduction agree on a layer: structural on
 -- the functor's well-formedness (plan 0.105: the coercion forgets only at a
 -- base leaf, and only first-order values cross).
-coerce-νin-erase-D : ∀ {G : Functor} (wf : WellFormedF G) (A : TT.Type) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
+coerce-νin-erase-D : ∀ {m} {Δₖ : KCtx m} {G : Fun m} (wf : WFFun Δₖ G) (A : TT.Ty m) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
   → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh G)
        (coerce-ν-in ⌈ eraseF G ⌉F ⟦ A ⟧ᴰ
          (subst (λ Z → ⟦ ⌈ eraseF G ⌉F ⟧F Z) (cohᴰ A)
            (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G A v0))))
     ≡ coerce-ν-in G ⟦ A ⟧ᴰ
         (coerce-functor-D wf A (subst id (cohᴰ (TT.⟦ G ⟧T A)) v0))
-coerce-νin-erase-D {TT.K B} (wf-K b) A v0 =
+coerce-νin-erase-D {G = TT.K B} (wf-K b) A v0 =
     cong (subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (TT.K B)))
          (cong (coerce-ν-in ⌈ eraseF (TT.K B) ⌉F ⟦ A ⟧ᴰ)
                (subst-KF-const (cohᴰ A) (forgetᵇ (base-⌈⌉ (base-⌊⌋ b)) v0)))
   ⟫ pushSK (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ b)) v0))
   ⟫ base-in-D b v0
 coerce-νin-erase-D wf-Id A v0 = refl
-coerce-νin-erase-D {G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₁ x0) =
+coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₁ x0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ
              (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (cohᴰ A)
@@ -306,7 +308,7 @@ coerce-νin-erase-D {G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₁ x0) =
   ⟫ cong inj₁ (coerce-νin-erase-D w₁ A x0)
   ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Sum w₁ w₂) A z))
               (push⊎₁ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0))
-coerce-νin-erase-D {G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₂ y0) =
+coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₂ y0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ
              (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (cohᴰ A)
@@ -323,7 +325,7 @@ coerce-νin-erase-D {G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₂ y0) =
   ⟫ cong inj₂ (coerce-νin-erase-D w₂ A y0)
   ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Sum w₁ w₂) A z))
               (push⊎₂ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) y0))
-coerce-νin-erase-D {G₁ TT.⊗ G₂} (wf-Prod w₁ w₂) A (x0 , y0) =
+coerce-νin-erase-D {G = G₁ TT.⊗ G₂} (wf-Prod w₁ w₂) A (x0 , y0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊗ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧ᴰ
              (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟧F Z) (cohᴰ A)

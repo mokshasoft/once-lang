@@ -48,7 +48,7 @@ open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
 open import Once.Denotation.ValueRelPER using (RelD-sym)
 open import Once.Internal.Laws.SubLaws using (<:-trans)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret; RelS-embed; RelS-iter∞)
-open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; seqF∞-rel; cfD⁻¹-rel; cfD-rel; cμin-rel; sem-cata-rel; anaᴵ-rel; retargetˡ; retargetʳ)
+open import Once.Denotation.ValueRel using (RelD; RelS-mono; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; seqF∞-rel; cfD⁻¹-rel; cfD-rel; cμin-rel; sem-cata-rel; anaᴵ-rel; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (RelEnv; liftFn-rel; RelT′-refl)
 open import Once.Adequacy.EnvRel using (restrict-rel; lookup-rel; bind-rel)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
@@ -81,7 +81,7 @@ ana-clo-rel {A = A} {F = F} wf rc ra = anaᴵ-rel (λ ra′ → RelS-fmap (RelS-
 
 -- Related definitions environments: related calls, related references.
 RelDefs : DefsSem → DefsSem → Set
-RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ (x : String) (A : Type) → RelS (RelD A) (refs σ x A) (refs σ′ x A))
+RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ {m} (x : String) (A : Ty m) → RelS (RelD A) (refs σ x A) (refs σ′ x A))
 
 -- A conversion maps related values to related values.
 <:-rel : ∀ {m} {A B : Ty m} (p : A <: B) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD B (⟦ p ⟧<: x) (⟦ p ⟧<: y)
@@ -110,7 +110,6 @@ RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ (x : String) (A :
 <:-trans-rel sub-float q r = <:-rel q r
 <:-trans-rel sub-μ     q r = <:-rel q r
 <:-trans-rel sub-var q {()}
-<:-trans-rel sub-rigid q {()}
 <:-trans-rel (sub-arr {q = Zero} a b _) (sub-arr a′ b′ _) r =
   RelS-fmapˡ (RelS-fmap r (<:-trans-rel b b′)) (λ z → z)
 <:-trans-rel (sub-arr {q = One} a b _) (sub-arr a′ b′ _) r rx =
@@ -125,7 +124,7 @@ RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ (x : String) (A :
 <:-trans-rel (sub-ν _) (sub-ν _) r = r
 
 -- The identity conversion on the right.
-<:-refl-relʳ : ∀ A {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A x (⟦ <:-refl A ⟧<: y)
+<:-refl-relʳ : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A x (⟦ <:-refl A ⟧<: y)
 <:-refl-relʳ A r = RelD-sym A (<:-refl-rel A (RelD-sym A r))
 
 module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
@@ -135,6 +134,11 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
             → RelS (RelD Y) (SD.sigOpˢ fmt σ si a) (SD.sigOpˢ fmt σ′ si a′)
   sigOp-rel si r with base-eq (baseA si) r | proj₂ (proj₁ rσ)
   ... | refl | e rewrite e = RelS-embed (RelT′-refl (base-refl (conB si)) _)
+
+  -- A comparison's result type `Unit + Unit` is closed: related at one index, at any.
+  bool-rel : ∀ {m m′} {x y} → RelD {m} (Unit + Unit) x y → RelD {m′} (Unit + Unit) x y
+  bool-rel {x = inj₁ _} {inj₁ _} r = r
+  bool-rel {x = inj₂ _} {inj₂ _} r = r
 
   -- An external operation's meaning, related at its ground type.
   sigOpSem-rel : (A : Type) (name : Once.Spec.Name.CanonicalName) (c : Once.Internal.Type.WellFormed.IsConcrete A)
@@ -220,17 +224,17 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   SD-rel (mod' {Γ = Γ} a b) r =
     RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel mod-info (ra , rb)
   SD-rel (lt {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel lt-info (ra , rb)
+    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel lt-info (ra , rb))
   SD-rel (le {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel le-info (ra , rb)
+    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel le-info (ra , rb))
   SD-rel (gt {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel gt-info (ra , rb)
+    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel gt-info (ra , rb))
   SD-rel (ge {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel ge-info (ra , rb)
+    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel ge-info (ra , rb))
   SD-rel (eq {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel eq-info (ra , rb)
+    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel eq-info (ra , rb))
   SD-rel (ne {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel ne-info (ra , rb)
+    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel ne-info (ra , rb))
   SD-rel (i2f a) r = RelS-bind (SD-rel a r) (sigOp-rel i2f-info)
   SD-rel (neg a) r = RelS-bind (SD-rel a r) (sigOp-rel neg-info)
   SD-rel (coerce p e) r = RelS-fmap (SD-rel e r) (<:-rel p)
@@ -238,9 +242,9 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   SD-rel (morph-app {Γ = Γ} {A = A} {B = B} ir e) r =
     RelS-bind (SD-rel e (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
   SD-rel (cata {Γ = Γ} {F = F} {A = A} {π = π} wf alg) r =
-    RelS-bind (SD-rel alg (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {F} {A} {π} wf ralg)
+    RelS-bind (SD-rel alg (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {A = A} {F = F} {π = π} wf ralg)
   SD-rel (ana {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg) r =
-    RelS-bind (SD-rel coalg (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
+    RelS-bind (SD-rel coalg (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {A = A} {F = F} {φ = φ} wf rc ra))
   SD-rel (loop {Γ = Γ} {A = A} {B = B} round) r =
     RelS-bind (SD-rel round (restrict-rel {Γ = Γ} _ r)) λ {c} {c′} rc →
       relS-ret (λ ra → RelS-iter∞ {RB = RelD B} {S = RelD (B + A)} {f = c} {f′ = c′}
