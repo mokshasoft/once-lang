@@ -1,0 +1,28 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D317: a server is the anamorphism into `Eff`, and `Eff` need not stop. Each
+-- round emits its counter and continues with the next one; no round ends the
+-- loop (`Void + Int`), so the program never terminates.
+--
+-- Observed by `foreverCases` (Layer5Spec): still running when the timeout
+-- stops it, and its trace starts 0, 1, 2, 3, 4. It has no expected exit, so
+-- tests/run-exit-tests*.sh skip it.
+--
+-- FAILS until plan 0.35 (allocator interface integration): each round
+-- allocates its next state on the bump heap, which nothing reclaims, so the
+-- 64 KiB heap fills after a few thousand rounds and the binary segfaults.
+
+import I.Test.Emit as E
+
+next : Int -> Void + Int
+next n = inr (n + 1)
+
+round : Act Int (Void + Int)
+round = compose next (compose snd (pair (compose emit@E id) id))
+
+serve : Eff Int Void
+serve = ana round
+
+main : Eff Unit Void
+main = compose serve (\_ -> 0)

@@ -1,0 +1,23 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D317 item 5: a round that performs no event is allowed, and a loop of them
+-- is a correct program that is never observed doing anything: what it does
+-- never arrives. The compiler warns that the round is silent.
+--
+-- Observed by `foreverCases` (Layer5Spec): still running when the timeout
+-- stops it, with an empty trace. It has no expected exit, so
+-- tests/run-exit-tests*.sh skip it.
+--
+-- FAILS until plan 0.35 (allocator interface integration): each round
+-- allocates its next state on the bump heap, which nothing reclaims, so the
+-- 64 KiB heap fills after a few thousand rounds and the binary segfaults.
+
+next : Int -> Void + Int
+next n = inr (n + 1)
+
+spin : Eff Int Void
+spin = ana next
+
+main : Eff Unit Void
+main = compose spin (\_ -> 0)

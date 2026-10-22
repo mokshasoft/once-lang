@@ -14,7 +14,7 @@ module Layer5Spec (layer5Tests) where
 
 import Test.Tasty
 
-import Backend.Common (exitCases, traceCases)
+import Backend.Common (exitCases, traceCases, foreverCases)
 
 layer5Tests :: TestTree
 layer5Tests = testGroup "Layer5"
@@ -61,6 +61,17 @@ layer5Tests = testGroup "Layer5"
       -- code (the sum, 6) alone would not.
       , traceCases "the loop's round runs once per layer, in order (D309)"
                    "loop-emit" [3, 2, 1, 0] 6
+      ]
+  , testGroup "a server never ends (D317)"
+      -- FAILING until plan 0.35 (allocator interface integration) wires the
+      -- allocator and its `free`. Each round allocates its next state on the
+      -- bump heap, which is never reclaimed, so the 64 KiB heap fills after a
+      -- few thousand rounds and the next allocation writes past its end: the
+      -- binary segfaults (139) instead of running on. The apex does not see
+      -- this because it assumes `HeapRoom`, which no finite heap satisfies
+      -- for a loop whose rounds allocate.
+      [ foreverCases "a server that emits each round runs on" "loop-forever-emit" [0, 1, 2, 3, 4]
+      , foreverCases "a silent server runs on and is never observed" "loop-forever-silent" []
       ]
   ]
 

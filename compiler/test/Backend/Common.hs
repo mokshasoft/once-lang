@@ -32,6 +32,7 @@ module Backend.Common
   , buildAndRunTraceOn
   , buildAndRunTraceFile
   , traceCases
+  , foreverCases
   , archWordBytes
   , decodeTrace
   , signedAt
@@ -210,6 +211,58 @@ traceCases label name emitted expected =
                           emitted (map (signedAt a) ws)
               assertEqual ("[" ++ archName a ++ "] exit code") expected code
     | a <- backendArches ]
+
+-- | A `.once` FILE that must never end (D317: a server is the anamorphism into
+-- `Eff`, which need not stop). On every backend arch it is run for `foreverSecs`
+-- seconds and must still be running when `timeout` stops it (status 124), with
+-- a trace that starts with `prefix` (empty: the trace stays empty, D317 item 5,
+-- "never arrives"). Only the bytes of the prefix are read: an endless emitter
+-- writes megabytes in that time.
+foreverCases :: String -> String -> [Integer] -> TestTree
+foreverCases label name prefix =
+  testGroup label
+    [ testCase (archName a) $ do
+        r <- buildAndRunForever a name
+        case r of
+          Left err -> assertFailure err
+          Right (out, code) -> do
+            assertEqual ("[" ++ archName a ++ "] still running when stopped (timeout's status)")
+                        124 code
+            case decodeTrace a out of
+              Left err -> assertFailure ("[" ++ archName a ++ "] " ++ err)
+              Right ws -> assertEqual ("[" ++ archName a ++ "] the trace's first words")
+                                      prefix (map (signedAt a) ws)
+    | a <- backendArches ]
+  where
+    buildAndRunForever arch nm = do
+      let tag     = archName arch
+          testDir = "/tmp/once_forever_" ++ tag ++ "_" ++ nm
+          exeFile = testDir </> nm
+          want    = length prefix * archWordBytes arch
+      createDirectoryIfMissing True testDir
+      (buildExit, _out, buildErr) <- runOnceArch arch
+        [ "build", "--target", tag, "--exe"
+        , "--strata", testStrataDir, "test/" ++ nm ++ ".once", "-o", exeFile ]
+      case buildExit of
+        ExitFailure _ -> do
+          cleanupDir testDir
+          pure (Left ("[" ++ tag ++ "] build failed: " ++ buildErr))
+        ExitSuccess -> do
+          let outPath = testDir </> "stdout.bin"
+          code <- withFile outPath WriteMode $ \h -> do
+            (_, _, _, ph) <- createProcess
+              (proc "timeout" ([show foreverSecs] ++ archRunPrefix arch ++ [exeFile]))
+                { std_out = UseHandle h }
+            runExit <- waitForProcess ph
+            pure (case runExit of ExitSuccess -> 0; ExitFailure c -> c)
+          raw <- BS.readFile outPath
+          let out = map (toEnum . fromIntegral) (BS.unpack (BS.take want raw))
+          length out `seq` cleanupDir testDir
+          pure (Right (out, code))
+
+-- | How long a never-ending program runs before it is stopped.
+foreverSecs :: Int
+foreverSecs = 1
 
 -- | Common type variables for tests
 tA, tB :: Type
