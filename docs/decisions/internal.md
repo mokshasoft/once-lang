@@ -100,7 +100,7 @@ decision-log entry updates the rule it changes here, in the same commit.
   (a hypothesis), never undefined. (D090, D208; GOAL.md "unlimited memory")
 - **`--alloc` selects the allocator** behind dynamic calls (bump, malloc,
   mempool, arena), not a placement mode; it is parsed but unwired until the
-  allocator subsystem (plan 0.35) is. (D142 ← D014)
+  allocator subsystem (plan 0.123 Part B) is. (D142 ← D014)
 
 ## 5. The machine models and the correspondence
 

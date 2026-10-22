@@ -103,10 +103,10 @@ blocks-disjoint-impl {addr₁ = .(heap-loc (mkHeapRef _) 0)} {addr₂ = .(heap-l
   addr-≢ (cong (λ r → heap-loc r 0) (cong heap-ref slot-≡))
 
 ------------------------------------------------------------------------
--- Deallocation (Plan 0.35 M1).
+-- Deallocation (Plan 0.123 B M1).
 --
 -- The bump counter cannot reclaim, so `free` is a no-op — the abstract
--- heap leaks. This honestly satisfies the interface today; Plan 0.35 M7
+-- heap leaks. This honestly satisfies the interface today; Plan 0.123 B M7
 -- upgrades it to a reusing free-list once net-zero conservation is proved
 -- (that change reshapes `State` from a counter and is intentionally NOT
 -- done here, as it cascades into SMCore's AllocState).
@@ -116,7 +116,7 @@ free-impl : HeapLocation → State → State
 free-impl _ s = s
 
 ------------------------------------------------------------------------
--- Liveness-aware freshness (Plan 0.35 M1).
+-- Liveness-aware freshness (Plan 0.123 B M1).
 --
 -- The address `alloc-impl` hands out at state s — `heap-loc (mkHeapRef s) 0`
 -- — differs from every block live in the pre-state (its ref-id < s). Since

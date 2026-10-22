@@ -65,7 +65,7 @@ record AllocatorInterface
 
     -- Deallocation operation: return a block to the allocator.
     -- (malloc-like interface; Place emits `free` at last-consumer points —
-    -- Plan 0.35.) A reusing allocator (Mempool/Slab) makes the block
+    -- Plan 0.123 Part B.) A reusing allocator (Mempool/Slab) makes the block
     -- available again; the trivial bump allocator's `free` is a no-op.
     free : Address → State → State
 
@@ -94,7 +94,7 @@ record AllocatorInterface
     -- differs from every block live in the PRE-state. Combined with
     -- `blocks-disjoint` this gives "the new block is disjoint from every
     -- currently-live block" — the fact the conservation/simulation layer
-    -- (Plan 0.35 M6/M7) consumes. For a monotone allocator the fresh ref
+    -- (Plan 0.123 B M6/M7) consumes. For a monotone allocator the fresh ref
     -- exceeds all prior refs; for a reusing allocator the popped slot is, by
     -- construction, not currently live. Each instance proves it.
     alloc-fresh :

@@ -9,7 +9,7 @@
 -- stops it, with an empty trace. It has no expected exit, so
 -- tests/run-exit-tests*.sh skip it.
 --
--- FAILS until plan 0.35 (allocator interface integration): each round
+-- FAILS until plan 0.123 Part B (the proven allocators reclaim): each round
 -- allocates its next state on the bump heap, which nothing reclaims, so the
 -- 64 KiB heap fills after a few thousand rounds and the binary segfaults.
 

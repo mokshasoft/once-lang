@@ -63,7 +63,7 @@ layer5Tests = testGroup "Layer5"
                    "loop-emit" [3, 2, 1, 0] 6
       ]
   , testGroup "a server never ends (D317)"
-      -- FAILING until plan 0.35 (allocator interface integration) wires the
+      -- FAILING until plan 0.123 Part B (the proven allocators reclaim) wires the
       -- allocator and its `free`. Each round allocates its next state on the
       -- bump heap, which is never reclaimed, so the 64 KiB heap fills after a
       -- few thousand rounds and the next allocation writes past its end: the

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Allocator.ReuseFreshness
 --
--- Plan 0.35 — load-bearing POC for the "reuse is sound" claim.
+-- Plan 0.123 Part B — load-bearing POC for the "reuse is sound" claim.
 --
 -- The plan rests on: a freed-then-reallocated block reuses an address in
 -- LOCKSTEP across the abstract and concrete allocators, and the interface's

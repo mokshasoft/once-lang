@@ -2,11 +2,11 @@
 # reason. The list only shrinks: repair a module, then delete its line. A new
 # entry needs a reason and the reviewer's agreement (MERGE.md §5).
 #
-# Stale import lists / dead names after a refactor (plan 0.35: the allocator is unwired)
-Once.Allocator.BumpAllocator        # AllocBump facade changed; unwired (plan 0.35)
-Once.Allocator.Mempool              # unwired allocator (plan 0.35)
-Once.Allocator.ReuseFreshness       # unwired allocator (plan 0.35)
-Once.Allocator.Slab                 # unwired allocator (plan 0.35)
+# Stale import lists / dead names after a refactor (plan 0.123 Part B: the allocator is unwired)
+Once.Allocator.BumpAllocator        # AllocBump facade changed; unwired (plan 0.123 Part B)
+Once.Allocator.Mempool              # unwired allocator (plan 0.123 Part B)
+Once.Allocator.ReuseFreshness       # unwired allocator (plan 0.123 Part B)
+Once.Allocator.Slab                 # unwired allocator (plan 0.123 Part B)
 Once.CCC.Machine.IR.MuValidity      # Allocation no longer exports what it uses
 # The pre-D179 Category/optimizer stack (uses the retired `eval`)
 Once.Category.Laws                  # `eval` not in scope

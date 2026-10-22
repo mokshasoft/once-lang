@@ -34,9 +34,9 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 
 | Plan | State | What remains |
 |---|---|---|
-| 0.86 allocation is mechanical | open | the machine half of step D, B′, C, F, `Allocator` rename |
+| 0.86 allocation is mechanical | open | the machine half of step D, B′, C, `Allocator` rename (F moved to 0.123) |
 | 0.87 stack-resident I/O | not started | re-prove the correspondence with stack pointers |
-| 0.35 allocator interface | M1 done | M2–M8 (free, wiring, leak-freedom, variable-size) |
+| 0.123 memory runs out observably | after the merge | A: out of memory is a Spec end + the Host's `exhaust` (removes `HeapRoom`/`StackRoom`/`CallRoom`); B: wire the proven allocators, `free`, reclaim per loop round, leak-freedom (was 0.35 and 0.86 F) |
 | 0.39 trace-correct optimizer | open | restate over traces, discharge `opt-trace` |
 | 0.64 proof-island audit | open | group O (the optimizer chain; overlaps 0.39) and verdicts |
 | 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |

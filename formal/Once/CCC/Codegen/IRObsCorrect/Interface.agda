@@ -509,7 +509,7 @@ module Core {FS : FrameSemantics} where
       -- the heap" is defined there as "ref-id below the frontier", which is
       -- true of a bump allocator and FALSE of a reusing one: a freed-then-
       -- reallocated `Mempool`/`Slab` slot has a low ref-id and is not the
-      -- caller's live data. Plan 0.35 M2 replaces that notion with the
+      -- caller's live data. Plan 0.123 B M2 replaces that notion with the
       -- allocator interface's liveness property; until it does, anything
       -- stated over heap locations is instance-specific.
       --
@@ -533,7 +533,7 @@ module Core {FS : FrameSemantics} where
                  → SMCore.MemOps.readLoc (floc settle) (AtStack fr j)
                    ≡ SMCore.MemOps.readLoc s (AtStack fr j)
 
-      -- CONTINGENT on the bump encoding; to be restated as 0.35 M2's liveness
+      -- CONTINGENT on the bump encoding; to be restated as 0.123 B M2's liveness
       -- property when the allocator is wired.
       heap-pres  : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → ∀ (hl : HeapLocation)
                  → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
