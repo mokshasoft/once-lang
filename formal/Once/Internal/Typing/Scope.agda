@@ -6,12 +6,15 @@
 -- Once.Internal.Typing.Scope — what is in scope where a term is typed.
 --
 -- A typing context (`NamedCtx`) holds:
+--   * the kinds of the type variables of the definition being typed (`kinds`):
+--     a polymorphic definition's body is typed once, over its parameters;
 --   * the local variables, twice: by name (`named`, innermost first) and as
---     the de Bruijn context the derivation is indexed by (`debruijn`);
---   * the program's monomorphic definitions in scope (`imports`);
+--     the de Bruijn context the derivation is indexed by (`debruijn`), typed
+--     over those type variables;
+--   * the program's monomorphic definitions in scope (`imports`, ground);
 --   * its polymorphic definitions, as a telescope (`polys`): each entry's
 --     prefix holds only the definitions declared before it;
---   * its signature Σ, the declared external operations (`sig`).
+--   * its signature Σ, the declared external operations (`sig`, ground).
 --
 -- `classifyAppHead` recognises the applied generators that have typing rules
 -- of their own; the general application rule applies to every other head.
@@ -33,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (map′)
 open import Once.Spec.Grade using (Quantity; Many)
-open import Once.Spec.Type using (Type)
+open import Once.Spec.Type using (Ty; Type; KCtx)
 open import Once.Internal.Type.Poly using (PolyType)
 open import Once.Spec.Name using (canonical; gen; generatorNS)
 open import Once.Internal.Syntax using (RawExpr)
@@ -45,21 +48,21 @@ import Once.Internal.Context as Surface
 -- Local variables, by name
 ------------------------------------------------------------------------
 
-record Binding : Set where
+record Binding (m : ℕ) : Set where
   constructor mkBinding
   field
     name     : String
-    type     : Type
+    type     : Ty m
     quantity : Quantity
 
 open Binding
 
 -- The most recent binding first.
-Ctx : Set
-Ctx = List Binding
+Ctx : ℕ → Set
+Ctx m = List (Binding m)
 
 -- Extend with a binding of unrestricted usage.
-extendCtx : Ctx → String → Type → Ctx
+extendCtx : ∀ {m} → Ctx m → String → Ty m → Ctx m
 extendCtx Γ x A = mkBinding x A Many ∷ Γ
 
 ------------------------------------------------------------------------
@@ -92,34 +95,35 @@ lookupPolyPrefix ((n , s , b) ∷ rest) x with StrProp._≟_ n x
 -- The typing context
 ------------------------------------------------------------------------
 
-record NamedCtx : Set where
+record NamedCtx (m : ℕ) : Set where
   constructor mkCtx
   field
     size        : ℕ
-    named       : Ctx
-    debruijn    : Surface.Ctx size
+    named       : Ctx m
+    debruijn    : Surface.Ctx m size
     imports     : Imports
     polys       : PolyCtx
     sig         : Imports
+    kinds       : KCtx m
 
-extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ imps polys sg) x A =
-  mkCtx (suc n) (extendCtx Γ x A) (Δ , A ^ Many) imps polys sg
+extendNamedCtx : ∀ {m} → NamedCtx m → String → Ty m → NamedCtx m
+extendNamedCtx (mkCtx n Γ Δ imps polys sg κ) x A =
+  mkCtx (suc n) (extendCtx Γ x A) (Δ , A ^ Many) imps polys sg κ
 
 -- A local variable: the innermost binding of the name, as a de Bruijn
 -- variable of the context.
 -- (Top-level steps, not `with`: a proof follows the lookup by the decision
 -- and the inner result it is given.)
-lookupLocal-go : ∀ {m} (x : String) (Γ : Ctx) (Δ' : Surface.Ctx m)
+lookupLocal-go : ∀ {k m} (x : String) (Γ : Ctx k) (Δ' : Surface.Ctx k m)
                → Maybe (∃[ A ] ∃[ Ψ ] (SVar Δ' Ψ A))
 -- the outer binder, past an inner result
-lookupLocal-next : ∀ {m} {Δ' : Surface.Ctx m} {B q} → Maybe (∃[ A ] ∃[ Ψ ] (SVar Δ' Ψ A))
+lookupLocal-next : ∀ {k m} {Δ' : Surface.Ctx k m} {B q} → Maybe (∃[ A ] ∃[ Ψ ] (SVar Δ' Ψ A))
                  → Maybe (∃[ A ] ∃[ Ψ ] (SVar (Δ' , B ^ q) Ψ A))
 lookupLocal-next nothing                 = nothing
 lookupLocal-next (just (A , Ψ , svar i)) = just (_ , _ , svar (suc i))
 
 -- the innermost binder: the name's, or the lookup goes on
-lookupLocal-at : ∀ {m} (x : String) (b : Binding) (Γ' : Ctx) (Δ' : Surface.Ctx m) {B q}
+lookupLocal-at : ∀ {k m} (x : String) (b : Binding k) (Γ' : Ctx k) (Δ' : Surface.Ctx k m) {B q}
                → Dec (x ≡ name b) → Maybe (∃[ A ] ∃[ Ψ ] (SVar (Δ' , B ^ q) Ψ A))
 lookupLocal-at x b Γ' Δ' (yes _) = just (_ , _ , svar zero)
 lookupLocal-at x b Γ' Δ' (no _)  = lookupLocal-next (lookupLocal-go x Γ' Δ')
@@ -129,7 +133,7 @@ lookupLocal-go x [] (_ , _ ^ _) = nothing
 lookupLocal-go x (_ ∷ _) Surface.∅ = nothing
 lookupLocal-go x (b ∷ Γ') (Δ' , B ^ _) = lookupLocal-at x b Γ' Δ' (Data.String._≟_ x (name b))
 
-lookupLocal : (ctx : NamedCtx) → String
+lookupLocal : ∀ {m} (ctx : NamedCtx m) → String
             → Maybe (∃[ A ] ∃[ Ψ ] (SVar (NamedCtx.debruijn ctx) Ψ A))
 lookupLocal ctx x = lookupLocal-go x (NamedCtx.named ctx) (NamedCtx.debruijn ctx)
 

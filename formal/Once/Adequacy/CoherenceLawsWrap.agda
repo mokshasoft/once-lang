@@ -164,7 +164,7 @@ module _ {n} {Γ : Ctx n} where
 module _ {n} {Γ : Ctx n} where
   ana-cong : ∀ {Ψ F A π₀ φ} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Spec.Grade.fin φ) ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ ana wf g′
   ana-cong {Ψ} {F} {A} {π₀} {φ} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {Ψ} {F} {A} {π₀} {φ} wf {g} {g′} h1)
-  loop-cong : ∀ {Ψ A B} {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many Once.Spec.Grade.act ] (B Once.Internal.Type.+ A))} → g ≈ g′ → loop {Γ = Γ} g ≈ loop g′
+  loop-cong : ∀ {Ψ A B} {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A))} → g ≈ g′ → loop {Γ = Γ} g ≈ loop g′
   loop-cong {Ψ} {A} {B} {g} {g′} (≈-intro h1) = ≈-intro (loop-congˢ {Γ = Γ} {Ψ} {A} {B} {g} {g′} h1)
 
 module _ {n} {Γ : Ctx n} where

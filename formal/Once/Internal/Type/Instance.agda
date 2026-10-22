@@ -27,7 +27,7 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String; _≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
-open import Once.Spec.Type using (Ty; Type; var; Unit)
+open import Once.Spec.Type using (Ty; Type; var; Unit; KCtx; Base)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 import Data.Maybe as Maybe
@@ -116,8 +116,10 @@ rigidOf T = substPoly (rigidSubst T) T
 -- Kinded instances: what a use may be at
 ------------------------------------------------------------------------
 
-RespectsKinds : PolyType → (String → Type) → Set
-RespectsKinds T θ = ∀ {x} → x ∈ ftvK T → IsBaseType (θ x)
+-- Over the kinds `Δ` of the type variables in scope where the use is typed
+-- (`∅ₖ` for a ground use).
+RespectsKinds : ∀ {m} → KCtx m → PolyType → (String → Ty m) → Set
+RespectsKinds Δ T θ = ∀ {x} → x ∈ ftvK T → Base Δ (θ x)
 
-KindedInstance : PolyType → Type → Set
-KindedInstance T U = Σ[ θ ∈ (String → Type) ] (substPoly θ T ≡ U) × RespectsKinds T θ
+KindedInstance : ∀ {m} → KCtx m → PolyType → Ty m → Set
+KindedInstance Δ T U = Σ[ θ ∈ (String → Ty _) ] (substPoly θ T ≡ U) × RespectsKinds Δ T θ

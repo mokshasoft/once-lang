@@ -5,7 +5,7 @@
 ------------------------------------------------------------------------
 -- Once.Internal.Context — typing contexts and usage vectors.
 --
--- A context `Ctx n` lists `n` typed variables, each with a declared usage
+-- A context `Ctx m n` lists `n` variables typed over `m` type variables, each with a declared usage
 -- quantity; variables are de Bruijn indices `Fin n`, `Fin.zero` the innermost.
 -- A `Usage n` records how many times a term uses each variable; usages add
 -- (`+ᵘ`, two subterms), scale (`*ᵘ`, a subterm under a binder used `q` times)
@@ -19,28 +19,28 @@ open import Data.Fin using (Fin)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
 open import Once.Type.Grade using (_⊔q_)
-open import Once.Spec.Type using (Type; Unit; _*_)
+open import Once.Spec.Type using (Ty; Unit; _*_)
 
 -- | Typing context (de Bruijn indexed with quantities)
 --
--- Ctx n represents a context with n variables.
+-- Ctx m n represents a context with n variables, typed over m type variables.
 -- Variables are indexed by Fin n (0 to n-1).
 -- Each variable has a type and a quantity (usage annotation).
 --
-data Ctx : ℕ → Set where
-  ∅   : Ctx 0
-  _,_^_ : ∀ {n} → Ctx n → Type → Quantity → Ctx (ℕ.suc n)
+data Ctx (m : ℕ) : ℕ → Set where
+  ∅   : Ctx m 0
+  _,_^_ : ∀ {n} → Ctx m n → Ty m → Quantity → Ctx m (ℕ.suc n)
 
 infixl 5 _,_^_
 
 -- | Smart constructor: extend context with unrestricted quantity
-_,_ : ∀ {n} → Ctx n → Type → Ctx (ℕ.suc n)
+_,_ : ∀ {m n} → Ctx m n → Ty m → Ctx m (ℕ.suc n)
 Γ , A = Γ , A ^ Many
 
 infixl 5 _,_
 
 -- | Lookup type at position in context
-lookup : ∀ {n} → Ctx n → Fin n → Type
+lookup : ∀ {m n} → Ctx m n → Fin n → Ty m
 lookup (Γ , A ^ q) Fin.zero    = A
 lookup (Γ , _ ^ _) (Fin.suc i) = lookup Γ i
 
@@ -48,7 +48,7 @@ lookup (Γ , _ ^ _) (Fin.suc i) = lookup Γ i
 --   (A₀,…,Aₙ₋₁) ↦ (…((Unit * A₀) * A₁) … * Aₙ₋₁). Pure `Ctx → Type` — it lives
 --   here (with `Ctx`/`Type`), NOT in `Surface.Elaborate`, so the denotational
 --   meaning can take it without importing the (operational) elaborator (0.47).
-⟦_⟧ᶜ : ∀ {n} → Ctx n → Type
+⟦_⟧ᶜ : ∀ {m n} → Ctx m n → Ty m
 ⟦ ∅ ⟧ᶜ         = Unit
 ⟦ Γ , A ^ q ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
 
@@ -96,8 +96,8 @@ infixl 55 _⊔ᵘ_
 ------------------------------------------------------------------------
 -- A variable of the context, used once
 ------------------------------------------------------------------------
-data SVar : ∀ {n} → Ctx n → Usage n → Type → Set where
-  svar : ∀ {n} {Γ : Ctx n} (i : Fin n) → SVar Γ (singleUse i One) (lookup Γ i)
+data SVar {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
+  svar : ∀ {n} {Γ : Ctx m n} (i : Fin n) → SVar Γ (singleUse i One) (lookup Γ i)
 
 ------------------------------------------------------------------------
 -- Usage-restricted contexts
@@ -117,7 +117,7 @@ liveCount (Many ∷ Ψ)   = ℕ.suc (liveCount Ψ)
 -- | Restrict a context to the variables a usage vector uses. `Usage`'s head
 --   is `Fin.zero`, which is the context's RIGHTMOST (innermost) binding, so
 --   the two structures line up cons-for-cons.
-_↾_ : ∀ {n} → Ctx n → (Ψ : Usage n) → Ctx (liveCount Ψ)
+_↾_ : ∀ {m n} → Ctx m n → (Ψ : Usage n) → Ctx m (liveCount Ψ)
 ∅           ↾ []         = ∅
 (Γ , A ^ q) ↾ (Zero ∷ Ψ) = Γ ↾ Ψ
 (Γ , A ^ q) ↾ (One  ∷ Ψ) = (Γ ↾ Ψ) , A ^ q

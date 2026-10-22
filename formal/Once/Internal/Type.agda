@@ -13,8 +13,9 @@
 --   Functor, ⟦ F ⟧T X       the ground functors `Fun 0` and their action;
 --   TKind, k-base, k-any    the Spec's kinds `Kind`, `base`, `any`;
 --
--- and the compiler's own helpers over them: the pure arrows at each usage and
--- the deciders `isVoid?`, `isUnit?`.
+-- and the compiler's own helpers over them: a ground type read over `m` type
+-- variables (`wk₀`), the pure arrows at each usage and the deciders `isVoid?`,
+-- `isUnit?`.
 ------------------------------------------------------------------------
 
 module Once.Internal.Type where
@@ -23,7 +24,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
 open import Once.Spec.Type
-  using (Ty; Type; Fun; Kind; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; base; any; ⟦_⟧F)
+  using (Ty; Type; Fun; Kind; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; base; any; ⟦_⟧F; _⟨_⟩)
 
 pattern μ-type F = μ F
 pattern ν-type F φ = ν F φ
@@ -37,8 +38,12 @@ TKind = Kind
 pattern k-base = base
 pattern k-any = any
 
+-- A ground type, as a type over `m` type variables (it mentions none).
+wk₀ : ∀ {m} → Type → Ty m
+wk₀ A = A ⟨ (λ ()) ⟩
+
 -- A functor applied to a type.
-⟦_⟧T : Functor → Type → Type
+⟦_⟧T : ∀ {m} → Fun m → Ty m → Ty m
 ⟦_⟧T = ⟦_⟧F
 
 -- The pure arrows at each usage: linear, unrestricted, erased.

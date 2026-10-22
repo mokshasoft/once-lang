@@ -181,14 +181,14 @@ pushSK⁻ refl v = refl
 -- pushing the `⌈⟧TI-commute` transport through, which is `push-+ᴰ₁⁻`.
 out-layer-gen-⊕₁ : ∀ (G₁ G₂ : Functor) (wfA : WellFormedF G₁) (wfB : WellFormedF G₂)
     (A : Type) (w : ⟦ translateF Carrier Carrier ⌈ eraseF G₁ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-  → out-layer-gen (G₁ Once.Internal.Type.⊕ G₂) (wf-Sum wfA wfB) A (inj₁ w)
+  → out-layer-gen (G₁ Once.Spec.Type.⊕ G₂) (wf-Sum wfA wfB) A (inj₁ w)
     ≡ inj₁ (out-layer-gen G₁ wfA A w)
 out-layer-gen-⊕₁ G₁ G₂ wfA wfB A w =
   push-+ᴰ₁⁻ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋) _
 
 out-layer-gen-⊕₂ : ∀ (G₁ G₂ : Functor) (wfA : WellFormedF G₁) (wfB : WellFormedF G₂)
     (A : Type) (w : ⟦ translateF Carrier Carrier ⌈ eraseF G₂ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-  → out-layer-gen (G₁ Once.Internal.Type.⊕ G₂) (wf-Sum wfA wfB) A (inj₂ w)
+  → out-layer-gen (G₁ Once.Spec.Type.⊕ G₂) (wf-Sum wfA wfB) A (inj₂ w)
     ≡ inj₂ (out-layer-gen G₂ wfB A w)
 out-layer-gen-⊕₂ G₁ G₂ wfA wfB A w =
   push-+ᴰ₂⁻ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋) _
@@ -196,7 +196,7 @@ out-layer-gen-⊕₂ G₁ G₂ wfA wfB A w =
 out-layer-gen-⊗ : ∀ (G₁ G₂ : Functor) (wfA : WellFormedF G₁) (wfB : WellFormedF G₂)
     (A : Type) (a : ⟦ translateF Carrier Carrier ⌈ eraseF G₁ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
                 (b : ⟦ translateF Carrier Carrier ⌈ eraseF G₂ ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-  → out-layer-gen (G₁ Once.Internal.Type.⊗ G₂) (wf-Prod wfA wfB) A (a , b)
+  → out-layer-gen (G₁ Once.Spec.Type.⊗ G₂) (wf-Prod wfA wfB) A (a , b)
     ≡ (out-layer-gen G₁ wfA A a , out-layer-gen G₂ wfB A b)
 out-layer-gen-⊗ G₁ G₂ wfA wfB A a b =
   push-*ᴰ⁻ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋) _ _
@@ -213,26 +213,26 @@ base-out : ∀ (B : Type) (ib : IsBaseType B) (A : Type)
 base-out _ base-Unit   A ℓ = refl
 base-out _ base-Int    A ℓ = refl
 base-out _ base-Float  A ℓ = refl
-base-out (X Once.Internal.Type.* Y) (base-Prod ibA ibB) A (a , b) =
-  trans (cong (λ z → subst id (cohᴰ (X Once.Internal.Type.* Y))
-                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Internal.Type.* Y)) A))
-                    (out-layer-gen (Once.Spec.Type.K (X Once.Internal.Type.* Y))
+base-out (X Once.Spec.Type.* Y) (base-Prod ibA ibB) A (a , b) =
+  trans (cong (λ z → subst id (cohᴰ (X Once.Spec.Type.* Y))
+                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Spec.Type.* Y)) A))
+                    (out-layer-gen (Once.Spec.Type.K (X Once.Spec.Type.* Y))
                                    (wf-K (base-Prod ibA ibB)) A z)))
               (push×⁻ (base-coh X) (base-coh Y) a b))
   (trans (push× (cohᴰ X) (cohᴰ Y) _ _)
          (cong₂ _,_ (base-out _ ibA A a) (base-out _ ibB A b)))
-base-out (X Once.Internal.Type.+ Y) (base-Sum ibA ibB) A (inj₁ a) =
-  trans (cong (λ z → subst id (cohᴰ (X Once.Internal.Type.+ Y))
-                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Internal.Type.+ Y)) A))
-                    (out-layer-gen (Once.Spec.Type.K (X Once.Internal.Type.+ Y))
+base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₁ a) =
+  trans (cong (λ z → subst id (cohᴰ (X Once.Spec.Type.+ Y))
+                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Spec.Type.+ Y)) A))
+                    (out-layer-gen (Once.Spec.Type.K (X Once.Spec.Type.+ Y))
                                    (wf-K (base-Sum ibA ibB)) A z)))
               (push⊎₁⁻ (base-coh X) (base-coh Y) a))
   (trans (push⊎₁ (cohᴰ X) (cohᴰ Y) _)
          (cong inj₁ (base-out _ ibA A a)))
-base-out (X Once.Internal.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
-  trans (cong (λ z → subst id (cohᴰ (X Once.Internal.Type.+ Y))
-                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Internal.Type.+ Y)) A))
-                    (out-layer-gen (Once.Spec.Type.K (X Once.Internal.Type.+ Y))
+base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
+  trans (cong (λ z → subst id (cohᴰ (X Once.Spec.Type.+ Y))
+                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Spec.Type.+ Y)) A))
+                    (out-layer-gen (Once.Spec.Type.K (X Once.Spec.Type.+ Y))
                                    (wf-K (base-Sum ibA ibB)) A z)))
               (push⊎₂⁻ (base-coh X) (base-coh Y) b))
   (trans (push⊎₂ (cohᴰ X) (cohᴰ Y) _)
@@ -262,60 +262,60 @@ base-out (X Once.Internal.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
     OUTK z = subst id (cohᴰ (⟦ Once.Spec.Type.K B ⟧T A))
                (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K B) A)) z)
 νout-erase-D _ wf-Id              A ℓ        = subst-subst-sym (cohᴰ A)
-νout-erase-D (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A (inj₁ x) =
-  trans (cong (λ z → OUT (out-layer-gen (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A
+νout-erase-D (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A (inj₁ x) =
+  trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A
                            (subst (λ H → ⟦ H ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-                                  (sym (tF-coh (F Once.Internal.Type.⊕ G))) z)))
+                                  (sym (tF-coh (F Once.Spec.Type.⊕ G))) z)))
               (push-⊎fam₁ (λ C → ⟦ translateF Carrier Carrier F ⟧SF C)
                           (λ C → ⟦ translateF Carrier Carrier G ⟧SF C)
                           (sym (cohᴰ A)) x))
- (trans (cong (λ z → OUT (out-layer-gen (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A z))
+ (trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A z))
               (pushS⊕₁⁻ (tF-coh F) (tF-coh G) _))
  (trans (cong OUT (out-layer-gen-⊕₁ F G wfA wfB A _))
- (trans (cong (subst id (cohᴰ (⟦ F Once.Internal.Type.⊕ G ⟧T A)))
+ (trans (cong (subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A)))
               (push-+ᴵ₁⁻ (⌊⟧T-commute F A) (⌊⟧T-commute G A) _))
  (trans (push⊎₁ (cohᴰ (⟦ F ⟧T A)) (cohᴰ (⟦ G ⟧T A)) _)
         (cong inj₁ (νout-erase-D F wfA A x))))))
   where
-    OUT : ⟦ IT.⟦ eraseF (F Once.Internal.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Internal.Type.⊕ G ⟧T A ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F Once.Internal.Type.⊕ G ⟧T A))
-              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Internal.Type.⊕ G) A)) z)
-νout-erase-D (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A (inj₂ y) =
-  trans (cong (λ z → OUT (out-layer-gen (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A
+    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Spec.Type.⊕ G ⟧T A ⟧ᴰ
+    OUT z = subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A))
+              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Spec.Type.⊕ G) A)) z)
+νout-erase-D (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A (inj₂ y) =
+  trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A
                            (subst (λ H → ⟦ H ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-                                  (sym (tF-coh (F Once.Internal.Type.⊕ G))) z)))
+                                  (sym (tF-coh (F Once.Spec.Type.⊕ G))) z)))
               (push-⊎fam₂ (λ C → ⟦ translateF Carrier Carrier F ⟧SF C)
                           (λ C → ⟦ translateF Carrier Carrier G ⟧SF C)
                           (sym (cohᴰ A)) y))
- (trans (cong (λ z → OUT (out-layer-gen (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A z))
+ (trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A z))
               (pushS⊕₂⁻ (tF-coh F) (tF-coh G) _))
  (trans (cong OUT (out-layer-gen-⊕₂ F G wfA wfB A _))
- (trans (cong (subst id (cohᴰ (⟦ F Once.Internal.Type.⊕ G ⟧T A)))
+ (trans (cong (subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A)))
               (push-+ᴵ₂⁻ (⌊⟧T-commute F A) (⌊⟧T-commute G A) _))
  (trans (push⊎₂ (cohᴰ (⟦ F ⟧T A)) (cohᴰ (⟦ G ⟧T A)) _)
         (cong inj₂ (νout-erase-D G wfB A y))))))
   where
-    OUT : ⟦ IT.⟦ eraseF (F Once.Internal.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Internal.Type.⊕ G ⟧T A ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F Once.Internal.Type.⊕ G ⟧T A))
-              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Internal.Type.⊕ G) A)) z)
-νout-erase-D (F Once.Internal.Type.⊗ G) (wf-Prod wfA wfB) A (x , y) =
-  trans (cong (λ z → OUT (out-layer-gen (F Once.Internal.Type.⊗ G) (wf-Prod wfA wfB) A
+    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Spec.Type.⊕ G ⟧T A ⟧ᴰ
+    OUT z = subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A))
+              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Spec.Type.⊕ G) A)) z)
+νout-erase-D (F Once.Spec.Type.⊗ G) (wf-Prod wfA wfB) A (x , y) =
+  trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊗ G) (wf-Prod wfA wfB) A
                            (subst (λ H → ⟦ H ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-                                  (sym (tF-coh (F Once.Internal.Type.⊗ G))) z)))
+                                  (sym (tF-coh (F Once.Spec.Type.⊗ G))) z)))
               (push-×fam (λ C → ⟦ translateF Carrier Carrier F ⟧SF C)
                          (λ C → ⟦ translateF Carrier Carrier G ⟧SF C)
                          (sym (cohᴰ A)) x y))
- (trans (cong (λ z → OUT (out-layer-gen (F Once.Internal.Type.⊗ G) (wf-Prod wfA wfB) A z))
+ (trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊗ G) (wf-Prod wfA wfB) A z))
               (pushS⊗⁻ (tF-coh F) (tF-coh G) _ _))
  (trans (cong OUT (out-layer-gen-⊗ F G wfA wfB A _ _))
- (trans (cong (subst id (cohᴰ (⟦ F Once.Internal.Type.⊗ G ⟧T A)))
+ (trans (cong (subst id (cohᴰ (⟦ F Once.Spec.Type.⊗ G ⟧T A)))
               (push-*ᴵ⁻ (⌊⟧T-commute F A) (⌊⟧T-commute G A) _ _))
  (trans (push× (cohᴰ (⟦ F ⟧T A)) (cohᴰ (⟦ G ⟧T A)) _ _)
         (cong₂ _,_ (νout-erase-D F wfA A x) (νout-erase-D G wfB A y))))))
   where
-    OUT : ⟦ IT.⟦ eraseF (F Once.Internal.Type.⊗ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Internal.Type.⊗ G ⟧T A ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F Once.Internal.Type.⊗ G ⟧T A))
-              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Internal.Type.⊗ G) A)) z)
+    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊗ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Spec.Type.⊗ G ⟧T A ⟧ᴰ
+    OUT z = subst id (cohᴰ (⟦ F Once.Spec.Type.⊗ G ⟧T A))
+              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Spec.Type.⊗ G) A)) z)
 
 -- THE `Out` RELATION: the IR's `Out`, through the erasure transports, runs
 -- the forced layer of a related stream and maps it as `out-sem` does. The
