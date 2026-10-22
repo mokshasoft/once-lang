@@ -20,7 +20,7 @@
 --     `refIR` reads the environment at its one name (`refIR-cong`).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Type using (Ty)
+open import Once.Spec.Type using (Ty; base)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -43,7 +43,7 @@ open import Induction.WellFounded using (Acc; acc)
 
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Spec.Type using (Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.Type.Poly using (PolyType)
 open import Once.IRTy using (IRTy)
@@ -63,7 +63,7 @@ open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
+open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
 open import Once.TypeCheck.Elaborate using (success; failure; checkElabV; VerifiedCheckResult)
 open import Once.Denotation.Realize using (realize)
@@ -93,47 +93,47 @@ acc-irrel (acc f) (acc g) =
 module _ (I : String → TopCtx) (uf : Imports) where
 
   -- D254: the spliced body is the realization of its derivation.
-  spliceClosed : ∀ {m} {A : Ty m} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
-               → VerifiedCheckResult (ctxWithImportsAndPolys Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
+  spliceClosed : ∀ {A : Type} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
+               → VerifiedCheckResult (ctxAt (λ _ → base) Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
   spliceClosed {A = A} pre x (failure _ , _)             = Srf.poly x A
   spliceClosed     pre x (success Srf.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize w))
 
-  polyVal : ∀ {m} → (x : String) (A : Ty m) → Maybe (PolyType × RawExpr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
+  polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × RawExpr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
   polyVal x A nothing                 = Srf.poly x A
-  polyVal x A (just (_ , body , pre)) = spliceClosed pre x (checkElabV (ctxWithImportsAndPolys (I x) pre) body A)
+  polyVal x A (just (_ , body , pre)) = spliceClosed pre x (checkElabV (ctxAt (λ _ → base) (I x) pre) body A)
 
   private
-    splice-val : ∀ {m} (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Ty m) {s b pre}
-      (eq : lookupPolyPrefix L x ≡ just (s , b , pre)) (r : VerifiedCheckResult (ctxWithImportsAndPolys (I x) pre) b A)
+    splice-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type) {s b pre}
+      (eq : lookupPolyPrefix L x ≡ just (s , b , pre)) (r : VerifiedCheckResult (ctxAt (λ _ → base) (I x) pre) b A)
       → applySplice {Γ = Srf.∅} L a I uf 0 x A eq r ≡ spliceClosed pre x r
     splice-val L a x A eq (failure _ , _) = refl
     splice-val L (acc rec) x A {pre = pre} eq (success Srf.[] eE _ _ , w) =
       cong (λ z → Srf.closed (resolveExprWF pre z I uf 0 (realize w))) (acc-irrel _ _)
 
-    case-val : ∀ {m} (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Ty m)
+    case-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type)
       (look : Maybe _) (eq : lookupPolyPrefix L x ≡ look)
       → resolvePolyCase {Γ = Srf.∅} L a I uf 0 x A look eq ≡ polyVal x A look
     case-val L a x A nothing eq = refl
     case-val L a x A (just (s , body , pre)) eq =
-      splice-val L a x A eq (checkElabV (ctxWithImportsAndPolys (I x) pre) body A)
+      splice-val L a x A eq (checkElabV (ctxAt (λ _ → base) (I x) pre) body A)
 
-  refs-lookup : ∀ {m} (ρ : CallEnv) (L : PolyCtx) (x : String) (A : Ty m)
+  refs-lookup : ∀ (ρ : CallEnv) (L : PolyCtx) (x : String) (A : Type)
     → SD.DefsSem.refs (RF.σR fmt ρ L I uf 0) x A ≡ SD.⟦ polyVal x A (lookupPolyPrefix L x) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
   refs-lookup ρ L x A = cong (λ e → SD.⟦ e ⟧ˢ fmt (RF.σ₀ fmt ρ) tt)
                              (case-val L (<-wellFounded (length L)) x A (lookupPolyPrefix L x) refl)
 
 module _ (I : String → TopCtx) (uf : Imports) (ρ : CallEnv) where
 
-  refs-skip : ∀ {m} (n : String) {s b} (L : PolyCtx) (y : String) (A : Ty m) → n ≢ y
+  refs-skip : ∀ (n : String) {s b} (L : PolyCtx) (y : String) (A : Type) → n ≢ y
     → SD.DefsSem.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) y A ≡ SD.DefsSem.refs (RF.σR fmt ρ L I uf 0) y A
   refs-skip n {s} {b} L y A n≢y =
     trans (refs-lookup I uf ρ ((n , s , b) ∷ L) y A)
           (trans (cong (λ l → SD.⟦ polyVal I uf y A l ⟧ˢ fmt (RF.σ₀ fmt ρ) tt) (lookup-skip n L y n≢y))
                  (sym (refs-lookup I uf ρ L y A)))
 
-  refs-head : ∀ {m} (n : String) {s b} (L : PolyCtx) (A : Ty m)
+  refs-head : ∀ (n : String) {s b} (L : PolyCtx) (A : Type)
     → SD.DefsSem.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) n A
-      ≡ SD.⟦ spliceClosed I uf L n (checkElabV (ctxWithImportsAndPolys (I n) L) b A) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
+      ≡ SD.⟦ spliceClosed I uf L n (checkElabV (ctxAt (λ _ → base) (I n) L) b A) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
   refs-head n {s} {b} L A =
     trans (refs-lookup I uf ρ ((n , s , b) ∷ L) n A)
           (cong (λ l → SD.⟦ polyVal I uf n A l ⟧ˢ fmt (RF.σ₀ fmt ρ) tt) (lookup-head n L))
@@ -144,13 +144,13 @@ module _ (I : String → TopCtx) (uf : Imports) (ρ : CallEnv) where
 
 RefsAgree : SD.DefsSem → SD.DefsSem → PolyCtx → Set
 RefsAgree σ₁ σ₂ []                   = ⊤
-RefsAgree σ₁ σ₂ ((n , _ , _) ∷ rest) = (∀ A → SD.DefsSem.refs σ₁ n A ≡ SD.DefsSem.refs σ₂ n A) × RefsAgree σ₁ σ₂ rest
+RefsAgree σ₁ σ₂ ((n , _ , _) ∷ rest) = (∀ (A : Type) → SD.DefsSem.refs σ₁ n A ≡ SD.DefsSem.refs σ₂ n A) × RefsAgree σ₁ σ₂ rest
 
 envrel-transport : ∀ (σ₁ σ₂ : SD.DefsSem) (polys : PolyCtx) {ρ : DefMeanings polys}
   → RefsAgree σ₁ σ₂ polys → MB.EnvRel fmt σ₁ polys ρ → MB.EnvRel fmt σ₂ polys ρ
 envrel-transport σ₁ σ₂ []                   _        _        = tt
 envrel-transport σ₁ σ₂ ((n , s , _) ∷ rest) {e , ρ} (h , hs) (r , rs) =
-  (λ U ki → subst (RelGM pure U (e U ki)) (h U) (r U ki)) , envrel-transport σ₁ σ₂ rest hs rs
+  (λ {Δ} U ki → subst (RelGM pure U (e U ki)) (h U) (r {Δ} U ki)) , envrel-transport σ₁ σ₂ rest hs rs
 
 CallsAgree : SD.DefsSem → SD.DefsSem → Imports → Set
 CallsAgree σ₁ σ₂ []               = ⊤
@@ -181,7 +181,7 @@ refIR-cong (μ-type F)   f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensio
 refIR-cong (ν-type F π) f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
 refIR-cong Int          f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
 refIR-cong Float        f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
-refIR-cong (rigid k i)  f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
+refIR-cong (var i)      f ρ₁ ρ₂ h = cong (return∞ tt >>=∞_) (extensionality (h _ _))
 
 -- Entries declared later, of other names, do not change a call.
 tableEnv-later : ∀ (later pre : List IRFun) (f : CanonicalName) → All (λ e → fname e ≢ f) later
