@@ -108,6 +108,18 @@ purityTests = testGroup "Purity (pure emits nothing)"
         ]
       assertBool "Should reject an Eff signature" (isLeft r)
 
+  , testCase "a stream over Eff is not a type" $ do
+      -- D317/D318: a stream's layer is a finite computation, `Nu (Act F)`;
+      -- `Eff` (a computation that may never arrive) is not a layer, so
+      -- `Nu (Eff F)` is not a type. The `Act` twin above is accepted.
+      r <- checkLib
+        [ "import I.Test.Emit as E"
+        , ""
+        , "mkNu : Int -> Nu (Eff (K Int))"
+        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
+        ]
+      assertBool "Should reject Nu (Eff F)" (isLeft r)
+
   , testCase "forcing an acting stream is an acting suspension" $ do
       -- The honest twin: `Out` on `Nu (Act F)` is `Act Unit (F …)`.
       r <- checkLib

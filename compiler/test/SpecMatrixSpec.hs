@@ -39,6 +39,14 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
       , testCase "a schema wider than the body's is rejected" $ do
           r <- checkLib [ "f : a -> a + b", "f = inl" ]
           assertBool "Should reject a free summand in a schema" (isLeft r)
+        -- D321: the principal type is least over the domains the signature
+        -- gives. `Void` is the given domain; the codomain is the body's.
+      , testCase "a constant out of a given Void domain is accepted (D321)" $ do
+          r <- checkLib [ "f : Void -> Int", "f = \\x -> 3" ]
+          r @?= Right ()
+      , testCase "returning the Void argument at Int is wider than the body's (D321)" $ do
+          r <- checkLib [ "f : Void -> Int", "f = \\x -> x" ]
+          assertBool "Should reject Int where the body's codomain is Void" (isLeft r)
       , testCase "main at its principal type is accepted (D315)" $ do
           r <- checkExe [ "import I.Linux.Syscalls as S", "", "main : Act Unit Void", "main = compose exit@S (\\_ -> 0)" ]
           r @?= Right ()

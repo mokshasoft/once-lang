@@ -8,8 +8,8 @@
 import D.Simple as S
 import I.Linux.Exit as E
 
-mySwap : A * B -> B * A
+mySwap : a * b -> b * a
 mySwap = swap@S
 
-main : Eff Unit Unit
+main : Act Unit Unit
 main = exit0@E

@@ -226,16 +226,30 @@ scopeErrorTests = testGroup "Scope errors"
   , rejects "unbound qualified (imported) name"
       [ "import I.Linux.Syscalls as S"
       , ""
-      , "main : Eff Unit Unit"
-      , "main = nope@S"
+      , "f : Int -> Int"
+      , "f = nope@S"
       ]
     -- plan 0.121 R11 (D324): no definition names `main`, bare or as `main@this`.
-  , rejects "a definition referring to main@this"
-      [ "f : Int -> Int"
-      , "f x = x"
-      , "main : Eff Unit Unit"
+    -- The control is accepted, so only the reference to `main` is rejected.
+  , accepts "control: main without a reference to it"
+      [ "main : Unit -> Unit"
       , "main = id"
+      ]
+  , rejectsWith "a definition referring to main@this" "refers to `main`"
+      [ "main : Unit -> Unit"
+      , "main = id"
+      , "g : Unit -> Unit"
       , "g = main@this"
+      ]
+  , rejectsWith "a definition referring to a bare main" "refers to `main`"
+      [ "main : Unit -> Unit"
+      , "main = id"
+      , "g : Unit -> Unit"
+      , "g = main"
+      ]
+  , accepts "a local variable named main is unaffected"
+      [ "f : Int -> Int"
+      , "f main = main"
       ]
     -- plan 0.121 R10: a type signature is immediately followed by its
     -- definition, as written; an import between them separates them even
@@ -285,6 +299,16 @@ rejects :: TestName -> [T.Text] -> TestTree
 rejects name sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
   assertBool ("Should reject: " ++ name) (isLeft result)
+
+-- | Assert that a program is REJECTED with an error that contains `needle`,
+-- so the test fails if the program is rejected for another reason.
+rejectsWith :: TestName -> String -> [T.Text] -> TestTree
+rejectsWith name needle sourceLines = testCase name $ do
+  result <- typeCheckSource (T.unlines sourceLines)
+  case result of
+    Left err -> assertBool ("Error should mention " ++ show needle ++ ":\n" ++ err)
+                           (T.pack needle `T.isInfixOf` T.pack err)
+    Right () -> assertFailure ("Should reject: " ++ name)
 
 -- | Assert that a program is ACCEPTED by `once check` (D072 flips).
 accepts :: TestName -> [T.Text] -> TestTree

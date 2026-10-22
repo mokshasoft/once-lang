@@ -7,5 +7,5 @@
 
 import I.Linux.Exit as E
 
-main : Eff Unit Unit
+main : Act Unit Unit
 main = exit0@E
