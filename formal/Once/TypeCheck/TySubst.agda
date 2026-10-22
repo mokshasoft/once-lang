@@ -50,7 +50,7 @@ open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Internal.Name using (showCanonical)
 open import Once.Internal.Syntax using (RResolved)
 import Once.Internal.Context as Surface
-open import Once.Spec.Context using (_▸_)
+open import Once.Spec.Context using (_▸_; _⟨_⟩ᶜ)
 open import Once.Internal.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Internal.Typing.Scope using (mkBinding)
 open Once.Internal.Typing.Scope.Binding using (quantity)
@@ -157,8 +157,7 @@ mutual
 
 -- The contexts: the named one, the de Bruijn one, and the scope at `Δ`.
 ρ̂S : ∀ {n} → SCtx m n → SCtx k n
-ρ̂S S∅      = S∅
-ρ̂S (Γ ▸ A) = ρ̂S Γ ▸ ρ̂ A
+ρ̂S Γ = Γ ⟨ τ ⟩ᶜ
 
 ρ̂N : NC.Ctx m → NC.Ctx k
 ρ̂N []      = []
