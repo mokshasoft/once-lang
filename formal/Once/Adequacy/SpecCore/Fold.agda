@@ -15,19 +15,18 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
-import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Grade as LG
 import Once.Internal.Type.Sub as LS
 import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as LW
 import Once.Spec.Type as ST
-open import Once.Adequacy.SpecCore.Index using (InstG)
+open import Once.Adequacy.SpecCore.Index using (gr; gf)
 
 import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Fold (Σ : Signature)
-  {m} {σ : LP.GSub m} {σ′ : ST.TySub m 0} (g : InstG σ σ′)
-  (F : LP.Fun m) (A : LP.Ty m) (wf : LW.WellFormedF (F LP.⟪ σ ⟫F))
+  {m} (σ : ST.TySub m 0)
+  (F : ST.Fun m) (A : ST.Ty m) (wf : LW.WellFormedF (F ST.⟨ σ ⟩F))
   {π} (u : LG.pure Once.Spec.Grade.⊑π π) where
 
 open import Data.Product using (_×_; _,_)
@@ -44,21 +43,17 @@ import Once.Spec.Effect Σ as SE
 import Once.Spec.Polynomial as SPoly
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
-open import Once.Adequacy.SpecGrammar.Conv using (πS)
-open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open import Once.Adequacy.SpecCore.Monad Σ
 open import Once.Adequacy.SpecCore.Layer Σ
 
 private
-  Fg = F LP.⟪ σ ⟫F
-  Ag = A LP.⟪ σ ⟫
-  F′ = pfunS F
-  A′ = ptyS A
-  G  = SD.code (F′ ST.⟨ σ′ ⟩F)
-  f₀ = GF-inst (pfr F) g
-  gA = GR-inst (ptr A) g
+  Fg = F ST.⟨ σ ⟩F
+  Ag = A ST.⟨ σ ⟩
+  G  = SD.code Fg
+  f₀ = gf Fg
+  gA = gr Ag
 
 -- One layer of computations, sequenced on both sides: the injections and the
 -- pairing, at each grade a fold may have.
@@ -67,7 +62,7 @@ private
     inl-R : ∀ {π₀} (u₀ : LG.pure Once.Spec.Grade.⊑π π₀) {F₁ F₂ : LT.Functor} {Y₂ : Set} {R : V.⟦ F₁ ⟧F X → Y → Set}
             {R′ : V.⟦ F₁ LT.⊕ F₂ ⟧F X → Y SPolyS.⊎ Y₂ → Set} {x y}
           → MR (pr π₀) R (LOps.seqM u₀ F₁ x) y → (∀ {a b} → R a b → R′ (inj₁ a) (inj₁ b))
-          → MR (pr π₀) R′ (LOps.seqM u₀ (F₁ LT.⊕ F₂) (inj₁ x)) (SE.fmap (πS π₀) inj₁ y)
+          → MR (pr π₀) R′ (LOps.seqM u₀ (F₁ LT.⊕ F₂) (inj₁ x)) (SE.fmap π₀ inj₁ y)
     inl-R Once.Spec.Grade.⊑-pure r k = k r
     inl-R Once.Spec.Grade.⊑-pa   r k = fmap-R pr-act r k
     inl-R Once.Spec.Grade.⊑-pe   r k = fmap-R pr-eff r k
@@ -75,7 +70,7 @@ private
     inr-R : ∀ {π₀} (u₀ : LG.pure Once.Spec.Grade.⊑π π₀) {F₁ F₂ : LT.Functor} {Y₁ : Set} {R : V.⟦ F₂ ⟧F X → Y → Set}
             {R′ : V.⟦ F₁ LT.⊕ F₂ ⟧F X → Y₁ SPolyS.⊎ Y → Set} {x y}
           → MR (pr π₀) R (LOps.seqM u₀ F₂ x) y → (∀ {a b} → R a b → R′ (inj₂ a) (inj₂ b))
-          → MR (pr π₀) R′ (LOps.seqM u₀ (F₁ LT.⊕ F₂) (inj₂ x)) (SE.fmap (πS π₀) inj₂ y)
+          → MR (pr π₀) R′ (LOps.seqM u₀ (F₁ LT.⊕ F₂) (inj₂ x)) (SE.fmap π₀ inj₂ y)
     inr-R Once.Spec.Grade.⊑-pure r k = k r
     inr-R Once.Spec.Grade.⊑-pa   r k = fmap-R pr-act r k
     inr-R Once.Spec.Grade.⊑-pe   r k = fmap-R pr-eff r k
@@ -86,50 +81,50 @@ private
          → MR (pr π₀) R₁ (LOps.seqM u₀ F₁ x₁) y₁ → MR (pr π₀) R₂ (LOps.seqM u₀ F₂ x₂) y₂
          → (∀ {a₁ a₂ b₁ b₂} → R₁ a₁ b₁ → R₂ a₂ b₂ → R′ (a₁ , a₂) (b₁ , b₂))
          → MR (pr π₀) R′ (LOps.seqM u₀ (F₁ LT.⊗ F₂) (x₁ , x₂))
-                         (SE.bind (πS π₀) y₁ λ b₁ → SE.bind (πS π₀) y₂ λ b₂ → SE.return (πS π₀) (b₁ , b₂))
+                         (SE.bind π₀ y₁ λ b₁ → SE.bind π₀ y₂ λ b₂ → SE.return π₀ (b₁ , b₂))
   pair-R Once.Spec.Grade.⊑-pure r₁ r₂ k = k r₁ r₂
   pair-R Once.Spec.Grade.⊑-pa   r₁ r₂ k = bindT-R r₁ (λ a → bindT-R r₂ (λ b → ret (k a b)))
   pair-R Once.Spec.Grade.⊑-pe   r₁ r₂ k = bind∞-R (λ a → bind∞-R (λ b → return∞-R (k a b)) r₂) r₁
 
 -- The algebras, related.
 module _ {valg : LGr.⟦ LT.⟦ Fg ⟧T Ag ⟧ᵛ → LGr.M π LGr.⟦ Ag ⟧ᵛ}
-         {alg′ : SD.⟦ ST.⟦ F′ ⟧F A′ ST.⟨ σ′ ⟩ ⟧ᵛ → SE.M (πS π) SD.⟦ A′ ST.⟨ σ′ ⟩ ⟧ᵛ}
-         (ralg : ∀ {x y} → ValR (GR-⟦⟧ g (pfr F) gA) x y → MR (pr π) (ValR gA) (valg x) (alg′ y)) where
+         {alg′ : SD.⟦ ST.⟦ F ⟧F A ST.⟨ σ ⟩ ⟧ᵛ → SE.M π SD.⟦ A ST.⟨ σ ⟩ ⟧ᵛ}
+         (ralg : ∀ {x y} → ValR (GR-⟦⟧σ σ F gA) x y → MR (pr π) (ValR gA) (valg x) (alg′ y)) where
 
   -- the compiler's algebra on a layer of folded children (as `cata-semᵛ`)
   alg₂ : LPoly.⟦ translateF Carrier Carrier Fg ⟧SF (LGr.M π LGr.⟦ Ag ⟧ᵛ) → LGr.M π LGr.⟦ Ag ⟧ᵛ
   alg₂ x = LGr.bindM π (LOps.seqM u Fg (V.coerce-μ-out wf _ x)) (λ layer → valg (LOps.cf⁻¹ᵛ Ag wf layer))
 
   -- the Spec's
-  a : SPoly.⟦ G ⟧SF SD.⟦ A′ ST.⟨ σ′ ⟩ ⟧ᵛ → SE.M (πS π) SD.⟦ A′ ST.⟨ σ′ ⟩ ⟧ᵛ
-  a l = alg′ (SD.fromL σ′ F′ A′ l)
+  a : SPoly.⟦ G ⟧SF SD.⟦ A ST.⟨ σ ⟩ ⟧ᵛ → SE.M π SD.⟦ A ST.⟨ σ ⟩ ⟧ᵛ
+  a l = alg′ (SD.fromL σ F A l)
 
-  fold-R  : ∀ {v w} → μR f₀ v w → MR (pr π) (ValR gA) (LPoly.cataS alg₂ v) (SD.foldM (πS π) G a w)
-  layer-R : ∀ {F₁ F₁′} (sub : PFR F₁ F₁′) (wf₁ : LW.WellFormedF (F₁ LP.⟪ σ ⟫F)) {x y}
-          → LayerR (GF-inst sub g) (μR f₀) x y
-          → MR (pr π) (LayerV (GF-inst sub g) (ValR gA))
-               (LOps.seqM u (F₁ LP.⟪ σ ⟫F) (V.coerce-μ-out wf₁ _ (LPoly.sfmapCata (translateF Carrier Carrier (F₁ LP.⟪ σ ⟫F)) alg₂ x)))
-               (SD.layerM (πS π) G (SD.code (F₁′ ST.⟨ σ′ ⟩F)) a y)
+  fold-R  : ∀ {v w} → μR f₀ v w → MR (pr π) (ValR gA) (LPoly.cataS alg₂ v) (SD.foldM π G a w)
+  layer-R : ∀ (F₁ : ST.Fun m) (wf₁ : LW.WellFormedF (F₁ ST.⟨ σ ⟩F)) {x y}
+          → LayerR (gf (F₁ ST.⟨ σ ⟩F)) (μR f₀) x y
+          → MR (pr π) (LayerV (gf (F₁ ST.⟨ σ ⟩F)) (ValR gA))
+               (LOps.seqM u (F₁ ST.⟨ σ ⟩F) (V.coerce-μ-out wf₁ _ (LPoly.sfmapCata (translateF Carrier Carrier (F₁ ST.⟨ σ ⟩F)) alg₂ x)))
+               (SD.layerM π G (SD.code (F₁ ST.⟨ σ ⟩F)) a y)
 
-  fold-R (inR l) = bind-R (pr π) (layer-R (pfr F) wf l) (λ rl → ralg (cf⁻¹-R g (pfr F) wf gA rl))
+  fold-R (inR l) = bind-R (pr π) (layer-R F wf l) (λ rl → ralg (cf⁻¹-R σ F wf gA rl))
 
-  layer-R {F₁ = LP.K B} (p-K b) (LW.wf-K ib) r = unit-R u (fromBase-R ib (GR-inst b g) r)
+  layer-R (ST.K B) (LW.wf-K ib) r = unit-R u (fromBase-R ib (gr _) r)
     where
-      unit-R : ∀ {π₀} (u₀ : LG.pure Once.Spec.Grade.⊑π π₀) {Y : Set} {R : V.⟦ B LP.⟪ σ ⟫ ⟧ → Y → Set} {x y} → R x y
-             → MR (pr π₀) R (LOps.seqM u₀ (LT.K (B LP.⟪ σ ⟫)) {X = LGr.⟦ Ag ⟧ᵛ} x) (SE.return (πS π₀) y)
+      unit-R : ∀ {π₀} (u₀ : LG.pure Once.Spec.Grade.⊑π π₀) {Y : Set} {R : V.⟦ B ST.⟨ σ ⟩ ⟧ → Y → Set} {x y} → R x y
+             → MR (pr π₀) R (LOps.seqM u₀ (ST.K (B ST.⟨ σ ⟩)) {X = LGr.⟦ Ag ⟧ᵛ} x) (SE.return π₀ y)
       unit-R Once.Spec.Grade.⊑-pure r = r
       unit-R Once.Spec.Grade.⊑-pa   r = ret r
       unit-R Once.Spec.Grade.⊑-pe   r = return∞-R r
-  layer-R p-Id LW.wf-Id r = id-R u (fold-R r)
+  layer-R ST.Id LW.wf-Id r = id-R u (fold-R r)
     where
       id-R : ∀ {π₀} (u₀ : LG.pure Once.Spec.Grade.⊑π π₀) {X Y : Set} {R : X → Y → Set} {x y} → MR (pr π₀) R x y
            → MR (pr π₀) R (LOps.seqM u₀ LT.Id x) y
       id-R Once.Spec.Grade.⊑-pure r = r
       id-R Once.Spec.Grade.⊑-pa   r = r
       id-R Once.Spec.Grade.⊑-pe   r = r
-  layer-R (p-⊕ f h) (LW.wf-Sum wf₁ wh) {inj₁ _} {inj₁ _} r = inl-R u (layer-R f wf₁ r) (λ x → x)
-  layer-R (p-⊕ f h) (LW.wf-Sum wf₁ wh) {inj₂ _} {inj₂ _} r = inr-R u (layer-R h wh r) (λ x → x)
-  layer-R (p-⊕ f h) (LW.wf-Sum wf₁ wh) {inj₁ _} {inj₂ _} ()
-  layer-R (p-⊕ f h) (LW.wf-Sum wf₁ wh) {inj₂ _} {inj₁ _} ()
-  layer-R (p-⊗ f h) (LW.wf-Prod wf₁ wh) {_ , _} {_ , _} (r , r′) =
-    pair-R u (layer-R f wf₁ r) (layer-R h wh r′) (λ x y → x , y)
+  layer-R (F₁ ST.⊕ H) (LW.wf-Sum wf₁ wh) {inj₁ _} {inj₁ _} r = inl-R u (layer-R F₁ wf₁ r) (λ x → x)
+  layer-R (F₁ ST.⊕ H) (LW.wf-Sum wf₁ wh) {inj₂ _} {inj₂ _} r = inr-R u (layer-R H wh r) (λ x → x)
+  layer-R (F₁ ST.⊕ H) (LW.wf-Sum wf₁ wh) {inj₁ _} {inj₂ _} ()
+  layer-R (F₁ ST.⊕ H) (LW.wf-Sum wf₁ wh) {inj₂ _} {inj₁ _} ()
+  layer-R (F₁ ST.⊗ H) (LW.wf-Prod wf₁ wh) {_ , _} {_ , _} (r , r′) =
+    pair-R u (layer-R F₁ wf₁ r) (layer-R H wh r′) (λ x y → x , y)

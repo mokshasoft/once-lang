@@ -6,9 +6,9 @@
 -- Once.Adequacy.SpecCore.Value — the compiler's values and computations as
 -- the Spec's (plan 0.121 §3.5, the meaning relation).
 --
--- At ground types, `GR A A′`: the compiler's type `A` is the Spec's `A′` (the
--- graph of the translation; a `rigid` constant, which has no values, goes to
--- `Unit`). Over it, a logical relation:
+-- At ground types, `GR A A′` (plan 0.122: the identity's graph — the two
+-- cores are one). Over it, a logical relation between the compiler's value
+-- domain and the Spec's:
 --   * values: the same word at `Int`/`Float`; pairwise at `*`, the same side
 --     at `+`; at an arrow, related arguments go to related computations; `μ`
 --     layer by layer (`μR`); a stream coinductively, layer by layer (`νpR`,
@@ -33,8 +33,6 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Type as LT
-import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Grade as SG
@@ -50,7 +48,6 @@ import Once.Internal.Iterative as LI
 import Once.Internal.Stream as LSt
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
-open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
 open import Once.Adequacy.SpecCore.Index
 import Once.Adequacy.SpecInterp as SI
 
@@ -72,7 +69,6 @@ BR (g-+ a b) (inj₂ _) (inj₁ _) = ⊥
 BR (g-⇒ _ _) _ _ = ⊤
 BR (g-μ _)   _ _ = ⊤
 BR (g-ν _)   _ _ = ⊤
-BR g-rigid   _ _ = ⊤
 
 ------------------------------------------------------------------------
 -- Layers and data
@@ -168,4 +164,3 @@ ValR (g-⇒ {q = LG.Many} {π} a b) f g = ∀ {x y} → ValR a x y → MR (pr π
 ValR (g-μ f) x y = μR f x y
 ValR (g-ν {φ = LG.pureᶠ} f) v w = νpR f v w
 ValR (g-ν {φ = LG.actᶠ}  f) v w = νdR f v w
-ValR g-rigid _ _ = ⊤

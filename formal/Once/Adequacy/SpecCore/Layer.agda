@@ -26,11 +26,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Type as LT
-import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as LW
-import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
 import Once.Internal.Value Carrier Carrier as V
 import Once.Internal.Graded as LGr
@@ -58,7 +55,6 @@ BVal (g-+ a b) (inj₂ _) (inj₁ _) = ⊥
 BVal (g-⇒ _ _) _ _ = ⊤
 BVal (g-μ _)   _ _ = ⊤
 BVal (g-ν _)   _ _ = ⊤
-BVal g-rigid   _ _ = ⊤
 
 prj-R : ∀ {A A′} (ib : LW.IsBaseType A) (g : GR A A′) {x x′} → ValR g x x′ → BVal g (LOps.prjB ib x) x′
 prj-R LW.base-Unit  g-unit  r = tt
@@ -95,7 +91,6 @@ toBase-R (g-+ a b) {inj₂ _} {inj₁ _} ()
 toBase-R (g-⇒ _ _) r = tt
 toBase-R (g-μ _)   r = tt
 toBase-R (g-ν _)   r = tt
-toBase-R g-rigid {()} r
 
 fromBase-R : ∀ {A A′} (ib : LW.IsBaseType A) (g : GR A A′) {x x′} → BR g x x′ → BVal g (V.coerce-base-to-full ib x) x′
 fromBase-R LW.base-Unit  g-unit  r = tt
@@ -146,31 +141,31 @@ out-R (g-⊗ f g) (LW.wf-Prod wf wg) {l = _ , _} {_ , _} (r , r′) = out-R f wf
 -- A layer as a value of the functor applied, on both sides
 ------------------------------------------------------------------------
 
-module _ {m} {σ : LP.GSub m} {σ′ : ST.TySub m 0} (g : InstG σ σ′) where
+module _ {m} (σ : ST.TySub m 0) where
 
-  GR-⟦⟧ : ∀ {F : LP.Fun m} {F′} (f : PFR F F′) {Xg X′} → GR Xg (X′ ST.⟨ σ′ ⟩)
-        → GR (LT.⟦ F LP.⟪ σ ⟫F ⟧T Xg) (ST.⟦ F′ ⟧F X′ ST.⟨ σ′ ⟩)
-  GR-⟦⟧ (p-K a)   gX = GR-inst a g
-  GR-⟦⟧ p-Id      gX = gX
-  GR-⟦⟧ (p-⊕ f h) gX = g-+ (GR-⟦⟧ f gX) (GR-⟦⟧ h gX)
-  GR-⟦⟧ (p-⊗ f h) gX = g-* (GR-⟦⟧ f gX) (GR-⟦⟧ h gX)
+  GR-⟦⟧σ : ∀ (F : ST.Fun m) {Xg X′} → GR Xg (X′ ST.⟨ σ ⟩)
+         → GR (ST.⟦ F ST.⟨ σ ⟩F ⟧F Xg) (ST.⟦ F ⟧F X′ ST.⟨ σ ⟩)
+  GR-⟦⟧σ (ST.K A)   gX = gr (A ST.⟨ σ ⟩)
+  GR-⟦⟧σ ST.Id      gX = gX
+  GR-⟦⟧σ (F ST.⊕ H) gX = g-+ (GR-⟦⟧σ F gX) (GR-⟦⟧σ H gX)
+  GR-⟦⟧σ (F ST.⊗ H) gX = g-* (GR-⟦⟧σ F gX) (GR-⟦⟧σ H gX)
 
-  cf-R : ∀ {F : LP.Fun m} {F′} (f : PFR F F′) (wf : LW.WellFormedF (F LP.⟪ σ ⟫F)) {Xg X′} (gX : GR Xg (X′ ST.⟨ σ′ ⟩))
-         {x x′} → ValR (GR-⟦⟧ f gX) x x′ → LayerV (GF-inst f g) (ValR gX) (LOps.cfᵛ Xg wf x) (SD.toL σ′ F′ X′ x′)
-  cf-R (p-K a)   (LW.wf-K ib) gX r = prj-R ib (GR-inst a g) r
-  cf-R p-Id      LW.wf-Id     gX r = r
-  cf-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₁ _} r = cf-R f wf gX r
-  cf-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₂ _} r = cf-R h wh gX r
-  cf-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₂ _} ()
-  cf-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₁ _} ()
-  cf-R (p-⊗ f h) (LW.wf-Prod wf wh) gX {_ , _} {_ , _} (r , r′) = cf-R f wf gX r , cf-R h wh gX r′
+  cf-R : ∀ (F : ST.Fun m) (wf : LW.WellFormedF (F ST.⟨ σ ⟩F)) {Xg X′} (gX : GR Xg (X′ ST.⟨ σ ⟩))
+         {x x′} → ValR (GR-⟦⟧σ F gX) x x′ → LayerV (gf (F ST.⟨ σ ⟩F)) (ValR gX) (LOps.cfᵛ Xg wf x) (SD.toL σ F X′ x′)
+  cf-R (ST.K A)   (LW.wf-K ib) gX r = prj-R ib (gr _) r
+  cf-R ST.Id      LW.wf-Id     gX r = r
+  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₁ _} r = cf-R F wf gX r
+  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₂ _} r = cf-R H wh gX r
+  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₂ _} ()
+  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₁ _} ()
+  cf-R (F ST.⊗ H) (LW.wf-Prod wf wh) gX {_ , _} {_ , _} (r , r′) = cf-R F wf gX r , cf-R H wh gX r′
 
-  cf⁻¹-R : ∀ {F : LP.Fun m} {F′} (f : PFR F F′) (wf : LW.WellFormedF (F LP.⟪ σ ⟫F)) {Xg X′} (gX : GR Xg (X′ ST.⟨ σ′ ⟩))
-           {l l′} → LayerV (GF-inst f g) (ValR gX) l l′ → ValR (GR-⟦⟧ f gX) (LOps.cf⁻¹ᵛ Xg wf l) (SD.fromL σ′ F′ X′ l′)
-  cf⁻¹-R (p-K a)   (LW.wf-K ib) gX r = inj-R ib (GR-inst a g) r
-  cf⁻¹-R p-Id      LW.wf-Id     gX r = r
-  cf⁻¹-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₁ _} r = cf⁻¹-R f wf gX r
-  cf⁻¹-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₂ _} r = cf⁻¹-R h wh gX r
-  cf⁻¹-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₂ _} ()
-  cf⁻¹-R (p-⊕ f h) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₁ _} ()
-  cf⁻¹-R (p-⊗ f h) (LW.wf-Prod wf wh) gX {_ , _} {_ , _} (r , r′) = cf⁻¹-R f wf gX r , cf⁻¹-R h wh gX r′
+  cf⁻¹-R : ∀ (F : ST.Fun m) (wf : LW.WellFormedF (F ST.⟨ σ ⟩F)) {Xg X′} (gX : GR Xg (X′ ST.⟨ σ ⟩))
+           {l l′} → LayerV (gf (F ST.⟨ σ ⟩F)) (ValR gX) l l′ → ValR (GR-⟦⟧σ F gX) (LOps.cf⁻¹ᵛ Xg wf l) (SD.fromL σ F X′ l′)
+  cf⁻¹-R (ST.K A)   (LW.wf-K ib) gX r = inj-R ib (gr _) r
+  cf⁻¹-R ST.Id      LW.wf-Id     gX r = r
+  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₁ _} r = cf⁻¹-R F wf gX r
+  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₂ _} r = cf⁻¹-R H wh gX r
+  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₂ _} ()
+  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₁ _} ()
+  cf⁻¹-R (F ST.⊗ H) (LW.wf-Prod wf wh) gX {_ , _} {_ , _} (r , r′) = cf⁻¹-R F wf gX r , cf⁻¹-R H wh gX r′
