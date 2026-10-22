@@ -5,13 +5,9 @@
 -- Once.Adequacy.SpecCore.Type — the compiler's types as the Spec's (plan
 -- 0.121, the core bridge).
 --
--- `TyR Δ A A′`: the compiler's type `A` is the Spec's `A′ : Ty m`. The two
--- grammars are the same but for type parameters: inside a polymorphic body
--- the compiler writes the `i`-th one as the constant `rigid k i`, the Spec as
--- the variable `var j` of the kinding context `Δ`, at `toℕ j ≡ i` and of the
--- same kind. The relation is a bijection (`TyR-uniqueˢ`, `TyR-uniqueˡ`), and
--- it carries the grades, the subtyping order, functor application and base
--- types both ways — what the core judgments are built from.
+-- `TyR Δ A A′`: the compiler's type `A` is the Spec's `A′ : Ty m`. Plan
+-- 0.122: the two are one grammar, the relation the identity's graph
+-- (`TyR-≡`), kept by its constructors for the front-end bridge.
 ------------------------------------------------------------------------
 
 import Once.Spec.Grade
@@ -22,16 +18,10 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; toℕ)
 open import Data.Fin.Properties using (toℕ-injective)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst; subst₂)
 
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-import Once.Internal.Type as LT
-import Once.Spec.Type as LT
-import Once.Internal.Type.Sub as LS
-import Once.Spec.Sub as LS
-import Once.Internal.Type.WellFormed as LW
-import Once.Spec.Type as LW
 import Once.Spec.Type as ST
 import Once.Spec.Sub as SS
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
@@ -127,40 +117,68 @@ positionGrade-S LG.Many π = refl
 -- Types
 ------------------------------------------------------------------------
 
-kindS : LT.TKind → ST.Kind
-kindS LT.k-base = ST.base
-kindS LT.k-any  = ST.any
-
-kindS-injective : ∀ {k k′} → kindS k ≡ kindS k′ → k ≡ k′
-kindS-injective {LT.k-base} {LT.k-base} _ = refl
-kindS-injective {LT.k-any}  {LT.k-any}  _ = refl
-kindS-injective {LT.k-base} {LT.k-any}  ()
-kindS-injective {LT.k-any}  {LT.k-base} ()
-
+-- Plan 0.122: the compiler's types ARE the Spec's (a polymorphic body is
+-- checked over its parameters, `var j`); `TyR` is the identity's graph, kept
+-- by its constructors for the front-end bridge's case analyses.
 mutual
-  data TyR {m} (Δ : ST.KCtx m) : LT.Type → ST.Ty m → Set where
-    r-unit  : TyR Δ LT.Unit ST.Unit
-    r-void  : TyR Δ LT.Void ST.Void
-    r-int   : TyR Δ LT.Int ST.Int
-    r-float : TyR Δ LT.Float ST.Float
-    r-*     : ∀ {A A′ B B′} → TyR Δ A A′ → TyR Δ B B′ → TyR Δ (A LT.* B) (A′ ST.* B′)
-    r-+     : ∀ {A A′ B B′} → TyR Δ A A′ → TyR Δ B B′ → TyR Δ (A LT.+ B) (A′ ST.+ B′)
+  data TyR {m} (Δ : ST.KCtx m) : ST.Ty m → ST.Ty m → Set where
+    r-unit  : TyR Δ ST.Unit ST.Unit
+    r-void  : TyR Δ ST.Void ST.Void
+    r-int   : TyR Δ ST.Int ST.Int
+    r-float : TyR Δ ST.Float ST.Float
+    r-*     : ∀ {A A′ B B′} → TyR Δ A A′ → TyR Δ B B′ → TyR Δ (A ST.* B) (A′ ST.* B′)
+    r-+     : ∀ {A A′ B B′} → TyR Δ A A′ → TyR Δ B B′ → TyR Δ (A ST.+ B) (A′ ST.+ B′)
     -- (the Spec's grades as equations, so that a derivation at a given
     -- Spec type can be taken apart)
     r-⇒     : ∀ {A A′ B B′ k k′} → kS k ≡ k′ → TyR Δ A A′ → TyR Δ B B′
-            → TyR Δ (A LT.⇒[ k ] B) (A′ ST.⇒[ k′ ] B′)
-    r-μ     : ∀ {F F′} → FunR Δ F F′ → TyR Δ (LT.μ-type F) (ST.μ F′)
-    r-ν     : ∀ {F F′ φ f} → φS φ ≡ f → FunR Δ F F′ → TyR Δ (LT.ν-type F φ) (ST.ν F′ f)
-    -- the `i`-th parameter, of its kind
-    r-rigid : ∀ {k i} (j : Fin m) → toℕ j ≡ i → Δ j ≡ kindS k → TyR Δ (LT.rigid k i) (ST.var j)
+            → TyR Δ (A ST.⇒[ k ] B) (A′ ST.⇒[ k′ ] B′)
+    r-μ     : ∀ {F F′} → FunR Δ F F′ → TyR Δ (ST.μ F) (ST.μ F′)
+    r-ν     : ∀ {F F′ φ f} → φS φ ≡ f → FunR Δ F F′ → TyR Δ (ST.ν F φ) (ST.ν F′ f)
+    -- a parameter
+    r-var   : ∀ (j : Fin m) → TyR Δ (ST.var j) (ST.var j)
 
-  data FunR {m} (Δ : ST.KCtx m) : LT.Functor → ST.Fun m → Set where
-    r-K  : ∀ {A A′} → TyR Δ A A′ → FunR Δ (LT.K A) (ST.K A′)
-    r-Id : FunR Δ LT.Id ST.Id
-    r-⊕  : ∀ {F F′ G G′} → FunR Δ F F′ → FunR Δ G G′ → FunR Δ (F LT.⊕ G) (F′ ST.⊕ G′)
-    r-⊗  : ∀ {F F′ G G′} → FunR Δ F F′ → FunR Δ G G′ → FunR Δ (F LT.⊗ G) (F′ ST.⊗ G′)
+  data FunR {m} (Δ : ST.KCtx m) : ST.Fun m → ST.Fun m → Set where
+    r-K  : ∀ {A A′} → TyR Δ A A′ → FunR Δ (ST.K A) (ST.K A′)
+    r-Id : FunR Δ ST.Id ST.Id
+    r-⊕  : ∀ {F F′ G G′} → FunR Δ F F′ → FunR Δ G G′ → FunR Δ (F ST.⊕ G) (F′ ST.⊕ G′)
+    r-⊗  : ∀ {F F′ G G′} → FunR Δ F F′ → FunR Δ G G′ → FunR Δ (F ST.⊗ G) (F′ ST.⊗ G′)
 
 module _ {m} {Δ : ST.KCtx m} where
+
+  -- (the graph's canonical proof)
+  mutual
+    tyR : ∀ (A : ST.Ty m) → TyR Δ A A
+    tyR (ST.var j) = r-var j
+    tyR ST.Unit    = r-unit
+    tyR ST.Void    = r-void
+    tyR ST.Int     = r-int
+    tyR ST.Float   = r-float
+    tyR (A ST.* B) = r-* (tyR A) (tyR B)
+    tyR (A ST.+ B) = r-+ (tyR A) (tyR B)
+    tyR (A ST.⇒[ LG.mk-kind q π ] B) = r-⇒ (kS-id q π) (tyR A) (tyR B)
+      where
+        kS-id : ∀ q π → kS (LG.mk-kind q π) ≡ LG.mk-kind q π
+        kS-id LG.Zero LG.pure = refl
+        kS-id LG.Zero LG.act  = refl
+        kS-id LG.Zero LG.eff  = refl
+        kS-id LG.One  LG.pure = refl
+        kS-id LG.One  LG.act  = refl
+        kS-id LG.One  LG.eff  = refl
+        kS-id LG.Many LG.pure = refl
+        kS-id LG.Many LG.act  = refl
+        kS-id LG.Many LG.eff  = refl
+    tyR (ST.μ F)   = r-μ (funR F)
+    tyR (ST.ν F φ) = r-ν (φS-id φ) (funR F)
+      where
+        φS-id : ∀ φ → φS φ ≡ φ
+        φS-id LG.pureᶠ = refl
+        φS-id LG.actᶠ  = refl
+
+    funR : ∀ (F : ST.Fun m) → FunR Δ F F
+    funR (ST.K A)   = r-K (tyR A)
+    funR ST.Id      = r-Id
+    funR (F ST.⊕ G) = r-⊕ (funR F) (funR G)
+    funR (F ST.⊗ G) = r-⊗ (funR F) (funR G)
 
   mutual
     TyR-uniqueˢ : ∀ {A A′ A″} → TyR Δ A A′ → TyR Δ A A″ → A′ ≡ A″
@@ -173,7 +191,7 @@ module _ {m} {Δ : ST.KCtx m} where
     TyR-uniqueˢ (r-⇒ refl a b) (r-⇒ refl a′ b′) = cong₂ (λ x y → x ST.⇒[ _ ] y) (TyR-uniqueˢ a a′) (TyR-uniqueˢ b b′)
     TyR-uniqueˢ (r-μ f)   (r-μ f′)    = cong ST.μ (FunR-uniqueˢ f f′)
     TyR-uniqueˢ (r-ν refl f) (r-ν refl f′) = cong (λ G → ST.ν G _) (FunR-uniqueˢ f f′)
-    TyR-uniqueˢ (r-rigid j e _) (r-rigid j′ e′ _) = cong ST.var (toℕ-injective (trans e (sym e′)))
+    TyR-uniqueˢ (r-var j) (r-var .j)  = refl
 
     FunR-uniqueˢ : ∀ {F F′ F″} → FunR Δ F F′ → FunR Δ F F″ → F′ ≡ F″
     FunR-uniqueˢ (r-K a)   (r-K a′)    = cong ST.K (TyR-uniqueˢ a a′)
@@ -187,110 +205,60 @@ module _ {m} {Δ : ST.KCtx m} where
     TyR-uniqueˡ r-void    r-void      = refl
     TyR-uniqueˡ r-int     r-int       = refl
     TyR-uniqueˡ r-float   r-float     = refl
-    TyR-uniqueˡ (r-* a b) (r-* a′ b′) = cong₂ LT._*_ (TyR-uniqueˡ a a′) (TyR-uniqueˡ b b′)
-    TyR-uniqueˡ (r-+ a b) (r-+ a′ b′) = cong₂ LT._+_ (TyR-uniqueˡ a a′) (TyR-uniqueˡ b b′)
+    TyR-uniqueˡ (r-* a b) (r-* a′ b′) = cong₂ ST._*_ (TyR-uniqueˡ a a′) (TyR-uniqueˡ b b′)
+    TyR-uniqueˡ (r-+ a b) (r-+ a′ b′) = cong₂ ST._+_ (TyR-uniqueˡ a a′) (TyR-uniqueˡ b b′)
     TyR-uniqueˡ (r-⇒ e a b) (r-⇒ e′ a′ b′) =
       arr (kS-injective (trans e (sym e′))) (TyR-uniqueˡ a a′) (TyR-uniqueˡ b b′)
       where
-        arr : ∀ {k k′ A B C D} → k ≡ k′ → A ≡ C → B ≡ D → (A LT.⇒[ k ] B) ≡ (C LT.⇒[ k′ ] D)
+        arr : ∀ {k k′ A B C D} → k ≡ k′ → A ≡ C → B ≡ D → (A ST.⇒[ k ] B) ≡ (C ST.⇒[ k′ ] D)
         arr refl refl refl = refl
-    TyR-uniqueˡ (r-μ f)   (r-μ f′)    = cong LT.μ-type (FunR-uniqueˡ f f′)
+    TyR-uniqueˡ (r-μ f)   (r-μ f′)    = cong ST.μ (FunR-uniqueˡ f f′)
     TyR-uniqueˡ (r-ν e f) (r-ν e′ f′) = ν-eq (φS-injective (trans e (sym e′))) (FunR-uniqueˡ f f′)
       where
-        ν-eq : ∀ {φ φ′ F G} → φ ≡ φ′ → F ≡ G → LT.ν-type F φ ≡ LT.ν-type G φ′
+        ν-eq : ∀ {φ φ′ F G} → φ ≡ φ′ → F ≡ G → ST.ν F φ ≡ ST.ν G φ′
         ν-eq refl refl = refl
-    TyR-uniqueˡ (r-rigid j e k) (r-rigid .j e′ k′) = rig (trans (sym e) e′) (kindS-injective (trans (sym k) k′))
-      where
-        rig : ∀ {i i′ κ κ′} → i ≡ i′ → κ ≡ κ′ → LT.rigid κ i ≡ LT.rigid κ′ i′
-        rig refl refl = refl
+    TyR-uniqueˡ (r-var j) (r-var .j)  = refl
 
     FunR-uniqueˡ : ∀ {F G F′} → FunR Δ F F′ → FunR Δ G F′ → F ≡ G
-    FunR-uniqueˡ (r-K a)   (r-K a′)    = cong LT.K (TyR-uniqueˡ a a′)
+    FunR-uniqueˡ (r-K a)   (r-K a′)    = cong ST.K (TyR-uniqueˡ a a′)
     FunR-uniqueˡ r-Id      r-Id        = refl
-    FunR-uniqueˡ (r-⊕ f g) (r-⊕ f′ g′) = cong₂ LT._⊕_ (FunR-uniqueˡ f f′) (FunR-uniqueˡ g g′)
-    FunR-uniqueˡ (r-⊗ f g) (r-⊗ f′ g′) = cong₂ LT._⊗_ (FunR-uniqueˡ f f′) (FunR-uniqueˡ g g′)
+    FunR-uniqueˡ (r-⊕ f g) (r-⊕ f′ g′) = cong₂ ST._⊕_ (FunR-uniqueˡ f f′) (FunR-uniqueˡ g g′)
+    FunR-uniqueˡ (r-⊗ f g) (r-⊗ f′ g′) = cong₂ ST._⊗_ (FunR-uniqueˡ f f′) (FunR-uniqueˡ g g′)
+
+  -- The graph is the identity.
+  TyR-≡ : ∀ {A A′} → TyR Δ A A′ → A ≡ A′
+  TyR-≡ {A} r = TyR-uniqueˢ (tyR A) r
+
+  FunR-≡ : ∀ {F F′} → FunR Δ F F′ → F ≡ F′
+  FunR-≡ {F} f = FunR-uniqueˢ (funR F) f
 
   -- Functor application commutes.
-  TyR-⟦⟧ : ∀ {F F′ A A′} → FunR Δ F F′ → TyR Δ A A′ → TyR Δ (LT.⟦ F ⟧T A) (ST.⟦ F′ ⟧F A′)
+  TyR-⟦⟧ : ∀ {F F′ A A′} → FunR Δ F F′ → TyR Δ A A′ → TyR Δ (ST.⟦ F ⟧F A) (ST.⟦ F′ ⟧F A′)
   TyR-⟦⟧ (r-K b)   a = b
   TyR-⟦⟧ r-Id      a = a
   TyR-⟦⟧ (r-⊕ f g) a = r-+ (TyR-⟦⟧ f a) (TyR-⟦⟧ g a)
   TyR-⟦⟧ (r-⊗ f g) a = r-* (TyR-⟦⟧ f a) (TyR-⟦⟧ g a)
 
   ------------------------------------------------------------------------
-  -- Base types and well-formed functors
+  -- Base types and well-formed functors: the Spec's, at the kinds
 
-  base-S : ∀ {A A′} → LW.IsBaseType A → TyR Δ A A′ → ST.Base Δ A′
-  base-S LW.base-Unit   r-unit    = ST.b-Unit
-  base-S LW.base-Void   r-void    = ST.b-Void
-  base-S LW.base-Int    r-int     = ST.b-Int
-  base-S LW.base-Float  r-float   = ST.b-Float
-  base-S (LW.base-Prod a b) (r-* ra rb) = ST.b-* (base-S a ra) (base-S b rb)
-  base-S (LW.base-Sum a b)  (r-+ ra rb) = ST.b-+ (base-S a ra) (base-S b rb)
-  base-S LW.base-rigid  (r-rigid j _ k) = ST.b-var k
+  base-S : ∀ {A A′} → ST.Base Δ A → TyR Δ A A′ → ST.Base Δ A′
+  base-S b r = subst (ST.Base Δ) (TyR-≡ r) b
 
-  base-L : ∀ {A A′} → ST.Base Δ A′ → TyR Δ A A′ → LW.IsBaseType A
-  base-L ST.b-Unit   r-unit    = LW.base-Unit
-  base-L ST.b-Void   r-void    = LW.base-Void
-  base-L ST.b-Int    r-int     = LW.base-Int
-  base-L ST.b-Float  r-float   = LW.base-Float
-  base-L (ST.b-* a b) (r-* ra rb) = LW.base-Prod (base-L a ra) (base-L b rb)
-  base-L (ST.b-+ a b) (r-+ ra rb) = LW.base-Sum (base-L a ra) (base-L b rb)
-  base-L (ST.b-var e) (r-rigid {k = k} j _ k′) = rigid-base k (kindS-injective (trans (sym k′) e))
-    where
-      rigid-base : ∀ {i} κ → κ ≡ LT.k-base → LW.IsBaseType (LT.rigid κ i)
-      rigid-base .LT.k-base refl = LW.base-rigid
+  base-L : ∀ {A A′} → ST.Base Δ A′ → TyR Δ A A′ → ST.Base Δ A
+  base-L b r = subst (ST.Base Δ) (sym (TyR-≡ r)) b
 
-  wf-S : ∀ {F F′} → LW.WellFormedF F → FunR Δ F F′ → ST.WFFun Δ F′
-  wf-S (LW.wf-K b)      (r-K a)   = ST.wf-K (base-S b a)
-  wf-S LW.wf-Id         r-Id      = ST.wf-Id
-  wf-S (LW.wf-Sum f g)  (r-⊕ a b) = ST.wf-⊕ (wf-S f a) (wf-S g b)
-  wf-S (LW.wf-Prod f g) (r-⊗ a b) = ST.wf-⊗ (wf-S f a) (wf-S g b)
+  wf-S : ∀ {F F′} → ST.WFFun Δ F → FunR Δ F F′ → ST.WFFun Δ F′
+  wf-S w f = subst (ST.WFFun Δ) (FunR-≡ f) w
 
-  wf-L : ∀ {F F′} → ST.WFFun Δ F′ → FunR Δ F F′ → LW.WellFormedF F
-  wf-L (ST.wf-K b) (r-K a)   = LW.wf-K (base-L b a)
-  wf-L ST.wf-Id    r-Id      = LW.wf-Id
-  wf-L (ST.wf-⊕ f g) (r-⊕ a b) = LW.wf-Sum (wf-L f a) (wf-L g b)
-  wf-L (ST.wf-⊗ f g) (r-⊗ a b) = LW.wf-Prod (wf-L f a) (wf-L g b)
+  wf-L : ∀ {F F′} → ST.WFFun Δ F′ → FunR Δ F F′ → ST.WFFun Δ F
+  wf-L w f = subst (ST.WFFun Δ) (sym (FunR-≡ f)) w
 
   ------------------------------------------------------------------------
-  -- Subtyping, both ways
+  -- Subtyping, both ways (one order)
 
-  sub-S : ∀ {A B A′ B′} → A LS.<: B → TyR Δ A A′ → TyR Δ B B′ → A′ SS.<: B′
-  sub-S LS.sub-void r-void _ = SS.sub-void
-  sub-S LS.sub-unit r-unit r-unit = SS.sub-unit
-  sub-S LS.sub-int r-int r-int = SS.sub-int
-  sub-S LS.sub-float r-float r-float = SS.sub-float
-  sub-S (LS.sub-arr a b p) (r-⇒ refl ra rb) (r-⇒ refl ra′ rb′) = SS.sub-arr (sub-S a ra′ ra) (sub-S b rb rb′) (⊑π-S p)
-  sub-S (LS.sub-prod a b) (r-* ra rb) (r-* ra′ rb′) = SS.sub-* (sub-S a ra ra′) (sub-S b rb rb′)
-  sub-S (LS.sub-sum a b) (r-+ ra rb) (r-+ ra′ rb′) = SS.sub-+ (sub-S a ra ra′) (sub-S b rb rb′)
-  sub-S LS.sub-μ (r-μ f) (r-μ f′) = subst (λ G → ST.μ _ SS.<: ST.μ G) (FunR-uniqueˢ f f′) SS.sub-μ
-  sub-S (LS.sub-ν {f = φ} {φ′} p) (r-ν refl f) (r-ν refl f′) =
-    subst (λ G → ST.ν _ _ SS.<: ST.ν G _) (FunR-uniqueˢ f f′) (SS.sub-ν (⊑φ-S φ φ′ p))
-  sub-S LS.sub-rigid r@(r-rigid _ _ _) r′ = subst (λ X → ST.var _ SS.<: X) (TyR-uniqueˢ r r′) SS.sub-var
+  sub-S : ∀ {A B A′ B′} → A SS.<: B → TyR Δ A A′ → TyR Δ B B′ → A′ SS.<: B′
+  sub-S p ra rb = subst₂ SS._<:_ (TyR-≡ ra) (TyR-≡ rb) p
 
-  -- The Spec's order, read back.
-  sub-L : ∀ {A B A′ B′} → A′ SS.<: B′ → TyR Δ A A′ → TyR Δ B B′ → A LS.<: B
-  sub-L SS.sub-void r-void _ = LS.sub-void
-  sub-L SS.sub-var r@(r-rigid _ _ _) r′ = subst (λ X → _ LS.<: X) (TyR-uniqueˡ r r′) LS.sub-rigid
-  sub-L SS.sub-unit r-unit r-unit = LS.sub-unit
-  sub-L SS.sub-int r-int r-int = LS.sub-int
-  sub-L SS.sub-float r-float r-float = LS.sub-float
-  sub-L (SS.sub-arr a b p) (r-⇒ {k = LG.mk-kind q π} e ra rb) (r-⇒ {k = LG.mk-kind q′ π′} e′ ra′ rb′) =
-    arr (qS-injective (trans (cong SG.ArrowKind.quantity e) (sym (cong SG.ArrowKind.quantity e′))))
-        (⊑π-L π π′ (grade (cong SG.ArrowKind.purity e) (cong SG.ArrowKind.purity e′) p))
-        (sub-L a ra′ ra) (sub-L b rb rb′)
-    where
-      grade : ∀ {x y x′ y′} → x ≡ x′ → y ≡ y′ → x′ SG.⊑π y′ → x SG.⊑π y
-      grade refl refl p = p
-      arr : ∀ {A A′ B B′} → q ≡ q′ → π Once.Spec.Grade.⊑π π′ → A′ LS.<: A → B LS.<: B′
-          → (A LT.⇒[ LG.mk-kind q π ] B) LS.<: (A′ LT.⇒[ LG.mk-kind q′ π′ ] B′)
-      arr refl p a b = LS.sub-arr a b p
-  sub-L (SS.sub-*  a b) (r-* ra rb) (r-* ra′ rb′) = LS.sub-prod (sub-L a ra ra′) (sub-L b rb rb′)
-  sub-L (SS.sub-+  a b) (r-+ ra rb) (r-+ ra′ rb′) = LS.sub-sum (sub-L a ra ra′) (sub-L b rb rb′)
-  sub-L SS.sub-μ (r-μ f) (r-μ f′) = subst (λ G → LT.μ-type _ LS.<: LT.μ-type G) (FunR-uniqueˡ f f′) LS.sub-μ
-  sub-L (SS.sub-ν p) (r-ν {φ = φ} e f) (r-ν {φ = φ′} e′ f′) =
-    subst (λ G → LT.ν-type _ φ LS.<: LT.ν-type G φ′) (FunR-uniqueˡ f f′) (LS.sub-ν (⊑φ-L φ φ′ (grade e e′ p)))
-    where
-      grade : ∀ {x y x′ y′} → x ≡ x′ → y ≡ y′ → SG.fin x′ SG.⊑π SG.fin y′ → SG.fin x SG.⊑π SG.fin y
-      grade refl refl p = p
+  sub-L : ∀ {A B A′ B′} → A′ SS.<: B′ → TyR Δ A A′ → TyR Δ B B′ → A SS.<: B
+  sub-L p ra rb = subst₂ SS._<:_ (sym (TyR-≡ ra)) (sym (TyR-≡ rb)) p
