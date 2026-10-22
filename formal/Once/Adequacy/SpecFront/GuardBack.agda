@@ -179,15 +179,15 @@ private
   sub-distinct (e-fun _ ∷ ds)  (de-fun ∷ a)  (h ∷ u) = sub ds a h ∷ sub-distinct ds a u
   sub-distinct (e-poly _ ∷ ds) (de-poly ∷ a) (h ∷ u) = ap-ins (E ds) (sub ds a h) (sub-distinct ds a u)
 
-  dist-ok : ∀ b r → b ≡ true → Parser.distinctOrErr b r ≡ r
-  dist-ok .true r refl = refl
+  dist-ok : ∀ b m r → b ≡ true → Parser.distinctOrErr b m r ≡ r
+  dist-ok .true m r refl = refl
 
 -- The guard admits FFI declarations followed by definitions, all named apart,
 -- the definitions by identifiers or operators.
 guard← : ∀ fs ds → All FFIEntry fs → All DefEntry ds → AllPairs _≢_ (names (fs ++ ds)) → All DefName (names ds)
        → guardDistinct (inj₂ (fs ++ ds)) ≡ inj₂ (fs ++ ds)
 guard← fs ds ff de u v =
-  dist-ok _ (inj₂ (fs ++ ds))
+  dist-ok _ _ (inj₂ (fs ++ ds))
     (∧-true (∧-true (∧-true (distinct-true (E es) (subst (AllPairs _≢_) (sym eE) (ap-pre (E ds) ed)))
                             (valid-true (subst (All DefName) (sym eE) (all-pre (E ds) (sub ds de v)))))
                     (distinct-true (E es ++ P es) (subst (AllPairs _≢_) (sym (cong₂ _++_ eE eP)) ed)))
