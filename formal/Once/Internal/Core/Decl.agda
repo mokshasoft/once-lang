@@ -105,3 +105,23 @@ toISig ((c ∶ t) ∷ Σ′) = (showCanonical c , ⌜ t ⌝ᵈ) ∷ toISig Σ′
 ⌜⌝ᵈ-concrete (constant b)      = con-base (⌜⌝-base b)
 ⌜⌝ᵈ-concrete (value a q b)     = con-fun (⌜⌝-base a) (⌜⌝-base b)
 ⌜⌝ᵈ-concrete (operation a q b) = con-fun (⌜⌝-base a) (⌜⌝-base b)
+
+-- A declaration's code is read back by `toB`/`declS` (so a declaration of Σ
+-- is the one `toISig` records at its rendered name).
+toB-⌜⌝ : ∀ b → toB ⌜ b ⌝ ≡ b
+toB-⌜⌝ S.unit    = refl
+toB-⌜⌝ S.void    = refl
+toB-⌜⌝ S.int     = refl
+toB-⌜⌝ S.float   = refl
+toB-⌜⌝ (a S.* b) = cong₂ S._*_ (toB-⌜⌝ a) (toB-⌜⌝ b)
+toB-⌜⌝ (a S.+ b) = cong₂ S._+_ (toB-⌜⌝ a) (toB-⌜⌝ b)
+
+declS-⌜⌝ᵈ : ∀ t → declS ⌜ t ⌝ᵈ ≡ t
+declS-⌜⌝ᵈ (constant S.unit)    = refl
+declS-⌜⌝ᵈ (constant S.void)    = refl
+declS-⌜⌝ᵈ (constant S.int)     = refl
+declS-⌜⌝ᵈ (constant S.float)   = refl
+declS-⌜⌝ᵈ (constant (a S.* b)) = cong₂ (λ x y → constant (x S.* y)) (toB-⌜⌝ a) (toB-⌜⌝ b)
+declS-⌜⌝ᵈ (constant (a S.+ b)) = cong₂ (λ x y → constant (x S.+ y)) (toB-⌜⌝ a) (toB-⌜⌝ b)
+declS-⌜⌝ᵈ (value a q b)        = cong₂ (λ x y → value x q y) (toB-⌜⌝ a) (toB-⌜⌝ b)
+declS-⌜⌝ᵈ (operation a q b)    = cong₂ (λ x y → operation x q y) (toB-⌜⌝ a) (toB-⌜⌝ b)

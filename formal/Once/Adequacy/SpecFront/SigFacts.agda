@@ -40,14 +40,15 @@ import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 open import Once.Internal.Type.WellFormed using (IsConcrete; RigidFree)
 open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; Decl; _∶_; OneName; ⌜_⌝ᵈ)
 import Once.Spec.Type as ST
 import Once.Parser as Parser
 open import Once.Internal.Module using (entrySig)
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecInterp using (declTy)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Internal.Core.Decl using (toISig; declS; declS-⌜⌝ᵈ)
+open import Once.Adequacy.SpecFront.Render using (render-inj)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts)
@@ -181,3 +182,13 @@ h-sig-of Σ fs e u fa Δ {c} {t} M =
   let (k , h , g) = facts-at fa (subst (_ ∈_) e (mem-toISig M))
   in declTy t , sig-at Σ fs e u M , k
      , subst (λ t′ → TyR Δ (Once.Internal.Type.wk₀ (declTy t)) ⌜ t′ ⌝ᵈ) (declS-declTy t) (Once.Adequacy.SpecFront.Types.decl-R Δ k h g)
+
+-- A declaration `toISig` records, read at a word name rendering to its key,
+-- is the declaration of Σ (D329: word names render injectively).
+sig-in : ∀ (Σ : Signature) → (∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
+       → ∀ {x T} → (x , T) ∈ toISig Σ → ∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
+sig-in [] w ()
+sig-in ((c′ ∶ t) ∷ Σ′) w (here refl) {c} wc e =
+  subst (λ d → (d ∶ declS ⌜ t ⌝ᵈ) ∈ ((c′ ∶ t) ∷ Σ′)) (sym (render-inj c c′ wc (w (here refl)) e))
+        (subst (λ u → (c′ ∶ u) ∈ ((c′ ∶ t) ∷ Σ′)) (sym (declS-⌜⌝ᵈ t)) (here refl))
+sig-in (_ ∷ Σ′) w (there m) wc e = there (sig-in Σ′ (λ m′ → w (there m′)) m wc e)
