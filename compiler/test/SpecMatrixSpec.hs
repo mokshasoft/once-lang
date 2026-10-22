@@ -208,6 +208,21 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             , "p = effInc"
             ]
           assertBool "Should reject eff where pure is expected" (isLeft r)
+        -- D318 item 2: a stream's layers are at a finite grade, `pure ⊑ act`,
+        -- so a pure stream is accepted where an acting one is expected (each
+        -- layer becomes a block with no call). PuritySpec rejects the converse.
+      , testCase "a pure stream where an acting one is expected is accepted" $ do
+          r <- checkLib
+            [ "mkNu : Int -> Nu (K Int)"
+            , "mkNu = ana (\\x -> x)"
+            , ""
+            , "peekA : Nu (Act (K Int)) -> Act Unit Int"
+            , "peekA v = Out v"
+            , ""
+            , "run : Act Unit Int"
+            , "run = peekA (mkNu 3)"
+            ]
+          r @?= Right ()
       ]
 
   , testGroup "QTT (D276)"
@@ -223,6 +238,16 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             , ""
             , "g : Act Unit Unit"
             , "g = tick"
+            ]
+          r @?= Right ()
+        -- D318 item 5: a signature declares constants, pure functions and
+        -- operations; this is the constant.
+      , testCase "a declared constant can be referenced" $ do
+          r <- checkLib
+            [ "signature seven : Int"
+            , ""
+            , "f : Unit -> Int"
+            , "f u = seven"
             ]
           r @?= Right ()
       , testCase "a signature and a definition of one name are rejected" $ do
