@@ -18,6 +18,8 @@ import Once.Internal.Type.WellFormed
 
 import Once.Spec.Type
 import Once.Type.Rigid
+open import Once.Internal.Type.Instance using (kindsOf)
+open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (Ty; KCtx)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig)
@@ -102,7 +104,7 @@ poly-instance-sem : ∀ {m} {imps sigs : Imports} {polys : PolyCtx} (V : View im
                              → Natural (kindsOf sc) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) V)
                       (irf : (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T)
                            × (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport sigs x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T))
-                      (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Ty m} (ki : KindedInstance ∅ₖ sc U)
+                      (D : ctxAt (kindsOf sc) (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Ty m} (ki : KindedInstance ∅ₖ sc U)
                   → GM.⟦ proj₂ (elabᶜ V (inst-at sc irf D ki)) ⟧ fmt δ tt
                     ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
                         (GM.⟦ PT.instantiate (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))

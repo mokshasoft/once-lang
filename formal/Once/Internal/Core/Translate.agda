@@ -237,11 +237,11 @@ polySg sg pfi (suc d) = sg d
 module _ {Fs s} {S : Sig Fs s} {sc : Scope} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0} where
 
   polyElab : SigSig Fs (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
-           → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ → E.Elab S Ctx.∅ Ψ (rigidOf (pfunType pfi))
+           → ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ → E.Elab S Ctx.∅ Ψ (rigidOf (pfunType pfi))
   polyElab ss is ts D = E.elabᶜ S (viewOf ss is ts) D
 
   polyBody : (ss : SigSig Fs (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc)) (sg : SigCF S)
-           → (D : ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
+           → (D : ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
            → PT._⊩_⊢[_]_∷_!_ S (kindsOf (pfunType pfi)) PT.∅ Usage.[]
                (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab ss is ts D)))
                (absTy (kindsOf (pfunType pfi)) (rigidOf (pfunType pfi))) T.pure
@@ -255,7 +255,7 @@ monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts sg g D =
                          (monoBody {S = S} {sc = sc} {fi = fi} ss is ts sg g D)
 
 polyDef : ∀ {Fs s} {S : Sig Fs s} {sc pfi Ψ} → Tele S → (ss : SigSig Fs (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-        → SigCF S → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ → Tele (S ▷ schemaOf (pfunType pfi))
+        → SigCF S → ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ → Tele (S ▷ schemaOf (pfunType pfi))
 polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts sg D =
   def tl (schemaOf (pfunType pfi))
          (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} ss is ts D)))

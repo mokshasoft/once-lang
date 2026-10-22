@@ -27,7 +27,9 @@
 
 module Once.Internal.Module where
 
-open import Once.Spec.Type using (Ty)
+open import Once.Internal.Type.Instance using (kindsOf)
+open import Once.TypeCheck.Classify using (ctxAt)
+open import Once.Spec.Type using (KCtx)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_)
@@ -82,14 +84,18 @@ record Scope : Set where
 emptyScope : Scope
 emptyScope = scope [] C.emptyFunCtx []
 
-ctxOf : ∀ {m} → Scope → NamedCtx m
+ctxOf : Scope → NamedCtx 0
 ctxOf sc = ctxWithImportsAndPolys (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc))
 
-addSig : ∀ {m} → Scope → String → Ty m → Scope
+-- The scope where a polymorphic body is typed: over its parameters, of kinds Δ.
+ctxOfAt : ∀ {m} → KCtx m → Scope → NamedCtx m
+ctxOfAt Δ sc = ctxAt Δ (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc))
+
+addSig : Scope → String → Type → Scope
 addSig sc x ty = scope ((x , ty) ∷ Scope.sig sc) (Scope.imps sc) (Scope.tele sc)
 
 -- D324: `main` never enters the definitions' context (`C.extendDefs`).
-addImp : ∀ {m} → Scope → String → Ty m → Scope
+addImp : Scope → String → Type → Scope
 addImp sc x ty = scope (Scope.sig sc) (C.extendDefs (Scope.imps sc) x ty) (Scope.tele sc)
 
 addPoly : Scope → Parser.PolyFunInfo → Scope
@@ -97,7 +103,7 @@ addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 
 -- R8 (plan 0.121): a monomorphic definition's body — CHECKED at its signature,
 -- or, without one, SYNTHESIZING its type (D323; the Spec's `w-sig`/`w-nosig`).
-MonoBody : ∀ {m} → Maybe (Ty m) → (ctx : NamedCtx m) → RawExpr → Ty m → Surface.Usage (NamedCtx.size ctx) → Set
+MonoBody : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
 MonoBody (just _) ctx e ty Ψ = ctx ⊢ᶜ e ∶ ty ⨾ Ψ
 MonoBody nothing  ctx e ty Ψ = ctx ⊢ᵢ e ∶ ty ⨾ Ψ
 
@@ -125,8 +131,8 @@ data ModTele : Scope → List Parser.Entry → Set where
   -- D243: a telescope definition, typed ONCE, at its schema with rigid
   -- parameters. A use is at a kinded instance of it.
   poly : ∀ {sc pfi es Ψ}
-       → PrincipalAt (ctxOf sc) (pfunBody pfi) (rigidOf (pfunType pfi))
-       → ctxOf sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
+       → PrincipalAt (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi))
+       → ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
        → ModTele (addPoly sc pfi) es
        → ModTele sc (Parser.e-poly pfi ∷ es)
 
@@ -138,7 +144,7 @@ data ModTele : Scope → List Parser.Entry → Set where
 -- do not depend on which derivation types the module.
 ------------------------------------------------------------------------
 
-entrySig-fun : ∀ {m} → Parser.FunInfo → Bool → Maybe (Ty m) → ISig → ISig
+entrySig-fun : Parser.FunInfo → Bool → Maybe Type → ISig → ISig
 entrySig-fun fi true  (just ty) rest = (funName fi , ty) ∷ rest
 entrySig-fun fi true  nothing   rest = rest
 entrySig-fun fi false _         rest = rest
@@ -174,7 +180,7 @@ ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions (Parser.extractAliases
 -- The entry point: a monomorphic definition `main`, usable as `Eff Unit Unit`.
 ------------------------------------------------------------------------
 
-EffUU : ∀ {m} → Ty m
+EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 -- Every monomorphic definition named `main` is usable as `Eff Unit Unit` (the

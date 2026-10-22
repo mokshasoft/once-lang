@@ -14,7 +14,6 @@
 
 module Once.Adequacy.MainIRForm where
 
-open import Once.Spec.Type using (Ty)
 open import Once.Internal.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx)
 import Once.Parser.Module as Module
@@ -47,7 +46,7 @@ open import Once.Internal.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate using ()
 import Once.Compile as C
 
-EffUU : ∀ {m} → Ty m
+EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 ------------------------------------------------------------------------
@@ -56,19 +55,19 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 ------------------------------------------------------------------------
 
 private
-  validateMain-at-sub : ∀ {m} (ty : Ty m) (d : Dec (ty <: EffUU)) → C.validateMain-at ty d ≡ inj₂ tt → ty <: EffUU
+  validateMain-at-sub : ∀ (ty : Type) (d : Dec (ty <: EffUU)) → C.validateMain-at ty d ≡ inj₂ tt → ty <: EffUU
   validateMain-at-sub ty (yes p) _ = p
   validateMain-at-sub ty (no _) ()
 
-validateMain-sub : ∀ {m} (ty : Ty m) → C.validateMain ty ≡ inj₂ tt → ty <: EffUU
+validateMain-sub : ∀ (ty : Type) → C.validateMain ty ≡ inj₂ tt → ty <: EffUU
 validateMain-sub ty eq = validateMain-at-sub ty (ty <:? EffUU) eq
 
 ------------------------------------------------------------------------
 -- (2) A successfully-compiled "main" is usable as `Eff Unit Unit`.
 ------------------------------------------------------------------------
 
-compileFun-main-sub : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
+compileFun-main-sub : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFun IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
@@ -76,8 +75,8 @@ compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in 
 ... | inj₁ err = case eq of λ ()
 
 -- R8: `main` without a signature, compiled from its synthesis.
-compileFunI-main-sub : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
+compileFunI-main-sub : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFunI IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFunI-main-sub ctx polys impsOf ty body irFun eq = go (C.validateMain ty) refl eq
@@ -87,8 +86,8 @@ compileFunI-main-sub ctx polys impsOf ty body irFun eq = go (C.validateMain ty) 
     go (inj₂ tt) veq _ = validateMain-sub ty veq
     go (inj₁ _)  _   ()
 
-compileFunM-main-sub : ∀ {m} (ft : Maybe (Ty m)) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
+compileFunM-main-sub : ∀ (ft : Maybe Type) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFunM ft IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFunM-main-sub (Data.Maybe.just _) = compileFun-main-sub

@@ -24,6 +24,7 @@
 
 module Once.Adequacy.NameClash where
 
+open import Once.Internal.Type.Instance using (kindsOf)
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map; _++_)
 open import Data.Maybe using (nothing; just)
@@ -203,10 +204,10 @@ ce-syms-fun : ∀ (doOpt : Bool) (sc : C.CScope) (fi : FunInfo) (es : List Entry
 ce-syms doOpt sc [] cfs eq = cong C.emittedSyms (sym (inj₂-injective eq))
 ce-syms doOpt sc (e-fun fi ∷ es) cfs eq = ce-syms-fun doOpt sc fi es (FunInfo.funIsPrimitive fi) refl cfs eq
 ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
-  with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (below (rigidOf (PolyFunInfo.pfunType pfi)))
+  with C.firstChecking (Classify.ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (below (rigidOf (PolyFunInfo.pfunType pfi)))
 ... | just _ = case eq of λ ()
 ... | nothing
-  with C.checkOK (TE.checkElabV (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
+  with C.checkOK (TE.checkElabV (Classify.ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
 ...   | inj₁ _ = case eq of λ ()
 ...   | inj₂ _ = ce-syms doOpt (C.addEntry sc pfi) es cfs eq
 

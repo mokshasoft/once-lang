@@ -23,6 +23,8 @@
 import Once.Spec.Grade
 module Once.Adequacy.ProgramLinked where
 
+open import Once.Internal.Type.Instance using (kindsOf)
+open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Nat using (ℕ; _<_)
@@ -551,7 +553,7 @@ private
   splice-at tbl pre ac I uf fresh x A (success Usage.[] _ _ _ , w) refl r = r
 
 linv-poly : ∀ {csc pre} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0}
-          → ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
+          → ctxAt (kindsOf (pfunType pfi)) (C.ctop csc) (C.cpolys csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
           → All (pfunName pfi ≢_) (scopeNames csc)
           → LInv σ csc pre → LInv σ (C.addEntry csc pfi) pre
 linv-poly {σ = σ} {csc} {pre} {pfi} {Usage.[]} D fr inv = record

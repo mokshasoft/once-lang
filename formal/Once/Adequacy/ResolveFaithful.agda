@@ -20,6 +20,7 @@
 -- (`resolveExpr-sigOp-closure-faithful`; plan 0.103 1c deleted the inconsistent poly-splice one).
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (base)
 open import Once.Spec.Type using (Ty)
 open import Once.Internal.Typing.Scope using (PolyCtx; Imports)
 open import Once.TypeCheck.Classify using (TopCtx)
@@ -69,7 +70,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; 
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV)
 import Once.TypeCheck.Elaborate as Elaborate
 open import Once.Internal.Typing.Scope using (lookupPolyPrefix)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; ctxAt)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 
@@ -101,42 +102,45 @@ open import Once.Postulates using (extensionality)
 -- is its pure half), never the references — so two definitions environments
 -- with the same calls mean it alike. The surface meaning dispatches on the
 -- type's shape, so the fact is stated per shape.
-sigOp-σ-irrel : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m} (c : CallEnv) (r r′ : String → (U : Ty m) → T∞ ⟦ U ⟧ᴰ)
+sigOpSem-σ-irrel : (A : Type) (c : CallEnv) (r r′ : ∀ {k} → String → (U : Ty k) → T∞ ⟦ U ⟧ᴰ)
+  (s : CanonicalName) (conc : IsConcrete A)
+  → SD.sigOpSem A s conc fmt (SD.defsSem c r) ≡ SD.sigOpSem A s conc fmt (SD.defsSem c r′)
+sigOpSem-σ-irrel (_ T.⇒[ T.mk-kind Zero T.pure ] _) c r r′ s (con-fun _ _) = refl
+sigOpSem-σ-irrel (_ T.⇒[ T.mk-kind Zero T.eff ] _) c r r′ s (con-fun _ _) = refl
+sigOpSem-σ-irrel (_ T.⇒[ T.mk-kind Zero T.act ] _) c r r′ s (con-fun _ _) = refl
+sigOpSem-σ-irrel (_ T.⇒[ T.mk-kind One _ ] _) c r r′ s (con-fun _ _) = refl
+sigOpSem-σ-irrel (_ T.⇒[ T.mk-kind Many _ ] _) c r r′ s (con-fun _ _) = refl
+sigOpSem-σ-irrel T.Unit c r r′ s (con-base _) = refl
+sigOpSem-σ-irrel T.Void c r r′ s (con-base _) = refl
+sigOpSem-σ-irrel T.Int c r r′ s (con-base _) = refl
+sigOpSem-σ-irrel T.Float c r r′ s (con-base _) = refl
+sigOpSem-σ-irrel (_ T.* _) c r r′ s (con-base _) = refl
+sigOpSem-σ-irrel (_ T.+ _) c r r′ s (con-base _) = refl
+sigOpSem-σ-irrel (_ T.⇒[ _ ] _) c r r′ s (con-base ())
+sigOpSem-σ-irrel (T.μ-type _) c r r′ s (con-base ())
+sigOpSem-σ-irrel (T.ν-type _ _) c r r′ s (con-base ())
+
+
+sigOp-σ-irrel : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Type} (c : CallEnv) (r r′ : ∀ {k} → String → (U : Ty k) → T∞ ⟦ U ⟧ᴰ)
   (s : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
   → SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt (SD.defsSem c r) dγ ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt (SD.defsSem c r′) dγ
-sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero T.pure ] _} c r r′ s (con-fun _ _) dγ = refl
-sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero T.eff ] _}  c r r′ s (con-fun _ _) dγ = refl
-sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero T.act ] _} c r r′ s (con-fun _ _) dγ = refl
-sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind One _ ] _}  c r r′ s (con-fun _ _) dγ = refl
-sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Many _ ] _} c r r′ s (con-fun _ _) dγ = refl
-sigOp-σ-irrel {A = _ T.⇒[ _ ] _} c r r′ s (con-base ()) dγ
-sigOp-σ-irrel {A = T.Unit}       c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = T.Void}       c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = T.Int}        c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = T.Float}      c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = T.rigid _ _}  c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = _ T.* _}      c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = _ T.+ _}      c r r′ s (con-base _) dγ = refl
-sigOp-σ-irrel {A = T.μ-type _}   c r r′ s (con-base ()) dγ
-sigOp-σ-irrel {A = T.ν-type _ _} c r r′ s (con-base ()) dγ
+sigOp-σ-irrel {A = A} c r r′ s conc dγ = cong (subst T∞ _) (sigOpSem-σ-irrel A c r r′ s conc)
 
 -- A linked reference is CLOSED: `poly x A` either stays (an internal call,
 -- environment-free) or becomes `closed r` — so its meaning does not depend on
 -- the context it sits in. Explicit-argument forms, so both sides reduce on
 -- the same lookup / elaboration answers.
-splice-ctx-indep :
-  ∀ {n} {Γ : Srf.Ctx n} {A : Type}
+splice-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → TopCtx) (userFns : Imports)
     (fresh : ℕ) (x : String) {schema body prefix}
     (polyEq : lookupPolyPrefix polys x ≡ just (schema , body , prefix))
-    (r : VerifiedCheckResult (ctxWithImportsAndPolys (imps x) prefix) body A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
+    (r : VerifiedCheckResult (ctxAt (λ _ → base) (imps x) prefix) body A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
   → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ dγ
       ≡ SD.⟦ applySplice {Γ = Srf.∅} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ tt
 splice-ctx-indep polys pAcc imps userFns fresh x polyEq (Elaborate.CheckElabResult.failure _ , _) dγ = refl
 splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (Elaborate.CheckElabResult.success Srf.[] eE _ _ , _) dγ = refl
 
-poly-ctx-indep :
-  ∀ {n} {Γ : Srf.Ctx n} {A : Type}
+poly-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → TopCtx) (userFns : Imports)
     (fresh : ℕ) (x : String) (lp : Maybe _) (eqLP : lookupPolyPrefix polys x ≡ lp)
     (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
@@ -145,7 +149,7 @@ poly-ctx-indep :
 poly-ctx-indep polys pAcc imps userFns fresh x nothing eqLP dγ = refl
 poly-ctx-indep {A = A} polys pAcc imps userFns fresh x (just (_ , body , prefix)) eqLP dγ =
   splice-ctx-indep polys pAcc imps userFns fresh x eqLP
-    (checkElabV (ctxWithImportsAndPolys (imps x) prefix) body A) dγ
+    (checkElabV (ctxAt (λ _ → base) (imps x) prefix) body A) dγ
 
 -- Two-sided bind congruence: related heads and pointwise-equal continuations
 -- give equal computations (plan 0.105: equality of trees, no budget).
@@ -165,8 +169,7 @@ bind2-faithful mR mU gR gU me ge = cong₂ _>>=∞_ me (extensionality ge)
 --   unsolvable higher-order constraint (`_f (_m k) k ≐ proj₂ …`) that Agda
 --   silently defers rather than rejects. Here every monadic argument is fixed by
 --   an explicit parameter, so nothing is inferred.
-binop-le-faithful :
-  ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ Ψ' : Usage n} {A B C : Type}
+binop-le-faithful : ∀ {m} {n} {Γ : Srf.Ctx m n} {Ψ₁ Ψ₂ Ψ' : Usage n} {A B C : Ty m}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
     (le₁ : Ψ₁ Srf.⊑ᵘ Ψ') (le₂ : Ψ₂ Srf.⊑ᵘ Ψ')
@@ -203,8 +206,7 @@ binop-le-faithful {Γ = Γ} polys imps userFns fresh a b le₁ le₂ g dγ ihA i
 -- | The common case of `binop-le-faithful`: both operands narrow out of the
 --   SUM usage `Ψ₁ +ᵘ Ψ₂` — every arithmetic op, `pair`, and the four D127
 --   combinators.
-binop-faithful :
-  ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type}
+binop-faithful : ∀ {m} {n} {Γ : Srf.Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
     (g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
@@ -233,8 +235,7 @@ binop-faithful {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {C = C} polys imps userFns fresh 
 --   through funext. `extensionality`'s implicit function arguments cannot be
 --   recovered from a `(m >>=∞ f) j` proof — `(m >>=∞ f) j` REDUCES, so the match
 --   is higher-order — hence `inner` carries an explicit signature that pins them.
-thunk-binop-faithful :
-  ∀ {n} {Γ : Srf.Ctx n} {Ψ₁ Ψ₂ Ψ' : Usage n} {A B C : Type}
+thunk-binop-faithful : ∀ {m} {n} {Γ : Srf.Ctx m n} {Ψ₁ Ψ₂ Ψ' : Usage n} {A B C : Ty m}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
     (le₁ : Ψ₁ Srf.⊑ᵘ Ψ') (le₂ : Ψ₂ Srf.⊑ᵘ Ψ')
@@ -272,8 +273,7 @@ thunk-binop-faithful {Γ = Γ} {C = C} polys imps userFns fresh a b le₁ le₂ 
 --   `le`, then a continuation the resolver leaves alone (`morph-app`, `fst'`,
 --   `snd'`, `inl'`, `inr'`, and `app` at an erased argument). Same discipline as
 --   `binop-faithful`: the monadic argument and the continuation are PARAMETERS.
-unop-faithful :
-  ∀ {n} {Γ : Srf.Ctx n} {Ψ Ψ' : Usage n} {A C : Type}
+unop-faithful : ∀ {m} {n} {Γ : Srf.Ctx m n} {Ψ Ψ' : Usage n} {A C : Ty m}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (a : Expr Γ Ψ A) (le : Ψ Srf.⊑ᵘ Ψ') (g : ⟦ A ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
     (dγ : ⟦ ⟦ Γ Srf.↾ Ψ' ⟧ᶜ ⟧ᴰ)
@@ -294,8 +294,7 @@ unop-faithful {Γ = Γ} polys imps userFns fresh a le g dγ ih =
 -- The faithfulness theorem.
 ------------------------------------------------------------------------
 
-resolveExpr-faithful :
-  ∀ {n} {Γ : Srf.Ctx n} {Ψ : Usage n} {A : Type}
+resolveExpr-faithful : ∀ {m} {n} {Γ : Srf.Ctx m n} {Ψ : Usage n} {A : Ty m}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (e : Expr Γ Ψ A) (dγ : ⟦ ⟦ Γ Srf.↾ Ψ ⟧ᶜ ⟧ᴰ)
   → SD.⟦ resolveExpr polys imps userFns fresh e ⟧ˢ fmt σ₀ dγ
@@ -578,8 +577,8 @@ resolveExpr-faithful polys imps userFns fresh (Srf.loop {Γ = Γ} {Ψ = Ψ} roun
   cong (λ rc → (rc >>=∞ λ clo → return∞ (iter∞ clo)))
        (resolveExpr-faithful polys imps userFns fresh round (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-*Many Ψ) dγ))
 -- sigOp: D246 — the resolver passes it through, and a SigOp reads no environment.
-resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.sigOp s conc) dγ =
-  sigOp-σ-irrel {Γ = Γ} {A = A} ρ _ _ s conc dγ
+resolveExpr-faithful {Γ = Γ} polys imps userFns fresh (Srf.sigOp {A = A₀} s conc) dγ =
+  sigOp-σ-irrel {Γ = Γ} {A = A₀} ρ _ _ s conc dγ
 -- poly: the substitution lemma's variable case — the linked reference means
 -- `σR x A` by definition, up to its context-independence.
 resolveExpr-faithful {Γ = Γ} {A = A} polys imps userFns fresh (Srf.poly x T) dγ =
