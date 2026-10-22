@@ -4,80 +4,55 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.SpecCore.Fundamental — the fundamental lemma of the meaning
--- relation (plan 0.121 §3.5).
+-- relation (plan 0.121 §3.5; plan 0.122: over the one core).
 --
--- A compiler core derivation `D` (over its type variables) and its Spec
--- translation `trD D` mean related computations: at related instances of the
--- variables and related environments, the compiler's meaning of `D`
--- instantiated and the Spec's meaning of `trD D` are related at the related
--- types and grades (`Fund D`), given related definitions environments.
+-- A Spec core derivation `D` (over its type variables) means, in the
+-- compiler, its instance `ty-subst-⊢ σ r D` (`Core.Telescope`), and in the
+-- Spec, `D` read at `σ` (`Spec.Core.Meaning`). At related environments the
+-- two are related at the instance's type and the derivation's grade (`Fund
+-- D`), given related definitions environments.
 --
--- Both sides move their derivations along equations where the indices agree
--- only propositionally (`instantiate`'s `subst`, `trD`'s `atS`); each is
--- crossed by one lemma (`L-at`, `S-at`), the graphs having one proof each.
--- The rules whose meanings differ in representation more than this — the
--- recursion formers, coercions, the loop, the signature's declarations,
+-- The instance's derivation is `D`'s rule by rule, but for a few rules whose
+-- type the substitution moves along an equation (`retypeᵗ`), crossed by
+-- `L-at`. The rules whose meanings differ in representation more than this —
+-- the recursion formers, coercions, the loop, the signature's declarations,
 -- definitions and arithmetic — are the cases record `Cases`, discharged in
--- their own modules.
+-- their own module.
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Product using (_,_)
-open import Once.Internal.Contract using (ISig)
-open import Once.Internal.Name using (showCanonical; WordName)
-import Once.Internal.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature; _∶_)
+open import Once.Spec.Core.Syntax using (Defs)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Adequacy.SpecCore.Poly using (declS)
 
 import Once.Spec.Grade
-module Once.Adequacy.SpecCore.Fundamental
-  {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
-  (fmt : TargetNum) where
+module Once.Adequacy.SpecCore.Fundamental (Σ : Signature) {s : ℕ} (S : Defs s) (fmt : TargetNum) where
 
 open import Data.Unit using (⊤; tt)
 import Data.Empty
-open import Data.Product using (_×_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂) renaming ([_,_]′ to [_,_]′′)
 open import Data.Fin using (Fin; zero; suc)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-import Once.Internal.Type as LT
-
-import Once.Spec.Type as LT
-import Once.Spec.Grade as LG
-import Once.Internal.Type.Sub as LS
-import Once.Spec.Sub as LS
-import Once.Internal.Context as LC
-import Once.Spec.Grade as SG
-import Once.Spec.Type as ST
-import Once.Spec.Context as SCx
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; Finite; fin; mk-kind; _⊑π_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Once.Spec.Type using (Ty; Type; Fun; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⇒[_]_; _+_; μ; ν; ⟦_⟧F)
+open import Once.Spec.Context using (Ctx; Usage; lookup; _⟨_⟩ᶜ; _*ᵘ_)
+open import Once.Internal.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Spec.Sub using (_<:_)
+open import Once.Spec.Signature using (DeclType)
+open import Once.Spec.Core.Syntax using (Prim; primDom; primCod; Schema; _!!_)
+open Schema using (arity; kinds; type)
+open import Once.Spec.Core.Typing Σ S
 import Once.Internal.Graded as LGr
-import Once.Internal.Core.PolyTyping S as PT
-import Once.Internal.Core.PolySub as PS
-import Once.Internal.Core.Typing S as GT
-import Once.Internal.Core.Meaning S as GM
-open import Once.Adequacy.SpecCore.Schema using (defsS; kindsS)
-open import Once.Adequacy.SpecCore.Context using (uS-zero)
-open import Once.Adequacy.SpecCore.Type using (⊑π-S)
-open import Once.Adequacy.SpecCore.Poly using (module Translate)
-open Translate S Σ sigop-S
-import Once.Spec.Core.Typing Σ S′ as S⊢
-import Once.Spec.Core.Meaning Σ fmt S′ as SM
+import Once.Internal.Core.Meaning Σ S as GM
+import Once.Spec.Core.Meaning Σ fmt S as SM
+import Once.Metatheory.TermModel.TySubst Σ S as TS
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open import Once.Adequacy.SpecCore.Monad Σ
-open import Once.Adequacy.SpecCore.Env S Σ fmt
-
-------------------------------------------------------------------------
--- Contexts, canonically
-------------------------------------------------------------------------
-
-crΓ : ∀ {m n} (Γ : PT.PCtx m n) → CR S Γ (pctxS Γ)
-crΓ PT.∅           = cr-∅
-crΓ (Γ PT., A ^ q) = cr-▸ (crΓ Γ) (ptr A)
+open import Once.Adequacy.SpecCore.Env Σ S fmt
 
 ------------------------------------------------------------------------
 -- The statement
@@ -85,74 +60,56 @@ crΓ (Γ PT., A ^ q) = cr-▸ (crΓ Γ) (ptr A)
 
 module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
 
-
-  -- `D` and `trD D` mean related computations.
-  Fund : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ t A π} → PT._⊩_⊢[_]_∷_!_ Δ Γ Ψ t A π → Set
-  Fund {Δ = Δ} {Γ} {Ψ} {A = A} {π} D =
-    ∀ {σ σ′} (r : LP.Respects Δ σ) (r′ : ST.Respects (kindsS Δ) ST.∅ₖ σ′) (g : InstG σ σ′) {γ γ′}
-    → EnvR g (crΓ Γ) (ur Ψ) γ γ′
-    → MR (pr π) (ValR (GR-inst (ptr A) g)) (GM.⟦ PT.instantiate σ r D ⟧ fmt ρ γ) (SM.⟦ trD D ⟧ ρ′ σ′ r′ γ′)
+  -- `D` instantiated, and `D` read at the instance, mean related computations.
+  Fund : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t A π} → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Set
+  Fund {m} {Δ = Δ} {Γ} {Ψ} {A = A} {π} D =
+    ∀ (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) (u : UR Ψ Ψ) (p : PR π π) {γ γ′}
+    → EnvR σ Γ u γ γ′
+    → MR p (ValR (gr (A ⟨ σ ⟩))) (GM.⟦ TS.ty-subst-⊢ σ r D ⟧ fmt ρ γ) (SM.⟦ D ⟧ ρ′ σ r γ′)
 
   ----------------------------------------------------------------------
   -- Crossing the equations
   ----------------------------------------------------------------------
 
-  module _ {m} {σ : LP.GSub m} {σ′ : ST.TySub m 0} (g : InstG σ σ′) where
+  -- a grade's graph has one proof
+  re-pr : ∀ {π π′} (p p′ : PR π π′) {X Y : Set} {R : X → Y → Set} {c c′} → MR p R c c′ → MR p′ R c c′
+  re-pr p p′ {R = R} {c} {c′} h = subst (λ q → MR q R c c′) (PR-unique p p′) h
 
-    -- the Spec side, along `atS`
-    S-at : ∀ {n} {Δ′ : ST.KCtx m} {Γ : PT.PCtx m n} {Γ′ Ψ Φ₁ Φ₂ A₁ A₂ π π₁ π₂ t′ Y}
-           (e₁ : Φ₁ ≡ Φ₂) (e₂ : A₁ ≡ A₂) (e₃ : π₁ ≡ π₂)
-           (d′ : S⊢._⊩_⊢[_]_∷_!_ Δ′ Γ′ Φ₁ t′ A₁ π₁) {r′ : ST.Respects Δ′ ST.∅ₖ σ′}
-           (c : CR S Γ Γ′) (u₁ : UR Ψ Φ₁) (u₂ : UR Ψ Φ₂)
-           (g₁ : GR Y (A₁ ST.⟨ σ′ ⟩)) (g₂ : GR Y (A₂ ST.⟨ σ′ ⟩)) (p₁ : PR π π₁) (p₂ : PR π π₂)
-           (L : GM.Env (Γ PT.⟪ σ ⟫ᶜ) Ψ → LGr.M π LGr.⟦ Y ⟧ᵛ)
-         → (∀ {γ γ′} → EnvR g c u₁ γ γ′ → MR p₁ (ValR g₁) (L γ) (SM.⟦ d′ ⟧ ρ′ σ′ r′ γ′))
-         → (∀ {γ γ′} → EnvR g c u₂ γ γ′ → MR p₂ (ValR g₂) (L γ) (SM.⟦ atS e₁ e₂ e₃ d′ ⟧ ρ′ σ′ r′ γ′))
-    S-at refl refl refl d′ c u₁ u₂ g₁ g₂ p₁ p₂ L h =
-      subst (λ u → ∀ {γ γ′} → EnvR g c u γ γ′ → MR p₂ (ValR g₂) (L γ) (SM.⟦ d′ ⟧ ρ′ σ′ _ γ′)) (UR-unique u₁ u₂)
-        (subst (λ x → ∀ {γ γ′} → EnvR g c u₁ γ γ′ → MR p₂ (ValR x) (L γ) (SM.⟦ d′ ⟧ ρ′ σ′ _ γ′)) (GR-unique g₁ g₂)
-          (subst (λ p → ∀ {γ γ′} → EnvR g c u₁ γ γ′ → MR p (ValR g₁) (L γ) (SM.⟦ d′ ⟧ ρ′ σ′ _ γ′)) (PR-unique p₁ p₂) h))
-
-  -- the compiler side, along `subst` on the type
-  L-at : ∀ {n} {Γ : LC.Ctx n} {Ψ t X Y π π′ B′} (e : X ≡ Y) (d : Γ GT.⊢[ Ψ ] t ∷ X ! π)
-         (p : PR π π′) (gX : GR X B′) (gY : GR Y B′) {γ y}
+  -- the compiler side, along the instance's retyping
+  L-at : ∀ {m} (σ : TySub m 0) {Δ : KCtx m} (r : Respects Δ ∅ₖ σ) {n} {Γ : Ctx 0 n} {Ψ t X Y π B′}
+         (e : X ≡ Y) (d : ∅ₖ ⊩ Γ ⊢[ Ψ ] t ∷ X ! π) (p : PR π π) (gX : GR X B′) (gY : GR Y B′) {γ y}
        → MR p (ValR gX) (GM.⟦ d ⟧ fmt ρ γ) y
-       → MR p (ValR gY) (GM.⟦ subst (λ Z → Γ GT.⊢[ Ψ ] t ∷ Z ! π) e d ⟧ fmt ρ γ) y
-  L-at refl d p gX gY h = subst (λ g → MR p (ValR g) (GM.⟦ d ⟧ fmt ρ _) _) (GR-unique gX gY) h
+       → MR p (ValR gY) (GM.⟦ TS.retypeᵗ σ r e d ⟧ fmt ρ γ) y
+  L-at σ r refl d p gX gY {γ} {y} h = subst (λ g → MR p (ValR g) (GM.⟦ d ⟧ fmt ρ γ) y) (GR-unique gX gY) h
 
   ----------------------------------------------------------------------
   -- The rules discharged elsewhere
   ----------------------------------------------------------------------
 
-  -- (the judgment, briefly)
-  private
-    _⊩_⊢[_]_∷_!_ = PT._⊩_⊢[_]_∷_!_
-
   record Cases : Set where
     field
-      c-roll   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π F t} (wf : LP.WFFun Δ F)
-                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ LP.⟦ F ⟧F (LP.μ-type F) ! π) → Fund d → Fund (PT.⊢roll wf d)
-      c-fold   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψa Ψt π π₁ π₂ F A alg t}
-                 (u : LG.pure Once.Spec.Grade.⊑π π) (wf : LP.WFFun Δ F)
-                 (da : Δ ⊩ Γ ⊢[ Ψa ] alg ∷ LP.⟦ F ⟧F A LP.⇒[ LG.mk-kind LG.Many π ] A ! π₁)
-                 (dt : Δ ⊩ Γ ⊢[ Ψt ] t ∷ LP.μ-type F ! π₂) → Fund da → Fund dt → Fund (PT.⊢fold u wf da dt)
-      c-unfold : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψc Ψs φ π₁ π₂ F A c x} (wf : LP.WFFun Δ F)
-                 (dc : Δ ⊩ Γ ⊢[ Ψc ] c ∷ A LP.⇒[ LG.mk-kind LG.Many (LG.fin φ) ] LP.⟦ F ⟧F A ! π₁)
-                 (dx : Δ ⊩ Γ ⊢[ Ψs ] x ∷ A ! π₂) → Fund dc → Fund dx → Fund (PT.⊢unfold wf dc dx)
-      c-out    : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ φ π₁ F t} (wf : LP.WFFun Δ F)
-                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ LP.ν-type F φ ! π₁) → Fund d → Fund (PT.⊢out wf d)
-      c-iter   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψf Ψs π₁ π₂ A B f x}
-                 (df : Δ ⊩ Γ ⊢[ Ψf ] f ∷ A LP.⇒[ LG.mk-kind LG.Many LG.act ] (B LP.+ A) ! π₁)
-                 (dx : Δ ⊩ Γ ⊢[ Ψs ] x ∷ A ! π₂) → Fund df → Fund dx → Fund (PT.⊢iter df dx)
-      c-coerce : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π A B t} (p : A PS.<:ₚ B)
-                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Fund d → Fund (PT.⊢coerce p d)
-      c-lit-int   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {i} → Fund (PT.⊢lit-int {Δ = Δ} {Γ = Γ} {i = i})
-      c-lit-float : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {d} → Fund (PT.⊢lit-float {Δ = Δ} {Γ = Γ} {d = d})
-      c-prim   : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ π t} (p : _)
-                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ LP.⌈ _ ⌉ ! π) → Fund d → Fund (PT.⊢prim {Δ = Δ} {Γ = Γ} {Ψ = Ψ} {π = π} {t = t} p d)
-      c-sigop  : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {A} c k h rf wn mem
-                 → Fund (PT.⊢sigop {Δ = Δ} {Γ = Γ} {A = A} c k h rf wn mem)
-      c-ref    : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} d τ rs → Fund (PT.⊢ref {Δ = Δ} {Γ = Γ} d τ rs)
+      c-roll   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ π F t} (wf : WFFun Δ F)
+                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧F (μ F) ! π) → Fund d → Fund (⊢roll wf d)
+      c-fold   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψa Ψt π π₁ π₂ F A alg t} (wf : WFFun Δ F)
+                 (da : Δ ⊩ Γ ⊢[ Ψa ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁)
+                 (dt : Δ ⊩ Γ ⊢[ Ψt ] t ∷ μ F ! π₂) → Fund da → Fund dt → Fund (⊢fold wf da dt)
+      c-unfold : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψc Ψs} {φ : Finite} {π₁ π₂ F A c x} (wf : WFFun Δ F)
+                 (dc : Δ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧F A ! π₁)
+                 (dx : Δ ⊩ Γ ⊢[ Ψs ] x ∷ A ! π₂) → Fund dc → Fund dx → Fund (⊢unfold wf dc dx)
+      c-out    : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ} {φ : Finite} {π₁ F t} (wf : WFFun Δ F)
+                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν F φ ! π₁) → Fund d → Fund (⊢out wf d)
+      c-iter   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψf Ψs π₁ π₂ A B f x}
+                 (df : Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many Once.Spec.Grade.act ] (B + A) ! π₁)
+                 (dx : Δ ⊩ Γ ⊢[ Ψs ] x ∷ A ! π₂) → Fund df → Fund dx → Fund (⊢iter df dx)
+      c-coerce : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ π A B t} (p : A <: B)
+                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Fund d → Fund (⊢coerce p d)
+      c-lit-int   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {i} → Fund (⊢lit-int {Δ = Δ} {Γ = Γ} {i = i})
+      c-lit-float : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {d} → Fund (⊢lit-float {Δ = Δ} {Γ = Γ} {d = d})
+      c-prim   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ π t} (p : Prim)
+                 (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ primDom p ! π) → Fund d → Fund (⊢prim p d)
+      c-sigop  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {c} {t : DeclType} (mem : (c ∶ t) ∈ Σ)
+                 → Fund (⊢sigop {Δ = Δ} {Γ = Γ} mem)
+      c-ref    : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} d τ rs → Fund (⊢ref {Δ = Δ} {Γ = Γ} d τ rs)
 
   ----------------------------------------------------------------------
   -- The fundamental lemma
@@ -174,101 +131,70 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
   module _ (cases : Cases) where
     open Cases cases
 
-    fund : ∀ {m n} {Δ : LP.KCtx m} {Γ : PT.PCtx m n} {Ψ t A π} (D : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Fund D
+    fund : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t A π} (D : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Fund D
 
-    fund {Γ = Γ} (PT.⊢var i) {σ} {σ′} r r′ g e =
-      L-at (PT.lookup-⟪⟫ Γ σ i) (GT.⊢var i) pr-pure gX (GR-inst (ptr (PT.lookupP Γ i)) g)
-        (S-at g (eqᵘ-var i) (sym (lookupS Γ i)) refl (S⊢.⊢var i) (crΓ Γ) (ur-single i) (ur _) (GR-lookup g (crΓ Γ) i) gX pr-pure pr-pure
-              (λ γ → GM.⟦ GT.⊢var {Γ = Γ PT.⟪ σ ⟫ᶜ} i ⟧ fmt ρ γ) (lookup-R g (crΓ Γ) i) e)
-      where gX = subst (λ Z → GR Z _) (sym (PT.lookup-⟪⟫ Γ σ i)) (GR-inst (ptr (PT.lookupP Γ i)) g)
+    fund {Γ = Γ} (⊢var i) σ r u pr-pure {γ} {γ′} e =
+      L-at σ r (TS.lookup-⟨⟩ σ Γ i) (⊢var i) pr-pure (GR-lookup σ Γ i) (gr _)
+        (lookup-R σ Γ i (subst (λ u′ → EnvR σ Γ u′ γ γ′) (UR-unique u (ur-single i)) e))
 
-    fund (PT.⊢lam {q = LG.Zero} {q' = LG.Zero} le d) r r′ g e = fund d r r′ g e
-    fund (PT.⊢lam {q = LG.One}  {q' = LG.Zero} le d) r r′ g e = λ _ → fund d r r′ g e
-    fund (PT.⊢lam {q = LG.One}  {q' = LG.One}  le d) r r′ g e = λ v → fund d r r′ g (e , v)
-    fund (PT.⊢lam {q = LG.Many} {q' = LG.Zero} le d) r r′ g e = λ v → fund d r r′ g e
-    fund (PT.⊢lam {q = LG.Many} {q' = LG.One}  le d) r r′ g e = λ v → fund d r r′ g (e , v)
-    fund (PT.⊢lam {q = LG.Many} {q' = LG.Many} le d) r r′ g e = λ v → fund d r r′ g (e , v)
-    fund (PT.⊢lam {q = LG.Zero} {q' = LG.One}  () d)
-    fund (PT.⊢lam {q = LG.Zero} {q' = LG.Many} () d)
-    fund (PT.⊢lam {q = LG.One}  {q' = LG.Many} () d)
+    fund (⊢lam {q = Zero} 0≤q d) σ r u pr-pure e = fund d σ r (ur-∷ qr-zero u) (pr _) e
+    fund (⊢lam {q = One}  0≤q d) σ r u pr-pure e = λ _ → fund d σ r (ur-∷ qr-zero u) (pr _) e
+    fund (⊢lam {q = Many} 0≤q d) σ r u pr-pure e = λ _ → fund d σ r (ur-∷ qr-zero u) (pr _) e
+    fund (⊢lam 1≤1 d) σ r u pr-pure e = λ v → fund d σ r (ur-∷ qr-one u) (pr _) (e , v)
+    fund (⊢lam 1≤ω d) σ r u pr-pure e = λ v → fund d σ r (ur-∷ qr-one u) (pr _) (e , v)
+    fund (⊢lam ω≤ω d) σ r u pr-pure e = λ v → fund d σ r (ur-∷ qr-many u) (pr _) (e , v)
 
-    fund PT.⊢unit r r′ g e = tt
+    fund ⊢unit σ r u pr-pure e = tt
 
-    fund (PT.⊢sub-eff {π = π} {π′} x d) r r′ g e = sub-R x (⊑π-S x) (pr π) (pr π′) (fund d r r′ g e)
-    fund {Γ = Γ} (PT.⊢sub-use {Ψ = Ψ} {Ψ′} x d) r r′ g e =
-      fund d r r′ g (restrict-R g (crΓ Γ) x _ (ur Ψ′) (ur Ψ) e)
+    fund (⊢sub-eff {π = π} {π′} x d) σ r u p e = sub-R x x (pr π) p (fund d σ r u (pr π) e)
+    fund {Γ = Γ} (⊢sub-use {Ψ = Ψ} {Ψ′} x d) σ r u p e =
+      fund d σ r (ur Ψ) p (restrict-R σ {Γ = Γ} x x u (ur Ψ) e)
 
-    fund (PT.⊢fst {π = π} d) r r′ g e = fmap-R (pr π) (fund d r r′ g e) proj₁
-    fund (PT.⊢snd {π = π} d) r r′ g e = fmap-R (pr π) (fund d r r′ g e) proj₂
-    fund (PT.⊢inl {π = π} d) r r′ g e = fmap-R (pr π) (fund d r r′ g e) (λ h → h)
-    fund (PT.⊢inr {π = π} d) r r′ g e = fmap-R (pr π) (fund d r r′ g e) (λ h → h)
-    fund (PT.⊢absurd {π = π} d) r r′ g e = bind-R (pr π) (fund d r r′ g e) (λ {x} _ → ⊥-elim′ x)
+    fund (⊢fst {π = π} d) σ r u p e = fmap-R p (fund d σ r u p e) proj₁
+    fund (⊢snd {π = π} d) σ r u p e = fmap-R p (fund d σ r u p e) proj₂
+    fund (⊢inl {π = π} d) σ r u p e = fmap-R p (fund d σ r u p e) (λ h → h)
+    fund (⊢inr {π = π} d) σ r u p e = fmap-R p (fund d σ r u p e) (λ h → h)
+    fund (⊢absurd {π = π} d) σ r u p e = bind-R p (fund d σ r u p e) (λ {x} _ → ⊥-elim′ x)
       where ⊥-elim′ : ∀ {X : Set} → Data.Empty.⊥ → X
             ⊥-elim′ ()
 
-    fund {Γ = Γ} (PT.⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Zero} {π} {π₁} {π₂} {B = B} df dx) {σ} r r′ g e =
-      S-at g (eqᵘ-app Ψ₁ LG.Zero Ψ₂) refl (eqᵍ-app π₁ LG.Zero π₂ π) (S⊢.⊢app (trD df) (trD dx)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur-* qr-zero (ur Ψ₂))) (ur _) gB gB (pr-· (pr π₁) (pr π)) (pr _)
-           _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π) (fund df r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀)) (λ vf → vf)) e
-      where gB = GR-inst (ptr B) g
-    fund {Γ = Γ} (PT.⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.One} {π} {π₁} {π₂} {B = B} df dx) {σ} r r′ g e =
-      S-at g (eqᵘ-app Ψ₁ LG.One Ψ₂) refl (eqᵍ-app π₁ LG.One π₂ π) (S⊢.⊢app (trD df) (trD dx)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur-* qr-one (ur Ψ₂))) (ur _) gB gB
-           (pr-· (pr π₁) (pr-· (pr π₂) (pr π))) (pr _)
-           _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
-                     (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx r r′ g (env*One-envʳ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) vf)) e
-      where gB = GR-inst (ptr B) g
-    fund {Γ = Γ} (PT.⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Many} {π} {π₁} {π₂} {B = B} df dx) {σ} r r′ g e =
-      S-at g (eqᵘ-app Ψ₁ LG.Many Ψ₂) refl (eqᵍ-app π₁ LG.Many π₂ π) (S⊢.⊢app (trD df) (trD dx)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur-* qr-many (ur Ψ₂))) (ur _) gB gB
-           (pr-· (pr π₁) (pr-· (pr π₂) (pr π))) (pr _)
-           _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
-                     (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx r r′ g (env*Many-envʳ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) vf)) e
-      where gB = GR-inst (ptr B) g
+    fund {Γ = Γ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Zero} {π} {π₁} df dx) σ r u p e =
+      re-pr (pr-· (pr π₁) (pr π)) p (bindᵍ-R (pr π₁) (pr π) (fund df σ r (ur Ψ₁) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) u (ur Ψ₁) e)) (λ vf → vf))
+    fund {Γ = Γ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = One} {π} {π₁} {π₂} df dx) σ r u p e =
+      re-pr (pr-· (pr π₁) (pr-· (pr π₂) (pr π))) p (bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df σ r (ur Ψ₁) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) u (ur Ψ₁) e))
+               (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx σ r (ur Ψ₂) (pr _) (env*One-envʳ-R σ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) u (ur Ψ₂) e)) vf))
+    fund {Γ = Γ} (⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Many} {π} {π₁} {π₂} df dx) σ r u p e =
+      re-pr (pr-· (pr π₁) (pr-· (pr π₂) (pr π))) p (bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df σ r (ur Ψ₁) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) u (ur Ψ₁) e))
+               (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx σ r (ur Ψ₂) (pr _) (env*Many-envʳ-R σ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) u (ur Ψ₂) e)) vf))
 
-    fund {Γ = Γ} (PT.⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Zero} {π₁} {π₂} {B = B} de db) {σ} r r′ g e =
-      S-at g (eqᵘ-app Ψ₂ LG.Zero Ψ₁) refl (eqᵍ-let LG.Zero π₁ π₂) (S⊢.⊢let (trD de) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₂) (ur-* qr-zero (ur Ψ₁))) (ur _) gB gB (pr π₂) (pr _)
-           _
-           (λ e₀ → fund db r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) e
-      where gB = GR-inst (ptr B) g
-    fund {Γ = Γ} (PT.⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.One} {π₁} {π₂} {B = B} de db) {σ} r r′ g e =
-      S-at g (eqᵘ-app Ψ₂ LG.One Ψ₁) refl (eqᵍ-let LG.One π₁ π₂) (S⊢.⊢let (trD de) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₂) (ur-* qr-one (ur Ψ₁))) (ur _) gB gB (pr-· (pr π₁) (pr π₂)) (pr _)
-           _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund de r r′ g (env*One-envʳ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
-                     (λ v → fund db r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀ , v))) e
-      where gB = GR-inst (ptr B) g
-    fund {Γ = Γ} (PT.⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Many} {π₁} {π₂} {B = B} de db) {σ} r r′ g e =
-      S-at g (eqᵘ-app Ψ₂ LG.Many Ψ₁) refl (eqᵍ-let LG.Many π₁ π₂) (S⊢.⊢let (trD de) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₂) (ur-* qr-many (ur Ψ₁))) (ur _) gB gB (pr-· (pr π₁) (pr π₂)) (pr _)
-           _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund de r r′ g (env*Many-envʳ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
-                     (λ v → fund db r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀ , v))) e
-      where gB = GR-inst (ptr B) g
+    fund {Γ = Γ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = Zero} {π₁} {π₂} de db) σ r u p e =
+      re-pr (pr π₂) p (fund db σ r (ur-∷ qr-zero (ur Ψ₂)) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) u (ur Ψ₂) e))
+    fund {Γ = Γ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = One} {π₁} {π₂} de db) σ r u p e =
+      re-pr (pr-· (pr π₁) (pr π₂)) p (bindᵍ-R (pr π₁) (pr π₂) (fund de σ r (ur Ψ₁) (pr _) (env*One-envʳ-R σ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) u (ur Ψ₁) e))
+               (λ v → fund db σ r (ur-∷ qr-one (ur Ψ₂)) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) u (ur Ψ₂) e , v)))
+    fund {Γ = Γ} (⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = Many} {π₁} {π₂} de db) σ r u p e =
+      re-pr (pr-· (pr π₁) (pr π₂)) p (bindᵍ-R (pr π₁) (pr π₂) (fund de σ r (ur Ψ₁) (pr _) (env*Many-envʳ-R σ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) u (ur Ψ₁) e))
+               (λ v → fund db σ r (ur-∷ qr-many (ur Ψ₂)) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) u (ur Ψ₂) e , v)))
 
-    fund {Γ = Γ} (PT.⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} {A} {B} da db) {σ} r r′ g e =
-      S-at g (eqᵘ-+ Ψ₁ Ψ₂) refl (eqᵍ-· π₁ π₂) (S⊢.⊢pair (trD da) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur Ψ₂)) (ur _) gAB gAB (pr-· (pr π₁) (pr π₂)) (pr _)
-           _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund da r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
-                     (λ va → fmap-R (pr π₂) (fund db r r′ g (envʳ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) (λ vb → va , vb))) e
-      where gAB = GR-inst (ptr (A LP.* B)) g
+    fund {Γ = Γ} (⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} da db) σ r u p e =
+      re-pr (pr-· (pr π₁) (pr π₂)) p (bindᵍ-R (pr π₁) (pr π₂) (fund da σ r (ur Ψ₁) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) u (ur Ψ₁) e))
+               (λ va → fmap-R (pr π₂) (fund db σ r (ur Ψ₂) (pr _) (envʳ-R σ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) u (ur Ψ₂) e)) (λ vb → va , vb)))
 
-    fund {Γ = Γ} (PT.⊢case {Ψs = Ψs} {Ψ} {qℓ} {qr₀} {π₁} {π₂} {A} {B} {C} ds dl dr) {σ} r r′ g e =
-      S-at g (eqᵘ-+ Ψs Ψ) refl (eqᵍ-· π₁ π₂) (S⊢.⊢case (trD ds) (trD dl) (trD dr)) (crΓ Γ) (ur-+ (ur Ψs) (ur Ψ)) (ur _) gC gC (pr-· (pr π₁) (pr π₂)) (pr _)
-           _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund ds r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψs) e₀))
-                     (λ {v} {v′} h → case-R (GR-inst (ptr A) g) (GR-inst (ptr B) g) (pr π₂)
-                        (λ ha → fund dl r r′ g (bind-env-R g (crΓ Γ) (ptr A) (ur Ψ) (qr qℓ) (envʳ-R g (crΓ Γ) _ _ (ur Ψ) e₀) ha))
-                        (λ hb → fund dr r r′ g (bind-env-R g (crΓ Γ) (ptr B) (ur Ψ) (qr qr₀) (envʳ-R g (crΓ Γ) _ _ (ur Ψ) e₀) hb))
-                        v v′ h)) e
-      where gC = GR-inst (ptr C) g
+    fund {Γ = Γ} (⊢case {Ψs = Ψs} {Ψ} {qℓ} {qr₀} {π₁} {π₂} {A} {B} ds dl dr) σ r u p e =
+      re-pr (pr-· (pr π₁) (pr π₂)) p (bindᵍ-R (pr π₁) (pr π₂) (fund ds σ r (ur Ψs) (pr _) (envˡ-R σ {Γ = Γ} (⊑ᵘ-+ˡ Ψs Ψ) u (ur Ψs) e))
+               (λ {v} {v′} h → case-R (gr (A ⟨ σ ⟩)) (gr (B ⟨ σ ⟩)) (pr π₂)
+                  (λ ha → fund dl σ r (ur-∷ (qr qℓ) (ur Ψ)) (pr _) (bind-env-R σ {Γ = Γ} A (ur Ψ) (qr qℓ) (envʳ-R σ {Γ = Γ} (⊑ᵘ-+ʳ Ψs Ψ) u (ur Ψ) e) ha))
+                  (λ hb → fund dr σ r (ur-∷ (qr qr₀) (ur Ψ)) (pr _) (bind-env-R σ {Γ = Γ} B (ur Ψ) (qr qr₀) (envʳ-R σ {Γ = Γ} (⊑ᵘ-+ʳ Ψs Ψ) u (ur Ψ) e) hb))
+                  v v′ h))
 
-    fund (PT.⊢roll wf d)            = c-roll wf d (fund d)
-    fund (PT.⊢fold u wf da dt)      = c-fold u wf da dt (fund da) (fund dt)
-    fund (PT.⊢unfold wf dc dx)      = c-unfold wf dc dx (fund dc) (fund dx)
-    fund (PT.⊢out wf d)             = c-out wf d (fund d)
-    fund (PT.⊢iter df dx)           = c-iter df dx (fund df) (fund dx)
-    fund (PT.⊢coerce p d)           = c-coerce p d (fund d)
-    fund PT.⊢lit-int                = c-lit-int
-    fund PT.⊢lit-float              = c-lit-float
-    fund (PT.⊢prim p d)             = c-prim p d (fund d)
-    fund (PT.⊢sigop c k h rf wn mem)   = c-sigop c k h rf wn mem
-    fund (PT.⊢ref d τ rs)           = c-ref d τ rs
+    fund (⊢roll wf d)           = c-roll wf d (fund d)
+    fund (⊢fold wf da dt)       = c-fold wf da dt (fund da) (fund dt)
+    fund (⊢unfold wf dc dx)     = c-unfold wf dc dx (fund dc) (fund dx)
+    fund (⊢out wf d)            = c-out wf d (fund d)
+    fund (⊢iter df dx)          = c-iter df dx (fund df) (fund dx)
+    fund (⊢coerce p d)          = c-coerce p d (fund d)
+    fund (⊢lit-int {i = i})     = c-lit-int {i = i}
+    fund (⊢lit-float {d = d})   = c-lit-float {d = d}
+    fund (⊢prim p d)            = c-prim p d (fund d)
+    fund (⊢sigop mem)           = c-sigop mem
+    fund (⊢ref d τ rs)          = c-ref d τ rs
