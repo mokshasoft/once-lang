@@ -107,14 +107,14 @@ tailAt-all {R = R} ((n , s′ , b′) ∷ rest) x {s} {b} {prefix} {e₁ , ρ₁
 -- exactly as `lookupImport` walks the list, so the first entry of a name wins.
 ------------------------------------------------------------------------
 
-ImpEnvOf : ∀ {m} → (Ty m → Set) → Imports → Set
+ImpEnvOf : (Type → Set) → Imports → Set
 ImpEnvOf F []               = ⊤
 ImpEnvOf F ((_ , T) ∷ rest) = F T × ImpEnvOf F rest
 
-impAt-found : ∀ {m} {F : Ty m → Set} {T′ T : Ty m} → just T′ ≡ just T → F T′ → F T
+impAt-found : ∀ {F : Type → Set} {T′ T : Type} → just T′ ≡ just T → F T′ → F T
 impAt-found refl e = e
 
-impAt : ∀ {m} {F : Ty m → Set} (imps : Imports) (x : String) {T : Ty m}
+impAt : ∀ {F : Type → Set} (imps : Imports) (x : String) {T : Type}
   → ImpEnvOf F imps → lookupImport imps x ≡ just T → F T
 impAt [] x _ ()
 impAt ((n , T′) ∷ rest) x (e , ι) lk with StrProp._≟_ n x

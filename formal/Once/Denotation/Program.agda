@@ -167,7 +167,7 @@ record IRProgram : Set where
 
 open IRProgram
 
-runIR : TargetNum → FFIAnswers → IRProgram → T∞ ⟦ Unit {0} ⟧ᴰᴵ
+runIR : TargetNum → FFIAnswers → IRProgram → T∞ ⟦ Unit ⟧ᴰᴵ
 runIR fmt φ p = evalᴰ fmt (tableEnv fmt φ (table p)) (main p) tt
 
 -- A LINKED PROGRAM: every call, in `main` and in every entry of the table, names

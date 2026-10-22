@@ -55,7 +55,7 @@ open import Once.Internal.Iterative using (T∞; return∞)
 open import Once.Internal.Stream
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
-open import Once.Spec.Type using (wf-K; wf-Id)
+open import Once.Spec.Type using (wf-K; wf-Id; b-*)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 
@@ -257,7 +257,7 @@ base-in-D base-Unit   v0 = refl
 base-in-D base-Int    v0 = refl
 base-in-D base-Float  v0 = refl
 base-in-D base-Void   ()
-base-in-D (base-Prod {A} {B} ba bb) (a , b) =
+base-in-D (b-* {A = A} {B = B} ba bb) (a , b) =
   trans (push× (base-coh A) (base-coh B)
                (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ ba)) a))
                (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ bb)) b)))

@@ -13,6 +13,7 @@
 
 module Once.Internal.Stream where
 
+open import Once.Spec.Type using (Fun)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
@@ -74,7 +75,7 @@ forceᵈ (in-νᵈ layer) = ret layer
 -- `_>>=T_`'s, so `bounded` holds by construction rather than by a bespoke
 -- argument. Same reason `events-Fᵇ` replaced `events-F` on the ana side —
 -- except here the layer is already monadic, so the traversal IS the fix.
-seqF : ∀ (G : Functor) {X : Set} → ⟦ G ⟧F (T X) → T (⟦ G ⟧F X)
+seqF : ∀ {m} (G : Fun m) {X : Set} → ⟦ G ⟧F (T X) → T (⟦ G ⟧F X)
 seqF (K A)   x        = returnT x
 seqF Id      m        = m
 seqF (G ⊕ H) (inj₁ x) = fmapT inj₁ (seqF G x)
@@ -124,7 +125,7 @@ mutual
 
 -- The Functor-level form the IR and surface clauses actually call: coerce the
 -- layer at the boundary, then unfold.
-anaFᵈ : ∀ (F : Functor) {A : Set}
+anaFᵈ : ∀ {m} (F : Fun m) {A : Set}
       → (A → T (⟦ F ⟧F A)) → A → νᵈ (translateF Carrier Carrier F)
 anaFᵈ F {A} coalg = anaᵈ (translateF Carrier Carrier F) (λ a → fmapT (coerce-ν-in F A) (coalg a))
 

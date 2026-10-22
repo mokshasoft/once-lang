@@ -20,6 +20,7 @@
 
 module Once.Internal.Iterative where
 
+open import Once.Spec.Type using (Fun)
 open import Data.List using (List; []; _∷_; _++_; [_])
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
@@ -155,7 +156,7 @@ open import Once.Internal.Value Carrier Carrier using (⟦_⟧F)
 fmap∞ : ∀ {X Y} → (X → Y) → T∞ X → T∞ Y
 fmap∞ f m = m >>=∞ λ x → return∞ (f x)
 
-seqF∞ : ∀ (G : Functor) {X : Set} → ⟦ G ⟧F (T∞ X) → T∞ (⟦ G ⟧F X)
+seqF∞ : ∀ {m} (G : Fun m) {X : Set} → ⟦ G ⟧F (T∞ X) → T∞ (⟦ G ⟧F X)
 seqF∞ (K A)   x        = return∞ x
 seqF∞ Id      m        = m
 seqF∞ (G ⊕ H) (inj₁ x) = fmap∞ inj₁ (seqF∞ G x)

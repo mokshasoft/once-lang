@@ -124,7 +124,7 @@ in-valueᵛ {F = F} wf x = sem-In F (cfᵛ (μ-type F) wf x)
 -- The fold at a grade with a unit (a fold traverses its layer).
 cata-semᵛ : ∀ {m} {Δₖ : KCtx m} {π} → pure ⊑π π → ∀ {A : Ty m} {F : Fun m} → WFFun Δₖ F
           → (⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) → ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ
-cata-semᵛ {π = π} u {F} {A} wf alg =
+cata-semᵛ {π = π} u {A = A} {F = F} wf alg =
   sem-cata wf (λ fc → bindM π (seqM u F fc) λ layer → alg (cf⁻¹ᵛ A wf layer))
 
 -- The functor's action on one layer at grade `π`: run `h` at every recursive
@@ -133,7 +133,7 @@ cata-semᵛ {π = π} u {F} {A} wf alg =
 -- (`Spec.Metatheory.Recursion`) are stated with it.
 mapLayerᵛ : ∀ {m} {Δₖ : KCtx m} {π} → pure ⊑π π → ∀ {A B : Ty m} {F : Fun m} → WFFun Δₖ F
           → (⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ) → ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ ⟦ F ⟧T B ⟧ᵛ
-mapLayerᵛ {π = π} u {F} {A} {B} wf h x = fmapM π (cf⁻¹ᵛ B wf) (seqM u F (sem-fmap F h (cfᵛ A wf x)))
+mapLayerᵛ {π = π} u {A = A} {B = B} {F = F} wf h x = fmapM π (cf⁻¹ᵛ B wf) (seqM u F (sem-fmap F h (cfᵛ A wf x)))
 
 ------------------------------------------------------------------------
 -- ν: pure codata, its embedding into the effectful one, unfold and out.
@@ -172,9 +172,9 @@ mapEmbνᵃ H (G₁ S⊗ G₂) (x , y)  = mapEmbνᵃ H G₁ x , mapEmbνᵃ H G
 -- next request.
 ana-semᵛ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} (φ : Finite) → WFFun Δₖ F
          → (⟦ A ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → ⟦ ν-type F φ ⟧ᵛ
-ana-semᵛ {F = F} {A = A} pureᶠ wf clo a =
+ana-semᵛ {A = A} {F = F} pureᶠ wf clo a =
   anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a
-ana-semᵛ {F = F} {A = A} actᶠ wf clo a =
+ana-semᵛ {A = A} {F = F} actᶠ wf clo a =
   anaᵈ (translateF Carrier Carrier F) (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 
 out-semᵛ : ∀ {m} {Δₖ : KCtx m} φ {F : Fun m} → WFFun Δₖ F → ⟦ ν-type F φ ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T (ν-type F φ) ⟧ᵛ
@@ -215,7 +215,7 @@ out-semᵛ actᶠ  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F actᶠ) 
 
 -- A foreign operation's call (the generic effect), a finite tree (`act`, D313):
 -- the call, which returns or halts. The form `arrow-sem-eff` decides.
-opCallᵀ : ∀ {m} {Δₖ : KCtx m} {A B : Ty m} → CanonicalName → Base Δₖ A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T Val.⟦ B ⟧
+opCallᵀ : ∀ {A B : Type} → CanonicalName → IsBaseType A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T Val.⟦ B ⟧
 opCallᵀ {A = A} cn bA (yes refl) _          x = halt (haltOp cn A bA) x
 opCallᵀ {A = A} cn bA (no _)     (yes refl) x = call (callOp cn A bA Unit) x (λ _ → ret tt)
 opCallᵀ {A = A} {B = B} cn bA (no _) (no _)     x = call (callOp cn A bA B) x ret
@@ -224,7 +224,7 @@ opCallᵀ {A = A} {B = B} cn bA (no _) (no _)     x = call (callOp cn A bA B) x 
 -- against (`m`: its declaration in `Σ`). A VALUE contract reads the
 -- implementation (`valueOf`, the reading every layer shares); an effectful
 -- arrow's application is its call, answered when the program runs.
-sigOpRefᵛ : ∀ {m} {A : Ty m} → TargetNum → (Σ : ISig) → Impl Σ → (cn : CanonicalName) → IsConcrete A
+sigOpRefᵛ : ∀ {A : Type} → TargetNum → (Σ : ISig) → Impl Σ → (cn : CanonicalName) → IsConcrete A
           → (showCanonical cn , A) ∈ Σ → ⟦ A ⟧ᵛ
 sigOpRefᵛ {A = A} fmt Σ I cn (con-base ib) m =
   injB ib (valueOf I (key (showCanonical cn) Unit A) (value-∈ m (base-contract (showCanonical cn) ib)) tt)
