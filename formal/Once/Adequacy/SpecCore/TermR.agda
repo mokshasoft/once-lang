@@ -131,3 +131,28 @@ data TmR {m} (Δ : ST.KCtx m) : ∀ {n} → SC.Tm S m n → SC.Tm S′ m n → S
   r-prim   : ∀ {n} p {t : SC.Tm S m n} {t′} → TmR Δ t t′ → TmR Δ (L.prim p t) (SC.prim (primS p) t′)
   r-sigop  : ∀ {n c t} → TmR Δ (L.sigop {n = n} c t) (SC.sigop c t)
   r-ref    : ∀ {n} (d : Fin s) {τ τ′} → InstR {Δ = Δ} τ τ′ → TmR Δ (L.ref {n = n} d τ) (SC.ref d (castSub S d τ′))
+
+-- (the graph's canonical proof)
+tmR : ∀ {m} {Δ : ST.KCtx m} {n} (t : SC.Tm S m n) → TmR Δ t t
+tmR (SC.var i)            = r-var i
+tmR (SC.lam A q π t)      = r-lam (tyR A) (tmR t)
+tmR (SC.app f x)          = r-app (tmR f) (tmR x)
+tmR (SC.let′ q e b)       = r-let (tmR e) (tmR b)
+tmR SC.unit               = r-unit
+tmR (SC.pair a b)         = r-pair (tmR a) (tmR b)
+tmR (SC.fst p)            = r-fst (tmR p)
+tmR (SC.snd p)            = r-snd (tmR p)
+tmR (SC.inl B a)          = r-inl (tyR B) (tmR a)
+tmR (SC.inr A b)          = r-inr (tyR A) (tmR b)
+tmR (SC.case qℓ qr e l r) = r-case (tmR e) (tmR l) (tmR r)
+tmR (SC.absurd A e)       = r-absurd (tyR A) (tmR e)
+tmR (SC.roll F t)         = r-roll (funR F) (tmR t)
+tmR (SC.fold F a t)       = r-fold (funR F) (tmR a) (tmR t)
+tmR (SC.unfold F c t)     = r-unfold (funR F) (tmR c) (tmR t)
+tmR (SC.out t)            = r-out (tmR t)
+tmR (SC.iter f t)         = r-iter (tmR f) (tmR t)
+tmR (SC.coerce A B t)     = r-coerce (tyR A) (tyR B) (tmR t)
+tmR (SC.lit l)            = r-lit l
+tmR (SC.prim p t)         = r-prim p (tmR t)
+tmR (SC.sigop c t)        = r-sigop
+tmR (SC.ref d τ)          = r-ref d (λ i → tyR (τ i))

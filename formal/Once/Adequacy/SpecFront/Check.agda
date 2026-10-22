@@ -18,6 +18,11 @@
 -- arity, that its type's variables occur, the shape of an arrow schema — is
 -- asked of the View's entries (the parameters `h-…`), which the telescope
 -- walk discharges.
+--
+-- Plan 0.122: the elaborator emits the Spec's core terms; `TyR`/`TmR` are
+-- the identity's graphs. A reference's term is the table entry at the
+-- instance the compiler's rule names, so its Spec rule is read off the
+-- View's entry equation (`refS`/`refC`/`refD`).
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ; _<_)
@@ -28,46 +33,35 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Internal.Contract using (ISig)
-open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Spec.Signature using (Signature; _∶_)
+open import Once.Spec.Signature using (Signature)
 import Once.Spec.Grade as LG
-import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
+import Once.Spec.Core.Syntax as SC
 import Once.Internal.Elaboration as E
 import Once.Internal.Type.Poly as TP
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
-open import Once.Internal.Core.Decl using (declS)
-open import Once.Adequacy.SpecCore.Schema using (CleanSig; ptyS)
 
-import Once.Spec.Grade
 module Once.Adequacy.SpecFront.Check
-  {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
-  (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ)
-  (nm : Fin s → CanonicalName) (clean : CleanSig S)
-  {imps sg : Imports} {polys : PolyCtx} (V : E.View S imps sg polys)
-  -- a monomorphic definition in scope: its name, and no type variables
+  (Σ : Signature) {s : ℕ} (S : SC.Defs s) (nm : Fin s → CanonicalName)
+  {imps sg : Imports} {polys : PolyCtx} (V : E.View Σ S imps sg polys)
+  -- a monomorphic definition in scope: its name
   (h-imp : ∀ {x T} (lk : lookupImport imps x ≡ just T)
-         → (nm (E.ImportAt.entryOf (E.View.imported V lk)) ≡ canonical (x ∷ []))
-           × (LP.Schema.arity (S LP.!! E.ImportAt.entryOf (E.View.imported V lk)) ≡ 0))
+         → nm (E.ImportAt.entryOf (E.View.imported V lk)) ≡ canonical (x ∷ []))
   -- a telescope definition in scope: its name; no type variables exactly when its schema is ground
   (h-poly : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
           → nm (E.View.entry V lp) ≡ canonical (x ∷ []))
   (h-ground : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-            → TP.Ground sc → LP.Schema.arity (S LP.!! E.View.entry V lp) ≡ 0)
+            → TP.Ground sc → SC.Schema.arity (S SC.!! E.View.entry V lp) ≡ 0)
   (h-open : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-          → ¬ TP.Ground sc → 0 < LP.Schema.arity (S LP.!! E.View.entry V lp))
-  -- …each of its type variables occurs in its type
-  (h-occ : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p)) i
-         → ST.Occurs i (ptyS (LP.Schema.type (S LP.!! E.View.entry V lp))))
+          → ¬ TP.Ground sc → 0 < SC.Schema.arity (S SC.!! E.View.entry V lp))
   -- …and an arrow schema is an arrow, its codomain's variables in its domain
   (h-arrow : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p)) {sd sco π′}
            → TP.ArrowSchema sc sd sco π′ → TP.CodVarsInDom sd sco
-           → Σ[ X ∈ LP.Ty (LP.Schema.arity (S LP.!! E.View.entry V lp)) ]
-             Σ[ Y ∈ LP.Ty (LP.Schema.arity (S LP.!! E.View.entry V lp)) ]
-               (LP.Schema.type (S LP.!! E.View.entry V lp) ≡ X LP.⇒[ LG.mk-kind LG.Many π′ ] Y)
-               × (∀ i → ST.Occurs i (ptyS Y) → ST.Occurs i (ptyS X)))
+           → Σ[ X ∈ ST.Ty (SC.Schema.arity (S SC.!! E.View.entry V lp)) ]
+             Σ[ Y ∈ ST.Ty (SC.Schema.arity (S SC.!! E.View.entry V lp)) ]
+               (SC.Schema.type (S SC.!! E.View.entry V lp) ≡ X ST.⇒[ LG.mk-kind LG.Many π′ ] Y)
+               × (∀ i → ST.Occurs i Y → ST.Occurs i X))
   {m : ℕ} (Δ : ST.KCtx m) where
 
 open import Data.Fin using (zero; suc)
@@ -78,76 +72,65 @@ open import Data.Maybe using (nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
-import Once.Internal.Type as LT
-
 import Once.Spec.Type as LT
-import Once.Internal.Type.Sub as LS
-import Once.Spec.Sub as LS
-import Once.Internal.Type.WellFormed as LW
-import Once.Spec.Type as LW
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SS
-import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Syntax as SX
 import Once.Internal.Context as LC
 open import Once.Internal.Context using (svar)
+open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Core.Decl using (⌜declS⌝)
+open import Once.Internal.Type.Schema using (kinded-instance)
+open import Once.Type.Rigid using (ground-kinded)
 open import Once.Internal.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Internal.Typing
 open import Once.Internal.Typing.Scope using (NamedCtx; mkCtx; classifyAppHead; Binding)
 import Data.List.Relation.Unary.Any
-import Once.Internal.Core.Syntax S as L
+import Once.Spec.Core.Syntax as L
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS)
 open import Once.Adequacy.SpecCore.Type
-open import Once.Adequacy.SpecCore.Schema using (defsS; castSub; schS; !!-defsS; InstR; TyR-inst; respects-S; Clean; c-⇒)
 open import Once.Adequacy.SpecCore.TermR S
 open import Once.Adequacy.SpecFront.Expr
 open import Once.Adequacy.SpecFront.Types Δ
 open import Once.Adequacy.SpecFront.Terms S {Δ = Δ}
-open import Once.Adequacy.SpecFront.Locals Σ S′ nm Δ
+open import Once.Adequacy.SpecFront.Locals Σ S nm Δ
 
-import Once.Spec.Surface.Typing Σ S′ nm as SU
+import Once.Spec.Surface.Typing Σ S nm as SU
 import Once.Spec.Core.Derived as SD
 open import Once.Adequacy.SpecCore.Prim S using (primS)
 
 private
-  module EV = E S
+  module EV = E Σ S
 
-  C : ∀ (n : ℕ) → List Binding → LC.Ctx n → NamedCtx
-  C n Γn Γd = mkCtx n Γn Γd imps polys sg
-
-  arity-S : ∀ {s′} (S₀ : LP.Sig Fs s′) (d : Fin s′) → SC.Schema.arity (defsS S₀ SC.!! d) ≡ LP.Schema.arity (S₀ LP.!! d)
-  arity-S (S₀ LP.▷ sc) zero    = refl
-  arity-S (S₀ LP.▷ sc) (suc d) = arity-S S₀ d
-
-  fin0 : Fin 0 → ⊥
-  fin0 ()
+  C : ∀ (n : ℕ) → List (Binding m) → LC.Ctx m n → NamedCtx m
+  C n Γn Γd = mkCtx n Γn Γd imps polys sg Δ
 
 ------------------------------------------------------------------------
 -- What a translated derivation gives
 ------------------------------------------------------------------------
 
-record Syn {n} (L : SU.Locals m n) (e′ : SX.Expr) (A : LT.Type) (t : L.Tm n) : Set where
+record Syn {n} (L : SU.Locals m n) (e′ : SX.Expr) (A : ST.Ty m) (t : SC.Tm S m n) : Set where
   constructor syn
   field
     {A′} : ST.Ty m
     ra   : TyR Δ A A′
-    {t′} : SC.Tm S′ m n
+    {t′} : SC.Tm S m n
     rt   : TmR Δ t t′
     der  : SU._⊢_⇒_↝_ Δ L e′ A′ t′
 
-record Chk {n} (L : SU.Locals m n) (e′ : SX.Expr) (A′ : ST.Ty m) (t : L.Tm n) : Set where
+record Chk {n} (L : SU.Locals m n) (e′ : SX.Expr) (A′ : ST.Ty m) (t : SC.Tm S m n) : Set where
   constructor chk
   field
-    {t′} : SC.Tm S′ m n
+    {t′} : SC.Tm S m n
     rt   : TmR Δ t t′
     der  : SU._⊢_⇐_↝_ Δ L e′ A′ t′
 
-record Dom {n} (L : SU.Locals m n) (e′ : SX.Expr) (A′ : ST.Ty m) (π : LG.Purity) (B : LT.Type) (t : L.Tm n) : Set where
+record Dom {n} (L : SU.Locals m n) (e′ : SX.Expr) (A′ : ST.Ty m) (π : LG.Purity) (B : ST.Ty m) (t : SC.Tm S m n) : Set where
   constructor dom
   field
     {B′} : ST.Ty m
     rb   : TyR Δ B B′
-    {t′} : SC.Tm S′ m n
+    {t′} : SC.Tm S m n
     rt   : TmR Δ t t′
     der  : SU._⊢_⇐_⇒[_]↦_↝_ Δ L e′ A′ (πS π) B′ t′
 
@@ -179,119 +162,53 @@ not-special () (x-app (x-res _) _) SU.sh-pair
 not-special () (x-app (x-res _) _) SU.sh-compose
 not-special () (x-app (x-res _) _) SU.sh-case
 
--- A reference to a definition with no type variables.
-ref0 : ∀ {n} {L : SU.Locals m n} {T} (d : Fin s) {c} → nm d ≡ c → LP.Schema.arity (S LP.!! d) ≡ 0
-     → (i : EV.InstanceOf d T) → Syn L (SX.RResolved c) T (L.ref d (proj₁ i))
-ref0 d e ar (τ , r , eq) =
-  syn (subst (λ X → TyR Δ X (SC.Schema.type (S′ SC.!! d) ST.⟨ castSub S d τ′ ⟩)) eq (ref-type S d (clean d) inst)) (r-ref d inst)
-      (SU.s-def d e (castSub S d τ′) (trans (arity-S S d) ar))
-  where
-    τ′ : ST.TySub (LP.Schema.arity (S LP.!! d)) m
-    τ′ i = ⊥-elim (fin0 (subst Fin ar i))
-    inst : InstR {Δ = Δ} τ τ′
-    inst i = ⊥-elim (fin0 (subst Fin ar i))
+-- A reference to a table entry: the term the elaborator emits for it is the
+-- entry at the instance, once the View's entry equation is read.
+module _ {n} {Γd : LC.Ctx m n} {L : SU.Locals m n} where
 
--- A variable that occurs in a type: its instance is a part of the instance
--- of the type, so related when that is.
-mutual
-  occ-R : ∀ {a} {A : LP.Ty a} {τ : LP.GSub a} {X i} → Clean A → ST.Occurs i (ptyS A) → TyR Δ (A LP.⟪ τ ⟫) X
-        → Σ[ Y ∈ ST.Ty m ] TyR Δ (τ i) Y
-  occ-R Once.Adequacy.SpecCore.Schema.c-var ST.o-var r = _ , r
-  occ-R (Once.Adequacy.SpecCore.Schema.c-* a b) (ST.o-*ˡ o) (r-* ra rb) = occ-R a o ra
-  occ-R (Once.Adequacy.SpecCore.Schema.c-* a b) (ST.o-*ʳ o) (r-* ra rb) = occ-R b o rb
-  occ-R (Once.Adequacy.SpecCore.Schema.c-+ a b) (ST.o-+ˡ o) (r-+ ra rb) = occ-R a o ra
-  occ-R (Once.Adequacy.SpecCore.Schema.c-+ a b) (ST.o-+ʳ o) (r-+ ra rb) = occ-R b o rb
-  occ-R (c-⇒ a b) (ST.o-⇒ˡ o) (r-⇒ _ ra rb) = occ-R a o ra
-  occ-R (c-⇒ a b) (ST.o-⇒ʳ o) (r-⇒ _ ra rb) = occ-R b o rb
-  occ-R (Once.Adequacy.SpecCore.Schema.c-μ f) (ST.o-μ o) (r-μ rf) = occF-R f o rf
-  occ-R (Once.Adequacy.SpecCore.Schema.c-ν f) (ST.o-ν o) (r-ν _ rf) = occF-R f o rf
+  private
+    Elab : ∀ {Ψ} → ST.Ty m → Set
+    Elab {Ψ} A = EV.Elab Δ Γd Ψ A
 
-  occF-R : ∀ {a} {F : LP.Fun a} {τ : LP.GSub a} {G i} → Once.Adequacy.SpecCore.Schema.CleanF F
-         → ST.OccursF i (Once.Adequacy.SpecCore.Schema.pfunS F) → FunR Δ (F LP.⟪ τ ⟫F) G
-         → Σ[ Y ∈ ST.Ty m ] TyR Δ (τ i) Y
-  occF-R (Once.Adequacy.SpecCore.Schema.c-K a) (ST.o-K o) (r-K ra) = occ-R a o ra
-  occF-R (Once.Adequacy.SpecCore.Schema.c-⊕ f g) (ST.o-⊕ˡ o) (r-⊕ rf rg) = occF-R f o rf
-  occF-R (Once.Adequacy.SpecCore.Schema.c-⊕ f g) (ST.o-⊕ʳ o) (r-⊕ rf rg) = occF-R g o rg
-  occF-R (Once.Adequacy.SpecCore.Schema.c-⊗ f g) (ST.o-⊗ˡ o) (r-⊗ rf rg) = occF-R f o rf
-  occF-R (Once.Adequacy.SpecCore.Schema.c-⊗ f g) (ST.o-⊗ʳ o) (r-⊗ rf rg) = occF-R g o rg
+  retype-tm : ∀ {Ψ A B} (q : A ≡ B) (D : Elab {Ψ} A) → proj₁ (EV.retypeE q D) ≡ proj₁ D
+  retype-tm refl D = refl
 
--- A reference to a polymorphic definition, at an instance whose type is
--- related: the instance is related, and the Spec's instance has that type.
-polyC : ∀ {n} {L : SU.Locals m n} {T X} (d : Fin s) {c} → nm d ≡ c → 0 < LP.Schema.arity (S LP.!! d)
-      → (∀ i → ST.Occurs i (ptyS (LP.Schema.type (S LP.!! d))))
-      → (i : EV.InstanceOf d T) → TyR Δ T X → Chk L (SX.RResolved c) X (L.ref d (proj₁ i))
-polyC {L = L} {X = X} d {c} e pos occ (τ , r , eq) rT =
-  chk (r-ref d inst)
-      (subst (λ Y → SU._⊢_⇐_↝_ Δ L (SX.RResolved c) Y (SC.ref d (castSub S d τ′))) (sym eqX)
-             (SU.c-poly d e (subst (0 <_) (sym (arity-S S d)) pos) (castSub S d τ′) (ref-respects S d r inst)))
-  where
-    rT′ : TyR Δ (LP.Schema.type (S LP.!! d) LP.⟪ τ ⟫) X
-    rT′ = subst (λ Z → TyR Δ Z X) (sym eq) rT
-    τ′ : ST.TySub (LP.Schema.arity (S LP.!! d)) m
-    τ′ i = proj₁ (occ-R (clean d) (occ i) rT′)
-    inst : InstR {Δ = Δ} τ τ′
-    inst i = proj₂ (occ-R (clean d) (occ i) rT′)
-    eqX : X ≡ SC.Schema.type (S′ SC.!! d) ST.⟨ castSub S d τ′ ⟩
-    eqX = TyR-uniqueˢ rT′ (ref-type S d (clean d) inst)
+  syn-retype : ∀ {Ψ A B e′} (q : A ≡ B) (D : Elab {Ψ} A) → Syn L e′ A (proj₁ D) → Syn L e′ B (proj₁ (EV.retypeE q D))
+  syn-retype refl D s = s
 
--- A polymorphic arrow reference given its domain: the domain fixes the
--- instance (its codomain's variables occur in it).
-private
-  castSub-subst : ∀ {s′} (S₀ : LP.Sig Fs s′) (d : Fin s′) (τ : ST.TySub (LP.Schema.arity (S₀ LP.!! d)) m)
-                → castSub S₀ d τ ≡ subst (λ sc → ST.TySub (SC.Schema.arity sc) m) (sym (!!-defsS S₀ d)) τ
-  castSub-subst (S₀ LP.▷ sc) zero    τ = refl
-  castSub-subst (S₀ LP.▷ sc) (suc d) τ = castSub-subst S₀ d τ
+  chk-retype : ∀ {Ψ A B e′} (q : A ≡ B) (D : Elab {Ψ} A) → Chk L e′ A (proj₁ D) → Chk L e′ B (proj₁ (EV.retypeE q D))
+  chk-retype refl D c = c
 
-  dpoly-at : ∀ {n} {L : SU.Locals m n} {c} (d : Fin s) → nm d ≡ c → (sch : SC.Schema) (e : S′ SC.!! d ≡ sch)
-           → 0 < SC.Schema.arity sch
-           → ∀ {sd sc π′ A B π} → SC.Schema.type sch ≡ sd SU.⇒⟨ π′ ⟩ sc → (∀ i → ST.Occurs i sc → ST.Occurs i sd)
-           → (τ : ST.TySub (SC.Schema.arity sch) m) → ST.Respects (SC.Schema.kinds sch) Δ τ
-           → sd ST.⟨ τ ⟩ ≡ A → sc ST.⟨ τ ⟩ ≡ B → π′ SG.⊑π π
-           → SU._⊢_⇐_⇒[_]↦_↝_ Δ L (SX.RResolved c) A π B
-               (SC.coerce (A SU.⇒⟨ π′ ⟩ B) (A SU.⇒⟨ π ⟩ B) (SC.ref d (subst (λ sc → ST.TySub (SC.Schema.arity sc) m) (sym e) τ)))
-  dpoly-at d e′ .(S′ SC.!! d) refl pos te occ τ resp ea eb g = SU.d-poly d e′ pos te occ τ resp ea eb g
+  -- …with no type variables: synthesized;
+  refS : (d : Fin s) {c : CanonicalName} → nm d ≡ c → ∀ {sc} (e : S SC.!! d ≡ sc) τ r
+       → SC.Schema.arity (S SC.!! d) ≡ 0
+       → Syn L (SX.RResolved c) (SC.Schema.type sc ST.⟨ τ ⟩) (proj₁ (EV.refAt {Δ = Δ} {Γ = Γd} d e τ r))
+  refS d ne refl τ r ar = syn (tyR _) (tmR _) (SU.s-def d ne τ ar)
 
-  arr-inj : ∀ {A B C D : LT.Type} {k} → (A LT.⇒[ k ] B) ≡ (C LT.⇒[ k ] D) → (A ≡ C) × (B ≡ D)
-  arr-inj refl = refl , refl
+  -- …with some: checked at the instance;
+  refC : (d : Fin s) {c : CanonicalName} → nm d ≡ c → ∀ {sc} (e : S SC.!! d ≡ sc) τ r
+       → 0 < SC.Schema.arity (S SC.!! d)
+       → Chk L (SX.RResolved c) (SC.Schema.type sc ST.⟨ τ ⟩) (proj₁ (EV.refAt {Δ = Δ} {Γ = Γd} d e τ r))
+  refC d ne refl τ r pos = chk (tmR _) (SU.c-poly d ne pos τ r)
 
-  clean-⇒ : ∀ {a} {X Y : LP.Ty a} {k} → Clean (X LP.⇒[ k ] Y) → Clean X × Clean Y
-  clean-⇒ (c-⇒ x y) = x , y
+  -- …and an arrow given its domain.
+  private
+    ⇒-inj : ∀ {A B C D : ST.Ty m} {k} → (A ST.⇒[ k ] B) ≡ (C ST.⇒[ k ] D) → (A ≡ C) × (B ≡ D)
+    ⇒-inj refl = refl , refl
 
-polyD : ∀ {n} {L : SU.Locals m n} {A B A₀ π π′} (d : Fin s) {c} → nm d ≡ c → 0 < LP.Schema.arity (S LP.!! d)
-      → (∀ i → ST.Occurs i (ptyS (LP.Schema.type (S LP.!! d))))
-      → (X Y : LP.Ty (LP.Schema.arity (S LP.!! d))) → LP.Schema.type (S LP.!! d) ≡ X LP.⇒[ LG.mk-kind LG.Many π′ ] Y
-      → (∀ i → ST.Occurs i (ptyS Y) → ST.Occurs i (ptyS X))
-      → (i : EV.InstanceOf d (A LT.⇒[ LG.mk-kind LG.Many π′ ] B)) → TyR Δ A A₀ → π′ Once.Spec.Grade.⊑π π
-      → Dom L (SX.RResolved c) A₀ π B
-            (L.coerce (A LT.⇒[ LG.mk-kind LG.Many π′ ] B) (A LT.⇒[ LG.mk-kind LG.Many π ] B) (L.ref d (proj₁ i)))
-polyD {L = L} {A} {B} {A₀} {π} {π′} d {c} e pos occ X Y te incl (τ , r , eq) rA g =
-  dom rb (r-coerce (r-⇒ refl rA rb) (r-⇒ refl rA rb) (r-ref d inst))
-      (subst (λ τ₀ → SU._⊢_⇐_⇒[_]↦_↝_ Δ L (SX.RResolved c) A₀ (πS π) B′
-                        (SC.coerce (A₀ SU.⇒⟨ πS π′ ⟩ B′) (A₀ SU.⇒⟨ πS π ⟩ B′) (SC.ref d τ₀)))
-             (sym (castSub-subst S d τ′))
-             (dpoly-at d e (schS (S LP.!! d)) (!!-defsS S d) pos (cong ptyS te) incl τ′ (respects-S r inst) ea refl (⊑π-S g)))
-  where
-    parts = arr-inj (trans (sym (cong (λ Z → Z LP.⟪ τ ⟫) te)) eq)
-    cx = proj₁ (clean-⇒ (subst Clean te (clean d)))
-    cy = proj₂ (clean-⇒ (subst Clean te (clean d)))
-    rX : TyR Δ (X LP.⟪ τ ⟫) A₀
-    rX = subst (λ Z → TyR Δ Z A₀) (sym (proj₁ parts)) rA
-    occX : ∀ i → ST.Occurs i (ptyS X)
-    occX i = side (subst (ST.Occurs i) (cong ptyS te) (occ i))
-      where
-        side : ST.Occurs i (ptyS X ST.⇒[ _ ] ptyS Y) → ST.Occurs i (ptyS X)
-        side (ST.o-⇒ˡ o) = o
-        side (ST.o-⇒ʳ o) = incl i o
-    τ′ : ST.TySub (LP.Schema.arity (S LP.!! d)) m
-    τ′ i = proj₁ (occ-R cx (occX i) rX)
-    inst : InstR {Δ = Δ} τ τ′
-    inst i = proj₂ (occ-R cx (occX i) rX)
-    B′ : ST.Ty m
-    B′ = ptyS Y ST.⟨ τ′ ⟩
-    rb : TyR Δ B B′
-    rb = subst (λ Z → TyR Δ Z B′) (proj₂ parts) (TyR-inst cy inst)
-    ea : ptyS X ST.⟨ τ′ ⟩ ≡ A₀
-    ea = TyR-uniqueˢ (TyR-inst cx inst) rX
+  refD : (d : Fin s) {c : CanonicalName} → nm d ≡ c → ∀ {sc} (e : S SC.!! d ≡ sc) τ r
+       → 0 < SC.Schema.arity (S SC.!! d)
+       → ∀ {X Y : ST.Ty (SC.Schema.arity (S SC.!! d))} {A B π′ π}
+       → SC.Schema.type (S SC.!! d) ≡ X ST.⇒[ LG.mk-kind LG.Many π′ ] Y → (∀ i → ST.Occurs i Y → ST.Occurs i X)
+       → (q : SC.Schema.type sc ST.⟨ τ ⟩ ≡ A ST.⇒[ LG.mk-kind LG.Many π′ ] B) → π′ SG.⊑π π
+       → Dom L (SX.RResolved c) A π B
+             (SC.coerce (A ST.⇒[ LG.mk-kind LG.Many π′ ] B) (A ST.⇒[ LG.mk-kind LG.Many π ] B)
+                        (proj₁ (EV.retypeE q (EV.refAt {Δ = Δ} {Γ = Γd} d e τ r))))
+  refD d ne refl τ r pos {X} {Y} te occ q g =
+    subst (λ t → Dom L _ _ _ _ (SC.coerce _ _ t)) (sym (retype-tm q _))
+          (dom (tyR _) (tmR _) (SU.d-poly d ne pos te occ τ r (proj₁ parts) (proj₂ parts) g))
+    where
+      parts = ⇒-inj (trans (sym (cong (ST._⟨ τ ⟩) te)) q)
 
 ------------------------------------------------------------------------
 -- The translation
@@ -340,11 +257,11 @@ private
   cmp {p = p} c (syn r-int rt₁ d₁) (syn r-int rt₂ d₂) = syn (r-+ r-unit r-unit) (r-prim p (r-pair rt₁ rt₂)) (SU.s-compare c d₁ d₂)
 
 mutual
-  fwdᵢ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᵢ e ∶ A ⨾ Ψ)
+  fwdᵢ : ∀ {n Γn} {Γd : LC.Ctx m n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᵢ e ∶ A ⨾ Ψ)
        → LR Γn Γd L → ∀ {e′} → RX (names Γn) e e′ → Syn L e′ A (proj₁ (EV.elabᵢ V D))
-  fwdᶜ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᶜ e ∶ A ⨾ Ψ)
+  fwdᶜ : ∀ {n Γn} {Γd : LC.Ctx m n} {L : SU.Locals m n} {e A Ψ} (D : C n Γn Γd ⊢ᶜ e ∶ A ⨾ Ψ)
        → LR Γn Γd L → ∀ {e′} → RX (names Γn) e e′ → ∀ {A′} → TyR Δ A A′ → Chk L e′ A′ (proj₁ (EV.elabᶜ V D))
-  fwdᵈ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e A B π Ψ} (D : C n Γn Γd ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  fwdᵈ : ∀ {n Γn} {Γd : LC.Ctx m n} {L : SU.Locals m n} {e A B π Ψ} (D : C n Γn Γd ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
        → LR Γn Γd L → ∀ {e′} → RX (names Γn) e e′ → ∀ {A′} → TyR Δ A A′ → Dom L e′ A′ π B (proj₁ (EV.elabᵈ V D))
 
   ----------------------------------------------------------------------
@@ -357,15 +274,19 @@ mutual
   fwdᵢ t-unit-var lr (x-res _) = syn r-unit r-unit SU.s-unit-g
   fwdᵢ (t-var-local {eV = svar i} lk) lr (x-local _) =
     let (A′ , ra , mem) = lk-R lr i lk in syn ra (r-var i) (SU.s-var mem)
-  fwdᵢ {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k refl) lr (x-res _) = res (E.View.declares V lk)
+  fwdᵢ {Γd = Γd} {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k eq) lr (x-res _) = res (E.View.declares V lk)
     where
-      res : EV.Declared (showCanonical cn) T → Syn L (SX.RResolved cn) T (L.sigop cn T)
-      res (EV.declared h g mem) = syn (decl-R k h g) (r-sigop (decl-R k h g)) (SU.s-sigop ng (sigop-S wn mem))
-  fwdᵢ (t-var-own _ lk refl) lr (x-res _) =
-    ref0 (E.ImportAt.entryOf (E.View.imported V lk)) (proj₁ (h-imp lk)) (proj₂ (h-imp lk)) (E.ImportAt.instOf (E.View.imported V lk))
+      res : (D : EV.Declared (showCanonical cn) T) → Syn L (SX.RResolved cn) _ (proj₁ (EV.sigE {Δ = Δ} {Γ = Γd} cn wn k D eq))
+      res (EV.declared h mem) =
+        syn (subst (TyR Δ _) (trans eq (sym (⌜declS⌝ k h))) (tyR _)) (tmR _) (SU.s-sigop ng (mem wn refl))
+  fwdᵢ (t-var-own _ lk eq) lr (x-res _) =
+    syn-retype (sym eq) _ (refS (E.ImportAt.entryOf (E.View.imported V lk)) (h-imp lk) (E.ImportAt.mono (E.View.imported V lk)) _ _
+                                (cong SC.Schema.arity (E.ImportAt.mono (E.View.imported V lk))))
   fwdᵢ (t-var-import _ lkl _ _ _) lr (x-local inb) = ⊥-elim (lk-out lr inb lkl)
-  fwdᵢ (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) lr (x-res _) =
-    ref0 (E.View.entry V lp) (h-poly lp) (h-ground lp g) (E.View.ground V lp g)
+  fwdᵢ (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ eq) lr (x-res _) =
+    let ki = kinded-instance sc (ground-kinded sc g) in
+    syn-retype (sym eq) _ (syn-retype (proj₂ (proj₂ ki)) _
+      (refS (E.View.entry V lp) (h-poly lp) (E.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-ground lp g)))
   fwdᵢ (t-annot rf d refl) lr (x-annot _ x) =
     let chk rt der = fwdᶜ d lr x (annot-R _ rf) in syn (annot-R _ rf) rt (SU.s-annot der)
   fwdᵢ (t-pair da db) lr (x-pair xa xb) =
@@ -551,8 +472,11 @@ mutual
     let chk rt d′ = fwdᶜ d lr x rb in chk (r-app (inrᶜ-R LG.pure ra rb) rt) (SU.c-inr-app d′)
   fwdᶜ (t-initial-app-check d) lr (x-app (x-res _) x) rT =
     let chk rt d′ = fwdᶜ d lr x r-void in chk (r-app (initialᶜ-R LG.pure rT) rt) (SU.c-initial-app d′)
-  fwdᶜ (t-var-poly-instantiate _ _ lp ng ins) lr (x-res _) rT =
-    polyC (E.View.entry V lp) (h-poly lp) (h-open lp ng) (h-occ lp) (E.View.inst V lp ng ins) rT
+  fwdᶜ (t-var-poly-instantiate {schema = sc} _ _ lp ng ins) lr (x-res _) rT =
+    let ki = kinded-instance sc ins in
+    subst (λ Z → Chk _ _ Z _) (TyR-≡ rT)
+          (chk-retype (proj₂ (proj₂ ki)) _
+            (refC (E.View.entry V lp) (h-poly lp) (E.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open lp ng)))
 
   ----------------------------------------------------------------------
   -- An arrow out of a given domain
@@ -563,9 +487,12 @@ mutual
       infer-step : Syn _ _ _ _ → Dom _ _ _ _ _ _
       infer-step (syn (r-⇒ refl rA′ rb) rt der) =
         dom rb (r-coerce (r-⇒ refl rA′ rb) (r-⇒ refl rA rb) rt) (SU.d-infer der (sub-S a rA rA′) (⊑π-S g))
-  fwdᵈ (d-poly _ _ lp ng arr cvd ins g) lr (x-res _) rA =
+  fwdᵈ (d-poly {schema = sc} _ _ lp ng arr cvd ins g) lr (x-res _) rA =
     let (X , Y , te , incl) = h-arrow lp arr cvd
-    in polyD (E.View.entry V lp) (h-poly lp) (h-open lp ng) (h-occ lp) X Y te incl (E.View.inst V lp ng ins) rA g
+        ki = kinded-instance sc ins
+    in subst (λ Z → Dom _ _ Z _ _ _) (TyR-≡ rA)
+             (refD (E.View.entry V lp) (h-poly lp) (E.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open lp ng) te incl
+                   (proj₂ (proj₂ ki)) g)
   fwdᵈ (d-lam d) lr (x-lam x) rA =
     let syn rb rt d′ = fwdᵢ d (lr-▸ lr rA) x in dom rb (r-lam rA rt) (SU.d-lam d′)
   fwdᵈ (d-compose {π = π} dg df) lr (x-app (x-app (x-res _) xf) xg) rA =
