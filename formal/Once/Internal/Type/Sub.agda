@@ -38,6 +38,7 @@ module Once.Internal.Type.Sub where
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; _·p_; fin; _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 open import Once.Spec.Sub
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 pattern sub-prod a b = sub-* a b
 pattern sub-sum a b = sub-+ a b
@@ -64,6 +65,15 @@ pure-⊑ : ∀ π → pure ⊑π π
 pure-⊑ pure = ⊑-pure
 pure-⊑ act  = ⊑-pa
 pure-⊑ eff  = ⊑-pe
+
+-- The grade order is proof-irrelevant.
+⊑π-irr : ∀ {π π′} (g g′ : π ⊑π π′) → g ≡ g′
+⊑π-irr ⊑-pure ⊑-pure = refl
+⊑π-irr ⊑-pa   ⊑-pa   = refl
+⊑π-irr ⊑-pe   ⊑-pe   = refl
+⊑π-irr ⊑-act  ⊑-act  = refl
+⊑π-irr ⊑-ae   ⊑-ae   = refl
+⊑π-irr ⊑-eff  ⊑-eff  = refl
 
 <:-refl : ∀ {m} (A : Ty m) → A <: A
 <:-refl (var _) = sub-var
