@@ -28,7 +28,7 @@ open import Data.Integer using (ℤ)
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.String using (String; _++_)
 
-open import Once.Internal.Type using (Unit; Int)
+open import Once.Spec.Type using (Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Internal.Type.WellFormed using (base-Unit; base-Int)
 open import Once.Spec.Name using (bare)

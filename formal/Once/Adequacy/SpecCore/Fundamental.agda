@@ -45,8 +45,11 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 import Once.Internal.Context as LC
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST

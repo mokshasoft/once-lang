@@ -25,6 +25,7 @@ open import Once.Internal.Contract using (ISig)
 open import Once.Internal.Name using (showCanonical; WordName)
 import Once.Internal.Core.PolyTy as LP
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Spec.Signature using (Signature; DeclType; BTy; constant; value; operation; _∶_; ⌜_⌝; ⌜_⌝ᵈ)
 import Once.Spec.Signature as SSig
@@ -37,6 +38,8 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 import Once.Internal.Type.Sub as LS
+
+import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Type.Honest as LH
 import Once.Internal.Context as LC
@@ -92,7 +95,6 @@ module _ {m : ℕ} where
   toB-S LW.base-Float _ = refl
   toB-S (LW.base-Prod a b) (LW.rf-* ra rb) = cong₂ ST._*_ (toB-S a ra) (toB-S b rb)
   toB-S (LW.base-Sum a b)  (LW.rf-+ ra rb) = cong₂ ST._+_ (toB-S a ra) (toB-S b rb)
-  toB-S LW.base-rigid ()
 
   -- An honest FFI type is its declaration's.
   declS-S : ∀ {A} → LW.IsConcrete A → LH.HonestFFI A → LW.RigidFree A → ⌜ declS A ⌝ᵈ ≡ ptyS (LP.⌈_⌉ {m} A)
@@ -109,7 +111,6 @@ module _ {m : ℕ} where
   declS-S (LW.con-base LW.base-Float) _ _ = refl
   declS-S (LW.con-base b@(LW.base-Prod _ _)) _ r = toB-S b r
   declS-S (LW.con-base b@(LW.base-Sum _ _)) _ r = toB-S b r
-  declS-S (LW.con-base LW.base-rigid) () _
 
 ------------------------------------------------------------------------
 -- Types: instances and functor application commute with the translation

@@ -19,7 +19,7 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Internal.Type.DecEq using (_≟T_)
-open import Once.Internal.Type.Sub using (_<:_; sub-int; sub-float)
+open import Once.Spec.Sub using (_<:_; sub-int; sub-float)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa; ⊑-act)
 open import Once.Type.Sub using (_<:?_)
 open import Once.Internal.Type.Sub using (<:-refl)
@@ -45,6 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IR as IR

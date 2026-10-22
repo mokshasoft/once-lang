@@ -36,6 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Function using (_∋_)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 open import Once.Internal.Type.Poly using (PolyType; Ground; extractGround)
 open import Once.Internal.Type.WellFormed using (IsConcrete; RigidFree)
 open import Once.Internal.Type.Honest using (HonestFFI)

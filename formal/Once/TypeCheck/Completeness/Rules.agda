@@ -42,7 +42,7 @@ open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Data.String.Properties as StrProp using ()
 open import Once.Spec.Grade as T using (Quantity; _≤q_; Zero; One; Many)
-open import Once.Internal.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
+open import Once.Spec.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
 open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
 open import Once.Internal.Name using (showCanonical; WordName; wordNameB)
@@ -74,7 +74,7 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Internal.Type.DecEq using (_≟T_)
-open import Once.Internal.Type.Sub using (_⊔_≔_)
+open import Once.Spec.Sub using (_⊔_≔_)
 open import Once.Internal.Type.Join using (join?-complete)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
 open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)

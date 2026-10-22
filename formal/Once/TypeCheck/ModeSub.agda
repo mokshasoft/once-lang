@@ -27,10 +27,11 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
-open import Once.Internal.Type as T using (Type; _*_; _⇒[_]_)
+open import Once.Spec.Type as T using (Type; _*_; _⇒[_]_)
 import Once.Internal.Type.Poly as T
 import Once.Spec.Grade as T
-open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
+open import Once.Spec.Sub using (_<:_; sub-arr; sub-void)
+open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.Internal.Type.Sub using (<:-refl)

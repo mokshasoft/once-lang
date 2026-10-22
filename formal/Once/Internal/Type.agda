@@ -3,106 +3,81 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Type — the types: the objects of the category.
+-- Once.Internal.Type — the compiler's names over the Spec's types.
 --
---   Unit, Void      the terminal and the initial object;
---   A * B, A + B    product and coproduct;
---   A ⇒[ k ] B      the exponential, graded by `k` (`Spec.Type.Grade`);
---   μ-type F        the initial algebra of the functor `F` (inductive data);
---   ν-type F φ      the final coalgebra of `F` (codata), whose layers are
---                   produced at the FINITE grade `φ` (D318): `ν-type F actᶠ`
---                   is ν(T ∘ F) over the finite call trees;
---   Int, Float      the target's integers and floating-point numbers;
---   rigid k i       the `i`-th type parameter of a polymorphic definition,
---                   of kind `k`, held abstract while its body is typed.
+-- The types are the Spec's (`Once.Spec.Type`): `Ty m` over `m` type
+-- variables, ground types `Type = Ty 0`. This module keeps the compiler's
+-- older names for some of them while plan 0.122 renames its users:
 --
--- The functors are the polynomial ones, built from constants, the recursive
--- position, sums and products; `⟦ F ⟧T X` is `F` applied to `X`.
+--   μ-type F, ν-type F φ    the Spec's `μ F`, `ν F φ`;
+--   Functor, ⟦ F ⟧T X       the ground functors `Fun 0` and their action;
+--   TKind, k-base, k-any    the Spec's kinds `Kind`, `base`, `any`;
+--
+-- and the compiler's own helpers over them: the pure arrows at each usage and
+-- the deciders `isVoid?`, `isUnit?`.
 ------------------------------------------------------------------------
 
 module Once.Internal.Type where
 
-open import Data.Nat using (ℕ)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (ArrowKind; mk-kind; Zero; One; Many; Purity; Finite; pure; actᶠ)
+open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
+open import Once.Spec.Type
+  using (Ty; Type; Fun; Kind; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; base; any; ⟦_⟧F)
 
-mutual
-  -- Polynomial (strictly positive) functors.
-  data Functor : Set where
-    K    : Type → Functor               -- constant
-    Id   : Functor                      -- the recursive position
-    _⊕_  : Functor → Functor → Functor  -- sum
-    _⊗_  : Functor → Functor → Functor  -- product
+pattern μ-type F = μ F
+pattern ν-type F φ = ν F φ
 
-  data Type : Set where
-    Unit   : Type
-    Void   : Type
-    _*_    : Type → Type → Type
-    _+_    : Type → Type → Type
-    _⇒[_]_ : Type → ArrowKind → Type → Type
-    μ-type : Functor → Type
-    ν-type : Functor → Finite → Type   -- D318: a stream's layers are at most `act`
-    Int    : Type
-    Float  : Type
-    rigid  : TKind → ℕ → Type
+Functor : Set
+Functor = Fun 0
 
-  -- What a type parameter may be instantiated at: `k-base`, a base type (it
-  -- occurs under a functor constant); `k-any`, any type.
-  data TKind : Set where
-    k-base k-any : TKind
+TKind : Set
+TKind = Kind
 
-infixr 40 _⊕_
-infixr 50 _⊗_
+pattern k-base = base
+pattern k-any = any
 
-infixr 30 _⇒[_]_
-infixr 40 _+_
-infixr 50 _*_
+-- A functor applied to a type.
+⟦_⟧T : Functor → Type → Type
+⟦_⟧T = ⟦_⟧F
 
 -- The pure arrows at each usage: linear, unrestricted, erased.
-_⊸_ : Type → Type → Type
+_⊸_ : ∀ {m} → Ty m → Ty m → Ty m
 A ⊸ B = A ⇒[ mk-kind One pure ] B
 
-_⇒_ : Type → Type → Type
+_⇒_ : ∀ {m} → Ty m → Ty m → Ty m
 A ⇒ B = A ⇒[ mk-kind Many pure ] B
 
-_⇒₀_ : Type → Type → Type
+_⇒₀_ : ∀ {m} → Ty m → Ty m → Ty m
 A ⇒₀ B = A ⇒[ mk-kind Zero pure ] B
 
 infixr 30 _⊸_
 infixr 30 _⇒_
 infixr 30 _⇒₀_
 
--- A functor applied to a type.
-⟦_⟧T : Functor → Type → Type
-⟦ K A ⟧T X = A
-⟦ Id ⟧T X = X
-⟦ F ⊕ G ⟧T X = ⟦ F ⟧T X + ⟦ G ⟧T X
-⟦ F ⊗ G ⟧T X = ⟦ F ⟧T X * ⟦ G ⟧T X
-
 -- Is a type `Void`, or `Unit`? The contract of an external operation
 -- (`Spec.Contract`) is defined by cases on its codomain: one into `Void` never
 -- returns, one into `Unit` returns nothing.
-isVoid? : (T : Type) → Dec (T ≡ Void)
+isVoid? : ∀ {m} (T : Ty m) → Dec (T ≡ Void)
 isVoid? Void          = yes refl
+isVoid? (var _)       = no (λ ())
 isVoid? Unit          = no (λ ())
 isVoid? (_ * _)       = no (λ ())
 isVoid? (_ + _)       = no (λ ())
 isVoid? (_ ⇒[ _ ] _)  = no (λ ())
-isVoid? (μ-type _)    = no (λ ())
-isVoid? (ν-type _ _)  = no (λ ())
+isVoid? (μ _)         = no (λ ())
+isVoid? (ν _ _)       = no (λ ())
 isVoid? Int           = no (λ ())
 isVoid? Float         = no (λ ())
-isVoid? (rigid _ _)   = no (λ ())
 
-isUnit? : (T : Type) → Dec (T ≡ Unit)
+isUnit? : ∀ {m} (T : Ty m) → Dec (T ≡ Unit)
 isUnit? Unit          = yes refl
+isUnit? (var _)       = no (λ ())
 isUnit? Void          = no (λ ())
 isUnit? (_ * _)       = no (λ ())
 isUnit? (_ + _)       = no (λ ())
 isUnit? (_ ⇒[ _ ] _)  = no (λ ())
-isUnit? (μ-type _)    = no (λ ())
-isUnit? (ν-type _ _)  = no (λ ())
+isUnit? (μ _)         = no (λ ())
+isUnit? (ν _ _)       = no (λ ())
 isUnit? Int           = no (λ ())
 isUnit? Float         = no (λ ())
-isUnit? (rigid _ _)   = no (λ ())

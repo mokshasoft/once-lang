@@ -15,6 +15,7 @@ module Once.Adequacy.SpecGrammar.Conv where
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.Poly as LP
 import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
@@ -69,7 +70,7 @@ toTy (LT.μ-type F)       = ST.μ (toFun F)
 toTy (LT.ν-type F φ)     = ST.ν (toFun F) (φS φ)
 toTy LT.Int              = ST.Int
 toTy LT.Float            = ST.Float
-toTy (LT.rigid _ _)      = ST.Unit
+toTy (ST.var ())
 toFun (LT.K A)           = ST.K (toTy A)
 toFun LT.Id              = ST.Id
 toFun (F LT.⊕ G)         = toFun F ST.⊕ toFun G
@@ -91,7 +92,7 @@ toPolyG (LT.μ-type F)                  = SS.Pμ (toPolyGF F)
 toPolyG (LT.ν-type F φ)                = SS.Pν (toPolyGF F) (φS φ)
 toPolyG LT.Int                         = SS.PInt
 toPolyG LT.Float                       = SS.PFloat
-toPolyG (LT.rigid _ _)                 = SS.PUnit
+toPolyG (ST.var ())
 toPolyGF (LT.K A)                      = SS.PK (toPolyG A)
 toPolyGF LT.Id                         = SS.PId
 toPolyGF (F LT.⊕ G)                    = toPolyGF F SS.P⊕ toPolyGF G

@@ -35,7 +35,7 @@ open import Once.Postulates using (extensionality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst-sym-subst)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; fin; eff)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup; thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)

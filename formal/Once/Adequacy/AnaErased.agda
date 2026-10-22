@@ -37,7 +37,8 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Type as TT using (Functor; _*_; _+_)
+open import Once.Spec.Type as TT using (_*_; _+_)
+open import Once.Internal.Type as TT using (Functor)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
@@ -54,7 +55,7 @@ open import Once.Internal.Iterative using (T∞; return∞)
 open import Once.Internal.Stream
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 
 ------------------------------------------------------------------------
@@ -255,7 +256,6 @@ base-in-D base-Unit   v0 = refl
 base-in-D base-Int    v0 = refl
 base-in-D base-Float  v0 = refl
 base-in-D base-Void   ()
-base-in-D base-rigid  v0 = refl
 base-in-D (base-Prod {A} {B} ba bb) (a , b) =
   trans (push× (base-coh A) (base-coh B)
                (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ ba)) a))

@@ -44,7 +44,7 @@ open import Function using (case_of_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Grade using (mk-kind; Many; eff)
-open import Once.Internal.Type using (Unit; Type; _⇒[_]_)
+open import Once.Spec.Type using (Unit; Type; _⇒[_]_)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
@@ -73,7 +73,7 @@ import Once.Internal.Type.DecEq
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; mainEntry; moduleToIR; moduleToIR-aux)
-open import Once.Internal.Type.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_)
 open import Once.Type.Sub using (_<:?_)
 open import Once.Adequacy.MainIRForm using (bare-injective)
 import Once.Adequacy.ModuleComplete as MC

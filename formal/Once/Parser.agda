@@ -29,7 +29,7 @@ open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Grade using (mk-kind; Many; eff)
-open import Once.Internal.Type using (Type; Unit; _⇒[_]_)
+open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Internal.Type.Poly using (PolyType; extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)

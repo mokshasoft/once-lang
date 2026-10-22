@@ -22,7 +22,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Spec.Grade using (Quantity; Many)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Typing.Scope using (Binding; mkBinding; Ctx)
 open Binding
 

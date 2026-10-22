@@ -19,6 +19,7 @@ open import Data.Fin.Properties using (toℕ-fromℕ<)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Core.PolyTy as LP
 open import Once.Internal.Type.DecEq using (_≟tk_)
 open import Once.Internal.Core.AbsTy using (absTy; absF; ar-bound; ar-kind; ConstFree; ConstFreeF; cf-var; cf-Unit; cf-Void; cf-Int; cf-Float; cf-*; cf-+; cf-⇒; cf-μ; cf-ν; cf-K; cf-Id; cf-⊕; cf-⊗)

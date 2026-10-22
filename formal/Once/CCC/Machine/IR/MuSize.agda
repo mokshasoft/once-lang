@@ -21,7 +21,9 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Internal.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+
+open import Once.Internal.Type using (Functor)
 open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap; sem-Out; sem-In)

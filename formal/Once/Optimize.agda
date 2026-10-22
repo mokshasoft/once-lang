@@ -28,6 +28,7 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IR
@@ -172,7 +173,6 @@ is-Void (μ-type _)   = false
 is-Void (ν-type _ _)   = false
 is-Void Int          = false
 is-Void Float        = false
-is-Void (rigid _ _)  = false
 
 ------------------------------------------------------------------------
 -- Optimizer: Composition Rules
@@ -200,7 +200,6 @@ isUnitType (μ-type _)   = false
 isUnitType (ν-type _ _)   = false
 isUnitType Int          = false
 isUnitType Float        = false
-isUnitType (rigid _ _)  = false
 
 isVoidType : Type → Bool
 isVoidType Unit         = false
@@ -212,7 +211,6 @@ isVoidType (μ-type _)   = false
 isVoidType (ν-type _ _)   = false
 isVoidType Int          = false
 isVoidType Float        = false
-isVoidType (rigid _ _)  = false
 
 -- IR predicates: use ir-head head-discriminator + decidable IRHead equality
 -- to avoid enumerating all 24 IR constructors per predicate.

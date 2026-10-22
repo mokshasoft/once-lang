@@ -25,10 +25,11 @@ open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
 import Data.Sign as Sign
 
-open import Once.Internal.Type using (Type; Unit; Int)
+open import Once.Spec.Type using (Type; Unit; Int)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Spec.Float.Decimal using (Decimal)
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Arith.Machine.Shape
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; Path; readLeaf)

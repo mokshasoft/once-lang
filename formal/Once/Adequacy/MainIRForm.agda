@@ -33,12 +33,13 @@ open import Function using (case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Compile using (findMain; findMain-here)
-open import Once.Internal.Type.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_)
 open import Once.Type.Sub using (_<:?_)
 import Once.IR as IR
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure; eff)
-open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Internal.Syntax using (RawExpr)

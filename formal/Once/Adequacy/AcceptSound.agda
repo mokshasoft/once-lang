@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Internal.Type using (Unit; Type)
+open import Once.Spec.Type using (Unit; Type)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser

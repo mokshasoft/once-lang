@@ -37,6 +37,8 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
 import Once.Internal.Type.WellFormed as LW

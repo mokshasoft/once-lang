@@ -24,7 +24,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
 
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.WellFormed using (RigidFree)
 import Once.Compile as C
 import Once.IR as IR
@@ -51,6 +51,7 @@ open import Data.Sum.Properties using (inj₂-injective)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Internal.Type
+import Once.Spec.Type
 import Once.Type
 import Once.Internal.Context as Ctx
 open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix)

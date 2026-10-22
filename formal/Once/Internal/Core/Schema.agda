@@ -31,6 +31,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 import Once.Internal.Type as T
+
+import Once.Spec.Type as T
 open import Once.Spec.Grade using (mk-kind; Many; act; eff; pure)
 open import Once.Internal.Type using (k-base; k-any)
 open import Once.Internal.Type.Poly using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF)

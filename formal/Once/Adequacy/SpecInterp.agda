@@ -36,6 +36,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Spec.Grade as G
 open import Once.Internal.Name using (showCanonical)
 open import Once.Spec.Name using (CanonicalName)

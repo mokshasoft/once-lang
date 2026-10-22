@@ -46,7 +46,7 @@ open import Once.Internal.Principal using (PrincipalAt)
 open import Once.Internal.Core.Translate
   using (SigSig; ImpSig; TeleSig; SigCF; SigIn; t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSg; polySg; mainEntry;
          toProgram; toProgramFrom)
-open import Once.Internal.Type.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_)
 import Once.Type.Sub
 import Once.Internal.Core.Translate
 open import Once.Adequacy.SpecFront.WalkState {Fs} Σ ps using (_∷ⁿ_)

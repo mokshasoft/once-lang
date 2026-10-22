@@ -29,6 +29,7 @@ open import Once.Internal.Res using (Res)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
@@ -66,7 +67,6 @@ base-coh (μ-type F)    = refl
 base-coh (ν-type F _)    = refl
 base-coh Int           = refl
 base-coh Float         = refl
-base-coh (rigid _ _)   = refl
 
 -- The translated SFunctor is unchanged by re-grading (its only Type-payloads
 -- are the `K`-constants, handled by `base-coh`).
@@ -94,4 +94,3 @@ coh (μ-type F)    = cong μS (tF-coh F)
 coh (ν-type F _)    = cong νS (tF-coh F)
 coh Int           = refl
 coh Float         = refl
-coh (rigid _ _)   = refl

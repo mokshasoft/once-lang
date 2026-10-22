@@ -31,8 +31,10 @@ open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst; subst-sym-subst; subst-subst-sym; subst-∘)
 
 open import Once.Spec.Grade using (Purity; mk-kind; Many; Finite; fin; act; eff)
-open import Once.Internal.Type using (Type; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T)
+open import Once.Spec.Type using (Type; _⇒[_]_)
+open import Once.Internal.Type using (μ-type; ν-type; Functor; ⟦_⟧T)
 import Once.Internal.Type as TT
+import Once.Spec.Type as TT
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; Ana)
 open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋)

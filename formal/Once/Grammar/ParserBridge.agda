@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using
   (_≡_; refl; cong)
 
 open import Once.Spec.Grade using (Zero; One; Many)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Parser.Token
 open import Once.Parser.Type
 open import Once.Parser.AccIrrelevant using (Acc-irrelevant)

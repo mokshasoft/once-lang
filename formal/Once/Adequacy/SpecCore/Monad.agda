@@ -25,6 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Grade as LG
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 import Once.Spec.Grade as SG
 import Once.Internal.Graded as LGr
 import Once.Internal.GradedOps as LOps

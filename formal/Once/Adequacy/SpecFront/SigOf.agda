@@ -36,6 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Data.String.Properties as StrProp
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Honest using (HonestFFI)
 open import Once.Internal.Contract using (ISig)

@@ -36,6 +36,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Internal.Type.DecEq using (_≟tk_)
 import Once.Spec.Grade as SG

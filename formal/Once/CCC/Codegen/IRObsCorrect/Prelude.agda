@@ -44,7 +44,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_) public
 
 -- SigOpInfo is over SURFACE Type (`SigOp : SigOpInfo A B → IR ⌊A⌋ ⌊B⌋`), so the
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
-open import Once.Internal.Type using (Type) renaming (Int to Intˢ) public
+open import Once.Spec.Type using (Type) renaming (Int to Intˢ) public
 open import Once.Type using (FitsInReg; fits-in-reg?) renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ) public
 open import Data.Integer using (ℤ) public
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧) public

@@ -26,7 +26,8 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; eff; act; fin)
-open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; ⟦_⟧T)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Type using (μ-type; ν-type; ⟦_⟧T)
 open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
 open import Once.Semantics.Machine using (sem-cata)
 open import Once.Internal.StreamInf using (anaFᴵ)
@@ -34,6 +35,7 @@ open import Once.Denotation.ValueDomain using (coerce-functor-D)
 open import Once.Internal.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞)

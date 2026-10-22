@@ -14,6 +14,8 @@
 module Once.Adequacy.RewriteLinked where
 
 import Once.Internal.Type
+
+import Once.Spec.Type
 import Once.SigOp.Info
 
 open import Data.Bool using (true; false)

@@ -25,6 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 
 -- Plan 0.113 B2: HALTING and EMITTING are properties UP TO ISOMORPHISM — a codomain
@@ -49,7 +50,7 @@ NotEmpty (A + B) = NotEmpty A ⊎ NotEmpty B
 NotEmpty (_ ⇒[ _ ] _) = ⊥
 NotEmpty (μ-type _)   = ⊥
 NotEmpty (ν-type _ _) = ⊥
-NotEmpty (rigid _ _)  = ⊥
+NotEmpty (var ())
 
 -- `|A + B| ≠ 1` iff both summands are inhabited, or neither is a singleton.
 NotSingleton : Type → Set
@@ -62,7 +63,7 @@ NotSingleton (A + B) = (NotEmpty A × NotEmpty B) ⊎ (NotSingleton A × NotSing
 NotSingleton (_ ⇒[ _ ] _) = ⊥
 NotSingleton (μ-type _)   = ⊥
 NotSingleton (ν-type _ _) = ⊥
-NotSingleton (rigid _ _)  = ⊥
+NotSingleton (var ())
 
 -- A data codomain at grade `π` (not `Unit`/`Void`, not an arrow): a pure one must be
 -- inhabited (a value contract); an effectful one must be neither empty nor a
@@ -92,7 +93,7 @@ HonestCod π (μ-type _)                 = ⊥   -- B2: not first-order data
 HonestCod π (ν-type _ _)               = ⊥
 HonestCod π Int                        = ⊤
 HonestCod π Float                      = ⊤
-HonestCod π (rigid _ _)                = ⊥   -- D243: an FFI signature is ground
+HonestCod π (var ())
 
 -- A constant is a pure value: it must be inhabited.
 HonestFFI : Type → Set
@@ -109,7 +110,7 @@ HonestFFI (μ-type _)              = ⊥
 HonestFFI (ν-type _ _)            = ⊥
 HonestFFI Int                     = ⊤
 HonestFFI Float                   = ⊤
-HonestFFI (rigid _ _)             = ⊥   -- D243: an FFI signature is ground
+HonestFFI (var ())
 
 ------------------------------------------------------------------------
 -- Deciders (implementation; the elaborator checks a reference with them)
@@ -146,7 +147,7 @@ notEmpty? (A + B)      = either (notEmpty? A) (notEmpty? B)
 notEmpty? (_ ⇒[ _ ] _) = nothing
 notEmpty? (μ-type _)   = nothing
 notEmpty? (ν-type _ _) = nothing
-notEmpty? (rigid _ _)  = nothing
+notEmpty? (var ())
 
 notSingleton? : (T : Type) → Maybe (NotSingleton T)
 notSingleton? Unit         = nothing
@@ -158,7 +159,7 @@ notSingleton? (A + B)      = either (both (notEmpty? A) (notEmpty? B)) (both (no
 notSingleton? (_ ⇒[ _ ] _) = nothing
 notSingleton? (μ-type _)   = nothing
 notSingleton? (ν-type _ _) = nothing
-notSingleton? (rigid _ _)  = nothing
+notSingleton? (var ())
 
 dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
 dataCod? pure B = notEmpty? B
@@ -175,7 +176,7 @@ honestCod? π (μ-type _)               = nothing
 honestCod? π (ν-type _ _)             = nothing
 honestCod? π Int                      = just tt
 honestCod? π Float                    = just tt
-honestCod? π (rigid _ _)              = nothing
+honestCod? π (var ())
 
 honest? : (T : Type) → Maybe (HonestFFI T)
 honest? Unit                    = nothing
@@ -191,5 +192,5 @@ honest? (μ-type _)              = nothing
 honest? (ν-type _ _)            = nothing
 honest? Int                     = just tt
 honest? Float                   = just tt
-honest? (rigid _ _)             = nothing
+honest? (var ())
 

@@ -38,7 +38,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl)
 
 open import Once.Spec.Grade as T using (Quantity)
-open import Once.Internal.Type as T using (Type)
+open import Once.Spec.Type as T using (Type)
 open import Once.Spec.Name using (gen)
 open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
 import Data.String.Properties

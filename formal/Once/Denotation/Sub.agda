@@ -27,8 +27,10 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
-open import Once.Internal.Type using (Type; _⇒[_]_; Void)
+open import Once.Spec.Type using (Type; _⇒[_]_; Void)
+import Once.Spec.Type as ST
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Laws.SubLaws
@@ -65,18 +67,17 @@ open import Once.Denotation.ValueRel using (RelD; RelS-fmap; RelS-fmapˡ)
 open import Data.Unit using (tt)
 
 <:-refl-rel : ∀ A {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A (⟦ <:-refl A ⟧<: x) y
-<:-refl-rel Type.Unit   r = r
-<:-refl-rel Type.Void   {()}
-<:-refl-rel Type.Int    r = r
-<:-refl-rel Type.Float  r = r
+<:-refl-rel ST.Unit   r = r
+<:-refl-rel ST.Void   {()}
+<:-refl-rel ST.Int    r = r
+<:-refl-rel ST.Float  r = r
 <:-refl-rel (A ⇒[ mk-kind Zero π ] B) r = RelS-fmapˡ r (<:-refl-rel B)
 <:-refl-rel (A ⇒[ mk-kind One π ] B)  r = λ ra → RelS-fmapˡ (r (<:-refl-rel A ra)) (<:-refl-rel B)
 <:-refl-rel (A ⇒[ mk-kind Many π ] B) r = λ ra → RelS-fmapˡ (r (<:-refl-rel A ra)) (<:-refl-rel B)
-<:-refl-rel (A Type.* B) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = <:-refl-rel A r₁ , <:-refl-rel B r₂
-<:-refl-rel (A Type.+ B) {inj₁ x} {inj₁ y} r = <:-refl-rel A r
-<:-refl-rel (A Type.+ B) {inj₂ x} {inj₂ y} r = <:-refl-rel B r
-<:-refl-rel (A Type.+ B) {inj₁ _} {inj₂ _} ()
-<:-refl-rel (A Type.+ B) {inj₂ _} {inj₁ _} ()
-<:-refl-rel (Type.μ-type F) r = r
-<:-refl-rel (Type.ν-type F _) r = r
-<:-refl-rel (Type.rigid _ _) {()}
+<:-refl-rel (A ST.* B) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = <:-refl-rel A r₁ , <:-refl-rel B r₂
+<:-refl-rel (A ST.+ B) {inj₁ x} {inj₁ y} r = <:-refl-rel A r
+<:-refl-rel (A ST.+ B) {inj₂ x} {inj₂ y} r = <:-refl-rel B r
+<:-refl-rel (A ST.+ B) {inj₁ _} {inj₂ _} ()
+<:-refl-rel (A ST.+ B) {inj₂ _} {inj₁ _} ()
+<:-refl-rel (ST.μ F) r = r
+<:-refl-rel (ST.ν F _) r = r

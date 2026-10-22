@@ -29,7 +29,7 @@ import Data.Maybe
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.Poly using (PolyType)
 open import Once.Internal.Type.Instance using (KindedInstance; rigidOf)
 import Once.Internal.Context as C

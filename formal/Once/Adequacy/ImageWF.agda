@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Internal.Type using (Unit)
+open import Once.Spec.Type using (Unit)
 open import Once.Denotation.Program using (IRProgram; irProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody)

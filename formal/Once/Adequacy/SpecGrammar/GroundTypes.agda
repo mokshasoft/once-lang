@@ -20,7 +20,8 @@ open import Relation.Nullary using (¬_)
 
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (Functor; μ-type; ν-type)
 open import Once.Spec.Surface.Lexing using (Token; TRParen)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; NoExtra; module Annot; module AliasType; GradeToken; g0; g1; gw)
 import Once.Spec.Type as ST

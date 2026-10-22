@@ -26,9 +26,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Internal.Laws.Order using (⊑π-antisym)
 open import Once.Spec.Grade using (Purity; pure; act; eff; Finite; fin; mk-kind; pureᶠ; actᶠ)
 open import Once.Type.Grade using (_⊔p_)
-open import Once.Internal.Type
-  using (Type; Functor; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Type using (Functor; μ-type; ν-type)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Type.DecEq using (_≟T_; _≟F_; _≟q_)
 

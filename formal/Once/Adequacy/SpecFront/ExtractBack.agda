@@ -80,6 +80,7 @@ open import Data.Empty using (⊥-elim)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Relation.Nullary using (¬_)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Poly using (PolyType)

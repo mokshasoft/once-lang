@@ -43,11 +43,13 @@ open import Data.Product using (_,_; _×_; ∃-syntax)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 import Once.Internal.Type.Sub
+import Once.Spec.Sub
 import Once.Internal.Type.Join
 import Once.Internal.Type
+import Once.Spec.Type
 import Once.Type
 import Once.Internal.Context
 open import Once.Internal.Syntax using (RawExpr)
@@ -73,6 +75,7 @@ import Once.TypeCheck.Identities   as Id
 import Once.Internal.Laws.Grade as Grade
 import Once.Internal.Laws.Order as Ord
 import Once.Internal.Type.Sub
+import Once.Spec.Sub
 import Once.Surface.GradeMatrix as GM
 import Algebra.Structures
 import Algebra.Module.Structures
@@ -745,7 +748,7 @@ record VerifiedTypeChecker : Set₁ where
         {Ψs : Surface.Usage (Classify.NamedCtx.size ctx)}
         {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A Once.Internal.Type.+ B)}
         {ds fs : _}
-        (C₁ C₂ C : Type) (J : Once.Internal.Type.Sub._⊔_≔_ C₁ C₂ C) {qℓ qr : _}
+        (C₁ C₂ C : Type) (J : Once.Spec.Sub._⊔_≔_ C₁ C₂ C) {qℓ qr : _}
         {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eLE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xL A))
                      (qℓ Once.Internal.Context.Usage.∷ Ψₗ) C₁}
@@ -870,7 +873,7 @@ record VerifiedTypeChecker : Set₁ where
     usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Internal.Context.Usage n} _≡_
                          Once.Internal.Context._⊔ᵘ_
     -- The orders are partial orders (plan 0.112 B6).
-    subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Type} _≡_ Once.Internal.Type.Sub._<:_
+    subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Type} _≡_ Once.Spec.Sub._<:_
     effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Grade.Purity} _≡_
                          Once.Spec.Grade._⊑π_
     usage-order      : ∀ {n} → Relation.Binary.Structures.IsPartialOrder {A = Once.Internal.Context.Usage n} _≡_

@@ -17,7 +17,8 @@ open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
-open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (μ-type; ν-type; Functor)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; νS)
 
 ------------------------------------------------------------------------
@@ -48,10 +49,7 @@ open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; �
 ⟦ IntRep , FloatRep ⟧-base (ν-type _ _) = ⊤    -- Corecursive: return ⊤ (not used in K)
 ⟦ IntRep , FloatRep ⟧-base Int = IntRep
 ⟦ IntRep , FloatRep ⟧-base Float = FloatRep
--- D243: a rigid parameter exists only while a definition's body is typed; a
--- definition is used at GROUND instances, so no runtime value of a rigid type
--- exists.
-⟦ IntRep , FloatRep ⟧-base (rigid _ _) = ⊥
+⟦ IntRep , FloatRep ⟧-base (var ())
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------

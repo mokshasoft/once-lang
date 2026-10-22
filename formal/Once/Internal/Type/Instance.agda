@@ -27,7 +27,8 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String; _≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
-open import Once.Internal.Type using (Type; rigid; TKind; k-base; k-any)
+open import Once.Spec.Type using (Type)
+open import Once.Internal.Type using (TKind; k-base; k-any)
 open import Once.Internal.Type.Poly
   using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; ftv; substPoly)

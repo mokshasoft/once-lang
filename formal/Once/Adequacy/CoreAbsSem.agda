@@ -31,11 +31,13 @@ import Data.Nat
 open import Data.Unit using (tt)
 open import Relation.Nullary using (Dec; yes; no)
 import Once.Internal.Type.Sub
+import Once.Spec.Sub
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 open import Once.Postulates using (extensionality)
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 open import Once.Internal.Type.WellFormed using (rf-⇒)
 import Once.Type as T
 open import Once.Internal.Laws.SubLaws using (<:-unique)

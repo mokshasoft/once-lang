@@ -60,7 +60,8 @@ open import Once.CCC.Codegen.IRToTrace o using
    cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; wrap-sum; resuspend-layer)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Internal.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (Functor)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 
 ------------------------------------------------------------------------

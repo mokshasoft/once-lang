@@ -21,7 +21,9 @@
 -- related at all is `ModeSub`.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Type.Sub using (_⊔_≔_; <:ᶜ⇒<:)
+open import Once.Spec.Sub using (_⊔_≔_)
+
+open import Once.Internal.Type.Sub using (<:ᶜ⇒<:)
 open import Once.Internal.Laws.SubLaws using (<:-trans)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -36,10 +38,11 @@ open import Once.Internal.Type.WellFormed using (con-fun)
 open import Once.Functor.Translate using (IsBaseType-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong-app)
 
-open import Once.Internal.Type as T using (Type; _⇒[_]_)
+open import Once.Spec.Type as T using (Type; _⇒[_]_)
 
 import Once.Spec.Grade as T
-open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-prod; sub-void)
+open import Once.Spec.Sub using (_<:_; sub-arr; sub-void)
+open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
 open import Once.Internal.Syntax using (RawExpr)

@@ -19,7 +19,7 @@ open import Data.Fin using (Fin)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
 open import Once.Type.Grade using (_⊔q_)
-open import Once.Internal.Type using (Type; Unit; _*_)
+open import Once.Spec.Type using (Type; Unit; _*_)
 
 -- | Typing context (de Bruijn indexed with quantities)
 --

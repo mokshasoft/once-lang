@@ -34,6 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Grade as SG

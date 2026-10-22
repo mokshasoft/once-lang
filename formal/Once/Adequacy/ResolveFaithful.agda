@@ -49,9 +49,10 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 
 open import Once.Spec.Grade using (Zero; One; Many)
-open import Once.Internal.Type using (Type; Int; Float; Unit; _+_)
+open import Once.Spec.Type using (Type; Int; Float; Unit; _+_)
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun; con-base)
 open import Once.Internal.Context as Srf using (Usage; ⟦_⟧ᶜ)

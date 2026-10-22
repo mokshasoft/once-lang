@@ -16,6 +16,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Internal.Type.Honest
 
@@ -50,7 +51,6 @@ notEmpty?-complete (A + B) (inj₂ b) = either-r (notEmpty? A) (notEmpty?-comple
 notEmpty?-complete (_ ⇒[ _ ] _) ()
 notEmpty?-complete (μ-type _)   ()
 notEmpty?-complete (ν-type _ _) ()
-notEmpty?-complete (rigid _ _)  ()
 
 notSingleton?-complete : ∀ (T : Type) → NotSingleton T → ∃[ h ] notSingleton? T ≡ just h
 notSingleton?-complete Unit    ()
@@ -65,7 +65,6 @@ notSingleton?-complete (A + B) (inj₂ (a , b)) =
 notSingleton?-complete (_ ⇒[ _ ] _) ()
 notSingleton?-complete (μ-type _)   ()
 notSingleton?-complete (ν-type _ _) ()
-notSingleton?-complete (rigid _ _)  ()
 
 dataCod?-complete : ∀ (π : Purity) (B : Type) → DataCod π B → ∃[ h ] dataCod? π B ≡ just h
 dataCod?-complete pure B h       = notEmpty?-complete B h
@@ -86,7 +85,6 @@ honestCod?-complete π (μ-type _)              ()
 honestCod?-complete π (ν-type _ _)            ()
 honestCod?-complete π Int                     tt   = tt , refl
 honestCod?-complete π Float                   tt   = tt , refl
-honestCod?-complete π (rigid _ _)             ()
 
 honest?-complete : ∀ {T : Type} → HonestFFI T → ∃[ h ] honest? T ≡ just h
 honest?-complete {Unit} ()
@@ -102,4 +100,3 @@ honest?-complete {μ-type _}   ()
 honest?-complete {ν-type _ _} ()
 honest?-complete {Int}        tt = tt , refl
 honest?-complete {Float}      tt = tt , refl
-honest?-complete {rigid _ _}  ()

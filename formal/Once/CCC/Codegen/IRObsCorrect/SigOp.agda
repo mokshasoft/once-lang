@@ -34,7 +34,8 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; SV-Ptr; readReg; Input1; AbstractTrace; StoredValue; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output; module LocState)
 open LocState using (regs; halted)
 import Once.Internal.Type as SpecTy
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+import Once.Spec.Type as SpecTy
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Internal.Event using (mk-event)
@@ -115,7 +116,7 @@ module SigOpC {FS : FrameSemantics} where
   -- the denotation passes (plan 0.105 §g: decoded from MEMORY). It splits on
   -- where the argument lives:
   --   * `Unit` — `⟦ Unit ⟧` is `⊤`, so the two agree by η (D074);
-  --   * `Void` / a rigid parameter — there is no argument;
+  --   * `Void` — there is no argument;
   --   * REGISTER-RESIDENT `Int`/`Float` — `decode-at`'s two literal clauses;
   --   * BEHIND A POINTER — `readTyped`, adequate at every `Readable` type.
   -- Every base type is `Readable` (D258: `Str`/`Buffer` are removed), so no
@@ -131,7 +132,6 @@ module SigOpC {FS : FrameSemantics} where
   decode-ptr base-Float      _ _ = refl
   decode-ptr (base-Prod _ _) _ _ = refl
   decode-ptr (base-Sum _ _)  _ _ = refl
-  decode-ptr base-rigid      _ _ = refl
 
   -- A register holds an `Int` or a `Float`, nothing else.
   arg-reg : ∀ {A : Type} (bt : IsBaseType A) (fit : FitsInRegI ⌊ A ⌋)
@@ -144,7 +144,6 @@ module SigOpC {FS : FrameSemantics} where
   arg-reg base-Void       () x s eq
   arg-reg (base-Prod _ _) () x s eq
   arg-reg (base-Sum _ _)  () x s eq
-  arg-reg base-rigid      () x s eq
 
   arg-agree : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
                 (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
@@ -152,7 +151,6 @@ module SigOpC {FS : FrameSemantics} where
             → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
   arg-agree base-Unit  x  s inp = refl
   arg-agree base-Void  () s inp
-  arg-agree base-rigid () s inp
   {-# CATCHALL #-}
   arg-agree bt x s (in-loc loc v _ eq) rewrite eq =
     trans (decode-ptr bt loc s) (readTyped-adequate (readable-base bt) bt v)
@@ -269,7 +267,6 @@ module SigOpC {FS : FrameSemantics} where
   pure-input-aux si fit (r-sum _ _)  x s (in-reg () _)
   pure-input-aux si fit r-float      x s (in-unit ())
   pure-input-aux si fit r-void       () s _
-  pure-input-aux si fit r-rigid      () s _
   pure-input-aux si fit (r-sum _ _)  x s (in-unit ())
   pure-input-aux si fit (r-pair _ _) x s (in-reg () _)
   pure-input-aux si fit r-int        x s (in-unit ())

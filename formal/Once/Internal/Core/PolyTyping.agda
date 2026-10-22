@@ -21,8 +21,11 @@
 ------------------------------------------------------------------------
 
 import Once.Internal.Type.Sub
+
+import Once.Spec.Sub
 open import Data.Nat using (ℕ)
 import Once.Internal.Type
+import Once.Spec.Type
 open import Once.Internal.Core.PolyTy using (Sig)
 
 open import Once.Internal.Contract using (ISig)
@@ -35,8 +38,11 @@ open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 import Once.Internal.Type as T
+
+import Once.Spec.Type as T
 open import Once.Spec.Grade using (Purity; pure; mk-kind; Quantity; One; Many; positionGrade; _·p_; eff; EffGrade; Finite; fin; act)
-open import Once.Internal.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
+open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.Internal.Type.Sub using (sub-rigid; sub-prod; sub-sum)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Honest using (HonestFFI)

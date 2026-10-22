@@ -36,6 +36,7 @@ open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)

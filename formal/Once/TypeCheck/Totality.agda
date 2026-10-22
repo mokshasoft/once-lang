@@ -36,7 +36,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;

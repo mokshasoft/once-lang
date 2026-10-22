@@ -12,10 +12,12 @@ module Once.Internal.Laws.SubLaws where
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind)
-open import Once.Internal.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.Type.DecEq using (_≟q_)
 open import Once.Internal.Type.DecEq using (_≟F_; _≟T_)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 

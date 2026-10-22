@@ -12,7 +12,8 @@
 module Once.Internal.Core.PolySub where
 
 open import Once.Spec.Grade using (mk-kind; fin)
-open import Once.Internal.Type.Sub using (_<:_; <:-refl; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
+open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.Internal.Type.Sub using (<:-refl; sub-rigid; sub-prod; sub-sum)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Core.PolyTy using (Ty; var; Unit; Void; Int; Float; rigid; _⇒[_]_; _*_; _+_; μ-type; ν-type; GSub; _⟪_⟫)
 

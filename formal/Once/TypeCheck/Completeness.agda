@@ -36,7 +36,7 @@ open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj�
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Data.String.Properties as StrProp using ()
-open import Once.Internal.Type as T using (Type; Unit; _*_)
+open import Once.Spec.Type as T using (Type; Unit; _*_)
 import Once.Type as T
 import Once.Internal.Type.Poly as T
 import Once.Spec.Grade as T
@@ -70,7 +70,8 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Internal.Type using (Functor; ⟦_⟧T)
-open import Once.Internal.Type.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-prod; sub-arr)
+open import Once.Spec.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-arr)
+open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Internal.Type.Sub using (<:-refl)

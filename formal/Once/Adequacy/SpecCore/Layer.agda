@@ -27,6 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST
@@ -68,7 +69,6 @@ prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₁ _} r = prj-R a ga r
 prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₂ _} r = prj-R b gb r
 prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₂ _} ()
 prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₁ _} ()
-prj-R LW.base-rigid g-rigid r = tt
 
 inj-R : ∀ {A A′} (ib : LW.IsBaseType A) (g : GR A A′) {x x′} → BVal g x x′ → ValR g (LOps.injB ib x) x′
 inj-R LW.base-Unit  g-unit  r = tt
@@ -80,7 +80,6 @@ inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₁ _} r = inj-R a ga r
 inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₂ _} r = inj-R b gb r
 inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₂ _} ()
 inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₁ _} ()
-inj-R LW.base-rigid g-rigid r = tt
 
 toBase-R : ∀ {A A′} (g : GR A A′) {x x′} → BVal g x x′ → BR g (V.coerce-full-to-base A x) x′
 toBase-R g-unit  r = tt
@@ -107,7 +106,6 @@ fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₁ _} r = fromBase-R a 
 fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₂ _} r = fromBase-R b gb r
 fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₂ _} ()
 fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₁ _} ()
-fromBase-R LW.base-rigid g-rigid {()} r
 
 ------------------------------------------------------------------------
 -- A layer in the compiler's plain representation

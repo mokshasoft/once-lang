@@ -44,6 +44,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 import Data.String.Properties as StrProp
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Core.PolyTy as LP
 import Once.Spec.Type as ST

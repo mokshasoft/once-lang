@@ -52,7 +52,8 @@ open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Internal.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (Functor)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)

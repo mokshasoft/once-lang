@@ -20,7 +20,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Context using (Ctx; ∅; _,_^_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-var-lookup; thin-usage;
   thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse; ⊆-wk)

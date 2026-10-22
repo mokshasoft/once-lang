@@ -22,8 +22,8 @@ open import Data.String using (String)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (Quantity; Many; Purity; Finite; pure; act; eff; mk-kind)
-open import Once.Internal.Type
-  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (μ-type; ν-type; Functor)
 
 mutual
   data PolyFunctor : Set where

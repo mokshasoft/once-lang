@@ -61,6 +61,7 @@ open import Function using (_∘_)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Res using (Res; stopped; returns; mapRes)
@@ -93,7 +94,7 @@ open import Once.Internal.Res using (Res; stopped; returns; mapRes)
 
 open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Internal.Polynomial
 open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)
 open Once.Internal.Polynomial.νS using (unfoldS)
@@ -279,7 +280,6 @@ coerce-base-type-round-trip (base-Sum pA pB) (inj₁ a) =
   cong inj₁ (coerce-base-type-round-trip pA a)
 coerce-base-type-round-trip (base-Sum pA pB) (inj₂ b) =
   cong inj₂ (coerce-base-type-round-trip pB b)
-coerce-base-type-round-trip base-rigid ()
 
 -- | For base types, coerce-full-to-base ∘ coerce-base-to-full = id (PROVEN)
 --

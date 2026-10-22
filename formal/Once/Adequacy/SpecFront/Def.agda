@@ -38,6 +38,7 @@ open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Core.PolyTy as LP

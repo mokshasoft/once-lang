@@ -36,7 +36,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; isArithmeticOp; isComparisonOp; RawExpr; RResolved)
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate

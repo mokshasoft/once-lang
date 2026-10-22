@@ -26,7 +26,7 @@
 module Once.TypeCheck.Route where
 
 import Once.Internal.Name
-open import Once.Internal.Type.Sub using (_⊔_≔_)
+open import Once.Spec.Sub using (_⊔_≔_)
 open import Relation.Binary.PropositionalEquality using (refl)
 import Relation.Binary.PropositionalEquality
 import Data.Maybe
@@ -34,7 +34,8 @@ import Once.Spec.Name
 import Once.Internal.Typing.Scope
 open import Once.Spec.Grade as T using (Purity; Quantity)
 import Once.Internal.Type.Poly as T
-open import Once.Internal.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type)
+open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Type as T using (μ-type; ν-type)
 open import Once.Internal.Syntax as Raw using (RawExpr)
 open import Once.Internal.Typing.Scope using (NamedCtx; extendNamedCtx)
 open import Once.Internal.Typing

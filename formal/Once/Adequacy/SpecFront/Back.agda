@@ -32,6 +32,7 @@ open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
@@ -83,6 +84,7 @@ import Data.List
 
 import Once.Spec.Grade as LG
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SS
 import Once.Spec.Context as SCx

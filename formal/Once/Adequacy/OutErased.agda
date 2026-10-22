@@ -32,7 +32,8 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Grade using (Purity; Finite)
-open import Once.Internal.Type using (Type; Functor; ν-type; ⟦_⟧T)
+open import Once.Spec.Type using (Type)
+open import Once.Internal.Type using (Functor; ν-type; ⟦_⟧T)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)

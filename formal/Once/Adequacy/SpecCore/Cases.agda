@@ -33,6 +33,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Type.Honest as LH
@@ -70,6 +72,7 @@ import Once.Adequacy.SpecCore.Fold as Fold
 import Once.Adequacy.SpecCore.Unfold as Unfold
 import Once.Internal.Context as LC
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 
 ------------------------------------------------------------------------
 -- Primitive operations: the same function of the same words

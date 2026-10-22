@@ -16,7 +16,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Internal.Type using (Type; rigid; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Spec.Type using (var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+
+open import Once.Internal.Type using (Functor; μ-type; ν-type)
 -- TVar removed: Type variables only exist in PolyType (for type inference).
 -- User-written types must be concrete. Type aliases without parameters
 -- are still supported via name lookup in the alias environment.
@@ -72,7 +74,7 @@ mutual
   expandAliases _ Void = Void
   expandAliases _ Int = Int
   expandAliases _ Float = Float
-  expandAliases _ (rigid k i) = rigid k i
+  expandAliases _ (var ())
   expandAliases env (a * b) = expandAliases env a * expandAliases env b
   expandAliases env (a + b) = expandAliases env a + expandAliases env b
   expandAliases env (a ⇒[ k ] b) = expandAliases env a ⇒[ k ] expandAliases env b

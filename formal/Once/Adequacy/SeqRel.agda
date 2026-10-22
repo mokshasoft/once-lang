@@ -22,7 +22,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Internal.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+
+open import Once.Internal.Type using (Functor)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Internal.Trace
   using (T; RelT′; rel-ret)

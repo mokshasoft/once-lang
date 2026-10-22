@@ -9,8 +9,9 @@
 
 module Once.Internal.Type.WellFormed where
 
-open import Once.Internal.Type
-  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; k-base; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+
+open import Once.Internal.Type using (μ-type; ν-type; Functor)
 
 data IsBaseType : Type → Set where
   base-Unit   : IsBaseType Unit
@@ -19,8 +20,6 @@ data IsBaseType : Type → Set where
   base-Float  : IsBaseType Float
   base-Prod   : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A * B)
   base-Sum    : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A + B)
-  -- a base-kinded type parameter is a base type; nothing else is known of it
-  base-rigid  : ∀ {i} → IsBaseType (rigid k-base i)
 
 -- | The types an external operation may have: a base type, or a first-order
 -- arrow between base types. An external operation takes and returns base
@@ -36,9 +35,9 @@ data WellFormedF : Functor → Set where
   wf-Sum : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊕ G)
   wf-Prod : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊗ G)
 
--- | A type with no type parameter in it. The signature's operations and the
--- monomorphic definitions have such types; parameters exist only while a
--- polymorphic definition's body is typed.
+-- | A type with no type parameter in it. Every ground `Type` is one (plan
+-- 0.122: a parameter is a `var` of `Ty m`, never part of a `Type`); the
+-- relation goes when its users are renamed.
 mutual
   data RigidFree : Type → Set where
     rf-Unit   : RigidFree Unit

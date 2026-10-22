@@ -44,7 +44,8 @@ open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s
 open RelS using (forceS)
 open import Once.Denotation.ValueRel
 open import Once.Internal.StreamInf using (νᴵ)
-open import Once.Internal.Type as Ty using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
+open import Once.Spec.Type as Ty using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Internal.Type as Ty using (μ-type; ν-type)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Internal.FunctorMeaning using (translateF)
 import Once.Internal.Type.WellFormed as LW
@@ -309,7 +310,6 @@ mutual
   RelD-coh (ν-type F π) r = srel-subst _ r
   RelD-coh Int r = r
   RelD-coh Float r = r
-  RelD-coh (rigid _ _) {()}
 
   RelD-coh⁻ : ∀ (A : Type) {x y : ⟦ A ⟧ᴰ} → RelD A x y
             → RelD ⌈ ⌊ A ⌋ ⌉ (subst idᶠ (sym (cohᴰ A)) x) (subst idᶠ (sym (cohᴰ A)) y)
@@ -335,7 +335,6 @@ mutual
   RelD-coh⁻ (ν-type F π) r = srel-subst⁻ _ r
   RelD-coh⁻ Int r = r
   RelD-coh⁻ Float r = r
-  RelD-coh⁻ (rigid _ _) {()}
 
 -- The evaluator's fundamental lemma at the source value domain.
 liftFn-rel : ∀ (fmt : TargetNum) {ρ ρ′ : CallEnv} → RelEnv fmt ρ ρ′

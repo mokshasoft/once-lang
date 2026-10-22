@@ -16,11 +16,12 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Data.List.Membership.DecPropositional as DecMem
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Internal.Type using (Type; _⇒[_]_; Void; isVoid?; isUnit?) renaming (Unit to UnitT)
+open import Once.Spec.Type using (Type; _⇒[_]_; Void) renaming (Unit to UnitT)
+open import Once.Internal.Type using (isVoid?; isUnit?)
 import Once.Type as Ty
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent)
@@ -76,4 +77,3 @@ base-contract x (base-Prod a b)  = refl
 
 base-contract x (base-Sum a b)   = refl
 
-base-contract x base-rigid       = refl

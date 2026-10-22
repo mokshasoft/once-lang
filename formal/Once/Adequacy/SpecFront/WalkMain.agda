@@ -117,6 +117,7 @@ module _ where
 
 open import Once.Internal.Type.Poly as LP using (PolyType; PolyFunctor; Ground; GroundF; extractGround)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Internal.Type.WellFormed using (IsConcrete; IsBaseType; con-base; con-fun; base-Unit; base-Void)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)

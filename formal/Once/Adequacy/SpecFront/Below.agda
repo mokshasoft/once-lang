@@ -23,8 +23,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
 import Once.Spec.Grade as G
-open import Once.Internal.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
-open import Once.Internal.Type.Sub using (_<:ᶜ_; <:ᶜ-refl; subᶜ-void; subᶜ-arr; subᶜ-prod; subᶜ-sum; subᶜ-ν)
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-arr; subᶜ-ν)
+open import Once.Internal.Type.Sub using (<:ᶜ-refl; subᶜ-prod; subᶜ-sum)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Principal using (below; gradesBelow; finBelow)
 

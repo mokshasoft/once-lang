@@ -36,7 +36,7 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Internal.Name using (showCanonical)
 open import Data.String using (String)
 
-open import Once.Internal.Type using (Type; Int; Float)
+open import Once.Spec.Type using (Type; Int; Float)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent)

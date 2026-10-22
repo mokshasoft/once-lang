@@ -77,7 +77,9 @@ case-win {k} {m} {hi} ssk≤m m≤hi wF wG =
 -- The functor walks and the re-suspension pass: each a functor induction.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+
+open import Once.Internal.Type using (Functor)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Prod; wf-Sum)
 open import Once.CCC.Codegen.IRToTrace o
   using (visit-walk; rebuild-walk; lsize; resuspend-layer)

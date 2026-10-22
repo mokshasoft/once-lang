@@ -25,6 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; c
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
@@ -102,8 +103,6 @@ subst-νᵈ-cong refl v = refl
 ⟦ ν-type F _ ⟧ᴰ = νᴵ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᴰ        = Val.⟦ Int ⟧
 ⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
--- D243: no runtime value of a rigid parameter (used at ground instances only).
-⟦ rigid _ _ ⟧ᴰ  = ⊥
 
 ------------------------------------------------------------------------
 -- Plan 0.52 M2: the monadic value domain over the UNGRADED IR objects
@@ -131,7 +130,6 @@ cohᴰ (μ-type F)   = coh (μ-type F)
 cohᴰ (ν-type F _) = cong νᴵ (tF-coh F)
 cohᴰ Int          = refl
 cohᴰ Float        = refl
-cohᴰ (rigid _ _)  = refl
 
 ------------------------------------------------------------------------
 -- The monadic and the pure value domains agree on FIRST-ORDER values, and

@@ -32,14 +32,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Function using (case_of_)
 open import Once.Compile using (findMain; moduleToIR; moduleToIR-aux; mainEntry)
-open import Once.Internal.Type.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_)
 open import Once.Type.Sub using (_<:?_)
 open import Data.Empty using (⊥-elim)
 import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-sub; compileFunM-main-sub; bare-injective)
 
-open import Once.Internal.Type using (Type; Unit)
+open import Once.Spec.Type using (Type; Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Internal.Context using (Usage; [])

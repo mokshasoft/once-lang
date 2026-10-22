@@ -39,9 +39,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Spec.Grade using (One)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 import Once.Grammar as G
 open G using (GType)
 
@@ -122,7 +123,6 @@ mutual
   typeToGType T.Void   = just G.TVoid
   typeToGType T.Int    = just G.TInt
   typeToGType T.Float  = just G.TFloat
-  typeToGType (T.rigid _ _) = nothing   -- D243: source never writes a rigid parameter
   typeToGType (A T.⇒[ T.mk-kind q T.pure ] B) with typeToGType A | typeToGType B
   ... | just A' | just B' = just (A' G.⇒[ q ] B')
   {-# CATCHALL #-}
@@ -192,7 +192,6 @@ typeToGType-gtypeToType T.Unit   .G.TUnit   refl = refl
 typeToGType-gtypeToType T.Void   .G.TVoid   refl = refl
 typeToGType-gtypeToType T.Int    .G.TInt    refl = refl
 typeToGType-gtypeToType T.Float  .G.TFloat  refl = refl
-typeToGType-gtypeToType (T.rigid _ _) _ ()
 typeToGType-gtypeToType (A T.⇒[ T.mk-kind q T.pure ] B) g eq with typeToGType A in eqA | typeToGType B in eqB
 typeToGType-gtypeToType (A T.⇒[ T.mk-kind q T.pure ] B) .(gA G.⇒[ q ] gB) refl | just gA | just gB
   rewrite typeToGType-gtypeToType A gA eqA

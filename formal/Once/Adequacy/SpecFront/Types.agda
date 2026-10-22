@@ -33,7 +33,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Type.Honest as LH
 import Once.Spec.Sub as SS
@@ -335,7 +337,6 @@ base-R LW.base-Int   _ = r-int
 base-R LW.base-Float _ = r-float
 base-R (LW.base-Prod a b) (LW.rf-* ra rb) = r-* (base-R a ra) (base-R b rb)
 base-R (LW.base-Sum a b)  (LW.rf-+ ra rb) = r-+ (base-R a ra) (base-R b rb)
-base-R LW.base-rigid ()
 
 decl-R : ∀ {A} → LW.IsConcrete A → LH.HonestFFI A → LW.RigidFree A → TyR Δ A ⌜ declS A ⌝ᵈ
 decl-R {A LT.⇒[ LG.mk-kind q LG.pure ] B} (LW.con-fun a b) h (LW.rf-⇒ ra rb) = r-⇒ refl (base-R a ra) (base-R b rb)
@@ -349,7 +350,6 @@ decl-R (LW.con-base LW.base-Int) _ _ = r-int
 decl-R (LW.con-base LW.base-Float) _ _ = r-float
 decl-R (LW.con-base b@(LW.base-Prod _ _)) _ r = base-R b r
 decl-R (LW.con-base b@(LW.base-Sum _ _)) _ r = base-R b r
-decl-R (LW.con-base LW.base-rigid) () _
 
 -- An effectful grade.
 eff-S : ∀ {π} → LG.EffGrade π → SG.EffGrade (πS π)

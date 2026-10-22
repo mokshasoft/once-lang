@@ -31,7 +31,9 @@ open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Internal.Type using (Type; Unit; _*_; μ-type; ν-type)
+open import Once.Spec.Type using (Type; Unit; _*_)
+
+open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR
   using (IR; Call; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;

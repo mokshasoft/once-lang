@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Internal.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
+open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)

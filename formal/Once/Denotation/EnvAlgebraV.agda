@@ -13,7 +13,7 @@ open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; _∷_; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Internal.Graded using (⟦_⟧ᵛ)
 open import Once.Internal.Environment using (restrictᵛ; bindᵛ)

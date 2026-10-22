@@ -15,10 +15,12 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 import Once.Internal.Type as T
+
+import Once.Spec.Type as T
 open import Once.Internal.Type using (TKind; k-base)
 open import Once.Internal.Type.DecEq using (_≟tk_)
 open import Once.Internal.Type.WellFormed using (RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
-open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 import Once.Internal.Type.WellFormed as Tr
 open import Once.Internal.Core.PolyTy
 
@@ -104,7 +106,6 @@ abs-base Δ base-Int    = b-Int
 abs-base Δ base-Float  = b-Float
 abs-base Δ (base-Prod a b) = b-Prod (abs-base Δ a) (abs-base Δ b)
 abs-base Δ (base-Sum a b)  = b-Sum (abs-base Δ a) (abs-base Δ b)
-abs-base {m} Δ (base-rigid {i}) = base-ar-bound Δ i (i <? m)
 
 abs-wf : ∀ {m} (Δ : KCtx m) {F : T.Functor} → WellFormedF F → WFFun Δ (absF Δ F)
 abs-wf Δ (Tr.wf-K b)      = wf-K (abs-base Δ b)

@@ -25,7 +25,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Grade using (mk-kind; Many; Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
-open import Once.Internal.Type using (Type; Functor; ⟦_⟧T; ν-type; _⇒[_]_)
+open import Once.Spec.Type using (Type; _⇒[_]_)
+open import Once.Internal.Type using (Functor; ⟦_⟧T; ν-type)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)

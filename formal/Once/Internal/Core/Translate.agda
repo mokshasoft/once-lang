@@ -38,6 +38,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Internal.Type.Poly as T
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Once.Internal.Type.Honest using (HonestFFI)
@@ -61,8 +62,9 @@ open Schema using (type; arity; kinds)
 open import Once.Internal.Core.AbsTy
 open import Once.Internal.Core.Schema using (schemaOf; schemaOf-cf; kindsOf; kinded-instance)
 open import Once.Internal.Core.Telescope using (Tele; def; Program; program; noKinds; noVars)
-open import Once.Internal.Type.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_)
 import Once.Internal.Type.Sub as LSub
+import Once.Spec.Sub as LSub
 open import Once.Type.Sub using (_<:?_)
 import Once.Internal.Core.PolyTyping as PT
 import Once.Internal.Core.PolySub as PS

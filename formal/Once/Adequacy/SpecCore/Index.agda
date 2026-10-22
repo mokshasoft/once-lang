@@ -18,6 +18,8 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Internal.Context as LC
 import Once.Internal.Core.PolyTy as LP

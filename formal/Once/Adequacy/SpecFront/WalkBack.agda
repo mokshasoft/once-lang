@@ -29,6 +29,7 @@ open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Numerics using (TargetNum)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
@@ -231,6 +232,7 @@ open import Once.Adequacy.SpecFront.WalkMain Σ using (MainsW; MainW; entry-conc
 open import Once.Spec.Core.Program Σ using (Entry; entry; EffUU)
 open import Once.Internal.Module using (MainsEffUU; MainIn)
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 import Once.Spec.Grade as LG
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
 open import Once.Adequacy.SpecCore.Type using (sub-L)

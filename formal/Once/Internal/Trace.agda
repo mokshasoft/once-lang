@@ -43,8 +43,10 @@ open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Internal.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
-open import Once.Internal.Type using (Type; isUnit?)
+open import Once.Spec.Type using (Type)
+open import Once.Internal.Type using (isUnit?)
 import Once.Internal.Type as SpecTy
+import Once.Spec.Type as SpecTy
 open import Once.Internal.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName; gen)
 open import Once.Internal.Name using (showCanonical)

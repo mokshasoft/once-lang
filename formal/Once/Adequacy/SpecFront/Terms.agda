@@ -22,6 +22,8 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Spec.Core.Syntax as SC

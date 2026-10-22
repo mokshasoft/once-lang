@@ -25,7 +25,8 @@ import Data.Integer as ℤ
 import Data.Nat as ℕ
 
 open import Once.Spec.Grade using (ArrowKind; mk-kind; pure; act; eff)
-open import Once.Internal.Type using (Unit; Void; Int; _*_; _+_; isUnit?; isVoid?)
+open import Once.Spec.Type using (Unit; Void; Int; _*_; _+_)
+open import Once.Internal.Type using (isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)

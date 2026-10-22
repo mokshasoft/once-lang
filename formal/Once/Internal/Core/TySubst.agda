@@ -16,6 +16,7 @@
 
 open import Data.Nat using (ℕ)
 import Once.Internal.Type
+import Once.Spec.Type
 open import Once.Internal.Core.PolyTy using (Sig)
 
 open import Once.Internal.Contract using (ISig)

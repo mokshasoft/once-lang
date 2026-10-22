@@ -15,6 +15,7 @@
 
 import Once.Internal.Name
 import Once.Internal.Type.Sub
+import Once.Spec.Sub
 open import Once.Internal.Type.Sub using (·p-diag)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig; KCtx; GSub; Respects)
@@ -41,6 +42,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 
 import Once.Internal.Type as T
+
+import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Spec.Grade using (Quantity; Zero; One; mk-kind; Many; pure; eff; positionGrade; EffGrade; Purity; pureᶠ)
 open import Once.Internal.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
@@ -157,7 +160,7 @@ private
   closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
   closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
 
-  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Internal.Type.Sub.<: B}
+  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Spec.Sub.<: B}
               {d₁ : Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ ] t₂ ∷ A ! π}
           → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢coerce p₁ d₁ ≅ GT.⊢coerce p₂ d₂
   ≅coerce {p₁ = p₁} {p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl

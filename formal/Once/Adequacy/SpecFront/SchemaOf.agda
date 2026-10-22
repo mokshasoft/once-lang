@@ -44,6 +44,8 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
 import Once.Internal.Type.Poly as TP
 open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;

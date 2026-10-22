@@ -18,6 +18,7 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Data.Nat using (ℕ)
 import Data.Nat
 import Data.Nat.Show
+import Data.Fin
 open import Data.String using (String; _++_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -26,9 +27,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind; pureᶠ; actᶠ)
-open import Once.Internal.Type
-  using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid; TKind; k-base; k-any;
-         Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (μ-type; ν-type; TKind; k-base; k-any; Functor)
 open import Once.Internal.Type.Poly
   using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
@@ -114,7 +114,7 @@ fits-in-reg? _     = nothing
 -- | Convert types and functors to human-readable strings
 -- Used for error messages
 mutual
-  showType : Type → String
+  showType : ∀ {m} → Ty m → String
   showType Unit = "Unit"
   showType Void = "Void"
   showType (A * B) = "(" ++ showType A ++ " * " ++ showType B ++ ")"
@@ -127,10 +127,9 @@ mutual
   showType (ν-type F actᶠ) = "ν (Act " ++ showFunctor F ++ ")"
   showType Int = "Int"
   showType Float = "Float"
-  showType (rigid k-base i) = "'b" ++ Data.Nat.Show.show i
-  showType (rigid k-any i)  = "'a" ++ Data.Nat.Show.show i
+  showType (var i) = "'a" ++ Data.Nat.Show.show (Data.Fin.toℕ i)
 
-  showFunctor : Functor → String
+  showFunctor : ∀ {m} → Fun m → String
   showFunctor (K A) = "(K " ++ showType A ++ ")"
   showFunctor Id = "Id"
   showFunctor (F ⊕ G) = "(" ++ showFunctor F ++ " ⊕ " ++ showFunctor G ++ ")"

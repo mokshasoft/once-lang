@@ -79,7 +79,10 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SS

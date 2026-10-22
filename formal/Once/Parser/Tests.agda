@@ -21,7 +21,7 @@ open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (mk-kind; pure; Zero; One; Many)
-open import Once.Internal.Type using (Unit; Void; Int; Float; _*_; _⇒[_]_)
+open import Once.Spec.Type using (Unit; Void; Int; Float; _*_; _⇒[_]_)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseType)
 

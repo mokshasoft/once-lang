@@ -36,6 +36,7 @@ import Data.String.Properties as StrProp
 
 open import Once.Internal.Contract using (ISig)
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 open import Once.Internal.Type.WellFormed using (IsConcrete; RigidFree)
 open import Once.Internal.Type.Honest using (HonestFFI)
 open import Once.Internal.Name using (showCanonical)

@@ -40,7 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
-open import Once.Internal.Type using (Type; Unit; Void)
+open import Once.Spec.Type using (Type; Unit; Void)
 open import Once.Internal.Res using (Res; stopped; returns)
 open import Once.Internal.Trace using (FFIAnswers)
 open import Data.Bool using (Bool; true; false)

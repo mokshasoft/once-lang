@@ -33,7 +33,8 @@ module Once.Internal.Core.Derived {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
-open import Once.Internal.Type using (Type; Functor; Unit; Void; _*_; _+_; _⇒[_]_; ⟦_⟧T; μ-type; ν-type)
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Type using (Functor; ⟦_⟧T; μ-type; ν-type)
 open import Once.Spec.Grade using (Purity; pure; eff; mk-kind; One; Many; Finite; fin; pureᶠ)
 open import Once.Internal.Core.Syntax S
 

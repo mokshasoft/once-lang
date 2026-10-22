@@ -35,10 +35,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open ArrowKind using (quantity)
-open import Once.Internal.Type.Sub using (_<:_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν; sub-rigid)
+open import Once.Spec.Sub using (_<:_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.Internal.Type.Sub using (sub-prod; sub-sum; sub-rigid)
 open import Once.Internal.Type.Sub using (<:-refl)
 open import Once.Internal.Type.Join using (Joins; j-refl; j-voidˡ; j-voidʳ; j-prod; j-sum; j-arr; j-ν; sound; complete)
 open import Once.Internal.Type.Instance using (KindedInstance)

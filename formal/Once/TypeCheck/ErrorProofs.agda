@@ -34,16 +34,17 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Internal.Type using (Type; Unit; Void; Int)
+open import Once.Spec.Type using (Type; Unit; Void; Int)
 open import Once.Spec.Name using (gen)
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Internal.Type.Poly as T
 import Once.Type as T
 open import Once.Internal.Syntax as Raw using (RawExpr; RLam; RQualified)
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Once.Internal.Type.Join using (UB; join?-apart)
-open import Once.Internal.Type.Sub using (sub-int; sub-unit)
+open import Once.Spec.Sub using (sub-int; sub-unit)
 open import Once.Type.Sub using (_<:?_)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)

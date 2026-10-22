@@ -690,7 +690,7 @@ open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.List.Properties using (map-∘)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Internal.Type using (Unit)
+open import Once.Spec.Type using (Unit)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
 

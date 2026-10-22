@@ -36,7 +36,9 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
 open import Once.Spec.Grade as T using (Quantity; Zero; One; Many; Purity; actᶠ)
-open import Once.Internal.Type as T using (Type; Functor)
+open import Once.Spec.Type as T using (Type)
+import Once.Spec.Type as ST
+open import Once.Internal.Type as T using (Functor)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)
@@ -117,26 +119,24 @@ eraseArrow Many a b = a ⇛ b
 
 mutual
   ⌊_⌋ : Type → IRTy
-  ⌊ Type.Unit        ⌋ = Unit
-  ⌊ Type.Void        ⌋ = Void
-  ⌊ A Type.* B       ⌋ = ⌊ A ⌋ * ⌊ B ⌋
-  ⌊ A Type.+ B       ⌋ = ⌊ A ⌋ + ⌊ B ⌋
-  ⌊ A Type.⇒[ k ] B  ⌋ = eraseArrow (T.ArrowKind.quantity k) ⌊ A ⌋ ⌊ B ⌋
-  ⌊ Type.μ-type F    ⌋ = μ-type (eraseF F)
-  ⌊ Type.ν-type F _  ⌋ = ν-type (eraseF F)   -- D233: the grade is erased, as an arrow's
-  ⌊ Type.Int         ⌋ = Int
-  ⌊ Type.Float       ⌋ = Float
-  -- D243: a rigid parameter never reaches a runtime type (a definition is used
-  -- at ground instances). It erases to `Void`, matching its value domain `⊥`.
-  ⌊ Type.rigid _ _   ⌋ = Void
+  ⌊ ST.Unit        ⌋ = Unit
+  ⌊ ST.Void        ⌋ = Void
+  ⌊ A ST.* B       ⌋ = ⌊ A ⌋ * ⌊ B ⌋
+  ⌊ A ST.+ B       ⌋ = ⌊ A ⌋ + ⌊ B ⌋
+  ⌊ A ST.⇒[ k ] B  ⌋ = eraseArrow (T.ArrowKind.quantity k) ⌊ A ⌋ ⌊ B ⌋
+  ⌊ ST.μ F    ⌋ = μ-type (eraseF F)
+  ⌊ ST.ν F _  ⌋ = ν-type (eraseF F)   -- D233: the grade is erased, as an arrow's
+  ⌊ ST.Int         ⌋ = Int
+  ⌊ ST.Float       ⌋ = Float
+  ⌊ ST.var () ⌋
 
   -- (plain prefix name, NOT `⌊_⌋F` — a second `⌊_…` mixfix collides with
   -- `⌊_⌋` when an application sits inside the brackets.)
   eraseF : Functor → IRFunctor
-  eraseF (Functor.K A)   = K ⌊ A ⌋
-  eraseF Functor.Id      = Id
-  eraseF (F Functor.⊕ G) = eraseF F ⊕ eraseF G
-  eraseF (F Functor.⊗ G) = eraseF F ⊗ eraseF G
+  eraseF (ST.K A)   = K ⌊ A ⌋
+  eraseF ST.Id      = Id
+  eraseF (F ST.⊕ G) = eraseF F ⊕ eraseF G
+  eraseF (F ST.⊗ G) = eraseF F ⊗ eraseF G
 
 ------------------------------------------------------------------------
 -- Functor machinery over IRTy (mirror of ⟦_⟧T / IsBaseType / WellFormedF,
@@ -293,7 +293,7 @@ data FitsInRegI : IRTy → Set where
 
 erase-⇒-purity-irrelevant
   : ∀ {A B : Type} (q : Quantity) (π₁ π₂ : Purity)
-  → ⌊ A Type.⇒[ T.mk-kind q π₁ ] B ⌋ ≡ ⌊ A Type.⇒[ T.mk-kind q π₂ ] B ⌋
+  → ⌊ A ST.⇒[ T.mk-kind q π₁ ] B ⌋ ≡ ⌊ A ST.⇒[ T.mk-kind q π₂ ] B ⌋
 erase-⇒-purity-irrelevant Zero _ _ = refl
 erase-⇒-purity-irrelevant One  _ _ = refl
 erase-⇒-purity-irrelevant Many _ _ = refl

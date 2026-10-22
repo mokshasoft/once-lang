@@ -56,6 +56,7 @@ open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-throug
 open import Once.SigOp.Info using (SigOpSem; mk-info'; primV; SigOpInfo)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 import Once.Internal.Type as Ty
+import Once.Spec.Type as Ty
 import Once.Type as Ty
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum using (int-bits; float-format)

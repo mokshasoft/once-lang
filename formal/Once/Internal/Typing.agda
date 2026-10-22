@@ -28,9 +28,12 @@ open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Internal.Type
+
+import Once.Spec.Type
 import Once.Internal.Type.Poly
 open import Once.Spec.Grade using (Quantity)
-open import Once.Internal.Type using (Type; Unit; Int; Void; Float; _*_; _+_; Functor; μ-type; ν-type; ⟦_⟧T)
+open import Once.Spec.Type using (Type; Unit; Int; Void; Float; _*_; _+_)
+open import Once.Internal.Type using (Functor; μ-type; ν-type; ⟦_⟧T)
 
 open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete)
 -- D134 Phase A removed the decider premises, and with them the last uses of
@@ -39,7 +42,7 @@ open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete)
 -- has to follow — the judgment no longer reaches into the IR or the elaborator.
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
-open import Once.Internal.Type.Sub using (_<:_; _⊔_≔_)
+open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)

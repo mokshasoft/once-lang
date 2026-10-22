@@ -43,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.IR
 open import Once.IRTy using (K; Id; _⊕_; _⊗_; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Prod; wf-Sum)
 open import Once.CCC.Label using (ℓ)
-open import Once.Internal.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; instr-ctrl; lea-indexed)

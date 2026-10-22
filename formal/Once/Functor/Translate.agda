@@ -26,6 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Polynomial
@@ -61,7 +62,6 @@ IsBaseType-irrelevant (base-Prod ibA₁ ibB₁) (base-Prod ibA₂ ibB₂) =
   cong₂ base-Prod (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
 IsBaseType-irrelevant (base-Sum ibA₁ ibB₁) (base-Sum ibA₂ ibB₂) =
   cong₂ base-Sum (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
-IsBaseType-irrelevant base-rigid base-rigid = refl
 
 -- | IsConcrete is proof-irrelevant
 --

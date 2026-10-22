@@ -47,8 +47,9 @@ open RelS using (forceS)
 open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; RelS-fmapʳ; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (liftFn-rel)
 open import Once.Adequacy.SourceRefl fmt using (SD-rel; <:-rel; cata-clo-rel; ana-clo-rel)
-open import Once.Internal.Type using (Type; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Int; Float; Unit)
+open import Once.Internal.Type using (μ-type; ν-type; ⟦_⟧T; Functor)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun)
 open import Once.Semantics.Machine using (sem-In; sem-cata)
 open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
@@ -77,6 +78,7 @@ open import Once.Type.Rigid using (ground-kinded)
 open import Once.Internal.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Laws.SubLaws
@@ -474,7 +476,6 @@ sd-sigOp-base≡ cn base-Unit          dγ = refl
 sd-sigOp-base≡ cn base-Void          dγ = refl
 sd-sigOp-base≡ cn base-Int           dγ = refl
 sd-sigOp-base≡ cn base-Float         dγ = refl
-sd-sigOp-base≡ cn base-rigid         dγ = refl
 sd-sigOp-base≡ cn (base-Prod ibA ibB) dγ = refl
 sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
 

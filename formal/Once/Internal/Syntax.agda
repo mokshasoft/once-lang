@@ -18,7 +18,8 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
-open import Once.Internal.Type using (Type; Functor)
+open import Once.Spec.Type using (Type)
+open import Once.Internal.Type using (Functor)
 open import Once.Spec.Name using (CanonicalName)
 
 ------------------------------------------------------------------------

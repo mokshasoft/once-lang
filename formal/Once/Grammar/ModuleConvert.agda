@@ -32,7 +32,7 @@ open import Once.Grammar as G
 open import Once.Parser.Module.Core as P
   using (Decl; Module; mkImport; mkModule)
 open import Once.Spec.Grade using (pure; pureᶠ)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.Poly using (PolyType; PolyFunctor; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; PInt; PFloat; PTVar; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Grammar.Convert    using (gtypeToType)
 open import Once.Grammar.ExprConvert using (gexprToRaw)

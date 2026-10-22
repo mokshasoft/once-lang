@@ -33,6 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
@@ -75,13 +76,13 @@ open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun; IsBaseType
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?)
 open import Once.Spec.Float.Decimal using (decimalOf)
 import Once.Spec.Float.Decimal as Decimal
-open import Once.Internal.Type.Sub using (_<:_; sub-arr)
+open import Once.Spec.Sub using (_<:_; sub-arr)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Once.Internal.Type.Join using (Join?; joined; apart; join?; sound)
-open Once.Internal.Type.Sub._⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
+open Once.Spec.Sub._⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
 open import Once.Internal.Type.Instance using (KindedInstance)

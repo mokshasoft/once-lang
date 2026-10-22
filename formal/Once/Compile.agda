@@ -39,6 +39,7 @@ open import Function using (case_of_)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 
@@ -99,7 +100,7 @@ open import Once.Parser
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Module)
 open import Once.Internal.Syntax using (RawExpr)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (no; yes)
 open FunInfo
@@ -134,7 +135,7 @@ open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.Surface.LoopWarn using (silentLoops)
 open import Once.Internal.Principal using (below)
-open import Once.Internal.Type.Sub using (_<:_; sub-arr; sub-unit; sub-void)
+open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
 open import Once.Type.Sub using (_<:?_)
 open import Data.Nat using (_<ᵇ_)
 

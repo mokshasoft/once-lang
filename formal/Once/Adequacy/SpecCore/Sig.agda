@@ -48,6 +48,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Spec.Grade as G
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Type.Honest as LH

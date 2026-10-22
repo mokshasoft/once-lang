@@ -37,6 +37,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym; trans)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)

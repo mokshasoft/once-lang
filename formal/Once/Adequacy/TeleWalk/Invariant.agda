@@ -40,7 +40,7 @@ open import Data.Empty using (⊥)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Internal.Type.Honest using (HonestFFI)

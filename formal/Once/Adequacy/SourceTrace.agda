@@ -44,7 +44,7 @@ open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Internal.Type using (Unit)
+open import Once.Spec.Type using (Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C

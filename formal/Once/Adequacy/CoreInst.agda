@@ -32,10 +32,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Spec.Grade using (mk-kind; Many; pure; pureᶠ)
 open import Once.Internal.Type.WellFormed using (rf-⇒)
-open import Once.Internal.Type using (Type; μ-type; ν-type; ⟦_⟧T)
+open import Once.Spec.Type using (Type)
+open import Once.Internal.Type using (μ-type; ν-type; ⟦_⟧T)
 import Once.Internal.Context as C
 import Once.Surface.Context as C
 open import Once.Internal.Core.PolyTy using (_⟪_⟫; _!!_; ⟨⟩-⟪⟫; ⌈⌉-⟪⟫; ⟦⟧F-⟪⟫; module Schema)
@@ -50,6 +52,7 @@ import Once.Internal.Core.Rename S as RN
 import Once.Surface.Thinning as TH
 import Once.Internal.Core.DerivedTyping S as DT
 import Once.Internal.Type.Sub
+import Once.Spec.Sub
 open import Once.Internal.Type.WellFormed using (WellFormedF)
 open PT using (_⟪_⟫ᶜ; _⟪_⟫ₜ)
 open import Once.Internal.Core.Abstract S using (SigGround; absCtx; absTm; abs-⊢; primDom-abs; primCod-abs; absCtx-lookup)

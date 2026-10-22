@@ -20,8 +20,10 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Internal.Type using (Type; Unit; Void; Int; Float; rigid; k-base; k-any; _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; IsConcrete; con-base; con-fun; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+
+open import Once.Internal.Type using (k-base; k-any; μ-type; ν-type; Functor)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun; WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 -- | Decide whether a type is a base type (no functions / μ / ν).
 isBaseType? : (A : Type) → Maybe (IsBaseType A)
@@ -40,8 +42,6 @@ isBaseType? (A + B) with isBaseType? A | isBaseType? B
 isBaseType? (_ ⇒[ _ ] _) = nothing
 isBaseType? (μ-type _) = nothing
 isBaseType? (ν-type _ _) = nothing
-isBaseType? (rigid k-base _) = just base-rigid
-isBaseType? (rigid k-any _)  = nothing
 
 -- | Decide whether a type is CONCRETE / FFI-representable (Plan 0.58): a base
 -- type, or a first-order function pointer (base argument, base result: the
@@ -64,7 +64,6 @@ isBaseType?-complete base-Unit   = base-Unit , refl
 isBaseType?-complete base-Void   = base-Void , refl
 isBaseType?-complete base-Int    = base-Int , refl
 isBaseType?-complete base-Float  = base-Float , refl
-isBaseType?-complete base-rigid  = base-rigid , refl
 isBaseType?-complete (base-Prod bA bB)
   with isBaseType?-complete bA | isBaseType?-complete bB
 ... | (a , eqA) | (b , eqB) rewrite eqA | eqB = base-Prod a b , refl
@@ -77,7 +76,6 @@ isConcrete?-complete (con-base base-Unit)   = con-base base-Unit , refl
 isConcrete?-complete (con-base base-Void)   = con-base base-Void , refl
 isConcrete?-complete (con-base base-Int)    = con-base base-Int , refl
 isConcrete?-complete (con-base base-Float)  = con-base base-Float , refl
-isConcrete?-complete (con-base base-rigid)  = con-base base-rigid , refl
 isConcrete?-complete (con-base (base-Prod bA bB))
   with isBaseType?-complete (base-Prod bA bB)
 ... | (b , eq) rewrite eq = con-base b , refl

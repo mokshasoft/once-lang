@@ -21,6 +21,8 @@ module Once.Adequacy.SpecCore.TermR {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) wher
 open import Data.Fin using (Fin; zero; suc)
 
 import Once.Internal.Type as LT
+
+import Once.Spec.Type as LT
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Internal.Core.Syntax S as L

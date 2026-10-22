@@ -240,7 +240,7 @@ module Core {FS : FrameSemantics} where
              → chain-events r ≡ DL.[]
              → SMCore.LocState.ev-log (floc fs′) ≡ SMCore.LocState.ev-log (floc fs)
   log-silent {fs = fs} r nn eq = trans (log-of r nn eq) (Data.List.Properties.++-identityʳ (SMCore.LocState.ev-log (floc fs)))
-  open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; r-rigid; readable?; readable-base; readTyped-adequate) public
+  open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; readable?; readable-base; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
 

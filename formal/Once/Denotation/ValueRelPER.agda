@@ -21,7 +21,8 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Internal.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Internal.Iterative using (T∞)
 open T∞ using (force)
@@ -156,7 +157,6 @@ mutual
   RelD-sym (ν-type F π) r = stream-sym r
   RelD-sym Int r = sym r
   RelD-sym Float r = sym r
-  RelD-sym (rigid _ _) {()}
 
   RelD-trans : ∀ (A : Type) {x y z : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y z → RelD A x z
   RelD-trans Unit r s = tt
@@ -175,7 +175,6 @@ mutual
   RelD-trans (ν-type F π) r s = stream-trans r s
   RelD-trans Int r s = trans r s
   RelD-trans Float r s = trans r s
-  RelD-trans (rigid _ _) {()}
 
   -- The right side of a related pair is related to itself.
   RelD-rightself : ∀ (A : Type) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y y

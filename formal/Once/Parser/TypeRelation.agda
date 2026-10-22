@@ -27,7 +27,8 @@ open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; eff; pureᶠ; actᶠ)
-open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (Functor; μ-type; ν-type)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------

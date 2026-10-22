@@ -47,8 +47,9 @@ open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Type using (Type; Functor; ⟦_⟧T; μ-type)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Spec.Type using (Type)
+open import Once.Internal.Type using (Functor; ⟦_⟧T; μ-type)
+open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
@@ -62,6 +63,7 @@ open import Once.Semantics.ValueIR Carrier Carrier using (base-coh)
 open import Once.Postulates using (extensionality)
 open import Data.Sum using (_⊎_)
 import Once.Internal.Type as TT
+import Once.Spec.Type as TT
 import Once.Type as TT
 import Once.IRTy as II
 import Once.IR as IR
@@ -182,8 +184,7 @@ subst-SK : ∀ {S₁ S₂ X : Set} (e : S₁ ≡ S₂) (a : S₂)
 subst-SK refl a = refl
 
 -- The K-node base-constant coherence (induction on `IsBaseType`): master's
--- `base-z`, at `injectᵇ` (plan 0.113 A2; D258 removed Str/Buffer, D243 added
--- `rigid`, which has no value).
+-- `base-z`, at `injectᵇ` (plan 0.113 A2; D258 removed Str/Buffer).
 base-z : ∀ {A} (ib : IsBaseType A) (y : ⟦ Carrier , Carrier ⟧-base A)
   → injectᵇ (base-⌈⌉ (base-⌊⌋ ib)) (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) (subst (λ z → z) (sym (base-coh A)) y))
     ≡ subst (λ z → z) (sym (cohᴰ A)) (injectᵇ ib (coerce-base-to-full ib y))
@@ -203,7 +204,6 @@ base-z (base-Sum {A} {B} pA pB) (inj₂ b)
   rewrite push-⊎₂ (base-coh A) (base-coh B) b
         | push-⊎₂ (cohᴰ A) (cohᴰ B) (injectᵇ pB (coerce-base-to-full pB b))
   = cong inj₂ (base-z pB b)
-base-z base-rigid ()
 
 -- Forward pushes (the transports `cohᴰ` performs at a sum and a product).
 push-⊎₁⁺ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A)

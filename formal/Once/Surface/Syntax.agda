@@ -13,9 +13,10 @@ module Once.Surface.Syntax where
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Internal.Type.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete)

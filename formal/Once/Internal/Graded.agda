@@ -33,6 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; pureᶠ; actᶠ)
 open import Once.Spec.Word using (Carrier)
@@ -142,5 +143,3 @@ record νᵖ (F : SFunctor) : Set where
 ⟦ ν-type F actᶠ ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᵛ        = Val.⟦ Int ⟧
 ⟦ Float ⟧ᵛ      = Val.⟦ Float ⟧
--- D243: no runtime value of a rigid parameter (used at ground instances only).
-⟦ rigid _ _ ⟧ᵛ  = ⊥

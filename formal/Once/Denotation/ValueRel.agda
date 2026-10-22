@@ -23,7 +23,8 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; cong)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Internal.Type using (Type; Functor; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; rigid)
+open import Once.Spec.Type using (Type; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Internal.Type using (Functor; μ-type; ν-type)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
@@ -73,7 +74,6 @@ RelD (μ-type F)  x y = x ≡ y
 RelD (ν-type F _) x y = StreamRel (translateF Carrier Carrier F) x y
 RelD Int         x y = x ≡ y
 RelD Float       x y = x ≡ y
-RelD (rigid _ _) () _
 
 -- Transport along an equation of types.
 RelD-subst : ∀ {A B : Type} (e : A ≡ B) {x y : ⟦ A ⟧ᴰ}
@@ -105,7 +105,7 @@ SRel R (F S⊗ G) (x , y)  (x′ , y′) = SRel R F x x′ × SRel R G y y′
 -- Base types: related is equal, and equal is related.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid;
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum;
                                              WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Internal.Type using (⟦_⟧T)
@@ -121,7 +121,6 @@ base-eq (base-Sum a b) {inj₁ x} {inj₁ y} r = cong inj₁ (base-eq a r)
 base-eq (base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eq b r)
 base-eq (base-Sum a b) {inj₁ _} {inj₂ _} ()
 base-eq (base-Sum a b) {inj₂ _} {inj₁ _} ()
-base-eq base-rigid {()}
 
 base-refl : ∀ {A} → IsBaseType A → ∀ (x : ⟦ A ⟧ᴰ) → RelD A x x
 base-refl base-Unit       x = tt
@@ -131,7 +130,6 @@ base-refl base-Float      x = refl
 base-refl (base-Prod a b) (x , y) = base-refl a x , base-refl b y
 base-refl (base-Sum a b)  (inj₁ x) = base-refl a x
 base-refl (base-Sum a b)  (inj₂ y) = base-refl b y
-base-refl base-rigid      ()
 
 ------------------------------------------------------------------------
 -- Runs: the monad's operations preserve relatedness.

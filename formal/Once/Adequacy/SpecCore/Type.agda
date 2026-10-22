@@ -27,7 +27,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.Sub as LS
+import Once.Spec.Sub as LS
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
 import Once.Spec.Sub as SS

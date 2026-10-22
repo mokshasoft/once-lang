@@ -11,7 +11,7 @@
 
 module Once.Internal.Event where
 
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
@@ -41,7 +41,9 @@ record SigOpEvent : Set where
 ------------------------------------------------------------------------
 
 import Once.Internal.Type as T
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+
+import Once.Spec.Type as T
+open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 import Once.Spec.Signature as S
 
 private
@@ -61,7 +63,6 @@ baseOf T.Int            _ = S.int
 baseOf T.Float          _ = S.float
 baseOf (A T.* B)        b = baseOf A (baseˡ b) S.* baseOf B (baseʳ b)
 baseOf (A T.+ B)        b = baseOf A (sumˡ b) S.+ baseOf B (sumʳ b)
-baseOf (T.rigid _ _)    _ = S.void
 baseOf (_ T.⇒[ _ ] _)   ()
 baseOf (T.μ-type _)     ()
 baseOf (T.ν-type _ _)   ()
@@ -74,7 +75,6 @@ valOf T.Float       _ v = v
 valOf (A T.* B)     b (x , y)  = valOf A (baseˡ b) x , valOf B (baseʳ b) y
 valOf (A T.+ B)     b (inj₁ x) = inj₁ (valOf A (sumˡ b) x)
 valOf (A T.+ B)     b (inj₂ y) = inj₂ (valOf B (sumʳ b) y)
-valOf (T.rigid _ _) _ ()
 valOf (_ T.⇒[ _ ] _) ()
 valOf (T.μ-type _)   ()
 valOf (T.ν-type _ _) ()

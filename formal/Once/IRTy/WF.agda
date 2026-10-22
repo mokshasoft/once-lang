@@ -43,7 +43,6 @@ base-⌊⌋ Tr.base-Int        = base-Int
 base-⌊⌋ Tr.base-Float      = base-Float
 base-⌊⌋ (Tr.base-Prod a b) = base-Prod (base-⌊⌋ a) (base-⌊⌋ b)
 base-⌊⌋ (Tr.base-Sum a b)  = base-Sum  (base-⌊⌋ a) (base-⌊⌋ b)
-base-⌊⌋ Tr.base-rigid      = base-Void   -- D243: ⌊ rigid ⌋ = Void
 
 wf-⌊⌋ : ∀ {F} → Tr.WellFormedF F → WellFormedFI (eraseF F)
 wf-⌊⌋ (Tr.wf-K b)      = wf-K (base-⌊⌋ b)

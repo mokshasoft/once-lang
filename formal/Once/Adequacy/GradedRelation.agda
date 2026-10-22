@@ -29,8 +29,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
-open import Once.Internal.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ-type; ν-type; rigid)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 import Once.Semantics.Machine as Val
 open import Once.Internal.GradedOps using (fmapM; prjB; injB; embνᵃ; mapEmbνᵃ)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
@@ -201,7 +202,6 @@ prjB-rel (base-Sum ia ib) {inj₁ _} {inj₁ _} r = cong inj₁ (prjB-rel ia r)
 prjB-rel (base-Sum ia ib) {inj₂ _} {inj₂ _} r = cong inj₂ (prjB-rel ib r)
 prjB-rel (base-Sum ia ib) {inj₁ _} {inj₂ _} ()
 prjB-rel (base-Sum ia ib) {inj₂ _} {inj₁ _} ()
-prjB-rel base-rigid  {()}
 
 injB-rel : ∀ {A} (ib : IsBaseType A) (x : Val.⟦ A ⟧) → RelGV A (injB ib x) (injectᵇ ib x)
 injB-rel base-Unit   x = tt
@@ -211,7 +211,6 @@ injB-rel base-Float  x = refl
 injB-rel (base-Prod ia ib) (x , y) = injB-rel ia x , injB-rel ib y
 injB-rel (base-Sum ia ib) (inj₁ x) = injB-rel ia x
 injB-rel (base-Sum ia ib) (inj₂ y) = injB-rel ib y
-injB-rel base-rigid  ()
 
 -- `pure ⊑ act` at ν: embedding a pure stream keeps it related.
 mutual

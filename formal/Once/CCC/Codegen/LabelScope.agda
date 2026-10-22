@@ -53,7 +53,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.Internal.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Internal.Type using (Functor)
 import Once.IRTy as IT
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)

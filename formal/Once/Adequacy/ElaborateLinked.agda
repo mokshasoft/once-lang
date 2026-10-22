@@ -23,8 +23,9 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
-open import Once.Internal.Type using (Type)
+open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Laws.SubLaws
@@ -36,7 +37,7 @@ import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
 import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Internal.Context hiding (_,_; _,_^_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
@@ -53,8 +54,10 @@ open import Once.Internal.ContractLaws using (value-∈; answer-∈)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
 import Once.Spec.Grade as Ty
-open import Once.Internal.Type using (Void; isVoid?; isUnit?)
+open import Once.Spec.Type using (Void)
+open import Once.Internal.Type using (isVoid?; isUnit?)
 import Once.Internal.Type as SpecTy
+import Once.Spec.Type as SpecTy
 open import Data.List.Membership.Propositional using (_∈_)
 
 private variable σ : ISig
@@ -362,7 +365,6 @@ sigOp-linked m name (con-base base-Int) d = value-∈ d refl , tt
 sigOp-linked m name (con-base base-Float) d = value-∈ d refl , tt
 sigOp-linked m name (con-base (base-Prod a b)) d = value-∈ d refl , tt
 sigOp-linked m name (con-base (base-Sum a b)) d = value-∈ d refl , tt
-sigOp-linked m name (con-base base-rigid) d = value-∈ d refl , tt
 
 ------------------------------------------------------------------------
 -- (D) THE LEMMA

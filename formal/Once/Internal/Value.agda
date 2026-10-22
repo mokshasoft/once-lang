@@ -24,10 +24,11 @@ open import Data.Empty using (⊥)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Res using (Res; stopped; returns; mapRes)
 open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; base-rigid; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Internal.Polynomial
 open Once.Internal.Polynomial.νS using (unfoldS)
 
@@ -79,9 +80,6 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 -- GuardedT removed: productivity follows from IR totality
 ⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = FloatRep
--- D243: no runtime value of a rigid parameter exists (a definition is used at
--- ground instances).
-⟦ rigid _ _ ⟧    = ⊥
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
@@ -114,7 +112,6 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 ⟦ ν-type F π ⟧ᵍ  = ⟦ ν-type F π ⟧
 ⟦ Int ⟧ᵍ         = ⟦ Int ⟧
 ⟦ Float ⟧ᵍ       = ⟦ Float ⟧
-⟦ rigid k i ⟧ᵍ   = ⟦ rigid k i ⟧
 
 eraseᵍ : ∀ {B} → ⟦ B ⟧ᵍ → ⟦ B ⟧
 eraseᵍ {A ⇒[ mk-kind Zero pure ] B} f = λ u → returns (eraseᵍ (f u))
@@ -135,7 +132,6 @@ eraseᵍ {μ-type F} x = x
 eraseᵍ {ν-type F π} x = x
 eraseᵍ {Int} x = x
 eraseᵍ {Float} x = x
-eraseᵍ {rigid k i} x = x
 
 ------------------------------------------------------------------------
 -- Functor Interpretation (Set level)
@@ -219,7 +215,6 @@ coerce-full-to-base (ν-type _ _) _ = tt      -- ν → ⊤
 -- GuardedT removed: productivity follows from IR totality
 coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x
-coerce-full-to-base (rigid _ _) ()
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 -- | Coerce from base to full interpretation
@@ -249,7 +244,6 @@ coerce-base-to-full (base-Prod pA pB) (a , b) =
   (coerce-base-to-full pA a , coerce-base-to-full pB b)
 coerce-base-to-full (base-Sum pA pB) (inj₁ a) = inj₁ (coerce-base-to-full pA a)
 coerce-base-to-full (base-Sum pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB b)
-coerce-base-to-full base-rigid ()
 
 ------------------------------------------------------------------------
 -- μ-type Coercions (OCP-0003)

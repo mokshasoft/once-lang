@@ -29,9 +29,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
+import Once.Spec.Type as T
 open import Once.Internal.Type.WellFormed using (rf-⇒)
 open import Once.Spec.Grade using (mk-kind; Many; fin)
-open import Once.Internal.Type.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-rigid; sub-arr; sub-prod; sub-sum; sub-μ; sub-ν)
+open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.Internal.Type.Sub using (sub-rigid; sub-prod; sub-sum)
 open import Once.Internal.Context as C using (Ctx; Usage)
 open import Once.Internal.Core.PolyTy
 open Schema using (type)
