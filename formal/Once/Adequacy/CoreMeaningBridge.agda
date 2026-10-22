@@ -465,12 +465,12 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag t-unit dγ = refl
   bridge-i V ag t-unit-var dγ = refl
   bridge-i V ag (t-var-local {eV = Once.Internal.Context.svar i} _) dγ = refl
-  bridge-i V ag (t-var-resolved {cn = cn} _ wn lk k) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
-  bridge-i V ag (t-var-own _ lk) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
-  bridge-i V ag (t-var-import _ _ lk k) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
+  bridge-i V ag (t-var-resolved {cn = cn} _ wn lk k _) dγ = sym (Agree.agree-resolved ag {cn = cn} lk k)
+  bridge-i V ag (t-var-own _ lk _) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
+  bridge-i V ag (t-var-import _ _ lk k _) dγ = trans (Agree.agree-import ag lk) (refSem-⊢ (ImportAt.instOf (imported V lk)) dγ)
   bridge-i V ag (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) dγ =
     trans (Agree.agree-ground ag lp g) (refSem-⊢ (ground V lp g) dγ)
-  bridge-i V ag (t-annot _ d) dγ = bridge-c V ag d dγ
+  bridge-i V ag (t-annot _ d _) dγ = bridge-c V ag d dγ
   bridge-i V ag (t-pair da db) dγ = bindC (bridge-i V ag da _) (λ a → trans (>>=ᵖ-β _ _) (cong (a ,_) (bridge-i V ag db _)))
   bridge-i V ag (t-neg d) dγ = fmapC _ (bridge-i V ag d dγ)
   bridge-i V ag (t-neg-float i f l p) dγ = refl

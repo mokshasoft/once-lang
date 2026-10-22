@@ -1060,7 +1060,7 @@ inferElabV-RPair-aux ctx a b (success _ _ _ _ _ , _) (failure err , _) = failure
 inferElabV-RAnnot-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Type) → Maybe (RigidFree T)
   → VerifiedCheckResult ctx e (wk₀ T) → VerifiedInferResult ctx (Raw.RAnnot e T)
 inferElabV-RAnnot-aux ctx e T nothing   _                          = failure (AnnotationMentionsParameter T) , tt
-inferElabV-RAnnot-aux ctx e T (just rf) (success Ψ eE d fr , witness) = success (wk₀ T) Ψ eE d fr , t-annot rf witness
+inferElabV-RAnnot-aux ctx e T (just rf) (success Ψ eE d fr , witness) = success (wk₀ T) Ψ eE d fr , t-annot rf witness refl
 inferElabV-RAnnot-aux ctx e T (just rf) (failure err , _)             = failure err , tt
 
 inferElabV-RUnaryOp-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
@@ -1336,7 +1336,7 @@ inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _
     success (wk₀ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)) _
       (resolvedArrowTerm ctx cn π bA cB)
       0 0
-    , t-var-resolved ng wn eq (con-fun bA cB)) (wordNameB cn) refl
+    , t-var-resolved ng wn eq (con-fun bA cB) refl) (wordNameB cn) refl
 inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq nothing _ _ _ =
   failure (NonConcreteSigOpType (showCanonical cn)
             (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)) , tt
@@ -1352,7 +1352,7 @@ inferElabV-RResolved-value-aux : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName)
   → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
   → VerifiedInferResult ctx (Raw.RResolved cn)
 inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
-  inferElabV-RResolved-word ctx cn (λ wn → success (wk₀ ty) _ (resolvedValueTerm cn conc) 0 0 , t-var-resolved ng wn eq conc)
+  inferElabV-RResolved-word ctx cn (λ wn → success (wk₀ ty) _ (resolvedValueTerm cn conc) 0 0 , t-var-resolved ng wn eq conc refl)
     (wordNameB cn) refl
 inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ =
   failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
@@ -1381,7 +1381,7 @@ inferElabV-RResolved-def ctx (own x) ns = inferElabV-RResolved-own-aux ctx x ns 
 {-# CATCHALL #-}
 inferElabV-RResolved-def ctx cn _ = failure (UnboundVariable (showCanonical cn)) , tt
 -- D327: a definition's reference at any type (no concreteness gate).
-inferElabV-RResolved-own-aux ctx x ns (just ty) eq = success (wk₀ ty) _ (Surface.closure x) 0 0 , t-var-own ns eq
+inferElabV-RResolved-own-aux ctx x ns (just ty) eq = success (wk₀ ty) _ (Surface.closure x) 0 0 , t-var-own ns eq refl
 -- R11 (D330): an own POLYMORPHIC definition — the telescope.
 inferElabV-RResolved-own-aux ctx x ns nothing eq = inferElabV-RVar-poly-aux ctx x ns eq
 
@@ -1399,7 +1399,7 @@ inferElabV-RVar-import-value-aux : ∀ {m} (ctx : NamedCtx m) (x : String)
 inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
   -- D246: a module entry's reference is a CALL of the entry, not a SigOp.
   success (wk₀ ty) _ (Surface.closure x) 0 0
-  , t-var-import ¬gw eq-loc eq-imp conc
+  , t-var-import ¬gw eq-loc eq-imp conc refl
 inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ nothing _ =
   failure (NonConcreteSigOpType x ty) , tt
 inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (yes _) _ _ _ =

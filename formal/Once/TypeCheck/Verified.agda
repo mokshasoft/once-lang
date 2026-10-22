@@ -110,7 +110,7 @@ record VerifiedTypeChecker {m} : Set₁ where
             → InferElabResult (Classify.NamedCtx.debruijn ctx)
 
     -- | Check-mode type-checker / elaborator.
-    tcCheck : (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+    tcCheck : (ctx : NamedCtx m) (e : RawExpr) (T : Type)
             → CheckElabResult (Classify.NamedCtx.debruijn ctx) T
 
     ----------------------------------------------------------------
@@ -121,13 +121,13 @@ record VerifiedTypeChecker {m} : Set₁ where
     tcInfer-refl : ∀ (ctx : NamedCtx m) (e : RawExpr)
                  → tcInfer ctx e ≡ tcInfer ctx e
 
-    tcCheck-refl : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+    tcCheck-refl : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Type)
                  → tcCheck ctx e T ≡ tcCheck ctx e T
 
     tcInfer-cong : ∀ (ctx : NamedCtx m) {e₁ e₂ : RawExpr}
                  → e₁ ≡ e₂ → tcInfer ctx e₁ ≡ tcInfer ctx e₂
 
-    tcCheck-cong : ∀ (ctx : NamedCtx m) (T : Ty m) {e₁ e₂ : RawExpr}
+    tcCheck-cong : ∀ (ctx : NamedCtx m) (T : Type) {e₁ e₂ : RawExpr}
                  → e₁ ≡ e₂ → tcCheck ctx e₁ T ≡ tcCheck ctx e₂ T
 
     ----------------------------------------------------------------
@@ -140,7 +140,7 @@ record VerifiedTypeChecker {m} : Set₁ where
                   → IsInferSuccess (tcInfer ctx e)
                   ⊎ IsInferFailure (tcInfer ctx e)
 
-    tcCheck-total : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+    tcCheck-total : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Type)
                   → IsCheckSuccess (tcCheck ctx e T)
                   ⊎ IsCheckFailure (tcCheck ctx e T)
 
@@ -160,7 +160,7 @@ record VerifiedTypeChecker {m} : Set₁ where
       → tcInfer ctx e ≡ success A Ψ eE d f
       → ctx ⊢ e ∶ A ⨾ Ψ
 
-    tcCheck-sound : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+    tcCheck-sound : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Type)
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
       {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : _}
       → tcCheck ctx e T ≡ success Ψ eE d f

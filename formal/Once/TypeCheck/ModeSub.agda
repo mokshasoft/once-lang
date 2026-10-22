@@ -87,8 +87,8 @@ di-dom d-initial d = ⊥-elim (noinf-initial d)
 di-dom (d-case _ _ _) d = ⊥-elim (noinf-case d)
 di-dom (d-pair _ _) d = ⊥-elim (noinf-pair d)
 di-dom (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
-di-dom (d-poly ns _ _ _ _ _ _ _) (t-var-resolved _ _ l _) = ⊥-elim (just≢nothing (trans (sym l) ns))
-di-dom (d-poly _ inn _ _ _ _ _ _) (t-var-own _ i) = ⊥-elim (just≢nothing (trans (sym i) inn))
+di-dom (d-poly ns _ _ _ _ _ _ _) (t-var-resolved _ _ l _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+di-dom (d-poly _ inn _ _ _ _ _ _) (t-var-own _ i _) = ⊥-elim (just≢nothing (trans (sym i) inn))
 di-dom (d-poly _ _ p ¬g _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) =
   ⊥-elim (ex (trans (sym p) p′) λ { refl → ¬g g })
 
@@ -128,8 +128,8 @@ mutual
   ic-sub (t-app () _ _) (t-apply-check _)
   ic-sub (t-effApp () _ _) (t-apply-check _)
   ic-sub (t-app-spine () _ _) (t-apply-check _)
-  ic-sub (t-var-resolved _ _ l _) (t-var-poly-instantiate ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
-  ic-sub (t-var-own _ i) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  ic-sub (t-var-resolved _ _ l _ _) (t-var-poly-instantiate ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  ic-sub (t-var-own _ i _) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
   ic-sub (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _) =
     ⊥-elim (ex (trans (sym p) p′) λ { refl → ¬g g })
   ic-sub () (t-lam _ _)

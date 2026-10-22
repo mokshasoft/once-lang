@@ -122,10 +122,11 @@ Elab {n = n} Γ Ψ A = Σ[ t ∈ Tm n ] Γ ⊢[ Ψ ] t ∷ A ! pure
 
 private
   variable
+    mᵥ : ℕ
     n : ℕ
     Γ : ∀ {m} → Ctx m n
     Ψ Ψ₁ Ψ₂ Ψ′ : Usage n
-    A B : ∀ {m} → Ty m
+    A B : Ty mᵥ
 
 -- The elaboration's building blocks (public: the 6b bridge names the
 -- transports they carry).
@@ -211,11 +212,11 @@ elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = Once.Internal.Context.svar i} _) = var i , ⊢var i
-elabᵢ V (t-var-resolved {cn = cn} _ w lk k) = sigE cn k w (declares V lk)
-elabᵢ V (t-var-own _ lk)                   = importE (imported V lk)
-elabᵢ V (t-var-import _ _ lk k)            = importE (imported V lk)
+elabᵢ V (t-var-resolved {cn = cn} _ w lk k _) = sigE cn k w (declares V lk)
+elabᵢ V (t-var-own _ lk _)                   = importE (imported V lk)
+elabᵢ V (t-var-import _ _ lk k _)            = importE (imported V lk)
 elabᵢ V (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) = refE (entry V lp) (ground V lp g)
-elabᵢ V (t-annot _ d)     = elabᶜ V d
+elabᵢ V (t-annot _ d _)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
 elabᵢ V (t-neg d)         = lift1 (prim p-neg) (⊢prim p-neg) (elabᵢ V d)
 elabᵢ V (t-neg-float i f l p) = lit (lit-float (negate (decimalOf i f l))) , ⊢lit-float

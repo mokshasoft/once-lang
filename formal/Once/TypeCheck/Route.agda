@@ -26,6 +26,7 @@
 module Once.TypeCheck.Route where
 
 import Once.Internal.Name
+open import Data.Nat using (ℕ)
 open import Once.Spec.Type using (Ty; Fun)
 open import Once.Spec.Sub using (_⊔_≔_)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -44,9 +45,10 @@ import Once.Internal.Context as Surface
 
 private
   variable
-    ctx : ∀ {m} → NamedCtx m
+    mᵥ : ℕ
+    ctx : NamedCtx mᵥ
     e e₁ e₂ e₃ : RawExpr
-    A A′ A₀ B B′ B₀ B₁ C C′ C₁ M M′ T T′ X X′ : ∀ {m} → Ty m
+    A A′ A₀ B B′ B₀ B₁ C C′ C₁ M M′ T T′ X X′ : Ty mᵥ
     π π′ π₀ : Purity
     q q′ : Quantity
 
@@ -60,15 +62,15 @@ mutual
     ii-float : ∀ {i f l p} → Rii {ctx = ctx} (t-float i f l p) (t-float i f l p)
     ii-unit  : Rii {ctx = ctx} t-unit t-unit
     ii-unit-var : Rii {ctx = ctx} t-unit-var t-unit-var
-    ii-resolved : ∀ {cn n n′ wn wn′ l l′ c c′} → Rii {ctx = ctx} (t-var-resolved {cn = cn} {T = T} n wn l c) (t-var-resolved {T = T′} n′ wn′ l′ c′)
-    ii-own : ∀ {x ns ns′ l l′} → Rii {ctx = ctx} (t-var-own {x = x} {T = T} ns l) (t-var-own {T = T′} ns′ l′)
+    ii-resolved : ∀ {T₁ T₂ : T.Type} {eq eq′ cn n n′ wn wn′ l l′ c c′} → Rii {ctx = ctx} (t-var-resolved {cn = cn} {T = T₁} {A = A} n wn l c eq) (t-var-resolved {T = T₂} {A = A′} n′ wn′ l′ c′ eq′)
+    ii-own : ∀ {T₁ T₂ : T.Type} {eq eq′ x ns ns′ l l′} → Rii {ctx = ctx} (t-var-own {x = x} {T = T₁} {A = A} ns l eq) (t-var-own {T = T₂} {A = A′} ns′ l′ eq′)
     ii-local : ∀ {x Ψ Ψ′ eV eV′ l l′}
       → Rii {ctx = ctx} (t-var-local {x = x} {A = A} {Ψ = Ψ} {eV = eV} l) (t-var-local {A = A′} {Ψ = Ψ′} {eV = eV′} l′)
-    ii-import : ∀ {x g g′ ln ln′ i i′ c c′} → Rii {ctx = ctx} (t-var-import {x = x} {T = T} g ln i c) (t-var-import {T = T′} g′ ln′ i′ c′)
+    ii-import : ∀ {T₁ T₂ : T.Type} {eq eq′ x g g′ ln ln′ i i′ c c′} → Rii {ctx = ctx} (t-var-import {x = x} {T = T₁} {A = A} g ln i c eq) (t-var-import {T = T₂} {A = A′} g′ ln′ i′ c′ eq′)
     ii-poly-infer : ∀ {x s s′ b b′ pr pr′ g g′ ln ln′ li li′ p p′ gr gr′ eq eq′}
       → Rii {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {T = T} {schema = s} {body = b} {prefix = pr} {g = g} ln li p gr eq)
                   (t-var-poly-instantiate-infer {T = T′} {schema = s′} {body = b′} {prefix = pr′} {g = g′} ln′ li′ p′ gr′ eq′)
-    ii-annot : ∀ {T₀ : T.Type} {Ψ Ψ′ r r′} {c : ctx ⊢ᶜ e ∶ T.wk₀ T₀ ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ T.wk₀ T₀ ⨾ Ψ′} → Rcc c c′ → Rii (t-annot {T = T₀} r c) (t-annot {T = T₀} r′ c′)
+    ii-annot : ∀ {T₀ : T.Type} {Ψ Ψ′ r r′ eq eq′} {c : ctx ⊢ᶜ e ∶ T ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ T ⨾ Ψ′} → Rcc c c′ → Rii (t-annot {T = T₀} r c eq) (t-annot {T = T₀} r′ c′ eq′)
     ii-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {a : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {a′ : ctx ⊢ᵢ e₁ ∶ A′ ⨾ Ψ₁′} {b : ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂} {b′ : ctx ⊢ᵢ e₂ ∶ B′ ⨾ Ψ₂′}
             → Rii a a′ → Rii b b′ → Rii (t-pair a b) (t-pair a′ b′)
     ii-neg : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ Int ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ Int ⨾ Ψ′} → Rii d d′ → Rii (t-neg d) (t-neg d′)

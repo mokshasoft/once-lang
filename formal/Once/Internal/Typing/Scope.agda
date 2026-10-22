@@ -107,8 +107,9 @@ record NamedCtx (m : ℕ) : Set where
     kinds       : KCtx m
 
 extendNamedCtx : ∀ {m} → NamedCtx m → String → Ty m → NamedCtx m
-extendNamedCtx (mkCtx n Γ Δ imps polys sg κ) x A =
-  mkCtx (suc n) (extendCtx Γ x A) (Δ , A ^ Many) imps polys sg κ
+extendNamedCtx ctx x A =
+  mkCtx (suc (NamedCtx.size ctx)) (extendCtx (NamedCtx.named ctx) x A) (NamedCtx.debruijn ctx , A ^ Many)
+        (NamedCtx.imports ctx) (NamedCtx.polys ctx) (NamedCtx.sig ctx) (NamedCtx.kinds ctx)
 
 -- A local variable: the innermost binding of the name, as a de Bruijn
 -- variable of the context.

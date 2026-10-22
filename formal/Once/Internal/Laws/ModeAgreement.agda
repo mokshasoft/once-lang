@@ -104,25 +104,25 @@ mutual
 ------------------------------------------------------------------------
 noinf-id : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "id") ∶ S ⨾ Ψ → ⊥
-noinf-id (t-var-resolved (¬g ∷ _) wn _ _) = ¬g refl
+noinf-id (t-var-resolved (¬g ∷ _) wn _ _ refl) = ¬g refl
 noinf-fst : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "fst") ∶ S ⨾ Ψ → ⊥
-noinf-fst (t-var-resolved (_ ∷ ¬g ∷ _) wn _ _) = ¬g refl
+noinf-fst (t-var-resolved (_ ∷ ¬g ∷ _) wn _ _ refl) = ¬g refl
 noinf-snd : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "snd") ∶ S ⨾ Ψ → ⊥
-noinf-snd (t-var-resolved (_ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
+noinf-snd (t-var-resolved (_ ∷ _ ∷ ¬g ∷ _) wn _ _ refl) = ¬g refl
 noinf-terminal : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "terminal") ∶ S ⨾ Ψ → ⊥
-noinf-terminal (t-var-resolved (_ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
+noinf-terminal (t-var-resolved (_ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _ refl) = ¬g refl
 noinf-initial : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "initial") ∶ S ⨾ Ψ → ⊥
-noinf-initial (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
+noinf-initial (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _ refl) = ¬g refl
 noinf-inl : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "inl") ∶ S ⨾ Ψ → ⊥
-noinf-inl (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
+noinf-inl (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _ refl) = ¬g refl
 noinf-inr : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "inr") ∶ S ⨾ Ψ → ⊥
-noinf-inr (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
+noinf-inr (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _ refl) = ¬g refl
 noinf-curry-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "curry")) a ∶ S ⨾ Ψ → ⊥
 noinf-curry-app (t-app () _ _)
@@ -233,31 +233,31 @@ mutual
   agree-ii (t-float _ _ _ _) (t-float _ _ _ _) = refl , refl
   agree-ii t-unit t-unit = refl , refl
   agree-ii t-unit-var t-unit-var = refl , refl
-  agree-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _) = ⊥-elim (¬u refl)
-  agree-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _) t-unit-var = ⊥-elim (¬u refl)
+  agree-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _ refl) = ⊥-elim (¬u refl)
+  agree-ii (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _ refl) t-unit-var = ⊥-elim (¬u refl)
   {-# CATCHALL #-}
-  agree-ii (t-var-resolved _ wn l _) (t-var-resolved _ wn′ l′ _) with trans (sym l) l′
+  agree-ii (t-var-resolved _ wn l _ refl) (t-var-resolved _ wn′ l′ _ refl) with trans (sym l) l′
   ... | refl = refl , refl
-  agree-ii (t-var-own _ l) (t-var-own _ l′) with trans (sym l) l′
+  agree-ii (t-var-own _ l refl) (t-var-own _ l′ refl) with trans (sym l) l′
   ... | refl = refl , refl
-  agree-ii (t-var-own n _) (t-var-resolved _ wn l _) = ⊥-elim (just≢nothing (trans (sym l) n))
+  agree-ii (t-var-own n _ refl) (t-var-resolved _ wn l _ refl) = ⊥-elim (just≢nothing (trans (sym l) n))
   {-# CATCHALL #-}
-  agree-ii (t-var-resolved _ wn l _) (t-var-own n _) = ⊥-elim (just≢nothing (trans (sym l) n))
+  agree-ii (t-var-resolved _ wn l _ refl) (t-var-own n _ refl) = ⊥-elim (just≢nothing (trans (sym l) n))
   agree-ii (t-var-local l) (t-var-local l′) with trans (sym l) l′
   ... | refl = refl , refl
-  agree-ii (t-var-local l) (t-var-import _ ln _ _) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-import _ ln _ _) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-import _ _ i _) (t-var-import _ _ i′ _) with trans (sym i) i′
+  agree-ii (t-var-local l) (t-var-import _ ln _ _ refl) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-ii (t-var-import _ ln _ _ refl) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
+  agree-ii (t-var-import _ _ i _ refl) (t-var-import _ _ i′ _ refl) with trans (sym i) i′
   ... | refl = refl , refl
-  agree-ii (t-var-own _ i) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
-  agree-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-own _ i) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ii (t-var-own _ i refl) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-own _ i refl) = ⊥-elim (just≢nothing (trans (sym i) inn))
   {-# CATCHALL #-}
-  agree-ii (t-var-resolved _ _ l _) (t-var-poly-instantiate-infer ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
-  agree-ii (t-var-poly-instantiate-infer ns _ _ _ _) (t-var-resolved _ _ l _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  agree-ii (t-var-resolved _ _ l _ refl) (t-var-poly-instantiate-infer ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  agree-ii (t-var-poly-instantiate-infer ns _ _ _ _) (t-var-resolved _ _ l _ refl) = ⊥-elim (just≢nothing (trans (sym l) ns))
   agree-ii (t-var-poly-instantiate-infer {schema = s} {g = g} _ _ p _ refl)
            (t-var-poly-instantiate-infer {g = g′} _ _ p′ _ refl) with trans (sym p) p′
   ... | refl = extractGround-irr s g g′ , refl
-  agree-ii (t-annot _ c) (t-annot _ c′) = refl , agree-cc c c′
+  agree-ii (t-annot _ c refl) (t-annot _ c′ refl) = refl , agree-cc c c′
   agree-ii (t-pair a b) (t-pair a′ b′) with agree-ii a a′ | agree-ii b b′
   ... | refl , refl | refl , refl = refl , refl
   agree-ii (t-neg d) (t-neg d′) = refl , proj₂ (agree-ii d d′)
@@ -481,8 +481,8 @@ mutual
   agree-ic (t-app () _ _) (t-apply-check _)
   agree-ic (t-effApp () _ _) (t-apply-check _)
   agree-ic (t-app-spine () _ _) (t-apply-check _)
-  agree-ic (t-var-resolved _ _ l _) (t-var-poly-instantiate ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
-  agree-ic (t-var-own _ i) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-ic (t-var-resolved _ _ l _ refl) (t-var-poly-instantiate ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  agree-ic (t-var-own _ i refl) (t-var-poly-instantiate _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
   agree-ic (t-var-poly-instantiate-infer _ _ p g _) (t-var-poly-instantiate _ _ p′ ¬g _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
   agree-ic () (t-lam _ _)
@@ -542,8 +542,8 @@ mutual
   agree-di (d-pair _ _) d = ⊥-elim (noinf-pair d)
   agree-di (d-cata _ _) d = ⊥-elim (noinf-cata-app d)
   -- Plan 0.103 phase 2b: a non-ground telescope entry does not infer.
-  agree-di (d-poly ns _ _ _ _ _ _ _) (t-var-resolved _ _ l _) = ⊥-elim (just≢nothing (trans (sym l) ns))
-  agree-di (d-poly _ inn _ _ _ _ _ _) (t-var-own _ i) = ⊥-elim (just≢nothing (trans (sym i) inn))
+  agree-di (d-poly ns _ _ _ _ _ _ _) (t-var-resolved _ _ l _ refl) = ⊥-elim (just≢nothing (trans (sym l) ns))
+  agree-di (d-poly _ inn _ _ _ _ _ _) (t-var-own _ i refl) = ⊥-elim (just≢nothing (trans (sym i) inn))
   agree-di (d-poly _ _ p ¬g _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) with trans (sym p) p′
   ... | refl = ⊥-elim (¬g g)
 

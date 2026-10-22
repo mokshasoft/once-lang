@@ -188,12 +188,12 @@ realize-refs-i (t-float i f l p) = tt
 realize-refs-i t-unit            = tt
 realize-refs-i t-unit-var        = tt
 realize-refs-i (t-var-local {eV = svar i} _) = tt
-realize-refs-i (t-var-resolved _ wn lk conc) = lk
-realize-refs-i (t-var-own _ lk) = lk
-realize-refs-i (t-var-import _ _ lk conc) = lk
+realize-refs-i (t-var-resolved _ wn lk conc _) = lk
+realize-refs-i (t-var-own _ lk _) = lk
+realize-refs-i (t-var-import _ _ lk conc _) = lk
 realize-refs-i (t-var-poly-instantiate-infer {schema = schema} {g = g} eL eI eP gr T≡) =
   _ , eP , subst (KindedInstance schema) (sym T≡) (ground-kinded schema g)
-realize-refs-i (t-annot _ d)     = realize-refs d
+realize-refs-i (t-annot _ d _)     = realize-refs d
 realize-refs-i (t-pair da db)    = realize-refs-i da , realize-refs-i db
 realize-refs-i (t-neg d)         = realize-refs-i d
 realize-refs-i (t-neg-float i f l p) = tt

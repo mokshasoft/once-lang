@@ -227,13 +227,13 @@ mutual
   subst-i′ ir t-unit-var           = t-unit-var
   subst-i′ {Γ = Γ} {D = D} ir (t-var-local {x = x} {eV = svar i} eq) =
     lookup-ρ̂ D i ⇝ᵢ t-var-local (lk-just x Γ D i eq)
-  subst-i′ ir (t-var-resolved ng wn li c) = sym (ρ̂-rf (proj₂ ir li)) ⇝ᵢ t-var-resolved ng wn li c
-  subst-i′ ir (t-var-own ns li) = sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-own ns li
-  subst-i′ {Γ = Γ} {D = D} ir (t-var-import {x = x} gw ln li c) =
-    sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-import gw (lk-nothing x Γ D ln) li c
+  subst-i′ ir (t-var-resolved ng wn li c _) = sym (ρ̂-rf (proj₂ ir li)) ⇝ᵢ t-var-resolved ng wn li c refl
+  subst-i′ ir (t-var-own ns li _) = sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-own ns li refl
+  subst-i′ {Γ = Γ} {D = D} ir (t-var-import {x = x} gw ln li c refl) =
+    sym (ρ̂-rf (proj₁ ir li)) ⇝ᵢ t-var-import gw (lk-nothing x Γ D ln) li c refl
   subst-i′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} ln li lp gr refl) =
     sym (ρ̂-rf (extractGround-rf s g)) ⇝ᵢ t-var-poly-instantiate-infer {g = g} ln li lp gr refl
-  subst-i′ ir (t-annot {T = T} rf d) = sym (ρ̂-rf rf) ⇝ᵢ t-annot rf (ρ̂-rf rf ⇝ᶜ subst-c′ ir d)
+  subst-i′ ir (t-annot {T = T} rf d _) = sym (ρ̂-rf rf) ⇝ᵢ t-annot rf (ρ̂-rf rf ⇝ᶜ subst-c′ ir d) refl
   subst-i′ ir (t-pair a b)         = t-pair (subst-i′ ir a) (subst-i′ ir b)
   subst-i′ ir (t-neg d)            = t-neg (subst-i′ ir d)
   subst-i′ ir (t-neg-float i f l p) = t-neg-float i f l p

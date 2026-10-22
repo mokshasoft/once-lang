@@ -62,26 +62,22 @@ import Once.Internal.Context
 -- Unconditional-failure paths (now trivial after refactor)
 ------------------------------------------------------------------------
 
-lam-infer-is-LambdaInInferMode :
-  ∀ (ctx : NamedCtx) (x : String) (body : RawExpr) {err : TypeError}
+lam-infer-is-LambdaInInferMode : ∀ {m} (ctx : NamedCtx m) (x : String) (body : RawExpr) {err : TypeError}
   → inferElab ctx (RLam x body) ≡ failure err
   → err ≡ LambdaInInferMode
 lam-infer-is-LambdaInInferMode ctx x body refl = refl
 
-inl-app-infer-is-InlInInferMode :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+inl-app-infer-is-InlInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) ≡ failure err
   → err ≡ InlInInferMode
 inl-app-infer-is-InlInInferMode ctx arg refl = refl
 
-inr-app-infer-is-InrInInferMode :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+inr-app-infer-is-InrInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "inr")) arg) ≡ failure err
   → err ≡ InrInInferMode
 inr-app-infer-is-InrInInferMode ctx arg refl = refl
 
-initial-app-infer-is-InitialInInferMode :
-  ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+initial-app-infer-is-InitialInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "initial")) arg) ≡ failure err
   → err ≡ InitialInInferMode
 initial-app-infer-is-InitialInInferMode ctx arg refl = refl
@@ -116,7 +112,7 @@ private
           → (∀ {w} → proj₁ (rule (success T Ψ' eE' d' f' , w)) ≡ failure e₀)
           → proj₁ (rule r) ≡ failure err
           → err ≡ e₀
-  rejects {ctx = ctx} rule (success _ _ _ _ _ , w) refl fact eq = fail-inj {ctx} (trans (sym (fact {w})) eq)
+  rejects {ctx = ctx} rule (success _ _ _ _ _ , w) refl fact eq = fail-inj {ctx = ctx} (trans (sym (fact {w})) eq)
 
   -- `-e`: a literal operand folds (the outer equation is `success ≡ failure`);
   -- any other operand goes through `inferElabV-RUnaryOp-aux` at its result.
@@ -134,8 +130,7 @@ inl-check-Int : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
                → err ≡ InlNeedsSumType
 inl-check-Int ctx arg refl = refl
 -- The resolver reads every `name@alias`, so an unresolved one is unbound.
-qualified-not-found-is-UnboundQualified :
-  ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
+qualified-not-found-is-UnboundQualified : ∀ {m} (ctx : NamedCtx m) (name alias : String) {err : TypeError}
   → inferElab ctx (RQualified name alias) ≡ failure err
   → err ≡ UnboundQualified name alias
 qualified-not-found-is-UnboundQualified ctx name alias refl = refl
@@ -188,13 +183,12 @@ case-scrut-Int : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
                  → err ≡ CaseScrutineeNotSum
 case-scrut-Int ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-case-branch-mismatch-is-CaseBranchMismatch :
-  ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+case-branch-mismatch-is-CaseBranchMismatch : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
     (xL : String) (eL : Raw.RawExpr)
     (xR : String) (eR : Raw.RawExpr)
-    (A B : Type)
+    (A B : Ty m)
     {Ψs scrutE ds fs}
-    (C₁ C₂ : Type) {qℓ qr}
+    (C₁ C₂ : Ty m) {qℓ qr}
     {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
   → inferElab ctx scrut ≡ success (A T.+ B) Ψs scrutE ds fs
   → inferElab (Classify.extendNamedCtx ctx xL A) eL
@@ -237,8 +231,7 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
 -- Variable lookup: unbound (neither "unit", local, nor import).
 ------------------------------------------------------------------------
 
-var-unbound-is-UnboundVariable :
-  ∀ (ctx : NamedCtx) (x : String)
+var-unbound-is-UnboundVariable : ∀ {m} (ctx : NamedCtx m) (x : String)
     {err : TypeError}
   → lookupLocal ctx x ≡ nothing
   → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
@@ -263,8 +256,7 @@ var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
     go : ∀ {err} → failure (UnboundVariable x) ≡ failure err
        → err ≡ UnboundVariable x
     go refl = refl
-check-RInt-type-mismatch :
-  ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
+check-RInt-type-mismatch : ∀ {m} (ctx : NamedCtx m) (n : _) (T : Ty m) {err : TypeError}
   → ¬ (T ≡ Int)
   → checkElab ctx (Raw.RInt n) T ≡ failure err
   → err ≡ TypeMismatch T Int
@@ -284,8 +276,7 @@ check-RInt-type-mismatch ctx n T ¬eq eq
 -- `TypeMismatch T A`. A literal's inferred type admits one supertype — itself —
 -- so `yes` pins `T` and contradicts the premise.
 
-check-RUnit-type-mismatch :
-  ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
+check-RUnit-type-mismatch : ∀ {m} (ctx : NamedCtx m) (T : Ty m) {err : TypeError}
   → ¬ (T ≡ Unit)
   → checkElab ctx Raw.RUnit T ≡ failure err
   → err ≡ TypeMismatch T Unit
@@ -294,9 +285,8 @@ check-RUnit-type-mismatch ctx T ¬eq eq
 ... | yes sub-unit | _    = ⊥-elim (¬eq refl)
 ... | no _         | refl = refl
 
-lam-usage-violation-is-UsageViolation :
-  ∀ (ctx : NamedCtx) (x : String) (body : Raw.RawExpr)
-    (A : Type) (q : _) (B : Type)
+lam-usage-violation-is-UsageViolation : ∀ {m} (ctx : NamedCtx m) (x : String) (body : Raw.RawExpr)
+    (A : Ty m) (q : _) (B : Ty m)
     (q' : _) {Ψ' eE' d' f' err}
   → Once.TypeCheck.Elaborate.checkElab
       (Classify.extendNamedCtx ctx x A) body B
@@ -336,8 +326,7 @@ lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
 --
 -- `binop-right-err-wraps` below needs no such repair: it requires the LEFT to
 -- be `Int`, and an `Int` left with a `Float` right IS still an error.
-binop-left-err-wraps :
-  ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+binop-left-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
     {sub-err outer-err}
   → Once.TypeCheck.Elaborate.notNumeric (inferElab ctx e₁) ≡ just sub-err
   → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
@@ -460,8 +449,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...   | refl with eqOuter
 ...     | refl = refl
 
-binop-right-err-wraps :
-  ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+binop-right-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
     {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
   → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
       ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁

@@ -357,16 +357,16 @@ mutual
   fwdᵢ t-unit-var lr (x-res _) = syn r-unit r-unit SU.s-unit-g
   fwdᵢ (t-var-local {eV = svar i} lk) lr (x-local _) =
     let (A′ , ra , mem) = lk-R lr i lk in syn ra (r-var i) (SU.s-var mem)
-  fwdᵢ {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k) lr (x-res _) = res (E.View.declares V lk)
+  fwdᵢ {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k refl) lr (x-res _) = res (E.View.declares V lk)
     where
       res : EV.Declared (showCanonical cn) T → Syn L (SX.RResolved cn) T (L.sigop cn T)
       res (EV.declared h g mem) = syn (decl-R k h g) (r-sigop (decl-R k h g)) (SU.s-sigop ng (sigop-S wn mem))
-  fwdᵢ (t-var-own _ lk) lr (x-res _) =
+  fwdᵢ (t-var-own _ lk refl) lr (x-res _) =
     ref0 (E.ImportAt.entryOf (E.View.imported V lk)) (proj₁ (h-imp lk)) (proj₂ (h-imp lk)) (E.ImportAt.instOf (E.View.imported V lk))
-  fwdᵢ (t-var-import _ lkl _ _) lr (x-local inb) = ⊥-elim (lk-out lr inb lkl)
+  fwdᵢ (t-var-import _ lkl _ _ _) lr (x-local inb) = ⊥-elim (lk-out lr inb lkl)
   fwdᵢ (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) lr (x-res _) =
     ref0 (E.View.entry V lp) (h-poly lp) (h-ground lp g) (E.View.ground V lp g)
-  fwdᵢ (t-annot rf d) lr (x-annot _ x) =
+  fwdᵢ (t-annot rf d refl) lr (x-annot _ x) =
     let chk rt der = fwdᶜ d lr x (annot-R _ rf) in syn (annot-R _ rf) rt (SU.s-annot der)
   fwdᵢ (t-pair da db) lr (x-pair xa xb) =
     let syn ra rta da′ = fwdᵢ da lr xa ; syn rb rtb db′ = fwdᵢ db lr xb in syn (r-* ra rb) (r-pair rta rtb) (SU.s-pair da′ db′)

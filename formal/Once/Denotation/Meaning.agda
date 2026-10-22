@@ -324,20 +324,20 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- implementation (`decl-*`: the world declares it).
 -- D274: a resolved reference names a generator of Σ — own or not, its meaning
 -- is that declaration's implementation.
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ wn lk conc) fmt ρ dγ =
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ wn lk conc refl) fmt ρ dγ =
   sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} lk)
 -- D248: an own-module DEFINITION's reference is a call of it, and means it.
-⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} _ lk) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
+⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} _ lk refl) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —
 -- read from the scope's import environment (an FFI entry's is its contract).
-⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
+⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _ refl) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
 -- Plan 0.58 / D071: an infer-mode ground telescope reference MEANS its body —
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
 -- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
 ⟦_⟧ᵢ {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} _ _ lp _ eT) fmt ρ dγ =
   subst (λ X → ⟦ X ⟧ᵛ) (sym eT) (defAt (NamedCtx.polys ctx) x (defs ρ) lp (extractGround s g) (ground-kinded s g))
-⟦_⟧ᵢ {ctx = ctx} (t-annot _ d) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
+⟦_⟧ᵢ {ctx = ctx} (t-annot _ d refl) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
 ⟦_⟧ᵢ {ctx = ctx} (t-pair da db) fmt ρ dγ = (⟦ da ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ db ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → returnᵖ (a , b)
 ⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) dγ >>=ᵖ λ v → semP neg-info int-prim fmt v
 -- PLAN 0.73 F3. `-3.14` MEANS the target's representation of the decimal

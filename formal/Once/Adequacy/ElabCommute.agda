@@ -178,12 +178,12 @@ mutual
   tm-i t-unit             = refl
   tm-i t-unit-var         = refl
   tm-i {D = D} (t-var-local {eV = C.svar i} eq) = ⇝ᵢ-tm (lookup-ρ̂ D i) _
-  tm-i {D = D} (t-var-resolved {cn = cn} ng wn li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} cn c wn (declares li))
-  tm-i {D = D} (t-var-own {x = x} ns li) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
-  tm-i {D = D} (t-var-import {x = x} gw ln li c) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
+  tm-i {D = D} (t-var-resolved {cn = cn} ng wn li c refl) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₂ ir li))) _) (sig-tm {Γ = D} cn c wn (declares li))
+  tm-i {D = D} (t-var-own {x = x} ns li refl) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
+  tm-i {D = D} (t-var-import {x = x} gw ln li c refl) = trans (⇝ᵢ-tm (sym (ρ̂-rf (proj₁ ir li))) _) (imp-tm {Γ = D} {x = x} (imported li) (nat-imp li))
   tm-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =
     trans (⇝ᵢ-tm (sym (ρ̂-rf (extractGround-rf sc g))) _) (cong (G.ref (entry lp)) (sym (nat-ground lp g)))
-  tm-i (t-annot rf d)     = trans (⇝ᵢ-tm (sym (ρ̂-rf rf)) _) (trans (⇝ᶜ-tm (ρ̂-rf rf) _) (tm-c d))
+  tm-i (t-annot rf d _)     = trans (⇝ᵢ-tm (sym (ρ̂-rf rf)) _) (trans (⇝ᶜ-tm (ρ̂-rf rf) _) (tm-c d))
   tm-i (t-pair a b)       = cong₂ G.pair (tm-i a) (tm-i b)
   tm-i (t-neg d)          = cong (G.prim G.p-neg) (tm-i d)
   tm-i (t-neg-float i f l p) = refl
@@ -324,13 +324,13 @@ mutual
   dr-i t-unit-var         = H.refl
   dr-i {D = D} (t-var-local {eV = C.svar i} eq) =
     H.trans (⇝ᵢ-dr (lookup-ρ̂ D i) _) (H.sym (rmA (λ X → X) (lookup-ρ̂ D i)))
-  dr-i {D = D} (t-var-resolved {cn = cn} ng wn li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} cn c wn (declares li))
-  dr-i {D = D} (t-var-own {x = x} ns li) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
-  dr-i {D = D} (t-var-import {x = x} gw ln li c) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
+  dr-i {D = D} (t-var-resolved {cn = cn} ng wn li c refl) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₂ ir li))) _) (sig-dr {Γ = D} cn c wn (declares li))
+  dr-i {D = D} (t-var-own {x = x} ns li refl) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
+  dr-i {D = D} (t-var-import {x = x} gw ln li c refl) = H.trans (⇝ᵢ-dr (sym (ρ̂-rf (proj₁ ir li))) _) (imp-dr {Γ = D} {x = x} (imported li) (nat-imp li))
   dr-i (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr refl) =
     H.trans (⇝ᵢ-dr (sym (ρ̂-rf (extractGround-rf sc g))) _)
             (refE-dr (entry lp) (ground lp g) (ground lp g) (sym (nat-ground lp g)))
-  dr-i (t-annot rf d)     = H.trans (⇝ᵢ-dr (sym (ρ̂-rf rf)) _) (H.trans (⇝ᶜ-dr (ρ̂-rf rf) _) (dr-c d))
+  dr-i (t-annot rf d _)     = H.trans (⇝ᵢ-dr (sym (ρ̂-rf rf)) _) (H.trans (⇝ᶜ-dr (ρ̂-rf rf) _) (dr-c d))
   dr-i (t-pair a b)       = ≅2 _ _ GT.⊢pair refl (tm-i a) (dr-i a) refl (tm-i b) (dr-i b)
   dr-i (t-neg d)          = ≅1 _ _ (GT.⊢prim G.p-neg) refl (tm-i d) (dr-i d)
   dr-i (t-neg-float i f l p) = H.refl

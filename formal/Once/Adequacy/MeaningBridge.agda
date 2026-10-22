@@ -796,14 +796,14 @@ module _ (σ-self : RelDefs fmt σ σ) where
 
   -- Named value references — the sigop-reference leaf (dispatch on result type).
   -- D274: a resolved reference names a generator of Σ — the sigop-reference leaf.
-  bridge-i {ctx = ctx} (t-var-resolved {cn = cn} {T = A} _ wn lk conc) {ρ = ρ} {dγ₂ = dγ₂} re er =
+  bridge-i {ctx = ctx} (t-var-resolved {cn = cn} {T = A} _ wn lk conc refl) {ρ = ρ} {dγ₂ = dγ₂} re er =
     sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} (world ρ) _ conc (decl-res ρ {cn = cn} lk) dγ₂ (proj₂ (proj₂ er))
   -- D248: an own-module DEFINITION's reference is a call of it, as a bare one.
-  bridge-i {ctx = ctx} (t-var-own {x = x} _ lk) re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
+  bridge-i {ctx = ctx} (t-var-own {x = x} _ lk refl) re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
   -- D246: a module entry's reference is a CALL of it on the SD side and the
   -- entry's meaning on the Spec side — related by the import half of the
   -- environment relation.
-  bridge-i {ctx = ctx} (t-var-import {x = x} {T = A} _ _ lk _)  re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
+  bridge-i {ctx = ctx} (t-var-import {x = x} {T = A} _ _ lk _ refl)  re er = imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk
 
   -- Plan 0.103 phase 1c: a ground telescope reference is a definition VARIABLE
   -- on both sides — the denotation reads the telescope environment `ρ`, the
@@ -813,7 +813,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
     envrel-at (NamedCtx.polys ctx) x (proj₁ er) lp (extractGround s g) (ground-kinded s g)
 
   -- Annotation switches to check mode.
-  bridge-i (t-annot _ d) re er = bridge-c d re er
+  bridge-i (t-annot _ d _) re er = bridge-c d re er
 
   -- Pair — two sequenced infers, product value.
   -- D179: via `RelGᵖ-bind`, not by threading budgets by hand. `_>>=T_` runs the

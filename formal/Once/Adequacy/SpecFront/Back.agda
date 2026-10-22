@@ -446,7 +446,7 @@ private
             pick : Dec (x ∈ ps) → BSyn Γn Γd (Once.Internal.Syntax.RResolved (nm d)) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) _
             pick (no x∉) =
               let (lks , T , lki , rT) = h-mono ex x∉ (λ x≡ → nm′ (trans ex (cong (λ y → canonical (y ∷ [])) x≡)))
-              in bsyn (rT τ) (at-own (t-var-own lks lki)) zero-use
+              in bsyn (rT τ) (at-own (t-var-own lks lki refl)) zero-use
             pick (yes x∈) =
               let pa = h-poly ex x∈ ; (g , rT) = Sc.PolyAt.ground pa ar
               in bsyn (rT τ) (at-own (t-var-poly-instantiate-infer (h-psig x∈) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) g refl)) zero-use
@@ -722,10 +722,10 @@ mutual
     trans (proj₁ (inv-var T)) (ctx-lookup mem)
     , bsyn (proj₂ (lk⁻ lr mem)) (t-var-local (proj₁ (lk⁻ lr mem))) (subst (SCx._⊑ᵘ _) (sym (uS-single _ LG.One)) (proj₂ (inv-var T)))
   bwdᵢ (SU.s-sigop ng mem) (x-res _) lr T =
-    let (T₀ , lk , k , r) = h-sig ng mem in inv-sigop T , bsyn r (t-var-resolved ng (h-word mem) lk k) zero-use
+    let (T₀ , lk , k , r) = h-sig ng mem in inv-sigop T , bsyn r (t-var-resolved ng (h-word mem) lk k refl) zero-use
   bwdᵢ (SU.s-def d e τ ar) (x-res nm′) lr T = inv-ref T , def-ref d τ e nm′ ar
   bwdᵢ (SU.s-annot d) (x-annot rf x) lr T =
-    let (eq , bchk der u) = bwdᶜ d x lr (annot-R _ rf) T in eq , bsyn (annot-R _ rf) (t-annot rf der) u
+    let (eq , bchk der u) = bwdᶜ d x lr (annot-R _ rf) T in eq , bsyn (annot-R _ rf) (t-annot rf der refl) u
   bwdᵢ (SU.s-pair da db) (x-pair xa xb) lr T =
     let r = inv-pair T ; (ea , sa) = bwdᵢ da xa lr (IPair.da r) ; (eb , sb) = bwdᵢ db xb lr (IPair.db r)
     in trans (IPair.ty r) (cong₂ ST._*_ ea eb) , pair-syn (IPair.use r) sa sb

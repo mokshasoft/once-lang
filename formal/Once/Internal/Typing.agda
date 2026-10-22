@@ -142,11 +142,15 @@ mutual
     -- D274: a resolved reference to a GENERATOR of the program's signature Σ
     -- (an FFI declaration, of another module or of this one) — a SigOp. Its
     -- name is a word name, so its rendered key names it alone (D329).
-    t-var-resolved : ∀ {ctx : NamedCtx m} {cn : CanonicalName} {T : Type}
+    -- (Plan 0.122: the declared type is ground; the reference is at it read
+    -- over the definition's type variables, `A ≡ wk₀ T`, stated as an equation
+    -- so a derivation can be split at any `A`.)
+    t-var-resolved : ∀ {ctx : NamedCtx m} {cn : CanonicalName} {T : Type} {A : Ty m}
                    → NotGenerator cn → WordName cn
                    → lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T
                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
-                   → ctx ⊢ᵢ RResolved cn ∶ wk₀ T ⨾ zeroUsage
+                   → A ≡ wk₀ T
+                   → ctx ⊢ᵢ RResolved cn ∶ A ⨾ zeroUsage
 
     -- D248/D274: a resolved reference to an OWN monomorphic DEFINITION
     -- (`own x`, the resolver's `rv-own`/`name@this`) — a call of it (D246) —
@@ -154,22 +158,24 @@ mutual
     -- stay syntax-directed; D249's guard makes the names distinct anyway).
     -- D327: at ANY type — a definition is not an FFI boundary (D071), so its
     -- reference is never gated on `IsConcrete` (the Spec's `s-def`).
-    t-var-own : ∀ {ctx : NamedCtx m} {x : String} {T : Type}
+    t-var-own : ∀ {ctx : NamedCtx m} {x : String} {T : Type} {A : Ty m}
               → lookupImport (NamedCtx.sig ctx) x ≡ nothing
               → lookupImport (NamedCtx.imports ctx) x ≡ just T
-              → ctx ⊢ᵢ RResolved (own x) ∶ wk₀ T ⨾ zeroUsage
+              → A ≡ wk₀ T
+              → ctx ⊢ᵢ RResolved (own x) ∶ A ⨾ zeroUsage
 
     -- D136: a RESERVED WORD is never a bare reference to an import or an
     -- own-module definition — it is the generator. This is the one rule that
     -- did name resolution on a String inside the judgment, and `¬ GenWord x`
     -- is what stops it resolving a name the resolver has already claimed.
     -- Stated as a PROPERTY (D134); `Resolve.isBuiltinName` is the decider.
-    t-var-import : ∀ {ctx : NamedCtx m} {x : String} {T : Type}
+    t-var-import : ∀ {ctx : NamedCtx m} {x : String} {T : Type} {A : Ty m}
                   → ¬ GenWord x
                   → lookupLocal ctx x ≡ nothing
                  → lookupImport (NamedCtx.imports ctx) x ≡ just T
                  → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
-                 → ctx ⊢ᵢ RVar x ∶ wk₀ T ⨾ zeroUsage
+                 → A ≡ wk₀ T
+                 → ctx ⊢ᵢ RVar x ∶ A ⨾ zeroUsage
 
     -- Plan 0.58 / D071: infer-mode reference to a GROUND own-module telescope
     -- def (incl. ground-NON-concrete, e.g. a cata at `μNat → Int`). A ground
@@ -213,11 +219,12 @@ mutual
     -- D252: an annotation is a SURFACE type, so it mentions no definition's
     -- parameter (`rigid` is the once-typed schema's internal constant, D243).
     -- This is what makes a body's typing stable under instantiation.
-    t-annot : ∀ {ctx : NamedCtx m} {e : RawExpr} {T : Type}
+    t-annot : ∀ {ctx : NamedCtx m} {e : RawExpr} {T : Type} {A : Ty m}
               {Ψ : Surface.Usage (NamedCtx.size ctx)}
             → RigidFree T
-            → ctx ⊢ᶜ e ∶ wk₀ T ⨾ Ψ   -- check sub in check mode
-            → ctx ⊢ᵢ RAnnot e T ∶ wk₀ T ⨾ Ψ
+            → ctx ⊢ᶜ e ∶ A ⨾ Ψ   -- check sub in check mode
+            → A ≡ wk₀ T
+            → ctx ⊢ᵢ RAnnot e T ∶ A ⨾ Ψ
 
     ----------------------------------------------------------------
     -- Pair introduction

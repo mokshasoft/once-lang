@@ -19,6 +19,7 @@
 --     and exhaustive.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 module Once.TypeCheck.Identities where
 
@@ -50,8 +51,7 @@ import Once.Internal.Typing.Scope as Classify
 
 -- Calling the classifier twice on the same RawExpr gives the same
 -- answer (trivially refl; stated for downstream use).
-classifyAppHead-deterministic :
-  ∀ (e : RawExpr) → classifyAppHead e ≡ classifyAppHead e
+classifyAppHead-deterministic : ∀ (e : RawExpr) → classifyAppHead e ≡ classifyAppHead e
 classifyAppHead-deterministic _ = refl
 
 ------------------------------------------------------------------------
@@ -59,8 +59,7 @@ classifyAppHead-deterministic _ = refl
 ------------------------------------------------------------------------
 
 -- Forward: if the Bool decision is true, decideLeq returns `just refl`.
-decideLeq-correct-true :
-  ∀ (q' q : Quantity)
+decideLeq-correct-true : ∀ (q' q : Quantity)
   → (q' ≤qᵇ q) ≡ true
   → ∃[ p ] decideLeq q' q ≡ just p
 decideLeq-correct-true Zero Zero _ = refl , refl
@@ -74,8 +73,7 @@ decideLeq-correct-true Many Zero ()
 decideLeq-correct-true Many One  ()
 
 -- Reverse: if decideLeq returns `just p`, the Bool decision is true.
-decideLeq-correct-just :
-  ∀ (q' q : Quantity) {p}
+decideLeq-correct-just : ∀ (q' q : Quantity) {p}
   → decideLeq q' q ≡ just p
   → (q' ≤qᵇ q) ≡ true
 decideLeq-correct-just Zero Zero _ = refl
@@ -89,8 +87,7 @@ decideLeq-correct-just Many Zero ()
 decideLeq-correct-just Many One  ()
 
 -- Forward: Bool decision false → decideLeq returns nothing.
-decideLeq-correct-false :
-  ∀ (q' q : Quantity)
+decideLeq-correct-false : ∀ (q' q : Quantity)
   → (q' ≤qᵇ q) ≡ false
   → decideLeq q' q ≡ nothing
 decideLeq-correct-false Zero Zero ()
@@ -104,8 +101,7 @@ decideLeq-correct-false Many Zero _ = refl
 decideLeq-correct-false Many One  _ = refl
 
 -- Reverse: decideLeq nothing → decision false.
-decideLeq-correct-nothing :
-  ∀ (q' q : Quantity)
+decideLeq-correct-nothing : ∀ (q' q : Quantity)
   → decideLeq q' q ≡ nothing
   → (q' ≤qᵇ q) ≡ false
 decideLeq-correct-nothing One  Zero _ = refl
@@ -123,8 +119,7 @@ decideLeq-correct-nothing Many Many ()
 ------------------------------------------------------------------------
 
 -- Every BinOp is either arithmetic or comparison, never both.
-binop-classification-exhaustive :
-  ∀ (op : BinOp) → (isArithmeticOp op ≡ true) ⊎ (isComparisonOp op ≡ true)
+binop-classification-exhaustive : ∀ (op : BinOp) → (isArithmeticOp op ≡ true) ⊎ (isComparisonOp op ≡ true)
 binop-classification-exhaustive OpAdd = inj₁ refl
 binop-classification-exhaustive OpSub = inj₁ refl
 binop-classification-exhaustive OpMul = inj₁ refl
@@ -138,8 +133,7 @@ binop-classification-exhaustive OpEq  = inj₂ refl
 binop-classification-exhaustive OpNe  = inj₂ refl
 
 -- Arithmetic and comparison are mutually exclusive.
-binop-classification-exclusive :
-  ∀ (op : BinOp)
+binop-classification-exclusive : ∀ (op : BinOp)
   → isArithmeticOp op ≡ true
   → isComparisonOp op ≡ true
   → ⊥
@@ -241,12 +235,11 @@ open import Once.Grammar using (GType)
 -- typeToGType is injective on its domain (restricted to grammar-
 -- expressible types): if two types map to the same GType, they're
 -- equal.
-typeToGType-injective :
-  ∀ {t₁ t₂ : Type} {g : GType}
+typeToGType-injective : ∀ {m} {t₁ t₂ : Ty m} {g : GType}
   → typeToGType t₁ ≡ just g
   → typeToGType t₂ ≡ just g
   → (gtypeToType g ≡ just t₁) × (gtypeToType g ≡ just t₂)
-typeToGType-injective {t₁} {t₂} {g} eq₁ eq₂ =
+typeToGType-injective {t₁ = t₁} {t₂ = t₂} {g = g} eq₁ eq₂ =
   typeToGType-gtypeToType t₁ g eq₁ , typeToGType-gtypeToType t₂ g eq₂
 
 ------------------------------------------------------------------------
@@ -336,8 +329,7 @@ open import Once.Type.Grade using (_⊔q_)
 ⊔q-assoc q₁ q₂ q₃ = Eq.sym (G.⊔q-assoc q₁ q₂ q₃)
 
 -- Left-distributivity: q₁ *q (q₂ +q q₃) ≡ (q₁ *q q₂) +q (q₁ *q q₃).
-*q-distrib-+q-left :
-  ∀ (q₁ q₂ q₃ : Quantity) → q₁ *q (q₂ +q q₃) ≡ (q₁ *q q₂) +q (q₁ *q q₃)
+*q-distrib-+q-left : ∀ (q₁ q₂ q₃ : Quantity) → q₁ *q (q₂ +q q₃) ≡ (q₁ *q q₂) +q (q₁ *q q₃)
 *q-distrib-+q-left Zero _    _    = refl
 *q-distrib-+q-left One  Zero Zero = refl
 *q-distrib-+q-left One  Zero One  = refl
@@ -480,13 +472,11 @@ open Once.Internal.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []�
 -- `extendNamedCtx` grows the context's size by exactly one.
 open Once.TypeCheck.Elaborate using ()
 
-extendNamedCtx-size :
-  ∀ (ctx : NamedCtx) (x : String) (T : Type)
+extendNamedCtx-size : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m)
   → Classify.NamedCtx.size (extendNamedCtx ctx x T) ≡ suc (Classify.NamedCtx.size ctx)
 extendNamedCtx-size _ _ _ = refl
 
 -- `extendNamedCtx` preserves the imports.
-extendNamedCtx-imports :
-  ∀ (ctx : NamedCtx) (x : String) (T : Type)
+extendNamedCtx-imports : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m)
   → Classify.NamedCtx.imports (extendNamedCtx ctx x T) ≡ Classify.NamedCtx.imports ctx
 extendNamedCtx-imports _ _ _ = refl

@@ -273,14 +273,14 @@ given-infer-route (t-float _ _ _ _) A π _ = refl
 given-infer-route t-unit A π _ = refl
 given-infer-route t-unit-var A π _ = refl
 given-infer-route (t-var-local _) A π _ = refl
-given-infer-route {ctx = ctx} (t-var-resolved {cn = cn} ng wn _ _) A π (_ , _ , _ , ok) =
+given-infer-route {ctx = ctx} (t-var-resolved {cn = cn} ng wn _ _ refl) A π (_ , _ , _ , ok) =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn)) ok
-given-infer-route {ctx = ctx} (t-var-own {x = x} _ _) A π (_ , _ , _ , ok) =
+given-infer-route {ctx = ctx} (t-var-own {x = x} _ _ refl) A π (_ , _ , _ , ok) =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
-given-infer-route (t-var-import _ _ _ _) A π _ = refl
+given-infer-route (t-var-import _ _ _ _ _) A π _ = refl
 given-infer-route {ctx = ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
-given-infer-route (t-annot _ _) A π _ = refl
+given-infer-route (t-annot _ _ _) A π _ = refl
 given-infer-route (t-pair _ _) A π _ = refl
 given-infer-route (t-neg _) A π _ = refl
 given-infer-route (t-neg-float _ _ _ _) A π _ = refl
@@ -632,22 +632,22 @@ mutual
   iFromInferSub {ctx = ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-local eqLocal)
     in checkElab-fallback-RVar {ctx} x T eqI sb
-  iFromInferSub {ctx = ctx} (t-var-resolved {cn = cn} {T = T} ng wn eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng wn eqImp conc)
+  iFromInferSub {ctx = ctx} (t-var-resolved {cn = cn} {T = T} ng wn eqImp conc refl) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng wn eqImp conc refl)
     in checkElab-fallback-RResolved {ctx} cn T eqI sb
-  iFromInferSub {ctx = ctx} (t-var-own {x = x} {T = T} ns eqImp) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-own ns eqImp)
+  iFromInferSub {ctx = ctx} (t-var-own {x = x} {T = T} ns eqImp refl) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-own ns eqImp refl)
     in checkElab-fallback-RResolved {ctx} (own x) T eqI sb
-  iFromInferSub {ctx = ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc)
+  iFromInferSub {ctx = ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc refl) sb =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc refl)
     in checkElab-fallback-RVar {ctx} x T eqI sb
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
   iFromInferSub {ctx = ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RResolved {ctx} (own x) T eqI sb
-  iFromInferSub (t-annot {e = e} {T = T} rf d) sb =
-    let (_ , _ , _ , eqI) = infer-complete (t-annot rf d)
+  iFromInferSub (t-annot {e = e} {T = T} rf d _) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-annot rf d refl)
     in checkElab-fallback-RAnnot e T eqI sb
   -- INTRO form: pair components were synthesized (d₁/d₂ : ⊢ᵢ) but `checkPairLit`
   -- re-CHECKS them — recurse the SWITCH on the genuine sub-derivations.
@@ -739,11 +739,11 @@ mutual
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
   infer-complete {ctx} (t-var-local {x = x} eqLocal) =
     infer-complete-RVar-local {ctx} x eqLocal
-  infer-complete {ctx} (t-var-resolved {cn = cn} ng wn eqImp conc) =
+  infer-complete {ctx} (t-var-resolved {cn = cn} ng wn eqImp conc _) =
     infer-complete-RResolved {ctx} {cn} ng wn eqImp conc
-  infer-complete {ctx} (t-var-own ns eqImp) =
+  infer-complete {ctx} (t-var-own ns eqImp refl) =
     infer-complete-RResolved-own {ctx} ns eqImp
-  infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc) =
+  infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc _) =
     infer-complete-RVar-import {ctx} x ¬gw eqLoc eqImp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the
   -- type-pin equation as `refl` aligns the conclusion `T` with the declared
@@ -754,7 +754,7 @@ mutual
     checkElab-fallback-RVar-poly-infer {ctx} x eqLoc eqImp
       (lookupPolyPrefix⇒lookupPoly (Classify.NamedCtx.polys ctx) x polyE)
       (isGround-complete-at schema g)
-  infer-complete (t-annot {e = e} {T = T} rf d) =
+  infer-complete (t-annot {e = e} {T = T} rf d _) =
     let (_ , _ , _ , eqC) = check-complete d
     in infer-complete-RAnnot e T rf eqC
   infer-complete (t-pair {a = a} {b = b} d₁ d₂) =

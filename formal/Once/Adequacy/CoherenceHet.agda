@@ -84,10 +84,11 @@ private
   cod-≡ refl = refl
 
   variable
+    mᵥ : ℕ
     n : ℕ
     Γ : ∀ {m} → Ctx m n
     Ψ Ψ′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Ψ₃ Ψ₃′ : Usage n
-    A A′ A₀ B B′ B₁ C C′ C₁ M T₀ X : ∀ {m} → Ty m
+    A A′ A₀ B B′ B₁ C C′ C₁ M T₀ X : Ty mᵥ
     π π′ π₀ : Purity
     q q′ q₁ q₁′ : Quantity
     e e₁ e₂ : RawExpr
@@ -377,22 +378,22 @@ module _ {ctx : NamedCtx} where
     resolved-go : ∀ {m} {T T′ : Ty m} {cn} (eT : just T ≡ just T′) (n n′ : NotGenerator cn) (wn wn′ : WordName cn)
                     (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T)
                     (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c : IsConcrete T) (c′ : IsConcrete T′)
-                → RI (t-var-resolved {ctx = ctx} n wn l c) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′)
+                → RI (t-var-resolved {ctx = ctx} n wn l c _) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
     resolved-go refl n n′ wn wn′ l l′ c c′ rewrite IsConcrete-irrelevant c c′ = ≅-refl
 
   resolved-h : ∀ {m} {T T′ : Ty m} {cn} (n : NotGenerator cn) (wn : WordName cn) (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T) (c : IsConcrete T)
                  (n′ : NotGenerator cn) (wn′ : WordName cn) (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c′ : IsConcrete T′)
-             → RI (t-var-resolved {ctx = ctx} n wn l c) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′)
+             → RI (t-var-resolved {ctx = ctx} n wn l c _) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
   resolved-h {cn = cn} n wn l c n′ wn′ l′ c′ = resolved-go {cn = cn} (trans (sym l) l′) n n′ wn wn′ l l′ c c′
 
   private
     own-go : ∀ {m} {T T′ : Ty m} {x ns ns′} (eT : just T ≡ just T′)
                (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-           → RI (t-var-own {ctx = ctx} ns l) ≅ RI (t-var-own {ctx = ctx} ns′ l′)
+           → RI (t-var-own {ctx = ctx} ns l _) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
     own-go refl l l′ = ≅-refl
 
   own-h : ∀ {m} {T T′ : Ty m} {x ns ns′} (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-        → RI (t-var-own {ctx = ctx} ns l) ≅ RI (t-var-own {ctx = ctx} ns′ l′)
+        → RI (t-var-own {ctx = ctx} ns l _) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
   own-h {ns = ns} {ns′ = ns′} l l′ = own-go {ns = ns} {ns′} (trans (sym l) l′) l l′
 
   private
@@ -408,11 +409,11 @@ module _ {ctx : NamedCtx} where
   private
     import-go : ∀ {x T T′ g g′ ln ln′ c c′} (eT : just T ≡ just T′)
                   (i : lookupImport (NamedCtx.imports ctx) x ≡ just T) (i′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-              → RI (t-var-import {ctx = ctx} g ln i c) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′)
+              → RI (t-var-import {ctx = ctx} g ln i c _) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
     import-go refl i i′ = ≅-refl
 
   import-h : ∀ {x T T′ g g′ ln ln′ c c′} (i : lookupImport (NamedCtx.imports ctx) x ≡ just T) (i′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-           → RI (t-var-import {ctx = ctx} g ln i c) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′)
+           → RI (t-var-import {ctx = ctx} g ln i c _) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
   import-h {g = g} {g′} {ln} {ln′} {c} {c′} i i′ = import-go {g = g} {g′} {ln} {ln′} {c} {c′} (trans (sym i) i′) i i′
 
   private
