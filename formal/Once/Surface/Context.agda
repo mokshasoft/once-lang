@@ -36,6 +36,6 @@ zeroUsage?-just {0}       = refl
 zeroUsage?-just {ℕ.suc n} rewrite zeroUsage?-just {n} = refl
 
 -- | Does a usage respect the context's declared quantities?
-_≤ᵘ?_ : ∀ {n} → Usage n → Ctx n → Bool
+_≤ᵘ?_ : ∀ {m} {n} → Usage n → Ctx m n → Bool
 [] ≤ᵘ? ∅ = true
 (q ∷ ψ) ≤ᵘ? (Γ , A ^ q') = (q ≤qᵇ q') ∧ (ψ ≤ᵘ? Γ)

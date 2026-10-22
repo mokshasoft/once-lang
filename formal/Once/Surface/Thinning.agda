@@ -14,6 +14,7 @@
 
 module Once.Surface.Thinning where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Nat as Nat using ()
 open import Data.Nat.Properties using (+-identityʳ; +-suc)
@@ -37,16 +38,16 @@ open import Once.Surface.Context as Surface
 -- A thinning from Γ to Δ says "Γ's variables appear in Δ in order,
 -- but Δ may have extra variables interspersed."
 
-data _⊆_ : ∀ {n m} → SCtx n → SCtx m → Set where
+data _⊆_ {k} : ∀ {n m} → SCtx k n → SCtx k m → Set where
   -- Empty context embeds into empty context
   done : S∅ ⊆ S∅
 
   -- Skip: Δ has an extra variable that Γ doesn't have
-  skip : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m} {A : Type} {q : Quantity}
+  skip : ∀ {n m} {Γ : SCtx k n} {Δ : SCtx k m} {A : Ty k} {q : Quantity}
        → Γ ⊆ Δ → Γ ⊆ (_S,_^_ Δ A q)
 
   -- Keep: both contexts have the same variable at this position
-  keep : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m} {A : Type} {q : Quantity}
+  keep : ∀ {n m} {Γ : SCtx k n} {Δ : SCtx k m} {A : Ty k} {q : Quantity}
        → Γ ⊆ Δ → (_S,_^_ Γ A q) ⊆ (_S,_^_ Δ A q)
 
 infixr 4 _⊆_
@@ -56,12 +57,12 @@ infixr 4 _⊆_
 ------------------------------------------------------------------------
 
 -- Identity thinning: Γ ⊆ Γ
-⊆-refl : ∀ {n} {Γ : SCtx n} → Γ ⊆ Γ
+⊆-refl : ∀ {m} {n} {Γ : SCtx m n} → Γ ⊆ Γ
 ⊆-refl {Γ = S∅}            = done
 ⊆-refl {Γ = _S,_^_ Γ' _ _} = keep ⊆-refl
 
 -- Weakening thinning: Γ ⊆ (Γ , A ^ q)
-⊆-wk : ∀ {n} {Γ : SCtx n} {A : Type} {q : Quantity} → Γ ⊆ (Γ S, A ^ q)
+⊆-wk : ∀ {m} {n} {Γ : SCtx m n} {A : Ty m} {q : Quantity} → Γ ⊆ (Γ S, A ^ q)
 ⊆-wk = skip ⊆-refl
 
 ------------------------------------------------------------------------
@@ -69,14 +70,14 @@ infixr 4 _⊆_
 ------------------------------------------------------------------------
 
 -- Apply thinning to a variable index
-thin-var : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-var : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
          → Γ ⊆ Δ → Fin n → Fin m
 thin-var (skip θ) i       = suc (thin-var θ i)
 thin-var (keep θ) zero    = zero
 thin-var (keep θ) (suc i) = suc (thin-var θ i)
 
 -- Key lemma: thinning preserves lookup
-thin-var-lookup : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-var-lookup : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
                 → (θ : Γ ⊆ Δ) → (i : Fin n)
                 → lookup Γ i ≡ lookup Δ (thin-var θ i)
 thin-var-lookup (skip θ) i       = thin-var-lookup θ i
@@ -90,7 +91,7 @@ thin-var-lookup (keep θ) (suc i) = thin-var-lookup θ i
 -- Apply a thinning to a usage vector.
 -- skip inserts Zero at the new position (the skipped variable is unused).
 -- keep copies the head, recurses on the tail.
-thin-usage : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-usage : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
            → Γ ⊆ Δ → Usage n → Usage m
 thin-usage done     []        = []
 thin-usage (skip θ) Ψ         = Zero ∷ thin-usage θ Ψ
@@ -98,7 +99,7 @@ thin-usage (keep θ) (q ∷ Ψ)  = q ∷ thin-usage θ Ψ
 
 -- Distribution lemmas: thin-usage commutes with QTT usage arithmetic.
 
-thin-usage-+ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-usage-+ᵘ : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
               → (θ : Γ ⊆ Δ) (Ψ₁ Ψ₂ : Usage n)
               → thin-usage θ (Ψ₁ +ᵘ Ψ₂) ≡ thin-usage θ Ψ₁ +ᵘ thin-usage θ Ψ₂
 thin-usage-+ᵘ done     [] []               = refl
@@ -107,7 +108,7 @@ thin-usage-+ᵘ (skip θ) Ψ₁ Ψ₂
 thin-usage-+ᵘ (keep θ) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂)
   rewrite thin-usage-+ᵘ θ Ψ₁ Ψ₂             = refl
 
-thin-usage-*ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-usage-*ᵘ : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
               → (θ : Γ ⊆ Δ) (q : Quantity) (Ψ : Usage n)
               → thin-usage θ (q *ᵘ Ψ) ≡ q *ᵘ thin-usage θ Ψ
 thin-usage-*ᵘ done     q []                 = refl
@@ -122,7 +123,7 @@ thin-usage-*ᵘ {Γ = Γ} {Δ = Δ S, _ ^ _} (skip θ) q Ψ
 thin-usage-*ᵘ (keep θ) q (q' ∷ Ψ)
   rewrite thin-usage-*ᵘ θ q Ψ               = refl
 
-thin-usage-⊔ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-usage-⊔ᵘ : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
               → (θ : Γ ⊆ Δ) (Ψ₁ Ψ₂ : Usage n)
               → thin-usage θ (Ψ₁ ⊔ᵘ Ψ₂) ≡ thin-usage θ Ψ₁ ⊔ᵘ thin-usage θ Ψ₂
 thin-usage-⊔ᵘ done     [] []               = refl
@@ -132,25 +133,25 @@ thin-usage-⊔ᵘ (keep θ) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂)
   rewrite thin-usage-⊔ᵘ θ Ψ₁ Ψ₂             = refl
 
 -- D276: thinning is monotone in the usage order (a skipped slot is `Zero`).
-thin-usage-⊑ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-usage-⊑ᵘ : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
               → (θ : Γ ⊆ Δ) {Ψ Ψ′ : Usage n}
               → Ψ ⊑ᵘ Ψ′ → thin-usage θ Ψ ⊑ᵘ thin-usage θ Ψ′
 thin-usage-⊑ᵘ done     ⊑[]       = ⊑[]
 thin-usage-⊑ᵘ (skip θ) p         = z≤z ⊑∷ thin-usage-⊑ᵘ θ p
 thin-usage-⊑ᵘ (keep θ) (q ⊑∷ p)  = q ⊑∷ thin-usage-⊑ᵘ θ p
 
-thin-usage-zeroUsage : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-usage-zeroUsage : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
                      → (θ : Γ ⊆ Δ) → thin-usage θ (zeroUsage {n}) ≡ zeroUsage {m}
 thin-usage-zeroUsage done     = refl
 thin-usage-zeroUsage (skip θ) = cong (Zero ∷_) (thin-usage-zeroUsage θ)
 thin-usage-zeroUsage (keep θ) = cong (Zero ∷_) (thin-usage-zeroUsage θ)
 
-thin-usage-refl : ∀ {n} {Γ : SCtx n} (Ψ : Usage n)
+thin-usage-refl : ∀ {m} {n} {Γ : SCtx m n} (Ψ : Usage n)
                 → thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ
 thin-usage-refl {Γ = S∅} []                = refl
 thin-usage-refl {Γ = _ S, _ ^ _} (q ∷ Ψ)  = cong (q ∷_) (thin-usage-refl Ψ)
 
-thin-usage-singleUse : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+thin-usage-singleUse : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
                      → (θ : Γ ⊆ Δ) (i : Fin n) (q : Quantity)
                      → thin-usage θ (singleUse i q) ≡ singleUse (thin-var θ i) q
 thin-usage-singleUse done     ()       q

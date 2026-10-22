@@ -123,12 +123,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 ------------------------------------------------------------------------
 
 -- | Subusaging is reflexive
-≤ᵘ?-refl : ∀ {n} (Γ : Ctx n) → zeroUsage ≤ᵘ? Γ ≡ true
+≤ᵘ?-refl : ∀ {m} {n} (Γ : Ctx m n) → zeroUsage ≤ᵘ? Γ ≡ true
 ≤ᵘ?-refl ∅ = refl
 ≤ᵘ?-refl (Γ , A ^ q) = cong (true ∧_) (≤ᵘ?-refl Γ)
 
 -- | Zero usage satisfies any context
-≤ᵘ?-zero : ∀ {n} (Γ : Ctx n) → zeroUsage ≤ᵘ? Γ ≡ true
+≤ᵘ?-zero : ∀ {m} {n} (Γ : Ctx m n) → zeroUsage ≤ᵘ? Γ ≡ true
 ≤ᵘ?-zero ∅ = refl
 ≤ᵘ?-zero (Γ , A ^ q) = cong (true ∧_) (≤ᵘ?-zero Γ)
 -- | ERASURE AT THE USAGE LEVEL (D143) — the Once analogue of `NbEPQTTJ`'s

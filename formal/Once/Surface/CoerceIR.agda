@@ -22,6 +22,7 @@
 
 module Once.Surface.CoerceIR where
 
+open import Once.Spec.Type using (Ty)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; subst)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Grade as T using (Zero; One; Many)
@@ -47,7 +48,7 @@ wrapArr f g = curry (g ∘ (apply ∘ ⟨ fst , f ∘ snd ⟩))
 wrapArr₀ : ∀ {Y Y′} → IR Y Y′ → IR (Unit ⇛ Y) (Unit ⇛ Y′)
 wrapArr₀ g = curry (g ∘ apply)
 
-coeIR : ∀ {A B} → A <: B → IR ⌊ A ⌋ ⌊ B ⌋
+coeIR : ∀ {m} {A B : Ty m} → A <: B → IR ⌊ A ⌋ ⌊ B ⌋
 coeIR sub-void   = initial
 coeIR sub-unit   = id
 coeIR sub-int    = id
@@ -59,16 +60,18 @@ coeIR (sub-prod a b) = ⟨ coeIR a ∘ fst , coeIR b ∘ snd ⟩
 coeIR (sub-sum a b)  = case (inl ∘ coeIR a) (inr ∘ coeIR b)
 coeIR sub-μ = id
 coeIR (sub-ν _) = id
+coeIR sub-var = id
 
 ------------------------------------------------------------------------
 -- Void-free derivations relate types with the same IR type.
 ------------------------------------------------------------------------
 
-data VoidFree : ∀ {A B : T.Type} → A <: B → Set where
+data VoidFree {m} : ∀ {A B : Ty m} → A <: B → Set where
   vf-void   : VoidFree (sub-void {B = T.Void})
   vf-unit   : VoidFree sub-unit
   vf-int    : VoidFree sub-int
   vf-float  : VoidFree sub-float
+  vf-var    : ∀ {i} → VoidFree (sub-var {i = i})
   vf-arr    : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
             → VoidFree a → VoidFree b → VoidFree (sub-arr {q = q} a b g)
   vf-prod   : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
@@ -84,22 +87,22 @@ private
   two k π₁ π₂ (no ¬p) _       = no λ r → ¬p (π₁ r)
   two k π₁ π₂ (yes _) (no ¬q) = no λ r → ¬q (π₂ r)
 
-  arr-a : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
+  arr-a : ∀ {m} {A A′ B B′ : Ty m} {q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
         → VoidFree (sub-arr {q = q} a b g) → VoidFree a
   arr-a (vf-arr va _) = va
-  arr-b : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
+  arr-b : ∀ {m} {A A′ B B′ : Ty m} {q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
         → VoidFree (sub-arr {q = q} a b g) → VoidFree b
   arr-b (vf-arr _ vb) = vb
-  prod-a : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree a
+  prod-a : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree a
   prod-a (vf-prod va _) = va
-  prod-b : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree b
+  prod-b : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree b
   prod-b (vf-prod _ vb) = vb
-  sum-a : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree a
+  sum-a : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree a
   sum-a (vf-sum va _) = va
-  sum-b : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree b
+  sum-b : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree b
   sum-b (vf-sum _ vb) = vb
 
-voidFree? : ∀ {A B} (p : A <: B) → Dec (VoidFree p)
+voidFree? : ∀ {m} {A B : Ty m} (p : A <: B) → Dec (VoidFree p)
 voidFree? (sub-void {B = T.Void})         = yes vf-void
 voidFree? (sub-void {B = T.Unit})         = no λ ()
 voidFree? (sub-void {B = T.Int})          = no λ ()
@@ -117,13 +120,16 @@ voidFree? (sub-prod a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b
 voidFree? (sub-sum a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
 voidFree? sub-μ = yes vf-μ
 voidFree? (sub-ν _) = yes vf-ν
+voidFree? sub-var = yes vf-var
+voidFree? (sub-void {B = T.var _})        = no λ ()
 
 -- For every CONCRETE derivation this reduces to `refl`.
-erase-eq : ∀ {A B} (p : A <: B) → VoidFree p → ⌊ A ⌋ ≡ ⌊ B ⌋
+erase-eq : ∀ {m} {A B : Ty m} (p : A <: B) → VoidFree p → ⌊ A ⌋ ≡ ⌊ B ⌋
 erase-eq _ vf-void   = refl
 erase-eq _ vf-unit   = refl
 erase-eq _ vf-int    = refl
 erase-eq _ vf-float  = refl
+erase-eq _ vf-var    = refl
 erase-eq (sub-arr {q = Zero} a b _) (vf-arr va vb) = cong (Unit ⇛_) (erase-eq b vb)
 erase-eq (sub-arr {q = One}  a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
 erase-eq (sub-arr {q = Many} a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
@@ -136,9 +142,9 @@ erase-eq _ vf-ν = refl
 -- What `elaborate (coerce p e)` emits.
 ------------------------------------------------------------------------
 
-runCoe-dec : ∀ {Z A B} (p : A <: B) → Dec (VoidFree p) → IR Z ⌊ A ⌋ → IR Z ⌊ B ⌋
+runCoe-dec : ∀ {m} {A B : Ty m} {Z} (p : A <: B) → Dec (VoidFree p) → IR Z ⌊ A ⌋ → IR Z ⌊ B ⌋
 runCoe-dec p (yes vf) f = subst (IR _) (erase-eq p vf) f
 runCoe-dec p (no _)   f = coeIR p ∘ f
 
-runCoe : ∀ {Z A B} → A <: B → IR Z ⌊ A ⌋ → IR Z ⌊ B ⌋
+runCoe : ∀ {m} {A B : Ty m} {Z} → A <: B → IR Z ⌊ A ⌋ → IR Z ⌊ B ⌋
 runCoe p f = runCoe-dec p (voidFree? p) f

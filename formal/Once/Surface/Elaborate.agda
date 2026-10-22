@@ -10,6 +10,7 @@
 
 module Once.Surface.Elaborate where
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
@@ -18,7 +19,7 @@ open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.IR
-open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; ⌊⟧T-commute; base-Unit)
+open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; ⌊⟧T-commute; ⌊wk₀⌋)
 open import Once.IR.Ref using (refIR)
 open import Once.Internal.Context
 open import Once.Surface.Context
@@ -48,7 +49,7 @@ open import Data.Integer using (ℤ)
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
 open import Once.Arith.SigOp.Builders
 open import Once.Spec.Name using (bare)
-open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
+open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF; IsConcrete)
 
 -- Literals: constant morphisms that ignore input environment.
 --
@@ -154,7 +155,7 @@ neIR = SigOp ne-info
 -- Given context (Γ, A), index 0 projects A (using snd),
 -- index n+1 projects from Γ (using fst then recursing).
 --
-proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
+proj : ∀ {m} {n} {Γ : Ctx m n} (i : Fin n) → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
 proj {Γ = Γ , A ^ q} Fin.zero    = snd
 proj {Γ = Γ , A ^ q} (Fin.suc i) = proj {Γ = Γ} i ∘ fst
 
@@ -167,7 +168,7 @@ proj {Γ = Γ , A ^ q} (Fin.suc i) = proj {Γ = Γ} i ∘ fst
 --
 -- A projection chain by construction: `fst` where the variable is dropped,
 -- `⟨ … ∘ fst , snd ⟩` where it is kept.
-restrictEnv : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (m : AllocMode)
+restrictEnv : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ Ψ' : Usage n} (m : AllocMode)
             → Ψ' ⊑ᵘ Ψ → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ' ⟧ᶜ ⌋
 restrictEnv {Γ = ∅}         m ⊑[]                    = id
 -- dropped on both sides — the variable is in neither environment
@@ -194,7 +195,7 @@ restrictEnv {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m
 -- Compare `proj`, which walked `proj i ∘ fst ∘ fst ∘ …` because the whole
 -- context was carried. Here a variable reference costs ONE `snd` whatever its
 -- de Bruijn index.
-projUsed : ∀ {n} {Γ : Ctx n} (i : Fin n)
+projUsed : ∀ {m} {n} {Γ : Ctx m n} (i : Fin n)
          → IR ⌊ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
 projUsed {Γ = Γ , A ^ q} Fin.zero    = snd
 projUsed {Γ = Γ , A ^ q} (Fin.suc i) = projUsed {Γ = Γ} i
@@ -202,18 +203,18 @@ projUsed {Γ = Γ , A ^ q} (Fin.suc i) = projUsed {Γ = Γ} i
 -- | The two narrowings every binary clause needs: feed the left branch the
 --   variables `Ψ₁` uses and the right branch those `Ψ₂` uses, out of an
 --   environment holding `Ψ₁ +ᵘ Ψ₂`.
-envˡ : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
+envˡ : ∀ {mₜ} {n} {Γ : Ctx mₜ n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
      → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋
 envˡ {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
 
-envʳ : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
+envʳ : ∀ {mₜ} {n} {Γ : Ctx mₜ n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
      → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋
 envʳ {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-+ʳ Ψ₁ Ψ₂)
 
 -- D232: the right component of `Ψ₁ +ᵘ Many *ᵘ Ψ₂` — an ARGUMENT scaled by an
 -- ω-graded consumer (`comp'`'s inner arm, `effApp`'s argument). The same
 -- restriction the `app`-at-`Many` clause uses.
-envʳω : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
+envʳω : ∀ {mₜ} {n} {Γ : Ctx mₜ n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
       → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋
 envʳω {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂)))
 
@@ -224,7 +225,7 @@ envʳω {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-
 --
 --   Factored out because `lam`, `case'` and `let'` all need it — writing it per
 --   clause would mean 3 x 3 combinations at `case'` alone.
-bindEnv : ∀ {n} {Γ : Ctx n} {Ψ' : Usage n} {A} (m : AllocMode) (q : Quantity)
+bindEnv : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ' : Usage n} {A : Ty mₜ} (m : AllocMode) (q : Quantity)
         → IR (⌊ ⟦ Γ ↾ Ψ' ⟧ᶜ ⌋ * ⌊ A ⌋) ⌊ ⟦ (Γ , A) ↾ (q ∷ Ψ') ⟧ᶜ ⌋
 bindEnv {Γ = Γ} m Zero = fst
 bindEnv {Γ = Γ} m One  = id
@@ -311,9 +312,9 @@ forkIR m = curry (⟨ apply ∘ ⟨ fst ∘ fst , snd ⟩
 curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛ C) (A ⇛ (B ⇛ C))
 curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ ⟩))
 
-cataM : ∀ {F : Functor} {A : Type} → WellFormedF F → AllocMode
+cataM : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F → AllocMode
       → IR (⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) (⌊ μ-type F ⌋ ⇛ ⌊ A ⌋)
-cataM {F} {A} wfF m =
+cataM {F = F} {A = A} wfF m =
   curry (Cata (wf-⌊⌋ wfF)
               (subst (λ o → IR ((⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) * o) ⌊ A ⌋)
                      (⌊⟧T-commute F A)
@@ -322,9 +323,9 @@ cataM {F} {A} wfF m =
 -- D273: `cataM`'s mirror. The coalgebra CLOSURE is the environment of the
 -- parameterized `Ana`, so the arm is evaluated once and applied per forced
 -- layer, and it may capture locals.
-anaM : ∀ {F : Functor} {A : Type} {φ : Finite} → WellFormedF F → AllocMode
+anaM : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {φ : Finite} → WFFun Δₖ F → AllocMode
      → IR (⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) (⌊ A ⌋ ⇛ ⌊ ν-type F φ ⌋)
-anaM {F} {A} wfF m =
+anaM {F = F} {A = A} wfF m =
   curry (Ana (wf-⌊⌋ wfF)
              (subst (λ o → IR ((⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) * ⌊ A ⌋) o)
                     (⌊⟧T-commute F A)
@@ -332,13 +333,29 @@ anaM {F} {A} wfF m =
 
 -- The loop (D317/D319): the round CLOSURE is the environment of `Iter`, so
 -- the round is obtained once and applied per iteration (`anaM`'s shape).
-loopM : ∀ {A B : Type} → AllocMode → IR (⌊ A ⌋ ⇛ ⌊ B + A ⌋) (⌊ A ⌋ ⇛ ⌊ B ⌋)
+loopM : ∀ {m} {A B : Ty m} → AllocMode → IR (⌊ A ⌋ ⇛ ⌊ B + A ⌋) (⌊ A ⌋ ⇛ ⌊ B ⌋)
 loopM m = curry (Iter (apply ∘ ⟨ fst , snd ⟩))
 
 -- D142 / plan 0.86 step B: the environment is `Γ ↾ Ψ` — EXACTLY the variables
 -- this term uses — not the whole context. A dead variable cannot be in the
 -- environment product because it was never put there.
-elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ A ⌋
+-- An external operation's IR, at its ground type (the term carries it read
+-- over the definition's type variables, `wk₀ A`, which erases the same).
+sigOpIR : ∀ {X} (A : Type) → Once.Spec.Name.CanonicalName → IsConcrete A → IR X ⌊ A ⌋
+sigOpIR (Dom ⇒[ mk-kind Zero pure ] Cod) name (con-fun bDom cCod) =
+  curry (SigOp (value-info name base-Unit cCod) ∘ snd)
+sigOpIR (Dom ⇒[ mk-kind Zero eff ] Cod) name (con-fun bDom cCod) =
+  curry (SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod) ∘ snd)
+sigOpIR (Dom ⇒[ mk-kind Zero act ] Cod) name (con-fun bDom cCod) =
+  curry (SigOp (arrow-info (mk-kind Zero act) name base-Unit cCod) ∘ snd)
+sigOpIR (Dom ⇒[ mk-kind One π ] Cod) name (con-fun bDom cCod) =
+  curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd)
+sigOpIR (Dom ⇒[ mk-kind Many π ] Cod) name (con-fun bDom cCod) =
+  curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd)
+{-# CATCHALL #-}
+sigOpIR _ name (con-base ib) = SigOp (value-info name base-Unit ib) ∘ terminal
+
+elaborate : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ A ⌋
 
 -- Variable: project from environment
 elaborate {Γ = Γ} m (var i) = projUsed {Γ = Γ} i
@@ -555,18 +572,7 @@ elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ 
 -- still a call (D250: only `pure` is referentially transparent) — the call's
 -- argument slot is `Unit`, the erased argument; `arrow-sem` then decides call /
 -- emit / halt from the codomain, as for every effectful SigOp.
-elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero pure ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (value-info name base-Unit cCod) ∘ snd)
-elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero eff ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod) ∘ snd)
-elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero act ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info (mk-kind Zero act) name base-Unit cCod) ∘ snd)
-elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd)
-elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd)
-{-# CATCHALL #-}
-elaborate {Γ = Γ} m (sigOp name (con-base ib)) = SigOp (value-info name base-Unit ib) ∘ terminal
+elaborate {Γ = Γ} m (sigOp {A = A} name c) = subst (IR _) (sym (⌊wk₀⌋ A)) (sigOpIR A name c)
 -- Plan 0.19 / D245: a reference to one of the program's own definitions CALLS
 -- its table entry, `once_<name>`, at the direct-call ABI codegen emits (D064):
 -- `refIR` (Once.IR.Ref). It is not a SigOp: a SigOp means the contract it
@@ -624,7 +630,7 @@ elaborate m (ana {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {φ = φ} wfF coalg) =
 
 -- The loop: the round is obtained once, as `ana`'s coalgebra.
 elaborate m (loop {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} round) =
-  loopM {A} {B} m ∘ (elaborate m round ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
+  loopM {A = A} {B = B} m ∘ (elaborate m round ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-*Many Ψ))
 
 -- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
 --   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`
@@ -634,7 +640,7 @@ elaborate m (loop {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} round) =
 --       erase (Γ ▷[ 𝟙 ] A) = pair (erase Γ ⊙ fstT) sndT
 --
 --   Callers that hold a full environment go through this to reach `elaborate`.
-eraseCtx : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ : Usage n)
+eraseCtx : ∀ {mₜ} {n} {Γ : Ctx mₜ n} (m : AllocMode) (Ψ : Usage n)
          → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋
 eraseCtx {Γ = ∅}         m []         = id
 eraseCtx {Γ = Γ , A ^ q} m (Zero ∷ Ψ) = eraseCtx {Γ = Γ} m Ψ ∘ fst
@@ -644,12 +650,12 @@ eraseCtx {Γ = Γ , A ^ q} m (Many ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst
 -- | Elaboration against the FULL environment — `elaborate` composed with the
 --   phase projection. This is the signature every existing caller expects, so
 --   the environment-precision change stays inside this module.
-elaborateFull : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+elaborateFull : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
               → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
 elaborateFull {Γ = Γ} {Ψ = Ψ} m e = elaborate m e ∘ eraseCtx {Γ = Γ} m Ψ
 
 -- | Historical default: Heap allocation.
-elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
+elaborate-default : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
 elaborate-default = elaborateFull Heap
 
 -- | Historical-default distribute (Heap). Used by `Once.Surface.Correct`,

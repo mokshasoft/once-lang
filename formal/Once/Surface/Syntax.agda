@@ -13,7 +13,7 @@ module Once.Surface.Syntax where
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Spec.Sub using (_<:_)
@@ -51,22 +51,22 @@ open import Once.Surface.Context
 --
 -- Uses de Bruijn indices for variables.
 --
-data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
+data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- Variable reference (de Bruijn index) — uses itself exactly once.
-  var   : ∀ {n} {Γ : Ctx n} (i : Fin n) → Expr Γ (singleUse i One) (lookup Γ i)
+  var   : ∀ {n} {Γ : Ctx m n} (i : Fin n) → Expr Γ (singleUse i One) (lookup Γ i)
 
   -- Lambda abstraction with quantity annotation.
   -- The body's head-usage q' must be ≤ the declared arrow grade q
   -- (sub-usage allowed: linear-use body accepted under ω-declared arrow).
   -- The explicit proof argument is the linearity-by-construction witness:
   -- no term violating its declared usage discipline can be built.
-  lam   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {q' : Quantity} {π : Purity} {A B} (q : Quantity)
+  lam   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {q' : Quantity} {π : Purity} {A B} (q : Quantity)
         → (q' ≤qᵇ q) ≡ true
         → Expr (Γ , A) (q' ∷ Ψ) B
         → Expr Γ Ψ (A ⇒[ mk-kind q π ] B)
 
   -- Application (pure function) — argument usage scales by arrow grade q.
-  app   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} {q : Quantity}
+  app   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B} {q : Quantity}
         → Expr Γ Ψ₁ (A ⇒[ mk-kind q pure ] B)
         → Expr Γ Ψ₂ A
         → Expr Γ (Ψ₁ +ᵘ (q *ᵘ Ψ₂)) B
@@ -85,46 +85,46 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- — see `Once.Surface.Elaborate` for the structural translation and
   -- `Once.Surface.Correct` for the correctness proof.
   -- D313: at either effectful grade a program writes (`act`, `eff`).
-  effApp : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} {π} {g : EffGrade π}
+  effApp : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B} {π} {g : EffGrade π}
          → Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) (Unit ⇒[ mk-kind Many π ] B)
 
   -- Pair introduction — both components consumed.
-  pair  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
+  pair  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B}
         → Expr Γ Ψ₁ A → Expr Γ Ψ₂ B → Expr Γ (Ψ₁ +ᵘ Ψ₂) (A * B)
 
   -- Pair elimination — same usage as the pair itself.
-  fst'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A * B) → Expr Γ Ψ A
-  snd'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A * B) → Expr Γ Ψ B
+  fst'  : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A * B) → Expr Γ Ψ A
+  snd'  : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A * B) → Expr Γ Ψ B
 
   -- Sum introduction — same usage as the injected component.
-  inl'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ A → Expr Γ Ψ (A + B)
-  inr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ B → Expr Γ Ψ (A + B)
+  inl'  : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B} → Expr Γ Ψ A → Expr Γ Ψ (A + B)
+  inr'  : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B} → Expr Γ Ψ B → Expr Γ Ψ (A + B)
 
   -- Sum elimination (case): scrutinee used, branches combined by per-position
   -- max (⊔ᵘ) since exactly one branch runs. Bound branch-variables'
   -- head-usages (qℓ, qr) pop off at the constructor.
-  case' : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {A B C}
+  case' : ∀ {n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {A B C}
         → Expr Γ Ψs (A + B)
         → Expr (Γ , A) (qℓ ∷ Ψₗ) C
         → Expr (Γ , B) (qr ∷ Ψᵣ) C
         → Expr Γ (Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ)) C
 
   -- Unit introduction — uses nothing.
-  unit  : ∀ {n} {Γ : Ctx n} → Expr Γ zeroUsage Unit
+  unit  : ∀ {n} {Γ : Ctx m n} → Expr Γ zeroUsage Unit
 
   -- Void elimination — same usage as the absurd proof.
-  absurd : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ Void → Expr Γ Ψ A
+  absurd : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A} → Expr Γ Ψ Void → Expr Γ Ψ A
 
   -- Let binding: let x = e₁ in e₂ — sugar for (λ^q x. e₂) e₁ where q is
   -- the head-usage of the body. RHS usage scales by q; the body's head
   -- (the bound variable) pops off into Ψ₂.
-  let'  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {A B}
+  let'  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {A B}
         → Expr Γ Ψ₁ A
         → Expr (Γ , A) (q ∷ Ψ₂) B
         → Expr Γ (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) B
 
   -- Literals — use no variables.
-  int   : ∀ {n} {Γ : Ctx n} → ℤ → Expr Γ zeroUsage Int
+  int   : ∀ {n} {Γ : Ctx m n} → ℤ → Expr Γ zeroUsage Int
 
   -- A float literal is JUST THE DECIMAL (plan 0.74 K0/K3, D116).
   --
@@ -140,43 +140,43 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- wrapping arithmetic (D054). So there is nothing left for the witness to
   -- rule out, and `round` closes the hole the witness was guarding: it cannot
   -- silently truncate, because it delivers a significand the format holds.
-  float : ∀ {n} {Γ : Ctx n} (d : Decimal) → Expr Γ zeroUsage Float
+  float : ∀ {n} {Γ : Ctx m n} (d : Decimal) → Expr Γ zeroUsage Float
 
   -- Arithmetic (Int → Int → Int)
-  add   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-  sub   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-  mul   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  add   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  sub   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  mul   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
   -- PLAN 0.75 F4: the same three at the second numeric type. SEPARATE
   -- constructors rather than a `NumType`-indexed one: `add` and `fadd` lower
   -- to different SigOps and different instructions, and the type is what
   -- decides which — so making the distinction structural is what stops a
   -- float ever reaching the integer `⊕`. There is no mixed form, because
   -- there is no implicit widening.
-  fadd  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
-  fsub  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
-  fmul  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  fadd  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  fsub  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  fmul  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   -- Division joins them (`Once.Spec.Float.Arith.fdiv`, correctly rounded via the
   -- sticky bit). TOTAL, so unlike integer `div` it carries no guard.
-  fdiv  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  fdiv  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   -- PLAN 0.75 F4 / D125: the widening itself, as a NODE rather than a silent
   -- retyping. `1 + 1.5` elaborates to `fadd (i2f 1) 1.5`, so the conversion is
   -- visible in the surface term, has its own SigOp, and lowers to a real
   -- instruction. A coercion that left no trace would be the "silent" half of
   -- "silent precision loss"; this one is written down.
-  i2f   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Float
-  div   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-  mod'  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  i2f   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Float
+  div   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  mod'  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
 
   -- Unary negation
-  neg   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Int
+  neg   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Int
 
   -- Comparison (Int → Int → Bool, where Bool = Unit + Unit)
-  lt    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  le    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  gt    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  ge    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  eq    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  ne    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  lt    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  le    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  gt    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  ge    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  eq    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  ne    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
 
   -- Surface grade coercion (pure→eff subsumption; `t-subsume`'s witness).
   -- Plan 0.52 M2: STAYS (the grade lives at the surface, OCP-0007), but now
@@ -184,7 +184,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- with identity denotation. Internal-only; the programmer never writes it.
   -- D226 / plan 0.99: the realisation of `t-sub` — a term converted along a
   -- subtyping derivation. Replaces `arr'`, which was its grade instance.
-  coerce : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → A <: B → Expr Γ Ψ A → Expr Γ Ψ B
+  coerce : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B} → A <: B → Expr Γ Ψ A → Expr Γ Ψ B
 
   -- External primitive reference (syscalls, intrinsics) — uses no variables.
   -- Asm-level `once_<name>` directly implements the declared type `A`: at
@@ -195,7 +195,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- contract `sigOp` is intended to enforce by being reserved for
   -- externally-provided routines (declared via `signature foo : …`).
   -- User-defined top-level fns use `closure` instead (see below).
-  sigOp    : ∀ {n} {Γ : Ctx n} {A} → CanonicalName → IsConcrete A → Expr Γ zeroUsage A
+  sigOp    : ∀ {n} {Γ : Ctx m n} {A : Type} → CanonicalName → IsConcrete A → Expr Γ zeroUsage (wk₀ A)
 
   -- Plan 0.19: user-defined top-level fn reference.
   --
@@ -218,7 +218,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- 2026-05-23: `myid = id; main = exit@S (myid 42)` exited 80 because
   -- `sigOp` curry-wrap fed the closure ptr through apply as if it were
   -- the codomain Int).
-  closure  : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
+  closure  : ∀ {n} {Γ : Ctx m n} {A} → String → Expr Γ zeroUsage A
 
   -- Unresolved polymorphic-def placeholder — Plan 0.6.2 Phase 2.
   -- Phase 1 (checkElab) emits `poly x T` when encountering a reference
@@ -226,14 +226,14 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- with the specialized body's elaboration. A well-formed compiled
   -- Expr reaching IR emission / codegen contains no `poly` nodes —
   -- downstream consumers reject it as "resolver not run".
-  poly    : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) → Expr Γ zeroUsage T
+  poly    : ∀ {n} {Γ : Ctx m n} (name : String) (T : Ty m) → Expr Γ zeroUsage T
 
   -- Plan 0.103 phase 1c: a CLOSED term is usable in any context (weakening
   -- by the whole context). Its meaning is the closed term's, on the empty
   -- environment — and, unlike embedding through the IR, it keeps the term's
   -- definition references open, so they are read from the definitions
   -- environment like any other.
-  closed  : ∀ {n} {Γ : Ctx n} {A} → Expr ∅ [] A → Expr Γ zeroUsage A
+  closed  : ∀ {n} {Γ : Ctx m n} {A} → Expr ∅ [] A → Expr Γ zeroUsage A
 
   -- Plan 0.2.4.5 D2: morphism realm.
   --
@@ -249,7 +249,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- The wrapped `IR A B` is grade-erased; the surface arrow carries the
   -- threaded purity π. Pure sites infer π = pure (byte-identical to the old
   -- `A ⇒ B`); the effectful fused morphisms (cata algebras) use π = eff.
-  lift-morphism : ∀ {n} {Γ : Ctx n} {A B} {π : Purity}
+  lift-morphism : ∀ {n} {Γ : Ctx m n} {A B} {π : Purity}
                 → IR ⌊ A ⌋ ⌊ B ⌋ → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] B)
 
   -- Plan 0.2.4.5 D2: morphism-realm application.
@@ -270,7 +270,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- usage is `zeroUsage` (closed), argument usage scales by `Many`
   -- (the default arrow grade). Keeping the shape identical to `app`'s
   -- emission lets us swap call sites without touching judgment rules.
-  morph-app : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B}
+  morph-app : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B}
             → IR ⌊ A ⌋ ⌊ B ⌋ → Expr Γ Ψ A → Expr Γ (zeroUsage +ᵘ (Many *ᵘ Ψ)) B
 
   ----------------------------------------------------------------
@@ -286,18 +286,18 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
 
   -- D232: the INNER arm's term is the outer arm's argument, so it is scaled
   -- by the outer arm's grade (standard QTT); the outer arm is used once.
-  comp' : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
+  comp' : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
         → Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)
         → Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)
         → Expr Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) (A ⇒[ mk-kind Many π ] C)
 
-  copair' : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
+  copair' : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
           → Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)
           → Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C)
           → Expr Γ (Ψ₁ +ᵘ Ψ₂) ((A + B) ⇒[ mk-kind Many π ] C)
 
   -- D222: one shared π — applying the pair's arrow runs BOTH arms.
-  fork' : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
+  fork' : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
         → Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)
         → Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)
         → Expr Γ (Ψ₁ +ᵘ Ψ₂) (A ⇒[ mk-kind Many π ] (B * C))
@@ -305,7 +305,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- D222: TWO independent purities — building the closure emits nothing
   -- (`returnT`), so the outer arrow is effect-free; the body's grade rides the
   -- INNER arrow, where `apply` runs it.
-  curry' : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C} {π₀ π : Purity}
+  curry' : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B C} {π₀ π : Purity}
          → Expr Γ Ψ ((A * B) ⇒[ mk-kind Many π ] C)
          → Expr Γ Ψ (A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C))
 
@@ -325,8 +325,8 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- Plan 0.113 B1 (standard QTT, D232's argument): the fold APPLIES its algebra
   -- once per node, so everything the algebra captures is used ω times — the
   -- usage is `Many *ᵘ Ψ`, as an eliminator's methods are in QTT.
-  cata : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π : Purity}
-       → WellFormedF F → Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
+  cata : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A} {π : Purity}
+       → WFFun Δₖ F → Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
        → Expr Γ (Many *ᵘ Ψ) (μ-type F ⇒[ mk-kind Many π ] A)
 
   -- Anamorphism (dual of `cata`): given a coalgebra `A → F(A)`, produce the
@@ -339,14 +339,14 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- `φ = pure | act`); building it runs nothing, so `ana`'s own arrow is free (`π₀`).
   -- PLAN 0.101 (D273): the coalgebra is an ordinary term IN CONTEXT — it may
   -- capture locals — obtained once, as `cata`'s algebra is.
-  ana : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A} {π₀ : Purity} {φ : Finite}
-      → WellFormedF F → Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)
+  ana : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A} {π₀ : Purity} {φ : Finite}
+      → WFFun Δₖ F → Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)
       → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many π₀ ] ν-type F φ)   -- B1: once per layer
 
   -- THE LOOP (D317/D319): `ana round` at `Eff`. The round is a finite block
   -- (`act`) ending with the result or the next state, obtained once; the loop
   -- runs it from the seed, possibly forever (`eff`). Its usage is `ana`'s.
-  loop : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B}
+  loop : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B}
        → Expr Γ Ψ (A ⇒[ mk-kind Many act ] (B + A))
        → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many eff ] B)
 
@@ -356,5 +356,5 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
 -- Plan 0.58 (OCP-0006): materialise the `Expr` variable from the IR-free `SVar`
 -- witness (`Once.Surface.Context`). `lookupLocal`/`t-var-local` name locals by
 -- `svar i`; the impl side (elaborate / realize) rebuilds `var i` here.
-svar→expr : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → SVar Γ Ψ A → Expr Γ Ψ A
+svar→expr : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → SVar Γ Ψ A → Expr Γ Ψ A
 svar→expr (svar i) = var i

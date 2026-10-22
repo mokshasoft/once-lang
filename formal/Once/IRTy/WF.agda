@@ -37,7 +37,9 @@ wf-⌈⌉ (wf-Prod f g) = Tr.wf-Prod (wf-⌈⌉ f) (wf-⌈⌉ g)
 -- The REVERSE transports (surface → ungraded, along `⌊_⌋`), for the
 -- elaborator, which carries surface `WellFormedF` but builds IR whose
 -- recursion schemes demand `WellFormedFI (eraseF F)`.
-base-⌊⌋ : ∀ {A} → Tr.IsBaseType A → IsBaseTypeI ⌊ A ⌋
+-- At any kinding context: a base type variable erases to `Void`.
+base-⌊⌋ : ∀ {m} {Δ : Tr.KCtx m} {A} → Tr.Base Δ A → IsBaseTypeI ⌊ A ⌋
+base-⌊⌋ (Tr.b-var _)       = base-Void
 base-⌊⌋ Tr.base-Unit       = base-Unit
 base-⌊⌋ Tr.base-Void       = base-Void
 base-⌊⌋ Tr.base-Int        = base-Int
@@ -45,7 +47,7 @@ base-⌊⌋ Tr.base-Float      = base-Float
 base-⌊⌋ (Tr.base-Prod a b) = base-Prod (base-⌊⌋ a) (base-⌊⌋ b)
 base-⌊⌋ (Tr.base-Sum a b)  = base-Sum  (base-⌊⌋ a) (base-⌊⌋ b)
 
-wf-⌊⌋ : ∀ {F} → Tr.WellFormedF F → WellFormedFI (eraseF F)
+wf-⌊⌋ : ∀ {m} {Δ : Tr.KCtx m} {F} → Tr.WFFun Δ F → WellFormedFI (eraseF F)
 wf-⌊⌋ (Tr.wf-K b)      = wf-K (base-⌊⌋ b)
 wf-⌊⌋ Tr.wf-Id         = wf-Id
 wf-⌊⌋ (Tr.wf-Sum f g)  = wf-Sum  (wf-⌊⌋ f) (wf-⌊⌋ g)

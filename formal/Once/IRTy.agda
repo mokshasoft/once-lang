@@ -36,9 +36,9 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
 open import Once.Spec.Grade as T using (Quantity; Zero; One; Many; Purity; actᶠ)
-open import Once.Spec.Type as T using (Type)
+open import Once.Spec.Type as T using (Ty; Fun; Type)
 import Once.Spec.Type as ST
-open import Once.Internal.Type as T using (Functor)
+open import Once.Internal.Type as T using (Functor; wk₀; wk₀F)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)
@@ -118,7 +118,7 @@ eraseArrow One  a b = a ⇛ b
 eraseArrow Many a b = a ⇛ b
 
 mutual
-  ⌊_⌋ : Type → IRTy
+  ⌊_⌋ : ∀ {m} → Ty m → IRTy
   ⌊ ST.Unit        ⌋ = Unit
   ⌊ ST.Void        ⌋ = Void
   ⌊ A ST.* B       ⌋ = ⌊ A ⌋ * ⌊ B ⌋
@@ -128,11 +128,13 @@ mutual
   ⌊ ST.ν F _  ⌋ = ν-type (eraseF F)   -- D233: the grade is erased, as an arrow's
   ⌊ ST.Int         ⌋ = Int
   ⌊ ST.Float       ⌋ = Float
-  ⌊ ST.var () ⌋
+  -- A type variable (a parameter of the definition being compiled, D243) has
+  -- no runtime value: it erases to `Void`.
+  ⌊ ST.var _ ⌋ = Void
 
   -- (plain prefix name, NOT `⌊_⌋F` — a second `⌊_…` mixfix collides with
   -- `⌊_⌋` when an application sits inside the brackets.)
-  eraseF : Functor → IRFunctor
+  eraseF : ∀ {m} → Fun m → IRFunctor
   eraseF (ST.K A)   = K ⌊ A ⌋
   eraseF ST.Id      = Id
   eraseF (F ST.⊕ G) = eraseF F ⊕ eraseF G
@@ -292,7 +294,7 @@ data FitsInRegI : IRTy → Set where
 -- becomes an identity morphism once `IR` is re-indexed over `IRTy`.
 
 erase-⇒-purity-irrelevant
-  : ∀ {A B : Type} (q : Quantity) (π₁ π₂ : Purity)
+  : ∀ {m} {A B : Ty m} (q : Quantity) (π₁ π₂ : Purity)
   → ⌊ A ST.⇒[ T.mk-kind q π₁ ] B ⌋ ≡ ⌊ A ST.⇒[ T.mk-kind q π₂ ] B ⌋
 erase-⇒-purity-irrelevant Zero _ _ = refl
 erase-⇒-purity-irrelevant One  _ _ = refl
@@ -357,8 +359,27 @@ mutual
 -- The `⌊_⌋` dual: erasure commutes with functor application the other way.
 -- Needed by the elaborator, which builds a `⟦F⟧T A`-shaped algebra (surface)
 -- but feeds it to `Cata`/`Ana` demanding `⟦ eraseF F ⟧TI ⌊A⌋`.
-⌊⟧T-commute : ∀ (F : Functor) (A : Type) → ⌊ T.⟦ F ⟧T A ⌋ ≡ ⟦ eraseF F ⟧TI ⌊ A ⌋
+⌊⟧T-commute : ∀ {m} (F : Fun m) (A : Ty m) → ⌊ T.⟦ F ⟧T A ⌋ ≡ ⟦ eraseF F ⟧TI ⌊ A ⌋
 ⌊⟧T-commute (T.K B)   A = refl
 ⌊⟧T-commute T.Id      A = refl
 ⌊⟧T-commute (F T.⊕ G) A = cong₂ _+_ (⌊⟧T-commute F A) (⌊⟧T-commute G A)
 ⌊⟧T-commute (F T.⊗ G) A = cong₂ _*_ (⌊⟧T-commute F A) (⌊⟧T-commute G A)
+
+-- A ground type read over `m` type variables (`wk₀`) erases as itself.
+mutual
+  ⌊wk₀⌋ : ∀ {m} (A : Type) → ⌊ T.wk₀ {m} A ⌋ ≡ ⌊ A ⌋
+  ⌊wk₀⌋ ST.Unit         = refl
+  ⌊wk₀⌋ ST.Void         = refl
+  ⌊wk₀⌋ ST.Int          = refl
+  ⌊wk₀⌋ ST.Float        = refl
+  ⌊wk₀⌋ (A ST.* B)      = cong₂ _*_ (⌊wk₀⌋ A) (⌊wk₀⌋ B)
+  ⌊wk₀⌋ (A ST.+ B)      = cong₂ _+_ (⌊wk₀⌋ A) (⌊wk₀⌋ B)
+  ⌊wk₀⌋ (A ST.⇒[ k ] B) = cong₂ (eraseArrow (T.ArrowKind.quantity k)) (⌊wk₀⌋ A) (⌊wk₀⌋ B)
+  ⌊wk₀⌋ (ST.μ F)        = cong μ-type (eraseF-wk₀ F)
+  ⌊wk₀⌋ (ST.ν F _)      = cong ν-type (eraseF-wk₀ F)
+
+  eraseF-wk₀ : ∀ {m} (F : T.Fun 0) → eraseF (T.wk₀F {m} F) ≡ eraseF F
+  eraseF-wk₀ (ST.K A)   = cong K (⌊wk₀⌋ A)
+  eraseF-wk₀ ST.Id      = refl
+  eraseF-wk₀ (F ST.⊕ G) = cong₂ _⊕_ (eraseF-wk₀ F) (eraseF-wk₀ G)
+  eraseF-wk₀ (F ST.⊗ G) = cong₂ _⊗_ (eraseF-wk₀ F) (eraseF-wk₀ G)

@@ -24,7 +24,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
 open import Once.Spec.Type
-  using (Ty; Type; Fun; Kind; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; base; any; ⟦_⟧F; _⟨_⟩)
+  using (Ty; Type; Fun; Kind; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; base; any; ⟦_⟧F; _⟨_⟩; _⟨_⟩F)
+open import Data.Fin using (Fin)
 
 pattern μ-type F = μ F
 pattern ν-type F φ = ν F φ
@@ -39,8 +40,16 @@ pattern k-base = base
 pattern k-any = any
 
 -- A ground type, as a type over `m` type variables (it mentions none).
+-- The substitution out of no type variables (named once: two absurd lambdas
+-- are not equal).
+none : ∀ {m} → Fin 0 → Ty m
+none ()
+
 wk₀ : ∀ {m} → Type → Ty m
-wk₀ A = A ⟨ (λ ()) ⟩
+wk₀ A = A ⟨ none ⟩
+
+wk₀F : ∀ {m} → Fun 0 → Fun m
+wk₀F F = F ⟨ none ⟩F
 
 -- A functor applied to a type.
 ⟦_⟧T : ∀ {m} → Fun m → Ty m → Ty m
