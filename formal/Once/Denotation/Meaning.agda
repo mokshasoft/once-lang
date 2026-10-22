@@ -40,7 +40,7 @@ open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Internal.Type using (μ-type; Functor; ⟦_⟧T)
 open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Spec.Name using (CanonicalName; bare)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Function using (id; _$_)
 open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
@@ -221,7 +221,7 @@ record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
     world   : Interp
     -- …which declare every generator of the signature Σ in scope (D274): what a
     -- resolved reference names.
-    decl-res  : ∀ {cn T} → lookupImport sg (showCanonical cn) ≡ just T
+    decl-res  : ∀ {cn T} → WordName cn → lookupImport sg (showCanonical cn) ≡ just T
               → (showCanonical cn , T) ∈ sig world
 open Meanings
 
@@ -332,7 +332,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- D274: a resolved reference names a generator of Σ — own or not, its meaning
 -- is that declaration's implementation.
 ⟦_⟧ᵢ (t-var-resolved {cn = cn} {T = T} _ wn lk conc refl) fmt ρ dγ =
-  subst id (sym (⟦wk₀⟧ᵛ T)) $ sigOpRefᵛ {A = T} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} lk)
+  subst id (sym (⟦wk₀⟧ᵛ T)) $ sigOpRefᵛ {A = T} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} wn lk)
 -- D248: an own-module DEFINITION's reference is a call of it, and means it.
 ⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} {T = T} _ lk refl) fmt ρ dγ = subst id (sym (⟦wk₀⟧ᵛ T)) (impAt (NamedCtx.imports ctx) x (entries ρ) lk)
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —

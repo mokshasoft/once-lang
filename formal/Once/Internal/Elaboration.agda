@@ -47,7 +47,7 @@ open import Once.Type.Grade using (≤q-Many; ≤qᵇ→≤q)
 open import Once.Spec.Type using (Ty; Type; KCtx; TySub; Respects; ∅ₖ; Int; Float; _*_; _⇒[_]_; _⟨_⟩)
 open import Once.Spec.Signature using (_∶_)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Type using (wk₀; none)
 open import Once.Internal.Type.Poly using (Ground; extractGround)
 open import Once.Internal.Type.Instance using (KindedInstance)
@@ -83,7 +83,7 @@ record Declared (x : String) (T : Type) : Set where
   constructor declared
   field
     honest : HonestFFI T
-    member : ∀ {c} → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
+    member : ∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
 
 -- One of the module's own monomorphic definitions: an entry of the table at
 -- its (ground) type.
@@ -150,9 +150,9 @@ module _ {m : ℕ} {Δ : KCtx m} {n : ℕ} {Γ : Ctx m n} where
   refAt d refl τ r = ref d τ , ⊢ref d τ r
 
   -- An FFI reference is the declaration's `sigop`, at its type.
-  sigE : ∀ {A : Ty m} (c : CanonicalName) {T : Type} → IsConcrete T → Declared (showCanonical c) T → A ≡ wk₀ T
+  sigE : ∀ {A : Ty m} (c : CanonicalName) {T : Type} → WordName c → IsConcrete T → Declared (showCanonical c) T → A ≡ wk₀ T
        → Elab Δ Γ zeroUsage A
-  sigE c {T} k (declared h mem) eq = sigop c (declS T) , retypeD (trans (⌜declS⌝ k h) (sym eq)) (⊢sigop (mem refl))
+  sigE c {T} wn k (declared h mem) eq = sigop c (declS T) , retypeD (trans (⌜declS⌝ k h) (sym eq)) (⊢sigop (mem wn refl))
 
   -- A monomorphic definition, at its ground type.
   importE : ∀ {A : Ty m} {x T} → ImportAt x T → A ≡ wk₀ T → Elab Δ Γ zeroUsage A
@@ -205,7 +205,7 @@ elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = svar i} _) = var i , ⊢var i
-elabᵢ V (t-var-resolved {cn = cn} _ w lk k eq) = sigE cn k (declares V lk) eq
+elabᵢ V (t-var-resolved {cn = cn} _ w lk k eq) = sigE cn w k (declares V lk) eq
 elabᵢ V (t-var-own _ lk eq)                  = importE (imported V lk) eq
 elabᵢ V (t-var-import _ _ lk k eq)           = importE (imported V lk) eq
 elabᵢ V (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ eq) = retypeE (sym eq) (polyE V lp (ground-kinded sc g))

@@ -45,7 +45,7 @@ open import Once.Type.Rigid using (ground-kinded)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type using (⟦_⟧T; wk₀; none)
 open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 open import Once.Functor.Translate using (Base-irrelevant)
@@ -102,10 +102,10 @@ impSem : (δ : GM.DefSem) {Δ : KCtx 0} {x : String} {T : Type} → ImportAt x T
 impSem δ {Δ} (def d mono) = refSemAt δ d mono none {Δ = Δ} (λ ())
 
 -- …and a generator of Σ (D274: an FFI declaration is not a definition).
-sigSem : (δ : GM.DefSem) (c : CanonicalName) {T : Type} → IsConcrete T → Declared (showCanonical c) T → ⟦ wk₀ {0} T ⟧ᵛ
-sigSem δ c {T} k (declared h mem) =
+sigSem : (δ : GM.DefSem) (c : CanonicalName) {T : Type} → WordName c → IsConcrete T → Declared (showCanonical c) T → ⟦ wk₀ {0} T ⟧ᵛ
+sigSem δ c {T} wn k (declared h mem) =
   subst (λ X → ⟦ X ⟧ᵛ) (⌜declS⌝ k h)
-        (sigOpRefᵛ {A = ⌜ declS T ⌝ᵈ} fmt (toISig Σ) (GM.impl δ) c (⌜⌝ᵈ-concrete (declS T)) (∈-toISig (mem {c} refl)))
+        (sigOpRefᵛ {A = ⌜ declS T ⌝ᵈ} fmt (toISig Σ) (GM.impl δ) c (⌜⌝ᵈ-concrete (declS T)) (∈-toISig (mem {c} wn refl)))
 
 ------------------------------------------------------------------------
 -- The environment agreement
@@ -121,9 +121,9 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
                  → subst id (sym (⟦wk₀⟧ᵛ T)) (impAt imps x (entries ρ) lk) ≡ impSem δ {Δ} (imported V lk)
     -- a resolved reference names a generator of Σ: both meanings read the same
     -- declaration.
-    agree-resolved : ∀ {cn T} (lk : lookupImport sg (showCanonical cn) ≡ just T) (k : IsConcrete T)
-                   → subst id (sym (⟦wk₀⟧ᵛ T)) (sigOpRefᵛ {A = T} fmt (sig (world ρ)) (impl (world ρ)) cn k (decl-res ρ {cn = cn} lk))
-                     ≡ sigSem δ cn k (declares V lk)
+    agree-resolved : ∀ {cn T} (wn : WordName cn) (lk : lookupImport sg (showCanonical cn) ≡ just T) (k : IsConcrete T)
+                   → subst id (sym (⟦wk₀⟧ᵛ T)) (sigOpRefᵛ {A = T} fmt (sig (world ρ)) (impl (world ρ)) cn k (decl-res ρ {cn = cn} wn lk))
+                     ≡ sigSem δ cn wn k (declares V lk)
 
 ------------------------------------------------------------------------
 -- The references' core meanings
@@ -154,11 +154,11 @@ module _ {Δ : KCtx 0} {n} {Γ : Ctx 0 n} (δ : GM.DefSem) where
   importE-sem : ∀ {x T} (i : ImportAt x T) (y : GM.Env Γ _) → GM.⟦ proj₂ (importE {Γ = Γ} i refl) ⟧ fmt δ y ≡ impSem δ {Δ} i
   importE-sem (def d mono) y = refAt-sem d mono none (λ ()) y
 
-  sigE-sem : ∀ (c : CanonicalName) {T} (k : IsConcrete T) (D : Declared (showCanonical c) T) (y : GM.Env Γ _)
-           → GM.⟦ proj₂ (sigE {Γ = Γ} c k D refl) ⟧ fmt δ y ≡ sigSem δ c k D
-  sigE-sem c {T} k (declared h mem) y =
+  sigE-sem : ∀ (c : CanonicalName) {T} (wn : WordName c) (k : IsConcrete T) (D : Declared (showCanonical c) T) (y : GM.Env Γ _)
+           → GM.⟦ proj₂ (sigE {Γ = Γ} c wn k D refl) ⟧ fmt δ y ≡ sigSem δ c wn k D
+  sigE-sem c {T} wn k (declared h mem) y =
     trans (⟦⟧-retypeD (trans (⌜declS⌝ k h) refl) _ y)
-          (cong (λ e → subst (λ X → ⟦ X ⟧ᵛ) e (sigOpRefᵛ {A = ⌜ declS T ⌝ᵈ} fmt (toISig Σ) (GM.impl δ) c (⌜⌝ᵈ-concrete (declS T)) (∈-toISig (mem {c} refl))))
+          (cong (λ e → subst (λ X → ⟦ X ⟧ᵛ) e (sigOpRefᵛ {A = ⌜ declS T ⌝ᵈ} fmt (toISig Σ) (GM.impl δ) c (⌜⌝ᵈ-concrete (declS T)) (∈-toISig (mem {c} wn refl))))
                 (trans-reflʳ (⌜declS⌝ k h)))
 
 ------------------------------------------------------------------------
@@ -479,7 +479,7 @@ module _ {δ : GM.DefSem} where
   bridge-i V ag t-unit-var dγ = refl
   bridge-i V ag (t-var-local {eV = Once.Internal.Context.svar i} _) dγ = refl
   bridge-i V ag (t-var-resolved {cn = cn} _ wn lk k refl) dγ =
-    trans (Agree.agree-resolved ag {cn = cn} lk k) (sym (sigE-sem δ cn k (declares V lk) dγ))
+    trans (Agree.agree-resolved ag {cn = cn} wn lk k) (sym (sigE-sem δ cn wn k (declares V lk) dγ))
   bridge-i V ag (t-var-own _ lk refl) dγ = trans (Agree.agree-import ag lk) (sym (importE-sem δ (imported V lk) dγ))
   bridge-i V ag (t-var-import _ _ lk k refl) dγ = trans (Agree.agree-import ag lk) (sym (importE-sem δ (imported V lk) dγ))
   bridge-i V ag (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ refl) dγ =

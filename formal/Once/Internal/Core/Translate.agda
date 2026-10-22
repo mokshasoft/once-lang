@@ -42,7 +42,7 @@ open import Once.Spec.Type using (Type; ∅ₖ)
 import Once.Spec.Type
 open import Once.Spec.Signature using (_∶_)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Type.Honest using (HonestFFI)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Instance using (rigidOf; kindsOf)
@@ -78,7 +78,7 @@ monoSchema ty = schema 0 ∅ₖ ty
 -- each telescope definition an entry at its schema.
 data SigSig : List _ → Set where
   []    : SigSig []
-  s-ffi : ∀ {x T sg} → IsConcrete T → HonestFFI T → (∀ {c} → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ) → SigSig sg
+  s-ffi : ∀ {x T sg} → IsConcrete T → HonestFFI T → (∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ) → SigSig sg
         → SigSig ((x , T) ∷ sg)
 
 data ImpSig {s} (S : Defs s) : C.FunCtx → Set where
@@ -168,7 +168,7 @@ mainEntry p = entry p
 
 -- Each FFI declaration of the module is one of Σ's, under its name.
 SigIn : ∀ {sc es} → ModTele sc es → Set
-SigIn mt = ∀ {x T} → (x , T) ∈ teleSig mt → ∀ {c} → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
+SigIn mt = ∀ {x T} → (x , T) ∈ teleSig mt → ∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
 
 mutual
   toProgram : ∀ {s} {S : Defs s} {sc es} → Tele S → SigSig (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)

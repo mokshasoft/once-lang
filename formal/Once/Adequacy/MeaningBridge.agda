@@ -805,7 +805,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
   -- Named value references — the sigop-reference leaf (dispatch on result type).
   -- D274: a resolved reference names a generator of Σ — the sigop-reference leaf.
   bridge-i (t-var-resolved {cn = cn} {T = T} _ wn lk conc refl) {ρ = ρ} re er =
-    RelGM-wk₀ {π = pure} {A = T} (sigop-ref-bridge (world ρ) cn conc (decl-res ρ {cn = cn} lk) (proj₂ (proj₂ er)))
+    RelGM-wk₀ {π = pure} {A = T} (sigop-ref-bridge (world ρ) cn conc (decl-res ρ {cn = cn} wn lk) (proj₂ (proj₂ er)))
   -- D248: an own-module DEFINITION's reference is a call of it, as a bare one.
   bridge-i {ctx = ctx} (t-var-own {x = x} {T = T} _ lk refl) re er =
     subst (RelGM pure (wk₀ T) _) (sym (T∞-wk₀ (callSD x) T)) (RelGM-wk₀ {π = pure} {A = T} (imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk))

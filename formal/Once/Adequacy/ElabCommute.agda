@@ -287,9 +287,9 @@ mutual
     comm (⇝ᵢ-tm (RS.lookup-ρ̂ D i) _)
          (H.trans (⇝ᵢ-dr (RS.lookup-ρ̂ D i) _) (H.sym (rtᵗ-≅ (TS.lookup-⟨⟩ τ D i) (⊢var i))))
   cm-i {D = D} (t-var-resolved {cn = cn} {T = T} ng wn lk k eq) =
-    comm refl (H.trans (rD-≅ (trans (⌜declS⌝ k h) (sym (RS.ρ̂-ground T eq))) (⊢sigop (mem refl)))
-                       (H.sym (H.trans (ty-rD {Γ = D} (trans (⌜declS⌝ k h) (sym eq)) (⊢sigop (mem refl)))
-                                       (rtᵗ-≅ (sym (TS.⌜⌝ᵈ-⟨⟩ τ (declS T))) (⊢sigop (mem refl))))))
+    comm refl (H.trans (rD-≅ (trans (⌜declS⌝ k h) (sym (RS.ρ̂-ground T eq))) (⊢sigop (mem wn refl)))
+                       (H.sym (H.trans (ty-rD {Γ = D} (trans (⌜declS⌝ k h) (sym eq)) (⊢sigop (mem wn refl)))
+                                       (rtᵗ-≅ (sym (TS.⌜⌝ᵈ-⟨⟩ τ (declS T))) (⊢sigop (mem wn refl))))))
     where h   = El.Declared.honest (declares lk)
           mem = El.Declared.member (declares lk)
   cm-i {D = D} (t-var-own {T = T} ns lk eq) =

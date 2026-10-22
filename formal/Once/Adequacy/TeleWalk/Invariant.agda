@@ -69,7 +69,7 @@ open Once.Denotation.Program.IRFun using (fname)
 open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoBody)
 open import Once.Spec.Type using (KCtx; ∅ₖ; TySub; Respects)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (_∶_)
 open import Once.Internal.Core.Decl using (declS)
 open import Once.Spec.Core.Syntax using (Defs; _▷_; _!!_; Schema)
@@ -186,7 +186,7 @@ private
   ns-head (e ∷ later) imps ((h ∷ _) ∷ ns) = h ∷ ns-head later imps ns
 
 inv-sig : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {x : String} {ty : Type}
-            {k : IsConcrete ty} {h : HonestFFI ty} {m : ∀ {c} → showCanonical c ≡ x → (c ∶ declS ty) ∈ Σ}
+            {k : IsConcrete ty} {h : HonestFFI ty} {m : ∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS ty) ∈ Σ}
         → Inv {S = S} csc tl ss is ts pre
         → Inv (C.extendSig csc x ty) tl (s-ffi k h m ss) is ts pre
 inv-sig inv = record

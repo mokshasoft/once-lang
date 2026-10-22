@@ -38,7 +38,7 @@ open Parser.PolyFunInfo using (pfunType)
 open import Once.Spec.Type using (Type; KCtx; ∅ₖ)
 open import Once.Spec.Signature using (⌜_⌝ᵈ)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Contract using (ISig)
 open import Once.Internal.Type using (wk₀; none)
 open import Once.Internal.Type.Instance using (KindedInstance)
@@ -74,10 +74,10 @@ sigConc {(n , T₀) ∷ rest} (TR.s-ffi k h m ss) {x} eq | no _ = sigConc ss eq
 declT : ∀ {x T} → IsConcrete T → Declared x T → ⌜ declS T ⌝ᵈ ≡ T
 declT {T = T} k D = trans (⌜declS⌝ {0} k (Declared.honest D)) (⟨⟩-0 none T)
 
-sigRes : ∀ {sg} → SigSig sg → ∀ {cn T} → lookupImport sg (showCanonical cn) ≡ just T → (showCanonical cn , T) ∈ toISig Σ
-sigRes ss {cn} lk =
+sigRes : ∀ {sg} → SigSig sg → ∀ {cn T} → WordName cn → lookupImport sg (showCanonical cn) ≡ just T → (showCanonical cn , T) ∈ toISig Σ
+sigRes ss {cn} wn lk =
   subst (λ X → (showCanonical cn , X) ∈ toISig Σ) (declT (sigConc ss lk) (sigAt ss lk))
-        (∈-toISig (Declared.member (sigAt ss lk) {cn} refl))
+        (∈-toISig (Declared.member (sigAt ss lk) {cn} wn refl))
 
 -- A reference along a type equation is the reference at the other type.
 sigOpRef-≅ : ∀ {I : ISig} (impl : _) (cn : CanonicalName) {A B : Type} (e : A ≡ B) (kA : IsConcrete A) (kB : IsConcrete B)
@@ -124,18 +124,18 @@ module _ (δ : GM.DefSem) where
   -- world — its signature with its implementation. D274: a reference to Σ
   -- reads the declaration the scope's signature correspondence records.
   envOf : ∀ {sg imps ps} → SigSig sg → ImpSig S imps → TeleSig S ps → Meanings (C.buildPolyCtx ps) imps sg
-  envOf ss is ts = meanings (defEnv ts) (impEnv is) (interp (toISig Σ) (GM.impl δ)) (λ {cn} lk → sigRes ss {cn} lk)
+  envOf ss is ts = meanings (defEnv ts) (impEnv is) (interp (toISig Σ) (GM.impl δ)) (λ {cn} wn lk → sigRes ss {cn} wn lk)
 
-  agree-res : ∀ {sg} (ss : SigSig sg) {cn T} (lk : lookupImport sg (showCanonical cn) ≡ just T) (k : IsConcrete T)
-            → subst id (sym (⟦wk₀⟧ᵛ T)) (sigOpRefᵛ {A = T} fmt (toISig Σ) (GM.impl δ) cn k (sigRes ss {cn} lk))
-              ≡ sigSem δ cn k (sigAt ss lk)
-  agree-res ss {cn} {T} lk k =
+  agree-res : ∀ {sg} (ss : SigSig sg) {cn T} (wn : WordName cn) (lk : lookupImport sg (showCanonical cn) ≡ just T) (k : IsConcrete T)
+            → subst id (sym (⟦wk₀⟧ᵛ T)) (sigOpRefᵛ {A = T} fmt (toISig Σ) (GM.impl δ) cn k (sigRes ss {cn} wn lk))
+              ≡ sigSem δ cn wn k (sigAt ss lk)
+  agree-res ss {cn} {T} wn lk k =
     H.≅-to-≡ (H.trans (H.≡-subst-removable id (sym (⟦wk₀⟧ᵛ T)) _)
              (H.trans (sigOpRef-≅ (GM.impl δ) cn (declT (sigConc ss lk) D) (⌜⌝ᵈ-concrete (declS T)) k m₀)
                       (H.sym (H.≡-subst-removable (λ X → ⟦ X ⟧ᵛ) (⌜declS⌝ k (Declared.honest D)) _))))
     where
       D  = sigAt ss lk
-      m₀ = ∈-toISig (Declared.member D {cn} refl)
+      m₀ = ∈-toISig (Declared.member D {cn} wn refl)
 
   -- THE AGREEMENT, by construction.
   agree : ∀ {sg imps ps} (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S ps)
@@ -143,5 +143,5 @@ module _ (δ : GM.DefSem) where
   agree ss is ts = record
     { agree-inst      = λ lp ki → agree-def ts lp ki
     ; agree-import    = λ lk → agree-imp is lk
-    ; agree-resolved  = λ lk k → agree-res ss lk k
+    ; agree-resolved  = λ wn lk k → agree-res ss wn lk k
     }
