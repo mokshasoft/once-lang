@@ -38,7 +38,7 @@ import Once.Spec.Type as ST
 import Once.Internal.Elaboration as E
 import Once.Internal.Type.Poly as TP
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
-open import Once.Adequacy.SpecCore.Poly using (declS)
+open import Once.Internal.Core.Decl using (declS)
 open import Once.Adequacy.SpecCore.Schema using (CleanSig; ptyS)
 
 import Once.Spec.Grade

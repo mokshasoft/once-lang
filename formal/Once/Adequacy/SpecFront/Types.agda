@@ -43,7 +43,7 @@ import Once.Spec.Sub as SS
 open import Once.Spec.Signature using (⌜_⌝; ⌜_⌝ᵈ)
 open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; kS; toTy; toFun)
 open import Once.Adequacy.SpecCore.Type
-open import Once.Adequacy.SpecCore.Poly using (toB; declS)
+open import Once.Internal.Core.Decl using (toB; declS)
 
 ------------------------------------------------------------------------
 -- Every Spec type is a compiler one

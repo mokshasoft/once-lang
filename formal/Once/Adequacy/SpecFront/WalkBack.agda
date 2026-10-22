@@ -35,7 +35,7 @@ import Once.Spec.Type as LW
 import Once.Spec.Type as ST
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecCore.Type using (TyR)
-open import Once.Adequacy.SpecCore.Poly using (declS)
+open import Once.Internal.Core.Decl using (declS)
 
 module Once.Adequacy.SpecFront.WalkBack
   (Σ : Signature) {Fs : ISig}

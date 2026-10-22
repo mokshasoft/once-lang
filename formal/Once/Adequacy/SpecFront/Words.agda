@@ -53,7 +53,7 @@ open import Once.Spec.Source using (ParsesModules)
 open import Once.Internal.Name using (showCanonical; noDotB; wordCharsB; wordB; wordsB; WordName)
 open import Once.Adequacy.SpecInterp using (declTy)
 open import Once.Internal.Core.Decl using (toISig)
-open import Once.Adequacy.SpecCore.Poly using (declS)
+open import Once.Internal.Core.Decl using (declS)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecGrammar.Suffix using (All-⊒)
 import Once.Adequacy.SpecGrammar.Suffix as Suf

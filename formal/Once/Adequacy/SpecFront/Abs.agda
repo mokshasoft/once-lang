@@ -22,7 +22,7 @@ open import Once.Internal.Contract using (ISig)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; _∶_)
 import Once.Internal.Core.PolyTy as LP
-open import Once.Adequacy.SpecCore.Poly using (declS)
+open import Once.Internal.Core.Decl using (declS)
 
 module Once.Adequacy.SpecFront.Abs
   {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)

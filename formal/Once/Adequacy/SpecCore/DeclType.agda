@@ -13,12 +13,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open S using (constant; value; operation)
-import Once.Adequacy.SpecCore.Poly
-open import Once.Adequacy.SpecCore.Poly using (declS)
+open import Once.Internal.Core.Decl using (declS; toB)
 open import Once.Adequacy.SpecInterp using (declTy; ⌞_⌟)
 
 -- Reading a declaration's type as the compiler's, and back, is the identity.
-toB-⌞⌟ : ∀ b → Once.Adequacy.SpecCore.Poly.toB ⌞ b ⌟ ≡ b
+toB-⌞⌟ : ∀ b → toB ⌞ b ⌟ ≡ b
 toB-⌞⌟ S.unit    = refl
 toB-⌞⌟ S.void    = refl
 toB-⌞⌟ S.int     = refl
