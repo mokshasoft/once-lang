@@ -18,6 +18,7 @@
 module Once.Adequacy.SpecFront.SigFacts where
 
 open import Data.Nat using (ℕ)
+import Once.Internal.Type
 open import Data.List using (List; []; _∷_; map; _ʳ++_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -175,8 +176,8 @@ sig-at Σ fs e u M =
 -- `Walk`'s `h-sig`, for the scope past the FFI declarations.
 h-sig-of : ∀ Σ fs → toISig Σ ≡ entrySig fs → AllPairs _≢_ (keys (entrySig fs)) → All FFIFacts fs
          → ∀ {m} (Δ : ST.KCtx m) {c t} → (c ∶ t) ∈ Σ
-         → Σ[ T ∈ LT.Type ] (lookupImport (entrySig fs ʳ++ []) (showCanonical c) ≡ just T) × IsConcrete T × TyR Δ T ⌜ t ⌝ᵈ
+         → Σ[ T ∈ LT.Type ] (lookupImport (entrySig fs ʳ++ []) (showCanonical c) ≡ just T) × IsConcrete T × TyR Δ (Once.Internal.Type.wk₀ T) ⌜ t ⌝ᵈ
 h-sig-of Σ fs e u fa Δ {c} {t} M =
   let (k , h , g) = facts-at fa (subst (_ ∈_) e (mem-toISig M))
   in declTy t , sig-at Σ fs e u M , k
-     , subst (λ t′ → TyR Δ (declTy t) ⌜ t′ ⌝ᵈ) (declS-declTy t) (Once.Adequacy.SpecFront.Types.decl-R Δ k h g)
+     , subst (λ t′ → TyR Δ (Once.Internal.Type.wk₀ (declTy t)) ⌜ t′ ⌝ᵈ) (declS-declTy t) (Once.Adequacy.SpecFront.Types.decl-R Δ k h g)
