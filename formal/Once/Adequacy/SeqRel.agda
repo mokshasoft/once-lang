@@ -22,9 +22,8 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Type using (Functor)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Internal.Trace
   using (T; RelT′; rel-ret)
@@ -36,7 +35,7 @@ open import Once.Internal.Stream using (seqF)
 -- recurses into, so there it is plain equality.
 ------------------------------------------------------------------------
 
-RelF : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set) → ⟦ G ⟧F X → ⟦ G ⟧F Y → Set
+RelF : ∀ {m} (G : Fun m) {X Y : Set} (R : X → Y → Set) → ⟦ G ⟧F X → ⟦ G ⟧F Y → Set
 RelF (K A)   R x        y        = x ≡ y
 RelF Id      R x        y        = R x y
 RelF (G ⊕ H) R (inj₁ x) (inj₁ y) = RelF G R x y
@@ -52,7 +51,7 @@ RelF (G ⊗ H) R (x₁ , y₁) (x₂ , y₂) = RelF G R x₁ x₂ × RelF H R y�
 
 -- Plan 0.105: `RelT′` (the tree relation) and its `fmap`/`bind` laws live in
 -- `TraceMonad`; sequencing a related layer is structural on the functor.
-seqF-rel : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set)
+seqF-rel : ∀ {m} (G : Fun m) {X Y : Set} (R : X → Y → Set)
            {l : ⟦ G ⟧F (T X)} {r : ⟦ G ⟧F (T Y)}
          → RelF G (RelT′ R) l r
          → RelT′ (RelF G R) (seqF G l) (seqF G r)

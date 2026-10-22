@@ -25,10 +25,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Grade using (mk-kind; Many; Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
-open import Once.Spec.Type using (Type; _⇒[_]_)
-open import Once.Internal.Type using (Functor; ⟦_⟧T; ν-type)
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; _⇒[_]_)
+open import Once.Internal.Type using (⟦_⟧T; ν-type)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod)
+open import Once.Internal.Type.WellFormed using (wf-Sum; wf-Prod)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
@@ -103,7 +103,7 @@ module _ (H : SFunctor) {X Y : Set} {R : X → Y → Set} where
 -- The ν-in coercions, heterogeneously (as `out-relᵍ`, the other way).
 ------------------------------------------------------------------------
 
-in-relᵍ : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
+in-relᵍ : ∀ {m} {Δ : KCtx m} {A : Ty m} {G : Fun m} (wf : WFFun Δ G)
             {l : ⟦ ⟦ G ⟧T A ⟧ᵛ} {r : ⟦ ⟦ G ⟧T A ⟧ᴰ}
         → RelGV (⟦ G ⟧T A) l r
         → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A)
@@ -119,13 +119,13 @@ in-relᵍ (wf-Prod wfF wfG) {_ , _} {_ , _} (rF , rG) = in-relᵍ wfF rF , in-re
 
 -- The IR side's two layer maps, against a run related at the layer type: the
 -- Spec value, coerced in, is related to the mapped IR layer.
-in-run : ∀ {A : Type} {G : Functor} (wf : WellFormedF G) {Z : Set} {m : T∞ Z} {S : Z → ⟦ ⟦ G ⟧T A ⟧ᴰ → Set}
+in-run : ∀ {mₜ} {Δ : KCtx mₜ} {A : Ty mₜ} {G : Fun mₜ} (wf : WFFun Δ G) {Z : Set} {m : T∞ Z} {S : Z → ⟦ ⟦ G ⟧T A ⟧ᴰ → Set}
            {n : T∞ ⟦ ⟦ G ⟧T A ⟧ᴰ} (val : Z → ⟦ ⟦ G ⟧T A ⟧ᵛ)
        → (∀ {z r} → S z r → RelGV (⟦ G ⟧T A) (val z) r)
        → RelS S m n
        → RelS (λ z r″ → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A) (coerce-ν-in G ⟦ A ⟧ᵛ (cfᵛ A wf (val z))) r″)
               m (fmap∞ (coerce-ν-in G ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wf A) n))
-in-run {A} {G} wf val h rn =
+in-run {A = A} {G = G} wf val h rn =
   RelS-fmapʳ (RelS-fmapʳ {R′ = λ z r′ → Σ[ r ∈ _ ] (r′ ≡ coerce-functor-D wf A r) × RelGV (⟦ G ⟧T A) (val z) r}
                          rn (λ {z} {r} s → r , refl , h s))
              (λ { (r , refl , rv) → in-relᵍ wf rv })
@@ -135,19 +135,19 @@ in-run {A} {G} wf val h rn =
 -- related seeds unfold to related streams.
 ------------------------------------------------------------------------
 
-ana-bridgeᵍ : ∀ (φ : Finite) {A : Type} {F : Functor} (wfF : WellFormedF F)
+ana-bridgeᵍ : ∀ (φ : Finite) {m} {Δ : KCtx m} {A : Ty m} {F : Fun m} (wfF : WFFun Δ F)
                 (c₁ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᵛ) (c₂ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ)
             → RelGV (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c₁ c₂
             → ∀ {a b} → RelGV A a b
             → RelGV (ν-type F φ) (ana-semᵛ φ wfF c₁ a) (anaFᴵ F (λ a′ → fmap∞ (coerce-functor-D wfF A) (c₂ a′)) b)
-ana-bridgeᵍ pureᶠ {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵖ-∼ (translateF Carrier Carrier F) cr rab
+ana-bridgeᵍ pureᶠ {A = A} {F = F} wfF c₁ c₂ (rc , _) rab = anaᵖ-∼ (translateF Carrier Carrier F) cr rab
   where
     cr : ∀ {x y} → RelGV A x y → RelS (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV A))
                                        (return∞ (coerce-ν-in F _ (cfᵛ A wfF (c₁ x))))
                                        (fmap∞ (coerce-ν-in F ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wfF A) (c₂ y)))
     cr {x} r = retargetˡ refl (RelS-fmapˡ {f = λ l → coerce-ν-in F _ (cfᵛ A wfF l)}
                                           (in-run wfF (λ l → l) (λ s → s) (rc r)) (λ z → z))
-ana-bridgeᵍ actᶠ {A} {F} wfF c₁ c₂ (rc , _) rab = anaᵈ-∼ (translateF Carrier Carrier F) cr rab
+ana-bridgeᵍ actᶠ {A = A} {F = F} wfF c₁ c₂ (rc , _) rab = anaᵈ-∼ (translateF Carrier Carrier F) cr rab
   where
     g : ⟦ ⟦ F ⟧T A ⟧ᵛ → ⟦ translateF Carrier Carrier F ⟧SF ⟦ A ⟧ᵛ
     g l = coerce-ν-in F _ (cfᵛ A wfF l)

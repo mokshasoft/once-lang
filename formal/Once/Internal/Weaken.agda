@@ -19,7 +19,7 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Type
-  using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
+  using (Ty; Fun; Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type using (wk₀; wk₀F)
 open import Once.Internal.FunctorMeaning using (⟦_,_⟧-base; translateF; μ-sem; ν-sem)
 open import Once.Internal.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; νS)
@@ -271,126 +271,46 @@ RelD-bool {x = inj₁ _} {inj₁ _} r = r
 RelD-bool {x = inj₂ _} {inj₂ _} r = r
 
 ------------------------------------------------------------------------
--- The graded relation (source meaning against the IR's) carries across
--- for a concrete type: what an external operation is declared at.
+-- At the ground index the weakening is the identity, so its transports
+-- collapse: whatever holds at `A` holds at `wk₀ A`, transported.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Graded using (toT∞)
-open import Once.Internal.Type.WellFormed using (IsBaseType; IsConcrete; con-base; con-fun)
-open import Once.Spec.Type using (b-Unit; b-Void; b-Int; b-Float; b-*; b-+)
-open import Once.Spec.Grade using (Purity; pure; act; eff)
+mutual
+  wk₀-id : (A : Type) → wk₀ {0} A ≡ A
+  wk₀-id (var ())
+  wk₀-id Unit           = refl
+  wk₀-id Void           = refl
+  wk₀-id Int            = refl
+  wk₀-id Float          = refl
+  wk₀-id (A * B)        = cong₂ _*_ (wk₀-id A) (wk₀-id B)
+  wk₀-id (A + B)        = cong₂ _+_ (wk₀-id A) (wk₀-id B)
+  wk₀-id (A ⇒[ k ] B)   = cong₂ (λ X Y → X ⇒[ k ] Y) (wk₀-id A) (wk₀-id B)
+  wk₀-id (μ G)          = cong μ (wk₀F-id G)
+  wk₀-id (ν G π)        = cong (λ H → ν H π) (wk₀F-id G)
+
+  wk₀F-id : (G : Fun 0) → wk₀F {0} G ≡ G
+  wk₀F-id (K A)   = cong K (wk₀-id A)
+  wk₀F-id Id      = refl
+  wk₀F-id (G ⊕ H) = cong₂ _⊕_ (wk₀F-id G) (wk₀F-id H)
+  wk₀F-id (G ⊗ H) = cong₂ _⊗_ (wk₀F-id G) (wk₀F-id H)
+
+-- A computation chosen per ground type, at `wk₀ A`, is the one at `A`.
+T∞-wk₀ : (F : (U : Type) → T∞ ⟦ U ⟧ᴰ) (A : Type) → F (wk₀ {0} A) ≡ subst T∞ (sym (⟦wk₀⟧ᴰ A)) (F A)
+T∞-wk₀ F A = go (wk₀ A) (wk₀-id A) (sym (⟦wk₀⟧ᴰ A))
+  where
+    go : (U : Type) → U ≡ A → (q : ⟦ A ⟧ᴰ ≡ ⟦ U ⟧ᴰ) → F U ≡ subst T∞ q (F A)
+    go .A refl refl = refl
+
 open import Once.Spec.Numerics using (TargetNum)
 
-module GradedWk₀ (fmt : TargetNum) where
-  open import Once.Adequacy.GradedRelation fmt using (RelGV; RelGM)
+module GradedWk₀-id (fmt : TargetNum) where
+  open import Once.Adequacy.GradedRelation fmt using (RelGM)
 
-  private
-    upᵛ : ∀ {m} (A : Type) → ⟦ A ⟧ᵛ → ⟦ wk₀ {m} A ⟧ᵛ
-    upᵛ A = subst id (sym (⟦wk₀⟧ᵛ A))
-
-    dnᵛ : ∀ {m} (A : Type) → ⟦ wk₀ {m} A ⟧ᵛ → ⟦ A ⟧ᵛ
-    dnᵛ A = subst id (⟦wk₀⟧ᵛ A)
-
-    -- A transport inside a graded computation commutes with its lift to `T∞`.
-    toT∞-tr : ∀ π {X Y : Set} (e : X ≡ Y) (c : M π X) → toT∞ π (subst (M π) e c) ≡ subst T∞ e (toT∞ π c)
-    toT∞-tr π refl c = refl
-
-    RelS-tr₂ : ∀ {X X′ Y Y′ : Set} (e : X ≡ X′) (e′ : Y ≡ Y′) {R : X → Y → Set} {R′ : X′ → Y′ → Set}
-             → (∀ {a b} → R a b → R′ (subst id e a) (subst id e′ b))
-             → ∀ {s s′} → RelS R s s′ → RelS R′ (subst T∞ e s) (subst T∞ e′ s′)
-    RelS-tr₂ refl refl h r = RelS-mono h r
-
-  mutual
-    RelGV-up-base : ∀ {m} {A : Type} (b : IsBaseType A) {x y} → RelGV A x y
-                  → RelGV (wk₀ {m} A) (upᵛ A x) (up A y)
-    RelGV-up-base b-Unit r = r
-    RelGV-up-base b-Int r = r
-    RelGV-up-base b-Float r = r
-    RelGV-up-base b-Void {()} r
-    RelGV-up-base (b-* {A = A} {B = B} a b) {x} {y} (ra , rb) =
-      subst₂ (RelGV (wk₀ (A * B)))
-        (sym (trans (cong (λ e → subst id e x) (sym-cong₂ _×_ (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B))) (tr-× (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᵛ B)) x)))
-        (sym (e× A B {y}))
-        (RelGV-up-base a ra , RelGV-up-base b rb)
-    RelGV-up-base (b-+ {A = A} {B = B} a b) {inj₁ x} {inj₁ y} r =
-      subst₂ (RelGV (wk₀ (A + B)))
-        (sym (trans (cong (λ e → subst id e (inj₁ x)) (sym-cong₂ _⊎_ (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B))) (tr-inj₁ (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᵛ B)) x)))
-        (sym (e₁ A B y)) (RelGV-up-base a r)
-    RelGV-up-base (b-+ {A = A} {B = B} a b) {inj₂ x} {inj₂ y} r =
-      subst₂ (RelGV (wk₀ (A + B)))
-        (sym (trans (cong (λ e → subst id e (inj₂ x)) (sym-cong₂ _⊎_ (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B))) (tr-inj₂ (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᵛ B)) x)))
-        (sym (e₂ A B y)) (RelGV-up-base b r)
-    RelGV-up-base (b-+ a b) {inj₁ _} {inj₂ _} ()
-    RelGV-up-base (b-+ a b) {inj₂ _} {inj₁ _} ()
-
-    RelGV-dn-base : ∀ {m} {A : Type} (b : IsBaseType A) {x y} → RelGV (wk₀ {m} A) x y
-                  → RelGV A (dnᵛ A x) (dn A y)
-    RelGV-dn-base b-Unit r = r
-    RelGV-dn-base b-Int r = r
-    RelGV-dn-base b-Float r = r
-    RelGV-dn-base b-Void {()} r
-    RelGV-dn-base (b-* {A = A} {B = B} a b) {x} {y} (ra , rb) =
-      subst₂ (RelGV (A * B)) (sym (tr-× (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B) x)) (sym (e×ᵈ A B {y}))
-        (RelGV-dn-base a ra , RelGV-dn-base b rb)
-    RelGV-dn-base (b-+ {A = A} {B = B} a b) {inj₁ x} {inj₁ y} r =
-      subst₂ (RelGV (A + B)) (sym (tr-inj₁ (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B) x)) (sym (tr-inj₁ (⟦wk₀⟧ᴰ A) (⟦wk₀⟧ᴰ B) y))
-        (RelGV-dn-base a r)
-    RelGV-dn-base (b-+ {A = A} {B = B} a b) {inj₂ x} {inj₂ y} r =
-      subst₂ (RelGV (A + B)) (sym (tr-inj₂ (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B) x)) (sym (tr-inj₂ (⟦wk₀⟧ᴰ A) (⟦wk₀⟧ᴰ B) y))
-        (RelGV-dn-base b r)
-    RelGV-dn-base (b-+ a b) {inj₁ _} {inj₂ _} ()
-    RelGV-dn-base (b-+ a b) {inj₂ _} {inj₁ _} ()
-
-  -- A graded computation at a base type, related, transports to its weakening.
-  RelGM-up-base : ∀ {m} π {A : Type} (b : IsBaseType A) {c : M π ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ}
-                → RelGM π A c t
-                → RelGM π (wk₀ {m} A) (subst (M π) (sym (⟦wk₀⟧ᵛ A)) c) (subst T∞ (sym (⟦wk₀⟧ᴰ A)) t)
-  RelGM-up-base π {A} b {c} {t} r =
-    subst (λ z → RelS (RelGV (wk₀ A)) z (subst T∞ (sym (⟦wk₀⟧ᴰ A)) t)) (sym (toT∞-tr π (sym (⟦wk₀⟧ᵛ A)) c))
-          (RelS-tr₂ (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᴰ A)) (RelGV-up-base b) r)
-
-  private
-    upᵛ→ : ∀ π {X X′ Y Y′ : Set} (eX : X′ ≡ X) (eY : Y′ ≡ Y) (f : X → M π Y) (a : X′)
-         → subst id (sym (cong₂ (λ P Q → P → M π Q) eX eY)) f a ≡ subst (M π) (sym eY) (f (subst id eX a))
-    upᵛ→ π refl refl f a = refl
-
-    upᵛ→₀ : ∀ π {Y Y′ : Set} (eY : Y′ ≡ Y) (f : ⊤ → M π Y) (u : ⊤)
-          → subst id (sym (cong (λ Q → ⊤ → M π Q) eY)) f u ≡ subst (M π) (sym eY) (f u)
-    upᵛ→₀ π refl f u = refl
-
-    up→ᴰ : ∀ {X X′ Y Y′ : Set} (eX : X′ ≡ X) (eY : Y′ ≡ Y) (f : X → T∞ Y) (a : X′)
-         → subst id (sym (cong₂ (λ P Q → P → T∞ Q) eX eY)) f a ≡ subst T∞ (sym eY) (f (subst id eX a))
-    up→ᴰ refl refl f a = refl
-
-    up→ᴰ₀ : ∀ {Y Y′ : Set} (eY : Y′ ≡ Y) (f : ⊤ → T∞ Y) (u : ⊤)
-          → subst id (sym (cong (λ Q → ⊤ → T∞ Q) eY)) f u ≡ subst T∞ (sym eY) (f u)
-    up→ᴰ₀ refl f u = refl
-
-  -- The graded relation at an external operation's (concrete) type carries
-  -- across its weakening.
-  RelGV-up-conc : ∀ {m} {A : Type} (c : IsConcrete A) {x y} → RelGV A x y
-                → RelGV (wk₀ {m} A) (upᵛ A x) (up A y)
-  RelGV-up-conc (con-base b) r = RelGV-up-base b r
-  RelGV-up-conc (con-fun {A = D} {B = C} {k = mk-kind Zero π} bD bC) {f} {g} (r , rd) =
-    subst₂ (RelGM π (wk₀ C)) (sym (upᵛ→₀ π (⟦wk₀⟧ᵛ C) f tt)) (sym (up→ᴰ₀ (⟦wk₀⟧ᴰ C) g tt))
-      (RelGM-up-base π bC r)
-    , RelD-up (D ⇒[ mk-kind Zero π ] C) rd
-  RelGV-up-conc (con-fun {A = D} {B = C} {k = mk-kind One π} bD bC) {f} {g} (r , rd) =
-    (λ {a} {b} rab →
-      subst₂ (RelGM π (wk₀ C)) (sym (upᵛ→ π (⟦wk₀⟧ᵛ D) (⟦wk₀⟧ᵛ C) f a)) (sym (up→ᴰ (⟦wk₀⟧ᴰ D) (⟦wk₀⟧ᴰ C) g b))
-        (RelGM-up-base π bC (r (RelGV-dn-base bD rab))))
-    , RelD-up (D ⇒[ mk-kind One π ] C) rd
-  RelGV-up-conc (con-fun {A = D} {B = C} {k = mk-kind Many π} bD bC) {f} {g} (r , rd) =
-    (λ {a} {b} rab →
-      subst₂ (RelGM π (wk₀ C)) (sym (upᵛ→ π (⟦wk₀⟧ᵛ D) (⟦wk₀⟧ᵛ C) f a)) (sym (up→ᴰ (⟦wk₀⟧ᴰ D) (⟦wk₀⟧ᴰ C) g b))
-        (RelGM-up-base π bC (r (RelGV-dn-base bD rab))))
-    , RelD-up (D ⇒[ mk-kind Many π ] C) rd
-
-  -- A pure reference's meaning, related at its declared type, is related at
-  -- the type it is read at inside a polymorphic body.
-  RelGM-up-conc : ∀ {m} {A : Type} (c : IsConcrete A) {v : ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ}
-                → RelGM pure A v t
-                → RelGM pure (wk₀ {m} A) (subst id (sym (⟦wk₀⟧ᵛ A)) v) (subst T∞ (sym (⟦wk₀⟧ᴰ A)) t)
-  RelGM-up-conc {A = A} c {v} {t} r =
-    subst (λ z → RelS (RelGV (wk₀ A)) z (subst T∞ (sym (⟦wk₀⟧ᴰ A)) t)) (sym (toT∞-tr pure (sym (⟦wk₀⟧ᵛ A)) v))
-          (RelS-tr₂ (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᴰ A)) (RelGV-up-conc c) r)
+  -- Any graded relation at `A` holds at `wk₀ A` over the ground index.
+  RelGM-wk₀ : ∀ {π} {A : Type} {v : M π ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} → RelGM π A v t
+            → RelGM π (wk₀ {0} A) (subst (M π) (sym (⟦wk₀⟧ᵛ A)) v) (subst T∞ (sym (⟦wk₀⟧ᴰ A)) t)
+  RelGM-wk₀ {π} {A} {v} {t} r = go (wk₀ A) (wk₀-id A) (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᴰ A))
+    where
+      go : (U : Type) → U ≡ A → (p : ⟦ A ⟧ᵛ ≡ ⟦ U ⟧ᵛ) (q : ⟦ A ⟧ᴰ ≡ ⟦ U ⟧ᴰ)
+         → RelGM π U (subst (M π) p v) (subst T∞ q t)
+      go .A refl refl refl = r
