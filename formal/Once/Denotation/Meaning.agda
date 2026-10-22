@@ -196,8 +196,11 @@ fmapᵖ f x = f x
 svarᵛRun : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ → ⟦ A ⟧ᵛ
 svarᵛRun {Γ = Γ} (svar i) dγ = lookupᵛUsed Γ i dγ
 
+-- Plan 0.122: a definition means a value at each GROUND kinded instance — what
+-- runs is ground (a type variable has no values, `⟦ var ⟧ᵛ = ⊥`), so the
+-- realms below are meant at the ground index.
 DefFamily : Once.Internal.Type.Poly.PolyType → Set
-DefFamily s = ∀ {m} {Δ : KCtx m} (U : Ty m) → KindedInstance Δ s U → ⟦ U ⟧ᵛ
+DefFamily s = ∀ {Δ : KCtx 0} (U : Type) → KindedInstance Δ s U → ⟦ U ⟧ᵛ
 
 DefMeanings : PolyCtx → Set
 DefMeanings = DefEnvOf DefFamily
@@ -238,10 +241,10 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- IR-free: morphisms via `⟦_⟧ᵐ`, values via `⟦_⟧ᵍ`, locals via `lookupᴰ`.
 ------------------------------------------------------------------------
 
-⟦_⟧ᶜ : ∀ {m} {ctx e} {A : Ty m} {Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
-⟦_⟧ᵢ : ∀ {m} {ctx e} {A : Ty m} {Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
+⟦_⟧ᶜ : ∀ {ctx : NamedCtx 0} {e} {A : Type} {Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
+⟦_⟧ᵢ : ∀ {ctx : NamedCtx 0} {e} {A : Type} {Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
 
-⟦_⟧ᵈ : ∀ {m} {ctx e} {A B : Ty m} {π Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
+⟦_⟧ᵈ : ∀ {ctx : NamedCtx 0} {e} {A B : Type} {π Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
      → ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ
 
 ------------------------------------------------------------------------

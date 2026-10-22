@@ -48,6 +48,7 @@ open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
 open import Once.Internal.Name using (showCanonical)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
+open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Internal.Graded using (⟦_⟧ᵛ; M; bindM; returnM; subM; _>>=ᵖ_; bindᵍ)
 open import Once.Internal.Type.Sub using (·p-diag; ⊑π-irr; pure-⊑)
 open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β; >>=ᵖ-assoc; >>=ᵖ-idʳ)
@@ -75,12 +76,26 @@ refSemAt : (δ : GM.DefSem) (d : Fin s) {sc : Schema} → S !! d ≡ sc → (τ 
          → Respects (kinds sc) Δ τ → ⟦ type sc ⟨ τ ⟩ ⟧ᵛ
 refSemAt δ d refl τ r = GM.defs δ d τ r
 
+-- The meaning of an entry does not depend on the kinds it is read at: over
+-- no variable there is one kind context, and `Respects` is a proposition.
+refSemAt-Δ : (δ : GM.DefSem) (d : Fin s) {sc : Schema} (e : S !! d ≡ sc) (τ : TySub (arity sc) 0) {Δ Δ′ : KCtx 0}
+             (r : Respects (kinds sc) Δ τ) (r′ : Respects (kinds sc) Δ′ τ) → refSemAt δ d e τ r ≡ refSemAt δ d e τ r′
+refSemAt-Δ δ d refl τ {Δ} r r′ = go (extensionality λ ()) r′
+  where
+    go : ∀ {Δ″ : KCtx 0} → Δ ≡ Δ″ → (r″ : Respects _ Δ″ τ) → GM.defs δ d τ r ≡ GM.defs δ d τ r″
+    go refl r″ = cong (GM.defs δ d τ) (extensionality λ i → extensionality λ e → Base-irrelevant (r i e) (r″ i e))
+
+-- An entry at a kinded instance of a telescope definition's schema.
+entrySem : (δ : GM.DefSem) (d : Fin s) {sc : PolyType} → S !! d ≡ schemaOf sc → {Δ : KCtx 0} {U : Ty 0}
+         → KindedInstance Δ sc U → ⟦ U ⟧ᵛ
+entrySem δ d {sc} e ki =
+  subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
+        (refSemAt δ d e (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))))
+
 -- A telescope definition at a kinded instance (the instance `polyE` computes).
 polySem : ∀ {imps sg polys} (δ : GM.DefSem) (V : View imps sg polys) {x sc body prefix} {Δ : KCtx 0} {U : Ty 0}
         → (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) → KindedInstance Δ sc U → ⟦ U ⟧ᵛ
-polySem δ V {sc = sc} lp ki =
-  subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
-        (refSemAt δ (entry V lp) (entryIs V lp) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))))
+polySem δ V {sc = sc} lp ki = entrySem δ (entry V lp) {sc} (entryIs V lp) ki
 
 -- …a monomorphic definition, at its ground type…
 impSem : (δ : GM.DefSem) {Δ : KCtx 0} {x : String} {T : Type} → ImportAt x T → ⟦ wk₀ {0} T ⟧ᵛ

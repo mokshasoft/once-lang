@@ -44,6 +44,7 @@ open import Once.Spec.Signature using (_∶_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Internal.Name using (showCanonical)
 open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Instance using (rigidOf; kindsOf)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Core.Decl using (declS)
@@ -77,7 +78,7 @@ monoSchema ty = schema 0 ∅ₖ ty
 -- each telescope definition an entry at its schema.
 data SigSig : List _ → Set where
   []    : SigSig []
-  s-ffi : ∀ {x T sg} → HonestFFI T → (∀ {c} → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ) → SigSig sg
+  s-ffi : ∀ {x T sg} → IsConcrete T → HonestFFI T → (∀ {c} → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ) → SigSig sg
         → SigSig ((x , T) ∷ sg)
 
 data ImpSig {s} (S : Defs s) : C.FunCtx → Set where
@@ -113,10 +114,10 @@ module _ {s} {S : Defs s} where
 
   sigAt : ∀ {sg} → SigSig sg → ∀ {x T′} → lookupImport sg x ≡ just T′ → ES.Declared x T′
   sigAt [] ()
-  sigAt {(n , T₀) ∷ rest} (s-ffi h m ss) {x} eq with StrProp._≟_ n x
+  sigAt {(n , T₀) ∷ rest} (s-ffi k h m ss) {x} eq with StrProp._≟_ n x
   ... | yes refl with just-injective eq
   ...   | refl = ES.declared h m
-  sigAt {(n , T₀) ∷ rest} (s-ffi h m ss) {x} eq | no _ = sigAt ss eq
+  sigAt {(n , T₀) ∷ rest} (s-ffi k h m ss) {x} eq | no _ = sigAt ss eq
 
   telFind : ∀ {ps} → TeleSig S ps → ∀ {x sc body prefix}
           → lookupPolyPrefix (C.buildPolyCtx ps) x ≡ just (sc , body , prefix)
@@ -173,7 +174,7 @@ mutual
   toProgram : ∀ {s} {S : Defs s} {sc es} → Tele S → SigSig (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
             → (mt : ModTele sc es) → MainIn mt → SigIn mt → Program
   toProgram tl ss is ts [] () u
-  toProgram tl ss is ts (ffi _ _ c h g rest) mi u = toProgram tl (s-ffi h (u (here refl)) ss) is ts rest mi (λ m → u (there m))
+  toProgram tl ss is ts (ffi _ _ c h g rest) mi u = toProgram tl (s-ffi c h (u (here refl)) ss) is ts rest mi (λ m → u (there m))
   toProgram {S = S} {sc = sc} tl ss is ts (poly {pfi = pfi} {Ψ = Ψ} pr D rest) mi u =
     toProgram (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D)
               ss (wkI is) (t-def zero refl (wkT ts)) rest mi u
@@ -219,7 +220,7 @@ mutual
   toProgramFrom : ∀ {s} {S : Defs s} {sc es} → Tele S → SigSig (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
                 → (d : Fin s) → Entry (S !! d) → (mt : ModTele sc es) → SigIn mt → Program
   toProgramFrom tl ss is ts d e [] u = programAt tl d e
-  toProgramFrom tl ss is ts d e (ffi _ _ c h g rest) u = toProgramFrom tl (s-ffi h (u (here refl)) ss) is ts d e rest (λ m → u (there m))
+  toProgramFrom tl ss is ts d e (ffi _ _ c h g rest) u = toProgramFrom tl (s-ffi c h (u (here refl)) ss) is ts d e rest (λ m → u (there m))
   toProgramFrom {S = S} {sc = sc} tl ss is ts d e (poly {pfi = pfi} {Ψ = Ψ} pr D rest) u =
     toProgramFrom (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D)
                   ss (wkI is) (t-def zero refl (wkT ts)) (suc d) e rest u
