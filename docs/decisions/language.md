@@ -211,7 +211,7 @@ entry updates the rule it changes here, in the same commit.
   capture locals and be effectful. `cata` is an eliminator: it synthesizes.
   (D131, D265, D295, D228)
 - **The fold is the unique algebra morphism out of `μ`**, and fusion holds —
-  Spec claims (postulated P2/P3 until proved). (D307)
+  Spec claims, proved in `Once.Metatheory.Recursion`. (D307)
 - **Only codata carries an effect grade**: arrows and `ν`. A stream's layers
   are produced at a finite grade: `ν F pure <: ν F act`; the surface writes
   `Nu F` / `Nu (Act F)`; `Nu (Eff F)` and `Mu (Eff F)` are ill-formed. An

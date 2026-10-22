@@ -18256,6 +18256,8 @@ Plan 0.112 names the algebraic structures the formalization already has. Three c
 - `Metatheory` has four fields: `term-model`, `type-system`, `effects`, `recursion`.
 - Open: C5's scope (functor vs full Freyd; "pure = central" is provable for the free `T`), F's object and equality. G moved to plan 0.114, with a new finding: effects vanish at quantity `Zero`.
 
+**Status (2026-10-22):** item 4's laws are proved, not postulated. `fold-in`, `fold-unique`, `fold-fusion` (and D309's `unfold-out`, with `unfold-unique`) are proved in `Once.Metatheory.Recursion` by induction on the finite μ tree and by the ν coercions' definitions; the postulates P2, P3 and P5 were removed from `Once.Postulates` (f3dcd9a38). They are fields of `Spec.Metatheory`'s `Recursion`, carried on the apex.
+
 ## D308 — AN ERASED POSITION IS PURE; THE MEANING IS A FUNCTION OF THE JUDGMENT; EFFECTS FORM A FREYD CATEGORY (2026-10-12)
 
 **Relates**: plan 0.116, D143 (erasure), D250 (`pure` = referential transparency), D276 (affine grades), D304 (metatheory placement), OCP-0009 ("Arrows / Freyd")
