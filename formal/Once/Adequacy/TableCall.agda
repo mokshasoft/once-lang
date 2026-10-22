@@ -89,7 +89,6 @@ abiT (μ-type F)   M = M
 abiT (ν-type F π) M = M
 abiT Int          M = M
 abiT Float        M = M
-abiT (rigid k i)  M = M
 
 -- The direct-call form (`directCallIR`) of an arrow entry, run on an argument:
 -- the closure its body computes, applied to it — related to any run related to
@@ -124,4 +123,3 @@ abi (μ-type F)   x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir
 abi (ν-type F π) x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
 abi Int          x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
 abi Float        x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
-abi (rigid k i)  x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
