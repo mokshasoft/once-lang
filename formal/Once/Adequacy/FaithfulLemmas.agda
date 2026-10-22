@@ -186,7 +186,7 @@ cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ dγ′ ih =
   ≡ˢ (cong-app (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A}
                          {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (cataM {F = F} {A = A} wf IR.Heap)
                          (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
-     (RelS-bind ih (cataM-fold {F} {A} {π} wf))
+     (RelS-bind ih (cataM-fold {F = F} {A = A} {π = π} wf))
 
 ------------------------------------------------------------------------
 -- `ana`. D273: `anaM wf m = curry (Ana (wf-⌊⌋ wf) (subst … (apply ∘ ⟨ fst ,
@@ -278,7 +278,7 @@ anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {c} {c′} r =
                       (RelS-substˡ⁻ (cohᴰ (⟦ F ⟧T A))
                         (≡ˢ (cong (λ W → subst T∞ (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ applyIR W))
                                   (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ A) c a)))
-                            (apply-rel {A} {⟦ F ⟧T A} {fin φ} {c} {c′} r ra))))))
+                            (apply-rel {A = A} {B = ⟦ F ⟧T A} {π = fin φ} {c = c} {c′ = c′} r ra))))))
               (λ { {_} {y} (x , refl , rx) → x , y , refl , refl , rx }))
             (λ { (x , y , refl , refl , rx) → layer x y rx })))
 
@@ -308,7 +308,7 @@ ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg 
   ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {C = A ⇒[ mk-kind Many π₀ ] ν-type F φ}
                          {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (anaM {F = F} {A = A} {φ = φ} wf IR.Heap)
                          (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
-     (RelS-bind ih (anaM-unfold {F} {A} {π₀} {φ} wf))
+     (RelS-bind ih (anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf))
 
 ------------------------------------------------------------------------
 -- THE LOOP. `loopM m = curry (Iter (apply ∘ ⟨ fst , snd ⟩))`: a round is
@@ -353,7 +353,7 @@ loopM-iter {A = A} {B = B} {c = c} {c′ = c′} r =
         (≡ˢ (cong (λ W → subst T∞ QBA (evalᴰ fmt ρ applyIR W))
                   (sym (trans (pairᴰ-subst⁻ (cohᴰ Arr) QA c (subst (λ z → z) QA a))
                               (cong (c₀ ,_) (subst-sym-subst {P = λ z → z} QA)))))
-            (apply-rel {A} {B TT.+ A} {act} {c} {c′} r
+            (apply-rel {A = A} {B = B TT.+ A} {π = act} {c = c} {c′ = c′} r
               (subst (λ z → RelD (B TT.+ A) z (inj₂ a′)) (subst-inj₂ QB QA a) r′)))
     start : ∀ {x x′} → RelD A x x′
           → RelD (B TT.+ A) (subst (λ z → z) QBA (inj₂ (subst (λ z → z) (sym QA) x))) (inj₂ x′)
@@ -377,4 +377,4 @@ loop-body {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} round dγ dγ′ ih =
   ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many act ] (B TT.+ A)} {C = A ⇒[ mk-kind Many eff ] B}
                          {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (loopM {A = A} {B = B} IR.Heap)
                          (elaborate IR.Heap round IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
-     (RelS-bind ih (loopM-iter {A} {B}))
+     (RelS-bind ih (loopM-iter {A = A} {B = B}))
