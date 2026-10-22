@@ -38,6 +38,7 @@ import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Type.Honest as LH
 import Once.Internal.GradedOps as LOps
 import Once.Spec.Type as ST
+import Once.Spec.Type.Substitution as STS
 import Once.Internal.Graded as LGr
 import Once.Internal.Core.PolyTyping S as PT
 import Once.Internal.Core.PolySub as PS
@@ -197,8 +198,8 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
   iter {Γ = Γ} {Ψf} {Ψs} {π₁} {π₂} {A} {B} df dx ihf ihx r r′ g e =
     S-at ρ ρ′ g (eqᵘ-many Ψf Ψs) refl (eqᵍ-3 π₁ π₂ LG.eff) (S⊢.⊢iter (trD df) (trD dx)) (crΓ Γ)
          (ur-+ (ur-* qr-many (ur Ψf)) (ur Ψs)) (ur _) gB gB (pr-· (pr π₁) (pr-· (pr π₂) pr-eff)) (pr _) _
-         (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) pr-eff) (ihf r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψf) e₀))
-                   (λ rf → bindᵍ-R (pr π₂) pr-eff (ihx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
+         (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) pr-eff) (ihf r r′ g (env*Many-envˡ-R g (crΓ Γ) _ _ (ur Ψf) e₀))
+                   (λ rf → bindᵍ-R (pr π₂) pr-eff (ihx r r′ g (envʳ-R g (crΓ Γ) _ _ (ur Ψs) e₀))
                              (λ ra → loop-R (λ rx → TR-map toSum (rf rx)) ra)))
          e
     where gB = GR-inst (ptr B) g
@@ -232,12 +233,12 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) (defsR : DefsR ρ ρ′) (sigR : S
       (S-at ρ ρ′ g {Γ = Γ} (sym (uS-zero {n})) (sym (ref-ty S d τ)) refl
             (S⊢.⊢ref {Δ = kindsS Δ} {Γ = pctxS Γ} d (castSub S d (λ i → ptyS (τ i))) (ref-resp S d τ rs))
             (crΓ Γ) ur-zero (ur _) gI gX pr-pure pr-pure _
-            (λ _ → ValR-substʳ (sym (ST.⟨⟩-∘ (SC.Schema.type (S′ SC.!! d)) (castSub S d (λ i → ptyS (τ i))) σ′))
+            (λ _ → ValR-substʳ (sym (STS.⟨⟩-∘ (SC.Schema.type (S′ SC.!! d)) (castSub S d (λ i → ptyS (τ i))) σ′))
                                 (GR-def S d (inst-ref S d τ g)) gI
                      (defsR d _ _ _ _ (inst-ref S d τ g)))
             e)
     where
-      gI = subst (λ Z → GR _ Z) (sym (ST.⟨⟩-∘ (SC.Schema.type (S′ SC.!! d)) (castSub S d (λ i → ptyS (τ i))) σ′))
+      gI = subst (λ Z → GR _ Z) (sym (STS.⟨⟩-∘ (SC.Schema.type (S′ SC.!! d)) (castSub S d (λ i → ptyS (τ i))) σ′))
                  (GR-def S d (inst-ref S d τ g))
       gX = subst (λ Z → GR Z _) (LP.⟨⟩-⟪⟫ (LP.Schema.type (S LP.!! d)) τ σ) (GR-inst (ptr (LP.Schema.type (S LP.!! d) LP.⟨ τ ⟩)) g)
 
@@ -313,8 +314,8 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
                           (PT.instantiate σ r da) (pr π₁) gAlgX gAlg
                           (S-at ρ ρ′ g refl (cong (λ X → X ST.⇒[ _ ] _) (ptyS-⟦⟧ F A)) refl (trD da) (crΓ Γ) (ur Ψa) (ur Ψa)
                                 (GR-inst (ptr (LP.⟦ F ⟧F A LP.⇒[ LG.mk-kind LG.Many π ] A)) g) gAlgX (pr π₁) (pr π₁) _
-                                (iha r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψa) e₀)))
-                   (λ ralg → bindᵍ-R (pr π₂) (pr π) (iht r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψt) e₀))
+                                (iha r r′ g) (env*Many-envˡ-R g (crΓ Γ) _ _ (ur Ψa) e₀)))
+                   (λ ralg → bindᵍ-R (pr π₂) (pr π) (iht r r′ g (envʳ-R g (crΓ Γ) _ _ (ur Ψt) e₀))
                                (λ rv → Fold.fold-R Σ g F A (LP.wf-⟪⟫ r wf) u (λ {x} {y} r₀ → ralg r₀) rv)))
          e
     where
@@ -334,8 +335,8 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
                           (PT.instantiate σ r dc) (pr π₁) gCX gC
                           (S-at ρ ρ′ g refl (arr-fin LG.pureᶠ (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
                                 (GR-inst (ptr (A LP.⇒[ LG.mk-kind LG.Many LG.pure ] LP.⟦ F ⟧F A)) g) gCX (pr π₁) (pr π₁) _
-                                (ihc r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψc) e₀)))
-                   (λ rc → fmap-R (pr π₂) (ihx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
+                                (ihc r r′ g) (env*Many-envˡ-R g (crΓ Γ) _ _ (ur Ψc) e₀)))
+                   (λ rc → fmap-R (pr π₂) (ihx r r′ g (envʳ-R g (crΓ Γ) _ _ (ur Ψs) e₀))
                              (λ ra → Unfold.anaP-R Σ (GF-inst (pfr F) g)
                                         (λ rx → in-R (GF-inst (pfr F) g) (cf-R g (pfr F) (LP.wf-⟪⟫ r wf) gA (rc rx))) ra)))
          e
@@ -353,8 +354,8 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
                           (PT.instantiate σ r dc) (pr π₁) gCX gC
                           (S-at ρ ρ′ g refl (arr-fin LG.actᶠ (ptyS-⟦⟧ F A)) refl (trD dc) (crΓ Γ) (ur Ψc) (ur Ψc)
                                 (GR-inst (ptr (A LP.⇒[ LG.mk-kind LG.Many LG.act ] LP.⟦ F ⟧F A)) g) gCX (pr π₁) (pr π₁) _
-                                (ihc r r′ g) (restrict-R g (crΓ Γ) _ _ _ (ur Ψc) e₀)))
-                   (λ rc → fmap-R (pr π₂) (ihx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
+                                (ihc r r′ g) (env*Many-envˡ-R g (crΓ Γ) _ _ (ur Ψc) e₀)))
+                   (λ rc → fmap-R (pr π₂) (ihx r r′ g (envʳ-R g (crΓ Γ) _ _ (ur Ψs) e₀))
                              (λ ra → Unfold.anaA-R Σ (GF-inst (pfr F) g)
                                         (λ rx → fmap-R pr-act (rc rx)
                                                   (λ rl → in-R (GF-inst (pfr F) g) (cf-R g (pfr F) (LP.wf-⟪⟫ r wf) gA rl))) ra)))

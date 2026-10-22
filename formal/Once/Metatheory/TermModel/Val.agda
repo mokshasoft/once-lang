@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω; _+q_; _*q_)
 open import Once.Spec.Type using (Ty; TySub; _⟨_⟩)
 open import Once.Spec.Context
-  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; zeroUsage; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_; ⊑ᵘ-trans; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ)
+  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; zeroUsage; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Meaning Σ fmt S using (Env; Slot; restrict; lookupᵛ)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)
@@ -113,19 +113,6 @@ module _ {m : ℕ} (σ : TySub m 0) where
   lookup-val : ∀ {n} (Γ : Ctx m n) (i : Fin n) (γ : Env σ Γ (singleUse i One)) → lookupᵛ σ Γ i γ ≡ val γ i (nz-single i)
   lookup-val (Γ ▸ A) zero    (γ , v) = refl
   lookup-val (Γ ▸ A) (suc i) (γ , v) = lookup-val Γ i γ
-
-  -- Forgetting twice is forgetting once.
-  restrict-∘ : ∀ {n} {Γ : Ctx m n} {Ψ₀ Ψ₁ Ψ : Usage n} (P : Ψ₀ ⊑ᵘ Ψ₁) (Q : Ψ₁ ⊑ᵘ Ψ) (γ : Env σ Γ Ψ)
-             → restrict σ P (restrict σ Q γ) ≡ restrict σ (⊑ᵘ-trans P Q) γ
-  restrict-∘ {Γ = ∅} [] [] γ = refl
-  restrict-∘ {Γ = Γ ▸ A} (0≤q ⊑∷ P) (0≤q ⊑∷ Q) (γ , v) = cong (_, tt) (restrict-∘ P Q γ)
-  restrict-∘ {Γ = Γ ▸ A} (0≤q ⊑∷ P) (1≤1 ⊑∷ Q) (γ , v) = cong (_, tt) (restrict-∘ P Q γ)
-  restrict-∘ {Γ = Γ ▸ A} (0≤q ⊑∷ P) (1≤ω ⊑∷ Q) (γ , v) = cong (_, tt) (restrict-∘ P Q γ)
-  restrict-∘ {Γ = Γ ▸ A} (0≤q ⊑∷ P) (ω≤ω ⊑∷ Q) (γ , v) = cong (_, tt) (restrict-∘ P Q γ)
-  restrict-∘ {Γ = Γ ▸ A} (1≤1 ⊑∷ P) (1≤1 ⊑∷ Q) (γ , v) = cong (_, v) (restrict-∘ P Q γ)
-  restrict-∘ {Γ = Γ ▸ A} (1≤1 ⊑∷ P) (1≤ω ⊑∷ Q) (γ , v) = cong (_, v) (restrict-∘ P Q γ)
-  restrict-∘ {Γ = Γ ▸ A} (1≤ω ⊑∷ P) (ω≤ω ⊑∷ Q) (γ , v) = cong (_, v) (restrict-∘ P Q γ)
-  restrict-∘ {Γ = Γ ▸ A} (ω≤ω ⊑∷ P) (ω≤ω ⊑∷ Q) (γ , v) = cong (_, v) (restrict-∘ P Q γ)
 
   -- The Spec's self-sameness, read at variables.
   SelfSame : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} → Env σ Γ Ψ → Set

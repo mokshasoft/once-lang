@@ -27,8 +27,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade
   using (Quantity; Zero; One; Many; Purity; pure; act; fin; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
-  using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Int; Float; _⇒[_]_; _*_; _+_; μ; ν; ⟦_⟧F; Unit)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_; ⊑ᵘ-trans)
+  using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; _⟨_⟩F; Int; Float; _⇒[_]_; _*_; _+_; μ; ν; ⟦_⟧F; Unit)
+open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
+open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
@@ -44,7 +45,8 @@ open import Once.Metatheory.Coherence.Layer Σ
 open import Once.Metatheory.Coherence.Loop Σ using (loopSame)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Conv Σ using (convSame)
-open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; selfAgree; restrictˡ; restrictʳ)
+open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; selfAgree; restrictˡ; restrictʳ; restrict-∘;
+         envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
 open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; primSame; substSame; slotSame; caseRel)
 open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
 open import Once.Metatheory.TermModel.Usage
@@ -140,6 +142,14 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
        → SelfSame σ (restrict σ P (restrict σ Q γ)) × SubAgree σS Ψ₀ (restrict σ P (restrict σ Q γ)) (restrict σ p′ γ′)
     sr σS P Q p′ {γ} ss ag = selfSame-restrict σ P {γ = restrict σ Q γ} (selfSame-restrict σ Q {γ = γ} ss) , subRestrict σS P Q p′ ag
 
+    -- the same, where the meaning forgets by `envˡ`/`envʳ`/`env*One`/`env*Many`
+    -- (D335): `restrict` up to the equations in `Coherence.Env`
+    sr≡ : ∀ {n n′} {Γ : Ctx m n} {Γ′ : Ctx m n′} (σS : TSub Γ Γ′) {Ψ₀ Ψ : Usage n′} {X}
+          {P : Ψ₀ ·ᵐ usage σS ⊑ᵘ X} {Q : X ⊑ᵘ Ψ ·ᵐ usage σS} {p′ : Ψ₀ ⊑ᵘ Ψ} {γ γ′ γ₀ γ₀′}
+        → γ₀ ≡ restrict σ P (restrict σ Q γ) → γ₀′ ≡ restrict σ p′ γ′
+        → SelfSame σ γ → SubAgree σS Ψ γ γ′ → SelfSame σ γ₀ × SubAgree σS Ψ₀ γ₀ γ₀′
+    sr≡ σS {P = P} {Q} {p′} refl refl ss ag = sr σS P Q p′ ss ag
+
     extᵃ : ∀ {n n′} {Γ : Ctx m n} {Γ′ : Ctx m n′} (σS : TSub Γ Γ′) {A : Ty m} (q : Quantity) (Ψ : Usage n′) {γ γ′ x x′}
         → SelfSame σ γ → SubAgree σS Ψ γ γ′ → SlotAgree σ A q q x x′
         → SelfSame σ (restrict σ (⊑ᵘ-≡ (·ᵐ-exts {A = A} σS q Ψ)) (γ , x))
@@ -168,25 +178,25 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   subSem σS (⊢lam {Ψ = Ψ} {π = π} {A} {B} ω≤ω d) ss ag =
     relPure {A = (A ⇒[ mk-kind Many π ] B) ⟨ σ ⟩} (lamMany {π = π} {A = A ⟨ σ ⟩} {B = B ⟨ σ ⟩} λ sa → under σS Many Ψ d ss ag sa)
   subSem σS (⊢app {q = Zero} {A = A} df dx) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS df ss₁ ag₁) (appZero {A = A ⟨ σ ⟩})
   subSem σS (⊢app {q = One} df dx) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (env*One-envʳ-restrict σ _ _ _) (env*One-envʳ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS df ss₁ ag₁) λ sf → relBindᵍ (subSem σS dx ss₂ ag₂) λ sx → appOne sf sx
   subSem σS (⊢app {q = Many} df dx) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (env*Many-envʳ-restrict σ _ _ _) (env*Many-envʳ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS df ss₁ ag₁) λ sf → relBindᵍ (subSem σS dx ss₂ ag₂) λ sx → appMany sf sx
   subSem σS (⊢let {Ψ₂ = Ψ₂} {q = Zero} d₁ d₂) ss ag =
-    let (ss₂ , ag₂) = sr σS _ _ _ ss ag in under σS Zero Ψ₂ d₂ ss₂ ag₂ tt
+    let (ss₂ , ag₂) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag in under σS Zero Ψ₂ d₂ ss₂ ag₂ tt
   subSem σS (⊢let {Ψ₂ = Ψ₂} {q = One} d₁ d₂) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (env*One-envʳ-restrict σ _ _ _) (env*One-envʳ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS d₁ ss₁ ag₁) λ sv → under σS One Ψ₂ d₂ ss₂ ag₂ sv
   subSem σS (⊢let {Ψ₂ = Ψ₂} {q = Many} d₁ d₂) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (env*Many-envʳ-restrict σ _ _ _) (env*Many-envʳ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS d₁ ss₁ ag₁) λ sv → under σS Many Ψ₂ d₂ ss₂ ag₂ sv
   subSem σS ⊢unit ss ag = relPure tt
   subSem σS (⊢pair {π₁ = π₁} {π₂} {A} {B} da db) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ss ag in
     relBindᵍ {π₁} {π₂} {π₁} {π₂} {A ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (subSem σS da ss₁ ag₁) λ sa →
     relFmap {π₂} {π₂} {B ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (subSem σS db ss₂ ag₂) λ sb → samePair {A ⟨ σ ⟩} {B ⟨ σ ⟩} sa sb
   subSem σS (⊢fst {A = A} {B} d) ss ag = relFmap (subSem σS d ss ag) (sameFst {A = A ⟨ σ ⟩} {B = B ⟨ σ ⟩})
@@ -194,7 +204,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   subSem σS (⊢inl {π = π} {A} {B} d) ss ag = relFmap {π} {π} (subSem σS d ss ag) (sameInl {A ⟨ σ ⟩} {B ⟨ σ ⟩})
   subSem σS (⊢inr {π = π} {A} {B} d) ss ag = relFmap {π} {π} (subSem σS d ss ag) (sameInr {A ⟨ σ ⟩} {B ⟨ σ ⟩})
   subSem σS (⊢case {Ψ = Ψ} {qℓ} {qr} {π₁} {π₂} {A} {B} {C} ds dl dr) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (envˡ-restrict σ _ _ _) (envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS ds ss₁ ag₁) λ {w} {w′} sw →
       caseRel {A ⟨ σ ⟩} {B ⟨ σ ⟩} {C ⟨ σ ⟩} {π₂} {π₂}
         (λ {a} {a′} sa → under σS qℓ Ψ dl ss₂ ag₂ (slotSame σ A qℓ {a} {a′} sa))
@@ -203,7 +213,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   subSem σS (⊢absurd {π = π} d) ss ag = relBind {π} {π} (subSem σS d ss ag) λ {x} _ → ⊥-elim x
   subSem σS (⊢roll {π = π} wf d) ss ag = relFmap {π} {π} (subSem σS d ss ag) λ s → Functor.roll-same σ r wf s
   subSem σS (⊢fold {π = π} {F = F} {A} wf da dt) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (env*Many-envˡ-restrict σ _ _ _) (env*Many-envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS da ss₁ ag₁) λ {alg} {alg′} salg →
     relBindᵍ (subSem σS dt ss₂ ag₂) λ {v} {v′} sv →
     subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
@@ -211,7 +221,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
           (sameμ sv)
           (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
   subSem σS (⊢unfold {f = f} {F = F} {A} wf dc da) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (env*Many-envˡ-restrict σ _ _ _) (env*Many-envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS dc ss₁ ag₁) λ {c₁} {c₂} sc →
     relFmap (subSem σS da ss₂ ag₂) λ sa n →
       Ana.anaRel f (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap (fin f) (toL σ F A) (c₁ x)) (λ x → fmap (fin f) (toL σ F A) (c₂ x))
@@ -225,7 +235,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
           (relatedFmap (outRel f (code (F ⟨ σ ⟩F)) sv)
                     (λ k → Functor.fromL-same σ r wf (ν F f) (LayerEq-∀ (code (F ⟨ σ ⟩F)) k)))))
   subSem σS (⊢iter {A = A} {B} df ds) ss ag =
-    let (ss₁ , ag₁) = sr σS _ _ _ ss ag ; (ss₂ , ag₂) = sr σS _ _ _ ss ag in
+    let (ss₁ , ag₁) = sr≡ σS (env*Many-envˡ-restrict σ _ _ _) (env*Many-envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ss ag in
     relBindᵍ (subSem σS df ss₁ ag₁) λ {f} {f′} sf →
     relBindᵍ (subSem σS ds ss₂ ag₂) λ sa →
     rel (loopSame (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → runs (appMany {π = act} sf s)) sa)

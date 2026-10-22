@@ -22,6 +22,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 open import Once.Spec.Grade using (mk-kind; Many; pure; act)
 open import Once.Spec.Type
+open import Once.Spec.Type.Substitution using (base-⟨⟩; respects-∘; ⟨⟩-∘)
 open import Once.Spec.Sub
 open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⌜_⌝ᵈ; DeclType; constant; value; operation)
 import Once.Spec.Signature as BT

@@ -37,11 +37,12 @@ open import Once.Spec.Grade
   using (fin; _·p_; positionGrade; Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; _⊑π_;
          0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
-  using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; WFFun; respects-∘; ⟨⟩-∘; _⟨_⟩; _⟨_⟩F; Base; b-Unit; b-Int; b-Float; b-*; b-+;
+  using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⟨_⟩F; Base; b-Unit; b-Int; b-Float; b-*; b-+;
          Unit; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Signature
   using (_∶_; constant; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op)
-open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_)
+open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
 open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
@@ -90,6 +91,13 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
        → Agree σ Γ Ψ Ψ′ γ γ′ → Agree σ Γ Ψ₀ Ψ₀′ (restrict σ p γ) (restrict σ p′ γ′)
     rr p p′ ag = restrictˡ σ p (restrictʳ σ p′ ag)
 
+    -- The meaning forgets by `envˡ`/`envʳ`/`env*One`/`env*Many` (D335), which
+    -- are `restrict` up to the equations in `Coherence.Env`.
+    rr≡ : ∀ {n} {Γ : Ctx m n} {Ψ₀ Ψ Ψ₀′ Ψ′ : Usage n} {p : Ψ₀ ⊑ᵘ Ψ} {p′ : Ψ₀′ ⊑ᵘ Ψ′} {γ γ′ γ₀ γ₀′}
+        → γ₀ ≡ restrict σ p γ → γ₀′ ≡ restrict σ p′ γ′
+        → Agree σ Γ Ψ Ψ′ γ γ′ → Agree σ Γ Ψ₀ Ψ₀′ γ₀ γ₀′
+    rr≡ {p = p} {p′} refl refl ag = rr p p′ ag
+
   -- application, at one arrow type
   appH : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₁′ Ψ₂′ q q′ π π″ π₁ π₂ π₁′ π₂′ A₁ A₂ B f x}
        → (A₁ ⇒[ mk-kind q π ] B) ≡ (A₂ ⇒[ mk-kind q′ π″ ] B)
@@ -98,15 +106,13 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
        → ∀ {γ γ′} → Agree σ Γ (Ψ₁ +ᵘ q *ᵘ Ψ₂) (Ψ₁′ +ᵘ q′ *ᵘ Ψ₂′) γ γ′
        → Rel _ _ (B ⟨ σ ⟩) (⟦ ⊢app df dx ⟧ δ σ r γ) (⟦ ⊢app df′ dx′ ⟧ δ σ r′ γ′)
   appH {Ψ₁ = Ψ₁} {Ψ₂} {Ψ₁′} {Ψ₂′} {q = Zero} {A₁ = A₁} refl df dx df′ dx′ ag =
-    relBindᵍ (FL df df′ refl (rr (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) (⊑ᵘ-+ˡ Ψ₁′ (Zero *ᵘ Ψ₂′)) ag)) (appZero {A = A₁ ⟨ σ ⟩})
+    relBindᵍ (FL df df′ refl (rr≡ (envˡ-restrict σ Ψ₁ (Zero *ᵘ Ψ₂) _) (envˡ-restrict σ Ψ₁′ (Zero *ᵘ Ψ₂′) _) ag)) (appZero {A = A₁ ⟨ σ ⟩})
   appH {Ψ₁ = Ψ₁} {Ψ₂} {Ψ₁′} {Ψ₂′} {q = One} refl df dx df′ dx′ ag =
-    relBindᵍ (FL df df′ refl (rr (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) (⊑ᵘ-+ˡ Ψ₁′ (One *ᵘ Ψ₂′)) ag)) λ sf →
-    relBindᵍ (FL dx dx′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂)))
-                                 (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂′) (⊑ᵘ-+ʳ Ψ₁′ (One *ᵘ Ψ₂′))) ag)) λ sx → appOne sf sx
+    relBindᵍ (FL df df′ refl (rr≡ (envˡ-restrict σ Ψ₁ (One *ᵘ Ψ₂) _) (envˡ-restrict σ Ψ₁′ (One *ᵘ Ψ₂′) _) ag)) λ sf →
+    relBindᵍ (FL dx dx′ refl (rr≡ (env*One-envʳ-restrict σ Ψ₁ Ψ₂ _) (env*One-envʳ-restrict σ Ψ₁′ Ψ₂′ _) ag)) λ sx → appOne sf sx
   appH {Ψ₁ = Ψ₁} {Ψ₂} {Ψ₁′} {Ψ₂′} {q = Many} refl df dx df′ dx′ ag =
-    relBindᵍ (FL df df′ refl (rr (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) (⊑ᵘ-+ˡ Ψ₁′ (Many *ᵘ Ψ₂′)) ag)) λ sf →
-    relBindᵍ (FL dx dx′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂)))
-                                 (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂′) (⊑ᵘ-+ʳ Ψ₁′ (Many *ᵘ Ψ₂′))) ag)) λ sx → appMany sf sx
+    relBindᵍ (FL df df′ refl (rr≡ (envˡ-restrict σ Ψ₁ (Many *ᵘ Ψ₂) _) (envˡ-restrict σ Ψ₁′ (Many *ᵘ Ψ₂′) _) ag)) λ sf →
+    relBindᵍ (FL dx dx′ refl (rr≡ (env*Many-envʳ-restrict σ Ψ₁ Ψ₂ _) (env*Many-envʳ-restrict σ Ψ₁′ Ψ₂′ _) ag)) λ sx → appMany sf sx
 
   letH : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₁′ Ψ₂′ q π₁ π₂ π₁′ π₂′ A A′ B e b}
        → A ≡ A′
@@ -115,15 +121,13 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
        → ∀ {γ γ′} → Agree σ Γ (Ψ₂ +ᵘ q *ᵘ Ψ₁) (Ψ₂′ +ᵘ q *ᵘ Ψ₁′) γ γ′
        → Rel _ _ (B ⟨ σ ⟩) (⟦ ⊢let d₁ d₂ ⟧ δ σ r γ) (⟦ ⊢let d₁′ d₂′ ⟧ δ σ r′ γ′)
   letH {Ψ₁ = Ψ₁} {Ψ₂} {Ψ₁′} {Ψ₂′} {q = Zero} refl d₁ d₂ d₁′ d₂′ ag =
-    FL d₂ d₂′ refl (rr (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) (⊑ᵘ-+ˡ Ψ₂′ (Zero *ᵘ Ψ₁′)) ag , tt)
+    FL d₂ d₂′ refl (rr≡ (envˡ-restrict σ Ψ₂ (Zero *ᵘ Ψ₁) _) (envˡ-restrict σ Ψ₂′ (Zero *ᵘ Ψ₁′) _) ag , tt)
   letH {Ψ₁ = Ψ₁} {Ψ₂} {Ψ₁′} {Ψ₂′} {q = One} refl d₁ d₂ d₁′ d₂′ ag =
-    relBindᵍ (FL d₁ d₁′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁)))
-                                 (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁′) (⊑ᵘ-+ʳ Ψ₂′ (One *ᵘ Ψ₁′))) ag)) λ sv →
-    FL d₂ d₂′ refl (rr (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) (⊑ᵘ-+ˡ Ψ₂′ (One *ᵘ Ψ₁′)) ag , sv)
+    relBindᵍ (FL d₁ d₁′ refl (rr≡ (env*One-envʳ-restrict σ Ψ₂ Ψ₁ _) (env*One-envʳ-restrict σ Ψ₂′ Ψ₁′ _) ag)) λ sv →
+    FL d₂ d₂′ refl (rr≡ (envˡ-restrict σ Ψ₂ (One *ᵘ Ψ₁) _) (envˡ-restrict σ Ψ₂′ (One *ᵘ Ψ₁′) _) ag , sv)
   letH {Ψ₁ = Ψ₁} {Ψ₂} {Ψ₁′} {Ψ₂′} {q = Many} refl d₁ d₂ d₁′ d₂′ ag =
-    relBindᵍ (FL d₁ d₁′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁)))
-                                 (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁′) (⊑ᵘ-+ʳ Ψ₂′ (Many *ᵘ Ψ₁′))) ag)) λ sv →
-    FL d₂ d₂′ refl (rr (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) (⊑ᵘ-+ˡ Ψ₂′ (Many *ᵘ Ψ₁′)) ag , sv)
+    relBindᵍ (FL d₁ d₁′ refl (rr≡ (env*Many-envʳ-restrict σ Ψ₂ Ψ₁ _) (env*Many-envʳ-restrict σ Ψ₂′ Ψ₁′ _) ag)) λ sv →
+    FL d₂ d₂′ refl (rr≡ (envˡ-restrict σ Ψ₂ (Many *ᵘ Ψ₁) _) (envˡ-restrict σ Ψ₂′ (Many *ᵘ Ψ₁′) _) ag , sv)
 
   fstH : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ π π′ A B B′ p}
        → (A * B) ≡ (A * B′) → (d : Δ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π) (d′ : Δ ⊩ Γ ⊢[ Ψ′ ] p ∷ A * B′ ! π′)
@@ -143,10 +147,10 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
         → ∀ {γ γ′} → Agree σ Γ (Ψs +ᵘ Ψ) (Ψs′ +ᵘ Ψ′) γ γ′
         → Rel _ _ (C ⟨ σ ⟩) (⟦ ⊢case ds dl dr ⟧ δ σ r γ) (⟦ ⊢case ds′ dl′ dr′ ⟧ δ σ r′ γ′)
   caseH {Ψs = Ψs} {Ψ} {Ψs′} {Ψ′} {qℓ} {qr} {π₁} {π₂} {π₁′} {π₂′} {A = A} {B} {C = C} refl ds dl dr ds′ dl′ dr′ ag =
-    relBindᵍ (FL ds ds′ refl (rr (⊑ᵘ-+ˡ Ψs Ψ) (⊑ᵘ-+ˡ Ψs′ Ψ′) ag))
+    relBindᵍ (FL ds ds′ refl (rr≡ (envˡ-restrict σ Ψs Ψ _) (envˡ-restrict σ Ψs′ Ψ′ _) ag))
       (λ {w} {w′} sw → caseRel {A ⟨ σ ⟩} {B ⟨ σ ⟩} {C ⟨ σ ⟩} {π₂} {π₂′}
-               (λ {a} {a′} sa → FL dl dl′ refl (rr (⊑ᵘ-+ʳ Ψs Ψ) (⊑ᵘ-+ʳ Ψs′ Ψ′) ag , slotSame σ A qℓ {a} {a′} sa))
-               (λ {b} {b′} sb → FL dr dr′ refl (rr (⊑ᵘ-+ʳ Ψs Ψ) (⊑ᵘ-+ʳ Ψs′ Ψ′) ag , slotSame σ B qr {b} {b′} sb))
+               (λ {a} {a′} sa → FL dl dl′ refl (rr≡ (envʳ-restrict σ Ψs Ψ _) (envʳ-restrict σ Ψs′ Ψ′ _) ag , slotSame σ A qℓ {a} {a′} sa))
+               (λ {b} {b′} sb → FL dr dr′ refl (rr≡ (envʳ-restrict σ Ψs Ψ _) (envʳ-restrict σ Ψs′ Ψ′ _) ag , slotSame σ B qr {b} {b′} sb))
                {w} {w′} sw)
 
   foldH : ∀ {n} {Γ : Ctx m n} {Ψa Ψt Ψa′ Ψt′ π π′ π₁ π₂ π₁′ π₂′ F A alg t}
@@ -158,9 +162,8 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
         → ∀ {γ γ′} → Agree σ Γ (Many *ᵘ Ψa +ᵘ Ψt) (Many *ᵘ Ψa′ +ᵘ Ψt′) γ γ′
         → Rel _ _ (A ⟨ σ ⟩) (⟦ ⊢fold wf da dt ⟧ δ σ r γ) (⟦ ⊢fold wf′ da′ dt′ ⟧ δ σ r′ γ′)
   foldH {Ψa = Ψa} {Ψt} {Ψa′} {Ψt′} {π} {F = F} {A} refl wf da dt wf′ da′ dt′ ag =
-    relBindᵍ (FL da da′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψa) (⊑ᵘ-+ˡ (Many *ᵘ Ψa) Ψt))
-                                 (⊑ᵘ-trans (⊑ᵘ-*Many Ψa′) (⊑ᵘ-+ˡ (Many *ᵘ Ψa′) Ψt′)) ag)) λ {alg} {alg′} salg →
-    relBindᵍ (FL dt dt′ refl (rr (⊑ᵘ-+ʳ (Many *ᵘ Ψa) Ψt) (⊑ᵘ-+ʳ (Many *ᵘ Ψa′) Ψt′) ag)) λ {v} {v′} sv →
+    relBindᵍ (FL da da′ refl (rr≡ (env*Many-envˡ-restrict σ Ψa Ψt _) (env*Many-envˡ-restrict σ Ψa′ Ψt′ _) ag)) λ {alg} {alg′} salg →
+    relBindᵍ (FL dt dt′ refl (rr≡ (envʳ-restrict σ (Many *ᵘ Ψa) Ψt _) (envʳ-restrict σ (Many *ᵘ Ψa′) Ψt′ _) ag)) λ {v} {v′} sv →
     subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
                                      (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
           (sameμ sv)
@@ -175,9 +178,8 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
           → ∀ {γ γ′} → Agree σ Γ (Many *ᵘ Ψc +ᵘ Ψs) (Many *ᵘ Ψc′ +ᵘ Ψs′) γ γ′
           → Rel _ _ (ν F f ⟨ σ ⟩) (⟦ ⊢unfold wf dc da ⟧ δ σ r γ) (⟦ ⊢unfold wf′ dc′ da′ ⟧ δ σ r′ γ′)
   unfoldH {Ψc = Ψc} {Ψs} {Ψc′} {Ψs′} {f} {F = F} {A} refl wf dc da wf′ dc′ da′ ag =
-    relBindᵍ (FL dc dc′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψc) (⊑ᵘ-+ˡ (Many *ᵘ Ψc) Ψs))
-                                 (⊑ᵘ-trans (⊑ᵘ-*Many Ψc′) (⊑ᵘ-+ˡ (Many *ᵘ Ψc′) Ψs′)) ag)) λ {c} {c′} sc →
-    relFmap (FL da da′ refl (rr (⊑ᵘ-+ʳ (Many *ᵘ Ψc) Ψs) (⊑ᵘ-+ʳ (Many *ᵘ Ψc′) Ψs′) ag)) λ sa n →
+    relBindᵍ (FL dc dc′ refl (rr≡ (env*Many-envˡ-restrict σ Ψc Ψs _) (env*Many-envˡ-restrict σ Ψc′ Ψs′ _) ag)) λ {c} {c′} sc →
+    relFmap (FL da da′ refl (rr≡ (envʳ-restrict σ (Many *ᵘ Ψc) Ψs _) (envʳ-restrict σ (Many *ᵘ Ψc′) Ψs′ _) ag)) λ sa n →
       Ana.anaRel f (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap (fin f) (toL σ F A) (c x)) (λ x → fmap (fin f) (toL σ F A) (c′ x))
         (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap (fin f) (toL σ F A) (c a)) (≈-Relatedʳ (toT∞-fmap (fin f) (toL σ F A) (c′ a′))
                           (relatedFmap (runs (appMany {π = fin f} sc s)) (Functor.toL-same σ r wf A))))
@@ -202,9 +204,8 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
         → ∀ {γ γ′} → Agree σ Γ (Many *ᵘ Ψf +ᵘ Ψs) (Many *ᵘ Ψf′ +ᵘ Ψs′) γ γ′
         → Rel _ _ (B ⟨ σ ⟩) (⟦ ⊢iter df ds ⟧ δ σ r γ) (⟦ ⊢iter df′ ds′ ⟧ δ σ r′ γ′)
   iterH {Ψf = Ψf} {Ψs} {Ψf′} {Ψs′} {A = A} {B = B} refl df ds df′ ds′ ag =
-    relBindᵍ (FL df df′ refl (rr (⊑ᵘ-trans (⊑ᵘ-*Many Ψf) (⊑ᵘ-+ˡ (Many *ᵘ Ψf) Ψs))
-                                 (⊑ᵘ-trans (⊑ᵘ-*Many Ψf′) (⊑ᵘ-+ˡ (Many *ᵘ Ψf′) Ψs′)) ag)) λ {f} {f′} sf →
-    relBindᵍ (FL ds ds′ refl (rr (⊑ᵘ-+ʳ (Many *ᵘ Ψf) Ψs) (⊑ᵘ-+ʳ (Many *ᵘ Ψf′) Ψs′) ag)) λ sa →
+    relBindᵍ (FL df df′ refl (rr≡ (env*Many-envˡ-restrict σ Ψf Ψs _) (env*Many-envˡ-restrict σ Ψf′ Ψs′ _) ag)) λ {f} {f′} sf →
+    relBindᵍ (FL ds ds′ refl (rr≡ (envʳ-restrict σ (Many *ᵘ Ψf) Ψs _) (envʳ-restrict σ (Many *ᵘ Ψf′) Ψs′ _) ag)) λ sa →
     rel (loopSame (A ⟨ σ ⟩) (B ⟨ σ ⟩) f f′ (λ s → runs (appMany {π = act} sf s)) sa)
 
   coerceH : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ π π′ A B t} (p p′ : A <: B)
@@ -258,8 +259,8 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
   FL (⊢let d₁ d₂) (⊢let d₁′ d₂′) refl ag = letH (ty-unique d₁ d₁′) d₁ d₂ d₁′ d₂′ ag
   FL ⊢unit ⊢unit refl ag = relPure tt
   FL (⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} {A} {B} da db) (⊢pair {Ψ₁ = Ψ₁′} {Ψ₂′} {π₁′} {π₂′} da′ db′) refl ag =
-    relBindᵍ {π₁} {π₂} {π₁′} {π₂′} {A ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (FL da da′ refl (rr (⊑ᵘ-+ˡ Ψ₁ Ψ₂) (⊑ᵘ-+ˡ Ψ₁′ Ψ₂′) ag)) λ sa →
-    relFmap {π₂} {π₂′} {B ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (FL db db′ refl (rr (⊑ᵘ-+ʳ Ψ₁ Ψ₂) (⊑ᵘ-+ʳ Ψ₁′ Ψ₂′) ag)) λ sb →
+    relBindᵍ {π₁} {π₂} {π₁′} {π₂′} {A ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (FL da da′ refl (rr≡ (envˡ-restrict σ Ψ₁ Ψ₂ _) (envˡ-restrict σ Ψ₁′ Ψ₂′ _) ag)) λ sa →
+    relFmap {π₂} {π₂′} {B ⟨ σ ⟩} {(A * B) ⟨ σ ⟩} (FL db db′ refl (rr≡ (envʳ-restrict σ Ψ₁ Ψ₂ _) (envʳ-restrict σ Ψ₁′ Ψ₂′ _) ag)) λ sb →
       samePair {A ⟨ σ ⟩} {B ⟨ σ ⟩} sa sb
   FL (⊢fst d) (⊢fst d′) refl ag = fstH (ty-unique d d′) d d′ ag
   FL (⊢snd d) (⊢snd d′) refl ag = sndH (ty-unique d d′) d d′ ag

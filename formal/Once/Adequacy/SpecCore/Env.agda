@@ -23,6 +23,7 @@ module Once.Adequacy.SpecCore.Env {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : 
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Fin using (Fin; zero; suc)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
@@ -34,6 +35,8 @@ import Once.Internal.Core.PolyTyping S as PT
 import Once.Internal.Core.Meaning S as GM
 open import Once.Adequacy.SpecCore.Schema using (defsS)
 import Once.Spec.Core.Meaning Σ fmt (defsS S) as SM
+import Once.Metatheory.Coherence.Env Σ fmt (defsS S) as CE
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 
@@ -91,6 +94,43 @@ module _ {m} {σ : LP.GSub m} {σ′ : ST.TySub m 0} (g : InstG σ σ′) where
     restrict-R c p p′ u u′ r , v
   restrict-R (cr-▸ c a) (LC.m≤m LC.⊑∷ p) (SG.ω≤ω SCx.⊑∷ p′) (ur-∷ qr-many u) (ur-∷ qr-many u′) (r , v) =
     restrict-R c p p′ u u′ r , v
+
+  -- The Spec meaning forgets by its own `envˡ`/`envʳ`/`env*One`/`env*Many`
+  -- (D335); each is `restrict` along the usage order (`Coherence.Env`).
+  restrict-R≡ : ∀ {n} {Γ : PT.PCtx m n} {Γ′ Ψ Ψ′ Φ Φ′} (c : CR S Γ Γ′)
+              (p : Ψ′ LC.⊑ᵘ Ψ) (p′ : Φ′ SCx.⊑ᵘ Φ) (u : UR Ψ Φ) (u′ : UR Ψ′ Φ′) {γ γ′ γ″}
+              → γ″ ≡ SM.restrict σ′ p′ γ′ → EnvR c u γ γ′
+              → EnvR c u′ (LEnv.restrictᵛ {Γ = Γ PT.⟪ σ ⟫ᶜ} p γ) γ″
+  restrict-R≡ c p p′ u u′ refl e = restrict-R c p p′ u u′ e
+
+  envˡ-R : ∀ {n} {Γ : PT.PCtx m n} {Γ′ Ψ Ψ′ Φ₁ Φ₂} (c : CR S Γ Γ′) (p : Ψ′ LC.⊑ᵘ Ψ) (u : UR Ψ (Φ₁ SCx.+ᵘ Φ₂)) (u′ : UR Ψ′ Φ₁) {γ γ′}
+         → EnvR c u γ γ′ → EnvR c u′ (LEnv.restrictᵛ {Γ = Γ PT.⟪ σ ⟫ᶜ} p γ) (SM.envˡ σ′ Φ₁ Φ₂ γ′)
+  envˡ-R {Φ₁ = Φ₁} {Φ₂} c p u u′ {γ′ = γ′} = restrict-R≡ c p (⊑ᵘ-+ˡ Φ₁ Φ₂) u u′ (CE.envˡ-restrict σ′ Φ₁ Φ₂ γ′)
+
+  envʳ-R : ∀ {n} {Γ : PT.PCtx m n} {Γ′ Ψ Ψ′ Φ₁ Φ₂} (c : CR S Γ Γ′) (p : Ψ′ LC.⊑ᵘ Ψ) (u : UR Ψ (Φ₁ SCx.+ᵘ Φ₂)) (u′ : UR Ψ′ Φ₂) {γ γ′}
+         → EnvR c u γ γ′ → EnvR c u′ (LEnv.restrictᵛ {Γ = Γ PT.⟪ σ ⟫ᶜ} p γ) (SM.envʳ σ′ Φ₁ Φ₂ γ′)
+  envʳ-R {Φ₁ = Φ₁} {Φ₂} c p u u′ {γ′ = γ′} = restrict-R≡ c p (⊑ᵘ-+ʳ Φ₁ Φ₂) u u′ (CE.envʳ-restrict σ′ Φ₁ Φ₂ γ′)
+
+  env*One-envʳ-R : ∀ {n} {Γ : PT.PCtx m n} {Γ′ Ψ Ψ′ Φ₁ Φ₂} (c : CR S Γ Γ′) (p : Ψ′ LC.⊑ᵘ Ψ)
+                   (u : UR Ψ (Φ₁ SCx.+ᵘ SG.One SCx.*ᵘ Φ₂)) (u′ : UR Ψ′ Φ₂) {γ γ′}
+                 → EnvR c u γ γ′
+                 → EnvR c u′ (LEnv.restrictᵛ {Γ = Γ PT.⟪ σ ⟫ᶜ} p γ) (SM.env*One σ′ Φ₂ (SM.envʳ σ′ Φ₁ (SG.One SCx.*ᵘ Φ₂) γ′))
+  env*One-envʳ-R {Φ₁ = Φ₁} {Φ₂} c p u u′ {γ′ = γ′} =
+    restrict-R≡ c p (⊑ᵘ-trans (⊑ᵘ-*One Φ₂) (⊑ᵘ-+ʳ Φ₁ (SG.One SCx.*ᵘ Φ₂))) u u′ (CE.env*One-envʳ-restrict σ′ Φ₁ Φ₂ γ′)
+
+  env*Many-envʳ-R : ∀ {n} {Γ : PT.PCtx m n} {Γ′ Ψ Ψ′ Φ₁ Φ₂} (c : CR S Γ Γ′) (p : Ψ′ LC.⊑ᵘ Ψ)
+                    (u : UR Ψ (Φ₁ SCx.+ᵘ SG.Many SCx.*ᵘ Φ₂)) (u′ : UR Ψ′ Φ₂) {γ γ′}
+                  → EnvR c u γ γ′
+                  → EnvR c u′ (LEnv.restrictᵛ {Γ = Γ PT.⟪ σ ⟫ᶜ} p γ) (SM.env*Many σ′ Φ₂ (SM.envʳ σ′ Φ₁ (SG.Many SCx.*ᵘ Φ₂) γ′))
+  env*Many-envʳ-R {Φ₁ = Φ₁} {Φ₂} c p u u′ {γ′ = γ′} =
+    restrict-R≡ c p (⊑ᵘ-trans (⊑ᵘ-*Many Φ₂) (⊑ᵘ-+ʳ Φ₁ (SG.Many SCx.*ᵘ Φ₂))) u u′ (CE.env*Many-envʳ-restrict σ′ Φ₁ Φ₂ γ′)
+
+  env*Many-envˡ-R : ∀ {n} {Γ : PT.PCtx m n} {Γ′ Ψ Ψ′ Φ₁ Φ₂} (c : CR S Γ Γ′) (p : Ψ′ LC.⊑ᵘ Ψ)
+                    (u : UR Ψ (SG.Many SCx.*ᵘ Φ₁ SCx.+ᵘ Φ₂)) (u′ : UR Ψ′ Φ₁) {γ γ′}
+                  → EnvR c u γ γ′
+                  → EnvR c u′ (LEnv.restrictᵛ {Γ = Γ PT.⟪ σ ⟫ᶜ} p γ) (SM.env*Many σ′ Φ₁ (SM.envˡ σ′ (SG.Many SCx.*ᵘ Φ₁) Φ₂ γ′))
+  env*Many-envˡ-R {Φ₁ = Φ₁} {Φ₂} c p u u′ {γ′ = γ′} =
+    restrict-R≡ c p (⊑ᵘ-trans (⊑ᵘ-*Many Φ₁) (⊑ᵘ-+ˡ (SG.Many SCx.*ᵘ Φ₁) Φ₂)) u u′ (CE.env*Many-envˡ-restrict σ′ Φ₁ Φ₂ γ′)
 
   -- Binding a variable at a usage.
   bind-env-R : ∀ {n} {Γ : PT.PCtx m n} {Γ′ Ψ Φ A A′ q q′} (c : CR S Γ Γ′) (a : PTR A A′) (u : UR Ψ Φ) (qq : QR q q′)

@@ -28,6 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Purity; mk-kind; Many; pure)
 open import Once.Metatheory.Types using (⊑π-refl)
 open import Once.Spec.Type
+open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-*; subᶜ-+; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived

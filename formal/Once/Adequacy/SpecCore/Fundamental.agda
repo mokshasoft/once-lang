@@ -206,55 +206,55 @@ module _ (ρ : GM.DefSem) (ρ′ : SM.DefSem) where
     fund {Γ = Γ} (PT.⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Zero} {π} {π₁} {π₂} {B = B} df dx) {σ} r r′ g e =
       S-at g (eqᵘ-app Ψ₁ LG.Zero Ψ₂) refl (eqᵍ-app π₁ LG.Zero π₂ π) (S⊢.⊢app (trD df) (trD dx)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur-* qr-zero (ur Ψ₂))) (ur _) gB gB (pr-· (pr π₁) (pr π)) (pr _)
            _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π) (fund df r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₁) e₀)) (λ vf → vf)) e
+           (λ e₀ → bindᵍ-R (pr π₁) (pr π) (fund df r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀)) (λ vf → vf)) e
       where gB = GR-inst (ptr B) g
     fund {Γ = Γ} (PT.⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.One} {π} {π₁} {π₂} {B = B} df dx) {σ} r r′ g e =
       S-at g (eqᵘ-app Ψ₁ LG.One Ψ₂) refl (eqᵍ-app π₁ LG.One π₂ π) (S⊢.⊢app (trD df) (trD dx)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur-* qr-one (ur Ψ₂))) (ur _) gB gB
            (pr-· (pr π₁) (pr-· (pr π₂) (pr π))) (pr _)
            _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₁) e₀))
-                     (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₂) e₀)) vf)) e
+           (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
+                     (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx r r′ g (env*One-envʳ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) vf)) e
       where gB = GR-inst (ptr B) g
     fund {Γ = Γ} (PT.⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Many} {π} {π₁} {π₂} {B = B} df dx) {σ} r r′ g e =
       S-at g (eqᵘ-app Ψ₁ LG.Many Ψ₂) refl (eqᵍ-app π₁ LG.Many π₂ π) (S⊢.⊢app (trD df) (trD dx)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur-* qr-many (ur Ψ₂))) (ur _) gB gB
            (pr-· (pr π₁) (pr-· (pr π₂) (pr π))) (pr _)
            _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₁) e₀))
-                     (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₂) e₀)) vf)) e
+           (λ e₀ → bindᵍ-R (pr π₁) (pr-· (pr π₂) (pr π)) (fund df r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
+                     (λ vf → bindᵍ-R (pr π₂) (pr π) (fund dx r r′ g (env*Many-envʳ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) vf)) e
       where gB = GR-inst (ptr B) g
 
     fund {Γ = Γ} (PT.⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Zero} {π₁} {π₂} {B = B} de db) {σ} r r′ g e =
       S-at g (eqᵘ-app Ψ₂ LG.Zero Ψ₁) refl (eqᵍ-let LG.Zero π₁ π₂) (S⊢.⊢let (trD de) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₂) (ur-* qr-zero (ur Ψ₁))) (ur _) gB gB (pr π₂) (pr _)
            _
-           (λ e₀ → fund db r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₂) e₀)) e
+           (λ e₀ → fund db r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) e
       where gB = GR-inst (ptr B) g
     fund {Γ = Γ} (PT.⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.One} {π₁} {π₂} {B = B} de db) {σ} r r′ g e =
       S-at g (eqᵘ-app Ψ₂ LG.One Ψ₁) refl (eqᵍ-let LG.One π₁ π₂) (S⊢.⊢let (trD de) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₂) (ur-* qr-one (ur Ψ₁))) (ur _) gB gB (pr-· (pr π₁) (pr π₂)) (pr _)
            _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund de r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₁) e₀))
-                     (λ v → fund db r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₂) e₀ , v))) e
+           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund de r r′ g (env*One-envʳ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
+                     (λ v → fund db r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀ , v))) e
       where gB = GR-inst (ptr B) g
     fund {Γ = Γ} (PT.⊢let {Ψ₁ = Ψ₁} {Ψ₂} {q = LG.Many} {π₁} {π₂} {B = B} de db) {σ} r r′ g e =
       S-at g (eqᵘ-app Ψ₂ LG.Many Ψ₁) refl (eqᵍ-let LG.Many π₁ π₂) (S⊢.⊢let (trD de) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₂) (ur-* qr-many (ur Ψ₁))) (ur _) gB gB (pr-· (pr π₁) (pr π₂)) (pr _)
            _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund de r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₁) e₀))
-                     (λ v → fund db r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₂) e₀ , v))) e
+           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund de r r′ g (env*Many-envʳ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
+                     (λ v → fund db r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀ , v))) e
       where gB = GR-inst (ptr B) g
 
     fund {Γ = Γ} (PT.⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} {A} {B} da db) {σ} r r′ g e =
       S-at g (eqᵘ-+ Ψ₁ Ψ₂) refl (eqᵍ-· π₁ π₂) (S⊢.⊢pair (trD da) (trD db)) (crΓ Γ) (ur-+ (ur Ψ₁) (ur Ψ₂)) (ur _) gAB gAB (pr-· (pr π₁) (pr π₂)) (pr _)
            _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund da r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₁) e₀))
-                     (λ va → fmap-R (pr π₂) (fund db r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψ₂) e₀)) (λ vb → va , vb))) e
+           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund da r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψ₁) e₀))
+                     (λ va → fmap-R (pr π₂) (fund db r r′ g (envʳ-R g (crΓ Γ) _ _ (ur Ψ₂) e₀)) (λ vb → va , vb))) e
       where gAB = GR-inst (ptr (A LP.* B)) g
 
     fund {Γ = Γ} (PT.⊢case {Ψs = Ψs} {Ψ} {qℓ} {qr₀} {π₁} {π₂} {A} {B} {C} ds dl dr) {σ} r r′ g e =
       S-at g (eqᵘ-+ Ψs Ψ) refl (eqᵍ-· π₁ π₂) (S⊢.⊢case (trD ds) (trD dl) (trD dr)) (crΓ Γ) (ur-+ (ur Ψs) (ur Ψ)) (ur _) gC gC (pr-· (pr π₁) (pr π₂)) (pr _)
            _
-           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund ds r r′ g (restrict-R g (crΓ Γ) _ _ _ (ur Ψs) e₀))
+           (λ e₀ → bindᵍ-R (pr π₁) (pr π₂) (fund ds r r′ g (envˡ-R g (crΓ Γ) _ _ (ur Ψs) e₀))
                      (λ {v} {v′} h → case-R (GR-inst (ptr A) g) (GR-inst (ptr B) g) (pr π₂)
-                        (λ ha → fund dl r r′ g (bind-env-R g (crΓ Γ) (ptr A) (ur Ψ) (qr qℓ) (restrict-R g (crΓ Γ) _ _ _ (ur Ψ) e₀) ha))
-                        (λ hb → fund dr r r′ g (bind-env-R g (crΓ Γ) (ptr B) (ur Ψ) (qr qr₀) (restrict-R g (crΓ Γ) _ _ _ (ur Ψ) e₀) hb))
+                        (λ ha → fund dl r r′ g (bind-env-R g (crΓ Γ) (ptr A) (ur Ψ) (qr qℓ) (envʳ-R g (crΓ Γ) _ _ (ur Ψ) e₀) ha))
+                        (λ hb → fund dr r r′ g (bind-env-R g (crΓ Γ) (ptr B) (ur Ψ) (qr qr₀) (envʳ-R g (crΓ Γ) _ _ (ur Ψ) e₀) hb))
                         v v′ h)) e
       where gC = GR-inst (ptr C) g
 

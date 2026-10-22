@@ -21,11 +21,11 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_,_)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 open import Once.Spec.Grade using (Zero; One; Many; pure)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (KCtx; TySub; Respects; ∅ₖ; _⟨_⟩)
-open import Once.Spec.Context using (Ctx; _▸_; lookup; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Spec.Context using (Ctx; _▸_; lookup; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
 open import Once.Spec.Core.Syntax using (Defs; let′; _[_])
 open import Once.Spec.Equivalence Σ using (Same)
 import Once.Spec.Equivalence
@@ -33,7 +33,7 @@ open import Once.Spec.Metatheory using (TermModel; SameDefs; SameEnv)
 open import Once.Metatheory.Coherence.Relation Σ using (Related-trans; toObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs; relPure⁻)
 open import Once.Metatheory.Coherence.PER Σ using (Same-trans)
-open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-≡)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-≡; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 
 module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
   open import Once.Spec.Core.Typing Σ S
@@ -42,7 +42,7 @@ module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
   open import Once.Metatheory.TermModel.TySubst Σ S using (ty-subst-⊢)
   open import Once.Metatheory.TermModel.Val Σ fmt S
   open import Once.Metatheory.TermModel.SubSem Σ u fmt S using (module SubSem)
-  open import Once.Metatheory.Coherence.Env Σ fmt S using (selfAgree; restrictˡ; restrictʳ)
+  open import Once.Metatheory.Coherence.Env Σ fmt S using (selfAgree; restrictˡ; restrictʳ; envˡ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict)
   open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
 
   -- A derivation's meaning does not see which proof put its term in place.
@@ -88,14 +88,16 @@ module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
             (γ : Env σ Γ (Ψₜ +ᵘ q *ᵘ Ψᵤ)) → SameEnv Σ fmt S σ Γ _ γ
           → Once.Spec.Equivalence.SameM Σ π (B ⟨ σ ⟩) (⟦ subst-⊢ dt du ⟧ δ σ r γ) (⟦ dl ⟧ δ σ r γ)
   let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {Zero} dt du dl δ sd σ r γ sγ =
-    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = Zero} {π₁ = pure} du dt) (restrict σ (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ)) γ , tt) refl ag
+    letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = Zero} {π₁ = pure} du dt) (restrict σ (⊑ᵘ-+ˡ Ψₜ (Zero *ᵘ Ψᵤ)) γ , tt)
+      (cong (λ e → ⟦ dt ⟧ δ σ r (e , tt)) (envˡ-restrict σ Ψₜ (Zero *ᵘ Ψᵤ) γ)) ag
     where
       ag : _
       ag zero () p
       ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
   let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {One} dt du dl δ sd σ r γ sγ =
     letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = One} {π₁ = pure} du dt)
-      (restrict σ (⊑ᵘ-+ˡ Ψₜ (One *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
+      (restrict σ (⊑ᵘ-+ˡ Ψₜ (One *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ))
+      (cong₂ (λ e e′ → ⟦ dt ⟧ δ σ r (e , ⟦ du ⟧ δ σ r e′)) (envˡ-restrict σ Ψₜ (One *ᵘ Ψᵤ) γ) (env*One-envʳ-restrict σ Ψₜ Ψᵤ γ)) ag
     where
       R₁ = ⊑ᵘ-trans (⊑ᵘ-*One Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (One *ᵘ Ψᵤ))
       ag : _
@@ -104,7 +106,8 @@ module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
       ag (suc j) nz p = varAg Γ δ sd σ r (selfSame σ Γ _ γ sγ) j nz p (⊑ᵘ-≡ (single-usage du _ Ψₜ)) (⊑ᵘ-+ˡ Ψₜ (_ *ᵘ Ψᵤ))
   let-β {Γ = Γ} {Ψₜ} {Ψᵤ} {Many} dt du dl δ sd σ r γ sγ =
     letCore Γ δ sd σ r dt du dl γ sγ (⊢let {q = Many} {π₁ = pure} du dt)
-      (restrict σ (⊑ᵘ-+ˡ Ψₜ (Many *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ)) refl ag
+      (restrict σ (⊑ᵘ-+ˡ Ψₜ (Many *ᵘ Ψᵤ)) γ , ⟦ du ⟧ δ σ r (restrict σ R₁ γ))
+      (cong₂ (λ e e′ → ⟦ dt ⟧ δ σ r (e , ⟦ du ⟧ δ σ r e′)) (envˡ-restrict σ Ψₜ (Many *ᵘ Ψᵤ) γ) (env*Many-envʳ-restrict σ Ψₜ Ψᵤ γ)) ag
     where
       R₁ = ⊑ᵘ-trans (⊑ᵘ-*Many Ψᵤ) (⊑ᵘ-+ʳ Ψₜ (Many *ᵘ Ψᵤ))
       ag : _
