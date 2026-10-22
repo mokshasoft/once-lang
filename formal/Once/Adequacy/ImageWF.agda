@@ -75,10 +75,10 @@ Resolved defs ext refs = All (λ s → s ∈ defs ⊎ s ∈ ext) refs
 -- What a program's code may name: a symbol its file defines (its blocks), or a
 -- symbol it calls that is defined elsewhere — an interpretation's (D274) or the
 -- Host's `leave` (D320).
-ProgG : Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → String → Set
+ProgG : Module → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → String → Set
 ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ prog-externs (irProgram (moduleTable m) ir)
 
-ProgP : Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → ∀ {A B} → SigOpInfo A B → Set
+ProgP : Module → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → ∀ {A B} → SigOpInfo A B → Set
 ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 
 -- That each file defines every symbol once is `Once.Adequacy.ImageUnique`'s
@@ -93,7 +93,7 @@ ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 ------------------------------------------------------------------------
 
 private
-  calls-ok : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+  calls-ok : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
            → All (ProgG m ir) (calls-of (rewrite-program (irProgram (moduleTable m) ir)))
   calls-ok m ir = tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? block-syms (program-blocks p)))
     where
@@ -109,7 +109,7 @@ private
   table-ok (e ∷ es) a = leaf-syms-leaves (fbody e) (proj₁ (++⁻ (leaf-syms (fbody e)) a))
                       ∷ table-ok es (proj₂ (++⁻ (leaf-syms (fbody e)) a))
 
-prog-sigops : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
+prog-sigops : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir
             → SigLeaves (ProgP m ir) (main (rewrite-program (irProgram (moduleTable m) ir)))
             × All (λ e → SigLeaves (ProgP m ir) (fbody e)) (table (rewrite-program (irProgram (moduleTable m) ir)))
 prog-sigops m ir _ =

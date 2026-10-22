@@ -752,7 +752,7 @@ private
     start-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map start≢def cD) (Data.List.Relation.Unary.All.map start≢blk cB)
 
 -- THE PROGRAM (was `ImageWF.prog-unique`, a postulate).
-prog-unique : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
+prog-unique : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
 prog-unique m ir =
   ((λ ()) ∷ heap-fresh D B cD cB) ∷ start-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
   where

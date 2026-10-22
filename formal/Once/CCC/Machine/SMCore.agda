@@ -1659,7 +1659,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- Aux-style (Maybe-argument) helpers so the adequacy proof
   -- (`ReadTypedAdequate`) can `rewrite` the `readLoc` results — a `with` on the
   -- abstract `readLoc s loc` would not reduce under the proof's rewrites.
-  readTyped-int : Maybe (StoredValue FS) → Maybe ⟦ Int ⟧
+  readTyped-int : Maybe (StoredValue FS) → Maybe ⟦ Int {0} ⟧
   readTyped-int (just (SV-Lit fits-int v))   = just v
   readTyped-int (just (SV-Lit fits-float _)) = nothing
   readTyped-int (just (SV-Ptr _))            = nothing
@@ -1667,7 +1667,7 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped-int (just (SV-Code _))           = nothing
   readTyped-int nothing                      = nothing
 
-  readTyped-float : Maybe (StoredValue FS) → Maybe ⟦ Float ⟧
+  readTyped-float : Maybe (StoredValue FS) → Maybe ⟦ Float {0} ⟧
   readTyped-float (just (SV-Lit fits-float v)) = just v
   readTyped-float (just (SV-Lit fits-int _))   = nothing
   readTyped-float (just (SV-Ptr _))            = nothing

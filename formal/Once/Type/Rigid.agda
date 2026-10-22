@@ -23,7 +23,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; KCtx; Base; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Type.WellFormed using (IsBaseType; RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
@@ -40,7 +40,7 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁻)
 open import Data.List.Relation.Unary.Any using (here; there)
 
 mutual
-  subst-ground : ∀ (θ : String → Type) (A : PolyType) (g : Ground A) → substPoly θ A ≡ extractGround A g
+  subst-ground : ∀ {m} (θ : String → Ty m) (A : PolyType) (g : Ground A) → substPoly θ A ≡ extractGround A g
   subst-ground θ (PTVar _) ()
   subst-ground θ PUnit   _ = refl
   subst-ground θ PVoid   _ = refl
@@ -57,7 +57,7 @@ mutual
   subst-ground θ (Pμ-type F) g = cong μ-type (subst-groundF θ F g)
   subst-ground θ (Pν-type F π) g = cong (λ G → ν-type G π) (subst-groundF θ F g)
 
-  subst-groundF : ∀ (θ : String → Type) (F : PolyFunctor) (g : GroundF F) → substPolyF θ F ≡ extractGroundF F g
+  subst-groundF : ∀ {m} (θ : String → Ty m) (F : PolyFunctor) (g : GroundF F) → substPolyF θ F ≡ extractGroundF F g
   subst-groundF θ (PK A) g = cong K (subst-ground θ A g)
   subst-groundF θ PId _ = refl
   subst-groundF θ (F P⊕ G) (gF , gG) = cong₂ _⊕_ (subst-groundF θ F gF) (subst-groundF θ G gG)
@@ -111,7 +111,7 @@ mutual
   ftvKF-ground (F P⊕ G) (gF , gG) = ++-⊥ (ftvKF F) (ftvKF G) (ftvKF-ground F gF) (ftvKF-ground G gG)
   ftvKF-ground (F P⊗ G) (gF , gG) = ++-⊥ (ftvKF F) (ftvKF G) (ftvKF-ground F gF) (ftvKF-ground G gG)
 
-ground-kinded : (A : PolyType) (g : Ground A) → KindedInstance A (extractGround A g)
+ground-kinded : ∀ {m} {Δ : KCtx m} (A : PolyType) (g : Ground A) → KindedInstance Δ A (extractGround A g)
 ground-kinded A g = (λ _ → Unit) , subst-ground _ A g , λ m → ⊥-elim (ftvK-ground A g m)
 
 ------------------------------------------------------------------------
@@ -126,7 +126,7 @@ open import Data.Product using (proj₂)
 open import Once.Type.Match using (instantiate)
 open import Once.Type.Instance using (instantiate-sound; instantiate-complete)
 open import Once.Type.Determined using (agree-from)
-open import Once.Functor.Decide using (isBaseType?; isBaseType?-complete)
+open import Once.Functor.Decide using (base?; base?-complete; isBaseType?; isBaseType?-complete)
 
 -- The base-kinded variables are variables.
 mutual
@@ -157,30 +157,30 @@ mutual
   ... | inj₂ p = ∈-++⁺ʳ xs′ (g p)
 
 -- Every listed variable is sent to a base type.
-AllBase : (String → Type) → List String → Set
-AllBase θ xs = ∀ {x} → x ∈ xs → IsBaseType (θ x)
+AllBase : ∀ {m} → KCtx m → (String → Ty m) → List String → Set
+AllBase Δ θ xs = ∀ {x} → x ∈ xs → Base Δ (θ x)
 
-allBase? : ∀ θ xs → Dec (AllBase θ xs)
-allBase? θ [] = yes (λ ())
-allBase? θ (x ∷ xs) with isBaseType? (θ x) in eqb | allBase? θ xs
+allBase? : ∀ {m} (Δ : KCtx m) θ xs → Dec (AllBase Δ θ xs)
+allBase? Δ θ [] = yes (λ ())
+allBase? Δ θ (x ∷ xs) with base? Δ (θ x) in eqb | allBase? Δ θ xs
 ... | just b  | yes h = yes λ { (here refl) → b ; (there m) → h m }
 ... | just _  | no ¬h = no λ h → ¬h (λ m → h (there m))
-... | nothing | _     = no λ h → nothing≢just (trans (sym eqb) (proj₂ (isBaseType?-complete (h (here refl)))))
+... | nothing | _     = no λ h → nothing≢just (trans (sym eqb) (proj₂ (base?-complete (h (here refl)))))
   where
     nothing≢just : ∀ {A : Set} {a : A} → nothing ≡ just a → ⊥
     nothing≢just ()
 
-kindedInstance? : ∀ (s : PolyType) (T : Type) → Dec (KindedInstance s T)
-kindedInstance? s T with instantiate s T in eqi
+kindedInstance? : ∀ {m} (Δ : KCtx m) (s : PolyType) (T : Ty m) → Dec (KindedInstance Δ s T)
+kindedInstance? Δ s T with instantiate s T in eqi
 ... | nothing = no λ (θ , e , _) → absurd (trans (sym eqi) (proj₂ (instantiate-complete s T (θ , e))))
   where
     absurd : ∀ {σ} → nothing ≡ just σ → ⊥
     absurd ()
 ... | just σ with instantiate-sound s T eqi
-...   | θ , e with allBase? θ (ftvK s)
+...   | θ , e with allBase? Δ θ (ftvK s)
 ...     | yes h = yes (θ , e , h)
 ...     | no ¬h = no λ (θ′ , e′ , h′) →
-            ¬h (λ {x} m → subst IsBaseType (sym (agree-from θ θ′ s (trans e (sym e′)) (ftvK⊆ftv s m))) (h′ m))
+            ¬h (λ {x} m → subst (Base Δ) (sym (agree-from θ θ′ s (trans e (sym e′)) (ftvK⊆ftv s m))) (h′ m))
 
 private
   both : ∀ {X Y Z : Set} → (X → Y → Z) → Maybe X → Maybe Y → Maybe Z

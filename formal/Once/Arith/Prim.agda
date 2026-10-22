@@ -36,17 +36,17 @@ module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 ------------------------------------------------------------------------
 
 -- Binary arithmetic — Int * Int → Int
-add-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+add-semM : TargetNum → M.⟦ Int {0} * Int ⟧ → M.⟦ Int {0} ⟧
 add-semM tn (a , b) = W._⊕_ tn a b
 
-sub-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+sub-semM : TargetNum → M.⟦ Int {0} * Int ⟧ → M.⟦ Int {0} ⟧
 sub-semM tn (a , b) = W._⊖_ tn a b
 
-mul-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+mul-semM : TargetNum → M.⟦ Int {0} * Int ⟧ → M.⟦ Int {0} ⟧
 mul-semM tn (a , b) = W._⊗_ tn a b
 
 -- Unary: Int → Int
-neg-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Int ⟧
+neg-semM : TargetNum → M.⟦ Int {0} ⟧ → M.⟦ Int {0} ⟧
 neg-semM tn x = W.⊝_ tn x
 
 ------------------------------------------------------------------------
@@ -65,37 +65,37 @@ neg-semM tn x = W.⊝_ tn x
 -- backends conform, not to let the meaning vary by backend.
 ------------------------------------------------------------------------
 
-fadd-semM : TargetNum → M.⟦ Float * Float ⟧ → M.⟦ Float ⟧
+fadd-semM : TargetNum → M.⟦ Float {0} * Float ⟧ → M.⟦ Float {0} ⟧
 fadd-semM tn (a , b) = FA.fadd (float-format tn) a b
 
-fsub-semM : TargetNum → M.⟦ Float * Float ⟧ → M.⟦ Float ⟧
+fsub-semM : TargetNum → M.⟦ Float {0} * Float ⟧ → M.⟦ Float {0} ⟧
 fsub-semM tn (a , b) = FA.fsub (float-format tn) a b
 
-fmul-semM : TargetNum → M.⟦ Float * Float ⟧ → M.⟦ Float ⟧
+fmul-semM : TargetNum → M.⟦ Float {0} * Float ⟧ → M.⟦ Float {0} ⟧
 fmul-semM tn (a , b) = FA.fmul (float-format tn) a b
 
 -- | Division. TOTAL like its integer sibling (D055) — `x/0` is a signed
 -- infinity and `0/0` the canonical NaN — so there is no guard and no second
 -- shape; `FA.fdiv` carries the sticky bit that makes the quotient correctly
 -- rounded, and nothing above this line has to know about it.
-fdiv-semM : TargetNum → M.⟦ Float * Float ⟧ → M.⟦ Float ⟧
+fdiv-semM : TargetNum → M.⟦ Float {0} * Float ⟧ → M.⟦ Float {0} ⟧
 fdiv-semM tn (a , b) = FA.fdiv (float-format tn) a b
 
 -- | `Int` → `Float` (D125). The word is read at its SIGNED value — `W.toℤ`,
 -- the target's width — and then rounded by the same `roundB` every float
 -- result goes through. Reading it unsigned would make `-1` convert to
 -- `2^64 - 1`, which is the `absℤ` bug this branch already found once.
-i2f-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Float ⟧
+i2f-semM : TargetNum → M.⟦ Int {0} ⟧ → M.⟦ Float {0} ⟧
 i2f-semM tn w = FA.i2f (float-format tn) (W.toℤ tn w)
 
 -- | Division and remainder (D055): TOTAL over `Word`, RISC-V's defined results
 -- (`x / 0`, `MIN / -1`), no trap — `Word.Width._/ˢ_`/`_%ˢ_`. These were
 -- postulated placeholders "pending a division-by-zero policy"; D055 is that
 -- policy, and the arith block's own meaning (`block-semM`) already read it.
-div-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+div-semM : TargetNum → M.⟦ Int {0} * Int ⟧ → M.⟦ Int {0} ⟧
 div-semM tn (a , b) = W._/ˢ_ tn a b
 
-mod-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+mod-semM : TargetNum → M.⟦ Int {0} * Int ⟧ → M.⟦ Int {0} ⟧
 mod-semM tn (a , b) = W._%ˢ_ tn a b
 
 ------------------------------------------------------------------------
@@ -106,13 +106,13 @@ mod-semM tn (a , b) = W._%ˢ_ tn a b
 -- postulated placeholders "pending a Bool encoding decision"; this is it.
 ------------------------------------------------------------------------
 
-bool : Bool → M.⟦ Unit + Unit ⟧ᵍ
+bool : Bool → M.⟦ Unit {0} + Unit ⟧ᵍ
 bool = truth
 
-cmp-bool : TargetNum → CmpOp → M.⟦ Int ⟧ → M.⟦ Int ⟧ → Bool
+cmp-bool : TargetNum → CmpOp → M.⟦ Int {0} ⟧ → M.⟦ Int {0} ⟧ → Bool
 cmp-bool tn = cmp-word (int-bits tn)
 
-cmp-semM : CmpOp → TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧ᵍ
+cmp-semM : CmpOp → TargetNum → M.⟦ Int {0} * Int ⟧ → M.⟦ Unit {0} + Unit ⟧ᵍ
 cmp-semM op tn (a , b) = bool (cmp-bool tn op a b)
 
 ------------------------------------------------------------------------

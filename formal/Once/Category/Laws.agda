@@ -173,7 +173,7 @@ eval-terminal-unique f x with eval f x
 -- Void is initial: there's a unique morphism from Void to any object.
 -- This is vacuously true since Void is empty.
 --
-eval-initial-unique : ∀ {A} (f : IR Void A) (x : ⟦ Void ⟧)
+eval-initial-unique : ∀ {A} (f : IR Void A) (x : ⟦ Void {0} ⟧)
                     → eval f x ≡ eval initial x
 eval-initial-unique f ()
 

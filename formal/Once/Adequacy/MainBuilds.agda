@@ -66,16 +66,16 @@ import Once.Parser.Module as Module
 cfb-aux-doOpt : ∀ {m} {nctx : Classify.NamedCtx m} {body : RawExpr}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Ty m.Type) (δ : Srf.⟦ Classify.NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux IR.Heap false ctx polys impsOf name ty δ cr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody-aux IR.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody-aux IR.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir')
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
 cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _ , _) eq = _ , refl
 
 cfb-doOpt : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBody IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
   cfb-aux-doOpt doOpt ctx polys impsOf name ty refl
     (TE.checkElabV (Classify.ctxWithImportsAndPolys ctx polys) expr ty) eq
@@ -85,66 +85,66 @@ cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
 ------------------------------------------------------------------------
 
 cfun-main-aux-doOpt : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux IR.Heap false ctx polys impsOf name ty expr vm ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir')
 cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₁ err) ()
 cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
 cfun-aux-doOpt : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m.Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m.Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFun-aux IR.Heap false ctx polys impsOf name ty expr b ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir')
 cfun-aux-doOpt doOpt ctx polys impsOf name ty expr true eq =
   cfun-main-aux-doOpt doOpt ctx polys impsOf name ty expr (C.validateMain ty) eq
 cfun-aux-doOpt doOpt ctx polys impsOf name ty expr false eq =
   cfb-doOpt doOpt ctx polys impsOf name ty expr eq
 
 cfun-doOpt : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFun IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfun-doOpt doOpt ctx polys impsOf name ty expr eq =
   cfun-aux-doOpt doOpt ctx polys impsOf name ty expr (name == "main") eq
 
 -- R8: a definition without a signature, compiled from its synthesis.
 cfbI-doOpt : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBodyI IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfbI-doOpt doOpt ctx polys impsOf name ty expr eq = aux (TE.inferElabV (Classify.ctxWithImportsAndPolys ctx polys) expr) eq
   where
     at : ∀ {T : Ty _} {Ψ} (w : Classify.ctxWithImportsAndPolys ctx polys Once.Internal.Typing.⊢ᵢ expr ∶ T ⨾ Ψ) (d : Dec (T ≡ ty)) {ir}
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ ir
-       → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty refl w d ≡ inj₂ ir')
+       → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty refl w d ≡ inj₂ ir')
     at w (yes refl) _ = _ , refl
     at w (no _) ()
-    aux : (cr : TE.VerifiedInferResult (Classify.ctxWithImportsAndPolys ctx polys) expr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋}
+    aux : (cr : TE.VerifiedInferResult (Classify.ctxWithImportsAndPolys ctx polys) expr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
         → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ ir
-        → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-aux IR.Heap doOpt ctx polys impsOf name ty refl cr ≡ inj₂ ir')
+        → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-aux IR.Heap doOpt ctx polys impsOf name ty refl cr ≡ inj₂ ir')
     aux (TE.failure _ , _) ()
     aux (TE.success T _ _ _ _ , w) e = at w (T ≟T ty) e
 
 cfunI-doOpt : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunI IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfunI-doOpt doOpt ctx polys impsOf name ty expr eq = aux (name == "main") eq
   where
-    main : (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} → C.compileFunI-main-aux IR.Heap false ctx polys impsOf name ty expr vm ≡ inj₂ ir
-         → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunI-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir')
+    main : (vm : String ⊎ ⊤) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} → C.compileFunI-main-aux IR.Heap false ctx polys impsOf name ty expr vm ≡ inj₂ ir
+         → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunI-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir')
     main (inj₁ _) ()
     main (inj₂ _) e = cfbI-doOpt doOpt ctx polys impsOf name ty expr e
-    aux : (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} → C.compileFunI-aux IR.Heap false ctx polys impsOf name ty expr b ≡ inj₂ ir
-        → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunI-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir')
+    aux : (b : Bool) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} → C.compileFunI-aux IR.Heap false ctx polys impsOf name ty expr b ≡ inj₂ ir
+        → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunI-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir')
     aux true  e = main (C.validateMain ty) e
     aux false e = cfbI-doOpt doOpt ctx polys impsOf name ty expr e
 
 cfunM-doOpt : ∀ {m} (ft : Maybe (Ty m).Type) (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m.Type) (expr : RawExpr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunM ft IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunM ft IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunM ft IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfunM-doOpt (just _) = cfun-doOpt
 cfunM-doOpt nothing  = cfunI-doOpt
 
@@ -282,13 +282,13 @@ cfm-built-from-crm doOpt arch m adm eq =
 -- `moduleToIR m ≡ just ir` ⇒ `compileResolvedModule Heap false m ≡ inj₂ _`.
 ------------------------------------------------------------------------
 
-mtir-aux-inj₂ : ∀ (r : String ⊎ List C.CompiledFun) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
+mtir-aux-inj₂ : ∀ (r : String ⊎ List C.CompiledFun) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR-aux r ≡ just ir →
   Σ-syntax (List C.CompiledFun) (λ funs → r ≡ inj₂ funs)
 mtir-aux-inj₂ (inj₁ _) ()
 mtir-aux-inj₂ (inj₂ funs) eq = funs , refl
 
-moduleToIR-inj₂ : ∀ (m : P.Module) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
+moduleToIR-inj₂ : ∀ (m : P.Module) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR m ≡ just ir →
   Σ-syntax (List C.CompiledFun) (λ funs → C.compileResolvedModule IR.Heap false m ≡ inj₂ funs)
 moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule IR.Heap false m) eq
@@ -306,7 +306,7 @@ moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule IR.Heap false 
 -- lived here while the IR gate did. Both are gone — the gate was a detector,
 -- it detected, and the defect it found is fixed. The invariant it stood for is
 -- recorded at the gate's old site in `Once.Compile`.
-main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
   AdmissibleM arch m →
   moduleToIR m ≡ just ir →
   Σ-syntax String (λ asm → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.Built asm)

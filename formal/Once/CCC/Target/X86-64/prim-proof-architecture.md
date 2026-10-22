@@ -94,7 +94,7 @@ Each primitive has its own proof at concrete types:
 
 ```agda
 -- Arith defines concrete primitive
-add-int-sem : ⟦ Int * Int ⟧ → ⟦ Int ⟧
+add-int-sem : ⟦ Int {0} * Int ⟧ → ⟦ Int {0} ⟧
 add-int-sem (a , b) = a + b
 
 add-int-contract : PrimContractV3 (Int * Int) Int

@@ -109,7 +109,7 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     {Ψ  : Usage (NamedCtx.size (ctxC sc))}
     {se : Expr (NamedCtx.debruijn (ctxC sc)) Ψ ty}
     {d f : ℕ}
-    {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+    {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
     (ep : funIsPrimitive fi ≡ false) →
     (rf : C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty) →
     (fc : C.firstChecking (ctxC sc) (funBody fi) (below ty) ≡ nothing) →
@@ -129,7 +129,7 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     FunBundle sc (Parser.e-poly pfi ∷ es)
 
 compileFunBody-ce : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m) (expr : RawExpr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -140,7 +140,7 @@ compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
     (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 compileFun-main-aux-ce : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -151,7 +151,7 @@ compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
 compileFun-aux-ce : ∀ {m} (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Ty m) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFun-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -163,7 +163,7 @@ compileFun-aux-ce doOpt ctx polys impsOf name ty expr false eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
 compileFun-ce : ∀ {m} (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ctx : TopCtx) (ty : Ty m) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  (ctx : TopCtx) (ty : Ty m) (fi : FunInfo) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFun IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -175,7 +175,7 @@ compileFun-ce polys impsOf ctx ty fi irFun eq =
 
 -- R8: a definition without a signature — its synthesis succeeded, at its type.
 compileFunI-ce : ∀ {m} (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ctx : TopCtx) (ty : Ty m) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  (ctx : TopCtx) (ty : Ty m) (fi : FunInfo) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFunI IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -211,7 +211,7 @@ compileFunI-ce polys impsOf ctx ty fi irFun eq =
         fix refl se′ = Ψ , se′ , d , f , refl
 
 compileFunM-ce : ∀ {m} (ft : Maybe (Ty m)) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ctx : TopCtx) (ty : Ty m) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) → funType fi ≡ ft →
+  (ctx : TopCtx) (ty : Ty m) (fi : FunInfo) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) → funType fi ≡ ft →
   C.compileFunM ft IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) ≡ inj₂ irFun →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -331,7 +331,7 @@ BMainExists (bpoly _ _ rest) = BMainExists rest
 
 -- D253: the program's `main` is the call of the entry `main : Eff Unit Unit`; the
 -- bundle finds it with the compiler's own decisions (`findMain-here`).
-bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
 bundle-find bnil = nothing
 bundle-find (bffi _ _ _ _ _ rest) = bundle-find rest
 bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
@@ -355,20 +355,20 @@ bme→me (bcons _ _ _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
 bme→me (bpoly _ _ rest) w = bme→me rest w
 
 -- The program's `main` is only ever the entry's call (`mainEntry`, D315).
-IsEntry : IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
+IsEntry : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
 IsEntry ir = Σ-syntax Type (λ ty → Σ-syntax (ty <: EffUU) (λ p → ir ≡ mainEntry p))
 
 private
   here-call : ∀ (cf : C.CompiledFun) (nd : Dec (C.CompiledFun.cfName cf ≡ bare "main"))
-                (td : Dec (C.CompiledFun.cfType cf <: EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+                (td : Dec (C.CompiledFun.cfType cf <: EffUU)) (cont : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
             → (cont ≡ just ir → IsEntry ir) → findMain-here cf nd td cont ≡ just ir → IsEntry ir
   here-call cf (yes _) (yes p) cont ih refl = _ , p , refl
   here-call cf (yes _) (no _)  cont ih eq   = ih eq
   here-call cf (no _)  _       cont ih eq   = ih eq
 
-  here-exists : ∀ {m} {sc es} (fi : FunInfo) {ty : Ty m} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} (rest : FunBundle (C.extendScope sc (funName fi) ty) es)
+  here-exists : ∀ {m} {sc es} (fi : FunInfo) {ty : Ty m} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} (rest : FunBundle (C.extendScope sc (funName fi) ty) es)
                 → funIsPrimitive fi ≡ false
-                → (nd : Dec (bare (funName fi) ≡ bare "main")) (td : Dec (ty <: EffUU)) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+                → (nd : Dec (bare (funName fi) ≡ bare "main")) (td : Dec (ty <: EffUU)) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
                 → (bundle-find rest ≡ just ir → BMainExists rest)
                 → findMain-here (C.mkCompiledFun (bare (funName fi)) _ ty irFun) nd td (bundle-find rest) ≡ just ir
                 → ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty <: EffUU)) ⊎ BMainExists rest
@@ -376,7 +376,7 @@ private
   here-exists fi rest ep (yes _) (no _)  ih eq = inj₂ (ih eq)
   here-exists fi rest ep (no _)  _       ih eq = inj₂ (ih eq)
 
-bundle-find-call : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → bundle-find b ≡ just ir → IsEntry ir
+bundle-find-call : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → bundle-find b ≡ just ir → IsEntry ir
 bundle-find-call bnil ()
 bundle-find-call (bffi _ _ _ _ _ rest) eq = bundle-find-call rest eq
 bundle-find-call (bpoly _ _ rest) eq = bundle-find-call rest eq
@@ -384,7 +384,7 @@ bundle-find-call (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf re
   here-call (C.mkCompiledFun (bare (funName fi)) _ ty irFun)
     (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) (bundle-find rest) (bundle-find-call rest) eq
 
-bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
   → bundle-find b ≡ just ir → BMainExists b
 bundle-find-exists bnil ()
 bundle-find-exists (bffi _ _ _ _ _ rest) eq = bundle-find-exists rest eq
@@ -406,7 +406,7 @@ ProgramNode m =
     C.compileResolvedModule IR.Heap false m ≡ inj₂ (bundle→compiled b))))
 
 private
-  node-ce : ∀ (m : Core.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (es : List Parser.Entry) (cv : String ⊎ List C.CompiledFun)
+  node-ce : ∀ (m : Core.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (es : List Parser.Entry) (cv : String ⊎ List C.CompiledFun)
           → C.compileEntries IR.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir
           → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es → ProgramNode m
   node-ce m ir es (inj₁ _) ce mi ef = case mi of λ ()
@@ -415,12 +415,12 @@ private
        , trans (cong (C.compileResolvedModule-aux IR.Heap false m) ef)
                (trans ce (cong inj₂ (sym (bundle→compiled≡compiled C.emptyCScope es compiled ce))))
 
-  node-ef : ∀ (m : Core.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (efv : String ⊎ List Parser.Entry)
+  node-ef : ∀ (m : Core.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (efv : String ⊎ List Parser.Entry)
           → Parser.extractFunctions (Parser.extractAliases m) m ≡ efv
           → moduleToIR-aux (C.compileResolvedModule-aux IR.Heap false m efv) ≡ just ir → ProgramNode m
   node-ef m ir (inj₁ _)  ef mi = case mi of λ ()
   node-ef m ir (inj₂ es) ef mi = node-ce m ir es (C.compileEntries IR.Heap false C.emptyCScope es) refl mi ef
 
-program-node : ∀ (m : Core.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → ProgramNode m
+program-node : ∀ (m : Core.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir → ProgramNode m
 program-node m ir mi = node-ef m ir (Parser.extractFunctions (Parser.extractAliases m) m) refl mi
 

@@ -122,17 +122,17 @@ interp-subst refl I = refl
 
 private
   -- the compiled program's trace, in a world
-  trIRAt : Interp → List IRFun → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Tr ⊤
+  trIRAt : Interp → List IRFun → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Tr ⊤
   trIRAt ι′ tbl ir = trT∞ ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) ir tt)
 
   -- the walk's agreement at the entry the bundle finds
-  agree-at : ∀ {Fs Ip tbl P} {m : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)} {ir} → m ≡ just ir
+  agree-at : ∀ {Fs Ip tbl P} {m : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)} {ir} → m ≡ just ir
            → TW.AgreeM fmt Fs Ip tbl m P → TW.Agree fmt Fs Ip tbl ir P
   agree-at refl a = a
 
   core-ef-tr : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
                  {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
-               → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → FB.bundle-find b ≡ just ir → (I : Impl (moduleSig-ef ef))
+               → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → FB.bundle-find b ≡ just ir → (I : Impl (moduleSig-ef ef))
                → trIRAt (interp (moduleSig-ef ef) I) (tableOf-go (FB.bundle→compiled b) []) ir
                  ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (moduleSig-ef ef) I) [] (runCore fmt (typedProgram-ef m ef mt hvm) (subst Impl (sym (typed-sig-ef m ef mt)) I))
   core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe I =
@@ -152,7 +152,7 @@ private
 -- makes is the core program's.
 program-core-tr :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (I : Impl (moduleSig m))
-    (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
+    (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
   → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (interp (moduleSig m) I)
     ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (moduleSig m) I) [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I))
 program-core-tr m mt hvm I ir mi with FB.program-node m ir mi

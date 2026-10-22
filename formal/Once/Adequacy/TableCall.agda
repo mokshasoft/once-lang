@@ -107,7 +107,7 @@ self es ir r = eval-rel fmt (table-self fmt φ es) ir r
 
 -- THE ABI ROUND TRIP: a reference to the head entry, compiled from `ir`, is
 -- related to `ir`'s computation in the rest of the table, read through `abiT`.
-abi : ∀ (U : Type) (x : _) (es : List IRFun) (ir : IR ⌊ Unit ⌋ ⌊ U ⌋)
+abi : ∀ (U : Type) (x : _) (es : List IRFun) (ir : IR ⌊ Unit {0} ⌋ ⌊ U ⌋)
     → RelS (RelD ⌈ ⌊ U ⌋ ⌉) (evalᴰ fmt (tableEnv fmt φ (irFunOf (C.mkCompiledFun (bare x) _ U ir) ∷ es)) (refIR U (bare x)) tt)
                             (abiT U (evalᴰ fmt (tableEnv fmt φ es) ir tt))
 abi (A ⇒[ mk-kind Zero π ] B) x es ir =

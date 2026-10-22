@@ -68,7 +68,7 @@ validateMain-sub ty eq = validateMain-at-sub ty (ty <:? EffUU) eq
 ------------------------------------------------------------------------
 
 compileFun-main-sub : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFun IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
@@ -77,7 +77,7 @@ compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in 
 
 -- R8: `main` without a signature, compiled from its synthesis.
 compileFunI-main-sub : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFunI IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFunI-main-sub ctx polys impsOf ty body irFun eq = go (C.validateMain ty) refl eq
@@ -88,7 +88,7 @@ compileFunI-main-sub ctx polys impsOf ty body irFun eq = go (C.validateMain ty) 
     go (inj₁ _)  _   ()
 
 compileFunM-main-sub : ∀ {m} (ft : Maybe (Ty m)) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
+  (ty : Ty m) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFunM ft IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFunM-main-sub (Data.Maybe.just _) = compileFun-main-sub
@@ -99,7 +99,7 @@ compileFunM-main-sub Data.Maybe.nothing  = compileFunI-main-sub
 ------------------------------------------------------------------------
 
 findMain-here-no : ∀ (cf : C.CompiledFun)
-  (mu : Dec (C.CompiledFun.cfType cf <: EffUU)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋))
+  (mu : Dec (C.CompiledFun.cfType cf <: EffUU)) (cont : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋))
   (¬p : ¬ (C.CompiledFun.cfName cf ≡ bare "main")) →
   findMain-here cf (no ¬p) mu cont ≡ cont
 findMain-here-no cf mu cont ¬p = refl

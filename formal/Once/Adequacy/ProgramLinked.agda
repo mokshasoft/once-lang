@@ -372,7 +372,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
 ------------------------------------------------------------------------
 
 -- The direct-call form (`directCallIR`) of a linked body is linked.
-dc-linked : ∀ {m} (tbl : List IRFun) (ty : Ty m) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
+dc-linked : ∀ {m} (tbl : List IRFun) (ty : Ty m) (ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋)
           → Linked σ tbl ir → Linked σ tbl (proj₂ (proj₂ (C.directCallIR ty ir)))
 dc-linked tbl (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir l = tt , ((l , tt) , tt)
 dc-linked tbl (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir l = tt , ((l , tt) , tt)
@@ -389,7 +389,7 @@ dc-linked tbl (Once.Internal.Type.rigid k i)    ir l = l
 
 -- A reference to an entry is linked once the entry is in the table: the
 -- reference's call (`refIR`) is at the entry's direct-call objects (D245).
-ref-entry : ∀ {m} (tbl : List IRFun) (x : String) (ty : Ty m) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
+ref-entry : ∀ {m} (tbl : List IRFun) (x : String) (ty : Ty m) (ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋)
           → RefLinked σ (irFunOf (C.mkCompiledFun (bare x) _ ty ir) ∷ tbl) x ty
 ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
@@ -475,7 +475,7 @@ linv-sig {σ = σ} {csc = csc} {pre = pre} x ty g d inv = record
   }
 
 -- A definition joins the scope, its compiled form the table.
-linv-entry : ∀ {m} {csc pre} (x : String) (ty : Ty m) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋) → RigidFree ty
+linv-entry : ∀ {m} {csc pre} (x : String) (ty : Ty m) (ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) → RigidFree ty
            → Linked σ pre (fbody (irFunOf (C.mkCompiledFun (bare x) _ ty ir)))
            → LInv σ csc pre → LInv σ (C.extendScope csc x ty) (irFunOf (C.mkCompiledFun (bare x) _ ty ir) ∷ pre)
 linv-entry {σ = σ} {csc = csc} {pre = pre} x ty ir g lb inv = record
@@ -490,7 +490,7 @@ linv-entry {σ = σ} {csc = csc} {pre = pre} x ty ir g lb inv = record
   where e = irFunOf (C.mkCompiledFun (bare x) _ ty ir)
 
 -- A definition's body, checked in its scope, compiles to linked IR.
-body-linked : ∀ {m} {csc pre} → LInv σ csc pre → (x : String) (ty : Ty m) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
+body-linked : ∀ {m} {csc pre} → LInv σ csc pre → (x : String) (ty : Ty m) {body : RawExpr} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
                 {se : _} {d f : ℕ}
             → C.compileFun IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
             → (ce : Once.TypeCheck.Elaborate.checkElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty
@@ -509,7 +509,7 @@ body-linked {σ = σ} {csc = csc} {pre = pre} inv x ty {body} cf ce =
         uf = (x , ty) ∷ C.CScope.cimps csc
 
 -- R8: likewise a definition without a signature, compiled from its synthesis.
-body-linkedI : ∀ {m} {csc pre} → LInv σ csc pre → (x : String) (ty : Ty m) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
+body-linkedI : ∀ {m} {csc pre} → LInv σ csc pre → (x : String) (ty : Ty m) {body : RawExpr} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
                  {se : _} {d f : ℕ}
              → C.compileFunI IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
              → (ce : Once.TypeCheck.Elaborate.inferElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body
@@ -529,7 +529,7 @@ body-linkedI {σ = σ} {csc = csc} {pre = pre} inv x ty {body} cf ce =
 
 -- A definition, in its own mode.
 body-linkedM : ∀ {m} {csc pre} → LInv σ csc pre → (ft : Data.Maybe.Maybe (Ty m)) (x : String) (ty : Ty m) {body : RawExpr}
-                 {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} {Ψ : Usage 0} {se : _} {d f : ℕ}
+                 {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} {Ψ : Usage 0} {se : _} {d f : ℕ}
              → C.compileFunM ft IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
              → FB.ElabOK ft (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty Ψ se d f
              → Linked σ pre irFun
@@ -628,7 +628,7 @@ link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr g
 -- own direct-call objects (D315: `main` at its type below `Eff Unit Unit`; a
 -- `main` answering `Void` is called through `initial`).
 private
-  entry-linked : ∀ {σ : ISig} {tbl ty} (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) (p : ty <: EffUU)
+  entry-linked : ∀ {σ : ISig} {tbl ty} (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (p : ty <: EffUU)
                → LinkedAt tbl (bare "main")
                    (IRFun.fdom (irFunOf (C.mkCompiledFun (bare "main") _ ty irFun)))
                    (IRFun.fcod (irFunOf (C.mkCompiledFun (bare "main") _ ty irFun)))
@@ -637,7 +637,7 @@ private
   entry-linked irFun (sub-arr sub-unit sub-void g) lk = tt , lk
   entry-linked irFun sub-void                      lk = tt , lk
 
-main-linked : ∀ {σ : ISig} {csc es} (b : FB.FunBundle csc es) (pre : List IRFun) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+main-linked : ∀ {σ : ISig} {csc es} (b : FB.FunBundle csc es) (pre : List IRFun) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
             → FB.bundle-find b ≡ just ir → Linked σ (tableOf-go (FB.bundle→compiled b) pre) ir
 main-linked FB.bnil pre ()
 main-linked (FB.bffi _ _ _ _ _ rest) pre q₀ = main-linked rest pre q₀
@@ -676,7 +676,7 @@ private
 
 -- plan 0.105: linked against the interpretation signatures the module is
 -- compiled against (`moduleSig`, its FFI declarations).
-moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
                        → moduleToIR m ≡ just ir → LinkedProgram (moduleSig m) (irProgram (moduleTable m) ir)
 moduleToProgram-linked m ir mi with FB.program-node m ir mi
 ... | es , ef , b , ceq =

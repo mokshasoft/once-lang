@@ -81,7 +81,7 @@ private
 
 -- THE FILE OF A PROGRAM: what `compileFileFromModule` returns for a module
 -- whose `main` is `ir` is the emission of that module's program.
-file-is-emit : ∀ (arch : Arch) (m : Module) (F : FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+file-is-emit : ∀ (arch : Arch) (m : Module) (F : FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
              → compileFileFromModule Heap false arch m ≡ inj₂ F
              → moduleToIR m ≡ just ir
              → F ≡ emitProgram arch (irProgram (moduleTable m) ir)

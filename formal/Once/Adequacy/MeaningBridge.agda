@@ -627,7 +627,7 @@ step-≡ h h' hr {x} refl = hr x
 
 -- The comparison codomain: `Unit + Unit` erases to itself, injection for
 -- injection.
-⊎⊤-rel : (v : Val.⟦ Unit + Unit ⟧ᵍ)
+⊎⊤-rel : (v : Val.⟦ Unit {0} + Unit ⟧ᵍ)
        → RelGM pure (Unit + Unit) v (embed (ret (injectᵇ (base-Sum base-Unit base-Unit) (Val.eraseᵍ {Unit + Unit} v))))
 ⊎⊤-rel (inj₁ _) = emb-ret tt
 ⊎⊤-rel (inj₂ _) = emb-ret tt
@@ -1071,7 +1071,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
                       , (λ {u} {u′} _ → retargetˡ (out-fst v′ u) (retargetʳ (out-fst v′ u′)
                             (liftFn-rel fmt (proj₁ σ-self) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) (right-self (ν-type F actᶠ) rv)))))))
     where
-      out-fst : ∀ (v : ⟦ ν-type F actᶠ ⟧ᴰ) (u : ⟦ Unit ⟧ᴰ)
+      out-fst : ∀ (v : ⟦ ν-type F actᶠ ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
               → force (liftFn fmt (calls σ) {F : Fun _} {ν-type actᶠ * Unit} {F F : Fun _} {⟦ ⟧T (ν-type actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
                 ≡ force (liftFn fmt (calls σ) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) v)
       out-fst v u = force-∘ {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} {ν-type F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {ν-type F actᶠ} {Unit} (v , u))
@@ -1097,7 +1097,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
                                           (proj₂ (proj₁ rv) (right-self A (proj₂ rv))))))))
     where
       AB = A ⇒[ mk-kind Many π ] B
-      app-fst : ∀ (q : ⟦ AB * A ⟧ᴰ) (u : ⟦ Unit ⟧ᴰ)
+      app-fst : ∀ (q : ⟦ AB * A ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
               → force (liftFn fmt (calls σ) {(AB * A) * Unit} {B} (IR.apply IR.∘ IR.fst) (q , u)) ≡ force (proj₁ q (proj₂ q))
       app-fst q u = trans (force-∘ {AB * A} {B} {(AB * A) * Unit} {IR.apply} {IR.fst} (now-fst {AB * A} {Unit} (q , u)))
                           (cong force (cong-app (liftFn-apply {A} {B} {π}) q))

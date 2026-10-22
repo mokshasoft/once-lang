@@ -212,7 +212,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     file-tr :
       ∀ (m : P.Module) (F : C.FileOf arch) →
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
-      ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) →
+      ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
       run-file arch ι F ≈ᵗ⟨ _≡_ ⟩ ⟦ just (rewrite-program (irProgram (moduleTable m) ir)) ⟧IRᵗ (arch-numerics arch) ι
 
@@ -288,7 +288,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   compile-fe arch (inj₁ _) = nothing
   compile-fe arch (inj₂ F) = just (file-bytes arch F)
 
-  compile-mir : Arch → Bool → P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (List Byte)
+  compile-mir : Arch → Bool → P.Module → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
   compile-mir arch doOpt m (just _)  = compile-fe arch (C.compileFileFromModule IR.Heap doOpt arch m)
 
@@ -324,7 +324,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     refuse-gated arch doOpt m es (admissibleM? arch m) ¬adm
 
   refuse-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                 (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) → ¬ AdmissibleM arch m
+                 (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) → ¬ AdmissibleM arch m
              → compile-mir arch doOpt m mir ≡ nothing
   refuse-mir arch doOpt m nothing   ¬adm = refl
   refuse-mir arch doOpt m (just ir) ¬adm =
@@ -356,7 +356,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     accept-gated arch doOpt m es (admissibleM? arch m) eq
 
   accept-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                 (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) {bytes : List Byte}
+                 (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) {bytes : List Byte}
              → compile-mir arch doOpt m mir ≡ just bytes → AdmissibleM arch m
   accept-mir arch doOpt m nothing   ()
   accept-mir arch doOpt m (just ir) eq =
@@ -381,7 +381,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- `compile`/`moduleToIR` run on.
   compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Module) (bytes : List Byte) →
     srcToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
-    Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
+    Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir → moduleToIR m ≡ just ir)
   compile-just-ir arch doOpt src m bytes g-eq pf with moduleToIR m in mi
   ... | just ir = ir , refl
   ... | nothing = ⊥-elim (case trans (sym c≡n) pf of λ ())
@@ -464,7 +464,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   ⟦_⟧ᵈᴵ : Arch → (tp : Typed) → Impl (sigOfT tp) → Tr Data.Unit.⊤
   ⟦ arch ⟧ᵈᴵ tp I = trT∞ (interp (sigOfT tp) I) Data.List.List.[] (runCore (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp) (CB.implFor (arch-numerics arch) tp I))
 
-  ir-core-tr : ∀ (arch : Arch) (tp : Typed) (I : Impl (sigOfT tp)) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR (proj₁ tp) ≡ just ir
+  ir-core-tr : ∀ (arch : Arch) (tp : Typed) (I : Impl (sigOfT tp)) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR (proj₁ tp) ≡ just ir
              → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (interp (sigOfT tp) I) ≋ ⟦ arch ⟧ᵈᴵ tp I
   ir-core-tr arch (m , mt , hvm) I ir mi =
     subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (interp (moduleSig m) I) ≋ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) I)
@@ -487,7 +487,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- preserves the program's trace (`rewrite-program-trace`). Every link but the
     -- first is a proof.
     file-correct :
-      ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+      ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
       moduleSig m ≡ sig ι →
@@ -553,8 +553,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- genuinely well-typed programs — soundness is no longer by-construction,
     -- it is discharged against the INDEPENDENT judgment via `AcceptSound`.
     -- With-free (explicit-`Maybe`-argument helpers).
-    ⟦⟧⊥-ir-sound : ∀ (tbl : _) (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (arch : Arch) (beh : Tr Data.Unit.⊤) →
-      ⟦ programAt tbl mir ⟧⊥-ir arch ≡ just beh → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → mir ≡ just ir)
+    ⟦⟧⊥-ir-sound : ∀ (tbl : _) (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) (arch : Arch) (beh : Tr Data.Unit.⊤) →
+      ⟦ programAt tbl mir ⟧⊥-ir arch ≡ just beh → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir → mir ≡ just ir)
     ⟦⟧⊥-ir-sound tbl nothing   arch beh ()
     ⟦⟧⊥-ir-sound tbl (just ir) arch beh eq = ir , refl
 
@@ -588,7 +588,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- optimize lift). The doOpt=false trace is PROVEN from the codegen chain
     -- (`trace-false` below).
     postulate
-      opt-trace : ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+      opt-trace : ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
         C.compileFileFromModule IR.Heap true arch m ≡ inj₂ F →
         moduleToIR m ≡ just ir →
         -- plan 0.105: in a world that declares the module's signatures
@@ -600,7 +600,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
     -- source meaning `⟦ just ir ⟧IR`. Supplied per `doOpt` by `correct` below
     -- (the proven codegen chain for `false`; `opt-trace` for `true`).
-    TraceAt : Arch → Bool → P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
+    TraceAt : Arch → Bool → P.Module → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
     TraceAt arch doOpt m ir =
       ∀ (F : C.FileOf arch) → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
@@ -608,7 +608,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
     -- supplied trace witness; the three reject results are ruled out by
     -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
-    correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+    correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
                    (fe : String ⊎ C.FileOf arch) → AdmissibleM arch m →
                    C.compileFileFromModule IR.Heap doOpt arch m ≡ fe →
                    moduleToIR m ≡ just ir →
@@ -623,10 +623,10 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
     -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
     -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
-    correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
+    correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) →
                     AdmissibleM arch m →
                     moduleToIR m ≡ mir →
-                    (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
+                    (∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
                     Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ programAt (moduleTable m) mir ⟧⊥-ir arch)
     correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
     correct-mir arch doOpt m (just ir) adm mi-eq tw =
@@ -637,7 +637,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- parseable ⇒ defer to `correct-mir`.
     correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Module) →
                    (∀ (m : P.Module) → gm ≡ just m →
-                      ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
+                      ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
                    Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt gm)) (⟦ gm ⟧⊥-m arch)
     -- D115: dispatch on the SAME gate the meaning uses. Inadmissible ⇒ the
     -- meaning is `nothing`, and the compiler's Build stage returns `Error`, so
@@ -646,7 +646,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- consulted twice.
     correct-gm-adm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
                        (d : Dec (AdmissibleM arch m)) →
-                       (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
+                       (∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
                        Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt (just m)))
                                      (⟦ m ⟧⊥-adm arch d)
     correct-gm-adm arch doOpt m (yes adm) tw =
@@ -736,7 +736,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     ⟦⟧⊥-just-adm arch m (yes _)   adm = refl
     ⟦⟧⊥-just-adm arch m (no ¬adm) adm = ⊥-elim (¬adm adm)
 
-    ⟦⟧⊥-just : ∀ (src : Source) (arch : Arch) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+    ⟦⟧⊥-just : ∀ (src : Source) (arch : Arch) (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
       AdmissibleM arch m →
       srcToModule src ≡ just m → moduleToIR m ≡ just ir →
       ⟦ src ⟧⊥ arch ≡ just (⟦ moduleToProgram m ⟧IRᵗ (arch-numerics arch) ι)
@@ -764,7 +764,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     sound-trace : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
       compile arch doOpt src ≡ just bytes →
       ∀ (mR : P.Module) (stm-eq : srcToModule src ≡ just mR)
-        (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR mR ≡ just ir) →
+        (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR mR ≡ just ir) →
       moduleSig mR ≡ sig ι →
       exec arch bytes ≋ ⟦ moduleToProgram mR ⟧IRᵗ (arch-numerics arch) ι
     sound-trace arch doOpt src bytes pf mR stm-eq ir mi ls = e≋

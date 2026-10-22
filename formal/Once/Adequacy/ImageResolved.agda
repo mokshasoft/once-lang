@@ -130,7 +130,7 @@ module Fns (G : String → Set) (D : List String) (σ : ISig) (tbl : List IRFun)
 -- THE PROGRAM.
 ------------------------------------------------------------------------
 
-module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir) where
+module Prog (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) where
 
   p   = irProgram (moduleTable m) ir
   rp  = C.rewrite-program p
@@ -206,7 +206,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
         flat (inj₂ (inj₂ y)) = inj₂ y
 
 -- THE THEOREM (was `ImageWF.prog-resolved`, a postulate).
-prog-resolved : ∀ (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
+prog-resolved : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
               → Resolved (prog-defs (irProgram (moduleTable m) ir)) (prog-externs (irProgram (moduleTable m) ir))
                          (arefs (C.image-of (irProgram (moduleTable m) ir)))
 prog-resolved m ir mi = Prog.resolved m ir mi (proj₁ (prog-sigops m ir mi)) (proj₂ (prog-sigops m ir mi))

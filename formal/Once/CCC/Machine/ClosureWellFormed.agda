@@ -502,14 +502,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       -- an arith result that feeds an Emits/Halts SigOp is never pinned — the
       -- `obs-correct-rest` gap. Mirrors `valid-pair-wf`'s `readLoc` content
       -- premise, bottoming the value recursion at the primitive leaf.)
-      valid-int-wf : ∀ {m} {n : ⟦ Int ⟧}
+      valid-int-wf : ∀ {m} {n : ⟦ Int {0} ⟧}
         {alloc : AllocState {FS}}
         {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →
         readLoc s loc ≡ just (prim-sv fits-int n) →
         ValidAtWF m alloc {Int} n loc s
 
-      valid-float-wf : ∀ {m} {x : ⟦ Float ⟧}
+      valid-float-wf : ∀ {m} {x : ⟦ Float {0} ⟧}
         {alloc : AllocState {FS}}
         {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →

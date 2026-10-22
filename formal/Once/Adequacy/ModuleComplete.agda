@@ -82,7 +82,7 @@ open FunInfo
 compileFunBody-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBody IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 -- D143: `Ψ : Usage 0` must be MATCHED, not just quantified: `Usage` is a
 -- `data` (no eta), so `∅ ↾ Ψ` is stuck until `Ψ` is `[]`, and the
@@ -92,7 +92,7 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
   where
     succ : ∀ (cr : TE.VerifiedCheckResult (ctxWithImportsAndPolys ctx polys) body ty) {eE d f}
          → proj₁ cr ≡ TE.success [] eE d f
-         → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBody-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
+         → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBody-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
     succ (TE.success _ _ _ _ , _) refl = _ , refl
 
 ------------------------------------------------------------------------
@@ -104,14 +104,14 @@ compileFun-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.
   (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFun IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 compileFun-complete ctx polys impsOf name ty body main-ok deriv with name Str.≟ "main"
 ... | no ¬p = compileFunBody-complete ctx polys impsOf name ty body deriv
 ... | yes refl = main-step (ty <:? EffUU) (main-ok refl)
   where
     main-step : (d : Dec (ty <: EffUU)) → ty <: EffUU
-              → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
+              → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
                   C.compileFun-main-aux IR.Heap false ctx polys impsOf "main" ty body (C.validateMain-at ty d) ≡ inj₂ irFun)
     main-step (yes _) _ = compileFunBody-complete ctx polys impsOf "main" ty body deriv
     main-step (no ¬q) q = ⊥-elim (¬q q)
@@ -120,32 +120,32 @@ compileFun-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
 compileFunBodyI-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᵢ body ∶ ty ⨾ Ψ →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBodyI IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 compileFunBodyI-complete ctx polys impsOf name ty body {[]} deriv =
   succ (TE.inferElabV (ctxWithImportsAndPolys ctx polys) body) (proj₂ (proj₂ (proj₂ (infer-complete deriv))))
   where
     at : (w : (ctxWithImportsAndPolys ctx polys) ⊢ᵢ body ∶ ty ⨾ []) (d : Dec (ty ≡ ty))
-       → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ irFun)
+       → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ irFun)
     at w (yes refl) = _ , refl
     at w (no ¬p)    = ⊥-elim (¬p refl)
     succ : ∀ (cr : TE.VerifiedInferResult (ctxWithImportsAndPolys ctx polys) body) {eE d f}
          → proj₁ cr ≡ TE.success ty [] eE d f
-         → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
+         → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
     succ (TE.success _ _ _ _ _ , w) refl = at w (ty ≟T ty)
 
 compileFunI-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᵢ body ∶ ty ⨾ Ψ →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunI IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 compileFunI-complete ctx polys impsOf name ty body main-ok deriv with name Str.≟ "main"
 ... | no ¬p = compileFunBodyI-complete ctx polys impsOf name ty body deriv
 ... | yes refl = main-step (ty <:? EffUU) (main-ok refl)
   where
     main-step : (d : Dec (ty <: EffUU)) → ty <: EffUU
-              → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
+              → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
                   C.compileFunI-main-aux IR.Heap false ctx polys impsOf "main" ty body (C.validateMain-at ty d) ≡ inj₂ irFun)
     main-step (yes _) _ = compileFunBodyI-complete ctx polys impsOf "main" ty body deriv
     main-step (no ¬q) q = ⊥-elim (¬q q)
@@ -155,7 +155,7 @@ compileFunM-complete : ∀ {m} (ft : Maybe (Ty m)) (ctx : TopCtx) (polys : PolyC
   (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   MonoBody ft (ctxWithImportsAndPolys ctx polys) body ty Ψ →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunM ft IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 compileFunM-complete (just _) = compileFun-complete
 compileFunM-complete nothing  = compileFunI-complete
@@ -210,7 +210,7 @@ ce-complete sc (poly {pfi = pfi} {es = es} pr deriv rest) mrest =
 
 FindResult : C.CScope → List Parser.Entry → Set
 FindResult sc es =
-  Σ-syntax (List C.CompiledFun) (λ compiled → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
+  Σ-syntax (List C.CompiledFun) (λ compiled → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir →
     (C.compileEntries IR.Heap false sc es ≡ inj₂ compiled) × (findMain compiled ≡ just ir)))
 
 -- The compiled telescope contains `main`, and `findMain` finds it.
@@ -248,16 +248,16 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (
     cf0 = C.mkCompiledFun (bare (funName fi)) _ ty irFun
     -- A `main` usable as `Eff Unit Unit` is found where it stands.
     here : funName fi ≡ "main" → ty <: EffUU → ∀ cfs
-         → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → findMain (cf0 ∷ cfs) ≡ just ir)
+         → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir → findMain (cf0 ∷ cfs) ≡ just ir)
     here nm te cfs = found (funName fi) ty irFun nm te
       where
-        foundD : ∀ (t : Ty _) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) (d : Dec (t <: EffUU)) → t <: EffUU
-          → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
+        foundD : ∀ (t : Ty _) (g : IR ⌊ Unit {0} ⌋ ⌊ t ⌋) (d : Dec (t <: EffUU)) → t <: EffUU
+          → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir →
               C.findMain-here (C.mkCompiledFun (bare "main") _ t g) (yes refl) d (findMain cfs) ≡ just ir)
         foundD t g (yes q) _ = mainEntry q , refl
         foundD t g (no ¬q) p = ⊥-elim (¬q p)
-        found : ∀ (n : String) (t : Ty _) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) → n ≡ "main" → t <: EffUU
-          → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
+        found : ∀ (n : String) (t : Ty _) (g : IR ⌊ Unit {0} ⌋ ⌊ t ⌋) → n ≡ "main" → t <: EffUU
+          → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir →
               findMain (C.mkCompiledFun (bare n) _ t g ∷ cfs) ≡ just ir)
         found .("main") t g refl p = foundD t g (t <:? EffUU) p
     step : ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest → Dec (funName fi ≡ "main") → FindResult sc (Parser.e-fun fi ∷ es)
@@ -274,7 +274,7 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (
       in cf0 ∷ cfs , ir , chain rec , trans (findMain-skip cf0 cfs (λ e → ¬nm (bare-injective e))) fm
 
 moduleToIR-complete : ∀ (m : Core.Module) (mt : ModuleTyped m) → HasValidMain m mt →
-  Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
+  Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir → moduleToIR m ≡ just ir)
 moduleToIR-complete m mt hvm with Parser.extractFunctions (Parser.extractAliases m) m
 ... | inj₂ es with ce-find-complete C.emptyCScope mt (proj₁ hvm) (proj₂ hvm)
 ...   | (compiled , ir , ce-eq , fm-eq) = ir , trans (cong moduleToIR-aux ce-eq) fm-eq
@@ -312,7 +312,7 @@ ce-mains sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) {cfs} eq 
       , ce-mains (C.extendScope sc (funName fi) ty) rest
           (proj₂ (AS.consCF-inj _ (subst (λ r → C.ce-mono-ir IR.Heap false sc fi es ty r ≡ inj₂ cfs) cf eq′)))
 
-ce-mainexists : ∀ (sc : C.CScope) {es} (mt : ModTele (scopeOf sc) es) {cfs} {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋}
+ce-mainexists : ∀ (sc : C.CScope) {es} (mt : ModTele (scopeOf sc) es) {cfs} {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
   → C.compileEntries IR.Heap false sc es ≡ inj₂ cfs → findMain cfs ≡ just ir → MainIn mt
 ce-mainexists sc [] eq fm = case subst (λ c → findMain c ≡ just _) (sym (inj₂-injective eq)) fm of λ ()
 ce-mainexists sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h g rest) {cfs} {ir} eq fm =
@@ -350,7 +350,7 @@ ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) {cfs
           in inj₂ (ce-mainexists (C.extendScope sc (funName fi) ty) rest rec
                      (trans (sym (findMain-skip cf0 rest-cfs (λ e → ¬p (bare-injective e)))) fm′))
 
-moduleToIR-sound : ∀ (m : Core.Module) (mt : ModuleTyped m) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
+moduleToIR-sound : ∀ (m : Core.Module) (mt : ModuleTyped m) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR m ≡ just ir → HasValidMain m mt
 moduleToIR-sound m mt mi with Parser.extractFunctions (Parser.extractAliases m) m
 ... | inj₂ es with C.compileEntries IR.Heap false C.emptyCScope es in ce-eq

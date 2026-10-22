@@ -17,10 +17,11 @@
 module Once.Functor.Decide where
 
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Fin using (Fin)
 open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; KCtx; Kind; base; any; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; var; μ; ν; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
 open import Once.Internal.Type using (k-base; k-any; μ-type; ν-type; Functor)
 open import Once.Spec.Type using (wf-K; wf-Id)
@@ -101,3 +102,46 @@ wellFormedF? (F ⊗ G) with wellFormedF? F | wellFormedF? G
 ... | just wF | just wG = just (wf-Prod wF wG)
 {-# CATCHALL #-}
 ... | _       | _       = nothing
+
+------------------------------------------------------------------------
+-- Base types over type variables of kinds `Δ` (a polymorphic body): a
+-- variable is base when its kind is.
+------------------------------------------------------------------------
+
+base-var? : ∀ {m} (Δ : KCtx m) (i : Fin m) (k : Kind) → Δ i ≡ k → Maybe (Base Δ (var i))
+base-var? Δ i base e = just (b-var e)
+base-var? Δ i any  _ = nothing
+
+base? : ∀ {m} (Δ : KCtx m) (A : Ty m) → Maybe (Base Δ A)
+base? Δ (var i) = base-var? Δ i (Δ i) refl
+base? Δ Unit   = just b-Unit
+base? Δ Void   = just b-Void
+base? Δ Int    = just b-Int
+base? Δ Float  = just b-Float
+base? Δ (A * B) with base? Δ A | base? Δ B
+... | just bA | just bB = just (b-* bA bB)
+{-# CATCHALL #-}
+... | _       | _       = nothing
+base? Δ (A + B) with base? Δ A | base? Δ B
+... | just bA | just bB = just (b-+ bA bB)
+{-# CATCHALL #-}
+... | _       | _       = nothing
+base? Δ (_ ⇒[ _ ] _) = nothing
+base? Δ (μ _) = nothing
+base? Δ (ν _ _) = nothing
+
+base?-complete : ∀ {m} {Δ : KCtx m} {A} → Base Δ A → ∃[ b ] base? Δ A ≡ just b
+base?-complete {Δ = Δ} (b-var {i} e) = go (Δ i) refl e
+  where
+    go : ∀ k (e′ : Δ i ≡ k) → k ≡ base → ∃[ b ] base-var? Δ i k e′ ≡ just b
+    go base e′ refl = b-var e′ , refl
+base?-complete b-Unit   = b-Unit , refl
+base?-complete b-Void   = b-Void , refl
+base?-complete b-Int    = b-Int , refl
+base?-complete b-Float  = b-Float , refl
+base?-complete (b-* bA bB)
+  with base?-complete bA | base?-complete bB
+... | (a , eqA) | (b , eqB) rewrite eqA | eqB = b-* a b , refl
+base?-complete (b-+ bA bB)
+  with base?-complete bA | base?-complete bB
+... | (a , eqA) | (b , eqB) rewrite eqA | eqB = b-+ a b , refl

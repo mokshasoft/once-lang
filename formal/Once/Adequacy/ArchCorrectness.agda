@@ -107,10 +107,10 @@ module RV (ι : Interp) (tbl : List IRFun) = ARV o tbl ι
        (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
 
 -- The emitted (arith-rewritten) program's table, and its linkedness.
-TP : P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → List IRFun
+TP : P.Module → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → List IRFun
 TP m ir = table (rewrite-program (irProgram (moduleTable m) ir))
 
-LK : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
+LK : ∀ (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir
    → LinkedProgram (moduleSig m) (rewrite-program (irProgram (moduleTable m) ir))
 LK m ir mi = rewrite-program-linked (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi)
 
