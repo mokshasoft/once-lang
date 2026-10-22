@@ -30,8 +30,9 @@ open import Once.Internal.Event using (SigOpEvent; toEvent)
 import Once.Spec.Signature as S
 open S using (Signature; WellFormed; _∶_; operation; NotEmpty)
 import Once.Spec.Observation as Obs
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecInterp
-  using (toISig; toImpl; answerAt; answerStep; answerAt-dec; declContract; DeclContract; dc-const; dc-value; dc-op-answer; dc-op-effect; fromB; toB)
+  using (toImpl; answerAt; answerStep; answerAt-dec; declContract; DeclContract; dc-const; dc-value; dc-op-answer; dc-op-effect; fromB; toB)
 
 module _ (Σ : Signature) (J : Obs.Interp Σ) where
 

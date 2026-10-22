@@ -17,12 +17,13 @@
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
-open import Once.Internal.Contract using (ISig)
 open import Once.Spec.Name using (CanonicalName)
-import Once.Internal.Core.PolyTy as LP
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Core.Syntax using (Defs)
+import Once.Spec.Core.Syntax as LP
 
 module Once.Adequacy.SpecFront.ScopeNames
-  {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (nm : Fin s → CanonicalName) where
+  (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) where
 
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (just)
@@ -38,11 +39,11 @@ import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (canonical)
 open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.Internal.Core.Translate using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
+open import Once.Internal.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
 import Once.Internal.Elaboration as E
 
 private
-  module ES = E S
+  module ES = E Σ S
 
 -- Every recorded monomorphic entry is named its definition's name.
 ImpNamed : ∀ {imps} → ImpSig S imps → Set

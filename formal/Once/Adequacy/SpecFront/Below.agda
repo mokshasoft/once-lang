@@ -49,23 +49,22 @@ private
   at-or-below π (here refl) = ⊑π-refl π
   at-or-below π (there m)   = proj₁ (grade-below π m)
 
-  *-inj : ∀ {A B A′ B′} → A * B ≡ A′ * B′ → (A ≡ A′) × (B ≡ B′)
+  *-inj : ∀ {A B A′ B′ : Type} → A * B ≡ A′ * B′ → (A ≡ A′) × (B ≡ B′)
   *-inj refl = refl , refl
-  +-inj : ∀ {A B A′ B′} → A + B ≡ A′ + B′ → (A ≡ A′) × (B ≡ B′)
+  +-inj : ∀ {A B A′ B′ : Type} → A + B ≡ A′ + B′ → (A ≡ A′) × (B ≡ B′)
   +-inj refl = refl , refl
-  ⇒-inj : ∀ {A A′ B B′ q q′ π π′} → (A ⇒[ mk-kind q π ] B) ≡ (A′ ⇒[ mk-kind q′ π′ ] B′) → (π ≡ π′) × (B ≡ B′)
+  ⇒-inj : ∀ {A A′ B B′ : Type} {q q′ π π′} → (A ⇒[ mk-kind q π ] B) ≡ (A′ ⇒[ mk-kind q′ π′ ] B′) → (π ≡ π′) × (B ≡ B′)
   ⇒-inj refl = refl , refl
-  ν-inj : ∀ {F F′ φ φ′} → ν-type F φ ≡ ν-type F′ φ′ → φ ≡ φ′
+  ν-inj : ∀ {F F′ : Once.Spec.Type.Fun 0} {φ φ′} → ν-type F φ ≡ ν-type F′ φ′ → φ ≡ φ′
   ν-inj refl = refl
 
 -- Each type `below T` lists is under `T`, and is not `T`.
-below-sound : ∀ T {X} → X ∈ below T → (X <:ᶜ T) × (X ≢ T)
+below-sound : ∀ (T : Type) {X} → X ∈ below T → (X <:ᶜ T) × (X ≢ T)
 private
-  first : ∀ A {x} → x ∈ A ∷ below A → x <:ᶜ A
+  first : ∀ (A : Type) {x} → x ∈ A ∷ below A → x <:ᶜ A
 below-sound Unit        (here refl) = subᶜ-void , λ ()
 below-sound Int         (here refl) = subᶜ-void , λ ()
 below-sound Float       (here refl) = subᶜ-void , λ ()
-below-sound (rigid k i) (here refl) = subᶜ-void , λ ()
 below-sound (μ-type F)  (here refl) = subᶜ-void , λ ()
 below-sound (ν-type F φ) (here refl) = subᶜ-void , λ ()
 below-sound (ν-type F φ) {X} (there m) = at (∈-map⁻ (ν-type F) m)
