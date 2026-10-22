@@ -48,6 +48,15 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
       , testCase "returning the Void argument at Int is wider than the body's (D321)" $ do
           r <- checkLib [ "f : Void -> Int", "f = \\x -> x" ]
           assertBool "Should reject Int where the body's codomain is Void" (isLeft r)
+        -- Every domain is kept, also one inside a domain: `(Void -> Int) -> Int`
+        -- is a strict subtype at which `\k -> 3` checks too, and it does not
+        -- make `(Int -> Int) -> Int` wider. The codomain must still be least.
+      , testCase "a domain that is an arrow is kept (D321)" $ do
+          r <- checkLib [ "h : (Int -> Int) -> Int", "h k = 3" ]
+          r @?= Right ()
+      , testCase "under an arrow domain the codomain is still the body's (D321)" $ do
+          r <- checkLib [ "h : (Int -> Int) -> Int + Int", "h k = inl 3" ]
+          assertBool "Should reject Int + Int where the body's codomain is Int + Void" (isLeft r)
       , testCase "main at its principal type is accepted (D315)" $ do
           r <- checkExe [ "import I.Linux.Syscalls as S", "", "main : Act Unit Void", "main = compose exit@S (\\_ -> 0)" ]
           r @?= Right ()
