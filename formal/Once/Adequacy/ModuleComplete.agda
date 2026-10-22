@@ -18,7 +18,7 @@ module Once.Adequacy.ModuleComplete where
 open import Once.Internal.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (Ty)
-open import Once.Internal.Typing.Scope using (PolyCtx)
+open import Once.Internal.Typing.Scope using (PolyCtx; NamedCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -81,8 +81,8 @@ open FunInfo
 -- (1) a `⊢ᶜ` derivation ⇒ the body compiles, via `check-complete`.
 ------------------------------------------------------------------------
 
-compileFunBody-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
+compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBody IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
@@ -102,8 +102,8 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
 -- = `isYes (name ≟ "main")`, so casing `name Str.≟ "main"` reduces it.
 ------------------------------------------------------------------------
 
-compileFun-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
+compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
@@ -119,8 +119,8 @@ compileFun-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
     main-step (no ¬q) q = ⊥-elim (¬q q)
 
 -- R8: a definition without a signature compiles from its synthesis.
-compileFunBodyI-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
+compileFunBodyI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᵢ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBodyI IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
@@ -136,8 +136,8 @@ compileFunBodyI-complete ctx polys impsOf name ty body {[]} deriv =
          → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
     succ (TE.success _ _ _ _ _ , w) refl = at w (ty ≟T ty)
 
-compileFunI-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
+compileFunI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᵢ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
@@ -153,8 +153,8 @@ compileFunI-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
     main-step (no ¬q) q = ⊥-elim (¬q q)
 
 -- A definition, in its own mode.
-compileFunM-complete : ∀ {m} (ft : Maybe (Ty m)) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
+compileFunM-complete : ∀ (ft : Maybe Type) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   MonoBody ft (ctxWithImportsAndPolys ctx polys) body ty Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
@@ -178,7 +178,7 @@ compileFunM-complete nothing  = compileFunI-complete
 
 scopeOf = AS.scopeOf
 
-checkOK-complete : ∀ {ctx e T} (r : TE.VerifiedCheckResult ctx e T) {Ψ eE d f}
+checkOK-complete : ∀ {m} {ctx : NamedCtx m} {e} {T : Ty m} (r : TE.VerifiedCheckResult ctx e T) {Ψ eE d f}
   → proj₁ r ≡ TE.success Ψ eE d f → C.checkOK r ≡ inj₂ tt
 checkOK-complete (TE.failure _ , _) ()
 checkOK-complete (TE.success _ _ _ _ , _) _ = refl
