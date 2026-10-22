@@ -58,7 +58,7 @@ open import Once.Functor.Decide using (isConcrete?; isConcrete?-complete)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
-  using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
+  using (isGround-complete-at; ¬Ground-isGround-inj₂; wfFun?-complete-at)
 import Once.Internal.Typing.Scope
 import Once.TypeCheck.Classify
 open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
@@ -928,7 +928,7 @@ mutual
       with elabGivenV ctx g A π | given-complete dg
   ...   | success _ _ _ _ _ , _ | (_ , _ , _ , refl) = _ , _ , _ , refl
   given-complete {ctx} (d-cata {alg = alg} {F = F} {A = A} {π = π} {u = u} wfF dalg)
-    rewrite wellFormedF?-complete-at wfF =
+    rewrite wfFun?-complete-at wfF =
       given-cata-complete wfF u (inferElabV ctx alg)
         (proj₂ (proj₂ (proj₂ (infer-complete dalg))))
 
@@ -1033,7 +1033,7 @@ mutual
   check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.pure} {u = ⊑-pure} wfF dalg)
     -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
     -- dispatches on the decider, so recover its equation here.
-    with wellFormedF?-complete-at wfF
+    with wfFun?-complete-at wfF
   ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
@@ -1043,7 +1043,7 @@ mutual
   check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.eff} {u = ⊑-pe} wfF dalg)
     -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
     -- dispatches on the decider, so recover its equation here.
-    with wellFormedF?-complete-at wfF
+    with wfFun?-complete-at wfF
   ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
@@ -1054,7 +1054,7 @@ mutual
   check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.act} {u = ⊑-pa} wfF dalg)
     -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
     -- dispatches on the decider, so recover its equation here.
-    with wellFormedF?-complete-at wfF
+    with wfFun?-complete-at wfF
   ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
@@ -1065,7 +1065,7 @@ mutual
   -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
   -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.
   check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} {ua = ua} wfF dcoalg)
-    with wellFormedF?-complete-at wfF
+    with wfFun?-complete-at wfF
   ... | eqW
     with check-completeV dcoalg
   ... | (_ , _ , _ , W , eqA)
@@ -1081,7 +1081,7 @@ mutual
   check-complete (t-In-app-check {arg = arg} {F = F} wfF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     -- PLAN 0.80 A1: witness in, decider equation recovered (as for cata).
-    in checkElab-fallback-RApp-In arg F (wellFormedF?-complete-at wfF) eqA
+    in checkElab-fallback-RApp-In arg F (wfFun?-complete-at wfF) eqA
   -- Direct (bidirectional) pair check: components carry ⊢ᶜ derivations, so recurse
   -- the STRONG `check-completeV` on the genuine subterms dA/dB (no switch needed).
   check-complete (t-pair-lit-check {a = a} {b = b} {A = A} {B = B} dA dB)

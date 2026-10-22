@@ -26,6 +26,7 @@
 ------------------------------------------------------------------------
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
+open import Once.Functor.Decide using (wfFun?)
 open import Once.Spec.Type using (var; Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Type.Grade
@@ -58,7 +59,7 @@ open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete; con-ba
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
-  using (wellFormedF?-complete-at)
+  using (wfFun?-complete-at)
 open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
@@ -402,7 +403,7 @@ infer-complete-RApp-terminal {ctx} arg eqArg
 ... | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 -- D194: the `Out` head. Unlike `terminal` the result type is not a constant,
--- so the argument's inferred `ν-type F` and the decided `wellFormedF? F` both
+-- so the argument's inferred `ν-type F` and the decided `wfFun? (NamedCtx.kinds ctx) F` both
 -- have to be reduced through before the elaborator's success is visible.
 infer-complete-RApp-Out :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
@@ -414,7 +415,7 @@ infer-complete-RApp-Out :
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
         ≡ success (T.⟦ F ⟧T (T.ν-type F T.pureᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
--- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
+-- The move from the elaborator's `(wfFun? (NamedCtx.kinds ctx) F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
 -- however the decision is obtained (parameter or `inspectWellFormedF` view).
@@ -422,7 +423,7 @@ infer-complete-RApp-Out {ctx} arg {F} wfF eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ Ψ' argE' d' fr' , w' | refl
       rewrite inferOutGo-J ctx arg F T.pureᶠ Ψ' argE' d' fr' w'
-                (just wfF) (wellFormedF?-complete-at wfF)
+                (just wfF) (wfFun?-complete-at wfF)
       = _ , _ , _ , refl
 
 infer-complete-RApp-Out-act :
@@ -435,7 +436,7 @@ infer-complete-RApp-Out-act :
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧T (T.ν-type F T.actᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
--- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
+-- The move from the elaborator's `(wfFun? (NamedCtx.kinds ctx) F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
 -- however the decision is obtained (parameter or `inspectWellFormedF` view).
@@ -443,7 +444,7 @@ infer-complete-RApp-Out-act {ctx} arg {F} wfF eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ Ψ' argE' d' fr' , w' | refl
       rewrite inferOutGo-J ctx arg F T.actᶠ Ψ' argE' d' fr' w'
-                (just wfF) (wellFormedF?-complete-at wfF)
+                (just wfF) (wfFun?-complete-at wfF)
       = _ , _ , _ , refl
 
 infer-complete-RApp-fst :

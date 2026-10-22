@@ -14,6 +14,7 @@
 -- — what the graded relation needs of the implementation's closures.
 ------------------------------------------------------------------------
 
+open import Once.Internal.Weaken using (RelS-wk₀)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -135,6 +136,24 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   sigOp-rel si r with base-eq (baseA si) r | proj₂ (proj₁ rσ)
   ... | refl | e rewrite e = RelS-embed (RelT′-refl (base-refl (conB si)) _)
 
+  -- An external operation's meaning, related at its ground type.
+  sigOpSem-rel : (A : Type) (name : Once.Spec.Name.CanonicalName) (c : Once.Internal.Type.WellFormed.IsConcrete A)
+               → RelS (RelD A) (SD.sigOpSem A name c fmt σ) (SD.sigOpSem A name c fmt σ′)
+  sigOpSem-rel (Dom ⇒[ mk-kind Zero pure ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (value-info name base-Unit bC) tt)
+  sigOpSem-rel (Dom ⇒[ mk-kind Zero eff ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Zero eff) name base-Unit bC) tt)
+  sigOpSem-rel (Dom ⇒[ mk-kind Zero act ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Zero act) name base-Unit bC) tt)
+  sigOpSem-rel (Dom ⇒[ mk-kind One π ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind One π) name bD bC))
+  sigOpSem-rel (Dom ⇒[ mk-kind Many π ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Many π) name bD bC))
+  sigOpSem-rel Unit name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
+  sigOpSem-rel Void name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
+  sigOpSem-rel Int name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
+  sigOpSem-rel Float name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
+  sigOpSem-rel (_ * _) name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
+  sigOpSem-rel (_ + _) name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
+  sigOpSem-rel (μ-type _) name (con-base ())
+  sigOpSem-rel (ν-type _ _) name (con-base ())
+  sigOpSem-rel (_ ⇒[ _ ] _) name (con-base ())
+
   SD-rel : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) {d d′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}
          → RelD ⟦ Γ ↾ Ψ ⟧ᶜ d d′ → RelS (RelD A) (SD.⟦ e ⟧ˢ fmt σ d) (SD.⟦ e ⟧ˢ fmt σ′ d′)
   SD-rel (var {Γ = Γ} i) r = relS-ret (lookup-rel Γ i r)
@@ -226,21 +245,7 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
     RelS-bind (SD-rel round (restrict-rel {Γ = Γ} _ r)) λ {c} {c′} rc →
       relS-ret (λ ra → RelS-iter∞ {RB = RelD B} {S = RelD (B + A)} {f = c} {f′ = c′}
                                   (λ rb → rb) rc (λ ()) (λ ()) ra)
-  SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero pure ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (value-info name base-Unit bC) tt)
-  SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero eff ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind Zero eff) name base-Unit bC) tt)
-  SD-rel (sigOp {A = Dom ⇒[ mk-kind Zero act ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind Zero act) name base-Unit bC) tt)
-  SD-rel (sigOp {A = Dom ⇒[ mk-kind One π ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind One π) name bD bC))
-  SD-rel (sigOp {A = Dom ⇒[ mk-kind Many π ] Cod} name (con-fun bD bC)) r = relS-ret (sigOp-rel (arrow-info (mk-kind Many π) name bD bC))
-  SD-rel (sigOp {A = Unit}  name (con-base ib)) r = sigOp-rel (value-info name base-Unit ib) tt
-  SD-rel (sigOp {A = Void}  name (con-base ib)) r = sigOp-rel (value-info name base-Unit ib) tt
-  SD-rel (sigOp {A = Int}   name (con-base ib)) r = sigOp-rel (value-info name base-Unit ib) tt
-  SD-rel (sigOp {A = Float} name (con-base ib)) r = sigOp-rel (value-info name base-Unit ib) tt
-  SD-rel (sigOp {A = rigid _ _} name (con-base ib)) r = sigOp-rel (value-info name base-Unit ib) tt
-  SD-rel (sigOp {A = _ * _} name (con-base ib)) r = sigOp-rel (value-info name base-Unit ib) tt
-  SD-rel (sigOp {A = _ + _} name (con-base ib)) r = sigOp-rel (value-info name base-Unit ib) tt
-  SD-rel (sigOp {A = μ-type _} name (con-base ())) r
-  SD-rel (sigOp {A = ν-type _ _} name (con-base ())) r
-  SD-rel (sigOp {A = _ ⇒[ _ ] _} name (con-base ())) r
+  SD-rel (sigOp {A = A} name c) r = RelS-wk₀ A (sigOpSem-rel A name c)
   SD-rel (closure {A = A} name) r = liftFn-rel fmt (proj₁ rσ) {Unit} {A} (refIR A (bare name)) {tt} {tt} tt
   SD-rel (poly name PT) r = proj₂ rσ name PT
   SD-rel (closed e) r = SD-rel e {tt} {tt} tt

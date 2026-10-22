@@ -32,14 +32,15 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
 
 open import Once.Internal.Type.Poly using (PolyType; PolyFunctor; Ground; GroundF; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type using (isGround; isGroundF)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod)
 open import Once.Functor.Translate using (WellFormedF-irrelevant)
-open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete)
+open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete; wfFun?; base?-complete)
+open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
 
 ------------------------------------------------------------------------
 -- `wellFormedF?` is complete for `WellFormedF` (the `isBaseType?-complete`
@@ -64,6 +65,40 @@ wellFormedF?-complete (wf-Prod wF wG)
 wellFormedF?-complete-at : ∀ {F} (w : WellFormedF F) → wellFormedF? F ≡ just w
 wellFormedF?-complete-at w with wellFormedF?-complete w
 ... | (w' , eq') rewrite WellFormedF-irrelevant w' w = eq'
+
+-- The same over type variables of kinds `Δ` (a polymorphic body).
+Base-irrelevant : ∀ {m} {Δ : KCtx m} {A} (b₁ b₂ : Base Δ A) → b₁ ≡ b₂
+Base-irrelevant (b-var e) (b-var e′) = cong b-var (uip e e′)
+  where
+    uip : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
+    uip refl refl = refl
+Base-irrelevant b-Unit b-Unit = refl
+Base-irrelevant b-Void b-Void = refl
+Base-irrelevant b-Int b-Int = refl
+Base-irrelevant b-Float b-Float = refl
+Base-irrelevant (b-* a b) (b-* a′ b′) rewrite Base-irrelevant a a′ | Base-irrelevant b b′ = refl
+Base-irrelevant (b-+ a b) (b-+ a′ b′) rewrite Base-irrelevant a a′ | Base-irrelevant b b′ = refl
+
+WFFun-irrelevant : ∀ {m} {Δ : KCtx m} {F} (w₁ w₂ : WFFun Δ F) → w₁ ≡ w₂
+WFFun-irrelevant (wf-K a) (wf-K a′) rewrite Base-irrelevant a a′ = refl
+WFFun-irrelevant wf-Id wf-Id = refl
+WFFun-irrelevant (wf-⊕ f g) (wf-⊕ f′ g′) rewrite WFFun-irrelevant f f′ | WFFun-irrelevant g g′ = refl
+WFFun-irrelevant (wf-⊗ f g) (wf-⊗ f′ g′) rewrite WFFun-irrelevant f f′ | WFFun-irrelevant g g′ = refl
+
+wfFun?-complete : ∀ {m} {Δ : KCtx m} {F} → WFFun Δ F → ∃[ w ] wfFun? Δ F ≡ just w
+wfFun?-complete (wf-K bA) with base?-complete bA
+... | (b , eq) rewrite eq = wf-K b , refl
+wfFun?-complete wf-Id = wf-Id , refl
+wfFun?-complete (wf-⊕ wF wG)
+  with wfFun?-complete wF | wfFun?-complete wG
+... | (f , eqF) | (g , eqG) rewrite eqF | eqG = wf-⊕ f g , refl
+wfFun?-complete (wf-⊗ wF wG)
+  with wfFun?-complete wF | wfFun?-complete wG
+... | (f , eqF) | (g , eqG) rewrite eqF | eqG = wf-⊗ f g , refl
+
+wfFun?-complete-at : ∀ {m} {Δ : KCtx m} {F} (w : WFFun Δ F) → wfFun? Δ F ≡ just w
+wfFun?-complete-at w with wfFun?-complete w
+... | (w' , eq') rewrite WFFun-irrelevant w' w = eq'
 
 ------------------------------------------------------------------------
 -- `isGround` is complete for `Ground`.

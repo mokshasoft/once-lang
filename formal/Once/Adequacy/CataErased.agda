@@ -18,6 +18,7 @@
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (wf-⊕; wf-⊗)
 open import Once.Spec.Type using (b-*; b-+)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -244,7 +245,7 @@ module _ {A' : Type} where
   LayerRel {G} wfG l r = RelD (⟦ G ⟧T A') (subst (λ z → z) (cohᴰ (⟦ G ⟧T A')) (L wfG l)) (coerce-functor⁻¹-D wfG A' r)
 
   private
-    ≡ˡᴰ : ∀ X {u u′ w : ⟦ X ⟧ᴰ} → u ≡ u′ → RelD X u′ w → RelD X u w
+    ≡ˡᴰ : ∀ (X : Type) {u u′ w : ⟦ X ⟧ᴰ} → u ≡ u′ → RelD X u′ w → RelD X u w
     ≡ˡᴰ X refl r = r
 
   sum₁-step : ∀ {Fa Gb} (wfF : WellFormedF Fa) (wfG : WellFormedF Gb) l r
@@ -305,15 +306,15 @@ module _ {A' : Type} where
   layer-rel {TT.K B} (wf-K ib) {y} {.y} refl
     rewrite subst-SK {X = T∞ ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} (base-coh B) y = relS-ret (base-step ib y)
   layer-rel wf-Id rc = rc
-  layer-rel (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₁ x₁} {inj₁ x₂} rsf
+  layer-rel (wf-⊕ {F = Fa} {G = Gb} wfF wfG) {inj₁ x₁} {inj₁ x₂} rsf
     rewrite subst-S⊕-inj₁ (tF-coh Fa) (tF-coh Gb) x₁ =
     RelS-fmap (layer-rel wfF rsf) (λ {l} {r} → sum₁-step wfF wfG l r)
-  layer-rel (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₂ y₁} {inj₂ y₂} rsf
+  layer-rel (wf-⊕ {F = Fa} {G = Gb} wfF wfG) {inj₂ y₁} {inj₂ y₂} rsf
     rewrite subst-S⊕-inj₂ (tF-coh Fa) (tF-coh Gb) y₁ =
     RelS-fmap (layer-rel wfG rsf) (λ {l} {r} → sum₂-step wfF wfG l r)
   layer-rel (wf-Sum wfF wfG) {inj₁ _} {inj₂ _} ()
   layer-rel (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} ()
-  layer-rel (wf-Prod {F = Fa} {G = Gb} wfF wfG) {x₁ , z₁} {x₂ , z₂} (rf , rg)
+  layer-rel (wf-⊗ {F = Fa} {G = Gb} wfF wfG) {x₁ , z₁} {x₂ , z₂} (rf , rg)
     rewrite subst-S⊗ (tF-coh Fa) (tF-coh Gb) x₁ z₁ =
     RelS-bind (layer-rel wfF rf) λ {l} {r} e →
     RelS-bind (layer-rel wfG rg) λ {l′} {r′} e′ →
