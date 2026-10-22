@@ -22,7 +22,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 
 | Plan | State | What remains |
 |---|---|---|
-| 0.121 before the merge | open, top-down | bridges proved and the apex on the Spec (D332); `Once.Lang` removed (Spec copies deleted, the rest to `Once.Internal`); docs; then the merge |
+| 0.121 before the merge | merged 2026-10-22 | §2: optional Spec improvements, echo-server test, loop name, T1/T2, the examples, tidy-ups |
 | 0.122 collapse the internal language | after the merge | retarget the compiler onto the Spec layer by layer (types, core, meaning, surface); delete `Once.Internal` and the bridges |
 | 0.50 named defs are morphisms | ABI landed | retire `classifyAppHead` from the judgment (moved here by D293) |
 | 0.96 `IO` is not a language construct | not started | decide (§3), remove the parser sites |
