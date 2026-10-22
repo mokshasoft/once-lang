@@ -36,86 +36,62 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
+open import Once.Spec.Signature using (Signature)
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
-open import Once.Internal.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef; moduleSig; moduleSig-ef; teleSig)
-open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
-open import Once.Internal.Contract using (ISig; Impl)
+open import Once.Internal.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef)
+open import Once.Internal.Contract using (Impl)
 open import Once.Internal.Trace using (Interp; interp; pureHalf)
 open import Once.Internal.Program using (Typed)
-open import Once.Internal.Core.Telescope using (Program; runCore)
+open import Once.Internal.Core.Decl using (toISig)
+import Once.Internal.Core.Telescope as TL
 import Once.Internal.Core.Translate as TR
-import Once.Internal.Core.Telescope as Tele
-import Once.Internal.Core.PolyTyping as PT
-import Once.Internal.Core.Meaning as GM
-import Once.Denotation.Behavior
+import Once.Spec.Core.Program as SP
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
 open import Once.Metatheory.Trace using (WB-sym)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB
-import Once.Denotation.Behavior
-open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Denotation.Program using (irProgram)
 open import Once.Denotation.DenotTrace using (evalᴰ)
-open import Once.Internal.Trace using (projTrace)
 open import Data.Maybe using (Maybe; just)
 import Once.Adequacy.TeleWalk as TW
 import Once.Adequacy.TeleWalk.Invariant as TWI
 import Once.Adequacy.TelePosition as TP
-import Once.Internal.Core.Translate as TR
 open import Once.Denotation.Program using (tableEnv; IRFun)
-open import Once.Internal.Event using (SigOpEvent)
 open import Data.List using (List; []; map)
-open import Data.List.Relation.Unary.All using ([])
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)
+open import Data.List.Relation.Unary.All using ([])
 open import Data.String using (String)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤; tt)
-import Once.Parser
-import Once.Adequacy.NameClash as NC
-open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; subst)
 
 ------------------------------------------------------------------------
--- The typed module as a core program (6c).
+-- The typed module as a core program (6c), over a signature Σ that declares
+-- its FFI words (plan 0.122: the core is the Spec's, over a Spec signature).
 ------------------------------------------------------------------------
 
--- The interpretation signatures the core program is compiled against: the
--- module's FFI declarations, as its typing fixes them.
-typedSig-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → ISig
-typedSig-ef m (inj₁ _)  ()
-typedSig-ef m (inj₂ es) mt = teleSig mt
+-- Σ declares the module's FFI declarations, each under its word names.
+SigView-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → Signature → Set
+SigView-ef m (inj₁ _)  ()
+SigView-ef m (inj₂ es) mt Σ = TR.SigIn Σ mt
 
-typedSig : Typed → ISig
-typedSig (m , mt , hvm) = typedSig-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt
+SigView : Typed → Signature → Set
+SigView (m , mt , hvm) = SigView-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt
 
-typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt → Program (typedSig-ef m ef mt)
+typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt
+                → (Σ : Signature) → SigView-ef m ef mt Σ → TL.Program Σ
 typedProgram-ef m (inj₁ _)  () _
-typedProgram-ef m (inj₂ es) mt (_ , mi) = TR.toProgram₀ mt mi
+typedProgram-ef m (inj₂ es) mt (_ , mi) Σ u = TR.toProgram₀ Σ mt mi u
 
-typedProgram : (tp : Typed) → Program (typedSig tp)
+typedProgram : (tp : Typed) (Σ : Signature) → SigView tp Σ → TL.Program Σ
 typedProgram (m , mt , hvm) = typedProgram-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm
 
--- …which are the module's signatures, read off its entries.
-typed-sig-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → typedSig-ef m ef mt ≡ moduleSig-ef ef
-typed-sig-ef m (inj₁ _)  ()
-typed-sig-ef m (inj₂ es) mt = teleSig≡entrySig mt
-
-typed-sig : ∀ (tp : Typed) → typedSig tp ≡ moduleSig (proj₁ tp)
-typed-sig (m , mt , hvm) = typed-sig-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt
-
--- An implementation of the module's signatures implements the core program's.
-implFor : ∀ (tp : Typed) → Impl (moduleSig (proj₁ tp)) → Impl (typedSig tp)
-implFor tp I = subst Impl (sym (typed-sig tp)) I
-
--- A world built from a transported implementation is the same world.
-interp-subst : ∀ {Σ₁ Σ₂ : ISig} (e : Σ₁ ≡ Σ₂) (I : Impl Σ₂) → interp Σ₁ (subst Impl (sym e) I) ≡ interp Σ₂ I
-interp-subst refl I = refl
-
 ------------------------------------------------------------------------
--- D320: THE SAME LINK, AS TRACES — calls and how each run ended. The walk's
+-- D320: THE LINK, AS TRACES — calls and how each run ended. The walk's
 -- relation (`TeleWalk.Agree`) relates the core run to the compiled tree node
 -- by node, so their traces are weakly bisimilar (`TraceTr.RelS-tr`).
 ------------------------------------------------------------------------
@@ -126,41 +102,40 @@ private
   trIRAt ι′ tbl ir = trT∞ ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) ir tt)
 
   -- the walk's agreement at the entry the bundle finds
-  agree-at : ∀ {Fs Ip tbl P} {m : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)} {ir} → m ≡ just ir
-           → TW.AgreeM fmt Fs Ip tbl m P → TW.Agree fmt Fs Ip tbl ir P
+  agree-at : ∀ {Σ Ip tbl P} {m : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)} {ir} → m ≡ just ir
+           → TW.AgreeM fmt Σ Ip tbl m P → TW.Agree fmt Σ Ip tbl ir P
   agree-at refl a = a
 
   core-ef-tr : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
                  {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
-               → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → FB.bundle-find b ≡ just ir → (I : Impl (moduleSig-ef ef))
-               → trIRAt (interp (moduleSig-ef ef) I) (tableOf-go (FB.bundle→compiled b) []) ir
-                 ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (moduleSig-ef ef) I) [] (runCore fmt (typedProgram-ef m ef mt hvm) (subst Impl (sym (typed-sig-ef m ef mt)) I))
-  core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe I =
-    subst (λ ι′ → trIRAt ι′ (tableOf-go (FB.bundle→compiled b) []) ir ≈ᵗ⟨ _≡_ ⟩ trT∞ ι′ [] (runCore fmt P I′))
-          (interp-subst (teleSig≡entrySig mt) I)
-          (WB-sym sym (RelS-tr (interp (teleSig mt) I′) []
-             (agree-at {teleSig mt} {I′} fe
-               (TWm.walk mt b mi Tele.[] TR.[] TR.[] TR.[] TR.noCF [] inv₀ (λ k → k) (dist , TP.none-in-empty _)))))
+               → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → FB.bundle-find b ≡ just ir
+               → (Σ : Signature) (u : SigView-ef m ef mt Σ) (Ip : Impl (toISig Σ))
+               → trIRAt (interp (toISig Σ) Ip) (tableOf-go (FB.bundle→compiled b) []) ir
+                 ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (toISig Σ) Ip) [] (TL.runCore Σ fmt (typedProgram-ef m ef mt hvm Σ u) Ip)
+  core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe Σ u Ip =
+    WB-sym sym (RelS-tr (interp (toISig Σ) Ip) []
+      (agree-at {Σ} {Ip} fe
+        (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] [] inv₀ u (dist , TP.none-in-empty _))))
     where
-      I′ = subst Impl (sym (teleSig≡entrySig mt)) I
-      P  = TR.toProgram Tele.[] TR.[] TR.[] TR.[] TR.noCF mt mi (λ k → k)
-      module TWm = TW fmt (teleSig mt) I′
-      inv₀ : TWI.Inv fmt (teleSig mt) I′ C.emptyCScope Tele.[] TR.[] TR.[] TR.[] []
-      inv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
+      module TWm = TW fmt Σ Ip
+      inv₀ : TWI.Inv fmt Σ Ip C.emptyCScope (SP.Tele.[]) TR.[] TR.[] TR.[] []
+      inv₀ = record { iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
 
--- For EVERY implementation `I`: the compiled program's trace in the world it
--- makes is the core program's.
+-- For EVERY signature declaring the module's FFI words and EVERY
+-- implementation of it: the compiled program's trace in the world they make
+-- is the core program's.
 program-core-tr :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt) (I : Impl (moduleSig m))
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
+    (Σ : Signature) (u : SigView (m , mt , hvm) Σ) (Ip : Impl (toISig Σ))
     (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
-  → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (interp (moduleSig m) I)
-    ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (moduleSig m) I) [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I))
-program-core-tr m mt hvm I ir mi with FB.program-node m ir mi
+  → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (interp (toISig Σ) Ip)
+    ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (toISig Σ) Ip) [] (TL.runCore Σ fmt (typedProgram (m , mt , hvm) Σ u) Ip)
+program-core-tr m mt hvm Σ u Ip ir mi with FB.program-node m ir mi
 ... | es , ef , b , ceq =
-  subst (λ t → trT∞ ι [] t ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runCore fmt (typedProgram (m , mt , hvm)) (implFor (m , mt , hvm) I)))
+  subst (λ t → trT∞ ι [] t ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (TL.runCore Σ fmt (typedProgram (m , mt , hvm) Σ u) Ip))
         (sym (cong (λ tbl → evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) ir tt) (cong tableOfResult ceq)))
-        (core-ef-tr m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b fe I)
+        (core-ef-tr m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b fe Σ u Ip)
   where
-    ι = interp (moduleSig m) I
+    ι = interp (toISig Σ) Ip
     fe : FB.bundle-find b ≡ just ir
     fe = trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi)
