@@ -50,6 +50,7 @@ open import Once.IRTy using (IRTy)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)
 import Once.Internal.Context as Srf
+import Once.Spec.Context as SCx
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_)
@@ -96,7 +97,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
   spliceClosed : ∀ {A : Type} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
                → VerifiedCheckResult (ctxAt (λ _ → base) Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
   spliceClosed {A = A} pre x (failure _ , _)             = Srf.poly x A
-  spliceClosed     pre x (success Srf.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize w))
+  spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize w))
 
   polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × RawExpr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
   polyVal x A nothing                 = Srf.poly x A
@@ -107,7 +108,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
       (eq : lookupPolyPrefix L x ≡ just (s , b , pre)) (r : VerifiedCheckResult (ctxAt (λ _ → base) (I x) pre) b A)
       → applySplice {Γ = Srf.∅} L a I uf 0 x A eq r ≡ spliceClosed pre x r
     splice-val L a x A eq (failure _ , _) = refl
-    splice-val L (acc rec) x A {pre = pre} eq (success Srf.[] eE _ _ , w) =
+    splice-val L (acc rec) x A {pre = pre} eq (success SCx.[] eE _ _ , w) =
       cong (λ z → Srf.closed (resolveExprWF pre z I uf 0 (realize w))) (acc-irrel _ _)
 
     case-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type)

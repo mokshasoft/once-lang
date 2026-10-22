@@ -56,7 +56,8 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Internal.Context using (Ctx; _,_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊔ᵘ_; _⊑∷_; z≤z; o≤o; m≤m; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
+open import Once.Internal.Context using (Ctx; _,_; lookup; Usage; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊔ᵘ_; z≤z; o≤o; m≤m; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
+open import Once.Spec.Context using (_∷_; _⊑∷_)
 open import Once.Internal.Core.Syntax S
 
 ------------------------------------------------------------------------

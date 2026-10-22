@@ -15,7 +15,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; _∷_; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Internal.Context using (Ctx; ∅; Usage; _↾_; _⊑ᵘ_; ⊑[]; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Internal.Graded using (⟦_⟧ᵛ)
 open import Once.Internal.Environment using (restrictᵛ; bindᵛ)
 
@@ -48,23 +49,23 @@ restrict-irr {Γ = Γ} u v x = cong (λ w → restrictᵛ {Γ = Γ} w x) (⊑ᵘ
 
 restrict-refl : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} (u : Ψ ⊑ᵘ Ψ) (x : Env Γ Ψ) → restrictᵛ {Γ = Γ} u x ≡ x
 restrict-refl {Γ = ∅}         ⊑[]        x = refl
-restrict-refl {Γ = Γ , A ^ q} (z≤z ⊑∷ u) x = restrict-refl {Γ = Γ} u x
-restrict-refl {Γ = Γ , A ^ q} (o≤o ⊑∷ u) x = cong (_, proj₂ x) (restrict-refl {Γ = Γ} u (proj₁ x))
-restrict-refl {Γ = Γ , A ^ q} (m≤m ⊑∷ u) x = cong (_, proj₂ x) (restrict-refl {Γ = Γ} u (proj₁ x))
+restrict-refl {Γ = Γ ▸ A} (z≤z ⊑∷ u) x = restrict-refl {Γ = Γ} u x
+restrict-refl {Γ = Γ ▸ A} (o≤o ⊑∷ u) x = cong (_, proj₂ x) (restrict-refl {Γ = Γ} u (proj₁ x))
+restrict-refl {Γ = Γ ▸ A} (m≤m ⊑∷ u) x = cong (_, proj₂ x) (restrict-refl {Γ = Γ} u (proj₁ x))
 
 restrict-∘ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (u : Ψ₁ ⊑ᵘ Ψ₂) (v : Ψ₂ ⊑ᵘ Ψ₃) (x : Env Γ Ψ₃)
            → restrictᵛ {Γ = Γ} u (restrictᵛ {Γ = Γ} v x) ≡ restrictᵛ {Γ = Γ} (⊑ᵘ-trans u v) x
 restrict-∘ {Γ = ∅}         ⊑[]        ⊑[]        x = refl
-restrict-∘ {Γ = Γ , A ^ q} (z≤z ⊑∷ u) (z≤z ⊑∷ v) x = restrict-∘ {Γ = Γ} u v x
-restrict-∘ {Γ = Γ , A ^ q} (z≤z ⊑∷ u) (z≤o ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
-restrict-∘ {Γ = Γ , A ^ q} (z≤z ⊑∷ u) (z≤m ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
-restrict-∘ {Γ = Γ , A ^ q} (z≤o ⊑∷ u) (o≤o ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
-restrict-∘ {Γ = Γ , A ^ q} (z≤o ⊑∷ u) (o≤m ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
-restrict-∘ {Γ = Γ , A ^ q} (z≤m ⊑∷ u) (m≤m ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
-restrict-∘ {Γ = Γ , A ^ q} (o≤o ⊑∷ u) (o≤o ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
-restrict-∘ {Γ = Γ , A ^ q} (o≤o ⊑∷ u) (o≤m ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
-restrict-∘ {Γ = Γ , A ^ q} (o≤m ⊑∷ u) (m≤m ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
-restrict-∘ {Γ = Γ , A ^ q} (m≤m ⊑∷ u) (m≤m ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
+restrict-∘ {Γ = Γ ▸ A} (z≤z ⊑∷ u) (z≤z ⊑∷ v) x = restrict-∘ {Γ = Γ} u v x
+restrict-∘ {Γ = Γ ▸ A} (z≤z ⊑∷ u) (z≤o ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
+restrict-∘ {Γ = Γ ▸ A} (z≤z ⊑∷ u) (z≤m ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
+restrict-∘ {Γ = Γ ▸ A} (z≤o ⊑∷ u) (o≤o ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
+restrict-∘ {Γ = Γ ▸ A} (z≤o ⊑∷ u) (o≤m ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
+restrict-∘ {Γ = Γ ▸ A} (z≤m ⊑∷ u) (m≤m ⊑∷ v) x = restrict-∘ {Γ = Γ} u v (proj₁ x)
+restrict-∘ {Γ = Γ ▸ A} (o≤o ⊑∷ u) (o≤o ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
+restrict-∘ {Γ = Γ ▸ A} (o≤o ⊑∷ u) (o≤m ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
+restrict-∘ {Γ = Γ ▸ A} (o≤m ⊑∷ u) (m≤m ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
+restrict-∘ {Γ = Γ ▸ A} (m≤m ⊑∷ u) (m≤m ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
 
 -- Any two restrictions of one environment to one usage agree.
 restrict-≡ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (u : Ψ₁ ⊑ᵘ Ψ₂) (v : Ψ₂ ⊑ᵘ Ψ₃) (w : Ψ₁ ⊑ᵘ Ψ₃) (x : Env Γ Ψ₃)
@@ -79,7 +80,7 @@ restrict-≡ {Γ = Γ} u v w x = trans (restrict-∘ {Γ = Γ} u v x) (restrict-
 -- restricted usage does not use it, and kept when it does.
 restrict-bind : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ' Ψ : Usage n} (q' q : Quantity)
                   (w : (q' ∷ Ψ') ⊑ᵘ (q ∷ Ψ)) (u : Ψ' ⊑ᵘ Ψ) (x : Env Γ Ψ) (a : ⟦ A ⟧ᵛ)
-              → restrictᵛ {Γ = Γ , A ^ Many} w (bindᵛ {Γ = Γ} {A = A} q x a)
+              → restrictᵛ {Γ = Γ ▸ A} w (bindᵛ {Γ = Γ} {A = A} q x a)
                 ≡ bindᵛ {Γ = Γ} {A = A} q' (restrictᵛ {Γ = Γ} u x) a
 restrict-bind {Γ = Γ} Zero Zero (z≤z ⊑∷ w) u x a = restrict-irr {Γ = Γ} w u x
 restrict-bind {Γ = Γ} Zero One  (z≤o ⊑∷ w) u x a = restrict-irr {Γ = Γ} w u x

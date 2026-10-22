@@ -39,10 +39,10 @@ open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_; ⌊wk₀⌋)
 import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
-open import Once.Internal.Context hiding (_,_; _,_^_)
+open import Once.Internal.Context hiding (_,_)
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
-open import Once.Internal.Context using (_,_^_)
 open import Once.Surface.CoerceIR using (runCoe; runCoe-dec; voidFree?; VoidFree; coeIR; erase-eq)
 open import Once.Surface.Elaborate
 import Once.Surface.Properties
@@ -285,22 +285,22 @@ linked-[] {tbl = tbl} = linked-mono (λ {f} {A} {B} → linkedAt-[] {tbl} {f} {A
 
 restrictEnv-cf : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ Ψ′ : Usage n} (m : _) (ule : Ψ′ ⊑ᵘ Ψ) → Linked σ [] (restrictEnv {Γ = Γ} m ule)
 restrictEnv-cf {Γ = ∅}         m ⊑[]          = tt
-restrictEnv-cf {Γ = Γ , A ^ q} m (z≤z ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule
-restrictEnv-cf {Γ = Γ , A ^ q} m (z≤o ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule , tt
-restrictEnv-cf {Γ = Γ , A ^ q} m (z≤m ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule , tt
-restrictEnv-cf {Γ = Γ , A ^ q} m (o≤o ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
-restrictEnv-cf {Γ = Γ , A ^ q} m (o≤m ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
-restrictEnv-cf {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
+restrictEnv-cf {Γ = Γ ▸ A} m (z≤z ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule
+restrictEnv-cf {Γ = Γ ▸ A} m (z≤o ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule , tt
+restrictEnv-cf {Γ = Γ ▸ A} m (z≤m ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule , tt
+restrictEnv-cf {Γ = Γ ▸ A} m (o≤o ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
+restrictEnv-cf {Γ = Γ ▸ A} m (o≤m ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
+restrictEnv-cf {Γ = Γ ▸ A} m (m≤m ⊑∷ ule) = (restrictEnv-cf {Γ = Γ} m ule , tt) , tt
 
 projUsed-cf : ∀ {m} {n} {Γ : Ctx m n} (i : Fin n) → Linked σ [] (projUsed {Γ = Γ} i)
-projUsed-cf {Γ = Γ , A ^ q} Fin.zero    = tt
-projUsed-cf {Γ = Γ , A ^ q} (Fin.suc i) = projUsed-cf {Γ = Γ} i
+projUsed-cf {Γ = Γ ▸ A} Fin.zero    = tt
+projUsed-cf {Γ = Γ ▸ A} (Fin.suc i) = projUsed-cf {Γ = Γ} i
 
 eraseCtx-cf : ∀ {mₜ} {n} {Γ : Ctx mₜ n} (m : _) (Ψ : Usage n) → Linked σ [] (eraseCtx {Γ = Γ} m Ψ)
 eraseCtx-cf {Γ = ∅}         m []         = tt
-eraseCtx-cf {Γ = Γ , A ^ q} m (Zero ∷ Ψ) = eraseCtx-cf {Γ = Γ} m Ψ , tt
-eraseCtx-cf {Γ = Γ , A ^ q} m (One  ∷ Ψ) = (eraseCtx-cf {Γ = Γ} m Ψ , tt) , tt
-eraseCtx-cf {Γ = Γ , A ^ q} m (Many ∷ Ψ) = (eraseCtx-cf {Γ = Γ} m Ψ , tt) , tt
+eraseCtx-cf {Γ = Γ ▸ A} m (Zero ∷ Ψ) = eraseCtx-cf {Γ = Γ} m Ψ , tt
+eraseCtx-cf {Γ = Γ ▸ A} m (One  ∷ Ψ) = (eraseCtx-cf {Γ = Γ} m Ψ , tt) , tt
+eraseCtx-cf {Γ = Γ ▸ A} m (Many ∷ Ψ) = (eraseCtx-cf {Γ = Γ} m Ψ , tt) , tt
 
 bindEnv-cf : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ′ : Usage n} {A : Ty mₜ} (m : _) (q : _) → Linked σ [] (bindEnv {Γ = Γ} {Ψ' = Ψ′} {A = A} m q)
 bindEnv-cf m Zero = tt

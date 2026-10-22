@@ -12,147 +12,107 @@
 -- and join (`⊔ᵘ`, the branches of a case). `Γ ↾ Ψ` is the context of the
 -- variables a usage actually uses: the environment a term's meaning receives.
 ------------------------------------------------------------------------
+-- The contexts and usages ARE the Spec's (`Once.Spec.Context`): a binder
+-- carries no quantity of its own — how a variable may be used is the usage
+-- vector's business. The old names are kept as aliases until the final rename.
 
 module Once.Internal.Context where
 
 open import Data.Fin using (Fin)
 open import Data.Nat using (ℕ)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Type.Grade using (_⊔q_)
 open import Once.Spec.Type using (Ty; Unit; _*_)
+import Once.Spec.Context as S
+open S using (_▸_; []; _∷_; _⊑∷_)
 
--- | Typing context (de Bruijn indexed with quantities)
---
--- Ctx m n represents a context with n variables, typed over m type variables.
--- Variables are indexed by Fin n (0 to n-1).
--- Each variable has a type and a quantity (usage annotation).
---
-data Ctx (m : ℕ) : ℕ → Set where
-  ∅   : Ctx m 0
-  _,_^_ : ∀ {n} → Ctx m n → Ty m → Quantity → Ctx m (ℕ.suc n)
+pattern ∅ = S.∅
 
-infixl 5 _,_^_
+Ctx : ℕ → ℕ → Set
+Ctx = S.Ctx
 
--- | Smart constructor: extend context with unrestricted quantity
-_,_ : ∀ {m n} → Ctx m n → Ty m → Ctx m (ℕ.suc n)
-Γ , A = Γ , A ^ Many
+pattern _,_ Γ A = Γ ▸ A
 
 infixl 5 _,_
 
--- | Lookup type at position in context
 lookup : ∀ {m n} → Ctx m n → Fin n → Ty m
-lookup (Γ , A ^ q) Fin.zero    = A
-lookup (Γ , _ ^ _) (Fin.suc i) = lookup Γ i
+lookup = S.lookup
 
 -- | Interpret a context as the (left-nested) product environment type.
 --   (A₀,…,Aₙ₋₁) ↦ (…((Unit * A₀) * A₁) … * Aₙ₋₁). Pure `Ctx → Type` — it lives
 --   here (with `Ctx`/`Type`), NOT in `Surface.Elaborate`, so the denotational
 --   meaning can take it without importing the (operational) elaborator (0.47).
 ⟦_⟧ᶜ : ∀ {m n} → Ctx m n → Ty m
-⟦ ∅ ⟧ᶜ         = Unit
-⟦ Γ , A ^ q ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
+⟦ ∅ ⟧ᶜ     = Unit
+⟦ Γ , A ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
 
 ------------------------------------------------------------------------
 -- Usage Vectors (QTT)
 ------------------------------------------------------------------------
 
-data Usage : ℕ → Set where
-  []  : Usage 0
-  _∷_ : ∀ {n} → Quantity → Usage n → Usage (ℕ.suc n)
+Usage : ℕ → Set
+Usage = S.Usage
 
-infixr 5 _∷_
-
--- | Zero usage vector (all variables unused)
 zeroUsage : ∀ {n} → Usage n
-zeroUsage {0} = []
-zeroUsage {ℕ.suc n} = Zero ∷ zeroUsage
+zeroUsage = S.zeroUsage
 
--- | Single variable usage (one variable used with quantity q, rest unused)
 singleUse : ∀ {n} → Fin n → Quantity → Usage n
-singleUse {ℕ.suc n} Fin.zero    q = q ∷ zeroUsage
-singleUse {ℕ.suc n} (Fin.suc i) q = Zero ∷ singleUse i q
+singleUse = S.singleUse
 
--- | Add two usage vectors (combine usage from different branches)
 _+ᵘ_ : ∀ {n} → Usage n → Usage n → Usage n
-[] +ᵘ [] = []
-(q₁ ∷ ψ₁) +ᵘ (q₂ ∷ ψ₂) = (q₁ +q q₂) ∷ (ψ₁ +ᵘ ψ₂)
+_+ᵘ_ = S._+ᵘ_
 
 infixl 60 _+ᵘ_
 
--- | Scale usage vector by quantity (usage in a context scaled by q)
 _*ᵘ_ : ∀ {n} → Quantity → Usage n → Usage n
-q *ᵘ [] = []
-q *ᵘ (q' ∷ ψ) = (q *q q') ∷ (q *ᵘ ψ)
+_*ᵘ_ = S._*ᵘ_
 
 infixl 70 _*ᵘ_
 
--- | Per-position maximum of two usage vectors (for case branches).
+-- | Join two usage vectors (the branches of a case).
 _⊔ᵘ_ : ∀ {n} → Usage n → Usage n → Usage n
 []        ⊔ᵘ []        = []
 (q₁ ∷ ψ₁) ⊔ᵘ (q₂ ∷ ψ₂) = (q₁ ⊔q q₂) ∷ (ψ₁ ⊔ᵘ ψ₂)
 
 infixl 55 _⊔ᵘ_
 
-------------------------------------------------------------------------
--- A variable of the context, used once
-------------------------------------------------------------------------
 data SVar {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   svar : ∀ {n} {Γ : Ctx m n} (i : Fin n) → SVar Γ (singleUse i One) (lookup Γ i)
 
-------------------------------------------------------------------------
--- Usage-restricted contexts
-------------------------------------------------------------------------
-
--- The environment a subterm's meaning receives holds exactly the variables
--- the subterm uses, never everything bound so far: a variable it does not use
--- is not in its environment.
-
--- | How many variables a usage vector actually uses.
+-- | The variables a usage actually uses.
 liveCount : ∀ {n} → Usage n → ℕ
 liveCount []           = 0
 liveCount (Zero ∷ Ψ)   = liveCount Ψ
 liveCount (One  ∷ Ψ)   = ℕ.suc (liveCount Ψ)
 liveCount (Many ∷ Ψ)   = ℕ.suc (liveCount Ψ)
 
--- | Restrict a context to the variables a usage vector uses. `Usage`'s head
---   is `Fin.zero`, which is the context's RIGHTMOST (innermost) binding, so
---   the two structures line up cons-for-cons.
 _↾_ : ∀ {m n} → Ctx m n → (Ψ : Usage n) → Ctx m (liveCount Ψ)
-∅           ↾ []         = ∅
-(Γ , A ^ q) ↾ (Zero ∷ Ψ) = Γ ↾ Ψ
-(Γ , A ^ q) ↾ (One  ∷ Ψ) = (Γ ↾ Ψ) , A ^ q
-(Γ , A ^ q) ↾ (Many ∷ Ψ) = (Γ ↾ Ψ) , A ^ q
+∅       ↾ []         = ∅
+(Γ , A) ↾ (Zero ∷ Ψ) = Γ ↾ Ψ
+(Γ , A) ↾ (One  ∷ Ψ) = (Γ ↾ Ψ) , A
+(Γ , A) ↾ (Many ∷ Ψ) = (Γ ↾ Ψ) , A
 
 infixl 6 _↾_
 
--- | The usage order `Zero ≤ One ≤ Many` as a relation (`_≤q_` in
---   `Spec.Type.Grade` is the same order as a Boolean test). Each constructor
---   names both quantities.
-data _≤q'_ : Quantity → Quantity → Set where
-  z≤z : Zero ≤q' Zero
-  z≤o : Zero ≤q' One
-  z≤m : Zero ≤q' Many
-  o≤o : One  ≤q' One
-  o≤m : One  ≤q' Many
-  m≤m : Many ≤q' Many
+-- | The usage order is the Spec's (`≤q`, pointwise `⊑ᵘ`); the six names below
+--   spell its constructors at each pair of quantities.
+_≤q'_ : Quantity → Quantity → Set
+_≤q'_ = _≤q_
 
--- | The pointwise order on usages: `Ψ ⊑ᵘ Φ` when `Ψ` uses each variable at
---   most as often as `Φ`. A subterm's environment is cut down from its
---   parent's along this order.
-data _⊑ᵘ_ : ∀ {n} → Usage n → Usage n → Set where
-  ⊑[] : [] ⊑ᵘ []
-  _⊑∷_ : ∀ {n q r} {Ψ Φ : Usage n} → q ≤q' r → Ψ ⊑ᵘ Φ → (q ∷ Ψ) ⊑ᵘ (r ∷ Φ)
+pattern z≤z = 0≤q {Zero}
+pattern z≤o = 0≤q {One}
+pattern z≤m = 0≤q {Many}
+pattern o≤o = 1≤1
+pattern o≤m = 1≤ω
+pattern m≤m = ω≤ω
 
-infixr 5 _⊑ᵘ_
-infixr 5 _⊑∷_
+_⊑ᵘ_ : ∀ {n} → Usage n → Usage n → Set
+_⊑ᵘ_ = S._⊑ᵘ_
 
-------------------------------------------------------------------------
--- The narrowings the meaning uses: each part of a sum, scaling or join uses
--- at most what the whole does. (The core meaning cuts a subterm's
--- environment out of its parent's with these.)
-------------------------------------------------------------------------
+infix 4 _⊑ᵘ_
 
--- | The order is reflexive — every subterm may keep what it already has.
+pattern ⊑[] = []
+
 ⊑ᵘ-refl : ∀ {n} (Ψ : Usage n) → Ψ ⊑ᵘ Ψ
 ⊑ᵘ-refl []           = ⊑[]
 ⊑ᵘ-refl (Zero ∷ Ψ)   = z≤z ⊑∷ ⊑ᵘ-refl Ψ

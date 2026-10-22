@@ -59,6 +59,12 @@ pattern subᶜ-rigid = subᶜ-var
 ⊑π-refl act = ⊑-act
 ⊑π-refl eff = ⊑-eff
 
+-- `pure` is the least grade.
+pure-⊑ : ∀ π → pure ⊑π π
+pure-⊑ pure = ⊑-pure
+pure-⊑ act  = ⊑-pa
+pure-⊑ eff  = ⊑-pe
+
 <:-refl : ∀ {m} (A : Ty m) → A <: A
 <:-refl (var _) = sub-var
 <:-refl Unit   = sub-unit

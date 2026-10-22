@@ -16,7 +16,8 @@ open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Zero; One; Many)
-open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; zeroUsage)
+open import Once.Internal.Context using (Ctx; ∅; Usage; zeroUsage)
+open import Once.Spec.Context using ([]; _∷_; _▸_)
 
 -- | Is this usage vector all zero, i.e. does the expression read no local
 -- variable? Returns the proof the closed-expression lift needs.
@@ -38,4 +39,4 @@ zeroUsage?-just {ℕ.suc n} rewrite zeroUsage?-just {n} = refl
 -- | Does a usage respect the context's declared quantities?
 _≤ᵘ?_ : ∀ {m} {n} → Usage n → Ctx m n → Bool
 [] ≤ᵘ? ∅ = true
-(q ∷ ψ) ≤ᵘ? (Γ , A ^ q') = (q ≤qᵇ q') ∧ (ψ ≤ᵘ? Γ)
+(q ∷ ψ) ≤ᵘ? (Γ ▸ A) = (q ≤qᵇ Many) ∧ (ψ ≤ᵘ? Γ)

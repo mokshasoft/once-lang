@@ -37,6 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 import Once.Spec.Grade as LG
 import Once.Internal.Context as LC
+import Once.Spec.Context as SCx
 open import Once.Internal.Context using (svar)
 open import Once.Internal.Typing.Scope using (Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
 open Binding using (name)
@@ -51,7 +52,7 @@ names = map name
 data LR : ∀ {n} → List Binding → LC.Ctx n → Locals m n → Set where
   lr-∅ : LR [] LC.∅ ∅
   lr-▸ : ∀ {n} {Γn} {Γd : LC.Ctx n} {L b A A′ q} → LR Γn Γd L → TyR Δ A A′
-       → LR (b ∷ Γn) (Γd LC., A ^ q) (L ▹ name b ∶ A′)
+       → LR (b ∷ Γn) (Γd SCx.▸ A) (L ▹ name b ∶ A′)
 
 private
   -- the index a lookup found
@@ -66,12 +67,12 @@ private
   suc-inj refl = refl
 
   next-zero : ∀ {n} {Γd : LC.Ctx n} {B q} (r : Maybe (Σ[ A ∈ _ ] Σ[ Ψ ∈ _ ] LC.SVar Γd Ψ A))
-            → lookupLocal-next {B = B} {q = q} r ≡ just (LC.lookup (Γd LC., B ^ q) zero , LC.singleUse zero LG.One , svar zero) → ⊥
+            → lookupLocal-next {B = B} {q = q} r ≡ just (LC.lookup (Γd SCx.▸ B) zero , LC.singleUse zero LG.One , svar zero) → ⊥
   next-zero nothing ()
   next-zero (just (_ , _ , svar j)) e = zero≢suc (sym (just-injective (cong idx e)))
 
   next-suc : ∀ {n} {Γd : LC.Ctx n} {B q} (r : Maybe (Σ[ A ∈ _ ] Σ[ Ψ ∈ _ ] LC.SVar Γd Ψ A)) (i : Fin n)
-           → lookupLocal-next {B = B} {q = q} r ≡ just (LC.lookup (Γd LC., B ^ q) (suc i) , LC.singleUse (suc i) LG.One , svar (suc i))
+           → lookupLocal-next {B = B} {q = q} r ≡ just (LC.lookup (Γd SCx.▸ B) (suc i) , LC.singleUse (suc i) LG.One , svar (suc i))
            → r ≡ just (LC.lookup Γd i , LC.singleUse i LG.One , svar i)
   next-suc nothing i ()
   next-suc {Γd = Γd} (just (_ , _ , svar j)) i e =
@@ -84,8 +85,8 @@ lk-R : ∀ {n x} {Γn} {Γd : LC.Ctx n} {L} → LR Γn Γd L → (i : Fin n)
      → Σ[ A′ ∈ ST.Ty m ] (TyR Δ (LC.lookup Γd i) A′ × SU._∋_⦂_at_ L x A′ i)
 lk-at : ∀ {n x} {b} {Γn} {Γd : LC.Ctx n} {L A A′ q} → LR Γn Γd L → TyR Δ A A′ → (i : Fin (ℕ.suc n))
       → (d : Dec (x ≡ name b))
-      → lookupLocal-at x b Γn Γd {B = A} {q = q} d ≡ just (LC.lookup (Γd LC., A ^ q) i , LC.singleUse i LG.One , svar i)
-      → Σ[ A″ ∈ ST.Ty m ] (TyR Δ (LC.lookup (Γd LC., A ^ q) i) A″ × SU._∋_⦂_at_ (L ▹ name b ∶ A′) x A″ i)
+      → lookupLocal-at x b Γn Γd {B = A} {q = q} d ≡ just (LC.lookup (Γd SCx.▸ A) i , LC.singleUse i LG.One , svar i)
+      → Σ[ A″ ∈ ST.Ty m ] (TyR Δ (LC.lookup (Γd SCx.▸ A) i) A″ × SU._∋_⦂_at_ (L ▹ name b ∶ A′) x A″ i)
 lk-R lr-∅ () eq
 lk-R {x = x} (lr-▸ {b = b} lr ra) i eq = lk-at lr ra i (x ≟ name b) eq
 lk-at {b = b} {L = L} {A′ = A′} lr ra zero (yes e) eq = A′ , ra , subst (λ y → SU._∋_⦂_at_ (L ▹ name b ∶ A′) y A′ zero) (sym e) SU.here
@@ -112,9 +113,9 @@ lk-in : ∀ {n x} Γn {Γd : LC.Ctx n} {r} → lookupLocal-go x Γn Γd ≡ just
 lk-in-at : ∀ {n x} b Γn {Γd : LC.Ctx n} {B q} {r} (d : Dec (x ≡ name b))
          → lookupLocal-at x b Γn Γd {B = B} {q = q} d ≡ just r → x ∈ names (b ∷ Γn)
 lk-in []       {LC.∅}         ()
-lk-in []       {Γd LC., _ ^ _} ()
+lk-in []       {Γd SCx.▸ _} ()
 lk-in (b ∷ Γn) {LC.∅}         ()
-lk-in {x = x} (b ∷ Γn) {Γd LC., B ^ q} e = lk-in-at b Γn (x ≟ name b) e
+lk-in {x = x} (b ∷ Γn) {Γd SCx.▸ B} e = lk-in-at b Γn (x ≟ name b) e
 lk-in-at b Γn (yes e) _ = here e
 lk-in-at {x = x} b Γn {Γd} (no _) e = there (lk-in Γn (proj₂ (next-just (lookupLocal-go x Γn Γd) e)))
 

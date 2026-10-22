@@ -51,7 +51,9 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Internal.Context as C using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
+open import Once.Internal.Context as C using (Usage; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
+import Once.Spec.Context as SCx
+open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Internal.Core.PolyTy
 open import Once.Internal.Core.PolySub using (_<:ₚ_; <:ₚ-⟪⟫)
 open Schema using (arity; kinds; type)
@@ -70,11 +72,11 @@ data PCtx (m : ℕ) : ℕ → Set where
 infixl 5 _,_^_ _,_
 
 _,_ : ∀ {m n} → PCtx m n → Ty m → PCtx m (suc n)
-Γ , A = Γ , A ^ Many
+Γ , A = Γ ▸ A
 
 lookupP : ∀ {m n} → PCtx m n → Fin n → Ty m
-lookupP (Γ , A ^ q) zero    = A
-lookupP (Γ , _ ^ _) (suc i) = lookupP Γ i
+lookupP (Γ ▸ A) zero    = A
+lookupP (Γ ▸ _) (suc i) = lookupP Γ i
 
 data PTm (m n : ℕ) : Set where
   var    : Fin n → PTm m n
@@ -107,11 +109,11 @@ data PTm (m n : ℕ) : Set where
 
 _⟪_⟫ᶜ : ∀ {m n} → PCtx m n → GSub m → C.Ctx n
 ∅           ⟪ σ ⟫ᶜ = C.∅
-(Γ , A ^ q) ⟪ σ ⟫ᶜ = (Γ ⟪ σ ⟫ᶜ) C., (A ⟪ σ ⟫) ^ q
+(Γ ▸ A) ⟪ σ ⟫ᶜ = (Γ ⟪ σ ⟫ᶜ) SCx.▸ (A ⟪ σ ⟫)
 
 lookup-⟪⟫ : ∀ {m n} (Γ : PCtx m n) (σ : GSub m) (i : Fin n) → C.lookup (Γ ⟪ σ ⟫ᶜ) i ≡ lookupP Γ i ⟪ σ ⟫
-lookup-⟪⟫ (Γ , A ^ q) σ zero    = refl
-lookup-⟪⟫ (Γ , A ^ q) σ (suc i) = lookup-⟪⟫ Γ σ i
+lookup-⟪⟫ (Γ ▸ A) σ zero    = refl
+lookup-⟪⟫ (Γ ▸ A) σ (suc i) = lookup-⟪⟫ Γ σ i
 
 _⟪_⟫ₜ : ∀ {m n} → PTm m n → GSub m → G.Tm n
 var i        ⟪ σ ⟫ₜ = G.var i

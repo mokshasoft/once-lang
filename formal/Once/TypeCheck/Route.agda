@@ -42,6 +42,7 @@ open import Once.Internal.Syntax as Raw using (RawExpr)
 open import Once.Internal.Typing.Scope using (NamedCtx; extendNamedCtx)
 open import Once.Internal.Typing
 import Once.Internal.Context as Surface
+import Once.Spec.Context as SCx
 
 private
   variable
@@ -76,11 +77,11 @@ mutual
     ii-neg : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ Int ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ Int ⨾ Ψ′} → Rii d d′ → Rii (t-neg d) (t-neg d′)
     ii-neg-float : ∀ {i f l p} → Rii {ctx = ctx} (t-neg-float i f l p) (t-neg-float i f l p)
     ii-let : ∀ {x Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {d₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁′}
-               {d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q Surface.Usage.∷ Ψ₂)} {d₂′ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B′ ⨾ (q′ Surface.Usage.∷ Ψ₂′)}
+               {d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q SCx.∷ Ψ₂)} {d₂′ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B′ ⨾ (q′ SCx.∷ Ψ₂′)}
            → Rii d₁ d₁′ → Rii d₂ d₂′ → Rii (t-let d₁ d₂) (t-let d₁′ d₂′)
     ii-case : ∀ {xL xR qL qL′ qR qR′ Ψs Ψs′ Ψl Ψl′ Ψr Ψr′} {Cᵣ Cᵣ′ D D′ : Ty m} {s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs} {s′ : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs′}
-                {l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL Surface.Usage.∷ Ψl)} {l′ : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ Surface.Usage.∷ Ψl′)}
-                {r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR Surface.Usage.∷ Ψr)} {r′ : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ′ ⨾ (qR′ Surface.Usage.∷ Ψr′)}
+                {l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL SCx.∷ Ψl)} {l′ : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ SCx.∷ Ψl′)}
+                {r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR SCx.∷ Ψr)} {r′ : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ′ ⨾ (qR′ SCx.∷ Ψr′)}
                 {J : C ⊔ Cᵣ ≔ D} {J′ : C′ ⊔ Cᵣ′ ≔ D′}
             → Rii s s′ → Rii l l′ → Rii r r′ → Rii (t-case s l r J) (t-case s′ l′ r′ J′)
     ii-arith : ∀ {op a a′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {d₁ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂′}
@@ -169,8 +170,8 @@ mutual
     cc-loop : ∀ {Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many T.act ] (B + A)) ⨾ Ψ}
                 {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many T.act ] (B + A)) ⨾ Ψ′}
             → Rcc a a′ → Rcc (t-loop-check a) (t-loop-check a′)
-    cc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p ≤p′} {b : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
-               {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁′ Surface.Usage.∷ Ψ′)}
+    cc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p ≤p′} {b : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁ SCx.∷ Ψ)}
+               {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B ⨾ (q₁′ SCx.∷ Ψ′)}
            → ∀ {u u′} → Rcc b b′ → Rcc (t-lam {q = q} {π = π} {u = u} ≤p b) (t-lam {u = u′} ≤p′ b′)
     cc-pair-lit : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {a : ctx ⊢ᶜ e₁ ∶ A ⨾ Ψ₁} {a′ : ctx ⊢ᶜ e₁ ∶ A ⨾ Ψ₁′} {b : ctx ⊢ᶜ e₂ ∶ B ⨾ Ψ₂} {b′ : ctx ⊢ᶜ e₂ ∶ B ⨾ Ψ₂′}
                 → Rcc a a′ → Rcc b b′ → Rcc (t-pair-lit-check a b) (t-pair-lit-check a′ b′)
@@ -199,8 +200,8 @@ mutual
     -- The check is a conversion of a synthesis; its type is the arrow `d-infer` reads, aligned.
     dc-sub : ∀ {Ψ Ψ′ p} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {d : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B) ⨾ Ψ′}
            → Rdi dd d → Rdc {B′ = B′} dd (t-sub d p)
-    dc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
-               {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B′ ⨾ (q₁′ Surface.Usage.∷ Ψ′)}
+    dc-lam : ∀ {x q₁ q₁′ Ψ Ψ′ ≤p′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ SCx.∷ Ψ)}
+               {b′ : extendNamedCtx ctx x A ⊢ᶜ e ∶ B′ ⨾ (q₁′ SCx.∷ Ψ′)}
            → ∀ {u u′} → Ric b b′ → Rdc (d-lam {π = π} {u = u} b) (t-lam {u = u′} ≤p′ b′)
     -- `d-compose` against the `g` route: the outer arm's domain is aligned.
     dc-cg : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂′}
@@ -239,8 +240,8 @@ mutual
                → Rdi dd w → Rdd (d-infer w a g) dd
     dd-infer-r : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B′) ⨾ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ}
                → Rdi dd w → Rdd dd (d-infer w a g)
-    dd-lam : ∀ {x q₁ q₁′ Ψ Ψ′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ Surface.Usage.∷ Ψ)}
-               {b′ : extendNamedCtx ctx x A ⊢ᵢ e ∶ B′ ⨾ (q₁′ Surface.Usage.∷ Ψ′)}
+    dd-lam : ∀ {x q₁ q₁′ Ψ Ψ′} {b : extendNamedCtx ctx x A ⊢ᵢ e ∶ B ⨾ (q₁ SCx.∷ Ψ)}
+               {b′ : extendNamedCtx ctx x A ⊢ᵢ e ∶ B′ ⨾ (q₁′ SCx.∷ Ψ′)}
            → ∀ {u u′} → Rii b b′ → Rdd (d-lam {π = π} {u = u} b) (d-lam {u = u′} b′)
     -- The outer half is domain-given at the middle the inner half determines, aligned.
     dd-compose : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂′}

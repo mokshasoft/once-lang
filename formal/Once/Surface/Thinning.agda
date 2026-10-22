@@ -27,8 +27,9 @@ open import Once.Internal.Type
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Internal.Context using (_⊑ᵘ_; ⊑[]; _⊑∷_; z≤z)
-open import Once.Internal.Context as Surface renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Internal.Context using (_⊑ᵘ_; ⊑[]; z≤z)
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
+open import Once.Internal.Context as Surface renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_)
 open import Once.Surface.Context as Surface
 
 ------------------------------------------------------------------------
@@ -43,12 +44,12 @@ data _⊆_ {k} : ∀ {n m} → SCtx k n → SCtx k m → Set where
   done : S∅ ⊆ S∅
 
   -- Skip: Δ has an extra variable that Γ doesn't have
-  skip : ∀ {n m} {Γ : SCtx k n} {Δ : SCtx k m} {A : Ty k} {q : Quantity}
-       → Γ ⊆ Δ → Γ ⊆ (_S,_^_ Δ A q)
+  skip : ∀ {n m} {Γ : SCtx k n} {Δ : SCtx k m} {A : Ty k}
+       → Γ ⊆ Δ → Γ ⊆ (Δ ▸ A)
 
   -- Keep: both contexts have the same variable at this position
-  keep : ∀ {n m} {Γ : SCtx k n} {Δ : SCtx k m} {A : Ty k} {q : Quantity}
-       → Γ ⊆ Δ → (_S,_^_ Γ A q) ⊆ (_S,_^_ Δ A q)
+  keep : ∀ {n m} {Γ : SCtx k n} {Δ : SCtx k m} {A : Ty k}
+       → Γ ⊆ Δ → (Γ ▸ A) ⊆ (Δ ▸ A)
 
 infixr 4 _⊆_
 
@@ -59,10 +60,10 @@ infixr 4 _⊆_
 -- Identity thinning: Γ ⊆ Γ
 ⊆-refl : ∀ {m} {n} {Γ : SCtx m n} → Γ ⊆ Γ
 ⊆-refl {Γ = S∅}            = done
-⊆-refl {Γ = _S,_^_ Γ' _ _} = keep ⊆-refl
+⊆-refl {Γ = Γ' ▸ _} = keep ⊆-refl
 
--- Weakening thinning: Γ ⊆ (Γ , A ^ q)
-⊆-wk : ∀ {m} {n} {Γ : SCtx m n} {A : Ty m} {q : Quantity} → Γ ⊆ (Γ S, A ^ q)
+-- Weakening thinning: Γ ⊆ (Γ ▸ A)
+⊆-wk : ∀ {m} {n} {Γ : SCtx m n} {A : Ty m} → Γ ⊆ (Γ ▸ A)
 ⊆-wk = skip ⊆-refl
 
 ------------------------------------------------------------------------
@@ -112,7 +113,7 @@ thin-usage-*ᵘ : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
               → (θ : Γ ⊆ Δ) (q : Quantity) (Ψ : Usage n)
               → thin-usage θ (q *ᵘ Ψ) ≡ q *ᵘ thin-usage θ Ψ
 thin-usage-*ᵘ done     q []                 = refl
-thin-usage-*ᵘ {Γ = Γ} {Δ = Δ S, _ ^ _} (skip θ) q Ψ
+thin-usage-*ᵘ {Γ = Γ} {Δ = Δ ▸ _} (skip θ) q Ψ
   rewrite thin-usage-*ᵘ θ q Ψ               = cong (_∷ (q *ᵘ thin-usage θ Ψ)) (sym (q*q-zero q))
   where
     -- q *q Zero = Zero for all q (needed for the skip case)
@@ -149,7 +150,7 @@ thin-usage-zeroUsage (keep θ) = cong (Zero ∷_) (thin-usage-zeroUsage θ)
 thin-usage-refl : ∀ {m} {n} {Γ : SCtx m n} (Ψ : Usage n)
                 → thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ
 thin-usage-refl {Γ = S∅} []                = refl
-thin-usage-refl {Γ = _ S, _ ^ _} (q ∷ Ψ)  = cong (q ∷_) (thin-usage-refl Ψ)
+thin-usage-refl {Γ = _ ▸ _} (q ∷ Ψ)  = cong (q ∷_) (thin-usage-refl Ψ)
 
 thin-usage-singleUse : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
                      → (θ : Γ ⊆ Δ) (i : Fin n) (q : Quantity)

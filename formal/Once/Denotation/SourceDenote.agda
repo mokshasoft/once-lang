@@ -36,7 +36,8 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Internal.Type using (⟦_⟧T)
-open import Once.Internal.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
+open import Once.Internal.Context using (Ctx; Usage; lookup; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
+open import Once.Spec.Context using (_▸_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Internal.Trace using (T; fmapT)
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; iter∞)
@@ -69,8 +70,8 @@ open Once.Surface.Syntax.Expr
 ------------------------------------------------------------------------
 
 lookupᴰ : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → ⟦ lookup Γ i ⟧ᴰ
-lookupᴰ (Γ , A ^ q) fzero    dγ = proj₂ dγ
-lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
+lookupᴰ (Γ ▸ A) fzero    dγ = proj₂ dγ
+lookupᴰ (Γ ▸ A) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 
 -- The runtime-phase helpers (`lookupᴰUsed` / `restrictᴰ` / `bindᴰ` /
 -- `bindᴰ0`) live in `Once.Denotation.Phase` — `Denotation.Meaning` needs the

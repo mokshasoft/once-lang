@@ -46,8 +46,9 @@ open import Once.Functor.Translate using (Base-irrelevant; WFFun-irrelevant)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Internal.Graded using (⟦_⟧ᵛ; M)
 import Once.Internal.Context as C
+import Once.Spec.Context as SCx
+open import Once.Spec.Context using ([]; _∷_)
 import Once.Surface.Context as C
-open import Once.Internal.Context using ([]; _∷_)
 open import Once.Internal.Core.PolyTy using (Ty; KCtx; ⟦⟧F-⟪⟫; ⌈⌉-⟪⟫; ⟨⟩-⟪⟫; GSub; Respects; _⟪_⟫; _⟪_⟫F; _!!_; module Schema)
 open Schema using (arity; type)
 open import Once.Internal.Core.AbsTy using (absTy; absF; ar-bound; absTy-⟦⟧; absTy-ground; abs-⟪⟫)
@@ -288,7 +289,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
 
   rtC-id : ∀ {m} {n} (Γ : C.Ctx m n) → absCtx Δ Γ ⟪ σ ⟫ᶜ ≡ Γ
   rtC-id C.∅             = refl
-  rtC-id (Γ C., A ^ q)   = cong₂ (λ G X → G C., X ^ q) (rtC-id Γ) (rt-id A)
+  rtC-id (Γ SCx.▸ A)   = cong₂ (λ G X → G SCx.▸ X) (rtC-id Γ) (rt-id A)
 
   rtT-id : ∀ {n} (t : G.Tm n) → absTm Δ t ⟪ σ ⟫ₜ ≡ t
   rtT-id (G.var i)        = refl

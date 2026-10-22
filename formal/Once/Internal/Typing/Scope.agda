@@ -41,7 +41,8 @@ open import Once.Internal.Type.Poly using (PolyType)
 open import Once.Spec.Name using (canonical; gen; generatorNS)
 open import Once.Internal.Syntax using (RawExpr)
 import Once.Internal.Syntax as Raw
-open import Once.Internal.Context using (_,_^_; SVar; svar)
+open import Once.Internal.Context using (SVar; svar)
+open import Once.Spec.Context using (_▸_)
 import Once.Internal.Context as Surface
 
 ------------------------------------------------------------------------
@@ -108,7 +109,7 @@ record NamedCtx (m : ℕ) : Set where
 
 extendNamedCtx : ∀ {m} → NamedCtx m → String → Ty m → NamedCtx m
 extendNamedCtx ctx x A =
-  mkCtx (suc (NamedCtx.size ctx)) (extendCtx (NamedCtx.named ctx) x A) (NamedCtx.debruijn ctx , A ^ Many)
+  mkCtx (suc (NamedCtx.size ctx)) (extendCtx (NamedCtx.named ctx) x A) (NamedCtx.debruijn ctx ▸ A)
         (NamedCtx.imports ctx) (NamedCtx.polys ctx) (NamedCtx.sig ctx) (NamedCtx.kinds ctx)
 
 -- A local variable: the innermost binding of the name, as a de Bruijn
@@ -118,21 +119,21 @@ extendNamedCtx ctx x A =
 lookupLocal-go : ∀ {k m} (x : String) (Γ : Ctx k) (Δ' : Surface.Ctx k m)
                → Maybe (∃[ A ] ∃[ Ψ ] (SVar Δ' Ψ A))
 -- the outer binder, past an inner result
-lookupLocal-next : ∀ {k m} {Δ' : Surface.Ctx k m} {B q} → Maybe (∃[ A ] ∃[ Ψ ] (SVar Δ' Ψ A))
-                 → Maybe (∃[ A ] ∃[ Ψ ] (SVar (Δ' , B ^ q) Ψ A))
+lookupLocal-next : ∀ {k m} {Δ' : Surface.Ctx k m} {B} → Maybe (∃[ A ] ∃[ Ψ ] (SVar Δ' Ψ A))
+                 → Maybe (∃[ A ] ∃[ Ψ ] (SVar (Δ' ▸ B) Ψ A))
 lookupLocal-next nothing                 = nothing
 lookupLocal-next (just (A , Ψ , svar i)) = just (_ , _ , svar (suc i))
 
 -- the innermost binder: the name's, or the lookup goes on
-lookupLocal-at : ∀ {k m} (x : String) (b : Binding k) (Γ' : Ctx k) (Δ' : Surface.Ctx k m) {B q}
-               → Dec (x ≡ name b) → Maybe (∃[ A ] ∃[ Ψ ] (SVar (Δ' , B ^ q) Ψ A))
+lookupLocal-at : ∀ {k m} (x : String) (b : Binding k) (Γ' : Ctx k) (Δ' : Surface.Ctx k m) {B}
+               → Dec (x ≡ name b) → Maybe (∃[ A ] ∃[ Ψ ] (SVar (Δ' ▸ B) Ψ A))
 lookupLocal-at x b Γ' Δ' (yes _) = just (_ , _ , svar zero)
 lookupLocal-at x b Γ' Δ' (no _)  = lookupLocal-next (lookupLocal-go x Γ' Δ')
 
 lookupLocal-go x [] Surface.∅ = nothing
-lookupLocal-go x [] (_ , _ ^ _) = nothing
+lookupLocal-go x [] (_ ▸ _) = nothing
 lookupLocal-go x (_ ∷ _) Surface.∅ = nothing
-lookupLocal-go x (b ∷ Γ') (Δ' , B ^ _) = lookupLocal-at x b Γ' Δ' (Data.String._≟_ x (name b))
+lookupLocal-go x (b ∷ Γ') (Δ' ▸ B) = lookupLocal-at x b Γ' Δ' (Data.String._≟_ x (name b))
 
 lookupLocal : ∀ {m} (ctx : NamedCtx m) → String
             → Maybe (∃[ A ] ∃[ Ψ ] (SVar (NamedCtx.debruijn ctx) Ψ A))

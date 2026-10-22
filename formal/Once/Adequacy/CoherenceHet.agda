@@ -53,7 +53,8 @@ open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.Internal.Type.WellFormed using (IsConcrete; WellFormedF)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 import Once.Internal.Context as Surface
-open import Once.Internal.Context using (Ctx; Usage; _∷_; _,_^_)
+open import Once.Spec.Context using (_∷_; _▸_)
+open import Once.Internal.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
@@ -133,14 +134,14 @@ module _ {m} {Γ : Ctx m n} where
   neg-h : {a : Expr Γ Ψ Int} {a′ : Expr Γ Ψ′ Int} → a ≅ a′ → neg a ≅ neg a′
   neg-h (≅i refl refl h) = ≅i refl refl (neg-cong h)
 
-  let-h : {e₁ : Expr Γ Ψ₁ A} {e₁′ : Expr Γ Ψ₁′ A} {e₂ : Expr (Γ , A ^ Many) (q ∷ Ψ₂) B} {e₂′ : Expr (Γ , A ^ Many) (q′ ∷ Ψ₂′) B′}
+  let-h : {e₁ : Expr Γ Ψ₁ A} {e₁′ : Expr Γ Ψ₁′ A} {e₂ : Expr (Γ ▸ A) (q ∷ Ψ₂) B} {e₂′ : Expr (Γ ▸ A) (q′ ∷ Ψ₂′) B′}
         → e₁ ≅ e₁′ → e₂ ≅ e₂′ → let' e₁ e₂ ≅ let' e₁′ e₂′
   let-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (let-cong h k)
 
   case-h : ∀ {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : Usage n} {qL qL′ qR qR′}
            {s : Expr Γ Ψs (A + B)} {s′ : Expr Γ Ψs′ (A + B)}
-           {l : Expr (Γ , A ^ Many) (qL ∷ Ψl) C} {l′ : Expr (Γ , A ^ Many) (qL′ ∷ Ψl′) C′}
-           {r : Expr (Γ , B ^ Many) (qR ∷ Ψr) C} {r′ : Expr (Γ , B ^ Many) (qR′ ∷ Ψr′) C′}
+           {l : Expr (Γ ▸ A) (qL ∷ Ψl) C} {l′ : Expr (Γ ▸ A) (qL′ ∷ Ψl′) C′}
+           {r : Expr (Γ ▸ B) (qR ∷ Ψr) C} {r′ : Expr (Γ ▸ B) (qR′ ∷ Ψr′) C′}
          → s ≅ s′ → l ≅ l′ → r ≅ r′ → case' s l r ≅ case' s′ l′ r′
   case-h (≅i refl refl h) (≅i refl refl k) (≅i refl refl m) = ≅i refl refl (case-cong h k m)
 
@@ -176,13 +177,13 @@ module _ {m} {Γ : Ctx m n} where
   coerce-h : {x : Expr Γ Ψ A} {y : Expr Γ Ψ′ A′} (p : A <: B) (p′ : A′ <: B) → x ≅ y → coerce p x ≅ coerce p′ y
   coerce-h p p′ (≅i refl refl h) = ≅i refl refl (≈-trans (coerce-cong p h) (coerce-uniq p p′ _))
 
-  lam-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B}
+  lam-h : ∀ {x : Expr (Γ ▸ A) (q₁ ∷ Ψ) B} {x′ : Expr (Γ ▸ A) (q₁′ ∷ Ψ′) B}
             (≤p : (q₁ ≤qᵇ q) ≡ true) (≤p′ : (q₁′ ≤qᵇ q) ≡ true)
         → x ≅ x′ → lam {π = π} q ≤p x ≅ lam q ≤p′ x′
   lam-h {q = q} {π = π} {x′ = x′} ≤p ≤p′ (≅i refl refl h) = ≅i refl refl (≈-trans (lam-cong q ≤p h) (≡→≈ (cong (λ z → lam {π = π} q z x′) (uip ≤p ≤p′))))
 
   -- Domain-given lambdas: the body's type is an output, so it may differ.
-  lamd-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B′}
+  lamd-h : ∀ {x : Expr (Γ ▸ A) (q₁ ∷ Ψ) B} {x′ : Expr (Γ ▸ A) (q₁′ ∷ Ψ′) B′}
              (≤p : (q₁ ≤qᵇ Many) ≡ true) (≤p′ : (q₁′ ≤qᵇ Many) ≡ true)
          → x ≅ x′ → lam {π = π} Many ≤p x ≅ lam Many ≤p′ x′
   lamd-h ≤p ≤p′ (≅i refl refl h) = lam-h ≤p ≤p′ (≅i refl refl h)
@@ -262,7 +263,7 @@ module _ {m} {Γ : Ctx m n} where
   dcsub-h {Y = Y} p a₀ b₀ g₀ (≅i refl refl h) =
     ≅i refl refl (≈-trans (coerce-cong _ h) (≈-trans (coerce-trans _ _ Y) (coerce-uniq _ _ Y)))
 
-  lamc-h : ∀ {x : Expr (Γ , A ^ Many) (q₁ ∷ Ψ) B} {x′ : Expr (Γ , A ^ Many) (q₁′ ∷ Ψ′) B′}
+  lamc-h : ∀ {x : Expr (Γ ▸ A) (q₁ ∷ Ψ) B} {x′ : Expr (Γ ▸ A) (q₁′ ∷ Ψ′) B′}
              (≤p : (q₁ ≤qᵇ Many) ≡ true) (≤p′ : (q₁′ ≤qᵇ Many) ≡ true) (p : B <: B′)
          → coerce p x ≅ x′ → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam {π = π} Many ≤p x) ≅ lam Many ≤p′ x′
   lamc-h {π = π} {x = x} {x′ = x′} ≤p ≤p′ p (≅i refl refl h) =
@@ -302,8 +303,8 @@ module _ {m} {Γ : Ctx m n} where
   -- unique), so the two cases convert their arms alike.
   casej-h : ∀ {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : Usage n} {qL qL′ qR qR′} {Cᵣ Cᵣ′ D D′ : Ty m}
             {s : Expr Γ Ψs (A + B)} {s′ : Expr Γ Ψs′ (A + B)}
-            {l : Expr (Γ , A ^ Many) (qL ∷ Ψl) C} {l′ : Expr (Γ , A ^ Many) (qL′ ∷ Ψl′) C′}
-            {r : Expr (Γ , B ^ Many) (qR ∷ Ψr) Cᵣ} {r′ : Expr (Γ , B ^ Many) (qR′ ∷ Ψr′) Cᵣ′}
+            {l : Expr (Γ ▸ A) (qL ∷ Ψl) C} {l′ : Expr (Γ ▸ A) (qL′ ∷ Ψl′) C′}
+            {r : Expr (Γ ▸ B) (qR ∷ Ψr) Cᵣ} {r′ : Expr (Γ ▸ B) (qR′ ∷ Ψr′) Cᵣ′}
             (J : C ⊔ Cᵣ ≔ D) (J′ : C′ ⊔ Cᵣ′ ≔ D′)
           → s ≅ s′ → l ≅ l′ → r ≅ r′
           → case' s (coerce (<:ᶜ⇒<: (⊔-left J)) l) (coerce (<:ᶜ⇒<: (⊔-right J)) r)
@@ -312,8 +313,8 @@ module _ {m} {Γ : Ctx m n} where
     where
       casej-at : ∀ {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : Usage n} {qL qL′ qR qR′} {Cᵣ D D′ : Ty _}
                  {s : Expr Γ Ψs (A + B)} {s′ : Expr Γ Ψs′ (A + B)}
-                 {l : Expr (Γ , A ^ Many) (qL ∷ Ψl) C} {l′ : Expr (Γ , A ^ Many) (qL′ ∷ Ψl′) C}
-                 {r : Expr (Γ , B ^ Many) (qR ∷ Ψr) Cᵣ} {r′ : Expr (Γ , B ^ Many) (qR′ ∷ Ψr′) Cᵣ}
+                 {l : Expr (Γ ▸ A) (qL ∷ Ψl) C} {l′ : Expr (Γ ▸ A) (qL′ ∷ Ψl′) C}
+                 {r : Expr (Γ ▸ B) (qR ∷ Ψr) Cᵣ} {r′ : Expr (Γ ▸ B) (qR′ ∷ Ψr′) Cᵣ}
                  (J : C ⊔ Cᵣ ≔ D) (J′ : C ⊔ Cᵣ ≔ D′) → D ≡ D′
                → s ≅ s′ → l ≅ l′ → r ≅ r′
                → case' s (coerce (<:ᶜ⇒<: (⊔-left J)) l) (coerce (<:ᶜ⇒<: (⊔-right J)) r)

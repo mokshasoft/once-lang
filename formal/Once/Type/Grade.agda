@@ -16,7 +16,7 @@ module Once.Type.Grade where
 
 open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 
 -- The usage order, decided.
 _≤qᵇ_ : Quantity → Quantity → Bool
@@ -27,6 +27,16 @@ One  ≤qᵇ Many = true
 Many ≤qᵇ Zero = false
 Many ≤qᵇ One  = false
 Many ≤qᵇ Many = true
+
+-- The Boolean order decides the Spec's (`_≤q_`).
+≤qᵇ→≤q : ∀ p q → (p ≤qᵇ q) ≡ true → p ≤q q
+≤qᵇ→≤q Zero q    _ = 0≤q
+≤qᵇ→≤q One  One  _ = 1≤1
+≤qᵇ→≤q One  Many _ = 1≤ω
+≤qᵇ→≤q Many Many _ = ω≤ω
+≤qᵇ→≤q One  Zero ()
+≤qᵇ→≤q Many Zero ()
+≤qᵇ→≤q Many One  ()
 
 
 -- Every usage is below `Many`.

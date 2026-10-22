@@ -37,7 +37,8 @@ open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Laws.SubLaws using (<:-trans)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Internal.Context using (Ctx; _∷_; _,_^_)
+open import Once.Internal.Context using (Ctx)
+open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 import Once.Type
 open import Once.Internal.Type.WellFormed using (WellFormedF)
@@ -169,15 +170,15 @@ module _ {m n} {Γ : Ctx m n} where
   loop-cong {Ψ} {A} {B} {g} {g′} (≈-intro h1) = ≈-intro (loop-congˢ {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} {g = g} {g′ = g′} h1)
 
 module _ {m n} {Γ : Ctx m n} where
-  let-cong : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B} → e₁ ≈ e₁′ → e₂ ≈ e₂′ → let' e₁ e₂ ≈ let' e₁′ e₂′
+  let-cong : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr ((Γ ▸ A)) (q ∷ Ψ₂) B} → e₁ ≈ e₁′ → e₂ ≈ e₂′ → let' e₁ e₂ ≈ let' e₁′ e₂′
   let-cong {Ψ₁} {Ψ₂} {A} {B} {q} {e₁} {e₁′} {e₂} {e₂′} (≈-intro h1) (≈-intro h2) = ≈-intro (let-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = q} {e₁ = e₁} {e₁′ = e₁′} {e₂ = e₂} {e₂′ = e₂′} h1 h2)
 
 module _ {m n} {Γ : Ctx m n} where
-  case-cong : ∀ {Ψs Ψₗ Ψᵣ qℓ qr A B C} {s s′ : Expr Γ Ψs (A + B)} {l l′ : Expr (_,_^_ Γ A Many) (qℓ ∷ Ψₗ) C} {r r′ : Expr (_,_^_ Γ B Many) (qr ∷ Ψᵣ) C} → s ≈ s′ → l ≈ l′ → r ≈ r′ → case' s l r ≈ case' s′ l′ r′
+  case-cong : ∀ {Ψs Ψₗ Ψᵣ qℓ qr A B C} {s s′ : Expr Γ Ψs (A + B)} {l l′ : Expr ((Γ ▸ A)) (qℓ ∷ Ψₗ) C} {r r′ : Expr ((Γ ▸ B)) (qr ∷ Ψᵣ) C} → s ≈ s′ → l ≈ l′ → r ≈ r′ → case' s l r ≈ case' s′ l′ r′
   case-cong {Ψs} {Ψₗ} {Ψᵣ} {qℓ} {qr} {A} {B} {C} {s} {s′} {l} {l′} {r} {r′} (≈-intro h1) (≈-intro h2) (≈-intro h3) = ≈-intro (case-congˢ {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} {C = C} {s = s} {s′ = s′} {l = l} {l′ = l′} {r = r} {r′ = r′} h1 h2 h3)
 
 module _ {m n} {Γ : Ctx m n} where
-  lam-cong : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤qᵇ q) ≡ true) {b b′ : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B} → b ≈ b′ → lam {π = π} q ≤p b ≈ lam q ≤p b′
+  lam-cong : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤qᵇ q) ≡ true) {b b′ : Expr ((Γ ▸ A)) (q' ∷ Ψ) B} → b ≈ b′ → lam {π = π} q ≤p b ≈ lam q ≤p b′
   lam-cong {Ψ} {q'} {π} {A} {B} q ≤p {b} {b′} (≈-intro h1) = ≈-intro (lam-congˢ {Γ = Γ} {Ψ = Ψ} {q' = q'} {π = π} {A = A} {B = B} q ≤p {b} {b′} h1)
 
 module _ {m n} {Γ : Ctx m n} where
@@ -209,7 +210,7 @@ module _ {m n} {Γ : Ctx m n} where
   comp-pre {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} {π′ = π′} q c g f h = ≈-intro (comp-preˢ {Γ = Γ} {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} {π′ = π′} q c g f h)
 
 module _ {m n} {Γ : Ctx m n} where
-  lam-coerce : ∀ {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B) → lam {π = π} Many ≤p (coerce p b) ≈ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
+  lam-coerce : ∀ {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr ((Γ ▸ A)) (q' ∷ Ψ) B) → lam {π = π} Many ≤p (coerce p b) ≈ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
   lam-coerce {A = A} {B = B} {B′ = B′} {Ψ = Ψ} {q' = q'} {π = π} ≤p p b = ≈-intro (lam-coerceˢ {Γ = Γ} {A = A} {B = B} {B′ = B′} {Ψ = Ψ} {q' = q'} {π = π} ≤p p b)
 
 module _ {m n} {Γ : Ctx m n} where

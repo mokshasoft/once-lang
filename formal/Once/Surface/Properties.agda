@@ -19,6 +19,7 @@ open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Flo
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Context
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 
@@ -125,12 +126,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 -- | Subusaging is reflexive
 ≤ᵘ?-refl : ∀ {m} {n} (Γ : Ctx m n) → zeroUsage ≤ᵘ? Γ ≡ true
 ≤ᵘ?-refl ∅ = refl
-≤ᵘ?-refl (Γ , A ^ q) = cong (true ∧_) (≤ᵘ?-refl Γ)
+≤ᵘ?-refl (Γ ▸ A) = cong (true ∧_) (≤ᵘ?-refl Γ)
 
 -- | Zero usage satisfies any context
 ≤ᵘ?-zero : ∀ {m} {n} (Γ : Ctx m n) → zeroUsage ≤ᵘ? Γ ≡ true
 ≤ᵘ?-zero ∅ = refl
-≤ᵘ?-zero (Γ , A ^ q) = cong (true ∧_) (≤ᵘ?-zero Γ)
+≤ᵘ?-zero (Γ ▸ A) = cong (true ∧_) (≤ᵘ?-zero Γ)
 -- | ERASURE AT THE USAGE LEVEL (D143) — the Once analogue of `NbEPQTTJ`'s
 --   judgment-level `erase-arg` (`(ρf +ᵘ (𝟘 ·ᵘ ρa)) ≡ ρf`). An application at a
 --   `Zero`-graded arrow uses exactly what the FUNCTION uses: the argument's

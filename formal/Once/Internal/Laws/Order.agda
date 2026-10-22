@@ -22,7 +22,8 @@ open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; s
 open import Once.Internal.Type.Sub using (sub-prod; sub-sum; sub-rigid)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Context
-  using (Usage; []; _∷_; _⊑ᵘ_; ⊑[]; _⊑∷_; ⊑ᵘ-refl; ⊑ᵘ-trans)
+  using (Usage; _⊑ᵘ_; ⊑[]; ⊑ᵘ-refl; ⊑ᵘ-trans)
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_)
 open import Once.Internal.Laws.SubLaws using (⊑π-trans; <:-trans)
 open import Once.Internal.Type.Sub using (⊑π-refl; <:-refl)
 open import Once.Internal.Laws.Grade using (≤q'-antisym)

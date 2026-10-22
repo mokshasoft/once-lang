@@ -1,6 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
-
 ------------------------------------------------------------------------
 -- Once.Internal.Elaboration — plan 0.103 phase 6b (plan 0.102 C): THE SURFACE
 -- ELABORATES INTO THE CORE.
@@ -20,35 +19,40 @@
 --     definitions (monomorphic or telescope) is `ref d τ`.
 --
 -- The module layer is an argument, not an assumption: a `View` resolves each
--- imported name to an honest, ground FFI declaration (D231, D243) or one of the module's own
--- definitions, and names each telescope entry's core index and the
--- kind-respecting instance a use is at.
+-- imported name to an honest, ground FFI declaration of Σ (D231) or one of the
+-- module's own definitions, and names each telescope entry's index in the
+-- definitions table, whose schema is the entry's (`entryIs`); a use's instance
+-- is computed from it (`kinded-instance`).
+--
+-- Plan 0.122: the target is the SPEC's core (`Spec.Core.Syntax`/`Typing`), at
+-- the scope's kinds — a polymorphic body elaborates over its parameters.
 -- Phase 6c/6d construct it from the module.
 ------------------------------------------------------------------------
 
-import Once.Internal.Name
-open import Once.Spec.Type using (Ty)
 open import Data.Nat using (ℕ)
-open import Once.Internal.Core.PolyTy using (Sig)
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Core.Syntax using (Defs)
 
-open import Once.Internal.Contract using (ISig)
-module Once.Internal.Elaboration {Fs : ISig} {s : ℕ} (S : Sig Fs s) where
+module Once.Internal.Elaboration (Σ : Signature) {s : ℕ} (S : Defs s) where
 
 open import Data.Fin using (Fin)
 open import Data.Maybe using (just)
 open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Data.Product using () renaming (_,_ to _,ᵈ_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.String using (String; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
-open import Relation.Nullary using (¬_)
+open import Data.String using (String)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
-open import Once.Spec.Grade using (mk-kind; Many; pure; EffGrade)
-open import Once.Type.Grade using (≤q-Many)
-open import Once.Spec.Type using (Type; Int; Float; _*_; _⇒[_]_)
+open import Once.Spec.Grade using (mk-kind; Many; pure)
+open import Once.Type.Grade using (≤q-Many; ≤qᵇ→≤q)
+open import Once.Spec.Type using (Ty; Type; KCtx; TySub; Respects; ∅ₖ; Int; Float; _*_; _⇒[_]_; _⟨_⟩)
+open import Once.Spec.Signature using (_∶_)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Type using (wk₀; none)
 open import Once.Internal.Type.Poly using (Ground; extractGround)
 open import Once.Internal.Type.Instance using (KindedInstance)
-open import Once.Internal.Type.WellFormed using (RigidFree)
+open import Once.Internal.Type.Schema using (schemaOf; kinded-instance)
+open import Once.Type.Rigid using (ground-kinded)
 open import Once.Spec.Sub using (_<:_; sub-arr)
 open import Once.Internal.Type.Sub using (·p-diag)
 open import Once.Spec.Grade using (⊑-pure)
@@ -56,131 +60,119 @@ open import Once.Spec.Sub using (_⊔_≔_)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open _⊔_≔_ using (left; right)
 open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Spec.Name using (bare)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Context using (Ctx; ∅; Usage; zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Spec.Context using (Ctx)
+open import Once.Internal.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; svar)
 open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Internal.Typing
-open import Once.Internal.Core.PolyTy using (sigOf; _!!_; Respects; GSub; _⟪_⟫; module Schema)
+open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
-open import Once.Internal.Core.Syntax S
-open import Once.Internal.Core.Typing S
-open import Once.Internal.Core.Derived S
-open import Once.Internal.Core.DerivedTyping S
-open import Once.Internal.Core.Rename S using (close; ⊢close)
+open import Once.Spec.Core.Derived
+open import Once.Spec.Core.Typing Σ S
+open import Once.Internal.Core.DerivedTyping Σ S
 
 ------------------------------------------------------------------------
--- The module layer, as seen by an expression
+-- The module layer
 ------------------------------------------------------------------------
 
--- `T` is a kind-respecting instance of the entry `d`.
-InstanceOf : ∀ {m} → Fin s → Ty m → Set
-InstanceOf d T = Σ[ τ ∈ GSub (arity (S !! d)) ] Respects (kinds (S !! d)) τ × (type (S !! d) ⟪ τ ⟫ ≡ T)
-
--- D274: what a generator of the signature Σ in scope is: an FFI declaration of
--- the program, honest (D231) and ground (D243). Indexed by its key `x` (the
--- rendered path Σ is keyed by).
-record Declared {m} (x : String) (T : Ty m) : Set where
+-- An FFI declaration: honest (D231), and a declaration of Σ under its name.
+record Declared (x : String) (T : Type) : Set where
   constructor declared
   field
     honest : HonestFFI T
-    rigid  : RigidFree T
-    member : (x ,ᵈ T) ∈ sigOf S
+    member : ∀ {c} → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
 
--- What a name in the definitions table denotes: one of the module's own
--- definitions (D061/D071: an internal reference is a context projection,
--- never a SigOp), at a kind-respecting instance of its entry.
-record ImportAt {m} (x : String) (T : Ty m) : Set where
+-- One of the module's own monomorphic definitions: an entry of the table at
+-- its (ground) type.
+record ImportAt (x : String) (T : Type) : Set where
   constructor def
   field
     entryOf : Fin s
-    instOf  : InstanceOf entryOf T
+    mono    : S !! entryOf ≡ schema 0 ∅ₖ T
 
 record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
   field
     imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt x T
     declares : ∀ {x T} → lookupImport sg x ≡ just T → Declared x T
-    entry  : ∀ {x sc body prefix} → lookupPolyPrefix polys x ≡ just (sc , body , prefix) → Fin s
-    ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) (g : Ground sc)
-           → InstanceOf (entry lp) (extractGround sc g)
-    inst   : ∀ {x sc body prefix T} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
-           → ¬ Ground sc → KindedInstance ∅ₖ sc T
-           → InstanceOf (entry lp) T
+    entry    : ∀ {x sc body prefix} → lookupPolyPrefix polys x ≡ just (sc , body , prefix) → Fin s
+    entryIs  : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
+             → S !! entry lp ≡ schemaOf sc
 open View
 
 Views : ∀ {m} → NamedCtx m → Set
 Views ctx = View (NamedCtx.imports ctx) (NamedCtx.sig ctx) (NamedCtx.polys ctx)
 
 ------------------------------------------------------------------------
--- Elaborated terms
+-- Elaborations and their combinators
 ------------------------------------------------------------------------
 
-Elab : ∀ {m} {n} → Ctx m n → Usage n → Ty m → Set
-Elab {n = n} Γ Ψ A = Σ[ t ∈ Tm n ] Γ ⊢[ Ψ ] t ∷ A ! pure
+Elab : ∀ {m n} → KCtx m → Ctx m n → Usage n → Ty m → Set
+Elab {m} {n} Δ Γ Ψ A = Σ[ t ∈ Tm S m n ] Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! pure
 
-private
-  variable
-    mᵥ : ℕ
-    n : ℕ
-    Γ : ∀ {m} → Ctx m n
-    Ψ Ψ₁ Ψ₂ Ψ′ : Usage n
-    A B : Ty mᵥ
+module _ {m : ℕ} {Δ : KCtx m} {n : ℕ} {Γ : Ctx m n} where
 
--- The elaboration's building blocks (public: the 6b bridge names the
--- transports they carry).
-lift1 : (f : Tm n → Tm n) → (∀ {t} → Γ ⊢[ Ψ ] t ∷ A ! pure → Γ ⊢[ Ψ′ ] f t ∷ B ! pure)
-      → Elab Γ Ψ A → Elab Γ Ψ′ B
-lift1 f h (t , d) = f t , h d
+  lift1 : ∀ {Ψ Ψ′ : Usage n} {A B : Ty m} (f : Tm S m n → Tm S m n)
+        → (∀ {t} → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! pure → Δ ⊩ Γ ⊢[ Ψ′ ] f t ∷ B ! pure)
+        → Elab Δ Γ Ψ A → Elab Δ Γ Ψ′ B
+  lift1 f h (t , d) = f t , h d
 
-lift2 : ∀ {m} {C : Ty m} {Ψ₃ : Usage n} (f : Tm n → Tm n → Tm n)
-      → (∀ {t u} → Γ ⊢[ Ψ₁ ] t ∷ A ! pure → Γ ⊢[ Ψ₂ ] u ∷ B ! pure → Γ ⊢[ Ψ₃ ] f t u ∷ C ! pure)
-      → Elab Γ Ψ₁ A → Elab Γ Ψ₂ B → Elab Γ Ψ₃ C
-lift2 f h (t , d) (u , e) = f t u , h d e
+  lift2 : ∀ {Ψ₁ Ψ₂ Ψ₃ : Usage n} {A B C : Ty m} (f : Tm S m n → Tm S m n → Tm S m n)
+        → (∀ {t u} → Δ ⊩ Γ ⊢[ Ψ₁ ] t ∷ A ! pure → Δ ⊩ Γ ⊢[ Ψ₂ ] u ∷ B ! pure → Δ ⊩ Γ ⊢[ Ψ₃ ] f t u ∷ C ! pure)
+        → Elab Δ Γ Ψ₁ A → Elab Δ Γ Ψ₂ B → Elab Δ Γ Ψ₃ C
+  lift2 f h (t , d) (u , e) = f t u , h d e
 
--- A closed combinator applied: the surface's `zeroUsage +ᵘ Many *ᵘ Ψ`.
-appC : ∀ {c} → Γ ⊢[ zeroUsage ] c ∷ A ⇒[ mk-kind Many pure ] B ! pure
-     → Elab Γ Ψ A → Elab Γ (zeroUsage +ᵘ Many *ᵘ Ψ) B
-appC {c = c} dc = lift1 (app c) (⊢app dc)
+  retypeD : ∀ {Ψ : Usage n} {t} {A B : Ty m} {π} → A ≡ B → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] t ∷ B ! π
+  retypeD refl d = d
 
--- A binary operation: the saturated primitive on the pair of its operands.
-bin : (p : Prim) → primDom p ≡ A * B → Elab Γ Ψ₁ A → Elab Γ Ψ₂ B → Elab Γ (Ψ₁ +ᵘ Ψ₂) (primCod p)
-bin p eq = lift2 (λ t u → prim p (pair t u)) (λ d e → ⊢prim p (subst (λ D → _ ⊢[ _ ] _ ∷ D ! pure) (sym eq) (⊢pair d e)))
+  retypeE : ∀ {Ψ : Usage n} {A B : Ty m} → A ≡ B → Elab Δ Γ Ψ A → Elab Δ Γ Ψ B
+  retypeE refl e = e
 
-i2f : Elab Γ Ψ Int → Elab Γ Ψ Float
-i2f = lift1 (prim p-i2f) (⊢prim p-i2f)
+  appC : ∀ {Ψ : Usage n} {A B : Ty m} {c} → Δ ⊩ Γ ⊢[ zeroUsage ] c ∷ A ⇒[ mk-kind Many pure ] B ! pure
+       → Elab Δ Γ Ψ A → Elab Δ Γ (zeroUsage +ᵘ Many *ᵘ Ψ) B
+  appC {c = c} dc = lift1 (app c) (⊢app dc)
 
-coerceE : A <: B → Elab Γ Ψ A → Elab Γ Ψ B
-coerceE {A = A} {B = B} p = lift1 (coerce A B) (⊢coerce p)
+  bin : ∀ {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (p : Prim) → primDom p ≡ A * B
+      → Elab Δ Γ Ψ₁ A → Elab Δ Γ Ψ₂ B → Elab Δ Γ (Ψ₁ +ᵘ Ψ₂) (primCod p)
+  bin p eq = lift2 (λ t u → prim p (pair t u)) (λ d e → ⊢prim p (subst (λ D → Δ ⊩ Γ ⊢[ _ ] _ ∷ D ! pure) (sym eq) (⊢pair d e)))
 
-refE : (d : Fin s) → InstanceOf d A → Elab Γ zeroUsage A
-refE {Γ = Γ} d (τ , r , eq) = ref d τ , subst (λ T → Γ ⊢[ zeroUsage ] ref d τ ∷ T ! pure) eq (⊢ref d τ r)
+  i2f : ∀ {Ψ : Usage n} → Elab Δ Γ Ψ Int → Elab Δ Γ Ψ Float
+  i2f = lift1 (prim p-i2f) (⊢prim p-i2f)
 
--- A generator's reference is the SigOp; its rendered path IS the key it was
--- looked up under in Σ (D274).
-sigE : (c : Once.Spec.Name.CanonicalName) → IsConcrete A → Once.Internal.Name.WordName c → Declared (Once.Internal.Name.showCanonical c) A → Elab Γ zeroUsage A
-sigE {A = A} c k w (declared h g m) = sigop c A , ⊢sigop c k h g w m
+  coerceE : ∀ {Ψ : Usage n} {A B : Ty m} → A <: B → Elab Δ Γ Ψ A → Elab Δ Γ Ψ B
+  coerceE {A = A} {B = B} p = lift1 (coerce A B) (⊢coerce p)
 
--- A definition's reference is the entry, at its instance.
-importE : ∀ {x} → ImportAt x A → Elab Γ zeroUsage A
-importE (def d i) = refE d i
+  -- An entry of the table, at a kind-respecting instance of its schema.
+  refAt : (d : Fin s) {sc : Schema} → S !! d ≡ sc → (τ : TySub (arity sc) m) → Respects (kinds sc) Δ τ
+        → Elab Δ Γ zeroUsage (type sc ⟨ τ ⟩)
+  refAt d refl τ r = ref d τ , ⊢ref d τ r
 
-closeE : Elab ∅ zeroUsage A → Elab Γ zeroUsage A
-closeE (t , d) = close t , ⊢close d
+  -- An FFI reference is the declaration's `sigop`, at its type.
+  sigE : ∀ {A : Ty m} (c : CanonicalName) {T : Type} → IsConcrete T → Declared (showCanonical c) T → A ≡ wk₀ T
+       → Elab Δ Γ zeroUsage A
+  sigE c {T} k (declared h mem) eq = sigop c (declS T) , retypeD (trans (⌜declS⌝ k h) (sym eq)) (⊢sigop (mem refl))
 
-subE : Ψ ≡ Ψ′ → Elab Γ Ψ A → Elab Γ Ψ′ A
-subE refl e = e
+  -- A monomorphic definition, at its ground type.
+  importE : ∀ {A : Ty m} {x T} → ImportAt x T → A ≡ wk₀ T → Elab Δ Γ zeroUsage A
+  importE (def d mono) eq = retypeE (sym eq) (refAt d mono none (λ ()))
 
+  -- A telescope definition, at a kinded instance of its type.
+  polyE : ∀ {imps sg polys} → View imps sg polys → ∀ {x sc body prefix} {U : Ty m}
+        → (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) → KindedInstance Δ sc U
+        → Elab Δ Γ zeroUsage U
+  polyE V {sc = sc} lp ki with kinded-instance sc ki
+  ... | τ , r , e = retypeE e (refAt (entry V lp) (entryIs V lp) τ r)
 
 ------------------------------------------------------------------------
 -- The elaboration
 ------------------------------------------------------------------------
 
-elabᶜ : ∀ {m} {A : Ty m} {ctx e Ψ} → Views ctx → ctx ⊢ᶜ e ∶ A ⨾ Ψ → Elab (NamedCtx.debruijn ctx) Ψ A
-elabᵢ : ∀ {m} {A : Ty m} {ctx e Ψ} → Views ctx → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Elab (NamedCtx.debruijn ctx) Ψ A
+elabᶜ : ∀ {m} {A : Ty m} {ctx e Ψ} → Views ctx → ctx ⊢ᶜ e ∶ A ⨾ Ψ → Elab (NamedCtx.kinds ctx) (NamedCtx.debruijn ctx) Ψ A
+elabᵢ : ∀ {m} {A : Ty m} {ctx e Ψ} → Views ctx → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Elab (NamedCtx.kinds ctx) (NamedCtx.debruijn ctx) Ψ A
 elabᵈ : ∀ {m} {A B : Ty m} {ctx e π Ψ} → Views ctx → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
-      → Elab (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] B)
+      → Elab (NamedCtx.kinds ctx) (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] B)
 
 elabᶜ V (t-id-check {u = u}) = idᶜ _ _ , ⊢idᶜ u
 elabᶜ V (t-fst-check {u = u}) = fstᶜ _ _ _ , ⊢fstᶜ u
@@ -194,28 +186,28 @@ elabᶜ V (t-compose-check-f wf p dg) = lift2 (composeᶜ _ _) (⊢composeᶜ (�
 elabᶜ V (t-case-copair-check df dg) = lift2 (caseᶜ _ _ _) ⊢caseᶜ (elabᶜ V df) (elabᶜ V dg)
 elabᶜ V (t-pair-morph-check df dg)  = lift2 (pairᶜ _ _) (⊢pairᶜ (·p-diag _)) (elabᶜ V df) (elabᶜ V dg)
 elabᶜ V (t-curry-check {u = u} df)  = lift1 (curryᶜ _ _ _ _) (⊢curryᶜ u) (elabᶜ V df)
-elabᶜ V (t-cata-check {u = u} wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ u wf) (elabᶜ V dalg)
+elabᶜ V (t-cata-check wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ wf) (elabᶜ V dalg)
 elabᶜ V (t-ana-check {u = u} wf dc) = lift1 (anaᶜ _ _ _) (⊢anaᶜ u wf) (elabᶜ V dc)
 elabᶜ V (t-loop-check dc)          = lift1 (loopᶜ _) ⊢loopᶜ (elabᶜ V dc)
 elabᶜ V (t-sub d p)                 = coerceE p (elabᵢ V d)
-elabᶜ V (t-lam {u = u} ≤p d)        = let (b , ⊢b) = elabᶜ V d in lam _ _ _ b , ⊢lam ≤p (⊢sub-eff u ⊢b)
+elabᶜ V (t-lam {q = q} {q' = q'} {u = u} ≤p d) = let (b , ⊢b) = elabᶜ V d in lam _ _ _ b , ⊢lam (≤qᵇ→≤q q' q ≤p) (⊢sub-eff u ⊢b)
 elabᶜ V (t-pair-lit-check da db)    = lift2 pair ⊢pair (elabᶜ V da) (elabᶜ V db)
 elabᶜ V (t-In-app-check wf d)       = appC (⊢inᶜ wf) (elabᶜ V d)
 elabᶜ V (t-apply-check dp)          = appC ⊢applyᶜ (elabᵢ V dp)
 elabᶜ V (t-inl-app-check d)         = appC (⊢inlᶜ ⊑-pure) (elabᶜ V d)
 elabᶜ V (t-inr-app-check d)         = appC (⊢inrᶜ ⊑-pure) (elabᶜ V d)
 elabᶜ V (t-initial-app-check d)     = appC (⊢initialᶜ ⊑-pure) (elabᶜ V d)
-elabᶜ V (t-var-poly-instantiate _ _ lp ng ins) = refE (entry V lp) (inst V lp ng ins)
+elabᶜ V (t-var-poly-instantiate _ _ lp ng ins) = polyE V lp ins
 
 elabᵢ V (t-int n)         = lit (lit-int n) , ⊢lit-int
 elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
-elabᵢ V (t-var-local {eV = Once.Internal.Context.svar i} _) = var i , ⊢var i
-elabᵢ V (t-var-resolved {cn = cn} _ w lk k _) = sigE cn k w (declares V lk)
-elabᵢ V (t-var-own _ lk _)                   = importE (imported V lk)
-elabᵢ V (t-var-import _ _ lk k _)            = importE (imported V lk)
-elabᵢ V (t-var-poly-instantiate-infer {g = g} _ _ lp _ refl) = refE (entry V lp) (ground V lp g)
+elabᵢ V (t-var-local {eV = svar i} _) = var i , ⊢var i
+elabᵢ V (t-var-resolved {cn = cn} _ w lk k eq) = sigE cn k (declares V lk) eq
+elabᵢ V (t-var-own _ lk eq)                  = importE (imported V lk) eq
+elabᵢ V (t-var-import _ _ lk k eq)           = importE (imported V lk) eq
+elabᵢ V (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ eq) = retypeE (sym eq) (polyE V lp (ground-kinded sc g))
 elabᵢ V (t-annot _ d _)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
 elabᵢ V (t-neg d)         = lift1 (prim p-neg) (⊢prim p-neg) (elabᵢ V d)
@@ -287,15 +279,15 @@ elabᵢ V (t-terminal-app d) = appC (⊢terminalᶜ ⊑-pure) (elabᵢ V d)
 elabᵢ V (t-apply-app-infer d)     = appC ⊢applyᶜ (elabᵢ V d)
 elabᵢ V (t-apply-eff-app-infer d) = appC ⊢applyEffᶜ (elabᵢ V d)
 elabᵢ V (t-Out-app-infer wf refl d)     = appC (⊢outᶜ wf) (elabᵢ V d)
-elabᵢ V (t-Out-eff-app-infer wf refl d) = appC (⊢outEffᶜ wf) (elabᵢ V d)
+elabᵢ V (t-Out-eff-app-infer wf refl d) = appC (⊢outActᶜ wf) (elabᵢ V d)
 elabᵢ V (t-app _ df dx)    = lift2 app (⊢app-pure _) (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-effApp {π = π} _ df dx) = lift2 (effAppᶜ π) ⊢effAppᶜ (elabᵢ V df) (elabᶜ V dx)
 elabᵢ V (t-app-spine _ dx df) = lift2 app ⊢app (elabᵈ V df) (elabᵢ V dx)
 
 elabᵈ V (d-infer {B = B} w a g) = coerceE (sub-arr a (<:-refl B) g) (elabᵢ V w)
 elabᵈ V (d-poly {A = A} {B = B} _ _ lp ng _ _ ins g) =
-  coerceE (sub-arr (<:-refl A) (<:-refl B) g) (refE (entry V lp) (inst V lp ng ins))
-elabᵈ V (d-lam {q' = q'} {u = u} d) = let (b , ⊢b) = elabᵢ V d in lam _ _ _ b , ⊢lam (≤q-Many q') (⊢sub-eff u ⊢b)
+  coerceE (sub-arr (<:-refl A) (<:-refl B) g) (polyE V lp ins)
+elabᵈ V (d-lam {q' = q'} {u = u} d) = let (b , ⊢b) = elabᵢ V d in lam _ _ _ b , ⊢lam (≤qᵇ→≤q q' Many (≤q-Many q')) (⊢sub-eff u ⊢b)
 elabᵈ V (d-compose dg df)    = lift2 (composeᶜ _ _) (⊢composeᶜ (·p-diag _)) (elabᵈ V df) (elabᵈ V dg)
 elabᵈ V (d-id {u = u}) = idᶜ _ _ , ⊢idᶜ u
 elabᵈ V (d-fst {u = u}) = fstᶜ _ _ _ , ⊢fstᶜ u
@@ -306,4 +298,4 @@ elabᵈ V (d-case df dg J) =
   lift2 (caseᶜ _ _ _) ⊢caseᶜ (coerceE (sub-arr (<:-refl _) (<:ᶜ⇒<: (left J)) (⊑π-refl _)) (elabᵈ V df))
                              (coerceE (sub-arr (<:-refl _) (<:ᶜ⇒<: (right J)) (⊑π-refl _)) (elabᵈ V dg))
 elabᵈ V (d-pair df dg) = lift2 (pairᶜ _ _) (⊢pairᶜ (·p-diag _)) (elabᵈ V df) (elabᵈ V dg)
-elabᵈ V (d-cata {u = u} wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ u wf) (elabᵢ V dalg)
+elabᵈ V (d-cata wf dalg) = lift1 (cataᶜ _ _) (⊢cataᶜ wf) (elabᵢ V dalg)

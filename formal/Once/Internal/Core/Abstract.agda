@@ -35,6 +35,7 @@ open import Once.Spec.Grade using (mk-kind; Many; fin)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
 open import Once.Internal.Type.Sub using (sub-rigid; sub-prod; sub-sum)
 open import Once.Internal.Context as C using (Ctx; Usage)
+import Once.Spec.Context as SCx
 open import Once.Internal.Core.PolyTy
 open Schema using (type)
 import Once.Internal.Core.Syntax S as G
@@ -73,11 +74,11 @@ SigGround = ∀ (d : Fin s) → ConstFree (type (S !! d))
 
 absCtx : ∀ {m n} (Δ : KCtx m) → Ctx n → PCtx m n
 absCtx Δ C.∅             = ∅
-absCtx Δ (Γ C., A ^ q)   = absCtx Δ Γ , absTy Δ A ^ q
+absCtx Δ (Γ SCx.▸ A)   = absCtx Δ Γ , absTy Δ A ^ q
 
 absCtx-lookup : ∀ {m n} (Δ : KCtx m) (Γ : Ctx n) (i : Fin n) → lookupP (absCtx Δ Γ) i ≡ absTy Δ (C.lookup Γ i)
-absCtx-lookup Δ (Γ C., A ^ q) zero    = refl
-absCtx-lookup Δ (Γ C., A ^ q) (suc i) = absCtx-lookup Δ Γ i
+absCtx-lookup Δ (Γ SCx.▸ A) zero    = refl
+absCtx-lookup Δ (Γ SCx.▸ A) (suc i) = absCtx-lookup Δ Γ i
 
 absTm : ∀ {m n} (Δ : KCtx m) → G.Tm n → PTm m n
 absTm Δ (G.var i)        = var i

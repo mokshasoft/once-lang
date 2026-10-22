@@ -62,7 +62,8 @@ open Once.Internal.Typing.Scope.Binding using (name)
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
 -- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
-open import Once.Internal.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open import Once.Internal.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_)
+open import Once.Spec.Context using (_▸_)
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
@@ -215,10 +216,10 @@ findLocalVarUsage (mkCtx n Γ Δ _ _ _ _) x = go Γ Δ
   where
     go : ∀ {m} → Ctx _ → SCtx _ m → Maybe (Fin m × Quantity)
     go [] S∅ = nothing
-    go [] (_ S, _ ^ _) = nothing
+    go [] (_ ▸ _) = nothing
     go (_ ∷ _) S∅ = nothing
-    go {suc m} (b ∷ Γ') (Δ' S, _ ^ q) with Data.String._≟_ x (name b)
-    ... | yes _ = just (zero , q)
+    go {suc m} (b ∷ Γ') (Δ' ▸ _) with Data.String._≟_ x (name b)
+    ... | yes _ = just (zero , Many)
     ... | no  _ with go Γ' Δ'
     ...   | nothing = nothing
     ...   | just (i , q') = just (suc i , q')

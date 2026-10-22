@@ -58,6 +58,7 @@ import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun; con-base)
 open import Once.Internal.Context as Srf using (Usage; ⟦_⟧ᶜ)
+import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Internal.StreamInf using (anaFᴵ)
@@ -138,7 +139,7 @@ splice-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
   → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ dγ
       ≡ SD.⟦ applySplice {Γ = Srf.∅} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ tt
 splice-ctx-indep polys pAcc imps userFns fresh x polyEq (Elaborate.CheckElabResult.failure _ , _) dγ = refl
-splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (Elaborate.CheckElabResult.success Srf.[] eE _ _ , _) dγ = refl
+splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (Elaborate.CheckElabResult.success SCx.[] eE _ _ , _) dγ = refl
 
 poly-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → TopCtx) (userFns : Imports)

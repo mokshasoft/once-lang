@@ -38,7 +38,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; fin; eff)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; []; _∷_; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Internal.Context using (Ctx; ∅; Usage; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-usage; thin-var-lookup; thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse)
 open import Once.Internal.Core.Rename S using (ren-⊢; ren-cong; keep-extR)
 open import Once.Internal.Graded using (⟦_⟧ᵛ; M; bindM; subM; bindᵍ)
@@ -379,8 +380,8 @@ thin-refl {Γ = Γ , X ^ r} (Many ∷ Ψ) e (y , a) =
 
 -- `wk-⊢′`'s usage transport sits under `Zero ∷_`.
 ⟦⟧-substΨ0 : ∀ {m} {n} {Γ : Ctx m n} {B : Ty m} {Ψ Ψ' : Usage n} {A : Ty m} {t π} (e : Ψ ≡ Ψ')
-               (d : (Γ , B ^ Many) ⊢[ Zero ∷ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ')
-           → GM.⟦ subst (λ U → (Γ , B ^ Many) ⊢[ Zero ∷ U ] t ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (subst (Env Γ) (sym e) x)
+               (d : (Γ ▸ B) ⊢[ Zero ∷ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ')
+           → GM.⟦ subst (λ U → (Γ ▸ B) ⊢[ Zero ∷ U ] t ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (subst (Env Γ) (sym e) x)
 ⟦⟧-substΨ0 refl d fmt δ x = refl
 
 -- THE WEAKENING LEMMA: a term weakened by one unused variable means what it meant.

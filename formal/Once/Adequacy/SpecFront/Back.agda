@@ -161,13 +161,13 @@ bdom-at refl b = b
 
 private
   at-name : ∀ {n} b {Γn} {Γd : LC.Ctx n} {B q} (d : Dec (name b ≡ name b))
-          → lookupLocal-at (name b) b Γn Γd {B = B} {q = q} d ≡ just (LC.lookup (Γd LC., B ^ q) zero , LC.singleUse zero LG.One , svar zero)
+          → lookupLocal-at (name b) b Γn Γd {B = B} {q = q} d ≡ just (LC.lookup (Γd SCx.▸ B) zero , LC.singleUse zero LG.One , svar zero)
   at-name b (yes _) = refl
   at-name b (no ¬e) = ⊥-elim (¬e refl)
 
   at-other : ∀ {n x} b {Γn} {Γd : LC.Ctx n} {B q} {i} → ¬ (x ≡ name b) → (d : Dec (x ≡ name b))
            → lookupLocal-go x Γn Γd ≡ just (LC.lookup Γd i , LC.singleUse i LG.One , svar i)
-           → lookupLocal-at x b Γn Γd {B = B} {q = q} d ≡ just (LC.lookup (Γd LC., B ^ q) (suc i) , LC.singleUse (suc i) LG.One , svar (suc i))
+           → lookupLocal-at x b Γn Γd {B = B} {q = q} d ≡ just (LC.lookup (Γd SCx.▸ B) (suc i) , LC.singleUse (suc i) LG.One , svar (suc i))
   at-other b ne (yes e) _  = ⊥-elim (ne e)
   at-other b ne (no _)  eq = cong LTS.lookupLocal-next eq
 
@@ -187,9 +187,9 @@ lk-none : ∀ {n x} Γn {Γd : LC.Ctx n} → ¬ (x ∈ names Γn) → lookupLoca
 lk-none-at : ∀ {n x} b Γn {Γd : LC.Ctx n} {B q} → ¬ (x ∈ names (b ∷ Γn)) → (d : Dec (x ≡ name b))
            → lookupLocal-at x b Γn Γd {B = B} {q = q} d ≡ nothing
 lk-none []       {LC.∅}         _ = refl
-lk-none []       {Γd LC., _ ^ _} _ = refl
+lk-none []       {Γd SCx.▸ _} _ = refl
 lk-none (b ∷ Γn) {LC.∅}         _ = refl
-lk-none {x = x} (b ∷ Γn) {Γd LC., B ^ q} ∉ = lk-none-at b Γn ∉ (x Data.String.≟ name b)
+lk-none {x = x} (b ∷ Γn) {Γd SCx.▸ B} ∉ = lk-none-at b Γn ∉ (x Data.String.≟ name b)
 lk-none-at b Γn ∉ (yes e) = ⊥-elim (∉ (Data.List.Relation.Unary.Any.here e))
 lk-none-at b Γn {Γd} ∉ (no _) = cong LTS.lookupLocal-next (lk-none Γn (λ m → ∉ (Data.List.Relation.Unary.Any.there m)))
 
@@ -288,8 +288,8 @@ private
   ⊔q-least LG.Many q    a _ = a
 
   ⊔-use : ∀ {n} (Ψl Ψr : LC.Usage n) {Φ : SCx.Usage n} → uS Ψl SCx.⊑ᵘ Φ → uS Ψr SCx.⊑ᵘ Φ → uS (Ψl LC.⊔ᵘ Ψr) SCx.⊑ᵘ Φ
-  ⊔-use LC.[]      LC.[]      SCx.[]       SCx.[]       = SCx.[]
-  ⊔-use (p LC.∷ Ψl) (q LC.∷ Ψr) (a SCx.⊑∷ as) (b SCx.⊑∷ bs) = ⊔q-least p q a b SCx.⊑∷ ⊔-use Ψl Ψr as bs
+  ⊔-use SCx.[]      SCx.[]      SCx.[]       SCx.[]       = SCx.[]
+  ⊔-use (p SCx.∷ Ψl) (q SCx.∷ Ψr) (a SCx.⊑∷ as) (b SCx.⊑∷ bs) = ⊔q-least p q a b SCx.⊑∷ ⊔-use Ψl Ψr as bs
 
   -- an arrow's parts, from an equation of arrows
   arr-inj : ∀ {A B A′ B′ : ST.Ty m} {q q′ π π′}
@@ -395,7 +395,7 @@ private
             → (s₁ : BSyn Γn Γd e₁ A′ Φ₁)
             → BSyn (LTS.mkBinding x (BSyn.A s₁) LG.Many ∷ Γn) (Γd LC., BSyn.A s₁ ^ LG.Many) e₂ B′ (q SCx.∷ Φ₂)
             → BSyn Γn Γd (Once.Internal.Syntax.RLet x e₁ e₂) B′ Φ
-    let-syn u (bsyn r₁ {Ψ₁} d₁ u₁) (bsyn r₂ {q₀ LC.∷ Ψ₂} d₂ u₂) =
+    let-syn u (bsyn r₁ {Ψ₁} d₁ u₁) (bsyn r₂ {q₀ SCx.∷ Ψ₂} d₂ u₂) =
       bsyn r₂ (t-let d₁ d₂) (⊑ᵘ-trans (app-use Ψ₂ Ψ₁ q₀ (⊑-tail u₂) u₁ (⊑-head u₂)) u)
 
     -- the binary operators
@@ -670,7 +670,7 @@ private
             → C (suc n) (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd LC., A₁ ^ LG.Many) ⊢ᶜ body ∶ A₂ ⨾ Ψ₀
             → uS Ψ₀ SCx.⊑ᵘ (q′ SCx.∷ Ψ) → q′ SG.≤q q → Ψ SCx.⊑ᵘ Φ
             → BChk Γn Γd (Once.Internal.Syntax.RLam x body) (A₁ LT.⇒[ k ] A₂) Φ
-    lam-chk k ek {q₀ LC.∷ Ψ₀} der u le w =
+    lam-chk k ek {q₀ SCx.∷ Ψ₀} der u le w =
       bchk (t-lam {u = pure-⊑ _}
                   (≤q-L q₀ (LG.ArrowKind.quantity k)
                         (subst (λ z → qS q₀ SG.≤q z) (sym (cong SG.ArrowKind.quantity ek)) (≤q-trans (⊑-head u) le)))
@@ -681,7 +681,7 @@ private
     lam-dom : ∀ {x body A₁ B′ π} {q′ : SG.Quantity} {Ψ Φ : SCx.Usage n}
             → BSyn (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd LC., A₁ ^ LG.Many) body B′ (q′ SCx.∷ Ψ) → Ψ SCx.⊑ᵘ Φ
             → BDom Γn Γd (Once.Internal.Syntax.RLam x body) A₁ π B′ Φ
-    lam-dom (bsyn rb {q₀ LC.∷ Ψ₀} der u) w = bdom rb (d-lam {u = pure-⊑ _} der) (⊑ᵘ-trans (⊑-tail u) w)
+    lam-dom (bsyn rb {q₀ SCx.∷ Ψ₀} der u) w = bdom rb (d-lam {u = pure-⊑ _} der) (⊑ᵘ-trans (⊑-tail u) w)
 
     -- `apply p` checked: `p`'s pair, its domain one type
     apply-chk : ∀ {e As Bs Bc Φ₁ Φ₂ Φ q} → BSyn Γn Γd e ((As SU.⇒⟨ SG.pure ⟩ Bs) ST.* As) Φ₂ → TyR Δ Bc Bs
@@ -751,7 +751,7 @@ mutual
         where
           branches : ∀ {Φl Φr} → BSyn _ _ _ Cl₀ Φl → BSyn _ _ _ Cr₀ Φr
                    → Φl SCx.⊑ᵘ (ql SCx.∷ ICase.Ψ r) → Φr SCx.⊑ᵘ (qr SCx.∷ ICase.Ψ r) → BSyn Γn Γd _ _ _
-          branches (bsyn rl {qL₀ LC.∷ Ψl} dL uL) (bsyn rr {qR₀ LC.∷ Ψr} dR uR) wl wr =
+          branches (bsyn rl {qL₀ SCx.∷ Ψl} dL uL) (bsyn rr {qR₀ SCx.∷ Ψr} dR uR) wl wr =
             let (C₀ , rc , J₀) = join-L J rl rr
             in bsyn rc (t-case dS dL dR J₀)
                  (⊑ᵘ-trans (sum-use Ψs (Ψl LC.⊔ᵘ Ψr) uS₀ (⊔-use Ψl Ψr (⊑-tail (⊑ᵘ-trans uL wl)) (⊑-tail (⊑ᵘ-trans uR wr))))

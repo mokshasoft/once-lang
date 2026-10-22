@@ -46,7 +46,8 @@ open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Laws.SubLaws using (<:-trans; <:-unique)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
-open import Once.Internal.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; _∷_; _,_^_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Internal.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
@@ -227,7 +228,7 @@ module _ {m n} {Γ : Ctx m n} where
       relS-ret (λ ra → RelS-iter∞ {RB = RelD B} {S = RelD (B + A)} {f = c} {f′ = c′}
                                   (λ rb → rb) rc (λ ()) (λ ()) ra)
 
-  let-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr (_,_^_ Γ A Many) (q ∷ Ψ₂) B}
+  let-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {e₁ e₁′ : Expr Γ Ψ₁ A} {e₂ e₂′ : Expr ((Γ ▸ A)) (q ∷ Ψ₂) B}
            → e₁ ≈ˢ e₁′ → e₂ ≈ˢ e₂′ → let' e₁ e₂ ≈ˢ let' e₁′ e₂′
   let-congˢ {q = Zero} _ e₂ σ rσ r = e₂ σ rσ (restrict-rel {Γ = Γ} _ r)
   let-congˢ {q = One} e₁ e₂ σ rσ r =
@@ -236,7 +237,7 @@ module _ {m n} {Γ : Ctx m n} where
     RelS-bind (e₁ σ rσ (restrict-rel {Γ = Γ} _ r)) λ rv → e₂ σ rσ (restrict-rel {Γ = Γ} _ r , rv)
 
   case-congˢ : ∀ {Ψs Ψₗ Ψᵣ qℓ qr A B C} {s s′ : Expr Γ Ψs (A + B)}
-                {l l′ : Expr (_,_^_ Γ A Many) (qℓ ∷ Ψₗ) C} {r r′ : Expr (_,_^_ Γ B Many) (qr ∷ Ψᵣ) C}
+                {l l′ : Expr ((Γ ▸ A)) (qℓ ∷ Ψₗ) C} {r r′ : Expr ((Γ ▸ B)) (qr ∷ Ψᵣ) C}
             → s ≈ˢ s′ → l ≈ˢ l′ → r ≈ˢ r′ → case' s l r ≈ˢ case' s′ l′ r′
   case-congˢ {qℓ = qℓ} {qr} es el er σ rσ re =
     RelS-bind (es σ rσ (restrict-rel {Γ = Γ} _ re))
@@ -245,7 +246,7 @@ module _ {m n} {Γ : Ctx m n} where
         ; {inj₁ _} {inj₂ _} ()
         ; {inj₂ _} {inj₁ _} () }
 
-  lam-congˢ : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤qᵇ q) ≡ true) {b b′ : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B}
+  lam-congˢ : ∀ {Ψ q' π A B} (q : Quantity) (≤p : (q' ≤qᵇ q) ≡ true) {b b′ : Expr ((Γ ▸ A)) (q' ∷ Ψ) B}
            → b ≈ˢ b′ → lam {π = π} q ≤p b ≈ˢ lam q ≤p b′
   lam-congˢ {q' = Zero} Zero ≤p eb σ rσ r = relS-ret (eb σ rσ r)
   lam-congˢ {q' = Zero} One  ≤p eb σ rσ r = relS-ret (λ _ → eb σ rσ r)
@@ -312,7 +313,7 @@ module _ {m n} {Γ : Ctx m n} where
           RelS-assocʳ (rh (<:-refl-relʳ A ra)) λ rb → retargetʳ refl (RelS-fmap (rf (<:-refl-relʳ B′ (<:-rel q rb))) (<:-rel c)))))
 
   -- Converting a lambda's body is converting the lambda.
-  lam-coerceˢ : ∀ {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
+  lam-coerceˢ : ∀ {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr ((Γ ▸ A)) (q' ∷ Ψ) B)
              → lam {π = π} Many ≤p (coerce p b) ≈ˢ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
   lam-coerceˢ {q' = Zero} ≤p p b σ rσ r = retargetʳ refl (relS-ret (λ _ → RelS-fmap (SD-rel rσ b r) (<:-rel p)))
   lam-coerceˢ {A = A} {q' = One} ≤p p b σ rσ r =

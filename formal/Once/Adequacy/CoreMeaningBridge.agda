@@ -96,7 +96,8 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
 -- The derived combinators' meanings (one lemma per combinator)
 ------------------------------------------------------------------------
 
-open import Once.Internal.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_; _⊑∷_; _∷_; _,_^_)
+open import Once.Internal.Context using (Ctx; Usage; _+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; zeroUsage; _⊑ᵘ_)
+open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Spec.Grade using (Quantity; Zero; One)
 open import Once.Spec.Type using (_*_)
 open import Once.Internal.Type using (Functor; ⟦_⟧T)
@@ -130,7 +131,7 @@ env-subst {Γ = Γ} refl u u' x = EA.restrict-irr {Γ = Γ} u u' x
 drop-bind : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ' Ψm U U' : Usage n} {q : Quantity}
               (W3 : (Zero ∷ Ψ') ⊑ᵘ (q ∷ Ψm)) (W2 : Ψm ⊑ᵘ U) (e : U ≡ U') (w : Ψ' ⊑ᵘ U')
               (x : RS.Env Γ U') (a : ⟦ A ⟧ᵛ)
-          → restrictᵛ {Γ = Γ , A ^ Many} W3 (bindᵛ {Γ = Γ} {A = A} q (restrictᵛ {Γ = Γ} W2 (subst (RS.Env Γ) (sym e) x)) a)
+          → restrictᵛ {Γ = Γ ▸ A} W3 (bindᵛ {Γ = Γ} {A = A} q (restrictᵛ {Γ = Γ} W2 (subst (RS.Env Γ) (sym e) x)) a)
             ≡ restrictᵛ {Γ = Γ} w x
 drop-bind {Γ = Γ} {q = q} (c ⊑∷ u) W2 refl w x a =
   trans (EA.restrict-bind {Γ = Γ} Zero q (c ⊑∷ u) u (restrictᵛ {Γ = Γ} W2 x) a)
@@ -279,8 +280,8 @@ module Comb {δ : GM.DefSem} where
 
   -- The transport under a binder used once.
   substΨ1 : ∀ {m} {n} {Γ : Ctx m n} {X : Ty m} {U U' : Usage n} {B : Ty m} {t π} (e : U ≡ U')
-    (d : (Γ , X ^ Many) ⊢[ One ∷ U ] t ∷ B ! π) (x : RS.Env Γ U') (a : ⟦ X ⟧ᵛ)
-    → GM.⟦ subst (λ V → (Γ , X ^ Many) ⊢[ One ∷ V ] t ∷ B ! π) e d ⟧ fmt δ (x , a)
+    (d : (Γ ▸ X) ⊢[ One ∷ U ] t ∷ B ! π) (x : RS.Env Γ U') (a : ⟦ X ⟧ᵛ)
+    → GM.⟦ subst (λ V → (Γ ▸ X) ⊢[ One ∷ V ] t ∷ B ! π) e d ⟧ fmt δ (x , a)
       ≡ GM.⟦ d ⟧ fmt δ (subst (RS.Env Γ) (sym e) x , a)
   substΨ1 refl d x a = refl
 

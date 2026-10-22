@@ -69,8 +69,8 @@ qr LG.One  = qr-one
 qr LG.Many = qr-many
 
 data UR : ∀ {n} → LC.Usage n → SCx.Usage n → Set where
-  ur-[] : UR LC.[] SCx.[]
-  ur-∷  : ∀ {n q q′} {Ψ : LC.Usage n} {Φ} → QR q q′ → UR Ψ Φ → UR (q LC.∷ Ψ) (q′ SCx.∷ Φ)
+  ur-[] : UR SCx.[] SCx.[]
+  ur-∷  : ∀ {n q q′} {Ψ : LC.Usage n} {Φ} → QR q q′ → UR Ψ Φ → UR (q SCx.∷ Ψ) (q′ SCx.∷ Φ)
 
 ------------------------------------------------------------------------
 -- Open types and contexts
@@ -171,8 +171,8 @@ open import Once.Adequacy.SpecCore.Context using (uS)
 open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS)
 
 ur : ∀ {n} (Ψ : LC.Usage n) → UR Ψ (uS Ψ)
-ur LC.[]      = ur-[]
-ur (q LC.∷ Ψ) = ur-∷ (qr q) (ur Ψ)
+ur SCx.[]      = ur-[]
+ur (q SCx.∷ Ψ) = ur-∷ (qr q) (ur Ψ)
 
 mutual
   ptr : ∀ {m} (A : LP.Ty m) → PTR A (ptyS A)

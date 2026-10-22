@@ -27,6 +27,7 @@
 -- itself (`ρ-self`).
 ------------------------------------------------------------------------
 
+import Once.Spec.Context
 open import Once.Spec.Type using (Ty; Fun)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -56,7 +57,9 @@ open import Once.Internal.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.IRTy using (⌊wk₀⌋)
 open import Once.Surface.Elaborate using (sigOpIR)
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit)
-open import Once.Internal.Context using (Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; _∷_)
+open import Once.Internal.Context using (Ctx; Usage; lookup; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
+import Once.Spec.Context as SCx
+open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Internal.Context using () renaming (_,_ to _,ᶜ_)
 import Once.Internal.Context as SrfS
@@ -131,20 +134,20 @@ sigOp-rel si r with base-eq (baseA si) r
 now-restrict : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ) (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
              → Now (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} (restrictEnv {Γ = Γ} IR.Heap ule) dγ) (restrictᴰ {Γ = Γ} ule dγ)
 now-restrict {Γ = Γ@∅}       ⊑[]          dγ = now-id {A = ⟦ Γ ⟧ᶜ} dγ
-now-restrict {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) dγ = now-restrict {Γ = Γ} ule dγ
-now-restrict {Γ = Γ , A ^ q} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (z≤o ⊑∷ ule) dγ =
+now-restrict {Γ = Γ ▸ A} (z≤z ⊑∷ ule) dγ = now-restrict {Γ = Γ} ule dγ
+now-restrict {Γ = Γ ▸ A} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (z≤o ⊑∷ ule) dγ =
   now-∘ {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {restrictEnv {Γ = Γ} IR.Heap ule} {fst} (now-fst {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ) (now-restrict {Γ = Γ} ule (proj₁ dγ))
-now-restrict {Γ = Γ , A ^ q} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (z≤m ⊑∷ ule) dγ =
+now-restrict {Γ = Γ ▸ A} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (z≤m ⊑∷ ule) dγ =
   now-∘ {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {restrictEnv {Γ = Γ} IR.Heap ule} {fst} (now-fst {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ) (now-restrict {Γ = Γ} ule (proj₁ dγ))
-now-restrict {Γ = Γ , A ^ q} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (o≤o ⊑∷ ule) dγ =
+now-restrict {Γ = Γ ▸ A} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (o≤o ⊑∷ ule) dγ =
   now-pair {_} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {⟦ Γ ↾ Ψ' ⟧ᶜ} {A} {restrictEnv {Γ = Γ} IR.Heap ule ∘ fst} {snd}
     (now-∘ {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {restrictEnv {Γ = Γ} IR.Heap ule} {fst} (now-fst {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ) (now-restrict {Γ = Γ} ule (proj₁ dγ)))
     (now-snd {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ)
-now-restrict {Γ = Γ , A ^ q} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (o≤m ⊑∷ ule) dγ =
+now-restrict {Γ = Γ ▸ A} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (o≤m ⊑∷ ule) dγ =
   now-pair {_} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {⟦ Γ ↾ Ψ' ⟧ᶜ} {A} {restrictEnv {Γ = Γ} IR.Heap ule ∘ fst} {snd}
     (now-∘ {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {restrictEnv {Γ = Γ} IR.Heap ule} {fst} (now-fst {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ) (now-restrict {Γ = Γ} ule (proj₁ dγ)))
     (now-snd {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ)
-now-restrict {Γ = Γ , A ^ q} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (m≤m ⊑∷ ule) dγ =
+now-restrict {Γ = Γ ▸ A} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (m≤m ⊑∷ ule) dγ =
   now-pair {_} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {⟦ Γ ↾ Ψ' ⟧ᶜ} {A} {restrictEnv {Γ = Γ} IR.Heap ule ∘ fst} {snd}
     (now-∘ {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {restrictEnv {Γ = Γ} IR.Heap ule} {fst} (now-fst {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ) (now-restrict {Γ = Γ} ule (proj₁ dγ)))
     (now-snd {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ)
@@ -174,19 +177,19 @@ now-branch {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule q d a =
 proj-lookup : ∀ {m} {n} {Γ : Ctx m n} (i : Fin n) (dγ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⟧ᴰ)
             → liftFn fmt ρ {⟦ Γ ↾ singleUse i One ⟧ᶜ} {lookup Γ i} (projUsed {Γ = Γ} i) dγ
               ≡ return∞ (lookupᴰUsed Γ i dγ)
-proj-lookup {Γ = Γ , A ^ q} zero    dγ =
+proj-lookup {Γ = Γ ▸ A} zero    dγ =
   trans (cong (λ w → subst T∞ (cohᴰ A) (return∞ w)) (proj₂-subst (cohᴰ ⟦ Γ ↾ zeroUsage ⟧ᶜ) (cohᴰ A) dγ))
         (trans (subst-T-return∞ (cohᴰ A) (subst id (sym (cohᴰ A)) (proj₂ dγ)))
                (cong return∞ (subst-subst-sym (cohᴰ A))))
-proj-lookup {Γ = Γ , A ^ q} (suc i) dγ = proj-lookup {Γ = Γ} i dγ
+proj-lookup {Γ = Γ ▸ A} (suc i) dγ = proj-lookup {Γ = Γ} i dγ
 
 -- Narrowing along a witness whose two usages are the SAME is the identity...
 restrictᴰ-id : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} (ule : Ψ ⊑ᵘ Ψ)
                (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ) → restrictᴰ {Γ = Γ} ule dγ ≡ dγ
 restrictᴰ-id {Γ = ∅}         ⊑[]          dγ = refl
-restrictᴰ-id {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) dγ = restrictᴰ-id {Γ = Γ} ule dγ
-restrictᴰ-id {Γ = Γ , A ^ q} (o≤o ⊑∷ ule) dγ = cong (_, proj₂ dγ) (restrictᴰ-id {Γ = Γ} ule (proj₁ dγ))
-restrictᴰ-id {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) dγ = cong (_, proj₂ dγ) (restrictᴰ-id {Γ = Γ} ule (proj₁ dγ))
+restrictᴰ-id {Γ = Γ ▸ A} (z≤z ⊑∷ ule) dγ = restrictᴰ-id {Γ = Γ} ule dγ
+restrictᴰ-id {Γ = Γ ▸ A} (o≤o ⊑∷ ule) dγ = cong (_, proj₂ dγ) (restrictᴰ-id {Γ = Γ} ule (proj₁ dγ))
+restrictᴰ-id {Γ = Γ ▸ A} (m≤m ⊑∷ ule) dγ = cong (_, proj₂ dγ) (restrictᴰ-id {Γ = Γ} ule (proj₁ dγ))
 
 -- ...hence narrowing along a PROPOSITIONALLY equal usage IS the transport.
 restrictᴰ-subst : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ) (eq : Ψ ≡ Ψ') (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
@@ -766,4 +769,4 @@ mutual
 ------------------------------------------------------------------------
 faithful∅ : ∀ {Ψ : Usage 0} {A : Type} (e : Expr ∅ Ψ A)
           → RelS (RelD A) (liftFn fmt ρ {⟦ ∅ ⟧ᶜ} {A} (elaborateFull IR.Heap e) tt) (SD.⟦ e ⟧ˢ fmt σ₀ (env0 {Ψ = Ψ} tt))
-faithful∅ {SrfS.[]} {A} e = retargetˡ (force-∘ {_} {⟦ ∅ {0} ⟧ᶜ} {A} {⟦ ∅ {0} ⟧ᶜ} {elaborate IR.Heap e} {IR.id} (now-id {A = ⟦ ∅ {0} ⟧ᶜ} tt)) (faithful e {tt} {tt} tt)
+faithful∅ {SCx.[]} {A} e = retargetˡ (force-∘ {_} {⟦ Once.Spec.Context.∅ {0} ⟧ᶜ} {A} {⟦ Once.Spec.Context.∅ {0} ⟧ᶜ} {elaborate IR.Heap e} {IR.id} (now-id {A = ⟦ Once.Spec.Context.∅ {0} ⟧ᶜ} tt)) (faithful e {tt} {tt} tt)

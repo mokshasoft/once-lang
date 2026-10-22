@@ -23,6 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Internal.Context as LC
+import Once.Spec.Context as SCx
 import Once.Spec.Context as SC
 import Once.Spec.Type as ST
 open import Once.Adequacy.SpecGrammar.Conv using (qS)
@@ -86,8 +87,8 @@ open import Once.Adequacy.SpecCore.Type using (TyR; qS-injective)
 ≤q′-L LG.Many LG.One  ()
 
 uS : ∀ {n} → LC.Usage n → SC.Usage n
-uS LC.[]      = SC.[]
-uS (q LC.∷ Ψ) = qS q SC.∷ uS Ψ
+uS SCx.[]      = SC.[]
+uS (q SCx.∷ Ψ) = qS q SC.∷ uS Ψ
 
 uS-zero : ∀ {n} → uS (LC.zeroUsage {n}) ≡ SC.zeroUsage
 uS-zero {ℕ.zero}  = refl
@@ -98,30 +99,30 @@ uS-single {ℕ.suc n} zero    q = cong (qS q SC.∷_) uS-zero
 uS-single {ℕ.suc n} (suc i) q = cong (SG.Zero SC.∷_) (uS-single i q)
 
 uS-+ : ∀ {n} (Ψ Φ : LC.Usage n) → uS (Ψ LC.+ᵘ Φ) ≡ uS Ψ SC.+ᵘ uS Φ
-uS-+ LC.[]      LC.[]      = refl
-uS-+ (p LC.∷ Ψ) (q LC.∷ Φ) = cong₂ SC._∷_ (+q-S p q) (uS-+ Ψ Φ)
+uS-+ SCx.[]      SCx.[]      = refl
+uS-+ (p SCx.∷ Ψ) (q SCx.∷ Φ) = cong₂ SC._∷_ (+q-S p q) (uS-+ Ψ Φ)
 
 uS-* : ∀ {n} q (Ψ : LC.Usage n) → uS (q LC.*ᵘ Ψ) ≡ qS q SC.*ᵘ uS Ψ
-uS-* q LC.[]      = refl
-uS-* q (p LC.∷ Ψ) = cong₂ SC._∷_ (*q-S q p) (uS-* q Ψ)
+uS-* q SCx.[]      = refl
+uS-* q (p SCx.∷ Ψ) = cong₂ SC._∷_ (*q-S q p) (uS-* q Ψ)
 
 ⊑ᵘ-S : ∀ {n} {Ψ Φ : LC.Usage n} → Ψ LC.⊑ᵘ Φ → uS Ψ SC.⊑ᵘ uS Φ
 ⊑ᵘ-S LC.⊑[]      = SC.[]
 ⊑ᵘ-S (p LC.⊑∷ s) = ≤q′-S p SC.⊑∷ ⊑ᵘ-S s
 
 ⊑ᵘ-L : ∀ {n} (Ψ Φ : LC.Usage n) → uS Ψ SC.⊑ᵘ uS Φ → Ψ LC.⊑ᵘ Φ
-⊑ᵘ-L LC.[]      LC.[]      SC.[]       = LC.⊑[]
-⊑ᵘ-L (p LC.∷ Ψ) (q LC.∷ Φ) (r SC.⊑∷ s) = ≤q′-L p q r LC.⊑∷ ⊑ᵘ-L Ψ Φ s
+⊑ᵘ-L SCx.[]      SCx.[]      SC.[]       = LC.⊑[]
+⊑ᵘ-L (p SCx.∷ Ψ) (q SCx.∷ Φ) (r SC.⊑∷ s) = ≤q′-L p q r LC.⊑∷ ⊑ᵘ-L Ψ Φ s
 
 uS-injective : ∀ {n} {Ψ Φ : LC.Usage n} → uS Ψ ≡ uS Φ → Ψ ≡ Φ
-uS-injective {Ψ = LC.[]}      {LC.[]}      _ = refl
-uS-injective {Ψ = p LC.∷ Ψ} {q LC.∷ Φ} e = cons (qS-injective (cong head e)) (uS-injective (cong tail e))
+uS-injective {Ψ = SCx.[]}      {SCx.[]}      _ = refl
+uS-injective {Ψ = p SCx.∷ Ψ} {q SCx.∷ Φ} e = cons (qS-injective (cong head e)) (uS-injective (cong tail e))
   where
     head : ∀ {n} → SC.Usage (ℕ.suc n) → SG.Quantity
     head (x SC.∷ _) = x
     tail : ∀ {n} → SC.Usage (ℕ.suc n) → SC.Usage n
     tail (_ SC.∷ xs) = xs
-    cons : p ≡ q → Ψ ≡ Φ → (p LC.∷ Ψ) ≡ (q LC.∷ Φ)
+    cons : p ≡ q → Ψ ≡ Φ → (p SCx.∷ Ψ) ≡ (q SCx.∷ Φ)
     cons refl refl = refl
 
 ------------------------------------------------------------------------
@@ -130,7 +131,7 @@ uS-injective {Ψ = p LC.∷ Ψ} {q LC.∷ Φ} e = cons (qS-injective (cong head 
 
 data CtxR {m} (Δ : ST.KCtx m) : ∀ {n} → LC.Ctx n → SC.Ctx m n → Set where
   r-∅ : CtxR Δ LC.∅ SC.∅
-  r-▸ : ∀ {n} {Γ : LC.Ctx n} {Γ′ A A′ q} → CtxR Δ Γ Γ′ → TyR Δ A A′ → CtxR Δ (Γ LC., A ^ q) (Γ′ SC.▸ A′)
+  r-▸ : ∀ {n} {Γ : LC.Ctx n} {Γ′ A A′ q} → CtxR Δ Γ Γ′ → TyR Δ A A′ → CtxR Δ (Γ SCx.▸ A) (Γ′ SC.▸ A′)
 
 lookup-R : ∀ {m} {Δ : ST.KCtx m} {n} {Γ : LC.Ctx n} {Γ′} → CtxR Δ Γ Γ′ → ∀ i → TyR Δ (LC.lookup Γ i) (SC.lookup Γ′ i)
 lookup-R (r-▸ g a) zero    = a

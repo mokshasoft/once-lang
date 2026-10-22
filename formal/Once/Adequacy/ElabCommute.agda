@@ -55,6 +55,7 @@ open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)
 import Once.Internal.Context as C
+import Once.Spec.Context as SCx
 open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Internal.Typing.Scope using (mkCtx)
 open import Once.Internal.Typing
@@ -141,7 +142,7 @@ private
   -- Binding or passing a pure part (plan 0.116) preserves `≅`.
   ≅let-pure : ∀ {m} {n} {Γ : C.Ctx m n} {A B : Ty m} {q π Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ e₁ e₂ b₁ b₂}
                 {de₁ : Γ ⊢[ Ψ₁ ] e₁ ∷ A ! pure} {de₂ : Γ ⊢[ Ψ₁′ ] e₂ ∷ A ! pure}
-                {db₁ : (Γ C., A) ⊢[ q C.∷ Ψ₂ ] b₁ ∷ B ! π} {db₂ : (Γ C., A) ⊢[ q C.∷ Ψ₂′ ] b₂ ∷ B ! π}
+                {db₁ : (Γ C., A) ⊢[ q SCx.∷ Ψ₂ ] b₁ ∷ B ! π} {db₂ : (Γ C., A) ⊢[ q SCx.∷ Ψ₂′ ] b₂ ∷ B ! π}
             → Ψ₁ ≡ Ψ₁′ → e₁ ≡ e₂ → de₁ ≅ de₂ → Ψ₂ ≡ Ψ₂′ → b₁ ≡ b₂ → db₁ ≅ db₂
             → GT.⊢let-pure q de₁ db₁ ≅ GT.⊢let-pure q de₂ db₂
   ≅let-pure refl refl H.refl refl refl H.refl = H.refl

@@ -22,6 +22,7 @@ open import Once.IR
 open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; ⌊⟧T-commute; ⌊wk₀⌋)
 open import Once.IR.Ref using (refIR)
 open import Once.Internal.Context
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 open import Once.Surface.CoerceIR using (runCoe)
@@ -156,8 +157,8 @@ neIR = SigOp ne-info
 -- index n+1 projects from Γ (using fst then recursing).
 --
 proj : ∀ {m} {n} {Γ : Ctx m n} (i : Fin n) → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
-proj {Γ = Γ , A ^ q} Fin.zero    = snd
-proj {Γ = Γ , A ^ q} (Fin.suc i) = proj {Γ = Γ} i ∘ fst
+proj {Γ = Γ ▸ A} Fin.zero    = snd
+proj {Γ = Γ ▸ A} (Fin.suc i) = proj {Γ = Γ} i ∘ fst
 
 -- | THE ENVIRONMENT-PRECISION PROJECTION (plan 0.86 step B, D142).
 --
@@ -172,14 +173,14 @@ restrictEnv : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ Ψ' : Usage n} (m : AllocMode
             → Ψ' ⊑ᵘ Ψ → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ' ⟧ᶜ ⌋
 restrictEnv {Γ = ∅}         m ⊑[]                    = id
 -- dropped on both sides — the variable is in neither environment
-restrictEnv {Γ = Γ , A ^ q} m (z≤z ⊑∷ ule) = restrictEnv {Γ = Γ} m ule
+restrictEnv {Γ = Γ ▸ A} m (z≤z ⊑∷ ule) = restrictEnv {Γ = Γ} m ule
 -- live in Ψ, dead in Ψ' — this is the narrowing that reclaims it
-restrictEnv {Γ = Γ , A ^ q} m (z≤o ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
-restrictEnv {Γ = Γ , A ^ q} m (z≤m ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
+restrictEnv {Γ = Γ ▸ A} m (z≤o ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
+restrictEnv {Γ = Γ ▸ A} m (z≤m ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
 -- live in both — keep it, narrow the rest
-restrictEnv {Γ = Γ , A ^ q} m (o≤o ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
-restrictEnv {Γ = Γ , A ^ q} m (o≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
-restrictEnv {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
+restrictEnv {Γ = Γ ▸ A} m (o≤o ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
+restrictEnv {Γ = Γ ▸ A} m (o≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
+restrictEnv {Γ = Γ ▸ A} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
 
 -- | Project the ONE variable a `var` term uses out of its environment.
 --
@@ -197,8 +198,8 @@ restrictEnv {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m
 -- de Bruijn index.
 projUsed : ∀ {m} {n} {Γ : Ctx m n} (i : Fin n)
          → IR ⌊ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
-projUsed {Γ = Γ , A ^ q} Fin.zero    = snd
-projUsed {Γ = Γ , A ^ q} (Fin.suc i) = projUsed {Γ = Γ} i
+projUsed {Γ = Γ ▸ A} Fin.zero    = snd
+projUsed {Γ = Γ ▸ A} (Fin.suc i) = projUsed {Γ = Γ} i
 
 -- | The two narrowings every binary clause needs: feed the left branch the
 --   variables `Ψ₁` uses and the right branch those `Ψ₂` uses, out of an
@@ -643,9 +644,9 @@ elaborate m (loop {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} round) =
 eraseCtx : ∀ {mₜ} {n} {Γ : Ctx mₜ n} (m : AllocMode) (Ψ : Usage n)
          → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋
 eraseCtx {Γ = ∅}         m []         = id
-eraseCtx {Γ = Γ , A ^ q} m (Zero ∷ Ψ) = eraseCtx {Γ = Γ} m Ψ ∘ fst
-eraseCtx {Γ = Γ , A ^ q} m (One  ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩
-eraseCtx {Γ = Γ , A ^ q} m (Many ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩
+eraseCtx {Γ = Γ ▸ A} m (Zero ∷ Ψ) = eraseCtx {Γ = Γ} m Ψ ∘ fst
+eraseCtx {Γ = Γ ▸ A} m (One  ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩
+eraseCtx {Γ = Γ ▸ A} m (Many ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩
 
 -- | Elaboration against the FULL environment — `elaborate` composed with the
 --   phase projection. This is the signature every existing caller expects, so

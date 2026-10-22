@@ -29,6 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.Spec.Grade using (Purity; pure; fin; mk-kind; Many; One)
 open import Once.Internal.Type.Sub using (⊑π-refl)
 open import Once.Internal.Context using (Usage; zeroUsage; singleUse)
+open import Once.Spec.Context using (_▸_)
 open import Once.Internal.Core.PolyTy
 open Schema using (type)
 open import Once.Internal.Core.PolyTyping S
@@ -65,7 +66,7 @@ KSub Δ Δ′ σ = ∀ i → Δ i ≡ Once.Internal.Type.k-base → Base Δ′ (
 
 _⟨_⟩ᶜ : ∀ {m k n} → PCtx m n → Sub m k → PCtx k n
 ∅           ⟨ σ ⟩ᶜ = ∅
-(Γ , A ^ q) ⟨ σ ⟩ᶜ = (Γ ⟨ σ ⟩ᶜ) , (A ⟨ σ ⟩) ^ q
+(Γ ▸ A) ⟨ σ ⟩ᶜ = (Γ ⟨ σ ⟩ᶜ) ▸ (A ⟨ σ ⟩)
 
 _⟨_⟩ₜ : ∀ {m k n} → PTm m n → Sub m k → PTm k n
 var i        ⟨ σ ⟩ₜ = var i

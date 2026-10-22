@@ -64,6 +64,7 @@ open import Once.TypeCheck.DeciderComplete
 import Once.Internal.Typing.Scope
 import Once.TypeCheck.Classify
 open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
@@ -896,7 +897,7 @@ mutual
       DPoly.from-lookups ctx x A π (Error.UnboundVariable x) ln li lp ¬g as inc θ eθ g ki
   given-complete {ctx = ctx} (d-lam {x = x} {body = body} {A = A} {q' = q'} {u = u} bd)
     with inferElabV (Classify.extendNamedCtx ctx x A) body | infer-complete bd
-  ... | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | (_ , _ , _ , refl)
+  ... | success _ (_ SCx.∷ _) _ _ _ , _ | (_ , _ , _ , refl)
       with E.decideLeq q' T.Many | decideLeq-just q' T.Many (Once.Type.Grade.≤q-Many q')
   ...   | just _ | _ , refl = withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
   given-complete {ctx = ctx} (d-compose {f = f} {g = g} {A = A} {M = M} {π = π} dg df)

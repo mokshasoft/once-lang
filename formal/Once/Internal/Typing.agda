@@ -55,7 +55,8 @@ open import Data.String using (_++_)
 -- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
 open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _∷_)
+open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Spec.Context using (_∷_)
 
 
 ------------------------------------------------------------------------

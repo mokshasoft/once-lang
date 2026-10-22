@@ -67,7 +67,8 @@ open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 import Once.Parser.Module.Core as P
 import Once.Surface.Context as Ctx
-open import Once.Internal.Context hiding (_,_; _,_^_)
+open import Once.Internal.Context hiding (_,_)
+open import Once.Spec.Context using ([]; _∷_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 open import Once.Internal.Syntax using (RawExpr)

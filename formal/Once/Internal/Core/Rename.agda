@@ -21,7 +21,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Context using (Ctx; ∅; _,_^_; lookup; Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
+open import Once.Internal.Context using (Ctx; ∅; lookup; Usage; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
+open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Thinning using (_⊆_; done; skip; keep; thin-var; thin-var-lookup; thin-usage;
   thin-usage-+ᵘ; thin-usage-*ᵘ; thin-usage-⊑ᵘ; thin-usage-zeroUsage; thin-usage-singleUse; ⊆-wk)
 open import Once.Internal.Core.Syntax S
@@ -78,7 +79,7 @@ ren-⊢ {Δ = Δ} θ (⊢var {Γ = Γ} i) =
     (subst (λ X → Δ ⊢[ singleUse (thin-var θ i) One ] var (thin-var θ i) ∷ X ! _) (sym (thin-var-lookup θ i))
       (⊢var (thin-var θ i)))
 ren-⊢ {Δ = Δ} {Ψ = Ψ} {π = π} θ (⊢lam {q = q} {A = A} {B = B} {t = t} le d) =
-  ⊢lam le (subst (λ u → (Δ , A ^ Many) ⊢[ _ ] u ∷ B ! _) (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d))
+  ⊢lam le (subst (λ u → (Δ ▸ A) ⊢[ _ ] u ∷ B ! _) (ren-cong (keep-extR θ) t) (ren-⊢ (keep θ) d))
 ren-⊢ {Δ = Δ} θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} {B = B} {f = f} {x = x} df dx) =
   subst (λ U → Δ ⊢[ U ] app (ren (thin-var θ) f) (ren (thin-var θ) x) ∷ B ! _)
     (sym (trans (thin-usage-+ᵘ θ Ψ₁ (q *ᵘ Ψ₂)) (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ q Ψ₂))))
@@ -86,7 +87,7 @@ ren-⊢ {Δ = Δ} θ (⊢app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} {B = B} {f 
 ren-⊢ {Δ = Δ} θ (⊢let {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} {A = A} {B = B} {e = e} {b = b} de db) =
   subst (λ U → Δ ⊢[ U ] let′ q (ren (thin-var θ) e) (ren (extR (thin-var θ)) b) ∷ B ! _)
     (sym (trans (thin-usage-+ᵘ θ Ψ₂ (q *ᵘ Ψ₁)) (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ q Ψ₁))))
-    (⊢let (ren-⊢ θ de) (subst (λ u → (Δ , A ^ Many) ⊢[ _ ] u ∷ B ! _) (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db)))
+    (⊢let (ren-⊢ θ de) (subst (λ u → (Δ ▸ A) ⊢[ _ ] u ∷ B ! _) (ren-cong (keep-extR θ) b) (ren-⊢ (keep θ) db)))
 ren-⊢ {Δ = Δ} θ ⊢unit = subst (λ U → Δ ⊢[ U ] unit ∷ _ ! _) (sym (thin-usage-zeroUsage θ)) ⊢unit
 ren-⊢ {Δ = Δ} θ (⊢pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {a = a} {b = b} da db) =
   subst (λ U → Δ ⊢[ U ] pair (ren (thin-var θ) a) (ren (thin-var θ) b) ∷ _ ! _)
@@ -99,8 +100,8 @@ ren-⊢ {Δ = Δ} θ (⊢case {Ψs = Ψs} {Ψ = Ψ} {A = A} {B = B} {C = C} {s =
   subst (λ U → Δ ⊢[ U ] case _ _ (ren (thin-var θ) sc) (ren (extR (thin-var θ)) l) (ren (extR (thin-var θ)) r) ∷ C ! _)
     (sym (thin-usage-+ᵘ θ Ψs Ψ))
     (⊢case (ren-⊢ θ ds)
-       (subst (λ u → (Δ , A ^ Many) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) l) (ren-⊢ (keep θ) dl))
-       (subst (λ u → (Δ , B ^ Many) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) r) (ren-⊢ (keep θ) dr)))
+       (subst (λ u → (Δ ▸ A) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) l) (ren-⊢ (keep θ) dl))
+       (subst (λ u → (Δ ▸ B) ⊢[ _ ] u ∷ C ! _) (ren-cong (keep-extR θ) r) (ren-⊢ (keep θ) dr)))
 ren-⊢ θ (⊢absurd d) = ⊢absurd (ren-⊢ θ d)
 ren-⊢ θ (⊢roll wf d) = ⊢roll wf (ren-⊢ θ d)
 ren-⊢ {Δ = Δ} θ (⊢fold {Ψa = Ψa} {Ψt = Ψt} {F = F} {alg = alg} {t = t} u wf da dt) =
@@ -127,12 +128,12 @@ ren-⊢ {Δ = Δ} θ (⊢ref d τ r) = subst (λ U → Δ ⊢[ U ] _ ∷ _ ! _) 
 
 -- The identity embedding renames as the identity.
 thin-var-refl : ∀ {n} {Γ : Ctx n} (i : Fin n) → thin-var (Once.Surface.Thinning.⊆-refl {Γ = Γ}) i ≡ i
-thin-var-refl {Γ = Γ , _ ^ _} zero    = refl
-thin-var-refl {Γ = Γ , _ ^ _} (suc i) = cong suc (thin-var-refl {Γ = Γ} i)
+thin-var-refl {Γ = Γ ▸ _} zero    = refl
+thin-var-refl {Γ = Γ ▸ _} (suc i) = cong suc (thin-var-refl {Γ = Γ} i)
 
 -- Weakening by one variable (unused).
 wk-⊢ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A π} (B : Type)
-  → Γ ⊢[ Ψ ] t ∷ A ! π → (Γ , B ^ Many) ⊢[ Zero ∷ thin-usage (Once.Surface.Thinning.⊆-refl {Γ = Γ}) Ψ ] wk t ∷ A ! π
+  → Γ ⊢[ Ψ ] t ∷ A ! π → (Γ ▸ B) ⊢[ Zero ∷ thin-usage (Once.Surface.Thinning.⊆-refl {Γ = Γ}) Ψ ] wk t ∷ A ! π
 wk-⊢ {Γ = Γ} {t = t} B d =
   subst (λ u → _ ⊢[ _ ] u ∷ _ ! _) (ren-cong (λ i → cong suc (thin-var-refl {Γ = Γ} i)) t)
     (ren-⊢ (⊆-wk {Γ = Γ} {A = B} {q = Many}) d)
@@ -140,7 +141,7 @@ wk-⊢ {Γ = Γ} {t = t} B d =
 -- The empty context embeds everywhere.
 ∅⊆ : ∀ {n} {Γ : Ctx n} → ∅ ⊆ Γ
 ∅⊆ {Γ = ∅}         = done
-∅⊆ {Γ = Γ , _ ^ _} = skip (∅⊆ {Γ = Γ})
+∅⊆ {Γ = Γ ▸ _} = skip (∅⊆ {Γ = Γ})
 
 -- A CLOSED term, embedded in any context (a cata algebra, D131).
 close : ∀ {n} → Tm 0 → Tm n

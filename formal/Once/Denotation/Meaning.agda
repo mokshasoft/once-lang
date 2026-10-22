@@ -65,7 +65,8 @@ open import Once.Internal.GradedOps
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
 open import Once.Internal.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 import Data.List as L
-open import Once.Internal.Context using (Ctx; _,_^_; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
+open import Once.Internal.Context using (Ctx; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
+open import Once.Spec.Context using (_▸_)
 open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
 open import Once.Internal.Type.Instance using (KindedInstance)
@@ -154,8 +155,8 @@ named-sem {A = A} {B = B} fmt φ cn bA bB a =
 ------------------------------------------------------------------------
 
 lookupᴰ : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ lookupᵗ Γ i ⟧ᴰ
-lookupᴰ (Γ , A ^ q) zero    (dγ , a) = a
-lookupᴰ (Γ , A ^ q) (suc i) (dγ , a) = lookupᴰ Γ i dγ
+lookupᴰ (Γ ▸ A) zero    (dγ , a) = a
+lookupᴰ (Γ ▸ A) (suc i) (dγ , a) = lookupᴰ Γ i dγ
 
 svarᴰ : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
 svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ

@@ -14,6 +14,7 @@
 -- lemma + the `RelEnv` it inducts over; the case discharges follow.
 ------------------------------------------------------------------------
 
+import Once.Spec.Context
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base; ∅ₖ)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -57,7 +58,8 @@ open import Once.Semantics.Machine using (sem-In; sem-cata)
 open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
 import Once.Denotation.Meaning
-open import Once.Internal.Context using (Ctx; ∅; _,_^_; lookup; svar; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _∷_; []; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Internal.Context using (Ctx; ∅; lookup; svar; _↾_; singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Internal.Context using (Usage)
 open import Once.Surface.Syntax using (sigOp)
 import Once.Surface.Syntax as Surface
@@ -158,7 +160,7 @@ subst-∘-move refl g f = refl
 
 RelEnv : ∀ {m} {n} (Γ : Ctx m n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᵛ → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → Set
 RelEnv ∅           _          _          = ⊤
-RelEnv (Γ , A ^ q) (dγ₁ , a₁) (dγ₂ , a₂) = RelEnv Γ dγ₁ dγ₂ × RelGV A a₁ a₂
+RelEnv (Γ ▸ A) (dγ₁ , a₁) (dγ₂ , a₂) = RelEnv Γ dγ₁ dγ₂ × RelGV A a₁ a₂
 
 -- D143: the bridge relates environments over the RUNTIME context `Γ ↾ Ψ`, and
 -- `_↾_` is NOT injective — from an expected `RelEnv (Γ ↾ Ψ) …` Agda recovers
@@ -181,8 +183,8 @@ rel-lookupUsed : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n)
                  {dγ₁ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜᵗ ⟧ᴰ}
                → RelEnv (Γ ↾ singleUse i One) dγ₁ dγ₂
                → RelGV (lookup Γ i) (lookupᵛUsed Γ i dγ₁) (lookupᴰUsed Γ i dγ₂)
-rel-lookupUsed (Γ , A ^ q) zero    {dγ₁ , a₁} {dγ₂ , a₂} (_ , ra) = ra
-rel-lookupUsed (Γ , A ^ q) (suc i) re = rel-lookupUsed Γ i re
+rel-lookupUsed (Γ ▸ A) zero    {dγ₁ , a₁} {dγ₂ , a₂} (_ , ra) = ra
+rel-lookupUsed (Γ ▸ A) (suc i) re = rel-lookupUsed Γ i re
 
 -- | `RelEnv` transports along a usage NARROWING: `restrictᴰ` only drops or
 --   keeps slots, so relatedness survives it. The RelEnv analogue of
@@ -192,12 +194,12 @@ rel-restrict₀ : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑�
              → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
              → RelEnv (Γ ↾ Ψ') (restrictᵛ {Γ = Γ} ule dγ₁) (restrictᴰ {Γ = Γ} ule dγ₂)
 rel-restrict₀ {Γ = ∅}         ⊑[]           re                             = re
-rel-restrict₀ {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) re                             = rel-restrict₀ {Γ = Γ} ule re
-rel-restrict₀ {Γ = Γ , A ^ q} (z≤o ⊑∷ ule) {_ , _} {_ , _} (re , _)       = rel-restrict₀ {Γ = Γ} ule re
-rel-restrict₀ {Γ = Γ , A ^ q} (z≤m ⊑∷ ule) {_ , _} {_ , _} (re , _)       = rel-restrict₀ {Γ = Γ} ule re
-rel-restrict₀ {Γ = Γ , A ^ q} (o≤o ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
-rel-restrict₀ {Γ = Γ , A ^ q} (o≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
-rel-restrict₀ {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
+rel-restrict₀ {Γ = Γ ▸ A} (z≤z ⊑∷ ule) re                             = rel-restrict₀ {Γ = Γ} ule re
+rel-restrict₀ {Γ = Γ ▸ A} (z≤o ⊑∷ ule) {_ , _} {_ , _} (re , _)       = rel-restrict₀ {Γ = Γ} ule re
+rel-restrict₀ {Γ = Γ ▸ A} (z≤m ⊑∷ ule) {_ , _} {_ , _} (re , _)       = rel-restrict₀ {Γ = Γ} ule re
+rel-restrict₀ {Γ = Γ ▸ A} (o≤o ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
+rel-restrict₀ {Γ = Γ ▸ A} (o≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
+rel-restrict₀ {Γ = Γ ▸ A} (m≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
 
 -- | `RelEnv` under a BINDER, keyed on the bound variable's usage in the body —
 --   the RelEnv analogue of `bindᴰ`. At `Zero` the value is dropped, so no
@@ -205,7 +207,7 @@ rel-restrict₀ {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)  
 rel-bind₀ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (q : Quantity)
              {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} {a₁ : ⟦ A ⟧ᵛ} {a₂ : ⟦ A ⟧ᴰ}
          → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂ → RelGV A a₁ a₂
-         → RelEnv ((Γ , A ^ Many) ↾ (q ∷ Ψ))
+         → RelEnv ((Γ ▸ A) ↾ (q ∷ Ψ))
                   (bindᵛ {Γ = Γ} {A = A} q dγ₁ a₁) (bindᴰ {Γ = Γ} {A = A} q dγ₂ a₂)
 rel-bind₀ Zero re rv = re
 rel-bind₀ One  re rv = re , rv
@@ -215,7 +217,7 @@ rel-bind₀ Many re rv = re , rv
 rel-bind0₀ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
               {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
           → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
-          → RelEnv ((Γ , A ^ Many) ↾ (Zero ∷ Ψ))
+          → RelEnv ((Γ ▸ A) ↾ (Zero ∷ Ψ))
                    (bindᵛ0 {Γ = Γ} {A = A} dγ₁) (bindᴰ0 {Γ = Γ} {A = A} dγ₂)
 rel-bind0₀ re = re
 
@@ -229,14 +231,14 @@ rel-restrict {Γ = Γ} ule r = mk↾ (rel-restrict₀ {Γ = Γ} ule (un↾ r))
 rel-bind : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (q : Quantity)
              {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} {a₁ : ⟦ A ⟧ᵛ} {a₂ : ⟦ A ⟧ᴰ}
          → RelEnv↾ Γ Ψ dγ₁ dγ₂ → RelGV A a₁ a₂
-         → RelEnv↾ (Γ , A ^ Many) (q ∷ Ψ)
+         → RelEnv↾ (Γ ▸ A) (q ∷ Ψ)
                    (bindᵛ {Γ = Γ} {A = A} q dγ₁ a₁) (bindᴰ {Γ = Γ} {A = A} q dγ₂ a₂)
 rel-bind {Γ = Γ} q r rv = mk↾ (rel-bind₀ {Γ = Γ} q (un↾ r) rv)
 
 rel-bind0 : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
               {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
           → RelEnv↾ Γ Ψ dγ₁ dγ₂
-          → RelEnv↾ (Γ , A ^ Many) (Zero ∷ Ψ)
+          → RelEnv↾ (Γ ▸ A) (Zero ∷ Ψ)
                     (bindᵛ0 {Γ = Γ} {A = A} dγ₁) (bindᴰ0 {Γ = Γ} {A = A} dγ₂)
 rel-bind0 {Γ = Γ} {A = A} r = mk↾ (rel-bind0₀ {Γ = Γ} {A = A} (un↾ r))
 
@@ -244,7 +246,7 @@ rel-bind0 {Γ = Γ} {A = A} r = mk↾ (rel-bind0₀ {Γ = Γ} {A = A} (un↾ r))
 --   `∅ ↾ Ψ` only reduces once `Ψ : Usage 0` is MATCHED, and matching it in
 --   `runMainˢ`/`runMainᵈ` would block those at their call sites. So the match
 --   lives here, in a lemma, exactly as `env0` itself does.
-rel-env0 : ∀ {Ψ : Usage 0} → RelEnv↾ (∅ {0}) Ψ (env0ᵛ {Ψ = Ψ} tt) (env0 {Ψ = Ψ} tt)
+rel-env0 : ∀ {Ψ : Usage 0} → RelEnv↾ (Once.Spec.Context.∅ {0}) Ψ (env0ᵛ {Ψ = Ψ} tt) (env0 {Ψ = Ψ} tt)
 rel-env0 {[]} = mk↾ tt
 
 -- The four usage-split shapes, each `rel-restrict` at EXACTLY the witness both
@@ -294,7 +296,7 @@ resᵐ {Γ = Γ} {Ψ = Ψ} =
 -- The source side of related environments is related to itself.
 env-self : ∀ {m} {n} (Γ : Ctx m n) {dγ₁ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ} → RelEnv Γ dγ₁ dγ₂ → RelD ⟦ Γ ⟧ᶜᵗ dγ₂ dγ₂
 env-self ∅           re        = tt
-env-self (Γ , A ^ q) {_ , _} {_ , _} (re , ra) = env-self Γ re , right-self A ra
+env-self (Γ ▸ A) {_ , _} {_ , _} (re , ra) = env-self Γ re , right-self A ra
 
 self↾ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
       → RelEnv↾ Γ Ψ dγ₁ dγ₂ → RelD ⟦ Γ ↾ Ψ ⟧ᶜᵗ dγ₂ dγ₂

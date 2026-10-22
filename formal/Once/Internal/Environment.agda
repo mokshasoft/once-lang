@@ -14,12 +14,14 @@
 
 module Once.Internal.Environment where
 
+import Once.Spec.Context
 open import Once.Spec.Type using (Ty)
 open import Data.Fin using (Fin)
 import Data.Fin
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
-open import Once.Internal.Context using (Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; [])
+open import Once.Internal.Context using (Ctx; Usage; lookup; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse)
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Internal.Graded using (⟦_⟧ᵛ)
 
 --
@@ -36,24 +38,24 @@ open import Once.Internal.Graded using (⟦_⟧ᵛ)
 --   the head IS the variable, and a `Zero` head is not in the environment.
 lookupᵛUsed : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n)
             → ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⟧ᵛ → ⟦ lookup Γ i ⟧ᵛ
-lookupᵛUsed (Γ , A ^ q) Data.Fin.zero    dγ = proj₂ dγ
-lookupᵛUsed (Γ , A ^ q) (Data.Fin.suc i) dγ = lookupᵛUsed Γ i dγ
+lookupᵛUsed (Γ ▸ A) Data.Fin.zero    dγ = proj₂ dγ
+lookupᵛUsed (Γ ▸ A) (Data.Fin.suc i) dγ = lookupᵛUsed Γ i dγ
 
 -- | The `erase` projection at the denotation: narrow the environment to a
 --   smaller usage. `fst` where a variable is dropped, keep it otherwise.
 restrictᵛ : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n}
           → Ψ' ⊑ᵘ Ψ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᵛ → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᵛ
 restrictᵛ {Γ = ∅}         ⊑[]              dγ = dγ
-restrictᵛ {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule dγ
-restrictᵛ {Γ = Γ , A ^ q} (z≤o ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ)
-restrictᵛ {Γ = Γ , A ^ q} (z≤m ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ)
-restrictᵛ {Γ = Γ , A ^ q} (o≤o ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ
-restrictᵛ {Γ = Γ , A ^ q} (o≤m ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ
-restrictᵛ {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ
+restrictᵛ {Γ = Γ ▸ A} (z≤z ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule dγ
+restrictᵛ {Γ = Γ ▸ A} (z≤o ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ)
+restrictᵛ {Γ = Γ ▸ A} (z≤m ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ)
+restrictᵛ {Γ = Γ ▸ A} (o≤o ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ
+restrictᵛ {Γ = Γ ▸ A} (o≤m ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ
+restrictᵛ {Γ = Γ ▸ A} (m≤m ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ
 
 -- | Extend for a binder, keyed on the bound variable's usage in the body.
 bindᵛ : ∀ {m} {n} {Γ : Ctx m n} {Ψ' : Usage n} {A : Ty m} (q : Quantity)
-      → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᵛ → ⟦ A ⟧ᵛ → ⟦ ⟦ (Γ , A ^ Many) ↾ (q ∷ Ψ') ⟧ᶜ ⟧ᵛ
+      → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᵛ → ⟦ A ⟧ᵛ → ⟦ ⟦ (Γ ▸ A) ↾ (q ∷ Ψ') ⟧ᶜ ⟧ᵛ
 bindᵛ Zero dγ a = dγ
 bindᵛ One  dγ a = dγ , a
 bindᵛ Many dγ a = dγ , a
@@ -62,7 +64,7 @@ bindᵛ Many dγ a = dγ , a
 --   still demands an `⟦ A ⟧ᵛ` it then discards, and at an erased arrow there is
 --   nothing to hand it (`A` may be uninhabited).
 bindᵛ0 : ∀ {m} {n} {Γ : Ctx m n} {Ψ' : Usage n} {A : Ty m}
-       → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᵛ → ⟦ ⟦ (Γ , A ^ Many) ↾ (Zero ∷ Ψ') ⟧ᶜ ⟧ᵛ
+       → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᵛ → ⟦ ⟦ (Γ ▸ A) ↾ (Zero ∷ Ψ') ⟧ᶜ ⟧ᵛ
 bindᵛ0 dγ = dγ
 
 
@@ -75,13 +77,13 @@ bindᵛ0 dγ = dγ
 --   rather than once per clause.
 eraseᵛ : ∀ {m} {n} (Γ : Ctx m n) (Ψ : Usage n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᵛ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᵛ
 eraseᵛ ∅           []         dγ = dγ
-eraseᵛ (Γ , A ^ q) (Zero ∷ Ψ) dγ = eraseᵛ Γ Ψ (proj₁ dγ)
-eraseᵛ (Γ , A ^ q) (One  ∷ Ψ) dγ = eraseᵛ Γ Ψ (proj₁ dγ) , proj₂ dγ
-eraseᵛ (Γ , A ^ q) (Many ∷ Ψ) dγ = eraseᵛ Γ Ψ (proj₁ dγ) , proj₂ dγ
+eraseᵛ (Γ ▸ A) (Zero ∷ Ψ) dγ = eraseᵛ Γ Ψ (proj₁ dγ)
+eraseᵛ (Γ ▸ A) (One  ∷ Ψ) dγ = eraseᵛ Γ Ψ (proj₁ dγ) , proj₂ dγ
+eraseᵛ (Γ ▸ A) (Many ∷ Ψ) dγ = eraseᵛ Γ Ψ (proj₁ dγ) , proj₂ dγ
 
 -- | The runtime environment at the EMPTY context. Every `Usage 0` restricts
 --   `∅` to `∅`, so the environment does not depend on the usage — but `_↾_` is
 --   stuck until the usage is matched, and `Usage` is a `data` (no eta), so the
 --   coercion has to be written out. It is the identity.
-env0 : ∀ {m} {Ψ : Usage 0} → ⟦ ⟦ ∅ {m} ⟧ᶜ ⟧ᵛ → ⟦ ⟦ ∅ {m} ↾ Ψ ⟧ᶜ ⟧ᵛ
+env0 : ∀ {m} {Ψ : Usage 0} → ⟦ ⟦ Once.Spec.Context.∅ {m} ⟧ᶜ ⟧ᵛ → ⟦ ⟦ Once.Spec.Context.∅ {m} ↾ Ψ ⟧ᶜ ⟧ᵛ
 env0 {Ψ = []} dγ = dγ

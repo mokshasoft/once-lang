@@ -15,6 +15,7 @@
 
 module Once.TypeCheck.Elaborate where
 
+import Once.Spec.Context
 open import Once.Internal.Type using (wk₀)
 open import Once.Spec.Type using (var; Ty; KCtx; Base)
 open import Data.String using (String; _++_)
@@ -393,7 +394,7 @@ specInl A B = Surface.lift-morphism (IR.inl)
 specInr : ∀ {m} → (A B : Ty m) → SExpr S∅ Surface.zeroUsage (B ⇒ (A Once.Spec.Type.+ B))
 specInr A B = Surface.lift-morphism (IR.inr)
 
-specUnitGen : SExpr (S∅ {0}) Surface.zeroUsage Unit
+specUnitGen : SExpr (Once.Spec.Context.∅ {0}) Surface.zeroUsage Unit
 specUnitGen = Surface.unit
 
 -- pair : (a → b) → (a → c) → a → (b × c)
