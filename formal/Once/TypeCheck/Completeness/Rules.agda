@@ -68,6 +68,7 @@ open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
 open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
 -- (12/15 cases/m-cata/m-named are scoped postulates there).
@@ -352,18 +353,18 @@ infer-complete-RLet : ∀ {m} {ctx : NamedCtx m} (x : String) (e₁ e₂ : RawEx
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ A}
     {e₂E : SExpr (Classify.NamedCtx.debruijn (Classify.extendNamedCtx ctx x A))
-                 (q Surface.Usage.∷ Ψ₂) B}
+                 (q SCx.∷ Ψ₂) B}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
   → inferElab (Classify.extendNamedCtx ctx x A) e₂
-      ≡ success B (q Surface.Usage.∷ Ψ₂) e₂E d₂ f₂
+      ≡ success B (q SCx.∷ Ψ₂) e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RLet x e₁ e₂) ≡ success B (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) eE d f
 infer-complete-RLet {ctx = ctx} x e₁ e₂ {A = A} eq₁ eq₂
   with inferElabV ctx e₁ | eq₁
 ... | success _ _ _ _ _ , _ | refl
     with inferElabV (Classify.extendNamedCtx ctx x A) e₂ | eq₂
-...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl = _ , _ , _ , refl
+...   | success _ (_ SCx.∷ _) _ _ _ , _ | refl = _ , _ , _ , refl
 
 infer-complete-RApp-id : ∀ {m} {ctx : NamedCtx m} (arg : RawExpr) {T : Ty m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -716,17 +717,17 @@ check-complete-RLam : ∀ {m} (ctx : NamedCtx m) (x : String) (body : RawExpr)
     (A : Ty m) (q q' : Quantity) (B : Ty m)
     {Ψ' : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE' : SExpr (Classify.NamedCtx.debruijn (Classify.extendNamedCtx ctx x A))
-                 (q' Surface.Usage.∷ Ψ') B}
+                 (q' SCx.∷ Ψ') B}
     {d' f' : ℕ} {π : T.Purity}
   → (q' Once.Type.Grade.≤qᵇ q) ≡ true
   → T.pure ⊑π π
   → checkElab (Classify.extendNamedCtx ctx x A) body B
-      ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
+      ≡ success (q' SCx.∷ Ψ') eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q π ] B) ≡ success Ψ' eE d f
 check-complete-RLam ctx x body A q q' B {Ψ' = Ψ'} leqEq u eqC
   with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqC
-... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
+... | success (_ SCx.∷ _) _ _ _ , _ | refl
     with E.decideLeq q' q | decideLeq-just q' q leqEq
 ...   | just _ | _ , refl =
   withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success Ψ' eE d f) (λ u′ → _ , _ , _ , refl)
@@ -744,18 +745,18 @@ infer-complete-RDestruct : ∀ {m} {ctx : NamedCtx m} (scrut : RawExpr) (xL : St
     {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eLE : SExpr (Classify.NamedCtx.debruijn
                     (Classify.extendNamedCtx ctx xL A))
-                 (qℓ Surface.Usage.∷ Ψₗ) C₁}
+                 (qℓ SCx.∷ Ψₗ) C₁}
     {dL fL : ℕ}
     {Ψᵣ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eRE : SExpr (Classify.NamedCtx.debruijn
                     (Classify.extendNamedCtx ctx xR B))
-                 (qr Surface.Usage.∷ Ψᵣ) C₂}
+                 (qr SCx.∷ Ψᵣ) C₂}
     {dR fR : ℕ}
   → inferElab ctx scrut ≡ success (A + B) Ψs scrutE ds fs
   → inferElab (Classify.extendNamedCtx ctx xL A) eL
-      ≡ success C₁ (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
+      ≡ success C₁ (qℓ SCx.∷ Ψₗ) eLE dL fL
   → inferElab (Classify.extendNamedCtx ctx xR B) eR
-      ≡ success C₂ (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
+      ≡ success C₂ (qr SCx.∷ Ψᵣ) eRE dR fR
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
         ≡ success C (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
@@ -763,9 +764,9 @@ infer-complete-RDestruct {ctx = ctx} scrut xL eL xR eR {A = A} {B = B} C₁ C₂
   with inferElabV ctx scrut | eqS
 ... | success (_ + _) _ _ _ _ , _ | refl
     with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
-...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
+...   | success _ (_ SCx.∷ _) _ _ _ , _ | refl
       with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
-...     | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl =
+...     | success _ (_ SCx.∷ _) _ _ _ , _ | refl =
   -- D322: the checker's join decision finds the derivation's join.
   _ , _ , _ , cong (λ x → proj₁ (E.inferElabV-RDestruct-join _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x))
                    (proj₂ (join?-complete J))

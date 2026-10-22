@@ -35,6 +35,7 @@ open import Once.Internal.Typing
 open import Once.Internal.Laws.ModeAgreement
 open import Once.TypeCheck.Route
 import Once.Internal.Context as Surface
+import Once.Spec.Context as SCx
 
 private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥
@@ -79,16 +80,16 @@ mutual
   -- The alignments, each taking `ModeAgreement`'s equation as an argument.
 
   let-r : ∀ {m} {A A′ B B′ : Ty m} {ctx x e₁ e₂ q q′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
-          (d₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁) (d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q Surface.Usage.∷ Ψ₂))
-          (d₁′ : ctx ⊢ᵢ e₁ ∶ A′ ⨾ Ψ₁′) (d₂′ : extendNamedCtx ctx x A′ ⊢ᵢ e₂ ∶ B′ ⨾ (q′ Surface.Usage.∷ Ψ₂′))
+          (d₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁) (d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q SCx.∷ Ψ₂))
+          (d₁′ : ctx ⊢ᵢ e₁ ∶ A′ ⨾ Ψ₁′) (d₂′ : extendNamedCtx ctx x A′ ⊢ᵢ e₂ ∶ B′ ⨾ (q′ SCx.∷ Ψ₂′))
         → A ≡ A′ → Rii (t-let d₁ d₂) (t-let d₁′ d₂′)
   let-r d₁ d₂ d₁′ d₂′ refl = ii-let (route-ii d₁ d₁′) (route-ii d₂ d₂′)
 
   case-r : ∀ {m} {A A′ B B′ C C′ Cᵣ Cᵣ′ D D′ : Ty m} {ctx xL xR e₁ e₂ e₃ qL qL′ qR qR′} {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : U ctx}
-           (s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs) (l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL Surface.Usage.∷ Ψl))
-           (r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR Surface.Usage.∷ Ψr)) (J : C ⊔ Cᵣ ≔ D)
-           (s′ : ctx ⊢ᵢ e₁ ∶ (A′ + B′) ⨾ Ψs′) (l′ : extendNamedCtx ctx xL A′ ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ Surface.Usage.∷ Ψl′))
-           (r′ : extendNamedCtx ctx xR B′ ⊢ᵢ e₃ ∶ Cᵣ′ ⨾ (qR′ Surface.Usage.∷ Ψr′)) (J′ : C′ ⊔ Cᵣ′ ≔ D′)
+           (s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs) (l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL SCx.∷ Ψl))
+           (r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR SCx.∷ Ψr)) (J : C ⊔ Cᵣ ≔ D)
+           (s′ : ctx ⊢ᵢ e₁ ∶ (A′ + B′) ⨾ Ψs′) (l′ : extendNamedCtx ctx xL A′ ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ SCx.∷ Ψl′))
+           (r′ : extendNamedCtx ctx xR B′ ⊢ᵢ e₃ ∶ Cᵣ′ ⨾ (qR′ SCx.∷ Ψr′)) (J′ : C′ ⊔ Cᵣ′ ≔ D′)
          → (A + B) ≡ (A′ + B′) → Rii (t-case s l r J) (t-case s′ l′ r′ J′)
   case-r s l r J s′ l′ r′ J′ refl = ii-case (route-ii s s′) (route-ii l l′) (route-ii r r′)
 
