@@ -130,7 +130,7 @@ NoShadow : List IRFun → C.FunCtx → Set
 NoShadow later imps = All (λ e → All (λ p → fname e ≢ bare (proj₁ p)) imps) later
 
 -- THE INVARIANT at a position of the walk.
-record Inv {m} {s} {S : Sig Fs s} (csc : C.CScope) (tl : Tele S) (ss : SigSig Fs (C.CScope.csig csc))
+record Inv {s} {S : Sig Fs s} (csc : C.CScope) (tl : Tele S) (ss : SigSig Fs (C.CScope.csig csc))
            (is : ImpSig S (C.CScope.cimps csc))
            (ts : TeleSig S (C.telePolys (C.CScope.ctele csc))) (pre : List IRFun) : Set where
   field
@@ -227,7 +227,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
   bodyD = monoBody {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts sg g D
   tl′  = def tl (monoSchema ty) bodyT bodyD
   δ′   = teleSem fmt Ip tl′
-  e    = irFunOf (C.mkCompiledFun (bare x) ty irFun)
+  e    = irFunOf (C.mkCompiledFun (bare x) _ ty irFun)
   ctx  = ctxOf (AS.scopeOf csc)
   ρ    = CE.envOf fmt S δ ss is ts
   V    = viewOf {S = S} ss is ts
@@ -314,7 +314,7 @@ inv-mono-at : ∀ {m} (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : 
                (def tl (monoSchema ty) (A.absTm S noKinds (proj₁ (monoElab {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts D)))
                        (monoBody {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts sg g D))
                ss (impDefs b is) (wkT ts)
-               (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
+               (irFunOf (C.mkCompiledFun (bare (funName fi)) _ ty irFun) ∷ pre)
 
 inv-mono : ∀ {m} {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Ty m} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
@@ -326,7 +326,7 @@ inv-mono : ∀ {m} {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi :
                (def tl (monoSchema ty) (A.absTm S noKinds (proj₁ (monoElab {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts D)))
                        (monoBody {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts sg g D))
                ss (impDefs (funName fi Str.== "main") is) (wkT ts)
-               (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
+               (irFunOf (C.mkCompiledFun (bare (funName fi)) _ ty irFun) ∷ pre)
 inv-mono {S = S} {csc = csc} {tl = tl} {ss = ss} {is = is} {ts = ts} {pre = pre} sg {fi} {ty} {g} {Ψ} D {irFun} cf inv fr =
   inv-mono-at (funName fi Str.== "main") {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ψ} D {irFun} cf inv fr
 
@@ -518,7 +518,7 @@ later-ns : ∀ {sc es} (b : FB.FunBundle sc es) (imps : C.FunCtx)
 later-ns FB.bnil imps _ xs a = a
 later-ns (FB.bffi _ _ _ _ _ rest) imps (_ ∷ hs) xs a = later-ns rest imps hs xs a
 later-ns (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ rest) imps (h ∷ hs) xs a =
-  later-ns rest imps hs (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ xs)
-           (ns-of imps h (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun)) refl ∷ a)
+  later-ns rest imps hs (irFunOf (C.mkCompiledFun (bare (funName fi)) _ ty irFun) ∷ xs)
+           (ns-of imps h (irFunOf (C.mkCompiledFun (bare (funName fi)) _ ty irFun)) refl ∷ a)
 later-ns (FB.bpoly _ _ rest) imps (_ ∷ hs) xs a = later-ns rest imps hs xs a
 

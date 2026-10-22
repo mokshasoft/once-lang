@@ -295,7 +295,7 @@ data FstSndView : ∀ {A B : IRTy} → IR A B → Set where
   fsv-other : ∀ {A B} (f : IR A B) → FstSndView f
 
 -- View: classify IR as inl, inr, or other (for case eta law)
-data InlInrView {m} : ∀ {A B : IRTy} → IR A B → Set where
+data InlInrView : ∀ {A B : IRTy} → IR A B → Set where
   iiv-inl : ∀ {X Y} → InlInrView {X} {X + Y} inl
   iiv-inr : ∀ {X Y} → InlInrView {Y} {X + Y} inr
   iiv-other : ∀ {A B} (f : IR A B) → InlInrView f

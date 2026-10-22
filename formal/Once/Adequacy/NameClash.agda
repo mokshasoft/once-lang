@@ -238,7 +238,7 @@ ce-syms-fun doOpt sc fi es false ep cfs eq
 ...           | inj₂ rest =
           subst (λ c → C.emittedSyms c ≡ map once-symbol-own (emittedNames (funsOf (e-fun fi ∷ es))))
                 (inj₂-injective eq)
-                (subst (λ b → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) ty irFun ∷ rest)
+                (subst (λ b → C.emittedSyms (C.mkCompiledFun (bare (FunInfo.funName fi)) _ ty irFun ∷ rest)
                               ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames (funsOf es))))
                        (sym ep) (cong (once-symbol-own (FunInfo.funName fi) ∷_) (ce-syms doOpt (C.extendScope sc (FunInfo.funName fi) ty) es rest rec)))
 

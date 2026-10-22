@@ -221,7 +221,7 @@ private
   -- `main`, which the table answers with its entry's direct-call form.
   main-run : ∀ {ty} (p : ty <: EffUU) (pre tbl : List IRFun) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋} {v : ⟦ ty ⟧ᵛ}
            → (∀ A B a → tableCalls fmt φ tbl (bare "main") A B a
-                        ≡ tableCalls fmt φ (irFunOf (C.mkCompiledFun (bare "main") ty irFun) ∷ pre) (bare "main") A B a)
+                        ≡ tableCalls fmt φ (irFunOf (C.mkCompiledFun (bare "main") _ ty irFun) ∷ pre) (bare "main") A B a)
            → RelGM Once.Spec.Grade.pure ty v (subst T∞ (cohᴰ ty) (abiT ty (evalᴰ fmt (tableEnv fmt φ pre) irFun tt)))
            → RelS (RelGV Once.Spec.Type.Unit) (⟦ p ⟧<:ᵛ v tt) (evalᴰ fmt (tableEnv fmt φ tbl) (C.mainEntry p) tt)
   main-run sub-void pre tbl {v = ()} sk r
@@ -282,8 +282,8 @@ here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd t
               (rest-b : FB.FunBundle (C.extendScope csc "main" ty) es)
           → Inv {S = S} csc tl ss is ts pre → (u : SigIn rest S) → All ("main" ≢_) (map entryName es)
           → (nd : Dec (bare "main" ≡ bare "main")) (td : Dec (ty <: EffUU))
-          → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare "main") ty irFun) ∷ pre))
-                   (C.findMain-here (C.mkCompiledFun (bare "main") ty irFun) nd td (FB.bundle-find rest-b))
+          → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare "main") _ ty irFun) ∷ pre))
+                   (C.findMain-here (C.mkCompiledFun (bare "main") _ ty irFun) nd td (FB.bundle-find rest-b))
                    (monoHere {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo "main" ft bd false} {ty = ty}
                              {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest p u)
 here-main sg p g D cf rest rest-b inv u hs (no ¬e) td = ⊥-elim (¬e refl)
@@ -347,8 +347,8 @@ mutual
                 {s} {S : Sig Fs s} (tl : Tele S) (ss : SigSig Fs (C.CScope.csig csc)) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
                 (sg : SigCF S) (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn rest S) → Fresh csc (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es)
                 → (nd′ : Dec (bare x ≡ bare "main")) (td : Dec (ty <: EffUU))
-            → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
-                     (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
+            → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) _ ty irFun) ∷ pre))
+                     (C.findMain-here (C.mkCompiledFun (bare x) _ ty irFun) nd′ td (FB.bundle-find rest-b))
                      (toProgram tl ss is ts sg (mono {fi = Parser.mkFunInfo x ft bd false} {Ψ = Ctx.Usage.[]} refl er pr g D rest) mi u)
   walk-mono {csc} {es} {ft = ft} {bd} er pr g D rest cf rest-b (inj₁ (refl , p)) {S = S} tl ss is ts sg pre inv u ((hd ∷ _) , _) nd′ td =
     here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} p g D cf {es} rest rest-b inv u hd nd′ td
@@ -365,8 +365,8 @@ mutual
                 {s} {S : Sig Fs s} (tl : Tele S) (ss : SigSig Fs (C.CScope.csig csc)) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
                 (sg : SigCF S) (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn rest S) → Fresh csc (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es)
                 → (nd : Dec (x ≡ "main")) (tc : Dec (ty <: EffUU)) (nd′ : Dec (bare x ≡ bare "main")) (td : Dec (ty <: EffUU))
-              → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
-                       (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
+              → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) _ ty irFun) ∷ pre))
+                       (C.findMain-here (C.mkCompiledFun (bare x) _ ty irFun) nd′ td (FB.bundle-find rest-b))
                        (Once.Internal.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo x ft bd false}
                                         {ty = ty} {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest mi′ nd tc u)
   -- `main`, found by the dispatch
@@ -382,7 +382,7 @@ mutual
   {-# CATCHALL #-}
   walk-mono-d {csc} {es} {x} {ft} {bd} {ty} g D rest {irFun} cf rest-b mi′ tl ss is ts sg pre inv u fr (no ¬q) tc (no _) td =
     walk rest rest-b mi′ _ ss (impDefs (x Str.== "main") is) (wkT ts) (monoSg sg g)
-         (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre)
+         (irFunOf (C.mkCompiledFun (bare x) _ ty irFun) ∷ pre)
          (inv-mono sg {fi = Parser.mkFunInfo x ft bd false} {ty = ty} {g = g} D {irFun = irFun} cf inv
                    (fresh-head {csc = csc} {e = Parser.e-fun (Parser.mkFunInfo x ft bd false)} {es = es} fr)) u
          (fresh-fun {csc = csc} {fi = Parser.mkFunInfo x ft bd false} {ty = ty} {es = es} fr)

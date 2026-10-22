@@ -202,7 +202,7 @@ ce-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (main-
            (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr)))
              (trans (cong (C.ce-mono-g IR.Heap false sc fi es ty) (rigidFree?-complete g))
              (trans (cong (C.ce-mono-ir IR.Heap false sc fi es ty) cf-eq)
-                    (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun)) rec))))
+                    (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) _ ty irFun)) rec))))
 ce-complete sc (poly {pfi = pfi} {es = es} pr deriv rest) mrest =
   let (_ , _ , _ , ce) = check-complete deriv
       (cfs , rec) = ce-complete (C.addEntry sc pfi) rest mrest
@@ -238,14 +238,14 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (
             (funName fi) ty (funBody fi) main-ok deriv
     irFun = proj₁ cfc
     chain : ∀ {r} → C.compileEntries IR.Heap false (C.extendScope sc (funName fi) ty) es ≡ r
-          → C.compileEntries IR.Heap false sc (Parser.e-fun fi ∷ es) ≡ C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun) r
+          → C.compileEntries IR.Heap false sc (Parser.e-fun fi ∷ es) ≡ C.consCF (C.mkCompiledFun (bare (funName fi)) _ ty irFun) r
     chain rec = trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
                   (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr)))
                     (trans (cong (C.ce-mono-g IR.Heap false sc fi es ty) (rigidFree?-complete g))
                     (trans (cong (C.ce-mono-ir IR.Heap false sc fi es ty) (proj₂ cfc))
-                           (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun)) rec))))
+                           (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) _ ty irFun)) rec))))
     cf0 : C.CompiledFun
-    cf0 = C.mkCompiledFun (bare (funName fi)) ty irFun
+    cf0 = C.mkCompiledFun (bare (funName fi)) _ ty irFun
     -- A `main` usable as `Eff Unit Unit` is found where it stands.
     here : funName fi ≡ "main" → ty <: EffUU → ∀ cfs
          → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → findMain (cf0 ∷ cfs) ≡ just ir)
@@ -253,12 +253,12 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (
       where
         foundD : ∀ (t : Ty _) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) (d : Dec (t <: EffUU)) → t <: EffUU
           → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
-              C.findMain-here (C.mkCompiledFun (bare "main") t g) (yes refl) d (findMain cfs) ≡ just ir)
+              C.findMain-here (C.mkCompiledFun (bare "main") _ t g) (yes refl) d (findMain cfs) ≡ just ir)
         foundD t g (yes q) _ = mainEntry q , refl
         foundD t g (no ¬q) p = ⊥-elim (¬q p)
         found : ∀ (n : String) (t : Ty _) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) → n ≡ "main" → t <: EffUU
           → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
-              findMain (C.mkCompiledFun (bare n) t g ∷ cfs) ≡ just ir)
+              findMain (C.mkCompiledFun (bare n) _ t g ∷ cfs) ≡ just ir)
         found .("main") t g refl p = foundD t g (t <:? EffUU) p
     step : ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest → Dec (funName fi ≡ "main") → FindResult sc (Parser.e-fun fi ∷ es)
     step (inj₁ (nm , te)) _ =
@@ -342,7 +342,7 @@ ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) {cfs
                                     (subst (λ nm → C.compileFunM (funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) nm ty (funBody fi) ≡ inj₂ irFun) p cf))
         decide (no ¬p) =
           let eq″ = subst (λ r → C.ce-mono-ir IR.Heap false sc fi es ty r ≡ inj₂ cfs) cf eq′
-              cf0 = C.mkCompiledFun (bare (funName fi)) ty irFun
+              cf0 = C.mkCompiledFun (bare (funName fi)) _ ty irFun
               (rest-cfs , rec) = AS.consCF-inj {cf = cf0} _ eq″
               cons-eq : C.consCF cf0 (C.compileEntries IR.Heap false (C.extendScope sc (funName fi) ty) es) ≡ inj₂ (cf0 ∷ rest-cfs)
               cons-eq = cong (C.consCF cf0) rec

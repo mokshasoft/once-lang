@@ -23,7 +23,7 @@
 
 module Once.TypeCheck.Classify where
 
-open import Once.Spec.Type using (Ty)
+open import Once.Spec.Type using (KCtx; ∅ₖ; Ty)
 open import Once.Internal.Typing.Scope
 
 open import Data.String using (String; _++_)
@@ -152,13 +152,13 @@ lookupPoly⇒lookupPolyPrefix ((n , s' , b') ∷ rest) x lp with StrProp._≟_ n
 ... | no  _ = lookupPoly⇒lookupPolyPrefix rest x lp
 
 -- | Empty context
-emptyCtx : ∀ {m} → NamedCtx m
-emptyCtx = mkCtx 0 ∅ S∅ emptyImports emptyPolyCtx emptyImports
+emptyCtx : NamedCtx 0
+emptyCtx = mkCtx 0 ∅ S∅ emptyImports emptyPolyCtx emptyImports ∅ₖ
 
 -- | D274: what is in scope at the top level, outside the telescope: the
 -- program's signature Σ (its FFI declarations, generators) and its monomorphic
 -- definitions — kept apart, as `NamedCtx` keeps them.
-record TopCtx {m} : Set where
+record TopCtx : Set where
   constructor topCtx
   field
     tsig  : Imports
@@ -168,8 +168,13 @@ emptyTopCtx : TopCtx
 emptyTopCtx = topCtx emptyImports emptyImports
 
 -- | Create a top-level context with polymorphic defs. Plan 0.6.2.
-ctxWithImportsAndPolys : ∀ {m} → TopCtx → PolyCtx → NamedCtx m
-ctxWithImportsAndPolys tc polys = mkCtx 0 ∅ S∅ (TopCtx.tdefs tc) polys (TopCtx.tsig tc)
+ctxWithImportsAndPolys : TopCtx → PolyCtx → NamedCtx 0
+ctxWithImportsAndPolys tc polys = mkCtx 0 ∅ S∅ (TopCtx.tdefs tc) polys (TopCtx.tsig tc) ∅ₖ
+
+-- | The same, inside a polymorphic definition: its body is typed over its
+-- parameters, of kinds `Δ`.
+ctxAt : ∀ {m} → KCtx m → TopCtx → PolyCtx → NamedCtx m
+ctxAt Δ tc polys = mkCtx 0 ∅ S∅ (TopCtx.tdefs tc) polys (TopCtx.tsig tc) Δ
 
 ------------------------------------------------------------------------
 -- Variable Lookup with Weakening and Instantiation
@@ -196,7 +201,7 @@ inspectLookupLocal ctx x with lookupLocal ctx x in eq
 ... | nothing           = llv-not-found eq
 
 data LookupImportView {m} (ctx : NamedCtx m) (x : String) : Set where
-  liv-found : ∀ {T : Ty m} → lookupImport (NamedCtx.imports ctx) x ≡ just T → LookupImportView ctx x
+  liv-found : ∀ {T : Type} → lookupImport (NamedCtx.imports ctx) x ≡ just T → LookupImportView ctx x
   liv-not-found : lookupImport (NamedCtx.imports ctx) x ≡ nothing → LookupImportView ctx x
 
 inspectLookupImport : ∀ {m} → (ctx : NamedCtx m) (x : String) → LookupImportView ctx x
@@ -206,7 +211,7 @@ inspectLookupImport ctx x with lookupImport (NamedCtx.imports ctx) x in eq
 
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : ∀ {m} → (ctx : NamedCtx m) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
-findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
+findLocalVarUsage (mkCtx n Γ Δ _ _ _ _) x = go Γ Δ
   where
     go : ∀ {m} → Ctx _ → SCtx _ m → Maybe (Fin m × Quantity)
     go [] S∅ = nothing

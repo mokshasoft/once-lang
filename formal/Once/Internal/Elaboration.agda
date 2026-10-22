@@ -98,7 +98,7 @@ record ImportAt {m} (x : String) (T : Ty m) : Set where
     entryOf : Fin s
     instOf  : InstanceOf entryOf T
 
-record View {m} (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
+record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
   field
     imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt x T
     declares : ∀ {x T} → lookupImport sg x ≡ just T → Declared x T

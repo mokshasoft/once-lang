@@ -138,7 +138,7 @@ open import Once.Surface.LoopWarn using (silentLoops)
 open import Once.Internal.Principal using (below)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
 open import Once.Type.Sub using (_<:?_)
-open import Data.Nat using (_<ᵇ_)
+open import Data.Nat using (ℕ; _<ᵇ_)
 
 ------------------------------------------------------------------------
 -- Main function validation
@@ -318,11 +318,12 @@ compileFunM nothing  = compileFunI
 
 -- | Result of compiling a module
 -- Contains function name, type, and compiled IR
-record CompiledFun {m} : Set where
+record CompiledFun : Set where
   constructor mkCompiledFun
   field
-    cfName : CanonicalName
-    cfType : Ty m
+    cfName  : CanonicalName
+    cfArity : ℕ              -- its type variables (0 unless polymorphic)
+    cfType  : Ty cfArity
     cfIR   : IR ⌊ Unit ⌋ ⌊ cfType ⌋
     -- (D274: no `cfIsPrimitive`. An FFI declaration is a generator of Σ, not
     -- a definition, so it is never compiled to a function.)
@@ -402,7 +403,7 @@ checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
 -- The compile-time scope: `Spec.Module.Scope` — the signature Σ, the
 -- monomorphic definitions — with each telescope entry's DECLARATION scope (where
 -- the resolver elaborates its body at a use).
-record CScope {m} : Set where
+record CScope : Set where
   constructor cscope
   field
     csig  : FunCtx
@@ -514,7 +515,7 @@ ce-mono-g m doOpt sc fi es ty (just _) =
     (compileFunM (funType fi) m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
 ce-mono-ir m doOpt sc fi es ty (inj₁ err) = inj₁ err
 ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
-  consCF (mkCompiledFun (bare (funName fi)) ty ir)
+  consCF (mkCompiledFun (bare (funName fi)) _ ty ir)
          (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
 
 -- D243: a telescope definition is checked ONCE, at its schema with rigid

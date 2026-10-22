@@ -72,7 +72,7 @@ impSem : ∀ {m} (δ : GM.DefSem) {x : String} {U : Ty m} → ImportAt x U → �
 impSem δ (def d i) = refSem δ i
 
 -- `ρ` agrees with `δ` at every reference the View resolves.
-record Agree {m} {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ : Meanings polys imps sg) (δ : GM.DefSem) : Set where
+record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ : Meanings polys imps sg) (δ : GM.DefSem) : Set where
   field
     agree-inst : ∀ {x sc body prefix U} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
                    (ng : ¬ Ground sc) (ki : KindedInstance sc U)

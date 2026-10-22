@@ -204,7 +204,7 @@ DefMeanings = DefEnvOf DefFamily
 ImpMeanings : Imports → Set
 ImpMeanings = ImpEnvOf (λ U → ⟦ U ⟧ᵛ)
 
-record Meanings {m} (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
+record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
   constructor meanings
   field
     defs    : DefMeanings polys

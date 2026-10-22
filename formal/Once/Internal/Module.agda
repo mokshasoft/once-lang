@@ -72,7 +72,7 @@ open Parser.PolyFunInfo using (pfunType; pfunBody)
 -- (its FFI declarations — generators, assumed) is kept apart from its
 -- DEFINITIONS (built from them): a reference to Σ is a SigOp, a reference to a
 -- definition is a call of it.
-record Scope {m} : Set where
+record Scope : Set where
   constructor scope
   field
     sig  : ISig                  -- the signatures declared so far (Σ)
@@ -101,7 +101,7 @@ MonoBody : ∀ {m} → Maybe (Ty m) → (ctx : NamedCtx m) → RawExpr → Ty m 
 MonoBody (just _) ctx e ty Ψ = ctx ⊢ᶜ e ∶ ty ⨾ Ψ
 MonoBody nothing  ctx e ty Ψ = ctx ⊢ᵢ e ∶ ty ⨾ Ψ
 
-data ModTele {m} : Scope → List Parser.Entry → Set where
+data ModTele : Scope → List Parser.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
   -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
   -- contract (D061/D071) — HONEST (D231: `pure` means no side effects), and
