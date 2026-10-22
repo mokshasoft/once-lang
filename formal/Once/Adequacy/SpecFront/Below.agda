@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
 import Once.Spec.Grade as G
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-arr; subᶜ-ν)
 open import Once.Internal.Type.Sub using (<:ᶜ-refl; subᶜ-prod; subᶜ-sum)
@@ -49,20 +49,21 @@ private
   at-or-below π (here refl) = ⊑π-refl π
   at-or-below π (there m)   = proj₁ (grade-below π m)
 
-  *-inj : ∀ {A B A′ B′ : Type} → A * B ≡ A′ * B′ → (A ≡ A′) × (B ≡ B′)
+  *-inj : ∀ {m} {A B A′ B′ : Ty m} → A * B ≡ A′ * B′ → (A ≡ A′) × (B ≡ B′)
   *-inj refl = refl , refl
-  +-inj : ∀ {A B A′ B′ : Type} → A + B ≡ A′ + B′ → (A ≡ A′) × (B ≡ B′)
+  +-inj : ∀ {m} {A B A′ B′ : Ty m} → A + B ≡ A′ + B′ → (A ≡ A′) × (B ≡ B′)
   +-inj refl = refl , refl
-  ⇒-inj : ∀ {A A′ B B′ : Type} {q q′ π π′} → (A ⇒[ mk-kind q π ] B) ≡ (A′ ⇒[ mk-kind q′ π′ ] B′) → (π ≡ π′) × (B ≡ B′)
+  ⇒-inj : ∀ {m} {A A′ B B′ : Ty m} {q q′ π π′} → (A ⇒[ mk-kind q π ] B) ≡ (A′ ⇒[ mk-kind q′ π′ ] B′) → (π ≡ π′) × (B ≡ B′)
   ⇒-inj refl = refl , refl
-  ν-inj : ∀ {F F′ : Once.Spec.Type.Fun 0} {φ φ′} → ν-type F φ ≡ ν-type F′ φ′ → φ ≡ φ′
+  ν-inj : ∀ {m} {F F′ : Fun m} {φ φ′} → ν-type F φ ≡ ν-type F′ φ′ → φ ≡ φ′
   ν-inj refl = refl
 
 -- Each type `below T` lists is under `T`, and is not `T`.
-below-sound : ∀ (T : Type) {X} → X ∈ below T → (X <:ᶜ T) × (X ≢ T)
+below-sound : ∀ {m} (T : Ty m) {X} → X ∈ below T → (X <:ᶜ T) × (X ≢ T)
 private
-  first : ∀ (A : Type) {x} → x ∈ A ∷ below A → x <:ᶜ A
+  first : ∀ {m} (A : Ty m) {x} → x ∈ A ∷ below A → x <:ᶜ A
 below-sound Unit        (here refl) = subᶜ-void , λ ()
+below-sound (var i)     (here refl) = subᶜ-void , λ ()
 below-sound Int         (here refl) = subᶜ-void , λ ()
 below-sound Float       (here refl) = subᶜ-void , λ ()
 below-sound (μ-type F)  (here refl) = subᶜ-void , λ ()
@@ -100,7 +101,7 @@ below-sound (A + B) {X} (there m) = cases (∈-++⁻ (cartesianProductWith _+_ (
 below-sound (A ⇒[ mk-kind q π ] B) (here refl) = subᶜ-void , λ ()
 below-sound (A ⇒[ mk-kind q π ] B) {X} (there m) = cases (∈-++⁻ (cartesianProductWith f (gradesBelow π) (B ∷ [])) m)
   where
-    f : Purity → Type → Type
+    f : Purity → Ty _ → Ty _
     f π′ B′ = A ⇒[ mk-kind q π′ ] B′
     Goal = (X <:ᶜ A ⇒[ mk-kind q π ] B) × (X ≢ A ⇒[ mk-kind q π ] B)
     one : (∃₂ λ π′ y → (π′ ∈ gradesBelow π) × (y ∈ B ∷ []) × (X ≡ f π′ y)) → Goal

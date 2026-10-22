@@ -16,6 +16,8 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Adequacy.SpecCore.TermR {s : ℕ} (S : Defs s) where
 
 open import Data.Fin using (Fin; zero; suc)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Once.Postulates using (extensionality)
 
 import Once.Spec.Type as LT
 import Once.Spec.Type as ST
@@ -156,3 +158,33 @@ tmR (SC.lit l)            = r-lit l
 tmR (SC.prim p t)         = r-prim p (tmR t)
 tmR (SC.sigop c t)        = r-sigop
 tmR (SC.ref d τ)          = r-ref d (λ i → tyR (τ i))
+
+-- (the graph is the identity's: a related term is the term; a reference's
+-- instance is a function, equal pointwise, so equal by extensionality, P1)
+TmR-≡ : ∀ {m} {Δ : ST.KCtx m} {n} {t t′ : SC.Tm S m n} → TmR Δ t t′ → t ≡ t′
+TmR-≡ (r-var i)          = refl
+TmR-≡ (r-lam {q = q} {π} a t) = cong₂ (λ A u → SC.lam A q π u) (TyR-≡ a) (TmR-≡ t)
+TmR-≡ (r-app f x)        = cong₂ SC.app (TmR-≡ f) (TmR-≡ x)
+TmR-≡ (r-let {q = q} e b) = cong₂ (SC.let′ q) (TmR-≡ e) (TmR-≡ b)
+TmR-≡ r-unit             = refl
+TmR-≡ (r-pair a b)       = cong₂ SC.pair (TmR-≡ a) (TmR-≡ b)
+TmR-≡ (r-fst p)          = cong SC.fst (TmR-≡ p)
+TmR-≡ (r-snd p)          = cong SC.snd (TmR-≡ p)
+TmR-≡ (r-inl b a)        = cong₂ SC.inl (TyR-≡ b) (TmR-≡ a)
+TmR-≡ (r-inr a b)        = cong₂ SC.inr (TyR-≡ a) (TmR-≡ b)
+TmR-≡ (r-case {qℓ = qℓ} {qr} e l r) with TmR-≡ e | TmR-≡ l | TmR-≡ r
+... | refl | refl | refl = refl
+TmR-≡ (r-absurd a e)     = cong₂ SC.absurd (TyR-≡ a) (TmR-≡ e)
+TmR-≡ (r-roll f t)       = cong₂ SC.roll (FunR-≡ f) (TmR-≡ t)
+TmR-≡ (r-fold f a t) with FunR-≡ f | TmR-≡ a | TmR-≡ t
+... | refl | refl | refl = refl
+TmR-≡ (r-unfold f c t) with FunR-≡ f | TmR-≡ c | TmR-≡ t
+... | refl | refl | refl = refl
+TmR-≡ (r-out t)          = cong SC.out (TmR-≡ t)
+TmR-≡ (r-iter f t)       = cong₂ SC.iter (TmR-≡ f) (TmR-≡ t)
+TmR-≡ (r-coerce a b t) with TyR-≡ a | TyR-≡ b | TmR-≡ t
+... | refl | refl | refl = refl
+TmR-≡ (r-lit l)          = refl
+TmR-≡ (r-prim p t)       = cong (SC.prim p) (TmR-≡ t)
+TmR-≡ r-sigop            = refl
+TmR-≡ (r-ref d inst)     = cong (SC.ref d) (extensionality (λ i → TyR-≡ (inst i)))
