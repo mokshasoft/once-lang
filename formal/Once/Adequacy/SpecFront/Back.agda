@@ -31,14 +31,13 @@ open import Relation.Nullary using (¬_)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
-import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
-import Once.Spec.Type as LW
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Adequacy.SpecCore.Type using (TyR)
+open import Once.Internal.Type using (wk₀)
 import Once.Adequacy.SpecFront.Scope as Sc
 
 import Once.Spec.Grade
@@ -51,12 +50,12 @@ module Once.Adequacy.SpecFront.Back
   (h-name : ∀ d → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []))
   -- a declaration of Σ is the signature table's, at its type
   (h-sig : ∀ {c t} → NotGenerator c → (c ∶ t) ∈ Σ
-         → Σ[ T ∈ LT.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ T ⌜ t ⌝ᵈ)
+         → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ (wk₀ T) ⌜ t ⌝ᵈ)
   -- a definition with no type variables, not a polymorphic one nor `main`: the definitions table's
   (h-mono : ∀ {d x} → nm d ≡ canonical (x ∷ []) → ¬ (x ∈ ps) → x ≢ "main"
           → (lookupImport sg x ≡ nothing)
-            × Σ[ T ∈ LT.Type ] (lookupImport imps x ≡ just T)
-              × (∀ τ → TyR Δ T (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩)))
+            × Σ[ T ∈ ST.Type ] (lookupImport imps x ≡ just T)
+              × (∀ τ → TyR Δ (wk₀ T) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩)))
   -- a definition with type variables is a polymorphic one
   (h-ps : ∀ {d x} → nm d ≡ canonical (x ∷ []) → 0 < SC.Schema.arity (S′ SC.!! d) → x ∈ ps)
   -- a polymorphic definition: the telescope's, with what its schema says
@@ -85,7 +84,6 @@ import Data.List
 
 import Once.Spec.Grade as LG
 import Once.Internal.Type.Sub as LS
-import Once.Spec.Sub as LS
 import Once.Spec.Grade as SG
 import Once.Spec.Sub as SS
 import Once.Spec.Context as SCx
@@ -112,8 +110,8 @@ open import Once.Spec.Core.Typing Σ S′ using (_⊩_⊢[_]_∷_!_)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-+; ⊑ᵘ-*ʳ; ⊑ᵘ-*ˡ; +ᵘ-comm; One*ᵘ)
 
 private
-  C : ∀ (n : ℕ) → List Binding → LC.Ctx n → NamedCtx
-  C n Γn Γd = mkCtx n Γn Γd imps polys sg
+  C : ∀ (n : ℕ) → List (Binding m) → LC.Ctx m n → NamedCtx m
+  C n Γn Γd = mkCtx n Γn Γd imps polys sg Δ
 
   -- the Spec's core context of its locals
   ctxL : ∀ {n} → SU.Locals m n → SCx.Ctx m n
@@ -124,27 +122,27 @@ private
 -- What a derivation read back gives
 ------------------------------------------------------------------------
 
-record BSyn {n} (Γn : List Binding) (Γd : LC.Ctx n) (e : RawExpr) (A′ : ST.Ty m) (Φ : SCx.Usage n) : Set where
+record BSyn {n} (Γn : List (Binding m)) (Γd : LC.Ctx m n) (e : RawExpr) (A′ : ST.Ty m) (Φ : SCx.Usage n) : Set where
   constructor bsyn
   field
-    {A} : LT.Type
+    {A} : ST.Ty m
     ra  : TyR Δ A A′
     {Ψ} : LC.Usage n
     der : C n Γn Γd ⊢ᵢ e ∶ A ⨾ Ψ
     use : uS Ψ SCx.⊑ᵘ Φ
 
-record BChk {n} (Γn : List Binding) (Γd : LC.Ctx n) (e : RawExpr) (A : LT.Type) (Φ : SCx.Usage n) : Set where
+record BChk {n} (Γn : List (Binding m)) (Γd : LC.Ctx m n) (e : RawExpr) (A : ST.Ty m) (Φ : SCx.Usage n) : Set where
   constructor bchk
   field
     {Ψ} : LC.Usage n
     der : C n Γn Γd ⊢ᶜ e ∶ A ⨾ Ψ
     use : uS Ψ SCx.⊑ᵘ Φ
 
-record BDom {n} (Γn : List Binding) (Γd : LC.Ctx n) (e : RawExpr) (A : LT.Type) (π : LG.Purity) (B′ : ST.Ty m)
+record BDom {n} (Γn : List (Binding m)) (Γd : LC.Ctx m n) (e : RawExpr) (A : ST.Ty m) (π : LG.Purity) (B′ : ST.Ty m)
             (Φ : SCx.Usage n) : Set where
   constructor bdom
   field
-    {B} : LT.Type
+    {B} : ST.Ty m
     rb  : TyR Δ B B′
     {Ψ} : LC.Usage n
     der : C n Γn Γd ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
@@ -160,14 +158,14 @@ bdom-at refl b = b
 ------------------------------------------------------------------------
 
 private
-  at-name : ∀ {n} b {Γn} {Γd : LC.Ctx n} {B q} (d : Dec (name b ≡ name b))
-          → lookupLocal-at (name b) b Γn Γd {B = B} {q = q} d ≡ just (LC.lookup (Γd SCx.▸ B) zero , LC.singleUse zero LG.One , svar zero)
+  at-name : ∀ {n} b {Γn} {Γd : LC.Ctx m n} {B} (d : Dec (name b ≡ name b))
+          → lookupLocal-at (name b) b Γn Γd {B = B} d ≡ just (LC.lookup (Γd SCx.▸ B) zero , LC.singleUse zero LG.One , svar zero)
   at-name b (yes _) = refl
   at-name b (no ¬e) = ⊥-elim (¬e refl)
 
-  at-other : ∀ {n x} b {Γn} {Γd : LC.Ctx n} {B q} {i} → ¬ (x ≡ name b) → (d : Dec (x ≡ name b))
+  at-other : ∀ {n x} b {Γn} {Γd : LC.Ctx m n} {B} {i} → ¬ (x ≡ name b) → (d : Dec (x ≡ name b))
            → lookupLocal-go x Γn Γd ≡ just (LC.lookup Γd i , LC.singleUse i LG.One , svar i)
-           → lookupLocal-at x b Γn Γd {B = B} {q = q} d ≡ just (LC.lookup (Γd SCx.▸ B) (suc i) , LC.singleUse (suc i) LG.One , svar (suc i))
+           → lookupLocal-at x b Γn Γd {B = B} d ≡ just (LC.lookup (Γd SCx.▸ B) (suc i) , LC.singleUse (suc i) LG.One , svar (suc i))
   at-other b ne (yes e) _  = ⊥-elim (ne e)
   at-other b ne (no _)  eq = cong LTS.lookupLocal-next eq
 
@@ -176,16 +174,16 @@ private
   ctx-lookup (SU.there _ m) = ctx-lookup m
 
 -- A Spec variable is the compiler's local, at a related type.
-lk⁻ : ∀ {n x} {Γn} {Γd : LC.Ctx n} {L A′ i} → LR Γn Γd L → SU._∋_⦂_at_ L x A′ i
+lk⁻ : ∀ {n x} {Γn} {Γd : LC.Ctx m n} {L A′ i} → LR Γn Γd L → SU._∋_⦂_at_ L x A′ i
     → (lookupLocal-go x Γn Γd ≡ just (LC.lookup Γd i , LC.singleUse i LG.One , svar i)) × TyR Δ (LC.lookup Γd i) A′
 lk⁻ (lr-▸ {b = b} lr ra) SU.here = at-name b (name b Data.String.≟ name b) , ra
 lk⁻ {x = x} (lr-▸ {b = b} lr ra) (SU.there ne m) =
   let (e , r) = lk⁻ lr m in at-other b ne (x Data.String.≟ name b) e , r
 
 -- A name bound by no enclosing binder is not found.
-lk-none : ∀ {n x} Γn {Γd : LC.Ctx n} → ¬ (x ∈ names Γn) → lookupLocal-go x Γn Γd ≡ nothing
-lk-none-at : ∀ {n x} b Γn {Γd : LC.Ctx n} {B q} → ¬ (x ∈ names (b ∷ Γn)) → (d : Dec (x ≡ name b))
-           → lookupLocal-at x b Γn Γd {B = B} {q = q} d ≡ nothing
+lk-none : ∀ {n x} Γn {Γd : LC.Ctx m n} → ¬ (x ∈ names Γn) → lookupLocal-go x Γn Γd ≡ nothing
+lk-none-at : ∀ {n x} b Γn {Γd : LC.Ctx m n} {B} → ¬ (x ∈ names (b ∷ Γn)) → (d : Dec (x ≡ name b))
+           → lookupLocal-at x b Γn Γd {B = B} d ≡ nothing
 lk-none []       {LC.∅}         _ = refl
 lk-none []       {Γd SCx.▸ _} _ = refl
 lk-none (b ∷ Γn) {LC.∅}         _ = refl
@@ -380,7 +378,7 @@ private
 ------------------------------------------------------------------------
 
 private
-  module _ {n} {Γn : List Binding} {Γd : LC.Ctx n} where
+  module _ {n} {Γn : List (Binding m)} {Γd : LC.Ctx m n} where
 
     pair-syn : ∀ {ea eb A′ B′ Φ₁ Φ₂ Φ} → Φ₁ SCx.+ᵘ Φ₂ SCx.⊑ᵘ Φ
              → BSyn Γn Γd ea A′ Φ₁ → BSyn Γn Γd eb B′ Φ₂ → BSyn Γn Γd (Once.Internal.Syntax.RPair ea eb) (A′ ST.* B′) Φ
@@ -393,7 +391,7 @@ private
     -- `x : A` in scope, then the body
     let-syn : ∀ {x e₁ e₂ A′ B′ q Φ₁ Φ₂ Φ} → Φ₂ SCx.+ᵘ q SCx.*ᵘ Φ₁ SCx.⊑ᵘ Φ
             → (s₁ : BSyn Γn Γd e₁ A′ Φ₁)
-            → BSyn (LTS.mkBinding x (BSyn.A s₁) LG.Many ∷ Γn) (Γd LC., BSyn.A s₁ ^ LG.Many) e₂ B′ (q SCx.∷ Φ₂)
+            → BSyn (LTS.mkBinding x (BSyn.A s₁) LG.Many ∷ Γn) (Γd SCx.▸ BSyn.A s₁) e₂ B′ (q SCx.∷ Φ₂)
             → BSyn Γn Γd (Once.Internal.Syntax.RLet x e₁ e₂) B′ Φ
     let-syn u (bsyn r₁ {Ψ₁} d₁ u₁) (bsyn r₂ {q₀ SCx.∷ Ψ₂} d₂ u₂) =
       bsyn r₂ (t-let d₁ d₂) (⊑ᵘ-trans (app-use Ψ₂ Ψ₁ q₀ (⊑-tail u₂) u₁ (⊑-head u₂)) u)
@@ -467,11 +465,11 @@ private
                   zero-use
 
   -- a compiler type related to a `Many` arrow is one
-  record ArrMany (A : LT.Type) (X Y : ST.Ty m) (π : SG.Purity) : Set where
+  record ArrMany (A : ST.Ty m) (X Y : ST.Ty m) (π : SG.Purity) : Set where
     field
       {πc}  : LG.Purity
       πeq   : πS πc ≡ π
-      {A₁ A₂} : LT.Type
+      {A₁ A₂} : ST.Ty m
       eq    : A ≡ A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂
       r₁    : TyR Δ A₁ X
       r₂    : TyR Δ A₂ Y
@@ -522,7 +520,7 @@ private
   φ-act {LG.actᶠ} _ = refl
   φ-act {LG.pureᶠ} ()
 
-  module _ {n} {Γn : List Binding} {Γd : LC.Ctx n} {e : RawExpr} {Φ Φ₁ Φ₂ : SCx.Usage n} {q : SG.Quantity}
+  module _ {n} {Γn : List (Binding m)} {Γd : LC.Ctx m n} {e : RawExpr} {Φ Φ₁ Φ₂ : SCx.Usage n} {q : SG.Quantity}
            (w : Φ₁ SCx.+ᵘ q SCx.*ᵘ Φ₂ SCx.⊑ᵘ Φ) (eq : q ≡ SG.Many) where
 
     G : String → RawExpr
@@ -542,7 +540,7 @@ private
 
     -- the pair's two domains are one compiler type
     private
-      one-dom : ∀ {Ψ} {A A′ : LT.Type} {X : ST.Ty m} {B : LT.Type} {π} → TyR Δ A X → TyR Δ A′ X
+      one-dom : ∀ {Ψ} {A A′ : ST.Ty m} {X : ST.Ty m} {B : ST.Ty m} {π} → TyR Δ A X → TyR Δ A′ X
               → C _ Γn Γd ⊢ᵢ e ∶ ((A LT.⇒[ LG.mk-kind LG.Many π ] B) LT.* A′) ⨾ Ψ
               → C _ Γn Γd ⊢ᵢ e ∶ ((A LT.⇒[ LG.mk-kind LG.Many π ] B) LT.* A) ⨾ Ψ
       one-dom ra ra′ d = subst (λ Z → C _ Γn Γd ⊢ᵢ e ∶ (_ LT.* Z) ⨾ _) (TyR-uniqueˡ ra′ ra) d
@@ -568,7 +566,7 @@ private
     out-gen : ∀ {F} → ST.WFFun Δ F → BSyn Γn Γd e (ST.ν F SG.pureᶠ) Φ₂ → BSyn Γn Γd (G "Out") (ST.⟦ F ⟧F (ST.ν F SG.pureᶠ)) Φ
     out-gen {F} wf (bsyn (r-ν eφ f) {Ψ} der u) = go (φ-pure eφ) f der
       where
-        go : ∀ {φ Fc} → φ ≡ LG.pureᶠ → FunR Δ Fc F → C _ Γn Γd ⊢ᵢ e ∶ LT.ν-type Fc φ ⨾ Ψ
+        go : ∀ {φ Fc} → φ ≡ LG.pureᶠ → FunR Δ Fc F → C _ Γn Γd ⊢ᵢ e ∶ LT.ν Fc φ ⨾ Ψ
            → BSyn Γn Γd (G "Out") (ST.⟦ F ⟧F (ST.ν F SG.pureᶠ)) Φ
         go refl f′ d = bsyn (⟦⟧-R f′ (r-ν refl f′)) (t-Out-app-infer (wf-L wf f′) refl d) (gen-use Ψ u eq w)
 
@@ -576,12 +574,12 @@ private
                → BSyn Γn Γd (G "Out") (ST.Unit SU.⇒⟨ SG.act ⟩ ST.⟦ F ⟧F (ST.ν F SG.actᶠ)) Φ
     outAct-gen {F} wf (bsyn (r-ν eφ f) {Ψ} der u) = go (φ-act eφ) f der
       where
-        go : ∀ {φ Fc} → φ ≡ LG.actᶠ → FunR Δ Fc F → C _ Γn Γd ⊢ᵢ e ∶ LT.ν-type Fc φ ⨾ Ψ
+        go : ∀ {φ Fc} → φ ≡ LG.actᶠ → FunR Δ Fc F → C _ Γn Γd ⊢ᵢ e ∶ LT.ν Fc φ ⨾ Ψ
            → BSyn Γn Γd (G "Out") (ST.Unit SU.⇒⟨ SG.act ⟩ ST.⟦ F ⟧F (ST.ν F SG.actᶠ)) Φ
         go refl f′ d = bsyn (r-⇒ refl r-unit (⟦⟧-R f′ (r-ν refl f′))) (t-Out-eff-app-infer (wf-L wf f′) refl d) (gen-use Ψ u eq w)
 
 private
-  on-arr : ∀ {n} {Γn : List Binding} {Γd : LC.Ctx n} {e A X Y π Φ} {P : Set} → TyR Δ A (X SU.⇒⟨ π ⟩ Y)
+  on-arr : ∀ {n} {Γn : List (Binding m)} {Γd : LC.Ctx m n} {e A X Y π Φ} {P : Set} → TyR Δ A (X SU.⇒⟨ π ⟩ Y)
          → (∀ {A₁ A₂ πc} → πS πc ≡ π → TyR Δ A₁ X → TyR Δ A₂ Y → P × BChk Γn Γd e (A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂) Φ)
          → P × BChk Γn Γd e A Φ
   on-arr {Γn = Γn} {Γd} {e} {Φ = Φ} {P} rA k = go (arr-many rA) k
@@ -596,12 +594,12 @@ private
   eff-of {LG.pure} ()
   eff-of {LG.act} ()
 
-  same-dom : ∀ {n} {Γn : List Binding} {Γd : LC.Ctx n} {e A₁ A₂ X Ψ k} → TyR Δ A₁ X → TyR Δ A₂ X
+  same-dom : ∀ {n} {Γn : List (Binding m)} {Γd : LC.Ctx m n} {e A₁ A₂ X Ψ k} → TyR Δ A₁ X → TyR Δ A₂ X
            → C n Γn Γd ⊢ᶜ e ∶ (A₁ LT.⇒[ k ] A₁) ⨾ Ψ → C n Γn Γd ⊢ᶜ e ∶ (A₁ LT.⇒[ k ] A₂) ⨾ Ψ
   same-dom r₁ r₂ d = subst (λ Z → C _ _ _ ⊢ᶜ _ ∶ (_ LT.⇒[ _ ] Z) ⨾ _) (TyR-uniqueˡ r₁ r₂) d
 
 private
-  ≡-chk : ∀ {n} {Γn : List Binding} {Γd : LC.Ctx n} {e A B Φ} → A ≡ B → BChk Γn Γd e A Φ → BChk Γn Γd e B Φ
+  ≡-chk : ∀ {n} {Γn : List (Binding m)} {Γd : LC.Ctx m n} {e A B Φ} → A ≡ B → BChk Γn Γd e A Φ → BChk Γn Γd e B Φ
   ≡-chk refl b = b
 
   kM : ∀ {πc π} → πS πc ≡ π → kS (LG.mk-kind LG.Many πc) ≡ SG.mk-kind SG.Many π
@@ -624,17 +622,17 @@ private
 
   -- a compiler type related to an arrow is one
   split-k : ∀ {Ac A′ B′ k′} → TyR Δ Ac (A′ ST.⇒[ k′ ] B′)
-          → Σ[ k ∈ LG.ArrowKind ] Σ[ A₁ ∈ LT.Type ] Σ[ A₂ ∈ LT.Type ]
+          → Σ[ k ∈ LG.ArrowKind ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
               (kS k ≡ k′) × (Ac ≡ A₁ LT.⇒[ k ] A₂) × TyR Δ A₁ A′ × TyR Δ A₂ B′
   split-k (r-⇒ e ra rb) = _ , _ , _ , e , refl , ra , rb
 
   split-arr : ∀ {Ac X Y π} → TyR Δ Ac (X SU.⇒⟨ π ⟩ Y)
-            → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ LT.Type ] Σ[ A₂ ∈ LT.Type ]
+            → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
                 (πS πc ≡ π) × (Ac ≡ A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂) × TyR Δ A₁ X × TyR Δ A₂ Y
   split-arr rA = go (arr-many rA)
     where
       go : ∀ {Ac X Y π} → ArrMany Ac X Y π
-         → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ LT.Type ] Σ[ A₂ ∈ LT.Type ]
+         → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
              (πS πc ≡ π) × (Ac ≡ A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂) × TyR Δ A₁ X × TyR Δ A₂ Y
       go record { πeq = pe ; eq = refl ; r₁ = r₁ ; r₂ = r₂ } = _ , _ , _ , pe , refl , r₁ , r₂
 
@@ -650,24 +648,24 @@ private
   one-use′ Ψ {Φ₁} u w = ⊑ᵘ-trans u (subst (SCx._⊑ᵘ _) (One*ᵘ Φ₁) w)
 
 
-  module _ {n} {Γn : List Binding} {Γd : LC.Ctx n} where
+  module _ {n} {Γn : List (Binding m)} {Γd : LC.Ctx m n} where
 
     syn-arr : ∀ {e Af X Y π Ψ} → TyR Δ Af (X SU.⇒⟨ π ⟩ Y) → C n Γn Γd ⊢ᵢ e ∶ Af ⨾ Ψ
-            → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ LT.Type ] Σ[ A₂ ∈ LT.Type ]
+            → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
                 (πS πc ≡ π) × TyR Δ A₁ X × TyR Δ A₂ Y × (C n Γn Γd ⊢ᵢ e ∶ (A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂) ⨾ Ψ)
     syn-arr rf d = go (split-arr rf) d
       where
-        go : ∀ {e Af X Y π Ψ} → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ LT.Type ] Σ[ A₂ ∈ LT.Type ]
+        go : ∀ {e Af X Y π Ψ} → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
                 (πS πc ≡ π) × (Af ≡ A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂) × TyR Δ A₁ X × TyR Δ A₂ Y
            → C n Γn Γd ⊢ᵢ e ∶ Af ⨾ Ψ
-           → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ LT.Type ] Σ[ A₂ ∈ LT.Type ]
+           → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
                 (πS πc ≡ π) × TyR Δ A₁ X × TyR Δ A₂ Y × (C n Γn Γd ⊢ᵢ e ∶ (A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂) ⨾ Ψ)
         go (_ , _ , _ , pe , refl , r₁ , r₂) d′ = _ , _ , _ , pe , r₁ , r₂ , d′
 
     -- `x : A` in scope, a body checked
     lam-chk : ∀ {x body A₁ A₂ q π q′} {Ψ Φ : SCx.Usage n} (k : LG.ArrowKind) → kS k ≡ SG.mk-kind q π
             → ∀ {Ψ₀ : LC.Usage (suc n)}
-            → C (suc n) (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd LC., A₁ ^ LG.Many) ⊢ᶜ body ∶ A₂ ⨾ Ψ₀
+            → C (suc n) (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd SCx.▸ A₁) ⊢ᶜ body ∶ A₂ ⨾ Ψ₀
             → uS Ψ₀ SCx.⊑ᵘ (q′ SCx.∷ Ψ) → q′ SG.≤q q → Ψ SCx.⊑ᵘ Φ
             → BChk Γn Γd (Once.Internal.Syntax.RLam x body) (A₁ LT.⇒[ k ] A₂) Φ
     lam-chk k ek {q₀ SCx.∷ Ψ₀} der u le w =
@@ -679,7 +677,7 @@ private
 
     -- `x : A` in scope, a body synthesized
     lam-dom : ∀ {x body A₁ B′ π} {q′ : SG.Quantity} {Ψ Φ : SCx.Usage n}
-            → BSyn (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd LC., A₁ ^ LG.Many) body B′ (q′ SCx.∷ Ψ) → Ψ SCx.⊑ᵘ Φ
+            → BSyn (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd SCx.▸ A₁) body B′ (q′ SCx.∷ Ψ) → Ψ SCx.⊑ᵘ Φ
             → BDom Γn Γd (Once.Internal.Syntax.RLam x body) A₁ π B′ Φ
     lam-dom (bsyn rb {q₀ SCx.∷ Ψ₀} der u) w = bdom rb (d-lam {u = pure-⊑ _} der) (⊑ᵘ-trans (⊑-tail u) w)
 
@@ -689,7 +687,7 @@ private
               → BChk Γn Γd (Once.Internal.Syntax.RApp (Once.Internal.Syntax.RResolved (Once.Spec.Name.gen "apply")) e) Bc Φ
     apply-chk {e = e} {As} {Bs} (bsyn (r-* rf ra′) {Ψ} der u) rB eq w = go (split-arr rf) ra′ der
       where
-        go : ∀ {Af Aa} → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ LT.Type ] Σ[ A₂ ∈ LT.Type ]
+        go : ∀ {Af Aa} → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
                 (πS πc ≡ SG.pure) × (Af ≡ A₁ LT.⇒[ LG.mk-kind LG.Many πc ] A₂) × TyR Δ A₁ As × TyR Δ A₂ Bs
            → TyR Δ Aa As → C n Γn Γd ⊢ᵢ e ∶ (Af LT.* Aa) ⨾ Ψ → BChk Γn Γd _ _ _
         go (πc , A₁ , A₂ , pe , refl , r₁ , r₂) ra″ d =
@@ -699,13 +697,13 @@ private
                   (gen-use Ψ u eq w))
 
 mutual
-  bwdᵢ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e e′ A′ t′}
+  bwdᵢ : ∀ {n Γn} {Γd : LC.Ctx m n} {L : SU.Locals m n} {e e′ A′ t′}
        → SU._⊢_⇒_↝_ Δ L e′ A′ t′ → RX (names Γn) e e′ → LR Γn Γd L
        → ∀ {Φ X π} → Δ ⊩ ctxL L ⊢[ Φ ] t′ ∷ X ! π → (X ≡ A′) × BSyn Γn Γd e A′ Φ
-  bwdᶜ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e e′ A A′ t′}
+  bwdᶜ : ∀ {n Γn} {Γd : LC.Ctx m n} {L : SU.Locals m n} {e e′ A A′ t′}
        → SU._⊢_⇐_↝_ Δ L e′ A′ t′ → RX (names Γn) e e′ → LR Γn Γd L → TyR Δ A A′
        → ∀ {Φ X π} → Δ ⊩ ctxL L ⊢[ Φ ] t′ ∷ X ! π → (X ≡ A′) × BChk Γn Γd e A Φ
-  bwdᵈ : ∀ {n Γn} {Γd : LC.Ctx n} {L : SU.Locals m n} {e e′ A A′ π′ B′ t′}
+  bwdᵈ : ∀ {n Γn} {Γd : LC.Ctx m n} {L : SU.Locals m n} {e e′ A A′ π′ B′ t′}
        → SU._⊢_⇐_⇒[_]↦_↝_ Δ L e′ A′ π′ B′ t′ → RX (names Γn) e e′ → LR Γn Γd L → TyR Δ A A′
        → ∀ π → πS π ≡ π′
        → ∀ {Φ X π₀} → Δ ⊩ ctxL L ⊢[ Φ ] t′ ∷ X ! π₀ → (X ≡ A′ SU.⇒⟨ π′ ⟩ B′) × BDom Γn Γd e A π B′ Φ
