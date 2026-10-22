@@ -36,8 +36,6 @@ open import Data.List.Membership.DecPropositional Data.String._≟_ using (_∈?
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-import Once.Internal.Type as LT
-
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
@@ -47,8 +45,7 @@ import Once.Internal.Type.Poly as TP
 open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
                PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; Ground; extractGround; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
 open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; ftvK; KindedInstance; RespectsKinds)
-import Once.Internal.Core.PolyTy as LP
-open import Once.Internal.Core.Schema using (schemaOf)
+open import Once.Internal.Type.Schema using (schemaOf)
 import Once.Spec.Grade as SG
 import Once.Spec.Core.Syntax as SC
 open import Once.Type.Rigid using (subst-ground; ftvK⊆ftv)
@@ -64,11 +61,11 @@ module _ (T : PolyType) where
   open Parts T
 
   -- each variable at the compiler type its instance reads back as
-  θ-at : ST.TySub (arityOf T) m → (x : String) → Dec (x ∈ ftv T) → LT.Type
+  θ-at : ST.TySub (arityOf T) m → (x : String) → Dec (x ∈ ftv T) → ST.Ty m
   θ-at τ x (yes mm) = proj₁ (back (τ (j mm)))
   θ-at τ x (no _)   = LT.Unit
 
-  θ : ST.TySub (arityOf T) m → String → LT.Type
+  θ : ST.TySub (arityOf T) m → String → ST.Ty m
   θ τ x = θ-at τ x (x ∈? ftv T)
 
   θ-is : ∀ τ {x} (mm : x ∈ ftv T) (d : Dec (x ∈ ftv T)) → θ-at τ x d ≡ proj₁ (back (τ (j mm)))
@@ -84,10 +81,10 @@ module _ (T : PolyType) where
     ʳ : ∀ (A : List String) {B : List String} {x} → (∀ {y} → y ∈ A Data.List.++ B → y ∈ ftv T) → x ∈ B → x ∈ ftv T
     ʳ A s mm = s (Data.List.Membership.Propositional.Properties.∈-++⁺ʳ A mm)
 
-    arr : ∀ {A B A′ B′ : LT.Type} {k k′} → A ≡ A′ → k ≡ k′ → B ≡ B′ → (A LT.⇒[ k ] B) ≡ (A′ LT.⇒[ k′ ] B′)
+    arr : ∀ {A B A′ B′ : ST.Ty m} {k k′} → A ≡ A′ → k ≡ k′ → B ≡ B′ → (A LT.⇒[ k ] B) ≡ (A′ LT.⇒[ k′ ] B′)
     arr refl refl refl = refl
 
-    νeq : ∀ {F F′ φ φ′} → F ≡ F′ → φ ≡ φ′ → LT.ν-type F φ ≡ LT.ν-type F′ φ′
+    νeq : ∀ {F F′ : ST.Fun m} {φ φ′} → F ≡ F′ → φ ≡ φ′ → LT.ν F φ ≡ LT.ν F′ φ′
     νeq refl refl = refl
 
   -- A compiler type related to the part at `τ` is the part at `θ τ`.
@@ -104,7 +101,7 @@ module _ (T : PolyType) where
     inst-eq τ (A P⇒[ q ] B) s (r-⇒ e a b) = arr (inst-eq τ A (ˡ s) a) (sym (kS-injective e)) (inst-eq τ B (ʳ (ftv A) s) b)
     inst-eq τ (PEff A B)    s (r-⇒ e a b) = arr (inst-eq τ A (ˡ s) a) (sym (kS-injective e)) (inst-eq τ B (ʳ (ftv A) s) b)
     inst-eq τ (PAct A B)    s (r-⇒ e a b) = arr (inst-eq τ A (ˡ s) a) (sym (kS-injective e)) (inst-eq τ B (ʳ (ftv A) s) b)
-    inst-eq τ (Pμ-type F)   s (r-μ f)     = cong LT.μ-type (instF-eq τ F s f)
+    inst-eq τ (Pμ-type F)   s (r-μ f)     = cong LT.μ (instF-eq τ F s f)
     inst-eq τ (Pν-type F φ) s (r-ν e f)   = νeq (instF-eq τ F s f) (sym (φS-injective e))
 
     instF-eq : ∀ τ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {G} → FunR Δ G (pfunS (abF F) ST.⟨ τ ⟩F) → substPolyF (θ τ) F ≡ G
@@ -114,7 +111,7 @@ module _ (T : PolyType) where
     instF-eq τ (F P⊗ G) s (r-⊗ f g) = cong₂ LT._⊗_ (instF-eq τ F (ˡ s) f) (instF-eq τ G (ʳ (ftvF F) s) g)
 
   -- An instance respecting the kinds reads back to one respecting them.
-  respects : ∀ τ → ST.Respects (kindsS κ) Δ τ → RespectsKinds T (θ τ)
+  respects : ∀ τ → ST.Respects (kindsS κ) Δ τ → RespectsKinds Δ T (θ τ)
   respects τ rs {x} mk =
     let mm = ftvK⊆ftv T mk
         u  = SchemaOf.kinded (schemaOf-S T) (j mm)
@@ -128,7 +125,7 @@ module _ (T : PolyType) where
 -- Its instances.
 inst-at : ∀ (sc : PolyType) (sch : SC.Schema) → sch ≡ schS (schemaOf sc)
         → ∀ (τ : ST.TySub (SC.Schema.arity sch) m) → ST.Respects (SC.Schema.kinds sch) Δ τ
-        → ∀ {U} → TyR Δ U (SC.Schema.type sch ST.⟨ τ ⟩) → KindedInstance sc U
+        → ∀ {U} → TyR Δ U (SC.Schema.type sch ST.⟨ τ ⟩) → KindedInstance Δ sc U
 inst-at sc .(schS (schemaOf sc)) refl τ rs r = θ sc τ , inst-eq sc τ sc (λ m′ → m′) r , respects sc τ rs
 
 -- No type variables: ground, at its one type.
