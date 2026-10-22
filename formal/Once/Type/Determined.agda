@@ -11,6 +11,7 @@
 
 module Once.Type.Determined where
 
+open import Once.Spec.Type using (Ty; Fun)
 open import Data.List using (_++_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ; ∈-++⁻)
@@ -35,7 +36,7 @@ open import Once.Type
 ------------------------------------------------------------------------
 
 mutual
-  agree-on : ∀ (θ θ′ : String → Type) (p : PolyType)
+  agree-on : ∀ {m} (θ θ′ : String → Ty m) (p : PolyType)
     → (∀ {x} → x ∈ ftv p → θ x ≡ θ′ x) → substPoly θ p ≡ substPoly θ′ p
   agree-on θ θ′ (PTVar x) h = h (here refl)
   agree-on θ θ′ PUnit   h = refl
@@ -58,7 +59,7 @@ mutual
   agree-on θ θ′ (Pμ-type F) h = cong μ-type (agreeF-on θ θ′ F h)
   agree-on θ θ′ (Pν-type F π) h = cong (λ f → ν-type f π) (agreeF-on θ θ′ F h)
 
-  agreeF-on : ∀ (θ θ′ : String → Type) (F : PolyFunctor)
+  agreeF-on : ∀ {m} (θ θ′ : String → Ty m) (F : PolyFunctor)
     → (∀ {x} → x ∈ ftvF F → θ x ≡ θ′ x) → substPolyF θ F ≡ substPolyF θ′ F
   agreeF-on θ θ′ (PK A) h = cong K (agree-on θ θ′ A h)
   agreeF-on θ θ′ PId h = refl
@@ -68,27 +69,27 @@ mutual
     cong₂ _⊗_ (agreeF-on θ θ′ F (λ m → h (∈-++⁺ˡ m))) (agreeF-on θ θ′ G (λ m → h (∈-++⁺ʳ (ftvF F) m)))
 
 private
-  *-inj : ∀ {a b c d} → a * b ≡ c * d → (a ≡ c) Data.Product.× (b ≡ d)
+  *-inj : ∀ {m} {a b c d : Ty m} → a * b ≡ c * d → (a ≡ c) Data.Product.× (b ≡ d)
   *-inj refl = refl Data.Product., refl
-  +-inj : ∀ {a b c d} → a + b ≡ c + d → (a ≡ c) Data.Product.× (b ≡ d)
+  +-inj : ∀ {m} {a b c d : Ty m} → a + b ≡ c + d → (a ≡ c) Data.Product.× (b ≡ d)
   +-inj refl = refl Data.Product., refl
-  ⇒-inj : ∀ {a b c d k k′} → a ⇒[ k ] b ≡ c ⇒[ k′ ] d → (a ≡ c) Data.Product.× (b ≡ d)
+  ⇒-inj : ∀ {m} {a b c d : Ty m} {k k′} → a ⇒[ k ] b ≡ c ⇒[ k′ ] d → (a ≡ c) Data.Product.× (b ≡ d)
   ⇒-inj refl = refl Data.Product., refl
-  μ-inj : ∀ {f g} → μ-type f ≡ μ-type g → f ≡ g
+  μ-inj : ∀ {m} {f g : Fun m} → μ-type f ≡ μ-type g → f ≡ g
   μ-inj refl = refl
-  ν-inj : ∀ {f g π π′} → ν-type f π ≡ ν-type g π′ → f ≡ g
+  ν-inj : ∀ {m} {f g : Fun m} {π π′} → ν-type f π ≡ ν-type g π′ → f ≡ g
   ν-inj refl = refl
-  K-inj : ∀ {a b} → K a ≡ K b → a ≡ b
+  K-inj : ∀ {m} {a b : Ty m} → K a ≡ K b → a ≡ b
   K-inj refl = refl
-  ⊕-inj : ∀ {f g f′ g′} → f ⊕ g ≡ f′ ⊕ g′ → (f ≡ f′) Data.Product.× (g ≡ g′)
+  ⊕-inj : ∀ {m} {f g f′ g′ : Fun m} → f ⊕ g ≡ f′ ⊕ g′ → (f ≡ f′) Data.Product.× (g ≡ g′)
   ⊕-inj refl = refl Data.Product., refl
-  ⊗-inj : ∀ {f g f′ g′} → f ⊗ g ≡ f′ ⊗ g′ → (f ≡ f′) Data.Product.× (g ≡ g′)
+  ⊗-inj : ∀ {m} {f g f′ g′ : Fun m} → f ⊗ g ≡ f′ ⊗ g′ → (f ≡ f′) Data.Product.× (g ≡ g′)
   ⊗-inj refl = refl Data.Product., refl
 
 import Data.Product
 
 mutual
-  agree-from : ∀ (θ θ′ : String → Type) (p : PolyType)
+  agree-from : ∀ {m} (θ θ′ : String → Ty m) (p : PolyType)
     → substPoly θ p ≡ substPoly θ′ p → ∀ {x} → x ∈ ftv p → θ x ≡ θ′ x
   agree-from θ θ′ (PTVar y) e (here refl) = e
   agree-from θ θ′ (A P* B) e m = pair-from θ θ′ A B (*-inj e) m
@@ -99,20 +100,20 @@ mutual
   agree-from θ θ′ (Pμ-type F) e m = agreeF-from θ θ′ F (μ-inj e) m
   agree-from θ θ′ (Pν-type F π) e m = agreeF-from θ θ′ F (ν-inj e) m
 
-  pair-from : ∀ (θ θ′ : String → Type) (A B : PolyType)
+  pair-from : ∀ {m} (θ θ′ : String → Ty m) (A B : PolyType)
     → (substPoly θ A ≡ substPoly θ′ A) Data.Product.× (substPoly θ B ≡ substPoly θ′ B)
     → ∀ {x} → x ∈ ftv A ++ ftv B → θ x ≡ θ′ x
   pair-from θ θ′ A B (ea Data.Product., eb) m with ∈-++⁻ (ftv A) m
   ... | inj₁ ma = agree-from θ θ′ A ea ma
   ... | inj₂ mb = agree-from θ θ′ B eb mb
 
-  agreeF-from : ∀ (θ θ′ : String → Type) (F : PolyFunctor)
+  agreeF-from : ∀ {m} (θ θ′ : String → Ty m) (F : PolyFunctor)
     → substPolyF θ F ≡ substPolyF θ′ F → ∀ {x} → x ∈ ftvF F → θ x ≡ θ′ x
   agreeF-from θ θ′ (PK A) e m = agree-from θ θ′ A (K-inj e) m
   agreeF-from θ θ′ (F P⊕ G) e m = pairF-from θ θ′ F G (⊕-inj e) m
   agreeF-from θ θ′ (F P⊗ G) e m = pairF-from θ θ′ F G (⊗-inj e) m
 
-  pairF-from : ∀ (θ θ′ : String → Type) (F G : PolyFunctor)
+  pairF-from : ∀ {m} (θ θ′ : String → Ty m) (F G : PolyFunctor)
     → (substPolyF θ F ≡ substPolyF θ′ F) Data.Product.× (substPolyF θ G ≡ substPolyF θ′ G)
     → ∀ {x} → x ∈ ftvF F ++ ftvF G → θ x ≡ θ′ x
   pairF-from θ θ′ F G (ef Data.Product., eg) m with ∈-++⁻ (ftvF F) m
@@ -120,9 +121,9 @@ mutual
   ... | inj₂ mg = agreeF-from θ θ′ G eg mg
 
 -- THE DETERMINACY: the domain's instance fixes the codomain's.
-cod-determined : ∀ {sd sc : PolyType} → CodVarsInDom sd sc
-  → ∀ (θ θ′ : String → Type) → substPoly θ sd ≡ substPoly θ′ sd → substPoly θ sc ≡ substPoly θ′ sc
-cod-determined {sd} {sc} inc θ θ′ e = agree-on θ θ′ sc (λ m → agree-from θ θ′ sd e (inc m))
+cod-determined : ∀ {m} {sd sc : PolyType} → CodVarsInDom sd sc
+  → ∀ (θ θ′ : String → Ty m) → substPoly θ sd ≡ substPoly θ′ sd → substPoly θ sc ≡ substPoly θ′ sc
+cod-determined {sd = sd} {sc = sc} inc θ θ′ e = agree-on θ θ′ sc (λ m → agree-from θ θ′ sd e (inc m))
 
 -- The decider of the premise.
 codVarsInDom? : ∀ (sd sc : PolyType) → Dec (CodVarsInDom sd sc)

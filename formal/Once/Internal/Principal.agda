@@ -128,7 +128,7 @@ at-or-below-<:ᶜ (subᶜ-prod a b) = tail (pair-below _*_ (at-or-below-<:ᶜ a)
 at-or-below-<:ᶜ (subᶜ-sum a b)  = tail (pair-below _+_ (at-or-below-<:ᶜ a) (at-or-below-<:ᶜ b))
 at-or-below-<:ᶜ (subᶜ-arr {A = A} {q = q} b g) =
   tail (pair-below (λ π′ B′ → A ⇒[ mk-kind q π′ ] B′) (grade-at-or-below g) (at-or-below-<:ᶜ b))
-at-or-below-<:ᶜ (subᶜ-ν {F} {φ} {φ′} g) = ν-step (fin-at-or-below φ φ′ g)
+at-or-below-<:ᶜ (subᶜ-ν {F = F} {f = φ} {f′ = φ′} g) = ν-step (fin-at-or-below φ φ′ g)
   where
     ν-step : φ ≡ φ′ ⊎ φ ∈ finBelow φ′ → ν-type F φ ≡ ν-type F φ′ ⊎ ν-type F φ ∈ below (ν-type F φ′)
     ν-step (inj₁ refl) = inj₁ refl

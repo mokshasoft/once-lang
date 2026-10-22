@@ -396,7 +396,7 @@ val-rel ι s bC x p (no ¬p)  = ⊥-elim (¬p p)
 -- D313: at `act` the call is a finite tree, the IR's own (the same decisions
 -- on the codomain), mapped into the two value domains.
 opCallᵀ-sem : ∀ {A B} (h : FFIAnswers) (cn : CanonicalName) (bA : IsBaseType A) (bB : IsBaseType B)
-                (dv : Dec (B ≡ Once.Internal.Type.Void)) (du : Dec (B ≡ Unit)) (x : Val.⟦ A ⟧)
+                (dv : Dec (B ≡ Once.Spec.Type.Void)) (du : Dec (B ≡ Unit)) (x : Val.⟦ A ⟧)
             → opCallᵀ cn bA dv du x ≡ sigOpSemT fmt h (mk-info' cn (arrow-sem-eff dv du) bA bB) (arrow-sem-eff dv du) x
 opCallᵀ-sem h cn bA bB (yes refl) du         x = refl
 opCallᵀ-sem h cn bA bB (no _)     (yes refl) x = refl
@@ -1142,8 +1142,8 @@ module _ (σ-self : RelDefs fmt σ σ) where
     relS-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM u (proj₂ ab)))
                  (sym (liftFn-snd {A} {B})) ((λ rv → RelGM-return u {B} (proj₂ rv)) , (λ ra → relS-ret (proj₂ ra))))
   bridge-c (t-terminal-morph-check {A = A} {π = π} {u = u}) re er =
-    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Internal.Type.Unit) (λ _ → returnM u tt))
-                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Internal.Type.Unit} tt) , (λ _ → relS-ret tt)))
+    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM u tt))
+                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Spec.Type.Unit} tt) , (λ _ → relS-ret tt)))
   bridge-c (t-initial-morph-check) re er = relS-ret ((λ { {a = ()} }) , (λ { {()} }))
   -- D313: a generator at its guard — the generic effect on both sides.
   bridge-c (t-inl-morph-check {A = A} {B = B} {π = π} {u = u}) re er =
@@ -1274,7 +1274,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
   -- The old clause read that value unconditionally; `RelGᵖ-bind` puts the ⊥ where
   -- it is actually bound, and the stopped branch closes on its own.
   bridge-c {ctx = ctx} {A = A} (t-initial-app-check d) {ρ = ρ} re er =
-    RelGᵖ-bind {A = Once.Internal.Type.Void} {B = A} (bridge-c d {ρ = ρ} (reᵐ re) er) (λ {a} _ → ⊥-elim a)
+    RelGᵖ-bind {A = Once.Spec.Type.Void} {B = A} (bridge-c d {ρ = ρ} (reᵐ re) er) (λ {a} _ → ⊥-elim a)
   -- D243: a polymorphic reference is the definition variable at its kinded
   -- instance on both sides — the environments' families at that instance.
   bridge-c {ctx = ctx} {A = U} (t-var-poly-instantiate {x = x} _ _ lp _ ki) re er =
@@ -1309,8 +1309,8 @@ module _ (σ-self : RelDefs fmt σ σ) where
     relS-ret (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM u (proj₂ ab)))
                  (sym (liftFn-snd {A} {B})) ((λ rv → RelGM-return u {B} (proj₂ rv)) , (λ ra → relS-ret (proj₂ ra))))
   bridge-d (d-terminal {A = A} {π = π} {u = u}) re er =
-    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Internal.Type.Unit) (λ _ → returnM u tt))
-                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Internal.Type.Unit} tt) , (λ _ → relS-ret tt)))
+    relS-ret (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM u tt))
+                 (sym (liftFn-terminal {A})) ((λ _ → RelGM-return u {Once.Spec.Type.Unit} tt) , (λ _ → relS-ret tt)))
   bridge-d d-initial re er = relS-ret ((λ { {a = ()} }) , (λ { {()} }))
   -- D322: each arm converted into the join first.
   bridge-d (d-case {A = A} {B = B} {C = C} {π = π} df dg J) re er =

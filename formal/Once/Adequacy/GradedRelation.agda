@@ -99,7 +99,6 @@ RelGV Float       x y = x ≡ y
 RelGV (μ-type F)  x y = x ≡ y
 RelGV (ν-type F pureᶠ) x y = x ∼ᵖᵈ y
 RelGV (ν-type F actᶠ)  x y = x ∼ᵈ y
-RelGV (rigid _ _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
 RelGV (A + B) (inj₁ a₁) (inj₁ a₂) = RelGV A a₁ a₂
 RelGV (A + B) (inj₂ b₁) (inj₂ b₂) = RelGV B b₁ b₂
@@ -362,7 +361,6 @@ right-self Float r = refl
 right-self (μ-type F) r = refl
 right-self (ν-type F pureᶠ) r = pd-self r
 right-self (ν-type F actᶠ) r = ad-self r
-right-self (rigid _ _) {()}
 right-self (A * B) {_ , _} {_ , _} (r , s) = right-self A r , right-self B s
 right-self (A + B) {inj₁ _} {inj₁ _} r = right-self A r
 right-self (A + B) {inj₂ _} {inj₂ _} r = right-self B r
@@ -382,7 +380,6 @@ mutual
   GV-D (μ-type F) r d = trans r (sym d)
   GV-D (ν-type F pureᶠ) r d = pd-D r d
   GV-D (ν-type F actᶠ) r d = ad-D r d
-  GV-D (rigid _ _) {()}
   GV-D (A * B) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = GV-D A r d , GV-D B s d′
   GV-D (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r d = GV-D A r d
   GV-D (A + B) {inj₂ _} {inj₂ _} {inj₂ _} r d = GV-D B r d

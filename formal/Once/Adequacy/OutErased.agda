@@ -124,17 +124,17 @@ pushS⊗⁻ refl refl a b = refl
 -- (sym q)`, so the inverse direction needs its own statements rather than a
 -- rewrite of the forward ones.
 push-+ᴰ₁⁻ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (z : ⟦ A' ⟧ᴰ)
-  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Internal.Type._+_ p q)) (inj₁ z)
+  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Spec.Type._+_ p q)) (inj₁ z)
     ≡ inj₁ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym p) z)
 push-+ᴰ₁⁻ refl refl z = refl
 
 push-+ᴰ₂⁻ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (z : ⟦ B' ⟧ᴰ)
-  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Internal.Type._+_ p q)) (inj₂ z)
+  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Spec.Type._+_ p q)) (inj₂ z)
     ≡ inj₂ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym q) z)
 push-+ᴰ₂⁻ refl refl z = refl
 
 push-*ᴰ⁻ : ∀ {A A' B B' : Type} (p : A ≡ A') (q : B ≡ B') (a : ⟦ A' ⟧ᴰ) (b : ⟦ B' ⟧ᴰ)
-  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Internal.Type._*_ p q)) (a , b)
+  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ Once.Spec.Type._*_ p q)) (a , b)
     ≡ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym p) a , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym q) b)
 push-*ᴰ⁻ refl refl a b = refl
 
@@ -204,34 +204,34 @@ out-layer-gen-⊗ G₁ G₂ wfA wfB A a b =
 -- `coerce-base-to-full`/`inject` where that one has `coerce-full-to-base`/
 -- `forget`. Induction on the base witness.
 base-out : ∀ (B : Type) (ib : IsBaseType B) (A : Type)
-    (ℓ : ⟦ translateF Carrier Carrier (Once.Internal.Type.K B) ⟧SF ⟦ A ⟧ᴰ)
-  → subst id (cohᴰ (⟦ Once.Internal.Type.K B ⟧T A))
-      (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Internal.Type.K B) A))
-        (out-layer-gen (Once.Internal.Type.K B) (wf-K ib) A (subst id (sym (base-coh B)) ℓ)))
+    (ℓ : ⟦ translateF Carrier Carrier (Once.Spec.Type.K B) ⟧SF ⟦ A ⟧ᴰ)
+  → subst id (cohᴰ (⟦ Once.Spec.Type.K B ⟧T A))
+      (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K B) A))
+        (out-layer-gen (Once.Spec.Type.K B) (wf-K ib) A (subst id (sym (base-coh B)) ℓ)))
     ≡ coerce-functor⁻¹-D (wf-K ib) A (coerce-ν-out (wf-K ib) ⟦ A ⟧ᴰ ℓ)
 base-out _ base-Unit   A ℓ = refl
 base-out _ base-Int    A ℓ = refl
 base-out _ base-Float  A ℓ = refl
 base-out (X Once.Internal.Type.* Y) (base-Prod ibA ibB) A (a , b) =
   trans (cong (λ z → subst id (cohᴰ (X Once.Internal.Type.* Y))
-                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Internal.Type.K (X Once.Internal.Type.* Y)) A))
-                    (out-layer-gen (Once.Internal.Type.K (X Once.Internal.Type.* Y))
+                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Internal.Type.* Y)) A))
+                    (out-layer-gen (Once.Spec.Type.K (X Once.Internal.Type.* Y))
                                    (wf-K (base-Prod ibA ibB)) A z)))
               (push×⁻ (base-coh X) (base-coh Y) a b))
   (trans (push× (cohᴰ X) (cohᴰ Y) _ _)
          (cong₂ _,_ (base-out _ ibA A a) (base-out _ ibB A b)))
 base-out (X Once.Internal.Type.+ Y) (base-Sum ibA ibB) A (inj₁ a) =
   trans (cong (λ z → subst id (cohᴰ (X Once.Internal.Type.+ Y))
-                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Internal.Type.K (X Once.Internal.Type.+ Y)) A))
-                    (out-layer-gen (Once.Internal.Type.K (X Once.Internal.Type.+ Y))
+                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Internal.Type.+ Y)) A))
+                    (out-layer-gen (Once.Spec.Type.K (X Once.Internal.Type.+ Y))
                                    (wf-K (base-Sum ibA ibB)) A z)))
               (push⊎₁⁻ (base-coh X) (base-coh Y) a))
   (trans (push⊎₁ (cohᴰ X) (cohᴰ Y) _)
          (cong inj₁ (base-out _ ibA A a)))
 base-out (X Once.Internal.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
   trans (cong (λ z → subst id (cohᴰ (X Once.Internal.Type.+ Y))
-                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Internal.Type.K (X Once.Internal.Type.+ Y)) A))
-                    (out-layer-gen (Once.Internal.Type.K (X Once.Internal.Type.+ Y))
+                  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K (X Once.Internal.Type.+ Y)) A))
+                    (out-layer-gen (Once.Spec.Type.K (X Once.Internal.Type.+ Y))
                                    (wf-K (base-Sum ibA ibB)) A z)))
               (push⊎₂⁻ (base-coh X) (base-coh Y) b))
   (trans (push⊎₂ (cohᴰ X) (cohᴰ Y) _)
@@ -248,18 +248,18 @@ base-out (X Once.Internal.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
           (subst (λ H → ⟦ H ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (sym (tF-coh G))
             (subst (λ C → ⟦ translateF Carrier Carrier G ⟧SF C) (sym (cohᴰ A)) ℓ))))
     ≡ coerce-functor⁻¹-D wfG A (coerce-ν-out wfG ⟦ A ⟧ᴰ ℓ)
-νout-erase-D (Once.Internal.Type.K B) (wf-K ib) A ℓ =
-  trans (cong (λ z → OUTK (out-layer-gen (Once.Internal.Type.K B) (wf-K ib) A
+νout-erase-D (Once.Spec.Type.K B) (wf-K ib) A ℓ =
+  trans (cong (λ z → OUTK (out-layer-gen (Once.Spec.Type.K B) (wf-K ib) A
                             (subst (λ H → ⟦ H ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
-                                   (sym (tF-coh (Once.Internal.Type.K B))) z)))
+                                   (sym (tF-coh (Once.Spec.Type.K B))) z)))
               (subst-SK-const (sym (cohᴰ A)) ℓ))
-        (trans (cong (λ z → OUTK (out-layer-gen (Once.Internal.Type.K B) (wf-K ib) A z))
+        (trans (cong (λ z → OUTK (out-layer-gen (Once.Spec.Type.K B) (wf-K ib) A z))
                      (pushSK⁻ (base-coh B) ℓ))
                (base-out B ib A ℓ))
   where
-    OUTK : ⟦ IT.⟦ eraseF (Once.Internal.Type.K B) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ Once.Internal.Type.K B ⟧T A ⟧ᴰ
-    OUTK z = subst id (cohᴰ (⟦ Once.Internal.Type.K B ⟧T A))
-               (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Internal.Type.K B) A)) z)
+    OUTK : ⟦ IT.⟦ eraseF (Once.Spec.Type.K B) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ Once.Spec.Type.K B ⟧T A ⟧ᴰ
+    OUTK z = subst id (cohᴰ (⟦ Once.Spec.Type.K B ⟧T A))
+               (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K B) A)) z)
 νout-erase-D _ wf-Id              A ℓ        = subst-subst-sym (cohᴰ A)
 νout-erase-D (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A (inj₁ x) =
   trans (cong (λ z → OUT (out-layer-gen (F Once.Internal.Type.⊕ G) (wf-Sum wfA wfB) A

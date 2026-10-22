@@ -215,7 +215,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
                 (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} (g : RigidFree ty)
                 (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ctx.Usage.[])
-                {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
+                {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
                 (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
                 (inv : Inv {S = S} csc tl ss is ts pre) where
@@ -305,7 +305,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
 -- D324: `main` joins the telescope and the table, not the definitions' scope.
 inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
-             {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
+             {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
@@ -317,7 +317,7 @@ inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigC
 
 inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
-             {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
+             {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)

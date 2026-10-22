@@ -89,7 +89,6 @@ RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ (x : String) (A :
 <:-rel sub-float r = r
 <:-rel sub-μ     r = r
 <:-rel (sub-ν _) r = r
-<:-rel sub-rigid {()}
 <:-rel (sub-arr {q = Zero} a b _) r = RelS-fmap r (<:-rel b)
 <:-rel (sub-arr {q = One}  a b _) r ra = RelS-fmap (r (<:-rel a ra)) (<:-rel b)
 <:-rel (sub-arr {q = Many} a b _) r ra = RelS-fmap (r (<:-rel a ra)) (<:-rel b)

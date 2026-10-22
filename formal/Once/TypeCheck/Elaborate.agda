@@ -122,8 +122,8 @@ isRIntVliftTarget? _ = nothing
 -- the same direction the acceptance premise fixes elsewhere.
 isRFloatVliftTarget? :
   (T : Type) →
-  Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Once.Internal.Type.Float))))
-isRFloatVliftTarget? (X Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Once.Internal.Type.Float) =
+  Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Once.Spec.Type.Float))))
+isRFloatVliftTarget? (X Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Once.Spec.Type.Float) =
   just (X , π , refl)
 {-# CATCHALL #-}
 isRFloatVliftTarget? _ = nothing
@@ -657,7 +657,7 @@ asInt (success (ν-type F π) _ _ _ _)                       = notInt (TypeMisma
 notNumeric : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → Maybe TypeError
 notNumeric (failure err)                                 = just err
 notNumeric (success Int _ _ _ _)                         = nothing
-notNumeric (success Once.Internal.Type.Float _ _ _ _)             = nothing
+notNumeric (success Once.Spec.Type.Float _ _ _ _)             = nothing
 notNumeric (success Unit _ _ _ _)                        = just (TypeMismatch Int Unit)
 notNumeric (success Void _ _ _ _)                        = just (TypeMismatch Int Void)
 notNumeric (success (rigid kᵣ iᵣ) _ _ _ _)                      = just (TypeMismatch Int (rigid kᵣ iᵣ))
@@ -974,7 +974,7 @@ inferOutGo ctx arg F Once.Spec.Grade.pureᶠ Ψ argE d fr w (just wfF) eqW =
 -- D233/D318: an ACTING stream — the stream is evaluated now, the force is
 -- suspended (`curry (Out ∘ fst)`), as `t-apply-eff-app-infer` suspends `apply`.
 inferOutGo ctx arg F Once.Spec.Grade.actᶠ Ψ argE d fr w (just wfF) eqW =
-  success (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ]
+  success (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ]
              ⟦ F ⟧T (Once.Internal.Type.ν-type F Once.Spec.Grade.actᶠ)) _
     (Surface.morph-app (IR.curry (outIR F Once.Spec.Grade.actᶠ wfF IR.∘ IR.fst)) argE)
     (suc d) fr
@@ -1029,13 +1029,13 @@ inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.pure B A') with 
 -- arrow is UNGRADED, so no new Surface former is needed.
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.eff B A') with A ≟T A'
 ... | yes refl =
-  success (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) _
+  success (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) _
           (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
   , t-apply-eff-app-infer {g = Once.Spec.Grade.eg-eff} w
 ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.act B A') with A ≟T A'
 ... | yes refl =
-  success (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) _
+  success (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) _
           (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
   , t-apply-eff-app-infer {g = Once.Spec.Grade.eg-act} w
 ... | no _ = failure (BuiltinTypeMismatch "apply") , tt
@@ -1093,12 +1093,12 @@ checkElabV-neg-int-aux ctx n T with Int <:? T
 
 checkElabV-neg-float-aux : (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
   → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) T
-checkElabV-neg-float-aux ctx i f l p T with Once.Internal.Type.Float <:? T
+checkElabV-neg-float-aux ctx i f l p T with Once.Spec.Type.Float <:? T
 ... | yes s = success Surface.zeroUsage
                       (Surface.coerce s (Surface.float (Decimal.negate (decimalOf i f l)))) 1
                       0
             , t-sub (t-neg-float i f l p) s
-... | no _  = failure (TypeMismatch T Once.Internal.Type.Float) , tt
+... | no _  = failure (TypeMismatch T Once.Spec.Type.Float) , tt
 
 inferElabV-RBinOp-aux : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
   → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
@@ -1795,10 +1795,10 @@ checkElabV-RFloat-aux :
 -- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
 -- `Float` or report a genuine type mismatch. The only failure left is a type
 -- mismatch — representability is no longer a way to fail.
-checkElabV-RFloat-aux ctx i f l p T with Once.Internal.Type.Float <:? T
+checkElabV-RFloat-aux ctx i f l p T with Once.Spec.Type.Float <:? T
 ... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (decimalOf i f l))) 0 0
             , t-sub (t-float i f l p) s
-... | no _  = failure (TypeMismatch T Once.Internal.Type.Float) , tt
+... | no _  = failure (TypeMismatch T Once.Spec.Type.Float) , tt
 
 -- RFloat infer-mode. No dispatch _ left at all — it is the `RInt` clause with
 -- `decimalOf` in place of the digit.
@@ -2698,7 +2698,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (μ-type _) = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | (ν-type _ _) = failure InrNeedsSumType , tt
   -- ahv-initial: arg must be Void; result has any expected T.
-  checkElabV-RApp-dispatch ctx f arg T ahv-initial _ with checkElabV ctx arg Once.Internal.Type.Void
+  checkElabV-RApp-dispatch ctx f arg T ahv-initial _ with checkElabV ctx arg Once.Spec.Type.Void
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , w =
         success _ (Surface.morph-app (IR.initial) argE) (suc d) fr , t-initial-app-check w

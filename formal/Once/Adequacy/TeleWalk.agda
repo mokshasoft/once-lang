@@ -155,11 +155,11 @@ open import Once.Adequacy.TeleWalk.Invariant fmt Fs Ip hiding (φ; ι)
 -- program's run are RELATED, step for step — which gives their traces
 -- (`TraceTr.RelS-tr`). The compiled program runs its entry `ir` (`mainEntry`:
 -- the call of `main`, converted to `Eff Unit Unit`, D315).
-Agree : List IRFun → IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋ → Program Fs → Set
-Agree tbl ir P = RelS (RelGV Once.Internal.Type.Unit) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) ir tt)
+Agree : List IRFun → IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Unit ⌋ → Program Fs → Set
+Agree tbl ir P = RelS (RelGV Once.Spec.Type.Unit) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) ir tt)
 
 -- …at the entry the bundle finds, if any.
-AgreeM : List IRFun → Maybe (IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋) → Program Fs → Set
+AgreeM : List IRFun → Maybe (IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Unit ⌋) → Program Fs → Set
 AgreeM tbl (just ir) P = Agree tbl ir P
 AgreeM tbl nothing   P = ⊥
 
@@ -199,40 +199,40 @@ private
   conv-subst refl q p x = cong (λ r → ⟦ r ⟧<:ᵛ x) (<:-irr q p)
 
   -- `main`'s result, converted to `Unit` at grade `eff`: the run is unchanged…
-  conv-unit : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Internal.Type.Unit ⟧ᵛ} {t}
-            → RelGM π Once.Internal.Type.Unit m t
-            → RelS (RelGV Once.Internal.Type.Unit) (subM g (fmapM π ⟦ sub-unit ⟧<:ᵛ m)) t
+  conv-unit : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Spec.Type.Unit ⟧ᵛ} {t}
+            → RelGM π Once.Spec.Type.Unit m t
+            → RelS (RelGV Once.Spec.Type.Unit) (subM g (fmapM π ⟦ sub-unit ⟧<:ᵛ m)) t
   conv-unit ⊑-eff r     = RelS-fmapˡ r (λ _ → tt)
   conv-unit ⊑-pe  r     = r
   conv-unit ⊑-ae  {m} r = RelS-embed-fmap m r
 
   -- …and a run that never returns (`Void`) is related to any continuation of
   -- a run it is related to.
-  conv-void : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Internal.Type.Void ⟧ᵛ} {t} {Y} {k : ⟦ Once.Internal.Type.Void ⟧ᴰ → T∞ Y}
-              {R : ⟦ Once.Internal.Type.Unit ⟧ᵛ → Y → Set}
-            → RelGM π Once.Internal.Type.Void m t
-            → RelS R (subM g (fmapM π ⟦ sub-void {B = Once.Internal.Type.Unit} ⟧<:ᵛ m)) (t >>=∞ k)
+  conv-void : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ Once.Spec.Type.Void ⟧ᵛ} {t} {Y} {k : ⟦ Once.Spec.Type.Void ⟧ᴰ → T∞ Y}
+              {R : ⟦ Once.Spec.Type.Unit ⟧ᵛ → Y → Set}
+            → RelGM π Once.Spec.Type.Void m t
+            → RelS R (subM g (fmapM π ⟦ sub-void {B = Once.Spec.Type.Unit} ⟧<:ᵛ m)) (t >>=∞ k)
   conv-void ⊑-eff      r = RelS-bind r (λ {a} _ → ⊥-elim a)
   conv-void ⊑-pe  {()} r
-  conv-void ⊑-ae  {m}  r = RelS-≈ˡ (embed-bind m (λ l → Once.Internal.Trace.ret (⟦ sub-void {B = Once.Internal.Type.Unit} ⟧<:ᵛ l))) (RelS-bind r (λ {a} _ → ⊥-elim a))
+  conv-void ⊑-ae  {m}  r = RelS-≈ˡ (embed-bind m (λ l → Once.Internal.Trace.ret (⟦ sub-void {B = Once.Spec.Type.Unit} ⟧<:ᵛ l))) (RelS-bind r (λ {a} _ → ⊥-elim a))
 
   -- `main`'s run, converted (D315), against the compiled entry: the call of
   -- `main`, which the table answers with its entry's direct-call form.
-  main-run : ∀ {ty} (p : ty <: EffUU) (pre tbl : List IRFun) {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋} {v : ⟦ ty ⟧ᵛ}
+  main-run : ∀ {ty} (p : ty <: EffUU) (pre tbl : List IRFun) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋} {v : ⟦ ty ⟧ᵛ}
            → (∀ A B a → tableCalls fmt φ tbl (bare "main") A B a
                         ≡ tableCalls fmt φ (irFunOf (C.mkCompiledFun (bare "main") ty irFun) ∷ pre) (bare "main") A B a)
            → RelGM Once.Spec.Grade.pure ty v (subst T∞ (cohᴰ ty) (abiT ty (evalᴰ fmt (tableEnv fmt φ pre) irFun tt)))
-           → RelS (RelGV Once.Internal.Type.Unit) (⟦ p ⟧<:ᵛ v tt) (evalᴰ fmt (tableEnv fmt φ tbl) (C.mainEntry p) tt)
+           → RelS (RelGV Once.Spec.Type.Unit) (⟦ p ⟧<:ᵛ v tt) (evalᴰ fmt (tableEnv fmt φ tbl) (C.mainEntry p) tt)
   main-run sub-void pre tbl {v = ()} sk r
   main-run (sub-arr {π = π} sub-unit sub-unit g) pre tbl {irFun} {v} sk r =
-    conv-unit g {m = v tt} (GM-D π Once.Internal.Type.Unit (proj₁ (ret-inv r) {tt} {tt} tt)
-      (retargetˡ (cong force (trans (sk ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋ tt)
-                                    (tableEnv-hit (bare "main") ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Unit ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
+    conv-unit g {m = v tt} (GM-D π Once.Spec.Type.Unit (proj₁ (ret-inv r) {tt} {tt} tt)
+      (retargetˡ (cong force (trans (sk ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Unit ⌋ tt)
+                                    (tableEnv-hit (bare "main") ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Unit ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
         (uncurry-app (tableEnv fmt φ pre) irFun (eval-rel fmt (table-self fmt φ pre) irFun {tt} {tt} tt) {tt} {tt} tt)))
   main-run (sub-arr {π = π} sub-unit sub-void g) pre tbl {irFun} {v} sk r =
-    conv-void g {m = v tt} (GM-D π Once.Internal.Type.Void (proj₁ (ret-inv r) {tt} {tt} tt)
-      (retargetˡ (cong force (trans (sk ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Void ⌋ tt)
-                                    (tableEnv-hit (bare "main") ⌊ Once.Internal.Type.Unit ⌋ ⌊ Once.Internal.Type.Void ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
+    conv-void g {m = v tt} (GM-D π Once.Spec.Type.Void (proj₁ (ret-inv r) {tt} {tt} tt)
+      (retargetˡ (cong force (trans (sk ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Void ⌋ tt)
+                                    (tableEnv-hit (bare "main") ⌊ Once.Spec.Type.Unit ⌋ ⌊ Once.Spec.Type.Void ⌋ (Once.IR.apply Once.IR.∘ Once.IR.⟨ irFun Once.IR.∘ Once.IR.terminal , Once.IR.id ⟩) pre tt)))
         (uncurry-app (tableEnv fmt φ pre) irFun (eval-rel fmt (table-self fmt φ pre) irFun {tt} {tt} tt) {tt} {tt} tt)))
 
   -- Any two proofs that `main` is usable as `Eff Unit Unit` give one entry.
@@ -274,7 +274,7 @@ from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep 
 -- `main` (D315): its run at its own type, converted, against the compiled
 -- entry the bundle finds — whichever proofs of the conversion each side holds.
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd ty} (p : ty <: EffUU) (g : RigidFree ty)
-              (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[]) {irFun : IR ⌊ Once.Internal.Type.Unit ⌋ ⌊ ty ⌋}
+              (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[]) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
               (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" ty bd ≡ Data.Sum.inj₂ irFun)
               {es} (rest : ModTele (AS.scopeOf (C.extendScope csc "main" ty)) es)
@@ -291,7 +291,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} {ty} p g D {irFun
   -- Plan 0.105 / D320: the entry's compile chain relates the core entry to the
   -- compiled call (`relM`); the compiled program's tree IS that call,
   -- converted, and the core program's run IS that entry, converted.
-  subst₂ (λ c ir → RelS (RelGV Once.Internal.Type.Unit) c (evalᴰ fmt (tableEnv fmt φ tbl) ir tt))
+  subst₂ (λ c ir → RelS (RelGV Once.Spec.Type.Unit) c (evalᴰ fmt (tableEnv fmt φ tbl) ir tt))
          (sym core-eq) (entry-irr p q)
          (main-run p pre tbl
             (λ A B a → trans (cong (λ t → tableCalls fmt φ t (bare "main") A B a) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))

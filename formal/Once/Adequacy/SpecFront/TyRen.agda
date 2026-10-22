@@ -96,7 +96,7 @@ mutual
 
 <:ᶜ-⟨⟩ : ∀ {a k} (τ : TySub a k) {A B : Ty a} → A <:ᶜ B → A ⟨ τ ⟩ <:ᶜ B ⟨ τ ⟩
 <:ᶜ-⟨⟩ τ subᶜ-void        = subᶜ-void
-<:ᶜ-⟨⟩ τ (subᶜ-var {i})   = <:ᶜ-refl (τ i)
+<:ᶜ-⟨⟩ τ (subᶜ-var {i = i})   = <:ᶜ-refl (τ i)
 <:ᶜ-⟨⟩ τ subᶜ-unit        = subᶜ-unit
 <:ᶜ-⟨⟩ τ subᶜ-int         = subᶜ-int
 <:ᶜ-⟨⟩ τ subᶜ-float       = subᶜ-float

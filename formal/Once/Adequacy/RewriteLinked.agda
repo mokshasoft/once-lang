@@ -43,7 +43,7 @@ private
   block-linked {σ = σ} tbl eq body =
     subst′ eq (block-info body) (block-decl body)
     where
-      subst′ : ∀ {A : II.IRTy} {T B : Once.Internal.Type.Type} (e : A ≡ II.⌊ T ⌋) (si : Once.SigOp.Info.SigOpInfo T B)
+      subst′ : ∀ {A : II.IRTy} {T B : Once.Spec.Type.Type} (e : A ≡ II.⌊ T ⌋) (si : Once.SigOp.Info.SigOpInfo T B)
              → Declared σ si → Linked σ tbl (subst (λ U → IR U II.⌊ B ⌋) (Relation.Binary.PropositionalEquality.sym e) (SigOp si))
       subst′ refl si d = d
       -- an arith block is the compiler's: it owes no declaration

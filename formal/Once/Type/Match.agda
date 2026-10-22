@@ -11,6 +11,7 @@
 
 module Once.Type.Match where
 
+open import Once.Spec.Type using (Ty; Fun)
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing; _>>=_)
@@ -19,10 +20,11 @@ open import Data.String using (String)
 import Data.String as Str
 open import Relation.Nullary using (Dec; yes; no)
 
+open import Data.Nat using (ℕ)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Type.DecEq using (_≟q_; _≟p_; _≟k_)
@@ -37,10 +39,10 @@ open import Once.Internal.Type.DecEq using (_≟T_)
 -- D007-compatible: structural template matching, not unification.
 -- No meta-variables. Total function.
 
-Subst : Set
-Subst = List (String × Type)
+Subst : ℕ → Set
+Subst m = List (String × Ty m)
 
-lookupSubst : String → Subst → Maybe Type
+lookupSubst : ∀ {m} → String → Subst m → Maybe (Ty m)
 lookupSubst _ [] = nothing
 lookupSubst x ((y , t) ∷ rest) with x Str.≟ y
 ... | yes _ = just t
@@ -54,11 +56,11 @@ decide (no _)  _ = nothing
 
 -- | Extend substitution with `(x, t)`; returns `nothing` if `x` was
 -- already bound to a different type.
-extendSubst-aux : String → Type → Subst → Maybe Type → Maybe Subst
+extendSubst-aux : ∀ {m} → String → Ty m → Subst m → Maybe (Ty m) → Maybe (Subst m)
 extendSubst-aux x t s (just t′) = decide (t ≟T t′) (just s)
 extendSubst-aux x t s nothing   = just ((x , t) ∷ s)
 
-extendSubst : String → Type → Subst → Maybe Subst
+extendSubst : ∀ {m} → String → Ty m → Subst m → Maybe (Subst m)
 extendSubst x t s = extendSubst-aux x t s (lookupSubst x s)
 
 -- Maybe-handling helpers (no-with form).
@@ -77,10 +79,10 @@ if-true-maybe false _ = nothing
 -- The top-level wrapper runs the accumulator form with an empty
 -- initial substitution.
 mutual
-  instantiate : PolyType → Type → Maybe Subst
+  instantiate : ∀ {m} → PolyType → Ty m → Maybe (Subst m)
   instantiate p t = instantiateAcc p t []
 
-  instantiateAcc : PolyType → Type → Subst → Maybe Subst
+  instantiateAcc : ∀ {m} → PolyType → Ty m → Subst m → Maybe (Subst m)
   instantiateAcc (PTVar x)       t               s = extendSubst x t s
   instantiateAcc PUnit           Unit            s = just s
   instantiateAcc PVoid           Void            s = just s
@@ -219,21 +221,21 @@ mutual
   instantiateAcc PFloat          (μ-type _)      _ = nothing
   instantiateAcc PFloat          (ν-type _ _)      _ = nothing
   instantiateAcc PFloat          Int             _ = nothing
-  -- D243: a rigid parameter is matched only by a schema variable.
-  instantiateAcc PUnit           (rigid _ _)     _ = nothing
-  instantiateAcc PVoid           (rigid _ _)     _ = nothing
-  instantiateAcc (_ P* _)        (rigid _ _)     _ = nothing
-  instantiateAcc (_ P+ _)        (rigid _ _)     _ = nothing
-  instantiateAcc (_ P⇒[ _ ] _)   (rigid _ _)     _ = nothing
-  instantiateAcc (PEff _ _)      (rigid _ _)     _ = nothing
-  instantiateAcc (PAct _ _)      (rigid _ _)     _ = nothing
-  instantiateAcc (Pμ-type _)     (rigid _ _)     _ = nothing
+  -- A type variable is matched only by a schema variable.
+  instantiateAcc PUnit           (var _)         _ = nothing
+  instantiateAcc PVoid           (var _)         _ = nothing
+  instantiateAcc (_ P* _)        (var _)         _ = nothing
+  instantiateAcc (_ P+ _)        (var _)         _ = nothing
+  instantiateAcc (_ P⇒[ _ ] _)   (var _)         _ = nothing
+  instantiateAcc (PEff _ _)      (var _)         _ = nothing
+  instantiateAcc (PAct _ _)      (var _)         _ = nothing
+  instantiateAcc (Pμ-type _)     (var _)         _ = nothing
   {-# CATCHALL #-}
-  instantiateAcc (Pν-type _ _)   (rigid _ _)     _ = nothing
-  instantiateAcc PInt            (rigid _ _)     _ = nothing
-  instantiateAcc PFloat          (rigid _ _)     _ = nothing
+  instantiateAcc (Pν-type _ _)   (var _)         _ = nothing
+  instantiateAcc PInt            (var _)         _ = nothing
+  instantiateAcc PFloat          (var _)         _ = nothing
 
-  instantiateFunctor : PolyFunctor → Functor → Subst → Maybe Subst
+  instantiateFunctor : ∀ {m} → PolyFunctor → Fun m → Subst m → Maybe (Subst m)
   instantiateFunctor (PK A)    (K a)   s = instantiateAcc A a s
   instantiateFunctor PId       Id      s = just s
   instantiateFunctor (F P⊕ G) (f ⊕ g) s =
@@ -258,7 +260,7 @@ mutual
 -- by the substitution (shouldn't happen after a successful
 -- `instantiate`, but we return Maybe for safety rather than assuming).
 mutual
-  applySubst : Subst → PolyType → Maybe Type
+  applySubst : ∀ {m} → Subst m → PolyType → Maybe (Ty m)
   applySubst s (PTVar x)       = lookupSubst x s
   applySubst _ PUnit           = just Unit
   applySubst _ PVoid           = just Void
@@ -275,7 +277,7 @@ mutual
   applySubst s (Pμ-type F)     = applySubstFunctor s F >>= λ f → just (μ-type f)
   applySubst s (Pν-type F π)   = applySubstFunctor s F >>= λ f → just (ν-type f π)
 
-  applySubstFunctor : Subst → PolyFunctor → Maybe Functor
+  applySubstFunctor : ∀ {m} → Subst m → PolyFunctor → Maybe (Fun m)
   applySubstFunctor s (PK A)   = applySubst s A >>= λ a → just (K a)
   applySubstFunctor _ PId      = just Id
   applySubstFunctor s (F P⊕ G) =
@@ -294,7 +296,7 @@ mutual
 -- Returns `nothing` if the schema isn't an arrow, if the domain
 -- doesn't match, or if the codomain still contains free TVars
 -- after substitution (shouldn't happen with well-formed schemas).
-schemaArrowCodomain : PolyType → Type → Maybe Type
+schemaArrowCodomain : ∀ {m} → PolyType → Ty m → Maybe (Ty m)
 schemaArrowCodomain (A P⇒[ _ ] B) domain =
   instantiate A domain >>= λ subst → applySubst subst B
 -- Schema is not an arrow → no codomain.

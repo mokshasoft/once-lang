@@ -437,7 +437,7 @@ mutual
                             {π : Once.Spec.Grade.Purity} {g : Once.Spec.Grade.EffGrade π}
                           → ctx ⊢ᵢ p ∶ ((A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B) Once.Internal.Type.* A) ⨾ Ψ
                           → ctx ⊢ᵢ RApp (RResolved (gen "apply")) p
-                                 ∶ (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)
+                                 ∶ (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)
                                  ⨾ (zeroUsage +ᵘ (Once.Spec.Grade.Many *ᵘ Ψ))
 
     -- | D194: `Out v` — force one layer of a ν. INFER, not check, and that
@@ -480,7 +480,7 @@ mutual
                         → ⟦ F ⟧T (ν-type F Once.Spec.Grade.actᶠ) ≡ C
                         → ctx ⊢ᵢ v ∶ ν-type F Once.Spec.Grade.actᶠ ⨾ Ψ
                         → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
-                                ∶ (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] C)
+                                ∶ (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] C)
                                 ⨾ (zeroUsage +ᵘ (Once.Spec.Grade.Many *ᵘ Ψ))
 
     ----------------------------------------------------------------
@@ -523,7 +523,7 @@ mutual
              → classifyAppHead f ≡ nothing
              → ctx ⊢ᵢ f ∶ A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B ⨾ Ψ₁
              → ctx ⊢ᶜ x ∶ A ⨾ Ψ₂
-             → ctx ⊢ᵢ RApp f x ∶ Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B ⨾ (Ψ₁ +ᵘ (Once.Spec.Grade.Many *ᵘ Ψ₂))
+             → ctx ⊢ᵢ RApp f x ∶ Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B ⨾ (Ψ₁ +ᵘ (Once.Spec.Grade.Many *ᵘ Ψ₂))
 
     -- | D230: THE SPINE. An application whose head does not synthesize: the
     -- argument's type is inferred and given to the head, whose output the
@@ -813,7 +813,7 @@ mutual
     -- object (`Void`) to any object — forced by CCC.
     t-initial-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {T : Type}
                           {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                        → ctx ⊢ᶜ arg ∶ Once.Internal.Type.Void ⨾ Ψ
+                        → ctx ⊢ᶜ arg ∶ Once.Spec.Type.Void ⨾ Ψ
                         → ctx ⊢ᶜ RApp (RResolved (gen "initial")) arg
                                  ∶ T
                                  ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ))

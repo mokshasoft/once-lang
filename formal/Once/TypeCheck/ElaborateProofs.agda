@@ -602,7 +602,7 @@ apply-eff : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usag
               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) Once.Internal.Type.* A)) (d fr : ℕ) w
           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.eff B A))
-                ≡ success (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
+                ≡ success (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
 apply-eff A _ _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
@@ -611,7 +611,7 @@ apply-act : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usag
               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) Once.Internal.Type.* A)) (d fr : ℕ) w
           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.act B A))
-                ≡ success (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
+                ≡ success (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
 apply-act A _ _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
@@ -639,7 +639,7 @@ checkElab-fallback-RApp-apply-effclosure :
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) Once.Internal.Type.* A)}
     {d fr : ℕ}
   → inferElab ctx p ≡ success ((A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) Once.Internal.Type.* A) Ψ eE d fr
-  → (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) <: τ
+  → (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p)
                 τ
@@ -654,7 +654,7 @@ checkElab-fallback-RApp-apply-actclosure :
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) Once.Internal.Type.* A)}
     {d fr : ℕ}
   → inferElab ctx p ≡ success ((A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) Once.Internal.Type.* A) Ψ eE d fr
-  → (Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) <: τ
+  → (Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p)
                 τ
@@ -930,7 +930,7 @@ resolveExpr-unit _ _ _ _ = refl
 resolveExpr-absurd :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (e : Surface.Expr Γ Ψ Once.Internal.Type.Void)
+    (e : Surface.Expr Γ Ψ Once.Spec.Type.Void)
   → resolveExpr {A = A} polys imps userFns fresh (Surface.absurd e)
       ≡ Surface.absurd (resolveExpr polys imps userFns fresh e)
 resolveExpr-absurd _ _ _ _ _ = refl

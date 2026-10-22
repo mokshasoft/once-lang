@@ -251,7 +251,7 @@ realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
 -- as `t-apply-eff-app-infer` suspends `apply` — the elaborator's term exactly.
 realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _
-                 (Once.Internal.Type.Unit ⇒[ mk-kind Many Once.Spec.Grade.act ] Z)) ceq
+                 (Once.Spec.Type.Unit ⇒[ mk-kind Many Once.Spec.Grade.act ] Z)) ceq
     (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F Once.Spec.Grade.actᶠ ⌋ o)
                                 (sym (⌊⟧T-commute F (ν-type F Once.Spec.Grade.actᶠ)))
                                 (IR.Out (wf-⌊⌋ wfF))

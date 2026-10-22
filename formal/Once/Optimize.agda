@@ -32,7 +32,7 @@ open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Flo
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IR
-open import Once.IRTy using (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; IRTy; _≟IRTy_)
+open import Once.IRTy using (Unit; Void; _*_; _+_; Int; Float; IRTy; _≟IRTy_)
 import Once.IRTy as II
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)

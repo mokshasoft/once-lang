@@ -261,7 +261,7 @@ realize-refs-i (t-Out-app-infer {F = F} wfF ceq d) =
     ( Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Grade.pureᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt
     , realize-refs-i d)
 realize-refs-i (t-Out-eff-app-infer {F = F} wfF ceq d) =
-  Refs-substF (λ Z → Once.Internal.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] Z) ceq _
+  Refs-substF (λ Z → Once.Spec.Type.Unit Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] Z) ceq _
     ( (Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Grade.actᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
     , realize-refs-i d)
 realize-refs-i (t-terminal-app d) = tt , realize-refs-i d
@@ -376,14 +376,14 @@ dc-linked : ∀ (tbl : List IRFun) (ty : Type) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
 dc-linked tbl (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir l = tt , ((l , tt) , tt)
 dc-linked tbl (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir l = tt , ((l , tt) , tt)
 dc-linked tbl (A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B) ir l = tt , ((l , tt) , tt)
-dc-linked tbl Once.Internal.Type.Unit           ir l = l
-dc-linked tbl Once.Internal.Type.Void           ir l = l
+dc-linked tbl Once.Spec.Type.Unit           ir l = l
+dc-linked tbl Once.Spec.Type.Void           ir l = l
 dc-linked tbl (A Once.Internal.Type.* B)        ir l = l
 dc-linked tbl (A Once.Internal.Type.+ B)        ir l = l
 dc-linked tbl (Once.Internal.Type.μ-type F)     ir l = l
 dc-linked tbl (Once.Internal.Type.ν-type F π)   ir l = l
-dc-linked tbl Once.Internal.Type.Int            ir l = l
-dc-linked tbl Once.Internal.Type.Float          ir l = l
+dc-linked tbl Once.Spec.Type.Int            ir l = l
+dc-linked tbl Once.Spec.Type.Float          ir l = l
 dc-linked tbl (Once.Internal.Type.rigid k i)    ir l = l
 
 -- A reference to an entry is linked once the entry is in the table: the
@@ -393,14 +393,14 @@ ref-entry : ∀ (tbl : List IRFun) (x : String) (ty : Type) (ir : IR ⌊ Unit �
 ref-entry tbl x ty@(A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Internal.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Internal.Type.Unit         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Internal.Type.Void         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Unit         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Void         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Internal.Type.* B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Internal.Type.+ B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(Once.Internal.Type.μ-type F)   ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(Once.Internal.Type.ν-type F π) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Internal.Type.Int          ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Internal.Type.Float        ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Int          ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Float        ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(Once.Internal.Type.rigid k i)  ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 
 RefLinked-mono : ∀ {tbl tbl′ : List IRFun} → (∀ {f A B} → LinkedAt tbl f A B → LinkedAt tbl′ f A B)

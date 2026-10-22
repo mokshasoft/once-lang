@@ -40,7 +40,7 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁻)
 open import Data.List.Relation.Unary.Any using (here; there)
 
 mutual
-  subst-ground : ∀ θ (A : PolyType) (g : Ground A) → substPoly θ A ≡ extractGround A g
+  subst-ground : ∀ (θ : String → Type) (A : PolyType) (g : Ground A) → substPoly θ A ≡ extractGround A g
   subst-ground θ (PTVar _) ()
   subst-ground θ PUnit   _ = refl
   subst-ground θ PVoid   _ = refl
@@ -57,7 +57,7 @@ mutual
   subst-ground θ (Pμ-type F) g = cong μ-type (subst-groundF θ F g)
   subst-ground θ (Pν-type F π) g = cong (λ G → ν-type G π) (subst-groundF θ F g)
 
-  subst-groundF : ∀ θ (F : PolyFunctor) (g : GroundF F) → substPolyF θ F ≡ extractGroundF F g
+  subst-groundF : ∀ (θ : String → Type) (F : PolyFunctor) (g : GroundF F) → substPolyF θ F ≡ extractGroundF F g
   subst-groundF θ (PK A) g = cong K (subst-ground θ A g)
   subst-groundF θ PId _ = refl
   subst-groundF θ (F P⊕ G) (gF , gG) = cong₂ _⊕_ (subst-groundF θ F gF) (subst-groundF θ G gG)
@@ -203,7 +203,6 @@ mutual
   rigidFree? (A ⇒[ k ] B) = both rf-⇒ (rigidFree? A) (rigidFree? B)
   rigidFree? (μ-type F)   = one rf-μ (rigidFreeF? F)
   rigidFree? (ν-type F π) = one rf-ν (rigidFreeF? F)
-  rigidFree? (rigid _ _)  = nothing
 
   rigidFreeF? : (F : Functor) → Maybe (RigidFreeF F)
   rigidFreeF? (K A)   = one rf-K (rigidFree? A)

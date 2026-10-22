@@ -113,30 +113,29 @@ mutual
   coeIR-rel sub-unit  {v} r = ≡ˡ (cong-app (liftFn-id {A = Unit}) v) (relS-ret r)
   coeIR-rel sub-int   {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Int}) v) (relS-ret r)
   coeIR-rel sub-float {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Float}) v) (relS-ret r)
-  coeIR-rel (sub-μ {F}) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.μ-type F}) v) (relS-ret r)
-  coeIR-rel (sub-ν {F} {π} _) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.ν-type F π}) v) (relS-ret r)
-  coeIR-rel sub-rigid {()}   -- D243: no value of a rigid parameter
-  coeIR-rel (sub-arr {A} {A′} {B} {B′} {Zero} {π} {π′} a b _) {f} r =
+  coeIR-rel (sub-μ {F = F}) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.μ-type F}) v) (relS-ret r)
+  coeIR-rel (sub-ν {F = F} {f = π} _) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.ν-type F π}) v) (relS-ret r)
+  coeIR-rel (sub-arr {A = A} {A′ = A′} {B = B} {B′ = B′} {q = Zero} {π = π} {π′ = π′} a b _) {f} r =
     ≡ˡ (cong-app (liftFn-curry₀ {A = A ⇒[ mk-kind Zero π ] B} {B = A′} {C = B′} {π = π′} (coeIR b ∘ apply)) f)
        (relS-ret (arr₀ {A} {A′} {B} {B′} {π} a b r))
-  coeIR-rel (sub-arr {A} {A′} {B} {B′} {One} {π} {π′} a b _) {f} r =
+  coeIR-rel (sub-arr {A = A} {A′ = A′} {B = B} {B′ = B′} {q = One} {π = π} {π′ = π′} a b _) {f} r =
     ≡ˡ (cong-app (liftFn-curry₁ {A = A ⇒[ mk-kind One π ] B} {B = A′} {C = B′} {π = π′}
                                 (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩))) f)
        (relS-ret (λ rx → arr₁ {A} {A′} {B} {B′} {π} a b r rx))
-  coeIR-rel (sub-arr {A} {A′} {B} {B′} {Many} {π} {π′} a b _) {f} r =
+  coeIR-rel (sub-arr {A = A} {A′ = A′} {B = B} {B′ = B′} {q = Many} {π = π} {π′ = π′} a b _) {f} r =
     ≡ˡ (cong-app (liftFn-curry {A = A ⇒[ mk-kind Many π ] B} {B = A′} {C = B′} {π = π′}
                                (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩))) f)
        (relS-ret (λ rx → arrω {A} {A′} {B} {B′} {π} a b r rx))
-  coeIR-rel (sub-prod {A} {A′} {B} {B′} a b) {x , y} {x′ , y′} (rx , ry) =
+  coeIR-rel (sub-prod {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {x , y} {x′ , y′} (rx , ry) =
     ≡ˡ (cong-app (liftFn-pair {A = A * B} {B = A′} {C = B′} (coeIR a ∘ fst) (coeIR b ∘ snd)) (x , y))
        (retargetʳ {n′ = return∞ (⟦ a ⟧<: x′) >>=∞ λ u → return∞ (⟦ b ⟧<: y′) >>=∞ λ w → return∞ (u , w)} refl
          (RelS-bind (comp-fst {A} {A′} {B} a rx) λ ru → RelS-bind (comp-snd {A} {B} {B′} b ry) λ rw → relS-ret (ru , rw)))
-  coeIR-rel (sub-sum {A} {A′} {B} {B′} a b) {inj₁ x} {inj₁ x′} r =
+  coeIR-rel (sub-sum {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {inj₁ x} {inj₁ x′} r =
     ≡ˡ (trans (liftFn-case-inj₁ {A = A} {B = B} {C = A′ + B′} (inl ∘ coeIR a) (inr ∘ coeIR b) x)
               (cong-app (liftFn-∘ {B = A′} {C = A′ + B′} {A = A} inl (coeIR a)) x))
        (retargetʳ {n′ = return∞ (⟦ a ⟧<: x′) >>=∞ λ u → return∞ (inj₁ u)} refl
          (RelS-bind (coeIR-rel a r) λ {u} {u′} ru → ≡ˡ (cong-app (liftFn-inl {A = A′} {B = B′}) u) (relS-ret ru)))
-  coeIR-rel (sub-sum {A} {A′} {B} {B′} a b) {inj₂ y} {inj₂ y′} r =
+  coeIR-rel (sub-sum {A = A} {A′ = A′} {B = B} {B′ = B′} a b) {inj₂ y} {inj₂ y′} r =
     ≡ˡ (trans (liftFn-case-inj₂ {A = A} {B = B} {C = A′ + B′} (inl ∘ coeIR a) (inr ∘ coeIR b) y)
               (cong-app (liftFn-∘ {B = B′} {C = A′ + B′} {A = B} inr (coeIR b)) y))
        (retargetʳ {n′ = return∞ (⟦ b ⟧<: y′) >>=∞ λ u → return∞ (inj₂ u)} refl

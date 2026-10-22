@@ -135,22 +135,22 @@ neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) base-Int base-Int
 -- Float arithmetic (plan 0.75 F4). Distinct NAMES, not overloads: the SigOp
 -- name is the identity the backend dispatches on, and `arith.add.int` and
 -- `arith.add.float` are different instructions on every target.
-base-F×F : IsBaseType (Once.Internal.Type.Float * Once.Internal.Type.Float)
+base-F×F : IsBaseType (Once.Spec.Type.Float * Once.Spec.Type.Float)
 base-F×F = base-Prod base-Float base-Float
 
-fadd-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
+fadd-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F base-Float
 
-fsub-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
+fsub-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F base-Float
 
-fmul-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
+fmul-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F base-Float
 
-fdiv-info : SigOpInfo (Once.Internal.Type.Float * Once.Internal.Type.Float) Once.Internal.Type.Float
+fdiv-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
 fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F base-Float
 
-i2f-info : SigOpInfo Int Once.Internal.Type.Float
+i2f-info : SigOpInfo Int Once.Spec.Type.Float
 i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int base-Float
 
 -- Comparisons

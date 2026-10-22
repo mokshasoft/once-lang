@@ -64,8 +64,8 @@ coeIR (sub-ν _) = id
 -- Void-free derivations relate types with the same IR type.
 ------------------------------------------------------------------------
 
-data VoidFree : ∀ {A B} → A <: B → Set where
-  vf-void   : VoidFree (sub-void {T.Void})
+data VoidFree : ∀ {A B : T.Type} → A <: B → Set where
+  vf-void   : VoidFree (sub-void {B = T.Void})
   vf-unit   : VoidFree sub-unit
   vf-int    : VoidFree sub-int
   vf-float  : VoidFree sub-float
@@ -75,8 +75,8 @@ data VoidFree : ∀ {A B} → A <: B → Set where
             → VoidFree a → VoidFree b → VoidFree (sub-prod a b)
   vf-sum    : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
             → VoidFree a → VoidFree b → VoidFree (sub-sum a b)
-  vf-μ      : ∀ {F} → VoidFree (sub-μ {F})
-  vf-ν      : ∀ {F φ φ′} {g : T.fin φ ⊑π T.fin φ′} → VoidFree (sub-ν {F} {φ} {φ′} g)
+  vf-μ      : ∀ {F} → VoidFree (sub-μ {F = F})
+  vf-ν      : ∀ {F φ φ′} {g : T.fin φ ⊑π T.fin φ′} → VoidFree (sub-ν {F = F} {f = φ} {f′ = φ′} g)
 
 private
   two : ∀ {P Q R : Set} → (P → Q → R) → (R → P) → (R → Q) → Dec P → Dec Q → Dec R
@@ -100,15 +100,15 @@ private
   sum-b (vf-sum _ vb) = vb
 
 voidFree? : ∀ {A B} (p : A <: B) → Dec (VoidFree p)
-voidFree? (sub-void {T.Void})         = yes vf-void
-voidFree? (sub-void {T.Unit})         = no λ ()
-voidFree? (sub-void {T.Int})          = no λ ()
-voidFree? (sub-void {T.Float})        = no λ ()
-voidFree? (sub-void {_ T.* _})        = no λ ()
-voidFree? (sub-void {_ T.+ _})        = no λ ()
-voidFree? (sub-void {_ T.⇒[ _ ] _})  = no λ ()
-voidFree? (sub-void {T.μ-type _})     = no λ ()
-voidFree? (sub-void {T.ν-type _ _})     = no λ ()
+voidFree? (sub-void {B = T.Void})         = yes vf-void
+voidFree? (sub-void {B = T.Unit})         = no λ ()
+voidFree? (sub-void {B = T.Int})          = no λ ()
+voidFree? (sub-void {B = T.Float})        = no λ ()
+voidFree? (sub-void {B = _ T.* _})        = no λ ()
+voidFree? (sub-void {B = _ T.+ _})        = no λ ()
+voidFree? (sub-void {B = _ T.⇒[ _ ] _})  = no λ ()
+voidFree? (sub-void {B = T.μ-type _})     = no λ ()
+voidFree? (sub-void {B = T.ν-type _ _})     = no λ ()
 voidFree? sub-unit   = yes vf-unit
 voidFree? sub-int    = yes vf-int
 voidFree? sub-float  = yes vf-float
