@@ -45,9 +45,9 @@ layer5Tests = testGroup "Layer5"
       --
       -- `nu-ana-build` builds a suspension and discards it — it covers the
       -- ten-instruction two-cell build and the coalgebra block. `nu-ana-force`
-      -- FORCES a layer, which is the call through the ν's second cell, and is
-      -- the half no proof in the tree discharges yet (`obs-correct-Out` is
-      -- still a postulate). If the ν codegen regresses, this is what fails.
+      -- FORCES a layer, which is the call through the ν's second cell
+      -- (`obs-correct-Out`, D199). If the ν codegen regresses, this is what
+      -- fails.
       [ exitCases "ana builds a suspension (exit 42)" "nu-ana-build" 42
       , exitCases "Out forces a layer (exit 42)"      "nu-ana-force" 42
       -- D199: the first ν test with a RECURSIVE POSITION. The two above use
@@ -55,6 +55,12 @@ layer5Tests = testGroup "Layer5"
       -- pass whether or not `Out` re-suspends. This one forces twice, through
       -- the recursive slot, and segfaulted before the re-suspension pass.
       , exitCases "forcing twice through Id (exit 42)" "nu-ana-deep"  42
+      -- D309: `unfold` evaluates its coalgebra term once and runs the
+      -- coalgebra FUNCTION per layer. Each round of the loop emits its
+      -- counter, so the trace shows one run per round, in order; the exit
+      -- code (the sum, 6) alone would not.
+      , traceCases "the loop's round runs once per layer, in order (D309)"
+                   "loop-emit" [3, 2, 1, 0] 6
       ]
   ]
 
