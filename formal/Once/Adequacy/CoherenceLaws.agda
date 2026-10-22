@@ -23,6 +23,7 @@
 -- naturality, by associativity on either side.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -73,29 +74,29 @@ open SD using (⟦_⟧ˢ; cata-ev-algˢ; DefsSem)
 open SD.DefsSem using (calls)
 
 infix 4 _≈ˢ_ _≈_
-_≈ˢ_ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → Expr Γ Ψ A → Set
-_≈ˢ_ {Γ = Γ} {Ψ} {A} a b =
+_≈ˢ_ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → Expr Γ Ψ A → Set
+_≈ˢ_ {Γ = Γ} {Ψ = Ψ} {A = A} a b =
   ∀ (σ : DefsSem) → RelDefs σ σ → ∀ {dγ dγ′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ} → RelD ⟦ Γ ↾ Ψ ⟧ᶜ dγ dγ′
   → RelS (RelD A) (⟦ a ⟧ˢ fmt σ dγ) (⟦ b ⟧ˢ fmt σ dγ′)
 
 -- Two terms MEAN the same. A record rather than the bare relation so that it
 -- is injective for unification: from `a ≈ b` Agda can read off `a` and `b`.
-record _≈_ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (a b : Expr Γ Ψ A) : Set where
+record _≈_ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (a b : Expr Γ Ψ A) : Set where
   constructor ≈-intro
   field ≈-out : a ≈ˢ b
 
-≈-refl : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a : Expr Γ Ψ A} → a ≈ a
+≈-refl : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {a : Expr Γ Ψ A} → a ≈ a
 ≈-refl {a = a} = ≈-intro (λ σ rσ r → SD-rel rσ a r)
 
-≈-sym : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a b : Expr Γ Ψ A} → a ≈ b → b ≈ a
-≈-sym {Γ = Γ} {Ψ} {A} (≈-intro e) = ≈-intro (λ σ rσ r → RelS-sym (RelD-sym A) (e σ rσ (RelD-sym ⟦ Γ ↾ Ψ ⟧ᶜ r)))
+≈-sym : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {a b : Expr Γ Ψ A} → a ≈ b → b ≈ a
+≈-sym {Γ = Γ} {Ψ = Ψ} {A = A} (≈-intro e) = ≈-intro (λ σ rσ r → RelS-sym (RelD-sym A) (e σ rσ (RelD-sym ⟦ Γ ↾ Ψ ⟧ᶜ r)))
 
-≈-trans : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a b c : Expr Γ Ψ A} → a ≈ b → b ≈ c → a ≈ c
-≈-trans {Γ = Γ} {Ψ} {A} (≈-intro e) (≈-intro f) =
+≈-trans : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {a b c : Expr Γ Ψ A} → a ≈ b → b ≈ c → a ≈ c
+≈-trans {Γ = Γ} {Ψ = Ψ} {A = A} (≈-intro e) (≈-intro f) =
   ≈-intro (λ σ rσ r → RelS-trans (RelD-trans A) (e σ rσ r) (f σ rσ (RelD-rightself ⟦ Γ ↾ Ψ ⟧ᶜ r)))
 
 -- Equal terms mean the same.
-≡→≈ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} {a b : Expr Γ Ψ A} → a ≡ b → a ≈ b
+≡→≈ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {a b : Expr Γ Ψ A} → a ≡ b → a ≈ b
 ≡→≈ refl = ≈-refl
 
 ------------------------------------------------------------------------
@@ -162,7 +163,7 @@ module _ {n} {Γ : Ctx n} where
   i2f-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → i2f a ≈ˢ i2f a′
   i2f-congˢ ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ i2f-info)
 
-  coerce-congˢ : ∀ {Ψ A B} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
+  coerce-congˢ : ∀ {m} {A B : Ty m} {Ψ} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
   coerce-congˢ p ea σ rσ r = RelS-fmap (ea σ rσ r) (<:-rel p)
 
   morph-app-congˢ : ∀ {Ψ A B} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → morph-app {A = A} {B = B} ir a ≈ˢ morph-app {A = A} {B = B} ir a′
@@ -204,15 +205,15 @@ module _ {n} {Γ : Ctx n} where
              → f ≈ˢ f′ → curry' {π₀ = π₀} f ≈ˢ curry' f′
   curry-congˢ ef σ rσ r = RelS-bind (ef σ rσ r) λ rf → relS-ret (λ ra → relS-ret (λ rb → rf (ra , rb)))
 
-  cata-congˢ : ∀ {Ψ F A π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  cata-congˢ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
-  cata-congˢ {F = F} {A} {π} wf eg σ rσ r =
+  cata-congˢ {F = F} {A = A} {π = π} wf eg σ rσ r =
     RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {F} {A} {π} wf ralg)
 
   -- D273: the coalgebra lives in the context and is bound once, as `cata`'s.
-  ana-congˢ : ∀ {Ψ F A π₀ φ} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)}
+  ana-congˢ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)}
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ˢ ana wf g′
-  ana-congˢ {F = F} {A} {φ = φ} wf eg σ rσ r =
+  ana-congˢ {F = F} {A = A} {φ = φ} wf eg σ rσ r =
     RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {F} {A} {φ} wf rc ra))
 
   -- the loop: related rounds, bound once, iterate to related loops.
@@ -259,18 +260,18 @@ module _ {n} {Γ : Ctx n} where
 
 module _ {n} {Γ : Ctx n} where
 
-  coerce-reflˢ : ∀ {Ψ A} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ˢ e
+  coerce-reflˢ : ∀ {m} {A : Ty m} {Ψ} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ˢ e
   coerce-reflˢ {A = A} e σ rσ r = RelS-fmapˡ (SD-rel rσ e r) (<:-refl-rel A)
 
-  coerce-transˢ : ∀ {Ψ A B C} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A)
+  coerce-transˢ : ∀ {m} {A B C : Ty m} {Ψ} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A)
                → coerce q (coerce p e) ≈ˢ coerce (<:-trans p q) e
   coerce-transˢ {C = C} p q e σ rσ r =
     RelS-fmapˡ (RelS-fmap {R′ = λ u v → RelD C (⟦ q ⟧<: u) v} (SD-rel rσ e r) (<:-trans-rel p q)) (λ z → z)
 
-  coerce-uniqˢ : ∀ {Ψ A B} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ˢ coerce q e
+  coerce-uniqˢ : ∀ {m} {A B : Ty m} {Ψ} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ˢ coerce q e
   coerce-uniqˢ p q e rewrite <:-unique p q = λ σ rσ r → SD-rel rσ (coerce q e) r
 
-  pair-coerceˢ : ∀ {Ψ₁ Ψ₂ A A′ B B′} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
+  pair-coerceˢ : ∀ {m} {A A′ B B′ : Ty m} {Ψ₁ Ψ₂} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
               → pair (coerce pa a) (coerce pb b) ≈ˢ coerce (sub-prod pa pb) (pair a b)
   pair-coerceˢ pa pb a b σ rσ r =
     RelS-assoc₂ (SD-rel rσ a (restrict-rel {Γ = Γ} _ r)) λ ra →
@@ -278,7 +279,7 @@ module _ {n} {Γ : Ctx n} where
         retargetˡ refl (retargetʳ refl (relS-ret (<:-rel pa ra , <:-rel pb rb))))
 
   -- Converting the head's domain is converting the argument.
-  app-coerceˢ : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Spec.Grade.pure ⊑π Once.Spec.Grade.pure)
+  app-coerceˢ : ∀ {m} {A′ B : Ty m} {Ψ₁ Ψ₂ X} (a : X <: A′) (g : Once.Spec.Grade.pure ⊑π Once.Spec.Grade.pure)
                  (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Spec.Grade.pure ] B)) (x : Expr Γ Ψ₂ X)
              → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ˢ app f (coerce a x)
   app-coerceˢ {B = B} a g f x σ rσ r =
@@ -287,17 +288,17 @@ module _ {n} {Γ : Ctx n} where
         retargetʳ refl (RelS-fmapˡ (rf (<:-rel a rx)) (<:-refl-rel B)))
 
   -- Converting the outer arm's codomain is converting the composite's.
-  comp-postˢ : ∀ {Ψ₁ Ψ₂ A M B B′ π} (p : B <: B′) (r r′ : π ⊑π π)
+  comp-postˢ : ∀ {m} {A B B′ : Ty m} {Ψ₁ Ψ₂ M π} (p : B <: B′) (r r′ : π ⊑π π)
                 (f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M))
             → comp' (coerce (sub-arr (<:-refl M) p r) f) g ≈ˢ coerce (sub-arr (<:-refl A) p r′) (comp' f g)
-  comp-postˢ {A = A} {M} p r r′ f g σ rσ re =
+  comp-postˢ {A = A} {M = M} p r r′ f g σ rσ re =
     RelS-assoc₂ (SD-rel rσ f (restrict-rel {Γ = Γ} _ re)) λ rf →
       retargetˡ refl (RelS-assocʳ (SD-rel rσ g (restrict-rel {Γ = Γ} _ re)) λ rg →
         retargetʳ refl (relS-ret λ ra →
           RelS-assocʳ (rg (<:-refl-relʳ A ra)) λ rm → retargetʳ refl (RelS-fmap (rf (<:-refl-rel M rm)) (<:-rel p))))
 
   -- Converting the outer arm's domain is converting the inner arm's codomain.
-  comp-preˢ : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π)
+  comp-preˢ : ∀ {m} {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π)
                (f : Expr Γ Ψ₁ (B′ ⇒[ mk-kind Many π′ ] C′)) (h : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B))
            → comp' (coerce (sub-arr q c g) f) h
              ≈ˢ comp' (coerce (sub-arr (<:-refl B′) c g) f) (coerce (sub-arr (<:-refl A) q (⊑π-refl π)) h)
@@ -308,7 +309,7 @@ module _ {n} {Γ : Ctx n} where
           RelS-assocʳ (rh (<:-refl-relʳ A ra)) λ rb → retargetʳ refl (RelS-fmap (rf (<:-refl-relʳ B′ (<:-rel q rb))) (<:-rel c)))))
 
   -- Converting a lambda's body is converting the lambda.
-  lam-coerceˢ : ∀ {Ψ q' π A B B′} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
+  lam-coerceˢ : ∀ {m} {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B)
              → lam {π = π} Many ≤p (coerce p b) ≈ˢ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
   lam-coerceˢ {q' = Zero} ≤p p b σ rσ r = retargetʳ refl (relS-ret (λ _ → RelS-fmap (SD-rel rσ b r) (<:-rel p)))
   lam-coerceˢ {q' = One} {A = A} ≤p p b σ rσ r =
@@ -316,11 +317,11 @@ module _ {n} {Γ : Ctx n} where
   lam-coerceˢ {q' = Many} {A = A} ≤p p b σ rσ r =
     retargetʳ refl (relS-ret (λ ra → RelS-fmap (SD-rel rσ b (r , <:-refl-relʳ A ra)) (<:-rel p)))
 
-  copair-coerceˢ : ∀ {Ψ₁ Ψ₂ A B C C′ π} (p : C <: C′) (r : π ⊑π π)
+  copair-coerceˢ : ∀ {m} {A B C C′ : Ty m} {Ψ₁ Ψ₂ π} (p : C <: C′) (r : π ⊑π π)
                     (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C))
                 → copair' (coerce (sub-arr (<:-refl A) p r) f) (coerce (sub-arr (<:-refl B) p r) g)
                   ≈ˢ coerce (sub-arr (<:-refl (A + B)) p r) (copair' f g)
-  copair-coerceˢ {A = A} {B} p r f g σ rσ re =
+  copair-coerceˢ {A = A} {B = B} p r f g σ rσ re =
     RelS-assoc₂ (SD-rel rσ f (restrict-rel {Γ = Γ} _ re)) λ rf →
       retargetˡ refl (RelS-assoc₂ (SD-rel rσ g (restrict-rel {Γ = Γ} _ re)) λ rg →
         retargetˡ refl (retargetʳ refl (relS-ret
@@ -329,7 +330,7 @@ module _ {n} {Γ : Ctx n} where
             ; {inj₁ _} {inj₂ _} ()
             ; {inj₂ _} {inj₁ _} () })))
 
-  fork-coerceˢ : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π)
+  fork-coerceˢ : ∀ {m} {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π)
                   (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C))
               → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g)
                 ≈ˢ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
@@ -411,7 +412,7 @@ module _ {A A′ : Type} (p : A <: A′) where
   seq-self (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) = fr-pair (seq-self F r₁) (seq-self G r₂)
 
 -- A layer converted up by `p` and back down by `d` relates to the layer.
-layer-rel : ∀ {F} (wf : WellFormedF F) {A A′ : Type} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
+layer-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {A A′ : Ty m} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
               {l₁ : ⟦ F ⟧F ⟦ A′ ⟧ᴰ} {l₂ : ⟦ F ⟧F ⟦ A ⟧ᴰ}
           → Rl p F l₁ l₂ → RelD (⟦ F ⟧T A) (⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ l₁)) (coerce-functor⁻¹-D wf A l₂)
 layer-rel {K B} (wf-K b) d p {l₁} refl rewrite <:-unique d (<:-refl B) = <:-refl-rel B (base-refl b _)
@@ -426,20 +427,20 @@ layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj�
 layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₁ _} ()
 layer-rel (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
 
-cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}
+cata-core : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {A A′ : Ty m} {π π′ : Purity}
               (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π′)
               {valg valg′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
           → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) valg valg′
           → ∀ (x : ⟦μ⟧ F)
-          → Rc p (sem-cata wf (cata-ev-algˢ {F} {A′} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
-                 (sem-cata wf (cata-ev-algˢ {F} {A} wf (return∞ valg′)) x)
-cata-core {F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
+          → Rc p (sem-cata wf (cata-ev-algˢ {F : Fun m} {A′ : Ty m} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
+                 (sem-cata wf (cata-ev-algˢ {F : Fun m} {A : Ty m} wf (return∞ valg′)) x)
+cata-core {F = F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
   cataS-rel {translateF Carrier Carrier F} (Rc p) algR x
   where
     self′ = RelD-rightself (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) ralg
     algR : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (Rc p) y₁ y₂
-         → Rc p (cata-ev-algˢ {F} {A′} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁))
-                (cata-ev-algˢ {F} {A} wf (return∞ valg′) (coerce-μ-out wf _ y₂))
+         → Rc p (cata-ev-algˢ {F : Fun _} {A′ : Ty _} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁))
+                (cata-ev-algˢ {F : Fun _} {A : Ty _} wf (return∞ valg′) (coerce-μ-out wf _ y₂))
     algR {y₁} {y₂} r =
       RelS-assocʳ (seq-rel p F (out-rel wf _ r))
         (λ rl → retargetˡ refl (retargetʳ refl (RelS-fmap (ralg (layer-rel wf d p rl)) (<:-rel p))))
@@ -448,7 +449,7 @@ cata-core {F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
 
 module _ {n} {Γ : Ctx n} where
 
-  cata-coerceˢ : ∀ {Ψ F A A′ π} (wf : WellFormedF F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π)
+  cata-coerceˢ : ∀ {m} {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π)
                   (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
               → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
                 ≈ˢ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)

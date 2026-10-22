@@ -20,6 +20,7 @@
 --     `LiftFnReduce`'s lemmas.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Denotation.DenotTrace using (CallEnv)
@@ -107,8 +108,8 @@ subst-inj₂ refl refl y = refl
 -- At a closure, the source side is written as the bind of returns the IR
 -- performs; it forces to the same block (`retargetʳ refl`).
 mutual
-  coeIR-rel : ∀ {A B} (p : A <: B) {v v′ : ⟦ A ⟧ᴰ} → RelD A v v′
-            → RelS (RelD B) (liftFn fmt ρ {A} {B} (coeIR p) v) (return∞ (⟦ p ⟧<: v′))
+  coeIR-rel : ∀ {m} {A B : Ty m} (p : A <: B) {v v′ : ⟦ A ⟧ᴰ} → RelD A v v′
+            → RelS (RelD B) (liftFn fmt ρ {A : Ty m} {B : Ty m} (coeIR p) v) (return∞ (⟦ p ⟧<: v′))
   coeIR-rel sub-void {()}
   coeIR-rel sub-unit  {v} r = ≡ˡ (cong-app (liftFn-id {A = Unit}) v) (relS-ret r)
   coeIR-rel sub-int   {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Int}) v) (relS-ret r)
@@ -142,39 +143,40 @@ mutual
          (RelS-bind (coeIR-rel b r) λ {u} {u′} ru → ≡ˡ (cong-app (liftFn-inr {B = B′} {A = A′}) u) (relS-ret ru)))
   coeIR-rel (sub-sum a b) {inj₁ _} {inj₂ _} ()
   coeIR-rel (sub-sum a b) {inj₂ _} {inj₁ _} ()
+  coeIR-rel sub-var {()}   -- a type variable has no value
 
   -- A component projected, then converted.
-  comp-fst : ∀ {A A′ B} (a : A <: A′) {x x′ : ⟦ A ⟧ᴰ} {y : ⟦ B ⟧ᴰ} → RelD A x x′
-           → RelS (RelD A′) (liftFn fmt ρ {A * B} {A′} (coeIR a ∘ fst) (x , y)) (return∞ (⟦ a ⟧<: x′))
-  comp-fst {A} {A′} {B} a {x} {x′} {y} r =
+  comp-fst : ∀ {m} {A A′ B : Ty m} (a : A <: A′) {x x′ : ⟦ A ⟧ᴰ} {y : ⟦ B ⟧ᴰ} → RelD A x x′
+           → RelS (RelD A′) (liftFn fmt ρ {A B : Ty m} {*} {A′ : Ty m} (coeIR a ∘ fst) (x , y)) (return∞ (⟦ a ⟧<: x′))
+  comp-fst {A = A} {A′ = A′} {B = B} a {x} {x′} {y} r =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = A} {C = A′} {A = A * B} (coeIR a) fst) (x , y))
               (cong (_>>=∞ liftFn fmt ρ {A} {A′} (coeIR a)) (cong-app (liftFn-fst {A = A} {B = B}) (x , y))))
        (retargetˡ refl (coeIR-rel a r))
 
-  comp-snd : ∀ {A B B′} (b : B <: B′) {x : ⟦ A ⟧ᴰ} {y y′ : ⟦ B ⟧ᴰ} → RelD B y y′
-           → RelS (RelD B′) (liftFn fmt ρ {A * B} {B′} (coeIR b ∘ snd) (x , y)) (return∞ (⟦ b ⟧<: y′))
-  comp-snd {A} {B} {B′} b {x} {y} {y′} r =
+  comp-snd : ∀ {m} {A B B′ : Ty m} (b : B <: B′) {x : ⟦ A ⟧ᴰ} {y y′ : ⟦ B ⟧ᴰ} → RelD B y y′
+           → RelS (RelD B′) (liftFn fmt ρ {A B : Ty m} {*} {B′ : Ty m} (coeIR b ∘ snd) (x , y)) (return∞ (⟦ b ⟧<: y′))
+  comp-snd {A = A} {B = B} {B′ = B′} b {x} {y} {y′} r =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = B} {C = B′} {A = A * B} (coeIR b) snd) (x , y))
               (cong (_>>=∞ liftFn fmt ρ {B} {B′} (coeIR b)) (cong-app (liftFn-snd {A = A} {B = B}) (x , y))))
        (retargetˡ refl (coeIR-rel b r))
 
   -- The closure body at each quantity: `apply` the old closure to the argument
   -- converted backwards, then convert the result forwards.
-  arr₀ : ∀ {A A′ B B′ π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ}
+  arr₀ : ∀ {m} {A A′ B B′ : Ty m} {π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ}
        → RelD (A ⇒[ mk-kind Zero π ] B) f f′
-       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B′} (coeIR b ∘ apply) (f , tt))
+       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B′ : Ty m} (coeIR b ∘ apply) (f , tt))
                         (fmap∞ ⟦ b ⟧<: (f′ tt))
-  arr₀ {A} {A′} {B} {B′} {π} a b {f} r =
+  arr₀ {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b {f} r =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = B} {C = B′} {A = (A ⇒[ mk-kind Zero π ] B) * Unit} (coeIR b) apply) (f , tt))
               (cong (_>>=∞ liftFn fmt ρ {B} {B′} (coeIR b)) (cong-app (liftFn-apply₀ {A = A} {B = B} {π = π}) (f , tt))))
        (RelS-bind r (coeIR-rel b))
 
-  arr₁ : ∀ {A A′ B B′ π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind One π ] B ⟧ᴰ}
+  arr₁ : ∀ {m} {A A′ B B′ : Ty m} {π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind One π ] B ⟧ᴰ}
        → RelD (A ⇒[ mk-kind One π ] B) f f′ → ∀ {x x′ : ⟦ A′ ⟧ᴰ} → RelD A′ x x′
-       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind One π ] B) * A′} {B′}
+       → RelS (RelD B′) (liftFn fmt ρ {A′ : Ty m} {(A ⇒[ mk-kind One π ] B) *} {B′ : Ty m}
                                (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x))
                         (fmap∞ ⟦ b ⟧<: (f′ (⟦ a ⟧<: x′)))
-  arr₁ {A} {A′} {B} {B′} {π} a b {f} {f′} r {x} {x′} rx =
+  arr₁ {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b {f} {f′} r {x} {x′} rx =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = B} {C = B′} {A = AB * A′} (coeIR b) (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x))
               (cong (_>>=∞ liftFn fmt ρ {B} {B′} (coeIR b))
                     (trans (cong-app (liftFn-∘ {B = AB * A} {C = B} {A = AB * A′} apply ⟨ fst , coeIR a ∘ snd ⟩) (f , x))
@@ -191,12 +193,12 @@ mutual
                   (coeIR-rel b))
     where AB = A ⇒[ mk-kind One π ] B
 
-  arrω : ∀ {A A′ B B′ π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ}
+  arrω : ∀ {m} {A A′ B B′ : Ty m} {π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ}
        → RelD (A ⇒[ mk-kind Many π ] B) f f′ → ∀ {x x′ : ⟦ A′ ⟧ᴰ} → RelD A′ x x′
-       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind Many π ] B) * A′} {B′}
+       → RelS (RelD B′) (liftFn fmt ρ {A′ : Ty m} {(A ⇒[ mk-kind Many π ] B) *} {B′ : Ty m}
                                (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x))
                         (fmap∞ ⟦ b ⟧<: (f′ (⟦ a ⟧<: x′)))
-  arrω {A} {A′} {B} {B′} {π} a b {f} {f′} r {x} {x′} rx =
+  arrω {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b {f} {f′} r {x} {x′} rx =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = B} {C = B′} {A = AB * A′} (coeIR b) (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x))
               (cong (_>>=∞ liftFn fmt ρ {B} {B′} (coeIR b))
                     (trans (cong-app (liftFn-∘ {B = AB * A} {C = B} {A = AB * A′} apply ⟨ fst , coeIR a ∘ snd ⟩) (f , x))
@@ -218,7 +220,7 @@ mutual
 -- to its conversion.
 ------------------------------------------------------------------------
 
-record VfSem {A B : Type} (p : A <: B) : Set₁ where
+record VfSem {m} {A B : Ty m} (p : A <: B) : Set₁ where
   field
     D  : ⟦ A ⟧ᴰ ≡ ⟦ B ⟧ᴰ
     pt : ∀ {v v′} → RelD A v v′ → RelD B (subst id D v) (⟦ p ⟧<: v′)
@@ -228,7 +230,7 @@ private
   ≡ʳᴰ : ∀ B {u u′ w : ⟦ B ⟧ᴰ} → u ≡ u′ → RelD B u′ w → RelD B u w
   ≡ʳᴰ B refl r = r
 
-  vf-arr₁ : ∀ {A A′ B B′} (a : A′ <: A) (b : B <: B′) (sa : VfSem a) (sb : VfSem b) {f f′ : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+  vf-arr₁ : ∀ {m} {A A′ B B′ : Ty m} (a : A′ <: A) (b : B <: B′) (sa : VfSem a) (sb : VfSem b) {f f′ : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
     → (∀ {x x′} → RelD A x x′ → RelS (RelD B) (f x) (f′ x′))
     → ∀ {x x′} → RelD A′ x x′
     → RelS (RelD B′) (subst id (cong₂ (λ U V → U → T∞ V) (sym (D sa)) (D sb)) f x) (fmap∞ ⟦ b ⟧<: (f′ (⟦ a ⟧<: x′)))
@@ -236,13 +238,14 @@ private
     ≡ˡ (trans (subst-arr (sym (D sa)) (D sb) f x) (cong (λ E → subst T∞ (D sb) (f (subst id E x))) (sym-sym (D sa))))
        (RelS-substˡ (D sb) (RelS-fmapʳ (r (pt sa rx)) (pt sb)))
 
-vf-sem : ∀ {A B} (p : A <: B) → VoidFree p → VfSem p
+vf-sem : ∀ {m} {A B : Ty m} (p : A <: B) → VoidFree p → VfSem p
 vf-sem _ vf-void   = record { D = refl ; pt = λ { {()} } }
 vf-sem _ vf-unit   = record { D = refl ; pt = λ r → r }
 vf-sem _ vf-int    = record { D = refl ; pt = λ r → r }
 vf-sem _ vf-float  = record { D = refl ; pt = λ r → r }
 vf-sem _ vf-μ      = record { D = refl ; pt = λ r → r }
 vf-sem _ vf-ν      = record { D = refl ; pt = λ r → r }
+vf-sem _ vf-rigid  = record { D = refl ; pt = λ { {()} } }
 vf-sem _ vf-rigid  = record { D = refl ; pt = λ { {()} } }
 vf-sem (sub-arr {q = Zero} a b _) (vf-arr va vb) =
   let sb = vf-sem b vb in
@@ -267,10 +270,10 @@ vf-sem (sub-sum {A′ = A′} {B′ = B′} a b) (vf-sum va vb) =
                   ; {inj₁ _} {inj₂ _} ()
                   ; {inj₂ _} {inj₁ _} () } }
 
-coerce-lift-yes : ∀ {Δ A B} (p : A <: B) (vf : VoidFree p) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
-  → RelS (RelD A) (liftFn fmt ρ {Δ} {A} f x) n
-  → RelS (RelD B) (liftFn fmt ρ {Δ} {B} (subst (IR ⌊ Δ ⌋) (erase-eq p vf) f) x) (fmap∞ ⟦ p ⟧<: n)
-coerce-lift-yes {Δ} {A} {B} p vf f x h =
+coerce-lift-yes : ∀ {m} {A B : Ty m} {Δ} (p : A <: B) (vf : VoidFree p) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
+  → RelS (RelD A) (liftFn fmt ρ {Δ} {A : Ty m} f x) n
+  → RelS (RelD B) (liftFn fmt ρ {Δ} {B : Ty m} (subst (IR ⌊ Δ ⌋) (erase-eq p vf) f) x) (fmap∞ ⟦ p ⟧<: n)
+coerce-lift-yes {Δ = Δ} {A = A} {B = B} p vf f x h =
   ≡ˡ (trans (cong (subst T∞ (cohᴰ B)) (eval-subst E f x₀))
        (trans (cong (subst T∞ (cohᴰ B)) (subst-⟦⟧ E m))
          (trans (subst-T-∘ (cong ⟦_⟧ᴰᴵ E) (cohᴰ B) m)
@@ -287,14 +290,14 @@ coerce-lift-yes {Δ} {A} {B} p vf f x h =
 -- The theorem.
 ------------------------------------------------------------------------
 
-coerce-lift-dec : ∀ {Δ A B} (p : A <: B) (dv : Dec (VoidFree p)) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
-  → RelS (RelD A) (liftFn fmt ρ {Δ} {A} f x) n
-  → RelS (RelD B) (liftFn fmt ρ {Δ} {B} (runCoe-dec p dv f) x) (fmap∞ ⟦ p ⟧<: n)
-coerce-lift-dec {Δ} p (yes vf) f x h = coerce-lift-yes {Δ} p vf f x h
-coerce-lift-dec {Δ} {A} {B} p (no _) f x h =
+coerce-lift-dec : ∀ {m} {A B : Ty m} {Δ} (p : A <: B) (dv : Dec (VoidFree p)) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
+  → RelS (RelD A) (liftFn fmt ρ {Δ} {A : Ty m} f x) n
+  → RelS (RelD B) (liftFn fmt ρ {Δ} {B : Ty m} (runCoe-dec p dv f) x) (fmap∞ ⟦ p ⟧<: n)
+coerce-lift-dec {Δ = Δ} p (yes vf) f x h = coerce-lift-yes {Δ} p vf f x h
+coerce-lift-dec {Δ = Δ} {A = A} {B = B} p (no _) f x h =
   ≡ˡ (cong-app (liftFn-∘ {B = A} {C = B} {A = Δ} (coeIR p) f) x) (RelS-bind h (coeIR-rel p))
 
-coerce-lift : ∀ {Δ A B} (p : A <: B) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
-  → RelS (RelD A) (liftFn fmt ρ {Δ} {A} f x) n
-  → RelS (RelD B) (liftFn fmt ρ {Δ} {B} (runCoe p f) x) (fmap∞ ⟦ p ⟧<: n)
-coerce-lift {Δ} p f x = coerce-lift-dec {Δ} p (voidFree? p) f x
+coerce-lift : ∀ {m} {A B : Ty m} {Δ} (p : A <: B) (f : IR ⌊ Δ ⌋ ⌊ A ⌋) (x : ⟦ Δ ⟧ᴰ) {n : T∞ ⟦ A ⟧ᴰ}
+  → RelS (RelD A) (liftFn fmt ρ {Δ} {A : Ty m} f x) n
+  → RelS (RelD B) (liftFn fmt ρ {Δ} {B : Ty m} (runCoe p f) x) (fmap∞ ⟦ p ⟧<: n)
+coerce-lift {Δ = Δ} p f x = coerce-lift-dec {Δ} p (voidFree? p) f x

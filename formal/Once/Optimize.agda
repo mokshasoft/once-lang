@@ -23,6 +23,7 @@
 
 module Once.Optimize where
 
+open import Once.Spec.Type using (var; Ty)
 open import Relation.Binary.Definitions using (DecidableEquality)
 
 open import Once.Spec.Grade
@@ -163,7 +164,7 @@ ir-head (Call _) = h-Call
 ------------------------------------------------------------------------
 
 -- | Check if a type is Void
-is-Void : Type → Bool
+is-Void : ∀ {m} → Ty m → Bool
 is-Void Unit         = false
 is-Void Void         = true
 is-Void (_ * _)      = false
@@ -173,6 +174,7 @@ is-Void (μ-type _)   = false
 is-Void (ν-type _ _)   = false
 is-Void Int          = false
 is-Void Float        = false
+is-Void (var _)  = false
 
 ------------------------------------------------------------------------
 -- Optimizer: Composition Rules
@@ -190,7 +192,7 @@ is-Void Float        = false
 --   Unsafe: ⟨ fst , fst ⟩ or ⟨ snd , snd ⟩ → duplicates a component's cost
 
 -- Type predicates for type-directed optimization
-isUnitType : Type → Bool
+isUnitType : ∀ {m} → Ty m → Bool
 isUnitType Unit         = true
 isUnitType Void         = false
 isUnitType (_ * _)      = false
@@ -200,8 +202,9 @@ isUnitType (μ-type _)   = false
 isUnitType (ν-type _ _)   = false
 isUnitType Int          = false
 isUnitType Float        = false
+isUnitType (var _)  = false
 
-isVoidType : Type → Bool
+isVoidType : ∀ {m} → Ty m → Bool
 isVoidType Unit         = false
 isVoidType Void         = true
 isVoidType (_ * _)      = false
@@ -211,6 +214,7 @@ isVoidType (μ-type _)   = false
 isVoidType (ν-type _ _)   = false
 isVoidType Int          = false
 isVoidType Float        = false
+isVoidType (var _)  = false
 
 -- IR predicates: use ir-head head-discriminator + decidable IRHead equality
 -- to avoid enumerating all 24 IR constructors per predicate.
@@ -291,7 +295,7 @@ data FstSndView : ∀ {A B : IRTy} → IR A B → Set where
   fsv-other : ∀ {A B} (f : IR A B) → FstSndView f
 
 -- View: classify IR as inl, inr, or other (for case eta law)
-data InlInrView : ∀ {A B : IRTy} → IR A B → Set where
+data InlInrView {m} : ∀ {A B : IRTy} → IR A B → Set where
   iiv-inl : ∀ {X Y} → InlInrView {X} {X + Y} inl
   iiv-inr : ∀ {X Y} → InlInrView {Y} {X + Y} inr
   iiv-other : ∀ {A B} (f : IR A B) → InlInrView f

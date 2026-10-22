@@ -19,6 +19,7 @@
 -- over the clause body and needs no extensionality.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -126,8 +127,8 @@ module _ {n} {Γ : Ctx n} where
   i2f-cong {Ψ} {a} {a′} (≈-intro h1) = ≈-intro (i2f-congˢ {Γ = Γ} {Ψ} {a} {a′} h1)
 
 module _ {n} {Γ : Ctx n} where
-  coerce-cong : ∀ {Ψ A B} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ a′ → coerce p a ≈ coerce p a′
-  coerce-cong {Ψ} {A} {B} p {a} {a′} (≈-intro h1) = ≈-intro (coerce-congˢ {Γ = Γ} {Ψ} {A} {B} p {a} {a′} h1)
+  coerce-cong : ∀ {m} {A B : Ty m} {Ψ} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ a′ → coerce p a ≈ coerce p a′
+  coerce-cong {Ψ = Ψ} {A = A} {B = B} p {a} {a′} (≈-intro h1) = ≈-intro (coerce-congˢ {Γ = Γ} {Ψ} {A} {B} p {a} {a′} h1)
 
 module _ {n} {Γ : Ctx n} where
   morph-app-cong : ∀ {Ψ A B} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : Expr Γ Ψ A} → a ≈ a′ → morph-app {A = A} {B = B} ir a ≈ morph-app {A = A} {B = B} ir a′
@@ -158,12 +159,12 @@ module _ {n} {Γ : Ctx n} where
   curry-cong {Ψ} {A} {B} {C} {π₀} {π} {f} {f′} (≈-intro h1) = ≈-intro (curry-congˢ {Γ = Γ} {Ψ} {A} {B} {C} {π₀} {π} {f} {f′} h1)
 
 module _ {n} {Γ : Ctx n} where
-  cata-cong : ∀ {Ψ F A π} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)} → g ≈ g′ → cata {Γ = Γ} wf g ≈ cata wf g′
-  cata-cong {Ψ} {F} {A} {π} wf {g} {g′} (≈-intro h1) = ≈-intro (cata-congˢ {Γ = Γ} {Ψ} {F} {A} {π} wf {g} {g′} h1)
+  cata-cong : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)} → g ≈ g′ → cata {Γ = Γ} wf g ≈ cata wf g′
+  cata-cong {Ψ = Ψ} {F = F} {A = A} {π = π} wf {g} {g′} (≈-intro h1) = ≈-intro (cata-congˢ {Γ = Γ} {Ψ} {F} {A} {π} wf {g} {g′} h1)
 
 module _ {n} {Γ : Ctx n} where
-  ana-cong : ∀ {Ψ F A π₀ φ} (wf : WellFormedF F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Spec.Grade.fin φ) ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ ana wf g′
-  ana-cong {Ψ} {F} {A} {π₀} {φ} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {Ψ} {F} {A} {π₀} {φ} wf {g} {g′} h1)
+  ana-cong : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Spec.Grade.fin φ) ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ ana wf g′
+  ana-cong {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {Ψ} {F} {A} {π₀} {φ} wf {g} {g′} h1)
   loop-cong : ∀ {Ψ A B} {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A))} → g ≈ g′ → loop {Γ = Γ} g ≈ loop g′
   loop-cong {Ψ} {A} {B} {g} {g′} (≈-intro h1) = ≈-intro (loop-congˢ {Γ = Γ} {Ψ} {A} {B} {g} {g′} h1)
 
@@ -180,49 +181,49 @@ module _ {n} {Γ : Ctx n} where
   lam-cong {Ψ} {q'} {π} {A} {B} q ≤p {b} {b′} (≈-intro h1) = ≈-intro (lam-congˢ {Γ = Γ} {Ψ} {q'} {π} {A} {B} q ≤p {b} {b′} h1)
 
 module _ {n} {Γ : Ctx n} where
-  coerce-refl : ∀ {Ψ A} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ e
-  coerce-refl {Ψ} {A} e = ≈-intro (coerce-reflˢ {Γ = Γ} {Ψ} {A} e)
+  coerce-refl : ∀ {m} {A : Ty m} {Ψ} (e : Expr Γ Ψ A) → coerce (<:-refl A) e ≈ e
+  coerce-refl {Ψ = Ψ} {A = A} e = ≈-intro (coerce-reflˢ {Γ = Γ} {Ψ} {A} e)
 
 module _ {n} {Γ : Ctx n} where
-  coerce-trans : ∀ {Ψ A B C} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A) → coerce q (coerce p e) ≈ coerce (<:-trans p q) e
-  coerce-trans {Ψ} {A} {B} {C} p q e = ≈-intro (coerce-transˢ {Γ = Γ} {Ψ} {A} {B} {C} p q e)
+  coerce-trans : ∀ {m} {A B C : Ty m} {Ψ} (p : A <: B) (q : B <: C) (e : Expr Γ Ψ A) → coerce q (coerce p e) ≈ coerce (<:-trans p q) e
+  coerce-trans {Ψ = Ψ} {A = A} {B = B} {C = C} p q e = ≈-intro (coerce-transˢ {Γ = Γ} {Ψ} {A} {B} {C} p q e)
 
 module _ {n} {Γ : Ctx n} where
-  coerce-uniq : ∀ {Ψ A B} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ coerce q e
-  coerce-uniq {Ψ} {A} {B} p q e = ≈-intro (coerce-uniqˢ {Γ = Γ} {Ψ} {A} {B} p q e)
+  coerce-uniq : ∀ {m} {A B : Ty m} {Ψ} (p q : A <: B) (e : Expr Γ Ψ A) → coerce p e ≈ coerce q e
+  coerce-uniq {Ψ = Ψ} {A = A} {B = B} p q e = ≈-intro (coerce-uniqˢ {Γ = Γ} {Ψ} {A} {B} p q e)
 
 module _ {n} {Γ : Ctx n} where
-  pair-coerce : ∀ {Ψ₁ Ψ₂ A A′ B B′} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) → pair (coerce pa a) (coerce pb b) ≈ coerce (sub-prod pa pb) (pair a b)
-  pair-coerce {Ψ₁} {Ψ₂} {A} {A′} {B} {B′} pa pb a b = ≈-intro (pair-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {A′} {B} {B′} pa pb a b)
+  pair-coerce : ∀ {m} {A A′ B B′ : Ty m} {Ψ₁ Ψ₂} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) → pair (coerce pa a) (coerce pb b) ≈ coerce (sub-prod pa pb) (pair a b)
+  pair-coerce {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {A′ = A′} {B = B} {B′ = B′} pa pb a b = ≈-intro (pair-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {A′} {B} {B′} pa pb a b)
 
 module _ {n} {Γ : Ctx n} where
-  app-coerce : ∀ {Ψ₁ Ψ₂ X A′ B} (a : X <: A′) (g : Once.Spec.Grade.pure ⊑π Once.Spec.Grade.pure) (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Spec.Grade.pure ] B)) (x : Expr Γ Ψ₂ X) → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ app f (coerce a x)
-  app-coerce {Ψ₁} {Ψ₂} {X} {A′} {B} a g f x = ≈-intro (app-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {X} {A′} {B} a g f x)
+  app-coerce : ∀ {m} {A′ B : Ty m} {Ψ₁ Ψ₂ X} (a : X <: A′) (g : Once.Spec.Grade.pure ⊑π Once.Spec.Grade.pure) (f : Expr Γ Ψ₁ (A′ ⇒[ mk-kind Many Once.Spec.Grade.pure ] B)) (x : Expr Γ Ψ₂ X) → app (coerce (sub-arr a (<:-refl B) g) f) x ≈ app f (coerce a x)
+  app-coerce {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {X = X} {A′ = A′} {B = B} a g f x = ≈-intro (app-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {X} {A′} {B} a g f x)
 
 module _ {n} {Γ : Ctx n} where
-  comp-post : ∀ {Ψ₁ Ψ₂ A M B B′ π} (p : B <: B′) (r r′ : π ⊑π π) (f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M)) → comp' (coerce (sub-arr (<:-refl M) p r) f) g ≈ coerce (sub-arr (<:-refl A) p r′) (comp' f g)
-  comp-post {Ψ₁} {Ψ₂} {A} {M} {B} {B′} {π} p r r′ f g = ≈-intro (comp-postˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {M} {B} {B′} {π} p r r′ f g)
+  comp-post : ∀ {m} {A B B′ : Ty m} {Ψ₁ Ψ₂ M π} (p : B <: B′) (r r′ : π ⊑π π) (f : Expr Γ Ψ₁ (M ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] M)) → comp' (coerce (sub-arr (<:-refl M) p r) f) g ≈ coerce (sub-arr (<:-refl A) p r′) (comp' f g)
+  comp-post {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {M = M} {B = B} {B′ = B′} {π = π} p r r′ f g = ≈-intro (comp-postˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {M} {B} {B′} {π} p r r′ f g)
 
 module _ {n} {Γ : Ctx n} where
-  comp-pre : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π) (f : Expr Γ Ψ₁ (B′ ⇒[ mk-kind Many π′ ] C′)) (h : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)) → comp' (coerce (sub-arr q c g) f) h ≈ comp' (coerce (sub-arr (<:-refl B′) c g) f) (coerce (sub-arr (<:-refl A) q (⊑π-refl π)) h)
-  comp-pre {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} {π′} q c g f h = ≈-intro (comp-preˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} {π′} q c g f h)
+  comp-pre : ∀ {m} {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π π′} (q : B <: B′) (c : C′ <: C) (g : π′ ⊑π π) (f : Expr Γ Ψ₁ (B′ ⇒[ mk-kind Many π′ ] C′)) (h : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)) → comp' (coerce (sub-arr q c g) f) h ≈ comp' (coerce (sub-arr (<:-refl B′) c g) f) (coerce (sub-arr (<:-refl A) q (⊑π-refl π)) h)
+  comp-pre {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {π = π} {π′ = π′} q c g f h = ≈-intro (comp-preˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} {π′} q c g f h)
 
 module _ {n} {Γ : Ctx n} where
-  lam-coerce : ∀ {Ψ q' π A B B′} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B) → lam {π = π} Many ≤p (coerce p b) ≈ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
-  lam-coerce {Ψ} {q'} {π} {A} {B} {B′} ≤p p b = ≈-intro (lam-coerceˢ {Γ = Γ} {Ψ} {q'} {π} {A} {B} {B′} ≤p p b)
+  lam-coerce : ∀ {m} {A B B′ : Ty m} {Ψ q' π} (≤p : (q' ≤qᵇ Many) ≡ true) (p : B <: B′) (b : Expr (_,_^_ Γ A Many) (q' ∷ Ψ) B) → lam {π = π} Many ≤p (coerce p b) ≈ coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (lam Many ≤p b)
+  lam-coerce {Ψ = Ψ} {q' = q'} {π = π} {A = A} {B = B} {B′ = B′} ≤p p b = ≈-intro (lam-coerceˢ {Γ = Γ} {Ψ} {q'} {π} {A} {B} {B′} ≤p p b)
 
 module _ {n} {Γ : Ctx n} where
-  copair-coerce : ∀ {Ψ₁ Ψ₂ A B C C′ π} (p : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C)) → copair' (coerce (sub-arr (<:-refl A) p r) f) (coerce (sub-arr (<:-refl B) p r) g) ≈ coerce (sub-arr (<:-refl (A + B)) p r) (copair' f g)
-  copair-coerce {Ψ₁} {Ψ₂} {A} {B} {C} {C′} {π} p r f g = ≈-intro (copair-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {C′} {π} p r f g)
+  copair-coerce : ∀ {m} {A B C C′ : Ty m} {Ψ₁ Ψ₂ π} (p : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C)) → copair' (coerce (sub-arr (<:-refl A) p r) f) (coerce (sub-arr (<:-refl B) p r) g) ≈ coerce (sub-arr (<:-refl (A + B)) p r) (copair' f g)
+  copair-coerce {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {C = C} {C′ = C′} {π = π} p r f g = ≈-intro (copair-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {C′} {π} p r f g)
 
 module _ {n} {Γ : Ctx n} where
-  fork-coerce : ∀ {Ψ₁ Ψ₂ A B B′ C C′ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)) → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g) ≈ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
-  fork-coerce {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} pb pc r f g = ≈-intro (fork-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} pb pc r f g)
+  fork-coerce : ∀ {m} {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)) → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g) ≈ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
+  fork-coerce {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {π = π} pb pc r f g = ≈-intro (fork-coerceˢ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {B′} {C} {C′} {π} pb pc r f g)
 
 module _ {n} {Γ : Ctx n} where
   initial-coerce : ∀ {A π} (r : π ⊑π π) → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} IR.initial) ≈ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} IR.initial
   initial-coerce {A} {π} r = ≈-intro (initial-coerceˢ {Γ = Γ} {A} {π} r)
 
 module _ {n} {Γ : Ctx n} where
-  cata-coerce : ∀ {Ψ F A A′ π} (wf : WellFormedF F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π) (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)) → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg) ≈ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
-  cata-coerce {Ψ} {F} {A} {A′} {π} wf d p g alg = ≈-intro (cata-coerceˢ {Γ = Γ} {Ψ} {F} {A} {A′} {π} wf d p g alg)
+  cata-coerce : ∀ {m} {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π) (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)) → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg) ≈ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
+  cata-coerce {Ψ = Ψ} {F = F} {A = A} {A′ = A′} {π = π} wf d p g alg = ≈-intro (cata-coerceˢ {Γ = Γ} {Ψ} {F} {A} {A′} {π} wf d p g alg)

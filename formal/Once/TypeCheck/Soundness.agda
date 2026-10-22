@@ -24,6 +24,7 @@
 -- Reference: plans/0.3-frontend-verification-gaps.md, gap G2.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 module Once.TypeCheck.Soundness where
 
@@ -65,8 +66,8 @@ open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- is restricted via pattern matching to the covered forms.
 
 -- Soundness for integer literals.
-sound-RInt : ∀ (ctx : NamedCtx) (n : ℤ)
-             {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+sound-RInt : ∀ {m} (ctx : NamedCtx m) (n : ℤ)
+             {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
              {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
            → inferElab ctx (RInt n) ≡ success A Ψ eE d f
            → ctx ⊢ RInt n ∶ A ⨾ Ψ
@@ -75,16 +76,16 @@ sound-RInt ctx n refl = t-int n
 -- Soundness for string literals.
 
 -- Soundness for unit literal.
-sound-RUnit : ∀ (ctx : NamedCtx)
-              {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+sound-RUnit : ∀ {m} (ctx : NamedCtx m)
+              {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
               {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
             → inferElab ctx RUnit ≡ success A Ψ eE d f
             → ctx ⊢ RUnit ∶ A ⨾ Ψ
 sound-RUnit ctx refl = t-unit
 
 -- Soundness for the `unit` variable builtin (monomorphic Unit).
-sound-RVar-unit : ∀ (ctx : NamedCtx)
-                  {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+sound-RVar-unit : ∀ {m} (ctx : NamedCtx m)
+                  {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
                   {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
                 → inferElab ctx (Raw.RResolved (gen "unit")) ≡ success A Ψ eE d f
                 → ctx ⊢ Raw.RResolved (gen "unit") ∶ A ⨾ Ψ
@@ -108,18 +109,18 @@ sound-RVar-unit ctx refl = t-unit-var
 ------------------------------------------------------------------------
 
 -- A view bundling an inference result with its defining equation.
-InferBundle : (ctx : NamedCtx) → RawExpr → Set
+InferBundle : ∀ {m} → (ctx : NamedCtx m) → RawExpr → Set
 InferBundle ctx e =
   ∃[ r ] inferElab ctx e ≡ r
 
-inferBundle : (ctx : NamedCtx) (e : RawExpr) → InferBundle ctx e
+inferBundle : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) → InferBundle ctx e
 inferBundle ctx e = inferElab ctx e , refl
 
-CheckBundle : (ctx : NamedCtx) → RawExpr → Type → Set
+CheckBundle : ∀ {m} → (ctx : NamedCtx m) → RawExpr → Ty m → Set
 CheckBundle ctx e T =
   ∃[ r ] checkElab ctx e T ≡ r
 
-checkBundle : (ctx : NamedCtx) (e : RawExpr) (T : Type) → CheckBundle ctx e T
+checkBundle : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Ty m) → CheckBundle ctx e T
 checkBundle ctx e T = checkElab ctx e T , refl
 
 -- Bundle for AppHeadView: pairs the view with its defining equation.
@@ -141,7 +142,7 @@ viewBundle f = Classify.classifyAppHeadView f , refl
 -- already carries the witness.
 ------------------------------------------------------------------------
 
-check-soundV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+check-soundV : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
   {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
   {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
   → Once.TypeCheck.ElaborateProofs.checkElabProj ctx e T ≡ success Ψ eE d f
@@ -152,8 +153,8 @@ check-soundV ctx e T eq with Once.TypeCheck.Elaborate.checkElabV ctx e T
 check-soundV ctx e T eq | failure _ , _ with eq
 ... | ()
 
-infer-soundV : ∀ (ctx : NamedCtx) (e : RawExpr)
-  {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+infer-soundV : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
+  {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
   {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → Once.TypeCheck.ElaborateProofs.inferElabProj ctx e ≡ success A Ψ eE d f
   → ctx ⊢ᵢ e ∶ A ⨾ Ψ
@@ -291,10 +292,10 @@ sound-RQualified ctx name alias ()
 ------------------------------------------------------------------------
 
 -- Bundle for local lookup.
-LocalLookupBundle : (ctx : NamedCtx) (x : _) → Set
+LocalLookupBundle : ∀ {m} → (ctx : NamedCtx m) (x : _) → Set
 LocalLookupBundle ctx x = ∃[ r ] lookupLocal ctx x ≡ r
 
-localLookupBundle : ∀ (ctx : NamedCtx) (x : _) → LocalLookupBundle ctx x
+localLookupBundle : ∀ {m} (ctx : NamedCtx m) (x : _) → LocalLookupBundle ctx x
 localLookupBundle ctx x = lookupLocal ctx x , refl
 
 -- Bundle for the `x ≟ "unit"` decision.
@@ -395,11 +396,11 @@ sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | failure _ , _ with eq
 
 -- Sub-bundle for the body of a let: the body's inferElab call is
 -- parameterised by the let-bound variable's type.
-LetBodyBundle : (ctx : NamedCtx) (x : _) (A : Type) (e₂ : RawExpr) → Set
+LetBodyBundle : ∀ {m} → (ctx : NamedCtx m) (x : _) (A : Ty m) (e₂ : RawExpr) → Set
 LetBodyBundle ctx x A e₂ =
   ∃[ r ] inferElab (extendNamedCtx ctx x A) e₂ ≡ r
 
-letBodyBundle : ∀ (ctx : NamedCtx) (x : _) (A : Type) (e₂ : RawExpr)
+letBodyBundle : ∀ {m} (ctx : NamedCtx m) (x : _) (A : Ty m) (e₂ : RawExpr)
               → LetBodyBundle ctx x A e₂
 letBodyBundle ctx x A e₂ = inferElab (extendNamedCtx ctx x A) e₂ , refl
 
@@ -437,19 +438,19 @@ sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq | failure _ , _ with eq
 ------------------------------------------------------------------------
 
 -- Sub-bundles for the branches in extended contexts.
-CaseBranchBundle : (ctx : NamedCtx) (x : _) (T : Type) (branch : RawExpr) → Set
+CaseBranchBundle : ∀ {m} → (ctx : NamedCtx m) (x : _) (T : Ty m) (branch : RawExpr) → Set
 CaseBranchBundle ctx x T branch =
   ∃[ r ] inferElab (extendNamedCtx ctx x T) branch ≡ r
 
-caseBranchBundle : ∀ (ctx : NamedCtx) (x : _) (T : Type) (branch : RawExpr)
+caseBranchBundle : ∀ {m} (ctx : NamedCtx m) (x : _) (T : Ty m) (branch : RawExpr)
                  → CaseBranchBundle ctx x T branch
 caseBranchBundle ctx x T branch = inferElab (extendNamedCtx ctx x T) branch , refl
 
 -- Bundle for the type-equality decision.
-TyEqBundle : (A B : Type) → Set
+TyEqBundle : ∀ {m} → (A B : Ty m) → Set
 TyEqBundle A B = ∃[ r ] Once.Internal.Type.DecEq._≟T_ A B ≡ r
 
-tyEqBundle : (A B : Type) → TyEqBundle A B
+tyEqBundle : ∀ {m} → (A B : Ty m) → TyEqBundle A B
 tyEqBundle A B = Once.Internal.Type.DecEq._≟T_ A B , refl
 
 sound-RDestruct :
@@ -491,12 +492,12 @@ sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq | failure _ , _ with eq
 
 -- Bundle for the body's check call, parameterised by the lambda's
 -- argument type `A` and expected result type `B`.
-LamBodyBundle : (ctx : NamedCtx) (x : _) (A : Type) (body : RawExpr) (B : Type)
+LamBodyBundle : ∀ {m} → (ctx : NamedCtx m) (x : _) (A : Ty m) (body : RawExpr) (B : Ty m)
               → Set
 LamBodyBundle ctx x A body B =
   ∃[ r ] checkElab (extendNamedCtx ctx x A) body B ≡ r
 
-lamBodyBundle : ∀ (ctx : NamedCtx) (x : _) (A : Type) (body : RawExpr) (B : Type)
+lamBodyBundle : ∀ {m} (ctx : NamedCtx m) (x : _) (A : Ty m) (body : RawExpr) (B : Ty m)
               → LamBodyBundle ctx x A body B
 lamBodyBundle ctx x A body B = checkElab (extendNamedCtx ctx x A) body B , refl
 
@@ -733,12 +734,12 @@ classifyAppHeadView-RVar-curry = refl
 -- soundness theorem is now `proj₂ ∘ inferElabV / checkElabV` modulo
 -- the success-injectivity refinement on eq.
 mutual
-  infer-sound : ∀ (ctx : NamedCtx) (e : RawExpr)
-    {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+  infer-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
+    {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
     → inferElab ctx e ≡ success A Ψ eE d f
     → ctx ⊢ e ∶ A ⨾ Ψ
-  check-sound : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+  check-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
     → checkElab ctx e T ≡ success Ψ eE d f

@@ -22,6 +22,7 @@
 module Once.TypeCheck.ModeSub where
 
 import Once.TypeCheck.Classify
+open import Once.Spec.Type using (Ty)
 open import Once.Internal.Type.Join using (least-<:)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (just; nothing)
@@ -51,7 +52,7 @@ private
   ex p f = f p
 
 -- An instance of an arrow schema has the schema's grade.
-arrow-at : ∀ {s sd sc : T.PolyType} {π′ π : T.Purity} {A B : Type} (θ : _)
+arrow-at : ∀ {m} {s sd sc : T.PolyType} {π′ π : T.Purity} {A B : Ty m} (θ : _)
          → T.ArrowSchema s sd sc π′ → T.substPoly θ s ≡ (A ⇒[ T.mk-kind T.Many π ] B)
          → T.ArrowSchema s sd sc π
 arrow-at θ T.as-pure refl = T.as-pure
@@ -59,21 +60,21 @@ arrow-at θ T.as-eff  refl = T.as-eff
 arrow-at θ T.as-act  refl = T.as-act
 
 -- The domain half of an arrow conversion (contravariant).
-sub-dom : ∀ {A A′ B B′ : Type} {k k′} → (A ⇒[ k ] B) <: (A′ ⇒[ k′ ] B′) → A′ <: A
+sub-dom : ∀ {m} {A A′ B B′ : Ty m} {k k′} → (A ⇒[ k ] B) <: (A′ ⇒[ k′ ] B′) → A′ <: A
 sub-dom (sub-arr a _ _) = a
 
 -- The codomain half of an arrow conversion.
-sub-cod : ∀ {A A′ B B′ : Type} {k k′} → (A ⇒[ k ] B) <: (A′ ⇒[ k′ ] B′) → B <: B′
+sub-cod : ∀ {m} {A A′ B B′ : Ty m} {k k′} → (A ⇒[ k ] B) <: (A′ ⇒[ k′ ] B′) → B <: B′
 sub-cod (sub-arr _ b _) = b
 
 -- A domain-given term that also synthesizes: its given domain is below the
 -- synthesized one (the spine's argument conversion).
-di-dom : ∀ {ctx : NamedCtx} {e : RawExpr} {X T₀ A B : Type} {π : T.Purity} {k : T.ArrowKind}
+di-dom : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {X T₀ A B : Ty m} {π : T.Purity} {k : T.ArrowKind}
            {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
        → ctx ⊢ᵈ e ∶ X ⇒[ π ]↦ T₀ ⨾ Ψ → ctx ⊢ᵢ e ∶ (A ⇒[ k ] B) ⨾ Ψ′ → X <: A
 di-dom (d-infer w a _) d = dom-along (agree-ii w d) a
   where
-    dom-along : ∀ {X A₀ A B₀ B : Type} {k₀ k : T.ArrowKind} {Y : Set}
+    dom-along : ∀ {X A₀ A B₀ B : Ty _} {k₀ k : T.ArrowKind} {Y : Set}
               → ((A₀ ⇒[ k₀ ] B₀) ≡ (A ⇒[ k ] B)) × Y → X <: A₀ → X <: A
     dom-along (refl , _) a = a
 di-dom (d-lam _) ()
@@ -93,23 +94,23 @@ di-dom (d-poly _ _ p ¬g _ _ _ _) (t-var-poly-instantiate-infer _ _ p′ g _) =
 
 -- The steps below take `ModeAgreement`'s equations as ARGUMENTS (no `with`).
 private
-  ≡-sub : ∀ {A B : Type} → A ≡ B → A <: B
+  ≡-sub : ∀ {m} {A B : Ty m} → A ≡ B → A <: B
   ≡-sub refl = <:-refl _
 
-  sub-along : ∀ {A A′ B : Type} {X : Set} → (A ≡ A′ × X) → A′ <: B → A <: B
+  sub-along : ∀ {m} {A A′ B : Ty m} {X : Set} → (A ≡ A′ × X) → A′ <: B → A <: B
   sub-along (refl , _) p = p
 
-  apply-sub : ∀ {A A′ B B′ : Type} {X : Set}
+  apply-sub : ∀ {m} {A A′ B B′ : Ty m} {X : Set}
             → ((A ⇒[ T.mk-kind T.Many T.pure ] B) * A) ≡ ((A′ ⇒[ T.mk-kind T.Many T.pure ] B′) * A′) × X → B <: B′
   apply-sub (refl , _) = <:-refl _
 
-  di-cod : ∀ {S A₁ B B′ : Type} {π : T.Purity} {P : Type → T.Purity → Set}
-         → Σ Type (λ A′ → Σ T.Purity (λ π′ → (S ≡ (A′ ⇒[ T.mk-kind T.Many π′ ] B)) × P A′ π′))
+  di-cod : ∀ {m} {S A₁ B B′ : Ty m} {π : T.Purity} {P : Ty m → T.Purity → Set}
+         → Σ (Ty m) (λ A′ → Σ T.Purity (λ π′ → (S ≡ (A′ ⇒[ T.mk-kind T.Many π′ ] B)) × P A′ π′))
          → S <: (A₁ ⇒[ T.mk-kind T.Many π ] B′) → B <: B′
   di-cod (_ , _ , refl , _) p = sub-cod p
 
 
-  poly-sub : ∀ {s s′ sd sc : T.PolyType} {b b′ : RawExpr} {pr pr′ : Once.Internal.Typing.Scope.PolyCtx} {A B B′ : Type} {π π′ : T.Purity}
+  poly-sub : ∀ {m} {s s′ sd sc : T.PolyType} {b b′ : RawExpr} {pr pr′ : Once.Internal.Typing.Scope.PolyCtx} {A B B′ : Ty m} {π π′ : T.Purity}
              (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′)) (as : T.ArrowSchema s sd sc π′) (inc : T.CodVarsInDom sd sc)
              (θ : _) (e : T.substPoly θ s ≡ (A ⇒[ T.mk-kind T.Many π′ ] B))
              (θ′ : _) (e′ : T.substPoly θ′ s′ ≡ (A ⇒[ T.mk-kind T.Many π ] B′))
@@ -117,7 +118,7 @@ private
   poly-sub refl as inc θ e θ′ e′ = ≡-sub (dpoly-det as (arrow-at θ′ as e′) inc θ θ′ e e′)
 
 mutual
-  ic-sub : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
+  ic-sub : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B : Ty m} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
          → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → A <: B
   ic-sub d (t-sub d′ p) = sub-along (agree-ii d d′) p
   ic-sub (t-pair a b) (t-pair-lit-check a′ b′) = sub-prod (ic-sub a a′) (ic-sub b b′)
@@ -152,7 +153,7 @@ mutual
   ic-sub d (t-inr-app-check _) = ⊥-elim (noinf-inr-app d)
   ic-sub d (t-initial-app-check _) = ⊥-elim (noinf-initial-app d)
 
-  dc-sub : ∀ {ctx : NamedCtx} {e : RawExpr} {A B B′ : Type} {π : T.Purity}
+  dc-sub : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B B′ : Ty m} {π : T.Purity}
              {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
          → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → B <: B′
   dc-sub (d-infer w _ g) c = sub-cod (ic-sub w c)
@@ -173,6 +174,6 @@ mutual
     (poly-sub (trans (sym p) p′) as inc θ e θ′ e′)
 
   -- The outer arm against the `g` route: its domain is the middle `g` determines.
-  cg-sub : ∀ {ctx : NamedCtx} {e : RawExpr} {M M′ B B′ : Type} {π : T.Purity} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
+  cg-sub : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {M M′ B B′ : Ty m} {π : T.Purity} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
          → M ≡ M′ → ctx ⊢ᵈ e ∶ M ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (M′ ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → B <: B′
   cg-sub refl df df′ = dc-sub df df′

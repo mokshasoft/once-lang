@@ -16,6 +16,7 @@
 
 module Once.Denotation.EvalRel where
 
+open import Once.Spec.Type using (var; Ty; Fun)
 open import Function using () renaming (id to idᶠ)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -79,7 +80,7 @@ base-reflI (II.base-Sum a b)  (inj₁ x) = base-reflI a x
 base-reflI (II.base-Sum a b)  (inj₂ y) = base-reflI b y
 
 -- A first-order layer over μ: related is equal, and equal is related.
-fo-eq : ∀ {F G} → WellFormedFI F → ∀ {x y : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ} → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x y → x ≡ y
+fo-eq : ∀ {m} {F G : Fun m} → WellFormedFI F → ∀ {x y : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ} → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x y → x ≡ y
 fo-eq (II.wf-K b)       r = base-eqI b r
 fo-eq II.wf-Id          r = r
 fo-eq (II.wf-Sum f g) {inj₁ x} {inj₁ y} r = cong inj₁ (fo-eq f r)
@@ -89,7 +90,7 @@ fo-eq (II.wf-Sum f g) {inj₂ _} {inj₁ _} ()
 fo-eq (II.wf-Prod f g) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with fo-eq f r₁ | fo-eq g r₂
 ... | refl | refl = refl
 
-fo-refl : ∀ {F G} → WellFormedFI F → ∀ (x : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ) → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x x
+fo-refl : ∀ {m} {F G : Fun m} → WellFormedFI F → ∀ (x : ⟦ ⟦ F ⟧TI (II.μ-type G) ⟧ᴰᴵ) → RelD ⌈ ⟦ F ⟧TI (II.μ-type G) ⌉ x x
 fo-refl (II.wf-K b)      x        = base-reflI b x
 fo-refl II.wf-Id         x        = refl
 fo-refl (II.wf-Sum f g)  (inj₁ x) = fo-refl f x
@@ -158,7 +159,7 @@ module _ (fmt : TargetNum) where
       relS-ret (RelD-subst (sym (⌈⟧TI-commute F (II.μ-type F)))
                  (cfD⁻¹-rel (wf-⌈⌉ w) ⌈ II.μ-type F ⌉ (frefl (wf-⌈⌉ w) _)))
       where
-        frefl : ∀ {G} (wg : LW.WellFormedF G) (l : ⟦ G ⟧F′ ⟦ ⌈ II.μ-type F ⌉ ⟧ᴰ)
+        frefl : ∀ {G : Fun _} (wg : LW.WellFormedF G) (l : ⟦ G ⟧F′ ⟦ ⌈ II.μ-type F ⌉ ⟧ᴰ)
               → FRel (RelD ⌈ II.μ-type F ⌉) G l l
         frefl (LW.wf-K b) l = fr-K
         frefl LW.wf-Id l = fr-Id refl
@@ -287,7 +288,7 @@ private
   RelS-subst₂ refl h = h
 
 mutual
-  RelD-coh : ∀ (A : Type) {x y : ⟦ ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ} → RelD ⌈ ⌊ A ⌋ ⌉ x y
+  RelD-coh : ∀ {m} (A : Ty m) {x y : ⟦ ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ} → RelD ⌈ ⌊ A ⌋ ⌉ x y
            → RelD A (subst idᶠ (cohᴰ A) x) (subst idᶠ (cohᴰ A) y)
   RelD-coh Unit r = r
   RelD-coh Void {()}
@@ -311,8 +312,9 @@ mutual
   RelD-coh (ν-type F π) r = srel-subst _ r
   RelD-coh Int r = r
   RelD-coh Float r = r
+  RelD-coh (var _) {()}
 
-  RelD-coh⁻ : ∀ (A : Type) {x y : ⟦ A ⟧ᴰ} → RelD A x y
+  RelD-coh⁻ : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y
             → RelD ⌈ ⌊ A ⌋ ⌉ (subst idᶠ (sym (cohᴰ A)) x) (subst idᶠ (sym (cohᴰ A)) y)
   RelD-coh⁻ Unit r = r
   RelD-coh⁻ Void {()}
@@ -336,14 +338,15 @@ mutual
   RelD-coh⁻ (ν-type F π) r = srel-subst⁻ _ r
   RelD-coh⁻ Int r = r
   RelD-coh⁻ Float r = r
+  RelD-coh⁻ (var _) {()}
 
 -- The evaluator's fundamental lemma at the source value domain.
-liftFn-rel : ∀ (fmt : TargetNum) {ρ ρ′ : CallEnv} → RelEnv fmt ρ ρ′
-           → ∀ {A B : Type} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : ⟦ A ⟧ᴰ} → RelD A a a′
-           → RelS (RelD B) (liftFn fmt ρ {A} {B} ir a) (liftFn fmt ρ′ {A} {B} ir a′)
+liftFn-rel : ∀ {m} (fmt : TargetNum) {ρ ρ′ : CallEnv} → RelEnv fmt ρ ρ′
+           → ∀ {A B : Ty m} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : ⟦ A ⟧ᴰ} → RelD A a a′
+           → RelS (RelD B) (liftFn fmt ρ {A : Ty m} {B : Ty m} ir a) (liftFn fmt ρ′ {A : Ty m} {B : Ty m} ir a′)
 liftFn-rel fmt re {A} {B} ir r = RelS-subst₂ (cohᴰ B) (RelS-mono (RelD-coh B) (eval-rel fmt re ir (RelD-coh⁻ A r)))
 
 -- Runs related at `⌈ ⌊ A ⌋ ⌉`, transported to the source domain, are related at `A`.
-coh-runs : ∀ (A : Type) {m n : T∞ ⟦ ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ} → RelS (RelD ⌈ ⌊ A ⌋ ⌉) m n
+coh-runs : ∀ {mₜ} (A : Ty mₜ) {m n : T∞ ⟦ ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ} → RelS (RelD ⌈ ⌊ A ⌋ ⌉) m n
          → RelS (RelD A) (subst T∞ (cohᴰ A) m) (subst T∞ (cohᴰ A) n)
 coh-runs A h = RelS-subst₂ (cohᴰ A) (RelS-mono (RelD-coh A) h)

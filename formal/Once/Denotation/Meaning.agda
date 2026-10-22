@@ -23,6 +23,7 @@ module Once.Denotation.Meaning where
 
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
 open import Once.Spec.Float.Decimal using (decimalOf; round; negate)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
@@ -110,24 +111,24 @@ open import Once.Internal.Typing
 -- lives in `T` now. Mirrors `DenotTrace.cata-ev-algᴰ` exactly.
 -- Plan 0.105: the layer crosses by the FIRST-ORDER coercion, so it takes the
 -- functor's well-formedness (as `DenotTrace.cata-ev-algᴰ` does).
-cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → WellFormedF F → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
+cata-ev-algᴰ-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
                → ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ) → T∞ ⟦ A ⟧ᴰ
-cata-ev-algᴰ-D {F} {A} wf dalg fc =
+cata-ev-algᴰ-D {F = F} {A = A} wf dalg fc =
   seqF∞ F fc >>=∞ λ layer → dalg (coerce-functor⁻¹-D wf A layer)
 
 -- `⟦ μ-type F ⟧ᴰ` IS the machine's μ (first-order data), so the fold reads it
 -- as it is.
-cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
+cata-sem : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F
          → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
-cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
+cata-sem {F = F} {A = A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} wf dalg) v
 
 -- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
 -- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
 -- other side of `⌈_⌉`).
-out-sem : ∀ {F : Functor} {π : Once.Spec.Grade.Finite} → WellFormedF F
+out-sem : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Once.Spec.Grade.Finite} → WFFun Δₖ F
         → ⟦ Once.Internal.Type.ν-type F π ⟧ᴰ → T∞ ⟦ ⟦ F ⟧T (Once.Internal.Type.ν-type F π) ⟧ᴰ
-out-sem {F} {π} wf v =
+out-sem {F = F} {π = π} wf v =
   fmap∞ (λ layer → coerce-functor⁻¹-D wf (Once.Internal.Type.ν-type F π)
                      (coerce-ν-out wf _ layer))
         (forceᴵ v)
@@ -135,25 +136,25 @@ out-sem {F} {π} wf v =
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level,
 -- through the first-order layer coercion (plan 0.105: `forget` is gone; a μ
 -- layer holds base values and children only).
-in-value : ∀ {F : Functor} → WellFormedF F → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
-in-value {F} wf x = sem-In F (coerce-functor-D wf (μ-type F) x)
+in-value : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
+in-value {F = F} wf x = sem-In F (coerce-functor-D wf (μ-type F) x)
 
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free — a pure
 -- FFI contract (`value-info` is `ffiV`, plan 0.105), so its value is the
 -- interpretation's pure half at the argument.
-named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → IsBaseType A → IsBaseType B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
-named-sem {A} {B} fmt φ cn bA bB a =
+named-sem : ∀ {m} {Δₖ : KCtx m} {A B : Ty m} → TargetNum → FFIAnswers → CanonicalName → Base Δₖ A → Base Δₖ B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+named-sem {A = A} {B = B} fmt φ cn bA bB a =
   embed (fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a)))
 
 ------------------------------------------------------------------------
 -- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
 ------------------------------------------------------------------------
 
-lookupᴰ : ∀ {n} (Γ : Ctx n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ lookupᵗ Γ i ⟧ᴰ
+lookupᴰ : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ lookupᵗ Γ i ⟧ᴰ
 lookupᴰ (Γ , A ^ q) zero    (dγ , a) = a
 lookupᴰ (Γ , A ^ q) (suc i) (dγ , a) = lookupᴰ Γ i dγ
 
-svarᴰ : ∀ {n} {Γ : Ctx n} {Ψ A} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
+svarᴰ : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
 svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 
 -- A closed named/sigop value reference, IR-free: the contract's computation
@@ -188,7 +189,7 @@ returnᵖ x = x
 fmapᵖ : ∀ {X Y : Set} → (X → Y) → X → Y
 fmapᵖ f x = f x
 
-svarᵛRun : ∀ {n} {Γ : Ctx n} {Ψ A} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ → ⟦ A ⟧ᵛ
+svarᵛRun : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ → ⟦ A ⟧ᵛ
 svarᵛRun {Γ = Γ} (svar i) dγ = lookupᵛUsed Γ i dγ
 
 DefFamily : Once.Internal.Type.Poly.PolyType → Set
@@ -203,7 +204,7 @@ DefMeanings = DefEnvOf DefFamily
 ImpMeanings : Imports → Set
 ImpMeanings = ImpEnvOf (λ U → ⟦ U ⟧ᵛ)
 
-record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
+record Meanings {m} (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
   constructor meanings
   field
     defs    : DefMeanings polys
@@ -217,15 +218,15 @@ record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
               → (showCanonical cn , T) ∈ sig world
 open Meanings
 
-MeaningsOf : NamedCtx → Set
+MeaningsOf : ∀ {m} → NamedCtx m → Set
 MeaningsOf ctx = Meanings (NamedCtx.polys ctx) (NamedCtx.imports ctx) (NamedCtx.sig ctx)
 
 -- So the meaning runs over `Γ ↾ Ψ` — exactly the variables the derivation uses
 -- — for the same reason `elaborate` and `⟦_⟧ˢ` do.
-Env : NamedCtx → Set
+Env : ∀ {m} → NamedCtx m → Set
 Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᵛ
 
-EnvRun : (ctx : NamedCtx) → Usage (NamedCtx.size ctx) → Set
+EnvRun : ∀ {m} → (ctx : NamedCtx m) → Usage (NamedCtx.size ctx) → Set
 EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 ------------------------------------------------------------------------
@@ -233,10 +234,10 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- IR-free: morphisms via `⟦_⟧ᵐ`, values via `⟦_⟧ᵍ`, locals via `lookupᴰ`.
 ------------------------------------------------------------------------
 
-⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
-⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
+⟦_⟧ᶜ : ∀ {m} {A : Ty m} {ctx e Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
+⟦_⟧ᵢ : ∀ {m} {A : Ty m} {ctx e Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ → ⟦ A ⟧ᵛ
 
-⟦_⟧ᵈ : ∀ {ctx e A π B Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
+⟦_⟧ᵈ : ∀ {m} {A B : Ty m} {ctx e π Ψ} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → TargetNum → MeaningsOf ctx → EnvRun ctx Ψ
      → ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ
 
 ------------------------------------------------------------------------

@@ -16,6 +16,8 @@
 
 module Once.Internal.GradedOps where
 
+open import Once.Spec.Type using (Base)
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
@@ -68,7 +70,7 @@ fmapM eff  f m = fmap∞ f m
 -- sums `⟦_⟧ᵛ` and `Val.⟦_⟧` each build.
 ------------------------------------------------------------------------
 
-injB : ∀ {A} → IsBaseType A → Val.⟦ A ⟧ → ⟦ A ⟧ᵛ
+injB : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → Val.⟦ A ⟧ → ⟦ A ⟧ᵛ
 injB base-Unit   x = x
 injB base-Void   x = x
 injB base-Int    x = x
@@ -77,7 +79,7 @@ injB (base-Prod a b) (x , y) = injB a x , injB b y
 injB (base-Sum a b) (inj₁ x) = inj₁ (injB a x)
 injB (base-Sum a b) (inj₂ y) = inj₂ (injB b y)
 
-prjB : ∀ {A} → IsBaseType A → ⟦ A ⟧ᵛ → Val.⟦ A ⟧
+prjB : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ⟦ A ⟧ᵛ → Val.⟦ A ⟧
 prjB base-Unit   x = x
 prjB base-Void   x = x
 prjB base-Int    x = x
@@ -90,14 +92,14 @@ prjB (base-Sum a b) (inj₂ y) = inj₂ (prjB b y)
 -- Functor layers (first-order payloads only, per `WellFormedF`).
 ------------------------------------------------------------------------
 
-cfᵛ : ∀ {F} (C : Type) → WellFormedF F → ⟦ ⟦ F ⟧T C ⟧ᵛ → ⟦ F ⟧F ⟦ C ⟧ᵛ
+cfᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (C : Ty m) → WFFun Δₖ F → ⟦ ⟦ F ⟧T C ⟧ᵛ → ⟦ F ⟧F ⟦ C ⟧ᵛ
 cfᵛ C (wf-K ib)     x        = prjB ib x
 cfᵛ C wf-Id         x        = x
 cfᵛ C (wf-Sum f g)  (inj₁ x) = inj₁ (cfᵛ C f x)
 cfᵛ C (wf-Sum f g)  (inj₂ y) = inj₂ (cfᵛ C g y)
 cfᵛ C (wf-Prod f g) (x , y)  = cfᵛ C f x , cfᵛ C g y
 
-cf⁻¹ᵛ : ∀ {F} (C : Type) → WellFormedF F → ⟦ F ⟧F ⟦ C ⟧ᵛ → ⟦ ⟦ F ⟧T C ⟧ᵛ
+cf⁻¹ᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (C : Ty m) → WFFun Δₖ F → ⟦ F ⟧F ⟦ C ⟧ᵛ → ⟦ ⟦ F ⟧T C ⟧ᵛ
 cf⁻¹ᵛ C (wf-K ib)     x        = injB ib x
 cf⁻¹ᵛ C wf-Id         x        = x
 cf⁻¹ᵛ C (wf-Sum f g)  (inj₁ x) = inj₁ (cf⁻¹ᵛ C f x)
@@ -107,7 +109,7 @@ cf⁻¹ᵛ C (wf-Prod f g) (x , y)  = cf⁻¹ᵛ C f x , cf⁻¹ᵛ C g y
 -- Sequence a layer of grade-`π` computations (at `pure`, there is nothing to
 -- run). It needs the grade's UNIT — a layer with no recursive position runs
 -- nothing — so it is defined at the grades that have one (`pure ⊑π π`).
-seqM : ∀ {π} → pure ⊑π π → (G : Functor) {X : Set} → ⟦ G ⟧F (M π X) → M π (⟦ G ⟧F X)
+seqM : ∀ {m} {π} → pure ⊑π π → (G : Fun m) {X : Set} → ⟦ G ⟧F (M π X) → M π (⟦ G ⟧F X)
 seqM ⊑-pure G x = x
 seqM ⊑-pa   G x = seqF G x
 seqM ⊑-pe   G x = seqF∞ G x
@@ -116,22 +118,22 @@ seqM ⊑-pe   G x = seqF∞ G x
 -- μ: introduction and the fold.
 ------------------------------------------------------------------------
 
-in-valueᵛ : ∀ {F} → WellFormedF F → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ → ⟦ μ-type F ⟧ᵛ
-in-valueᵛ {F} wf x = sem-In F (cfᵛ (μ-type F) wf x)
+in-valueᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ → ⟦ μ-type F ⟧ᵛ
+in-valueᵛ {F = F} wf x = sem-In F (cfᵛ (μ-type F) wf x)
 
 -- The fold at a grade with a unit (a fold traverses its layer).
-cata-semᵛ : ∀ {π} → pure ⊑π π → ∀ {F A} → WellFormedF F
+cata-semᵛ : ∀ {m} {Δₖ : KCtx m} {π} → pure ⊑π π → ∀ {A : Ty m} {F : Fun m} → WFFun Δₖ F
           → (⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) → ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ
-cata-semᵛ {π} u {F} {A} wf alg =
+cata-semᵛ {π = π} u {F} {A} wf alg =
   sem-cata wf (λ fc → bindM π (seqM u F fc) λ layer → alg (cf⁻¹ᵛ A wf layer))
 
 -- The functor's action on one layer at grade `π`: run `h` at every recursive
 -- position and sequence the results (a plain map at `pure`, Kleisli at `eff`).
 -- What a fold does to one layer before its algebra; the fold's laws
 -- (`Spec.Metatheory.Recursion`) are stated with it.
-mapLayerᵛ : ∀ {π} → pure ⊑π π → ∀ {F A B} → WellFormedF F
+mapLayerᵛ : ∀ {m} {Δₖ : KCtx m} {π} → pure ⊑π π → ∀ {A B : Ty m} {F : Fun m} → WFFun Δₖ F
           → (⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ) → ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ ⟦ F ⟧T B ⟧ᵛ
-mapLayerᵛ {π} u {F} {A} {B} wf h x = fmapM π (cf⁻¹ᵛ B wf) (seqM u F (sem-fmap F h (cfᵛ A wf x)))
+mapLayerᵛ {π = π} u {F} {A} {B} wf h x = fmapM π (cf⁻¹ᵛ B wf) (seqM u F (sem-fmap F h (cfᵛ A wf x)))
 
 ------------------------------------------------------------------------
 -- ν: pure codata, its embedding into the effectful one, unfold and out.
@@ -168,14 +170,14 @@ mapEmbνᵃ H (G₁ S⊗ G₂) (x , y)  = mapEmbνᵃ H G₁ x , mapEmbνᵃ H G
 -- pure ν needs a pure coalgebra function; an effectful one runs the function in
 -- each forced layer — a server is such a stream (D233), its coalgebra reads the
 -- next request.
-ana-semᵛ : ∀ {F A} (φ : Finite) → WellFormedF F
+ana-semᵛ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} (φ : Finite) → WFFun Δₖ F
          → (⟦ A ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → ⟦ ν-type F φ ⟧ᵛ
-ana-semᵛ {F} {A} pureᶠ wf clo a =
+ana-semᵛ {F = F} {A = A} pureᶠ wf clo a =
   anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a
-ana-semᵛ {F} {A} actᶠ wf clo a =
+ana-semᵛ {F = F} {A = A} actᶠ wf clo a =
   anaᵈ (translateF Carrier Carrier F) (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 
-out-semᵛ : ∀ φ {F} → WellFormedF F → ⟦ ν-type F φ ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T (ν-type F φ) ⟧ᵛ
+out-semᵛ : ∀ {m} {Δₖ : KCtx m} φ {F : Fun m} → WFFun Δₖ F → ⟦ ν-type F φ ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T (ν-type F φ) ⟧ᵛ
 out-semᵛ pureᶠ {F} wf v = cf⁻¹ᵛ (ν-type F pureᶠ) wf (coerce-ν-out wf _ (forceᵖ v))
 out-semᵛ actᶠ  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F actᶠ) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
 
@@ -183,7 +185,7 @@ out-semᵛ actᶠ  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F actᶠ) 
 -- Subtyping coercions (D226), graded.
 ------------------------------------------------------------------------
 
-⟦_⟧<:ᵛ : ∀ {A B} → A <: B → ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ
+⟦_⟧<:ᵛ : ∀ {m} {A B : Ty m} → A <: B → ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ
 ⟦ sub-void   ⟧<:ᵛ ()
 ⟦ sub-unit   ⟧<:ᵛ x = x
 ⟦ sub-int    ⟧<:ᵛ x = x
@@ -213,18 +215,18 @@ out-semᵛ actᶠ  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F actᶠ) 
 
 -- A foreign operation's call (the generic effect), a finite tree (`act`, D313):
 -- the call, which returns or halts. The form `arrow-sem-eff` decides.
-opCallᵀ : ∀ {A B} → CanonicalName → IsBaseType A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T Val.⟦ B ⟧
-opCallᵀ {A} cn bA (yes refl) _          x = halt (haltOp cn A bA) x
-opCallᵀ {A} cn bA (no _)     (yes refl) x = call (callOp cn A bA Unit) x (λ _ → ret tt)
-opCallᵀ {A} {B} cn bA (no _) (no _)     x = call (callOp cn A bA B) x ret
+opCallᵀ : ∀ {m} {Δₖ : KCtx m} {A B : Ty m} → CanonicalName → Base Δₖ A → Dec (B ≡ Void) → Dec (B ≡ Unit) → Val.⟦ A ⟧ → T Val.⟦ B ⟧
+opCallᵀ {A = A} cn bA (yes refl) _          x = halt (haltOp cn A bA) x
+opCallᵀ {A = A} cn bA (no _)     (yes refl) x = call (callOp cn A bA Unit) x (λ _ → ret tt)
+opCallᵀ {A = A} {B = B} cn bA (no _) (no _)     x = call (callOp cn A bA B) x ret
 
 -- Plan 0.105 (D257 amendment 2): a reference to a SigOp the program is compiled
 -- against (`m`: its declaration in `Σ`). A VALUE contract reads the
 -- implementation (`valueOf`, the reading every layer shares); an effectful
 -- arrow's application is its call, answered when the program runs.
-sigOpRefᵛ : ∀ {A} → TargetNum → (Σ : ISig) → Impl Σ → (cn : CanonicalName) → IsConcrete A
+sigOpRefᵛ : ∀ {m} {A : Ty m} → TargetNum → (Σ : ISig) → Impl Σ → (cn : CanonicalName) → IsConcrete A
           → (showCanonical cn , A) ∈ Σ → ⟦ A ⟧ᵛ
-sigOpRefᵛ {A} fmt Σ I cn (con-base ib) m =
+sigOpRefᵛ {A = A} fmt Σ I cn (con-base ib) m =
   injB ib (valueOf I (key (showCanonical cn) Unit A) (value-∈ m (base-contract (showCanonical cn) ib)) tt)
 sigOpRefᵛ fmt Σ I cn (con-fun {B = Cod} {k = mk-kind Zero pure} bDom bCod) m =
   λ _ → injB bCod (valueOf I (key (showCanonical cn) Unit Cod) (value-∈ m refl) tt)

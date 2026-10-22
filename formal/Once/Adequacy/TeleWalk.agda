@@ -23,6 +23,7 @@
 -- two runs.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Internal.Trace using (Interp; pureHalf; interp)
@@ -179,7 +180,7 @@ private
   ⊑π-irr ⊑-pa   ⊑-pa   = refl
   ⊑π-irr ⊑-ae   ⊑-ae   = refl
 
-  <:-irr : ∀ {A B} (p q : A <: B) → p ≡ q
+  <:-irr : ∀ {m} {A B : Ty m} (p q : A <: B) → p ≡ q
   <:-irr sub-void          sub-void             = refl
   <:-irr sub-unit          sub-unit             = refl
   <:-irr sub-int           sub-int              = refl
@@ -194,7 +195,7 @@ private
   <:-irr sub-rigid         sub-rigid            = refl
 
   -- The entry's conversion, read across the schema's round trip.
-  conv-subst : ∀ {X ty : Type} (e : X ≡ ty) (q : X <: EffUU) (p : ty <: EffUU) (x : ⟦ X ⟧ᵛ)
+  conv-subst : ∀ {m} {X ty : Ty m} (e : X ≡ ty) (q : X <: EffUU) (p : ty <: EffUU) (x : ⟦ X ⟧ᵛ)
              → ⟦ q ⟧<:ᵛ x ≡ ⟦ p ⟧<:ᵛ (subst (λ Y → ⟦ Y ⟧ᵛ) e x)
   conv-subst refl q p x = cong (λ r → ⟦ r ⟧<:ᵛ x) (<:-irr q p)
 

@@ -7,6 +7,7 @@
 -- of the entry; ground and imported uses are fixed. (`viewOf` is, ElabInst.)
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (KCtx)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig)
 
@@ -29,7 +30,7 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   NatImp : ∀ {x T} → ImportAt x T → Set
   NatImp (def d i) = (λ j → RS.ρ̂ Δ τ r (proj₁ i j)) ≡ proj₁ i
 
-  record Natural {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) : Set where
+  record Natural {m} {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) : Set where
     field
       nat-inst : ∀ {x sc body prefix T} (lp : lookupPolyPrefix polys x ≡ Data.Maybe.just (sc , body , prefix))
                    (ng : ¬ Ground sc) (ki : KindedInstance sc T)

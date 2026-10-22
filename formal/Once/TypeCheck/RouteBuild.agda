@@ -17,6 +17,7 @@
 
 module Once.TypeCheck.RouteBuild where
 
+open import Once.Spec.Type using (Ty)
 open import Once.Spec.Sub using (_⊔_≔_)
 open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -39,7 +40,7 @@ private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥
   just≢nothing ()
 
-  cod-≡ : ∀ {A A′ B B′ : Type} {k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → B ≡ B′
+  cod-≡ : ∀ {m} {A A′ B B′ : Ty m} {k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → B ≡ B′
   cod-≡ refl = refl
 
   arith-not-cmp : ∀ (op : BinOp) → isArithmeticOp op ≡ true → isComparisonOp op ≡ true → ⊥
@@ -63,27 +64,27 @@ private
 -- THE CASE SPLIT
 ------------------------------------------------------------------------
 
-private U : NamedCtx → Set
+private U : ∀ {m} → NamedCtx m → Set
         U ctx = Surface.Usage (NamedCtx.size ctx)
 
 mutual
-  route-ii : ∀ {ctx e A A′ Ψ Ψ′} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′) → Rii d d′
-  route-cc : ∀ {ctx e A Ψ Ψ′} (c : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (c′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′) → Rcc c c′
-  route-ic : ∀ {ctx e A B Ψ Ψ′} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (c : ctx ⊢ᶜ e ∶ B ⨾ Ψ′) → Ric d c
-  route-dc : ∀ {ctx e A B B′ π Ψ Ψ′} (dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′) → Rdc dd c
-  route-di : ∀ {ctx e A A′ B B′ π q π′ Ψ Ψ′} (dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (d : ctx ⊢ᵢ e ∶ (A′ ⇒[ T.mk-kind q π′ ] B′) ⨾ Ψ′) → Rdi dd d
-  route-dd : ∀ {ctx e A B B′ π Ψ Ψ′} (dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (dd′ : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′) → Rdd dd dd′
+  route-ii : ∀ {m} {A A′ : Ty m} {ctx e Ψ Ψ′} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′) → Rii d d′
+  route-cc : ∀ {m} {A : Ty m} {ctx e Ψ Ψ′} (c : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (c′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′) → Rcc c c′
+  route-ic : ∀ {m} {A B : Ty m} {ctx e Ψ Ψ′} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (c : ctx ⊢ᶜ e ∶ B ⨾ Ψ′) → Ric d c
+  route-dc : ∀ {m} {A B B′ : Ty m} {ctx e π Ψ Ψ′} (dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′) → Rdc dd c
+  route-di : ∀ {m} {A A′ B B′ : Ty m} {ctx e π q π′ Ψ Ψ′} (dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (d : ctx ⊢ᵢ e ∶ (A′ ⇒[ T.mk-kind q π′ ] B′) ⨾ Ψ′) → Rdi dd d
+  route-dd : ∀ {m} {A B B′ : Ty m} {ctx e π Ψ Ψ′} (dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (dd′ : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′) → Rdd dd dd′
 
   ----------------------------------------------------------------------
   -- The alignments, each taking `ModeAgreement`'s equation as an argument.
 
-  let-r : ∀ {ctx x e₁ e₂ A A′ B B′ q q′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  let-r : ∀ {m} {A A′ B B′ : Ty m} {ctx x e₁ e₂ q q′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
           (d₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁) (d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q Surface.Usage.∷ Ψ₂))
           (d₁′ : ctx ⊢ᵢ e₁ ∶ A′ ⨾ Ψ₁′) (d₂′ : extendNamedCtx ctx x A′ ⊢ᵢ e₂ ∶ B′ ⨾ (q′ Surface.Usage.∷ Ψ₂′))
         → A ≡ A′ → Rii (t-let d₁ d₂) (t-let d₁′ d₂′)
   let-r d₁ d₂ d₁′ d₂′ refl = ii-let (route-ii d₁ d₁′) (route-ii d₂ d₂′)
 
-  case-r : ∀ {ctx xL xR e₁ e₂ e₃ A A′ B B′ C C′ Cᵣ Cᵣ′ D D′ qL qL′ qR qR′} {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : U ctx}
+  case-r : ∀ {m} {A A′ B B′ C C′ Cᵣ Cᵣ′ D D′ : Ty m} {ctx xL xR e₁ e₂ e₃ qL qL′ qR qR′} {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : U ctx}
            (s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs) (l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL Surface.Usage.∷ Ψl))
            (r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR Surface.Usage.∷ Ψr)) (J : C ⊔ Cᵣ ≔ D)
            (s′ : ctx ⊢ᵢ e₁ ∶ (A′ + B′) ⨾ Ψs′) (l′ : extendNamedCtx ctx xL A′ ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ Surface.Usage.∷ Ψl′))
@@ -91,32 +92,32 @@ mutual
          → (A + B) ≡ (A′ + B′) → Rii (t-case s l r J) (t-case s′ l′ r′ J′)
   case-r s l r J s′ l′ r′ J′ refl = ii-case (route-ii s s′) (route-ii l l′) (route-ii r r′)
 
-  app-r : ∀ {ctx e₁ e₂ A A′ B B′ q q′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  app-r : ∀ {m} {A A′ B B′ : Ty m} {ctx e₁ e₂ q q′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
           (h : classifyAppHead e₁ ≡ nothing) (f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ₁) (x : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂)
           (h′ : classifyAppHead e₁ ≡ nothing) (f′ : ctx ⊢ᵢ e₁ ∶ (A′ ⇒[ T.mk-kind q′ T.pure ] B′) ⨾ Ψ₁′) (x′ : ctx ⊢ᶜ e₂ ∶ A′ ⨾ Ψ₂′)
         → (A ⇒[ T.mk-kind q T.pure ] B) ≡ (A′ ⇒[ T.mk-kind q′ T.pure ] B′) → Rii (t-app h f x) (t-app h′ f′ x′)
   app-r h f x h′ f′ x′ refl = ii-app (route-ii f f′) (route-cc x x′)
 
-  effApp-r : ∀ {ctx e₁ e₂ A A′ B B′ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  effApp-r : ∀ {m} {A A′ B B′ : Ty m} {ctx e₁ e₂ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
              (h : classifyAppHead e₁ ≡ nothing) (f : ctx ⊢ᵢ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B) ⨾ Ψ₁) (x : ctx ⊢ᶜ e₂ ∶ A ⨾ Ψ₂)
              (h′ : classifyAppHead e₁ ≡ nothing) (f′ : ctx ⊢ᵢ e₁ ∶ (A′ ⇒[ T.mk-kind T.Many π′ ] B′) ⨾ Ψ₁′) (x′ : ctx ⊢ᶜ e₂ ∶ A′ ⨾ Ψ₂′)
            → (A ⇒[ T.mk-kind T.Many π ] B) ≡ (A′ ⇒[ T.mk-kind T.Many π′ ] B′) → Rii (t-effApp {g = g} h f x) (t-effApp {g = g′} h′ f′ x′)
   effApp-r {g = T.eg-act} {T.eg-act} h f x h′ f′ x′ refl = ii-effApp (route-ii f f′) (route-cc x x′)
   effApp-r {g = T.eg-eff} {T.eg-eff} h f x h′ f′ x′ refl = ii-effApp (route-ii f f′) (route-cc x x′)
 
-  spine-r : ∀ {ctx e₁ e₂ X X′ T T′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  spine-r : ∀ {m} {T T′ : Ty m} {ctx e₁ e₂ X X′} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
             (h : classifyAppHead e₁ ≡ nothing) (dX : ctx ⊢ᵢ e₂ ∶ X ⨾ Ψ₂) (dF : ctx ⊢ᵈ e₁ ∶ X ⇒[ T.pure ]↦ T ⨾ Ψ₁)
             (h′ : classifyAppHead e₁ ≡ nothing) (dX′ : ctx ⊢ᵢ e₂ ∶ X′ ⨾ Ψ₂′) (dF′ : ctx ⊢ᵈ e₁ ∶ X′ ⇒[ T.pure ]↦ T′ ⨾ Ψ₁′)
           → X ≡ X′ → Rii (t-app-spine h dX dF) (t-app-spine h′ dX′ dF′)
   spine-r h dX dF h′ dX′ dF′ refl = ii-spine (route-ii dX dX′) (route-dd dF dF′)
 
-  gg-r : ∀ {ctx e₁ e₂ A B B′ C π} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  gg-r : ∀ {m} {A B B′ C : Ty m} {ctx e₁ e₂ π} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
          (dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ B ⨾ Ψ₂) (df : ctx ⊢ᶜ e₁ ∶ (B ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ₁)
          (dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ B′ ⨾ Ψ₂′) (df′ : ctx ⊢ᶜ e₁ ∶ (B′ ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ₁′)
        → B ≡ B′ → Rcc (t-compose-check-g dg df) (t-compose-check-g dg′ df′)
   gg-r dg df dg′ df′ refl = cc-gg (route-dd dg dg′) (route-cc df df′)
 
-  ff-r : ∀ {ctx e₁ e₂ A B B″ C C′ C″ π π′ π″} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  ff-r : ∀ {m} {A B C C′ : Ty m} {ctx e₁ e₂ B″ C″ π π′ π″} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
          (wf : ctx ⊢ᵢ e₁ ∶ (B ⇒[ T.mk-kind T.Many π′ ] C′) ⨾ Ψ₁)
          (s : (B ⇒[ T.mk-kind T.Many π′ ] C′) <: (B ⇒[ T.mk-kind T.Many π ] C)) (dg : ctx ⊢ᶜ e₂ ∶ (A ⇒[ T.mk-kind T.Many π ] B) ⨾ Ψ₂)
          (wf′ : ctx ⊢ᵢ e₁ ∶ (B″ ⇒[ T.mk-kind T.Many π″ ] C″) ⨾ Ψ₁′)
@@ -125,19 +126,19 @@ mutual
        → Rcc (t-compose-check-f wf s dg) (t-compose-check-f wf′ s′ dg′)
   ff-r wf s dg wf′ s′ dg′ refl = cc-ff (route-ii wf wf′) (route-cc dg dg′)
 
-  dcsub-r : ∀ {ctx e A B B′ S π} {Ψ Ψ′ : U ctx}
+  dcsub-r : ∀ {m} {A B B′ : Ty m} {ctx e S π} {Ψ Ψ′ : U ctx}
             (dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (d : ctx ⊢ᵢ e ∶ S ⨾ Ψ′) (p : S <: (A ⇒[ T.mk-kind T.Many π ] B′))
-          → Σ[ A₁ ∈ Type ] Σ[ π₁ ∈ T.Purity ] (S ≡ (A₁ ⇒[ T.mk-kind T.Many π₁ ] B)) × π₁ ⊑π π × Ψ ≡ Ψ′
+          → Σ[ A₁ ∈ Ty m ] Σ[ π₁ ∈ T.Purity ] (S ≡ (A₁ ⇒[ T.mk-kind T.Many π₁ ] B)) × π₁ ⊑π π × Ψ ≡ Ψ′
           → Rdc dd (t-sub d p)
   dcsub-r dd d p (_ , _ , refl , _ , _) = dc-sub (route-di dd d)
 
-  cg-r : ∀ {ctx e₁ e₂ A M M′ B B′ π} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  cg-r : ∀ {m} {A B B′ : Ty m} {ctx e₁ e₂ M M′ π} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
          (dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂) (df : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B ⨾ Ψ₁)
          (dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M′ ⨾ Ψ₂′) (df′ : ctx ⊢ᶜ e₁ ∶ (M′ ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₁′)
        → M ≡ M′ → Rdc (d-compose dg df) (t-compose-check-g dg′ df′)
   cg-r dg df dg′ df′ refl = dc-cg (route-dd dg dg′) (route-dc df df′)
 
-  comp-r : ∀ {ctx e₁ e₂ A M M′ B B′ π} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
+  comp-r : ∀ {m} {A B B′ : Ty m} {ctx e₁ e₂ M M′ π} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U ctx}
            (dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂) (df : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B ⨾ Ψ₁)
            (dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M′ ⨾ Ψ₂′) (df′ : ctx ⊢ᵈ e₁ ∶ M′ ⇒[ π ]↦ B′ ⨾ Ψ₁′)
          → M ≡ M′ → Rdd (d-compose dg df) (d-compose dg′ df′)

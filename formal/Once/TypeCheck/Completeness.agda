@@ -28,6 +28,7 @@ import Once.Type.Grade
 module Once.TypeCheck.Completeness where
 
 import Once.Surface.Syntax as Srf
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -96,17 +97,17 @@ open import Once.TypeCheck.Completeness.Rules
 -- exactly the ones `NotGenerator` rules out.
 private
   -- (a resolved head that infers is given through its inference)
-  res-route : ∀ (ctx : NamedCtx) (cn : CanonicalName) (A : Type) (π : T.Purity)
-                (r : VerifiedInferResult ctx (RResolved cn)) {B Ψ eE d f}
+  res-route : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (A : Ty m) (π : T.Purity)
+                (r : VerifiedInferResult ctx (RResolved cn)) {B : Ty m} {Ψ eE d f}
             → proj₁ r ≡ success B Ψ eE d f
             → E.given-res ctx cn A π r ≡ given-infer ctx (RResolved cn) A π r
   res-route ctx cn A π (success _ _ _ _ _ , _) _ = refl
   res-route ctx cn A π (failure _ , _) ()
 
-  leaf-route : ∀ (ctx : NamedCtx) (cn : CanonicalName) (A : Type) (π : T.Purity)
+  leaf-route : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (A : Ty m) (π : T.Purity)
                  (r : VerifiedInferResult ctx (RResolved cn))
              → NotGenerator cn → (vw : AppHeadView (RResolved cn))
-             → ∀ {B Ψ eE d f} → proj₁ r ≡ success B Ψ eE d f
+             → ∀ {B : Ty m} {Ψ eE d f} → proj₁ r ≡ success B Ψ eE d f
              → elabGivenLeaf ctx cn A π vw r ≡ given-infer ctx (RResolved cn) A π r
   leaf-route ctx ._ A π r (¬id ∷ᴬ _) Classify.ahv-id _ = ⊥-elim (¬id refl)
   leaf-route ctx ._ A π r (_ ∷ᴬ ¬fst ∷ᴬ _) Classify.ahv-fst _ = ⊥-elim (¬fst refl)
@@ -133,7 +134,7 @@ private
   leaf-route ctx cn A π r _ ahv-other ok = res-route ctx cn A π r ok
 
 
-  app-other-route : ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) (π : T.Purity)
+  app-other-route : ∀ {m} (ctx : NamedCtx m) (f x : RawExpr) (A : Ty m) (π : T.Purity)
                       (r : VerifiedInferResult ctx (Raw.RApp f x))
                   → classifyAppHeadView f ≡ ahv-other
                   → elabGivenApp ctx f x A π (classifyAppHeadView f) r ≡ given-infer ctx (Raw.RApp f x) A π r
@@ -158,29 +159,29 @@ module DPoly where
   open import Data.Unit using (tt)
   open import Data.Empty using (⊥-elim)
 
-  ⇒-parts : ∀ {a b c d : Type} {k k′} → (a T.⇒[ k ] b) ≡ (c T.⇒[ k′ ] d) → (a ≡ c) × (b ≡ d)
+  ⇒-parts : ∀ {m} {a b c d : Ty m} {k k′} → (a T.⇒[ k ] b) ≡ (c T.⇒[ k′ ] d) → (a ≡ c) × (b ≡ d)
   ⇒-parts refl = refl , refl
 
-  arrow-parts : ∀ {s sd sc : T.PolyType} {π′} {A B : Type} (θ : String → Type)
+  arrow-parts : ∀ {m} {s sd sc : T.PolyType} {π′} {A B : Ty m} (θ : String → Ty m)
     → T.ArrowSchema s sd sc π′ → T.substPoly θ s ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)
     → (T.substPoly θ sd ≡ A) × (T.substPoly θ sc ≡ B)
   arrow-parts θ T.as-pure e = ⇒-parts e
   arrow-parts θ T.as-eff  e = ⇒-parts e
   arrow-parts θ T.as-act  e = ⇒-parts e
 
-  gp-eq : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err ll eL li eI lp eP
+  gp-eq : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err ll eL li eI lp eP
     → given-poly ctx x A π err (lookupImport (Classify.NamedCtx.sig ctx) x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
         (lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl
       ≡ given-poly ctx x A π err ll eL li eI lp eP
   gp-eq ctx x A π err .(lookupImport (Classify.NamedCtx.sig ctx) x) refl .(lookupImport (Classify.NamedCtx.imports ctx) x) refl
     .(lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl = refl
 
-  gg-eq : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err schema {body prefix} eL eI
+  gg-eq : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err schema {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ig eG
     → given-poly-g ctx x A π err schema eL eI eP (T.isGround schema) refl ≡ given-poly-g ctx x A π err schema eL eI eP ig eG
   gg-eq ctx x A π err schema eL eI eP .(T.isGround schema) refl = refl
 
-  gm-eq : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err {schema sd sc π′ body prefix} eL eI
+  gm-eq : ∀ {mₜ} (ctx : NamedCtx mₜ) (x : String) (A : Ty mₜ) (π : T.Purity) err {schema sd sc π′ body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc) mσ eS
     → given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl
@@ -188,10 +189,10 @@ module DPoly where
   gm-eq ctx x A π err {sd = sd} eL eI eP ¬g as inc .(instantiate sd A) refl = refl
 
   -- The codomain the elaborator computes IS the derivation's.
-  at-π : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err
-    {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
+  at-π : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
-    (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc) (θ₀ : String → Type) (e₀ : T.substPoly θ₀ sd ≡ A)
+    (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc) (θ₀ : String → Ty m) (e₀ : T.substPoly θ₀ sd ≡ A)
     → T.substPoly θ₀ sc ≡ B → π′ ⊑π π → KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B)
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ (π′ ⊑π? π)) ≡ success B Surface.zeroUsage eE d f
@@ -201,11 +202,11 @@ module DPoly where
   ...   | yes _ = _ , _ , _ , refl
   ...   | no ¬k = ⊥-elim (¬k ki)
 
-  at-m : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err
-    {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
+  at-m : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
+    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl) ≡ success B Surface.zeroUsage eE d f
   at-m ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g as inc θ eθ g ki =
@@ -217,11 +218,11 @@ module DPoly where
         (eE , d , f , r) = at-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ eB g ki
     in eE , d , f , trans (cong proj₁ (gm-eq ctx x A π err eL eI eP ¬g as inc (just σ) eS)) r
 
-  from-arrow : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err
-    {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
+  from-arrow : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
+    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-a ctx x A π err eL eI eP ¬g (arrowSchema? schema)) ≡ success B Surface.zeroUsage eE d f
   from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-pure inc θ eθ g ki with codVarsInDom? sd sc
@@ -235,12 +236,12 @@ module DPoly where
   ... | no ¬inc = ⊥-elim (¬inc inc)
 
   -- The whole chain, from the lookups (the head's inference has failed).
-  from-lookups : ∀ (ctx : NamedCtx) (x : String) (A : Type) (π : T.Purity) err
-    {B : Type} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix}
+  from-lookups : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
+    {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix}
     (eL : lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing) (eI : lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing)
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) (¬g : ¬ T.Ground schema)
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Type) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
+    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly ctx x A π err (lookupImport (Classify.NamedCtx.sig ctx) x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
                  (lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl) ≡ success B Surface.zeroUsage eE d f
@@ -252,7 +253,7 @@ module DPoly where
          (trans (cong proj₁ (gg-eq ctx x A π err schema eL eI eP (inj₂ tt) eG)) r)
 
 -- A non-ground telescope entry does not infer.
-poly-head-fails : ∀ (ctx : NamedCtx) (x : String) {schema body prefix}
+poly-head-fails : ∀ {m} (ctx : NamedCtx m) (x : String) {schema body prefix}
   → lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
   → Once.Internal.Typing.Scope.lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ T.Ground schema
@@ -262,9 +263,9 @@ poly-head-fails ctx x {schema} eS eI eP ¬g =
     (Once.TypeCheck.ElaborateProofs.inferElabV-RVar-poly-aux-fail-nonground ctx x eS eI
        (Once.TypeCheck.Classify.lookupPolyPrefix⇒lookupPoly (Classify.NamedCtx.polys ctx) x eP) (¬Ground-isGround-inj₂ schema ¬g))
 
-given-infer-route : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
+given-infer-route : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {T : Ty m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-  → ctx ⊢ᵢ e ∶ T ⨾ Ψ → ∀ (A : Type) (π : T.Purity)
+  → ctx ⊢ᵢ e ∶ T ⨾ Ψ → ∀ (A : Ty m) (π : T.Purity)
   → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ (inferElabV ctx e) ≡ success T Ψ eE d f
   → elabGivenV ctx e A π ≡ given-infer ctx e A π (inferElabV ctx e)
 given-infer-route (t-int _) A π _ = refl
@@ -272,12 +273,12 @@ given-infer-route (t-float _ _ _ _) A π _ = refl
 given-infer-route t-unit A π _ = refl
 given-infer-route t-unit-var A π _ = refl
 given-infer-route (t-var-local _) A π _ = refl
-given-infer-route {ctx} (t-var-resolved {cn = cn} ng wn _ _) A π (_ , _ , _ , ok) =
+given-infer-route {ctx = ctx} (t-var-resolved {cn = cn} ng wn _ _) A π (_ , _ , _ , ok) =
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn)) ok
-given-infer-route {ctx} (t-var-own {x = x} _ _) A π (_ , _ , _ , ok) =
+given-infer-route {ctx = ctx} (t-var-own {x = x} _ _) A π (_ , _ , _ , ok) =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
 given-infer-route (t-var-import _ _ _ _) A π _ = refl
-given-infer-route {ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) =
+given-infer-route {ctx = ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
 given-infer-route (t-annot _ _) A π _ = refl
 given-infer-route (t-pair _ _) A π _ = refl
@@ -298,33 +299,33 @@ given-infer-route (t-apply-app-infer _) A π _ = refl
 given-infer-route (t-apply-eff-app-infer _) A π _ = refl
 given-infer-route (t-Out-app-infer _ _ _) A π _ = refl
 given-infer-route (t-Out-eff-app-infer _ _ _) A π _ = refl
-given-infer-route {ctx} (t-app {f = f} {x = x} eqAH _ _) A π _ =
+given-infer-route {ctx = ctx} (t-app {f = f} {x = x} eqAH _ _) A π _ =
   app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
-given-infer-route {ctx} (t-effApp {f = f} {x = x} eqAH _ _) A π _ =
+given-infer-route {ctx = ctx} (t-effApp {f = f} {x = x} eqAH _ _) A π _ =
   app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
-given-infer-route {ctx} (t-app-spine {f = f} {arg = x} eqAH _ _) A π _ =
+given-infer-route {ctx = ctx} (t-app-spine {f = f} {arg = x} eqAH _ _) A π _ =
   app-other-route ctx f x A π (inferElabV ctx (Raw.RApp f x)) (classifyAppHead-nothing⇒view-other eqAH)
 
 -- `d-infer`: the inferred arrow's domain converts back, its grade up.
-given-infer-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A A′ B : Type} {π π′ : T.Purity}
+given-infer-complete : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A A′ B : Ty m} {π π′ : T.Purity}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
     (r : VerifiedInferResult ctx e)
   → proj₁ r ≡ success (A′ T.⇒[ T.mk-kind T.Many π′ ] B) Ψ eE d f
   → A <: A′ → π′ ⊑π π
   → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-infer ctx e A π r) ≡ success B Ψ eE′ d′ f′
-given-infer-complete {A = A} {A′} {π = π} {π′} (success _ _ _ _ _ , _) refl a g
+given-infer-complete {A = A} {A′ = A′} {π = π} {π′ = π′} (success _ _ _ _ _ , _) refl a g
   with A <:? A′ | π′ ⊑π? π
 ... | yes _ | yes _ = _ , _ , _ , refl
 ... | no ¬a | _     = ⊥-elim (¬a a)
 ... | yes _ | no ¬g = ⊥-elim (¬g g)
 
 -- `d-cata`: the algebra synthesizes the arrow the fold needs.
-given-cata-complete : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type} {π : T.Purity}
-    (wfF : WellFormedF F) {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
+given-cata-complete : ∀ {m} {Δₖ : KCtx m} {ctx : NamedCtx m} {alg : RawExpr} {F : Fun m} {A : Ty m} {π : T.Purity}
+    (wfF : WFFun Δₖ F) {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
     (u : T.pure ⊑π π) (r : VerifiedInferResult ctx alg)
   → proj₁ r ≡ success (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
   → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′   -- plan 0.113 B1
-given-cata-complete {F = F} {A} {π} wfF {Ψ = Ψ} u (success _ _ _ _ _ , _) refl
+given-cata-complete {F = F} {A = A} {π = π} wfF {Ψ = Ψ} u (success _ _ _ _ _ , _) refl
   with (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A)
 ... | yes refl =
   withUnit-elim _ u _
@@ -333,13 +334,13 @@ given-cata-complete {F = F} {A} {π} wfF {Ψ = Ψ} u (success _ _ _ _ _ , _) ref
 
 -- compose, `f`'s route: `f` synthesizes, converts, and `g` is checked at the
 -- middle it names.
-compose-f-complete : ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C C′ : Type) (π π′ : T.Purity)
+compose-f-complete : ∀ {m} {ctx : NamedCtx m} (f g : RawExpr) (A B C C′ : Ty m) (π π′ : T.Purity)
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)} {fE : _} {gE : _} {df ff dg fg : ℕ}
   → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
   → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
   → checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) ≡ success Ψ₂ gE dg fg
   → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-f ctx f g A C π) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
-compose-f-complete {ctx} f g A B C C′ π π′ eqF p eqG
+compose-f-complete {ctx = ctx} f g A B C C′ π π′ eqF p eqG
   with inferElabV ctx f | eqF
 ... | success _ _ _ _ _ , _ | refl
     with (B T.⇒[ T.mk-kind T.Many π′ ] C′) <:? (B T.⇒[ T.mk-kind T.Many π ] C)
@@ -350,7 +351,7 @@ compose-f-complete {ctx} f g A B C C′ π π′ eqF p eqG
 -- compose, the elaborator's order: `g`'s route first. Where it succeeds on a
 -- derivation built on `f`'s route, the two agree because usage is the term's
 -- (`ModeAgreement`), not the route's.
-compose-g-complete : ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C C′ : Type) (π π′ : T.Purity)
+compose-g-complete : ∀ {m} {ctx : NamedCtx m} (f g : RawExpr) (A B C C′ : Ty m) (π π′ : T.Purity)
     (rG : VerifiedGivenResult ctx g A π)
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)} {fE : _} {gE : _} {df ff dg fg : ℕ}
   → ctx ⊢ᵢ f ∶ (B T.⇒[ T.mk-kind T.Many π′ ] C′) ⨾ Ψ₁
@@ -361,7 +362,7 @@ compose-g-complete : ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C C′ : Type) (�
   → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-g ctx f g A C π rG) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 compose-g-complete f g A B C C′ π π′ (failure _ , _) wf dg eqF p eqG =
   compose-f-complete f g A B C C′ π π′ eqF p eqG
-compose-g-complete {ctx} f g A B C C′ π π′ (success B″ Ψg″ gE″ dg″ fg″ , wG) wf dg eqF p eqG
+compose-g-complete {ctx = ctx} f g A B C C′ π π′ (success B″ Ψg″ gE″ dg″ fg″ , wG) wf dg eqF p eqG
   with checkElabV ctx f (B″ T.⇒[ T.mk-kind T.Many π ] C)
 ... | failure _ , _ = compose-f-complete f g A B C C′ π π′ eqF p eqG
 ... | success Ψf″ fE″ df″ ff″ , wF
@@ -534,7 +535,7 @@ checkElabV-RResolved-J ctx cn T .(classifyGen cn) refl = refl
 
 private
   -- The `case` twin. No `mid` argument, so no `-J` bridge is needed.
-  caseGo-success : ∀ {ctx f g A B C} {π : T.Purity}
+  caseGo-success : ∀ {m} {A B C : Ty m} {ctx f g} {π : T.Purity}
     {Ψf Ψg : Surface.Usage (Classify.NamedCtx.size ctx)}
     {Ef : _} {Eg : _} {Wf : _} {Wg : _} {df ff dg fg : ℕ}
     → checkElabV ctx f (A T.⇒[ T.mk-kind T.Many π ] C)
@@ -559,13 +560,13 @@ private
 -- closure rather than a direct `IR.SigOp` — which was a statement about
 -- morphism EXTRACTION and has no analogue once arms are ordinary terms.
 mutual
-  check-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+  check-completeV : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A : Ty m}
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᶜ e ∶ A ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         Σ-syntax (ctx ⊢ᶜ e ∶ A ⨾ Ψ) (λ w →
           checkElabV ctx e A ≡ (success Ψ eE d f , w))
-  check-completeV {ctx} {e} {A} d with checkElabV ctx e A | check-complete d
+  check-completeV {ctx = ctx} {e = e} {A = A} d with checkElabV ctx e A | check-complete d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
 
   -- The bidirectional SWITCH lemma `infer ⊆ check`, by structural recursion on the
@@ -580,7 +581,7 @@ mutual
   -- inferred type is concrete, matching the derivation `p` fixes the target;
   -- elsewhere the fallback lemmas take `p` and the elaborator's `A <:? B`
   -- decides yes.
-  iFromInferSub : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+  iFromInferSub : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B : Ty m}
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᵢ e ∶ A ⨾ Ψ → A <: B
     → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -589,7 +590,7 @@ mutual
   -- Strong (paired `checkElabV`) view of the switch — mirrors `check-completeV`
   -- over `check-complete`, but from the INFER derivation (so a pair's components
   -- are reached without a re-wrap). Feeds `checkPairLit`'s two scrutinees.
-  check-completeV-from-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+  check-completeV-from-infer : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B : Ty m}
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᵢ e ∶ A ⨾ Ψ → A <: B
     → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -600,7 +601,7 @@ mutual
   -- checkElabV b B). Given the two paired component equations, `rewrite` drives it
   -- to its `success` leaf. NON-recursive (the caller supplies the equations, so the
   -- recursion measure lives in the caller's structural descent, not here).
-  pair-lit-reduce : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
+  pair-lit-reduce : ∀ {m} {ctx : NamedCtx m} {a b : RawExpr} {A B : Ty m}
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {aE da fa wA bE db fb wB}
     → checkElabV ctx a A ≡ (success Ψ₁ aE da fa , wA)
@@ -609,14 +610,14 @@ mutual
         checkElab ctx (Raw.RPair a b) (A * B)
           ≡ success (Ψ₁ +ᵘ Ψ₂) eE d f
 
-  check-completeV-from-infer {ctx} {e} {A} {B} d p
+  check-completeV-from-infer {ctx = ctx} {e = e} {A = A} {B = B} d p
     with checkElabV ctx e B | iFromInferSub d p
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
 
   pair-lit-reduce eqA eqB rewrite eqA | eqB = _ , _ , _ , refl
 
   -- The reflexive instance (the former `t-embed` switch).
-  iFromInfer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+  iFromInfer : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A : Ty m}
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᵢ e ∶ A ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -624,25 +625,25 @@ mutual
   iFromInfer {A = A} d = iFromInferSub d (<:-refl A)
 
   -- Leaves.
-  iFromInferSub {ctx} (t-int n) sub-int = checkElab-fallback-RInt {ctx} n
-  iFromInferSub {ctx} (t-float i f l p) sub-float = checkElab-fallback-RFloat {ctx} i f l p
-  iFromInferSub {ctx} t-unit sub-unit = checkElab-fallback-RUnit {ctx}
-  iFromInferSub {ctx} t-unit-var sub-unit = checkElab-fallback-RVar-unit {ctx}
-  iFromInferSub {ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
+  iFromInferSub {ctx = ctx} (t-int n) sub-int = checkElab-fallback-RInt {ctx} n
+  iFromInferSub {ctx = ctx} (t-float i f l p) sub-float = checkElab-fallback-RFloat {ctx} i f l p
+  iFromInferSub {ctx = ctx} t-unit sub-unit = checkElab-fallback-RUnit {ctx}
+  iFromInferSub {ctx = ctx} t-unit-var sub-unit = checkElab-fallback-RVar-unit {ctx}
+  iFromInferSub {ctx = ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-local eqLocal)
     in checkElab-fallback-RVar {ctx} x T eqI sb
-  iFromInferSub {ctx} (t-var-resolved {cn = cn} {T = T} ng wn eqImp conc) sb =
+  iFromInferSub {ctx = ctx} (t-var-resolved {cn = cn} {T = T} ng wn eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng wn eqImp conc)
     in checkElab-fallback-RResolved {ctx} cn T eqI sb
-  iFromInferSub {ctx} (t-var-own {x = x} {T = T} ns eqImp) sb =
+  iFromInferSub {ctx = ctx} (t-var-own {x = x} {T = T} ns eqImp) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-own ns eqImp)
     in checkElab-fallback-RResolved {ctx} (own x) T eqI sb
-  iFromInferSub {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) sb =
+  iFromInferSub {ctx = ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc)
     in checkElab-fallback-RVar {ctx} x T eqI sb
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
-  iFromInferSub {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
+  iFromInferSub {ctx = ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RResolved {ctx} (own x) T eqI sb
   iFromInferSub (t-annot {e = e} {T = T} rf d) sb =
@@ -662,7 +663,7 @@ mutual
   -- reduces, so `inferElab ctx (RUnaryOp OpNeg (RFloat i f l p))` is already
   -- the folded literal. Routing through `infer-complete` instead would leave
   -- its three existential witnesses as metas with nothing to solve them.
-  iFromInferSub {ctx} (t-neg-float i f l p) sub-float =
+  iFromInferSub {ctx = ctx} (t-neg-float i f l p) sub-float =
     checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg (Raw.RFloat i f l p) T.Float refl
   iFromInferSub (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
@@ -853,7 +854,7 @@ mutual
   -- `d-infer`, at the pure grade); any other head has no synthesized type (the
   -- elaborator's head inference fails by computation — `refl` below) and is
   -- taken apart given the argument's type.
-  spine-complete : ∀ {ctx : NamedCtx} (f x : RawExpr) {X B : Type}
+  spine-complete : ∀ {m} {ctx : NamedCtx m} (f x : RawExpr) {X B : Ty m}
       {Ψf Ψx : Surface.Usage (Classify.NamedCtx.size ctx)}
     → Classify.classifyAppHead f ≡ nothing
     → ctx ⊢ᵢ x ∶ X ⨾ Ψx
@@ -875,7 +876,7 @@ mutual
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX dF@(d-cata _ _) =
     infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
-  spine-complete {ctx} f x eqAH dX dF@(d-poly {x = y} ln li lp ¬g _ _ _ _) =
+  spine-complete {ctx = ctx} f x eqAH dX dF@(d-poly {x = y} ln li lp ¬g _ _ _ _) =
     infer-complete-RApp-spine f x eqAH (cong proj₁ (poly-head-fails ctx y ln li lp ¬g))
       (proj₂ (proj₂ (proj₂ (infer-complete dX)))) (proj₂ (proj₂ (proj₂ (given-complete dF))))
   spine-complete f x eqAH dX (d-infer {A′ = A′} w a ⊑-pure) =

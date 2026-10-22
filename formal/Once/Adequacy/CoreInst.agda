@@ -12,6 +12,7 @@
 -- instance at `τ` of the empty context.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig; KCtx; GSub; Respects)
 
@@ -79,7 +80,7 @@ module WithSG (sg : SigGround) where
         → ρ̂ (type (S !! d) ⟪ τ′ ⟫) ≡ type (S !! d) ⟪ (λ i → ρ̂ (τ′ i)) ⟫
   ρ̂-ref d τ′ = trans (cong (_⟪ τ ⟫) (abs-⟪⟫ Δ τ′ (sg d))) (⟨⟩-⟪⟫ (type (S !! d)) (λ i → absTy Δ (τ′ i)) τ)
 
-  ρ̂ᶜ : ∀ {n} {Γ : C.Ctx n} {Ψ t A π} → Γ ⊢[ Ψ ] t ∷ A ! π → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ t ∷ ρ̂ A ! π
+  ρ̂ᶜ : ∀ {m} {n} {Γ : C.Ctx m n} {A : Ty m} {Ψ t π} → Γ ⊢[ Ψ ] t ∷ A ! π → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ t ∷ ρ̂ A ! π
   ρ̂ᶜ {Γ = Γ} (GT.⊢var i) = subst (λ X → ρ̂S Γ ⊢[ _ ] G.var i ∷ X ! pure) (lookup-ρ̂ Γ i) (GT.⊢var i)
   ρ̂ᶜ (GT.⊢lam le d)    = GT.⊢lam le (ρ̂ᶜ d)
   ρ̂ᶜ (GT.⊢app f x)     = GT.⊢app (ρ̂ᶜ f) (ρ̂ᶜ x)
@@ -121,14 +122,14 @@ module WithSG (sg : SigGround) where
 
   -- A pure part in a position of quantity `q` (plan 0.116) is the rule's own
   -- derivation at every `q`, so `ρ̂ᶜ` commutes with binding or passing it.
-  ρ̂ᶜ-let-pure : ∀ (q : T.Quantity) {n} {Γ : C.Ctx n} {Ψ₁ Ψ₂ e b A B π}
+  ρ̂ᶜ-let-pure : ∀ {m} (q : T.Quantity) {n} {Γ : C.Ctx m n} {A B : Ty m} {Ψ₁ Ψ₂ e b π}
                   (de : Γ ⊢[ Ψ₁ ] e ∷ A ! pure) (db : (Γ C., A) ⊢[ q C.∷ Ψ₂ ] b ∷ B ! π)
               → ρ̂ᶜ (GT.⊢let-pure q de db) ≡ GT.⊢let-pure q (ρ̂ᶜ de) (ρ̂ᶜ db)
   ρ̂ᶜ-let-pure T.Zero de db = refl
   ρ̂ᶜ-let-pure T.One  de db = refl
   ρ̂ᶜ-let-pure T.Many de db = refl
 
-  ρ̂ᶜ-app-pure : ∀ (q : T.Quantity) {n} {Γ : C.Ctx n} {Ψ₁ Ψ₂ f x A B π}
+  ρ̂ᶜ-app-pure : ∀ {m} (q : T.Quantity) {n} {Γ : C.Ctx m n} {A B : Ty m} {Ψ₁ Ψ₂ f x π}
                   (df : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind q π ] B ! pure) (dx : Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
               → ρ̂ᶜ (GT.⊢app-pure q df dx) ≡ GT.⊢app-pure q (ρ̂ᶜ df) (ρ̂ᶜ dx)
   ρ̂ᶜ-app-pure T.Zero df dx = refl
@@ -136,7 +137,7 @@ module WithSG (sg : SigGround) where
   ρ̂ᶜ-app-pure T.Many df dx = refl
 
   -- The context of the instantiated abstraction is the substituted context.
-  ρ̂S-abs : ∀ {n} (Γ : C.Ctx n) → absCtx Δ Γ ⟪ τ ⟫ᶜ ≡ ρ̂S Γ
+  ρ̂S-abs : ∀ {m} {n} (Γ : C.Ctx m n) → absCtx Δ Γ ⟪ τ ⟫ᶜ ≡ ρ̂S Γ
   ρ̂S-abs C.∅           = refl
   ρ̂S-abs (Γ C., A ^ q) = cong (λ G → G C., ρ̂ A ^ q) (ρ̂S-abs Γ)
 
@@ -146,12 +147,12 @@ module WithSG (sg : SigGround) where
   ----------------------------------------------------------------------
 
   private
-    IA : ∀ {n} {Γ : C.Ctx n} {Ψ t A π} → Γ ⊢[ Ψ ] t ∷ A ! π
+    IA : ∀ {m} {n} {Γ : C.Ctx m n} {A : Ty m} {Ψ t π} → Γ ⊢[ Ψ ] t ∷ A ! π
        → absCtx Δ Γ ⟪ τ ⟫ᶜ ⊢[ Ψ ] ρ̂ₜ t ∷ ρ̂ A ! π
     IA D = PT.instantiate τ r (abs-⊢ Δ sg D)
 
     -- An abstraction-side `subst` under `instantiate` (CoreAbsSem's, at any arity).
-    tr-isubst′ : ∀ {n} {Γp : PT.PCtx m n} {Γ : C.Ctx n} {Ψ} {tp : PT.PTm m n} {t : G.Tm n} {A : Type} {π}
+    tr-isubst′ : ∀ {mₜ} {n} {Γp : PT.PCtx m n} {Γ : C.Ctx mₜ n} {Ψ} {tp : PT.PTm m n} {t : G.Tm n} {A : Ty mₜ} {π}
                    {Y : Set} {f : Y → Once.Internal.Core.PolyTy.Ty m} {y₁ y₂ : Y}
                    {eΓ : Γp ⟪ τ ⟫ᶜ ≡ Γ} {et : tp ⟪ τ ⟫ₜ ≡ t} {eA : f y₂ ⟪ τ ⟫ ≡ A} (e : y₁ ≡ y₂)
                    (D : PT._⊩_⊢[_]_∷_!_ Δ Γp Ψ tp (f y₁) π)
@@ -160,21 +161,21 @@ module WithSG (sg : SigGround) where
     tr-isubst′ refl D = refl
 
     -- A transport of the instantiated side meets a `subst` of the substituted side.
-    close : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ t A₀ X π} (eΓ : Γ' ≡ Γ)
+    close : ∀ {m} {n} {Γ' Γ : C.Ctx m n} {A₀ : Ty m} {Ψ t X π} (eΓ : Γ' ≡ Γ)
               {D : Γ' ⊢[ Ψ ] t ∷ A₀ ! π} {E : Γ ⊢[ Ψ ] t ∷ A₀ ! π} (E* e : A₀ ≡ X)
           → tr eΓ refl refl D ≡ E → tr eΓ refl E* D ≡ subst (λ Y → Γ ⊢[ Ψ ] t ∷ Y ! π) e E
     close refl refl refl refl = refl
 
-    closeF : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ t π} {Y : Set} (f : Y → Type) {y₀ y₁ : Y} (eΓ : Γ' ≡ Γ)
+    closeF : ∀ {m} {n} {Γ' Γ : C.Ctx m n} {Ψ t π} {Y : Set} (f : Y → Ty m) {y₀ y₁ : Y} (eΓ : Γ' ≡ Γ)
                {D : Γ' ⊢[ Ψ ] t ∷ f y₀ ! π} {E : Γ ⊢[ Ψ ] t ∷ f y₀ ! π} (E* : f y₀ ≡ f y₁) (e : y₀ ≡ y₁)
            → tr eΓ refl refl D ≡ E → tr eΓ refl E* D ≡ subst (λ y → Γ ⊢[ Ψ ] t ∷ f y ! π) e E
     closeF f refl refl refl refl = refl
 
-    tr-var-subst : ∀ {n} {Γ' Γ : C.Ctx n} (i : _) (eΓ : Γ' ≡ Γ) {X} (eA : C.lookup Γ' i ≡ X) (e : C.lookup Γ i ≡ X)
+    tr-var-subst : ∀ {m} {n} {Γ' Γ : C.Ctx m n} (i : _) (eΓ : Γ' ≡ Γ) {X} (eA : C.lookup Γ' i ≡ X) (e : C.lookup Γ i ≡ X)
                  → tr eΓ refl eA (GT.⊢var i) ≡ subst (λ Y → Γ ⊢[ C.singleUse i T.One ] G.var i ∷ Y ! pure) e (GT.⊢var i)
     tr-var-subst i refl refl refl = refl
 
-  inst-abs : ∀ {n} {Γ : C.Ctx n} {Ψ t A π} (D : Γ ⊢[ Ψ ] t ∷ A ! π)
+  inst-abs : ∀ {m} {n} {Γ : C.Ctx m n} {A : Ty m} {Ψ t π} (D : Γ ⊢[ Ψ ] t ∷ A ! π)
            → tr (ρ̂S-abs Γ) refl refl (IA D) ≡ ρ̂ᶜ D
   inst-abs {Γ = Γ} (GT.⊢var i) =
     trans (tr-isubst′ (absCtx-lookup Δ Γ i) _)
@@ -275,49 +276,49 @@ module WithSG (sg : SigGround) where
   ρ̂ₜ-ren ρ (G.ref d τ′)     = refl
 
   -- The substitution on thinnings; it moves no position.
-  ρ̂θ : ∀ {n k} {Γ : C.Ctx n} {D : C.Ctx k} → Γ ⊆ D → ρ̂S Γ ⊆ ρ̂S D
+  ρ̂θ : ∀ {m} {n k} {Γ : C.Ctx m n} {D : C.Ctx m k} → Γ ⊆ D → ρ̂S Γ ⊆ ρ̂S D
   ρ̂θ done     = done
   ρ̂θ (skip θ) = skip (ρ̂θ θ)
   ρ̂θ (keep θ) = keep (ρ̂θ θ)
 
-  thin-var-ρ̂ : ∀ {n k} {Γ : C.Ctx n} {D : C.Ctx k} (θ : Γ ⊆ D) (i : Fin n) → thin-var (ρ̂θ θ) i ≡ thin-var θ i
+  thin-var-ρ̂ : ∀ {m} {n k} {Γ : C.Ctx m n} {D : C.Ctx m k} (θ : Γ ⊆ D) (i : Fin n) → thin-var (ρ̂θ θ) i ≡ thin-var θ i
   thin-var-ρ̂ (skip θ) i       = cong suc (thin-var-ρ̂ θ i)
   thin-var-ρ̂ (keep θ) zero    = refl
   thin-var-ρ̂ (keep θ) (suc i) = cong suc (thin-var-ρ̂ θ i)
 
-  thin-usage-ρ̂ : ∀ {n k} {Γ : C.Ctx n} {D : C.Ctx k} (θ : Γ ⊆ D) (Ψ : C.Usage n) → thin-usage (ρ̂θ θ) Ψ ≡ thin-usage θ Ψ
+  thin-usage-ρ̂ : ∀ {m} {n k} {Γ : C.Ctx m n} {D : C.Ctx m k} (θ : Γ ⊆ D) (Ψ : C.Usage n) → thin-usage (ρ̂θ θ) Ψ ≡ thin-usage θ Ψ
   thin-usage-ρ̂ done     C.[]      = refl
   thin-usage-ρ̂ (skip θ) Ψ         = cong (T.Zero C.∷_) (thin-usage-ρ̂ θ Ψ)
   thin-usage-ρ̂ (keep θ) (q C.∷ Ψ) = cong (q C.∷_) (thin-usage-ρ̂ θ Ψ)
 
-  ρ̂θ-refl : ∀ {n} (Γ : C.Ctx n) → ρ̂θ (⊆-refl {Γ = Γ}) ≡ ⊆-refl
+  ρ̂θ-refl : ∀ {m} {n} (Γ : C.Ctx m n) → ρ̂θ (⊆-refl {Γ = Γ}) ≡ ⊆-refl
   ρ̂θ-refl C.∅           = refl
   ρ̂θ-refl (Γ C., A ^ q) = cong keep (ρ̂θ-refl Γ)
 
   -- Transports are invisible to `_≅_`: a `subst` under ρ̂ᶜ or ren-⊢ is removable.
   module _ {n} {Γ : C.Ctx n} {π : T.Purity} where
-    ρ̂ᶜ-sU : ∀ {Ψ₁ Ψ₂ t A} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ Ψ₁ ] t ∷ A ! π} → ρ̂ᶜ (subst (λ U → Γ ⊢[ U ] t ∷ A ! π) e D) ≅ ρ̂ᶜ D
+    ρ̂ᶜ-sU : ∀ {m} {A : Ty m} {Ψ₁ Ψ₂ t} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ Ψ₁ ] t ∷ A ! π} → ρ̂ᶜ (subst (λ U → Γ ⊢[ U ] t ∷ A ! π) e D) ≅ ρ̂ᶜ D
     ρ̂ᶜ-sU refl = H.refl
-    ρ̂ᶜ-st : ∀ {Ψ t₁ t₂ A} (e : t₁ ≡ t₂) {D : Γ ⊢[ Ψ ] t₁ ∷ A ! π} → ρ̂ᶜ (subst (λ u → Γ ⊢[ Ψ ] u ∷ A ! π) e D) ≅ ρ̂ᶜ D
+    ρ̂ᶜ-st : ∀ {m} {A : Ty m} {Ψ t₁ t₂} (e : t₁ ≡ t₂) {D : Γ ⊢[ Ψ ] t₁ ∷ A ! π} → ρ̂ᶜ (subst (λ u → Γ ⊢[ Ψ ] u ∷ A ! π) e D) ≅ ρ̂ᶜ D
     ρ̂ᶜ-st refl = H.refl
-    ρ̂ᶜ-sA : ∀ {Ψ t} {Y : Set} (f : Y → Type) {y₁ y₂} (e : y₁ ≡ y₂) {D : Γ ⊢[ Ψ ] t ∷ f y₁ ! π}
+    ρ̂ᶜ-sA : ∀ {m} {Ψ t} {Y : Set} (f : Y → Ty m) {y₁ y₂} (e : y₁ ≡ y₂) {D : Γ ⊢[ Ψ ] t ∷ f y₁ ! π}
           → ρ̂ᶜ (subst (λ X → Γ ⊢[ Ψ ] t ∷ f X ! π) e D) ≅ ρ̂ᶜ D
     ρ̂ᶜ-sA f refl = H.refl
-    ren-sA : ∀ {k} {D′ : C.Ctx k} (θ : Γ ⊆ D′) {Ψ t} {Y : Set} (f : Y → Type) {y₁ y₂} (e : y₁ ≡ y₂)
+    ren-sA : ∀ {m} {k} {D′ : C.Ctx m k} (θ : Γ ⊆ D′) {Ψ t} {Y : Set} (f : Y → Ty m) {y₁ y₂} (e : y₁ ≡ y₂)
                {D : Γ ⊢[ Ψ ] t ∷ f y₁ ! π}
            → RN.ren-⊢ θ (subst (λ X → Γ ⊢[ Ψ ] t ∷ f X ! π) e D) ≅ RN.ren-⊢ θ D
     ren-sA θ f refl = H.refl
-    ρ̂ᶜ-sUf : ∀ {k} (f : C.Usage k → C.Usage n) {Ψ₁ Ψ₂ t A} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ f Ψ₁ ] t ∷ A ! π}
+    ρ̂ᶜ-sUf : ∀ {m} {k} (f : C.Usage k → C.Usage n) {A : Ty m} {Ψ₁ Ψ₂ t} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ f Ψ₁ ] t ∷ A ! π}
            → ρ̂ᶜ (subst (λ U → Γ ⊢[ f U ] t ∷ A ! π) e D) ≅ ρ̂ᶜ D
     ρ̂ᶜ-sUf f refl = H.refl
-    rmUf : ∀ {k} (f : C.Usage k → C.Usage n) {Ψ₁ Ψ₂ t A} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ f Ψ₁ ] t ∷ A ! π}
+    rmUf : ∀ {m} {k} (f : C.Usage k → C.Usage n) {A : Ty m} {Ψ₁ Ψ₂ t} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ f Ψ₁ ] t ∷ A ! π}
          → subst (λ U → Γ ⊢[ f U ] t ∷ A ! π) e D ≅ D
     rmUf f refl = H.refl
-    rmU : ∀ {Ψ₁ Ψ₂ t A} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ Ψ₁ ] t ∷ A ! π} → subst (λ U → Γ ⊢[ U ] t ∷ A ! π) e D ≅ D
+    rmU : ∀ {m} {A : Ty m} {Ψ₁ Ψ₂ t} (e : Ψ₁ ≡ Ψ₂) {D : Γ ⊢[ Ψ₁ ] t ∷ A ! π} → subst (λ U → Γ ⊢[ U ] t ∷ A ! π) e D ≅ D
     rmU refl = H.refl
-    rmt : ∀ {Ψ t₁ t₂ A} (e : t₁ ≡ t₂) {D : Γ ⊢[ Ψ ] t₁ ∷ A ! π} → subst (λ u → Γ ⊢[ Ψ ] u ∷ A ! π) e D ≅ D
+    rmt : ∀ {m} {A : Ty m} {Ψ t₁ t₂} (e : t₁ ≡ t₂) {D : Γ ⊢[ Ψ ] t₁ ∷ A ! π} → subst (λ u → Γ ⊢[ Ψ ] u ∷ A ! π) e D ≅ D
     rmt refl = H.refl
-    rmA : ∀ {Ψ t} {Y : Set} (f : Y → Type) {y₁ y₂} (e : y₁ ≡ y₂) {D : Γ ⊢[ Ψ ] t ∷ f y₁ ! π}
+    rmA : ∀ {m} {Ψ t} {Y : Set} (f : Y → Ty m) {y₁ y₂} (e : y₁ ≡ y₂) {D : Γ ⊢[ Ψ ] t ∷ f y₁ ! π}
         → subst (λ X → Γ ⊢[ Ψ ] t ∷ f X ! π) e D ≅ D
     rmA f refl = H.refl
 
@@ -325,14 +326,14 @@ module WithSG (sg : SigGround) where
   rm P e z = ≡-subst-removable P e z
 
   -- The index equations of a renamed sub-derivation.
-  U≡ : ∀ {n k} {Γ : C.Ctx n} {D : C.Ctx k} (θ : Γ ⊆ D) (Ψ : C.Usage n) → thin-usage θ Ψ ≡ thin-usage (ρ̂θ θ) Ψ
+  U≡ : ∀ {m} {n k} {Γ : C.Ctx m n} {D : C.Ctx m k} (θ : Γ ⊆ D) (Ψ : C.Usage n) → thin-usage θ Ψ ≡ thin-usage (ρ̂θ θ) Ψ
   U≡ θ Ψ = sym (thin-usage-ρ̂ θ Ψ)
 
-  T≡ : ∀ {n k} {Γ : C.Ctx n} {D : C.Ctx k} (θ : Γ ⊆ D) (t : G.Tm n)
+  T≡ : ∀ {m} {n k} {Γ : C.Ctx m n} {D : C.Ctx m k} (θ : Γ ⊆ D) (t : G.Tm n)
      → ρ̂ₜ (G.ren (thin-var θ) t) ≡ G.ren (thin-var (ρ̂θ θ)) (ρ̂ₜ t)
   T≡ θ t = trans (ρ̂ₜ-ren (thin-var θ) t) (RN.ren-cong (λ i → sym (thin-var-ρ̂ θ i)) (ρ̂ₜ t))
 
-  T≡e : ∀ {n k} {Γ : C.Ctx n} {D : C.Ctx k} (θ : Γ ⊆ D) (t : G.Tm (Data.Nat.suc n))
+  T≡e : ∀ {m} {n k} {Γ : C.Ctx m n} {D : C.Ctx m k} (θ : Γ ⊆ D) (t : G.Tm (Data.Nat.suc n))
       → ρ̂ₜ (G.ren (G.extR (thin-var θ)) t) ≡ G.ren (G.extR (thin-var (ρ̂θ θ))) (ρ̂ₜ t)
   T≡e θ t = trans (ρ̂ₜ-ren (G.extR (thin-var θ)) t) (RN.ren-cong ex (ρ̂ₜ t))
     where
@@ -344,29 +345,29 @@ module WithSG (sg : SigGround) where
   module _ {n} {Γ : C.Ctx n} where
     ≅var : ∀ {i j : Fin n} → i ≡ j → GT.⊢var {Γ = Γ} i ≅ GT.⊢var {Γ = Γ} j
     ≅var refl = H.refl
-    ≅1 : ∀ {m′} {Γ′ : C.Ctx m′} {B A′ : Type} {π π′ Ψ₁ Ψ₂ t₁ t₂}
+    ≅1 : ∀ {mₜ} {m′} {Γ′ : C.Ctx mₜ m′} {B A′ : Ty mₜ} {π π′ Ψ₁ Ψ₂ t₁ t₂}
            (W : C.Usage m′ → C.Usage n) (V : G.Tm m′ → G.Tm n)
            (f : ∀ {Ψ t} → Γ′ ⊢[ Ψ ] t ∷ A′ ! π′ → Γ ⊢[ W Ψ ] V t ∷ B ! π)
            {d₁ : Γ′ ⊢[ Ψ₁ ] t₁ ∷ A′ ! π′} {d₂ : Γ′ ⊢[ Ψ₂ ] t₂ ∷ A′ ! π′}
        → Ψ₁ ≡ Ψ₂ → t₁ ≡ t₂ → d₁ ≅ d₂ → f d₁ ≅ f d₂
     ≅1 W V f refl refl H.refl = H.refl
-    ≅2 : ∀ {m₁ m₂} {Γ₁ : C.Ctx m₁} {Γ₂ : C.Ctx m₂} {B A₁ A₂ : Type} {π π₁ π₂ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ t₁ t₁′ t₂ t₂′}
+    ≅2 : ∀ {m} {m₁ m₂} {Γ₁ : C.Ctx m m₁} {Γ₂ : C.Ctx m m₂} {B A₁ A₂ : Ty m} {π π₁ π₂ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ t₁ t₁′ t₂ t₂′}
            (W : C.Usage m₁ → C.Usage m₂ → C.Usage n) (V : G.Tm m₁ → G.Tm m₂ → G.Tm n)
            (f : ∀ {Ψ Ψ′ t t′} → Γ₁ ⊢[ Ψ ] t ∷ A₁ ! π₁ → Γ₂ ⊢[ Ψ′ ] t′ ∷ A₂ ! π₂ → Γ ⊢[ W Ψ Ψ′ ] V t t′ ∷ B ! π)
            {a₁ : Γ₁ ⊢[ Ψ₁ ] t₁ ∷ A₁ ! π₁} {a₂ : Γ₁ ⊢[ Ψ₂ ] t₂ ∷ A₁ ! π₁}
            {b₁ : Γ₂ ⊢[ Ψ₁′ ] t₁′ ∷ A₂ ! π₂} {b₂ : Γ₂ ⊢[ Ψ₂′ ] t₂′ ∷ A₂ ! π₂}
        → Ψ₁ ≡ Ψ₂ → t₁ ≡ t₂ → a₁ ≅ a₂ → Ψ₁′ ≡ Ψ₂′ → t₁′ ≡ t₂′ → b₁ ≅ b₂ → f a₁ b₁ ≅ f a₂ b₂
     ≅2 W V f refl refl H.refl refl refl H.refl = H.refl
-    ≅lam : ∀ {A B q q′ π} {le : (q′ Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true} {Ψ₁ Ψ₂ t₁ t₂}
+    ≅lam : ∀ {m} {A B : Ty m} {q q′ π} {le : (q′ Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true} {Ψ₁ Ψ₂ t₁ t₂}
              {d₁ : (Γ C., A) ⊢[ q′ C.∷ Ψ₁ ] t₁ ∷ B ! π} {d₂ : (Γ C., A) ⊢[ q′ C.∷ Ψ₂ ] t₂ ∷ B ! π}
          → Ψ₁ ≡ Ψ₂ → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢lam le d₁ ≅ GT.⊢lam le d₂
     ≅lam refl refl H.refl = H.refl
-    ≅let : ∀ {A B q π₁ π₂ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ e₁ e₂ b₁ b₂}
+    ≅let : ∀ {m} {A B : Ty m} {q π₁ π₂ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ e₁ e₂ b₁ b₂}
              {de₁ : Γ ⊢[ Ψ₁ ] e₁ ∷ A ! T.positionGrade q π₁} {de₂ : Γ ⊢[ Ψ₁′ ] e₂ ∷ A ! T.positionGrade q π₁}
              {db₁ : (Γ C., A) ⊢[ q C.∷ Ψ₂ ] b₁ ∷ B ! π₂} {db₂ : (Γ C., A) ⊢[ q C.∷ Ψ₂′ ] b₂ ∷ B ! π₂}
          → Ψ₁ ≡ Ψ₁′ → e₁ ≡ e₂ → de₁ ≅ de₂ → Ψ₂ ≡ Ψ₂′ → b₁ ≡ b₂ → db₁ ≅ db₂ → GT.⊢let de₁ db₁ ≅ GT.⊢let de₂ db₂
     ≅let refl refl H.refl refl refl H.refl = H.refl
-    ≅case : ∀ {A B C′ qℓ qr π₁ π₂ Ψs Ψs′ Ψ Ψ′ s₁ s₂ l₁ l₂ r₁ r₂}
+    ≅case : ∀ {m} {A B C′ : Ty m} {qℓ qr π₁ π₂ Ψs Ψs′ Ψ Ψ′ s₁ s₂ l₁ l₂ r₁ r₂}
               {ds₁ : Γ ⊢[ Ψs ] s₁ ∷ A T.+ B ! π₁} {ds₂ : Γ ⊢[ Ψs′ ] s₂ ∷ A T.+ B ! π₁}
               {dl₁ : (Γ C., A) ⊢[ qℓ C.∷ Ψ ] l₁ ∷ C′ ! π₂} {dl₂ : (Γ C., A) ⊢[ qℓ C.∷ Ψ′ ] l₂ ∷ C′ ! π₂}
               {dr₁ : (Γ C., B) ⊢[ qr C.∷ Ψ ] r₁ ∷ C′ ! π₂} {dr₂ : (Γ C., B) ⊢[ qr C.∷ Ψ′ ] r₂ ∷ C′ ! π₂}
@@ -374,7 +375,7 @@ module WithSG (sg : SigGround) where
           → GT.⊢case ds₁ dl₁ dr₁ ≅ GT.⊢case ds₂ dl₂ dr₂
     ≅case refl refl H.refl refl refl H.refl refl H.refl = H.refl
     -- …and the elaboration's `case`, whose arms are sub-used to the join (D276).
-    ≅case⊔ : ∀ {A B C′ qℓ qr π₁ π₂ Ψs Ψs′ Ψₗ Ψₗ′ Ψᵣ Ψᵣ′ s₁ s₂ l₁ l₂ r₁ r₂}
+    ≅case⊔ : ∀ {m} {A B C′ : Ty m} {qℓ qr π₁ π₂ Ψs Ψs′ Ψₗ Ψₗ′ Ψᵣ Ψᵣ′ s₁ s₂ l₁ l₂ r₁ r₂}
               {ds₁ : Γ ⊢[ Ψs ] s₁ ∷ A T.+ B ! π₁} {ds₂ : Γ ⊢[ Ψs′ ] s₂ ∷ A T.+ B ! π₁}
               {dl₁ : (Γ C., A) ⊢[ qℓ C.∷ Ψₗ ] l₁ ∷ C′ ! π₂} {dl₂ : (Γ C., A) ⊢[ qℓ C.∷ Ψₗ′ ] l₂ ∷ C′ ! π₂}
               {dr₁ : (Γ C., B) ⊢[ qr C.∷ Ψᵣ ] r₁ ∷ C′ ! π₂} {dr₂ : (Γ C., B) ⊢[ qr C.∷ Ψᵣ′ ] r₂ ∷ C′ ! π₂}
@@ -382,15 +383,15 @@ module WithSG (sg : SigGround) where
           → GT.⊢case⊔ ds₁ dl₁ dr₁ ≅ GT.⊢case⊔ ds₂ dl₂ dr₂
     ≅case⊔ refl refl H.refl refl refl H.refl refl refl H.refl = H.refl
     -- D276: the order is proof-irrelevant, so only the indices matter.
-    ≅sub-use : ∀ {A π Ψ₁ Ψ₂ Ψ₁′ Ψ₂′ t₁ t₂} {p₁ : Ψ₁ C.⊑ᵘ Ψ₁′} {p₂ : Ψ₂ C.⊑ᵘ Ψ₂′}
+    ≅sub-use : ∀ {m} {A : Ty m} {π Ψ₁ Ψ₂ Ψ₁′ Ψ₂′ t₁ t₂} {p₁ : Ψ₁ C.⊑ᵘ Ψ₁′} {p₂ : Ψ₂ C.⊑ᵘ Ψ₂′}
                  {d₁ : Γ ⊢[ Ψ₁ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ₂ ] t₂ ∷ A ! π}
              → Ψ₁ ≡ Ψ₂ → Ψ₁′ ≡ Ψ₂′ → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢sub-use p₁ d₁ ≅ GT.⊢sub-use p₂ d₂
-    ≅sub-use {p₁ = p₁} {p₂} refl refl refl H.refl = irr (⊑ᵘ-unique p₁ p₂)
+    ≅sub-use {p₁ = p₁} {p₂ = p₂} refl refl refl H.refl = irr (⊑ᵘ-unique p₁ p₂)
       where irr : ∀ {d} → p₁ ≡ p₂ → GT.⊢sub-use p₁ d ≅ GT.⊢sub-use p₂ d
             irr refl = H.refl
 
   -- THE LEMMA.
-  ρ̂ᶜ-ren : ∀ {n k} {Γ : C.Ctx n} {D′ : C.Ctx k} (θ : Γ ⊆ D′) {Ψ t A π} (D : Γ ⊢[ Ψ ] t ∷ A ! π)
+  ρ̂ᶜ-ren : ∀ {m} {n k} {Γ : C.Ctx m n} {D′ : C.Ctx m k} (θ : Γ ⊆ D′) {A : Ty m} {Ψ t π} (D : Γ ⊢[ Ψ ] t ∷ A ! π)
          → ρ̂ᶜ (RN.ren-⊢ θ D) ≅ RN.ren-⊢ (ρ̂θ θ) (ρ̂ᶜ D)
   ρ̂ᶜ-ren {Γ = Γ} {D′ = D′} θ (GT.⊢var i) =
     H.trans (ρ̂ᶜ-sU (sym (TH.thin-usage-singleUse θ i T.One)))
@@ -486,11 +487,11 @@ module WithSG (sg : SigGround) where
   -- Weakening and closing, and the combinators that use them.
   ----------------------------------------------------------------------
 
-  ren-θ≡ : ∀ {n k} {Γ : C.Ctx n} {D′ : C.Ctx k} {θ₁ θ₂ : Γ ⊆ D′} → θ₁ ≡ θ₂ → ∀ {Ψ t A π} (X : Γ ⊢[ Ψ ] t ∷ A ! π)
+  ren-θ≡ : ∀ {m} {n k} {Γ : C.Ctx m n} {D′ : C.Ctx m k} {θ₁ θ₂ : Γ ⊆ D′} → θ₁ ≡ θ₂ → ∀ {A : Ty m} {Ψ t π} (X : Γ ⊢[ Ψ ] t ∷ A ! π)
          → RN.ren-⊢ θ₁ X ≅ RN.ren-⊢ θ₂ X
   ren-θ≡ refl X = H.refl
 
-  wk≅ : ∀ {n} {Γ : C.Ctx n} {Ψ t A π} (B : Type) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
+  wk≅ : ∀ {m} {n} {Γ : C.Ctx m n} {A : Ty m} {Ψ t π} (B : Ty m) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
       → ρ̂ᶜ (DT.wk-⊢′ B d) ≅ DT.wk-⊢′ (ρ̂ B) (ρ̂ᶜ d)
   wk≅ {Γ = Γ} {Ψ = Ψ} {t = t} B d =
     H.trans (ρ̂ᶜ-sUf (T.Zero C.∷_) (TH.thin-usage-refl {Γ = Γ} Ψ))
@@ -500,11 +501,11 @@ module WithSG (sg : SigGround) where
             (H.sym (H.trans (rmUf (T.Zero C.∷_) (TH.thin-usage-refl {Γ = ρ̂S Γ} Ψ))
                             (rmt (RN.ren-cong (λ i → cong suc (RN.thin-var-refl {Γ = ρ̂S Γ} i)) (ρ̂ₜ t))))))))
 
-  ρ̂θ-∅ : ∀ {n} (Γ : C.Ctx n) → ρ̂θ (RN.∅⊆ {Γ = Γ}) ≡ RN.∅⊆ {Γ = ρ̂S Γ}
+  ρ̂θ-∅ : ∀ {m} {n} (Γ : C.Ctx m n) → ρ̂θ (RN.∅⊆ {Γ = Γ}) ≡ RN.∅⊆ {Γ = ρ̂S Γ}
   ρ̂θ-∅ C.∅           = refl
   ρ̂θ-∅ (Γ C., A ^ q) = cong skip (ρ̂θ-∅ Γ)
 
-  close≅ : ∀ {n} {Γ : C.Ctx n} {t A π} (d : C.∅ ⊢[ C.zeroUsage ] t ∷ A ! π)
+  close≅ : ∀ {m} {n} {Γ : C.Ctx m n} {A : Ty m} {t π} (d : C.∅ ⊢[ C.zeroUsage ] t ∷ A ! π)
          → ρ̂ᶜ (RN.⊢close {Γ = Γ} d) ≅ RN.⊢close {Γ = ρ̂S Γ} (ρ̂ᶜ d)
   close≅ {Γ = Γ} {t = t} d =
     H.trans (ρ̂ᶜ-st (RN.ren-cong {ρ = thin-var (RN.∅⊆ {Γ = Γ})} {ρ′ = λ ()} (λ ()) t))
@@ -518,19 +519,19 @@ module WithSG (sg : SigGround) where
   module _ {n} {Γ : C.Ctx n} where
     open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-identityˡ)
 
-    c-compose : ∀ {Ψ₁ Ψ₂ A B C′ π₁ π₂ π f g} (le : (π₂ T.·p π₁) Once.Spec.Grade.⊑π π)
+    c-compose : ∀ {m} {A B C′ : Ty m} {Ψ₁ Ψ₂ π₁ π₂ π f g} (le : (π₂ T.·p π₁) Once.Spec.Grade.⊑π π)
                   (a : Γ ⊢[ Ψ₁ ] f ∷ B T.⇒[ mk-kind Many π₁ ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π₂ ] B ! pure)
               → ρ̂ᶜ (DT.⊢composeᶜ le a b) ≅ DT.⊢composeᶜ le (ρ̂ᶜ a) (ρ̂ᶜ b)
-    c-compose {Ψ₁} {Ψ₂} {B = B} {C′} {π₁} {g = g} le a b =
+    c-compose {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {B = B} {C′ = C′} {π₁ = π₁} {g = g} le a b =
       H.trans (ρ̂ᶜ-sU (DT.arms Many Ψ₁ Ψ₂ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (DT.z+qz Many))) (DT.z+qz Many))))
         (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ _ u _) (ρ̂ₜ-ren suc g))
                        (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (B T.⇒[ mk-kind Many π₁ ] C′) b) refl refl H.refl))
           (H.sym (rmU (DT.arms Many Ψ₁ Ψ₂ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (DT.z+qz Many))) (DT.z+qz Many))))))
 
-    c-pair : ∀ {Ψ₁ Ψ₂ A B C′ π₁ π₂ π f g} (le : (π₁ T.·p π₂) Once.Spec.Grade.⊑π π)
+    c-pair : ∀ {m} {A B C′ : Ty m} {Ψ₁ Ψ₂ π₁ π₂ π f g} (le : (π₁ T.·p π₂) Once.Spec.Grade.⊑π π)
                (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π₁ ] B ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ A T.⇒[ mk-kind Many π₂ ] C′ ! pure)
            → ρ̂ᶜ (DT.⊢pairᶜ le a b) ≅ DT.⊢pairᶜ le (ρ̂ᶜ a) (ρ̂ᶜ b)
-    c-pair {Ψ₁} {Ψ₂} {A} {B} {π₁ = π₁} {g = g} le a b =
+    c-pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {π₁ = π₁} {g = g} le a b =
       H.trans (ρ̂ᶜ-sU E)
         (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ _ u _) (ρ̂ₜ-ren suc g))
                        (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (A T.⇒[ mk-kind Many π₁ ] B) b) refl refl H.refl))
@@ -538,10 +539,10 @@ module WithSG (sg : SigGround) where
       where E = trans (DT.arms T.One Ψ₁ Ψ₂ (trans (cong₂ C._+ᵘ_ (DT.z+qz Many) (DT.z+qz Many)) (+ᵘ-identityˡ C.zeroUsage)))
                       (cong (Ψ₁ C.+ᵘ_) (*ᵘ-identityˡ Ψ₂))
 
-    c-case : ∀ {Ψ₁ Ψ₂ A B C′ π f g}
+    c-case : ∀ {m} {A B C′ : Ty m} {Ψ₁ Ψ₂ π f g}
                (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π ] C′ ! pure) (b : Γ ⊢[ Ψ₂ ] g ∷ B T.⇒[ mk-kind Many π ] C′ ! pure)
            → ρ̂ᶜ (DT.⊢caseᶜ a b) ≅ DT.⊢caseᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
-    c-case {Ψ₁} {Ψ₂} {A} {B} {C′} {π} {g = g} a b =
+    c-case {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {C′ = C′} {π = π} {g = g} a b =
       H.trans (ρ̂ᶜ-sU E)
         (H.trans (≅let refl refl H.refl refl (cong (λ u → G.let′ _ u _) (ρ̂ₜ-ren suc g))
                        (≅let refl (ρ̂ₜ-ren suc g) (wk≅ (A T.⇒[ mk-kind Many π ] C′) b) refl refl H.refl))
@@ -550,22 +551,22 @@ module WithSG (sg : SigGround) where
                                                (+ᵘ-identityˡ C.zeroUsage)))
                       (cong (Ψ₁ C.+ᵘ_) (*ᵘ-identityˡ Ψ₂))
 
-    c-curry : ∀ {Ψ A B C′ π₀ π f} (u₀ : Once.Spec.Grade._⊑π_ T.pure π₀) (a : Γ ⊢[ Ψ ] f ∷ (A T.* B) T.⇒[ mk-kind Many π ] C′ ! pure)
+    c-curry : ∀ {m} {A B C′ : Ty m} {Ψ π₀ π f} (u₀ : Once.Spec.Grade._⊑π_ T.pure π₀) (a : Γ ⊢[ Ψ ] f ∷ (A T.* B) T.⇒[ mk-kind Many π ] C′ ! pure)
             → ρ̂ᶜ (DT.⊢curryᶜ u₀ a) ≅ DT.⊢curryᶜ u₀ (ρ̂ᶜ a)
-    c-curry {Ψ} u₀ a = H.trans (ρ̂ᶜ-sU E) (H.sym (rmU E))
+    c-curry {Ψ = Ψ} u₀ a = H.trans (ρ̂ᶜ-sU E) (H.sym (rmU E))
       where E = trans (cong₂ C._+ᵘ_ (trans (cong (C.zeroUsage C.+ᵘ_) (cong (Many C.*ᵘ_) (+ᵘ-identityˡ C.zeroUsage))) (DT.z+qz Many))
                                     (*ᵘ-identityˡ Ψ))
                       (+ᵘ-identityˡ Ψ)
 
-    c-apply : ∀ {A B} → ρ̂ᶜ (DT.⊢applyᶜ {Γ = Γ} {A = A} {B = B}) ≅ DT.⊢applyᶜ {Γ = ρ̂S Γ} {A = ρ̂ A} {B = ρ̂ B}
+    c-apply : ∀ {m} {A B : Ty m} → ρ̂ᶜ (DT.⊢applyᶜ {Γ = Γ} {A = A} {B = B}) ≅ DT.⊢applyᶜ {Γ = ρ̂S Γ} {A = ρ̂ A} {B = ρ̂ B}
     c-apply = H.trans (ρ̂ᶜ-sU (DT.z+qz Many)) (H.sym (rmU (DT.z+qz Many)))
 
-    c-applyEff : ∀ {π A B} → ρ̂ᶜ (DT.⊢applyEffᶜ {Γ = Γ} {π = π} {A = A} {B = B}) ≅ DT.⊢applyEffᶜ {Γ = ρ̂S Γ} {π = π} {A = ρ̂ A} {B = ρ̂ B}
+    c-applyEff : ∀ {m} {A B : Ty m} {π} → ρ̂ᶜ (DT.⊢applyEffᶜ {Γ = Γ} {π = π} {A = A} {B = B}) ≅ DT.⊢applyEffᶜ {Γ = ρ̂S Γ} {π = π} {A = ρ̂ A} {B = ρ̂ B}
     c-applyEff = H.trans (ρ̂ᶜ-sU (DT.z+qz Many)) (H.sym (rmU (DT.z+qz Many)))
 
-    c-effApp : ∀ {Ψ₁ Ψ₂ π A B f x} (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π ] B ! pure) (b : Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
+    c-effApp : ∀ {m} {A B : Ty m} {Ψ₁ Ψ₂ π f x} (a : Γ ⊢[ Ψ₁ ] f ∷ A T.⇒[ mk-kind Many π ] B ! pure) (b : Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
              → ρ̂ᶜ (DT.⊢effAppᶜ a b) ≅ DT.⊢effAppᶜ (ρ̂ᶜ a) (ρ̂ᶜ b)
-    c-effApp {f = f} {x} a b =
+    c-effApp {f = f} {x = x} a b =
       ≅lam refl (cong₂ G.app (ρ̂ₜ-ren suc f) (ρ̂ₜ-ren suc x))
         (≅2 _ _ GT.⊢app refl (ρ̂ₜ-ren suc f) (wk≅ T.Unit a)
                         refl (ρ̂ₜ-ren suc x) (wk≅ T.Unit b))
@@ -574,35 +575,35 @@ module WithSG (sg : SigGround) where
   -- the image of the original at `ρ̂ (⟦ F ⟧T _)`; one J on that equation.
   module _ {n} {Γ : C.Ctx n} where
     private
-      in-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T (μ-type G))
+      in-gen : ∀ {m} {m₀} {Δ₀ : C.Ctx m m₀} {G : T.Functor} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T (μ-type G))
              → GT.⊢lam {Γ = Δ₀} {q = Many} refl (GT.⊢roll w (subst (λ Y → (Δ₀ C., X) ⊢[ C.singleUse zero T.One ] G.var zero ∷ Y ! pure) e (GT.⊢var zero)))
                ≅ DT.⊢inᶜ {Γ = Δ₀} w
       in-gen w refl = H.refl
 
-      out-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf pureᶠ) ≡ X)
+      out-gen : ∀ {m} {m₀} {Δ₀ : C.Ctx m m₀} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf pureᶠ) ≡ X)
               → GT.⊢lam {Γ = Δ₀} {q = Many} refl (subst (λ Y → (Δ₀ C., ν-type Gf pureᶠ) ⊢[ C.singleUse zero T.One ] G.out (G.var zero) ∷ Y ! pure) e
                                               (GT.⊢out w (GT.⊢var zero)))
                 ≅ DT.⊢outᶜ {Γ = Δ₀} w
       out-gen w refl = H.refl
 
-      outEff-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {π : T.Finite} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf π) ≡ X)
+      outEff-gen : ∀ {m} {m₀} {Δ₀ : C.Ctx m m₀} {π : T.Finite} {Gf : T.Functor} (w : WellFormedF Gf) {X} (e : ⟦ Gf ⟧T (ν-type Gf π) ≡ X)
                  → GT.⊢lam {Γ = Δ₀} {q = Many} refl (GT.⊢lam {q = Many} refl
                      (subst (λ Y → ((Δ₀ C., ν-type Gf π) C., T.Unit) ⊢[ T.Zero C.∷ C.singleUse zero T.One ] G.out (G.var (suc zero)) ∷ Y ! T.fin π) e
                             (GT.⊢out w (GT.⊢var (suc zero)))))
                    ≅ DT.⊢outEffᶜ {Γ = Δ₀} {φ = π} w
       outEff-gen w refl = H.refl
 
-    c-in : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢inᶜ {Γ = Γ} wf) ≅ DT.⊢inᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
-    c-in {F} wf = in-gen (ρ̂-wf wf) (ρ̂-⟦⟧ F (μ-type F))
+    c-in : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) → ρ̂ᶜ (DT.⊢inᶜ {Γ = Γ} wf) ≅ DT.⊢inᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
+    c-in {F = F} wf = in-gen (ρ̂-wf wf) (ρ̂-⟦⟧ F (μ-type F))
 
-    c-out : ∀ {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outᶜ {Γ = Γ} wf) ≅ DT.⊢outᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
-    c-out {F} wf = out-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ)))
+    c-out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) → ρ̂ᶜ (DT.⊢outᶜ {Γ = Γ} wf) ≅ DT.⊢outᶜ {Γ = ρ̂S Γ} (ρ̂-wf wf)
+    c-out {F = F} wf = out-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F pureᶠ)))
 
-    c-outEff : ∀ {π : T.Finite} {F} (wf : WellFormedF F) → ρ̂ᶜ (DT.⊢outEffᶜ {Γ = Γ} {φ = π} wf) ≅ DT.⊢outEffᶜ {Γ = ρ̂S Γ} {φ = π} (ρ̂-wf wf)
-    c-outEff {π} {F} wf = outEff-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F π)))
+    c-outEff : ∀ {m} {Δₖ : KCtx m} {π : T.Finite} {F : Fun m} (wf : WFFun Δₖ F) → ρ̂ᶜ (DT.⊢outEffᶜ {Γ = Γ} {φ = π} wf) ≅ DT.⊢outEffᶜ {Γ = ρ̂S Γ} {φ = π} (ρ̂-wf wf)
+    c-outEff {π = π} {F = F} wf = outEff-gen (ρ̂-wf wf) (sym (ρ̂-⟦⟧ F (ν-type F π)))
 
     private
-      cata-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ t π} (u : Once.Spec.Grade._⊑π_ T.pure π) (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
+      cata-gen : ∀ {m} {Δₖ : KCtx m} {m₀} {Δ₀ : C.Ctx m m₀} {G : T.Functor} {R : Ty m} {Ψ t π} (u : Once.Spec.Grade._⊑π_ T.pure π) (w : WFFun Δₖ G) {X} (e : X ≡ ⟦ G ⟧T R)
                    (D : Δ₀ ⊢[ Ψ ] t ∷ X T.⇒[ mk-kind Many π ] R ! pure)
                → GT.⊢let D (GT.⊢lam {q = Many} refl (GT.⊢fold u w
                      (subst (λ Y → ((Δ₀ C., X T.⇒[ mk-kind Many π ] R) C., μ-type G) ⊢[ C.singleUse (suc zero) T.One ]
@@ -612,7 +613,7 @@ module WithSG (sg : SigGround) where
                            (GT.⊢lam {q = Many} refl (GT.⊢fold u w (GT.⊢var (suc zero)) (GT.⊢var zero)))
       cata-gen u w refl D = H.refl
 
-      ana-gen : ∀ {m₀} {Δ₀ : C.Ctx m₀} {G : T.Functor} {R : Type} {Ψ c} {π : T.Finite} (w : WellFormedF G) {X} (e : X ≡ ⟦ G ⟧T R)
+      ana-gen : ∀ {m} {Δₖ : KCtx m} {m₀} {Δ₀ : C.Ctx m m₀} {G : T.Functor} {R : Ty m} {Ψ c} {π : T.Finite} (w : WFFun Δₖ G) {X} (e : X ≡ ⟦ G ⟧T R)
                   (Y : Δ₀ ⊢[ Ψ ] c ∷ R T.⇒[ mk-kind Many (T.fin π) ] X ! pure)
               → GT.⊢unfold w (subst (λ Z → (Δ₀ C., R) ⊢[ T.Zero C.∷ Ψ ] G.wk c ∷ R T.⇒[ mk-kind Many (T.fin π) ] Z ! pure) e
                                      (DT.wk-⊢′ R Y))
@@ -621,10 +622,10 @@ module WithSG (sg : SigGround) where
                                (GT.⊢var zero)
       ana-gen w refl Y = H.refl
 
-    c-cata : ∀ {Ψ F A π alg} (u : Once.Spec.Grade._⊑π_ T.pure π) (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A T.⇒[ mk-kind Many π ] A ! pure)
+    c-cata : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π alg} (u : Once.Spec.Grade._⊑π_ T.pure π) (wf : WFFun Δₖ F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A T.⇒[ mk-kind Many π ] A ! pure)
            → ρ̂ᶜ (DT.⊢cataᶜ u wf da)
              ≅ DT.⊢cataᶜ u (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ alg ∷ X T.⇒[ mk-kind Many π ] ρ̂ A ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ da))
-    c-cata {Ψ} {F} {A} u wf da =
+    c-cata {Ψ = Ψ} {F = F} {A = A} u wf da =
       H.trans (ρ̂ᶜ-sU E) (H.trans (cata-gen u (ρ̂-wf wf) (ρ̂-⟦⟧ F A) (ρ̂ᶜ da)) (H.sym (rmU E)))
       where
         open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
@@ -632,18 +633,18 @@ module WithSG (sg : SigGround) where
         E = trans (cong (C._+ᵘ (Many C.*ᵘ Ψ)) (trans (cong (C._+ᵘ C.zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ C.zeroUsage)))
                   (+ᵘ-identityˡ (Many C.*ᵘ Ψ))
 
-    c-loop : ∀ {Ψ A B c} (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many T.act ] (B T.+ A) ! pure)
+    c-loop : ∀ {m} {A B : Ty m} {Ψ c} (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many T.act ] (B T.+ A) ! pure)
            → ρ̂ᶜ (DT.⊢loopᶜ dc) ≅ DT.⊢loopᶜ (ρ̂ᶜ dc)
-    c-loop {Ψ} dc = H.trans (ρ̂ᶜ-sU E) (H.sym (rmU E))
+    c-loop {Ψ = Ψ} dc = H.trans (ρ̂ᶜ-sU E) (H.sym (rmU E))
       where
         open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
         E = trans (cong (C._+ᵘ (Many C.*ᵘ Ψ)) (trans (cong (C._+ᵘ C.zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ C.zeroUsage)))
                   (+ᵘ-identityˡ (Many C.*ᵘ Ψ))
 
-    c-ana : ∀ {Ψ F A π₀} {π : T.Finite} {c} (u₀ : Once.Spec.Grade._⊑π_ T.pure π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many (T.fin π) ] ⟦ F ⟧T A ! pure)
+    c-ana : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀} {π : T.Finite} {c} (u₀ : Once.Spec.Grade._⊑π_ T.pure π₀) (wf : WFFun Δₖ F) (dc : Γ ⊢[ Ψ ] c ∷ A T.⇒[ mk-kind Many (T.fin π) ] ⟦ F ⟧T A ! pure)
           → ρ̂ᶜ (DT.⊢anaᶜ u₀ wf dc)
             ≅ DT.⊢anaᶜ u₀ (ρ̂-wf wf) (subst (λ X → ρ̂S Γ ⊢[ Ψ ] ρ̂ₜ c ∷ ρ̂ A T.⇒[ mk-kind Many (T.fin π) ] X ! pure) (ρ̂-⟦⟧ F A) (ρ̂ᶜ dc))
-    c-ana {Ψ} {F} {A} {π₀} {π} {c} u₀ wf dc =
+    c-ana {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {π = π} {c = c} u₀ wf dc =
       ≅lam refl (cong (λ u → G.unfold _ u (G.var zero)) (ρ̂ₜ-ren suc c))
         (H.trans (ρ̂ᶜ-sUf (T.One C.∷_) (+ᵘ-identityʳ (Many C.*ᵘ Ψ)))
           (H.trans (≅1 _ _ (GT.⊢sub-eff u₀) refl

@@ -31,6 +31,7 @@
 
 module Once.TypeCheck.Totality where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
@@ -57,23 +58,23 @@ open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- guarantee ("result is success-or-failure") and a well-formedness
 -- guarantee ("success carries a well-typed, linearity-respecting
 -- expression").
-data IsInferSuccess {n : ℕ} {Δ : SCtx n} : InferElabResult Δ → Set where
-  isInferSuccess : ∀ (A : Type) (Ψ : Surface.Usage n)
+data IsInferSuccess {m} {n : ℕ} {Δ : SCtx m n} : InferElabResult Δ → Set where
+  isInferSuccess : ∀ (A : Ty m) (Ψ : Surface.Usage n)
                      (eE : SExpr Δ Ψ A) (d f : ℕ)
                  → IsInferSuccess (success A Ψ eE d f)
 
 -- | Witness that an inference result is a failure.
-data IsInferFailure {n : ℕ} {Δ : SCtx n} : InferElabResult Δ → Set where
+data IsInferFailure {m} {n : ℕ} {Δ : SCtx m n} : InferElabResult Δ → Set where
   isInferFailure : ∀ (err : TypeError) → IsInferFailure (failure err)
 
 -- | Same, for check mode.
-data IsCheckSuccess {n : ℕ} {Δ : SCtx n} {A : Type}
+data IsCheckSuccess {m} {n : ℕ} {Δ : SCtx m n} {A : Ty m}
                   : CheckElabResult Δ A → Set where
   isCheckSuccess : ∀ (Ψ : Surface.Usage n)
                      (eE : SExpr Δ Ψ A) (d f : ℕ)
                  → IsCheckSuccess (success Ψ eE d f)
 
-data IsCheckFailure {n : ℕ} {Δ : SCtx n} {A : Type}
+data IsCheckFailure {m} {n : ℕ} {Δ : SCtx m n} {A : Ty m}
                   : CheckElabResult Δ A → Set where
   isCheckFailure : ∀ (err : TypeError) → IsCheckFailure (failure err)
 
@@ -88,7 +89,7 @@ data IsCheckFailure {n : ℕ} {Δ : SCtx n} {A : Type}
 --
 -- Combined with Agda's coverage checking, this is a closed statement
 -- of totality: no input shape is unhandled, no result is stuck.
-inferElab-total : ∀ (ctx : NamedCtx) (e : RawExpr)
+inferElab-total : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
                 → IsInferSuccess (inferElab ctx e)
                 ⊎ IsInferFailure (inferElab ctx e)
 inferElab-total ctx e with inferElab ctx e
@@ -96,7 +97,7 @@ inferElab-total ctx e with inferElab ctx e
 ... | failure err        = inj₂ (isInferFailure err)
 
 -- | Same dichotomy for `checkElab`.
-checkElab-total : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+checkElab-total : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
                 → IsCheckSuccess (checkElab ctx e T)
                 ⊎ IsCheckFailure (checkElab ctx e T)
 checkElab-total ctx e T with checkElab ctx e T
@@ -112,13 +113,13 @@ checkElab-total ctx e T with checkElab ctx e T
 -- (e.g. G4's error-preservation: "this specific failure path reaches
 -- this specific error shape").
 
-success≢failure-infer : ∀ {n} {Δ : SCtx n}
-                        {A : Type} {Ψ : Surface.Usage n}
+success≢failure-infer : ∀ {m} {n} {Δ : SCtx m n}
+                        {A : Ty m} {Ψ : Surface.Usage n}
                         {eE : SExpr Δ Ψ A} {d f : ℕ} {err : TypeError}
                       → _≡_ {A = InferElabResult Δ} (success A Ψ eE d f) (failure err) → ⊥
 success≢failure-infer ()
 
-success≢failure-check : ∀ {n} {Δ : SCtx n} {A : Type}
+success≢failure-check : ∀ {m} {n} {Δ : SCtx m n} {A : Ty m}
                         {Ψ : Surface.Usage n}
                         {eE : SExpr Δ Ψ A} {d f : ℕ} {err : TypeError}
                       → success {Δ = Δ} {A = A} Ψ eE d f ≡ failure err → ⊥

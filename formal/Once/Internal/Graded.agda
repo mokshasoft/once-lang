@@ -24,6 +24,7 @@
 
 module Once.Internal.Graded where
 
+open import Once.Spec.Type using (var; Ty)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
@@ -128,7 +129,7 @@ record νᵖ (F : SFunctor) : Set where
 -- The graded value domain.
 ------------------------------------------------------------------------
 
-⟦_⟧ᵛ : Type → Set
+⟦_⟧ᵛ : ∀ {m} → Ty m → Set
 ⟦ Unit ⟧ᵛ       = ⊤
 ⟦ Void ⟧ᵛ       = ⊥
 ⟦ A * B ⟧ᵛ      = ⟦ A ⟧ᵛ × ⟦ B ⟧ᵛ
@@ -141,5 +142,6 @@ record νᵖ (F : SFunctor) : Set where
 ⟦ μ-type F ⟧ᵛ   = Val.⟦ μ-type F ⟧
 ⟦ ν-type F pureᶠ ⟧ᵛ = νᵖ (translateF Carrier Carrier F)
 ⟦ ν-type F actᶠ ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
-⟦ Int ⟧ᵛ        = Val.⟦ Int ⟧
-⟦ Float ⟧ᵛ      = Val.⟦ Float ⟧
+⟦ Int ⟧ᵛ        = Val.⟦ Int {0} ⟧
+⟦ Float ⟧ᵛ      = Val.⟦ Float {0} ⟧
+⟦ var _ ⟧ᵛ  = ⊥

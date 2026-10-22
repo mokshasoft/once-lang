@@ -27,6 +27,7 @@
 ------------------------------------------------------------------------
 
 import Once.Internal.Name
+open import Once.Spec.Type using (Ty)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig)
 
@@ -75,13 +76,13 @@ open import Once.Internal.Core.Rename S using (close; ⊢close)
 ------------------------------------------------------------------------
 
 -- `T` is a kind-respecting instance of the entry `d`.
-InstanceOf : Fin s → Type → Set
+InstanceOf : ∀ {m} → Fin s → Ty m → Set
 InstanceOf d T = Σ[ τ ∈ GSub (arity (S !! d)) ] Respects (kinds (S !! d)) τ × (type (S !! d) ⟪ τ ⟫ ≡ T)
 
 -- D274: what a generator of the signature Σ in scope is: an FFI declaration of
 -- the program, honest (D231) and ground (D243). Indexed by its key `x` (the
 -- rendered path Σ is keyed by).
-record Declared (x : String) (T : Type) : Set where
+record Declared {m} (x : String) (T : Ty m) : Set where
   constructor declared
   field
     honest : HonestFFI T
@@ -91,13 +92,13 @@ record Declared (x : String) (T : Type) : Set where
 -- What a name in the definitions table denotes: one of the module's own
 -- definitions (D061/D071: an internal reference is a context projection,
 -- never a SigOp), at a kind-respecting instance of its entry.
-record ImportAt (x : String) (T : Type) : Set where
+record ImportAt {m} (x : String) (T : Ty m) : Set where
   constructor def
   field
     entryOf : Fin s
     instOf  : InstanceOf entryOf T
 
-record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
+record View {m} (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
   field
     imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt x T
     declares : ∀ {x T} → lookupImport sg x ≡ just T → Declared x T
@@ -109,22 +110,22 @@ record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
            → InstanceOf (entry lp) T
 open View
 
-Views : NamedCtx → Set
+Views : ∀ {m} → NamedCtx m → Set
 Views ctx = View (NamedCtx.imports ctx) (NamedCtx.sig ctx) (NamedCtx.polys ctx)
 
 ------------------------------------------------------------------------
 -- Elaborated terms
 ------------------------------------------------------------------------
 
-Elab : ∀ {n} → Ctx n → Usage n → Type → Set
-Elab {n} Γ Ψ A = Σ[ t ∈ Tm n ] Γ ⊢[ Ψ ] t ∷ A ! pure
+Elab : ∀ {m} {n} → Ctx m n → Usage n → Ty m → Set
+Elab {n = n} Γ Ψ A = Σ[ t ∈ Tm n ] Γ ⊢[ Ψ ] t ∷ A ! pure
 
 private
   variable
     n : ℕ
-    Γ : Ctx n
+    Γ : ∀ {m} → Ctx m n
     Ψ Ψ₁ Ψ₂ Ψ′ : Usage n
-    A B : Type
+    A B : ∀ {m} → Ty m
 
 -- The elaboration's building blocks (public: the 6b bridge names the
 -- transports they carry).
@@ -132,7 +133,7 @@ lift1 : (f : Tm n → Tm n) → (∀ {t} → Γ ⊢[ Ψ ] t ∷ A ! pure → Γ 
       → Elab Γ Ψ A → Elab Γ Ψ′ B
 lift1 f h (t , d) = f t , h d
 
-lift2 : ∀ {C : Type} {Ψ₃ : Usage n} (f : Tm n → Tm n → Tm n)
+lift2 : ∀ {m} {C : Ty m} {Ψ₃ : Usage n} (f : Tm n → Tm n → Tm n)
       → (∀ {t u} → Γ ⊢[ Ψ₁ ] t ∷ A ! pure → Γ ⊢[ Ψ₂ ] u ∷ B ! pure → Γ ⊢[ Ψ₃ ] f t u ∷ C ! pure)
       → Elab Γ Ψ₁ A → Elab Γ Ψ₂ B → Elab Γ Ψ₃ C
 lift2 f h (t , d) (u , e) = f t u , h d e
@@ -175,9 +176,9 @@ subE refl e = e
 -- The elaboration
 ------------------------------------------------------------------------
 
-elabᶜ : ∀ {ctx e A Ψ} → Views ctx → ctx ⊢ᶜ e ∶ A ⨾ Ψ → Elab (NamedCtx.debruijn ctx) Ψ A
-elabᵢ : ∀ {ctx e A Ψ} → Views ctx → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Elab (NamedCtx.debruijn ctx) Ψ A
-elabᵈ : ∀ {ctx e A B π Ψ} → Views ctx → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
+elabᶜ : ∀ {m} {A : Ty m} {ctx e Ψ} → Views ctx → ctx ⊢ᶜ e ∶ A ⨾ Ψ → Elab (NamedCtx.debruijn ctx) Ψ A
+elabᵢ : ∀ {m} {A : Ty m} {ctx e Ψ} → Views ctx → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Elab (NamedCtx.debruijn ctx) Ψ A
+elabᵈ : ∀ {m} {A B : Ty m} {ctx e π Ψ} → Views ctx → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
       → Elab (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] B)
 
 elabᶜ V (t-id-check {u = u}) = idᶜ _ _ , ⊢idᶜ u

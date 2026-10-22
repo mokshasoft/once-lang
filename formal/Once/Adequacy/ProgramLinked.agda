@@ -23,6 +23,7 @@
 import Once.Spec.Grade
 module Once.Adequacy.ProgramLinked where
 
+open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Nat using (ℕ; _<_)
 open import Data.List using (List; []; _∷_; length)
@@ -98,28 +99,28 @@ open import Once.Adequacy.ElaborateLinked
 private variable σ : ISig
 
 -- What a typing rule finds in scope at a reference.
-ImpRef : Imports → String → Type → Set
+ImpRef : ∀ {m} → Imports → String → Ty m → Set
 ImpRef imps x A = lookupImport imps x ≡ just A
 
 -- Plan 0.105 / D274: an FFI reference (`realize` emits one for a qualified or
 -- resolved name): the generator of Σ it found.
-FFIRef : Imports → CanonicalName → Type → Set
+FFIRef : ∀ {m} → Imports → CanonicalName → Ty m → Set
 FFIRef sg c A = lookupImport sg (showCanonical c) ≡ just A
 
-PolyRef : PolyCtx → String → Type → Set
+PolyRef : ∀ {m} → PolyCtx → String → Ty m → Set
 PolyRef polys x A = Σ (PolyType × RawExpr × PolyCtx) (λ r → (lookupPolyPrefix polys x ≡ just r) × KindedInstance (proj₁ r) A)
 
 -- The resolver's splice of a telescope reference, read off the checker's
 -- answer at the instance (`applySplice` without its termination bookkeeping).
-spliceWith : ∀ {n} {Γ : Ctx n} (pre : PolyCtx) → Acc _<_ (length pre) → (String → TopCtx) → Imports → ℕ
-           → (x : String) (A : Type) {Xs : TopCtx} {b : RawExpr}
+spliceWith : ∀ {m} {n} {Γ : Ctx n} (pre : PolyCtx) → Acc _<_ (length pre) → (String → TopCtx) → Imports → ℕ
+           → (x : String) (A : Ty m) {Xs : TopCtx} {b : RawExpr}
            → VerifiedCheckResult (ctxWithImportsAndPolys Xs pre) b A → Expr Γ zeroUsage A
 spliceWith pre ac I uf fresh x A (failure _ , _)             = poly x A
 spliceWith pre ac I uf fresh x A (success Usage.[] _ _ _ , w) = closed (resolveExprWF pre ac I uf fresh (realize w))
 
 -- A telescope reference's splice is linked: at the entry's body, checked at
 -- the instance in its declaration context.
-SpliceOK : ISig → List IRFun → PolyCtx → (String → TopCtx) → String → Type → Set
+SpliceOK : ∀ {m} → ISig → List IRFun → PolyCtx → (String → TopCtx) → String → Ty m → Set
 SpliceOK σ tbl polys I x A =
   ∀ {s b pre} → lookupPolyPrefix polys x ≡ just (s , b , pre)
   → ∀ (ac : Acc _<_ (length pre)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx n}
@@ -132,11 +133,11 @@ SpliceOK σ tbl polys I x A =
 ------------------------------------------------------------------------
 
 private
-  Refs-substA : ∀ {Ps : CanonicalName → Type → Set} {Pc Pp : String → Type → Set} {n} {Γ : Ctx n} {Ψ : Usage n} {A B} (eq : A ≡ B) (e : Expr Γ Ψ A)
+  Refs-substA : ∀ {m} {Ps : CanonicalName → Ty m → Set} {Pc Pp : String → Ty m → Set} {n} {Γ : Ctx n} {Ψ : Usage n} {A B : Ty m} (eq : A ≡ B) (e : Expr Γ Ψ A)
               → Refs Ps Pc Pp e → Refs Ps Pc Pp (subst (Expr Γ Ψ) eq e)
   Refs-substA refl e r = r
 
-  Refs-substF : ∀ {Ps : CanonicalName → Type → Set} {Pc Pp : String → Type → Set} {n} {Γ : Ctx n} {Ψ : Usage n} (G : Type → Type) {A B} (eq : A ≡ B)
+  Refs-substF : ∀ {m} {Ps : CanonicalName → Ty m → Set} {Pc Pp : String → Ty m → Set} {n} {Γ : Ctx n} {Ψ : Usage n} (G : Ty m → Ty m) {A B : Ty m} (eq : A ≡ B)
                 (e : Expr Γ Ψ (G A)) → Refs Ps Pc Pp e → Refs Ps Pc Pp (subst (λ Z → Expr Γ Ψ (G Z)) eq e)
   Refs-substF G refl e r = r
 
@@ -148,12 +149,12 @@ private
                 → Linked σ tbl ir → Linked σ tbl (subst (λ o → IR X o) eq ir)
   Linked-substʳ refl ir l = l
 
-RR : (ctx : NamedCtx) → ∀ {Ψ : Usage (NamedCtx.size ctx)} {A} → Expr (NamedCtx.debruijn ctx) Ψ A → Set
+RR : ∀ {m} → (ctx : NamedCtx m) → ∀ {Ψ : Usage (NamedCtx.size ctx)} {A : Ty m} → Expr (NamedCtx.debruijn ctx) Ψ A → Set
 RR ctx = Refs (FFIRef (NamedCtx.sig ctx)) (ImpRef (NamedCtx.imports ctx)) (PolyRef (NamedCtx.polys ctx))
 
 realize-refs   : ∀ {ctx e A} {Ψ : Usage (NamedCtx.size ctx)} (D : ctx ⊢ᶜ e ∶ A ⨾ Ψ) → RR ctx (realize D)
-realize-refs-i : ∀ {ctx e A} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Internal.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ) → RR ctx (realize-infer D)
-realize-refs-d : ∀ {ctx e A B π} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Internal.Typing._⊢ᵈ_∶_⇒[_]↦_⨾_ ctx e A π B Ψ)
+realize-refs-i : ∀ {m} {A : Ty m} {ctx e} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Internal.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ) → RR ctx (realize-infer D)
+realize-refs-d : ∀ {m} {A B : Ty m} {ctx e π} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Internal.Typing._⊢ᵈ_∶_⇒[_]↦_⨾_ ctx e A π B Ψ)
                → RR ctx (realize-d D)
 
 realize-refs t-id-check             = tt
@@ -294,7 +295,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
     L = RefLinked σ tbl
 
     -- `applySplice` is `spliceWith` at the prefix's accessibility.
-    as-case : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx n}
+    as-case : ∀ {m} (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Ty m) {n} {Γ : Ctx n}
                 {s b pre} (polyEq : lookupPolyPrefix polys x ≡ just (s , b , pre))
                 (cr : VerifiedCheckResult (ctxWithImportsAndPolys (I x) pre) b A)
             → (∀ ac → Refs (DeclIn σ) L L (spliceWith {Γ = Γ} pre ac I uf fresh x A cr))
@@ -303,7 +304,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
     as-case (acc rec) uf fresh x A polyEq (success Usage.[] _ _ _ , w) h =
       h (rec (Once.TypeCheck.Classify.lookupPolyPrefix-decreases x polys polyEq))
 
-    rp-case : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx n}
+    rp-case : ∀ {m} (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Ty m) {n} {Γ : Ctx n}
                 (look : Maybe (PolyType × RawExpr × PolyCtx)) (lq : lookupPolyPrefix polys x ≡ look)
             → PolyRef polys x A
             → Refs (DeclIn σ) L L (Once.TypeCheck.ElaborateProofs.resolvePolyCase {Γ = Γ} polys pAcc I uf fresh x A look lq)
@@ -314,7 +315,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
       as-case pAcc uf fresh x A lq (checkElabV (ctxWithImportsAndPolys (I x) pre) b A)
               (λ ac → sp pr lq ac uf fresh {Γ = Γ})
 
-  resolve-refs : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+  resolve-refs : ∀ {m} (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx n} {Ψ : Usage n} {A : Ty m}
                    (e : Expr Γ Ψ A)
                → Refs (DeclIn σ) L (PolyRef polys) e → Refs (DeclIn σ) L L (resolveExprWF polys pAcc I uf fresh e)
   resolve-refs pAcc uf fresh (var _)           r = tt
@@ -371,7 +372,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
 ------------------------------------------------------------------------
 
 -- The direct-call form (`directCallIR`) of a linked body is linked.
-dc-linked : ∀ (tbl : List IRFun) (ty : Type) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
+dc-linked : ∀ {m} (tbl : List IRFun) (ty : Ty m) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
           → Linked σ tbl ir → Linked σ tbl (proj₂ (proj₂ (C.directCallIR ty ir)))
 dc-linked tbl (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir l = tt , ((l , tt) , tt)
 dc-linked tbl (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir l = tt , ((l , tt) , tt)
@@ -388,7 +389,7 @@ dc-linked tbl (Once.Internal.Type.rigid k i)    ir l = l
 
 -- A reference to an entry is linked once the entry is in the table: the
 -- reference's call (`refIR`) is at the entry's direct-call objects (D245).
-ref-entry : ∀ (tbl : List IRFun) (x : String) (ty : Type) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
+ref-entry : ∀ {m} (tbl : List IRFun) (x : String) (ty : Ty m) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋)
           → RefLinked σ (irFunOf (C.mkCompiledFun (bare x) ty ir) ∷ tbl) x ty
 ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
@@ -411,7 +412,7 @@ RefLinked-mono h {x} {A} = linked-mono h (refIR A (bare x))
 -- (E) THE WALK
 ------------------------------------------------------------------------
 
-record LInv (σ : ISig) (csc : C.CScope) (pre : List IRFun) : Set where
+record LInv {m} (σ : ISig) (csc : C.CScope) (pre : List IRFun) : Set where
   field
     irf    : ImportsRF (C.CScope.cimps csc)
     irs    : ImportsRF (C.CScope.csig csc)      -- D243: Σ is ground too
@@ -438,32 +439,32 @@ private
             → All (λ e′ → Linked σ (e ∷ pre) (fbody e′)) (e ∷ pre)
   ents-cons e pre lb ok = linked-mono (linkedAt-cons e pre) (fbody e) lb ∷ All.map (λ {e′} → linked-mono (linkedAt-cons e pre) (fbody e′)) ok
 
-  imp-cons : ∀ {imps : Imports} {pre : List IRFun} (x : String) (ty : Type) (e : IRFun)
-           → RefLinked σ (e ∷ pre) x ty → (∀ {y A} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
-           → ∀ {y A} → lookupImport ((x , ty) ∷ imps) y ≡ just A → RefLinked σ (e ∷ pre) y A
+  imp-cons : ∀ {m} {imps : Imports} {pre : List IRFun} (x : String) (ty : Ty m) (e : IRFun)
+           → RefLinked σ (e ∷ pre) x ty → (∀ {A : Ty m} {y} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
+           → ∀ {A : Ty m} {y} → lookupImport ((x , ty) ∷ imps) y ≡ just A → RefLinked σ (e ∷ pre) y A
   imp-cons {σ = σ} {pre = pre} x ty e hr old {y} {A} lk with x Str.≟ y
   ... | yes refl = subst (RefLinked σ (e ∷ pre) x) (just-injective lk) hr
   ... | no _     = RefLinked-mono (linkedAt-cons e pre) {y} {A} (old lk)
 
   -- D324: a definition named `main` does not enter the context (`C.extendDefs`);
   -- the table still grows by its compiled form.
-  imp-defs : ∀ (b : Bool) {imps : Imports} {pre : List IRFun} (x : String) (ty : Type) (e : IRFun)
-           → RefLinked σ (e ∷ pre) x ty → (∀ {y A} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
-           → ∀ {y A} → lookupImport (C.extendDefs-at b imps x ty) y ≡ just A → RefLinked σ (e ∷ pre) y A
+  imp-defs : ∀ {m} (b : Bool) {imps : Imports} {pre : List IRFun} (x : String) (ty : Ty m) (e : IRFun)
+           → RefLinked σ (e ∷ pre) x ty → (∀ {A : Ty m} {y} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
+           → ∀ {A : Ty m} {y} → lookupImport (C.extendDefs-at b imps x ty) y ≡ just A → RefLinked σ (e ∷ pre) y A
   imp-defs true  {pre = pre} x ty e hr old {y} {A} lk = RefLinked-mono (linkedAt-cons e pre) {y} {A} (old lk)
   imp-defs false x ty e hr old lk = imp-cons x ty e hr old lk
 
-  sig-cons : ∀ {sg : Imports} (x : String) (ty : Type) → (x , ty) ∈ σ
-           → (∀ {y A} → lookupImport sg y ≡ just A → (y , A) ∈ σ)
-           → ∀ {y A} → lookupImport ((x , ty) ∷ sg) y ≡ just A → (y , A) ∈ σ
+  sig-cons : ∀ {m} {sg : Imports} (x : String) (ty : Ty m) → (x , ty) ∈ σ
+           → (∀ {A : Ty m} {y} → lookupImport sg y ≡ just A → (y , A) ∈ σ)
+           → ∀ {A : Ty m} {y} → lookupImport ((x , ty) ∷ sg) y ≡ just A → (y , A) ∈ σ
   sig-cons {σ = σ} x ty new old {y} {A} lk with x Str.≟ y
   ... | yes refl = subst (λ B → (x , B) ∈ σ) (just-injective lk) new
   ... | no _     = old lk
 
 -- D274: an FFI declaration joins Σ — no table entry.
-linv-sig : ∀ {csc pre} (x : String) (ty : Type) → RigidFree ty → (x , ty) ∈ σ
+linv-sig : ∀ {m} {csc pre} (x : String) (ty : Ty m) → RigidFree ty → (x , ty) ∈ σ
          → LInv σ csc pre → LInv σ (C.extendSig csc x ty) pre
-linv-sig {σ = σ} {csc} {pre} x ty g d inv = record
+linv-sig {σ = σ} {csc = csc} {pre = pre} x ty g d inv = record
   { irf    = LInv.irf inv
   ; irs    = irf-cons {imps = C.CScope.csig csc} {y = x} {ty = ty} g (LInv.irs inv)
   ; iself  = LInv.iself inv
@@ -474,10 +475,10 @@ linv-sig {σ = σ} {csc} {pre} x ty g d inv = record
   }
 
 -- A definition joins the scope, its compiled form the table.
-linv-entry : ∀ {csc pre} (x : String) (ty : Type) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋) → RigidFree ty
+linv-entry : ∀ {m} {csc pre} (x : String) (ty : Ty m) (ir : IR ⌊ Unit ⌋ ⌊ ty ⌋) → RigidFree ty
            → Linked σ pre (fbody (irFunOf (C.mkCompiledFun (bare x) ty ir)))
            → LInv σ csc pre → LInv σ (C.extendScope csc x ty) (irFunOf (C.mkCompiledFun (bare x) ty ir) ∷ pre)
-linv-entry {σ = σ} {csc} {pre} x ty ir g lb inv = record
+linv-entry {σ = σ} {csc = csc} {pre = pre} x ty ir g lb inv = record
   { irf    = irf-defs (x Str.== "main") {imps = C.CScope.cimps csc} {y = x} {ty = ty} g (LInv.irf inv)
   ; irs    = LInv.irs inv
   ; iself  = LInv.iself inv
@@ -489,13 +490,13 @@ linv-entry {σ = σ} {csc} {pre} x ty ir g lb inv = record
   where e = irFunOf (C.mkCompiledFun (bare x) ty ir)
 
 -- A definition's body, checked in its scope, compiles to linked IR.
-body-linked : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
+body-linked : ∀ {m} {csc pre} → LInv σ csc pre → (x : String) (ty : Ty m) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
                 {se : _} {d f : ℕ}
             → C.compileFun IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
             → (ce : Once.TypeCheck.Elaborate.checkElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty
                       ≡ success Usage.[] se d f)
             → Linked σ pre irFun
-body-linked {σ = σ} {csc} {pre} inv x ty {body} cf ce =
+body-linked {σ = σ} {csc = csc} {pre = pre} inv x ty {body} cf ce =
   subst (Linked σ pre) (sym (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body cf ce))
     (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))
       (resolve-refs pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
@@ -508,13 +509,13 @@ body-linked {σ = σ} {csc} {pre} inv x ty {body} cf ce =
         uf = (x , ty) ∷ C.CScope.cimps csc
 
 -- R8: likewise a definition without a signature, compiled from its synthesis.
-body-linkedI : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
+body-linkedI : ∀ {m} {csc pre} → LInv σ csc pre → (x : String) (ty : Ty m) {body : RawExpr} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
                  {se : _} {d f : ℕ}
              → C.compileFunI IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
              → (ce : Once.TypeCheck.Elaborate.inferElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body
                        ≡ success ty Usage.[] se d f)
              → Linked σ pre irFun
-body-linkedI {σ = σ} {csc} {pre} inv x ty {body} cf ce =
+body-linkedI {σ = σ} {csc = csc} {pre = pre} inv x ty {body} cf ce =
   subst (Linked σ pre) (sym (irFun-formI (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body cf ce))
     (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D′))
       (resolve-refs pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
@@ -527,7 +528,7 @@ body-linkedI {σ = σ} {csc} {pre} inv x ty {body} cf ce =
         uf = (x , ty) ∷ C.CScope.cimps csc
 
 -- A definition, in its own mode.
-body-linkedM : ∀ {csc pre} → LInv σ csc pre → (ft : Data.Maybe.Maybe Type) (x : String) (ty : Type) {body : RawExpr}
+body-linkedM : ∀ {m} {csc pre} → LInv σ csc pre → (ft : Data.Maybe.Maybe (Ty m)) (x : String) (ty : Ty m) {body : RawExpr}
                  {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} {Ψ : Usage 0} {se : _} {d f : ℕ}
              → C.compileFunM ft IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
              → FB.ElabOK ft (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty Ψ se d f
@@ -541,8 +542,8 @@ body-linkedM inv Data.Maybe.nothing  x ty {Ψ = Usage.[]} cf ce = body-linkedI i
 -- splice is the realization of that derivation, whose references are the
 -- scope's (`realize-refs`), resolved (`resolve-refs`).
 private
-  splice-at : ∀ (tbl : List IRFun) (pre : PolyCtx) (ac : Acc _<_ (length pre)) (I : String → TopCtx) (uf : Imports)
-                (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx n} {Xs : TopCtx} {b : RawExpr} {se : _} {d f : ℕ}
+  splice-at : ∀ {m} (tbl : List IRFun) (pre : PolyCtx) (ac : Acc _<_ (length pre)) (I : String → TopCtx) (uf : Imports)
+                (fresh : ℕ) (x : String) (A : Ty m) {n} {Γ : Ctx n} {Xs : TopCtx} {b : RawExpr} {se : _} {d f : ℕ}
                 (cr : VerifiedCheckResult (ctxWithImportsAndPolys Xs pre) b A)
                 (ce : proj₁ cr ≡ success Usage.[] se d f)
             → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (resolveExprWF pre ac I uf fresh (realize (sound-of cr ce)))
@@ -573,7 +574,7 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Usage.[]} D fr inv = record
     top   = C.ctop csc
 
     -- the head: its body at the instance, in its declaration scope
-    head-ok : ∀ (I : String → TopCtx) → I y ≡ top → IAgree I (C.CScope.ctele csc) → ∀ {A} → KindedInstance scT A
+    head-ok : ∀ (I : String → TopCtx) → I y ≡ top → IAgree I (C.CScope.ctele csc) → ∀ {A : Ty _} → KindedInstance scT A
             → ∀ (ac : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx n}
             → Refs (DeclIn σ) (RefLinked σ pre) (RefLinked σ pre)
                    (spliceWith {Γ = Γ} polys ac I uf fresh y A (checkElabV (ctxWithImportsAndPolys (I y) polys) bd A))
@@ -592,7 +593,7 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Usage.[]} D fr inv = record
         w   = sound-of cr ce
 
     tel′ : ∀ (I : String → TopCtx) → IAgree I ((pfi , top) ∷ C.CScope.ctele csc)
-         → ∀ {x A} → PolyRef (C.cpolys (C.addEntry csc pfi)) x A → SpliceOK σ pre (C.cpolys (C.addEntry csc pfi)) I x A
+         → ∀ {A : Ty _} {x} → PolyRef (C.cpolys (C.addEntry csc pfi)) x A → SpliceOK σ pre (C.cpolys (C.addEntry csc pfi)) I x A
     tel′ I (iy ∷ ia) {x} {A} pr {s} {b} {pre′} lk ac uf fresh {Γ = Γ} with StrProp._≟_ y x
     tel′ I (iy ∷ ia) {x} {A} (r , eP , ki) {s} {b} {pre′} lk ac uf fresh {Γ = Γ} | yes refl
       with just-injective lk | just-injective eP

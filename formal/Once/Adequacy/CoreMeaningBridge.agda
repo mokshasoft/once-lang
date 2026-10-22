@@ -16,6 +16,7 @@
 -- carry.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig; sigOf)
@@ -62,16 +63,16 @@ open View
 ------------------------------------------------------------------------
 
 -- The core meaning of a reference to entry `d` at an instance.
-refSem : ∀ (δ : GM.DefSem) {d : Fin s} {U : Type} → InstanceOf d U → ⟦ U ⟧ᵛ
+refSem : ∀ {m} (δ : GM.DefSem) {d : Fin s} {U : Ty m} → InstanceOf d U → ⟦ U ⟧ᵛ
 refSem δ {d} (τ , r , eq) = subst (λ X → ⟦ X ⟧ᵛ) eq (GM.defs δ d τ r)
 
 -- …and of a definition in scope (D274: an FFI declaration is not one — it is
 -- in Σ, and its reference is the SigOp).
-impSem : ∀ (δ : GM.DefSem) {x : String} {U : Type} → ImportAt x U → ⟦ U ⟧ᵛ
+impSem : ∀ {m} (δ : GM.DefSem) {x : String} {U : Ty m} → ImportAt x U → ⟦ U ⟧ᵛ
 impSem δ (def d i) = refSem δ i
 
 -- `ρ` agrees with `δ` at every reference the View resolves.
-record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ : Meanings polys imps sg) (δ : GM.DefSem) : Set where
+record Agree {m} {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ : Meanings polys imps sg) (δ : GM.DefSem) : Set where
   field
     agree-inst : ∀ {x sc body prefix U} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
                    (ng : ¬ Ground sc) (ki : KindedInstance sc U)
@@ -120,13 +121,13 @@ import Once.Internal.Laws.CoreRenameSem S as RS
 import Once.Denotation.EnvAlgebraV as EA
 
 -- A restriction of a transported environment is any restriction of the original.
-env-subst : ∀ {n} {Γ : Ctx n} {U U' Ψ' : Usage n} (e : U ≡ U') (u : Ψ' ⊑ᵘ U) (u' : Ψ' ⊑ᵘ U') (x : RS.Env Γ U')
+env-subst : ∀ {m} {n} {Γ : Ctx m n} {U U' Ψ' : Usage n} (e : U ≡ U') (u : Ψ' ⊑ᵘ U) (u' : Ψ' ⊑ᵘ U') (x : RS.Env Γ U')
           → restrictᵛ {Γ = Γ} u (subst (RS.Env Γ) (sym e) x) ≡ restrictᵛ {Γ = Γ} u' x
 env-subst {Γ = Γ} refl u u' x = EA.restrict-irr {Γ = Γ} u u' x
 
 -- Restrict, bind a value the restricted usage does not use, restrict again:
 -- a restriction of the original (the pipeline `let′` builds for a weakened arm).
-drop-bind : ∀ {n} {Γ : Ctx n} {A : Type} {Ψ' Ψm U U' : Usage n} {q : Quantity}
+drop-bind : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ' Ψm U U' : Usage n} {q : Quantity}
               (W3 : (Zero ∷ Ψ') ⊑ᵘ (q ∷ Ψm)) (W2 : Ψm ⊑ᵘ U) (e : U ≡ U') (w : Ψ' ⊑ᵘ U')
               (x : RS.Env Γ U') (a : ⟦ A ⟧ᵛ)
           → restrictᵛ {Γ = Γ , A ^ Many} W3 (bindᵛ {Γ = Γ} {A = A} q (restrictᵛ {Γ = Γ} W2 (subst (RS.Env Γ) (sym e) x)) a)
@@ -136,7 +137,7 @@ drop-bind {Γ = Γ} {q = q} (c ⊑∷ u) W2 refl w x a =
         (EA.restrict-≡ {Γ = Γ} u W2 w x)
 
 -- Two restrictions of a transported environment: any restriction of the original.
-env-subst₂ : ∀ {n} {Γ : Ctx n} {Ψ' Um U U' : Usage n} (u : Ψ' ⊑ᵘ Um) (v : Um ⊑ᵘ U) (e : U ≡ U') (w : Ψ' ⊑ᵘ U')
+env-subst₂ : ∀ {m} {n} {Γ : Ctx m n} {Ψ' Um U U' : Usage n} (u : Ψ' ⊑ᵘ Um) (v : Um ⊑ᵘ U) (e : U ≡ U') (w : Ψ' ⊑ᵘ U')
                (x : RS.Env Γ U')
            → restrictᵛ {Γ = Γ} u (restrictᵛ {Γ = Γ} v (subst (RS.Env Γ) (sym e) x)) ≡ restrictᵛ {Γ = Γ} w x
 env-subst₂ {Γ = Γ} u v refl w x = EA.restrict-≡ {Γ = Γ} u v w x
@@ -155,14 +156,14 @@ module Comb {δ : GM.DefSem} where
   fmapC : ∀ {X Y : Set} {a a' : X} (f : X → Y) → a ≡ a' → (a >>=ᵖ f) ≡ f a'
   fmapC {a = a} f refl = >>=ᵖ-β a f
 
-  compose-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
+  compose-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π} {f g}
     (df : Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π ] C ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] B ! pure)
     (x : RS.Env Γ (Ψ₁ +ᵘ Many *ᵘ Ψ₂))
     → GM.⟦ ⊢composeᶜ (·p-diag π) df dg ⟧ fmt δ x
       ≡ (GM.⟦ df ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) x) >>=ᵖ λ vf →
          GM.⟦ dg ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) x) >>=ᵖ λ vg →
          λ a → bindM π (vg a) vf)
-  compose-sem {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg x =
+  compose-sem {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} df dg x =
     trans (RS.⟦⟧-substΨ (arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many)))
                         (⊢let df (⊢let (wk-⊢′ _ dg)
                           (⊢lam refl (⊢sub-eff (·p-diag π) (⊢app (⊢var (suc (suc zero))) (⊢app (⊢var (suc zero)) (⊢var zero)))))))
@@ -177,14 +178,14 @@ module Comb {δ : GM.DefSem} where
                                         (diag-bind π (vg a) vf))))
     where E = arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many))
 
-  pair-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
+  pair-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π} {f g}
     (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ A ⇒[ mk-kind Many π ] C ! pure)
     (x : RS.Env Γ (Ψ₁ +ᵘ Ψ₂))
     → GM.⟦ ⊢pairᶜ (·p-diag π) df dg ⟧ fmt δ x
       ≡ (GM.⟦ df ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x) >>=ᵖ λ vf →
          GM.⟦ dg ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x) >>=ᵖ λ vg →
          λ a → bindM π (vf a) λ b → fmapM π (λ c → (b , c)) (vg a))
-  pair-sem {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg x =
+  pair-sem {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} df dg x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢let (wk-⊢′ _ dg)
                           (⊢lam refl (⊢sub-eff (·p-diag π) (⊢pair (⊢app (⊢var (suc (suc zero))) (⊢var zero))
@@ -202,21 +203,21 @@ module Comb {δ : GM.DefSem} where
     where E = trans (arms One Ψ₁ Ψ₂ (trans (cong₂ _+ᵘ_ (z+qz Many) (z+qz Many)) (+ᵘ-identityˡ zeroUsage)))
                     (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂))
 
-  case-arm : ∀ {A B C : Type} {π} (vf : ⟦ A ⟧ᵛ → M π ⟦ C ⟧ᵛ) (vg : ⟦ B ⟧ᵛ → M π ⟦ C ⟧ᵛ) (ab : ⟦ A ⟧ᵛ Data.Sum.⊎ ⟦ B ⟧ᵛ)
+  case-arm : ∀ {m} {A B C : Ty m} {π} (vf : ⟦ A ⟧ᵛ → M π ⟦ C ⟧ᵛ) (vg : ⟦ B ⟧ᵛ → M π ⟦ C ⟧ᵛ) (ab : ⟦ A ⟧ᵛ Data.Sum.⊎ ⟦ B ⟧ᵛ)
            → [ (λ a → vf >>=ᵖ λ f → a >>=ᵖ λ y → f y)
              , (λ b → vg >>=ᵖ λ g → b >>=ᵖ λ y → g y) ]′ ab
              ≡ [ vf , vg ]′ ab
   case-arm vf vg (inj₁ a) = trans (>>=ᵖ-β vf _) (>>=ᵖ-β a _)
   case-arm vf vg (inj₂ b) = trans (>>=ᵖ-β vg _) (>>=ᵖ-β b _)
 
-  case-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C : Type} {π} {f g}
+  case-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π} {f g}
     (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] C ! pure) (dg : Γ ⊢[ Ψ₂ ] g ∷ B ⇒[ mk-kind Many π ] C ! pure)
     (x : RS.Env Γ (Ψ₁ +ᵘ Ψ₂))
     → GM.⟦ ⊢caseᶜ df dg ⟧ fmt δ x
       ≡ (GM.⟦ df ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x) >>=ᵖ λ vf →
          GM.⟦ dg ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x) >>=ᵖ λ vg →
          returnᵖ (λ ab → [ vf , vg ]′ ab))
-  case-sem {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} {π} df dg x =
+  case-sem {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {C = C} {π = π} df dg x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢let (wk-⊢′ _ dg)
                           (⊢lam refl (⊢case⊔ (⊢var zero)
@@ -233,11 +234,11 @@ module Comb {δ : GM.DefSem} where
                                            (+ᵘ-identityˡ zeroUsage)))
                     (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂))
 
-  curry-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C : Type} {π₀ π} {f}
+  curry-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A B C : Ty m} {π₀ π} {f}
     (u₀ : pure ⊑π π₀) (df : Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure) (x : RS.Env Γ Ψ)
     → GM.⟦ ⊢curryᶜ u₀ df ⟧ fmt δ x
       ≡ (GM.⟦ df ⟧ fmt δ x >>=ᵖ λ vf → λ a → returnM u₀ (λ b → vf (a , b)))
-  curry-sem {Γ = Γ} {Ψ} {π₀ = π₀} {π} u₀ df x =
+  curry-sem {Γ = Γ} {Ψ = Ψ} {π₀ = π₀} {π = π} u₀ df x =
     trans (RS.⟦⟧-substΨ E
                         (⊢let df (⊢lam refl (⊢sub-eff u₀
                           (⊢lam refl (⊢app (⊢var (suc (suc zero))) (⊢pair (⊢var (suc zero)) (⊢var zero)))))))
@@ -254,13 +255,13 @@ module Comb {δ : GM.DefSem} where
           _∙_ = trans
 
   -- A closed combinator whose meaning is `returnᵖ F`, applied: its argument, bound into `F`.
-  appC-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B : Type} {c t} (F : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ)
+  appC-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {c t} (F : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ)
     (dc : Γ ⊢[ zeroUsage ] c ∷ A ⇒[ mk-kind Many pure ] B ! pure)
     (hc : ∀ y → GM.⟦ dc ⟧ fmt δ y ≡ returnᵖ F)
     (dt : Γ ⊢[ Ψ ] t ∷ A ! pure) (x : RS.Env Γ (zeroUsage +ᵘ Many *ᵘ Ψ))
     → GM.⟦ ⊢app dc dt ⟧ fmt δ x
       ≡ (GM.⟦ dt ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))) x) >>=ᵖ F)
-  appC-sem {Γ = Γ} {Ψ} F dc hc dt x rewrite hc (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ zeroUsage (Many *ᵘ Ψ)) x) = >>=ᵖ-β F _
+  appC-sem {Γ = Γ} {Ψ = Ψ} F dc hc dt x rewrite hc (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ zeroUsage (Many *ᵘ Ψ)) x) = >>=ᵖ-β F _
 
   -- Two pure binds, each of a projection, feeding a binary continuation.
   bind2β : ∀ {X Y Z W : Set} (m : X) (f : X → Y) (n : X) (g : X → Z) (h : Y → Z → W)
@@ -270,25 +271,25 @@ module Comb {δ : GM.DefSem} where
           (trans (>>=ᵖ-β (f m) _)
                  (trans (cong (_>>=ᵖ (λ vx → h (f m) vx)) (>>=ᵖ-β n g)) (>>=ᵖ-β (g n) _)))
 
-  apply-sem : ∀ {n} {Γ : Ctx n} {A B : Type} (x : RS.Env Γ zeroUsage)
+  apply-sem : ∀ {m} {n} {Γ : Ctx m n} {A B : Ty m} (x : RS.Env Γ zeroUsage)
     → GM.⟦ ⊢applyᶜ {Γ = Γ} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → proj₁ fa (proj₂ fa))
   apply-sem {Γ = Γ} x =
     trans (RS.⟦⟧-substΨ {Γ = Γ} (z+qz Many) (⊢lam refl (⊢app (⊢fst (⊢var zero)) (⊢snd (⊢var zero)))) fmt δ x)
           (extensionality λ fa → trans (>>=ᵖ-β _ _) (>>=ᵖ-β _ _))
 
   -- The transport under a binder used once.
-  substΨ1 : ∀ {n} {Γ : Ctx n} {X : Type} {U U' : Usage n} {t B π} (e : U ≡ U')
+  substΨ1 : ∀ {m} {n} {Γ : Ctx m n} {X : Ty m} {U U' : Usage n} {B : Ty m} {t π} (e : U ≡ U')
     (d : (Γ , X ^ Many) ⊢[ One ∷ U ] t ∷ B ! π) (x : RS.Env Γ U') (a : ⟦ X ⟧ᵛ)
     → GM.⟦ subst (λ V → (Γ , X ^ Many) ⊢[ One ∷ V ] t ∷ B ! π) e d ⟧ fmt δ (x , a)
       ≡ GM.⟦ d ⟧ fmt δ (subst (RS.Env Γ) (sym e) x , a)
   substΨ1 refl d x a = refl
 
   -- plan 0.113 B1: the coalgebra's usage is ω-scaled; it reads `x` restricted.
-  ana-sem″ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π₀} {π : Finite} {c}
-    (u₀ : pure ⊑π π₀) (wf : WellFormedF F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
+  ana-sem″ : ∀ {m} {Δₖ : KCtx m} {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {A : Ty m} {π₀} {π : Finite} {c}
+    (u₀ : pure ⊑π π₀) (wf : WFFun Δₖ F) (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧T A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
     → GM.⟦ ⊢anaᶜ u₀ wf dc ⟧ fmt δ x
       ≡ (λ a → returnM u₀ (ana-semᵛ π wf (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a))
-  ana-sem″ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} {π} u₀ wf dc x =
+  ana-sem″ {Γ = Γ} {Ψ = Ψ} {A = A} {π₀ = π₀} {π = π} u₀ wf dc x =
     extensionality λ a →
       trans (substΨ1 (+ᵘ-identityʳ (Many *ᵘ Ψ))
                      (⊢sub-eff u₀ (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))) x a)
@@ -299,14 +300,14 @@ module Comb {δ : GM.DefSem} where
                          (cong (GM.⟦ dc ⟧ fmt δ)
                                (env-subst {Γ = Γ} (+ᵘ-identityʳ (Many *ᵘ Ψ)) _ (⊑ᵘ-*Many Ψ) x))))))
 
-  applyEff-sem : ∀ {n} {Γ : Ctx n} {π} {A B : Type} (x : RS.Env Γ zeroUsage)
+  applyEff-sem : ∀ {m} {n} {Γ : Ctx m n} {π} {A B : Ty m} (x : RS.Env Γ zeroUsage)
     → GM.⟦ ⊢applyEffᶜ {Γ = Γ} {π = π} {A = A} {B = B} ⟧ fmt δ x ≡ returnᵖ (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
   applyEff-sem {Γ = Γ} x =
     trans (RS.⟦⟧-substΨ {Γ = Γ} (z+qz Many)
              (⊢lam refl (⊢lam refl (⊢app (⊢fst (⊢var (suc zero))) (⊢snd (⊢var (suc zero)))))) fmt δ x)
           (extensionality λ fa → extensionality λ _ → trans (>>=ᵖ-β _ _) (>>=ᵖ-β _ _))
 
-  effApp-sem : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {π} {A B : Type} {f t}
+  effApp-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {π} {A B : Ty m} {f t}
     (df : Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure) (dx : Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
     (x : RS.Env Γ (Ψ₁ +ᵘ Many *ᵘ Ψ₂))
     → GM.⟦ ⊢effAppᶜ df dx ⟧ fmt δ x
@@ -316,11 +317,11 @@ module Comb {δ : GM.DefSem} where
     extensionality λ _ →
       cong₂ (λ F X → F >>=ᵖ λ vf → X >>=ᵖ λ vx → vf vx) (RS.wk-sem _ df fmt δ _) (RS.wk-sem _ dx fmt δ _)
 
-  cata-sem′ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {F : Functor} {A : Type} {π} {alg}
-    (u : pure ⊑π π) (wf : WellFormedF F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
+  cata-sem′ : ∀ {m} {Δₖ : KCtx m} {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {A : Ty m} {π} {alg}
+    (u : pure ⊑π π) (wf : WFFun Δₖ F) (da : Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
     → GM.⟦ ⊢cataᶜ u wf da ⟧ fmt δ x
       ≡ (GM.⟦ da ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x) >>=ᵖ λ valg → λ v → cata-semᵛ u wf valg v)
-  cata-sem′ {Γ = Γ} {Ψ} {π = π} u wf da x =
+  cata-sem′ {Γ = Γ} {Ψ = Ψ} {π = π} u wf da x =
     trans (RS.⟦⟧-substΨ E (⊢let da (⊢lam refl (⊢fold u wf (⊢var (suc zero)) (⊢var zero)))) fmt δ x)
           (bindC (cong (GM.⟦ da ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-*Many Ψ) x))
                  (λ valg → extensionality λ v → trans (>>=ᵖ-β valg _) (>>=ᵖ-β v _)))
@@ -328,10 +329,10 @@ module Comb {δ : GM.DefSem} where
                     (+ᵘ-identityˡ (Many *ᵘ Ψ))
 
   -- the loop: the round's closure, bound once, then iterated (`Lang.Iterative.loop`).
-  loop-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B : Type} {c}
+  loop-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {c}
     (dc : Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure) (x : RS.Env Γ (Many *ᵘ Ψ))
     → GM.⟦ ⊢loopᶜ dc ⟧ fmt δ x ≡ (λ a → loop (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a)
-  loop-sem {Γ = Γ} {Ψ} dc x =
+  loop-sem {Γ = Γ} {Ψ = Ψ} dc x =
     trans (RS.⟦⟧-substΨ E (⊢let dc (⊢lam refl (⊢iter (⊢var (suc zero)) (⊢var zero)))) fmt δ x)
           (trans (bindC (cong (GM.⟦ dc ⟧ fmt δ) (env-subst {Γ = Γ} E _ (⊑ᵘ-*Many Ψ) x))
                         (λ vr → extensionality λ a → trans (>>=ᵖ-β vr _) (>>=ᵖ-β a _)))
@@ -357,15 +358,15 @@ idʳT : ∀ {X : Set} (m : T X) → (m >>=T returnT) ≡ m
 idʳT m = >>=T-identityʳ m
 
 -- `subE`'s usage transport moves onto the environment.
-subE-sem : ∀ {δ : GM.DefSem} {n} {Γ : Ctx n} {Ψ Ψ′ : Usage n} {A : Type} (eq : Ψ ≡ Ψ′) (e : Elab Γ Ψ A) (x : RS.Env Γ Ψ′)
+subE-sem : ∀ {m} {δ : GM.DefSem} {n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} {A : Ty m} (eq : Ψ ≡ Ψ′) (e : Elab Γ Ψ A) (x : RS.Env Γ Ψ′)
          → GM.⟦ proj₂ (subE eq e) ⟧ fmt δ x ≡ GM.⟦ proj₂ e ⟧ fmt δ (subst (RS.Env Γ) (sym eq) x)
 subE-sem refl e x = refl
 
 -- A resolved reference means its entry at the instance (refE's typing).
-refSem-⊢ : ∀ {δ : GM.DefSem} {n} {Γ : Ctx n} {d : Fin s} {U : Type} (i : InstanceOf d U) (x : RS.Env Γ zeroUsage)
+refSem-⊢ : ∀ {m} {δ : GM.DefSem} {n} {Γ : Ctx m n} {d : Fin s} {U : Ty m} (i : InstanceOf d U) (x : RS.Env Γ zeroUsage)
          → refSem δ i ≡ GM.⟦ subst (λ X → Γ ⊢[ zeroUsage ] ref d (proj₁ i) ∷ X ! pure) (proj₂ (proj₂ i))
                                   (⊢ref d (proj₁ i) (proj₁ (proj₂ i))) ⟧ fmt δ x
-refSem-⊢ {δ} {d = d} (τ , r , eq) x = sym (RS.⟦⟧-substA eq (⊢ref d τ r) fmt δ x)
+refSem-⊢ {δ = δ} {d = d} (τ , r , eq) x = sym (RS.⟦⟧-substA eq (⊢ref d τ r) fmt δ x)
 
 module _ {δ : GM.DefSem} where
   bindC : ∀ {X Y : Set} {a a' : X} {f g : X → Y} → a ≡ a' → (∀ v → f v ≡ g v) → (a >>=ᵖ f) ≡ (a' >>=ᵖ g)
@@ -391,15 +392,15 @@ module _ {δ : GM.DefSem} where
   binK {m₁' = m₁'} {m₂' = m₂'} {K = K} refl refl =
     trans (>>=ᵖ-β m₁' _) (trans (>>=ᵖ-β m₂' _) (sym (cong K (>>=ᵖ-β m₁' _))))
 
-  bridge-d : ∀ {ctx e A B π Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
+  bridge-d : ∀ {m} {A B : Ty m} {ctx e π Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
              (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) (dγ : EnvRun ctx Ψ)
            → ⟦ d ⟧ᵈ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᵈ V d) ⟧ fmt δ dγ
 
-  bridge-i : ∀ {ctx e A Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
+  bridge-i : ∀ {m} {A : Ty m} {ctx e Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
              (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (dγ : EnvRun ctx Ψ)
            → ⟦ d ⟧ᵢ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᵢ V d) ⟧ fmt δ dγ
 
-  bridge-c : ∀ {ctx e A Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
+  bridge-c : ∀ {m} {A : Ty m} {ctx e Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
              (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : EnvRun ctx Ψ)
            → ⟦ d ⟧ᶜ fmt ρ dγ ≡ GM.⟦ proj₂ (elabᶜ V d) ⟧ fmt δ dγ
 

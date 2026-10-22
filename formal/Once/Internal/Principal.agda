@@ -20,6 +20,7 @@
 
 module Once.Internal.Principal where
 
+open import Once.Spec.Type using (Ty)
 open import Data.List using (List; []; _∷_; _++_; map; cartesianProductWith)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺; ∈-++⁺ˡ; ∈-++⁺ʳ; ∈-cartesianProductWith⁺)
@@ -52,7 +53,7 @@ finBelow G.actᶠ  = G.pureᶠ ∷ []
 
 -- The types strictly below `T` over its domains: below one component, or the
 -- first one at or below and the second strictly below.
-below : Type → List Type
+below : ∀ {m} → Ty m → List (Ty m)
 below Void        = []
 below Unit        = Void ∷ []
 below Int         = Void ∷ []
@@ -69,7 +70,7 @@ below (A ⇒[ mk-kind q π ] B) =
           ++ cartesianProductWith (λ π′ B′ → A ⇒[ mk-kind q π′ ] B′) (π ∷ gradesBelow π) (below B))
 
 -- The body checks at no type strictly below its type.
-PrincipalAt : (ctx : NamedCtx) → RawExpr → Type → Set
+PrincipalAt : ∀ {m} → (ctx : NamedCtx m) → RawExpr → Ty m → Set
 PrincipalAt ctx e T = ∀ {X} → X ∈ below T → ∀ {Ψ : Usage (NamedCtx.size ctx)} → ¬ (ctx ⊢ᶜ e ∶ X ⨾ Ψ)
 
 ------------------------------------------------------------------------
@@ -113,11 +114,11 @@ private
   void-below (A + B)        = inj₂ (here refl)
   void-below (A ⇒[ _ ] B)   = inj₂ (here refl)
 
-  tail : ∀ {X T} {xs : List Type} → X ≡ T ⊎ X ∈ xs → X ≡ T ⊎ X ∈ (Void ∷ xs)
+  tail : ∀ {m} {T : Ty m} {X} {xs : List (Ty m)} → X ≡ T ⊎ X ∈ xs → X ≡ T ⊎ X ∈ (Void ∷ xs)
   tail (inj₁ eq) = inj₁ eq
   tail (inj₂ m)  = inj₂ (there m)
 
-at-or-below-<:ᶜ : ∀ {X T} → X <:ᶜ T → X ≡ T ⊎ X ∈ below T
+at-or-below-<:ᶜ : ∀ {m} {T : Ty m} {X} → X <:ᶜ T → X ≡ T ⊎ X ∈ below T
 at-or-below-<:ᶜ {T = T} subᶜ-void = void-below T
 at-or-below-<:ᶜ subᶜ-unit  = inj₁ refl
 at-or-below-<:ᶜ subᶜ-int   = inj₁ refl
@@ -134,7 +135,7 @@ at-or-below-<:ᶜ (subᶜ-ν {F = F} {f = φ} {f′ = φ′} g) = ν-step (fin-a
     ν-step (inj₁ refl) = inj₁ refl
     ν-step (inj₂ m)    = inj₂ (there (∈-map⁺ (ν-type F) m))
 
-below-complete : ∀ {X T} → X <:ᶜ T → ¬ X ≡ T → X ∈ below T
+below-complete : ∀ {m} {T : Ty m} {X} → X <:ᶜ T → ¬ X ≡ T → X ∈ below T
 below-complete s ne = strict (at-or-below-<:ᶜ s) ne
   where
     strict : ∀ {X T} → X ≡ T ⊎ X ∈ below T → ¬ X ≡ T → X ∈ below T

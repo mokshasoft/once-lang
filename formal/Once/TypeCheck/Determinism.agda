@@ -23,6 +23,7 @@
 
 module Once.TypeCheck.Determinism where
 
+open import Once.Spec.Type using (Ty)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Spec.Type using (Type)
@@ -38,12 +39,12 @@ open import Once.Internal.Typing.Scope using (NamedCtx)
 -- | `inferElab` applied twice to the same inputs produces the same result.
 -- This is trivially `refl` in Agda — the statement merely pins down
 -- that `inferElab` is a function (not a relation or a monadic effect).
-inferElab-refl : ∀ (ctx : NamedCtx) (e : RawExpr)
+inferElab-refl : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
                → inferElab ctx e ≡ inferElab ctx e
 inferElab-refl _ _ = refl
 
 -- | Same for `checkElab`.
-checkElab-refl : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+checkElab-refl : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
                → checkElab ctx e T ≡ checkElab ctx e T
 checkElab-refl _ _ _ = refl
 
@@ -58,7 +59,7 @@ checkElab-refl _ _ _ = refl
 -- input is computed via a chain of equalities rather than being
 -- syntactically identical. E.g., if some metatheoretic transformation
 -- produces `e'` with `e ≡ e'`, then `inferElab ctx e ≡ inferElab ctx e'`.
-inferElab-cong-expr : ∀ (ctx : NamedCtx) {e₁ e₂ : RawExpr}
+inferElab-cong-expr : ∀ {m} (ctx : NamedCtx m) {e₁ e₂ : RawExpr}
                     → e₁ ≡ e₂
                     → inferElab ctx e₁ ≡ inferElab ctx e₂
 inferElab-cong-expr ctx = cong (inferElab ctx)
@@ -71,7 +72,7 @@ inferElab-cong-expr ctx = cong (inferElab ctx)
 -- types until the context equality is substituted in, which would
 -- require `subst` + heterogeneous equality. The expression-only form
 -- covers the use cases without that machinery.
-inferElab-cong : ∀ (ctx : NamedCtx) {e₁ e₂ : RawExpr}
+inferElab-cong : ∀ {m} (ctx : NamedCtx m) {e₁ e₂ : RawExpr}
                → e₁ ≡ e₂
                → inferElab ctx e₁ ≡ inferElab ctx e₂
 inferElab-cong ctx eq rewrite eq = refl
@@ -80,7 +81,7 @@ inferElab-cong ctx eq rewrite eq = refl
 -- argument, at a fixed context and fixed expected type.
 -- (Ctx and T are in the result type's index, so they must be held
 -- fixed — see the `inferElab-cong` comment above.)
-checkElab-cong : ∀ (ctx : NamedCtx) (T : Type) {e₁ e₂ : RawExpr}
+checkElab-cong : ∀ {m} (ctx : NamedCtx m) (T : Ty m) {e₁ e₂ : RawExpr}
                → e₁ ≡ e₂
                → checkElab ctx e₁ T ≡ checkElab ctx e₂ T
 checkElab-cong ctx T eq rewrite eq = refl
@@ -92,7 +93,7 @@ checkElab-cong ctx T eq rewrite eq = refl
 -- | Determinism-via-transitivity: if two derivations agree on the
 -- typechecker result for the same input, they agree with each other.
 -- Useful when reasoning about program transformations.
-inferElab-trans : ∀ (ctx : NamedCtx) (e : RawExpr) {r : InferElabResult _}
+inferElab-trans : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) {r : InferElabResult _}
                 → inferElab ctx e ≡ r
                 → inferElab ctx e ≡ r
                 → r ≡ r

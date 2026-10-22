@@ -13,6 +13,7 @@
 
 module Once.Adequacy.PrincipalDecide where
 
+open import Once.Spec.Type using (Ty)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -33,14 +34,14 @@ import Once.TypeCheck.Elaborate as TE
 open import Once.TypeCheck.Completeness using (check-complete)
 
 -- a check result's failure, as a Boolean
-fails : ∀ {n} {Γ : Ctx n} {A : Type} → TE.CheckElabResult Γ A → Bool
+fails : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} → TE.CheckElabResult Γ A → Bool
 fails (TE.failure _)         = true
 fails (TE.success _ _ _ _)   = false
 
-firstChecking-sound : ∀ (ctx : NamedCtx) (e : RawExpr) (Xs : List Type)
+firstChecking-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (Xs : List (Ty m))
                     → C.firstChecking ctx e Xs ≡ nothing
                     → ∀ {X} → X ∈ Xs → ∀ {Ψ : Usage (NamedCtx.size ctx)} → ¬ (ctx ⊢ᶜ e ∶ X ⨾ Ψ)
-fc-step-sound : ∀ (ctx : NamedCtx) (e : RawExpr) (X : Type) (Xs : List Type)
+fc-step-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (X : Ty m) (Xs : List (Ty m))
                 (r : TE.VerifiedCheckResult ctx e X) → TE.checkElabV ctx e X ≡ r
               → C.fc-step ctx e X Xs r ≡ nothing
               → ∀ {Y} → Y ∈ (X ∷ Xs) → ∀ {Ψ : Usage (NamedCtx.size ctx)} → ¬ (ctx ⊢ᶜ e ∶ Y ⨾ Ψ)
@@ -53,10 +54,10 @@ fc-step-sound ctx e X Xs (TE.failure err , _) r≡ eq (here refl) d =
   case cong fails (trans (sym (cong proj₁ r≡)) (proj₂ (proj₂ (proj₂ (check-complete d))))) of λ ()
 fc-step-sound ctx e X Xs (TE.failure err , _) r≡ eq (there m) d = firstChecking-sound ctx e Xs eq m d
 
-firstChecking-complete : ∀ (ctx : NamedCtx) (e : RawExpr) (Xs : List Type)
+firstChecking-complete : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (Xs : List (Ty m))
                        → (∀ {X} → X ∈ Xs → ∀ {Ψ : Usage (NamedCtx.size ctx)} → ¬ (ctx ⊢ᶜ e ∶ X ⨾ Ψ))
                        → C.firstChecking ctx e Xs ≡ nothing
-fc-step-complete : ∀ (ctx : NamedCtx) (e : RawExpr) (X : Type) (Xs : List Type)
+fc-step-complete : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (X : Ty m) (Xs : List (Ty m))
                    (r : TE.VerifiedCheckResult ctx e X)
                  → (∀ {Y} → Y ∈ (X ∷ Xs) → ∀ {Ψ : Usage (NamedCtx.size ctx)} → ¬ (ctx ⊢ᶜ e ∶ Y ⨾ Ψ))
                  → C.fc-step ctx e X Xs r ≡ nothing

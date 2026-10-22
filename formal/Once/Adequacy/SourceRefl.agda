@@ -14,6 +14,7 @@
 -- — what the graded relation needs of the implementation's closures.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.SourceRefl (fmt : TargetNum) where
@@ -61,34 +62,35 @@ open DefsSem using (calls; refs)
 open Once.Surface.Syntax.Expr
 
 -- The fold of related algebras is a related closure.
-cata-clo-rel : ∀ {F A π} (wf : WellFormedF F) {va vb : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
+cata-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {π} (wf : WFFun Δₖ F) {va vb : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
              → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) va vb
-             → RelD (μ-type F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ va)) x)
-                                                       (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ vb)) x)
-cata-clo-rel {F} {A} wf {va} {vb} ralg {x} refl =
+             → RelD (μ-type F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {F : Fun m} {A : Ty m} wf (return∞ va)) x)
+                                                       (λ x → sem-cata wf (SD.cata-ev-algˢ {F : Fun m} {A : Ty m} wf (return∞ vb)) x)
+cata-clo-rel {F = F} {A = A} wf {va} {vb} ralg {x} refl =
   sem-cata-rel wf {R = RelS (RelD A)} {SD.cata-ev-algˢ wf (return∞ va)} {SD.cata-ev-algˢ wf (return∞ vb)}
     (λ fr → RelS-bind (seqF∞-rel F fr) λ fl → retargetˡ refl (retargetʳ refl (ralg (cfD⁻¹-rel wf A fl)))) x
 
 -- The unfold of related coalgebras, from related seeds, is a related stream.
-ana-clo-rel : ∀ {F A φ} (wf : WellFormedF F) {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ}
+ana-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {φ} (wf : WFFun Δₖ F) {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ}
             → RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c c′
             → ∀ {a a′} → RelD A a a′
             → RelD (ν-type F φ) (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c a')) a)
                                 (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′)
-ana-clo-rel {F} {A} wf rc ra = anaᴵ-rel (λ ra′ → RelS-fmap (RelS-fmap (rc ra′) (cfD-rel wf A)) (cμin-rel F)) ra
+ana-clo-rel {F = F} {A = A} wf rc ra = anaᴵ-rel (λ ra′ → RelS-fmap (RelS-fmap (rc ra′) (cfD-rel wf A)) (cμin-rel F)) ra
 
 -- Related definitions environments: related calls, related references.
 RelDefs : DefsSem → DefsSem → Set
 RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ (x : String) (A : Type) → RelS (RelD A) (refs σ x A) (refs σ′ x A))
 
 -- A conversion maps related values to related values.
-<:-rel : ∀ {A B} (p : A <: B) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD B (⟦ p ⟧<: x) (⟦ p ⟧<: y)
+<:-rel : ∀ {m} {A B : Ty m} (p : A <: B) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD B (⟦ p ⟧<: x) (⟦ p ⟧<: y)
 <:-rel sub-void {()}
 <:-rel sub-unit  r = r
 <:-rel sub-int   r = r
 <:-rel sub-float r = r
 <:-rel sub-μ     r = r
 <:-rel (sub-ν _) r = r
+<:-rel sub-var {()}
 <:-rel (sub-arr {q = Zero} a b _) r = RelS-fmap r (<:-rel b)
 <:-rel (sub-arr {q = One}  a b _) r ra = RelS-fmap (r (<:-rel a ra)) (<:-rel b)
 <:-rel (sub-arr {q = Many} a b _) r ra = RelS-fmap (r (<:-rel a ra)) (<:-rel b)
@@ -99,13 +101,14 @@ RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ (x : String) (A :
 <:-rel (sub-sum a b) {inj₂ _} {inj₁ _} ()
 
 -- Two conversions in sequence relate to the composite conversion.
-<:-trans-rel : ∀ {A B C} (p : A <: B) (q : B <: C) {x y : ⟦ A ⟧ᴰ} → RelD A x y
+<:-trans-rel : ∀ {m} {A B C : Ty m} (p : A <: B) (q : B <: C) {x y : ⟦ A ⟧ᴰ} → RelD A x y
              → RelD C (⟦ q ⟧<: (⟦ p ⟧<: x)) (⟦ <:-trans p q ⟧<: y)
 <:-trans-rel sub-void q {()}
 <:-trans-rel sub-unit  q r = <:-rel q r
 <:-trans-rel sub-int   q r = <:-rel q r
 <:-trans-rel sub-float q r = <:-rel q r
 <:-trans-rel sub-μ     q r = <:-rel q r
+<:-trans-rel sub-var q {()}
 <:-trans-rel sub-rigid q {()}
 <:-trans-rel (sub-arr {q = Zero} a b _) (sub-arr a′ b′ _) r =
   RelS-fmapˡ (RelS-fmap r (<:-trans-rel b b′)) (λ z → z)
@@ -132,7 +135,7 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   sigOp-rel si r with base-eq (baseA si) r | proj₂ (proj₁ rσ)
   ... | refl | e rewrite e = RelS-embed (RelT′-refl (base-refl (conB si)) _)
 
-  SD-rel : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) {d d′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}
+  SD-rel : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) {d d′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}
          → RelD ⟦ Γ ↾ Ψ ⟧ᶜ d d′ → RelS (RelD A) (SD.⟦ e ⟧ˢ fmt σ d) (SD.⟦ e ⟧ˢ fmt σ′ d′)
   SD-rel (var {Γ = Γ} i) r = relS-ret (lookup-rel Γ i r)
   SD-rel (lam {q' = Zero} Zero _ e) r = relS-ret (SD-rel e r)

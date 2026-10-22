@@ -20,6 +20,7 @@
 -- (`resolveExpr-sigOp-closure-faithful`; plan 0.103 1c deleted the inconsistent poly-splice one).
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Internal.Typing.Scope using (PolyCtx; Imports)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
@@ -100,7 +101,7 @@ open import Once.Postulates using (extensionality)
 -- is its pure half), never the references — so two definitions environments
 -- with the same calls mean it alike. The surface meaning dispatches on the
 -- type's shape, so the fact is stated per shape.
-sigOp-σ-irrel : ∀ {n} {Γ : Srf.Ctx n} {A : Type} (c : CallEnv) (r r′ : String → (U : Type) → T∞ ⟦ U ⟧ᴰ)
+sigOp-σ-irrel : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m} (c : CallEnv) (r r′ : String → (U : Ty m) → T∞ ⟦ U ⟧ᴰ)
   (s : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
   → SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt (SD.defsSem c r) dγ ≡ SD.⟦ Srf.sigOp {Γ = Γ} {A = A} s conc ⟧ˢ fmt (SD.defsSem c r′) dγ
 sigOp-σ-irrel {A = _ T.⇒[ T.mk-kind Zero T.pure ] _} c r r′ s (con-fun _ _) dγ = refl

@@ -17,6 +17,8 @@
 
 module Once.Internal.Value (IntRep : Set) (FloatRep : Set) where
 
+open import Once.Spec.Type using (Base)
+open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx; WFFun)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -38,7 +40,7 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 -- Defined via translation to SFunctor.
 -- μ-coherence is now provable (essentially refl).
 --
-⟦μ⟧ : Functor → Set
+⟦μ⟧ : ∀ {m} → Fun m → Set
 ⟦μ⟧ = μ-sem IntRep FloatRep
 
 -- | Semantic interpretation of ν-type (final coalgebra)
@@ -46,7 +48,7 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 -- Defined via translation to SFunctor.
 -- ν-coherence is now provable (essentially refl).
 --
-⟦ν⟧ : Functor → Set
+⟦ν⟧ : ∀ {m} → Fun m → Set
 ⟦ν⟧ = ν-sem IntRep FloatRep
 
 -- ⟦Guarded⟧ removed: productivity follows from IR totality (see IR/Totality.agda)
@@ -56,7 +58,7 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 ------------------------------------------------------------------------
 
 -- | Type interpretation
-⟦_⟧ : Type → Set
+⟦_⟧ : ∀ {m} → Ty m → Set
 ⟦ Unit ⟧         = ⊤
 ⟦ Void ⟧         = ⊥
 ⟦ A * B ⟧        = ⟦ A ⟧ × ⟦ B ⟧
@@ -72,7 +74,7 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 -- same fix `semM` already took — the value domain admits "no value" wherever
 -- a halt can reach. This does NOT duplicate `⟦_⟧ᴰ`: with `eval` gone this is
 -- a value domain, not a second evaluator, and it carries no trace.
-⟦ A ⇒[ mk-kind Zero π ] B ⟧ = ⟦ Unit ⟧ → Res ⟦ B ⟧   -- erased: no argument
+⟦ A ⇒[ mk-kind Zero π ] B ⟧ = ⟦ Unit {0} ⟧ → Res ⟦ B ⟧   -- erased: no argument
 ⟦ A ⇒[ mk-kind One  π ] B ⟧ = ⟦ A ⟧ → Res ⟦ B ⟧
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ = ⟦ A ⟧ → Res ⟦ B ⟧
 -- OCP-0003: Fix removed, use μ-type/ν-type
@@ -81,6 +83,7 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 -- GuardedT removed: productivity follows from IR totality
 ⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = FloatRep
+⟦ var _ ⟧        = ⊥
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
@@ -94,12 +97,12 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 -- machine's value domain, and `eraseᵍ` is how a graded value reaches it.
 ------------------------------------------------------------------------
 
-⟦_⟧ᵍ : Type → Set
-⟦ A ⇒[ mk-kind Zero pure ] B ⟧ᵍ = ⟦ Unit ⟧ → ⟦ B ⟧ᵍ
+⟦_⟧ᵍ : ∀ {m} → Ty m → Set
+⟦ A ⇒[ mk-kind Zero pure ] B ⟧ᵍ = ⟦ Unit {0} ⟧ → ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind One  pure ] B ⟧ᵍ = ⟦ A ⟧ → ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind Many pure ] B ⟧ᵍ = ⟦ A ⟧ → ⟦ B ⟧ᵍ
-⟦ A ⇒[ mk-kind Zero eff ] B ⟧ᵍ  = ⟦ Unit ⟧ → Res ⟦ B ⟧ᵍ
-⟦ A ⇒[ mk-kind Zero act ] B ⟧ᵍ  = ⟦ Unit ⟧ → Res ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind Zero eff ] B ⟧ᵍ  = ⟦ Unit {0} ⟧ → Res ⟦ B ⟧ᵍ
+⟦ A ⇒[ mk-kind Zero act ] B ⟧ᵍ  = ⟦ Unit {0} ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind One  eff ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind One  act ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
 ⟦ A ⇒[ mk-kind Many eff ] B ⟧ᵍ  = ⟦ A ⟧ → Res ⟦ B ⟧ᵍ
@@ -107,32 +110,34 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 ⟦ A * B ⟧ᵍ = ⟦ A ⟧ᵍ × ⟦ B ⟧ᵍ
 ⟦ A + B ⟧ᵍ = ⟦ A ⟧ᵍ ⊎ ⟦ B ⟧ᵍ
 -- First-order: no arrow inside, so the machine value.
-⟦ Unit ⟧ᵍ        = ⟦ Unit ⟧
-⟦ Void ⟧ᵍ        = ⟦ Void ⟧
+⟦ Unit ⟧ᵍ        = ⟦ Unit {0} ⟧
+⟦ Void ⟧ᵍ        = ⟦ Void {0} ⟧
 ⟦ μ-type F ⟧ᵍ    = ⟦ μ-type F ⟧
 ⟦ ν-type F π ⟧ᵍ  = ⟦ ν-type F π ⟧
-⟦ Int ⟧ᵍ         = ⟦ Int ⟧
-⟦ Float ⟧ᵍ       = ⟦ Float ⟧
+⟦ Int ⟧ᵍ         = ⟦ Int {0} ⟧
+⟦ Float ⟧ᵍ       = ⟦ Float {0} ⟧
+⟦ var _ ⟧ᵍ       = ⊥
 
-eraseᵍ : ∀ {B} → ⟦ B ⟧ᵍ → ⟦ B ⟧
-eraseᵍ {A ⇒[ mk-kind Zero pure ] B} f = λ u → returns (eraseᵍ (f u))
-eraseᵍ {A ⇒[ mk-kind One  pure ] B} f = λ x → returns (eraseᵍ (f x))
-eraseᵍ {A ⇒[ mk-kind Many pure ] B} f = λ x → returns (eraseᵍ (f x))
-eraseᵍ {A ⇒[ mk-kind Zero eff ] B}  f = λ u → mapRes eraseᵍ (f u)
-eraseᵍ {A ⇒[ mk-kind Zero act ] B}  f = λ u → mapRes eraseᵍ (f u)
-eraseᵍ {A ⇒[ mk-kind One  eff ] B}  f = λ x → mapRes eraseᵍ (f x)
-eraseᵍ {A ⇒[ mk-kind One  act ] B}  f = λ x → mapRes eraseᵍ (f x)
-eraseᵍ {A ⇒[ mk-kind Many eff ] B}  f = λ x → mapRes eraseᵍ (f x)
-eraseᵍ {A ⇒[ mk-kind Many act ] B}  f = λ x → mapRes eraseᵍ (f x)
-eraseᵍ {A * B} (a , b) = eraseᵍ a , eraseᵍ b
-eraseᵍ {A + B} (inj₁ a) = inj₁ (eraseᵍ a)
-eraseᵍ {A + B} (inj₂ b) = inj₂ (eraseᵍ b)
-eraseᵍ {Unit} x = x
-eraseᵍ {Void} x = x
-eraseᵍ {μ-type F} x = x
-eraseᵍ {ν-type F π} x = x
-eraseᵍ {Int} x = x
-eraseᵍ {Float} x = x
+eraseᵍ : ∀ {m} {B : Ty m} → ⟦ B ⟧ᵍ → ⟦ B ⟧
+eraseᵍ {B = A ⇒[ mk-kind Zero pure ] B} f = λ u → returns (eraseᵍ (f u))
+eraseᵍ {B = A ⇒[ mk-kind One  pure ] B} f = λ x → returns (eraseᵍ (f x))
+eraseᵍ {B = A ⇒[ mk-kind Many pure ] B} f = λ x → returns (eraseᵍ (f x))
+eraseᵍ {B = A ⇒[ mk-kind Zero eff ] B}  f = λ u → mapRes eraseᵍ (f u)
+eraseᵍ {B = A ⇒[ mk-kind Zero act ] B}  f = λ u → mapRes eraseᵍ (f u)
+eraseᵍ {B = A ⇒[ mk-kind One  eff ] B}  f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {B = A ⇒[ mk-kind One  act ] B}  f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {B = A ⇒[ mk-kind Many eff ] B}  f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {B = A ⇒[ mk-kind Many act ] B}  f = λ x → mapRes eraseᵍ (f x)
+eraseᵍ {B = A * B} (a , b) = eraseᵍ a , eraseᵍ b
+eraseᵍ {B = A + B} (inj₁ a) = inj₁ (eraseᵍ a)
+eraseᵍ {B = A + B} (inj₂ b) = inj₂ (eraseᵍ b)
+eraseᵍ {B = Unit} x = x
+eraseᵍ {B = Void} x = x
+eraseᵍ {B = μ-type F} x = x
+eraseᵍ {B = ν-type F π} x = x
+eraseᵍ {B = Int} x = x
+eraseᵍ {B = Float} x = x
+eraseᵍ {B = var _} x = x
 
 ------------------------------------------------------------------------
 -- Functor Interpretation (Set level)
@@ -141,7 +146,7 @@ eraseᵍ {Float} x = x
 -- This parallels ⟦_⟧T at the Type level.
 ------------------------------------------------------------------------
 
-⟦_⟧F : Functor → Set → Set
+⟦_⟧F : ∀ {m} → Fun m → Set → Set
 ⟦ K A ⟧F X = ⟦ A ⟧
 ⟦ Id ⟧F X = X
 ⟦ F ⊕ G ⟧F X = ⟦ F ⟧F X ⊎ ⟦ G ⟧F X
@@ -156,7 +161,7 @@ eraseᵍ {Float} x = x
 ------------------------------------------------------------------------
 
 -- | Coercion from Type-level to Set-level functor application
-coerce-functor : ∀ F X → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
+coerce-functor : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
 coerce-functor (K A) X x = x
 coerce-functor Id X x = x
 coerce-functor (F ⊕ G) X (inj₁ x) = inj₁ (coerce-functor F X x)
@@ -164,7 +169,7 @@ coerce-functor (F ⊕ G) X (inj₂ y) = inj₂ (coerce-functor G X y)
 coerce-functor (F ⊗ G) X (x , y) = (coerce-functor F X x , coerce-functor G X y)
 
 -- | Inverse coercion
-coerce-functor⁻¹ : ∀ F X → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
+coerce-functor⁻¹ : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
 coerce-functor⁻¹ (K A) X x = x
 coerce-functor⁻¹ Id X x = x
 coerce-functor⁻¹ (F ⊕ G) X (inj₁ x) = inj₁ (coerce-functor⁻¹ F X x)
@@ -179,7 +184,7 @@ coerce-functor⁻¹ (F ⊗ G) X (x , y) = (coerce-functor⁻¹ F X x , coerce-fu
 ------------------------------------------------------------------------
 
 -- | Functorial map for polynomials (defined first for use in postulates)
-sem-fmap : ∀ F {X Y : Set} → (X → Y) → ⟦ F ⟧F X → ⟦ F ⟧F Y
+sem-fmap : ∀ {m} (F : Fun m) {X Y : Set} → (X → Y) → ⟦ F ⟧F X → ⟦ F ⟧F Y
 sem-fmap (K A) f x = x
 sem-fmap Id f x = f x
 sem-fmap (F ⊕ G) f (inj₁ x) = inj₁ (sem-fmap F f x)
@@ -204,7 +209,7 @@ sem-fmap (F ⊗ G) f (x , y) = (sem-fmap F f x , sem-fmap G f y)
 -- - Base types: identity (definitionally equal)
 -- - Complex types: produce tt (base interp returns ⊤)
 --
-coerce-full-to-base : ∀ A → ⟦ A ⟧ → ⟦ IntRep , FloatRep ⟧-base A
+coerce-full-to-base : ∀ {m} (A : Ty m) → ⟦ A ⟧ → ⟦ IntRep , FloatRep ⟧-base A
 coerce-full-to-base Unit x = x
 coerce-full-to-base Void x = x
 coerce-full-to-base (A * B) (a , b) = (coerce-full-to-base A a , coerce-full-to-base B b)
@@ -216,6 +221,7 @@ coerce-full-to-base (ν-type _ _) _ = tt      -- ν → ⊤
 -- GuardedT removed: productivity follows from IR totality
 coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x
+coerce-full-to-base (var _) ()
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 -- | Coerce from base to full interpretation
@@ -236,7 +242,7 @@ coerce-full-to-base Float x = x
 --
 -- Requires an IsBaseType proof, which is what makes it total.
 --
-coerce-base-to-full : ∀ {A} → IsBaseType A → ⟦ IntRep , FloatRep ⟧-base A → ⟦ A ⟧
+coerce-base-to-full : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ⟦ IntRep , FloatRep ⟧-base A → ⟦ A ⟧
 coerce-base-to-full base-Unit x = x
 coerce-base-to-full base-Void ()
 coerce-base-to-full base-Int x = x
@@ -245,6 +251,7 @@ coerce-base-to-full (base-Prod pA pB) (a , b) =
   (coerce-base-to-full pA a , coerce-base-to-full pB b)
 coerce-base-to-full (base-Sum pA pB) (inj₁ a) = inj₁ (coerce-base-to-full pA a)
 coerce-base-to-full (base-Sum pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB b)
+coerce-base-to-full (b-var _) ()
 
 ------------------------------------------------------------------------
 -- μ-type Coercions (OCP-0003)
@@ -255,7 +262,7 @@ coerce-base-to-full (base-Sum pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB
 
 -- | Coerce from ⟦ F ⟧F to ⟦ translateF F ⟧SF (for μ-type operations)
 --
-coerce-μ-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep FloatRep F ⟧SF X
+coerce-μ-in : ∀ {m} (F : Fun m) (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep FloatRep F ⟧SF X
 coerce-μ-in (K A) X x = coerce-full-to-base A x
 coerce-μ-in Id X x = x
 coerce-μ-in (F ⊕ G) X (inj₁ x) = inj₁ (coerce-μ-in F X x)
@@ -266,7 +273,7 @@ coerce-μ-in (F ⊗ G) X (x , y) = (coerce-μ-in F X x , coerce-μ-in G X y)
 --
 -- Requires a WellFormedF proof to ensure K positions only use base types.
 --
-coerce-μ-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
+coerce-μ-out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
 coerce-μ-out (wf-K pA) X x = coerce-base-to-full pA x
 coerce-μ-out wf-Id X x = x
 coerce-μ-out (wf-Sum wfF wfG) X (inj₁ x) = inj₁ (coerce-μ-out wfF X x)
@@ -284,7 +291,7 @@ coerce-μ-out (wf-Prod wfF wfG) X (x , y) = (coerce-μ-out wfF X x , coerce-μ-o
 --
 -- OCP-0003: Defined via Semantics.Functor's ⟨_⟩ constructor with coercion.
 --
-sem-In : ∀ (F : Functor) → ⟦ F ⟧F (⟦μ⟧ F) → ⟦μ⟧ F
+sem-In : ∀ {m} (F : Fun m) → ⟦ F ⟧F (⟦μ⟧ F) → ⟦μ⟧ F
 sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
 
 -- | Out: μF → F(μF) (destructor, inverse of In)
@@ -292,16 +299,16 @@ sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
 -- OCP-0003: Defined via Semantics.Functor's outS with coercion.
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
-sem-Out : ∀ {F : Functor} → WellFormedF F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
-sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep FloatRep F) x)
+sem-Out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
+sem-Out {F = F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep FloatRep F) x)
 
 -- | Catamorphism: given algebra F(A) → A, fold μF → A
 --
 -- OCP-0003: Defined via Semantics.Functor's cataS with coercions.
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
-sem-cata : ∀ {F : Functor} → WellFormedF F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
-sem-cata {F} wf {A} alg = cataS {translateF IntRep FloatRep F} (λ x → alg (coerce-μ-out wf A x))
+sem-cata : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
+sem-cata {F = F} wf {A} alg = cataS {translateF IntRep FloatRep F} (λ x → alg (coerce-μ-out wf A x))
 
 -- | Paramorphism: fold with access to original substructure
 --
@@ -312,9 +319,9 @@ sem-cata {F} wf {A} alg = cataS {translateF IntRep FloatRep F} (λ x → alg (co
 -- Implementation: Encode via sem-cata with a product that carries both
 -- the original structure and the recursive result.
 --
-sem-para : ∀ {F : Functor} → WellFormedF F → {A : Set}
+sem-para : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → {A : Set}
          → (⟦ F ⟧F (⟦μ⟧ F × A) → A) → ⟦μ⟧ F → A
-sem-para {F} wf {A} alg x = proj₂ (sem-cata wf alg' x)
+sem-para {F = F} wf {A} alg x = proj₂ (sem-cata wf alg' x)
   where
     alg' : ⟦ F ⟧F (⟦μ⟧ F × A) → (⟦μ⟧ F × A)
     alg' fx = (sem-In F (sem-fmap F proj₁ fx) , alg fx)
@@ -326,12 +333,12 @@ sem-para {F} wf {A} alg x = proj₂ (sem-cata wf alg' x)
 ------------------------------------------------------------------------
 
 -- | Coerce from ⟦ F ⟧F to ⟦ translateF F ⟧SF (for ν-type operations)
-coerce-ν-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep FloatRep F ⟧SF X
+coerce-ν-in : ∀ {m} (F : Fun m) (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep FloatRep F ⟧SF X
 coerce-ν-in = coerce-μ-in  -- Same structure
 
 -- | Coerce from ⟦ translateF F ⟧SF to ⟦ F ⟧F (for ν-type operations)
 -- Requires a WellFormedF proof, which is what defines the coercion.
-coerce-ν-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
+coerce-ν-out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
 coerce-ν-out = coerce-μ-out  -- Same structure
 
 ------------------------------------------------------------------------
@@ -346,15 +353,15 @@ coerce-ν-out = coerce-μ-out  -- Same structure
 -- plan 0.98: `Res`-valued — forcing a possibly-finite stream may find no
 -- layer. This is `Out`'s pure counterpart and it stops exactly where `Out`'s
 -- does.
-sem-CoOut : ∀ {F : Functor} → WellFormedF F → ⟦ν⟧ F → Res (⟦ F ⟧F (⟦ν⟧ F))
-sem-CoOut {F} wf x = mapRes (coerce-ν-out wf (⟦ν⟧ F)) (unfoldS x)
+sem-CoOut : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ν⟧ F → Res (⟦ F ⟧F (⟦ν⟧ F))
+sem-CoOut {F = F} wf x = mapRes (coerce-ν-out wf (⟦ν⟧ F)) (unfoldS x)
 
 -- | CoIn: F(νF) → νF (coalgebra)
 --
 -- OCP-0003: Defined via Semantics.Functor's anaS with the identity coalgebra.
 -- CoIn packages an F-layer observation as a ν-value.
 --
-sem-CoIn : ∀ (F : Functor) → ⟦ F ⟧F (⟦ν⟧ F) → ⟦ν⟧ F
+sem-CoIn : ∀ {m} (F : Fun m) → ⟦ F ⟧F (⟦ν⟧ F) → ⟦ν⟧ F
 unfoldS (sem-CoIn F x) = returns (coerce-ν-in F (⟦ν⟧ F) x)
 
 
@@ -364,19 +371,19 @@ unfoldS (sem-CoIn F x) = returns (coerce-ν-in F (⟦ν⟧ F) x)
 -- `sfmapSemAna` places the corecursive `sem-ana` calls structurally at SId, so
 -- Agda sees the guard. Bridged to `sfmap` by `sfmapSemAna-is-sfmap`.
 mutual
-  sem-ana : ∀ (F : Functor) {A : Set} → (A → Res (⟦ F ⟧F A)) → A → ⟦ν⟧ F
+  sem-ana : ∀ {m} (F : Fun m) {A : Set} → (A → Res (⟦ F ⟧F A)) → A → ⟦ν⟧ F
   unfoldS (sem-ana F {A} coalg a) = semAnaLayer F A coalg (coalg a)
 
   -- Named and applied directly, not handed to `mapRes`: a partial application
   -- to a higher-order function hides the corecursive call from the
   -- guardedness checker.
-  semAnaLayer : ∀ (F : Functor) (A : Set) → (A → Res (⟦ F ⟧F A))
+  semAnaLayer : ∀ {m} (F : Fun m) (A : Set) → (A → Res (⟦ F ⟧F A))
               → Res (⟦ F ⟧F A) → Res (⟦ translateF IntRep FloatRep F ⟧SF (⟦ν⟧ F))
   semAnaLayer F A coalg stopped     = stopped
   semAnaLayer F A coalg (returns l) =
     returns (sfmapSemAna F (translateF IntRep FloatRep F) coalg (coerce-ν-in F A l))
 
-  sfmapSemAna : ∀ (F : Functor) (H : SFunctor) {A : Set}
+  sfmapSemAna : ∀ {m} (F : Fun m) (H : SFunctor) {A : Set}
               → (A → Res (⟦ F ⟧F A)) → ⟦ H ⟧SF A → ⟦ H ⟧SF (⟦ν⟧ F)
   sfmapSemAna F (SK B)     coalg x        = x
   sfmapSemAna F SId        coalg a        = sem-ana F coalg a

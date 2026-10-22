@@ -22,6 +22,7 @@
 
 module Once.Denotation.Sub where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
@@ -42,7 +43,7 @@ open import Once.Internal.Iterative using (T∞; fmap∞)
 -- The conversion a derivation denotes.
 ------------------------------------------------------------------------
 
-⟦_⟧<: : ∀ {A B} → A <: B → ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ
+⟦_⟧<: : ∀ {m} {A B : Ty m} → A <: B → ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ
 ⟦ sub-void   ⟧<: ()
 ⟦ sub-unit   ⟧<: x = x
 ⟦ sub-int    ⟧<: x = x
@@ -81,3 +82,4 @@ open import Data.Unit using (tt)
 <:-refl-rel (A ST.+ B) {inj₂ _} {inj₁ _} ()
 <:-refl-rel (ST.μ F) r = r
 <:-refl-rel (ST.ν F _) r = r
+<:-refl-rel (ST.var _) {()}

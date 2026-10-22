@@ -13,6 +13,7 @@
 
 module Once.Adequacy.EnvRel where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
 
@@ -23,7 +24,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.ValueRel using (RelD)
 
-restrict-rel : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ) {d d′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}
+restrict-rel : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ) {d d′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}
              → RelD ⟦ Γ ↾ Ψ ⟧ᶜ d d′ → RelD ⟦ Γ ↾ Ψ' ⟧ᶜ (restrictᴰ {Γ = Γ} ule d) (restrictᴰ {Γ = Γ} ule d′)
 restrict-rel {Γ = ∅}         ⊑[]          r = r
 restrict-rel {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) r = restrict-rel {Γ = Γ} ule r
@@ -33,12 +34,12 @@ restrict-rel {Γ = Γ , A ^ q} (o≤o ⊑∷ ule) r = restrict-rel {Γ = Γ} ule
 restrict-rel {Γ = Γ , A ^ q} (o≤m ⊑∷ ule) r = restrict-rel {Γ = Γ} ule (proj₁ r) , proj₂ r
 restrict-rel {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) r = restrict-rel {Γ = Γ} ule (proj₁ r) , proj₂ r
 
-lookup-rel : ∀ {n} (Γ : Ctx n) (i : Fin n) {d d′ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⟧ᴰ}
+lookup-rel : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n) {d d′ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⟧ᴰ}
            → RelD ⟦ Γ ↾ singleUse i One ⟧ᶜ d d′ → RelD (lookup Γ i) (lookupᴰUsed Γ i d) (lookupᴰUsed Γ i d′)
 lookup-rel (Γ , A ^ q) zero    r = proj₂ r
 lookup-rel (Γ , A ^ q) (suc i) r = lookup-rel Γ i r
 
-bind-rel : ∀ {n} {Γ : Ctx n} {Ψ' : Usage n} {A : Type} (q : Quantity) {d d′ : ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ} {a a′ : ⟦ A ⟧ᴰ}
+bind-rel : ∀ {m} {n} {Γ : Ctx m n} {Ψ' : Usage n} {A : Ty m} (q : Quantity) {d d′ : ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ} {a a′ : ⟦ A ⟧ᴰ}
          → RelD ⟦ Γ ↾ Ψ' ⟧ᶜ d d′ → RelD A a a′
          → RelD ⟦ (Γ , A ^ Many) ↾ (q ∷ Ψ') ⟧ᶜ (bindᴰ {Γ = Γ} {A = A} q d a) (bindᴰ {Γ = Γ} {A = A} q d′ a′)
 bind-rel Zero r ra = r

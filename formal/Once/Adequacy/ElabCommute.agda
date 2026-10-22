@@ -16,6 +16,7 @@
 import Once.Internal.Name
 import Once.Internal.Type.Sub
 import Once.Spec.Sub
+open import Once.Spec.Type using (Ty; KCtx)
 open import Once.Internal.Type.Sub using (·p-diag)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig; KCtx; GSub; Respects)
@@ -78,27 +79,27 @@ open View V
 ------------------------------------------------------------------------
 
 private
-  ⇝ᵢ-tm : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
+  ⇝ᵢ-tm : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₁ (elabᵢ V (q ⇝ᵢ d)) ≡ proj₁ (elabᵢ V d)
   ⇝ᵢ-tm refl d = refl
-  ⇝ᵢ-dr : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
+  ⇝ᵢ-dr : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ) → proj₂ (elabᵢ V (q ⇝ᵢ d)) ≅ proj₂ (elabᵢ V d)
   ⇝ᵢ-dr refl d = H.refl
-  ⇝ᶜ-tm : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
+  ⇝ᶜ-tm : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₁ (elabᶜ V (q ⇝ᶜ d)) ≡ proj₁ (elabᶜ V d)
   ⇝ᶜ-tm refl d = refl
-  ⇝ᶜ-dr : ∀ {n Γ D e A B Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
+  ⇝ᶜ-dr : ∀ {m} {D A B : Ty m} {n Γ e Ψ} (q : A ≡ B) (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ) → proj₂ (elabᶜ V (q ⇝ᶜ d)) ≅ proj₂ (elabᶜ V d)
   ⇝ᶜ-dr refl d = H.refl
 
-  ≅ref : ∀ {n} {Γ : C.Ctx n} {d} {τ₁ τ₂ : GSub (arity (S !! d))} {r₁ r₂} → τ₁ ≡ τ₂
+  ≅ref : ∀ {m} {n} {Γ : C.Ctx m n} {d} {τ₁ τ₂ : GSub (arity (S !! d))} {r₁ r₂} → τ₁ ≡ τ₂
        → GT.⊢ref {Γ = Γ} d τ₁ r₁ ≅ GT.⊢ref {Γ = Γ} d τ₂ r₂
-  ≅ref {r₁ = r₁} {r₂} refl
+  ≅ref {r₁ = r₁} {r₂ = r₂} refl
     rewrite extensionality (λ i → extensionality (λ e → IsBaseType-irrelevant (r₁ i e) (r₂ i e))) = H.refl
 
   -- A reference: the instance the substituted use finds is the substituted one.
-  refE-tm : ∀ {n} {Γ : C.Ctx n} {A₁ A} (d : Fin s) (i₁ : InstanceOf d A₁) (i₀ : InstanceOf d A)
+  refE-tm : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A : Ty m} (d : Fin s) (i₁ : InstanceOf d A₁) (i₀ : InstanceOf d A)
           → proj₁ i₁ ≡ (λ j → ρ̂ (proj₁ i₀ j))
           → proj₁ (refE {Γ = ρ̂S Γ} d i₁) ≡ ρ̂ₜ (proj₁ (refE {Γ = Γ} d i₀))
   refE-tm d i₁ i₀ h = cong (G.ref d) h
 
-  refE-dr : ∀ {n} {Γ : C.Ctx n} {A₁ A} (d : Fin s) (i₁ : InstanceOf d A₁) (i₀ : InstanceOf d A)
+  refE-dr : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A : Ty m} (d : Fin s) (i₁ : InstanceOf d A₁) (i₀ : InstanceOf d A)
           → proj₁ i₁ ≡ (λ j → ρ̂ (proj₁ i₀ j))
           → proj₂ (refE {Γ = ρ̂S Γ} d i₁) ≅ ρ̂ᶜ (proj₂ (refE {Γ = Γ} d i₀))
   refE-dr d (τ₁ , r₁ , e₁) (τ₀ , r₀ , e₀) h =
@@ -106,46 +107,46 @@ private
       (H.trans (≅ref h) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e₀) (rmA (λ X → X) (sym (ρ̂-ref d τ₀))))))
 
   -- A generator's reference: its contract is ground (D274).
-  sig-tm : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
+  sig-tm : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
          → proj₁ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≡ ρ̂ₜ (proj₁ (sigE {Γ = Γ} cn k wn dc))
   sig-tm cn k wn dc = refl
 
-  sig-dr : ∀ {n} {Γ : C.Ctx n} {T} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
+  sig-dr : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} (cn : Once.Spec.Name.CanonicalName) k wn (dc : Declared (Once.Internal.Name.showCanonical cn) T)
          → proj₂ (sigE {Γ = ρ̂S Γ} cn k wn dc) ≅ ρ̂ᶜ (proj₂ (sigE {Γ = Γ} cn k wn dc))
   sig-dr cn k wn dc = H.sym (rmA (λ X → X) (sym (ρ̂-rf (Declared.rigid dc))))
 
   -- D313: a generator at its guard — the guarded arrow is ground too.
 
   -- A definition's reference, at its ground instance, is fixed.
-  imp-tm : ∀ {n} {Γ : C.Ctx n} {x T} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
+  imp-tm : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} {x} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
          → proj₁ (importE {Γ = ρ̂S Γ} ia) ≡ ρ̂ₜ (proj₁ (importE {Γ = Γ} ia))
   imp-tm (def d i) ni = cong (G.ref d) (sym ni)
 
-  imp-dr : ∀ {n} {Γ : C.Ctx n} {x T} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
+  imp-dr : ∀ {m} {n} {Γ : C.Ctx m n} {T : Ty m} {x} (ia : ImportAt x T) → VN.NatImp S Δ τ r ia
          → proj₂ (importE {Γ = ρ̂S Γ} ia) ≅ ρ̂ᶜ (proj₂ (importE {Γ = Γ} ia))
   imp-dr {Γ = Γ} (def d (τ′ , r′ , e′)) ni =
     H.trans (rmA (λ X → X) e′)
       (H.trans (≅ref (sym ni)) (H.sym (H.trans (ρ̂ᶜ-sA (λ X → X) e′) (rmA (λ X → X) (sym (ρ̂-ref d τ′))))))
 
-  closeH : ∀ {n} {Γ : C.Ctx n} {t₁ t₂ A₁ A₂ π} {D₁ : C.∅ ⊢[ C.zeroUsage ] t₁ ∷ A₁ ! π} {D₂ : C.∅ ⊢[ C.zeroUsage ] t₂ ∷ A₂ ! π}
+  closeH : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A₂ : Ty m} {t₁ t₂ π} {D₁ : C.∅ ⊢[ C.zeroUsage ] t₁ ∷ A₁ ! π} {D₂ : C.∅ ⊢[ C.zeroUsage ] t₂ ∷ A₂ ! π}
          → t₁ ≡ t₂ → A₁ ≡ A₂ → D₁ ≅ D₂ → RN.⊢close {Γ = Γ} D₁ ≅ RN.⊢close {Γ = Γ} D₂
   closeH refl refl H.refl = H.refl
 
-  ≅app : ∀ {n} {Γ : C.Ctx n} {Ψ₁ Ψ₂ q π π₁ π₂ A₁ A₂ B₁ B₂ f₁ f₂ x₁ x₂}
+  ≅app : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A₂ B₁ B₂ : Ty m} {Ψ₁ Ψ₂ q π π₁ π₂ f₁ f₂ x₁ x₂}
            {df₁ : Γ ⊢[ Ψ₁ ] f₁ ∷ A₁ T.⇒[ mk-kind q π ] B₁ ! π₁} {df₂ : Γ ⊢[ Ψ₁ ] f₂ ∷ A₂ T.⇒[ mk-kind q π ] B₂ ! π₁}
            {dx₁ : Γ ⊢[ Ψ₂ ] x₁ ∷ A₁ ! positionGrade q π₂} {dx₂ : Γ ⊢[ Ψ₂ ] x₂ ∷ A₂ ! positionGrade q π₂}
        → A₁ ≡ A₂ → B₁ ≡ B₂ → f₁ ≡ f₂ → df₁ ≅ df₂ → x₁ ≡ x₂ → dx₁ ≅ dx₂ → GT.⊢app df₁ dx₁ ≅ GT.⊢app df₂ dx₂
   ≅app refl refl refl H.refl refl H.refl = H.refl
 
   -- Binding or passing a pure part (plan 0.116) preserves `≅`.
-  ≅let-pure : ∀ {n} {Γ : C.Ctx n} {q π A B Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ e₁ e₂ b₁ b₂}
+  ≅let-pure : ∀ {m} {n} {Γ : C.Ctx m n} {A B : Ty m} {q π Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ e₁ e₂ b₁ b₂}
                 {de₁ : Γ ⊢[ Ψ₁ ] e₁ ∷ A ! pure} {de₂ : Γ ⊢[ Ψ₁′ ] e₂ ∷ A ! pure}
                 {db₁ : (Γ C., A) ⊢[ q C.∷ Ψ₂ ] b₁ ∷ B ! π} {db₂ : (Γ C., A) ⊢[ q C.∷ Ψ₂′ ] b₂ ∷ B ! π}
             → Ψ₁ ≡ Ψ₁′ → e₁ ≡ e₂ → de₁ ≅ de₂ → Ψ₂ ≡ Ψ₂′ → b₁ ≡ b₂ → db₁ ≅ db₂
             → GT.⊢let-pure q de₁ db₁ ≅ GT.⊢let-pure q de₂ db₂
   ≅let-pure refl refl H.refl refl refl H.refl = H.refl
 
-  ≅app-pure : ∀ {n} {Γ : C.Ctx n} {q π A B Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ f₁ f₂ x₁ x₂}
+  ≅app-pure : ∀ {m} {n} {Γ : C.Ctx m n} {A B : Ty m} {q π Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ f₁ f₂ x₁ x₂}
                 {df₁ : Γ ⊢[ Ψ₁ ] f₁ ∷ A T.⇒[ mk-kind q π ] B ! pure} {df₂ : Γ ⊢[ Ψ₁′ ] f₂ ∷ A T.⇒[ mk-kind q π ] B ! pure}
                 {dx₁ : Γ ⊢[ Ψ₂ ] x₁ ∷ A ! pure} {dx₂ : Γ ⊢[ Ψ₂′ ] x₂ ∷ A ! pure}
             → Ψ₁ ≡ Ψ₁′ → f₁ ≡ f₂ → df₁ ≅ df₂ → Ψ₂ ≡ Ψ₂′ → x₁ ≡ x₂ → dx₁ ≅ dx₂
@@ -160,17 +161,17 @@ private
   closeT : ∀ {n} {t₁ t : G.Tm 0} → t₁ ≡ ρ̂ₜ t → RN.close {n} t₁ ≡ ρ̂ₜ (RN.close t)
   closeT et = trans (cong RN.close et) (sym (ρ̂ₜ-ren _ _))
 
-  ≅coerce : ∀ {n} {Γ : C.Ctx n} {Ψ π A B t₁ t₂} {p₁ p₂ : A Once.Spec.Sub.<: B}
+  ≅coerce : ∀ {m} {n} {Γ : C.Ctx m n} {A B : Ty m} {Ψ π t₁ t₂} {p₁ p₂ : A Once.Spec.Sub.<: B}
               {d₁ : Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Γ ⊢[ Ψ ] t₂ ∷ A ! π}
           → t₁ ≡ t₂ → d₁ ≅ d₂ → GT.⊢coerce p₁ d₁ ≅ GT.⊢coerce p₂ d₂
-  ≅coerce {p₁ = p₁} {p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl
+  ≅coerce {p₁ = p₁} {p₂ = p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl
 
 ------------------------------------------------------------------------
 -- THE INDUCTION.
 ------------------------------------------------------------------------
 
 mutual
-  tm-i : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
+  tm-i : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₁ (elabᵢ V (subst-i′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵢ V d))
   tm-i (t-int k)          = refl
   tm-i (t-float i f l p)  = refl
@@ -261,7 +262,7 @@ mutual
                                       (trans (cong G.wk (tm-c dx)) (sym (ρ̂ₜ-ren suc _)))
   tm-i (t-app-spine h da df) = cong₂ G.app (tm-d df) (tm-i da)
 
-  tm-c : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+  tm-c : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₁ (elabᶜ V (subst-c′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᶜ V d))
   tm-c t-id-check             = refl
   tm-c t-fst-check            = refl
@@ -294,7 +295,7 @@ mutual
   tm-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     cong (G.ref (entry lp)) (nat-inst lp ng ki)
 
-  tm-d : ∀ {n Γ D e A π B Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  tm-d : ∀ {m} {D A B : Ty m} {n Γ e π Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
        → proj₁ (elabᵈ V (subst-d′ ir d)) ≡ ρ̂ₜ (proj₁ (elabᵈ V d))
   tm-d (d-infer w p g)     = cong (G.coerce _ _) (tm-i w)
   tm-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
@@ -315,7 +316,7 @@ mutual
   tm-d (d-cata {F = F} {A = A} {π = π} wf da) =
     cong (λ u → G.let′ _ u _) (trans (⇝ᵢ-tm (cong (λ X → X T.⇒[ mk-kind Many π ] ρ̂ A) (ρ̂-⟦⟧ F A)) _) (tm-i da))
 
-  dr-i : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
+  dr-i : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵢ e ∶ A ⨾ Ψ)
        → proj₂ (elabᵢ V (subst-i′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵢ V d))
   dr-i (t-int k)          = H.refl
   dr-i (t-float i f l p)  = H.refl
@@ -443,7 +444,7 @@ mutual
     H.trans (≅2 _ _ DT.⊢effAppᶜ refl (tm-i df) (dr-i df) refl (tm-c dx) (dr-c dx)) (H.sym (c-effApp (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx))))
   dr-i (t-app-spine h da df) = ≅2 _ _ (GT.⊢app {π₁ = pure} {π₂ = pure}) refl (tm-d df) (dr-d df) refl (tm-i da) (dr-i da)
 
-  dr-c : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+  dr-c : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
        → proj₂ (elabᶜ V (subst-c′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᶜ V d))
   dr-c t-id-check             = H.refl
   dr-c t-fst-check            = H.refl
@@ -499,7 +500,7 @@ mutual
   dr-c (t-var-poly-instantiate {schema = sc} ln li lp ng ki) =
     refE-dr (entry lp) (inst lp ng (ρ̂-ki {sc} ki)) (inst lp ng ki) (nat-inst lp ng ki)
 
-  dr-d : ∀ {n Γ D e A π B Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  dr-d : ∀ {m} {D A B : Ty m} {n Γ e π Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
        → proj₂ (elabᵈ V (subst-d′ ir d)) ≅ ρ̂ᶜ (proj₂ (elabᵈ V d))
   dr-d (d-infer w p g)     = ≅coerce (tm-i w) (dr-i w)
   dr-d (d-poly {schema = sc} ln li lp ng as cv ki g) =
@@ -538,7 +539,7 @@ private
   Σ≅ : ∀ {X : Set} {P : X → Set} {a₁ a₂ : X} {b₁ : P a₁} {b₂ : P a₂} → a₁ ≡ a₂ → b₁ ≅ b₂ → (a₁ , b₁) ≡ (a₂ , b₂)
   Σ≅ refl H.refl = refl
 
-elab-ρ̂ᶜ : ∀ {n Γ D e A Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
+elab-ρ̂ᶜ : ∀ {m} {D A : Ty m} {n Γ e Ψ} (d : mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
         → elabᶜ V (subst-c′ ir d) ≡ (ρ̂ₜ (proj₁ (elabᶜ V d)) , ρ̂ᶜ (proj₂ (elabᶜ V d)))
 elab-ρ̂ᶜ d = Σ≅ (tm-c d) (dr-c d)
 

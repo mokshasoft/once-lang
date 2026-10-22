@@ -18,6 +18,7 @@ import Once.Internal.Type.WellFormed
 
 import Once.Spec.Type
 import Once.Type.Rigid
+open import Once.Spec.Type using (Ty; KCtx)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig)
 
@@ -61,18 +62,18 @@ open import Once.Adequacy.ViewNatural S using (NatImp; Natural; module Natural)
 -- elaboration (`ElabCommute`).
 import Once.Adequacy.ElabCommute as EC
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
-  elab-ρ̂ᶜ : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (nat : Natural Δ τ r V) (sg : SigGround)
-              (ir : RS.TopRF Δ τ r imps sigs) {n Γ D e A Ψ}
+  elab-ρ̂ᶜ : ∀ {m} {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (nat : Natural Δ τ r V) (sg : SigGround)
+              (ir : RS.TopRF Δ τ r imps sigs) {D A : Ty m} {n Γ e Ψ}
               (d : Once.Internal.Typing.Scope.mkCtx n Γ D imps polys sigs ⊢ᶜ e ∶ A ⨾ Ψ)
           → elabᶜ V (RS.subst-c′ Δ τ r ir d) ≡ (CI.ρ̂ₜ S Δ τ r (proj₁ (elabᶜ V d)) , CI.WithSG.ρ̂ᶜ S Δ τ r sg (proj₂ (elabᶜ V d)))
   elab-ρ̂ᶜ V nat sg ir d = EC.elab-ρ̂ᶜ S Δ τ r sg V nat ir d
 
 -- The elaboration of the substituted derivation means what the instantiated
 -- abstraction of the elaboration means: (ii), then (i) at the empty context.
-elab-inst-sem : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys)
+elab-inst-sem : ∀ {mₜ} {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys)
                   {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) (nat : Natural Δ τ r V) (sg : SigGround)
                   (ir : RS.TopRF Δ τ r imps sigs)
-                  {body : _} {A : Type} (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ A ⨾ C.Usage.[])
+                  {body : _} {A : Ty mₜ} (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ A ⨾ C.Usage.[])
                   (fmt : TargetNum) (δ : GM.DefSem)
               → GM.⟦ proj₂ (elabᶜ V (RS.subst-c Δ τ r ir D)) ⟧ fmt δ tt
                 ≡ GM.⟦ PT.instantiate τ r (abs-⊢ Δ sg (proj₂ (elabᶜ V D))) ⟧ fmt δ tt
@@ -81,7 +82,7 @@ elab-inst-sem V Δ τ r nat sg ir D fmt δ =
         (cong (λ E → GM.⟦ E ⟧ fmt δ tt) (sym (CI.WithSG.inst-abs S Δ τ r sg (proj₂ (elabᶜ V D)))))
 
 -- A transport of the checked type moves the elaboration's meaning with it.
-elab-subst-sem : ∀ {ctx body A B Ψ} (V : Views ctx) (e : A ≡ B) (D : ctx ⊢ᶜ body ∶ A ⨾ Ψ)
+elab-subst-sem : ∀ {m} {A B : Ty m} {ctx body Ψ} (V : Views ctx) (e : A ≡ B) (D : ctx ⊢ᶜ body ∶ A ⨾ Ψ)
                    (fmt : TargetNum) (δ : GM.DefSem) (γ : GM.Env (NamedCtx.debruijn ctx) Ψ)
                → GM.⟦ proj₂ (elabᶜ V (subst (λ X → ctx ⊢ᶜ body ∶ X ⨾ Ψ) e D)) ⟧ fmt δ γ
                  ≡ subst (λ X → ⟦ X ⟧ᵛ) e (GM.⟦ proj₂ (elabᶜ V D) ⟧ fmt δ γ)
@@ -95,13 +96,13 @@ elab-subst-sem V refl D fmt δ γ = refl
 -- the instance derivation itself is `TypeCheck.Instance.inst-at` (no core).
 inst-at = Inst.inst-at
 
-poly-instance-sem : ∀ {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (sg : SigGround)
+poly-instance-sem : ∀ {m} {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) (sg : SigGround)
                       (fmt : TargetNum) (δ : GM.DefSem) {body : _} (sc : PolyType)
-                      (nat : ∀ {U} (ki : KindedInstance sc U)
+                      (nat : ∀ {U : Ty m} (ki : KindedInstance sc U)
                              → Natural (kindsOf sc) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) V)
-                      (irf : (∀ {x T} → Once.Internal.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T)
-                           × (∀ {x T} → Once.Internal.Typing.Scope.lookupImport sigs x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T))
-                      (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Type} (ki : KindedInstance sc U)
+                      (irf : (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T)
+                           × (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport sigs x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T))
+                      (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Ty m} (ki : KindedInstance sc U)
                   → GM.⟦ proj₂ (elabᶜ V (inst-at sc irf D ki)) ⟧ fmt δ tt
                     ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
                         (GM.⟦ PT.instantiate (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
@@ -130,7 +131,7 @@ import Once.Internal.Core.Translate as TR
 
 module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   private
-    Inst : Type → Schema → Set
+    Inst : ∀ {m} → Ty m → Schema → Set
     Inst T sch = Σ-syntax (GSub (arity sch)) (λ τ′ → Respects (kinds sch) τ′ × (type sch ⟪ τ′ ⟫ ≡ T))
 
     -- Pointwise ρ̂ survives the transport along the schema equation.

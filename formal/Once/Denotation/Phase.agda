@@ -20,6 +20,7 @@
 
 module Once.Denotation.Phase where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -43,14 +44,14 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 
 -- | Read the one variable a `var` uses. As in `projUsed`, the chain collapses:
 --   the head IS the variable, and a `Zero` head is not in the environment.
-lookupᴰUsed : ∀ {n} (Γ : Ctx n) (i : Fin n)
+lookupᴰUsed : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n)
             → ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⟧ᴰ → ⟦ lookup Γ i ⟧ᴰ
 lookupᴰUsed (Γ , A ^ q) fzero    dγ = proj₂ dγ
 lookupᴰUsed (Γ , A ^ q) (fsuc i) dγ = lookupᴰUsed Γ i dγ
 
 -- | The `erase` projection at the denotation: narrow the environment to a
 --   smaller usage. `fst` where a variable is dropped, keep it otherwise.
-restrictᴰ : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n}
+restrictᴰ : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n}
           → Ψ' ⊑ᵘ Ψ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ
 restrictᴰ {Γ = ∅}         ⊑[]              dγ = dγ
 restrictᴰ {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) dγ = restrictᴰ {Γ = Γ} ule dγ
@@ -61,7 +62,7 @@ restrictᴰ {Γ = Γ , A ^ q} (o≤m ⊑∷ ule) dγ = restrictᴰ {Γ = Γ} ule
 restrictᴰ {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) dγ = restrictᴰ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ
 
 -- | Extend for a binder, keyed on the bound variable's usage in the body.
-bindᴰ : ∀ {n} {Γ : Ctx n} {Ψ' : Usage n} {A} (q : Quantity)
+bindᴰ : ∀ {m} {n} {Γ : Ctx m n} {Ψ' : Usage n} {A : Ty m} (q : Quantity)
       → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ → ⟦ A ⟧ᴰ → ⟦ ⟦ (Γ , A ^ Many) ↾ (q ∷ Ψ') ⟧ᶜ ⟧ᴰ
 bindᴰ Zero dγ a = dγ
 bindᴰ One  dγ a = dγ , a
@@ -70,7 +71,7 @@ bindᴰ Many dγ a = dγ , a
 -- | The ERASED binder: no value is required, because none exists. `bindᴰ Zero`
 --   still demands an `⟦ A ⟧ᴰ` it then discards, and at an erased arrow there is
 --   nothing to hand it (`A` may be uninhabited).
-bindᴰ0 : ∀ {n} {Γ : Ctx n} {Ψ' : Usage n} {A}
+bindᴰ0 : ∀ {m} {n} {Γ : Ctx m n} {Ψ' : Usage n} {A : Ty m}
        → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ → ⟦ ⟦ (Γ , A ^ Many) ↾ (Zero ∷ Ψ') ⟧ᶜ ⟧ᴰ
 bindᴰ0 dγ = dγ
 

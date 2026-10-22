@@ -16,6 +16,8 @@
 
 module Once.Denotation.ValueRel where
 
+open import Once.Spec.Type using (Base)
+open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx; WFFun)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -59,7 +61,7 @@ LayerRel H (G₁ S⊗ G₂) (x , y)  (x′ , y′) = LayerRel H G₁ x x′ × L
 -- The relation, by type.
 ------------------------------------------------------------------------
 
-RelD : ∀ (A : Type) → ⟦ A ⟧ᴰ → ⟦ A ⟧ᴰ → Set
+RelD : ∀ {m} (A : Ty m) → ⟦ A ⟧ᴰ → ⟦ A ⟧ᴰ → Set
 RelD Unit        _ _ = ⊤
 RelD Void        () _
 RelD (A * B) (a , b) (a′ , b′) = RelD A a a′ × RelD B b b′
@@ -74,9 +76,10 @@ RelD (μ-type F)  x y = x ≡ y
 RelD (ν-type F _) x y = StreamRel (translateF Carrier Carrier F) x y
 RelD Int         x y = x ≡ y
 RelD Float       x y = x ≡ y
+RelD (var _) () _
 
 -- Transport along an equation of types.
-RelD-subst : ∀ {A B : Type} (e : A ≡ B) {x y : ⟦ A ⟧ᴰ}
+RelD-subst : ∀ {m} {A B : Ty m} (e : A ≡ B) {x y : ⟦ A ⟧ᴰ}
            → RelD A x y → RelD B (subst ⟦_⟧ᴰ e x) (subst ⟦_⟧ᴰ e y)
 RelD-subst refl r = r
 
@@ -85,7 +88,7 @@ RelD-subst refl r = r
 -- positions related.
 ------------------------------------------------------------------------
 
-data FRel {X Y : Set} (R : X → Y → Set) : (F : Functor) → ⟦ F ⟧F X → ⟦ F ⟧F Y → Set where
+data FRel {m} {X Y : Set} (R : X → Y → Set) : (F : Fun m) → ⟦ F ⟧F X → ⟦ F ⟧F Y → Set where
   fr-K    : ∀ {A x} → FRel R (K A) x x
   fr-Id   : ∀ {x y} → R x y → FRel R Id x y
   fr-inl  : ∀ {F G x y} → FRel R F x y → FRel R (F ⊕ G) (inj₁ x) (inj₁ y)
@@ -111,7 +114,7 @@ open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Internal.Type using (⟦_⟧T)
 
-base-eq : ∀ {A} → IsBaseType A → ∀ {x y : ⟦ A ⟧ᴰ} → RelD A x y → x ≡ y
+base-eq : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ∀ {x y : ⟦ A ⟧ᴰ} → RelD A x y → x ≡ y
 base-eq base-Unit       _ = refl
 base-eq base-Void {()}
 base-eq base-Int        r = r
@@ -122,8 +125,9 @@ base-eq (base-Sum a b) {inj₁ x} {inj₁ y} r = cong inj₁ (base-eq a r)
 base-eq (base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eq b r)
 base-eq (base-Sum a b) {inj₁ _} {inj₂ _} ()
 base-eq (base-Sum a b) {inj₂ _} {inj₁ _} ()
+base-eq (b-var _) {()}
 
-base-refl : ∀ {A} → IsBaseType A → ∀ (x : ⟦ A ⟧ᴰ) → RelD A x x
+base-refl : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ∀ (x : ⟦ A ⟧ᴰ) → RelD A x x
 base-refl base-Unit       x = tt
 base-refl base-Void       ()
 base-refl base-Int        x = refl
@@ -131,6 +135,7 @@ base-refl base-Float      x = refl
 base-refl (base-Prod a b) (x , y) = base-refl a x , base-refl b y
 base-refl (base-Sum a b)  (inj₁ x) = base-refl a x
 base-refl (base-Sum a b)  (inj₂ y) = base-refl b y
+base-refl (b-var _)      ()
 
 ------------------------------------------------------------------------
 -- Runs: the monad's operations preserve relatedness.
@@ -249,7 +254,7 @@ RelS-substˡ : ∀ {X X′ Y} {R : X′ → Y → Set} (E : X ≡ X′) {m : T�
             → RelS (λ a b → R (subst (λ Z → Z) E a) b) m n → RelS R (subst T∞ E m) n
 RelS-substˡ refl h = h
 
-seqF∞-rel : ∀ {X Y} {R : X → Y → Set} (G : Functor) {l : ⟦ G ⟧F (T∞ X)} {l′ : ⟦ G ⟧F (T∞ Y)}
+seqF∞-rel : ∀ {m} {X Y} {R : X → Y → Set} (G : Fun m) {l : ⟦ G ⟧F (T∞ X)} {l′ : ⟦ G ⟧F (T∞ Y)}
           → FRel (RelS R) G l l′ → RelS (FRel R G) (seqF∞ G l) (seqF∞ G l′)
 seqF∞-rel (K A)   fr-K        = relS-ret fr-K
 seqF∞-rel Id      (fr-Id r)   = RelS-mono fr-Id r
@@ -266,7 +271,7 @@ private
   fr-K≡ : ∀ {X Y} {R : X → Y → Set} {A} {x y} → x ≡ y → FRel R (K A) x y
   fr-K≡ refl = fr-K
 
-cfD-rel : ∀ {F} (wf : WellFormedF F) (C : Type) {x y : ⟦ ⟦ F ⟧T C ⟧ᴰ}
+cfD-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {x y : ⟦ ⟦ F ⟧T C ⟧ᴰ}
         → RelD (⟦ F ⟧T C) x y → FRel (RelD C) F (coerce-functor-D wf C x) (coerce-functor-D wf C y)
 cfD-rel (wf-K b) C r = fr-K≡ (cong (forgetᵇ b) (base-eq b r))
 cfD-rel wf-Id C r = fr-Id r
@@ -276,7 +281,7 @@ cfD-rel (wf-Sum wf wg) C {inj₁ _} {inj₂ _} ()
 cfD-rel (wf-Sum wf wg) C {inj₂ _} {inj₁ _} ()
 cfD-rel (wf-Prod wf wg) C {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = fr-pair (cfD-rel wf C r₁) (cfD-rel wg C r₂)
 
-cfD⁻¹-rel : ∀ {F} (wf : WellFormedF F) (C : Type) {x y : ⟦ F ⟧F ⟦ C ⟧ᴰ}
+cfD⁻¹-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {x y : ⟦ F ⟧F ⟦ C ⟧ᴰ}
           → FRel (RelD C) F x y → RelD (⟦ F ⟧T C) (coerce-functor⁻¹-D wf C x) (coerce-functor⁻¹-D wf C y)
 cfD⁻¹-rel (wf-K b) C {x} fr-K = base-refl b (injectᵇ b x)
 cfD⁻¹-rel wf-Id C (fr-Id r) = r
@@ -290,7 +295,7 @@ cfD⁻¹-rel (wf-Prod wf wg) C (fr-pair r s) = cfD⁻¹-rel wf C r , cfD⁻¹-re
 
 open import Once.Internal.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
 
-cμin-rel : ∀ (F : Functor) {X : Set} {R : X → X → Set} {x y : ⟦ F ⟧F X}
+cμin-rel : ∀ {m} (F : Fun m) {X : Set} {R : X → X → Set} {x y : ⟦ F ⟧F X}
          → FRel R F x y → SRel R (translateF Carrier Carrier F) (coerce-μ-in F X x) (coerce-μ-in F X y)
 cμin-rel (K A)   fr-K          = refl
 cμin-rel Id      (fr-Id r)     = r
@@ -298,7 +303,7 @@ cμin-rel (F ⊕ G) (fr-inl r)    = cμin-rel F r
 cμin-rel (F ⊕ G) (fr-inr r)    = cμin-rel G r
 cμin-rel (F ⊗ G) (fr-pair r s) = cμin-rel F r , cμin-rel G s
 
-cμout-rel : ∀ {F} (wf : WellFormedF F) {X : Set} {R : X → X → Set} {x y : ⟦ translateF Carrier Carrier F ⟧SF X}
+cμout-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {X : Set} {R : X → X → Set} {x y : ⟦ translateF Carrier Carrier F ⟧SF X}
           → SRel R (translateF Carrier Carrier F) x y → FRel R F (coerce-μ-out wf X x) (coerce-μ-out wf X y)
 cμout-rel (wf-K pA) e = fr-K≡ (cong (coerce-base-to-full pA) e)
 cμout-rel wf-Id r = fr-Id r
@@ -360,7 +365,7 @@ module _ {H : SFunctor} {A B : Set} {RA : A → B → Set} {c₁ : A → T∞ (�
 open import Once.Internal.Value Carrier Carrier using (sem-cata)
 open import Once.Internal.StreamInf using (in-νᴵ)
 
-sem-cata-rel : ∀ {F} (wf : WellFormedF F) {A : Set} {R : A → A → Set} {alg₁ alg₂ : ⟦ F ⟧F A → A}
+sem-cata-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {A : Set} {R : A → A → Set} {alg₁ alg₂ : ⟦ F ⟧F A → A}
              → (∀ {l₁ l₂} → FRel R F l₁ l₂ → R (alg₁ l₁) (alg₂ l₂))
              → ∀ x → R (sem-cata wf alg₁ x) (sem-cata wf alg₂ x)
 sem-cata-rel wf h x = cataS-rel (λ sr → h (cμout-rel wf sr)) x

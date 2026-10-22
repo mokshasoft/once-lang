@@ -24,6 +24,7 @@ module Once.Compile where
 
 import Once.Internal.Context as Srf
 
+open import Once.Spec.Type using (Ty)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
 import Data.List as DL
@@ -149,22 +150,22 @@ open import Data.Nat using (_<ᵇ_)
 -- converts (`mainEntry`). A `main` is never checked at `Eff Unit Unit`
 -- instead of its own type — checking is not closed upward (R6), and a body
 -- that only checks there is not what its signature says (R7).
-mainType : Type
+mainType : ∀ {m} → Ty m
 mainType = Unit ⇒[ mk-kind Many eff ] Unit
 
-validateMain-at : (ty : Type) → Dec (ty <: mainType) → String ⊎ ⊤
+validateMain-at : ∀ {m} → (ty : Ty m) → Dec (ty <: mainType) → String ⊎ ⊤
 validateMain-at ty (yes _) = inj₂ tt
 validateMain-at ty (no _)  =
   inj₁ ("main must be usable as Eff Unit Unit (its type below it), but its type is " ++ showType ty)
 
-validateMain : Type → String ⊎ ⊤
+validateMain : ∀ {m} → Ty m → String ⊎ ⊤
 validateMain ty = validateMain-at ty (ty <:? mainType)
 
 -- | D314/D321 (plan 0.119 D6): the first LOWERING of a definition's type at
 -- which its body also checks (`Once.Internal.Principal`); none means the type is
 -- the body's principal type.
-firstChecking : (ctx : NamedCtx) (e : RawExpr) → List Type → Maybe Type
-fc-step : (ctx : NamedCtx) (e : RawExpr) (X : Type) → List Type → TE.VerifiedCheckResult ctx e X → Maybe Type
+firstChecking : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) → List (Ty m) → Maybe (Ty m)
+fc-step : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (X : Ty m) → List (Ty m) → TE.VerifiedCheckResult ctx e X → Maybe (Ty m)
 firstChecking ctx e []       = nothing
 firstChecking ctx e (X ∷ Xs) = fc-step ctx e X Xs (TE.checkElabV ctx e X)
 fc-step ctx e X Xs (TE.success _ _ _ _ , _) = just X
@@ -183,7 +184,7 @@ fc-step ctx e X Xs (TE.failure _ , _)       = firstChecking ctx e Xs
 -- uncurried to `apply ∘ ⟨ cfIR ∘ terminal , id ⟩ : IR A B` — the verified
 -- `apply` consumes the closure with the incoming argument `id`. `main` is no
 -- exception (D253): at `Eff Unit Unit = Unit ⇒[eff] Unit` this is its entry.
-directCallIR : (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] IR ⌊ D ⌋ ⌊ C ⌋
+directCallIR : ∀ {m} → (ty : Ty m) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] IR ⌊ D ⌋ ⌊ C ⌋
 -- Plan 0.53: `Heap`, not `Stack`. A curried direct-call
 -- function's first application returns a closure that captures the first arg
 -- and escapes, so its apply-pair must be heap-allocated.
@@ -209,7 +210,7 @@ emptyFunCtx : FunCtx
 emptyFunCtx = []
 
 -- | Extend context with a new function
-extendFunCtx : FunCtx → String → Type → FunCtx
+extendFunCtx : ∀ {m} → FunCtx → String → Ty m → FunCtx
 extendFunCtx ctx name ty = (name , ty) ∷ ctx
 
 -- | Compile a function body to IR with context of previous functions
@@ -226,8 +227,8 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- to prove `doOpt`-independence of success without the `with`-bite).
 -- D254: the compiled term is the REALIZATION of the checker's derivation
 -- (`realize`), the reference elaboration the Spec reads.
-compileFunBody-aux : ∀ {ctx : NamedCtx} {body : RawExpr}
-  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
+compileFunBody-aux : ∀ {m} {ctx : NamedCtx m} {body : RawExpr}
+  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
   → TE.VerifiedCheckResult ctx body ty → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
@@ -242,7 +243,7 @@ compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ _ _ _ 
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
-compileFunBody : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBody : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody m doOpt ctx polys impsOf name ty expr =
   compileFunBody-aux m doOpt ctx polys impsOf name ty refl
     (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty)
@@ -254,23 +255,23 @@ compileFunBody m doOpt ctx polys impsOf name ty expr =
 -- Explicit-argument aux form (Plan 0.48): `compileFun-aux` dispatches on the
 -- `name == "main"` Bool, `compileFun-main-aux` on the `validateMain` result —
 -- both `doOpt`-free guards, so success rides on `compileFunBody` alone.
-compileFun-main-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-main-aux : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun-main-aux m doOpt ctx polys impsOf name ty expr (inj₁ err) = inj₁ err
 compileFun-main-aux m doOpt ctx polys impsOf name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys impsOf name ty expr
 
-compileFun-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun-aux : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun-aux m doOpt ctx polys impsOf name ty expr true  = compileFun-main-aux m doOpt ctx polys impsOf name ty expr (validateMain ty)
 compileFun-aux m doOpt ctx polys impsOf name ty expr false = compileFunBody m doOpt ctx polys impsOf name ty expr
 
-compileFun : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFun : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx polys impsOf name ty expr (name == "main")
 
 -- R8 (plan 0.121): a definition WITHOUT a signature is compiled from its body's
 -- SYNTHESIS — the term the Spec's `w-nosig` takes — at the type it
 -- synthesizes (D323). (Checking it at that type would elaborate differently:
 -- a pair literal component-wise, a synthesized part with an identity coercion.)
-compileFunBodyI-at : ∀ {ctx : NamedCtx} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size ctx)}
-  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
+compileFunBodyI-at : ∀ {m} {ctx : NamedCtx m} {body : RawExpr} {T : Ty m} {Ψ : Srf.Usage (NamedCtx.size ctx)}
+  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
   → ctx ⊢ᵢ body ∶ T ⨾ Ψ → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (no _) =
@@ -281,8 +282,8 @@ compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
-compileFunBodyI-aux : ∀ {ctx : NamedCtx} {body : RawExpr}
-  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
+compileFunBodyI-aux : ∀ {m} {ctx : NamedCtx m} {body : RawExpr}
+  → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
   → TE.VerifiedInferResult ctx body → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
@@ -290,24 +291,24 @@ compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _
 compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success T _ _ _ _ , w) =
   compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (T ≟T ty)
 
-compileFunBodyI : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunBodyI : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBodyI m doOpt ctx polys impsOf name ty expr =
   compileFunBodyI-aux m doOpt ctx polys impsOf name ty refl
     (TE.inferElabV (ctxWithImportsAndPolys ctx polys) expr)
 
-compileFunI-main-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunI-main-aux : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunI-main-aux m doOpt ctx polys impsOf name ty expr (inj₁ err) = inj₁ err
 compileFunI-main-aux m doOpt ctx polys impsOf name ty expr (inj₂ _)   = compileFunBodyI m doOpt ctx polys impsOf name ty expr
 
-compileFunI-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunI-aux : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunI-aux m doOpt ctx polys impsOf name ty expr true  = compileFunI-main-aux m doOpt ctx polys impsOf name ty expr (validateMain ty)
 compileFunI-aux m doOpt ctx polys impsOf name ty expr false = compileFunBodyI m doOpt ctx polys impsOf name ty expr
 
-compileFunI : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunI : ∀ {m} → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunI m doOpt ctx polys impsOf name ty expr = compileFunI-aux m doOpt ctx polys impsOf name ty expr (name == "main")
 
 -- A definition, by whether it has a signature.
-compileFunM : Maybe Type → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
+compileFunM : ∀ {m} → Maybe (Ty m) → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Ty m) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunM (just _) = compileFun
 compileFunM nothing  = compileFunI
 
@@ -317,11 +318,11 @@ compileFunM nothing  = compileFunI
 
 -- | Result of compiling a module
 -- Contains function name, type, and compiled IR
-record CompiledFun : Set where
+record CompiledFun {m} : Set where
   constructor mkCompiledFun
   field
     cfName : CanonicalName
-    cfType : Type
+    cfType : Ty m
     cfIR   : IR ⌊ Unit ⌋ ⌊ cfType ⌋
     -- (D274: no `cfIsPrimitive`. An FFI declaration is a generator of Σ, not
     -- a definition, so it is never compiled to a function.)
@@ -346,7 +347,7 @@ buildPolyCtx (pfi ∷ rest) =
 -- synthesizes (no specialization, no ambiguity). Inferred in a SELF-LESS
 -- context (Once has no recursion). `inferElab`'s `success` carries it.
 
-inferType : TopCtx → PolyCtx → RawExpr → String ⊎ Type
+inferType : ∀ {m} → TopCtx → PolyCtx → RawExpr → String ⊎ Ty m
 inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) body
 ... | TE.success A _ _ _ _ = inj₂ A
 -- D323: a definition without a signature has the type its body synthesizes;
@@ -356,7 +357,7 @@ inferType ctx polys body with TE.inferElab (ctxWithImportsAndPolys ctx polys) bo
             ++ "): a definition without a signature must synthesize its type; give it a signature")
 
 -- | The explicit signature if given, otherwise the inferred type (D007).
-resolveFunType : TopCtx → PolyCtx → Maybe Type → RawExpr → String ⊎ Type
+resolveFunType : ∀ {m} → TopCtx → PolyCtx → Maybe (Ty m) → RawExpr → String ⊎ Ty m
 resolveFunType ctx polys (just ty) body = inj₂ ty
 resolveFunType ctx polys nothing   body = inferType ctx polys body
 
@@ -401,7 +402,7 @@ checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
 -- The compile-time scope: `Spec.Module.Scope` — the signature Σ, the
 -- monomorphic definitions — with each telescope entry's DECLARATION scope (where
 -- the resolver elaborates its body at a use).
-record CScope : Set where
+record CScope {m} : Set where
   constructor cscope
   field
     csig  : FunCtx
@@ -435,17 +436,17 @@ declImps-aux e es x (no _)  = declImps es x
 -- D324: `main` is the program's entry, not a name: no later definition sees
 -- it. The one place a definition enters the definitions' context — the
 -- compiler's scope and the typing's (`Lang.Module.addImp`) both use it.
-extendDefs : FunCtx → String → Type → FunCtx
-extendDefs-at : Bool → FunCtx → String → Type → FunCtx
+extendDefs : ∀ {m} → FunCtx → String → Ty m → FunCtx
+extendDefs-at : ∀ {m} → Bool → FunCtx → String → Ty m → FunCtx
 extendDefs fc x ty = extendDefs-at (x == "main") fc x ty
 extendDefs-at true  fc x ty = fc
 extendDefs-at false fc x ty = extendFunCtx fc x ty
 
-extendScope : CScope → String → Type → CScope
+extendScope : ∀ {m} → CScope → String → Ty m → CScope
 extendScope sc x ty = cscope (CScope.csig sc) (extendDefs (CScope.cimps sc) x ty) (CScope.ctele sc)
 
 -- …an FFI declaration the signature Σ (D274)…
-extendSig : CScope → String → Type → CScope
+extendSig : ∀ {m} → CScope → String → Ty m → CScope
 extendSig sc x ty = cscope (extendFunCtx (CScope.csig sc) x ty) (CScope.cimps sc) (CScope.ctele sc)
 
 -- …and a telescope definition the telescope, with its declaration scope.
@@ -639,7 +640,7 @@ open import Data.Integer.Show renaming (show to showℤ)
 ------------------------------------------------------------------------
 
 -- | `main`'s type, `Eff Unit Unit`.
-EffUU : Type
+EffUU : ∀ {m} → Ty m
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 -- D253: `main` is an entry like any other; the program's own `main` is the

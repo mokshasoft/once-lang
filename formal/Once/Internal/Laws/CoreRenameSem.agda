@@ -21,6 +21,7 @@
 -- its slot.)
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig)
 
@@ -48,7 +49,7 @@ open import Once.Internal.Core.Typing S
 open import Once.Internal.Type.WellFormed using (con-fun)
 import Once.Internal.Core.Meaning S as GM
 
-Env : ∀ {n} → Ctx n → Usage n → Set
+Env : ∀ {m} {n} → Ctx m n → Usage n → Set
 Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 ------------------------------------------------------------------------
@@ -57,7 +58,7 @@ Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 -- `skip` drops the slot the thinning added (its usage is `Zero`, so the
 -- runtime environment has no slot for it); `keep` keeps a slot iff it is live.
-thinᴰ : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) (Ψ : Usage n)
+thinᴰ : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) (Ψ : Usage n)
       → Env Δ (thin-usage θ Ψ) → Env Γ Ψ
 thinᴰ done     []         dΔ = dΔ
 thinᴰ (skip θ) Ψ          dΔ = thinᴰ θ Ψ dΔ
@@ -69,7 +70,7 @@ thinᴰ (keep θ) (Many ∷ Ψ) dΔ = thinᴰ θ Ψ (proj₁ dΔ) , proj₂ dΔ
 -- The usage order is proof-irrelevant
 ------------------------------------------------------------------------
 
-restrictᵛ-irr : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (u v : Ψ' ⊑ᵘ Ψ) (x : Env Γ Ψ)
+restrictᵛ-irr : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (u v : Ψ' ⊑ᵘ Ψ) (x : Env Γ Ψ)
               → restrictᵛ {Γ = Γ} u x ≡ restrictᵛ {Γ = Γ} v x
 restrictᵛ-irr {Γ = Γ} u v x = cong (λ w → restrictᵛ {Γ = Γ} w x) (⊑ᵘ-unique u v)
 
@@ -78,11 +79,11 @@ restrictᵛ-irr {Γ = Γ} u v x = cong (λ w → restrictᵛ {Γ = Γ} w x) (⊑
 ------------------------------------------------------------------------
 
 -- The thinned order, from the original one.
-thin-⊑ : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+thin-⊑ : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
        → Ψ' ⊑ᵘ Ψ → thin-usage θ Ψ' ⊑ᵘ thin-usage θ Ψ
 thin-⊑ = thin-usage-⊑ᵘ
 
-thin-restrict : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+thin-restrict : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
                 (u : Ψ' ⊑ᵘ Ψ) (x : Env Δ (thin-usage θ Ψ))
               → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} (thin-⊑ θ u) x) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ x)
 thin-restrict done     ⊑[]        x = refl
@@ -95,13 +96,13 @@ thin-restrict (keep θ) (o≤m ⊑∷ u) x = cong (_, proj₂ x) (thin-restrict 
 thin-restrict (keep θ) (m≤m ⊑∷ u) x = cong (_, proj₂ x) (thin-restrict θ u (proj₁ x))
 
 -- …at ANY pair of witnesses (the order is proof-irrelevant).
-thin-restrict′ : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+thin-restrict′ : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
                  (u : Ψ' ⊑ᵘ Ψ) (u' : thin-usage θ Ψ' ⊑ᵘ thin-usage θ Ψ) (x : Env Δ (thin-usage θ Ψ))
                → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} u' x) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ x)
 thin-restrict′ {Δ = Δ} θ u u' x = trans (cong (thinᴰ θ _) (restrictᵛ-irr {Γ = Δ} u' (thin-⊑ θ u) x)) (thin-restrict θ u x)
 
 -- A binder under `keep`.
-thin-bind : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {A : Type} (q : Quantity) (Ψ : Usage n)
+thin-bind : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) {A : Ty mₜ} (q : Quantity) (Ψ : Usage n)
             (x : Env Δ (thin-usage θ Ψ)) (a : ⟦ A ⟧ᵛ)
           → thinᴰ (keep {A = A} {q = Many} θ) (q ∷ Ψ) (bindᵛ {Γ = Δ} {A = A} q x a) ≡ bindᵛ {Γ = Γ} {A = A} q (thinᴰ θ Ψ x) a
 thin-bind θ Zero Ψ x a = refl
@@ -113,19 +114,19 @@ thin-bind θ Many Ψ x a = refl
 ------------------------------------------------------------------------
 
 -- A usage transport on a derivation is a transport on its environment.
-⟦⟧-substΨ : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} {t A π} (e : Ψ ≡ Ψ')
+⟦⟧-substΨ : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} {A : Ty m} {t π} (e : Ψ ≡ Ψ')
               (d : Γ ⊢[ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ')
           → GM.⟦ subst (λ U → Γ ⊢[ U ] t ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (subst (Env Γ) (sym e) x)
 ⟦⟧-substΨ refl d fmt δ x = refl
 
 -- …a term transport is invisible…
-⟦⟧-substt : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t t' A π} (e : t ≡ t')
+⟦⟧-substt : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {t t' π} (e : t ≡ t')
               (d : Γ ⊢[ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ)
           → GM.⟦ subst (λ u → Γ ⊢[ Ψ ] u ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ x
 ⟦⟧-substt refl d fmt δ x = refl
 
 -- …and a type transport transports the result.
-⟦⟧-substA : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A A' π} (e : A ≡ A')
+⟦⟧-substA : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A A' : Ty m} {t π} (e : A ≡ A')
               (d : Γ ⊢[ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ)
           → GM.⟦ subst (λ X → Γ ⊢[ Ψ ] t ∷ X ! π) e d ⟧ fmt δ x ≡ subst (λ X → M π ⟦ X ⟧ᵛ) e (GM.⟦ d ⟧ fmt δ x)
 ⟦⟧-substA refl d fmt δ x = refl
@@ -134,7 +135,7 @@ thin-bind θ Many Ψ x a = refl
 -- The general move: restriction after a usage transport, thinned.
 ------------------------------------------------------------------------
 
-thin-restr : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
+thin-restr : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n}
                (u : Ψ' ⊑ᵘ Ψ) {U : Usage m} (e : thin-usage θ Ψ ≡ U)
                (u' : thin-usage θ Ψ' ⊑ᵘ U) (x : Env Δ U)
            → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} u' x) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ (subst (Env Δ) (sym e) x))
@@ -149,7 +150,7 @@ bindCᵍ : ∀ {π₁ π₂} {X Y : Set} {a a' : M π₁ X} {f g : X → M π₂
 bindCᵍ {π₁} {π₂} {a = a} refl h = cong (bindᵍ π₁ π₂ a) (extensionality h)
 
 -- Undo a transport.
-back : ∀ {m} {Δ : Ctx m} {U V : Usage m} (e : U ≡ V) (x : Env Δ U) → subst (Env Δ) (sym e) (subst (Env Δ) e x) ≡ x
+back : ∀ {mₜ} {m} {Δ : Ctx mₜ m} {U V : Usage m} (e : U ≡ V) (x : Env Δ U) → subst (Env Δ) (sym e) (subst (Env Δ) e x) ≡ x
 back e x = subst-sym-subst e
 
 ------------------------------------------------------------------------
@@ -160,19 +161,19 @@ back e x = subst-sym-subst e
 tail≡ : ∀ {n} {q : Quantity} {A B : Usage n} → (Once.Internal.Context._∷_ q A) ≡ (q ∷ B) → A ≡ B
 tail≡ refl = refl
 
-peel0 : ∀ {n} {Δ : Ctx n} {X : Type} {r : Quantity} {A B : Usage n} (e : Zero ∷ A ≡ Zero ∷ B) (x : Env Δ A)
+peel0 : ∀ {m} {n} {Δ : Ctx m n} {X : Ty m} {r : Quantity} {A B : Usage n} (e : Zero ∷ A ≡ Zero ∷ B) (x : Env Δ A)
       → subst (Env (Δ , X ^ r)) e x ≡ subst (Env Δ) (tail≡ e) x
 peel0 e x with tail≡ e
 ... | refl with e
 ...   | refl = refl
 
-peel1 : ∀ {n} {Δ : Ctx n} {X : Type} {r : Quantity} {A B : Usage n} (e : One ∷ A ≡ One ∷ B) (x : Env Δ A) (a : ⟦ X ⟧ᵛ)
+peel1 : ∀ {m} {n} {Δ : Ctx m n} {X : Ty m} {r : Quantity} {A B : Usage n} (e : One ∷ A ≡ One ∷ B) (x : Env Δ A) (a : ⟦ X ⟧ᵛ)
       → subst (Env (Δ , X ^ r)) e (x , a) ≡ (subst (Env Δ) (tail≡ e) x , a)
 peel1 e x a with tail≡ e
 ... | refl with e
 ...   | refl = refl
 
-lookup-thin : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) (i : Fin n)
+lookup-thin : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) (i : Fin n)
                 (e' : thin-usage θ (singleUse i One) ≡ singleUse (thin-var θ i) One)
                 (x : Env Δ (thin-usage θ (singleUse i One)))
             → subst ⟦_⟧ᵛ (sym (thin-var-lookup θ i)) (lookupᵛUsed Δ (thin-var θ i) (subst (Env Δ) e' x))
@@ -189,7 +190,7 @@ lookup-thin {Δ = Δ , X ^ r} (keep θ) (suc i) e' x =
         (lookup-thin θ i (tail≡ e') x)
 
 -- The environment of a subterm, after `ren-⊢`'s usage transport, thinned.
-envEq : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n} {U : Usage m}
+envEq : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} (θ : Γ ⊆ Δ) {Ψ' Ψ : Usage n} {U : Usage m}
           (u : Ψ' ⊑ᵘ Ψ) (e : thin-usage θ Ψ ≡ U) (u' : thin-usage θ Ψ' ⊑ᵘ U) (x : Env Δ (thin-usage θ Ψ))
       → thinᴰ θ Ψ' (restrictᵛ {Γ = Δ} u' (subst (Env Δ) e x)) ≡ restrictᵛ {Γ = Γ} u (thinᴰ θ Ψ x)
 envEq {Γ = Γ} {Δ = Δ} θ {Ψ = Ψ} u e u' x =
@@ -199,7 +200,7 @@ envEq {Γ = Γ} {Δ = Δ} θ {Ψ = Ψ} u e u' x =
 -- THE RENAMING LEMMA
 ------------------------------------------------------------------------
 
-ren-sem : ∀ {n m} {Γ : Ctx n} {Δ : Ctx m} {Ψ t A π} (θ : Γ ⊆ Δ) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
+ren-sem : ∀ {mₜ} {n m} {Γ : Ctx mₜ n} {Δ : Ctx mₜ m} {A : Ty mₜ} {Ψ t π} (θ : Γ ⊆ Δ) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
             (fmt : TargetNum) (δ : GM.DefSem) (x : Env Δ (thin-usage θ Ψ))
         → GM.⟦ ren-⊢ θ d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (thinᴰ θ Ψ x)
 
@@ -349,7 +350,7 @@ open import Once.Internal.Core.DerivedTyping S using (wk-⊢′)
 open import Once.Internal.Core.Rename S using (wk-⊢; thin-var-refl)
 
 -- The identity thinning is the identity, across its usage transport.
-thin-refl : ∀ {n} {Γ : Ctx n} (Ψ : Usage n) (e : thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ) (y : Env Γ Ψ)
+thin-refl : ∀ {m} {n} {Γ : Ctx m n} (Ψ : Usage n) (e : thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ) (y : Env Γ Ψ)
           → thinᴰ (⊆-refl {Γ = Γ}) Ψ (subst (Env Γ) (sym e) y) ≡ y
 thin-refl {Γ = ∅} [] refl y = refl
 thin-refl {Γ = Γ , X ^ r} (Zero ∷ Ψ) e y = trans (cong (thinᴰ (⊆-refl {Γ = Γ}) Ψ) (peel0' e y)) (thin-refl {Γ = Γ} Ψ (tail≡ e) y)
@@ -377,13 +378,13 @@ thin-refl {Γ = Γ , X ^ r} (Many ∷ Ψ) e (y , a) =
     ...   | refl = refl
 
 -- `wk-⊢′`'s usage transport sits under `Zero ∷_`.
-⟦⟧-substΨ0 : ∀ {n} {Γ : Ctx n} {B : Type} {Ψ Ψ' : Usage n} {t A π} (e : Ψ ≡ Ψ')
+⟦⟧-substΨ0 : ∀ {m} {n} {Γ : Ctx m n} {B : Ty m} {Ψ Ψ' : Usage n} {A : Ty m} {t π} (e : Ψ ≡ Ψ')
                (d : (Γ , B ^ Many) ⊢[ Zero ∷ Ψ ] t ∷ A ! π) (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ')
            → GM.⟦ subst (λ U → (Γ , B ^ Many) ⊢[ Zero ∷ U ] t ∷ A ! π) e d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ (subst (Env Γ) (sym e) x)
 ⟦⟧-substΨ0 refl d fmt δ x = refl
 
 -- THE WEAKENING LEMMA: a term weakened by one unused variable means what it meant.
-wk-sem : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {t A π} (B : Type) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
+wk-sem : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} {t π} (B : Ty m) (d : Γ ⊢[ Ψ ] t ∷ A ! π)
            (fmt : TargetNum) (δ : GM.DefSem) (x : Env Γ Ψ)
        → GM.⟦ wk-⊢′ B d ⟧ fmt δ x ≡ GM.⟦ d ⟧ fmt δ x
 wk-sem {Γ = Γ} {Ψ = Ψ} {t = t} B d fmt δ x =

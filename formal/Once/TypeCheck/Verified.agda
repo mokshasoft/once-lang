@@ -31,6 +31,7 @@
 -- Reference: plans/0.3-frontend-verification-gaps.md.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Grade
 module Once.TypeCheck.Verified where
@@ -98,18 +99,18 @@ open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Record: the compiler front-end + its proof obligations
 ------------------------------------------------------------------------
 
-record VerifiedTypeChecker : Set₁ where
+record VerifiedTypeChecker {m} : Set₁ where
   field
     ----------------------------------------------------------------
     -- Implementations
     ----------------------------------------------------------------
 
     -- | Inference-mode type-checker / elaborator.
-    tcInfer : (ctx : NamedCtx) (e : RawExpr)
+    tcInfer : (ctx : NamedCtx m) (e : RawExpr)
             → InferElabResult (Classify.NamedCtx.debruijn ctx)
 
     -- | Check-mode type-checker / elaborator.
-    tcCheck : (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    tcCheck : (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
             → CheckElabResult (Classify.NamedCtx.debruijn ctx) T
 
     ----------------------------------------------------------------
@@ -117,16 +118,16 @@ record VerifiedTypeChecker : Set₁ where
     -- inputs. (plans/0.3-frontend-verification-gaps.md, gap G6.)
     ----------------------------------------------------------------
 
-    tcInfer-refl : ∀ (ctx : NamedCtx) (e : RawExpr)
+    tcInfer-refl : ∀ (ctx : NamedCtx m) (e : RawExpr)
                  → tcInfer ctx e ≡ tcInfer ctx e
 
-    tcCheck-refl : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    tcCheck-refl : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
                  → tcCheck ctx e T ≡ tcCheck ctx e T
 
-    tcInfer-cong : ∀ (ctx : NamedCtx) {e₁ e₂ : RawExpr}
+    tcInfer-cong : ∀ (ctx : NamedCtx m) {e₁ e₂ : RawExpr}
                  → e₁ ≡ e₂ → tcInfer ctx e₁ ≡ tcInfer ctx e₂
 
-    tcCheck-cong : ∀ (ctx : NamedCtx) (T : Type) {e₁ e₂ : RawExpr}
+    tcCheck-cong : ∀ (ctx : NamedCtx m) (T : Ty m) {e₁ e₂ : RawExpr}
                  → e₁ ≡ e₂ → tcCheck ctx e₁ T ≡ tcCheck ctx e₂ T
 
     ----------------------------------------------------------------
@@ -135,11 +136,11 @@ record VerifiedTypeChecker : Set₁ where
     -- (plans/0.3-frontend-verification-gaps.md, gap G3.)
     ----------------------------------------------------------------
 
-    tcInfer-total : ∀ (ctx : NamedCtx) (e : RawExpr)
+    tcInfer-total : ∀ (ctx : NamedCtx m) (e : RawExpr)
                   → IsInferSuccess (tcInfer ctx e)
                   ⊎ IsInferFailure (tcInfer ctx e)
 
-    tcCheck-total : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    tcCheck-total : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
                   → IsCheckSuccess (tcCheck ctx e T)
                   ⊎ IsCheckFailure (tcCheck ctx e T)
 
@@ -153,13 +154,13 @@ record VerifiedTypeChecker : Set₁ where
     -- sync. Per-shape lemmas below remain for fine-grained reuse.
     ----------------------------------------------------------------
 
-    tcInfer-sound : ∀ (ctx : NamedCtx) (e : RawExpr)
-      {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+    tcInfer-sound : ∀ (ctx : NamedCtx m) (e : RawExpr)
+      {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
       {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → tcInfer ctx e ≡ success A Ψ eE d f
       → ctx ⊢ e ∶ A ⨾ Ψ
 
-    tcCheck-sound : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    tcCheck-sound : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
       {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : _}
       → tcCheck ctx e T ≡ success Ψ eE d f
@@ -174,7 +175,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RInt :
       ∀ (ctx : NamedCtx) (n : ℤ)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → tcInfer ctx (RInt n) ≡ success A Ψ eE d f
       → ctx ⊢ RInt n ∶ A ⨾ Ψ
@@ -182,14 +183,14 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RUnit :
       ∀ (ctx : NamedCtx)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → tcInfer ctx RUnit ≡ success A Ψ eE d f
       → ctx ⊢ RUnit ∶ A ⨾ Ψ
 
     tcInfer-sound-RVar-unit :
       ∀ (ctx : NamedCtx)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → tcInfer ctx (RResolved (gen "unit")) ≡ success A Ψ eE d f
       → ctx ⊢ RResolved (gen "unit") ∶ A ⨾ Ψ
@@ -200,7 +201,7 @@ record VerifiedTypeChecker : Set₁ where
     -- of a literal string pattern.
     tcInfer-sound-RVar :
       ∀ (ctx : NamedCtx) (x : String)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → tcInfer ctx (RVar x) ≡ success A Ψ eE d f
       → ctx ⊢ RVar x ∶ A ⨾ Ψ
@@ -211,7 +212,7 @@ record VerifiedTypeChecker : Set₁ where
     -- for modularity but trivial to assemble.
     tcInfer-sound-RUnaryOp-neg :
       ∀ (ctx : NamedCtx) (e : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx e ≡ success A' Ψ' eE' d' f'
@@ -225,7 +226,7 @@ record VerifiedTypeChecker : Set₁ where
     -- caller could satisfy. Surfaced when scaffolding infer-sound.
     tcInfer-sound-RAnnot :
       ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {Ψ' eE' d' f'}
             → tcCheck ctx e T ≡ success Ψ' eE' d' f'
@@ -235,7 +236,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RPair :
       ∀ (ctx : NamedCtx) (a b : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IHa : ∀ {A' Ψ' eE' d' f'}
              → tcInfer ctx a ≡ success A' Ψ' eE' d' f'
@@ -248,7 +249,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RQualified :
       ∀ (ctx : NamedCtx) (name alias : String)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → tcInfer ctx (RQualified name alias) ≡ success A Ψ eE d f
       → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
@@ -395,7 +396,7 @@ record VerifiedTypeChecker : Set₁ where
     -- arrow's declared grade → UsageViolation.
     tc-err-lam-usage-violation :
       ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
-        (A : Type) (q : _) (B : Type)
+        (A : Ty m) (q : _) (B : Ty m)
         (q' : _) {Ψ' eE' d' f' err}
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' Once.Internal.Context.Usage.∷ Ψ') eE' d' f'
@@ -465,7 +466,7 @@ record VerifiedTypeChecker : Set₁ where
     -- RApp polymorphic builtin specialisations
     tcInfer-sound-RApp-id :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
@@ -475,7 +476,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RApp-fst :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
@@ -485,7 +486,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RApp-snd :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
@@ -495,7 +496,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RApp-terminal :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
@@ -515,7 +516,7 @@ record VerifiedTypeChecker : Set₁ where
     -- t-app/t-effApp's updated check-mode premise.
     tcInfer-sound-RApp-generic :
       ∀ (ctx : NamedCtx) (f x : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d fresh : _}
       → Classify.classifyAppHead f ≡ nothing
       → (IH_f : ∀ {F' Ψ' eE' d' f'}
@@ -529,7 +530,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RBinOp :
       ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH₁ : ∀ {A' Ψ' eE' d' f'}
              → tcInfer ctx e₁ ≡ success A' Ψ' eE' d' f'
@@ -543,7 +544,7 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-sound-RDestruct :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IHs : ∀ {T' Ψ' eE' d' f'}
              → tcInfer ctx scrut ≡ success T' Ψ' eE' d' f'
@@ -559,7 +560,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcCheck-sound-RLam :
       ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
-        (A : Type) (q : _) (B : Type)
+        (A : Ty m) (q : _) (B : Ty m)
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B)}
         {d f : _}
@@ -571,7 +572,7 @@ record VerifiedTypeChecker : Set₁ where
 
     tcInfer-sound-RLet :
       ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
-        {A : Type} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
+        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH₁ : ∀ {A' Ψ' eE' d' f'}
              → tcInfer ctx e₁ ≡ success A' Ψ' eE' d' f'
@@ -744,7 +745,7 @@ record VerifiedTypeChecker : Set₁ where
     -- RDestruct (case/sum elim)
     tcInfer-complete-RDestruct :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
-        (xR : String) (eR : RawExpr) {A B : Type}
+        (xR : String) (eR : RawExpr) {A B : Ty m}
         {Ψs : Surface.Usage (Classify.NamedCtx.size ctx)}
         {scrutE : SExpr (Classify.NamedCtx.debruijn ctx) Ψs (A Once.Spec.Type.+ B)}
         {ds fs : _}
@@ -786,7 +787,7 @@ record VerifiedTypeChecker : Set₁ where
     -- Check-mode RLam
     tcCheck-complete-RLam :
       ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
-        (A : Type) (q q' : _) (B : Type)
+        (A : Ty m) (q q' : _) (B : Ty m)
         {Ψ' : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE' : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
                      (q' Once.Internal.Context.Usage.∷ Ψ') B}
@@ -873,7 +874,7 @@ record VerifiedTypeChecker : Set₁ where
     usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Internal.Context.Usage n} _≡_
                          Once.Internal.Context._⊔ᵘ_
     -- The orders are partial orders (plan 0.112 B6).
-    subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Type} _≡_ Once.Spec.Sub._<:_
+    subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Ty m} _≡_ Once.Spec.Sub._<:_
     effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Grade.Purity} _≡_
                          Once.Spec.Grade._⊑π_
     usage-order      : ∀ {n} → Relation.Binary.Structures.IsPartialOrder {A = Once.Internal.Context.Usage n} _≡_

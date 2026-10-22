@@ -26,6 +26,7 @@
 ------------------------------------------------------------------------
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
+open import Once.Spec.Type using (Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Type.Grade
 module Once.TypeCheck.Completeness.Rules where
@@ -164,13 +165,13 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ wn eq conc =
   go T conc eq
   where
     open Once.TypeCheck.ElaborateProofs using ()
-    helper : ∀ (lhs : Maybe Type)
+    helper : ∀ (lhs : Maybe (Ty _))
            → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ lhs)
            → inferElabV-RResolved-aux ctx cn ng'
                (lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn)) refl
              ≡ inferElabV-RResolved-aux ctx cn ng' lhs eq'
     helper _ refl = refl
-    helperArr : ∀ {A B} {π : T.Purity}
+    helperArr : ∀ {A B : Ty _} {π : T.Purity}
               → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn)
                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B))
               → (mbA : Maybe (IsBaseType A)) (eqb : isBaseType? A ≡ mbA)
@@ -192,7 +193,7 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ wn eq conc =
       where
         T-true : ∀ b → Data.Bool.T b → b ≡ true
         T-true true _ = refl
-    go : ∀ (T' : Type) → IsConcrete T'
+    go : ∀ (T' : Ty _) → IsConcrete T'
        → (eq' : lookupImport (Classify.NamedCtx.sig ctx) (showCanonical cn) ≡ just T')
        → ∃[ eE ] ∃[ d ] ∃[ f ]
            inferElab ctx (RResolved cn) ≡ success T' zeroUsage eE d f
@@ -255,11 +256,11 @@ infer-complete-RResolved-own :
 infer-complete-RResolved-own {ctx} {x} {T} ns eq = view (classifyGen (own x)) refl
   where
     open Once.TypeCheck.ElaborateProofs using ()
-    h1 : ∀ (ng : NotGenerator (own x)) (lhs : Maybe Type) (e′ : lookupImport (Classify.NamedCtx.sig ctx) x ≡ lhs)
+    h1 : ∀ (ng : NotGenerator (own x)) (lhs : Maybe (Ty _)) (e′ : lookupImport (Classify.NamedCtx.sig ctx) x ≡ lhs)
        → inferElabV-RResolved-aux ctx (own x) ng (lookupImport (Classify.NamedCtx.sig ctx) x) refl
          ≡ inferElabV-RResolved-aux ctx (own x) ng lhs e′
     h1 ng _ refl = refl
-    h2 : ∀ (lhs : Maybe Type) (e′ : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
+    h2 : ∀ (lhs : Maybe (Ty _)) (e′ : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
        → inferElabV-RResolved-own-aux ctx x ns (lookupImport (Classify.NamedCtx.imports ctx) x) refl
          ≡ inferElabV-RResolved-own-aux ctx x ns lhs e′
     h2 _ refl = refl
@@ -553,7 +554,7 @@ infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc
               → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
                 ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
     helperLoc _ refl = refl
-    helperImp : ∀ (lhs : Maybe Type)
+    helperImp : ∀ (lhs : Maybe (Ty _))
               → (eq' : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
               → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (Classify.NamedCtx.imports ctx) x) refl
                 ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc lhs eq'

@@ -15,6 +15,7 @@
 
 module Once.Adequacy.ModuleComplete where
 
+open import Once.Spec.Type using (Ty)
 open import Once.Internal.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (false)
@@ -78,8 +79,8 @@ open FunInfo
 -- (1) a `⊢ᶜ` derivation ⇒ the body compiles, via `check-complete`.
 ------------------------------------------------------------------------
 
-compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+compileFunBody-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBody IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
@@ -99,8 +100,8 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
 -- = `isYes (name ≟ "main")`, so casing `name Str.≟ "main"` reduces it.
 ------------------------------------------------------------------------
 
-compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+compileFun-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
@@ -116,8 +117,8 @@ compileFun-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
     main-step (no ¬q) q = ⊥-elim (¬q q)
 
 -- R8: a definition without a signature compiles from its synthesis.
-compileFunBodyI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+compileFunBodyI-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndPolys ctx polys) ⊢ᵢ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBodyI IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
@@ -133,8 +134,8 @@ compileFunBodyI-complete ctx polys impsOf name ty body {[]} deriv =
          → Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
     succ (TE.success _ _ _ _ _ , w) refl = at w (ty ≟T ty)
 
-compileFunI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+compileFunI-complete : ∀ {m} (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   (ctxWithImportsAndPolys ctx polys) ⊢ᵢ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
@@ -150,8 +151,8 @@ compileFunI-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
     main-step (no ¬q) q = ⊥-elim (¬q q)
 
 -- A definition, in its own mode.
-compileFunM-complete : ∀ (ft : Maybe Type) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+compileFunM-complete : ∀ {m} (ft : Maybe (Ty m)) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
+  (name : String) (ty : Ty m) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   MonoBody ft (ctxWithImportsAndPolys ctx polys) body ty Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
@@ -250,12 +251,12 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (
          → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → findMain (cf0 ∷ cfs) ≡ just ir)
     here nm te cfs = found (funName fi) ty irFun nm te
       where
-        foundD : ∀ (t : Type) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) (d : Dec (t <: EffUU)) → t <: EffUU
+        foundD : ∀ (t : Ty _) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) (d : Dec (t <: EffUU)) → t <: EffUU
           → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
               C.findMain-here (C.mkCompiledFun (bare "main") t g) (yes refl) d (findMain cfs) ≡ just ir)
         foundD t g (yes q) _ = mainEntry q , refl
         foundD t g (no ¬q) p = ⊥-elim (¬q p)
-        found : ∀ (n : String) (t : Type) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) → n ≡ "main" → t <: EffUU
+        found : ∀ (n : String) (t : Ty _) (g : IR ⌊ Unit ⌋ ⌊ t ⌋) → n ≡ "main" → t <: EffUU
           → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
               findMain (C.mkCompiledFun (bare n) t g ∷ cfs) ≡ just ir)
         found .("main") t g refl p = foundD t g (t <:? EffUU) p

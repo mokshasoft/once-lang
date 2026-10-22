@@ -21,6 +21,7 @@
 -- related at all is `ModeSub`.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Spec.Sub using (_⊔_≔_)
 
 open import Once.Internal.Type.Sub using (<:ᶜ⇒<:)
@@ -71,7 +72,7 @@ private
 
 
 mutual
-  coh-ii : ∀ {ctx e A A′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → RI d ≅ RI d′
+  coh-ii : ∀ {m} {A A′ : Ty m} {ctx e Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → RI d ≅ RI d′
   coh-ii ii-int = ≅-refl
   coh-ii ii-float = ≅-refl
   coh-ii ii-unit = ≅-refl
@@ -109,7 +110,7 @@ mutual
     ≅-sym (spine-h (MS.di-dom dF′ wF) (coh-ic rx (MS.di-dom dF′ wF)) (coh-di rd (MS.di-dom dF′ wF) ⊑-pure))
   coh-ii (ii-spine r₁ r₂) = app-h (coh-dd r₂) (coh-ii r₁)
 
-  coh-cc : ∀ {ctx e A Ψ Ψ′} {c : ctx ⊢ᶜ e ∶ A ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′} → Rcc c c′ → RC c ≅ RC c′
+  coh-cc : ∀ {m} {A : Ty m} {ctx e Ψ Ψ′} {c : ctx ⊢ᶜ e ∶ A ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′} → Rcc c c′ → RC c ≅ RC c′
   coh-cc (cc-sub-l {p = p} r) = coh-ic r p
   coh-cc (cc-sub-r {p = p} r) = ≅-sym (coh-ic r p)
   coh-cc cc-id = ≅-refl
@@ -145,7 +146,7 @@ mutual
   coh-cc cc-poly = ≅-refl
 
   -- A checked term means its inferred meaning, converted.
-  coh-ic : ∀ {ctx e A B Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ B ⨾ Ψ′} → Ric d c → (p : A <: B)
+  coh-ic : ∀ {m} {A B : Ty m} {ctx e Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ B ⨾ Ψ′} → Ric d c → (p : A <: B)
          → coerce p (RI d) ≅ RC c
   coh-ic (ic-sub {p = p′} r) p = coerce-h p p′ (coh-ii r)
   coh-ic (ic-pair r₁ r₂) (sub-prod pa pb) = pairc-h pa pb (coh-ic r₁ pa) (coh-ic r₂ pb)
@@ -153,7 +154,7 @@ mutual
 
   -- A term checked at an arrow from its given domain means its domain-given
   -- meaning, its codomain converted.
-  coh-dc : ∀ {ctx e A B B′ π Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′}
+  coh-dc : ∀ {m} {A B B′ : Ty m} {ctx e π Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′}
          → Rdc dd c → (p : B <: B′) → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (RD dd) ≅ RC c
   coh-dc (dc-infer {a = a} {g = g} {w = w} {c = c} r) p =
     twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (MS.ic-sub w c) (coh-ic r (MS.ic-sub w c))
@@ -181,11 +182,11 @@ mutual
     polydc-h {ctx = ctx} {x = x} (trans (sym q₀) q₀′) as inc θ e θ′ e′ gr p
 
   -- A domain-given term that synthesizes means its synthesized arrow, converted.
-  coh-di : ∀ {ctx e A A′ B B′ π q π′ Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {d : ctx ⊢ᵢ e ∶ (A′ ⇒[ T.mk-kind q π′ ] B′) ⨾ Ψ′}
+  coh-di : ∀ {m} {A A′ B B′ : Ty m} {ctx e π q π′ Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {d : ctx ⊢ᵢ e ∶ (A′ ⇒[ T.mk-kind q π′ ] B′) ⨾ Ψ′}
          → Rdi dd d → (a : A <: A′) (g : π′ ⊑π π) → RD dd ≅ coerce (sub-arr {q = q} a (<:-refl B′) g) (RI d)
   coh-di (di-infer {a = a₀} {g = g₀} r) a g = di-h a₀ g₀ a g (coh-ii r)
 
-  coh-dd : ∀ {ctx e A B B′ π Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {dd′ : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′}
+  coh-dd : ∀ {m} {A B B′ : Ty m} {ctx e π Ψ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ} {dd′ : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′}
          → Rdd dd dd′ → RD dd ≅ RD dd′
   coh-dd (dd-infer-l {a = a} {g = g} r) = ≅-sym (coh-di r a g)
   coh-dd (dd-infer-r {a = a} {g = g} r) = coh-di r a g

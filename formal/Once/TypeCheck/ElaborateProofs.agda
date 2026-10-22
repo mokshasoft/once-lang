@@ -12,6 +12,7 @@
 
 module Once.TypeCheck.ElaborateProofs where
 
+open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Elaborate
 open import Once.Internal.Context using (zeroUsage)
 open import Data.Unit using (tt; ⊤)
@@ -582,15 +583,15 @@ checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
 -- rule lands wherever `k` says it does at that success. Proving the lemmas
 -- below through this, rather than `with`-abstracting `inferElabV ctx arg` out
 -- of the elaborated goal, is what keeps each of them cheap.
-via : ∀ {ctx ctx' : NamedCtx} {x y : RawExpr} (rule : VerifiedInferResult ctx x → VerifiedInferResult ctx' y)
-      (r : VerifiedInferResult ctx x) {T Ψ e d f} {T' : Type} {Ψ' : Surface.Usage (NamedCtx.size ctx')}
+via : ∀ {m} {ctx ctx' : NamedCtx m} {x y : RawExpr} (rule : VerifiedInferResult ctx x → VerifiedInferResult ctx' y)
+      (r : VerifiedInferResult ctx x) {T : Ty m} {Ψ e d f} {T' : Ty m} {Ψ' : Surface.Usage (NamedCtx.size ctx')}
     → proj₁ r ≡ success T Ψ e d f
     → (∀ w → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule (success T Ψ e d f , w)) ≡ success T' Ψ' eE d' f')
     → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule r) ≡ success T' Ψ' eE d' f'
 via rule (success _ _ _ _ _ , w) refl k = k w
 
 -- `apply` at a pure / effectful closure whose domain is the argument's type.
-apply-pure : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
+apply-pure : ∀ {m} {ctx : NamedCtx m} {arg : RawExpr} (A B : Ty m) (Ψ : Surface.Usage (NamedCtx.size ctx))
                (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.pure ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
            → ∃[ eE ] ∃[ d' ] ∃[ f' ]
                proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.pure B A))
@@ -599,7 +600,7 @@ apply-pure A _ _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
 
-apply-eff : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
+apply-eff : ∀ {m} {ctx : NamedCtx m} {arg : RawExpr} (A B : Ty m) (Ψ : Surface.Usage (NamedCtx.size ctx))
               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.eff B A))
@@ -608,7 +609,7 @@ apply-eff A _ _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
 
-apply-act : ∀ {ctx : NamedCtx} {arg : RawExpr} (A B : Type) (Ψ : Surface.Usage (NamedCtx.size ctx))
+apply-act : ∀ {m} {ctx : NamedCtx m} {arg : RawExpr} (A B : Ty m) (Ψ : Surface.Usage (NamedCtx.size ctx))
               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.act B A))
@@ -670,19 +671,19 @@ checkElab-fallback-RApp-apply-actclosure {ctx} {τ} p A B {Ψ} {eE} {d} {fr} eqI
 -- it (`impsOf x`) — exactly the context `Spec.Module.PolysTyped` types it in,
 -- so a ground definition is compiled as it was typed, once. The spliced term
 -- is CLOSED (`closed`), so linking is substitution of closed terms.
-resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
+resolveExprWF : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n} {A : Ty m}
               → (polys : PolyCtx) → Acc _<_ (length polys)
               → (String → TopCtx) → Imports → ℕ
               → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
-resolvePolyCase : ∀ {n} {Γ : Surface.Ctx n}
+resolvePolyCase : ∀ {m} {n} {Γ : Surface.Ctx m n}
                 → (polys : PolyCtx) → Acc _<_ (length polys)
-                → (String → TopCtx) → Imports → ℕ → (x : String) (A : Type)
+                → (String → TopCtx) → Imports → ℕ → (x : String) (A : Ty m)
                 → (look : Maybe (PolyType × RawExpr × PolyCtx))
                 → lookupPolyPrefix polys x ≡ look
                 → Surface.Expr Γ Surface.zeroUsage A
-applySplice : ∀ {n} {Γ : Surface.Ctx n}
+applySplice : ∀ {m} {n} {Γ : Surface.Ctx m n}
             → (polys : PolyCtx) → Acc _<_ (length polys)
-            → (imps : String → TopCtx) → Imports → ℕ → (x : String) (A : Type)
+            → (imps : String → TopCtx) → Imports → ℕ → (x : String) (A : Ty m)
             → {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
             → lookupPolyPrefix polys x ≡ just (schema , body , prefix)
             → VerifiedCheckResult (ctxWithImportsAndPolys (imps x) prefix) body A
@@ -813,7 +814,7 @@ applySplice polys (acc rec) imps userFns fresh x A {prefix = prefix} polyEq (suc
 -- external primitives). Semantically a no-op (`evalSurface (sigOp x) ≡
 -- evalSurface (closure x)` by construction); the rewrite enables the
 -- elaborator to emit the correct asm calling convention downstream.
-resolveExpr : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
+resolveExpr : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n} {A : Ty m}
             → (polys : PolyCtx) → (String → TopCtx) → Imports → ℕ
             → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
 resolveExpr polys imps userFns fresh e = resolveExprWF polys (<-wellFounded (length polys)) imps userFns fresh e
@@ -1078,21 +1079,21 @@ resolveExpr-sigOp-extern _ _ _ _ _ conc eq = refl
 -- body. Existential witnesses are satisfied by the `poly x T` placeholder.
 -- Plan 0.103 phase 2a: J-style specialisations of the de-withed check-mode
 -- polymorphic-reference stages.
-poly-check-eq : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) ls eS li eI lp eP
+poly-check-eq : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError) ls eS li eI lp eP
   → checkElabV-RVar-poly-check-aux ctx x T err (lookupImport (NamedCtx.sig ctx) x) refl (lookupImport (NamedCtx.imports ctx) x) refl
       (lookupPolyPrefix (NamedCtx.polys ctx) x) refl
     ≡ checkElabV-RVar-poly-check-aux ctx x T err ls eS li eI lp eP
 poly-check-eq ctx x T err .(lookupImport (NamedCtx.sig ctx) x) refl .(lookupImport (NamedCtx.imports ctx) x) refl
   .(lookupPolyPrefix (NamedCtx.polys ctx) x) refl = refl
 
-poly-ground-eq : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) (schema : PolyType)
+poly-ground-eq : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError) (schema : PolyType)
   {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ig eG
   → checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (isGround schema) refl
     ≡ checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP ig eG
 poly-ground-eq ctx x T err schema eL eI eP .(isGround schema) refl = refl
 
 -- D243: a kinded instance makes the decided premise `yes`.
-poly-inst-yes : ∀ (ctx : NamedCtx) (x : String) (T : Type) (err : TypeError) {schema : PolyType}
+poly-inst-yes : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError) {schema : PolyType}
   {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
   → KindedInstance schema T
   → Data.Product.proj₁ (checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (kindedInstance? schema T))
@@ -1459,7 +1460,7 @@ checkElab-fallback-RBinOp {ctx} {τ} op e₁ e₂ T eqInf sb
 -- | Compile with type signature. Plan 0.14 follow-up: uses Heap as
 -- the default AllocMode for backwards compatibility with callers that
 -- don't supply one via CLI.
-compileExprTyped : RawExpr → (A : Type) → Maybe (IR ⌊ Unit ⌋ ⌊ A ⌋)
+compileExprTyped : ∀ {m} → RawExpr → (A : Ty m) → Maybe (IR ⌊ Unit ⌋ ⌊ A ⌋)
 compileExprTyped e A with checkElab emptyCtx e A
 ... | failure _                 = nothing
 ... | success Ψ se _ _          = just (Elab.elaborate-default se)
@@ -1486,11 +1487,11 @@ compileExpr e with inferElab emptyCtx e
 -- postulates retire as clauses migrate.
 ------------------------------------------------------------------------
 
-inferElabProj : (ctx : NamedCtx) (e : RawExpr) → InferElabResult (NamedCtx.debruijn ctx)
+inferElabProj : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) → InferElabResult (NamedCtx.debruijn ctx)
 inferElabProj ctx e = proj₁ (inferElabV ctx e)
   where open import Data.Product using (proj₁)
 
-checkElabProj : (ctx : NamedCtx) (e : RawExpr) (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+checkElabProj : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Ty m) → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabProj ctx e T = proj₁ (checkElabV ctx e T)
   where open import Data.Product using (proj₁)
 

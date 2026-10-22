@@ -8,6 +8,7 @@
 -- that module has the walk itself and `main`'s step.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -129,7 +130,7 @@ NoShadow : List IRFun → C.FunCtx → Set
 NoShadow later imps = All (λ e → All (λ p → fname e ≢ bare (proj₁ p)) imps) later
 
 -- THE INVARIANT at a position of the walk.
-record Inv {s} {S : Sig Fs s} (csc : C.CScope) (tl : Tele S) (ss : SigSig Fs (C.CScope.csig csc))
+record Inv {m} {s} {S : Sig Fs s} (csc : C.CScope) (tl : Tele S) (ss : SigSig Fs (C.CScope.csig csc))
            (is : ImpSig S (C.CScope.cimps csc))
            (ts : TeleSig S (C.telePolys (C.CScope.ctele csc))) (pre : List IRFun) : Set where
   field
@@ -155,7 +156,7 @@ private
   bare-ne (p ∷ ps) rest (h ∷ hs) = (λ e → h (MIF.bare-injective e)) ∷ bare-ne ps rest hs
 
   -- A later table, seen from the scope before an entry, gains that entry.
-  ns-step : ∀ (later : List IRFun) {x : String} {ty : Type} (imps : C.FunCtx) (e : IRFun) → fname e ≡ bare x
+  ns-step : ∀ {m} (later : List IRFun) {x : String} {ty : Ty m} (imps : C.FunCtx) (e : IRFun) → fname e ≡ bare x
           → All (λ p → bare x ≢ bare (proj₁ p)) imps
           → NoShadow later ((x , ty) ∷ imps) → NoShadow (later ++ e ∷ []) imps
   ns-step []            imps e eq hs ns       = subst (λ n → All (λ p → n ≢ bare (proj₁ p)) imps) (sym eq) hs ∷ []
@@ -168,12 +169,12 @@ private
   ns-snoc []           imps e eq hs []       = subst (λ n → All (λ p → n ≢ bare (proj₁ p)) imps) (sym eq) hs ∷ []
   ns-snoc (e′ ∷ later) imps e eq hs (a ∷ ns) = a ∷ ns-snoc later imps e eq hs ns
 
-  ns-head : ∀ (later : List IRFun) {x : String} {ty : Type} (imps : C.FunCtx)
+  ns-head : ∀ {m} (later : List IRFun) {x : String} {ty : Ty m} (imps : C.FunCtx)
           → NoShadow later ((x , ty) ∷ imps) → All (λ e → fname e ≢ bare x) later
   ns-head []           imps []             = []
   ns-head (e ∷ later) imps ((h ∷ _) ∷ ns) = h ∷ ns-head later imps ns
 
-inv-sig : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} {x : String} {ty : Type}
+inv-sig : ∀ {mₜ} {s} {S : Sig Fs s} {csc tl ss is ts pre} {x : String} {ty : Ty mₜ}
             {h : HonestFFI ty} {g : RigidFree ty} {m : (x , ty) ∈ Fs}
         → Inv {S = S} csc tl ss is ts pre
         → Inv (C.extendSig csc x ty) tl (s-ffi h g m ss) is ts pre
@@ -192,8 +193,8 @@ inv-sig {csc = csc} {x = x} {ty = ty} {g = g} inv = record
 
 private
   -- The splice of a telescope body is its derivation's realization, resolved.
-  splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.Internal.Typing.Scope.PolyCtx) (y : String)
-                  {Xs : TopCtx} {b : _} {A : Type} {se : _} {d f : ℕ}
+  splice-form : ∀ {m} (I : String → TopCtx) (uf : Imports) (pre : Once.Internal.Typing.Scope.PolyCtx) (y : String)
+                  {Xs : TopCtx} {b : _} {A : Ty m} {se : _} {d f : ℕ}
                   (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
                   (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
               → spliceClosed I uf pre y cr ≡ Srf.closed (resolveExpr pre I uf 0 (realize (sound-of cr ce)))
@@ -290,7 +291,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
       relA = MB.bridge-i fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
-  relM-at : ∀ (ft : Data.Maybe.Maybe Type) (D′ : MonoBody ft ctx (funBody fi) ty Ctx.Usage.[])
+  relM-at : ∀ {m} (ft : Data.Maybe.Maybe (Ty m)) (D′ : MonoBody ft ctx (funBody fi) ty Ctx.Usage.[])
           → C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
           → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S (proj₂ (TR.elabM ft V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relM-at (Data.Maybe.just _) D′ cf′ = relC D′ cf′
@@ -303,7 +304,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
   relM = relM-at (funType fi) D cf
 
 -- D324: `main` joins the telescope and the table, not the definitions' scope.
-inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
+inv-mono-at : ∀ {m} (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Ty m} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
@@ -315,7 +316,7 @@ inv-mono-at : ∀ (b : Bool) {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigC
                ss (impDefs b is) (wkT ts)
                (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
 
-inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} {g : RigidFree ty}
+inv-mono : ∀ {m} {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Parser.FunInfo} {ty : Ty m} {g : RigidFree ty}
              {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
@@ -326,7 +327,7 @@ inv-mono : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi : Par
                        (monoBody {S = S} {sc = AS.scopeOf csc} {fi = fi} ss is ts sg g D))
                ss (impDefs (funName fi Str.== "main") is) (wkT ts)
                (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
-inv-mono {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ψ} D {irFun} cf inv fr =
+inv-mono {S = S} {csc = csc} {tl = tl} {ss = ss} {is = is} {ts = ts} {pre = pre} sg {fi} {ty} {g} {Ψ} D {irFun} cf inv fr =
   inv-mono-at (funName fi Str.== "main") {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ψ} D {irFun} cf inv fr
 
 inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {irFun} cf inv fr = record
@@ -456,7 +457,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
           , ra qs hs
 
         -- the new entry: its splice at an instance is its core instance (6e)
-        head : ∀ (U : Type) (ki : KindedInstance scT U)
+        head : ∀ (U : Ty _) (ki : KindedInstance scT U)
              → RelGM Once.Spec.Grade.pure U (CMB.refSem fmt S′ δ′ {d = zero} {U = U} (TR.poly-inst {S = S′} {d = zero} {sc = scT} refl ki))
                       (SD.DefsSem.refs σ y U)
         head U ki =

@@ -18,6 +18,7 @@
 -- (`WellFormedF`, `<:`, `IsBaseType`) are proof-irrelevant.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig)
 
@@ -62,17 +63,17 @@ import Once.Internal.Core.Meaning S as GM
 -- Transport of ground derivations, and its irrelevance (K)
 ------------------------------------------------------------------------
 
-tr : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
+tr : ∀ {m} {n} {Γ' Γ : C.Ctx m n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
    → Γ' ≡ Γ → t' ≡ t → A' ≡ A → Γ' ⊢[ Ψ ] t' ∷ A' ! π → Γ ⊢[ Ψ ] t ∷ A ! π
 tr refl refl refl D = D
 
-tr-irr : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
+tr-irr : ∀ {m} {n} {Γ' Γ : C.Ctx m n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
            (eΓ eΓ′ : Γ' ≡ Γ) (et et′ : t' ≡ t) (eA eA′ : A' ≡ A) (D : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
        → tr eΓ et eA D ≡ tr eΓ′ et′ eA′ D
 tr-irr refl refl refl refl refl refl D = refl
 
 -- A `subst` on the type index (ground, or under `instantiate`) is absorbed.
-tr-subst : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ} {t' t : G.Tm n} {A : T.Type} {π} {Y : Set} {f : Y → T.Type} {y₁ y₂ : Y}
+tr-subst : ∀ {m} {n} {Γ' Γ : C.Ctx m n} {Ψ} {t' t : G.Tm n} {A : T.Type} {π} {Y : Set} {f : Y → T.Type} {y₁ y₂ : Y}
              {eΓ : Γ' ≡ Γ} {et : t' ≡ t} {eA : f y₂ ≡ A} (e : y₁ ≡ y₂)
              (D : Γ' ⊢[ Ψ ] t' ∷ f y₁ ! π)
          → tr eΓ et eA (subst (λ y → Γ' ⊢[ Ψ ] t' ∷ f y ! π) e D) ≡ tr eΓ et (trans (cong f e) eA) D
@@ -80,7 +81,7 @@ tr-subst refl D = refl
 
 module _ {Δ : KCtx 0} {σ : GSub 0} {r : Respects Δ σ} where
 
-  tr-isubst : ∀ {n} {Γp : PT.PCtx 0 n} {Γ : C.Ctx n} {Ψ} {tp : PT.PTm 0 n} {t : G.Tm n} {A : T.Type} {π}
+  tr-isubst : ∀ {m} {n} {Γp : PT.PCtx 0 n} {Γ : C.Ctx m n} {Ψ} {tp : PT.PTm 0 n} {t : G.Tm n} {A : T.Type} {π}
                 {Y : Set} {f : Y → Ty 0} {y₁ y₂ : Y}
                 {eΓ : Γp ⟪ σ ⟫ᶜ ≡ Γ} {et : tp ⟪ σ ⟫ₜ ≡ t} {eA : f y₂ ⟪ σ ⟫ ≡ A} (e : y₁ ≡ y₂)
                 (D : Δ PT.⊩ Γp ⊢[ Ψ ] tp ∷ f y₁ ! π)
@@ -98,27 +99,27 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
          → tr eΓ et eA (GT.⊢var i) ≡ GT.⊢var i
   tr-var {eΓ = refl} {refl} {refl} = refl
 
-  tr-lam : ∀ {Ψ q q' π A' A B' B} {t' t : G.Tm (suc n)} {le}
+  tr-lam : ∀ {m} {A' A B' B : Ty m} {Ψ q q' π} {t' t : G.Tm (suc n)} {le}
              {eΓ : Γ' ≡ Γ} {et : G.lam A' q π t' ≡ G.lam A q π t} {eF : (A' T.⇒[ T.mk-kind q π ] B') ≡ (A T.⇒[ T.mk-kind q π ] B)}
              (eΓA : (Γ' C., A') ≡ (Γ C., A)) (eb : t' ≡ t) (eB : B' ≡ B) (d : (Γ' C., A') ⊢[ q' ∷ Ψ ] t' ∷ B' ! π)
          → tr eΓ et eF (GT.⊢lam le d) ≡ GT.⊢lam le (tr eΓA eb eB d)
   tr-lam {eΓ = refl} {refl} {refl} refl refl refl d = refl
 
-  tr-app : ∀ {Ψ₁ Ψ₂ q π π₁ π₂ A' A B' B} {f' f x' x : G.Tm n}
+  tr-app : ∀ {m} {A' A B' B : Ty m} {Ψ₁ Ψ₂ q π π₁ π₂} {f' f x' x : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.app f' x' ≡ G.app f x} {eB : B' ≡ B}
              (ef : f' ≡ f) (eF : (A' T.⇒[ T.mk-kind q π ] B') ≡ (A T.⇒[ T.mk-kind q π ] B)) (ex : x' ≡ x) (eA : A' ≡ A)
              (df : Γ' ⊢[ Ψ₁ ] f' ∷ A' T.⇒[ T.mk-kind q π ] B' ! π₁) (dx : Γ' ⊢[ Ψ₂ ] x' ∷ A' ! T.positionGrade q π₂)
          → tr eΓ et eB (GT.⊢app df dx) ≡ GT.⊢app (tr eΓ ef eF df) (tr eΓ ex eA dx)
   tr-app {eΓ = refl} {refl} {refl} refl refl refl refl df dx = refl
 
-  tr-let : ∀ {Ψ₁ Ψ₂ q π₁ π₂ A' A B' B} {e' e : G.Tm n} {b' b : G.Tm (suc n)}
+  tr-let : ∀ {m} {A' A B' B : Ty m} {Ψ₁ Ψ₂ q π₁ π₂} {e' e : G.Tm n} {b' b : G.Tm (suc n)}
              {eΓ : Γ' ≡ Γ} {et : G.let′ q e' b' ≡ G.let′ q e b} {eB : B' ≡ B}
              (ee : e' ≡ e) (eA : A' ≡ A) (eΓA : (Γ' C., A') ≡ (Γ C., A)) (eb : b' ≡ b) (eB′ : B' ≡ B)
              (de : Γ' ⊢[ Ψ₁ ] e' ∷ A' ! T.positionGrade q π₁) (db : (Γ' C., A') ⊢[ q ∷ Ψ₂ ] b' ∷ B' ! π₂)
          → tr eΓ et eB (GT.⊢let de db) ≡ GT.⊢let (tr eΓ ee eA de) (tr eΓA eb eB′ db)
   tr-let {eΓ = refl} {refl} {refl} refl refl refl refl refl de db = refl
 
-  tr-iter : ∀ {Ψf Ψs π₁ π₂ A' A B' B} {f' f s' s : G.Tm n}
+  tr-iter : ∀ {m} {A' A B' B : Ty m} {Ψf Ψs π₁ π₂} {f' f s' s : G.Tm n}
               {eΓ : Γ' ≡ Γ} {et : G.iter f' s' ≡ G.iter f s} {eB : B' ≡ B}
               (ef : f' ≡ f)
               (eF : (A' T.⇒[ T.mk-kind T.Many T.act ] (B' T.+ A')) ≡ (A T.⇒[ T.mk-kind T.Many T.act ] (B T.+ A)))
@@ -130,7 +131,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-unit : ∀ {eΓ : Γ' ≡ Γ} {et : G.unit ≡ G.unit} {eA : T.Unit ≡ T.Unit} → tr eΓ et eA GT.⊢unit ≡ GT.⊢unit
   tr-unit {eΓ = refl} {refl} {refl} = refl
 
-  tr-pair : ∀ {Ψ₁ Ψ₂ π₁ π₂ A' A B' B} {a' a b' b : G.Tm n}
+  tr-pair : ∀ {m} {A' A B' B : Ty m} {Ψ₁ Ψ₂ π₁ π₂} {a' a b' b : G.Tm n}
               {eΓ : Γ' ≡ Γ} {et : G.pair a' b' ≡ G.pair a b} {eP : (A' T.* B') ≡ (A T.* B)}
               (ea : a' ≡ a) (eA : A' ≡ A) (eb : b' ≡ b) (eB : B' ≡ B)
               (da : Γ' ⊢[ Ψ₁ ] a' ∷ A' ! π₁) (db : Γ' ⊢[ Ψ₂ ] b' ∷ B' ! π₂)
@@ -138,31 +139,31 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
   tr-pair {eΓ = refl} {refl} {refl} refl refl refl refl da db = refl
 
 
-  tr-fst : ∀ {Ψ π A' A B' B} {p' p : G.Tm n}
+  tr-fst : ∀ {m} {A' A B' B : Ty m} {Ψ π} {p' p : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.fst p' ≡ G.fst p} {eA : A' ≡ A}
              (ep : p' ≡ p) (eP : (A' T.* B') ≡ (A T.* B)) (d : Γ' ⊢[ Ψ ] p' ∷ A' T.* B' ! π)
          → tr eΓ et eA (GT.⊢fst d) ≡ GT.⊢fst (tr eΓ ep eP d)
   tr-fst {eΓ = refl} {refl} {refl} refl refl d = refl
 
-  tr-snd : ∀ {Ψ π A' A B' B} {p' p : G.Tm n}
+  tr-snd : ∀ {m} {A' A B' B : Ty m} {Ψ π} {p' p : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.snd p' ≡ G.snd p} {eB : B' ≡ B}
              (ep : p' ≡ p) (eP : (A' T.* B') ≡ (A T.* B)) (d : Γ' ⊢[ Ψ ] p' ∷ A' T.* B' ! π)
          → tr eΓ et eB (GT.⊢snd d) ≡ GT.⊢snd (tr eΓ ep eP d)
   tr-snd {eΓ = refl} {refl} {refl} refl refl d = refl
 
-  tr-inl : ∀ {Ψ π A' A B' B} {a' a : G.Tm n}
+  tr-inl : ∀ {m} {A' A B' B : Ty m} {Ψ π} {a' a : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.inl B' a' ≡ G.inl B a} {eS : (A' T.+ B') ≡ (A T.+ B)}
              (ea : a' ≡ a) (eA : A' ≡ A) (d : Γ' ⊢[ Ψ ] a' ∷ A' ! π)
          → tr eΓ et eS (GT.⊢inl d) ≡ GT.⊢inl (tr eΓ ea eA d)
   tr-inl {eΓ = refl} {refl} {refl} refl refl d = refl
 
-  tr-inr : ∀ {Ψ π A' A B' B} {b' b : G.Tm n}
+  tr-inr : ∀ {m} {A' A B' B : Ty m} {Ψ π} {b' b : G.Tm n}
              {eΓ : Γ' ≡ Γ} {et : G.inr A' b' ≡ G.inr A b} {eS : (A' T.+ B') ≡ (A T.+ B)}
              (eb : b' ≡ b) (eB : B' ≡ B) (d : Γ' ⊢[ Ψ ] b' ∷ B' ! π)
          → tr eΓ et eS (GT.⊢inr d) ≡ GT.⊢inr (tr eΓ eb eB d)
   tr-inr {eΓ = refl} {refl} {refl} refl refl d = refl
 
-  tr-case : ∀ {Ψs Ψ qℓ qr π₁ π₂ A' A B' B C' C} {s' s : G.Tm n} {l' l r' r : G.Tm (suc n)}
+  tr-case : ∀ {m} {A' A B' B C' C : Ty m} {Ψs Ψ qℓ qr π₁ π₂} {s' s : G.Tm n} {l' l r' r : G.Tm (suc n)}
               {eΓ : Γ' ≡ Γ} {et : G.case qℓ qr s' l' r' ≡ G.case qℓ qr s l r} {eC : C' ≡ C}
               (es : s' ≡ s) (eS : (A' T.+ B') ≡ (A T.+ B))
               (eΓA : (Γ' C., A') ≡ (Γ C., A)) (el : l' ≡ l) (eC₁ : C' ≡ C)
@@ -172,52 +173,52 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
           → tr eΓ et eC (GT.⊢case ds dl dr) ≡ GT.⊢case (tr eΓ es eS ds) (tr eΓA el eC₁ dl) (tr eΓB er eC₂ dr)
   tr-case {eΓ = refl} {refl} {refl} refl refl refl refl refl refl refl refl ds dl dr = refl
 
-  tr-absurd : ∀ {Ψ π A' A} {e' e : G.Tm n}
+  tr-absurd : ∀ {m} {A' A : Ty m} {Ψ π} {e' e : G.Tm n}
                 {eΓ : Γ' ≡ Γ} {et : G.absurd A' e' ≡ G.absurd A e} {eA : A' ≡ A}
                 (ee : e' ≡ e) (d : Γ' ⊢[ Ψ ] e' ∷ T.Void ! π)
             → tr eΓ et eA (GT.⊢absurd d) ≡ GT.⊢absurd (tr eΓ ee refl d)
   tr-absurd {eΓ = refl} {refl} {refl} refl d = refl
 
-  tr-roll : ∀ {Ψ π F' F} {t' t : G.Tm n} {wf' wf}
+  tr-roll : ∀ {m} {F' F : Fun m} {Ψ π} {t' t : G.Tm n} {wf' wf}
               {eΓ : Γ' ≡ Γ} {et : G.roll F' t' ≡ G.roll F t} {eM : T.μ-type F' ≡ T.μ-type F}
               (eF : F' ≡ F) (ed : t' ≡ t) (eX : T.⟦ F' ⟧T (T.μ-type F') ≡ T.⟦ F ⟧T (T.μ-type F))
               (d : Γ' ⊢[ Ψ ] t' ∷ T.⟦ F' ⟧T (T.μ-type F') ! π)
           → tr eΓ et eM (GT.⊢roll wf' d) ≡ GT.⊢roll wf (tr eΓ ed eX d)
-  tr-roll {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl d
+  tr-roll {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl d
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-fold : ∀ {Ψa Ψt π π₁ π₂ F' F A' A} {a' a t' t : G.Tm n} {wf' wf} {u : Once.Spec.Grade._⊑π_ T.pure π}
+  tr-fold : ∀ {m} {A' A : Ty m} {F' F : Fun m} {Ψa Ψt π π₁ π₂} {a' a t' t : G.Tm n} {wf' wf} {u : Once.Spec.Grade._⊑π_ T.pure π}
               {eΓ : Γ' ≡ Γ} {et : G.fold F' a' t' ≡ G.fold F a t} {eA : A' ≡ A}
               (eF : F' ≡ F) (ea : a' ≡ a) (eAl : (T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A') ≡ (T.⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A))
               (eA′ : A' ≡ A) (ed : t' ≡ t) (eM : T.μ-type F' ≡ T.μ-type F)
               (da : Γ' ⊢[ Ψa ] a' ∷ T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A' ! π₁) (dt : Γ' ⊢[ Ψt ] t' ∷ T.μ-type F' ! π₂)
           → tr eΓ et eA (GT.⊢fold u wf' da dt) ≡ GT.⊢fold u wf (tr eΓ ea eAl da) (tr eΓ ed eM dt)
-  tr-fold {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl da dt
+  tr-fold {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl da dt
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-unfold : ∀ {Ψc Ψs φ π₁ π₂ F' F A' A} {c' c s' s : G.Tm n} {wf' wf}
+  tr-unfold : ∀ {m} {A' A : Ty m} {F' F : Fun m} {Ψc Ψs φ π₁ π₂} {c' c s' s : G.Tm n} {wf' wf}
                 {eΓ : Γ' ≡ Γ} {et : G.unfold F' c' s' ≡ G.unfold F c s} {eN : T.ν-type F' φ ≡ T.ν-type F φ}
                 (eF : F' ≡ F) (eA : A' ≡ A) (ec : c' ≡ c)
                 (eCo : (A' T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ F' ⟧T A') ≡ (A T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ F ⟧T A))
                 (es : s' ≡ s) (eA′ : A' ≡ A)
                 (dc : Γ' ⊢[ Ψc ] c' ∷ A' T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ F' ⟧T A' ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
             → tr eΓ et eN (GT.⊢unfold wf' dc ds) ≡ GT.⊢unfold wf (tr eΓ ec eCo dc) (tr eΓ es eA′ ds)
-  tr-unfold {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl dc ds
+  tr-unfold {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl dc ds
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-out : ∀ {Ψ π π₁ F' F} {t' t : G.Tm n} {wf' wf}
+  tr-out : ∀ {m} {F' F : Fun m} {Ψ π π₁} {t' t : G.Tm n} {wf' wf}
              {eΓ : Γ' ≡ Γ} {et : G.out t' ≡ G.out t} {eX : T.⟦ F' ⟧T (T.ν-type F' π) ≡ T.⟦ F ⟧T (T.ν-type F π)}
              (eF : F' ≡ F) (ed : t' ≡ t) (eN : T.ν-type F' π ≡ T.ν-type F π)
              (d : Γ' ⊢[ Ψ ] t' ∷ T.ν-type F' π ! π₁)
          → tr eΓ et eX (GT.⊢out wf' d) ≡ GT.⊢out wf (tr eΓ ed eN d)
-  tr-out {wf' = wf'} {wf} {eΓ = refl} {refl} {refl} refl refl refl d
+  tr-out {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl d
     rewrite WellFormedF-irrelevant wf' wf = refl
 
-  tr-coerce : ∀ {Ψ π A' A B' B} {t' t : G.Tm n} {p' p}
+  tr-coerce : ∀ {m} {A' A B' B : Ty m} {Ψ π} {t' t : G.Tm n} {p' p}
                 {eΓ : Γ' ≡ Γ} {et : G.coerce A' B' t' ≡ G.coerce A B t} {eB : B' ≡ B}
                 (eA : A' ≡ A) (eB′ : B' ≡ B) (ed : t' ≡ t) (d : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
             → tr eΓ et eB (GT.⊢coerce p' d) ≡ GT.⊢coerce p (tr eΓ ed eA d)
-  tr-coerce {p' = p'} {p} {eΓ = refl} {refl} {refl} refl refl refl d
+  tr-coerce {p' = p'} {p = p} {eΓ = refl} {refl} {refl} refl refl refl d
     rewrite <:-unique p' p = refl
 
   tr-lit-int : ∀ {i} {eΓ : Γ' ≡ Γ} {et : G.lit (G.lit-int i) ≡ G.lit (G.lit-int i)} {eA : T.Int ≡ T.Int}
@@ -234,17 +235,17 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
           → tr eΓ et eA (GT.⊢prim p d) ≡ GT.⊢prim p (tr eΓ ed refl d)
   tr-prim {eΓ = refl} {refl} {refl} refl d = refl
 
-  tr-sigop : ∀ {A c k h g wn m} {eΓ : Γ' ≡ Γ} {et : G.sigop c A ≡ G.sigop c A} {eA : A ≡ A}
+  tr-sigop : ∀ {mₜ} {A : Ty mₜ} {c k h g wn m} {eΓ : Γ' ≡ Γ} {et : G.sigop c A ≡ G.sigop c A} {eA : A ≡ A}
            → tr eΓ et eA (GT.⊢sigop c k h g wn m) ≡ GT.⊢sigop c k h g wn m
   tr-sigop {eΓ = refl} {refl} {refl} = refl
 
 
-  tr-sub-eff : ∀ {Ψ π π′ A' A} {t' t : G.Tm n} {g}
+  tr-sub-eff : ∀ {m} {A' A : Ty m} {Ψ π π′} {t' t : G.Tm n} {g}
                  {eΓ : Γ' ≡ Γ} {et : t' ≡ t} {eA : A' ≡ A} (d : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
              → tr eΓ et eA (GT.⊢sub-eff {π′ = π′} g d) ≡ GT.⊢sub-eff g (tr eΓ et eA d)
   tr-sub-eff {eΓ = refl} {refl} {refl} d = refl
 
-  tr-sub-use : ∀ {Ψ Ψ′ π A' A} {t' t : G.Tm n} {p}
+  tr-sub-use : ∀ {m} {A' A : Ty m} {Ψ Ψ′ π} {t' t : G.Tm n} {p}
                  {eΓ : Γ' ≡ Γ} {et : t' ≡ t} {eA : A' ≡ A} (d : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
              → tr eΓ et eA (GT.⊢sub-use {Ψ′ = Ψ′} p d) ≡ GT.⊢sub-use p (tr eΓ et eA d)
   tr-sub-use {eΓ = refl} {refl} {refl} d = refl
@@ -285,7 +286,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
     rtF-id (F T.⊕ G) = cong₂ T._⊕_ (rtF-id F) (rtF-id G)
     rtF-id (F T.⊗ G) = cong₂ T._⊗_ (rtF-id F) (rtF-id G)
 
-  rtC-id : ∀ {n} (Γ : C.Ctx n) → absCtx Δ Γ ⟪ σ ⟫ᶜ ≡ Γ
+  rtC-id : ∀ {m} {n} (Γ : C.Ctx m n) → absCtx Δ Γ ⟪ σ ⟫ᶜ ≡ Γ
   rtC-id C.∅             = refl
   rtC-id (Γ C., A ^ q)   = cong₂ (λ G X → G C., X ^ q) (rtC-id Γ) (rt-id A)
 
@@ -314,7 +315,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
   rtT-id (G.sigop c A)    = refl
   rtT-id (G.ref d τ)      = cong (G.ref d) (extensionality (λ i → rt-id (τ i)))
 
-  RT : ∀ {n} {Γ : C.Ctx n} {Ψ t A π} → Γ ⊢[ Ψ ] t ∷ A ! π
+  RT : ∀ {m} {n} {Γ : C.Ctx m n} {A : Ty m} {Ψ t π} → Γ ⊢[ Ψ ] t ∷ A ! π
      → absCtx Δ Γ ⟪ σ ⟫ᶜ ⊢[ Ψ ] absTm Δ t ⟪ σ ⟫ₜ ∷ absTy Δ A ⟪ σ ⟫ ! π
   RT D = PT.instantiate σ r (abs-⊢ Δ sg D)
 
@@ -322,14 +323,14 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
   -- THE ROUND TRIP: instantiate ∘ abstract = id, at arity 0
   ----------------------------------------------------------------------
 
-  RT-id : ∀ {n} {Γ : C.Ctx n} {Ψ t A π} (D : Γ ⊢[ Ψ ] t ∷ A ! π)
+  RT-id : ∀ {m} {n} {Γ : C.Ctx m n} {A : Ty m} {Ψ t π} (D : Γ ⊢[ Ψ ] t ∷ A ! π)
         → tr (rtC-id Γ) (rtT-id t) (rt-id A) (RT D) ≡ D
   -- Peel a subst'd sub-derivation back to its round trip, then the IH.
   private
-    irr : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
-            {eΓ eΓ′ : Γ' ≡ Γ} {et et′ : t' ≡ t} {eA eA′ : A' ≡ A} (D : Γ' ⊢[ Ψ ] t' ∷ A' ! π) {E}
+    irr : ∀ {m} {n} {Γ' Γ : C.Ctx m n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
+            {eΓ eΓ′ : Γ' ≡ Γ} {et et′ : t' ≡ t} {eA eA′ : A' ≡ A} (D : Γ' ⊢[ Ψ ] t' ∷ A' ! π) {E : Ty m}
         → tr eΓ′ et′ eA′ D ≡ E → tr eΓ et eA D ≡ E
-    irr {eΓ = eΓ} {eΓ′} {et} {et′} {eA} {eA′} D q = trans (tr-irr eΓ eΓ′ et et′ eA eA′ D) q
+    irr {eΓ = eΓ} {eΓ′ = eΓ′} {et = et} {et′ = et′} {eA = eA} {eA′ = eA′} D q = trans (tr-irr eΓ eΓ′ et et′ eA eA′ D) q
 
   RT-id {Γ = Γ} (GT.⊢var i) =
     trans (tr-isubst {r = r} (absCtx-lookup Δ Γ i) _)
@@ -396,7 +397,7 @@ module RoundTrip (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGroun
 -- The meaning: a transported derivation means the transported meaning
 ------------------------------------------------------------------------
 
-tr-sem : ∀ {n} {Γ' Γ : C.Ctx n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
+tr-sem : ∀ {m} {n} {Γ' Γ : C.Ctx m n} {Ψ} {t' t : G.Tm n} {A' A : T.Type} {π}
            (eΓ : Γ' ≡ Γ) (et : t' ≡ t) (eA : A' ≡ A) (D : Γ' ⊢[ Ψ ] t' ∷ A' ! π)
            (fmt : TargetNum) (δ : GM.DefSem) (γ : GM.Env Γ Ψ)
        → GM.⟦ tr eΓ et eA D ⟧ fmt δ γ
@@ -407,8 +408,8 @@ tr-sem refl refl refl D fmt δ γ = refl
 -- embedded ground type) read back at arity 0 means its elaboration.
 open import Once.Internal.Type.WellFormed using (RigidFree)
 
-mono-entry-sem : ∀ (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
-                   {t A} (g : RigidFree A) (D : C.∅ ⊢[ [] ] t ∷ A ! T.pure) (fmt : TargetNum) (δ : GM.DefSem)
+mono-entry-sem : ∀ {m} (Δ : KCtx 0) (σ : GSub 0) (r : Respects Δ σ) (sg : SigGround)
+                   {A : Ty m} {t} (g : RigidFree A) (D : C.∅ ⊢[ [] ] t ∷ A ! T.pure) (fmt : TargetNum) (δ : GM.DefSem)
                → subst (λ X → ⟦ X ⟧ᵛ) (⌈⌉-⟪⟫ A σ)
                    (GM.⟦ PT.instantiate σ r
                            (subst (λ X → Δ PT.⊩ PT.∅ ⊢[ [] ] absTm Δ t ∷ X ! T.pure) (absTy-ground Δ g) (abs-⊢ Δ sg D)) ⟧ fmt δ tt)

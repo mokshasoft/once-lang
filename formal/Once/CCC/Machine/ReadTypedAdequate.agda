@@ -158,7 +158,7 @@ readTyped-adequate (r-pair {A} {B} rA rB) (base-Prod iA iB) {v = v} (valid-pair-
 readTyped-cell-adequate r-unit base-Unit (cell-ptr r bf v)    rewrite r = refl
 readTyped-cell-adequate r-unit base-Unit {s = s} (cell-inline rep r)  rewrite r = unit-cell rep
   where
-    unit-cell : ∀ {c} (rep : InlineRep ⌊ Unit ⌋)
+    unit-cell : ∀ {c} (rep : InlineRep ⌊ Unit {0} ⌋)
               → readTyped-cell (λ l → readTyped Unit l s) (readReg-typed Unit)
                   (just (inline-sv rep c))
                 ≡ just tt

@@ -14,6 +14,7 @@
 -- lemma + the `RelEnv` it inducts over; the case discharges follow.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -154,7 +155,7 @@ subst-∘-move refl g f = refl
 -- Related environments — pointwise `RelGV` down the context.
 ------------------------------------------------------------------------
 
-RelEnv : ∀ {n} (Γ : Ctx n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᵛ → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → Set
+RelEnv : ∀ {m} {n} (Γ : Ctx m n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᵛ → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → Set
 RelEnv ∅           _          _          = ⊤
 RelEnv (Γ , A ^ q) (dγ₁ , a₁) (dγ₂ , a₂) = RelEnv Γ dγ₁ dγ₂ × RelGV A a₁ a₂
 
@@ -165,7 +166,7 @@ RelEnv (Γ , A ^ q) (dγ₁ , a₁) (dγ₂ , a₂) = RelEnv Γ dγ₁ dγ₂ ×
 -- two SEPARATELY makes them ordinary indices, solved by unification like any
 -- other. The composite is what the relation is ABOUT; it is not what it is
 -- indexed BY.
-record RelEnv↾ {n} (Γ : Ctx n) (Ψ : Usage n)
+record RelEnv↾ {m} {n} (Γ : Ctx m n) (Ψ : Usage n)
                (dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ) (dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ) : Set where
   constructor mk↾
   field un↾ : RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
@@ -175,7 +176,7 @@ open RelEnv↾
 -- has usage `singleUse i One`), and BOTH sides now use `lookupᴰUsed`, so the
 -- `suc` case passes the environment through untouched — `↾` never put the
 -- skipped slot there. Same collapse as `proj-lookup` in `SourceFaithful`.
-rel-lookupUsed : ∀ {n} (Γ : Ctx n) (i : Fin n)
+rel-lookupUsed : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n)
                  {dγ₁ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜᵗ ⟧ᴰ}
                → RelEnv (Γ ↾ singleUse i One) dγ₁ dγ₂
                → RelGV (lookup Γ i) (lookupᵛUsed Γ i dγ₁) (lookupᴰUsed Γ i dγ₂)
@@ -185,7 +186,7 @@ rel-lookupUsed (Γ , A ^ q) (suc i) re = rel-lookupUsed Γ i re
 -- | `RelEnv` transports along a usage NARROWING: `restrictᴰ` only drops or
 --   keeps slots, so relatedness survives it. The RelEnv analogue of
 --   `liftFn-restrictEnv` in `SourceFaithful`; matches `restrictᴰ`'s own split.
-rel-restrict₀ : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ)
+rel-restrict₀ : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ)
                  {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
              → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
              → RelEnv (Γ ↾ Ψ') (restrictᵛ {Γ = Γ} ule dγ₁) (restrictᴰ {Γ = Γ} ule dγ₂)
@@ -200,7 +201,7 @@ rel-restrict₀ {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)  
 -- | `RelEnv` under a BINDER, keyed on the bound variable's usage in the body —
 --   the RelEnv analogue of `bindᴰ`. At `Zero` the value is dropped, so no
 --   `RelGV` premise is consumed (and none is available at an erased arrow).
-rel-bind₀ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (q : Quantity)
+rel-bind₀ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (q : Quantity)
              {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} {a₁ : ⟦ A ⟧ᵛ} {a₂ : ⟦ A ⟧ᴰ}
          → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂ → RelGV A a₁ a₂
          → RelEnv ((Γ , A ^ Many) ↾ (q ∷ Ψ))
@@ -210,7 +211,7 @@ rel-bind₀ One  re rv = re , rv
 rel-bind₀ Many re rv = re , rv
 
 -- | The ERASED binder: `bindᴰ0` is the identity on the environment.
-rel-bind0₀ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+rel-bind0₀ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
               {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
           → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
           → RelEnv ((Γ , A ^ Many) ↾ (Zero ∷ Ψ))
@@ -218,20 +219,20 @@ rel-bind0₀ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
 rel-bind0₀ re = re
 
 -- The same three at `RelEnv↾`, which is what the clauses below actually use.
-rel-restrict : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ)
+rel-restrict : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ)
                  {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
              → RelEnv↾ Γ Ψ dγ₁ dγ₂
              → RelEnv↾ Γ Ψ' (restrictᵛ {Γ = Γ} ule dγ₁) (restrictᴰ {Γ = Γ} ule dγ₂)
 rel-restrict {Γ = Γ} ule r = mk↾ (rel-restrict₀ {Γ = Γ} ule (un↾ r))
 
-rel-bind : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (q : Quantity)
+rel-bind : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (q : Quantity)
              {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} {a₁ : ⟦ A ⟧ᵛ} {a₂ : ⟦ A ⟧ᴰ}
          → RelEnv↾ Γ Ψ dγ₁ dγ₂ → RelGV A a₁ a₂
          → RelEnv↾ (Γ , A ^ Many) (q ∷ Ψ)
                    (bindᵛ {Γ = Γ} {A = A} q dγ₁ a₁) (bindᴰ {Γ = Γ} {A = A} q dγ₂ a₂)
 rel-bind {Γ = Γ} q r rv = mk↾ (rel-bind₀ {Γ = Γ} q (un↾ r) rv)
 
-rel-bind0 : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+rel-bind0 : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
               {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
           → RelEnv↾ Γ Ψ dγ₁ dγ₂
           → RelEnv↾ (Γ , A ^ Many) (Zero ∷ Ψ)
@@ -248,13 +249,13 @@ rel-env0 {[]} = mk↾ tt
 -- The four usage-split shapes, each `rel-restrict` at EXACTLY the witness both
 -- `⟦_⟧ᵢ` and `⟦_⟧ˢ` apply — pinned, never inferred, so the clause bodies below
 -- stay as short as they were before the phase index.
-reˡ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {dγ₁ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᴰ}
+reˡ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {dγ₁ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᴰ}
     → RelEnv↾ Γ (Ψ₁ +ᵘ Ψ₂) dγ₁ dγ₂
     → RelEnv↾ Γ Ψ₁ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ₁)
                     (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ₂)
 reˡ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} = rel-restrict {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
 
-reʳ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {dγ₁ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᴰ}
+reʳ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {dγ₁ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᴰ}
     → RelEnv↾ Γ (Ψ₁ +ᵘ Ψ₂) dγ₁ dγ₂
     → RelEnv↾ Γ Ψ₂ (restrictᵛ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ₁)
                     (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ₂)
@@ -262,7 +263,7 @@ reʳ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} = rel-restrict {Γ = Γ} (⊑ᵘ-
 
 -- The ARGUMENT half of an application: scaled by the arrow's quantity, then
 -- taken from the right of the split. `Many` and `One` differ only in the scale.
-reᵐ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n}
+reᵐ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n}
         {dγ₁ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜᵗ ⟧ᴰ}
     → RelEnv↾ Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) dγ₁ dγ₂
     → RelEnv↾ Γ Ψ₂
@@ -271,7 +272,7 @@ reᵐ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n}
 reᵐ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} =
   rel-restrict {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂)))
 
-re¹ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n}
+re¹ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n}
         {dγ₁ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) ⟧ᶜᵗ ⟧ᴰ}
     → RelEnv↾ Γ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) dγ₁ dγ₂
     → RelEnv↾ Γ Ψ₂
@@ -283,20 +284,20 @@ re¹ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} =
 -- The same narrowing on a BARE environment: `morph-app`'s own, so the SD side
 -- of a point-free application clause names the environment `⟦_⟧ˢ` actually
 -- hands its argument.
-resᵐ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n}
+resᵐ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n}
      → ⟦ ⟦ Γ ↾ (zeroUsage +ᵘ (Many *ᵘ Ψ)) ⟧ᶜᵗ ⟧ᴰ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 resᵐ {Γ = Γ} {Ψ = Ψ} =
   restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ)))
 
 
 -- The source side of related environments is related to itself.
-env-self : ∀ {n} (Γ : Ctx n) {dγ₁ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ} → RelEnv Γ dγ₁ dγ₂ → RelD ⟦ Γ ⟧ᶜᵗ dγ₂ dγ₂
+env-self : ∀ {m} {n} (Γ : Ctx m n) {dγ₁ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ} → RelEnv Γ dγ₁ dγ₂ → RelD ⟦ Γ ⟧ᶜᵗ dγ₂ dγ₂
 env-self ∅           re        = tt
 env-self (Γ , A ^ q) {_ , _} {_ , _} (re , ra) = env-self Γ re , right-self A ra
 
-self↾ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
+self↾ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {dγ₁ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
       → RelEnv↾ Γ Ψ dγ₁ dγ₂ → RelD ⟦ Γ ↾ Ψ ⟧ᶜᵗ dγ₂ dγ₂
-self↾ {Γ = Γ} {Ψ} re = env-self (Γ ↾ Ψ) (un↾ re)
+self↾ {Γ = Γ} {Ψ = Ψ} re = env-self (Γ ↾ Ψ) (un↾ re)
 
 ------------------------------------------------------------------------
 -- Runs.
@@ -348,7 +349,7 @@ ptr-self bDom bCod f {a} r with base-eq bDom r
 -- A well-formed functor layer is polynomial (`WellFormedF`'s `K` holds only
 -- base types), so related layers over a `μ` slot coerce to the SAME machine
 -- layer.
-cf-rel : ∀ {F} (wfF : WellFormedF F) {G}
+cf-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wfF : WFFun Δₖ F) {G : Fun m}
            {a : ⟦ ⟦ F ⟧T (μ-type G) ⟧ᵛ} {b : ⟦ ⟦ F ⟧T (μ-type G) ⟧ᴰ}
        → RelGV (⟦ F ⟧T (μ-type G)) a b
        → cfᵛ (μ-type G) wfF a ≡ coerce-functor-D wfF (μ-type G) b
@@ -471,8 +472,8 @@ sigOpRef-rel ι cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many act} bDom bCod
 -- on the correctly-dispatching `sigOpRefᴰ`.
 -- At a base (non-arrow) type SD's `sigOp` catch-all IS the closed `value-info`
 -- form; casing the witness exposes the shape so each clause is `refl`.
-sd-sigOp-base≡ : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (ib : IsBaseType A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜᵗ ⟧ᴰ)
-               → (SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ fmt σ) dγ ≡ sigOpValᴰ fmt (ffiE (calls σ)) (value-info {Unit} {A} cn base-Unit ib)
+sd-sigOp-base≡ : ∀ {m} {Δₖ : KCtx m} {n} {Γ : Ctx m n} {A : Ty m} (cn : CanonicalName) (ib : Base Δₖ A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜᵗ ⟧ᴰ)
+               → (SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ fmt σ) dγ ≡ sigOpValᴰ fmt (ffiE (calls σ)) (value-info {Unit} {A : Ty m} cn base-Unit ib)
 sd-sigOp-base≡ cn base-Unit          dγ = refl
 sd-sigOp-base≡ cn base-Void          dγ = refl
 sd-sigOp-base≡ cn base-Int           dγ = refl
@@ -487,7 +488,7 @@ sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
 -- closure ⇒ plain reflexivity.
 -- Plan 0.105: the Spec side reads the meanings' FFI half `φ`, the source side
 -- its call environment's; the bridge holds where they are the same half.
-sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (ι : Interp) (cn : CanonicalName) (conc : IsConcrete A)
+sigop-ref-bridge : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {A : Ty mₜ} (ι : Interp) (cn : CanonicalName) (conc : IsConcrete A)
                    (m : (showCanonical cn , A) ∈ sig ι) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜᵗ ⟧ᴰ)
                  → pureHalf ι ≡ ffiE (calls σ)
                  → RelGM pure A (sigOpRefᵛ fmt (sig ι) (impl ι) cn conc m) ((SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ fmt σ) dγ)
@@ -541,7 +542,7 @@ sigop-ref-bridge {A = Dom ⇒[ mk-kind Many π ] Cod} ι cn (con-fun bDom bCod) 
 -- D250: the `Out` coercions, heterogeneously. A well-formed layer is
 -- polynomial: at `K` both sides are the same machine value (`injB-rel`), at
 -- `Id` the carrier's own relation.
-out-relᵍ : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
+out-relᵍ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {G : Fun m} (wf : WFFun Δₖ G)
              {x : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᵛ} {y : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᴰ}
          → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A) x y
          → RelGV (⟦ G ⟧T A)
@@ -556,35 +557,35 @@ out-relᵍ (wf-Sum wfF wfG) {x = inj₂ _} {y = inj₁ _} ()
 out-relᵍ (wf-Prod wfF wfG) {x = _ , _} {y = _ , _} (rF , rG) =
   out-relᵍ wfF rF , out-relᵍ wfG rG
 
-out-app-bridge : ∀ {F : Functor} {π : Finite} {wfF : WellFormedF F}
+out-app-bridge : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} {wfF : WFFun Δₖ F}
                    {vᴸ : ⟦ ν-type F π ⟧ᵛ} {vᴿ : ⟦ ν-type F π ⟧ᴰ}
                → RelGV (ν-type F π) vᴸ vᴿ
                → RelGM (fin π) (⟦ F ⟧T (ν-type F π)) (out-semᵛ π wfF vᴸ)
-                      (liftFn fmt (calls σ) {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF) vᴿ)
+                      (liftFn fmt (calls σ) {F : Fun m} {ν-type π} {F F : Fun m} {⟦ ⟧T (ν-type π)} (Out-ir {π = π} wfF) vᴿ)
 -- Plan 0.119 D5: the Spec's force is related to the source's `out-sem` by the
 -- stream relation's force, mapped by the `Out` coercions; and the IR's `Out`
 -- is related to `out-sem` (`liftFn-Out`) at the stream's self-relation — so
 -- the relation transfers to it (`GM-D`).
 -- D250: at `pure` the Spec's force is a plain layer, always there and silent.
-out-app-bridge {F} {pureᶠ} {wfF} {vᴸ} {vᴿ} rel =
+out-app-bridge {F = F} {pureᶠ} {wfF = wfF} {vᴸ = vᴸ} {vᴿ = vᴿ} rel =
   GM-D pure (⟦ F ⟧T (ν-type F pureᶠ))
     (retargetˡ refl (RelS-fmap {f = λ l → cf⁻¹ᵛ (ν-type F pureᶠ) wfF (coerce-ν-out wfF _ l)}
                                {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F pureᶠ) (coerce-ν-out wfF _ layer)}
                                (force-∼ᵖᵈ rel) (λ r → out-relᵍ {A = ν-type F pureᶠ} wfF r)))
     (liftFn-Out {π = pureᶠ} wfF (right-self (ν-type F pureᶠ) rel))
-out-app-bridge {F} {actᶠ} {wfF} {vᴸ} {vᴿ} rel =
+out-app-bridge {F = F} {actᶠ} {wfF = wfF} {vᴸ = vᴸ} {vᴿ = vᴿ} rel =
   GM-D act (⟦ F ⟧T (ν-type F actᶠ))
     (RelS-embed-fmap (forceᵈ vᴸ)
       (RelS-fmapʳ {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F actᶠ) (coerce-ν-out wfF _ layer)}
                   (force-∼ rel) (λ r → out-relᵍ {A = ν-type F actᶠ} wfF r)))
     (liftFn-Out {π = actᶠ} wfF (right-self (ν-type F actᶠ) rel))
 
-in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F}
+in-app-bridge : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {wfF : WFFun Δₖ F}
                 {vᴸ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ} {vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
               → RelGV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
               → RelGM pure (μ-type F) (in-valueᵛ wfF vᴸ)
-                     (liftFn fmt (calls σ) {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) vᴿ)
-in-app-bridge {F} {wfF} rv =
+                     (liftFn fmt (calls σ) {F : Fun m} {⟦ ⟧T (μ-type F)} {F : Fun m} {μ-type} (In-ir wfF) vᴿ)
+in-app-bridge {F = F} {wfF = wfF} rv =
   ≡ʳ (liftFn-In wfF _) (relS-ret (cong (sem-In F) (cf-rel wfF rv)))
 
 -- D127: `int-bridge`, `bridge-g`, `wrapM` and `bridge-m` are DELETED with the
@@ -595,7 +596,7 @@ in-app-bridge {F} {wfF} rv =
 
 -- The scrutinees are EXPLICIT: as a term of the arrow relation's Π type Agda
 -- cannot see which injection to split on, so the caller passes them.
-copair-rel : ∀ {A B C : Type} {π : Purity}
+copair-rel : ∀ {m} {A B C : Ty m} {π : Purity}
                {vf : ⟦ A ⟧ᵛ → M π ⟦ C ⟧ᵛ} {vf' : ⟦ A ⟧ᴰ → T∞ ⟦ C ⟧ᴰ}
                {vg : ⟦ B ⟧ᵛ → M π ⟦ C ⟧ᵛ} {vg' : ⟦ B ⟧ᴰ → T∞ ⟦ C ⟧ᴰ}
            → (∀ {a b} → RelGV A a b → RelGM π C (vf a) (vf' b))
@@ -619,7 +620,7 @@ copair-rel rf rg (inj₂ _) (inj₁ _) ()
 -- source side is the contract's computation (`sigOpˢ`), which for an internal
 -- contract is that value, erased and returned. Equal arguments, so the step is
 -- compared at one point.
-step-≡ : ∀ {X : Set} {C : Type} (h : X → ⟦ C ⟧ᵛ) (h' : X → T∞ ⟦ C ⟧ᴰ)
+step-≡ : ∀ {m} {X : Set} {C : Ty m} (h : X → ⟦ C ⟧ᵛ) (h' : X → T∞ ⟦ C ⟧ᴰ)
        → (∀ x → RelGM pure C (h x) (h' x))
        → ∀ {x x'} → x ≡ x' → RelGM pure C (h x) (h' x')
 step-≡ h h' hr {x} refl = hr x
@@ -633,7 +634,7 @@ step-≡ h h' hr {x} refl = hr x
 
 -- D179: the TWO-ARM shape, once. Every comparison clause is two binds and a
 -- pure contract step, differing only in the contract.
-bind2-rel : ∀ {A B C : Type} {m₁ : ⟦ A ⟧ᵛ} {m₁' : T∞ ⟦ A ⟧ᴰ} {m₂ : ⟦ B ⟧ᵛ} {m₂' : T∞ ⟦ B ⟧ᴰ}
+bind2-rel : ∀ {m} {A B C : Ty m} {m₁ : ⟦ A ⟧ᵛ} {m₁' : T∞ ⟦ A ⟧ᴰ} {m₂ : ⟦ B ⟧ᵛ} {m₂' : T∞ ⟦ B ⟧ᴰ}
             (h : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ → ⟦ C ⟧ᵛ) (h' : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
           → RelGM pure A m₁ m₁' → RelGM pure B m₂ m₂'
           → (∀ {a a' b b'} → RelGV A a a' → RelGV B b b'
@@ -657,7 +658,7 @@ bind2-rel {A = A} {B = B} {C = C} h h' r₁ r₂ hrel =
 -- already said of the Kleisli side. At ν the embedding of a pure stream into
 -- an acting one is `embνᵃ`, related by `embνᵃ-∼`.
 mutual
-  RelGV-sub : ∀ {A B} (p : A <: B) {x : ⟦ A ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelGV B (⟦ p ⟧<:ᵛ x) (⟦ p ⟧<: y)
+  RelGV-sub : ∀ {m} {A B : Ty m} (p : A <: B) {x : ⟦ A ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelGV B (⟦ p ⟧<:ᵛ x) (⟦ p ⟧<: y)
   RelGV-sub sub-void {()}
   RelGV-sub sub-unit   r = r
   RelGV-sub sub-int    r = r
@@ -676,17 +677,17 @@ mutual
   RelGV-sub (sub-sum a b) {inj₁ _} {inj₂ _} ()
   RelGV-sub (sub-sum a b) {inj₂ _} {inj₁ _} ()
 
-  RelGM-sub : ∀ {π π′ B B′} (g : π ⊑π π′) (b : B <: B′) {m : M π ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ}
+  RelGM-sub : ∀ {mₜ} {B B′ : Ty mₜ} {π π′} (g : π ⊑π π′) (b : B <: B′) {m : M π ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ}
             → RelGM π B m t → RelGM π′ B′ (subM g (fmapM π ⟦ b ⟧<:ᵛ m)) (fmap∞ ⟦ b ⟧<: t)
-  RelGM-sub {B = B} {B′} ⊑-pure b r = RelGM-fmap pure {B} {B′} r (RelGV-sub b)
-  RelGM-sub {B = B} {B′} ⊑-eff  b r = RelGM-fmap eff {B} {B′} r (RelGV-sub b)
-  RelGM-sub {B = B} {B′} ⊑-act  b r = RelGM-fmap act {B} {B′} r (RelGV-sub b)
-  RelGM-sub {B = B} {B′} ⊑-pa   b r = retargetˡ refl (RelS-fmap {R′ = RelGV B′} r (RelGV-sub b))
-  RelGM-sub {B = B} {B′} ⊑-ae   b r = RelGM-fmap act {B} {B′} r (RelGV-sub b)
-  RelGM-sub {B = B} {B′} ⊑-pe   b r = retargetˡ refl (RelS-fmap {R′ = RelGV B′} r (RelGV-sub b))
+  RelGM-sub {B = B} {B′ = B′} ⊑-pure b r = RelGM-fmap pure {B} {B′} r (RelGV-sub b)
+  RelGM-sub {B = B} {B′ = B′} ⊑-eff  b r = RelGM-fmap eff {B} {B′} r (RelGV-sub b)
+  RelGM-sub {B = B} {B′ = B′} ⊑-act  b r = RelGM-fmap act {B} {B′} r (RelGV-sub b)
+  RelGM-sub {B = B} {B′ = B′} ⊑-pa   b r = retargetˡ refl (RelS-fmap {R′ = RelGV B′} r (RelGV-sub b))
+  RelGM-sub {B = B} {B′ = B′} ⊑-ae   b r = RelGM-fmap act {B} {B′} r (RelGV-sub b)
+  RelGM-sub {B = B} {B′ = B′} ⊑-pe   b r = retargetˡ refl (RelS-fmap {R′ = RelGV B′} r (RelGV-sub b))
 
 -- The mode switch at a pure inferred term.
-RelGT-sub : ∀ {A B} (p : A <: B) {v : ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ}
+RelGT-sub : ∀ {m} {A B : Ty m} (p : A <: B) {v : ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ}
           → RelGM pure A v t → RelGM pure B (⟦ p ⟧<:ᵛ v) (fmap∞ ⟦ p ⟧<: t)
 RelGT-sub p r = RelGM-sub ⊑-pure p r
 
@@ -702,15 +703,15 @@ EnvRel []                   _       = ⊤
 EnvRel ((n , s , _) ∷ rest) (e , ρ) =
   (∀ (U : Type) (ki : KindedInstance s U) → RelGM pure U (e U ki) (refs σ n U)) × EnvRel rest ρ
 
-envrel-at : ∀ (polys : PolyCtx) (x : String) {s b prefix} {ρ : DefMeanings polys}
+envrel-at : ∀ {m} (polys : PolyCtx) (x : String) {s b prefix} {ρ : DefMeanings polys}
   → EnvRel polys ρ → (lp : lookupPolyPrefix polys x ≡ just (s , b , prefix))
-  → ∀ (U : Type) (ki : KindedInstance s U) → RelGM pure U (defAt polys x ρ lp U ki) (refs σ x U)
+  → ∀ (U : Ty m) (ki : KindedInstance s U) → RelGM pure U (defAt polys x ρ lp U ki) (refs σ x U)
 envrel-at [] x _ ()
 envrel-at ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrProp.≟ x
 ... | yes refl = found lp
   where
-    found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix)) (U : Type) (ki : KindedInstance s U)
-      → RelGM pure U (defAt-found {F = λ s → (U : Type) → KindedInstance s U → ⟦ U ⟧ᵛ} lp′ e U ki) (refs σ n U)
+    found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix)) (U : Ty _) (ki : KindedInstance s U)
+      → RelGM pure U (defAt-found {F = λ s → (U : Ty _) → KindedInstance s U → ⟦ U ⟧ᵛ} lp′ e U ki) (refs σ n U)
     found refl = r
 ... | no _ = envrel-at rest x rs lp
 
@@ -722,7 +723,7 @@ envrel-tail ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrP
 ... | yes _ = found lp
   where
     found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix))
-      → EnvRel prefix (tailAt-found {F = λ s → (U : Type) → KindedInstance s U → ⟦ U ⟧ᵛ} lp′ ρ)
+      → EnvRel prefix (tailAt-found {F = λ s → (U : Ty _) → KindedInstance s U → ⟦ U ⟧ᵛ} lp′ ρ)
     found refl = rs
 ... | no _ = envrel-tail rest x rs lp
 
@@ -730,7 +731,7 @@ envrel-tail ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrP
 -- of it in σ's call environment (`SD.⟦ closure x ⟧ˢ`); on the Spec side it is
 -- the entry's meaning in the import environment. Related entrywise, walked as
 -- `lookupImport` walks the list.
-callSD : String → (U : Type) → T∞ ⟦ U ⟧ᴰ
+callSD : ∀ {m} → String → (U : Ty m) → T∞ ⟦ U ⟧ᴰ
 callSD x U = subst T∞ (cohᴰ U) (evalᴰ fmt (calls σ) (refIR U (bare x)) tt)
 
 ImpRel : (imps : Imports) → ImpMeanings imps → Set
@@ -750,7 +751,7 @@ imprel-at ((n , U′) ∷ rest) x {ι = e , ι} (r , rs) lk with n StrProp.≟ x
 ... | no _ = imprel-at rest x rs lk
 
 -- The whole environment relation: the telescope half and the import half.
-MRel : (ctx : NamedCtx) → MeaningsOf ctx → Set
+MRel : ∀ {m} → (ctx : NamedCtx m) → MeaningsOf ctx → Set
 -- Plan 0.105: and the FFI half — both meanings read the same interpretation.
 MRel ctx ρ = EnvRel (NamedCtx.polys ctx) (defs ρ) × ImpRel (NamedCtx.imports ctx) (entries ρ)
            × (pureHalf (world ρ) ≡ ffiE (calls σ))
@@ -762,16 +763,16 @@ module _ (σ-self : RelDefs fmt σ σ) where
 
   -- D143: over the RUNTIME environment. `RelEnv` needs no change — it is already
   -- generic in the context, and the runtime context IS `debruijn ctx ↾ Ψ`.
-  bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
+  bridge-i : ∀ {m} {ctx : NamedCtx m} {A : Ty m} {e Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
              {ρ : MeaningsOf ctx} {dγ₁ : EnvRun ctx Ψ} {dγ₂ : ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
              (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : MRel ctx ρ)
            → RelGM pure A ((⟦ d ⟧ᵢ fmt ρ) dγ₁) ((SD.⟦ realize-infer d ⟧ˢ fmt σ) dγ₂)
-  bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
+  bridge-c : ∀ {m} {ctx : NamedCtx m} {A : Ty m} {e Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
              {ρ : MeaningsOf ctx} {dγ₁ : EnvRun ctx Ψ} {dγ₂ : ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
              (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : MRel ctx ρ)
            → RelGM pure A ((⟦ d ⟧ᶜ fmt ρ) dγ₁) ((SD.⟦ realize d ⟧ˢ fmt σ) dγ₂)
   -- Plan 0.94 §10: the domain-given realm, related at the arrow it determines.
-  bridge-d : ∀ {ctx : NamedCtx} {e A π B Ψ} (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
+  bridge-d : ∀ {m} {ctx : NamedCtx m} {A B : Ty m} {e π Ψ} (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ)
              {ρ : MeaningsOf ctx} {dγ₁ : EnvRun ctx Ψ} {dγ₂ : ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
              (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂) (er : MRel ctx ρ)
            → RelGM pure (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵈ fmt ρ) dγ₁) ((SD.⟦ realize-d d ⟧ˢ fmt σ) dγ₂)
@@ -1071,7 +1072,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
                             (liftFn-rel fmt (proj₁ σ-self) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) (right-self (ν-type F actᶠ) rv)))))))
     where
       out-fst : ∀ (v : ⟦ ν-type F actᶠ ⟧ᴰ) (u : ⟦ Unit ⟧ᴰ)
-              → force (liftFn fmt (calls σ) {ν-type F actᶠ * Unit} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
+              → force (liftFn fmt (calls σ) {F : Fun _} {ν-type actᶠ * Unit} {F F : Fun _} {⟦ ⟧T (ν-type actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
                 ≡ force (liftFn fmt (calls σ) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) v)
       out-fst v u = force-∘ {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} {ν-type F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {ν-type F actᶠ} {Unit} (v , u))
   bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {ρ = ρ} {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =

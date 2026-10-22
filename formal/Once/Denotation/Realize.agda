@@ -31,6 +31,7 @@
 
 module Once.Denotation.Realize where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Integer using ()   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
 open import Once.Spec.Grade using (Many; Purity; mk-kind)
@@ -84,14 +85,14 @@ poly-usage-eq : ∀ {n} → (zeroUsage {n}) +ᵘ (Many *ᵘ zeroUsage) ≡ zeroU
 poly-usage-eq = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)
 
 -- Forward signatures first (mutual recursion, no `mutual` keyword needed).
-realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+realize : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A : Ty m}
             {Ψ : Usage (NamedCtx.size ctx)}
         → ctx ⊢ᶜ e ∶ A ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ A
-realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+realize-infer : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A : Ty m}
                 {Ψ : Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ A
 -- Plan 0.94 §10: a domain-given derivation realises the term as its arrow.
-realize-d : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Purity}
+realize-d : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B : Ty m} {π : Purity}
               {Ψ : Usage (NamedCtx.size ctx)}
           → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] B)
 

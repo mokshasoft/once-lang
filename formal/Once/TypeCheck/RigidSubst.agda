@@ -18,6 +18,7 @@
 -- The scope's imports are ground, so they are fixed.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (KCtx; GSub; Respects)
 
@@ -66,13 +67,13 @@ open import Once.Internal.Typing
 -- The substitution on types.
 ------------------------------------------------------------------------
 
-ρ̂ : Type → Type
+ρ̂ : ∀ {m} → Ty m → Ty m
 ρ̂ A = absTy Δ A ⟪ τ ⟫
 
-ρ̂F : Functor → Functor
+ρ̂F : ∀ {m} → Fun m → Fun m
 ρ̂F F = absF Δ F ⟪ τ ⟫F
 
-ρ̂-⟦⟧ : ∀ (F : Functor) (A : Type) → ρ̂ (⟦ F ⟧T A) ≡ ⟦ ρ̂F F ⟧T (ρ̂ A)
+ρ̂-⟦⟧ : ∀ {m} (F : Fun m) (A : Ty m) → ρ̂ (⟦ F ⟧T A) ≡ ⟦ ρ̂F F ⟧T (ρ̂ A)
 ρ̂-⟦⟧ F A = trans (cong (_⟪ τ ⟫) (absTy-⟦⟧ Δ F A)) (⟦⟧F-⟪⟫ (absF Δ F) (absTy Δ A) τ)
 
 ρ̂-base : ∀ {A} → IsBaseType A → IsBaseType (ρ̂ A)
@@ -86,7 +87,7 @@ open import Once.Internal.Typing
 ρ̂-rf {A} rf = trans (cong (_⟪ τ ⟫) (absTy-ground Δ rf)) (⌈⌉-⟪⟫ A τ)
 
 -- Subtyping is preserved: a rigid is related only to itself, so its image is.
-ρ̂-<: : ∀ {A B} → A <: B → ρ̂ A <: ρ̂ B
+ρ̂-<: : ∀ {m} {A B : Ty m} → A <: B → ρ̂ A <: ρ̂ B
 ρ̂-<: sub-void         = sub-void
 ρ̂-<: sub-unit         = sub-unit
 ρ̂-<: sub-int          = sub-int
@@ -109,12 +110,12 @@ open import Once.Internal.Typing
 ρ̂-Joins (j-arr r)    = j-arr (ρ̂-Joins r)
 ρ̂-Joins j-ν          = j-ν
 
-ρ̂-⊔ : ∀ {A B C} → A ⊔ B ≔ C → ρ̂ A ⊔ ρ̂ B ≔ ρ̂ C
+ρ̂-⊔ : ∀ {m} {A B C : Ty m} → A ⊔ B ≔ C → ρ̂ A ⊔ ρ̂ B ≔ ρ̂ C
 ρ̂-⊔ J = sound (ρ̂-Joins (complete J))
 
 -- Instances compose: an instance of a schema, substituted, is an instance.
 mutual
-  substPoly-ρ̂ : ∀ (θ : String → Type) (P : PolyType) → substPoly (λ x → ρ̂ (θ x)) P ≡ ρ̂ (substPoly θ P)
+  substPoly-ρ̂ : ∀ {m} (θ : String → Ty m) (P : PolyType) → substPoly (λ x → ρ̂ (θ x)) P ≡ ρ̂ (substPoly θ P)
   substPoly-ρ̂ θ (PTVar x)     = refl
   substPoly-ρ̂ θ PUnit         = refl
   substPoly-ρ̂ θ PVoid         = refl
@@ -128,7 +129,7 @@ mutual
   substPoly-ρ̂ θ (Pμ-type F)   = cong μ-type (substPolyF-ρ̂ θ F)
   substPoly-ρ̂ θ (Pν-type F π) = cong (λ G → ν-type G π) (substPolyF-ρ̂ θ F)
 
-  substPolyF-ρ̂ : ∀ (θ : String → Type) (F : PolyFunctor) → substPolyF (λ x → ρ̂ (θ x)) F ≡ ρ̂F (substPolyF θ F)
+  substPolyF-ρ̂ : ∀ {m} (θ : String → Ty m) (F : PolyFunctor) → substPolyF (λ x → ρ̂ (θ x)) F ≡ ρ̂F (substPolyF θ F)
   substPolyF-ρ̂ θ (PK A)   = cong K (substPoly-ρ̂ θ A)
   substPolyF-ρ̂ θ PId      = refl
   substPolyF-ρ̂ θ (F P⊕ G) = cong₂ _⊕_ (substPolyF-ρ̂ θ F) (substPolyF-ρ̂ θ G)
@@ -142,23 +143,23 @@ mutual
 -- untouched: only the local variables' types move.
 ------------------------------------------------------------------------
 
-ρ̂S : ∀ {n} → SCtx n → SCtx n
+ρ̂S : ∀ {m} {n} → SCtx m n → SCtx m n
 ρ̂S S∅            = S∅
 ρ̂S (Γ S, A ^ q)  = ρ̂S Γ S, ρ̂ A ^ q
 
-ρ̂N : NC.Ctx → NC.Ctx
+ρ̂N : ∀ {m} → NC.Ctx m → NC.Ctx m
 ρ̂N []      = []
 ρ̂N (b ∷ Γ) = mkBinding (name b) (ρ̂ (type b)) (quantity b) ∷ ρ̂N Γ
 
-ρ̂C : NamedCtx → NamedCtx
+ρ̂C : ∀ {m} → NamedCtx m → NamedCtx m
 ρ̂C (mkCtx n Γ D imps polys sg) = mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg
 
-lookup-ρ̂ : ∀ {n} (Γ : SCtx n) (i : Fin n) → Surface.lookup (ρ̂S Γ) i ≡ ρ̂ (Surface.lookup Γ i)
+lookup-ρ̂ : ∀ {m} {n} (Γ : SCtx m n) (i : Fin n) → Surface.lookup (ρ̂S Γ) i ≡ ρ̂ (Surface.lookup Γ i)
 lookup-ρ̂ (Γ S, A ^ q) zero    = refl
 lookup-ρ̂ (Γ S, A ^ q) (suc i) = lookup-ρ̂ Γ i
 
 -- The local lookup finds the SAME position (it reads names only).
-lk-just : ∀ {n} (x : String) (Γ : NC.Ctx) (D : SCtx n) (i : Fin n)
+lk-just : ∀ {m} {n} (x : String) (Γ : NC.Ctx m) (D : SCtx m n) (i : Fin n)
         → lookupLocal-go x Γ D ≡ just (Surface.lookup D i , singleUse i One , svar i)
         → lookupLocal-go x (ρ̂N Γ) (ρ̂S D) ≡ just (Surface.lookup (ρ̂S D) i , singleUse i One , svar i)
 lk-just x []      S∅          i ()
@@ -171,7 +172,7 @@ lk-just {suc n} x (b ∷ Γ) (D S, B ^ q) i () | no _ | nothing
 lk-just {suc n} x (b ∷ Γ) (D S, B ^ q) .(suc j) refl | no _ | just (A₀ , Ψ₀ , svar j)
   rewrite lk-just x Γ D j e₀ = refl
 
-lk-nothing : ∀ {n} (x : String) (Γ : NC.Ctx) (D : SCtx n)
+lk-nothing : ∀ {m} {n} (x : String) (Γ : NC.Ctx m) (D : SCtx m n)
            → lookupLocal-go x Γ D ≡ nothing → lookupLocal-go x (ρ̂N Γ) (ρ̂S D) ≡ nothing
 lk-nothing x []      S∅           _ = refl
 lk-nothing x []      (_ S, _ ^ _) _ = refl
@@ -199,26 +200,26 @@ TopRF imps sg = ImportsRF imps × ImportsRF sg
 
 -- Transport a conclusion's type (the raw term and usage stay).
 infixr 2 _⇝ᵢ_
-_⇝ᵢ_ : ∀ {ctx e A B Ψ} → A ≡ B → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ B ⨾ Ψ
+_⇝ᵢ_ : ∀ {m} {A B : Ty m} {ctx e Ψ} → A ≡ B → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ B ⨾ Ψ
 refl ⇝ᵢ d = d
 
 infixr 2 _⇝ᶜ_
-_⇝ᶜ_ : ∀ {ctx e A B Ψ} → A ≡ B → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ
+_⇝ᶜ_ : ∀ {m} {A B : Ty m} {ctx e Ψ} → A ≡ B → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ
 refl ⇝ᶜ d = d
 
 mutual
-  subst-i : ∀ {ctx e A Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
+  subst-i : ∀ {m} {A : Ty m} {ctx e Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
   subst-i {mkCtx n Γ D imps polys sg} ir d = subst-i′ ir d
 
-  subst-c : ∀ {ctx e A Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
+  subst-c : ∀ {m} {A : Ty m} {ctx e Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ρ̂C ctx ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
   subst-c {mkCtx n Γ D imps polys sg} ir d = subst-c′ ir d
 
-  subst-d : ∀ {ctx e A π B Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
+  subst-d : ∀ {m} {A B : Ty m} {ctx e π Ψ} → TopRF (NamedCtx.imports ctx) (NamedCtx.sig ctx) → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
           → ρ̂C ctx ⊢ᵈ e ∶ ρ̂ A ⇒[ π ]↦ ρ̂ B ⨾ Ψ
   subst-d {mkCtx n Γ D imps polys sg} ir d = subst-d′ ir d
 
   -- At a context in constructor form, so `ρ̂C` and `extendNamedCtx` reduce.
-  subst-i′ : ∀ {n Γ D imps polys sg e A Ψ} → TopRF imps sg
+  subst-i′ : ∀ {m} {D A : Ty m} {n Γ imps polys sg e Ψ} → TopRF imps sg
            → mkCtx n Γ D imps polys sg ⊢ᵢ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
   subst-i′ ir (t-int k)            = t-int k
   subst-i′ ir (t-float i f l p)    = t-float i f l p
@@ -258,7 +259,7 @@ mutual
   subst-i′ ir (t-effApp {g = g} h df dx) = t-effApp {g = g} h (subst-i′ ir df) (subst-c′ ir dx)
   subst-i′ ir (t-app-spine h da df)  = t-app-spine h (subst-i′ ir da) (subst-d′ ir df)
 
-  subst-c′ : ∀ {n Γ D imps polys sg e A Ψ} → TopRF imps sg
+  subst-c′ : ∀ {m} {D A : Ty m} {n Γ imps polys sg e Ψ} → TopRF imps sg
            → mkCtx n Γ D imps polys sg ⊢ᶜ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg ⊢ᶜ e ∶ ρ̂ A ⨾ Ψ
   subst-c′ ir (t-id-check {u = u})             = t-id-check {u = u}
   subst-c′ ir (t-fst-check {u = u})            = t-fst-check {u = u}
@@ -291,7 +292,7 @@ mutual
   subst-c′ {Γ = Γ} {D = D} ir (t-var-poly-instantiate {x = x} {schema = sch} ln li lp ng ki) =
     t-var-poly-instantiate ln li lp ng (ρ̂-ki {sch} ki)
 
-  subst-d′ : ∀ {n Γ D imps polys sg e A π B Ψ} → TopRF imps sg
+  subst-d′ : ∀ {m} {D A B : Ty m} {n Γ imps polys sg e π Ψ} → TopRF imps sg
            → mkCtx n Γ D imps polys sg ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
            → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg ⊢ᵈ e ∶ ρ̂ A ⇒[ π ]↦ ρ̂ B ⨾ Ψ
   subst-d′ ir (d-infer w p g)      = d-infer (subst-i′ ir w) (ρ̂-<: p) g

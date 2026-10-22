@@ -16,6 +16,7 @@
 -- extractor's guard), and such a name is not (it has a dot, or is empty).
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (Ty)
 open import Once.Spec.Numerics using (TargetNum)
 open import Data.Nat using (ℕ)
 open import Once.Internal.Core.PolyTy using (Sig; sigOf)
@@ -74,7 +75,7 @@ module _ (δ : GM.DefSem) where
   ...   | refl = refl
   agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk | no _ = agree-imp is lk
 
-  agree-def : ∀ {ps} (ts : TeleSig S ps) {x sc body prefix U}
+  agree-def : ∀ {m} {ps} (ts : TeleSig S ps) {U : Ty m} {x sc body prefix}
                 (lp : lookupPolyPrefix (C.buildPolyCtx ps) x ≡ just (sc , body , prefix)) (ki : KindedInstance sc U)
             → defAt (C.buildPolyCtx ps) x (defEnv ts) lp U ki ≡ refSem δ (poly-inst {S = S} {sc = sc} (proj₂ (telFind {S = S} ts lp)) ki)
   agree-def TR.[] () ki

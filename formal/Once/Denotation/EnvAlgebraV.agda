@@ -9,6 +9,7 @@
 
 module Once.Denotation.EnvAlgebraV where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 
@@ -18,7 +19,7 @@ open import Once.Internal.Context using (Ctx; ∅; _,_^_; Usage; _∷_; _↾_; _
 open import Once.Internal.Graded using (⟦_⟧ᵛ)
 open import Once.Internal.Environment using (restrictᵛ; bindᵛ)
 
-Env : ∀ {n} → Ctx n → Usage n → Set
+Env : ∀ {m} {n} → Ctx m n → Usage n → Set
 Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 ------------------------------------------------------------------------
@@ -37,7 +38,7 @@ Env Γ Ψ = ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 ⊑ᵘ-unique ⊑[]       ⊑[]       = refl
 ⊑ᵘ-unique (a ⊑∷ u) (b ⊑∷ v) = cong₂ _⊑∷_ (≤q'-unique a b) (⊑ᵘ-unique u v)
 
-restrict-irr : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (u v : Ψ' ⊑ᵘ Ψ) (x : Env Γ Ψ)
+restrict-irr : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (u v : Ψ' ⊑ᵘ Ψ) (x : Env Γ Ψ)
              → restrictᵛ {Γ = Γ} u x ≡ restrictᵛ {Γ = Γ} v x
 restrict-irr {Γ = Γ} u v x = cong (λ w → restrictᵛ {Γ = Γ} w x) (⊑ᵘ-unique u v)
 
@@ -45,13 +46,13 @@ restrict-irr {Γ = Γ} u v x = cong (λ w → restrictᵛ {Γ = Γ} w x) (⊑ᵘ
 -- Identity and composition
 ------------------------------------------------------------------------
 
-restrict-refl : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} (u : Ψ ⊑ᵘ Ψ) (x : Env Γ Ψ) → restrictᵛ {Γ = Γ} u x ≡ x
+restrict-refl : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} (u : Ψ ⊑ᵘ Ψ) (x : Env Γ Ψ) → restrictᵛ {Γ = Γ} u x ≡ x
 restrict-refl {Γ = ∅}         ⊑[]        x = refl
 restrict-refl {Γ = Γ , A ^ q} (z≤z ⊑∷ u) x = restrict-refl {Γ = Γ} u x
 restrict-refl {Γ = Γ , A ^ q} (o≤o ⊑∷ u) x = cong (_, proj₂ x) (restrict-refl {Γ = Γ} u (proj₁ x))
 restrict-refl {Γ = Γ , A ^ q} (m≤m ⊑∷ u) x = cong (_, proj₂ x) (restrict-refl {Γ = Γ} u (proj₁ x))
 
-restrict-∘ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (u : Ψ₁ ⊑ᵘ Ψ₂) (v : Ψ₂ ⊑ᵘ Ψ₃) (x : Env Γ Ψ₃)
+restrict-∘ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (u : Ψ₁ ⊑ᵘ Ψ₂) (v : Ψ₂ ⊑ᵘ Ψ₃) (x : Env Γ Ψ₃)
            → restrictᵛ {Γ = Γ} u (restrictᵛ {Γ = Γ} v x) ≡ restrictᵛ {Γ = Γ} (⊑ᵘ-trans u v) x
 restrict-∘ {Γ = ∅}         ⊑[]        ⊑[]        x = refl
 restrict-∘ {Γ = Γ , A ^ q} (z≤z ⊑∷ u) (z≤z ⊑∷ v) x = restrict-∘ {Γ = Γ} u v x
@@ -66,7 +67,7 @@ restrict-∘ {Γ = Γ , A ^ q} (o≤m ⊑∷ u) (m≤m ⊑∷ v) x = cong (_, pr
 restrict-∘ {Γ = Γ , A ^ q} (m≤m ⊑∷ u) (m≤m ⊑∷ v) x = cong (_, proj₂ x) (restrict-∘ {Γ = Γ} u v (proj₁ x))
 
 -- Any two restrictions of one environment to one usage agree.
-restrict-≡ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (u : Ψ₁ ⊑ᵘ Ψ₂) (v : Ψ₂ ⊑ᵘ Ψ₃) (w : Ψ₁ ⊑ᵘ Ψ₃) (x : Env Γ Ψ₃)
+restrict-≡ : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (u : Ψ₁ ⊑ᵘ Ψ₂) (v : Ψ₂ ⊑ᵘ Ψ₃) (w : Ψ₁ ⊑ᵘ Ψ₃) (x : Env Γ Ψ₃)
            → restrictᵛ {Γ = Γ} u (restrictᵛ {Γ = Γ} v x) ≡ restrictᵛ {Γ = Γ} w x
 restrict-≡ {Γ = Γ} u v w x = trans (restrict-∘ {Γ = Γ} u v x) (restrict-irr {Γ = Γ} (⊑ᵘ-trans u v) w x)
 
@@ -76,7 +77,7 @@ restrict-≡ {Γ = Γ} u v w x = trans (restrict-∘ {Γ = Γ} u v x) (restrict-
 
 -- Restricting an extended environment: the bound variable is dropped when the
 -- restricted usage does not use it, and kept when it does.
-restrict-bind : ∀ {n} {Γ : Ctx n} {A : Type} {Ψ' Ψ : Usage n} (q' q : Quantity)
+restrict-bind : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ' Ψ : Usage n} (q' q : Quantity)
                   (w : (q' ∷ Ψ') ⊑ᵘ (q ∷ Ψ)) (u : Ψ' ⊑ᵘ Ψ) (x : Env Γ Ψ) (a : ⟦ A ⟧ᵛ)
               → restrictᵛ {Γ = Γ , A ^ Many} w (bindᵛ {Γ = Γ} {A = A} q x a)
                 ≡ bindᵛ {Γ = Γ} {A = A} q' (restrictᵛ {Γ = Γ} u x) a

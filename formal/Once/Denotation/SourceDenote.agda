@@ -22,6 +22,7 @@
 
 module Once.Denotation.SourceDenote where
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 import Once.Spec.Word as OnceWord
 open import Data.Product using (_,_; proj₁; proj₂)
@@ -66,7 +67,7 @@ open Once.Surface.Syntax.Expr
 -- is the most recent binding (`proj₂`), `suc i` recurses into `proj₁`.
 ------------------------------------------------------------------------
 
-lookupᴰ : ∀ {n} (Γ : Ctx n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → ⟦ lookup Γ i ⟧ᴰ
+lookupᴰ : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → ⟦ lookup Γ i ⟧ᴰ
 lookupᴰ (Γ , A ^ q) fzero    dγ = proj₂ dγ
 lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 
@@ -95,9 +96,9 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- the algebra runs, mirroring `DenotTrace.cata-ev-algᴰ`. The `ℕ` is gone —
 -- the budget lives in `T`, so the children share it instead of each getting
 -- the full `n` and having their traces concatenated.
-cata-ev-algˢ : ∀ {F C} → WellFormedF F → T∞ (⟦ ⟦ F ⟧T C ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
+cata-ev-algˢ : ∀ {m} {Δₖ : KCtx m} {C : Ty m} {F : Fun m} → WFFun Δₖ F → T∞ (⟦ ⟦ F ⟧T C ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
              → ⟦ F ⟧F (T∞ ⟦ C ⟧ᴰ) → T∞ ⟦ C ⟧ᴰ
-cata-ev-algˢ {F} {C} wf algComp fc =
+cata-ev-algˢ {F = F} {C = C} wf algComp fc =
   seqF∞ F fc >>=∞ λ layer →
     algComp >>=∞ λ algClo → algClo (coerce-functor⁻¹-D wf C layer)
 
@@ -109,7 +110,7 @@ cata-ev-algˢ {F} {C} wf algComp fc =
 -- transported form without re-importing the `⟦_⟧ˢ`-mixfix (Plan 0.52 M2).
 ------------------------------------------------------------------------
 
-liftD : (fmt : TargetNum) → CallEnv → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T∞ (⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ)
+liftD : ∀ {m} → (fmt : TargetNum) → CallEnv → ∀ {A B : Ty m} → IR ⌊ A ⌋ ⌊ B ⌋ → T∞ (⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ)
 liftD fmt ρ {A} {B} ir = return∞ (liftFn fmt ρ {A} {B} ir)
 
 ------------------------------------------------------------------------
@@ -130,11 +131,11 @@ liftD fmt ρ {A} {B} ir = return∞ (liftFn fmt ρ {A} {B} ir)
 -- The compiled program's environment is `internalDefs fmt ρ`, whose `refs` read the
 -- same call environment `ρ` at the erased type (a reference that linking did not
 -- replace is lowered to `Call`).
-record DefsSem : Set where
+record DefsSem {m} : Set where
   constructor defsSem
   field
     calls : CallEnv
-    refs  : (x : String) (A : Type) → T∞ ⟦ A ⟧ᴰ
+    refs  : (x : String) (A : Ty m) → T∞ ⟦ A ⟧ᴰ
 
 open DefsSem
 
@@ -160,7 +161,7 @@ sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (call
 -- recursive function in a parameterised module stops reducing downstream.
 -- D142/D143: over the RUNTIME environment `Γ ↾ Ψ`, for the same reason
 -- `elaborate` is. See the note above `lookupᴰUsed`.
-⟦_⟧ˢ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+⟦_⟧ˢ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
      → Expr Γ Ψ A → TargetNum → DefsSem → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
 ⟦ var {Γ = Γ} i ⟧ˢ fmt σ dγ = return∞ (lookupᴰUsed Γ i dγ)
 -- The arrow's declared quantity `q` decides whether the meaning takes an

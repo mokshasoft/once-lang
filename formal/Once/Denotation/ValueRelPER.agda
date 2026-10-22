@@ -14,6 +14,7 @@
 
 module Once.Denotation.ValueRelPER where
 
+open import Once.Spec.Type using (var; Ty)
 open import Data.Empty using (⊥)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
@@ -142,7 +143,7 @@ module _ {H : SFunctor} where
 ------------------------------------------------------------------------
 
 mutual
-  RelD-sym : ∀ (A : Type) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y x
+  RelD-sym : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y x
   RelD-sym Unit r = tt
   RelD-sym Void {()}
   RelD-sym (A * B) {_ , _} {_ , _} (r , s) = RelD-sym A r , RelD-sym B s
@@ -157,8 +158,9 @@ mutual
   RelD-sym (ν-type F π) r = stream-sym r
   RelD-sym Int r = sym r
   RelD-sym Float r = sym r
+  RelD-sym (var _) {()}
 
-  RelD-trans : ∀ (A : Type) {x y z : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y z → RelD A x z
+  RelD-trans : ∀ {m} (A : Ty m) {x y z : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y z → RelD A x z
   RelD-trans Unit r s = tt
   RelD-trans Void {()}
   RelD-trans (A * B) {_ , _} {_ , _} {_ , _} (r , s) (r′ , s′) = RelD-trans A r r′ , RelD-trans B s s′
@@ -175,10 +177,11 @@ mutual
   RelD-trans (ν-type F π) r s = stream-trans r s
   RelD-trans Int r s = trans r s
   RelD-trans Float r s = trans r s
+  RelD-trans (var _) {()}
 
   -- The right side of a related pair is related to itself.
-  RelD-rightself : ∀ (A : Type) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y y
+  RelD-rightself : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y y
   RelD-rightself A r = RelD-trans A (RelD-sym A r) r
 
-RelD-leftself : ∀ (A : Type) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A x x
+RelD-leftself : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A x x
 RelD-leftself A r = RelD-trans A r (RelD-sym A r)

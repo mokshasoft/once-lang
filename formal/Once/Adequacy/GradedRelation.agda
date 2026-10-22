@@ -17,6 +17,8 @@
 -- (`RelS`); the streams likewise, coinductively.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (KCtx; Base)
+open import Once.Spec.Type using (var; b-var; Ty)
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.GradedRelation (fmt : TargetNum) where
@@ -81,15 +83,15 @@ open _∼ᵈ_
 -- The relation, by recursion on the type.
 ------------------------------------------------------------------------
 
-RelGV : ∀ (A : Type) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᴰ → Set
+RelGV : ∀ {m} (A : Ty m) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᴰ → Set
 
 -- A grade-`π` Spec meaning against the IR's run: its lift into `T∞`, step for
 -- step.
-RelGM : ∀ (π : Purity) (A : Type) → M π ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
+RelGM : ∀ {m} (π : Purity) (A : Ty m) → M π ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
 RelGM π A m t = RelS (RelGV A) (toT∞ π m) t
 
 -- A finite block against the IR's run.
-RelGT : ∀ (A : Type) → T ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
+RelGT : ∀ {m} (A : Ty m) → T ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
 RelGT A t₁ t₂ = RelGM act A t₁ t₂
 
 RelGV Unit        _ _ = ⊤
@@ -99,6 +101,7 @@ RelGV Float       x y = x ≡ y
 RelGV (μ-type F)  x y = x ≡ y
 RelGV (ν-type F pureᶠ) x y = x ∼ᵖᵈ y
 RelGV (ν-type F actᶠ)  x y = x ∼ᵈ y
+RelGV (var _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
 RelGV (A + B) (inj₁ a₁) (inj₁ a₂) = RelGV A a₁ a₂
 RelGV (A + B) (inj₂ b₁) (inj₂ b₂) = RelGV B b₁ b₂
@@ -191,7 +194,7 @@ RelGM-return ⊑-pe   rv = relS-ret rv
 -- and a machine value read into either domain is related to itself.
 ------------------------------------------------------------------------
 
-prjB-rel : ∀ {A} (ib : IsBaseType A) {a : ⟦ A ⟧ᵛ} {b : ⟦ A ⟧ᴰ} → RelGV A a b → prjB ib a ≡ forgetᵇ ib b
+prjB-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} (ib : Base Δₖ A) {a : ⟦ A ⟧ᵛ} {b : ⟦ A ⟧ᴰ} → RelGV A a b → prjB ib a ≡ forgetᵇ ib b
 prjB-rel base-Unit   _ = refl
 prjB-rel base-Void   {()}
 prjB-rel base-Int    r = r
@@ -201,8 +204,9 @@ prjB-rel (base-Sum ia ib) {inj₁ _} {inj₁ _} r = cong inj₁ (prjB-rel ia r)
 prjB-rel (base-Sum ia ib) {inj₂ _} {inj₂ _} r = cong inj₂ (prjB-rel ib r)
 prjB-rel (base-Sum ia ib) {inj₁ _} {inj₂ _} ()
 prjB-rel (base-Sum ia ib) {inj₂ _} {inj₁ _} ()
+prjB-rel (b-var _)  {()}
 
-injB-rel : ∀ {A} (ib : IsBaseType A) (x : Val.⟦ A ⟧) → RelGV A (injB ib x) (injectᵇ ib x)
+injB-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} (ib : Base Δₖ A) (x : Val.⟦ A ⟧) → RelGV A (injB ib x) (injectᵇ ib x)
 injB-rel base-Unit   x = tt
 injB-rel base-Void   ()
 injB-rel base-Int    x = refl
@@ -210,6 +214,7 @@ injB-rel base-Float  x = refl
 injB-rel (base-Prod ia ib) (x , y) = injB-rel ia x , injB-rel ib y
 injB-rel (base-Sum ia ib) (inj₁ x) = injB-rel ia x
 injB-rel (base-Sum ia ib) (inj₂ y) = injB-rel ib y
+injB-rel (b-var _)  ()
 
 -- `pure ⊑ act` at ν: embedding a pure stream keeps it related.
 mutual
@@ -353,7 +358,7 @@ module _ {H : SFunctor} where
   ad-D-layer (G₁ S⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = ad-D-layer G₁ r d , ad-D-layer G₂ s d′
 
 -- The implementation side of a related pair is related to itself.
-right-self : ∀ (A : Type) {x : ⟦ A ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelD A y y
+right-self : ∀ {m} (A : Ty m) {x : ⟦ A ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelD A y y
 right-self Unit r = tt
 right-self Void {()}
 right-self Int r = refl
@@ -361,6 +366,7 @@ right-self Float r = refl
 right-self (μ-type F) r = refl
 right-self (ν-type F pureᶠ) r = pd-self r
 right-self (ν-type F actᶠ) r = ad-self r
+right-self (var _) {()}
 right-self (A * B) {_ , _} {_ , _} (r , s) = right-self A r , right-self B s
 right-self (A + B) {inj₁ _} {inj₁ _} r = right-self A r
 right-self (A + B) {inj₂ _} {inj₂ _} r = right-self B r
@@ -372,7 +378,7 @@ right-self (A ⇒[ mk-kind Many π ] B) (_ , d) = d
 
 -- An implementation related (`RelD`) to a Spec meaning's twin is a twin too.
 mutual
-  GV-D : ∀ (A : Type) {c : ⟦ A ⟧ᵛ} {s i : ⟦ A ⟧ᴰ} → RelGV A c s → RelD A i s → RelGV A c i
+  GV-D : ∀ {m} (A : Ty m) {c : ⟦ A ⟧ᵛ} {s i : ⟦ A ⟧ᴰ} → RelGV A c s → RelD A i s → RelGV A c i
   GV-D Unit r d = tt
   GV-D Void {()}
   GV-D Int r d = trans r (sym d)
@@ -380,6 +386,7 @@ mutual
   GV-D (μ-type F) r d = trans r (sym d)
   GV-D (ν-type F pureᶠ) r d = pd-D r d
   GV-D (ν-type F actᶠ) r d = ad-D r d
+  GV-D (var _) {()}
   GV-D (A * B) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = GV-D A r d , GV-D B s d′
   GV-D (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r d = GV-D A r d
   GV-D (A + B) {inj₂ _} {inj₂ _} {inj₂ _} r d = GV-D B r d
@@ -393,5 +400,5 @@ mutual
   GV-D (A ⇒[ mk-kind Many π ] B) (h , _) d =
     (λ rab → GM-D π B (h rab) (d (right-self A rab))) , RelD-leftself (A ⇒[ mk-kind Many π ] B) d
 
-  GM-D : ∀ (π : Purity) (A : Type) {m : M π ⟦ A ⟧ᵛ} {s i : T∞ ⟦ A ⟧ᴰ} → RelGM π A m s → RelS (RelD A) i s → RelGM π A m i
+  GM-D : ∀ {mₜ} (π : Purity) (A : Ty mₜ) {m : M π ⟦ A ⟧ᵛ} {s i : T∞ ⟦ A ⟧ᴰ} → RelGM π A m s → RelS (RelD A) i s → RelGM π A m i
   GM-D π A r d = RelS-mono (λ { (_ , gv , dv) → GV-D A gv dv }) (RelS-meet r d)

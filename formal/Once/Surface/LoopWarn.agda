@@ -17,6 +17,7 @@
 
 module Once.Surface.LoopWarn where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat using (ℕ; _+_)
 open import Once.Spec.Grade using (mk-kind; pure)
@@ -26,19 +27,19 @@ open import Once.Surface.Syntax using (Expr)
 open Once.Surface.Syntax.Expr
 
 -- a pure arrow
-pureArrow : Type → Bool
+pureArrow : ∀ {m} → Ty m → Bool
 pureArrow (_ ⇒[ mk-kind _ pure ] _) = true
 {-# CATCHALL #-}
 pureArrow _ = false
 
 -- a round coerced from a pure arrow
-roundIsPure : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {T : Type} → Expr Γ Ψ T → Bool
+roundIsPure : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → Bool
 roundIsPure (coerce {A = S} _ _) = pureArrow S
 {-# CATCHALL #-}
 roundIsPure _ = false
 
 -- how many loops in a term have a pure round
-silentLoops : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {T : Type} → Expr Γ Ψ T → ℕ
+silentLoops : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → ℕ
 silentLoops (lam _ _ b)      = silentLoops b
 silentLoops (app f x)        = silentLoops f + silentLoops x
 silentLoops (effApp f x)     = silentLoops f + silentLoops x

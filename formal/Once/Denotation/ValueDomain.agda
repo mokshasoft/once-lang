@@ -15,6 +15,8 @@
 
 module Once.Denotation.ValueDomain where
 
+open import Once.Spec.Type using (Base)
+open import Once.Spec.Type using (var; Ty; Fun; KCtx; WFFun)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
@@ -73,7 +75,7 @@ subst-νᵈ-cong refl v = refl
 -- an arrow is one that need not stop; a finite block embeds).
 ------------------------------------------------------------------------
 
-⟦_⟧ᴰ : Type → Set
+⟦_⟧ᴰ : ∀ {m} → Ty m → Set
 ⟦ Unit ⟧ᴰ       = ⊤
 ⟦ Void ⟧ᴰ       = ⊥
 ⟦ A * B ⟧ᴰ      = ⟦ A ⟧ᴰ × ⟦ B ⟧ᴰ
@@ -102,8 +104,9 @@ subst-νᵈ-cong refl v = refl
 -- the anamorphism does not order. Here the order is the order the program
 -- FORCES layers, which is the order the machine runs them in.
 ⟦ ν-type F _ ⟧ᴰ = νᴵ (translateF Carrier Carrier F)
-⟦ Int ⟧ᴰ        = Val.⟦ Int ⟧
-⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
+⟦ Int ⟧ᴰ        = Val.⟦ Int {0} ⟧
+⟦ Float ⟧ᴰ      = Val.⟦ Float {0} ⟧
+⟦ var _ ⟧ᴰ  = ⊥
 
 ------------------------------------------------------------------------
 -- Plan 0.52 M2: the monadic value domain over the UNGRADED IR objects
@@ -114,7 +117,7 @@ subst-νᵈ-cong refl v = refl
 ⟦_⟧ᴰᴵ : IRTy → Set
 ⟦ A ⟧ᴰᴵ = ⟦ ⌈ A ⌉ ⟧ᴰ
 
-cohᴰ : ∀ (T' : Type) → ⟦ ⌊ T' ⌋ ⟧ᴰᴵ ≡ ⟦ T' ⟧ᴰ
+cohᴰ : ∀ {m} (T' : Ty m) → ⟦ ⌊ T' ⌋ ⟧ᴰᴵ ≡ ⟦ T' ⟧ᴰ
 cohᴰ Unit         = refl
 cohᴰ Void         = refl
 cohᴰ (A * B)      = cong₂ _×_ (cohᴰ A) (cohᴰ B)
@@ -131,6 +134,7 @@ cohᴰ (μ-type F)   = coh (μ-type F)
 cohᴰ (ν-type F _) = cong νᴵ (tF-coh F)
 cohᴰ Int          = refl
 cohᴰ Float        = refl
+cohᴰ (var _)  = refl
 
 ------------------------------------------------------------------------
 -- The monadic and the pure value domains agree on FIRST-ORDER values, and
@@ -143,7 +147,7 @@ cohᴰ Float        = refl
 -- answer its calls: there is no meaning-free erasure, so none is defined.
 ------------------------------------------------------------------------
 
-forgetᵇ : ∀ {A} → IsBaseType A → ⟦ A ⟧ᴰ → Val.⟦ A ⟧
+forgetᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ⟦ A ⟧ᴰ → Val.⟦ A ⟧
 forgetᵇ base-Unit   x = x
 forgetᵇ base-Void   ()
 forgetᵇ base-Int    x = x
@@ -152,7 +156,7 @@ forgetᵇ (base-Prod a b) (x , y) = forgetᵇ a x , forgetᵇ b y
 forgetᵇ (base-Sum a b) (inj₁ x) = inj₁ (forgetᵇ a x)
 forgetᵇ (base-Sum a b) (inj₂ y) = inj₂ (forgetᵇ b y)
 
-injectᵇ : ∀ {A} → IsBaseType A → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
+injectᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
 injectᵇ base-Unit   x = x
 injectᵇ base-Void   ()
 injectᵇ base-Int    x = x
@@ -173,14 +177,14 @@ injectᵇ (base-Sum a b) (inj₂ y) = inj₂ (injectᵇ b y)
 -- `Ana` needs it to hand its coalgebra to `anaᵈ`. At `K` it forgets, exactly
 -- as the inverse injects — and `WellFormedF` puts `K` only at base types,
 -- where `forget` is the identity.
-coerce-functor-D : ∀ {F} → WellFormedF F → ∀ C → ⟦ ⟦ F ⟧T C ⟧ᴰ → ⟦ F ⟧F ⟦ C ⟧ᴰ
+coerce-functor-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ ⟦ F ⟧T C ⟧ᴰ → ⟦ F ⟧F ⟦ C ⟧ᴰ
 coerce-functor-D (wf-K b)          C x        = forgetᵇ b x
 coerce-functor-D wf-Id             C x        = x
 coerce-functor-D (wf-Sum wf wg)    C (inj₁ x) = inj₁ (coerce-functor-D wf C x)
 coerce-functor-D (wf-Sum wf wg)    C (inj₂ y) = inj₂ (coerce-functor-D wg C y)
 coerce-functor-D (wf-Prod wf wg)   C (x , y)  = (coerce-functor-D wf C x , coerce-functor-D wg C y)
 
-coerce-functor⁻¹-D : ∀ {F} → WellFormedF F → ∀ C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ ⟦ F ⟧T C ⟧ᴰ
+coerce-functor⁻¹-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ ⟦ F ⟧T C ⟧ᴰ
 coerce-functor⁻¹-D (wf-K b)        C x        = injectᵇ b x
 coerce-functor⁻¹-D wf-Id           C x        = x
 coerce-functor⁻¹-D (wf-Sum wf wg)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D wf C x)

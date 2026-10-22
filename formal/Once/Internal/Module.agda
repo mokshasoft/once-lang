@@ -27,6 +27,7 @@
 
 module Once.Internal.Module where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_)
@@ -71,7 +72,7 @@ open Parser.PolyFunInfo using (pfunType; pfunBody)
 -- (its FFI declarations — generators, assumed) is kept apart from its
 -- DEFINITIONS (built from them): a reference to Σ is a SigOp, a reference to a
 -- definition is a call of it.
-record Scope : Set where
+record Scope {m} : Set where
   constructor scope
   field
     sig  : ISig                  -- the signatures declared so far (Σ)
@@ -81,14 +82,14 @@ record Scope : Set where
 emptyScope : Scope
 emptyScope = scope [] C.emptyFunCtx []
 
-ctxOf : Scope → NamedCtx
+ctxOf : ∀ {m} → Scope → NamedCtx m
 ctxOf sc = ctxWithImportsAndPolys (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc))
 
-addSig : Scope → String → Type → Scope
+addSig : ∀ {m} → Scope → String → Ty m → Scope
 addSig sc x ty = scope ((x , ty) ∷ Scope.sig sc) (Scope.imps sc) (Scope.tele sc)
 
 -- D324: `main` never enters the definitions' context (`C.extendDefs`).
-addImp : Scope → String → Type → Scope
+addImp : ∀ {m} → Scope → String → Ty m → Scope
 addImp sc x ty = scope (Scope.sig sc) (C.extendDefs (Scope.imps sc) x ty) (Scope.tele sc)
 
 addPoly : Scope → Parser.PolyFunInfo → Scope
@@ -96,11 +97,11 @@ addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 
 -- R8 (plan 0.121): a monomorphic definition's body — CHECKED at its signature,
 -- or, without one, SYNTHESIZING its type (D323; the Spec's `w-sig`/`w-nosig`).
-MonoBody : Maybe Type → (ctx : NamedCtx) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
+MonoBody : ∀ {m} → Maybe (Ty m) → (ctx : NamedCtx m) → RawExpr → Ty m → Surface.Usage (NamedCtx.size ctx) → Set
 MonoBody (just _) ctx e ty Ψ = ctx ⊢ᶜ e ∶ ty ⨾ Ψ
 MonoBody nothing  ctx e ty Ψ = ctx ⊢ᵢ e ∶ ty ⨾ Ψ
 
-data ModTele : Scope → List Parser.Entry → Set where
+data ModTele {m} : Scope → List Parser.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
   -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
   -- contract (D061/D071) — HONEST (D231: `pure` means no side effects), and
@@ -137,7 +138,7 @@ data ModTele : Scope → List Parser.Entry → Set where
 -- do not depend on which derivation types the module.
 ------------------------------------------------------------------------
 
-entrySig-fun : Parser.FunInfo → Bool → Maybe Type → ISig → ISig
+entrySig-fun : ∀ {m} → Parser.FunInfo → Bool → Maybe (Ty m) → ISig → ISig
 entrySig-fun fi true  (just ty) rest = (funName fi , ty) ∷ rest
 entrySig-fun fi true  nothing   rest = rest
 entrySig-fun fi false _         rest = rest
@@ -173,7 +174,7 @@ ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions (Parser.extractAliases
 -- The entry point: a monomorphic definition `main`, usable as `Eff Unit Unit`.
 ------------------------------------------------------------------------
 
-EffUU : Type
+EffUU : ∀ {m} → Ty m
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 -- Every monomorphic definition named `main` is usable as `Eff Unit Unit` (the

@@ -25,6 +25,7 @@
 ------------------------------------------------------------------------
 module Once.Internal.Laws.ModeAgreement where
 
+open import Once.Spec.Type using (Ty)
 open import Once.Internal.Type.Join using (join-unique)
 open import Data.Bool using (true)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -54,7 +55,7 @@ private
   just≢nothing : ∀ {ℓ} {X : Set ℓ} {x : X} → just x ≡ nothing → ⊥
   just≢nothing ()
 
-  cod-≡ : ∀ {A A′ B B′ : Type} {k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → B ≡ B′
+  cod-≡ : ∀ {m} {A A′ B B′ : Ty m} {k k′} → (A ⇒[ k ] B) ≡ (A′ ⇒[ k′ ] B′) → B ≡ B′
   cod-≡ refl = refl
 
   arith-not-cmp : ∀ (op : BinOp) → isArithmeticOp op ≡ true → isComparisonOp op ≡ true → ⊥
@@ -101,73 +102,73 @@ mutual
 ------------------------------------------------------------------------
 -- The builtin heads never synthesize.
 ------------------------------------------------------------------------
-noinf-id : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-id : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "id") ∶ S ⨾ Ψ → ⊥
 noinf-id (t-var-resolved (¬g ∷ _) wn _ _) = ¬g refl
-noinf-fst : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-fst : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "fst") ∶ S ⨾ Ψ → ⊥
 noinf-fst (t-var-resolved (_ ∷ ¬g ∷ _) wn _ _) = ¬g refl
-noinf-snd : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-snd : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "snd") ∶ S ⨾ Ψ → ⊥
 noinf-snd (t-var-resolved (_ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
-noinf-terminal : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-terminal : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "terminal") ∶ S ⨾ Ψ → ⊥
 noinf-terminal (t-var-resolved (_ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
-noinf-initial : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-initial : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "initial") ∶ S ⨾ Ψ → ⊥
 noinf-initial (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
-noinf-inl : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-inl : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "inl") ∶ S ⨾ Ψ → ⊥
 noinf-inl (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
-noinf-inr : ∀ {ctx : NamedCtx} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-inr : ∀ {m} {ctx : NamedCtx m} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RResolved (gen "inr") ∶ S ⨾ Ψ → ⊥
 noinf-inr (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬g ∷ _) wn _ _) = ¬g refl
-noinf-curry-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-curry-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "curry")) a ∶ S ⨾ Ψ → ⊥
 noinf-curry-app (t-app () _ _)
 noinf-curry-app (t-effApp () _ _)
 noinf-curry-app (t-app-spine () _ _)
-noinf-cata-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-cata-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "cata")) a ∶ S ⨾ Ψ → ⊥
 noinf-cata-app (t-app () _ _)
 noinf-cata-app (t-effApp () _ _)
 noinf-cata-app (t-app-spine () _ _)
-noinf-ana-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-ana-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "ana")) a ∶ S ⨾ Ψ → ⊥
 noinf-ana-app (t-app () _ _)
 noinf-ana-app (t-effApp () _ _)
 noinf-ana-app (t-app-spine () _ _)
-noinf-In-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-In-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "In")) a ∶ S ⨾ Ψ → ⊥
 noinf-In-app (t-app () _ _)
 noinf-In-app (t-effApp () _ _)
 noinf-In-app (t-app-spine () _ _)
-noinf-inl-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-inl-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "inl")) a ∶ S ⨾ Ψ → ⊥
 noinf-inl-app (t-app () _ _)
 noinf-inl-app (t-effApp () _ _)
 noinf-inl-app (t-app-spine () _ _)
-noinf-inr-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-inr-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "inr")) a ∶ S ⨾ Ψ → ⊥
 noinf-inr-app (t-app () _ _)
 noinf-inr-app (t-effApp () _ _)
 noinf-inr-app (t-app-spine () _ _)
-noinf-initial-app : ∀ {ctx : NamedCtx} {a : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-initial-app : ∀ {m} {ctx : NamedCtx m} {a : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RResolved (gen "initial")) a ∶ S ⨾ Ψ → ⊥
 noinf-initial-app (t-app () _ _)
 noinf-initial-app (t-effApp () _ _)
 noinf-initial-app (t-app-spine () _ _)
-noinf-compose : ∀ {ctx : NamedCtx} {f g : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-compose : ∀ {m} {ctx : NamedCtx m} {f g : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RApp (RResolved (gen "compose")) f) g ∶ S ⨾ Ψ → ⊥
 noinf-compose (t-app () _ _)
 noinf-compose (t-effApp () _ _)
 noinf-compose (t-app-spine () _ _)
-noinf-case : ∀ {ctx : NamedCtx} {f g : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-case : ∀ {m} {ctx : NamedCtx m} {f g : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RApp (RResolved (gen "case")) f) g ∶ S ⨾ Ψ → ⊥
 noinf-case (t-app () _ _)
 noinf-case (t-effApp () _ _)
 noinf-case (t-app-spine () _ _)
-noinf-pair : ∀ {ctx : NamedCtx} {f g : RawExpr} {S : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+noinf-pair : ∀ {m} {ctx : NamedCtx m} {f g : RawExpr} {S : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
   → ctx ⊢ᵢ RApp (RApp (RResolved (gen "pair")) f) g ∶ S ⨾ Ψ → ⊥
 noinf-pair (t-app () _ _)
 noinf-pair (t-effApp () _ _)
@@ -182,12 +183,12 @@ noinf-pair (t-app-spine () _ _)
 -- have the same codomain.
 ------------------------------------------------------------------------
 
-⇒-parts : ∀ {a b c d : Type} {k k′} → (a T.⇒[ k ] b) ≡ (c T.⇒[ k′ ] d) → (a ≡ c) × (b ≡ d)
+⇒-parts : ∀ {m} {a b c d : Ty m} {k k′} → (a T.⇒[ k ] b) ≡ (c T.⇒[ k′ ] d) → (a ≡ c) × (b ≡ d)
 ⇒-parts refl = refl , refl
 
-dpoly-det : ∀ {s sd sc sd′ sc′ : T.PolyType} {π′ π″ : T.Purity} {A B B′ : Type}
+dpoly-det : ∀ {m} {s sd sc sd′ sc′ : T.PolyType} {π′ π″ : T.Purity} {A B B′ : Ty m}
   → T.ArrowSchema s sd sc π′ → T.ArrowSchema s sd′ sc′ π″ → T.CodVarsInDom sd sc
-  → ∀ (θ θ′ : String → Type)
+  → ∀ (θ θ′ : String → Ty m)
   → T.substPoly θ s ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B) → T.substPoly θ′ s ≡ (A T.⇒[ T.mk-kind T.Many π″ ] B′)
   → B ≡ B′
 dpoly-det {sd = sd} {sc = sc} T.as-pure T.as-pure inc θ θ′ refl e′ with ⇒-parts e′
@@ -199,30 +200,30 @@ dpoly-det {sd = sd} {sc = sc} T.as-act T.as-act inc θ θ′ refl e′ with ⇒-
 
 mutual
   -- Synthesis is unique.
-  agree-ii : ∀ {ctx : NamedCtx} {e : RawExpr} {A A′ : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
+  agree-ii : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A A′ : Ty m} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
            → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′ → A ≡ A′ × Ψ ≡ Ψ′
 
   -- Checking at one type: one usage.
-  agree-cc : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
+  agree-cc : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A : Ty m} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
            → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ A ⨾ Ψ′ → Ψ ≡ Ψ′
 
   -- Checking agrees with inference.
-  agree-ic : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
+  agree-ic : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B : Ty m} {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
            → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → Ψ ≡ Ψ′
 
   -- The domain-given mode agrees with checking at an arrow from its domain.
-  agree-dc : ∀ {ctx : NamedCtx} {e : RawExpr} {A B B′ : Type} {π : T.Purity}
+  agree-dc : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B B′ : Ty m} {π : T.Purity}
                {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
            → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → Ψ ≡ Ψ′
 
   -- A term that synthesizes is domain-given only through its synthesized arrow.
-  agree-di : ∀ {ctx : NamedCtx} {e : RawExpr} {A B S : Type} {π : T.Purity}
+  agree-di : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B S : Ty m} {π : T.Purity}
                {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
            → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵢ e ∶ S ⨾ Ψ′
-           → Σ[ A′ ∈ Type ] Σ[ π′ ∈ T.Purity ] (S ≡ (A′ ⇒[ T.mk-kind T.Many π′ ] B)) × π′ ⊑π π × Ψ ≡ Ψ′
+           → Σ[ A′ ∈ Ty m ] Σ[ π′ ∈ T.Purity ] (S ≡ (A′ ⇒[ T.mk-kind T.Many π′ ] B)) × π′ ⊑π π × Ψ ≡ Ψ′
 
   -- The domain-given mode is exact.
-  agree-dd : ∀ {ctx : NamedCtx} {e : RawExpr} {A B B′ : Type} {π : T.Purity}
+  agree-dd : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B B′ : Ty m} {π : T.Purity}
                {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
            → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′ → B ≡ B′ × Ψ ≡ Ψ′
 
@@ -579,14 +580,14 @@ mutual
 ------------------------------------------------------------------------
 
 -- An inferred term, checked at any type, has its inferred usage.
-mode-agree-ic : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+mode-agree-ic : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B : Ty m}
                   {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → Ψ ≡ Ψ′
 mode-agree-ic = agree-ic
 
 -- A domain-given term, checked at an arrow from the same domain, has its
 -- domain-given usage.
-mode-agree-dc : ∀ {ctx : NamedCtx} {e : RawExpr} {A B B′ : Type} {π : T.Purity}
+mode-agree-dc : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A B B′ : Ty m} {π : T.Purity}
                   {Ψ Ψ′ : Surface.Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ
               → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′

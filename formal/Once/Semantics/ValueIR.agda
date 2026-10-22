@@ -21,6 +21,7 @@
 -- Plan 0.72 (D112): `FloatRep` joins `IntRep`, as in `Semantics.Value`.
 module Once.Semantics.ValueIR (IntRep : Set) (FloatRep : Set) where
 
+open import Once.Spec.Type using (var; Ty; Fun)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
@@ -52,7 +53,7 @@ open import Once.Internal.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F)
 
 -- Grade-blindness of the base carrier: `⟦_⟧-base` sends arrows and μ/ν to
 -- `⊤`, so re-grading (`⌈ ⌊ · ⌋ ⌉`) leaves it unchanged.
-base-coh : ∀ (A : Type) → ⟦ IntRep , FloatRep ⟧-base ⌈ ⌊ A ⌋ ⌉ ≡ ⟦ IntRep , FloatRep ⟧-base A
+base-coh : ∀ {m} (A : Ty m) → ⟦ IntRep , FloatRep ⟧-base ⌈ ⌊ A ⌋ ⌉ ≡ ⟦ IntRep , FloatRep ⟧-base A
 base-coh Unit          = refl
 base-coh Void          = refl
 base-coh (A * B)       = cong₂ _×_ (base-coh A) (base-coh B)
@@ -67,17 +68,18 @@ base-coh (μ-type F)    = refl
 base-coh (ν-type F _)    = refl
 base-coh Int           = refl
 base-coh Float         = refl
+base-coh (var _)   = refl
 
 -- The translated SFunctor is unchanged by re-grading (its only Type-payloads
 -- are the `K`-constants, handled by `base-coh`).
-tF-coh : ∀ (F : Functor) → translateF IntRep FloatRep ⌈ eraseF F ⌉F ≡ translateF IntRep FloatRep F
+tF-coh : ∀ {m} (F : Fun m) → translateF IntRep FloatRep ⌈ eraseF F ⌉F ≡ translateF IntRep FloatRep F
 tF-coh (K A)   = cong SK (base-coh A)
 tF-coh Id      = refl
 tF-coh (F ⊕ G) = cong₂ _S⊕_ (tF-coh F) (tF-coh G)
 tF-coh (F ⊗ G) = cong₂ _S⊗_ (tF-coh F) (tF-coh G)
 
 -- The bridge: `⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧`.
-coh : ∀ (T : Type) → ⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧
+coh : ∀ {m} (T : Ty m) → ⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧
 coh Unit          = refl
 coh Void          = refl
 coh (A * B)       = cong₂ _×_ (coh A) (coh B)
@@ -87,10 +89,11 @@ coh (A + B)       = cong₂ _⊎_ (coh A) (coh B)
 -- grade-blind `⟦_⟧ᴰ` the two sides disagreed and `coh` was simply false.
 -- plan 0.98: the codomain is `Res`-wrapped on both sides (a function value may
 -- not return), so the transport carries `Res` through unchanged.
-coh (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⟦ Unit ⟧ → Res y) (coh B)
+coh (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⟦ Unit {0} ⟧ → Res y) (coh B)
 coh (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → Res y) (coh A) (coh B)
 coh (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → Res y) (coh A) (coh B)
 coh (μ-type F)    = cong μS (tF-coh F)
 coh (ν-type F _)    = cong νS (tF-coh F)
 coh Int           = refl
 coh Float         = refl
+coh (var _)   = refl

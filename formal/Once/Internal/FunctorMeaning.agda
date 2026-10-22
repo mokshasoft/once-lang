@@ -13,6 +13,7 @@
 
 module Once.Internal.FunctorMeaning where
 
+open import Once.Spec.Type using (var; Ty; Fun)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
@@ -39,7 +40,7 @@ open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; �
 -- PLAN 0.72 (D112): the THIRD place `Float` was pinned to Agda's double while
 -- `Int`'s carrier was a parameter (`Semantics.Value` and `IRTy` are the other
 -- two). Same fix, same reason.
-⟦_,_⟧-base : Set → Set → Type → Set
+⟦_,_⟧-base : ∀ {m} → Set → Set → Ty m → Set
 ⟦ IntRep , FloatRep ⟧-base Unit = ⊤
 ⟦ IntRep , FloatRep ⟧-base Void = ⊥
 ⟦ IntRep , FloatRep ⟧-base (A * B) = ⟦ IntRep , FloatRep ⟧-base A × ⟦ IntRep , FloatRep ⟧-base B
@@ -49,7 +50,7 @@ open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; �
 ⟦ IntRep , FloatRep ⟧-base (ν-type _ _) = ⊤    -- Corecursive: return ⊤ (not used in K)
 ⟦ IntRep , FloatRep ⟧-base Int = IntRep
 ⟦ IntRep , FloatRep ⟧-base Float = FloatRep
-⟦ IntRep , FloatRep ⟧-base (var ())
+⟦ IntRep , FloatRep ⟧-base (var _) = ⊥
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
@@ -60,7 +61,7 @@ open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; �
 --
 -- Uses the base interpretation for K positions.
 --
-translateF : Set → Set → Functor → SFunctor
+translateF : ∀ {m} → Set → Set → Fun m → SFunctor
 translateF IntRep FloatRep (K A) = SK (⟦ IntRep , FloatRep ⟧-base A)
 translateF IntRep FloatRep Id = SId
 translateF IntRep FloatRep (F ⊕ G) = translateF IntRep FloatRep F S⊕ translateF IntRep FloatRep G
@@ -76,14 +77,14 @@ translateF IntRep FloatRep (F ⊗ G) = translateF IntRep FloatRep F S⊗ transla
 --
 -- μ-sem F = μS (translateF F)
 --
-μ-sem : Set → Set → Functor → Set
+μ-sem : ∀ {m} → Set → Set → Fun m → Set
 μ-sem IntRep FloatRep F = μS (translateF IntRep FloatRep F)
 
 -- | Semantic ν via translation
 --
 -- ν-sem F = νS (translateF F)
 --
-ν-sem : Set → Set → Functor → Set
+ν-sem : ∀ {m} → Set → Set → Fun m → Set
 ν-sem IntRep FloatRep F = νS (translateF IntRep FloatRep F)
 
 ------------------------------------------------------------------------
@@ -100,7 +101,7 @@ translateF IntRep FloatRep (F ⊗ G) = translateF IntRep FloatRep F S⊗ transla
 --
 -- This is definitionally true by construction.
 --
-⟦_,_⟧F-base : Set → Set → Functor → Set → Set
+⟦_,_⟧F-base : ∀ {m} → Set → Set → Fun m → Set → Set
 ⟦ IntRep , FloatRep ⟧F-base (K A) X = ⟦ IntRep , FloatRep ⟧-base A
 ⟦ IntRep , FloatRep ⟧F-base Id X = X
 ⟦ IntRep , FloatRep ⟧F-base (F ⊕ G) X = ⟦ IntRep , FloatRep ⟧F-base F X ⊎ ⟦ IntRep , FloatRep ⟧F-base G X
