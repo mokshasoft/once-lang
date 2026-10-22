@@ -120,6 +120,28 @@ purityTests = testGroup "Purity (pure emits nothing)"
         ]
       assertBool "Should reject Nu (Eff F)" (isLeft r)
 
+  , testCase "a let-bound operation application is a value, not a run" $ do
+      -- D308: an erased (`Zero`) position holds only a pure computation. The
+      -- surface cannot put an effect there: applying an operation is a value
+      -- (a suspended computation), so an unused `let` is pure and the
+      -- function's own type is `Int -> Int`.
+      r <- checkLib
+        [ "import I.Test.Emit as E"
+        , ""
+        , "f : Int -> Int"
+        , "f x = let r = emit@E 5 in x"
+        ]
+      r @?= Right ()
+
+  , testCase "...so Act is wider than its type and rejected" $ do
+      r <- checkLib
+        [ "import I.Test.Emit as E"
+        , ""
+        , "f : Act Int Int"
+        , "f x = let r = emit@E 5 in x"
+        ]
+      assertBool "Should reject Act over a body whose let binds a value" (isLeft r)
+
   , testCase "forcing an acting stream is an acting suspension" $ do
       -- The honest twin: `Out` on `Nu (Act F)` is `Act Unit (F …)`.
       r <- checkLib
