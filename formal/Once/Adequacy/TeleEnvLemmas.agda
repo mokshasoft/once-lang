@@ -64,7 +64,7 @@ open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
-open import Once.TypeCheck.Classify using (ctxAt)
+open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
 open import Once.TypeCheck.Elaborate using (success; failure; checkElabV; VerifiedCheckResult)
 open import Once.Denotation.Realize using (realize)
@@ -95,17 +95,17 @@ module _ (I : String → TopCtx) (uf : Imports) where
 
   -- D254: the spliced body is the realization of its derivation.
   spliceClosed : ∀ {A : Type} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
-               → VerifiedCheckResult (ctxAt (λ _ → base) Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
+               → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
   spliceClosed {A = A} pre x (failure _ , _)             = Srf.poly x A
   spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize w))
 
   polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × RawExpr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
   polyVal x A nothing                 = Srf.poly x A
-  polyVal x A (just (_ , body , pre)) = spliceClosed pre x (checkElabV (ctxAt (λ _ → base) (I x) pre) body A)
+  polyVal x A (just (_ , body , pre)) = spliceClosed pre x (checkElabV (ctxAt baseKinds (I x) pre) body A)
 
   private
     splice-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type) {s b pre}
-      (eq : lookupPolyPrefix L x ≡ just (s , b , pre)) (r : VerifiedCheckResult (ctxAt (λ _ → base) (I x) pre) b A)
+      (eq : lookupPolyPrefix L x ≡ just (s , b , pre)) (r : VerifiedCheckResult (ctxAt baseKinds (I x) pre) b A)
       → applySplice {Γ = Srf.∅} L a I uf 0 x A eq r ≡ spliceClosed pre x r
     splice-val L a x A eq (failure _ , _) = refl
     splice-val L (acc rec) x A {pre = pre} eq (success SCx.[] eE _ _ , w) =
@@ -116,7 +116,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
       → resolvePolyCase {Γ = Srf.∅} L a I uf 0 x A look eq ≡ polyVal x A look
     case-val L a x A nothing eq = refl
     case-val L a x A (just (s , body , pre)) eq =
-      splice-val L a x A eq (checkElabV (ctxAt (λ _ → base) (I x) pre) body A)
+      splice-val L a x A eq (checkElabV (ctxAt baseKinds (I x) pre) body A)
 
   refs-lookup : ∀ (ρ : CallEnv) (L : PolyCtx) (x : String) (A : Type)
     → SD.DefsSem.refs (RF.σR fmt ρ L I uf 0) x A ≡ SD.⟦ polyVal x A (lookupPolyPrefix L x) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
@@ -134,7 +134,7 @@ module _ (I : String → TopCtx) (uf : Imports) (ρ : CallEnv) where
 
   refs-head : ∀ (n : String) {s b} (L : PolyCtx) (A : Type)
     → SD.DefsSem.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) n A
-      ≡ SD.⟦ spliceClosed I uf L n (checkElabV (ctxAt (λ _ → base) (I n) L) b A) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
+      ≡ SD.⟦ spliceClosed I uf L n (checkElabV (ctxAt baseKinds (I n) L) b A) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
   refs-head n {s} {b} L A =
     trans (refs-lookup I uf ρ ((n , s , b) ∷ L) n A)
           (cong (λ l → SD.⟦ polyVal I uf n A l ⟧ˢ fmt (RF.σ₀ fmt ρ) tt) (lookup-head n L))

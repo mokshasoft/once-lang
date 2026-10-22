@@ -71,7 +71,7 @@ open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; 
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV)
 import Once.TypeCheck.Elaborate as Elaborate
 open import Once.Internal.Typing.Scope using (lookupPolyPrefix)
-open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; ctxAt)
+open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; ctxAt; baseKinds)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 
@@ -135,7 +135,7 @@ splice-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → TopCtx) (userFns : Imports)
     (fresh : ℕ) (x : String) {schema body prefix}
     (polyEq : lookupPolyPrefix polys x ≡ just (schema , body , prefix))
-    (r : VerifiedCheckResult (ctxAt (λ _ → base) (imps x) prefix) body A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
+    (r : VerifiedCheckResult (ctxAt baseKinds (imps x) prefix) body A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
   → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ dγ
       ≡ SD.⟦ applySplice {Γ = Srf.∅} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ tt
 splice-ctx-indep polys pAcc imps userFns fresh x polyEq (Elaborate.CheckElabResult.failure _ , _) dγ = refl
@@ -150,7 +150,7 @@ poly-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
 poly-ctx-indep polys pAcc imps userFns fresh x nothing eqLP dγ = refl
 poly-ctx-indep {A = A} polys pAcc imps userFns fresh x (just (_ , body , prefix)) eqLP dγ =
   splice-ctx-indep polys pAcc imps userFns fresh x eqLP
-    (checkElabV (ctxAt (λ _ → base) (imps x) prefix) body A) dγ
+    (checkElabV (ctxAt baseKinds (imps x) prefix) body A) dγ
 
 -- Two-sided bind congruence: related heads and pointwise-equal continuations
 -- give equal computations (plan 0.105: equality of trees, no budget).

@@ -23,7 +23,7 @@
 
 module Once.TypeCheck.Classify where
 
-open import Once.Spec.Type using (KCtx; ∅ₖ; Ty)
+open import Once.Spec.Type using (KCtx; ∅ₖ; Ty; base)
 open import Once.Internal.Typing.Scope
 
 open import Data.String using (String; _++_)
@@ -176,6 +176,13 @@ ctxWithImportsAndPolys tc polys = mkCtx 0 ∅ S∅ (TopCtx.tdefs tc) polys (TopC
 -- parameters, of kinds `Δ`.
 ctxAt : ∀ {m} → KCtx m → TopCtx → PolyCtx → NamedCtx m
 ctxAt Δ tc polys = mkCtx 0 ∅ S∅ (TopCtx.tdefs tc) polys (TopCtx.tsig tc) Δ
+
+-- | Every variable a base type: what the resolver splices a body at. Over no
+-- variable it IS the empty kinds (so a ground splice is checked in
+-- `ctxWithImportsAndPolys`).
+baseKinds : ∀ {m} → KCtx m
+baseKinds {zero}  = ∅ₖ
+baseKinds {suc m} = λ _ → base
 
 ------------------------------------------------------------------------
 -- Variable Lookup with Weakening and Instantiation

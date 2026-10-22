@@ -658,7 +658,7 @@ applySplice : ∀ {m} {n} {Γ : Surface.Ctx m n}
             → (imps : String → TopCtx) → Imports → ℕ → (x : String) (A : Ty m)
             → {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
             → lookupPolyPrefix polys x ≡ just (schema , body , prefix)
-            → VerifiedCheckResult (ctxAt (λ _ → base) (imps x) prefix) body A
+            → VerifiedCheckResult (ctxAt baseKinds (imps x) prefix) body A
             → Surface.Expr Γ Surface.zeroUsage A
 
 resolveExprWF polys _ imps userFns _ (Surface.var i) = Surface.var i
@@ -772,7 +772,7 @@ resolveExprWF {A = A} polys pAcc imps userFns fresh (Surface.poly x _) =
 resolvePolyCase polys _ imps userFns _ x A nothing _ = Surface.poly x A
 resolvePolyCase polys pAcc imps userFns fresh x A (just (_ , body , prefix)) polyEq =
   applySplice polys pAcc imps userFns fresh x A polyEq
-              (checkElabV (ctxAt (λ _ → base) (imps x) prefix) body A)
+              (checkElabV (ctxAt baseKinds (imps x) prefix) body A)
 
 -- D254: the spliced body is the realization of its derivation.
 applySplice polys _ imps userFns _ x A _ (failure _ , _) = Surface.poly x A
