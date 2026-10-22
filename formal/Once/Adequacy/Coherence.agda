@@ -77,10 +77,10 @@ mutual
   coh-ii ii-float = ≅-refl
   coh-ii ii-unit = ≅-refl
   coh-ii ii-unit-var = ≅-refl
-  coh-ii {ctx = ctx} (ii-resolved {n = n} {n′ = n′} {wn = wn} {wn′ = wn′} {l = l} {l′ = l′} {c = c} {c′ = c′}) = resolved-h {ctx = ctx} n wn l c n′ wn′ l′ c′
-  coh-ii {ctx = ctx} (ii-own {ns = ns} {ns′ = ns′} {l = l} {l′ = l′}) = own-h {ctx = ctx} {ns = ns} {ns′ = ns′} l l′
+  coh-ii {ctx = ctx} (ii-resolved {eq = refl} {eq′ = refl} {n = n} {n′ = n′} {wn = wn} {wn′ = wn′} {l = l} {l′ = l′} {c = c} {c′ = c′}) = resolved-h {ctx = ctx} n wn l c n′ wn′ l′ c′
+  coh-ii {ctx = ctx} (ii-own {eq = refl} {eq′ = refl} {ns = ns} {ns′ = ns′} {l = l} {l′ = l′}) = own-h {ctx = ctx} {ns = ns} {ns′ = ns′} l l′
   coh-ii {ctx = ctx} (ii-local {l = l} {l′ = l′}) = local-h {ctx = ctx} l l′
-  coh-ii {ctx = ctx} (ii-import {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {i = i} {i′ = i′} {c = c} {c′ = c′}) = import-h {ctx = ctx} {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {c = c} {c′ = c′} i i′
+  coh-ii {ctx = ctx} (ii-import {eq = refl} {eq′ = refl} {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {i = i} {i′ = i′} {c = c} {c′ = c′}) = import-h {ctx = ctx} {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {c = c} {c′ = c′} i i′
   coh-ii {ctx = ctx} (ii-poly-infer {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {li = li} {li′ = li′} {p = p} {p′ = p′} {gr = gr} {gr′ = gr′} {eq = eq} {eq′ = eq′}) =
     polyinf-h {ctx = ctx} {g = g} {g′ = g′} {ln = ln} {ln′ = ln′} {li = li} {li′ = li′} {gr = gr} {gr′ = gr′} p eq p′ eq′
   coh-ii (ii-annot r) = coh-cc r
@@ -210,7 +210,7 @@ mutual
 -- Plan 0.119 D5: in a self-related definitions environment, at related
 -- environments, the two realizations have related runs.
 realize-invariant :
-  ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
     (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (σ : SD.DefsSem) → RelDefs σ σ → ∀ {dγ dγ′}
   → RelD Surface.⟦ NamedCtx.debruijn ctx Surface.↾ Ψ ⟧ᶜ dγ dγ′
   → RelS (RelD A) (⟦ RC d₁ ⟧ˢ fmt σ dγ) (⟦ RC d₂ ⟧ˢ fmt σ dγ′)
@@ -218,7 +218,7 @@ realize-invariant d₁ d₂ σ rσ r = ≈-out (≅-≈ (coh-cc (route-cc d₁ d
 
 -- R8: likewise for two synthesis derivations (a definition without a signature).
 realize-invariant-i :
-  ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
     (d₁ d₂ : ctx ⊢ᵢ e ∶ A ⨾ Ψ) (σ : SD.DefsSem) → RelDefs σ σ → ∀ {dγ dγ′}
   → RelD Surface.⟦ NamedCtx.debruijn ctx Surface.↾ Ψ ⟧ᶜ dγ dγ′
   → RelS (RelD A) (⟦ RI d₁ ⟧ˢ fmt σ dγ) (⟦ RI d₂ ⟧ˢ fmt σ dγ′)
