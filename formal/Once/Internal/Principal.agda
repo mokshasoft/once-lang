@@ -20,7 +20,7 @@
 
 module Once.Internal.Principal where
 
-open import Once.Spec.Type using (Ty)
+open import Once.Spec.Type using (var; Ty)
 open import Data.List using (List; []; _∷_; _++_; map; cartesianProductWith)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺; ∈-++⁺ˡ; ∈-++⁺ʳ; ∈-cartesianProductWith⁺)
@@ -58,7 +58,7 @@ below Void        = []
 below Unit        = Void ∷ []
 below Int         = Void ∷ []
 below Float       = Void ∷ []
-below (rigid k i) = Void ∷ []
+below (var i) = Void ∷ []
 below (μ-type F)  = Void ∷ []
 below (ν-type F φ) = Void ∷ map (ν-type F) (finBelow φ)
 below (A * B)     =
@@ -102,12 +102,12 @@ private
   pair-below f {a′ = a′} {b′ = b′} {xs = xs} {ys} (inj₂ a∈) (inj₂ b∈) =
     inj₂ (∈-++⁺ʳ (cartesianProductWith f xs (b′ ∷ [])) (∈-cartesianProductWith⁺ f {a′ ∷ xs} {ys} (there a∈) b∈))
 
-  void-below : ∀ T → Void ≡ T ⊎ Void ∈ below T
+  void-below : ∀ {m} (T : Ty m) → Void ≡ T ⊎ Void ∈ below T
   void-below Void           = inj₁ refl
   void-below Unit           = inj₂ (here refl)
   void-below Int            = inj₂ (here refl)
   void-below Float          = inj₂ (here refl)
-  void-below (rigid k i)    = inj₂ (here refl)
+  void-below (var i)    = inj₂ (here refl)
   void-below (μ-type F)     = inj₂ (here refl)
   void-below (ν-type F φ)   = inj₂ (here refl)
   void-below (A * B)        = inj₂ (here refl)
@@ -138,6 +138,6 @@ at-or-below-<:ᶜ (subᶜ-ν {F = F} {f = φ} {f′ = φ′} g) = ν-step (fin-a
 below-complete : ∀ {m} {T : Ty m} {X} → X <:ᶜ T → ¬ X ≡ T → X ∈ below T
 below-complete s ne = strict (at-or-below-<:ᶜ s) ne
   where
-    strict : ∀ {X T} → X ≡ T ⊎ X ∈ below T → ¬ X ≡ T → X ∈ below T
+    strict : ∀ {X T : Ty _} → X ≡ T ⊎ X ∈ below T → ¬ X ≡ T → X ∈ below T
     strict (inj₁ eq) ne = ⊥-elim (ne eq)
     strict (inj₂ m)  _  = m

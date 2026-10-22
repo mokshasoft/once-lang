@@ -268,7 +268,7 @@ seqF∞-rel (G ⊗ H) (fr-pair r s) =
 ------------------------------------------------------------------------
 
 private
-  fr-K≡ : ∀ {X Y} {R : X → Y → Set} {A} {x y} → x ≡ y → FRel R (K A) x y
+  fr-K≡ : ∀ {m} {X Y} {R : X → Y → Set} {A : Ty m} {x y} → x ≡ y → FRel R (K A) x y
   fr-K≡ refl = fr-K
 
 cfD-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {x y : ⟦ ⟦ F ⟧T C ⟧ᴰ}

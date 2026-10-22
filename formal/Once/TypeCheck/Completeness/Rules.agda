@@ -26,7 +26,7 @@
 ------------------------------------------------------------------------
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
-open import Once.Spec.Type using (Ty)
+open import Once.Spec.Type using (var; Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Type.Grade
 module Once.TypeCheck.Completeness.Rules where
@@ -225,10 +225,10 @@ infer-complete-RResolved-view {ctx} {cn} {T} (gv-other ng') eqv _ wn eq conc =
     go Float         _ eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
       (cong proj₁ (helperW _ _ wt))
-    go (T.rigid T.k-base _) _ eq' = _ , _ , _ ,
+    go (T.var _) _ eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
       (cong proj₁ (helperW _ _ wt))
-    go (T.rigid T.k-any _) (con-base ()) eq'
+    go (T.var _) (con-base ()) eq'
     go (A * B) conc' eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
       (trans (cong proj₁ (helper _ eq'))

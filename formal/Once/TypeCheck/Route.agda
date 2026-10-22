@@ -55,28 +55,28 @@ private
 ------------------------------------------------------------------------
 
 mutual
-  data Rii {m} : ∀ {A A′ : Ty m} {ctx e Ψ Ψ′} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′ → Set where
-    ii-int   : ∀ {n} → Rii {ctx} (t-int n) (t-int n)
-    ii-float : ∀ {i f l p} → Rii {ctx} (t-float i f l p) (t-float i f l p)
-    ii-unit  : Rii {ctx} t-unit t-unit
-    ii-unit-var : Rii {ctx} t-unit-var t-unit-var
-    ii-resolved : ∀ {cn n n′ wn wn′ l l′ c c′} → Rii {ctx} (t-var-resolved {cn = cn} {T = T} n wn l c) (t-var-resolved {T = T′} n′ wn′ l′ c′)
-    ii-own : ∀ {x ns ns′ l l′} → Rii {ctx} (t-var-own {x = x} {T = T} ns l) (t-var-own {T = T′} ns′ l′)
+  data Rii {m} : ∀ {ctx e} {A A′ : Ty m} {Ψ Ψ′} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′ → Set where
+    ii-int   : ∀ {n} → Rii {ctx = ctx} (t-int n) (t-int n)
+    ii-float : ∀ {i f l p} → Rii {ctx = ctx} (t-float i f l p) (t-float i f l p)
+    ii-unit  : Rii {ctx = ctx} t-unit t-unit
+    ii-unit-var : Rii {ctx = ctx} t-unit-var t-unit-var
+    ii-resolved : ∀ {cn n n′ wn wn′ l l′ c c′} → Rii {ctx = ctx} (t-var-resolved {cn = cn} {T = T} n wn l c) (t-var-resolved {T = T′} n′ wn′ l′ c′)
+    ii-own : ∀ {x ns ns′ l l′} → Rii {ctx = ctx} (t-var-own {x = x} {T = T} ns l) (t-var-own {T = T′} ns′ l′)
     ii-local : ∀ {x Ψ Ψ′ eV eV′ l l′}
-      → Rii {ctx} (t-var-local {x = x} {A = A} {Ψ = Ψ} {eV = eV} l) (t-var-local {A = A′} {Ψ = Ψ′} {eV = eV′} l′)
-    ii-import : ∀ {x g g′ ln ln′ i i′ c c′} → Rii {ctx} (t-var-import {x = x} {T = T} g ln i c) (t-var-import {T = T′} g′ ln′ i′ c′)
+      → Rii {ctx = ctx} (t-var-local {x = x} {A = A} {Ψ = Ψ} {eV = eV} l) (t-var-local {A = A′} {Ψ = Ψ′} {eV = eV′} l′)
+    ii-import : ∀ {x g g′ ln ln′ i i′ c c′} → Rii {ctx = ctx} (t-var-import {x = x} {T = T} g ln i c) (t-var-import {T = T′} g′ ln′ i′ c′)
     ii-poly-infer : ∀ {x s s′ b b′ pr pr′ g g′ ln ln′ li li′ p p′ gr gr′ eq eq′}
-      → Rii {ctx} (t-var-poly-instantiate-infer {x = x} {T = T} {schema = s} {body = b} {prefix = pr} {g = g} ln li p gr eq)
+      → Rii {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {T = T} {schema = s} {body = b} {prefix = pr} {g = g} ln li p gr eq)
                   (t-var-poly-instantiate-infer {T = T′} {schema = s′} {body = b′} {prefix = pr′} {g = g′} ln′ li′ p′ gr′ eq′)
-    ii-annot : ∀ {Ψ Ψ′ r r′} {c : ctx ⊢ᶜ e ∶ T ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ T ⨾ Ψ′} → Rcc c c′ → Rii (t-annot r c) (t-annot r′ c′)
+    ii-annot : ∀ {T₀ : T.Type} {Ψ Ψ′ r r′} {c : ctx ⊢ᶜ e ∶ T.wk₀ T₀ ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ T.wk₀ T₀ ⨾ Ψ′} → Rcc c c′ → Rii (t-annot {T = T₀} r c) (t-annot {T = T₀} r′ c′)
     ii-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {a : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {a′ : ctx ⊢ᵢ e₁ ∶ A′ ⨾ Ψ₁′} {b : ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂} {b′ : ctx ⊢ᵢ e₂ ∶ B′ ⨾ Ψ₂′}
             → Rii a a′ → Rii b b′ → Rii (t-pair a b) (t-pair a′ b′)
     ii-neg : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ Int ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ Int ⨾ Ψ′} → Rii d d′ → Rii (t-neg d) (t-neg d′)
-    ii-neg-float : ∀ {i f l p} → Rii {ctx} (t-neg-float i f l p) (t-neg-float i f l p)
+    ii-neg-float : ∀ {i f l p} → Rii {ctx = ctx} (t-neg-float i f l p) (t-neg-float i f l p)
     ii-let : ∀ {x Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {d₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁′}
                {d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q Surface.Usage.∷ Ψ₂)} {d₂′ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B′ ⨾ (q′ Surface.Usage.∷ Ψ₂′)}
            → Rii d₁ d₁′ → Rii d₂ d₂′ → Rii (t-let d₁ d₂) (t-let d₁′ d₂′)
-    ii-case : ∀ {Cᵣ Cᵣ′ D D′ : Ty m} {xL xR qL qL′ qR qR′ Ψs Ψs′ Ψl Ψl′ Ψr Ψr′} {s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs} {s′ : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs′}
+    ii-case : ∀ {xL xR qL qL′ qR qR′ Ψs Ψs′ Ψl Ψl′ Ψr Ψr′} {Cᵣ Cᵣ′ D D′ : Ty m} {s : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs} {s′ : ctx ⊢ᵢ e₁ ∶ (A + B) ⨾ Ψs′}
                 {l : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C ⨾ (qL Surface.Usage.∷ Ψl)} {l′ : extendNamedCtx ctx xL A ⊢ᵢ e₂ ∶ C′ ⨾ (qL′ Surface.Usage.∷ Ψl′)}
                 {r : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ ⨾ (qR Surface.Usage.∷ Ψr)} {r′ : extendNamedCtx ctx xR B ⊢ᵢ e₃ ∶ Cᵣ′ ⨾ (qR′ Surface.Usage.∷ Ψr′)}
                 {J : C ⊔ Cᵣ ≔ D} {J′ : C′ ⊔ Cᵣ′ ≔ D′}
@@ -126,16 +126,16 @@ mutual
                  {dF : ctx ⊢ᵈ e₁ ∶ X ⇒[ T.pure ]↦ T ⨾ Ψ₁} {dF′ : ctx ⊢ᵈ e₁ ∶ X ⇒[ T.pure ]↦ T′ ⨾ Ψ₁′}
              → Rii dX dX′ → Rdd dF dF′ → Rii (t-app-spine h dX dF) (t-app-spine h′ dX′ dF′)
 
-  data Rcc {m} : ∀ {A : Ty m} {ctx e Ψ Ψ′} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ A ⨾ Ψ′ → Set where
+  data Rcc {m} : ∀ {ctx e} {A : Ty m} {Ψ Ψ′} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ A ⨾ Ψ′ → Set where
     cc-sub-l : ∀ {Ψ Ψ′ p} {d : ctx ⊢ᵢ e ∶ A₀ ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ A ⨾ Ψ′} → Ric d c → Rcc (t-sub d p) c
     cc-sub-r : ∀ {Ψ Ψ′ p} {d : ctx ⊢ᵢ e ∶ A₀ ⨾ Ψ′} {c : ctx ⊢ᶜ e ∶ A ⨾ Ψ} → Ric d c → Rcc c (t-sub d p)
-    cc-id : ∀ {u u′} → Rcc {ctx} (t-id-check {T = A} {π = π} {u = u}) (t-id-check {u = u′})
-    cc-fst : ∀ {u u′} → Rcc {ctx} (t-fst-check {A = A} {B = B} {π = π} {u = u}) (t-fst-check {u = u′})
-    cc-snd : ∀ {u u′} → Rcc {ctx} (t-snd-check {A = A} {B = B} {π = π} {u = u}) (t-snd-check {u = u′})
-    cc-terminal : ∀ {u u′} → Rcc {ctx} (t-terminal-morph-check {A = A} {π = π} {u = u}) (t-terminal-morph-check {u = u′})
-    cc-initial : ∀ {u u′} → Rcc {ctx} (t-initial-morph-check {A = A} {π = π} {u = u}) (t-initial-morph-check {u = u′})
-    cc-inl : ∀ {u u′} → Rcc {ctx} (t-inl-morph-check {A = A} {B = B} {π = π} {u = u}) (t-inl-morph-check {u = u′})
-    cc-inr : ∀ {u u′} → Rcc {ctx} (t-inr-morph-check {A = A} {B = B} {π = π} {u = u}) (t-inr-morph-check {u = u′})
+    cc-id : ∀ {u u′} → Rcc {ctx = ctx} (t-id-check {T = A} {π = π} {u = u}) (t-id-check {u = u′})
+    cc-fst : ∀ {u u′} → Rcc {ctx = ctx} (t-fst-check {A = A} {B = B} {π = π} {u = u}) (t-fst-check {u = u′})
+    cc-snd : ∀ {u u′} → Rcc {ctx = ctx} (t-snd-check {A = A} {B = B} {π = π} {u = u}) (t-snd-check {u = u′})
+    cc-terminal : ∀ {u u′} → Rcc {ctx = ctx} (t-terminal-morph-check {A = A} {π = π} {u = u}) (t-terminal-morph-check {u = u′})
+    cc-initial : ∀ {u u′} → Rcc {ctx = ctx} (t-initial-morph-check {A = A} {π = π} {u = u}) (t-initial-morph-check {u = u′})
+    cc-inl : ∀ {u u′} → Rcc {ctx = ctx} (t-inl-morph-check {A = A} {B = B} {π = π} {u = u}) (t-inl-morph-check {u = u′})
+    cc-inr : ∀ {u u′} → Rcc {ctx = ctx} (t-inr-morph-check {A = A} {B = B} {π = π} {u = u}) (t-inr-morph-check {u = u′})
     -- Both `g` routes: the outer arm is checked at the middle `g` determines, aligned.
     cc-gg : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ B ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ B ⨾ Ψ₂′}
               {df : ctx ⊢ᶜ e₁ ∶ (B ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (B ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ₁′}
@@ -180,18 +180,18 @@ mutual
     cc-inr-app : ∀ {Ψ Ψ′} {d : ctx ⊢ᶜ e ∶ B ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ B ⨾ Ψ′} → Rcc d d′ → Rcc (t-inr-app-check {A = A} d) (t-inr-app-check d′)
     cc-initial-app : ∀ {Ψ Ψ′} {d : ctx ⊢ᶜ e ∶ Void ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ Void ⨾ Ψ′} → Rcc d d′ → Rcc (t-initial-app-check {T = A} d) (t-initial-app-check d′)
     cc-poly : ∀ {x s s′ b b′ pr pr′ ln ln′ li li′ p p′ g g′ k k′}
-      → Rcc {ctx} (t-var-poly-instantiate {x = x} {T = A} {schema = s} {body = b} {prefix = pr} ln li p g k)
+      → Rcc {ctx = ctx} (t-var-poly-instantiate {x = x} {T = A} {schema = s} {body = b} {prefix = pr} ln li p g k)
                   (t-var-poly-instantiate {schema = s′} {body = b′} {prefix = pr′} ln′ li′ p′ g′ k′)
     -- D313: a generator at its guard, twice.
 
-  data Ric {m} : ∀ {A B : Ty m} {ctx e Ψ Ψ′} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → Set where
+  data Ric {m} : ∀ {ctx e} {A B : Ty m} {Ψ Ψ′} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᶜ e ∶ B ⨾ Ψ′ → Set where
     ic-sub : ∀ {Ψ Ψ′ p} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′} → Rii d d′ → Ric d (t-sub {B = B} d′ p)
     ic-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {a : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {a′ : ctx ⊢ᶜ e₁ ∶ A′ ⨾ Ψ₁′} {b : ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂} {b′ : ctx ⊢ᶜ e₂ ∶ B′ ⨾ Ψ₂′}
             → Ric a a′ → Ric b b′ → Ric (t-pair a b) (t-pair-lit-check a′ b′)
     ic-apply : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many T.pure ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many T.pure ] B′) * A′) ⨾ Ψ′}
              → Rii d d′ → Ric (t-apply-app-infer d) (t-apply-check d′)
 
-  data Rdc {m} : ∀ {A B B′ : Ty m} {ctx e π Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → Set where
+  data Rdc {m} : ∀ {ctx e} {A B B′ : Ty m} {π Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′ → Set where
     dc-infer : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B) ⨾ Ψ} {c : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ′}
              → Ric w c → Rdc (d-infer w a g) c
     -- The check is a conversion of a synthesis; its type is the arrow `d-infer` reads, aligned.
@@ -207,12 +207,12 @@ mutual
     dc-cf : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ s} {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂} {df : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B ⨾ Ψ₁}
               {wf : ctx ⊢ᵢ e₁ ∶ (A′ ⇒[ T.mk-kind T.Many π′ ] C′) ⨾ Ψ₁′} {dg′ : ctx ⊢ᶜ e₂ ∶ (A ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ₂′}
           → Rdi df wf → Rdc dg dg′ → Rdc {B′ = B′} (d-compose dg df) (t-compose-check-f wf s dg′)
-    dc-id : ∀ {u u′} → Rdc {ctx} (d-id {A = A} {π = π} {u = u}) (t-id-check {u = u′})
-    dc-fst : ∀ {u u′} → Rdc {ctx} (d-fst {A = A} {B = B} {π = π} {u = u}) (t-fst-check {u = u′})
-    dc-snd : ∀ {u u′} → Rdc {ctx} (d-snd {A = A} {B = B} {π = π} {u = u}) (t-snd-check {u = u′})
-    dc-terminal : ∀ {u u′} → Rdc {ctx} (d-terminal {A = A} {π = π} {u = u}) (t-terminal-morph-check {u = u′})
-    dc-initial : ∀ {u u′} → Rdc {ctx} (d-initial {π = π} {u = u}) (t-initial-morph-check {A = A} {u = u′})
-    dc-case : ∀ {D : Ty m} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Cg} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₁′}
+    dc-id : ∀ {u u′} → Rdc {ctx = ctx} (d-id {A = A} {π = π} {u = u}) (t-id-check {u = u′})
+    dc-fst : ∀ {u u′} → Rdc {ctx = ctx} (d-fst {A = A} {B = B} {π = π} {u = u}) (t-fst-check {u = u′})
+    dc-snd : ∀ {u u′} → Rdc {ctx = ctx} (d-snd {A = A} {B = B} {π = π} {u = u}) (t-snd-check {u = u′})
+    dc-terminal : ∀ {u u′} → Rdc {ctx = ctx} (d-terminal {A = A} {π = π} {u = u}) (t-terminal-morph-check {u = u′})
+    dc-initial : ∀ {u u′} → Rdc {ctx = ctx} (d-initial {π = π} {u = u}) (t-initial-morph-check {A = A} {u = u′})
+    dc-case : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Cg} {D : Ty m} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ Cg ⨾ Ψ₂} {dg′ : ctx ⊢ᶜ e₂ ∶ (B ⇒[ T.mk-kind T.Many π ] B′) ⨾ Ψ₂′}
                 {J : C ⊔ Cg ≔ D}
             → Rdc df df′ → Rdc dg dg′ → Rdc (d-case df dg J) (t-case-copair-check df′ dg′)
@@ -223,16 +223,16 @@ mutual
                 {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ′}
             → ∀ {u u′} → Ric a a′ → Rdc (d-cata {ctx = ctx} {F = F} {u = u} w a) (t-cata-check {F = F} {u = u′} w′ a′)
     dc-poly : ∀ {x s s′ sd sc b b′ pr pr′ ln ln′ li li′ p p′ g g′ as ki ki′ gr} {inc : T.CodVarsInDom sd sc}
-      → Rdc {ctx} (d-poly {x = x} {A = A} {B = B} {π = π} {π′ = π′} {schema = s} {sd = sd} {sc = sc} {body = b} {prefix = pr}
+      → Rdc {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π = π} {π′ = π′} {schema = s} {sd = sd} {sc = sc} {body = b} {prefix = pr}
                           ln li p g as inc ki gr)
                   (t-var-poly-instantiate {T = A ⇒[ T.mk-kind T.Many π ] B′} {schema = s′} {body = b′} {prefix = pr′} ln′ li′ p′ g′ ki′)
 
   -- A domain-given derivation of a term that also synthesizes an arrow.
-  data Rdi {m} : ∀ {A A′ B B′ : Ty m} {ctx e π q π′ Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵢ e ∶ (A′ ⇒[ T.mk-kind q π′ ] B′) ⨾ Ψ′ → Set where
+  data Rdi {m} : ∀ {ctx e} {A A′ B B′ : Ty m} {π q π′ Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵢ e ∶ (A′ ⇒[ T.mk-kind q π′ ] B′) ⨾ Ψ′ → Set where
     di-infer : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B) ⨾ Ψ} {d : ctx ⊢ᵢ e ∶ (A′ ⇒[ T.mk-kind q π′ ] B′) ⨾ Ψ′}
              → Rii w d → Rdi (d-infer {A = A} {π = π} w a g) d
 
-  data Rdd {m} : ∀ {A B B′ : Ty m} {ctx e π Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′ → Set where
+  data Rdd {m} : ∀ {ctx e} {A B B′ : Ty m} {π Ψ Ψ′} → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ → ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′ → Set where
     dd-infer-l : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B) ⨾ Ψ} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B′ ⨾ Ψ′}
                → Rdi dd w → Rdd (d-infer w a g) dd
     dd-infer-r : ∀ {Ψ Ψ′ a g} {w : ctx ⊢ᵢ e ∶ (A₀ ⇒[ T.mk-kind T.Many π₀ ] B′) ⨾ Ψ′} {dd : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ}
@@ -244,12 +244,12 @@ mutual
     dd-compose : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ M ⨾ Ψ₂′}
                    {df : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ M ⇒[ π ]↦ B′ ⨾ Ψ₁′}
                → Rdd dg dg′ → Rdd df df′ → Rdd (d-compose dg df) (d-compose dg′ df′)
-    dd-id : ∀ {u u′} → Rdd {ctx} (d-id {A = A} {π = π} {u = u}) (d-id {u = u′})
-    dd-fst : ∀ {u u′} → Rdd {ctx} (d-fst {A = A} {B = B} {π = π} {u = u}) (d-fst {u = u′})
-    dd-snd : ∀ {u u′} → Rdd {ctx} (d-snd {A = A} {B = B} {π = π} {u = u}) (d-snd {u = u′})
-    dd-terminal : ∀ {u u′} → Rdd {ctx} (d-terminal {A = A} {π = π} {u = u}) (d-terminal {u = u′})
-    dd-initial : ∀ {u u′} → Rdd {ctx} (d-initial {π = π} {u = u}) (d-initial {u = u′})
-    dd-case : ∀ {D D′ : Ty m} {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Cg Cg′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C′ ⨾ Ψ₁′}
+    dd-id : ∀ {u u′} → Rdd {ctx = ctx} (d-id {A = A} {π = π} {u = u}) (d-id {u = u′})
+    dd-fst : ∀ {u u′} → Rdd {ctx = ctx} (d-fst {A = A} {B = B} {π = π} {u = u}) (d-fst {u = u′})
+    dd-snd : ∀ {u u′} → Rdd {ctx = ctx} (d-snd {A = A} {B = B} {π = π} {u = u}) (d-snd {u = u′})
+    dd-terminal : ∀ {u u′} → Rdd {ctx = ctx} (d-terminal {A = A} {π = π} {u = u}) (d-terminal {u = u′})
+    dd-initial : ∀ {u u′} → Rdd {ctx = ctx} (d-initial {π = π} {u = u}) (d-initial {u = u′})
+    dd-case : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Cg Cg′} {D D′ : Ty m} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ C′ ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ Cg ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ B ⇒[ π ]↦ Cg′ ⨾ Ψ₂′}
                 {J : C ⊔ Cg ≔ D} {J′ : C′ ⊔ Cg′ ≔ D′}
             → Rdd df df′ → Rdd dg dg′ → Rdd (d-case df dg J) (d-case df′ dg′ J′)
@@ -261,6 +261,6 @@ mutual
             → ∀ {u u′} → Rii a a′ → Rdd (d-cata {ctx = ctx} {F = F} {u = u} w a) (d-cata {F = F} {u = u′} w′ a′)
     dd-poly : ∀ {x s s′ sd sc sd′ sc′ b b′ pr pr′ ln ln′ li li′ p p′ g g′ as as′ ki ki′ gr gr′}
                 {inc : T.CodVarsInDom sd sc} {inc′ : T.CodVarsInDom sd′ sc′}
-      → Rdd {ctx} (d-poly {x = x} {A = A} {B = B} {π = π} {π′ = π′} {schema = s} {sd = sd} {sc = sc} {body = b} {prefix = pr}
+      → Rdd {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π = π} {π′ = π′} {schema = s} {sd = sd} {sc = sc} {body = b} {prefix = pr}
                           ln li p g as inc ki gr)
                   (d-poly {B = B′} {π′ = π₀} {schema = s′} {sd = sd′} {sc = sc′} {body = b′} {prefix = pr′} ln′ li′ p′ g′ as′ inc′ ki′ gr′)

@@ -80,7 +80,7 @@ abstract
   -- via the refl-proved stepping lemmas below. (extract-proofs-from-where
   -- + agda-typecheck-oom-abstract.)
   ------------------------------------------------------------------------
-  child-measure : ∀ F {G} (wfG : WellFormedF G) → ⟦ F ⟧F (⟦μ⟧ G) → ℕ
+  child-measure : ∀ (F : Functor) {G} (wfG : WellFormedF G) → ⟦ F ⟧F (⟦μ⟧ G) → ℕ
   child-measure F wfG layer = sum-Id F (sem-fmap F (μ-size wfG) layer)
 
   -- The total child-size of x's layer is strictly less than μ-size x.
