@@ -18,7 +18,7 @@ module Once.Adequacy.SpecCore.Context where
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Bool using (true)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym)
 
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
@@ -86,53 +86,45 @@ open import Once.Adequacy.SpecCore.Type using (TyR; qS-injective)
 ≤q′-L LG.Many LG.Zero ()
 ≤q′-L LG.Many LG.One  ()
 
+-- Plan 0.122: the usages are one (`uS` the identity), the lemmas kept as the
+-- front-end bridge reads them.
+qS-id : ∀ q → qS q ≡ q
+qS-id LG.Zero = refl
+qS-id LG.One  = refl
+qS-id LG.Many = refl
+
 uS : ∀ {n} → LC.Usage n → SC.Usage n
-uS SCx.[]      = SC.[]
-uS (q SCx.∷ Ψ) = qS q SC.∷ uS Ψ
+uS Ψ = Ψ
 
 uS-zero : ∀ {n} → uS (LC.zeroUsage {n}) ≡ SC.zeroUsage
-uS-zero {ℕ.zero}  = refl
-uS-zero {ℕ.suc n} = cong (SG.Zero SC.∷_) uS-zero
+uS-zero = refl
 
 uS-single : ∀ {n} (i : Fin n) q → uS (LC.singleUse i q) ≡ SC.singleUse i (qS q)
-uS-single {ℕ.suc n} zero    q = cong (qS q SC.∷_) uS-zero
-uS-single {ℕ.suc n} (suc i) q = cong (SG.Zero SC.∷_) (uS-single i q)
+uS-single i q = cong (SC.singleUse i) (sym (qS-id q))
 
 uS-+ : ∀ {n} (Ψ Φ : LC.Usage n) → uS (Ψ LC.+ᵘ Φ) ≡ uS Ψ SC.+ᵘ uS Φ
-uS-+ SCx.[]      SCx.[]      = refl
-uS-+ (p SCx.∷ Ψ) (q SCx.∷ Φ) = cong₂ SC._∷_ (+q-S p q) (uS-+ Ψ Φ)
+uS-+ Ψ Φ = refl
 
 uS-* : ∀ {n} q (Ψ : LC.Usage n) → uS (q LC.*ᵘ Ψ) ≡ qS q SC.*ᵘ uS Ψ
-uS-* q SCx.[]      = refl
-uS-* q (p SCx.∷ Ψ) = cong₂ SC._∷_ (*q-S q p) (uS-* q Ψ)
+uS-* q Ψ = cong (SC._*ᵘ Ψ) (sym (qS-id q))
 
 ⊑ᵘ-S : ∀ {n} {Ψ Φ : LC.Usage n} → Ψ LC.⊑ᵘ Φ → uS Ψ SC.⊑ᵘ uS Φ
-⊑ᵘ-S LC.⊑[]      = SC.[]
-⊑ᵘ-S (p LC.⊑∷ s) = ≤q′-S p SC.⊑∷ ⊑ᵘ-S s
+⊑ᵘ-S s = s
 
 ⊑ᵘ-L : ∀ {n} (Ψ Φ : LC.Usage n) → uS Ψ SC.⊑ᵘ uS Φ → Ψ LC.⊑ᵘ Φ
-⊑ᵘ-L SCx.[]      SCx.[]      SC.[]       = LC.⊑[]
-⊑ᵘ-L (p SCx.∷ Ψ) (q SCx.∷ Φ) (r SC.⊑∷ s) = ≤q′-L p q r LC.⊑∷ ⊑ᵘ-L Ψ Φ s
+⊑ᵘ-L Ψ Φ s = s
 
 uS-injective : ∀ {n} {Ψ Φ : LC.Usage n} → uS Ψ ≡ uS Φ → Ψ ≡ Φ
-uS-injective {Ψ = SCx.[]}      {SCx.[]}      _ = refl
-uS-injective {Ψ = p SCx.∷ Ψ} {q SCx.∷ Φ} e = cons (qS-injective (cong head e)) (uS-injective (cong tail e))
-  where
-    head : ∀ {n} → SC.Usage (ℕ.suc n) → SG.Quantity
-    head (x SC.∷ _) = x
-    tail : ∀ {n} → SC.Usage (ℕ.suc n) → SC.Usage n
-    tail (_ SC.∷ xs) = xs
-    cons : p ≡ q → Ψ ≡ Φ → (p SCx.∷ Ψ) ≡ (q SCx.∷ Φ)
-    cons refl refl = refl
+uS-injective e = e
 
 ------------------------------------------------------------------------
 -- Contexts
 ------------------------------------------------------------------------
 
-data CtxR {m} (Δ : ST.KCtx m) : ∀ {n} → LC.Ctx n → SC.Ctx m n → Set where
-  r-∅ : CtxR Δ LC.∅ SC.∅
-  r-▸ : ∀ {n} {Γ : LC.Ctx n} {Γ′ A A′ q} → CtxR Δ Γ Γ′ → TyR Δ A A′ → CtxR Δ (Γ SCx.▸ A) (Γ′ SC.▸ A′)
+data CtxR {m} (Δ : ST.KCtx m) : ∀ {n} → SC.Ctx m n → SC.Ctx m n → Set where
+  r-∅ : CtxR Δ SC.∅ SC.∅
+  r-▸ : ∀ {n} {Γ Γ′ : SC.Ctx m n} {A A′} → CtxR Δ Γ Γ′ → TyR Δ A A′ → CtxR Δ (Γ SC.▸ A) (Γ′ SC.▸ A′)
 
-lookup-R : ∀ {m} {Δ : ST.KCtx m} {n} {Γ : LC.Ctx n} {Γ′} → CtxR Δ Γ Γ′ → ∀ i → TyR Δ (LC.lookup Γ i) (SC.lookup Γ′ i)
+lookup-R : ∀ {m} {Δ : ST.KCtx m} {n} {Γ Γ′ : SC.Ctx m n} → CtxR Δ Γ Γ′ → ∀ i → TyR Δ (SC.lookup Γ i) (SC.lookup Γ′ i)
 lookup-R (r-▸ g a) zero    = a
 lookup-R (r-▸ g a) (suc i) = lookup-R g i
