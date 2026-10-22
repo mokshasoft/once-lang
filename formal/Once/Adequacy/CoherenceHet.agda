@@ -13,7 +13,7 @@
 -- (`CoherenceLaws`).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (Ty; Type; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -51,7 +51,7 @@ open import Once.Internal.Typing
 open import Once.Internal.Laws.ModeAgreement using (extractGround-irr; dpoly-det)
 open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.Internal.Type.WellFormed using (IsConcrete; WellFormedF)
-open import Once.Functor.Translate using (IsConcrete-irrelevant; WellFormedF-irrelevant)
+open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 import Once.Internal.Context as Surface
 open import Once.Internal.Context using (Ctx; Usage; _∷_; _,_^_)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
@@ -86,7 +86,7 @@ private
   variable
     mᵥ : ℕ
     n : ℕ
-    Γ : ∀ {m} → Ctx m n
+    Γ : Ctx mᵥ n
     Ψ Ψ′ Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ Ψ₃ Ψ₃′ : Usage n
     A A′ A₀ B B′ B₁ C C′ C₁ M T₀ X : Ty mᵥ
     π π′ π₀ : Purity
@@ -97,11 +97,11 @@ private
 -- The relation
 ------------------------------------------------------------------------
 
-Same2 : A ≡ A′ → Ψ ≡ Ψ′ → Expr Γ Ψ A → Expr Γ Ψ′ A′ → Set
+Same2 : ∀ {m} {Γ : Ctx m n} {A A′ : Ty m} → A ≡ A′ → Ψ ≡ Ψ′ → Expr Γ Ψ A → Expr Γ Ψ′ A′ → Set
 Same2 refl refl a b = a ≈ b
 
 infix 4 _≅_
-record _≅_ (a : Expr Γ Ψ A) (b : Expr Γ Ψ′ A′) : Set where
+record _≅_ {m} {Γ : Ctx m n} {A A′ : Ty m} (a : Expr Γ Ψ A) (b : Expr Γ Ψ′ A′) : Set where
   constructor ≅i
   field
     ≅-ty  : A ≡ A′
@@ -125,7 +125,7 @@ open _≅_
 -- Congruences
 ------------------------------------------------------------------------
 
-module _ {Γ : Ctx n} where
+module _ {m} {Γ : Ctx m n} where
   pair-h : {a : Expr Γ Ψ₁ A} {a′ : Expr Γ Ψ₁′ A′} {b : Expr Γ Ψ₂ B} {b′ : Expr Γ Ψ₂′ B′}
          → a ≅ a′ → b ≅ b′ → pair a b ≅ pair a′ b′
   pair-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (pair-cong h k)
@@ -187,17 +187,17 @@ module _ {Γ : Ctx n} where
          → x ≅ x′ → lam {π = π} Many ≤p x ≅ lam Many ≤p′ x′
   lamd-h ≤p ≤p′ (≅i refl refl h) = lam-h ≤p ≤p′ (≅i refl refl h)
 
-  cata-h : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  cata-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
            {a′ : Expr Γ Ψ′ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
          → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
   cata-h w w′ {a′ = a′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WFFun-irrelevant w w′))))
 
-  ana-h : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {φ : T.Finite} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
+  ana-h : ∀ {Δₖ : KCtx m} {F : Fun m} {φ : T.Finite} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
           {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
         → a ≅ a′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} w a ≅ ana w′ a′
   ana-h {π₀ = π₀} {φ = φ} w w′ {a′ = a′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (ana-cong w h) (≡→≈ (cong (λ v → ana {Γ = Γ} {π₀ = π₀} {φ = φ} v a′) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (ana-cong w h) (≡→≈ (cong (λ v → ana {Γ = Γ} {π₀ = π₀} {φ = φ} v a′) (WFFun-irrelevant w w′))))
 
   loop-h : ∀ {a : Expr Γ Ψ (A ⇒[ mk-kind Many T.act ] (B + A))} {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many T.act ] (B + A))}
          → a ≅ a′ → loop {Γ = Γ} a ≅ loop a′
@@ -205,12 +205,12 @@ module _ {Γ : Ctx n} where
 
   -- A fold's carrier is its algebra's codomain, so equal algebras give one carrier.
   private
-    catad : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+    catad : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
               {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
           → A ≡ A′ → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
     catad w w′ refl h = cata-h w w′ h
 
-  catad-h : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  catad-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
               {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
           → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
   catad-h w w′ h = catad w w′ (cod-≡ (≅-ty h)) h
@@ -219,7 +219,7 @@ module _ {Γ : Ctx n} where
 -- Two routes through the overlaps
 ------------------------------------------------------------------------
 
-module _ {Γ : Ctx n} where
+module _ {m} {Γ : Ctx m n} where
   -- `t-app` against the spine.
   spine-h : {f : Expr Γ Ψ₁ (A ⇒[ mk-kind q T.pure ] B)} {x : Expr Γ Ψ₂ A}
             {f′ : Expr Γ Ψ₁′ (X ⇒[ mk-kind Many T.pure ] T₀)} {x′ : Expr Γ Ψ₂′ X} (a : X <: A)
@@ -300,7 +300,7 @@ module _ {Γ : Ctx n} where
 
   -- D322: two derivations' arms at equal types meet at the same join (it is
   -- unique), so the two cases convert their arms alike.
-  casej-h : ∀ {m} {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : Usage n} {qL qL′ qR qR′} {Cᵣ Cᵣ′ D D′ : Ty m}
+  casej-h : ∀ {Ψs Ψs′ Ψl Ψl′ Ψr Ψr′ : Usage n} {qL qL′ qR qR′} {Cᵣ Cᵣ′ D D′ : Ty m}
             {s : Expr Γ Ψs (A + B)} {s′ : Expr Γ Ψs′ (A + B)}
             {l : Expr (Γ , A ^ Many) (qL ∷ Ψl) C} {l′ : Expr (Γ , A ^ Many) (qL′ ∷ Ψl′) C′}
             {r : Expr (Γ , B ^ Many) (qR ∷ Ψr) Cᵣ} {r′ : Expr (Γ , B ^ Many) (qR′ ∷ Ψr′) Cᵣ′}
@@ -320,7 +320,7 @@ module _ {Γ : Ctx n} where
                  ≅ case' s′ (coerce (<:ᶜ⇒<: (⊔-left J′)) l′) (coerce (<:ᶜ⇒<: (⊔-right J′)) r′)
       casej-at J J′ refl hs hl hr = case-h hs (coerce-h _ _ hl) (coerce-h _ _ hr)
 
-  copairj-h : ∀ {m} {Cg Cg′ D D′ : Ty m}
+  copairj-h : ∀ {Cg Cg′ D D′ : Ty m}
               {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] C)} {f′ : Expr Γ Ψ₁′ (A ⇒[ mk-kind Many π ] C′)}
               {g : Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] Cg)} {g′ : Expr Γ Ψ₂′ (B ⇒[ mk-kind Many π ] Cg′)}
               (J : C ⊔ Cg ≔ D) (J′ : C′ ⊔ Cg′ ≔ D′)
@@ -350,7 +350,7 @@ module _ {Γ : Ctx n} where
   forkc-h {f = f} {g = g} pb pc (≅i refl refl h) (≅i refl refl k) =
     ≅i refl refl (≈-trans (≈-sym (fork-coerce pb pc (⊑π-refl _) f g)) (fork-cong h k))
 
-  catac-h : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  catac-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
               {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)} (p : A <: A′)
               (s : (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) <: (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′))
           → coerce s a ≅ a′ → coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} w a) ≅ cata w′ a′
@@ -358,7 +358,7 @@ module _ {Γ : Ctx n} where
     ≅i refl refl
       (≈-trans (coerce-uniq _ (sub-arr (<:-refl _) p₀ (⊑π-refl _)) _)
        (≈-trans (≈-sym (cata-coerce w d p₀ g₀ a))
-        (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WellFormedF-irrelevant w w′))))))
+        (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WFFun-irrelevant w w′))))))
 
   -- A domain-given term, synthesizing: both sides convert the synthesized arrow.
   di-h : {x : Expr Γ Ψ (A₀ ⇒[ mk-kind Many π₀ ] B)} {y : Expr Γ Ψ′ (A′ ⇒[ mk-kind q π′ ] B′)}
@@ -370,30 +370,30 @@ module _ {Γ : Ctx n} where
 -- Realized forms: the leaves, the primitives, the IR embeddings
 ------------------------------------------------------------------------
 
-module _ {ctx : NamedCtx} where
+module _ {m} {ctx : NamedCtx m} where
   private U = Surface.Usage (NamedCtx.size ctx)
 
   -- A resolved reference's derivation is determined by its name and type.
   private
-    resolved-go : ∀ {m} {T T′ : Ty m} {cn} (eT : just T ≡ just T′) (n n′ : NotGenerator cn) (wn wn′ : WordName cn)
+    resolved-go : ∀ {T T′ : Type} {cn} (eT : just T ≡ just T′) (n n′ : NotGenerator cn) (wn wn′ : WordName cn)
                     (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T)
                     (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c : IsConcrete T) (c′ : IsConcrete T′)
-                → RI (t-var-resolved {ctx = ctx} n wn l c _) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
+                → RI (t-var-resolved {ctx = ctx} n wn l c refl) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
     resolved-go refl n n′ wn wn′ l l′ c c′ rewrite IsConcrete-irrelevant c c′ = ≅-refl
 
-  resolved-h : ∀ {m} {T T′ : Ty m} {cn} (n : NotGenerator cn) (wn : WordName cn) (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T) (c : IsConcrete T)
+  resolved-h : ∀ {T T′ : Type} {cn} (n : NotGenerator cn) (wn : WordName cn) (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T) (c : IsConcrete T)
                  (n′ : NotGenerator cn) (wn′ : WordName cn) (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c′ : IsConcrete T′)
-             → RI (t-var-resolved {ctx = ctx} n wn l c _) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
+             → RI (t-var-resolved {ctx = ctx} n wn l c refl) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
   resolved-h {cn = cn} n wn l c n′ wn′ l′ c′ = resolved-go {cn = cn} (trans (sym l) l′) n n′ wn wn′ l l′ c c′
 
   private
-    own-go : ∀ {m} {T T′ : Ty m} {x ns ns′} (eT : just T ≡ just T′)
+    own-go : ∀ {T T′ : Type} {x ns ns′} (eT : just T ≡ just T′)
                (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-           → RI (t-var-own {ctx = ctx} ns l _) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
+           → RI (t-var-own {ctx = ctx} ns l refl) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
     own-go refl l l′ = ≅-refl
 
-  own-h : ∀ {m} {T T′ : Ty m} {x ns ns′} (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-        → RI (t-var-own {ctx = ctx} ns l _) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
+  own-h : ∀ {T T′ : Type} {x ns ns′} (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
+        → RI (t-var-own {ctx = ctx} ns l refl) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
   own-h {ns = ns} {ns′ = ns′} l l′ = own-go {ns = ns} {ns′} (trans (sym l) l′) l l′
 
   private
@@ -407,25 +407,25 @@ module _ {ctx : NamedCtx} where
   local-h l l′ = local-go (trans (sym l) l′) l l′
 
   private
-    import-go : ∀ {x T T′ g g′ ln ln′ c c′} (eT : just T ≡ just T′)
+    import-go : ∀ {x} {T T′ : Type} {g g′ ln ln′ c c′} (eT : just T ≡ just T′)
                   (i : lookupImport (NamedCtx.imports ctx) x ≡ just T) (i′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-              → RI (t-var-import {ctx = ctx} g ln i c _) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
+              → RI (t-var-import {ctx = ctx} g ln i c refl) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
     import-go refl i i′ = ≅-refl
 
-  import-h : ∀ {x T T′ g g′ ln ln′ c c′} (i : lookupImport (NamedCtx.imports ctx) x ≡ just T) (i′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-           → RI (t-var-import {ctx = ctx} g ln i c _) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
+  import-h : ∀ {x} {T T′ : Type} {g g′ ln ln′ c c′} (i : lookupImport (NamedCtx.imports ctx) x ≡ just T) (i′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
+           → RI (t-var-import {ctx = ctx} g ln i c refl) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
   import-h {g = g} {g′} {ln} {ln′} {c} {c′} i i′ = import-go {g = g} {g′} {ln} {ln′} {c} {c′} (trans (sym i) i′) i i′
 
   private
-    poly-ty : ∀ {m} {T T′ : Ty m} {x} → T ≡ T′ → poly {Γ = NamedCtx.debruijn ctx} x T ≅ poly x T′
+    poly-ty : ∀ {T T′ : Ty m} {x} → T ≡ T′ → poly {Γ = NamedCtx.debruijn ctx} x T ≅ poly x T′
     poly-ty refl = ≅-refl
 
-    polyinf-go : ∀ {m} {T T′ : Ty m} {x s s′} {b b′ : RawExpr} {pr pr′ : PolyCtx} {g : T.Ground s} {g′ : T.Ground s′} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
+    polyinf-go : ∀ {T T′ : Ty m} {x s s′} {b b′ : RawExpr} {pr pr′ : PolyCtx} {g : T.Ground s} {g′ : T.Ground s′} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
                    (eq : T ≡ T.extractGround s g) (eq′ : T′ ≡ T.extractGround s′ g′)
                → poly {Γ = NamedCtx.debruijn ctx} x T ≅ poly x T′
     polyinf-go {s = s} {g = g} {g′ = g′} refl eq eq′ = poly-ty (trans eq (trans (extractGround-irr s g g′) (sym eq′)))
 
-  polyinf-h : ∀ {m} {T T′ : Ty m} {x s s′} {b b′ : RawExpr} {pr pr′ : PolyCtx} {g : T.Ground s} {g′ : T.Ground s′} {ln ln′ li li′ gr gr′}
+  polyinf-h : ∀ {T T′ : Ty m} {x s s′} {b b′ : RawExpr} {pr pr′ : PolyCtx} {g : T.Ground s} {g′ : T.Ground s′} {ln ln′ li li′ gr gr′}
                 (p : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (s , b , pr)) (eq : T ≡ T.extractGround s g)
                 (p′ : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (s′ , b′ , pr′)) (eq′ : T′ ≡ T.extractGround s′ g′)
             → RI (t-var-poly-instantiate-infer {ctx = ctx} {x = x} {T = T} {g = g} ln li p gr eq)
@@ -509,89 +509,89 @@ module _ {ctx : NamedCtx} where
   cmp-h {op = Raw.OpMod} () _ _ _
 
   -- The IR embeddings (`morph-app` of a fixed morphism).
-  idapp-h : ∀ {m} {A A′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′}
+  idapp-h : ∀ {A A′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′}
           → RI d ≅ RI d′ → RI (t-id-app d) ≅ RI (t-id-app d′)
   idapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.id h)
 
-  fstapp-h : ∀ {m} {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ (A * B) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ (A′ * B′) ⨾ Ψ′}
+  fstapp-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ (A * B) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ (A′ * B′) ⨾ Ψ′}
            → RI d ≅ RI d′ → RI (t-fst-app d) ≅ RI (t-fst-app d′)
   fstapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.fst h)
 
-  sndapp-h : ∀ {m} {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ (A * B) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ (A′ * B′) ⨾ Ψ′}
+  sndapp-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ (A * B) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ (A′ * B′) ⨾ Ψ′}
            → RI d ≅ RI d′ → RI (t-snd-app d) ≅ RI (t-snd-app d′)
   sndapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.snd h)
 
-  termapp-h : ∀ {m} {A A′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′}
+  termapp-h : ∀ {A A′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′}
             → RI d ≅ RI d′ → RI (t-terminal-app d) ≅ RI (t-terminal-app d′)
   termapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.terminal h)
 
-  apply-h : ∀ {m} {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
+  apply-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
               {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B′) * A′) ⨾ Ψ′}
           → RI d ≅ RI d′ → RI (t-apply-app-infer d) ≅ RI (t-apply-app-infer d′)
   apply-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.apply h)
 
-  applyeff-h : ∀ {m} {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
+  applyeff-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
                  {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many π ] B) * A) ⨾ Ψ}
                  {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many π′ ] B′) * A′) ⨾ Ψ′}
              → RI d ≅ RI d′ → RI (t-apply-eff-app-infer {g = g} d) ≅ RI (t-apply-eff-app-infer {g = g′} d′)
   applyeff-h (≅i refl refl h) = ≅i refl refl (morph-app-cong (IR.curry (IR.apply IR.∘ IR.fst)) h)
 
-  out-h : ∀ {m} {Δₖ : KCtx m} {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun Δₖ F) (w′ : WFFun Δₖ F′)
+  out-h : ∀ {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun (NamedCtx.kinds ctx) F) (w′ : WFFun (NamedCtx.kinds ctx) F′)
             {d : ctx ⊢ᵢ e ∶ ν-type F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pureᶠ ⨾ Ψ′}
         → RI d ≅ RI d′ → RI (t-Out-app-infer w refl d) ≅ RI (t-Out-app-infer w′ refl d′)
   out-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-app-infer v refl d′)) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-app-infer v refl d′)) (WFFun-irrelevant w w′))))
 
-  outeff-h : ∀ {m} {Δₖ : KCtx m} {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun Δₖ F) (w′ : WFFun Δₖ F′)
+  outeff-h : ∀ {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun (NamedCtx.kinds ctx) F) (w′ : WFFun (NamedCtx.kinds ctx) F′)
                {d : ctx ⊢ᵢ e ∶ ν-type F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.actᶠ ⨾ Ψ′}
            → RI d ≅ RI d′ → RI (t-Out-eff-app-infer w refl d) ≅ RI (t-Out-eff-app-infer w′ refl d′)
   outeff-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-eff-app-infer v refl d′)) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-eff-app-infer v refl d′)) (WFFun-irrelevant w w′))))
 
-  applychk-h : ∀ {m} {A A′ B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
+  applychk-h : ∀ {A A′ B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
                  {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B) * A′) ⨾ Ψ′}
              → RI d ≅ RI d′ → RC (t-apply-check d) ≅ RC (t-apply-check d′)
   applychk-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.apply h)
 
   -- A synthesized `apply`, converted, against the checked one.
-  applyic-h : ∀ {m} {A A′ B B′ B₂ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
+  applyic-h : ∀ {A A′ B B′ B₂ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
                 {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B′) * A′) ⨾ Ψ′} (p : B <: B₂)
             → B′ ≡ B₂ → RI d ≅ RI d′ → coerce p (RI (t-apply-app-infer d)) ≅ RC (t-apply-check d′)
   applyic-h p refl (≅i refl refl h) =
     ≅i refl refl (≈-trans (coerce-uniq p (<:-refl _) _) (≈-trans (coerce-refl _) (morph-app-cong IR.apply h)))
 
-  In-h : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {Ψ Ψ′ : U} (w w′ : WFFun Δₖ F) {d : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ′}
+  In-h : ∀ {F : Fun m} {Ψ Ψ′ : U} (w w′ : WFFun (NamedCtx.kinds ctx) F) {d : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ′}
        → RC d ≅ RC d′ → RC (t-In-app-check w d) ≅ RC (t-In-app-check w′ d′)
   In-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RC (t-In-app-check v d′)) (WellFormedF-irrelevant w w′))))
+    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RC (t-In-app-check v d′)) (WFFun-irrelevant w w′))))
 
-  inlapp-h : ∀ {m} {A B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′}
+  inlapp-h : ∀ {A B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′}
            → RC d ≅ RC d′ → RC (t-inl-app-check {B = B} d) ≅ RC (t-inl-app-check d′)
   inlapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong _ h)
 
-  inrapp-h : ∀ {m} {A B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ B ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ B ⨾ Ψ′}
+  inrapp-h : ∀ {A B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ B ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ B ⨾ Ψ′}
            → RC d ≅ RC d′ → RC (t-inr-app-check {A = A} d) ≅ RC (t-inr-app-check d′)
   inrapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong _ h)
 
-  initapp-h : ∀ {m} {A : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ Void ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ Void ⨾ Ψ′}
+  initapp-h : ∀ {A : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ Void ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ Void ⨾ Ψ′}
             → RC d ≅ RC d′ → RC (t-initial-app-check {T = A} d) ≅ RC (t-initial-app-check d′)
   initapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong _ h)
 
   -- A polymorphic head: one schema, so one grade and (its codomain variables
   -- occurring in its domain) one codomain at a given domain.
   private
-    polydc-go : ∀ {m} {A B B′ : Ty m} {x π π′} (eπ : π′ ≡ π) (eB : B ≡ B′) (g : π′ ⊑π π) (q : B <: B′)
+    polydc-go : ∀ {A B B′ : Ty m} {x π π′} (eπ : π′ ≡ π) (eB : B ≡ B′) (g : π′ ⊑π π) (q : B <: B′)
               → coerce (sub-arr (<:-refl A) q (⊑π-refl π))
                   (coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly {Γ = NamedCtx.debruijn ctx} x (A ⇒[ mk-kind Many π′ ] B)))
                 ≅ poly x (A ⇒[ mk-kind Many π ] B′)
     polydc-go refl refl g q = ≅-of (≈-trans (coerce-trans _ _ _) (≈-trans (coerce-uniq _ (<:-refl _) _) (coerce-refl _)))
 
-    polydd-go : ∀ {m} {A B B′ : Ty m} {x π π′ π₀} (eπ : π′ ≡ π₀) (eB : B ≡ B′) (g : π′ ⊑π π) (g′ : π₀ ⊑π π)
+    polydd-go : ∀ {A B B′ : Ty m} {x π π′ π₀} (eπ : π′ ≡ π₀) (eB : B ≡ B′) (g : π′ ⊑π π) (g′ : π₀ ⊑π π)
               → coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly {Γ = NamedCtx.debruijn ctx} x (A ⇒[ mk-kind Many π′ ] B))
                 ≅ coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B′) g′) (poly x (A ⇒[ mk-kind Many π₀ ] B′))
     polydd-go refl refl g g′ = ≅-of (coerce-uniq _ _ _)
 
-  polydc-h : ∀ {m} {A B B′ : Ty m} {x π π′ s s′ sd sc} {b b′ : RawExpr} {pr pr′ : PolyCtx} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
+  polydc-h : ∀ {A B B′ : Ty m} {x π π′ s s′ sd sc} {b b′ : RawExpr} {pr pr′ : PolyCtx} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
                (as : T.ArrowSchema s sd sc π′) (inc : T.CodVarsInDom sd sc)
                (θ : _) (e : T.substPoly θ s ≡ (A ⇒[ mk-kind Many π′ ] B))
                (θ′ : _) (e′ : T.substPoly θ′ s′ ≡ (A ⇒[ mk-kind Many π ] B′)) (g : π′ ⊑π π) (q : B <: B′)
@@ -601,7 +601,7 @@ module _ {ctx : NamedCtx} where
   polydc-h refl as inc θ e θ′ e′ g q =
     polydc-go (as-grade as (arrow-at θ′ as e′)) (dpoly-det as (arrow-at θ′ as e′) inc θ θ′ e e′) g q
 
-  polydd-h : ∀ {m} {A B B′ : Ty m} {x π π′ π₀ s s′ sd sc sd′ sc′} {b b′ : RawExpr} {pr pr′ : PolyCtx} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
+  polydd-h : ∀ {A B B′ : Ty m} {x π π′ π₀ s s′ sd sc sd′ sc′} {b b′ : RawExpr} {pr pr′ : PolyCtx} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
                (as : T.ArrowSchema s sd sc π′) (as′ : T.ArrowSchema s′ sd′ sc′ π₀) (inc : T.CodVarsInDom sd sc)
                (θ : _) (e : T.substPoly θ s ≡ (A ⇒[ mk-kind Many π′ ] B))
                (θ′ : _) (e′ : T.substPoly θ′ s′ ≡ (A ⇒[ mk-kind Many π₀ ] B′)) (g : π′ ⊑π π) (g′ : π₀ ⊑π π)

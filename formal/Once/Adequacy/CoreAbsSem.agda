@@ -42,7 +42,7 @@ import Once.Spec.Type as T
 open import Once.Internal.Type.WellFormed using (rf-⇒)
 import Once.Type as T
 open import Once.Internal.Laws.SubLaws using (<:-unique)
-open import Once.Functor.Translate using (IsBaseType-irrelevant; WellFormedF-irrelevant)
+open import Once.Functor.Translate using (Base-irrelevant; WFFun-irrelevant)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Internal.Graded using (⟦_⟧ᵛ; M)
 import Once.Internal.Context as C
@@ -185,7 +185,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
               (d : Γ' ⊢[ Ψ ] t' ∷ T.⟦ F' ⟧T (T.μ-type F') ! π)
           → tr eΓ et eM (GT.⊢roll wf' d) ≡ GT.⊢roll wf (tr eΓ ed eX d)
   tr-roll {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl d
-    rewrite WellFormedF-irrelevant wf' wf = refl
+    rewrite WFFun-irrelevant wf' wf = refl
 
   tr-fold : ∀ {m} {A' A : Ty m} {F' F : Fun m} {Ψa Ψt π π₁ π₂} {a' a t' t : G.Tm n} {wf' wf} {u : Once.Spec.Grade._⊑π_ T.pure π}
               {eΓ : Γ' ≡ Γ} {et : G.fold F' a' t' ≡ G.fold F a t} {eA : A' ≡ A}
@@ -194,7 +194,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
               (da : Γ' ⊢[ Ψa ] a' ∷ T.⟦ F' ⟧T A' T.⇒[ T.mk-kind T.Many π ] A' ! π₁) (dt : Γ' ⊢[ Ψt ] t' ∷ T.μ-type F' ! π₂)
           → tr eΓ et eA (GT.⊢fold u wf' da dt) ≡ GT.⊢fold u wf (tr eΓ ea eAl da) (tr eΓ ed eM dt)
   tr-fold {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl da dt
-    rewrite WellFormedF-irrelevant wf' wf = refl
+    rewrite WFFun-irrelevant wf' wf = refl
 
   tr-unfold : ∀ {m} {A' A : Ty m} {F' F : Fun m} {Ψc Ψs φ π₁ π₂} {c' c s' s : G.Tm n} {wf' wf}
                 {eΓ : Γ' ≡ Γ} {et : G.unfold F' c' s' ≡ G.unfold F c s} {eN : T.ν-type F' φ ≡ T.ν-type F φ}
@@ -204,7 +204,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
                 (dc : Γ' ⊢[ Ψc ] c' ∷ A' T.⇒[ T.mk-kind T.Many (T.fin φ) ] T.⟦ F' ⟧T A' ! π₁) (ds : Γ' ⊢[ Ψs ] s' ∷ A' ! π₂)
             → tr eΓ et eN (GT.⊢unfold wf' dc ds) ≡ GT.⊢unfold wf (tr eΓ ec eCo dc) (tr eΓ es eA′ ds)
   tr-unfold {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl refl refl refl dc ds
-    rewrite WellFormedF-irrelevant wf' wf = refl
+    rewrite WFFun-irrelevant wf' wf = refl
 
   tr-out : ∀ {m} {F' F : Fun m} {Ψ π π₁} {t' t : G.Tm n} {wf' wf}
              {eΓ : Γ' ≡ Γ} {et : G.out t' ≡ G.out t} {eX : T.⟦ F' ⟧T (T.ν-type F' π) ≡ T.⟦ F ⟧T (T.ν-type F π)}
@@ -212,7 +212,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
              (d : Γ' ⊢[ Ψ ] t' ∷ T.ν-type F' π ! π₁)
          → tr eΓ et eX (GT.⊢out wf' d) ≡ GT.⊢out wf (tr eΓ ed eN d)
   tr-out {wf' = wf'} {wf = wf} {eΓ = refl} {refl} {refl} refl refl refl d
-    rewrite WellFormedF-irrelevant wf' wf = refl
+    rewrite WFFun-irrelevant wf' wf = refl
 
   tr-coerce : ∀ {m} {A' A B' B : Ty m} {Ψ π} {t' t : G.Tm n} {p' p}
                 {eΓ : Γ' ≡ Γ} {et : G.coerce A' B' t' ≡ G.coerce A B t} {eB : B' ≡ B}
@@ -255,7 +255,7 @@ module _ {n : ℕ} {Γ' Γ : C.Ctx n} where
              (eτ : τ' ≡ τ)
          → tr eΓ et eA (GT.⊢ref d τ' r') ≡ GT.⊢ref d τ r
   tr-ref {r' = r'} {r} {eΓ = refl} {refl} {refl} refl
-    rewrite extensionality (λ i → extensionality (λ e → IsBaseType-irrelevant (r' i e) (r i e))) = refl
+    rewrite extensionality (λ i → extensionality (λ e → Base-irrelevant (r' i e) (r i e))) = refl
 
 ------------------------------------------------------------------------
 -- The round trip on types, contexts and terms

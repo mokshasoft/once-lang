@@ -168,8 +168,8 @@ data WellFormedFI : IRFunctor → Set where
   wf-Sum  : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊕ G)
   wf-Prod : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊗ G)
 
--- Proof-irrelevance of the ungraded witnesses (mirror `IsBaseType-irrelevant` /
--- `WellFormedF-irrelevant`; needed by the IR decidable-equality deciders).
+-- Proof-irrelevance of the ungraded witnesses (mirror `Base-irrelevant` /
+-- `WFFun-irrelevant`; needed by the IR decidable-equality deciders).
 IsBaseTypeI-irrelevant : ∀ {A} (ib₁ ib₂ : IsBaseTypeI A) → ib₁ ≡ ib₂
 IsBaseTypeI-irrelevant base-Unit   base-Unit   = refl
 IsBaseTypeI-irrelevant base-Void   base-Void   = refl

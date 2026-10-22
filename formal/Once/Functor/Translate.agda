@@ -32,7 +32,7 @@ open import Once.Type
 open import Once.Internal.Polynomial
 open import Once.Semantics.Functor
 open import Once.Internal.Type.WellFormed
-open import Once.Spec.Type using (wf-K; wf-Id)
+open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
 open import Once.Internal.FunctorMeaning
 -- | Translation preserves interpretation
 translate-coherence : ∀ {m} IntRep FloatRep (F : Fun m) X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X
@@ -53,16 +53,18 @@ translate-coherence IntRep FloatRep (F ⊗ G) X
 -- on validity proofs without worrying about which proof was used.
 ------------------------------------------------------------------------
 
--- | IsBaseType is proof-irrelevant
-IsBaseType-irrelevant : ∀ {A} (ib₁ ib₂ : IsBaseType A) → ib₁ ≡ ib₂
-IsBaseType-irrelevant base-Unit base-Unit = refl
-IsBaseType-irrelevant base-Void base-Void = refl
-IsBaseType-irrelevant base-Int base-Int = refl
-IsBaseType-irrelevant base-Float base-Float = refl
-IsBaseType-irrelevant (base-Prod ibA₁ ibB₁) (base-Prod ibA₂ ibB₂) =
-  cong₂ base-Prod (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
-IsBaseType-irrelevant (base-Sum ibA₁ ibB₁) (base-Sum ibA₂ ibB₂) =
-  cong₂ base-Sum (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
+-- | A base type's witness is proof-irrelevant, over type variables of any kinds.
+Base-irrelevant : ∀ {m} {Δ : KCtx m} {A} (b₁ b₂ : Base Δ A) → b₁ ≡ b₂
+Base-irrelevant (b-var e) (b-var e′) = cong b-var (uip e e′)
+  where
+    uip : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
+    uip refl refl = refl
+Base-irrelevant b-Unit b-Unit = refl
+Base-irrelevant b-Void b-Void = refl
+Base-irrelevant b-Int b-Int = refl
+Base-irrelevant b-Float b-Float = refl
+Base-irrelevant (b-* a b) (b-* a′ b′) = cong₂ b-* (Base-irrelevant a a′) (Base-irrelevant b b′)
+Base-irrelevant (b-+ a b) (b-+ a′ b′) = cong₂ b-+ (Base-irrelevant a a′) (Base-irrelevant b b′)
 
 -- | IsConcrete is proof-irrelevant
 --
@@ -71,20 +73,18 @@ IsBaseType-irrelevant (base-Sum ibA₁ ibB₁) (base-Sum ibA₂ ibB₂) =
 -- other type only `con-base`. Hence the mixed cases are absurd.
 IsConcrete-irrelevant : ∀ {A} (c₁ c₂ : IsConcrete A) → c₁ ≡ c₂
 IsConcrete-irrelevant (con-base ib₁) (con-base ib₂) =
-  cong con-base (IsBaseType-irrelevant ib₁ ib₂)
+  cong con-base (Base-irrelevant ib₁ ib₂)
 IsConcrete-irrelevant (con-fun bA₁ cB₁) (con-fun bA₂ cB₂) =
-  cong₂ (λ b c → con-fun b c) (IsBaseType-irrelevant bA₁ bA₂) (IsBaseType-irrelevant cB₁ cB₂)
+  cong₂ (λ b c → con-fun b c) (Base-irrelevant bA₁ bA₂) (Base-irrelevant cB₁ cB₂)
 IsConcrete-irrelevant (con-base ()) (con-fun bA cB)
 IsConcrete-irrelevant (con-fun bA cB) (con-base ())
 
--- | WellFormedF is proof-irrelevant
-WellFormedF-irrelevant : ∀ {F} (wf₁ wf₂ : WellFormedF F) → wf₁ ≡ wf₂
-WellFormedF-irrelevant (wf-K ib₁) (wf-K ib₂) = cong wf-K (IsBaseType-irrelevant ib₁ ib₂)
-WellFormedF-irrelevant wf-Id wf-Id = refl
-WellFormedF-irrelevant (wf-Sum wfF₁ wfG₁) (wf-Sum wfF₂ wfG₂) =
-  cong₂ wf-Sum (WellFormedF-irrelevant wfF₁ wfF₂) (WellFormedF-irrelevant wfG₁ wfG₂)
-WellFormedF-irrelevant (wf-Prod wfF₁ wfG₁) (wf-Prod wfF₂ wfG₂) =
-  cong₂ wf-Prod (WellFormedF-irrelevant wfF₁ wfF₂) (WellFormedF-irrelevant wfG₁ wfG₂)
+-- | A functor's well-formedness is proof-irrelevant, over any kinds.
+WFFun-irrelevant : ∀ {m} {Δ : KCtx m} {F} (w₁ w₂ : WFFun Δ F) → w₁ ≡ w₂
+WFFun-irrelevant (wf-K a) (wf-K a′) = cong wf-K (Base-irrelevant a a′)
+WFFun-irrelevant wf-Id wf-Id = refl
+WFFun-irrelevant (wf-⊕ f g) (wf-⊕ f′ g′) = cong₂ wf-⊕ (WFFun-irrelevant f f′) (WFFun-irrelevant g g′)
+WFFun-irrelevant (wf-⊗ f g) (wf-⊗ f′ g′) = cong₂ wf-⊗ (WFFun-irrelevant f f′) (WFFun-irrelevant g g′)
 
 ------------------------------------------------------------------------
 -- Standard Functor Codes

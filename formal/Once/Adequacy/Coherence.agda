@@ -36,7 +36,7 @@ open import Data.Product using (_,_)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Once.Internal.Type.WellFormed using (con-fun)
-open import Once.Functor.Translate using (IsBaseType-irrelevant)
+open import Once.Functor.Translate using (Base-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong-app)
 
 open import Once.Spec.Type as T using (Type; _⇒[_]_)

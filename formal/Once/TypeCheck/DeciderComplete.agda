@@ -38,7 +38,7 @@ open import Once.Internal.Type.Poly using (PolyType; PolyFunctor; Ground; Ground
 open import Once.Type using (isGround; isGroundF)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod)
-open import Once.Functor.Translate using (WellFormedF-irrelevant)
+open import Once.Functor.Translate using (WFFun-irrelevant)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete; wfFun?; base?-complete)
 open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
 
@@ -59,31 +59,12 @@ wellFormedF?-complete (wf-Prod wF wG)
 ... | (f , eqF) | (g , eqG) rewrite eqF | eqG = wf-Prod f g , refl
 
 -- The form the proofs use: the decider's answer AT the derivation's own
--- witness. `WellFormedF-irrelevant` (already proven next to the definition) is
+-- witness. `WFFun-irrelevant` (already proven next to the definition) is
 -- what lets the two be identified — which is the whole reason the rule never
 -- needed to pin one of them.
 wellFormedF?-complete-at : ∀ {F} (w : WellFormedF F) → wellFormedF? F ≡ just w
 wellFormedF?-complete-at w with wellFormedF?-complete w
-... | (w' , eq') rewrite WellFormedF-irrelevant w' w = eq'
-
--- The same over type variables of kinds `Δ` (a polymorphic body).
-Base-irrelevant : ∀ {m} {Δ : KCtx m} {A} (b₁ b₂ : Base Δ A) → b₁ ≡ b₂
-Base-irrelevant (b-var e) (b-var e′) = cong b-var (uip e e′)
-  where
-    uip : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
-    uip refl refl = refl
-Base-irrelevant b-Unit b-Unit = refl
-Base-irrelevant b-Void b-Void = refl
-Base-irrelevant b-Int b-Int = refl
-Base-irrelevant b-Float b-Float = refl
-Base-irrelevant (b-* a b) (b-* a′ b′) rewrite Base-irrelevant a a′ | Base-irrelevant b b′ = refl
-Base-irrelevant (b-+ a b) (b-+ a′ b′) rewrite Base-irrelevant a a′ | Base-irrelevant b b′ = refl
-
-WFFun-irrelevant : ∀ {m} {Δ : KCtx m} {F} (w₁ w₂ : WFFun Δ F) → w₁ ≡ w₂
-WFFun-irrelevant (wf-K a) (wf-K a′) rewrite Base-irrelevant a a′ = refl
-WFFun-irrelevant wf-Id wf-Id = refl
-WFFun-irrelevant (wf-⊕ f g) (wf-⊕ f′ g′) rewrite WFFun-irrelevant f f′ | WFFun-irrelevant g g′ = refl
-WFFun-irrelevant (wf-⊗ f g) (wf-⊗ f′ g′) rewrite WFFun-irrelevant f f′ | WFFun-irrelevant g g′ = refl
+... | (w' , eq') rewrite WFFun-irrelevant w' w = eq'
 
 wfFun?-complete : ∀ {m} {Δ : KCtx m} {F} → WFFun Δ F → ∃[ w ] wfFun? Δ F ≡ just w
 wfFun?-complete (wf-K bA) with base?-complete bA

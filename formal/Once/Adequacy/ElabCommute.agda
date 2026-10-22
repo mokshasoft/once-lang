@@ -51,7 +51,7 @@ open import Once.Internal.Type.WellFormed using (RigidFree; rf-⇒; IsConcrete)
 open import Once.Spec.Name using (NotGenerator)
 open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.Laws.SubLaws using (<:-unique)
-open import Once.Functor.Translate using (IsBaseType-irrelevant)
+open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Type.Rigid using (extractGround-rf)
 open import Once.Postulates using (extensionality)
 import Once.Internal.Context as C
@@ -91,7 +91,7 @@ private
   ≅ref : ∀ {m} {n} {Γ : C.Ctx m n} {d} {τ₁ τ₂ : GSub (arity (S !! d))} {r₁ r₂} → τ₁ ≡ τ₂
        → GT.⊢ref {Γ = Γ} d τ₁ r₁ ≅ GT.⊢ref {Γ = Γ} d τ₂ r₂
   ≅ref {r₁ = r₁} {r₂ = r₂} refl
-    rewrite extensionality (λ i → extensionality (λ e → IsBaseType-irrelevant (r₁ i e) (r₂ i e))) = H.refl
+    rewrite extensionality (λ i → extensionality (λ e → Base-irrelevant (r₁ i e) (r₂ i e))) = H.refl
 
   -- A reference: the instance the substituted use finds is the substituted one.
   refE-tm : ∀ {m} {n} {Γ : C.Ctx m n} {A₁ A : Ty m} (d : Fin s) (i₁ : InstanceOf d A₁) (i₀ : InstanceOf d A)
