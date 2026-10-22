@@ -55,6 +55,7 @@ open import Once.Spec.Type using (Type; Int; Float; Unit; _+_)
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
 import Once.Spec.Type as T
+import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun; con-base)
 open import Once.Internal.Context as Srf using (Usage; ⟦_⟧ᶜ)
@@ -118,8 +119,8 @@ sigOpSem-σ-irrel T.Float c r r′ s (con-base _) = refl
 sigOpSem-σ-irrel (_ T.* _) c r r′ s (con-base _) = refl
 sigOpSem-σ-irrel (_ T.+ _) c r r′ s (con-base _) = refl
 sigOpSem-σ-irrel (_ T.⇒[ _ ] _) c r r′ s (con-base ())
-sigOpSem-σ-irrel (T.μ-type _) c r r′ s (con-base ())
-sigOpSem-σ-irrel (T.ν-type _ _) c r r′ s (con-base ())
+sigOpSem-σ-irrel (T.μ _) c r r′ s (con-base ())
+sigOpSem-σ-irrel (T.ν _ _) c r r′ s (con-base ())
 
 
 sigOp-σ-irrel : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Type} (c : CallEnv) (r r′ : ∀ {k} → String → (U : Ty k) → T∞ ⟦ U ⟧ᴰ)

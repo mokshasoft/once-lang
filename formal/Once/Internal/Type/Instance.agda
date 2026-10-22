@@ -32,7 +32,7 @@ import Data.List as List
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 import Data.Maybe as Maybe
-open import Once.Internal.Type using (TKind; k-base; k-any)
+open import Once.Spec.Type using (Kind; any; base)
 open import Once.Internal.Type.Poly
   using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; ftv; substPoly)
@@ -84,8 +84,8 @@ params T = nub (ftv T)
 arityOf : PolyType → ℕ
 arityOf T = length (params T)
 
-kindOf : PolyType → String → TKind
-kindOf T x = if memberB x (ftvK T) then k-base else k-any
+kindOf : PolyType → String → Kind
+kindOf T x = if memberB x (ftvK T) then base else any
 
 -- A parameter's position (its index in the definition's telescope).
 indexOf : String → List String → ℕ

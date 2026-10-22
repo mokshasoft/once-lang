@@ -39,7 +39,6 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type as TT using (_*_; _+_)
-open import Once.Internal.Type as TT using (Functor)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
@@ -197,8 +196,8 @@ pushS⊗ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor} (p : H₁ ≡ H₁')
 pushS⊗ refl refl a b = refl
 
 -- surface-side layer value splits (mirror `ve-split`)
-VE0ᴰ : ∀ {m} (G : Fun m) (A : TT.Ty m) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
-     → ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧T ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ
+VE0ᴰ : ∀ {m} (G : Fun m) (A : TT.Ty m) (v0 : ⟦ ⌊ TT.⟦ G ⟧F A ⌋ ⟧ᴰᴵ)
+     → ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧F ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ
 VE0ᴰ G A v0 = subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF G) ⌊ A ⌋)
                     (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G A)) v0)
 
@@ -218,7 +217,7 @@ pushᴰ* refl refl u w = refl
 
 -- `VE0ᴰ` distributes over the constructors. The Val-level `ve-split*` had to
 -- commute a `forget` past both transports as well; here there is none.
-ve-split⊕₁ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ)
+ve-split⊕₁ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧F A ⌋ ⟧ᴰᴵ)
   → VE0ᴰ (G₁ TT.⊕ G₂) A (inj₁ x0) ≡ inj₁ (VE0ᴰ G₁ A x0)
 ve-split⊕₁ᴰ G₁ G₂ A x0 =
   trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋))
@@ -226,7 +225,7 @@ ve-split⊕₁ᴰ G₁ G₂ A x0 =
         (pushᴰ+₁ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
                  (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0))
 
-ve-split⊕₂ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+ve-split⊕₂ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧F A ⌋ ⟧ᴰᴵ)
   → VE0ᴰ (G₁ TT.⊕ G₂) A (inj₂ y0) ≡ inj₂ (VE0ᴰ G₂ A y0)
 ve-split⊕₂ᴰ G₁ G₂ A y0 =
   trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋))
@@ -235,7 +234,7 @@ ve-split⊕₂ᴰ G₁ G₂ A y0 =
                  (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0))
 
 ve-split⊗ᴰ : ∀ {m} (G₁ G₂ : Fun m) (A : TT.Ty m)
-               (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+               (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧F A ⌋ ⟧ᴰᴵ) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧F A ⌋ ⟧ᴰᴵ)
   → VE0ᴰ (G₁ TT.⊗ G₂) A (x0 , y0) ≡ (VE0ᴰ G₁ A x0 , VE0ᴰ G₂ A y0)
 ve-split⊗ᴰ G₁ G₂ A x0 y0 =
   trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊗ G₂)) ⌊ A ⌋))
@@ -277,13 +276,13 @@ base-in-D (b-+ {A = A} {B = B} ba bb) (inj₂ b) =
 -- The erased and the surface ν introduction agree on a layer: structural on
 -- the functor's well-formedness (plan 0.105: the coercion forgets only at a
 -- base leaf, and only first-order values cross).
-coerce-νin-erase-D : ∀ {m} {Δₖ : KCtx m} {G : Fun m} (wf : WFFun Δₖ G) (A : TT.Ty m) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
+coerce-νin-erase-D : ∀ {m} {Δₖ : KCtx m} {G : Fun m} (wf : WFFun Δₖ G) (A : TT.Ty m) (v0 : ⟦ ⌊ TT.⟦ G ⟧F A ⌋ ⟧ᴰᴵ)
   → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh G)
        (coerce-ν-in ⌈ eraseF G ⌉F ⟦ A ⟧ᴰ
          (subst (λ Z → ⟦ ⌈ eraseF G ⌉F ⟧F Z) (cohᴰ A)
            (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ wf)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G A v0))))
     ≡ coerce-ν-in G ⟦ A ⟧ᴰ
-        (coerce-functor-D wf A (subst id (cohᴰ (TT.⟦ G ⟧T A)) v0))
+        (coerce-functor-D wf A (subst id (cohᴰ (TT.⟦ G ⟧F A)) v0))
 coerce-νin-erase-D {G = TT.K B} (wf-K b) A v0 =
     cong (subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (TT.K B)))
          (cong (coerce-ν-in ⌈ eraseF (TT.K B) ⌉F ⟦ A ⟧ᴰ)
@@ -307,7 +306,7 @@ coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₁ x0) =
           (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ w₁)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₁ A x0))))
   ⟫ cong inj₁ (coerce-νin-erase-D w₁ A x0)
   ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Sum w₁ w₂) A z))
-              (push⊎₁ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0))
+              (push⊎₁ (cohᴰ (TT.⟦ G₁ ⟧F A)) (cohᴰ (TT.⟦ G₂ ⟧F A)) x0))
 coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₂ y0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ
@@ -324,7 +323,7 @@ coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₂ y0) =
           (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ w₂)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0))))
   ⟫ cong inj₂ (coerce-νin-erase-D w₂ A y0)
   ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Sum w₁ w₂) A z))
-              (push⊎₂ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) y0))
+              (push⊎₂ (cohᴰ (TT.⟦ G₁ ⟧F A)) (cohᴰ (TT.⟦ G₂ ⟧F A)) y0))
 coerce-νin-erase-D {G = G₁ TT.⊗ G₂} (wf-Prod w₁ w₂) A (x0 , y0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊗ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧ᴰ
@@ -345,4 +344,4 @@ coerce-νin-erase-D {G = G₁ TT.⊗ G₂} (wf-Prod w₁ w₂) A (x0 , y0) =
           (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ w₂)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0))))
   ⟫ cong₂ _,_ (coerce-νin-erase-D w₁ A x0) (coerce-νin-erase-D w₂ A y0)
   ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊗ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Prod w₁ w₂) A z))
-              (push× (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0 y0))
+              (push× (cohᴰ (TT.⟦ G₁ ⟧F A)) (cohᴰ (TT.⟦ G₂ ⟧F A)) x0 y0))

@@ -14,7 +14,6 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.Type.DecEq using (_≟q_)
 open import Once.Internal.Type.DecEq using (_≟F_; _≟T_)
 open import Once.Internal.Type.Sub

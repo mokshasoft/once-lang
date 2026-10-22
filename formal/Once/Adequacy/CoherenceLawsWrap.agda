@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Grade using (mk-kind; Many; Quantity)
 open import Once.Spec.Type using (Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ⟦_⟧T)
+open import Once.Spec.Type using (μ; ⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-void)
 open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_)
@@ -160,11 +160,11 @@ module _ {m n} {Γ : Ctx m n} where
   curry-cong {Ψ} {A} {B} {C} {π₀} {π} {f} {f′} (≈-intro h1) = ≈-intro (curry-congˢ {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} {C = C} {π₀ = π₀} {π = π} {f = f} {f′ = f′} h1)
 
 module _ {m n} {Γ : Ctx m n} where
-  cata-cong : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)} → g ≈ g′ → cata {Γ = Γ} wf g ≈ cata wf g′
+  cata-cong : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)} → g ≈ g′ → cata {Γ = Γ} wf g ≈ cata wf g′
   cata-cong {A = A} {F = F} {Ψ = Ψ} {π = π} wf {g} {g′} (≈-intro h1) = ≈-intro (cata-congˢ {Γ = Γ} {A = A} {F = F} {Ψ = Ψ} {π = π} wf {g} {g′} h1)
 
 module _ {m n} {Γ : Ctx m n} where
-  ana-cong : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Spec.Grade.fin φ) ] ⟦ F ⟧T A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ ana wf g′
+  ana-cong : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (Once.Spec.Grade.fin φ) ] ⟦ F ⟧F A)} → g ≈ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ ana wf g′
   ana-cong {A = A} {F = F} {Ψ = Ψ} {π₀ = π₀} {φ = φ} wf {g} {g′} (≈-intro h1) = ≈-intro (ana-congˢ {Γ = Γ} {A = A} {F = F} {Ψ = Ψ} {π₀ = π₀} {φ = φ} wf {g} {g′} h1)
   loop-cong : ∀ {Ψ A B} {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A))} → g ≈ g′ → loop {Γ = Γ} g ≈ loop g′
   loop-cong {Ψ} {A} {B} {g} {g′} (≈-intro h1) = ≈-intro (loop-congˢ {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} {g = g} {g′ = g′} h1)
@@ -226,5 +226,5 @@ module _ {m n} {Γ : Ctx m n} where
   initial-coerce {A} {π} r = ≈-intro (initial-coerceˢ {Γ = Γ} {A = A} {π = π} r)
 
 module _ {m n} {Γ : Ctx m n} where
-  cata-coerce : ∀ {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π) (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)) → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg) ≈ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
+  cata-coerce : ∀ {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : ⟦ F ⟧F A′ <: ⟦ F ⟧F A) (p : A <: A′) (g : π ⊑π π) (alg : Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)) → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg) ≈ coerce (sub-arr (<:-refl (μ F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
   cata-coerce {A = A} {A′ = A′} {F = F} {Ψ = Ψ} {π = π} wf d p g alg = ≈-intro (cata-coerceˢ {Γ = Γ} {A = A} {A′ = A′} {F = F} {Ψ = Ψ} {π = π} wf d p g alg)

@@ -14,6 +14,8 @@
 -- values, and the Kleisli sequencing of it is silent (`seqF-relᵖ`).
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.GradedCataBridge (fmt : TargetNum) where
@@ -26,7 +28,7 @@ open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Grade using (Purity; pure; act; eff)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (⟦_⟧T; μ-type)
+open import Once.Spec.Type using (μ)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (wf-Sum; wf-Prod)
 open import Once.Internal.FunctorMeaning using (translateF)
@@ -63,7 +65,7 @@ out-relR (wf-Prod wfF wfG) R {_ , _} {_ , _} (rf , rg) = out-relR wfF R rf , out
 -- A related functor layer reads back to related values of the layer type.
 z-relᵍ : ∀ {m} {Δ : KCtx m} {G : Fun m} (wf : WFFun Δ G) {A : Ty m} {l : ⟦ G ⟧F ⟦ A ⟧ᵛ} {r : ⟦ G ⟧F ⟦ A ⟧ᴰ}
        → RelF G (RelGV A) l r
-       → RelGV (⟦ G ⟧T A) (cf⁻¹ᵛ A wf l) (coerce-functor⁻¹-D wf A r)
+       → RelGV (SpT.⟦ G ⟧F A) (cf⁻¹ᵛ A wf l) (coerce-functor⁻¹-D wf A r)
 z-relᵍ (wf-K ib) {r = r} refl = injB-rel ib r
 z-relᵍ wf-Id     rel = rel
 z-relᵍ (wf-Sum wfF wfG) {l = inj₁ _} {inj₁ _} rel = z-relᵍ wfF rel
@@ -122,8 +124,8 @@ seqF∞-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
 
 -- The algebra step at each grade.
 alg-step : ∀ {π : Purity} (u : pure ⊑π π) {m} {Δ : KCtx m} {F : Fun m} {A : Ty m} (wfF : WFFun Δ F)
-             (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
-         → (∀ {x y} → RelGV (⟦ F ⟧T A) x y → RelGM π A (alg₁ x) (alg₂ y))
+             (alg₁ : ⟦ SpT.⟦ F ⟧F A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ SpT.⟦ F ⟧F A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
+         → (∀ {x y} → RelGV (SpT.⟦ F ⟧F A) x y → RelGM π A (alg₁ x) (alg₂ y))
          → ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (RelGM π A) y₁ y₂
          → RelGM π A (bindM π (seqM u F (coerce-μ-out wfF (M π ⟦ A ⟧ᵛ) y₁)) λ l → alg₁ (cf⁻¹ᵛ A wfF l))
                      (cata-ev-algᴰ-D {F = F} {A = A} wfF alg₂ (coerce-μ-out wfF (T∞ ⟦ A ⟧ᴰ) y₂))
@@ -139,9 +141,9 @@ alg-step ⊑-pe {F = F} {A = A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
   RelS-bind (seqF∞-rel F (RelGV A) (out-relR wfF (RelGM eff A) rsf)) (λ r → algR (z-relᵍ wfF r))
 
 cata-bridgeᵍ : ∀ {π : Purity} (u : pure ⊑π π) {m} {Δ : KCtx m} {F : Fun m} {A : Ty m} {wfF : WFFun Δ F}
-                 (alg₁ : ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
-             → (∀ {x y} → RelGV (⟦ F ⟧T A) x y → RelGM π A (alg₁ x) (alg₂ y))
-             → ∀ {a : ⟦ μ-type F ⟧ᵛ} {b : ⟦ μ-type F ⟧ᴰ} → RelGV (μ-type F) a b
+                 (alg₁ : ⟦ SpT.⟦ F ⟧F A ⟧ᵛ → M π ⟦ A ⟧ᵛ) (alg₂ : ⟦ SpT.⟦ F ⟧F A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
+             → (∀ {x y} → RelGV (SpT.⟦ F ⟧F A) x y → RelGM π A (alg₁ x) (alg₂ y))
+             → ∀ {a : ⟦ μ F ⟧ᵛ} {b : ⟦ μ F ⟧ᴰ} → RelGV (μ F) a b
              → RelGM π A (cata-semᵛ u wfF alg₁ a) (cata-sem wfF alg₂ b)
 cata-bridgeᵍ {π} u {A = A} {wfF = wfF} alg₁ alg₂ algR {a} refl =
   cataS-rel (RelGM π A) (alg-step u wfF alg₁ alg₂ algR) a

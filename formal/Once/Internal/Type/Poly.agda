@@ -23,7 +23,7 @@ open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (Quantity; Many; Purity; Finite; pure; act; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (μ-type; ν-type; Functor)
+open import Once.Spec.Type using (μ; ν)
 
 mutual
   data PolyFunctor : Set where
@@ -92,8 +92,8 @@ mutual
   extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ mk-kind q pure ] extractGround B gB
   extractGround (PEff A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many eff ] extractGround B gB
   extractGround (PAct A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many act ] extractGround B gB
-  extractGround (Pμ-type F)      g        = μ-type (extractGroundF F g)
-  extractGround (Pν-type F π)    g        = ν-type (extractGroundF F g) π
+  extractGround (Pμ-type F)      g        = μ (extractGroundF F g)
+  extractGround (Pν-type F π)    g        = ν (extractGroundF F g) π
   extractGround PInt             _        = Int
   extractGround PFloat           _        = Float
 
@@ -114,8 +114,8 @@ mutual
   substPoly θ (A P⇒[ q ] B) = substPoly θ A ⇒[ mk-kind q pure ] substPoly θ B
   substPoly θ (PEff A B)    = substPoly θ A ⇒[ mk-kind Many eff ] substPoly θ B
   substPoly θ (PAct A B)    = substPoly θ A ⇒[ mk-kind Many act ] substPoly θ B
-  substPoly θ (Pμ-type F)   = μ-type (substPolyF θ F)
-  substPoly θ (Pν-type F π) = ν-type (substPolyF θ F) π
+  substPoly θ (Pμ-type F)   = μ (substPolyF θ F)
+  substPoly θ (Pν-type F π) = ν (substPolyF θ F) π
 
   substPolyF : ∀ {m} → (String → Ty m) → PolyFunctor → Fun m
   substPolyF θ (PK A)   = K (substPoly θ A)

@@ -28,12 +28,13 @@ open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 
 import Once.Spec.Type
 import Once.Internal.Type.Poly
 open import Once.Spec.Grade using (Quantity)
 open import Once.Spec.Type using (Ty; Fun; Type; WFFun; Unit; Int; Void; Float; _*_; _+_)
-open import Once.Internal.Type using (wk₀; Functor; μ-type; ν-type; ⟦_⟧T)
+open import Once.Internal.Type using (wk₀)
 
 open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete)
 -- D134 Phase A removed the decider premises, and with them the last uses of
@@ -472,8 +473,8 @@ mutual
     t-Out-app-infer : ∀ {ctx : NamedCtx m} {v : RawExpr} {F : Fun m} {C : Ty m}
                       {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → WFFun (NamedCtx.kinds ctx) F
-                    → ⟦ F ⟧T (ν-type F Once.Spec.Grade.pureᶠ) ≡ C
-                    → ctx ⊢ᵢ v ∶ ν-type F Once.Spec.Grade.pureᶠ ⨾ Ψ
+                    → ⟦ F ⟧F (ν F Once.Spec.Grade.pureᶠ) ≡ C
+                    → ctx ⊢ᵢ v ∶ ν F Once.Spec.Grade.pureᶠ ⨾ Ψ
                     → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
                             ∶ C ⨾ (zeroUsage +ᵘ (Once.Spec.Grade.Many *ᵘ Ψ))
 
@@ -485,8 +486,8 @@ mutual
     t-Out-eff-app-infer : ∀ {ctx : NamedCtx m} {v : RawExpr} {F : Fun m} {C : Ty m}
                           {Ψ : Surface.Usage (NamedCtx.size ctx)}
                         → WFFun (NamedCtx.kinds ctx) F
-                        → ⟦ F ⟧T (ν-type F Once.Spec.Grade.actᶠ) ≡ C
-                        → ctx ⊢ᵢ v ∶ ν-type F Once.Spec.Grade.actᶠ ⨾ Ψ
+                        → ⟦ F ⟧F (ν F Once.Spec.Grade.actᶠ) ≡ C
+                        → ctx ⊢ᵢ v ∶ ν F Once.Spec.Grade.actᶠ ⨾ Ψ
                         → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
                                 ∶ (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] C)
                                 ⨾ (zeroUsage +ᵘ (Once.Spec.Grade.Many *ᵘ Ψ))
@@ -699,9 +700,9 @@ mutual
     t-cata-check : ∀ {ctx : NamedCtx m} {alg : RawExpr} {F : Fun m} {A : Ty m}
                    {π : Once.Spec.Grade.Purity} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Grade.pure ⊑π π}
                  → WFFun (NamedCtx.kinds ctx) F
-                 → ctx ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) ⨾ Ψ
+                 → ctx ⊢ᶜ alg ∶ ((⟦ F ⟧F A) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) ⨾ Ψ
                  → ctx ⊢ᶜ RApp (RResolved (gen "cata")) alg
-                         ∶ ((μ-type F) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
+                         ∶ ((μ F) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
                          ⨾ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)   -- plan 0.113 B1: the algebra runs per node
 
     -- D192: `ana coalg` in check mode at `A ⇒ ν-type F` — `t-cata-check`'s
@@ -722,9 +723,9 @@ mutual
                   {π₀ : Once.Spec.Grade.Purity} {φ : Once.Spec.Grade.Finite} {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Grade.pure ⊑π π₀}
                   {ua : π₀ ⊑π Once.Spec.Grade.act}   -- the Spec's `c-ana` bound: at `eff`, `ana` is the loop
                 → WFFun (NamedCtx.kinds ctx) F
-                → ctx ⊢ᶜ coalg ∶ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin φ) ] (⟦ F ⟧T A)) ⨾ Ψ
+                → ctx ⊢ᶜ coalg ∶ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin φ) ] (⟦ F ⟧F A)) ⨾ Ψ
                 → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg
-                        ∶ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π₀ ] (ν-type F φ))
+                        ∶ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π₀ ] (ν F φ))
                         ⨾ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)   -- B1: the coalgebra runs per layer
 
     -- D317/D319: `ana round` checked at `Eff`: THE LOOP (the Spec's `c-loop`).
@@ -783,8 +784,8 @@ mutual
     t-In-app-check : ∀ {ctx : NamedCtx m} {arg : RawExpr} {F : Fun m}
                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
                    → WFFun (NamedCtx.kinds ctx) F
-                   → ctx ⊢ᶜ arg ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ
-                   → ctx ⊢ᶜ RApp (RResolved (gen "In")) arg ∶ μ-type F
+                   → ctx ⊢ᶜ arg ∶ ⟦ F ⟧F (μ F) ⨾ Ψ
+                   → ctx ⊢ᶜ RApp (RResolved (gen "In")) arg ∶ μ F
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ))
 
     -- | Applied `apply p` at result type B; p must be inferable as
@@ -954,8 +955,8 @@ mutual
     d-cata     : ∀ {ctx : NamedCtx m} {alg : RawExpr} {F : Fun m} {A : Ty m} {π : Once.Spec.Grade.Purity}
                    {Ψ : Surface.Usage (NamedCtx.size ctx)} {u : Once.Spec.Grade.pure ⊑π π}
                → WFFun (NamedCtx.kinds ctx) F
-               → ctx ⊢ᵢ alg ∶ ((⟦ F ⟧T A) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) ⨾ Ψ
-               → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ-type F) ⇒[ π ]↦ A ⨾ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)
+               → ctx ⊢ᵢ alg ∶ ((⟦ F ⟧F A) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) ⨾ Ψ
+               → ctx ⊢ᵈ RApp (RResolved (gen "cata")) alg ∶ (μ F) ⇒[ π ]↦ A ⨾ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)
 
 _⊢_∶_⨾_ : ∀ {m} (ctx : NamedCtx m) → RawExpr → (A : Ty m)
          → Surface.Usage (NamedCtx.size ctx) → Set

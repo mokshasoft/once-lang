@@ -18,6 +18,8 @@
 --                     (`AnaErased.coerce-νin-erase-D`).
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -33,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Spec.Grade using (Purity; mk-kind; Many; Finite; fin; act; eff)
 open import Once.Spec.Type using (Type; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type; Functor; ⟦_⟧T)
+open import Once.Spec.Type using (μ; ν)
 import Once.Internal.Type as TT
 import Once.Spec.Type as TT
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; Ana)
@@ -145,25 +147,25 @@ apply-rel {A = A} {B = B} {π = π} {c = c} {c′ = c′} {z = z} {z′ = z′} 
 ------------------------------------------------------------------------
 
 cataM-fold : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {π : Purity} (wfF : WFFun Δₖ F)
-               {c c′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
-           → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) c c′
-           → RelS (RelD (μ-type F ⇒[ mk-kind Many π ] A))
-                  (liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {μ-type F ⇒[ mk-kind Many π ] A}
+               {c c′ : ⟦ SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A ⟧ᴰ}
+           → RelD (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A) c c′
+           → RelS (RelD (μ F ⇒[ mk-kind Many π ] A))
+                  (liftFn fmt ρ {SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A} {μ F ⇒[ mk-kind Many π ] A}
                           (cataM {F = F} {A = A} wfF IR.Heap) c)
                   (return∞ (λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c′)) x))
 cataM-fold {F = F} {A = A} {π = π} wfF {c} {c′} r =
-  ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ (μ-type F)) (cohᴰ A))
+  ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ (μ F)) (cohᴰ A))
                              (λ b → evalᴰ fmt ρ innerCata (c₀ , b)))
-            (cong return∞ (subst-arrow (cohᴰ (μ-type F)) (cohᴰ A) (λ b → evalᴰ fmt ρ innerCata (c₀ , b)))))
+            (cong return∞ (subst-arrow (cohᴰ (μ F)) (cohᴰ A) (λ b → evalᴰ fmt ρ innerCata (c₀ , b)))))
      (relS-ret λ { {x} refl →
         ≡ˢ (cong (λ W → subst T∞ (cohᴰ A) (evalᴰ fmt ρ innerCata W))
-                 (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ (μ-type F)) c x)))
+                 (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ (μ F)) c x)))
            (cata-erased-rel {A' = A} {F = F} {Eˢ = Arr} wfF applyIR c (λ z → return∞ c′ >>=∞ λ k → k z)
-              (λ {z} {z′} rz → retargetʳ {n′ = c′ z′} refl (apply-rel {A = ⟦ F ⟧T A} {B = A} {π = π} {c = c} {c′ = c′} r rz)) x) })
+              (λ {z} {z′} rz → retargetʳ {n′ = c′ z′} refl (apply-rel {A = SpT.⟦ F ⟧F A} {B = A} {π = π} {c = c} {c′ = c′} r rz)) x) })
   where
-    Arr = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A
+    Arr = SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A
     c₀ = subst (λ z → z) (sym (cohᴰ Arr)) c
-    applyIR : IR (⌊ Arr ⌋ II.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
+    applyIR : IR (⌊ Arr ⌋ II.* ⌊ SpT.⟦ F ⟧F A ⌋) ⌊ A ⌋
     applyIR = IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩
     innerCata = IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR (⌊ Arr ⌋ II.* o) ⌊ A ⌋) (⌊⟧T-commute F A) applyIR)
 
@@ -172,18 +174,18 @@ cataM-fold {F = F} {A = A} {π = π} wfF {c} {c′} r =
 -- that composite.
 cata-body : ∀ {mₜ} {Δₖ : KCtx mₜ} {m} {Γ : Ctx mₜ m} {Ψ : Usage m} {F : Fun mₜ} {A : Ty mₜ} {π : Purity}
               (wf : WFFun Δₖ F)
-              (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
+              (alg : Expr Γ Ψ (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A))
               (dγ dγ′ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
-            → RelS (RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
+            → RelS (RelD (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A))
+                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A}
                       (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ)
                    (SD.⟦ alg ⟧ˢ fmt (SD.internalDefs fmt ρ) (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ′))
-            → RelS (RelD (μ-type F ⇒[ mk-kind Many π ] A))
-                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+            → RelS (RelD (μ F ⇒[ mk-kind Many π ] A))
+                   (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {μ F ⇒[ mk-kind Many π ] A}
                       (elaborate IR.Heap (cata {Γ = Γ} wf alg)) dγ)
                    (SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
 cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ dγ′ ih =
-  ≡ˢ (cong-app (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A}
+  ≡ˢ (cong-app (liftFn-∘ {B = SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A} {C = μ F ⇒[ mk-kind Many π ] A}
                          {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (cataM {F = F} {A = A} wf IR.Heap)
                          (elaborate IR.Heap alg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
      (RelS-bind ih (cataM-fold {F = F} {A = A} {π = π} wf))
@@ -194,27 +196,27 @@ cata-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π = π} wf alg dγ dγ′ ih =
 ------------------------------------------------------------------------
 
 anaM-unfold : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {π₀ : Purity} {φ : Finite} (wf : WFFun Δₖ F)
-                {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ}
-            → RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c c′
-            → RelS (RelD (A ⇒[ mk-kind Many π₀ ] ν-type F φ))
-                   (liftFn fmt ρ {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
+                {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A ⟧ᴰ}
+            → RelD (A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A) c c′
+            → RelS (RelD (A ⇒[ mk-kind Many π₀ ] ν F φ))
+                   (liftFn fmt ρ {A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A} {A ⇒[ mk-kind Many π₀ ] ν F φ}
                            (anaM {F = F} {A = A} {φ = φ} wf IR.Heap) c)
                    (return∞ (λ a → return∞ (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a)))
 anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {c} {c′} r =
-  ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ (ν-type F φ))) (λ b → evalᴰ fmt ρ Ana-IR (c₀ , b)))
-            (cong return∞ (subst-arrow (cohᴰ A) (cohᴰ (ν-type F φ)) (λ b → evalᴰ fmt ρ Ana-IR (c₀ , b)))))
+  ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ (ν F φ))) (λ b → evalᴰ fmt ρ Ana-IR (c₀ , b)))
+            (cong return∞ (subst-arrow (cohᴰ A) (cohᴰ (ν F φ)) (λ b → evalᴰ fmt ρ Ana-IR (c₀ , b)))))
      (relS-ret λ {a} {a′} ra →
-        ≡ˢ (subst-T-return∞ (cohᴰ (ν-type F φ)) (anaFᴵ ⌈ eraseF F ⌉F cE (seedOf a)))
+        ≡ˢ (subst-T-return∞ (cohᴰ (ν F φ)) (anaFᴵ ⌈ eraseF F ⌉F cE (seedOf a)))
            (relS-ret (stream ra)))
   where
-    Arr = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A
+    Arr = A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A
     H   = translateF Carrier Carrier F
     H₁  = translateF Carrier Carrier ⌈ eraseF F ⌉F
     c₀ = subst (λ z → z) (sym (cohᴰ Arr)) c
-    applyIR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ⟦ F ⟧T A ⌋
+    applyIR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ SpT.⟦ F ⟧F A ⌋
     applyIR = IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩
     coalg' = subst (λ o → IR (⌊ Arr ⌋ II.* ⌊ A ⌋) o) (⌊⟧T-commute F A) applyIR
-    Ana-IR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ν-type F φ ⌋
+    Ana-IR : IR (⌊ Arr ⌋ II.* ⌊ A ⌋) ⌊ ν F φ ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
     seedOf : ⟦ A ⟧ᴰ → ⟦ ⌊ A ⌋ ⟧ᴰᴵ
@@ -237,7 +239,7 @@ anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {c} {c′} r =
     c₂ a′ = fmap∞ (coerce-ν-in F ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wf A) (c′ a′))
 
     -- On a layer, the IR's coercion chain IS the source's (`coerce-νin-erase-D`).
-    layer : ∀ (x : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ) (y : ⟦ ⟦ F ⟧T A ⟧ᴰ) → RelD (⟦ F ⟧T A) (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) x) y
+    layer : ∀ (x : ⟦ ⌊ SpT.⟦ F ⟧F A ⌋ ⟧ᴰᴵ) (y : ⟦ SpT.⟦ F ⟧F A ⟧ᴰ) → RelD (SpT.⟦ F ⟧F A) (subst (λ z → z) (cohᴰ (SpT.⟦ F ⟧F A)) x) y
           → SRel (RelD A) H
               (subst (λ G → ⟦ G ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)
                 (subst (λ Z → ⟦ H₁ ⟧SF Z) (cohᴰ A)
@@ -257,14 +259,14 @@ anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {c} {c′} r =
 
     -- The two coalgebras take related seeds to related layers. The relations
     -- record which IR value a layer came from.
-    R₄ : ⟦ II.⟦ eraseF F ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F ⟧T A ⟧ᴰ → Set
-    R₄ x′ y = Σ[ x ∈ ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ ] (x′ ≡ subst ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) x)
-                                         × RelD (⟦ F ⟧T A) (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) x) y
+    R₄ : ⟦ II.⟦ eraseF F ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ SpT.⟦ F ⟧F A ⟧ᴰ → Set
+    R₄ x′ y = Σ[ x ∈ ⟦ ⌊ SpT.⟦ F ⟧F A ⌋ ⟧ᴰᴵ ] (x′ ≡ subst ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) x)
+                                         × RelD (SpT.⟦ F ⟧F A) (subst (λ z → z) (cohᴰ (SpT.⟦ F ⟧F A)) x) y
 
     R₃ : ⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A ⌋ ⟧ᴰᴵ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
-    R₃ u v = Σ[ x ∈ ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ ] Σ[ y ∈ ⟦ ⟦ F ⟧T A ⟧ᴰ ]
+    R₃ u v = Σ[ x ∈ ⟦ ⌊ SpT.⟦ F ⟧F A ⌋ ⟧ᴰᴵ ] Σ[ y ∈ ⟦ SpT.⟦ F ⟧F A ⟧ᴰ ]
                (u ≡ f₂ (subst ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) x)) × (v ≡ coerce-functor-D wf A y)
-             × RelD (⟦ F ⟧T A) (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) x) y
+             × RelD (SpT.⟦ F ⟧F A) (subst (λ z → z) (cohᴰ (SpT.⟦ F ⟧F A)) x) y
 
     hc : ∀ {a a′} → RelD A a a′ → RelS (SRel (RelD A) H) (c₁ a) (c₂ a′)
     hc {a} {a′} ra =
@@ -275,15 +277,15 @@ anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {c} {c′} r =
               (≡ˢ (evalᴰ-subst-cod (⌊⟧T-commute F A) applyIR (c₀ , seedOf a))
                   (RelS-substF₀ ⟦_⟧ᴰᴵ (⌊⟧T-commute F A) {R = R₄}
                     (RelS-mono (λ {x} {y} rx → x , refl , rx)
-                      (RelS-substˡ⁻ (cohᴰ (⟦ F ⟧T A))
-                        (≡ˢ (cong (λ W → subst T∞ (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt ρ applyIR W))
+                      (RelS-substˡ⁻ (cohᴰ (SpT.⟦ F ⟧F A))
+                        (≡ˢ (cong (λ W → subst T∞ (cohᴰ (SpT.⟦ F ⟧F A)) (evalᴰ fmt ρ applyIR W))
                                   (sym (pairᴰ-subst⁻ (cohᴰ Arr) (cohᴰ A) c a)))
-                            (apply-rel {A = A} {B = ⟦ F ⟧T A} {π = fin φ} {c = c} {c′ = c′} r ra))))))
+                            (apply-rel {A = A} {B = SpT.⟦ F ⟧F A} {π = fin φ} {c = c} {c′ = c′} r ra))))))
               (λ { {_} {y} (x , refl , rx) → x , y , refl , refl , rx }))
             (λ { (x , y , refl , refl , rx) → layer x y rx })))
 
     stream : ∀ {a a′} → RelD A a a′
-           → StreamRel H (subst (λ z → z) (cohᴰ (ν-type F φ)) (anaFᴵ ⌈ eraseF F ⌉F cE (seedOf a)))
+           → StreamRel H (subst (λ z → z) (cohᴰ (ν F φ)) (anaFᴵ ⌈ eraseF F ⌉F cE (seedOf a)))
                          (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′)
     stream {a} {a′} ra =
       subst (λ s → StreamRel H s (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′))
@@ -294,18 +296,18 @@ anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf {c} {c′} r =
 -- D131 / D273: `cata-body`'s shape.
 ana-body : ∀ {mₜ} {Δₖ : KCtx mₜ} {m} {Γ : Ctx mₜ m} {Ψ : Usage m} {F : Fun mₜ} {A : Ty mₜ} {π₀ : Purity} {φ : Finite}
              (wf : WFFun Δₖ F)
-             (coalg : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A))
+             (coalg : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A))
              (dγ dγ′ : ⟦ ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ ⟧ᴰ)
-           → RelS (RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A))
-                  (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A}
+           → RelS (RelD (A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A))
+                  (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A}
                      (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ)) dγ)
                   (SD.⟦ coalg ⟧ˢ fmt (SD.internalDefs fmt ρ) (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ′))
-           → RelS (RelD (A ⇒[ mk-kind Many π₀ ] ν-type F φ))
-                  (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν-type F φ}
+           → RelS (RelD (A ⇒[ mk-kind Many π₀ ] ν F φ))
+                  (liftFn fmt ρ {⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} {A ⇒[ mk-kind Many π₀ ] ν F φ}
                      (elaborate IR.Heap (ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg)) dγ)
                   (SD.⟦ ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf coalg ⟧ˢ fmt (SD.internalDefs fmt ρ) dγ′)
 ana-body {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg dγ dγ′ ih =
-  ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A} {C = A ⇒[ mk-kind Many π₀ ] ν-type F φ}
+  ≡ˢ (cong-app (liftFn-∘ {B = A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A} {C = A ⇒[ mk-kind Many π₀ ] ν F φ}
                          {A = ⟦ Γ ↾ (Many *ᵘ Ψ) ⟧ᶜ} (anaM {F = F} {A = A} {φ = φ} wf IR.Heap)
                          (elaborate IR.Heap coalg IR.∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-*Many Ψ))) dγ)
      (RelS-bind ih (anaM-unfold {F = F} {A = A} {π₀ = π₀} {φ = φ} wf))

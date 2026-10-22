@@ -15,6 +15,8 @@
 -- finite, so there is no third case.
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.GradedAnaBridge (fmt : TargetNum) where
@@ -26,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Grade using (mk-kind; Many; Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; _⇒[_]_)
-open import Once.Internal.Type using (⟦_⟧T; ν-type)
+open import Once.Spec.Type using (ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (wf-Sum; wf-Prod)
 open import Once.Internal.FunctorMeaning using (translateF)
@@ -104,8 +106,8 @@ module _ (H : SFunctor) {X Y : Set} {R : X → Y → Set} where
 ------------------------------------------------------------------------
 
 in-relᵍ : ∀ {m} {Δ : KCtx m} {A : Ty m} {G : Fun m} (wf : WFFun Δ G)
-            {l : ⟦ ⟦ G ⟧T A ⟧ᵛ} {r : ⟦ ⟦ G ⟧T A ⟧ᴰ}
-        → RelGV (⟦ G ⟧T A) l r
+            {l : ⟦ SpT.⟦ G ⟧F A ⟧ᵛ} {r : ⟦ SpT.⟦ G ⟧F A ⟧ᴰ}
+        → RelGV (SpT.⟦ G ⟧F A) l r
         → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A)
             (coerce-ν-in G ⟦ A ⟧ᵛ (cfᵛ A wf l))
             (coerce-ν-in G ⟦ A ⟧ᴰ (coerce-functor-D wf A r))
@@ -119,14 +121,14 @@ in-relᵍ (wf-Prod wfF wfG) {_ , _} {_ , _} (rF , rG) = in-relᵍ wfF rF , in-re
 
 -- The IR side's two layer maps, against a run related at the layer type: the
 -- Spec value, coerced in, is related to the mapped IR layer.
-in-run : ∀ {mₜ} {Δ : KCtx mₜ} {A : Ty mₜ} {G : Fun mₜ} (wf : WFFun Δ G) {Z : Set} {m : T∞ Z} {S : Z → ⟦ ⟦ G ⟧T A ⟧ᴰ → Set}
-           {n : T∞ ⟦ ⟦ G ⟧T A ⟧ᴰ} (val : Z → ⟦ ⟦ G ⟧T A ⟧ᵛ)
-       → (∀ {z r} → S z r → RelGV (⟦ G ⟧T A) (val z) r)
+in-run : ∀ {mₜ} {Δ : KCtx mₜ} {A : Ty mₜ} {G : Fun mₜ} (wf : WFFun Δ G) {Z : Set} {m : T∞ Z} {S : Z → ⟦ SpT.⟦ G ⟧F A ⟧ᴰ → Set}
+           {n : T∞ ⟦ SpT.⟦ G ⟧F A ⟧ᴰ} (val : Z → ⟦ SpT.⟦ G ⟧F A ⟧ᵛ)
+       → (∀ {z r} → S z r → RelGV (SpT.⟦ G ⟧F A) (val z) r)
        → RelS S m n
        → RelS (λ z r″ → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A) (coerce-ν-in G ⟦ A ⟧ᵛ (cfᵛ A wf (val z))) r″)
               m (fmap∞ (coerce-ν-in G ⟦ A ⟧ᴰ) (fmap∞ (coerce-functor-D wf A) n))
 in-run {A = A} {G = G} wf val h rn =
-  RelS-fmapʳ (RelS-fmapʳ {R′ = λ z r′ → Σ[ r ∈ _ ] (r′ ≡ coerce-functor-D wf A r) × RelGV (⟦ G ⟧T A) (val z) r}
+  RelS-fmapʳ (RelS-fmapʳ {R′ = λ z r′ → Σ[ r ∈ _ ] (r′ ≡ coerce-functor-D wf A r) × RelGV (SpT.⟦ G ⟧F A) (val z) r}
                          rn (λ {z} {r} s → r , refl , h s))
              (λ { (r , refl , rv) → in-relᵍ wf rv })
 
@@ -136,10 +138,10 @@ in-run {A = A} {G = G} wf val h rn =
 ------------------------------------------------------------------------
 
 ana-bridgeᵍ : ∀ (φ : Finite) {m} {Δ : KCtx m} {A : Ty m} {F : Fun m} (wfF : WFFun Δ F)
-                (c₁ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᵛ) (c₂ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ)
-            → RelGV (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c₁ c₂
+                (c₁ : ⟦ A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A ⟧ᵛ) (c₂ : ⟦ A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A ⟧ᴰ)
+            → RelGV (A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A) c₁ c₂
             → ∀ {a b} → RelGV A a b
-            → RelGV (ν-type F φ) (ana-semᵛ φ wfF c₁ a) (anaFᴵ F (λ a′ → fmap∞ (coerce-functor-D wfF A) (c₂ a′)) b)
+            → RelGV (ν F φ) (ana-semᵛ φ wfF c₁ a) (anaFᴵ F (λ a′ → fmap∞ (coerce-functor-D wfF A) (c₂ a′)) b)
 ana-bridgeᵍ pureᶠ {A = A} {F = F} wfF c₁ c₂ (rc , _) rab = anaᵖ-∼ (translateF Carrier Carrier F) cr rab
   where
     cr : ∀ {x y} → RelGV A x y → RelS (⟦ translateF Carrier Carrier F ⟧SF-rel (RelGV A))
@@ -149,11 +151,11 @@ ana-bridgeᵍ pureᶠ {A = A} {F = F} wfF c₁ c₂ (rc , _) rab = anaᵖ-∼ (t
                                           (in-run wfF (λ l → l) (λ s → s) (rc r)) (λ z → z))
 ana-bridgeᵍ actᶠ {A = A} {F = F} wfF c₁ c₂ (rc , _) rab = anaᵈ-∼ (translateF Carrier Carrier F) cr rab
   where
-    g : ⟦ ⟦ F ⟧T A ⟧ᵛ → ⟦ translateF Carrier Carrier F ⟧SF ⟦ A ⟧ᵛ
+    g : ⟦ SpT.⟦ F ⟧F A ⟧ᵛ → ⟦ translateF Carrier Carrier F ⟧SF ⟦ A ⟧ᵛ
     g l = coerce-ν-in F _ (cfᵛ A wfF l)
     -- `embed` is a monad morphism: a mapped finite block embeds as the map of
     -- its embedding.
-    emb-map : ∀ {S : _ → _ → Set} (t : T ⟦ ⟦ F ⟧T A ⟧ᵛ) {n}
+    emb-map : ∀ {S : _ → _ → Set} (t : T ⟦ SpT.⟦ F ⟧F A ⟧ᵛ) {n}
             → RelS (λ l r → S (g l) r) (embed t) n → RelS S (embed (fmapT g t)) n
     emb-map t h = RelS-≈ˡ (embed-bind t (λ l → ret (g l))) (emb-fmap h)
       where

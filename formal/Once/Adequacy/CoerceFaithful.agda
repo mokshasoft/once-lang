@@ -36,6 +36,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Grade as Ty using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
 import Once.Internal.Type as Ty
+import Once.Spec.Type as Ty
 open import Once.Internal.Type.Sub
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
@@ -115,8 +116,8 @@ mutual
   coeIR-rel sub-unit  {v} r = ≡ˡ (cong-app (liftFn-id {A = Unit {0}}) v) (relS-ret r)
   coeIR-rel sub-int   {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Int {0}}) v) (relS-ret r)
   coeIR-rel sub-float {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Float {0}}) v) (relS-ret r)
-  coeIR-rel (sub-μ {F = F}) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.μ-type F}) v) (relS-ret r)
-  coeIR-rel (sub-ν {F = F} {f = π} _) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.ν-type F π}) v) (relS-ret r)
+  coeIR-rel (sub-μ {F = F}) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.μ F}) v) (relS-ret r)
+  coeIR-rel (sub-ν {F = F} {f = π} _) {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.ν F π}) v) (relS-ret r)
   coeIR-rel (sub-arr {A = A} {A′ = A′} {B = B} {B′ = B′} {q = Zero} {π = π} {π′ = π′} a b _) {f} r =
     ≡ˡ (cong-app (liftFn-curry₀ {A = A ⇒[ mk-kind Zero π ] B} {B = A′} {C = B′} {π = π′} (coeIR b ∘ apply)) f)
        (relS-ret (arr₀ {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b r))

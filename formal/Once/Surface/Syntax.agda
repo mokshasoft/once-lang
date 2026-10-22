@@ -13,6 +13,7 @@ module Once.Surface.Syntax where
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -327,8 +328,8 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- once per node, so everything the algebra captures is used ω times — the
   -- usage is `Many *ᵘ Ψ`, as an eliminator's methods are in QTT.
   cata : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A} {π : Purity}
-       → WFFun Δₖ F → Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)
-       → Expr Γ (Many *ᵘ Ψ) (μ-type F ⇒[ mk-kind Many π ] A)
+       → WFFun Δₖ F → Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)
+       → Expr Γ (Many *ᵘ Ψ) (μ F ⇒[ mk-kind Many π ] A)
 
   -- Anamorphism (dual of `cata`): given a coalgebra `A → F(A)`, produce the
   -- unfold `A → νF`. This is the PRODUCTIVE / corecursive scheme — `νF` is
@@ -341,8 +342,8 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- PLAN 0.101 (D273): the coalgebra is an ordinary term IN CONTEXT — it may
   -- capture locals — obtained once, as `cata`'s algebra is.
   ana : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A} {π₀ : Purity} {φ : Finite}
-      → WFFun Δₖ F → Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)
-      → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many π₀ ] ν-type F φ)   -- B1: once per layer
+      → WFFun Δₖ F → Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧F A)
+      → Expr Γ (Many *ᵘ Ψ) (A ⇒[ mk-kind Many π₀ ] ν F φ)   -- B1: once per layer
 
   -- THE LOOP (D317/D319): `ana round` at `Eff`. The round is a finite block
   -- (`act`) ending with the result or the next state, obtained once; the loop

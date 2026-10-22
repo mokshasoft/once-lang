@@ -16,6 +16,7 @@
 
 module Once.Denotation.ValueRel where
 
+import Once.Spec.Type as SpT
 open import Once.Spec.Type using (Base)
 open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx; WFFun)
 open import Data.Empty using (⊥)
@@ -26,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
-open import Once.Internal.Type using (Functor; μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
@@ -72,8 +73,8 @@ RelD (A + B) (inj₂ _) (inj₁ _)  = ⊥
 RelD (A ⇒[ mk-kind Zero π ] B) f g = RelS (RelD B) (f tt) (g tt)
 RelD (A ⇒[ mk-kind One  π ] B) f g = ∀ {a a′} → RelD A a a′ → RelS (RelD B) (f a) (g a′)
 RelD (A ⇒[ mk-kind Many π ] B) f g = ∀ {a a′} → RelD A a a′ → RelS (RelD B) (f a) (g a′)
-RelD (μ-type F)  x y = x ≡ y
-RelD (ν-type F _) x y = StreamRel (translateF Carrier Carrier F) x y
+RelD (μ F)  x y = x ≡ y
+RelD (ν F _) x y = StreamRel (translateF Carrier Carrier F) x y
 RelD Int         x y = x ≡ y
 RelD Float       x y = x ≡ y
 RelD (var _) () _
@@ -112,7 +113,6 @@ open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Voi
                                              WellFormedF; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
-open import Once.Internal.Type using (⟦_⟧T)
 
 base-eq : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ∀ {x y : ⟦ A ⟧ᴰ} → RelD A x y → x ≡ y
 base-eq base-Unit       _ = refl
@@ -271,8 +271,8 @@ private
   fr-K≡ : ∀ {m} {X Y} {R : X → Y → Set} {A : Ty m} {x y} → x ≡ y → FRel R (K A) x y
   fr-K≡ refl = fr-K
 
-cfD-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {x y : ⟦ ⟦ F ⟧T C ⟧ᴰ}
-        → RelD (⟦ F ⟧T C) x y → FRel (RelD C) F (coerce-functor-D wf C x) (coerce-functor-D wf C y)
+cfD-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {x y : ⟦ SpT.⟦ F ⟧F C ⟧ᴰ}
+        → RelD (SpT.⟦ F ⟧F C) x y → FRel (RelD C) F (coerce-functor-D wf C x) (coerce-functor-D wf C y)
 cfD-rel (wf-K b) C r = fr-K≡ (cong (forgetᵇ b) (base-eq b r))
 cfD-rel wf-Id C r = fr-Id r
 cfD-rel (wf-Sum wf wg) C {inj₁ x} {inj₁ y} r = fr-inl (cfD-rel wf C r)
@@ -282,7 +282,7 @@ cfD-rel (wf-Sum wf wg) C {inj₂ _} {inj₁ _} ()
 cfD-rel (wf-Prod wf wg) C {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = fr-pair (cfD-rel wf C r₁) (cfD-rel wg C r₂)
 
 cfD⁻¹-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {x y : ⟦ F ⟧F ⟦ C ⟧ᴰ}
-          → FRel (RelD C) F x y → RelD (⟦ F ⟧T C) (coerce-functor⁻¹-D wf C x) (coerce-functor⁻¹-D wf C y)
+          → FRel (RelD C) F x y → RelD (SpT.⟦ F ⟧F C) (coerce-functor⁻¹-D wf C x) (coerce-functor⁻¹-D wf C y)
 cfD⁻¹-rel (wf-K b) C {x} fr-K = base-refl b (injectᵇ b x)
 cfD⁻¹-rel wf-Id C (fr-Id r) = r
 cfD⁻¹-rel (wf-Sum wf wg) C (fr-inl r) = cfD⁻¹-rel wf C r

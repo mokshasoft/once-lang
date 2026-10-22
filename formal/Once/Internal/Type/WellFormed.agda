@@ -11,7 +11,7 @@ module Once.Internal.Type.WellFormed where
 
 open import Once.Spec.Type using (Base; WFFun; ∅ₖ; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Type using (μ-type; ν-type; Functor)
+open import Once.Spec.Type using (Fun; μ; ν)
 
 -- The base types and the well-formed functors are the Spec's (`Base`, `WFFun`), here at
 -- the ground kinding context; the compiler's older constructor names stay while plan 0.122
@@ -34,7 +34,7 @@ data IsConcrete : Type → Set where
   con-fun  : ∀ {A B k} → IsBaseType A → IsBaseType B → IsConcrete (A ⇒[ k ] B)
 
 -- | A functor is well formed when every constant in it is a base type.
-WellFormedF : Functor → Set
+WellFormedF : Fun 0 → Set
 WellFormedF = WFFun ∅ₖ
 
 pattern wf-Sum f g = wf-⊕ f g
@@ -52,10 +52,10 @@ mutual
     rf-*      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A * B)
     rf-+      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A + B)
     rf-⇒      : ∀ {A B k} → RigidFree A → RigidFree B → RigidFree (A ⇒[ k ] B)
-    rf-μ      : ∀ {F} → RigidFreeF F → RigidFree (μ-type F)
-    rf-ν      : ∀ {F π} → RigidFreeF F → RigidFree (ν-type F π)
+    rf-μ      : ∀ {F} → RigidFreeF F → RigidFree (μ F)
+    rf-ν      : ∀ {F π} → RigidFreeF F → RigidFree (ν F π)
 
-  data RigidFreeF : Functor → Set where
+  data RigidFreeF : Fun 0 → Set where
     rf-K  : ∀ {A} → RigidFree A → RigidFreeF (K A)
     rf-Id : RigidFreeF Id
     rf-⊕  : ∀ {F G} → RigidFreeF F → RigidFreeF G → RigidFreeF (F ⊕ G)

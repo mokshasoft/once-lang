@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Internal.Trace using (ret)
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
@@ -92,7 +92,7 @@ abi-rel Unit         v M rel = rel
 abi-rel Void         v M rel = rel
 abi-rel (A * B)      v M rel = rel
 abi-rel (A + B)      v M rel = rel
-abi-rel (μ-type F)   v M rel = rel
-abi-rel (ν-type F π) v M rel = rel
+abi-rel (μ F)   v M rel = rel
+abi-rel (ν F π) v M rel = rel
 abi-rel Int          v M rel = rel
 abi-rel Float        v M rel = rel

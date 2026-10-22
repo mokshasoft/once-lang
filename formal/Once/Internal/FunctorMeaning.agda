@@ -19,7 +19,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Once.Spec.Type using (var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (μ-type; ν-type; Functor)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; νS)
 
 ------------------------------------------------------------------------
@@ -46,8 +46,8 @@ open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; �
 ⟦ IntRep , FloatRep ⟧-base (A * B) = ⟦ IntRep , FloatRep ⟧-base A × ⟦ IntRep , FloatRep ⟧-base B
 ⟦ IntRep , FloatRep ⟧-base (A + B) = ⟦ IntRep , FloatRep ⟧-base A ⊎ ⟦ IntRep , FloatRep ⟧-base B
 ⟦ IntRep , FloatRep ⟧-base (_ ⇒[ _ ] _) = ⊤  -- Functions (all kinds): return ⊤ (not used in K)
-⟦ IntRep , FloatRep ⟧-base (μ-type _) = ⊤    -- Recursive: return ⊤ (not used in K)
-⟦ IntRep , FloatRep ⟧-base (ν-type _ _) = ⊤    -- Corecursive: return ⊤ (not used in K)
+⟦ IntRep , FloatRep ⟧-base (μ _) = ⊤    -- Recursive: return ⊤ (not used in K)
+⟦ IntRep , FloatRep ⟧-base (ν _ _) = ⊤    -- Corecursive: return ⊤ (not used in K)
 ⟦ IntRep , FloatRep ⟧-base Int = IntRep
 ⟦ IntRep , FloatRep ⟧-base Float = FloatRep
 ⟦ IntRep , FloatRep ⟧-base (var _) = ⊥

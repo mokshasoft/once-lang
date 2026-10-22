@@ -36,6 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (Type; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; μ; ν; K; Id; _⊕_; _⊗_; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Type.Substitution using (base-⟨⟩)
 import Once.Spec.Core.Syntax as SCS
@@ -66,7 +67,7 @@ open import Once.Internal.Typing
 ρ̂F : Fun m → Fun k
 ρ̂F F = F ⟨ τ ⟩F
 
-ρ̂-⟦⟧ : ∀ (F : Fun m) (A : Ty m) → ρ̂ (⟦ F ⟧T A) ≡ ⟦ ρ̂F F ⟧T (ρ̂ A)
+ρ̂-⟦⟧ : ∀ (F : Fun m) (A : Ty m) → ρ̂ (⟦ F ⟧F A) ≡ ⟦ ρ̂F F ⟧F (ρ̂ A)
 ρ̂-⟦⟧ = ⟦⟧F-⟨⟩ τ
 
 ρ̂-wf : ∀ {F} → WFFun Δ F → WFFun Δ′ (ρ̂F F)
@@ -249,9 +250,9 @@ mutual
   subst-i′ (t-apply-app-infer d)  = t-apply-app-infer (subst-i′ d)
   subst-i′ (t-apply-eff-app-infer {g = g} d) = t-apply-eff-app-infer {g = g} (subst-i′ d)
   subst-i′ (t-Out-app-infer {F = F} wf refl d) =
-    sym (ρ̂-⟦⟧ F (ν-type F pureᶠ)) ⇝ᵢ t-Out-app-infer (ρ̂-wf wf) refl (subst-i′ d)
+    sym (ρ̂-⟦⟧ F (ν F pureᶠ)) ⇝ᵢ t-Out-app-infer (ρ̂-wf wf) refl (subst-i′ d)
   subst-i′ (t-Out-eff-app-infer {F = F} wf refl d) =
-    cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (ρ̂-⟦⟧ F (ν-type F actᶠ)))
+    cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (ρ̂-⟦⟧ F (ν F actᶠ)))
       ⇝ᵢ t-Out-eff-app-infer (ρ̂-wf wf) refl (subst-i′ d)
   subst-i′ (t-app h df dx)        = t-app h (subst-i′ df) (subst-c′ dx)
   subst-i′ (t-effApp {g = g} h df dx) = t-effApp {g = g} h (subst-i′ df) (subst-c′ dx)
@@ -282,7 +283,7 @@ mutual
   subst-c′ (t-lam {u = u} le d)          = t-lam {u = u} le (subst-c′ d)
   subst-c′ (t-pair-lit-check a b) = t-pair-lit-check (subst-c′ a) (subst-c′ b)
   subst-c′ (t-In-app-check {F = F} wf d) =
-    t-In-app-check (ρ̂-wf wf) (ρ̂-⟦⟧ F (μ-type F) ⇝ᶜ subst-c′ d)
+    t-In-app-check (ρ̂-wf wf) (ρ̂-⟦⟧ F (μ F) ⇝ᶜ subst-c′ d)
   subst-c′ (t-apply-check d)     = t-apply-check (subst-i′ d)
   subst-c′ (t-inl-app-check d)   = t-inl-app-check (subst-c′ d)
   subst-c′ (t-inr-app-check d)   = t-inr-app-check (subst-c′ d)

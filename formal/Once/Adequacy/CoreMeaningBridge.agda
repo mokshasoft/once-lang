@@ -43,7 +43,8 @@ open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Type.Schema using (schemaOf; kinded-instance)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Type using (⟦_⟧T; wk₀; none)
+open import Once.Internal.Type using (wk₀; none)
+open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName)
@@ -322,7 +323,7 @@ module Comb {Δ : KCtx 0} {δ : GM.DefSem} where
 
   -- plan 0.113 B1: the coalgebra's usage is ω-scaled; it reads `x` restricted.
   ana-sem″ : ∀ {n} {Γ : Ctx 0 n} {Ψ : Usage n} {F : Fun 0} {A : Ty 0} {π₀} {π : Finite} {c}
-    (u₀ : pure ⊑π π₀) (wf : WFFun Δ F) (dc : Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧T A ! pure) (x : GM.Env Γ (Many *ᵘ Ψ))
+    (u₀ : pure ⊑π π₀) (wf : WFFun Δ F) (dc : Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧F A ! pure) (x : GM.Env Γ (Many *ᵘ Ψ))
     → GM.⟦ ⊢anaᶜ u₀ wf dc ⟧ fmt δ x
       ≡ (λ a → returnM u₀ (ana-semᵛ π wf (GM.⟦ dc ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a))
   ana-sem″ {Γ = Γ} {Ψ = Ψ} {A = A} {π₀ = π₀} {π = π} u₀ wf dc x =
@@ -354,7 +355,7 @@ module Comb {Δ : KCtx 0} {δ : GM.DefSem} where
       cong₂ (λ F X → F >>=ᵖ λ vf → X >>=ᵖ λ vx → vf vx) (RS.wk-sem fmt δ _ df _) (RS.wk-sem fmt δ _ dx _)
 
   cata-sem′ : ∀ {n} {Γ : Ctx 0 n} {Ψ : Usage n} {F : Fun 0} {A : Ty 0} {π} {alg}
-    (u : pure ⊑π π) (wf : WFFun Δ F) (da : Δ ⊩ Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure) (x : GM.Env Γ (Many *ᵘ Ψ))
+    (u : pure ⊑π π) (wf : WFFun Δ F) (da : Δ ⊩ Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! pure) (x : GM.Env Γ (Many *ᵘ Ψ))
     → GM.⟦ ⊢cataᶜ wf da ⟧ fmt δ x
       ≡ (GM.⟦ da ⟧ fmt δ (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x) >>=ᵖ λ valg → λ v → cata-semᵛ u wf valg v)
   cata-sem′ {Γ = Γ} {Ψ = Ψ} {π = π} u wf da x =

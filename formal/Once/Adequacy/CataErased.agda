@@ -18,6 +18,8 @@
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Data.Nat using (ℕ)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
 open import Once.Spec.Type using (wf-⊕; wf-⊗)
@@ -52,7 +54,7 @@ open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type using (Functor; ⟦_⟧T; μ-type)
+open import Once.Spec.Type using (μ)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
@@ -236,7 +238,7 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
   RelC = RelS (λ l r → RelD A' (subst (λ z → z) (cohᴰ A') l) r)
 
   -- A layer of the erased functor, read back into `⟦ G ⟧T A'`'s IR domain.
-  L : ∀ {G : Fun m} → WFFun Δₖ G → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ ⌊ ⟦ G ⟧T A' ⌋ ⟧ᴰᴵ
+  L : ∀ {G : Fun m} → WFFun Δₖ G → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ ⌊ SpT.⟦ G ⟧F A' ⌋ ⟧ᴰᴵ
   L {G = G} wfG l =
     subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
       (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF G) ⌊ A' ⌋))
@@ -244,7 +246,7 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
 
   -- An IR layer and a meaning layer are related when their values are.
   LayerRel : ∀ {G : Fun m} → WFFun Δₖ G → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ G ⟧F ⟦ A' ⟧ᴰ → Set
-  LayerRel {G = G} wfG l r = RelD (⟦ G ⟧T A') (subst (λ z → z) (cohᴰ (⟦ G ⟧T A')) (L wfG l)) (coerce-functor⁻¹-D wfG A' r)
+  LayerRel {G = G} wfG l r = RelD (SpT.⟦ G ⟧F A') (subst (λ z → z) (cohᴰ (SpT.⟦ G ⟧F A')) (L wfG l)) (coerce-functor⁻¹-D wfG A' r)
 
   private
     ≡ˡᴰ : ∀ (X : Ty m) {u u′ w : ⟦ X ⟧ᴰ} → u ≡ u′ → RelD X u′ w → RelD X u w
@@ -253,38 +255,38 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
   sum₁-step : ∀ {Fa Gb} (wfF : WFFun Δₖ Fa) (wfG : WFFun Δₖ Gb) l r
             → LayerRel wfF l r → LayerRel (wf-Sum wfF wfG) (inj₁ l) (inj₁ r)
   sum₁-step {Fa} {Gb} wfF wfG l r e =
-    ≡ˡᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')
-      (trans (cong (subst (λ z → z) (cohᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')))
+    ≡ˡᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')
+      (trans (cong (subst (λ z → z) (cohᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')))
                    (trans (cong (subst ⟦_⟧ᴰᴵ (sym (cong₂ II._+_ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A'))))
                                 (pushᴰ-+₁ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
                                           (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)))
                           (pushᴰᴵ-+₁ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A') _)))
-             (push-⊎₁⁺ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) _))
+             (push-⊎₁⁺ (cohᴰ (SpT.⟦ Fa ⟧F A')) (cohᴰ (SpT.⟦ Gb ⟧F A')) _))
       e
 
   sum₂-step : ∀ {Fa Gb} (wfF : WFFun Δₖ Fa) (wfG : WFFun Δₖ Gb) l r
             → LayerRel wfG l r → LayerRel (wf-Sum wfF wfG) (inj₂ l) (inj₂ r)
   sum₂-step {Fa} {Gb} wfF wfG l r e =
-    ≡ˡᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')
-      (trans (cong (subst (λ z → z) (cohᴰ (⟦ Fa ⟧T A' TT.+ ⟦ Gb ⟧T A')))
+    ≡ˡᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')
+      (trans (cong (subst (λ z → z) (cohᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')))
                    (trans (cong (subst ⟦_⟧ᴰᴵ (sym (cong₂ II._+_ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A'))))
                                 (pushᴰ-+₂ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
                                           (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l)))
                           (pushᴰᴵ-+₂ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A') _)))
-             (push-⊎₂⁺ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) _))
+             (push-⊎₂⁺ (cohᴰ (SpT.⟦ Fa ⟧F A')) (cohᴰ (SpT.⟦ Gb ⟧F A')) _))
       e
 
   prod-step : ∀ {Fa Gb} (wfF : WFFun Δₖ Fa) (wfG : WFFun Δₖ Gb) l r l′ r′
             → LayerRel wfF l r → LayerRel wfG l′ r′ → LayerRel (wf-Prod wfF wfG) (l , l′) (r , r′)
   prod-step {Fa} {Gb} wfF wfG l r l′ r′ e e′ =
-    ≡ˡᴰ (⟦ Fa ⟧T A' TT.* ⟦ Gb ⟧T A')
-      (trans (cong (subst (λ z → z) (cohᴰ (⟦ Fa ⟧T A' TT.* ⟦ Gb ⟧T A')))
+    ≡ˡᴰ (SpT.⟦ Fa ⟧F A' TT.* SpT.⟦ Gb ⟧F A')
+      (trans (cong (subst (λ z → z) (cohᴰ (SpT.⟦ Fa ⟧F A' TT.* SpT.⟦ Gb ⟧F A')))
                    (trans (cong (subst ⟦_⟧ᴰᴵ (sym (cong₂ II._*_ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A'))))
                                 (pushᴰ-* (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
                                          (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ ⌊ A' ⌋ ⌉ l)
                                          (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfG)) ⌈ ⌊ A' ⌋ ⌉ l′)))
                           (pushᴰᴵ-* (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A') _ _)))
-             (push-×⁺ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A')) _ _))
+             (push-×⁺ (cohᴰ (SpT.⟦ Fa ⟧F A')) (cohᴰ (SpT.⟦ Gb ⟧F A')) _ _))
       (e , e′)
 
   -- A constant layer: the IR value is the meaning's, read back (`base-z`).
@@ -325,17 +327,17 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
   -- THE ERASED FOLD. An IR algebra related to a semantic one folds every value
   -- to a run related to the meaning's fold.
   cata-erased-rel : ∀ {F : Fun m} {Eˢ : Ty m} (wfF : WFFun Δₖ F)
-      (mir : IR.IR (⌊ Eˢ ⌋ II.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ)
-      (g : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T∞ ⟦ A' ⟧ᴰ)
-    → (∀ {z z′} → RelD (⟦ F ⟧T A') z z′ → RelS (RelD A') (liftFn fmt ρ {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (g z′))
-    → ∀ (w : ⟦ μ-type F ⟧ᴰ)
-    → RelS (RelD A') (liftFn fmt ρ {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
+      (mir : IR.IR (⌊ Eˢ ⌋ II.* ⌊ SpT.⟦ F ⟧F A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ)
+      (g : ⟦ SpT.⟦ F ⟧F A' ⟧ᴰ → T∞ ⟦ A' ⟧ᴰ)
+    → (∀ {z z′} → RelD (SpT.⟦ F ⟧F A') z z′ → RelS (RelD A') (liftFn fmt ρ {Eˢ TT.* SpT.⟦ F ⟧F A'} {A'} mir (env , z)) (g z′))
+    → ∀ (w : ⟦ μ F ⟧ᴰ)
+    → RelS (RelD A') (liftFn fmt ρ {Eˢ TT.* μ F} {A'} (IR.Cata (wf-⌊⌋ wfF)
                         (subst (λ o → IR.IR (⌊ Eˢ ⌋ II.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
                         (env , w))
                      (cata-sem wfF g w)
   cata-erased-rel {F = F} {Eˢ = Eˢ} wfF mir env g hg w =
     ≡ˢ (trans (cong (λ W → subst T∞ (cohᴰ A') (evalᴰ fmt ρ (IR.Cata (wf-⌊⌋ wfF) mir') W))
-                    (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
+                    (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ F)) env w))
               (cong (subst T∞ (cohᴰ A')) Lr≡))
        (RelS-substˡ (cohᴰ A') (cataS-rel {R = RelC} algR w))
     where
@@ -347,8 +349,8 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
 
       env₀ = subst (λ t → t) (sym (cohᴰ Eˢ)) env
 
-      w' : ⟦ ⌊ μ-type F ⌋ ⟧ᴰᴵ
-      w' = subst (λ z → z) (sym (cohᴰ (μ-type F))) w
+      w' : ⟦ ⌊ μ F ⌋ ⟧ᴰᴵ
+      w' = subst (λ z → z) (sym (cohᴰ (μ F))) w
 
       seed-eq : subst μS (tF-coh F) w' ≡ w
       seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
@@ -373,8 +375,8 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
         ≡ˢ (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir env₀ _)
            (RelS-substˡ⁻ (cohᴰ A')
              (≡ˢ (cong (λ W → subst T∞ (cohᴰ A') (evalᴰ fmt ρ mir W))
-                       (sym (trans (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _)
-                                   (cong (env₀ ,_) (subst-sym-subst {P = λ z → z} (cohᴰ (⟦ F ⟧T A')))))))
+                       (sym (trans (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (SpT.⟦ F ⟧F A')) env _)
+                                   (cong (env₀ ,_) (subst-sym-subst {P = λ z → z} (cohᴰ (SpT.⟦ F ⟧F A')))))))
                  (hg lr)))
 
       algR : ∀ {y₁ y₂} → SRel RelC (translateF Carrier Carrier F) y₁ y₂

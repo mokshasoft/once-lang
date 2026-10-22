@@ -53,7 +53,7 @@ import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
@@ -196,7 +196,7 @@ module Scope {FS : FrameSemantics} where
   -- Neither emits a `c-thunk`: both are loads, stores, branches and the `once`
   -- join labels (D082 — a different provenance entirely).
   ------------------------------------------------------------------------
-  visit-walk-nt : ∀ (todoSlot tv tb : ℕ) (F : Functor) (s lb : ℕ)
+  visit-walk-nt : ∀ (todoSlot tv tb : ℕ) (F : Fun 0) (s lb : ℕ)
                 → NoThunkT (visit-walk todoSlot tv tb F s lb)
   visit-walk-nt todoSlot tv tb (K _)   s lb = []
   visit-walk-nt todoSlot tv tb Id      s lb =
@@ -213,7 +213,7 @@ module Scope {FS : FrameSemantics} where
         (refl ∷ refl ∷ refl ∷ 
          visit-walk-nt todoSlot tv tb G (s + 4) (lb + lsize F))
 
-  rebuild-walk-nt : ∀ (valSlot tv tb : ℕ) (F : Functor) (s lb : ℕ)
+  rebuild-walk-nt : ∀ (valSlot tv tb : ℕ) (F : Fun 0) (s lb : ℕ)
                   → NoThunkT (rebuild-walk valSlot tv tb F s lb)
   rebuild-walk-nt valSlot tv tb (K _)   s lb = refl ∷ []
   rebuild-walk-nt valSlot tv tb Id      s lb = nt-dec (pop2 valSlot) refl
@@ -233,7 +233,7 @@ module Scope {FS : FrameSemantics} where
              (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
 
   -- `cata-br-I₁` splices both walks between literal, marker-free chunks.
-  br-I₁-nt : ∀ (F : Functor) (n1 l1 : ℕ) → NoThunkT (cata-br-I₁ F n1 l1)
+  br-I₁-nt : ∀ (F : Fun 0) (n1 l1 : ℕ) → NoThunkT (cata-br-I₁ F n1 l1)
   br-I₁-nt F n1 l1 =
     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
     ++⁺ (nt-dec (push2 n1 (n1 + 4) (n1 + 5)) refl)

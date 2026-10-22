@@ -51,7 +51,7 @@ open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap;
 open import Once.Denotation.EvalRel using (liftFn-rel)
 open import Once.Adequacy.SourceRefl fmt using (SD-rel; <:-rel; cata-clo-rel; ana-clo-rel)
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Int; Float; Unit)
-open import Once.Internal.Type using (μ-type; ν-type; ⟦_⟧T; Functor)
+open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun)
 open import Once.Semantics.Machine using (sem-In; sem-cata)
@@ -353,9 +353,9 @@ ptr-self bDom bCod f {a} r with base-eq bDom r
 -- base types), so related layers over a `μ` slot coerce to the SAME machine
 -- layer.
 cf-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wfF : WFFun Δₖ F) {G : Fun m}
-           {a : ⟦ ⟦ F ⟧T (μ-type G) ⟧ᵛ} {b : ⟦ ⟦ F ⟧T (μ-type G) ⟧ᴰ}
-       → RelGV (⟦ F ⟧T (μ-type G)) a b
-       → cfᵛ (μ-type G) wfF a ≡ coerce-functor-D wfF (μ-type G) b
+           {a : ⟦ ⟦ F ⟧F (μ G) ⟧ᵛ} {b : ⟦ ⟦ F ⟧F (μ G) ⟧ᴰ}
+       → RelGV (⟦ F ⟧F (μ G)) a b
+       → cfᵛ (μ G) wfF a ≡ coerce-functor-D wfF (μ G) b
 cf-rel (wf-K ib)        r = prjB-rel ib r
 cf-rel wf-Id            r = r
 cf-rel (wf-Sum wfF wfG) {a = inj₁ _} {inj₁ _} r = cong inj₁ (cf-rel wfF r)
@@ -548,7 +548,7 @@ sigop-ref-bridge {A = Dom ⇒[ mk-kind Many π ] Cod} ι cn (con-fun bDom bCod) 
 out-relᵍ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {G : Fun m} (wf : WFFun Δₖ G)
              {x : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᵛ} {y : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᴰ}
          → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelGV A) x y
-         → RelGV (⟦ G ⟧T A)
+         → RelGV (⟦ G ⟧F A)
              (cf⁻¹ᵛ A wf (coerce-ν-out wf ⟦ A ⟧ᵛ x))
              (coerce-functor⁻¹-D wf A (coerce-ν-out wf ⟦ A ⟧ᴰ y))
 out-relᵍ (wf-K ib) {x} refl = injB-rel ib _
@@ -561,33 +561,33 @@ out-relᵍ (wf-Prod wfF wfG) {x = _ , _} {y = _ , _} (rF , rG) =
   out-relᵍ wfF rF , out-relᵍ wfG rG
 
 out-app-bridge : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} {wfF : WFFun Δₖ F}
-                   {vᴸ : ⟦ ν-type F π ⟧ᵛ} {vᴿ : ⟦ ν-type F π ⟧ᴰ}
-               → RelGV (ν-type F π) vᴸ vᴿ
-               → RelGM (fin π) (⟦ F ⟧T (ν-type F π)) (out-semᵛ π wfF vᴸ)
-                      (liftFn fmt (calls σ) {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF) vᴿ)
+                   {vᴸ : ⟦ ν F π ⟧ᵛ} {vᴿ : ⟦ ν F π ⟧ᴰ}
+               → RelGV (ν F π) vᴸ vᴿ
+               → RelGM (fin π) (⟦ F ⟧F (ν F π)) (out-semᵛ π wfF vᴸ)
+                      (liftFn fmt (calls σ) {ν F π} {⟦ F ⟧F (ν F π)} (Out-ir {π = π} wfF) vᴿ)
 -- Plan 0.119 D5: the Spec's force is related to the source's `out-sem` by the
 -- stream relation's force, mapped by the `Out` coercions; and the IR's `Out`
 -- is related to `out-sem` (`liftFn-Out`) at the stream's self-relation — so
 -- the relation transfers to it (`GM-D`).
 -- D250: at `pure` the Spec's force is a plain layer, always there and silent.
 out-app-bridge {F = F} {pureᶠ} {wfF = wfF} {vᴸ = vᴸ} {vᴿ = vᴿ} rel =
-  GM-D pure (⟦ F ⟧T (ν-type F pureᶠ))
-    (retargetˡ refl (RelS-fmap {f = λ l → cf⁻¹ᵛ (ν-type F pureᶠ) wfF (coerce-ν-out wfF _ l)}
-                               {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F pureᶠ) (coerce-ν-out wfF _ layer)}
-                               (force-∼ᵖᵈ rel) (λ r → out-relᵍ {A = ν-type F pureᶠ} wfF r)))
-    (liftFn-Out {π = pureᶠ} wfF (right-self (ν-type F pureᶠ) rel))
+  GM-D pure (⟦ F ⟧F (ν F pureᶠ))
+    (retargetˡ refl (RelS-fmap {f = λ l → cf⁻¹ᵛ (ν F pureᶠ) wfF (coerce-ν-out wfF _ l)}
+                               {g = λ layer → coerce-functor⁻¹-D wfF (ν F pureᶠ) (coerce-ν-out wfF _ layer)}
+                               (force-∼ᵖᵈ rel) (λ r → out-relᵍ {A = ν F pureᶠ} wfF r)))
+    (liftFn-Out {π = pureᶠ} wfF (right-self (ν F pureᶠ) rel))
 out-app-bridge {F = F} {actᶠ} {wfF = wfF} {vᴸ = vᴸ} {vᴿ = vᴿ} rel =
-  GM-D act (⟦ F ⟧T (ν-type F actᶠ))
+  GM-D act (⟦ F ⟧F (ν F actᶠ))
     (RelS-embed-fmap (forceᵈ vᴸ)
-      (RelS-fmapʳ {g = λ layer → coerce-functor⁻¹-D wfF (ν-type F actᶠ) (coerce-ν-out wfF _ layer)}
-                  (force-∼ rel) (λ r → out-relᵍ {A = ν-type F actᶠ} wfF r)))
-    (liftFn-Out {π = actᶠ} wfF (right-self (ν-type F actᶠ) rel))
+      (RelS-fmapʳ {g = λ layer → coerce-functor⁻¹-D wfF (ν F actᶠ) (coerce-ν-out wfF _ layer)}
+                  (force-∼ rel) (λ r → out-relᵍ {A = ν F actᶠ} wfF r)))
+    (liftFn-Out {π = actᶠ} wfF (right-self (ν F actᶠ) rel))
 
 in-app-bridge : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {wfF : WFFun Δₖ F}
-                {vᴸ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ} {vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
-              → RelGV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
-              → RelGM pure (μ-type F) (in-valueᵛ wfF vᴸ)
-                     (liftFn fmt (calls σ) {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) vᴿ)
+                {vᴸ : ⟦ ⟦ F ⟧F (μ F) ⟧ᵛ} {vᴿ : ⟦ ⟦ F ⟧F (μ F) ⟧ᴰ}
+              → RelGV (⟦ F ⟧F (μ F)) vᴸ vᴿ
+              → RelGM pure (μ F) (in-valueᵛ wfF vᴸ)
+                     (liftFn fmt (calls σ) {⟦ F ⟧F (μ F)} {μ F} (In-ir wfF) vᴿ)
 in-app-bridge {F = F} {wfF = wfF} rv =
   ≡ʳ (liftFn-In wfF _) (relS-ret (cong (sem-In F) (cf-rel wfF rv)))
 
@@ -1067,24 +1067,24 @@ module _ (σ-self : RelDefs fmt σ σ) where
     RelGᵖ-bind {A = A * B} {B = B} {g = liftFn fmt (calls σ) {A * B} {B} IR.snd} (bridge-i d (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-snd {0} {A} {B}) b) (relS-ret (proj₂ rv)))
   bridge-i (t-Out-app-infer {F = F} wfF refl d) re er =
-    RelGᵖ-bind {A = ν-type F pureᶠ} {B = ⟦ F ⟧T (ν-type F pureᶠ)}
+    RelGᵖ-bind {A = ν F pureᶠ} {B = ⟦ F ⟧F (ν F pureᶠ)}
               (bridge-i d (reᵐ re) er) (λ rv → out-app-bridge {π = pureᶠ} {wfF = wfF} rv)
   -- D233: at an EFFECTFUL stream both sides evaluate the stream, then return the
   -- suspension of the force (`curry (Out ∘ fst)` on the IR side).
   bridge-i {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF refl d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
-    RelGᵖ-bind {A = ν-type F actᶠ} {B = Unit ⇒[ mk-kind Many act ] ⟦ F ⟧T (ν-type F actᶠ)}
-               {g = liftFn fmt (calls σ) {ν-type F actᶠ} {Unit ⇒[ mk-kind Many act ] ⟦ F ⟧T (ν-type F actᶠ)} (IR.curry (Out-ir wfF IR.∘ IR.fst))}
+    RelGᵖ-bind {A = ν F actᶠ} {B = Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)}
+               {g = liftFn fmt (calls σ) {ν F actᶠ} {Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)} (IR.curry (Out-ir wfF IR.∘ IR.fst))}
       (bridge-i d (reᵐ re) er)
       (λ {v} {v′} rv →
-         ≡ʳ (cong-app (liftFn-curry {0} {ν-type F actᶠ} {Unit} {⟦ F ⟧T (ν-type F actᶠ)} {act} (Out-ir wfF IR.∘ IR.fst)) v′)
+         ≡ʳ (cong-app (liftFn-curry {0} {ν F actᶠ} {Unit} {⟦ F ⟧F (ν F actᶠ)} {act} (Out-ir wfF IR.∘ IR.fst)) v′)
             (relS-ret ((λ {u} {u′} _ → retargetʳ (out-fst v′ u′) (out-app-bridge {F = F} {π = actᶠ} {wfF = wfF} rv))
                       , (λ {u} {u′} _ → retargetˡ (out-fst v′ u) (retargetʳ (out-fst v′ u′)
-                            (liftFn-rel fmt (proj₁ σ-self) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) (right-self (ν-type F actᶠ) rv)))))))
+                            (liftFn-rel fmt (proj₁ σ-self) {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF) (right-self (ν F actᶠ) rv)))))))
     where
-      out-fst : ∀ (v : ⟦ ν-type F actᶠ ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
-              → force (liftFn fmt (calls σ) {ν-type F actᶠ * Unit} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
-                ≡ force (liftFn fmt (calls σ) {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} (Out-ir wfF) v)
-      out-fst v u = force-∘ {0} {ν-type F actᶠ} {⟦ F ⟧T (ν-type F actᶠ)} {ν-type F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {0} {ν-type F actᶠ} {Unit} (v , u))
+      out-fst : ∀ (v : ⟦ ν F actᶠ ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
+              → force (liftFn fmt (calls σ) {ν F actᶠ * Unit} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
+                ≡ force (liftFn fmt (calls σ) {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF) v)
+      out-fst v u = force-∘ {0} {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} {ν F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {0} {ν F actᶠ} {Unit} (v , u))
   bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {ρ = ρ} {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
     RelGᵖ-bind {A = T} {B = Unit {0}} {g = liftFn fmt (calls σ) {T} {Unit} IR.terminal} (bridge-i d {ρ = ρ} (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-terminal {0} {T}) b) (relS-ret tt))
@@ -1215,8 +1215,8 @@ module _ (σ-self : RelDefs fmt σ σ) where
   -- the algebra followed by the fold congruence `cata-bridge` — which is exactly
   -- why that lemma is now stated over two ALGEBRAS.
   bridge-c (t-cata-check {F = F} {A = A} {π = π} {u = u} wfF dalg) re er =
-    RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
-              {B = μ-type F ⇒[ mk-kind Many π ] A}
+    RelGᵖ-bind {A = ⟦ F ⟧F A ⇒[ mk-kind Many π ] A}
+              {B = μ F ⇒[ mk-kind Many π ] A}
               (bridge-c dalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} ralg →   -- plan 0.113 B1
     relS-ret {x = λ v → cata-semᵛ u wfF c₁ v} {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c₂)) x}
              ((λ {a} {b} rv → cata-bridgeᵍ u {wfF = wfF} c₁ (λ z → return∞ c₂ >>=∞ λ k → k z) (λ r → retargetʳ refl (proj₁ ralg r)) rv)
@@ -1229,10 +1229,10 @@ module _ (σ-self : RelDefs fmt σ σ) where
   -- (`RelGT-bind` at `returnT`, not `RelGᵖ-bind`: the Spec clause applies its
   -- continuation directly rather than through the opaque `>>=ᵖ`.)
   bridge-c (t-ana-check {F = F} {A = A} {π₀ = π₀} {φ = π} {u = u} wfF dcoalg) re er =
-    RelGᵖ-app {A = A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧T A}
-              {B = A ⇒[ mk-kind Many π₀ ] ν-type F π}
+    RelGᵖ-app {A = A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧F A}
+              {B = A ⇒[ mk-kind Many π₀ ] ν F π}
               (bridge-c dcoalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} rco →
-    relS-ret ((λ {a} {b} rab → RelGM-return u {A = ν-type F π} (ana-bridgeᵍ π wfF c₁ c₂ rco rab))
+    relS-ret ((λ {a} {b} rab → RelGM-return u {A = ν F π} (ana-bridgeᵍ π wfF c₁ c₂ rco rab))
              , (λ ra → relS-ret (ana-clo-rel {A = A} {F = F} {φ = π} wfF (proj₂ rco) ra))))
   -- THE LOOP: the round's own bridge, then the graded loop over finite rounds
   -- against SD's iteration (`RelS-loop`); the source side is self-related
@@ -1267,7 +1267,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
               (λ ra → RelGᵖ-bind {A = B} {B = A * B} (bridge-c db (reʳ re) er)
                                  (λ rb → relS-ret (ra , rb)))
   bridge-c (t-In-app-check {F = F} wfF d) re er =
-    RelGᵖ-bind {A = ⟦ F ⟧T (μ-type F)} {B = μ-type F}
+    RelGᵖ-bind {A = ⟦ F ⟧F (μ F)} {B = μ F}
               (bridge-c d (reᵐ re) er) (λ rv → in-app-bridge {wfF = wfF} rv)
   bridge-c {ctx = ctx} (t-apply-check {A = A} {B = B} dp) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re er =
     RelGᵖ-bind {A = (A ⇒[ mk-kind Many pure ] B) * A} {B = B} {g = liftFn fmt (calls σ) {(A ⇒[ mk-kind Many pure ] B) * A} {B} IR.apply}
@@ -1345,8 +1345,8 @@ module _ (σ-self : RelDefs fmt σ σ) where
              ((λ rv → RelGM-bind π {B} {B * C} (proj₁ rf rv) (λ {b₁} {b₂} rb → RelGM-fmap π {C} {B * C} (proj₁ rg rv) (λ rc → rb , rc)))
              , (λ ra → RelS-bind (proj₂ rf ra) λ rb → RelS-fmap (proj₂ rg ra) (λ rc → rb , rc)))))
   bridge-d (d-cata {F = F} {A = A} {π = π} {u = u} wfF dalg) re er =
-    RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
-              {B = μ-type F ⇒[ mk-kind Many π ] A}
+    RelGᵖ-bind {A = ⟦ F ⟧F A ⇒[ mk-kind Many π ] A}
+              {B = μ F ⇒[ mk-kind Many π ] A}
               (bridge-i dalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} ralg →
     relS-ret {x = λ v → cata-semᵛ u wfF c₁ v} {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c₂)) x}
              ((λ {a} {b} rv → cata-bridgeᵍ u {wfF = wfF} c₁ (λ z → return∞ c₂ >>=∞ λ k → k z) (λ r → retargetʳ refl (proj₁ ralg r)) rv)

@@ -15,7 +15,7 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type using (Ty; Fun; var; Type; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _⇒[_]_)
-open import Once.Internal.Type using (Functor; μ-type; ν-type; TKind; k-base; k-any)
+open import Once.Spec.Type using (Kind; any; base; μ; ν)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; Finite; pureᶠ; actᶠ; pure; act; eff; ArrowKind; mk-kind)
 import Data.Fin as Fin
 
@@ -122,12 +122,12 @@ mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p 
 ≟T-⇒-aux _          _          (no ¬r)    = no λ { refl → ¬r refl }
 ≟T-⇒-aux (yes refl) (yes refl) (yes refl) = yes refl
 
-≟T-μ-aux : ∀ {m} {F₁ F₂ : Fun m} → Dec (F₁ ≡ F₂) → Dec (μ-type F₁ ≡ μ-type F₂)
+≟T-μ-aux : ∀ {m} {F₁ F₂ : Fun m} → Dec (F₁ ≡ F₂) → Dec (μ F₁ ≡ μ F₂)
 ≟T-μ-aux (yes refl) = yes refl
 ≟T-μ-aux (no ¬p)    = no λ { refl → ¬p refl }
 
 -- D233: the grade is decided FIRST, for the reason `≟T-⇒-aux` gives.
-≟T-ν-aux : ∀ {m} {F₁ F₂ : Fun m} {π₁ π₂} → Dec (π₁ ≡ π₂) → Dec (F₁ ≡ F₂) → Dec (ν-type F₁ π₁ ≡ ν-type F₂ π₂)
+≟T-ν-aux : ∀ {m} {F₁ F₂ : Fun m} {π₁ π₂} → Dec (π₁ ≡ π₂) → Dec (F₁ ≡ F₂) → Dec (ν F₁ π₁ ≡ ν F₂ π₂)
 ≟T-ν-aux (no ¬π)    _          = no λ { refl → ¬π refl }
 {-# CATCHALL #-}
 ≟T-ν-aux _          (no ¬p)    = no λ { refl → ¬p refl }
@@ -135,11 +135,11 @@ mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p 
 
 
 -- Kinds, and type variables: equal iff their positions are.
-_≟tk_ : DecidableEquality TKind
-k-base ≟tk k-base = yes refl
-k-base ≟tk k-any  = no λ ()
-k-any  ≟tk k-base = no λ ()
-k-any  ≟tk k-any  = yes refl
+_≟tk_ : DecidableEquality Kind
+base ≟tk base = yes refl
+base ≟tk any  = no λ ()
+any  ≟tk base = no λ ()
+any  ≟tk any  = yes refl
 
 ≟T-var-aux : ∀ {m} {i₁ i₂ : Fin.Fin m} → Dec (i₁ ≡ i₂) → Dec (var i₁ ≡ var i₂)
 ≟T-var-aux (no ¬i)    = no λ { refl → ¬i refl }
@@ -223,38 +223,38 @@ mutual
   (_ ⇒[ _ ] _) ≟T (_ Once.Spec.Type.+ _) = no λ ()
   -- TVar removed from Type; now in PolyType (see Once.Type)
   -- OCP-0003: μ-type and ν-type cases
-  (μ-type F₁) ≟T (μ-type F₂) = ≟T-μ-aux (F₁ ≟F F₂)
-  (ν-type F₁ π₁) ≟T (ν-type F₂ π₂) = ≟T-ν-aux (π₁ ≟f π₂) (F₁ ≟F F₂)
-  μ-type _ ≟T Unit = no λ ()
-  μ-type _ ≟T Void = no λ ()
-  μ-type _ ≟T Int = no λ ()
-  μ-type _ ≟T Float = no λ ()
-  μ-type _ ≟T (_ Once.Spec.Type.* _) = no λ ()
-  μ-type _ ≟T (_ Once.Spec.Type.+ _) = no λ ()
-  μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  μ-type _ ≟T ν-type _ _ = no λ ()
-  ν-type _ _ ≟T Unit = no λ ()
-  ν-type _ _ ≟T Void = no λ ()
-  ν-type _ _ ≟T Int = no λ ()
-  ν-type _ _ ≟T Float = no λ ()
-  ν-type _ _ ≟T (_ Once.Spec.Type.* _) = no λ ()
-  ν-type _ _ ≟T (_ Once.Spec.Type.+ _) = no λ ()
-  ν-type _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  ν-type _ _ ≟T μ-type _ = no λ ()
-  Unit ≟T μ-type _ = no λ ()
-  Unit ≟T ν-type _ _ = no λ ()
-  Void ≟T μ-type _ = no λ ()
-  Void ≟T ν-type _ _ = no λ ()
-  Int ≟T μ-type _ = no λ ()
-  Int ≟T ν-type _ _ = no λ ()
-  Float ≟T μ-type _ = no λ ()
-  Float ≟T ν-type _ _ = no λ ()
-  (_ Once.Spec.Type.* _) ≟T μ-type _ = no λ ()
-  (_ Once.Spec.Type.* _) ≟T ν-type _ _ = no λ ()
-  (_ Once.Spec.Type.+ _) ≟T μ-type _ = no λ ()
-  (_ Once.Spec.Type.+ _) ≟T ν-type _ _ = no λ ()
-  (_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
-  (_ ⇒[ _ ] _) ≟T ν-type _ _ = no λ ()
+  (μ F₁) ≟T (μ F₂) = ≟T-μ-aux (F₁ ≟F F₂)
+  (ν F₁ π₁) ≟T (ν F₂ π₂) = ≟T-ν-aux (π₁ ≟f π₂) (F₁ ≟F F₂)
+  μ _ ≟T Unit = no λ ()
+  μ _ ≟T Void = no λ ()
+  μ _ ≟T Int = no λ ()
+  μ _ ≟T Float = no λ ()
+  μ _ ≟T (_ Once.Spec.Type.* _) = no λ ()
+  μ _ ≟T (_ Once.Spec.Type.+ _) = no λ ()
+  μ _ ≟T (_ ⇒[ _ ] _) = no λ ()
+  μ _ ≟T ν _ _ = no λ ()
+  ν _ _ ≟T Unit = no λ ()
+  ν _ _ ≟T Void = no λ ()
+  ν _ _ ≟T Int = no λ ()
+  ν _ _ ≟T Float = no λ ()
+  ν _ _ ≟T (_ Once.Spec.Type.* _) = no λ ()
+  ν _ _ ≟T (_ Once.Spec.Type.+ _) = no λ ()
+  ν _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
+  ν _ _ ≟T μ _ = no λ ()
+  Unit ≟T μ _ = no λ ()
+  Unit ≟T ν _ _ = no λ ()
+  Void ≟T μ _ = no λ ()
+  Void ≟T ν _ _ = no λ ()
+  Int ≟T μ _ = no λ ()
+  Int ≟T ν _ _ = no λ ()
+  Float ≟T μ _ = no λ ()
+  Float ≟T ν _ _ = no λ ()
+  (_ Once.Spec.Type.* _) ≟T μ _ = no λ ()
+  (_ Once.Spec.Type.* _) ≟T ν _ _ = no λ ()
+  (_ Once.Spec.Type.+ _) ≟T μ _ = no λ ()
+  (_ Once.Spec.Type.+ _) ≟T ν _ _ = no λ ()
+  (_ ⇒[ _ ] _) ≟T μ _ = no λ ()
+  (_ ⇒[ _ ] _) ≟T ν _ _ = no λ ()
   -- type variables
   var i₁ ≟T var i₂ = ≟T-var-aux (i₁ Fin.≟ i₂)
   var _ ≟T Unit = no λ ()
@@ -267,10 +267,10 @@ mutual
   (_ Once.Spec.Type.+ _) ≟T var _ = no λ ()
   var _ ≟T (_ ⇒[ _ ] _) = no λ ()
   (_ ⇒[ _ ] _) ≟T var _ = no λ ()
-  var _ ≟T μ-type _ = no λ ()
-  μ-type _ ≟T var _ = no λ ()
-  var _ ≟T ν-type _ _ = no λ ()
-  ν-type _ _ ≟T var _ = no λ ()
+  var _ ≟T μ _ = no λ ()
+  μ _ ≟T var _ = no λ ()
+  var _ ≟T ν _ _ = no λ ()
+  ν _ _ ≟T var _ = no λ ()
   var _ ≟T Int = no λ ()
   Int ≟T var _ = no λ ()
   var _ ≟T Float = no λ ()

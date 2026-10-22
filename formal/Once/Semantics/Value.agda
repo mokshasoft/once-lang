@@ -51,6 +51,7 @@
 -- width-free exact carrier — the analogue of `Once.Word.Carrier`.
 module Once.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 
+import Once.Spec.Type as SpT
 open import Once.Spec.Type using (Ty; Fun; KCtx; Base; b-var)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -62,6 +63,7 @@ open import Function using (_∘_)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Fun)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -117,7 +119,7 @@ open import Once.Internal.Value IntRep FloatRep
 -- This allows converting between Type-level and Set-level functor apps.
 -- Proven by structural induction on F.
 --
-sem-functor-coherence : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ ⟦ F ⟧T X ⟧ ≡ ⟦ F ⟧F ⟦ X ⟧
+sem-functor-coherence : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ SpT.⟦ F ⟧F X ⟧ ≡ ⟦ F ⟧F ⟦ X ⟧
 sem-functor-coherence (K A) X = refl
 sem-functor-coherence Id X = refl
 sem-functor-coherence (F ⊕ G) X rewrite sem-functor-coherence F X
@@ -134,7 +136,7 @@ sem-functor-coherence (F ⊗ G) X rewrite sem-functor-coherence F X
 ------------------------------------------------------------------------
 
 -- | Round-trip: coerce then coerce⁻¹ is identity
-coerce-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ ⟦ F ⟧T X ⟧)
+coerce-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ SpT.⟦ F ⟧F X ⟧)
                   → coerce-functor⁻¹ F X (coerce-functor F X x) ≡ x
 coerce-round-trip (K A) X x = refl
 coerce-round-trip Id X x = refl
@@ -158,15 +160,15 @@ coerce⁻¹-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce⁻¹-round-trip
 ------------------------------------------------------------------------
 
 -- | Alias for coerce-functor (backwards compatibility)
-coerce-struct : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
+coerce-struct : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ SpT.⟦ F ⟧F X ⟧ → ⟦ F ⟧F ⟦ X ⟧
 coerce-struct = coerce-functor
 
 -- | Alias for coerce-functor⁻¹ (backwards compatibility)
-coerce-struct⁻¹ : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
+coerce-struct⁻¹ : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ F ⟧F ⟦ X ⟧ → ⟦ SpT.⟦ F ⟧F X ⟧
 coerce-struct⁻¹ = coerce-functor⁻¹
 
 -- | Alias for coerce-round-trip
-coerce-struct-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ ⟦ F ⟧T X ⟧)
+coerce-struct-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ SpT.⟦ F ⟧F X ⟧)
                          → coerce-struct⁻¹ F X (coerce-struct F X x) ≡ x
 coerce-struct-round-trip = coerce-round-trip
 
@@ -234,7 +236,7 @@ sem-case-inr f g b = refl
 
 -- | Type-level functorial map (works on ⟦ ⟦ F ⟧T X ⟧)
 -- This mirrors sem-fmap but at the Type level
-sem-fmap-Type : ∀ {m} (F : Fun m) {X Y : Ty m} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
+sem-fmap-Type : ∀ {m} (F : Fun m) {X Y : Ty m} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ SpT.⟦ F ⟧F X ⟧ → ⟦ SpT.⟦ F ⟧F Y ⟧
 sem-fmap-Type (K A) f x = x
 sem-fmap-Type Id f x = f x
 sem-fmap-Type (F ⊕ G) f (inj₁ x) = inj₁ (sem-fmap-Type F f x)
@@ -242,7 +244,7 @@ sem-fmap-Type (F ⊕ G) f (inj₂ y) = inj₂ (sem-fmap-Type G f y)
 sem-fmap-Type (F ⊗ G) f (x , y) = (sem-fmap-Type F f x , sem-fmap-Type G f y)
 
 -- | coerce-struct⁻¹ ∘ sem-fmap ∘ coerce-struct ≡ sem-fmap-Type
-fmap-struct-coherence : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+fmap-struct-coherence : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ SpT.⟦ F ⟧F X ⟧)
                       → coerce-struct⁻¹ F Y (sem-fmap F f (coerce-struct F X x)) ≡ sem-fmap-Type F f x
 fmap-struct-coherence (K A) f x = refl
 fmap-struct-coherence Id f x = refl
@@ -347,14 +349,14 @@ coerce-μ⁻¹-round-trip (wf-Prod wfF wfG) X (x , y) =
 --                                    = coerce-ν-out wf (coerce-ν-in F x)
 --                                    = x  (by round-trip)
 --
-sem-CoOut-CoIn : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦ν⟧ F))
+sem-CoOut-CoIn : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦ν⟧ F))
                → sem-CoOut wf (sem-CoIn F x) ≡ returns x
 sem-CoOut-CoIn {F} wf x = cong returns (coerce-μ-round-trip wf (⟦ν⟧ F) x)
 
 -- | The mutual `sfmapSemAna` IS `sfmap` of the corecursor (D062): structural
 -- induction on the functor code, refl at the leaves. `F` explicit (non-injective
 -- `⟦ F ⟧F` in coalg).
-sfmapSemAna-is-sfmap : ∀ (F : Functor) (H : SFunctor) {A : Set}
+sfmapSemAna-is-sfmap : ∀ (F : Fun 0) (H : SFunctor) {A : Set}
                        (coalg : A → Res (⟦ F ⟧F A)) (x : ⟦ H ⟧SF A)
                      → sfmapSemAna F H coalg x ≡ sfmap H (sem-ana F coalg) x
 sfmapSemAna-is-sfmap F (SK B)     coalg x        = refl
@@ -396,7 +398,7 @@ sfmapSemAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
 -- When such IR morphisms use only structural operations (no Cata/Ana/etc.),
 -- they evaluate to natural transformations.
 --
-sem-fuseNat : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+sem-fuseNat : ∀ (F G : Fun 0) → WellFormedF F → WellFormedF G → {B : Set}
             → (∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)   -- natural transform: G → F
             → (⟦ F ⟧F B → B)                   -- algebra: F(B) → B
             → ⟦μ⟧ G → B
@@ -410,7 +412,7 @@ sem-fuseNat F G wfF wfG {B} transform alg =
 -- fusion correctness proofs lift `appNatTr-F (map-nt t) ≡ appNatTr-F t` and the
 -- algebra correctness through the `Fuse`/`Hylo` meaning.) Reduces to
 -- `cataS-cong` since `sem-fuseNat … = cataS (alg ∘ transform ∘ coercions)`.
-sem-fuseNat-cong : ∀ (F G : Functor) (wfF : WellFormedF F) (wfG : WellFormedF G) {B : Set}
+sem-fuseNat-cong : ∀ (F G : Fun 0) (wfF : WellFormedF F) (wfG : WellFormedF G) {B : Set}
                  → (φ ψ : ∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)
                  → (alg₁ alg₂ : ⟦ F ⟧F B → B)
                  → (∀ {A} (g : ⟦ G ⟧F A) → φ g ≡ ψ g)
@@ -437,7 +439,7 @@ sem-fuseNat-cong F G wfF wfG {B} φ ψ alg₁ alg₂ φψ-eq alg-eq x =
 -- SigOp trace of the (structural, total) fused hylomorphism. Pragma-free:
 -- `fuseNatW` is `cataS`-derived. Replaces the `fuseW`-based `sem-fuse-events`.
 sem-fuseNat-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
-                     (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+                     (F G : Fun 0) → WellFormedF F → WellFormedF G → {B : Set}
                    → (∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)   -- natural transform: G ⇒ F
                    → (⟦ F ⟧F B → M × B)               -- algebra: F(B) → (M , B)
                    → ⟦μ⟧ G → M × B
@@ -469,14 +471,14 @@ sem-fuseNat-events {M} _·_ ε F G wfF wfG {B} transform alg =
 --
 -- OCP-0003: Proven using coerce-μ-round-trip.
 --
-sem-Out-In : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out wf (sem-In F x) ≡ x
+sem-Out-In : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out wf (sem-In F x) ≡ x
 sem-Out-In wf x = coerce-μ-round-trip wf _ x
 
 -- | In and Out are inverses (Lambek's Lemma, other direction)
 --
 -- OCP-0003: Proven using coerce-μ⁻¹-round-trip.
 --
-sem-In-Out : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-In F (sem-Out wf x) ≡ x
+sem-In-Out : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-In F (sem-Out wf x) ≡ x
 sem-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf _ y)
 
 ------------------------------------------------------------------------
@@ -524,7 +526,7 @@ fmap-coerce-μ-coherence′ (wf-Prod wfF wfG) f (x , y) = cong₂ _,_ (fmap-coer
 --   = (alg ∘ coerce-μ-out wf) (sfmapCata (translateF F) ... (coerce-μ-in F x))
 --   By cataS-computation and coherence properties.
 --
-sem-cata-compute : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
+sem-cata-compute : ∀ {F : Fun 0} → (wf : WellFormedF F) → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
                  → sem-cata wf alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata wf alg) x)
 sem-cata-compute {F} wf {A} alg x =
   let TF = translateF IntRep FloatRep F

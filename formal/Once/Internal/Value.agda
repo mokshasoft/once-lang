@@ -26,6 +26,8 @@ open import Data.Empty using (⊥)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
+import Once.Spec.Type as ST
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Res using (Res; stopped; returns; mapRes)
 open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF)
@@ -78,8 +80,8 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 ⟦ A ⇒[ mk-kind One  π ] B ⟧ = ⟦ A ⟧ → Res ⟦ B ⟧
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ = ⟦ A ⟧ → Res ⟦ B ⟧
 -- OCP-0003: Fix removed, use μ-type/ν-type
-⟦ μ-type F ⟧     = ⟦μ⟧ F
-⟦ ν-type F _ ⟧   = ⟦ν⟧ F
+⟦ μ F ⟧     = ⟦μ⟧ F
+⟦ ν F _ ⟧   = ⟦ν⟧ F
 -- GuardedT removed: productivity follows from IR totality
 ⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = FloatRep
@@ -112,8 +114,8 @@ open Once.Internal.Polynomial.νS using (unfoldS)
 -- First-order: no arrow inside, so the machine value.
 ⟦ Unit ⟧ᵍ        = ⟦ Unit {0} ⟧
 ⟦ Void ⟧ᵍ        = ⟦ Void {0} ⟧
-⟦ μ-type F ⟧ᵍ    = ⟦ μ-type F ⟧
-⟦ ν-type F π ⟧ᵍ  = ⟦ ν-type F π ⟧
+⟦ μ F ⟧ᵍ    = ⟦ μ F ⟧
+⟦ ν F π ⟧ᵍ  = ⟦ ν F π ⟧
 ⟦ Int ⟧ᵍ         = ⟦ Int {0} ⟧
 ⟦ Float ⟧ᵍ       = ⟦ Float {0} ⟧
 ⟦ var _ ⟧ᵍ       = ⊥
@@ -133,8 +135,8 @@ eraseᵍ {B = A + B} (inj₁ a) = inj₁ (eraseᵍ a)
 eraseᵍ {B = A + B} (inj₂ b) = inj₂ (eraseᵍ b)
 eraseᵍ {B = Unit} x = x
 eraseᵍ {B = Void} x = x
-eraseᵍ {B = μ-type F} x = x
-eraseᵍ {B = ν-type F π} x = x
+eraseᵍ {B = μ F} x = x
+eraseᵍ {B = ν F π} x = x
 eraseᵍ {B = Int} x = x
 eraseᵍ {B = Float} x = x
 eraseᵍ {B = var _} x = x
@@ -161,7 +163,7 @@ eraseᵍ {B = var _} x = x
 ------------------------------------------------------------------------
 
 -- | Coercion from Type-level to Set-level functor application
-coerce-functor : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
+coerce-functor : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ ST.⟦ F ⟧F X ⟧ → ⟦ F ⟧F ⟦ X ⟧
 coerce-functor (K A) X x = x
 coerce-functor Id X x = x
 coerce-functor (F ⊕ G) X (inj₁ x) = inj₁ (coerce-functor F X x)
@@ -169,7 +171,7 @@ coerce-functor (F ⊕ G) X (inj₂ y) = inj₂ (coerce-functor G X y)
 coerce-functor (F ⊗ G) X (x , y) = (coerce-functor F X x , coerce-functor G X y)
 
 -- | Inverse coercion
-coerce-functor⁻¹ : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
+coerce-functor⁻¹ : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ST.⟦ F ⟧F X ⟧
 coerce-functor⁻¹ (K A) X x = x
 coerce-functor⁻¹ Id X x = x
 coerce-functor⁻¹ (F ⊕ G) X (inj₁ x) = inj₁ (coerce-functor⁻¹ F X x)
@@ -216,8 +218,8 @@ coerce-full-to-base (A * B) (a , b) = (coerce-full-to-base A a , coerce-full-to-
 coerce-full-to-base (A + B) (inj₁ a) = inj₁ (coerce-full-to-base A a)
 coerce-full-to-base (A + B) (inj₂ b) = inj₂ (coerce-full-to-base B b)
 coerce-full-to-base (_ ⇒[ _ ] _) _ = tt   -- Functions (all kinds) → ⊤
-coerce-full-to-base (μ-type _) _ = tt      -- μ → ⊤
-coerce-full-to-base (ν-type _ _) _ = tt      -- ν → ⊤
+coerce-full-to-base (μ _) _ = tt      -- μ → ⊤
+coerce-full-to-base (ν _ _) _ = tt      -- ν → ⊤
 -- GuardedT removed: productivity follows from IR totality
 coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x

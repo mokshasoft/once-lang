@@ -6,16 +6,9 @@
 -- Once.Internal.Type — the compiler's names over the Spec's types.
 --
 -- The types are the Spec's (`Once.Spec.Type`): `Ty m` over `m` type
--- variables, ground types `Type = Ty 0`. This module keeps the compiler's
--- older names for some of them while plan 0.122 renames its users:
---
---   μ-type F, ν-type F φ    the Spec's `μ F`, `ν F φ`;
---   Functor, ⟦ F ⟧T X       the ground functors `Fun 0` and their action;
---   TKind, k-base, k-any    the Spec's kinds `Kind`, `base`, `any`;
---
--- and the compiler's own helpers over them: a ground type read over `m` type
--- variables (`wk₀`), the pure arrows at each usage and the deciders `isVoid?`,
--- `isUnit?`.
+-- variables, ground types `Type = Ty 0`. This module keeps the compiler's own
+-- helpers over them: a ground type read over `m` type variables (`wk₀`), the
+-- pure arrows at each usage and the deciders `isVoid?`, `isUnit?`.
 ------------------------------------------------------------------------
 
 module Once.Internal.Type where
@@ -24,20 +17,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
 open import Once.Spec.Type
-  using (Ty; Type; Fun; Kind; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; base; any; ⟦_⟧F; _⟨_⟩; _⟨_⟩F)
+  using (Ty; Type; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; _⟨_⟩; _⟨_⟩F)
 open import Data.Fin using (Fin)
-
-pattern μ-type F = μ F
-pattern ν-type F φ = ν F φ
-
-Functor : Set
-Functor = Fun 0
-
-TKind : Set
-TKind = Kind
-
-pattern k-base = base
-pattern k-any = any
 
 -- A ground type, as a type over `m` type variables (it mentions none).
 -- The substitution out of no type variables (named once: two absurd lambdas
@@ -50,10 +31,6 @@ wk₀ A = A ⟨ none ⟩
 
 wk₀F : ∀ {m} → Fun 0 → Fun m
 wk₀F F = F ⟨ none ⟩F
-
--- A functor applied to a type.
-⟦_⟧T : ∀ {m} → Fun m → Ty m → Ty m
-⟦_⟧T = ⟦_⟧F
 
 -- The pure arrows at each usage: linear, unrestricted, erased.
 _⊸_ : ∀ {m} → Ty m → Ty m → Ty m

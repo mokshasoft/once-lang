@@ -15,6 +15,8 @@
 
 module Once.Internal.Polynomial where
 
+import Once.Spec.Type
+
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Internal.Res using (Res; stopped; returns)
@@ -23,7 +25,7 @@ open import Once.Internal.Res using (Res; stopped; returns)
 ------------------------------------------------------------------------
 -- Semantic Functor (Set-level)
 --
--- Unlike Once.Internal.Type.Functor where K takes a Type, here K takes a Set
+-- Unlike (Once.Spec.Type.Fun 0) where K takes a Type, here K takes a Set
 -- directly. This breaks the dependency on the type interpretation.
 ------------------------------------------------------------------------
 

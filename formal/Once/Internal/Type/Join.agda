@@ -28,7 +28,7 @@ open import Once.Spec.Grade using (Purity; pure; act; eff; Finite; fin; mk-kind;
 open import Once.Type.Grade using (_⊔p_)
 open import Data.Fin using (Fin)
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (Functor; μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Type.Sub
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
@@ -98,8 +98,8 @@ shape Void           = 1
 shape (_ * _)        = 2
 shape (_ + _)        = 3
 shape (_ ⇒[ _ ] _)   = 4
-shape (μ-type _)     = 5
-shape (ν-type _ _)   = 6
+shape (μ _)     = 5
+shape (ν _ _)   = 6
 shape Int            = 7
 shape Float          = 8
 shape (var _)        = 9
@@ -129,7 +129,7 @@ data Joins {m} : Ty m → Ty m → Ty m → Set where
   j-sum   : ∀ {A A′ B B′ C E} → Joins A A′ C → Joins B B′ E → Joins (A + B) (A′ + B′) (C + E)
   j-arr   : ∀ {A B B′ C q π π′} → Joins B B′ C
           → Joins (A ⇒[ mk-kind q π ] B) (A ⇒[ mk-kind q π′ ] B′) (A ⇒[ mk-kind q (π ⊔p π′) ] C)
-  j-ν     : ∀ {F φ ψ} → Joins (ν-type F φ) (ν-type F ψ) (ν-type F (φ ⊔f ψ))
+  j-ν     : ∀ {F φ ψ} → Joins (ν F φ) (ν F ψ) (ν F (φ ⊔f ψ))
 
 data Join? {m} (A B : Ty m) : Set where
   joined : ∀ C → Joins A B C → Join? A B
@@ -212,21 +212,21 @@ eqJ : ∀ {m} {A B : Ty m} → Dec (A ≡ B) → (A ≢ B → ¬ UB A B) → Joi
 eqJ {A = A} (yes refl) _ = joined A j-refl
 eqJ     (no ne)    f = apart (f ne)
 
-μ-apart : ∀ {m} {F G : Fun m} → μ-type F ≢ μ-type G → ¬ UB (μ-type F) (μ-type G)
+μ-apart : ∀ {m} {F G : Fun m} → μ F ≢ μ G → ¬ UB (μ F) (μ G)
 μ-apart ne (_ , subᶜ-μ , subᶜ-μ) = ne refl
 
 var-apart : ∀ {m} {i j : Fin m} → var i ≢ var j → ¬ UB (var i) (var j)
 var-apart ne (_ , subᶜ-var , subᶜ-var) = ne refl
 
 -- Streams: one functor; the grades join.
-ν-least : ∀ {m} {D : Ty m} {F : Fun m} {φ ψ} → ν-type F φ <:ᶜ D → ν-type F ψ <:ᶜ D → ν-type F (φ ⊔f ψ) <:ᶜ D
+ν-least : ∀ {m} {D : Ty m} {F : Fun m} {φ ψ} → ν F φ <:ᶜ D → ν F ψ <:ᶜ D → ν F (φ ⊔f ψ) <:ᶜ D
 ν-least (subᶜ-ν g) (subᶜ-ν h) = subᶜ-ν (⊔f-least g h)
 
-ν-apart : ∀ {m} {F G : Fun m} {φ ψ} → F ≢ G → ¬ UB (ν-type F φ) (ν-type G ψ)
+ν-apart : ∀ {m} {F G : Fun m} {φ ψ} → F ≢ G → ¬ UB (ν F φ) (ν G ψ)
 ν-apart ne (_ , subᶜ-ν _ , subᶜ-ν _) = ne refl
 
-νJ : ∀ {m} {F G : Fun m} {φ ψ} → Dec (F ≡ G) → Join? (ν-type F φ) (ν-type G ψ)
-νJ {F = F} {φ = φ} {ψ} (yes refl) = joined (ν-type F (φ ⊔f ψ)) j-ν
+νJ : ∀ {m} {F G : Fun m} {φ ψ} → Dec (F ≡ G) → Join? (ν F φ) (ν G ψ)
+νJ {F = F} {φ = φ} {ψ} (yes refl) = joined (ν F (φ ⊔f ψ)) j-ν
 νJ (no ne) = apart (ν-apart ne)
 
 ------------------------------------------------------------------------
@@ -247,8 +247,8 @@ mutual
   joinS (A + B) (A′ + B′) (yes refl) = sumJ (join? A A′) (join? B B′)
   joinS (A ⇒[ mk-kind q π ] B) (A′ ⇒[ mk-kind q′ π′ ] B′) (yes refl) =
     arrJ (A ≟T A′) (q ≟q q′) (join? B B′)
-  joinS (μ-type F)   (μ-type G)   (yes refl) = eqJ (μ-type F ≟T μ-type G) μ-apart
-  joinS (ν-type F φ) (ν-type G ψ) (yes refl) = νJ (F ≟F G)
+  joinS (μ F)   (μ G)   (yes refl) = eqJ (μ F ≟T μ G) μ-apart
+  joinS (ν F φ) (ν G ψ) (yes refl) = νJ (F ≟F G)
   joinS (var i)      (var j)      (yes refl) = eqJ (var i ≟T var j) var-apart
 
 ------------------------------------------------------------------------
@@ -288,7 +288,7 @@ private
 <:ᶜ-antisym (subᶜ-prod a b)  (subᶜ-prod a′ b′)  = cong₂ _*_ (<:ᶜ-antisym a a′) (<:ᶜ-antisym b b′)
 <:ᶜ-antisym (subᶜ-sum a b)   (subᶜ-sum a′ b′)   = cong₂ _+_ (<:ᶜ-antisym a a′) (<:ᶜ-antisym b b′)
 <:ᶜ-antisym subᶜ-μ           _                  = refl
-<:ᶜ-antisym (subᶜ-ν {F = F} g) (subᶜ-ν g′)      = cong (ν-type F) (fin-inj (⊑π-antisym g g′))
+<:ᶜ-antisym (subᶜ-ν {F = F} g) (subᶜ-ν g′)      = cong (ν F) (fin-inj (⊑π-antisym g g′))
 <:ᶜ-antisym subᶜ-var         _                  = refl
 
 join-unique : ∀ {m} {A B C C′ : Ty m} → A ⊔ B ≔ C → A ⊔ B ≔ C′ → C ≡ C′

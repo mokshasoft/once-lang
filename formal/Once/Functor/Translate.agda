@@ -6,7 +6,7 @@
 -- Translation from syntactic Functor (with Type) to semantic SFunctor (with Set).
 --
 -- This module provides the bridge between:
---   - Once.Internal.Type.Functor (K takes Type)
+--   - (Once.Spec.Type.Fun 0) (K takes Type)
 --   - Once.Internal.Polynomial.SFunctor (K takes Set)
 --
 -- The translation uses a base type interpretation that handles only
@@ -16,6 +16,8 @@
 ------------------------------------------------------------------------
 
 module Once.Functor.Translate where
+
+import Once.Spec.Type
 
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)

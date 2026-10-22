@@ -16,6 +16,7 @@
 
 module Once.Internal.GradedOps where
 
+import Once.Spec.Type as SpT
 open import Once.Spec.Type using (Base)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Unit using (tt)
@@ -26,6 +27,7 @@ open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Internal.Type.Sub
@@ -92,14 +94,14 @@ prjB (base-Sum a b) (inj₂ y) = inj₂ (prjB b y)
 -- Functor layers (first-order payloads only, per `WellFormedF`).
 ------------------------------------------------------------------------
 
-cfᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (C : Ty m) → WFFun Δₖ F → ⟦ ⟦ F ⟧T C ⟧ᵛ → ⟦ F ⟧F ⟦ C ⟧ᵛ
+cfᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (C : Ty m) → WFFun Δₖ F → ⟦ SpT.⟦ F ⟧F C ⟧ᵛ → ⟦ F ⟧F ⟦ C ⟧ᵛ
 cfᵛ C (wf-K ib)     x        = prjB ib x
 cfᵛ C wf-Id         x        = x
 cfᵛ C (wf-Sum f g)  (inj₁ x) = inj₁ (cfᵛ C f x)
 cfᵛ C (wf-Sum f g)  (inj₂ y) = inj₂ (cfᵛ C g y)
 cfᵛ C (wf-Prod f g) (x , y)  = cfᵛ C f x , cfᵛ C g y
 
-cf⁻¹ᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (C : Ty m) → WFFun Δₖ F → ⟦ F ⟧F ⟦ C ⟧ᵛ → ⟦ ⟦ F ⟧T C ⟧ᵛ
+cf⁻¹ᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (C : Ty m) → WFFun Δₖ F → ⟦ F ⟧F ⟦ C ⟧ᵛ → ⟦ SpT.⟦ F ⟧F C ⟧ᵛ
 cf⁻¹ᵛ C (wf-K ib)     x        = injB ib x
 cf⁻¹ᵛ C wf-Id         x        = x
 cf⁻¹ᵛ C (wf-Sum f g)  (inj₁ x) = inj₁ (cf⁻¹ᵛ C f x)
@@ -118,12 +120,12 @@ seqM ⊑-pe   G x = seqF∞ G x
 -- μ: introduction and the fold.
 ------------------------------------------------------------------------
 
-in-valueᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ → ⟦ μ-type F ⟧ᵛ
-in-valueᵛ {F = F} wf x = sem-In F (cfᵛ (μ-type F) wf x)
+in-valueᵛ : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ SpT.⟦ F ⟧F (μ F) ⟧ᵛ → ⟦ μ F ⟧ᵛ
+in-valueᵛ {F = F} wf x = sem-In F (cfᵛ (μ F) wf x)
 
 -- The fold at a grade with a unit (a fold traverses its layer).
 cata-semᵛ : ∀ {m} {Δₖ : KCtx m} {π} → pure ⊑π π → ∀ {A : Ty m} {F : Fun m} → WFFun Δₖ F
-          → (⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ A ⟧ᵛ) → ⟦ μ-type F ⟧ᵛ → M π ⟦ A ⟧ᵛ
+          → (⟦ SpT.⟦ F ⟧F A ⟧ᵛ → M π ⟦ A ⟧ᵛ) → ⟦ μ F ⟧ᵛ → M π ⟦ A ⟧ᵛ
 cata-semᵛ {π = π} u {A = A} {F = F} wf alg =
   sem-cata wf (λ fc → bindM π (seqM u F fc) λ layer → alg (cf⁻¹ᵛ A wf layer))
 
@@ -132,7 +134,7 @@ cata-semᵛ {π = π} u {A = A} {F = F} wf alg =
 -- What a fold does to one layer before its algebra; the fold's laws
 -- (`Spec.Metatheory.Recursion`) are stated with it.
 mapLayerᵛ : ∀ {m} {Δₖ : KCtx m} {π} → pure ⊑π π → ∀ {A B : Ty m} {F : Fun m} → WFFun Δₖ F
-          → (⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ) → ⟦ ⟦ F ⟧T A ⟧ᵛ → M π ⟦ ⟦ F ⟧T B ⟧ᵛ
+          → (⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ) → ⟦ SpT.⟦ F ⟧F A ⟧ᵛ → M π ⟦ SpT.⟦ F ⟧F B ⟧ᵛ
 mapLayerᵛ {π = π} u {A = A} {B = B} {F = F} wf h x = fmapM π (cf⁻¹ᵛ B wf) (seqM u F (sem-fmap F h (cfᵛ A wf x)))
 
 ------------------------------------------------------------------------
@@ -171,15 +173,15 @@ mapEmbνᵃ H (G₁ S⊗ G₂) (x , y)  = mapEmbνᵃ H G₁ x , mapEmbνᵃ H G
 -- each forced layer — a server is such a stream (D233), its coalgebra reads the
 -- next request.
 ana-semᵛ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} (φ : Finite) → WFFun Δₖ F
-         → (⟦ A ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T A ⟧ᵛ) → ⟦ A ⟧ᵛ → ⟦ ν-type F φ ⟧ᵛ
+         → (⟦ A ⟧ᵛ → M (fin φ) ⟦ SpT.⟦ F ⟧F A ⟧ᵛ) → ⟦ A ⟧ᵛ → ⟦ ν F φ ⟧ᵛ
 ana-semᵛ {A = A} {F = F} pureᶠ wf clo a =
   anaᵖ (translateF Carrier Carrier F) (λ a′ → coerce-ν-in F _ (cfᵛ A wf (clo a′))) a
 ana-semᵛ {A = A} {F = F} actᶠ wf clo a =
   anaᵈ (translateF Carrier Carrier F) (λ a′ → fmapT (λ l → coerce-ν-in F _ (cfᵛ A wf l)) (clo a′)) a
 
-out-semᵛ : ∀ {m} {Δₖ : KCtx m} φ {F : Fun m} → WFFun Δₖ F → ⟦ ν-type F φ ⟧ᵛ → M (fin φ) ⟦ ⟦ F ⟧T (ν-type F φ) ⟧ᵛ
-out-semᵛ pureᶠ {F} wf v = cf⁻¹ᵛ (ν-type F pureᶠ) wf (coerce-ν-out wf _ (forceᵖ v))
-out-semᵛ actᶠ  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F actᶠ) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
+out-semᵛ : ∀ {m} {Δₖ : KCtx m} φ {F : Fun m} → WFFun Δₖ F → ⟦ ν F φ ⟧ᵛ → M (fin φ) ⟦ SpT.⟦ F ⟧F (ν F φ) ⟧ᵛ
+out-semᵛ pureᶠ {F} wf v = cf⁻¹ᵛ (ν F pureᶠ) wf (coerce-ν-out wf _ (forceᵖ v))
+out-semᵛ actᶠ  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν F actᶠ) wf (coerce-ν-out wf _ layer)) (forceᵈ v)
 
 ------------------------------------------------------------------------
 -- Subtyping coercions (D226), graded.

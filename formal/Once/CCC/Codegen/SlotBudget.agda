@@ -55,7 +55,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero; c-leave)
@@ -394,7 +394,7 @@ wrap-sum-below tag s b ps pss =
 
 -- the VISIT walk: `Id` is a push (fixed slots), `⊕` one case instruction,
 -- `⊗` owns `s` and recurses at `s+4`
-visit-below : ∀ (F : Functor) (todo tv tb s lb b : ℕ)
+visit-below : ∀ (F : Fun 0) (todo tv tb s lb b : ℕ)
             → todo < b → tv < b → tb < b → s + 4 * fsize F ≤ b
             → All (SlotBelow b) (visit-walk todo tv tb F s lb)
 visit-below (K _) todo tv tb s lb b pt pv pb h = []
@@ -439,7 +439,7 @@ visit-below (F ⊗ G) todo tv tb s lb b pt pv pb h =
 
 -- the REBUILD walk: `Id` is a pop (the value slot), `⊕` one case instruction
 -- (`wrap-sum` lives inside its branches), `⊗` owns `[s, s+3]`
-rebuild-below : ∀ (F : Functor) (val tv tb s lb b : ℕ)
+rebuild-below : ∀ (F : Fun 0) (val tv tb s lb b : ℕ)
               → val < b → s + 4 * fsize F ≤ b
               → All (SlotBelow b) (rebuild-walk val tv tb F s lb)
 rebuild-below (K _) val tv tb s lb b pt h = sb-none refl ∷ []
@@ -508,7 +508,7 @@ rebuild-below (F ⊗ G) val tv tb s lb b pt h =
 -- THE COMPILE-TIME WALKS EMIT NO MARKER. `seg-idle?` cannot reduce on a stuck
 -- functor (unlike the fixed skeletons, where it is `refl`), so both walks need
 -- their own induction on `F`.
-visit-idle : ∀ (F : Functor) (todo tv tb s lb : ℕ)
+visit-idle : ∀ (F : Fun 0) (todo tv tb s lb : ℕ)
            → seg-idle? (visit-walk todo tv tb F s lb) ≡ true
 visit-idle (K _)   todo tv tb s lb = refl
 visit-idle Id      todo tv tb s lb = refl
@@ -522,7 +522,7 @@ visit-idle (F ⊗ G) todo tv tb s lb =
     (visit-idle F todo tv tb (s + 4) lb)
     (visit-idle G todo tv tb (s + 4) (lb + lsize F))
 
-rebuild-idle : ∀ (F : Functor) (val tv tb s lb : ℕ)
+rebuild-idle : ∀ (F : Fun 0) (val tv tb s lb : ℕ)
              → seg-idle? (rebuild-walk val tv tb F s lb) ≡ true
 rebuild-idle (K _)   val tv tb s lb = refl
 rebuild-idle Id      val tv tb s lb = refl
@@ -537,7 +537,7 @@ rebuild-idle (F ⊗ G) val tv tb s lb =
     (idle-++ (rebuild-walk val tv tb F (s + 4) lb) _
       (rebuild-idle F val tv tb (s + 4) lb) refl)
 
-cata-branching-below : ∀ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace)
+cata-branching-below : ∀ (F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
                      → SegOK bb at
                      → SegOK (cata-budget-of (cata-dispatch (strat-branching F) bb n1 l1 at))
                              (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))

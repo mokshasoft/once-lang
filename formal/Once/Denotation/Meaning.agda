@@ -21,8 +21,11 @@
 
 module Once.Denotation.Meaning where
 
+import Once.Spec.Type
+
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
+import Once.Spec.Type as SpT
 open import Once.Spec.Type using (∅ₖ; KCtx)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
 open import Once.Spec.Float.Decimal using (decimalOf; round; negate)
@@ -37,7 +40,7 @@ open import Data.String using (_++_)
 
 open import Once.Spec.Grade using (Purity; mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; Functor; ⟦_⟧T)
+open import Once.Spec.Type using (μ)
 open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Internal.Name using (showCanonical; WordName)
@@ -115,7 +118,7 @@ open import Once.Internal.Typing
 -- lives in `T` now. Mirrors `DenotTrace.cata-ev-algᴰ` exactly.
 -- Plan 0.105: the layer crosses by the FIRST-ORDER coercion, so it takes the
 -- functor's well-formedness (as `DenotTrace.cata-ev-algᴰ` does).
-cata-ev-algᴰ-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
+cata-ev-algᴰ-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F → (⟦ SpT.⟦ F ⟧F A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
                → ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ) → T∞ ⟦ A ⟧ᴰ
 cata-ev-algᴰ-D {F = F} {A = A} wf dalg fc =
   seqF∞ F fc >>=∞ λ layer → dalg (coerce-functor⁻¹-D wf A layer)
@@ -123,7 +126,7 @@ cata-ev-algᴰ-D {F = F} {A = A} wf dalg fc =
 -- `⟦ μ-type F ⟧ᴰ` IS the machine's μ (first-order data), so the fold reads it
 -- as it is.
 cata-sem : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F
-         → (⟦ ⟦ F ⟧T A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
+         → (⟦ SpT.⟦ F ⟧F A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ) → ⟦ μ F ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
 cata-sem {F = F} {A = A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F = F} {A = A} wf dalg) v
 
 -- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
@@ -131,17 +134,17 @@ cata-sem {F = F} {A = A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F = F} {A = 
 -- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
 -- other side of `⌈_⌉`).
 out-sem : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Once.Spec.Grade.Finite} → WFFun Δₖ F
-        → ⟦ Once.Internal.Type.ν-type F π ⟧ᴰ → T∞ ⟦ ⟦ F ⟧T (Once.Internal.Type.ν-type F π) ⟧ᴰ
+        → ⟦ Once.Spec.Type.ν F π ⟧ᴰ → T∞ ⟦ SpT.⟦ F ⟧F (Once.Spec.Type.ν F π) ⟧ᴰ
 out-sem {F = F} {π = π} wf v =
-  fmap∞ (λ layer → coerce-functor⁻¹-D wf (Once.Internal.Type.ν-type F π)
+  fmap∞ (λ layer → coerce-functor⁻¹-D wf (Once.Spec.Type.ν F π)
                      (coerce-ν-out wf _ layer))
         (forceᴵ v)
 
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level,
 -- through the first-order layer coercion (plan 0.105: `forget` is gone; a μ
 -- layer holds base values and children only).
-in-value : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
-in-value {F = F} wf x = sem-In F (coerce-functor-D wf (μ-type F) x)
+in-value : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ SpT.⟦ F ⟧F (μ F) ⟧ᴰ → ⟦ μ F ⟧ᴰ
+in-value {F = F} wf x = sem-In F (coerce-functor-D wf (μ F) x)
 
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free — a pure
 -- FFI contract (`value-info` is `ffiV`, plan 0.105), so its value is the

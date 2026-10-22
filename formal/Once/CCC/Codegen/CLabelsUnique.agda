@@ -79,7 +79,7 @@ case-win {k} {m} {hi} ssk≤m m≤hi wF wG =
 
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Prod; wf-Sum)
 open import Once.CCC.Codegen.IRToTrace o
   using (visit-walk; rebuild-walk; lsize; resuspend-layer)
@@ -110,7 +110,7 @@ private
     dst-++ dF dG (dj-win wF wG ≤-refl)
     , win-hi (+-assoc lb a b) (All-++⁺ (win-weaken ≤-refl (m≤m+n _ b) wF) (win-weaken (m≤m+n lb a) ≤-refl wG))
 
-visit-cl : ∀ (F : Functor) (todo tv tb s lb : ℕ)
+visit-cl : ∀ (F : Fun 0) (todo tv tb s lb : ℕ)
          → Dst (clabs (visit-walk todo tv tb F s lb)) × Win lb (lb + lsize F) (clabs (visit-walk todo tv tb F s lb))
 visit-cl (K _)   todo tv tb s lb = [] , []
 visit-cl Id      todo tv tb s lb = [] , []
@@ -135,7 +135,7 @@ visit-cl (F ⊗ G) todo tv tb s lb =
     eq : clabs (visit-walk todo tv tb (F ⊗ G) s lb) ≡ clabs vF ++ clabs vG
     eq = clabs-++ vF _
 
-rebuild-cl : ∀ (F : Functor) (val tv tb s lb : ℕ)
+rebuild-cl : ∀ (F : Fun 0) (val tv tb s lb : ℕ)
            → Dst (clabs (rebuild-walk val tv tb F s lb)) × Win lb (lb + lsize F) (clabs (rebuild-walk val tv tb F s lb))
 rebuild-cl (K _)   val tv tb s lb = [] , []
 rebuild-cl Id      val tv tb s lb = [] , []
@@ -671,7 +671,7 @@ private
         → NoFn (blocks-layout xs) → NoFn (blocks-layout ys) → NoFn (blocks-layout (xs ++ ys))
   nf-bl xs ys hx hy = subst NoFn (sym (blocks-layout-++ xs ys)) (nf (blocks-layout xs) (blocks-layout ys) hx hy)
 
-visit-nf : ∀ (F : Functor) (todo tv tb s lb : ℕ) → NoFn (visit-walk todo tv tb F s lb)
+visit-nf : ∀ (F : Fun 0) (todo tv tb s lb : ℕ) → NoFn (visit-walk todo tv tb F s lb)
 visit-nf (K _)   todo tv tb s lb = refl
 visit-nf Id      todo tv tb s lb = refl
 visit-nf (F ⊕ G) todo tv tb s lb =
@@ -680,7 +680,7 @@ visit-nf (F ⊕ G) todo tv tb s lb =
 visit-nf (F ⊗ G) todo tv tb s lb =
   nf (visit-walk todo tv tb F (s + 4) lb) _ (visit-nf F todo tv tb (s + 4) lb) (visit-nf G todo tv tb (s + 4) (lb + lsize F))
 
-rebuild-nf : ∀ (F : Functor) (val tv tb s lb : ℕ) → NoFn (rebuild-walk val tv tb F s lb)
+rebuild-nf : ∀ (F : Fun 0) (val tv tb s lb : ℕ) → NoFn (rebuild-walk val tv tb F s lb)
 rebuild-nf (K _)   val tv tb s lb = refl
 rebuild-nf Id      val tv tb s lb = refl
 rebuild-nf (F ⊕ G) val tv tb s lb =

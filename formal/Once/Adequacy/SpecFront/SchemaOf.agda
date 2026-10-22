@@ -44,6 +44,7 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
 import Once.Internal.Type.Poly as TP
 open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
@@ -332,8 +333,8 @@ schemaOf-S T = record
   where
     open Parts T
     to-base : ∀ i → memberB (names i) (ftvK T) ≡ true → kindsS κ i ≡ ST.base
-    to-base i e = cong (λ b → if b then LT.k-base else LT.k-any) e
-    from-base : ∀ i b → memberB (names i) (ftvK T) ≡ b → (if b then LT.k-base else LT.k-any) ≡ ST.base
+    to-base i e = cong (λ b → if b then LT.base else LT.any) e
+    from-base : ∀ i b → memberB (names i) (ftvK T) ≡ b → (if b then LT.base else LT.any) ≡ ST.base
               → names i ∈ ftvK T
     from-base i true  e _  = memberB-sound _ (ftvK T) e
     from-base i false _ ()

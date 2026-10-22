@@ -19,6 +19,8 @@
 --     layer maps agree on a layer (`νout-erase-D`).
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -34,7 +36,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Grade using (Purity; Finite)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type using (Functor; ν-type; ⟦_⟧T)
+open import Once.Spec.Type using (ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Internal.FunctorMeaning using (translateF)
@@ -59,9 +61,9 @@ import Once.IR as IR
 -- The transported `Out` morphism `realize-infer` uses
 ------------------------------------------------------------------------
 
-Out-ir : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} → WFFun Δₖ F → IR.IR ⌊ ν-type F π ⌋ ⌊ ⟦ F ⟧T (ν-type F π) ⌋
-Out-ir {F = F} {π = π} wfF = subst (λ o → IR.IR ⌊ ν-type F π ⌋ o)
-                       (sym (⌊⟧T-commute F (ν-type F π)))
+Out-ir : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} → WFFun Δₖ F → IR.IR ⌊ ν F π ⌋ ⌊ SpT.⟦ F ⟧F (ν F π) ⌋
+Out-ir {F = F} {π = π} wfF = subst (λ o → IR.IR ⌊ ν F π ⌋ o)
+                       (sym (⌊⟧T-commute F (ν F π)))
                        (IR.Out (wf-⌊⌋ wfF))
 
 -- The CODOMAIN mirror of `CataErased.evalᴰ-subst-dom`. Match-to-refl.
@@ -207,7 +209,7 @@ out-layer-gen-⊗ G₁ G₂ wfA wfB A a b =
 -- `forget`. Induction on the base witness.
 base-out : ∀ {m} {Δₖ : KCtx m} (B : Ty m) (ib : Base Δₖ B) (A : Ty m)
     (ℓ : ⟦ translateF Carrier Carrier (Once.Spec.Type.K B) ⟧SF ⟦ A ⟧ᴰ)
-  → subst id (cohᴰ (⟦ Once.Spec.Type.K B ⟧T A))
+  → subst id (cohᴰ (SpT.⟦ Once.Spec.Type.K B ⟧F A))
       (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K B) A))
         (out-layer-gen (Once.Spec.Type.K B) (wf-K ib) A (subst id (sym (base-coh B)) ℓ)))
     ≡ coerce-functor⁻¹-D (wf-K ib) A (coerce-ν-out (wf-K ib) ⟦ A ⟧ᴰ ℓ)
@@ -244,7 +246,7 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
 -- (not on the raw functor: `coerce-ν-out` is indexed by the witness).
 νout-erase-D : ∀ {m} {Δₖ : KCtx m} (G : Fun m) (wfG : WFFun Δₖ G) (A : Ty m)
     (ℓ : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᴰ)
-  → subst id (cohᴰ (⟦ G ⟧T A))
+  → subst id (cohᴰ (SpT.⟦ G ⟧F A))
       (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A))
         (out-layer-gen G wfG A
           (subst (λ H → ⟦ H ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (sym (tF-coh G))
@@ -259,8 +261,8 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
                      (pushSK⁻ (base-coh B) ℓ))
                (base-out B ib A ℓ))
   where
-    OUTK : ⟦ IT.⟦ eraseF (Once.Spec.Type.K B) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ Once.Spec.Type.K B ⟧T A ⟧ᴰ
-    OUTK z = subst id (cohᴰ (⟦ Once.Spec.Type.K B ⟧T A))
+    OUTK : ⟦ IT.⟦ eraseF (Once.Spec.Type.K B) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ SpT.⟦ Once.Spec.Type.K B ⟧F A ⟧ᴰ
+    OUTK z = subst id (cohᴰ (SpT.⟦ Once.Spec.Type.K B ⟧F A))
                (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (Once.Spec.Type.K B) A)) z)
 νout-erase-D _ wf-Id              A ℓ        = subst-subst-sym (cohᴰ A)
 νout-erase-D (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A (inj₁ x) =
@@ -273,13 +275,13 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
  (trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A z))
               (pushS⊕₁⁻ (tF-coh F) (tF-coh G) _))
  (trans (cong OUT (out-layer-gen-⊕₁ F G wfA wfB A _))
- (trans (cong (subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A)))
+ (trans (cong (subst id (cohᴰ (SpT.⟦ F Once.Spec.Type.⊕ G ⟧F A)))
               (push-+ᴵ₁⁻ (⌊⟧T-commute F A) (⌊⟧T-commute G A) _))
- (trans (push⊎₁ (cohᴰ (⟦ F ⟧T A)) (cohᴰ (⟦ G ⟧T A)) _)
+ (trans (push⊎₁ (cohᴰ (SpT.⟦ F ⟧F A)) (cohᴰ (SpT.⟦ G ⟧F A)) _)
         (cong inj₁ (νout-erase-D F wfA A x))))))
   where
-    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Spec.Type.⊕ G ⟧T A ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A))
+    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ SpT.⟦ F Once.Spec.Type.⊕ G ⟧F A ⟧ᴰ
+    OUT z = subst id (cohᴰ (SpT.⟦ F Once.Spec.Type.⊕ G ⟧F A))
               (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Spec.Type.⊕ G) A)) z)
 νout-erase-D (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A (inj₂ y) =
   trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A
@@ -291,13 +293,13 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
  (trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊕ G) (wf-Sum wfA wfB) A z))
               (pushS⊕₂⁻ (tF-coh F) (tF-coh G) _))
  (trans (cong OUT (out-layer-gen-⊕₂ F G wfA wfB A _))
- (trans (cong (subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A)))
+ (trans (cong (subst id (cohᴰ (SpT.⟦ F Once.Spec.Type.⊕ G ⟧F A)))
               (push-+ᴵ₂⁻ (⌊⟧T-commute F A) (⌊⟧T-commute G A) _))
- (trans (push⊎₂ (cohᴰ (⟦ F ⟧T A)) (cohᴰ (⟦ G ⟧T A)) _)
+ (trans (push⊎₂ (cohᴰ (SpT.⟦ F ⟧F A)) (cohᴰ (SpT.⟦ G ⟧F A)) _)
         (cong inj₂ (νout-erase-D G wfB A y))))))
   where
-    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Spec.Type.⊕ G ⟧T A ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F Once.Spec.Type.⊕ G ⟧T A))
+    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊕ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ SpT.⟦ F Once.Spec.Type.⊕ G ⟧F A ⟧ᴰ
+    OUT z = subst id (cohᴰ (SpT.⟦ F Once.Spec.Type.⊕ G ⟧F A))
               (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Spec.Type.⊕ G) A)) z)
 νout-erase-D (F Once.Spec.Type.⊗ G) (wf-Prod wfA wfB) A (x , y) =
   trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊗ G) (wf-Prod wfA wfB) A
@@ -309,13 +311,13 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
  (trans (cong (λ z → OUT (out-layer-gen (F Once.Spec.Type.⊗ G) (wf-Prod wfA wfB) A z))
               (pushS⊗⁻ (tF-coh F) (tF-coh G) _ _))
  (trans (cong OUT (out-layer-gen-⊗ F G wfA wfB A _ _))
- (trans (cong (subst id (cohᴰ (⟦ F Once.Spec.Type.⊗ G ⟧T A)))
+ (trans (cong (subst id (cohᴰ (SpT.⟦ F Once.Spec.Type.⊗ G ⟧F A)))
               (push-*ᴵ⁻ (⌊⟧T-commute F A) (⌊⟧T-commute G A) _ _))
- (trans (push× (cohᴰ (⟦ F ⟧T A)) (cohᴰ (⟦ G ⟧T A)) _ _)
+ (trans (push× (cohᴰ (SpT.⟦ F ⟧F A)) (cohᴰ (SpT.⟦ G ⟧F A)) _ _)
         (cong₂ _,_ (νout-erase-D F wfA A x) (νout-erase-D G wfB A y))))))
   where
-    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊗ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ ⟦ F Once.Spec.Type.⊗ G ⟧T A ⟧ᴰ
-    OUT z = subst id (cohᴰ (⟦ F Once.Spec.Type.⊗ G ⟧T A))
+    OUT : ⟦ IT.⟦ eraseF (F Once.Spec.Type.⊗ G) ⟧TI ⌊ A ⌋ ⟧ᴰᴵ → ⟦ SpT.⟦ F Once.Spec.Type.⊗ G ⟧F A ⟧ᴰ
+    OUT z = subst id (cohᴰ (SpT.⟦ F Once.Spec.Type.⊗ G ⟧F A))
               (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Spec.Type.⊗ G) A)) z)
 
 -- THE `Out` RELATION: the IR's `Out`, through the erasure transports, runs
@@ -323,28 +325,28 @@ base-out (X Once.Spec.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
 -- forced runs are related (`StreamRel.forceR`); on a layer the IR's map, read
 -- back, IS the meaning's (`νout-erase-D`), and the meaning's map takes related
 -- layers to related values.
-liftFn-Out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} (wfF : WFFun Δₖ F) {v v′ : ⟦ ν-type F π ⟧ᴰ}
-  → RelD (ν-type F π) v v′
-  → RelS (RelD (⟦ F ⟧T (ν-type F π))) (liftFn fmt ρ {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir wfF) v) (out-sem {π = π} wfF v′)
+liftFn-Out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} (wfF : WFFun Δₖ F) {v v′ : ⟦ ν F π ⟧ᴰ}
+  → RelD (ν F π) v v′
+  → RelS (RelD (SpT.⟦ F ⟧F (ν F π))) (liftFn fmt ρ {ν F π} {SpT.⟦ F ⟧F (ν F π)} (Out-ir wfF) v) (out-sem {π = π} wfF v′)
 liftFn-Out {F = F} {π = π} wfF {v} {v′} r =
   ≡ˢ (cong (subst T∞ (cohᴰ X))
-        (trans (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F π))) (IR.Out (wf-⌊⌋ wfF)) v₀)
-               (cong (λ m → subst (λ o → T∞ ⟦ o ⟧ᴰᴵ) (sym (⌊⟧T-commute F (ν-type F π))) (fmap∞ g₀ m))
+        (trans (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν F π))) (IR.Out (wf-⌊⌋ wfF)) v₀)
+               (cong (λ m → subst (λ o → T∞ ⟦ o ⟧ᴰᴵ) (sym (⌊⟧T-commute F (ν F π))) (fmap∞ g₀ m))
                      (force-subst (tF-coh F) v))))
      (RelS-substˡ (cohᴰ X)
-       (RelS-substF₀ ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π)))
+       (RelS-substF₀ ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν F π)))
          (RelS-fmap {R = R₀}
            (RelS-substF (λ H → ⟦ H ⟧SF (νᴵ H)) (sym (tF-coh F))
              (RelS-mono (λ {ℓ} lr → ℓ , refl , lr) (StreamRel.forceR r)))
            (λ { {_} {b} (ℓ , refl , lr) → step ℓ b lr }))))
   where
-    X  = ⟦ F ⟧T (ν-type F π)
+    X  = SpT.⟦ F ⟧F (ν F π)
     H  = translateF Carrier Carrier F
-    v₀ = subst id (sym (cohᴰ (ν-type F π))) v
+    v₀ = subst id (sym (cohᴰ (ν F π))) v
     g₀ = λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute (eraseF F) (IT.ν-type (eraseF F))))
                      (coerce-functor⁻¹-D (wf-⌈⌉ (wf-⌊⌋ wfF)) ⌈ IT.ν-type (eraseF F) ⌉
                        (coerce-ν-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ layer))
-    g₁ = λ layer → coerce-functor⁻¹-D wfF (ν-type F π) (coerce-ν-out wfF _ layer)
+    g₁ = λ layer → coerce-functor⁻¹-D wfF (ν F π) (coerce-ν-out wfF _ layer)
 
     R₀ : _ → _ → Set
     R₀ a b = Σ[ ℓ ∈ ⟦ H ⟧SF (νᴵ H) ] (a ≡ subst (λ G → ⟦ G ⟧SF (νᴵ G)) (sym (tF-coh F)) ℓ) × LayerRel H H ℓ b
@@ -356,15 +358,15 @@ liftFn-Out {F = F} {π = π} wfF {v} {v′} r =
     ≡ᴰ refl h = h
 
     step : ∀ ℓ b → LayerRel H H ℓ b
-         → RelD X (subst id (cohᴰ X) (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π)))
+         → RelD X (subst id (cohᴰ X) (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν F π)))
                      (g₀ (subst (λ G → ⟦ G ⟧SF (νᴵ G)) (sym (tF-coh F)) ℓ))))
                   (g₁ b)
     step ℓ b lr =
-      ≡ᴰ (trans (cong (λ z → subst id (cohᴰ X) (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F π)))
-                                (out-layer-gen F wfF (ν-type F π) z)))
+      ≡ᴰ (trans (cong (λ z → subst id (cohᴰ X) (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν F π)))
+                                (out-layer-gen F wfF (ν F π) z)))
                       (subst-diag-ν⁻ (tF-coh F) ℓ))
-                (νout-erase-D F wfF (ν-type F π) ℓ))
-         (cfD⁻¹-rel wfF (ν-type F π) (cμout-rel wfF (layer→srel H lr)))
+                (νout-erase-D F wfF (ν F π) ℓ))
+         (cfD⁻¹-rel wfF (ν F π) (cμout-rel wfF (layer→srel H lr)))
 
 ------------------------------------------------------------------------
 -- The bridge's two halves, packaged

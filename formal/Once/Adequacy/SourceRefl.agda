@@ -14,6 +14,8 @@
 -- — what the graded relation needs of the implementation's closures.
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Once.Internal.Weaken using (RelS-wk₀)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
@@ -29,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; eff; act; fin)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type; ⟦_⟧T)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
 open import Once.Semantics.Machine using (sem-cata)
 open import Once.Internal.StreamInf using (anaFᴵ)
@@ -63,19 +65,19 @@ open DefsSem using (calls; refs)
 open Once.Surface.Syntax.Expr
 
 -- The fold of related algebras is a related closure.
-cata-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {π} (wf : WFFun Δₖ F) {va vb : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
-             → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) va vb
-             → RelD (μ-type F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {C = A} {F = F} wf (return∞ va)) x)
+cata-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {π} (wf : WFFun Δₖ F) {va vb : ⟦ SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A ⟧ᴰ}
+             → RelD (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A) va vb
+             → RelD (μ F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {C = A} {F = F} wf (return∞ va)) x)
                                                        (λ x → sem-cata wf (SD.cata-ev-algˢ {C = A} {F = F} wf (return∞ vb)) x)
 cata-clo-rel {A = A} {F = F} wf {va} {vb} ralg {x} refl =
   sem-cata-rel wf {R = RelS (RelD A)} {SD.cata-ev-algˢ wf (return∞ va)} {SD.cata-ev-algˢ wf (return∞ vb)}
     (λ fr → RelS-bind (seqF∞-rel F fr) λ fl → retargetˡ refl (retargetʳ refl (ralg (cfD⁻¹-rel wf A fl)))) x
 
 -- The unfold of related coalgebras, from related seeds, is a related stream.
-ana-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {φ} (wf : WFFun Δₖ F) {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ⟧ᴰ}
-            → RelD (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A) c c′
+ana-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {φ} (wf : WFFun Δₖ F) {c c′ : ⟦ A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A ⟧ᴰ}
+            → RelD (A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A) c c′
             → ∀ {a a′} → RelD A a a′
-            → RelD (ν-type F φ) (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c a')) a)
+            → RelD (ν F φ) (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c a')) a)
                                 (anaFᴵ F (λ a' → fmap∞ (coerce-functor-D wf A) (c′ a')) a′)
 ana-clo-rel {A = A} {F = F} wf rc ra = anaᴵ-rel (λ ra′ → RelS-fmap (RelS-fmap (rc ra′) (cfD-rel wf A)) (cμin-rel F)) ra
 
@@ -154,8 +156,8 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   sigOpSem-rel Float name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
   sigOpSem-rel (_ * _) name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
   sigOpSem-rel (_ + _) name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
-  sigOpSem-rel (μ-type _) name (con-base ())
-  sigOpSem-rel (ν-type _ _) name (con-base ())
+  sigOpSem-rel (μ _) name (con-base ())
+  sigOpSem-rel (ν _ _) name (con-base ())
   sigOpSem-rel (_ ⇒[ _ ] _) name (con-base ())
 
   SD-rel : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) {d d′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}

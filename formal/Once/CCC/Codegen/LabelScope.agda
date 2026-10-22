@@ -54,7 +54,7 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 import Once.IRTy as IT
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -102,7 +102,7 @@ wrap-sum-ls lo hi tag s =
 -- `lb` (F) and `lb + lsize F` (G). Hence `lsize (F ⊕ G) = 2 + lsize F + lsize G`
 -- and `lsize (F ⊗ G) = lsize F + lsize G` — the windows are exactly disjoint.
 ------------------------------------------------------------------------
-visit-ls : ∀ (F : Functor) (todo tv tb s lb : ℕ)
+visit-ls : ∀ (F : Fun 0) (todo tv tb s lb : ℕ)
          → LabelsIn lb (lb + lsize F) (visit-walk todo tv tb F s lb)
 visit-ls (K _) todo tv tb s lb = []
 visit-ls Id    todo tv tb s lb =
@@ -141,7 +141,7 @@ visit-ls (F ⊗ G) todo tv tb s lb =
     hiG : lb + lsize F + lsize G ≤ lb + lsize (F ⊗ G)
     hiG = ≤-reflexive (+-assoc lb (lsize F) (lsize G))
 
-rebuild-ls : ∀ (F : Functor) (val tv tb s lb : ℕ)
+rebuild-ls : ∀ (F : Fun 0) (val tv tb s lb : ℕ)
            → LabelsIn lb (lb + lsize F) (rebuild-walk val tv tb F s lb)
 rebuild-ls (K _) val tv tb s lb = li-none refl ∷ []
 rebuild-ls Id    val tv tb s lb = pop2-ls _ _ val
@@ -374,7 +374,7 @@ cata-linear-ls lo bb n1 l1 at lo≤l1 atls =
 -- functor walks in DISJOINT windows: visit at `lv = l1+4`, rebuild at
 -- `lr = lv + lsize F`, and `l2 = lr + lsize F`. That the windows are disjoint
 -- is exactly what the two `ls-weaken`s below check.
-cata-branching-ls : ∀ (F : Functor) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
+cata-branching-ls : ∀ (F : Fun 0) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
                   → LabelsIn lo (cata-label-of (cata-dispatch (strat-branching F) bb n1 l1 at))
                              (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
 -- C1: `cata-body ++ setup ++ I₁ ++ call ++ I₂` — Tier 2 splices once, so it
@@ -1117,7 +1117,7 @@ cata-lin-split bb n1 l1 at =
 -- Tier 2 calls the algebra ONCE, so its `H` has one call site. The functor
 -- walks are stuck on `F`, so `H ++ body` is NOT definitionally the emitted
 -- trace here — one `++-assoc` at `cata-br-I₁` is the whole difference.
-cata-br-split : ∀ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace)
+cata-br-split : ∀ (F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
               → CataSplit bb l1 at (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
 cata-br-split F bb n1 l1 at =
   mkSplit H (ℓ o bodyL) (ℓ o endL) hi2 assoc H-idle H-ls (Lend , Hend)

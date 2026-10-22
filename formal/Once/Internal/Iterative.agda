@@ -150,7 +150,6 @@ open TreeEq∞
 
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Type using (Functor)
 open import Once.Internal.Value Carrier Carrier using (⟦_⟧F)
 
 fmap∞ : ∀ {X Y} → (X → Y) → T∞ X → T∞ Y

@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Type using (Ty; Fun; WFFun; wf-⊕; wf-⊗; KCtx; Kind; base; any; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; var; μ; ν; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Type using (k-base; k-any; μ-type; ν-type; Functor)
+open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun; WellFormedF; wf-Sum; wf-Prod)
 
@@ -42,8 +42,8 @@ isBaseType? (A + B) with isBaseType? A | isBaseType? B
 {-# CATCHALL #-}
 ... | _       | _       = nothing
 isBaseType? (_ ⇒[ _ ] _) = nothing
-isBaseType? (μ-type _) = nothing
-isBaseType? (ν-type _ _) = nothing
+isBaseType? (μ _) = nothing
+isBaseType? (ν _ _) = nothing
 
 -- | Decide whether a type is CONCRETE / FFI-representable (Plan 0.58): a base
 -- type, or a first-order function pointer (base argument, base result: the
@@ -89,7 +89,7 @@ isConcrete?-complete (con-fun bA bB)
 ... | (b , eqB) | (c , eqC) rewrite eqB | eqC = con-fun b c , refl
 
 -- | Decide whether a functor is well-formed (K positions are base types).
-wellFormedF? : (F : Functor) → Maybe (WellFormedF F)
+wellFormedF? : (F : Fun 0) → Maybe (WellFormedF F)
 wellFormedF? (K A) with isBaseType? A
 ... | just bA = just (wf-K bA)
 ... | nothing = nothing

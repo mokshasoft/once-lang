@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_)
 open import Once.Spec.Name using (CanonicalName; bare)
@@ -85,8 +85,8 @@ abiT Unit         M = M
 abiT Void         M = M
 abiT (A * B)      M = M
 abiT (A + B)      M = M
-abiT (μ-type F)   M = M
-abiT (ν-type F π) M = M
+abiT (μ F)   M = M
+abiT (ν F π) M = M
 abiT Int          M = M
 abiT Float        M = M
 
@@ -119,7 +119,7 @@ abi Unit         x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir 
 abi Void         x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
 abi (A * B)      x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
 abi (A + B)      x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
-abi (μ-type F)   x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
-abi (ν-type F π) x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
+abi (μ F)   x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
+abi (ν F π) x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
 abi Int          x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)
 abi Float        x es ir = retargetˡ (cong force (tableEnv-hit (bare x) _ _ ir es tt)) (self es ir {tt} {tt} tt)

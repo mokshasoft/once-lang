@@ -28,6 +28,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Grade as T using (Zero; One; Many)
 import Once.Internal.Type as T
 import Once.Spec.Type as T
+import Once.Spec.Type as T
 open import Once.Internal.Type.Sub
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
@@ -110,8 +111,8 @@ voidFree? (sub-void {B = T.Float})        = no λ ()
 voidFree? (sub-void {B = _ T.* _})        = no λ ()
 voidFree? (sub-void {B = _ T.+ _})        = no λ ()
 voidFree? (sub-void {B = _ T.⇒[ _ ] _})  = no λ ()
-voidFree? (sub-void {B = T.μ-type _})     = no λ ()
-voidFree? (sub-void {B = T.ν-type _ _})     = no λ ()
+voidFree? (sub-void {B = T.μ _})     = no λ ()
+voidFree? (sub-void {B = T.ν _ _})     = no λ ()
 voidFree? sub-unit   = yes vf-unit
 voidFree? sub-int    = yes vf-int
 voidFree? sub-float  = yes vf-float

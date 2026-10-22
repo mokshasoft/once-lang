@@ -16,6 +16,7 @@ open import Once.Spec.Type using (Ty; Fun)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Fun; μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -358,21 +359,21 @@ open import Once.Postulates using (extensionality)
 --
 -- Note: Requires a WellFormedF proof.
 --
-eval-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (m : AllocMode) (x : ⟦ μ-type F ⟧)
+eval-cata-In-id : ∀ {F : Fun 0} → (wf : WellFormedF F) → (m : AllocMode) (x : ⟦ μ F ⟧)
                 → eval (Cata {F} wf (In {F} wf)) x ≡ x
 eval-cata-In-id {F} wf m x =
   let -- The algebra used by Cata evaluation: λ fa → eval (In m) (coerce⁻¹ fa)
       -- which equals λ fa → sem-In F (coerce (coerce⁻¹ fa))
       -- By round-trip, coerce (coerce⁻¹ fa) = fa
-      alg-pointwise : ∀ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa)) ≡ sem-In F fa
-      alg-pointwise fa = cong (sem-In F) (coerce⁻¹-round-trip F (μ-type F) fa)
+      alg-pointwise : ∀ fa → sem-In F (coerce-functor F (μ F) (coerce-functor⁻¹ F (μ F) fa)) ≡ sem-In F fa
+      alg-pointwise fa = cong (sem-In F) (coerce⁻¹-round-trip F (μ F) fa)
 
       -- By function extensionality, the algebras are equal
-      alg-eq : (λ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa))) ≡ sem-In F
+      alg-eq : (λ fa → sem-In F (coerce-functor F (μ F) (coerce-functor⁻¹ F (μ F) fa))) ≡ sem-In F
       alg-eq = extensionality alg-pointwise
 
       -- Step 1: Substitute equal algebras in sem-cata
-      step1 : sem-cata wf (λ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa))) x
+      step1 : sem-cata wf (λ fa → sem-In F (coerce-functor F (μ F) (coerce-functor⁻¹ F (μ F) fa))) x
             ≡ sem-cata wf (sem-In F) x
       step1 = cong (λ alg → sem-cata wf alg x) alg-eq
 
@@ -393,7 +394,7 @@ eval-cata-In-id {F} wf m x =
 -- This applies a function through the functor structure, working with
 -- Type-level functor application (⟦ F ⟧T) rather than Set-level (⟦ F ⟧F).
 --
-fmap-Type : ∀ {m} (F : Fun m) {X Y : Ty m} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
+fmap-Type : ∀ {m} (F : Fun m) {X Y : Ty m} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧F X ⟧ → ⟦ ⟦ F ⟧F Y ⟧
 fmap-Type (K A) f x = x
 fmap-Type Id f x = f x
 fmap-Type (F ⊕ G) f (inj₁ x) = inj₁ (fmap-Type F f x)
@@ -429,7 +430,7 @@ open import Once.Semantics.Value Carrier Carrier
   using (fmap-struct-coherence; fmap-struct-coherence′; sem-fmap-Type)
 
 -- | fmap-Type equals sem-fmap-Type (both defined identically)
-fmap-Type-eq : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+fmap-Type-eq : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧F X ⟧)
              → fmap-Type F f x ≡ sem-fmap-Type F f x
 fmap-Type-eq (K A) f x = refl
 fmap-Type-eq Id f x = refl
@@ -442,7 +443,7 @@ fmap-Type-eq (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-Type-eq F f x) (fmap-Type-e
 -- Now that coerce-functor is defined structurally (not via subst),
 -- this follows directly from fmap-struct-coherence and fmap-Type-eq.
 --
-fmap-coerce-coherence : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+fmap-coerce-coherence : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧F X ⟧)
                       → coerce-functor⁻¹ F Y (sem-fmap F f (coerce-functor F X x)) ≡ fmap-Type F f x
 fmap-coerce-coherence F f x = trans (fmap-struct-coherence F f x) (sym (fmap-Type-eq F f x))
 
@@ -468,8 +469,8 @@ fmap-coerce-coherence′ F f y = trans (fmap-struct-coherence′ F f y) (sym (fm
 --   = eval alg (fmap-Type F (sem-cata F alg′) x)       (by fmap-coerce-coherence)
 --   = eval alg (fmap-Type F (eval (Cata alg)) x)      (by def of eval (Cata alg))
 --
-eval-cata-In : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
-               (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
+eval-cata-In : ∀ {F : Fun 0} → (wf : WellFormedF F) → ∀ {A : Type} (alg : IR (⟦ F ⟧F A) A) (m : AllocMode)
+               (x : ⟦ ⟦ F ⟧F (μ F) ⟧)
              → eval (Cata {F} wf alg ∘ In {F} wf) x ≡
                eval alg (fmap-Type F (eval (Cata {F} wf alg)) x)
 eval-cata-In {F} wf {A} alg m x =
@@ -479,19 +480,19 @@ eval-cata-In {F} wf {A} alg m x =
 
       -- Step 1: Apply sem-cata-compute (well-formed)
       -- sem-cata wf alg′ (sem-In F (coerce x)) = alg′ (sem-fmap F (sem-cata wf alg′) (coerce x))
-      step1 : sem-cata wf alg′ (sem-In F (coerce-functor F (μ-type F) x))
-            ≡ alg′ (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x))
-      step1 = sem-cata-compute wf alg′ (coerce-functor F (μ-type F) x)
+      step1 : sem-cata wf alg′ (sem-In F (coerce-functor F (μ F) x))
+            ≡ alg′ (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ F) x))
+      step1 = sem-cata-compute wf alg′ (coerce-functor F (μ F) x)
 
       -- Step 2: Apply fmap-coerce-coherence
       -- coerce⁻¹ (sem-fmap F f (coerce x)) = fmap-Type F f x
-      step2 : coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x))
+      step2 : coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ F) x))
             ≡ fmap-Type F (sem-cata wf alg′) x
       step2 = fmap-coerce-coherence F (sem-cata wf alg′) x
 
       -- Step 3: Combine - alg′ of step1 = eval alg (coerce⁻¹ ...)
       -- eval alg (coerce⁻¹ (sem-fmap F ...)) = eval alg (fmap-Type F ... x)
-      step3 : eval alg (coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x)))
+      step3 : eval alg (coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ F) x)))
             ≡ eval alg (fmap-Type F (sem-cata wf alg′) x)
       step3 = cong (eval alg) step2
 
@@ -517,9 +518,9 @@ eval-cata-In {F} wf {A} alg m x =
 -- So `fuse ≡ hylo` is definitional — one structural scheme, two packagings.
 -- (The old IR-coalgebra bridge `eval (Hylo alg coalg) ≡ eval (Fuse alg (coalg
 -- ∘ In))` is gone: the coalgebra is no longer a general IR morphism.)
-eval-hylo-is-fuse : ∀ {F G : Functor} → (wfF : WellFormedF F) → (wfG : WellFormedF G)
-                    → ∀ {B : Type} (alg : IR (⟦ F ⟧T B) B) (t : NatTr G F)
-                    → (x : ⟦ μ-type G ⟧)
+eval-hylo-is-fuse : ∀ {F G : Fun 0} → (wfF : WellFormedF F) → (wfG : WellFormedF G)
+                    → ∀ {B : Type} (alg : IR (⟦ F ⟧F B) B) (t : NatTr G F)
+                    → (x : ⟦ μ G ⟧)
                     → eval (Hylo wfF wfG alg t) x ≡ eval (Fuse wfF wfG alg t) x
 eval-hylo-is-fuse wfF wfG alg t x = refl
 
@@ -546,18 +547,18 @@ eval-hylo-is-fuse wfF wfG alg t x = refl
 --   = sem-ana F (sem-CoOut wf) x   [by coerce⁻¹-round-trip + extensionality]
 --   = x                            [by sem-ana-Out-id]
 --
-eval-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) (x : ⟦ ν-type F ⟧)
+eval-ana-Out-id : ∀ {F : Fun 0} → (wf : WellFormedF F) (x : ⟦ ν F ⟧)
                 → eval (Ana {F} wf (Out {F} wf)) x ≡ x
 eval-ana-Out-id {F} wf x =
   let -- The actual coalgebra from eval (with round-trip coercions)
-      actual-coalg : ⟦ ν-type F ⟧ → ⟦ F ⟧F ⟦ ν-type F ⟧
-      actual-coalg a = coerce-functor F (ν-type F) (coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf a))
+      actual-coalg : ⟦ ν F ⟧ → ⟦ F ⟧F ⟦ ν F ⟧
+      actual-coalg a = coerce-functor F (ν F) (coerce-functor⁻¹ F (ν F) (sem-CoOut wf a))
       -- The coalgebra expected by sem-ana-Out-id
-      expected-coalg : ⟦ ν-type F ⟧ → ⟦ F ⟧F ⟦ ν-type F ⟧
+      expected-coalg : ⟦ ν F ⟧ → ⟦ F ⟧F ⟦ ν F ⟧
       expected-coalg = sem-CoOut wf
       -- They're pointwise equal via round-trip
       coalg-eq : ∀ a → actual-coalg a ≡ expected-coalg a
-      coalg-eq a = coerce⁻¹-round-trip F (ν-type F) (sem-CoOut wf a)
+      coalg-eq a = coerce⁻¹-round-trip F (ν F) (sem-CoOut wf a)
       -- Therefore equal as functions (by extensionality)
       coalg-ext : actual-coalg ≡ expected-coalg
       coalg-ext = extensionality coalg-eq

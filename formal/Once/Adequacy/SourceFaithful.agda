@@ -52,7 +52,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Spec.Grade using (mk-kind; pure; eff; act; Quantity; Zero; One; Many; fin)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using () renaming (var to tvar)
-open import Once.Internal.Type using (μ-type; ν-type; ⟦_⟧T; wk₀)
+open import Once.Internal.Type using (wk₀)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.IRTy using (⌊wk₀⌋)
 open import Once.Surface.Elaborate using (sigOpIR)
@@ -725,8 +726,8 @@ mutual
   sigop-faithful (tvar ()) name _ _
   sigop-faithful {Γ = Γ} (_ * _) name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
   sigop-faithful {Γ = Γ} (_ + _) name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
-  sigop-faithful (μ-type _) name (con-base ()) _
-  sigop-faithful (ν-type _ _) name (con-base ()) _
+  sigop-faithful (μ _) name (con-base ()) _
+  sigop-faithful (ν _ _) name (con-base ()) _
   sigop-faithful (_ ⇒[ _ ] _) name (con-base ()) _
 
   sigop-value : ∀ {n} {Γ : Ctx 0 n} {A : Ty 0} (si : SigOpInfo Unit A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)

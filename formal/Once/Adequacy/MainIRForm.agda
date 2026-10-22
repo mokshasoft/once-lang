@@ -39,7 +39,6 @@ import Once.IR as IR
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure; eff)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Internal.Syntax using (RawExpr)

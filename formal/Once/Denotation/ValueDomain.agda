@@ -15,6 +15,7 @@
 
 module Once.Denotation.ValueDomain where
 
+import Once.Spec.Type as SpT
 open import Once.Spec.Type using (Base)
 open import Once.Spec.Type using (var; Ty; Fun; KCtx; WFFun)
 open import Data.Unit using (⊤)
@@ -27,6 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; c
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -95,7 +97,7 @@ subst-νᵈ-cong refl v = refl
 ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ = ⊤ → T∞ ⟦ B ⟧ᴰ   -- erased: no argument
 ⟦ A ⇒[ mk-kind One  π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
-⟦ μ-type F ⟧ᴰ   = Val.⟦ μ-type F ⟧            -- first-order data: reuse pure
+⟦ μ F ⟧ᴰ   = Val.⟦ μ F ⟧            -- first-order data: reuse pure
 -- ν is the OTHER type that suspends computation, so like the arrow it is
 -- Kleisli: forcing a layer IS a `T`-computation. A ν built by an EFFECTFUL
 -- coalgebra cannot be a pure value — while it was one, `Ana` had to read its
@@ -103,7 +105,7 @@ subst-νᵈ-cong refl v = refl
 -- re-invented by a separate eager left-to-right unfold, which ordered events
 -- the anamorphism does not order. Here the order is the order the program
 -- FORCES layers, which is the order the machine runs them in.
-⟦ ν-type F _ ⟧ᴰ = νᴵ (translateF Carrier Carrier F)
+⟦ ν F _ ⟧ᴰ = νᴵ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᴰ        = Val.⟦ Int {0} ⟧
 ⟦ Float ⟧ᴰ      = Val.⟦ Float {0} ⟧
 ⟦ var _ ⟧ᴰ  = ⊥
@@ -128,10 +130,10 @@ cohᴰ (A + B)      = cong₂ _⊎_ (cohᴰ A) (cohᴰ B)
 cohᴰ (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⊤ → T∞ y) (cohᴰ B)
 cohᴰ (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ B)
 cohᴰ (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → T∞ y) (cohᴰ A) (cohᴰ B)
-cohᴰ (μ-type F)   = coh (μ-type F)
+cohᴰ (μ F)   = coh (μ F)
 -- ν's monadic meaning is no longer its pure one, so this transport stops
 -- borrowing `coh` and names its own constructor. Structurally identical.
-cohᴰ (ν-type F _) = cong νᴵ (tF-coh F)
+cohᴰ (ν F _) = cong νᴵ (tF-coh F)
 cohᴰ Int          = refl
 cohᴰ Float        = refl
 cohᴰ (var _)  = refl
@@ -177,14 +179,14 @@ injectᵇ (base-Sum a b) (inj₂ y) = inj₂ (injectᵇ b y)
 -- `Ana` needs it to hand its coalgebra to `anaᵈ`. At `K` it forgets, exactly
 -- as the inverse injects — and `WellFormedF` puts `K` only at base types,
 -- where `forget` is the identity.
-coerce-functor-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ ⟦ F ⟧T C ⟧ᴰ → ⟦ F ⟧F ⟦ C ⟧ᴰ
+coerce-functor-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ SpT.⟦ F ⟧F C ⟧ᴰ → ⟦ F ⟧F ⟦ C ⟧ᴰ
 coerce-functor-D (wf-K b)          C x        = forgetᵇ b x
 coerce-functor-D wf-Id             C x        = x
 coerce-functor-D (wf-Sum wf wg)    C (inj₁ x) = inj₁ (coerce-functor-D wf C x)
 coerce-functor-D (wf-Sum wf wg)    C (inj₂ y) = inj₂ (coerce-functor-D wg C y)
 coerce-functor-D (wf-Prod wf wg)   C (x , y)  = (coerce-functor-D wf C x , coerce-functor-D wg C y)
 
-coerce-functor⁻¹-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ ⟦ F ⟧T C ⟧ᴰ
+coerce-functor⁻¹-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ SpT.⟦ F ⟧F C ⟧ᴰ
 coerce-functor⁻¹-D (wf-K b)        C x        = injectᵇ b x
 coerce-functor⁻¹-D wf-Id           C x        = x
 coerce-functor⁻¹-D (wf-Sum wf wg)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D wf C x)

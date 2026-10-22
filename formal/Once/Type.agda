@@ -28,7 +28,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (μ-type; ν-type; TKind; k-base; k-any; Functor)
+open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Internal.Type.Poly
   using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
          Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
@@ -60,15 +60,15 @@ showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
 ------------------------------------------------------------------------
 
 -- | Natural numbers: Nat = μ (K Unit ⊕ Id)
-NatF : Functor
+NatF : Fun 0
 NatF = K Unit ⊕ Id
 
 -- | List A = μ (K Unit ⊕ K A ⊗ Id)
-ListF : Type → Functor
+ListF : Type → Fun 0
 ListF A = K Unit ⊕ (K A ⊗ Id)
 
 -- | Binary tree: Tree A = μ (K A ⊕ Id ⊗ Id)
-TreeF : Type → Functor
+TreeF : Type → Fun 0
 TreeF A = K A ⊕ (Id ⊗ Id)
 
 
@@ -122,9 +122,9 @@ mutual
   showType (A ⇒[ mk-kind q pure ] B) = "(" ++ showType A ++ " " ++ showQuantity q ++ "→ " ++ showType B ++ ")"
   showType (A ⇒[ mk-kind _ eff ] B)  = "Eff " ++ showType A ++ " " ++ showType B
   showType (A ⇒[ mk-kind _ act ] B) = "Act " ++ showType A ++ " " ++ showType B
-  showType (μ-type F) = "μ " ++ showFunctor F
-  showType (ν-type F pureᶠ) = "ν " ++ showFunctor F
-  showType (ν-type F actᶠ) = "ν (Act " ++ showFunctor F ++ ")"
+  showType (μ F) = "μ " ++ showFunctor F
+  showType (ν F pureᶠ) = "ν " ++ showFunctor F
+  showType (ν F actᶠ) = "ν (Act " ++ showFunctor F ++ ")"
   showType Int = "Int"
   showType Float = "Float"
   showType (var i) = "'a" ++ Data.Nat.Show.show (Data.Fin.toℕ i)

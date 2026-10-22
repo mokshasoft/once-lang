@@ -20,6 +20,8 @@
 -- entry so far.
 ------------------------------------------------------------------------
 
+import Once.Spec.Type
+
 import Once.Spec.Grade
 module Once.Adequacy.ProgramLinked where
 
@@ -27,6 +29,7 @@ open import Once.Internal.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Spec.Type using (Ty; KCtx; ∅ₖ)
 open import Once.Internal.Type using (wk₀)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Weaken using (wk₀-id)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Nat using (ℕ; _<_)
@@ -87,7 +90,6 @@ open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt;
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.IRTy using (⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; LinkedProgram)
 open Once.Denotation.Program.IRFun using (fbody)
 open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; ModuleTyped-ef; EffUU; teleSig; moduleSig; moduleSig-ef)
@@ -182,7 +184,7 @@ realize-refs (t-sub d p)                 = realize-refs-i d
 realize-refs (t-lam ≤p d)                = realize-refs d
 realize-refs (t-pair-lit-check da db)    = realize-refs da , realize-refs db
 realize-refs (t-In-app-check {F = F} wfF d) =
-  Linked-substˡ (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF)) tt , realize-refs d
+  Linked-substˡ (sym (⌊⟧T-commute F (μ F))) (IR.In (wf-⌊⌋ wfF)) tt , realize-refs d
 realize-refs (t-apply-check dp)      = tt , realize-refs-i dp
 realize-refs (t-inl-app-check d)     = tt , realize-refs d
 realize-refs (t-inr-app-check d)     = tt , realize-refs d
@@ -265,11 +267,11 @@ realize-refs-i (t-fst-app d)      = tt , realize-refs-i d
 realize-refs-i (t-snd-app d)      = tt , realize-refs-i d
 realize-refs-i (t-Out-app-infer {F = F} wfF ceq d) =
   Refs-substA ceq _
-    ( Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Grade.pureᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt
+    ( Linked-substʳ (sym (⌊⟧T-commute F (ν F Once.Spec.Grade.pureᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt
     , realize-refs-i d)
 realize-refs-i (t-Out-eff-app-infer {F = F} wfF ceq d) =
   Refs-substF (λ Z → Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] Z) ceq _
-    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν-type F Once.Spec.Grade.actᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
+    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν F Once.Spec.Grade.actᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
     , realize-refs-i d)
 realize-refs-i (t-terminal-app d) = tt , realize-refs-i d
 realize-refs-i (t-apply-app-infer d) = tt , realize-refs-i d
@@ -388,8 +390,8 @@ dc-linked tbl Once.Spec.Type.Unit           ir l = l
 dc-linked tbl Once.Spec.Type.Void           ir l = l
 dc-linked tbl (A Once.Spec.Type.* B)        ir l = l
 dc-linked tbl (A Once.Spec.Type.+ B)        ir l = l
-dc-linked tbl (Once.Internal.Type.μ-type F)     ir l = l
-dc-linked tbl (Once.Internal.Type.ν-type F π)   ir l = l
+dc-linked tbl (Once.Spec.Type.μ F)     ir l = l
+dc-linked tbl (Once.Spec.Type.ν F π)   ir l = l
 dc-linked tbl Once.Spec.Type.Int            ir l = l
 dc-linked tbl Once.Spec.Type.Float          ir l = l
 dc-linked tbl (Once.Spec.Type.var i)    ir l = l
@@ -405,8 +407,8 @@ ref-entry tbl x ty@Once.Spec.Type.Unit         ir = linkedAt-here (irFunOf (C.mk
 ref-entry tbl x ty@Once.Spec.Type.Void         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Spec.Type.* B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(A Once.Spec.Type.+ B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Internal.Type.μ-type F)   ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Internal.Type.ν-type F π) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Spec.Type.μ F)   ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Spec.Type.ν F π) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@Once.Spec.Type.Int          ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@Once.Spec.Type.Float        ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 ref-entry tbl x ty@(Once.Spec.Type.var i)  ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt

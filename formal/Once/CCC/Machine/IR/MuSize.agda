@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap; sem-Out; sem-In)
@@ -80,7 +80,7 @@ abstract
   -- via the refl-proved stepping lemmas below. (extract-proofs-from-where
   -- + agda-typecheck-oom-abstract.)
   ------------------------------------------------------------------------
-  child-measure : ∀ (F : Functor) {G} (wfG : WellFormedF G) → ⟦ F ⟧F (⟦μ⟧ G) → ℕ
+  child-measure : ∀ (F : Fun 0) {G} (wfG : WellFormedF G) → ⟦ F ⟧F (⟦μ⟧ G) → ℕ
   child-measure F wfG layer = sum-Id F (sem-fmap F (μ-size wfG) layer)
 
   -- The total child-size of x's layer is strictly less than μ-size x.
@@ -132,7 +132,7 @@ abstract
 -- four lemmas are the strict decreases the capability is indexed by.
 -- Structural + cheap, so NOT abstract (definitional reductions are fine).
 ------------------------------------------------------------------------
-functor-size : Functor → ℕ
+functor-size : Fun 0 → ℕ
 functor-size (K t)     = 1
 functor-size Id        = 1
 functor-size (F₁ ⊕ F₂) = suc (functor-size F₁ ℕ.+ functor-size F₂)

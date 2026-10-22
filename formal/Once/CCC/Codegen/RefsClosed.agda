@@ -61,7 +61,7 @@ open import Once.CCC.Codegen.IRToTrace o using
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 
 ------------------------------------------------------------------------
@@ -219,7 +219,7 @@ module _ (G : String → Set) where
   -- THE COMPILE-TIME FUNCTOR WALKS. A `⊕` level owns `lb` and `suc lb`: it
   -- branches to `lb` and jumps to `suc lb`, and defines both itself.
   ------------------------------------------------------------------------
-  visit-closes : ∀ (todo tv tb : ℕ) (F : Functor) (s lb : ℕ) {D}
+  visit-closes : ∀ (todo tv tb : ℕ) (F : Fun 0) (s lb : ℕ) {D}
                → Defd D (visit-walk todo tv tb F s lb) → Closes D (visit-walk todo tv tb F s lb)
   visit-closes todo tv tb (K _)   s lb d = []
   visit-closes todo tv tb Id      s lb d = []
@@ -249,7 +249,7 @@ module _ (G : String → Set) where
       VG⊆ : VG ⊆ visit-walk todo tv tb (F ⊗ G) s lb
       VG⊆ m = there (there (there (there (∈-++⁺ʳ VF (there (there (there (m))))))))
 
-  rebuild-closes : ∀ (val tv tb : ℕ) (F : Functor) (s lb : ℕ) {D}
+  rebuild-closes : ∀ (val tv tb : ℕ) (F : Fun 0) (s lb : ℕ) {D}
                  → Defd D (rebuild-walk val tv tb F s lb) → Closes D (rebuild-walk val tv tb F s lb)
   rebuild-closes val tv tb (K _)   s lb d = []
   rebuild-closes val tv tb Id      s lb d = []
@@ -329,7 +329,7 @@ module _ (G : String → Set) where
       end∈ = there (there (there (there (there (∈-++⁺ʳ (tG ++ ch 1) (there (there (there (there (∈-++⁺ʳ (tF ++ ch 0) (here refl)))))))))))
 
   module BrS where
-    module _ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace) where
+    module _ (F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace) where
       Lb = l1 + 4 + lsize F + lsize F
       B0 = n1 + 7 + (4 * fsize F) + 4
       S = cata-call-setup B0 (B0 + 1) (B0 + 2) (B0 + 3) Lb

@@ -17,6 +17,7 @@ module Once.Optimize.Correct where
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ⟦_⟧F)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -161,19 +162,19 @@ open import Once.Semantics.Value Carrier Carrier using (sem-fuseNat; sem-fuseNat
 
 -- Cata: if two algebras evaluate equally (pointwise), so do their Cata applications.
 -- Proved by cong over the lambda inside the sem-cata call.
-eval-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)
+eval-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧F A) A) (x : ⟦ μ F ⟧)
                → eval alg ≡ eval alg'
                → eval (Cata wf alg) x ≡ eval (Cata wf alg') x
 eval-Cata-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-cata wf (λ fa → ev (coerce-functor⁻¹ F _ fa)) x) eq
 
-eval-Para-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T (μ-type F * A)) A) (x : ⟦ μ-type F ⟧)
+eval-Para-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧F (μ F * A)) A) (x : ⟦ μ F ⟧)
                → eval alg ≡ eval alg'
                → eval (Para wf alg) x ≡ eval (Para wf alg') x
 eval-Para-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-para wf (λ fx → ev (coerce-functor⁻¹ F _ fx)) x) eq
 
-eval-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
+eval-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧F A)) (x : ⟦ A ⟧)
               → eval coalg ≡ eval coalg'
               → eval (Ana wf coalg) x ≡ eval (Ana wf coalg') x
 eval-Ana-cong {F} {A} wf coalg coalg' x eq =

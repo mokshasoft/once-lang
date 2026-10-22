@@ -54,7 +54,6 @@ open import Once.Denotation.ValueRel
 open import Once.Denotation.EvalRel using (base-eqI; base-reflI; fo-eq; RelS-now; RelEnv; sigop-rel)
 open import Once.Internal.StreamInf using (anaFᴵ; in-νᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
-open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.FunctorMeaning using (translateF)
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as LW

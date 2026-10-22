@@ -90,7 +90,7 @@ open import Once.CCC.Label using (LabelId; ℓ)
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.Type as Ty
 
@@ -131,7 +131,7 @@ open import Once.CCC.Machine.SMCore
 -- number of recursive (`Id`) positions reachable in a single constructor
 -- (sum = distinct constructors → max; product = same constructor → sum).
 -- ────────────────────────────────────────────────────────────────────
-rec-count : Functor → ℕ
+rec-count : Fun 0 → ℕ
 rec-count (K _)   = 0
 rec-count Id      = 1
 rec-count (F ⊕ G) = rec-count F ⊔ rec-count G
@@ -141,7 +141,7 @@ data CataStrategy : Set where
   strat-const     : CataStrategy   -- 0 rec positions: cata = alg on the In-layer
   strat-nat       : CataStrategy   -- 1 bare-Id rec position, no payload (Nat)
   strat-linear    : CataStrategy   -- 1 rec position + payload (Tier 1)
-  strat-branching : Functor → CataStrategy  -- ≥2 rec positions (Tier 2); carries F
+  strat-branching : Fun 0 → CataStrategy  -- ≥2 rec positions (Tier 2); carries F
 
 -- `has-id F` — does `Id` occur anywhere in `F`? `id-under-product F` — does
 -- some `Id` sit INSIDE a `⊗`? A single-recursive functor with `Id` under a
@@ -149,13 +149,13 @@ data CataStrategy : Set where
 -- "linear with payload": the rec arm is `_ ⊗ Id`, so each layer carries a
 -- payload word the fold must stash (Tier 1). A single-recursive functor with a
 -- bare `Id` arm (Nat `K Unit + Id`) carries no payload (Tier nat).
-has-id : Functor → Bool
+has-id : Fun 0 → Bool
 has-id (K _)   = false
 has-id Id      = true
 has-id (F ⊕ G) = has-id F ∨ has-id G
 has-id (F ⊗ G) = has-id F ∨ has-id G
 
-id-under-product : Functor → Bool
+id-under-product : Fun 0 → Bool
 id-under-product (K _)   = false
 id-under-product Id      = false
 id-under-product (F ⊕ G) = id-under-product F ∨ id-under-product G
@@ -164,7 +164,7 @@ id-under-product (F ⊗ G) = has-id F ∨ has-id G ∨ id-under-product F ∨ id
 -- The classifier: no recursion → Nat (no loop); one recursive position →
 -- linear (with payload) vs Nat (bare Id) per `id-under-product`; two or more →
 -- branching (Tier 2, still TODO).
-cata-strategy : Functor → CataStrategy
+cata-strategy : Fun 0 → CataStrategy
 cata-strategy F with rec-count F
 ... | 0           = strat-const
 ... | 1           = if id-under-product F then strat-linear else strat-nat
@@ -439,7 +439,7 @@ cata-trace-linear bb n1 l1 at =
 -- ────────────────────────────────────────────────────────────────────
 
 -- size bound (≥ nesting depth) — drives the structural-walk slot budget.
-fsize : Functor → ℕ
+fsize : Fun 0 → ℕ
 fsize (K _)   = 1
 fsize Id      = 1
 fsize (F ⊕ G) = suc (fsize F ℕ.+ fsize G)
@@ -479,7 +479,7 @@ wrap-sum tag s =
 -- (branch target + join). Positional allocation — a node at label base `lb`
 -- takes [lb, lb+1], its F child starts at lb+2, its G child at lb+2+lsize F —
 -- so the walks stay plain trace-builders (no threaded counter to return).
-lsize : Functor → ℕ
+lsize : Fun 0 → ℕ
 lsize (K _)   = 0
 lsize Id      = 0
 lsize (F ⊕ G) = suc (suc (lsize F ℕ.+ lsize G))
@@ -489,7 +489,7 @@ lsize (F ⊗ G) = lsize F ℕ.+ lsize G
 -- `instr-case-on-tag` — same shape as `case f g` below and as the branching
 -- cata's own loop: `c-branch-tag-zero` to the inl branch, inr falls through,
 -- `c-jmp` joins. Branch prologue (payload into Input1) unchanged.
-visit-walk : (todoSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTrace
+visit-walk : (todoSlot tv tb : ℕ) → Fun 0 → (s lb : ℕ) → AbstractTrace
 visit-walk todoSlot tv tb (K _) s lb = []
 visit-walk todoSlot tv tb Id    s lb = mov-to-output ∷ push2 todoSlot tv tb
 visit-walk todoSlot tv tb (F ⊕ G) s lb =
@@ -515,7 +515,7 @@ visit-walk todoSlot tv tb (F ⊗ G) s lb =
 -- `reverse` of it, because the visited stack is also LIFO) is LEFT-FIRST — the
 -- order `seqF (G ⊗ H)` specifies. The value stack then has the RIGHT child's
 -- result on top, so this walk pops `G` before `F`.
-rebuild-walk : (valSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTrace
+rebuild-walk : (valSlot tv tb : ℕ) → Fun 0 → (s lb : ℕ) → AbstractTrace
 rebuild-walk valSlot tv tb (K _) s lb = mov-to-output ∷ []
 rebuild-walk valSlot tv tb Id    s lb = pop2 valSlot
 rebuild-walk valSlot tv tb (F ⊕ G) s lb =
@@ -540,7 +540,7 @@ rebuild-walk valSlot tv tb (F ⊗ G) s lb =
 -- Plan 0.63 (iii): the branching skeleton splices the algebra ONCE, so its
 -- decomposition is `I₁ ++ at ++ I₂`. Same list as before; the old form nested
 -- as `(… ++ at ++ B) ++ final-read`.
-cata-br-I₁ : Functor → ℕ → ℕ → AbstractTrace
+cata-br-I₁ : Fun 0 → ℕ → ℕ → AbstractTrace
 cata-br-I₁ F n1 l1 =
   -- init
   (mov-to-output ∷ store-at-slot (n1 ℕ.+ 3) ∷
@@ -578,7 +578,7 @@ cata-br-I₂ n1 l1 =
 
 -- Tier 2 splices the algebra ONCE, so C1 costs it one call site, not two.
 -- The body/join labels and the call's two slots go above the existing ranges.
-cata-trace-branching : Functor → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-branching : Fun 0 → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-branching F bb n1 l1 at =
   -- D131: two more slots above the existing range — `ev` for the fold's
   -- environment and `pr` for the `(env , layer)` argument pair.

@@ -34,6 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae; pureᶠ; actᶠ)
@@ -139,9 +140,9 @@ record νᵖ (F : SFunctor) : Set where
 ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᵛ = ⊤ → M π ⟦ B ⟧ᵛ
 ⟦ A ⇒[ mk-kind One  π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ
 ⟦ A ⇒[ mk-kind Many π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ
-⟦ μ-type F ⟧ᵛ   = Val.⟦ μ-type F ⟧
-⟦ ν-type F pureᶠ ⟧ᵛ = νᵖ (translateF Carrier Carrier F)
-⟦ ν-type F actᶠ ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
+⟦ μ F ⟧ᵛ   = Val.⟦ μ F ⟧
+⟦ ν F pureᶠ ⟧ᵛ = νᵖ (translateF Carrier Carrier F)
+⟦ ν F actᶠ ⟧ᵛ  = νᵈ (translateF Carrier Carrier F)
 ⟦ Int ⟧ᵛ        = Val.⟦ Int {0} ⟧
 ⟦ Float ⟧ᵛ      = Val.⟦ Float {0} ⟧
 ⟦ var _ ⟧ᵛ  = ⊥

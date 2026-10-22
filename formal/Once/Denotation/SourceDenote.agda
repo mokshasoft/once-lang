@@ -23,6 +23,7 @@
 module Once.Denotation.SourceDenote where
 
 open import Once.Internal.Weaken using (⟦wk₀⟧ᴰ)
+import Once.Spec.Type as SpT
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 import Once.Spec.Word as OnceWord
@@ -35,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
-open import Once.Internal.Type using (⟦_⟧T)
+open import Once.Spec.Type using ()
 open import Once.Internal.Context using (Ctx; Usage; lookup; ⟦_⟧ᶜ; _↾_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
 open import Once.Spec.Context using (_▸_)
 open import Once.Surface.Syntax using (Expr)
@@ -98,7 +99,7 @@ lookupᴰ (Γ ▸ A) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- the algebra runs, mirroring `DenotTrace.cata-ev-algᴰ`. The `ℕ` is gone —
 -- the budget lives in `T`, so the children share it instead of each getting
 -- the full `n` and having their traces concatenated.
-cata-ev-algˢ : ∀ {m} {Δₖ : KCtx m} {C : Ty m} {F : Fun m} → WFFun Δₖ F → T∞ (⟦ ⟦ F ⟧T C ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
+cata-ev-algˢ : ∀ {m} {Δₖ : KCtx m} {C : Ty m} {F : Fun m} → WFFun Δₖ F → T∞ (⟦ SpT.⟦ F ⟧F C ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
              → ⟦ F ⟧F (T∞ ⟦ C ⟧ᴰ) → T∞ ⟦ C ⟧ᴰ
 cata-ev-algˢ {C = C} {F = F} wf algComp fc =
   seqF∞ F fc >>=∞ λ layer →

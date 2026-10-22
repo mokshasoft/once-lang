@@ -27,6 +27,7 @@ import Data.List.Relation.Binary.Subset.DecPropositional as SubDec
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -56,8 +57,8 @@ mutual
   agree-on θ θ′ (PAct A B) h =
     cong₂ (λ a b → a ⇒[ mk-kind Many act ] b)
       (agree-on θ θ′ A (λ m → h (∈-++⁺ˡ m))) (agree-on θ θ′ B (λ m → h (∈-++⁺ʳ (ftv A) m)))
-  agree-on θ θ′ (Pμ-type F) h = cong μ-type (agreeF-on θ θ′ F h)
-  agree-on θ θ′ (Pν-type F π) h = cong (λ f → ν-type f π) (agreeF-on θ θ′ F h)
+  agree-on θ θ′ (Pμ-type F) h = cong μ (agreeF-on θ θ′ F h)
+  agree-on θ θ′ (Pν-type F π) h = cong (λ f → ν f π) (agreeF-on θ θ′ F h)
 
   agreeF-on : ∀ {m} (θ θ′ : String → Ty m) (F : PolyFunctor)
     → (∀ {x} → x ∈ ftvF F → θ x ≡ θ′ x) → substPolyF θ F ≡ substPolyF θ′ F
@@ -75,9 +76,9 @@ private
   +-inj refl = refl Data.Product., refl
   ⇒-inj : ∀ {m} {a b c d : Ty m} {k k′} → a ⇒[ k ] b ≡ c ⇒[ k′ ] d → (a ≡ c) Data.Product.× (b ≡ d)
   ⇒-inj refl = refl Data.Product., refl
-  μ-inj : ∀ {m} {f g : Fun m} → μ-type f ≡ μ-type g → f ≡ g
+  μ-inj : ∀ {m} {f g : Fun m} → μ f ≡ μ g → f ≡ g
   μ-inj refl = refl
-  ν-inj : ∀ {m} {f g : Fun m} {π π′} → ν-type f π ≡ ν-type g π′ → f ≡ g
+  ν-inj : ∀ {m} {f g : Fun m} {π π′} → ν f π ≡ ν g π′ → f ≡ g
   ν-inj refl = refl
   K-inj : ∀ {m} {a b : Ty m} → K a ≡ K b → a ≡ b
   K-inj refl = refl

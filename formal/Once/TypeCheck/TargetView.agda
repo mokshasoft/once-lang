@@ -21,6 +21,7 @@ open import Once.Spec.Type using (Ty)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -28,11 +29,11 @@ open import Once.Spec.Grade using (_⊑π_; ⊑-pa; ⊑-act)
 
 -- `cata alg` : μ F ⇒ A
 data CataTarget {m} : Ty m → Set where
-  cata-at    : ∀ F π A → CataTarget (μ-type F ⇒[ mk-kind Many π ] A)
+  cata-at    : ∀ F π A → CataTarget (μ F ⇒[ mk-kind Many π ] A)
   cata-other : ∀ {T} → CataTarget T
 
 cataTarget : ∀ {m} → (T : Ty m) → CataTarget T
-cataTarget (μ-type F ⇒[ mk-kind Many π ] A) = cata-at F π A
+cataTarget (μ F ⇒[ mk-kind Many π ] A) = cata-at F π A
 {-# CATCHALL #-}
 cataTarget _ = cata-other
 
@@ -42,23 +43,23 @@ cataTarget _ = cata-other
 -- reads the grade alone, so it reduces at any codomain.
 data AnaTarget {m} : Ty m → Set where
   loop-at   : ∀ A B → AnaTarget (A ⇒[ mk-kind Many eff ] B)
-  ana-at    : ∀ A π₀ F π → π₀ ⊑π act → AnaTarget (A ⇒[ mk-kind Many π₀ ] ν-type F π)
+  ana-at    : ∀ A π₀ F π → π₀ ⊑π act → AnaTarget (A ⇒[ mk-kind Many π₀ ] ν F π)
   ana-other : ∀ {T} → AnaTarget T
 
 anaTarget : ∀ {m} → (T : Ty m) → AnaTarget T
 anaTarget (A ⇒[ mk-kind Many eff ] B)           = loop-at A B
-anaTarget (A ⇒[ mk-kind Many pure ] ν-type F π) = ana-at A pure F π ⊑-pa
-anaTarget (A ⇒[ mk-kind Many act ] ν-type F π)  = ana-at A act F π ⊑-act
+anaTarget (A ⇒[ mk-kind Many pure ] ν F π) = ana-at A pure F π ⊑-pa
+anaTarget (A ⇒[ mk-kind Many act ] ν F π)  = ana-at A act F π ⊑-act
 {-# CATCHALL #-}
 anaTarget _ = ana-other
 
 -- `In arg` : μ F
 data InTarget {m} : Ty m → Set where
-  in-at    : ∀ F → InTarget (μ-type F)
+  in-at    : ∀ F → InTarget (μ F)
   in-other : ∀ {T} → InTarget T
 
 inTarget : ∀ {m} → (T : Ty m) → InTarget T
-inTarget (μ-type F) = in-at F
+inTarget (μ F) = in-at F
 {-# CATCHALL #-}
 inTarget _ = in-other
 
@@ -114,11 +115,11 @@ data SumTarget {m} : Ty m → Set where
 ------------------------------------------------------------------------
 
 data NuView {m} : Ty m → Set where
-  nu-at    : ∀ F π → NuView (ν-type F π)
+  nu-at    : ∀ F π → NuView (ν F π)
   nu-other : ∀ {T} → NuView T
 
 nuView : ∀ {m} → (T : Ty m) → NuView T
-nuView (ν-type F π) = nu-at F π
+nuView (ν F π) = nu-at F π
 {-# CATCHALL #-}
 nuView _            = nu-other
 

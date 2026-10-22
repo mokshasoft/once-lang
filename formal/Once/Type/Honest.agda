@@ -16,6 +16,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Internal.Type.Honest
@@ -49,8 +50,8 @@ notEmpty?-complete (A * B) (a , b)  = both-c (notEmpty?-complete A a) (notEmpty?
 notEmpty?-complete (A + B) (inj₁ a) = either-l (notEmpty?-complete A a)
 notEmpty?-complete (A + B) (inj₂ b) = either-r (notEmpty? A) (notEmpty?-complete B b)
 notEmpty?-complete (_ ⇒[ _ ] _) ()
-notEmpty?-complete (μ-type _)   ()
-notEmpty?-complete (ν-type _ _) ()
+notEmpty?-complete (μ _)   ()
+notEmpty?-complete (ν _ _) ()
 
 notSingleton?-complete : ∀ (T : Type) → NotSingleton T → ∃[ h ] notSingleton? T ≡ just h
 notSingleton?-complete Unit    ()
@@ -63,8 +64,8 @@ notSingleton?-complete (A + B) (inj₁ (a , b)) = either-l (both-c (notEmpty?-co
 notSingleton?-complete (A + B) (inj₂ (a , b)) =
   either-r (both (notEmpty? A) (notEmpty? B)) (both-c (notSingleton?-complete A a) (notSingleton?-complete B b))
 notSingleton?-complete (_ ⇒[ _ ] _) ()
-notSingleton?-complete (μ-type _)   ()
-notSingleton?-complete (ν-type _ _) ()
+notSingleton?-complete (μ _)   ()
+notSingleton?-complete (ν _ _) ()
 
 dataCod?-complete : ∀ (π : Purity) (B : Type) → DataCod π B → ∃[ h ] dataCod? π B ≡ just h
 dataCod?-complete pure B h       = notEmpty?-complete B h
@@ -81,8 +82,8 @@ honestCod?-complete π Void                    h    = effectful?-complete π h
 honestCod?-complete π (_ ⇒[ _ ] _)            ()
 honestCod?-complete π (A * B)                 h    = dataCod?-complete π (A * B) h
 honestCod?-complete π (A + B)                 h    = dataCod?-complete π (A + B) h
-honestCod?-complete π (μ-type _)              ()
-honestCod?-complete π (ν-type _ _)            ()
+honestCod?-complete π (μ _)              ()
+honestCod?-complete π (ν _ _)            ()
 honestCod?-complete π Int                     tt   = tt , refl
 honestCod?-complete π Float                   tt   = tt , refl
 
@@ -96,7 +97,7 @@ honest?-complete {A ⇒[ mk-kind One  act  ] B} ()
 honest?-complete {A ⇒[ mk-kind q    eff  ] B} ()
 honest?-complete {A * B}      h  = notEmpty?-complete (A * B) h
 honest?-complete {A + B}      h  = notEmpty?-complete (A + B) h
-honest?-complete {μ-type _}   ()
-honest?-complete {ν-type _ _} ()
+honest?-complete {μ _}   ()
+honest?-complete {ν _ _} ()
 honest?-complete {Int}        tt = tt , refl
 honest?-complete {Float}      tt = tt , refl

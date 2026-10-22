@@ -32,7 +32,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 import Once.Semantics.Machine as Val
 open import Once.Internal.GradedOps using (fmapM; prjB; injB; embνᵃ; mapEmbνᵃ)
@@ -98,9 +98,9 @@ RelGV Unit        _ _ = ⊤
 RelGV Void        () _
 RelGV Int         x y = x ≡ y
 RelGV Float       x y = x ≡ y
-RelGV (μ-type F)  x y = x ≡ y
-RelGV (ν-type F pureᶠ) x y = x ∼ᵖᵈ y
-RelGV (ν-type F actᶠ)  x y = x ∼ᵈ y
+RelGV (μ F)  x y = x ≡ y
+RelGV (ν F pureᶠ) x y = x ∼ᵖᵈ y
+RelGV (ν F actᶠ)  x y = x ∼ᵈ y
 RelGV (var _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
 RelGV (A + B) (inj₁ a₁) (inj₁ a₂) = RelGV A a₁ a₂
@@ -363,9 +363,9 @@ right-self Unit r = tt
 right-self Void {()}
 right-self Int r = refl
 right-self Float r = refl
-right-self (μ-type F) r = refl
-right-self (ν-type F pureᶠ) r = pd-self r
-right-self (ν-type F actᶠ) r = ad-self r
+right-self (μ F) r = refl
+right-self (ν F pureᶠ) r = pd-self r
+right-self (ν F actᶠ) r = ad-self r
 right-self (var _) {()}
 right-self (A * B) {_ , _} {_ , _} (r , s) = right-self A r , right-self B s
 right-self (A + B) {inj₁ _} {inj₁ _} r = right-self A r
@@ -383,9 +383,9 @@ mutual
   GV-D Void {()}
   GV-D Int r d = trans r (sym d)
   GV-D Float r d = trans r (sym d)
-  GV-D (μ-type F) r d = trans r (sym d)
-  GV-D (ν-type F pureᶠ) r d = pd-D r d
-  GV-D (ν-type F actᶠ) r d = ad-D r d
+  GV-D (μ F) r d = trans r (sym d)
+  GV-D (ν F pureᶠ) r d = pd-D r d
+  GV-D (ν F actᶠ) r d = ad-D r d
   GV-D (var _) {()}
   GV-D (A * B) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = GV-D A r d , GV-D B s d′
   GV-D (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r d = GV-D A r d

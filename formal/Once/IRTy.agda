@@ -38,7 +38,9 @@ open import Data.Sum using (_⊎_)
 open import Once.Spec.Grade as T using (Quantity; Zero; One; Many; Purity; actᶠ)
 open import Once.Spec.Type as T using (Ty; Fun; Type)
 import Once.Spec.Type as ST
-open import Once.Internal.Type as T using (Functor; wk₀; wk₀F)
+open import Once.Internal.Type as T using (wk₀; wk₀F)
+open import Once.Spec.Type using (Fun)
+import Once.Spec.Type as T
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)
@@ -315,12 +317,12 @@ mutual
   ⌈ A * B    ⌉ = ⌈ A ⌉ T.* ⌈ B ⌉
   ⌈ A + B    ⌉ = ⌈ A ⌉ T.+ ⌈ B ⌉
   ⌈ A ⇛ B    ⌉ = ⌈ A ⌉ T.⇒[ Once.Type.Grade.effK ] ⌈ B ⌉   -- canonical grade
-  ⌈ μ-type F ⌉ = T.μ-type ⌈ F ⌉F
-  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F T.actᶠ   -- canonical grade (the top finite one, D318)
+  ⌈ μ-type F ⌉ = T.μ ⌈ F ⌉F
+  ⌈ ν-type F ⌉ = T.ν ⌈ F ⌉F T.actᶠ   -- canonical grade (the top finite one, D318)
   ⌈ Int      ⌉ = T.Int
   ⌈ Float    ⌉ = T.Float
 
-  ⌈_⌉F : IRFunctor → Functor
+  ⌈_⌉F : IRFunctor → Fun 0
   ⌈ K A   ⌉F = T.K ⌈ A ⌉
   ⌈ Id    ⌉F = T.Id
   ⌈ F ⊕ G ⌉F = ⌈ F ⌉F T.⊕ ⌈ G ⌉F
@@ -350,7 +352,7 @@ mutual
 -- recursion schemes' evaluator (Plan 0.52 M2 S2): their operand lives at
 -- `⟦ F ⟧TI X` (IRTy), while the surface `coerce-functor`/`sem-*` helpers
 -- expect `⟦ ⌈F⌉F ⟧T ⌈X⌉` (Type). Refl/cong by induction on the functor.
-⌈⟧TI-commute : ∀ (F : IRFunctor) (X : IRTy) → ⌈ ⟦ F ⟧TI X ⌉ ≡ T.⟦ ⌈ F ⌉F ⟧T ⌈ X ⌉
+⌈⟧TI-commute : ∀ (F : IRFunctor) (X : IRTy) → ⌈ ⟦ F ⟧TI X ⌉ ≡ T.⟦ ⌈ F ⌉F ⟧F ⌈ X ⌉
 ⌈⟧TI-commute (K A)   X = refl
 ⌈⟧TI-commute Id      X = refl
 ⌈⟧TI-commute (F ⊕ G) X = cong₂ T._+_ (⌈⟧TI-commute F X) (⌈⟧TI-commute G X)
@@ -359,7 +361,7 @@ mutual
 -- The `⌊_⌋` dual: erasure commutes with functor application the other way.
 -- Needed by the elaborator, which builds a `⟦F⟧T A`-shaped algebra (surface)
 -- but feeds it to `Cata`/`Ana` demanding `⟦ eraseF F ⟧TI ⌊A⌋`.
-⌊⟧T-commute : ∀ {m} (F : Fun m) (A : Ty m) → ⌊ T.⟦ F ⟧T A ⌋ ≡ ⟦ eraseF F ⟧TI ⌊ A ⌋
+⌊⟧T-commute : ∀ {m} (F : Fun m) (A : Ty m) → ⌊ T.⟦ F ⟧F A ⌋ ≡ ⟦ eraseF F ⟧TI ⌊ A ⌋
 ⌊⟧T-commute (T.K B)   A = refl
 ⌊⟧T-commute T.Id      A = refl
 ⌊⟧T-commute (F T.⊕ G) A = cong₂ _+_ (⌊⟧T-commute F A) (⌊⟧T-commute G A)

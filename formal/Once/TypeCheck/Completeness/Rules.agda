@@ -29,6 +29,7 @@
 open import Once.Spec.Type using (WFFun)
 open import Once.Spec.Type using (Ty; Fun)
 open import Once.Internal.Type using (wk₀)
+import Once.Spec.Type as T
 open import Once.Functor.Decide using (wfFun?)
 open import Once.Spec.Type using (var; Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -235,8 +236,8 @@ infer-complete-RResolved-view {ctx = ctx} {cn = cn} {T = T} (gv-other ng') eqv _
       (trans (cong proj₁ (helper _ eq'))
             (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
       (cong proj₁ (helperW _ _ wt))
-    go (T.μ-type F)  (con-base ()) eq'
-    go (T.ν-type F _)  (con-base ()) eq'
+    go (T.μ F)  (con-base ()) eq'
+    go (T.ν F _)  (con-base ()) eq'
 
 infer-complete-RResolved {ctx = ctx} {cn = cn} {T = T} ng wn eq conc =
   infer-complete-RResolved-view (classifyGen cn) refl ng wn eq conc
@@ -395,13 +396,13 @@ infer-complete-RApp-terminal {ctx = ctx} arg eqArg
 -- have to be reduced through before the elaborator's success is visible.
 infer-complete-RApp-Out : ∀ {m} {ctx : NamedCtx m} (arg : RawExpr) {F : Fun m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.pureᶠ)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν F T.pureᶠ)}
     {d' f' : ℕ}
     (wfF : WFFun (Classify.NamedCtx.kinds ctx) F)
-  → inferElab ctx arg ≡ success (T.ν-type F T.pureᶠ) Ψ argE d' f'
+  → inferElab ctx arg ≡ success (T.ν F T.pureᶠ) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-        ≡ success (T.⟦ F ⟧T (T.ν-type F T.pureᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+        ≡ success (T.⟦ F ⟧F (T.ν F T.pureᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 -- The move from the elaborator's `(wfFun? (NamedCtx.kinds ctx) F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes
@@ -415,13 +416,13 @@ infer-complete-RApp-Out {ctx = ctx} arg {F} wfF eqArg
 
 infer-complete-RApp-Out-act : ∀ {m} {ctx : NamedCtx m} (arg : RawExpr) {F : Fun m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν-type F T.actᶠ)}
+    {argE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (T.ν F T.actᶠ)}
     {d' f' : ℕ}
     (wfF : WFFun (Classify.NamedCtx.kinds ctx) F)
-  → inferElab ctx arg ≡ success (T.ν-type F T.actᶠ) Ψ argE d' f'
+  → inferElab ctx arg ≡ success (T.ν F T.actᶠ) Ψ argE d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
-        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧T (T.ν-type F T.actᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧F (T.ν F T.actᶠ)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 -- The move from the elaborator's `(wfFun? (NamedCtx.kinds ctx) F, refl)` to the witness's
 -- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
 -- a rewrite would use mentions the very term it must abstract, so it clashes

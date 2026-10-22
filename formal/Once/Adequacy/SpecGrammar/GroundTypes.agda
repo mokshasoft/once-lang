@@ -21,7 +21,7 @@ open import Relation.Nullary using (¬_)
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor; μ-type; ν-type)
+open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Surface.Lexing using (Token; TRParen)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; NoExtra; module Annot; module AliasType; GradeToken; g0; g1; gw)
 import Once.Spec.Type as ST
@@ -43,7 +43,7 @@ private
 module _ {R′ RF′ : Set} (salg : TypeAlg R′ RF′) where
   private module S = TypeAlg salg
 
-  record HomG (h : Type → R′) (hF : Functor → RF′) : Set where
+  record HomG (h : Type → R′) (hF : Fun 0 → RF′) : Set where
     field
       h-unit  : h Unit ≡ S.aUnit
       h-void  : h Void ≡ S.aVoid
@@ -54,15 +54,15 @@ module _ {R′ RF′ : Set} (salg : TypeAlg R′ RF′) where
       h-eff   : ∀ a b → h (a ⇒[ LG.mk-kind LG.Many LG.eff ] b) ≡ S.aEff (h a) (h b)
       h-act   : ∀ a b → h (a ⇒[ LG.mk-kind LG.Many LG.act ] b) ≡ S.aAct (h a) (h b)
       h-arrow : ∀ q a b → h (a ⇒[ LG.mk-kind q LG.pure ] b) ≡ S.aArrow (qS q) (h a) (h b)
-      h-mu    : ∀ f → h (μ-type f) ≡ S.aMu (hF f)
-      h-nu    : ∀ f π → h (ν-type f π) ≡ S.aNu (φS π) (hF f)
+      h-mu    : ∀ f → h (μ f) ≡ S.aMu (hF f)
+      h-nu    : ∀ f π → h (ν f π) ≡ S.aNu (φS π) (hF f)
       hF-k    : ∀ a → hF (K a) ≡ S.fK (h a)
       hF-id   : hF Id ≡ S.fId
       hF-sum  : ∀ f g → hF (f ⊕ g) ≡ S.fSum (hF f) (hF g)
       hF-prod : ∀ f g → hF (f ⊗ g) ≡ S.fProd (hF f) (hF g)
       no-extra : ∀ {ts a r} → ¬ S.Extra ts a r
 
-module Bridge {R′ RF′ : Set} (salg : TypeAlg R′ RF′) (h : Type → R′) (hF : Functor → RF′) (hom : HomG salg h hF) where
+module Bridge {R′ RF′ : Set} (salg : TypeAlg R′ RF′) (h : Type → R′) (hF : Fun 0 → RF′) (hom : HomG salg h hF) where
   private module S = TypeAlg salg
   open Types salg hiding (ParsesAtom; ParsesProd; ParsesProdTail; ParsesSum; ParsesSumTail; ParsesType; ParsesArrowTail)
   open HomG hom
@@ -143,14 +143,14 @@ module Bridge {R′ RF′ : Set} (salg : TypeAlg R′ RF′) (h : Type → R′)
   Back : (List P.Token → Type → List P.Token → Set) → List P.Token → R′ → List Token → Set
   Back Rel toks a′ r′ = Σ[ a ∈ Type ] Σ[ rest ∈ List P.Token ] (Rel toks a rest × h a ≡ a′ × F rest ≡ r′)
 
-  BackF : (List P.Token → Functor → List P.Token → Set) → List P.Token → RF′ → List Token → Set
-  BackF Rel toks f′ r′ = Σ[ f ∈ Functor ] Σ[ rest ∈ List P.Token ] (Rel toks f rest × hF f ≡ f′ × F rest ≡ r′)
+  BackF : (List P.Token → Fun 0 → List P.Token → Set) → List P.Token → RF′ → List Token → Set
+  BackF Rel toks f′ r′ = Σ[ f ∈ (Fun 0) ] Σ[ rest ∈ List P.Token ] (Rel toks f rest × hF f ≡ f′ × F rest ≡ r′)
 
   BackT : (Type → List P.Token → Type → List P.Token → Set) → Type → List P.Token → R′ → List Token → Set
   BackT Rel l toks a′ r′ = Σ[ a ∈ Type ] Σ[ rest ∈ List P.Token ] (Rel l toks a rest × h a ≡ a′ × F rest ≡ r′)
 
-  BackTF : (Functor → List P.Token → Functor → List P.Token → Set) → Functor → List P.Token → RF′ → List Token → Set
-  BackTF Rel l toks f′ r′ = Σ[ f ∈ Functor ] Σ[ rest ∈ List P.Token ] (Rel l toks f rest × hF f ≡ f′ × F rest ≡ r′)
+  BackTF : (Fun 0 → List P.Token → Fun 0 → List P.Token → Set) → Fun 0 → List P.Token → RF′ → List Token → Set
+  BackTF Rel l toks f′ r′ = Σ[ f ∈ (Fun 0) ] Σ[ rest ∈ List P.Token ] (Rel l toks f rest × hF f ≡ f′ × F rest ≡ r′)
 
   atom←   : ∀ {ts a′ r′} → Types.ParsesAtom salg ts a′ r′ → ∀ toks → F toks ≡ ts → Back ParsesAtom toks a′ r′
   prod←   : ∀ {ts a′ r′} → Types.ParsesProd salg ts a′ r′ → ∀ toks → F toks ≡ ts → Back ParsesProd toks a′ r′

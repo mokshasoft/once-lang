@@ -23,6 +23,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (Ty; KCtx; Base; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -54,8 +55,8 @@ mutual
     cong₂ (λ a b → a ⇒[ mk-kind Many eff ] b) (subst-ground θ A gA) (subst-ground θ B gB)
   subst-ground θ (PAct A B) (gA , gB) =
     cong₂ (λ a b → a ⇒[ mk-kind Many act ] b) (subst-ground θ A gA) (subst-ground θ B gB)
-  subst-ground θ (Pμ-type F) g = cong μ-type (subst-groundF θ F g)
-  subst-ground θ (Pν-type F π) g = cong (λ G → ν-type G π) (subst-groundF θ F g)
+  subst-ground θ (Pμ-type F) g = cong μ (subst-groundF θ F g)
+  subst-ground θ (Pν-type F π) g = cong (λ G → ν G π) (subst-groundF θ F g)
 
   subst-groundF : ∀ {m} (θ : String → Ty m) (F : PolyFunctor) (g : GroundF F) → substPolyF θ F ≡ extractGroundF F g
   subst-groundF θ (PK A) g = cong K (subst-ground θ A g)
@@ -201,10 +202,10 @@ mutual
   rigidFree? (A * B)      = both rf-* (rigidFree? A) (rigidFree? B)
   rigidFree? (A + B)      = both rf-+ (rigidFree? A) (rigidFree? B)
   rigidFree? (A ⇒[ k ] B) = both rf-⇒ (rigidFree? A) (rigidFree? B)
-  rigidFree? (μ-type F)   = one rf-μ (rigidFreeF? F)
-  rigidFree? (ν-type F π) = one rf-ν (rigidFreeF? F)
+  rigidFree? (μ F)   = one rf-μ (rigidFreeF? F)
+  rigidFree? (ν F π) = one rf-ν (rigidFreeF? F)
 
-  rigidFreeF? : (F : Functor) → Maybe (RigidFreeF F)
+  rigidFreeF? : (F : Fun 0) → Maybe (RigidFreeF F)
   rigidFreeF? (K A)   = one rf-K (rigidFree? A)
   rigidFreeF? Id      = just rf-Id
   rigidFreeF? (F ⊕ G) = both rf-⊕ (rigidFreeF? F) (rigidFreeF? G)

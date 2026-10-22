@@ -14,6 +14,8 @@
 -- `sem-In = ⟨_⟩∘coerce-μ-in`).
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Once.Spec.Type using (Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -31,7 +33,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; trans; sym; subst; subst-subst-sym)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Type using (Functor; μ-type; ⟦_⟧T)
+open import Once.Spec.Type using (μ)
 open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
@@ -62,9 +64,9 @@ subst-diag : ∀ {H₁ H₂ : Once.Internal.Polynomial.SFunctor} (eq : H₁ ≡ 
 subst-diag refl z = refl
 
 -- The transported `In` morphism `realize` uses (Realize:156 / :104).
-In-ir : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → IR.IR ⌊ ⟦ F ⟧T (μ-type F) ⌋ ⌊ μ-type F ⌋
-In-ir {F = F} wfF = subst (λ o → IR.IR o ⌊ μ-type F ⌋)
-                      (sym (⌊⟧T-commute F (μ-type F)))
+In-ir : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → IR.IR ⌊ SpT.⟦ F ⟧F (μ F) ⌋ ⌊ μ F ⌋
+In-ir {F = F} wfF = subst (λ o → IR.IR o ⌊ μ F ⌋)
+                      (sym (⌊⟧T-commute F (μ F)))
                       (IR.In (wf-⌊⌋ wfF))
 
 -- `⟨_⟩` (the μS "in" constructor) commutes with a subst over the functor eq.
@@ -92,23 +94,23 @@ subst-⟦⟧ᴰᴵ-fix refl x = refl
 -- trees — the domain transport peels (`evalᴰ-subst-dom`), the result
 -- transport moves into the `ret` leaf, and what remains is the μ-twin of
 -- `AnaErased.coerce-νin-erase-D` at the value.
-liftFn-In : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wfF : WFFun Δₖ F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
-  → liftFn fmt ρ {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ return∞ (in-value wfF v)
+liftFn-In : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wfF : WFFun Δₖ F) (v : ⟦ SpT.⟦ F ⟧F (μ F) ⟧ᴰ)
+  → liftFn fmt ρ {SpT.⟦ F ⟧F (μ F)} {μ F} (In-ir wfF) v ≡ return∞ (in-value wfF v)
 liftFn-In {F = F} wfF v =
-  trans (cong (subst T∞ (cohᴰ (μ-type F)))
-              (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF)) v′))
-  (trans (cong (λ arg → subst T∞ (cohᴰ (μ-type F)) (evalᴰ fmt ρ (IR.In (wf-⌊⌋ wfF)) arg))
-               (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ-type F)) v′))
-  (trans (subst-T-return∞ (cohᴰ (μ-type F)) _)
+  trans (cong (subst T∞ (cohᴰ (μ F)))
+              (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ F))) (IR.In (wf-⌊⌋ wfF)) v′))
+  (trans (cong (λ arg → subst T∞ (cohᴰ (μ F)) (evalᴰ fmt ρ (IR.In (wf-⌊⌋ wfF)) arg))
+               (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ F)) v′))
+  (trans (subst-T-return∞ (cohᴰ (μ F)) _)
   (cong return∞
     (trans (subst-id-μS (tF-coh F) _)
     (trans (⟨⟩-subst-nat (tF-coh F) _)
            (cong ⟨_⟩
              (trans (subst-diag (tF-coh F) _)
-             (trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ μ-type F ⟧ᴰ) (tF-coh F))
-                          (sym (coerce-μ-in-subst ⌈ eraseF F ⌉F (cohᴰ (μ-type F)) _)))
-                    (trans (coerce-νin-erase-D wfF (μ-type F) v′)
-                           (cong (λ x → coerce-μ-in F ⟦ μ-type F ⟧ᴰ (coerce-functor-D wfF (μ-type F) x))
-                                 (subst-subst-sym (cohᴰ (⟦ F ⟧T (μ-type F))))))))))))))
+             (trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ μ F ⟧ᴰ) (tF-coh F))
+                          (sym (coerce-μ-in-subst ⌈ eraseF F ⌉F (cohᴰ (μ F)) _)))
+                    (trans (coerce-νin-erase-D wfF (μ F) v′)
+                           (cong (λ x → coerce-μ-in F ⟦ μ F ⟧ᴰ (coerce-functor-D wfF (μ F) x))
+                                 (subst-subst-sym (cohᴰ (SpT.⟦ F ⟧F (μ F))))))))))))))
   where
-    v′ = subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v
+    v′ = subst id (sym (cohᴰ (SpT.⟦ F ⟧F (μ F)))) v

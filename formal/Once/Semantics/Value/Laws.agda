@@ -18,7 +18,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Internal.Polynomial
@@ -41,7 +41,7 @@ postulate
 ------------------------------------------------------------------------
 
 -- | Identity catamorphism: cata with In algebra is identity (PROVEN).
-sem-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-cata wf (sem-In F) x ≡ x
+sem-cata-In-id : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-cata wf (sem-In F) x ≡ x
 sem-cata-In-id {F} wf x =
   let TF = translateF IntRep FloatRep F
       alg′ : ⟦ TF ⟧SF (μS TF) → μS TF
@@ -83,7 +83,7 @@ private
         eq = coerce-μ⁻¹-round-trip wf (⟦ν⟧ F) (unfoldS y)
     in subst (λ z → ⟦ TF ⟧SF-rel _∼S_ z (unfoldS y)) (sym eq) (sfmap-∼S-refl TF (unfoldS y))
 
-sem-CoIn-CoOut : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
+sem-CoIn-CoOut : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
                → sem-CoIn F (sem-CoOut wf x) ≡ x
 sem-CoIn-CoOut {F} wf x = bisimS-to-eq (sem-CoIn F (sem-CoOut wf x)) x (CoIn-CoOut-bisim wf x)
 
@@ -128,6 +128,6 @@ mutual
     sem-ana-Out-rel wf H₁ a₁ b₁ (×injˡ eq) , sem-ana-Out-rel wf H₂ a₂ b₂ (×injʳ eq)
 
 -- | Identity anamorphism: ana with CoOut coalgebra is identity (PROVEN).
-sem-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut wf) x ≡ x
+sem-ana-Out-id : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut wf) x ≡ x
 sem-ana-Out-id {F} wf x =
   bisimS-to-eq (sem-ana F (sem-CoOut wf) x) x (sem-ana-Out-bisim wf x x refl)

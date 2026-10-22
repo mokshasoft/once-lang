@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; pure; act; eff; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor; μ-type; ν-type)
+open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------
@@ -119,21 +119,21 @@ mutual
              → ParsesAtom (TLParen ∷ toks) T rest2
 
     -- 'Mu' functor  — initial algebra of a polynomial functor.
-    pa-mu : ∀ {toks rest} {F : Functor}
+    pa-mu : ∀ {toks rest} {F : Fun 0}
           → ParsesFunctorSum toks F rest
-          → ParsesAtom (TWord "Mu" ∷ toks) (μ-type F) rest
+          → ParsesAtom (TWord "Mu" ∷ toks) (μ F) rest
 
     -- D191: 'Nu' functor — FINAL coalgebra, the dual. Same functor
     -- sub-grammar, so the shrink and bridge lemmas are `pa-mu`'s verbatim.
-    pa-nu : ∀ {toks rest} {F : Functor}
+    pa-nu : ∀ {toks rest} {F : Fun 0}
           → ParsesFunctorSum toks F rest
-          → ParsesAtom (TWord "Nu" ∷ toks) (ν-type F pureᶠ) rest
+          → ParsesAtom (TWord "Nu" ∷ toks) (ν F pureᶠ) rest
 
     -- D313: 'Nu (Act F)' — the stream whose layers RETURN, ν(T ∘ F) over the
     -- finite trees. `Act` is not a functor keyword either.
-    pa-nu-act : ∀ {toks rest} {F : Functor}
+    pa-nu-act : ∀ {toks rest} {F : Fun 0}
               → ParsesFunctorSum toks F (TRParen ∷ rest)
-              → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ toks) (ν-type F actᶠ) rest
+              → ParsesAtom (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ toks) (ν F actᶠ) rest
 
   -- prod ::= atom ('*' atom)*
   data ParsesProd : List Token → Type → List Token → Set where
@@ -194,38 +194,38 @@ mutual
   --   fSum  ::= fProd ('+' fProd)*
   ------------------------------------------------------------------------
 
-  data ParsesFunctorAtom : List Token → Functor → List Token → Set where
+  data ParsesFunctorAtom : List Token → Fun 0 → List Token → Set where
     pfa-id : ∀ rest → ParsesFunctorAtom (TWord "Id" ∷ rest) Id rest
     pfa-k  : ∀ {toks rest} {A : Type}
            → ParsesAtom toks A rest
            → ParsesFunctorAtom (TWord "K" ∷ toks) (K A) rest
-    pfa-paren : ∀ {toks rest1 rest2} {F : Functor}
+    pfa-paren : ∀ {toks rest1 rest2} {F : Fun 0}
               → ParsesFunctorSum toks F rest1
               → rest1 ≡ TRParen ∷ rest2
               → ParsesFunctorAtom (TLParen ∷ toks) F rest2
 
-  data ParsesFunctorProd : List Token → Functor → List Token → Set where
-    pfp-mk : ∀ {toks toks1 rest} {A F : Functor}
+  data ParsesFunctorProd : List Token → Fun 0 → List Token → Set where
+    pfp-mk : ∀ {toks toks1 rest} {A F : Fun 0}
            → ParsesFunctorAtom toks A toks1
            → ParsesFunctorProdTail A toks1 F rest
            → ParsesFunctorProd toks F rest
 
-  data ParsesFunctorProdTail : Functor → List Token → Functor → List Token → Set where
+  data ParsesFunctorProdTail : Fun 0 → List Token → Fun 0 → List Token → Set where
     pfpt-done : ∀ {left toks} → NotStar toks → ParsesFunctorProdTail left toks left toks
-    pfpt-star : ∀ {left toks1 toks2 rest} {B F : Functor}
+    pfpt-star : ∀ {left toks1 toks2 rest} {B F : Fun 0}
               → ParsesFunctorAtom toks1 B toks2
               → ParsesFunctorProdTail (left ⊗ B) toks2 F rest
               → ParsesFunctorProdTail left (TStar ∷ toks1) F rest
 
-  data ParsesFunctorSum : List Token → Functor → List Token → Set where
-    pfs-mk : ∀ {toks toks1 rest} {A F : Functor}
+  data ParsesFunctorSum : List Token → Fun 0 → List Token → Set where
+    pfs-mk : ∀ {toks toks1 rest} {A F : Fun 0}
            → ParsesFunctorProd toks A toks1
            → ParsesFunctorSumTail A toks1 F rest
            → ParsesFunctorSum toks F rest
 
-  data ParsesFunctorSumTail : Functor → List Token → Functor → List Token → Set where
+  data ParsesFunctorSumTail : Fun 0 → List Token → Fun 0 → List Token → Set where
     pfst-done : ∀ {left toks} → NotStarPlus toks → ParsesFunctorSumTail left toks left toks
-    pfst-plus : ∀ {left toks1 toks2 rest} {B F : Functor}
+    pfst-plus : ∀ {left toks1 toks2 rest} {B F : Fun 0}
               → ParsesFunctorProd toks1 B toks2
               → ParsesFunctorSumTail (left ⊕ B) toks2 F rest
               → ParsesFunctorSumTail left (TPlus ∷ toks1) F rest

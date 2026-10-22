@@ -32,7 +32,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Purity; pure; act; eff; Finite; mk-kind; fin)
 import Once.Spec.Grade as G
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
-open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Internal.Type.Sub using (subᶜ-prod; subᶜ-sum; subᶜ-rigid)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
@@ -59,8 +59,8 @@ below Unit        = Void ∷ []
 below Int         = Void ∷ []
 below Float       = Void ∷ []
 below (var i) = Void ∷ []
-below (μ-type F)  = Void ∷ []
-below (ν-type F φ) = Void ∷ map (ν-type F) (finBelow φ)
+below (μ F)  = Void ∷ []
+below (ν F φ) = Void ∷ map (ν F) (finBelow φ)
 below (A * B)     =
   Void ∷ (cartesianProductWith _*_ (below A) (B ∷ []) ++ cartesianProductWith _*_ (A ∷ below A) (below B))
 below (A + B)     =
@@ -108,8 +108,8 @@ private
   void-below Int            = inj₂ (here refl)
   void-below Float          = inj₂ (here refl)
   void-below (var i)    = inj₂ (here refl)
-  void-below (μ-type F)     = inj₂ (here refl)
-  void-below (ν-type F φ)   = inj₂ (here refl)
+  void-below (μ F)     = inj₂ (here refl)
+  void-below (ν F φ)   = inj₂ (here refl)
   void-below (A * B)        = inj₂ (here refl)
   void-below (A + B)        = inj₂ (here refl)
   void-below (A ⇒[ _ ] B)   = inj₂ (here refl)
@@ -131,9 +131,9 @@ at-or-below-<:ᶜ (subᶜ-arr {A = A} {q = q} b g) =
   tail (pair-below (λ π′ B′ → A ⇒[ mk-kind q π′ ] B′) (grade-at-or-below g) (at-or-below-<:ᶜ b))
 at-or-below-<:ᶜ (subᶜ-ν {F = F} {f = φ} {f′ = φ′} g) = ν-step (fin-at-or-below φ φ′ g)
   where
-    ν-step : φ ≡ φ′ ⊎ φ ∈ finBelow φ′ → ν-type F φ ≡ ν-type F φ′ ⊎ ν-type F φ ∈ below (ν-type F φ′)
+    ν-step : φ ≡ φ′ ⊎ φ ∈ finBelow φ′ → ν F φ ≡ ν F φ′ ⊎ ν F φ ∈ below (ν F φ′)
     ν-step (inj₁ refl) = inj₁ refl
-    ν-step (inj₂ m)    = inj₂ (there (∈-map⁺ (ν-type F) m))
+    ν-step (inj₂ m)    = inj₂ (there (∈-map⁺ (ν F) m))
 
 below-complete : ∀ {m} {T : Ty m} {X} → X <:ᶜ T → ¬ X ≡ T → X ∈ below T
 below-complete s ne = strict (at-or-below-<:ᶜ s) ne

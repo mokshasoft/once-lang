@@ -37,6 +37,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym; trans)
 
 import Once.Internal.Type as LT
+import Once.Spec.Type as LT
 
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
@@ -114,10 +115,10 @@ mutual
   expand-id al (a LT.* b)     = cong₂ LT._*_ (expand-id al a) (expand-id al b)
   expand-id al (a LT.+ b)     = cong₂ LT._+_ (expand-id al a) (expand-id al b)
   expand-id al (a LT.⇒[ k ] b) = cong₂ (λ x y → x LT.⇒[ k ] y) (expand-id al a) (expand-id al b)
-  expand-id al (LT.μ-type F)   = cong LT.μ-type (expandF-id al F)
-  expand-id al (LT.ν-type F π) = cong (λ G → LT.ν-type G π) (expandF-id al F)
+  expand-id al (LT.μ F)   = cong LT.μ (expandF-id al F)
+  expand-id al (LT.ν F π) = cong (λ G → LT.ν G π) (expandF-id al F)
 
-  expandF-id : ∀ al (F : LT.Functor) → expandAliasesF al F ≡ F
+  expandF-id : ∀ al (F : LT.Fun 0) → expandAliasesF al F ≡ F
   expandF-id al (LT.K A)   = cong LT.K (expand-id al A)
   expandF-id al LT.Id      = refl
   expandF-id al (F LT.⊕ G) = cong₂ LT._⊕_ (expandF-id al F) (expandF-id al G)

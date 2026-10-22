@@ -14,6 +14,7 @@ open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -314,10 +315,10 @@ curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛ C) (A ⇛ (B ⇛ C
 curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ ⟩))
 
 cataM : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F → AllocMode
-      → IR (⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) (⌊ μ-type F ⌋ ⇛ ⌊ A ⌋)
+      → IR (⌊ ⟦ F ⟧F A ⌋ ⇛ ⌊ A ⌋) (⌊ μ F ⌋ ⇛ ⌊ A ⌋)
 cataM {F = F} {A = A} wfF m =
   curry (Cata (wf-⌊⌋ wfF)
-              (subst (λ o → IR ((⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) * o) ⌊ A ⌋)
+              (subst (λ o → IR ((⌊ ⟦ F ⟧F A ⌋ ⇛ ⌊ A ⌋) * o) ⌊ A ⌋)
                      (⌊⟧T-commute F A)
                      (apply ∘ ⟨ fst , snd ⟩)))
 
@@ -325,10 +326,10 @@ cataM {F = F} {A = A} wfF m =
 -- parameterized `Ana`, so the arm is evaluated once and applied per forced
 -- layer, and it may capture locals.
 anaM : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {φ : Finite} → WFFun Δₖ F → AllocMode
-     → IR (⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) (⌊ A ⌋ ⇛ ⌊ ν-type F φ ⌋)
+     → IR (⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧F A ⌋) (⌊ A ⌋ ⇛ ⌊ ν F φ ⌋)
 anaM {F = F} {A = A} wfF m =
   curry (Ana (wf-⌊⌋ wfF)
-             (subst (λ o → IR ((⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧T A ⌋) * ⌊ A ⌋) o)
+             (subst (λ o → IR ((⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧F A ⌋) * ⌊ A ⌋) o)
                     (⌊⟧T-commute F A)
                     (apply ∘ ⟨ fst , snd ⟩)))
 

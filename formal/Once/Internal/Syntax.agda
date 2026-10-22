@@ -19,7 +19,7 @@ open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type using (Functor)
+open import Once.Spec.Type using (Fun)
 open import Once.Spec.Name using (CanonicalName)
 
 ------------------------------------------------------------------------
@@ -66,7 +66,7 @@ data RawExpr : Set where
   RBinOp     : BinOp → RawExpr → RawExpr → RawExpr
   RUnaryOp   : UnaryOp → RawExpr → RawExpr
   -- The unfold into `ν F`, carrying `F`. Not produced by the parser.
-  RAna       : Functor → RawExpr → RawExpr
+  RAna       : Fun 0 → RawExpr → RawExpr
 
 ------------------------------------------------------------------------
 -- Operator classes (the typing rules for operators are stated by class)

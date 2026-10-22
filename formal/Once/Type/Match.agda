@@ -24,6 +24,7 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -105,12 +106,12 @@ mutual
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero act ] _)  _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind One eff ] _)   _ = nothing
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind One act ] _)   _ = nothing
-  instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
-  instantiateAcc (Pν-type F pureᶠ) (ν-type f pureᶠ) s = instantiateFunctor F f s
+  instantiateAcc (Pμ-type F)     (μ f)      s = instantiateFunctor F f s
+  instantiateAcc (Pν-type F pureᶠ) (ν f pureᶠ) s = instantiateFunctor F f s
   -- D311: no schema writes a `prod` arrow yet (plan 0.117 F).
-  instantiateAcc (Pν-type F actᶠ) (ν-type f actᶠ) s = instantiateFunctor F f s
-  instantiateAcc (Pν-type _ pureᶠ) (ν-type _ actᶠ) _ = nothing
-  instantiateAcc (Pν-type _ actᶠ) (ν-type _ pureᶠ) _ = nothing
+  instantiateAcc (Pν-type F actᶠ) (ν f actᶠ) s = instantiateFunctor F f s
+  instantiateAcc (Pν-type _ pureᶠ) (ν _ actᶠ) _ = nothing
+  instantiateAcc (Pν-type _ actᶠ) (ν _ pureᶠ) _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ act ] _) _ = nothing
   instantiateAcc (PEff _ _)      (_ ⇒[ mk-kind Zero act ] _) _ = nothing
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero eff ] _) _ = nothing
@@ -123,32 +124,32 @@ mutual
   instantiateAcc PUnit           (_ * _)         _ = nothing
   instantiateAcc PUnit           (_ + _)         _ = nothing
   instantiateAcc PUnit           (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc PUnit           (μ-type _)      _ = nothing
-  instantiateAcc PUnit           (ν-type _ _)      _ = nothing
+  instantiateAcc PUnit           (μ _)      _ = nothing
+  instantiateAcc PUnit           (ν _ _)      _ = nothing
   instantiateAcc PUnit           Int             _ = nothing
   instantiateAcc PUnit           Float           _ = nothing
   instantiateAcc PVoid           Unit            _ = nothing
   instantiateAcc PVoid           (_ * _)         _ = nothing
   instantiateAcc PVoid           (_ + _)         _ = nothing
   instantiateAcc PVoid           (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc PVoid           (μ-type _)      _ = nothing
-  instantiateAcc PVoid           (ν-type _ _)      _ = nothing
+  instantiateAcc PVoid           (μ _)      _ = nothing
+  instantiateAcc PVoid           (ν _ _)      _ = nothing
   instantiateAcc PVoid           Int             _ = nothing
   instantiateAcc PVoid           Float           _ = nothing
   instantiateAcc (_ P* _)        Unit            _ = nothing
   instantiateAcc (_ P* _)        Void            _ = nothing
   instantiateAcc (_ P* _)        (_ + _)         _ = nothing
   instantiateAcc (_ P* _)        (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc (_ P* _)        (μ-type _)      _ = nothing
-  instantiateAcc (_ P* _)        (ν-type _ _)      _ = nothing
+  instantiateAcc (_ P* _)        (μ _)      _ = nothing
+  instantiateAcc (_ P* _)        (ν _ _)      _ = nothing
   instantiateAcc (_ P* _)        Int             _ = nothing
   instantiateAcc (_ P* _)        Float           _ = nothing
   instantiateAcc (_ P+ _)        Unit            _ = nothing
   instantiateAcc (_ P+ _)        Void            _ = nothing
   instantiateAcc (_ P+ _)        (_ * _)         _ = nothing
   instantiateAcc (_ P+ _)        (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc (_ P+ _)        (μ-type _)      _ = nothing
-  instantiateAcc (_ P+ _)        (ν-type _ _)      _ = nothing
+  instantiateAcc (_ P+ _)        (μ _)      _ = nothing
+  instantiateAcc (_ P+ _)        (ν _ _)      _ = nothing
   instantiateAcc (_ P+ _)        Int             _ = nothing
   instantiateAcc (_ P+ _)        Float           _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Unit            _ = nothing
@@ -156,8 +157,8 @@ mutual
   instantiateAcc (_ P⇒[ _ ] _)   (_ * _)         _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ + _)         _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   (_ ⇒[ mk-kind _ eff ] _) _ = nothing
-  instantiateAcc (_ P⇒[ _ ] _)   (μ-type _)      _ = nothing
-  instantiateAcc (_ P⇒[ _ ] _)   (ν-type _ _)      _ = nothing
+  instantiateAcc (_ P⇒[ _ ] _)   (μ _)      _ = nothing
+  instantiateAcc (_ P⇒[ _ ] _)   (ν _ _)      _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Int             _ = nothing
   instantiateAcc (_ P⇒[ _ ] _)   Float           _ = nothing
   instantiateAcc (PEff _ _)      Unit            _ = nothing
@@ -173,10 +174,10 @@ mutual
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Zero pure ] _) _ = nothing
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind One pure ] _) _ = nothing
   instantiateAcc (PAct _ _)      (_ ⇒[ mk-kind Many pure ] _) _ = nothing
-  instantiateAcc (PEff _ _)      (μ-type _)      _ = nothing
-  instantiateAcc (PAct _ _)      (μ-type _)      _ = nothing
-  instantiateAcc (PEff _ _)      (ν-type _ _)      _ = nothing
-  instantiateAcc (PAct _ _)      (ν-type _ _)      _ = nothing
+  instantiateAcc (PEff _ _)      (μ _)      _ = nothing
+  instantiateAcc (PAct _ _)      (μ _)      _ = nothing
+  instantiateAcc (PEff _ _)      (ν _ _)      _ = nothing
+  instantiateAcc (PAct _ _)      (ν _ _)      _ = nothing
   instantiateAcc (PEff _ _)      Int             _ = nothing
   instantiateAcc (PAct _ _)      Int             _ = nothing
   instantiateAcc (PEff _ _)      Float           _ = nothing
@@ -186,7 +187,7 @@ mutual
   instantiateAcc (Pμ-type _)     (_ * _)         _ = nothing
   instantiateAcc (Pμ-type _)     (_ + _)         _ = nothing
   instantiateAcc (Pμ-type _)     (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc (Pμ-type _)     (ν-type _ _)      _ = nothing
+  instantiateAcc (Pμ-type _)     (ν _ _)      _ = nothing
   instantiateAcc (Pμ-type _)     Int             _ = nothing
   instantiateAcc (Pμ-type _)     Float           _ = nothing
   {-# CATCHALL #-}
@@ -200,7 +201,7 @@ mutual
   {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     (_ ⇒[ _ ] _)    _ = nothing
   {-# CATCHALL #-}
-  instantiateAcc (Pν-type _ _)     (μ-type _)      _ = nothing
+  instantiateAcc (Pν-type _ _)     (μ _)      _ = nothing
   {-# CATCHALL #-}
   instantiateAcc (Pν-type _ _)     Int             _ = nothing
   {-# CATCHALL #-}
@@ -210,16 +211,16 @@ mutual
   instantiateAcc PInt            (_ * _)         _ = nothing
   instantiateAcc PInt            (_ + _)         _ = nothing
   instantiateAcc PInt            (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc PInt            (μ-type _)      _ = nothing
-  instantiateAcc PInt            (ν-type _ _)      _ = nothing
+  instantiateAcc PInt            (μ _)      _ = nothing
+  instantiateAcc PInt            (ν _ _)      _ = nothing
   instantiateAcc PInt            Float           _ = nothing
   instantiateAcc PFloat          Unit            _ = nothing
   instantiateAcc PFloat          Void            _ = nothing
   instantiateAcc PFloat          (_ * _)         _ = nothing
   instantiateAcc PFloat          (_ + _)         _ = nothing
   instantiateAcc PFloat          (_ ⇒[ _ ] _)    _ = nothing
-  instantiateAcc PFloat          (μ-type _)      _ = nothing
-  instantiateAcc PFloat          (ν-type _ _)      _ = nothing
+  instantiateAcc PFloat          (μ _)      _ = nothing
+  instantiateAcc PFloat          (ν _ _)      _ = nothing
   instantiateAcc PFloat          Int             _ = nothing
   -- A type variable is matched only by a schema variable.
   instantiateAcc PUnit           (var _)         _ = nothing
@@ -274,8 +275,8 @@ mutual
     maybe-pair (λ a b → a ⇒[ mk-kind Many eff ] b) (applySubst s A) (applySubst s B)
   applySubst s (PAct A B)      =
     maybe-pair (λ a b → a ⇒[ mk-kind Many act ] b) (applySubst s A) (applySubst s B)
-  applySubst s (Pμ-type F)     = applySubstFunctor s F >>= λ f → just (μ-type f)
-  applySubst s (Pν-type F π)   = applySubstFunctor s F >>= λ f → just (ν-type f π)
+  applySubst s (Pμ-type F)     = applySubstFunctor s F >>= λ f → just (μ f)
+  applySubst s (Pν-type F π)   = applySubstFunctor s F >>= λ f → just (ν f π)
 
   applySubstFunctor : ∀ {m} → Subst m → PolyFunctor → Maybe (Fun m)
   applySubstFunctor s (PK A)   = applySubst s A >>= λ a → just (K a)

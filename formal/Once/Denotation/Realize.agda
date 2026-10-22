@@ -37,7 +37,7 @@ open import Data.String using (_++_)
 open import Once.Spec.Grade using (Many; Purity; mk-kind)
 open import Once.Type.Grade using (≤q-Many)
 open import Once.Spec.Type using (Type; _⇒[_]_)
-open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (sub-arr)
 open import Once.Internal.Type.WellFormed using (con-fun)
 open import Once.Spec.Sub using (_⊔_≔_)
@@ -129,7 +129,7 @@ realize (t-sub d p)             = coerce p (realize-infer d)
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)
 realize (t-In-app-check {F = F} wfF d) =
-  morph-app (subst (λ o → IR o ⌊ μ-type F ⌋) (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))) (realize d)
+  morph-app (subst (λ o → IR o ⌊ μ F ⌋) (sym (⌊⟧T-commute F (μ F))) (IR.In (wf-⌊⌋ wfF))) (realize d)
 realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr) (realize d)
@@ -244,8 +244,8 @@ realize-infer (t-snd-app d)      = morph-app IR.snd      (realize-infer d)
 -- direction — `In` lands AT `⌊ μ-type F ⌋`, `Out` STARTS there.
 realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _ Z) ceq
-    (morph-app (subst (λ o → IR ⌊ ν-type F Once.Spec.Grade.pureᶠ ⌋ o)
-                      (sym (⌊⟧T-commute F (ν-type F Once.Spec.Grade.pureᶠ)))
+    (morph-app (subst (λ o → IR ⌊ ν F Once.Spec.Grade.pureᶠ ⌋ o)
+                      (sym (⌊⟧T-commute F (ν F Once.Spec.Grade.pureᶠ)))
                       (IR.Out (wf-⌊⌋ wfF)))
                (realize-infer d))
 -- D233/D318: at an ACTING stream the force is suspended (`curry (Out ∘ fst)`),
@@ -253,8 +253,8 @@ realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
 realize-infer {ctx = ctx} (t-Out-eff-app-infer {F = F} wfF ceq d) =
   subst (λ Z → Expr (NamedCtx.debruijn ctx) _
                  (Once.Spec.Type.Unit ⇒[ mk-kind Many Once.Spec.Grade.act ] Z)) ceq
-    (morph-app (IR.curry (subst (λ o → IR ⌊ ν-type F Once.Spec.Grade.actᶠ ⌋ o)
-                                (sym (⌊⟧T-commute F (ν-type F Once.Spec.Grade.actᶠ)))
+    (morph-app (IR.curry (subst (λ o → IR ⌊ ν F Once.Spec.Grade.actᶠ ⌋ o)
+                                (sym (⌊⟧T-commute F (ν F Once.Spec.Grade.actᶠ)))
                                 (IR.Out (wf-⌊⌋ wfF))
                           IR.∘ IR.fst))
                (realize-infer d))

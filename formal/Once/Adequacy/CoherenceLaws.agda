@@ -23,6 +23,8 @@
 -- naturality, by associativity on either side.
 ------------------------------------------------------------------------
 
+import Once.Spec.Type as SpT
+
 open import Data.Nat using (ℕ)
 open import Once.Internal.Weaken using (RelD-bool)
 open import Once.Denotation.ValueRel using (RelS-mono)
@@ -40,7 +42,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; fin; act)
 open import Once.Spec.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (μ-type; ⟦_⟧T)
+open import Once.Spec.Type using (μ)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-void)
 open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_)
@@ -209,13 +211,13 @@ module _ {m n} {Γ : Ctx m n} where
              → f ≈ˢ f′ → curry' {π₀ = π₀} f ≈ˢ curry' f′
   curry-congˢ ef σ rσ r = RelS-bind (ef σ rσ r) λ rf → relS-ret (λ ra → relS-ret (λ rb → rf (ra , rb)))
 
-  cata-congˢ : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  cata-congˢ : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A)}
             → g ≈ˢ g′ → cata {Γ = Γ} wf g ≈ˢ cata wf g′
   cata-congˢ {A = A} {F = F} {π = π} wf eg σ rσ r =
     RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {A = A} {F = F} {π = π} wf ralg)
 
   -- D273: the coalgebra lives in the context and is bound once, as `cata`'s.
-  ana-congˢ : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A)}
+  ana-congˢ : ∀ {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {Ψ π₀ φ} (wf : WFFun Δₖ F) {g g′ : Expr Γ Ψ (A ⇒[ mk-kind Many (fin φ) ] SpT.⟦ F ⟧F A)}
            → g ≈ˢ g′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} wf g ≈ˢ ana wf g′
   ana-congˢ {A = A} {F = F} {φ = φ} wf eg σ rσ r =
     RelS-bind (eg σ rσ (restrict-rel {Γ = Γ} _ r)) λ rc → relS-ret (λ ra → relS-ret (ana-clo-rel {A = A} {F = F} {φ = φ} wf rc ra))
@@ -416,9 +418,9 @@ module _ {m : ℕ} {A A′ : Ty m} (p : A <: A′) where
   seq-self (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) = fr-pair (seq-self F r₁) (seq-self G r₂)
 
 -- A layer converted up by `p` and back down by `d` relates to the layer.
-layer-rel : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
+layer-rel : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} (d : SpT.⟦ F ⟧F A′ <: SpT.⟦ F ⟧F A) (p : A <: A′)
               {l₁ : ⟦ F ⟧F ⟦ A′ ⟧ᴰ} {l₂ : ⟦ F ⟧F ⟦ A ⟧ᴰ}
-          → Rl p F l₁ l₂ → RelD (⟦ F ⟧T A) (⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ l₁)) (coerce-functor⁻¹-D wf A l₂)
+          → Rl p F l₁ l₂ → RelD (SpT.⟦ F ⟧F A) (⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ l₁)) (coerce-functor⁻¹-D wf A l₂)
 layer-rel {F = K B} (wf-K b) d p {l₁} refl rewrite <:-unique d (<:-refl B) = <:-refl-rel B (base-refl b _)
 layer-rel wf-Id {A} d p {l₁} {l₂} (ra , rb) = RelD-trans A (<:-rel d ra) back
   where
@@ -432,16 +434,16 @@ layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj�
 layer-rel (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
 
 cata-core : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} {π π′ : Purity}
-              (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π′)
-              {valg valg′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
-          → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) valg valg′
+              (d : SpT.⟦ F ⟧F A′ <: SpT.⟦ F ⟧F A) (p : A <: A′) (g : π ⊑π π′)
+              {valg valg′ : ⟦ SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A ⟧ᴰ}
+          → RelD (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A) valg valg′
           → ∀ (x : ⟦μ⟧ F)
           → Rc p (sem-cata wf (cata-ev-algˢ {C = A′} {F = F} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
                  (sem-cata wf (cata-ev-algˢ {C = A} {F = F} wf (return∞ valg′)) x)
 cata-core {F = F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
   cataS-rel {translateF Carrier Carrier F} (Rc p) algR x
   where
-    self′ = RelD-rightself (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) ralg
+    self′ = RelD-rightself (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A) ralg
     algR : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (Rc p) y₁ y₂
          → Rc p (cata-ev-algˢ {C = A′} {F = F} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁))
                 (cata-ev-algˢ {C = A} {F = F} wf (return∞ valg′) (coerce-μ-out wf _ y₂))
@@ -453,10 +455,10 @@ cata-core {F = F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
 
 module _ {m n} {Γ : Ctx m n} where
 
-  cata-coerceˢ : ∀ {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π)
-                  (alg : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
+  cata-coerceˢ : ∀ {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : SpT.⟦ F ⟧F A′ <: SpT.⟦ F ⟧F A) (p : A <: A′) (g : π ⊑π π)
+                  (alg : Expr Γ Ψ (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A))
               → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
-                ≈ˢ coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
+                ≈ˢ coerce (sub-arr (<:-refl (μ F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
   cata-coerceˢ wf d p g alg σ rσ re =
     RelS-assoc₂ (SD-rel rσ alg (restrict-rel {Γ = Γ} _ re)) λ ralg →
       retargetˡ refl (retargetʳ refl (relS-ret λ { {x} refl → proj₁ (cata-core wf d p g ralg x) }))

@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
 import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
-open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-arr; subᶜ-ν)
 open import Once.Internal.Type.Sub using (<:ᶜ-refl; subᶜ-prod; subᶜ-sum)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
@@ -55,7 +55,7 @@ private
   +-inj refl = refl , refl
   ⇒-inj : ∀ {m} {A A′ B B′ : Ty m} {q q′ π π′} → (A ⇒[ mk-kind q π ] B) ≡ (A′ ⇒[ mk-kind q′ π′ ] B′) → (π ≡ π′) × (B ≡ B′)
   ⇒-inj refl = refl , refl
-  ν-inj : ∀ {m} {F F′ : Fun m} {φ φ′} → ν-type F φ ≡ ν-type F′ φ′ → φ ≡ φ′
+  ν-inj : ∀ {m} {F F′ : Fun m} {φ φ′} → ν F φ ≡ ν F′ φ′ → φ ≡ φ′
   ν-inj refl = refl
 
 -- Each type `below T` lists is under `T`, and is not `T`.
@@ -66,11 +66,11 @@ below-sound Unit        (here refl) = subᶜ-void , λ ()
 below-sound (var i)     (here refl) = subᶜ-void , λ ()
 below-sound Int         (here refl) = subᶜ-void , λ ()
 below-sound Float       (here refl) = subᶜ-void , λ ()
-below-sound (μ-type F)  (here refl) = subᶜ-void , λ ()
-below-sound (ν-type F φ) (here refl) = subᶜ-void , λ ()
-below-sound (ν-type F φ) {X} (there m) = at (∈-map⁻ (ν-type F) m)
+below-sound (μ F)  (here refl) = subᶜ-void , λ ()
+below-sound (ν F φ) (here refl) = subᶜ-void , λ ()
+below-sound (ν F φ) {X} (there m) = at (∈-map⁻ (ν F) m)
   where
-    at : (Σ[ φ′ ∈ _ ] (φ′ ∈ finBelow φ) × (X ≡ ν-type F φ′)) → (X <:ᶜ ν-type F φ) × (X ≢ ν-type F φ)
+    at : (Σ[ φ′ ∈ _ ] (φ′ ∈ finBelow φ) × (X ≡ ν F φ′)) → (X <:ᶜ ν F φ) × (X ≢ ν F φ)
     at (φ′ , m′ , refl) = let (g , n) = fin-below φ m′ in subᶜ-ν g , λ e → n (ν-inj e)
 below-sound (A * B) (here refl) = subᶜ-void , λ ()
 below-sound (A * B) {X} (there m) = cases (∈-++⁻ (cartesianProductWith _*_ (below A) (B ∷ [])) m)

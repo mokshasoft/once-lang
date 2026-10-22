@@ -25,6 +25,7 @@ module Once.Fusion.Correct where
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ⟦_⟧F)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -71,19 +72,19 @@ open import Once.Spec.Float.Dyadic using (Dyadic)
 open import Once.Internal.Value Carrier Carrier using (sem-cata; sem-para; sem-ana; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 open import Once.Semantics.Value Carrier Carrier using (sem-fuseNat; sem-fuseNat-cong)
 
-fusion-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧)
+fusion-Cata-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧F A) A) (x : ⟦ μ F ⟧)
                  → eval alg ≡ eval alg'
                  → eval (Cata wf alg) x ≡ eval (Cata wf alg') x
 fusion-Cata-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-cata wf (λ fa → ev (coerce-functor⁻¹ F _ fa)) x) eq
 
-fusion-Para-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧T (μ-type F * A)) A) (x : ⟦ μ-type F ⟧)
+fusion-Para-cong : ∀ {F A} (wf : _) (alg alg' : IR (⟦ F ⟧F (μ F * A)) A) (x : ⟦ μ F ⟧)
                  → eval alg ≡ eval alg'
                  → eval (Para wf alg) x ≡ eval (Para wf alg') x
 fusion-Para-cong {F} wf alg alg' x eq =
   cong (λ ev → sem-para wf (λ fx → ev (coerce-functor⁻¹ F _ fx)) x) eq
 
-fusion-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
+fusion-Ana-cong : ∀ {F A} (wf : _) (coalg coalg' : IR A (⟦ F ⟧F A)) (x : ⟦ A ⟧)
                 → eval coalg ≡ eval coalg'
                 → eval (Ana wf coalg) x ≡ eval (Ana wf coalg') x
 fusion-Ana-cong {F} {A} wf coalg coalg' x eq =

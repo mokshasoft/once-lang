@@ -46,7 +46,7 @@ open RelS using (forceS)
 open import Once.Denotation.ValueRel
 open import Once.Internal.StreamInf using (νᴵ)
 open import Once.Spec.Type as Ty using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
-open import Once.Internal.Type as Ty using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Internal.FunctorMeaning using (translateF)
 import Once.Internal.Type.WellFormed as LW
@@ -308,8 +308,8 @@ mutual
   RelD-coh (A ⇒[ mk-kind Many π ] B) {f} {g} r {a} {a′} ra =
     ≡ˢ (arr-subst (cohᴰ A) (cohᴰ B) f a) (arr-subst (cohᴰ A) (cohᴰ B) g a′)
        (RelS-subst₂ (cohᴰ B) (RelS-mono (RelD-coh B) (r (RelD-coh⁻ A ra))))
-  RelD-coh (μ-type F) r = cong (subst idᶠ (cohᴰ (μ-type F))) r
-  RelD-coh (ν-type F π) r = srel-subst _ r
+  RelD-coh (μ F) r = cong (subst idᶠ (cohᴰ (μ F))) r
+  RelD-coh (ν F π) r = srel-subst _ r
   RelD-coh Int r = r
   RelD-coh Float r = r
   RelD-coh (var _) {()}
@@ -334,8 +334,8 @@ mutual
   RelD-coh⁻ (A ⇒[ mk-kind Many π ] B) {f} {g} r {a} {a′} ra =
     ≡ˢ (arr-subst⁻ (cohᴰ A) (cohᴰ B) f a) (arr-subst⁻ (cohᴰ A) (cohᴰ B) g a′)
        (RelS-subst₂ (sym (cohᴰ B)) (RelS-mono (RelD-coh⁻ B) (r (RelD-coh A ra))))
-  RelD-coh⁻ (μ-type F) r = cong (subst idᶠ (sym (cohᴰ (μ-type F)))) r
-  RelD-coh⁻ (ν-type F π) r = srel-subst⁻ _ r
+  RelD-coh⁻ (μ F) r = cong (subst idᶠ (sym (cohᴰ (μ F)))) r
+  RelD-coh⁻ (ν F π) r = srel-subst⁻ _ r
   RelD-coh⁻ Int r = r
   RelD-coh⁻ Float r = r
   RelD-coh⁻ (var _) {()}

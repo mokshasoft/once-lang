@@ -46,7 +46,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; act; eff; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Type using (Functor; μ-type; ν-type)
+open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.TypeRelation
@@ -114,19 +114,19 @@ ParseArrowTailD left toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] Pa
 
 -- Functor sub-grammar (body of `Mu`).
 ParseFunctorAtomD : List Token → Set
-ParseFunctorAtomD toks = Maybe (Σ[ F ∈ Functor ] Σ[ rest ∈ List Token ] ParsesFunctorAtom toks F rest)
+ParseFunctorAtomD toks = Maybe (Σ[ F ∈ (Fun 0) ] Σ[ rest ∈ List Token ] ParsesFunctorAtom toks F rest)
 
 ParseFunctorProdD : List Token → Set
-ParseFunctorProdD toks = Maybe (Σ[ F ∈ Functor ] Σ[ rest ∈ List Token ] ParsesFunctorProd toks F rest)
+ParseFunctorProdD toks = Maybe (Σ[ F ∈ (Fun 0) ] Σ[ rest ∈ List Token ] ParsesFunctorProd toks F rest)
 
-ParseFunctorProdTailD : Functor → List Token → Set
-ParseFunctorProdTailD left toks = Maybe (Σ[ F ∈ Functor ] Σ[ rest ∈ List Token ] ParsesFunctorProdTail left toks F rest)
+ParseFunctorProdTailD : Fun 0 → List Token → Set
+ParseFunctorProdTailD left toks = Maybe (Σ[ F ∈ (Fun 0) ] Σ[ rest ∈ List Token ] ParsesFunctorProdTail left toks F rest)
 
 ParseFunctorSumD : List Token → Set
-ParseFunctorSumD toks = Maybe (Σ[ F ∈ Functor ] Σ[ rest ∈ List Token ] ParsesFunctorSum toks F rest)
+ParseFunctorSumD toks = Maybe (Σ[ F ∈ (Fun 0) ] Σ[ rest ∈ List Token ] ParsesFunctorSum toks F rest)
 
-ParseFunctorSumTailD : Functor → List Token → Set
-ParseFunctorSumTailD left toks = Maybe (Σ[ F ∈ Functor ] Σ[ rest ∈ List Token ] ParsesFunctorSumTail left toks F rest)
+ParseFunctorSumTailD : Fun 0 → List Token → Set
+ParseFunctorSumTailD left toks = Maybe (Σ[ F ∈ (Fun 0) ] Σ[ rest ∈ List Token ] ParsesFunctorSumTail left toks F rest)
 
 ------------------------------------------------------------------------
 -- Mutual WF parsers
@@ -164,10 +164,10 @@ parseArrowTailWF : (left : Type) (toks : List Token)
 -- | Functor sub-grammar parsers (the body of `Mu`).
 parseFunctorAtomWF : (toks : List Token) → Acc _<_ (length toks) → ParseFunctorAtomD toks
 parseFunctorProdWF : (toks : List Token) → Acc _<_ (length toks) → ParseFunctorProdD toks
-parseFunctorProdTailWF : (left : Functor) (toks : List Token)
+parseFunctorProdTailWF : (left : Fun 0) (toks : List Token)
                        → Acc _<_ (length toks) → ParseFunctorProdTailD left toks
 parseFunctorSumWF : (toks : List Token) → Acc _<_ (length toks) → ParseFunctorSumD toks
-parseFunctorSumTailWF : (left : Functor) (toks : List Token)
+parseFunctorSumTailWF : (left : Fun 0) (toks : List Token)
                       → Acc _<_ (length toks) → ParseFunctorSumTailD left toks
 
 -- | Parse `( functor )`: inner functor-sum then TRParen suffix.
@@ -226,7 +226,7 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
   | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Mu"
 ... | yes refl with parseFunctorSumWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
-...   | just (F , rest1 , dF) = just (μ-type F , rest1 , pa-mu dF)
+...   | just (F , rest1 , dF) = just (μ F , rest1 , pa-mu dF)
 -- D191: Nu F — the FINAL coalgebra, `Mu`'s mirror. Without this the ν half
 -- of the language had no surface type, so an `ana` could not be annotated
 -- and the ν codegen path was unreachable from source (D189).
@@ -282,7 +282,7 @@ parseTypeAtomWF (TEOF       ∷ _) _ = nothing
 -- only needs "the functor parser rejects `( Act`".
 nuAct : ∀ {r} → ParseFunctorSumD r → ParseAtomD (TWord "Nu" ∷ TLParen ∷ TWord "Act" ∷ r)
 nuAct nothing                          = nothing
-nuAct (just (F , TRParen ∷ r2 , dF))   = just (ν-type F actᶠ , r2 , pa-nu-act dF)
+nuAct (just (F , TRParen ∷ r2 , dF))   = just (ν F actᶠ , r2 , pa-nu-act dF)
 {-# CATCHALL #-}
 nuAct (just (F , _ , dF))              = nothing
 
@@ -300,7 +300,7 @@ parseNuActWF _ _ = nothing
 
 nuTry : (rest : List Token) → WfRec _<_ (Acc _<_) (length (TWord "Nu" ∷ rest))
       → ParseFunctorSumD rest → ParseAtomD (TWord "Nu" ∷ rest)
-nuTry rest rec (just (F , r , dF)) = just (ν-type F pureᶠ , r , pa-nu dF)
+nuTry rest rec (just (F , r , dF)) = just (ν F pureᶠ , r , pa-nu dF)
 nuTry rest rec nothing             = parseNuActWF rest rec
 
 parseNuWF rest rec = nuTry rest rec (parseFunctorSumWF rest (rec (s≤s ≤-refl)))

@@ -37,7 +37,7 @@ import Once.Internal.Typing.Scope
 open import Once.Spec.Grade as T using (Purity; Quantity)
 import Once.Internal.Type.Poly as T
 open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type as T using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Syntax as Raw using (RawExpr)
 open import Once.Internal.Typing.Scope using (NamedCtx; extendNamedCtx)
 open import Once.Internal.Typing
@@ -103,10 +103,10 @@ mutual
     ii-apply-eff : ∀ {Ψ Ψ′ π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
                      {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many π ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many π′ ] B′) * A′) ⨾ Ψ′}
                  → Rii d d′ → Rii (t-apply-eff-app-infer {g = g} d) (t-apply-eff-app-infer {g = g′} d′)
-    ii-Out : ∀ {F F′ : Fun m} {w w′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ν-type F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pureᶠ ⨾ Ψ′}
+    ii-Out : ∀ {F F′ : Fun m} {w w′ Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ν F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν F′ T.pureᶠ ⨾ Ψ′}
            → Rii d d′ → Rii (t-Out-app-infer w refl d) (t-Out-app-infer w′ refl d′)
     ii-Out-eff : ∀ {F F′ w w′ Ψ Ψ′}
-                   {d : ctx ⊢ᵢ e ∶ ν-type F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.actᶠ ⨾ Ψ′}
+                   {d : ctx ⊢ᵢ e ∶ ν F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν F′ T.actᶠ ⨾ Ψ′}
                → Rii d d′ → Rii (t-Out-eff-app-infer w refl d) (t-Out-eff-app-infer w′ refl d′)
     -- `t-app` / `t-effApp`: the argument is CHECKED at the head's domain, so the
     -- two heads' types are aligned (the argument's context does not depend on it,
@@ -161,11 +161,11 @@ mutual
             → Rcc df df′ → Rcc dg dg′ → Rcc (t-pair-morph-check df dg) (t-pair-morph-check df′ dg′)
     cc-curry : ∀ {Ψ Ψ′} {d : ctx ⊢ᶜ e ∶ ((A * B) ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ((A * B) ⇒[ T.mk-kind T.Many π ] C) ⨾ Ψ′}
              → ∀ {u u′} → Rcc d d′ → Rcc (t-curry-check {π₀ = π₀} {u = u} d) (t-curry-check {u = u′} d′)
-    cc-cata : ∀ {F : Fun m} {w w′ Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
-                {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ′}
+    cc-cata : ∀ {F : Fun m} {w w′ Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧F A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
+                {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧F A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ′}
             → ∀ {u u′} → Rcc a a′ → Rcc (t-cata-check {ctx = ctx} {F = F} {u = u} w a) (t-cata-check {F = F} {u = u′} w′ a′)
-    cc-ana : ∀ {F : Fun m} {w w′ Ψ Ψ′} {φ : T.Finite} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧T A)) ⨾ Ψ}
-               {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧T A)) ⨾ Ψ′}
+    cc-ana : ∀ {F : Fun m} {w w′ Ψ Ψ′} {φ : T.Finite} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧F A)) ⨾ Ψ}
+               {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many (T.fin φ) ] (T.⟦ F ⟧F A)) ⨾ Ψ′}
            → ∀ {u u′ ua ua′} → Rcc a a′ → Rcc (t-ana-check {ctx = ctx} {F = F} {π₀ = π₀} {u = u} {ua = ua} w a) (t-ana-check {F = F} {u = u′} {ua = ua′} w′ a′)
     cc-loop : ∀ {Ψ Ψ′} {a : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many T.act ] (B + A)) ⨾ Ψ}
                 {a′ : ctx ⊢ᶜ e ∶ (A ⇒[ T.mk-kind T.Many T.act ] (B + A)) ⨾ Ψ′}
@@ -175,7 +175,7 @@ mutual
            → ∀ {u u′} → Rcc b b′ → Rcc (t-lam {q = q} {π = π} {u = u} ≤p b) (t-lam {u = u′} ≤p′ b′)
     cc-pair-lit : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {a : ctx ⊢ᶜ e₁ ∶ A ⨾ Ψ₁} {a′ : ctx ⊢ᶜ e₁ ∶ A ⨾ Ψ₁′} {b : ctx ⊢ᶜ e₂ ∶ B ⨾ Ψ₂} {b′ : ctx ⊢ᶜ e₂ ∶ B ⨾ Ψ₂′}
                 → Rcc a a′ → Rcc b b′ → Rcc (t-pair-lit-check a b) (t-pair-lit-check a′ b′)
-    cc-In : ∀ {F : Fun m} {w w′ Ψ Ψ′} {d : ctx ⊢ᶜ e ∶ T.⟦ F ⟧T (μ-type F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ T.⟦ F ⟧T (μ-type F) ⨾ Ψ′}
+    cc-In : ∀ {F : Fun m} {w w′ Ψ Ψ′} {d : ctx ⊢ᶜ e ∶ T.⟦ F ⟧F (μ F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ T.⟦ F ⟧F (μ F) ⨾ Ψ′}
           → Rcc d d′ → Rcc (t-In-app-check {F = F} w d) (t-In-app-check {F = F} w′ d′)
     cc-apply : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ T.mk-kind T.Many T.pure ] B) * A) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ T.mk-kind T.Many T.pure ] B) * A′) ⨾ Ψ′}
              → Rii d d′ → Rcc (t-apply-check d) (t-apply-check d′)
@@ -222,8 +222,8 @@ mutual
     dc-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᶜ e₁ ∶ (A ⇒[ T.mk-kind T.Many π ] B₁) ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᶜ e₂ ∶ (A ⇒[ T.mk-kind T.Many π ] C₁) ⨾ Ψ₂′}
             → Rdc df df′ → Rdc dg dg′ → Rdc (d-pair df dg) (t-pair-morph-check df′ dg′)
-    dc-cata : ∀ {F : Fun m} {w w′ Ψ Ψ′} {a : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
-                {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧T A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ′}
+    dc-cata : ∀ {F : Fun m} {w w′ Ψ Ψ′} {a : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧F A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
+                {a′ : ctx ⊢ᶜ e ∶ ((T.⟦ F ⟧F A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ′}
             → ∀ {u u′} → Ric a a′ → Rdc (d-cata {ctx = ctx} {F = F} {u = u} w a) (t-cata-check {F = F} {u = u′} w′ a′)
     dc-poly : ∀ {x s s′ sd sc b b′ pr pr′ ln ln′ li li′ p p′ g g′ as ki ki′ gr} {inc : T.CodVarsInDom sd sc}
       → Rdc {ctx = ctx} (d-poly {x = x} {A = A} {B = B} {π = π} {π′ = π′} {schema = s} {sd = sd} {sc = sc} {body = b} {prefix = pr}
@@ -259,8 +259,8 @@ mutual
     dd-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {df : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B ⨾ Ψ₁} {df′ : ctx ⊢ᵈ e₁ ∶ A ⇒[ π ]↦ B′ ⨾ Ψ₁′}
                 {dg : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C ⨾ Ψ₂} {dg′ : ctx ⊢ᵈ e₂ ∶ A ⇒[ π ]↦ C′ ⨾ Ψ₂′}
             → Rdd df df′ → Rdd dg dg′ → Rdd (d-pair df dg) (d-pair df′ dg′)
-    dd-cata : ∀ {F : Fun m} {w w′ Ψ Ψ′} {a : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧T A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
-                {a′ : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧T A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ′}
+    dd-cata : ∀ {F : Fun m} {w w′ Ψ Ψ′} {a : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧F A) ⇒[ T.mk-kind T.Many π ] A) ⨾ Ψ}
+                {a′ : ctx ⊢ᵢ e ∶ ((T.⟦ F ⟧F A′) ⇒[ T.mk-kind T.Many π ] A′) ⨾ Ψ′}
             → ∀ {u u′} → Rii a a′ → Rdd (d-cata {ctx = ctx} {F = F} {u = u} w a) (d-cata {F = F} {u = u′} w′ a′)
     dd-poly : ∀ {x s s′ sd sc sd′ sc′ b b′ pr pr′ ln ln′ li li′ p p′ g g′ as as′ ki ki′ gr gr′}
                 {inc : T.CodVarsInDom sd sc} {inc′ : T.CodVarsInDom sd′ sc′}

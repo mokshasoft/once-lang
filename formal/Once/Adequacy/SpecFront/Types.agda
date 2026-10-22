@@ -86,7 +86,7 @@ join-L {C′ = C′} J ra rb = C′ , tyR C′ , subst₂ (λ X Y → X SS.⊔ Y
 ------------------------------------------------------------------------
 
 -- A functor applied.
-⟦⟧-R : ∀ {F F′ A A′} → FunR Δ F F′ → TyR Δ A A′ → TyR Δ (LT.⟦ F ⟧T A) (ST.⟦ F′ ⟧F A′)
+⟦⟧-R : ∀ {F F′ A A′} → FunR Δ F F′ → TyR Δ A A′ → TyR Δ (LT.⟦ F ⟧F A) (ST.⟦ F′ ⟧F A′)
 ⟦⟧-R (r-K b)   a = b
 ⟦⟧-R r-Id      a = a
 ⟦⟧-R (r-⊕ f g) a = r-+ (⟦⟧-R f a) (⟦⟧-R g a)

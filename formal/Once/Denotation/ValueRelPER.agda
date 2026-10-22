@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
-open import Once.Internal.Type using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Internal.Iterative using (T∞)
 open T∞ using (force)
@@ -154,8 +154,8 @@ mutual
   RelD-sym (A ⇒[ mk-kind Zero π ] B) r = RelS-sym (RelD-sym B) r
   RelD-sym (A ⇒[ mk-kind One π ] B) r ra = RelS-sym (RelD-sym B) (r (RelD-sym A ra))
   RelD-sym (A ⇒[ mk-kind Many π ] B) r ra = RelS-sym (RelD-sym B) (r (RelD-sym A ra))
-  RelD-sym (μ-type F) r = sym r
-  RelD-sym (ν-type F π) r = stream-sym r
+  RelD-sym (μ F) r = sym r
+  RelD-sym (ν F π) r = stream-sym r
   RelD-sym Int r = sym r
   RelD-sym Float r = sym r
   RelD-sym (var _) {()}
@@ -173,8 +173,8 @@ mutual
   RelD-trans (A ⇒[ mk-kind Zero π ] B) r s = RelS-trans (RelD-trans B) r s
   RelD-trans (A ⇒[ mk-kind One π ] B) r s ra = RelS-trans (RelD-trans B) (r ra) (s (RelD-rightself A ra))
   RelD-trans (A ⇒[ mk-kind Many π ] B) r s ra = RelS-trans (RelD-trans B) (r ra) (s (RelD-rightself A ra))
-  RelD-trans (μ-type F) r s = trans r s
-  RelD-trans (ν-type F π) r s = stream-trans r s
+  RelD-trans (μ F) r s = trans r s
+  RelD-trans (ν F π) r s = stream-trans r s
   RelD-trans Int r s = trans r s
   RelD-trans Float r s = trans r s
   RelD-trans (var _) {()}

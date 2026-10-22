@@ -16,6 +16,7 @@ import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
+import Once.Spec.Type as LT
 import Once.Internal.Type.Poly as LP
 import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
@@ -57,14 +58,14 @@ toPolyF (F LP.P⊗ G)       = toPolyF F SS.P⊗ toPolyF G
 
 -- Ground types, as the Spec's types.
 toTy  : LT.Type → ST.Type
-toFun : LT.Functor → ST.Fun 0
+toFun : LT.Fun 0 → ST.Fun 0
 toTy LT.Unit             = ST.Unit
 toTy LT.Void             = ST.Void
 toTy (A LT.* B)          = toTy A ST.* toTy B
 toTy (A LT.+ B)          = toTy A ST.+ toTy B
 toTy (A LT.⇒[ k ] B)     = toTy A ST.⇒[ kS k ] toTy B
-toTy (LT.μ-type F)       = ST.μ (toFun F)
-toTy (LT.ν-type F φ)     = ST.ν (toFun F) (φS φ)
+toTy (LT.μ F)       = ST.μ (toFun F)
+toTy (LT.ν F φ)     = ST.ν (toFun F) (φS φ)
 toTy LT.Int              = ST.Int
 toTy LT.Float            = ST.Float
 toTy (ST.var ())
@@ -75,7 +76,7 @@ toFun (F LT.⊗ G)         = toFun F ST.⊗ toFun G
 
 -- Ground types, as the schemas a type alias is written with.
 toPolyG  : LT.Type → SS.PolyType
-toPolyGF : LT.Functor → SS.PolyFunctor
+toPolyGF : LT.Fun 0 → SS.PolyFunctor
 arrowG   : LG.Purity → LG.Quantity → SS.PolyType → SS.PolyType → SS.PolyType
 arrowG LG.pure q A B = A SS.P⇒[ qS q ] B
 arrowG LG.act  q A B = SS.PAct A B
@@ -85,8 +86,8 @@ toPolyG LT.Void                        = SS.PVoid
 toPolyG (A LT.* B)                     = toPolyG A SS.P* toPolyG B
 toPolyG (A LT.+ B)                     = toPolyG A SS.P+ toPolyG B
 toPolyG (A LT.⇒[ LG.mk-kind q π ] B)   = arrowG π q (toPolyG A) (toPolyG B)
-toPolyG (LT.μ-type F)                  = SS.Pμ (toPolyGF F)
-toPolyG (LT.ν-type F φ)                = SS.Pν (toPolyGF F) (φS φ)
+toPolyG (LT.μ F)                  = SS.Pμ (toPolyGF F)
+toPolyG (LT.ν F φ)                = SS.Pν (toPolyGF F) (φS φ)
 toPolyG LT.Int                         = SS.PInt
 toPolyG LT.Float                       = SS.PFloat
 toPolyG (ST.var ())

@@ -30,6 +30,7 @@ open import Once.Internal.Res using (Res)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -64,8 +65,8 @@ base-coh (A + B)       = cong₂ _⊎_ (base-coh A) (base-coh B)
 base-coh (A ⇒[ mk-kind Zero π ] B) = refl
 base-coh (A ⇒[ mk-kind One  π ] B) = refl
 base-coh (A ⇒[ mk-kind Many π ] B) = refl
-base-coh (μ-type F)    = refl
-base-coh (ν-type F _)    = refl
+base-coh (μ F)    = refl
+base-coh (ν F _)    = refl
 base-coh Int           = refl
 base-coh Float         = refl
 base-coh (var _)   = refl
@@ -92,8 +93,8 @@ coh (A + B)       = cong₂ _⊎_ (coh A) (coh B)
 coh (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⟦ Unit {0} ⟧ → Res y) (coh B)
 coh (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → Res y) (coh A) (coh B)
 coh (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → Res y) (coh A) (coh B)
-coh (μ-type F)    = cong μS (tF-coh F)
-coh (ν-type F _)    = cong νS (tF-coh F)
+coh (μ F)    = cong μS (tF-coh F)
+coh (ν F _)    = cong νS (tF-coh F)
 coh Int           = refl
 coh Float         = refl
 coh (var _)   = refl

@@ -25,6 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 
@@ -48,8 +49,8 @@ NotEmpty Float   = ⊤
 NotEmpty (A * B) = NotEmpty A × NotEmpty B
 NotEmpty (A + B) = NotEmpty A ⊎ NotEmpty B
 NotEmpty (_ ⇒[ _ ] _) = ⊥
-NotEmpty (μ-type _)   = ⊥
-NotEmpty (ν-type _ _) = ⊥
+NotEmpty (μ _)   = ⊥
+NotEmpty (ν _ _) = ⊥
 NotEmpty (var ())
 
 -- `|A + B| ≠ 1` iff both summands are inhabited, or neither is a singleton.
@@ -61,8 +62,8 @@ NotSingleton Float   = ⊤
 NotSingleton (A * B) = NotSingleton A ⊎ NotSingleton B
 NotSingleton (A + B) = (NotEmpty A × NotEmpty B) ⊎ (NotSingleton A × NotSingleton B)
 NotSingleton (_ ⇒[ _ ] _) = ⊥
-NotSingleton (μ-type _)   = ⊥
-NotSingleton (ν-type _ _) = ⊥
+NotSingleton (μ _)   = ⊥
+NotSingleton (ν _ _) = ⊥
 NotSingleton (var ())
 
 -- A data codomain at grade `π` (not `Unit`/`Void`, not an arrow): a pure one must be
@@ -89,8 +90,8 @@ HonestCod π Void                       = Effectful π
 HonestCod π (_ ⇒[ _ ] _)               = ⊥   -- D318: first order
 HonestCod π (A * B)                    = DataCod π (A * B)
 HonestCod π (A + B)                    = DataCod π (A + B)
-HonestCod π (μ-type _)                 = ⊥   -- B2: not first-order data
-HonestCod π (ν-type _ _)               = ⊥
+HonestCod π (μ _)                 = ⊥   -- B2: not first-order data
+HonestCod π (ν _ _)               = ⊥
 HonestCod π Int                        = ⊤
 HonestCod π Float                      = ⊤
 HonestCod π (var ())
@@ -106,8 +107,8 @@ HonestFFI (A ⇒[ mk-kind One  act  ] B) = ⊥
 HonestFFI (A ⇒[ mk-kind q    eff  ] B) = ⊥
 HonestFFI (A * B)                 = NotEmpty (A * B)
 HonestFFI (A + B)                 = NotEmpty (A + B)
-HonestFFI (μ-type _)              = ⊥
-HonestFFI (ν-type _ _)            = ⊥
+HonestFFI (μ _)              = ⊥
+HonestFFI (ν _ _)            = ⊥
 HonestFFI Int                     = ⊤
 HonestFFI Float                   = ⊤
 HonestFFI (var ())
@@ -145,8 +146,8 @@ notEmpty? Float        = just tt
 notEmpty? (A * B)      = both (notEmpty? A) (notEmpty? B)
 notEmpty? (A + B)      = either (notEmpty? A) (notEmpty? B)
 notEmpty? (_ ⇒[ _ ] _) = nothing
-notEmpty? (μ-type _)   = nothing
-notEmpty? (ν-type _ _) = nothing
+notEmpty? (μ _)   = nothing
+notEmpty? (ν _ _) = nothing
 notEmpty? (var ())
 
 notSingleton? : (T : Type) → Maybe (NotSingleton T)
@@ -157,8 +158,8 @@ notSingleton? Float        = just tt
 notSingleton? (A * B)      = either (notSingleton? A) (notSingleton? B)
 notSingleton? (A + B)      = either (both (notEmpty? A) (notEmpty? B)) (both (notSingleton? A) (notSingleton? B))
 notSingleton? (_ ⇒[ _ ] _) = nothing
-notSingleton? (μ-type _)   = nothing
-notSingleton? (ν-type _ _) = nothing
+notSingleton? (μ _)   = nothing
+notSingleton? (ν _ _) = nothing
 notSingleton? (var ())
 
 dataCod? : (π : Purity) (B : Type) → Maybe (DataCod π B)
@@ -172,8 +173,8 @@ honestCod? π Void                     = effectful? π
 honestCod? π (_ ⇒[ _ ] _)             = nothing
 honestCod? π (A * B)                  = dataCod? π (A * B)
 honestCod? π (A + B)                  = dataCod? π (A + B)
-honestCod? π (μ-type _)               = nothing
-honestCod? π (ν-type _ _)             = nothing
+honestCod? π (μ _)               = nothing
+honestCod? π (ν _ _)             = nothing
 honestCod? π Int                      = just tt
 honestCod? π Float                    = just tt
 honestCod? π (var ())
@@ -188,8 +189,8 @@ honest? (A ⇒[ mk-kind One  act  ] B) = nothing
 honest? (A ⇒[ mk-kind q    eff  ] B) = nothing
 honest? (A * B)                 = notEmpty? (A * B)
 honest? (A + B)                 = notEmpty? (A + B)
-honest? (μ-type _)              = nothing
-honest? (ν-type _ _)            = nothing
+honest? (μ _)              = nothing
+honest? (ν _ _)            = nothing
 honest? Int                     = just tt
 honest? Float                   = just tt
 honest? (var ())

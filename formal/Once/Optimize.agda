@@ -29,6 +29,7 @@ open import Relation.Binary.Definitions using (DecidableEquality)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
@@ -170,8 +171,8 @@ is-Void Void         = true
 is-Void (_ * _)      = false
 is-Void (_ + _)      = false
 is-Void (_ ⇒[ _ ] _) = false
-is-Void (μ-type _)   = false
-is-Void (ν-type _ _)   = false
+is-Void (μ _)   = false
+is-Void (ν _ _)   = false
 is-Void Int          = false
 is-Void Float        = false
 is-Void (var _)  = false
@@ -198,8 +199,8 @@ isUnitType Void         = false
 isUnitType (_ * _)      = false
 isUnitType (_ + _)      = false
 isUnitType (_ ⇒[ _ ] _) = false
-isUnitType (μ-type _)   = false
-isUnitType (ν-type _ _)   = false
+isUnitType (μ _)   = false
+isUnitType (ν _ _)   = false
 isUnitType Int          = false
 isUnitType Float        = false
 isUnitType (var _)  = false
@@ -210,8 +211,8 @@ isVoidType Void         = true
 isVoidType (_ * _)      = false
 isVoidType (_ + _)      = false
 isVoidType (_ ⇒[ _ ] _) = false
-isVoidType (μ-type _)   = false
-isVoidType (ν-type _ _)   = false
+isVoidType (μ _)   = false
+isVoidType (ν _ _)   = false
 isVoidType Int          = false
 isVoidType Float        = false
 isVoidType (var _)  = false

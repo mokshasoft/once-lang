@@ -41,6 +41,7 @@ open import Once.Spec.Name using (gen)
 import Once.Spec.Grade as T
 import Once.Internal.Type as T
 import Once.Spec.Type as T
+import Once.Spec.Type as T
 import Once.Internal.Type.Poly as T
 import Once.Type as T
 open import Once.Internal.Syntax as Raw using (RawExpr; RLam; RQualified)
@@ -349,8 +350,8 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
-...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
-...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν _ _) _ _ _ _ , _ | refl = refl
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (T.var _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
@@ -363,8 +364,8 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
-...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
-...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν _ _) _ _ _ _ , _ | refl = refl
 
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (_ T.* _) _ _ _ _ , _ with eqNN
@@ -378,8 +379,8 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
-...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
-...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν _ _) _ _ _ _ , _ | refl = refl
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (_ T.+ _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
@@ -392,8 +393,8 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
-...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
-...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν _ _) _ _ _ _ , _ | refl = refl
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
@@ -406,10 +407,10 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
-...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
-...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν _ _) _ _ _ _ , _ | refl = refl
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (T.μ-type _) _ _ _ _ , _ with eqNN
+    | success (T.μ _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
 ...     | success Void _ _ _ _ , _ | refl = refl
@@ -420,10 +421,10 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
-...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
-...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν _ _) _ _ _ _ , _ | refl = refl
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (T.ν-type _ _) _ _ _ _ , _ with eqNN
+    | success (T.ν _ _) _ _ _ _ , _ with eqNN
 ...   | refl with inferElabV ctx e₂ | eqOuter
 ...     | failure _ , _ | refl = refl
 ...     | success Void _ _ _ _ , _ | refl = refl
@@ -434,8 +435,8 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...     | success (_ T.* _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.+ _) _ _ _ _ , _ | refl = refl
 ...     | success (_ T.⇒[ _ ] _) _ _ _ _ , _ | refl = refl
-...     | success (T.μ-type _) _ _ _ _ , _ | refl = refl
-...     | success (T.ν-type _ _) _ _ _ _ , _ | refl = refl
+...     | success (T.μ _) _ _ _ _ , _ | refl = refl
+...     | success (T.ν _ _) _ _ _ _ , _ | refl = refl
 -- NUMERIC left types are absurd here: `notNumeric` answers `nothing` for each.
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
     | success Int _ _ _ _ , _             with eqNN
@@ -485,10 +486,10 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success (_ T.⇒[ _ ] _) _ _ _ _ , _  with eqAsInt₁
 ...   | ()
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (T.μ-type _) _ _ _ _ , _    with eqAsInt₁
+    | success (T.μ _) _ _ _ _ , _    with eqAsInt₁
 ...   | ()
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (T.ν-type _ _) _ _ _ _ , _    with eqAsInt₁
+    | success (T.ν _ _) _ _ _ _ , _    with eqAsInt₁
 ...   | ()
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ with inferElabV ctx e₂
@@ -574,11 +575,11 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
 ... | refl with eqOuter
 ...   | refl = refl
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _ , _ | success (T.μ-type _) _ _ _ _ , _ with eqAsInt₂
+    | success Int _ _ _ _ , _ | success (T.μ _) _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter
 ...   | refl = refl
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _ , _ | success (T.ν-type _ _) _ _ _ _ , _ with eqAsInt₂
+    | success Int _ _ _ _ , _ | success (T.ν _ _) _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter
 ...   | refl = refl
 fst-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
@@ -683,13 +684,13 @@ fst-non-pair-Eff : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m}
 fst-non-pair-Eff ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
 fst-non-pair-μ : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m}
                   {Ψ' eE' d' f' err}
-                → inferElab ctx arg ≡ success (T.μ-type F) Ψ' eE' d' f'
+                → inferElab ctx arg ≡ success (T.μ F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                 → err ≡ FstNeedsPair
 fst-non-pair-μ ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
 fst-non-pair-ν : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m} {π}
                   {Ψ' eE' d' f' err}
-                → inferElab ctx arg ≡ success (T.ν-type F π) Ψ' eE' d' f'
+                → inferElab ctx arg ≡ success (T.ν F π) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                 → err ≡ FstNeedsPair
 fst-non-pair-ν ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
@@ -701,13 +702,13 @@ snd-non-pair-Eff : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m}
 snd-non-pair-Eff ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
 snd-non-pair-μ : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m}
                   {Ψ' eE' d' f' err}
-                → inferElab ctx arg ≡ success (T.μ-type F) Ψ' eE' d' f'
+                → inferElab ctx arg ≡ success (T.μ F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                 → err ≡ SndNeedsPair
 snd-non-pair-μ ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
 snd-non-pair-ν : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m} {π}
                   {Ψ' eE' d' f' err}
-                → inferElab ctx arg ≡ success (T.ν-type F π) Ψ' eE' d' f'
+                → inferElab ctx arg ≡ success (T.ν F π) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                 → err ≡ SndNeedsPair
 snd-non-pair-ν ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
@@ -720,16 +721,16 @@ neg-non-Int-Eff ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner
 
 neg-non-Int-μ : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {F : Fun m}
                  {Ψ' eE' d' f' err}
-               → inferElab ctx e ≡ success (T.μ-type F) Ψ' eE' d' f'
+               → inferElab ctx e ≡ success (T.μ F) Ψ' eE' d' f'
                → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-               → err ≡ TypeMismatch Int (T.μ-type F)
+               → err ≡ TypeMismatch Int (T.μ F)
 neg-non-Int-μ ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 neg-non-Int-ν : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {F : Fun m} {π}
                  {Ψ' eE' d' f' err}
-               → inferElab ctx e ≡ success (T.ν-type F π) Ψ' eE' d' f'
+               → inferElab ctx e ≡ success (T.ν F π) Ψ' eE' d' f'
                → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-               → err ≡ TypeMismatch Int (T.ν-type F π)
+               → err ≡ TypeMismatch Int (T.ν F π)
 neg-non-Int-ν ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 neg-non-Int-Fun : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m} {q : _}
@@ -751,7 +752,7 @@ case-scrut-μ : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
                   (xL : String) (eL : Raw.RawExpr)
                   (xR : String) (eR : Raw.RawExpr)
                   {F : Fun m} {Ψ' eE' d' f' err}
-                → inferElab ctx scrut ≡ success (T.μ-type F) Ψ' eE' d' f'
+                → inferElab ctx scrut ≡ success (T.μ F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                 → err ≡ CaseScrutineeNotSum
 case-scrut-μ ctx scrut xL eL xR eR eqInner eqOuter =
@@ -760,7 +761,7 @@ case-scrut-ν : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
                 (xL : String) (eL : Raw.RawExpr)
                 (xR : String) (eR : Raw.RawExpr)
                 {F : Fun m} {π} {Ψ' eE' d' f' err}
-              → inferElab ctx scrut ≡ success (T.ν-type F π) Ψ' eE' d' f'
+              → inferElab ctx scrut ≡ success (T.ν F π) Ψ' eE' d' f'
               → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
               → err ≡ CaseScrutineeNotSum
 case-scrut-ν ctx scrut xL eL xR eR eqInner eqOuter =

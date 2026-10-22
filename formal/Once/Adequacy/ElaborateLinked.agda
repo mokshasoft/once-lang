@@ -47,7 +47,7 @@ open import Once.Surface.CoerceIR using (runCoe; runCoe-dec; voidFree?; VoidFree
 open import Once.Surface.Elaborate
 import Once.Surface.Properties
 import Once.IRTy
-open import Once.Internal.Type using (⟦_⟧T)
+open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Denotation.Program using (IRFun; LinkedAt; LinkedAt-at; Linked; Declared-at)
 open Once.Denotation.Program.IRFun using (fcod; fdom; fname)
 open import Once.Internal.Contract using (ISig; contractOf; contract-eff)
@@ -481,12 +481,12 @@ module _ {σ : ISig} (tbl : List IRFun) where
   elaborate-linked′ m {Γ = Γ} (morph-app {Ψ = Ψ} morph x) (rm , rx) =
     cf morph (linked-σ morph rm) , (elaborate-linked′ m x rx , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))))
   elaborate-linked′ m {Γ = Γ} (cata {Ψ = Ψ} {F = F} {A = A} wfF alg) r =
-    Linked-subst (λ o → (⌊ ⟦ F ⟧T A ⌋ Once.IRTy.⇛ ⌊ A ⌋) Once.IRTy.* o) (λ _ → ⌊ A ⌋)
+    Linked-subst (λ o → (⌊ ⟦ F ⟧F A ⌋ Once.IRTy.⇛ ⌊ A ⌋) Once.IRTy.* o) (λ _ → ⌊ A ⌋)
                  (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))
     , (elaborate-linked′ m alg r , rE {Γ = Γ} m (⊑ᵘ-*Many Ψ))   -- plan 0.113 B1
   -- D273: `anaM ∘ ecoalg`, `cata`'s shape.
   elaborate-linked′ m {Γ = Γ} (ana {Ψ = Ψ} {F = F} {A = A} wfF coalg) r =
-    Linked-subst (λ _ → (⌊ A ⌋ Once.IRTy.⇛ ⌊ ⟦ F ⟧T A ⌋) Once.IRTy.* ⌊ A ⌋) (λ o → o)
+    Linked-subst (λ _ → (⌊ A ⌋ Once.IRTy.⇛ ⌊ ⟦ F ⟧F A ⌋) Once.IRTy.* ⌊ A ⌋) (λ o → o)
                  (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))
     , (elaborate-linked′ m coalg r , rE {Γ = Γ} m (⊑ᵘ-*Many Ψ))
   -- the loop: `loopM ∘ eround`, `ana`'s shape (no functor to commute).

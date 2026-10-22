@@ -22,7 +22,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sub
 open import Once.Spec.Grade using (mk-kind; Many; One; Zero; Quantity; Purity; pure; act; eff; _·p_; Finite; fin; pureᶠ; actᶠ; _⊑π_)
 open import Once.Type.Grade using (≤qᵇ→≤q)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
-open import Once.Internal.Type using (⟦_⟧T)
+open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; lookup; _∷_)
 open import Once.Internal.Context using (Usage; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; _⊑ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; z≤z; o≤o; m≤m)
 open import Once.Spec.Context using (_⊑∷_)
@@ -200,7 +200,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
 
   ⊢cataᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {A : Ty m} {π : Purity} {alg}
          → WFFun Δ F
-         → Δ ⊩ Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ! pure
+         → Δ ⊩ Γ ⊢[ Ψ ] alg ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! pure
          → Δ ⊩ Γ ⊢[ Many *ᵘ Ψ ] cataᶜ F π alg ∷ μ F ⇒[ mk-kind Many π ] A ! pure
   -- Plan 0.113 B1: inside the body the algebra's variable is used ω times (the
   -- fold applies it per node), so the `let` charges `Many *ᵘ Ψ` — the surface rule.
@@ -210,7 +210,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
 
   ⊢anaᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {A : Ty m} {π₀ : Purity} {φ : Finite} {c}
         → pure ⊑π π₀ → WFFun Δ F
-        → Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧T A ! pure
+        → Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many (fin φ) ] ⟦ F ⟧F A ! pure
         → Δ ⊩ Γ ⊢[ Many *ᵘ Ψ ] anaᶜ F A π₀ c ∷ A ⇒[ mk-kind Many π₀ ] ν F φ ! pure
   ⊢anaᶜ {Γ = Γ} {Ψ} {A = A} {π₀ = π₀} u₀ wf dc =
     ⊢lam (≤qᵇ→≤q _ _ refl) (subst (λ U → Δ ⊩ (Γ ▸ A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
@@ -239,11 +239,11 @@ module _ {m : ℕ} {Δ : KCtx m} where
     (⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (⊢fst (⊢var zero)) (⊢snd (⊢var zero))))
 
   ⊢inᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m}
-       → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] inᶜ F ∷ ⟦ F ⟧T (μ F) ⇒[ mk-kind Many pure ] μ F ! pure
+       → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] inᶜ F ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] μ F ! pure
   ⊢inᶜ wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢roll wf (⊢var zero))
 
   ⊢outᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m}
-        → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] outᶜ F ∷ ν F pureᶠ ⇒[ mk-kind Many pure ] ⟦ F ⟧T (ν F pureᶠ) ! pure
+        → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] outᶜ F ∷ ν F pureᶠ ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! pure
   ⊢outᶜ wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢out wf (⊢var zero))
 
   ⊢applyEffᶜ : ∀ {n} {Γ : Ctx m n} {π : Purity} {A B : Ty m}
@@ -255,7 +255,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   ⊢outActᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m}
            → WFFun Δ F
            → Δ ⊩ Γ ⊢[ zeroUsage ] outActᶜ F
-               ∷ ν F actᶠ ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many act ] ⟦ F ⟧T (ν F actᶠ)) ! pure
+               ∷ ν F actᶠ ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)) ! pure
   ⊢outActᶜ wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢lam (≤qᵇ→≤q _ _ refl) (⊢out wf (⊢var (suc zero))))
 
   ⊢effAppᶜ : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {π : Purity} {A B : Ty m} {f x}

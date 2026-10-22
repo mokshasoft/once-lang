@@ -18,7 +18,7 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.Spec.Type using (var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Type using (Functor; μ-type; ν-type)
+open import Once.Spec.Type using (Fun; μ; ν)
 -- TVar removed: Type variables only exist in PolyType (for type inference).
 -- User-written types must be concrete. Type aliases without parameters
 -- are still supported via name lookup in the alias environment.
@@ -63,7 +63,7 @@ lookupAlias name ((n , params , body) ∷ rest) with name ≟ n
 
 -- | Expand type aliases in a type (currently a no-op)
 mutual
-  expandAliasesF : TypeAliasEnv → Functor → Functor
+  expandAliasesF : TypeAliasEnv → Fun 0 → Fun 0
   expandAliasesF env (K A) = K (expandAliases env A)
   expandAliasesF _ Id = Id
   expandAliasesF env (F ⊕ G) = expandAliasesF env F ⊕ expandAliasesF env G
@@ -78,5 +78,5 @@ mutual
   expandAliases env (a * b) = expandAliases env a * expandAliases env b
   expandAliases env (a + b) = expandAliases env a + expandAliases env b
   expandAliases env (a ⇒[ k ] b) = expandAliases env a ⇒[ k ] expandAliases env b
-  expandAliases env (μ-type F) = μ-type (expandAliasesF env F)
-  expandAliases env (ν-type F π) = ν-type (expandAliasesF env F) π
+  expandAliases env (μ F) = μ (expandAliasesF env F)
+  expandAliases env (ν F π) = ν (expandAliasesF env F) π

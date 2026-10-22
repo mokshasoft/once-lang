@@ -34,7 +34,7 @@ open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.Spec.Type as T using (Type; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type as T using (μ-type; ν-type)
+open import Once.Spec.Type using (μ; ν)
 import Once.Spec.Grade as T
 open import Once.Internal.Type.Poly as T using (PolyType; PolyFunctor; Ground; GroundF; extractGround; extractGroundF; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PInt; PFloat; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
@@ -93,8 +93,8 @@ mutual
     cong₂ (λ X Y → X ⇒[ T.mk-kind T.Many T.eff ] Y) (extractGround-irr A gA gA′) (extractGround-irr B gB gB′)
   extractGround-irr (PAct A B) (gA , gB) (gA′ , gB′) =
     cong₂ (λ X Y → X ⇒[ T.mk-kind T.Many T.act ] Y) (extractGround-irr A gA gA′) (extractGround-irr B gB gB′)
-  extractGround-irr (Pμ-type F) g g′ = cong μ-type (extractGroundF-irr F g g′)
-  extractGround-irr (Pν-type F π) g g′ = cong (λ G → ν-type G π) (extractGroundF-irr F g g′)
+  extractGround-irr (Pμ-type F) g g′ = cong μ (extractGroundF-irr F g g′)
+  extractGround-irr (Pν-type F π) g g′ = cong (λ G → ν G π) (extractGroundF-irr F g g′)
   extractGround-irr PInt _ _ = refl
   extractGround-irr PFloat _ _ = refl
   extractGround-irr (PTVar _) () _

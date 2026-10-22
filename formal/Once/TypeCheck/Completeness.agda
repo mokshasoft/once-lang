@@ -29,6 +29,8 @@ module Once.TypeCheck.Completeness where
 
 import Once.Surface.Syntax as Srf
 open import Once.Internal.Type using (wk₀)
+open import Once.Spec.Type using (⟦_⟧F)
+import Once.Spec.Type as T
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Nat using (ℕ)
 open import Data.String using (String)
@@ -73,7 +75,6 @@ open import Data.Empty using (⊥-elim)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Internal.Type using (Functor; ⟦_⟧T)
 open import Once.Spec.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-arr)
 open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
@@ -326,10 +327,10 @@ given-infer-complete {A = A} {A′ = A′} {π = π} {π′ = π′} (success _ 
 given-cata-complete : ∀ {m} {ctx : NamedCtx m} {alg : RawExpr} {F : Fun m} {A : Ty m} {π : T.Purity}
     (wfF : WFFun (Classify.NamedCtx.kinds ctx) F) {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
     (u : T.pure ⊑π π) (r : VerifiedInferResult ctx alg)
-  → proj₁ r ≡ success (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
+  → proj₁ r ≡ success (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
   → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′   -- plan 0.113 B1
 given-cata-complete {F = F} {A = A} {π = π} wfF {Ψ = Ψ} u (success _ _ _ _ _ , _) refl
-  with (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A)
+  with (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A)
 ... | yes refl =
   withUnit-elim _ u _
     (λ res → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ res ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′) (λ u′ → _ , _ , _ , refl)
@@ -700,10 +701,10 @@ mutual
   -- so its switch is `terminal`'s.
   iFromInferSub (t-Out-app-infer {v = v} {F = F} wfF refl d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-Out-app-infer wfF refl d)
-    in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F T.pureᶠ)) eqI sb
+    in checkElab-fallback-RApp-Out v (T.⟦ F ⟧F (T.ν F T.pureᶠ)) eqI sb
   iFromInferSub (t-Out-eff-app-infer {v = v} {F = F} wfF refl d) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-Out-eff-app-infer wfF refl d)
-    in checkElab-fallback-RApp-Out v (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧T (T.ν-type F T.actᶠ)) eqI sb
+    in checkElab-fallback-RApp-Out v (T.Unit T.⇒[ T.mk-kind T.Many T.act ] T.⟦ F ⟧F (T.ν F T.actᶠ)) eqI sb
   iFromInferSub (t-apply-app-infer {p = p} {A = A} {B = B} d) sb =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eqI sb

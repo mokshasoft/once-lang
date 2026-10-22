@@ -34,7 +34,7 @@ open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
 import Once.Internal.Type.Poly as T
 open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_)
-open import Once.Internal.Type as T using (μ-type; ν-type; ⟦_⟧T)
+open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; sub-arr)
 open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
@@ -188,14 +188,14 @@ module _ {m} {Γ : Ctx m n} where
          → x ≅ x′ → lam {π = π} Many ≤p x ≅ lam Many ≤p′ x′
   lamd-h ≤p ≤p′ (≅i refl refl h) = lam-h ≤p ≤p′ (≅i refl refl h)
 
-  cata-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-           {a′ : Expr Γ Ψ′ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
+  cata-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)}
+           {a′ : Expr Γ Ψ′ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)}
          → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
   cata-h w w′ {a′ = a′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WFFun-irrelevant w w′))))
 
-  ana-h : ∀ {Δₖ : KCtx m} {F : Fun m} {φ : T.Finite} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
-          {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧T A)}
+  ana-h : ∀ {Δₖ : KCtx m} {F : Fun m} {φ : T.Finite} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧F A)}
+          {a′ : Expr Γ Ψ′ (A ⇒[ mk-kind Many (T.fin φ) ] ⟦ F ⟧F A)}
         → a ≅ a′ → ana {Γ = Γ} {π₀ = π₀} {φ = φ} w a ≅ ana w′ a′
   ana-h {π₀ = π₀} {φ = φ} w w′ {a′ = a′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (ana-cong w h) (≡→≈ (cong (λ v → ana {Γ = Γ} {π₀ = π₀} {φ = φ} v a′) (WFFun-irrelevant w w′))))
@@ -206,13 +206,13 @@ module _ {m} {Γ : Ctx m n} where
 
   -- A fold's carrier is its algebra's codomain, so equal algebras give one carrier.
   private
-    catad : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-              {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
+    catad : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)}
+              {a′ : Expr Γ Ψ′ (⟦ F ⟧F A′ ⇒[ mk-kind Many π ] A′)}
           → A ≡ A′ → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
     catad w w′ refl h = cata-h w w′ h
 
-  catad-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-              {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)}
+  catad-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)}
+              {a′ : Expr Γ Ψ′ (⟦ F ⟧F A′ ⇒[ mk-kind Many π ] A′)}
           → a ≅ a′ → cata {Γ = Γ} w a ≅ cata w′ a′
   catad-h w w′ h = catad w w′ (cod-≡ (≅-ty h)) h
 
@@ -351,10 +351,10 @@ module _ {m} {Γ : Ctx m n} where
   forkc-h {f = f} {g = g} pb pc (≅i refl refl h) (≅i refl refl k) =
     ≅i refl refl (≈-trans (≈-sym (fork-coerce pb pc (⊑π-refl _) f g)) (fork-cong h k))
 
-  catac-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-              {a′ : Expr Γ Ψ′ (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′)} (p : A <: A′)
-              (s : (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) <: (⟦ F ⟧T A′ ⇒[ mk-kind Many π ] A′))
-          → coerce s a ≅ a′ → coerce (sub-arr (<:-refl (μ-type F)) p (⊑π-refl π)) (cata {Γ = Γ} w a) ≅ cata w′ a′
+  catac-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)}
+              {a′ : Expr Γ Ψ′ (⟦ F ⟧F A′ ⇒[ mk-kind Many π ] A′)} (p : A <: A′)
+              (s : (⟦ F ⟧F A ⇒[ mk-kind Many π ] A) <: (⟦ F ⟧F A′ ⇒[ mk-kind Many π ] A′))
+          → coerce s a ≅ a′ → coerce (sub-arr (<:-refl (μ F)) p (⊑π-refl π)) (cata {Γ = Γ} w a) ≅ cata w′ a′
   catac-h w w′ {a = a} {a′ = a′} p (sub-arr d p₀ g₀) (≅i refl refl h) =
     ≅i refl refl
       (≈-trans (coerce-uniq _ (sub-arr (<:-refl _) p₀ (⊑π-refl _)) _)
@@ -538,13 +538,13 @@ module _ {m} {ctx : NamedCtx m} where
   applyeff-h (≅i refl refl h) = ≅i refl refl (morph-app-cong (IR.curry (IR.apply IR.∘ IR.fst)) h)
 
   out-h : ∀ {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun (NamedCtx.kinds ctx) F) (w′ : WFFun (NamedCtx.kinds ctx) F′)
-            {d : ctx ⊢ᵢ e ∶ ν-type F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.pureᶠ ⨾ Ψ′}
+            {d : ctx ⊢ᵢ e ∶ ν F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν F′ T.pureᶠ ⨾ Ψ′}
         → RI d ≅ RI d′ → RI (t-Out-app-infer w refl d) ≅ RI (t-Out-app-infer w′ refl d′)
   out-h w w′ {d′ = d′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-app-infer v refl d′)) (WFFun-irrelevant w w′))))
 
   outeff-h : ∀ {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun (NamedCtx.kinds ctx) F) (w′ : WFFun (NamedCtx.kinds ctx) F′)
-               {d : ctx ⊢ᵢ e ∶ ν-type F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν-type F′ T.actᶠ ⨾ Ψ′}
+               {d : ctx ⊢ᵢ e ∶ ν F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν F′ T.actᶠ ⨾ Ψ′}
            → RI d ≅ RI d′ → RI (t-Out-eff-app-infer w refl d) ≅ RI (t-Out-eff-app-infer w′ refl d′)
   outeff-h w w′ {d′ = d′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-eff-app-infer v refl d′)) (WFFun-irrelevant w w′))))
@@ -561,7 +561,7 @@ module _ {m} {ctx : NamedCtx m} where
   applyic-h p refl (≅i refl refl h) =
     ≅i refl refl (≈-trans (coerce-uniq p (<:-refl _) _) (≈-trans (coerce-refl _) (morph-app-cong IR.apply h)))
 
-  In-h : ∀ {F : Fun m} {Ψ Ψ′ : U} (w w′ : WFFun (NamedCtx.kinds ctx) F) {d : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ′}
+  In-h : ∀ {F : Fun m} {Ψ Ψ′ : U} (w w′ : WFFun (NamedCtx.kinds ctx) F) {d : ctx ⊢ᶜ e ∶ ⟦ F ⟧F (μ F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ⟦ F ⟧F (μ F) ⨾ Ψ′}
        → RC d ≅ RC d′ → RC (t-In-app-check w d) ≅ RC (t-In-app-check w′ d′)
   In-h w w′ {d′ = d′} (≅i refl refl h) =
     ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RC (t-In-app-check v d′)) (WFFun-irrelevant w w′))))
