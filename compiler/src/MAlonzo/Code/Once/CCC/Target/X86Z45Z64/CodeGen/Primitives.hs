@@ -22,10 +22,10 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Spec.Word
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
@@ -162,7 +162,7 @@ d_compile'45'sigOp'45'length_70 ::
 d_compile'45'sigOp'45'length_70 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const
 d_compile'45'const_76 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   AgdaAny ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_30]
@@ -204,7 +204,7 @@ du_compile'45'const_76 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-size
 d_compile'45'const'45'size_84 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 -> Integer
 d_compile'45'const'45'size_84 ~v0 v1
   = du_compile'45'const'45'size_84 v1
@@ -214,7 +214,7 @@ du_compile'45'const'45'size_84 v0
   = coe seq (coe v0) (coe (1 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-length
 d_compile'45'const'45'length_92 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_compile'45'const'45'length_92 = erased

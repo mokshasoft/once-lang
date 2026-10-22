@@ -22,7 +22,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Algebra.Structures
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Internal.Context
 import qualified MAlonzo.Code.Once.Internal.Type.DecEq
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties
@@ -168,53 +167,86 @@ d_quantity'45''8852''45'isCommutativeBand_150
 -- Once.Internal.Laws.Grade.≤q'-refl
 d_'8804'q'''45'refl_154 ::
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22
 d_'8804'q'''45'refl_154 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Grade.C_Zero_8
-        -> coe MAlonzo.Code.Once.Internal.Context.C_z'8804'z_164
+        -> coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26
       MAlonzo.Code.Once.Spec.Grade.C_One_10
-        -> coe MAlonzo.Code.Once.Internal.Context.C_o'8804'o_170
+        -> coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28
       MAlonzo.Code.Once.Spec.Grade.C_Many_12
-        -> coe MAlonzo.Code.Once.Internal.Context.C_m'8804'm_174
+        -> coe MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Laws.Grade.≤q'-trans
 d_'8804'q'''45'trans_162 ::
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162
-d_'8804'q'''45'trans_162 ~v0 ~v1 ~v2 v3 v4
-  = du_'8804'q'''45'trans_162 v3 v4
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22
+d_'8804'q'''45'trans_162 ~v0 v1 ~v2 v3 v4
+  = du_'8804'q'''45'trans_162 v1 v3 v4
 du_'8804'q'''45'trans_162 ::
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162
-du_'8804'q'''45'trans_162 v0 v1
-  = case coe v0 of
-      MAlonzo.Code.Once.Internal.Context.C_z'8804'z_164 -> coe v1
-      MAlonzo.Code.Once.Internal.Context.C_z'8804'o_166
-        -> case coe v1 of
-             MAlonzo.Code.Once.Internal.Context.C_o'8804'o_170 -> coe v0
-             MAlonzo.Code.Once.Internal.Context.C_o'8804'm_172
-               -> coe MAlonzo.Code.Once.Internal.Context.C_z'8804'm_168
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Internal.Context.C_z'8804'm_168
-        -> coe seq (coe v1) (coe v0)
-      MAlonzo.Code.Once.Internal.Context.C_o'8804'o_170 -> coe v1
-      MAlonzo.Code.Once.Internal.Context.C_o'8804'm_172
-        -> coe seq (coe v1) (coe v0)
-      MAlonzo.Code.Once.Internal.Context.C_m'8804'm_174
-        -> coe seq (coe v1) (coe v0)
-      _ -> MAlonzo.RTE.mazUnreachableError
+  MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22
+du_'8804'q'''45'trans_162 v0 v1 v2
+  = let v3
+          = case coe v1 of
+              MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28 -> coe v2
+              MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30
+                -> coe seq (coe v2) (coe v1)
+              MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32
+                -> coe seq (coe v2) (coe v1)
+              _ -> MAlonzo.RTE.mazUnreachableError in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.Spec.Grade.C_Zero_8
+           -> case coe v1 of
+                MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26 -> coe v2
+                MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28 -> coe v2
+                MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30
+                  -> coe seq (coe v2) (coe v1)
+                MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32
+                  -> coe seq (coe v2) (coe v1)
+                _ -> MAlonzo.RTE.mazUnreachableError
+         MAlonzo.Code.Once.Spec.Grade.C_One_10
+           -> case coe v1 of
+                MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26
+                  -> case coe v2 of
+                       MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28
+                         -> coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26
+                       MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30
+                         -> coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26
+                       _ -> coe v3
+                MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28 -> coe v2
+                MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30
+                  -> coe seq (coe v2) (coe v1)
+                MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32
+                  -> coe seq (coe v2) (coe v1)
+                _ -> MAlonzo.RTE.mazUnreachableError
+         MAlonzo.Code.Once.Spec.Grade.C_Many_12
+           -> case coe v1 of
+                MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26
+                  -> case coe v2 of
+                       MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32
+                         -> coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26
+                       _ -> coe v3
+                MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28 -> coe v2
+                MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30
+                  -> coe seq (coe v2) (coe v1)
+                MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32
+                  -> coe seq (coe v2) (coe v1)
+                _ -> MAlonzo.RTE.mazUnreachableError
+         _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Internal.Laws.Grade.≤q'-antisym
 d_'8804'q'''45'antisym_172 ::
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8804'q'''45'antisym_172 = erased
 -- Once.Internal.Laws.Grade.≤q'-total
@@ -225,49 +257,40 @@ d_'8804'q'''45'total_178 ::
 d_'8804'q'''45'total_178 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Grade.C_Zero_8
-        -> case coe v1 of
-             MAlonzo.Code.Once.Spec.Grade.C_Zero_8
-               -> coe
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                    (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'z_164)
-             MAlonzo.Code.Once.Spec.Grade.C_One_10
-               -> coe
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                    (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'o_166)
-             MAlonzo.Code.Once.Spec.Grade.C_Many_12
-               -> coe
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                    (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'm_168)
-             _ -> MAlonzo.RTE.mazUnreachableError
+        -> coe
+             seq (coe v1)
+             (coe
+                MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
+                (coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26))
       MAlonzo.Code.Once.Spec.Grade.C_One_10
         -> case coe v1 of
              MAlonzo.Code.Once.Spec.Grade.C_Zero_8
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                    (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'o_166)
+                    (coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26)
              MAlonzo.Code.Once.Spec.Grade.C_One_10
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                    (coe MAlonzo.Code.Once.Internal.Context.C_o'8804'o_170)
+                    (coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28)
              MAlonzo.Code.Once.Spec.Grade.C_Many_12
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                    (coe MAlonzo.Code.Once.Internal.Context.C_o'8804'm_172)
+                    (coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Grade.C_Many_12
         -> case coe v1 of
              MAlonzo.Code.Once.Spec.Grade.C_Zero_8
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                    (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'm_168)
+                    (coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26)
              MAlonzo.Code.Once.Spec.Grade.C_One_10
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                    (coe MAlonzo.Code.Once.Internal.Context.C_o'8804'm_172)
+                    (coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30)
              MAlonzo.Code.Once.Spec.Grade.C_Many_12
                -> coe
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-                    (coe MAlonzo.Code.Once.Internal.Context.C_m'8804'm_174)
+                    (coe MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Laws.Grade._≤q'?_
@@ -278,29 +301,14 @@ d__'8804'q'''63'__184 ::
 d__'8804'q'''63'__184 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Grade.C_Zero_8
-        -> case coe v1 of
-             MAlonzo.Code.Once.Spec.Grade.C_Zero_8
-               -> coe
-                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
-                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
-                    (coe
-                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
-                       (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'z_164))
-             MAlonzo.Code.Once.Spec.Grade.C_One_10
-               -> coe
-                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
-                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
-                    (coe
-                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
-                       (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'o_166))
-             MAlonzo.Code.Once.Spec.Grade.C_Many_12
-               -> coe
-                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
-                    (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
-                    (coe
-                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
-                       (coe MAlonzo.Code.Once.Internal.Context.C_z'8804'm_168))
-             _ -> MAlonzo.RTE.mazUnreachableError
+        -> coe
+             seq (coe v1)
+             (coe
+                MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
+                (coe
+                   MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                   (coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26)))
       MAlonzo.Code.Once.Spec.Grade.C_One_10
         -> case coe v1 of
              MAlonzo.Code.Once.Spec.Grade.C_Zero_8
@@ -314,14 +322,14 @@ d__'8804'q'''63'__184 v0 v1
                     (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
                     (coe
                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
-                       (coe MAlonzo.Code.Once.Internal.Context.C_o'8804'o_170))
+                       (coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28))
              MAlonzo.Code.Once.Spec.Grade.C_Many_12
                -> coe
                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
                     (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
                     (coe
                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
-                       (coe MAlonzo.Code.Once.Internal.Context.C_o'8804'm_172))
+                       (coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Grade.C_Many_12
         -> case coe v1 of
@@ -341,7 +349,7 @@ d__'8804'q'''63'__184 v0 v1
                     (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
                     (coe
                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
-                       (coe MAlonzo.Code.Once.Internal.Context.C_m'8804'm_174))
+                       (coe MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Laws.Grade.quantity-≤-isDecTotalOrder
@@ -359,7 +367,7 @@ d_quantity'45''8804''45'isDecTotalOrder_186
                (coe
                   MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties.du_isEquivalence_396)
                (coe (\ v0 v1 v2 -> d_'8804'q'''45'refl_154 (coe v0)))
-               (\ v0 v1 v2 v3 v4 -> coe du_'8804'q'''45'trans_162 v3 v4))
+               (\ v0 v1 v2 v3 v4 -> coe du_'8804'q'''45'trans_162 v1 v3 v4))
             erased)
          (coe d_'8804'q'''45'total_178))
       (coe MAlonzo.Code.Once.Internal.Type.DecEq.d__'8799'q__8)
@@ -369,40 +377,33 @@ d_'8804'q'45'sound_194 ::
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22
 d_'8804'q'45'sound_194 v0 v1 ~v2 = du_'8804'q'45'sound_194 v0 v1
 du_'8804'q'45'sound_194 ::
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22
 du_'8804'q'45'sound_194 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Grade.C_Zero_8
-        -> case coe v1 of
-             MAlonzo.Code.Once.Spec.Grade.C_Zero_8
-               -> coe MAlonzo.Code.Once.Internal.Context.C_z'8804'z_164
-             MAlonzo.Code.Once.Spec.Grade.C_One_10
-               -> coe MAlonzo.Code.Once.Internal.Context.C_z'8804'o_166
-             MAlonzo.Code.Once.Spec.Grade.C_Many_12
-               -> coe MAlonzo.Code.Once.Internal.Context.C_z'8804'm_168
-             _ -> MAlonzo.RTE.mazUnreachableError
+        -> coe
+             seq (coe v1) (coe MAlonzo.Code.Once.Spec.Grade.C_0'8804'q_26)
       MAlonzo.Code.Once.Spec.Grade.C_One_10
         -> case coe v1 of
              MAlonzo.Code.Once.Spec.Grade.C_One_10
-               -> coe MAlonzo.Code.Once.Internal.Context.C_o'8804'o_170
+               -> coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'1_28
              MAlonzo.Code.Once.Spec.Grade.C_Many_12
-               -> coe MAlonzo.Code.Once.Internal.Context.C_o'8804'm_172
+               -> coe MAlonzo.Code.Once.Spec.Grade.C_1'8804'ω_30
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Grade.C_Many_12
         -> coe
-             seq (coe v1)
-             (coe MAlonzo.Code.Once.Internal.Context.C_m'8804'm_174)
+             seq (coe v1) (coe MAlonzo.Code.Once.Spec.Grade.C_ω'8804'ω_32)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Laws.Grade.≤q-complete
 d_'8804'q'45'complete_200 ::
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
-  MAlonzo.Code.Once.Internal.Context.T__'8804'q''__162 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8804'q'45'complete_200 = erased
 -- Once.Internal.Laws.Grade.⊔p-assoc

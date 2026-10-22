@@ -18,9 +18,9 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.IR.AllocMode
 d_AllocMode_4 = ()
@@ -37,15 +37,15 @@ data T_IR_16
     C_'10216'_'44'_'10217'_36 T_IR_16 T_IR_16 | C_fst_42 | C_snd_48 |
     C_inl_54 | C_inr_60 | C_case_68 T_IR_16 T_IR_16 | C_terminal_72 |
     C_initial_76 | C_curry_84 T_IR_16 | C_apply_90 |
-    C_In_94 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 |
-    C_out'45'μ_98 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 |
-    C_Cata_106 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 T_IR_16 |
-    C_Out_110 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 |
-    C_in'45'ν_114 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 |
-    C_Ana_122 MAlonzo.Code.Once.IRTy.T_WellFormedFI_122 T_IR_16 |
+    C_In_94 MAlonzo.Code.Once.IRTy.T_WellFormedFI_126 |
+    C_out'45'μ_98 MAlonzo.Code.Once.IRTy.T_WellFormedFI_126 |
+    C_Cata_106 MAlonzo.Code.Once.IRTy.T_WellFormedFI_126 T_IR_16 |
+    C_Out_110 MAlonzo.Code.Once.IRTy.T_WellFormedFI_126 |
+    C_in'45'ν_114 MAlonzo.Code.Once.IRTy.T_WellFormedFI_126 |
+    C_Ana_122 MAlonzo.Code.Once.IRTy.T_WellFormedFI_126 T_IR_16 |
     C_Iter_130 T_IR_16 |
-    C_const_134 MAlonzo.Code.Once.IRTy.T_FitsInRegI_510 AgdaAny |
-    C_SigOp_140 MAlonzo.Code.Once.Internal.Type.T_Type_8
-                MAlonzo.Code.Once.Internal.Type.T_Type_8
+    C_const_134 MAlonzo.Code.Once.IRTy.T_FitsInRegI_514 AgdaAny |
+    C_SigOp_140 MAlonzo.Code.Once.Spec.Type.T_Ty_8
+                MAlonzo.Code.Once.Spec.Type.T_Ty_8
                 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 |
     C_Call_146 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6

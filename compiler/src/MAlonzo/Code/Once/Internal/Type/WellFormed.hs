@@ -17,38 +17,32 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Spec.Grade
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Internal.Type.WellFormed.IsBaseType
-d_IsBaseType_8 a0 = ()
-data T_IsBaseType_8
-  = C_base'45'Unit_10 | C_base'45'Void_12 | C_base'45'Int_14 |
-    C_base'45'Float_16 |
-    C_base'45'Prod_22 T_IsBaseType_8 T_IsBaseType_8 |
-    C_base'45'Sum_28 T_IsBaseType_8 T_IsBaseType_8 | C_base'45'rigid_32
+d_IsBaseType_8 :: MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> ()
+d_IsBaseType_8 = erased
 -- Once.Internal.Type.WellFormed.IsConcrete
-d_IsConcrete_34 a0 = ()
-data T_IsConcrete_34
-  = C_con'45'base_38 T_IsBaseType_8 |
-    C_con'45'fun_46 T_IsBaseType_8 T_IsBaseType_8
+d_IsConcrete_30 a0 = ()
+data T_IsConcrete_30
+  = C_con'45'base_34 MAlonzo.Code.Once.Spec.Type.T_Base_84 |
+    C_con'45'fun_42 MAlonzo.Code.Once.Spec.Type.T_Base_84
+                    MAlonzo.Code.Once.Spec.Type.T_Base_84
 -- Once.Internal.Type.WellFormed.WellFormedF
-d_WellFormedF_48 a0 = ()
-data T_WellFormedF_48
-  = C_wf'45'K_52 T_IsBaseType_8 | C_wf'45'Id_54 |
-    C_wf'45'Sum_60 T_WellFormedF_48 T_WellFormedF_48 |
-    C_wf'45'Prod_66 T_WellFormedF_48 T_WellFormedF_48
+d_WellFormedF_44 :: MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> ()
+d_WellFormedF_44 = erased
 -- Once.Internal.Type.WellFormed.RigidFree
-d_RigidFree_68 a0 = ()
-data T_RigidFree_68
-  = C_rf'45'Unit_72 | C_rf'45'Void_74 | C_rf'45'Int_76 |
-    C_rf'45'Float_78 | C_rf'45''42'_84 T_RigidFree_68 T_RigidFree_68 |
-    C_rf'45''43'_90 T_RigidFree_68 T_RigidFree_68 |
-    C_rf'45''8658'_98 T_RigidFree_68 T_RigidFree_68 |
-    C_rf'45'μ_102 T_RigidFreeF_70 | C_rf'45'ν_108 T_RigidFreeF_70
+d_RigidFree_58 a0 = ()
+data T_RigidFree_58
+  = C_rf'45'Unit_62 | C_rf'45'Void_64 | C_rf'45'Int_66 |
+    C_rf'45'Float_68 | C_rf'45''42'_74 T_RigidFree_58 T_RigidFree_58 |
+    C_rf'45''43'_80 T_RigidFree_58 T_RigidFree_58 |
+    C_rf'45''8658'_88 T_RigidFree_58 T_RigidFree_58 |
+    C_rf'45'μ_92 T_RigidFreeF_60 | C_rf'45'ν_98 T_RigidFreeF_60
 -- Once.Internal.Type.WellFormed.RigidFreeF
-d_RigidFreeF_70 a0 = ()
-data T_RigidFreeF_70
-  = C_rf'45'K_112 T_RigidFree_68 | C_rf'45'Id_114 |
-    C_rf'45''8853'_120 T_RigidFreeF_70 T_RigidFreeF_70 |
-    C_rf'45''8855'_126 T_RigidFreeF_70 T_RigidFreeF_70
+d_RigidFreeF_60 a0 = ()
+data T_RigidFreeF_60
+  = C_rf'45'K_102 T_RigidFree_58 | C_rf'45'Id_104 |
+    C_rf'45''8853'_110 T_RigidFreeF_60 T_RigidFreeF_60 |
+    C_rf'45''8855'_116 T_RigidFreeF_60 T_RigidFreeF_60

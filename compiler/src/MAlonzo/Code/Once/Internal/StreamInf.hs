@@ -23,18 +23,18 @@ import qualified MAlonzo.Code.Once.Internal.FunctorMeaning
 import qualified MAlonzo.Code.Once.Internal.Iterative
 import qualified MAlonzo.Code.Once.Internal.Polynomial
 import qualified MAlonzo.Code.Once.Internal.Trace
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Internal.Value
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Internal.StreamInf._.coerce-ν-in
 d_coerce'45'ν'45'in_8 ::
-  MAlonzo.Code.Once.Internal.Type.T_Functor_6 ->
-  () -> AgdaAny -> AgdaAny
-d_coerce'45'ν'45'in_8
-  = coe MAlonzo.Code.Once.Internal.Value.du_coerce'45'ν'45'in_578
+  Integer ->
+  MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> () -> AgdaAny -> AgdaAny
+d_coerce'45'ν'45'in_8 v0
+  = coe MAlonzo.Code.Once.Internal.Value.du_coerce'45'ν'45'in_616
 -- Once.Internal.StreamInf._.⟦_⟧F
 d_'10214'_'10215'F_10 ::
-  MAlonzo.Code.Once.Internal.Type.T_Functor_6 -> () -> ()
+  Integer -> MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> () -> ()
 d_'10214'_'10215'F_10 = erased
 -- Once.Internal.StreamInf.νᴵ
 d_ν'7477'_14 a0 = ()
@@ -169,27 +169,28 @@ du_mapAna'7477'_54 v0 v1 v2 v3
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.StreamInf.anaFᴵ
-d_anaF'7477'_150 ::
-  MAlonzo.Code.Once.Internal.Type.T_Functor_6 ->
+d_anaF'7477'_152 ::
+  Integer ->
+  MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny -> T_ν'7477'_14
-d_anaF'7477'_150 v0 ~v1 v2 = du_anaF'7477'_150 v0 v2
-du_anaF'7477'_150 ::
-  MAlonzo.Code.Once.Internal.Type.T_Functor_6 ->
+d_anaF'7477'_152 ~v0 v1 ~v2 v3 = du_anaF'7477'_152 v1 v3
+du_anaF'7477'_152 ::
+  MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny -> T_ν'7477'_14
-du_anaF'7477'_150 v0 v1
+du_anaF'7477'_152 v0 v1
   = coe
       du_ana'7477'_34
       (coe
-         MAlonzo.Code.Once.Internal.FunctorMeaning.du_translateF_56
+         MAlonzo.Code.Once.Internal.FunctorMeaning.du_translateF_60
          (coe v0))
       (coe
          (\ v2 ->
             coe
               MAlonzo.Code.Once.Internal.Iterative.du_fmap'8734'_358
               (coe
-                 MAlonzo.Code.Once.Internal.Value.du_coerce'45'ν'45'in_578 v0
+                 MAlonzo.Code.Once.Internal.Value.du_coerce'45'ν'45'in_616 v0
                  erased)
               (coe v1 v2)))

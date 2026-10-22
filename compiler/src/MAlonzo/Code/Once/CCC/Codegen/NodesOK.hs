@@ -30,15 +30,15 @@ import qualified MAlonzo.Code.Once.Arith.SigOp.Compare
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Target.Symbol
 
 -- Once.CCC.Codegen.NodesOK.sigop-syms
 d_sigop'45'syms_12 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
@@ -70,8 +70,8 @@ du_sigop'45'syms_12 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.NodesOK.SigLeaves
 d_SigLeaves_28 ::
-  (MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 -> ()) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -144,7 +144,7 @@ d_leaf'45'syms_100 v0 v1 v2
                            (coe
                               MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v8)
                               (coe
-                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v10) (coe v1)))
+                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v10) (coe v1)))
                            (coe v1) (coe v7)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -160,7 +160,7 @@ d_leaf'45'syms_100 v0 v1 v2
                       -> coe
                            d_leaf'45'syms_100 (coe v0)
                            (coe
-                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v10) (coe v9))
+                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v10) (coe v9))
                            (coe v7)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -293,7 +293,7 @@ du_leaf'45'syms'45'leaves_134 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v9)
                               (coe
-                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v11) (coe v1)))
+                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v11) (coe v1)))
                            (coe v1) (coe v8) (coe v3)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -309,7 +309,7 @@ du_leaf'45'syms'45'leaves_134 v0 v1 v2 v3
                       -> coe
                            du_leaf'45'syms'45'leaves_134 (coe v0)
                            (coe
-                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v11) (coe v10))
+                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v11) (coe v10))
                            (coe v8) (coe v3)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -330,8 +330,8 @@ du_leaf'45'syms'45'leaves_134 v0 v1 v2 v3
 -- Once.CCC.Codegen.NodesOK.leaf-syms-all
 d_leaf'45'syms'45'all_216 ::
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()) ->
-  (MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -341,8 +341,8 @@ d_leaf'45'syms'45'all_216 ::
 d_leaf'45'syms'45'all_216 ~v0 v1 v2 v3 v4
   = du_leaf'45'syms'45'all_216 v1 v2 v3 v4
 du_leaf'45'syms'45'all_216 ::
-  (MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  (MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
    MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44) ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -419,7 +419,7 @@ du_leaf'45'syms'45'all_216 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v9)
                               (coe
-                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v11) (coe v2)))
+                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v11) (coe v2)))
                            (coe v2) (coe v8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -435,7 +435,7 @@ du_leaf'45'syms'45'all_216 v0 v1 v2 v3
                       -> coe
                            du_leaf'45'syms'45'all_216 (coe v0) (coe v1)
                            (coe
-                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v11) (coe v10))
+                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v11) (coe v10))
                            (coe v8)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -570,7 +570,7 @@ du_nodes'45'from_338 v0 v1 v2 v3 v4 v5
                            (coe
                               MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v11)
                               (coe
-                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v13) (coe v2)))
+                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v13) (coe v2)))
                            (coe v2) (coe v10) (coe v4) (coe v5)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -586,7 +586,7 @@ du_nodes'45'from_338 v0 v1 v2 v3 v4 v5
                       -> coe
                            du_nodes'45'from_338 (coe v0) (coe v1)
                            (coe
-                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_80 (coe v13) (coe v12))
+                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v13) (coe v12))
                            (coe v10) (coe v4) (coe v5)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

@@ -19,8 +19,8 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.String.Base
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Spec.Grade
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.TypeCheck.Error.TypeError
@@ -30,31 +30,32 @@ data T_TypeError_6
     C_UnboundQualified_14 MAlonzo.Code.Agda.Builtin.String.T_String_6
                           MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_NonConcreteSigOpType_20 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                              MAlonzo.Code.Once.Internal.Type.T_Type_8 |
+                              MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
     C_FloatLiteralUnsupported_22 | C_LambdaInInferMode_24 |
     C_LambdaRequiresFunctionType_26 | C_InlInInferMode_28 |
     C_InrInInferMode_30 | C_InitialInInferMode_32 |
     C_InlNeedsSumType_34 | C_InrNeedsSumType_36 | C_FstNeedsPair_38 |
     C_SndNeedsPair_40 | C_ArrNeedsFunction_42 | C_NegationNotInt_44 |
     C_CaseScrutineeNotSum_46 | C_CaseBranchMismatch_48 |
-    C_ApplicationTypeMismatch_54 MAlonzo.Code.Once.Internal.Type.T_Type_8
-                                 MAlonzo.Code.Once.Internal.Type.T_Type_8 |
-    C_TypeMismatch_60 MAlonzo.Code.Once.Internal.Type.T_Type_8
-                      MAlonzo.Code.Once.Internal.Type.T_Type_8 |
-    C_NotFunction_64 MAlonzo.Code.Once.Internal.Type.T_Type_8 |
-    C_UsageViolation_72 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_ApplicationTypeMismatch_56 Integer
+                                 MAlonzo.Code.Once.Spec.Type.T_Ty_8
+                                 MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+    C_TypeMismatch_64 Integer MAlonzo.Code.Once.Spec.Type.T_Ty_8
+                      MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+    C_NotFunction_70 Integer MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+    C_UsageViolation_78 MAlonzo.Code.Agda.Builtin.String.T_String_6
                         MAlonzo.Code.Once.Spec.Grade.T_Quantity_6
                         MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 |
-    C_BuiltinTypeMismatch_76 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_ComposeMiddleUndetermined_78 |
-    C_BinOpLeftError_80 T_TypeError_6 |
-    C_BinOpRightError_82 T_TypeError_6 |
-    C_AnnotationMentionsParameter_86 MAlonzo.Code.Once.Internal.Type.T_Type_8 |
-    C_UnclassifiedError_88 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_BuiltinTypeMismatch_82 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_ComposeMiddleUndetermined_84 |
+    C_BinOpLeftError_86 T_TypeError_6 |
+    C_BinOpRightError_88 T_TypeError_6 |
+    C_AnnotationMentionsParameter_92 MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+    C_UnclassifiedError_94 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.TypeCheck.Error.renderError
-d_renderError_90 ::
+d_renderError_96 ::
   T_TypeError_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_renderError_90 v0
+d_renderError_96 v0
   = case coe v0 of
       C_UnboundVariable_8 v1
         -> coe
@@ -85,7 +86,8 @@ d_renderError_90 v0
                    ("' has non-concrete type " :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (MAlonzo.Code.Once.Type.d_showType_34 (coe v2))
+                      (MAlonzo.Code.Once.Type.d_showType_36
+                         (coe (0 :: Integer)) (coe v2))
                       (" (FFI/SigOp references must be base types or first-order function pointers)"
                        ::
                        Data.Text.Text))))
@@ -135,34 +137,34 @@ d_renderError_90 v0
         -> coe ("Case requires a sum-typed scrutinee" :: Data.Text.Text)
       C_CaseBranchMismatch_48
         -> coe ("Case branches have different types" :: Data.Text.Text)
-      C_ApplicationTypeMismatch_54 v1 v2
+      C_ApplicationTypeMismatch_56 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Application: argument type " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.Type.d_showType_34 (coe v2))
+                (MAlonzo.Code.Once.Type.d_showType_36 (coe v1) (coe v3))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" does not match function domain " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))))
-      C_TypeMismatch_60 v1 v2
+                   (MAlonzo.Code.Once.Type.d_showType_36 (coe v1) (coe v2))))
+      C_TypeMismatch_64 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Type mismatch: expected " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))
+                (MAlonzo.Code.Once.Type.d_showType_36 (coe v1) (coe v2))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" but got " :: Data.Text.Text)
-                   (MAlonzo.Code.Once.Type.d_showType_34 (coe v2))))
-      C_NotFunction_64 v1
+                   (MAlonzo.Code.Once.Type.d_showType_36 (coe v1) (coe v3))))
+      C_NotFunction_70 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("expected function type, got " :: Data.Text.Text)
-             (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))
-      C_UsageViolation_72 v1 v2 v3
+             (MAlonzo.Code.Once.Type.d_showType_36 (coe v1) (coe v2))
+      C_UsageViolation_78 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Parameter '" :: Data.Text.Text)
@@ -178,11 +180,11 @@ d_renderError_90 v0
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (" but declared with quantity " :: Data.Text.Text)
                          (MAlonzo.Code.Once.Type.d_showQuantity_4 (coe v2))))))
-      C_BuiltinTypeMismatch_76 v1
+      C_BuiltinTypeMismatch_82 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
              (": expected type mismatch" :: Data.Text.Text)
-      C_ComposeMiddleUndetermined_78
+      C_ComposeMiddleUndetermined_84
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("compose: cannot determine the middle type \8212 neither the second argument's "
@@ -194,20 +196,21 @@ d_renderError_90 v0
                  ::
                  Data.Text.Text)
                 ("annotate one of them" :: Data.Text.Text))
-      C_BinOpLeftError_80 v1
+      C_BinOpLeftError_86 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("binop left: " :: Data.Text.Text) (d_renderError_90 (coe v1))
-      C_BinOpRightError_82 v1
+             ("binop left: " :: Data.Text.Text) (d_renderError_96 (coe v1))
+      C_BinOpRightError_88 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("binop right: " :: Data.Text.Text) (d_renderError_90 (coe v1))
-      C_AnnotationMentionsParameter_86 v1
+             ("binop right: " :: Data.Text.Text) (d_renderError_96 (coe v1))
+      C_AnnotationMentionsParameter_92 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("An annotation may not mention a type parameter: "
               ::
               Data.Text.Text)
-             (MAlonzo.Code.Once.Type.d_showType_34 (coe v1))
-      C_UnclassifiedError_88 v1 -> coe v1
+             (MAlonzo.Code.Once.Type.d_showType_36
+                (coe (0 :: Integer)) (coe v1))
+      C_UnclassifiedError_94 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

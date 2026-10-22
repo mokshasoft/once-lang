@@ -24,10 +24,10 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.Grammar
 import qualified MAlonzo.Code.Once.Grammar.ParserRelation
 import qualified MAlonzo.Code.Once.Grammar.Printer
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
 import qualified MAlonzo.Code.Once.Spec.Grade
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Grammar.RelRoundtrip.quantityToken≡quantityTokenOf
 d_quantityToken'8801'quantityTokenOf_8 ::
@@ -165,7 +165,7 @@ d_rt'45'atom_40 v0 v1 v2
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                           (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                        (coe
-                          MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28
+                          MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                           (coe
                              MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v7)
                              (coe v5))
@@ -182,7 +182,7 @@ d_rt'45'atom_40 v0 v1 v2
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                              (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                           (coe
-                             MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28
+                             MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                              (coe
                                 MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v7)
                                 (coe v5))
@@ -199,7 +199,7 @@ d_rt'45'atom_40 v0 v1 v2
                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                 (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                              (coe
-                                MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28
+                                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                 (coe
                                    MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v7)
                                    (coe v5))
@@ -257,7 +257,7 @@ d_rt'45'atom_40 v0 v1 v2
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                           (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                        (coe
-                          MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28
+                          MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                           (coe
                              MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v7)
                              (coe v5))
@@ -276,7 +276,7 @@ d_rt'45'atom_40 v0 v1 v2
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                              (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                           (coe
-                             MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28
+                             MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                              (coe
                                 MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v7)
                                 (coe v5))
@@ -295,7 +295,7 @@ d_rt'45'atom_40 v0 v1 v2
                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                 (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                              (coe
-                                MAlonzo.Code.Once.Internal.Type.C__'8658''91'_'93'__28
+                                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                 (coe
                                    MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v7)
                                    (coe v5))
@@ -363,7 +363,7 @@ du_rt'45'type'45'of'45'prod_52 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268 v4
       (coe
-         MAlonzo.Code.Once.Internal.Type.C__'42'__24
+         MAlonzo.Code.Once.Spec.Type.C__'42'__22
          (coe
             MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v0)
             (coe v2))
@@ -373,7 +373,7 @@ du_rt'45'type'45'of'45'prod_52 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Once.Parser.TypeRelation.C_ps'45'mk_236 v4
          (coe
-            MAlonzo.Code.Once.Internal.Type.C__'42'__24
+            MAlonzo.Code.Once.Spec.Type.C__'42'__22
             (coe
                MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v0)
                (coe v2))
@@ -435,7 +435,7 @@ du_rt'45'type'45'of'45'sum_64 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Parser.TypeRelation.C_pt'45'mk_268 v4
       (coe
-         MAlonzo.Code.Once.Internal.Type.C__'43'__26
+         MAlonzo.Code.Once.Spec.Type.C__'43'__24
          (coe
             MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v0)
             (coe v2))

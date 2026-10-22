@@ -24,8 +24,8 @@ import qualified MAlonzo.Code.Data.Sign.Base
 import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.Type
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Arith.Machine.IR.MArithIR
 d_MArithIR_10 a0 a1 = ()
@@ -193,31 +193,31 @@ du_cmpℤ_132 v0 v1 v2
 -- Once.Arith.Machine.IR.shape-as-type
 d_shape'45'as'45'type_158 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8
 d_shape'45'as'45'type_158 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'unit_10
-        -> coe MAlonzo.Code.Once.Internal.Type.C_Unit_20
+        -> coe MAlonzo.Code.Once.Spec.Type.C_Unit_18
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12
-        -> coe MAlonzo.Code.Once.Internal.Type.C_Int_34
+        -> coe MAlonzo.Code.Once.Spec.Type.C_Int_32
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'float_14
-        -> coe MAlonzo.Code.Once.Internal.Type.C_Float_36
+        -> coe MAlonzo.Code.Once.Spec.Type.C_Float_34
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16 v1 v2
         -> coe
-             MAlonzo.Code.Once.Internal.Type.C__'42'__24
+             MAlonzo.Code.Once.Spec.Type.C__'42'__22
              (coe d_shape'45'as'45'type_158 (coe v1))
              (coe d_shape'45'as'45'type_158 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.IR.numtype-as-type
 d_numtype'45'as'45'type_164 ::
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8
 d_numtype'45'as'45'type_164 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Type.C_NInt_8
-        -> coe MAlonzo.Code.Once.Internal.Type.C_Int_34
+        -> coe MAlonzo.Code.Once.Spec.Type.C_Int_32
       MAlonzo.Code.Once.Arith.Type.C_NFloat_10
-        -> coe MAlonzo.Code.Once.Internal.Type.C_Float_36
+        -> coe MAlonzo.Code.Once.Spec.Type.C_Float_34
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.IR.ArithBlock
 d_ArithBlock_166 = ()

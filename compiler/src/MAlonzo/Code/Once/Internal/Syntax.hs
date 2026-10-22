@@ -19,8 +19,8 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Bool
 import qualified MAlonzo.Code.Agda.Builtin.String
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Internal.Syntax.BinOp
 d_BinOp_6 = ()
@@ -49,10 +49,10 @@ data T_RawExpr_34
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34 |
     C_RUnit_52 | C_RInt_54 Integer |
     C_RFloat_56 Integer Integer Integer Integer |
-    C_RAnnot_58 T_RawExpr_34 MAlonzo.Code.Once.Internal.Type.T_Type_8 |
+    C_RAnnot_58 T_RawExpr_34 MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
     C_RBinOp_60 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
     C_RUnaryOp_62 T_RawExpr_34 |
-    C_RAna_64 MAlonzo.Code.Once.Internal.Type.T_Functor_6 T_RawExpr_34
+    C_RAna_64 MAlonzo.Code.Once.Spec.Type.T_Fun_12 T_RawExpr_34
 -- Once.Internal.Syntax.isComparisonOp
 d_isComparisonOp_66 :: T_BinOp_6 -> Bool
 d_isComparisonOp_66 v0

@@ -26,10 +26,10 @@ import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Internal.Iterative
 import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Trace
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Numerics
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Denotation.Program.IRFun
@@ -67,8 +67,8 @@ d_fbody_22 v0
 d_tableEnv_26 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
   [T_IRFun_6] -> MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6
 d_tableEnv_26 v0 v1 v2
@@ -79,8 +79,8 @@ d_tableEnv_26 v0 v1 v2
 d_tableCalls_32 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
   [T_IRFun_6] ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -101,10 +101,10 @@ d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
                 MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__76
                 (coe d_fname_16 (coe v7)) (coe v3))
              (coe
-                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__196 (coe d_fdom_18 (coe v7))
+                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__200 (coe d_fdom_18 (coe v7))
                 (coe v4))
              (coe
-                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__196 (coe d_fcod_20 (coe v7))
+                MAlonzo.Code.Once.IRTy.d__'8799'IRTy__200 (coe d_fcod_20 (coe v7))
                 (coe v5))
              (coe v6)
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -112,8 +112,8 @@ d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
 d_tableEnv'45'at_42 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
   T_IRFun_6 ->
   [T_IRFun_6] ->
@@ -188,16 +188,16 @@ d_LinkedAt'45'at_158 = erased
 -- Once.Denotation.Program.Declared-at
 d_Declared'45'at_220 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 -> ()
 d_Declared'45'at_220 = erased
 -- Once.Denotation.Program.Declared
 d_Declared_258 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 -> ()
 d_Declared_258 = erased
 -- Once.Denotation.Program.Linked
@@ -228,8 +228,8 @@ d_main_394 v0
 d_runIR_398 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-   MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
   T_IRProgram_386 ->
   MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58

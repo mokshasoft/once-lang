@@ -25,9 +25,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Internal.Syntax
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
@@ -76,21 +76,21 @@ du_one'45'name_60 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.ResolvedRefs.rigidFree-dec
 d_rigidFree'45'dec_76 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d_rigidFree'45'dec_76 v0
   = coe
       du_from_86
-      (coe MAlonzo.Code.Once.Type.Rigid.d_rigidFree'63'_676 (coe v0))
+      (coe MAlonzo.Code.Once.Type.Rigid.d_rigidFree'63'_718 (coe v0))
 -- Once.Internal.ResolvedRefs._.from
 d_from_86 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  Maybe MAlonzo.Code.Once.Internal.Type.WellFormed.T_RigidFree_68 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  Maybe MAlonzo.Code.Once.Internal.Type.WellFormed.T_RigidFree_58 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d_from_86 ~v0 v1 ~v2 = du_from_86 v1
 du_from_86 ::
-  Maybe MAlonzo.Code.Once.Internal.Type.WellFormed.T_RigidFree_68 ->
+  Maybe MAlonzo.Code.Once.Internal.Type.WellFormed.T_RigidFree_58 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 du_from_86 v0
   = case coe v0 of
@@ -107,7 +107,7 @@ du_from_86 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.ResolvedRefs._._.nothing≢just
 d_nothing'8802'just_100 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   () ->
   AgdaAny ->

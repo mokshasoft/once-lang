@@ -95,8 +95,10 @@ library
       MAlonzo.Code.Once.CanonicalName
       MAlonzo.Code.Once.Compile
       MAlonzo.Code.Once.Internal.Principal
+      MAlonzo.Code.Once.Spec.Context
       MAlonzo.Code.Once.Spec.Grade
       MAlonzo.Code.Once.Spec.Signature
+      MAlonzo.Code.Once.Spec.Sub
       MAlonzo.Code.Once.Spec.Type
       MAlonzo.Code.Once.Target.SymbolFresh
       MAlonzo.Code.Once.Denotation.Admissible

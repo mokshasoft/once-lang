@@ -39,12 +39,11 @@ import qualified MAlonzo.Code.Once.Internal.Contract
 import qualified MAlonzo.Code.Once.Internal.Event
 import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Trace
-import qualified MAlonzo.Code.Once.Internal.Type
-import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Spec.Word
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -90,7 +89,7 @@ d_StoredValue_66 a0 = ()
 data T_StoredValue_66
   = C_SV'45'Ptr_70 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 |
     C_SV'45'Tag_72 Integer |
-    C_SV'45'Lit_76 MAlonzo.Code.Once.Internal.Type.T_Type_8
+    C_SV'45'Lit_76 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                    MAlonzo.Code.Once.Type.T_FitsInReg_24 AgdaAny |
     C_SV'45'Code_78 MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 -- Once.CCC.Machine.SMCore.sucLoc
@@ -1917,10 +1916,10 @@ data T_AbstractInstr_2252
     C_instr'45'pop'45'frame_2282 | C_instr'45'call'45'closure_2284 |
     C_worklist'45'init_2286 Integer | C_worklist'45'push_2288 Integer |
     C_worklist'45'pop_2290 Integer | C_worklist'45'check_2292 Integer |
-    C_instr'45'sigop_2298 MAlonzo.Code.Once.Internal.Type.T_Type_8
-                          MAlonzo.Code.Once.Internal.Type.T_Type_8
+    C_instr'45'sigop_2298 MAlonzo.Code.Once.Spec.Type.T_Ty_8
+                          MAlonzo.Code.Once.Spec.Type.T_Ty_8
                           MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 |
-    C_instr'45'load'45'const_2304 MAlonzo.Code.Once.Internal.Type.T_Type_8
+    C_instr'45'load'45'const_2304 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                                   MAlonzo.Code.Once.Type.T_FitsInReg_24 AgdaAny |
     C_instr'45'load'45'code'45'addr_2306 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
     C_instr'45'save'45'closure'45'reg_2308 |
@@ -2583,13 +2582,13 @@ d_unit'45'storedvalue_2670 ~v0 = du_unit'45'storedvalue_2670
 du_unit'45'storedvalue_2670 :: T_StoredValue_66
 du_unit'45'storedvalue_2670
   = coe
-      C_SV'45'Lit_76 (coe MAlonzo.Code.Once.Internal.Type.C_Int_34)
+      C_SV'45'Lit_76 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
       (coe MAlonzo.Code.Once.Type.C_fits'45'int_26) (coe (0 :: Integer))
 -- Once.CCC.Machine.SMCore.AbstractExec.combine-typed
 d_combine'45'typed_2676 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   Maybe AgdaAny ->
   Maybe AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_combine'45'typed_2676 ~v0 ~v1 ~v2 v3 v4
@@ -2665,7 +2664,7 @@ du_readTyped'45'float_2686 v0
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-cell
 d_readTyped'45'cell_2692 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    Maybe AgdaAny) ->
   (T_StoredValue_66 -> Maybe AgdaAny) ->
@@ -2691,8 +2690,8 @@ du_readTyped'45'cell_2692 v0 v1 v2
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-pair
 d_readTyped'45'pair_2728 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
    Maybe AgdaAny) ->
   (MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
@@ -2722,21 +2721,21 @@ du_readTyped'45'pair_2728 v0 v1 v2 v3 v4 v5
 -- Once.CCC.Machine.SMCore.AbstractExec.readReg-typed
 d_readReg'45'typed_2744 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   T_StoredValue_66 -> Maybe AgdaAny
 d_readReg'45'typed_2744 ~v0 v1 v2 = du_readReg'45'typed_2744 v1 v2
 du_readReg'45'typed_2744 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   T_StoredValue_66 -> Maybe AgdaAny
 du_readReg'45'typed_2744 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Internal.Type.C_Unit_20
+         MAlonzo.Code.Once.Spec.Type.C_Unit_18
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-         MAlonzo.Code.Once.Internal.Type.C_Int_34
+         MAlonzo.Code.Once.Spec.Type.C_Int_32
            -> case coe v1 of
                 C_SV'45'Lit_76 v3 v4 v5
                   -> case coe v4 of
@@ -2744,7 +2743,7 @@ du_readReg'45'typed_2744 v0 v1
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v5)
                        _ -> coe v2
                 _ -> coe v2
-         MAlonzo.Code.Once.Internal.Type.C_Float_36
+         MAlonzo.Code.Once.Spec.Type.C_Float_34
            -> case coe v1 of
                 C_SV'45'Lit_76 v3 v4 v5
                   -> case coe v4 of
@@ -2756,8 +2755,8 @@ du_readReg'45'typed_2744 v0 v1
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped-sum
 d_readTyped'45'sum_2754 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   (Maybe T_StoredValue_66 -> Maybe AgdaAny) ->
   (Maybe T_StoredValue_66 -> Maybe AgdaAny) ->
   Maybe T_StoredValue_66 ->
@@ -2796,23 +2795,23 @@ du_readTyped'45'sum_2754 v0 v1 v2 v3
 -- Once.CCC.Machine.SMCore.AbstractExec.readTyped
 d_readTyped_2800 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_408 -> Maybe AgdaAny
 d_readTyped_2800 ~v0 v1 v2 v3 = du_readTyped_2800 v1 v2 v3
 du_readTyped_2800 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_LocState_408 -> Maybe AgdaAny
 du_readTyped_2800 v0 v1 v2
   = let v3 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Internal.Type.C_Unit_20
+         MAlonzo.Code.Once.Spec.Type.C_Unit_18
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-         MAlonzo.Code.Once.Internal.Type.C__'42'__24 v4 v5
+         MAlonzo.Code.Once.Spec.Type.C__'42'__22 v4 v5
            -> coe
                 du_readTyped'45'pair_2728
                 (coe (\ v6 -> coe du_readTyped_2800 (coe v4) (coe v6) (coe v2)))
@@ -2821,7 +2820,7 @@ du_readTyped_2800 v0 v1 v2
                 (coe du_readReg'45'typed_2744 (coe v5))
                 (coe du_readLoc_666 (coe v2) (coe v1))
                 (coe du_readLoc_666 (coe v2) (coe du_sucLoc_82 (coe v1)))
-         MAlonzo.Code.Once.Internal.Type.C__'43'__26 v4 v5
+         MAlonzo.Code.Once.Spec.Type.C__'43'__24 v4 v5
            -> coe
                 du_readTyped'45'sum_2754
                 (coe
@@ -2834,10 +2833,10 @@ du_readTyped_2800 v0 v1 v2
                    (coe du_readReg'45'typed_2744 (coe v5)))
                 (coe du_readLoc_666 (coe v2) (coe v1))
                 (coe du_readLoc_666 (coe v2) (coe du_sucLoc_82 (coe v1)))
-         MAlonzo.Code.Once.Internal.Type.C_Int_34
+         MAlonzo.Code.Once.Spec.Type.C_Int_32
            -> coe
                 du_readTyped'45'int_2682 (coe du_readLoc_666 (coe v2) (coe v1))
-         MAlonzo.Code.Once.Internal.Type.C_Float_36
+         MAlonzo.Code.Once.Spec.Type.C_Float_34
            -> coe
                 du_readTyped'45'float_2686 (coe du_readLoc_666 (coe v2) (coe v1))
          _ -> coe v3)
@@ -2848,14 +2847,14 @@ d_structured'45'pure'45'sigop'45'output_2846
 -- Once.CCC.Machine.SMCore.AbstractExec.decode-at
 d_decode'45'at_2850 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Base_84 ->
   T_StoredValue_66 -> T_LocState_408 -> Maybe AgdaAny
 d_decode'45'at_2850 ~v0 v1 v2 v3 v4
   = du_decode'45'at_2850 v1 v2 v3 v4
 du_decode'45'at_2850 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsBaseType_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Base_84 ->
   T_StoredValue_66 -> T_LocState_408 -> Maybe AgdaAny
 du_decode'45'at_2850 v0 v1 v2 v3
   = let v4
@@ -2867,11 +2866,11 @@ du_decode'45'at_2850 v0 v1 v2 v3
                  _ -> coe v4) in
     coe
       (case coe v1 of
-         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Unit_10
+         MAlonzo.Code.Once.Spec.Type.C_b'45'Unit_94
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Int_14
+         MAlonzo.Code.Once.Spec.Type.C_b'45'Int_98
            -> case coe v2 of
                 C_SV'45'Lit_76 v5 v6 v7
                   -> case coe v6 of
@@ -2879,7 +2878,7 @@ du_decode'45'at_2850 v0 v1 v2 v3
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v7)
                        _ -> coe v4
                 _ -> coe v4
-         MAlonzo.Code.Once.Internal.Type.WellFormed.C_base'45'Float_16
+         MAlonzo.Code.Once.Spec.Type.C_b'45'Float_100
            -> case coe v2 of
                 C_SV'45'Lit_76 v5 v6 v7
                   -> case coe v6 of
@@ -2891,14 +2890,14 @@ du_decode'45'at_2850 v0 v1 v2 v3
 -- Once.CCC.Machine.SMCore.AbstractExec.events-at-arg
 d_events'45'at'45'arg_2866 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   Maybe AgdaAny -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_events'45'at'45'arg_2866 ~v0 v1 ~v2 v3 v4
   = du_events'45'at'45'arg_2866 v1 v3 v4
 du_events'45'at'45'arg_2866 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   Maybe AgdaAny -> [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 du_events'45'at'45'arg_2866 v0 v1 v2
@@ -2916,15 +2915,15 @@ du_events'45'at'45'arg_2866 v0 v1 v2
 -- Once.CCC.Machine.SMCore.AbstractExec.machine-events
 d_machine'45'events_2880 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_machine'45'events_2880 ~v0 v1 ~v2 v3 v4
   = du_machine'45'events_2880 v1 v3 v4
 du_machine'45'events_2880 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
@@ -2939,8 +2938,8 @@ du_machine'45'events_2880 v0 v1 v2
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-ans-at
 d_call'45'sigop'45'ans'45'at_2892 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
@@ -2966,8 +2965,8 @@ d_call'45'sigop'45'ans'45'at_2892 v0 v1 v2 v3 v4 v5 v6 v7
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-ans
 d_call'45'sigop'45'ans_2922 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
@@ -2993,8 +2992,8 @@ d_call'45'sigop'45'ans_2922 v0 v1 v2 v3 v4 v5 v6
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-dec
 d_call'45'sigop'45'dec_2944 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d_call'45'sigop'45'dec_2944 v0 v1 v2 v3
@@ -3011,8 +3010,8 @@ d_call'45'sigop'45'dec_2944 v0 v1 v2 v3
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-val
 d_call'45'sigop'45'val_2956 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   Maybe MAlonzo.Code.Once.Type.T_FitsInReg_24 -> T_StoredValue_66
@@ -3030,8 +3029,8 @@ d_call'45'sigop'45'val_2956 v0 v1 v2 v3 v4 v5
 -- Once.CCC.Machine.SMCore.AbstractExec.call-sigop-output
 d_call'45'sigop'45'output_2972 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 -> T_StoredValue_66
 d_call'45'sigop'45'output_2972 v0 v1 v2 v3 v4
@@ -3042,8 +3041,8 @@ d_call'45'sigop'45'output_2972 v0 v1 v2 v3 v4
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-sigop-output
 d_pure'45'sigop'45'output_2984 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 -> T_StoredValue_66
 d_pure'45'sigop'45'output_2984 v0 v1 v2 v3 v4
@@ -3057,8 +3056,8 @@ d_pure'45'sigop'45'output_2984 v0 v1 v2 v3 v4
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-sigop-out-val
 d_pure'45'sigop'45'out'45'val_2990 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   Maybe AgdaAny -> T_StoredValue_66
@@ -3079,12 +3078,12 @@ d_pure'45'sigop'45'out'45'val_2990 v0 v1 v2 v3 v4 v5
 -- Once.CCC.Machine.SMCore.AbstractExec.res-sv
 d_res'45'sv_2994 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   MAlonzo.Code.Once.Internal.Res.T_Res_8 -> T_StoredValue_66
 d_res'45'sv_2994 ~v0 v1 v2 v3 = du_res'45'sv_2994 v1 v2 v3
 du_res'45'sv_2994 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
   MAlonzo.Code.Once.Internal.Res.T_Res_8 -> T_StoredValue_66
 du_res'45'sv_2994 v0 v1 v2
@@ -3097,8 +3096,8 @@ du_res'45'sv_2994 v0 v1 v2
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-sigop-out-aux
 d_pure'45'sigop'45'out'45'aux_3014 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   Maybe MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
@@ -3127,8 +3126,8 @@ d_pure'45'sigop'45'out'45'aux_3014 v0 v1 v2 v3 v4 v5 v6
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-output-of
 d_exec'45'sigop'45'output'45'of_3050 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 -> T_StoredValue_66
@@ -3150,8 +3149,8 @@ d_exec'45'sigop'45'output'45'of_3050 v0 v1 v2 v3 v4 v5
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-events-of
 d_sigop'45'events'45'of_3064 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
@@ -3159,7 +3158,7 @@ d_sigop'45'events'45'of_3064 ::
 d_sigop'45'events'45'of_3064 ~v0 v1 ~v2 v3 v4 v5
   = du_sigop'45'events'45'of_3064 v1 v3 v4 v5
 du_sigop'45'events'45'of_3064 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
@@ -3178,15 +3177,15 @@ du_sigop'45'events'45'of_3064 v0 v1 v2 v3
 -- Once.CCC.Machine.SMCore.AbstractExec.sigop-events
 d_sigop'45'events_3082 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
 d_sigop'45'events_3082 ~v0 v1 ~v2 v3 v4
   = du_sigop'45'events_3082 v1 v3 v4
 du_sigop'45'events_3082 ::
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 ->
   [MAlonzo.Code.Once.Internal.Event.T_SigOpEvent_56]
@@ -3198,8 +3197,8 @@ du_sigop'45'events_3082 v0 v1 v2
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-output
 d_exec'45'sigop'45'output_3092 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 -> T_StoredValue_66
 d_exec'45'sigop'45'output_3092 v0 v1 v2 v3 v4
@@ -3210,8 +3209,8 @@ d_exec'45'sigop'45'output_3092 v0 v1 v2 v3 v4
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-halts-of
 d_exec'45'sigop'45'halts'45'of_3102 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_EffectShape_58 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 -> Bool
@@ -3233,8 +3232,8 @@ du_exec'45'sigop'45'halts'45'of_3102 v0
 -- Once.CCC.Machine.SMCore.AbstractExec.exec-sigop-halts
 d_exec'45'sigop'45'halts_3108 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
   T_LocState_408 -> Bool
 d_exec'45'sigop'45'halts_3108 ~v0 ~v1 ~v2 v3 ~v4
@@ -3363,7 +3362,7 @@ du_exec'45'loop'45'run_3144 v0 v1 v2 v3
 -- Once.CCC.Machine.SMCore.AbstractExec.lit-value
 d_lit'45'value_3204 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Internal.Type.T_Type_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 -> AgdaAny -> AgdaAny
 d_lit'45'value_3204 v0 ~v1 v2 v3 = du_lit'45'value_3204 v0 v2 v3
 du_lit'45'value_3204 ::

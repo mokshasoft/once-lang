@@ -18,7 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Once.Internal.Context
+import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Grade
 
 -- Once.Surface.Properties.≤q-refl
@@ -66,40 +66,40 @@ d_'43'q'45'absorb_88 = erased
 -- Once.Surface.Properties.+ᵘ-comm
 d_'43''7512''45'comm_98 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'43''7512''45'comm_98 = erased
 -- Once.Surface.Properties.+ᵘ-assoc
 d_'43''7512''45'assoc_116 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'43''7512''45'assoc_116 = erased
 -- Once.Surface.Properties.+ᵘ-identityˡ
 d_'43''7512''45'identity'737'_134 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'43''7512''45'identity'737'_134 = erased
 -- Once.Surface.Properties.+ᵘ-identityʳ
 d_'43''7512''45'identity'691'_144 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'43''7512''45'identity'691'_144 = erased
 -- Once.Surface.Properties.*ᵘ-identityˡ
 d_'42''7512''45'identity'737'_154 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'42''7512''45'identity'737'_154 = erased
 -- Once.Surface.Properties.*ᵘ-zeroˡ
 d_'42''7512''45'zero'737'_166 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'42''7512''45'zero'737'_166 = erased
 -- Once.Surface.Properties.*ᵘ-zeroʳ
@@ -109,27 +109,29 @@ d_'42''7512''45'zero'691'_176 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'42''7512''45'zero'691'_176 = erased
 -- Once.Surface.Properties.≤ᵘ?-refl
-d_'8804''7512''63''45'refl_190 ::
+d_'8804''7512''63''45'refl_192 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Ctx_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804''7512''63''45'refl_190 = erased
+d_'8804''7512''63''45'refl_192 = erased
 -- Once.Surface.Properties.≤ᵘ?-zero
-d_'8804''7512''63''45'zero_204 ::
+d_'8804''7512''63''45'zero_206 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Ctx_6 ->
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8804''7512''63''45'zero_204 = erased
+d_'8804''7512''63''45'zero_206 = erased
 -- Once.Surface.Properties.+ᵘ-idʳ
 d_'43''7512''45'id'691'_218 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'43''7512''45'id'691'_218 = erased
 -- Once.Surface.Properties.erase-arg-usage
 d_erase'45'arg'45'usage_230 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
-  MAlonzo.Code.Once.Internal.Context.T_Usage_46 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_erase'45'arg'45'usage_230 = erased
