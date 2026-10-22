@@ -51,7 +51,9 @@ open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Metatheory.Trace using (WB-trans)
-open import Once.Internal.Core.Telescope using (runCore)
+import Once.Internal.Core.Telescope as TL
+open import Once.Spec.Signature using (Signature)
+open import Once.Internal.Core.Decl using (toISig)
 import Data.Unit
 open import Once.Internal.Trace using (PrefixFamily)
 open Once.Internal.Trace.PrefixFamily using (bnd; sat; coh)
@@ -459,16 +461,19 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- against. The compiled program's `main` is the call of that entry, so the
   -- telescope walk's per-entry invariant at `main` relates the two runs
   -- (`CoreBridge.program-core-tr`), in the world those signatures and `I` make.
-  -- D320: the meaning is the core run's TRACE, in the world the module's
-  -- signatures and `I` make — its calls, and how it ended.
-  ⟦_⟧ᵈᴵ : Arch → (tp : Typed) → Impl (sigOfT tp) → Tr Data.Unit.⊤
-  ⟦ arch ⟧ᵈᴵ tp I = trT∞ (interp (sigOfT tp) I) Data.List.List.[] (runCore (arch-numerics arch) (CB.typedProgram (arch-numerics arch) tp) (CB.implFor (arch-numerics arch) tp I))
+  -- D320: the meaning is the core run's TRACE, in the world a signature and
+  -- `I` make — its calls, and how it ended. Plan 0.122: the core is the
+  -- Spec's, over a signature `Σs` that declares the module's FFI words
+  -- (`CB.SigView`), run with an implementation `I` of it.
+  ⟦_⟧ᵈᴵ : Arch → (tp : Typed) (Σs : Signature) → CB.SigView tp Σs → Impl (toISig Σs) → Tr Data.Unit.⊤
+  ⟦ arch ⟧ᵈᴵ tp Σs u I = trT∞ (interp (toISig Σs) I) Data.List.List.[] (TL.runCore Σs (arch-numerics arch) (CB.typedProgram tp Σs u) I)
 
-  ir-core-tr : ∀ (arch : Arch) (tp : Typed) (I : Impl (sigOfT tp)) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR (proj₁ tp) ≡ just ir
-             → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (interp (sigOfT tp) I) ≋ ⟦ arch ⟧ᵈᴵ tp I
-  ir-core-tr arch (m , mt , hvm) I ir mi =
-    subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (interp (moduleSig m) I) ≋ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) I)
-          (sym mi) (CB.program-core-tr (arch-numerics arch) m mt hvm I ir mi)
+  ir-core-tr : ∀ (arch : Arch) (tp : Typed) (Σs : Signature) (u : CB.SigView tp Σs) (I : Impl (toISig Σs))
+               (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR (proj₁ tp) ≡ just ir
+             → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (interp (toISig Σs) I) ≋ ⟦ arch ⟧ᵈᴵ tp Σs u I
+  ir-core-tr arch (m , mt , hvm) Σs u I ir mi =
+    subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (interp (toISig Σs) I) ≋ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) Σs u I)
+          (sym mi) (CB.program-core-tr (arch-numerics arch) m mt hvm Σs u I ir mi)
 
   ----------------------------------------------------------------------
   -- Plan 0.105: the semantic half, at an interpretation `ι` — the world the
@@ -803,20 +808,22 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- agree in every world the program can run in.
   ----------------------------------------------------------------------
   -- Plan 0.105 (D257, D061): THE STATEMENT the Spec's `correct` is filled with.
-  -- A typed module is compiled against its FFI declarations (`sigOfT`); its
-  -- meaning is relative to an implementation `I` of them (`⟦_⟧ᵈᴵ`), and its
-  -- bytes run in the world those declarations and `I` make.
+  -- A typed module is compiled against its FFI declarations; its meaning is
+  -- relative to a signature `Σs` declaring them (`CB.SigView`) and an
+  -- implementation `I` of it (`⟦_⟧ᵈᴵ`), and its bytes run in the world they make.
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
-                               × (∀ (I : Impl (sigOfT tp)) → _≋_ (exec (interp (sigOfT tp) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp I))) )
+                               × (∀ (Σs : Signature) (u : CB.SigView tp Σs) (I : Impl (toISig Σs))
+                                  → _≋_ (exec (interp (toISig Σs) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u I))) )
     × ( ∀ tp → src ⊢R tp → Admissible arch tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctᵈ arch doOpt src = sound , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
     where
       sound : ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
-                               × (∀ (I : Impl (sigOfT tp)) → _≋_ (exec (interp (sigOfT tp) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp I)))
+                               × (∀ (Σs : Signature) (u : CB.SigView tp Σs) (I : Impl (toISig Σs))
+                                  → _≋_ (exec (interp (toISig Σs) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u I)))
       sound bytes pf with accept-typed arch doOpt src bytes pf
       ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
       ...   | (ir , mi) with srcToModule-inv src mR stm-eq
@@ -826,5 +833,5 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                   , FB.parseStrict-sound (Source.srcText src) mU p-eq
                   , RBR.resolvesModule-complete (Source.srcImports src) (P.Module.decls mU) mR res-eq )
                 , accept-gm arch doOpt mR (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
-                , (λ I → WB-trans trans (sound-trace (interp (moduleSig mR) I) arch doOpt src bytes pf mR stm-eq ir mi refl)
-                                 (ir-core-tr arch (mR , MT , MC.moduleToIR-sound mR MT mi) I ir mi))
+                , (λ Σs u I → WB-trans trans (sound-trace (interp (toISig Σs) I) arch doOpt src bytes pf mR stm-eq ir mi refl)
+                                 (ir-core-tr arch (mR , MT , MC.moduleToIR-sound mR MT mi) Σs u I ir mi))
