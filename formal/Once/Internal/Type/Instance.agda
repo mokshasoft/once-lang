@@ -3,16 +3,16 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Type.Instance — a schema's parameters, their kinds, its rigid
--- instance, and the instances a use of it may be at.
+-- Once.Internal.Type.Instance — a schema's parameters, their kinds, the type
+-- its body is checked at, and the instances a use of it may be at.
 --
 --   * The parameters of `∀ā.T` are its free variables in order of first
 --     occurrence (`params`).
 --   * A parameter is `k-base` if it occurs inside a functor constant (`PK`),
 --     where every instance must be a base type; otherwise it is `k-any`.
 --     Kinds are read off the schema.
---   * The body of a polymorphic definition is typed once, at `rigidOf T`:
---     parameter `i` held abstract as `rigid kᵢ i`.
+--   * The body of a polymorphic definition is typed once, at
+--     `rigidOf T : Ty (arityOf T)`: parameter `i` is the type variable `var i`.
 --   * A use is at a kinded instance: some `θ` with `substPoly θ T ≡ U` that
 --     instantiates every base-kinded parameter at a base type.
 ------------------------------------------------------------------------
@@ -27,7 +27,10 @@ open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String; _≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
-open import Once.Spec.Type using (Type)
+open import Once.Spec.Type using (Ty; Type; var; Unit)
+open import Data.Fin using (Fin; zero; suc)
+open import Data.Maybe using (Maybe; just; nothing; maybe′)
+import Data.Maybe as Maybe
 open import Once.Internal.Type using (TKind; k-base; k-any)
 open import Once.Internal.Type.Poly
   using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
@@ -90,14 +93,23 @@ indexOf x (y ∷ ys) with x ≟ y
 ... | yes _ = zero
 ... | no  _ = suc (indexOf x ys)
 
+-- A name's first position in a list, as an index into it.
+positionOf : String → (xs : List String) → Maybe (Fin (length xs))
+positionOf x []       = nothing
+positionOf x (y ∷ ys) with x ≟ y
+... | yes _ = just zero
+... | no  _ = Maybe.map suc (positionOf x ys)
+
 ------------------------------------------------------------------------
--- The rigid instance: the type the body is checked at
+-- The type the body is checked at
 ------------------------------------------------------------------------
 
-rigidSubst : PolyType → String → Type
-rigidSubst T x = rigid (kindOf T x) (indexOf x (params T))
+-- Each parameter is its variable (a name that is not a parameter occurs in no
+-- schema it is applied to; it goes to `Unit`).
+rigidSubst : (T : PolyType) → String → Ty (arityOf T)
+rigidSubst T x = maybe′ var Unit (positionOf x (params T))
 
-rigidOf : PolyType → Type
+rigidOf : (T : PolyType) → Ty (arityOf T)
 rigidOf T = substPoly (rigidSubst T) T
 
 ------------------------------------------------------------------------

@@ -26,10 +26,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Internal.Laws.Order using (⊑π-antisym)
 open import Once.Spec.Grade using (Purity; pure; act; eff; Finite; fin; mk-kind; pureᶠ; actᶠ)
 open import Once.Type.Grade using (_⊔p_)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Data.Fin using (Fin)
+open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Internal.Type using (Functor; μ-type; ν-type)
 open import Once.Internal.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Type.DecEq using (_≟T_; _≟F_; _≟q_)
 
@@ -91,7 +92,7 @@ actᶠ  ⊔f _ = actᶠ
 -- Shapes: only `Void` converts into a type of another shape
 ------------------------------------------------------------------------
 
-shape : Type → ℕ
+shape : ∀ {m} → Ty m → ℕ
 shape Unit           = 0
 shape Void           = 1
 shape (_ * _)        = 2
@@ -101,9 +102,9 @@ shape (μ-type _)     = 5
 shape (ν-type _ _)   = 6
 shape Int            = 7
 shape Float          = 8
-shape (rigid _ _)    = 9
+shape (var _)        = 9
 
-<:ᶜ-shape : ∀ {A D} → A <:ᶜ D → A ≢ Void → shape A ≡ shape D
+<:ᶜ-shape : ∀ {m} {A D : Ty m} → A <:ᶜ D → A ≢ Void → shape A ≡ shape D
 <:ᶜ-shape subᶜ-void       v = ⊥-elim (v refl)
 <:ᶜ-shape subᶜ-unit       _ = refl
 <:ᶜ-shape subᶜ-int        _ = refl
@@ -113,14 +114,14 @@ shape (rigid _ _)    = 9
 <:ᶜ-shape (subᶜ-sum _ _)  _ = refl
 <:ᶜ-shape subᶜ-μ          _ = refl
 <:ᶜ-shape (subᶜ-ν _)      _ = refl
-<:ᶜ-shape subᶜ-rigid      _ = refl
+<:ᶜ-shape subᶜ-var        _ = refl
 
 -- An upper bound of two types.
-UB : Type → Type → Set
-UB A B = Σ[ D ∈ Type ] (A <:ᶜ D × B <:ᶜ D)
+UB : ∀ {m} → Ty m → Ty m → Set
+UB A B = Σ[ D ∈ Ty _ ] (A <:ᶜ D × B <:ᶜ D)
 
 -- The join, one rule per type former.
-data Joins : Type → Type → Type → Set where
+data Joins {m} : Ty m → Ty m → Ty m → Set where
   j-refl  : ∀ {A} → Joins A A A
   j-voidˡ : ∀ {B} → Joins Void B B
   j-voidʳ : ∀ {A} → Joins A Void A
@@ -130,7 +131,7 @@ data Joins : Type → Type → Type → Set where
           → Joins (A ⇒[ mk-kind q π ] B) (A ⇒[ mk-kind q π′ ] B′) (A ⇒[ mk-kind q (π ⊔p π′) ] C)
   j-ν     : ∀ {F φ ψ} → Joins (ν-type F φ) (ν-type F ψ) (ν-type F (φ ⊔f ψ))
 
-data Join? (A B : Type) : Set where
+data Join? {m} (A B : Ty m) : Set where
   joined : ∀ C → Joins A B C → Join? A B
   apart  : ¬ UB A B → Join? A B
 
@@ -138,67 +139,67 @@ data Join? (A B : Type) : Set where
 -- The cases
 ------------------------------------------------------------------------
 
-reflJ : ∀ A → A ⊔ A ≔ A
+reflJ : ∀ {m} (A : Ty m) → A ⊔ A ≔ A
 reflJ A = record { left = <:ᶜ-refl A ; right = <:ᶜ-refl A ; least = λ p _ → p }
 
-voidˡ : ∀ B → Void ⊔ B ≔ B
+voidˡ : ∀ {m} (B : Ty m) → Void ⊔ B ≔ B
 voidˡ B = record { left = subᶜ-void ; right = <:ᶜ-refl B ; least = λ _ q → q }
 
-voidʳ : ∀ A → A ⊔ Void ≔ A
+voidʳ : ∀ {m} (A : Ty m) → A ⊔ Void ≔ A
 voidʳ A = record { left = <:ᶜ-refl A ; right = subᶜ-void ; least = λ p _ → p }
 
 -- Different shapes: one side is `Void`, or there is no upper bound.
-clashJ : ∀ {A B} → shape A ≢ shape B → Dec (A ≡ Void) → Dec (B ≡ Void) → Join? A B
+clashJ : ∀ {m} {A B : Ty m} → shape A ≢ shape B → Dec (A ≡ Void) → Dec (B ≡ Void) → Join? A B
 clashJ {B = B} _  (yes refl) _          = joined B j-voidˡ
 clashJ {A = A} _  (no _)     (yes refl) = joined A j-voidʳ
 clashJ         ne (no a)     (no b)     =
   apart λ { (_ , p , q) → ne (trans (<:ᶜ-shape p a) (sym (<:ᶜ-shape q b))) }
 
 -- Products and sums: componentwise.
-prod-least : ∀ {A A′ B B′ C E D} → A ⊔ A′ ≔ C → B ⊔ B′ ≔ E → (A * B) <:ᶜ D → (A′ * B′) <:ᶜ D → (C * E) <:ᶜ D
+prod-least : ∀ {m} {A A′ B B′ C E D : Ty m} → A ⊔ A′ ≔ C → B ⊔ B′ ≔ E → (A * B) <:ᶜ D → (A′ * B′) <:ᶜ D → (C * E) <:ᶜ D
 prod-least j k (subᶜ-prod p q) (subᶜ-prod p′ q′) = subᶜ-prod (least j p p′) (least k q q′)
 
-prod-fst : ∀ {A A′ B B′} → UB (A * B) (A′ * B′) → UB A A′
+prod-fst : ∀ {m} {A A′ B B′ : Ty m} → UB (A * B) (A′ * B′) → UB A A′
 prod-fst (_ , subᶜ-prod p _ , subᶜ-prod p′ _) = _ , p , p′
 
-prod-snd : ∀ {A A′ B B′} → UB (A * B) (A′ * B′) → UB B B′
+prod-snd : ∀ {m} {A A′ B B′ : Ty m} → UB (A * B) (A′ * B′) → UB B B′
 prod-snd (_ , subᶜ-prod _ q , subᶜ-prod _ q′) = _ , q , q′
 
-prodJ : ∀ {A A′ B B′} → Join? A A′ → Join? B B′ → Join? (A * B) (A′ * B′)
+prodJ : ∀ {m} {A A′ B B′ : Ty m} → Join? A A′ → Join? B B′ → Join? (A * B) (A′ * B′)
 prodJ (joined C j) (joined E k) = joined (C * E) (j-prod j k)
 prodJ (apart n)    _            = apart (λ u → n (prod-fst u))
 prodJ (joined _ _) (apart n)    = apart (λ u → n (prod-snd u))
 
-sum-least : ∀ {A A′ B B′ C E D} → A ⊔ A′ ≔ C → B ⊔ B′ ≔ E → (A + B) <:ᶜ D → (A′ + B′) <:ᶜ D → (C + E) <:ᶜ D
+sum-least : ∀ {m} {A A′ B B′ C E D : Ty m} → A ⊔ A′ ≔ C → B ⊔ B′ ≔ E → (A + B) <:ᶜ D → (A′ + B′) <:ᶜ D → (C + E) <:ᶜ D
 sum-least j k (subᶜ-sum p q) (subᶜ-sum p′ q′) = subᶜ-sum (least j p p′) (least k q q′)
 
-sum-inl : ∀ {A A′ B B′} → UB (A + B) (A′ + B′) → UB A A′
+sum-inl : ∀ {m} {A A′ B B′ : Ty m} → UB (A + B) (A′ + B′) → UB A A′
 sum-inl (_ , subᶜ-sum p _ , subᶜ-sum p′ _) = _ , p , p′
 
-sum-inr : ∀ {A A′ B B′} → UB (A + B) (A′ + B′) → UB B B′
+sum-inr : ∀ {m} {A A′ B B′ : Ty m} → UB (A + B) (A′ + B′) → UB B B′
 sum-inr (_ , subᶜ-sum _ q , subᶜ-sum _ q′) = _ , q , q′
 
-sumJ : ∀ {A A′ B B′} → Join? A A′ → Join? B B′ → Join? (A + B) (A′ + B′)
+sumJ : ∀ {m} {A A′ B B′ : Ty m} → Join? A A′ → Join? B B′ → Join? (A + B) (A′ + B′)
 sumJ (joined C j) (joined E k) = joined (C + E) (j-sum j k)
 sumJ (apart n)    _            = apart (λ u → n (sum-inl u))
 sumJ (joined _ _) (apart n)    = apart (λ u → n (sum-inr u))
 
 -- Arrows: one domain, one usage; codomains and grades join.
-arr-least : ∀ {A B B′ C D q π π′} → B ⊔ B′ ≔ C
+arr-least : ∀ {m} {A B B′ C D : Ty m} {q π π′} → B ⊔ B′ ≔ C
           → (A ⇒[ mk-kind q π ] B) <:ᶜ D → (A ⇒[ mk-kind q π′ ] B′) <:ᶜ D
           → (A ⇒[ mk-kind q (π ⊔p π′) ] C) <:ᶜ D
 arr-least j (subᶜ-arr b g) (subᶜ-arr b′ g′) = subᶜ-arr (least j b b′) (⊔p-least g g′)
 
-arr-cod : ∀ {A A′ B B′ k k′} → UB (A ⇒[ k ] B) (A′ ⇒[ k′ ] B′) → UB B B′
+arr-cod : ∀ {m} {A A′ B B′ : Ty m} {k k′} → UB (A ⇒[ k ] B) (A′ ⇒[ k′ ] B′) → UB B B′
 arr-cod (_ , subᶜ-arr b _ , subᶜ-arr b′ _) = _ , b , b′
 
-arr-dom : ∀ {A A′ B B′ k k′} → UB (A ⇒[ k ] B) (A′ ⇒[ k′ ] B′) → A ≡ A′
+arr-dom : ∀ {m} {A A′ B B′ : Ty m} {k k′} → UB (A ⇒[ k ] B) (A′ ⇒[ k′ ] B′) → A ≡ A′
 arr-dom (_ , subᶜ-arr _ _ , subᶜ-arr _ _) = refl
 
-arr-q : ∀ {A A′ B B′ q q′ π π′} → UB (A ⇒[ mk-kind q π ] B) (A′ ⇒[ mk-kind q′ π′ ] B′) → q ≡ q′
+arr-q : ∀ {m} {A A′ B B′ : Ty m} {q q′ π π′} → UB (A ⇒[ mk-kind q π ] B) (A′ ⇒[ mk-kind q′ π′ ] B′) → q ≡ q′
 arr-q (_ , subᶜ-arr _ _ , subᶜ-arr _ _) = refl
 
-arrJ : ∀ {A A′ B B′ q q′ π π′} → Dec (A ≡ A′) → Dec (q ≡ q′) → Join? B B′
+arrJ : ∀ {m} {A A′ B B′ : Ty m} {q q′ π π′} → Dec (A ≡ A′) → Dec (q ≡ q′) → Join? B B′
      → Join? (A ⇒[ mk-kind q π ] B) (A′ ⇒[ mk-kind q′ π′ ] B′)
 arrJ {A = A} {q = q} {π = π} {π′} (yes refl) (yes refl) (joined C j) =
   joined (A ⇒[ mk-kind q (π ⊔p π′) ] C) (j-arr j)
@@ -207,25 +208,25 @@ arrJ (yes refl) (no ne)    _         = apart (λ u → ne (arr-q u))
 arrJ (no ne)    _          _         = apart (λ u → ne (arr-dom u))
 
 -- `μ` and type variables: only themselves.
-eqJ : ∀ {A B} → Dec (A ≡ B) → (A ≢ B → ¬ UB A B) → Join? A B
-eqJ {A} (yes refl) _ = joined A j-refl
+eqJ : ∀ {m} {A B : Ty m} → Dec (A ≡ B) → (A ≢ B → ¬ UB A B) → Join? A B
+eqJ {A = A} (yes refl) _ = joined A j-refl
 eqJ     (no ne)    f = apart (f ne)
 
-μ-apart : ∀ {F G} → μ-type F ≢ μ-type G → ¬ UB (μ-type F) (μ-type G)
+μ-apart : ∀ {m} {F G : Fun m} → μ-type F ≢ μ-type G → ¬ UB (μ-type F) (μ-type G)
 μ-apart ne (_ , subᶜ-μ , subᶜ-μ) = ne refl
 
-rigid-apart : ∀ {k i l j} → rigid k i ≢ rigid l j → ¬ UB (rigid k i) (rigid l j)
-rigid-apart ne (_ , subᶜ-rigid , subᶜ-rigid) = ne refl
+var-apart : ∀ {m} {i j : Fin m} → var i ≢ var j → ¬ UB (var i) (var j)
+var-apart ne (_ , subᶜ-var , subᶜ-var) = ne refl
 
 -- Streams: one functor; the grades join.
-ν-least : ∀ {F φ ψ D} → ν-type F φ <:ᶜ D → ν-type F ψ <:ᶜ D → ν-type F (φ ⊔f ψ) <:ᶜ D
+ν-least : ∀ {m} {D : Ty m} {F : Fun m} {φ ψ} → ν-type F φ <:ᶜ D → ν-type F ψ <:ᶜ D → ν-type F (φ ⊔f ψ) <:ᶜ D
 ν-least (subᶜ-ν g) (subᶜ-ν h) = subᶜ-ν (⊔f-least g h)
 
-ν-apart : ∀ {F G φ ψ} → F ≢ G → ¬ UB (ν-type F φ) (ν-type G ψ)
+ν-apart : ∀ {m} {F G : Fun m} {φ ψ} → F ≢ G → ¬ UB (ν-type F φ) (ν-type G ψ)
 ν-apart ne (_ , subᶜ-ν _ , subᶜ-ν _) = ne refl
 
-νJ : ∀ {F G φ ψ} → Dec (F ≡ G) → Join? (ν-type F φ) (ν-type G ψ)
-νJ {F} {φ = φ} {ψ} (yes refl) = joined (ν-type F (φ ⊔f ψ)) j-ν
+νJ : ∀ {m} {F G : Fun m} {φ ψ} → Dec (F ≡ G) → Join? (ν-type F φ) (ν-type G ψ)
+νJ {F = F} {φ = φ} {ψ} (yes refl) = joined (ν-type F (φ ⊔f ψ)) j-ν
 νJ (no ne) = apart (ν-apart ne)
 
 ------------------------------------------------------------------------
@@ -233,10 +234,10 @@ rigid-apart ne (_ , subᶜ-rigid , subᶜ-rigid) = ne refl
 ------------------------------------------------------------------------
 
 mutual
-  join? : ∀ A B → Join? A B
+  join? : ∀ {m} (A B : Ty m) → Join? A B
   join? A B = joinS A B (shape A ≟ shape B)
 
-  joinS : ∀ A B → Dec (shape A ≡ shape B) → Join? A B
+  joinS : ∀ {m} (A B : Ty m) → Dec (shape A ≡ shape B) → Join? A B
   joinS A B (no ne) = clashJ ne (A ≟T Void) (B ≟T Void)
   joinS Unit  Unit  (yes refl) = joined Unit j-refl
   joinS Void  Void  (yes refl) = joined Void j-refl
@@ -248,13 +249,13 @@ mutual
     arrJ (A ≟T A′) (q ≟q q′) (join? B B′)
   joinS (μ-type F)   (μ-type G)   (yes refl) = eqJ (μ-type F ≟T μ-type G) μ-apart
   joinS (ν-type F φ) (ν-type G ψ) (yes refl) = νJ (F ≟F G)
-  joinS (rigid k i)  (rigid l j)  (yes refl) = eqJ (rigid k i ≟T rigid l j) rigid-apart
+  joinS (var i)      (var j)      (yes refl) = eqJ (var i ≟T var j) var-apart
 
 ------------------------------------------------------------------------
 -- `Joins` is the join
 ------------------------------------------------------------------------
 
-sound : ∀ {A B C} → Joins A B C → A ⊔ B ≔ C
+sound : ∀ {m} {A B C : Ty m} → Joins A B C → A ⊔ B ≔ C
 sound j-refl      = reflJ _
 sound j-voidˡ     = voidˡ _
 sound j-voidʳ     = voidʳ _
@@ -270,7 +271,7 @@ sound (j-arr {π = π} {π′} r) = record { left = subᶜ-arr (left (sound r)) 
 sound (j-ν {φ = φ} {ψ}) = record { left = subᶜ-ν (⊔f-ˡ φ ψ) ; right = subᶜ-ν (⊔f-ʳ φ ψ) ; least = ν-least }
 
 private
-  arr-≡ : ∀ {A B B′ q π π′} → π ≡ π′ → B ≡ B′ → (A ⇒[ mk-kind q π ] B) ≡ (A ⇒[ mk-kind q π′ ] B′)
+  arr-≡ : ∀ {m} {A B B′ : Ty m} {q π π′} → π ≡ π′ → B ≡ B′ → (A ⇒[ mk-kind q π ] B) ≡ (A ⇒[ mk-kind q π′ ] B′)
   arr-≡ refl refl = refl
 
   fin-inj : ∀ {φ ψ} → fin φ ≡ fin ψ → φ ≡ ψ
@@ -278,7 +279,7 @@ private
   fin-inj {actᶠ}  {actᶠ}  _ = refl
 
 -- `<:ᶜ` is antisymmetric, so a join is unique.
-<:ᶜ-antisym : ∀ {A B} → A <:ᶜ B → B <:ᶜ A → A ≡ B
+<:ᶜ-antisym : ∀ {m} {A B : Ty m} → A <:ᶜ B → B <:ᶜ A → A ≡ B
 <:ᶜ-antisym subᶜ-void        subᶜ-void          = refl
 <:ᶜ-antisym subᶜ-unit        _                  = refl
 <:ᶜ-antisym subᶜ-int         _                  = refl
@@ -288,13 +289,13 @@ private
 <:ᶜ-antisym (subᶜ-sum a b)   (subᶜ-sum a′ b′)   = cong₂ _+_ (<:ᶜ-antisym a a′) (<:ᶜ-antisym b b′)
 <:ᶜ-antisym subᶜ-μ           _                  = refl
 <:ᶜ-antisym (subᶜ-ν {F = F} g) (subᶜ-ν g′)      = cong (ν-type F) (fin-inj (⊑π-antisym g g′))
-<:ᶜ-antisym subᶜ-rigid       _                  = refl
+<:ᶜ-antisym subᶜ-var         _                  = refl
 
-join-unique : ∀ {A B C C′} → A ⊔ B ≔ C → A ⊔ B ≔ C′ → C ≡ C′
+join-unique : ∀ {m} {A B C C′ : Ty m} → A ⊔ B ≔ C → A ⊔ B ≔ C′ → C ≡ C′
 join-unique j j′ = <:ᶜ-antisym (least j (left j′) (right j′)) (least j′ (left j) (right j))
 
-complete : ∀ {A B C} → A ⊔ B ≔ C → Joins A B C
-complete {A} {B} J = from (join? A B)
+complete : ∀ {m} {A B C : Ty m} → A ⊔ B ≔ C → Joins A B C
+complete {A = A} {B = B} J = from (join? A B)
   where
     from : Join? A B → Joins A B _
     from (apart n)    = ⊥-elim (n (_ , left J , right J))
@@ -302,7 +303,7 @@ complete {A} {B} J = from (join? A B)
 
 -- Where it exists, the join is least among ALL upper bounds, domains free:
 -- what lies above both arms lies above their join.
-Joins-least-<: : ∀ {A B C D} → Joins A B C → A <: D → B <: D → C <: D
+Joins-least-<: : ∀ {m} {A B C D : Ty m} → Joins A B C → A <: D → B <: D → C <: D
 Joins-least-<: j-refl        p _ = p
 Joins-least-<: j-voidˡ       _ q = q
 Joins-least-<: j-voidʳ       p _ = p
@@ -311,14 +312,14 @@ Joins-least-<: (j-sum r s)   (sub-sum p₁ p₂)  (sub-sum q₁ q₂)  = sub-sum
 Joins-least-<: (j-arr r)     (sub-arr a b g)  (sub-arr _ b′ g′) = sub-arr a (Joins-least-<: r b b′) (⊔p-least g g′)
 Joins-least-<: j-ν           (sub-ν g)        (sub-ν h)         = sub-ν (⊔f-least g h)
 
-least-<: : ∀ {A B C D} → A ⊔ B ≔ C → A <: D → B <: D → C <: D
+least-<: : ∀ {m} {A B C D : Ty m} → A ⊔ B ≔ C → A <: D → B <: D → C <: D
 least-<: J = Joins-least-<: (complete J)
 
 -- Where a join exists, the decision finds it.
-join?-complete : ∀ {A B C} → A ⊔ B ≔ C → Σ[ r ∈ Joins A B C ] join? A B ≡ joined C r
-join?-complete {A} {B} {C} J = go (join? A B) refl
+join?-complete : ∀ {m} {A B C : Ty m} → A ⊔ B ≔ C → Σ[ r ∈ Joins A B C ] join? A B ≡ joined C r
+join?-complete {A = A} {B = B} {C = C} J = go (join? A B) refl
   where
-    found : ∀ {C′} (r : Joins A B C′) → C′ ≡ C → join? A B ≡ joined C′ r → Σ[ r ∈ Joins A B C ] join? A B ≡ joined C r
+    found : ∀ {C′ : Ty _} (r : Joins A B C′) → C′ ≡ C → join? A B ≡ joined C′ r → Σ[ r ∈ Joins A B C ] join? A B ≡ joined C r
     found r refl eq = r , eq
 
     go : (x : Join? A B) → join? A B ≡ x → Σ[ r ∈ Joins A B C ] join? A B ≡ joined C r
@@ -326,17 +327,17 @@ join?-complete {A} {B} {C} J = go (join? A B) refl
     go (joined _ r) eq = found r (join-unique (sound r) J) eq
 
 -- Where no upper bound exists, the decision says so.
-join?-apart : ∀ {A B} → ¬ UB A B → Σ[ n ∈ ¬ UB A B ] join? A B ≡ apart n
-join?-apart {A} {B} nub = go (join? A B) refl
+join?-apart : ∀ {m} {A B : Ty m} → ¬ UB A B → Σ[ n ∈ ¬ UB A B ] join? A B ≡ apart n
+join?-apart {A = A} {B = B} nub = go (join? A B) refl
   where
     go : (x : Join? A B) → join? A B ≡ x → Σ[ n ∈ ¬ UB A B ] join? A B ≡ apart n
     go (apart n)    eq = n , eq
     go (joined C r) _  = ⊥-elim (nub (C , left (sound r) , right (sound r)))
 
 -- The join as a value, for the checker.
-join : Type → Type → Maybe Type
+join : ∀ {m} → Ty m → Ty m → Maybe (Ty m)
 join A B = fromJoin? (join? A B)
   where
-    fromJoin? : ∀ {A B} → Join? A B → Maybe Type
+    fromJoin? : ∀ {A B : Ty _} → Join? A B → Maybe (Ty _)
     fromJoin? (joined C _) = just C
     fromJoin? (apart _)    = nothing

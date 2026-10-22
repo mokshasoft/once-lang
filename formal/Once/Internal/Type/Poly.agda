@@ -22,7 +22,7 @@ open import Data.String using (String)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (Quantity; Many; Purity; Finite; pure; act; eff; mk-kind)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type using (μ-type; ν-type; Functor)
 
 mutual
@@ -78,13 +78,13 @@ mutual
   Ground (PTVar _)       = ⊥
 
 mutual
-  extractGroundF : (F : PolyFunctor) → GroundF F → Functor
+  extractGroundF : ∀ {m} (F : PolyFunctor) → GroundF F → Fun m
   extractGroundF (PK A) g          = K (extractGround A g)
   extractGroundF PId _             = Id
   extractGroundF (F P⊕ G) (gF , gG) = extractGroundF F gF ⊕ extractGroundF G gG
   extractGroundF (F P⊗ G) (gF , gG) = extractGroundF F gF ⊗ extractGroundF G gG
 
-  extractGround : (A : PolyType) → Ground A → Type
+  extractGround : ∀ {m} (A : PolyType) → Ground A → Ty m
   extractGround PUnit            _        = Unit
   extractGround PVoid            _        = Void
   extractGround (A P* B)         (gA , gB) = extractGround A gA * extractGround B gB
@@ -103,7 +103,7 @@ mutual
 
 -- Substituting a type for every variable.
 mutual
-  substPoly : (String → Type) → PolyType → Type
+  substPoly : ∀ {m} → (String → Ty m) → PolyType → Ty m
   substPoly θ (PTVar x)     = θ x
   substPoly θ PUnit         = Unit
   substPoly θ PVoid         = Void
@@ -117,15 +117,15 @@ mutual
   substPoly θ (Pμ-type F)   = μ-type (substPolyF θ F)
   substPoly θ (Pν-type F π) = ν-type (substPolyF θ F) π
 
-  substPolyF : (String → Type) → PolyFunctor → Functor
+  substPolyF : ∀ {m} → (String → Ty m) → PolyFunctor → Fun m
   substPolyF θ (PK A)   = K (substPoly θ A)
   substPolyF θ PId      = Id
   substPolyF θ (F P⊕ G) = substPolyF θ F ⊕ substPolyF θ G
   substPolyF θ (F P⊗ G) = substPolyF θ F ⊗ substPolyF θ G
 
 -- `T` is an instance of the schema `s`.
-IsInstance : PolyType → Type → Set
-IsInstance s T = Σ (String → Type) (λ θ → substPoly θ s ≡ T)
+IsInstance : ∀ {m} → PolyType → Ty m → Set
+IsInstance s T = Σ (String → _) (λ θ → substPoly θ s ≡ T)
 
 -- The free type variables of a schema.
 mutual

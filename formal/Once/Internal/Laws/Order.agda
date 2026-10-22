@@ -13,6 +13,7 @@
 
 module Once.Internal.Laws.Order where
 
+open import Once.Spec.Type using (Ty)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; isEquivalence)
 open import Relation.Binary.Structures using (IsPartialOrder)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; pureᶠ; actᶠ)
@@ -47,7 +48,7 @@ purity-⊑-isPartialOrder = record
 -- Subtyping
 ------------------------------------------------------------------------
 
-<:-antisym : ∀ {A B} → A <: B → B <: A → A ≡ B
+<:-antisym : ∀ {m} {A B : Ty m} → A <: B → B <: A → A ≡ B
 <:-antisym sub-void sub-void = refl
 <:-antisym sub-unit sub-unit = refl
 <:-antisym sub-int sub-int = refl
@@ -57,13 +58,13 @@ purity-⊑-isPartialOrder = record
 <:-antisym (sub-prod a b) (sub-prod a′ b′) = cong₂ _*_ (<:-antisym a a′) (<:-antisym b b′)
 <:-antisym (sub-sum a b) (sub-sum a′ b′) = cong₂ _+_ (<:-antisym a a′) (<:-antisym b b′)
 <:-antisym sub-μ sub-μ = refl
-<:-antisym (sub-ν {φ = pureᶠ} {pureᶠ} _) (sub-ν _)  = refl
-<:-antisym (sub-ν {φ = actᶠ}  {actᶠ}  _) (sub-ν _)  = refl
-<:-antisym (sub-ν {φ = pureᶠ} {actᶠ}  _) (sub-ν ())
-<:-antisym (sub-ν {φ = actᶠ}  {pureᶠ} ()) _
+<:-antisym (sub-ν {f = pureᶠ} {pureᶠ} _) (sub-ν _)  = refl
+<:-antisym (sub-ν {f = actᶠ}  {actᶠ}  _) (sub-ν _)  = refl
+<:-antisym (sub-ν {f = pureᶠ} {actᶠ}  _) (sub-ν ())
+<:-antisym (sub-ν {f = actᶠ}  {pureᶠ} ()) _
 <:-antisym sub-rigid sub-rigid = refl
 
-subtype-isPartialOrder : IsPartialOrder _≡_ _<:_
+subtype-isPartialOrder : ∀ {m} → IsPartialOrder {A = Ty m} _≡_ _<:_
 subtype-isPartialOrder = record
   { isPreorder = record
     { isEquivalence = isEquivalence

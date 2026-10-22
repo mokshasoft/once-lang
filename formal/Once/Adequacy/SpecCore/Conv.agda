@@ -164,7 +164,7 @@ conv-R (PS.sub-sum a b) g {inj₂ _} {inj₂ _} r = conv-R b g r
 conv-R (PS.sub-sum a b) g {inj₁ _} {inj₂ _} ()
 conv-R (PS.sub-sum a b) g {inj₂ _} {inj₁ _} ()
 conv-R PS.sub-μ g r = r
-conv-R (PS.sub-ν {φ = LG.pureᶠ} {LG.pureᶠ} x) g r = r
-conv-R (PS.sub-ν {φ = LG.actᶠ}  {LG.actᶠ}  x) g r = r
+conv-R (PS.sub-ν {f = LG.pureᶠ} {LG.pureᶠ} x) g r = r
+conv-R (PS.sub-ν {f = LG.actᶠ}  {LG.actᶠ}  x) g r = r
 conv-R (PS.sub-ν {F = F} {φ = LG.pureᶠ} {LG.actᶠ} x) g r = embν-R (GF-inst (pfr F) g) r
-conv-R (PS.sub-ν {φ = LG.actᶠ} {LG.pureᶠ} ()) g r
+conv-R (PS.sub-ν {f = LG.actᶠ} {LG.pureᶠ} ()) g r

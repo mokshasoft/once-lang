@@ -185,7 +185,7 @@ module SubS {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) where
   subS (PS.sub-prod x y)  = SSub.sub-* (subS x) (subS y)
   subS (PS.sub-sum x y)   = SSub.sub-+ (subS x) (subS y)
   subS PS.sub-μ           = SSub.sub-μ
-  subS (PS.sub-ν {φ = φ} {φ′} g) = SSub.sub-ν (⊑φ-S φ φ′ g)
+  subS (PS.sub-ν {f = φ} {φ′} g) = SSub.sub-ν (⊑φ-S φ φ′ g)
 
 module Translate {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature)
   (sigop-S : ∀ {c A} → WordName c → (showCanonical c , A) ∈ Fs → (c ∶ declS A) ∈ Σ) where

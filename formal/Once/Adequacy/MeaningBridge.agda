@@ -78,7 +78,7 @@ open import Once.Type.Rigid using (ground-kinded)
 open import Once.Internal.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Internal.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 open import Once.Internal.Laws.SubLaws
@@ -662,10 +662,10 @@ mutual
   RelGV-sub sub-int    r = r
   RelGV-sub sub-float  r = r
   RelGV-sub sub-μ      r = r
-  RelGV-sub (sub-ν {φ = pureᶠ} {pureᶠ} _) r = r
-  RelGV-sub (sub-ν {φ = actᶠ}  {actᶠ}  _) r = r
-  RelGV-sub (sub-ν {φ = pureᶠ} {actᶠ}  _) r = embνᵃ-∼ r
-  RelGV-sub (sub-ν {φ = actᶠ}  {pureᶠ} ())
+  RelGV-sub (sub-ν {f = pureᶠ} {pureᶠ} _) r = r
+  RelGV-sub (sub-ν {f = actᶠ}  {actᶠ}  _) r = r
+  RelGV-sub (sub-ν {f = pureᶠ} {actᶠ}  _) r = embνᵃ-∼ r
+  RelGV-sub (sub-ν {f = actᶠ}  {pureᶠ} ())
   RelGV-sub p@(sub-arr {q = Zero} a b g) (r , s) = RelGM-sub g b r , <:-rel p s
   RelGV-sub p@(sub-arr {q = One}  a b g) (r , s) = (λ ra → RelGM-sub g b (r (RelGV-sub a ra))) , <:-rel p s
   RelGV-sub p@(sub-arr {q = Many} a b g) (r , s) = (λ ra → RelGM-sub g b (r (RelGV-sub a ra))) , <:-rel p s

@@ -264,7 +264,7 @@ module _ {m} {Δ : ST.KCtx m} where
   sub-S (LS.sub-prod a b) (r-* ra rb) (r-* ra′ rb′) = SS.sub-* (sub-S a ra ra′) (sub-S b rb rb′)
   sub-S (LS.sub-sum a b) (r-+ ra rb) (r-+ ra′ rb′) = SS.sub-+ (sub-S a ra ra′) (sub-S b rb rb′)
   sub-S LS.sub-μ (r-μ f) (r-μ f′) = subst (λ G → ST.μ _ SS.<: ST.μ G) (FunR-uniqueˢ f f′) SS.sub-μ
-  sub-S (LS.sub-ν {φ = φ} {φ′} p) (r-ν refl f) (r-ν refl f′) =
+  sub-S (LS.sub-ν {f = φ} {φ′} p) (r-ν refl f) (r-ν refl f′) =
     subst (λ G → ST.ν _ _ SS.<: ST.ν G _) (FunR-uniqueˢ f f′) (SS.sub-ν (⊑φ-S φ φ′ p))
   sub-S LS.sub-rigid r@(r-rigid _ _ _) r′ = subst (λ X → ST.var _ SS.<: X) (TyR-uniqueˢ r r′) SS.sub-var
 

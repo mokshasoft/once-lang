@@ -13,10 +13,12 @@ module Once.Type.Sub where
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
+open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
-open import Once.Internal.Type.Sub using (sub-prod; sub-sum; sub-rigid)
+open import Once.Internal.Type.Sub using (sub-prod; sub-sum)
+open import Once.Spec.Sub using (sub-var)
+open import Data.Fin using (Fin)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Type.DecEq using (_≟q_)
 open import Once.Internal.Type.DecEq using (_≟F_; _≟T_)
@@ -42,7 +44,7 @@ eff ⊑π? eff = yes ⊑-eff
 ------------------------------------------------------------------------
 
 private
-  arr-aux : ∀ {A A′ B B′ q q′ π π′}
+  arr-aux : ∀ {m} {A A′ B B′ : Ty m} {q q′ π π′}
           → Dec (q ≡ q′) → Dec (A′ <: A) → Dec (B <: B′) → Dec (π ⊑π π′)
           → Dec ((A ⇒[ mk-kind q π ] B) <: (A′ ⇒[ mk-kind q′ π′ ] B′))
   arr-aux (yes refl) (yes a) (yes b) (yes g) = yes (sub-arr a b g)
@@ -51,27 +53,27 @@ private
   arr-aux (yes refl) (yes _) (no ¬b) _       = no λ { (sub-arr _ b _) → ¬b b }
   arr-aux (yes refl) (yes _) (yes _) (no ¬g) = no λ { (sub-arr _ _ g) → ¬g g }
 
-  prod-aux : ∀ {A A′ B B′} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A * B) <: (A′ * B′))
+  prod-aux : ∀ {m} {A A′ B B′ : Ty m} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A * B) <: (A′ * B′))
   prod-aux (yes a) (yes b) = yes (sub-prod a b)
   prod-aux (no ¬a) _       = no λ { (sub-prod a _) → ¬a a }
   prod-aux (yes _) (no ¬b) = no λ { (sub-prod _ b) → ¬b b }
 
-  sum-aux : ∀ {A A′ B B′} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A + B) <: (A′ + B′))
+  sum-aux : ∀ {m} {A A′ B B′ : Ty m} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A + B) <: (A′ + B′))
   sum-aux (yes a) (yes b) = yes (sub-sum a b)
   sum-aux (no ¬a) _       = no λ { (sub-sum a _) → ¬a a }
   sum-aux (yes _) (no ¬b) = no λ { (sub-sum _ b) → ¬b b }
 
-  μ-aux : ∀ {F G} → Dec (F ≡ G) → Dec (μ-type F <: μ-type G)
+  μ-aux : ∀ {m} {F G : Fun m} → Dec (F ≡ G) → Dec (μ-type F <: μ-type G)
   μ-aux (yes refl) = yes sub-μ
   μ-aux (no ¬e)    = no λ { sub-μ → ¬e refl }
 
-  ν-aux : ∀ {F G φ φ′} → Dec (F ≡ G) → Dec (fin φ ⊑π fin φ′) → Dec (ν-type F φ <: ν-type G φ′)
+  ν-aux : ∀ {m} {F G : Fun m} {φ φ′} → Dec (F ≡ G) → Dec (fin φ ⊑π fin φ′) → Dec (ν-type F φ <: ν-type G φ′)
   ν-aux (yes refl) (yes g) = yes (sub-ν g)
   ν-aux (no ¬e)    _       = no λ { (sub-ν _) → ¬e refl }
   ν-aux (yes refl) (no ¬g) = no λ { (sub-ν g) → ¬g g }
-  rigid-aux : ∀ {k k′ i i′} → Dec (rigid k i ≡ rigid k′ i′) → Dec (rigid k i <: rigid k′ i′)
-  rigid-aux (yes refl) = yes sub-rigid
-  rigid-aux (no ¬e)    = no λ { sub-rigid → ¬e refl }
+  var-aux : ∀ {m} {i i′ : Fin m} → Dec (var i ≡ var i′) → Dec (var i <: var i′)
+  var-aux (yes refl) = yes sub-var
+  var-aux (no ¬e)    = no λ { sub-var → ¬e refl }
 
 _<:?_ : (A B : Type) → Dec (A <: B)
 Void <:? _ = yes sub-void
@@ -148,21 +150,21 @@ Float <:? (ν-type _ _) = no λ ()
 ν-type _ _ <:? (_ ⇒[ _ ] _) = no λ ()
 ν-type _ _ <:? (μ-type _) = no λ ()
 -- D243
-rigid k i <:? rigid k′ i′ = rigid-aux (rigid k i ≟T rigid k′ i′)
-rigid _ _ <:? Void = no λ ()
-rigid _ _ <:? Unit = no λ ()
-Unit <:? rigid _ _ = no λ ()
-rigid _ _ <:? (_ * _) = no λ ()
-(_ * _) <:? rigid _ _ = no λ ()
-rigid _ _ <:? (_ + _) = no λ ()
-(_ + _) <:? rigid _ _ = no λ ()
-rigid _ _ <:? (_ ⇒[ _ ] _) = no λ ()
-(_ ⇒[ _ ] _) <:? rigid _ _ = no λ ()
-rigid _ _ <:? μ-type _ = no λ ()
-μ-type _ <:? rigid _ _ = no λ ()
-rigid _ _ <:? ν-type _ _ = no λ ()
-ν-type _ _ <:? rigid _ _ = no λ ()
-rigid _ _ <:? Int = no λ ()
-Int <:? rigid _ _ = no λ ()
-rigid _ _ <:? Float = no λ ()
-Float <:? rigid _ _ = no λ ()
+var i <:? var i′ = var-aux (var i ≟T var i′)
+var _ <:? Void = no λ ()
+var _ <:? Unit = no λ ()
+Unit <:? var _ = no λ ()
+var _ <:? (_ * _) = no λ ()
+(_ * _) <:? var _ = no λ ()
+var _ <:? (_ + _) = no λ ()
+(_ + _) <:? var _ = no λ ()
+var _ <:? (_ ⇒[ _ ] _) = no λ ()
+(_ ⇒[ _ ] _) <:? var _ = no λ ()
+var _ <:? μ-type _ = no λ ()
+μ-type _ <:? var _ = no λ ()
+var _ <:? ν-type _ _ = no λ ()
+ν-type _ _ <:? var _ = no λ ()
+var _ <:? Int = no λ ()
+Int <:? var _ = no λ ()
+var _ <:? Float = no λ ()
+Float <:? var _ = no λ ()

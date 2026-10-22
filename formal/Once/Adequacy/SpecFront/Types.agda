@@ -122,7 +122,7 @@ subᶜ-S (LS.subᶜ-arr b p) (r-⇒ refl ra rb) (r-⇒ refl ra′ rb′) =
 subᶜ-S (LS.subᶜ-prod a b) (r-* ra rb) (r-* ra′ rb′) = SS.subᶜ-* (subᶜ-S a ra ra′) (subᶜ-S b rb rb′)
 subᶜ-S (LS.subᶜ-sum a b)  (r-+ ra rb) (r-+ ra′ rb′) = SS.subᶜ-+ (subᶜ-S a ra ra′) (subᶜ-S b rb rb′)
 subᶜ-S LS.subᶜ-μ (r-μ f) (r-μ f′) = subst (λ G → ST.μ _ SS.<:ᶜ ST.μ G) (FunR-uniqueˢ f f′) SS.subᶜ-μ
-subᶜ-S (LS.subᶜ-ν {φ = φ} {φ′} p) (r-ν refl f) (r-ν refl f′) =
+subᶜ-S (LS.subᶜ-ν {f = φ} {φ′} p) (r-ν refl f) (r-ν refl f′) =
   subst (λ G → ST.ν _ _ SS.<:ᶜ ST.ν G _) (FunR-uniqueˢ f f′) (SS.subᶜ-ν (⊑φ-S φ φ′ p))
 subᶜ-S LS.subᶜ-rigid r@(r-rigid _ _ _) r′ = subst (λ X → ST.var _ SS.<:ᶜ X) (TyR-uniqueˢ r r′) SS.subᶜ-var
 

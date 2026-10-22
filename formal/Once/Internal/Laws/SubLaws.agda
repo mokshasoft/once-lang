@@ -9,6 +9,7 @@
 
 module Once.Internal.Laws.SubLaws where
 
+open import Once.Spec.Type using (Ty)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind)
@@ -17,7 +18,7 @@ open import Once.Internal.Type using (μ-type; ν-type)
 open import Once.Internal.Type.DecEq using (_≟q_)
 open import Once.Internal.Type.DecEq using (_≟F_; _≟T_)
 open import Once.Internal.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
 
@@ -41,7 +42,7 @@ open import Once.Type.Sub
 ⊑π-trans ⊑-pa ⊑-ae = ⊑-pe
 ⊑π-trans ⊑-ae ⊑-eff = ⊑-ae
 
-<:-unique : ∀ {A B} (p q : A <: B) → p ≡ q
+<:-unique : ∀ {m} {A B : Ty m} (p q : A <: B) → p ≡ q
 
 <:-unique sub-void   sub-void   = refl
 
@@ -64,7 +65,7 @@ open import Once.Type.Sub
 
 <:-unique sub-rigid sub-rigid = refl
 
-<:-trans : ∀ {A B C} → A <: B → B <: C → A <: C
+<:-trans : ∀ {m} {A B C : Ty m} → A <: B → B <: C → A <: C
 
 <:-trans sub-void   _          = sub-void
 

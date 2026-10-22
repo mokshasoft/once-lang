@@ -27,7 +27,7 @@ open import Once.Internal.Type
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Internal.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun)
 open import Once.Internal.FunctorMeaning using (translateF)
@@ -194,10 +194,10 @@ out-semᵛ actᶠ  {F} wf v = fmapT (λ layer → cf⁻¹ᵛ (ν-type F actᶠ) 
 ⟦ sub-sum a b ⟧<:ᵛ (inj₁ x) = inj₁ (⟦ a ⟧<:ᵛ x)
 ⟦ sub-sum a b ⟧<:ᵛ (inj₂ y) = inj₂ (⟦ b ⟧<:ᵛ y)
 ⟦ sub-μ ⟧<:ᵛ x = x
-⟦ sub-ν {φ = pureᶠ} {pureᶠ} _ ⟧<:ᵛ x = x
-⟦ sub-ν {φ = actᶠ}  {actᶠ}  _ ⟧<:ᵛ x = x
-⟦ sub-ν {φ = pureᶠ} {actᶠ}  _ ⟧<:ᵛ x = embνᵃ x
-⟦ sub-ν {φ = actᶠ}  {pureᶠ} () ⟧<:ᵛ
+⟦ sub-ν {f = pureᶠ} {pureᶠ} _ ⟧<:ᵛ x = x
+⟦ sub-ν {f = actᶠ}  {actᶠ}  _ ⟧<:ᵛ x = x
+⟦ sub-ν {f = pureᶠ} {actᶠ}  _ ⟧<:ᵛ x = embνᵃ x
+⟦ sub-ν {f = actᶠ}  {pureᶠ} () ⟧<:ᵛ
 ⟦ sub-rigid ⟧<:ᵛ x = x
 
 ------------------------------------------------------------------------
