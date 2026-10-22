@@ -465,15 +465,20 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- `I` make — its calls, and how it ended. Plan 0.122: the core is the
   -- Spec's, over a signature `Σs` that declares the module's FFI words
   -- (`CB.SigView`), run with an implementation `I` of it.
-  ⟦_⟧ᵈᴵ : Arch → (tp : Typed) (Σs : Signature) → CB.SigView tp Σs → Impl (toISig Σs) → Tr Data.Unit.⊤
-  ⟦ arch ⟧ᵈᴵ tp Σs u I = trT∞ (interp (toISig Σs) I) Data.List.List.[] (TL.runCore Σs (arch-numerics arch) (CB.typedProgram tp Σs u) I)
+  record SigOf (tp : Typed) (Σs : Signature) : Set where
+    field
+      view : CB.SigView tp Σs                -- Σs declares the module's FFI words
+      same : toISig Σs ≡ sigOfT tp           -- …and nothing else, at their types
 
-  ir-core-tr : ∀ (arch : Arch) (tp : Typed) (Σs : Signature) (u : CB.SigView tp Σs) (I : Impl (toISig Σs))
+  ⟦_⟧ᵈᴵ : Arch → (tp : Typed) (Σs : Signature) → SigOf tp Σs → Impl (toISig Σs) → Tr Data.Unit.⊤
+  ⟦ arch ⟧ᵈᴵ tp Σs u I = trT∞ (interp (toISig Σs) I) Data.List.List.[] (TL.runCore Σs (arch-numerics arch) (CB.typedProgram tp Σs (SigOf.view u)) I)
+
+  ir-core-tr : ∀ (arch : Arch) (tp : Typed) (Σs : Signature) (u : SigOf tp Σs) (I : Impl (toISig Σs))
                (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR (proj₁ tp) ≡ just ir
              → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (interp (toISig Σs) I) ≋ ⟦ arch ⟧ᵈᴵ tp Σs u I
   ir-core-tr arch (m , mt , hvm) Σs u I ir mi =
     subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (interp (toISig Σs) I) ≋ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) Σs u I)
-          (sym mi) (CB.program-core-tr (arch-numerics arch) m mt hvm Σs u I ir mi)
+          (sym mi) (CB.program-core-tr (arch-numerics arch) m mt hvm Σs (SigOf.view u) I ir mi)
 
   ----------------------------------------------------------------------
   -- Plan 0.105: the semantic half, at an interpretation `ι` — the world the
@@ -809,12 +814,12 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   ----------------------------------------------------------------------
   -- Plan 0.105 (D257, D061): THE STATEMENT the Spec's `correct` is filled with.
   -- A typed module is compiled against its FFI declarations; its meaning is
-  -- relative to a signature `Σs` declaring them (`CB.SigView`) and an
-  -- implementation `I` of it (`⟦_⟧ᵈᴵ`), and its bytes run in the world they make.
+  -- relative to a signature `Σs` of them (`SigOf`) and an implementation `I`
+  -- of it (`⟦_⟧ᵈᴵ`), and its bytes run in the world they make.
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
-                               × (∀ (Σs : Signature) (u : CB.SigView tp Σs) (I : Impl (toISig Σs))
+                               × (∀ (Σs : Signature) (u : SigOf tp Σs) (I : Impl (toISig Σs))
                                   → _≋_ (exec (interp (toISig Σs) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u I))) )
     × ( ∀ tp → src ⊢R tp → Admissible arch tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
@@ -822,7 +827,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     where
       sound : ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
-                               × (∀ (Σs : Signature) (u : CB.SigView tp Σs) (I : Impl (toISig Σs))
+                               × (∀ (Σs : Signature) (u : SigOf tp Σs) (I : Impl (toISig Σs))
                                   → _≋_ (exec (interp (toISig Σs) I) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u I)))
       sound bytes pf with accept-typed arch doOpt src bytes pf
       ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
@@ -833,5 +838,5 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                   , FB.parseStrict-sound (Source.srcText src) mU p-eq
                   , RBR.resolvesModule-complete (Source.srcImports src) (P.Module.decls mU) mR res-eq )
                 , accept-gm arch doOpt mR (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
-                , (λ Σs u I → WB-trans trans (sound-trace (interp (toISig Σs) I) arch doOpt src bytes pf mR stm-eq ir mi refl)
+                , (λ Σs u I → WB-trans trans (sound-trace (interp (toISig Σs) I) arch doOpt src bytes pf mR stm-eq ir mi (sym (SigOf.same u)))
                                  (ir-core-tr arch (mR , MT , MC.moduleToIR-sound mR MT mi) Σs u I ir mi))
