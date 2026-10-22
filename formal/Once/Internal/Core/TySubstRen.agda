@@ -123,121 +123,120 @@ module Deriv {m k : ℕ} (σ : TySub m k) {Δ : KCtx m} {Δ′ : KCtx k} (rσ : 
   cid-⟨⟩ ∅       = refl
   cid-⟨⟩ (Γ ▸ A) = cong ckeep (cid-⟨⟩ Γ)
 
-  private
-    -- Transports erase.
-    rtᵗ-≅ : ∀ {n} {Γ : Ctx k n} {Ψ t A A′ π} (e : A ≡ A′) (d : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → TS.retypeᵗ σ rσ e d ≅ d
-    rtᵗ-≅ refl d = H.refl
+  -- Transports erase.
+  rtᵗ-≅ : ∀ {n} {Γ : Ctx k n} {Ψ t A A′ π} (e : A ≡ A′) (d : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → TS.retypeᵗ σ rσ e d ≅ d
+  rtᵗ-≅ refl d = H.refl
 
-    rt-≅ : ∀ {n} {Γ : Ctx k n} {Ψ t A A′ π} (e : A ≡ A′) (d : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → TM.retype e d ≅ d
-    rt-≅ refl d = H.refl
+  rt-≅ : ∀ {n} {Γ : Ctx k n} {Ψ t A A′ π} (e : A ≡ A′) (d : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → TM.retype e d ≅ d
+  rt-≅ refl d = H.refl
 
-    ty-rt : ∀ {n} {Γ : Ctx m n} {Ψ t A A′ π} (e : A ≡ A′) (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → ty (TM.retype e d) ≅ ty d
-    ty-rt refl d = H.refl
+  ty-rt : ∀ {n} {Γ : Ctx m n} {Ψ t A A′ π} (e : A ≡ A′) (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → ty (TM.retype e d) ≅ ty d
+  ty-rt refl d = H.refl
 
-    R-rt : ∀ {n n′} (θ : Thin n n′) (ρ : Fin n → Fin n′) (h : ∀ i → ⟦ θ ⟧θ i ≡ ρ i) {Γ Γ′} (c : CThin θ Γ Γ′)
-             {Ψ t A A′ π} (e : A ≡ A′) (d : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π)
-         → TM.ren-⊢ θ ρ h c (TS.retypeᵗ σ rσ e d) ≅ TM.ren-⊢ θ ρ h c d
-    R-rt θ ρ h c refl d = H.refl
+  R-rt : ∀ {n n′} (θ : Thin n n′) (ρ : Fin n → Fin n′) (h : ∀ i → ⟦ θ ⟧θ i ≡ ρ i) {Γ Γ′} (c : CThin θ Γ Γ′)
+           {Ψ t A A′ π} (e : A ≡ A′) (d : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π)
+       → TM.ren-⊢ θ ρ h c (TS.retypeᵗ σ rσ e d) ≅ TM.ren-⊢ θ ρ h c d
+  R-rt θ ρ h c refl d = H.refl
 
-    -- Congruences of the rules, along equal terms.
-    c-sub-use : ∀ {n} {Γ : Ctx k n} {Ψ Ψ′ A A′ π t t′} {p : Ψ ⊑ᵘ Ψ′}
-                  {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ A′ ! π}
-              → t ≡ t′ → A ≡ A′ → x ≅ y → ⊢sub-use p x ≅ ⊢sub-use p y
-    c-sub-use refl refl H.refl = H.refl
+  -- Congruences of the rules, along equal terms.
+  c-sub-use : ∀ {n} {Γ : Ctx k n} {Ψ Ψ′ A A′ π t t′} {p : Ψ ⊑ᵘ Ψ′}
+                {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ A′ ! π}
+            → t ≡ t′ → A ≡ A′ → x ≅ y → ⊢sub-use p x ≅ ⊢sub-use p y
+  c-sub-use refl refl H.refl = H.refl
 
-    c-sub-eff : ∀ {n} {Γ : Ctx k n} {Ψ A π π′ t t′} {g : Once.Spec.Grade._⊑π_ π π′}
-                  {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ A ! π}
-              → t ≡ t′ → x ≅ y → ⊢sub-eff g x ≅ ⊢sub-eff g y
-    c-sub-eff refl H.refl = H.refl
+  c-sub-eff : ∀ {n} {Γ : Ctx k n} {Ψ A π π′ t t′} {g : Once.Spec.Grade._⊑π_ π π′}
+                {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ A ! π}
+            → t ≡ t′ → x ≅ y → ⊢sub-eff g x ≅ ⊢sub-eff g y
+  c-sub-eff refl H.refl = H.refl
 
-    c-lam : ∀ {n} {Γ : Ctx k n} {Ψ q q′ π A B t t′} {le : Once.Spec.Grade._≤q_ q′ q}
-              {x : Δ′ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ ] t ∷ B ! π} {y : Δ′ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ ] t′ ∷ B ! π}
-          → t ≡ t′ → x ≅ y → ⊢lam le x ≅ ⊢lam le y
-    c-lam refl H.refl = H.refl
+  c-lam : ∀ {n} {Γ : Ctx k n} {Ψ q q′ π A B t t′} {le : Once.Spec.Grade._≤q_ q′ q}
+            {x : Δ′ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ ] t ∷ B ! π} {y : Δ′ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ ] t′ ∷ B ! π}
+        → t ≡ t′ → x ≅ y → ⊢lam le x ≅ ⊢lam le y
+  c-lam refl H.refl = H.refl
 
-    c-app : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ q π π₁ π₂ A B f f′ x x′}
-              {df : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π₁} {df′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f′ ∷ A ⇒[ mk-kind q π ] B ! π₁}
-              {dx : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π₂} {dx′ : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x′ ∷ A ! positionGrade q π₂}
-          → f ≡ f′ → x ≡ x′ → df ≅ df′ → dx ≅ dx′ → ⊢app df dx ≅ ⊢app df′ dx′
-    c-app refl refl H.refl H.refl = H.refl
+  c-app : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ q π π₁ π₂ A B f f′ x x′}
+            {df : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π₁} {df′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] f′ ∷ A ⇒[ mk-kind q π ] B ! π₁}
+            {dx : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π₂} {dx′ : Δ′ ⊩ Γ ⊢[ Ψ₂ ] x′ ∷ A ! positionGrade q π₂}
+        → f ≡ f′ → x ≡ x′ → df ≅ df′ → dx ≅ dx′ → ⊢app df dx ≅ ⊢app df′ dx′
+  c-app refl refl H.refl H.refl = H.refl
 
-    c-let : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ q π₁ π₂ A B e e′ b b′}
-              {de : Δ′ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π₁} {de′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] e′ ∷ A ! positionGrade q π₁}
-              {db : Δ′ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π₂} {db′ : Δ′ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b′ ∷ B ! π₂}
-          → e ≡ e′ → b ≡ b′ → de ≅ de′ → db ≅ db′ → ⊢let de db ≅ ⊢let de′ db′
-    c-let refl refl H.refl H.refl = H.refl
+  c-let : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ q π₁ π₂ A B e e′ b b′}
+            {de : Δ′ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π₁} {de′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] e′ ∷ A ! positionGrade q π₁}
+            {db : Δ′ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π₂} {db′ : Δ′ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b′ ∷ B ! π₂}
+        → e ≡ e′ → b ≡ b′ → de ≅ de′ → db ≅ db′ → ⊢let de db ≅ ⊢let de′ db′
+  c-let refl refl H.refl H.refl = H.refl
 
-    c-pair : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ π₁ π₂ A B a a′ b b′}
-               {da : Δ′ ⊩ Γ ⊢[ Ψ₁ ] a ∷ A ! π₁} {da′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] a′ ∷ A ! π₁}
-               {db : Δ′ ⊩ Γ ⊢[ Ψ₂ ] b ∷ B ! π₂} {db′ : Δ′ ⊩ Γ ⊢[ Ψ₂ ] b′ ∷ B ! π₂}
-           → a ≡ a′ → b ≡ b′ → da ≅ da′ → db ≅ db′ → ⊢pair da db ≅ ⊢pair da′ db′
-    c-pair refl refl H.refl H.refl = H.refl
+  c-pair : ∀ {n} {Γ : Ctx k n} {Ψ₁ Ψ₂ π₁ π₂ A B a a′ b b′}
+             {da : Δ′ ⊩ Γ ⊢[ Ψ₁ ] a ∷ A ! π₁} {da′ : Δ′ ⊩ Γ ⊢[ Ψ₁ ] a′ ∷ A ! π₁}
+             {db : Δ′ ⊩ Γ ⊢[ Ψ₂ ] b ∷ B ! π₂} {db′ : Δ′ ⊩ Γ ⊢[ Ψ₂ ] b′ ∷ B ! π₂}
+         → a ≡ a′ → b ≡ b′ → da ≅ da′ → db ≅ db′ → ⊢pair da db ≅ ⊢pair da′ db′
+  c-pair refl refl H.refl H.refl = H.refl
 
-    c-fst : ∀ {n} {Γ : Ctx k n} {Ψ π A B p p′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] p′ ∷ A * B ! π}
-          → p ≡ p′ → x ≅ y → ⊢fst x ≅ ⊢fst y
-    c-fst refl H.refl = H.refl
+  c-fst : ∀ {n} {Γ : Ctx k n} {Ψ π A B p p′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] p′ ∷ A * B ! π}
+        → p ≡ p′ → x ≅ y → ⊢fst x ≅ ⊢fst y
+  c-fst refl H.refl = H.refl
 
-    c-snd : ∀ {n} {Γ : Ctx k n} {Ψ π A B p p′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] p′ ∷ A * B ! π}
-          → p ≡ p′ → x ≅ y → ⊢snd x ≅ ⊢snd y
-    c-snd refl H.refl = H.refl
+  c-snd : ∀ {n} {Γ : Ctx k n} {Ψ π A B p p′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] p′ ∷ A * B ! π}
+        → p ≡ p′ → x ≅ y → ⊢snd x ≅ ⊢snd y
+  c-snd refl H.refl = H.refl
 
-    c-inl : ∀ {n} {Γ : Ctx k n} {Ψ π A B a a′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] a ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] a′ ∷ A ! π}
-          → a ≡ a′ → x ≅ y → ⊢inl {B = B} x ≅ ⊢inl {B = B} y
-    c-inl refl H.refl = H.refl
+  c-inl : ∀ {n} {Γ : Ctx k n} {Ψ π A B a a′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] a ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] a′ ∷ A ! π}
+        → a ≡ a′ → x ≅ y → ⊢inl {B = B} x ≅ ⊢inl {B = B} y
+  c-inl refl H.refl = H.refl
 
-    c-inr : ∀ {n} {Γ : Ctx k n} {Ψ π A B b b′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] b ∷ B ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] b′ ∷ B ! π}
-          → b ≡ b′ → x ≅ y → ⊢inr {A = A} x ≅ ⊢inr {A = A} y
-    c-inr refl H.refl = H.refl
+  c-inr : ∀ {n} {Γ : Ctx k n} {Ψ π A B b b′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] b ∷ B ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] b′ ∷ B ! π}
+        → b ≡ b′ → x ≅ y → ⊢inr {A = A} x ≅ ⊢inr {A = A} y
+  c-inr refl H.refl = H.refl
 
-    c-case : ∀ {n} {Γ : Ctx k n} {Ψs Ψ qℓ qr π₁ π₂ A B C s s′ l l′ r r′}
-               {ds : Δ′ ⊩ Γ ⊢[ Ψs ] s ∷ A + B ! π₁} {ds′ : Δ′ ⊩ Γ ⊢[ Ψs ] s′ ∷ A + B ! π₁}
-               {dl : Δ′ ⊩ (Γ ▸ A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π₂} {dl′ : Δ′ ⊩ (Γ ▸ A) ⊢[ qℓ ∷ Ψ ] l′ ∷ C ! π₂}
-               {dr : Δ′ ⊩ (Γ ▸ B) ⊢[ qr ∷ Ψ ] r ∷ C ! π₂} {dr′ : Δ′ ⊩ (Γ ▸ B) ⊢[ qr ∷ Ψ ] r′ ∷ C ! π₂}
-           → s ≡ s′ → l ≡ l′ → r ≡ r′ → ds ≅ ds′ → dl ≅ dl′ → dr ≅ dr′ → ⊢case ds dl dr ≅ ⊢case ds′ dl′ dr′
-    c-case refl refl refl H.refl H.refl H.refl = H.refl
+  c-case : ∀ {n} {Γ : Ctx k n} {Ψs Ψ qℓ qr π₁ π₂ A B C s s′ l l′ r r′}
+             {ds : Δ′ ⊩ Γ ⊢[ Ψs ] s ∷ A + B ! π₁} {ds′ : Δ′ ⊩ Γ ⊢[ Ψs ] s′ ∷ A + B ! π₁}
+             {dl : Δ′ ⊩ (Γ ▸ A) ⊢[ qℓ ∷ Ψ ] l ∷ C ! π₂} {dl′ : Δ′ ⊩ (Γ ▸ A) ⊢[ qℓ ∷ Ψ ] l′ ∷ C ! π₂}
+             {dr : Δ′ ⊩ (Γ ▸ B) ⊢[ qr ∷ Ψ ] r ∷ C ! π₂} {dr′ : Δ′ ⊩ (Γ ▸ B) ⊢[ qr ∷ Ψ ] r′ ∷ C ! π₂}
+         → s ≡ s′ → l ≡ l′ → r ≡ r′ → ds ≅ ds′ → dl ≅ dl′ → dr ≅ dr′ → ⊢case ds dl dr ≅ ⊢case ds′ dl′ dr′
+  c-case refl refl refl H.refl H.refl H.refl = H.refl
 
-    c-absurd : ∀ {n} {Γ : Ctx k n} {Ψ π A e e′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] e ∷ Void ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] e′ ∷ Void ! π}
-             → e ≡ e′ → x ≅ y → ⊢absurd {A = A} x ≅ ⊢absurd {A = A} y
-    c-absurd refl H.refl = H.refl
+  c-absurd : ∀ {n} {Γ : Ctx k n} {Ψ π A e e′} {x : Δ′ ⊩ Γ ⊢[ Ψ ] e ∷ Void ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] e′ ∷ Void ! π}
+           → e ≡ e′ → x ≅ y → ⊢absurd {A = A} x ≅ ⊢absurd {A = A} y
+  c-absurd refl H.refl = H.refl
 
-    c-roll : ∀ {n} {Γ : Ctx k n} {Ψ π F t t′} {w : WFFun Δ′ F}
-               {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧F (μ F) ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ ⟦ F ⟧F (μ F) ! π}
-           → t ≡ t′ → x ≅ y → ⊢roll w x ≅ ⊢roll w y
-    c-roll refl H.refl = H.refl
+  c-roll : ∀ {n} {Γ : Ctx k n} {Ψ π F t t′} {w : WFFun Δ′ F}
+             {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ ⟦ F ⟧F (μ F) ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ ⟦ F ⟧F (μ F) ! π}
+         → t ≡ t′ → x ≅ y → ⊢roll w x ≅ ⊢roll w y
+  c-roll refl H.refl = H.refl
 
-    c-fold : ∀ {n} {Γ : Ctx k n} {Ψa Ψt π π₁ π₂ F A a a′ t t′} {w : WFFun Δ′ F}
-               {da : Δ′ ⊩ Γ ⊢[ Ψa ] a ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁} {da′ : Δ′ ⊩ Γ ⊢[ Ψa ] a′ ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁}
-               {dt : Δ′ ⊩ Γ ⊢[ Ψt ] t ∷ μ F ! π₂} {dt′ : Δ′ ⊩ Γ ⊢[ Ψt ] t′ ∷ μ F ! π₂}
-           → a ≡ a′ → t ≡ t′ → da ≅ da′ → dt ≅ dt′ → ⊢fold w da dt ≅ ⊢fold w da′ dt′
-    c-fold refl refl H.refl H.refl = H.refl
+  c-fold : ∀ {n} {Γ : Ctx k n} {Ψa Ψt π π₁ π₂ F A a a′ t t′} {w : WFFun Δ′ F}
+             {da : Δ′ ⊩ Γ ⊢[ Ψa ] a ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁} {da′ : Δ′ ⊩ Γ ⊢[ Ψa ] a′ ∷ ⟦ F ⟧F A ⇒[ mk-kind Many π ] A ! π₁}
+             {dt : Δ′ ⊩ Γ ⊢[ Ψt ] t ∷ μ F ! π₂} {dt′ : Δ′ ⊩ Γ ⊢[ Ψt ] t′ ∷ μ F ! π₂}
+         → a ≡ a′ → t ≡ t′ → da ≅ da′ → dt ≅ dt′ → ⊢fold w da dt ≅ ⊢fold w da′ dt′
+  c-fold refl refl H.refl H.refl = H.refl
 
-    c-unfold : ∀ {n} {Γ : Ctx k n} {Ψc Ψs f π₁ π₂ F A c c′ a a′} {w : WFFun Δ′ F}
-                 {dc : Δ′ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A ! π₁}
-                 {dc′ : Δ′ ⊩ Γ ⊢[ Ψc ] c′ ∷ A ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A ! π₁}
-                 {da : Δ′ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂} {da′ : Δ′ ⊩ Γ ⊢[ Ψs ] a′ ∷ A ! π₂}
-             → c ≡ c′ → a ≡ a′ → dc ≅ dc′ → da ≅ da′ → ⊢unfold w dc da ≅ ⊢unfold w dc′ da′
-    c-unfold refl refl H.refl H.refl = H.refl
-
-    c-out : ∀ {n} {Γ : Ctx k n} {Ψ f π₁ F t t′} {w : WFFun Δ′ F}
-              {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ ν F f ! π₁} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ ν F f ! π₁}
-          → t ≡ t′ → x ≅ y → ⊢out w x ≅ ⊢out w y
-    c-out refl H.refl = H.refl
-
-    c-iter : ∀ {n} {Γ : Ctx k n} {Ψf Ψs π₁ π₂ A B f f′ a a′}
-               {df : Δ′ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁} {df′ : Δ′ ⊩ Γ ⊢[ Ψf ] f′ ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁}
+  c-unfold : ∀ {n} {Γ : Ctx k n} {Ψc Ψs f π₁ π₂ F A c c′ a a′} {w : WFFun Δ′ F}
+               {dc : Δ′ ⊩ Γ ⊢[ Ψc ] c ∷ A ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A ! π₁}
+               {dc′ : Δ′ ⊩ Γ ⊢[ Ψc ] c′ ∷ A ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A ! π₁}
                {da : Δ′ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂} {da′ : Δ′ ⊩ Γ ⊢[ Ψs ] a′ ∷ A ! π₂}
-           → f ≡ f′ → a ≡ a′ → df ≅ df′ → da ≅ da′ → ⊢iter df da ≅ ⊢iter df′ da′
-    c-iter refl refl H.refl H.refl = H.refl
+           → c ≡ c′ → a ≡ a′ → dc ≅ dc′ → da ≅ da′ → ⊢unfold w dc da ≅ ⊢unfold w dc′ da′
+  c-unfold refl refl H.refl H.refl = H.refl
 
-    c-coerce : ∀ {n} {Γ : Ctx k n} {Ψ π A B t t′} {p : A <: B}
-                 {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ A ! π}
-             → t ≡ t′ → x ≅ y → ⊢coerce p x ≅ ⊢coerce p y
-    c-coerce refl H.refl = H.refl
+  c-out : ∀ {n} {Γ : Ctx k n} {Ψ f π₁ F t t′} {w : WFFun Δ′ F}
+            {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ ν F f ! π₁} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ ν F f ! π₁}
+        → t ≡ t′ → x ≅ y → ⊢out w x ≅ ⊢out w y
+  c-out refl H.refl = H.refl
 
-    c-prim : ∀ {n} {Γ : Ctx k n} {Ψ π t t′} (p : Prim)
-               {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ primDom p ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ primDom p ! π}
-           → t ≡ t′ → x ≅ y → ⊢prim p x ≅ ⊢prim p y
-    c-prim p refl H.refl = H.refl
+  c-iter : ∀ {n} {Γ : Ctx k n} {Ψf Ψs π₁ π₂ A B f f′ a a′}
+             {df : Δ′ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁} {df′ : Δ′ ⊩ Γ ⊢[ Ψf ] f′ ∷ A ⇒[ mk-kind Many act ] (B + A) ! π₁}
+             {da : Δ′ ⊩ Γ ⊢[ Ψs ] a ∷ A ! π₂} {da′ : Δ′ ⊩ Γ ⊢[ Ψs ] a′ ∷ A ! π₂}
+         → f ≡ f′ → a ≡ a′ → df ≅ df′ → da ≅ da′ → ⊢iter df da ≅ ⊢iter df′ da′
+  c-iter refl refl H.refl H.refl = H.refl
+
+  c-coerce : ∀ {n} {Γ : Ctx k n} {Ψ π A B t t′} {p : A <: B}
+               {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ A ! π}
+           → t ≡ t′ → x ≅ y → ⊢coerce p x ≅ ⊢coerce p y
+  c-coerce refl H.refl = H.refl
+
+  c-prim : ∀ {n} {Γ : Ctx k n} {Ψ π t t′} (p : Prim)
+             {x : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ primDom p ! π} {y : Δ′ ⊩ Γ ⊢[ Ψ ] t′ ∷ primDom p ! π}
+         → t ≡ t′ → x ≅ y → ⊢prim p x ≅ ⊢prim p y
+  c-prim p refl H.refl = H.refl
 
   -- The renamed terms agree when the two renamings do.
   tm-eq : ∀ {n n′} {θ : Thin n n′} {ρ ρ′ : Fin n → Fin n′} → (∀ i → ⟦ θ ⟧θ i ≡ ρ i) → (∀ i → ⟦ θ ⟧θ i ≡ ρ′ i)

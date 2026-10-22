@@ -128,6 +128,10 @@ module _ {m : ℕ} {Δ : KCtx m} where
 
   -- D311: `g` runs first, then `f`, so the composite's body is at `π₂ ·p π₁`,
   -- and its arrow at any grade above that.
+  compose-use : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → _ ≡ Ψ₁ +ᵘ Many *ᵘ Ψ₂
+  compose-use Ψ₁ Ψ₂ =
+    (arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many)))
+
   ⊢composeᶜ : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π₁ π₂ π : Purity} {f g}
             → π₂ ·p π₁ ⊑π π
             → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ B ⇒[ mk-kind Many π₁ ] C ! pure
@@ -135,11 +139,16 @@ module _ {m : ℕ} {Δ : KCtx m} where
             → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] composeᶜ A π f g ∷ A ⇒[ mk-kind Many π ] C ! pure
   ⊢composeᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {C} le df dg =
     subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure)
-          (arms Many Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (z+qz Many))) (z+qz Many)))
+          (compose-use Ψ₁ Ψ₂)
           (⊢let df (⊢let (wk-⊢′ _ dg)
             (⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff le (⊢app (⊢var (suc (suc zero))) (⊢app (⊢var (suc zero)) (⊢var zero)))))))
 
   -- D311: `f` runs first, then `g`: the body is at `π₁ ·p π₂`.
+  pair-use : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → _ ≡ Ψ₁ +ᵘ Ψ₂
+  pair-use Ψ₁ Ψ₂ =
+    (trans (arms One Ψ₁ Ψ₂ (trans (cong₂ _+ᵘ_ (z+qz Many) (z+qz Many)) (+ᵘ-identityˡ zeroUsage)))
+                   (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂)))
+
   ⊢pairᶜ : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π₁ π₂ π : Purity} {f g}
          → π₁ ·p π₂ ⊑π π
          → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π₁ ] B ! pure
@@ -147,11 +156,16 @@ module _ {m : ℕ} {Δ : KCtx m} where
          → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pairᶜ A π f g ∷ A ⇒[ mk-kind Many π ] (B * C) ! pure
   ⊢pairᶜ {Γ = Γ} {Ψ₁} {Ψ₂} le df dg =
     subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure)
-          (trans (arms One Ψ₁ Ψ₂ (trans (cong₂ _+ᵘ_ (z+qz Many) (z+qz Many)) (+ᵘ-identityˡ zeroUsage)))
-                 (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂)))
+          (pair-use Ψ₁ Ψ₂)
           (⊢let df (⊢let (wk-⊢′ _ dg)
             (⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff le (⊢pair (⊢app (⊢var (suc (suc zero))) (⊢var zero))
                                            (⊢app (⊢var (suc zero)) (⊢var zero)))))))
+
+  case-use : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → _ ≡ Ψ₁ +ᵘ Ψ₂
+  case-use Ψ₁ Ψ₂ =
+    (trans (arms One Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (trans (cong₂ _⊔ᵘ_ (z+qz Many) (z+qz Many)) z⊔z))
+                                          (+ᵘ-identityˡ zeroUsage)))
+                   (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂)))
 
   ⊢caseᶜ : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π : Purity} {f g}
          → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] C ! pure
@@ -159,24 +173,30 @@ module _ {m : ℕ} {Δ : KCtx m} where
          → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] caseᶜ A B π f g ∷ (A + B) ⇒[ mk-kind Many π ] C ! pure
   ⊢caseᶜ {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} df dg =
     subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure)
-          (trans (arms One Ψ₁ Ψ₂ (trans (cong (zeroUsage +ᵘ_) (trans (cong₂ _⊔ᵘ_ (z+qz Many) (z+qz Many)) z⊔z))
-                                        (+ᵘ-identityˡ zeroUsage)))
-                 (cong (Ψ₁ +ᵘ_) (*ᵘ-identityˡ Ψ₂)))
+          (case-use Ψ₁ Ψ₂)
           (⊢let df (⊢let (wk-⊢′ _ dg)
             (⊢lam (≤qᵇ→≤q _ _ refl) (⊢case⊔ (⊢var zero)
                               (⊢app (⊢var (suc (suc (suc zero)))) (⊢var zero))
                               (⊢app (⊢var (suc (suc zero))) (⊢var zero))))))
+
+  curry-use : ∀ {n} (Ψ : Usage n) → _ ≡ Ψ
+  curry-use Ψ =
+    (trans (cong₂ _+ᵘ_ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (+ᵘ-identityˡ zeroUsage))) (z+qz Many))
+                               (*ᵘ-identityˡ Ψ))
+                   (+ᵘ-identityˡ Ψ))
 
   ⊢curryᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B C : Ty m} {π₀ π : Purity} {f}
           → pure ⊑π π₀ → Δ ⊩ Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many π ] C ! pure
           → Δ ⊩ Γ ⊢[ Ψ ] curryᶜ A B π₀ π f ∷ A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C) ! pure
   ⊢curryᶜ {Γ = Γ} {Ψ} {π₀ = π₀} {π} u₀ df =
     subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure)
-          (trans (cong₂ _+ᵘ_ (trans (cong (zeroUsage +ᵘ_) (cong (Many *ᵘ_) (+ᵘ-identityˡ zeroUsage))) (z+qz Many))
-                             (*ᵘ-identityˡ Ψ))
-                 (+ᵘ-identityˡ Ψ))
+          (curry-use Ψ)
           (⊢let df (⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u₀
             (⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (⊢var (suc (suc zero))) (⊢pair (⊢var (suc zero)) (⊢var zero)))))))
+
+  cata-use : ∀ {n} (Ψ : Usage n) → (Many *ᵘ zeroUsage +ᵘ zeroUsage) +ᵘ Many *ᵘ Ψ ≡ Many *ᵘ Ψ
+  cata-use Ψ = trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
+                     (+ᵘ-identityˡ (Many *ᵘ Ψ))
 
   ⊢cataᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {A : Ty m} {π : Purity} {alg}
          → WFFun Δ F
@@ -185,9 +205,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   -- Plan 0.113 B1: inside the body the algebra's variable is used ω times (the
   -- fold applies it per node), so the `let` charges `Many *ᵘ Ψ` — the surface rule.
   ⊢cataᶜ {Γ = Γ} {Ψ} {π = π} wf da =
-    subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure)
-          (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
-                 (+ᵘ-identityˡ (Many *ᵘ Ψ)))
+    subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure) (cata-use Ψ)
           (⊢let da (⊢lam (≤qᵇ→≤q _ _ refl) (⊢fold wf (⊢var (suc zero)) (⊢var zero))))
 
   ⊢anaᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {A : Ty m} {π₀ : Purity} {φ : Finite} {c}
@@ -198,13 +216,17 @@ module _ {m : ℕ} {Δ : KCtx m} where
     ⊢lam (≤qᵇ→≤q _ _ refl) (subst (λ U → Δ ⊩ (Γ ▸ A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
                      (⊢sub-eff u₀ (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))))
 
+  loop-use : ∀ {n} (Ψ : Usage n) → _ ≡ Many *ᵘ Ψ
+  loop-use Ψ =
+    (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
+                   (+ᵘ-identityˡ (Many *ᵘ Ψ)))
+
   ⊢loopᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {c}
          → Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure
          → Δ ⊩ Γ ⊢[ Many *ᵘ Ψ ] loopᶜ A c ∷ A ⇒[ mk-kind Many eff ] B ! pure
   ⊢loopᶜ {Γ = Γ} {Ψ} dc =
     subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure)
-          (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
-                 (+ᵘ-identityˡ (Many *ᵘ Ψ)))
+          (loop-use Ψ)
           (⊢let dc (⊢lam (≤qᵇ→≤q _ _ refl) (⊢iter (⊢var (suc zero)) (⊢var zero))))
 
   ------------------------------------------------------------------------
