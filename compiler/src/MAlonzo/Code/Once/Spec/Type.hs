@@ -153,116 +153,21 @@ d_Respects_226 ::
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) -> ()
 d_Respects_226 = erased
--- Once.Spec.Type.base-⟨⟩
-d_base'45''10216''10217'_248 ::
-  Integer ->
-  Integer ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  T_Ty_8 ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84) ->
-  T_Base_84 -> T_Base_84
-d_base'45''10216''10217'_248 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7
-  = du_base'45''10216''10217'_248 v5 v6 v7
-du_base'45''10216''10217'_248 ::
-  T_Ty_8 ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84) ->
-  T_Base_84 -> T_Base_84
-du_base'45''10216''10217'_248 v0 v1 v2
-  = case coe v2 of
-      C_b'45'var_92
-        -> case coe v0 of
-             C_var_16 v5 -> coe v1 v5 erased
-             _ -> MAlonzo.RTE.mazUnreachableError
-      C_b'45'Unit_94 -> coe v2
-      C_b'45'Void_96 -> coe v2
-      C_b'45'Int_98 -> coe v2
-      C_b'45'Float_100 -> coe v2
-      C_b'45''42'_106 v5 v6
-        -> case coe v0 of
-             C__'42'__22 v7 v8
-               -> coe
-                    C_b'45''42'_106
-                    (coe du_base'45''10216''10217'_248 (coe v7) (coe v1) (coe v5))
-                    (coe du_base'45''10216''10217'_248 (coe v8) (coe v1) (coe v6))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      C_b'45''43'_112 v5 v6
-        -> case coe v0 of
-             C__'43'__24 v7 v8
-               -> coe
-                    C_b'45''43'_112
-                    (coe du_base'45''10216''10217'_248 (coe v7) (coe v1) (coe v5))
-                    (coe du_base'45''10216''10217'_248 (coe v8) (coe v1) (coe v6))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Spec.Type.respects-∘
-d_respects'45''8728'_292 ::
-  Integer ->
-  Integer ->
-  Integer ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84) ->
-  MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84
-d_respects'45''8728'_292 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6 ~v7 v8 v9 v10
-                         v11
-  = du_respects'45''8728'_292 v6 v8 v9 v10 v11
-du_respects'45''8728'_292 ::
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84) ->
-  MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_Base_84
-du_respects'45''8728'_292 v0 v1 v2 v3 v4
-  = coe
-      du_base'45''10216''10217'_248 (coe v0 v3) (coe v2) (coe v1 v3 v4)
--- Once.Spec.Type.⟨⟩-∘
-d_'10216''10217''45''8728'_316 ::
-  Integer ->
-  Integer ->
-  Integer ->
-  T_Ty_8 ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'10216''10217''45''8728'_316 = erased
--- Once.Spec.Type.⟨⟩F-∘
-d_'10216''10217'F'45''8728'_332 ::
-  Integer ->
-  Integer ->
-  Integer ->
-  T_Fun_12 ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'10216''10217'F'45''8728'_332 = erased
 -- Once.Spec.Type.Occurs
-d_Occurs_432 a0 a1 a2 = ()
-data T_Occurs_432
-  = C_o'45'var_442 | C_o'45''42''737'_448 T_Occurs_432 |
-    C_o'45''42''691'_454 T_Occurs_432 |
-    C_o'45''43''737'_460 T_Occurs_432 |
-    C_o'45''43''691'_466 T_Occurs_432 |
-    C_o'45''8658''737'_474 T_Occurs_432 |
-    C_o'45''8658''691'_482 T_Occurs_432 | C_o'45'μ_486 T_OccursF_438 |
-    C_o'45'ν_492 T_OccursF_438
+d_Occurs_240 a0 a1 a2 = ()
+data T_Occurs_240
+  = C_o'45'var_250 | C_o'45''42''737'_256 T_Occurs_240 |
+    C_o'45''42''691'_262 T_Occurs_240 |
+    C_o'45''43''737'_268 T_Occurs_240 |
+    C_o'45''43''691'_274 T_Occurs_240 |
+    C_o'45''8658''737'_282 T_Occurs_240 |
+    C_o'45''8658''691'_290 T_Occurs_240 | C_o'45'μ_294 T_OccursF_246 |
+    C_o'45'ν_300 T_OccursF_246
 -- Once.Spec.Type.OccursF
-d_OccursF_438 a0 a1 a2 = ()
-data T_OccursF_438
-  = C_o'45'K_498 T_Occurs_432 |
-    C_o'45''8853''737'_504 T_OccursF_438 |
-    C_o'45''8853''691'_510 T_OccursF_438 |
-    C_o'45''8855''737'_516 T_OccursF_438 |
-    C_o'45''8855''691'_522 T_OccursF_438
+d_OccursF_246 a0 a1 a2 = ()
+data T_OccursF_246
+  = C_o'45'K_306 T_Occurs_240 |
+    C_o'45''8853''737'_312 T_OccursF_246 |
+    C_o'45''8853''691'_318 T_OccursF_246 |
+    C_o'45''8855''737'_324 T_OccursF_246 |
+    C_o'45''8855''691'_330 T_OccursF_246
