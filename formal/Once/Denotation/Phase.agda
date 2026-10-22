@@ -79,5 +79,5 @@ bindᴰ0 dγ = dγ
 --   `∅` to `∅`, so the environment does not depend on the usage — but `_↾_` is
 --   stuck until the usage is matched, and `Usage` is a `data` (no eta), so the
 --   coercion has to be written out. It is the identity.
-env0 : ∀ {Ψ : Usage 0} → ⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ → ⟦ ⟦ ∅ ↾ Ψ ⟧ᶜ ⟧ᴰ
-env0 {[]} dγ = dγ
+env0 : ∀ {m} {Ψ : Usage 0} → ⟦ ⟦ ∅ {m} ⟧ᶜ ⟧ᴰ → ⟦ ⟦ ∅ {m} ↾ Ψ ⟧ᶜ ⟧ᴰ
+env0 {Ψ = []} dγ = dγ

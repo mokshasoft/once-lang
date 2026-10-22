@@ -109,7 +109,7 @@ subst-inj₂ refl refl y = refl
 -- performs; it forces to the same block (`retargetʳ refl`).
 mutual
   coeIR-rel : ∀ {m} {A B : Ty m} (p : A <: B) {v v′ : ⟦ A ⟧ᴰ} → RelD A v v′
-            → RelS (RelD B) (liftFn fmt ρ {A : Ty m} {B : Ty m} (coeIR p) v) (return∞ (⟦ p ⟧<: v′))
+            → RelS (RelD B) (liftFn fmt ρ {A} {B} (coeIR p) v) (return∞ (⟦ p ⟧<: v′))
   coeIR-rel sub-void {()}
   coeIR-rel sub-unit  {v} r = ≡ˡ (cong-app (liftFn-id {A = Unit}) v) (relS-ret r)
   coeIR-rel sub-int   {v} r = ≡ˡ (cong-app (liftFn-id {A = Ty.Int}) v) (relS-ret r)
@@ -147,14 +147,14 @@ mutual
 
   -- A component projected, then converted.
   comp-fst : ∀ {m} {A A′ B : Ty m} (a : A <: A′) {x x′ : ⟦ A ⟧ᴰ} {y : ⟦ B ⟧ᴰ} → RelD A x x′
-           → RelS (RelD A′) (liftFn fmt ρ {A B : Ty m} {*} {A′ : Ty m} (coeIR a ∘ fst) (x , y)) (return∞ (⟦ a ⟧<: x′))
+           → RelS (RelD A′) (liftFn fmt ρ {A * B} {A′} (coeIR a ∘ fst) (x , y)) (return∞ (⟦ a ⟧<: x′))
   comp-fst {A = A} {A′ = A′} {B = B} a {x} {x′} {y} r =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = A} {C = A′} {A = A * B} (coeIR a) fst) (x , y))
               (cong (_>>=∞ liftFn fmt ρ {A} {A′} (coeIR a)) (cong-app (liftFn-fst {A = A} {B = B}) (x , y))))
        (retargetˡ refl (coeIR-rel a r))
 
   comp-snd : ∀ {m} {A B B′ : Ty m} (b : B <: B′) {x : ⟦ A ⟧ᴰ} {y y′ : ⟦ B ⟧ᴰ} → RelD B y y′
-           → RelS (RelD B′) (liftFn fmt ρ {A B : Ty m} {*} {B′ : Ty m} (coeIR b ∘ snd) (x , y)) (return∞ (⟦ b ⟧<: y′))
+           → RelS (RelD B′) (liftFn fmt ρ {A * B} {B′} (coeIR b ∘ snd) (x , y)) (return∞ (⟦ b ⟧<: y′))
   comp-snd {A = A} {B = B} {B′ = B′} b {x} {y} {y′} r =
     ≡ˡ (trans (cong-app (liftFn-∘ {B = B} {C = B′} {A = A * B} (coeIR b) snd) (x , y))
               (cong (_>>=∞ liftFn fmt ρ {B} {B′} (coeIR b)) (cong-app (liftFn-snd {A = A} {B = B}) (x , y))))
@@ -173,7 +173,7 @@ mutual
 
   arr₁ : ∀ {m} {A A′ B B′ : Ty m} {π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind One π ] B ⟧ᴰ}
        → RelD (A ⇒[ mk-kind One π ] B) f f′ → ∀ {x x′ : ⟦ A′ ⟧ᴰ} → RelD A′ x x′
-       → RelS (RelD B′) (liftFn fmt ρ {A′ : Ty m} {(A ⇒[ mk-kind One π ] B) *} {B′ : Ty m}
+       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind One π ] B) * A′} {B′}
                                (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x))
                         (fmap∞ ⟦ b ⟧<: (f′ (⟦ a ⟧<: x′)))
   arr₁ {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b {f} {f′} r {x} {x′} rx =
@@ -195,7 +195,7 @@ mutual
 
   arrω : ∀ {m} {A A′ B B′ : Ty m} {π} (a : A′ <: A) (b : B <: B′) {f f′ : ⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ}
        → RelD (A ⇒[ mk-kind Many π ] B) f f′ → ∀ {x x′ : ⟦ A′ ⟧ᴰ} → RelD A′ x x′
-       → RelS (RelD B′) (liftFn fmt ρ {A′ : Ty m} {(A ⇒[ mk-kind Many π ] B) *} {B′ : Ty m}
+       → RelS (RelD B′) (liftFn fmt ρ {(A ⇒[ mk-kind Many π ] B) * A′} {B′}
                                (coeIR b ∘ (apply ∘ ⟨ fst , coeIR a ∘ snd ⟩)) (f , x))
                         (fmap∞ ⟦ b ⟧<: (f′ (⟦ a ⟧<: x′)))
   arrω {A = A} {A′ = A′} {B = B} {B′ = B′} {π = π} a b {f} {f′} r {x} {x′} rx =

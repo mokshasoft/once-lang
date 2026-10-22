@@ -64,8 +64,8 @@ open Once.Surface.Syntax.Expr
 -- The fold of related algebras is a related closure.
 cata-clo-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} {F : Fun m} {π} (wf : WFFun Δₖ F) {va vb : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
              → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) va vb
-             → RelD (μ-type F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {F : Fun m} {A : Ty m} wf (return∞ va)) x)
-                                                       (λ x → sem-cata wf (SD.cata-ev-algˢ {F : Fun m} {A : Ty m} wf (return∞ vb)) x)
+             → RelD (μ-type F ⇒[ mk-kind Many π ] A) (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ va)) x)
+                                                       (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ vb)) x)
 cata-clo-rel {F = F} {A = A} wf {va} {vb} ralg {x} refl =
   sem-cata-rel wf {R = RelS (RelD A)} {SD.cata-ev-algˢ wf (return∞ va)} {SD.cata-ev-algˢ wf (return∞ vb)}
     (λ fr → RelS-bind (seqF∞-rel F fr) λ fl → retargetˡ refl (retargetʳ refl (ralg (cfD⁻¹-rel wf A fl)))) x

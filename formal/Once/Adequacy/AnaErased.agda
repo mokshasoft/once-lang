@@ -55,7 +55,7 @@ open import Once.Internal.Iterative using (T∞; return∞)
 open import Once.Internal.Stream
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
-open import Once.Spec.Type using (wf-K; wf-Id; b-*)
+open import Once.Spec.Type using (wf-K; wf-Id; b-*; b-+)
 open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 
@@ -263,11 +263,11 @@ base-in-D (b-* {A = A} {B = B} ba bb) (a , b) =
                (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ bb)) b)))
     (trans (cong₂ _,_ (base-in-D ba a) (base-in-D bb b))
            (sym (cong (λ z → coerce-full-to-base (A * B) (forgetᵇ (base-Prod ba bb) z)) (push× (cohᴰ A) (cohᴰ B) a b))))
-base-in-D (base-Sum {A} {B} ba bb) (inj₁ a) =
+base-in-D (b-+ {A = A} {B = B} ba bb) (inj₁ a) =
   trans (push⊎₁ (base-coh A) (base-coh B) (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ ba)) a)))
     (trans (cong inj₁ (base-in-D ba a))
            (sym (cong (λ z → coerce-full-to-base (A + B) (forgetᵇ (base-Sum ba bb) z)) (push⊎₁ (cohᴰ A) (cohᴰ B) a))))
-base-in-D (base-Sum {A} {B} ba bb) (inj₂ b) =
+base-in-D (b-+ {A = A} {B = B} ba bb) (inj₂ b) =
   trans (push⊎₂ (base-coh A) (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ bb)) b)))
     (trans (cong inj₂ (base-in-D bb b))
            (sym (cong (λ z → coerce-full-to-base (A + B) (forgetᵇ (base-Sum ba bb) z)) (push⊎₂ (cohᴰ A) (cohᴰ B) b))))

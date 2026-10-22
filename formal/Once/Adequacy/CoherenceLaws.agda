@@ -412,7 +412,7 @@ module _ {A A′ : Type} (p : A <: A′) where
   seq-self (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) = fr-pair (seq-self F r₁) (seq-self G r₂)
 
 -- A layer converted up by `p` and back down by `d` relates to the layer.
-layer-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {A A′ : Ty m} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
+layer-rel : ∀ {F} (wf : WellFormedF F) {A A′ : Type} (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′)
               {l₁ : ⟦ F ⟧F ⟦ A′ ⟧ᴰ} {l₂ : ⟦ F ⟧F ⟦ A ⟧ᴰ}
           → Rl p F l₁ l₂ → RelD (⟦ F ⟧T A) (⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ l₁)) (coerce-functor⁻¹-D wf A l₂)
 layer-rel {K B} (wf-K b) d p {l₁} refl rewrite <:-unique d (<:-refl B) = <:-refl-rel B (base-refl b _)
@@ -427,13 +427,13 @@ layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj�
 layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₁ _} ()
 layer-rel (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
 
-cata-core : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {A A′ : Ty m} {π π′ : Purity}
+cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}
               (d : ⟦ F ⟧T A′ <: ⟦ F ⟧T A) (p : A <: A′) (g : π ⊑π π′)
               {valg valg′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
           → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) valg valg′
           → ∀ (x : ⟦μ⟧ F)
-          → Rc p (sem-cata wf (cata-ev-algˢ {F : Fun m} {A′ : Ty m} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
-                 (sem-cata wf (cata-ev-algˢ {F : Fun m} {A : Ty m} wf (return∞ valg′)) x)
+          → Rc p (sem-cata wf (cata-ev-algˢ {F} {A′} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
+                 (sem-cata wf (cata-ev-algˢ {F} {A} wf (return∞ valg′)) x)
 cata-core {F = F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
   cataS-rel {translateF Carrier Carrier F} (Rc p) algR x
   where

@@ -146,15 +146,15 @@ now-restrict {Γ = Γ , A ^ q} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (m≤m ⊑∷ u
     (now-snd {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ)
 
 now-bindEnv : ∀ {m} {n} {Γ : Ctx m n} {Ψ' : Usage n} {A : Ty m} (q : Quantity) (d : ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ) (a : ⟦ A ⟧ᴰ)
-            → Now (liftFn fmt ρ {A : Ty m} {⟦ Γ ↾ Ψ' ⟧ᶜ *} {⟦ (Γ ,ᶜ A) ↾ (q ∷ Ψ') ⟧ᶜ} (bindEnv {Γ = Γ} {A = A} IR.Heap q) (d , a))
+            → Now (liftFn fmt ρ {⟦ Γ ↾ Ψ' ⟧ᶜ * A} {⟦ (Γ ,ᶜ A) ↾ (q ∷ Ψ') ⟧ᶜ} (bindEnv {Γ = Γ} {A = A} IR.Heap q) (d , a))
                   (bindᴰ {Γ = Γ} {A = A} q d a)
-now-bindEnv {Γ = Γ} {Ψ' = Ψ'} {A = A} Zero d a = now-fst {⟦ Γ ↾ Ψ' ⟧ᶜ} {A} (d , a)
-now-bindEnv {Γ = Γ} {Ψ' = Ψ'} {A = A} One  d a = now-id {⟦ Γ ↾ Ψ' ⟧ᶜ * A} (d , a)
-now-bindEnv {Γ = Γ} {Ψ' = Ψ'} {A = A} Many d a = now-id {⟦ Γ ↾ Ψ' ⟧ᶜ * A} (d , a)
+now-bindEnv {Γ = Γ} {Ψ'} {A} Zero d a = now-fst {⟦ Γ ↾ Ψ' ⟧ᶜ} {A} (d , a)
+now-bindEnv {Γ = Γ} {Ψ'} {A} One  d a = now-id {⟦ Γ ↾ Ψ' ⟧ᶜ * A} (d , a)
+now-bindEnv {Γ = Γ} {Ψ'} {A} Many d a = now-id {⟦ Γ ↾ Ψ' ⟧ᶜ * A} (d , a)
 
 -- A `case'` branch's environment: narrowed, then bound.
 now-branch : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} {A : Ty m} (ule : Ψ' ⊑ᵘ Ψ) (q : Quantity) (d : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ) (a : ⟦ A ⟧ᴰ)
-           → Now (liftFn fmt ρ {A : Ty m} {⟦ Γ ↾ Ψ ⟧ᶜ *} {⟦ (Γ ,ᶜ A) ↾ (q ∷ Ψ') ⟧ᶜ}
+           → Now (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ * A} {⟦ (Γ ,ᶜ A) ↾ (q ∷ Ψ') ⟧ᶜ}
                     (bindEnv {Γ = Γ} {A = A} IR.Heap q ∘ ⟨ restrictEnv {Γ = Γ} IR.Heap ule ∘ fst , snd ⟩) (d , a))
                  (bindᴰ {Γ = Γ} {A = A} q (restrictᴰ {Γ = Γ} ule d) a)
 now-branch {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule q d a =
@@ -192,7 +192,7 @@ restrictᴰ-subst {Γ = Γ} ule refl dγ = restrictᴰ-id {Γ = Γ} ule dγ
 -- Peeling `elaborate`'s usage transport (the erased `app`/`let'`).
 liftFn-substΦ : ∀ {m} {n} {Γ : Ctx m n} {Φ Φ' : Usage n} {B : Ty m} (eq : Φ ≡ Φ')
                 (h : IR ⌊ ⟦ Γ ↾ Φ' ⟧ᶜ ⌋ ⌊ B ⌋) (dγ : ⟦ ⟦ Γ ↾ Φ ⟧ᶜ ⟧ᴰ)
-  → liftFn fmt ρ {⟦ Γ ↾ Φ ⟧ᶜ} {B : Ty m} (subst (λ Φ'' → IR ⌊ ⟦ Γ ↾ Φ'' ⟧ᶜ ⌋ ⌊ B ⌋) (sym eq) h) dγ
+  → liftFn fmt ρ {⟦ Γ ↾ Φ ⟧ᶜ} {B} (subst (λ Φ'' → IR ⌊ ⟦ Γ ↾ Φ'' ⟧ᶜ ⌋ ⌊ B ⌋) (sym eq) h) dγ
     ≡ liftFn fmt ρ {⟦ Γ ↾ Φ' ⟧ᶜ} {B} h (subst (λ Φ'' → ⟦ ⟦ Γ ↾ Φ'' ⟧ᶜ ⟧ᴰ) eq dγ)
 liftFn-substΦ refl h dγ = refl
 
@@ -293,7 +293,7 @@ unop-rel {X = X} {A = A} {C = C} si ea dγ ha =
 
 -- A projection or injection after a subterm.
 post-rel : ∀ {m} {X A B : Ty m} (p : IR ⌊ A ⌋ ⌊ B ⌋) (g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ)
-             (hp : liftFn fmt ρ {A : Ty m} {B : Ty m} p ≡ (λ v → return∞ (g v))) (e : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ) {s : T∞ ⟦ A ⟧ᴰ}
+             (hp : liftFn fmt ρ {A} {B} p ≡ (λ v → return∞ (g v))) (e : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ) {s : T∞ ⟦ A ⟧ᴰ}
          → (∀ {a a′} → RelD A a a′ → RelD B (g a) (g a′))
          → RelS (RelD A) (liftFn fmt ρ {X} {A : Ty m} e dγ) s
          → RelS (RelD B) (liftFn fmt ρ {X} {B : Ty m} (p ∘ e) dγ) (s >>=∞ λ v → return∞ (g v))
@@ -326,12 +326,12 @@ apply-path {X = X} {A = A} {B = B} {π = π} {f = f} {y = y} {x = x} {F = F} hf 
 mutual
   faithful : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) {dγ dγ′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}
            → RelD ⟦ Γ ↾ Ψ ⟧ᶜ dγ dγ′
-           → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A : Ty m} (elaborate IR.Heap e) dγ) (SD.⟦ e ⟧ˢ fmt σ₀ dγ′)
+           → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A} (elaborate IR.Heap e) dγ) (SD.⟦ e ⟧ˢ fmt σ₀ dγ′)
 
   -- A subterm elaborated against a narrowed environment.
   ih∘ : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} {A : Ty m} (ule : Ψ' ⊑ᵘ Ψ) (e : Expr Γ Ψ' A) {dγ dγ′ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ}
       → RelD ⟦ Γ ↾ Ψ ⟧ᶜ dγ dγ′
-      → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A : Ty m} (elaborate IR.Heap e ∘ restrictEnv {Γ = Γ} IR.Heap ule) dγ)
+      → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A} (elaborate IR.Heap e ∘ restrictEnv {Γ = Γ} IR.Heap ule) dγ)
                       (SD.⟦ e ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} ule dγ′))
   ih∘ {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule e {dγ} r =
     retargetˡ (force-∘ {⟦ Γ ↾ Ψ' ⟧ᶜ} {A} {⟦ Γ ↾ Ψ ⟧ᶜ} {elaborate IR.Heap e} {restrictEnv {Γ = Γ} IR.Heap ule} (now-restrict {Γ = Γ} ule dγ))
@@ -377,7 +377,7 @@ mutual
                            (λ rf → retargetˡ refl rf)))
     where E = subst (λ Φ → ⟦ ⟦ Γ ↾ Φ ⟧ᶜ ⟧ᴰ) (erase-arg-usage Ψ₁ Ψ₂) dγ
   faithful (app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = One} f x) {dγ} r =
-    app-rel₁ {⟦ Γ ↾ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) ⟧ᶜ} {A = A} {B = B} {pure}
+    app-rel₁ {⟦ Γ ↾ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) ⟧ᶜ} {A} {B} {pure}
              (elaborate IR.Heap f ∘ restrictEnv {Γ = Γ} IR.Heap leF)
              (elaborate IR.Heap x ∘ restrictEnv {Γ = Γ} IR.Heap leX) dγ
              (ih∘ leF f r) (ih∘ leX x r)
@@ -385,7 +385,7 @@ mutual
       leF = ⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)
       leX = ⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))
   faithful (app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Many} f x) {dγ} r =
-    app-rel {⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ} {A = A} {B = B} {pure}
+    app-rel {⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜ} {A} {B} {pure}
             (elaborate IR.Heap f ∘ restrictEnv {Γ = Γ} IR.Heap leF)
             (elaborate IR.Heap x ∘ restrictEnv {Γ = Γ} IR.Heap leX) dγ
             (ih∘ leF f r) (ih∘ leX x r)
@@ -519,13 +519,13 @@ mutual
       F = (A * B) ⇒[ mk-kind Many π ] C
       body = apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ ⟩
   faithful (fst' {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} e) {dγ} r =
-    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {A * B} {A = A} fst proj₁ (liftFn-fst {A} {B}) (elaborate IR.Heap e) dγ proj₁ (faithful e r)
+    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {A * B} {A} fst proj₁ (liftFn-fst {A} {B}) (elaborate IR.Heap e) dγ proj₁ (faithful e r)
   faithful (snd' {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} e) {dγ} r =
-    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {A * B} {B = B} snd proj₂ (liftFn-snd {A} {B}) (elaborate IR.Heap e) dγ proj₂ (faithful e r)
+    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {A * B} {B} snd proj₂ (liftFn-snd {A} {B}) (elaborate IR.Heap e) dγ proj₂ (faithful e r)
   faithful (inl' {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} e) {dγ} r =
-    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {A = A} {A + B} IR.inl inj₁ (liftFn-inl {A} {B}) (elaborate IR.Heap e) dγ (λ ra → ra) (faithful e r)
+    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {A} {A + B} IR.inl inj₁ (liftFn-inl {A} {B}) (elaborate IR.Heap e) dγ (λ ra → ra) (faithful e r)
   faithful (inr' {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} e) {dγ} r =
-    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {B = B} {A + B} IR.inr inj₂ (liftFn-inr {B} {A}) (elaborate IR.Heap e) dγ (λ rb → rb) (faithful e r)
+    post-rel {⟦ Γ ↾ Ψ ⟧ᶜ} {B} {A + B} IR.inr inj₂ (liftFn-inr {B} {A}) (elaborate IR.Heap e) dγ (λ rb → rb) (faithful e r)
   -- Two-operand arithmetic: `<op>IR ∘ ⟨ ea , eb ⟩`, denoted through the SAME
   -- contract (`sigOpˢ`).
   faithful (add {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop add-info a b r
@@ -654,13 +654,13 @@ mutual
   binop : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A₁ A₂ C : Ty m} (si : SigOpInfo (A₁ * A₂) C)
             (a : Expr Γ Ψ₁ A₁) (b : Expr Γ Ψ₂ A₂) {dγ dγ′ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⟧ᴰ}
         → RelD ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ dγ dγ′
-        → RelS (RelD C) (liftFn fmt ρ {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {C : Ty m}
+        → RelS (RelD C) (liftFn fmt ρ {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {C}
                            (SigOp si ∘ ⟨ elaborate IR.Heap a ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
                                        , elaborate IR.Heap b ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ʳ Ψ₁ Ψ₂) ⟩) dγ)
                         (SD.⟦ a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ′) >>=∞ λ va →
                          SD.⟦ b ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ′) >>=∞ λ vb → SD.sigOpˢ fmt σ₀ si (va , vb))
   binop {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A₁ = A₁} {A₂ = A₂} {C = C} si a b {dγ} r =
-    arith-rel {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {A₁ = A₁} {A₂ = A₂} {C = C} si
+    arith-rel {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {A₁} {A₂} {C} si
               (elaborate IR.Heap a ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ˡ Ψ₁ Ψ₂))
               (elaborate IR.Heap b ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ʳ Ψ₁ Ψ₂)) dγ
               (ih∘ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) a r) (ih∘ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) b r)
@@ -670,7 +670,7 @@ mutual
   let-body : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} (q : Quantity)
                (e1 : Expr Γ Ψ₁ A) (e2 : Expr (Γ ,ᶜ A) (q ∷ Ψ₂) B) {dγ dγ′ : ⟦ ⟦ Γ ↾ (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) ⟧ᶜ ⟧ᴰ}
            → RelD ⟦ Γ ↾ (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) ⟧ᶜ dγ dγ′ → (le₁ : Ψ₁ ⊑ᵘ (q *ᵘ Ψ₁))
-           → RelS (RelD B) (liftFn fmt ρ {⟦ Γ ↾ (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) ⟧ᶜ} {B : Ty m}
+           → RelS (RelD B) (liftFn fmt ρ {⟦ Γ ↾ (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) ⟧ᶜ} {B}
                               (elaborate IR.Heap e2 ∘ bindEnv {Γ = Γ} {A = A} IR.Heap q
                                  ∘ ⟨ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ˡ Ψ₂ (q *ᵘ Ψ₁))
                                    , elaborate IR.Heap e1 ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-trans le₁ (⊑ᵘ-+ʳ Ψ₂ (q *ᵘ Ψ₁))) ⟩) dγ)
@@ -707,7 +707,7 @@ mutual
 
   -- A value-position SigOp (`SigOp info ∘ terminal`).
   sigop-value : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} (si : SigOpInfo Unit A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
-              → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A : Ty m} (SigOp si ∘ terminal) dγ) (SD.sigOpˢ fmt σ₀ si tt)
+              → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A} (SigOp si ∘ terminal) dγ) (SD.sigOpˢ fmt σ₀ si tt)
   sigop-value {Γ = Γ} {A = A} si dγ =
     retargetˡ (force-∘ {Unit} {A} {⟦ Γ ↾ zeroUsage ⟧ᶜ} {SigOp si} {terminal} {dγ} {tt} (now-terminal {⟦ Γ ↾ zeroUsage ⟧ᶜ} dγ))
               (≡ˡ (cong-app (liftFn-SigOp si) tt) (sigOp-rel si tt))
@@ -724,7 +724,7 @@ mutual
 
   -- A reference's call, after the environment is discarded.
   ref-rel : ∀ {m} {n} {Γ : Ctx m n} (A : Ty m) (name : _) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
-          → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A : Ty m} (refIR A (bare name) ∘ terminal) dγ)
+          → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A} (refIR A (bare name) ∘ terminal) dγ)
                           (subst T∞ (cohᴰ A) (evalᴰ fmt ρ (refIR A (bare name)) tt))
   ref-rel {Γ = Γ} A name dγ =
     retargetˡ (force-∘ {Unit} {A} {⟦ Γ ↾ zeroUsage ⟧ᶜ} {refIR A (bare name)} {terminal} {dγ} {tt} (now-terminal {⟦ Γ ↾ zeroUsage ⟧ᶜ} dγ))
@@ -733,8 +733,8 @@ mutual
   -- A pre-built morphism as a closure.
   lift-morph : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {π} (morph : IR ⌊ A ⌋ ⌊ B ⌋) (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
              → RelS (RelD (A ⇒[ mk-kind Many π ] B))
-                    (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A B : Ty m} {⇒[ mk-kind Many π ]} (curry (morph ∘ snd)) dγ)
-                    (SD.liftD fmt ρ {A : Ty m} {B : Ty m} morph)
+                    (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many π ] B} (curry (morph ∘ snd)) dγ)
+                    (SD.liftD fmt ρ {A} {B} morph)
   lift-morph {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} {π = π} morph dγ =
     ≡ˡ (cong-app (liftFn-curry {⟦ Γ ↾ Ψ ⟧ᶜ} {A} {B} {π} (morph ∘ snd)) dγ)
        (relS-ret λ {a} ra → retargetˡ (force-∘ {A} {B} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {morph} {snd} (now-snd {⟦ Γ ↾ Ψ ⟧ᶜ} {A} (dγ , a)))

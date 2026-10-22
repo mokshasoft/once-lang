@@ -343,7 +343,7 @@ mutual
 -- The evaluator's fundamental lemma at the source value domain.
 liftFn-rel : ∀ {m} (fmt : TargetNum) {ρ ρ′ : CallEnv} → RelEnv fmt ρ ρ′
            → ∀ {A B : Ty m} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : ⟦ A ⟧ᴰ} → RelD A a a′
-           → RelS (RelD B) (liftFn fmt ρ {A : Ty m} {B : Ty m} ir a) (liftFn fmt ρ′ {A : Ty m} {B : Ty m} ir a′)
+           → RelS (RelD B) (liftFn fmt ρ {A} {B} ir a) (liftFn fmt ρ′ {A} {B} ir a′)
 liftFn-rel fmt re {A} {B} ir r = RelS-subst₂ (cohᴰ B) (RelS-mono (RelD-coh B) (eval-rel fmt re ir (RelD-coh⁻ A r)))
 
 -- Runs related at `⌈ ⌊ A ⌋ ⌉`, transported to the source domain, are related at `A`.

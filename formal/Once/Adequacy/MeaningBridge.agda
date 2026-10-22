@@ -561,7 +561,7 @@ out-app-bridge : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Finite} {wfF : WFFun
                    {vᴸ : ⟦ ν-type F π ⟧ᵛ} {vᴿ : ⟦ ν-type F π ⟧ᴰ}
                → RelGV (ν-type F π) vᴸ vᴿ
                → RelGM (fin π) (⟦ F ⟧T (ν-type F π)) (out-semᵛ π wfF vᴸ)
-                      (liftFn fmt (calls σ) {F : Fun m} {ν-type π} {F F : Fun m} {⟦ ⟧T (ν-type π)} (Out-ir {π = π} wfF) vᴿ)
+                      (liftFn fmt (calls σ) {ν-type F π} {⟦ F ⟧T (ν-type F π)} (Out-ir {π = π} wfF) vᴿ)
 -- Plan 0.119 D5: the Spec's force is related to the source's `out-sem` by the
 -- stream relation's force, mapped by the `Out` coercions; and the IR's `Out`
 -- is related to `out-sem` (`liftFn-Out`) at the stream's self-relation — so
@@ -584,7 +584,7 @@ in-app-bridge : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {wfF : WFFun Δₖ F}
                 {vᴸ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᵛ} {vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
               → RelGV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
               → RelGM pure (μ-type F) (in-valueᵛ wfF vᴸ)
-                     (liftFn fmt (calls σ) {F : Fun m} {⟦ ⟧T (μ-type F)} {F : Fun m} {μ-type} (In-ir wfF) vᴿ)
+                     (liftFn fmt (calls σ) {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) vᴿ)
 in-app-bridge {F = F} {wfF = wfF} rv =
   ≡ʳ (liftFn-In wfF _) (relS-ret (cong (sem-In F) (cf-rel wfF rv)))
 

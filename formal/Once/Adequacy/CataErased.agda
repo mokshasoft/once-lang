@@ -18,6 +18,7 @@
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Type using (b-*; b-+)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -193,15 +194,15 @@ base-z base-Unit   y = refl
 base-z base-Void   ()
 base-z base-Int    y = refl
 base-z base-Float  y = refl
-base-z (base-Prod {A} {B} pA pB) (a , b)
+base-z (b-* {A = A} {B = B} pA pB) (a , b)
   rewrite push-× (base-coh A) (base-coh B) a b
         | push-× (cohᴰ A) (cohᴰ B) (injectᵇ pA (coerce-base-to-full pA a)) (injectᵇ pB (coerce-base-to-full pB b))
   = cong₂ _,_ (base-z pA a) (base-z pB b)
-base-z (base-Sum {A} {B} pA pB) (inj₁ a)
+base-z (b-+ {A = A} {B = B} pA pB) (inj₁ a)
   rewrite push-⊎₁ (base-coh A) (base-coh B) a
         | push-⊎₁ (cohᴰ A) (cohᴰ B) (injectᵇ pA (coerce-base-to-full pA a))
   = cong inj₁ (base-z pA a)
-base-z (base-Sum {A} {B} pA pB) (inj₂ b)
+base-z (b-+ {A = A} {B = B} pA pB) (inj₂ b)
   rewrite push-⊎₂ (base-coh A) (base-coh B) b
         | push-⊎₂ (cohᴰ A) (cohᴰ B) (injectᵇ pB (coerce-base-to-full pB b))
   = cong inj₂ (base-z pB b)
