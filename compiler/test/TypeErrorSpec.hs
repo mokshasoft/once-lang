@@ -247,9 +247,24 @@ scopeErrorTests = testGroup "Scope errors"
       , "g : Unit -> Unit"
       , "g = main"
       ]
-  , accepts "a local variable named main is unaffected"
+    -- A local binder named `main` is a local variable, not the entry: the
+    -- entry is never in scope in a definition, and a bound name carries no
+    -- meaning (`\main -> main` is `\x -> x`). Every binder form is allowed.
+  , accepts "a lambda-bound local named main is a local variable, not the entry"
       [ "f : Int -> Int"
       , "f main = main"
+      ]
+  , accepts "a let-bound local named main is a local variable, not the entry"
+      [ "f : Int -> Int"
+      , "f x = let main = x in main"
+      ]
+  , accepts "a destruct-bound local named main is a local variable, not the entry"
+      [ "f : Int + Int -> Int"
+      , "f s = destruct s of { Left main -> main ; Right y -> y }"
+      ]
+  , rejectsWith "main referring to itself" "refers to `main`"
+      [ "main : Unit -> Unit"
+      , "main = \\u -> main u"
       ]
     -- D319 (`OneName`): each name in a program's signature is declared once.
     -- Two equal declarations used to satisfy `sig-unique`; they do not
