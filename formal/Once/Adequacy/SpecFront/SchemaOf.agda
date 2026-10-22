@@ -44,16 +44,16 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 import Once.Internal.Type as LT
-
-import Once.Spec.Type as LT
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
 import Once.Internal.Type.Poly as TP
 open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
                PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; Ground; GroundF; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
-open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; kindOf; indexOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
-import Once.Internal.Core.PolyTy as LP
-open import Once.Internal.Core.AbsTy using (absTy; absF)
-open import Once.Internal.Core.Schema using (schemaOf; kindsOf; module Var; memberB-sound; memberB-complete; lookup-∈)
+open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; kindOf; kindsOf; positionOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
+open import Once.Internal.Type.Schema using (schemaOf; ∈-params; positionOf-∈; memberB-sound; memberB-complete; lookup-∈)
+import Once.Spec.Core.Syntax as SC
+open import Data.Maybe using (Maybe; just; nothing; maybe′)
+import Data.Maybe as Maybe
+open import Data.Maybe.Properties using (just-injective)
 import Once.Spec.Type as ST
 open ST using (Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
 import Once.Spec.Surface.Syntax as SS
@@ -63,7 +63,6 @@ open import Once.Spec.Surface.Program
          uk-*ˡ; uk-*ʳ; uk-+ˡ; uk-+ʳ; uk-⇒ˡ; uk-⇒ʳ; uk-μ; uk-ν; uk-K; uk-⊕ˡ; uk-⊕ʳ; uk-⊗ˡ; uk-⊗ʳ)
 open import Once.Type.Rigid using (ftv-ground)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
-open import Once.Adequacy.SpecCore.Type using (kindS)
 open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS; schS; kindsS)
 
 ------------------------------------------------------------------------
@@ -115,14 +114,14 @@ nub-unique seen (x ∷ xs) = go (memberB x seen)
     go true  = nub-unique seen xs
     go false = fresh ∷ nub-unique (x ∷ seen) xs
 
--- In a list without repetition, an element's index is its position.
-indexOf-lookup : ∀ (xs : List String) → Unique xs → ∀ i → indexOf (lookup xs i) xs ≡ toℕ i
-indexOf-lookup (x ∷ xs) u zero with x ≟ x
+-- In a list without repetition, an element's position is its index.
+positionOf-lookup : ∀ (xs : List String) → Unique xs → ∀ i → positionOf (lookup xs i) xs ≡ just i
+positionOf-lookup (x ∷ xs) u zero with x ≟ x
 ... | yes _ = refl
 ... | no ¬e = ⊥-elim (¬e refl)
-indexOf-lookup (x ∷ xs) (fx ∷ u) (suc i) with lookup xs i ≟ x
+positionOf-lookup (x ∷ xs) (fx ∷ u) (suc i) with lookup xs i ≟ x
 ... | yes e = ⊥-elim (All.lookup fx (lookup-∈ xs i) (sym e))
-... | no _  = cong suc (indexOf-lookup xs u i)
+... | no _  = cong (Maybe.map suc) (positionOf-lookup xs u i)
 
 lookup-injective : ∀ (xs : List String) → Unique xs → Injective _≡_ _≡_ (lookup xs)
 lookup-injective (x ∷ xs) u          {zero}  {zero}  _ = refl
@@ -139,33 +138,37 @@ module Parts (T : PolyType) where
   ps : List String
   ps = params T
 
-  κ : LP.KCtx (arityOf T)
+  κ : ST.KCtx (arityOf T)
   κ = kindsOf T
 
   names : Fin (arityOf T) → String
   names = lookup ps
 
-  ab : PolyType → LP.Ty (arityOf T)
-  ab A = absTy κ (substPoly (rigidSubst T) A)
+  ab : PolyType → ST.Ty (arityOf T)
+  ab A = substPoly (rigidSubst T) A
 
-  abF : PolyFunctor → LP.Fun (arityOf T)
-  abF F = absF κ (substPolyF (rigidSubst T) F)
+  abF : PolyFunctor → ST.Fun (arityOf T)
+  abF F = substPolyF (rigidSubst T) F
+
+  private
+    at : ∀ {x} → x ∈ ftv T → Σ[ j ∈ Fin (arityOf T) ] (positionOf x ps ≡ just j) × (lookup ps j ≡ x)
+    at {x} m = positionOf-∈ x ps (∈-params T m)
 
   -- the variable of a parameter
   j : ∀ {x} → x ∈ ftv T → Fin (arityOf T)
-  j m = Var.j T m
+  j m = proj₁ (at m)
 
-  var-ab : ∀ {x} (m : x ∈ ftv T) → ptyS (absTy κ (rigidSubst T x)) ≡ ST.var (j m)
-  var-ab m = cong ptyS (Var.abstracts T m)
+  var-ab : ∀ {x} (m : x ∈ ftv T) → ptyS (rigidSubst T x) ≡ ST.var (j m)
+  var-ab m = cong (maybe′ ST.var ST.Unit) (proj₁ (proj₂ (at m)))
 
   name-j : ∀ {x} (m : x ∈ ftv T) → names (j m) ≡ x
-  name-j m = Var.lookup-at T m
+  name-j m = proj₂ (proj₂ (at m))
 
   in-ftv : ∀ i → names i ∈ ftv T
   in-ftv i = nub-⊆ [] (ftv T) (lookup-∈ ps i)
 
   j-names : ∀ i (m : names i ∈ ftv T) → j m ≡ i
-  j-names i m = toℕ-injective (trans (toℕ-fromℕ< _) (indexOf-lookup ps (nub-unique [] (ftv T)) i))
+  j-names i m = just-injective (trans (sym (proj₁ (proj₂ (at m)))) (positionOf-lookup ps (nub-unique [] (ftv T)) i))
 
   private
     occ-var : ∀ {a} {i k : Fin a} → Occurs i (ST.var k) → i ≡ k
@@ -236,7 +239,7 @@ module Parts (T : PolyType) where
 
     -- a parameter's variable does not depend on the membership proof
     j-irr : ∀ {x} (m m′ : x ∈ ftv T) → j m ≡ j m′
-    j-irr m m′ = toℕ-injective (trans (toℕ-fromℕ< _) (sym (toℕ-fromℕ< _)))
+    j-irr m m′ = just-injective (trans (sym (proj₁ (proj₂ (at m)))) (proj₁ (proj₂ (at m′))))
 
   -- A variable occurring in the part is one of the part's.
   mutual
@@ -329,8 +332,8 @@ schemaOf-S T = record
   where
     open Parts T
     to-base : ∀ i → memberB (names i) (ftvK T) ≡ true → kindsS κ i ≡ ST.base
-    to-base i e = cong (λ b → kindS (if b then LT.k-base else LT.k-any)) e
-    from-base : ∀ i b → memberB (names i) (ftvK T) ≡ b → kindS (if b then LT.k-base else LT.k-any) ≡ ST.base
+    to-base i e = cong (λ b → if b then LT.k-base else LT.k-any) e
+    from-base : ∀ i b → memberB (names i) (ftvK T) ≡ b → (if b then LT.k-base else LT.k-any) ≡ ST.base
               → names i ∈ ftvK T
     from-base i true  e _  = memberB-sound _ (ftvK T) e
     from-base i false _ ()
@@ -375,7 +378,7 @@ open-arity sc ng = go (ftv sc) refl
     go (x ∷ l) e = subst (λ l′ → 0 < length (nubFrom [] l′)) (sym e) (s≤s z≤n)
 
 -- Every parameter occurs in the schema's type.
-schema-occ : ∀ sc i → Occurs i (ptyS (LP.Schema.type (schemaOf sc)))
+schema-occ : ∀ sc i → Occurs i (ptyS (SC.Schema.type (schemaOf sc)))
 schema-occ sc = SchemaOf.used (schemaOf-S sc)
 
 private
@@ -387,8 +390,8 @@ private
 
 -- An arrow schema is an arrow; its codomain's variables occur in its domain.
 schema-arrow : ∀ sc {sd sco π′} → ArrowSchema sc sd sco π′ → CodVarsInDom sd sco
-             → Σ[ X ∈ LP.Ty (arityOf sc) ] Σ[ Y ∈ LP.Ty (arityOf sc) ]
-                 (LP.Schema.type (schemaOf sc) ≡ X LP.⇒[ mk-kind Many π′ ] Y)
+             → Σ[ X ∈ ST.Ty (arityOf sc) ] Σ[ Y ∈ ST.Ty (arityOf sc) ]
+                 (SC.Schema.type (schemaOf sc) ≡ X ST.⇒[ mk-kind Many π′ ] Y)
                  × (∀ i → Occurs i (ptyS Y) → Occurs i (ptyS X))
 schema-arrow (sd P⇒[ Many ] sco) as-pure cv = Parts.ab (sd P⇒[ Many ] sco) sd , Parts.ab (sd P⇒[ Many ] sco) sco , refl , incl′ (sd P⇒[ Many ] sco) sd sco (λ m → m) cv
 schema-arrow (PEff sd sco) as-eff cv = Parts.ab (PEff sd sco) sd , Parts.ab (PEff sd sco) sco , refl , incl′ (PEff sd sco) sd sco (λ m → m) cv

@@ -20,23 +20,20 @@ import Once.Internal.Type.Poly as LP
 import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
 
+-- Plan 0.122: the compiler's grades ARE the Spec's; the readings are the
+-- identity (kept as names the bridges are written with).
 qS : LG.Quantity → SG.Quantity
-qS LG.Zero = SG.Zero
-qS LG.One  = SG.One
-qS LG.Many = SG.Many
+qS q = q
 
 πS : LG.Purity → SG.Purity
-πS LG.pure = SG.pure
-πS LG.act  = SG.act
-πS LG.eff  = SG.eff
+πS π = π
 
 -- A ν's grade is finite on both sides (D318 item 13).
 φS : LG.Finite → SG.Finite
-φS LG.pureᶠ = SG.pureᶠ
-φS LG.actᶠ  = SG.actᶠ
+φS φ = φ
 
 kS : LG.ArrowKind → SG.ArrowKind
-kS (LG.mk-kind q π) = SG.mk-kind (qS q) (πS π)
+kS k = k
 
 -- Schemas.
 toPoly  : LP.PolyType → SS.PolyType
