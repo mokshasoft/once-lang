@@ -23,6 +23,7 @@
 -- two runs.
 ------------------------------------------------------------------------
 
+import Once.Spec.Context as SCx
 open import Once.Spec.Type using (Ty)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -275,7 +276,7 @@ from-sem {S = S} {sc} tl ss is ts sg d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep 
 -- `main` (D315): its run at its own type, converted, against the compiled
 -- entry the bundle finds — whichever proofs of the conversion each side holds.
 here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd ty} (p : ty <: EffUU) (g : RigidFree ty)
-              (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[]) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
+              (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[]) {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
               (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" ty bd ≡ Data.Sum.inj₂ irFun)
               {es} (rest : ModTele (AS.scopeOf (C.extendScope csc "main" ty)) es)
@@ -285,7 +286,7 @@ here-main : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {ft bd t
           → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare "main") ty irFun) ∷ pre))
                    (C.findMain-here (C.mkCompiledFun (bare "main") ty irFun) nd td (FB.bundle-find rest-b))
                    (monoHere {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo "main" ft bd false} {ty = ty}
-                             {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest p u)
+                             {Ψ = SCx.[]} tl ss is ts sg g D rest p u)
 here-main sg p g D cf rest rest-b inv u hs (no ¬e) td = ⊥-elim (¬e refl)
 here-main sg p g D cf rest rest-b inv u hs (yes _) (no ¬p) = ⊥-elim (¬p p)
 here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} {ty} p g D {irFun} cf {es} rest rest-b inv u hs (yes _) (yes q) =
@@ -306,7 +307,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} {ty} p g D {irFun
     -- the core program's run: its entry, read back at its only instance (the
     -- elaboration's meaning), converted
     core-eq : runCore fmt (monoHere {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo "main" ft bd false} {ty = ty}
-                                    {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest p u) Ip
+                                    {Ψ = SCx.[]} tl ss is ts sg g D rest p u) Ip
             ≡ ⟦ p ⟧<:ᵛ (GM.⟦_⟧ S Dc fmt δ tt) tt
     core-eq =
       trans (from-sem tl′ ss (impDefs ("main" Str.== "main") {x = "main"} {T = ty} is) (wkT ts) (monoSg sg g) zero (TR.mainEntry p) rest u)
@@ -326,19 +327,19 @@ mutual
                  (inv-sig {x = funName fi} {ty = ty} {h = h} {g = g} {m = u (here refl)} inv)
                  (λ m → u (there m)) (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr)
   walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf fc eg ce cf rest-b) mi tl ss is ts sg pre inv u fr
-  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = Ctx.Usage.[]} pr D rest) (FB.bpoly fc ce rest-b) mi tl ss is ts sg pre inv u fr =
+  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = SCx.[]} pr D rest) (FB.bpoly fc ce rest-b) mi tl ss is ts sg pre inv u fr =
     walk rest rest-b mi _ ss (wkI is) (t-def zero refl (wkT ts)) (polySg sg pfi) pre
          (inv-poly sg D inv (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr)) u
          (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr)
-  walk (mono {fi = Parser.mkFunInfo x ft bd prim} {ty = ty} {Ψ = Ctx.Usage.[]} refl er pr g D rest)
-       (FB.bcons {ty = ty′} {Ψ = Ctx.Usage.[]} {irFun = irFun} refl rf fc eg ce cf rest-b) mi tl ss is ts sg pre inv u fr
+  walk (mono {fi = Parser.mkFunInfo x ft bd prim} {ty = ty} {Ψ = SCx.[]} refl er pr g D rest)
+       (FB.bcons {ty = ty′} {Ψ = SCx.[]} {irFun = irFun} refl rf fc eg ce cf rest-b) mi tl ss is ts sg pre inv u fr
     with inj₂-injective (trans (sym er) rf)
   ... | refl = walk-mono er pr g D rest cf rest-b mi tl ss is ts sg pre inv u fr
                  (bare x ≟ᶜ bare "main") (ty <:? EffUU)
 
   walk-mono : ∀ {csc es x ft bd ty} (er : C.resolveFunType (C.ctop csc) (C.cpolys csc) ft bd ≡ inj₂ ty)
                 (pr : PrincipalAt (ctxOf (AS.scopeOf csc)) bd ty)
-                (g : RigidFree ty) (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[])
+                (g : RigidFree ty) (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[])
                 (rest : ModTele (AS.scopeOf (C.extendScope csc x ty)) es)
                 {irFun} (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                                 x ty bd ≡ Data.Sum.inj₂ irFun)
@@ -349,14 +350,14 @@ mutual
                 → (nd′ : Dec (bare x ≡ bare "main")) (td : Dec (ty <: EffUU))
             → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
                      (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
-                     (toProgram tl ss is ts sg (mono {fi = Parser.mkFunInfo x ft bd false} {Ψ = Ctx.Usage.[]} refl er pr g D rest) mi u)
+                     (toProgram tl ss is ts sg (mono {fi = Parser.mkFunInfo x ft bd false} {Ψ = SCx.[]} refl er pr g D rest) mi u)
   walk-mono {csc} {es} {ft = ft} {bd} er pr g D rest cf rest-b (inj₁ (refl , p)) {S = S} tl ss is ts sg pre inv u ((hd ∷ _) , _) nd′ td =
     here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} p g D cf {es} rest rest-b inv u hd nd′ td
   walk-mono {x = x} {ty = ty} er pr g D rest cf rest-b (inj₂ mi′) tl ss is ts sg pre inv u fr nd′ td =
     walk-mono-d g D rest cf rest-b mi′ tl ss is ts sg pre inv u fr (x Str.≟ "main") (ty <:? EffUU) nd′ td
 
   walk-mono-d : ∀ {csc es x ft bd ty}
-                (g : RigidFree ty) (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty Ctx.Usage.[])
+                (g : RigidFree ty) (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[])
                 (rest : ModTele (AS.scopeOf (C.extendScope csc x ty)) es)
                 {irFun} (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                                 x ty bd ≡ Data.Sum.inj₂ irFun)
@@ -368,7 +369,7 @@ mutual
               → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
                        (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
                        (Once.Internal.Core.Translate.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo x ft bd false}
-                                        {ty = ty} {Ψ = Ctx.Usage.[]} tl ss is ts sg g D rest mi′ nd tc u)
+                                        {ty = ty} {Ψ = SCx.[]} tl ss is ts sg g D rest mi′ nd tc u)
   -- `main`, found by the dispatch
   walk-mono-d {csc} {es} {ft = ft} {bd} g D rest cf rest-b mi′ {S = S} tl ss is ts sg pre inv u ((hd ∷ _) , _) (yes refl) (yes p) nd′ td =
     here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {ft} {bd} p g D cf {es} rest rest-b inv u hd nd′ td

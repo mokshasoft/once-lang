@@ -24,6 +24,7 @@
 
 module Once.TypeCheck.ErrorProofs where
 
+import Once.Spec.Context as SCx
 import Once.Internal.Context as Surface
 
 open import Once.Spec.Type using (var; Ty; Fun)
@@ -192,9 +193,9 @@ case-branch-mismatch-is-CaseBranchMismatch : ∀ {m} (ctx : NamedCtx m) (scrut :
     {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
   → inferElab ctx scrut ≡ success (A T.+ B) Ψs scrutE ds fs
   → inferElab (Classify.extendNamedCtx ctx xL A) eL
-      ≡ success C₁ (qℓ Once.Internal.Context.Usage.∷ Ψₗ) eLE dL fL
+      ≡ success C₁ (qℓ SCx.∷ Ψₗ) eLE dL fL
   → inferElab (Classify.extendNamedCtx ctx xR B) eR
-      ≡ success C₂ (qr Once.Internal.Context.Usage.∷ Ψᵣ) eRE dR fR
+      ≡ success C₂ (qr SCx.∷ Ψᵣ) eRE dR fR
   → ¬ UB C₁ C₂
   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
   → err ≡ CaseBranchMismatch
@@ -202,9 +203,9 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
   with inferElabV ctx scrut | eqS
 ... | success (_ T.+ _) _ _ _ _ , _ | refl
     with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
-...   | success _ (_ Once.Internal.Context.Usage.∷ _) _ _ _ , _ | refl
+...   | success _ (_ SCx.∷ _) _ _ _ , _ | refl
       with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
-...     | success _ (_ Once.Internal.Context.Usage.∷ _) _ _ _ , _ | refl =
+...     | success _ (_ SCx.∷ _) _ _ _ , _ | refl =
   -- D322: branches with no upper bound have no join.
   sym (failure-inj (trans (sym (cong proj₁ (cong (Once.TypeCheck.Elaborate.inferElabV-RDestruct-join _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
                                                 (proj₂ (join?-apart ¬eq)))))
@@ -290,14 +291,14 @@ lam-usage-violation-is-UsageViolation : ∀ {m} (ctx : NamedCtx m) (x : String) 
     (q' : _) {Ψ' eE' d' f' err}
   → Once.TypeCheck.Elaborate.checkElab
       (Classify.extendNamedCtx ctx x A) body B
-      ≡ success (q' Once.Internal.Context.Usage.∷ Ψ') eE' d' f'
+      ≡ success (q' SCx.∷ Ψ') eE' d' f'
   → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
   → Once.TypeCheck.Elaborate.checkElab ctx (Raw.RLam x body)
       (A T.⇒[ T.mk-kind q T.pure ] B) ≡ failure err
   → err ≡ Once.TypeCheck.Error.UsageViolation x q q'
 lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
   with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqInner
-... | success (_ Once.Internal.Context.Usage.∷ _) _ _ _ , _ | refl
+... | success (_ SCx.∷ _) _ _ _ , _ | refl
     with Once.TypeCheck.Elaborate.decideLeq q' q | eqLeq
 ...   | nothing | refl with eqOuter
 ...     | refl = refl

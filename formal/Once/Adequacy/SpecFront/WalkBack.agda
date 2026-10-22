@@ -125,8 +125,8 @@ module Step {s} {S : LP.Sig Fs s} {imps tele} (ss : SigSig Fs sg) (is : ImpSig S
 
     -- (every usage over no locals is the empty one)
     u0 : ∀ {m} {Δ : LP.KCtx m} {Ψ : LCx.Usage 0} {t B π}
-       → PT._⊩_⊢[_]_∷_!_ Δ PT.∅ Ψ t B π → PT._⊩_⊢[_]_∷_!_ Δ PT.∅ LCx.Usage.[] t B π
-    u0 {Ψ = LCx.Usage.[]} d = d
+       → PT._⊩_⊢[_]_∷_!_ Δ PT.∅ Ψ t B π → PT._⊩_⊢[_]_∷_!_ Δ PT.∅ SCx.[] t B π
+    u0 {Ψ = SCx.[]} d = d
 
   -- The body checks in the compiler, at its type, which is principal there.
   step : ∀ {a} (κ : LP.KCtx a) {T sc e e′ A A′}

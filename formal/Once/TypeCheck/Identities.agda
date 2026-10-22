@@ -356,7 +356,7 @@ open import Once.Type.Grade using (_⊔q_)
 
 open import Data.Nat using (zero; suc)
 open import Once.Internal.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
-open Once.Internal.Context.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
+open import Once.Spec.Context using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 
 -- Note: Once.Internal.Context.Usage is an indexed vector of Quantity.
 -- Pattern matching exposes its per-position structure; the identities

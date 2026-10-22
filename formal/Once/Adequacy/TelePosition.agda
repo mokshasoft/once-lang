@@ -12,6 +12,7 @@
 
 module Once.Adequacy.TelePosition where
 
+import Once.Spec.Context as SCx
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
@@ -228,7 +229,7 @@ irFun-body ctx polys impsOf x ty body false cf = cf
 aux-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
              (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty)
-             (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
+             (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
          → C.compileFunBody-aux IR.Heap false ctx polys impsOf x ty refl cr
            ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize (sound-of cr ce))))
 aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
@@ -238,7 +239,7 @@ irFun-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (im
                {se : _} {d f : ℕ}
            → C.compileFun IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
            → (ce : Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty
-                     ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
+                     ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
            → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0
                        (realize (sound-of (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce)))
 irFun-form ctx polys impsOf x ty body cf ce =
@@ -262,7 +263,7 @@ irFunI-body ctx polys impsOf x ty body false cf = cf
 auxI-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
               (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
               (cr : Once.TypeCheck.Elaborate.VerifiedInferResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body)
-              (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success ty Ctx.Usage.[] se d f)
+              (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success ty SCx.[] se d f)
           → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf x ty refl cr
             ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize-infer (sound-of-i cr ce))))
 auxI-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w) refl = at (ty ≟T ty)
@@ -278,7 +279,7 @@ irFun-formI : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (i
                 {se : _} {d f : ℕ}
             → C.compileFunI IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
             → (ce : Once.TypeCheck.Elaborate.inferElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body
-                      ≡ Once.TypeCheck.Elaborate.success ty Ctx.Usage.[] se d f)
+                      ≡ Once.TypeCheck.Elaborate.success ty SCx.[] se d f)
             → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0
                         (realize-infer (sound-of-i (Once.TypeCheck.Elaborate.inferElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body) ce)))
 irFun-formI ctx polys impsOf x ty body cf ce =

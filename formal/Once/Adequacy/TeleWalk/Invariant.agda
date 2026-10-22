@@ -8,6 +8,7 @@
 -- that module has the walk itself and `main`'s step.
 ------------------------------------------------------------------------
 
+import Once.Spec.Context as SCx
 open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
@@ -196,7 +197,7 @@ private
   splice-form : ∀ {m} (I : String → TopCtx) (uf : Imports) (pre : Once.Internal.Typing.Scope.PolyCtx) (y : String)
                   {Xs : TopCtx} {b : _} {A : Ty m} {se : _} {d f : ℕ}
                   (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
-                  (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ctx.Usage.[] se d f)
+                  (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
               → spliceClosed I uf pre y cr ≡ Srf.closed (resolveExpr pre I uf 0 (realize (sound-of cr ce)))
   splice-form I uf pre y (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
@@ -215,7 +216,7 @@ defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def d e ts) = cong₂ _,_ refl (defEnv
 module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig Fs (C.CScope.csig csc)} {is : ImpSig S (C.CScope.cimps csc)}
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
                 (sg : SigCF S) {fi : Parser.FunInfo} {ty : Type} (g : RigidFree ty)
-                (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ctx.Usage.[])
+                (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty SCx.[])
                 {irFun : IR ⌊ Once.Spec.Type.Unit ⌋ ⌊ ty ⌋}
                 (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
@@ -240,7 +241,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
   -- With a signature: the compiled body's run is related to the elaboration's
   -- surface meaning (the compile chain): faithfulness, then linking (an
   -- equation), then coherence.
-  relC : (D′ : ctx ⊢ᶜ funBody fi ∶ ty ⨾ Ctx.Usage.[])
+  relC : (D′ : ctx ⊢ᶜ funBody fi ∶ ty ⨾ SCx.[])
        → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
        → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᶜ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relC D′ cf′ =
@@ -266,7 +267,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   -- R8, without a signature: the same chain, through the synthesis.
-  relI : (D′ : ctx ⊢ᵢ funBody fi ∶ ty ⨾ Ctx.Usage.[])
+  relI : (D′ : ctx ⊢ᵢ funBody fi ∶ ty ⨾ SCx.[])
        → C.compileFunI IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
        → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S (proj₂ (ElabM.elabᵢ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relI D′ cf′ =
@@ -291,7 +292,7 @@ module MonoStep {s} {S : Sig Fs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig F
       relA = MB.bridge-i fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
-  relM-at : ∀ {m} (ft : Data.Maybe.Maybe (Ty m)) (D′ : MonoBody ft ctx (funBody fi) ty Ctx.Usage.[])
+  relM-at : ∀ {m} (ft : Data.Maybe.Maybe (Ty m)) (D′ : MonoBody ft ctx (funBody fi) ty SCx.[])
           → C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
           → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ S (proj₂ (TR.elabM ft V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relM-at (Data.Maybe.just _) D′ cf′ = relC D′ cf′
@@ -330,7 +331,7 @@ inv-mono : ∀ {m} {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {fi :
 inv-mono {S = S} {csc = csc} {tl = tl} {ss = ss} {is = is} {ts = ts} {pre = pre} sg {fi} {ty} {g} {Ψ} D {irFun} cf inv fr =
   inv-mono-at (funName fi Str.== "main") {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ψ} D {irFun} cf inv fr
 
-inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {irFun} cf inv fr = record
+inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {SCx.[]} D {irFun} cf inv fr = record
   { irf   = Inv.irf inv
   ; irs   = Inv.irs inv
   ; iself = Inv.iself inv
@@ -356,7 +357,7 @@ inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.U
                        (ns-snoc later (C.CScope.cimps csc) e refl
                           (bare-ne (C.CScope.cimps csc) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)) fr) ns)
                        I ia uf′)
-inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {Ctx.Usage.[]} D {irFun} cf inv fr = record
+inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {fi} {ty} {g} {SCx.[]} D {irFun} cf inv fr = record
   { irf   = irf-cons {imps = C.CScope.cimps csc} {y = funName fi} {ty = ty} g (Inv.irf inv)
   ; irs   = Inv.irs inv
   ; iself = Inv.iself inv
@@ -406,7 +407,7 @@ inv-poly : ∀ {s} {S : Sig Fs s} {csc tl ss is ts pre} (sg : SigCF S) {pfi : Pa
                        (A.absTm S (kindsOf (pfunType pfi)) (proj₁ (polyElab {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} ss is ts D)))
                        (polyBody {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} ss is ts sg D))
                ss (wkI is) (t-def zero refl (wkT ts)) pre
-inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv fr = record
+inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {SCx.[]} D inv fr = record
   { irf   = Inv.irf inv
   ; irs   = Inv.irs inv
   ; iself = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (y Str.≟ y)
@@ -416,8 +417,8 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} sg {pfi} {Ctx.Usage.[]} D inv f
   where
     y     = pfunName pfi
     scT   = pfunType pfi
-    bodyT = A.absTm S (kindsOf scT) (proj₁ (polyElab {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ctx.Usage.[]} ss is ts D))
-    bodyD = polyBody {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ctx.Usage.[]} ss is ts sg D
+    bodyT = A.absTm S (kindsOf scT) (proj₁ (polyElab {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} ss is ts D))
+    bodyD = polyBody {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} ss is ts sg D
     S′    = S Once.Internal.Core.PolyTy.▷ schemaOf scT
     δ     = teleSem fmt Ip tl
     δ′    = teleSem fmt Ip (def tl (schemaOf scT) bodyT bodyD)

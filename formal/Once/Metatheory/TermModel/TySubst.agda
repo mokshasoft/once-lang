@@ -115,12 +115,13 @@ module _ {m k : ℕ} (σ : TySub m k) where
     wf-⟨⟩ (wf-⊕ f g) = wf-⊕ (wf-⟨⟩ f) (wf-⟨⟩ g)
     wf-⟨⟩ (wf-⊗ f g) = wf-⊗ (wf-⟨⟩ f) (wf-⟨⟩ g)
 
-    private
-      retype : ∀ {n} {Γ : Ctx k n} {Ψ t A A′ π} → A ≡ A′ → Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A′ ! π
-      retype refl d = d
+    -- The type a rule computes, moved to the one stated (public, so the
+    -- substitution's transports can be reasoned about).
+    retypeᵗ : ∀ {n} {Γ : Ctx k n} {Ψ t A A′ π} → A ≡ A′ → Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ A′ ! π
+    retypeᵗ refl d = d
 
     ty-subst-⊢ : ∀ {n} {Γ : Ctx m n} {Ψ t A π} → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ A ⟨ σ ⟩ ! π
-    ty-subst-⊢ {Γ = Γ} (⊢var i) = retype (lookup-⟨⟩ Γ i) (⊢var i)
+    ty-subst-⊢ {Γ = Γ} (⊢var i) = retypeᵗ (lookup-⟨⟩ Γ i) (⊢var i)
     ty-subst-⊢ (⊢lam le d) = ⊢lam le (ty-subst-⊢ d)
     ty-subst-⊢ (⊢app df dx) = ⊢app (ty-subst-⊢ df) (ty-subst-⊢ dx)
     ty-subst-⊢ (⊢let d₁ d₂) = ⊢let (ty-subst-⊢ d₁) (ty-subst-⊢ d₂)
@@ -133,20 +134,20 @@ module _ {m k : ℕ} (σ : TySub m k) where
     ty-subst-⊢ (⊢case ds dl dr) = ⊢case (ty-subst-⊢ ds) (ty-subst-⊢ dl) (ty-subst-⊢ dr)
     ty-subst-⊢ (⊢absurd d) = ⊢absurd (ty-subst-⊢ d)
     ty-subst-⊢ (⊢roll {F = F} wf d) =
-      ⊢roll (wf-⟨⟩ wf) (retype (⟦⟧F-⟨⟩ F (μ F)) (ty-subst-⊢ d))
+      ⊢roll (wf-⟨⟩ wf) (retypeᵗ (⟦⟧F-⟨⟩ F (μ F)) (ty-subst-⊢ d))
     ty-subst-⊢ (⊢fold {F = F} {A} wf da dt) =
-      ⊢fold (wf-⟨⟩ wf) (retype (cong (λ X → X ⇒[ mk-kind Many _ ] A ⟨ σ ⟩) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ da)) (ty-subst-⊢ dt)
+      ⊢fold (wf-⟨⟩ wf) (retypeᵗ (cong (λ X → X ⇒[ mk-kind Many _ ] A ⟨ σ ⟩) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ da)) (ty-subst-⊢ dt)
     ty-subst-⊢ (⊢unfold {F = F} {A} wf dc da) =
-      ⊢unfold (wf-⟨⟩ wf) (retype (cong (λ X → A ⟨ σ ⟩ ⇒[ mk-kind Many _ ] X) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ dc)) (ty-subst-⊢ da)
+      ⊢unfold (wf-⟨⟩ wf) (retypeᵗ (cong (λ X → A ⟨ σ ⟩ ⇒[ mk-kind Many _ ] X) (⟦⟧F-⟨⟩ F A)) (ty-subst-⊢ dc)) (ty-subst-⊢ da)
     ty-subst-⊢ (⊢out {f = f} {F = F} wf d) =
-      retype (sym (⟦⟧F-⟨⟩ F (ν F f))) (⊢out (wf-⟨⟩ wf) (ty-subst-⊢ d))
+      retypeᵗ (sym (⟦⟧F-⟨⟩ F (ν F f))) (⊢out (wf-⟨⟩ wf) (ty-subst-⊢ d))
     ty-subst-⊢ (⊢iter df ds) = ⊢iter (ty-subst-⊢ df) (ty-subst-⊢ ds)
     ty-subst-⊢ (⊢coerce p d) = ⊢coerce (<:-⟨⟩ p) (ty-subst-⊢ d)
     ty-subst-⊢ ⊢lit-int = ⊢lit-int
     ty-subst-⊢ ⊢lit-float = ⊢lit-float
-    ty-subst-⊢ (⊢prim p d) = retype (sym (primCod-⟨⟩ p)) (⊢prim p (retype (primDom-⟨⟩ p) (ty-subst-⊢ d)))
-    ty-subst-⊢ (⊢sigop {t = t} mem) = retype (sym (⌜⌝ᵈ-⟨⟩ t)) (⊢sigop mem)
+    ty-subst-⊢ (⊢prim p d) = retypeᵗ (sym (primCod-⟨⟩ p)) (⊢prim p (retypeᵗ (primDom-⟨⟩ p) (ty-subst-⊢ d)))
+    ty-subst-⊢ (⊢sigop {t = t} mem) = retypeᵗ (sym (⌜⌝ᵈ-⟨⟩ t)) (⊢sigop mem)
     ty-subst-⊢ (⊢ref d τ rd) =
-      retype (sym (⟨⟩-∘ (type (S !! d)) τ σ)) (⊢ref d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd rσ))
+      retypeᵗ (sym (⟨⟩-∘ (type (S !! d)) τ σ)) (⊢ref d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd rσ))
     ty-subst-⊢ (⊢sub-use p d) = ⊢sub-use p (ty-subst-⊢ d)
     ty-subst-⊢ (⊢sub-eff g d) = ⊢sub-eff g (ty-subst-⊢ d)

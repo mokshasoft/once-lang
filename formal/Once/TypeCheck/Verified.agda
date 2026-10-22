@@ -31,6 +31,7 @@
 -- Reference: plans/0.3-frontend-verification-gaps.md.
 ------------------------------------------------------------------------
 
+import Once.Spec.Context as SCx
 open import Once.Internal.Type using (wk₀)
 open import Once.Spec.Type using (Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -353,9 +354,9 @@ record VerifiedTypeChecker {m} : Set₁ where
         {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
       → tcInfer ctx scrut ≡ success (A Once.Spec.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
-          ≡ success C₁ (qℓ Once.Internal.Context.Usage.∷ Ψₗ) eLE dL fL
+          ≡ success C₁ (qℓ SCx.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
-          ≡ success C₂ (qr Once.Internal.Context.Usage.∷ Ψᵣ) eRE dR fR
+          ≡ success C₂ (qr SCx.∷ Ψᵣ) eRE dR fR
       → ¬ Once.Internal.Type.Join.UB C₁ C₂
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseBranchMismatch
@@ -375,7 +376,7 @@ record VerifiedTypeChecker {m} : Set₁ where
         (A : Ty m) (q : _) (B : Ty m)
         (q' : _) {Ψ' eE' d' f' err}
       → tcCheck (extendNamedCtx ctx x A) body B
-          ≡ success (q' Once.Internal.Context.Usage.∷ Ψ') eE' d' f'
+          ≡ success (q' SCx.∷ Ψ') eE' d' f'
       → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
       → tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) ≡ failure err
       → err ≡ UsageViolation x q q'
@@ -600,11 +601,11 @@ record VerifiedTypeChecker {m} : Set₁ where
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ A}
         {e₂E : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
-                     (q Once.Internal.Context.Usage.∷ Ψ₂) B}
+                     (q SCx.∷ Ψ₂) B}
         {d₁ d₂ f₁ f₂ : _}
       → tcInfer ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
       → tcInfer (extendNamedCtx ctx x A) e₂
-          ≡ success B (q Once.Internal.Context.Usage.∷ Ψ₂) e₂E d₂ f₂
+          ≡ success B (q SCx.∷ Ψ₂) e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RLet x e₁ e₂)
             ≡ success B (Ψ₂ Surface.+ᵘ (q Surface.*ᵘ Ψ₁)) eE d f
@@ -697,17 +698,17 @@ record VerifiedTypeChecker {m} : Set₁ where
         (C₁ C₂ C : Ty m) (J : Once.Spec.Sub._⊔_≔_ C₁ C₂ C) {qℓ qr : _}
         {Ψₗ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eLE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xL A))
-                     (qℓ Once.Internal.Context.Usage.∷ Ψₗ) C₁}
+                     (qℓ SCx.∷ Ψₗ) C₁}
         {dL fL : _}
         {Ψᵣ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eRE : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx xR B))
-                     (qr Once.Internal.Context.Usage.∷ Ψᵣ) C₂}
+                     (qr SCx.∷ Ψᵣ) C₂}
         {dR fR : _}
       → tcInfer ctx scrut ≡ success (A Once.Spec.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
-          ≡ success C₁ (qℓ Once.Internal.Context.Usage.∷ Ψₗ) eLE dL fL
+          ≡ success C₁ (qℓ SCx.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
-          ≡ success C₂ (qr Once.Internal.Context.Usage.∷ Ψᵣ) eRE dR fR
+          ≡ success C₂ (qr SCx.∷ Ψᵣ) eRE dR fR
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (Raw.RDestruct scrut xL eL xR eR)
             ≡ success C (Ψs Surface.+ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
@@ -733,12 +734,12 @@ record VerifiedTypeChecker {m} : Set₁ where
         (A : Ty m) (q q' : _) (B : Ty m)
         {Ψ' : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE' : SExpr (Classify.NamedCtx.debruijn (extendNamedCtx ctx x A))
-                     (q' Once.Internal.Context.Usage.∷ Ψ') B}
+                     (q' SCx.∷ Ψ') B}
         {d' f' : _} {π : Once.Spec.Grade.Purity}
       → (q' Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true
       → Once.Spec.Grade._⊑π_ Once.Spec.Grade.pure π
       → tcCheck (extendNamedCtx ctx x A) body B
-          ≡ success (q' Once.Internal.Context.Usage.∷ Ψ') eE' d' f'
+          ≡ success (q' SCx.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B) ≡ success Ψ' eE d f
 

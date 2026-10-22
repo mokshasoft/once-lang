@@ -14,6 +14,7 @@
 -- the abstracted elaboration.
 ------------------------------------------------------------------------
 
+import Once.Spec.Context as SCx
 import Once.Internal.Type.WellFormed
 
 import Once.Spec.Type
@@ -75,7 +76,7 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
 elab-inst-sem : ∀ {mₜ} {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys)
                   {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) (nat : Natural Δ τ r V) (sg : SigGround)
                   (ir : RS.TopRF Δ τ r imps sigs)
-                  {body : _} {A : Ty mₜ} (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ A ⨾ C.Usage.[])
+                  {body : _} {A : Ty mₜ} (D : ctxWithImportsAndPolys (topCtx sigs imps) polys ⊢ᶜ body ∶ A ⨾ SCx.[])
                   (fmt : TargetNum) (δ : GM.DefSem)
               → GM.⟦ proj₂ (elabᶜ V (RS.subst-c Δ τ r ir D)) ⟧ fmt δ tt
                 ≡ GM.⟦ PT.instantiate τ r (abs-⊢ Δ sg (proj₂ (elabᶜ V D))) ⟧ fmt δ tt
@@ -104,7 +105,7 @@ poly-instance-sem : ∀ {m} {imps sigs : Imports} {polys : PolyCtx} (V : View im
                              → Natural (kindsOf sc) (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) V)
                       (irf : (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport imps x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T)
                            × (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport sigs x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T))
-                      (D : ctxAt (kindsOf sc) (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[]) {U : Ty m} (ki : KindedInstance ∅ₖ sc U)
+                      (D : ctxAt (kindsOf sc) (topCtx sigs imps) polys ⊢ᶜ body ∶ rigidOf sc ⨾ SCx.[]) {U : Ty m} (ki : KindedInstance ∅ₖ sc U)
                   → GM.⟦ proj₂ (elabᶜ V (inst-at sc irf D ki)) ⟧ fmt δ tt
                     ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
                         (GM.⟦ PT.instantiate (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki)))
