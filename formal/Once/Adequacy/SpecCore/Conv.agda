@@ -15,22 +15,21 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Once.Internal.Contract using (ISig)
-import Once.Internal.Core.PolyTy as LP
 open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Core.Syntax using (Defs)
 
 import Once.Spec.Grade
-module Once.Adequacy.SpecCore.Conv {Fs : ISig} {s : ℕ} (S : LP.Sig Fs s) (Σ : Signature) where
+module Once.Adequacy.SpecCore.Conv (Σ : Signature) {s : ℕ} (S : Defs s) where
 
 
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Once.Internal.Laws.SubLaws using (<:-unique)
+import Once.Metatheory.Types
 
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Type as LT
-import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 import Once.Internal.Type.Sub as LS
 import Once.Spec.Sub as LS
@@ -47,16 +46,13 @@ import Once.Spec.Domain Σ as SD
 import Once.Internal.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
 open import Once.Internal.FunctorMeaning using (translateF)
-import Once.Internal.Core.PolyTyping S as PT
-import Once.Internal.Core.PolySub as PS
+import Once.Metatheory.TermModel.TySubst Σ S as TS
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 open T∞R
 open νpR
 open νdR
 open import Once.Adequacy.SpecCore.Monad Σ
-open import Once.Adequacy.SpecCore.Type using (⊑π-S; ⊑φ-S)
-open import Once.Adequacy.SpecCore.Schema using (ptyS)
 
 ------------------------------------------------------------------------
 -- A map on the compiler's side only
@@ -134,37 +130,33 @@ refl-R (g-⇒ {q = LG.Many} {π} a b) r = λ rx → subM-refl-R (pr π) (fmapˡ-
 refl-R (g-μ f) r = r
 refl-R (g-ν {φ = LG.pureᶠ} f) r = r
 refl-R (g-ν {φ = LG.actᶠ}  f) r = r
-refl-R g-rigid {()} r
 
 ------------------------------------------------------------------------
 -- A coercion, on both sides
 ------------------------------------------------------------------------
 
-open import Once.Adequacy.SpecCore.Poly using (module SubS)
-open SubS S using (subS)
-
-conv-R : ∀ {m} {A B : LP.Ty m} (p : A PS.<:ₚ B) {σ σ′} (g : InstG σ σ′) {x x′}
-       → ValR (GR-inst (ptr A) g) x x′
-       → ValR (GR-inst (ptr B) g) (LOps.⟦ PS.<:ₚ-⟪⟫ σ p ⟧<:ᵛ x) (SD.conv σ′ (subS p) x′)
-conv-R {A = LP.var i} PS.sub-var g r = refl-R (g i) r
-conv-R PS.sub-void g {()} r
-conv-R PS.sub-unit g r = r
-conv-R PS.sub-int g r = r
-conv-R PS.sub-float g r = r
-conv-R PS.sub-rigid g r = tt
-conv-R (PS.sub-arr {q = LG.Zero} {π} {π′} a b x) g r =
-  sub-R x (⊑π-S x) (pr π) (pr π′) (fmap-R (pr π) r (conv-R b g))
-conv-R (PS.sub-arr {q = LG.One} {π} {π′} a b x) g r =
-  λ rx → sub-R x (⊑π-S x) (pr π) (pr π′) (fmap-R (pr π) (r (conv-R a g rx)) (conv-R b g))
-conv-R (PS.sub-arr {q = LG.Many} {π} {π′} a b x) g r =
-  λ rx → sub-R x (⊑π-S x) (pr π) (pr π′) (fmap-R (pr π) (r (conv-R a g rx)) (conv-R b g))
-conv-R (PS.sub-prod a b) g {_ , _} {_ , _} (r , r′) = conv-R a g r , conv-R b g r′
-conv-R (PS.sub-sum a b) g {inj₁ _} {inj₁ _} r = conv-R a g r
-conv-R (PS.sub-sum a b) g {inj₂ _} {inj₂ _} r = conv-R b g r
-conv-R (PS.sub-sum a b) g {inj₁ _} {inj₂ _} ()
-conv-R (PS.sub-sum a b) g {inj₂ _} {inj₁ _} ()
-conv-R PS.sub-μ g r = r
-conv-R (PS.sub-ν {f = LG.pureᶠ} {LG.pureᶠ} x) g r = r
-conv-R (PS.sub-ν {f = LG.actᶠ}  {LG.actᶠ}  x) g r = r
-conv-R (PS.sub-ν {F = F} {φ = LG.pureᶠ} {LG.actᶠ} x) g r = embν-R (GF-inst (pfr F) g) r
-conv-R (PS.sub-ν {f = LG.actᶠ} {LG.pureᶠ} ()) g r
+conv-R : ∀ {m} (σ : ST.TySub m 0) {A B : ST.Ty m} (p : A SSub.<: B) {x x′}
+       → ValR (gr (A ST.⟨ σ ⟩)) x x′
+       → ValR (gr (B ST.⟨ σ ⟩)) (LOps.⟦ TS.<:-⟨⟩ σ p ⟧<:ᵛ x) (SD.conv σ p x′)
+conv-R σ (SSub.sub-var {i}) {x} {x′} r =
+  subst (λ (q : σ i SSub.<: σ i) → ValR (gr (σ i)) (LOps.⟦ q ⟧<:ᵛ x) x′) (<:-unique (LS.<:-refl (σ i)) (Once.Metatheory.Types.<:-refl (σ i))) (refl-R (gr (σ i)) r)
+conv-R σ SSub.sub-void {()} r
+conv-R σ SSub.sub-unit r = r
+conv-R σ SSub.sub-int r = r
+conv-R σ SSub.sub-float r = r
+conv-R σ (SSub.sub-arr {q = LG.Zero} {π} {π′} a b x) r =
+  sub-R x x (pr π) (pr π′) (fmap-R (pr π) r (conv-R σ b))
+conv-R σ (SSub.sub-arr {q = LG.One} {π} {π′} a b x) r =
+  λ rx → sub-R x x (pr π) (pr π′) (fmap-R (pr π) (r (conv-R σ a rx)) (conv-R σ b))
+conv-R σ (SSub.sub-arr {q = LG.Many} {π} {π′} a b x) r =
+  λ rx → sub-R x x (pr π) (pr π′) (fmap-R (pr π) (r (conv-R σ a rx)) (conv-R σ b))
+conv-R σ (SSub.sub-* a b) {_ , _} {_ , _} (r , r′) = conv-R σ a r , conv-R σ b r′
+conv-R σ (SSub.sub-+ a b) {inj₁ _} {inj₁ _} r = conv-R σ a r
+conv-R σ (SSub.sub-+ a b) {inj₂ _} {inj₂ _} r = conv-R σ b r
+conv-R σ (SSub.sub-+ a b) {inj₁ _} {inj₂ _} ()
+conv-R σ (SSub.sub-+ a b) {inj₂ _} {inj₁ _} ()
+conv-R σ SSub.sub-μ r = r
+conv-R σ (SSub.sub-ν {f = LG.pureᶠ} {LG.pureᶠ} Once.Spec.Grade.⊑-pure) r = r
+conv-R σ (SSub.sub-ν {f = LG.actᶠ}  {LG.actᶠ}  Once.Spec.Grade.⊑-act) r = r
+conv-R σ (SSub.sub-ν {F = F} {f = LG.pureᶠ} {LG.actᶠ} Once.Spec.Grade.⊑-pa) r = embν-R (gf (F ST.⟨ σ ⟩F)) r
+conv-R σ (SSub.sub-ν {f = LG.actᶠ} {LG.pureᶠ} ()) r
