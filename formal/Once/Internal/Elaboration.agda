@@ -106,7 +106,7 @@ record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
     ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) (g : Ground sc)
            → InstanceOf (entry lp) (extractGround sc g)
     inst   : ∀ {x sc body prefix T} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
-           → ¬ Ground sc → KindedInstance sc T
+           → ¬ Ground sc → KindedInstance ∅ₖ sc T
            → InstanceOf (entry lp) T
 open View
 

@@ -75,7 +75,7 @@ impSem δ (def d i) = refSem δ i
 record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ : Meanings polys imps sg) (δ : GM.DefSem) : Set where
   field
     agree-inst : ∀ {x sc body prefix U} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
-                   (ng : ¬ Ground sc) (ki : KindedInstance sc U)
+                   (ng : ¬ Ground sc) (ki : KindedInstance ∅ₖ sc U)
                → defAt polys x (defs ρ) lp U ki ≡ refSem δ (inst V lp ng ki)
     agree-ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
                      (g : Ground sc)

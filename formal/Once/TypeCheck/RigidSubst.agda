@@ -135,7 +135,7 @@ mutual
   substPolyF-ρ̂ θ (F P⊕ G) = cong₂ _⊕_ (substPolyF-ρ̂ θ F) (substPolyF-ρ̂ θ G)
   substPolyF-ρ̂ θ (F P⊗ G) = cong₂ _⊗_ (substPolyF-ρ̂ θ F) (substPolyF-ρ̂ θ G)
 
-ρ̂-ki : ∀ {s T} → KindedInstance s T → KindedInstance s (ρ̂ T)
+ρ̂-ki : ∀ {s T} → KindedInstance (NamedCtx.kinds ctx) s T → KindedInstance (NamedCtx.kinds ctx) s (ρ̂ T)
 ρ̂-ki {s} (θ , e , rk) = (λ x → ρ̂ (θ x)) , trans (substPoly-ρ̂ θ s) (cong ρ̂ e) , (λ x∈ → ρ̂-base (rk x∈))
 
 ------------------------------------------------------------------------

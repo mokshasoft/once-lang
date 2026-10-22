@@ -167,7 +167,7 @@ neg-non-Int-Unit : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
-                   → err ≡ TypeMismatch Int Unit
+                   → err ≡ TypeMismatch {0} Int Unit
 neg-non-Int-Unit ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 case-scrut-Unit : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
@@ -328,8 +328,8 @@ lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
 -- PLAN 0.75 F4 CHANGED THE HYPOTHESIS, and the old one is now FALSE rather
 -- than merely weaker. This was stated over `asInt`'s failure, and `asInt`
 -- fails on `Float` — but a `Float` left operand is now a good operand, so
--- `1.5 + ()` reports `BinOpRightError (TypeMismatch Float Unit)` while the
--- lemma claimed `BinOpLeftError (TypeMismatch Int Float)`. The right
+-- `1.5 + ()` reports `BinOpRightError (TypeMismatch {0} Float Unit)` while the
+-- lemma claimed `BinOpLeftError (TypeMismatch {0} Int Float)`. The right
 -- hypothesis is the one it always meant: the left operand is not a number at
 -- all. `notNumeric` says exactly that, with `asInt`'s own error messages, so
 -- nothing a user sees changes.
@@ -520,7 +520,7 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
 -- PLAN 0.75 F4 / D125: `Int` left with `Float` right now SPLITS ON THE
 -- OPERATOR. For `+`, `−` and `×` the `Int` side widens and the binop SUCCEEDS,
 -- so the failure premise is absurd; for the other eight there is no float
--- form, the error is still `BinOpRightError (TypeMismatch Int Float)`, and the
+-- form, the error is still `BinOpRightError (TypeMismatch {0} Int Float)`, and the
 -- claim holds unchanged. One clause could not cover both, which is the
 -- statement noticing that the language grew.
 binop-right-err-wraps ctx Raw.OpAdd e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter

@@ -75,7 +75,7 @@ private
   var-aux (yes refl) = yes sub-var
   var-aux (no ¬e)    = no λ { sub-var → ¬e refl }
 
-_<:?_ : (A B : Type) → Dec (A <: B)
+_<:?_ : ∀ {m} (A B : Ty m) → Dec (A <: B)
 Void <:? _ = yes sub-void
 Unit <:? Unit = yes sub-unit
 Unit <:? Void = no λ ()

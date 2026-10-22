@@ -74,7 +74,7 @@ private
 -- `Ground` is built from `⊤` and `×`, so its projection cannot depend on the
 -- witness.
 mutual
-  extractGroundF-irr : ∀ (F : PolyFunctor) (g g′ : GroundF F) → extractGroundF F g ≡ extractGroundF F g′
+  extractGroundF-irr : ∀ {m} (F : PolyFunctor) (g g′ : GroundF F) → extractGroundF {m} F g ≡ extractGroundF F g′
   extractGroundF-irr (PK A) g g′ = cong T.K (extractGround-irr A g g′)
   extractGroundF-irr PId _ _ = refl
   extractGroundF-irr (F P⊕ G) (gF , gG) (gF′ , gG′) =
@@ -82,7 +82,7 @@ mutual
   extractGroundF-irr (F P⊗ G) (gF , gG) (gF′ , gG′) =
     cong₂ T._⊗_ (extractGroundF-irr F gF gF′) (extractGroundF-irr G gG gG′)
 
-  extractGround-irr : ∀ (A : PolyType) (g g′ : Ground A) → extractGround A g ≡ extractGround A g′
+  extractGround-irr : ∀ {m} (A : PolyType) (g g′ : Ground A) → extractGround {m} A g ≡ extractGround A g′
   extractGround-irr PUnit _ _ = refl
   extractGround-irr PVoid _ _ = refl
   extractGround-irr (A P* B) (gA , gB) (gA′ , gB′) = cong₂ _*_ (extractGround-irr A gA gA′) (extractGround-irr B gB gB′)
@@ -192,11 +192,11 @@ dpoly-det : ∀ {m} {s sd sc sd′ sc′ : T.PolyType} {π′ π″ : T.Purity} 
   → T.substPoly θ s ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B) → T.substPoly θ′ s ≡ (A T.⇒[ T.mk-kind T.Many π″ ] B′)
   → B ≡ B′
 dpoly-det {sd = sd} {sc = sc} T.as-pure T.as-pure inc θ θ′ refl e′ with ⇒-parts e′
-... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
+... | ed , ec = trans (cod-determined {sd = sd} {sc = sc} inc θ θ′ (sym ed)) ec
 dpoly-det {sd = sd} {sc = sc} T.as-eff T.as-eff inc θ θ′ refl e′ with ⇒-parts e′
-... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
+... | ed , ec = trans (cod-determined {sd = sd} {sc = sc} inc θ θ′ (sym ed)) ec
 dpoly-det {sd = sd} {sc = sc} T.as-act T.as-act inc θ θ′ refl e′ with ⇒-parts e′
-... | ed , ec = trans (cod-determined {sd} {sc} inc θ θ′ (sym ed)) ec
+... | ed , ec = trans (cod-determined {sd = sd} {sc = sc} inc θ θ′ (sym ed)) ec
 
 mutual
   -- Synthesis is unique.

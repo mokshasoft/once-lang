@@ -33,7 +33,7 @@ module Once.TypeCheck.Error where
 
 open import Data.String using (String; _++_)
 open import Once.Spec.Grade using (Quantity)
-open import Once.Spec.Type using (Type)
+open import Once.Spec.Type using (Ty; Type)
 open import Once.Type using (showQuantity; showType)
 
 ------------------------------------------------------------------------
@@ -92,14 +92,14 @@ data TypeError : Set where
   CaseBranchMismatch  : TypeError
 
   -- Application / annotation / check-mode mismatches
-  ApplicationTypeMismatch : (expected actual : Type) → TypeError
-  TypeMismatch            : (expected actual : Type) → TypeError
+  ApplicationTypeMismatch : ∀ {m} (expected actual : Ty m) → TypeError
+  TypeMismatch            : ∀ {m} (expected actual : Ty m) → TypeError
 
   -- Type-shape errors emitted by the `asInt` / `asFun` projection
   -- views when the inferred sub-result has the wrong shape. Used by
   -- RBinOp (via asInt on each operand) and generic RApp (via asFun
   -- on the function position).
-  NotFunction : (actual : Type) → TypeError  -- "expected function, got X"
+  NotFunction : ∀ {m} (actual : Ty m) → TypeError  -- "expected function, got X"
 
   -- Usage (QTT) violations
   UsageViolation : (name : String) (declared actual : Quantity) → TypeError

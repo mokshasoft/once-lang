@@ -22,6 +22,7 @@
 
 module Once.TypeCheck.Morph where
 
+open import Once.Spec.Type using (Ty)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 import Data.String.Properties as StrProp
@@ -38,7 +39,7 @@ open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RApp)
 -- `nothing` is "not equal", which is all `morphToIR` needs).
 ------------------------------------------------------------------------
 
-_≡T?_ : (A B : Type) → Maybe (A ≡ B)
+_≡T?_ : ∀ {m} → (A B : Ty m) → Maybe (A ≡ B)
 Unit   ≡T? Unit   = just refl
 Void   ≡T? Void   = just refl
 Int    ≡T? Int    = just refl
@@ -104,7 +105,7 @@ morphRaw? _ = nothing
 -- those types (e.g. `inl` whose target isn't a sum starting at X).
 ------------------------------------------------------------------------
 
-morphToIR : ∀ {alg} → MorphRaw alg → (X A : Type) → Maybe (IR ⌊ X ⌋ ⌊ A ⌋)
+morphToIR : ∀ {m} {alg} → MorphRaw alg → (X A : Ty m) → Maybe (IR ⌊ X ⌋ ⌊ A ⌋)
 morphToIR mr-id X A with X ≡T? A
 ... | just refl = just IR.id
 ... | nothing   = nothing

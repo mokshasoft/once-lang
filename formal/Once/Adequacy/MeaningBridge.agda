@@ -701,17 +701,17 @@ RelGT-sub p r = RelGM-sub ⊑-pure p r
 EnvRel : (polys : PolyCtx) → DefMeanings polys → Set
 EnvRel []                   _       = ⊤
 EnvRel ((n , s , _) ∷ rest) (e , ρ) =
-  (∀ (U : Type) (ki : KindedInstance s U) → RelGM pure U (e U ki) (refs σ n U)) × EnvRel rest ρ
+  (∀ (U : Type) (ki : KindedInstance ∅ₖ s U) → RelGM pure U (e U ki) (refs σ n U)) × EnvRel rest ρ
 
 envrel-at : ∀ {m} (polys : PolyCtx) (x : String) {s b prefix} {ρ : DefMeanings polys}
   → EnvRel polys ρ → (lp : lookupPolyPrefix polys x ≡ just (s , b , prefix))
-  → ∀ (U : Ty m) (ki : KindedInstance s U) → RelGM pure U (defAt polys x ρ lp U ki) (refs σ x U)
+  → ∀ (U : Ty m) (ki : KindedInstance ∅ₖ s U) → RelGM pure U (defAt polys x ρ lp U ki) (refs σ x U)
 envrel-at [] x _ ()
 envrel-at ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrProp.≟ x
 ... | yes refl = found lp
   where
-    found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix)) (U : Ty _) (ki : KindedInstance s U)
-      → RelGM pure U (defAt-found {F = λ s → (U : Ty _) → KindedInstance s U → ⟦ U ⟧ᵛ} lp′ e U ki) (refs σ n U)
+    found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix)) (U : Ty _) (ki : KindedInstance ∅ₖ s U)
+      → RelGM pure U (defAt-found {F = λ s → (U : Ty _) → KindedInstance ∅ₖ s U → ⟦ U ⟧ᵛ} lp′ e U ki) (refs σ n U)
     found refl = r
 ... | no _ = envrel-at rest x rs lp
 
@@ -723,7 +723,7 @@ envrel-tail ((n , s′ , b′) ∷ rest) x {ρ = e , ρ} (r , rs) lp with n StrP
 ... | yes _ = found lp
   where
     found : ∀ {s b prefix} (lp′ : just (s′ , b′ , rest) ≡ just (s , b , prefix))
-      → EnvRel prefix (tailAt-found {F = λ s → (U : Ty _) → KindedInstance s U → ⟦ U ⟧ᵛ} lp′ ρ)
+      → EnvRel prefix (tailAt-found {F = λ s → (U : Ty _) → KindedInstance ∅ₖ s U → ⟦ U ⟧ᵛ} lp′ ρ)
     found refl = rs
 ... | no _ = envrel-tail rest x rs lp
 

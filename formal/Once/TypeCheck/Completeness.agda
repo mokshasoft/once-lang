@@ -193,7 +193,7 @@ module DPoly where
     {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc) (θ₀ : String → Ty m) (e₀ : T.substPoly θ₀ sd ≡ A)
-    → T.substPoly θ₀ sc ≡ B → π′ ⊑π π → KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B)
+    → T.substPoly θ₀ sc ≡ B → π′ ⊑π π → KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B)
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ (π′ ⊑π? π)) ≡ success B Surface.zeroUsage eE d f
   at-π ctx x A π err {π′ = π′} {schema = schema} {sc = sc} eL eI eP ¬g as inc θ₀ e₀ refl g ki with π′ ⊑π? π
@@ -206,7 +206,7 @@ module DPoly where
     {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
+    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl) ≡ success B Surface.zeroUsage eE d f
   at-m ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g as inc θ eθ g ki =
@@ -214,7 +214,7 @@ module DPoly where
         (σ , eS)  = instantiate-complete sd A (θ , ed)
         θ₀        = proj₁ (instantiate-sound sd A eS)
         e₀        = proj₂ (instantiate-sound sd A eS)
-        eB        = trans (cod-determined {sd} {sc} inc θ₀ θ (trans e₀ (sym ed))) ec
+        eB        = trans (cod-determined {sd = sd} {sc = sc} inc θ₀ θ (trans e₀ (sym ed))) ec
         (eE , d , f , r) = at-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ eB g ki
     in eE , d , f , trans (cong proj₁ (gm-eq ctx x A π err eL eI eP ¬g as inc (just σ) eS)) r
 
@@ -222,7 +222,7 @@ module DPoly where
     {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
+    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly-a ctx x A π err eL eI eP ¬g (arrowSchema? schema)) ≡ success B Surface.zeroUsage eE d f
   from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-pure inc θ eθ g ki with codVarsInDom? sd sc
@@ -241,7 +241,7 @@ module DPoly where
     (eL : lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing) (eI : lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing)
     (eP : lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) (¬g : ¬ T.Ground schema)
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
-    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
+    (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         proj₁ (given-poly ctx x A π err (lookupImport (Classify.NamedCtx.sig ctx) x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
                  (lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl) ≡ success B Surface.zeroUsage eE d f

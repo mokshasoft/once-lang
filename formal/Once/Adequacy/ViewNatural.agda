@@ -33,7 +33,7 @@ module _ {m} (Δ : KCtx m) (τ : GSub m) (r : Respects Δ τ) where
   record Natural {m} {imps sigs : Imports} {polys : PolyCtx} (V : View imps sigs polys) : Set where
     field
       nat-inst : ∀ {x sc body prefix T} (lp : lookupPolyPrefix polys x ≡ Data.Maybe.just (sc , body , prefix))
-                   (ng : ¬ Ground sc) (ki : KindedInstance sc T)
+                   (ng : ¬ Ground sc) (ki : KindedInstance ∅ₖ sc T)
                → proj₁ (View.inst V lp ng (RS.ρ̂-ki Δ τ r {sc} ki)) ≡ (λ i → RS.ρ̂ Δ τ r (proj₁ (View.inst V lp ng ki) i))
       nat-ground : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ Data.Maybe.just (sc , body , prefix)) (g : Ground sc)
                  → (λ i → RS.ρ̂ Δ τ r (proj₁ (View.ground V lp g) i)) ≡ proj₁ (View.ground V lp g)

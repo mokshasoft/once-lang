@@ -32,7 +32,7 @@ import Once.TypeCheck.RigidSubst as RS
 inst-at : ∀ {m} {tc : TopCtx} {polys : PolyCtx} {body : _} (sc : PolyType)
         → (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport (TopCtx.tdefs tc) x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T)
         × (∀ {T : Ty m} {x} → Once.Internal.Typing.Scope.lookupImport (TopCtx.tsig tc) x ≡ Data.Maybe.just T → Once.Internal.Type.WellFormed.RigidFree T)
-        → ctxWithImportsAndPolys tc polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[] → ∀ {U : Ty m} → KindedInstance sc U
+        → ctxWithImportsAndPolys tc polys ⊢ᶜ body ∶ rigidOf sc ⨾ C.Usage.[] → ∀ {U : Ty m} → KindedInstance (NamedCtx.kinds ctx) sc U
         → ctxWithImportsAndPolys tc polys ⊢ᶜ body ∶ U ⨾ C.Usage.[]
 inst-at sc irf D ki =
   subst (λ X → _ ⊢ᶜ _ ∶ X ⨾ C.Usage.[]) (proj₂ (proj₂ (kinded-instance sc ki)))

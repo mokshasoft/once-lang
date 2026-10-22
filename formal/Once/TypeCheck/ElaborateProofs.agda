@@ -1095,7 +1095,7 @@ poly-ground-eq ctx x T err schema eL eI eP .(isGround schema) refl = refl
 -- D243: a kinded instance makes the decided premise `yes`.
 poly-inst-yes : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError) {schema : PolyType}
   {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
-  → KindedInstance schema T
+  → KindedInstance (NamedCtx.kinds ctx) schema T
   → Data.Product.proj₁ (checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (kindedInstance? schema T))
     ≡ success Surface.zeroUsage (Surface.poly x T) 0 0
 poly-inst-yes ctx x T err {schema} eL eI eP ¬g ki with kindedInstance? schema T
@@ -1112,7 +1112,7 @@ checkElab-fallback-RVar-poly :
   -- type (`t-var-poly-instantiate-infer`), so the check-mode fallback (poly
   -- node at arbitrary `T`) fires only when infer failed, i.e. non-ground.
   → isGround schema ≡ inj₂ tt
-  → KindedInstance schema T
+  → KindedInstance (NamedCtx.kinds ctx) schema T
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RResolved (own x)) T
         ≡ success Surface.zeroUsage eE d fr)))
@@ -1547,7 +1547,7 @@ _ = refl
 -- truncate-versus-round is the programmer's call. `%` is the witness, since
 -- it is not a float op at all.
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1)))
-      ≡ failure (BinOpRightError (TypeMismatch Float Int))
+      ≡ failure (BinOpRightError (TypeMismatch {0} Float Int))
 _ = refl
 
 -- `/` on floats LOWERS now: `Once.Spec.Float.Arith.fdiv` is the correctly-rounded
@@ -1564,7 +1564,7 @@ _ = refl
 -- remainder and D055's `a = (a/b)*b + (a%b)` does not survive rounding, so it
 -- needs its own decision before it can have a lowering.
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
-      ≡ failure (BinOpLeftError (TypeMismatch Int Float))
+      ≡ failure (BinOpLeftError (TypeMismatch {0} Int Float))
 _ = refl
 
 -- …and the INTEGER family is untouched, which is the other half of "the

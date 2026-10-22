@@ -21,7 +21,7 @@ open import Data.Fin using (Fin)
 open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Type using (Ty; KCtx; Kind; base; any; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; var; μ; ν; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; Fun; WFFun; wf-⊕; wf-⊗; KCtx; Kind; base; any; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; var; μ; ν; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 
 open import Once.Internal.Type using (k-base; k-any; μ-type; ν-type; Functor)
 open import Once.Spec.Type using (wf-K; wf-Id)
@@ -145,3 +145,18 @@ base?-complete (b-* bA bB)
 base?-complete (b-+ bA bB)
   with base?-complete bA | base?-complete bB
 ... | (a , eqA) | (b , eqB) rewrite eqA | eqB = b-+ a b , refl
+
+-- Well-formed functors over type variables of kinds `Δ`.
+wfFun? : ∀ {m} (Δ : KCtx m) (F : Fun m) → Maybe (WFFun Δ F)
+wfFun? Δ (K A) with base? Δ A
+... | just b  = just (wf-K b)
+... | nothing = nothing
+wfFun? Δ Id = just wf-Id
+wfFun? Δ (F ⊕ G) with wfFun? Δ F | wfFun? Δ G
+... | just f | just g = just (wf-⊕ f g)
+{-# CATCHALL #-}
+... | _      | _      = nothing
+wfFun? Δ (F ⊗ G) with wfFun? Δ F | wfFun? Δ G
+... | just f | just g = just (wf-⊗ f g)
+{-# CATCHALL #-}
+... | _      | _      = nothing

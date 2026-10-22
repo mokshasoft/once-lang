@@ -17,6 +17,7 @@
 
 module Once.TypeCheck.TargetView where
 
+open import Once.Spec.Type using (Ty)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
@@ -26,11 +27,11 @@ open import Once.Type
 open import Once.Spec.Grade using (_⊑π_; ⊑-pa; ⊑-act)
 
 -- `cata alg` : μ F ⇒ A
-data CataTarget : Type → Set where
+data CataTarget {m} : Ty m → Set where
   cata-at    : ∀ F π A → CataTarget (μ-type F ⇒[ mk-kind Many π ] A)
   cata-other : ∀ {T} → CataTarget T
 
-cataTarget : (T : Type) → CataTarget T
+cataTarget : ∀ {m} → (T : Ty m) → CataTarget T
 cataTarget (μ-type F ⇒[ mk-kind Many π ] A) = cata-at F π A
 {-# CATCHALL #-}
 cataTarget _ = cata-other
@@ -39,12 +40,12 @@ cataTarget _ = cata-other
 -- A ⇒[eff] B (THE LOOP, D317/D319) — the Spec's `c-ana` bounds the stream's
 -- arrow by `act`, so the two never overlap. The `eff` clause comes FIRST: it
 -- reads the grade alone, so it reduces at any codomain.
-data AnaTarget : Type → Set where
+data AnaTarget {m} : Ty m → Set where
   loop-at   : ∀ A B → AnaTarget (A ⇒[ mk-kind Many eff ] B)
   ana-at    : ∀ A π₀ F π → π₀ ⊑π act → AnaTarget (A ⇒[ mk-kind Many π₀ ] ν-type F π)
   ana-other : ∀ {T} → AnaTarget T
 
-anaTarget : (T : Type) → AnaTarget T
+anaTarget : ∀ {m} → (T : Ty m) → AnaTarget T
 anaTarget (A ⇒[ mk-kind Many eff ] B)           = loop-at A B
 anaTarget (A ⇒[ mk-kind Many pure ] ν-type F π) = ana-at A pure F π ⊑-pa
 anaTarget (A ⇒[ mk-kind Many act ] ν-type F π)  = ana-at A act F π ⊑-act
@@ -52,57 +53,57 @@ anaTarget (A ⇒[ mk-kind Many act ] ν-type F π)  = ana-at A act F π ⊑-act
 anaTarget _ = ana-other
 
 -- `In arg` : μ F
-data InTarget : Type → Set where
+data InTarget {m} : Ty m → Set where
   in-at    : ∀ F → InTarget (μ-type F)
   in-other : ∀ {T} → InTarget T
 
-inTarget : (T : Type) → InTarget T
+inTarget : ∀ {m} → (T : Ty m) → InTarget T
 inTarget (μ-type F) = in-at F
 {-# CATCHALL #-}
 inTarget _ = in-other
 
 -- `curry f` : A ⇒ (B ⇒ C)
-data CurryTarget : Type → Set where
+data CurryTarget {m} : Ty m → Set where
   curry-at    : ∀ A π₀ B π C → CurryTarget (A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C))
   curry-other : ∀ {T} → CurryTarget T
 
-curryTarget : (T : Type) → CurryTarget T
+curryTarget : ∀ {m} → (T : Ty m) → CurryTarget T
 curryTarget (A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C)) = curry-at A π₀ B π C
 {-# CATCHALL #-}
 curryTarget _ = curry-other
 
 -- `pair f g` : A ⇒ (B * C)
-data PairTarget : Type → Set where
+data PairTarget {m} : Ty m → Set where
   pair-at    : ∀ A π B C → PairTarget (A ⇒[ mk-kind Many π ] (B * C))
   pair-other : ∀ {T} → PairTarget T
 
-pairTarget : (T : Type) → PairTarget T
+pairTarget : ∀ {m} → (T : Ty m) → PairTarget T
 pairTarget (A ⇒[ mk-kind Many π ] (B * C)) = pair-at A π B C
 {-# CATCHALL #-}
 pairTarget _ = pair-other
 
 -- `case f g` : (A + B) ⇒ C
-data CaseTarget : Type → Set where
+data CaseTarget {m} : Ty m → Set where
   case-at    : ∀ A B π C → CaseTarget ((A + B) ⇒[ mk-kind Many π ] C)
   case-other : ∀ {T} → CaseTarget T
 
-caseTarget : (T : Type) → CaseTarget T
+caseTarget : ∀ {m} → (T : Ty m) → CaseTarget T
 caseTarget ((A + B) ⇒[ mk-kind Many π ] C) = case-at A B π C
 {-# CATCHALL #-}
 caseTarget _ = case-other
 
 -- `compose f g` : A ⇒ C
-data ArrowTarget : Type → Set where
+data ArrowTarget {m} : Ty m → Set where
   arrow-at    : ∀ A π C → ArrowTarget (A ⇒[ mk-kind Many π ] C)
   arrow-other : ∀ {T} → ArrowTarget T
 
-arrowTarget : (T : Type) → ArrowTarget T
+arrowTarget : ∀ {m} → (T : Ty m) → ArrowTarget T
 arrowTarget (A ⇒[ mk-kind Many π ] C) = arrow-at A π C
 {-# CATCHALL #-}
 arrowTarget _ = arrow-other
 
 -- `inl a` / `inr b` : A + B
-data SumTarget : Type → Set where
+data SumTarget {m} : Ty m → Set where
   sum-at    : ∀ A B → SumTarget (A + B)
   sum-other : ∀ {T} → SumTarget T
 
@@ -112,30 +113,30 @@ data SumTarget : Type → Set where
 -- D251: no view has a `Void` case; ex falso is `initial`.
 ------------------------------------------------------------------------
 
-data NuView : Type → Set where
+data NuView {m} : Ty m → Set where
   nu-at    : ∀ F π → NuView (ν-type F π)
   nu-other : ∀ {T} → NuView T
 
-nuView : (T : Type) → NuView T
+nuView : ∀ {m} → (T : Ty m) → NuView T
 nuView (ν-type F π) = nu-at F π
 {-# CATCHALL #-}
 nuView _            = nu-other
 
-data ApplyView : Type → Set where
+data ApplyView {m} : Ty m → Set where
   apply-at    : ∀ A π B A' → ApplyView ((A ⇒[ mk-kind Many π ] B) * A')
   apply-other : ∀ {T} → ApplyView T
 
-applyView : (T : Type) → ApplyView T
+applyView : ∀ {m} → (T : Ty m) → ApplyView T
 applyView ((A ⇒[ mk-kind Many π ] B) * A') = apply-at A π B A'
 {-# CATCHALL #-}
 applyView _ = apply-other
 
 -- `fst` / `snd` : a pair.
-data ProdView : Type → Set where
+data ProdView {m} : Ty m → Set where
   prod-at    : ∀ A B → ProdView (A * B)
   prod-other : ∀ {T} → ProdView T
 
-prodView : (T : Type) → ProdView T
+prodView : ∀ {m} → (T : Ty m) → ProdView T
 prodView (A * B) = prod-at A B
 {-# CATCHALL #-}
 prodView _       = prod-other

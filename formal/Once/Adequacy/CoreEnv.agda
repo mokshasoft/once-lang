@@ -76,7 +76,7 @@ module _ (δ : GM.DefSem) where
   agree-imp {(n , T₀) ∷ rest} (TR.i-def d e is) {x} lk | no _ = agree-imp is lk
 
   agree-def : ∀ {m} {ps} (ts : TeleSig S ps) {U : Ty m} {x sc body prefix}
-                (lp : lookupPolyPrefix (C.buildPolyCtx ps) x ≡ just (sc , body , prefix)) (ki : KindedInstance sc U)
+                (lp : lookupPolyPrefix (C.buildPolyCtx ps) x ≡ just (sc , body , prefix)) (ki : KindedInstance ∅ₖ sc U)
             → defAt (C.buildPolyCtx ps) x (defEnv ts) lp U ki ≡ refSem δ (poly-inst {S = S} {sc = sc} (proj₂ (telFind {S = S} ts lp)) ki)
   agree-def TR.[] () ki
   agree-def {Parser.mkPolyFunInfo n ty b ∷ ps} (TR.t-def d e ts) {x} lp ki with StrProp._≟_ n x
