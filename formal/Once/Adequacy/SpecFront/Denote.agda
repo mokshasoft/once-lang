@@ -101,7 +101,7 @@ private
   guard-ok (inj₁ _) ()
   guard-ok (inj₂ es) e = dist-ok _ e
     where
-      dist-ok : ∀ b {es′} → Parser.distinctOrErr b (inj₂ es) ≡ inj₂ es′ → inj₂ es ≡ inj₂ es′
+      dist-ok : ∀ b {m es′} → Parser.distinctOrErr b m (inj₂ es) ≡ inj₂ es′ → inj₂ es ≡ inj₂ es′
       dist-ok true  e′ = e′
       dist-ok false ()
 

@@ -155,8 +155,8 @@ DistinctSymbols : Module → Set
 DistinctSymbols m = AllPairs _≢_ (C.moduleSyms IR.Heap false m)
 
 -- (a) the extractor guard fired ⇒ the well-formedness Bool was `true`.
-distinctOrErr-true : ∀ b {p p' : List Entry}
-  → distinctOrErr b (inj₂ p) ≡ inj₂ p' → b ≡ true
+distinctOrErr-true : ∀ b {m} {p p' : List Entry}
+  → distinctOrErr b m (inj₂ p) ≡ inj₂ p' → b ≡ true
 distinctOrErr-true true  _  = refl
 distinctOrErr-true false ()
 

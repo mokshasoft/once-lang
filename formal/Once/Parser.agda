@@ -13,6 +13,7 @@ module Once.Parser where
 open import Once.Internal.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
+open import Data.Bool.ListAction using (any)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
 open import Once.Spec.Name using (canonical)
 open import Once.Internal.Name using (showCanonical)
@@ -435,15 +436,45 @@ emittedNames []         = []
 emittedNames (fi ∷ fis) = emittedNames-cons (FunInfo.funIsPrimitive fi) fi (emittedNames fis)
 
 -- Guard `extractFunctions-go`'s result on name well-formedness — DISTINCT and
--- each a valid identifier (with-free dispatch on the combined Bool).
-distinctOrErr : Bool → EFResult → EFResult
-distinctOrErr true  r = r
-distinctOrErr false _ = inj₁ "ill-formed top-level definition name (duplicate or not an identifier)"
+-- each a valid identifier (with-free dispatch on the combined Bool). The
+-- message is the guard's diagnosis (`guardMsg`); only the Bool decides.
+distinctOrErr : Bool → String → EFResult → EFResult
+distinctOrErr true  _   r = r
+distinctOrErr false msg _ = inj₁ msg
+
+-- The first name that occurs again later in the list, if any.
+firstDuplicate : List String → Maybe String
+duplicateOr    : Bool → String → List String → Maybe String
+firstDuplicate []       = nothing
+firstDuplicate (x ∷ xs) = duplicateOr (any (λ y → does (x ≟ y)) xs) x xs
+duplicateOr true  x _  = just x
+duplicateOr false _ xs = firstDuplicate xs
+
+-- The first name that is neither an identifier nor an operator name, if any.
+firstInvalid : List String → Maybe String
+invalidOr    : Bool → String → List String → Maybe String
+firstInvalid []       = nothing
+firstInvalid (x ∷ xs) = invalidOr (validNameB x) x xs
+invalidOr true  _ xs = firstInvalid xs
+invalidOr false x _  = just x
 
 -- The name an entry binds.
 entryNameOf : Entry → String
 entryNameOf (e-fun fi)   = FunInfo.funName fi
 entryNameOf (e-poly pfi) = PolyFunInfo.pfunName pfi
+
+-- What the guard reports when it fails. Every name the guard compares is an
+-- entry name, so a duplicate among them is found in `map entryNameOf es`; a
+-- guard with no duplicate failed on validity.
+guardMsg : List Entry → String
+guardMsg es = dupMsg (firstDuplicate (map entryNameOf es))
+  where
+    invalidMsg : Maybe String → String
+    invalidMsg (just x) = "`" ++ x ++ "` is not an identifier or an operator name"
+    invalidMsg nothing  = "ill-formed top-level name (duplicate or not an identifier)"
+    dupMsg : Maybe String → String
+    dupMsg (just x) = "`" ++ x ++ "` is declared more than once: definitions and `signature` declarations share one namespace, and each name is declared once"
+    dupMsg nothing  = invalidMsg (firstInvalid (emittedNames (funsOf es)))
 
 guardDistinct : EFResult → EFResult
 guardDistinct (inj₁ err)            = inj₁ err
@@ -455,7 +486,7 @@ guardDistinct (inj₁ err)            = inj₁ err
 guardDistinct (inj₂ es) =
   distinctOrErr (((namesDistinct nms ∧ allValidNameB nms) ∧ namesDistinct (nms ++ₗ map PolyFunInfo.pfunName (polysOf es)))
                  ∧ namesDistinct (map entryNameOf es))
-                (inj₂ es)
+                (guardMsg es) (inj₂ es)
   where nms = emittedNames (funsOf es)
 
 -- The Spec's `Walk` (`w-sig`): a type signature is IMMEDIATELY followed by
