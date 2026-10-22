@@ -22,6 +22,7 @@
 
 module Once.Denotation.SourceDenote where
 
+open import Once.Internal.Weaken using (⟦wk₀⟧ᴰ)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 import Once.Spec.Word as OnceWord
@@ -131,11 +132,11 @@ liftD fmt ρ {A} {B} ir = return∞ (liftFn fmt ρ {A} {B} ir)
 -- The compiled program's environment is `internalDefs fmt ρ`, whose `refs` read the
 -- same call environment `ρ` at the erased type (a reference that linking did not
 -- replace is lowered to `Call`).
-record DefsSem {m} : Set where
+record DefsSem : Set where
   constructor defsSem
   field
     calls : CallEnv
-    refs  : (x : String) (A : Ty m) → T∞ ⟦ A ⟧ᴰ
+    refs  : ∀ {m} (x : String) (A : Ty m) → T∞ ⟦ A ⟧ᴰ
 
 open DefsSem
 
@@ -146,7 +147,7 @@ internalDefs fmt ρ = defsSem ρ (λ x A → subst T∞ (cohᴰ A) (evalᴰ fmt 
 -- first-order argument (plan 0.105), read into the value domain — the IR's
 -- `evalᴰ (SigOp si)` without the IRTy transports (`CataErased.liftFn-SigOp`).
 -- A pure FFI contract reads the call environment's pure half.
-sigOpˢ : ∀ {m} {A B : Ty m} → TargetNum → DefsSem → SigOpInfo A B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+sigOpˢ : ∀ {A B : Type} → TargetNum → DefsSem → SigOpInfo A B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) si (forgetᵇ (baseA si) a)))
 
 ------------------------------------------------------------------------
@@ -161,6 +162,27 @@ sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (call
 -- recursive function in a parameterised module stops reducing downstream.
 -- D142/D143: over the RUNTIME environment `Γ ↾ Ψ`, for the same reason
 -- `elaborate` is. See the note above `lookupᴰUsed`.
+-- An external operation's meaning at its ground type (the term carries it read
+-- over the definition's type variables, `wk₀ A`, which means the same).
+sigOpSem : (A : Type) → Once.Spec.Name.CanonicalName → Once.Internal.Type.WellFormed.IsConcrete A → TargetNum → DefsSem → T∞ ⟦ A ⟧ᴰ
+sigOpSem (Dom ⇒[ mk-kind Zero Once.Spec.Grade.pure ] Cod) name (con-fun bDom bCod) fmt σ =
+  return∞ (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
+-- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
+sigOpSem (Dom ⇒[ mk-kind Zero Once.Spec.Grade.eff ] Cod) name (con-fun bDom bCod) fmt σ =
+  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) name base-Unit bCod) tt)
+sigOpSem (Dom ⇒[ mk-kind Zero Once.Spec.Grade.act ] Cod) name (con-fun bDom bCod) fmt σ =
+  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) name base-Unit bCod) tt)
+sigOpSem (Dom ⇒[ mk-kind One π ] Cod) name (con-fun bDom bCod) fmt σ =
+  return∞ (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
+sigOpSem (Dom ⇒[ mk-kind Many π ] Cod) name (con-fun bDom bCod) fmt σ =
+  return∞ (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom bCod) arg)
+-- VALUE-position references (non-arrow sigOp): a pure FFI contract
+-- (`value-info` is `ffiV`), so the reference is the interpretation's value.
+-- Matches elaborate's `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays
+-- `refl`.
+{-# CATCHALL #-}
+sigOpSem A name (con-base ib) fmt σ = sigOpˢ fmt σ (value-info {Unit} {A} name base-Unit ib) tt
+
 ⟦_⟧ˢ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
      → Expr Γ Ψ A → TargetNum → DefsSem → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
 ⟦ var {Γ = Γ} i ⟧ˢ fmt σ dγ = return∞ (lookupᴰUsed Γ i dγ)
@@ -332,7 +354,7 @@ sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (call
 -- through the `⊑ᵘ-*Many` restriction (as D232's scaled arms do).
 ⟦ cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf alg ⟧ˢ fmt σ dγ =
   ⟦ alg ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-*Many Ψ) dγ) >>=∞ λ valg →
-  return∞ (λ x → sem-cata wf (cata-ev-algˢ {F} {A} wf (return∞ valg)) x)
+  return∞ (λ x → sem-cata wf (cata-ev-algˢ {C = A} {F = F} wf (return∞ valg)) x)
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
 -- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.
@@ -363,23 +385,7 @@ sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (call
 -- D143: split on the arrow's quantity. At an ERASED arrow the symbol never
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Grade.pure ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  return∞ (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
--- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Grade.eff ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) name base-Unit bCod) tt)
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero Once.Spec.Grade.act ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) name base-Unit bCod) tt)
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  return∞ (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
-⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom bCod) ⟧ˢ fmt σ dγ =
-  return∞ (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom bCod) arg)
--- VALUE-position references (non-arrow sigOp): a pure FFI contract
--- (`value-info` is `ffiV`), so the reference is the interpretation's value.
--- Matches elaborate's `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays
--- `refl`.
-{-# CATCHALL #-}
-⟦ sigOp {Γ = Γ} {A = A} name (con-base ib) ⟧ˢ fmt σ dγ = sigOpˢ fmt σ (value-info {Unit} {A} name base-Unit ib) tt
+⟦ sigOp {A = A} name c ⟧ˢ fmt σ dγ = subst T∞ (sym (⟦wk₀⟧ᴰ A)) (sigOpSem A name c fmt σ)
 -- D246: a reference to a module ENTRY is a CALL of it (the IR's `Call`), so it
 -- reads the CALL environment; a spliced telescope reference (`poly`) reads the
 -- reference environment.

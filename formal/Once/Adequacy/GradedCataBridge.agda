@@ -126,9 +126,9 @@ alg-step : ∀ {π : Purity} (u : pure ⊑π π) {F} {A : Type} (wfF : WellForme
          → (∀ {x y} → RelGV (⟦ F ⟧T A) x y → RelGM π A (alg₁ x) (alg₂ y))
          → ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (RelGM π A) y₁ y₂
          → RelGM π A (bindM π (seqM u F (coerce-μ-out wfF (M π ⟦ A ⟧ᵛ) y₁)) λ l → alg₁ (cf⁻¹ᵛ A wfF l))
-                     (cata-ev-algᴰ-D {F} {A} wfF alg₂ (coerce-μ-out wfF (T∞ ⟦ A ⟧ᴰ) y₂))
+                     (cata-ev-algᴰ-D {F = F} {A = A} wfF alg₂ (coerce-μ-out wfF (T∞ ⟦ A ⟧ᴰ) y₂))
 alg-step ⊑-pure {F} {A} wfF alg₁ alg₂ algR {y₁} {y₂} rsf =
-  subst (λ v → RelGM pure A v (cata-ev-algᴰ-D {F} {A} wfF alg₂ (coerce-μ-out wfF (T∞ ⟦ A ⟧ᴰ) y₂)))
+  subst (λ v → RelGM pure A v (cata-ev-algᴰ-D {F = F} {A = A} wfF alg₂ (coerce-μ-out wfF (T∞ ⟦ A ⟧ᴰ) y₂)))
         (sym (>>=ᵖ-β (coerce-μ-out wfF ⟦ A ⟧ᵛ y₁) (λ l → alg₁ (cf⁻¹ᵛ A wfF l))))
         (retargetˡ refl (RelS-bind (seqF-relᵖ F (RelGV A) (out-relR wfF (RelGM pure A) rsf))
                                    (λ r → algR (z-relᵍ wfF r))))

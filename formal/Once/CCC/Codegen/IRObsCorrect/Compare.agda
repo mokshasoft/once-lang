@@ -129,7 +129,7 @@ module CompareC {FS : FrameSemantics} where
       span′ = subst (SpanAt prog base) em≡ span
 
       -- ── THE DENOTATION: a pure value, `bool` of the comparison.
-      a : EvV.⟦ SpecTy.Int SpecTy.* SpecTy.Int ⟧
+      a : EvV.⟦ SpecTy.Int {0} SpecTy.* SpecTy.Int ⟧
       a = argOf si x
 
       c : Bool
@@ -151,7 +151,7 @@ module CompareC {FS : FrameSemantics} where
       -- The block's info decodes the SAME argument: the two base witnesses
       -- are the one canonical witness.
       a≡ : argOf si′ x ≡ a
-      a≡ = cong (λ b → forgetᵇ b (subst idᶠ (cohᴰ (SpecTy.Int SpecTy.* SpecTy.Int)) x)) (sym (bt-II (baseA si)))
+      a≡ = cong (λ b → forgetᵇ b (subst idᶠ (cohᴰ (SpecTy.Int {0} SpecTy.* SpecTy.Int)) x)) (sym (bt-II (baseA si)))
 
       -- ── THE STATES. Two register-only steps, then the nine of the build.
       fs0 fs1 fs2 : FlatState

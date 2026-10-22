@@ -1208,7 +1208,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
     RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
               {B = μ-type F ⇒[ mk-kind Many π ] A}
               (bridge-c dalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} ralg →   -- plan 0.113 B1
-    relS-ret {x = λ v → cata-semᵛ u wfF c₁ v} {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (return∞ c₂)) x}
+    relS-ret {x = λ v → cata-semᵛ u wfF c₁ v} {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c₂)) x}
              ((λ {a} {b} rv → cata-bridgeᵍ u {wfF = wfF} c₁ (λ z → return∞ c₂ >>=∞ λ k → k z) (λ r → retargetʳ refl (proj₁ ralg r)) rv)
              , cata-clo-rel {F} {A} {π} wfF (proj₂ ralg)))
   -- D193 / D273: the unfold. The coalgebra lives in the context and the source
@@ -1338,6 +1338,6 @@ module _ (σ-self : RelDefs fmt σ σ) where
     RelGᵖ-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
               {B = μ-type F ⇒[ mk-kind Many π ] A}
               (bridge-i dalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} ralg →
-    relS-ret {x = λ v → cata-semᵛ u wfF c₁ v} {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (return∞ c₂)) x}
+    relS-ret {x = λ v → cata-semᵛ u wfF c₁ v} {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c₂)) x}
              ((λ {a} {b} rv → cata-bridgeᵍ u {wfF = wfF} c₁ (λ z → return∞ c₂ >>=∞ λ k → k z) (λ r → retargetʳ refl (proj₁ ralg r)) rv)
              , cata-clo-rel {F} {A} {π} wfF (proj₂ ralg)))

@@ -80,7 +80,7 @@ import Once.Spec.Sub as LS
 ------------------------------------------------------------------------
 
 private
-  bool-refl : ∀ (v : LGr.⟦ LT.Unit LT.+ LT.Unit ⟧ᵛ) → ValR (g-+ g-unit g-unit) v v
+  bool-refl : ∀ (v : LGr.⟦ LT.Unit {0} LT.+ LT.Unit ⟧ᵛ) → ValR (g-+ g-unit g-unit) v v
   bool-refl (inj₁ _) = tt
   bool-refl (inj₂ _) = tt
 

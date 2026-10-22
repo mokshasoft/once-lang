@@ -564,7 +564,7 @@ resolveExpr-faithful polys imps userFns fresh
 -- in the context).
 resolveExpr-faithful polys imps userFns fresh (Srf.cata {Γ = Γ} {Ψ = Ψ} {F = F} {A = A} wf alg) dγ =
   cong (λ ac → (ac >>=∞ λ valg →
-                  return∞ (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} wf (return∞ valg)) x)))
+                  return∞ (λ x → sem-cata wf (SD.cata-ev-algˢ {C = A} {F = F} wf (return∞ valg)) x)))
        (( resolveExpr-faithful polys imps userFns fresh alg (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-*Many Ψ) dγ)))   -- plan 0.113 B1
 -- ana: dual of cata (D273) — the coalgebra is BOUND once at the same
 -- environment, so the clause is ONE `cong` over the coalgebra denotation.

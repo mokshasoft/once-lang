@@ -41,7 +41,9 @@ open import Once.Internal.Type using (μ-type; Functor; ⟦_⟧T)
 open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Internal.Name using (showCanonical)
-open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
+open import Function using (id; _$_)
+open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
 open import Data.Maybe using (just)
 open import Once.Internal.Trace using (T; fmapT; Interp; module Interp)
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; loop)
@@ -325,19 +327,19 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- implementation (`decl-*`: the world declares it).
 -- D274: a resolved reference names a generator of Σ — own or not, its meaning
 -- is that declaration's implementation.
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ wn lk conc refl) fmt ρ dγ =
-  sigOpRefᵛ {A = A} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} lk)
+⟦_⟧ᵢ (t-var-resolved {cn = cn} {T = T} _ wn lk conc refl) fmt ρ dγ =
+  subst id (sym (⟦wk₀⟧ᵛ T)) $ sigOpRefᵛ {A = T} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} lk)
 -- D248: an own-module DEFINITION's reference is a call of it, and means it.
-⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} _ lk refl) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
+⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} {T = T} _ lk refl) fmt ρ dγ = subst id (sym (⟦wk₀⟧ᵛ T)) (impAt (NamedCtx.imports ctx) x (entries ρ) lk)
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —
 -- read from the scope's import environment (an FFI entry's is its contract).
-⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} _ _ lk _ refl) fmt ρ dγ = impAt (NamedCtx.imports ctx) x (entries ρ) lk
+⟦_⟧ᵢ {ctx = ctx} (t-var-import {x = x} {T = T} _ _ lk _ refl) fmt ρ dγ = subst id (sym (⟦wk₀⟧ᵛ T)) (impAt (NamedCtx.imports ctx) x (entries ρ) lk)
 -- Plan 0.58 / D071: an infer-mode ground telescope reference MEANS its body —
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
 -- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
 ⟦_⟧ᵢ {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} _ _ lp _ eT) fmt ρ dγ =
-  subst (λ X → ⟦ X ⟧ᵛ) (sym eT) (defAt (NamedCtx.polys ctx) x (defs ρ) lp (extractGround s g) (ground-kinded s g))
+  subst (λ X → ⟦ X ⟧ᵛ) (sym eT) (defAt (NamedCtx.polys ctx) x (defs ρ) lp (extractGround s g) (ground-kinded {Δ = NamedCtx.kinds ctx} s g))
 ⟦_⟧ᵢ {ctx = ctx} (t-annot _ d refl) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
 ⟦_⟧ᵢ {ctx = ctx} (t-pair da db) fmt ρ dγ = (⟦ da ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ db ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → returnᵖ (a , b)
 ⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) dγ >>=ᵖ λ v → semP neg-info int-prim fmt v

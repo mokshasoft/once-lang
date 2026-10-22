@@ -18,6 +18,7 @@
 
 module Once.Internal.StreamInf where
 
+open import Once.Spec.Type using (Fun)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Internal.Trace using (T; ret; call; halt)
@@ -62,6 +63,6 @@ mutual
   mapAnaᴵ H (G₁ S⊗ G₂) coalg (x , y)  = (mapAnaᴵ H G₁ coalg x , mapAnaᴵ H G₂ coalg y)
 
 -- Over a source functor.
-anaFᴵ : ∀ (F : Functor) {A : Set}
+anaFᴵ : ∀ {m} (F : Fun m) {A : Set}
       → (A → T∞ (⟦ F ⟧F A)) → A → νᴵ (translateF Carrier Carrier F)
 anaFᴵ F {A} coalg = anaᴵ (translateF Carrier Carrier F) (λ a → fmap∞ (coerce-ν-in F A) (coalg a))

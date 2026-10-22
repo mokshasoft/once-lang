@@ -150,7 +150,7 @@ cataM-fold : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {π : Purity} (wfF 
            → RelS (RelD (μ-type F ⇒[ mk-kind Many π ] A))
                   (liftFn fmt ρ {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {μ-type F ⇒[ mk-kind Many π ] A}
                           (cataM {F} {A} wfF IR.Heap) c)
-                  (return∞ (λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} wfF (return∞ c′)) x))
+                  (return∞ (λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c′)) x))
 cataM-fold {F = F} {A = A} {π = π} wfF {c} {c′} r =
   ≡ˢ (trans (subst-T-return∞ (cong₂ (λ x y → x → T∞ y) (cohᴰ (μ-type F)) (cohᴰ A))
                              (λ b → evalᴰ fmt ρ innerCata (c₀ , b)))

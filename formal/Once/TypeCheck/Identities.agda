@@ -235,7 +235,7 @@ open import Once.Grammar using (GType)
 -- typeToGType is injective on its domain (restricted to grammar-
 -- expressible types): if two types map to the same GType, they're
 -- equal.
-typeToGType-injective : ∀ {m} {t₁ t₂ : Ty m} {g : GType}
+typeToGType-injective : ∀ {t₁ t₂ : Type} {g : GType}
   → typeToGType t₁ ≡ just g
   → typeToGType t₂ ≡ just g
   → (gtypeToType g ≡ just t₁) × (gtypeToType g ≡ just t₂)

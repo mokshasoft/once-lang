@@ -432,15 +432,15 @@ cata-core : ∀ {F} (wf : WellFormedF F) {A A′ : Type} {π π′ : Purity}
               {valg valg′ : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ}
           → RelD (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) valg valg′
           → ∀ (x : ⟦μ⟧ F)
-          → Rc p (sem-cata wf (cata-ev-algˢ {F} {A′} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
-                 (sem-cata wf (cata-ev-algˢ {F} {A} wf (return∞ valg′)) x)
+          → Rc p (sem-cata wf (cata-ev-algˢ {C = A′} {F = F} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
+                 (sem-cata wf (cata-ev-algˢ {C = A} {F = F} wf (return∞ valg′)) x)
 cata-core {F = F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
   cataS-rel {translateF Carrier Carrier F} (Rc p) algR x
   where
     self′ = RelD-rightself (⟦ F ⟧T A ⇒[ mk-kind Many π ] A) ralg
     algR : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (Rc p) y₁ y₂
-         → Rc p (cata-ev-algˢ {F : Fun _} {A′ : Ty _} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁))
-                (cata-ev-algˢ {F : Fun _} {A : Ty _} wf (return∞ valg′) (coerce-μ-out wf _ y₂))
+         → Rc p (cata-ev-algˢ {C = A′} {F = F} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁))
+                (cata-ev-algˢ {C = A} {F = F} wf (return∞ valg′) (coerce-μ-out wf _ y₂))
     algR {y₁} {y₂} r =
       RelS-assocʳ (seq-rel p F (out-rel wf _ r))
         (λ rl → retargetˡ refl (retargetʳ refl (RelS-fmap (ralg (layer-rel wf d p rl)) (<:-rel p))))
