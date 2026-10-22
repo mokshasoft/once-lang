@@ -136,10 +136,9 @@ module _ {s} {S : Defs s} where
     ; entryIs  = λ lp → proj₂ (telFind ts lp)
     }
 
-private
-  u0 : ∀ {m s} {S : Defs s} {Δ : Once.Spec.Type.KCtx m} {Ψ : Usage 0} {t A π}
-     → Ty._⊩_⊢[_]_∷_!_ Σ S Δ SCx.∅ Ψ t A π → Ty._⊩_⊢[_]_∷_!_ Σ S Δ SCx.∅ [] t A π
-  u0 {Ψ = []} d = d
+u0 : ∀ {m s} {S : Defs s} {Δ : Once.Spec.Type.KCtx m} {Ψ : Usage 0} {t A π}
+   → Ty._⊩_⊢[_]_∷_!_ Σ S Δ SCx.∅ Ψ t A π → Ty._⊩_⊢[_]_∷_!_ Σ S Δ SCx.∅ [] t A π
+u0 {Ψ = []} d = d
 
 elabM : ∀ {s} {S : Defs s} (ft : Data.Maybe.Maybe Type) {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e ty Ψ}
       → E.Views Σ S ctx → MonoBody ft ctx e ty Ψ
