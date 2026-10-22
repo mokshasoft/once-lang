@@ -93,6 +93,7 @@ inferenceTests = testGroup "type inference"
 inferenceLimitTests :: TestTree
 inferenceLimitTests = testGroup "no signature: the synthesized type (D323)"
   [ rejects "bare `id` needs a signature"                   [ "f = id" ]
+  , rejects "bare `snd` needs a signature"                  [ "f = snd" ]
   , rejects "a bare `compose` chain needs a signature"      [ "f = compose id id" ]
   , rejects "`pair id id` needs a signature"                [ "f = pair id id" ]
   , rejects "a lambda needs a signature"                    [ "f x = x + 1" ]

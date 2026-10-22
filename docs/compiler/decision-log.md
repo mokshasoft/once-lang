@@ -19074,7 +19074,15 @@ one type per definition can be complete for it (an oracle hypothesis would be re
 ### Consequences
 * `Bridges.complete` becomes provable from the checker's existing completeness (`infer-complete`).
 * Plan 0.59 (oracle principality) is no longer needed for correctness; `language.md` Open item 3 closes.
-* About 4 of 153 test programs (and some Haskell specs) gain a signature.
+* Five test programs existed to test a definition without a signature whose body only checks:
+  `infer-id` (`myId = id`), `infer-lambda` (`addOne x = x + 1`), `infer-compose` and
+  `infer-compose-chain` (`compose exit@S …`), `infer-poly-alias` (`mySnd = snd`). They are now rejected,
+  and with a signature they would duplicate existing tests, so they are deleted (cef480e12), not
+  signed. Their run-time behaviour is covered by signed programs (`layer4-named-id`,
+  `layer4-named-snd`, the signed `compose exit@S` mains). GeneratorSpec's group "no signature: the
+  synthesized type" checks the rejections (`f = id`, `f = snd`, `f = compose id id`, `f = pair id id`,
+  `f x = x + 1`) and that an applied generator still synthesizes (`f = id 7`); InferSpec runs the two
+  sig-less programs that synthesize (`infer-literal`, `infer-applied`).
 * The oracle (`TypeCheck.Principal`) had no other use and is deleted; the front end (`extractFunctions`,
   `polyDefNames`, `inferType`) types a definition without a signature by synthesis alone.
 

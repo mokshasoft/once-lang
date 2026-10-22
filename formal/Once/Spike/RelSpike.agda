@@ -1122,7 +1122,9 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   --       called that "the likely rejection".  That was backwards — the
   --       parameterised shape is the one Agda accepts (`μS`,
   --       Functor.agda:103-104; `_∼S_`, Laws.agda:43-46; `_∼ᵈ_`,
-  --       ValueDomainLaws.agda:53-58, all escape-hatch-free).  What must
+  --       ValueDomainLaws.agda:53-58, all escape-hatch-free; that module
+  --       was deleted 2026-10-22, superseded by the T∞ bridges, so read it
+  --       and the line numbers below from git history).  What must
   --       not be done is hard-wiring `RelV`, and the reason is
   --       TERMINATION, not positivity.  0b sidesteps both by making the
   --       layer a mutual `data` instead of a combinator.
