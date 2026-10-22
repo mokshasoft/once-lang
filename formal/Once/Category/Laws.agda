@@ -12,6 +12,7 @@
 module Once.Category.Laws where
 
 
+open import Once.Spec.Type using (Ty; Fun)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
@@ -392,7 +393,7 @@ eval-cata-In-id {F} wf m x =
 -- This applies a function through the functor structure, working with
 -- Type-level functor application (⟦ F ⟧T) rather than Set-level (⟦ F ⟧F).
 --
-fmap-Type : ∀ F {X Y : Type} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
+fmap-Type : ∀ {m} (F : Fun m) {X Y : Ty m} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
 fmap-Type (K A) f x = x
 fmap-Type Id f x = f x
 fmap-Type (F ⊕ G) f (inj₁ x) = inj₁ (fmap-Type F f x)
@@ -428,7 +429,7 @@ open import Once.Semantics.Value Carrier Carrier
   using (fmap-struct-coherence; fmap-struct-coherence′; sem-fmap-Type)
 
 -- | fmap-Type equals sem-fmap-Type (both defined identically)
-fmap-Type-eq : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+fmap-Type-eq : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
              → fmap-Type F f x ≡ sem-fmap-Type F f x
 fmap-Type-eq (K A) f x = refl
 fmap-Type-eq Id f x = refl
@@ -441,13 +442,13 @@ fmap-Type-eq (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-Type-eq F f x) (fmap-Type-e
 -- Now that coerce-functor is defined structurally (not via subst),
 -- this follows directly from fmap-struct-coherence and fmap-Type-eq.
 --
-fmap-coerce-coherence : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+fmap-coerce-coherence : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
                       → coerce-functor⁻¹ F Y (sem-fmap F f (coerce-functor F X x)) ≡ fmap-Type F f x
 fmap-coerce-coherence F f x = trans (fmap-struct-coherence F f x) (sym (fmap-Type-eq F f x))
 
 -- | coerce⁻¹ ∘ sem-fmap ≡ fmap-Type ∘ coerce⁻¹ (for Set-level input)
 --
-fmap-coerce-coherence′ : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (y : ⟦ F ⟧F ⟦ X ⟧)
+fmap-coerce-coherence′ : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (y : ⟦ F ⟧F ⟦ X ⟧)
                        → coerce-functor⁻¹ F Y (sem-fmap F f y) ≡ fmap-Type F f (coerce-functor⁻¹ F X y)
 fmap-coerce-coherence′ F f y = trans (fmap-struct-coherence′ F f y) (sym (fmap-Type-eq F f _))
 

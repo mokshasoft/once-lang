@@ -13,6 +13,7 @@
 
 module Once.CCC.Machine.IR.MuSize where
 
+open import Once.Spec.Type using (Ty; Fun)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
 import Data.Nat as ℕ
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; n≤1+n; n<1+n;
@@ -33,7 +34,7 @@ open import Once.Semantics.Value Carrier Carrier using (sem-In-Out; sem-cata-com
 -- sum-Id: sum the ℕ at the Id (recursive) positions of an F-layer.
 -- (Structural on the functor F.)
 ------------------------------------------------------------------------
-sum-Id : ∀ F → ⟦ F ⟧F ℕ → ℕ
+sum-Id : ∀ {m} (F : Fun m) → ⟦ F ⟧F ℕ → ℕ
 sum-Id (K t)     x         = 0
 sum-Id Id        n         = n
 sum-Id (F₁ ⊕ F₂) (inj₁ x)  = sum-Id F₁ x

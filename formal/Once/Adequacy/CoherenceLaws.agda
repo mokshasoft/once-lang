@@ -387,7 +387,7 @@ module _ {A A′ : Type} (p : A <: A′) where
   Rc t₁ t₂ = RelS (RelD A′) t₁ (fmap∞ ⟦ p ⟧<: t₂) × RelS (RelD A) t₂ t₂
 
   -- …and on a sequenced layer.
-  Rl : ∀ F → ⟦ F ⟧F ⟦ A′ ⟧ᴰ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
+  Rl : ∀ {m} (F : Fun m) → ⟦ F ⟧F ⟦ A′ ⟧ᴰ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
   Rl F = RelF F (λ a b → RelD A′ a (⟦ p ⟧<: b) × RelD A b b)
 
   seq-rel : ∀ F {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)}

@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Polynomial
@@ -35,7 +35,7 @@ open import Once.Internal.Type.WellFormed
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.FunctorMeaning
 -- | Translation preserves interpretation
-translate-coherence : ∀ IntRep FloatRep F X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X
+translate-coherence : ∀ {m} IntRep FloatRep (F : Fun m) X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X
 translate-coherence IntRep FloatRep (K A) X = refl
 translate-coherence IntRep FloatRep Id X = refl
 translate-coherence IntRep FloatRep (F ⊕ G) X

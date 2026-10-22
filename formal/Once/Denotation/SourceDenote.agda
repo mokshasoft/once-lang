@@ -146,7 +146,7 @@ internalDefs fmt ρ = defsSem ρ (λ x A → subst T∞ (cohᴰ A) (evalᴰ fmt 
 -- first-order argument (plan 0.105), read into the value domain — the IR's
 -- `evalᴰ (SigOp si)` without the IRTy transports (`CataErased.liftFn-SigOp`).
 -- A pure FFI contract reads the call environment's pure half.
-sigOpˢ : ∀ {A B} → TargetNum → DefsSem → SigOpInfo A B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+sigOpˢ : ∀ {m} {A B : Ty m} → TargetNum → DefsSem → SigOpInfo A B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (calls σ)) si (forgetᵇ (baseA si) a)))
 
 ------------------------------------------------------------------------

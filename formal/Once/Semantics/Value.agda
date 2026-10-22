@@ -51,6 +51,7 @@
 -- width-free exact carrier — the analogue of `Once.Word.Carrier`.
 module Once.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 
+open import Once.Spec.Type using (Ty; Fun; KCtx; Base; b-var)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -116,7 +117,7 @@ open import Once.Internal.Value IntRep FloatRep
 -- This allows converting between Type-level and Set-level functor apps.
 -- Proven by structural induction on F.
 --
-sem-functor-coherence : ∀ F X → ⟦ ⟦ F ⟧T X ⟧ ≡ ⟦ F ⟧F ⟦ X ⟧
+sem-functor-coherence : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ ⟦ F ⟧T X ⟧ ≡ ⟦ F ⟧F ⟦ X ⟧
 sem-functor-coherence (K A) X = refl
 sem-functor-coherence Id X = refl
 sem-functor-coherence (F ⊕ G) X rewrite sem-functor-coherence F X
@@ -133,7 +134,7 @@ sem-functor-coherence (F ⊗ G) X rewrite sem-functor-coherence F X
 ------------------------------------------------------------------------
 
 -- | Round-trip: coerce then coerce⁻¹ is identity
-coerce-round-trip : ∀ F X (x : ⟦ ⟦ F ⟧T X ⟧)
+coerce-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ ⟦ F ⟧T X ⟧)
                   → coerce-functor⁻¹ F X (coerce-functor F X x) ≡ x
 coerce-round-trip (K A) X x = refl
 coerce-round-trip Id X x = refl
@@ -142,7 +143,7 @@ coerce-round-trip (F ⊕ G) X (inj₂ y) = cong inj₂ (coerce-round-trip G X y)
 coerce-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce-round-trip F X x) (coerce-round-trip G X y)
 
 -- | Round-trip: coerce⁻¹ then coerce is identity
-coerce⁻¹-round-trip : ∀ F X (x : ⟦ F ⟧F ⟦ X ⟧)
+coerce⁻¹-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ F ⟧F ⟦ X ⟧)
                     → coerce-functor F X (coerce-functor⁻¹ F X x) ≡ x
 coerce⁻¹-round-trip (K A) X x = refl
 coerce⁻¹-round-trip Id X x = refl
@@ -157,20 +158,20 @@ coerce⁻¹-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce⁻¹-round-trip
 ------------------------------------------------------------------------
 
 -- | Alias for coerce-functor (backwards compatibility)
-coerce-struct : ∀ F X → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
+coerce-struct : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
 coerce-struct = coerce-functor
 
 -- | Alias for coerce-functor⁻¹ (backwards compatibility)
-coerce-struct⁻¹ : ∀ F X → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
+coerce-struct⁻¹ : ∀ {m} (F : Fun m) (X : Ty m) → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
 coerce-struct⁻¹ = coerce-functor⁻¹
 
 -- | Alias for coerce-round-trip
-coerce-struct-round-trip : ∀ F X (x : ⟦ ⟦ F ⟧T X ⟧)
+coerce-struct-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ ⟦ F ⟧T X ⟧)
                          → coerce-struct⁻¹ F X (coerce-struct F X x) ≡ x
 coerce-struct-round-trip = coerce-round-trip
 
 -- | Alias for coerce⁻¹-round-trip
-coerce-struct⁻¹-round-trip : ∀ F X (x : ⟦ F ⟧F ⟦ X ⟧)
+coerce-struct⁻¹-round-trip : ∀ {m} (F : Fun m) (X : Ty m) (x : ⟦ F ⟧F ⟦ X ⟧)
                            → coerce-struct F X (coerce-struct⁻¹ F X x) ≡ x
 coerce-struct⁻¹-round-trip = coerce⁻¹-round-trip
 
@@ -182,23 +183,23 @@ coerce-struct⁻¹-round-trip = coerce⁻¹-round-trip
 ------------------------------------------------------------------------
 
 -- Pair operations
-sem-fst : ∀ {A B} → ⟦ A * B ⟧ → ⟦ A ⟧
+sem-fst : ∀ {m} {A B : Ty m} → ⟦ A * B ⟧ → ⟦ A ⟧
 sem-fst = proj₁
 
-sem-snd : ∀ {A B} → ⟦ A * B ⟧ → ⟦ B ⟧
+sem-snd : ∀ {m} {A B : Ty m} → ⟦ A * B ⟧ → ⟦ B ⟧
 sem-snd = proj₂
 
-sem-pair : ∀ {A B} → ⟦ A ⟧ → ⟦ B ⟧ → ⟦ A * B ⟧
+sem-pair : ∀ {m} {A B : Ty m} → ⟦ A ⟧ → ⟦ B ⟧ → ⟦ A * B ⟧
 sem-pair a b = a , b
 
 -- Sum operations
-sem-inl : ∀ {A B} → ⟦ A ⟧ → ⟦ A + B ⟧
+sem-inl : ∀ {m} {A B : Ty m} → ⟦ A ⟧ → ⟦ A + B ⟧
 sem-inl = inj₁
 
-sem-inr : ∀ {A B} → ⟦ B ⟧ → ⟦ A + B ⟧
+sem-inr : ∀ {m} {A B : Ty m} → ⟦ B ⟧ → ⟦ A + B ⟧
 sem-inr = inj₂
 
-sem-case : ∀ {A B C} → (⟦ A ⟧ → ⟦ C ⟧) → (⟦ B ⟧ → ⟦ C ⟧) → ⟦ A + B ⟧ → ⟦ C ⟧
+sem-case : ∀ {m} {A B C : Ty m} → (⟦ A ⟧ → ⟦ C ⟧) → (⟦ B ⟧ → ⟦ C ⟧) → ⟦ A + B ⟧ → ⟦ C ⟧
 sem-case f g (inj₁ a) = f a
 sem-case f g (inj₂ b) = g b
 
@@ -208,17 +209,17 @@ sem-case f g (inj₂ b) = g b
 -- Semantic Laws
 ------------------------------------------------------------------------
 
-sem-fst-pair : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) → sem-fst (sem-pair a b) ≡ a
+sem-fst-pair : ∀ {m} {A B : Ty m} (a : ⟦ A ⟧) (b : ⟦ B ⟧) → sem-fst (sem-pair a b) ≡ a
 sem-fst-pair a b = refl
 
-sem-snd-pair : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) → sem-snd (sem-pair a b) ≡ b
+sem-snd-pair : ∀ {m} {A B : Ty m} (a : ⟦ A ⟧) (b : ⟦ B ⟧) → sem-snd (sem-pair a b) ≡ b
 sem-snd-pair a b = refl
 
-sem-case-inl : ∀ {A B C} (f : ⟦ A ⟧ → ⟦ C ⟧) (g : ⟦ B ⟧ → ⟦ C ⟧) (a : ⟦ A ⟧) →
+sem-case-inl : ∀ {m} {A B C : Ty m} (f : ⟦ A ⟧ → ⟦ C ⟧) (g : ⟦ B ⟧ → ⟦ C ⟧) (a : ⟦ A ⟧) →
   sem-case f g (sem-inl a) ≡ f a
 sem-case-inl f g a = refl
 
-sem-case-inr : ∀ {A B C} (f : ⟦ A ⟧ → ⟦ C ⟧) (g : ⟦ B ⟧ → ⟦ C ⟧) (b : ⟦ B ⟧) →
+sem-case-inr : ∀ {m} {A B C : Ty m} (f : ⟦ A ⟧ → ⟦ C ⟧) (g : ⟦ B ⟧ → ⟦ C ⟧) (b : ⟦ B ⟧) →
   sem-case f g (sem-inr b) ≡ g b
 sem-case-inr f g b = refl
 
@@ -233,7 +234,7 @@ sem-case-inr f g b = refl
 
 -- | Type-level functorial map (works on ⟦ ⟦ F ⟧T X ⟧)
 -- This mirrors sem-fmap but at the Type level
-sem-fmap-Type : ∀ F {X Y : Type} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
+sem-fmap-Type : ∀ {m} (F : Fun m) {X Y : Ty m} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
 sem-fmap-Type (K A) f x = x
 sem-fmap-Type Id f x = f x
 sem-fmap-Type (F ⊕ G) f (inj₁ x) = inj₁ (sem-fmap-Type F f x)
@@ -241,7 +242,7 @@ sem-fmap-Type (F ⊕ G) f (inj₂ y) = inj₂ (sem-fmap-Type G f y)
 sem-fmap-Type (F ⊗ G) f (x , y) = (sem-fmap-Type F f x , sem-fmap-Type G f y)
 
 -- | coerce-struct⁻¹ ∘ sem-fmap ∘ coerce-struct ≡ sem-fmap-Type
-fmap-struct-coherence : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+fmap-struct-coherence : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
                       → coerce-struct⁻¹ F Y (sem-fmap F f (coerce-struct F X x)) ≡ sem-fmap-Type F f x
 fmap-struct-coherence (K A) f x = refl
 fmap-struct-coherence Id f x = refl
@@ -250,7 +251,7 @@ fmap-struct-coherence (F ⊕ G) f (inj₂ y) = cong inj₂ (fmap-struct-coherenc
 fmap-struct-coherence (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-struct-coherence F f x) (fmap-struct-coherence G f y)
 
 -- | coerce-struct⁻¹ ∘ sem-fmap ≡ sem-fmap-Type ∘ coerce-struct⁻¹
-fmap-struct-coherence′ : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (y : ⟦ F ⟧F ⟦ X ⟧)
+fmap-struct-coherence′ : ∀ {m} (F : Fun m) {X Y : Ty m} (f : ⟦ X ⟧ → ⟦ Y ⟧) (y : ⟦ F ⟧F ⟦ X ⟧)
                        → coerce-struct⁻¹ F Y (sem-fmap F f y) ≡ sem-fmap-Type F f (coerce-struct⁻¹ F X y)
 fmap-struct-coherence′ (K A) f y = refl
 fmap-struct-coherence′ Id f y = refl
@@ -269,10 +270,11 @@ fmap-struct-coherence′ (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-struct-coherenc
 --
 -- This is the key lemma for well-formed functors.
 --
-coerce-base-type-round-trip : ∀ {A} → (pA : IsBaseType A) → (x : ⟦ A ⟧)
+coerce-base-type-round-trip : ∀ {m} {Δ : KCtx m} {A : Ty m} → (pA : Base Δ A) → (x : ⟦ A ⟧)
                             → coerce-base-to-full pA (coerce-full-to-base A x) ≡ x
 coerce-base-type-round-trip base-Unit x = refl
 coerce-base-type-round-trip base-Void ()
+coerce-base-type-round-trip (b-var _) ()
 coerce-base-type-round-trip base-Int x = refl
 coerce-base-type-round-trip base-Float x = refl
 coerce-base-type-round-trip (base-Prod pA pB) (a , b) =
@@ -488,7 +490,7 @@ sem-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf _ y)
 --
 -- coerce-μ-in F ∘ sem-fmap F f ≡ sfmap (translateF F) f ∘ coerce-μ-in F
 --
-fmap-coerce-μ-coherence : ∀ F {X Y : Set} (f : X → Y) (x : ⟦ F ⟧F X)
+fmap-coerce-μ-coherence : ∀ {m} (F : Fun m) {X Y : Set} (f : X → Y) (x : ⟦ F ⟧F X)
                         → coerce-μ-in F Y (sem-fmap F f x) ≡ sfmap (translateF IntRep FloatRep F) f (coerce-μ-in F X x)
 fmap-coerce-μ-coherence (K A) f x = refl
 fmap-coerce-μ-coherence Id f x = refl

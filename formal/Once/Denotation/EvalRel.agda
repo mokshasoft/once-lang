@@ -58,7 +58,7 @@ open import Once.Internal.Value Carrier Carrier using () renaming (⟦_⟧F to �
 -- IR base types: related is equal, and equal is related.
 ------------------------------------------------------------------------
 
-base-eqI : ∀ {A} → IsBaseTypeI A → ∀ {x y : ⟦ A ⟧ᴰᴵ} → RelD ⌈ A ⌉ x y → x ≡ y
+base-eqI : ∀ {m} {A : Ty m} → IsBaseTypeI A → ∀ {x y : ⟦ A ⟧ᴰᴵ} → RelD ⌈ A ⌉ x y → x ≡ y
 base-eqI II.base-Unit       _ = refl
 base-eqI II.base-Void {()}
 base-eqI II.base-Int        r = r
@@ -70,7 +70,7 @@ base-eqI (II.base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eqI b r)
 base-eqI (II.base-Sum a b) {inj₁ _} {inj₂ _} ()
 base-eqI (II.base-Sum a b) {inj₂ _} {inj₁ _} ()
 
-base-reflI : ∀ {A} → IsBaseTypeI A → ∀ (x : ⟦ A ⟧ᴰᴵ) → RelD ⌈ A ⌉ x x
+base-reflI : ∀ {m} {A : Ty m} → IsBaseTypeI A → ∀ (x : ⟦ A ⟧ᴰᴵ) → RelD ⌈ A ⌉ x x
 base-reflI II.base-Unit       x = tt
 base-reflI II.base-Void       ()
 base-reflI II.base-Int        x = refl
@@ -129,7 +129,7 @@ module _ (fmt : TargetNum) where
     private
       E  : ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
       E  = evalᴰ fmt ρ
-      E′ : ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
+      E′ : ∀ {m} {A B : Ty m} → IR A B → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ
       E′ = evalᴰ fmt ρ′
 
     -- A SigOp's block is a finite tree of first-order values.
@@ -273,7 +273,7 @@ private
               → subst idᶠ (sym (cong₂ _⊎_ P Q)) (inj₂ y) ≡ inj₂ (subst idᶠ (sym Q) y)
   inj₂-subst⁻ refl refl y = refl
 
-  ≡ᴰ : ∀ A {u u′ w w′ : ⟦ A ⟧ᴰ} → u ≡ u′ → w ≡ w′ → RelD A u′ w′ → RelD A u w
+  ≡ᴰ : ∀ {m} (A : Ty m) {u u′ w w′ : ⟦ A ⟧ᴰ} → u ≡ u′ → w ≡ w′ → RelD A u′ w′ → RelD A u w
   ≡ᴰ A refl refl r = r
 
   ≡ˢ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n n′ : T∞ Y} → m ≡ m′ → n ≡ n′ → RelS R m′ n′ → RelS R m n

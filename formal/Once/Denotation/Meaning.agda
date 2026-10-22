@@ -159,14 +159,14 @@ svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 
 -- A closed named/sigop value reference, IR-free: the contract's computation
 -- (`sigOpT`, the IR's own dispatch), read into the value domain.
-sigOpValᴰ : ∀ {B} → TargetNum → FFIAnswers → SigOpInfo Unit B → T∞ ⟦ B ⟧ᴰ
+sigOpValᴰ : ∀ {m} {B : Ty m} → TargetNum → FFIAnswers → SigOpInfo Unit B → T∞ ⟦ B ⟧ᴰ
 sigOpValᴰ fmt φ si = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt))
 
 -- An EXTERNAL sigop reference (`t-var-resolved/import`). At an ARROW
 -- type the reference is a first-order function POINTER whose effect fires on
 -- APPLICATION (`arrow-info` respects the arrow's `Purity`). Split on the
 -- WITNESS (not `A`'s shape) so `con-base` reduces at an abstract base `A`.
-sigOpRefᴰ : ∀ {A} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T∞ ⟦ A ⟧ᴰ
+sigOpRefᴰ : ∀ {m} {A : Ty m} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T∞ ⟦ A ⟧ᴰ
 sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
 -- D143: at an ERASED arrow the symbol never receives its argument, so the
 -- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.

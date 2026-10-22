@@ -67,7 +67,7 @@ open import Once.Internal.Iterative using (T∞; fmap∞)
 open import Once.Denotation.ValueRel using (RelD; RelS-fmap; RelS-fmapˡ)
 open import Data.Unit using (tt)
 
-<:-refl-rel : ∀ A {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A (⟦ <:-refl A ⟧<: x) y
+<:-refl-rel : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A (⟦ <:-refl A ⟧<: x) y
 <:-refl-rel ST.Unit   r = r
 <:-refl-rel ST.Void   {()}
 <:-refl-rel ST.Int    r = r
