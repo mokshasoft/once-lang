@@ -106,7 +106,7 @@ once-compiler b64 b32 brv = SA.spec-compiler SA.bridges
 record CertifiedBuild : Set₁ where
   field
     correctness : CorrectCompiler       -- soundness + completeness (the minimal claim)
-    typechecker : VerifiedTypeChecker    -- determinism ∧ totality ∧ errors ∧ identities
+    typechecker : ∀ {m} → VerifiedTypeChecker {m}   -- determinism ∧ totality ∧ errors ∧ identities, at every kind context
     -- what the language promises about itself (the Spec's metatheory): the term
     -- model is a graded category, ⟦_⟧ a functor out of it — substitution of terms
     -- and of types is typed, a pure term may replace its `let`; subtyping is a
