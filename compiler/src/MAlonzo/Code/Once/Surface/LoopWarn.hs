@@ -19,7 +19,6 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Bool
 import qualified MAlonzo.Code.Data.Bool.Base
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Type
@@ -443,8 +442,8 @@ du_silentLoops_34 v0 v1
                                      (coe
                                         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42
-                                           v15 v14)
+                                           MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50
+                                           (coe v15) (coe v14))
                                         (coe
                                            MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
                                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v17))
@@ -467,7 +466,8 @@ du_silentLoops_34 v0 v1
                                     (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                     (coe MAlonzo.Code.Once.Spec.Grade.C_fin_42 (coe v17)))
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42 v16 v13))
+                                    MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v16)
+                                    (coe v13)))
                               (coe v12)
                        _ -> coe v2
                 _ -> coe v2

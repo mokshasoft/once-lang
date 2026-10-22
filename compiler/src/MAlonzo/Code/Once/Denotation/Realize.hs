@@ -22,7 +22,6 @@ import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
 import qualified MAlonzo.Code.Once.Internal.Syntax
-import qualified MAlonzo.Code.Once.Internal.Type
 import qualified MAlonzo.Code.Once.Internal.Type.Sub
 import qualified MAlonzo.Code.Once.Internal.Typing
 import qualified MAlonzo.Code.Once.Internal.Typing.Scope
@@ -287,8 +286,8 @@ d_realize_22 v0 v1 v2 v3 v4 v5
                                             (coe
                                                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                                (coe
-                                                  MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42
-                                                  v20 v19)
+                                                  MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50
+                                                  (coe v20) (coe v19))
                                                (coe
                                                   MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
                                                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
@@ -318,8 +317,8 @@ d_realize_22 v0 v1 v2 v3 v4 v5
                                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                            (coe MAlonzo.Code.Once.Spec.Grade.C_fin_42 (coe v23)))
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42
-                                           v22 v19))
+                                           MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50
+                                           (coe v22) (coe v19)))
                                      (coe v12) (coe v16))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -405,7 +404,9 @@ d_realize_22 v0 v1 v2 v3 v4 v5
                     MAlonzo.Code.Once.Spec.Type.C_μ_28 v14
                       -> coe
                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v9
-                           (coe MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42 v14 v3)
+                           (coe
+                              MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v14)
+                              (coe v3))
                            (coe
                               MAlonzo.Code.Once.IR.C_In_94
                               (coe
@@ -413,7 +414,9 @@ d_realize_22 v0 v1 v2 v3 v4 v5
                                  (coe v10)))
                            (d_realize_22
                               (coe v0) (coe v1) (coe v13)
-                              (coe MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42 v14 v3)
+                              (coe
+                                 MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v14)
+                                 (coe v3))
                               (coe v9) (coe v11))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1407,7 +1410,9 @@ d_realize'45'd_50 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe v0) (coe v1) (coe v18)
                               (coe
                                  MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
-                                 (coe MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42 v19 v4)
+                                 (coe
+                                    MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v19)
+                                    (coe v4))
                                  (coe
                                     MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
                                     (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v5))

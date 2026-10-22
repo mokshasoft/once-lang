@@ -242,7 +242,7 @@ du_checkElab'45'fallback'45'RAnnot_1012 v0 v1 v2 v3 v4
                  MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6624 (coe v0)
                  (coe v1) (coe v3)
                  (coe
-                    MAlonzo.Code.Once.Internal.Type.d_wk'8320'_30 (coe v0)
+                    MAlonzo.Code.Once.Internal.Type.d_wk'8320'_12 (coe v0)
                     (coe v4))) in
     coe
       (case coe v5 of
@@ -255,7 +255,7 @@ du_checkElab'45'fallback'45'RAnnot_1012 v0 v1 v2 v3 v4
                                (coe
                                   MAlonzo.Code.Once.Spec.Type.d__'10216'_'10217'_154
                                   (coe (0 :: Integer)) (coe v0) (coe v4)
-                                  (\ v13 -> coe MAlonzo.Code.Once.Internal.Type.du_none_26))
+                                  (\ v13 -> coe MAlonzo.Code.Once.Internal.Type.du_none_8))
                                (coe v2) in
                      coe
                        (case coe v13 of
@@ -271,7 +271,7 @@ du_checkElab'45'fallback'45'RAnnot_1012 v0 v1 v2 v3 v4
                                                      (coe (0 :: Integer)) (coe v0) (coe v4)
                                                      (\ v17 ->
                                                         coe
-                                                          MAlonzo.Code.Once.Internal.Type.du_none_26))
+                                                          MAlonzo.Code.Once.Internal.Type.du_none_8))
                                                   v16 v10)
                                                (coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -1242,7 +1242,7 @@ du_checkInGo'45'just'45'success_3008 v0 v1 v2 v3 v4
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_6634
               (coe v0) (coe v1) (coe v2)
               (coe
-                 MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42 v3
+                 MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v3)
                  (coe MAlonzo.Code.Once.Spec.Type.C_μ_28 (coe v3))) in
     coe
       (case coe v5 of
@@ -2229,8 +2229,8 @@ du_resolveExprWF_3494 v0 v1 v2 v3 v4 v5 v6
                                      (coe
                                         MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42
-                                           v19 v18)
+                                           MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50
+                                           (coe v19) (coe v18))
                                         (coe
                                            MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
                                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v21))
@@ -2255,7 +2255,8 @@ du_resolveExprWF_3494 v0 v1 v2 v3 v4 v5 v6
                                     (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                     (coe MAlonzo.Code.Once.Spec.Grade.C_fin_42 (coe v21)))
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Type.du_'10214'_'10215'T_42 v20 v17))
+                                    MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v20)
+                                    (coe v17)))
                               (coe v2) (coe v3) (coe v4) (coe v5) (coe v16))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
