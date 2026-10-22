@@ -50,7 +50,7 @@ record PolyAt (d : Fin s) (x : String) : Set where
     open′  : 0 < arity (S′ SC.!! d) → ¬ TP.Ground sc
     -- a kinded instance, at its type
     inst   : ∀ (τ : ST.TySub (arity (S′ SC.!! d)) m) → ST.Respects (kinds (S′ SC.!! d)) Δ τ
-           → ∀ {T} → TyR Δ T (type (S′ SC.!! d) ST.⟨ τ ⟩) → LI.KindedInstance sc T
+           → ∀ {T} → TyR Δ T (type (S′ SC.!! d) ST.⟨ τ ⟩) → LI.KindedInstance Δ sc T
     -- an arrow whose codomain's variables occur in its domain
     arrow  : ∀ {sd sco π′} → type (S′ SC.!! d) ≡ sd ST.⇒[ SG.mk-kind SG.Many π′ ] sco
            → (∀ i → ST.Occurs i sco → ST.Occurs i sd)
