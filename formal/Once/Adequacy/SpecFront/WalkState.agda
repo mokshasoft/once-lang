@@ -19,11 +19,10 @@
 
 open import Data.List using (List)
 open import Data.String using (String)
-open import Once.Internal.Contract using (ISig)
 
 open import Once.Spec.Signature using (Signature)
 
-module Once.Adequacy.SpecFront.WalkState {Fs : ISig} (Σ : Signature) (ps : List String) where
+module Once.Adequacy.SpecFront.WalkState (Σ : Signature) (ps : List String) where
 
 open import Data.Nat using (ℕ; zero; suc; _<_)
 open import Data.Fin using (Fin; zero; suc)
@@ -43,12 +42,10 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 import Data.String.Properties as StrProp
 
-import Once.Internal.Type as LT
-
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
-import Once.Spec.Type as LW
-import Once.Internal.Core.PolyTy as LP
+open import Once.Internal.Type using (wk₀)
+open import Once.Postulates using (extensionality)
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Compile as C
@@ -58,11 +55,10 @@ open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Surface.Program
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Internal.Module using (Scope; scope; emptyScope; addImp; addPoly)
-open import Once.Internal.Core.Schema using (schemaOf)
-open import Once.Internal.Core.Translate using (ImpSig; TeleSig; []; i-def; t-def; wkI; wkT; impDefs; monoSchema)
+open import Once.Internal.Type.Schema using (schemaOf)
+open import Once.Internal.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; wkI; wkT; impDefs; monoSchema)
 open import Once.Adequacy.SpecCore.Type
-open import Once.Adequacy.SpecCore.Schema using (defsS; schS; ptyS; pfunS)
-open import Once.Adequacy.SpecFront.ScopeNames using (ImpNamed; TeleNamed)
+import Once.Adequacy.SpecFront.ScopeNames as SN
 import Once.Adequacy.SpecFront.Scope as Sc
 import Once.Adequacy.SpecFront.Inst as In
 open import Once.Adequacy.TelePosition using (lookup-head; lookup-skip)
@@ -133,48 +129,31 @@ private
 -- A ground type, at any instance of its (variable-free) schema
 ------------------------------------------------------------------------
 
-mutual
-  ground-R : ∀ {m k} {Δ : ST.KCtx m} {A : LT.Type} (τ : ST.TySub k m) → LW.RigidFree A → TyR Δ A (ptyS (LP.⌈_⌉ {k} A) ST.⟨ τ ⟩)
-  ground-R τ LW.rf-Unit   = r-unit
-  ground-R τ LW.rf-Void   = r-void
-  ground-R τ LW.rf-Int    = r-int
-  ground-R τ LW.rf-Float  = r-float
-  ground-R τ (LW.rf-* a b) = r-* (ground-R τ a) (ground-R τ b)
-  ground-R τ (LW.rf-+ a b) = r-+ (ground-R τ a) (ground-R τ b)
-  ground-R τ (LW.rf-⇒ a b) = r-⇒ refl (ground-R τ a) (ground-R τ b)
-  ground-R τ (LW.rf-μ f)   = r-μ (groundF-R τ f)
-  ground-R τ (LW.rf-ν f)   = r-ν refl (groundF-R τ f)
+-- a monomorphic definition's type, at any instance of its (variable-free) schema
+mono-R : ∀ {m} {Δ : ST.KCtx m} (ty : ST.Type) (τ : ST.TySub 0 m) → TyR Δ (wk₀ ty) (ty ST.⟨ τ ⟩)
+mono-R ty τ = subst (λ σ → TyR _ (wk₀ ty) (ty ST.⟨ σ ⟩)) (extensionality (λ ())) (tyR _)
 
-  groundF-R : ∀ {m k} {Δ : ST.KCtx m} {F : LT.Functor} (τ : ST.TySub k m) → LW.RigidFreeF F → FunR Δ F (pfunS (LP.⌈_⌉F {k} F) ST.⟨ τ ⟩F)
-  groundF-R τ (LW.rf-K a)   = r-K (ground-R τ a)
-  groundF-R τ LW.rf-Id      = r-Id
-  groundF-R τ (LW.rf-⊕ f g) = r-⊕ (groundF-R τ f) (groundF-R τ g)
-  groundF-R τ (LW.rf-⊗ f g) = r-⊗ (groundF-R τ f) (groundF-R τ g)
 
-------------------------------------------------------------------------
--- The invariant
-------------------------------------------------------------------------
-
-record WInv {s} (S : LP.Sig Fs s) (sc : Scope) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+record WInv {s} (S : SC.Defs s) (sc : Scope) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
             (nm : Fin s → CanonicalName) : Set where
   field
-    imp-named  : ImpNamed S nm is
-    tele-named : TeleNamed S nm ts
+    imp-named  : SN.ImpNamed Σ S nm is
+    tele-named : SN.TeleNamed Σ S nm ts
     named      : ∀ d → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ [])
     -- a monomorphic definition (not `main`): the definitions table's, at its type
     mono-at    : ∀ {m} (Δ : ST.KCtx m) {d x} → nm d ≡ canonical (x ∷ []) → ¬ (x ∈ ps) → x ≢ "main"
                → (lookupImport (Scope.sig sc) x ≡ nothing)
-                 × Σ[ T ∈ LT.Type ] (lookupImport (Scope.imps sc) x ≡ just T)
-                     × (∀ τ → TyR Δ T (SC.Schema.type (defsS S SC.!! d) ST.⟨ τ ⟩))
+                 × Σ[ T ∈ ST.Type ] (lookupImport (Scope.imps sc) x ≡ just T)
+                     × (∀ τ → TyR Δ (wk₀ T) (SC.Schema.type (S SC.!! d) ST.⟨ τ ⟩))
     -- a definition with type variables is a polymorphic one
-    ps-at      : ∀ {d x} → nm d ≡ canonical (x ∷ []) → 0 < SC.Schema.arity (defsS S SC.!! d) → x ∈ ps
+    ps-at      : ∀ {d x} → nm d ≡ canonical (x ∷ []) → 0 < SC.Schema.arity (S SC.!! d) → x ∈ ps
     -- a polymorphic definition: the telescope's
     poly-at    : ∀ {m} (Δ : ST.KCtx m) {d x} → nm d ≡ canonical (x ∷ []) → x ∈ ps
-               → Sc.PolyAt (defsS S) (Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) Δ d x
+               → Sc.PolyAt (S) (Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) Δ d x
 open WInv
 
 -- The start: nothing in scope.
-winv-empty : ∀ {sig} {nm : Fin 0 → CanonicalName} → WInv (LP.[] {Fs = Fs}) (scope sig C.emptyFunCtx []) [] [] nm
+winv-empty : ∀ {sig} {nm : Fin 0 → CanonicalName} → WInv SC.[] (scope sig C.emptyFunCtx []) [] [] nm
 winv-empty = record
   { imp-named  = tt
   ; tele-named = tt
@@ -192,19 +171,19 @@ winv-empty = record
 ------------------------------------------------------------------------
 
 private
-  imp-named-wk : ∀ {s} {S : LP.Sig Fs s} {sc′ c nm imps} (is : ImpSig S imps)
-               → ImpNamed S nm is → ImpNamed (S LP.▷ sc′) (c ∷ⁿ nm) (wkI is)
+  imp-named-wk : ∀ {s} {S : SC.Defs s} {sc′ c nm imps} (is : ImpSig S imps)
+               → SN.ImpNamed Σ S nm is → SN.ImpNamed Σ (S SC.▷ sc′) (c ∷ⁿ nm) (wkI is)
   imp-named-wk []             _          = tt
   imp-named-wk (i-def d e is) (nd , ns) = nd , imp-named-wk is ns
 
-  tele-named-wk : ∀ {s} {S : LP.Sig Fs s} {sc′ c nm tele} (ts : TeleSig S tele)
-                → TeleNamed S nm ts → TeleNamed (S LP.▷ sc′) (c ∷ⁿ nm) (wkT ts)
+  tele-named-wk : ∀ {s} {S : SC.Defs s} {sc′ c nm tele} (ts : TeleSig S tele)
+                → SN.TeleNamed Σ S nm ts → SN.TeleNamed Σ (S SC.▷ sc′) (c ∷ⁿ nm) (wkT ts)
   tele-named-wk []             _          = tt
   tele-named-wk (t-def d e ts) (nd , ns) = nd , tele-named-wk ts ns
 
   -- an entry's facts, at the next index of a longer signature
-  polyAt-wk : ∀ {s} {S : LP.Sig Fs s} {sc′ : LP.Schema} {imps polys m} {Δ : ST.KCtx m} {d x}
-            → Sc.PolyAt (defsS S) imps polys Δ d x → Sc.PolyAt (defsS (S LP.▷ sc′)) imps polys Δ (suc d) x
+  polyAt-wk : ∀ {s} {S : SC.Defs s} {sc′ : SC.Schema} {imps polys m} {Δ : ST.KCtx m} {d x}
+            → Sc.PolyAt (S) imps polys Δ d x → Sc.PolyAt ((S SC.▷ sc′)) imps polys Δ (suc d) x
   polyAt-wk p = record
     { lki = Sc.PolyAt.lki p ; lp = Sc.PolyAt.lp p ; ground = Sc.PolyAt.ground p ; open′ = Sc.PolyAt.open′ p
     ; inst = Sc.PolyAt.inst p ; arrow = Sc.PolyAt.arrow p }
@@ -229,9 +208,9 @@ private
 
 -- `main` (D324) joins the signature and the names, not the table.
 private
-  mono-main-at : ∀ {s} {S : LP.Sig Fs s} {sc is ts nm} {x ty}
+  mono-main-at : ∀ {s} {S : SC.Defs s} {sc is ts nm} {x ty}
                → WInv S sc is ts nm → x ≡ "main" → ¬ (x ∈ ps)
-               → WInv (S LP.▷ monoSchema ty) sc (wkI is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)
+               → WInv (S SC.▷ monoSchema ty) sc (wkI is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)
   mono-main-at {S = S} {sc = sc} {is} {ts} {nm} {x} {ty} w xm x∉ = record
     { imp-named  = imp-named-wk is (imp-named w)
     ; tele-named = tele-named-wk ts (tele-named w)
@@ -245,12 +224,12 @@ private
       mono Δ {zero}  e y∉ ym = ⊥-elim (ym (trans (sym (canon-inj e)) xm))
       mono Δ {suc d} e y∉ ym = mono-at w Δ e y∉ ym
 
-  mono-def-at : ∀ {s} {S : LP.Sig Fs s} {sc is ts nm} {x ty}
-              → WInv S sc is ts nm → LW.RigidFree ty → ¬ (x ∈ ps)
+  mono-def-at : ∀ {s} {S : SC.Defs s} {sc is ts nm} {x ty}
+              → WInv S sc is ts nm → ¬ (x ∈ ps)
               → lookupImport (Scope.sig sc) x ≡ nothing → All (x ≢_) (defNames sc)
-              → WInv (S LP.▷ monoSchema ty) (scope (Scope.sig sc) ((x , ty) ∷ Scope.imps sc) (Scope.tele sc))
+              → WInv (S SC.▷ monoSchema ty) (scope (Scope.sig sc) ((x , ty) ∷ Scope.imps sc) (Scope.tele sc))
                      (i-def zero refl (wkI is)) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)
-  mono-def-at {S = S} {sc = sc} {is} {ts} {nm} {x} {ty} w g x∉ nsig fr = record
+  mono-def-at {S = S} {sc = sc} {is} {ts} {nm} {x} {ty} w x∉ nsig fr = record
     { imp-named  = refl , imp-named-wk is (imp-named w)
     ; tele-named = tele-named-wk ts (tele-named w)
     ; named      = λ { zero → x , refl ; (suc d) → named w d }
@@ -261,15 +240,15 @@ private
     where
       mono : ∀ {m} (Δ : ST.KCtx m) {d y} → (canonical (x ∷ []) ∷ⁿ nm) d ≡ canonical (y ∷ []) → ¬ (y ∈ ps) → y ≢ "main"
            → (lookupImport (Scope.sig sc) y ≡ nothing)
-             × Σ[ T ∈ LT.Type ] (lookupImport ((x , ty) ∷ Scope.imps sc) y ≡ just T)
-                 × (∀ τ → TyR Δ T (SC.Schema.type (defsS (S LP.▷ monoSchema ty) SC.!! d) ST.⟨ τ ⟩))
-      mono Δ {zero} refl y∉ ym = nsig , ty , imp-head (Scope.imps sc) x ty , λ τ → ground-R τ g
+             × Σ[ T ∈ ST.Type ] (lookupImport ((x , ty) ∷ Scope.imps sc) y ≡ just T)
+                 × (∀ τ → TyR Δ (wk₀ T) (SC.Schema.type ((S SC.▷ monoSchema ty) SC.!! d) ST.⟨ τ ⟩))
+      mono Δ {zero} refl y∉ ym = nsig , ty , imp-head (Scope.imps sc) x ty , mono-R ty
       mono Δ {suc d} {y} e y∉ ym =
         let (ns , T , lk , r) = mono-at w Δ e y∉ ym
             ne = ne-of (all-ˡ (map proj₁ (Scope.imps sc)) fr) (imp-in (Scope.imps sc) lk)
         in ns , T , trans (imp-skip (Scope.imps sc) ty ne) lk , r
       poly : ∀ {m} (Δ : ST.KCtx m) {d y} → (canonical (x ∷ []) ∷ⁿ nm) d ≡ canonical (y ∷ []) → y ∈ ps
-           → Sc.PolyAt (defsS (S LP.▷ monoSchema ty)) ((x , ty) ∷ Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) Δ d y
+           → Sc.PolyAt ((S SC.▷ monoSchema ty)) ((x , ty) ∷ Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) Δ d y
       poly Δ {zero} refl y∈ = ⊥-elim (x∉ y∈)
       poly Δ {suc d} e y∈ =
         let p = poly-at w Δ e y∈
@@ -277,25 +256,25 @@ private
         in polyAt-wk (polyAt-imp ne p)
 
 -- A monomorphic definition, new to the scope, joins it (`main` only the names).
-winv-mono : ∀ {s} {S : LP.Sig Fs s} {sc is ts nm} {x ty}
-          → WInv S sc is ts nm → LW.RigidFree ty → ¬ (x ∈ ps)
+winv-mono : ∀ {s} {S : SC.Defs s} {sc is ts nm} {x ty}
+          → WInv S sc is ts nm → ¬ (x ∈ ps)
           → lookupImport (Scope.sig sc) x ≡ nothing → All (x ≢_) (defNames sc)
-          → WInv (S LP.▷ monoSchema ty) (addImp sc x ty) (impDefs (x Data.String.== "main") is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)
-winv-mono {s} {S} {sc} {is} {ts} {nm} {x} {ty} w g x∉ nsig fr = at (x StrProp.≟ "main")
+          → WInv (S SC.▷ monoSchema ty) (addImp sc x ty) (impDefs (x Data.String.== "main") is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)
+winv-mono {s} {S} {sc} {is} {ts} {nm} {x} {ty} w x∉ nsig fr = at (x StrProp.≟ "main")
   where
     at : (d : Dec (x ≡ "main"))
-       → WInv (S LP.▷ monoSchema ty) (scope (Scope.sig sc) (C.extendDefs-at (Relation.Nullary.isYes d) (Scope.imps sc) x ty) (Scope.tele sc))
+       → WInv (S SC.▷ monoSchema ty) (scope (Scope.sig sc) (C.extendDefs-at (Relation.Nullary.isYes d) (Scope.imps sc) x ty) (Scope.tele sc))
               (impDefs (Relation.Nullary.isYes d) is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)
     at (yes xm) = mono-main-at w xm x∉
-    at (no _)   = mono-def-at w g x∉ nsig fr
+    at (no _)   = mono-def-at w x∉ nsig fr
 
 ------------------------------------------------------------------------
 -- A telescope definition
 ------------------------------------------------------------------------
 
-winv-poly : ∀ {s} {S : LP.Sig Fs s} {sc is ts nm} (pfi : Parser.PolyFunInfo)
+winv-poly : ∀ {s} {S : SC.Defs s} {sc is ts nm} (pfi : Parser.PolyFunInfo)
           → WInv S sc is ts nm → pfunName pfi ∈ ps → All (pfunName pfi ≢_) (defNames sc)
-          → WInv (S LP.▷ schemaOf (pfunType pfi)) (addPoly sc pfi) (wkI is) (t-def zero refl (wkT ts))
+          → WInv (S SC.▷ schemaOf (pfunType pfi)) (addPoly sc pfi) (wkI is) (t-def zero refl (wkT ts))
                  (canonical (pfunName pfi ∷ []) ∷ⁿ nm)
 winv-poly {s} {S} {sc} {is} {ts} {nm} pfi w x∈ fr = record
   { imp-named  = imp-named-wk is (imp-named w)
@@ -312,7 +291,7 @@ winv-poly {s} {S} {sc} {is} {ts} {nm} pfi w x∈ fr = record
     mono Δ {zero} refl y∉ ym = ⊥-elim (y∉ x∈)
     mono Δ {suc d} e y∉ ym   = mono-at w Δ e y∉ ym
     poly : ∀ {m} (Δ : ST.KCtx m) {d y} → (canonical (x ∷ []) ∷ⁿ nm) d ≡ canonical (y ∷ []) → y ∈ ps
-         → Sc.PolyAt (defsS (S LP.▷ schemaOf T)) (Scope.imps sc) (C.buildPolyCtx (pfi ∷ Scope.tele sc)) Δ d y
+         → Sc.PolyAt ((S SC.▷ schemaOf T)) (Scope.imps sc) (C.buildPolyCtx (pfi ∷ Scope.tele sc)) Δ d y
     poly Δ {zero} refl y∈ = record
       { lki    = imp-none (Scope.imps sc) (∉-all (all-ˡ (map proj₁ (Scope.imps sc)) fr))
       ; lp     = lookup-head x (C.buildPolyCtx (Scope.tele sc))
