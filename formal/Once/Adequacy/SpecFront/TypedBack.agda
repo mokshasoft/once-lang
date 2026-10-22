@@ -43,19 +43,16 @@ import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr
 import Once.Spec.Surface.Resolution as SR
 import Once.Spec.Core.Program as CoreProgram
-import Once.Internal.Core.PolyTy as LP
-import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 open import Once.Parser.Module.Core using (Decl; mkModule; DImport; mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule; sigNames)
 import Once.Internal.Resolution as LR
 import Once.Internal.Module as LM
 open import Once.Internal.Module using (ModTele; emptyScope; scope; entrySig; MainsEffUU; MainIn)
-open import Once.Internal.Core.Translate using (SigSig; s-ffi; SigCF)
+open import Once.Internal.Core.Translate using (SigSig; s-ffi)
 open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
-open import Once.Adequacy.SpecCore.Schema using (defsS)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts; nonSigs-none)
 open import Once.Adequacy.SpecFront.ExtractBack using (walk-adj; dr-adj)
@@ -63,11 +60,12 @@ open import Once.Adequacy.SpecFront.ExtractOk using (Extracted; extract-ok)
 open import Once.Adequacy.SpecFront.GuardBack using (defNamesS; walk-tab)
 open import Once.Adequacy.SpecFront.ResolveBack using (PathsNE; unaliased-eq; module Decls)
 import Once.Adequacy.SpecFront.Resolve as Res
-open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-distinct; h-sig-of)
+open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-distinct; h-sig-of; sig-in)
 open import Once.Adequacy.SpecFront.Start using (distinct-rest; nosig-rest; fresh-start; not-sig)
 open import Once.Adequacy.SpecFront.Polys using (polyNames; poly-names; kinds-of; defs-of)
 open import Once.Adequacy.SpecFront.Prefix using (prefix←)
-open import Once.Adequacy.SpecFront.Words using (ModsW; DeclW; signature-words; key-word; r13-at)
+open import Once.Adequacy.SpecFront.Words using (ModsW; DeclW; signature-words; key-word)
+open import Once.Internal.Name using (WordName)
 import Once.Adequacy.SpecFront.Align as Al
 import Once.Adequacy.SpecFront.WalkBack as WB
 import Once.Adequacy.SpecFront.WalkMain as WM
@@ -144,11 +142,12 @@ main-defined {ds = ds} {nm″ = nm″} w i e = at (ʳ++-mem (map own (defNamesS 
 
 private
   -- the FFI entries' table, reversed onto a recorded one
-  sigsig-of : ∀ {Fs} fs {acc} → All FFIFacts fs → (∀ {d} → d ∈ entrySig fs → d ∈ Fs) → SigSig Fs acc → SigSig Fs (entrySig fs ʳ++ acc)
-  sigsig-of [] [] _ ss = ss
-  sigsig-of (Parser.e-fun (Parser.mkFunInfo x _ _ _) ∷ fs) ((refl , ty , refl , c , h , g) ∷ fa) inF ss =
-    sigsig-of fs fa (λ m → inF (there m)) (s-ffi h g (inF (here refl)) ss)
-  sigsig-of (Parser.e-poly _ ∷ fs) (() ∷ fa) inF ss
+  sigsig-of : ∀ {Σ} → (∀ {c t} → (c ∶ t) ∈ Σ → WordName c) → ∀ fs {acc} → All FFIFacts fs
+            → (∀ {d} → d ∈ entrySig fs → d ∈ toISig Σ) → SigSig Σ acc → SigSig Σ (entrySig fs ʳ++ acc)
+  sigsig-of w [] [] _ ss = ss
+  sigsig-of {Σ} w (Parser.e-fun (Parser.mkFunInfo x _ _ _) ∷ fs) ((refl , ty , refl , c , h , g) ∷ fa) inF ss =
+    sigsig-of w fs fa (λ m → inF (there m)) (s-ffi c h (sig-in Σ w (inF (here refl))) ss)
+  sigsig-of w (Parser.e-poly _ ∷ fs) (() ∷ fa) inF ss
 
   all-pre : ∀ {A : Set} {P : A → Set} xs {ys} → All P (xs ++ ys) → All P xs
   all-pre []       _        = []
@@ -213,21 +212,21 @@ typed← {mm} {mm′} {dsU} {ds′} {Σ} {p} wm wd wr mr pw D = record { dsR = d
             → h-sig-of Σ fs tf ukeys (Extracted.facts X) {m} Δ M
     h-own = λ {x} {t} (x∈ : x ∈ ps) M → not-sig Σ fs es′ tf guard {x} {t} (poly-names es′ x∈) M
     h-psig = λ {x} (x∈ : x ∈ ps) → All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
-    module W = WB Σ (r13-at {Σ} kw) fmt ps sg h-sig h-own h-psig (key-word kw)
-    module Wk = Once.Adequacy.SpecFront.Walk Σ (r13-at {Σ} kw) fmt ps sg h-sig h-own h-psig (key-word kw)
-    ss : SigSig (toISig Σ) sg
-    ss = sigsig-of fs (Extracted.facts X) (λ m → subst (_ ∈_) (sym tf) m) SigSig.[]
+    module W = WB Σ ps sg h-sig h-own h-psig (key-word kw)
+    module Wk = Once.Adequacy.SpecFront.Walk Σ ps sg h-sig h-own h-psig (key-word kw)
+    ss : SigSig Σ sg
+    ss = sigsig-of (key-word kw) fs (Extracted.facts X) (λ m → subst (_ ∈_) (sym tf) m) SigSig.[]
     guard′ = distinct-rest fs es′ guard
     eok : Wk.EntriesOK (scope sg Once.Compile.emptyFunCtx []) es′
     eok = record { distinct = guard′ ; fresh = fresh-start es′ ; nosig = nosig-rest fs es′ guard
                  ; kinds = kinds-of es′ guard′ (defs-of (nonSigs-none dsR) (Extracted.defs X)) }
-    rel₀ : W.Rel SC.[] (defsS (LP.[] {Fs = toISig Σ}))
+    rel₀ : W.Rel SC.[] SC.[]
     rel₀ = record { ρ⇒ = λ () ; ren⇒ = λ () ; ρ⇐ = λ () ; ren⇐ = λ () }
     align = Al.align-of Σ dr (dr-adj Σ dr (walk-adj walk)) (Extracted.defs X)
     -- the end's `main` is the entry
     H : ∀ i → names i ≡ canonical ("main" ∷ []) → CoreProgram.Entry Σ (P.sig SC.!! i)
     H i e = subst (λ j → CoreProgram.Entry Σ (P.sig SC.!! j)) (sym (distinct (trans e (sym entry)))) P.isMain
-    w← = W.walk← TL.[] ss Once.Internal.Core.Translate.ImpSig.[] Once.Internal.Core.Translate.TeleSig.[] (λ ()) _ rel₀ walk align
+    w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Internal.Core.Translate.ImpSig.[] Once.Internal.Core.Translate.TeleSig.[] (λ ()) rel₀ walk align
                  (WS.winv-empty Σ ps) eok
     pf = prefix← {sc = emptyScope} fs (Extracted.facts X) (proj₁ w←)
     th = typed-at (mkModule dsR) _ (Extracted.extracted X) (proj₁ pf)
