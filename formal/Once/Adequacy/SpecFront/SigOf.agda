@@ -56,7 +56,8 @@ open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; 
 open import Once.Parser.Module.Resolve using (signaturesWithOwner; expandPath)
 import Once.Internal.Resolution as LR
 open import Once.Internal.Module using (entrySig)
-open import Once.Adequacy.SpecInterp using (toISig; declTy)
+open import Once.Adequacy.SpecInterp using (declTy)
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts; nonSigs-none; FFIEntry; ffi-of)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-of; decl-eq)

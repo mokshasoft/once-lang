@@ -39,6 +39,7 @@ import Once.Internal.Type as T
 import Once.Spec.Type as T
 import Once.Spec.Grade as G
 open import Once.Internal.Name using (showCanonical)
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Internal.Contract
   using (Key; key; kdom; kcod; ISig; Contract; answers; effect; contract-eff; contractOf;
@@ -60,23 +61,12 @@ qL SG.Zero = G.Zero
 qL SG.One  = G.One
 qL SG.Many = G.Many
 
+-- A declaration's types are the Spec's (`⌜_⌝`, `⌜_⌝ᵈ`), at the ground index.
 ⌞_⌟ : BTy → T.Type
-⌞ S.unit ⌟  = T.Unit
-⌞ S.void ⌟  = T.Void
-⌞ S.int ⌟   = T.Int
-⌞ S.float ⌟ = T.Float
-⌞ a S.* b ⌟ = ⌞ a ⌟ T.* ⌞ b ⌟
-⌞ a S.+ b ⌟ = ⌞ a ⌟ T.+ ⌞ b ⌟
+⌞_⌟ = S.⌜_⌝
 
--- A declaration's type, as the compiler declares it: an operation at `Act`.
 declTy : DeclType → T.Type
-declTy (constant b)      = ⌞ b ⌟
-declTy (S.value a q b)   = ⌞ a ⌟ T.⇒[ G.mk-kind (qL q) G.pure ] ⌞ b ⌟
-declTy (operation a q b) = ⌞ a ⌟ T.⇒[ G.mk-kind (qL q) G.act ] ⌞ b ⌟
-
-toISig : Signature → ISig
-toISig []              = []
-toISig ((c ∶ t) ∷ Σ′) = (showCanonical c , declTy t) ∷ toISig Σ′
+declTy = S.⌜_⌝ᵈ
 
 toB : ∀ b → M.⟦ ⌞ b ⌟ ⟧ → S.⟦ b ⟧ᵇ
 fromB : ∀ b → S.⟦ b ⟧ᵇ → M.⟦ ⌞ b ⌟ ⟧

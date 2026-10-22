@@ -37,7 +37,7 @@ import Once.Spec.Surface.Resolution as SR
 open import Once.Spec.Surface.Program
   using (SignaturesOf; so-nil; so-sig; so-other; ns-tsig; ns-def; ns-alias; ns-import;
          Imported; im-nil; im-import; im-other; ni-sig; ni-tsig; ni-def; ni-alias)
-open import Once.Adequacy.SpecInterp using (toISig)
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; IsSig; is-sig; FFIFacts)
 open import Once.Adequacy.SpecFront.SigBack using (project-of; decl-honest; declTy-concrete; declTy-rf)

@@ -52,7 +52,7 @@ import Once.Internal.Resolution as LR
 import Once.Internal.Module as LM
 open import Once.Internal.Module using (ModTele; emptyScope; scope; entrySig; MainsEffUU; MainIn)
 open import Once.Internal.Core.Translate using (SigSig; s-ffi; SigCF)
-open import Once.Adequacy.SpecInterp using (toISig)
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
 open import Once.Adequacy.SpecCore.Schema using (defsS)

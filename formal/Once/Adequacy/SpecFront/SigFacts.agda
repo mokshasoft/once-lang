@@ -45,7 +45,8 @@ import Once.Spec.Type as ST
 import Once.Parser as Parser
 open import Once.Internal.Module using (entrySig)
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
-open import Once.Adequacy.SpecInterp using (toISig; declTy)
+open import Once.Adequacy.SpecInterp using (declTy)
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts)

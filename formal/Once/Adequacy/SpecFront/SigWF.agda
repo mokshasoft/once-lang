@@ -30,7 +30,8 @@ import Once.Spec.Signature as S
 open S using (Signature; _∶_; DeclType; constant; value; operation; WellFormed; WellFormedDecl; []; _∷_)
 import Once.Parser as Parser
 open import Once.Internal.Module using (entrySig)
-open import Once.Adequacy.SpecInterp using (toISig; declTy; ⌞_⌟)
+open import Once.Adequacy.SpecInterp using (declTy; ⌞_⌟)
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts)
 open import Once.Adequacy.SpecFront.SigFacts using (mem-toISig; facts-at)
 

@@ -14,10 +14,16 @@
 module Once.Internal.Core.Decl where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+open import Data.List using ([]; _∷_)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.Product using (_,_)
+open import Once.Internal.Contract using (ISig)
+open import Once.Internal.Name using (showCanonical)
 open import Once.Spec.Grade using (mk-kind; pure; act; eff; Zero; One; Many)
 open import Once.Spec.Type using (Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 import Once.Spec.Signature as S
-open S using (BTy; DeclType; constant; value; operation; ⌜_⌝; ⌜_⌝ᵈ)
+open S using (BTy; DeclType; constant; value; operation; ⌜_⌝; ⌜_⌝ᵈ; Signature; _∶_)
 open import Once.Internal.Type using (wk₀)
 open import Once.Internal.Type.WellFormed using (IsBaseType; IsConcrete; con-base; con-fun;
   base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
@@ -73,3 +79,29 @@ declS (var ())
 ⌜declS⌝ (con-base base-Float) h = refl
 ⌜declS⌝ (con-base b@(base-Prod _ _)) h = ⌜toB⌝ b
 ⌜declS⌝ (con-base b@(base-Sum _ _)) h = ⌜toB⌝ b
+
+------------------------------------------------------------------------
+-- The other way: a Spec signature as the checker's (`ISig`)
+------------------------------------------------------------------------
+
+toISig : Signature → ISig
+toISig []              = []
+toISig ((c ∶ t) ∷ Σ′) = (showCanonical c , ⌜ t ⌝ᵈ) ∷ toISig Σ′
+
+∈-toISig : ∀ {Σ c t} → (c ∶ t) ∈ Σ → (showCanonical c , ⌜ t ⌝ᵈ) ∈ toISig Σ
+∈-toISig {(c′ ∶ t′) ∷ _} (here refl) = here refl
+∈-toISig {_ ∷ _}         (there m)   = there (∈-toISig m)
+
+-- A declaration's type is concrete.
+⌜⌝-base : ∀ b → IsBaseType ⌜ b ⌝
+⌜⌝-base S.unit    = base-Unit
+⌜⌝-base S.void    = base-Void
+⌜⌝-base S.int     = base-Int
+⌜⌝-base S.float   = base-Float
+⌜⌝-base (a S.* b) = base-Prod (⌜⌝-base a) (⌜⌝-base b)
+⌜⌝-base (a S.+ b) = base-Sum (⌜⌝-base a) (⌜⌝-base b)
+
+⌜⌝ᵈ-concrete : ∀ t → IsConcrete ⌜ t ⌝ᵈ
+⌜⌝ᵈ-concrete (constant b)      = con-base (⌜⌝-base b)
+⌜⌝ᵈ-concrete (value a q b)     = con-fun (⌜⌝-base a) (⌜⌝-base b)
+⌜⌝ᵈ-concrete (operation a q b) = con-fun (⌜⌝-base a) (⌜⌝-base b)

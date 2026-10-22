@@ -25,7 +25,7 @@ open import Data.List using (List)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_,_)
 open import Once.Spec.Signature using (Signature; _∶_)
-open import Once.Adequacy.SpecInterp using (toISig)
+open import Once.Internal.Core.Decl using (toISig)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)

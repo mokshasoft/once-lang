@@ -25,7 +25,7 @@ open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl; _∶_)
 import Once.Spec.Observation as Obs
-open import Once.Adequacy.SpecInterp using (toISig)
+open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecCore.Poly using (declS)
 
 module Once.Adequacy.SpecCore.Sound

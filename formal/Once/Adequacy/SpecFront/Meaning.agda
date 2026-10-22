@@ -21,7 +21,7 @@ open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.SpecFront.Meaning (fmt : TargetNum) where
 
-open import Once.Adequacy.SpecInterp using (toISig)
+open import Once.Internal.Core.Decl using (toISig)
 
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_)

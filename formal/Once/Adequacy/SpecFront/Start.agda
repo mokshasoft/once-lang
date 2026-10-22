@@ -38,7 +38,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺)
 open import Once.Spec.Signature using (Signature; _∶_)
 open import Once.Spec.Name using (canonical)
-open import Once.Adequacy.SpecInterp using (toISig)
+open import Once.Internal.Core.Decl using (toISig)
 open import Relation.Nullary using (¬_)
 
 private
