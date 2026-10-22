@@ -251,6 +251,26 @@ scopeErrorTests = testGroup "Scope errors"
       [ "f : Int -> Int"
       , "f main = main"
       ]
+    -- D319 (`OneName`): each name in a program's signature is declared once.
+    -- Two equal declarations used to satisfy `sig-unique`; they do not
+    -- satisfy `OneName`. The control shows one declaration is accepted.
+  , accepts "control: an operation declared once"
+      [ "signature tick : Act Unit Unit"
+      , "f : Act Unit Unit"
+      , "f = tick"
+      ]
+  , rejectsWith "an operation declared twice at one type" "`tick` is declared more than once"
+      [ "signature tick : Act Unit Unit"
+      , "signature tick : Act Unit Unit"
+      , "f : Act Unit Unit"
+      , "f = tick"
+      ]
+  , rejectsWith "an operation declared twice at two types" "`tick` is declared more than once"
+      [ "signature tick : Act Unit Unit"
+      , "signature tick : Act Int Unit"
+      , "f : Act Unit Unit"
+      , "f = tick"
+      ]
     -- plan 0.121 R10: a type signature is immediately followed by its
     -- definition, as written; an import between them separates them even
     -- when the imported module has no signatures (Derived.Nat has none).
