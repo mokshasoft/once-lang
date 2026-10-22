@@ -28,6 +28,7 @@ open import Data.String using (String; _≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
 open import Once.Spec.Type using (Ty; Type; var; Unit; KCtx; Base)
+import Data.List as List
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 import Data.Maybe as Maybe
@@ -111,6 +112,10 @@ rigidSubst T x = maybe′ var Unit (positionOf x (params T))
 
 rigidOf : (T : PolyType) → Ty (arityOf T)
 rigidOf T = substPoly (rigidSubst T) T
+
+-- The kinds of its parameters, in order.
+kindsOf : (T : PolyType) → KCtx (arityOf T)
+kindsOf T i = kindOf T (List.lookup (params T) i)
 
 ------------------------------------------------------------------------
 -- Kinded instances: what a use may be at

@@ -90,7 +90,7 @@ checkElab-fallback-RInt : ∀ {m} {ctx : NamedCtx m} (n : ℤ)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
       checkElab ctx (Raw.RInt n) Int
         ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RInt {ctx = ctx} n with Int <:? Int
+checkElab-fallback-RInt {m = m} {ctx = ctx} n with Int {m} <:? Int
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
 
@@ -107,7 +107,7 @@ checkElab-fallback-RFloat : ∀ {m} {ctx : NamedCtx m} (i f l p : ℕ)
   → ∃-syntax (λ eE → ∃-syntax (λ dd → ∃-syntax (λ fr →
       checkElab ctx (Raw.RFloat i f l p) Float
         ≡ success Surface.zeroUsage eE dd fr)))
-checkElab-fallback-RFloat {ctx = ctx} i f l p with Float <:? Float
+checkElab-fallback-RFloat {m = m} {ctx = ctx} i f l p with Float {m} <:? Float
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 
@@ -116,7 +116,7 @@ checkElab-fallback-RUnit : ∀ {m} {ctx : NamedCtx m}
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
       checkElab ctx Raw.RUnit Unit
         ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RUnit {ctx = ctx} with Unit <:? Unit
+checkElab-fallback-RUnit {m = m} {ctx = ctx} with Unit {m} <:? Unit
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Unit))
 
@@ -258,13 +258,13 @@ checkElab-fallback-RUnaryOp : ∀ {m} {ctx : NamedCtx m} (op : Raw.UnaryOp) (e :
   → inferElab ctx (Raw.RUnaryOp op e) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RUnaryOp op e) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg e T eqInf
+checkElab-fallback-RUnaryOp {m = m} {ctx = ctx} Raw.OpNeg e T eqInf
   with negOperandView e | eqInf
-... | nov-int n | refl with Int <:? Int
+... | nov-int n | refl with Int {m} <:? Int
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
-checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg e T eqInf
-  | nov-float i f l p | refl with Float <:? Float
+checkElab-fallback-RUnaryOp {m = m} {ctx = ctx} Raw.OpNeg e T eqInf
+  | nov-float i f l p | refl with Float {m} <:? Float
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg e T eqInf
@@ -289,15 +289,15 @@ checkElab-fallback-RUnaryOp-sub : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (op : R
   → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RUnaryOp op e) τ ≡ success Ψ eE' d' f')))
-checkElab-fallback-RUnaryOp-sub {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
+checkElab-fallback-RUnaryOp-sub {m = m} {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
   with negOperandView e | eqInf
 ... | nov-int n | refl with sb
-...   | sub-int with Int <:? Int
+...   | sub-int with Int {m} <:? Int
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
-checkElab-fallback-RUnaryOp-sub {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
+checkElab-fallback-RUnaryOp-sub {m = m} {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
   | nov-float i f l p | refl with sb
-...   | sub-float with Float <:? Float
+...   | sub-float with Float {m} <:? Float
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 checkElab-fallback-RUnaryOp-sub {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
@@ -329,7 +329,7 @@ checkElab-fallback-RVar-unit : ∀ {m} {ctx : NamedCtx m}
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
       checkElab ctx (Raw.RResolved (gen "unit")) Unit
         ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-unit {ctx = ctx} with Unit <:? Unit
+checkElab-fallback-RVar-unit {m = m} {ctx = ctx} with Unit {m} <:? Unit
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Unit))
 

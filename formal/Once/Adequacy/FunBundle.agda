@@ -237,7 +237,7 @@ bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
 bundle→compiled bnil = []
 bundle→compiled (bffi _ _ _ _ _ rest) = bundle→compiled rest
 bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
-  C.mkCompiledFun (bare (funName fi)) _ ty irFun ∷ bundle→compiled rest
+  C.mkCompiledFun (bare (funName fi)) ty irFun ∷ bundle→compiled rest
 bundle→compiled (bpoly fc ce rest) = bundle→compiled rest
 
 -- A bundle for every accepted telescope, whose compiled list IS the compiler's.
@@ -303,7 +303,7 @@ cgb-mono sc fi es compiled ep (inj₂ ty) er eq
         let (Ψ , se , d , f , ce) = compileFunM-ce (funType fi) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.ctop sc) ty fi irFun refl cf
             (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
         in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er fc eg ce cf b
-         , trans (cong (C.mkCompiledFun (bare (funName fi)) _ ty irFun ∷_) beq)
+         , trans (cong (C.mkCompiledFun (bare (funName fi)) ty irFun ∷_) beq)
                  (inj₂-injective eq)
 
 cgb-poly-p sc pfi es compiled (just _) _ ()
@@ -335,7 +335,7 @@ bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit {0} ⌋ ⌊
 bundle-find bnil = nothing
 bundle-find (bffi _ _ _ _ _ rest) = bundle-find rest
 bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
-  findMain-here (C.mkCompiledFun (bare (funName fi)) _ ty irFun)
+  findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
     (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) (bundle-find rest)
 bundle-find (bpoly _ _ rest) = bundle-find rest
 
@@ -343,7 +343,7 @@ find-agree : ∀ {sc es} (b : FunBundle sc es) → findMain (bundle→compiled b
 find-agree bnil = refl
 find-agree (bffi _ _ _ _ _ rest) = find-agree rest
 find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
-  cong (findMain-here (C.mkCompiledFun (bare (funName fi)) _ ty irFun)
+  cong (findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
           (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU))
        (find-agree rest)
 find-agree (bpoly _ _ rest) = find-agree rest
@@ -370,7 +370,7 @@ private
                 → funIsPrimitive fi ≡ false
                 → (nd : Dec (bare (funName fi) ≡ bare "main")) (td : Dec (ty <: EffUU)) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
                 → (bundle-find rest ≡ just ir → BMainExists rest)
-                → findMain-here (C.mkCompiledFun (bare (funName fi)) _ ty irFun) nd td (bundle-find rest) ≡ just ir
+                → findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun) nd td (bundle-find rest) ≡ just ir
                 → ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty <: EffUU)) ⊎ BMainExists rest
   here-exists fi rest ep (yes n) (yes e) ih eq = inj₁ (bare-injective n , ep , e)
   here-exists fi rest ep (yes _) (no _)  ih eq = inj₂ (ih eq)
@@ -381,7 +381,7 @@ bundle-find-call bnil ()
 bundle-find-call (bffi _ _ _ _ _ rest) eq = bundle-find-call rest eq
 bundle-find-call (bpoly _ _ rest) eq = bundle-find-call rest eq
 bundle-find-call (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) eq =
-  here-call (C.mkCompiledFun (bare (funName fi)) _ ty irFun)
+  here-call (C.mkCompiledFun (bare (funName fi)) ty irFun)
     (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) (bundle-find rest) (bundle-find-call rest) eq
 
 bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}

@@ -390,19 +390,19 @@ dc-linked tbl (Once.Internal.Type.rigid k i)    ir l = l
 -- A reference to an entry is linked once the entry is in the table: the
 -- reference's call (`refIR`) is at the entry's direct-call objects (D245).
 ref-entry : ∀ {m} (tbl : List IRFun) (x : String) (ty : Ty m) (ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋)
-          → RefLinked σ (irFunOf (C.mkCompiledFun (bare x) _ ty ir) ∷ tbl) x ty
-ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Spec.Type.Unit         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Spec.Type.Void         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Spec.Type.* B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@(A Once.Spec.Type.+ B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Internal.Type.μ-type F)   ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Internal.Type.ν-type F π) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Spec.Type.Int          ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@Once.Spec.Type.Float        ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
-ref-entry tbl x ty@(Once.Internal.Type.rigid k i)  ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) _ ty ir)) tbl , tt
+          → RefLinked σ (irFunOf (C.mkCompiledFun (bare x) ty ir) ∷ tbl) x ty
+ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One  π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Unit         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Void         ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.* B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(A Once.Spec.Type.+ B)      ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Internal.Type.μ-type F)   ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Internal.Type.ν-type F π) ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Int          ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@Once.Spec.Type.Float        ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
+ref-entry tbl x ty@(Once.Internal.Type.rigid k i)  ir = linkedAt-here (irFunOf (C.mkCompiledFun (bare x) ty ir)) tbl , tt
 
 RefLinked-mono : ∀ {tbl tbl′ : List IRFun} → (∀ {f A B} → LinkedAt tbl f A B → LinkedAt tbl′ f A B)
                → ∀ {x A} → RefLinked σ tbl x A → RefLinked σ tbl′ x A
@@ -476,8 +476,8 @@ linv-sig {σ = σ} {csc = csc} {pre = pre} x ty g d inv = record
 
 -- A definition joins the scope, its compiled form the table.
 linv-entry : ∀ {m} {csc pre} (x : String) (ty : Ty m) (ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) → RigidFree ty
-           → Linked σ pre (fbody (irFunOf (C.mkCompiledFun (bare x) _ ty ir)))
-           → LInv σ csc pre → LInv σ (C.extendScope csc x ty) (irFunOf (C.mkCompiledFun (bare x) _ ty ir) ∷ pre)
+           → Linked σ pre (fbody (irFunOf (C.mkCompiledFun (bare x) ty ir)))
+           → LInv σ csc pre → LInv σ (C.extendScope csc x ty) (irFunOf (C.mkCompiledFun (bare x) ty ir) ∷ pre)
 linv-entry {σ = σ} {csc = csc} {pre = pre} x ty ir g lb inv = record
   { irf    = irf-defs (x Str.== "main") {imps = C.CScope.cimps csc} {y = x} {ty = ty} g (LInv.irf inv)
   ; irs    = LInv.irs inv
@@ -487,7 +487,7 @@ linv-entry {σ = σ} {csc = csc} {pre = pre} x ty ir g lb inv = record
   ; ent-ok = ents-cons e pre lb (LInv.ent-ok inv)
   ; sig-ok = LInv.sig-ok inv
   }
-  where e = irFunOf (C.mkCompiledFun (bare x) _ ty ir)
+  where e = irFunOf (C.mkCompiledFun (bare x) ty ir)
 
 -- A definition's body, checked in its scope, compiles to linked IR.
 body-linked : ∀ {m} {csc pre} → LInv σ csc pre → (x : String) (ty : Ty m) {body : RawExpr} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
@@ -630,8 +630,8 @@ link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr g
 private
   entry-linked : ∀ {σ : ISig} {tbl ty} (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (p : ty <: EffUU)
                → LinkedAt tbl (bare "main")
-                   (IRFun.fdom (irFunOf (C.mkCompiledFun (bare "main") _ ty irFun)))
-                   (IRFun.fcod (irFunOf (C.mkCompiledFun (bare "main") _ ty irFun)))
+                   (IRFun.fdom (irFunOf (C.mkCompiledFun (bare "main") ty irFun)))
+                   (IRFun.fcod (irFunOf (C.mkCompiledFun (bare "main") ty irFun)))
                → Linked σ tbl (mainEntry p)
   entry-linked irFun (sub-arr sub-unit sub-unit g) lk = lk
   entry-linked irFun (sub-arr sub-unit sub-void g) lk = tt , lk
@@ -647,8 +647,8 @@ main-linked {σ} (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ rest)
   where
     T = FB.bundle→compiled rest
     atMain : ∀ x → x ≡ funName fi → ∀ nd td {ir}
-         → findMain-here (C.mkCompiledFun (bare x) _ ty irFun) nd td (FB.bundle-find rest) ≡ just ir
-         → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare x) _ ty irFun) ∷ pre)) ir
+         → findMain-here (C.mkCompiledFun (bare x) ty irFun) nd td (FB.bundle-find rest) ≡ just ir
+         → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre)) ir
     atMain x xe (yes n) (yes p) refl =
       entry-linked irFun p
         (subst (λ t → LinkedAt t (bare "main") _ _) (sym (tableOf-go-++ T [] (e′ ∷ pre)))
@@ -656,9 +656,9 @@ main-linked {σ} (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ rest)
                                                          (linkedAt-here e′ pre))))
       where
         n′ = n
-        e′ = irFunOf (C.mkCompiledFun (bare x) _ ty irFun)
-    atMain x xe (yes _) (no _)  {ir} q₀′ = subst (λ y → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare y) _ ty irFun) ∷ pre)) ir) (sym xe) (main-linked rest _ q₀′)
-    atMain x xe (no _)  _       {ir} q₀′ = subst (λ y → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare y) _ ty irFun) ∷ pre)) ir) (sym xe) (main-linked rest _ q₀′)
+        e′ = irFunOf (C.mkCompiledFun (bare x) ty irFun)
+    atMain x xe (yes _) (no _)  {ir} q₀′ = subst (λ y → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare y) ty irFun) ∷ pre)) ir) (sym xe) (main-linked rest _ q₀′)
+    atMain x xe (no _)  _       {ir} q₀′ = subst (λ y → Linked σ (tableOf-go T (irFunOf (C.mkCompiledFun (bare y) ty irFun) ∷ pre)) ir) (sym xe) (main-linked rest _ q₀′)
 
 ------------------------------------------------------------------------
 -- THE THEOREM

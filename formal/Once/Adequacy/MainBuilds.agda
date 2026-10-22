@@ -221,7 +221,7 @@ ce-mono-g-doOpt doOpt sc fi es ty (just _) eqg
         let (ir-d , cfd) = cfunM-doOpt (Parser.FunInfo.funType fi) doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                              (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf-eq
             (_ , recd)   = ce-doOpt doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es rec
-        in _ , trans (cong (C.ce-mono-ir IR.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.Spec.Name.bare (Parser.FunInfo.funName fi)) _ ty ir-d)) recd)
+        in _ , trans (cong (C.ce-mono-ir IR.Heap doOpt sc fi es ty) cfd) (cong (C.consCF (C.mkCompiledFun (Once.Spec.Name.bare (Parser.FunInfo.funName fi)) ty ir-d)) recd)
 
 ce-poly-p-doOpt doOpt sc pfi es (just _) ()
 ce-poly-p-doOpt doOpt sc pfi es nothing eq =
