@@ -42,6 +42,27 @@ The analysis must cover each of the following.
   effectful premise is bound exactly once, left to right (plan 0.116). Its effects then happen once,
   in the order written, which the Spec's coherence and Freyd theorems rely on.
 
+**The Spec, read through the tests.** A large Spec diff cannot be reviewed hunk by hunk. The tests
+show what changed for a programmer, so analyse their diff against master as well:
+
+```
+git diff master..HEAD --name-status -- compiler/test tests examples formal/Once/Parser/Tests.agda
+```
+
+Classify every test change and judge it from first principles: is the language better, more
+uniform, or closer to `GOAL.md` and its categorical reading?
+- *Added*: a program is newly accepted, rejected or observed. Name the Spec change and the
+  decision behind it.
+- *Deleted*: something is no longer accepted or observable. Name the decision that removed it,
+  and check that removing it was the intent, not a loss to get a proof through.
+- *Modified expectation*: accept and reject swapped, or the exit code, trace or error changed.
+  This is a change in meaning, and it must trace to a decision.
+- *Modified program text only*: the surface changed (syntax, names, imports). Name the decision
+  that changed the surface, and check that the program still tests what it did before.
+
+A test change that no decision explains stops the merge. So does a Spec change that no test
+witnesses, unless the analysis says why no program can observe it.
+
 **Top-level modules.** State which of these the diff touches, what changed and why:
 `Once.Spec`, `Once.Certified`, `Once.Compiler`, `Once.Compile`, the trusted base, and the core
 types (`Once.IR`, `Once.Type`, `Once.IRTy`). Read their hunks line by line. If none is touched,
