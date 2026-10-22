@@ -542,7 +542,7 @@ body-linkedM inv (Data.Maybe.just _) x ty {Ψ = Once.Spec.Context.[]} cf ce = bo
 body-linkedM inv Data.Maybe.nothing  x ty {Ψ = Once.Spec.Context.[]} cf ce = body-linkedI inv x ty cf ce
 
 -- A telescope entry joins the scope. Its splice at a kinded instance is
--- linked: its body, typed once at the rigid schema, types at the instance
+-- linked: its body, typed once over the schema's parameters, types at the instance
 -- (`inst-at`, D243/D252), so the checker succeeds there (completeness); the
 -- splice is the realization of that derivation, whose references are the
 -- scope's (`realize-refs`), resolved (`resolve-refs`).

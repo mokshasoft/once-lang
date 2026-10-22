@@ -517,8 +517,8 @@ ce-mono-ir m doOpt sc fi es ty (inj₂ ir)  =
   consCF (mkCompiledFun (bare (funName fi)) ty ir)
          (compileEntries m doOpt (extendScope sc (funName fi) ty) es)
 
--- D243: a telescope definition is checked ONCE, at its schema with rigid
--- parameters; its uses are instances of it.
+-- D243: a telescope definition is checked ONCE, over its schema's parameters
+-- (plan 0.122); its uses are instances of it.
 ce-poly-p m doOpt sc pfi es (just X) =
   inj₁ ("`" ++ pfunName pfi ++ "` is more precise than its schema: the body also checks at " ++ showType X
         ++ ". A signature states the body's own type: write the more precise one")

@@ -128,8 +128,8 @@ data ModTele : Scope → List Parser.Entry → Set where
        → MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (Parser.e-fun fi ∷ es)
-  -- D243: a telescope definition, typed ONCE, at its schema with rigid
-  -- parameters. A use is at a kinded instance of it.
+  -- D243: a telescope definition, typed ONCE, over its schema's parameters
+  -- (plan 0.122). A use is at a kinded instance of it.
   poly : ∀ {sc pfi es Ψ}
        → PrincipalAt (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi))
        → ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ

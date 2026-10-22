@@ -8,7 +8,7 @@
 -- The compiler reads a signature's type `T` as the schema `schemaOf T`: its
 -- parameters are `T`'s variables in order of first occurrence (`params`),
 -- each of base kind exactly when it occurs under a functor constant, and its
--- type is `T` at the rigid constants, abstracted. The Spec reads the written
+-- type is `T` over them (`rigidOf`: each variable read as its parameter). The Spec reads the written
 -- type as a schema too (`SchemaOf`: distinct names, each used, the type read
 -- through them, kinds by `UnderK`). They agree (`schemaOf-S`).
 --

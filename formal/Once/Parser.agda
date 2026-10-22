@@ -235,8 +235,8 @@ record FunInfo : Set where
     funIsPrimitive : Bool
 
 -- | A telescope definition: polymorphic, or ground but not concrete (a
--- context projection, D071). Typed ONCE, at its schema with rigid
--- parameters, where it is declared (D243).
+-- context projection, D071). Typed ONCE, over its schema's parameters, where
+-- it is declared (D243; plan 0.122).
 record PolyFunInfo : Set where
   constructor mkPolyFunInfo
   field

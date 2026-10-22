@@ -5,8 +5,8 @@
 -- Once.Adequacy.SpecFront.Def — a definition of the compiler's telescope,
 -- as the Spec's (plan 0.121 §3.6, F6).
 --
--- The compiler checks a definition's body once, at its schema with rigid
--- parameters, and elaborates it; the Spec's walk asks for a `Body` (the body
+-- The compiler checks a definition's body once, over its schema's parameters
+-- (plan 0.122), and elaborates it; the Spec's walk asks for a `Body` (the body
 -- checked at the schema's type, naming a core term) and that the schema is
 -- the body's principal type. Both come from the two typing bridges, at the
 -- Spec's kinds of the schema:
