@@ -55,7 +55,7 @@ lit-int-name n = "lit.int." ++ showℤ n
 --
 -- Fixed rather than left alone, for the reason the retired-constructor trap
 -- teaches: dead code with a refuted semantics is the code that gets revived.
--- It now agrees with `Denotation/Meaning`'s `⟦ t-int n ⟧ᵢ` — `fromℤ` at the
+-- It now agrees with the core meaning of an integer literal — `fromℤ` at the
 -- TARGET's width, two's complement, no absolute value.
 lit-int-info : ℤ → SigOpInfo Unit Int
 lit-int-info n = mk-info

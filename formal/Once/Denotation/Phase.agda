@@ -12,10 +12,8 @@
 --     ⟦ Γ ▷[ 𝟘 ] A ⟧run  = ⟦ Γ ⟧run
 --     erase (Γ ▷[ 𝟘 ] A) = erase Γ ⊙ fstT
 --
--- Shared by `Denotation.SourceDenote` (meaning of a Surface term) and
--- `Denotation.Meaning` (meaning of a `⊢ᶜ` derivation), which need the same
--- three operations — `⊢ᶜ` carries a `Surface.Usage` index, so its meaning runs
--- over the runtime phase for exactly the reason the others do.
+-- Used by `Denotation.SourceDenote` (meaning of a Surface term), whose
+-- environment is the runtime phase.
 ------------------------------------------------------------------------
 
 module Once.Denotation.Phase where

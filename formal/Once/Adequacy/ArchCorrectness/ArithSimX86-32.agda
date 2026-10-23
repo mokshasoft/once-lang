@@ -53,8 +53,8 @@ import Once.Word as OnceWordL
 -- the concrete x86-32 arith interpreter this correspondence is stated over,
 -- computed `rd s d W.⊕ rd s src` and `W.fromℤ z` with 64-bit operations,
 -- while `CCC/Target/X86-32/Semantics.agda:33` wraps at 2^32. The plan asked
--- whether the two layers ever meet. They do — in `Denotation/Meaning`'s
--- `⟦ t-neg d ⟧ᵢ`, which reaches the same baked `semM` — so the whole x86-32
+-- whether the two layers ever meet. They do — in the meaning of `neg`,
+-- which reaches the same baked `semM` — so the whole x86-32
 -- arith correspondence was a statement about a 64-bit machine that x86-32 is
 -- not.
 module W = OnceWord.Width 32

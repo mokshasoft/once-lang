@@ -185,8 +185,8 @@ _ = refl
 --
 -- `-3.14` is ONE literal whose payload is `negate (decimalOf 3 14 2)` — the
 -- elaborator folds the minus (`Once.TypeCheck.Elaborate`'s
--- `inferElabV-neg-aux … (nov-float …)`) and `Once.Denotation.Meaning`'s
--- `⟦ t-neg-float ⟧ᵢ` reads the same payload. THAT IS EXACTLY WHY THESE PINS
+-- `inferElabV-neg-aux … (nov-float …)`) and the core meaning of the
+-- elaborated literal reads the same payload. THAT IS EXACTLY WHY THESE PINS
 -- EXIST: the two sides name the same `negate` and the same `round`, so the
 -- correspondence between them is `refl`-shaped and cannot falsify either
 -- (D117). The patterns below were computed by glibc/GHC, not by this file.

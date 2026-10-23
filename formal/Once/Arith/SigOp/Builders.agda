@@ -81,7 +81,7 @@ import Once.Internal.Value Carrier Carrier as M
 -- disagreeing." Every clause of that is true and the conclusion is false. Two
 -- paths agreeing on 64 is not "no promise changed" when one of the targets is
 -- 32-bit — it is both paths being wrong together, which is what made it
--- invisible. `Denotation/Meaning`'s `⟦ t-neg d ⟧ᵢ` reads these functions, so
+-- invisible. The meaning of `neg` reads these functions, so
 -- on x86-32 the SPEC said `⟦ neg (int 5) ⟧ = 2^64 - 5`, not a 32-bit word at
 -- all, while `⟦ int 5 ⟧` in the same expression was already width-correct.
 --

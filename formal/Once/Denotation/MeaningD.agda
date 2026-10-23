@@ -2,10 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.MeaningD — the implementation-side operations the surface
--- meaning's bridges read: the event-tracking fold, the force of a stream, the
--- constructor, a declaration's reference, all over the Kleisli domain `⟦_⟧ᴰ`
--- (split from `Denotation.Meaning`, plan 0.122 §5.5 M2).
+-- Once.Denotation.MeaningD — the implementation-side operations the bridges
+-- read: the event-tracking fold, the force of a stream, the constructor, a
+-- declaration's reference, all over the Kleisli domain `⟦_⟧ᴰ` (plan 0.122
+-- §5.5 M2).
 ------------------------------------------------------------------------
 
 module Once.Denotation.MeaningD where

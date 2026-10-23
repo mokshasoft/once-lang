@@ -123,7 +123,6 @@ open import Once.Internal.Trace using (FFIAnswers)
 σ₀ = noVars
 
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
-import Once.Denotation.Meaning Σ σ₀ as MeaningM
 open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM; GM-D)
 open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
@@ -328,8 +327,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
   relC D′ cf′ =
     TE.abi-rel ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᶜ Σ S V D′)) δ tt) M
       (GM-D Once.Spec.Grade.pure ty
-            (subst (λ m → RelGM Once.Spec.Grade.pure ty m (SD.⟦ realize D′ ⟧ˢ fmt σx tt))
-                   (CMB.bridge-c fmt Σ S σ₀ {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts) D′ tt) relA)
+            relA
             chain)
     where
       ccE  = Once.TypeCheck.Completeness.check-complete D′
@@ -343,8 +341,9 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
              (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″) tt)
                  (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″))))
              (realize-invariant D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
-      relA : RelGM Once.Spec.Grade.pure ty (MeaningM.⟦_⟧ᶜ D′ fmt ρ tt) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
-      relA = MB.bridge-c fmt Σ σ₀ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
+      relA : RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᶜ Σ S V D′)) δ tt) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
+      relA = MB.bridge-c fmt Σ σ₀ σx S (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts)
+               D′ {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   -- R8, without a signature: the same chain, through the synthesis.
@@ -354,8 +353,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
   relI D′ cf′ =
     TE.abi-rel ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᵢ Σ S V D′)) δ tt) M
       (GM-D Once.Spec.Grade.pure ty
-            (subst (λ m → RelGM Once.Spec.Grade.pure ty m (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt))
-                   (CMB.bridge-i fmt Σ S σ₀ {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts) D′ tt) relA)
+            relA
             chain)
     where
       ciE  = Once.TypeCheck.Completeness.infer-complete D′
@@ -369,8 +367,9 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
              (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″) tt)
                  (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″))))
              (realize-invariant-i D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
-      relA : RelGM Once.Spec.Grade.pure ty (MeaningM.⟦_⟧ᵢ D′ fmt ρ tt) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
-      relA = MB.bridge-i fmt Σ σ₀ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
+      relA : RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᵢ Σ S V D′)) δ tt) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
+      relA = MB.bridge-i fmt Σ σ₀ σx S (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts)
+               D′ {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   relM-at : (ft : Data.Maybe.Maybe Type) (D′ : MonoBody ft ctx (funBody fi) ty SCx.[])
@@ -541,13 +540,13 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
               → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ σ₀ δ′ zero {scT} refl ki) (SD.DefsSem.refs σ y U)
         head₀ U ki =
           subst (λ m → RelGM Once.Spec.Grade.pure U m (SD.DefsSem.refs σ y U))
-                (trans (CMB.bridge-c fmt Σ S σ₀ {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts) D-U tt)
-                       (trans (EI.poly-instance-sem Σ fmt S σ₀ V δ scT D ki)
-                              (sym (cong (subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance scT ki))))
-                                         (head-at {tl = tl} {sc = schemaOf scT} {D = proj₂ (ElabM.elabᶜ Σ S V D)} (proj₁ (kinded-instance scT ki)) (proj₁ (proj₂ (kinded-instance scT ki)))
-                                                  (proj₁ (proj₂ (kinded-instance scT ki))))))))
+                (trans (EI.poly-instance-sem Σ fmt S σ₀ V δ scT D ki)
+                       (sym (cong (subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance scT ki))))
+                                  (head-at {tl = tl} {sc = schemaOf scT} {D = proj₂ (ElabM.elabᶜ Σ S V D)} (proj₁ (kinded-instance scT ki)) (proj₁ (proj₂ (kinded-instance scT ki)))
+                                           (proj₁ (proj₂ (kinded-instance scT ki)))))))
                 (GM-D Once.Spec.Grade.pure U
-                       (MB.bridge-c fmt Σ σ₀ σo (σW-self tbl (C.cpolys csc) I uf) D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old)
+                       (MB.bridge-c fmt Σ σ₀ σo S (σW-self tbl (C.cpolys csc) I uf) {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts)
+                                    D-U {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt) old)
                        relSD)
           where
             D-U = EI.inst-at Σ fmt S σ₀ scT D ki

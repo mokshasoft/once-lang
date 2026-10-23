@@ -75,8 +75,7 @@ lookupᴰ (Γ ▸ A) fzero    dγ = proj₂ dγ
 lookupᴰ (Γ ▸ A) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 
 -- The runtime-phase helpers (`lookupᴰUsed` / `restrictᴰ` / `bindᴰ` /
--- `bindᴰ0`) live in `Once.Denotation.Phase` — `Denotation.Meaning` needs the
--- same three, and duplicating them would let the two drift.
+-- `bindᴰ0`) live in `Once.Denotation.Phase`.
 
 ------------------------------------------------------------------------
 -- The `Cata` fold's per-layer trace+value algebra, over a ⟦_⟧ˢ algebra
@@ -212,10 +211,10 @@ sigOpSem A name (con-base ib) fmt σ = sigOpˢ fmt σ (value-info {Unit} {A} nam
 ⟦ pair {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
   ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
   ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → return∞ (va , vb)
--- D127: the combinators. These are the SAME four expressions as the
--- corresponding `⟦_⟧ᶜ` clauses in `Once.Denotation.Meaning`, and that is not a
--- coincidence to be maintained by hand — `realize-agrees` is what holds them
--- together, and it now compares like with like at every combinator.
+-- D127: the combinators. These are the compositions the Spec's derived
+-- combinators are written to have (`CoreMeaningBridge.Comb`), and that is not a
+-- coincidence to be maintained by hand — `MeaningBridge` relates them clause
+-- by clause.
 ⟦ comp' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g ⟧ˢ fmt σ dγ =
   ⟦ f ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=∞ λ vf →
   ⟦ g ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=∞ λ vg →

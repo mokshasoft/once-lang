@@ -130,7 +130,7 @@ data SigOpSem (A B : Type) : Set where
   -- PLAN 0.74 J5 (D059) — it takes the TARGET'S NUMERICS. It used to be a
   -- closed `M.⟦ A ⟧ → M.⟦ B ⟧`, and `Arith/SigOp/Builders` accordingly
   -- computed `arith.neg.int` with `Word64.⊝` on every target. That is not an
-  -- untidy import: `Denotation/Meaning`'s `⟦ t-neg d ⟧ᵢ` reaches this
+  -- untidy import: the meaning of `neg` reaches this
   -- function, so on x86-32 the SPEC said `⟦ neg (int 5) ⟧ = 2^64 - 5`, which
   -- is not even a 32-bit word, while literals in the same expression were
   -- already width-correct. Nothing was red because `block-semM` and

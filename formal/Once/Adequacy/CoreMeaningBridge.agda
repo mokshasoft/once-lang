@@ -2,21 +2,21 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.CoreMeaningBridge — plan 0.103 6b, step B.2: THE SURFACE
--- MEANING IS THE CORE MEANING OF THE ELABORATION (plan 0.122 §5.5 M4: the
--- Spec's core meaning).
+-- Once.Adequacy.CoreMeaningBridge — the core meaning of an elaboration, as
+-- the bridge to the implementation reads it (plan 0.103 6b; plan 0.122 §2b-3:
+-- the Spec's core meaning is the only meaning of a derivation).
 --
---   ⟦ d ⟧ᶜ fmt ρ x ≡ SM.⟦ proj₂ (elabᶜ V d) ⟧ δ σ₀ noResp γ
---
--- clause by clause over the surface judgment, at related environments
--- (`SurfaceEnv.EnvR`: the surface's product of the used values against the
--- Spec's slots), in a surface environment `ρ` that AGREES with the core's
--- `δ` at every reference the View resolves (`Agree`). The derived combinators
--- were written so their evaluation order is the surface clause's
--- (Spec.Core.Derived's header); what the proof spends is the pure bind's
--- β-law, the renaming lemma (`SpecRenameSem.wk-sem`) where a combinator
--- weakens an arm, each of the Spec's environment splits being a restriction
--- (`Coherence.Env`), and the transports the typing proofs carry.
+-- The references' meanings (an entry at an instance, an import, a generator
+-- of Σ), the agreement of a scope's reference tables with the core's `δ`
+-- (`Agree`), and one lemma per derived combinator: its core meaning, at a
+-- Spec environment related to a surface one (`SurfaceEnv.EnvR`: the product
+-- of the used values against the Spec's slots), is its arms' meanings
+-- composed as the implementation composes them. The derived combinators were
+-- written so their evaluation order is the implementation's (Spec.Core.Derived's
+-- header); what the proofs spend is the pure bind's β-law, the renaming lemma
+-- (`SpecRenameSem.wk-sem`) where a combinator weakens an arm, each of the
+-- Spec's environment splits being a restriction (`Coherence.Env`), and the
+-- transports the typing proofs carry.
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
@@ -59,9 +59,9 @@ open import Once.Denotation.PureBind using (_>>=ᵖ_; >>=ᵖ-β; >>=ᵖ-idʳ)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
 open import Once.Internal.Typing
 open import Once.Denotation.DefEnv using (defAt; impAt)
-import Once.Denotation.Meaning Σ σ₀ as DM
-open DM using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵈ; MeaningsOf; Meanings; returnᵖ)
-open DM.Meanings using (sigs; defs; entries)
+import Once.Denotation.RefMeanings Σ σ₀ as RM
+open RM using (MeaningsOf; Meanings)
+open RM.Meanings using (sigs; defs; entries)
 open import Once.Denotation.SpecDomain Σ σ₀
   using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ; M; bindM; returnM; subM; fmapM; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ; loop; restrictᵛ; bindᵛ)
 open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
@@ -185,6 +185,10 @@ module _ {Δ : KCtx 0} {n} {Γ : Ctx 0 n} (δ : DefSem) where
 -- The pure bind
 ------------------------------------------------------------------------
 
+-- A pure return.
+returnᵖ : ∀ {X : Set} → X → X
+returnᵖ x = x
+
 β2 : ∀ {X Y Z : Set} (m : X) (n : Y) (k : X → Y → Z) → (m >>=ᵖ λ a → n >>=ᵖ λ b → k a b) ≡ k m n
 β2 m n k = trans (>>=ᵖ-β m _) (>>=ᵖ-β n _)
 
@@ -232,6 +236,10 @@ module Comb {Δ : KCtx 0} {δ : DefSem} {n} {Γ : Ctx 0 n} where
   -- An arm's bridge: related environments give equal meanings.
   Arm : ∀ {Ψ : Usage n} {X : Set} → (EA.Env Γ Ψ → X) → (Env σ₀ Γ Ψ → X) → Set
   Arm {Ψ} F G = ∀ {x γ} → EnvR Γ Ψ x γ → F x ≡ G γ
+
+  -- A derivation's own arm: its meaning, read at the surface environment's values.
+  arm : ∀ {Ψ : Usage n} {A : Ty 0} {t π} (D : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Arm (λ x → ⟦ D ⟧ₛ δ (fromSurf {Γ = Γ} x)) (⟦ D ⟧ₛ δ)
+  arm D r = cong (⟦ D ⟧ₛ δ) (fromR≡ {Γ = Γ} r)
 
   -- A closed combinator whose meaning is `F`, applied: its argument, bound into `F`.
   appC-sem : ∀ {Ψ : Usage n} {A B : Ty 0} {c t} (F : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ)
@@ -426,252 +434,3 @@ module Comb {Δ : KCtx 0} {δ : DefSem} {n} {Γ : Ctx 0 n} where
     extensionality λ _ →
       trans (appC (hF (envˡ-R {Γ = Γ} Ψ₁ (Many *ᵘ Ψ₂) r)) (hX (env*Many-envʳ-R {Γ = Γ} Ψ₁ Ψ₂ r)))
             (sym (cong₂ (λ f a → f a) (RS.wk-sem σ₀ δ noResp Once.Spec.Type.Unit df _) (RS.wk-sem σ₀ δ noResp Once.Spec.Type.Unit dx _)))
-
-------------------------------------------------------------------------
--- The bridge
-------------------------------------------------------------------------
-
-open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Denotation.Meaning Σ σ₀ using (EnvRun)
-
-module _ {δ : DefSem} where
-
-  bridge-d : ∀ {A B : Ty 0} {ctx : NamedCtx 0} {e π Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
-             (d : ctx ⊢ᵈ e ∶ A ⇒[ π ]↦ B ⨾ Ψ) {x γ} → EnvR (NamedCtx.debruijn ctx) Ψ x γ
-           → ⟦ d ⟧ᵈ fmt ρ x ≡ ⟦ proj₂ (elabᵈ V d) ⟧ₛ δ γ
-
-  bridge-i : ∀ {A : Ty 0} {ctx : NamedCtx 0} {e Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
-             (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ) {x γ} → EnvR (NamedCtx.debruijn ctx) Ψ x γ
-           → ⟦ d ⟧ᵢ fmt ρ x ≡ ⟦ proj₂ (elabᵢ V d) ⟧ₛ δ γ
-
-  bridge-c : ∀ {A : Ty 0} {ctx : NamedCtx 0} {e Ψ} (V : Views ctx) {ρ : MeaningsOf ctx} (ag : Agree V ρ δ)
-             (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ) {x γ} → EnvR (NamedCtx.debruijn ctx) Ψ x γ
-           → ⟦ d ⟧ᶜ fmt ρ x ≡ ⟦ proj₂ (elabᶜ V d) ⟧ₛ δ γ
-
-  bridge-c V ag t-id-check             r = refl
-  bridge-c V ag (t-fst-check {u = u}) r = refl
-  bridge-c V ag (t-snd-check {u = u}) r = refl
-  bridge-c V ag t-terminal-morph-check r = refl
-  bridge-c V ag (t-initial-morph-check {π = π}) r = extensionality λ ()
-  bridge-c V ag (t-inl-morph-check {u = u}) r = refl
-  bridge-c V ag (t-inr-morph-check {u = u}) r = refl
-  bridge-c V ag (t-compose-check-g dg df) r =
-    Comb.compose-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᵈ V dg)) _ _ (bridge-c V ag df) (bridge-d V ag dg) r
-  bridge-c V ag (t-compose-check-f wf p dg) r =
-    Comb.compose-sem {δ = δ} (⊢coerce p (proj₂ (elabᵢ V wf))) (proj₂ (elabᶜ V dg)) _ _
-                     (λ e → cong ⟦ p ⟧<:ᵛ (bridge-i V ag wf e)) (bridge-c V ag dg) r
-  bridge-c V ag (t-case-copair-check df dg) r =
-    Comb.case-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg)) _ _ (bridge-c V ag df) (bridge-c V ag dg) r
-  bridge-c V ag (t-pair-morph-check df dg) r =
-    Comb.pair-sem {δ = δ} (proj₂ (elabᶜ V df)) (proj₂ (elabᶜ V dg)) _ _ (bridge-c V ag df) (bridge-c V ag dg) r
-  bridge-c V ag (t-curry-check {u = u} df) r =
-    Comb.curry-sem {δ = δ} u (proj₂ (elabᶜ V df)) _ (bridge-c V ag df) r
-  bridge-c V ag (t-cata-check {u = u} wf dalg) r =
-    Comb.cata-sem′ {δ = δ} u wf (proj₂ (elabᶜ V dalg)) _ (bridge-c V ag dalg) r
-  bridge-c V ag (t-sub d p) r = cong ⟦ p ⟧<:ᵛ (bridge-i V ag d r)
-  bridge-c {ctx = ctx} V ag (t-lam {A = A} {q = Zero} {q' = Zero} {u = u} le d) r = extensionality λ a → cong (subM u) (bridge-c V ag d (bind0-R {Γ = NamedCtx.debruijn ctx} {A = A} tt r))
-  bridge-c {ctx = ctx} V ag (t-lam {A = A} {q = One} {q' = Zero} {u = u} le d) r = extensionality λ a → cong (subM u) (bridge-c V ag d (bind0-R {Γ = NamedCtx.debruijn ctx} {A = A} tt r))
-  bridge-c {ctx = ctx} V ag (t-lam {A = A} {q = Many} {q' = Zero} {u = u} le d) r = extensionality λ a → cong (subM u) (bridge-c V ag d (bind0-R {Γ = NamedCtx.debruijn ctx} {A = A} tt r))
-  bridge-c {ctx = ctx} V ag (t-lam {A = A} {q = One} {q' = One} {u = u} le d) r = extensionality λ a → cong (subM u) (bridge-c V ag d (bind-R {Γ = NamedCtx.debruijn ctx} {A = A} One a r))
-  bridge-c {ctx = ctx} V ag (t-lam {A = A} {q = Many} {q' = One} {u = u} le d) r = extensionality λ a → cong (subM u) (bridge-c V ag d (bind-R {Γ = NamedCtx.debruijn ctx} {A = A} One a r))
-  bridge-c {ctx = ctx} V ag (t-lam {A = A} {q = Many} {q' = Many} {u = u} le d) r = extensionality λ a → cong (subM u) (bridge-c V ag d (bind-R {Γ = NamedCtx.debruijn ctx} {A = A} Many a r))
-  bridge-c V ag (t-lam {q = Zero} {q' = One}  () d) r
-  bridge-c V ag (t-lam {q = Zero} {q' = Many} () d) r
-  bridge-c V ag (t-lam {q = One}  {q' = Many} () d) r
-  bridge-c {ctx = ctx} V ag (t-pair-lit-check {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} da db) r =
-    binK {K = λ ab → ab}
-         (bridge-c V ag da (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
-         (bridge-c V ag db (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envʳ σ₀ _ _) (envʳ-restrict σ₀ _ _) r))
-  bridge-c V ag (t-In-app-check {F = F} wf d) r =
-    Comb.appC-sem {δ = δ} {A = ⟦ F ⟧F (Once.Spec.Type.μ F)} {B = Once.Spec.Type.μ F} _ (⊢inᶜ wf) (λ y → refl) (proj₂ (elabᶜ V d)) _ (bridge-c V ag d) r
-  bridge-c V ag (t-inl-app-check {A = A} {B = B} d) r =
-    Comb.appC-sem {δ = δ} {A = A} {B = A + B} _ (⊢inlᶜ ⊑-pure) (λ y → refl) (proj₂ (elabᶜ V d)) _ (bridge-c V ag d) r
-  bridge-c V ag (t-inr-app-check {A = A} {B = B} d) r =
-    Comb.appC-sem {δ = δ} {A = B} {B = A + B} _ (⊢inrᶜ ⊑-pure) (λ y → refl) (proj₂ (elabᶜ V d)) _ (bridge-c V ag d) r
-  bridge-c V ag (t-initial-app-check {T = T} d) r =
-    Comb.appC-sem {δ = δ} {A = Once.Spec.Type.Void} {B = T} (λ w → ⊥-elim w) (⊢initialᶜ ⊑-pure) (λ y → refl) (proj₂ (elabᶜ V d)) _ (bridge-c V ag d) r
-  -- D273: the coalgebra lives in the context — no `close`, read at `x`.
-  bridge-c V ag (t-ana-check {π₀ = π₀} {φ = π} {u = u} wf dcoalg) r =
-    Comb.ana-sem″ {δ = δ} u wf (proj₂ (elabᶜ V dcoalg)) _ (bridge-c V ag dcoalg) r
-  bridge-c V ag (t-loop-check dround) r =
-    Comb.loop-sem {δ = δ} (proj₂ (elabᶜ V dround)) _ (bridge-c V ag dround) r
-  bridge-c {ctx = ctx} V ag (t-apply-check {A = A} {B = B} dp) r =
-    Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})
-                  (λ y → ⟦⟧-substΨ (z+qz {Δ = NamedCtx.kinds ctx} Many) _ δ y) (proj₂ (elabᵢ V dp)) _ (bridge-i V ag dp) r
-  bridge-c V ag (t-var-poly-instantiate _ _ lp ng ki) {γ = γ} r =
-    trans (Agree.agree-inst ag lp ki) (sym (polyE-sem δ V lp ki γ))
-
-  bridge-i V ag (t-int n) r = refl
-  bridge-i V ag (t-float i f l) r = refl
-  bridge-i V ag t-unit r = refl
-  bridge-i V ag t-unit-var r = refl
-  bridge-i {ctx = ctx} V ag (t-var-local {eV = Once.Internal.Context.svar i} _) r = lookup-R (NamedCtx.debruijn ctx) i r
-  bridge-i V ag (t-var-resolved {cn = cn} _ wn lk k refl) {γ = γ} r =
-    trans (Agree.agree-resolved ag {cn = cn} wn lk k) (sym (sigE-sem δ cn wn k (declares V lk) γ))
-  bridge-i V ag (t-var-own _ lk refl) {γ = γ} r = trans (Agree.agree-import ag lk) (sym (importE-sem δ (imported V lk) γ))
-  bridge-i V ag (t-var-import _ _ lk k refl) {γ = γ} r = trans (Agree.agree-import ag lk) (sym (importE-sem δ (imported V lk) γ))
-  bridge-i V ag (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ refl) {γ = γ} r =
-    trans (Agree.agree-inst ag lp (ground-kinded sc g)) (sym (polyE-sem δ V lp (ground-kinded sc g) γ))
-  bridge-i V ag (t-annot d refl) r = bridge-c V ag d r
-  bridge-i {ctx = ctx} V ag (t-pair da db) r =
-    binK {K = λ ab → ab}
-         (bridge-i V ag da (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
-         (bridge-i V ag db (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envʳ σ₀ _ _) (envʳ-restrict σ₀ _ _) r))
-  bridge-i V ag (t-neg d) r = fmapC _ (bridge-i V ag d r)
-  bridge-i V ag (t-neg-float i f l) r = refl
-  bridge-i {ctx = ctx} V ag (t-let {A = A} {q = Zero} d₁ d₂) r =
-    bridge-i V ag d₂ (bind0-R {Γ = NamedCtx.debruijn ctx} {A = A} tt (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
-  bridge-i {ctx = ctx} V {ρ = ρ} ag (t-let {A = A} {q = One} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} d₁ d₂) {x = x} r =
-    trans (>>=ᵖ-β _ _)
-          (trans (cong (λ v → ⟦ d₂ ⟧ᵢ fmt ρ (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} One (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) x) v))
-                       (bridge-i V ag d₁ (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (λ y → env*One σ₀ Ψ₁ (envʳ σ₀ Ψ₂ (One *ᵘ Ψ₁) y))
-                                                     (env*One-envʳ-restrict σ₀ Ψ₂ Ψ₁) r)))
-                 (bridge-i V ag d₂ (bind-R {Γ = NamedCtx.debruijn ctx} {A = A} One _ (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))))
-  bridge-i {ctx = ctx} V {ρ = ρ} ag (t-let {A = A} {q = Many} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} d₁ d₂) {x = x} r =
-    trans (>>=ᵖ-β _ _)
-          (trans (cong (λ v → ⟦ d₂ ⟧ᵢ fmt ρ (bindᵛ {Γ = NamedCtx.debruijn ctx} {A = A} Many (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) x) v))
-                       (bridge-i V ag d₁ (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (λ y → env*Many σ₀ Ψ₁ (envʳ σ₀ Ψ₂ (Many *ᵘ Ψ₁) y))
-                                                     (env*Many-envʳ-restrict σ₀ Ψ₂ Ψ₁) r)))
-                 (bridge-i V ag d₂ (bind-R {Γ = NamedCtx.debruijn ctx} {A = A} Many _ (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))))
-  -- D276: the core arm runs at the join through `⊢sub-use`, i.e. restricted
-  -- after binding; the surface binds after restricting. Same environment.
-  -- D322: each arm converted into the join, on both sides.
-  bridge-i V ag (t-case {ctx = ctx} {A = A} {B = B} {C = C} {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr J) {x = x} {γ = γ} r =
-    trans (>>=ᵖ-β _ _)
-      (trans (cong (λ v → [ L , R ]′ v) (bridge-i V ag ds (envˡ-R {Γ = Γc} Ψs (Ψₗ ⊔ᵘ Ψᵣ) r)))
-             (go (⟦ proj₂ (elabᵢ V ds) ⟧ₛ δ (envˡ σ₀ Ψs (Ψₗ ⊔ᵘ Ψᵣ) γ))))
-    where
-      Γc = NamedCtx.debruijn ctx
-      xr = restrictᵛ {Γ = Γc} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) x
-      γr = envʳ σ₀ Ψs (Ψₗ ⊔ᵘ Ψᵣ) γ
-      rr : EnvR Γc (Ψₗ ⊔ᵘ Ψᵣ) xr γr
-      rr = envʳ-R {Γ = Γc} Ψs (Ψₗ ⊔ᵘ Ψᵣ) r
-      kl = ⊑ᵘ-keep {Δ = NamedCtx.kinds ctx} qL (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)
-      kr = ⊑ᵘ-keep {Δ = NamedCtx.kinds ctx} qR (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)
-      L : ⟦ A ⟧ᵛ → ⟦ C ⟧ᵛ
-      L = λ a → ⟦ <:ᶜ⇒<: (⊔-left J) ⟧<:ᵛ (⟦ dl ⟧ᵢ fmt _ (bindᵛ {Γ = Γc} {A = A} qL (restrictᵛ {Γ = Γc} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) xr) a))
-      R : ⟦ B ⟧ᵛ → ⟦ C ⟧ᵛ
-      R = λ b → ⟦ <:ᶜ⇒<: (⊔-right J) ⟧<:ᵛ (⟦ dr ⟧ᵢ fmt _ (bindᵛ {Γ = Γc} {A = B} qR (restrictᵛ {Γ = Γc} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) xr) b))
-      L′ : ⟦ A ⟧ᵛ → ⟦ C ⟧ᵛ
-      L′ = λ a → ⟦ <:ᶜ⇒<: (⊔-left J) ⟧<:ᵛ (⟦ proj₂ (elabᵢ V dl) ⟧ₛ δ (restrict σ₀ {Γ = Γc ▸ A} kl (γr , slot qL a)))
-      R′ : ⟦ B ⟧ᵛ → ⟦ C ⟧ᵛ
-      R′ = λ b → ⟦ <:ᶜ⇒<: (⊔-right J) ⟧<:ᵛ (⟦ proj₂ (elabᵢ V dr) ⟧ₛ δ (restrict σ₀ {Γ = Γc ▸ B} kr (γr , slot qR b)))
-      go : ∀ v → [ L , R ]′ v ≡ [ L′ , R′ ]′ v
-      go (inj₁ a) =
-        cong ⟦ <:ᶜ⇒<: (⊔-left J) ⟧<:ᵛ
-          (bridge-i V ag dl (subst (λ z → EnvR (Γc ▸ A) (qL ∷ Ψₗ) z (restrict σ₀ {Γ = Γc ▸ A} kl (γr , slot qL a)))
-                                   (EA.restrict-bind {Γ = Γc} {A = A} qL qL kl (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) xr a)
-                                   (restrict-R {Γ = Γc ▸ A} kl kl (bind-R {Γ = Γc} {A = A} qL a rr))))
-      go (inj₂ b) =
-        cong ⟦ <:ᶜ⇒<: (⊔-right J) ⟧<:ᵛ
-          (bridge-i V ag dr (subst (λ z → EnvR (Γc ▸ B) (qR ∷ Ψᵣ) z (restrict σ₀ {Γ = Γc ▸ B} kr (γr , slot qR b)))
-                                   (EA.restrict-bind {Γ = Γc} {A = B} qR qR kr (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) xr b)
-                                   (restrict-R {Γ = Γc ▸ B} kr kr (bind-R {Γ = Γc} {A = B} qR b rr))))
-  bridge-i {ctx = ctx} V ag (t-binop-arith {op = OpAdd} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith {op = OpSub} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith {op = OpMul} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith {op = OpDiv} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith {op = OpMod} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i V ag (t-binop-arith {op = OpLt} () _ _) r
-  bridge-i V ag (t-binop-arith {op = OpLe} () _ _) r
-  bridge-i V ag (t-binop-arith {op = OpGt} () _ _) r
-  bridge-i V ag (t-binop-arith {op = OpGe} () _ _) r
-  bridge-i V ag (t-binop-arith {op = OpEq} () _ _) r
-  bridge-i V ag (t-binop-arith {op = OpNe} () _ _) r
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float {op = OpAdd} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float {op = OpSub} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float {op = OpMul} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float {op = OpDiv} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i V ag (t-binop-arith-float {op = OpMod} () _ _) r
-  bridge-i V ag (t-binop-arith-float {op = OpLt} () _ _) r
-  bridge-i V ag (t-binop-arith-float {op = OpLe} () _ _) r
-  bridge-i V ag (t-binop-arith-float {op = OpGt} () _ _) r
-  bridge-i V ag (t-binop-arith-float {op = OpGe} () _ _) r
-  bridge-i V ag (t-binop-arith-float {op = OpEq} () _ _) r
-  bridge-i V ag (t-binop-arith-float {op = OpNe} () _ _) r
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-il {op = OpAdd} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (fmapC _ (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-il {op = OpSub} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (fmapC _ (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-il {op = OpMul} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (fmapC _ (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-il {op = OpDiv} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (fmapC _ (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i V ag (t-binop-arith-float-il {op = OpMod} () _ _) r
-  bridge-i V ag (t-binop-arith-float-il {op = OpLt} () _ _) r
-  bridge-i V ag (t-binop-arith-float-il {op = OpLe} () _ _) r
-  bridge-i V ag (t-binop-arith-float-il {op = OpGt} () _ _) r
-  bridge-i V ag (t-binop-arith-float-il {op = OpGe} () _ _) r
-  bridge-i V ag (t-binop-arith-float-il {op = OpEq} () _ _) r
-  bridge-i V ag (t-binop-arith-float-il {op = OpNe} () _ _) r
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-ir {op = OpAdd} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (fmapC _ (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-ir {op = OpSub} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (fmapC _ (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-ir {op = OpMul} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (fmapC _ (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)))
-  bridge-i {ctx = ctx} V ag (t-binop-arith-float-ir {op = OpDiv} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (fmapC _ (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)))
-  bridge-i V ag (t-binop-arith-float-ir {op = OpMod} () _ _) r
-  bridge-i V ag (t-binop-arith-float-ir {op = OpLt} () _ _) r
-  bridge-i V ag (t-binop-arith-float-ir {op = OpLe} () _ _) r
-  bridge-i V ag (t-binop-arith-float-ir {op = OpGt} () _ _) r
-  bridge-i V ag (t-binop-arith-float-ir {op = OpGe} () _ _) r
-  bridge-i V ag (t-binop-arith-float-ir {op = OpEq} () _ _) r
-  bridge-i V ag (t-binop-arith-float-ir {op = OpNe} () _ _) r
-  bridge-i {ctx = ctx} V ag (t-binop-cmp {op = OpLt} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-cmp {op = OpLe} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-cmp {op = OpGt} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-cmp {op = OpGe} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-cmp {op = OpEq} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i {ctx = ctx} V ag (t-binop-cmp {op = OpNe} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ d₁ d₂) r = binK (bridge-i V ag d₁ (envˡ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r)) (bridge-i V ag d₂ (envʳ-R {Γ = NamedCtx.debruijn ctx} Ψ₁ Ψ₂ r))
-  bridge-i V ag (t-binop-cmp {op = OpAdd} () _ _) r
-  bridge-i V ag (t-binop-cmp {op = OpSub} () _ _) r
-  bridge-i V ag (t-binop-cmp {op = OpMul} () _ _) r
-  bridge-i V ag (t-binop-cmp {op = OpDiv} () _ _) r
-  bridge-i V ag (t-binop-cmp {op = OpMod} () _ _) r
-  bridge-i V ag (t-id-app {T = T} d) r =
-    trans (sym (>>=ᵖ-idʳ _)) (Comb.appC-sem {δ = δ} {A = T} {B = T} (λ v → v) (⊢idᶜ ⊑-pure) (λ y → refl) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r)
-  bridge-i V ag (t-fst-app {A = A} {B = B} d) r = Comb.appC-sem {δ = δ} {A = A * B} {B = A} _ (⊢fstᶜ ⊑-pure) (λ y → refl) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r
-  bridge-i V ag (t-snd-app {A = A} {B = B} d) r = Comb.appC-sem {δ = δ} {A = A * B} {B = B} _ (⊢sndᶜ ⊑-pure) (λ y → refl) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r
-  bridge-i V ag (t-terminal-app {T = T} d) r = Comb.appC-sem {δ = δ} {A = T} {B = Once.Spec.Type.Unit} _ (⊢terminalᶜ ⊑-pure) (λ y → refl) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r
-  bridge-i V ag (t-Out-app-infer {F = F} wf refl d) r = Comb.appC-sem {δ = δ} {A = Once.Spec.Type.ν F pureᶠ} {B = ⟦ F ⟧F (Once.Spec.Type.ν F pureᶠ)} _ (⊢outᶜ wf) (λ y → refl) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r
-  bridge-i V ag (t-Out-eff-app-infer {F = F} wf refl d) r = Comb.appC-sem {δ = δ} {A = Once.Spec.Type.ν F actᶠ} {B = Once.Spec.Type.Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (Once.Spec.Type.ν F actᶠ)} _ (⊢outActᶜ wf) (λ y → refl) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r
-  bridge-i {ctx = ctx} V ag (t-apply-app-infer {A = A} {B = B} d) r =
-    Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = NamedCtx.debruijn ctx} {A = A} {B = B})
-                  (λ y → ⟦⟧-substΨ (z+qz {Δ = NamedCtx.kinds ctx} Many) _ δ y) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r
-  bridge-i {ctx = ctx} V ag (t-apply-eff-app-infer {A = A} {B = B} {π = π} d) r =
-    Comb.appC-sem {δ = δ} (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
-                  (⊢applyEffᶜ {Γ = NamedCtx.debruijn ctx} {π = π} {A = A} {B = B})
-                  (λ y → ⟦⟧-substΨ (z+qz {Δ = NamedCtx.kinds ctx} Many) _ δ y) (proj₂ (elabᵢ V d)) _ (bridge-i V ag d) r
-  bridge-i {ctx = ctx} V ag (t-app {q = Zero} _ df dx) r =
-    trans (>>=ᵖ-β _ _) (cong (λ f → f tt) (bridge-i V ag df (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r)))
-  bridge-i {ctx = ctx} V ag (t-app {q = One} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ df dx) r =
-    appC (bridge-i V ag df (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
-         (bridge-c V ag dx (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (λ y → env*One σ₀ Ψ₂ (envʳ σ₀ Ψ₁ (One *ᵘ Ψ₂) y))
-                                     (env*One-envʳ-restrict σ₀ Ψ₁ Ψ₂) r))
-  bridge-i {ctx = ctx} V ag (t-app {q = Many} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ df dx) r =
-    appC (bridge-i V ag df (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
-         (bridge-c V ag dx (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (λ y → env*Many σ₀ Ψ₂ (envʳ σ₀ Ψ₁ (Many *ᵘ Ψ₂) y))
-                                     (env*Many-envʳ-restrict σ₀ Ψ₁ Ψ₂) r))
-  bridge-i V ag (t-effApp _ df dx) r =
-    Comb.effApp-sem {δ = δ} (proj₂ (elabᵢ V df)) (proj₂ (elabᶜ V dx)) _ _ (bridge-i V ag df) (bridge-c V ag dx) r
-  bridge-i {ctx = ctx} V ag (t-app-spine {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ dx df) r =
-    appC (bridge-d V ag df (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
-         (bridge-i V ag dx (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
-                                     (env*Many-envʳ-restrict σ₀ _ _) r))
-
-  bridge-d V ag (d-infer {B = B} w a g) r = cong ⟦ sub-arr {q = Many} a (<:-refl B) g ⟧<:ᵛ (bridge-i V ag w r)
-  bridge-d V ag (d-poly {A = A} {B = B} _ _ lp ng _ _ ki g) {γ = γ} r =
-    cong ⟦ sub-arr {q = Many} (<:-refl A) (<:-refl B) g ⟧<:ᵛ (trans (Agree.agree-inst ag lp ki) (sym (polyE-sem δ V lp ki γ)))
-  bridge-d {ctx = ctx} V ag (d-lam {A = A} {q' = Zero} {u = u} d) r = extensionality λ a → cong (subM u) (bridge-i V ag d (bind0-R {Γ = NamedCtx.debruijn ctx} {A = A} tt r))
-  bridge-d {ctx = ctx} V ag (d-lam {A = A} {q' = One} {u = u} d) r = extensionality λ a → cong (subM u) (bridge-i V ag d (bind-R {Γ = NamedCtx.debruijn ctx} {A = A} One a r))
-  bridge-d {ctx = ctx} V ag (d-lam {A = A} {q' = Many} {u = u} d) r = extensionality λ a → cong (subM u) (bridge-i V ag d (bind-R {Γ = NamedCtx.debruijn ctx} {A = A} Many a r))
-  bridge-d V ag (d-compose dg df) r =
-    Comb.compose-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) _ _ (bridge-d V ag df) (bridge-d V ag dg) r
-  bridge-d V ag d-id r = refl
-  bridge-d V ag (d-fst {u = u}) r = refl
-  bridge-d V ag (d-snd {u = u}) r = refl
-  bridge-d V ag d-terminal r = refl
-  bridge-d V ag (d-initial {π = π}) r = extensionality λ ()
-  bridge-d V ag (d-case {A = A} {B = B} {π = π} df dg J) r =
-    Comb.case-sem {δ = δ} (⊢coerce pf (proj₂ (elabᵈ V df))) (⊢coerce pg (proj₂ (elabᵈ V dg))) _ _
-                  (λ e → cong ⟦ pf ⟧<:ᵛ (bridge-d V ag df e)) (λ e → cong ⟦ pg ⟧<:ᵛ (bridge-d V ag dg e)) r
-    where pf = sub-arr {q = Many} (<:-refl A) (<:ᶜ⇒<: (⊔-left J)) (⊑π-refl π)
-          pg = sub-arr {q = Many} (<:-refl B) (<:ᶜ⇒<: (⊔-right J)) (⊑π-refl π)
-  bridge-d V ag (d-pair df dg) r =
-    Comb.pair-sem {δ = δ} (proj₂ (elabᵈ V df)) (proj₂ (elabᵈ V dg)) _ _ (bridge-d V ag df) (bridge-d V ag dg) r
-  bridge-d V ag (d-cata {u = u} wf dalg) r =
-    Comb.cata-sem′ {δ = δ} u wf (proj₂ (elabᵢ V dalg)) _ (bridge-i V ag dalg) r

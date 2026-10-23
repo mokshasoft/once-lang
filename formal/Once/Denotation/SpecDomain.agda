@@ -6,14 +6,14 @@
 -- Once.Denotation.SpecDomain — the Spec's value domain, read at a closed
 -- instance `σ` of no type variables (plan 0.122 §5.5 M2).
 --
--- The surface meaning (`Denotation.Meaning`) lands in the Spec's domain
--- (`Spec.Domain Σ`, graded by `Spec.Effect Σ`). The Spec states its meaning
--- at an instance `σ` (`Spec.Core.Meaning`), so a ground type `A` is read as
--- `A ⟨ σ ⟩`: then the surface meaning and the Spec's core meaning of its
--- elaboration have the same type at every rule. Over it: the grade's monad,
--- the recursion formers' operations and the subtyping conversions as the
--- Spec's core meaning has them, the environment over the variables a term
--- uses, and the crossing of a ground type read over type variables (`wk₀`).
+-- The bridge to the implementation (`Adequacy.MeaningBridge`) reads values
+-- in the Spec's domain (`Spec.Domain Σ`, graded by `Spec.Effect Σ`). The Spec
+-- states its meaning at an instance `σ` (`Spec.Core.Meaning`), so a ground
+-- type `A` is read as `A ⟨ σ ⟩`: then a value of a ground type and the Spec's
+-- core meaning at it have the same type. Over it: the grade's monad, the
+-- recursion formers' operations and the subtyping conversions as the Spec's
+-- core meaning has them, the environment over the variables a term uses, and
+-- the crossing of a ground type read over type variables (`wk₀`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)

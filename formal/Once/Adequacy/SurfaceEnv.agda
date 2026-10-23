@@ -2,14 +2,14 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.SurfaceEnv — the surface meaning's environment against the
--- Spec's (plan 0.122 §5.5 M4).
+-- Once.Adequacy.SurfaceEnv — the implementation's environment shape against
+-- the Spec's (plan 0.122 §5.5 M4).
 --
--- The surface meaning (`Denotation.Meaning`) runs over the values of the
--- variables a term uses as one product, `⟦ Γ ↾ Ψ ⟧ᶜ` (a variable used zero
--- times has no slot); the Spec's core meaning over `Env σ Γ Ψ`, a slot per
--- variable (`⊤` at `Zero`). They agree when every live slot holds the same
--- value (`EnvR`). Each of the Spec's splits of an environment is a restriction
+-- The realization runs over the values of the variables a term uses as one
+-- product, `⟦ Γ ↾ Ψ ⟧ᶜ` (a variable used zero times has no slot); the Spec's
+-- core meaning over `Env σ Γ Ψ`, a slot per variable (`⊤` at `Zero`). They
+-- agree when every live slot holds the same value (`EnvR`, the graph of
+-- `fromSurf`). Each of the Spec's splits of an environment is a restriction
 -- (`Coherence.Env`), so a split keeps related environments related; so does
 -- binding a variable.
 ------------------------------------------------------------------------
@@ -25,7 +25,7 @@ module Once.Adequacy.SurfaceEnv (Σ : Signature) (fmt : TargetNum) {s : ℕ} (S 
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑∷_; _⊑ᵘ_; singleUse; lookup)
@@ -45,6 +45,26 @@ EnvR ∅       []         _       _        = ⊤
 EnvR (Γ ▸ A) (Zero ∷ Ψ) x       (γ , _)  = EnvR Γ Ψ x γ
 EnvR (Γ ▸ A) (One  ∷ Ψ) (x , a) (γ , a′) = EnvR Γ Ψ x γ × a ≡ a′
 EnvR (Γ ▸ A) (Many ∷ Ψ) (x , a) (γ , a′) = EnvR Γ Ψ x γ × a ≡ a′
+
+-- The Spec's environment holding a surface environment's values: `EnvR` is
+-- its graph.
+fromSurf : ∀ {n} {Γ : Ctx 0 n} {Ψ : Usage n} → SEnv Γ Ψ → Env σ Γ Ψ
+fromSurf {Γ = ∅}     {[]}       _       = tt
+fromSurf {Γ = Γ ▸ A} {Zero ∷ Ψ} x       = fromSurf {Γ = Γ} x , tt
+fromSurf {Γ = Γ ▸ A} {One  ∷ Ψ} (x , a) = fromSurf {Γ = Γ} x , a
+fromSurf {Γ = Γ ▸ A} {Many ∷ Ψ} (x , a) = fromSurf {Γ = Γ} x , a
+
+fromR : ∀ {n} {Γ : Ctx 0 n} {Ψ : Usage n} {x : SEnv Γ Ψ} → EnvR Γ Ψ x (fromSurf {Γ = Γ} x)
+fromR {Γ = ∅}     {[]}       = tt
+fromR {Γ = Γ ▸ A} {Zero ∷ Ψ} = fromR {Γ = Γ}
+fromR {Γ = Γ ▸ A} {One  ∷ Ψ} = fromR {Γ = Γ} , refl
+fromR {Γ = Γ ▸ A} {Many ∷ Ψ} = fromR {Γ = Γ} , refl
+
+fromR≡ : ∀ {n} {Γ : Ctx 0 n} {Ψ : Usage n} {x : SEnv Γ Ψ} {γ : Env σ Γ Ψ} → EnvR Γ Ψ x γ → fromSurf {Γ = Γ} x ≡ γ
+fromR≡ {Γ = ∅}     {[]}                       r       = refl
+fromR≡ {Γ = Γ ▸ A} {Zero ∷ Ψ} {γ = _ , _}     r       = cong (_, tt) (fromR≡ {Γ = Γ} r)
+fromR≡ {Γ = Γ ▸ A} {One  ∷ Ψ} {_ , _} {_ , _} (r , e) = cong₂ _,_ (fromR≡ {Γ = Γ} r) e
+fromR≡ {Γ = Γ ▸ A} {Many ∷ Ψ} {_ , _} {_ , _} (r , e) = cong₂ _,_ (fromR≡ {Γ = Γ} r) e
 
 -- A restriction, on both sides (one proof per pair, `⊑ᵘ-unique`).
 restrict-R : ∀ {n} {Γ : Ctx 0 n} {Ψ Ψ′ : Usage n} (p q : Ψ′ ⊑ᵘ Ψ) {x γ}

@@ -50,7 +50,7 @@ open import Once.Internal.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concret
 open import Once.Internal.Core.TySubstZero Σ S using (⟨⟩-0)
 open import Once.Functor.Translate using (IsConcrete-irrelevant)
 open import Once.Denotation.DefEnv using (defAt; impAt)
-open import Once.Denotation.Meaning Σ σ₀ using (DefMeanings; ImpMeanings; Meanings; meanings)
+open import Once.Denotation.RefMeanings Σ σ₀ using (DefMeanings; ImpMeanings; Meanings; meanings)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
 import Once.Spec.Core.Meaning Σ fmt S as SM
 import Once.Internal.Core.Translate Σ as TR
