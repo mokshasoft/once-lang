@@ -113,9 +113,10 @@ shape-lo (Sc.Locals.lo-▸ lo) = UM.sh-▸ (shape-lo lo)
 OkOf : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) → Fin (s P) → Set
 OkOf P = TView.InView (Sg P) (S P) (V P)
 
--- …and the declarations: those the scope's signature declares.
+-- …and the declarations: those the scope's signature declares, under a name
+-- the resolver writes.
 OkSOf : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) → CanonicalName → ST.Type → Set
-OkSOf {ctx = ctx} P c T = lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T
+OkSOf {ctx = ctx} P c T = (lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T) × Once.Internal.Name.WordName c
 
 -- What the lookups a reference records give: a definition in scope is no
 -- generator, no declaration in scope, and the one its name finds (D249,
@@ -156,7 +157,7 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
 
   ok-sig : ∀ {d T} → OkOf P d → OkSOf P (nm P d) T → Data.Empty.⊥
   ok-sig {T = T} ok l =
-    just≢nothing (PE.trans (sym (subst (λ c → lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T) (proj₁ (proj₂ (own-name ok))) l))
+    just≢nothing (PE.trans (sym (subst (λ c → lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T) (proj₁ (proj₂ (own-name ok))) (proj₁ l)))
                         (proj₂ (proj₂ (own-name ok))))
 
   ok-inj : ∀ {d d′} → OkOf P d → OkOf P d′ → nm P d ≡ nm P d′ → d ≡ d′
@@ -170,7 +171,7 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
   ... | refl = poly-same lp lp′
 
   oks-fun : ∀ {c T T′} → OkSOf P c T → OkSOf P c T′ → T ≡ T′
-  oks-fun l l′ = Data.Maybe.Properties.just-injective (PE.trans (sym l) l′)
+  oks-fun l l′ = Data.Maybe.Properties.just-injective (PE.trans (sym (proj₁ l)) (proj₁ l′))
 
 -- A witness's realization, in the checker's context.
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
@@ -612,7 +613,7 @@ module _ {m} {ctx : NamedCtx m} where
       res P (TView.declared h mem) =
         let open At P in
         let p = ⌜declS⌝ k h
-            w = w-sigop {ok = lk} ng (mem wn refl) k h
+            w = w-sigop {ok = lk , wn} ng (mem wn refl) k h
         in _ , retype⇒ p w , trans (rt⇒ p w) (subst-twice (⌜declS⌝ k h) p _)
 
   wt-var-own : ∀ {x T A} → lookupImport (sig ctx) x ≡ nothing → (lk : lookupImport (imports ctx) x ≡ just T) → (eq : A ≡ wk₀ T)
