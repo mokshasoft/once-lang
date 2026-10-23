@@ -238,7 +238,7 @@ canonExpr bound um am (RDestruct s xl el xr er) =
   RDestruct (canonExpr bound um am s) xl (canonExpr (xl ∷ bound) um am el) xr (canonExpr (xr ∷ bound) um am er)
 canonExpr bound um am RUnit               = RUnit
 canonExpr bound um am (RInt n)            = RInt n
-canonExpr bound um am (RFloat i f l p)    = RFloat i f l p
+canonExpr bound um am (RFloat i f l)    = RFloat i f l
 canonExpr bound um am (RAnnot e t)        = RAnnot (canonExpr bound um am e) t
 canonExpr bound um am (RBinOp op a b)     = RBinOp op (canonExpr bound um am a) (canonExpr bound um am b)
 canonExpr bound um am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound um am e)
@@ -286,7 +286,7 @@ cls-reflect bound um am (RApp _ _) ()
 cls-reflect bound um am (RLam _ _) ()
 cls-reflect bound um am (RPair _ _) ()
 cls-reflect bound um am (RInt _) ()
-cls-reflect bound um am (RFloat _ _ _ _) ()
+cls-reflect bound um am (RFloat _ _ _) ()
 cls-reflect bound um am (RUnaryOp _ _) ()
 
 -- | Apply `canonExpr` to a decl's function body; everything else is untouched

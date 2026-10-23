@@ -144,7 +144,7 @@ realize (t-var-poly-instantiate {x = x} {T = T} _ _ _ _ _) = poly x T
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
 ------------------------------------------------------------------------
 realize-infer (t-int n)         = int n
-realize-infer (t-float i f l p) = float (decimalOf i f l)
+realize-infer (t-float i f l) = float (decimalOf i f l)
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit
 realize-infer (t-var-local {eV = eV} _) = svar→expr eV
@@ -172,7 +172,7 @@ realize-infer (t-neg d)         = neg (realize-infer d)
 -- is `Expr Γ Ψ Int → Expr Γ Ψ Int`, so a float negation is not expressible in
 -- the surface syntax at all. The reference elaboration folds because it has
 -- no choice, and agreement with the elaborator is `refl`.
-realize-infer (t-neg-float i f l p) = float (negate (decimalOf i f l))
+realize-infer (t-neg-float i f l) = float (negate (decimalOf i f l))
 realize-infer (t-let d₁ d₂)     = let' (realize-infer d₁) (realize-infer d₂)
 -- D322: each branch converted into the join.
 realize-infer (t-case ds dl dr J) =

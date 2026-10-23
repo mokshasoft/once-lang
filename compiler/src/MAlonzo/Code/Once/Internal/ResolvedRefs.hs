@@ -221,7 +221,7 @@ d_goodRefs'63'_136 v0
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 v1 v2 v3 v4
+      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 v1 v2 v3
         -> coe
              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
              (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)

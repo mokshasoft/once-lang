@@ -38,7 +38,7 @@ data RX (bound : List String) : RawExpr → S.Expr → Set where
              → RX bound (RDestruct e xl l xr r) (S.RDestruct e′ xl l′ xr r′)
   x-unit     : RX bound RUnit S.RUnit
   x-int      : ∀ {n} → RX bound (RInt n) (S.RInt n)
-  x-float    : ∀ {i f l p} → RX bound (RFloat i f l p) (S.RFloat i f l)
+  x-float    : ∀ {i f l} → RX bound (RFloat i f l) (S.RFloat i f l)
   x-annot    : ∀ {e e′ T} → RigidFree T → RX bound e e′ → RX bound (RAnnot e T) (S.RAnnot e′ (toTy T))
   x-binop    : ∀ {op a b a′ b′} → RX bound a a′ → RX bound b b′ → RX bound (RBinOp op a b) (S.RBinOp (opS op) a′ b′)
   x-neg      : ∀ {e e′} → RX bound e e′ → RX bound (RUnaryOp OpNeg e) (S.RNeg e′)

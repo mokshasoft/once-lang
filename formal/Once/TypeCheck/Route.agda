@@ -60,7 +60,7 @@ private
 mutual
   data Rii {m} : ∀ {ctx e} {A A′ : Ty m} {Ψ Ψ′} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′ → Set where
     ii-int   : ∀ {n} → Rii {ctx = ctx} (t-int n) (t-int n)
-    ii-float : ∀ {i f l p} → Rii {ctx = ctx} (t-float i f l p) (t-float i f l p)
+    ii-float : ∀ {i f l} → Rii {ctx = ctx} (t-float i f l) (t-float i f l)
     ii-unit  : Rii {ctx = ctx} t-unit t-unit
     ii-unit-var : Rii {ctx = ctx} t-unit-var t-unit-var
     ii-resolved : ∀ {T₁ T₂ : T.Type} {eq eq′ cn n n′ wn wn′ l l′ c c′} → Rii {ctx = ctx} (t-var-resolved {cn = cn} {T = T₁} {A = A} n wn l c eq) (t-var-resolved {T = T₂} {A = A′} n′ wn′ l′ c′ eq′)
@@ -75,7 +75,7 @@ mutual
     ii-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {a : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {a′ : ctx ⊢ᵢ e₁ ∶ A′ ⨾ Ψ₁′} {b : ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂} {b′ : ctx ⊢ᵢ e₂ ∶ B′ ⨾ Ψ₂′}
             → Rii a a′ → Rii b b′ → Rii (t-pair a b) (t-pair a′ b′)
     ii-neg : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ Int ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ Int ⨾ Ψ′} → Rii d d′ → Rii (t-neg d) (t-neg d′)
-    ii-neg-float : ∀ {i f l p} → Rii {ctx = ctx} (t-neg-float i f l p) (t-neg-float i f l p)
+    ii-neg-float : ∀ {i f l} → Rii {ctx = ctx} (t-neg-float i f l) (t-neg-float i f l)
     ii-let : ∀ {x Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {d₁ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁′}
                {d₂ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B ⨾ (q SCx.∷ Ψ₂)} {d₂′ : extendNamedCtx ctx x A ⊢ᵢ e₂ ∶ B′ ⨾ (q′ SCx.∷ Ψ₂′)}
            → Rii d₁ d₁′ → Rii d₂ d₂′ → Rii (t-let d₁ d₂) (t-let d₁′ d₂′)

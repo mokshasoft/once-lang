@@ -102,8 +102,8 @@ mutual
     -- The source offset `p` rides along and is never read here: a position
     -- cannot affect whether a term is well-typed. It exists so a DIAGNOSTIC
     -- can point at the literal, and the elaborator drops it.
-    t-float : ∀ {ctx : NamedCtx m} (i f l p : ℕ)
-            → ctx ⊢ᵢ RFloat i f l p ∶ Float ⨾ zeroUsage
+    t-float : ∀ {ctx : NamedCtx m} (i f l : ℕ)
+            → ctx ⊢ᵢ RFloat i f l ∶ Float ⨾ zeroUsage
 
 
     t-unit : ∀ {ctx : NamedCtx m}
@@ -271,8 +271,8 @@ mutual
     --
     -- No premise, exactly as `t-float` has none: the literal is total, and
     -- the offset `p` rides along unread for the diagnostic's sake.
-    t-neg-float : ∀ {ctx : NamedCtx m} (i f l p : ℕ)
-                → ctx ⊢ᵢ RUnaryOp OpNeg (RFloat i f l p) ∶ Float ⨾ zeroUsage
+    t-neg-float : ∀ {ctx : NamedCtx m} (i f l : ℕ)
+                → ctx ⊢ᵢ RUnaryOp OpNeg (RFloat i f l) ∶ Float ⨾ zeroUsage
 
     ----------------------------------------------------------------
     -- Let binding

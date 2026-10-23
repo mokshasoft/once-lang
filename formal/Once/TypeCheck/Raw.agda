@@ -33,7 +33,7 @@ closedLiftShape? (RApp _ _)            = nothing
 closedLiftShape? (RLam _ _)            = nothing
 closedLiftShape? (RPair _ _)           = nothing
 closedLiftShape? (RInt _)              = nothing
-closedLiftShape? (RFloat _ _ _ _)      = nothing
+closedLiftShape? (RFloat _ _ _)      = nothing
 closedLiftShape? (RUnaryOp _ _)        = nothing
 
 -- | …and agrees with the witness, which is what makes the elaborator's

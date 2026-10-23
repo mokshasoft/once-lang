@@ -318,7 +318,7 @@ infer-complete-RUnaryOp-neg {ctx = ctx} e eqE with negOperandView e | eqE
 -- `success` head's type index, so the equation is absurd outright. `-3.14`'s
 -- completeness is `t-neg-float`'s own clause in `infer-complete` — it never
 -- consults the operand, exactly as the `RInt` fold does not.
-... | nov-float i f l p | ()
+... | nov-float i f l | ()
 ... | nov-other .e | _    with inferElabV ctx e | eqE
 ...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
 

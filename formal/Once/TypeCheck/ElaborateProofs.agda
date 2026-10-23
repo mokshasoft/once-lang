@@ -96,7 +96,7 @@ checkElab-fallback-RInt {m = m} {ctx = ctx} n with Int {m} <:? Int
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
 
--- RFloat infers at `Float` _ — BUT ONLY IF ACCEPTED, so the witness is a
+-- RFloat infers at `Float` — BUT ONLY IF ACCEPTED, so the witness is a
 -- premise rather than something this lemma could conjure. That asymmetry with
 -- `RInt` is the acceptance rule showing up in the proofs exactly where it
 -- should: there is no fallback for a literal the compiler must reject.
@@ -105,11 +105,11 @@ checkElab-fallback-RInt {m = m} {ctx = ctx} n with Int {m} <:? Int
 -- decider agrees with the derivation, so `inferElabV`'s dispatch unsticks.
 -- K3: no acceptance witness rides in, because there is none. Every float
 -- literal checks at `Float`.
-checkElab-fallback-RFloat : ∀ {m} {ctx : NamedCtx m} (i f l p : ℕ)
+checkElab-fallback-RFloat : ∀ {m} {ctx : NamedCtx m} (i f l : ℕ)
   → ∃-syntax (λ eE → ∃-syntax (λ dd → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RFloat i f l p) Float
+      checkElab ctx (Raw.RFloat i f l) Float
         ≡ success Surface.zeroUsage eE dd fr)))
-checkElab-fallback-RFloat {m = m} {ctx = ctx} i f l p with Float {m} <:? Float
+checkElab-fallback-RFloat {m = m} {ctx = ctx} i f l with Float {m} <:? Float
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 
@@ -266,7 +266,7 @@ checkElab-fallback-RUnaryOp {m = m} {ctx = ctx} Raw.OpNeg e T eqInf
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
 checkElab-fallback-RUnaryOp {m = m} {ctx = ctx} Raw.OpNeg e T eqInf
-  | nov-float i f l p | refl with Float {m} <:? Float
+  | nov-float i f l | refl with Float {m} <:? Float
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg e T eqInf
@@ -298,7 +298,7 @@ checkElab-fallback-RUnaryOp-sub {m = m} {ctx = ctx} {τ = τ} Raw.OpNeg e T eqIn
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
 checkElab-fallback-RUnaryOp-sub {m = m} {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
-  | nov-float i f l p | refl with sb
+  | nov-float i f l | refl with sb
 ...   | sub-float with Float {m} <:? Float
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
@@ -1432,17 +1432,17 @@ checkElabProj ctx e T = proj₁ (checkElabV ctx e T)
 
 -- Both operands `Float`, and the result is `Float` — the whole point.
 _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      inferElab emptyCtx (Raw.RBinOp Raw.OpSub (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 1 1 6))
+      inferElab emptyCtx (Raw.RBinOp Raw.OpSub (Raw.RFloat 1 5 1) (Raw.RFloat 2 1 1))
         ≡ success Float Ψ eE d f))))
 _ = _ , _ , _ , _ , refl
 
 _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 5 1 6))
+      inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1) (Raw.RFloat 2 5 1))
         ≡ success Float Ψ eE d f))))
 _ = _ , _ , _ , _ , refl
 
 _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      inferElab emptyCtx (Raw.RBinOp Raw.OpMul (Raw.RFloat 3 14 2 0) (Raw.RFloat 2 0 1 7))
+      inferElab emptyCtx (Raw.RBinOp Raw.OpMul (Raw.RFloat 3 14 2) (Raw.RFloat 2 0 1))
         ≡ success Float Ψ eE d f))))
 _ = _ , _ , _ , _ , refl
 
@@ -1453,14 +1453,14 @@ _ = _ , _ , _ , _ , refl
 -- The elaborated term is pinned in FULL, not just its type: `i2f` is really
 -- there. A coercion that silently retyped the operand would satisfy a
 -- type-only pin and would be the "silent" half of "silent precision loss".
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RFloat 1 5 1 4))
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RFloat 1 5 1))
       ≡ success Float (zeroUsage +ᵘ zeroUsage)
           (Surface.fadd (Surface.i2f (Surface.int (+ 1)))
                         (Surface.float (decimalOf 1 5 1)))
           (0 ⊔ 0) 0
 _ = refl
 
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1)))
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1) (Raw.RInt (+ 1)))
       ≡ success Float (zeroUsage +ᵘ zeroUsage)
           (Surface.fadd (Surface.float (decimalOf 1 5 1))
                         (Surface.i2f (Surface.int (+ 1))))
@@ -1472,7 +1472,7 @@ _ = refl
 -- RISC-V saturates), so it is a D055 situation AND a narrowing where
 -- truncate-versus-round is the programmer's call. `%` is the witness, since
 -- it is not a float op at all.
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1)))
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1) (Raw.RInt (+ 1)))
       ≡ failure (BinOpRightError (TypeMismatch {0} Float Int))
 _ = refl
 
@@ -1480,7 +1480,7 @@ _ = refl
 -- quotient (a sticky bit through the division), pinned against the machine on
 -- both formats, so the restriction this pin used to record is gone. The pin is
 -- kept and FLIPPED rather than deleted, so the change is legible here.
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpDiv (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpDiv (Raw.RFloat 1 5 1) (Raw.RFloat 2 0 1))
       ≡ success Float (zeroUsage +ᵘ zeroUsage)
           (Surface.fdiv (Surface.float (decimalOf 1 5 1)) (Surface.float (decimalOf 2 0 1)))
           (0 ⊔ 0) 0
@@ -1489,7 +1489,7 @@ _ = refl
 -- `%` still reports: IEEE's `fmod` is a different function from integer
 -- remainder and D055's `a = (a/b)*b + (a%b)` does not survive rounding, so it
 -- needs its own decision before it can have a lowering.
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1) (Raw.RFloat 2 0 1))
       ≡ failure (BinOpLeftError (TypeMismatch {0} Int Float))
 _ = refl
 

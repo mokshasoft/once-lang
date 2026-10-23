@@ -279,10 +279,10 @@ mutual
   cm-i : ∀ {n′ N} {D : Ctx m n′} {A e Ψ} (d : mkCtx n′ N D imps polys sigs Δ ⊢ᵢ e ∶ A ⨾ Ψ)
        → Comm (elabᵢ V (subst-i′ d)) (elabᵢ V d)
   cm-i (t-int k)             = comm refl H.refl
-  cm-i (t-float i f l p)     = comm refl H.refl
+  cm-i (t-float i f l)     = comm refl H.refl
   cm-i t-unit                = comm refl H.refl
   cm-i t-unit-var            = comm refl H.refl
-  cm-i (t-neg-float i f l p) = comm refl H.refl
+  cm-i (t-neg-float i f l) = comm refl H.refl
   cm-i {D = D} (t-var-local {eV = Once.Internal.Context.svar i} eq) =
     comm (⇝ᵢ-tm (RS.lookup-ρ̂ D i) _)
          (H.trans (⇝ᵢ-dr (RS.lookup-ρ̂ D i) _) (H.sym (rtᵗ-≅ (TS.lookup-⟨⟩ τ D i) (⊢var i))))

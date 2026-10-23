@@ -83,7 +83,7 @@ data Emb : RawExpr → S.Expr → Set where
   e-destruct : ∀ {s x l y r s′ l′ r′} → Emb s s′ → Emb l l′ → Emb r r′ → Emb (RDestruct s x l y r) (S.RDestruct s′ x l′ y r′)
   e-unit     : Emb RUnit S.RUnit
   e-int      : ∀ {n} → Emb (RInt n) (S.RInt n)
-  e-float    : ∀ {i f l p} → Emb (RFloat i f l p) (S.RFloat i f l)
+  e-float    : ∀ {i f l} → Emb (RFloat i f l) (S.RFloat i f l)
   -- (a parsed annotation is a surface type: no rigid parameter)
   e-annot    : ∀ {e e′ T} → RigidFree T → Emb e e′ → Emb (RAnnot e T) (S.RAnnot e′ (toTy T))
   e-binop    : ∀ {op a b a′ b′} → Emb a a′ → Emb b b′ → Emb (RBinOp op a b) (S.RBinOp (opS op) a′ b′)

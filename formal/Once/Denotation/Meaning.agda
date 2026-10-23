@@ -232,7 +232,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 ⟦_⟧ᵢ {ctx = ctx} (t-int n) fmt ρ dγ = returnᵖ (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
-⟦_⟧ᵢ {ctx = ctx} (t-float i f l p) fmt ρ dγ = returnᵖ (round (float-format fmt) (decimalOf i f l))
+⟦_⟧ᵢ {ctx = ctx} (t-float i f l) fmt ρ dγ = returnᵖ (round (float-format fmt) (decimalOf i f l))
 -- plan 0.98: `semM` is `Res`-valued, so a literal's meaning LIFTS its result
 -- rather than wrapping a value. `str-lit-info` is a `Pure` contract, so this
 -- is `returnᵖ` in every reachable case — but the type no longer lets the
@@ -271,7 +271,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- readings agree — `round` splits sign from magnitude at `signBit (sig d)` /
 -- `∣ sig d ∣`, so negating `sig` moves the sign bit and nothing else — but
 -- that is a fact to PIN, not a coincidence to lean on.
-⟦_⟧ᵢ {ctx = ctx} (t-neg-float i f l p) fmt ρ dγ = returnᵖ (round (float-format fmt) (negate (decimalOf i f l)))
+⟦_⟧ᵢ {ctx = ctx} (t-neg-float i f l) fmt ρ dγ = returnᵖ (round (float-format fmt) (negate (decimalOf i f l)))
 -- D143: at `q = Zero` the bound value is ERASED — `e₁` is not evaluated and the
 -- body runs on the unextended environment, matching `elaborate` and `⟦_⟧ˢ`.
 ⟦_⟧ᵢ {ctx = ctx} (t-let {A = A} {q = Zero} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} d₁ d₂) fmt ρ dγ =

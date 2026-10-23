@@ -273,7 +273,7 @@ given-infer-route : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {T : Ty m}
   → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ (inferElabV ctx e) ≡ success T Ψ eE d f
   → elabGivenV ctx e A π ≡ given-infer ctx e A π (inferElabV ctx e)
 given-infer-route (t-int _) A π _ = refl
-given-infer-route (t-float _ _ _ _) A π _ = refl
+given-infer-route (t-float _ _ _) A π _ = refl
 given-infer-route t-unit A π _ = refl
 given-infer-route t-unit-var A π _ = refl
 given-infer-route (t-var-local _) A π _ = refl
@@ -287,7 +287,7 @@ given-infer-route {ctx = ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A
 given-infer-route (t-annot _ _ _) A π _ = refl
 given-infer-route (t-pair _ _) A π _ = refl
 given-infer-route (t-neg _) A π _ = refl
-given-infer-route (t-neg-float _ _ _ _) A π _ = refl
+given-infer-route (t-neg-float _ _ _) A π _ = refl
 given-infer-route (t-let _ _) A π _ = refl
 given-infer-route (t-case _ _ _ _) A π _ = refl
 given-infer-route (t-binop-arith _ _ _) A π _ = refl
@@ -624,7 +624,7 @@ mutual
 
   -- Leaves.
   iFromInferSub {ctx = ctx} (t-int n) sub-int = checkElab-fallback-RInt {ctx = ctx} n
-  iFromInferSub {ctx = ctx} (t-float i f l p) sub-float = checkElab-fallback-RFloat {ctx = ctx} i f l p
+  iFromInferSub {ctx = ctx} (t-float i f l) sub-float = checkElab-fallback-RFloat {ctx = ctx} i f l
   iFromInferSub {ctx = ctx} t-unit sub-unit = checkElab-fallback-RUnit {ctx = ctx}
   iFromInferSub {ctx = ctx} t-unit-var sub-unit = checkElab-fallback-RVar-unit {ctx = ctx}
   iFromInferSub {ctx = ctx} (t-var-local {x = x} {A = T} eqLocal) sb =
@@ -658,11 +658,11 @@ mutual
   -- PLAN 0.73 F3: the switch for `-3.14` is the generic infer→check fallback,
   -- at `Float` instead of `Int`. Nothing recurses — the rule has no premise,
   -- and the infer-side equation is `refl` outright: `negOperandView (RFloat …)`
-  -- reduces, so `inferElab ctx (RUnaryOp OpNeg (RFloat i f l p))` is already
+  -- reduces, so `inferElab ctx (RUnaryOp OpNeg (RFloat i f l))` is already
   -- the folded literal. Routing through `infer-complete` instead would leave
   -- its three existential witnesses as metas with nothing to solve them.
-  iFromInferSub {ctx = ctx} (t-neg-float i f l p) sub-float =
-    checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg (Raw.RFloat i f l p) T.Float refl
+  iFromInferSub {ctx = ctx} (t-neg-float i f l) sub-float =
+    checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg (Raw.RFloat i f l) T.Float refl
   iFromInferSub (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
     in checkElab-fallback-RLet x e₁ e₂ B eqI sb
@@ -731,7 +731,7 @@ mutual
         inferElab ctx e ≡ success A Ψ eE d f
 
   infer-complete {ctx = ctx} (t-int n)   = infer-complete-RInt {ctx = ctx} n
-  infer-complete {ctx = ctx} (t-float i f l p) = _ , _ , _ , refl
+  infer-complete {ctx = ctx} (t-float i f l) = _ , _ , _ , refl
   infer-complete {ctx = ctx} t-unit      = infer-complete-RUnit {ctx = ctx}
   infer-complete {ctx = ctx} t-unit-var  = infer-complete-RVar-unit {ctx = ctx}
   infer-complete {ctx = ctx} (t-var-local {x = x} eqLocal) =
@@ -762,10 +762,10 @@ mutual
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RUnaryOp-neg e eqSub
   -- PLAN 0.73 F3. Immediate, exactly as the `RInt` fold's branch is:
-  -- `negOperandView (RFloat i f l p)` reduces to `nov-float …`, so the
+  -- `negOperandView (RFloat i f l)` reduces to `nov-float …`, so the
   -- dispatch reduces straight to the folded literal without consulting the
   -- operand's inference. There is no sub-derivation to recurse on.
-  infer-complete (t-neg-float i f l p) = _ , _ , _ , refl
+  infer-complete (t-neg-float i f l) = _ , _ , _ , refl
   infer-complete (t-let {x = x} {e₁ = e₁} {e₂ = e₂} d₁ d₂) =
     let (_ , _ , _ , eq₁) = infer-complete d₁
         (_ , _ , _ , eq₂) = infer-complete d₂

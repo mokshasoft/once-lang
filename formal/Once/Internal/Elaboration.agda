@@ -201,7 +201,7 @@ elabᶜ V (t-initial-app-check d)     = appC (⊢initialᶜ ⊑-pure) (elabᶜ V
 elabᶜ V (t-var-poly-instantiate _ _ lp ng ins) = polyE V lp ins
 
 elabᵢ V (t-int n)         = lit (lit-int n) , ⊢lit-int
-elabᵢ V (t-float i f l p) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
+elabᵢ V (t-float i f l) = lit (lit-float (decimalOf i f l)) , ⊢lit-float
 elabᵢ V t-unit            = unit , ⊢unit
 elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = svar i} _) = var i , ⊢var i
@@ -212,7 +212,7 @@ elabᵢ V (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ eq) = ret
 elabᵢ V (t-annot _ d _)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)
 elabᵢ V (t-neg d)         = lift1 (prim p-neg) (⊢prim p-neg) (elabᵢ V d)
-elabᵢ V (t-neg-float i f l p) = lit (lit-float (negate (decimalOf i f l))) , ⊢lit-float
+elabᵢ V (t-neg-float i f l) = lit (lit-float (negate (decimalOf i f l))) , ⊢lit-float
 elabᵢ V (t-let d₁ d₂)     = let (e , ⊢e) = elabᵢ V d₁ ; (b , ⊢b) = elabᵢ V d₂ in let′ _ e b , ⊢let-pure _ ⊢e ⊢b
 -- Each branch composed with its conversion into the join (D322).
 elabᵢ V (t-case ds dl dr J) =

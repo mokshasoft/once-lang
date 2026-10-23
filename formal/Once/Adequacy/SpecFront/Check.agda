@@ -269,7 +269,7 @@ mutual
   ----------------------------------------------------------------------
 
   fwdᵢ (t-int n) lr x-int = syn r-int (r-lit _) (SU.s-int n)
-  fwdᵢ (t-float i f l p) lr x-float = syn r-float (r-lit _) (SU.s-float i f l)
+  fwdᵢ (t-float i f l) lr x-float = syn r-float (r-lit _) (SU.s-float i f l)
   fwdᵢ t-unit lr x-unit = syn r-unit r-unit SU.s-unit
   fwdᵢ t-unit-var lr (x-res _) = syn r-unit r-unit SU.s-unit-g
   fwdᵢ (t-var-local {eV = svar i} lk) lr (x-local _) =
@@ -293,7 +293,7 @@ mutual
     let syn ra rta da′ = fwdᵢ da lr xa ; syn rb rtb db′ = fwdᵢ db lr xb in syn (r-* ra rb) (r-pair rta rtb) (SU.s-pair da′ db′)
   fwdᵢ (t-neg d) lr (x-neg x) =
     let (_ , rt , der) = atInt (fwdᵢ d lr x) in syn r-int (r-prim L.p-neg rt) (SU.s-neg der)
-  fwdᵢ (t-neg-float i f l p) lr (x-neg x-float) = syn r-float (r-lit _) (SU.s-neg-float i f l)
+  fwdᵢ (t-neg-float i f l) lr (x-neg x-float) = syn r-float (r-lit _) (SU.s-neg-float i f l)
   fwdᵢ (t-let {q = q} d₁ d₂) lr (x-let x₁ x₂) =
     let syn r₁ rt₁ d₁′ = fwdᵢ d₁ lr x₁ ; syn r₂ rt₂ d₂′ = fwdᵢ d₂ (lr-▸ lr r₁) x₂
     in syn r₂ (r-let rt₁ rt₂) (SU.s-let (qS q) d₁′ d₂′)

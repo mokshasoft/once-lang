@@ -221,7 +221,7 @@ mutual
   subst-i′ : ∀ {n Γ} {D : SCtx m n} {A : Ty m} {imps polys sg e Ψ}
            → mkCtx n Γ D imps polys sg Δ ⊢ᵢ e ∶ A ⨾ Ψ → mkCtx n (ρ̂N Γ) (ρ̂S D) imps polys sg Δ′ ⊢ᵢ e ∶ ρ̂ A ⨾ Ψ
   subst-i′ (t-int k)            = t-int k
-  subst-i′ (t-float i f l p)    = t-float i f l p
+  subst-i′ (t-float i f l)    = t-float i f l
   subst-i′ t-unit               = t-unit
   subst-i′ t-unit-var           = t-unit-var
   subst-i′ {Γ = Γ} {D = D} (t-var-local {x = x} {eV = svar i} eq) =
@@ -235,7 +235,7 @@ mutual
   subst-i′ (t-annot {T = T} rf d eq) = t-annot rf (subst-c′ d) (ρ̂-ground T eq)
   subst-i′ (t-pair a b)         = t-pair (subst-i′ a) (subst-i′ b)
   subst-i′ (t-neg d)            = t-neg (subst-i′ d)
-  subst-i′ (t-neg-float i f l p) = t-neg-float i f l p
+  subst-i′ (t-neg-float i f l) = t-neg-float i f l
   subst-i′ (t-let d₁ d₂)        = t-let (subst-i′ d₁) (subst-i′ d₂)
   subst-i′ (t-case ds dl dr J)  = t-case (subst-i′ ds) (subst-i′ dl) (subst-i′ dr) (ρ̂-⊔ J)
   subst-i′ (t-binop-arith o d₁ d₂)          = t-binop-arith o (subst-i′ d₁) (subst-i′ d₂)

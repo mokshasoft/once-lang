@@ -573,13 +573,13 @@ module _ (σ-self : RelDefs fmt σ σ) where
 
   -- Literals — pure `returnT`, identical values.
   bridge-i (t-int _)   re er = return∞-R refl
-  bridge-i (t-float _ _ _ _) re er = return∞-R refl
+  bridge-i (t-float _ _ _) re er = return∞-R refl
   -- PLAN 0.73 F3. A LEAF, like `t-float` above and unlike `t-neg` below: both
   -- sides are the literal `round fmt (negate (decimalOf i f l))`, because
   -- `realize-infer` had no float `neg` to keep (`Surface.neg` is Int-typed).
   -- The `Int` fold could keep one and pays `⊝-fromℤ` for it in `RealizeAgrees`;
   -- here there is nothing to reconcile.
-  bridge-i (t-neg-float _ _ _ _) re er = return∞-R refl
+  bridge-i (t-neg-float _ _ _) re er = return∞-R refl
   bridge-i t-unit      re er = return∞-R tt
   bridge-i t-unit-var  re er = return∞-R tt
 

@@ -60,8 +60,8 @@ data RawExpr : Set where
   RUnit      : RawExpr                                -- ()
   RInt       : ℤ → RawExpr                            -- an integer literal
   -- A decimal literal as written: integer part, fraction digits, number of
-  -- fraction digits, and its source offset (used only for warnings).
-  RFloat     : ℕ → ℕ → ℕ → ℕ → RawExpr
+  -- fraction digits (its source offset stays on the token, for warnings).
+  RFloat     : ℕ → ℕ → ℕ → RawExpr
   RAnnot     : RawExpr → Type → RawExpr               -- (e : T)
   RBinOp     : BinOp → RawExpr → RawExpr → RawExpr
   RUnaryOp   : UnaryOp → RawExpr → RawExpr

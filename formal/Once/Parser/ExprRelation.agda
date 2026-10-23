@@ -443,10 +443,9 @@ mutual
 
     pae-int  : ∀ {n p rest}
              → ParsesAtomExpr (TInt n p ∷ rest) (RInt n) rest
-    -- PLAN 0.74 (positions): THE point where a token's position reaches the
-    -- AST. Everything else in this change exists to get `p` here.
+    -- (a float's position stays on its token: plan 0.122)
     pae-float : ∀ {i f l p rest}
-             → ParsesAtomExpr (TFloat i f l p ∷ rest) (RFloat i f l p) rest
+             → ParsesAtomExpr (TFloat i f l p ∷ rest) (RFloat i f l) rest
 
 
     pae-var  : ∀ {name rest}

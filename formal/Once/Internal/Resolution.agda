@@ -190,7 +190,7 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
   -- Literals are fixed points.
   re-unit  : ∀ {bound} → ResolvesExpr um am bound RUnit RUnit
   re-int   : ∀ {bound n} → ResolvesExpr um am bound (RInt n) (RInt n)
-  re-float : ∀ {bound i f l p} → ResolvesExpr um am bound (RFloat i f l p) (RFloat i f l p)
+  re-float : ∀ {bound i f l} → ResolvesExpr um am bound (RFloat i f l) (RFloat i f l)
 
 ------------------------------------------------------------------------
 -- Declarations. Only a function BODY carries references; every other form

@@ -192,7 +192,7 @@ realize-refs (t-initial-app-check d) = tt , realize-refs d
 realize-refs (t-var-poly-instantiate eL eI eP ¬g ki) = _ , eP , ki
 
 realize-refs-i (t-int n)         = tt
-realize-refs-i (t-float i f l p) = tt
+realize-refs-i (t-float i f l) = tt
 realize-refs-i t-unit            = tt
 realize-refs-i t-unit-var        = tt
 realize-refs-i (t-var-local {eV = svar i} _) = tt
@@ -204,7 +204,7 @@ realize-refs-i {ctx = ctx} (t-var-poly-instantiate-infer {schema = schema} {g = 
 realize-refs-i (t-annot _ d _)     = realize-refs d
 realize-refs-i (t-pair da db)    = realize-refs-i da , realize-refs-i db
 realize-refs-i (t-neg d)         = realize-refs-i d
-realize-refs-i (t-neg-float i f l p) = tt
+realize-refs-i (t-neg-float i f l) = tt
 realize-refs-i (t-let d₁ d₂)     = realize-refs-i d₁ , realize-refs-i d₂
 realize-refs-i (t-case ds dl dr _) = realize-refs-i ds , realize-refs-i dl , realize-refs-i dr
 realize-refs-i (t-binop-arith {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂

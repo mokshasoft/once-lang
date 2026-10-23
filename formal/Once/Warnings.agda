@@ -27,14 +27,14 @@
 -- carries those same three fields plus the figures: what used to abort the
 -- compile now reports.
 --
--- IT SAYS WHERE. `at` is the literal's source offset, carried from the lexer
--- through `TFloat` and `RFloat`. "Some literal somewhere was rounded" is
+-- IT SAYS WHERE. `at` is the literal's source offset, read from the lexer's
+-- `TFloat` (plan 0.122). "Some literal somewhere was rounded" is
 -- nearly useless in a large module, and a warning that cannot be located is a
 -- warning that gets ignored — which is how a warning channel dies.
 --
--- The offset is DIAGNOSTIC METADATA and goes no further than this: the
--- elaborator drops it, so it never reaches `Surface.Expr`, the IR, the machine
--- or any correspondence proof. A position cannot change what is compiled, and
+-- The offset is DIAGNOSTIC METADATA and goes no further than this: the parser
+-- drops it, so it never reaches the syntax tree, the IR, the machine or any
+-- correspondence proof. A position cannot change what is compiled, and
 -- the fact that it stops here is what says so.
 ------------------------------------------------------------------------
 
@@ -56,7 +56,9 @@ open import Once.Target.Arch using (Arch; arch-float-format)
 open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
 open import Once.Spec.Float.Decimal
   using (decimalOf; round; roundSig; storedExp; maxFiniteExp)
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp)
+open import Once.Parser.Token using (Token; TFloat)
+open import Once.Parser.Lexer using (tokenize)
+open import Data.String using (toList)
 open import Once.Compile using (silentRoundDefs)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
@@ -177,52 +179,24 @@ floatWarning F i f l at =
   where sig = i * 10 ^ l + f
 
 ------------------------------------------------------------------------
--- Walking the module
---
--- ENUMERATED, no catch-all, for the reason `rawIntLits` gives: a catch-all
--- would silently return `[]` for a constructor added later, and the literal it
--- failed to look at is exactly the one whose rounding would go unreported.
+-- The literals of a source
 ------------------------------------------------------------------------
 
-rawFloatLits : RawExpr → List (ℕ × ℕ × ℕ × ℕ)
-rawFloatLits (RFloat i f l p)      = (i , f , l , p) ∷ []
-rawFloatLits (RApp f x)          = rawFloatLits f ++ rawFloatLits x
-rawFloatLits (RLam _ b)          = rawFloatLits b
-rawFloatLits (RLet _ e b)        = rawFloatLits e ++ rawFloatLits b
-rawFloatLits (RPair a b)         = rawFloatLits a ++ rawFloatLits b
-rawFloatLits (RDestruct s _ l _ r) = rawFloatLits s ++ rawFloatLits l ++ rawFloatLits r
-rawFloatLits (RAnnot e _)        = rawFloatLits e
-rawFloatLits (RBinOp _ a b)      = rawFloatLits a ++ rawFloatLits b
--- PLAN 0.73 F3: `-3.14` is ONE literal to the elaborator, but the warning
--- channel still sees the TOKEN `3.14` and reports its offset — which is the
--- right offset, since `-` is a token of its own. Every figure the warning
--- carries is unaffected by the sign: `round` splits into `signBit (sig d)` and
--- `∣ sig d ∣`, so a negated literal rounds with the same absolute error and
--- the same ulp count as its positive twin.
-rawFloatLits (RUnaryOp _ e)      = rawFloatLits e
-rawFloatLits (RVar _)            = []
-rawFloatLits (RQualified _ _)    = []
-rawFloatLits (RResolved _)       = []
-rawFloatLits RUnit               = []
-rawFloatLits (RInt _)            = []
+-- The float literals are the tokens: a literal's offset is where the lexer
+-- found it, and the syntax tree does not carry it (plan 0.122: the compiler's
+-- expressions are the Spec's). Every float literal of the module is a
+-- `TFloat` of its source, in order. A negated literal is the token after the
+-- `-`; every figure the warning carries is unaffected by the sign (`round`
+-- splits into `signBit (sig d)` and `∣ sig d ∣`).
+tokenFloatLits : List Token → List (ℕ × ℕ × ℕ × ℕ)
+tokenFloatLits []                    = []
+tokenFloatLits (TFloat i f l p ∷ ts) = (i , f , l , p) ∷ tokenFloatLits ts
+{-# CATCHALL #-}
+tokenFloatLits (_ ∷ ts)              = tokenFloatLits ts
 
-declFloatLits : Decl → List (ℕ × ℕ × ℕ × ℕ)
-declFloatLits (DFunDef _ body)   = rawFloatLits body
-declFloatLits (DTypeSig _ _)       = []
-declFloatLits (DSignature _ _ _) = []
-declFloatLits (DTypeAlias _ _ _)   = []
-declFloatLits (DImport _)          = []
-
-moduleFloatLits : Module → List (ℕ × ℕ × ℕ × ℕ)
-moduleFloatLits (mkModule ds) = go ds
-  where
-    go : List Decl → List (ℕ × ℕ × ℕ × ℕ)
-    go []       = []
-    go (d ∷ ds) = declFloatLits d ++ go ds
-
--- | THE query. A function of the module and the target, and of nothing else.
-roundingWarnings : Arch → Module → List Warning
-roundingWarnings arch m = go (moduleFloatLits m)
+-- | THE query. A function of the source's tokens and the target, and of nothing else.
+roundingWarnings : Arch → List Token → List Warning
+roundingWarnings arch ts = go (tokenFloatLits ts)
   where
     F = arch-float-format arch
     go : List (ℕ × ℕ × ℕ × ℕ) → List Warning
@@ -296,7 +270,7 @@ private
 
   -- THE POSITION SURVIVES THE WALK. `3.14` at offset 42 is reported AT 42 —
   -- the whole point of the lexer/parser threading.
-  _ : rawFloatLits (RFloat 3 14 2 42) ≡ (3 , 14 , 2 , 42) ∷ []
+  _ : tokenFloatLits (TFloat 3 14 2 42 ∷ []) ≡ (3 , 14 , 2 , 42) ∷ []
   _ = refl
 
   _ : floatWarning binary32 3 1 1 42
@@ -368,8 +342,8 @@ loopWarnings m = go (silentRoundDefs m)
 -- | The compiler's entry point: every rounding warning this module has for
 -- this target, rendered. `Once.Compile` re-exports it and the CLI prints it,
 -- which is what keeps this module ON the apex path rather than beside it.
-warningsFor : Arch → Module → List String
-warningsFor arch m = go (roundingWarnings arch m ++ loopWarnings m)
+warningsFor : Arch → String → Module → List String
+warningsFor arch src m = go (roundingWarnings arch (tokenize (toList src)) ++ loopWarnings m)
   where
     go : List Warning → List String
     go []       = []

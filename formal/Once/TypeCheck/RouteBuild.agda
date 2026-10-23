@@ -149,7 +149,7 @@ mutual
   -- The pairs (in `ModeAgreement`'s order).
 
   route-ii (t-int _) (t-int _) = ii-int
-  route-ii (t-float _ _ _ _) (t-float _ _ _ _) = ii-float
+  route-ii (t-float _ _ _) (t-float _ _ _) = ii-float
   route-ii t-unit t-unit = ii-unit
   route-ii t-unit-var t-unit-var = ii-unit-var
   route-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _ refl) = ⊥-elim (¬u refl)
@@ -173,9 +173,9 @@ mutual
   route-ii (t-annot _ c refl) (t-annot _ c′ refl) = ii-annot (route-cc c c′)
   route-ii (t-pair a b) (t-pair a′ b′) = ii-pair (route-ii a a′) (route-ii b b′)
   route-ii (t-neg d) (t-neg d′) = ii-neg (route-ii d d′)
-  route-ii (t-neg ()) (t-neg-float _ _ _ _)
-  route-ii (t-neg-float _ _ _ _) (t-neg ())
-  route-ii (t-neg-float _ _ _ _) (t-neg-float _ _ _ _) = ii-neg-float
+  route-ii (t-neg ()) (t-neg-float _ _ _)
+  route-ii (t-neg-float _ _ _) (t-neg ())
+  route-ii (t-neg-float _ _ _) (t-neg-float _ _ _) = ii-neg-float
   route-ii (t-let d₁ d₂) (t-let d₁′ d₂′) = let-r d₁ d₂ d₁′ d₂′ (proj₁ (agree-ii d₁ d₁′))
   route-ii (t-case dS dL dR J) (t-case dS′ dL′ dR′ J′) = case-r dS dL dR J dS′ dL′ dR′ J′ (proj₁ (agree-ii dS dS′))
   route-ii (t-binop-arith _ d₁ d₂) (t-binop-arith _ d₁′ d₂′) = ii-arith (route-ii d₁ d₁′) (route-ii d₂ d₂′)

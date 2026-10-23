@@ -24808,7 +24808,7 @@ du_parseAtomExprWF_496 v0
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
                           MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 (coe v3) (coe v4)
-                          (coe v5) (coe v6))
+                          (coe v5))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
                           (coe MAlonzo.Code.Once.Parser.ExprRelation.C_pae'45'float_834)))
@@ -30439,7 +30439,7 @@ du_parseAppTailWF_558 v0 v1
                -> let v8
                         = coe
                             MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 (coe v4) (coe v5)
-                            (coe v6) (coe v7) in
+                            (coe v6) in
                   coe
                     (let v9
                            = coe MAlonzo.Code.Once.Parser.ExprRelation.C_pae'45'float_834 in

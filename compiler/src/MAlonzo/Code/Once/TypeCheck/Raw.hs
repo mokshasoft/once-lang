@@ -59,7 +59,7 @@ d_closedLiftShape'63'_8 v0
              (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'unit_106)
       MAlonzo.Code.Once.Internal.Syntax.C_RInt_54 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 v1 v2 v3 v4
+      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 v1 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       MAlonzo.Code.Once.Internal.Syntax.C_RAnnot_58 v1 v2
         -> coe

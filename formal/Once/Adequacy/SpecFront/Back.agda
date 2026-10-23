@@ -713,7 +713,7 @@ mutual
   ----------------------------------------------------------------------
 
   bwdᵢ (SU.s-int i) x-int lr T = inv-lit-int T , bsyn r-int (t-int i) zero-use
-  bwdᵢ (SU.s-float i f l) (x-float {p = p}) lr T = inv-lit-float T , bsyn r-float (t-float i f l p) zero-use
+  bwdᵢ (SU.s-float i f l) x-float lr T = inv-lit-float T , bsyn r-float (t-float i f l) zero-use
   bwdᵢ SU.s-unit x-unit lr T = inv-unit T , bsyn r-unit t-unit zero-use
   bwdᵢ SU.s-unit-g (x-res _) lr T = inv-unit T , bsyn r-unit t-unit-var zero-use
   bwdᵢ (SU.s-var mem) (x-local _) lr T =
@@ -729,7 +729,7 @@ mutual
     in trans (IPair.ty r) (cong₂ ST._*_ ea eb) , pair-syn (IPair.use r) sa sb
   bwdᵢ (SU.s-neg d) (x-neg x) lr T =
     let r = inv-prim T ; (_ , sd) = bwdᵢ d x lr (IPrim.dt r) in IPrim.ty r , neg-syn (IPrim.use r) sd
-  bwdᵢ (SU.s-neg-float i f l) (x-neg (x-float {p = p})) lr T = inv-lit-float T , bsyn r-float (t-neg-float i f l p) zero-use
+  bwdᵢ (SU.s-neg-float i f l) (x-neg x-float) lr T = inv-lit-float T , bsyn r-float (t-neg-float i f l) zero-use
   bwdᵢ (SU.s-let q d₁ d₂) (x-let x₁ x₂) lr T =
     let r = inv-let T ; (e₁ , s₁) = bwdᵢ d₁ x₁ lr (ILet.de r)
         (e₂ , s₂) = bwdᵢ d₂ x₂ (lr-▸ lr (BSyn.ra s₁)) (ty-ctx e₁ (ILet.db r))

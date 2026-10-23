@@ -124,7 +124,7 @@ private
               → proj₁ (inferElabV-neg-aux ctx e v) ≡ failure err
               → err ≡ e₀
   neg-rejects .(Raw.RInt n) (nov-int n) _ _ ()
-  neg-rejects .(Raw.RFloat i f l p) (nov-float i f l p) _ _ ()
+  neg-rejects .(Raw.RFloat i f l) (nov-float i f l) _ _ ()
   neg-rejects {ctx = ctx} e (nov-other .e) eqI fact eqO = rejects (inferElabV-RUnaryOp-aux ctx e) (inferElabV ctx e) eqI fact eqO
 
 inl-check-Int : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}

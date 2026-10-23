@@ -226,12 +226,12 @@ open import Data.Unit using (⊤; tt)
 -- `--exact-split`, as its `isRIntView` predecessor was; see the census target.)
 data NegOperandView : RawExpr → Set where
   nov-int   : (n : ℤ)       → NegOperandView (Raw.RInt n)
-  nov-float : (i f l p : ℕ) → NegOperandView (Raw.RFloat i f l p)
+  nov-float : (i f l : ℕ) → NegOperandView (Raw.RFloat i f l)
   nov-other : (e : RawExpr) → NegOperandView e
 
 negOperandView : (e : RawExpr) → NegOperandView e
 negOperandView (Raw.RInt n)         = nov-int n
-negOperandView (Raw.RFloat i f l p) = nov-float i f l p
+negOperandView (Raw.RFloat i f l) = nov-float i f l
 {-# CATCHALL #-}
 negOperandView e                    = nov-other e
 
@@ -552,7 +552,7 @@ spineOf e = go e []
     go (Raw.RDestruct e a b c d) args = mkSpine (Raw.RDestruct e a b c d) args
     go Raw.RUnit             args = mkSpine Raw.RUnit args
     go (Raw.RInt n)          args = mkSpine (Raw.RInt n) args
-    go (Raw.RFloat i f l p)    args = mkSpine (Raw.RFloat i f l p) args
+    go (Raw.RFloat i f l)    args = mkSpine (Raw.RFloat i f l) args
     go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
     go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
     go (Raw.RUnaryOp op x)   args = mkSpine (Raw.RUnaryOp op x) args
@@ -1088,13 +1088,13 @@ checkElabV-neg-int-aux ctx n T with Int <:? T
             , t-sub (t-neg (t-int n)) p
 ... | no _  = failure (TypeMismatch T Int) , tt
 
-checkElabV-neg-float-aux : ∀ {m} → (ctx : NamedCtx m) (i f l p : ℕ) (T : Ty m)
-  → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) T
-checkElabV-neg-float-aux ctx i f l p T with Once.Spec.Type.Float <:? T
+checkElabV-neg-float-aux : ∀ {m} → (ctx : NamedCtx m) (i f l : ℕ) (T : Ty m)
+  → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l)) T
+checkElabV-neg-float-aux ctx i f l T with Once.Spec.Type.Float <:? T
 ... | yes s = success Surface.zeroUsage
                       (Surface.coerce s (Surface.float (Decimal.negate (decimalOf i f l)))) 1
                       0
-            , t-sub (t-neg-float i f l p) s
+            , t-sub (t-neg-float i f l) s
 ... | no _  = failure (TypeMismatch T Once.Spec.Type.Float) , tt
 
 inferElabV-RBinOp-aux : ∀ {m} → (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
@@ -1761,23 +1761,23 @@ checkElabV-RVar-bbc-other-aux : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty 
 checkElabV-RVar-bbc-other-aux ctx x T r = embedOrSubsume ctx (Raw.RVar x) T r
 
 
-checkElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (i f l p : ℕ) (T : Ty m)
-  → VerifiedCheckResult ctx (Raw.RFloat i f l p) T
+checkElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (i f l : ℕ) (T : Ty m)
+  → VerifiedCheckResult ctx (Raw.RFloat i f l) T
 -- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
 -- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
 -- `nothing` branch reproduces the old generic clause for RInt verbatim.
 -- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
 -- `Float` or report a genuine type mismatch. The only failure left is a type
 -- mismatch — representability is no longer a way to fail.
-checkElabV-RFloat-aux ctx i f l p T with Once.Spec.Type.Float <:? T
+checkElabV-RFloat-aux ctx i f l T with Once.Spec.Type.Float <:? T
 ... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (decimalOf i f l))) 0 0
-            , t-sub (t-float i f l p) s
+            , t-sub (t-float i f l) s
 ... | no _  = failure (TypeMismatch T Once.Spec.Type.Float) , tt
 
--- RFloat infer-mode. No dispatch _ left at all — it is the `RInt` clause with
+-- RFloat infer-mode. No dispatch left at all — it is the `RInt` clause with
 -- `decimalOf` in place of the digit.
-inferElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (i f l p : ℕ)
-  → VerifiedInferResult ctx (Raw.RFloat i f l p)
+inferElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (i f l : ℕ)
+  → VerifiedInferResult ctx (Raw.RFloat i f l)
 -- RFloat: F4's decision, made once and passed in.
 --
 -- The accepted branch hands the witness straight to BOTH the Surface node
@@ -1789,9 +1789,9 @@ inferElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (i f l p : ℕ)
 -- become the nearest double, it fails to compile.
 -- TOTAL. `FloatNotRepresentable` is unreachable from here now; the literal
 -- always elaborates and the target rounds it.
-inferElabV-RFloat-aux ctx i f l p =
+inferElabV-RFloat-aux ctx i f l =
   success Float _ (Surface.float (decimalOf i f l)) 0 0
-  , t-float i f l p
+  , t-float i f l
 
 mutual
   -- RVar dispatch helper (plan 0.6 Phase C.7 POC-1). Separates
@@ -2290,7 +2290,7 @@ mutual
   inferElabV ctx (Raw.RInt n) =
     success Int _ (Surface.int n) 0 0 , t-int n
 
-  inferElabV ctx (Raw.RFloat i f l p) = inferElabV-RFloat-aux ctx i f l p
+  inferElabV ctx (Raw.RFloat i f l) = inferElabV-RFloat-aux ctx i f l
 
 
   inferElabV ctx Raw.RUnit =
@@ -2431,8 +2431,8 @@ mutual
   -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
   -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
   checkElabV-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T
-  checkElabV-wf ctx ac (Raw.RFloat i f l p) T =
-    checkElabV-RFloat-aux ctx i f l p T
+  checkElabV-wf ctx ac (Raw.RFloat i f l) T =
+    checkElabV-RFloat-aux ctx i f l T
   -- PLAN 0.73 F3: `- <literal>` gets the same value-lift the bare literal
   -- does. Before this it fell through to the generic clause below, which
   -- infers `Int`/`Float` and then mismatches against the ARROW the position
@@ -2498,16 +2498,16 @@ mutual
   --
   -- Depth `1` and the untouched fresh counter mirror the `RInt` fold: one
   -- constructor deeper than the bare literal, no name allocated.
-  inferElabV-neg-aux ctx .(Raw.RFloat i f l p) (nov-float i f l p) =
+  inferElabV-neg-aux ctx .(Raw.RFloat i f l) (nov-float i f l) =
     success Float _ (Surface.float (Decimal.negate (decimalOf i f l))) 1
             0
-    , t-neg-float i f l p
+    , t-neg-float i f l
   inferElabV-neg-aux ctx e (nov-other .e) = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
 
   checkElabV-neg-dispatch ctx .(Raw.RInt n) T (nov-int n) =
     checkElabV-neg-int-aux ctx n T
-  checkElabV-neg-dispatch ctx .(Raw.RFloat i f l p) T (nov-float i f l p) =
-    checkElabV-neg-float-aux ctx i f l p T
+  checkElabV-neg-dispatch ctx .(Raw.RFloat i f l) T (nov-float i f l) =
+    checkElabV-neg-float-aux ctx i f l T
   -- NOT a literal: the old generic clause verbatim, `embedOrSubsume` included,
   -- so the pure→eff subsumption (`t-subsume`, plan 0.52 M1) is not lost.
   checkElabV-neg-dispatch ctx e T (nov-other .e) =

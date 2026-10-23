@@ -868,7 +868,7 @@ parseAtomExprWF (TWord name ∷ rest) (acc rec) = atomExprWordWF name rest (rec 
 parseAtomExprWF (TInt n _    ∷ rest) _ = just (RInt n , rest , pae-int)
 -- Plan 0.71 F3a: the AST has its node now, so the rejection F1 left here
 -- becomes the real rule.
-parseAtomExprWF (TFloat i f l _ ∷ rest) _ = just (RFloat i f l _ , rest , pae-float)
+parseAtomExprWF (TFloat i f l _ ∷ rest) _ = just (RFloat i f l , rest , pae-float)
 -- A string literal is no expression (the Spec's grammar has none).
 parseAtomExprWF (TString _  ∷ _) _ = nothing
 parseAtomExprWF (TRParen    ∷ _) _ = nothing

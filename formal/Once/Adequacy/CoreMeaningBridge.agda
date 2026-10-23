@@ -502,7 +502,7 @@ module _ {δ : DefSem} where
     trans (Agree.agree-inst ag lp ki) (sym (polyE-sem δ V lp ki γ))
 
   bridge-i V ag (t-int n) r = refl
-  bridge-i V ag (t-float i f l p) r = refl
+  bridge-i V ag (t-float i f l) r = refl
   bridge-i V ag t-unit r = refl
   bridge-i V ag t-unit-var r = refl
   bridge-i {ctx = ctx} V ag (t-var-local {eV = Once.Internal.Context.svar i} _) r = lookup-R (NamedCtx.debruijn ctx) i r
@@ -518,7 +518,7 @@ module _ {δ : DefSem} where
          (bridge-i V ag da (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
          (bridge-i V ag db (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envʳ σ₀ _ _) (envʳ-restrict σ₀ _ _) r))
   bridge-i V ag (t-neg d) r = fmapC _ (bridge-i V ag d r)
-  bridge-i V ag (t-neg-float i f l p) r = refl
+  bridge-i V ag (t-neg-float i f l) r = refl
   bridge-i {ctx = ctx} V ag (t-let {A = A} {q = Zero} d₁ d₂) r =
     bridge-i V ag d₂ (bind0-R {Γ = NamedCtx.debruijn ctx} {A = A} tt (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
   bridge-i {ctx = ctx} V {ρ = ρ} ag (t-let {A = A} {q = One} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} d₁ d₂) {x = x} r =

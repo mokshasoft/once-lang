@@ -230,7 +230,7 @@ mutual
   ----------------------------------------------------------------------
   -- agree-ii
   agree-ii (t-int _) (t-int _) = refl , refl
-  agree-ii (t-float _ _ _ _) (t-float _ _ _ _) = refl , refl
+  agree-ii (t-float _ _ _) (t-float _ _ _) = refl , refl
   agree-ii t-unit t-unit = refl , refl
   agree-ii t-unit-var t-unit-var = refl , refl
   agree-ii t-unit-var (t-var-resolved (_ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ _ ∷ ¬u ∷ _) wn _ _ refl) = ⊥-elim (¬u refl)
@@ -261,9 +261,9 @@ mutual
   agree-ii (t-pair a b) (t-pair a′ b′) with agree-ii a a′ | agree-ii b b′
   ... | refl , refl | refl , refl = refl , refl
   agree-ii (t-neg d) (t-neg d′) = refl , proj₂ (agree-ii d d′)
-  agree-ii (t-neg ()) (t-neg-float _ _ _ _)
-  agree-ii (t-neg-float _ _ _ _) (t-neg ())
-  agree-ii (t-neg-float _ _ _ _) (t-neg-float _ _ _ _) = refl , refl
+  agree-ii (t-neg ()) (t-neg-float _ _ _)
+  agree-ii (t-neg-float _ _ _) (t-neg ())
+  agree-ii (t-neg-float _ _ _) (t-neg-float _ _ _) = refl , refl
   agree-ii (t-let d₁ d₂) (t-let d₁′ d₂′) with agree-ii d₁ d₁′
   ... | refl , refl with agree-ii d₂ d₂′
   ...   | refl , refl = refl , refl
