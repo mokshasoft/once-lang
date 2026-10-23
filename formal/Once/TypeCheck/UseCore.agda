@@ -84,81 +84,93 @@ poly-inst : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) m) {sd sc A B π′}
           → type (S !! d) ⟨ τ ⟩ ≡ A ⇒[ mk-kind Many π′ ] B
 poly-inst d τ ty ea eb = trans (cong (_⟨ τ ⟩) ty) (cong₂ (λ X Y → X ⇒[ mk-kind Many _ ] Y) ea eb)
 
+-- In a context of the locals' shape (`typ` at their own context, below).
+typS⇒ : ∀ {n} {L : Locals m n} {Γ} {e A t Ψ} {d : L ⊢ e ⇒ A ↝ t} → Shape L Γ → Use⇒ d Ψ → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! pure
+typS⇐ : ∀ {n} {L : Locals m n} {Γ} {e A t Ψ} {d : L ⊢ e ⇐ A ↝ t} → Shape L Γ → Use⇐ d Ψ → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! pure
+typS↦ : ∀ {n} {L : Locals m n} {Γ} {e A π B t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} → Shape L Γ → Use↦ d Ψ
+      → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ⇒[ mk-kind Many π ] B ! pure
+
+typS⇒ sh u-int                       = ⊢lit-int
+typS⇒ sh u-float                     = ⊢lit-float
+typS⇒ sh u-unit                      = ⊢unit
+typS⇒ sh u-unit-g                    = ⊢unit
+typS⇒ sh (u-var {v = v})             = subst (λ X → Δ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (lookup-shape sh v) (⊢var _)
+typS⇒ sh (u-sigop {mem = mem} k h)   = ⊢sigop mem
+typS⇒ sh (u-def {d = d} {τ = τ} {a = a}) = ⊢ref d τ (no-kinds d τ a)
+typS⇒ sh (u-annot u)                 = typS⇐ sh u
+typS⇒ sh (u-pair ua ub)              = ⊢pair (typS⇒ sh ua) (typS⇒ sh ub)
+typS⇒ sh (u-neg u)                   = ⊢prim p-neg (typS⇒ sh u)
+typS⇒ sh u-neg-float                 = ⊢lit-float
+typS⇒ sh (u-let {q = q} u₁ u₂)       = ⊢let-pure q (typS⇒ sh u₁) (typS⇒ (sh-▸ sh) u₂)
+-- Each branch composed with its conversion into the join (D322).
+typS⇒ sh (u-case {j = j} us ul ur)   =
+  ⊢case⊔ (typS⇒ sh us) (⊢coerce (<:ᶜ⇒<: (left j)) (typS⇒ (sh-▸ sh) ul)) (⊢coerce (<:ᶜ⇒<: (right j)) (typS⇒ (sh-▸ sh) ur))
+typS⇒ sh (u-arith {o = o} u₁ u₂)            = ar o (typS⇒ sh u₁) (typS⇒ sh u₂)
+typS⇒ sh (u-arith-float {o = o} u₁ u₂)      = far o (typS⇒ sh u₁) (typS⇒ sh u₂)
+typS⇒ sh (u-arith-float-il {o = o} u₁ u₂)   = far o (⊢prim p-i2f (typS⇒ sh u₁)) (typS⇒ sh u₂)
+typS⇒ sh (u-arith-float-ir {o = o} u₁ u₂)   = far o (typS⇒ sh u₁) (⊢prim p-i2f (typS⇒ sh u₂))
+typS⇒ sh (u-compare {o = o} u₁ u₂)          = cm o (typS⇒ sh u₁) (typS⇒ sh u₂)
+typS⇒ sh (u-id-app u)                = ⊢app (⊢idᶜ ⊑-pure) (typS⇒ sh u)
+typS⇒ sh (u-fst-app u)               = ⊢app (⊢fstᶜ ⊑-pure) (typS⇒ sh u)
+typS⇒ sh (u-snd-app u)               = ⊢app (⊢sndᶜ ⊑-pure) (typS⇒ sh u)
+typS⇒ sh (u-terminal-app u)          = ⊢app (⊢terminalᶜ ⊑-pure) (typS⇒ sh u)
+typS⇒ sh (u-apply-app u)             = ⊢app ⊢applyᶜ (typS⇒ sh u)
+typS⇒ sh (u-apply-eff-app u)         = ⊢app ⊢applyEffᶜ (typS⇒ sh u)
+typS⇒ sh (u-Out-app {w = w} u)       = ⊢app (⊢outᶜ w) (typS⇒ sh u)
+typS⇒ sh (u-Out-act-app {w = w} u)   = ⊢app (⊢outActᶜ w) (typS⇒ sh u)
+typS⇒ sh (u-app {q = q} uf ux)       = ⊢app-pure q (typS⇒ sh uf) (typS⇐ sh ux)
+typS⇒ sh (u-effApp uf ux)            = ⊢effAppᶜ (typS⇒ sh uf) (typS⇐ sh ux)
+typS⇒ sh (u-app-spine ux uf)         = ⊢app (typS↦ sh uf) (typS⇒ sh ux)
+
+typS⇐ sh (u-id {π = π})              = ⊢idᶜ (pure-⊑ π)
+typS⇐ sh (u-fst {π = π})             = ⊢fstᶜ (pure-⊑ π)
+typS⇐ sh (u-snd {π = π})             = ⊢sndᶜ (pure-⊑ π)
+typS⇐ sh (u-terminal {π = π})        = ⊢terminalᶜ (pure-⊑ π)
+typS⇐ sh (u-initial {π = π})         = ⊢initialᶜ (pure-⊑ π)
+typS⇐ sh (u-inl {π = π})             = ⊢inlᶜ (pure-⊑ π)
+typS⇐ sh (u-inr {π = π})             = ⊢inrᶜ (pure-⊑ π)
+typS⇐ sh (u-compose-g ug uf)         = ⊢composeᶜ (·p-diag _) (typS⇐ sh uf) (typS↦ sh ug)
+typS⇐ sh (u-compose-f {p = p} uf ug) = ⊢composeᶜ (·p-diag _) (⊢coerce p (typS⇒ sh uf)) (typS⇐ sh ug)
+typS⇐ sh (u-case uf ug)              = ⊢caseᶜ (typS⇐ sh uf) (typS⇐ sh ug)
+typS⇐ sh (u-pair uf ug)              = ⊢pairᶜ (·p-diag _) (typS⇐ sh uf) (typS⇐ sh ug)
+typS⇐ sh (u-curry {π₀ = π₀} u)       = ⊢curryᶜ (pure-⊑ π₀) (typS⇐ sh u)
+typS⇐ sh (u-cata {w = w} u)          = ⊢cataᶜ w (typS⇐ sh u)
+typS⇐ sh (u-ana {π₀ = π₀} {w = w} u) = ⊢anaᶜ (pure-⊑ π₀) w (typS⇐ sh u)
+typS⇐ sh (u-loop u)                  = ⊢loopᶜ (typS⇐ sh u)
+typS⇐ sh (u-sub {p = p} u)           = ⊢coerce p (typS⇒ sh u)
+typS⇐ sh (u-lam {q = q} {π = π} {q′ = q′} ≤p u) = ⊢lam (≤qᵇ→≤q q′ q ≤p) (⊢sub-eff (pure-⊑ π) (typS⇐ (sh-▸ sh) u))
+typS⇐ sh (u-pair-lit ua ub)          = ⊢pair (typS⇐ sh ua) (typS⇐ sh ub)
+typS⇐ sh (u-In-app {w = w} u)        = ⊢app (⊢inᶜ w) (typS⇐ sh u)
+typS⇐ sh (u-apply-app u)             = ⊢app ⊢applyᶜ (typS⇒ sh u)
+typS⇐ sh (u-inl-app u)               = ⊢app (⊢inlᶜ ⊑-pure) (typS⇐ sh u)
+typS⇐ sh (u-inr-app u)               = ⊢app (⊢inrᶜ ⊑-pure) (typS⇐ sh u)
+typS⇐ sh (u-initial-app u)           = ⊢app (⊢initialᶜ ⊑-pure) (typS⇐ sh u)
+typS⇐ sh (u-poly {d = d} {τ = τ} {r = r}) = ⊢ref d τ r
+
+typS↦ sh (u-infer {B = B} {p = p} {o = o} u) = ⊢coerce (sub-arr p (<:-refl B) o) (typS⇒ sh u)
+typS↦ {Γ = Γ} sh (u-poly {d = d} {A = A} {B = B} {ty = ty} {τ = τ} {r = r} {ea = ea} {eb = eb} {o = o}) =
+  ⊢coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o)
+          (subst (λ X → Δ ⊩ Γ ⊢[ zeroUsage ] ref d τ ∷ X ! pure) (poly-inst d τ ty ea eb) (⊢ref d τ r))
+typS↦ sh (u-lam {π = π} {q′ = q′} u) = ⊢lam (≤qᵇ→≤q q′ Many (≤q-Many q′)) (⊢sub-eff (pure-⊑ π) (typS⇒ (sh-▸ sh) u))
+typS↦ sh (u-compose ug uf)           = ⊢composeᶜ (·p-diag _) (typS↦ sh uf) (typS↦ sh ug)
+typS↦ sh (u-id {π = π})              = ⊢idᶜ (pure-⊑ π)
+typS↦ sh (u-fst {π = π})             = ⊢fstᶜ (pure-⊑ π)
+typS↦ sh (u-snd {π = π})             = ⊢sndᶜ (pure-⊑ π)
+typS↦ sh (u-terminal {π = π})        = ⊢terminalᶜ (pure-⊑ π)
+typS↦ sh (u-initial {π = π})         = ⊢initialᶜ (pure-⊑ π)
+typS↦ sh (u-case {j = j} uf ug)      =
+  ⊢caseᶜ (⊢coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (left j)) (⊑π-refl _)) (typS↦ sh uf))
+         (⊢coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (right j)) (⊑π-refl _)) (typS↦ sh ug))
+typS↦ sh (u-pair uf ug)              = ⊢pairᶜ (·p-diag _) (typS↦ sh uf) (typS↦ sh ug)
+typS↦ sh (u-cata {w = w} u)          = ⊢cataᶜ w (typS⇒ sh u)
+
+-- At the locals' own context.
 typ⇒ : ∀ {n} {L : Locals m n} {e A t Ψ} {d : L ⊢ e ⇒ A ↝ t} → Use⇒ d Ψ → Δ ⊩ ctxOf L ⊢[ Ψ ] t ∷ A ! pure
+typ⇒ = typS⇒ (shape-of _)
+
 typ⇐ : ∀ {n} {L : Locals m n} {e A t Ψ} {d : L ⊢ e ⇐ A ↝ t} → Use⇐ d Ψ → Δ ⊩ ctxOf L ⊢[ Ψ ] t ∷ A ! pure
+typ⇐ = typS⇐ (shape-of _)
+
 typ↦ : ∀ {n} {L : Locals m n} {e A π B t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} → Use↦ d Ψ
      → Δ ⊩ ctxOf L ⊢[ Ψ ] t ∷ A ⇒[ mk-kind Many π ] B ! pure
-
-typ⇒ u-int                       = ⊢lit-int
-typ⇒ u-float                     = ⊢lit-float
-typ⇒ u-unit                      = ⊢unit
-typ⇒ u-unit-g                    = ⊢unit
-typ⇒ (u-var {v = v})             = subst (λ X → Δ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (lookup-at v) (⊢var _)
-typ⇒ (u-sigop {mem = mem} k h)   = ⊢sigop mem
-typ⇒ (u-def {d = d} {τ = τ} {a = a}) = ⊢ref d τ (no-kinds d τ a)
-typ⇒ (u-annot u)                 = typ⇐ u
-typ⇒ (u-pair ua ub)              = ⊢pair (typ⇒ ua) (typ⇒ ub)
-typ⇒ (u-neg u)                   = ⊢prim p-neg (typ⇒ u)
-typ⇒ u-neg-float                 = ⊢lit-float
-typ⇒ (u-let {q = q} u₁ u₂)       = ⊢let-pure q (typ⇒ u₁) (typ⇒ u₂)
--- Each branch composed with its conversion into the join (D322).
-typ⇒ (u-case {j = j} us ul ur)   =
-  ⊢case⊔ (typ⇒ us) (⊢coerce (<:ᶜ⇒<: (left j)) (typ⇒ ul)) (⊢coerce (<:ᶜ⇒<: (right j)) (typ⇒ ur))
-typ⇒ (u-arith {o = o} u₁ u₂)            = ar o (typ⇒ u₁) (typ⇒ u₂)
-typ⇒ (u-arith-float {o = o} u₁ u₂)      = far o (typ⇒ u₁) (typ⇒ u₂)
-typ⇒ (u-arith-float-il {o = o} u₁ u₂)   = far o (⊢prim p-i2f (typ⇒ u₁)) (typ⇒ u₂)
-typ⇒ (u-arith-float-ir {o = o} u₁ u₂)   = far o (typ⇒ u₁) (⊢prim p-i2f (typ⇒ u₂))
-typ⇒ (u-compare {o = o} u₁ u₂)          = cm o (typ⇒ u₁) (typ⇒ u₂)
-typ⇒ (u-id-app u)                = ⊢app (⊢idᶜ ⊑-pure) (typ⇒ u)
-typ⇒ (u-fst-app u)               = ⊢app (⊢fstᶜ ⊑-pure) (typ⇒ u)
-typ⇒ (u-snd-app u)               = ⊢app (⊢sndᶜ ⊑-pure) (typ⇒ u)
-typ⇒ (u-terminal-app u)          = ⊢app (⊢terminalᶜ ⊑-pure) (typ⇒ u)
-typ⇒ (u-apply-app u)             = ⊢app ⊢applyᶜ (typ⇒ u)
-typ⇒ (u-apply-eff-app u)         = ⊢app ⊢applyEffᶜ (typ⇒ u)
-typ⇒ (u-Out-app {w = w} u)       = ⊢app (⊢outᶜ w) (typ⇒ u)
-typ⇒ (u-Out-act-app {w = w} u)   = ⊢app (⊢outActᶜ w) (typ⇒ u)
-typ⇒ (u-app {q = q} uf ux)       = ⊢app-pure q (typ⇒ uf) (typ⇐ ux)
-typ⇒ (u-effApp uf ux)            = ⊢effAppᶜ (typ⇒ uf) (typ⇐ ux)
-typ⇒ (u-app-spine ux uf)         = ⊢app (typ↦ uf) (typ⇒ ux)
-
-typ⇐ (u-id {π = π})              = ⊢idᶜ (pure-⊑ π)
-typ⇐ (u-fst {π = π})             = ⊢fstᶜ (pure-⊑ π)
-typ⇐ (u-snd {π = π})             = ⊢sndᶜ (pure-⊑ π)
-typ⇐ (u-terminal {π = π})        = ⊢terminalᶜ (pure-⊑ π)
-typ⇐ (u-initial {π = π})         = ⊢initialᶜ (pure-⊑ π)
-typ⇐ (u-inl {π = π})             = ⊢inlᶜ (pure-⊑ π)
-typ⇐ (u-inr {π = π})             = ⊢inrᶜ (pure-⊑ π)
-typ⇐ (u-compose-g ug uf)         = ⊢composeᶜ (·p-diag _) (typ⇐ uf) (typ↦ ug)
-typ⇐ (u-compose-f {p = p} uf ug) = ⊢composeᶜ (·p-diag _) (⊢coerce p (typ⇒ uf)) (typ⇐ ug)
-typ⇐ (u-case uf ug)              = ⊢caseᶜ (typ⇐ uf) (typ⇐ ug)
-typ⇐ (u-pair uf ug)              = ⊢pairᶜ (·p-diag _) (typ⇐ uf) (typ⇐ ug)
-typ⇐ (u-curry {π₀ = π₀} u)       = ⊢curryᶜ (pure-⊑ π₀) (typ⇐ u)
-typ⇐ (u-cata {w = w} u)          = ⊢cataᶜ w (typ⇐ u)
-typ⇐ (u-ana {π₀ = π₀} {w = w} u) = ⊢anaᶜ (pure-⊑ π₀) w (typ⇐ u)
-typ⇐ (u-loop u)                  = ⊢loopᶜ (typ⇐ u)
-typ⇐ (u-sub {p = p} u)           = ⊢coerce p (typ⇒ u)
-typ⇐ (u-lam {q = q} {π = π} {q′ = q′} ≤p u) = ⊢lam (≤qᵇ→≤q q′ q ≤p) (⊢sub-eff (pure-⊑ π) (typ⇐ u))
-typ⇐ (u-pair-lit ua ub)          = ⊢pair (typ⇐ ua) (typ⇐ ub)
-typ⇐ (u-In-app {w = w} u)        = ⊢app (⊢inᶜ w) (typ⇐ u)
-typ⇐ (u-apply-app u)             = ⊢app ⊢applyᶜ (typ⇒ u)
-typ⇐ (u-inl-app u)               = ⊢app (⊢inlᶜ ⊑-pure) (typ⇐ u)
-typ⇐ (u-inr-app u)               = ⊢app (⊢inrᶜ ⊑-pure) (typ⇐ u)
-typ⇐ (u-initial-app u)           = ⊢app (⊢initialᶜ ⊑-pure) (typ⇐ u)
-typ⇐ (u-poly {d = d} {τ = τ} {r = r}) = ⊢ref d τ r
-
-typ↦ (u-infer {B = B} {p = p} {o = o} u) = ⊢coerce (sub-arr p (<:-refl B) o) (typ⇒ u)
-typ↦ {L = L} (u-poly {d = d} {A = A} {B = B} {ty = ty} {τ = τ} {r = r} {ea = ea} {eb = eb} {o = o}) =
-  ⊢coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o)
-          (subst (λ X → Δ ⊩ ctxOf L ⊢[ zeroUsage ] ref d τ ∷ X ! pure) (poly-inst d τ ty ea eb) (⊢ref d τ r))
-typ↦ (u-lam {π = π} {q′ = q′} u) = ⊢lam (≤qᵇ→≤q q′ Many (≤q-Many q′)) (⊢sub-eff (pure-⊑ π) (typ⇒ u))
-typ↦ (u-compose ug uf)           = ⊢composeᶜ (·p-diag _) (typ↦ uf) (typ↦ ug)
-typ↦ (u-id {π = π})              = ⊢idᶜ (pure-⊑ π)
-typ↦ (u-fst {π = π})             = ⊢fstᶜ (pure-⊑ π)
-typ↦ (u-snd {π = π})             = ⊢sndᶜ (pure-⊑ π)
-typ↦ (u-terminal {π = π})        = ⊢terminalᶜ (pure-⊑ π)
-typ↦ (u-initial {π = π})         = ⊢initialᶜ (pure-⊑ π)
-typ↦ (u-case {j = j} uf ug)      =
-  ⊢caseᶜ (⊢coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (left j)) (⊑π-refl _)) (typ↦ uf))
-         (⊢coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (right j)) (⊑π-refl _)) (typ↦ ug))
-typ↦ (u-pair uf ug)              = ⊢pairᶜ (·p-diag _) (typ↦ uf) (typ↦ ug)
-typ↦ (u-cata {w = w} u)          = ⊢cataᶜ w (typ⇒ u)
+typ↦ = typS↦ (shape-of _)

@@ -107,7 +107,7 @@ private
 ------------------------------------------------------------------------
 
 -- (retyping a witness along equations of its type and term)
-private
+module _ where
   ≡W⇒ : ∀ {n} {L : Locals k n} {e A A′ t t′ Ψ} → A ≡ A′ → t ≡ t′ → W⇒ L e A t Ψ → W⇒ L e A′ t′ Ψ
   ≡W⇒ refl refl w = w
   ≡W⇐ : ∀ {n} {L : Locals k n} {e A A′ t t′ Ψ} → A ≡ A′ → t ≡ t′ → W⇐ L e A t Ψ → W⇐ L e A′ t′ Ψ
@@ -122,10 +122,12 @@ private
 -- The combinators that weaken commute with the substitution.
 private
   module DV = Once.Spec.Core.Derived
-  open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk)
-  open import Once.Spec.Core.Syntax using (wk; let′; lam; app; unfold; var; roll)
-  open import Data.Fin using (zero)
-  open import Once.Spec.Grade using (One)
+open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk)
+open import Once.Spec.Core.Syntax using (wk; let′; lam; app; unfold; var; roll)
+open import Data.Fin using (zero)
+open import Once.Spec.Grade using (One)
+
+module _ where
 
   compose-⟪⟫ : ∀ {n} (A : Ty m) π (f g : Tm S m n) → DV.composeᶜ A π f g ⟪ σ ⟫ₜ ≡ DV.composeᶜ (A ⟨ σ ⟩) π (f ⟪ σ ⟫ₜ) (g ⟪ σ ⟫ₜ)
   compose-⟪⟫ A π f g = cong (λ x → let′ One (f ⟪ σ ⟫ₜ) (let′ Many x _)) (⟪⟫-wk σ g)
