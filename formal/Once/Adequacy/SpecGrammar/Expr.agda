@@ -58,18 +58,9 @@ private
 -- The trees that embed
 ------------------------------------------------------------------------
 
+-- (the compiler's operators are the Spec's: plan 0.122)
 opS : O.BinOp → S.BinOp
-opS OpAdd = S.OpAdd
-opS OpSub = S.OpSub
-opS OpMul = S.OpMul
-opS OpDiv = S.OpDiv
-opS OpMod = S.OpMod
-opS OpLt  = S.OpLt
-opS OpLe  = S.OpLe
-opS OpGt  = S.OpGt
-opS OpGe  = S.OpGe
-opS OpEq  = S.OpEq
-opS OpNe  = S.OpNe
+opS op = op
 
 data Emb : RawExpr → S.Expr → Set where
   e-var      : ∀ {x} → Emb (RVar x) (S.RVar x)

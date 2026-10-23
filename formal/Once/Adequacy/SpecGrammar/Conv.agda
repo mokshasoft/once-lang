@@ -56,23 +56,12 @@ toPolyF LP.PId            = SS.PId
 toPolyF (F LP.P⊕ G)       = toPolyF F SS.P⊕ toPolyF G
 toPolyF (F LP.P⊗ G)       = toPolyF F SS.P⊗ toPolyF G
 
--- Ground types, as the Spec's types.
+-- Ground types, as the Spec's types: the same (plan 0.122).
 toTy  : LT.Type → ST.Type
+toTy A = A
+
 toFun : LT.Fun 0 → ST.Fun 0
-toTy LT.Unit             = ST.Unit
-toTy LT.Void             = ST.Void
-toTy (A LT.* B)          = toTy A ST.* toTy B
-toTy (A LT.+ B)          = toTy A ST.+ toTy B
-toTy (A LT.⇒[ k ] B)     = toTy A ST.⇒[ kS k ] toTy B
-toTy (LT.μ F)       = ST.μ (toFun F)
-toTy (LT.ν F φ)     = ST.ν (toFun F) (φS φ)
-toTy LT.Int              = ST.Int
-toTy LT.Float            = ST.Float
-toTy (ST.var ())
-toFun (LT.K A)           = ST.K (toTy A)
-toFun LT.Id              = ST.Id
-toFun (F LT.⊕ G)         = toFun F ST.⊕ toFun G
-toFun (F LT.⊗ G)         = toFun F ST.⊗ toFun G
+toFun F = F
 
 -- Ground types, as the schemas a type alias is written with.
 toPolyG  : LT.Type → SS.PolyType
