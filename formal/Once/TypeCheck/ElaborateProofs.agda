@@ -478,7 +478,7 @@ checkElab-fallback-RVar-terminal {ctx = ctx} A u = withUnit-elim _ u _ (λ res �
 -- path as the weak one, so the body is identical modulo the extra witness slot.
 checkElab-fallback-RVar-terminalV : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.Purity} (A : Ty m) (u : pure ⊑π π)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      Σ-syntax (DC ctx (Raw.RResolved (gen "terminal")) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Unit) Surface.zeroUsage) (λ w →
+      Σ-syntax (DC ctx (Raw.RResolved (gen "terminal")) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Unit) Surface.zeroUsage eE) (λ w →
         checkElabV ctx (Raw.RResolved (gen "terminal")) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Unit)
           ≡ (success Surface.zeroUsage eE d f , w)))))
 checkElab-fallback-RVar-terminalV {ctx = ctx} A ⊑-pure = _ , _ , _ , _ , refl
@@ -1167,7 +1167,7 @@ checkElab-fallback-RApp-generic {ctx = ctx} {τ = τ} f x T eqAH eqInf sb
 inferOutGo-J : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Finite)
     (Ψ : Surface.Usage (NamedCtx.size ctx))
     (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.ν F π))
-    (d fr : ℕ) (w : DI ctx arg (Once.Spec.Type.ν F π) Ψ)
+    (d fr : ℕ) (w : DI ctx arg (Once.Spec.Type.ν F π) Ψ argE)
     (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)) (eq : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
   → inferOutGo ctx arg F π Ψ argE d fr w (wfFun? (NamedCtx.kinds ctx) F) refl
     ≡ inferOutGo ctx arg F π Ψ argE d fr w mw eq
@@ -1218,7 +1218,7 @@ checkCataGo-just-success : ∀ {m} (ctx : NamedCtx m) (alg : RawExpr) (F : Once.
     {d fr : ℕ}
     {w : DC ctx alg
            (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
-           Ψ}
+           Ψ algE}
   → checkElabV ctx
               alg (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
       ≡ (success Ψ algE d fr , w)
@@ -1269,7 +1269,7 @@ checkAnaGo-just-success : ∀ {m} (ctx : NamedCtx m) (coalg : RawExpr) (F : Once
     {d fr : ℕ}
     {w : DC ctx coalg
            (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A)
-           Ψ}
+           Ψ coalgE}
   → checkElabV ctx
               coalg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A)
       ≡ (success Ψ coalgE d fr , w)
@@ -1312,7 +1312,7 @@ checkCata-eff-strong-hlp : ∀ {m} (ctx : NamedCtx m) (alg : RawExpr) (F : Once.
     {d fr : ℕ}
     {w : DC ctx alg
            (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] A)
-           Ψ}
+           Ψ algE}
     (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
            (Once.Spec.Type.μ F Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] A))
   → checkCataGo ctx alg F A Once.Spec.Grade.eff (wfFun? (NamedCtx.kinds ctx) F) refl ≡ r

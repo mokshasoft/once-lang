@@ -114,7 +114,7 @@ cfbI-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsO
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfbI-doOpt doOpt ctx polys impsOf name ty expr eq = aux (TE.inferElabV (Classify.ctxWithImportsAndPolys ctx polys) expr) eq
   where
-    at : ∀ {T Ψ} (w : Once.TypeCheck.DualWitness.DI (Classify.ctxWithImportsAndPolys ctx polys) expr T Ψ) (d : Dec (T ≡ ty)) {ir}
+    at : ∀ {T Ψ eE} (w : Once.TypeCheck.DualWitness.DI (Classify.ctxWithImportsAndPolys ctx polys) expr T Ψ eE) (d : Dec (T ≡ ty)) {ir}
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ ir
        → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty refl w d ≡ inj₂ ir')
     at w (yes refl) _ = _ , refl

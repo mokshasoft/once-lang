@@ -128,7 +128,7 @@ compileFunBodyI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String
 compileFunBodyI-complete ctx polys impsOf name ty body {[]} deriv =
   succ (TE.inferElabV (ctxWithImportsAndPolys ctx polys) body) (proj₂ (proj₂ (proj₂ (infer-complete deriv))))
   where
-    at : (w : Once.TypeCheck.DualWitness.DI (ctxWithImportsAndPolys ctx polys) body ty []) (d : Dec (ty ≡ ty))
+    at : ∀ {eE} (w : Once.TypeCheck.DualWitness.DI (ctxWithImportsAndPolys ctx polys) body ty [] eE) (d : Dec (ty ≡ ty))
        → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ irFun)
     at w (yes refl) = _ , refl
     at w (no ¬p)    = ⊥-elim (¬p refl)

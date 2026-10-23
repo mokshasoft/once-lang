@@ -219,9 +219,7 @@ generic-info = value-info
 -- `generic-semM` postulate could supply — while the elaborator emitted
 -- `haltsV`: plan 0.98 §2's "inhabited by fiat", one layer below stage E.
 -- Dispatched through the shared `isVoid?`/`isUnit?` decisions (a top-level aux
--- on the two `Dec`s, NOT a pattern-match on `B`) — the SAME pair, in the same
--- order, that the elaborator's `ext-resolved-info` hands `ext-resolved-info-aux`,
--- so the masquerade proof folds both with one split.
+-- on the two `Dec`s, NOT a pattern-match on `B`).
 -- Only the CONTRACT is dispatched; the info is built once from its name and
 -- witnesses, so `name`/`baseA`/`conB` of an arrow's info are definitionally its
 -- arguments whatever the codomain (plan 0.105: the meanings read them).

@@ -565,7 +565,7 @@ mutual
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᶜ e ∶ A ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        Σ-syntax (DC ctx e A Ψ) (λ w →
+        Σ-syntax (DC ctx e A Ψ eE) (λ w →
           checkElabV ctx e A ≡ (success Ψ eE d f , w))
   check-completeV {ctx = ctx} {e = e} {A = A} d with checkElabV ctx e A | check-complete d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
@@ -595,7 +595,7 @@ mutual
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᵢ e ∶ A ⨾ Ψ → A <: B
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        Σ-syntax (DC ctx e B Ψ) (λ w →
+        Σ-syntax (DC ctx e B Ψ eE) (λ w →
           checkElabV ctx e B ≡ (success Ψ eE d f , w))
 
   -- `checkElabV (RPair a b) (A * B)` reduces via `checkPairLit` (checkElabV a A /

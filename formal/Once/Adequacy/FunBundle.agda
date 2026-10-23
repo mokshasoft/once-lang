@@ -196,7 +196,7 @@ compileFunI-ce polys impsOf ctx ty fi irFun eq =
         main (inj₁ _) ()
         main (inj₂ _) e′ = e′
     body false e = e
-    at : ∀ {T Ψ} (w : Once.TypeCheck.DualWitness.DI nctx (funBody fi) T Ψ) (dd : Dec (T ≡ ty))
+    at : ∀ {T Ψ eE} (w : Once.TypeCheck.DualWitness.DI nctx (funBody fi) T Ψ eE) (dd : Dec (T ≡ ty))
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf (funName fi) ty refl w dd ≡ inj₂ irFun → T ≡ ty
     at w (yes e) _ = e
     at w (no _) ()

@@ -136,10 +136,10 @@ compileFun-sound doOpt ctx polys impsOf name ty expr eq =
   compileFun-aux-sound doOpt ctx polys impsOf name ty expr (name == "main") eq
 
 -- R8: a definition without a signature — its body's synthesis derivation.
-compileFunBodyI-at-success : ∀ {nctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size nctx)}
+compileFunBodyI-at-success : ∀ {nctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size nctx)} {eE : Srf.Expr (NamedCtx.debruijn nctx) Ψ T}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (w : DI nctx body T Ψ) (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  (w : DI nctx body T Ψ eE) (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty δ w d ≡ inj₂ ir → nctx ⊢ᵢ body ∶ ty ⨾ Ψ
 compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w (yes refl) _ = proj₁ w
 compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w (no _) ()

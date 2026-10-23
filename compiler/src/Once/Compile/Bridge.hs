@@ -103,10 +103,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_1506
-toMStage Parse = MC.C_Parse_1508
-toMStage Check = MC.C_Check_1510
-toMStage Build = MC.C_Build_1512
+toMStage :: Stage -> MC.T_Stage_1508
+toMStage Parse = MC.C_Parse_1510
+toMStage Check = MC.C_Check_1512
+toMStage Build = MC.C_Build_1514
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -139,12 +139,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_134 (MP.d_pfunType_106 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_1514 -> CompileResult
-fromMResult (MC.C_Parsed_1516 fis pfis) =
+fromMResult :: MC.T_CompileResult_1516 -> CompileResult
+fromMResult (MC.C_Parsed_1518 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_1518 _)  = Checked
-fromMResult (MC.C_Built_1520 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_1522 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_1520 _)  = Checked
+fromMResult (MC.C_Built_1522 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_1524 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -152,7 +152,7 @@ fromMResult (MC.C_Error_1522 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_1570 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_1572 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -166,7 +166,7 @@ compile stage doOpt arch source =
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_622 (textToAgda source) of
+  case MC.d_parseSourceToModule_624 (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -253,5 +253,5 @@ toMAllocMode AllocHeap  = MCIR.C_Heap_8
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =
   fromMResult
-    (MC.d_compileFromModule_1772
+    (MC.d_compileFromModule_1774
        (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))

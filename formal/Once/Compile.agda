@@ -270,10 +270,10 @@ compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx po
 -- SYNTHESIS — the term the Spec's `w-nosig` takes — at the type it
 -- synthesizes (D323). (Checking it at that type would elaborate differently:
 -- a pair literal component-wise, a synthesized part with an identity coercion.)
-compileFunBodyI-at : ∀ {ctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size ctx)}
+compileFunBodyI-at : ∀ {ctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size ctx)} {eE : Srf.Expr (NamedCtx.debruijn ctx) Ψ T}
   → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
-  → DI ctx body T Ψ → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
+  → DI ctx body T Ψ eE → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (no _) =
   inj₁ ("Type error in " ++ name ++ ": its body synthesizes another type than " ++ showType ty)
 compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =
