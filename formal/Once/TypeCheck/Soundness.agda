@@ -36,7 +36,7 @@ import Once.Internal.Context as Surface
 open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (nothing)
-open import Data.Product using (∃-syntax; _,_)
+open import Data.Product using (∃-syntax; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl)
 
@@ -152,7 +152,7 @@ check-soundV : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
   → ctx ⊢ᶜ e ∶ T ⨾ Ψ
 check-soundV ctx e T eq with Once.TypeCheck.Elaborate.checkElabV ctx e T
 ... | success Ψ' eE' d' fr' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 check-soundV ctx e T eq | failure _ , _ with eq
 ... | ()
 
@@ -163,7 +163,7 @@ infer-soundV : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
   → ctx ⊢ᵢ e ∶ A ⨾ Ψ
 infer-soundV ctx e eq with Once.TypeCheck.Elaborate.inferElabV ctx e
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 infer-soundV ctx e eq | failure _ , _ with eq
 ... | ()
 
@@ -213,7 +213,7 @@ sound-RNeg : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
 sound-RNeg ctx e IH eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RNeg e)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RNeg ctx e IH eq | failure _ , _ with eq
 ... | ()
 
@@ -235,7 +235,7 @@ sound-RAnnot : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Type)
 sound-RAnnot ctx e T IH eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RAnnot e T)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RAnnot ctx e T IH eq | failure _ , _ with eq
 ... | ()
 
@@ -255,7 +255,7 @@ sound-RPair : ∀ {m} (ctx : NamedCtx m) (a b : RawExpr)
 sound-RPair ctx a b IHa IHb eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RPair a b)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RPair ctx a b IHa IHb eq | failure _ , _ with eq
 ... | ()
 
@@ -312,7 +312,7 @@ sound-RVar : ∀ {m} (ctx : NamedCtx m) (x : _)
 sound-RVar ctx x eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RVar x)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RVar ctx x eq | failure _ , _ with eq
 ... | ()
 
@@ -330,7 +330,7 @@ sound-check-RVar-id : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 sound-check-RVar-id ctx T eq
   with Once.TypeCheck.Elaborate.checkElabV ctx (Raw.RResolved (gen "id")) T
 ... | success Ψ' eE' d' fr' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-check-RVar-id ctx T eq | failure _ , _ with eq
 ... | ()
 
@@ -374,7 +374,7 @@ sound-RBinOp : ∀ {m} (ctx : NamedCtx m) (op : BinOp) (e₁ e₂ : RawExpr)
 sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RBinOp op e₁ e₂)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | failure _ , _ with eq
 ... | ()
 
@@ -413,7 +413,7 @@ sound-RLet : ∀ {m} (ctx : NamedCtx m) (x : _) (e₁ e₂ : RawExpr)
 sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RLet x e₁ e₂)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq | failure _ , _ with eq
 ... | ()
 
@@ -465,7 +465,7 @@ sound-RDestruct : ∀ {m} (ctx : NamedCtx m) (scrut : RawExpr) (xL : _) (eL : Ra
 sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RDestruct scrut xL eL xR eR)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq | failure _ , _ with eq
 ... | ()
 
@@ -515,7 +515,7 @@ sound-check-RLam : ∀ {m} (ctx : NamedCtx m) (x : _) (body : RawExpr)
 sound-check-RLam ctx x body A q B IH eq
   with Once.TypeCheck.Elaborate.checkElabV ctx (RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B)
 ... | success Ψ' eE' d' fr' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-check-RLam ctx x body A q B IH eq | failure _ , _ with eq
 ... | ()
 
@@ -542,7 +542,7 @@ sound-RApp-id : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr)
 sound-RApp-id ctx arg IH eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "id")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RApp-id ctx arg IH eq | failure _ , _ with eq
 ... | ()
 
@@ -558,7 +558,7 @@ sound-RApp-terminal : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr)
 sound-RApp-terminal ctx arg IH eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "terminal")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RApp-terminal ctx arg IH eq | failure _ , _ with eq
 ... | ()
 
@@ -574,7 +574,7 @@ sound-RApp-fst : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr)
 sound-RApp-fst ctx arg IH eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "fst")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RApp-fst ctx arg IH eq | failure _ , _ with eq
 ... | ()
 
@@ -590,7 +590,7 @@ sound-RApp-snd : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr)
 sound-RApp-snd ctx arg IH eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "snd")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RApp-snd ctx arg IH eq | failure _ , _ with eq
 ... | ()
 
@@ -609,7 +609,7 @@ sound-RApp-apply : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr)
 sound-RApp-apply ctx arg IH eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "apply")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RApp-apply ctx arg IH eq | failure _ , _ with eq
 ... | ()
 
@@ -653,7 +653,7 @@ sound-RApp-generic : ∀ {m} (ctx : NamedCtx m) (f x : RawExpr)
 sound-RApp-generic ctx f x _ IH_f IH_x eq
   with Once.TypeCheck.Elaborate.inferElabV ctx (RApp f x)
 ... | success A' Ψ' eE' d' f' , w with eq
-...   | refl = w
+...   | refl = proj₁ w
 sound-RApp-generic ctx f x _ IH_f IH_x eq | failure _ , _ with eq
 ... | ()
 
@@ -733,12 +733,12 @@ mutual
 
   infer-sound ctx e eq with Once.TypeCheck.Elaborate.inferElabV ctx e
   ... | success A' Ψ' eE' d' f' , w with eq
-  ...   | refl = w
+  ...   | refl = proj₁ w
   infer-sound ctx e eq | failure _ , _ with eq
   ... | ()
 
   check-sound ctx e T eq with Once.TypeCheck.Elaborate.checkElabV ctx e T
   ... | success Ψ' eE' d' fr' , w with eq
-  ...   | refl = w
+  ...   | refl = proj₁ w
   check-sound ctx e T eq | failure _ , _ with eq
   ... | ()

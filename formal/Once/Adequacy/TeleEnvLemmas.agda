@@ -37,7 +37,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁)
 open import Data.Unit using (⊤; tt)
 open import Data.String using (String)
 import Data.String.Properties as StrProp
@@ -100,7 +100,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
   spliceClosed : ∀ {A : Type} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
                → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
   spliceClosed {A = A} pre x (failure _ , _)             = Srf.poly x A
-  spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize w))
+  spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize (proj₁ w)))
 
   polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × RawExpr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
   polyVal x A nothing                 = Srf.poly x A
@@ -112,7 +112,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
       → applySplice {Γ = Srf.∅} L a I uf 0 x A eq r ≡ spliceClosed pre x r
     splice-val L a x A eq (failure _ , _) = refl
     splice-val L (acc rec) x A {pre = pre} eq (success SCx.[] eE _ _ , w) =
-      cong (λ z → Srf.closed (resolveExprWF pre z I uf 0 (realize w))) (acc-irrel _ _)
+      cong (λ z → Srf.closed (resolveExprWF pre z I uf 0 (realize (proj₁ w)))) (acc-irrel _ _)
 
     case-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type)
       (look : Maybe _) (eq : lookupPolyPrefix L x ≡ look)

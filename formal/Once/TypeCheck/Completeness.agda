@@ -53,6 +53,7 @@ open import Once.Internal.Name using (showCanonical)
 open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.TypeCheck.Elaborate
   using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo; checkLoop)
+open import Once.TypeCheck.DualWitness using (dt-case-copair-check; DC; DI; DD)
 import Once.Internal.Typing.Scope as Classify
 import Once.TypeCheck.Error as Error
 open import Once.Internal.Typing
@@ -372,7 +373,7 @@ compose-g-complete {ctx = ctx} f g A B C C′ π π′ (success B″ Ψg″ gE�
   with checkElabV ctx f (B″ T.⇒[ T.mk-kind T.Many π ] C)
 ... | failure _ , _ = compose-f-complete f g A B C C′ π π′ eqF p eqG
 ... | success Ψf″ fE″ df″ ff″ , wF
-      with mode-agree-ic wf wF | mode-agree-dc wG dg
+      with mode-agree-ic wf (proj₁ wF) | mode-agree-dc (proj₁ wG) dg
 ...   | refl | refl = _ , _ , _ , refl
 
 -- The spine, once the head is known not to synthesize.
@@ -545,7 +546,7 @@ private
     → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
         checkCaseGo ctx f g A B C π
           ≡ (success (Ψf Surface.+ᵘ Ψg) (Srf.copair' Ef Eg) d fr
-            , t-case-copair-check Wf Wg)
+            , dt-case-copair-check Wf Wg)
   caseGo-success eqf eqg rewrite eqf | eqg = _ , _ , refl
 
   -- D127: `cgo-usage` / `ccgo-usage` DELETED. They said compose/case emit
@@ -564,7 +565,7 @@ mutual
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᶜ e ∶ A ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        Σ-syntax (ctx ⊢ᶜ e ∶ A ⨾ Ψ) (λ w →
+        Σ-syntax (DC ctx e A Ψ) (λ w →
           checkElabV ctx e A ≡ (success Ψ eE d f , w))
   check-completeV {ctx = ctx} {e = e} {A = A} d with checkElabV ctx e A | check-complete d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
@@ -594,7 +595,7 @@ mutual
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     → ctx ⊢ᵢ e ∶ A ⨾ Ψ → A <: B
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        Σ-syntax (ctx ⊢ᶜ e ∶ B ⨾ Ψ) (λ w →
+        Σ-syntax (DC ctx e B Ψ) (λ w →
           checkElabV ctx e B ≡ (success Ψ eE d f , w))
 
   -- `checkElabV (RPair a b) (A * B)` reduces via `checkPairLit` (checkElabV a A /

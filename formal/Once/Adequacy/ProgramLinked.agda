@@ -124,7 +124,7 @@ spliceWith : ∀ {m} {n} {Γ : Ctx m n} (pre : PolyCtx) → Acc _<_ (length pre)
            → (x : String) (A : Ty m) {Xs : TopCtx} {b : RawExpr}
            → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Expr Γ zeroUsage A
 spliceWith pre ac I uf fresh x A (failure _ , _)             = poly x A
-spliceWith pre ac I uf fresh x A (success Once.Spec.Context.[] _ _ _ , w) = closed (resolveExprWF pre ac I uf fresh (realize w))
+spliceWith pre ac I uf fresh x A (success Once.Spec.Context.[] _ _ _ , w) = closed (resolveExprWF pre ac I uf fresh (realize (proj₁ w)))
 
 -- A telescope reference's splice is linked: at the entry's body, checked at
 -- the instance in its declaration context.

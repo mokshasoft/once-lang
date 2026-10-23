@@ -31,6 +31,7 @@ import Data.List as DL
 import Data.Bool.ListAction as BLA
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; ∃-syntax; proj₁; proj₂)
+open import Once.TypeCheck.DualWitness using (DI; DC; DD)
 open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -238,7 +239,7 @@ compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ _ _ _ 
   -- (`impsOf`), not in this function's. External syscalls are handled via
   -- the qualified-name path and never reach this resolver.
   let userList = (name , ty) ∷ TopCtx.tdefs ctx
-      resolved = resolveExpr polys impsOf userList 0 (realize w)
+      resolved = resolveExpr polys impsOf userList 0 (realize (proj₁ w))
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
@@ -272,12 +273,12 @@ compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx po
 compileFunBodyI-at : ∀ {ctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size ctx)}
   → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
-  → ctx ⊢ᵢ body ∶ T ⨾ Ψ → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
+  → DI ctx body T Ψ → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (no _) =
   inj₁ ("Type error in " ++ name ++ ": its body synthesizes another type than " ++ showType ty)
 compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =
   let userList = (name , ty) ∷ TopCtx.tdefs ctx
-      resolved = resolveExpr polys impsOf userList 0 (realize-infer w)
+      resolved = resolveExpr polys impsOf userList 0 (realize-infer (proj₁ w))
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
@@ -551,9 +552,9 @@ lw-mono sc fi es (inj₂ ty) =
   lw-name fi (lw-bodyM (funType fi) (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty)
   DL.++ lw-entries (extendScope sc (funName fi) ty) es
 lw-body ctx body ty (TE.failure _ , _)       = false
-lw-body ctx body ty (TE.success _ _ _ _ , w) = 0 <ᵇ silentLoops (realize w)
+lw-body ctx body ty (TE.success _ _ _ _ , w) = 0 <ᵇ silentLoops (realize (proj₁ w))
 lw-bodyI ctx body (TE.failure _ , _)         = false
-lw-bodyI ctx body (TE.success _ _ _ _ _ , w) = 0 <ᵇ silentLoops (realize-infer w)
+lw-bodyI ctx body (TE.success _ _ _ _ _ , w) = 0 <ᵇ silentLoops (realize-infer (proj₁ w))
 lw-bodyM (just _) ctx body ty = lw-body ctx body ty (TE.checkElabV ctx body ty)
 lw-bodyM nothing  ctx body ty = lw-bodyI ctx body (TE.inferElabV ctx body)
 lw-name fi true  = funName fi ∷ []

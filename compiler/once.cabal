@@ -222,6 +222,17 @@ library
       MAlonzo.Code.Once.TypeCheck.Classify
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.DeciderComplete
+      MAlonzo.Code.Once.Internal.Core.Decl
+      MAlonzo.Code.Once.Internal.Type.Schema
+      MAlonzo.Code.Once.Spec.Core.Derived
+      MAlonzo.Code.Once.Spec.Core.Syntax
+      MAlonzo.Code.Once.Spec.Surface.Typing
+      MAlonzo.Code.Once.TypeCheck.DualWitness
+      MAlonzo.Code.Once.TypeCheck.Scoped
+      MAlonzo.Code.Once.TypeCheck.SpecWitness
+      MAlonzo.Code.Once.TypeCheck.Use
+      MAlonzo.Code.Once.TypeCheck.View
+      MAlonzo.Code.Once.TypeCheck.Witness
       MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.ElaborateProofs
       MAlonzo.Code.Once.TypeCheck.Error

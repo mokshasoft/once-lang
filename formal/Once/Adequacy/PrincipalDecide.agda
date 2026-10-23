@@ -65,6 +65,6 @@ fc-step-complete : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (X : Ty m) (Xs : Lis
 firstChecking-complete ctx e []       h = refl
 firstChecking-complete ctx e (X ∷ Xs) h = fc-step-complete ctx e X Xs (TE.checkElabV ctx e X) h
 
-fc-step-complete ctx e X Xs (TE.success _ _ _ _ , w) h with h (here refl) w
+fc-step-complete ctx e X Xs (TE.success _ _ _ _ , w) h with h (here refl) (proj₁ w)
 ... | ()
 fc-step-complete ctx e X Xs (TE.failure _ , _) h = firstChecking-complete ctx e Xs (λ m → h (there m))

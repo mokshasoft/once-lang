@@ -18,6 +18,7 @@
 
 module Once.Adequacy.AcceptSound where
 
+open import Once.TypeCheck.DualWitness using (DI)
 open import Once.Internal.Type.Instance using (kindsOf; arityOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
@@ -138,9 +139,9 @@ compileFun-sound doOpt ctx polys impsOf name ty expr eq =
 compileFunBodyI-at-success : ∀ {nctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size nctx)}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (w : nctx ⊢ᵢ body ∶ T ⨾ Ψ) (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  (w : DI nctx body T Ψ) (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty δ w d ≡ inj₂ ir → nctx ⊢ᵢ body ∶ ty ⨾ Ψ
-compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w (yes refl) _ = w
+compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w (yes refl) _ = proj₁ w
 compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w (no _) ()
 
 compileFunBodyI-aux-success : ∀ {nctx : NamedCtx 0} {body : RawExpr}
@@ -277,7 +278,7 @@ ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
          → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)
     step fc r@(TE.failure _ , _) _ ()
     step fc r@(TE.success Ψ _ _ _ , w) _ eq′ =
-      poly (firstChecking-sound ctx (Parser.PolyFunInfo.pfunBody pfi) low fc) w (ce-sound doOpt (C.addEntry sc pfi) es eq′)
+      poly (firstChecking-sound ctx (Parser.PolyFunInfo.pfunBody pfi) low fc) (proj₁ w) (ce-sound doOpt (C.addEntry sc pfi) es eq′)
     pstep : (mx : Maybe (Once.Spec.Type.Ty (arityOf (Parser.PolyFunInfo.pfunType pfi)))) → C.firstChecking ctx (Parser.PolyFunInfo.pfunBody pfi) low ≡ mx
           → ∀ {cfs} → C.ce-poly-p IR.Heap doOpt sc pfi es mx ≡ inj₂ cfs
           → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)

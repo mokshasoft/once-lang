@@ -142,13 +142,13 @@ fresh-poly {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) =
 sound-of : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
          → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → ctx ⊢ᶜ e ∶ T ⨾ Ψ
-sound-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = w
+sound-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = Data.Product.proj₁ w
 
 -- R8: the synthesizer's derivation, read off its verified result.
 sound-of-i : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
                (cr : Once.TypeCheck.Elaborate.VerifiedInferResult ctx e)
            → proj₁ cr ≡ Once.TypeCheck.Elaborate.success T Ψ se d f → ctx ⊢ᵢ e ∶ T ⨾ Ψ
-sound-of-i (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w) refl = w
+sound-of-i (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w) refl = Data.Product.proj₁ w
 
 
 ------------------------------------------------------------------------
@@ -254,7 +254,7 @@ auxI-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w)
   where
     at : (dd : Dec (ty ≡ ty))
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf x ty refl w dd
-         ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize-infer w)))
+         ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize-infer (proj₁ w))))
     at (yes refl) = refl
     at (no ¬p)    = ⊥-elim (¬p refl)
 
