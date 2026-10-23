@@ -26,6 +26,7 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Induction.WellFounded
+import qualified MAlonzo.Code.Once.Internal.Type.Poly
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.PolyType
 import qualified MAlonzo.Code.Once.Parser.Token
@@ -158,7 +159,8 @@ d_gta'45'type_58 v0 v1 v2 v3
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
                                  MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_28 (coe v0)
-                                 (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v2) (coe v5))
+                                 (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v2)
+                                 (coe MAlonzo.Code.Once.Internal.Type.Poly.d_polyOf_150 (coe v5)))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
                                  (coe

@@ -25,6 +25,7 @@ open import Once.Parser.Token
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; wordHead)
 open import Once.Parser.Module.DeclTail using (taEqHead; taDrop1)
 open import Once.Parser.TypeRelation using (ParsesType)
+open import Once.Internal.Type.Poly using (polyOf)
 
 ------------------------------------------------------------------------
 -- Param scanner `param* = Type` (params accumulator). Bottoms at `ParsesType`.
@@ -33,7 +34,7 @@ open import Once.Parser.TypeRelation using (ParsesType)
 data ParsesTypeAlias (name : String) : List String → List Token → Decl → List Token → Set where
   gta-eq-r   : ∀ {params toks ty rest''} → wordHead toks ≡ false → taEqHead toks ≡ true →
                ParsesType (taDrop1 toks) ty rest'' →
-               ParsesTypeAlias name params toks (DTypeAlias name (reverse params) ty) rest''
+               ParsesTypeAlias name params toks (DTypeAlias name (reverse params) (polyOf ty)) rest''
   gta-word-r : ∀ {params p rest' d rest''} → ParsesTypeAlias name (p ∷ params) rest' d rest'' →
                ParsesTypeAlias name params (TWord p ∷ rest') d rest''
 

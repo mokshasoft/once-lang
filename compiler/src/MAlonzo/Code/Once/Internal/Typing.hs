@@ -225,7 +225,7 @@ data T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__30
                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10
                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68
                     [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-                    MAlonzo.Code.Once.Internal.Type.Poly.T_ArrowSchema_260
+                    MAlonzo.Code.Once.Internal.Type.Poly.T_ArrowSchema_316
                     (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                      MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
                      MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34)

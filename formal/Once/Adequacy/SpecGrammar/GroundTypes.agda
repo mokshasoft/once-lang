@@ -7,7 +7,7 @@
 -- Spec's (`Types`, over an algebra with no extra atoms).
 --
 -- Instances: an annotation (`Annot`, read by `toTy`) and the body of a type
--- alias (`AliasType`, read by `toPolyG`).
+-- alias (`AliasType`, read by `polyOf`).
 ------------------------------------------------------------------------
 
 module Once.Adequacy.SpecGrammar.GroundTypes where
@@ -33,7 +33,8 @@ open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads
   using (notStar→TStar; notStar←; notPlus→TPlus; notPlus←;
          notArrow→TArrow; notArrow→TCaret0; notArrow→TCaret1; notArrow→TCaretW; notArrow←)
-open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; toTy; toFun; toPolyG; toPolyGF)
+open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; toTy; toFun)
+open import Once.Internal.Type.Poly using (polyOf; polyOfF)
 open import Once.Adequacy.SpecGrammar.SigTypes using (writtenS)
 
 private
@@ -354,7 +355,7 @@ homTy = record
   ; hF-k = λ _ → refl ; hF-id = refl ; hF-sum = λ _ _ → refl ; hF-prod = λ _ _ → refl
   ; no-extra = λ () }
 
-homAlias : HomG (writtenS NoExtra) toPolyG toPolyGF
+homAlias : HomG (writtenS NoExtra) polyOf polyOfF
 homAlias = record
   { h-unit = refl ; h-void = refl ; h-int = refl ; h-float = refl
   ; h-prod = λ _ _ → refl ; h-sum = λ _ _ → refl ; h-eff = λ _ _ → refl ; h-act = λ _ _ → refl
@@ -364,7 +365,7 @@ homAlias = record
 
 private
   module BA = Bridge groundS toTy toFun homTy
-  module BL = Bridge (writtenS NoExtra) toPolyG toPolyGF homAlias
+  module BL = Bridge (writtenS NoExtra) polyOf polyOfF homAlias
 
 annot→ : ∀ {toks A rest} → ParsesType toks A rest → Annot.ParsesType (F toks) (toTy A) (F rest)
 annot→ = BA.type→
@@ -373,9 +374,9 @@ annot← : ∀ {ts A′ r′} → Annot.ParsesType ts A′ r′ → ∀ toks →
        → Σ[ A ∈ Type ] Σ[ rest ∈ List P.Token ] (ParsesType toks A rest × toTy A ≡ A′ × F rest ≡ r′)
 annot← = BA.type←
 
-alias→ : ∀ {toks A rest} → ParsesType toks A rest → AliasType.ParsesType (F toks) (toPolyG A) (F rest)
+alias→ : ∀ {toks A rest} → ParsesType toks A rest → AliasType.ParsesType (F toks) (polyOf A) (F rest)
 alias→ = BL.type→
 
 alias← : ∀ {ts A′ r′} → AliasType.ParsesType ts A′ r′ → ∀ toks → F toks ≡ ts
-       → Σ[ A ∈ Type ] Σ[ rest ∈ List P.Token ] (ParsesType toks A rest × toPolyG A ≡ A′ × F rest ≡ r′)
+       → Σ[ A ∈ Type ] Σ[ rest ∈ List P.Token ] (ParsesType toks A rest × polyOf A ≡ A′ × F rest ≡ r′)
 alias← = BL.type←

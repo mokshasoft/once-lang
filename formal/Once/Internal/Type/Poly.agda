@@ -22,7 +22,7 @@ open import Data.String using (String)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (Quantity; Many; Purity; Finite; pure; act; eff; mk-kind)
-open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_; var)
 open import Once.Spec.Type using (μ; ν)
 
 -- The types as written are the Spec's (plan 0.122).
@@ -72,6 +72,31 @@ mutual
   extractGround (Pν F π)    g        = ν (extractGroundF F g) π
   extractGround PInt             _        = Int
   extractGround PFloat           _        = Float
+
+-- …and a type is the ground schema written for it (a type alias's body).
+arrowPoly : Purity → Quantity → PolyType → PolyType → PolyType
+arrowPoly pure q A B = A P⇒[ q ] B
+arrowPoly act  q A B = PAct A B
+arrowPoly eff  q A B = PEff A B
+
+mutual
+  polyOf : Type → PolyType
+  polyOf Unit                  = PUnit
+  polyOf Void                  = PVoid
+  polyOf (A * B)               = polyOf A P* polyOf B
+  polyOf (A + B)               = polyOf A P+ polyOf B
+  polyOf (A ⇒[ mk-kind q π ] B) = arrowPoly π q (polyOf A) (polyOf B)
+  polyOf (μ F)                 = Pμ (polyOfF F)
+  polyOf (ν F φ)               = Pν (polyOfF F) φ
+  polyOf Int                   = PInt
+  polyOf Float                 = PFloat
+  polyOf (var ())
+
+  polyOfF : Fun 0 → PolyFunctor
+  polyOfF (K A)   = PK (polyOf A)
+  polyOfF Id      = PId
+  polyOfF (F ⊕ G) = polyOfF F P⊕ polyOfF G
+  polyOfF (F ⊗ G) = polyOfF F P⊗ polyOfF G
 
 ------------------------------------------------------------------------
 -- Instances

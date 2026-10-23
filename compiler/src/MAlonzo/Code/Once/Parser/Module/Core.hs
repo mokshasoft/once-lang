@@ -30,7 +30,6 @@ import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
-import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Parser.Module.Core.Import
 d_Import_8 = ()
@@ -63,7 +62,7 @@ data T_Decl_20
                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 |
     C_DTypeAlias_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-                    MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+                    MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 |
     C_DImport_30 T_Import_8
 -- Once.Parser.Module.Core.Module
 d_Module_32 = ()

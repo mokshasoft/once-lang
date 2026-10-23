@@ -231,8 +231,8 @@ d_codVarsInDom'63'_608 v0 v1
       (coe
          MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties.du_decSetoid_406
          (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54))
-      (coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_220 (coe v1))
-      (coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_220 (coe v0))
+      (coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_276 (coe v1))
+      (coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_276 (coe v0))
 -- Once.Type.Determined.ArrowView
 d_ArrowView_614 ::
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 -> ()
@@ -273,7 +273,7 @@ d_arrowSchema'63'_626 v0
                              (coe
                                 MAlonzo.Code.Once.Spec.Grade.C_fin_42
                                 (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36))
-                             (coe MAlonzo.Code.Once.Internal.Type.Poly.C_as'45'pure_266))))
+                             (coe MAlonzo.Code.Once.Internal.Type.Poly.C_as'45'pure_322))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_PAct_34 v1 v2
         -> coe
@@ -287,7 +287,7 @@ d_arrowSchema'63'_626 v0
                       (coe
                          MAlonzo.Code.Once.Spec.Grade.C_fin_42
                          (coe MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38))
-                      (coe MAlonzo.Code.Once.Internal.Type.Poly.C_as'45'act_278))))
+                      (coe MAlonzo.Code.Once.Internal.Type.Poly.C_as'45'act_334))))
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_PEff_36 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
@@ -298,7 +298,7 @@ d_arrowSchema'63'_626 v0
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe MAlonzo.Code.Once.Spec.Grade.C_eff_44)
-                      (coe MAlonzo.Code.Once.Internal.Type.Poly.C_as'45'eff_272))))
+                      (coe MAlonzo.Code.Once.Internal.Type.Poly.C_as'45'eff_328))))
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pμ_38 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pν_40 v1 v2

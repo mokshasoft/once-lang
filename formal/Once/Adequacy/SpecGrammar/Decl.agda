@@ -67,7 +67,8 @@ open import Once.Adequacy.SpecGrammar.Tokens using (step; peel; peels; []; _∷_
 open import Once.Adequacy.SpecGrammar.DeclHeads
 open import Once.Adequacy.SpecGrammar.ExprHeads using (StrHead; str-head)
 open import Once.Adequacy.SpecGrammar.Expr using (expr→; expr←)
-open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyG)
+open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
+open import Once.Internal.Type.Poly using (polyOf)
 open import Once.Adequacy.SpecGrammar.SigTypes using (sig→; sig←)
 open import Once.Adequacy.SpecGrammar.GroundTypes using (alias→; alias←)
 
@@ -86,7 +87,7 @@ data DEmb : Decl → S.Decl → Set where
   d-typesig   : ∀ {x A} → DEmb (DTypeSig x A) (S.DTypeSig x (toPoly A))
   d-fundef    : ∀ {x e} → DEmb (DFunDef x e) (S.DFunDef x e)
   d-signature : ∀ {x A} → DEmb (DSignature x nothing A) (S.DSignature x (toPoly A))
-  d-alias     : ∀ {x ps T} → DEmb (DTypeAlias x ps T) (S.DTypeAlias x ps (toPolyG T))
+  d-alias     : ∀ {x ps T} → DEmb (DTypeAlias x ps T) (S.DTypeAlias x ps T)
   d-import    : ∀ {p a} → DEmb (DImport (mkImport p a)) (S.DImport (S.mkImport p a))
 
 -- (the compiler wraps a definition's parameters as the Spec's grammar does)
@@ -185,7 +186,7 @@ aliasd→ : ∀ {name ps toks d rest d′} → LT.ParsesTypeAlias name ps toks d
 private
   aeq : ∀ {name ps toks T rest} {b} → TaEqView toks b → b ≡ true
       → Once.Parser.TypeRelation.ParsesType (Once.Parser.Module.DeclTail.taDrop1 toks) T rest
-      → G.ParsesTypeAlias name ps (F toks) (S.DTypeAlias name (reverse ps) (toPolyG T)) (F rest)
+      → G.ParsesTypeAlias name ps (F toks) (S.DTypeAlias name (reverse ps) (polyOf T)) (F rest)
   aeq taEq-yes _ dT = alias-eq (alias→ dT)
   aeq (taEq-no _) () dT
 
@@ -416,7 +417,7 @@ aliasd← : ∀ {x ps ts d′ r} → G.ParsesTypeAlias x ps ts d′ r → ∀ to
 aliasd← (alias-eq dT) toks e =
   step (λ z → BackD (LT.ParsesTypeAlias _ _) z _ _) refl e (λ {toks′} e′ → ae₁ (alias← dT toks′ e′))
   where
-    ae₁ : ∀ {x ps toks′ A′ r} → Σ[ T ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.TypeRelation.ParsesType toks′ T rest × toPolyG T ≡ A′ × F rest ≡ r)
+    ae₁ : ∀ {x ps toks′ A′ r} → Σ[ T ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.TypeRelation.ParsesType toks′ T rest × polyOf T ≡ A′ × F rest ≡ r)
         → BackD (LT.ParsesTypeAlias x ps) (P.TEquals ∷ toks′) (S.DTypeAlias x (reverse ps) A′) r
     ae₁ (T , rest , dT , refl , er) = _ , rest , LT.gta-eq-r refl refl dT , d-alias , er
 aliasd← (alias-param da) toks e =

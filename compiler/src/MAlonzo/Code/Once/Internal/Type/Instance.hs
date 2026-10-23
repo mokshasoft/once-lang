@@ -79,7 +79,7 @@ d_ftvKF_10 ::
 d_ftvKF_10 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_PK_12 v1
-        -> coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_220 (coe v1)
+        -> coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_276 (coe v1)
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_PId_14
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8853'__16 v1 v2
@@ -152,7 +152,7 @@ d_params_84 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_params_84 v0
   = coe
-      d_nub_82 (MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_220 (coe v0))
+      d_nub_82 (MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_276 (coe v0))
 -- Once.Internal.Type.Instance.arityOf
 d_arityOf_88 ::
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 -> Integer
@@ -252,7 +252,7 @@ d_rigidOf_162 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8
 d_rigidOf_162 v0
   = coe
-      MAlonzo.Code.Once.Internal.Type.Poly.d_substPoly_132
+      MAlonzo.Code.Once.Internal.Type.Poly.d_substPoly_188
       (coe d_arityOf_88 (coe v0)) (coe d_rigidSubst_154 (coe v0))
       (coe v0)
 -- Once.Internal.Type.Instance.kindsOf

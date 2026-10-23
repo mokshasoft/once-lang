@@ -26,6 +26,7 @@ open import Data.Nat.Properties using (<-trans; <-≤-trans; m≤n⇒m≤1+n; �
 open import Data.Nat using (_<_; _≤_)
 open import Data.List using (List; []; _∷_; length)
 open import Once.Parser.PolyType using (parsePolyTypeB; ParsePolyAtB)
+open import Once.Internal.Type.Poly using (polyOf)
 
 -- Local head classifier + `taDrop1` (Plan 0.52 bridge-readiness).
 taEqHead : List Token → Bool
@@ -65,7 +66,7 @@ gta-eq name toks params true  = gta-type name toks params (parseTypeB (taDrop1 t
 gta-eq name toks params false = nothing
 
 gta-type name toks params (just (ty , rest'' , bnd)) =
-  just (DTypeAlias name (reverse params) ty , rest'' , <-≤-trans bnd (taDrop1-≤ toks))
+  just (DTypeAlias name (reverse params) (polyOf ty) , rest'' , <-≤-trans bnd (taDrop1-≤ toks))
 gta-type name toks params nothing = nothing
 
 gta-sub name toks params p rest' bnd (just (d , rest'' , bnd')) = just (d , rest'' , <-trans bnd' bnd)

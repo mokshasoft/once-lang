@@ -63,7 +63,7 @@ data Decl : Set where
   -- its CODOMAIN (`Void` halts, `Unit` emits), so `! halts` had nothing left
   -- to say.
   DSignature : String → Maybe (List String) → PolyType → Decl
-  DTypeAlias : String → List String → Type → Decl
+  DTypeAlias : String → List String → PolyType → Decl
   DImport    : Import → Decl
 
 record Module : Set where

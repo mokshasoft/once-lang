@@ -35,6 +35,7 @@ open import Once.Spec.Grade using (pure; pureᶠ)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; PInt; PFloat; PTVar; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
 open import Once.Grammar.Convert    using (gtypeToType)
+open import Once.Internal.Type.Poly using (polyOf)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
 open import Once.Grammar.ConcreteDec using (concrete?)
 
@@ -89,7 +90,7 @@ gdeclToDecl (G.DTypeSig name ty)   = just (P.DTypeSig name (gtypeToPolyType ty))
 gdeclToDecl (G.DSignature name ty) = just (P.DSignature name nothing (gtypeToPolyType ty))
 gdeclToDecl (G.DImport path alias) = just (P.DImport (mkImport path alias))
 gdeclToDecl (G.DTypeAlias name params ty) with gtypeToType ty
-... | just t  = just (P.DTypeAlias name params t)
+... | just t  = just (P.DTypeAlias name params (polyOf t))
 ... | nothing = nothing
 gdeclToDecl (G.DFunDef name params body) with concrete? (wrapParams params body)
 ... | just c  = just (P.DFunDef name (gexprToRaw c))

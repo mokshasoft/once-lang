@@ -50,25 +50,3 @@ toTy A = A
 
 toFun : LT.Fun 0 → ST.Fun 0
 toFun F = F
-
--- Ground types, as the schemas a type alias is written with.
-toPolyG  : LT.Type → SS.PolyType
-toPolyGF : LT.Fun 0 → SS.PolyFunctor
-arrowG   : LG.Purity → LG.Quantity → SS.PolyType → SS.PolyType → SS.PolyType
-arrowG LG.pure q A B = A SS.P⇒[ qS q ] B
-arrowG LG.act  q A B = SS.PAct A B
-arrowG LG.eff  q A B = SS.PEff A B
-toPolyG LT.Unit                        = SS.PUnit
-toPolyG LT.Void                        = SS.PVoid
-toPolyG (A LT.* B)                     = toPolyG A SS.P* toPolyG B
-toPolyG (A LT.+ B)                     = toPolyG A SS.P+ toPolyG B
-toPolyG (A LT.⇒[ LG.mk-kind q π ] B)   = arrowG π q (toPolyG A) (toPolyG B)
-toPolyG (LT.μ F)                  = SS.Pμ (toPolyGF F)
-toPolyG (LT.ν F φ)                = SS.Pν (toPolyGF F) (φS φ)
-toPolyG LT.Int                         = SS.PInt
-toPolyG LT.Float                       = SS.PFloat
-toPolyG (ST.var ())
-toPolyGF (LT.K A)                      = SS.PK (toPolyG A)
-toPolyGF LT.Id                         = SS.PId
-toPolyGF (F LT.⊕ G)                    = toPolyGF F SS.P⊕ toPolyGF G
-toPolyGF (F LT.⊗ G)                    = toPolyGF F SS.P⊗ toPolyGF G
