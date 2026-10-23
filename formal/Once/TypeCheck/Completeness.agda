@@ -43,6 +43,7 @@ open import Data.String.Properties as StrProp using ()
 open import Once.Spec.Type as T using (Type; Unit; _*_)
 import Once.Internal.Type as T
 import Once.Type as T
+import Once.Spec.Surface.Syntax as T
 import Once.Internal.Type.Poly as T
 import Once.Spec.Grade as T
 open import Once.Spec.Surface.Syntax as Raw using (RVar; RResolved)

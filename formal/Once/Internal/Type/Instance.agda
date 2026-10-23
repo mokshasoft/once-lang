@@ -33,9 +33,8 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 import Data.Maybe as Maybe
 open import Once.Spec.Type using (Kind; any; base)
-open import Once.Internal.Type.Poly
-  using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
-         Pμ-type; Pν-type; PInt; PFloat; PTVar; ftv; substPoly)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Internal.Type.Poly using (ftv; substPoly)
 open import Once.Internal.Type.WellFormed using (IsBaseType)
 
 ------------------------------------------------------------------------
@@ -55,8 +54,8 @@ mutual
   ftvK (A P⇒[ _ ] B) = ftvK A ++ ftvK B
   ftvK (PEff A B)    = ftvK A ++ ftvK B
   ftvK (PAct A B)    = ftvK A ++ ftvK B
-  ftvK (Pμ-type F)   = ftvKF F
-  ftvK (Pν-type F _) = ftvKF F
+  ftvK (Pμ F)   = ftvKF F
+  ftvK (Pν F _) = ftvKF F
 
   ftvKF : PolyFunctor → List String
   ftvKF (PK A)   = ftv A            -- everything under a constant is base

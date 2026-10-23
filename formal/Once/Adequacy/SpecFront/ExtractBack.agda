@@ -15,6 +15,7 @@
 
 module Once.Adequacy.SpecFront.ExtractBack where
 
+import Once.Internal.Type.Poly
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_)
@@ -83,7 +84,7 @@ import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Internal.Type.Poly using (PolyType)
+open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Spec.Signature using (Signature)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr

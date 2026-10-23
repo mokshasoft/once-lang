@@ -116,7 +116,7 @@ svarᵛRun {Γ = Γ} (svar i) dγ = lookupᵛUsed Γ i dγ
 -- Plan 0.122: a definition means a value at each GROUND kinded instance — what
 -- runs is ground (a type variable has no values, `⟦ var ⟧ᵛ = ⊥`), so the
 -- realms below are meant at the ground index.
-DefFamily : Once.Internal.Type.Poly.PolyType → Set
+DefFamily : Once.Spec.Surface.Syntax.PolyType → Set
 DefFamily s = ∀ {Δ : KCtx 0} (U : Type) → KindedInstance Δ s U → ⟦ U ⟧ᵛ
 
 DefMeanings : PolyCtx → Set

@@ -36,8 +36,8 @@ open import Once.Spec.Grade using (mk-kind; Many; act; eff; pure)
 open import Once.Spec.Type using (Ty; Fun; KCtx; Base; TySub; Respects; _⟨_⟩; _⟨_⟩F; var; Unit; Void; Int; Float;
   _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; base; any)
 open import Once.Spec.Core.Syntax using (Schema; schema)
-open import Once.Internal.Type.Poly using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_;
-  _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
+open import Once.Internal.Type.Poly using (substPoly; substPolyF; ftv; ftvF)
 open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; kindOf; kindsOf; memberB; positionOf;
   rigidSubst; rigidOf; ftvK; KindedInstance; RespectsKinds)
 
@@ -131,8 +131,8 @@ module _ {m} (sc : PolyType) (θ : String → Ty m) where
       cong₂ (λ a b → a ⇒[ mk-kind Many eff ] b) (part-inst A (λ m → h (∈-++⁺ˡ m))) (part-inst B (λ m → h (∈-++⁺ʳ (ftv A) m)))
     part-inst (PAct A B) h =
       cong₂ (λ a b → a ⇒[ mk-kind Many act ] b) (part-inst A (λ m → h (∈-++⁺ˡ m))) (part-inst B (λ m → h (∈-++⁺ʳ (ftv A) m)))
-    part-inst (Pμ-type F) h = cong μ (partF-inst F h)
-    part-inst (Pν-type F π) h = cong (λ G → ν G π) (partF-inst F h)
+    part-inst (Pμ F) h = cong μ (partF-inst F h)
+    part-inst (Pν F π) h = cong (λ G → ν G π) (partF-inst F h)
 
     partF-inst : ∀ (F : PolyFunctor) → (∀ {x} → x ∈ ftvF F → x ∈ ftv sc)
                → substPolyF (rigidSubst sc) F ⟨ τOf sc θ ⟩F ≡ substPolyF θ F

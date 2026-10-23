@@ -47,8 +47,8 @@ import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
 import Once.Internal.Type.Poly as TP
-open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
-               PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; Ground; GroundF; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
+open import Once.Internal.Type.Poly using (substPoly; substPolyF; ftv; ftvF; Ground; GroundF; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
 open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; kindOf; kindsOf; positionOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
 open import Once.Internal.Type.Schema using (schemaOf; ∈-params; positionOf-∈; memberB-sound; memberB-complete; lookup-∈)
 import Once.Spec.Core.Syntax as SC
@@ -193,8 +193,8 @@ module Parts (T : PolyType) where
     reads (A P⇒[ q ] B) s = to-⇒ (reads A (ˡ s)) (reads B (ʳ (ftv A) s))
     reads (PEff A B)    s = to-eff (reads A (ˡ s)) (reads B (ʳ (ftv A) s))
     reads (PAct A B)    s = to-act (reads A (ˡ s)) (reads B (ʳ (ftv A) s))
-    reads (Pμ-type F)   s = to-μ (readsF F s)
-    reads (Pν-type F φ) s = to-ν (readsF F s)
+    reads (Pμ F)   s = to-μ (readsF F s)
+    reads (Pν F φ) s = to-ν (readsF F s)
 
     readsF : ∀ F → (∀ {x} → x ∈ ftvF F → x ∈ ftv T) → FunOf names (toPolyF F) (pfunS (abF F))
     readsF (PK A)   s = fo-K (reads A s)
@@ -211,8 +211,8 @@ module Parts (T : PolyType) where
     occ (A P⇒[ q ] B) s m = split A B s {λ k → Occurs k (ptyS (ab (A P⇒[ q ] B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
     occ (PEff A B)    s m = split A B s {λ k → Occurs k (ptyS (ab (PEff A B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
     occ (PAct A B)    s m = split A B s {λ k → Occurs k (ptyS (ab (PAct A B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
-    occ (Pμ-type F)   s m = o-μ (occF F s m)
-    occ (Pν-type F φ) s m = o-ν (occF F s m)
+    occ (Pμ F)   s m = o-μ (occF F s m)
+    occ (Pν F φ) s m = o-ν (occF F s m)
 
     occF : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {x} (m : x ∈ ftvF F) → OccursF (j (s m)) (pfunS (abF F))
     occF (PK A)   s m = o-K (occ A s m)
@@ -257,8 +257,8 @@ module Parts (T : PolyType) where
     occ⁻ (PEff A B) s (o-⇒ʳ o)    = ∈-++⁺ʳ (ftv A) (occ⁻ B (ʳ (ftv A) s) o)
     occ⁻ (PAct A B) s (o-⇒ˡ o)    = ∈-++⁺ˡ (occ⁻ A (ˡ s) o)
     occ⁻ (PAct A B) s (o-⇒ʳ o)    = ∈-++⁺ʳ (ftv A) (occ⁻ B (ʳ (ftv A) s) o)
-    occ⁻ (Pμ-type F) s (o-μ o)    = occF⁻ F s o
-    occ⁻ (Pν-type F φ) s (o-ν o)  = occF⁻ F s o
+    occ⁻ (Pμ F) s (o-μ o)    = occF⁻ F s o
+    occ⁻ (Pν F φ) s (o-ν o)  = occF⁻ F s o
 
     occF⁻ : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {i} → OccursF i (pfunS (abF F)) → names i ∈ ftvF F
     occF⁻ (PK A) s (o-K o)      = occ⁻ A s o
@@ -284,8 +284,8 @@ module Parts (T : PolyType) where
     underK⁻ (PEff A B) s (uk-⇒ʳ u)    = ∈-++⁺ʳ (ftvK A) (underK⁻ B (ʳ (ftv A) s) u)
     underK⁻ (PAct A B) s (uk-⇒ˡ u)    = ∈-++⁺ˡ (underK⁻ A (ˡ s) u)
     underK⁻ (PAct A B) s (uk-⇒ʳ u)    = ∈-++⁺ʳ (ftvK A) (underK⁻ B (ʳ (ftv A) s) u)
-    underK⁻ (Pμ-type F) s (uk-μ u)    = underKF⁻ F s u
-    underK⁻ (Pν-type F φ) s (uk-ν u)  = underKF⁻ F s u
+    underK⁻ (Pμ F) s (uk-μ u)    = underKF⁻ F s u
+    underK⁻ (Pν F φ) s (uk-ν u)  = underKF⁻ F s u
     underK⁻ (PTVar x) s {i} u = ⊥-elim (no-var (subst (UnderK i) (var-ab (s (here refl))) u))
       where
         no-var : ∀ {k} → UnderK i (ST.var k) → ⊥
@@ -305,8 +305,8 @@ module Parts (T : PolyType) where
     underK (A P⇒[ q ] B) s i m = sideK (∈-++⁻ (ftvK A) m) (λ m′ → uk-⇒ˡ (underK A (ˡ s) i m′)) (λ m′ → uk-⇒ʳ (underK B (ʳ (ftv A) s) i m′))
     underK (PEff A B) s i m = sideK (∈-++⁻ (ftvK A) m) (λ m′ → uk-⇒ˡ (underK A (ˡ s) i m′)) (λ m′ → uk-⇒ʳ (underK B (ʳ (ftv A) s) i m′))
     underK (PAct A B) s i m = sideK (∈-++⁻ (ftvK A) m) (λ m′ → uk-⇒ˡ (underK A (ˡ s) i m′)) (λ m′ → uk-⇒ʳ (underK B (ʳ (ftv A) s) i m′))
-    underK (Pμ-type F) s i m = uk-μ (underKF F s i m)
-    underK (Pν-type F φ) s i m = uk-ν (underKF F s i m)
+    underK (Pμ F) s i m = uk-μ (underKF F s i m)
+    underK (Pν F φ) s i m = uk-ν (underKF F s i m)
 
     underKF : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) i → names i ∈ ftvKF F → UnderKF i (pfunS (abF F))
     underKF (PK A) s i m = uk-K (occ-at A s i m)
@@ -359,8 +359,8 @@ mutual
   empty-ground (A P⇒[ q ] B) e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
   empty-ground (PEff A B)    e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
   empty-ground (PAct A B)    e = empty-ground A (++-conicalˡ (ftv A) (ftv B) e) , empty-ground B (++-conicalʳ (ftv A) (ftv B) e)
-  empty-ground (Pμ-type F)   e = empty-groundF F e
-  empty-ground (Pν-type F φ) e = empty-groundF F e
+  empty-ground (Pμ F)   e = empty-groundF F e
+  empty-ground (Pν F φ) e = empty-groundF F e
 
   empty-groundF : ∀ F → ftvF F ≡ [] → GroundF F
   empty-groundF (PK A)   e = empty-ground A e

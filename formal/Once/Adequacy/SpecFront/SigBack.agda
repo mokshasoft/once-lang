@@ -29,8 +29,8 @@ import Once.Spec.Type as LW
 import Once.Internal.Type.Honest as LH
 import Once.Spec.Grade as LG
 open import Data.List using ([])
-open import Once.Internal.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
-  Ground; extractGround)
+open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
+open import Once.Internal.Type.Poly using (Ground; extractGround)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open import Once.Spec.Signature using (DeclType; constant; value; operation; WellFormedDecl)
@@ -59,8 +59,8 @@ base-ground (PTVar _)     ()
 base-ground (_ P⇒[ _ ] _) ()
 base-ground (PEff _ _)    ()
 base-ground (PAct _ _)    ()
-base-ground (Pμ-type _)   ()
-base-ground (Pν-type _ _) ()
+base-ground (Pμ _)   ()
+base-ground (Pν _ _) ()
 
 decl-ground : ∀ (T : PolyType) {t} → DeclTypeOf (toPoly T) t → Ground T
 decl-ground (A P⇒[ q ] B) (dt-pure a b) = base-ground A a , base-ground B b
@@ -75,8 +75,8 @@ decl-ground PFloat        (dt-const b)  = base-ground PFloat b
 decl-ground (A P* B)      (dt-const b)  = base-ground (A P* B) b
 decl-ground (A P+ B)      (dt-const b)  = base-ground (A P+ B) b
 decl-ground (PTVar _)     (dt-const ())
-decl-ground (Pμ-type _)   (dt-const ())
-decl-ground (Pν-type _ _) (dt-const ())
+decl-ground (Pμ _)   (dt-const ())
+decl-ground (Pν _ _) (dt-const ())
 
 ------------------------------------------------------------------------
 -- Honest

@@ -54,7 +54,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Type using (Type; Unit)
-open import Once.Internal.Type.Poly using (PolyType)
+open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Internal.Type.Instance using (KindedInstance; rigidOf)
 open import Once.Internal.Type.WellFormed using (con-fun)
 open import Once.Spec.Name using (CanonicalName; bare)

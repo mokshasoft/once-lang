@@ -37,7 +37,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (map′)
 open import Once.Spec.Grade using (Quantity; Many)
 open import Once.Spec.Type using (Ty; Type; KCtx)
-open import Once.Internal.Type.Poly using (PolyType)
+open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Spec.Name using (canonical; gen; generatorNS)
 open import Once.Internal.Syntax using (RawExpr)
 import Once.Spec.Surface.Syntax as Raw

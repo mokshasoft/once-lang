@@ -25,6 +25,7 @@ open import Once.Type.Grade
 open import Once.Internal.Type
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Type.DecEq using (_≟q_; _≟p_; _≟k_)
@@ -85,9 +86,9 @@ mutual
     bind-ok θ (instantiateAcc A (substPoly θ A) s) (instantiateAcc B (substPoly θ B)) (inst-ok θ A s c) (λ s′ c′ → inst-ok θ B s′ c′)
   inst-ok θ (PAct A B) s c =
     bind-ok θ (instantiateAcc A (substPoly θ A) s) (instantiateAcc B (substPoly θ B)) (inst-ok θ A s c) (λ s′ c′ → inst-ok θ B s′ c′)
-  inst-ok θ (Pμ-type F) s c = instF-ok θ F s c
-  inst-ok θ (Pν-type F pureᶠ) s c = instF-ok θ F s c
-  inst-ok θ (Pν-type F actᶠ) s c = instF-ok θ F s c
+  inst-ok θ (Pμ F) s c = instF-ok θ F s c
+  inst-ok θ (Pν F pureᶠ) s c = instF-ok θ F s c
+  inst-ok θ (Pν F actᶠ) s c = instF-ok θ F s c
 
   instF-ok : ∀ {m} (θ : String → Ty m) (F : PolyFunctor) s → Consistent θ s → Matches θ (instantiateFunctor F (substPolyF θ F) s)
   instF-ok θ (PK A) s c = inst-ok θ A s c
@@ -256,24 +257,24 @@ mutual
   inst-sound (PAct A B) (μ _) s ()
   inst-sound (PEff A B) (ν _ _) s ()
   inst-sound (PAct A B) (ν _ _) s ()
-  inst-sound (Pμ-type F) (μ f) s eq = map-sound μ (instF-sound F f s eq)
-  inst-sound (Pμ-type F) Unit s ()
-  inst-sound (Pμ-type F) Void s ()
-  inst-sound (Pμ-type F) Int s ()
-  inst-sound (Pμ-type F) Float s ()
-  inst-sound (Pμ-type F) (_ * _) s ()
-  inst-sound (Pμ-type F) (_ + _) s ()
-  inst-sound (Pμ-type F) (_ ⇒[ _ ] _) s ()
-  inst-sound (Pμ-type F) (ν _ _) s ()
-  inst-sound (Pν-type F pureᶠ) (ν f pureᶠ) s eq = map-sound (λ g → ν g pureᶠ) (instF-sound F f s eq)
-  inst-sound (Pν-type F pureᶠ) Unit s ()
-  inst-sound (Pν-type F pureᶠ) Void s ()
-  inst-sound (Pν-type F pureᶠ) Int s ()
-  inst-sound (Pν-type F pureᶠ) Float s ()
-  inst-sound (Pν-type F pureᶠ) (_ * _) s ()
-  inst-sound (Pν-type F pureᶠ) (_ + _) s ()
-  inst-sound (Pν-type F pureᶠ) (_ ⇒[ _ ] _) s ()
-  inst-sound (Pν-type F pureᶠ) (μ _) s ()
+  inst-sound (Pμ F) (μ f) s eq = map-sound μ (instF-sound F f s eq)
+  inst-sound (Pμ F) Unit s ()
+  inst-sound (Pμ F) Void s ()
+  inst-sound (Pμ F) Int s ()
+  inst-sound (Pμ F) Float s ()
+  inst-sound (Pμ F) (_ * _) s ()
+  inst-sound (Pμ F) (_ + _) s ()
+  inst-sound (Pμ F) (_ ⇒[ _ ] _) s ()
+  inst-sound (Pμ F) (ν _ _) s ()
+  inst-sound (Pν F pureᶠ) (ν f pureᶠ) s eq = map-sound (λ g → ν g pureᶠ) (instF-sound F f s eq)
+  inst-sound (Pν F pureᶠ) Unit s ()
+  inst-sound (Pν F pureᶠ) Void s ()
+  inst-sound (Pν F pureᶠ) Int s ()
+  inst-sound (Pν F pureᶠ) Float s ()
+  inst-sound (Pν F pureᶠ) (_ * _) s ()
+  inst-sound (Pν F pureᶠ) (_ + _) s ()
+  inst-sound (Pν F pureᶠ) (_ ⇒[ _ ] _) s ()
+  inst-sound (Pν F pureᶠ) (μ _) s ()
   inst-sound (A P⇒[ q ] B) (a ⇒[ mk-kind q′ act ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind Zero act ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind Zero eff ] b) s ()
@@ -281,17 +282,17 @@ mutual
   inst-sound (PAct A B) (a ⇒[ mk-kind One eff ] b) s ()
   inst-sound (PEff A B) (a ⇒[ mk-kind Many act ] b) s ()
   inst-sound (PAct A B) (a ⇒[ mk-kind Many eff ] b) s ()
-  inst-sound (Pν-type F actᶠ) (ν f actᶠ) s eq = map-sound (λ g → ν g actᶠ) (instF-sound F f s eq)
-  inst-sound (Pν-type F pureᶠ) (ν f actᶠ) s ()
-  inst-sound (Pν-type F actᶠ) (ν f pureᶠ) s ()
-  inst-sound (Pν-type F actᶠ) Unit s ()
-  inst-sound (Pν-type F actᶠ) Void s ()
-  inst-sound (Pν-type F actᶠ) Int s ()
-  inst-sound (Pν-type F actᶠ) Float s ()
-  inst-sound (Pν-type F actᶠ) (_ * _) s ()
-  inst-sound (Pν-type F actᶠ) (_ + _) s ()
-  inst-sound (Pν-type F actᶠ) (_ ⇒[ _ ] _) s ()
-  inst-sound (Pν-type F actᶠ) (μ _) s ()
+  inst-sound (Pν F actᶠ) (ν f actᶠ) s eq = map-sound (λ g → ν g actᶠ) (instF-sound F f s eq)
+  inst-sound (Pν F pureᶠ) (ν f actᶠ) s ()
+  inst-sound (Pν F actᶠ) (ν f pureᶠ) s ()
+  inst-sound (Pν F actᶠ) Unit s ()
+  inst-sound (Pν F actᶠ) Void s ()
+  inst-sound (Pν F actᶠ) Int s ()
+  inst-sound (Pν F actᶠ) Float s ()
+  inst-sound (Pν F actᶠ) (_ * _) s ()
+  inst-sound (Pν F actᶠ) (_ + _) s ()
+  inst-sound (Pν F actᶠ) (_ ⇒[ _ ] _) s ()
+  inst-sound (Pν F actᶠ) (μ _) s ()
 
   instF-sound : ∀ {m} (F : PolyFunctor) (f : Fun m) (s : Subst m) {s′} → instantiateFunctor F f s ≡ just s′
     → Extends s′ s × (∀ s″ → Extends s″ s′ → substPolyF (θof s″) F ≡ f)

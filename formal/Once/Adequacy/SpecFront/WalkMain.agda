@@ -115,7 +115,8 @@ module _ where
 -- An entry's written type is a concrete ground type
 ------------------------------------------------------------------------
 
-open import Once.Internal.Type.Poly as LP using (PolyType; PolyFunctor; Ground; GroundF; extractGround)
+open import Once.Spec.Surface.Syntax as LP using (PolyType; PolyFunctor)
+open import Once.Internal.Type.Poly as LP using (Ground; GroundF; extractGround)
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
@@ -137,8 +138,8 @@ private
     g0 (A LP.P⇒[ q ] B)   (to-⇒ a b)   = g0 A a , g0 B b
     g0 (LP.PEff A B)      (to-eff a b) = g0 A a , g0 B b
     g0 (LP.PAct A B)      (to-act a b) = g0 A a , g0 B b
-    g0 (LP.Pμ-type F)     (to-μ f)     = g0F F f
-    g0 (LP.Pν-type F φ)   (to-ν f)     = g0F F f
+    g0 (LP.Pμ F)     (to-μ f)     = g0F F f
+    g0 (LP.Pν F φ)   (to-ν f)     = g0F F f
     g0 (LP.PTVar x)       (to-var () _)
 
     g0F : ∀ (F : PolyFunctor) {ns : Fin 0 → String} {G} → FunOf ns (toPolyF F) G → GroundF F
@@ -159,8 +160,8 @@ private
   dom-base (A LP.P⇒[ q ] B) (to-⇒ a b) ()
   dom-base (LP.PEff A B) (to-eff a b) ()
   dom-base (LP.PAct A B) (to-act a b) ()
-  dom-base (LP.Pμ-type F) (to-μ f) ()
-  dom-base (LP.Pν-type F φ) (to-ν f) ()
+  dom-base (LP.Pμ F) (to-μ f) ()
+  dom-base (LP.Pν F φ) (to-ν f) ()
   dom-base (LP.PTVar x) (to-var () _)
 
   -- a codomain below `Unit` is `Unit` or `Void`
@@ -175,8 +176,8 @@ private
   cod-base (A LP.P⇒[ q ] B) (to-⇒ a b) ()
   cod-base (LP.PEff A B) (to-eff a b) ()
   cod-base (LP.PAct A B) (to-act a b) ()
-  cod-base (LP.Pμ-type F) (to-μ f) ()
-  cod-base (LP.Pν-type F φ) (to-ν f) ()
+  cod-base (LP.Pμ F) (to-μ f) ()
+  cod-base (LP.Pν F φ) (to-ν f) ()
   cod-base (LP.PTVar x) (to-var () _)
 
   conc : ∀ (T : PolyType) {ns : Fin 0 → String} {A} (r : TypeOf ns (toPoly T) A) → A SS.<: EffUU
@@ -192,8 +193,8 @@ private
   conc (A LP.P⇒[ LG.Zero ] B) (to-⇒ a b) ()
   conc (LP.PEff A B) (to-eff a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
   conc (LP.PAct A B) (to-act a b) (SS.sub-arr d c _) = con-fun (dom-base A a d) (cod-base B b c)
-  conc (LP.Pμ-type F) (to-μ f) ()
-  conc (LP.Pν-type F φ) (to-ν f) ()
+  conc (LP.Pμ F) (to-μ f) ()
+  conc (LP.Pν F φ) (to-ν f) ()
   conc (LP.PTVar x) (to-var () _)
 
 -- A written type the Spec reads as an entry is a concrete ground type.

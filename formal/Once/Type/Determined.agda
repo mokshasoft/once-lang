@@ -29,6 +29,7 @@ open import Once.Type.Grade
 open import Once.Internal.Type
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
 
@@ -57,8 +58,8 @@ mutual
   agree-on θ θ′ (PAct A B) h =
     cong₂ (λ a b → a ⇒[ mk-kind Many act ] b)
       (agree-on θ θ′ A (λ m → h (∈-++⁺ˡ m))) (agree-on θ θ′ B (λ m → h (∈-++⁺ʳ (ftv A) m)))
-  agree-on θ θ′ (Pμ-type F) h = cong μ (agreeF-on θ θ′ F h)
-  agree-on θ θ′ (Pν-type F π) h = cong (λ f → ν f π) (agreeF-on θ θ′ F h)
+  agree-on θ θ′ (Pμ F) h = cong μ (agreeF-on θ θ′ F h)
+  agree-on θ θ′ (Pν F π) h = cong (λ f → ν f π) (agreeF-on θ θ′ F h)
 
   agreeF-on : ∀ {m} (θ θ′ : String → Ty m) (F : PolyFunctor)
     → (∀ {x} → x ∈ ftvF F → θ x ≡ θ′ x) → substPolyF θ F ≡ substPolyF θ′ F
@@ -98,8 +99,8 @@ mutual
   agree-from θ θ′ (A P⇒[ q ] B) e m = pair-from θ θ′ A B (⇒-inj e) m
   agree-from θ θ′ (PEff A B) e m = pair-from θ θ′ A B (⇒-inj e) m
   agree-from θ θ′ (PAct A B) e m = pair-from θ θ′ A B (⇒-inj e) m
-  agree-from θ θ′ (Pμ-type F) e m = agreeF-from θ θ′ F (μ-inj e) m
-  agree-from θ θ′ (Pν-type F π) e m = agreeF-from θ θ′ F (ν-inj e) m
+  agree-from θ θ′ (Pμ F) e m = agreeF-from θ θ′ F (μ-inj e) m
+  agree-from θ θ′ (Pν F π) e m = agreeF-from θ θ′ F (ν-inj e) m
 
   pair-from : ∀ {m} (θ θ′ : String → Ty m) (A B : PolyType)
     → (substPoly θ A ≡ substPoly θ′ A) Data.Product.× (substPoly θ B ≡ substPoly θ′ B)
@@ -150,6 +151,6 @@ arrowSchema? PInt               = nothing
 arrowSchema? PFloat             = nothing
 arrowSchema? (_ P* _)           = nothing
 arrowSchema? (_ P+ _)           = nothing
-arrowSchema? (Pμ-type _)        = nothing
-arrowSchema? (Pν-type _ _)      = nothing
+arrowSchema? (Pμ _)        = nothing
+arrowSchema? (Pν _ _)      = nothing
 

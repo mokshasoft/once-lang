@@ -21,7 +21,7 @@ open import Data.Nat.Properties using (≤-refl)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Axiom.UniquenessOfIdentityProofs.WithK using (uip)
 
-open import Once.Internal.Type.Poly using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type; PInt; PFloat; PTVar; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
+open import Once.Spec.Surface.Syntax using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
 open import Once.Parser.Token
 open import Once.Parser.CharClass using (isLowerWord)
 open import Once.Parser.Generic.Relation
@@ -72,9 +72,9 @@ PolyAlg = record
   ; aUnit = PUnit ; aVoid = PVoid ; aInt = PInt ; aFloat = PFloat
   ; aProd = _P*_ ; aSum = _P+_ ; aEff = PEff ; aAct = PAct
   ; aArrow = λ q A B → A P⇒[ q ] B
-  ; aMu = Pμ-type
-  ; aNu = λ F → Pν-type F Once.Spec.Grade.pureᶠ
-  ; aNuAct = λ F → Pν-type F Once.Spec.Grade.actᶠ
+  ; aMu = Pμ
+  ; aNu = λ F → Pν F Once.Spec.Grade.pureᶠ
+  ; aNuAct = λ F → Pν F Once.Spec.Grade.actᶠ
   ; fK = PK ; fId = PId ; fSum = _P⊕_ ; fProd = _P⊗_
   ; Extra = TVarRel ; extraShrink = tvar-shrink ; extraP = tvarP
   ; extraComplete = tvar-complete

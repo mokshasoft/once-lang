@@ -24,8 +24,8 @@ import Once.Internal.Type as LT
 
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
-open import Once.Internal.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
-  Ground; extractGround)
+open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
+open import Once.Internal.Type.Poly using (Ground; extractGround)
 open import Once.Internal.Type.WellFormed using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; con-base; con-fun)
 open import Once.Internal.Type.Honest using (HonestFFI)
 import Once.Spec.Grade as SG
@@ -56,8 +56,8 @@ base-eq (PTVar _) () _
 base-eq (A P⇒[ q ] B) _ ()
 base-eq (PEff A B) _ ()
 base-eq (PAct A B) _ ()
-base-eq (Pμ-type F) _ ()
-base-eq (Pν-type F φ) _ ()
+base-eq (Pμ F) _ ()
+base-eq (Pν F φ) _ ()
 
 decl-eq : ∀ (T : PolyType) (g : Ground T) {t} → DeclTypeOf (toPoly T) t → declTy t ≡ extractGround T g
 decl-eq T g (dt-const b) = base-eq T g b
@@ -83,8 +83,8 @@ base-of (PTVar _) () _
 base-of (A P⇒[ q ] B) _ ()
 base-of (PEff A B) _ ()
 base-of (PAct A B) _ ()
-base-of (Pμ-type F) _ ()
-base-of (Pν-type F φ) _ ()
+base-of (Pμ F) _ ()
+base-of (Pν F φ) _ ()
 
 private
   const-of : ∀ (T : PolyType) (g : Ground T) → IsBaseType (extractGround T g) → Σ[ t ∈ DeclType ] DeclTypeOf (toPoly T) t
@@ -107,5 +107,5 @@ decl-of PInt g (con-base b) h = const-of PInt g b
 decl-of PFloat g (con-base b) h = const-of PFloat g b
 decl-of (A P* B) g (con-base b) h = const-of (A P* B) g b
 decl-of (A P+ B) g (con-base b) h = const-of (A P+ B) g b
-decl-of (Pμ-type F) g (con-base ()) h
-decl-of (Pν-type F φ) g (con-base ()) h
+decl-of (Pμ F) g (con-base ()) h
+decl-of (Pν F φ) g (con-base ()) h

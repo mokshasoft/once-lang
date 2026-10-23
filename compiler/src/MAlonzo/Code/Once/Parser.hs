@@ -351,7 +351,7 @@ d_funIsPrimitive_112 v0
 d_PolyFunInfo_116 = ()
 data T_PolyFunInfo_116
   = C_mkPolyFunInfo_130 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                        MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
+                        MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10
                         MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68
 -- Once.Parser.PolyFunInfo.pfunName
 d_pfunName_124 ::
@@ -363,7 +363,7 @@ d_pfunName_124 v0
 -- Once.Parser.PolyFunInfo.pfunType
 d_pfunType_126 ::
   T_PolyFunInfo_116 ->
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10
 d_pfunType_126 v0
   = case coe v0 of
       C_mkPolyFunInfo_130 v1 v2 v3 -> coe v2
@@ -448,7 +448,7 @@ d_honestSig_156 v0 v1 v2
 d_projectSig_166 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_projectSig_166 v0 v1 v2
   = let v3 = MAlonzo.Code.Once.Type.d_isGround_98 (coe v2) in
@@ -460,14 +460,14 @@ d_projectSig_166 v0 v1 v2
                 (coe
                    MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
                    (coe
-                      MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                      MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                       (coe (0 :: Integer)) (coe v2) (coe v4)))
                 (coe
                    MAlonzo.Code.Once.Internal.Type.Honest.d_honest'63'_202
                    (coe
                       MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
                       (coe
-                         MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                         MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                          (coe (0 :: Integer)) (coe v2) (coe v4))))
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
            -> coe
@@ -521,7 +521,7 @@ d_extractFunctions'45'consFun_196 v0 v1
 d_extractFunctions'45'consPoly_204 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_extractFunctions'45'consPoly_204 v0 v1 v2 v3
@@ -600,7 +600,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                    -> let v10
                                             = MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63'_52
                                                 (coe
-                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                                                    (coe (0 :: Integer)) (coe v7) (coe v9)) in
                                       coe
                                         (case coe v10 of
@@ -618,7 +618,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                               MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                               (coe v0)
                                                               (coe
-                                                                 MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                                                                 MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                                                                  (coe (0 :: Integer)) (coe v7)
                                                                  (coe v9))))))
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -765,7 +765,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                              MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                              (coe v0)
                                                              (coe
-                                                                MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                                                                MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                                                                 (coe (0 :: Integer)) (coe v8)
                                                                 (coe v12)))
                                                           (coe
@@ -774,7 +774,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                                 MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                                 (coe v0)
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                                                                    (coe (0 :: Integer)) (coe v8)
                                                                    (coe v12)))) in
                                                 coe
@@ -865,7 +865,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                           MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                           (coe v0)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                                                             MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                                                              (coe (0 :: Integer)) (coe v8)
                                                              (coe v10)))
                                                        (coe
@@ -874,7 +874,7 @@ d_extractFunctions'45'go_220 v0 v1 v2
                                                              MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48
                                                              (coe v0)
                                                              (coe
-                                                                MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_92
+                                                                MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
                                                                 (coe (0 :: Integer)) (coe v8)
                                                                 (coe v10)))) in
                                              coe

@@ -27,6 +27,7 @@ open import Once.Type.Grade
 open import Once.Internal.Type
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 
 -- Plan 0.113 B2: HALTING and EMITTING are properties UP TO ISOMORPHISM — a codomain

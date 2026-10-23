@@ -42,8 +42,8 @@ open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as LW
 import Once.Internal.Type.Poly as TP
-open TP using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
-               PK; PId; _P⊕_; _P⊗_; substPoly; substPolyF; ftv; ftvF; Ground; extractGround; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
+open import Once.Internal.Type.Poly using (substPoly; substPolyF; ftv; ftvF; Ground; extractGround; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
 open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; ftvK; KindedInstance; RespectsKinds)
 open import Once.Internal.Type.Schema using (schemaOf)
 import Once.Spec.Grade as SG
@@ -101,8 +101,8 @@ module _ (T : PolyType) where
     inst-eq τ (A P⇒[ q ] B) s (r-⇒ e a b) = arr (inst-eq τ A (ˡ s) a) (sym (kS-injective e)) (inst-eq τ B (ʳ (ftv A) s) b)
     inst-eq τ (PEff A B)    s (r-⇒ e a b) = arr (inst-eq τ A (ˡ s) a) (sym (kS-injective e)) (inst-eq τ B (ʳ (ftv A) s) b)
     inst-eq τ (PAct A B)    s (r-⇒ e a b) = arr (inst-eq τ A (ˡ s) a) (sym (kS-injective e)) (inst-eq τ B (ʳ (ftv A) s) b)
-    inst-eq τ (Pμ-type F)   s (r-μ f)     = cong LT.μ (instF-eq τ F s f)
-    inst-eq τ (Pν-type F φ) s (r-ν e f)   = νeq (instF-eq τ F s f) (sym (φS-injective e))
+    inst-eq τ (Pμ F)   s (r-μ f)     = cong LT.μ (instF-eq τ F s f)
+    inst-eq τ (Pν F φ) s (r-ν e f)   = νeq (instF-eq τ F s f) (sym (φS-injective e))
 
     instF-eq : ∀ τ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {G} → FunR Δ G (pfunS (abF F) ST.⟨ τ ⟩F) → substPolyF (θ τ) F ≡ G
     instF-eq τ (PK A)   s (r-K a)   = cong LT.K (inst-eq τ A s a)
@@ -186,8 +186,8 @@ private
   arrow-go PFloat () _ _ _
   arrow-go (A P* B) () _ _ _
   arrow-go (A P+ B) () _ _ _
-  arrow-go (Pμ-type F) () _ _ _
-  arrow-go (Pν-type F φ) () _ _ _
+  arrow-go (Pμ F) () _ _ _
+  arrow-go (Pν F φ) () _ _ _
   arrow-go (A P⇒[ Many ] B) refl incl pure _ = A , B , as-pure , cod-in (A P⇒[ Many ] B) A B (λ m′ → m′) {k = SG.mk-kind SG.Many SG.pure} refl incl
   arrow-go (A P⇒[ Many ] B) refl incl act ()
   arrow-go (A P⇒[ Many ] B) refl incl eff ()

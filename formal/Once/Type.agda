@@ -29,9 +29,8 @@ open import Data.Unit using (⊤; tt)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun; μ; ν)
-open import Once.Internal.Type.Poly
-  using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct;
-         Pμ-type; Pν-type; PInt; PFloat; PTVar; Ground; GroundF)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Internal.Type.Poly using (Ground; GroundF)
 
 
 -- | Show function for Quantity (for error messages)
@@ -168,8 +167,8 @@ mutual
   isGround (A P⇒[ _ ] B)  = both-ground (isGround A) (isGround B)
   isGround (PEff A B)     = both-ground (isGround A) (isGround B)
   isGround (PAct A B)     = both-ground (isGround A) (isGround B)
-  isGround (Pμ-type F)    = isGroundF F     -- Ground (Pμ-type F) = GroundF F
-  isGround (Pν-type F _)  = isGroundF F     -- Ground (Pν-type F) = GroundF F
+  isGround (Pμ F)    = isGroundF F     -- Ground (Pμ F) = GroundF F
+  isGround (Pν F _)  = isGroundF F     -- Ground (Pν F) = GroundF F
   isGround PInt         = inj₁ tt
   isGround PFloat       = inj₁ tt
   isGround (PTVar _)    = inj₂ tt
@@ -188,9 +187,9 @@ mutual
   showPolyType (A P⇒[ q ] B)    = "(" ++ showPolyType A ++ " " ++ showQuantity q ++ "→ " ++ showPolyType B ++ ")"
   showPolyType (PEff A B)       = "Eff " ++ showPolyType A ++ " " ++ showPolyType B
   showPolyType (PAct A B)       = "Act " ++ showPolyType A ++ " " ++ showPolyType B
-  showPolyType (Pμ-type F)      = "μ " ++ showPolyFunctor F
-  showPolyType (Pν-type F pureᶠ) = "ν " ++ showPolyFunctor F
-  showPolyType (Pν-type F actᶠ) = "ν (Act " ++ showPolyFunctor F ++ ")"
+  showPolyType (Pμ F)      = "μ " ++ showPolyFunctor F
+  showPolyType (Pν F pureᶠ) = "ν " ++ showPolyFunctor F
+  showPolyType (Pν F actᶠ) = "ν (Act " ++ showPolyFunctor F ++ ")"
   showPolyType PInt             = "Int"
   showPolyType PFloat           = "Float"
   showPolyType (PTVar x)        = x

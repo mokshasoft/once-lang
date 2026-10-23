@@ -17,6 +17,7 @@ import Once.Spec.Grade as SG
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Spec.Type as LT
+import Once.Spec.Surface.Syntax as LP
 import Once.Internal.Type.Poly as LP
 import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
@@ -37,24 +38,11 @@ kS : LG.ArrowKind → SG.ArrowKind
 kS k = k
 
 -- Schemas.
-toPoly  : LP.PolyType → SS.PolyType
+toPoly : LP.PolyType → SS.PolyType
+toPoly A = A
+
 toPolyF : LP.PolyFunctor → SS.PolyFunctor
-toPoly LP.PUnit           = SS.PUnit
-toPoly LP.PVoid           = SS.PVoid
-toPoly (A LP.P* B)        = toPoly A SS.P* toPoly B
-toPoly (A LP.P+ B)        = toPoly A SS.P+ toPoly B
-toPoly (A LP.P⇒[ q ] B)   = toPoly A SS.P⇒[ qS q ] toPoly B
-toPoly (LP.PEff A B)      = SS.PEff (toPoly A) (toPoly B)
-toPoly (LP.PAct A B)      = SS.PAct (toPoly A) (toPoly B)
-toPoly (LP.Pμ-type F)     = SS.Pμ (toPolyF F)
-toPoly (LP.Pν-type F φ)   = SS.Pν (toPolyF F) (φS φ)
-toPoly LP.PInt            = SS.PInt
-toPoly LP.PFloat          = SS.PFloat
-toPoly (LP.PTVar x)       = SS.PTVar x
-toPolyF (LP.PK A)         = SS.PK (toPoly A)
-toPolyF LP.PId            = SS.PId
-toPolyF (F LP.P⊕ G)       = toPolyF F SS.P⊕ toPolyF G
-toPolyF (F LP.P⊗ G)       = toPolyF F SS.P⊗ toPolyF G
+toPolyF F = F
 
 -- Ground types, as the Spec's types: the same (plan 0.122).
 toTy  : LT.Type → ST.Type

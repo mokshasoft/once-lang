@@ -41,6 +41,7 @@ open import Once.Spec.Type using (Type; var; Unit; Void; _*_; _+_; _⇒[_]_; Int
 open import Once.Spec.Type.Substitution using (base-⟨⟩)
 import Once.Spec.Core.Syntax as SCS
 open import Once.Metatheory.TermModel.TySubst [] SCS.[] using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
@@ -110,8 +111,8 @@ mutual
   extractGround-⟨⟩ (A P⇒[ q ] B) (a , b)  = cong₂ (λ X Y → X ⇒[ mk-kind q pure ] Y) (extractGround-⟨⟩ A a) (extractGround-⟨⟩ B b)
   extractGround-⟨⟩ (PEff A B)    (a , b)  = cong₂ (λ X Y → X ⇒[ mk-kind Many eff ] Y) (extractGround-⟨⟩ A a) (extractGround-⟨⟩ B b)
   extractGround-⟨⟩ (PAct A B)    (a , b)  = cong₂ (λ X Y → X ⇒[ mk-kind Many act ] Y) (extractGround-⟨⟩ A a) (extractGround-⟨⟩ B b)
-  extractGround-⟨⟩ (Pμ-type F)   g        = cong μ (extractGroundF-⟨⟩ F g)
-  extractGround-⟨⟩ (Pν-type F π) g        = cong (λ G → ν G π) (extractGroundF-⟨⟩ F g)
+  extractGround-⟨⟩ (Pμ F)   g        = cong μ (extractGroundF-⟨⟩ F g)
+  extractGround-⟨⟩ (Pν F π) g        = cong (λ G → ν G π) (extractGroundF-⟨⟩ F g)
   extractGround-⟨⟩ (PTVar _)     ()
 
   extractGroundF-⟨⟩ : ∀ (F : PolyFunctor) (g : GroundF F) → extractGroundF {m} F g ⟨ τ ⟩F ≡ extractGroundF {k} F g
@@ -144,8 +145,8 @@ mutual
   substPoly-ρ̂ θ (A P⇒[ q ] B) = cong₂ (λ a b → a ⇒[ mk-kind q pure ] b) (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
   substPoly-ρ̂ θ (PEff A B)    = cong₂ (λ a b → a ⇒[ mk-kind Many eff ] b) (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
   substPoly-ρ̂ θ (PAct A B)    = cong₂ (λ a b → a ⇒[ mk-kind Many act ] b) (substPoly-ρ̂ θ A) (substPoly-ρ̂ θ B)
-  substPoly-ρ̂ θ (Pμ-type F)   = cong μ (substPolyF-ρ̂ θ F)
-  substPoly-ρ̂ θ (Pν-type F π) = cong (λ G → ν G π) (substPolyF-ρ̂ θ F)
+  substPoly-ρ̂ θ (Pμ F)   = cong μ (substPolyF-ρ̂ θ F)
+  substPoly-ρ̂ θ (Pν F π) = cong (λ G → ν G π) (substPolyF-ρ̂ θ F)
 
   substPolyF-ρ̂ : (θ : String → Ty m) (F : PolyFunctor) → substPolyF (λ x → ρ̂ (θ x)) F ≡ ρ̂F (substPolyF θ F)
   substPolyF-ρ̂ θ (PK A)   = cong K (substPoly-ρ̂ θ A)

@@ -27,65 +27,66 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Maybe.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Internal.Type.Poly
+import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Internal.Type.Instance.ftvK
 d_ftvK_8 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_ftvK_8 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PUnit_20
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PUnit_20
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PVoid_22
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PVoid_22
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Type.Poly.C__P'42'__24 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PInt_24
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PFloat_26
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'42'__28 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_ftvK_8 (coe v1)) (coe d_ftvK_8 (coe v2))
-      MAlonzo.Code.Once.Internal.Type.Poly.C__P'43'__26 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'43'__30 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_ftvK_8 (coe v1)) (coe d_ftvK_8 (coe v2))
-      MAlonzo.Code.Once.Internal.Type.Poly.C__P'8658''91'_'93'__28 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8658''91'_'93'__32 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_ftvK_8 (coe v1)) (coe d_ftvK_8 (coe v3))
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PEff_30 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PAct_34 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_ftvK_8 (coe v1)) (coe d_ftvK_8 (coe v2))
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PAct_32 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PEff_36 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_ftvK_8 (coe v1)) (coe d_ftvK_8 (coe v2))
-      MAlonzo.Code.Once.Internal.Type.Poly.C_Pμ'45'type_34 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pμ_38 v1
         -> coe d_ftvKF_10 (coe v1)
-      MAlonzo.Code.Once.Internal.Type.Poly.C_Pν'45'type_36 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_Pν_40 v1 v2
         -> coe d_ftvKF_10 (coe v1)
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PInt_38
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PFloat_40
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PTVar_42 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PTVar_42 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Type.Instance.ftvKF
 d_ftvKF_10 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyFunctor_8 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyFunctor_8 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_ftvKF_10 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PK_12 v1
-        -> coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_256 (coe v1)
-      MAlonzo.Code.Once.Internal.Type.Poly.C_PId_14
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PK_12 v1
+        -> coe MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_220 (coe v1)
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_PId_14
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Type.Poly.C__P'8853'__16 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8853'__16 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_ftvKF_10 (coe v1)) (coe d_ftvKF_10 (coe v2))
-      MAlonzo.Code.Once.Internal.Type.Poly.C__P'8855'__18 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'8855'__18 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_ftvKF_10 (coe v1)) (coe d_ftvKF_10 (coe v2))
@@ -147,20 +148,20 @@ d_nub_82
       d_nubFrom_72 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.Internal.Type.Instance.params
 d_params_84 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_params_84 v0
   = coe
-      d_nub_82 (MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_256 (coe v0))
+      d_nub_82 (MAlonzo.Code.Once.Internal.Type.Poly.d_ftv_220 (coe v0))
 -- Once.Internal.Type.Instance.arityOf
 d_arityOf_88 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 -> Integer
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 -> Integer
 d_arityOf_88 v0
   = coe
       MAlonzo.Code.Data.List.Base.du_length_268 (d_params_84 (coe v0))
 -- Once.Internal.Type.Instance.kindOf
 d_kindOf_92 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Kind_70
 d_kindOf_92 v0 v1
@@ -236,7 +237,7 @@ d_positionOf_126 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Type.Instance.rigidSubst
 d_rigidSubst_154 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8
 d_rigidSubst_154 v0 v1
@@ -247,16 +248,16 @@ d_rigidSubst_154 v0 v1
       (d_positionOf_126 (coe v1) (coe d_params_84 (coe v0)))
 -- Once.Internal.Type.Instance.rigidOf
 d_rigidOf_162 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8
 d_rigidOf_162 v0
   = coe
-      MAlonzo.Code.Once.Internal.Type.Poly.d_substPoly_168
+      MAlonzo.Code.Once.Internal.Type.Poly.d_substPoly_132
       (coe d_arityOf_88 (coe v0)) (coe d_rigidSubst_154 (coe v0))
       (coe v0)
 -- Once.Internal.Type.Instance.kindsOf
 d_kindsOf_168 ::
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Spec.Type.T_Kind_70
 d_kindsOf_168 v0 v1
@@ -270,7 +271,7 @@ d_RespectsKinds_176 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Spec.Type.T_Kind_70) ->
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
   ()
@@ -280,6 +281,6 @@ d_KindedInstance_188 ::
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
    MAlonzo.Code.Once.Spec.Type.T_Kind_70) ->
-  MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> ()
 d_KindedInstance_188 = erased

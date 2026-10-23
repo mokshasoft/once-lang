@@ -25,32 +25,8 @@ open import Once.Spec.Grade using (Quantity; Many; Purity; Finite; pure; act; ef
 open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (μ; ν)
 
-mutual
-  data PolyFunctor : Set where
-    PK   : PolyType → PolyFunctor
-    PId  : PolyFunctor
-    _P⊕_ : PolyFunctor → PolyFunctor → PolyFunctor
-    _P⊗_ : PolyFunctor → PolyFunctor → PolyFunctor
-
-  data PolyType : Set where
-    PUnit   : PolyType
-    PVoid   : PolyType
-    _P*_    : PolyType → PolyType → PolyType
-    _P+_    : PolyType → PolyType → PolyType
-    _P⇒[_]_ : PolyType → Quantity → PolyType → PolyType   -- a pure arrow
-    PEff    : PolyType → PolyType → PolyType               -- an effectful arrow (`Eff A B`)
-    PAct    : PolyType → PolyType → PolyType               -- one that returns (`Act A B`, D313)
-    Pμ-type : PolyFunctor → PolyType
-    Pν-type : PolyFunctor → Finite → PolyType
-    PInt    : PolyType
-    PFloat  : PolyType
-    PTVar   : String → PolyType                           -- a type variable
-
-infixr 40 _P⊕_
-infixr 50 _P⊗_
-infixr 30 _P⇒[_]_
-infixr 40 _P+_
-infixr 50 _P*_
+-- The types as written are the Spec's (plan 0.122).
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 
 ------------------------------------------------------------------------
 -- Ground schemas are types
@@ -71,8 +47,8 @@ mutual
   Ground (A P⇒[ _ ] B)   = Ground A × Ground B
   Ground (PEff A B)      = Ground A × Ground B
   Ground (PAct A B)      = Ground A × Ground B
-  Ground (Pμ-type F)     = GroundF F
-  Ground (Pν-type F _)   = GroundF F
+  Ground (Pμ F)     = GroundF F
+  Ground (Pν F _)   = GroundF F
   Ground PInt            = ⊤
   Ground PFloat          = ⊤
   Ground (PTVar _)       = ⊥
@@ -92,8 +68,8 @@ mutual
   extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ mk-kind q pure ] extractGround B gB
   extractGround (PEff A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many eff ] extractGround B gB
   extractGround (PAct A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many act ] extractGround B gB
-  extractGround (Pμ-type F)      g        = μ (extractGroundF F g)
-  extractGround (Pν-type F π)    g        = ν (extractGroundF F g) π
+  extractGround (Pμ F)      g        = μ (extractGroundF F g)
+  extractGround (Pν F π)    g        = ν (extractGroundF F g) π
   extractGround PInt             _        = Int
   extractGround PFloat           _        = Float
 
@@ -114,8 +90,8 @@ mutual
   substPoly θ (A P⇒[ q ] B) = substPoly θ A ⇒[ mk-kind q pure ] substPoly θ B
   substPoly θ (PEff A B)    = substPoly θ A ⇒[ mk-kind Many eff ] substPoly θ B
   substPoly θ (PAct A B)    = substPoly θ A ⇒[ mk-kind Many act ] substPoly θ B
-  substPoly θ (Pμ-type F)   = μ (substPolyF θ F)
-  substPoly θ (Pν-type F π) = ν (substPolyF θ F) π
+  substPoly θ (Pμ F)   = μ (substPolyF θ F)
+  substPoly θ (Pν F π) = ν (substPolyF θ F) π
 
   substPolyF : ∀ {m} → (String → Ty m) → PolyFunctor → Fun m
   substPolyF θ (PK A)   = K (substPoly θ A)
@@ -140,8 +116,8 @@ mutual
   ftv (A P⇒[ _ ] B) = ftv A ++ ftv B
   ftv (PEff A B)    = ftv A ++ ftv B
   ftv (PAct A B)    = ftv A ++ ftv B
-  ftv (Pμ-type F)   = ftvF F
-  ftv (Pν-type F _) = ftvF F
+  ftv (Pμ F)   = ftvF F
+  ftv (Pν F _) = ftvF F
 
   ftvF : PolyFunctor → List String
   ftvF (PK A)   = ftv A

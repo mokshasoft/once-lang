@@ -45,8 +45,8 @@ import Once.Spec.Type as LW
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)
 open import Once.Functor.Decide using (isConcrete?)
 import Data.Sum
-open import Once.Internal.Type.Poly using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ-type; Pν-type;
-  PolyFunctor; PK; PId; _P⊕_; _P⊗_; Ground; GroundF; extractGround; extractGroundF)
+open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
+open import Once.Internal.Type.Poly using (Ground; GroundF; extractGround; extractGroundF)
 import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Program
   using (SchemaOf; TypeOf; FunOf; NotDefinition; nd-sig; nd-alias; nd-import;
@@ -142,8 +142,8 @@ private
     reads-ground (A P⇒[ q ] B) (ga , gb) = to-⇒ (reads-ground A ga) (reads-ground B gb)
     reads-ground (PEff A B) (ga , gb) = to-eff (reads-ground A ga) (reads-ground B gb)
     reads-ground (PAct A B) (ga , gb) = to-act (reads-ground A ga) (reads-ground B gb)
-    reads-ground (Pμ-type F) g = to-μ (readsF-ground F g)
-    reads-ground (Pν-type F φ) g = to-ν (readsF-ground F g)
+    reads-ground (Pμ F) g = to-μ (readsF-ground F g)
+    reads-ground (Pν F φ) g = to-ν (readsF-ground F g)
 
     readsF-ground : ∀ (F : PolyFunctor) (g : GroundF F) → FunOf no-names (toPolyF F) (Once.Adequacy.SpecCore.Schema.pfunS (extractGroundF {0} F g))
     readsF-ground (PK A) g = fo-K (reads-ground A g)

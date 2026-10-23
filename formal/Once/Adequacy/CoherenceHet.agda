@@ -32,6 +32,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
+import Once.Spec.Surface.Syntax as T
 import Once.Internal.Type.Poly as T
 open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)

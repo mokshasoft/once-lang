@@ -31,6 +31,7 @@ import Once.Internal.Type
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 
 import Once.Spec.Type
+import Once.Spec.Surface.Syntax
 import Once.Internal.Type.Poly
 open import Once.Spec.Grade using (Quantity)
 open import Once.Spec.Type using (Ty; Fun; Type; WFFun; Unit; Int; Void; Float; _*_; _+_)
@@ -193,7 +194,7 @@ mutual
     -- irreducible function application, which makes every downstream dependent
     -- split on `⊢ᵢ` at a concrete type shape stuck (SplitError).
     t-var-poly-instantiate-infer :
-      ∀ {ctx : NamedCtx m} {x : String} {T : Ty m} {schema : Once.Internal.Type.Poly.PolyType}
+      ∀ {ctx : NamedCtx m} {x : String} {T : Ty m} {schema : Once.Spec.Surface.Syntax.PolyType}
         {body : RawExpr} {prefix : PolyCtx}
         {g : Once.Internal.Type.Poly.Ground schema}
       -- R11 (D330): an own polymorphic definition is referred to by its
@@ -838,7 +839,7 @@ mutual
     -- D243: a use is at a kinded INSTANCE of the definition's schema; the
     -- body is typed once, at the definition (plan 0.103 phase 6d).
     t-var-poly-instantiate :
-      ∀ {ctx : NamedCtx m} {x : String} {T : Ty m} {schema : Once.Internal.Type.Poly.PolyType} {body : RawExpr}
+      ∀ {ctx : NamedCtx m} {x : String} {T : Ty m} {schema : Once.Spec.Surface.Syntax.PolyType} {body : RawExpr}
         {prefix : PolyCtx}
       → lookupImport (NamedCtx.sig ctx) x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
@@ -901,7 +902,7 @@ mutual
     -- occur in the domain), and the reference is typed at that instance. The
     -- body premise is typed per use until plan 0.103 phase 6.
     d-poly : ∀ {ctx : NamedCtx m} {x : String} {A B : Ty m} {π π′ : Once.Spec.Grade.Purity}
-               {schema sd sc : Once.Internal.Type.Poly.PolyType} {body : RawExpr}
+               {schema sd sc : Once.Spec.Surface.Syntax.PolyType} {body : RawExpr}
                {prefix : PolyCtx}
            → lookupImport (NamedCtx.sig ctx) x ≡ nothing
            → lookupImport (NamedCtx.imports ctx) x ≡ nothing

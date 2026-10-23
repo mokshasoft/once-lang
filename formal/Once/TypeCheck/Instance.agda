@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 open import Once.Spec.Type using (Type; ∅ₖ)
 open import Once.Spec.Context using ([])
-open import Once.Internal.Type.Poly using (PolyType)
+open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Internal.Type.Instance using (KindedInstance; rigidOf; kindsOf)
 open import Once.Internal.Type.Schema using (kinded-instance)
 open import Once.Internal.Typing.Scope using (PolyCtx)

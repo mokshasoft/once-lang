@@ -25,6 +25,7 @@ open import Once.Type.Grade
 open import Once.Internal.Type
 open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (Ty; KCtx; Base; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Type.WellFormed using (IsBaseType)
@@ -55,8 +56,8 @@ mutual
     cong₂ (λ a b → a ⇒[ mk-kind Many eff ] b) (subst-ground θ A gA) (subst-ground θ B gB)
   subst-ground θ (PAct A B) (gA , gB) =
     cong₂ (λ a b → a ⇒[ mk-kind Many act ] b) (subst-ground θ A gA) (subst-ground θ B gB)
-  subst-ground θ (Pμ-type F) g = cong μ (subst-groundF θ F g)
-  subst-ground θ (Pν-type F π) g = cong (λ G → ν G π) (subst-groundF θ F g)
+  subst-ground θ (Pμ F) g = cong μ (subst-groundF θ F g)
+  subst-ground θ (Pν F π) g = cong (λ G → ν G π) (subst-groundF θ F g)
 
   subst-groundF : ∀ {m} (θ : String → Ty m) (F : PolyFunctor) (g : GroundF F) → substPolyF θ F ≡ extractGroundF F g
   subst-groundF θ (PK A) g = cong K (subst-ground θ A g)
@@ -82,8 +83,8 @@ mutual
   ftv-ground (A P⇒[ _ ] B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
   ftv-ground (PEff A B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
   ftv-ground (PAct A B) (gA , gB) = ++-⊥ (ftv A) (ftv B) (ftv-ground A gA) (ftv-ground B gB)
-  ftv-ground (Pμ-type F) g = ftvF-ground F g
-  ftv-ground (Pν-type F _) g = ftvF-ground F g
+  ftv-ground (Pμ F) g = ftvF-ground F g
+  ftv-ground (Pν F _) g = ftvF-ground F g
 
   ftvF-ground : ∀ (F : PolyFunctor) → GroundF F → ∀ {x} → x ∈ ftvF F → ⊥
   ftvF-ground (PK A) g = ftv-ground A g
@@ -103,8 +104,8 @@ mutual
   ftvK-ground (A P⇒[ _ ] B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
   ftvK-ground (PEff A B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
   ftvK-ground (PAct A B) (gA , gB) = ++-⊥ (ftvK A) (ftvK B) (ftvK-ground A gA) (ftvK-ground B gB)
-  ftvK-ground (Pμ-type F) g = ftvKF-ground F g
-  ftvK-ground (Pν-type F _) g = ftvKF-ground F g
+  ftvK-ground (Pμ F) g = ftvKF-ground F g
+  ftvK-ground (Pν F _) g = ftvKF-ground F g
 
   ftvKF-ground : ∀ (F : PolyFunctor) → GroundF F → ∀ {x} → x ∈ ftvKF F → ⊥
   ftvKF-ground (PK A) g = ftv-ground A g
@@ -142,8 +143,8 @@ mutual
   ftvK⊆ftv (A P⇒[ _ ] B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
   ftvK⊆ftv (PEff A B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
   ftvK⊆ftv (PAct A B) m = ++-mono (ftvK A) (ftv A) (ftvK⊆ftv A) (ftvK⊆ftv B) m
-  ftvK⊆ftv (Pμ-type F) m = ftvKF⊆ftvF F m
-  ftvK⊆ftv (Pν-type F _) m = ftvKF⊆ftvF F m
+  ftvK⊆ftv (Pμ F) m = ftvKF⊆ftvF F m
+  ftvK⊆ftv (Pν F _) m = ftvKF⊆ftvF F m
 
   ftvKF⊆ftvF : ∀ (F : PolyFunctor) {x} → x ∈ ftvKF F → x ∈ ftvF F
   ftvKF⊆ftvF (PK A) m = m

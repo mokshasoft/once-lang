@@ -23,6 +23,7 @@ open import Once.Spec.Signature using (Signature)
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
+import Once.Spec.Surface.Syntax as TP
 import Once.Internal.Type.Poly as TP
 import Once.Internal.Type.Instance as LI
 import Once.Spec.Type as ST
