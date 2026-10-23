@@ -57,10 +57,14 @@ open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
 import Once.Internal.Type.Poly as TP
 import Once.Compile as C
 import Once.Parser as Parser
-open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; MonoWit)
+open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp; MonoWit)
+import Once.Internal.Typing.Scope
+import Once.Surface.Syntax as SS
+open import Once.TypeCheck.DualWitness using (DC)
+open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
 open import Once.Internal.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; []; s-ffi; i-def; t-def; wkI; wkT; impDefs; viewOf; impAt; telFind; monoSchema; u0;
-         polyDef; programAt; mainEntry; SigIn)
+         programAt; mainEntry; SigIn)
 import Once.TypeCheck.View as TView
 import Once.TypeCheck.Scoped as Sc
 open import Once.TypeCheck.SpecWitness using (Pack)
@@ -70,7 +74,7 @@ open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; sc
 open import Once.Internal.Type.Schema using (schemaOf)
 
 open Parser.FunInfo using (funName; funBody; funType)
-open Parser.PolyFunInfo using (pfunName; pfunType)
+open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 
 ------------------------------------------------------------------------
 -- The names
@@ -180,9 +184,9 @@ private
                × (∀ i → ST.Occurs i Y → ST.Occurs i X)
   arrow-at {sc} .(schemaOf sc) refl = schema-arrow sc
 
-packOf : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-       → Names S is ts → Pack (ctxOf sc)
-packOf {S = S} ss is ts N = record
+packOfAt : ∀ {m} (Δ : ST.KCtx m) {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+         → Names S is ts → Pack (ctxOfAt Δ sc)
+packOfAt Δ {S = S} ss is ts N = record
   { Sg = Σ ; S = S ; nm = nm N ; inline = inline N ; V = viewOf {S = S} ss is ts
   ; h-imp = λ lk → proj₁ (SN.h-imp-of Σ S (nm N) is (imp-named N) lk)
   ; h-imp-call = h-call-of (inline N) is (imp-call N)
@@ -193,6 +197,11 @@ packOf {S = S} ss is ts N = record
   ; h-arrow = λ {x} {sc} lp → arrow-at {sc} _ (proj₂ (telFind {S = S} ts lp))
   ; L = SUT.∅
   ; lr = Sc.Locals.lo-∅ }
+
+-- (a monomorphic definition's scope has no type variables)
+packOf : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+       → Names S is ts → Pack (ctxOf sc)
+packOf = packOfAt ST.∅ₖ
 
 ------------------------------------------------------------------------
 -- The entries
@@ -219,6 +228,33 @@ monoSynth : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is :
           → SUT._⊢_⇒_↝_ Σ S (nm N) ST.∅ₖ SUT.∅ e ty (proj₁ (monoBody ss is ts N nothing W))
 monoSynth ss is ts N (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ (proj₂ w) (packOf ss is ts N))))
 
+-- A telescope definition's witness: its body checked over its parameters.
+PolyWit : (sc : Scope) (pfi : Parser.PolyFunInfo) → Once.Spec.Context.Usage 0 → Set
+PolyWit sc pfi Ψ = Σ[ eE ∈ SS.Expr (Once.Internal.Typing.Scope.NamedCtx.debruijn (ctxOfAt (kindsOf (pfunType pfi)) sc)) Ψ (rigidOf (pfunType pfi)) ]
+                     DC (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi)) Ψ eE
+
+-- Its body: the term its witness names, at the scope's Pack over the
+-- parameters, typed in the core by the witness's usage.
+polyBody : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+         → (N : Names S is ts) → ∀ {pfi Ψ} → PolyWit sc pfi Ψ
+         → Σ[ t ∈ SC.Tm S (SC.Schema.arity (schemaOf (pfunType pfi))) 0 ]
+             Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S (kindsOf (pfunType pfi)) Once.Spec.Context.∅ [] t (rigidOf (pfunType pfi)) LG.pure
+polyBody ss is ts N {pfi} (_ , w) =
+  let (t , u , _) = proj₂ (proj₂ w) (packOfAt (kindsOf (pfunType pfi)) ss is ts N)
+  in t , u0 (UC.typ⇐ Σ _ (nm N) _ _ (kindsOf (pfunType pfi)) (proj₂ u))
+
+-- …and the Spec's derivation of the body, naming that term.
+polyCheck : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+          → (N : Names S is ts) → ∀ {pfi Ψ} (W : PolyWit sc pfi Ψ)
+          → SUT._⊢_⇐_↝_ Σ S (nm N) (kindsOf (pfunType pfi)) SUT.∅ (pfunBody pfi) (rigidOf (pfunType pfi)) (proj₁ (polyBody ss is ts N {pfi} {Ψ} W))
+polyCheck ss is ts N {pfi} (_ , w) = proj₁ (proj₁ (proj₂ (proj₂ (proj₂ w) (packOfAt (kindsOf (pfunType pfi)) ss is ts N))))
+
+-- A telescope definition: an entry at its schema, its body the witness's term.
+polyDef : ∀ {s} {S : Defs s} {sc pfi Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+        → Names S is ts → PolyWit sc pfi Ψ → Tele (S ▷ schemaOf (pfunType pfi))
+polyDef {pfi = pfi} {Ψ = Ψ} tl ss is ts N W =
+  let (t , d) = polyBody ss is ts N {pfi} {Ψ} W in def tl (schemaOf (pfunType pfi)) t d
+
 -- A monomorphic definition: an arity-0 entry, its body the witness's term.
 monoDef : ∀ {s} {S : Defs s} {sc fi ty Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
         → Names S is ts → MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ → Tele (S ▷ monoSchema ty)
@@ -235,7 +271,7 @@ mutual
   toProgram tl ss is ts N [] () u
   toProgram tl ss is ts N (ffi _ _ c h rest) mi u = toProgram tl (s-ffi c h (u (here′ refl)) ss) is ts N rest mi (λ m → u (there′ m))
   toProgram {S = S} {sc = sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) mi u =
-    toProgram (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D)
+    toProgram (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W)
               ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) rest mi u
   toProgram {S = S} {sc = sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) mi u =
     monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi u
@@ -282,7 +318,7 @@ mutual
   toProgramFrom tl ss is ts N d e [] u = programAt tl d e
   toProgramFrom tl ss is ts N d e (ffi _ _ c h rest) u = toProgramFrom tl (s-ffi c h (u (here′ refl)) ss) is ts N d e rest (λ m → u (there′ m))
   toProgramFrom {S = S} {sc = sc} tl ss is ts N d e (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) u =
-    toProgramFrom (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D)
+    toProgramFrom (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W)
                   ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) (suc d) e rest u
   toProgramFrom {S = S} {sc = sc} tl ss is ts N d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) u =
     toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W)

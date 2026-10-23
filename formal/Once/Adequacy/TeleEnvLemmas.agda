@@ -70,7 +70,6 @@ open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
 open import Once.TypeCheck.Elaborate using (success; failure; checkElabV; VerifiedCheckResult)
-open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; resolvePolyCase; applySplice)
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
@@ -100,7 +99,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
   spliceClosed : ∀ {A : Type} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
                → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
   spliceClosed {A = A} pre x (failure _ , _)             = Srf.poly x A
-  spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 (realize (proj₁ w)))
+  spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 eE)
 
   polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × RawExpr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
   polyVal x A nothing                 = Srf.poly x A
@@ -112,7 +111,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
       → applySplice {Γ = Srf.∅} L a I uf 0 x A eq r ≡ spliceClosed pre x r
     splice-val L a x A eq (failure _ , _) = refl
     splice-val L (acc rec) x A {pre = pre} eq (success SCx.[] eE _ _ , w) =
-      cong (λ z → Srf.closed (resolveExprWF pre z I uf 0 (realize (proj₁ w)))) (acc-irrel _ _)
+      cong (λ z → Srf.closed (resolveExprWF pre z I uf 0 eE)) (acc-irrel _ _)
 
     case-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type)
       (look : Maybe _) (eq : lookupPolyPrefix L x ≡ look)

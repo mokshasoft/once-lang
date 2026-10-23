@@ -113,7 +113,7 @@ module _ {s : ℕ} {S : Defs s} where
       sd-poly d e n rewrite e | n = refl
 
     refs-entry : ∀ (d : Fin s) → TV.InView V d → Goal d refl
-    refs-entry d (TV.iv-imp {x = x} {T = T} lk refl) = move d mono refl g
+    refs-entry d (TV.iv-imp {x = x} {T = T} _ lk refl) = move d mono refl g
       where
         mono = TV.ImportAt.mono (TV.View.imported V lk)
         g : Goal d mono
@@ -124,7 +124,7 @@ module _ {s : ℕ} {S : Defs s} where
                               (refSemAt-≅ δ d mono (λ ()) r (extensionality (λ ())))))
             (H.trans (H.cong (callSD x) (H.≡-to-≅ (sym (⟨⟩-0 τ T)))) (H.≡-to-≅ (sym (sd-call d (h-call lk) (h-imp lk)))))
             (imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk)
-    refs-entry d (TV.iv-poly {x = x} {sc = psc} lp refl) = move d (TV.View.entryIs V lp) refl g
+    refs-entry d (TV.iv-poly {x = x} {sc = psc} _ _ lp refl) = move d (TV.View.entryIs V lp) refl g
       where
         g : Goal d (TV.View.entryIs V lp)
         g τ r {dγ = dγ} =

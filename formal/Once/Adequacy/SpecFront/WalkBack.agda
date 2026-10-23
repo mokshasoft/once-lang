@@ -187,8 +187,8 @@ open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; ad
 import Once.Internal.Typing
 import Once.Internal.Typing.Scope
 import Once.TypeCheck.DualWitness
-open import Once.Internal.Core.Translate Σ using (t-def; wkI; wkT; impDefs; polyDef; monoSchema)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef)
+open import Once.Internal.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoSchema)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf)
 import Once.Internal.Type.Instance
@@ -306,7 +306,7 @@ walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig so b pr wk) (al-poly {x
     Ψ = proj₁ (proj₁ st)
     D = proj₂ (proj₁ st)
     P = proj₂ st
-    rest = walk← (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
+    rest = walk← (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts N (wit-c D)) ss (wkI is) (t-def zero refl (wkT ts))
                  (names-poly pfi N) (rel-▷ r so so₂) wk al
                  (winv-poly pfi w (all-head (kinds o)) (all-head (fresh o))) (eok-poly o)
     mt = proj₁ rest

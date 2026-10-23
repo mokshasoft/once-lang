@@ -78,8 +78,8 @@ open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
 import Once.Internal.Elaboration as E
 open import Once.Internal.Core.Translate Σ
-  using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; polyDef; viewOf; telFind; u0)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; monoBody; monoCheck; monoSynth)
+  using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; viewOf; telFind; u0)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
 open import Once.Adequacy.SpecCore.Type using (tyR; TyR-≡)
 open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
 import Once.Adequacy.SpecFront.ScopeNames as SN
@@ -185,18 +185,19 @@ walk tl ss is ts N [] al-nil w o = w-end
 {-# CATCHALL #-}
 walk tl ss is ts N (ffi ep _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
 -- a telescope definition
-walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D _ rest) (al-poly so _ rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D W rest) (al-poly so _ rx al) w o =
   w-sig so b (AtState.principal ss is ts (Names.nm N) w κ pr rx (tyR _))
-    (walk (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
+    (walk (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
           (names-poly pfi N) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
   where
     κ = kindsOf T
-    el = E.elabᶜ Σ S (viewOf {S = S} ss is ts) D
+    pb = polyBody {sc = scope sg imps tele} ss is ts N {pfi} {Ψ} W
     b : Body Σ S (Names.nm N) (schemaOf T) _
     b = record
-      { term  = proj₁ el
-      ; check = AtState.body-check ss is ts (Names.nm N) w κ D rx (tyR _)
-      ; typed = u0 (proj₂ el)
+      { term  = proj₁ pb
+      ; check = subst (λ e′ → Once.Spec.Surface.Typing._⊢_⇐_↝_ Σ S (Names.nm N) κ Once.Spec.Surface.Typing.∅ e′ (rigidOf T) (proj₁ pb))
+                      (rx-≡ rx) (polyCheck {sc = scope sg imps tele} ss is ts N {pfi} {Ψ} W)
+      ; typed = proj₂ pb
       }
 -- a monomorphic definition with a signature: the Spec's derivation is the
 -- checker's witness, at the scope's Pack

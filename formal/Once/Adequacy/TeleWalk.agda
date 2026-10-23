@@ -92,7 +92,7 @@ open import Once.Internal.Iterative using (_>>=∞_)
 open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Internal.Core.Translate Σ using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigIn; monoSchema)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; toProgram; toProgramFrom; monoHere)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; toProgram; toProgramFrom; monoHere)
 import Once.Adequacy.ModuleProgram Σ as MP
 import Once.Internal.Core.Translate Σ as TR
 open import Once.Compile using (irFunOf; tableOf-go)
@@ -229,8 +229,8 @@ from-sem : ∀ {s} {S : Defs s} {sc es} (tl : Tele S) (ss : SigSig (Once.Interna
          → runCore fmt (toProgramFrom tl ss is ts N d e rest u) mo ≡ runCore fmt (program tl d e) mo
 from-sem tl ss is ts N d e [] u = refl
 from-sem tl ss is ts N d e (ffi _ _ c h rest) u = from-sem tl (s-ffi c h (u (here refl)) ss) is ts N d e rest (λ m → u (there m))
-from-sem {S = S} {sc} tl ss is ts N d e (poly {pfi = pfi} {Ψ = Ψ} pr D _ rest) u =
-  from-sem (TR.polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) (suc d) e rest u
+from-sem {S = S} {sc} tl ss is ts N d e (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) u =
+  from-sem (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) (suc d) e rest u
 from-sem {S = S} {sc} tl ss is ts N d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) u =
   from-sem (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Str.== "main") is) (wkT ts)
            (names-mono (funName fi Str.== "main") (funName fi) ty N) (suc d) e rest u
@@ -293,9 +293,9 @@ mutual
                  (inv-sig {x = funName fi} {ty = ty} {k = c} {h = h} {m = u (here refl)} inv)
                  (λ m → u (there m)) (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr)
   walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) mi tl ss is ts N pre inv u fr
-  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = SCx.[]} pr D _ rest) (FB.bpoly fc ce rest-b) mi tl ss is ts N pre inv u fr =
+  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = SCx.[]} pr D W rest) (FB.bpoly fc ce rest-b) mi tl ss is ts N pre inv u fr =
     walk rest rest-b mi _ ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) pre
-         (inv-poly D inv (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr)) u
+         (inv-poly N D W inv (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr)) u
          (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr)
   walk (mono {fi = Parser.mkFunInfo x ft bd prim} {ty = ty} {Ψ = SCx.[]} refl er pr D W rest)
        (FB.bcons {ty = ty′} {Ψ = SCx.[]} {irFun = irFun} refl rf fc ce cf rest-b) mi tl ss is ts N pre inv u fr

@@ -76,8 +76,8 @@ import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoBody; MonoWit)
-open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; monoBody; packOf)
-open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf)
+open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; monoBody; packOf; packOfAt; polyDef; PolyWit)
+open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; ok-gen; ok-sig; ok-inj; oks-fun)
 import Once.Adequacy.ScopeRefs as SR
 import Once.Internal.Type
 import Once.Adequacy.MeaningBridgeS
@@ -101,7 +101,7 @@ import Once.Adequacy.SpecSig as SSg
 open import Once.Denotation.DenotTrace using (CallEnv)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf)
-open import Once.Internal.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; viewOf; monoSchema; polyDef)
+open import Once.Internal.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; viewOf; monoSchema)
 import Once.Internal.Core.Translate Σ as TR
 open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
@@ -141,6 +141,16 @@ open import Once.Adequacy.TeleEnvLemmas fmt φ Σ σ₀ using (σW; σW-self; ca
 import Once.Adequacy.TeleEntry fmt ι Σ σ₀ as TE
 
 import Once.Adequacy.ElabInst as EI
+import Once.Adequacy.CoherenceS
+import Once.Spec.Core.Typing
+import Once.Adequacy.UseCommute
+import Once.TypeCheck.WitnessSubst
+import Once.TypeCheck.Use
+import Once.TypeCheck.UseCore as UC
+import Once.Denotation.RealizeS
+import Once.Adequacy.CoherenceHet fmt as CH
+open import Once.Adequacy.CoherenceLaws fmt using (module _≈_)
+open _≈_ using (≈-out)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
 open import Once.Adequacy.Coherence fmt using (realize-invariant; realize-invariant-i)
@@ -248,12 +258,12 @@ inv-sig {tl = tl} {ss} {k = k} {h} {m} inv = record
 ------------------------------------------------------------------------
 
 private
-  -- The splice of a telescope body is its derivation's realization, resolved.
+  -- The splice of a telescope body is the checker's term at the instance, resolved.
   splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.Internal.Typing.Scope.PolyCtx) (y : String)
                   {Xs : TopCtx} {b : _} {A : Type} {se : _} {d f : ℕ}
                   (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
                   (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
-              → spliceClosed I uf pre y cr ≡ Srf.closed (resolveExpr pre I uf 0 (realize (sound-of cr ce)))
+              → spliceClosed I uf pre y cr ≡ Srf.closed (resolveExpr pre I uf 0 se)
   splice-form I uf pre y (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
 -- An earlier entry, read through the extended telescope.
@@ -279,6 +289,11 @@ defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def {p = p} d e ts) =
                      cong (subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance (pfunType p) ki))))
                           (refSemAt-wk {sc = sc} {tl = tl} {body = body} {D = D} d e _ _)))
             (defEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} ts)
+
+-- A derivation's meaning depends on it only up to transports.
+⟦⟧ˢ-≅ : ∀ {s} {S : Defs s} {Δ : KCtx 0} {t A} {d d′ : Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S Δ SCx.∅ SCx.[] t A Once.Spec.Grade.pure} {δ}
+      → d H.≅ d′ → CMB.⟦_⟧ₛ fmt Σ S σ₀ d δ tt ≡ CMB.⟦_⟧ₛ fmt Σ S σ₀ d′ δ tt
+⟦⟧ˢ-≅ H.refl = refl
 
 -- The head of the instance telescope, read at an instance: its derivation
 -- instantiated there, read at no variable (the instance of the instance is
@@ -499,16 +514,21 @@ inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} N W
 -- the resolver's splice of its body at the instance (6e).
 ------------------------------------------------------------------------
 
--- Plan 0.104 E / 0.122: the body at a kinded instance is the surface
--- substitution instance of its derivation (`ElabInst.inst-at`), and it means
--- the entry instantiated there (`ElabInst.poly-instance-sem`).
+-- Plan 0.122: a reference at a kinded instance splices the checker's term at
+-- the instance; it means what the entry instantiated there means — the
+-- witness over the parameters, instantiated (`WitnessSubst`), is typed by the
+-- instantiated core typing (`UseCommute`), means its realization
+-- (`MeaningBridgeS`), and that realization means what the instance's does
+-- (`CoherenceS`), whose term the checker built.
 inv-poly : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {pfi : Parser.PolyFunInfo} {Ψ : Ctx.Usage 0}
+             (N : Names S is ts)
              (D : ctxOfAt (kindsOf (pfunType pfi)) (AS.scopeOf csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
+             (W : PolyWit (AS.scopeOf csc) pfi Ψ)
          → Inv {S = S} csc tl ss is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
          → Inv (C.addEntry csc pfi)
-               (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D)
+               (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W)
                ss (wkI is) (t-def zero refl (wkT ts)) pre
-inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = record
+inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N D W inv fr = record
   { iself = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (y Str.≟ y)
             ∷ iself-step (pfi , C.ctop csc) (C.CScope.ctele csc) (C.CScope.ctele csc) frT (Inv.iself inv)
   ; rel   = rel′
@@ -518,7 +538,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
     scT   = pfunType pfi
     S′    = S ▷ schemaOf scT
     δ     = teleSem fmt mo tl
-    δ′    = teleSem fmt mo (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} tl ss is ts D)
+    δ′    = teleSem fmt mo (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} tl ss is ts N W)
     ctx   = ctxOf (AS.scopeOf csc)
     ρ     = CE.envOf fmt Σ S σ₀ δ ss is ts
     V     = viewOf {S = S} ss is ts
@@ -537,7 +557,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
               (sym (impEnv-wk {sc = schemaOf scT} {tl = tl} is))
               (imprel-transport σo σ (C.CScope.cimps csc)
                  (calls-same tbl (C.cpolys csc) (C.cpolys (C.addEntry csc pfi)) I I uf uf (C.CScope.cimps csc)) (proj₁ (proj₂ old)))
-      , sigR (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} tl ss is ts D) ss σ refl
+      , sigR (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} tl ss is ts N W) ss σ refl
       where
         tbl = later ++ pre
         σo  = σW tbl (C.cpolys csc) I uf
@@ -553,34 +573,79 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
           (λ A → sym (refs-skip I uf (tableEnv fmt φ tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) (pfunName (proj₁ q)) A h))
           , ra qs hs
 
-        -- the new entry: its splice at an instance is its core instance (6e)
+        -- the scope's Pack, and over the parameters
+        P  = packOf {S = S} {sc = AS.scopeOf csc} ss is ts N
+        κ  = kindsOf scT
+        Pκ = packOfAt κ {S = S} {sc = AS.scopeOf csc} ss is ts N
+        ctxT = Once.TypeCheck.Classify.ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)
+
+        module MBS = Once.Adequacy.MeaningBridgeS fmt Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N) σ₀ σo (σW-self tbl (C.cpolys csc) I uf) ∅ₖ
+        module COH = Once.Adequacy.CoherenceS fmt Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N)
+                       (ok-gen P) (ok-sig P) (ok-inj P) (λ {c} → oks-fun P {c}) ∅ₖ
+        module RS = Once.Denotation.RealizeS Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N) ∅ₖ
+        module UM = Once.TypeCheck.Use Σ S (Names.nm N) (OkOf P) (OkSOf P) ∅ₖ
+
+        -- the scope's references, related (as for a monomorphic entry)
+        refsR : MBS.Refs δ
+        refsR = record
+          { entry = SR.refs-entry fmt Σ σ₀ σo (σW-self tbl (C.cpolys csc) I uf) ctx (Names.nm N) (Names.inline N) V (OkSOf P)
+                      (Pack.h-imp P) (Pack.h-imp-call P) (Pack.h-poly P) (Pack.h-poly-inline P) δ ρ (CE.agree fmt Σ S σ₀ δ ss is ts) old
+          ; sigop = λ {c} {T} mem k h →
+              SR.RelGM-≅ fmt Σ σ₀ σo (σW-self tbl (C.cpolys csc) I uf) {A = Once.Internal.Type.wk₀ {0} T} {B = Once.Internal.Type.wk₀ {0} T} refl
+                (H.trans (H.≡-subst-removable (SE.M Once.Spec.Grade.pure) (sym (⟦wk₀⟧ᵛ T)) _) (H.≡-subst-removable id (⟦wk₀⟧ᵛ T) _))
+                H.refl
+                (RelGM-wk₀ {π = Once.Spec.Grade.pure} {A = T}
+                  (subst (λ md → RelGM Once.Spec.Grade.pure T
+                                   (subst id (⟦wk₀⟧ᵛ T) (subst (λ X → ⟦ X ⟧ᵛ) (⌜declS⌝ k h) (SM.sigopᵛ Σ fmt S σ₀ c (declS T) mem md)))
+                                   (SD.sigOpSem T c k fmt σo))
+                         (sym (teleSem-model fmt mo tl)) (SSg.sig-rel Σ wf J uniq fmt σ₀ S σo refl k h mem)))
+          }
+
+        -- a related pair of terms, their meanings related, read at the instance's type
+        fin : ∀ {X U : Type} {m} {a : Srf.Expr SCx.∅ SCx.[] U} {b : Srf.Expr SCx.∅ SCx.[] X} {t}
+            → a CH.≅ b → RelGM Once.Spec.Grade.pure X m (SD.⟦ b ⟧ˢ fmt σo tt) → t ≡ SD.⟦ a ⟧ˢ fmt σo tt
+            → ∀ {m′} → m′ H.≅ m → RelGM Once.Spec.Grade.pure U m′ t
+        fin {X = X} (CH.≅i refl refl h) rg refl H.refl = GM-D Once.Spec.Grade.pure X rg (≈-out h σo (σW-self tbl (C.cpolys csc) I uf) tt)
+
+        -- the new entry: its splice at an instance is its core instance
         head₀ : ∀ (U : Type) (ki : KindedInstance ∅ₖ scT U)
               → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ σ₀ δ′ zero {scT} refl ki) (SD.DefsSem.refs σ y U)
-        head₀ U ki =
-          subst (λ m → RelGM Once.Spec.Grade.pure U m (SD.DefsSem.refs σ y U))
-                (trans (EI.poly-instance-sem Σ fmt S σ₀ V δ scT D ki)
-                       (sym (cong (subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance scT ki))))
-                                  (head-at {tl = tl} {sc = schemaOf scT} {D = proj₂ (ElabM.elabᶜ Σ S V D)} (proj₁ (kinded-instance scT ki)) (proj₁ (proj₂ (kinded-instance scT ki)))
-                                           (proj₁ (proj₂ (kinded-instance scT ki)))))))
-                (GM-D Once.Spec.Grade.pure U
-                       (MB.bridge-c fmt Σ σ₀ σo S (σW-self tbl (C.cpolys csc) I uf) {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts)
-                                    D-U {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt) old)
-                       relSD)
+        head₀ U ki = fin hU (MBS.bridge⇐ (proj₂ su) {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt) refsR) relRefs entryH
           where
+            K   = kinded-instance scT ki
+            τ   = proj₁ K
+            r   = proj₁ (proj₂ K)
+            module WS = Once.TypeCheck.WitnessSubst Σ S (Names.nm N) (OkOf P) (OkSOf P) κ ∅ₖ τ r
+            module UCm = Once.Adequacy.UseCommute Σ S (Names.nm N) (OkOf P) (OkSOf P) κ ∅ₖ τ r
+            -- the witness over the parameters, and at the instance
+            uΔ  = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ W)) Pκ))
+            su  = WS.subW⇐ (proj₂ uΔ)
+            -- the checker at the instance
             D-U = EI.inst-at Σ fmt S σ₀ scT D ki
-            ccU = Once.TypeCheck.Completeness.check-complete D-U
-            ce  = proj₂ (proj₂ (proj₂ ccU))
-            cr  = Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) (pfunBody pfi) U
-            D′  = sound-of cr ce
-            relSD : RelS (RelD U) (SD.DefsSem.refs σ y U) (SD.⟦ realize D-U ⟧ˢ fmt σo tt)
-            relSD =
-              ≡ˡ (trans (refs-head I uf (tableEnv fmt φ tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
-                   (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
-                                             (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
-                                                (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) iy)
-                     (trans (cong (λ e′ → SD.⟦ e′ ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) (splice-form I uf (C.cpolys csc) y cr ce))
-                            (RF.resolveExpr-faithful fmt (tableEnv fmt φ tbl) (C.cpolys csc) I uf 0 (realize D′) tt))))
-                 (realize-invariant D′ D-U σo (σW-self tbl (C.cpolys csc) I uf) tt)
+            cc  = Once.TypeCheck.Completeness.check-complete D-U
+            se  = proj₁ cc
+            ce  = proj₂ (proj₂ (proj₂ cc))
+            cr  = Once.TypeCheck.Elaborate.checkElabV ctxT (pfunBody pfi) U
+            rU  = proj₂ (proj₂ (wit-of cr ce)) P
+            uU  = proj₁ (proj₂ rU)
+            hU  = COH.coh⇐ UM.sh-∅ (proj₂ uU) (proj₂ su) (sym (proj₂ (proj₂ K)))
+            -- the reference is the splice, the checker's term, the instance's realization
+            relRefs : SD.DefsSem.refs σ y U ≡ SD.⟦ RS.realize⇐ UM.sh-∅ (proj₂ uU) ⟧ˢ fmt σo tt
+            relRefs =
+              trans (refs-head I uf (tableEnv fmt φ tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
+                (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
+                                          (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
+                                             (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) iy)
+                  (trans (cong (λ e′ → SD.⟦ e′ ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) (splice-form I uf (C.cpolys csc) y cr ce))
+                    (trans (RF.resolveExpr-faithful fmt (tableEnv fmt φ tbl) (C.cpolys csc) I uf 0 se tt)
+                           (cong (λ e′ → SD.⟦ e′ ⟧ˢ fmt σo tt) (sym (proj₂ (proj₂ rU)))))))
+            -- the entry at the instance is the instantiated witness's core meaning
+            entryH : CMB.entrySem fmt Σ S′ σ₀ δ′ zero {scT} refl ki H.≅ CMB.⟦_⟧ₛ fmt Σ S σ₀ (UC.typ⇐ Σ S (Names.nm N) (OkOf P) (OkSOf P) ∅ₖ (proj₂ su)) δ tt
+            entryH =
+              H.trans (H.≡-subst-removable (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ K)) _)
+                (H.≡-to-≅ (trans (head-at {tl = tl} {sc = schemaOf scT} {D = UC.typ⇐ Σ S (Names.nm N) (OkOf P) (OkSOf P) κ (proj₂ uΔ)} τ r r)
+                                 (⟦⟧ˢ-≅ (H.sym (UCm.cm⇐ UM′.sh-∅ (proj₂ uΔ))))))
+              where module UM′ = Once.TypeCheck.Use Σ S (Names.nm N) (OkOf P) (OkSOf P) κ
 
         -- …at any kinds over no variable (there is one such context).
         head : ∀ {Δ : KCtx 0} (U : Type) (ki : KindedInstance Δ scT U)

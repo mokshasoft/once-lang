@@ -30,7 +30,6 @@ import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Induction.WellFounded
-import qualified MAlonzo.Code.Once.Denotation.Realize
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
@@ -50,7 +49,6 @@ import qualified MAlonzo.Code.Once.Surface.Elaborate
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type.Sub
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
-import qualified MAlonzo.Code.Once.TypeCheck.Context
 import qualified MAlonzo.Code.Once.TypeCheck.DualWitness
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
 import qualified MAlonzo.Code.Once.TypeCheck.Error
@@ -2350,7 +2348,7 @@ du_resolvePolyCase_3484 v0 v1 v2 v3 v4 v5 v6
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                       -> coe
                            du_applySplice_3506 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
-                           (coe v5) (coe v10) (coe v11)
+                           (coe v5) (coe v11)
                            (coe
                               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6438 (coe v0)
                               (coe
@@ -2382,9 +2380,9 @@ d_applySplice_3506 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10
-d_applySplice_3506 v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 ~v10 v11 v12
+d_applySplice_3506 v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7 v8 v9 ~v10 ~v11 v12
                    ~v13 v14
-  = du_applySplice_3506 v0 v5 v6 v7 v8 v9 v11 v12 v14
+  = du_applySplice_3506 v0 v5 v6 v7 v8 v9 v12 v14
 du_applySplice_3506 ::
   Integer ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -2393,38 +2391,22 @@ du_applySplice_3506 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10
-du_applySplice_3506 v0 v1 v2 v3 v4 v5 v6 v7 v8
-  = case coe v8 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
-        -> case coe v9 of
-             MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_126 v11 v12 v13 v14
+du_applySplice_3506 v0 v1 v2 v3 v4 v5 v6 v7
+  = case coe v7 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
+        -> case coe v8 of
+             MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_126 v10 v11 v12 v13
                -> coe
-                    seq (coe v11)
+                    seq (coe v10)
                     (coe
                        MAlonzo.Code.Once.Surface.Syntax.C_closed_414
                        (coe
-                          du_resolveExprWF_3468 (coe v0) (coe v5) (coe v7) (coe v1) (coe v2)
-                          (coe v3)
-                          (coe
-                             MAlonzo.Code.Once.Denotation.Realize.d_realize_22 (coe v0)
-                             (coe
-                                MAlonzo.Code.Once.Internal.Typing.Scope.C_mkCtx_146
-                                (coe (0 :: Integer))
-                                (coe MAlonzo.Code.Once.TypeCheck.Context.du_'8709'_8)
-                                (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12)
-                                (coe MAlonzo.Code.Once.TypeCheck.Classify.d_tdefs_340 (coe v1 v4))
-                                (coe v7)
-                                (coe MAlonzo.Code.Once.TypeCheck.Classify.d_tsig_338 (coe v1 v4))
-                                (coe
-                                   MAlonzo.Code.Once.TypeCheck.Classify.d_baseKinds_364 (coe v0)))
-                             (coe v6) (coe v5)
-                             (coe MAlonzo.Code.Once.Spec.Context.C_'91''93'_36)
-                             (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v10)))))
-             MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_128 v11
+                          du_resolveExprWF_3468 (coe v0) (coe v5) (coe v6) (coe v1) (coe v2)
+                          (coe v3) (coe v11)))
+             MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_128 v10
                -> coe MAlonzo.Code.Once.Surface.Syntax.C_poly_406 v4
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

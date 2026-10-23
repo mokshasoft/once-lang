@@ -35,6 +35,7 @@ open import Once.Internal.Typing.Scope using (Imports)
 open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Internal.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Elaborate
+import Once.TypeCheck.DualWitness
 import Once.Internal.Typing.Scope
 import Once.TypeCheck.Classify
 import Once.Parser
@@ -143,6 +144,12 @@ sound-of : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} 
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
          → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → ctx ⊢ᶜ e ∶ T ⨾ Ψ
 sound-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = Data.Product.proj₁ w
+
+-- …and its witness: the term it built is the realization of the Spec's derivation.
+wit-of : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
+           (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
+       → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → Once.TypeCheck.DualWitness.DC ctx e T Ψ se
+wit-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = w
 
 -- R8: the synthesizer's derivation, read off its verified result.
 sound-of-i : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}

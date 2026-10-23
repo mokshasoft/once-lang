@@ -21,7 +21,6 @@ open import Once.TypeCheck.Elaborate
 open import Once.Internal.Context using (zeroUsage)
 import Once.Spec.Context as SCx
 open import Data.Unit using (tt; ⊤)
-open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
 open import Once.Internal.Type.DecEq using (_≟T_)
@@ -778,10 +777,10 @@ resolvePolyCase polys pAcc imps userFns fresh x A (just (_ , body , prefix)) pol
   applySplice polys pAcc imps userFns fresh x A polyEq
               (checkElabV (ctxAt baseKinds (imps x) prefix) body A)
 
--- D254: the spliced body is the realization of its derivation.
+-- D254, plan 0.122: the spliced body is the checker's term at the instance.
 applySplice polys _ imps userFns _ x A _ (failure _ , _) = Surface.poly x A
 applySplice polys (acc rec) imps userFns fresh x A {prefix = prefix} polyEq (success SCx.[] eE _ _ , w) =
-  Surface.closed (resolveExprWF prefix (rec (lookupPolyPrefix-decreases x polys polyEq)) imps userFns fresh (realize (proj₁ w)))
+  Surface.closed (resolveExprWF prefix (rec (lookupPolyPrefix-decreases x polys polyEq)) imps userFns fresh eE)
 
 -- Public entry. Computes `<-wellFounded` once; no callers need updating.
 -- Plan 0.19: `userFns` carries the set of user-defined top-level fn

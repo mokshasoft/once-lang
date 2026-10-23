@@ -43,8 +43,8 @@ open import Once.TypeCheck.Classify using (topCtx)
 import Once.Compile as C
 open import Once.Internal.Principal using (PrincipalAt)
 open import Once.Internal.Core.Translate Σ
-  using (SigSig; ImpSig; TeleSig; SigIn; t-def; wkI; wkT; impDefs; polyDef; mainEntry)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; toProgram; toProgramFrom)
+  using (SigSig; ImpSig; TeleSig; SigIn; t-def; wkI; wkT; impDefs; mainEntry)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; toProgram; toProgramFrom)
 import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Spec.Sub using (_<:_)
 import Once.Type.Sub
@@ -80,7 +80,7 @@ endOf : ∀ {s} {S : SC.Defs s} {sc es} → SP.Tele S → SigSig (Scope.sig sc) 
 endOf tl ss is ts N [] _ = end tl (Names.nm N)
 endOf tl ss is ts N (ffi ep _ _ _ _) ks = ⊥-elim (no-ffi ep ks)
 endOf {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) ks =
-  endOf (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
+  endOf (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
         (names-poly pfi N) rest (all-tail ks)
 endOf {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) ks =
   endOf (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
@@ -102,7 +102,7 @@ from-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope.
 from-end tl ss is ts N d me h [] u ks = d , me , refl , h
 from-end tl ss is ts N d me h (ffi ep _ _ _ _) u ks = ⊥-elim (no-ffi ep ks)
 from-end {S = S} {sc} tl ss is ts N d me h (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) u ks =
-  from-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
+  from-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
            (names-poly pfi N) (suc d) me h rest u (all-tail ks)
 from-end {S = S} {sc} tl ss is ts N d me h (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) u ks =
   from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
@@ -127,7 +127,7 @@ mono-end : ∀ {s} {S : SC.Defs s} {sc es fi ty Ψ} (tl : SP.Tele S) (ss : SigSi
 prog-end tl ss is ts N [] () u ks
 prog-end tl ss is ts N (ffi ep _ _ _ _) mi u ks = ⊥-elim (no-ffi ep ks)
 prog-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) mi u ks =
-  prog-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
+  prog-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
            (names-poly pfi N) rest mi u (all-tail ks)
 prog-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) (inj₁ (em , e)) u ks =
   from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)

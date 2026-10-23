@@ -114,7 +114,7 @@ spliceWith : ∀ {m} {n} {Γ : Ctx m n} (pre : PolyCtx) → Acc _<_ (length pre)
            → (x : String) (A : Ty m) {Xs : TopCtx} {b : RawExpr}
            → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Expr Γ zeroUsage A
 spliceWith pre ac I uf fresh x A (failure _ , _)             = poly x A
-spliceWith pre ac I uf fresh x A (success Once.Spec.Context.[] _ _ _ , w) = closed (resolveExprWF pre ac I uf fresh (realize (proj₁ w)))
+spliceWith pre ac I uf fresh x A (success Once.Spec.Context.[] eE _ _ , _) = closed (resolveExprWF pre ac I uf fresh eE)
 
 -- A telescope reference's splice is linked: at the entry's body, checked at
 -- the instance in its declaration context.
@@ -547,7 +547,7 @@ private
                 (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx 0 n} {Xs : TopCtx} {b : RawExpr} {se : _} {d f : ℕ}
                 (cr : VerifiedCheckResult (ctxAt baseKinds Xs pre) b A)
                 (ce : proj₁ cr ≡ success Once.Spec.Context.[] se d f)
-            → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (resolveExprWF pre ac I uf fresh (realize (sound-of cr ce)))
+            → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (resolveExprWF pre ac I uf fresh se)
             → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (spliceWith {Γ = Γ} pre ac I uf fresh x A cr)
   splice-at tbl pre ac I uf fresh x A (success Once.Spec.Context.[] _ _ _ , w) refl r = r
 
@@ -582,14 +582,15 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Once.Spec.Context.[]} D fr inv = record
                          (spliceWith {Γ = Γ} polys ac I uf fresh y A (checkElabV (ctxWithImportsAndPolys Xs polys) bd A)))
             (sym iy)
             (splice-at pre polys ac I uf fresh y A cr ce
-              (resolve-refs pre polys I (LInv.tel-ok inv I ia) ac uf fresh (realize w)
+              (resolve-refs pre polys I (LInv.tel-ok inv I ia) ac uf fresh se
                  (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef imps} {Pp = PolyRef polys ∅ₖ} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef polys ∅ₖ}
-                           (LInv.sig-ok inv) (imp-ref inv) (λ r → r) (realize w) (realize-refs w))))
+                           (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se (proj₁ (proj₂ (wit-of cr ce))))))
       where
         D-A = inst-at scT D ki
         cr  = checkElabV (ctxWithImportsAndPolys top polys) bd A
-        ce  = proj₂ (proj₂ (proj₂ (check-complete D-A)))
-        w   = sound-of cr ce
+        cc  = check-complete D-A
+        se  = proj₁ cc
+        ce  = proj₂ (proj₂ (proj₂ cc))
 
     tel′ : ∀ (I : String → TopCtx) → IAgree I ((pfi , top) ∷ C.CScope.ctele csc)
          → ∀ {x} {A : Type} → PolyRef (C.cpolys (C.addEntry csc pfi)) ∅ₖ x A → SpliceOK σ pre (C.cpolys (C.addEntry csc pfi)) I x A

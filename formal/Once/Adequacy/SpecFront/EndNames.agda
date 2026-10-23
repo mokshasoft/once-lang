@@ -39,8 +39,8 @@ open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Name
 open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly)
-open import Once.Internal.Core.Translate Σ using (SigSig; ImpSig; TeleSig; t-def; wkI; wkT; impDefs; polyDef)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef)
+open import Once.Internal.Core.Translate Σ using (SigSig; ImpSig; TeleSig; t-def; wkI; wkT; impDefs)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef)
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (_∷ⁿ_)
 open import Once.Adequacy.SpecFront.End Σ ps using (EntryKind; End; endOf; no-ffi; all-tail)
 import Data.String
@@ -91,8 +91,8 @@ named-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope
           → NamedIn (Names.nm N) L → ∀ d → Σ[ x ∈ String ] (End.nm (endOf tl ss is ts N mt ks) d ≡ canonical (x ∷ [])) × (x ∈ L ⊎ x ∈ names es)
 named-end tl ss is ts N [] ks n d = let (x , e , m) = n d in x , e , inj₁ m
 named-end tl ss is ts N (ffi ep _ _ _ _) ks n d = ⊥-elim (no-ffi ep ks)
-named-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D _ rest) ks {L} n d =
-  let (x , e , m) = named-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
+named-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) ks {L} n d =
+  let (x , e , m) = named-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
                               (names-poly pfi N) rest (all-tail ks) (step-named {L = L} n) d
   in x , e , back m
 named-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) ks {L} n d =
@@ -107,8 +107,8 @@ distinct-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Sc
              → Injective _≡_ _≡_ (End.nm (endOf tl ss is ts N mt ks))
 distinct-end tl ss is ts N [] ks i u f = i
 distinct-end tl ss is ts N (ffi ep _ _ _ _) ks i u f = ⊥-elim (no-ffi ep ks)
-distinct-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D _ rest) ks i (h ∷ u) (f ∷ fs) =
-  distinct-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
+distinct-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) ks i (h ∷ u) (f ∷ fs) =
+  distinct-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
                (names-poly pfi N) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)
 distinct-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) ks i (h ∷ u) (f ∷ fs) =
   distinct-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)

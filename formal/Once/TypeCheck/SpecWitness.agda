@@ -21,10 +21,15 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (just)
+import Data.Maybe
+import Data.Maybe.Properties
+import Data.Empty
+import Data.List.Relation.Unary.All
 open import Data.Nat using (ℕ; _<_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+import Relation.Binary.PropositionalEquality as PE
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature)
@@ -111,6 +116,61 @@ OkOf P = TView.InView (Sg P) (S P) (V P)
 -- …and the declarations: those the scope's signature declares.
 OkSOf : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) → CanonicalName → ST.Type → Set
 OkSOf {ctx = ctx} P c T = lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T
+
+-- What the lookups a reference records give: a definition in scope is no
+-- generator, no declaration in scope, and the one its name finds (D249,
+-- locally: the checker looks a name up in the signature first, then among
+-- the monomorphic definitions, then the telescope).
+module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
+  private
+    own-name : ∀ {d} → OkOf P d → Σ[ x ∈ String ] (nm P d ≡ canonical (x ∷ [])) × (lookupImport (sig ctx) x ≡ Data.Maybe.nothing)
+    own-name (TView.iv-imp ns lk refl)     = _ , h-imp P lk , ns
+    own-name (TView.iv-poly ns _ lp refl)  = _ , h-poly P lp , ns
+
+    own≢gen : ∀ {x g} → canonical (x ∷ []) ≡ canonical ("Generators" ∷ g ∷ []) → Data.Empty.⊥
+    own≢gen ()
+
+    uip : ∀ {ℓ} {X : Set ℓ} {a b : X} (p q : a ≡ b) → p ≡ q
+    uip refl refl = refl
+
+    one-inj : ∀ {x y} → canonical (x ∷ []) ≡ canonical (y ∷ []) → x ≡ y
+    one-inj refl = refl
+
+    just≢nothing : ∀ {A : Set} {a : A} → Data.Maybe.just a ≡ Data.Maybe.nothing → Data.Empty.⊥
+    just≢nothing ()
+
+    imp-same : ∀ {x T T′} (lk : lookupImport (imports ctx) x ≡ just T) (lk′ : lookupImport (imports ctx) x ≡ just T′)
+             → TView.ImportAt.entryOf (TView.View.imported (V P) lk) ≡ TView.ImportAt.entryOf (TView.View.imported (V P) lk′)
+    imp-same lk lk′ with PE.trans (sym lk) lk′
+    ... | refl with uip lk lk′
+    ...   | refl = refl
+
+    poly-same : ∀ {x r r′} (lp : lookupPolyPrefix (polys ctx) x ≡ just r) (lp′ : lookupPolyPrefix (polys ctx) x ≡ just r′)
+              → TView.View.entry (V P) lp ≡ TView.View.entry (V P) lp′
+    poly-same lp lp′ with PE.trans (sym lp) lp′
+    ... | refl with uip lp lp′
+    ...   | refl = refl
+
+  ok-gen : ∀ {d} → OkOf P d → Once.Spec.Name.NotGenerator (nm P d)
+  ok-gen ok = Data.List.Relation.Unary.All.tabulate (λ _ e → own≢gen (PE.trans (sym (proj₁ (proj₂ (own-name ok)))) e))
+
+  ok-sig : ∀ {d T} → OkOf P d → OkSOf P (nm P d) T → Data.Empty.⊥
+  ok-sig {T = T} ok l =
+    just≢nothing (PE.trans (sym (subst (λ c → lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T) (proj₁ (proj₂ (own-name ok))) l))
+                        (proj₂ (proj₂ (own-name ok))))
+
+  ok-inj : ∀ {d d′} → OkOf P d → OkOf P d′ → nm P d ≡ nm P d′ → d ≡ d′
+  ok-inj (TView.iv-imp _ lk refl) (TView.iv-imp _ lk′ refl) e with one-inj (PE.trans (sym (h-imp P lk)) (PE.trans e (h-imp P lk′)))
+  ... | refl = imp-same lk lk′
+  ok-inj (TView.iv-imp _ lk refl) (TView.iv-poly _ ni lp refl) e with one-inj (PE.trans (sym (h-imp P lk)) (PE.trans e (h-poly P lp)))
+  ... | refl = Data.Empty.⊥-elim (just≢nothing (PE.trans (sym lk) ni))
+  ok-inj (TView.iv-poly _ ni lp refl) (TView.iv-imp _ lk refl) e with one-inj (PE.trans (sym (h-poly P lp)) (PE.trans e (h-imp P lk)))
+  ... | refl = Data.Empty.⊥-elim (just≢nothing (PE.trans (sym lk) ni))
+  ok-inj (TView.iv-poly _ _ lp refl) (TView.iv-poly _ _ lp′ refl) e with one-inj (PE.trans (sym (h-poly P lp)) (PE.trans e (h-poly P lp′)))
+  ... | refl = poly-same lp lp′
+
+  oks-fun : ∀ {c T T′} → OkSOf P c T → OkSOf P c T′ → T ≡ T′
+  oks-fun l l′ = Data.Maybe.Properties.just-injective (PE.trans (sym l) l′)
 
 -- A witness's realization, in the checker's context.
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
@@ -559,7 +619,7 @@ module _ {m} {ctx : NamedCtx m} where
              → WI ctx (SX.RResolved (own x)) A SCx.zeroUsage (subst (E SCx.zeroUsage) (sym eq) (SS.closure x))
   wt-var-own ns lk refl = (_ , lk , refl) , λ P → let open At P in
     let d = TView.ImportAt.entryOf (TView.View.imported (V P) lk)
-        (t , w , r) = (refS d (TView.iv-imp lk refl) (h-imp P lk) (TView.ImportAt.mono (TView.View.imported (V P) lk)) none
+        (t , w , r) = (refS d (TView.iv-imp ns lk refl) (h-imp P lk) (TView.ImportAt.mono (TView.View.imported (V P) lk)) none
                             (cong SC.Schema.arity (TView.ImportAt.mono (TView.View.imported (V P) lk))))
     in t , w , trans r (ref-call d (h-imp-call P lk) (h-imp P lk))
 
@@ -568,10 +628,10 @@ module _ {m} {ctx : NamedCtx m} where
                                 → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , body , prefix))
                                 → TP.Ground sc → T ≡ TP.extractGround sc g
                                 → WI ctx (SX.RResolved (own x)) T SCx.zeroUsage (SS.poly x T)
-  wt-var-poly-instantiate-infer {sc = sc} {g = g} _ _ lp _ eq = (_ , lp , subst (KindedInstance (kinds ctx) sc) (sym eq) (ground-kinded {Δ = kinds ctx} sc g)) , λ P → let open At P in
+  wt-var-poly-instantiate-infer {sc = sc} {g = g} nsg nim lp _ eq = (_ , lp , subst (KindedInstance (kinds ctx) sc) (sym eq) (ground-kinded {Δ = kinds ctx} sc g)) , λ P → let open At P in
     let ki = kinded-instance sc (ground-kinded {Δ = kinds ctx} sc g)
         d = TView.View.entry (V P) lp
-        (t , w , r) = (refS d (TView.iv-poly lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (h-ground P lp g))
+        (t , w , r) = (refS d (TView.iv-poly nsg nim lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (h-ground P lp g))
         p = trans (proj₂ (proj₂ ki)) (sym eq)
     in t , retype⇒ p w
        , trans (rt⇒ p w) (trans (cong (subst (E SCx.zeroUsage) p) (trans r (ref-poly d (h-poly-inline P lp) (h-poly P lp)))) (subst-poly p))
@@ -822,10 +882,10 @@ module _ {m} {ctx : NamedCtx m} where
                           → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , body , prefix))
                           → ¬ TP.Ground sc → KindedInstance (kinds ctx) sc T
                           → WC ctx (SX.RResolved (own x)) T Z (SS.poly x T)
-  wt-var-poly-instantiate {sc = sc} _ _ lp ng ins = (_ , lp , ins) , λ P → let open At P in
+  wt-var-poly-instantiate {sc = sc} nsg nim lp ng ins = (_ , lp , ins) , λ P → let open At P in
     let ki = kinded-instance sc ins
         d = TView.View.entry (V P) lp
-        (t , w , r) = (refC d (TView.iv-poly lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open P lp ng))
+        (t , w , r) = (refC d (TView.iv-poly nsg nim lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open P lp ng))
         p = proj₂ (proj₂ ki)
     in t , retype⇐ p w
        , trans (rt⇐ p w) (trans (cong (subst (E Z) p) (trans r (ref-poly d (h-poly-inline P lp) (h-poly P lp)))) (subst-poly p))
@@ -853,11 +913,11 @@ module _ {m} {ctx : NamedCtx m} where
           → KindedInstance (kinds ctx) sc (A ST.⇒[ LG.mk-kind LG.Many π′ ] B) → (g : π′ LG.⊑π π)
           → WD ctx (SX.RResolved (own x)) A π B Z
                (SS.coerce (sub-arr {q = LG.Many} (<:-refl A) (<:-refl B) g) (SS.poly x (A ST.⇒[ LG.mk-kind LG.Many π′ ] B)))
-  wd-poly {A = A} {B = B} {sc = sc} _ _ lp ng arr cvd ins g = (_ , lp , ins) , λ P → let open At P in
+  wd-poly {A = A} {B = B} {sc = sc} nsg nim lp ng arr cvd ins g = (_ , lp , ins) , λ P → let open At P in
     let (X , Y , te , incl) = h-arrow P lp arr cvd
         ki = kinded-instance sc ins
         d = TView.View.entry (V P) lp
-        (t , w , r) = refD d (TView.iv-poly lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (proj₁ (proj₂ ki))
+        (t , w , r) = refD d (TView.iv-poly nsg nim lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (proj₁ (proj₂ ki))
                             (h-open P lp ng) te incl (proj₂ (proj₂ ki)) g
     in t , w , trans r (cong (SS.coerce (sub-arr (<:-refl A) (<:-refl B) g)) (ref-poly d (h-poly-inline P lp) (h-poly P lp)))
 

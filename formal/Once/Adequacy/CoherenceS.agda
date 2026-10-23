@@ -15,7 +15,9 @@
 -- unique). Where the two derivations take different rules, the conversion
 -- between their types is read off the derivations (`coh⇒⇐`, `coh↦⇒` return
 -- it), and the rules that cannot meet are refuted by the Spec's own
--- metatheory (`Metatheory.Surface`), under its names assumption (`Distinct`).
+-- metatheory (`Metatheory.Surface.Basics`) and, at a name, by the lookups the
+-- annotations record (`Ok`, `OkS`: a definition in scope is no generator, no
+-- declaration in scope, and the one its name finds).
 ------------------------------------------------------------------------
 
 open import Data.Bool using (Bool)
@@ -27,18 +29,22 @@ open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
 open import Once.Spec.Type using (KCtx; Type)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Metatheory using (Distinct)
+open import Data.Empty using (⊥)
+open import Once.Spec.Name using (NotGenerator)
 
 module Once.Adequacy.CoherenceS (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName)
   (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set) (inline : Fin s → Bool)
-  (dist : Distinct Σ nm) (oks-fun : ∀ {c T T′} → OkS c T → OkS c T′ → T ≡ T′) {m : ℕ} (Δ : KCtx m) where
+  (gen-ok : ∀ {d} → Ok d → NotGenerator (nm d)) (sig-ok : ∀ {d T} → Ok d → OkS (nm d) T → ⊥)
+  (inj-ok : ∀ {d d′} → Ok d → Ok d′ → nm d ≡ nm d′ → d ≡ d′)
+  (oks-fun : ∀ {c T T′} → OkS c T → OkS c T′ → T ≡ T′) {m : ℕ} (Δ : KCtx m) where
 
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.Fin using (suc)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂; subst)
+open import Data.Nat using (_<_)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Many; One; Purity; mk-kind; pure; act; eff; pureᶠ; actᶠ; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
 open import Once.Spec.Type using (Ty; TySub; Occurs; WFFun; ⟦_⟧F; Int; Float; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; _⟨_⟩)
@@ -71,9 +77,9 @@ open import Once.Adequacy.CoherenceHet fmt
          lam-h; lamd-h; cata-h; ana-h; loop-h; catad-h; spine-h; gf-h; pairc-h; twice-h; lamc-h; cg-h; cf-h; casec-h;
          casej-h; copairj-h; forkc-h; catac-h; di-h)
 open _≅_ using (≅-ty)
-open import Once.Metatheory.Surface Σ S nm dist
+open import Once.Metatheory.Surface.Basics Σ S nm hiding (module Modes)
+open import Once.Metatheory.Surface.Basics Σ S nm using (module Modes)
 open Modes Δ
-open Distinct dist using (def-inj)
 
 private
   uip : ∀ {ℓ} {X : Set ℓ} {x y : X} (p q : x ≡ y) → p ≡ q
@@ -130,6 +136,25 @@ private
 
   der↦ : ∀ {n} {L : Locals m n} {e A π B t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} → Use↦ d Ψ → L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t
   der↦ {d = d} _ = d
+
+  -- a definition in scope is not named as a generator…
+  dgen : ∀ {d w} → Ok d → w ∈ genNames → nm d ≡ gen w → ⊥
+  dgen ok m e = notGen m (subst NotGenerator e (gen-ok ok))
+
+  -- …so a generator other than `unit` does not synthesize…
+  nsGen : ∀ {n} {L : Locals m n} {w A t Ψ} {d : L ⊢ R.RResolved (gen w) ⇒ A ↝ t} → w ∈ genNames → w ≢ "unit" → Use⇒ d Ψ → ⊥
+  nsGen m nu u-unit-g = nu refl
+  nsGen m nu (u-sigop {ng = ng} _ _) = notGen m ng
+  nsGen m nu (u-def {e = e} {ok = ok}) = dgen ok m e
+
+  -- …and neither does a polymorphic definition: it is no declaration in
+  -- scope, and not the monomorphic one its name finds.
+  nsPoly : ∀ {n} {L : Locals m n} {c A t Ψ} {d : L ⊢ R.RResolved c ⇒ A ↝ t} {d₀ : Fin s} → Ok d₀ → nm d₀ ≡ c
+         → 0 < arity (S !! d₀) → Use⇒ d Ψ → ⊥
+  nsPoly ok e a0< u-unit-g = dgen ok unit∈ e
+  nsPoly ok e a0< (u-sigop {T = T} {ok = oks} _ _) = sig-ok ok (subst (λ c → OkS c T) (sym e) oks)
+  nsPoly ok e a0< (u-def {e = e′} {a = a0} {ok = ok′}) =
+    0<0 (subst (λ x → arity (S !! x) ≡ 0) (sym (inj-ok ok ok′ (trans e (sym e′)))) a0) a0<
 
 ------------------------------------------------------------------------
 -- Generators applied that never synthesize
@@ -254,7 +279,7 @@ module _ {n} {Γ : Ctx m n} where
   polydd-h o o′ refl refl refl = coerce-h _ _ ≅-refl
 
   -- a polymorphic definition read at a domain, against the same definition checked at an instance
-  polydc-at : ∀ {d d′ : Fin s} {c} (e : nm d ≡ c) (e′ : nm d′ ≡ c) {sd sc : Ty (arity (S !! d))} {π₁ π : Purity} {A B B′ : Ty m}
+  polydc-at : ∀ {d d′ : Fin s} (dd : d ≡ d′) {sd sc : Ty (arity (S !! d))} {π₁ π : Purity} {A B B′ : Ty m}
                 (ty : type (S !! d) ≡ sd ⇒⟨ π₁ ⟩ sc) (oc : ∀ i → Occurs i sc → Occurs i sd)
                 (τ : TySub (arity (S !! d)) m) (τ′ : TySub (arity (S !! d′)) m)
                 (ea : sd ⟨ τ ⟩ ≡ A) (eb : sc ⟨ τ ⟩ ≡ B) (o : π₁ ⊑π π) (p : B <: B′)
@@ -262,7 +287,7 @@ module _ {n} {Γ : Ctx m n} where
             → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o)
                  (ref {Γ = Γ} d (A ⇒[ mk-kind Many π₁ ] B) (inline d)))
               ≅ ref {Γ = Γ} d′ (type (S !! d′) ⟨ τ′ ⟩) (inline d′)
-  polydc-at {d = d} e e′ {sd = sd} {sc = sc} {A = A} ty oc τ τ′ ea eb o p eC = go (def-inj (trans e (sym e′))) τ′ eC
+  polydc-at {d = d} dd {sd = sd} {sc = sc} {A = A} ty oc τ τ′ ea eb o p eC = go dd τ′ eC
     where
       go : ∀ {d′} (dd : d ≡ d′) (τ′ : TySub (arity (S !! d′)) m) (eC : type (S !! d′) ⟨ τ′ ⟩ ≡ (A ⇒[ mk-kind Many _ ] _))
          → coerce (sub-arr (<:-refl A) p (⊑π-refl _)) (coerce (sub-arr {q = Many} (<:-refl A) (<:-refl _) o)
@@ -367,15 +392,15 @@ mutual
   coh⇒ sh u-unit   u-unit   = ≅-refl
   coh⇒ sh u-unit-g u-unit-g = ≅-refl
   coh⇒ sh u-unit-g (u-sigop {ng = ng} _ _) = ⊥-elim (notGen unit∈ ng)
-  coh⇒ sh u-unit-g (u-def {d = d} {e = e}) = ⊥-elim (def-gen d unit∈ e)
+  coh⇒ sh u-unit-g (u-def {e = e} {ok = ok}) = ⊥-elim (dgen ok unit∈ e)
   coh⇒ sh (u-var {v = v}) (u-var {v = v′}) = var-h (∋-at v v′) (lookup-shape sh v) (lookup-shape sh v′)
   coh⇒ sh (u-sigop {ok = ok} k h) (u-sigop {ok = ok′} k′ h′) = sigop-h (oks-fun ok ok′) k k′ h h′
   coh⇒ sh (u-sigop {ng = ng} _ _) u-unit-g = ⊥-elim (notGen unit∈ ng)
-  coh⇒ sh (u-sigop {mem = mem} _ _) (u-def {d = d} {e = e}) = ⊥-elim (def-sig d e mem)
-  coh⇒ sh (u-def {d = d} {e = e} {τ = τ} {a = a}) (u-def {d = d′} {e = e′} {τ = τ′}) =
-    let dd = def-inj (trans e (sym e′)) in ref-h dd (mono dd τ τ′ a)
-  coh⇒ sh (u-def {d = d} {e = e}) u-unit-g = ⊥-elim (def-gen d unit∈ e)
-  coh⇒ sh (u-def {d = d} {e = e}) (u-sigop {mem = mem} _ _) = ⊥-elim (def-sig d e mem)
+  coh⇒ sh (u-sigop {T = T} {ok = oks} _ _) (u-def {e = e} {ok = ok}) = ⊥-elim (sig-ok ok (subst (λ c → OkS c T) (sym e) oks))
+  coh⇒ sh (u-def {d = d} {e = e} {τ = τ} {a = a} {ok = ok}) (u-def {d = d′} {e = e′} {τ = τ′} {ok = ok′}) =
+    let dd = inj-ok ok ok′ (trans e (sym e′)) in ref-h dd (mono dd τ τ′ a)
+  coh⇒ sh (u-def {e = e} {ok = ok}) u-unit-g = ⊥-elim (dgen ok unit∈ e)
+  coh⇒ sh (u-def {e = e} {ok = ok}) (u-sigop {T = T} {ok = oks} _ _) = ⊥-elim (sig-ok ok (subst (λ c → OkS c T) (sym e) oks))
   coh⇒ sh (u-annot u) (u-annot u′) = coh⇐ sh u u′ refl
   coh⇒ sh (u-pair ua ub) (u-pair ua′ ub′) = pair-h (coh⇒ sh ua ua′) (coh⇒ sh ub ub′)
   coh⇒ sh (u-neg u) (u-neg u′) = neg-h (coh⇒ sh u u′)
@@ -531,13 +556,9 @@ mutual
     ⊥-elim (effPure g (kind-π (proj₁ (proj₂ (⇒-inj (≅-ty (coh⇒ sh uf uf′)))))))
   coh⇒ sh (u-effApp uf ux) (u-effApp uf′ ux′) =
     let hf = coh⇒ sh uf uf′ in effapp-at hf (coh⇐ sh ux ux′ (dom-≡ (≅-ty hf)))
-  coh⇒ sh (u-effApp {g = g} uf _) (u-app-spine _ uf′) =
-    let (A′ , π′ , E , p) = agree (der↦ uf′) (der⇒ uf)
-    in ⊥-elim (effPure g (trans (kind-π (proj₁ (proj₂ (⇒-inj E)))) (⊑pure p)))
+  coh⇒ sh (u-effApp {g = g} uf _) (u-app-spine _ uf′) = ⊥-elim (effPure g (⊑pure (proj₁ (proj₂ (coh↦⇒ sh uf′ uf)))))
   coh⇒ sh (u-app-spine ux uf) (u-app uf′ ux′) = ≅-sym (spine sh uf′ ux′ ux uf)
-  coh⇒ sh (u-app-spine _ uf) (u-effApp {g = g} uf′ _) =
-    let (A′ , π′ , E , p) = agree (der↦ uf) (der⇒ uf′)
-    in ⊥-elim (effPure g (trans (kind-π (proj₁ (proj₂ (⇒-inj E)))) (⊑pure p)))
+  coh⇒ sh (u-app-spine _ uf) (u-effApp {g = g} uf′ _) = ⊥-elim (effPure g (⊑pure (proj₁ (proj₂ (coh↦⇒ sh uf uf′)))))
   coh⇒ sh (u-app-spine ux uf) (u-app-spine ux′ uf′) =
     let hx = coh⇒ sh ux ux′ in app-h (coh↦ sh uf uf′ (≅-ty hx) refl) hx
   coh⇒ sh (u-id-app u) (u-app {ns = h} _ _) = ⊥-elim (h (sh-gen sid))
@@ -645,21 +666,21 @@ mutual
   coh⇐ sh (u-inl-app u) (u-inl-app u′) refl = inlapp-h sh {u = u} {u′ = u′} (coh⇐ sh u u′ refl)
   coh⇐ sh (u-inr-app u) (u-inr-app u′) refl = inrapp-h sh {u = u} {u′ = u′} (coh⇐ sh u u′ refl)
   coh⇐ sh (u-initial-app u) (u-initial-app u′) refl = initapp-h sh {u = u} {u′ = u′} (coh⇐ sh u u′ refl)
-  coh⇐ sh (u-poly {d = d} {e = e}) (u-poly {d = d′} {e = e′}) eA = ref-h (def-inj (trans e (sym e′))) eA
-  coh⇐ sh u-id (u-poly {d = d} {e = e}) _ = ⊥-elim (def-gen d id∈ e)
-  coh⇐ sh (u-poly {d = d} {e = e}) u-id _ = ⊥-elim (def-gen d id∈ e)
-  coh⇐ sh u-fst (u-poly {d = d} {e = e}) _ = ⊥-elim (def-gen d fst∈ e)
-  coh⇐ sh (u-poly {d = d} {e = e}) u-fst _ = ⊥-elim (def-gen d fst∈ e)
-  coh⇐ sh u-snd (u-poly {d = d} {e = e}) _ = ⊥-elim (def-gen d snd∈ e)
-  coh⇐ sh (u-poly {d = d} {e = e}) u-snd _ = ⊥-elim (def-gen d snd∈ e)
-  coh⇐ sh u-terminal (u-poly {d = d} {e = e}) _ = ⊥-elim (def-gen d terminal∈ e)
-  coh⇐ sh (u-poly {d = d} {e = e}) u-terminal _ = ⊥-elim (def-gen d terminal∈ e)
-  coh⇐ sh u-initial (u-poly {d = d} {e = e}) _ = ⊥-elim (def-gen d initial∈ e)
-  coh⇐ sh (u-poly {d = d} {e = e}) u-initial _ = ⊥-elim (def-gen d initial∈ e)
-  coh⇐ sh u-inl (u-poly {d = d} {e = e}) _ = ⊥-elim (def-gen d inl∈ e)
-  coh⇐ sh (u-poly {d = d} {e = e}) u-inl _ = ⊥-elim (def-gen d inl∈ e)
-  coh⇐ sh u-inr (u-poly {d = d} {e = e}) _ = ⊥-elim (def-gen d inr∈ e)
-  coh⇐ sh (u-poly {d = d} {e = e}) u-inr _ = ⊥-elim (def-gen d inr∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) (u-poly {e = e′} {ok = ok′}) eA = ref-h (inj-ok ok ok′ (trans e (sym e′))) eA
+  coh⇐ sh u-id (u-poly {e = e} {ok = ok}) _ = ⊥-elim (dgen ok id∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) u-id _ = ⊥-elim (dgen ok id∈ e)
+  coh⇐ sh u-fst (u-poly {e = e} {ok = ok}) _ = ⊥-elim (dgen ok fst∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) u-fst _ = ⊥-elim (dgen ok fst∈ e)
+  coh⇐ sh u-snd (u-poly {e = e} {ok = ok}) _ = ⊥-elim (dgen ok snd∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) u-snd _ = ⊥-elim (dgen ok snd∈ e)
+  coh⇐ sh u-terminal (u-poly {e = e} {ok = ok}) _ = ⊥-elim (dgen ok terminal∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) u-terminal _ = ⊥-elim (dgen ok terminal∈ e)
+  coh⇐ sh u-initial (u-poly {e = e} {ok = ok}) _ = ⊥-elim (dgen ok initial∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) u-initial _ = ⊥-elim (dgen ok initial∈ e)
+  coh⇐ sh u-inl (u-poly {e = e} {ok = ok}) _ = ⊥-elim (dgen ok inl∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) u-inl _ = ⊥-elim (dgen ok inl∈ e)
+  coh⇐ sh u-inr (u-poly {e = e} {ok = ok}) _ = ⊥-elim (dgen ok inr∈ e)
+  coh⇐ sh (u-poly {e = e} {ok = ok}) u-inr _ = ⊥-elim (dgen ok inr∈ e)
 
   -- A synthesized term converted, against the same expression checked.
   coh⇒⇐ : ∀ {n} {L : Locals m n} {Γ} (sh : Shape L Γ) {e A B t t′ Ψ Ψ′} {d : L ⊢ e ⇒ A ↝ t} {d′ : L ⊢ e ⇐ B ↝ t′}
@@ -675,7 +696,7 @@ mutual
   coh⇒⇐ sh (u-effApp {ns = h} _ _) (u-apply-app _) = ⊥-elim (h (sh-gen sapply))
   coh⇒⇐ sh (u-app-spine {ns = h} _ _) (u-apply-app _) = ⊥-elim (h (sh-gen sapply))
   coh⇒⇐ sh () (u-lam _ _)
-  coh⇒⇐ sh u (u-poly {d = d} {e = e} {a = a}) = ⊥-elim (noSyn-poly d e a (der⇒ u))
+  coh⇒⇐ sh u (u-poly {d = d} {e = e} {a = a} {ok = ok}) = ⊥-elim (nsPoly ok e a u)
   coh⇒⇐ sh u (u-compose-g _ _) = ⊥-elim (noSyn-compose (der⇒ u))
   coh⇒⇐ sh u (u-compose-f _ _) = ⊥-elim (noSyn-compose (der⇒ u))
   coh⇒⇐ sh u (u-case _ _)      = ⊥-elim (noSyn-case (der⇒ u))
@@ -688,22 +709,22 @@ mutual
   coh⇒⇐ sh u (u-inl-app _)     = ⊥-elim (ns-inl (der⇒ u))
   coh⇒⇐ sh u (u-inr-app _)     = ⊥-elim (ns-inr (der⇒ u))
   coh⇒⇐ sh u (u-initial-app _) = ⊥-elim (ns-initial (der⇒ u))
-  coh⇒⇐ sh u u-id = ⊥-elim (noSyn-gen id∈ (λ ()) (der⇒ u))
-  coh⇒⇐ sh u u-fst = ⊥-elim (noSyn-gen fst∈ (λ ()) (der⇒ u))
-  coh⇒⇐ sh u u-snd = ⊥-elim (noSyn-gen snd∈ (λ ()) (der⇒ u))
-  coh⇒⇐ sh u u-terminal = ⊥-elim (noSyn-gen terminal∈ (λ ()) (der⇒ u))
-  coh⇒⇐ sh u u-initial = ⊥-elim (noSyn-gen initial∈ (λ ()) (der⇒ u))
-  coh⇒⇐ sh u u-inl = ⊥-elim (noSyn-gen inl∈ (λ ()) (der⇒ u))
-  coh⇒⇐ sh u u-inr = ⊥-elim (noSyn-gen inr∈ (λ ()) (der⇒ u))
+  coh⇒⇐ sh u u-id = ⊥-elim (nsGen id∈ (λ ()) u)
+  coh⇒⇐ sh u u-fst = ⊥-elim (nsGen fst∈ (λ ()) u)
+  coh⇒⇐ sh u u-snd = ⊥-elim (nsGen snd∈ (λ ()) u)
+  coh⇒⇐ sh u u-terminal = ⊥-elim (nsGen terminal∈ (λ ()) u)
+  coh⇒⇐ sh u u-initial = ⊥-elim (nsGen initial∈ (λ ()) u)
+  coh⇒⇐ sh u u-inl = ⊥-elim (nsGen inl∈ (λ ()) u)
+  coh⇒⇐ sh u u-inr = ⊥-elim (nsGen inr∈ (λ ()) u)
 
   -- Two domain-given derivations of one expression, at one domain, mean the same.
   coh↦ : ∀ {n} {L : Locals m n} {Γ} (sh : Shape L Γ) {e A A′ π π′ B B′ t t′ Ψ Ψ′}
            {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} {d′ : L ⊢ e ⇐ A′ ⇒[ π′ ]↦ B′ ↝ t′}
        → (u : Use↦ d Ψ) (u′ : Use↦ d′ Ψ′) → A ≡ A′ → π ≡ π′ → realize↦ sh u ≅ realize↦ sh u′
   coh↦ sh (u-infer {p = a} {o = g} w) (u-infer {p = a′} {o = g′} w′) refl refl = di-h a g a′ g′ (coh⇒ sh w w′)
-  coh↦ sh (u-poly {d = d} {e = e} {ty = ty} {oc = oc} {τ = τ} {ea = ea} {eb = eb} {o = o})
-          (u-poly {d = d′} {e = e′} {ty = ty′} {τ = τ′} {ea = ea′} {eb = eb′} {o = o′}) refl refl =
-    let dd = def-inj (trans e (sym e′)) in
+  coh↦ sh (u-poly {d = d} {e = e} {ty = ty} {oc = oc} {τ = τ} {ea = ea} {eb = eb} {o = o} {ok = ok})
+          (u-poly {d = d′} {e = e′} {ty = ty′} {τ = τ′} {ea = ea′} {eb = eb′} {o = o′} {ok = ok′}) refl refl =
+    let dd = inj-ok ok ok′ (trans e (sym e′)) in
     polydd-h o o′ dd (poly-exact dd ty ty′ oc τ τ′ ea ea′ eb eb′) (ty-π dd ty ty′)
   coh↦ sh (u-lam {q′ = q₁} u) (u-lam {q′ = q₁′} u′) refl refl = lamd-h (≤q-Many q₁) (≤q-Many q₁′) (coh⇒ (sh-▸ sh) u u′)
   coh↦ sh (u-compose ug uf) (u-compose ug′ uf′) refl refl =
@@ -716,8 +737,8 @@ mutual
   coh↦ sh (u-case {j = j} uf ug) (u-case {j = j′} uf′ ug′) refl refl = copairj-h j j′ (coh↦ sh uf uf′ refl refl) (coh↦ sh ug ug′ refl refl)
   coh↦ sh (u-pair uf ug) (u-pair uf′ ug′) refl refl = fork-h (coh↦ sh uf uf′ refl refl) (coh↦ sh ug ug′ refl refl)
   coh↦ sh (u-cata {w = w} u) (u-cata {w = w′} u′) refl refl = catad-h w w′ (coh⇒ sh u u′)
-  coh↦ sh (u-infer w) (u-poly {d = d} {e = e} {a = a}) _ _ = ⊥-elim (noSyn-poly d e a (der⇒ w))
-  coh↦ sh (u-poly {d = d} {e = e} {a = a}) (u-infer w) _ _ = ⊥-elim (noSyn-poly d e a (der⇒ w))
+  coh↦ sh (u-infer w) (u-poly {d = d} {e = e} {a = a} {ok = ok}) _ _ = ⊥-elim (nsPoly ok e a w)
+  coh↦ sh (u-poly {d = d} {e = e} {a = a} {ok = ok}) (u-infer w) _ _ = ⊥-elim (nsPoly ok e a w)
   coh↦ sh (u-infer w) (u-compose _ _) _ _ = ⊥-elim (noSyn-compose (der⇒ w))
   coh↦ sh (u-compose _ _) (u-infer w) _ _ = ⊥-elim (noSyn-compose (der⇒ w))
   coh↦ sh (u-infer w) (u-case _ _) _ _ = ⊥-elim (noSyn-case (der⇒ w))
@@ -726,28 +747,28 @@ mutual
   coh↦ sh (u-pair _ _) (u-infer w) _ _ = ⊥-elim (noSyn-pair (der⇒ w))
   coh↦ sh (u-infer w) (u-cata _) _ _ = ⊥-elim (noSyn-cata (der⇒ w))
   coh↦ sh (u-cata _) (u-infer w) _ _ = ⊥-elim (noSyn-cata (der⇒ w))
-  coh↦ sh (u-infer w) u-id _ _ = ⊥-elim (noSyn-gen id∈ (λ ()) (der⇒ w))
-  coh↦ sh u-id (u-infer w) _ _ = ⊥-elim (noSyn-gen id∈ (λ ()) (der⇒ w))
-  coh↦ sh (u-infer w) u-fst _ _ = ⊥-elim (noSyn-gen fst∈ (λ ()) (der⇒ w))
-  coh↦ sh u-fst (u-infer w) _ _ = ⊥-elim (noSyn-gen fst∈ (λ ()) (der⇒ w))
-  coh↦ sh (u-infer w) u-snd _ _ = ⊥-elim (noSyn-gen snd∈ (λ ()) (der⇒ w))
-  coh↦ sh u-snd (u-infer w) _ _ = ⊥-elim (noSyn-gen snd∈ (λ ()) (der⇒ w))
-  coh↦ sh (u-infer w) u-terminal _ _ = ⊥-elim (noSyn-gen terminal∈ (λ ()) (der⇒ w))
-  coh↦ sh u-terminal (u-infer w) _ _ = ⊥-elim (noSyn-gen terminal∈ (λ ()) (der⇒ w))
-  coh↦ sh (u-infer w) u-initial _ _ = ⊥-elim (noSyn-gen initial∈ (λ ()) (der⇒ w))
-  coh↦ sh u-initial (u-infer w) _ _ = ⊥-elim (noSyn-gen initial∈ (λ ()) (der⇒ w))
+  coh↦ sh (u-infer w) u-id _ _ = ⊥-elim (nsGen id∈ (λ ()) w)
+  coh↦ sh u-id (u-infer w) _ _ = ⊥-elim (nsGen id∈ (λ ()) w)
+  coh↦ sh (u-infer w) u-fst _ _ = ⊥-elim (nsGen fst∈ (λ ()) w)
+  coh↦ sh u-fst (u-infer w) _ _ = ⊥-elim (nsGen fst∈ (λ ()) w)
+  coh↦ sh (u-infer w) u-snd _ _ = ⊥-elim (nsGen snd∈ (λ ()) w)
+  coh↦ sh u-snd (u-infer w) _ _ = ⊥-elim (nsGen snd∈ (λ ()) w)
+  coh↦ sh (u-infer w) u-terminal _ _ = ⊥-elim (nsGen terminal∈ (λ ()) w)
+  coh↦ sh u-terminal (u-infer w) _ _ = ⊥-elim (nsGen terminal∈ (λ ()) w)
+  coh↦ sh (u-infer w) u-initial _ _ = ⊥-elim (nsGen initial∈ (λ ()) w)
+  coh↦ sh u-initial (u-infer w) _ _ = ⊥-elim (nsGen initial∈ (λ ()) w)
   coh↦ sh (u-infer ()) (u-lam _) _ _
   coh↦ sh (u-lam _) (u-infer ()) _ _
-  coh↦ sh u-id (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d id∈ e)
-  coh↦ sh (u-poly {d = d} {e = e}) u-id _ _ = ⊥-elim (def-gen d id∈ e)
-  coh↦ sh u-fst (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d fst∈ e)
-  coh↦ sh (u-poly {d = d} {e = e}) u-fst _ _ = ⊥-elim (def-gen d fst∈ e)
-  coh↦ sh u-snd (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d snd∈ e)
-  coh↦ sh (u-poly {d = d} {e = e}) u-snd _ _ = ⊥-elim (def-gen d snd∈ e)
-  coh↦ sh u-terminal (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d terminal∈ e)
-  coh↦ sh (u-poly {d = d} {e = e}) u-terminal _ _ = ⊥-elim (def-gen d terminal∈ e)
-  coh↦ sh u-initial (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d initial∈ e)
-  coh↦ sh (u-poly {d = d} {e = e}) u-initial _ _ = ⊥-elim (def-gen d initial∈ e)
+  coh↦ sh u-id (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok id∈ e)
+  coh↦ sh (u-poly {e = e} {ok = ok}) u-id _ _ = ⊥-elim (dgen ok id∈ e)
+  coh↦ sh u-fst (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok fst∈ e)
+  coh↦ sh (u-poly {e = e} {ok = ok}) u-fst _ _ = ⊥-elim (dgen ok fst∈ e)
+  coh↦ sh u-snd (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok snd∈ e)
+  coh↦ sh (u-poly {e = e} {ok = ok}) u-snd _ _ = ⊥-elim (dgen ok snd∈ e)
+  coh↦ sh u-terminal (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok terminal∈ e)
+  coh↦ sh (u-poly {e = e} {ok = ok}) u-terminal _ _ = ⊥-elim (dgen ok terminal∈ e)
+  coh↦ sh u-initial (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok initial∈ e)
+  coh↦ sh (u-poly {e = e} {ok = ok}) u-initial _ _ = ⊥-elim (dgen ok initial∈ e)
 
   -- A domain-given term, its codomain converted, against the same expression checked at an arrow.
   coh↦⇐ : ∀ {n} {L : Locals m n} {Γ} (sh : Shape L Γ) {e A π B B′ C t t′ Ψ Ψ′}
@@ -756,8 +777,8 @@ mutual
         → coerce (sub-arr (<:-refl A) p (⊑π-refl π)) (realize↦ sh u) ≅ realize⇐ sh u′
   coh↦⇐ sh (u-infer {p = a} {o = g} w) u′ refl p =
     let r = coh⇒⇐ sh w u′ in twice-h (sub-arr a (<:-refl _) g) (sub-arr (<:-refl _) p (⊑π-refl _)) (proj₁ r) (proj₂ r)
-  coh↦⇐ sh (u-poly {d = d} {e = e} {ty = ty} {oc = oc} {τ = τ} {ea = ea} {eb = eb} {o = o}) (u-poly {d = d′} {e = e′} {τ = τ′}) eC p =
-    polydc-at e e′ ty oc τ τ′ ea eb o p eC
+  coh↦⇐ sh (u-poly {d = d} {e = e} {ty = ty} {oc = oc} {τ = τ} {ea = ea} {eb = eb} {o = o} {ok = ok}) (u-poly {d = d′} {e = e′} {τ = τ′} {ok = ok′}) eC p =
+    polydc-at (inj-ok ok ok′ (trans e (sym e′))) ty oc τ τ′ ea eb o p eC
   coh↦⇐ sh (u-lam {q′ = q₁} u) (u-lam ≤p′ u′) refl p = lamc-h (≤q-Many q₁) ≤p′ p (at-p p (coh⇒⇐ (sh-▸ sh) u u′))
   coh↦⇐ sh (u-compose ug uf) (u-compose-g ug′ uf′) refl p =
     let hg = coh↦ sh ug ug′ refl refl in cg-h′ p (coh↦⇐ sh uf uf′ (arr-dom (sym (cod-≡′ (≅-ty hg)))) p) hg
@@ -779,28 +800,28 @@ mutual
   coh↦⇐ sh (u-pair uf ug) (u-pair uf′ ug′) refl (sub-* pb pc) = forkc-h pb pc (coh↦⇐ sh uf uf′ refl pb) (coh↦⇐ sh ug ug′ refl pc)
   coh↦⇐ sh (u-cata {w = w} u) (u-cata {w = w′} u′) refl p = let r = coh⇒⇐ sh u u′ in catac-h w w′ p (proj₁ r) (proj₂ r)
   coh↦⇐ sh (u-lam _) (u-sub ()) _ _
-  coh↦⇐ sh (u-poly {d = d} {e = e} {a = a}) (u-sub u′) _ _ = ⊥-elim (noSyn-poly d e a (der⇒ u′))
+  coh↦⇐ sh (u-poly {d = d} {e = e} {a = a} {ok = ok}) (u-sub u′) _ _ = ⊥-elim (nsPoly ok e a u′)
   coh↦⇐ sh (u-compose _ _) (u-sub u′) _ _ = ⊥-elim (noSyn-compose (der⇒ u′))
   coh↦⇐ sh (u-case _ _) (u-sub u′) _ _ = ⊥-elim (noSyn-case (der⇒ u′))
   coh↦⇐ sh (u-pair _ _) (u-sub u′) _ _ = ⊥-elim (noSyn-pair (der⇒ u′))
   coh↦⇐ sh (u-cata _) (u-sub u′) _ _ = ⊥-elim (noSyn-cata (der⇒ u′))
-  coh↦⇐ sh u-id (u-sub u′) _ _ = ⊥-elim (noSyn-gen id∈ (λ ()) (der⇒ u′))
-  coh↦⇐ sh u-fst (u-sub u′) _ _ = ⊥-elim (noSyn-gen fst∈ (λ ()) (der⇒ u′))
-  coh↦⇐ sh u-snd (u-sub u′) _ _ = ⊥-elim (noSyn-gen snd∈ (λ ()) (der⇒ u′))
-  coh↦⇐ sh u-terminal (u-sub u′) _ _ = ⊥-elim (noSyn-gen terminal∈ (λ ()) (der⇒ u′))
-  coh↦⇐ sh u-initial (u-sub u′) _ _ = ⊥-elim (noSyn-gen initial∈ (λ ()) (der⇒ u′))
-  coh↦⇐ sh (u-poly {d = d} {e = e}) u-id _ _ = ⊥-elim (def-gen d id∈ e)
-  coh↦⇐ sh (u-poly {d = d} {e = e}) u-fst _ _ = ⊥-elim (def-gen d fst∈ e)
-  coh↦⇐ sh (u-poly {d = d} {e = e}) u-snd _ _ = ⊥-elim (def-gen d snd∈ e)
-  coh↦⇐ sh (u-poly {d = d} {e = e}) u-terminal _ _ = ⊥-elim (def-gen d terminal∈ e)
-  coh↦⇐ sh (u-poly {d = d} {e = e}) u-initial _ _ = ⊥-elim (def-gen d initial∈ e)
-  coh↦⇐ sh (u-poly {d = d} {e = e}) u-inl _ _ = ⊥-elim (def-gen d inl∈ e)
-  coh↦⇐ sh (u-poly {d = d} {e = e}) u-inr _ _ = ⊥-elim (def-gen d inr∈ e)
-  coh↦⇐ sh u-id (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d id∈ e)
-  coh↦⇐ sh u-fst (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d fst∈ e)
-  coh↦⇐ sh u-snd (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d snd∈ e)
-  coh↦⇐ sh u-terminal (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d terminal∈ e)
-  coh↦⇐ sh u-initial (u-poly {d = d} {e = e}) _ _ = ⊥-elim (def-gen d initial∈ e)
+  coh↦⇐ sh u-id (u-sub u′) _ _ = ⊥-elim (nsGen id∈ (λ ()) u′)
+  coh↦⇐ sh u-fst (u-sub u′) _ _ = ⊥-elim (nsGen fst∈ (λ ()) u′)
+  coh↦⇐ sh u-snd (u-sub u′) _ _ = ⊥-elim (nsGen snd∈ (λ ()) u′)
+  coh↦⇐ sh u-terminal (u-sub u′) _ _ = ⊥-elim (nsGen terminal∈ (λ ()) u′)
+  coh↦⇐ sh u-initial (u-sub u′) _ _ = ⊥-elim (nsGen initial∈ (λ ()) u′)
+  coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-id _ _ = ⊥-elim (dgen ok id∈ e)
+  coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-fst _ _ = ⊥-elim (dgen ok fst∈ e)
+  coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-snd _ _ = ⊥-elim (dgen ok snd∈ e)
+  coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-terminal _ _ = ⊥-elim (dgen ok terminal∈ e)
+  coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-initial _ _ = ⊥-elim (dgen ok initial∈ e)
+  coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-inl _ _ = ⊥-elim (dgen ok inl∈ e)
+  coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-inr _ _ = ⊥-elim (dgen ok inr∈ e)
+  coh↦⇐ sh u-id (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok id∈ e)
+  coh↦⇐ sh u-fst (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok fst∈ e)
+  coh↦⇐ sh u-snd (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok snd∈ e)
+  coh↦⇐ sh u-terminal (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok terminal∈ e)
+  coh↦⇐ sh u-initial (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok initial∈ e)
 
   -- A domain-given term against the same expression synthesized: its synthesized arrow, converted.
   coh↦⇒ : ∀ {n} {L : Locals m n} {Γ} (sh : Shape L Γ) {e A π B A′ q π′ B′ t t′ Ψ Ψ′}
@@ -809,16 +830,16 @@ mutual
         → Σ[ a ∈ A <: A′ ] Σ[ g ∈ π′ ⊑π π ] (realize↦ sh u ≅ coerce (sub-arr {q = q} a (<:-refl B′) g) (realize⇒ sh u′))
   coh↦⇒ sh (u-infer {p = a} {o = g} w) u′ = infer-at a g (coh⇒ sh w u′)
   coh↦⇒ sh (u-lam _) ()
-  coh↦⇒ sh (u-poly {d = d} {e = e} {a = a}) u′ = ⊥-elim (noSyn-poly d e a (der⇒ u′))
+  coh↦⇒ sh (u-poly {d = d} {e = e} {a = a} {ok = ok}) u′ = ⊥-elim (nsPoly ok e a u′)
   coh↦⇒ sh (u-compose _ _) u′ = ⊥-elim (noSyn-compose (der⇒ u′))
   coh↦⇒ sh (u-case _ _) u′ = ⊥-elim (noSyn-case (der⇒ u′))
   coh↦⇒ sh (u-pair _ _) u′ = ⊥-elim (noSyn-pair (der⇒ u′))
   coh↦⇒ sh (u-cata _) u′ = ⊥-elim (noSyn-cata (der⇒ u′))
-  coh↦⇒ sh u-id u′ = ⊥-elim (noSyn-gen id∈ (λ ()) (der⇒ u′))
-  coh↦⇒ sh u-fst u′ = ⊥-elim (noSyn-gen fst∈ (λ ()) (der⇒ u′))
-  coh↦⇒ sh u-snd u′ = ⊥-elim (noSyn-gen snd∈ (λ ()) (der⇒ u′))
-  coh↦⇒ sh u-terminal u′ = ⊥-elim (noSyn-gen terminal∈ (λ ()) (der⇒ u′))
-  coh↦⇒ sh u-initial u′ = ⊥-elim (noSyn-gen initial∈ (λ ()) (der⇒ u′))
+  coh↦⇒ sh u-id u′ = ⊥-elim (nsGen id∈ (λ ()) u′)
+  coh↦⇒ sh u-fst u′ = ⊥-elim (nsGen fst∈ (λ ()) u′)
+  coh↦⇒ sh u-snd u′ = ⊥-elim (nsGen snd∈ (λ ()) u′)
+  coh↦⇒ sh u-terminal u′ = ⊥-elim (nsGen terminal∈ (λ ()) u′)
+  coh↦⇒ sh u-initial u′ = ⊥-elim (nsGen initial∈ (λ ()) u′)
 
   -- `s-app` against `s-app-spine`.
   spine : ∀ {n} {L : Locals m n} {Γ} (sh : Shape L Γ) {f x A B X T q tf tx tf′ tx′ Ψ₁ Ψ₂ Ψ₁′ Ψ₂′}
