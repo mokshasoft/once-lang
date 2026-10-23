@@ -45,11 +45,12 @@ open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; f
 open import Once.TypeCheck.Use Σ S nm Δ
 
 -- An entry with no type variables respects any kinds.
+no-kinds : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0 → Respects (kinds (S !! d)) Δ τ
+no-kinds d τ a i = ⊥-elim (fin0 (subst Fin a i))
+  where fin0 : Fin 0 → ⊥
+        fin0 ()
+
 private
-  no-kinds : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0 → Respects (kinds (S !! d)) Δ τ
-  no-kinds d τ a i = ⊥-elim (fin0 (subst Fin a i))
-    where fin0 : Fin 0 → ⊥
-          fin0 ()
 
   -- The saturated primitive of a binary operator, on the pair of its operands.
   module _ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ t₁ t₂} where
@@ -76,6 +77,12 @@ private
     cm cmp-ge d e = ⊢prim p-ge (⊢pair d e)
     cm cmp-eq d e = ⊢prim p-eq (⊢pair d e)
     cm cmp-ne d e = ⊢prim p-ne (⊢pair d e)
+
+-- A polymorphic arrow's instance, from its domain and codomain's.
+poly-inst : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) m) {sd sc A B π′}
+          → type (S !! d) ≡ sd ⇒[ mk-kind Many π′ ] sc → sd ⟨ τ ⟩ ≡ A → sc ⟨ τ ⟩ ≡ B
+          → type (S !! d) ⟨ τ ⟩ ≡ A ⇒[ mk-kind Many π′ ] B
+poly-inst d τ ty ea eb = trans (cong (_⟨ τ ⟩) ty) (cong₂ (λ X Y → X ⇒[ mk-kind Many _ ] Y) ea eb)
 
 typ⇒ : ∀ {n} {L : Locals m n} {e A t Ψ} {d : L ⊢ e ⇒ A ↝ t} → Use⇒ d Ψ → Δ ⊩ ctxOf L ⊢[ Ψ ] t ∷ A ! pure
 typ⇐ : ∀ {n} {L : Locals m n} {e A t Ψ} {d : L ⊢ e ⇐ A ↝ t} → Use⇐ d Ψ → Δ ⊩ ctxOf L ⊢[ Ψ ] t ∷ A ! pure
@@ -141,11 +148,8 @@ typ⇐ (u-poly {d = d} {τ = τ} {r = r}) = ⊢ref d τ r
 
 typ↦ (u-infer {B = B} {p = p} {o = o} u) = ⊢coerce (sub-arr p (<:-refl B) o) (typ⇒ u)
 typ↦ {L = L} (u-poly {d = d} {A = A} {B = B} {ty = ty} {τ = τ} {r = r} {ea = ea} {eb = eb} {o = o}) =
-  ⊢coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o) (subst (λ X → Δ ⊩ ctxOf L ⊢[ zeroUsage ] ref d τ ∷ X ! pure) (inst ty ea eb) (⊢ref d τ r))
-  where
-    inst : ∀ {sd sc π′} → type (S !! d) ≡ sd ⇒[ mk-kind Many π′ ] sc → sd ⟨ τ ⟩ ≡ A → sc ⟨ τ ⟩ ≡ B
-         → type (S !! d) ⟨ τ ⟩ ≡ A ⇒[ mk-kind Many π′ ] B
-    inst ty ea eb = trans (cong (_⟨ τ ⟩) ty) (cong₂ (λ X Y → X ⇒[ mk-kind Many _ ] Y) ea eb)
+  ⊢coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o)
+          (subst (λ X → Δ ⊩ ctxOf L ⊢[ zeroUsage ] ref d τ ∷ X ! pure) (poly-inst d τ ty ea eb) (⊢ref d τ r))
 typ↦ (u-lam {π = π} {q′ = q′} u) = ⊢lam (≤qᵇ→≤q q′ Many (≤q-Many q′)) (⊢sub-eff (pure-⊑ π) (typ⇒ u))
 typ↦ (u-compose ug uf)           = ⊢composeᶜ (·p-diag _) (typ↦ uf) (typ↦ ug)
 typ↦ (u-id {π = π})              = ⊢idᶜ (pure-⊑ π)
