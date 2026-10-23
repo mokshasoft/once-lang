@@ -62,7 +62,10 @@ open import Once.Spec.Surface.Program
   using (TypeOf; FunOf; SchemaOf; UnderK; UnderKF;
          to-var; to-unit; to-void; to-int; to-float; to-*; to-+; to-⇒; to-act; to-eff; to-μ; to-ν; fo-K; fo-Id; fo-⊕; fo-⊗;
          uk-*ˡ; uk-*ʳ; uk-+ˡ; uk-+ʳ; uk-⇒ˡ; uk-⇒ʳ; uk-μ; uk-ν; uk-K; uk-⊕ˡ; uk-⊕ʳ; uk-⊗ˡ; uk-⊗ʳ)
-open import Once.Type.Rigid using (ftv-ground)
+open import Once.Type.Rigid using (ftv-ground; ftvK⊆ftv)
+open import Once.Postulates using (extensionality)
+open import Once.Internal.Type.Instance using (KindedInstance; RespectsKinds)
+open import Once.Internal.Type.Schema using (τOf; part-inst; kinded-instance)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS; schS; kindsS)
 
@@ -397,3 +400,31 @@ schema-arrow : ∀ sc {sd sco π′} → ArrowSchema sc sd sco π′ → CodVars
 schema-arrow (sd P⇒[ Many ] sco) as-pure cv = Parts.ab (sd P⇒[ Many ] sco) sd , Parts.ab (sd P⇒[ Many ] sco) sco , refl , incl′ (sd P⇒[ Many ] sco) sd sco (λ m → m) cv
 schema-arrow (PEff sd sco) as-eff cv = Parts.ab (PEff sd sco) sd , Parts.ab (PEff sd sco) sco , refl , incl′ (PEff sd sco) sd sco (λ m → m) cv
 schema-arrow (PAct sd sco) as-act cv = Parts.ab (PAct sd sco) sd , Parts.ab (PAct sd sco) sco , refl , incl′ (PAct sd sco) sd sco (λ m → m) cv
+
+------------------------------------------------------------------------
+-- A substitution at a schema's numbering, as a kinded instance
+------------------------------------------------------------------------
+
+-- (`kinded-instance`'s converse: the naming reads the substitution at each
+-- parameter's position)
+module _ {m} {Δ : ST.KCtx m} (sc : PolyType) where
+
+  θOf : ST.TySub (arityOf sc) m → String → ST.Ty m
+  θOf τ x = maybe′ τ ST.Unit (positionOf x (params sc))
+
+  τOf-θOf : ∀ τ i → τOf sc (θOf τ) i ≡ τ i
+  τOf-θOf τ i = cong (maybe′ τ ST.Unit) (positionOf-lookup (params sc) (nub-unique [] (ftv sc)) i)
+
+  ki-of : (τ : ST.TySub (arityOf sc) m) → ST.Respects (kindsOf sc) Δ τ → KindedInstance Δ sc (rigidOf sc ST.⟨ τ ⟩)
+  ki-of τ r = θOf τ , trans (sym (part-inst sc (θOf τ) sc (λ x → x))) (cong (rigidOf sc ST.⟨_⟩) (extensionality (τOf-θOf τ))) , rk
+    where
+      rk : RespectsKinds Δ sc (θOf τ)
+      rk {x} mk with positionOf-∈ x (params sc) (∈-params sc (ftvK⊆ftv sc mk))
+      ... | j , e , l = subst (ST.Base Δ) (sym (cong (maybe′ τ ST.Unit) e)) (r j kb)
+        where
+          kb : kindsOf sc j ≡ ST.base
+          kb = trans (cong (kindOf sc) l) (cong (λ b → if b then ST.base else ST.any) (memberB-complete x (ftvK sc) mk))
+
+  -- …whose substitution is the one it was built from
+  ki-of-τ : ∀ τ r → proj₁ (kinded-instance sc (ki-of τ r)) ≡ τ
+  ki-of-τ τ r = extensionality (τOf-θOf τ)

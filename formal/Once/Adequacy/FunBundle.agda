@@ -25,7 +25,7 @@ module Once.Adequacy.FunBundle where
 import Once.TypeCheck.DualWitness
 open import Once.Internal.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoBody; MonoWit)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoBody; MonoWit; pair-at)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -104,8 +104,8 @@ elabOK-sound nothing  ctx e ty ce = infer-soundV ctx e ce
 -- …and its witness: the checker's own, at the result the equation names.
 elabOK-wit : ∀ (ft : Maybe Type) (ctx : NamedCtx 0) (e : RawExpr) (ty : Type) {Ψ se d f}
            → ElabOK ft ctx e ty Ψ se d f → MonoWit ft ctx e ty Ψ
-elabOK-wit (just _) ctx e ty {se = se} ce = se , subst (TE.checkSoundOf ctx e ty) ce (proj₂ (TE.checkElabV ctx e ty))
-elabOK-wit nothing  ctx e ty {se = se} ce = se , subst (TE.soundOf ctx e) ce (proj₂ (TE.inferElabV ctx e))
+elabOK-wit (just _) ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TE.checkElabV ctx e ty) ce
+elabOK-wit nothing  ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TE.inferElabV ctx e) ce
 
 data FunBundle : C.CScope → List Parser.Entry → Set where
   bnil  : ∀ {sc} → FunBundle sc []

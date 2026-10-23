@@ -96,7 +96,8 @@ open import Once.Adequacy.SpecFront.Expr
 open import Once.Adequacy.SpecFront.Types Δ
 open import Once.Adequacy.SpecFront.Terms S {Δ = Δ}
 open import Once.Adequacy.SpecFront.Locals Σ S nm Δ
-open import Once.TypeCheck.Witness Σ S nm Δ
+open import Data.Unit using (⊤; tt)
+open import Once.TypeCheck.Witness Σ S nm (λ _ → ⊤) (λ _ _ → ⊤) Δ
 import Once.Spec.Context as SCx
 
 import Once.Spec.Surface.Typing Σ S nm as SU
@@ -188,13 +189,13 @@ module _ {n} {Γd : LC.Ctx m n} {L : SU.Locals m n} where
   refS : (d : Fin s) {c : CanonicalName} → nm d ≡ c → ∀ {sc} (e : S SC.!! d ≡ sc) τ r
        → SC.Schema.arity (S SC.!! d) ≡ 0
        → Syn L (SX.RResolved c) (SC.Schema.type sc ST.⟨ τ ⟩) (proj₁ (EV.refAt {Δ = Δ} {Γ = Γd} d e τ r)) SCx.zeroUsage
-  refS d ne refl τ r ar = syn (tyR _) (tmR _) (w-def d ne τ ar)
+  refS d ne refl τ r ar = syn (tyR _) (tmR _) (w-def d {tt} ne τ ar)
 
   -- …with some: checked at the instance;
   refC : (d : Fin s) {c : CanonicalName} → nm d ≡ c → ∀ {sc} (e : S SC.!! d ≡ sc) τ r
        → 0 < SC.Schema.arity (S SC.!! d)
        → Chk L (SX.RResolved c) (SC.Schema.type sc ST.⟨ τ ⟩) (proj₁ (EV.refAt {Δ = Δ} {Γ = Γd} d e τ r)) SCx.zeroUsage
-  refC d ne refl τ r pos = chk (tmR _) (w-poly d ne pos τ r)
+  refC d ne refl τ r pos = chk (tmR _) (w-poly d {tt} ne pos τ r)
 
   -- …and an arrow given its domain.
   private
@@ -211,7 +212,7 @@ module _ {n} {Γd : LC.Ctx m n} {L : SU.Locals m n} where
                         (proj₁ (EV.retypeE q (EV.refAt {Δ = Δ} {Γ = Γd} d e τ r)))) SCx.zeroUsage
   refD d ne refl τ r pos {X} {Y} te occ q g =
     subst (λ t → Dom L _ _ _ _ (SC.coerce _ _ t) _) (sym (retype-tm q _))
-          (dom (tyR _) (tmR _) (w-poly↦ d ne pos te occ τ r (proj₁ parts) (proj₂ parts) g))
+          (dom (tyR _) (tmR _) (w-poly↦ d {tt} ne pos te occ τ r (proj₁ parts) (proj₂ parts) g))
     where
       parts = ⇒-inj (trans (sym (cong (ST._⟨ τ ⟩) te)) q)
 
@@ -283,7 +284,7 @@ mutual
     where
       res : (D : VV.Declared (showCanonical cn) T) → Syn L (SX.RResolved cn) _ (proj₁ (EV.sigE {Δ = Δ} {Γ = Γd} cn wn k D eq)) SCx.zeroUsage
       res (VV.declared h mem) =
-        syn (subst (TyR Δ _) (trans eq (sym (⌜declS⌝ k h))) (tyR _)) (tmR _) (w-sigop ng (mem wn refl) k (⌜declS⌝ k h))
+        syn (subst (TyR Δ _) (trans eq (sym (⌜declS⌝ k h))) (tyR _)) (tmR _) (w-sigop {ok = tt} ng (mem wn refl) k h)
   fwdᵢ (t-var-own _ lk eq) lr (x-res _) =
     syn-retype (sym eq) _ (refS (TView.ImportAt.entryOf (TView.View.imported V lk)) (h-imp lk) (TView.ImportAt.mono (TView.View.imported V lk)) _ _
                                 (cong SC.Schema.arity (TView.ImportAt.mono (TView.View.imported V lk))))

@@ -27,6 +27,7 @@ open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 import Once.Internal.Core.Telescope as TL
 open import Once.Internal.Module using (ModTele; MainIn; emptyScope)
 import Once.Internal.Core.Translate as TR
+import Once.Adequacy.ModuleProgram as MP
 import Once.Adequacy.SpecCore.Program as PG
 import Once.Adequacy.SpecCore.Sound as Sound
 import Once.Adequacy.CoreBridge as CB
@@ -46,7 +47,7 @@ module _ {mm′ ds′ es} {mt : ModTele emptyScope es} {mi : MainIn mt} (D : Den
   view = λ m → sig-in Σₛ (key-word keysW) (subst (_ ∈_) sig-eq m)
 
   -- The compiler's run of its core program has the Spec's trace.
-  same-trace : ∀ J → CB.coreTr fmt Σₛ (TR.toProgram₀ Σₛ mt mi view) J ≈ᵗ⟨ _≡_ ⟩ CoreProgram.behaviour Σₛ fmt progS J
+  same-trace : ∀ J → CB.coreTr fmt Σₛ (MP.toProgram₀ Σₛ mt mi view) J ≈ᵗ⟨ _≡_ ⟩ CoreProgram.behaviour Σₛ fmt progS J
   same-trace J =
     subst (λ P → CB.coreTr fmt Σₛ P J ≈ᵗ⟨ _≡_ ⟩ CoreProgram.behaviour Σₛ fmt progS J)
           (sym built)

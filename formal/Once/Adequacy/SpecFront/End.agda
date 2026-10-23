@@ -43,8 +43,9 @@ open import Once.TypeCheck.Classify using (topCtx)
 import Once.Compile as C
 open import Once.Internal.Principal using (PrincipalAt)
 open import Once.Internal.Core.Translate Σ
-  using (SigSig; ImpSig; TeleSig; SigIn; t-def; wkI; wkT; impDefs; monoDef; polyDef; mainEntry;
-         toProgram; toProgramFrom)
+  using (SigSig; ImpSig; TeleSig; SigIn; t-def; wkI; wkT; impDefs; polyDef; mainEntry)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; toProgram; toProgramFrom)
+import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Spec.Sub using (_<:_)
 import Once.Type.Sub
 import Once.Internal.Core.Translate Σ as TR
@@ -74,16 +75,16 @@ private
 no-ffi : ∀ {fi es} → funIsPrimitive fi ≡ true → All EntryKind (Parser.e-fun fi ∷ es) → ⊥
 no-ffi ep ((ep′ , _) ∷ _) = t≢f (trans (sym ep) ep′)
 
-endOf : ∀ {s} {S : SC.Defs s} {sc es} → SP.Tele S → SigSig (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
-      → (Fin s → CanonicalName) → (mt : ModTele sc es) → All EntryKind es → End
-endOf tl ss is ts nm [] _ = end tl nm
-endOf tl ss is ts nm (ffi ep _ _ _ _) ks = ⊥-elim (no-ffi ep ks)
-endOf {S = S} {sc} tl ss is ts nm (poly {pfi = pfi} {Ψ = Ψ} pr D _ rest) ks =
+endOf : ∀ {s} {S : SC.Defs s} {sc es} → SP.Tele S → SigSig (Scope.sig sc) → (is : ImpSig S (Scope.imps sc)) → (ts : TeleSig S (Scope.tele sc))
+      → Names S is ts → (mt : ModTele sc es) → All EntryKind es → End
+endOf tl ss is ts N [] _ = end tl (Names.nm N)
+endOf tl ss is ts N (ffi ep _ _ _ _) ks = ⊥-elim (no-ffi ep ks)
+endOf {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) ks =
   endOf (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
-        (canonical (pfunName pfi ∷ []) ∷ⁿ nm) rest (all-tail ks)
-endOf {S = S} {sc} tl ss is ts nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D _ rest) ks =
-  endOf (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-        (canonical (funName fi ∷ []) ∷ⁿ nm) rest (all-tail ks)
+        (names-poly pfi N) rest (all-tail ks)
+endOf {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) ks =
+  endOf (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
+        (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest (all-tail ks)
 
 ------------------------------------------------------------------------
 -- The compiler's core program is the end's telescope
@@ -95,51 +96,51 @@ EndsAt e p = Σ[ d ∈ Fin (End.s e) ] Σ[ me ∈ SP.Entry (SC._!!_ (End.S e) d)
 
 -- after `main`: the entry, weakened along
 from-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-           (nm : Fin s → CanonicalName) (d : Fin s) (me : SP.Entry (SC._!!_ S d)) → nm d ≡ canonical ("main" ∷ [])
+           (N : Names S is ts) (d : Fin s) (me : SP.Entry (SC._!!_ S d)) → Names.nm N d ≡ canonical ("main" ∷ [])
          → (mt : ModTele sc es) (u : SigIn mt) (ks : All EntryKind es)
-         → EndsAt (endOf tl ss is ts nm mt ks) (toProgramFrom tl ss is ts d me mt u)
-from-end tl ss is ts nm d me h [] u ks = d , me , refl , h
-from-end tl ss is ts nm d me h (ffi ep _ _ _ _) u ks = ⊥-elim (no-ffi ep ks)
-from-end {S = S} {sc} tl ss is ts nm d me h (poly {pfi = pfi} {Ψ = Ψ} pr D _ rest) u ks =
+         → EndsAt (endOf tl ss is ts N mt ks) (toProgramFrom tl ss is ts N d me mt u)
+from-end tl ss is ts N d me h [] u ks = d , me , refl , h
+from-end tl ss is ts N d me h (ffi ep _ _ _ _) u ks = ⊥-elim (no-ffi ep ks)
+from-end {S = S} {sc} tl ss is ts N d me h (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) u ks =
   from-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
-           (canonical (pfunName pfi ∷ []) ∷ⁿ nm) (suc d) me h rest u (all-tail ks)
-from-end {S = S} {sc} tl ss is ts nm d me h (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D _ rest) u ks =
-  from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-           (canonical (funName fi ∷ []) ∷ⁿ nm) (suc d) me h rest u (all-tail ks)
+           (names-poly pfi N) (suc d) me h rest u (all-tail ks)
+from-end {S = S} {sc} tl ss is ts N d me h (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) u ks =
+  from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
+           (names-mono (funName fi Data.String.== "main") (funName fi) ty N) (suc d) me h rest u (all-tail ks)
 
 prog-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-           (nm : Fin s → CanonicalName)
+           (N : Names S is ts)
          → (mt : ModTele sc es) (mi : MainIn mt) (u : SigIn mt) (ks : All EntryKind es)
-         → EndsAt (endOf tl ss is ts nm mt ks) (toProgram tl ss is ts mt mi u)
+         → EndsAt (endOf tl ss is ts N mt ks) (toProgram tl ss is ts N mt mi u)
 -- a `mono` entry: `main` here (picked, or dispatched on), or later
 mono-end : ∀ {s} {S : SC.Defs s} {sc es fi ty Ψ} (tl : SP.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-           (nm : Fin s → CanonicalName)
+           (N : Names S is ts)
            (ep : funIsPrimitive fi ≡ false)
            (er : C.resolveFunType (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty)
            (pr : PrincipalAt (ctxOf sc) (funBody fi) ty) (D : MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            (rest : ModTele (addImp sc (funName fi) ty) es) (mi′ : MainIn rest)
          → (dm : Dec (funName fi ≡ "main")) (de : Dec (ty <: EffUU)) (u : SigIn rest) (ks : All EntryKind (Parser.e-fun fi ∷ es))
-         → EndsAt (endOf tl ss is ts nm (mono {sc = sc} {fi = fi} {ty = ty} {es = es} {Ψ = Ψ} ep er pr D W rest) ks)
-                  (TR.monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D rest mi′ dm de u)
+         → EndsAt (endOf tl ss is ts N (mono {sc = sc} {fi = fi} {ty = ty} {es = es} {Ψ = Ψ} ep er pr D W rest) ks)
+                  (MP.monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ dm de u)
 
-prog-end tl ss is ts nm [] () u ks
-prog-end tl ss is ts nm (ffi ep _ _ _ _) mi u ks = ⊥-elim (no-ffi ep ks)
-prog-end {S = S} {sc} tl ss is ts nm (poly {pfi = pfi} {Ψ = Ψ} pr D _ rest) mi u ks =
+prog-end tl ss is ts N [] () u ks
+prog-end tl ss is ts N (ffi ep _ _ _ _) mi u ks = ⊥-elim (no-ffi ep ks)
+prog-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr D W rest) mi u ks =
   prog-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
-           (canonical (pfunName pfi ∷ []) ∷ⁿ nm) rest mi u (all-tail ks)
-prog-end {S = S} {sc} tl ss is ts nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D _ rest) (inj₁ (em , e)) u ks =
-  from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-           (canonical (funName fi ∷ []) ∷ⁿ nm) zero (mainEntry e) (cong (λ x → canonical (x ∷ [])) em) rest u (all-tail ks)
-prog-end {S = S} {sc} tl ss is ts nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) (inj₂ mi′) u ks =
-  mono-end tl ss is ts nm ep er pr D W rest mi′ (funName fi Data.String.≟ "main") (Once.Type.Sub._<:?_ ty EffUU) u ks
+           (names-poly pfi N) rest mi u (all-tail ks)
+prog-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) (inj₁ (em , e)) u ks =
+  from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
+           (names-mono (funName fi Data.String.== "main") (funName fi) ty N) zero (mainEntry e) (cong (λ x → canonical (x ∷ [])) em) rest u (all-tail ks)
+prog-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D W rest) (inj₂ mi′) u ks =
+  mono-end tl ss is ts N ep er pr D W rest mi′ (funName fi Data.String.≟ "main") (Once.Type.Sub._<:?_ ty EffUU) u ks
 
-mono-end {S = S} {sc} {fi = fi} {ty} {Ψ} tl ss is ts nm ep er pr D W rest mi′ (yes em) (yes e) u ks =
-  from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-           (canonical (funName fi ∷ []) ∷ⁿ nm) zero (mainEntry e) (cong (λ x → canonical (x ∷ [])) em) rest u (all-tail ks)
-mono-end {S = S} {sc} {fi = fi} {ty} {Ψ} tl ss is ts nm ep er pr D W rest mi′ (yes _) (no _) u ks =
-  prog-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-           (canonical (funName fi ∷ []) ∷ⁿ nm) rest mi′ u (all-tail ks)
-mono-end {S = S} {sc} {fi = fi} {ty} {Ψ} tl ss is ts nm ep er pr D W rest mi′ (no _) _ u ks =
-  prog-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-           (canonical (funName fi ∷ []) ∷ⁿ nm) rest mi′ u (all-tail ks)
+mono-end {S = S} {sc} {fi = fi} {ty} {Ψ} tl ss is ts N ep er pr D W rest mi′ (yes em) (yes e) u ks =
+  from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
+           (names-mono (funName fi Data.String.== "main") (funName fi) ty N) zero (mainEntry e) (cong (λ x → canonical (x ∷ [])) em) rest u (all-tail ks)
+mono-end {S = S} {sc} {fi = fi} {ty} {Ψ} tl ss is ts N ep er pr D W rest mi′ (yes _) (no _) u ks =
+  prog-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
+           (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest mi′ u (all-tail ks)
+mono-end {S = S} {sc} {fi = fi} {ty} {Ψ} tl ss is ts N ep er pr D W rest mi′ (no _) _ u ks =
+  prog-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
+           (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest mi′ u (all-tail ks)

@@ -234,6 +234,7 @@ library
       MAlonzo.Code.Once.TypeCheck.View
       MAlonzo.Code.Once.TypeCheck.Witness
       MAlonzo.Code.Once.Denotation.RealizeS
+      MAlonzo.Code.Once.Denotation.SurfaceRefs
       MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.ElaborateProofs
       MAlonzo.Code.Once.TypeCheck.Error

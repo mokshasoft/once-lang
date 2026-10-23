@@ -103,20 +103,10 @@ import Once.Adequacy.FunBundle as FB
 import Data.Maybe
 open import Once.Adequacy.TelePosition
 open import Once.Adequacy.ElaborateLinked
+open import Once.Denotation.SurfaceRefs using (Refs; FFIRef; ImpRef; PolyRef; InScope)
+open import Once.TypeCheck.Elaborate using (checkSoundOf; soundOf; inferElabV)
 
 private variable σ : ISig
-
--- What a typing rule finds in scope at a reference.
-ImpRef : ∀ {m} → Imports → String → Ty m → Set
-ImpRef imps x A = Σ Type (λ T → (lookupImport imps x ≡ just T) × (A ≡ wk₀ T))
-
--- Plan 0.105 / D274: an FFI reference (`realize` emits one for a qualified or
--- resolved name): the generator of Σ it found.
-FFIRef : Imports → CanonicalName → Type → Set
-FFIRef sg c A = lookupImport sg (showCanonical c) ≡ just A
-
-PolyRef : ∀ {m} → PolyCtx → KCtx m → String → Ty m → Set
-PolyRef polys Δ x A = Σ (PolyType × RawExpr × PolyCtx) (λ r → (lookupPolyPrefix polys x ≡ just r) × KindedInstance Δ (proj₁ r) A)
 
 -- The resolver's splice of a telescope reference, read off the checker's
 -- answer at the instance (`applySplice` without its termination bookkeeping).
@@ -502,15 +492,18 @@ body-linked : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {bo
             → (ce : Once.TypeCheck.Elaborate.checkElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty
                       ≡ success Once.Spec.Context.[] se d f)
             → Linked σ pre irFun
-body-linked {σ = σ} {csc = csc} {pre = pre} inv x ty {body} cf ce =
+body-linked {σ = σ} {csc = csc} {pre = pre} inv x ty {body} {se = se} cf ce =
   subst (Linked σ pre) (sym (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body cf ce))
-    (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D′))
+    (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 se)
       (resolve-refs pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
          (LInv.tel-ok inv (C.declImps (C.CScope.ctele csc)) (LInv.iself inv))
-         (<-wellFounded (length (C.cpolys csc))) uf 0 (realize D′)
+         (<-wellFounded (length (C.cpolys csc))) uf 0 se
          (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef (C.CScope.cimps csc)} {Pp = PolyRef (C.cpolys csc) ∅ₖ} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef (C.cpolys csc) ∅ₖ}
-                   (LInv.sig-ok inv) (imp-ref inv) (λ r → r) (realize D′) (realize-refs D′))))
-  where D′ = sound-of (checkElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty) ce
+                   (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se refs)))
+  where -- the checker's term refers only into its scope (its witness says so)
+        refs : InScope (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) se
+        refs = proj₁ (proj₂ (subst (checkSoundOf (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty) ce
+                                   (proj₂ (checkElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty))))
         uf : Imports
         uf = (x , ty) ∷ C.CScope.cimps csc
 
@@ -521,15 +514,17 @@ body-linkedI : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {b
              → (ce : Once.TypeCheck.Elaborate.inferElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body
                        ≡ success ty Once.Spec.Context.[] se d f)
              → Linked σ pre irFun
-body-linkedI {σ = σ} {csc = csc} {pre = pre} inv x ty {body} cf ce =
+body-linkedI {σ = σ} {csc = csc} {pre = pre} inv x ty {body} {se = se} cf ce =
   subst (Linked σ pre) (sym (irFun-formI (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body cf ce))
-    (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D′))
+    (elaborate-linked pre IR′.Heap (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 se)
       (resolve-refs pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
          (LInv.tel-ok inv (C.declImps (C.CScope.ctele csc)) (LInv.iself inv))
-         (<-wellFounded (length (C.cpolys csc))) uf 0 (realize-infer D′)
+         (<-wellFounded (length (C.cpolys csc))) uf 0 se
          (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef (C.CScope.cimps csc)} {Pp = PolyRef (C.cpolys csc) ∅ₖ} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef (C.cpolys csc) ∅ₖ}
-                   (LInv.sig-ok inv) (imp-ref inv) (λ r → r) (realize-infer D′) (realize-refs-i D′))))
-  where D′ = sound-of-i (Once.TypeCheck.Elaborate.inferElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body) ce
+                   (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se refs)))
+  where refs : InScope (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) se
+        refs = proj₁ (proj₂ (subst (soundOf (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body) ce
+                                   (proj₂ (inferElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body))))
         uf : Imports
         uf = (x , ty) ∷ C.CScope.cimps csc
 

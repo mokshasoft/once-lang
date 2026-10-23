@@ -225,21 +225,21 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- `with` on `checkElabV`), so proofs can case on a bound variable and the
 -- original `compileFunBody` is `aux ∘ checkElabV` by `refl` (Plan 0.48: needed
 -- to prove `doOpt`-independence of success without the `with`-bite).
--- D254: the compiled term is the REALIZATION of the checker's derivation
--- (`realize`), the reference elaboration the Spec reads.
+-- Plan 0.122 §5.6: the compiled term is the checker's own, which is the
+-- realization of its Spec witness (`TypeCheck.SpecWitness`).
 compileFunBody-aux : ∀ {ctx : NamedCtx 0} {body : RawExpr}
   → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
   → TE.VerifiedCheckResult ctx body ty → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
   inj₁ ("Type error in " ++ name ++ ": " ++ Error.renderError err)
-compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ _ _ _ , w) =
+compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ eE _ _ , w) =
   -- Plan 0.19: the user-fn list (= `ctx + self`) is `userFns`. Plan 0.103
   -- phase 1c: a telescope body is linked in ITS declaration imports
   -- (`impsOf`), not in this function's. External syscalls are handled via
   -- the qualified-name path and never reach this resolver.
   let userList = (name , ty) ∷ TopCtx.tdefs ctx
-      resolved = resolveExpr polys impsOf userList 0 (realize (proj₁ w))
+      resolved = resolveExpr polys impsOf userList 0 eE
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
@@ -276,9 +276,9 @@ compileFunBodyI-at : ∀ {ctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Sr
   → DI ctx body T Ψ eE → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (no _) =
   inj₁ ("Type error in " ++ name ++ ": its body synthesizes another type than " ++ showType ty)
-compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =
+compileFunBodyI-at {eE = eE} m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =
   let userList = (name , ty) ∷ TopCtx.tdefs ctx
-      resolved = resolveExpr polys impsOf userList 0 (realize-infer (proj₁ w))
+      resolved = resolveExpr polys impsOf userList 0 eE
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
@@ -552,9 +552,9 @@ lw-mono sc fi es (inj₂ ty) =
   lw-name fi (lw-bodyM (funType fi) (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty)
   DL.++ lw-entries (extendScope sc (funName fi) ty) es
 lw-body ctx body ty (TE.failure _ , _)       = false
-lw-body ctx body ty (TE.success _ _ _ _ , w) = 0 <ᵇ silentLoops (realize (proj₁ w))
+lw-body ctx body ty (TE.success _ eE _ _ , w) = 0 <ᵇ silentLoops eE
 lw-bodyI ctx body (TE.failure _ , _)         = false
-lw-bodyI ctx body (TE.success _ _ _ _ _ , w) = 0 <ᵇ silentLoops (realize-infer (proj₁ w))
+lw-bodyI ctx body (TE.success _ _ eE _ _ , w) = 0 <ᵇ silentLoops eE
 lw-bodyM (just _) ctx body ty = lw-body ctx body ty (TE.checkElabV ctx body ty)
 lw-bodyM nothing  ctx body ty = lw-bodyI ctx body (TE.inferElabV ctx body)
 lw-name fi true  = funName fi ∷ []

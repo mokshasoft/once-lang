@@ -135,3 +135,12 @@ d_Views_142 ::
   Integer ->
   MAlonzo.Code.Once.Internal.Typing.Scope.T_NamedCtx_114 -> ()
 d_Views_142 = erased
+-- Once.TypeCheck.View.InView
+d_InView_156 a0 a1 a2 a3 a4 a5 a6 a7 = ()
+data T_InView_156
+  = C_iv'45'imp_174 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                    MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+    C_iv'45'poly_186 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10
+                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68
+                     [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]

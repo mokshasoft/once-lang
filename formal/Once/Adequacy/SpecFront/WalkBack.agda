@@ -183,11 +183,12 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
 open import Data.List.Relation.Unary.All using (All; _∷_)
 open import Data.Sum using (inj₂)
 open import Data.Bool using (false)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly; MonoWit; pair-at)
 import Once.Internal.Typing
 import Once.Internal.Typing.Scope
 import Once.TypeCheck.DualWitness
-open import Once.Internal.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSchema)
+open import Once.Internal.Core.Translate Σ using (t-def; wkI; wkT; impDefs; polyDef; monoSchema)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf)
 import Once.Internal.Type.Instance
@@ -204,9 +205,12 @@ private
         → Σ[ eE ∈ _ ] Once.TypeCheck.DualWitness.DC ctx e A Ψ eE
   wit-c D = let (eE , _ , _ , w , _) = check-completeV D in eE , w
 
-  wit-i : ∀ {m} {ctx : Once.Internal.Typing.Scope.NamedCtx m} {e A Ψ} → Once.Internal.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ
-        → Σ[ eE ∈ _ ] Once.TypeCheck.DualWitness.DI ctx e A Ψ eE
-  wit-i {ctx = ctx} {e} D = let (eE , _ , _ , eq) = infer-complete D in eE , subst (TE.soundOf ctx e) eq (proj₂ (TE.inferElabV ctx e))
+  -- …the checker's own result (a monomorphic body's)
+  mwit-c : ∀ {ctx e A Ψ} → Once.Internal.Typing._⊢ᶜ_∶_⨾_ ctx e A Ψ → MonoWit (just A) ctx e A Ψ
+  mwit-c D = check-completeV D
+
+  mwit-i : ∀ {ctx e A Ψ} → Once.Internal.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ → MonoWit nothing ctx e A Ψ
+  mwit-i {ctx = ctx} {e} D = let (eE , d , f , eq) = infer-complete D in eE , d , f , _ , pair-at (TE.inferElabV ctx e) eq
 open import Once.Adequacy.SpecCore.Type using (TyR-≡; tyR; r-unit; r-void; r-int; r-float; r-*; r-+; r-⇒; r-μ; r-ν; r-var;
                                                FunR; r-K; r-Id; r-⊕; r-⊗)
 open import Once.Adequacy.SpecFront.SchemaRen using (ren-0)
@@ -265,26 +269,26 @@ rel-▷0 r refl = record
 -- defining `main` define entries, so do the telescope's, and where some
 -- step does, some entry is `main`.
 walk← : ∀ {s} {S : SC.Defs s} {imps tele es ds}
-          (tl : SP.Tele S) (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele) (nm : Fin s → CanonicalName)
+          (tl : SP.Tele S) (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele) (N : Names S is ts)
           {S′ : SC.Defs s} {tl′ s″} {S″ : SC.Defs s″} {nm″ tl″}
-        → Rel S′ S → (wk : SPr.Walk Σ S′ nm tl′ ds S″ nm″ tl″) → Align ds es
-        → WInv S (scope sg imps tele) is ts nm → EntriesOK (scope sg imps tele) es
+        → Rel S′ S → (wk : SPr.Walk Σ S′ (Names.nm N) tl′ ds S″ nm″ tl″) → Align ds es
+        → WInv S (scope sg imps tele) is ts (Names.nm N) → EntriesOK (scope sg imps tele) es
         → Σ[ mt ∈ ModTele (scope sg imps tele) es ] (MainsW wk → MainsEffUU mt) × (MainW wk → MainIn mt)
-walk← tl ss is ts nm r SPr.w-end al-nil w o = [] , (λ _ → tt) , (λ ())
-walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-sig al)    w o = walk← tl ss is ts nm r wk al w o
-walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-alias al)  w o = walk← tl ss is ts nm r wk al w o
-walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-import al) w o = walk← tl ss is ts nm r wk al w o
+walk← tl ss is ts N r SPr.w-end al-nil w o = [] , (λ _ → tt) , (λ ())
+walk← tl ss is ts N r (SPr.w-skip _ wk) (al-skip SPr.nd-sig al)    w o = walk← tl ss is ts N r wk al w o
+walk← tl ss is ts N r (SPr.w-skip _ wk) (al-skip SPr.nd-alias al)  w o = walk← tl ss is ts N r wk al w o
+walk← tl ss is ts N r (SPr.w-skip _ wk) (al-skip SPr.nd-import al) w o = walk← tl ss is ts N r wk al w o
 -- a monomorphic definition with a signature
-walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig {sc = sc} so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ rx al) w o =
-  mono refl refl P D (wit-c D) mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
+walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig {sc = sc} so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ rx al) w o =
+  mono refl refl P D (mwit-c D) mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
   where
     fi = Parser.mkFunInfo x (just ty) e false
-    st = Step.step ss is ts nm w r ST.∅ₖ (tyR ty) so₂ so b pr rx
+    st = Step.step ss is ts (Names.nm N) w r ST.∅ₖ (tyR ty) so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
     D = proj₂ (proj₁ st)
     P = proj₂ st
-    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss
-                 (impDefs (x Data.String.== "main") is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm) (rel-▷ r so so₂) wk al
+    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N (mwit-c D)) ss
+                 (impDefs (x Data.String.== "main") is) (wkT ts) (names-mono (x Data.String.== "main") x ty N) (rel-▷ r so so₂) wk al
                  (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o)
     mt = proj₁ rest
     ms = proj₁ (proj₂ rest)
@@ -293,17 +297,17 @@ walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig {sc = sc} so b pr wk) 
     eff-at : Entry sc → ty LS.<: LT.Unit LT.⇒[ LG.mk-kind LG.Many LG.eff ] LT.Unit
     eff-at = entry-eff (schemaOf-ren so₂ so)
 -- a telescope definition
-walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig so b pr wk) (al-poly {x = x} {T = T} {e = e} so₂ nmono rx al) w o =
+walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig so b pr wk) (al-poly {x = x} {T = T} {e = e} so₂ nmono rx al) w o =
   poly P D (wit-c D) mt , (λ { (_ , hs) → ms hs }) , (λ { (inj₁ (_ , en)) → ⊥-elim (not-entry en) ; (inj₂ m) → mi m })
   where
     pfi = Parser.mkPolyFunInfo x T e
     κ = kindsOf T
-    st = Step.step ss is ts nm w r κ (tyR _) so₂ so b pr rx
+    st = Step.step ss is ts (Names.nm N) w r κ (tyR _) so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
     D = proj₂ (proj₁ st)
     P = proj₂ st
     rest = walk← (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
-                 (canonical (x ∷ []) ∷ⁿ nm) (rel-▷ r so so₂) wk al
+                 (names-poly pfi N) (rel-▷ r so so₂) wk al
                  (winv-poly pfi w (all-head (kinds o)) (all-head (fresh o))) (eok-poly o)
     mt = proj₁ rest
     ms = proj₁ (proj₂ rest)
@@ -315,19 +319,19 @@ walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig so b pr wk) (al-poly {
           (c′ , eq) = isConcrete?-complete c
       in nothing≢just (trans (sym (nmono g′)) eq)
 -- one without a signature: the type its body synthesizes
-walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-nosig syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
-  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P D (wit-i D) mt
+walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-nosig syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
+  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P D (mwit-i D) mt
   , (λ { (h , hs) → (λ m → sub-L (h m) rA r-EffUU) , ms hs }) , (λ { (inj₁ (m , p)) → inj₁ (m , sub-L p rA r-EffUU) ; (inj₂ m) → inj₂ (mi m) })
   where
-    st = Step.step-nosig ss is ts nm w r syn typ pr rx
+    st = Step.step-nosig ss is ts (Names.nm N) w r syn typ pr rx
     ty = proj₁ st
     rA = proj₁ (proj₂ st)
     Ψ = proj₁ (proj₁ (proj₂ (proj₂ st)))
     D = proj₂ (proj₁ (proj₂ (proj₂ st)))
     P = proj₂ (proj₂ (proj₂ st))
     fi = Parser.mkFunInfo x nothing e false
-    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss
-                 (impDefs (x Data.String.== "main") is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)
+    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N (mwit-i D)) ss
+                 (impDefs (x Data.String.== "main") is) (wkT ts) (names-mono (x Data.String.== "main") x ty N)
                  (rel-▷0 r (sym (TyR-≡ rA))) wk al
                  (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o)
     mt = proj₁ rest

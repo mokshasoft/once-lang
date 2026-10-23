@@ -78,9 +78,10 @@ open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
 import Once.Internal.Elaboration as E
 open import Once.Internal.Core.Translate Σ
-  using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; monoDef; polyDef; viewOf; telFind; elabM; u0)
+  using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; polyDef; viewOf; telFind; u0)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; monoBody; monoCheck; monoSynth)
 open import Once.Adequacy.SpecCore.Type using (tyR; TyR-≡)
-open import Once.Adequacy.SpecFront.Expr using (RX)
+open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
 import Once.Adequacy.SpecFront.ScopeNames as SN
 open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; schema-arrow)
 open import Once.Adequacy.SpecFront.WalkState Σ ps
@@ -174,53 +175,54 @@ private
   head-poly (h ∷ _) = h
 
 walk : ∀ {s} {S : SC.Defs s} {imps tele es ds}
-         (tl : SP.Tele S) (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele) (nm : Fin s → CanonicalName)
-       → (mt : ModTele (scope sg imps tele) es) → Align ds es → (w : WInv S (scope sg imps tele) is ts nm)
+         (tl : SP.Tele S) (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele) (N : Names S is ts)
+       → (mt : ModTele (scope sg imps tele) es) → Align ds es → (w : WInv S (scope sg imps tele) is ts (Names.nm N))
        → (o : EntriesOK (scope sg imps tele) es)
-       → let e = endOf tl ss is ts nm mt (kinds o)
-         in Walk Σ S nm tl ds (End.S e) (End.nm e) (End.tl e)
-walk tl ss is ts nm mt (al-skip nd al) w o = w-skip nd (walk tl ss is ts nm mt al w o)
-walk tl ss is ts nm [] al-nil w o = w-end
+       → let e = endOf tl ss is ts N mt (kinds o)
+         in Walk Σ S (Names.nm N) tl ds (End.S e) (End.nm e) (End.tl e)
+walk tl ss is ts N mt (al-skip nd al) w o = w-skip nd (walk tl ss is ts N mt al w o)
+walk tl ss is ts N [] al-nil w o = w-end
 {-# CATCHALL #-}
-walk tl ss is ts nm (ffi ep _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
+walk tl ss is ts N (ffi ep _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
 -- a telescope definition
-walk {S = S} {imps} {tele} tl ss is ts nm (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D _ rest) (al-poly so _ rx al) w o =
-  w-sig so b (AtState.principal ss is ts nm w κ pr rx (tyR _))
+walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D _ rest) (al-poly so _ rx al) w o =
+  w-sig so b (AtState.principal ss is ts (Names.nm N) w κ pr rx (tyR _))
     (walk (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
-          (canonical (x ∷ []) ∷ⁿ nm) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
+          (names-poly pfi N) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
   where
     κ = kindsOf T
     el = E.elabᶜ Σ S (viewOf {S = S} ss is ts) D
-    b : Body Σ S nm (schemaOf T) _
+    b : Body Σ S (Names.nm N) (schemaOf T) _
     b = record
       { term  = proj₁ el
-      ; check = AtState.body-check ss is ts nm w κ D rx (tyR _)
+      ; check = AtState.body-check ss is ts (Names.nm N) w κ D rx (tyR _)
       ; typed = u0 (proj₂ el)
       }
--- a monomorphic definition with a signature
-walk {S = S} {imps} {tele} tl ss is ts nm (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr D _ rest) (al-mono so rx al) w o =
-  w-sig so b (AtState.principal ss is ts nm w ST.∅ₖ pr rx (tyR _))
-    (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (x Data.String.== "main") is) (wkT ts)
-          (canonical (x ∷ []) ∷ⁿ nm) rest al
+-- a monomorphic definition with a signature: the Spec's derivation is the
+-- checker's witness, at the scope's Pack
+walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr D W rest) (al-mono so rx al) w o =
+  w-sig so b (AtState.principal ss is ts (Names.nm N) w ST.∅ₖ pr rx (tyR _))
+    (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (x Data.String.== "main") is) (wkT ts)
+          (names-mono (x Data.String.== "main") x ty N) rest al
           (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))
   where
-    el = elabM {S = S} (just ty) (viewOf {S = S} ss is ts) D
-    b : Body Σ S nm (monoSchema ty) _
+    mb = monoBody {sc = scope sg imps tele} ss is ts N (just ty) W
+    b : Body Σ S (Names.nm N) (monoSchema ty) _
     b = record
-      { term  = proj₁ el
-      ; check = AtState.body-check ss is ts nm w ST.∅ₖ D rx (tyR _)
-      ; typed = u0 (proj₂ el)
+      { term  = proj₁ mb
+      ; check = subst (λ e′ → Once.Spec.Surface.Typing._⊢_⇐_↝_ Σ S (Names.nm N) ST.∅ₖ Once.Spec.Surface.Typing.∅ e′ ty (proj₁ mb))
+                      (rx-≡ rx) (monoCheck {sc = scope sg imps tele} ss is ts N {A = ty} W)
+      ; typed = proj₂ mb
       }
 -- one without: the type its body synthesizes
-walk {S = S} {imps} {tele} tl ss is ts nm (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr D _ rest) (al-nosig rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr D W rest) (al-nosig rx al) w o =
   w-nosig
-    (subst (λ A′ → Once.Spec.Surface.Typing._⊢_⇒_↝_ Σ S nm ST.∅ₖ Once.Spec.Surface.Typing.∅ _ A′ _)
-           (sym (TyR-≡ (proj₁ (proj₂ syn)))) (proj₂ (proj₂ syn)))
-    (u0 (proj₂ el))
-    (AtState.principal ss is ts nm w ST.∅ₖ pr rx (tyR _))
-    (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (x Data.String.== "main") is) (wkT ts)
-          (canonical (x ∷ []) ∷ⁿ nm) rest al
+    (subst (λ e′ → Once.Spec.Surface.Typing._⊢_⇒_↝_ Σ S (Names.nm N) ST.∅ₖ Once.Spec.Surface.Typing.∅ e′ ty (proj₁ mb))
+           (rx-≡ rx) (monoSynth {sc = scope sg imps tele} ss is ts N W))
+    (proj₂ mb)
+    (AtState.principal ss is ts (Names.nm N) w ST.∅ₖ pr rx (tyR _))
+    (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (x Data.String.== "main") is) (wkT ts)
+          (names-mono (x Data.String.== "main") x ty N) rest al
           (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))
   where
-    el = elabM {S = S} nothing (viewOf {S = S} ss is ts) D
-    syn = AtState.body-synth ss is ts nm w ST.∅ₖ D rx
+    mb = monoBody {sc = scope sg imps tele} ss is ts N nothing W

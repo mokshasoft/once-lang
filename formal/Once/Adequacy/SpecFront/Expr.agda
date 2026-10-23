@@ -14,7 +14,7 @@
 module Once.Adequacy.SpecFront.Expr where
 
 open import Data.List using (List; []; _∷_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (String)
 
@@ -40,3 +40,23 @@ data RX (bound : List String) : RawExpr → S.Expr → Set where
   x-annot    : ∀ {e e′ T} → RX bound e e′ → RX bound (RAnnot e T) (S.RAnnot e′ (toTy T))
   x-binop    : ∀ {op a b a′ b′} → RX bound a a′ → RX bound b b′ → RX bound (RBinOp op a b) (S.RBinOp (opS op) a′ b′)
   x-neg      : ∀ {e e′} → RX bound e e′ → RX bound (RNeg e) (S.RNeg e′)
+
+-- The relation is the identity: the compiler's expressions are the Spec's
+-- (plan 0.122 2b-2).
+rx-≡ : ∀ {bound e e′} → RX bound e e′ → e ≡ e′
+rx-≡ (x-local _)          = refl
+rx-≡ (x-res _)            = refl
+rx-≡ (x-app f a)          = cong₂ RApp (rx-≡ f) (rx-≡ a)
+rx-≡ (x-lam b)            = cong (RLam _) (rx-≡ b)
+rx-≡ (x-let e b)          = cong₂ (RLet _) (rx-≡ e) (rx-≡ b)
+rx-≡ (x-pair a b)         = cong₂ RPair (rx-≡ a) (rx-≡ b)
+rx-≡ (x-destruct e l r)   = cong₃ (rx-≡ e) (rx-≡ l) (rx-≡ r)
+  where
+    cong₃ : ∀ {e e′ l l′ r r′ xl xr} → e ≡ e′ → l ≡ l′ → r ≡ r′ → RDestruct e xl l xr r ≡ RDestruct e′ xl l′ xr r′
+    cong₃ refl refl refl = refl
+rx-≡ x-unit               = refl
+rx-≡ x-int                = refl
+rx-≡ x-float              = refl
+rx-≡ (x-annot e)          = cong (λ e″ → RAnnot e″ _) (rx-≡ e)
+rx-≡ (x-binop a b)        = cong₂ (RBinOp _) (rx-≡ a) (rx-≡ b)
+rx-≡ (x-neg e)            = cong RNeg (rx-≡ e)

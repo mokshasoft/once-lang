@@ -75,7 +75,13 @@ open import Once.Denotation.Realize using (realize; realize-infer)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoBody)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoBody; MonoWit)
+open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; monoBody; packOf)
+open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf)
+import Once.Adequacy.ScopeRefs as SR
+import Once.Internal.Type
+import Once.Adequacy.MeaningBridgeS
+import Once.Spec.Effect Σ as SE
 open import Once.Spec.Type using (KCtx; ∅ₖ; TySub; Respects)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Name using (WordName)
@@ -95,7 +101,7 @@ import Once.Adequacy.SpecSig as SSg
 open import Once.Denotation.DenotTrace using (CallEnv)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf)
-open import Once.Internal.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; viewOf; monoSchema; monoDef; polyDef)
+open import Once.Internal.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; viewOf; monoSchema; polyDef)
 import Once.Internal.Core.Translate Σ as TR
 open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
@@ -124,7 +130,7 @@ open import Once.Internal.Trace using (FFIAnswers)
 σ₀ = noVars
 
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
-open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM; GM-D)
+open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM; GM-D; RelGM-wk₀)
 open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueRel using (RelD)
@@ -295,11 +301,13 @@ head-at {S = S} {tl} {sc} {body} {D} τ r r′ =
                                  (extensionality λ i → extensionality λ e → Base-irrelevant _ _))
 
 -- The compile chain of a monomorphic entry: its compiled body, read through the
--- ABI, is related to its elaboration's core meaning.
+-- ABI, is related to its entry's core meaning — the checker's term, the
+-- realization of its witness, means what the witness's core term means
+-- (`MeaningBridgeS`), at the scope's references (`ScopeRefs`).
 module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.CScope.csig csc)} {is : ImpSig S (C.CScope.cimps csc)}
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
-                {fi : Parser.FunInfo} {ty : Type}
-                (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty SCx.[])
+                (N : Names S is ts) {fi : Parser.FunInfo} {ty : Type}
+                (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty SCx.[])
                 {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
                 (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
@@ -307,77 +315,86 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
   x    = funName fi
   δ    = teleSem fmt mo tl
   S′   = S ▷ monoSchema ty
-  tl′  = monoDef {S = S} {sc = AS.scopeOf csc} {fi = fi} {ty = ty} {Ψ = SCx.[]} tl ss is ts D
+  tl′  = monoDef {S = S} {sc = AS.scopeOf csc} {fi = fi} {ty = ty} {Ψ = SCx.[]} tl ss is ts N W
   δ′   = teleSem fmt mo tl′
   e    = irFunOf (C.mkCompiledFun (bare x) ty irFun)
   ctx  = ctxOf (AS.scopeOf csc)
   ρ    = CE.envOf fmt Σ S σ₀ δ ss is ts
   V    = viewOf {S = S} ss is ts
-  Dc   = proj₂ (TR.elabM (funType fi) V D)
+  P    = packOf {S = S} {sc = AS.scopeOf csc} ss is ts N
+  Dc   = proj₂ (monoBody {S = S} {sc = AS.scopeOf csc} ss is ts N (funType fi) W)
   uf : C.FunCtx
   uf   = (x , ty) ∷ C.CScope.cimps csc
   σx   = σW pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf
   M    = evalᴰ fmt (tableEnv fmt φ pre) irFun tt
+  σx-self = σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf
 
-  -- With a signature: the compiled body's run is related to the elaboration's
-  -- surface meaning (the compile chain): faithfulness, then linking (an
-  -- equation), then coherence.
-  relC : (D′ : ctx ⊢ᶜ funBody fi ∶ ty ⨾ SCx.[])
+  module MBS = Once.Adequacy.MeaningBridgeS fmt Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N) σ₀ σx σx-self ∅ₖ
+
+  -- The scope's references, related: the table's entries by name (the
+  -- invariant's relation), the declarations of Σ as `J` reads them.
+  refsR : MBS.Refs δ
+  refsR = record
+    { entry = SR.refs-entry fmt Σ σ₀ σx σx-self ctx (Names.nm N) (Names.inline N) V (OkSOf P)
+                (Pack.h-imp P) (Pack.h-imp-call P) (Pack.h-poly P) (Pack.h-poly-inline P) δ ρ (CE.agree fmt Σ S σ₀ δ ss is ts)
+                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
+    ; sigop = λ {c} {T} mem k h →
+        SR.RelGM-≅ fmt Σ σ₀ σx σx-self {A = Once.Internal.Type.wk₀ {0} T} {B = Once.Internal.Type.wk₀ {0} T} refl
+          (H.trans (H.≡-subst-removable (SE.M Once.Spec.Grade.pure) (sym (⟦wk₀⟧ᵛ T)) _) (H.≡-subst-removable id (⟦wk₀⟧ᵛ T) _))
+          H.refl
+          (RelGM-wk₀ {π = Once.Spec.Grade.pure} {A = T}
+            (subst (λ md → RelGM Once.Spec.Grade.pure T
+                             (subst id (⟦wk₀⟧ᵛ T) (subst (λ X → ⟦ X ⟧ᵛ) (⌜declS⌝ k h) (SM.sigopᵛ Σ fmt S σ₀ c (declS T) mem md)))
+                             (SD.sigOpSem T c k fmt σx))
+                   (sym (teleSem-model fmt mo tl)) (SSg.sig-rel Σ wf J uniq fmt σ₀ S σx refl k h mem)))
+    }
+
+  -- The compiled body's run is related to the checker's term's source meaning
+  -- (faithfulness, then linking, an equation), and that term, the witness's
+  -- realization, to the witness's core term (`MeaningBridgeS`).
+  relC : ∀ {A} (W′ : MonoWit (Data.Maybe.just A) ctx (funBody fi) ty SCx.[])
        → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-       → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᶜ Σ S V D′)) δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
-  relC D′ cf′ =
-    TE.abi-rel ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᶜ Σ S V D′)) δ tt) M
-      (GM-D Once.Spec.Grade.pure ty
-            relA
-            chain)
+       → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (monoBody {S = S} {sc = AS.scopeOf csc} ss is ts N (Data.Maybe.just A) W′)) δ tt)
+                (subst T∞ (cohᴰ ty) (abiT ty M))
+  relC (eE , d , f , w , ce) cf′ =
+    TE.abi-rel ty _ M (GM-D Once.Spec.Grade.pure ty relA chain)
     where
-      ccE  = Once.TypeCheck.Completeness.check-complete D′
-      ce   = proj₂ (proj₂ (proj₂ ccE))
-      D″   = sound-of (Once.TypeCheck.Elaborate.checkElabV ctx (funBody fi) ty) ce
-      chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
+      u = proj₁ (proj₂ (proj₂ (proj₂ w) P))
+      chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ eE ⟧ˢ fmt σx tt)
       chain =
         ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
-                 (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf′ ce))
-           (RelS-trans (RelD-trans ty)
-             (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″) tt)
-                 (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″))))
-             (realize-invariant D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
-      relA : RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᶜ Σ S V D′)) δ tt) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
-      relA = MB.bridge-c fmt Σ σ₀ σx S (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts)
-               D′ {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt)
-               (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
+                 (irFun-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf′ (cong proj₁ ce)))
+           (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE tt)
+               (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE)))
+      relA : RelGM Once.Spec.Grade.pure ty _ (SD.⟦ eE ⟧ˢ fmt σx tt)
+      relA = subst (λ t → RelGM Once.Spec.Grade.pure ty _ (SD.⟦ t ⟧ˢ fmt σx tt)) (proj₂ (proj₂ (proj₂ (proj₂ w) P)))
+                   (MBS.bridge⇐ (proj₂ u) {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt) refsR)
 
   -- R8, without a signature: the same chain, through the synthesis.
-  relI : (D′ : ctx ⊢ᵢ funBody fi ∶ ty ⨾ SCx.[])
+  relI : (W′ : MonoWit Data.Maybe.nothing ctx (funBody fi) ty SCx.[])
        → C.compileFunI IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-       → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᵢ Σ S V D′)) δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
-  relI D′ cf′ =
-    TE.abi-rel ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᵢ Σ S V D′)) δ tt) M
-      (GM-D Once.Spec.Grade.pure ty
-            relA
-            chain)
+       → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (monoBody {S = S} {sc = AS.scopeOf csc} ss is ts N Data.Maybe.nothing W′)) δ tt)
+                (subst T∞ (cohᴰ ty) (abiT ty M))
+  relI (eE , d , f , w , ce) cf′ =
+    TE.abi-rel ty _ M (GM-D Once.Spec.Grade.pure ty relA chain)
     where
-      ciE  = Once.TypeCheck.Completeness.infer-complete D′
-      ce   = proj₂ (proj₂ (proj₂ ciE))
-      D″   = sound-of-i (Once.TypeCheck.Elaborate.inferElabV ctx (funBody fi)) ce
-      chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
+      u = proj₁ (proj₂ (proj₂ (proj₂ w) P))
+      chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ eE ⟧ˢ fmt σx tt)
       chain =
         ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
-                 (irFun-formI (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf′ ce))
-           (RelS-trans (RelD-trans ty)
-             (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″) tt)
-                 (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″))))
-             (realize-invariant-i D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
-      relA : RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᵢ Σ S V D′)) δ tt) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
-      relA = MB.bridge-i fmt Σ σ₀ σx S (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts)
-               D′ {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt)
-               (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
+                 (irFun-formI (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) cf′ (cong proj₁ ce)))
+           (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE tt)
+               (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE)))
+      relA : RelGM Once.Spec.Grade.pure ty _ (SD.⟦ eE ⟧ˢ fmt σx tt)
+      relA = subst (λ t → RelGM Once.Spec.Grade.pure ty _ (SD.⟦ t ⟧ˢ fmt σx tt)) (proj₂ (proj₂ (proj₂ (proj₂ w) P)))
+                   (MBS.bridge⇒ (proj₂ u) {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt) refsR)
 
-  relM-at : (ft : Data.Maybe.Maybe Type) (D′ : MonoBody ft ctx (funBody fi) ty SCx.[])
+  relM-at : (ft : Data.Maybe.Maybe Type) (W′ : MonoWit ft ctx (funBody fi) ty SCx.[])
           → C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-          → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (TR.elabM ft V D′)) δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
-  relM-at (Data.Maybe.just _) D′ cf′ = relC D′ cf′
-  relM-at Data.Maybe.nothing  D′ cf′ = relI D′ cf′
+          → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (monoBody {S = S} {sc = AS.scopeOf csc} ss is ts N ft W′)) δ tt)
+                   (subst T∞ (cohᴰ ty) (abiT ty M))
+  relM-at (Data.Maybe.just A) W′ cf′ = relC {A = A} W′ cf′
+  relM-at Data.Maybe.nothing  W′ cf′ = relI W′ cf′
 
   -- The entry, read back at its (only) instance, is the body's meaning
   -- (`MonoEntry`: the instance substitutes for no variable).
@@ -393,39 +410,39 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
                       (H.sym (H.≡-subst-removable id (⟦wk₀⟧ᵛ ty) _))))
 
   relM : RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ Dc δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
-  relM = relM-at (funType fi) D cf
+  relM = relM-at (funType fi) W cf
 
 -- D324: `main` joins the telescope and the table, not the definitions' scope.
 inv-mono-at : ∀ (b : Bool) {s} {S : Defs s} {csc tl ss is ts pre} {fi : Parser.FunInfo} {ty : Type}
-             {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
+             {Ψ : Ctx.Usage 0} (N : Names S is ts) (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
          → Inv (C.cscope (C.CScope.csig csc) (C.extendDefs-at b (C.CScope.cimps csc) (funName fi) ty) (C.CScope.ctele csc))
-               (monoDef {S = S} {sc = AS.scopeOf csc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D)
+               (monoDef {S = S} {sc = AS.scopeOf csc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W)
                ss (impDefs b is) (wkT ts)
                (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
 
 inv-mono : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {fi : Parser.FunInfo} {ty : Type}
-             {Ψ : Ctx.Usage 0} (D : MonoBody (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
+             {Ψ : Ctx.Usage 0} (N : Names S is ts) (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
          → Inv {S = S} csc tl ss is ts pre → All (funName fi ≢_) (scopeNames csc)
          → Inv (C.extendScope csc (funName fi) ty)
-               (monoDef {S = S} {sc = AS.scopeOf csc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D)
+               (monoDef {S = S} {sc = AS.scopeOf csc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W)
                ss (impDefs (funName fi Str.== "main") is) (wkT ts)
                (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
-inv-mono {S = S} {csc = csc} {tl = tl} {ss = ss} {is = is} {ts = ts} {pre = pre} {fi} {ty} {Ψ} D {irFun} cf inv fr =
-  inv-mono-at (funName fi Str.== "main") {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {Ψ} D {irFun} cf inv fr
+inv-mono {S = S} {csc = csc} {tl = tl} {ss = ss} {is = is} {ts = ts} {pre = pre} {fi} {ty} {Ψ} N W {irFun} cf inv fr =
+  inv-mono-at (funName fi Str.== "main") {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {Ψ} N W {irFun} cf inv fr
 
-inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} D {irFun} cf inv fr = record
+inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} N W {irFun} cf inv fr = record
   { iself = Inv.iself inv
   ; rel   = rel′
   }
   where
-    open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} D {irFun} cf inv
+    open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} N {fi} {ty} W {irFun} cf inv
     rel′ : ∀ (later : List IRFun) → NoShadow later (C.CScope.cimps csc)
          → ∀ (I : String → TopCtx) → IAgree I (C.CScope.ctele csc) → ∀ (uf′ : Imports)
          → MB.MRel fmt Σ σ₀ (σW (later ++ e ∷ pre) (C.cpolys csc) I uf′) ctx
@@ -444,12 +461,12 @@ inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} D {i
                        (ns-snoc later (C.CScope.cimps csc) e refl
                           (bare-ne (C.CScope.cimps csc) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)) fr) ns)
                        I ia uf′)
-inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} D {irFun} cf inv fr = record
+inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} N W {irFun} cf inv fr = record
   { iself = Inv.iself inv
   ; rel   = rel′
   }
   where
-    open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} D {irFun} cf inv
+    open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} N {fi} {ty} W {irFun} cf inv
     rel′ : ∀ (later : List IRFun) → NoShadow later ((x , ty) ∷ C.CScope.cimps csc)
          → ∀ (I : String → TopCtx) → IAgree I (C.CScope.ctele csc) → ∀ (uf′ : Imports)
          → MB.MRel fmt Σ σ₀ (σW (later ++ e ∷ pre) (C.cpolys csc) I uf′)

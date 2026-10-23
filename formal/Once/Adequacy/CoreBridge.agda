@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.CoreBridge — plan 0.103 phase 6a: THE APEX MEANS THE CORE.
 --
--- A typed module IS a core program (6c, `Spec.Core.Translate.toProgram`), and
+-- A typed module IS a core program (6c, `Adequacy.ModuleProgram.toProgram`), and
 -- its meaning is the core's (`Telescope.runCore`): every definition typed
 -- once, a reference meaning the entry (D239, D243, D246), and the program
 -- running its `main` entry (D253). This module proves the link between it and
@@ -51,6 +51,7 @@ open import Once.Internal.Trace using (Interp; pureHalf)
 open import Once.Internal.Program using (Typed)
 import Once.Internal.Core.Telescope as TL
 import Once.Internal.Core.Translate as TR
+import Once.Adequacy.ModuleProgram as MP
 import Once.Spec.Core.Program as SP
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
@@ -88,7 +89,7 @@ SigView (m , mt , hvm) = SigView-ef m (Parser.extractFunctions m) mt
 typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt
                 → (Σ : Signature) → SigView-ef m ef mt Σ → TL.Program Σ
 typedProgram-ef m (inj₁ _)  () _
-typedProgram-ef m (inj₂ es) mt (_ , mi) Σ u = TR.toProgram₀ Σ mt mi u
+typedProgram-ef m (inj₂ es) mt (_ , mi) Σ u = MP.toProgram₀ Σ mt mi u
 
 typedProgram : (tp : Typed) (Σ : Signature) → SigView tp Σ → TL.Program Σ
 typedProgram (m , mt , hvm) = typedProgram-ef m (Parser.extractFunctions m) mt hvm
@@ -127,7 +128,7 @@ module _ (fmt : TargetNum) where
     core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe Σ u wf J uniq =
       SO.observe-R Σ (toInterp Σ wf J) (Obs.Interp.world J) (SSg.agree Σ wf J uniq fmt (SP.noVars Σ))
         (agree-at {Σ} {wf} {J} {uniq} fe
-          (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] [] inv₀ u (dist , TP.none-in-empty _)))
+          (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] (MP.names₀ Σ) [] inv₀ u (dist , TP.none-in-empty _)))
       where
         module TWm = TW fmt Σ wf J uniq
         inv₀ : TWI.Inv fmt Σ wf J uniq C.emptyCScope (SP.Tele.[]) TR.[] TR.[] TR.[] []

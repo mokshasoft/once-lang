@@ -19,12 +19,12 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
-open import Once.Spec.Type using (KCtx; TySub)
+open import Once.Spec.Type using (KCtx; TySub; Type)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Denotation.SourceDenote using (DefsSem; module DefsSem)
 open import Once.Adequacy.SourceRefl using (RelDefs)
 
-module Once.Adequacy.MeaningBridgeS (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName)
+module Once.Adequacy.MeaningBridgeS (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set)
   (inline : Fin s → Bool) (σ₀ : TySub 0 0) (σ : DefsSem) (σ-self : RelDefs fmt σ σ) (Δ : KCtx 0) where
 
 open DefsSem using (calls; refs)
@@ -170,9 +170,11 @@ open import Once.Internal.Type.Sub using (pure-⊑)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;
                cmp-lt; cmp-le; cmp-gt; cmp-ge; cmp-eq; cmp-ne)
-open import Once.TypeCheck.Use Σ S nm Δ
-open import Once.TypeCheck.UseCore Σ S nm Δ
-open import Once.Denotation.RealizeS Σ S nm inline Δ
+open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
+open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
+open import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ
+open import Once.Denotation.RealizeS Σ S nm Ok OkS inline Δ
 open import Once.Internal.Type using (noResp)
 import Once.Spec.Core.Syntax
 open import Once.Spec.Grade using (One)
@@ -188,11 +190,11 @@ import Once.Spec.Context
 -- realizations mean in `σ`.
 record Refs (δ : DefSem) : Set where
   field
-    entry : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) 0) (r : Respects (kinds (S !! d)) Δ τ)
-              {n} {Γ : Once.Spec.Context.Ctx 0 n} {dγ}
+    entry : ∀ (d : Fin s) → Ok d → (τ : TySub (arity (S !! d)) 0) (r : Respects (kinds (S !! d)) Δ τ)
+          → ∀ {n} {Γ : Once.Spec.Context.Ctx 0 n} {dγ}
           → RelGM pure (type (S !! d) ⟨ τ ⟩) (refSemAt δ d refl τ r) ((SD.⟦ ref {Γ = Γ} d (type (S !! d) ⟨ τ ⟩) (inline d) ⟧ˢ fmt σ) dγ)
-    sigop : ∀ {c t} (mem : (c ∶ t) ∈ Σ) {T : Type} (k : IsConcrete T) (e : ⌜ t ⌝ᵈ ≡ wk₀ {0} T)
-          → RelGM pure (wk₀ {0} T) (subst (λ A → ⟦ A ⟧ᵛ) e (sigopᵛ σ₀ c t mem (DefSem.model δ)))
+    sigop : ∀ {c} {T : Type} (mem : (c ∶ declS T) ∈ Σ) (k : IsConcrete T) (h : HonestFFI T)
+          → RelGM pure (wk₀ {0} T) (subst (λ A → ⟦ A ⟧ᵛ) (⌜declS⌝ k h) (sigopᵛ σ₀ c (declS T) mem (DefSem.model δ)))
                   (subst T∞ (sym (⟦wk₀⟧ᴰ T)) (SD.sigOpSem T c k fmt σ))
 
 -- The Spec's meaning, restated along an equation.
@@ -244,7 +246,7 @@ module _ {δ : DefSem} where
                    (return∞-R (rel-lookupUsed (ctxOf L) i (un↾ re)))
   -- A declaration of Σ: its meaning in the world's model, against the
   -- implementation's call of it.
-  bridge⇒ {L = L} (u-sigop {mem = mem} k e) {dγ₂ = dγ₂} r re er = at e (Refs.sigop er mem k e)
+  bridge⇒ {L = L} (u-sigop {mem = mem} k h) {dγ₂ = dγ₂} r re er = at (⌜declS⌝ k h) (Refs.sigop er mem k h)
     where
       Z = Once.Spec.Context.zeroUsage
       at : ∀ {X Y : Type} (e′ : X ≡ Y) {x : ⟦ X ⟧ᵛ} {y : Expr (ctxOf L) Z Y}
@@ -252,7 +254,7 @@ module _ {δ : DefSem} where
          → RelGM pure X x ((SD.⟦ subst (Expr (ctxOf L) Z) (sym e′) y ⟧ˢ fmt σ) dγ₂)
       at refl h = h
   -- An entry of the table with no type variables.
-  bridge⇒ (u-def {d = d} {τ = τ} {a = a}) r re er = Refs.entry er d τ (no-kinds d τ a)
+  bridge⇒ (u-def {d = d} {τ = τ} {a = a} {ok = ok}) r re er = Refs.entry er d ok τ (no-kinds d τ a)
   -- Literals — pure `returnT`, identical values.
   bridge⇒ (u-int) r re er = return∞-R refl
   bridge⇒ (u-float) r re er = return∞-R refl
@@ -797,7 +799,7 @@ module _ {δ : DefSem} where
     ≡ˡ {A = A} (Comb.appC-sem {δ = δ} {A = Once.Spec.Type.Void} {B = T} (λ w → ⊥-elim w) (⊢initialᶜ ⊑-pure) (λ y → refl) (typ⇐ d) _ (Comb.arm {δ = δ} (typ⇐ d)) r)
        (RelGᵖ-bind {A = Once.Spec.Type.Void} {B = A} (bridgeᶠ⇐ d (reᵐ re) er) (λ {a} _ → ⊥-elim a))
   -- A polymorphic entry, at a kinded instance.
-  bridge⇐ (u-poly {d = d} {τ = τ} {r = rk}) r re er = Refs.entry er d τ rk
+  bridge⇐ (u-poly {d = d} {τ = τ} {r = rk} {ok = ok}) r re er = Refs.entry er d ok τ rk
   -- Plan 0.94 §10: the domain-given clauses mirror their check-mode twins.
   bridge↦ {A = Aₓ} {B = Bₓ} {π = πₓ} (u-infer {B = B} {p = a} {o = g} w) r re er =
     ≡ˡ {A = Aₓ ⇒[ mk-kind Many πₓ ] Bₓ} (cong ⟦ sub-arr {q = Many} a (<:-refl B) g ⟧<:ᵛ (Comb.arm {δ = δ} (typ⇒ w) r))
@@ -865,10 +867,10 @@ module _ {δ : DefSem} where
              , cata-clo-rel {A = A} {F = F} {π = π} wfF (proj₂ ralg))))
 
   -- …and as an arrow given its domain, converted to the given grade.
-  bridge↦ {L = L} (u-poly {d = d} {A = A} {B = B} {ty = ty} {τ = τ} {r = rk} {ea = ea} {eb = eb} {o = o}) {γ = γ} {dγ₂ = dγ₂} r re er =
+  bridge↦ {L = L} (u-poly {d = d} {A = A} {B = B} {ty = ty} {τ = τ} {r = rk} {ea = ea} {eb = eb} {o = o} {ok = ok}) {γ = γ} {dγ₂ = dγ₂} r re er =
     RelGT-sub (sub-arr {q = Many} (<:-refl A) (<:-refl B) o) (at (poly-inst d τ ty ea eb))
     where
       at : ∀ {T′} (eq : type (S !! d) ⟨ τ ⟩ ≡ T′)
          → RelGM pure T′ (⟦ subst (λ X → Δ ⊩ ctxOf L ⊢[ Once.Spec.Context.zeroUsage ] Once.Spec.Core.Syntax.ref d τ ∷ X ! pure) eq (⊢ref d τ rk) ⟧ₛ δ γ)
                          ((SD.⟦ ref {Γ = ctxOf L} d T′ (inline d) ⟧ˢ fmt σ) dγ₂)
-      at refl = Refs.entry er d τ rk
+      at refl = Refs.entry er d ok τ rk

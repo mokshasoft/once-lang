@@ -68,6 +68,7 @@ open import Once.Adequacy.SpecFront.Prefix using (prefix←)
 open import Once.Adequacy.SpecFront.Words using (ModsW; DeclW; signature-words; key-word)
 open import Once.Internal.Name using (WordName)
 import Once.Adequacy.SpecFront.Align as Al
+import Once.Adequacy.ModuleProgram
 import Once.Adequacy.SpecFront.WalkBack as WB
 import Once.Adequacy.SpecFront.WalkMain as WM
 import Once.Adequacy.SpecFront.WalkState as WS
@@ -226,7 +227,7 @@ typed← {mm} {mm′} {dsU} {ds′} {Σ} {p} wm wd wr mr pw D = record { dsR = d
     -- the end's `main` is the entry
     H : ∀ i → names i ≡ canonical ("main" ∷ []) → CoreProgram.Entry Σ (P.sig SC.!! i)
     H i e = subst (λ j → CoreProgram.Entry Σ (P.sig SC.!! j)) (sym (distinct (trans e (sym entry)))) P.isMain
-    w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Internal.Core.Translate.ImpSig.[] Once.Internal.Core.Translate.TeleSig.[] (λ ()) rel₀ walk align
+    w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Internal.Core.Translate.ImpSig.[] Once.Internal.Core.Translate.TeleSig.[] (Once.Adequacy.ModuleProgram.names₀ Σ) rel₀ walk align
                  (WS.winv-empty Σ ps) eok
     pf = prefix← {sc = emptyScope} fs (Extracted.facts X) (proj₁ w←)
     th = typed-at (mkModule dsR) _ (Extracted.extracted X) (proj₁ pf)

@@ -19,9 +19,11 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
-open import Once.Spec.Type using (KCtx)
+open import Once.Spec.Type using (KCtx; Type)
 
-module Once.TypeCheck.Use (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) {m : ℕ} (Δ : KCtx m) where
+-- `Ok`/`OkS`: the entries / declarations a reference may name — the checker's, the ones its View
+-- finds (`TypeCheck.View.InView`); the Spec's rule admits any.
+module Once.TypeCheck.Use (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set) {m : ℕ} (Δ : KCtx m) where
 
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -40,6 +42,10 @@ open import Once.Spec.Type using (Type)
 open import Once.Spec.Signature using (⌜_⌝ᵈ)
 open import Once.Internal.Type using (wk₀)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Spec.Signature using (_∶_)
+open import Data.List.Membership.Propositional using (_∈_)
 
 -- The Spec's judgment, at the kinds `Δ`.
 _⊢_⇒_↝_ : ∀ {n} → Locals m n → Expr → Ty m → Tm S m n → Set
@@ -89,8 +95,9 @@ data Use⇒ {n} {L} where
   -- A local is used once.
   u-var      : ∀ {x A i} {v : L ∋ x ⦂ A at i} → Use⇒ (s-var v) (singleUse i One)
   -- A declaration of the signature, read at the ground type it declares.
-  u-sigop    : ∀ {c t ng mem} {T : Type} → IsConcrete T → ⌜ t ⌝ᵈ ≡ wk₀ {m} T → Use⇒ (s-sigop {c = c} {t = t} ng mem) zeroUsage
-  u-def      : ∀ {c d e τ a} → Use⇒ (s-def {c = c} d e τ a) zeroUsage
+  -- (an honest one: the checker's sigops are the module's FFI declarations)
+  u-sigop    : ∀ {c ng} {T : Type} {mem : (c ∶ declS T) ∈ Σ} {ok : OkS c T} → IsConcrete T → HonestFFI T → Use⇒ (s-sigop {c = c} {t = declS T} ng mem) zeroUsage
+  u-def      : ∀ {c d e τ a} {ok : Ok d} → Use⇒ (s-def {c = c} d e τ a) zeroUsage
   u-annot    : ∀ {e T t} {d : L ⊢ e ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇒ (s-annot {T = T} d) Ψ
   u-pair     : ∀ {a b A B ta tb} {da : L ⊢ a ⇒ A ↝ ta} {db : L ⊢ b ⇒ B ↝ tb} {Ψ₁ Ψ₂}
              → Use⇒ da Ψ₁ → Use⇒ db Ψ₂ → Use⇒ (s-pair da db) (Ψ₁ +ᵘ Ψ₂)
@@ -167,12 +174,12 @@ data Use⇐ {n} {L} where
   u-inl-app  : ∀ {e A B t} {d : L ⊢ e ⇐ A ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-inl-app {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   u-inr-app  : ∀ {e A B t} {d : L ⊢ e ⇐ B ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-inr-app {A = A} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   u-initial-app : ∀ {e T t} {d : L ⊢ e ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-initial-app {T = T} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-poly     : ∀ {c d e a τ r} → Use⇐ (c-poly {c = c} d e a τ r) zeroUsage
+  u-poly     : ∀ {c d e a τ r} {ok : Ok d} → Use⇐ (c-poly {c = c} d e a τ r) zeroUsage
 
 data Use↦ {n} {L} where
   u-infer    : ∀ {g A A′ B π π′ t} {d : L ⊢ g ⇒ _ ↝ t} {p o} {Ψ}
              → Use⇒ d Ψ → Use↦ (d-infer {A = A} {A′ = A′} {B = B} {π = π} {π′ = π′} d p o) Ψ
-  u-poly     : ∀ {c d e a sd sc π′ A B π ty oc τ r ea eb o}
+  u-poly     : ∀ {c d e a sd sc π′ A B π ty oc τ r ea eb o} {ok : Ok d}
              → Use↦ (d-poly {c = c} d e a {sd = sd} {sc = sc} {π′ = π′} {A = A} {B = B} {π = π} ty oc τ r ea eb o) zeroUsage
   u-lam      : ∀ {x body A B π t} {d : (L ▹ x ∶ A) ⊢ body ⇒ B ↝ t} {q′ Ψ}
              → Use⇒ d (q′ ∷ Ψ) → Use↦ (d-lam {π = π} d) Ψ

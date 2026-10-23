@@ -56,7 +56,8 @@ open import Once.Parser.Module.Core using (Decl; mkModule)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases)
 import Once.Internal.Resolution as LR
 open import Once.Internal.Module using (ModTele; MainIn; emptyScope; entrySig)
-open import Once.Internal.Core.Translate using (toProgram; [])
+open import Once.Internal.Core.Translate using ([])
+open import Once.Adequacy.ModuleProgram using (toProgram; names₀; Names)
 import Data.Empty
 open import Once.Postulates using (extensionality)
 import Once.Spec.Core.Syntax
@@ -107,10 +108,6 @@ private
 -- The denotation
 ------------------------------------------------------------------------
 
-private
-  noNames : Fin 0 → CanonicalName
-  noNames ()
-
 -- What the Spec's module denotes, and that it is the compiler's program.
 record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele emptyScope es) (mi : MainIn mt) : Set where
   field
@@ -125,7 +122,7 @@ record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele e
     tele    : CoreProgram.Tele Σₛ sig
     entry   : Fin size
     isMain  : CoreProgram.Entry Σₛ (sig SC.!! entry)
-    built   : toProgram Σₛ {S = SC.[]} CoreProgram.[] [] [] [] mt mi
+    built   : toProgram Σₛ {S = SC.[]} CoreProgram.[] [] [] [] (names₀ Σₛ) mt mi
                 (λ m → sig-in Σₛ (key-word keysW) (subst (_ ∈_) sig-eq m))
               ≡ TL.program tele entry isMain
     -- …which the module denotes
@@ -172,7 +169,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         kw = signature-words wm wd sig
         eqT : Once.Internal.Module.teleSig mt ≡ toISig Σₛ
         eqT = trans (teleSig≡entrySig mt) (trans te (sym tf))
-        P = prefix Σₛ {S = SC.[]} fs ffiE CoreProgram.[] [] [] [] mt mi (λ m → sig-in Σₛ (key-word kw) (subst (_ ∈_) eqT m))
+        P = prefix Σₛ {S = SC.[]} fs ffiE CoreProgram.[] [] [] [] (names₀ Σₛ) mt mi (λ m → sig-in Σₛ (key-word kw) (subst (_ ∈_) eqT m))
         sg = entrySig fs ʳ++ []
         ukeys : AllPairs _≢_ (keys (entrySig fs))
         ukeys = subst (λ l → AllPairs _≢_ (keys l)) te (keys-distinct (fs ++ es′) guard)
@@ -193,13 +190,13 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
           { distinct = guard′ ; fresh = fresh-start es′ ; nosig = nosig-rest fs es′ guard
           ; kinds = kinds-of es′ guard′ (defs-of (nonSigs-none dsR) xn) }
         ks = W.EntriesOK.kinds eok
-        e = En.endOf Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] noNames (Past.mt′ P) ks
-        pe = En.prog-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] noNames (Past.mt′ P) (Past.mi′ P) (Past.u′ P) ks
+        e = En.endOf Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks
+        pe = En.prog-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) (Past.mi′ P) (Past.u′ P) ks
         d = proj₁ pe
         me = proj₁ (proj₂ pe)
         eqP = proj₁ (proj₂ (proj₂ pe))
         p = PG.programS Σₛ fmt wf (TL.program (En.End.tl e) d me)
-        w = W.walk CoreProgram.[] (Past.ss′ P) [] [] noNames (Past.mt′ P) align (WS.winv-empty Σₛ ps) eok
+        w = W.walk CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) align (WS.winv-empty Σₛ ps) eok
         den : SPr.Denotes mm′ (S.mkModule ds′) Σₛ p
         den = record
           { signature = sig
@@ -210,7 +207,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
                               (proj₁ (proj₂ rd))
           ; names     = En.End.nm e
           ; walk      = subst (λ n → SPr.Walk Σₛ SC.[] n CoreProgram.[] dsR′ (En.End.S e) (En.End.nm e) (En.End.tl e)) fin0-ext w
-          ; distinct  = EN.distinct-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] noNames (Past.mt′ P) ks
+          ; distinct  = EN.distinct-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks
                           (λ {x} → Data.Empty.⊥-elim (fin0 x)) guard′ (Data.List.Relation.Unary.All.tabulate (λ _ ()))
           ; sig-distinct = one-name Σₛ (uniq-of Σₛ (fs ++ es′) (trans tf (sym te)) guard)
           ; def-not-sig  = λ dd M → not-def dd M
@@ -220,10 +217,10 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
             fin0 : Fin 0 → Data.Empty.⊥
             fin0 ()
             -- (two namings of no definitions, by P1)
-            fin0-ext : ∀ {g : Fin 0 → CanonicalName} → noNames ≡ g
+            fin0-ext : ∀ {g : Fin 0 → CanonicalName} → Names.nm (names₀ Σₛ) ≡ g
             fin0-ext = extensionality (λ ())
             not-def : ∀ dd {t} → ¬ ((En.End.nm e dd ∶ t) ∈ Σₛ)
-            not-def dd M = pick (EN.named-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] noNames (Past.mt′ P) ks {L = []} (λ ()) dd) M
+            not-def dd M = pick (EN.named-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks {L = []} (λ ()) dd) M
               where
                 pick : ∀ {c t} → Σ[ x ∈ String ] (c ≡ canonical (x ∷ [])) × (x ∈ [] ⊎ x ∈ names es′) → ¬ ((c ∶ t) ∈ Σₛ)
                 pick (x , ex , inj₁ ()) M′

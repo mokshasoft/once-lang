@@ -31,14 +31,14 @@ open import Once.Internal.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (KCtx)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; Σ-syntax; proj₁)
+open import Data.Product using (_×_; _,_; Σ-syntax; Σ; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
 open import Once.Internal.Contract using (ISig)
 
 open import Once.Spec.Grade using (mk-kind; Many; eff)
@@ -57,6 +57,8 @@ open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 import Once.Internal.Context as Surface
 import Once.Surface.Syntax as SS
 open import Once.TypeCheck.DualWitness using (DI; DC)
+import Once.TypeCheck.Elaborate as TE
+open import Data.Nat using (ℕ)
 open import Once.Internal.Syntax using (RawExpr)
 
 open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
@@ -108,16 +110,23 @@ MonoBody : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Us
 MonoBody (just _) ctx e ty Ψ = ctx ⊢ᶜ e ∶ ty ⨾ Ψ
 MonoBody nothing  ctx e ty Ψ = ctx ⊢ᵢ e ∶ ty ⨾ Ψ
 
--- …and its witness: the Spec's derivation, whose realization is the term the
--- checker built (`TypeCheck.SpecWitness`; plan 0.122 §5.6, stage e).
+-- …and its witness: the checker's own result — the term it built and the
+-- Spec's derivation, whose realization that term is (`TypeCheck.SpecWitness`;
+-- plan 0.122 §5.6, stage e).
 MonoWit : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
-MonoWit (just _) ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] DC ctx e ty Ψ eE
-MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] DI ctx e ty Ψ eE
+MonoWit (just _) ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ DC ctx e ty Ψ eE ]
+                                (TE.checkElabV ctx e ty ≡ (TE.success Ψ eE d f , w))
+MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ DI ctx e ty Ψ eE ]
+                                (TE.inferElabV ctx e ≡ (TE.success ty Ψ eE d f , w))
 
 -- The compiler's derivation the witness carries.
 mder : ∀ ft {ctx e ty Ψ} → MonoWit ft ctx e ty Ψ → MonoBody ft ctx e ty Ψ
-mder (just _) (_ , w) = proj₁ w
-mder nothing  (_ , w) = proj₁ w
+mder (just _) (_ , _ , _ , w , _) = proj₁ w
+mder nothing  (_ , _ , _ , w , _) = proj₁ w
+
+-- A pair, read along an equation on its first component.
+pair-at : ∀ {a b} {A : Set a} {B : A → Set b} (r : Σ A B) {x : A} (q : proj₁ r ≡ x) → r ≡ (x , subst B q (proj₂ r))
+pair-at (_ , _) refl = refl
 
 data ModTele : Scope → List Parser.Entry → Set where
   []   : ∀ {sc} → ModTele sc []

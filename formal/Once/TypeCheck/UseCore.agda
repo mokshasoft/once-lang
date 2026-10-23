@@ -18,9 +18,9 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
-open import Once.Spec.Type using (KCtx)
+open import Once.Spec.Type using (KCtx; Type)
 
-module Once.TypeCheck.UseCore (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) {m : ℕ} (Δ : KCtx m) where
+module Once.TypeCheck.UseCore (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set) {m : ℕ} (Δ : KCtx m) where
 
 open import Data.Fin using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
@@ -42,7 +42,7 @@ open import Once.Type.Grade using (≤q-Many; ≤qᵇ→≤q)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;
                cmp-lt; cmp-le; cmp-gt; cmp-ge; cmp-eq; cmp-ne)
-open import Once.TypeCheck.Use Σ S nm Δ
+open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 
 -- An entry with no type variables respects any kinds.
 no-kinds : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0 → Respects (kinds (S !! d)) Δ τ
@@ -94,7 +94,7 @@ typ⇒ u-float                     = ⊢lit-float
 typ⇒ u-unit                      = ⊢unit
 typ⇒ u-unit-g                    = ⊢unit
 typ⇒ (u-var {v = v})             = subst (λ X → Δ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (lookup-at v) (⊢var _)
-typ⇒ (u-sigop {mem = mem} k e)   = ⊢sigop mem
+typ⇒ (u-sigop {mem = mem} k h)   = ⊢sigop mem
 typ⇒ (u-def {d = d} {τ = τ} {a = a}) = ⊢ref d τ (no-kinds d τ a)
 typ⇒ (u-annot u)                 = typ⇐ u
 typ⇒ (u-pair ua ub)              = ⊢pair (typ⇒ ua) (typ⇒ ub)

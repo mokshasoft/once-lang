@@ -18,9 +18,9 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
-open import Once.Spec.Type using (KCtx)
+open import Once.Spec.Type using (KCtx; Type)
 
-module Once.TypeCheck.Witness (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) {m : ℕ} (Δ : KCtx m) where
+module Once.TypeCheck.Witness (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set) {m : ℕ} (Δ : KCtx m) where
 
 open import Data.Bool using (true)
 open import Data.Integer using (ℤ)
@@ -49,7 +49,9 @@ open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; _▹_∶_; _∋_⦂_at_; SpecialHead; IntArith; FloatArith; Compare; _⇒⟨_⟩_; ↑)
-open import Once.TypeCheck.Use Σ S nm Δ
+open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
+open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
 
 ------------------------------------------------------------------------
 -- The witnesses
@@ -85,13 +87,13 @@ module _ {n} {L : Locals m n} where
   w-var : ∀ {x A i} → L ∋ x ⦂ A at i → W⇒ L (RVar x) A (var i) (singleUse i One)
   w-var v = SU.s-var v , u-var
 
-  w-sigop : ∀ {c t} → NotGenerator c → (mem : (c ∶ t) ∈ Σ) {T : Type} → IsConcrete T → ⌜ t ⌝ᵈ ≡ wk₀ {m} T
-          → W⇒ L (RResolved c) ⌜ t ⌝ᵈ (sigop c t) zeroUsage
-  w-sigop ng mem k e = SU.s-sigop ng mem , u-sigop k e
+  w-sigop : ∀ {c} {T : Type} {ok : OkS c T} → NotGenerator c → (mem : (c ∶ declS T) ∈ Σ) → IsConcrete T → HonestFFI T
+          → W⇒ L (RResolved c) ⌜ declS T ⌝ᵈ (sigop c (declS T)) zeroUsage
+  w-sigop {ok = ok} ng mem k h = SU.s-sigop ng mem , u-sigop {ok = ok} k h
 
-  w-def : ∀ {c} (d : Fin s) → nm d ≡ c → (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0
+  w-def : ∀ {c} (d : Fin s) {ok : Ok d} → nm d ≡ c → (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0
         → W⇒ L (RResolved c) (type (S !! d) ⟨ τ ⟩) (ref d τ) zeroUsage
-  w-def d e τ a = SU.s-def d e τ a , u-def
+  w-def d {ok} e τ a = SU.s-def d e τ a , u-def {ok = ok}
 
   w-annot : ∀ {e T t Ψ} → W⇐ L e (↑ T) t Ψ → W⇒ L (RAnnot e T) (↑ T) t Ψ
   w-annot (d , u) = SU.s-annot d , u-annot u
@@ -262,9 +264,9 @@ module _ {n} {L : Locals m n} where
                 → W⇐ L (RApp (RResolved (gen "initial")) e) T (app (initialᶜ T pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   w-initial-app (d , u) = SU.c-initial-app d , u-initial-app u
 
-  w-poly : ∀ {c} (d : Fin s) → nm d ≡ c → 0 < arity (S !! d) → (τ : TySub (arity (S !! d)) m) → Respects (kinds (S !! d)) Δ τ
+  w-poly : ∀ {c} (d : Fin s) {ok : Ok d} → nm d ≡ c → 0 < arity (S !! d) → (τ : TySub (arity (S !! d)) m) → Respects (kinds (S !! d)) Δ τ
          → W⇐ L (RResolved c) (type (S !! d) ⟨ τ ⟩) (ref d τ) zeroUsage
-  w-poly d e a τ r = SU.c-poly d e a τ r , u-poly
+  w-poly d {ok} e a τ r = SU.c-poly d e a τ r , u-poly {ok = ok}
 
   ------------------------------------------------------------------
   -- An arrow out of a given domain
@@ -274,12 +276,12 @@ module _ {n} {L : Locals m n} where
           → W↦ L g A π B (coerce (A′ ⇒⟨ π′ ⟩ B) (A ⇒⟨ π ⟩ B) t) Ψ
   w-infer (d , u) p o = SU.d-infer d p o , u-infer u
 
-  w-poly↦ : ∀ {c} (d : Fin s) → nm d ≡ c → 0 < arity (S !! d)
+  w-poly↦ : ∀ {c} (d : Fin s) {ok : Ok d} → nm d ≡ c → 0 < arity (S !! d)
           → ∀ {sd sc π′ A B π} → type (S !! d) ≡ sd ⇒⟨ π′ ⟩ sc → (∀ i → Occurs i sc → Occurs i sd)
           → (τ : TySub (arity (S !! d)) m) → Respects (kinds (S !! d)) Δ τ
           → sd ⟨ τ ⟩ ≡ A → sc ⟨ τ ⟩ ≡ B → π′ ⊑π π
           → W↦ L (RResolved c) A π B (coerce (A ⇒⟨ π′ ⟩ B) (A ⇒⟨ π ⟩ B) (ref d τ)) zeroUsage
-  w-poly↦ d e a ty oc τ r ea eb o = SU.d-poly d e a ty oc τ r ea eb o , u-poly
+  w-poly↦ d {ok} e a ty oc τ r ea eb o = SU.d-poly d e a ty oc τ r ea eb o , u-poly {ok = ok}
 
   w-lam↦ : ∀ {x body A B π t q′ Ψ} → W⇒ (L ▹ x ∶ A) body B t (q′ ∷ Ψ) → W↦ L (RLam x body) A π B (lam A Many π t) Ψ
   w-lam↦ (d , u) = SU.d-lam d , u-lam u

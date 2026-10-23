@@ -22,9 +22,9 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
-open import Once.Spec.Type using (KCtx)
+open import Once.Spec.Type using (KCtx; Type)
 
-module Once.Denotation.RealizeS (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName)
+module Once.Denotation.RealizeS (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set)
   (inline : Fin s → Bool) {m : ℕ} (Δ : KCtx m) where
 
 open import Data.Bool using (true; false)
@@ -50,7 +50,8 @@ open import Once.Surface.Syntax
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;
                cmp-lt; cmp-le; cmp-gt; cmp-ge; cmp-eq; cmp-ne)
-open import Once.TypeCheck.Use Σ S nm Δ
+open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
+open import Once.Internal.Core.Decl using (⌜declS⌝)
 
 -- A reference to entry `d` at type `T`.
 ref : ∀ {n} {Γ : Once.Spec.Context.Ctx m n} (d : Fin s) (T : Ty m) → Bool → Expr Γ Once.Spec.Context.zeroUsage T
@@ -67,7 +68,7 @@ realize⇒ sh (u-float {i} {f} {l})   = float (decimalOf i f l)
 realize⇒ sh u-unit                  = unit
 realize⇒ sh u-unit-g                = unit
 realize⇒ sh (u-var {v = v})         = subst (Expr _ _) (lookup-shape sh v) (var _)
-realize⇒ sh (u-sigop {c = c} k e)   = subst (Expr _ _) (sym e) (sigOp c k)
+realize⇒ sh (u-sigop {c = c} k h)   = subst (Expr _ _) (sym (⌜declS⌝ k h)) (sigOp c k)
 realize⇒ sh (u-def {d = d} {τ = τ}) = ref d (type (S !! d) ⟨ τ ⟩) (inline d)
 realize⇒ sh (u-annot u)             = realize⇐ sh u
 realize⇒ sh (u-pair ua ub)          = pair (realize⇒ sh ua) (realize⇒ sh ub)

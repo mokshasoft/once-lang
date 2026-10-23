@@ -215,7 +215,7 @@ aux-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (imps
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty)
              (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
          → C.compileFunBody-aux IR.Heap false ctx polys impsOf x ty refl cr
-           ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize (sound-of cr ce))))
+           ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 se))
 aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
 irFun-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
@@ -224,8 +224,7 @@ irFun-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (im
            → C.compileFun IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
            → (ce : Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty
                      ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
-           → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0
-                       (realize (sound-of (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce)))
+           → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 se)
 irFun-form ctx polys impsOf x ty body cf ce =
   inj₂-injective (trans (sym (irFun-body ctx polys impsOf x ty body (Relation.Nullary.isYes (x Str.≟ "main")) cf))
                         (aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty) ce))
@@ -249,12 +248,12 @@ auxI-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (imp
               (cr : Once.TypeCheck.Elaborate.VerifiedInferResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body)
               (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success ty SCx.[] se d f)
           → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf x ty refl cr
-            ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize-infer (sound-of-i cr ce))))
-auxI-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w) refl = at (ty ≟T ty)
+            ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 se))
+auxI-form ctx polys impsOf x ty {se = se} (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w) refl = at (ty ≟T ty)
   where
     at : (dd : Dec (ty ≡ ty))
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf x ty refl w dd
-         ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 (realize-infer (proj₁ w))))
+         ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 se))
     at (yes refl) = refl
     at (no ¬p)    = ⊥-elim (¬p refl)
 
@@ -264,8 +263,7 @@ irFun-formI : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (i
             → C.compileFunI IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
             → (ce : Once.TypeCheck.Elaborate.inferElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body
                       ≡ Once.TypeCheck.Elaborate.success ty SCx.[] se d f)
-            → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0
-                        (realize-infer (sound-of-i (Once.TypeCheck.Elaborate.inferElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body) ce)))
+            → irFun ≡ elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 se)
 irFun-formI ctx polys impsOf x ty body cf ce =
   inj₂-injective (trans (sym (irFunI-body ctx polys impsOf x ty body (Relation.Nullary.isYes (x Str.≟ "main")) cf))
                         (auxI-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.inferElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body) ce))
