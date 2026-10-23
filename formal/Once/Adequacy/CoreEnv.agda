@@ -55,7 +55,7 @@ open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧�
 import Once.Spec.Core.Meaning Σ fmt S as SM
 import Once.Internal.Core.Translate Σ as TR
 open TR using (SigSig; ImpSig; TeleSig; viewOf; telFind; sigAt) renaming (impAt to impView)
-open import Once.Internal.Elaboration Σ S using (Declared; def)
+open import Once.TypeCheck.View Σ S using (Declared; def)
 open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (refSemAt-Δ; entrySem; impSem; sigSem; Agree)
 
 ------------------------------------------------------------------------

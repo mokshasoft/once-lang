@@ -1,0 +1,61 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.TypeCheck.View — the checker's scope read through a table of
+-- definitions (plan 0.103 phase 6b; plan 0.122 §2b-3).
+--
+-- A View resolves each name the checker's scope binds to what the Spec
+-- reads: an imported name to an honest, ground FFI declaration of Σ (D231)
+-- or one of the module's own definitions, and each telescope entry to its
+-- index in the definitions table, whose schema is the entry's (`entryIs`).
+------------------------------------------------------------------------
+
+open import Data.Nat using (ℕ)
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Core.Syntax using (Defs)
+
+module Once.TypeCheck.View (Σ : Signature) {s : ℕ} (S : Defs s) where
+
+open import Data.Fin using (Fin)
+open import Data.Maybe using (just)
+open import Data.Product using (_,_)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.String using (String)
+open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Once.Spec.Type using (Type; ∅ₖ)
+open import Once.Spec.Signature using (_∶_)
+open import Once.Spec.Core.Syntax using (schema; _!!_)
+open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Internal.Type.Schema using (schemaOf)
+open import Once.Internal.Core.Decl using (declS)
+open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+
+-- An FFI declaration: honest (D231), and a declaration of Σ under its name.
+record Declared (x : String) (T : Type) : Set where
+  constructor declared
+  field
+    honest : HonestFFI T
+    member : ∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
+
+-- One of the module's own monomorphic definitions: an entry of the table at
+-- its (ground) type.
+record ImportAt (x : String) (T : Type) : Set where
+  constructor def
+  field
+    entryOf : Fin s
+    mono    : S !! entryOf ≡ schema 0 ∅ₖ T
+
+record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
+  field
+    imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt x T
+    declares : ∀ {x T} → lookupImport sg x ≡ just T → Declared x T
+    entry    : ∀ {x sc body prefix} → lookupPolyPrefix polys x ≡ just (sc , body , prefix) → Fin s
+    entryIs  : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
+             → S !! entry lp ≡ schemaOf sc
+open View
+
+Views : ∀ {m} → NamedCtx m → Set
+Views ctx = View (NamedCtx.imports ctx) (NamedCtx.sig ctx) (NamedCtx.polys ctx)
+

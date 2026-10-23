@@ -19,10 +19,11 @@ open import Once.Spec.Core.Syntax using (Defs)
 open import Once.Spec.Type using (KCtx; TySub; Respects)
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx)
 import Once.Internal.Elaboration as El
+import Once.TypeCheck.View as TView
 
 module Once.Adequacy.ElabCommute (Σ : Signature) {s : ℕ} (S : Defs s)
   {m k : ℕ} (Δ : KCtx m) (Δ′ : KCtx k) (τ : TySub m k) (r : Respects Δ Δ′ τ)
-  {imps sigs : Imports} {polys : PolyCtx} (V : El.View Σ S imps sigs polys) where
+  {imps sigs : Imports} {polys : PolyCtx} (V : TView.View Σ S imps sigs polys) where
 
 open import Data.Nat using (suc)
 open import Data.Fin using (Fin; zero; suc)
@@ -51,7 +52,8 @@ open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk; module Deriv)
 open Deriv τ r
 import Once.Internal.Core.DerivedTyping Σ S as DT
 open import Once.Internal.Core.DerivedSubst Σ S τ r
-open El Σ S using (Elab; View; elabᶜ; elabᵢ; elabᵈ; retypeD; retypeE; refAt)
+open El Σ S using (Elab; elabᶜ; elabᵢ; elabᵈ; retypeD; retypeE; refAt)
+open import Once.TypeCheck.View Σ S using (View)
 open View V
 import Once.TypeCheck.TySubst Δ Δ′ τ r as RS
 open RS using (ρ̂; subst-c′; subst-i′; subst-d′; _⇝ᵢ_; _⇝ᶜ_)
@@ -209,7 +211,8 @@ private
   open import Once.Internal.Typing.Scope using (lookupPolyPrefix)
   open import Once.Internal.Type.Instance using (KindedInstance)
   open import Once.Internal.Type.Schema using (kinded-instance)
-  open El Σ S using (polyE; ImportAt; def; importE)
+  open El Σ S using (polyE; importE)
+  open import Once.TypeCheck.View Σ S using (ImportAt; def)
   open import Once.Internal.Type using (none)
   open import Once.Spec.Type using (Type)
 
@@ -290,8 +293,8 @@ mutual
     comm refl (H.trans (rD-≅ (trans (⌜declS⌝ k h) (sym (RS.ρ̂-ground T eq))) (⊢sigop (mem wn refl)))
                        (H.sym (H.trans (ty-rD {Γ = D} (trans (⌜declS⌝ k h) (sym eq)) (⊢sigop (mem wn refl)))
                                        (rtᵗ-≅ (sym (TS.⌜⌝ᵈ-⟨⟩ τ (declS T))) (⊢sigop (mem wn refl))))))
-    where h   = El.Declared.honest (declares lk)
-          mem = El.Declared.member (declares lk)
+    where h   = TView.Declared.honest (declares lk)
+          mem = TView.Declared.member (declares lk)
   cm-i {D = D} (t-var-own {T = T} ns lk eq) =
     comm (imp-tm {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq)) (imp-dr {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq))
   cm-i {D = D} (t-var-import {T = T} gw ln lk c eq) =

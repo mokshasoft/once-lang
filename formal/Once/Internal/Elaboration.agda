@@ -72,38 +72,9 @@ open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Derived
 open import Once.Spec.Core.Typing Σ S
-open import Once.Internal.Core.DerivedTyping Σ S
-
-------------------------------------------------------------------------
--- The module layer
-------------------------------------------------------------------------
-
--- An FFI declaration: honest (D231), and a declaration of Σ under its name.
-record Declared (x : String) (T : Type) : Set where
-  constructor declared
-  field
-    honest : HonestFFI T
-    member : ∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS T) ∈ Σ
-
--- One of the module's own monomorphic definitions: an entry of the table at
--- its (ground) type.
-record ImportAt (x : String) (T : Type) : Set where
-  constructor def
-  field
-    entryOf : Fin s
-    mono    : S !! entryOf ≡ schema 0 ∅ₖ T
-
-record View (imps : Imports) (sg : Imports) (polys : PolyCtx) : Set where
-  field
-    imported : ∀ {x T} → lookupImport imps x ≡ just T → ImportAt x T
-    declares : ∀ {x T} → lookupImport sg x ≡ just T → Declared x T
-    entry    : ∀ {x sc body prefix} → lookupPolyPrefix polys x ≡ just (sc , body , prefix) → Fin s
-    entryIs  : ∀ {x sc body prefix} (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix))
-             → S !! entry lp ≡ schemaOf sc
+open import Once.TypeCheck.View Σ S
 open View
-
-Views : ∀ {m} → NamedCtx m → Set
-Views ctx = View (NamedCtx.imports ctx) (NamedCtx.sig ctx) (NamedCtx.polys ctx)
+open import Once.Internal.Core.DerivedTyping Σ S
 
 ------------------------------------------------------------------------
 -- Elaborations and their combinators

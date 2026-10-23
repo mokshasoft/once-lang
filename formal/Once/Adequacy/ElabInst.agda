@@ -41,7 +41,8 @@ import Once.Spec.Core.Meaning Σ fmt S as SM
 open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (⟦_⟧ₛ)
 open import Once.Spec.Core.Typing Σ S
 import Once.Metatheory.TermModel.TySubst Σ S as TS
-open import Once.Internal.Elaboration Σ S using (View; Views; elabᶜ)
+open import Once.Internal.Elaboration Σ S using (elabᶜ)
+open import Once.TypeCheck.View Σ S using (View; Views)
 import Once.TypeCheck.TySubst as RS
 import Once.TypeCheck.Instance as Inst
 import Once.Adequacy.ElabCommute as EC

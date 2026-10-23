@@ -40,6 +40,7 @@ import Once.Spec.Grade as LG
 import Once.Internal.Type.WellFormed as LW
 import Once.Internal.Type.Poly as TP
 import Once.Internal.Elaboration as E
+import Once.TypeCheck.View as TView
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 open import Once.Internal.Type using (wk₀)
@@ -49,21 +50,21 @@ import Once.Adequacy.SpecFront.Scope as Sc
 
 module Once.Adequacy.SpecFront.Def
   (Σ : Signature) {s : ℕ} (S : SC.Defs s) (nm : Fin s → CanonicalName)
-  {imps sg : Imports} {polys : PolyCtx} {ps : List String} (V : E.View Σ S imps sg polys)
+  {imps sg : Imports} {polys : PolyCtx} {ps : List String} (V : TView.View Σ S imps sg polys)
   -- what the compiler's typing asks of the scope (`Check`)
   (h-imp : ∀ {x T} (lk : lookupImport imps x ≡ just T)
-         → nm (E.ImportAt.entryOf (E.View.imported V lk)) ≡ canonical (x ∷ []))
+         → nm (TView.ImportAt.entryOf (TView.View.imported V lk)) ≡ canonical (x ∷ []))
   (h-poly : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-          → nm (E.View.entry V lp) ≡ canonical (x ∷ []))
+          → nm (TView.View.entry V lp) ≡ canonical (x ∷ []))
   (h-ground : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-            → TP.Ground sc → SC.Schema.arity (S SC.!! E.View.entry V lp) ≡ 0)
+            → TP.Ground sc → SC.Schema.arity (S SC.!! TView.View.entry V lp) ≡ 0)
   (h-open : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-          → ¬ TP.Ground sc → 0 < SC.Schema.arity (S SC.!! E.View.entry V lp))
+          → ¬ TP.Ground sc → 0 < SC.Schema.arity (S SC.!! TView.View.entry V lp))
   (h-arrow : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p)) {sd sco π′}
            → TP.ArrowSchema sc sd sco π′ → TP.CodVarsInDom sd sco
-           → Σ[ X ∈ ST.Ty (SC.Schema.arity (S SC.!! E.View.entry V lp)) ]
-             Σ[ Y ∈ ST.Ty (SC.Schema.arity (S SC.!! E.View.entry V lp)) ]
-               (SC.Schema.type (S SC.!! E.View.entry V lp) ≡ X ST.⇒[ LG.mk-kind LG.Many π′ ] Y)
+           → Σ[ X ∈ ST.Ty (SC.Schema.arity (S SC.!! TView.View.entry V lp)) ]
+             Σ[ Y ∈ ST.Ty (SC.Schema.arity (S SC.!! TView.View.entry V lp)) ]
+               (SC.Schema.type (S SC.!! TView.View.entry V lp) ≡ X ST.⇒[ LG.mk-kind LG.Many π′ ] Y)
                × (∀ i → ST.Occurs i Y → ST.Occurs i X))
   -- what the Spec's typing asks of it (`Back`), at every kind context
   (b-name : ∀ d → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []))

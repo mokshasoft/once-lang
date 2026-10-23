@@ -40,10 +40,10 @@ open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (canonical)
 open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
 open import Once.Internal.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
-import Once.Internal.Elaboration as E
+import Once.TypeCheck.View as TView
 
 private
-  module ES = E Σ S
+  module VS = TView Σ S
 
 -- Every recorded monomorphic entry is named its definition's name.
 ImpNamed : ∀ {imps} → ImpSig S imps → Set
@@ -57,8 +57,8 @@ TeleNamed (t-def {p = p} d e ts)  = (nm d ≡ canonical (pfunName p ∷ [])) × 
 
 -- A monomorphic definition found by name: named so, and without type variables.
 h-imp-of : ∀ {imps} (is : ImpSig S imps) → ImpNamed is → ∀ {x T} (lk : lookupImport imps x ≡ just T)
-         → (nm (ES.ImportAt.entryOf (impAt is lk)) ≡ canonical (x ∷ []))
-           × (LP.Schema.arity (S LP.!! ES.ImportAt.entryOf (impAt is lk)) ≡ 0)
+         → (nm (VS.ImportAt.entryOf (impAt is lk)) ≡ canonical (x ∷ []))
+           × (LP.Schema.arity (S LP.!! VS.ImportAt.entryOf (impAt is lk)) ≡ 0)
 h-imp-of [] _ ()
 h-imp-of {(n , T₀) ∷ rest} (i-def d e is) (nd , ns) {x} lk with StrProp._≟_ n x
 ... | yes refl with just-injective lk

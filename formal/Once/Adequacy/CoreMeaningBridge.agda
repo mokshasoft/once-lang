@@ -73,7 +73,8 @@ open import Once.Metatheory.Coherence.Env Σ fmt S
   using (envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Internal.Elaboration Σ S
-  using (Views; View; ImportAt; Declared; declared; def; elabᶜ; elabᵢ; elabᵈ; Elab; refAt; sigE; importE; polyE; retypeD; retypeE)
+  using (elabᶜ; elabᵢ; elabᵈ; Elab; refAt; sigE; importE; polyE; retypeD; retypeE)
+open import Once.TypeCheck.View Σ S using (Views; View; ImportAt; Declared; declared; def)
 open View
 open import Once.Adequacy.SurfaceEnv Σ fmt S σ₀
 import Once.Adequacy.SpecRenameSem Σ fmt S as RS

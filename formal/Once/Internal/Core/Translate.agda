@@ -69,6 +69,7 @@ open import Once.Spec.Sub using (_<:_)
 open import Once.Type.Sub using (_<:?_)
 import Once.Spec.Core.Typing as Ty
 import Once.Internal.Elaboration as E
+import Once.TypeCheck.View as TView
 
 monoSchema : Type → Schema
 monoSchema ty = schema 0 ∅ₖ ty
@@ -104,19 +105,20 @@ wkT (t-def d e ts) = t-def (suc d) e (wkT ts)
 module _ {s} {S : Defs s} where
 
   module ES = E Σ S
+  module VS = TView Σ S
 
-  impAt : ∀ {imps} → ImpSig S imps → ∀ {x T′} → lookupImport imps x ≡ just T′ → ES.ImportAt x T′
+  impAt : ∀ {imps} → ImpSig S imps → ∀ {x T′} → lookupImport imps x ≡ just T′ → VS.ImportAt x T′
   impAt [] ()
   impAt {(n , T₀) ∷ rest} (i-def d e is) {x} eq with StrProp._≟_ n x
   ... | yes _ with just-injective eq
-  ...   | refl = ES.def d e
+  ...   | refl = VS.def d e
   impAt {(n , T₀) ∷ rest} (i-def d e is) {x} eq | no _ = impAt is eq
 
-  sigAt : ∀ {sg} → SigSig sg → ∀ {x T′} → lookupImport sg x ≡ just T′ → ES.Declared x T′
+  sigAt : ∀ {sg} → SigSig sg → ∀ {x T′} → lookupImport sg x ≡ just T′ → VS.Declared x T′
   sigAt [] ()
   sigAt {(n , T₀) ∷ rest} (s-ffi k h m ss) {x} eq with StrProp._≟_ n x
   ... | yes refl with just-injective eq
-  ...   | refl = ES.declared h m
+  ...   | refl = VS.declared h m
   sigAt {(n , T₀) ∷ rest} (s-ffi k h m ss) {x} eq | no _ = sigAt ss eq
 
   telFind : ∀ {ps} → TeleSig S ps → ∀ {x sc body prefix}
@@ -128,7 +130,7 @@ module _ {s} {S : Defs s} where
   ...   | refl = d , e
   telFind {p ∷ ps} (t-def d e ts) {x} eq | no _ = telFind ts eq
 
-  viewOf : ∀ {sg imps ps} → SigSig sg → ImpSig S imps → TeleSig S ps → ES.View imps sg (C.buildPolyCtx ps)
+  viewOf : ∀ {sg imps ps} → SigSig sg → ImpSig S imps → TeleSig S ps → VS.View imps sg (C.buildPolyCtx ps)
   viewOf ss is ts = record
     { imported = impAt is
     ; declares = sigAt ss
@@ -141,7 +143,7 @@ u0 : ∀ {m s} {S : Defs s} {Δ : Once.Spec.Type.KCtx m} {Ψ : Usage 0} {t A π}
 u0 {Ψ = []} d = d
 
 elabM : ∀ {s} {S : Defs s} (ft : Data.Maybe.Maybe Type) {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e ty Ψ}
-      → E.Views Σ S ctx → MonoBody ft ctx e ty Ψ
+      → TView.Views Σ S ctx → MonoBody ft ctx e ty Ψ
       → E.Elab Σ S (Once.Internal.Typing.Scope.NamedCtx.kinds ctx) (Once.Internal.Typing.Scope.NamedCtx.debruijn ctx) Ψ ty
 elabM {S = S} (just _) V D = E.elabᶜ Σ S V D
 elabM {S = S} nothing  V D = E.elabᵢ Σ S V D

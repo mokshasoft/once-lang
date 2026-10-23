@@ -106,6 +106,7 @@ import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.MonoEntry as ME
 import Once.Internal.Elaboration as ElabM
+import Once.TypeCheck.View as TView
 open import Once.Internal.Type using (none; noResp)
 open import Once.Internal.Type.Schema using (kinded-instance)
 open import Once.Postulates using (extensionality)
@@ -182,9 +183,9 @@ record Inv {s} {S : Defs s} (csc : C.CScope) (tl : Tele S) (ss : SigSig (C.CScop
 
 sig-at : ∀ {s} (S : Defs s) (δ : SM.DefSem Σ fmt S) → SM.DefSem.model δ ≡ mo
        → (σ : SD.DefsSem) → CallEnv.ffiE (SD.DefsSem.calls σ) ≡ φ
-       → ∀ {cn T} (wn : WordName cn) (k : IsConcrete T) (dc : ElabM.Declared Σ S (showCanonical cn) T)
+       → ∀ {cn T} (wn : WordName cn) (k : IsConcrete T) (dc : TView.Declared Σ S (showCanonical cn) T)
        → RelGM Once.Spec.Grade.pure T (subst id (⟦wk₀⟧ᵛ T) (CMB.sigSem fmt Σ S σ₀ δ cn wn k dc)) (SD.sigOpSem T cn k fmt σ)
-sig-at S δ e σ eψ {cn} {T} wn k (ElabM.declared h mem) =
+sig-at S δ e σ eψ {cn} {T} wn k (TView.declared h mem) =
   subst (λ md → RelGM Once.Spec.Grade.pure T
                   (subst id (⟦wk₀⟧ᵛ T) (subst (λ X → ⟦ X ⟧ᵛ) (⌜declS⌝ k h) (SM.sigopᵛ Σ fmt S σ₀ cn (declS T) (mem {cn} wn refl) md)))
                   (SD.sigOpSem T cn k fmt σ))
@@ -384,7 +385,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
     r0 : Respects ∅ₖ ∅ₖ none
     r0 ()
 
-  entry≡ : CMB.⟦_⟧ₛ fmt Σ S σ₀ Dc δ tt ≡ subst id (⟦wk₀⟧ᵛ ty) (CMB.impSem fmt Σ S′ σ₀ δ′ {∅ₖ} {x} (ElabM.def zero refl))
+  entry≡ : CMB.⟦_⟧ₛ fmt Σ S σ₀ Dc δ tt ≡ subst id (⟦wk₀⟧ᵛ ty) (CMB.impSem fmt Σ S′ σ₀ δ′ {∅ₖ} {x} (TView.def zero refl))
   entry≡ =
     H.≅-to-≡ (H.trans (H.trans (H.sym (H.≡-to-≅ (ME.mono-entry-sem Σ fmt S σ₀ ∅ₖ ∅ₖ none r0 Dc δ)))
                                (H.≡-subst-removable (λ X → ⟦ X ⟧ᵛ) (TZ.⟨⟩-0 Σ S none ty) _))
@@ -471,7 +472,7 @@ inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} D {
         callRel : RelS (RelD ty) (MB.callSD fmt Σ σ₀ σ x ty) (subst T∞ (cohᴰ ty) (abiT ty M))
         callRel = ≡ˡ (callSD-later later (e ∷ pre) (C.cpolys csc) I uf′ x ty (ns-head later (C.CScope.cimps csc) ns))
                      (coh-runs ty (abi ty x pre irFun))
-        new : RelGM Once.Spec.Grade.pure ty (subst id (⟦wk₀⟧ᵛ ty) (CMB.impSem fmt Σ S′ σ₀ δ′ {∅ₖ} {x} (ElabM.def zero refl)))
+        new : RelGM Once.Spec.Grade.pure ty (subst id (⟦wk₀⟧ᵛ ty) (CMB.impSem fmt Σ S′ σ₀ δ′ {∅ₖ} {x} (TView.def zero refl)))
                     (MB.callSD fmt Σ σ₀ σ x ty)
         new = subst (λ m → RelGM Once.Spec.Grade.pure ty m (MB.callSD fmt Σ σ₀ σ x ty)) entry≡
                     (GM-D Once.Spec.Grade.pure ty relM callRel)

@@ -562,7 +562,8 @@ module _ {s : ℕ} (S : Defs s) (σ-self : RelDefs fmt σ σ) where
   open import Once.Spec.Core.Meaning Σ fmt S using (DefSem; envˡ; envʳ; env*One; env*Many; restrict; slot)
   open import Once.Metatheory.Coherence.Env Σ fmt S
     using (envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict)
-  open import Once.Internal.Elaboration Σ S using (Views; module View; elabᶜ; elabᵢ; elabᵈ)
+  open import Once.Internal.Elaboration Σ S using (elabᶜ; elabᵢ; elabᵈ)
+  open import Once.TypeCheck.View Σ S using (Views; module View)
   open View using (declares; imported)
   open import Once.Adequacy.SurfaceEnv Σ fmt S σ₀
     using (EnvR; fromSurf; fromR; split-R′; envˡ-R; envʳ-R; bind-R; bind0-R; lookup-R; restrict-R)

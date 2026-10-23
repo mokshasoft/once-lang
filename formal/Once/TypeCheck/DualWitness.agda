@@ -26,21 +26,22 @@ import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as SX
-import Once.Internal.Elaboration as E
+import Once.TypeCheck.View as TView
 import Once.Internal.Type.Poly as TP
 open import Once.Internal.Typing.Scope using (NamedCtx; Binding; Imports; PolyCtx; lookupImport; lookupPolyPrefix; extendNamedCtx)
 open NamedCtx
 import Once.Spec.Surface.Typing as SUT
-import Once.Adequacy.SpecFront.Locals as LocalsM
-open import Once.Adequacy.SpecFront.Expr using (RX)
-open import Once.Adequacy.SpecCore.Type using (tyR)
+import Once.TypeCheck.Scoped as Sc
+open Sc using (Scoped; names; s-local; s-res; s-app; s-lam; s-let; s-pair; s-destruct; s-unit; s-int; s-float; s-annot; s-binop; s-neg)
 import Once.TypeCheck.Witness as WM
 
 open import Data.Bool using (true)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (nothing)
 open import Data.Integer using (ℤ)
-open import Relation.Binary.PropositionalEquality using (trans; cong)
+open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂)
 open import Once.Spec.Name using (gen; own)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Internal.Name using (showCanonical; WordName)
@@ -55,7 +56,6 @@ open import Once.Internal.Core.Decl using (⌜declS⌝)
 open import Once.Type.Grade using (_≤qᵇ_)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; BinOp)
-open import Once.Adequacy.SpecCore.Type using (TyR-≡)
 open import Data.Unit using (⊤)
 
 open import Once.Internal.Typing

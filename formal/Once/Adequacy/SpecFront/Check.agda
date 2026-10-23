@@ -39,28 +39,29 @@ import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Internal.Elaboration as E
+import Once.TypeCheck.View as TView
 import Once.Internal.Type.Poly as TP
 open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 
 module Once.Adequacy.SpecFront.Check
   (Σ : Signature) {s : ℕ} (S : SC.Defs s) (nm : Fin s → CanonicalName)
-  {imps sg : Imports} {polys : PolyCtx} (V : E.View Σ S imps sg polys)
+  {imps sg : Imports} {polys : PolyCtx} (V : TView.View Σ S imps sg polys)
   -- a monomorphic definition in scope: its name
   (h-imp : ∀ {x T} (lk : lookupImport imps x ≡ just T)
-         → nm (E.ImportAt.entryOf (E.View.imported V lk)) ≡ canonical (x ∷ []))
+         → nm (TView.ImportAt.entryOf (TView.View.imported V lk)) ≡ canonical (x ∷ []))
   -- a telescope definition in scope: its name; no type variables exactly when its schema is ground
   (h-poly : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-          → nm (E.View.entry V lp) ≡ canonical (x ∷ []))
+          → nm (TView.View.entry V lp) ≡ canonical (x ∷ []))
   (h-ground : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-            → TP.Ground sc → SC.Schema.arity (S SC.!! E.View.entry V lp) ≡ 0)
+            → TP.Ground sc → SC.Schema.arity (S SC.!! TView.View.entry V lp) ≡ 0)
   (h-open : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p))
-          → ¬ TP.Ground sc → 0 < SC.Schema.arity (S SC.!! E.View.entry V lp))
+          → ¬ TP.Ground sc → 0 < SC.Schema.arity (S SC.!! TView.View.entry V lp))
   -- …and an arrow schema is an arrow, its codomain's variables in its domain
   (h-arrow : ∀ {x sc b p} (lp : lookupPolyPrefix polys x ≡ just (sc , b , p)) {sd sco π′}
            → TP.ArrowSchema sc sd sco π′ → TP.CodVarsInDom sd sco
-           → Σ[ X ∈ ST.Ty (SC.Schema.arity (S SC.!! E.View.entry V lp)) ]
-             Σ[ Y ∈ ST.Ty (SC.Schema.arity (S SC.!! E.View.entry V lp)) ]
-               (SC.Schema.type (S SC.!! E.View.entry V lp) ≡ X ST.⇒[ LG.mk-kind LG.Many π′ ] Y)
+           → Σ[ X ∈ ST.Ty (SC.Schema.arity (S SC.!! TView.View.entry V lp)) ]
+             Σ[ Y ∈ ST.Ty (SC.Schema.arity (S SC.!! TView.View.entry V lp)) ]
+               (SC.Schema.type (S SC.!! TView.View.entry V lp) ≡ X ST.⇒[ LG.mk-kind LG.Many π′ ] Y)
                × (∀ i → ST.Occurs i Y → ST.Occurs i X))
   {m : ℕ} (Δ : ST.KCtx m) where
 
@@ -104,6 +105,7 @@ open import Once.Adequacy.SpecCore.Prim S using (primS)
 
 private
   module EV = E Σ S
+  module VV = TView Σ S
 
   C : ∀ (n : ℕ) → List (Binding m) → LC.Ctx m n → NamedCtx m
   C n Γn Γd = mkCtx n Γn Γd imps polys sg Δ
@@ -277,19 +279,19 @@ mutual
   fwdᵢ t-unit-var lr (x-res _) = syn r-unit r-unit w-unit-g
   fwdᵢ (t-var-local {eV = svar i} lk) lr (x-local _) =
     let (A′ , ra , mem) = lk-R lr i lk in syn ra (r-var i) (w-var mem)
-  fwdᵢ {Γd = Γd} {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k eq) lr (x-res _) = res (E.View.declares V lk)
+  fwdᵢ {Γd = Γd} {L = L} (t-var-resolved {cn = cn} {T = T} ng wn lk k eq) lr (x-res _) = res (TView.View.declares V lk)
     where
-      res : (D : EV.Declared (showCanonical cn) T) → Syn L (SX.RResolved cn) _ (proj₁ (EV.sigE {Δ = Δ} {Γ = Γd} cn wn k D eq)) SCx.zeroUsage
-      res (EV.declared h mem) =
+      res : (D : VV.Declared (showCanonical cn) T) → Syn L (SX.RResolved cn) _ (proj₁ (EV.sigE {Δ = Δ} {Γ = Γd} cn wn k D eq)) SCx.zeroUsage
+      res (VV.declared h mem) =
         syn (subst (TyR Δ _) (trans eq (sym (⌜declS⌝ k h))) (tyR _)) (tmR _) (w-sigop ng (mem wn refl) k (⌜declS⌝ k h))
   fwdᵢ (t-var-own _ lk eq) lr (x-res _) =
-    syn-retype (sym eq) _ (refS (E.ImportAt.entryOf (E.View.imported V lk)) (h-imp lk) (E.ImportAt.mono (E.View.imported V lk)) _ _
-                                (cong SC.Schema.arity (E.ImportAt.mono (E.View.imported V lk))))
+    syn-retype (sym eq) _ (refS (TView.ImportAt.entryOf (TView.View.imported V lk)) (h-imp lk) (TView.ImportAt.mono (TView.View.imported V lk)) _ _
+                                (cong SC.Schema.arity (TView.ImportAt.mono (TView.View.imported V lk))))
   fwdᵢ (t-var-import _ lkl _ _ _) lr (x-local inb) = ⊥-elim (lk-out lr inb lkl)
   fwdᵢ (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ eq) lr (x-res _) =
     let ki = kinded-instance sc (ground-kinded sc g) in
     syn-retype (sym eq) _ (syn-retype (proj₂ (proj₂ ki)) _
-      (refS (E.View.entry V lp) (h-poly lp) (E.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-ground lp g)))
+      (refS (TView.View.entry V lp) (h-poly lp) (TView.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-ground lp g)))
   fwdᵢ (t-annot {T = T} d refl) lr (x-annot x) =
     let chk rt der = fwdᶜ d lr x (annot-R {T} _) in syn (annot-R {T} _) rt (w-annot der)
   fwdᵢ (t-pair da db) lr (x-pair xa xb) =
@@ -479,7 +481,7 @@ mutual
     let ki = kinded-instance sc ins in
     subst (λ Z → Chk _ _ Z _ _) (TyR-≡ rT)
           (chk-retype (proj₂ (proj₂ ki)) _
-            (refC (E.View.entry V lp) (h-poly lp) (E.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open lp ng)))
+            (refC (TView.View.entry V lp) (h-poly lp) (TView.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open lp ng)))
 
   ----------------------------------------------------------------------
   -- An arrow out of a given domain
@@ -494,7 +496,7 @@ mutual
     let (X , Y , te , incl) = h-arrow lp arr cvd
         ki = kinded-instance sc ins
     in subst (λ Z → Dom _ _ Z _ _ _ _) (TyR-≡ rA)
-             (refD (E.View.entry V lp) (h-poly lp) (E.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open lp ng) te incl
+             (refD (TView.View.entry V lp) (h-poly lp) (TView.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open lp ng) te incl
                    (proj₂ (proj₂ ki)) g)
   fwdᵈ (d-lam d) lr (x-lam x) rA =
     let syn rb rt d′ = fwdᵢ d (lr-▸ lr rA) x in dom rb (r-lam rA rt) (w-lam↦ d′)
