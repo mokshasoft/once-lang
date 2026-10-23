@@ -42,7 +42,6 @@ open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContin
 open import Once.Parser.Type using (isUpperWord)
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
-open import Once.Parser.TypeAlias
 
 -- Parser smoke tests (plan 0.3 G1): pull into the compilation graph
 -- so a regression in parser behaviour fails `make parser`.
@@ -203,16 +202,6 @@ parseStrict source = parseStrict-pm (parseModule (tokenizeString source))
 -- Processing Pipeline Helpers
 ------------------------------------------------------------------------
 
--- | Extract type aliases from a module's declarations
-extractAliases : Module → TypeAliasEnv
-extractAliases (mkModule ds) = go ds
-  where
-  go : List Decl → TypeAliasEnv
-  go [] = []
-  go (DTypeAlias name params body ∷ rest) = (name , params , body) ∷ go rest
-  {-# CATCHALL #-}
-  go (_ ∷ rest) = go rest
-
 -- | Extract function definitions with their types (paired sig + def)
 -- Returns: List (name, type, body)
 -- Processes declarations in order, matching type sigs with subsequent defs.
@@ -268,10 +257,6 @@ polysOf (e-poly pfi ∷ es) = pfi ∷ polysOf es
 -- polymorphic signatures are not admissible. User `DFunDef`s with
 -- polymorphic sigs route into `PolyFunInfo` instead of going through
 -- this projector.
---
--- Applies alias expansion after projection (aliases currently live
--- in ground `Type` land — see `expandAliases`). If a future phase
--- introduces polymorphic aliases, expansion moves pre-projection.
 -- D231: an FFI declaration must be HONEST (`Once.Type.Honest`): a SigOp
 -- returning `Unit` emits and one returning `Void` halts, so such an arrow must
 -- be `Eff`, and a bare `Unit`/`Void` constant is not a declaration. Checked
@@ -284,10 +269,9 @@ honestSig name T nothing  =
         ++ "returning Unit emits and one returning Void halts, so its arrow must be Eff "
         ++ "(a bare Unit/Void constant is written Eff Unit Unit)")
 
-projectSig : TypeAliasEnv → String → PolyType → String ⊎ Type
-projectSig aliases name ty with isGround ty
-... | inj₁ g  = honestSig name (expandAliases aliases (extractGround ty g))
-                               (honest? (expandAliases aliases (extractGround ty g)))
+projectSig : String → PolyType → String ⊎ Type
+projectSig name ty with isGround ty
+... | inj₁ g  = honestSig name (extractGround ty g) (honest? (extractGround ty g))
 ... | inj₂ _  = inj₁ ("Polymorphic signature not admissible here for `" ++ name
                         ++ "`: " ++ showPolyType ty
                         ++ " — primitives and type aliases must be ground. "
@@ -303,7 +287,6 @@ PendingSig = String × (Type ⊎ PolyType)
 -- `consFun`/`consPoly`/`go` lifted to TOP LEVEL (were `where`-locals of
 -- `extractFunctions`) so the verified frontend can induct on them (a
 -- non-primitive "main" `FunInfo` traces back to a `DFunDef "main"`).
--- `aliases` is now an explicit parameter.
 EFResult : Set
 EFResult = String ⊎ List Entry
 
@@ -320,10 +303,10 @@ extractFunctions-consPoly (inj₂ es)  n t b = inj₂ (e-poly (mkPolyFunInfo n t
 danglingSig : String → String
 danglingSig s = "The signature of `" ++ s ++ "` is not followed by its definition"
 
-extractFunctions-go : TypeAliasEnv → List Decl → Maybe PendingSig → EFResult
-extractFunctions-sigless : TypeAliasEnv → (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → EFResult
-extractFunctions-go aliases [] nothing = inj₂ []
-extractFunctions-go aliases [] (just (s , _)) = inj₁ (danglingSig s)
+extractFunctions-go : List Decl → Maybe PendingSig → EFResult
+extractFunctions-sigless : (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → EFResult
+extractFunctions-go [] nothing = inj₂ []
+extractFunctions-go [] (just (s , _)) = inj₁ (danglingSig s)
 -- Signatures are classified now: ground types get expanded eagerly;
 -- polymorphic types are carried as-is for the matching DFunDef.
 -- Plan 0.58 / D071: a ground signature routes to a monomorphic `FunInfo`
@@ -332,26 +315,26 @@ extractFunctions-go aliases [] (just (s , _)) = inj₁ (danglingSig s)
 -- projection carried as a `PolyFunInfo` and δ-reduced at use sites, NOT gated by
 -- FFI concreteness. The resolver's keep-bare set (`polyDefNames`) uses the SAME
 -- `isGround`-then-`isConcrete?` criterion, so the two classifications agree.
-extractFunctions-go aliases (DTypeSig name ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
-extractFunctions-go aliases (DTypeSig name ty ∷ rest) nothing with isGround ty
-... | inj₂ _  = extractFunctions-go aliases rest (just (name , inj₂ ty))
+extractFunctions-go (DTypeSig name ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
+extractFunctions-go (DTypeSig name ty ∷ rest) nothing with isGround ty
+... | inj₂ _  = extractFunctions-go rest (just (name , inj₂ ty))
 ... | inj₁ g  with isConcrete? (extractGround ty g)
-...   | just _  = extractFunctions-go aliases rest (just (name , inj₁ (expandAliases aliases (extractGround ty g))))
-...   | nothing = extractFunctions-go aliases rest (just (name , inj₂ ty))
+...   | just _  = extractFunctions-go rest (just (name , inj₁ (extractGround ty g)))
+...   | nothing = extractFunctions-go rest (just (name , inj₂ ty))
 -- DFunDef with matching ground sig → FunInfo (user-defined; not primitive)
-extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
-... | yes _ = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) body false)
+extractFunctions-go (DFunDef name body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
+... | yes _ = extractFunctions-consFun (extractFunctions-go rest nothing) (mkFunInfo name (just gty) body false)
 ... | no  _ = inj₁ (danglingSig sigName)
 -- DFunDef with matching polymorphic sig → PolyFunInfo
-extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
-... | yes _ = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) name pty body
+extractFunctions-go (DFunDef name body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
+... | yes _ = extractFunctions-consPoly (extractFunctions-go rest nothing) name pty body
 ... | no  _ = inj₁ (danglingSig sigName)
 -- D323: NO explicit signature → a monomorphic definition at the type its
 -- body SYNTHESIZES (`inferElab`, during compilation). No oracle: the
 -- definition alone decides its type. `polyDefNames` (Resolve) never keeps a
 -- sig-less definition bare, so the two classifications agree.
-extractFunctions-go aliases (DFunDef name body ∷ rest) nothing =
-  extractFunctions-sigless aliases name body rest (name ≟ "main")
+extractFunctions-go (DFunDef name body ∷ rest) nothing =
+  extractFunctions-sigless name body rest (name ≟ "main")
 -- Primitives: use RVar as placeholder body (actual impl is external).
 -- Owned primitives (from resolved imports) get qualified names
 -- `alias.name` — same textual form that the typechecker's
@@ -359,24 +342,24 @@ extractFunctions-go aliases (DFunDef name body ∷ rest) nothing =
 -- resolves to this FunInfo without further wiring. Primitives must
 -- be ground; polymorphic primitive signatures are rejected by
 -- `projectSig`.
-extractFunctions-go aliases (DSignature name owner ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
-extractFunctions-go aliases (DSignature name nothing ty ∷ rest) nothing with projectSig aliases name ty
+extractFunctions-go (DSignature name owner ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
+extractFunctions-go (DSignature name nothing ty ∷ rest) nothing with projectSig name ty
 ... | inj₁ err  = inj₁ err
-... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) (RVar name) true)
-extractFunctions-go aliases (DSignature name (just owner) ty ∷ rest) nothing with projectSig aliases (showCanonical (canonical (owner ++ₗ name ∷ []))) ty
+... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go rest nothing) (mkFunInfo name (just gty) (RVar name) true)
+extractFunctions-go (DSignature name (just owner) ty ∷ rest) nothing with projectSig (showCanonical (canonical (owner ++ₗ name ∷ []))) ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  =
          let qname = showCanonical (canonical (owner ++ₗ name ∷ []))
-         in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
+         in extractFunctions-consFun (extractFunctions-go rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
 {-# CATCHALL #-}
-extractFunctions-go aliases (_ ∷ rest) nothing = extractFunctions-go aliases rest nothing
+extractFunctions-go (_ ∷ rest) nothing = extractFunctions-go rest nothing
 {-# CATCHALL #-}
-extractFunctions-go aliases (_ ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
+extractFunctions-go (_ ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
 
 -- D315/D323: a sig-less definition, `main` included, is a FunInfo at its
 -- synthesized type (`main` is then used at `Eff Unit Unit`); never a schema.
-extractFunctions-sigless aliases name body rest _ =
-  extractFunctions-consFun (extractFunctions-go aliases rest nothing)
+extractFunctions-sigless name body rest _ =
+  extractFunctions-consFun (extractFunctions-go rest nothing)
     (mkFunInfo name nothing body false)
 
 
@@ -539,9 +522,9 @@ thenExtract : String ⊎ ⊤ → EFResult → EFResult
 thenExtract (inj₁ err) _ = inj₁ err
 thenExtract (inj₂ _)   r = r
 
-extractFunctions : TypeAliasEnv → Module → String ⊎ List Entry
-extractFunctions aliases (mkModule ds) =
-  guardDistinct (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go aliases (sigsFirst ds) nothing))
+extractFunctions : Module → String ⊎ List Entry
+extractFunctions (mkModule ds) =
+  guardDistinct (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (sigsFirst ds) nothing))
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all
 -- removed. The eager RawExpr-level inlining pipeline is replaced by

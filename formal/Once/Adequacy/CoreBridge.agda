@@ -83,7 +83,7 @@ SigView-ef m (inj₁ _)  ()
 SigView-ef m (inj₂ es) mt Σ = TR.SigIn Σ mt
 
 SigView : Typed → Signature → Set
-SigView (m , mt , hvm) = SigView-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt
+SigView (m , mt , hvm) = SigView-ef m (Parser.extractFunctions m) mt
 
 typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt
                 → (Σ : Signature) → SigView-ef m ef mt Σ → TL.Program Σ
@@ -91,7 +91,7 @@ typedProgram-ef m (inj₁ _)  () _
 typedProgram-ef m (inj₂ es) mt (_ , mi) Σ u = TR.toProgram₀ Σ mt mi u
 
 typedProgram : (tp : Typed) (Σ : Signature) → SigView tp Σ → TL.Program Σ
-typedProgram (m , mt , hvm) = typedProgram-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm
+typedProgram (m , mt , hvm) = typedProgram-ef m (Parser.extractFunctions m) mt hvm
 
 module _ (fmt : TargetNum) where
 
@@ -147,7 +147,7 @@ module _ (fmt : TargetNum) where
   ... | es , ef , b , ceq =
     subst (λ t → trT∞ ι [] t ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram (m , mt , hvm) Σ u) J)
           (sym (cong (λ tbl → evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) ir tt) (cong tableOfResult ceq)))
-          (core-ef-tr m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b fe Σ u wf J uniq)
+          (core-ef-tr m (Parser.extractFunctions m) mt hvm ef (TP.entries-distinct m ef) b fe Σ u wf J uniq)
     where
       ι = toInterp Σ wf J
       fe : FB.bundle-find b ≡ just ir

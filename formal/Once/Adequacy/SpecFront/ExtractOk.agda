@@ -38,7 +38,6 @@ import Once.Internal.Resolution as LR
 import Once.Parser as Parser
 open import Once.Parser using (Entry; entryNameOf)
 open import Once.Parser.Module.Core using (Decl; mkModule)
-open import Once.Parser.TypeAlias using (TypeAliasEnv)
 open import Once.Internal.Module using (entrySig)
 open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb)
@@ -56,7 +55,7 @@ open import Once.Adequacy.SpecFront.Align using (DR)
 
 private
   -- the FFI declarations' entries are named by their table
-  sig-names : ∀ {al sigs fs} → All IsSig sigs → XAlign al sigs fs → names fs ≡ keys (entrySig fs)
+  sig-names : ∀ {sigs fs} → All IsSig sigs → XAlign sigs fs → names fs ≡ keys (entrySig fs)
   sig-names []           xa-nil        = refl
   sig-names (is-sig ∷ a) (xa-pass () _)
   sig-names (is-sig ∷ a) (xa-sig _ x)  = cong (_ ∷_) (sig-names a x)
@@ -75,24 +74,24 @@ private
 
 -- What the extractor makes of the module: the FFI declarations' entries,
 -- then the definitions'.
-record Extracted (al : TypeAliasEnv) (dsR : List Decl) (Σ : Signature) : Set where
+record Extracted (dsR : List Decl) (Σ : Signature) : Set where
   field
     fs esN    : List Entry
-    extracted : Parser.extractFunctions al (mkModule dsR) ≡ inj₂ (fs ++ esN)
-    sigs      : XAlign al (Parser.ownSigs dsR ++ Parser.importedSigs dsR) fs
-    defs      : XAlign al (Parser.nonSigs dsR) esN
+    extracted : Parser.extractFunctions (mkModule dsR) ≡ inj₂ (fs ++ esN)
+    sigs      : XAlign (Parser.ownSigs dsR ++ Parser.importedSigs dsR) fs
+    defs      : XAlign (Parser.nonSigs dsR) esN
     table     : toISig Σ ≡ entrySig fs
     facts     : All FFIFacts fs
     distinct  : AllPairs _≢_ (names (fs ++ esN))
 
 extract-ok : ∀ {mm mm′ um am dsU dsR ds′ dsR′ Σ E s′} {S′ : _} {nm′ : Fin s′ → CanonicalName} {tl′}
-               {S₀ : _} {nm₀ : Fin 0 → CanonicalName} {tl₀} al
+               {S₀ : _} {nm₀ : Fin 0 → CanonicalName} {tl₀}
            → ModsW mm′ → All DeclW ds′ → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
            → SPr.ResolvesDecls E ds′ dsR′ → DR Σ dsR′ dsR
            → SPr.SignatureOf mm′ ds′ Σ → WellFormed Σ → OneName Σ
            → SPr.Walk Σ S₀ nm₀ tl₀ dsR′ S′ nm′ tl′ → Injective _≡_ _≡_ nm′ → (∀ i {t} → ¬ ((nm′ i ∶ t) ∈ Σ))
-           → Extracted al dsR Σ
-extract-ok {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} al wm wd mr rds pw rd dr sig@(Σ₀ , Σᵢ , so , im , refl) wf one w inj ns =
+           → Extracted dsR Σ
+extract-ok {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} wm wd mr rds pw rd dr sig@(Σ₀ , Σᵢ , so , im , refl) wf one w inj ns =
   record
     { fs = fs ; esN = esN
     ; extracted = trans (cong₂ (λ a r → Parser.guardDistinct (Parser.thenExtract a r)) (adj-ok adj) (align-extract xw))
@@ -101,21 +100,21 @@ extract-ok {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} al wm wd mr rds pw rd dr sig@
   where
     w₀ = proj₁ (wf-++ Σ₀ wf)
     wᵢ = proj₂ (wf-++ Σ₀ wf)
-    p₀ = own-part← {al} pw so w₀
-    pᵢ = imp-part← {al} mr rds pw im wᵢ
+    p₀ = own-part← pw so w₀
+    pᵢ = imp-part← mr rds pw im wᵢ
     fs₀ = proj₁ p₀
     fsᵢ = proj₁ pᵢ
-    x₀ : XAlign al (Parser.ownSigs dsR) fs₀
-    x₀ = subst (λ l → XAlign al l fs₀) (sym (own-res rds)) (proj₁ (proj₂ p₀))
+    x₀ : XAlign (Parser.ownSigs dsR) fs₀
+    x₀ = subst (λ l → XAlign l fs₀) (sym (own-res rds)) (proj₁ (proj₂ p₀))
     xᵢ = proj₁ (proj₂ pᵢ)
     adj = dr-adj Σ dr (walk-adj w)
-    pN = xalign-of al (nonSigs-adj adj) (nonSigs-none dsR)
+    pN = xalign-of (nonSigs-adj adj) (nonSigs-none dsR)
     esN = proj₁ pN
     xN = proj₂ pN
     fs = fs₀ ++ fsᵢ
     xs = xa-++ x₀ xᵢ
-    xw : XAlign al (Parser.sigsFirst dsR) (fs ++ esN)
-    xw = subst (XAlign al (Parser.sigsFirst dsR)) (sym (++-assoc fs₀ fsᵢ esN)) (xa-++ x₀ (xa-++ xᵢ xN))
+    xw : XAlign (Parser.sigsFirst dsR) (fs ++ esN)
+    xw = subst (XAlign (Parser.sigsFirst dsR)) (sym (++-assoc fs₀ fsᵢ esN)) (xa-++ x₀ (xa-++ xᵢ xN))
     isF = AllP.++⁺ (own-sigs dsR) (imported-sigs dsR)
     table : toISig Σ ≡ entrySig fs
     table = trans (toISig-++ Σ₀ Σᵢ)

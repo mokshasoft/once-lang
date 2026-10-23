@@ -102,7 +102,7 @@ data DefEntry : Parser.Entry → Set where
   de-fun  : ∀ {fi} → funIsPrimitive fi ≡ false → DefEntry (Parser.e-fun fi)
   de-poly : ∀ {pfi} → DefEntry (Parser.e-poly pfi)
 
-defs-of : ∀ {al ds es} → All (λ d → ¬ IsSig d) ds → XAlign al ds es → All DefEntry es
+defs-of : ∀ {ds es} → All (λ d → ¬ IsSig d) ds → XAlign ds es → All DefEntry es
 defs-of [] xa-nil = []
 defs-of (_ ∷ n) (xa-pass _ xa) = defs-of n xa
 defs-of (_ ∷ _ ∷ n) (xa-mono _ xa) = de-fun refl ∷ defs-of n xa

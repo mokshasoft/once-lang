@@ -42,7 +42,6 @@ open import Once.Parser using (projectSig)
 open import Once.Type using (isGround)
 open import Once.Type.Honest using (honest?-complete)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
-open import Once.Adequacy.SpecFront.Align [] using (expand-id)
 
 ------------------------------------------------------------------------
 -- Ground
@@ -145,12 +144,11 @@ decl-honest (dt-act {b = b} _ _) e = op-cod b e
 -- The extractor reads it
 ------------------------------------------------------------------------
 
--- (the alias expansion of a type is the type: `expand-id`)
-project-of : ∀ al n (T : PolyType) {t} → DeclTypeOf (toPoly T) t → WellFormedDecl t → projectSig al n T ≡ inj₂ (declTy t)
-project-of al n T {t} dt wf = at (decl-ground T dt)
+project-of : ∀ n (T : PolyType) {t} → DeclTypeOf (toPoly T) t → WellFormedDecl t → projectSig n T ≡ inj₂ (declTy t)
+project-of n T {t} dt wf = at (decl-ground T dt)
   where
-    at : (g : Ground T) → projectSig al n T ≡ inj₂ (declTy t)
-    at g rewrite isGround-complete-at T g = hs _ (expand-id al (extractGround T g))
+    at : (g : Ground T) → projectSig n T ≡ inj₂ (declTy t)
+    at g rewrite isGround-complete-at T g = hs _ refl
       where
         hs : ∀ X → X ≡ extractGround T g → Once.Parser.honestSig n X (LH.honest? X) ≡ inj₂ (declTy t)
         hs .(extractGround T g) refl

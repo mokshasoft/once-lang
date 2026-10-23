@@ -185,7 +185,6 @@ library
       MAlonzo.Code.Once.Parser.Tests
       MAlonzo.Code.Once.Parser.Token
       MAlonzo.Code.Once.Parser.Type
-      MAlonzo.Code.Once.Parser.TypeAlias
       MAlonzo.Code.Once.Parser.TypeRelation
       MAlonzo.Code.Once.Postulates
       MAlonzo.Code.Once.Semantics.Functor

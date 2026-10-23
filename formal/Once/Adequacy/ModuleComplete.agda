@@ -277,7 +277,7 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr deriv rest) (ma
 
 moduleToIR-complete : ∀ (m : Core.Module) (mt : ModuleTyped m) → HasValidMain m mt →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir → moduleToIR m ≡ just ir)
-moduleToIR-complete m mt hvm with Parser.extractFunctions (Parser.extractAliases m) m
+moduleToIR-complete m mt hvm with Parser.extractFunctions m
 ... | inj₂ es with ce-find-complete C.emptyCScope mt (proj₁ hvm) (proj₂ hvm)
 ...   | (compiled , ir , ce-eq , fm-eq) = ir , trans (cong moduleToIR-aux ce-eq) fm-eq
 
@@ -354,7 +354,7 @@ ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er pr deriv rest) {cfs} 
 
 moduleToIR-sound : ∀ (m : Core.Module) (mt : ModuleTyped m) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR m ≡ just ir → HasValidMain m mt
-moduleToIR-sound m mt mi with Parser.extractFunctions (Parser.extractAliases m) m
+moduleToIR-sound m mt mi with Parser.extractFunctions m
 ... | inj₂ es with C.compileEntries IR.Heap false C.emptyCScope es in ce-eq
 ...   | inj₁ _ = case mi of λ ()
 ...   | inj₂ compiled = ce-mains C.emptyCScope mt ce-eq , ce-mainexists C.emptyCScope mt ce-eq mi

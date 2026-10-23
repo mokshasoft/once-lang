@@ -27,7 +27,7 @@ open import Once.Denotation.Program using (irProgram)
 open import Once.Target.Arch using (Arch)
 open import Once.Compile
   using (CompiledFun; compileFileFromModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
-open import Once.Parser using (Entry; extractFunctions; extractAliases)
+open import Once.Parser using (Entry; extractFunctions)
 open import Once.Parser.Module using ()
 open import Once.Parser.Module.Core using (Module)
 
@@ -86,7 +86,7 @@ file-is-emit : ∀ (arch : Arch) (m : Module) (F : FileOf arch) (ir : IR ⌊ Uni
              → moduleToIR m ≡ just ir
              → F ≡ emitProgram arch (irProgram (moduleTable m) ir)
 file-is-emit arch m F ir eq mi =
-  at-ef arch m (extractFunctions (extractAliases m) m) F ir eq mi
+  at-ef arch m (extractFunctions m) F ir eq mi
 
 -- …and THE FILE OF A LIBRARY: a module without `main` compiles to its
 -- functions only.
@@ -95,4 +95,4 @@ file-is-lib : ∀ (arch : Arch) (m : Module) (F : FileOf arch)
             → moduleToIR m ≡ nothing
             → F ≡ emitLibrary arch (moduleTable m)
 file-is-lib arch m F eq mi =
-  lib-ef arch m (extractFunctions (extractAliases m) m) F eq mi
+  lib-ef arch m (extractFunctions m) F eq mi

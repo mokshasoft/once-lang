@@ -52,7 +52,6 @@ open import Once.Spec.Surface.Program
   using (SchemaOf; TypeOf; FunOf; NotDefinition; nd-sig; nd-alias; nd-import;
          to-unit; to-void; to-int; to-float; to-*; to-+; to-⇒; to-act; to-eff; to-μ; to-ν; fo-K; fo-Id; fo-⊕; fo-⊗)
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
-open import Once.Parser.TypeAlias using (TypeAliasEnv; expandAliases; expandAliasesF)
 import Once.Parser as Parser
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Core.Translate Σ using (monoSchema)
@@ -104,25 +103,6 @@ data DR : List SX.Decl → List Decl → Set where
 -- A ground signature's schema
 ------------------------------------------------------------------------
 
-mutual
-  expand-id : ∀ al (A : LT.Type) → expandAliases al A ≡ A
-  expand-id al LT.Unit        = refl
-  expand-id al LT.Void        = refl
-  expand-id al LT.Int         = refl
-  expand-id al LT.Float       = refl
-  expand-id al (LT.var ())
-  expand-id al (a LT.* b)     = cong₂ LT._*_ (expand-id al a) (expand-id al b)
-  expand-id al (a LT.+ b)     = cong₂ LT._+_ (expand-id al a) (expand-id al b)
-  expand-id al (a LT.⇒[ k ] b) = cong₂ (λ x y → x LT.⇒[ k ] y) (expand-id al a) (expand-id al b)
-  expand-id al (LT.μ F)   = cong LT.μ (expandF-id al F)
-  expand-id al (LT.ν F π) = cong (λ G → LT.ν G π) (expandF-id al F)
-
-  expandF-id : ∀ al (F : LT.Fun 0) → expandAliasesF al F ≡ F
-  expandF-id al (LT.K A)   = cong LT.K (expand-id al A)
-  expandF-id al LT.Id      = refl
-  expandF-id al (F LT.⊕ G) = cong₂ LT._⊕_ (expandF-id al F) (expandF-id al G)
-  expandF-id al (F LT.⊗ G) = cong₂ LT._⊗_ (expandF-id al F) (expandF-id al G)
-
 private
   fin0 : Fin 0 → ⊥
   fin0 ()
@@ -152,11 +132,10 @@ private
     readsF-ground (F P⊗ G) (gf , gg) = fo-⊗ (readsF-ground F gf) (readsF-ground G gg)
 
 -- A ground signature, read by the Spec, is the monomorphic entry's schema.
-ground-schemaOf : ∀ al (T : PolyType) (g : Ground T) → SchemaOf (toPoly T) (schS (monoSchema (expandAliases al (extractGround T g))))
-ground-schemaOf al T g =
-  subst (λ ty → SchemaOf (toPoly T) (schS (monoSchema ty))) (sym (expand-id al (extractGround T g)))
-    (record { names = no-names ; distinct = λ {i} → ⊥-elim (fin0 i) ; reads = reads-ground T g
-            ; used = λ i → ⊥-elim (fin0 i) ; kinded = λ i → ⊥-elim (fin0 i) })
+ground-schemaOf : ∀ (T : PolyType) (g : Ground T) → SchemaOf (toPoly T) (schS (monoSchema (extractGround T g)))
+ground-schemaOf T g =
+  record { names = no-names ; distinct = λ {i} → ⊥-elim (fin0 i) ; reads = reads-ground T g
+            ; used = λ i → ⊥-elim (fin0 i) ; kinded = λ i → ⊥-elim (fin0 i) }
 
 ------------------------------------------------------------------------
 -- The alignment
@@ -168,21 +147,21 @@ private
   nonSigs-imported (_ ∷ sigs)  dc ((x , o , T , refl) ∷ as) = nonSigs-imported sigs dc as
 
   -- the reading's schema
-  mono-schema : ∀ {al T ty} → SigReading al T (just ty) → SchemaOf (toPoly T) (schS (monoSchema ty))
-  mono-schema {al} {T} (sr-mono g c _ _) = ground-schemaOf al T g
+  mono-schema : ∀ {T ty} → SigReading T (just ty) → SchemaOf (toPoly T) (schS (monoSchema ty))
+  mono-schema {T} (sr-mono g c _ _) = ground-schemaOf T g
 
-  poly-why : ∀ {al T} → SigReading al T nothing → NotMono T
+  poly-why : ∀ {T} → SigReading T nothing → NotMono T
   poly-why {T = T} (sr-open ig) g = ⊥-elim (inj≢ (trans (sym (isGround-complete-at T g)) ig))
     where
       inj≢ : ∀ {A B : Set} {a : A} {b : B} → _≡_ {A = A Data.Sum.⊎ B} (inj₁ a) (inj₂ b) → ⊥
       inj≢ ()
   poly-why {T = T} (sr-nonc g₀ ig ic) g = subst (λ h → isConcrete? (extractGround T h) ≡ nothing) (Ground-irrelevant T g₀ g) ic
 
-align-of : ∀ {al ds dc es} → DR ds dc → Adj dc → XAlign al (Parser.nonSigs dc) es → Align ds es
+align-of : ∀ {ds dc es} → DR ds dc → Adj dc → XAlign (Parser.nonSigs dc) es → Align ds es
 align-of dr-nil adj-nil xa-nil = al-nil
 align-of (dr-sig r) (adj-other _ a) xa = al-skip nd-sig (align-of r a xa)
-align-of {al} (dr-import {sigs = sigs} {dc = dc} as r) (adj-other _ a) (xa-pass pa-import xa) =
-  al-skip nd-import (align-of r (adj-rest sigs as a) (subst (λ l → XAlign al l _) (nonSigs-imported sigs dc as) xa))
+align-of (dr-import {sigs = sigs} {dc = dc} as r) (adj-other _ a) (xa-pass pa-import xa) =
+  al-skip nd-import (align-of r (adj-rest sigs as a) (subst (λ l → XAlign l _) (nonSigs-imported sigs dc as) xa))
   where
     adj-rest : ∀ (sigs : List Decl) {dc} → All ImportedSig sigs → Adj (sigs ++ dc) → Adj dc
     adj-rest []         []                       a′ = a′

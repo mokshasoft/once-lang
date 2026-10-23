@@ -232,7 +232,7 @@ build≡file-ef doOpt arch m (inj₂ es)  = refl
 
 build≡file : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
            → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.built-of arch (C.compileFileFromModule IR.Heap doOpt arch m)
-build≡file doOpt arch m = build≡file-ef doOpt arch m (Parser.extractFunctions (Parser.extractAliases m) m)
+build≡file doOpt arch m = build≡file-ef doOpt arch m (Parser.extractFunctions m)
 
 built-of-inv : ∀ (arch : Arch) (r : String ⊎ C.FileOf arch) (asm : String)
              → C.built-of arch r ≡ C.Built asm → Σ-syntax (C.FileOf arch) (λ F → r ≡ inj₂ F)
@@ -335,7 +335,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
              → compile-mir arch doOpt m mir ≡ nothing
   refuse-mir arch doOpt m nothing   ¬adm = refl
   refuse-mir arch doOpt m (just ir) ¬adm =
-    refuse-ef arch doOpt m (Parser.extractFunctions (Parser.extractAliases m) m) ¬adm
+    refuse-ef arch doOpt m (Parser.extractFunctions m) ¬adm
 
   refuse-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) → ¬ AdmissibleM arch m
             → compile-gm arch doOpt (just m) ≡ nothing
@@ -367,7 +367,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
              → compile-mir arch doOpt m mir ≡ just bytes → AdmissibleM arch m
   accept-mir arch doOpt m nothing   ()
   accept-mir arch doOpt m (just ir) eq =
-    accept-ef arch doOpt m (Parser.extractFunctions (Parser.extractAliases m) m) eq
+    accept-ef arch doOpt m (Parser.extractFunctions m) eq
 
   accept-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) {bytes : List Byte}
             → compile-gm arch doOpt (just m) ≡ just bytes → AdmissibleM arch m

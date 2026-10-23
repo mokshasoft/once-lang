@@ -524,7 +524,7 @@ compileResolvedModule-aux m doOpt mod (inj₂ es)  = compileEntries m doOpt empt
 
 compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
-  compileResolvedModule-aux m doOpt mod (extractFunctions (extractAliases mod) mod)
+  compileResolvedModule-aux m doOpt mod (extractFunctions mod)
 
 -- | plan 0.119 D5: the definitions with a loop whose round performs no event
 -- (`Once.Surface.LoopWarn`). A PURE QUERY, as the rounding warnings are
@@ -564,7 +564,7 @@ silentRoundDefs-aux (inj₁ _)  = []
 silentRoundDefs-aux (inj₂ es) = lw-entries emptyCScope es
 
 silentRoundDefs : Module → List String
-silentRoundDefs mod = silentRoundDefs-aux (extractFunctions (extractAliases mod) mod)
+silentRoundDefs mod = silentRoundDefs-aux (extractFunctions mod)
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
@@ -578,8 +578,7 @@ compileModule : AllocMode → Bool → String → String ⊎ List CompiledFun
 compileModule m doOpt source with parse source
 ... | nothing = inj₁ "Parse error: failed to parse module"
 ... | just mod =
-      let aliases = extractAliases mod
-      in case extractFunctions aliases mod of λ where
+      case extractFunctions mod of λ where
            (inj₁ err) → inj₁ err
            (inj₂ es)  → compileEntries m doOpt emptyCScope es
 
@@ -896,8 +895,7 @@ compile : AllocMode → Stage → Bool → Arch → String → CompileResult
 compile m stage doOpt arch source with parseStrict source
 ... | inj₁ err = Error err
 ... | inj₂ mod =
-  let aliases = extractAliases mod
-  in case extractFunctions aliases mod of λ where
+  case extractFunctions mod of λ where
        (inj₁ err) → Error err
        (inj₂ es)  →
          case stage of λ where
@@ -996,7 +994,7 @@ cfm-file-ef m doOpt arch mod (inj₂ es)  = cfm-file-gated m doOpt arch mod es (
 
 compileFileFromModule : AllocMode → Bool → (arch : Arch) → Module → String ⊎ FileOf arch
 compileFileFromModule m doOpt arch mod =
-  cfm-file-ef m doOpt arch mod (extractFunctions (extractAliases mod) mod)
+  cfm-file-ef m doOpt arch mod (extractFunctions mod)
 
 cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List Entry → CompileResult
 cfm-stage-aux m Parse doOpt arch mod es = Parsed (funsOf es) (polysOf es)
@@ -1011,4 +1009,4 @@ cfm-ef-aux m stage doOpt arch mod (inj₂ es)  = cfm-stage-aux m stage doOpt arc
 
 compileFromModule : AllocMode → Stage → Bool → Arch → Module → CompileResult
 compileFromModule m stage doOpt arch mod =
-  cfm-ef-aux m stage doOpt arch mod (extractFunctions (extractAliases mod) mod)
+  cfm-ef-aux m stage doOpt arch mod (extractFunctions mod)

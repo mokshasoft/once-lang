@@ -10,7 +10,7 @@
 -- to hide it behind a proof module:
 --
 --   * `ModuleTyped m` is defined by RUNNING the front end —
---     `ModuleTyped-ef m (extractFunctions (extractAliases m) m)`. The spec's
+--     `ModuleTyped-ef m (extractFunctions m)`. The spec's
 --     notion of "well-typed" therefore quantifies over whatever the extractor
 --     happens to produce, instead of over the module's own syntax.
 --   * `AllFunsTyped` names `ctxWithImportsAndPolys` from
@@ -165,14 +165,14 @@ moduleSig-ef (inj₁ _)  = []
 moduleSig-ef (inj₂ es) = entrySig es
 
 moduleSig : P.Module → ISig
-moduleSig m = moduleSig-ef (Parser.extractFunctions (Parser.extractAliases m) m)
+moduleSig m = moduleSig-ef (Parser.extractFunctions m)
 
 ModuleTyped-ef : P.Module → (String ⊎ List Parser.Entry) → Set
 ModuleTyped-ef m (inj₁ _)  = ⊥
 ModuleTyped-ef m (inj₂ es) = ModTele emptyScope es
 
 ModuleTyped : P.Module → Set
-ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions (Parser.extractAliases m) m)
+ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions m)
 
 ------------------------------------------------------------------------
 -- The entry point: a monomorphic definition `main`, usable as `Eff Unit Unit`.
@@ -200,4 +200,4 @@ HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) → Mod
 HasValidMain-ef m (inj₂ _) mt = MainsEffUU mt × MainIn mt
 
 HasValidMain : ∀ (m : P.Module) → ModuleTyped m → Set
-HasValidMain m mt = HasValidMain-ef m (Parser.extractFunctions (Parser.extractAliases m) m) mt
+HasValidMain m mt = HasValidMain-ef m (Parser.extractFunctions m) mt

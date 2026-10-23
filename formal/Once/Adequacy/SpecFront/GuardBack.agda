@@ -352,7 +352,7 @@ def-names {S.DTypeAlias _ _ _ ∷ ds} (_ ∷ ws) = def-names ws
 def-names {S.DImport _ ∷ ds}        (_ ∷ ws) = def-names ws
 
 -- The definitions' entries, by name.
-xa-names : ∀ {al ds es} → XAlign al ds es → All (λ d → ¬ IsSig d) ds → All DefEntry es × (names es ≡ defNamesC ds)
+xa-names : ∀ {ds es} → XAlign ds es → All (λ d → ¬ IsSig d) ds → All DefEntry es × (names es ≡ defNamesC ds)
 xa-names xa-nil []                                  = [] , refl
 xa-names (xa-pass Once.Adequacy.SpecFront.Extract.pa-alias xa)  (_ ∷ ns) = xa-names xa ns
 xa-names (xa-pass Once.Adequacy.SpecFront.Extract.pa-import xa) (_ ∷ ns) = xa-names xa ns

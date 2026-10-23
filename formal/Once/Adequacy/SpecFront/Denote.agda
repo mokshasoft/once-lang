@@ -136,17 +136,16 @@ denote : ∀ {mm mm′ dsU dsR ds′ es}
        → ModRel mm mm′
        → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
        → Pointwise DEmb dsU ds′
-       → Parser.extractFunctions (Parser.extractAliases (mkModule dsR)) (mkModule dsR) ≡ inj₂ es
+       → Parser.extractFunctions (mkModule dsR) ≡ inj₂ es
        → (mt : ModTele emptyScope es) (mi : MainIn mt) → Denoted mm′ ds′ mt mi
 denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
   go fs es′ ees mt mi guard xn ffiE sigk
   where
-    al = Parser.extractAliases (mkModule dsR)
-    r₀ = Parser.thenExtract (Parser.sigsAdjacent dsR nothing) (Parser.extractFunctions-go al (Parser.sigsFirst dsR) nothing)
+    r₀ = Parser.thenExtract (Parser.sigsAdjacent dsR nothing) (Parser.extractFunctions-go (Parser.sigsFirst dsR) nothing)
     adjE = proj₁ (then-ok _ _ (guard-ok r₀ ef))
     goE  = proj₂ (then-ok _ _ (guard-ok r₀ ef))
     guard = NC.guard-entries r₀ ef
-    sp = SigOf.signature-of mr rds pw (extract-align al (Parser.sigsFirst dsR) goE)
+    sp = SigOf.signature-of mr rds pw (extract-align (Parser.sigsFirst dsR) goE)
     fs = proj₁ sp
     es′ = proj₁ (proj₂ sp)
     ees = proj₁ (proj₂ (proj₂ sp))
@@ -156,7 +155,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
     adj = adj-of dsR adjE
 
     go : ∀ fs es′ {es} → es ≡ fs ++ es′ → (mt : ModTele emptyScope es) (mi : MainIn mt)
-       → AllPairs _≢_ (names es) → XAlign al (Parser.nonSigs dsR) es′ → All Once.Adequacy.SpecFront.Extract.FFIEntry fs
+       → AllPairs _≢_ (names es) → XAlign (Parser.nonSigs dsR) es′ → All Once.Adequacy.SpecFront.Extract.FFIEntry fs
        → (All Once.Adequacy.SpecFront.Extract.FFIFacts fs → Σ[ Σₛ ∈ Signature ] SPr.SignatureOf mm′ ds′ Σₛ
             × (toISig Σₛ ≡ entrySig fs) × (entrySig es ≡ entrySig fs))
        → Denoted mm′ ds′ mt mi

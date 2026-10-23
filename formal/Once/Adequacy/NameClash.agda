@@ -45,7 +45,7 @@ open import Data.String using (_≟_)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.Parser using
   ( FunInfo; PolyFunInfo; Entry; e-fun; e-poly; funsOf; polysOf
-  ; extractFunctions; extractFunctions-go; extractAliases; thenExtract; sigsAdjacent; sigsFirst
+  ; extractFunctions; extractFunctions-go; thenExtract; sigsAdjacent; sigsFirst
   ; namesDistinct; allValidNameB; validNameB; validCharsB; allOpNameChars; opCharsB
   ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
@@ -241,7 +241,7 @@ ce-syms-fun doOpt sc fi es false ep cfs eq
 
 program-no-clash : ∀ (m : Module) → DistinctSymbols m
 program-no-clash (mkModule ds)
-  with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq
+  with extractFunctions (mkModule ds) in efeq
 ... | inj₁ _ = []
 ... | inj₂ es
     with C.compileEntries IR.Heap false C.emptyCScope es in caeq
@@ -253,6 +253,6 @@ program-no-clash (mkModule ds)
             (allValidNameB-sound _ (∧-elimʳ guard)))
       where
         guard : (namesDistinct (emittedNames (funsOf es)) ∧ allValidNameB (emittedNames (funsOf es))) ≡ true
-        guard = guard-true (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (extractAliases (mkModule ds)) (sigsFirst ds) nothing)) efeq
+        guard = guard-true (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (sigsFirst ds) nothing)) efeq
         bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf es))
         bridge = ce-syms false C.emptyCScope es cfs caeq

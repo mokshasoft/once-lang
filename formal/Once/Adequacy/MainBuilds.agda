@@ -238,7 +238,7 @@ crm-doOpt : ∀ (doOpt : Bool) (m : P.Module) {c : List C.CompiledFun} →
   C.compileResolvedModule IR.Heap false m ≡ inj₂ c →
   Σ-syntax (List C.CompiledFun) (λ c' → C.compileResolvedModule IR.Heap doOpt m ≡ inj₂ c')
 crm-doOpt doOpt m eq =
-  crm-aux-doOpt doOpt m (Parser.extractFunctions (Parser.extractAliases m) m) eq
+  crm-aux-doOpt doOpt m (Parser.extractFunctions m) eq
 
 ------------------------------------------------------------------------
 -- A compiled module Builds: `compileResolvedModule doOpt ≡ inj₂ _` ⇒
@@ -272,7 +272,7 @@ cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → Admissi
   C.compileResolvedModule IR.Heap doOpt m ≡ inj₂ c →
   Σ-syntax String (λ asm → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.Built asm)
 cfm-built-from-crm doOpt arch m adm eq =
-  cfm-built-aux doOpt arch m adm (Parser.extractFunctions (Parser.extractAliases m) m) eq
+  cfm-built-aux doOpt arch m adm (Parser.extractFunctions m) eq
 
 ------------------------------------------------------------------------
 -- `moduleToIR m ≡ just ir` ⇒ `compileResolvedModule Heap false m ≡ inj₂ _`.

@@ -295,7 +295,7 @@ crm-sound : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} �
   C.compileResolvedModule IR.Heap doOpt m ≡ inj₂ compiled →
   ModuleTyped m
 crm-sound doOpt m eq =
-  crm-aux-sound doOpt m (Parser.extractFunctions (Parser.extractAliases m) m) eq
+  crm-aux-sound doOpt m (Parser.extractFunctions m) eq
 
 moduleToIR-typed : ∀ (m : P.Module) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR m ≡ just ir →

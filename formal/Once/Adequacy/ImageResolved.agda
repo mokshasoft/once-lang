@@ -250,7 +250,7 @@ module Lib (m : Module) where
 
   -- the table is linked, by the telescope walk (any compile result)
   private
-    ce-linked : ∀ (es : List Parser.Entry) → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es
+    ce-linked : ∀ (es : List Parser.Entry) → Parser.extractFunctions m ≡ inj₂ es
               → (r : _) → C.compileEntries IR.Heap false C.emptyCScope es ≡ r
               → All (λ e → Linked (moduleSig-ef (inj₂ es)) (C.tableOfResult r) (fbody e)) (C.tableOfResult r)
     ce-linked es ef (inj₁ _)   _   = []
@@ -264,14 +264,14 @@ module Lib (m : Module) where
         u : ∀ {d} → d ∈ teleSig mt → d ∈ moduleSig-ef (inj₂ es)
         u {d} k = subst (d ∈_) (teleSig≡entrySig mt) k
 
-    ef-linked : ∀ (ef : _) → Parser.extractFunctions (Parser.extractAliases m) m ≡ ef
+    ef-linked : ∀ (ef : _) → Parser.extractFunctions m ≡ ef
               → All (λ e → Linked (moduleSig-ef ef) (C.tableOfResult (C.compileResolvedModule-aux IR.Heap false m ef)) (fbody e))
                     (C.tableOfResult (C.compileResolvedModule-aux IR.Heap false m ef))
     ef-linked (inj₁ _)  _  = []
     ef-linked (inj₂ es) ef = ce-linked es ef _ refl
 
   table-linked : All (λ e → Linked σ tbl (fbody e)) tbl
-  table-linked = ef-linked (Parser.extractFunctions (Parser.extractAliases m) m) refl
+  table-linked = ef-linked (Parser.extractFunctions m) refl
 
   rt-linked : All (λ e → Linked σ rt (fbody e)) rt
   rt-linked = proj₂ (rewrite-program-linked lp (tt , table-linked))

@@ -17,7 +17,7 @@
 -- manifest rather than incidental.
 --
 -- NOTE on `ModuleTyped` (plan 0.59): it is DEFINED by running the front end —
--- `ModuleTyped m = ModuleTyped-ef m (extractFunctions (extractAliases m) m)` —
+-- `ModuleTyped m = ModuleTyped-ef m (extractFunctions m)` —
 -- so the spec's notion of "well-typed" depends on an executable. (The
 -- principality oracle is gone, D323; resolution no longer needs the module's
 -- polymorphic names, D330.)

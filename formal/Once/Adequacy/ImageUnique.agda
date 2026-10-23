@@ -467,7 +467,7 @@ private
   no-names = record { names = [] ; syms≡ = refl ; dist = [] ; valid = [] }
 
 table-names : ∀ (m : Module) → TableNames (C.moduleTable m)
-table-names (mkModule ds) with Parser.extractFunctions (Parser.extractAliases (mkModule ds)) (mkModule ds) in efeq
+table-names (mkModule ds) with Parser.extractFunctions (mkModule ds) in efeq
 ... | inj₁ _ = no-names
 ... | inj₂ es with C.compileEntries IR.Heap false C.emptyCScope es in caeq
 ...   | inj₁ _ = no-names
@@ -478,7 +478,7 @@ table-names (mkModule ds) with Parser.extractFunctions (Parser.extractAliases (m
         ; valid = allValidNameB-sound _ (∧-elimʳ guard)
         }
   where
-    guard = guard-true (Parser.thenExtract (Parser.sigsAdjacent ds nothing) (extractFunctions-go (Parser.extractAliases (mkModule ds)) (Parser.sigsFirst ds) nothing)) efeq
+    guard = guard-true (Parser.thenExtract (Parser.sigsAdjacent ds nothing) (extractFunctions-go (Parser.sigsFirst ds) nothing)) efeq
 
 -- distinctness survives reversal
 ap-reverse : ∀ {xs : List String} → AllPairs _≢_ xs → AllPairs _≢_ (reverse xs)

@@ -103,10 +103,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_1508
-toMStage Parse = MC.C_Parse_1510
-toMStage Check = MC.C_Check_1512
-toMStage Build = MC.C_Build_1514
+toMStage :: Stage -> MC.T_Stage_1506
+toMStage Parse = MC.C_Parse_1508
+toMStage Check = MC.C_Check_1510
+toMStage Build = MC.C_Build_1512
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -123,28 +123,28 @@ agdaToText = unsafeCoerce
 textToAgda :: Text -> a
 textToAgda = unsafeCoerce
 
-fromMFunInfo :: MP.T_FunInfo_96 -> FunSig
+fromMFunInfo :: MP.T_FunInfo_76 -> FunSig
 fromMFunInfo fi = FunSig
-  { funSigName = agdaToText (MP.d_funName_106 fi)
+  { funSigName = agdaToText (MP.d_funName_86 fi)
     -- D007: funType is now `Maybe Type` (Nothing = no explicit sig, inferred).
     -- MAlonzo's Maybe is Haskell's Maybe (Just/Nothing pattern synonyms).
-  , funSigType = case MP.d_funType_108 fi of
+  , funSigType = case MP.d_funType_88 fi of
       Just ty -> agdaToText (MT.d_showType_36 0 ty)
       Nothing -> T.pack "<inferred>"
   }
 
-fromMPolyFunInfo :: MP.T_PolyFunInfo_116 -> PolyFunSig
+fromMPolyFunInfo :: MP.T_PolyFunInfo_96 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
-  { polyFunSigName = agdaToText (MP.d_pfunName_124 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_134 (MP.d_pfunType_126 pfi))
+  { polyFunSigName = agdaToText (MP.d_pfunName_104 pfi)
+  , polyFunSigType = agdaToText (MT.d_showPolyType_134 (MP.d_pfunType_106 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_1516 -> CompileResult
-fromMResult (MC.C_Parsed_1518 fis pfis) =
+fromMResult :: MC.T_CompileResult_1514 -> CompileResult
+fromMResult (MC.C_Parsed_1516 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_1520 _)  = Checked
-fromMResult (MC.C_Built_1522 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_1524 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_1518 _)  = Checked
+fromMResult (MC.C_Built_1520 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_1522 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -152,7 +152,7 @@ fromMResult (MC.C_Error_1524 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_1572 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_1570 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -253,5 +253,5 @@ toMAllocMode AllocHeap  = MCIR.C_Heap_8
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule m stage doOpt arch (Module mod_) =
   fromMResult
-    (MC.d_compileFromModule_1776
+    (MC.d_compileFromModule_1772
        (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))

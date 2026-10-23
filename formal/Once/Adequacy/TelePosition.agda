@@ -174,8 +174,8 @@ lookup-head n L with StrProp._≟_ n n
 -- The walk's premises at the start: the empty scope, and the entries' names
 -- (D249: the extractor's guard).
 entries-distinct : ∀ (m : P.Module) {es : List Parser.Entry}
-  → Parser.extractFunctions (Parser.extractAliases m) m ≡ inj₂ es → AllPairs _≢_ (map entryName es)
-entries-distinct (P.mkModule ds) eq = NC.guard-entries (Parser.thenExtract (Parser.sigsAdjacent ds Maybe.nothing) (Parser.extractFunctions-go (Parser.extractAliases (P.mkModule ds)) (Parser.sigsFirst ds) Maybe.nothing)) eq
+  → Parser.extractFunctions m ≡ inj₂ es → AllPairs _≢_ (map entryName es)
+entries-distinct (P.mkModule ds) eq = NC.guard-entries (Parser.thenExtract (Parser.sigsAdjacent ds Maybe.nothing) (Parser.extractFunctions-go (Parser.sigsFirst ds) Maybe.nothing)) eq
 
 none-in-empty : ∀ (xs : List String) → All (λ x → All (x ≢_) (scopeNames C.emptyCScope)) xs
 none-in-empty []       = []

@@ -38,19 +38,19 @@ open import Once.Adequacy.SpecFront.Polys using (Adj; adj-nil; adj-sig; adj-othe
 -- What `XAlign` describes, the extractor produces
 ------------------------------------------------------------------------
 
-align-extract : ∀ {al ds es} → XAlign al ds es → extractFunctions-go al ds nothing ≡ inj₂ es
+align-extract : ∀ {ds es} → XAlign ds es → extractFunctions-go ds nothing ≡ inj₂ es
 align-extract xa-nil = refl
 align-extract (xa-pass pa-alias xa)  = align-extract xa
 align-extract (xa-pass pa-import xa) = align-extract xa
-align-extract {al} (xa-mono {x = x} {T = T} {b = b} {ds = ds} (sr-mono g c ig ic) xa) rewrite ig | ic with x ≟ x
+align-extract (xa-mono {x = x} {T = T} {b = b} {ds = ds} (sr-mono g c ig ic) xa) rewrite ig | ic with x ≟ x
 ... | yes _  rewrite align-extract xa = refl
 ... | no x≢x = Data.Empty.⊥-elim (x≢x refl)
   where import Data.Empty
-align-extract {al} (xa-poly {x = x} (sr-open ig) xa) rewrite ig with x ≟ x
+align-extract (xa-poly {x = x} (sr-open ig) xa) rewrite ig with x ≟ x
 ... | yes _  rewrite align-extract xa = refl
 ... | no x≢x = Data.Empty.⊥-elim (x≢x refl)
   where import Data.Empty
-align-extract {al} (xa-poly {x = x} (sr-nonc g ig ic) xa) rewrite ig | ic with x ≟ x
+align-extract (xa-poly {x = x} (sr-nonc g ig ic) xa) rewrite ig | ic with x ≟ x
 ... | yes _  rewrite align-extract xa = refl
 ... | no x≢x = Data.Empty.⊥-elim (x≢x refl)
   where import Data.Empty
@@ -89,7 +89,6 @@ open import Once.Spec.Signature using (Signature)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr
 import Once.Parser as Parser
-open import Once.Parser.TypeAlias using (TypeAliasEnv)
 open import Once.Adequacy.SpecFront.Extract using (IsSig; is-sig)
 
 data SNotTSig : S.Decl → Set where
@@ -143,19 +142,19 @@ nonSigs-adj (adj-other nt-import a) = adj-other nt-import (nonSigs-adj a)
 ------------------------------------------------------------------------
 
 -- A type signature always has a reading (mirrors the extractor's `with`).
-sig-reading : ∀ al (T : PolyType) → Σ[ m ∈ Maybe LT.Type ] SigReading al T m
-sig-reading al T with isGround T in ig
+sig-reading : ∀ (T : PolyType) → Σ[ m ∈ Maybe LT.Type ] SigReading T m
+sig-reading T with isGround T in ig
 ... | inj₂ _ = nothing , sr-open ig
 ... | inj₁ g with isConcrete? (Once.Internal.Type.Poly.extractGround T g) in ic
 ...   | just c  = _ , sr-mono g c ig ic
 ...   | nothing = nothing , sr-nonc g ig ic
 
-xalign-of : ∀ al {ds} → Adj ds → All (λ d → ¬ IsSig d) ds → Σ[ es ∈ List Entry ] XAlign al ds es
-xalign-of al adj-nil [] = [] , xa-nil
-xalign-of al (adj-sig {T = T} a) (_ ∷ _ ∷ ns) with sig-reading al T | xalign-of al a ns
+xalign-of : ∀ {ds} → Adj ds → All (λ d → ¬ IsSig d) ds → Σ[ es ∈ List Entry ] XAlign ds es
+xalign-of adj-nil [] = [] , xa-nil
+xalign-of (adj-sig {T = T} a) (_ ∷ _ ∷ ns) with sig-reading T | xalign-of a ns
 ... | just ty , sr  | es , xa = _ , xa-mono sr xa
 ... | nothing , sr  | es , xa = _ , xa-poly sr xa
-xalign-of al (adj-other nt-def a) (_ ∷ ns)    = let (es , xa) = xalign-of al a ns in _ , xa-nosig xa
-xalign-of al (adj-other nt-sig a) (n ∷ ns)    = ⊥-elim (n is-sig)
-xalign-of al (adj-other nt-alias a) (_ ∷ ns)  = let (es , xa) = xalign-of al a ns in _ , xa-pass pa-alias xa
-xalign-of al (adj-other nt-import a) (_ ∷ ns) = let (es , xa) = xalign-of al a ns in _ , xa-pass pa-import xa
+xalign-of (adj-other nt-def a) (_ ∷ ns)    = let (es , xa) = xalign-of a ns in _ , xa-nosig xa
+xalign-of (adj-other nt-sig a) (n ∷ ns)    = ⊥-elim (n is-sig)
+xalign-of (adj-other nt-alias a) (_ ∷ ns)  = let (es , xa) = xalign-of a ns in _ , xa-pass pa-alias xa
+xalign-of (adj-other nt-import a) (_ ∷ ns) = let (es , xa) = xalign-of a ns in _ , xa-pass pa-import xa

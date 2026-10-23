@@ -235,7 +235,7 @@ private
            → LPa.ParsesText (SP.Source.text src) (PM.mkModule dsU)
            → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
            → AdmissibleM arch (PM.mkModule dsR)
-           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (Parser.extractAliases (PM.mkModule dsR)) (PM.mkModule dsR) ≡ ef
+           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (PM.mkModule dsR) ≡ ef
            → (mt : LM.ModuleTyped-ef (PM.mkModule dsR) ef) (hvm : LM.HasValidMain-ef (PM.mkModule dsR) ef mt)
            → Goal-ef arch src (PM.mkModule dsR) ef mt hvm
   sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (_ , mi) =
@@ -271,7 +271,7 @@ sound-of arch src srcC (mR , mt , hvm) ts (mU , pt , rmod) adm =
        → _
     at refl pm pt (LR.rm rds) =
       let (tp′ , ⊢tp′ , adm′ , u , same , uniq , means) =
-            sound-ef arch src pm pt rds adm (Parser.extractFunctions (Parser.extractAliases mR) mR) refl mt hvm
+            sound-ef arch src pm pt rds adm (Parser.extractFunctions mR) refl mt hvm
       in tp′ , ⊢tp′ , adm′ , record { view = u ; same = same ; uniq = uniq } , means
 
 ------------------------------------------------------------------------

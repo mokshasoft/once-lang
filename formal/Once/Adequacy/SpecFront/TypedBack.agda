@@ -196,8 +196,7 @@ typed← {mm} {mm′} {dsU} {ds′} {Σ} {p} wm wd wr mr pw D = record { dsR = d
     rds = proj₁ (proj₂ r←)
     dr = proj₂ (proj₂ r←)
     -- the extractor's entries
-    al = Parser.extractAliases (mkModule dsR)
-    X = extract-ok al wm wd mr rds pw rd′ dr sig P.wf sig-distinct walk distinct def-not-sig
+    X = extract-ok wm wd mr rds pw rd′ dr sig P.wf sig-distinct walk distinct def-not-sig
     fs = Extracted.fs X
     es′ = Extracted.esN X
     tf = Extracted.table X
