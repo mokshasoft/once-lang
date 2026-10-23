@@ -52,65 +52,60 @@ d_gBinOpToRaw_6 v0
       MAlonzo.Code.Once.Grammar.C_OpNe_74
         -> coe MAlonzo.Code.Once.Internal.Syntax.C_OpNe_28
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Grammar.ExprConvert.gUnaryOpToRaw
-d_gUnaryOpToRaw_8 ::
-  MAlonzo.Code.Once.Grammar.T_UnaryOp_76 ->
-  MAlonzo.Code.Once.Internal.Syntax.T_UnaryOp_30
-d_gUnaryOpToRaw_8 = erased
 -- Once.Grammar.ExprConvert.gexprToRaw
-d_gexprToRaw_12 ::
+d_gexprToRaw_10 ::
   MAlonzo.Code.Once.Grammar.T_GExpr_80 ->
   MAlonzo.Code.Once.Grammar.ExprPrinter.T_ConcreteExpr_76 ->
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
-d_gexprToRaw_12 v0 v1
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30
+d_gexprToRaw_10 v0 v1
   = case coe v1 of
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'unit_78
-        -> coe MAlonzo.Code.Once.Internal.Syntax.C_RUnit_52
+        -> coe MAlonzo.Code.Once.Internal.Syntax.C_RUnit_48
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'int_82
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EInt_84 v3
-               -> coe MAlonzo.Code.Once.Internal.Syntax.C_RInt_54 (coe v3)
+               -> coe MAlonzo.Code.Once.Internal.Syntax.C_RInt_50 (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'var_86
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EVar_86 v4
-               -> coe MAlonzo.Code.Once.Internal.Syntax.C_RVar_36 (coe v4)
+               -> coe MAlonzo.Code.Once.Internal.Syntax.C_RVar_32 (coe v4)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'qual_92
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EQualified_88 v5 v6
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RQualified_38 (coe v5) (coe v6)
+                    MAlonzo.Code.Once.Internal.Syntax.C_RQualified_34 (coe v5) (coe v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'lam_98 v4
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_ELam_90 v5 v6
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 (coe v5)
-                    (coe d_gexprToRaw_12 (coe v6) (coe v4))
+                    MAlonzo.Code.Once.Internal.Syntax.C_RLam_40 (coe v5)
+                    (coe d_gexprToRaw_10 (coe v6) (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'app_104 v4 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EApp_92 v6 v7
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
-                    (coe d_gexprToRaw_12 (coe v6) (coe v4))
-                    (coe d_gexprToRaw_12 (coe v7) (coe v5))
+                    MAlonzo.Code.Once.Internal.Syntax.C_RApp_38
+                    (coe d_gexprToRaw_10 (coe v6) (coe v4))
+                    (coe d_gexprToRaw_10 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'pair_110 v4 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EPair_94 v6 v7
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RPair_48
-                    (coe d_gexprToRaw_12 (coe v6) (coe v4))
-                    (coe d_gexprToRaw_12 (coe v7) (coe v5))
+                    MAlonzo.Code.Once.Internal.Syntax.C_RPair_44
+                    (coe d_gexprToRaw_10 (coe v6) (coe v4))
+                    (coe d_gexprToRaw_10 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'annot_116 v4 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EAnnot_106 v6 v7
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RAnnot_58
-                    (coe d_gexprToRaw_12 (coe v6) (coe v4))
+                    MAlonzo.Code.Once.Internal.Syntax.C_RAnnot_54
+                    (coe d_gexprToRaw_10 (coe v6) (coe v4))
                     (coe
                        MAlonzo.Code.Once.Grammar.ParserRelation.d_toType_8 (coe v7)
                        (coe v5))
@@ -119,30 +114,30 @@ d_gexprToRaw_12 v0 v1
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EBinOp_100 v7 v8 v9
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60
+                    MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_56
                     (coe d_gBinOpToRaw_6 (coe v7))
-                    (coe d_gexprToRaw_12 (coe v8) (coe v5))
-                    (coe d_gexprToRaw_12 (coe v9) (coe v6))
+                    (coe d_gexprToRaw_10 (coe v8) (coe v5))
+                    (coe d_gexprToRaw_10 (coe v9) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'unary_130 v4
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EUnaryOp_102 v6
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62
-                    (d_gexprToRaw_12 (coe v6) (coe v4))
+                    MAlonzo.Code.Once.Internal.Syntax.C_RNeg_58
+                    (coe d_gexprToRaw_10 (coe v6) (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'comp_136 v4 v5
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_ECompose_104 v6 v7
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
+                    MAlonzo.Code.Once.Internal.Syntax.C_RApp_38
                     (coe
-                       MAlonzo.Code.Once.Internal.Syntax.C_RApp_42
+                       MAlonzo.Code.Once.Internal.Syntax.C_RApp_38
                        (coe
-                          MAlonzo.Code.Once.Internal.Syntax.C_RVar_36
+                          MAlonzo.Code.Once.Internal.Syntax.C_RVar_32
                           (coe ("compose" :: Data.Text.Text)))
-                       (coe d_gexprToRaw_12 (coe v6) (coe v4)))
-                    (coe d_gexprToRaw_12 (coe v7) (coe v5))
+                       (coe d_gexprToRaw_10 (coe v6) (coe v4)))
+                    (coe d_gexprToRaw_10 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Grammar.ExprPrinter.C_c'45'e'45'let1_144 v5 v6
         -> case coe v0 of
@@ -152,9 +147,9 @@ d_gexprToRaw_12 v0 v1
                       -> case coe v9 of
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                              -> coe
-                                  MAlonzo.Code.Once.Internal.Syntax.C_RLet_46 (coe v11)
-                                  (coe d_gexprToRaw_12 (coe v12) (coe v5))
-                                  (coe d_gexprToRaw_12 (coe v8) (coe v6))
+                                  MAlonzo.Code.Once.Internal.Syntax.C_RLet_42 (coe v11)
+                                  (coe d_gexprToRaw_10 (coe v12) (coe v5))
+                                  (coe d_gexprToRaw_10 (coe v8) (coe v6))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -162,9 +157,9 @@ d_gexprToRaw_12 v0 v1
         -> case coe v0 of
              MAlonzo.Code.Once.Grammar.C_EDestruct_98 v10 v11 v12 v13 v14
                -> coe
-                    MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50
-                    (coe d_gexprToRaw_12 (coe v10) (coe v7)) (coe v11)
-                    (coe d_gexprToRaw_12 (coe v12) (coe v8)) (coe v13)
-                    (coe d_gexprToRaw_12 (coe v14) (coe v9))
+                    MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_46
+                    (coe d_gexprToRaw_10 (coe v10) (coe v7)) (coe v11)
+                    (coe d_gexprToRaw_10 (coe v12) (coe v8)) (coe v13)
+                    (coe d_gexprToRaw_10 (coe v14) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

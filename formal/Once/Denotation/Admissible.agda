@@ -52,7 +52,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Spec.Word as OnceWord
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpNeg)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
    DImport)
@@ -73,7 +73,7 @@ open import Once.Parser.Module.Core using
 -- writable only if the sign is part of the numeral.
 --
 -- The parser cannot say this: `Once/Parser/Expr.agda` produces
--- `RUnaryOp OpNeg (RInt n)`, because at the level of GRAMMAR `-` really is a
+-- `RNeg (RInt n)`, because at the level of GRAMMAR `-` really is a
 -- prefix operator. What a negative numeral MEANS is a fact about the language,
 -- not about its grammar, so it is stated here, in the spec, and the front end
 -- is what has to bridge to it.
@@ -95,7 +95,7 @@ rawIntLits (RPair a b)          = rawIntLits a ++ rawIntLits b
 rawIntLits (RDestruct s _ l _ r) = rawIntLits s ++ rawIntLits l ++ rawIntLits r
 rawIntLits (RAnnot e _)         = rawIntLits e
 rawIntLits (RBinOp _ a b)       = rawIntLits a ++ rawIntLits b
-rawIntLits (RUnaryOp OpNeg e)   = negLits e
+rawIntLits (RNeg e)   = negLits e
 -- leaves that carry no `Int` literal
 rawIntLits (RVar _)             = []
 rawIntLits (RQualified _ _)     = []

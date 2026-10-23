@@ -32,61 +32,61 @@ import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Denotation.Admissible.rawIntLits
 d_rawIntLits_6 ::
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 -> [Integer]
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 -> [Integer]
 d_rawIntLits_6 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Internal.Syntax.C_RVar_36 v1
+      MAlonzo.Code.Once.Internal.Syntax.C_RVar_32 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Syntax.C_RQualified_38 v1 v2
+      MAlonzo.Code.Once.Internal.Syntax.C_RQualified_34 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Syntax.C_RResolved_40 v1
+      MAlonzo.Code.Once.Internal.Syntax.C_RResolved_36 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Syntax.C_RApp_42 v1 v2
+      MAlonzo.Code.Once.Internal.Syntax.C_RApp_38 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v1)) (coe d_rawIntLits_6 (coe v2))
-      MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 v1 v2
+      MAlonzo.Code.Once.Internal.Syntax.C_RLam_40 v1 v2
         -> coe d_rawIntLits_6 (coe v2)
-      MAlonzo.Code.Once.Internal.Syntax.C_RLet_46 v1 v2 v3
+      MAlonzo.Code.Once.Internal.Syntax.C_RLet_42 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v2)) (coe d_rawIntLits_6 (coe v3))
-      MAlonzo.Code.Once.Internal.Syntax.C_RPair_48 v1 v2
+      MAlonzo.Code.Once.Internal.Syntax.C_RPair_44 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v1)) (coe d_rawIntLits_6 (coe v2))
-      MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50 v1 v2 v3 v4 v5
+      MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_46 v1 v2 v3 v4 v5
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v1))
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_rawIntLits_6 (coe v3)) (coe d_rawIntLits_6 (coe v5)))
-      MAlonzo.Code.Once.Internal.Syntax.C_RUnit_52
+      MAlonzo.Code.Once.Internal.Syntax.C_RUnit_48
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Syntax.C_RInt_54 v1
+      MAlonzo.Code.Once.Internal.Syntax.C_RInt_50 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 v1 v2 v3
+      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_52 v1 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
-      MAlonzo.Code.Once.Internal.Syntax.C_RAnnot_58 v1 v2
+      MAlonzo.Code.Once.Internal.Syntax.C_RAnnot_54 v1 v2
         -> coe d_rawIntLits_6 (coe v1)
-      MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60 v1 v2 v3
+      MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_56 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v2)) (coe d_rawIntLits_6 (coe v3))
-      MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62 v2
-        -> coe d_negLits_8 (coe v2)
+      MAlonzo.Code.Once.Internal.Syntax.C_RNeg_58 v1
+        -> coe d_negLits_8 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible.negLits
 d_negLits_8 ::
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 -> [Integer]
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 -> [Integer]
 d_negLits_8 v0
   = let v1 = d_rawIntLits_6 (coe v0) in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Internal.Syntax.C_RInt_54 v2
+         MAlonzo.Code.Once.Internal.Syntax.C_RInt_50 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Data.Integer.Base.d_'45'__260 (coe v2))

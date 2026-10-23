@@ -95,10 +95,10 @@ round-trip-EPair-vars :
     ≡ just (RPair (RVar "x") (RVar "y") , [])
 round-trip-EPair-vars = refl
 
--- (- x) → RUnaryOp OpNeg (RVar "x")
+-- (- x) → RNeg (RVar "x")
 round-trip-ENeg-var :
   parseExpr (printGExpr (G.EUnaryOp G.OpNeg (G.EVar "x")))
-    ≡ just (RUnaryOp OpNeg (RVar "x") , [])
+    ≡ just (RNeg (RVar "x") , [])
 round-trip-ENeg-var = refl
 
 -- (\x -> x)

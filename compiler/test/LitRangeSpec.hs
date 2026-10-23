@@ -83,7 +83,7 @@ wrapAt bits z = ((z + half) `mod` (2 * half)) - half
 --
 -- NEGATED NUMERALS ARE IN THIS TABLE NOW (0.74 J6, 2026-08-24). They used to
 -- live in a KNOWN DEFECT group at the bottom of this file, because `-N` parsed
--- as `RUnaryOp OpNeg (RInt N)` and nothing folded the sign, so the compiler
+-- as `RNeg (RInt N)` and nothing folded the sign, so the compiler
 -- decided on the MAGNITUDE: `-2147483648` was refused on x86-32 though it is
 -- exactly that target's least Int, and the emitted code was "load 2147483648,
 -- then negate at runtime". The elaborator folds now — verified on the metal,

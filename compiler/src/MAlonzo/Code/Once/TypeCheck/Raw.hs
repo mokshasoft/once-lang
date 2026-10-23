@@ -23,58 +23,58 @@ import qualified MAlonzo.Code.Once.Internal.Syntax
 
 -- Once.TypeCheck.Raw.closedLiftShape?
 d_closedLiftShape'63'_8 ::
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
-  Maybe MAlonzo.Code.Once.Internal.Syntax.T_ClosedLiftShape_70
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 ->
+  Maybe MAlonzo.Code.Once.Internal.Syntax.T_ClosedLiftShape_66
 d_closedLiftShape'63'_8 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Internal.Syntax.C_RVar_36 v1
+      MAlonzo.Code.Once.Internal.Syntax.C_RVar_32 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'var_74)
-      MAlonzo.Code.Once.Internal.Syntax.C_RQualified_38 v1 v2
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'var_70)
+      MAlonzo.Code.Once.Internal.Syntax.C_RQualified_34 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'qual_80)
-      MAlonzo.Code.Once.Internal.Syntax.C_RResolved_40 v1
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'qual_76)
+      MAlonzo.Code.Once.Internal.Syntax.C_RResolved_36 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'res_84)
-      MAlonzo.Code.Once.Internal.Syntax.C_RApp_42 v1 v2
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'res_80)
+      MAlonzo.Code.Once.Internal.Syntax.C_RApp_38 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 v1 v2
+      MAlonzo.Code.Once.Internal.Syntax.C_RLam_40 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Internal.Syntax.C_RLet_46 v1 v2 v3
+      MAlonzo.Code.Once.Internal.Syntax.C_RLet_42 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'let_92)
-      MAlonzo.Code.Once.Internal.Syntax.C_RPair_48 v1 v2
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'let_88)
+      MAlonzo.Code.Once.Internal.Syntax.C_RPair_44 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_50 v1 v2 v3 v4 v5
+      MAlonzo.Code.Once.Internal.Syntax.C_RDestruct_46 v1 v2 v3 v4 v5
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'destr_104)
-      MAlonzo.Code.Once.Internal.Syntax.C_RUnit_52
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'destr_100)
+      MAlonzo.Code.Once.Internal.Syntax.C_RUnit_48
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'unit_106)
-      MAlonzo.Code.Once.Internal.Syntax.C_RInt_54 v1
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'unit_102)
+      MAlonzo.Code.Once.Internal.Syntax.C_RInt_50 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_56 v1 v2 v3
+      MAlonzo.Code.Once.Internal.Syntax.C_RFloat_52 v1 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Internal.Syntax.C_RAnnot_58 v1 v2
+      MAlonzo.Code.Once.Internal.Syntax.C_RAnnot_54 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'annot_112)
-      MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60 v1 v2 v3
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'annot_108)
+      MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_56 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'binop_120)
-      MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62 v2
+             (coe MAlonzo.Code.Once.Internal.Syntax.C_cls'45'binop_116)
+      MAlonzo.Code.Once.Internal.Syntax.C_RNeg_58 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.closedLiftShape?-just
 d_closedLiftShape'63''45'just_14 ::
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
-  MAlonzo.Code.Once.Internal.Syntax.T_ClosedLiftShape_70 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_ClosedLiftShape_66 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_closedLiftShape'63''45'just_14 = erased

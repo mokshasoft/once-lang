@@ -87,7 +87,7 @@ open import Once.Internal.Typing using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
 open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Internal.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
+open import Once.Internal.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RNeg; RBinOp; RLam; RApp; BinOp)
 open import Once.Spec.Name using (gen; GenWord)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -208,14 +208,14 @@ record VerifiedTypeChecker {m} : Set₁ where
     -- for the sub-expression(s). A top-level structural recursion
     -- over RawExpr stitches these lemmas together — omitted here
     -- for modularity but trivial to assemble.
-    tcInfer-sound-RUnaryOp-neg : ∀ (ctx : NamedCtx m) (e : RawExpr)
+    tcInfer-sound-RNeg : ∀ (ctx : NamedCtx m) (e : RawExpr)
         {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx e ≡ success A' Ψ' eE' d' f'
             → ctx ⊢ e ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RUnaryOp OpNeg e) ≡ success A Ψ eE d f
-      → ctx ⊢ RUnaryOp OpNeg e ∶ A ⨾ Ψ
+      → tcInfer ctx (RNeg e) ≡ success A Ψ eE d f
+      → ctx ⊢ RNeg e ∶ A ⨾ Ψ
 
     -- Plan 0.4 T0 (2026-04-30): IH now gives ⊢ᶜ (matches what
     -- check-sound returns). Previously claimed to give ⊢ᵢ from a
@@ -291,7 +291,7 @@ record VerifiedTypeChecker {m} : Set₁ where
     tc-err-neg-non-Int-Unit : ∀ (ctx : NamedCtx m) (e : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Spec.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
+      → tcInfer ctx (RNeg e) ≡ failure err
       → err ≡ TypeMismatch {0} Once.Spec.Type.Int Once.Spec.Type.Unit
 
 
@@ -421,7 +421,7 @@ record VerifiedTypeChecker {m} : Set₁ where
 
     tc-err-neg-non-Int-Float : ∀ (ctx : NamedCtx m) (e : RawExpr) {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
-      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
+      → tcInfer ctx (RNeg e) ≡ failure err
       → err ≡ TypeMismatch {0} Once.Spec.Type.Int Once.Spec.Type.Float
 
     tc-err-case-scrut-Float : ∀ (ctx : NamedCtx m) (scrut : RawExpr) (xL : String) (eL : RawExpr)
@@ -576,14 +576,14 @@ record VerifiedTypeChecker {m} : Set₁ where
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RPair a b) ≡ success (A Once.Spec.Type.* B) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
-    -- RUnaryOp OpNeg: sub at Int → outer success at Int.
-    tcInfer-complete-RUnaryOp-neg : ∀ (ctx : NamedCtx m) (e : RawExpr)
+    -- RNeg: sub at Int → outer success at Int.
+    tcInfer-complete-RNeg : ∀ (ctx : NamedCtx m) (e : RawExpr)
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Once.Spec.Type.Int}
         {d' f' : _}
       → tcInfer ctx e ≡ success Once.Spec.Type.Int Ψ eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RUnaryOp OpNeg e) ≡ success Once.Spec.Type.Int Ψ eE d f
+          tcInfer ctx (RNeg e) ≡ success Once.Spec.Type.Int Ψ eE d f
 
     -- RAnnot: check-mode sub success → infer-mode success.
     tcInfer-complete-RAnnot : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Type)
@@ -857,7 +857,7 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RUnit           = Snd.sound-RUnit
   ; tcInfer-sound-RVar-unit       = Snd.sound-RVar-unit
   ; tcInfer-sound-RVar            = Snd.sound-RVar
-  ; tcInfer-sound-RUnaryOp-neg    = Snd.sound-RUnaryOp-neg
+  ; tcInfer-sound-RNeg    = Snd.sound-RNeg
   ; tcInfer-sound-RAnnot          = Snd.sound-RAnnot
   ; tcInfer-sound-RPair           = Snd.sound-RPair
   ; tcInfer-sound-RQualified      = Snd.sound-RQualified
@@ -897,7 +897,7 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RUnit        = λ ctx → CmpR.infer-complete-RUnit {ctx = ctx}
   ; tcInfer-complete-RVar-unit    = λ ctx → CmpR.infer-complete-RVar-unit {ctx = ctx}
   ; tcInfer-complete-RPair        = λ ctx → CmpR.infer-complete-RPair
-  ; tcInfer-complete-RUnaryOp-neg = λ ctx → CmpR.infer-complete-RUnaryOp-neg
+  ; tcInfer-complete-RNeg = λ ctx → CmpR.infer-complete-RNeg
   ; tcInfer-complete-RAnnot       = λ ctx → CmpR.infer-complete-RAnnot
   ; tcInfer-complete-RLet         = λ ctx → CmpR.infer-complete-RLet
   ; tcInfer-complete-RApp-id      = λ ctx → CmpR.infer-complete-RApp-id

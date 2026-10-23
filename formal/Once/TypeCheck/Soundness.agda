@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Spec.Grade as T using (Quantity)
 open import Once.Spec.Type as T using (Type)
 open import Once.Spec.Name using (gen)
-open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
+open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RNeg; RBinOp; BinOp)
 import Data.String.Properties
 import Once.Internal.Type.DecEq
 open import Once.TypeCheck.Elaborate
@@ -94,7 +94,7 @@ sound-RVar-unit : ∀ {m} (ctx : NamedCtx m)
 sound-RVar-unit ctx refl = t-unit-var
 
 ------------------------------------------------------------------------
--- Recursive cases (RUnaryOp, RAnnot, RPair)
+-- Recursive cases (RNeg, RAnnot, RPair)
 --
 -- These cases require the soundness induction hypothesis applied to
 -- a sub-expression. Naïve `with inferElab ctx e in eqSub` collapses
@@ -190,7 +190,7 @@ inferElab-eq-RUnit ctx = refl
 --   (2) per-case case-analysis proofs (~50–100 LoC per RawExpr shape).
 -- See plans/0.4-T0-handoff for the path.
 
--- Soundness for RUnaryOp OpNeg: the sub-expression must be inferable
+-- Soundness for RNeg: the sub-expression must be inferable
 -- at type Int, and the result inherits that type and its usage
 -- vector unchanged.
 --
@@ -201,19 +201,19 @@ inferElab-eq-RUnit ctx = refl
 -- Int branch, we apply `t-neg` with `IH refl` (the IH is also
 -- rewritten, so `refl` now gives us the judgment for the sub). In
 -- every other branch, the outer `eq` is `failure ≡ success`, absurd.
-sound-RUnaryOp-neg : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
+sound-RNeg : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
     {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   → (IH : ∀ {A' : Ty m} {Ψ' eE' d' f'}
         → inferElab ctx e ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ e ∶ A' ⨾ Ψ')
-  → inferElab ctx (RUnaryOp OpNeg e) ≡ success A Ψ eE d f
-  → ctx ⊢ RUnaryOp OpNeg e ∶ A ⨾ Ψ
-sound-RUnaryOp-neg ctx e IH eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RUnaryOp OpNeg e)
+  → inferElab ctx (RNeg e) ≡ success A Ψ eE d f
+  → ctx ⊢ RNeg e ∶ A ⨾ Ψ
+sound-RNeg ctx e IH eq
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RNeg e)
 ... | success A' Ψ' eE' d' f' , w with eq
 ...   | refl = w
-sound-RUnaryOp-neg ctx e IH eq | failure _ , _ with eq
+sound-RNeg ctx e IH eq | failure _ , _ with eq
 ... | ()
 
 -- Soundness for RAnnot: the sub-expression must successfully check

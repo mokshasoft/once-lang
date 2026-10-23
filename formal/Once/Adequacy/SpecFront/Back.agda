@@ -385,7 +385,7 @@ private
     pair-syn u (bsyn ra {Ψa} da ua) (bsyn rb {Ψb} db ub) = bsyn (r-* ra rb) (t-pair da db) (⊑ᵘ-trans (sum-use Ψa Ψb ua ub) u)
 
     neg-syn : ∀ {e Φ₀ Φ} → Φ₀ SCx.⊑ᵘ Φ → BSyn Γn Γd e ST.Int Φ₀
-            → BSyn Γn Γd (Once.Internal.Syntax.RUnaryOp Once.Internal.Syntax.OpNeg e) ST.Int Φ
+            → BSyn Γn Γd (Once.Internal.Syntax.RNeg e) ST.Int Φ
     neg-syn u (bsyn r-int d u₀) = bsyn r-int (t-neg d) (⊑ᵘ-trans u₀ u)
 
     -- `x : A` in scope, then the body

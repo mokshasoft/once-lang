@@ -436,7 +436,7 @@ infer-complete-RApp-spine {ctx = ctx} f x {X} {B} eqAH eqF eqX eqG
 ------------------------------------------------------------------------
 
 open Once.TypeCheck.ElaborateProofs
-  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic)
+  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RNeg; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic)
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
@@ -654,15 +654,15 @@ mutual
   ... | (_ , _ , _ , _ , eqA) | (_ , _ , _ , _ , eqB) = pair-lit-reduce eqA eqB
   iFromInferSub (t-neg {e = e} d) sub-int =
     let (_ , _ , _ , eqI) = infer-complete (t-neg d)
-    in checkElab-fallback-RUnaryOp Raw.OpNeg e T.Int eqI
+    in checkElab-fallback-RNeg e T.Int eqI
   -- PLAN 0.73 F3: the switch for `-3.14` is the generic infer→check fallback,
   -- at `Float` instead of `Int`. Nothing recurses — the rule has no premise,
   -- and the infer-side equation is `refl` outright: `negOperandView (RFloat …)`
-  -- reduces, so `inferElab ctx (RUnaryOp OpNeg (RFloat i f l))` is already
+  -- reduces, so `inferElab ctx (RNeg (RFloat i f l))` is already
   -- the folded literal. Routing through `infer-complete` instead would leave
   -- its three existential witnesses as metas with nothing to solve them.
   iFromInferSub {ctx = ctx} (t-neg-float i f l) sub-float =
-    checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg (Raw.RFloat i f l) T.Float refl
+    checkElab-fallback-RNeg {ctx = ctx} (Raw.RFloat i f l) T.Float refl
   iFromInferSub (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂) sb =
     let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
     in checkElab-fallback-RLet x e₁ e₂ B eqI sb
@@ -760,7 +760,7 @@ mutual
     in infer-complete-RPair a b eq₁ eq₂
   infer-complete (t-neg {e = e} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
-    in infer-complete-RUnaryOp-neg e eqSub
+    in infer-complete-RNeg e eqSub
   -- PLAN 0.73 F3. Immediate, exactly as the `RInt` fold's branch is:
   -- `negOperandView (RFloat i f l)` reduces to `nov-float …`, so the
   -- dispatch reduces straight to the folded literal without consulting the

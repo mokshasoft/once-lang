@@ -48,9 +48,6 @@ gBinOpToRaw G.OpGe  = OpGe
 gBinOpToRaw G.OpEq  = OpEq
 gBinOpToRaw G.OpNe  = OpNe
 
-gUnaryOpToRaw : G.UnaryOp → UnaryOp
-gUnaryOpToRaw G.OpNeg = OpNeg
-
 ------------------------------------------------------------------------
 -- Type conversion: trust the `Concrete` predicate to guarantee
 -- `gtypeToType t` returns `just _`. We extract that internal Type via
@@ -78,7 +75,7 @@ gexprToRaw (c-e-pair cA cB)           = RPair (gexprToRaw cA) (gexprToRaw cB)
 gexprToRaw (c-e-annot cE cT)          = RAnnot (gexprToRaw cE) (toType cT)
 gexprToRaw (c-e-binop {op} cA cB)     =
   RBinOp (gBinOpToRaw op) (gexprToRaw cA) (gexprToRaw cB)
-gexprToRaw (c-e-unary {op} cE)        = RUnaryOp (gUnaryOpToRaw op) (gexprToRaw cE)
+gexprToRaw (c-e-unary {G.OpNeg} cE)   = RNeg (gexprToRaw cE)
 gexprToRaw (c-e-comp cF cG)           =
   -- f . g desugars to compose f g.
   RApp (RApp (RVar "compose") (gexprToRaw cF)) (gexprToRaw cG)

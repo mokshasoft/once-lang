@@ -296,20 +296,20 @@ infer-complete-RPair {ctx = ctx} a b eqA eqB
     with inferElabV ctx b | eqB
 ...   | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
 
-infer-complete-RUnaryOp-neg : ∀ {m} {ctx : NamedCtx m} (e : RawExpr)
+infer-complete-RNeg : ∀ {m} {ctx : NamedCtx m} (e : RawExpr)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Int}
     {d' f' : ℕ}
   → inferElab ctx e ≡ success Int Ψ eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ success Int Ψ eE d f
--- PLAN 0.74 J6 step 3. `inferElabV` routes `RUnaryOp OpNeg` through
+      inferElab ctx (Raw.RNeg e) ≡ success Int Ψ eE d f
+-- PLAN 0.74 J6 step 3. `inferElabV` routes `RNeg` through
 -- `inferElabV-neg-dispatch`, which folds a minus on a NUMERAL into one
 -- literal. The dispatch takes the decision as an ARGUMENT, so it unfolds for
 -- an abstract operand and this proof splits two ways rather than sixteen.
 -- `eqE` is abstracted with the view so that the folded branch's `Ψ` is pinned
 -- to `zeroUsage` by the literal's own inference.
-infer-complete-RUnaryOp-neg {ctx = ctx} e eqE with negOperandView e | eqE
+infer-complete-RNeg {ctx = ctx} e eqE with negOperandView e | eqE
 -- FOLDED: `- 5` is the literal `-5`; the operand's own inference is not
 -- consulted, so the result is immediate.
 ... | nov-int n | refl = _ , _ , _ , refl

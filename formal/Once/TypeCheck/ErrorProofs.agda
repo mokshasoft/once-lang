@@ -50,7 +50,7 @@ open import Once.Internal.Type.Join using (UB; join?-apart)
 open import Once.Spec.Sub using (sub-int; sub-unit)
 open import Once.Type.Sub using (_<:?_)
 open import Once.TypeCheck.Elaborate
-  using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RUnaryOp-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
+  using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RNeg-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal)
 open import Once.TypeCheck.Classify using (lookupPoly)
 import Once.Internal.Typing.Scope as Classify
@@ -97,7 +97,7 @@ inl-check-Void ctx arg refl = refl
 -- The families below are stated at `inferElab`, but proved over the
 -- operand's RESULT: the elaborator's rule is a function of that result
 -- (`inferFstOn`, `inferSndOn`, `inferElabV-RDestruct-aux`,
--- `inferElabV-RUnaryOp-aux`), so matching it is enough — no `with` that
+-- `inferElabV-RNeg-aux`), so matching it is enough — no `with` that
 -- abstracts the operand's inference out of the whole elaborated goal
 -- (≈3 s per lemma, 117 s for the module).
 ------------------------------------------------------------------------
@@ -117,15 +117,15 @@ private
   rejects {ctx = ctx} rule (success _ _ _ _ _ , w) refl fact eq = fail-inj {ctx = ctx} (trans (sym (fact {w})) eq)
 
   -- `-e`: a literal operand folds (the outer equation is `success ≡ failure`);
-  -- any other operand goes through `inferElabV-RUnaryOp-aux` at its result.
+  -- any other operand goes through `inferElabV-RNeg-aux` at its result.
   neg-rejects : ∀ {m} {ctx : NamedCtx m} (e : RawExpr) (v : NegOperandView e) {T : Ty m} {Ψ' eE' d' f'} {e₀ err : TypeError}
               → proj₁ (inferElabV ctx e) ≡ success T Ψ' eE' d' f'
-              → (∀ {w} → proj₁ (inferElabV-RUnaryOp-aux ctx e (success T Ψ' eE' d' f' , w)) ≡ failure e₀)
+              → (∀ {w} → proj₁ (inferElabV-RNeg-aux ctx e (success T Ψ' eE' d' f' , w)) ≡ failure e₀)
               → proj₁ (inferElabV-neg-aux ctx e v) ≡ failure err
               → err ≡ e₀
   neg-rejects .(Raw.RInt n) (nov-int n) _ _ ()
   neg-rejects .(Raw.RFloat i f l) (nov-float i f l) _ _ ()
-  neg-rejects {ctx = ctx} e (nov-other .e) eqI fact eqO = rejects (inferElabV-RUnaryOp-aux ctx e) (inferElabV ctx e) eqI fact eqO
+  neg-rejects {ctx = ctx} e (nov-other .e) eqI fact eqO = rejects (inferElabV-RNeg-aux ctx e) (inferElabV ctx e) eqI fact eqO
 
 inl-check-Int : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
                → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Int ≡ failure err
@@ -163,7 +163,7 @@ snd-non-pair-Int ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferEl
 neg-non-Int-Unit : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                   → inferElab ctx (Raw.RNeg e) ≡ failure err
                    → err ≡ TypeMismatch {0} Int Unit
 neg-non-Int-Unit ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
@@ -603,12 +603,12 @@ fst-non-pair-Fun ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferEl
 neg-non-Int-Float : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                   → inferElab ctx (Raw.RNeg e) ≡ failure err
                    → err ≡ TypeMismatch Int T.Float
 -- PLAN 0.73 F3 CHANGES WHICH PREMISE DOES THE WORK HERE, and this is the one
 -- lemma where it matters. The claim is unchanged and still TRUE, but for a
 -- `RFloat` operand it is now true VACUOUSLY: `-3.14` no longer fails, so the
--- premise `inferElab ctx (RUnaryOp OpNeg e) ≡ failure err` is what cannot
+-- premise `inferElab ctx (RNeg e) ≡ failure err` is what cannot
 -- hold. Before F3 the same case was discharged by the operand's own inference.
 --
 -- Read the other direction, that is the statement earning its keep: had the
@@ -621,14 +621,14 @@ neg-non-Int-Float ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInn
 neg-non-Int-Product : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m}
                        {Ψ' eE' d' f' err}
                      → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
-                     → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                     → inferElab ctx (Raw.RNeg e) ≡ failure err
                      → err ≡ TypeMismatch Int (A T.* B)
 neg-non-Int-Product ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 neg-non-Int-Sum : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m}
                    {Ψ' eE' d' f' err}
                  → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
-                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                 → inferElab ctx (Raw.RNeg e) ≡ failure err
                  → err ≡ TypeMismatch Int (A T.+ B)
 neg-non-Int-Sum ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 snd-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
@@ -715,28 +715,28 @@ snd-non-pair-ν ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferEla
 neg-non-Int-Eff : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                  → inferElab ctx (Raw.RNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind T.Many T.eff ] B)
 neg-non-Int-Eff ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 neg-non-Int-μ : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {F : Fun m}
                  {Ψ' eE' d' f' err}
                → inferElab ctx e ≡ success (T.μ F) Ψ' eE' d' f'
-               → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+               → inferElab ctx (Raw.RNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.μ F)
 neg-non-Int-μ ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 neg-non-Int-ν : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {F : Fun m} {π}
                  {Ψ' eE' d' f' err}
                → inferElab ctx e ≡ success (T.ν F π) Ψ' eE' d' f'
-               → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+               → inferElab ctx (Raw.RNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.ν F π)
 neg-non-Int-ν ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 neg-non-Int-Fun : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                  → inferElab ctx (Raw.RNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind q T.pure ] B)
 neg-non-Int-Fun ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 case-scrut-Eff : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)

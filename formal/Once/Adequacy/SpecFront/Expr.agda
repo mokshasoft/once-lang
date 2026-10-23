@@ -21,7 +21,7 @@ open import Data.String using (String)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Internal.Syntax
-  using (RawExpr; RVar; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpNeg)
+  using (RawExpr; RVar; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 import Once.Spec.Surface.Syntax as S
 open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Adequacy.SpecGrammar.Conv using (toTy)
@@ -41,4 +41,4 @@ data RX (bound : List String) : RawExpr → S.Expr → Set where
   x-float    : ∀ {i f l} → RX bound (RFloat i f l) (S.RFloat i f l)
   x-annot    : ∀ {e e′ T} → RigidFree T → RX bound e e′ → RX bound (RAnnot e T) (S.RAnnot e′ (toTy T))
   x-binop    : ∀ {op a b a′ b′} → RX bound a a′ → RX bound b b′ → RX bound (RBinOp op a b) (S.RBinOp (opS op) a′ b′)
-  x-neg      : ∀ {e e′} → RX bound e e′ → RX bound (RUnaryOp OpNeg e) (S.RNeg e′)
+  x-neg      : ∀ {e e′} → RX bound e e′ → RX bound (RNeg e) (S.RNeg e′)

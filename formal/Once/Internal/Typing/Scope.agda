@@ -240,7 +240,7 @@ classifyAppHeadView (Raw.RApp (Raw.RInt _) _)           = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RFloat _ _ _) _)     = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RAnnot _ _) _)       = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RBinOp _ _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RUnaryOp _ _) _)     = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RNeg _) _)     = ahv-other
 classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
 classifyAppHeadView (Raw.RLam _ _)            = ahv-other
 classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
@@ -251,7 +251,7 @@ classifyAppHeadView (Raw.RInt _)              = ahv-other
 classifyAppHeadView (Raw.RFloat _ _ _)        = ahv-other
 classifyAppHeadView (Raw.RAnnot _ _)          = ahv-other
 classifyAppHeadView (Raw.RBinOp _ _ _)        = ahv-other
-classifyAppHeadView (Raw.RUnaryOp _ _)        = ahv-other
+classifyAppHeadView (Raw.RNeg _)        = ahv-other
 
 viewToPba : ∀ {f} → AppHeadView f → Maybe PolyBuiltinApp
 viewToPba ahv-id              = just pba-id

@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Bool using (Bool; true; false)
 
-open import Once.Internal.Syntax using (RVar; RApp; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
+open import Once.Internal.Syntax using (RVar; RApp; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Parser.Token
 open import Once.Parser.Expr
 open import Once.Parser.ExprRelation
@@ -423,7 +423,7 @@ private
 
   unary-neg : ∀ {toks rest e} (rec : ∀ {y} → y < length (TMinus ∷ toks) → Acc _<_ y)
     → (∃ λ (d1 : ParsesUnary toks e rest) → parseUnaryWF toks (rec (s≤s ≤-refl)) ≡ just (e , rest , d1))
-    → ∃ λ (d' : ParsesUnary (TMinus ∷ toks) (RUnaryOp OpNeg e) rest) → parseUnaryWF (TMinus ∷ toks) (acc rec) ≡ just (RUnaryOp OpNeg e , rest , d')
+    → ∃ λ (d' : ParsesUnary (TMinus ∷ toks) (RNeg e) rest) → parseUnaryWF (TMinus ∷ toks) (acc rec) ≡ just (RNeg e , rest , d')
   unary-neg rec (d1 , eq1) rewrite eq1 = _ , refl
 
   expr-mk : ∀ {toks e rest} (a : Acc _<_ (length toks))

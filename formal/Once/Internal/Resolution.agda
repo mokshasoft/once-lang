@@ -38,9 +38,7 @@ open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Internal.ResolvedRefs using (GoodRefs)
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp;
-  RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
-  RBinOp; RUnaryOp)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Parser.Module.Core using (Module; mkModule; Decl;
   DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import)
 open import Once.Parser.Module.Resolve using (ModuleMap;
@@ -182,9 +180,9 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
            → ResolvesExpr um am bound a a' → ResolvesExpr um am bound b b'
            → ResolvesExpr um am bound (RBinOp op a b) (RBinOp op a' b')
 
-  re-unop : ∀ {bound op e e'}
+  re-unop : ∀ {bound e e'}
           → ResolvesExpr um am bound e e'
-          → ResolvesExpr um am bound (RUnaryOp op e) (RUnaryOp op e')
+          → ResolvesExpr um am bound (RNeg e) (RNeg e')
 
 
   -- Literals are fixed points.

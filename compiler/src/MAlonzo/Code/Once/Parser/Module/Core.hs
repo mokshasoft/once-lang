@@ -58,7 +58,7 @@ data T_Decl_20
   = C_DTypeSig_22 MAlonzo.Code.Agda.Builtin.String.T_String_6
                   MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 |
     C_DFunDef_24 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                 MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 |
+                 MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 |
     C_DSignature_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe [MAlonzo.Code.Agda.Builtin.String.T_String_6])
                     MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 |

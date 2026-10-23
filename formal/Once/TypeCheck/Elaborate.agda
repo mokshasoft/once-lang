@@ -555,7 +555,7 @@ spineOf e = go e []
     go (Raw.RFloat i f l)    args = mkSpine (Raw.RFloat i f l) args
     go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
     go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
-    go (Raw.RUnaryOp op x)   args = mkSpine (Raw.RUnaryOp op x) args
+    go (Raw.RNeg x)   args = mkSpine (Raw.RNeg x) args
 
 -- | Is this name one of the 13 polymorphic builtins?
 isPolyBuiltin : String → Bool
@@ -1064,24 +1064,24 @@ inferElabV-RAnnot-aux ctx e T nothing   _                          = failure (An
 inferElabV-RAnnot-aux ctx e T (just rf) (success Ψ eE d fr , witness) = success (wk₀ T) Ψ eE d fr , t-annot rf witness refl
 inferElabV-RAnnot-aux ctx e T (just rf) (failure err , _)             = failure err , tt
 
-inferElabV-RUnaryOp-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
-  → VerifiedInferResult ctx e → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
-inferElabV-RUnaryOp-aux ctx e (failure err , _)                = failure err , tt
-inferElabV-RUnaryOp-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch {0} Int Unit) , tt
-inferElabV-RUnaryOp-aux ctx e (success Void   _ _ _ _ , _)     = failure (TypeMismatch {0} Int Void) , tt
-inferElabV-RUnaryOp-aux ctx e (success Int    Ψ eE d fr , w)   = success Int _ (Surface.neg eE) (suc d) fr , t-neg w
-inferElabV-RUnaryOp-aux ctx e (success Float  _ _ _ _ , _)     = failure (TypeMismatch {0} Int Float) , tt
-inferElabV-RUnaryOp-aux ctx e (success (var iᵣ) _ _ _ _ , _)     = failure (TypeMismatch Int (var iᵣ)) , tt
-inferElabV-RUnaryOp-aux ctx e (success (A Once.Spec.Type.* B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Spec.Type.* B)) , tt
-inferElabV-RUnaryOp-aux ctx e (success (A Once.Spec.Type.+ B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Spec.Type.+ B)) , tt
-inferElabV-RUnaryOp-aux ctx e (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Spec.Type.⇒[ k ] B)) , tt
-inferElabV-RUnaryOp-aux ctx e (success (Once.Spec.Type.μ F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Spec.Type.μ F)) , tt
-inferElabV-RUnaryOp-aux ctx e (success (Once.Spec.Type.ν F π)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Spec.Type.ν F π)) , tt
+inferElabV-RNeg-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
+  → VerifiedInferResult ctx e → VerifiedInferResult ctx (Raw.RNeg e)
+inferElabV-RNeg-aux ctx e (failure err , _)                = failure err , tt
+inferElabV-RNeg-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch {0} Int Unit) , tt
+inferElabV-RNeg-aux ctx e (success Void   _ _ _ _ , _)     = failure (TypeMismatch {0} Int Void) , tt
+inferElabV-RNeg-aux ctx e (success Int    Ψ eE d fr , w)   = success Int _ (Surface.neg eE) (suc d) fr , t-neg w
+inferElabV-RNeg-aux ctx e (success Float  _ _ _ _ , _)     = failure (TypeMismatch {0} Int Float) , tt
+inferElabV-RNeg-aux ctx e (success (var iᵣ) _ _ _ _ , _)     = failure (TypeMismatch Int (var iᵣ)) , tt
+inferElabV-RNeg-aux ctx e (success (A Once.Spec.Type.* B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Spec.Type.* B)) , tt
+inferElabV-RNeg-aux ctx e (success (A Once.Spec.Type.+ B)      _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Spec.Type.+ B)) , tt
+inferElabV-RNeg-aux ctx e (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _ , _) = failure (TypeMismatch Int (A Once.Spec.Type.⇒[ k ] B)) , tt
+inferElabV-RNeg-aux ctx e (success (Once.Spec.Type.μ F)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Spec.Type.μ F)) , tt
+inferElabV-RNeg-aux ctx e (success (Once.Spec.Type.ν F π)   _ _ _ _ , _) = failure (TypeMismatch Int (Once.Spec.Type.ν F π)) , tt
 
 checkElabV-neg-int-aux : ∀ {m} → (ctx : NamedCtx m) (n : ℤ) (T : Ty m)
-  → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) T
+  → VerifiedCheckResult ctx (Raw.RNeg (Raw.RInt n)) T
 -- Written out so the FOLDED literal is what gets embedded — routing through
--- `inferElabV ctx (RUnaryOp OpNeg (RInt n))` would be the same term but
+-- `inferElabV ctx (RNeg (RInt n))` would be the same term but
 -- would stop reducing wherever the view has been abstracted.
 checkElabV-neg-int-aux ctx n T with Int <:? T
 ... | yes p = success Surface.zeroUsage (Surface.coerce p (Surface.int (- n))) 1 0
@@ -1089,7 +1089,7 @@ checkElabV-neg-int-aux ctx n T with Int <:? T
 ... | no _  = failure (TypeMismatch T Int) , tt
 
 checkElabV-neg-float-aux : ∀ {m} → (ctx : NamedCtx m) (i f l : ℕ) (T : Ty m)
-  → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l)) T
+  → VerifiedCheckResult ctx (Raw.RNeg (Raw.RFloat i f l)) T
 checkElabV-neg-float-aux ctx i f l T with Once.Spec.Type.Float <:? T
 ... | yes s = success Surface.zeroUsage
                       (Surface.coerce s (Surface.float (Decimal.negate (decimalOf i f l)))) 1
@@ -1916,29 +1916,29 @@ mutual
   -- file's `inferElabV-RApp-dispatch` convention) so the definitional
   -- reduction that stops holding is confined to this function.
   inferElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
-    → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
+    → VerifiedInferResult ctx (Raw.RNeg e)
   inferElabV-neg-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
     → NegOperandView e
-    → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
+    → VerifiedInferResult ctx (Raw.RNeg e)
   -- CHECK-mode twin of the same dispatch. A negated literal at a pure-arrow
   -- target is its constant morphism, exactly as a bare literal is; anything
-  -- else falls to the generic infer-and-match the `RUnaryOp` clause used
+  -- else falls to the generic infer-and-match the `RNeg` clause used
   -- before. ONE scrutinee per aux, the `checkElabV-RInt-aux` convention.
   --
-  -- EACH BRANCH IS SELF-CONTAINED — no shared `inferElabV ctx (RUnaryOp OpNeg
+  -- EACH BRANCH IS SELF-CONTAINED — no shared `inferElabV ctx (RNeg
   -- e)` threaded in, and that is forced twice over. Once by TERMINATION: the
-  -- dispatch receives the OPERAND, so rebuilding `RUnaryOp OpNeg e` inside it
+  -- dispatch receives the OPERAND, so rebuilding `RNeg e` inside it
   -- is growth to foetus. Once by REDUCTION: a downstream proof that has
   -- with-abstracted `negOperandView e` needs the branch body to mention only
   -- terms that still reduce under that abstraction, and
-  -- `inferElabV ctx (RUnaryOp OpNeg e)` does not — it unfolds back into the
+  -- `inferElabV ctx (RNeg e)` does not — it unfolds back into the
   -- view. So the literal branches state their folded result outright (they
   -- know it: the fold has no premise) and only the non-literal branch calls
-  -- into inference, at the OPERAND, which is what `inferElabV-RUnaryOp-aux`
+  -- into inference, at the OPERAND, which is what `inferElabV-RNeg-aux`
   -- takes anyway.
   checkElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
     → NegOperandView e
-    → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg e) T
+    → VerifiedCheckResult ctx (Raw.RNeg e) T
   -- RLet/RDestruct: the later sub-expressions live in EXTENDED contexts whose
   -- types come from the earlier sub-results, so they fold through nested auxes
   -- (each takes the prior result's data explicitly — no inline `with`).
@@ -2305,7 +2305,7 @@ mutual
     inferElabV-RPair-aux ctx a b (inferElabV ctx a) (inferElabV ctx b)
 
   ----------------------------------------------------------------------
-  -- Phase B — lookup-driven clauses (RQualified, RVar, RUnaryOp,
+  -- Phase B — lookup-driven clauses (RQualified, RVar, RNeg,
   -- RLet, RDestruct). RBinOp deferred (more complex op + type
   -- dispatch).
   ----------------------------------------------------------------------
@@ -2327,7 +2327,7 @@ mutual
   inferElabV ctx (Raw.RVar x) =
     inferElabV-RVar-lookup-aux ctx x _ refl _ refl
 
-  inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) = inferElabV-neg-dispatch ctx e
+  inferElabV ctx (Raw.RNeg e) = inferElabV-neg-dispatch ctx e
 
   inferElabV ctx (Raw.RLet x e₁ e₂) =
     inferElabV-RLet-aux ctx x e₁ e₂ (inferElabV ctx e₁)
@@ -2437,11 +2437,11 @@ mutual
   -- does. Before this it fell through to the generic clause below, which
   -- infers `Int`/`Float` and then mismatches against the ARROW the position
   -- wants — which is why `compose emit@E (-5)` did not compile.
-  checkElabV-wf ctx ac (Raw.RUnaryOp Raw.OpNeg e) T =
+  checkElabV-wf ctx ac (Raw.RNeg e) T =
     checkElabV-neg-dispatch ctx e T (negOperandView e)
 
   -- Generic infer-and-match fallback — covers RInt, RUnit,
-  -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified, RResolved.
+  -- RPair, RBinOp, RNeg, RLet, RDestruct, RAnnot, RQualified, RResolved.
   -- NB: the `with inferElabV ctx e` here is LOAD-BEARING for termination — the
   -- mutual `checkElab`↔`inferElab` same-size call (`checkElab e → inferElab e`)
   -- is accepted by the foetus checker only as a `with`-scrutinee; extracting it
@@ -2477,7 +2477,7 @@ mutual
   -- reading them changes. Sound by `Once.Word.Width.⊝-fromℤ`, which
   -- `RealizeAgrees` spends.
   -- The decision is an ARGUMENT, not a `with` and not a pattern match on `e`,
-  -- so `inferElabV ctx (RUnaryOp OpNeg e)` still unfolds for an ABSTRACT `e`.
+  -- so `inferElabV ctx (RNeg e)` still unfolds for an ABSTRACT `e`.
   -- That is the difference between this and the first attempt: matching `e`
   -- here would have forced every downstream proof to enumerate all sixteen
   -- `RawExpr` heads just to make the dispatch reduce. Downstream now does
@@ -2502,7 +2502,7 @@ mutual
     success Float _ (Surface.float (Decimal.negate (decimalOf i f l))) 1
             0
     , t-neg-float i f l
-  inferElabV-neg-aux ctx e (nov-other .e) = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
+  inferElabV-neg-aux ctx e (nov-other .e) = inferElabV-RNeg-aux ctx e (inferElabV ctx e)
 
   checkElabV-neg-dispatch ctx .(Raw.RInt n) T (nov-int n) =
     checkElabV-neg-int-aux ctx n T
@@ -2511,8 +2511,8 @@ mutual
   -- NOT a literal: the old generic clause verbatim, `embedOrSubsume` included,
   -- so the pure→eff subsumption (`t-subsume`, plan 0.52 M1) is not lost.
   checkElabV-neg-dispatch ctx e T (nov-other .e) =
-    embedOrSubsume ctx (Raw.RUnaryOp Raw.OpNeg e) T
-                   (inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e))
+    embedOrSubsume ctx (Raw.RNeg e) T
+                   (inferElabV-RNeg-aux ctx e (inferElabV ctx e))
 
 
   inferElabV-RLet-aux ctx x e₁ e₂ (failure err , _) = failure err , tt

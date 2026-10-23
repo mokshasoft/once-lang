@@ -45,7 +45,7 @@ open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Grade using (_⊑π_)
-open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
+open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RUnit; RAnnot; RPair; RFloat; RLam; RLet; RDestruct; RNeg; RBinOp; BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx; lookupLocal; lookupImport; lookupPolyPrefix; extendNamedCtx; classifyAppHead)
@@ -245,7 +245,7 @@ mutual
     t-neg : ∀ {ctx : NamedCtx m} {e : RawExpr}
             {Ψ : Surface.Usage (NamedCtx.size ctx)}
           → ctx ⊢ᵢ e ∶ Int ⨾ Ψ
-          → ctx ⊢ᵢ RUnaryOp OpNeg e ∶ Int ⨾ Ψ
+          → ctx ⊢ᵢ RNeg e ∶ Int ⨾ Ψ
 
     -- PLAN 0.73 F3: `-3.14` IS A LITERAL, for D120's reason and by D120's
     -- route. `t-neg` cannot cover it — its premise is at `Int`, and `RFloat`
@@ -264,7 +264,7 @@ mutual
     -- with only the sign bit different. `Once.Spec.Float.Decimal.negate` is that
     -- one function, and it exists already.
     --
-    -- Deliberately NOT the general `⊢ᵢ e ∶ Float → ⊢ᵢ RUnaryOp OpNeg e`: that
+    -- Deliberately NOT the general `⊢ᵢ e ∶ Float → ⊢ᵢ RNeg e`: that
     -- rule would type `- x` for a float VARIABLE, which is F4's arithmetic
     -- and has no lowering. A rule with no lowering is a false promise the
     -- backend would then have to break.
@@ -272,7 +272,7 @@ mutual
     -- No premise, exactly as `t-float` has none: the literal is total, and
     -- the offset `p` rides along unread for the diagnostic's sake.
     t-neg-float : ∀ {ctx : NamedCtx m} (i f l : ℕ)
-                → ctx ⊢ᵢ RUnaryOp OpNeg (RFloat i f l) ∶ Float ⨾ zeroUsage
+                → ctx ⊢ᵢ RNeg (RFloat i f l) ∶ Float ⨾ zeroUsage
 
     ----------------------------------------------------------------
     -- Let binding

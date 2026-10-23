@@ -25,8 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Relation.Nullary using (¬_)
 
 open import Once.Internal.Syntax as O
-  using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
-         RAnnot; RBinOp; RUnaryOp; OpNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+  using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals;
   TArrow; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe;
@@ -87,7 +86,7 @@ data Emb : RawExpr → S.Expr → Set where
   -- (a parsed annotation is a surface type: no rigid parameter)
   e-annot    : ∀ {e e′ T} → RigidFree T → Emb e e′ → Emb (RAnnot e T) (S.RAnnot e′ (toTy T))
   e-binop    : ∀ {op a b a′ b′} → Emb a a′ → Emb b b′ → Emb (RBinOp op a b) (S.RBinOp (opS op) a′ b′)
-  e-neg      : ∀ {e e′} → Emb e e′ → Emb (RUnaryOp OpNeg e) (S.RNeg e′)
+  e-neg      : ∀ {e e′} → Emb e e′ → Emb (RNeg e) (S.RNeg e′)
 
 ------------------------------------------------------------------------
 -- The compiler's derivation gives the Spec's
@@ -386,7 +385,7 @@ private
   mop←₂ mk du (e , rest , dt , em , er) = e , rest , mk du dt , em , er
 
   neg←₁ : ∀ {toks e′ r} → BackE E.ParsesUnary toks e′ r → BackE E.ParsesUnary (P.TMinus ∷ toks) (S.RNeg e′) r
-  neg←₁ (e , rest , du , em , er) = RUnaryOp OpNeg e , rest , pu-neg du , e-neg em , er
+  neg←₁ (e , rest , du , em , er) = RNeg e , rest , pu-neg du , e-neg em , er
 
   un←₁ : ∀ {toks e′ r} → BackE E.ParsesApp toks e′ r → BackE E.ParsesUnary toks e′ r
   un←₁ (e , rest , da , em , er) = e , rest , pu-app da , em , er

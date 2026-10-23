@@ -26,8 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Nullary.Decidable using (_×-dec_)
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt;
-  RFloat; RAnnot; RBinOp; RUnaryOp)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 
 open import Data.Maybe using (just; nothing)
 import Relation.Binary.PropositionalEquality
@@ -52,7 +51,7 @@ GoodRefs (RInt _)              = ⊤
 GoodRefs (RFloat _ _ _)      = ⊤
 GoodRefs (RAnnot e T)          = RigidFree T × GoodRefs e
 GoodRefs (RBinOp _ a b)        = GoodRefs a × GoodRefs b
-GoodRefs (RUnaryOp _ e)        = GoodRefs e
+GoodRefs (RNeg e)        = GoodRefs e
 
 private
   parts≢ : ∀ {xs ys : List String} → xs ≢ ys → canonical xs ≢ canonical ys
@@ -98,4 +97,4 @@ goodRefs? (RInt _)              = yes tt
 goodRefs? (RFloat _ _ _)      = yes tt
 goodRefs? (RAnnot e T)          = rigidFree-dec T ×-dec goodRefs? e
 goodRefs? (RBinOp _ a b)        = goodRefs? a ×-dec goodRefs? b
-goodRefs? (RUnaryOp _ e)        = goodRefs? e
+goodRefs? (RNeg e)        = goodRefs? e

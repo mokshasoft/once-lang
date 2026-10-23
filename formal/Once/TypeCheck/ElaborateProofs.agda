@@ -242,7 +242,7 @@ checkElab-fallback-RDestruct {ctx = ctx} {τ = τ} scrut xL eL xR eR T eqInf sb
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 
--- RUnaryOp: a specialised check clause EXISTS NOW (plan 0.73 F3) — a negated
+-- RNeg: a specialised check clause EXISTS NOW (plan 0.73 F3) — a negated
 -- literal at a pure-arrow target is its constant morphism — so this proof
 -- follows `checkElabV-neg-dispatch`'s three-way split instead of reducing
 -- straight to the generic fallback.
@@ -253,28 +253,28 @@ checkElab-fallback-RDestruct {ctx = ctx} {τ = τ} scrut xL eL xR eR T eqInf sb
 -- `isRIntVliftTarget?`/`isRFloatVliftTarget?` answer `nothing`. Both fall to
 -- the same `embedOrSubsume` the old single clause used. What the split buys is
 -- that this is now SAID rather than assumed.
-checkElab-fallback-RUnaryOp : ∀ {m} {ctx : NamedCtx m} (op : Raw.UnaryOp) (e : RawExpr) (T : Ty m)
+checkElab-fallback-RNeg : ∀ {m} {ctx : NamedCtx m} (e : RawExpr) (T : Ty m)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
-  → inferElab ctx (Raw.RUnaryOp op e) ≡ success T Ψ eE d f
+  → inferElab ctx (Raw.RNeg e) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RUnaryOp op e) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RUnaryOp {m = m} {ctx = ctx} Raw.OpNeg e T eqInf
+      checkElab ctx (Raw.RNeg e) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RNeg {m = m} {ctx = ctx} e T eqInf
   with negOperandView e | eqInf
 ... | nov-int n | refl with Int {m} <:? Int
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
-checkElab-fallback-RUnaryOp {m = m} {ctx = ctx} Raw.OpNeg e T eqInf
+checkElab-fallback-RNeg {m = m} {ctx = ctx} e T eqInf
   | nov-float i f l | refl with Float {m} <:? Float
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
-checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg e T eqInf
+checkElab-fallback-RNeg {ctx = ctx} e T eqInf
   -- NAME THE REDUCED FORM. Under the abstracted view the goal and `eqI` both
-  -- mention `inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)`, not
-  -- `inferElabV ctx (RUnaryOp OpNeg e)` — that unfolds back into the view and
+  -- mention `inferElabV-RNeg-aux ctx e (inferElabV ctx e)`, not
+  -- `inferElabV ctx (RNeg e)` — that unfolds back into the view and
   -- would be stuck. Same convention as `RealizeAgrees`' neg branch.
-  | nov-other .e | eqI with inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e) | eqI
+  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElabV ctx e) | eqI
 ...   | failure _ , _ | ()
 ...   | success T' Ψ' eE' d' fr' , w | refl with T <:? T
 ...     | yes _    = _ , _ , _ , refl
@@ -283,27 +283,27 @@ checkElab-fallback-RUnaryOp {ctx = ctx} Raw.OpNeg e T eqInf
 -- D229 / plan 0.94 §13: the same, at any SUPERtype of the inferred one (a
 -- `Void` result converts to every type). A numeral's fold infers `Int`/`Float`,
 -- whose only supertypes are themselves.
-checkElab-fallback-RUnaryOp-sub : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (op : Raw.UnaryOp) (e : RawExpr) (T : Ty m)
+checkElab-fallback-RNeg-sub : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (e : RawExpr) (T : Ty m)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
-  → inferElab ctx (Raw.RUnaryOp op e) ≡ success T Ψ eE d f
+  → inferElab ctx (Raw.RNeg e) ≡ success T Ψ eE d f
   → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RUnaryOp op e) τ ≡ success Ψ eE' d' f')))
-checkElab-fallback-RUnaryOp-sub {m = m} {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
+      checkElab ctx (Raw.RNeg e) τ ≡ success Ψ eE' d' f')))
+checkElab-fallback-RNeg-sub {m = m} {ctx = ctx} {τ = τ} e T eqInf sb
   with negOperandView e | eqInf
 ... | nov-int n | refl with sb
 ...   | sub-int with Int {m} <:? Int
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
-checkElab-fallback-RUnaryOp-sub {m = m} {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
+checkElab-fallback-RNeg-sub {m = m} {ctx = ctx} {τ = τ} e T eqInf sb
   | nov-float i f l | refl with sb
 ...   | sub-float with Float {m} <:? Float
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
-checkElab-fallback-RUnaryOp-sub {ctx = ctx} {τ = τ} Raw.OpNeg e T eqInf sb
-  | nov-other .e | eqI with inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e) | eqI
+checkElab-fallback-RNeg-sub {ctx = ctx} {τ = τ} e T eqInf sb
+  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElabV ctx e) | eqI
 ...   | failure _ , _ | ()
 ...   | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
 ...     | yes _    = _ , _ , _ , refl

@@ -43,7 +43,7 @@ open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Name using (GenWord)
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature;
   DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
@@ -231,8 +231,8 @@ resolves-sound um am bound _ _ (re-annot {t = t} r) =
   cong (λ z → RAnnot z t) (resolves-sound um am bound _ _ r)
 resolves-sound um am bound _ _ (re-binop {op = op} ra rb) =
   cong₂ (RBinOp op) (resolves-sound um am bound _ _ ra) (resolves-sound um am bound _ _ rb)
-resolves-sound um am bound _ _ (re-unop {op = op} r) =
-  cong (RUnaryOp op) (resolves-sound um am bound _ _ r)
+resolves-sound um am bound _ _ (re-unop r) =
+  cong RNeg (resolves-sound um am bound _ _ r)
 resolves-sound um am bound _ _ re-unit  = refl
 resolves-sound um am bound _ _ re-int   = refl
 resolves-sound um am bound _ _ re-float = refl
@@ -261,7 +261,7 @@ resolves-complete um am bound (RDestruct s xl el xr er) =
 resolves-complete um am bound (RAnnot e t) = re-annot (resolves-complete um am bound e)
 resolves-complete um am bound (RBinOp op a b) =
   re-binop (resolves-complete um am bound a) (resolves-complete um am bound b)
-resolves-complete um am bound (RUnaryOp op e) = re-unop (resolves-complete um am bound e)
+resolves-complete um am bound (RNeg e) = re-unop (resolves-complete um am bound e)
 resolves-complete um am bound RUnit           = re-unit
 resolves-complete um am bound (RInt n)        = re-int
 resolves-complete um am bound (RFloat i f l) = re-float

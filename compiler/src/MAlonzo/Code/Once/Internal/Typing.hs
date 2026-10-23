@@ -47,7 +47,7 @@ data T__'8866''7522'_'8758'_'10814'__12
     C_t'45'var'45'import_98 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                             MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 |
     C_t'45'var'45'poly'45'instantiate'45'infer_114 MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
-                                                   MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
+                                                   MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30
                                                    [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] AgdaAny
                                                    AgdaAny |
     C_t'45'annot_126 MAlonzo.Code.Once.Internal.Type.WellFormed.T_RigidFree_58
@@ -207,7 +207,7 @@ data T__'8866''7580'_'8758'_'10814'__20
     C_t'45'initial'45'app'45'check_772 MAlonzo.Code.Once.Spec.Context.T_Usage_34
                                        T__'8866''7580'_'8758'_'10814'__20 |
     C_t'45'var'45'poly'45'instantiate_786 MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
-                                          MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
+                                          MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30
                                           [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
                                           MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 -- Once.Internal.Typing._⊢ᵈ_∶_⇒[_]↦_⨾_
@@ -224,7 +224,7 @@ data T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__30
                     MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
                     MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
                     MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10
-                    MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34
+                    MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30
                     [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
                     MAlonzo.Code.Once.Internal.Type.Poly.T_ArrowSchema_296
                     (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -264,7 +264,7 @@ data T__'8866''7496'_'8758'_'8658''91'_'93''8614'_'10814'__30
 d__'8866'_'8758'_'10814'__990 ::
   Integer ->
   MAlonzo.Code.Once.Internal.Typing.Scope.T_NamedCtx_114 ->
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 -> ()
 d__'8866'_'8758'_'10814'__990 = erased
@@ -272,7 +272,7 @@ d__'8866'_'8758'_'10814'__990 = erased
 d_Typed_1004 ::
   Integer ->
   MAlonzo.Code.Once.Internal.Typing.Scope.T_NamedCtx_114 ->
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 -> ()
 d_Typed_1004 = erased

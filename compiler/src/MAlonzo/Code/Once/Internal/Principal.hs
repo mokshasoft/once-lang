@@ -202,7 +202,7 @@ du_below_12 v0
 d_PrincipalAt_50 ::
   Integer ->
   MAlonzo.Code.Once.Internal.Typing.Scope.T_NamedCtx_114 ->
-  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_34 ->
+  MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> ()
 d_PrincipalAt_50 = erased
 -- Once.Internal.Principal.grade-at-or-below

@@ -39,9 +39,6 @@ data BinOp : Set where
   OpEq  : BinOp    -- a == b
   OpNe  : BinOp    -- a != b
 
-data UnaryOp : Set where
-  OpNeg : UnaryOp  -- -x
-
 ------------------------------------------------------------------------
 -- Expressions
 ------------------------------------------------------------------------
@@ -64,7 +61,7 @@ data RawExpr : Set where
   RFloat     : ℕ → ℕ → ℕ → RawExpr
   RAnnot     : RawExpr → Type → RawExpr               -- (e : T)
   RBinOp     : BinOp → RawExpr → RawExpr → RawExpr
-  RUnaryOp   : UnaryOp → RawExpr → RawExpr
+  RNeg       : RawExpr → RawExpr                    -- -e
 
 ------------------------------------------------------------------------
 -- Operator classes (the typing rules for operators are stated by class)

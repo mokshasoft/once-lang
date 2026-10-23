@@ -44,7 +44,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.Type using (parseTypeWF)
@@ -998,7 +998,7 @@ parseAppWF toks (acc rec) with parseAtomExprWF toks (acc rec)
 
 parseUnaryWF (TMinus ∷ rest) (acc rec) with parseUnaryWF rest (rec (s≤s ≤-refl))
 ... | nothing                  = nothing
-... | just (e , rest' , dU)   = just (RUnaryOp OpNeg e , rest' , pu-neg dU)
+... | just (e , rest' , dU)   = just (RNeg e , rest' , pu-neg dU)
 parseUnaryWF []               a with parseAppWF [] a
 ... | nothing                 = nothing
 ... | just (e , rest' , d)   = just (e , rest' , pu-app d)

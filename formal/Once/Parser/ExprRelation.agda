@@ -61,7 +61,7 @@ open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; OpNeg)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Parser.Token
 open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
 
@@ -414,7 +414,7 @@ mutual
   data ParsesUnary : List Token → RawExpr → List Token → Set where
     pu-neg : ∀ {toks rest e}
            → ParsesUnary toks e rest
-           → ParsesUnary (TMinus ∷ toks) (RUnaryOp OpNeg e) rest
+           → ParsesUnary (TMinus ∷ toks) (RNeg e) rest
     pu-app : ∀ {toks rest e}
            → ParsesApp toks e rest
            → ParsesUnary toks e rest
