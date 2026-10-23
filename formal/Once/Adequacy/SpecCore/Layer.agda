@@ -3,169 +3,92 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.SpecCore.Layer — one layer of a recursive type, as each side
--- represents it (plan 0.121 §3.5).
+-- Once.Adequacy.SpecCore.Layer — one layer of a recursive type, on both
+-- sides (plan 0.121 §3.5; plan 0.122: both are the Spec's).
 --
--- The compiler holds a layer three ways: as a value of the type `⟦F⟧T C`
--- (graded), as the functor applied to a set (`Val.⟦F⟧F`, a base constant a
--- plain value), and as its polynomial's layer (`translateF`, a base constant
--- in the functor-meaning representation); the Spec two (`⟦F⟧F C` and `code`).
--- A base value is the same in every representation, so each conversion — the
--- compiler's `cfᵛ`/`cf⁻¹ᵛ`, `coerce-μ-in`/`coerce-μ-out`, the Spec's
--- `toL`/`fromL` — keeps layers related.
+-- A layer is held as a value of the type `⟦F⟧F C` and as its polynomial's
+-- layer (`code`); the Spec converts by `toL`/`fromL`, the instance at no
+-- variable along the instantiated functor, the Spec at the instance. A base
+-- constant is the same as a value and as a layer's constant (`BR`), so both
+-- conversions keep layers related.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
 
 module Once.Adequacy.SpecCore.Layer (Σ : Signature) where
 
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
-open import Data.Product using (_×_; _,_)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Word using (Carrier)
-import Once.Internal.Type.WellFormed as LW
-import Once.Spec.Type as LW
 import Once.Spec.Type as ST
-import Once.Internal.Value Carrier Carrier as V
-import Once.Internal.Graded as LGr
-import Once.Internal.GradedOps as LOps
-import Once.Spec.Polynomial as SPoly
+open ST using (Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; WFFun; wf-K; wf-Id; wf-⊕; wf-⊗)
 import Once.Spec.Domain Σ as SD
-open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+open import Once.Spec.Core.Program Σ using (noVars)
 open import Once.Adequacy.SpecCore.Index
 open import Once.Adequacy.SpecCore.Value Σ
 
 ------------------------------------------------------------------------
--- Base values, in the compiler's plain representation
+-- Base values
 ------------------------------------------------------------------------
 
-BVal : ∀ {A A′} → GR A A′ → V.⟦ A ⟧ → SD.⟦ A′ ⟧ᵛ → Set
-BVal g-unit  _ _ = ⊤
-BVal g-void  _ _ = ⊤
-BVal g-int   x y = x ≡ y
-BVal g-float x y = x ≡ y
-BVal (g-* a b) (x , x′) (y , y′) = BVal a x y × BVal b x′ y′
-BVal (g-+ a b) (inj₁ x) (inj₁ y) = BVal a x y
-BVal (g-+ a b) (inj₂ x) (inj₂ y) = BVal b x y
-BVal (g-+ a b) (inj₁ _) (inj₂ _) = ⊥
-BVal (g-+ a b) (inj₂ _) (inj₁ _) = ⊥
-BVal (g-⇒ _ _) _ _ = ⊤
-BVal (g-μ _)   _ _ = ⊤
-BVal (g-ν _)   _ _ = ⊤
+val→br : ∀ {A A′} (g : GR A A′) {x y} → ValR g x y → BR g x y
+val→br g-unit  r = tt
+val→br g-void  r = tt
+val→br g-int   r = r
+val→br g-float r = r
+val→br (g-* a b) {_ , _} {_ , _} (r , r′) = val→br a r , val→br b r′
+val→br (g-+ a b) {inj₁ _} {inj₁ _} r = val→br a r
+val→br (g-+ a b) {inj₂ _} {inj₂ _} r = val→br b r
+val→br (g-+ a b) {inj₁ _} {inj₂ _} ()
+val→br (g-+ a b) {inj₂ _} {inj₁ _} ()
+val→br (g-⇒ _ _) r = tt
+val→br (g-μ _)   r = tt
+val→br (g-ν _)   r = tt
 
-prj-R : ∀ {A A′} (ib : LW.IsBaseType A) (g : GR A A′) {x x′} → ValR g x x′ → BVal g (LOps.prjB ib x) x′
-prj-R LW.base-Unit  g-unit  r = tt
-prj-R LW.base-Void  g-void  r = tt
-prj-R LW.base-Int   g-int   r = r
-prj-R LW.base-Float g-float r = r
-prj-R (LW.base-Prod a b) (g-* ga gb) {_ , _} {_ , _} (r , r′) = prj-R a ga r , prj-R b gb r′
-prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₁ _} r = prj-R a ga r
-prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₂ _} r = prj-R b gb r
-prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₂ _} ()
-prj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₁ _} ()
-
-inj-R : ∀ {A A′} (ib : LW.IsBaseType A) (g : GR A A′) {x x′} → BVal g x x′ → ValR g (LOps.injB ib x) x′
-inj-R LW.base-Unit  g-unit  r = tt
-inj-R LW.base-Void  g-void  r = tt
-inj-R LW.base-Int   g-int   r = r
-inj-R LW.base-Float g-float r = r
-inj-R (LW.base-Prod a b) (g-* ga gb) {_ , _} {_ , _} (r , r′) = inj-R a ga r , inj-R b gb r′
-inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₁ _} r = inj-R a ga r
-inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₂ _} r = inj-R b gb r
-inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₂ _} ()
-inj-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₁ _} ()
-
-toBase-R : ∀ {A A′} (g : GR A A′) {x x′} → BVal g x x′ → BR g (V.coerce-full-to-base A x) x′
-toBase-R g-unit  r = tt
-toBase-R g-void  r = tt
-toBase-R g-int   r = r
-toBase-R g-float r = r
-toBase-R (g-* a b) {_ , _} {_ , _} (r , r′) = toBase-R a r , toBase-R b r′
-toBase-R (g-+ a b) {inj₁ _} {inj₁ _} r = toBase-R a r
-toBase-R (g-+ a b) {inj₂ _} {inj₂ _} r = toBase-R b r
-toBase-R (g-+ a b) {inj₁ _} {inj₂ _} ()
-toBase-R (g-+ a b) {inj₂ _} {inj₁ _} ()
-toBase-R (g-⇒ _ _) r = tt
-toBase-R (g-μ _)   r = tt
-toBase-R (g-ν _)   r = tt
-
-fromBase-R : ∀ {A A′} (ib : LW.IsBaseType A) (g : GR A A′) {x x′} → BR g x x′ → BVal g (V.coerce-base-to-full ib x) x′
-fromBase-R LW.base-Unit  g-unit  r = tt
-fromBase-R LW.base-Void  g-void  {()} r
-fromBase-R LW.base-Int   g-int   r = r
-fromBase-R LW.base-Float g-float r = r
-fromBase-R (LW.base-Prod a b) (g-* ga gb) {_ , _} {_ , _} (r , r′) = fromBase-R a ga r , fromBase-R b gb r′
-fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₁ _} r = fromBase-R a ga r
-fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₂ _} r = fromBase-R b gb r
-fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₁ _} {inj₂ _} ()
-fromBase-R (LW.base-Sum a b) (g-+ ga gb) {inj₂ _} {inj₁ _} ()
+br→val : ∀ {X} (b : Base ST.∅ₖ X) {x y} → BR (g⟨⟩ noVars X) x y → ValR (g⟨⟩ noVars X) x y
+br→val (b-var {i = ()} _)
+br→val b-Unit  r = tt
+br→val b-Void  r = tt
+br→val b-Int   r = r
+br→val b-Float r = r
+br→val (b-* a b) {_ , _} {_ , _} (r , r′) = br→val a r , br→val b r′
+br→val (b-+ a b) {inj₁ _} {inj₁ _} r = br→val a r
+br→val (b-+ a b) {inj₂ _} {inj₂ _} r = br→val b r
+br→val (b-+ a b) {inj₁ _} {inj₂ _} ()
+br→val (b-+ a b) {inj₂ _} {inj₁ _} ()
 
 ------------------------------------------------------------------------
--- A layer in the compiler's plain representation
-------------------------------------------------------------------------
-
-LayerV : ∀ {F F′} → GF F F′ → ∀ {X Y : Set} → (X → Y → Set) → V.⟦ F ⟧F X → SPoly.⟦ SD.code F′ ⟧SF Y → Set
-LayerV (g-K a)   R x y = BVal a x y
-LayerV g-Id      R x y = R x y
-LayerV (g-⊕ f g) R (inj₁ x) (inj₁ y) = LayerV f R x y
-LayerV (g-⊕ f g) R (inj₂ x) (inj₂ y) = LayerV g R x y
-LayerV (g-⊕ f g) R (inj₁ _) (inj₂ _) = ⊥
-LayerV (g-⊕ f g) R (inj₂ _) (inj₁ _) = ⊥
-LayerV (g-⊗ f g) R (x , x′) (y , y′) = LayerV f R x y × LayerV g R x′ y′
-
--- into the polynomial's layer, and back
-in-R : ∀ {F F′} (f : GF F F′) {X Y : Set} {R : X → Y → Set} {l l′}
-     → LayerV f R l l′ → LayerR f R (V.coerce-μ-in F X l) l′
-in-R (g-K a)   r = toBase-R a r
-in-R g-Id      r = r
-in-R (g-⊕ f g) {l = inj₁ _} {inj₁ _} r = in-R f r
-in-R (g-⊕ f g) {l = inj₂ _} {inj₂ _} r = in-R g r
-in-R (g-⊕ f g) {l = inj₁ _} {inj₂ _} ()
-in-R (g-⊕ f g) {l = inj₂ _} {inj₁ _} ()
-in-R (g-⊗ f g) {l = _ , _} {_ , _} (r , r′) = in-R f r , in-R g r′
-
-out-R : ∀ {F F′} (f : GF F F′) (wf : LW.WellFormedF F) {X Y : Set} {R : X → Y → Set} {l l′}
-      → LayerR f R l l′ → LayerV f R (V.coerce-μ-out wf X l) l′
-out-R (g-K a)   (LW.wf-K ib)    r = fromBase-R ib a r
-out-R g-Id      LW.wf-Id        r = r
-out-R (g-⊕ f g) (LW.wf-Sum wf wg) {l = inj₁ _} {inj₁ _} r = out-R f wf r
-out-R (g-⊕ f g) (LW.wf-Sum wf wg) {l = inj₂ _} {inj₂ _} r = out-R g wg r
-out-R (g-⊕ f g) (LW.wf-Sum wf wg) {l = inj₁ _} {inj₂ _} ()
-out-R (g-⊕ f g) (LW.wf-Sum wf wg) {l = inj₂ _} {inj₁ _} ()
-out-R (g-⊗ f g) (LW.wf-Prod wf wg) {l = _ , _} {_ , _} (r , r′) = out-R f wf r , out-R g wg r′
-
-------------------------------------------------------------------------
--- A layer as a value of the functor applied, on both sides
+-- The layer of an instantiated functor
 ------------------------------------------------------------------------
 
 module _ {m} (σ : ST.TySub m 0) where
 
-  GR-⟦⟧σ : ∀ (F : ST.Fun m) {Xg X′} → GR Xg (X′ ST.⟨ σ ⟩)
-         → GR (ST.⟦ F ST.⟨ σ ⟩F ⟧F Xg) (ST.⟦ F ⟧F X′ ST.⟨ σ ⟩)
-  GR-⟦⟧σ (ST.K A)   gX = gr (A ST.⟨ σ ⟩)
+  GR-⟦⟧σ : ∀ (F : ST.Fun m) {Xs X′} → GR (Xs ST.⟨ noVars ⟩) (X′ ST.⟨ σ ⟩)
+         → GR (ST.⟦ F ST.⟨ σ ⟩F ⟧F Xs ST.⟨ noVars ⟩) (ST.⟦ F ⟧F X′ ST.⟨ σ ⟩)
+  GR-⟦⟧σ (ST.K A)   gX = g⟨⟩ noVars (A ST.⟨ σ ⟩)
   GR-⟦⟧σ ST.Id      gX = gX
   GR-⟦⟧σ (F ST.⊕ H) gX = g-+ (GR-⟦⟧σ F gX) (GR-⟦⟧σ H gX)
   GR-⟦⟧σ (F ST.⊗ H) gX = g-* (GR-⟦⟧σ F gX) (GR-⟦⟧σ H gX)
 
-  cf-R : ∀ (F : ST.Fun m) (wf : LW.WellFormedF (F ST.⟨ σ ⟩F)) {Xg X′} (gX : GR Xg (X′ ST.⟨ σ ⟩))
-         {x x′} → ValR (GR-⟦⟧σ F gX) x x′ → LayerV (gf (F ST.⟨ σ ⟩F)) (ValR gX) (LOps.cfᵛ Xg wf x) (SD.toL σ F X′ x′)
-  cf-R (ST.K A)   (LW.wf-K ib) gX r = prj-R ib (gr _) r
-  cf-R ST.Id      LW.wf-Id     gX r = r
-  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₁ _} r = cf-R F wf gX r
-  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₂ _} r = cf-R H wh gX r
-  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₂ _} ()
-  cf-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₁ _} ()
-  cf-R (F ST.⊗ H) (LW.wf-Prod wf wh) gX {_ , _} {_ , _} (r , r′) = cf-R F wf gX r , cf-R H wh gX r′
+  toL-R : ∀ (F : ST.Fun m) {Xs X′} (gX : GR (Xs ST.⟨ noVars ⟩) (X′ ST.⟨ σ ⟩)) {x x′}
+        → ValR (GR-⟦⟧σ F gX) x x′
+        → LayerR (gf⟨⟩ noVars (F ST.⟨ σ ⟩F)) (ValR gX) (SD.toL noVars (F ST.⟨ σ ⟩F) Xs x) (SD.toL σ F X′ x′)
+  toL-R (ST.K A)   gX r = val→br (g⟨⟩ noVars (A ST.⟨ σ ⟩)) r
+  toL-R ST.Id      gX r = r
+  toL-R (F ST.⊕ H) gX {inj₁ _} {inj₁ _} r = toL-R F gX r
+  toL-R (F ST.⊕ H) gX {inj₂ _} {inj₂ _} r = toL-R H gX r
+  toL-R (F ST.⊕ H) gX {inj₁ _} {inj₂ _} ()
+  toL-R (F ST.⊕ H) gX {inj₂ _} {inj₁ _} ()
+  toL-R (F ST.⊗ H) gX {_ , _} {_ , _} (r , r′) = toL-R F gX r , toL-R H gX r′
 
-  cf⁻¹-R : ∀ (F : ST.Fun m) (wf : LW.WellFormedF (F ST.⟨ σ ⟩F)) {Xg X′} (gX : GR Xg (X′ ST.⟨ σ ⟩))
-           {l l′} → LayerV (gf (F ST.⟨ σ ⟩F)) (ValR gX) l l′ → ValR (GR-⟦⟧σ F gX) (LOps.cf⁻¹ᵛ Xg wf l) (SD.fromL σ F X′ l′)
-  cf⁻¹-R (ST.K A)   (LW.wf-K ib) gX r = inj-R ib (gr _) r
-  cf⁻¹-R ST.Id      LW.wf-Id     gX r = r
-  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₁ _} r = cf⁻¹-R F wf gX r
-  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₂ _} r = cf⁻¹-R H wh gX r
-  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₁ _} {inj₂ _} ()
-  cf⁻¹-R (F ST.⊕ H) (LW.wf-Sum wf wh) gX {inj₂ _} {inj₁ _} ()
-  cf⁻¹-R (F ST.⊗ H) (LW.wf-Prod wf wh) gX {_ , _} {_ , _} (r , r′) = cf⁻¹-R F wf gX r , cf⁻¹-R H wh gX r′
+  fromL-R : ∀ (F : ST.Fun m) (wf : WFFun ST.∅ₖ (F ST.⟨ σ ⟩F)) {Xs X′} (gX : GR (Xs ST.⟨ noVars ⟩) (X′ ST.⟨ σ ⟩)) {l l′}
+          → LayerR (gf⟨⟩ noVars (F ST.⟨ σ ⟩F)) (ValR gX) l l′
+          → ValR (GR-⟦⟧σ F gX) (SD.fromL noVars (F ST.⟨ σ ⟩F) Xs l) (SD.fromL σ F X′ l′)
+  fromL-R (ST.K A)   (wf-K b) gX r = br→val b r
+  fromL-R ST.Id      wf-Id    gX r = r
+  fromL-R (F ST.⊕ H) (wf-⊕ wf wh) gX {inj₁ _} {inj₁ _} r = fromL-R F wf gX r
+  fromL-R (F ST.⊕ H) (wf-⊕ wf wh) gX {inj₂ _} {inj₂ _} r = fromL-R H wh gX r
+  fromL-R (F ST.⊕ H) (wf-⊕ wf wh) gX {inj₁ _} {inj₂ _} ()
+  fromL-R (F ST.⊕ H) (wf-⊕ wf wh) gX {inj₂ _} {inj₁ _} ()
+  fromL-R (F ST.⊗ H) (wf-⊗ wf wh) gX {_ , _} {_ , _} (r , r′) = fromL-R F wf gX r , fromL-R H wh gX r′

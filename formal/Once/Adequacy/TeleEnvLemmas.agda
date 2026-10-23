@@ -27,7 +27,10 @@ open import Once.Spec.Numerics using (TargetNum)
 open import Once.Internal.Trace using (FFIAnswers)
 
 -- Plan 0.105: over the interpretation's FFI half `φ`.
-module Once.Adequacy.TeleEnvLemmas (fmt : TargetNum) (φ : FFIAnswers) where
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Type using (TySub)
+
+module Once.Adequacy.TeleEnvLemmas (fmt : TargetNum) (φ : FFIAnswers) (Σ : Signature) (σ₀ : TySub 0 0) where
 
 open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
@@ -61,7 +64,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; cohᴰ)
 open CallEnv using (callsE)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings)
+open import Once.Denotation.Meaning Σ σ₀ using (DefMeanings; ImpMeanings)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
@@ -71,7 +74,7 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; resolvePolyCase; applySplice)
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
-open import Once.Adequacy.GradedRelation fmt using (RelGM)
+open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM)
 open import Once.Spec.Grade using (pure)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip)
 
@@ -148,17 +151,17 @@ RefsAgree σ₁ σ₂ []                   = ⊤
 RefsAgree σ₁ σ₂ ((n , _ , _) ∷ rest) = (∀ (A : Type) → SD.DefsSem.refs σ₁ n A ≡ SD.DefsSem.refs σ₂ n A) × RefsAgree σ₁ σ₂ rest
 
 envrel-transport : ∀ (σ₁ σ₂ : SD.DefsSem) (polys : PolyCtx) {ρ : DefMeanings polys}
-  → RefsAgree σ₁ σ₂ polys → MB.EnvRel fmt σ₁ polys ρ → MB.EnvRel fmt σ₂ polys ρ
+  → RefsAgree σ₁ σ₂ polys → MB.EnvRel fmt Σ σ₀ σ₁ polys ρ → MB.EnvRel fmt Σ σ₀ σ₂ polys ρ
 envrel-transport σ₁ σ₂ []                   _        _        = tt
 envrel-transport σ₁ σ₂ ((n , s , _) ∷ rest) {e , ρ} (h , hs) (r , rs) =
   (λ {Δ} U ki → subst (RelGM pure U (e U ki)) (h U) (r {Δ} U ki)) , envrel-transport σ₁ σ₂ rest hs rs
 
 CallsAgree : SD.DefsSem → SD.DefsSem → Imports → Set
 CallsAgree σ₁ σ₂ []               = ⊤
-CallsAgree σ₁ σ₂ ((n , U) ∷ rest) = MB.callSD fmt σ₁ n U ≡ MB.callSD fmt σ₂ n U × CallsAgree σ₁ σ₂ rest
+CallsAgree σ₁ σ₂ ((n , U) ∷ rest) = MB.callSD fmt Σ σ₀ σ₁ n U ≡ MB.callSD fmt Σ σ₀ σ₂ n U × CallsAgree σ₁ σ₂ rest
 
 imprel-transport : ∀ (σ₁ σ₂ : SD.DefsSem) (imps : Imports) {ι : ImpMeanings imps}
-  → CallsAgree σ₁ σ₂ imps → MB.ImpRel fmt σ₁ imps ι → MB.ImpRel fmt σ₂ imps ι
+  → CallsAgree σ₁ σ₂ imps → MB.ImpRel fmt Σ σ₀ σ₁ imps ι → MB.ImpRel fmt Σ σ₀ σ₂ imps ι
 imprel-transport σ₁ σ₂ []               _        _        = tt
 imprel-transport σ₁ σ₂ ((n , U) ∷ rest) {e , ι} (h , hs) (r , rs) =
   subst (RelGM pure U e) h r , imprel-transport σ₁ σ₂ rest hs rs
@@ -193,7 +196,7 @@ tableEnv-later (e ∷ later) pre f (ne ∷ nes) A B a =
 
 callSD-later : ∀ {m} (later pre : List IRFun) (P : PolyCtx) (I : String → TopCtx) (uf : Imports) (x : String) (U : Ty m)
   → All (λ e → fname e ≢ bare x) later
-  → MB.callSD fmt (σW (later ++ pre) P I uf) x U ≡ MB.callSD fmt (σW pre P I uf) x U
+  → MB.callSD fmt Σ σ₀ (σW (later ++ pre) P I uf) x U ≡ MB.callSD fmt Σ σ₀ (σW pre P I uf) x U
 callSD-later later pre P I uf x U nes =
   cong (subst T∞ (cohᴰ U)) (refIR-cong U (bare x) _ _ (tableEnv-later later pre (bare x) nes))
 

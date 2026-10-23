@@ -13,19 +13,29 @@ open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Internal.Trace using (Interp; pureHalf; interp)
-open import Once.Internal.Contract using (Impl)
-open import Once.Spec.Signature using (Signature)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Internal.Trace using (Interp; pureHalf)
+open import Once.Spec.Signature using (Signature; WellFormed; Decl)
+open import Data.List using (map)
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
+open import Once.Internal.Name using (showCanonical)
+import Once.Spec.Observation as Obs
 
--- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
--- run against the same one. Plan 0.122: the program's signature is Σ.
+-- Plan 0.105: at an interpretation — the meaning and the compiled program run
+-- against the same one. Plan 0.122: the program's signature is Σ, its
+-- interpretation `J` (the Spec's), which the compiler reads as `ι`.
 import Once.Spec.Grade
-module Once.Adequacy.TeleWalk.Invariant (fmt : TargetNum) (Σ : Signature) (Ip : Impl (toISig Σ)) where
+module Once.Adequacy.TeleWalk.Invariant (fmt : TargetNum) (Σ : Signature) (wf : WellFormed Σ) (J : Obs.Interp Σ)
+  (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ)) where
 
--- The world: the program's signature with the implementation `Ip`.
+open import Once.Adequacy.SpecInterp using (toInterp)
+
+-- The compiler's reading of `J`.
 ι : Interp
-ι = interp (toISig Σ) Ip
+ι = toInterp Σ wf J
+
+-- `J`'s model: what the program's FFI values are.
+mo : Obs.Model Σ
+mo = Obs.Interp.model J
 
 open import Data.Nat using (ℕ)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -69,12 +79,21 @@ open Once.Denotation.Program.IRFun using (fname)
 open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoBody)
 open import Once.Spec.Type using (KCtx; ∅ₖ; TySub; Respects)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Internal.Name using (WordName)
 open import Once.Spec.Signature using (_∶_)
-open import Once.Internal.Core.Decl using (declS)
+open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
 open import Once.Spec.Core.Syntax using (Defs; _▷_; _!!_; Schema)
-open import Once.Spec.Core.Program Σ using (Tele; def)
-open import Once.Internal.Core.Telescope Σ using (teleSem)
+open import Once.Spec.Core.Program Σ using (Tele; def; noVars)
+open import Once.Internal.Core.Telescope Σ using (teleSem; teleSem-model)
+import Once.Spec.Core.Meaning as SM
+import Once.Spec.Domain Σ as SDm
+import Once.Metatheory.TermModel.TySubst as TS
+import Once.Internal.Core.TySubstZero as TZ
+open import Once.Spec.Type.Substitution using (⟨⟩-∘)
+open import Once.Spec.Type using (_⟨_⟩)
+open import Once.Functor.Translate using (Base-irrelevant)
+import Once.Adequacy.SpecSig as SSg
+open import Once.Denotation.DenotTrace using (CallEnv)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf)
 open import Once.Internal.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; viewOf; monoSchema; monoDef; polyDef)
@@ -88,30 +107,33 @@ import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.MonoEntry as ME
 import Once.Internal.Elaboration as ElabM
-import Once.Internal.Core.Meaning as GM
-open import Once.Internal.Graded using (⟦_⟧ᵛ)
-open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
-open import Once.Internal.Type using (none)
+open import Once.Internal.Type using (none; noResp)
 open import Once.Internal.Type.Schema using (kinded-instance)
 open import Once.Postulates using (extensionality)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 open import Function using (id)
-import Once.Denotation.Meaning as MeaningM
 open import Once.Internal.Trace using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
 φ = pureHalf ι
 
-open import Once.Adequacy.GradedRelation fmt using (RelGM; GM-D)
+-- The instance the core's values are read at: no variable (the walk's
+-- definitions are ground).
+σ₀ : TySub 0 0
+σ₀ = noVars
+
+open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
+import Once.Denotation.Meaning Σ σ₀ as MeaningM
+open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM; GM-D)
 open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueRel using (RelD)
 open import Once.Denotation.ValueRelPER using (RelS-trans; RelD-trans)
 open import Once.Denotation.EvalRel using (table-self; coh-runs)
-open import Once.Adequacy.TeleEnvLemmas fmt φ using (σW; σW-self; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
+open import Once.Adequacy.TeleEnvLemmas fmt φ Σ σ₀ using (σW; σW-self; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)
-import Once.Adequacy.TeleEntry fmt ι as TE
+import Once.Adequacy.TeleEntry fmt ι Σ σ₀ as TE
 
 import Once.Adequacy.ElabInst as EI
 import Once.Adequacy.SourceFaithful as SF
@@ -152,8 +174,27 @@ record Inv {s} {S : Defs s} (csc : C.CScope) (tl : Tele S) (ss : SigSig (C.CScop
     iself : IAgree (C.declImps (C.CScope.ctele csc)) (C.CScope.ctele csc)
     rel   : ∀ (later : List IRFun) → NoShadow later (C.CScope.cimps csc)
           → ∀ (I : String → TopCtx) → IAgree I (C.CScope.ctele csc) → ∀ (uf : Imports)
-          → MB.MRel fmt (σW (later ++ pre) (C.cpolys csc) I uf) (ctxOf (AS.scopeOf csc))
-                    (CE.envOf fmt Σ S (teleSem fmt Ip tl) ss is ts)
+          → MB.MRel fmt Σ σ₀ (σW (later ++ pre) (C.cpolys csc) I uf) (ctxOf (AS.scopeOf csc))
+                    (CE.envOf fmt Σ S σ₀ (teleSem fmt mo tl) ss is ts)
+
+------------------------------------------------------------------------
+-- D274: a declaration of Σ means `J`'s reading of it (`SpecSig.sig-rel`),
+-- at every environment whose FFI values are `J`'s.
+------------------------------------------------------------------------
+
+sig-at : ∀ {s} (S : Defs s) (δ : SM.DefSem Σ fmt S) → SM.DefSem.model δ ≡ mo
+       → (σ : SD.DefsSem) → CallEnv.ffiE (SD.DefsSem.calls σ) ≡ φ
+       → ∀ {cn T} (wn : WordName cn) (k : IsConcrete T) (dc : ElabM.Declared Σ S (showCanonical cn) T)
+       → RelGM Once.Spec.Grade.pure T (subst id (⟦wk₀⟧ᵛ T) (CMB.sigSem fmt Σ S σ₀ δ cn wn k dc)) (SD.sigOpSem T cn k fmt σ)
+sig-at S δ e σ eψ {cn} {T} wn k (ElabM.declared h mem) =
+  subst (λ md → RelGM Once.Spec.Grade.pure T
+                  (subst id (⟦wk₀⟧ᵛ T) (subst (λ X → ⟦ X ⟧ᵛ) (⌜declS⌝ k h) (SM.sigopᵛ Σ fmt S σ₀ cn (declS T) (mem {cn} wn refl) md)))
+                  (SD.sigOpSem T cn k fmt σ))
+        (sym e) (SSg.sig-rel Σ wf J uniq fmt σ₀ S σ eψ k h (mem {cn} wn refl))
+
+sigR : ∀ {s} {S : Defs s} (tl : Tele S) {sg} (ss : SigSig sg) (σ : SD.DefsSem) → CallEnv.ffiE (SD.DefsSem.calls σ) ≡ φ
+     → MB.SigRel fmt Σ σ₀ σ sg (λ {cn} {T} → CE.sigEnv fmt Σ S σ₀ (teleSem fmt mo tl) ss {cn} {T})
+sigR {S = S} tl ss σ eψ wn lk k = sig-at S (teleSem fmt mo tl) (teleSem-model fmt mo tl) σ eψ wn k (TR.sigAt ss lk)
 
 ------------------------------------------------------------------------
 -- D274: an FFI declaration extends Σ — the environment's definitions are
@@ -189,9 +230,10 @@ inv-sig : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {x : String} {ty : Type}
             {k : IsConcrete ty} {h : HonestFFI ty} {m : ∀ {c} → WordName c → showCanonical c ≡ x → (c ∶ declS ty) ∈ Σ}
         → Inv {S = S} csc tl ss is ts pre
         → Inv (C.extendSig csc x ty) tl (s-ffi k h m ss) is ts pre
-inv-sig inv = record
+inv-sig {tl = tl} {ss} {k = k} {h} {m} inv = record
   { iself = Inv.iself inv
-  ; rel   = Inv.rel inv
+  ; rel   = λ later ns I ia uf → let old = Inv.rel inv later ns I ia uf in
+              proj₁ old , proj₁ (proj₂ old) , sigR tl (s-ffi k h m ss) _ refl
   }
 
 ------------------------------------------------------------------------
@@ -212,19 +254,19 @@ private
 -- An earlier entry, read through the extended telescope.
 refSemAt-wk : ∀ {s} {S : Defs s} {sc} {tl : Tele S} {body D} (d : Data.Fin.Fin s) {sc′ : Schema} (e : S !! d ≡ sc′)
                 (τ : TySub (Schema.arity sc′) 0) {Δ : KCtx 0} (r : Respects (Schema.kinds sc′) Δ τ)
-            → CMB.refSemAt fmt Σ (S ▷ sc) (teleSem fmt Ip (def tl sc body D)) (Data.Fin.suc d) e τ r
-              ≡ CMB.refSemAt fmt Σ S (teleSem fmt Ip tl) d e τ r
+            → CMB.refSemAt fmt Σ (S ▷ sc) σ₀ (teleSem fmt mo (def tl sc body D)) (Data.Fin.suc d) e τ r
+              ≡ CMB.refSemAt fmt Σ S σ₀ (teleSem fmt mo tl) d e τ r
 refSemAt-wk d refl τ r = refl
 
 impEnv-wk : ∀ {s} {S : Defs s} {sc} {tl : Tele S} {body D} {imps} (is : ImpSig S imps)
-          → CE.impEnv fmt Σ (S ▷ sc) (teleSem fmt Ip (def tl sc body D)) (wkI is) ≡ CE.impEnv fmt Σ S (teleSem fmt Ip tl) is
+          → CE.impEnv fmt Σ (S ▷ sc) σ₀ (teleSem fmt mo (def tl sc body D)) (wkI is) ≡ CE.impEnv fmt Σ S σ₀ (teleSem fmt mo tl) is
 impEnv-wk TR.[]              = refl
 impEnv-wk {sc = sc} {tl} {body} {D} (TR.i-def {T = T} d e is) =
-  cong₂ _,_ (cong (subst id (⟦wk₀⟧ᵛ {0} T)) (refSemAt-wk {sc = sc} {tl = tl} {body = body} {D = D} d e none _))
+  cong₂ _,_ (cong (subst id (⟦wk₀⟧ᵛ T)) (refSemAt-wk {sc = sc} {tl = tl} {body = body} {D = D} d e none _))
             (impEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} is)
 
 defEnv-wk : ∀ {s} {S : Defs s} {sc} {tl : Tele S} {body D} {ps} (ts : TeleSig S ps)
-          → CE.defEnv fmt Σ (S ▷ sc) (teleSem fmt Ip (def tl sc body D)) (wkT ts) ≡ CE.defEnv fmt Σ S (teleSem fmt Ip tl) ts
+          → CE.defEnv fmt Σ (S ▷ sc) σ₀ (teleSem fmt mo (def tl sc body D)) (wkT ts) ≡ CE.defEnv fmt Σ S σ₀ (teleSem fmt mo tl) ts
 defEnv-wk TR.[]              = refl
 defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def {p = p} d e ts) =
   cong₂ _,_ (cong (λ (h : (Δ : KCtx 0) (U : Type) → KindedInstance Δ (pfunType p) U → ⟦ U ⟧ᵛ) → λ {Δ} → h Δ)
@@ -232,6 +274,26 @@ defEnv-wk {sc = sc} {tl} {body} {D} (TR.t-def {p = p} d e ts) =
                      cong (subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance (pfunType p) ki))))
                           (refSemAt-wk {sc = sc} {tl = tl} {body = body} {D = D} d e _ _)))
             (defEnv-wk {sc = sc} {tl = tl} {body = body} {D = D} ts)
+
+-- The head of the instance telescope, read at an instance: its derivation
+-- instantiated there, read at no variable (the instance of the instance is
+-- the instance, `⟨⟩-0`; `Respects` is a proposition).
+head-at : ∀ {s} {S : Defs s} {tl : Tele S} {sc : Schema} {body} {D} (τ : TySub (Schema.arity sc) 0) {Δ : KCtx 0}
+            (r : Respects (Schema.kinds sc) Δ τ) (r′ : Respects (Schema.kinds sc) ∅ₖ τ)
+        → CMB.refSemAt fmt Σ (S ▷ sc) σ₀ (teleSem fmt mo (def tl sc body D)) zero refl τ r
+          ≡ CMB.⟦_⟧ₛ fmt Σ S σ₀ (TS.ty-subst-⊢ Σ S τ r′ D) (teleSem fmt mo tl) tt
+head-at {S = S} {tl} {sc} {body} {D} τ r r′ =
+  H.≅-to-≡ (H.trans (H.≡-subst-removable SDm.⟦_⟧ᵛ (sym (⟨⟩-∘ (Schema.type sc) τ σ₀)) _)
+           (H.trans (H.≡-subst-removable SDm.⟦_⟧ᵛ (TZ.⟨⟩-0 Σ S noVars (Schema.type sc ⟨ τ∘ ⟩)) _)
+                    (go τ∘ (extensionality λ i → TZ.⟨⟩-0 Σ S noVars (τ i)) _)))
+  where
+    τ∘ : TySub (Schema.arity sc) 0
+    τ∘ i = τ i ⟨ σ₀ ⟩
+    go : ∀ (τ′ : TySub (Schema.arity sc) 0) → τ′ ≡ τ → (r″ : Respects (Schema.kinds sc) ∅ₖ τ′)
+       → SM.⟦_⟧ Σ fmt S (TS.ty-subst-⊢ Σ S τ′ r″ D) (teleSem fmt mo tl) noVars noResp tt
+         H.≅ SM.⟦_⟧ Σ fmt S (TS.ty-subst-⊢ Σ S τ r′ D) (teleSem fmt mo tl) noVars noResp tt
+    go _ refl r″ = H.≡-to-≅ (cong (λ q → SM.⟦_⟧ Σ fmt S (TS.ty-subst-⊢ Σ S τ q D) (teleSem fmt mo tl) noVars noResp tt)
+                                 (extensionality λ i → extensionality λ e → Base-irrelevant _ _))
 
 -- The compile chain of a monomorphic entry: its compiled body, read through the
 -- ABI, is related to its elaboration's core meaning.
@@ -244,13 +306,13 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
                         (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun)
                 (inv : Inv {S = S} csc tl ss is ts pre) where
   x    = funName fi
-  δ    = teleSem fmt Ip tl
+  δ    = teleSem fmt mo tl
   S′   = S ▷ monoSchema ty
   tl′  = monoDef {S = S} {sc = AS.scopeOf csc} {fi = fi} {ty = ty} {Ψ = SCx.[]} tl ss is ts D
-  δ′   = teleSem fmt Ip tl′
+  δ′   = teleSem fmt mo tl′
   e    = irFunOf (C.mkCompiledFun (bare x) ty irFun)
   ctx  = ctxOf (AS.scopeOf csc)
-  ρ    = CE.envOf fmt Σ S δ ss is ts
+  ρ    = CE.envOf fmt Σ S σ₀ δ ss is ts
   V    = viewOf {S = S} ss is ts
   Dc   = proj₂ (TR.elabM (funType fi) V D)
   uf : C.FunCtx
@@ -263,12 +325,12 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
   -- equation), then coherence.
   relC : (D′ : ctx ⊢ᶜ funBody fi ∶ ty ⨾ SCx.[])
        → C.compileFun IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-       → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ Σ S (proj₂ (ElabM.elabᶜ Σ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+       → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᶜ Σ S V D′)) δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relC D′ cf′ =
-    TE.abi-rel ty (GM.⟦_⟧ Σ S (proj₂ (ElabM.elabᶜ Σ S V D′)) fmt δ tt) M
+    TE.abi-rel ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᶜ Σ S V D′)) δ tt) M
       (GM-D Once.Spec.Grade.pure ty
             (subst (λ m → RelGM Once.Spec.Grade.pure ty m (SD.⟦ realize D′ ⟧ˢ fmt σx tt))
-                   (CMB.bridge-c fmt Σ S {δ = δ} V (CE.agree fmt Σ S δ ss is ts) D′ tt) relA)
+                   (CMB.bridge-c fmt Σ S σ₀ {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts) D′ tt) relA)
             chain)
     where
       ccE  = Once.TypeCheck.Completeness.check-complete D′
@@ -283,18 +345,18 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
                  (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize D″))))
              (realize-invariant D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
       relA : RelGM Once.Spec.Grade.pure ty (MeaningM.⟦_⟧ᶜ D′ fmt ρ tt) (SD.⟦ realize D′ ⟧ˢ fmt σx tt)
-      relA = MB.bridge-c fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
+      relA = MB.bridge-c fmt Σ σ₀ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   -- R8, without a signature: the same chain, through the synthesis.
   relI : (D′ : ctx ⊢ᵢ funBody fi ∶ ty ⨾ SCx.[])
        → C.compileFunI IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-       → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ Σ S (proj₂ (ElabM.elabᵢ Σ S V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+       → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᵢ Σ S V D′)) δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relI D′ cf′ =
-    TE.abi-rel ty (GM.⟦_⟧ Σ S (proj₂ (ElabM.elabᵢ Σ S V D′)) fmt δ tt) M
+    TE.abi-rel ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (ElabM.elabᵢ Σ S V D′)) δ tt) M
       (GM-D Once.Spec.Grade.pure ty
             (subst (λ m → RelGM Once.Spec.Grade.pure ty m (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt))
-                   (CMB.bridge-i fmt Σ S {δ = δ} V (CE.agree fmt Σ S δ ss is ts) D′ tt) relA)
+                   (CMB.bridge-i fmt Σ S σ₀ {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts) D′ tt) relA)
             chain)
     where
       ciE  = Once.TypeCheck.Completeness.infer-complete D′
@@ -309,12 +371,12 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
                  (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 (realize-infer D″))))
              (realize-invariant-i D″ D′ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) tt))
       relA : RelGM Once.Spec.Grade.pure ty (MeaningM.⟦_⟧ᵢ D′ fmt ρ tt) (SD.⟦ realize-infer D′ ⟧ˢ fmt σx tt)
-      relA = MB.bridge-i fmt σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
+      relA = MB.bridge-i fmt Σ σ₀ σx (σW-self pre (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf) D′ {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt)
                (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
 
   relM-at : (ft : Data.Maybe.Maybe Type) (D′ : MonoBody ft ctx (funBody fi) ty SCx.[])
           → C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty (funBody fi) ≡ Data.Sum.inj₂ irFun
-          → RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ Σ S (proj₂ (TR.elabM ft V D′)) fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+          → RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ (proj₂ (TR.elabM ft V D′)) δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relM-at (Data.Maybe.just _) D′ cf′ = relC D′ cf′
   relM-at Data.Maybe.nothing  D′ cf′ = relI D′ cf′
 
@@ -324,14 +386,14 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
     r0 : Respects ∅ₖ ∅ₖ none
     r0 ()
 
-  entry≡ : GM.⟦_⟧ Σ S Dc fmt δ tt ≡ subst id (⟦wk₀⟧ᵛ {0} ty) (CMB.impSem fmt Σ S′ δ′ {∅ₖ} {x} (ElabM.def zero refl))
+  entry≡ : CMB.⟦_⟧ₛ fmt Σ S σ₀ Dc δ tt ≡ subst id (⟦wk₀⟧ᵛ ty) (CMB.impSem fmt Σ S′ σ₀ δ′ {∅ₖ} {x} (ElabM.def zero refl))
   entry≡ =
-    H.≅-to-≡ (H.trans (H.trans (H.sym (H.≡-to-≅ (ME.mono-entry-sem Σ S ∅ₖ ∅ₖ none r0 Dc fmt δ)))
-                               (H.≡-subst-removable (λ X → ⟦ X ⟧ᵛ) _ _))
-             (H.trans (H.≡-to-≅ (CMB.refSemAt-Δ fmt Σ S′ δ′ zero refl none r0 _))
-                      (H.sym (H.≡-subst-removable id (⟦wk₀⟧ᵛ {0} ty) _))))
+    H.≅-to-≡ (H.trans (H.trans (H.sym (H.≡-to-≅ (ME.mono-entry-sem Σ fmt S σ₀ ∅ₖ ∅ₖ none r0 Dc δ)))
+                               (H.≡-subst-removable (λ X → ⟦ X ⟧ᵛ) (TZ.⟨⟩-0 Σ S none ty) _))
+             (H.trans (H.≡-to-≅ (sym (head-at {tl = tl} {sc = monoSchema ty} {D = Dc} none (λ ()) r0)))
+                      (H.sym (H.≡-subst-removable id (⟦wk₀⟧ᵛ ty) _))))
 
-  relM : RelGM Once.Spec.Grade.pure ty (GM.⟦_⟧ Σ S Dc fmt δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
+  relM : RelGM Once.Spec.Grade.pure ty (CMB.⟦_⟧ₛ fmt Σ S σ₀ Dc δ tt) (subst T∞ (cohᴰ ty) (abiT ty M))
   relM = relM-at (funType fi) D cf
 
 -- D324: `main` joins the telescope and the table, not the definitions' scope.
@@ -367,17 +429,17 @@ inv-mono-at true {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} D {i
     open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} D {irFun} cf inv
     rel′ : ∀ (later : List IRFun) → NoShadow later (C.CScope.cimps csc)
          → ∀ (I : String → TopCtx) → IAgree I (C.CScope.ctele csc) → ∀ (uf′ : Imports)
-         → MB.MRel fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf′) ctx
-                   (CE.envOf fmt Σ S′ δ′ ss (wkI is) (wkT ts))
+         → MB.MRel fmt Σ σ₀ (σW (later ++ e ∷ pre) (C.cpolys csc) I uf′) ctx
+                   (CE.envOf fmt Σ S′ σ₀ δ′ ss (wkI is) (wkT ts))
     rel′ later ns I ia uf′ =
-      subst (λ dm → MB.EnvRel fmt σ (C.cpolys csc) dm) (sym (defEnv-wk {sc = monoSchema ty} {tl = tl} ts)) (proj₁ old)
-      , subst (λ im → MB.ImpRel fmt σ (C.CScope.cimps csc) im)
+      subst (λ dm → MB.EnvRel fmt Σ σ₀ σ (C.cpolys csc) dm) (sym (defEnv-wk {sc = monoSchema ty} {tl = tl} ts)) (proj₁ old)
+      , subst (λ im → MB.ImpRel fmt Σ σ₀ σ (C.CScope.cimps csc) im)
               (sym (impEnv-wk {sc = monoSchema ty} {tl = tl} is)) (proj₁ (proj₂ old))
-      , refl
+      , sigR tl′ ss σ refl
       where
         σ = σW (later ++ e ∷ pre) (C.cpolys csc) I uf′
-        old : MB.MRel fmt σ ctx ρ
-        old = subst (λ tbl → MB.MRel fmt (σW tbl (C.cpolys csc) I uf′) ctx ρ)
+        old : MB.MRel fmt Σ σ₀ σ ctx ρ
+        old = subst (λ tbl → MB.MRel fmt Σ σ₀ (σW tbl (C.cpolys csc) I uf′) ctx ρ)
                     (++-assoc later (e ∷ []) pre)
                     (Inv.rel inv (later ++ e ∷ [])
                        (ns-snoc later (C.CScope.cimps csc) e refl
@@ -391,29 +453,29 @@ inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} D {
     open MonoStep {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} D {irFun} cf inv
     rel′ : ∀ (later : List IRFun) → NoShadow later ((x , ty) ∷ C.CScope.cimps csc)
          → ∀ (I : String → TopCtx) → IAgree I (C.CScope.ctele csc) → ∀ (uf′ : Imports)
-         → MB.MRel fmt (σW (later ++ e ∷ pre) (C.cpolys csc) I uf′)
+         → MB.MRel fmt Σ σ₀ (σW (later ++ e ∷ pre) (C.cpolys csc) I uf′)
                    (ctxOf (AS.scopeOf (C.cscope (C.CScope.csig csc) ((x , ty) ∷ C.CScope.cimps csc) (C.CScope.ctele csc))))
-                   (CE.envOf fmt Σ S′ δ′ ss (i-def zero refl (wkI is)) (wkT ts))
+                   (CE.envOf fmt Σ S′ σ₀ δ′ ss (i-def zero refl (wkI is)) (wkT ts))
     rel′ later ns I ia uf′ =
-      subst (λ dm → MB.EnvRel fmt σ (C.cpolys csc) dm) (sym (defEnv-wk {sc = monoSchema ty} {tl = tl} ts)) (proj₁ old)
-      , (new , subst (λ im → MB.ImpRel fmt σ (C.CScope.cimps csc) im)
+      subst (λ dm → MB.EnvRel fmt Σ σ₀ σ (C.cpolys csc) dm) (sym (defEnv-wk {sc = monoSchema ty} {tl = tl} ts)) (proj₁ old)
+      , (new , subst (λ im → MB.ImpRel fmt Σ σ₀ σ (C.CScope.cimps csc) im)
                      (sym (impEnv-wk {sc = monoSchema ty} {tl = tl} is)) (proj₁ (proj₂ old)))
-      , refl
+      , sigR tl′ ss σ refl
       where
         σ = σW (later ++ e ∷ pre) (C.cpolys csc) I uf′
-        old : MB.MRel fmt σ ctx ρ
-        old = subst (λ tbl → MB.MRel fmt (σW tbl (C.cpolys csc) I uf′) ctx ρ)
+        old : MB.MRel fmt Σ σ₀ σ ctx ρ
+        old = subst (λ tbl → MB.MRel fmt Σ σ₀ (σW tbl (C.cpolys csc) I uf′) ctx ρ)
                     (++-assoc later (e ∷ []) pre)
                     (Inv.rel inv (later ++ e ∷ [])
                        (ns-step later (C.CScope.cimps csc) e refl
                           (bare-ne (C.CScope.cimps csc) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc)) fr) ns)
                        I ia uf′)
-        callRel : RelS (RelD ty) (MB.callSD fmt σ x ty) (subst T∞ (cohᴰ ty) (abiT ty M))
+        callRel : RelS (RelD ty) (MB.callSD fmt Σ σ₀ σ x ty) (subst T∞ (cohᴰ ty) (abiT ty M))
         callRel = ≡ˡ (callSD-later later (e ∷ pre) (C.cpolys csc) I uf′ x ty (ns-head later (C.CScope.cimps csc) ns))
                      (coh-runs ty (abi ty x pre irFun))
-        new : RelGM Once.Spec.Grade.pure ty (subst id (⟦wk₀⟧ᵛ {0} ty) (CMB.impSem fmt Σ S′ δ′ {∅ₖ} {x} (ElabM.def zero refl)))
-                    (MB.callSD fmt σ x ty)
-        new = subst (λ m → RelGM Once.Spec.Grade.pure ty m (MB.callSD fmt σ x ty)) entry≡
+        new : RelGM Once.Spec.Grade.pure ty (subst id (⟦wk₀⟧ᵛ ty) (CMB.impSem fmt Σ S′ σ₀ δ′ {∅ₖ} {x} (ElabM.def zero refl)))
+                    (MB.callSD fmt Σ σ₀ σ x ty)
+        new = subst (λ m → RelGM Once.Spec.Grade.pure ty m (MB.callSD fmt Σ σ₀ σ x ty)) entry≡
                     (GM-D Once.Spec.Grade.pure ty relM callRel)
 
 ------------------------------------------------------------------------
@@ -439,32 +501,32 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
     y     = pfunName pfi
     scT   = pfunType pfi
     S′    = S ▷ schemaOf scT
-    δ     = teleSem fmt Ip tl
-    δ′    = teleSem fmt Ip (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} tl ss is ts D)
+    δ     = teleSem fmt mo tl
+    δ′    = teleSem fmt mo (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} tl ss is ts D)
     ctx   = ctxOf (AS.scopeOf csc)
-    ρ     = CE.envOf fmt Σ S δ ss is ts
+    ρ     = CE.envOf fmt Σ S σ₀ δ ss is ts
     V     = viewOf {S = S} ss is ts
     frT   = ++⁻ʳ (map proj₁ (C.CScope.cimps csc)) fr
 
     rel′ : ∀ (later : List IRFun) → NoShadow later (C.CScope.cimps csc)
          → ∀ (I : String → TopCtx) → IAgree I ((pfi , C.ctop csc) ∷ C.CScope.ctele csc) → ∀ (uf : Imports)
-         → MB.MRel fmt (σW (later ++ pre) (C.cpolys (C.addEntry csc pfi)) I uf) (ctxOf (AS.scopeOf (C.addEntry csc pfi)))
-                   (CE.envOf fmt Σ S′ δ′ ss (wkI is) (t-def zero refl (wkT ts)))
+         → MB.MRel fmt Σ σ₀ (σW (later ++ pre) (C.cpolys (C.addEntry csc pfi)) I uf) (ctxOf (AS.scopeOf (C.addEntry csc pfi)))
+                   (CE.envOf fmt Σ S′ σ₀ δ′ ss (wkI is) (t-def zero refl (wkT ts)))
     rel′ later ns I (iy ∷ ia) uf =
       ( head
       , envrel-transport σo σ (C.cpolys csc) (ra (C.CScope.ctele csc) frT)
-          (subst (λ dm → MB.EnvRel fmt σo (C.cpolys csc) dm)
+          (subst (λ dm → MB.EnvRel fmt Σ σ₀ σo (C.cpolys csc) dm)
                  (sym (defEnv-wk {sc = schemaOf scT} {tl = tl} ts)) (proj₁ old)) )
-      , subst (λ im → MB.ImpRel fmt σ (C.CScope.cimps csc) im)
+      , subst (λ im → MB.ImpRel fmt Σ σ₀ σ (C.CScope.cimps csc) im)
               (sym (impEnv-wk {sc = schemaOf scT} {tl = tl} is))
               (imprel-transport σo σ (C.CScope.cimps csc)
                  (calls-same tbl (C.cpolys csc) (C.cpolys (C.addEntry csc pfi)) I I uf uf (C.CScope.cimps csc)) (proj₁ (proj₂ old)))
-      , refl
+      , sigR (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = SCx.[]} tl ss is ts D) ss σ refl
       where
         tbl = later ++ pre
         σo  = σW tbl (C.cpolys csc) I uf
         σ   = σW tbl (C.cpolys (C.addEntry csc pfi)) I uf
-        old : MB.MRel fmt σo ctx ρ
+        old : MB.MRel fmt Σ σ₀ σo ctx ρ
         old = Inv.rel inv later ns I ia uf
 
         -- the telescope's earlier entries are not the new one
@@ -477,16 +539,19 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
 
         -- the new entry: its splice at an instance is its core instance (6e)
         head₀ : ∀ (U : Type) (ki : KindedInstance ∅ₖ scT U)
-              → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ δ′ zero {scT} refl ki) (SD.DefsSem.refs σ y U)
+              → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ σ₀ δ′ zero {scT} refl ki) (SD.DefsSem.refs σ y U)
         head₀ U ki =
           subst (λ m → RelGM Once.Spec.Grade.pure U m (SD.DefsSem.refs σ y U))
-                (trans (CMB.bridge-c fmt Σ S {δ = δ} V (CE.agree fmt Σ S δ ss is ts) D-U tt)
-                       (EI.poly-instance-sem Σ S V fmt δ scT D ki))
+                (trans (CMB.bridge-c fmt Σ S σ₀ {δ = δ} V (CE.agree fmt Σ S σ₀ δ ss is ts) D-U tt)
+                       (trans (EI.poly-instance-sem Σ fmt S σ₀ V δ scT D ki)
+                              (sym (cong (subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance scT ki))))
+                                         (head-at {tl = tl} {sc = schemaOf scT} {D = proj₂ (ElabM.elabᶜ Σ S V D)} (proj₁ (kinded-instance scT ki)) (proj₁ (proj₂ (kinded-instance scT ki)))
+                                                  (proj₁ (proj₂ (kinded-instance scT ki))))))))
                 (GM-D Once.Spec.Grade.pure U
-                       (MB.bridge-c fmt σo (σW-self tbl (C.cpolys csc) I uf) D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old)
+                       (MB.bridge-c fmt Σ σ₀ σo (σW-self tbl (C.cpolys csc) I uf) D-U {dγ₁ = tt} {dγ₂ = tt} (MB.mk↾ tt) old)
                        relSD)
           where
-            D-U = EI.inst-at Σ S scT D ki
+            D-U = EI.inst-at Σ fmt S σ₀ scT D ki
             ccU = Once.TypeCheck.Completeness.check-complete D-U
             ce  = proj₂ (proj₂ (proj₂ ccU))
             cr  = Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) (pfunBody pfi) U
@@ -503,11 +568,11 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
 
         -- …at any kinds over no variable (there is one such context).
         head : ∀ {Δ : KCtx 0} (U : Type) (ki : KindedInstance Δ scT U)
-             → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ δ′ zero {scT} refl ki) (SD.DefsSem.refs σ y U)
+             → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ σ₀ δ′ zero {scT} refl ki) (SD.DefsSem.refs σ y U)
         head {Δ} U ki = go (extensionality λ ()) ki
           where
             go : ∀ {Δ′ : KCtx 0} → ∅ₖ ≡ Δ′ → (ki′ : KindedInstance Δ′ scT U)
-               → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ δ′ zero {scT} refl ki′) (SD.DefsSem.refs σ y U)
+               → RelGM Once.Spec.Grade.pure U (CMB.entrySem fmt Σ S′ σ₀ δ′ zero {scT} refl ki′) (SD.DefsSem.refs σ y U)
             go refl ki′ = head₀ U ki′
 
 ------------------------------------------------------------------------

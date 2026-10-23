@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Grade
@@ -628,3 +629,20 @@ du_'8849''7512''45''8852''691'_286 v0 v1
                     (coe du_'8849''7512''45''8852''691'_286 (coe v4) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Internal.Context.≤q'-unique
+d_'8804'q'''45'unique_304 ::
+  MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
+  MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
+  MAlonzo.Code.Once.Spec.Grade.T__'8804'q__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8804'q'''45'unique_304 = erased
+-- Once.Internal.Context.⊑ᵘ-unique
+d_'8849''7512''45'unique_316 ::
+  Integer ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
+  MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
+  MAlonzo.Code.Once.Spec.Context.T__'8849''7512'__84 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8849''7512''45'unique_316 = erased

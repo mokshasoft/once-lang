@@ -36,22 +36,25 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
-open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Signature using (Signature; WellFormed; Decl)
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
+open import Once.Internal.Name using (showCanonical)
+import Once.Spec.Observation as Obs
+open import Once.Adequacy.SpecInterp using (toInterp)
+import Once.Adequacy.SpecObserve as SO
+import Once.Adequacy.SpecSig as SSg
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.Internal.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef)
-open import Once.Internal.Contract using (Impl)
-open import Once.Internal.Trace using (Interp; interp; pureHalf)
+open import Once.Internal.Trace using (Interp; pureHalf)
 open import Once.Internal.Program using (Typed)
-open import Once.Internal.Core.Decl using (toISig)
 import Once.Internal.Core.Telescope as TL
 import Once.Internal.Core.Translate as TR
 import Once.Spec.Core.Program as SP
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
-open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
-open import Once.Metatheory.Trace using (WB-sym)
+open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Compile using (moduleToIR; moduleToIR-aux; tableOf-go; moduleTable; tableOfResult)
 import Once.Adequacy.FunBundle as FB
 open import Once.Denotation.Program using (irProgram)
@@ -94,9 +97,15 @@ module _ (fmt : TargetNum) where
 
   ------------------------------------------------------------------------
   -- D320: THE LINK, AS TRACES — calls and how each run ended. The walk's
-  -- relation (`TeleWalk.Agree`) relates the core run to the compiled tree node
-  -- by node, so their traces are weakly bisimilar (`TraceTr.RelS-tr`).
+  -- relation (`TeleWalk.Agree`) relates the core run to the compiled tree
+  -- step for step, so their traces are weakly bisimilar
+  -- (`SpecObserve.observe-R`, the interpretation agreeing with `J`'s world,
+  -- `SpecSig.agree`). Plan 0.122: the core run is the Spec's, in `J`'s world.
   ------------------------------------------------------------------------
+
+  -- The core program's trace in `J`'s world.
+  coreTr : ∀ (Σ : Signature) → TL.Program Σ → Obs.Interp Σ → Tr ⊤
+  coreTr Σ P J = Obs.trace Σ (Obs.Interp.world J) [] (TL.runCore Σ fmt P (Obs.Interp.model J))
 
   private
     -- the compiled program's trace, in a world
@@ -104,40 +113,42 @@ module _ (fmt : TargetNum) where
     trIRAt ι′ tbl ir = trT∞ ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) ir tt)
 
     -- the walk's agreement at the entry the bundle finds
-    agree-at : ∀ {Σ Ip tbl P} {m : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)} {ir} → m ≡ just ir
-             → TW.AgreeM fmt Σ Ip tbl m P → TW.Agree fmt Σ Ip tbl ir P
+    agree-at : ∀ {Σ wf J uniq tbl P} {m : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)} {ir} → m ≡ just ir
+             → TW.AgreeM fmt Σ wf J uniq tbl m P → TW.Agree fmt Σ wf J uniq tbl ir P
     agree-at refl a = a
 
     core-ef-tr : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
                    {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
                  → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → FB.bundle-find b ≡ just ir
-                 → (Σ : Signature) (u : SigView-ef m ef mt Σ) (Ip : Impl (toISig Σ))
-                 → trIRAt (interp (toISig Σ) Ip) (tableOf-go (FB.bundle→compiled b) []) ir
-                   ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (toISig Σ) Ip) [] (TL.runCore Σ fmt (typedProgram-ef m ef mt hvm Σ u) Ip)
-    core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe Σ u Ip =
-      WB-sym sym (RelS-tr (interp (toISig Σ) Ip) []
-        (agree-at {Σ} {Ip} fe
-          (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] [] inv₀ u (dist , TP.none-in-empty _))))
+                 → (Σ : Signature) (u : SigView-ef m ef mt Σ)
+                   (wf : WellFormed Σ) (J : Obs.Interp Σ) (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ))
+                 → trIRAt (toInterp Σ wf J) (tableOf-go (FB.bundle→compiled b) []) ir
+                   ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram-ef m ef mt hvm Σ u) J
+    core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe Σ u wf J uniq =
+      SO.observe-R Σ (toInterp Σ wf J) (Obs.Interp.world J) (SSg.agree Σ wf J uniq fmt (SP.noVars Σ))
+        (agree-at {Σ} {wf} {J} {uniq} fe
+          (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] [] inv₀ u (dist , TP.none-in-empty _)))
       where
-        module TWm = TW fmt Σ Ip
-        inv₀ : TWI.Inv fmt Σ Ip C.emptyCScope (SP.Tele.[]) TR.[] TR.[] TR.[] []
-        inv₀ = record { iself = [] ; rel = λ _ _ _ _ _ → tt , tt , refl }
+        module TWm = TW fmt Σ wf J uniq
+        inv₀ : TWI.Inv fmt Σ wf J uniq C.emptyCScope (SP.Tele.[]) TR.[] TR.[] TR.[] []
+        inv₀ = record { iself = [] ; rel = λ _ _ _ _ _ → tt , tt , λ _ () }
 
-  -- For EVERY signature declaring the module's FFI words and EVERY
-  -- implementation of it: the compiled program's trace in the world they make
-  -- is the core program's.
+  -- For EVERY signature declaring the module's FFI words, under distinct
+  -- names, and EVERY Interpretation `J` of it: the compiled program's trace
+  -- in the world `J` makes is the core program's in `J`'s.
   program-core-tr :
     ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
-      (Σ : Signature) (u : SigView (m , mt , hvm) Σ) (Ip : Impl (toISig Σ))
+      (Σ : Signature) (u : SigView (m , mt , hvm) Σ)
+      (wf : WellFormed Σ) (J : Obs.Interp Σ) (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ))
       (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
-    → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (interp (toISig Σ) Ip)
-      ≈ᵗ⟨ _≡_ ⟩ trT∞ (interp (toISig Σ) Ip) [] (TL.runCore Σ fmt (typedProgram (m , mt , hvm) Σ u) Ip)
-  program-core-tr m mt hvm Σ u Ip ir mi with FB.program-node m ir mi
+    → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (toInterp Σ wf J)
+      ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram (m , mt , hvm) Σ u) J
+  program-core-tr m mt hvm Σ u wf J uniq ir mi with FB.program-node m ir mi
   ... | es , ef , b , ceq =
-    subst (λ t → trT∞ ι [] t ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (TL.runCore Σ fmt (typedProgram (m , mt , hvm) Σ u) Ip))
+    subst (λ t → trT∞ ι [] t ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram (m , mt , hvm) Σ u) J)
           (sym (cong (λ tbl → evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) ir tt) (cong tableOfResult ceq)))
-          (core-ef-tr m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b fe Σ u Ip)
+          (core-ef-tr m (Parser.extractFunctions (Parser.extractAliases m) m) mt hvm ef (TP.entries-distinct m ef) b fe Σ u wf J uniq)
     where
-      ι = interp (toISig Σ) Ip
+      ι = toInterp Σ wf J
       fe : FB.bundle-find b ≡ just ir
       fe = trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi)

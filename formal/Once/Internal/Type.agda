@@ -17,7 +17,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
 open import Once.Spec.Type
-  using (Ty; Type; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; _⟨_⟩; _⟨_⟩F)
+  using (Ty; Type; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; _⟨_⟩; _⟨_⟩F; TySub; KCtx; Respects)
 open import Data.Fin using (Fin)
 
 -- A ground type, as a type over `m` type variables (it mentions none).
@@ -28,6 +28,11 @@ none ()
 
 wk₀ : ∀ {m} → Type → Ty m
 wk₀ A = A ⟨ none ⟩
+
+-- An instance of no type variables respects any kinds (named once, for the
+-- same reason).
+noResp : ∀ {σ : TySub 0 0} {Δ Δ′ : KCtx 0} → Respects Δ Δ′ σ
+noResp ()
 
 wk₀F : ∀ {m} → Fun 0 → Fun m
 wk₀F F = F ⟨ none ⟩F

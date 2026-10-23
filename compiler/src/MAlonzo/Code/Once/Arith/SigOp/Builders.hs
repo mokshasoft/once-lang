@@ -730,14 +730,14 @@ du_arrow'45'sem_178 v0 v1
                     MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38
                       -> coe
                            du_arrow'45'sem'45'eff_172
-                           (coe MAlonzo.Code.Once.Internal.Type.du_isVoid'63'_50 (coe v0))
-                           (coe MAlonzo.Code.Once.Internal.Type.du_isUnit'63'_56 (coe v0))
+                           (coe MAlonzo.Code.Once.Internal.Type.du_isVoid'63'_58 (coe v0))
+                           (coe MAlonzo.Code.Once.Internal.Type.du_isUnit'63'_64 (coe v0))
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Spec.Grade.C_eff_44
                -> coe
                     du_arrow'45'sem'45'eff_172
-                    (coe MAlonzo.Code.Once.Internal.Type.du_isVoid'63'_50 (coe v0))
-                    (coe MAlonzo.Code.Once.Internal.Type.du_isUnit'63'_56 (coe v0))
+                    (coe MAlonzo.Code.Once.Internal.Type.du_isVoid'63'_58 (coe v0))
+                    (coe MAlonzo.Code.Once.Internal.Type.du_isUnit'63'_64 (coe v0))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Builders.arrow-info

@@ -20,6 +20,7 @@ module Once.Internal.Context where
 
 open import Data.Fin using (Fin)
 open import Data.Nat using (ℕ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Type.Grade using (_⊔q_)
 open import Once.Spec.Type using (Ty; Unit; _*_)
@@ -214,3 +215,15 @@ pattern ⊑[] = []
 ⊑ᵘ-⊔ʳ []       []       = ⊑[]
 ⊑ᵘ-⊔ʳ (q ∷ Ψ₁) (r ∷ Ψ₂) = ≤q'-⊔ʳ q r ⊑∷ ⊑ᵘ-⊔ʳ Ψ₁ Ψ₂
 
+-- The order is proof-irrelevant: one proof per pair.
+≤q'-unique : ∀ {q r} (a b : q ≤q' r) → a ≡ b
+≤q'-unique z≤z z≤z = refl
+≤q'-unique z≤o z≤o = refl
+≤q'-unique z≤m z≤m = refl
+≤q'-unique o≤o o≤o = refl
+≤q'-unique o≤m o≤m = refl
+≤q'-unique m≤m m≤m = refl
+
+⊑ᵘ-unique : ∀ {n} {Ψ Φ : Usage n} (u v : Ψ ⊑ᵘ Φ) → u ≡ v
+⊑ᵘ-unique ⊑[]       ⊑[]       = refl
+⊑ᵘ-unique (a ⊑∷ u) (b ⊑∷ v) = cong₂ _⊑∷_ (≤q'-unique a b) (⊑ᵘ-unique u v)

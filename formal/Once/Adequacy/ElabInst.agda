@@ -17,7 +17,10 @@ open import Data.Nat using (ℕ)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
 
-module Once.Adequacy.ElabInst (Σ : Signature) {s : ℕ} (S : Defs s) where
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Type using (TySub)
+
+module Once.Adequacy.ElabInst (Σ : Signature) (fmt : TargetNum) {s : ℕ} (S : Defs s) (σ₀ : TySub 0 0) where
 
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (tt)
@@ -33,10 +36,11 @@ open import Once.Internal.Type.Schema using (kinded-instance)
 open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx)
 open import Once.TypeCheck.Classify using (ctxAt; TopCtx)
 open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Internal.Graded using (⟦_⟧ᵛ)
+open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ)
+import Once.Spec.Core.Meaning Σ fmt S as SM
+open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (⟦_⟧ₛ)
 open import Once.Spec.Core.Typing Σ S
 import Once.Metatheory.TermModel.TySubst Σ S as TS
-import Once.Internal.Core.Meaning Σ S as GM
 open import Once.Internal.Elaboration Σ S using (View; Views; elabᶜ)
 import Once.TypeCheck.TySubst as RS
 import Once.TypeCheck.Instance as Inst
@@ -46,28 +50,28 @@ inst-at = Inst.inst-at
 
 -- A derivation's meaning does not depend on how its term is written.
 ⟦⟧-≅ : ∀ {n} {Δ : KCtx 0} {Γ : Ctx 0 n} {Ψ t t′ A π} {d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π} {d′ : Δ ⊩ Γ ⊢[ Ψ ] t′ ∷ A ! π}
-     → t ≡ t′ → d ≅ d′ → GM.⟦ d ⟧ ≡ GM.⟦ d′ ⟧
+     → t ≡ t′ → d ≅ d′ → ⟦ d ⟧ₛ ≡ ⟦ d′ ⟧ₛ
 ⟦⟧-≅ refl H.refl = refl
 
 -- Elaborating a derivation moved along a type equation means the moved meaning.
 elab-subst-sem : ∀ {A B : Type} {ctx : NamedCtx 0} {body Ψ} (V : Views ctx) (e : A ≡ B) (D : ctx ⊢ᶜ body ∶ A ⨾ Ψ)
-                   (fmt : TargetNum) (δ : GM.DefSem) (γ : GM.Env (NamedCtx.debruijn ctx) Ψ)
-               → GM.⟦ proj₂ (elabᶜ V (subst (λ X → ctx ⊢ᶜ body ∶ X ⨾ Ψ) e D)) ⟧ fmt δ γ
-                 ≡ subst (λ X → ⟦ X ⟧ᵛ) e (GM.⟦ proj₂ (elabᶜ V D) ⟧ fmt δ γ)
-elab-subst-sem V refl D fmt δ γ = refl
+                   (δ : SM.DefSem) (γ : SM.Env σ₀ (NamedCtx.debruijn ctx) Ψ)
+               → ⟦ proj₂ (elabᶜ V (subst (λ X → ctx ⊢ᶜ body ∶ X ⨾ Ψ) e D)) ⟧ₛ δ γ
+                 ≡ subst (λ X → ⟦ X ⟧ᵛ) e (⟦ proj₂ (elabᶜ V D) ⟧ₛ δ γ)
+elab-subst-sem V refl D δ γ = refl
 
 -- A body checked over its parameters, used at a kinded ground instance,
 -- means its elaboration instantiated.
 poly-instance-sem : ∀ {tc : TopCtx} {polys : PolyCtx} (V : View (TopCtx.tdefs tc) (TopCtx.tsig tc) polys)
-                      (fmt : TargetNum) (δ : GM.DefSem) {body} (sc : PolyType)
+                      (δ : SM.DefSem) {body} (sc : PolyType)
                       (D : ctxAt (kindsOf sc) tc polys ⊢ᶜ body ∶ rigidOf sc ⨾ []) {U : Type} (ki : KindedInstance ∅ₖ sc U)
-                  → GM.⟦ proj₂ (elabᶜ V (inst-at sc D ki)) ⟧ fmt δ tt
+                  → ⟦ proj₂ (elabᶜ V (inst-at sc D ki)) ⟧ₛ δ tt
                     ≡ subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki)))
-                        (GM.⟦ TS.ty-subst-⊢ (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) (proj₂ (elabᶜ V D)) ⟧ fmt δ tt)
-poly-instance-sem {tc} {polys} V fmt δ sc D ki =
-  trans (elab-subst-sem V e (RS.subst-c (kindsOf sc) ∅ₖ τ r {ctx = ctxAt (kindsOf sc) tc polys} D) fmt δ tt)
+                        (⟦ TS.ty-subst-⊢ (proj₁ (kinded-instance sc ki)) (proj₁ (proj₂ (kinded-instance sc ki))) (proj₂ (elabᶜ V D)) ⟧ₛ δ tt)
+poly-instance-sem {tc} {polys} V δ sc D ki =
+  trans (elab-subst-sem V e (RS.subst-c (kindsOf sc) ∅ₖ τ r {ctx = ctxAt (kindsOf sc) tc polys} D) δ tt)
         (cong (subst (λ X → ⟦ X ⟧ᵛ) e)
-              (cong (λ f → f fmt δ tt) (⟦⟧-≅ (EC.Comm.tm C) (EC.Comm.dr C))))
+              (cong (λ f → f δ tt) (⟦⟧-≅ (EC.Comm.tm C) (EC.Comm.dr C))))
   where
     τ = proj₁ (kinded-instance sc ki)
     r = proj₁ (proj₂ (kinded-instance sc ki))

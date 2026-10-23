@@ -27,18 +27,16 @@ import Once.Spec.Context as SCx
 open import Once.Spec.Type using (Ty)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Internal.Trace using (Interp; pureHalf; interp)
-open import Once.Internal.Contract using (Impl)
-open import Once.Spec.Signature using (Signature)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Spec.Signature using (Signature; WellFormed; Decl)
+open import Data.List using (map)
+open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
+open import Once.Internal.Name using (showCanonical)
+import Once.Spec.Observation as Obs
 
--- Plan 0.105: at an interpretation `ι` — the meaning and the compiled program
--- run against the same one. Plan 0.122: the program's signature is Σ.
-module Once.Adequacy.TeleWalk (fmt : TargetNum) (Σ : Signature) (Ip : Impl (toISig Σ)) where
-
--- The world: the program's signature with the implementation `Ip`.
-ι : Interp
-ι = interp (toISig Σ) Ip
+-- Plan 0.105: at an interpretation — the meaning and the compiled program run
+-- against the same one. Plan 0.122: the Spec's interpretation `J` of Σ.
+module Once.Adequacy.TeleWalk (fmt : TargetNum) (Σ : Signature) (wf : WellFormed Σ) (J : Obs.Interp Σ)
+  (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ)) where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
@@ -52,13 +50,13 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Product using (_×_; _,_; proj₁)
 import Data.String as Str
-open import Data.Unit using (tt)
+open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
-open import Once.Spec.Type using (Type)
+open import Once.Spec.Type using (Type; _⟨_⟩)
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Spec.Name using (bare)
@@ -80,20 +78,17 @@ open import Once.Internal.Principal using (PrincipalAt)
 open import Once.Spec.Core.Syntax using (Defs; _!!_)
 open import Once.Spec.Core.Program Σ using (Tele; Entry; noVars)
 open import Once.Internal.Core.Telescope Σ using (Program; runCore; program)
-open import Once.Internal.Core.TySubstZero using (⟨⟩-0)
-open import Once.Metatheory.TermModel.TySubst using (<:-⟨⟩)
-open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
-open import Once.Internal.Type.Sub using (sub-prod; sub-sum; sub-rigid)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-arr)
+open import Once.Spec.Grade using (_⊑π_; ⊑-eff; ⊑-pe; ⊑-ae)
 open import Once.Type.Sub using (_<:?_)
-open import Once.Internal.GradedOps using (⟦_⟧<:ᵛ; fmapM)
-open import Once.Internal.Graded using (M; subM)
+import Once.Spec.Domain Σ as SDm
+import Once.Spec.Effect Σ as SE
+import Once.Internal.Core.TySubstZero as TZ
+open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
 open import Once.Denotation.ValueDomain using (cohᴰ)
-open import Once.Denotation.ValueRel using (RelS-fmapˡ)
-open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; RelS-≈ˡ; embed-bind)
 open import Once.Internal.Iterative using (_>>=∞_)
 open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
@@ -108,24 +103,18 @@ import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.MonoEntry as ME
 import Once.Internal.Elaboration as ElabM
-import Once.Internal.Core.Meaning as GM
-import Once.Denotation.Meaning as MeaningM
-open import Once.Internal.Trace using (FFIAnswers)
 
--- The interpretation's pure half: what the program's pure FFI values are.
-φ : FFIAnswers
-φ = pureHalf ι
+open import Once.Adequacy.TeleWalk.Invariant fmt Σ wf J uniq
 
-open import Once.Adequacy.GradedRelation fmt using (RelGV; RelGM; GM-D; RelS-embed-fmap)
+open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGV; RelGM; GM-D)
+open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ)
+open import Once.Adequacy.SpecRun Σ using (RunR; BlockR; SumR; ret; left; forceR; fmapˡ-R; embed-mapˡ-R; bind∞-R; embed-bind-R)
 open import Once.Internal.Iterative using (T∞; return∞)
 open T∞ using (force)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret)
-open RelS using (forceS)
 open import Once.Denotation.ValueRel using (retargetˡ)
 open import Once.Denotation.EvalRel using (eval-rel; table-self)
 open import Once.Spec.Grade using (eff)
 open import Once.Internal.Trace using (projTrace)
-import Once.Adequacy.TeleEntry fmt ι as TE
 
 import Once.Adequacy.ElabInst as EI
 import Once.Adequacy.SourceFaithful as SF
@@ -138,14 +127,11 @@ open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; u
 open import Once.Internal.Event using (SigOpEvent)
 import Data.Fin
 import Relation.Nullary
-open import Once.Internal.Graded using (⟦_⟧ᵛ)
 open import Once.Adequacy.TelePosition
 open import Once.Internal.Trace using ()
 open import Once.Denotation.TraceMonadLaws using (RelT′-events)
 open import Once.Denotation.Program using (tableCalls)
 open import Data.List using (take)
-
-open import Once.Adequacy.TeleWalk.Invariant fmt Σ Ip hiding (φ; ι)
 
 ------------------------------------------------------------------------
 -- `main` (D253): an entry like any other. The compiled program runs the CALL
@@ -159,7 +145,7 @@ open import Once.Adequacy.TeleWalk.Invariant fmt Σ Ip hiding (φ; ι)
 -- (`TraceTr.RelS-tr`). The compiled program runs its entry `ir` (`mainEntry`:
 -- the call of `main`, converted to `Eff Unit Unit`, D315).
 Agree : List IRFun → IR ⌊ (Once.Spec.Type.Unit {0}) ⌋ ⌊ (Once.Spec.Type.Unit {0}) ⌋ → Program → Set
-Agree tbl ir P = RelS (RelGV (Once.Spec.Type.Unit {0})) (runCore fmt P Ip) (evalᴰ fmt (tableEnv fmt φ tbl) ir tt)
+Agree tbl ir P = RunR (RelGV (Once.Spec.Type.Unit {0})) (runCore fmt P mo) (evalᴰ fmt (tableEnv fmt φ tbl) ir tt)
 
 -- …at the entry the bundle finds, if any.
 AgreeM : List IRFun → Maybe (IR ⌊ (Once.Spec.Type.Unit {0}) ⌋ ⌊ (Once.Spec.Type.Unit {0}) ⌋) → Program → Set
@@ -168,56 +154,29 @@ AgreeM tbl nothing   P = ⊥
 
 private
   -- A run related to a returned value, against a returned value.
-  ret-inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelS R (return∞ a) (return∞ b) → R a b
-  ret-inv h = inv (forceS h)
-    where inv : ∀ {X Y} {R : X → Y → Set} {a b} → RelSB R (Once.Internal.Trace.ret (inj₁ a)) (Once.Internal.Trace.ret (inj₁ b)) → R a b
-          inv (s-ret r) = r
-
-  -- A subtyping has one proof.
-  ⊑π-irr : ∀ {π π′} (g g′ : π ⊑π π′) → g ≡ g′
-  ⊑π-irr ⊑-pure ⊑-pure = refl
-  ⊑π-irr ⊑-eff  ⊑-eff  = refl
-  ⊑π-irr ⊑-pe   ⊑-pe   = refl
-  ⊑π-irr ⊑-act  ⊑-act  = refl
-  ⊑π-irr ⊑-pa   ⊑-pa   = refl
-  ⊑π-irr ⊑-ae   ⊑-ae   = refl
-
-  <:-irr : ∀ {m} {A B : Ty m} (p q : A <: B) → p ≡ q
-  <:-irr sub-void          sub-void             = refl
-  <:-irr sub-unit          sub-unit             = refl
-  <:-irr sub-int           sub-int              = refl
-  <:-irr sub-float         sub-float            = refl
-  <:-irr (sub-arr a b g)   (sub-arr a′ b′ g′)   =
-    trans (cong (λ x → sub-arr x b g) (<:-irr a a′))
-          (trans (cong (λ x → sub-arr a′ x g) (<:-irr b b′)) (cong (sub-arr a′ b′) (⊑π-irr g g′)))
-  <:-irr (sub-prod a b)    (sub-prod a′ b′)     = cong₂ sub-prod (<:-irr a a′) (<:-irr b b′)
-  <:-irr (sub-sum a b)     (sub-sum a′ b′)      = cong₂ sub-sum (<:-irr a a′) (<:-irr b b′)
-  <:-irr sub-μ             sub-μ                = refl
-  <:-irr (sub-ν g)         (sub-ν g′)           = cong sub-ν (⊑π-irr g g′)
-  <:-irr sub-rigid         sub-rigid            = refl
-
-  -- The entry's conversion, read across the schema's round trip.
-  conv-subst : ∀ {X ty : Type} (e : X ≡ ty) (q : X <: EffUU) (p : ty <: EffUU) (x : ⟦ X ⟧ᵛ)
-             → ⟦ q ⟧<:ᵛ x ≡ ⟦ p ⟧<:ᵛ (subst (λ Y → ⟦ Y ⟧ᵛ) e x)
-  conv-subst refl q p x = cong (λ r → ⟦ r ⟧<:ᵛ x) (<:-irr q p)
+  ret-inv : ∀ {X Y} {R : X → Y → Set} {a b} → RunR R (SE.return∞ a) (return∞ b) → R a b
+  ret-inv h = inv (forceR h)
+    where inv : ∀ {X Y} {R : X → Y → Set} {a b}
+              → BlockR (SumR R (RunR R)) (SE.roll (SE.done (inj₁ a))) (Once.Internal.Trace.ret (inj₁ b)) → R a b
+          inv (ret (left r)) = r
 
   -- `main`'s result, converted to `Unit` at grade `eff`: the run is unchanged…
-  conv-unit : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ (Once.Spec.Type.Unit {0}) ⟧ᵛ} {t}
+  conv-unit : ∀ {π} (g : π ⊑π eff) {m : SE.M π ⊤} {t}
             → RelGM π (Once.Spec.Type.Unit {0}) m t
-            → RelS (RelGV (Once.Spec.Type.Unit {0})) (subM g (fmapM π ⟦ sub-unit {m = 0} ⟧<:ᵛ m)) t
-  conv-unit ⊑-eff r     = RelS-fmapˡ r (λ _ → tt)
-  conv-unit ⊑-pe  r     = r
-  conv-unit ⊑-ae  {m} r = RelS-embed-fmap m r
+            → RunR (RelGV (Once.Spec.Type.Unit {0})) (SE.sub g (SE.fmap π (SDm.conv σ₀ (sub-unit {m = 0})) m)) t
+  conv-unit ⊑-eff     r = fmapˡ-R (λ _ → tt) r
+  conv-unit ⊑-pe      r = r
+  conv-unit ⊑-ae  {m} r = embed-mapˡ-R (λ _ → tt) m r
 
   -- …and a run that never returns (`Void`) is related to any continuation of
   -- a run it is related to.
-  conv-void : ∀ {π} (g : π ⊑π eff) {m : M π ⟦ (Once.Spec.Type.Void {0}) ⟧ᵛ} {t} {Y} {k : ⟦ (Once.Spec.Type.Void {0}) ⟧ᴰ → T∞ Y}
-              {R : ⟦ (Once.Spec.Type.Unit {0}) ⟧ᵛ → Y → Set}
+  conv-void : ∀ {π} (g : π ⊑π eff) {m : SE.M π ⊥} {t} {Y} {k : ⟦ (Once.Spec.Type.Void {0}) ⟧ᴰ → T∞ Y}
+              {R : ⊤ → Y → Set}
             → RelGM π (Once.Spec.Type.Void {0}) m t
-            → RelS R (subM g (fmapM π ⟦ sub-void {B = (Once.Spec.Type.Unit {0})} ⟧<:ᵛ m)) (t >>=∞ k)
-  conv-void ⊑-eff      r = RelS-bind r (λ {a} _ → ⊥-elim a)
+            → RunR R (SE.sub g (SE.fmap π (SDm.conv σ₀ (sub-void {B = Once.Spec.Type.Unit {0}})) m)) (t >>=∞ k)
+  conv-void ⊑-eff      r = bind∞-R (λ {a} _ → ⊥-elim a) r
   conv-void ⊑-pe  {()} r
-  conv-void ⊑-ae  {m}  r = RelS-≈ˡ (embed-bind m (λ l → Once.Internal.Trace.ret (⟦ sub-void {B = (Once.Spec.Type.Unit {0})} ⟧<:ᵛ l))) (RelS-bind r (λ {a} _ → ⊥-elim a))
+  conv-void ⊑-ae  {m}  r = embed-bind-R (λ {a} _ → ⊥-elim a) m r
 
   -- `main`'s run, converted (D315), against the compiled entry: the call of
   -- `main`, which the table answers with its entry's direct-call form.
@@ -225,7 +184,7 @@ private
            → (∀ A B a → tableCalls fmt φ tbl (bare "main") A B a
                         ≡ tableCalls fmt φ (irFunOf (C.mkCompiledFun (bare "main") ty irFun) ∷ pre) (bare "main") A B a)
            → RelGM Once.Spec.Grade.pure ty v (subst T∞ (cohᴰ ty) (abiT ty (evalᴰ fmt (tableEnv fmt φ pre) irFun tt)))
-           → RelS (RelGV (Once.Spec.Type.Unit {0})) (⟦ p ⟧<:ᵛ v tt) (evalᴰ fmt (tableEnv fmt φ tbl) (C.mainEntry p) tt)
+           → RunR (RelGV (Once.Spec.Type.Unit {0})) (SDm.conv σ₀ p v tt) (evalᴰ fmt (tableEnv fmt φ tbl) (C.mainEntry p) tt)
   main-run sub-void pre tbl {v = ()} sk r
   main-run (sub-arr {π = π} sub-unit sub-unit g) pre tbl {irFun} {v} sk r =
     conv-unit g {m = v tt} (GM-D π (Once.Spec.Type.Unit {0}) (proj₁ (ret-inv r) {tt} {tt} tt)
@@ -266,7 +225,7 @@ private
 from-sem : ∀ {s} {S : Defs s} {sc es} (tl : Tele S) (ss : SigSig (Once.Internal.Module.Scope.sig sc)) (is : ImpSig S (Once.Internal.Module.Scope.imps sc))
              (ts : TeleSig S (Once.Internal.Module.Scope.tele sc))
              (d : Data.Fin.Fin s) (e : Entry (S !! d)) (rest : ModTele sc es) (u : SigIn rest)
-         → runCore fmt (TR.toProgramFrom tl ss is ts d e rest u) Ip ≡ runCore fmt (program tl d e) Ip
+         → runCore fmt (TR.toProgramFrom tl ss is ts d e rest u) mo ≡ runCore fmt (program tl d e) mo
 from-sem tl ss is ts d e [] u = refl
 from-sem tl ss is ts d e (ffi _ _ c h g rest) u = from-sem tl (s-ffi c h (u (here refl)) ss) is ts d e rest (λ m → u (there m))
 from-sem {S = S} {sc} tl ss is ts d e (poly {pfi = pfi} {Ψ = Ψ} pr D rest) u =
@@ -294,7 +253,7 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} {ty} p D {irFun} cf 
   -- Plan 0.105 / D320: the entry's compile chain relates the core entry to the
   -- compiled call (`relM`); the compiled program's tree IS that call,
   -- converted, and the core program's run IS that entry, converted.
-  subst₂ (λ c ir → RelS (RelGV (Once.Spec.Type.Unit {0})) c (evalᴰ fmt (tableEnv fmt φ tbl) ir tt))
+  subst₂ (λ c ir → RunR (RelGV (Once.Spec.Type.Unit {0})) c (evalᴰ fmt (tableEnv fmt φ tbl) ir tt))
          (sym core-eq) (entry-irr p q)
          (main-run p pre tbl
             (λ A B a → trans (cong (λ t → tableCalls fmt φ t (bare "main") A B a) (tableOf-go-++ (FB.bundle→compiled rest-b) [] (e ∷ pre)))
@@ -308,12 +267,16 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} {ty} p D {irFun} cf 
     -- the core program's run: its entry, read back at its only instance (the
     -- elaboration's meaning), converted
     core-eq : runCore fmt (monoHere {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo "main" ft bd false} {ty = ty}
-                                    {Ψ = SCx.[]} tl ss is ts D rest p u) Ip
-            ≡ ⟦ p ⟧<:ᵛ (GM.⟦_⟧ Σ S Dc fmt δ tt) tt
+                                    {Ψ = SCx.[]} tl ss is ts D rest p u) mo
+            ≡ SDm.conv σ₀ p (CMB.⟦_⟧ₛ fmt Σ S σ₀ Dc δ tt) tt
     core-eq =
       trans (from-sem tl′ ss (impDefs ("main" Str.== "main") {x = "main"} {T = ty} is) (wkT ts) zero (TR.mainEntry p) rest u)
-        (trans (cong (λ f → f tt) (conv-subst (⟨⟩-0 Σ S noVars ty) (<:-⟨⟩ Σ S noVars p) p _))
-               (cong (λ v → ⟦ p ⟧<:ᵛ v tt) (ME.mono-entry-sem Σ S _ _ noVars _ Dc fmt δ)))
+            (cong (λ v → SDm.conv σ₀ p v tt) entry-v)
+      where
+        -- the entry at no variable: the instance's meaning is the body's
+        entry-v = H.≅-to-≡ (H.trans (H.≡-subst-removable SDm.⟦_⟧ᵛ (TZ.⟨⟩-0 Σ S noVars (ty ⟨ noVars ⟩)) _)
+                           (H.trans (H.sym (H.≡-subst-removable (λ X → SDm.⟦ X ⟨ σ₀ ⟩ ⟧ᵛ) (TZ.⟨⟩-0 Σ S noVars ty) _))
+                                    (H.≡-to-≅ (ME.mono-entry-sem Σ fmt S σ₀ _ _ noVars _ Dc δ))))
 
 mutual
   walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es) (mi : MainIn mt)

@@ -73,29 +73,8 @@ module ValueWk₀ (I F : Set) where
   ⟦wk₀⟧ (μ G)                      = μ-sem-wk₀ I F G
   ⟦wk₀⟧ (ν G _)                    = ν-sem-wk₀ I F G
 
-------------------------------------------------------------------------
--- The graded values (the source's meaning)
-------------------------------------------------------------------------
-
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Graded using (⟦_⟧ᵛ; M)
-open import Once.Internal.Stream using (νᵈ)
-open import Once.Internal.Graded using (νᵖ)
 open ValueWk₀ Carrier Carrier
-
-⟦wk₀⟧ᵛ : ∀ {m} (A : Type) → ⟦ wk₀ {m} A ⟧ᵛ ≡ ⟦ A ⟧ᵛ
-⟦wk₀⟧ᵛ Unit                       = refl
-⟦wk₀⟧ᵛ Void                       = refl
-⟦wk₀⟧ᵛ Int                        = refl
-⟦wk₀⟧ᵛ Float                      = refl
-⟦wk₀⟧ᵛ (A * B)                    = cong₂ _×_ (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B)
-⟦wk₀⟧ᵛ (A + B)                    = cong₂ _⊎_ (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B)
-⟦wk₀⟧ᵛ (A ⇒[ mk-kind Zero π ] B)  = cong (λ Y → _ → M π Y) (⟦wk₀⟧ᵛ B)
-⟦wk₀⟧ᵛ (A ⇒[ mk-kind One π ] B)   = cong₂ (λ X Y → X → M π Y) (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B)
-⟦wk₀⟧ᵛ (A ⇒[ mk-kind Many π ] B)  = cong₂ (λ X Y → X → M π Y) (⟦wk₀⟧ᵛ A) (⟦wk₀⟧ᵛ B)
-⟦wk₀⟧ᵛ (μ G)                      = ⟦wk₀⟧ (μ G)
-⟦wk₀⟧ᵛ (ν G pureᶠ)                = cong νᵖ (translateF-wk₀ Carrier Carrier G)
-⟦wk₀⟧ᵛ (ν G actᶠ)                 = cong νᵈ (translateF-wk₀ Carrier Carrier G)
 
 ------------------------------------------------------------------------
 -- The denotational value domain
@@ -300,17 +279,3 @@ T∞-wk₀ F A = go (wk₀ A) (wk₀-id A) (sym (⟦wk₀⟧ᴰ A))
   where
     go : (U : Type) → U ≡ A → (q : ⟦ A ⟧ᴰ ≡ ⟦ U ⟧ᴰ) → F U ≡ subst T∞ q (F A)
     go .A refl refl = refl
-
-open import Once.Spec.Numerics using (TargetNum)
-
-module GradedWk₀-id (fmt : TargetNum) where
-  open import Once.Adequacy.GradedRelation fmt using (RelGM)
-
-  -- Any graded relation at `A` holds at `wk₀ A` over the ground index.
-  RelGM-wk₀ : ∀ {π} {A : Type} {v : M π ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} → RelGM π A v t
-            → RelGM π (wk₀ {0} A) (subst (M π) (sym (⟦wk₀⟧ᵛ A)) v) (subst T∞ (sym (⟦wk₀⟧ᴰ A)) t)
-  RelGM-wk₀ {π} {A} {v} {t} r = go (wk₀ A) (wk₀-id A) (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᴰ A))
-    where
-      go : (U : Type) → U ≡ A → (p : ⟦ A ⟧ᵛ ≡ ⟦ U ⟧ᵛ) (q : ⟦ A ⟧ᴰ ≡ ⟦ U ⟧ᴰ)
-         → RelGM π U (subst (M π) p v) (subst T∞ q t)
-      go .A refl refl refl = r

@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Bool
+import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Type
@@ -41,21 +42,37 @@ d_wk'8320'_12 v0 v1
   = coe
       MAlonzo.Code.Once.Spec.Type.d__'10216'_'10217'_154
       (coe (0 :: Integer)) (coe v0) (coe v1) (\ v2 -> coe du_none_8)
+-- Once.Internal.Type.noResp
+d_noResp_22 ::
+  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
+   MAlonzo.Code.Once.Spec.Type.T_Ty_8) ->
+  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
+   MAlonzo.Code.Once.Spec.Type.T_Kind_70) ->
+  (MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
+   MAlonzo.Code.Once.Spec.Type.T_Kind_70) ->
+  MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Spec.Type.T_Base_84
+d_noResp_22 ~v0 ~v1 ~v2 ~v3 = du_noResp_22
+du_noResp_22 ::
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Spec.Type.T_Base_84
+du_noResp_22 = MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Type.wk₀F
-d_wk'8320'F_18 ::
+d_wk'8320'F_26 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12
-d_wk'8320'F_18 v0 v1
+d_wk'8320'F_26 v0 v1
   = coe
       MAlonzo.Code.Once.Spec.Type.d__'10216'_'10217'F_160
       (coe (0 :: Integer)) (coe v0) (coe v1) (\ v2 -> coe du_none_8)
 -- Once.Internal.Type._⊸_
-d__'8888'__24 ::
+d__'8888'__32 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8
-d__'8888'__24 v0 v1
+d__'8888'__32 v0 v1
   = coe
       MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v0)
       (coe
@@ -66,11 +83,11 @@ d__'8888'__24 v0 v1
             (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
       (coe v1)
 -- Once.Internal.Type._⇒_
-d__'8658'__32 ::
+d__'8658'__40 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8
-d__'8658'__32 v0 v1
+d__'8658'__40 v0 v1
   = coe
       MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v0)
       (coe
@@ -81,11 +98,11 @@ d__'8658'__32 v0 v1
             (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
       (coe v1)
 -- Once.Internal.Type._⇒₀_
-d__'8658''8320'__40 ::
+d__'8658''8320'__48 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8
-d__'8658''8320'__40 v0 v1
+d__'8658''8320'__48 v0 v1
   = coe
       MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v0)
       (coe
@@ -96,15 +113,15 @@ d__'8658''8320'__40 v0 v1
             (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
       (coe v1)
 -- Once.Internal.Type.isVoid?
-d_isVoid'63'_50 ::
+d_isVoid'63'_58 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_isVoid'63'_50 ~v0 v1 = du_isVoid'63'_50 v1
-du_isVoid'63'_50 ::
+d_isVoid'63'_58 ~v0 v1 = du_isVoid'63'_58 v1
+du_isVoid'63'_58 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-du_isVoid'63'_50 v0
+du_isVoid'63'_58 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Type.C_var_16 v1
         -> coe
@@ -158,15 +175,15 @@ du_isVoid'63'_50 v0
              (coe MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Type.isUnit?
-d_isUnit'63'_56 ::
+d_isUnit'63'_64 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_isUnit'63'_56 ~v0 v1 = du_isUnit'63'_56 v1
-du_isUnit'63'_56 ::
+d_isUnit'63'_64 ~v0 v1 = du_isUnit'63'_64 v1
+du_isUnit'63'_64 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-du_isUnit'63'_56 v0
+du_isUnit'63'_64 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Type.C_var_16 v1
         -> coe

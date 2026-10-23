@@ -10,8 +10,8 @@
 -- entry by entry along the scope's signature (`ImpSig`/`TeleSig`, the View's
 -- data), so the agreement holds by construction:
 --   * a definition means its core entry at the instance (`entrySem`);
---   * an FFI declaration means its contract (`sigOpRefᵛ`), in the world of
---     the core's signature `Σ` and implementation.
+--   * an FFI declaration means the Spec's reference to its declaration of Σ
+--     (`sigSem`: the world's model, or the Spec's call).
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
@@ -19,7 +19,9 @@ open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
 
-module Once.Adequacy.CoreEnv (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S : Defs s) where
+open import Once.Spec.Type using (TySub)
+
+module Once.Adequacy.CoreEnv (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S : Defs s) (σ₀ : TySub 0 0) where
 
 open import Data.List using (_∷_)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -43,21 +45,18 @@ open import Once.Internal.Contract using (ISig)
 open import Once.Internal.Type using (wk₀; none)
 open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
-open import Once.Internal.Graded using (⟦_⟧ᵛ)
-open import Once.Internal.GradedOps using (sigOpRefᵛ)
-open import Once.Internal.Trace using (interp)
 open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
 open import Once.Internal.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete; declS; ⌜declS⌝)
 open import Once.Internal.Core.TySubstZero Σ S using (⟨⟩-0)
 open import Once.Functor.Translate using (IsConcrete-irrelevant)
 open import Once.Denotation.DefEnv using (defAt; impAt)
-open import Once.Denotation.Meaning using (DefMeanings; ImpMeanings; Meanings; meanings)
-import Once.Internal.Core.Meaning Σ S as GM
+open import Once.Denotation.Meaning Σ σ₀ using (DefMeanings; ImpMeanings; Meanings; meanings)
+open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
+import Once.Spec.Core.Meaning Σ fmt S as SM
 import Once.Internal.Core.Translate Σ as TR
 open TR using (SigSig; ImpSig; TeleSig; viewOf; telFind; sigAt) renaming (impAt to impView)
 open import Once.Internal.Elaboration Σ S using (Declared; def)
-open import Once.Adequacy.CoreMeaningBridge fmt Σ S using (refSemAt-Δ; entrySem; impSem; sigSem; Agree)
+open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (refSemAt-Δ; entrySem; impSem; sigSem; Agree)
 
 ------------------------------------------------------------------------
 -- An FFI declaration of the scope is Σ's, at its type
@@ -71,29 +70,11 @@ sigConc {(n , T₀) ∷ rest} (TR.s-ffi k h m ss) {x} eq with StrProp._≟_ n x
 sigConc {(n , T₀) ∷ rest} (TR.s-ffi k h m ss) {x} eq | no _ = sigConc ss eq
 
 -- The declared type, read back, is the declaration's.
-declT : ∀ {x T} → IsConcrete T → Declared x T → ⌜ declS T ⌝ᵈ ≡ T
-declT {T = T} k D = trans (⌜declS⌝ {0} k (Declared.honest D)) (⟨⟩-0 none T)
-
-sigRes : ∀ {sg} → SigSig sg → ∀ {cn T} → WordName cn → lookupImport sg (showCanonical cn) ≡ just T → (showCanonical cn , T) ∈ toISig Σ
-sigRes ss {cn} wn lk =
-  subst (λ X → (showCanonical cn , X) ∈ toISig Σ) (declT (sigConc ss lk) (sigAt ss lk))
-        (∈-toISig (Declared.member (sigAt ss lk) {cn} wn refl))
-
--- A reference along a type equation is the reference at the other type.
-sigOpRef-≅ : ∀ {I : ISig} (impl : _) (cn : CanonicalName) {A B : Type} (e : A ≡ B) (kA : IsConcrete A) (kB : IsConcrete B)
-               (m : (showCanonical cn , A) ∈ I)
-           → sigOpRefᵛ {A = B} fmt I impl cn kB (subst (λ X → (showCanonical cn , X) ∈ I) e m) ≅ sigOpRefᵛ {A = A} fmt I impl cn kA m
-sigOpRef-≅ impl cn refl kA kB m rewrite IsConcrete-irrelevant kA kB = H.refl
-
-------------------------------------------------------------------------
--- The environment of a scope, from the core's
-------------------------------------------------------------------------
-
-module _ (δ : GM.DefSem) where
+module _ (δ : SM.DefSem) where
 
   impEnv : ∀ {imps} → ImpSig S imps → ImpMeanings imps
   impEnv TR.[]                          = tt
-  impEnv (TR.i-def {x = x} {T = T} d e is) = subst id (⟦wk₀⟧ᵛ {0} T) (impSem δ {∅ₖ} {x} (def d e)) , impEnv is
+  impEnv (TR.i-def {x = x} {T = T} d e is) = subst id (⟦wk₀⟧ᵛ T) (impSem δ {∅ₖ} {x} (def d e)) , impEnv is
 
   defEnv : ∀ {ps} → TeleSig S ps → DefMeanings (C.buildPolyCtx ps)
   defEnv TR.[]                        = tt
@@ -123,21 +104,17 @@ module _ (δ : GM.DefSem) where
   -- Plan 0.105 (D257 amendment 2): the scope's environment runs in the core's
   -- world — its signature with its implementation. D274: a reference to Σ
   -- reads the declaration the scope's signature correspondence records.
+  -- A declaration of Σ means the Spec's reference to it.
+  sigEnv : ∀ {sg} → SigSig sg → ∀ {cn T} → WordName cn → lookupImport sg (showCanonical cn) ≡ just T → IsConcrete T → ⟦ T ⟧ᵛ
+  sigEnv ss {cn} {T} wn lk k = subst id (⟦wk₀⟧ᵛ T) (sigSem δ cn wn k (sigAt ss lk))
+
   envOf : ∀ {sg imps ps} → SigSig sg → ImpSig S imps → TeleSig S ps → Meanings (C.buildPolyCtx ps) imps sg
-  envOf ss is ts = meanings (defEnv ts) (impEnv is) (interp (toISig Σ) (GM.impl δ)) (λ {cn} wn lk → sigRes ss {cn} wn lk)
+  envOf ss is ts = meanings (defEnv ts) (impEnv is) (λ {cn} {T} wn lk k → sigEnv ss {cn} {T} wn lk k)
 
   agree-res : ∀ {sg} (ss : SigSig sg) {cn T} (wn : WordName cn) (lk : lookupImport sg (showCanonical cn) ≡ just T) (k : IsConcrete T)
-            → subst id (sym (⟦wk₀⟧ᵛ T)) (sigOpRefᵛ {A = T} fmt (toISig Σ) (GM.impl δ) cn k (sigRes ss {cn} wn lk))
-              ≡ sigSem δ cn wn k (sigAt ss lk)
-  agree-res ss {cn} {T} wn lk k =
-    H.≅-to-≡ (H.trans (H.≡-subst-removable id (sym (⟦wk₀⟧ᵛ T)) _)
-             (H.trans (sigOpRef-≅ (GM.impl δ) cn (declT (sigConc ss lk) D) (⌜⌝ᵈ-concrete (declS T)) k m₀)
-                      (H.sym (H.≡-subst-removable (λ X → ⟦ X ⟧ᵛ) (⌜declS⌝ k (Declared.honest D)) _))))
-    where
-      D  = sigAt ss lk
-      m₀ = ∈-toISig (Declared.member D {cn} wn refl)
+            → subst id (sym (⟦wk₀⟧ᵛ T)) (sigEnv ss {cn} wn lk k) ≡ sigSem δ cn wn k (sigAt ss lk)
+  agree-res ss {cn} {T} wn lk k = subst-sym-subst (⟦wk₀⟧ᵛ T)
 
-  -- THE AGREEMENT, by construction.
   agree : ∀ {sg imps ps} (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S ps)
         → Agree (viewOf ss is ts) (envOf ss is ts) δ
   agree ss is ts = record

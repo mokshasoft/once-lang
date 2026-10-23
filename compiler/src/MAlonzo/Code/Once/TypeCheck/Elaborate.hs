@@ -5683,8 +5683,8 @@ du_ext'45'resolved'45'info_4700 ::
 du_ext'45'resolved'45'info_4700 v0 v1 v2 v3 v4
   = coe
       du_ext'45'resolved'45'info'45'aux_4680 (coe v1) (coe v2)
-      (coe MAlonzo.Code.Once.Internal.Type.du_isVoid'63'_50 (coe v0))
-      (coe MAlonzo.Code.Once.Internal.Type.du_isUnit'63'_56 (coe v0))
+      (coe MAlonzo.Code.Once.Internal.Type.du_isVoid'63'_58 (coe v0))
+      (coe MAlonzo.Code.Once.Internal.Type.du_isUnit'63'_64 (coe v0))
       (coe v3) (coe v4)
 -- Once.TypeCheck.Elaborate.resolvedArrowTerm
 d_resolvedArrowTerm_4726 ::

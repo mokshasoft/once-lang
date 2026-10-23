@@ -18,7 +18,7 @@ open import Data.Nat using (ℕ; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Spec.Grade
-open import Once.Spec.Type using (Type; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; ⟦_⟧F)
+open import Once.Spec.Type using (Type; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; ⟦_⟧F; TySub; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Context using (Usage; []; _∷_; _+ᵘ_; _*ᵘ_)
 
 ------------------------------------------------------------------------
@@ -175,3 +175,28 @@ mutual
   GF-unique g-Id      g-Id        = refl
   GF-unique (g-⊕ f g) (g-⊕ f′ g′) = cong₂ g-⊕ (GF-unique f f′) (GF-unique g g′)
   GF-unique (g-⊗ f g) (g-⊗ f′ g′) = cong₂ g-⊗ (GF-unique f f′) (GF-unique g g′)
+
+------------------------------------------------------------------------
+-- A ground type read at a ground instance is itself, structurally
+------------------------------------------------------------------------
+
+module _ (σ₀ : TySub 0 0) where
+
+  mutual
+    g⟨⟩ : (A : Type) → GR (A ⟨ σ₀ ⟩) A
+    g⟨⟩ (Once.Spec.Type.var ())
+    g⟨⟩ Unit         = g-unit
+    g⟨⟩ Void         = g-void
+    g⟨⟩ Int          = g-int
+    g⟨⟩ Float        = g-float
+    g⟨⟩ (A * B)      = g-* (g⟨⟩ A) (g⟨⟩ B)
+    g⟨⟩ (A + B)      = g-+ (g⟨⟩ A) (g⟨⟩ B)
+    g⟨⟩ (A ⇒[ mk-kind q π ] B) = g-⇒ (g⟨⟩ A) (g⟨⟩ B)
+    g⟨⟩ (μ F)        = g-μ (gf⟨⟩ F)
+    g⟨⟩ (ν F φ)      = g-ν (gf⟨⟩ F)
+
+    gf⟨⟩ : (F : Fun 0) → GF (F ⟨ σ₀ ⟩F) F
+    gf⟨⟩ (K A)   = g-K (g⟨⟩ A)
+    gf⟨⟩ Id      = g-Id
+    gf⟨⟩ (F ⊕ G) = g-⊕ (gf⟨⟩ F) (gf⟨⟩ G)
+    gf⟨⟩ (F ⊗ G) = g-⊗ (gf⟨⟩ F) (gf⟨⟩ G)

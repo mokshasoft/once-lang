@@ -3,8 +3,9 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.SpecCore.Observe — related computations are observed the
--- same (plan 0.121 §3.5).
+-- Once.Adequacy.SpecObserve — related computations are observed the same
+-- (plan 0.121 §3.5; plan 0.122 §5.5: a Spec computation against an
+-- implementation run, `SpecRun`).
 --
 -- The compiler observes a computation as its trace machine's run against an
 -- interpretation (`TraceTr.trT∞`), the Spec as its trace in a world
@@ -17,7 +18,7 @@
 
 open import Once.Spec.Signature using (Signature)
 
-module Once.Adequacy.SpecCore.Observe (Σ : Signature) where
+module Once.Adequacy.SpecObserve (Σ : Signature) where
 
 open import Data.Empty using (⊥-elim)
 import Data.Empty
@@ -47,8 +48,7 @@ open Tr using (next)
 open _≈ᵗ⟨_⟩_ using (same)
 open import Once.Spec.Observation Σ using (World; module World; trace; blockD; after)
 import Once.Spec.Effect Σ as SE
-open import Once.Adequacy.SpecCore.Value Σ
-open T∞R
+open import Once.Adequacy.SpecRun Σ
 
 ------------------------------------------------------------------------
 -- The interpretation and the world agree on related calls
@@ -59,15 +59,15 @@ record Agree (ι : LTr.Interp) (w : World) : Set where
     -- a related call has an answer, and is answered by the related one: the
     -- world's at the inhabitant its answer type is decided to have
     answered : ∀ {o o′} (c : CallR o o′) {a a′} → argR c a a′ → ∀ h
-             → NotEmpty (ans o′)
-               × (∀ p → notEmpty? (ans o′) ≡ yes p
-                  → Σ[ b ∈ V.⟦ LTr.CallOp.ccod o ⟧ ] (LTr.callAnswer ι h o a ≡ just b)
-                      × ansR c b (World.answer w o′ (map toEvent h) a′ p))
+             → NotEmpty (ans o)
+               × (∀ p → notEmpty? (ans o) ≡ yes p
+                  → Σ[ b ∈ V.⟦ LTr.CallOp.ccod o′ ⟧ ] (LTr.callAnswer ι h o′ a′ ≡ just b)
+                      × ansR c (World.answer w o (map toEvent h) a p) b)
     -- and shows the same event
-    call-event : ∀ {o o′} (c : CallR o o′) {a a′} → argR c a a′ → toEvent (LTr.callEvent o a) ≡ eventOf o′ a′
+    call-event : ∀ {o o′} (c : CallR o o′) {a a′} → argR c a a′ → toEvent (LTr.callEvent o′ a′) ≡ eventOf o a
     -- a halt shows its call, and the Spec's call answers nothing
-    halt-event : ∀ {o o′} (h : HaltR o o′) {a a′} → hargR h a a′ → toEvent (LTr.haltEvent o a) ≡ eventOf o′ a′
-    halt-void  : ∀ {o o′} → HaltR o o′ → ¬ NotEmpty (ans o′)
+    halt-event : ∀ {o o′} (h : HaltR o o′) {a a′} → hargR h a a′ → toEvent (LTr.haltEvent o′ a′) ≡ eventOf o a
+    halt-void  : ∀ {o o′} → HaltR o o′ → ¬ NotEmpty (ans o)
 
 ------------------------------------------------------------------------
 -- Two traces in lockstep
@@ -129,7 +129,7 @@ bwd-later e k (laterLS r₁) x = bwd r₁ (λ q → k (later⇓ (sym e) q)) _ x
 -- Related computations, observed
 ------------------------------------------------------------------------
 
-module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : X → ⊤ → Set} where
+module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : ⊤ → X → Set} where
   open Agree ag
   private
     module M = Machine (δ∞ ι {X})
@@ -144,53 +144,54 @@ module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : X → �
     just-inj : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
     just-inj refl = refl
 
-  blockLS : ∀ {h h′ b b′} → map toEvent h ≡ h′ → TR (SumR R (T∞R R)) b b′
-          → LS (M.go (δ∞ ι (h , b))) (blockD w h′ b′)
+  -- (`b` the Spec's block, `b′` the implementation's)
+  blockLS : ∀ {h h′ b b′} → map toEvent h ≡ h′ → BlockR (SumR R (RunR R)) b b′
+          → LS (M.go (δ∞ ι (h , b′))) (blockD w h′ b)
   callStep : ∀ {h h′ o o′ a a′ k k′} (c : CallR o o′) → map toEvent h ≡ h′ → (ra : argR c a a′)
-           → (∀ {b b′} → ansR c b b′ → TR (SumR R (T∞R R)) (k b) (k′ b′))
-           → ∀ mb → LTr.callAnswer ι h o a ≡ mb
-           → StepLS (step (M.go (TT.answer ι h o a k mb)))
-                    (inj₁ (inj₂ (eventOf o′ a′ , after w h′ o′ a′ k′ (notEmpty? (ans o′)))))
-  afterR  : ∀ {h h′ o o′ a a′ k k′ b} (c : CallR o o′) → map toEvent h ≡ h′ → argR c a a′
-          → (∀ {b b′} → ansR c b b′ → TR (SumR R (T∞R R)) (k b) (k′ b′))
-          → NotEmpty (ans o′) → (∀ p → notEmpty? (ans o′) ≡ yes p → ansR c b (World.answer w o′ h′ a′ p))
-          → ∀ dec → notEmpty? (ans o′) ≡ dec → TLS (M.tr [] (h ++ [ LTr.callEvent o a ] , k b)) (after w h′ o′ a′ k′ dec)
-  haltR   : ∀ {h′ o o′ a a′ k′} (hh : HaltR o o′) → hargR hh a a′
-          → ∀ dec → TLS (listTr [] halted) (after w h′ o′ a′ k′ dec)
+           → (∀ {b b′} → ansR c b b′ → BlockR (SumR R (RunR R)) (k b) (k′ b′))
+           → ∀ mb → LTr.callAnswer ι h o′ a′ ≡ mb
+           → StepLS (step (M.go (TT.answer ι h o′ a′ k′ mb)))
+                    (inj₁ (inj₂ (eventOf o a , after w h′ o a k (notEmpty? (ans o)))))
+  afterR  : ∀ {h h′ o o′ a a′ k k′ b′} (c : CallR o o′) → map toEvent h ≡ h′ → argR c a a′
+          → (∀ {b b′} → ansR c b b′ → BlockR (SumR R (RunR R)) (k b) (k′ b′))
+          → NotEmpty (ans o) → (∀ p → notEmpty? (ans o) ≡ yes p → ansR c (World.answer w o h′ a p) b′)
+          → ∀ dec → notEmpty? (ans o) ≡ dec → TLS (M.tr [] (h ++ [ LTr.callEvent o′ a′ ] , k′ b′)) (after w h′ o a k dec)
+  haltR   : ∀ {h′ o o′ a a′ k} (hh : HaltR o o′) → hargR hh a a′
+          → ∀ dec → TLS (listTr [] halted) (after w h′ o a k dec)
 
   ls (blockLS e (ret (left r)))  = nowEnd (returned≈ refl)
-  ls (blockLS e (ret (right r))) = laterLS (blockLS e (force∞ r))
-  ls (blockLS {h} e (call {o = o} {a = a} c ra k)) = callStep c e ra k (LTr.callAnswer ι h o a) refl
+  ls (blockLS e (ret (right r))) = laterLS (blockLS e (forceR r))
+  ls (blockLS {h} e (call {o′ = o′} {a′ = a′} c ra k)) = callStep c e ra k (LTr.callAnswer ι h o′ a′) refl
   ls (blockLS e (halt hh ra)) = nowCall (halt-event hh ra) (haltR hh ra (notEmpty? _))
 
   callStep {h} {k = kk} {k′ = kk′} c e ra k (just b′) q =
     nowCall (call-event c ra) (afterR {k = kk} {k′ = kk′} c e ra k (proj₁ (answered c ra h)) ans₀ (notEmpty? _) refl)
     where
-      ans₀ : ∀ p → notEmpty? _ ≡ yes p → ansR c b′ (World.answer w _ _ _ p)
+      ans₀ : ∀ p → notEmpty? _ ≡ yes p → ansR c (World.answer w _ _ _ p) b′
       ans₀ p d = from (proj₂ (answered c ra h) p d)
         where
           from : _ → _
-          from (b , eq , r) = subst (λ x → ansR c x (World.answer w _ _ _ p)) (just-inj (trans (sym eq) q))
-                                    (subst (λ hh → ansR c b (World.answer w _ hh _ p)) e r)
-  callStep {h} {h′} {o} {o′} {a} {a′} {kk} {kk′} c e ra k nothing q = no-answer (notEmpty? (ans o′)) refl
+          from (b , eq , r) = subst (λ x → ansR c (World.answer w _ _ _ p) x) (just-inj (trans (sym eq) q))
+                                    (subst (λ hh → ansR c (World.answer w _ hh _ p) b) e r)
+  callStep {h} {h′} {o} {o′} {a} {a′} {kk} {kk′} c e ra k nothing q = no-answer (notEmpty? (ans o)) refl
     where
       just≢nothing : ∀ {A : Set} {x : A} → just x ≡ nothing → Data.Empty.⊥
       just≢nothing ()
-      no-answer : ∀ dec → notEmpty? (ans o′) ≡ dec
-                → StepLS (step (M.go (TT.answer ι h o a kk nothing)))
-                         (inj₁ (inj₂ (eventOf o′ a′ , after w h′ o′ a′ kk′ (notEmpty? (ans o′)))))
+      no-answer : ∀ dec → notEmpty? (ans o) ≡ dec
+                → StepLS (step (M.go (TT.answer ι h o′ a′ kk′ nothing)))
+                         (inj₁ (inj₂ (eventOf o a , after w h′ o a kk (notEmpty? (ans o)))))
       no-answer (yes p) d = ⊥-elim (just≢nothing (trans (sym (proj₁ (proj₂ (proj₂ (answered c ra h) p d)))) q))
       no-answer (no ¬p) d = ⊥-elim (¬p (proj₁ (answered c ra h)))
 
-  tls (afterR {o = o} {a = a} c e ra k ne hans (yes p) d) = blockLS (hist e (LTr.callEvent o a) (call-event c ra)) (k (hans p d))
+  tls (afterR {o′ = o′} {a′ = a′} c e ra k ne hans (yes p) d) = blockLS (hist e (LTr.callEvent o′ a′) (call-event c ra)) (k (hans p d))
   afterR c e ra k ne hans (no ¬p) d = ⊥-elim (¬p ne)
 
   haltR hh ra (yes p) = ⊥-elim (halt-void hh p)
   tls (haltR hh ra (no _)) = tls haltLS
 
-  observeLS : ∀ {h m m′} → T∞R R m m′ → TLS (trT∞ ι h m) (trace w (map toEvent h) m′)
-  tls (observeLS r) = blockLS refl (force∞ r)
+  observeLS : ∀ {h m m′} → RunR R m m′ → TLS (trT∞ ι h m′) (trace w (map toEvent h) m)
+  tls (observeLS r) = blockLS refl (forceR r)
 
   -- Related computations have the same trace.
-  observe-R : ∀ {h m m′} → T∞R R m m′ → trT∞ ι h m ≈ᵗ⟨ _≡_ ⟩ trace w (map toEvent h) m′
+  observe-R : ∀ {h m m′} → RunR R m m′ → trT∞ ι h m′ ≈ᵗ⟨ _≡_ ⟩ trace w (map toEvent h) m
   observe-R r = TLS⇒≈ (observeLS r)

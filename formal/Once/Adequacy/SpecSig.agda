@@ -3,15 +3,17 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.SpecCore.Sig — a Spec Interpretation, read as the compiler's,
--- agrees with itself (plan 0.121 §3.5).
+-- Once.Adequacy.SpecSig — a Spec Interpretation, read as the compiler's,
+-- agrees with itself (plan 0.121 §3.5; plan 0.122 §5.5: against the Spec's
+-- own meaning, over `SpecRun`).
 --
 -- `SpecInterp` reads a Spec Interpretation `J` of Σ as the compiler's: an
 -- implementation of `toISig Σ` (`toImpl`) and so an interpretation
--- (`toInterp`). Against it, the compiler's reference to a declaration means
--- the Spec's (`sig-G`, the hypothesis of `Program.teleR`), and its calls are
--- answered and observed as the Spec's (`agree`, the hypothesis of
--- `Observe.observe-R`).
+-- (`toInterp`). Against it, a reference to a declaration of Σ — the Spec's
+-- meaning: the world's model, or the Spec's call — is related to the source
+-- semantics' contract computation (`sig-SD`), and the calls are answered and
+-- observed as the Spec's (`agree`, the hypothesis of
+-- `SpecObserve.observe-R`).
 --
 -- The compiler finds a declaration by its RENDERED name (`showCanonical`); the
 -- reading is the declaration's when no two of Σ's declarations render alike
@@ -24,11 +26,12 @@ open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
+open import Once.Spec.Type using (TySub)
 import Once.Spec.Observation as Obs
 
-module Once.Adequacy.SpecCore.Sig
+module Once.Adequacy.SpecSig
   (Σ : Signature) (wf : WellFormed Σ) (J : Obs.Interp Σ)
-  (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ)) (fmt : TargetNum) where
+  (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ)) (fmt : TargetNum) (σ₀ : TySub 0 0) where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using ([]; _∷_)
@@ -44,7 +47,6 @@ open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 import Once.Internal.Type as T
@@ -52,8 +54,6 @@ import Once.Spec.Type as T
 import Once.Spec.Grade as G
 import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as LW
-import Once.Internal.Type.Honest as LH
-import Once.Internal.GradedOps as LOps
 import Once.Internal.Trace as LTr
 open import Once.Internal.Event using (SigOpEvent; toEvent; baseOf; valOf)
 open import Once.Internal.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf; valueOf-at; _∈K?_; Impl)
@@ -69,14 +69,29 @@ import Once.Spec.Core.Meaning as SM
 open Obs Σ using (Model; World; module Model; module World)
 import Once.Adequacy.SpecInterp as SI
 open SI using (declTy; ⌞_⌟; qL; toImpl; toInterp)
-open import Once.Internal.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete)
-open import Once.Adequacy.SpecCore.Index
-open import Once.Adequacy.SpecCore.Value Σ
-open import Once.Adequacy.SpecCore.Observe Σ using (Agree)
-import Once.Adequacy.SpecCore.Program as PG
-import Once.Adequacy.SpecCore.Cases as Cases
+open import Once.Internal.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete; ⌜⌝-base; declS; ⌜declS⌝)
+open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Internal.Weaken using (wk₀-id)
+open import Once.Functor.Translate using (IsConcrete-irrelevant)
+open import Once.Denotation.SpecDomain Σ σ₀ using (⟦wk₀⟧ᵛ)
+open import Relation.Binary.PropositionalEquality using (subst-∘; subst-subst)
+open import Once.Adequacy.SpecRun Σ using (CallR; cr; HaltR; hr; argR; ansR; RunR; forceR; BlockR; ret; call; halt; SumR; left; right; return∞-R)
+open import Once.Adequacy.SpecObserve Σ using (Agree)
+open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGV; RelGM)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ)
+open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-embed)
+open import Once.Denotation.TraceMonadLaws using (RelT′-refl)
+open import Once.Internal.Iterative using (embed; return∞)
+import Once.Denotation.SourceDenote as SDn
+open import Once.Denotation.DenotTrace using (sigOpT; module CallEnv)
+open import Once.Arith.SigOp.Builders using (value-info; arrow-info; arrow-sem-eff)
+open import Once.SigOp.Info using (mk-info')
 
 private
+  SD⟦⟧ : T.Type → Set
+  SD⟦⟧ X = SD.⟦ X ST.⟨ σ₀ ⟩ ⟧ᵛ
+
   sname : Decl → String
   sname d = showCanonical (Decl.name d)
 
@@ -141,32 +156,6 @@ base-of (a S.+ b) _ = cong₂ S._+_ (base-of a _) (base-of b _)
 ⌞⌟-unit S.float ()
 ⌞⌟-unit (a S.* b) ()
 ⌞⌟-unit (a S.+ b) ()
-
--- A base value, read into the compiler's graded domain and into the Spec's.
-module _ {m} (σ′ : ST.TySub m 0) where
-
-  base-R : ∀ b (ib : LW.IsBaseType ⌞ b ⌟) (g : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) (v : S.⟦ b ⟧ᵇ)
-         → ValR g (LOps.injB ib (SI.fromB b v)) (SD.fromB σ′ b v)
-  base-R S.unit  LW.base-Unit  g-unit  v = tt
-  base-R S.void  LW.base-Void  g-void  v = tt
-  base-R S.int   LW.base-Int   g-int   v = refl
-  base-R S.float LW.base-Float g-float v = refl
-  base-R (a S.* b) (LW.base-Prod ia ib) (g-* ga gb) (x , y) = base-R a ia ga x , base-R b ib gb y
-  base-R (a S.+ b) (LW.base-Sum ia ib) (g-+ ga gb) (inj₁ x) = base-R a ia ga x
-  base-R (a S.+ b) (LW.base-Sum ia ib) (g-+ ga gb) (inj₂ y) = base-R b ib gb y
-
-  toB-R : ∀ b (ib : LW.IsBaseType ⌞ b ⌟) (g : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y}
-        → ValR g x y → SI.toB b (LOps.prjB ib x) ≡ SD.toB σ′ b y
-  toB-R S.unit  LW.base-Unit  g-unit  r = refl
-  toB-R S.void  LW.base-Void  g-void  {()} r
-  toB-R S.int   LW.base-Int   g-int   r = r
-  toB-R S.float LW.base-Float g-float r = r
-  toB-R (a S.* b) (LW.base-Prod ia ib) (g-* ga gb) {_ , _} {_ , _} (r , r′) =
-    cong₂ _,_ (toB-R a ia ga r) (toB-R b ib gb r′)
-  toB-R (a S.+ b) (LW.base-Sum ia ib) (g-+ ga gb) {inj₁ _} {inj₁ _} r = cong inj₁ (toB-R a ia ga r)
-  toB-R (a S.+ b) (LW.base-Sum ia ib) (g-+ ga gb) {inj₂ _} {inj₂ _} r = cong inj₂ (toB-R b ib gb r)
-  toB-R (a S.+ b) (LW.base-Sum ia ib) (g-+ ga gb) {inj₁ _} {inj₂ _} ()
-  toB-R (a S.+ b) (LW.base-Sum ia ib) (g-+ ga gb) {inj₂ _} {inj₁ _} ()
 
 -- An event, read as the Spec's, at a declaration's argument type.
 private
@@ -287,10 +276,6 @@ ans-op {h} (ag m′ ne) m e p d x = ao (one-decl uniq m′ m (cong kname e)) e x
     ao {a = a} {q = q} {b = b} {m = m} {ne = ne} refl refl x p d′ =
       cong (λ dd → SI.fromB b (SI.answerAt-dec Σ J (op m) (map toEvent h) (SI.toB (argAt q a) x) dd ne)) d′
 
-------------------------------------------------------------------------
--- The declarations: the compiler's reference means the Spec's
-------------------------------------------------------------------------
-
 private
   -- a constant's type is a base type
   const-k : ∀ b (k : LW.IsConcrete ⌞ b ⌟) → Σ[ ib ∈ LW.IsBaseType ⌞ b ⌟ ] (k ≡ LW.con-base ib)
@@ -320,71 +305,130 @@ private
   ne-void : ∀ {b} → NotEmpty b → b ≢ S.void
   ne-void ne refl = ne
 
-module _ {s₀} (S₀ : SC.Defs s₀) {m} (σ′ : ST.TySub m 0) where
+------------------------------------------------------------------------
+-- Base values: the Spec's against the implementation's
+------------------------------------------------------------------------
+
+fromB-R : ∀ b (v : S.⟦ b ⟧ᵇ) → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b v) (injectᵇ (⌜⌝-base b) (SI.fromB b v))
+fromB-R S.unit  v = tt
+fromB-R S.void  ()
+fromB-R S.int   v = refl
+fromB-R S.float v = refl
+fromB-R (a S.* b) (x , y)  = fromB-R a x , fromB-R b y
+fromB-R (a S.+ b) (inj₁ x) = fromB-R a x
+fromB-R (a S.+ b) (inj₂ y) = fromB-R b y
+
+toB-R : ∀ b {x y} → RelGV (S.⌜ b ⌝) x y → SI.toB b (forgetᵇ (⌜⌝-base b) y) ≡ SD.toB σ₀ b x
+toB-R S.unit  r = refl
+toB-R S.void  {()}
+toB-R S.int   r = sym r
+toB-R S.float r = sym r
+toB-R (a S.* b) {_ , _} {_ , _} (r , r′) = cong₂ _,_ (toB-R a r) (toB-R b r′)
+toB-R (a S.+ b) {inj₁ _} {inj₁ _} r = cong inj₁ (toB-R a r)
+toB-R (a S.+ b) {inj₂ _} {inj₂ _} r = cong inj₂ (toB-R b r)
+
+-- The implementation's closures over first-order values are related to
+-- themselves.
+private
+  emb-self : ∀ {C} (bC : LW.IsBaseType C) (t : LTr.T M.⟦ C ⟧) → RelS (RelD C) (embed (LTr.fmapT (injectᵇ bC) t)) (embed (LTr.fmapT (injectᵇ bC) t))
+  emb-self bC t = RelS-embed (RelT′-refl (base-refl bC) (LTr.fmapT (injectᵇ bC) t))
+
+  ptr-self : ∀ {Dom Cod} (bDom : LW.IsBaseType Dom) (bCod : LW.IsBaseType Cod) (f : M.⟦ Dom ⟧ → LTr.T M.⟦ Cod ⟧)
+               {a a′ : ⟦ Dom ⟧ᴰ} → RelD Dom a a′
+           → RelS (RelD Cod) (embed (LTr.fmapT (injectᵇ bCod) (f (forgetᵇ bDom a)))) (embed (LTr.fmapT (injectᵇ bCod) (f (forgetᵇ bDom a′))))
+  ptr-self bDom bCod f {a} r with base-eq bDom r
+  ... | refl = emb-self bCod (f (forgetᵇ bDom a))
+
+------------------------------------------------------------------------
+-- The declarations: the Spec's reference against the source's contract
+------------------------------------------------------------------------
+
+private
+  ι′ : LTr.Interp
+  ι′ = toInterp Σ wf J
+
+-- A value read from the world's pure half, at a key the signature provides.
+val-R : ∀ (ψ : LTr.FFIAnswers) → ψ ≡ LTr.pureHalf ι′ → ∀ {D : T.Type} (c : _) b (x : M.⟦ D ⟧) (v : S.⟦ b ⟧ᵇ)
+      → key (showCanonical c) D ⌞ b ⌟ ∈ valueKeys (toISig Σ)
+      → (∀ p₀ → LTr.pure ι′ (key (showCanonical c) D ⌞ b ⌟) p₀ x ≡ SI.fromB b v)
+      → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b v) (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (ψ c D ⌞ b ⌟ x))))
+val-R ψ refl {D} c b x v p h = go (key (showCanonical c) D ⌞ b ⌟ ∈K? valueKeys (toISig Σ))
+  where
+    go : (d : Dec (key (showCanonical c) D ⌞ b ⌟ ∈ valueKeys (toISig Σ)))
+       → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b v)
+               (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (LTr.pureHalf-at ι′ (key (showCanonical c) D ⌞ b ⌟) d x))))
+    forceR (go (yes p₀)) = ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b v) (injectᵇ (⌜⌝-base b) z)) (sym (h p₀)) (fromB-R b v)))
+    go (no ¬p) = ⊥-elim (¬p p)
+
+module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SDn.DefsSem.calls σ) ≡ LTr.pureHalf ι′) where
 
   private
-    -- an operation's call, by the form its answer type decides (an argument
-    -- used zero times is `unit`, `argAt`)
-    sig-halt : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
-               (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → SI.toB (argAt q a) x ≡ y
-             → b ≡ S.void → (e : ⌞ b ⌟ ≡ T.Void) → ∀ du
-             → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom (yes e) du x))
-                            (SE.performT (S.call (op M) y (SD.fromB σ′ b)))
-    sig-halt M bDom bCod gb ra refl refl du = halt (hr M) ra
+    ψ = CallEnv.ffiE (SDn.DefsSem.calls σ)
 
-    sig-unit : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
-               (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → SI.toB (argAt q a) x ≡ y
-             → (¬v : ¬ (⌞ b ⌟ ≡ T.Void)) → b ≡ S.unit → (e : ⌞ b ⌟ ≡ T.Unit)
-             → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom (no ¬v) (yes e) x))
-                            (SE.performT (S.call (op M) y (SD.fromB σ′ b)))
-    sig-unit M bDom bCod gb ra ¬v refl refl =
-      call (cr M tt) ra (λ {v} {v′} _ → ret (base-R σ′ S.unit bCod gb v′))
-
-    sig-op : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) (bCod : LW.IsBaseType ⌞ b ⌟)
-             (gb : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) {x y} → SI.toB (argAt q a) x ≡ y
-           → ∀ dv du
-           → TR (ValR gb) (LTr.fmapT (LOps.injB bCod) (LOps.opCallᵀ c bDom dv du x))
-                          (SE.performT (S.call (op M) y (SD.fromB σ′ b)))
-    sig-op {b = b} M bDom bCod gb ra (yes e) du      = sig-halt M bDom bCod gb ra (⌞⌟-void b e) e du
-    sig-op {b = b} M bDom bCod gb ra (no ¬v) (yes e) = sig-unit M bDom bCod gb ra ¬v (⌞⌟-unit b e) e
-    sig-op {b = b} M bDom bCod gb ra (no ¬v) (no ¬u) =
+    -- an operation's call, by the form its answer type decides
+    op-R : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) {x y}
+         → SI.toB (argAt q a) x ≡ y → ∀ dv du
+         → RunR (RelGV (S.⌜ b ⌝)) (SE.embed (SE.performT (S.call (op M) y (SD.fromB σ₀ b))))
+                (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (sigOpT fmt ψ (mk-info' c (arrow-sem-eff dv du) bDom (⌜⌝-base b)) x)))
+    forceR (op-R {b = b} M bDom ra (yes e) du) with ⌞⌟-void b e
+    ... | refl with e
+    ...   | refl = halt (hr M) ra
+    forceR (op-R {b = b} M bDom ra (no ¬v) (yes e)) with ⌞⌟-unit b e
+    ... | refl with e
+    ...   | refl = call (cr M tt) ra (λ {v} {v′} _ → ret (left tt))
+    forceR (op-R {b = b} M bDom ra (no ¬v) (no ¬u)) =
       call (cr M (data-ne b (wf-at wf M) ¬v ¬u)) ra
-           (λ {v} {v′} e → ret (subst (λ z → ValR gb (LOps.injB bCod z) (SD.fromB σ′ b v′)) (sym e) (base-R σ′ b bCod gb v′)))
+           (λ {v} {v′} e → ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b v) (injectᵇ (⌜⌝-base b) z)) (sym e) (fromB-R b v))))
 
   -- At each form of declaration.
-  sig-t : ∀ {c} t (k : LW.IsConcrete (declTy t)) (mem : (showCanonical c , declTy t) ∈ toISig Σ)
-          (gs : GR (declTy t) (⌜ t ⌝ᵈ ST.⟨ σ′ ⟩)) (M : (c ∶ t) ∈ Σ)
-        → ValR gs (LOps.sigOpRefᵛ fmt (toISig Σ) I c k mem) (SM.sigopᵛ Σ fmt S₀ σ′ c t M mo)
-  sig-c : ∀ {c} b (k : LW.IsConcrete ⌞ b ⌟) → Σ[ ib ∈ LW.IsBaseType ⌞ b ⌟ ] (k ≡ LW.con-base ib)
-        → (mem : (showCanonical c , ⌞ b ⌟) ∈ toISig Σ) (gs : GR ⌞ b ⌟ (S.⌜ b ⌝ ST.⟨ σ′ ⟩)) (M : (c ∶ constant b) ∈ Σ)
-        → ValR gs (LOps.sigOpRefᵛ fmt (toISig Σ) I c k mem) (SM.sigopᵛ Σ fmt S₀ σ′ c (constant b) M mo)
-  sig-c b .(LW.con-base ib) (ib , refl) mem gs M =
-    subst (λ v → ValR gs (LOps.injB ib v) (SD.fromB σ′ b (Model.constantᵐ mo M))) (sym (read-const M (_ ∈K? valueKeys (toISig Σ)))) (base-R σ′ b ib gs _)
+  sig-SD : ∀ {c} t (M : (c ∶ t) ∈ Σ)
+         → RelGM G.pure ⌜ t ⌝ᵈ (SM.sigopᵛ Σ fmt S₀ σ₀ c t M mo) (SDn.sigOpSem ⌜ t ⌝ᵈ c (⌜⌝ᵈ-concrete t) fmt σ)
+  sig-SD {c} (constant S.unit) M = val-R ψ eψ c S.unit  tt (Model.constantᵐ mo M) (value-∈ (∈-toISig M) (base-contract (showCanonical c) (⌜⌝-base S.unit)))  (λ p₀ → read-const M {p₀} (yes p₀))
+  sig-SD {c} (constant S.void) M = val-R ψ eψ c S.void  tt (Model.constantᵐ mo M) (value-∈ (∈-toISig M) (base-contract (showCanonical c) (⌜⌝-base S.void)))  (λ p₀ → read-const M {p₀} (yes p₀))
+  sig-SD {c} (constant S.int) M = val-R ψ eψ c S.int   tt (Model.constantᵐ mo M) (value-∈ (∈-toISig M) (base-contract (showCanonical c) (⌜⌝-base S.int)))   (λ p₀ → read-const M {p₀} (yes p₀))
+  sig-SD {c} (constant S.float) M = val-R ψ eψ c S.float tt (Model.constantᵐ mo M) (value-∈ (∈-toISig M) (base-contract (showCanonical c) (⌜⌝-base S.float))) (λ p₀ → read-const M {p₀} (yes p₀))
+  sig-SD {c} (constant (a S.* b)) M = val-R ψ eψ c (a S.* b) tt (Model.constantᵐ mo M) (value-∈ (∈-toISig M) (base-contract (showCanonical c) (⌜⌝-base (a S.* b)))) (λ p₀ → read-const M {p₀} (yes p₀))
+  sig-SD {c} (constant (a S.+ b)) M = val-R ψ eψ c (a S.+ b) tt (Model.constantᵐ mo M) (value-∈ (∈-toISig M) (base-contract (showCanonical c) (⌜⌝-base (a S.+ b)))) (λ p₀ → read-const M {p₀} (yes p₀))
+  sig-SD {c} (value a SG.Zero b) M =
+    return∞-R ( val-R ψ eψ c b tt (Model.valueᵐ mo M tt) (value-∈ (∈-toISig M) refl) (λ p₀ → read-value M {p₀} (yes p₀) tt)
+              , emb-self (⌜⌝-base b) (LTr.resT (ψ c LW.Unit ⌞ b ⌟ tt)) )
+  sig-SD {c} (value a SG.One b) M =
+    return∞-R ( (λ {x} {y} r → val-R ψ eψ c b (forgetᵇ (⌜⌝-base a) y) (Model.valueᵐ mo M (SD.toB σ₀ a x)) (value-∈ (∈-toISig M) refl)
+                                 (λ p₀ → trans (read-value M {p₀} (yes p₀) (forgetᵇ (⌜⌝-base a) y))
+                                               (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R a r))))
+              , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.One G.pure) c (⌜⌝-base a) (⌜⌝-base b)) x) )
+  sig-SD {c} (value a SG.Many b) M =
+    return∞-R ( (λ {x} {y} r → val-R ψ eψ c b (forgetᵇ (⌜⌝-base a) y) (Model.valueᵐ mo M (SD.toB σ₀ a x)) (value-∈ (∈-toISig M) refl)
+                                 (λ p₀ → trans (read-value M {p₀} (yes p₀) (forgetᵇ (⌜⌝-base a) y))
+                                               (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R a r))))
+              , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.Many G.pure) c (⌜⌝-base a) (⌜⌝-base b)) x) )
+  sig-SD {c} (operation a SG.Zero b) M =
+    return∞-R ( op-R M LW.base-Unit refl (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
+              , emb-self (⌜⌝-base b) (sigOpT fmt ψ (arrow-info (G.mk-kind SG.Zero G.act) c LW.base-Unit (⌜⌝-base b)) tt) )
+  sig-SD {c} (operation a SG.One b) M =
+    return∞-R ( (λ {x} {y} r → op-R M (⌜⌝-base a) (toB-R a r) (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟))
+              , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.One G.act) c (⌜⌝-base a) (⌜⌝-base b)) x) )
+  sig-SD {c} (operation a SG.Many b) M =
+    return∞-R ( (λ {x} {y} r → op-R M (⌜⌝-base a) (toB-R a r) (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟))
+              , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.Many G.act) c (⌜⌝-base a) (⌜⌝-base b)) x) )
 
-  sig-t (constant b) k mem gs M = sig-c b k (const-k b k) mem gs M
-  sig-t (value a SG.Zero b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M =
-    subst (λ v → ValR gb (LOps.injB bCod v) (SD.fromB σ′ b (Model.valueᵐ mo M tt))) (sym (read-value M (_ ∈K? valueKeys (toISig Σ)) tt)) (base-R σ′ b bCod gb _)
-  sig-t (value a SG.One b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
-    subst (λ v → ValR gb (LOps.injB bCod v) (SD.fromB σ′ b (Model.valueᵐ mo M (SD.toB σ′ a y))))
-          (sym (trans (read-value M (_ ∈K? valueKeys (toISig Σ)) (LOps.prjB bDom x)) (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R σ′ a bDom ga r))))
-          (base-R σ′ b bCod gb _)
-  sig-t (value a SG.Many b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
-    subst (λ v → ValR gb (LOps.injB bCod v) (SD.fromB σ′ b (Model.valueᵐ mo M (SD.toB σ′ a y))))
-          (sym (trans (read-value M (_ ∈K? valueKeys (toISig Σ)) (LOps.prjB bDom x)) (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R σ′ a bDom ga r))))
-          (base-R σ′ b bCod gb _)
-  sig-t (value a q b) (LW.con-base ()) mem gs M
-  sig-t (operation a SG.Zero b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M =
-    sig-op M LW.base-Unit bCod gb refl (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
-  sig-t (operation a SG.One b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
-    sig-op M bDom bCod gb (toB-R σ′ a bDom ga r) (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
-  sig-t (operation a SG.Many b) (LW.con-fun bDom bCod) mem (g-⇒ ga gb) M {x} {y} r =
-    sig-op M bDom bCod gb (toB-R σ′ a bDom ga r) (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
-  sig-t (operation a q b) (LW.con-base ()) mem gs M
+  -- …and at the type the surface reads the declaration at: its honest FFI
+  -- type, through the declaration's code (`⌜declS⌝`) and the ground index
+  -- (`wk₀`).
+  private
+    at-type : ∀ {X Y : T.Type} (e : X ≡ Y) {c} (kX : LW.IsConcrete X) (kY : LW.IsConcrete Y) {v}
+            → RelGM G.pure X v (SDn.sigOpSem X c kX fmt σ)
+            → RelGM G.pure Y (subst SD⟦⟧ e v) (SDn.sigOpSem Y c kY fmt σ)
+    at-type refl kX kY r rewrite IsConcrete-irrelevant kX kY = r
 
--- The compiler's implementation and the Spec's model agree on every
--- declaration of Σ (`Program.SigG`).
-sig-G : PG.SigG Σ fmt I mo
-sig-G S₀ σ {c} {t} mem = sig-t S₀ σ t (⌜⌝ᵈ-concrete t) (∈-toISig mem) (Cases.gS Σ S₀ fmt σ t) mem
+  sig-rel : ∀ {T : T.Type} (k : LW.IsConcrete T) (h : HonestFFI T) {c} (M : (c ∶ declS T) ∈ Σ)
+          → RelGM G.pure T (subst (λ X → X) (⟦wk₀⟧ᵛ T) (subst SD⟦⟧ (⌜declS⌝ k h) (SM.sigopᵛ Σ fmt S₀ σ₀ c (declS T) M mo)))
+                           (SDn.sigOpSem T c k fmt σ)
+  sig-rel {T} k h {c} M =
+    subst (λ z → RelGM G.pure T z (SDn.sigOpSem T c k fmt σ))
+          (sym (trans (sym (subst-∘ {P = λ (X : Set) → X} {f = SD⟦⟧} (wk₀-id T)))
+                      (subst-subst {P = SD⟦⟧} (⌜declS⌝ k h) {y≡z = wk₀-id T})))
+          (at-type (trans (⌜declS⌝ k h) (wk₀-id T)) (⌜⌝ᵈ-concrete (declS T)) k (sig-SD (declS T) M))
 
 ------------------------------------------------------------------------
 -- The calls: answered and observed alike
@@ -436,9 +480,10 @@ private
 -- related call (`Observe.Agree`).
 agree : Agree ι w
 agree = record
-  { answered   = λ { (cr {a = a} {q} {b} {bA} M ne) {x} {y} ra h →
+  { answered   = λ { (cr {a = a} {q} {b} {bA} M ne) {y} {x} ra h →
                      ne , λ p d → ans-at {bA = bA} M ne ra h p d (T.isUnit? ⌞ b ⌟) (key _ ⌞ argAt q a ⌟ ⌞ b ⌟ ∈K? answerKeys (toISig Σ)) }
   ; call-event = λ { (cr {a = a} {q} M ne) ra → ev-eq (argAt q a) _ ra }
   ; halt-event = λ { (hr {a = a} {q} M) ra → ev-eq (argAt q a) _ ra }
   ; halt-void  = λ { (hr M) () }
   }
+

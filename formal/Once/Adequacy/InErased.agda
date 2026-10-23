@@ -44,7 +44,7 @@ open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
 open import Once.Internal.Iterative using (T∞; return∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
-open import Once.Denotation.Meaning using (in-value)
+open import Once.Denotation.MeaningD using (in-value)
 open import Once.Adequacy.CataErased fmt ρ using (evalᴰ-subst-dom)
 open import Once.Adequacy.AnaErased fmt ρ using (coerce-νin-erase-D; subst-T-return∞)
 import Once.IR as IR

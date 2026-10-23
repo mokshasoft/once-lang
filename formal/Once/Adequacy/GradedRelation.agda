@@ -1,61 +1,95 @@
+{-# OPTIONS --guardedness #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.GradedRelation — the logical relation between the GRADED Spec
--- meaning (`⟦_⟧ᵛ`, D250) and the purity-blind Kleisli implementation meaning
--- (`⟦_⟧ᴰ`, SD and the IR's `evalᴰ`). Plan 0.104 A.6.
+-- Once.Adequacy.GradedRelation — the logical relation between the Spec's
+-- meaning (`Spec.Domain Σ`, graded by `Spec.Effect Σ`) and the purity-blind
+-- Kleisli implementation meaning (`⟦_⟧ᴰ`, SD and the IR's `evalᴰ`). Plan
+-- 0.104 A.6; plan 0.122 §5.5 M1: against the Spec's own domain.
 --
--- `MeaningRelation` relates two Kleisli meanings and stays for the SD/IR
--- modules. This one is HETEROGENEOUS: the two sides are different sets at a
--- pure arrow (a total function against a Kleisli one) and at a pure ν (plain
--- codata against a suspension of computations). A pure value is related to a
--- Kleisli computation when the computation emits nothing and returns a related
--- value — `RelGM pure B v m = RelS (RelGV B) (return∞ v) m`. Plan 0.119 D5: the
--- implementation side is a `T∞` run (the IR is ungraded), so every grade's
--- meaning is compared, after its lift into `T∞` (`toT∞`), step for step
--- (`RelS`); the streams likewise, coinductively.
+-- HETEROGENEOUS: the two sides are different sets at a pure arrow (a total
+-- function against a Kleisli one), at `μ` (the Spec's polynomial data against
+-- the machine's, layer by layer) and at `ν` (the Spec's streams against
+-- suspensions of runs). A Spec computation at grade `π` is compared with the
+-- implementation's run after its lift into `T∞` (`toT∞`), step for step, a
+-- call of Σ's declaration against the implementation's call of its name
+-- (`SpecRun`). The implementation's closure is also related to itself
+-- (`RelD`) — the PER condition (plan 0.119 D5).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Type using (KCtx; Base)
-open import Once.Spec.Type using (var; b-var; Ty)
-open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Signature using (Signature)
 
-module Once.Adequacy.GradedRelation (fmt : TargetNum) where
+open import Once.Spec.Type using (TySub)
 
-open import Data.Product using (_×_; _,_)
+module Once.Adequacy.GradedRelation (Σ : Signature) (σ : TySub 0 0) where
+
+open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
+open import Once.Denotation.PureBind using (_>>=ᵖ_; >>=ᵖ-β)
 
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
-open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Spec.Type using (μ; ν)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
-import Once.Semantics.Machine as Val
-open import Once.Internal.GradedOps using (fmapM; prjB; injB; embνᵃ; mapEmbνᵃ)
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Internal.Trace using (T; ret; returnT; _>>=T_; fmapT; RelT′; rel-ret)
-open import Once.Internal.Stream using (νᵈ; module νᵈ)
+open import Once.Spec.Type using (_⟨_⟩; _⟨_⟩F; Type; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Word using (Carrier)
+import Once.Internal.Polynomial as LPoly
+import Once.Spec.Polynomial as SPoly
+open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+import Once.Internal.Trace as LTr
+open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
+import Once.Internal.Iterative as LI
 open import Once.Internal.StreamInf using (νᴵ; module νᴵ)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forgetᵇ; injectᵇ)
-open νᵈ using (forceᵈ)
 open νᴵ using (forceᴵ)
-open import Once.Internal.Graded using (M; ⟦_⟧ᵛ; νᵖ; bindM; returnM; _>>=ᵖ_; toT∞)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; TreeEq∞; BlockEq; ret≈; StepEq; done≈)
-open TreeEq∞ using (force≈)
-open Once.Internal.Iterative.T∞ using (force)
-open import Once.Denotation.TraceMonadInfLaws
-  using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; relS-ret; RelS-bind; RelS-≈ˡ; embed-bind)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
-open import Once.Denotation.GradedDomainLaws using (>>=ᵖ-β)
-open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel; RelS-mono)
-open import Once.Denotation.ValueRelPER using (RelD-sym; RelD-trans; RelD-leftself; RelD-rightself; RelS-meet)
-open StreamRel using (forceR)
-open Once.Internal.Graded.νᵖ using (forceᵖ)
+open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel)
+open import Once.Denotation.ValueRelPER using (RelD-leftself)
+open StreamRel using () renaming (forceR to forceSR)
+import Once.Spec.Effect Σ as SE
+open SE.νM using (outν)
+import Once.Spec.Domain Σ as SD
+open import Once.Internal.Type using (wk₀)
+open import Once.Internal.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
+open import Once.Denotation.SpecDomain Σ σ using (⟦wk₀⟧ᵛ)
+open import Once.Adequacy.SpecRun Σ public
+  using (RunR; forceR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-R; embed-bind-R; bindT-R; mapT-R; BlockR-mono; RunR-mono; CallR; cr)
+import Once.Adequacy.SpecInterp as SI
+
+------------------------------------------------------------------------
+-- Layers and data: a functor's constant (a base value) the same on both
+-- sides, its recursive positions related.
+------------------------------------------------------------------------
+
+BR : (A : Type) → SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ Carrier , Carrier ⟧-base A → Set
+BR Unit    _ _ = ⊤
+BR Void    () _
+BR Int     x y = x ≡ y
+BR Float   x y = x ≡ y
+BR (A * B) (x , x′) (y , y′) = BR A x y × BR B x′ y′
+BR (A + B) (inj₁ x) (inj₁ y) = BR A x y
+BR (A + B) (inj₂ x) (inj₂ y) = BR B x y
+BR (A + B) (inj₁ _) (inj₂ _) = ⊥
+BR (A + B) (inj₂ _) (inj₁ _) = ⊥
+BR (_ ⇒[ _ ] _) _ _ = ⊤
+BR (μ _)   _ _ = ⊤
+BR (ν _ _) _ _ = ⊤
+
+LayerR : ∀ (F : Fun 0) {X Y : Set} → (X → Y → Set)
+       → SPoly.⟦ SD.code (F ⟨ σ ⟩F) ⟧SF X → LPoly.⟦ translateF Carrier Carrier F ⟧SF Y → Set
+LayerR (K A)   R x y = BR A x y
+LayerR Id      R x y = R x y
+LayerR (F ⊕ G) R (inj₁ x) (inj₁ y) = LayerR F R x y
+LayerR (F ⊕ G) R (inj₂ x) (inj₂ y) = LayerR G R x y
+LayerR (F ⊕ G) R (inj₁ _) (inj₂ _) = ⊥
+LayerR (F ⊕ G) R (inj₂ _) (inj₁ _) = ⊥
+LayerR (F ⊗ G) R (x , x′) (y , y′) = LayerR F R x y × LayerR G R x′ y′
+
+data μR (F : Fun 0) : SPoly.μS (SD.code (F ⟨ σ ⟩F)) → LPoly.μS (translateF Carrier Carrier F) → Set where
+  inR : ∀ {x y} → LayerR F (μR F) x y → μR F (SPoly.inS x) LPoly.⟨ y ⟩
 
 ------------------------------------------------------------------------
 -- Codata: the Spec's streams against the IR's (whose layers are `T∞` runs).
@@ -63,45 +97,44 @@ open Once.Internal.Graded.νᵖ using (forceᵖ)
 
 -- A pure stream's layer is there at once: the IR's force returns a related
 -- layer, silently.
-record _∼ᵖᵈ_ {F : SFunctor} (x : νᵖ F) (y : νᴵ F) : Set where
+record _∼ᵖᵈ_ {F : Fun 0} (x : SE.νM pureᶠ (SD.code (F ⟨ σ ⟩F))) (y : νᴵ (translateF Carrier Carrier F)) : Set where
   coinductive
   field
-    force-∼ᵖᵈ : RelS (⟦ F ⟧SF-rel (_∼ᵖᵈ_ {F})) (return∞ (forceᵖ x)) (forceᴵ y)
+    force-∼ᵖᵈ : RunR (LayerR F (_∼ᵖᵈ_ {F})) (SE.return∞ (outν x)) (forceᴵ y)
 
-open _∼ᵖᵈ_
+open _∼ᵖᵈ_ public
 
 -- An `act` stream's layer is a finite block: the IR's force makes the same
 -- calls, step for step, ending in a related layer.
-record _∼ᵈ_ {F : SFunctor} (x : νᵈ F) (y : νᴵ F) : Set where
+record _∼ᵈ_ {F : Fun 0} (x : SE.νM actᶠ (SD.code (F ⟨ σ ⟩F))) (y : νᴵ (translateF Carrier Carrier F)) : Set where
   coinductive
   field
-    force-∼ : RelS (⟦ F ⟧SF-rel (_∼ᵈ_ {F})) (embed (forceᵈ x)) (forceᴵ y)
+    force-∼ : RunR (LayerR F (_∼ᵈ_ {F})) (SE.embed (outν x)) (forceᴵ y)
 
-open _∼ᵈ_
+open _∼ᵈ_ public
 
 ------------------------------------------------------------------------
 -- The relation, by recursion on the type.
 ------------------------------------------------------------------------
 
-RelGV : ∀ {m} (A : Ty m) → ⟦ A ⟧ᵛ → ⟦ A ⟧ᴰ → Set
+RelGV : (A : Type) → SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ A ⟧ᴰ → Set
 
 -- A grade-`π` Spec meaning against the IR's run: its lift into `T∞`, step for
 -- step.
-RelGM : ∀ {m} (π : Purity) (A : Ty m) → M π ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
-RelGM π A m t = RelS (RelGV A) (toT∞ π m) t
+RelGM : (π : Purity) (A : Type) → SE.M π SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
+RelGM π A m t = RunR (RelGV A) (SE.toT∞ π m) t
 
 -- A finite block against the IR's run.
-RelGT : ∀ {m} (A : Ty m) → T ⟦ A ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
+RelGT : (A : Type) → SE.T SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → T∞ ⟦ A ⟧ᴰ → Set
 RelGT A t₁ t₂ = RelGM act A t₁ t₂
 
 RelGV Unit        _ _ = ⊤
 RelGV Void        () _
 RelGV Int         x y = x ≡ y
 RelGV Float       x y = x ≡ y
-RelGV (μ F)  x y = x ≡ y
+RelGV (μ F)       x y = μR F x y
 RelGV (ν F pureᶠ) x y = x ∼ᵖᵈ y
 RelGV (ν F actᶠ)  x y = x ∼ᵈ y
-RelGV (var _) () _
 RelGV (A * B) (a₁ , b₁) (a₂ , b₂) = RelGV A a₁ a₂ × RelGV B b₁ b₂
 RelGV (A + B) (inj₁ a₁) (inj₁ a₂) = RelGV A a₁ a₂
 RelGV (A + B) (inj₂ b₁) (inj₂ b₂) = RelGV B b₁ b₂
@@ -111,254 +144,240 @@ RelGV (A + B) (inj₂ _)  (inj₁ _)  = ⊥
 -- arrow's Kleisli twin must answer silently with a related value. The
 -- implementation's closure is also related to itself (`RelD`): an
 -- implementation related to it (the IR, which `faithful` relates to the
--- source) then inherits the relation (`GV-D`) — the standard PER condition
--- (plan 0.119 D5).
+-- source) then inherits the relation (`GV-D`).
 RelGV (A ⇒[ mk-kind Zero π ] B) f g = RelGM π B (f tt) (g tt) × RelD (A ⇒[ mk-kind Zero π ] B) g g
 RelGV (A ⇒[ mk-kind One  π ] B) f g = (∀ {a b} → RelGV A a b → RelGM π B (f a) (g b)) × RelD (A ⇒[ mk-kind One π ] B) g g
 RelGV (A ⇒[ mk-kind Many π ] B) f g = (∀ {a b} → RelGV A a b → RelGM π B (f a) (g b)) × RelD (A ⇒[ mk-kind Many π ] B) g g
 
 ------------------------------------------------------------------------
--- The monad lemmas.
+-- The monad lemmas, at any relation of the results (`RelM`), and at the
+-- relation of a type (`RelGM`).
 ------------------------------------------------------------------------
 
-private
-  -- Runs with the same first block relate to the same runs.
-  sameˡ : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {n : T∞ Y} → force m ≡ force m′ → RelS R m′ n → RelS R m n
-  forceS (sameˡ e r) = subst (λ b → RelSB _ b _) (sym e) (forceS r)
+RelM : ∀ (π : Purity) {X Y : Set} → (X → Y → Set) → SE.M π X → T∞ Y → Set
+RelM π R m t = RunR R (SE.toT∞ π m) t
 
-  ret≈ˡ : ∀ {X} {x y : X} → x ≡ y → TreeEq∞ _≡_ (return∞ x) (return∞ y)
-  force≈ (ret≈ˡ e) = ret≈ (done≈ e)
+RelM-return : ∀ π {X Y : Set} {R : X → Y → Set} {x y} → R x y → RelM π R (SE.return π x) (return∞ y)
+RelM-return pure r = return∞-R r
+forceR (RelM-return act r) = ret (left r)
+RelM-return eff r = return∞-R r
 
-RelGT-return : ∀ {mₜ} {A : Ty mₜ} {x y} → RelGV A x y → RelGT A (returnT x) (return∞ y)
-forceS (RelGT-return rv) = s-ret rv
+module _ {X X′ Y Y′ : Set} {R : X → Y → Set} {S : X′ → Y′ → Set} where
 
-RelGT-bind : ∀ {mₜ} {A B : Ty mₜ} {t₁ : T ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → T ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+  -- The pure bind (application) against the IR's: the IR's run returns a
+  -- related value at once, which the continuation receives.
+  RelMᵖ-app : ∀ {m t} {k : X → X′} {g : Y → T∞ Y′}
+            → RelM pure R m t → (∀ {x y} → R x y → RelM pure S (k x) (g y)) → RelM pure S (k m) (t >>=∞ g)
+  forceR (RelMᵖ-app {k = k} rt rk) = forceR (bind∞-R {k = λ a → SE.return∞ (k a)} rk rt)
+
+  RelM-bind : ∀ π {m t} {k : X → SE.M π X′} {g : Y → T∞ Y′}
+            → RelM π R m t → (∀ {x y} → R x y → RelM π S (k x) (g y)) → RelM π S (SE.bind π m k) (t >>=∞ g)
+  RelM-bind pure rm rk = RelMᵖ-app rm rk
+  RelM-bind act {m = m} rm rk = embed-bind-R rk m rm
+  RelM-bind eff rm rk = bind∞-R rk rm
+
+  RelM-fmap : ∀ π {m t} {f : X → X′} {g : Y → Y′}
+            → RelM π R m t → (∀ {x y} → R x y → S (f x) (g y)) → RelM π S (SE.fmap π f m) (fmap∞ g t)
+  RelM-fmap pure {f = f} rm h = RelMᵖ-app {k = f} rm (λ r → return∞-R (h r))
+  RelM-fmap act  rm h = RelM-bind act rm (λ r → RelM-return act (h r))
+  RelM-fmap eff  rm h = bind∞-R (λ r → return∞-R (h r)) rm
+
+RelGT-return : ∀ {A : Type} {x y} → RelGV A x y → RelGT A (SE.returnT x) (return∞ y)
+RelGT-return {A} = RelM-return act {R = RelGV A}
+
+RelGT-bind : ∀ {A B : Type} {t₁ : SE.T SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {f : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → SE.T SD.⟦ B ⟨ σ ⟩ ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
            → RelGT A t₁ t₂
            → (∀ {a b} → RelGV A a b → RelGT B (f a) (g b))
-           → RelGT B (t₁ >>=T f) (t₂ >>=∞ g)
-RelGT-bind {A = A} {B = B} {t₁} {t₂} {f} {g} rt rk = RelS-≈ˡ (embed-bind t₁ f) (RelS-bind rt rk)
+           → RelGT B (t₁ SE.>>=T f) (t₂ >>=∞ g)
+RelGT-bind {A} {B} = RelM-bind {R = RelGV A} {S = RelGV B} act
 
--- The PURE bind against the IR's: the pure side's value is its continuation's
--- (`>>=ᵖ-β`).
-RelGᵖ-bind : ∀ {mₜ} {A B : Ty mₜ} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+-- The PURE bind (`_>>=ᵖ_`, application kept opaque) against the IR's.
+RelGᵖ-bind : ∀ {A B : Type} {m : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → SD.⟦ B ⟨ σ ⟩ ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
            → RelGM pure A m t₂
            → (∀ {a b} → RelGV A a b → RelGM pure B (k a) (g b))
            → RelGM pure B (m >>=ᵖ k) (t₂ >>=∞ g)
-RelGᵖ-bind {A = A} {B = B} {m} {t₂} {k} {g} rt rk =
-  RelS-≈ˡ (ret≈ˡ (>>=ᵖ-β m k)) (sameˡ refl (RelS-bind rt rk))
-
--- A pure bind feeding any continuation: the IR's run returns a related value at
--- once, which the continuation receives.
-RelGᵖᵉ-bind : ∀ {mₜ} {A B : Ty mₜ} {X : Set} {P : X → T∞ ⟦ B ⟧ᴰ → Set} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → X} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
-            → RelGM pure A m t₂
-            → (∀ {a b} → RelGV A a b → P (k a) (g b))
-            → (∀ {x t t′} → force t ≡ force t′ → P x t′ → P x t)
-            → P (m >>=ᵖ k) (t₂ >>=∞ g)
-RelGᵖᵉ-bind {A = A} {B = B} {P = P} {m} {t₂} {k} {g} rt rk tr = go (force t₂) refl (forceS rt)
-  where
-    go : ∀ (b : _) → force t₂ ≡ b → RelSB (RelGV A) (Once.Internal.Trace.ret (inj₁ m)) b → P (m >>=ᵖ k) (t₂ >>=∞ g)
-    go .(Once.Internal.Trace.ret (inj₁ _)) e (s-ret {y = y} r) =
-      tr (cong (λ bl → Once.Internal.Iterative.bindBlock bl g) e)
-         (subst (λ x → P x (g y)) (sym (>>=ᵖ-β m k)) (rk r))
-
--- The two, at any grade.
-RelGM-bind : ∀ {mₜ} π {A B : Ty mₜ} {m : M π ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
-           → RelGM π A m t₂
-           → (∀ {a b} → RelGV A a b → RelGM π B (k a) (g b))
-           → RelGM π B (bindM π m k) (t₂ >>=∞ g)
-RelGM-bind pure {A = A} {B = B} rm rk = RelGᵖ-bind {A = A} {B = B} rm rk
-RelGM-bind act  {A = A} {B = B} rm rk = RelGT-bind {A = A} {B = B} rm rk
-RelGM-bind eff  rm rk = RelS-bind rm rk
-
--- The graded map: both sides map their result along related functions.
-RelGM-fmap : ∀ {mₜ} π {A B : Ty mₜ} {m : M π ⟦ A ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} {f : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
-           → RelGM π A m t
-           → (∀ {a b} → RelGV A a b → RelGV B (f a) (g b))
-           → RelGM π B (fmapM π f m) (fmap∞ g t)
-RelGM-fmap pure {A = A} {B = B} {m} rm h = sameˡ refl (RelS-bind rm (λ r → relS-ret (h r)))
-RelGM-fmap act  {A = A} {B = B} {m} {f = f} rm h =
-  RelS-≈ˡ (embed-bind m (λ x → ret (f x))) (RelS-bind rm (λ r → embed-ret (h r)))
-  where
-    embed-ret : ∀ {x y} → RelGV B (f x) y → RelS (RelGV B) (embed (ret (f x))) (return∞ y)
-    forceS (embed-ret r) = s-ret r
-RelGM-fmap eff  rm h = RelS-bind rm (λ r → relS-ret (h r))
-
-RelGM-return : ∀ {mₜ} {π} (u : pure ⊑π π) {A : Ty mₜ} {x y} → RelGV A x y → RelGM π A (returnM u x) (return∞ y)
-RelGM-return ⊑-pure rv = relS-ret rv
-RelGM-return ⊑-pa {A = A} rv = RelGT-return {A = A} rv
-RelGM-return ⊑-pe   rv = relS-ret rv
-
-------------------------------------------------------------------------
--- The FFI boundary. Contracts are first-order (plan 0.105), so at a base type
--- both domains are the machine value: related values project to the same one,
--- and a machine value read into either domain is related to itself.
-------------------------------------------------------------------------
-
-prjB-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} (ib : Base Δₖ A) {a : ⟦ A ⟧ᵛ} {b : ⟦ A ⟧ᴰ} → RelGV A a b → prjB ib a ≡ forgetᵇ ib b
-prjB-rel base-Unit   _ = refl
-prjB-rel base-Void   {()}
-prjB-rel base-Int    r = r
-prjB-rel base-Float  r = r
-prjB-rel (base-Prod ia ib) {_ , _} {_ , _} (ra , rb) = cong₂ _,_ (prjB-rel ia ra) (prjB-rel ib rb)
-prjB-rel (base-Sum ia ib) {inj₁ _} {inj₁ _} r = cong inj₁ (prjB-rel ia r)
-prjB-rel (base-Sum ia ib) {inj₂ _} {inj₂ _} r = cong inj₂ (prjB-rel ib r)
-prjB-rel (base-Sum ia ib) {inj₁ _} {inj₂ _} ()
-prjB-rel (base-Sum ia ib) {inj₂ _} {inj₁ _} ()
-prjB-rel (b-var _)  {()}
-
-injB-rel : ∀ {m} {Δₖ : KCtx m} {A : Ty m} (ib : Base Δₖ A) (x : Val.⟦ A ⟧) → RelGV A (injB ib x) (injectᵇ ib x)
-injB-rel base-Unit   x = tt
-injB-rel base-Void   ()
-injB-rel base-Int    x = refl
-injB-rel base-Float  x = refl
-injB-rel (base-Prod ia ib) (x , y) = injB-rel ia x , injB-rel ib y
-injB-rel (base-Sum ia ib) (inj₁ x) = injB-rel ia x
-injB-rel (base-Sum ia ib) (inj₂ y) = injB-rel ib y
-injB-rel (b-var _)  ()
-
--- `pure ⊑ act` at ν: embedding a pure stream keeps it related.
-mutual
-  embνᵃ-∼ : ∀ {H : SFunctor} {x : νᵖ H} {y : νᴵ H} → x ∼ᵖᵈ y → embνᵃ x ∼ᵈ y
-  force-∼ (embνᵃ-∼ {H} r) = embLayerᵃ H (force-∼ᵖᵈ r)
-
-  embLayerᵃ : ∀ (H : SFunctor) {l : ⟦ H ⟧SF (νᵖ H)} {m : T∞ (⟦ H ⟧SF (νᴵ H))}
-           → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (return∞ l) m
-           → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (embed (ret (mapEmbνᵃ H H l))) m
-  forceS (embLayerᵃ H r) = embLayerBᵃ H (forceS r)
-
-  embLayerBᵃ : ∀ (H : SFunctor) {l : ⟦ H ⟧SF (νᵖ H)} {b}
-            → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) (ret (inj₁ l)) b
-            → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) (ret (inj₁ (mapEmbνᵃ H H l))) b
-  embLayerBᵃ H (s-ret rr) = s-ret (mapEmbνᵃ-∼ H H rr)
-
-  mapEmbνᵃ-∼ : ∀ (H G : SFunctor) {l : ⟦ G ⟧SF (νᵖ H)} {l′ : ⟦ G ⟧SF (νᴵ H)}
-            → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) (mapEmbνᵃ H G l) l′
-  mapEmbνᵃ-∼ H (SK B)     r = r
-  mapEmbνᵃ-∼ H SId        r = embνᵃ-∼ r
-  mapEmbνᵃ-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = mapEmbνᵃ-∼ H G₁ r
-  mapEmbνᵃ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = mapEmbνᵃ-∼ H G₂ r
-  mapEmbνᵃ-∼ H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-  mapEmbνᵃ-∼ H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-  mapEmbνᵃ-∼ H (G₁ S⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbνᵃ-∼ H G₁ r₁ , mapEmbνᵃ-∼ H G₂ r₂
-
--- `embed` is a monad morphism: a mapped finite block embeds as the map of its
--- embedding (step for step, the map applied at the return).
-RelS-embed-fmap : ∀ {X Y Z : Set} {g : X → Y} {S : Y → Z → Set} (t : T X) {n : T∞ Z}
-                → RelS (λ l r → S (g l) r) (embed t) n → RelS S (embed (fmapT g t)) n
-RelS-embed-fmap {g = g} t h = RelS-≈ˡ (embed-bind t (λ l → ret (g l))) (emb-fmap h)
-  where
-    emb-fmap  : ∀ {S : _ → _ → Set} {m n} → RelS (λ l r → S (g l) r) m n → RelS S (m >>=∞ λ l → embed (ret (g l))) n
-    emb-fmapB : ∀ {S : _ → _ → Set} {b b′} → RelSB (λ l r → S (g l) r) b b′
-              → RelSB S (Once.Internal.Iterative.bindBlock b λ l → embed (ret (g l))) b′
-    forceS (emb-fmap h) = emb-fmapB (forceS h)
-    emb-fmapB (s-ret r)  = s-ret r
-    emb-fmapB (s-next h) = s-next (emb-fmap h)
-    emb-fmapB (s-call f) = s-call (λ v → emb-fmapB (f v))
-    emb-fmapB s-halt     = s-halt
+RelGᵖ-bind {A} {B} {m} {t₂} {k} {g} rt rk =
+  subst (λ z → RelGM pure B z (t₂ >>=∞ g)) (sym (>>=ᵖ-β m k)) (RelMᵖ-app {R = RelGV A} {S = RelGV B} {k = k} rt rk)
 
 -- A pure meaning fed to a continuation directly, against the IR's bind.
-RelGᵖ-app : ∀ {mₜ} {A B : Ty mₜ} {m : ⟦ A ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : ⟦ A ⟧ᵛ → ⟦ B ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+RelGᵖ-app : ∀ {A B : Type} {m : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → SD.⟦ B ⟨ σ ⟩ ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
           → RelGM pure A m t₂
           → (∀ {a b} → RelGV A a b → RelGM pure B (k a) (g b))
           → RelGM pure B (k m) (t₂ >>=∞ g)
-RelGᵖ-app {A = A} {B = B} {m} {t₂} {k} {g} rt rk = subst (λ z → RelGM pure B z (t₂ >>=∞ g)) (>>=ᵖ-β m k) (RelGᵖ-bind {A = A} {B = B} {m} {t₂} {k} {g} rt rk)
+RelGᵖ-app {A} {B} {k = k} = RelMᵖ-app {R = RelGV A} {S = RelGV B} {k = k}
+
+-- A pure bind feeding any continuation: the IR's run returns a related value
+-- at once, which the continuation receives.
+RelGᵖᵉ-bind : ∀ {A B : Type} {X : Set} {P : X → T∞ ⟦ B ⟧ᴰ → Set} {m : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → X} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+            → RelGM pure A m t₂
+            → (∀ {a b} → RelGV A a b → P (k a) (g b))
+            → (∀ {x t t′} → LI.T∞.force t ≡ LI.T∞.force t′ → P x t′ → P x t)
+            → P (m >>=ᵖ k) (t₂ >>=∞ g)
+RelGᵖᵉ-bind {A = A} {P = P} {m} {t₂} {k} {g} rt rk tr =
+  subst (λ z → P z (t₂ >>=∞ g)) (sym (>>=ᵖ-β m k)) (go (LI.T∞.force t₂) refl (forceR rt))
+  where
+    go : ∀ b → LI.T∞.force t₂ ≡ b → BlockR (SumR (RelGV A) (RunR (RelGV A))) (SE.roll (SE.done (inj₁ m))) b → P (k m) (t₂ >>=∞ g)
+    go .(LTr.ret (inj₁ _)) e (ret (left {y = y} r)) = tr (cong (λ bl → LI.bindBlock bl g) e) (rk r)
+
+-- The two, at any grade.
+RelGM-bind : ∀ π {A B : Type} {m : SE.M π SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {t₂ : T∞ ⟦ A ⟧ᴰ} {k : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → SE.M π SD.⟦ B ⟨ σ ⟩ ⟧ᵛ} {g : ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ}
+           → RelGM π A m t₂
+           → (∀ {a b} → RelGV A a b → RelGM π B (k a) (g b))
+           → RelGM π B (SE.bind π m k) (t₂ >>=∞ g)
+RelGM-bind π {A} {B} = RelM-bind {R = RelGV A} {S = RelGV B} π
+
+-- The graded map: both sides map their result along related functions.
+RelGM-fmap : ∀ π {A B : Type} {m : SE.M π SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} {f : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → SD.⟦ B ⟨ σ ⟩ ⟧ᵛ} {g : ⟦ A ⟧ᴰ → ⟦ B ⟧ᴰ}
+           → RelGM π A m t
+           → (∀ {a b} → RelGV A a b → RelGV B (f a) (g b))
+           → RelGM π B (SE.fmap π f m) (fmap∞ g t)
+RelGM-fmap π {A} {B} = RelM-fmap {R = RelGV A} {S = RelGV B} π
+
+-- A pure value, embedded at a grade with a unit.
+RelGM-return : ∀ {π} (u : pure ⊑π π) {A : Type} {x y} → RelGV A x y → RelGM π A (SE.sub u x) (return∞ y)
+RelGM-return ⊑-pure rv = return∞-R rv
+RelGM-return ⊑-pa {A} rv = RelGT-return {A = A} rv
+RelGM-return ⊑-pe   rv = return∞-R rv
 
 -- A pure meaning, embedded at any grade (what a lambda's body is, D250).
-RelGM-ret : ∀ {mₜ} {π} (u : pure ⊑π π) {B : Ty mₜ} {v : ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (returnM u v) t
+RelGM-ret : ∀ {π} (u : pure ⊑π π) {B : Type} {v : SD.⟦ B ⟨ σ ⟩ ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ} → RelGM pure B v t → RelGM π B (SE.sub u v) t
 RelGM-ret ⊑-pure r = r
-RelGM-ret ⊑-pa   r = sameˡ refl r
+forceR (RelGM-ret ⊑-pa r) = forceR r
 RelGM-ret ⊑-pe   r = r
+
+------------------------------------------------------------------------
+-- `pure ⊑ act` at ν: the Spec's subeffect of a pure stream keeps it related.
+------------------------------------------------------------------------
+
+private
+  emb : (G : SPoly.SFunctor) → SE.νM pureᶠ G → SE.T (SPoly.⟦ G ⟧SF (SE.νM pureᶠ G))
+  emb G u = SE.returnT (outν u)
+
+mutual
+  embνᵃ-∼ : ∀ {F : Fun 0} {x : SE.νM pureᶠ (SD.code (F ⟨ σ ⟩F))} {y : νᴵ (translateF Carrier Carrier F)}
+          → x ∼ᵖᵈ y → SD.subν ⊑-pa (SD.code (F ⟨ σ ⟩F)) x ∼ᵈ y
+  force-∼ (embνᵃ-∼ {F} r) = embLayerᵃ F (force-∼ᵖᵈ r)
+
+  embLayerᵃ : ∀ (F : Fun 0) {l : SPoly.⟦ SD.code (F ⟨ σ ⟩F) ⟧SF (SE.νM pureᶠ (SD.code (F ⟨ σ ⟩F)))} {n}
+            → RunR (LayerR F (_∼ᵖᵈ_ {F})) (SE.return∞ l) n
+            → RunR (LayerR F (_∼ᵈ_ {F})) (SE.embed (SE.returnT (SE.mapA (SD.code (F ⟨ σ ⟩F)) (SD.code (F ⟨ σ ⟩F)) (emb (SD.code (F ⟨ σ ⟩F))) l))) n
+  forceR (embLayerᵃ F r) = embLayerBᵃ F (forceR r)
+
+  embLayerBᵃ : ∀ (F : Fun 0) {l : SPoly.⟦ SD.code (F ⟨ σ ⟩F) ⟧SF (SE.νM pureᶠ (SD.code (F ⟨ σ ⟩F)))} {b}
+             → BlockR (SumR (LayerR F (_∼ᵖᵈ_ {F})) (RunR (LayerR F (_∼ᵖᵈ_ {F})))) (SE.roll (SE.done (inj₁ l))) b
+             → BlockR (SumR (LayerR F (_∼ᵈ_ {F})) (RunR (LayerR F (_∼ᵈ_ {F}))))
+                      (SE.roll (SE.done (inj₁ (SE.mapA (SD.code (F ⟨ σ ⟩F)) (SD.code (F ⟨ σ ⟩F)) (emb (SD.code (F ⟨ σ ⟩F))) l)))) b
+  embLayerBᵃ F (ret (left rr)) = ret (left (mapEmbνᵃ-∼ F F rr))
+
+  mapEmbνᵃ-∼ : ∀ (F G : Fun 0) {l : SPoly.⟦ SD.code (G ⟨ σ ⟩F) ⟧SF (SE.νM pureᶠ (SD.code (F ⟨ σ ⟩F)))} {l′}
+             → LayerR G (_∼ᵖᵈ_ {F}) l l′ → LayerR G (_∼ᵈ_ {F}) (SE.mapA (SD.code (F ⟨ σ ⟩F)) (SD.code (G ⟨ σ ⟩F)) (emb (SD.code (F ⟨ σ ⟩F))) l) l′
+  mapEmbνᵃ-∼ F (K A)     r = r
+  mapEmbνᵃ-∼ F Id        r = embνᵃ-∼ r
+  mapEmbνᵃ-∼ F (G₁ ⊕ G₂) {inj₁ _} {inj₁ _} r = mapEmbνᵃ-∼ F G₁ r
+  mapEmbνᵃ-∼ F (G₁ ⊕ G₂) {inj₂ _} {inj₂ _} r = mapEmbνᵃ-∼ F G₂ r
+  mapEmbνᵃ-∼ F (G₁ ⊗ G₂) {_ , _} {_ , _} (r₁ , r₂) = mapEmbνᵃ-∼ F G₁ r₁ , mapEmbνᵃ-∼ F G₂ r₂
 
 ------------------------------------------------------------------------
 -- The implementation side is self-related, and the relation transfers along
 -- `RelD` on the implementation side (plan 0.119 D5).
 ------------------------------------------------------------------------
 
+-- Two relations meet at the implementation side: a Spec run related to `s`,
+-- and an implementation run `RelS`-related to `s`.
+module _ {X Y : Set} {R : X → Y → Set} {D : Y → Y → Set} where
+
+  Meet : X → Y → Set
+  Meet x i = Σ-syntax Y (λ s → R x s × D i s)
+
+  run-meet  : ∀ {m s i} → RunR R m s → RelS D i s → RunR Meet m i
+  runB-meet : ∀ {b s i} → BlockR (SumR R (RunR R)) b s → RelSB D i s → BlockR (SumR Meet (RunR Meet)) b i
+  forceR (run-meet r d) = runB-meet (forceR r) (forceS d)
+  runB-meet (ret (left r))  (s-ret d)  = ret (left (_ , r , d))
+  runB-meet (ret (right r)) (s-next d) = ret (right (run-meet r d))
+  runB-meet (call c a k)    (s-call f) = call c a (λ {b} {b′} e → runB-meet (k e) (f b′))
+  runB-meet (halt x a)      s-halt     = halt x a
+
 -- Streams. A Spec stream's IR twin is self-related; and an IR stream related
 -- to the twin is a twin too.
-module _ {H : SFunctor} where
-  pd-self   : ∀ {x : νᵖ H} {y : νᴵ H} → x ∼ᵖᵈ y → StreamRel H y y
-  pd-run    : ∀ {m : T∞ (⟦ H ⟧SF (νᵖ H))} {n} → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) m n → RelS (LayerRel H H) n n
-  pd-block  : ∀ {l l′} → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) l l′ → RelSB (LayerRel H H) l′ l′
-  pd-layer  : ∀ (G : SFunctor) {l l′} → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → LayerRel H G l′ l′
-  forceR (pd-self r) = pd-run (force-∼ᵖᵈ r)
-  forceS (pd-run r) = pd-block (forceS r)
-  pd-block (s-ret r)  = s-ret (pd-layer H r)
-  pd-block (s-next r) = s-next (pd-run r)
-  pd-block (s-call f) = s-call (λ b → pd-block (f b))
-  pd-block s-halt     = s-halt
-  pd-layer (SK B)     e = refl
-  pd-layer SId        r = pd-self r
-  pd-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = pd-layer G₁ r
-  pd-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = pd-layer G₂ r
-  pd-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-  pd-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-  pd-layer (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = pd-layer G₁ r , pd-layer G₂ s
+module _ {F : Fun 0} where
+  private
+    H : LPoly.SFunctor
+    H = translateF Carrier Carrier F
+    Lp = LayerR F (_∼ᵖᵈ_ {F})
+    La = LayerR F (_∼ᵈ_ {F})
 
-  ad-self   : ∀ {x : νᵈ H} {y : νᴵ H} → x ∼ᵈ y → StreamRel H y y
-  ad-run    : ∀ {m : T∞ (⟦ H ⟧SF (νᵈ H))} {n} → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) m n → RelS (LayerRel H H) n n
-  ad-block  : ∀ {l l′} → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) l l′ → RelSB (LayerRel H H) l′ l′
-  ad-layer  : ∀ (G : SFunctor) {l l′} → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) l l′ → LayerRel H G l′ l′
-  forceR (ad-self r) = ad-run (force-∼ r)
-  forceS (ad-run r) = ad-block (forceS r)
-  ad-block (s-ret r)  = s-ret (ad-layer H r)
-  ad-block (s-next r) = s-next (ad-run r)
-  ad-block (s-call f) = s-call (λ b → ad-block (f b))
-  ad-block s-halt     = s-halt
-  ad-layer (SK B)     e = refl
-  ad-layer SId        r = ad-self r
-  ad-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = ad-layer G₁ r
-  ad-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = ad-layer G₂ r
-  ad-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-  ad-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-  ad-layer (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = ad-layer G₁ r , ad-layer G₂ s
+  pd-self   : ∀ {x y} → x ∼ᵖᵈ y → StreamRel H y y
+  pd-run    : ∀ {m n} → RunR Lp m n → RelS (LayerRel H H) n n
+  pd-block  : ∀ {b b′} → BlockR (SumR Lp (RunR Lp)) b b′ → RelSB (LayerRel H H) b′ b′
+  pd-layer  : ∀ (G : Fun 0) {l l′} → LayerR G (_∼ᵖᵈ_ {F}) l l′ → LayerRel H (translateF Carrier Carrier G) l′ l′
+  forceSR (pd-self r) = pd-run (force-∼ᵖᵈ r)
+  forceS (pd-run r) = pd-block (forceR r)
+  pd-block (ret (left r))  = s-ret (pd-layer F r)
+  pd-block (ret (right r)) = s-next (pd-run r)
+  pd-block (call (cr {b = b} m ne) a k) = s-call (λ x → pd-block (k (sym (SI.fromB-toB b x))))
+  pd-block (halt x a)      = s-halt
+  pd-layer (K A)     e = refl
+  pd-layer Id        r = pd-self r
+  pd-layer (G₁ ⊕ G₂) {inj₁ _} {inj₁ _} r = pd-layer G₁ r
+  pd-layer (G₁ ⊕ G₂) {inj₂ _} {inj₂ _} r = pd-layer G₂ r
+  pd-layer (G₁ ⊗ G₂) {_ , _} {_ , _} (r , s) = pd-layer G₁ r , pd-layer G₂ s
 
-  pd-D       : ∀ {x : νᵖ H} {s i : νᴵ H} → x ∼ᵖᵈ s → StreamRel H i s → x ∼ᵖᵈ i
-  pd-D-run   : ∀ {m : T∞ (⟦ H ⟧SF (νᵖ H))} {n n′} → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) m n → RelS (LayerRel H H) n′ n
-             → RelS (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) m n′
-  pd-D-block : ∀ {l l′ l″} → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) l l′ → RelSB (LayerRel H H) l″ l′
-             → RelSB (⟦ H ⟧SF-rel (_∼ᵖᵈ_ {H})) l l″
-  pd-D-layer : ∀ (G : SFunctor) {l l′ l″} → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l′ → LayerRel H G l″ l′ → ⟦ G ⟧SF-rel (_∼ᵖᵈ_ {H}) l l″
-  force-∼ᵖᵈ (pd-D r d) = pd-D-run (force-∼ᵖᵈ r) (forceR d)
-  forceS (pd-D-run r d) = pd-D-block (forceS r) (forceS d)
-  pd-D-block (s-ret r)  (s-ret d)  = s-ret (pd-D-layer H r d)
-  pd-D-block (s-next r) (s-next d) = s-next (pd-D-run r d)
-  pd-D-block (s-call f) (s-call g) = s-call (λ b → pd-D-block (f b) (g b))
-  pd-D-block s-halt     s-halt     = s-halt
-  pd-D-layer (SK B)     e e′ = trans e (sym e′)
-  pd-D-layer SId        r d  = pd-D r d
-  pd-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r d = pd-D-layer G₁ r d
-  pd-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r d = pd-D-layer G₂ r d
-  pd-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} () _
-  pd-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} () _
-  pd-D-layer (G₁ S⊕ G₂) {_} {inj₁ _} {inj₂ _} _ ()
-  pd-D-layer (G₁ S⊕ G₂) {_} {inj₂ _} {inj₁ _} _ ()
-  pd-D-layer (G₁ S⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = pd-D-layer G₁ r d , pd-D-layer G₂ s d′
+  ad-self   : ∀ {x y} → x ∼ᵈ y → StreamRel H y y
+  ad-run    : ∀ {m n} → RunR La m n → RelS (LayerRel H H) n n
+  ad-block  : ∀ {b b′} → BlockR (SumR La (RunR La)) b b′ → RelSB (LayerRel H H) b′ b′
+  ad-layer  : ∀ (G : Fun 0) {l l′} → LayerR G (_∼ᵈ_ {F}) l l′ → LayerRel H (translateF Carrier Carrier G) l′ l′
+  forceSR (ad-self r) = ad-run (force-∼ r)
+  forceS (ad-run r) = ad-block (forceR r)
+  ad-block (ret (left r))  = s-ret (ad-layer F r)
+  ad-block (ret (right r)) = s-next (ad-run r)
+  ad-block (call (cr {b = b} m ne) a k) = s-call (λ x → ad-block (k (sym (SI.fromB-toB b x))))
+  ad-block (halt x a)      = s-halt
+  ad-layer (K A)     e = refl
+  ad-layer Id        r = ad-self r
+  ad-layer (G₁ ⊕ G₂) {inj₁ _} {inj₁ _} r = ad-layer G₁ r
+  ad-layer (G₁ ⊕ G₂) {inj₂ _} {inj₂ _} r = ad-layer G₂ r
+  ad-layer (G₁ ⊗ G₂) {_ , _} {_ , _} (r , s) = ad-layer G₁ r , ad-layer G₂ s
 
-  ad-D       : ∀ {x : νᵈ H} {s i : νᴵ H} → x ∼ᵈ s → StreamRel H i s → x ∼ᵈ i
-  ad-D-run   : ∀ {m : T∞ (⟦ H ⟧SF (νᵈ H))} {n n′} → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) m n → RelS (LayerRel H H) n′ n
-             → RelS (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) m n′
-  ad-D-block : ∀ {l l′ l″} → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) l l′ → RelSB (LayerRel H H) l″ l′
-             → RelSB (⟦ H ⟧SF-rel (_∼ᵈ_ {H})) l l″
-  ad-D-layer : ∀ (G : SFunctor) {l l′ l″} → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) l l′ → LayerRel H G l″ l′ → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) l l″
-  force-∼ (ad-D r d) = ad-D-run (force-∼ r) (forceR d)
-  forceS (ad-D-run r d) = ad-D-block (forceS r) (forceS d)
-  ad-D-block (s-ret r)  (s-ret d)  = s-ret (ad-D-layer H r d)
-  ad-D-block (s-next r) (s-next d) = s-next (ad-D-run r d)
-  ad-D-block (s-call f) (s-call g) = s-call (λ b → ad-D-block (f b) (g b))
-  ad-D-block s-halt     s-halt     = s-halt
-  ad-D-layer (SK B)     e e′ = trans e (sym e′)
-  ad-D-layer SId        r d  = ad-D r d
-  ad-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r d = ad-D-layer G₁ r d
-  ad-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r d = ad-D-layer G₂ r d
-  ad-D-layer (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} () _
-  ad-D-layer (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} () _
-  ad-D-layer (G₁ S⊕ G₂) {_} {inj₁ _} {inj₂ _} _ ()
-  ad-D-layer (G₁ S⊕ G₂) {_} {inj₂ _} {inj₁ _} _ ()
-  ad-D-layer (G₁ S⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = ad-D-layer G₁ r d , ad-D-layer G₂ s d′
+  pd-D       : ∀ {x s i} → x ∼ᵖᵈ s → StreamRel H i s → x ∼ᵖᵈ i
+  pd-D-run   : ∀ {m n n′} → RunR Lp m n → RelS (LayerRel H H) n′ n → RunR Lp m n′
+  pd-D-block : ∀ {b l′ l″} → BlockR (SumR Lp (RunR Lp)) b l′ → RelSB (LayerRel H H) l″ l′ → BlockR (SumR Lp (RunR Lp)) b l″
+  pd-D-layer : ∀ (G : Fun 0) {l l′ l″} → LayerR G (_∼ᵖᵈ_ {F}) l l′ → LayerRel H (translateF Carrier Carrier G) l″ l′
+             → LayerR G (_∼ᵖᵈ_ {F}) l l″
+  force-∼ᵖᵈ (pd-D r d) = pd-D-run (force-∼ᵖᵈ r) (forceSR d)
+  forceR (pd-D-run r d) = pd-D-block (forceR r) (forceS d)
+  pd-D-block (ret (left r))  (s-ret d)  = ret (left (pd-D-layer F r d))
+  pd-D-block (ret (right r)) (s-next d) = ret (right (pd-D-run r d))
+  pd-D-block (call c a k)    (s-call g) = call c a (λ {b} {b′} e → pd-D-block (k e) (g b′))
+  pd-D-block (halt x a)      s-halt     = halt x a
+  pd-D-layer (K A) {l} e e′ = subst (BR A l) (sym e′) e
+  pd-D-layer Id        r d  = pd-D r d
+  pd-D-layer (G₁ ⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r d = pd-D-layer G₁ r d
+  pd-D-layer (G₁ ⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r d = pd-D-layer G₂ r d
+  pd-D-layer (G₁ ⊕ G₂) {_} {inj₁ _} {inj₂ _} _ ()
+  pd-D-layer (G₁ ⊕ G₂) {_} {inj₂ _} {inj₁ _} _ ()
+  pd-D-layer (G₁ ⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = pd-D-layer G₁ r d , pd-D-layer G₂ s d′
+
+  ad-D       : ∀ {x s i} → x ∼ᵈ s → StreamRel H i s → x ∼ᵈ i
+  ad-D-run   : ∀ {m n n′} → RunR La m n → RelS (LayerRel H H) n′ n → RunR La m n′
+  ad-D-block : ∀ {b l′ l″} → BlockR (SumR La (RunR La)) b l′ → RelSB (LayerRel H H) l″ l′ → BlockR (SumR La (RunR La)) b l″
+  ad-D-layer : ∀ (G : Fun 0) {l l′ l″} → LayerR G (_∼ᵈ_ {F}) l l′ → LayerRel H (translateF Carrier Carrier G) l″ l′
+             → LayerR G (_∼ᵈ_ {F}) l l″
+  force-∼ (ad-D r d) = ad-D-run (force-∼ r) (forceSR d)
+  forceR (ad-D-run r d) = ad-D-block (forceR r) (forceS d)
+  ad-D-block (ret (left r))  (s-ret d)  = ret (left (ad-D-layer F r d))
+  ad-D-block (ret (right r)) (s-next d) = ret (right (ad-D-run r d))
+  ad-D-block (call c a k)    (s-call g) = call c a (λ {b} {b′} e → ad-D-block (k e) (g b′))
+  ad-D-block (halt x a)      s-halt     = halt x a
+  ad-D-layer (K A) {l} e e′ = subst (BR A l) (sym e′) e
+  ad-D-layer Id        r d  = ad-D r d
+  ad-D-layer (G₁ ⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r d = ad-D-layer G₁ r d
+  ad-D-layer (G₁ ⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r d = ad-D-layer G₂ r d
+  ad-D-layer (G₁ ⊕ G₂) {_} {inj₁ _} {inj₂ _} _ ()
+  ad-D-layer (G₁ ⊕ G₂) {_} {inj₂ _} {inj₁ _} _ ()
+  ad-D-layer (G₁ ⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = ad-D-layer G₁ r d , ad-D-layer G₂ s d′
 
 -- The implementation side of a related pair is related to itself.
-right-self : ∀ {m} (A : Ty m) {x : ⟦ A ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelD A y y
+right-self : ∀ (A : Type) {x : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {y : ⟦ A ⟧ᴰ} → RelGV A x y → RelD A y y
 right-self Unit r = tt
 right-self Void {()}
 right-self Int r = refl
@@ -366,32 +385,26 @@ right-self Float r = refl
 right-self (μ F) r = refl
 right-self (ν F pureᶠ) r = pd-self r
 right-self (ν F actᶠ) r = ad-self r
-right-self (var _) {()}
 right-self (A * B) {_ , _} {_ , _} (r , s) = right-self A r , right-self B s
 right-self (A + B) {inj₁ _} {inj₁ _} r = right-self A r
 right-self (A + B) {inj₂ _} {inj₂ _} r = right-self B r
-right-self (A + B) {inj₁ _} {inj₂ _} ()
-right-self (A + B) {inj₂ _} {inj₁ _} ()
 right-self (A ⇒[ mk-kind Zero π ] B) (_ , d) = d
 right-self (A ⇒[ mk-kind One π ] B) (_ , d) = d
 right-self (A ⇒[ mk-kind Many π ] B) (_ , d) = d
 
 -- An implementation related (`RelD`) to a Spec meaning's twin is a twin too.
 mutual
-  GV-D : ∀ {m} (A : Ty m) {c : ⟦ A ⟧ᵛ} {s i : ⟦ A ⟧ᴰ} → RelGV A c s → RelD A i s → RelGV A c i
+  GV-D : ∀ (A : Type) {c : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {s i : ⟦ A ⟧ᴰ} → RelGV A c s → RelD A i s → RelGV A c i
   GV-D Unit r d = tt
   GV-D Void {()}
   GV-D Int r d = trans r (sym d)
   GV-D Float r d = trans r (sym d)
-  GV-D (μ F) r d = trans r (sym d)
+  GV-D (μ F) {c} r d = subst (μR F c) (sym d) r
   GV-D (ν F pureᶠ) r d = pd-D r d
   GV-D (ν F actᶠ) r d = ad-D r d
-  GV-D (var _) {()}
   GV-D (A * B) {_ , _} {_ , _} {_ , _} (r , s) (d , d′) = GV-D A r d , GV-D B s d′
   GV-D (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r d = GV-D A r d
   GV-D (A + B) {inj₂ _} {inj₂ _} {inj₂ _} r d = GV-D B r d
-  GV-D (A + B) {inj₁ _} {inj₂ _} ()
-  GV-D (A + B) {inj₂ _} {inj₁ _} ()
   GV-D (A + B) {inj₁ _} {inj₁ _} {inj₂ _} _ ()
   GV-D (A + B) {inj₂ _} {inj₂ _} {inj₁ _} _ ()
   GV-D (A ⇒[ mk-kind Zero π ] B) (h , _) d = GM-D π B h d , RelD-leftself (A ⇒[ mk-kind Zero π ] B) d
@@ -400,5 +413,18 @@ mutual
   GV-D (A ⇒[ mk-kind Many π ] B) (h , _) d =
     (λ rab → GM-D π B (h rab) (d (right-self A rab))) , RelD-leftself (A ⇒[ mk-kind Many π ] B) d
 
-  GM-D : ∀ {mₜ} (π : Purity) (A : Ty mₜ) {m : M π ⟦ A ⟧ᵛ} {s i : T∞ ⟦ A ⟧ᴰ} → RelGM π A m s → RelS (RelD A) i s → RelGM π A m i
-  GM-D π A r d = RelS-mono (λ { (_ , gv , dv) → GV-D A gv dv }) (RelS-meet r d)
+  GM-D : ∀ (π : Purity) (A : Type) {m : SE.M π SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {s i : T∞ ⟦ A ⟧ᴰ} → RelGM π A m s → RelS (RelD A) i s → RelGM π A m i
+  GM-D π A r d = RunR-mono (λ { (_ , gv , dv) → GV-D A gv dv }) (run-meet r d)
+
+------------------------------------------------------------------------
+-- At the ground index the weakening is the identity: whatever is related at
+-- `A` is related at `wk₀ A`, transported.
+------------------------------------------------------------------------
+
+RelGM-wk₀ : ∀ {π} {A : Type} {v : SE.M π SD.⟦ A ⟨ σ ⟩ ⟧ᵛ} {t : T∞ ⟦ A ⟧ᴰ} → RelGM π A v t
+          → RelGM π (wk₀ {0} A) (subst (SE.M π) (sym (⟦wk₀⟧ᵛ A)) v) (subst T∞ (sym (⟦wk₀⟧ᴰ A)) t)
+RelGM-wk₀ {π} {A} {v} {t} r = go (wk₀ A) (wk₀-id A) (sym (⟦wk₀⟧ᵛ A)) (sym (⟦wk₀⟧ᴰ A))
+  where
+    go : (U : Type) → U ≡ A → (p : SD.⟦ A ⟨ σ ⟩ ⟧ᵛ ≡ SD.⟦ U ⟨ σ ⟩ ⟧ᵛ) (q : ⟦ A ⟧ᴰ ≡ ⟦ U ⟧ᴰ)
+       → RelGM π U (subst (SE.M π) p v) (subst T∞ q t)
+    go .A refl refl refl = r

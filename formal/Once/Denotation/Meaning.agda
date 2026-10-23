@@ -6,7 +6,8 @@
 -- typing DERIVATIONS (Plan 0.58 north star, OCP-0006).
 --
 -- This is the IR-FREE reference semantics: recursion on the typing derivation,
--- landing in the value domain `⟦_⟧ᴰ` / trace monad `T`. It replaces the
+-- landing in the Spec's value domain (`Spec.Domain Σ`, read at an instance `σ`
+-- of no type variables, `SpecDomain`; plan 0.122 §5.5 M2). It replaces the
 -- `SD.⟦ realize _ ⟧ˢ` route, whose only IR contact is `Surface.Expr`'s
 -- `lift-morphism`/`morph-app` leaves (a morphism represented AS `IR`) — note
 -- the imports below contain NO `Once.IR`, NO `evalᴰ`.
@@ -19,7 +20,10 @@
 -- verbatim. That is the sense in which this generalises rather than replaces.
 ------------------------------------------------------------------------
 
-module Once.Denotation.Meaning where
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Type using (TySub)
+
+module Once.Denotation.Meaning (Σ : Signature) (σ : TySub 0 0) where
 
 import Once.Spec.Type
 
@@ -46,13 +50,9 @@ open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Function using (id; _$_)
-open import Once.Internal.Weaken using (⟦wk₀⟧ᵛ)
 open import Data.Maybe using (just)
-open import Once.Internal.Trace using (T; fmapT; Interp; module Interp)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; embed; loop)
 open import Once.Internal.StreamInf using (anaFᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
-open Interp using (sig; impl)
 open import Data.List.Membership.Propositional using (_∈_)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
@@ -61,10 +61,6 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ;
 
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (lookupᴰUsed)
-open import Once.Internal.Environment using (restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
-open import Once.Internal.Graded using (⟦_⟧ᵛ; M; returnM; bindM; _>>=ᵖ_)
-open import Once.Internal.GradedOps
-  using (fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; sigOpRefᵛ; ⟦_⟧<:ᵛ)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
 open import Once.Internal.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 import Data.List as L
@@ -103,92 +99,10 @@ open import Once.Internal.Typing
          t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp)
-
-------------------------------------------------------------------------
--- P1 scaffolds (discharged in P2). NAMED and narrow — each is exactly one
--- rule's semantics that needs machinery this file does not yet set up.
-------------------------------------------------------------------------
-
--- m-cata: the event-tracking structural fold, IR-free — a direct-algebra mirror
--- of SD's `cata-ev-algᴰ` (`evalᴰ alg` replaced by the direct algebra `dalg`).
--- DEFINITIONALLY matches `evalᴰ (Cata wf alg)` when `dalg = evalᴰ alg`, so the
--- `bridgeᵈ` cata case reduces to the (recursive) morphism bridge.
--- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF∞`) before
--- the algebra runs, so the children share ONE budget. The `ℕ` is gone — it
--- lives in `T` now. Mirrors `DenotTrace.cata-ev-algᴰ` exactly.
--- Plan 0.105: the layer crosses by the FIRST-ORDER coercion, so it takes the
--- functor's well-formedness (as `DenotTrace.cata-ev-algᴰ` does).
-cata-ev-algᴰ-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F → (⟦ SpT.⟦ F ⟧F A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ)
-               → ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ) → T∞ ⟦ A ⟧ᴰ
-cata-ev-algᴰ-D {F = F} {A = A} wf dalg fc =
-  seqF∞ F fc >>=∞ λ layer → dalg (coerce-functor⁻¹-D wf A layer)
-
--- `⟦ μ-type F ⟧ᴰ` IS the machine's μ (first-order data), so the fold reads it
--- as it is.
-cata-sem : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F
-         → (⟦ SpT.⟦ F ⟧F A ⟧ᴰ → T∞ ⟦ A ⟧ᴰ) → ⟦ μ F ⟧ᴰ → T∞ ⟦ A ⟧ᴰ
-cata-sem {F = F} {A = A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F = F} {A = A} wf dalg) v
-
--- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
--- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
--- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
--- other side of `⌈_⌉`).
-out-sem : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {π : Once.Spec.Grade.Finite} → WFFun Δₖ F
-        → ⟦ Once.Spec.Type.ν F π ⟧ᴰ → T∞ ⟦ SpT.⟦ F ⟧F (Once.Spec.Type.ν F π) ⟧ᴰ
-out-sem {F = F} {π = π} wf v =
-  fmap∞ (λ layer → coerce-functor⁻¹-D wf (Once.Spec.Type.ν F π)
-                     (coerce-ν-out wf _ layer))
-        (forceᴵ v)
-
--- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level,
--- through the first-order layer coercion (plan 0.105: `forget` is gone; a μ
--- layer holds base values and children only).
-in-value : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦ SpT.⟦ F ⟧F (μ F) ⟧ᴰ → ⟦ μ F ⟧ᴰ
-in-value {F = F} wf x = sem-In F (coerce-functor-D wf (μ F) x)
-
--- m-named / m-named-resolved: the named arrow's meaning, IR-free — a pure
--- FFI contract (`value-info` is `ffiV`, plan 0.105), so its value is the
--- interpretation's pure half at the argument.
-named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → IsBaseType A → IsBaseType B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
-named-sem {A = A} {B = B} fmt φ cn bA bB a =
-  embed (fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a)))
-
-------------------------------------------------------------------------
--- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
-------------------------------------------------------------------------
-
-lookupᴰ : ∀ {m} {n} (Γ : Ctx m n) (i : Fin n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ lookupᵗ Γ i ⟧ᴰ
-lookupᴰ (Γ ▸ A) zero    (dγ , a) = a
-lookupᴰ (Γ ▸ A) (suc i) (dγ , a) = lookupᴰ Γ i dγ
-
-svarᴰ : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
-svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
-
--- A closed named/sigop value reference, IR-free: the contract's computation
--- (`sigOpT`, the IR's own dispatch), read into the value domain.
-sigOpValᴰ : ∀ {B : Type} → TargetNum → FFIAnswers → SigOpInfo Unit B → T∞ ⟦ B ⟧ᴰ
-sigOpValᴰ fmt φ si = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt))
-
--- An EXTERNAL sigop reference (`t-var-resolved/import`). At an ARROW
--- type the reference is a first-order function POINTER whose effect fires on
--- APPLICATION (`arrow-info` respects the arrow's `Purity`). Split on the
--- WITNESS (not `A`'s shape) so `con-base` reduces at an abstract base `A`.
-sigOpRefᴰ : ∀ {A : Type} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T∞ ⟦ A ⟧ᴰ
-sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
--- D143: at an ERASED arrow the symbol never receives its argument, so the
--- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.pure} bDom bCod) =
-  return∞ (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
--- plan 0.113 A3: only a PURE erased arrow is a value; an effectful one is a call
--- with the erased slot `tt` (as `Elaborate` and `SourceDenote`).
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.eff} bDom bCod) =
-  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) cn base-Unit bCod) tt)))
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.act} bDom bCod) =
-  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) cn base-Unit bCod) tt)))
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
-  return∞ (λ arg → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg))))
-sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =
-  return∞ (λ arg → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom bCod) (forgetᵇ bDom arg))))
+open import Once.Denotation.PureBind using (_>>=ᵖ_)
+open import Once.Denotation.SpecDomain Σ σ
+  using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ; M; returnM; bindM; fmapM; cata-semᵛ; ana-semᵛ; out-semᵛ; in-valueᵛ; ⟦_⟧<:ᵛ; loop;
+         restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 
 returnᵖ : ∀ {X : Set} → X → X
 returnᵖ x = x
@@ -196,7 +110,7 @@ returnᵖ x = x
 fmapᵖ : ∀ {X Y : Set} → (X → Y) → X → Y
 fmapᵖ f x = f x
 
-svarᵛRun : ∀ {m} {n} {Γ : Ctx m n} {A : Ty m} {Ψ} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ → ⟦ A ⟧ᵛ
+svarᵛRun : ∀ {n} {Γ : Ctx 0 n} {A : Type} {Ψ} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᵛ → ⟦ A ⟧ᵛ
 svarᵛRun {Γ = Γ} (svar i) dγ = lookupᵛUsed Γ i dγ
 
 -- Plan 0.122: a definition means a value at each GROUND kinded instance — what
@@ -219,13 +133,10 @@ record Meanings (polys : PolyCtx) (imps : Imports) (sg : Imports) : Set where
   field
     defs    : DefMeanings polys
     entries : ImpMeanings imps
-    -- Plan 0.105 (D257 amendment 2): the interpretation the program runs in —
-    -- its declared signatures and their implementation…
-    world   : Interp
-    -- …which declare every generator of the signature Σ in scope (D274): what a
-    -- resolved reference names.
-    decl-res  : ∀ {cn T} → WordName cn → lookupImport sg (showCanonical cn) ≡ just T
-              → (showCanonical cn , T) ∈ sig world
+    -- …and of every generator of the signature in scope (D274): what a
+    -- resolved reference names, a declaration of Σ (plan 0.122: read in the
+    -- world's model, or the Spec's call of the operation).
+    sigs    : ∀ {cn T} → WordName cn → lookupImport sg (showCanonical cn) ≡ just T → IsConcrete T → ⟦ T ⟧ᵛ
 open Meanings
 
 MeaningsOf : ∀ {m} → NamedCtx m → Set
@@ -233,10 +144,10 @@ MeaningsOf ctx = Meanings (NamedCtx.polys ctx) (NamedCtx.imports ctx) (NamedCtx.
 
 -- So the meaning runs over `Γ ↾ Ψ` — exactly the variables the derivation uses
 -- — for the same reason `elaborate` and `⟦_⟧ˢ` do.
-Env : ∀ {m} → NamedCtx m → Set
+Env : NamedCtx 0 → Set
 Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᵛ
 
-EnvRun : ∀ {m} → (ctx : NamedCtx m) → Usage (NamedCtx.size ctx) → Set
+EnvRun : (ctx : NamedCtx 0) → Usage (NamedCtx.size ctx) → Set
 EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 
 ------------------------------------------------------------------------
@@ -335,7 +246,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- D274: a resolved reference names a generator of Σ — own or not, its meaning
 -- is that declaration's implementation.
 ⟦_⟧ᵢ (t-var-resolved {cn = cn} {T = T} _ wn lk conc refl) fmt ρ dγ =
-  subst id (sym (⟦wk₀⟧ᵛ T)) $ sigOpRefᵛ {A = T} fmt (sig (world ρ)) (impl (world ρ)) cn conc (decl-res ρ {cn = cn} wn lk)
+  subst id (sym (⟦wk₀⟧ᵛ T)) (sigs ρ {cn = cn} wn lk conc)
 -- D248: an own-module DEFINITION's reference is a call of it, and means it.
 ⟦_⟧ᵢ {ctx = ctx} (t-var-own {x = x} {T = T} _ lk refl) fmt ρ dγ = subst id (sym (⟦wk₀⟧ᵛ T)) (impAt (NamedCtx.imports ctx) x (entries ρ) lk)
 -- D246: a reference to a module ENTRY is a call of it, and means the entry —

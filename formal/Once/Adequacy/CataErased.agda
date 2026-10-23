@@ -49,7 +49,7 @@ open import Once.Denotation.ValueRel using () renaming (base-refl to base-refl�
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (evalᴰ; cata-ev-algᴰ)
-open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
+open import Once.Denotation.MeaningD using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
   using (⟦_⟧F; coerce-μ-out; tF-coh)
 open import Once.Spec.Word using (Carrier)

@@ -30,7 +30,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Word using (Carrier)
@@ -84,6 +84,16 @@ fromB S.float v = v
 fromB (a S.* b) (x , y) = fromB a x , fromB b y
 fromB (a S.+ b) (inj₁ x) = inj₁ (fromB a x)
 fromB (a S.+ b) (inj₂ y) = inj₂ (fromB b y)
+
+-- The two are inverse.
+fromB-toB : ∀ b x → fromB b (toB b x) ≡ x
+fromB-toB S.unit  x = refl
+fromB-toB S.void  x = refl
+fromB-toB S.int   x = refl
+fromB-toB S.float x = refl
+fromB-toB (a S.* b) (x , y) = cong₂ _,_ (fromB-toB a x) (fromB-toB b y)
+fromB-toB (a S.+ b) (inj₁ x) = cong inj₁ (fromB-toB a x)
+fromB-toB (a S.+ b) (inj₂ y) = cong inj₂ (fromB-toB b y)
 
 ------------------------------------------------------------------------
 -- The contract a declaration owes
