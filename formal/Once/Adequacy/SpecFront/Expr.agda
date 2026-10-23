@@ -7,9 +7,8 @@
 --
 -- The two resolvers write every name alike (R11, D330): a bare name is a
 -- variable a binder encloses (`RX`, over the names bound around it), and a
--- resolved one is never the entry `main` (D324: no definition refers to it);
--- an annotation is a surface type (no rigid constant). The other formers are
--- the grammar bridge's (`SpecGrammar.Expr.Emb`).
+-- resolved one is never the entry `main` (D324: no definition refers to it).
+-- The other formers are the same on both sides (plan 0.122: one syntax).
 ------------------------------------------------------------------------
 
 module Once.Adequacy.SpecFront.Expr where

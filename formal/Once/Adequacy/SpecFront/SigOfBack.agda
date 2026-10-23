@@ -114,7 +114,7 @@ own-part← {al} (d-signature {x = x} {A = A} ∷ pw) (so-sig {t = t} dto so) (w
   let (fs , xa , ti , fa) = own-part← pw so ws
   in _ , xa-sig (project-of al x A dto w) xa , cong (_ ∷_) ti , ffi-facts t {n = x} {b = RVar x} dto w ∷ fa
 own-part← (d-typesig ∷ pw)  (so-other ns-tsig so)   ws = own-part← pw so ws
-own-part← (d-fundef _ ∷ pw) (so-other ns-def so)    ws = own-part← pw so ws
+own-part← (d-fundef ∷ pw) (so-other ns-def so)    ws = own-part← pw so ws
 own-part← (d-alias ∷ pw)    (so-other ns-alias so)  ws = own-part← pw so ws
 own-part← (d-import ∷ pw)   (so-other ns-import so) ws = own-part← pw so ws
 
@@ -130,7 +130,7 @@ imp-module← {al} {p′} (d-signature {x = x} {A = A} ∷ pw) (so-sig {t = t} d
   in _ , xa-isig (project-of al n A dto w) xa , cong (_ ∷_) ti , ffi-facts t {n = n} {b = RVar n} dto w ∷ fa
   where n = showCanonical (canonical (p′ ++ x ∷ []))
 imp-module← (d-typesig ∷ pw)  (so-other ns-tsig so)   ws = imp-module← pw so ws
-imp-module← (d-fundef _ ∷ pw) (so-other ns-def so)    ws = imp-module← pw so ws
+imp-module← (d-fundef ∷ pw) (so-other ns-def so)    ws = imp-module← pw so ws
 imp-module← (d-alias ∷ pw)    (so-other ns-alias so)  ws = imp-module← pw so ws
 imp-module← (d-import ∷ pw)   (so-other ns-import so) ws = imp-module← pw so ws
 
@@ -138,7 +138,7 @@ imp-part← : ∀ {al mm mm′ um am dsU dsR ds′ Σᵢ} → ModRel mm mm′ �
           → Pointwise DEmb dsU ds′ → Imported mm′ ds′ Σᵢ → WellFormed Σᵢ
           → Σ[ fs ∈ List Entry ] XAlign al (Parser.importedSigs dsR) fs × (toISig Σᵢ ≡ entrySig fs) × All FFIFacts fs
 imp-part← mr LR.rds-nil [] im-nil [] = [] , xa-nil , refl , []
-imp-part← mr (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (d-fundef _ ∷ pw) (im-other ni-def im) ws = imp-part← mr rds pw im ws
+imp-part← mr (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (d-fundef ∷ pw) (im-other ni-def im) ws = imp-part← mr rds pw im ws
 imp-part← mr (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (d-typesig ∷ pw) (im-other ni-tsig im) ws = imp-part← mr rds pw im ws
 imp-part← mr (LR.rds-cons LR.nim-sig LR.rd-signature rds) (d-signature ∷ pw) (im-other ni-sig im) ws =
   imp-part← mr rds pw im ws

@@ -92,7 +92,7 @@ private
 um-ne : ∀ (mm : ModuleMap) {dsU ds′} → Pointwise DEmb dsU ds′ → All DeclW ds′ → PathsNE (collectUnaliased mm dsU)
 um-ne mm [] [] = []
 um-ne mm (d-typesig ∷ pw)  (_ ∷ ws) = um-ne mm pw ws
-um-ne mm (d-fundef _ ∷ pw) (_ ∷ ws) = um-ne mm pw ws
+um-ne mm (d-fundef ∷ pw) (_ ∷ ws) = um-ne mm pw ws
 um-ne mm (d-signature ∷ pw) (_ ∷ ws) = um-ne mm pw ws
 um-ne mm (d-alias ∷ pw)    (_ ∷ ws) = um-ne mm pw ws
 um-ne mm (d-import {p = p} {a = just _} ∷ pw) (_ ∷ ws) = um-ne mm pw ws
@@ -103,7 +103,7 @@ um-ne mm (d-import {p = p} {a = nothing} ∷ pw) ((_ , ne) ∷ ws) with lookupMo
 am-ne : ∀ {dsU ds′} → Pointwise DEmb dsU ds′ → All DeclW ds′ → PathsNE (collectAliases dsU)
 am-ne [] [] = []
 am-ne (d-typesig ∷ pw)  (_ ∷ ws) = am-ne pw ws
-am-ne (d-fundef _ ∷ pw) (_ ∷ ws) = am-ne pw ws
+am-ne (d-fundef ∷ pw) (_ ∷ ws) = am-ne pw ws
 am-ne (d-signature ∷ pw) (_ ∷ ws) = am-ne pw ws
 am-ne (d-alias ∷ pw)    (_ ∷ ws) = am-ne pw ws
 am-ne (d-import {a = just _} ∷ pw)  ((_ , ne) ∷ ws) = ne ∷ am-ne pw ws

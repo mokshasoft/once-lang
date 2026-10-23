@@ -31,8 +31,6 @@ open import Once.Denotation.Admissible using (rawIntLits; negLits; declIntLits; 
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
 open import Once.Parser.Module.Resolve using (signaturesWithOwner)
 import Once.Internal.Resolution as LR
-open import Once.Adequacy.SpecGrammar.Expr
-  using (Emb; e-var; e-qual; e-res; e-app; e-lam; e-let; e-pair; e-destruct; e-unit; e-int; e-float; e-annot; e-binop; e-neg)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Target.Arch using (Arch; arch-numerics)
 
@@ -111,42 +109,42 @@ decls-res (LR.rds-import {impDs = impDs} {ds' = dsR′} _ rds) = trans (go-owned
 ------------------------------------------------------------------------
 
 mutual
-  emb-lits : ∀ {e e′} → Emb e e′ → SP.intLits e′ ≡ rawIntLits e
-  emb-lits e-var = refl
-  emb-lits e-qual = refl
-  emb-lits e-res = refl
-  emb-lits (e-app f a) = cong₂ _++_ (emb-lits f) (emb-lits a)
-  emb-lits (e-lam b) = emb-lits b
-  emb-lits (e-let e b) = cong₂ _++_ (emb-lits e) (emb-lits b)
-  emb-lits (e-pair a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
-  emb-lits (e-destruct s l r) = cong₂ _++_ (emb-lits s) (cong₂ _++_ (emb-lits l) (emb-lits r))
-  emb-lits e-unit = refl
-  emb-lits e-int = refl
-  emb-lits e-float = refl
-  emb-lits (e-annot e) = emb-lits e
-  emb-lits (e-binop a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
-  emb-lits (e-neg e) = emb-neg e
+  emb-lits : ∀ e → SP.intLits e ≡ rawIntLits e
+  emb-lits (RVar _) = refl
+  emb-lits (RQualified _ _) = refl
+  emb-lits (RResolved _) = refl
+  emb-lits (RApp f a) = cong₂ _++_ (emb-lits f) (emb-lits a)
+  emb-lits (RLam _ b) = emb-lits b
+  emb-lits (RLet _ e b) = cong₂ _++_ (emb-lits e) (emb-lits b)
+  emb-lits (RPair a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
+  emb-lits (RDestruct s _ l _ r) = cong₂ _++_ (emb-lits s) (cong₂ _++_ (emb-lits l) (emb-lits r))
+  emb-lits RUnit = refl
+  emb-lits (RInt _) = refl
+  emb-lits (RFloat _ _ _) = refl
+  emb-lits (RAnnot e _) = emb-lits e
+  emb-lits (RBinOp _ a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
+  emb-lits (RNeg e) = emb-neg e
 
-  emb-neg : ∀ {e e′} → Emb e e′ → SP.negLits e′ ≡ negLits e
-  emb-neg e-var = refl
-  emb-neg e-qual = refl
-  emb-neg e-res = refl
-  emb-neg (e-app f a) = cong₂ _++_ (emb-lits f) (emb-lits a)
-  emb-neg (e-lam b) = emb-lits b
-  emb-neg (e-let e b) = cong₂ _++_ (emb-lits e) (emb-lits b)
-  emb-neg (e-pair a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
-  emb-neg (e-destruct s l r) = cong₂ _++_ (emb-lits s) (cong₂ _++_ (emb-lits l) (emb-lits r))
-  emb-neg e-unit = refl
-  emb-neg e-int = refl
-  emb-neg e-float = refl
-  emb-neg (e-annot e) = emb-lits e
-  emb-neg (e-binop a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
-  emb-neg (e-neg e) = emb-neg e
+  emb-neg : ∀ e → SP.negLits e ≡ negLits e
+  emb-neg (RVar _) = refl
+  emb-neg (RQualified _ _) = refl
+  emb-neg (RResolved _) = refl
+  emb-neg (RApp f a) = cong₂ _++_ (emb-lits f) (emb-lits a)
+  emb-neg (RLam _ b) = emb-lits b
+  emb-neg (RLet _ e b) = cong₂ _++_ (emb-lits e) (emb-lits b)
+  emb-neg (RPair a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
+  emb-neg (RDestruct s _ l _ r) = cong₂ _++_ (emb-lits s) (cong₂ _++_ (emb-lits l) (emb-lits r))
+  emb-neg RUnit = refl
+  emb-neg (RInt _) = refl
+  emb-neg (RFloat _ _ _) = refl
+  emb-neg (RAnnot e _) = emb-lits e
+  emb-neg (RBinOp _ a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
+  emb-neg (RNeg e) = emb-neg e
 
 decls-emb : ∀ {ds ds′} → Pointwise DEmb ds ds′ → SP.declLits ds′ ≡ go ds
 decls-emb [] = refl
 decls-emb (d-typesig ∷ pw) = decls-emb pw
-decls-emb (d-fundef em ∷ pw) = cong₂ _++_ (emb-lits em) (decls-emb pw)
+decls-emb (d-fundef {e = e} ∷ pw) = cong₂ _++_ (emb-lits e) (decls-emb pw)
 decls-emb (d-signature ∷ pw) = decls-emb pw
 decls-emb (d-alias ∷ pw) = decls-emb pw
 decls-emb (d-import ∷ pw) = decls-emb pw

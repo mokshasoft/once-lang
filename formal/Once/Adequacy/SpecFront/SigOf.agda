@@ -94,7 +94,7 @@ own-part {al} (d-signature {x = x} {A = A} ∷ pw) (xa-sig ps xa) ((_ , ty , ref
   let (t , dto , e) = read-sig al x A ps c h ; (Σ₀ , so , ti) = own-part pw xa fa
   in _ , so-sig dto so , cong₂ _∷_ (cong (x ,_) e) ti
 own-part (d-typesig ∷ pw)  xa fa = let (Σ₀ , so , ti) = own-part pw xa fa in Σ₀ , so-other ns-tsig so , ti
-own-part (d-fundef _ ∷ pw) xa fa = let (Σ₀ , so , ti) = own-part pw xa fa in Σ₀ , so-other ns-def so , ti
+own-part (d-fundef ∷ pw) xa fa = let (Σ₀ , so , ti) = own-part pw xa fa in Σ₀ , so-other ns-def so , ti
 own-part (d-alias ∷ pw)    xa fa = let (Σ₀ , so , ti) = own-part pw xa fa in Σ₀ , so-other ns-alias so , ti
 own-part (d-import ∷ pw)   xa fa = let (Σ₀ , so , ti) = own-part pw xa fa in Σ₀ , so-other ns-import so , ti
 
@@ -110,7 +110,7 @@ imp-module {al} {p′} (d-signature {x = x} {A = A} ∷ pw) (xa-isig ps xa) ((_ 
   let (t , dto , e) = read-sig al (showCanonical (canonical (p′ ++ x ∷ []))) A ps c h ; (Σ₁ , so , ti) = imp-module pw xa fa
   in _ , so-sig dto so , cong₂ _∷_ (cong (_ ,_) e) ti
 imp-module (d-typesig ∷ pw)  xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-tsig so , ti
-imp-module (d-fundef _ ∷ pw) xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-def so , ti
+imp-module (d-fundef ∷ pw) xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-def so , ti
 imp-module (d-alias ∷ pw)    xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-alias so , ti
 imp-module (d-import ∷ pw)   xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-import so , ti
 
@@ -162,7 +162,7 @@ imp-part : ∀ {al mm mm′ um am dsU dsR ds′ fs} → ModRel mm mm′ → LR.R
          → XAlign al (Parser.importedSigs dsR) fs → All FFIFacts fs
          → Σ[ Σᵢ ∈ Signature ] Imported mm′ ds′ Σᵢ × (toISig Σᵢ ≡ entrySig fs)
 imp-part mr LR.rds-nil [] xa-nil [] = [] , im-nil , refl
-imp-part mr (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (d-fundef _ ∷ pw) xa fa =
+imp-part mr (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (d-fundef ∷ pw) xa fa =
   let (Σᵢ , im , ti) = imp-part mr rds pw xa fa in Σᵢ , im-other ni-def im , ti
 imp-part mr (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (d-typesig ∷ pw) xa fa =
   let (Σᵢ , im , ti) = imp-part mr rds pw xa fa in Σᵢ , im-other ni-tsig im , ti

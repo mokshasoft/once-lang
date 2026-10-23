@@ -8,8 +8,8 @@
 -- The two resolutions take the same decisions, in the same order — a binder,
 -- a generator, an unaliased import, the own module (D136); `name@this`,
 -- `name@alias` — over the same tables, and write every name alike (R11,
--- D330). Given a body as written in both grammars (`Emb`), its resolution by
--- the compiler, and the resolved body good (`ResolvedRefs`: it does not name
+-- D330). Given a body (the compiler's expressions are the Spec's), its
+-- resolution by the compiler, and the resolved body good (`ResolvedRefs`: it does not name
 -- `main`, and its annotations are surface types), the Spec resolves the body
 -- too, to an expression `RX`-related to the compiler's (`res-expr`).
 ------------------------------------------------------------------------
@@ -39,8 +39,6 @@ open import Once.Spec.Surface.Resolution as SR
          r-annot; r-binop; r-neg; Expands; fa-here; fa-there)
 import Once.Spec.Surface.Resolution
 open import Once.Internal.ResolvedRefs using (GoodName; GoodRefs)
-open import Once.Adequacy.SpecGrammar.Expr using (Emb; e-var; e-qual; e-res; e-app; e-lam; e-let; e-pair; e-destruct; e-unit;
-  e-int; e-float; e-annot; e-binop; e-neg)
 open import Once.Adequacy.SpecFront.Expr
   using (RX; x-local; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
 
@@ -73,33 +71,33 @@ private
 -- An expression
 ------------------------------------------------------------------------
 
-res-expr : ∀ {um am bound eU eC eU′} → ResolvesExpr um am bound eU eC → Emb eU eU′ → GoodRefs eC
-         → Σ[ eS ∈ S.Expr ] Resolves (env um am) bound eU′ eS × RX bound eC eS
-res-expr (re-var (rv-binder m)) e-var g = _ , r-local m , x-local m
-res-expr (re-var (rv-gen nb gw)) e-var g = _ , r-name nb (rn-gen gw) , x-good (gen-good _)
-res-expr (re-var (rv-import nb ngw fa ex)) e-var g = _ , r-name nb (rn-import ngw (fa→ fa) (ex→ ex)) , x-good g
-res-expr (re-var (rv-own {x = x} nb ngw ab)) e-var g = _ , r-name nb (rn-own ngw ab (g refl)) , x-good g
-res-expr re-this e-qual g = _ , r-this (g refl) , x-good g
-res-expr (re-qual na fa ex) e-qual g = _ , r-qual na (fa→ fa) (ex→ ex) , x-good g
-res-expr (re-qual-path na ab) e-qual g = _ , r-qual-path na ab , x-good g
-res-expr re-res e-res g = _ , r-res , x-good g
-res-expr (re-app f a) (e-app ef ea) (gf , ga) =
-  let (f′ , rf , xf) = res-expr f ef gf ; (a′ , ra , xa) = res-expr a ea ga in _ , r-app rf ra , x-app xf xa
-res-expr (re-lam b) (e-lam eb) g = let (b′ , rb , xb) = res-expr b eb g in _ , r-lam rb , x-lam xb
-res-expr (re-let e b) (e-let ee eb) (ge , gb) =
-  let (e′ , re′ , xe) = res-expr e ee ge ; (b′ , rb , xb) = res-expr b eb gb in _ , r-let re′ rb , x-let xe xb
-res-expr (re-pair a b) (e-pair ea eb) (ga , gb) =
-  let (a′ , ra , xa) = res-expr a ea ga ; (b′ , rb , xb) = res-expr b eb gb in _ , r-pair ra rb , x-pair xa xb
-res-expr (re-destruct s l r) (e-destruct es el er) (gs , gl , gr) =
-  let (s′ , rs , xs) = res-expr s es gs ; (l′ , rl , xl) = res-expr l el gl ; (r′ , rr , xr) = res-expr r er gr
+res-expr : ∀ {um am bound eU eC} → ResolvesExpr um am bound eU eC → GoodRefs eC
+         → Σ[ eS ∈ S.Expr ] Resolves (env um am) bound eU eS × RX bound eC eS
+res-expr (re-var (rv-binder m)) g = _ , r-local m , x-local m
+res-expr (re-var (rv-gen nb gw)) g = _ , r-name nb (rn-gen gw) , x-good (gen-good _)
+res-expr (re-var (rv-import nb ngw fa ex)) g = _ , r-name nb (rn-import ngw (fa→ fa) (ex→ ex)) , x-good g
+res-expr (re-var (rv-own {x = x} nb ngw ab)) g = _ , r-name nb (rn-own ngw ab (g refl)) , x-good g
+res-expr re-this g = _ , r-this (g refl) , x-good g
+res-expr (re-qual na fa ex) g = _ , r-qual na (fa→ fa) (ex→ ex) , x-good g
+res-expr (re-qual-path na ab) g = _ , r-qual-path na ab , x-good g
+res-expr re-res g = _ , r-res , x-good g
+res-expr (re-app f a) (gf , ga) =
+  let (f′ , rf , xf) = res-expr f gf ; (a′ , ra , xa) = res-expr a ga in _ , r-app rf ra , x-app xf xa
+res-expr (re-lam b) g = let (b′ , rb , xb) = res-expr b g in _ , r-lam rb , x-lam xb
+res-expr (re-let e b) (ge , gb) =
+  let (e′ , re′ , xe) = res-expr e ge ; (b′ , rb , xb) = res-expr b gb in _ , r-let re′ rb , x-let xe xb
+res-expr (re-pair a b) (ga , gb) =
+  let (a′ , ra , xa) = res-expr a ga ; (b′ , rb , xb) = res-expr b gb in _ , r-pair ra rb , x-pair xa xb
+res-expr (re-destruct s l r) (gs , gl , gr) =
+  let (s′ , rs , xs) = res-expr s gs ; (l′ , rl , xl) = res-expr l gl ; (r′ , rr , xr) = res-expr r gr
   in _ , r-destruct rs rl rr , x-destruct xs xl xr
-res-expr (re-annot e) (e-annot ee) g = let (e′ , re′ , xe) = res-expr e ee g in _ , r-annot re′ , x-annot xe
-res-expr (re-binop a b) (e-binop ea eb) (ga , gb) =
-  let (a′ , ra , xa) = res-expr a ea ga ; (b′ , rb , xb) = res-expr b eb gb in _ , r-binop ra rb , x-binop xa xb
-res-expr (re-unop e) (e-neg ee) g = let (e′ , re′ , xe) = res-expr e ee g in _ , r-neg re′ , x-neg xe
-res-expr re-unit e-unit g = _ , r-unit , x-unit
-res-expr re-int e-int g = _ , r-int , x-int
-res-expr re-float e-float g = _ , r-float , x-float
+res-expr (re-annot e) g = let (e′ , re′ , xe) = res-expr e g in _ , r-annot re′ , x-annot xe
+res-expr (re-binop a b) (ga , gb) =
+  let (a′ , ra , xa) = res-expr a ga ; (b′ , rb , xb) = res-expr b gb in _ , r-binop ra rb , x-binop xa xb
+res-expr (re-unop e) g = let (e′ , re′ , xe) = res-expr e g in _ , r-neg re′ , x-neg xe
+res-expr re-unit g = _ , r-unit , x-unit
+res-expr re-int g = _ , r-int , x-int
+res-expr re-float g = _ , r-float , x-float
 
 ------------------------------------------------------------------------
 -- The declarations
@@ -136,8 +134,8 @@ module Decls (Σ : Signature) where
   res-decls : ∀ {mm um am dsU dsR ds′} → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
             → Σ[ dsR′ ∈ List S.Decl ] SPr.ResolvesDecls (env um am) ds′ dsR′ × DR dsR′ dsR
   res-decls LR.rds-nil [] = [] , SPr.rd-nil , dr-nil
-  res-decls (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb g) rds) (d-fundef em ∷ pw) =
-    let (e′ , re′ , rx) = res-expr rb em g ; (ds′ , rd , dr) = res-decls rds pw
+  res-decls (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb g) rds) (d-fundef ∷ pw) =
+    let (e′ , re′ , rx) = res-expr rb g ; (ds′ , rd , dr) = res-decls rds pw
     in _ , SPr.rd-def re′ rd , dr-def rx dr
   res-decls (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (d-typesig ∷ pw) =
     let (ds′ , rd , dr) = res-decls rds pw in _ , SPr.rd-other SPr.nf-tsig rd , dr-tsig dr
@@ -171,7 +169,7 @@ open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
 names-eq : ∀ {ds ds′} → Pointwise DEmb ds ds′ → sigNames ds ≡ SR.exports ds′
 names-eq [] = refl
 names-eq (d-typesig ∷ pw)   = names-eq pw
-names-eq (d-fundef _ ∷ pw)  = names-eq pw
+names-eq (d-fundef ∷ pw)  = names-eq pw
 names-eq (d-signature ∷ pw) = cong (_ ∷_) (names-eq pw)
 names-eq (d-alias ∷ pw)     = names-eq pw
 names-eq (d-import ∷ pw)    = names-eq pw
@@ -184,7 +182,7 @@ map-path p (x ∷ xs) = cong (_ ∷_) (map-path p xs)
 aliases-eq : ∀ {dsU ds′} → Pointwise DEmb dsU ds′ → collectAliases dsU ≡ SR.aliases ds′
 aliases-eq [] = refl
 aliases-eq (d-typesig ∷ pw)   = aliases-eq pw
-aliases-eq (d-fundef _ ∷ pw)  = aliases-eq pw
+aliases-eq (d-fundef ∷ pw)  = aliases-eq pw
 aliases-eq (d-signature ∷ pw) = aliases-eq pw
 aliases-eq (d-alias ∷ pw)     = aliases-eq pw
 aliases-eq (d-import {a = just a} ∷ pw) = cong (_ ∷_) (aliases-eq pw)
@@ -195,7 +193,7 @@ aliases-eq (d-import {a = nothing} ∷ pw) = aliases-eq pw
 unaliased-of : ∀ {mm mm′ um am dsU dsR ds′} → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
              → SR.Unaliased mm′ ds′ (collectUnaliased mm dsU)
 unaliased-of mr LR.rds-nil [] = SR.un-nil
-unaliased-of mr (LR.rds-cons LR.nim-fundef _ rds) (d-fundef _ ∷ pw) = SR.un-other SR.nu-def (unaliased-of mr rds pw)
+unaliased-of mr (LR.rds-cons LR.nim-fundef _ rds) (d-fundef ∷ pw) = SR.un-other SR.nu-def (unaliased-of mr rds pw)
 unaliased-of mr (LR.rds-cons LR.nim-typesig _ rds) (d-typesig ∷ pw) = SR.un-other SR.nu-tsig (unaliased-of mr rds pw)
 unaliased-of mr (LR.rds-cons LR.nim-sig _ rds) (d-signature ∷ pw) = SR.un-other SR.nu-sig (unaliased-of mr rds pw)
 unaliased-of mr (LR.rds-cons LR.nim-alias _ rds) (d-alias ∷ pw) = SR.un-other SR.nu-alias (unaliased-of mr rds pw)

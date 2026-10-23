@@ -66,7 +66,7 @@ open import Once.Adequacy.SpecLexing using (toNew; toOld; forget)
 open import Once.Adequacy.SpecGrammar.Tokens using (step; peel; peels; []; _∷_)
 open import Once.Adequacy.SpecGrammar.DeclHeads
 open import Once.Adequacy.SpecGrammar.ExprHeads using (StrHead; str-head)
-open import Once.Adequacy.SpecGrammar.Expr using (Emb; e-lam; expr→; expr←)
+open import Once.Adequacy.SpecGrammar.Expr using (expr→; expr←)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyG)
 open import Once.Adequacy.SpecGrammar.SigTypes using (sig→; sig←)
 open import Once.Adequacy.SpecGrammar.GroundTypes using (alias→; alias←)
@@ -84,22 +84,18 @@ private
 
 data DEmb : Decl → S.Decl → Set where
   d-typesig   : ∀ {x A} → DEmb (DTypeSig x A) (S.DTypeSig x (toPoly A))
-  d-fundef    : ∀ {x e e′} → Emb e e′ → DEmb (DFunDef x e) (S.DFunDef x e′)
+  d-fundef    : ∀ {x e} → DEmb (DFunDef x e) (S.DFunDef x e)
   d-signature : ∀ {x A} → DEmb (DSignature x nothing A) (S.DSignature x (toPoly A))
   d-alias     : ∀ {x ps T} → DEmb (DTypeAlias x ps T) (S.DTypeAlias x ps (toPolyG T))
   d-import    : ∀ {p a} → DEmb (DImport (mkImport p a)) (S.DImport (S.mkImport p a))
 
-emb-wrap : ∀ ps {b b′} → Emb b b′ → Emb (LPar.wrapLams ps b) (wrapLams ps b′)
-emb-wrap []       eb = eb
-emb-wrap (p ∷ ps) eb = e-lam (emb-wrap ps eb)
+-- (the compiler wraps a definition's parameters as the Spec's grammar does)
+wrap-same : ∀ ps b → LPar.wrapLams ps b ≡ wrapLams ps b
+wrap-same []       b = refl
+wrap-same (p ∷ ps) b = cong (S.RLam p) (wrap-same ps b)
 
-emb-unwrap : ∀ ps {b e′} → Emb (LPar.wrapLams ps b) e′ → Σ[ b′ ∈ S.Expr ] (Emb b b′ × e′ ≡ wrapLams ps b′)
-emb-unwrap []       em = _ , em , refl
-emb-unwrap (p ∷ ps) (e-lam em) = unwrap-cons (emb-unwrap ps em)
-  where
-    unwrap-cons : ∀ {b w} → Σ[ b′ ∈ S.Expr ] (Emb b b′ × w ≡ wrapLams ps b′)
-                → Σ[ b′ ∈ S.Expr ] (Emb b b′ × S.RLam p w ≡ wrapLams (p ∷ ps) b′)
-    unwrap-cons (b′ , eb , refl) = b′ , eb , refl
+fundef-emb : ∀ {x} ps b → DEmb (DFunDef x (LPar.wrapLams ps b)) (S.DFunDef x (wrapLams ps b))
+fundef-emb {x} ps b = subst (λ w → DEmb (DFunDef x (LPar.wrapLams ps b)) (S.DFunDef x w)) (wrap-same ps b) d-fundef
 
 ------------------------------------------------------------------------
 -- Small facts about the views
@@ -229,12 +225,12 @@ fundef→ : ∀ {name toks d rest d′} → LF.ParsesFunDef name toks d rest →
 private
   body→ : ∀ {name ps toks toks″ body rest e′} {b} → LF.ParsesParams toks ps toks″ → EqView toks″ b → b ≡ true
         → Once.Parser.ExprRelation.ParsesExpr (Once.Parser.Module.FunDef.Body.drop1 toks″) body rest
-        → Σ[ b′ ∈ S.Expr ] (Emb body b′ × e′ ≡ wrapLams ps b′)
+        → e′ ≡ wrapLams ps body
         → G.ParsesFunDef name (F toks) (S.DFunDef name e′) (F rest)
-  body→ dp eq-yes _ de (b′ , eb , refl) = fundef (params→ dp) (expr→ de eb)
+  body→ dp eq-yes _ de refl = fundef (params→ dp) (expr→ de)
   body→ dp (eq-no _) () de _
 
-fundef→ (LF.pfd-mk {params = ps} dp (LF.pfb-mk {toks = toks″} e de)) (d-fundef em) = body→ dp (eq-view toks″) e de (emb-unwrap ps em)
+fundef→ (LF.pfd-mk {params = ps} dp (LF.pfb-mk {toks = toks″} e de)) d-fundef = body→ dp (eq-view toks″) e de (wrap-same ps _)
 
 opchars→ : ∀ {toks cs s rest} → LO.ParsesOpChars toks cs s rest → G.ParsesOpChars (F toks) cs s (F rest)
 
@@ -452,9 +448,9 @@ fundef← : ∀ {x ts d′ r} → G.ParsesFunDef x ts d′ r → ∀ toks → F 
 fundef← (fundef dp de) toks e n = fd₁ n de (params← dp toks e)
   where
     fd₃ : ∀ {x ps toks toks₁ b′ r} → LF.ParsesParams toks ps (P.TEquals ∷ toks₁)
-        → Σ[ b ∈ RawExpr ] Σ[ rest ∈ List P.Token ] (Once.Parser.ExprRelation.ParsesExpr toks₁ b rest × Emb b b′ × F rest ≡ r)
+        → Σ[ rest ∈ List P.Token ] (Once.Parser.ExprRelation.ParsesExpr toks₁ b′ rest × F rest ≡ r)
         → BackD (LF.ParsesFunDef x) toks (S.DFunDef x (wrapLams ps b′)) r
-    fd₃ {ps = ps} dp (b , rest , de , eb , er) = _ , rest , LF.pfd-mk dp (LF.pfb-mk refl de) , d-fundef (emb-wrap ps eb) , er
+    fd₃ {ps = ps} dp (rest , de , er) = _ , rest , LF.pfd-mk dp (LF.pfb-mk refl de) , fundef-emb ps _ , er
     fd₂ : ∀ {x ps toks rest₁ ts₁ b′ r} → N r → G.ParsesExpr ts₁ b′ r → LF.ParsesParams toks ps rest₁
         → Σ[ toks₁ ∈ List P.Token ] (rest₁ ≡ P.TEquals ∷ toks₁ × F toks₁ ≡ ts₁)
         → BackD (LF.ParsesFunDef x) toks (S.DFunDef x (wrapLams ps b′)) r
