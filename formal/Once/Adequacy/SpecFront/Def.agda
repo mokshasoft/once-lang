@@ -131,14 +131,14 @@ module _ {m} (Δ : ST.KCtx m) where
   body-check : ∀ {e e′ A A′ Ψ} (D : C₀ ⊢ᶜ e ∶ A ⨾ Ψ) → RX [] e e′ → TyR Δ A A′
              → SU._⊢_⇐_↝_ Δ SU.∅ e′ A′ (proj₁ (EV.elabᶜ V D))
   body-check D rx rA =
-    let c = fwdᶜ D lr-∅ rx rA in subst (SU._⊢_⇐_↝_ Δ SU.∅ _ _) (sym (TmR-≡ (Chk.rt c))) (Chk.der c)
+    let c = fwdᶜ D lr-∅ rx rA in subst (SU._⊢_⇐_↝_ Δ SU.∅ _ _) (sym (TmR-≡ (Chk.rt c))) (proj₁ (Chk.der c))
 
   -- R8: a body without a signature synthesizes its type, naming the term the
   -- compiler's telescope holds.
   body-synth : ∀ {e e′ A Ψ} (D : C₀ ⊢ᵢ e ∶ A ⨾ Ψ) → RX [] e e′
              → Σ[ A′ ∈ ST.Ty m ] TyR Δ A A′ × SU._⊢_⇒_↝_ Δ SU.∅ e′ A′ (proj₁ (EV.elabᵢ V D))
   body-synth D rx =
-    let c = fwdᵢ D lr-∅ rx in Syn.A′ c , Syn.ra c , subst (SU._⊢_⇒_↝_ Δ SU.∅ _ _) (sym (TmR-≡ (Syn.rt c))) (Syn.der c)
+    let c = fwdᵢ D lr-∅ rx in Syn.A′ c , Syn.ra c , subst (SU._⊢_⇒_↝_ Δ SU.∅ _ _) (sym (TmR-≡ (Syn.rt c))) (proj₁ (Syn.der c))
 
   -- The type is the body's principal one.
   principal : ∀ {e e′ A A′} → PrincipalAt C₀ e A → RX [] e e′ → TyR Δ A A′
