@@ -30,7 +30,8 @@ open import Data.String using (String)
 open import Once.Grammar as G
   using ( GExpr; GType; GDecl; GModule; ELam )
 open import Once.Parser.Module.Core as P
-  using (Decl; Module; mkImport; mkModule)
+  using (Decl; Module; mkModule)
+open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Spec.Grade using (pure; pureᶠ)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; PInt; PFloat; PTVar; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)

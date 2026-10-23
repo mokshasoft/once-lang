@@ -53,7 +53,8 @@ open import Once.Parser.Module.Resolve
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Internal.Resolution
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Parser.Module.Core using (Module; mkModule; Import)
+open import Once.Parser.Module.Core using (Module; mkModule)
+open import Once.Spec.Surface.Syntax using (Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports;
   resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux; consDecl; consDecl-at;
   lookupModule; _path≟_; signaturesWithOwner; ownerOf;

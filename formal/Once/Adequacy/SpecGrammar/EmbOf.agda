@@ -19,7 +19,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Spec.Surface.Syntax as S
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-signature; d-alias; d-import; fundef-emb)
-open import Once.Parser.Module.Core using (Decl; DImport; mkImport)
+open import Once.Parser.Module.Core using (Decl; DImport)
+open import Once.Spec.Surface.Syntax using (mkImport)
 import Once.Parser.Module.Core
 import Once.Internal.Grammar.Decl as LD
 import Once.Internal.Grammar.Import as LI

@@ -40,8 +40,8 @@ open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Internal.ResolvedRefs using (GoodRefs)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Internal.Syntax using (RawExpr)
-open import Once.Parser.Module.Core using (Module; mkModule; Decl;
-  DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import)
+open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (Import)
 open import Once.Parser.Module.Resolve using (ModuleMap;
   signaturesWithOwner; ownerOf; collectAliases; collectUnaliased)
 

@@ -54,9 +54,10 @@ open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Parser.Module.Core using
-  (Module; Decl; DFunDef; DImport; Import)
+  (Module; Decl; DFunDef; DImport)
+open import Once.Spec.Surface.Syntax using (Import)
 open Once.Parser.Module.Core.Module using (decls)
-open Once.Parser.Module.Core.Import using (path; alias)
+open Once.Spec.Surface.Syntax.Import using (path; alias)
 
 ------------------------------------------------------------------------
 -- The two predicates the bridge used to compute by pattern-matching MAlonzo

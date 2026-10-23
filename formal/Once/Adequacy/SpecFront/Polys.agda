@@ -32,7 +32,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport)
+open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (mkImport)
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName)

@@ -13,6 +13,7 @@ module Once.Parser.Module.Import where
 open import Relation.Nullary using (Dec)
 open import Data.Bool using (Bool; true; false)
 open import Once.Parser.Module.Core
+open import Once.Spec.Surface.Syntax using (Import; mkImport)
 open import Data.Maybe using (nothing; just)
 open import Data.Product using (_,_)
 open import Data.String using (String; _≟_)

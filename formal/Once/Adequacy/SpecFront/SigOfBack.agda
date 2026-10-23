@@ -24,7 +24,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 import Once.Parser as Parser
 open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo)
-open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport)
+open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; signaturesWithOwner; expandPath)
 import Once.Internal.Resolution as LR
 open import Once.Internal.Module using (entrySig)

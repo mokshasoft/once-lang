@@ -22,7 +22,7 @@ open import Data.Nat.Properties using (≤-refl)
 open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Surface.Syntax using (PolyType; Import)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseTypeWF)
@@ -39,12 +39,6 @@ open import Once.Parser.ExprRelation using (ParsesExpr-shrinks)
 -- register-resident, bounded internals go to frontier scratch, unbounded
 -- internals to the heap and are freed by the IR itself. Nothing in the source
 -- picks. Supersedes D012/D013/D014; see plan 0.86.
-
-record Import : Set where
-  constructor mkImport
-  field
-    path  : List String
-    alias : Maybe String
 
 data Decl : Set where
   -- Type signatures and primitives carry `PolyType` (not `Type`) so

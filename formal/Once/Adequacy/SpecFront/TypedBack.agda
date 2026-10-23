@@ -44,7 +44,8 @@ import Once.Spec.Surface.Program as SPr
 import Once.Spec.Surface.Resolution as SR
 import Once.Spec.Core.Program as CoreProgram
 import Once.Parser as Parser
-open import Once.Parser.Module.Core using (Decl; mkModule; DImport; mkImport)
+open import Once.Parser.Module.Core using (Decl; mkModule; DImport)
+open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule; sigNames)
 import Once.Internal.Resolution as LR
 import Once.Internal.Module as LM

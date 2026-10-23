@@ -90,7 +90,7 @@ data CompileResult
 
 -- | Opaque Module handle — a wrapped Agda `Module` AST. Haskell
 -- doesn't introspect the internals except through `moduleImports`.
-newtype Module = Module MMC.T_Module_32
+newtype Module = Module MMC.T_Module_20
 
 -- | An `import` decl seen inside a parsed module. Haskell uses this
 -- to decide which files to load before calling `resolveImports`.

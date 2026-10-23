@@ -42,7 +42,8 @@ open import Once.Spec.Surface.Resolution
   using (Env; env; Resolves; rn-gen; rn-import; rn-own; r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam;
          r-let; r-pair; r-destruct; r-unit; r-int; r-float; r-annot; r-binop; r-neg)
 open import Once.Internal.ResolvedRefs using (GoodName; GoodRefs)
-open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport)
+open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
@@ -169,7 +170,7 @@ res-expr← nu na r-float w = _ , re-float , x-float , tt
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
-open import Once.Parser.Module.Core using (Import)
+open import Once.Spec.Surface.Syntax using (Import)
 open import Once.Parser.Module.Resolve using (signaturesWithOwner; ownerOf)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
 import Once.Spec.Surface.Program as SPr

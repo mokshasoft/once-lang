@@ -40,7 +40,8 @@ open import Once.Spec.Surface.Grammar as G
          SkipNewlines; skip-nl; skip-done; decls-stop; decls-cons; Trailing; trail-end; trail-nl; trail-eof; wrapLams)
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
-open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport; wordHead)
+open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; wordHead)
+open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.DeclTail using (colonHead)
 open import Once.Parser.Module.OpName using (opTokClass)
 open import Once.Parser.Module.FunDef.Body using (eqHead)

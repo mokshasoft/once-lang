@@ -52,7 +52,8 @@ import Once.Parser as Parser
 import Once.Adequacy.SpecGrammar.Conv
 import Once.Spec.Surface.Program
 open Parser.FunInfo using (funType)
-open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport)
+open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (signaturesWithOwner; expandPath)
 import Once.Internal.Resolution as LR
 open import Once.Internal.Module using (entrySig)

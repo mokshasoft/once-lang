@@ -44,6 +44,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 
 open import Once.Parser.Module.Core
+open import Once.Spec.Surface.Syntax using (Import; mkImport)
 open import Once.Spec.Surface.Syntax using (RLam)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.ResolvedRefs using (GoodRefs; goodRefs?)

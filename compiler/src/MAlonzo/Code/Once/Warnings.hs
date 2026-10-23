@@ -490,14 +490,14 @@ d_renderWarning_330 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Warnings.loopWarnings
 d_loopWarnings_364 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> [T_Warning_16]
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 -> [T_Warning_16]
 d_loopWarnings_364 v0
   = coe
       du_go_372
       (coe MAlonzo.Code.Once.Compile.d_silentRoundDefs_1170 (coe v0))
 -- Once.Warnings._.go
 d_go_372 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] -> [T_Warning_16]
 d_go_372 ~v0 v1 = du_go_372 v1
 du_go_372 ::
@@ -514,7 +514,7 @@ du_go_372 v0
 d_warningsFor_378 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_warningsFor_378 v0 v1 v2
   = coe
@@ -531,7 +531,7 @@ d_warningsFor_378 v0 v1 v2
 d_go_390 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 ->
   [T_Warning_16] -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_go_390 ~v0 ~v1 ~v2 v3 = du_go_390 v3
 du_go_390 ::
