@@ -191,6 +191,10 @@ module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
   ofSyn (syn ra rt der) = _ , retype⇒ (sym (TyR-≡ ra)) der
   ofChk : ∀ {e A t Ψ} → Chk (L P) e A t Ψ → Σ[ t′ ∈ SC.Tm (S P) m (size ctx) ] W⇐ (L P) e A t′ Ψ
   ofChk (chk rt der) = _ , der
+  retype↦ : ∀ {e A π B B′ t Ψ} → B ≡ B′ → W↦ (L P) e A π B t Ψ → W↦ (L P) e A π B′ t Ψ
+  retype↦ refl w = w
+  ofDom : ∀ {e A π B t Ψ} → Dom (L P) e A π B t Ψ → Σ[ t′ ∈ SC.Tm (S P) m (size ctx) ] W↦ (L P) e A π B t′ Ψ
+  ofDom (dom rb rt der) = _ , retype↦ (sym (TyR-≡ rb)) der
 
 ------------------------------------------------------------------------
 -- Synthesis
@@ -294,3 +298,219 @@ module _ {m} {ctx : NamedCtx m} where
   wt-binop-cmp : ∀ {op e₁ e₂ Ψ₁ Ψ₂} → isComparisonOp op ≡ true → WI ctx e₁ ST.Int Ψ₁ → WI ctx e₂ ST.Int Ψ₂
                → WI ctx (SX.RBinOp op e₁ e₂) (ST.Unit ST.+ ST.Unit) (Ψ₁ SCx.+ᵘ Ψ₂)
   wt-binop-cmp c w₁ w₂ P (x-binop x₁ x₂) = _ , w-compare (proj₂ (cmp-of c)) (proj₂ (w₁ P x₁)) (proj₂ (w₂ P x₂)) where open At P
+
+  -- A generator applied to a synthesizing argument.
+  wt-id-app : ∀ {e T Ψ} → WI ctx e T Ψ → WI ctx (SX.RApp (SX.RResolved (gen "id")) e) T (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-id-app w P (x-app (x-res _) x) = _ , w-id-app (proj₂ (w P x)) where open At P
+
+  wt-fst-app : ∀ {e A B Ψ} → WI ctx e (A ST.* B) Ψ → WI ctx (SX.RApp (SX.RResolved (gen "fst")) e) A (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-fst-app w P (x-app (x-res _) x) = _ , w-fst-app (proj₂ (w P x)) where open At P
+
+  wt-snd-app : ∀ {e A B Ψ} → WI ctx e (A ST.* B) Ψ → WI ctx (SX.RApp (SX.RResolved (gen "snd")) e) B (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-snd-app w P (x-app (x-res _) x) = _ , w-snd-app (proj₂ (w P x)) where open At P
+
+  wt-terminal-app : ∀ {e T Ψ} → WI ctx e T Ψ → WI ctx (SX.RApp (SX.RResolved (gen "terminal")) e) ST.Unit (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-terminal-app w P (x-app (x-res _) x) = _ , w-terminal-app (proj₂ (w P x)) where open At P
+
+  wt-apply-app-infer : ∀ {e A B Ψ} → WI ctx e ((A ST.⇒[ LG.mk-kind LG.Many LG.pure ] B) ST.* A) Ψ
+                     → WI ctx (SX.RApp (SX.RResolved (gen "apply")) e) B (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-apply-app-infer w P (x-app (x-res _) x) = _ , w-apply-app (proj₂ (w P x)) where open At P
+
+  wt-apply-eff-app-infer : ∀ {e A B Ψ π} {g : LG.EffGrade π} → WI ctx e ((A ST.⇒[ LG.mk-kind LG.Many π ] B) ST.* A) Ψ
+                         → WI ctx (SX.RApp (SX.RResolved (gen "apply")) e) (ST.Unit ST.⇒[ LG.mk-kind LG.Many π ] B)
+                              (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-apply-eff-app-infer {g = g} w P (x-app (x-res _) x) = _ , w-apply-eff-app g (proj₂ (w P x)) where open At P
+
+  wt-Out-app-infer : ∀ {e F C Ψ} → ST.WFFun (kinds ctx) F → ST.⟦ F ⟧F (ST.ν F LG.pureᶠ) ≡ C → WI ctx e (ST.ν F LG.pureᶠ) Ψ
+                   → WI ctx (SX.RApp (SX.RResolved (gen "Out")) e) C (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-Out-app-infer wf ce w P (x-app (x-res _) x) = _ , retype⇒ ce (w-Out-app wf (proj₂ (w P x))) where open At P
+
+  wt-Out-eff-app-infer : ∀ {e F C Ψ} → ST.WFFun (kinds ctx) F → ST.⟦ F ⟧F (ST.ν F LG.actᶠ) ≡ C → WI ctx e (ST.ν F LG.actᶠ) Ψ
+                       → WI ctx (SX.RApp (SX.RResolved (gen "Out")) e) (ST.Unit ST.⇒[ LG.mk-kind LG.Many LG.act ] C)
+                            (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-Out-eff-app-infer {F = F} wf ce w P (x-app (x-res _) x) =
+    _ , retype⇒ (cong (ST.Unit ST.⇒[ LG.mk-kind LG.Many LG.act ]_) ce) (w-Out-act-app wf (proj₂ (w P x))) where open At P
+
+  -- Application: the head's type synthesized, the argument checked.
+  wt-app : ∀ {f x A B q Ψ₁ Ψ₂} → classifyAppHead f ≡ nothing
+         → WI ctx f (A ST.⇒[ LG.mk-kind q LG.pure ] B) Ψ₁ → WC ctx x A Ψ₂
+         → WI ctx (SX.RApp f x) B (Ψ₁ SCx.+ᵘ (q SCx.*ᵘ Ψ₂))
+  wt-app nh wf wx P (x-app xf xx) = _ , w-app (not-special nh xf) (proj₂ (wf P xf)) (proj₂ (wx P xx)) where open At P
+
+  wt-effApp : ∀ {f x A B Ψ₁ Ψ₂ π} {g : LG.EffGrade π} → classifyAppHead f ≡ nothing
+            → WI ctx f (A ST.⇒[ LG.mk-kind LG.Many π ] B) Ψ₁ → WC ctx x A Ψ₂
+            → WI ctx (SX.RApp f x) (ST.Unit ST.⇒[ LG.mk-kind LG.Many π ] B) (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂))
+  wt-effApp {g = g} nh wf wx P (x-app xf xx) = _ , w-effApp (not-special nh xf) g (proj₂ (wf P xf)) (proj₂ (wx P xx)) where open At P
+
+  -- …or the argument's type synthesized and the head checked from that domain.
+  wt-app-spine : ∀ {f x X T Ψ₁ Ψ₂} → classifyAppHead f ≡ nothing
+               → WI ctx x X Ψ₂ → WD ctx f X LG.pure T Ψ₁
+               → WI ctx (SX.RApp f x) T (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂))
+  wt-app-spine nh wx wf P (x-app xf xx) = _ , w-app-spine (not-special nh xf) (proj₂ (wx P xx)) (proj₂ (wf P xf)) where open At P
+
+------------------------------------------------------------------------
+-- Checking
+------------------------------------------------------------------------
+
+module _ {m} {ctx : NamedCtx m} where
+
+  private
+    _⇒⟨_⟩_ : ST.Ty m → LG.Purity → ST.Ty m → ST.Ty m
+    A ⇒⟨ π ⟩ B = A ST.⇒[ LG.mk-kind LG.Many π ] B
+    infixr 30 _⇒⟨_⟩_
+    Z = SCx.zeroUsage {size ctx}
+    gn : String → SX.Expr
+    gn g = SX.RResolved (gen g)
+
+  -- The generators as morphisms, at any grade.
+  wt-id-check : ∀ {T π} {u : LG.pure LG.⊑π π} → WC ctx (gn "id") (T ⇒⟨ π ⟩ T) Z
+  wt-id-check P _ = _ , w-id where open At P
+  wt-fst-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "fst") ((A ST.* B) ⇒⟨ π ⟩ A) Z
+  wt-fst-check P _ = _ , w-fst where open At P
+  wt-snd-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "snd") ((A ST.* B) ⇒⟨ π ⟩ B) Z
+  wt-snd-check P _ = _ , w-snd where open At P
+  wt-terminal-morph-check : ∀ {A π} {u : LG.pure LG.⊑π π} → WC ctx (gn "terminal") (A ⇒⟨ π ⟩ ST.Unit) Z
+  wt-terminal-morph-check P _ = _ , w-terminal where open At P
+  wt-initial-morph-check : ∀ {A π} {u : LG.pure LG.⊑π π} → WC ctx (gn "initial") (ST.Void ⇒⟨ π ⟩ A) Z
+  wt-initial-morph-check P _ = _ , w-initial where open At P
+  wt-inl-morph-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "inl") (A ⇒⟨ π ⟩ (A ST.+ B)) Z
+  wt-inl-morph-check P _ = _ , w-inl where open At P
+  wt-inr-morph-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "inr") (B ⇒⟨ π ⟩ (A ST.+ B)) Z
+  wt-inr-morph-check P _ = _ , w-inr where open At P
+
+  -- `compose f g`: `g`'s codomain from its domain, or `f`'s type synthesized.
+  wt-compose-check-g : ∀ {f g A B C π Ψ₁ Ψ₂} → WD ctx g A π B Ψ₂ → WC ctx f (B ⇒⟨ π ⟩ C) Ψ₁
+                     → WC ctx (SX.RApp (SX.RApp (gn "compose") f) g) (A ⇒⟨ π ⟩ C) (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂))
+  wt-compose-check-g wg wf P (x-app (x-app (x-res _) xf) xg) = _ , w-compose-g (proj₂ (wg P xg)) (proj₂ (wf P xf)) where open At P
+
+  wt-compose-check-f : ∀ {f g A B C C′ π π′ Ψ₁ Ψ₂} → WI ctx f (B ⇒⟨ π′ ⟩ C′) Ψ₁ → (B ⇒⟨ π′ ⟩ C′) <: (B ⇒⟨ π ⟩ C)
+                     → WC ctx g (A ⇒⟨ π ⟩ B) Ψ₂
+                     → WC ctx (SX.RApp (SX.RApp (gn "compose") f) g) (A ⇒⟨ π ⟩ C) (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂))
+  wt-compose-check-f wf p wg P (x-app (x-app (x-res _) xf) xg) = _ , w-compose-f (proj₂ (wf P xf)) p (proj₂ (wg P xg)) where open At P
+
+  wt-case-copair-check : ∀ {f g A B C π Ψ₁ Ψ₂} → WC ctx f (A ⇒⟨ π ⟩ C) Ψ₁ → WC ctx g (B ⇒⟨ π ⟩ C) Ψ₂
+                       → WC ctx (SX.RApp (SX.RApp (gn "case") f) g) ((A ST.+ B) ⇒⟨ π ⟩ C) (Ψ₁ SCx.+ᵘ Ψ₂)
+  wt-case-copair-check wf wg P (x-app (x-app (x-res _) xf) xg) = _ , w-case′ (proj₂ (wf P xf)) (proj₂ (wg P xg)) where open At P
+
+  wt-pair-morph-check : ∀ {f g A B C π Ψ₁ Ψ₂} → WC ctx f (A ⇒⟨ π ⟩ B) Ψ₁ → WC ctx g (A ⇒⟨ π ⟩ C) Ψ₂
+                      → WC ctx (SX.RApp (SX.RApp (gn "pair") f) g) (A ⇒⟨ π ⟩ (B ST.* C)) (Ψ₁ SCx.+ᵘ Ψ₂)
+  wt-pair-morph-check wf wg P (x-app (x-app (x-res _) xf) xg) = _ , w-pair′ (proj₂ (wf P xf)) (proj₂ (wg P xg)) where open At P
+
+  wt-curry-check : ∀ {f A B C π₀ π Ψ} {u : LG.pure LG.⊑π π₀} → WC ctx f ((A ST.* B) ⇒⟨ π ⟩ C) Ψ
+                 → WC ctx (SX.RApp (gn "curry") f) (A ⇒⟨ π₀ ⟩ (B ⇒⟨ π ⟩ C)) Ψ
+  wt-curry-check w P (x-app (x-res _) x) = _ , w-curry (proj₂ (w P x)) where open At P
+
+  wt-cata-check : ∀ {alg F A π Ψ} {u : LG.pure LG.⊑π π} → ST.WFFun (kinds ctx) F → WC ctx alg (ST.⟦ F ⟧F A ⇒⟨ π ⟩ A) Ψ
+                → WC ctx (SX.RApp (gn "cata") alg) (ST.μ F ⇒⟨ π ⟩ A) (LG.Many SCx.*ᵘ Ψ)
+  wt-cata-check wf w P (x-app (x-res _) x) = _ , w-cata wf (proj₂ (w P x)) where open At P
+
+  wt-ana-check : ∀ {c F A π₀ φ Ψ} {u : LG.pure LG.⊑π π₀} {ua : π₀ LG.⊑π LG.act} → ST.WFFun (kinds ctx) F
+               → WC ctx c (A ⇒⟨ LG.fin φ ⟩ ST.⟦ F ⟧F A) Ψ
+               → WC ctx (SX.RApp (gn "ana") c) (A ⇒⟨ π₀ ⟩ ST.ν F φ) (LG.Many SCx.*ᵘ Ψ)
+  wt-ana-check {ua = ua} wf w P (x-app (x-res _) x) = _ , w-ana ua wf (proj₂ (w P x)) where open At P
+
+  wt-loop-check : ∀ {c A B Ψ} → WC ctx c (A ⇒⟨ LG.act ⟩ (B ST.+ A)) Ψ
+                → WC ctx (SX.RApp (gn "ana") c) (A ⇒⟨ LG.eff ⟩ B) (LG.Many SCx.*ᵘ Ψ)
+  wt-loop-check w P (x-app (x-res _) x) = _ , w-loop (proj₂ (w P x)) where open At P
+
+  -- A synthesized type where a supertype is expected: its conversion.
+  wt-sub : ∀ {e A B Ψ} → WI ctx e A Ψ → A <: B → WC ctx e B Ψ
+  wt-sub w p P x = _ , w-sub (proj₂ (w P x)) p where open At P
+
+  wt-lam : ∀ {x body A B q q′ π Ψ} {u : LG.pure LG.⊑π π} → (q′ ≤qᵇ q) ≡ true
+         → WC (extendNamedCtx ctx x A) body B (q′ SCx.∷ Ψ)
+         → WC ctx (SX.RLam x body) (A ST.⇒[ LG.mk-kind q π ] B) Ψ
+  wt-lam {x = x} {A = A} ≤p w P (x-lam xb) = _ , w-lam ≤p (proj₂ (w (pack▸ x A P) xb)) where open At P
+
+  wt-pair-lit-check : ∀ {a b A B Ψ₁ Ψ₂} → WC ctx a A Ψ₁ → WC ctx b B Ψ₂ → WC ctx (SX.RPair a b) (A ST.* B) (Ψ₁ SCx.+ᵘ Ψ₂)
+  wt-pair-lit-check wa wb P (x-pair xa xb) = _ , w-pair-lit (proj₂ (wa P xa)) (proj₂ (wb P xb)) where open At P
+
+  wt-In-app-check : ∀ {e F Ψ} → ST.WFFun (kinds ctx) F → WC ctx e (ST.⟦ F ⟧F (ST.μ F)) Ψ
+                  → WC ctx (SX.RApp (gn "In") e) (ST.μ F) (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-In-app-check wf w P (x-app (x-res _) x) = _ , w-In-app wf (proj₂ (w P x)) where open At P
+
+  wt-apply-check : ∀ {e A B Ψ} → WI ctx e ((A ⇒⟨ LG.pure ⟩ B) ST.* A) Ψ
+                 → WC ctx (SX.RApp (gn "apply") e) B (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-apply-check w P (x-app (x-res _) x) = _ , w-apply-app′ (proj₂ (w P x)) where open At P
+
+  wt-inl-app-check : ∀ {e A B Ψ} → WC ctx e A Ψ → WC ctx (SX.RApp (gn "inl") e) (A ST.+ B) (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-inl-app-check w P (x-app (x-res _) x) = _ , w-inl-app (proj₂ (w P x)) where open At P
+
+  wt-inr-app-check : ∀ {e A B Ψ} → WC ctx e B Ψ → WC ctx (SX.RApp (gn "inr") e) (A ST.+ B) (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-inr-app-check w P (x-app (x-res _) x) = _ , w-inr-app (proj₂ (w P x)) where open At P
+
+  wt-initial-app-check : ∀ {e T Ψ} → WC ctx e ST.Void Ψ → WC ctx (SX.RApp (gn "initial") e) T (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
+  wt-initial-app-check w P (x-app (x-res _) x) = _ , w-initial-app (proj₂ (w P x)) where open At P
+
+  -- A polymorphic telescope definition, at a kinded instance.
+  wt-var-poly-instantiate : ∀ {x T sc body prefix}
+                          → lookupImport (sig ctx) x ≡ nothing → lookupImport (imports ctx) x ≡ nothing
+                          → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , body , prefix))
+                          → ¬ TP.Ground sc → KindedInstance (kinds ctx) sc T
+                          → WC ctx (SX.RResolved (own x)) T Z
+  wt-var-poly-instantiate {sc = sc} _ _ lp ng ins P _ =
+    let ki = kinded-instance sc ins
+        (t , w) = ofChk (refC {Γd = debruijn ctx} (E.View.entry (V P) lp) (h-poly P lp) (E.View.entryIs (V P) lp)
+                              (proj₁ ki) (proj₁ (proj₂ ki)) (h-open P lp ng))
+    in t , retype⇐ (proj₂ (proj₂ ki)) w
+    where open At P
+
+------------------------------------------------------------------------
+-- An arrow out of a given domain
+------------------------------------------------------------------------
+
+module _ {m} {ctx : NamedCtx m} where
+
+  private
+    Z = SCx.zeroUsage {size ctx}
+    gn : String → SX.Expr
+    gn g = SX.RResolved (gen g)
+
+  wd-infer : ∀ {g A A′ B π π′ Ψ} → WI ctx g (A′ ST.⇒[ LG.mk-kind LG.Many π′ ] B) Ψ → A <: A′ → π′ LG.⊑π π → WD ctx g A π B Ψ
+  wd-infer w a o P x = _ , w-infer (proj₂ (w P x)) a o where open At P
+
+  -- A polymorphic definition whose codomain's variables occur in its domain.
+  wd-poly : ∀ {x A B π π′ sc sd sco body prefix}
+          → lookupImport (sig ctx) x ≡ nothing → lookupImport (imports ctx) x ≡ nothing
+          → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , body , prefix))
+          → ¬ TP.Ground sc → TP.ArrowSchema sc sd sco π′ → TP.CodVarsInDom sd sco
+          → KindedInstance (kinds ctx) sc (A ST.⇒[ LG.mk-kind LG.Many π′ ] B) → π′ LG.⊑π π
+          → WD ctx (SX.RResolved (own x)) A π B Z
+  wd-poly {sc = sc} _ _ lp ng arr cvd ins g P _ =
+    let (X , Y , te , incl) = h-arrow P lp arr cvd
+        ki = kinded-instance sc ins
+    in ofDom (refD {Γd = debruijn ctx} (E.View.entry (V P) lp) (h-poly P lp) (E.View.entryIs (V P) lp) (proj₁ ki) (proj₁ (proj₂ ki))
+                   (h-open P lp ng) te incl (proj₂ (proj₂ ki)) g)
+    where open At P
+
+  wd-lam : ∀ {x body A B q′ π Ψ} {u : LG.pure LG.⊑π π} → WI (extendNamedCtx ctx x A) body B (q′ SCx.∷ Ψ)
+         → WD ctx (SX.RLam x body) A π B Ψ
+  wd-lam {x = x} {A = A} w P (x-lam xb) = _ , w-lam↦ (proj₂ (w (pack▸ x A P) xb)) where open At P
+
+  wd-compose : ∀ {f g A M B π Ψ₁ Ψ₂} → WD ctx g A π M Ψ₂ → WD ctx f M π B Ψ₁
+             → WD ctx (SX.RApp (SX.RApp (gn "compose") f) g) A π B (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂))
+  wd-compose wg wf P (x-app (x-app (x-res _) xf) xg) = _ , w-compose↦ (proj₂ (wg P xg)) (proj₂ (wf P xf)) where open At P
+
+  wd-id : ∀ {A π} {u : LG.pure LG.⊑π π} → WD ctx (gn "id") A π A Z
+  wd-id P _ = _ , w-id↦ where open At P
+  wd-fst : ∀ {A B π} {u : LG.pure LG.⊑π π} → WD ctx (gn "fst") (A ST.* B) π A Z
+  wd-fst P _ = _ , w-fst↦ where open At P
+  wd-snd : ∀ {A B π} {u : LG.pure LG.⊑π π} → WD ctx (gn "snd") (A ST.* B) π B Z
+  wd-snd P _ = _ , w-snd↦ where open At P
+  wd-terminal : ∀ {A π} {u : LG.pure LG.⊑π π} → WD ctx (gn "terminal") A π ST.Unit Z
+  wd-terminal P _ = _ , w-terminal↦ where open At P
+  wd-initial : ∀ {π} {u : LG.pure LG.⊑π π} → WD ctx (gn "initial") ST.Void π ST.Void Z
+  wd-initial P _ = _ , w-initial↦ where open At P
+
+  wd-case : ∀ {f g A B Cf Cg C π Ψ₁ Ψ₂} → WD ctx f A π Cf Ψ₁ → WD ctx g B π Cg Ψ₂ → Cf ⊔ Cg ≔ C
+          → WD ctx (SX.RApp (SX.RApp (gn "case") f) g) (A ST.+ B) π C (Ψ₁ SCx.+ᵘ Ψ₂)
+  wd-case wf wg j P (x-app (x-app (x-res _) xf) xg) = _ , w-case↦ (proj₂ (wf P xf)) (proj₂ (wg P xg)) j where open At P
+
+  wd-pair : ∀ {f g A B C π Ψ₁ Ψ₂} → WD ctx f A π B Ψ₁ → WD ctx g A π C Ψ₂
+          → WD ctx (SX.RApp (SX.RApp (gn "pair") f) g) A π (B ST.* C) (Ψ₁ SCx.+ᵘ Ψ₂)
+  wd-pair wf wg P (x-app (x-app (x-res _) xf) xg) = _ , w-pair↦ (proj₂ (wf P xf)) (proj₂ (wg P xg)) where open At P
+
+  wd-cata : ∀ {alg F A π Ψ} {u : LG.pure LG.⊑π π} → ST.WFFun (kinds ctx) F
+          → WI ctx alg (ST.⟦ F ⟧F A ST.⇒[ LG.mk-kind LG.Many π ] A) Ψ
+          → WD ctx (SX.RApp (gn "cata") alg) (ST.μ F) π A (LG.Many SCx.*ᵘ Ψ)
+  wd-cata wf w P (x-app (x-res _) x) = _ , w-cata↦ wf (proj₂ (w P x)) where open At P
