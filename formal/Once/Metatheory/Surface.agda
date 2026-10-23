@@ -55,7 +55,7 @@ open import Once.Spec.Sub using (_⊔_≔_)
 -- Names
 ------------------------------------------------------------------------
 
-private
+module _ where
   notGen : ∀ {w} → w ∈ genNames → ¬ NotGenerator (gen w)
   notGen m n = All.lookup n m refl
 
@@ -106,7 +106,7 @@ private
 -- Types: injectivity, and substitution read back at the variables it uses
 ------------------------------------------------------------------------
 
-private
+module _ where
   *-inj : ∀ {m} {A A′ B B′ : Ty m} → (A * B) ≡ (A′ * B′) → (A ≡ A′) × (B ≡ B′)
   *-inj refl = refl , refl
   +-inj : ∀ {m} {A A′ B B′ : Ty m} → (A + B) ≡ (A′ + B′) → (A ≡ A′) × (B ≡ B′)
@@ -175,7 +175,7 @@ module Modes {m} (Δ : KCtx m) where
   Dom : ∀ {n} → Locals m n → Expr → Ty m → Purity → Ty m → _ → Set
   Dom = _⊢_⇐_⇒[_]↦_↝_ Δ
 
-  private
+  module _ where
     ∋-unique : ∀ {n} {L : Locals m n} {x A A′ i i′} → L ∋ x ⦂ A at i → L ∋ x ⦂ A′ at i′ → A ≡ A′
     ∋-unique here         here         = refl
     ∋-unique here         (there ne _) = ⊥-elim (ne refl)
