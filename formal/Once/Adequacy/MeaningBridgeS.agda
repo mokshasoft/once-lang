@@ -209,28 +209,28 @@ module _ {δ : DefSem} where
   bridge⇒ : ∀ {n} {L : Locals 0 n} {A : Type} {e t Ψ} {d : L ⊢ e ⇒ A ↝ t} (u : Use⇒ d Ψ)
             {dγ₁ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {γ} {dγ₂ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
             (r : EnvR (ctxOf L) Ψ dγ₁ γ) (re : RelEnv↾ (ctxOf L) Ψ dγ₁ dγ₂) (er : Refs δ)
-          → RelGM pure A (⟦ typ⇒ u ⟧ₛ δ γ) ((SD.⟦ realize⇒ u ⟧ˢ fmt σ) dγ₂)
+          → RelGM pure A (⟦ typ⇒ u ⟧ₛ δ γ) ((SD.⟦ realize⇒ (shape-of _) u ⟧ˢ fmt σ) dγ₂)
   bridge⇐ : ∀ {n} {L : Locals 0 n} {A : Type} {e t Ψ} {d : L ⊢ e ⇐ A ↝ t} (u : Use⇐ d Ψ)
             {dγ₁ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {γ} {dγ₂ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
             (r : EnvR (ctxOf L) Ψ dγ₁ γ) (re : RelEnv↾ (ctxOf L) Ψ dγ₁ dγ₂) (er : Refs δ)
-          → RelGM pure A (⟦ typ⇐ u ⟧ₛ δ γ) ((SD.⟦ realize⇐ u ⟧ˢ fmt σ) dγ₂)
+          → RelGM pure A (⟦ typ⇐ u ⟧ₛ δ γ) ((SD.⟦ realize⇐ (shape-of _) u ⟧ˢ fmt σ) dγ₂)
   bridge↦ : ∀ {n} {L : Locals 0 n} {A B : Type} {e π t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} (u : Use↦ d Ψ)
             {dγ₁ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {γ} {dγ₂ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
             (r : EnvR (ctxOf L) Ψ dγ₁ γ) (re : RelEnv↾ (ctxOf L) Ψ dγ₁ dγ₂) (er : Refs δ)
-          → RelGM pure (A ⇒[ mk-kind Many π ] B) (⟦ typ↦ u ⟧ₛ δ γ) ((SD.⟦ realize↦ u ⟧ˢ fmt σ) dγ₂)
+          → RelGM pure (A ⇒[ mk-kind Many π ] B) (⟦ typ↦ u ⟧ₛ δ γ) ((SD.⟦ realize↦ (shape-of _) u ⟧ˢ fmt σ) dγ₂)
 
   -- A recursive call at the Spec environment holding the surface values.
   bridgeᶠ⇒ : ∀ {n} {L : Locals 0 n} {A : Type} {e t Ψ} {d : L ⊢ e ⇒ A ↝ t} (u : Use⇒ d Ψ)
              {dγ₁ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} (re : RelEnv↾ (ctxOf L) Ψ dγ₁ dγ₂) (er : Refs δ)
-           → RelGM pure A (⟦ typ⇒ u ⟧ₛ δ (fromSurf {Γ = ctxOf L} dγ₁)) ((SD.⟦ realize⇒ u ⟧ˢ fmt σ) dγ₂)
+           → RelGM pure A (⟦ typ⇒ u ⟧ₛ δ (fromSurf {Γ = ctxOf L} dγ₁)) ((SD.⟦ realize⇒ (shape-of _) u ⟧ˢ fmt σ) dγ₂)
   bridgeᶠ⇒ {L = L} {Ψ = Ψ} u re er = bridge⇒ u (fromR {Γ = ctxOf L} {Ψ = Ψ}) re er
   bridgeᶠ⇐ : ∀ {n} {L : Locals 0 n} {A : Type} {e t Ψ} {d : L ⊢ e ⇐ A ↝ t} (u : Use⇐ d Ψ)
              {dγ₁ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} (re : RelEnv↾ (ctxOf L) Ψ dγ₁ dγ₂) (er : Refs δ)
-           → RelGM pure A (⟦ typ⇐ u ⟧ₛ δ (fromSurf {Γ = ctxOf L} dγ₁)) ((SD.⟦ realize⇐ u ⟧ˢ fmt σ) dγ₂)
+           → RelGM pure A (⟦ typ⇐ u ⟧ₛ δ (fromSurf {Γ = ctxOf L} dγ₁)) ((SD.⟦ realize⇐ (shape-of _) u ⟧ˢ fmt σ) dγ₂)
   bridgeᶠ⇐ {L = L} {Ψ = Ψ} u re er = bridge⇐ u (fromR {Γ = ctxOf L} {Ψ = Ψ}) re er
   bridgeᶠ↦ : ∀ {n} {L : Locals 0 n} {A B : Type} {e π t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} (u : Use↦ d Ψ)
              {dγ₁ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {dγ₂ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} (re : RelEnv↾ (ctxOf L) Ψ dγ₁ dγ₂) (er : Refs δ)
-           → RelGM pure (A ⇒[ mk-kind Many π ] B) (⟦ typ↦ u ⟧ₛ δ (fromSurf {Γ = ctxOf L} dγ₁)) ((SD.⟦ realize↦ u ⟧ˢ fmt σ) dγ₂)
+           → RelGM pure (A ⇒[ mk-kind Many π ] B) (⟦ typ↦ u ⟧ₛ δ (fromSurf {Γ = ctxOf L} dγ₁)) ((SD.⟦ realize↦ (shape-of _) u ⟧ˢ fmt σ) dγ₂)
   bridgeᶠ↦ {L = L} {Ψ = Ψ} u re er = bridge↦ u (fromR {Γ = ctxOf L} {Ψ = Ψ}) re er
 
   -- A local: the positional lookup on both sides, at the type the name finds.
@@ -337,12 +337,12 @@ module _ {δ : DefSem} where
              (go (⟦ typ⇒ ds ⟧ₛ δ (envˡ σ₀ Ψs (Ψₗ ⊔ᵘ Ψᵣ) γ)))))
        (RelGᵖ-bind {A = A Once.Spec.Type.+ B} {B = C}
       {m = ⟦ typ⇒ ds ⟧ₛ δ (fromSurf {Γ = ctxOf L} (restrictᵛ {Γ = ctxOf L} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₁))}
-      {t₂ = (SD.⟦ realize⇒ ds ⟧ˢ fmt σ) (restrictᴰ {Γ = ctxOf L} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₂)}
+      {t₂ = (SD.⟦ realize⇒ (shape-of _) ds ⟧ˢ fmt σ) (restrictᴰ {Γ = ctxOf L} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₂)}
       {k = λ v → [ Lb , Rb ]′ v}
-    {g = λ v → [ (λ a → (SD.⟦ Surface.coerce (<:ᶜ⇒<: (_⊔_≔_.left J)) (realize⇒ dl) ⟧ˢ fmt σ) (bindᴰ {Γ = ctxOf L} {A = A} qL
+    {g = λ v → [ (λ a → (SD.⟦ Surface.coerce (<:ᶜ⇒<: (_⊔_≔_.left J)) (realize⇒ (shape-of _) dl) ⟧ˢ fmt σ) (bindᴰ {Γ = ctxOf L} {A = A} qL
                             (restrictᴰ {Γ = ctxOf L} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)
                               (restrictᴰ {Γ = ctxOf L} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₂)) a))
-                 , (λ b → (SD.⟦ Surface.coerce (<:ᶜ⇒<: (_⊔_≔_.right J)) (realize⇒ dr) ⟧ˢ fmt σ) (bindᴰ {Γ = ctxOf L} {A = B} qR
+                 , (λ b → (SD.⟦ Surface.coerce (<:ᶜ⇒<: (_⊔_≔_.right J)) (realize⇒ (shape-of _) dr) ⟧ˢ fmt σ) (bindᴰ {Γ = ctxOf L} {A = B} qR
                             (restrictᴰ {Γ = ctxOf L} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)
                               (restrictᴰ {Γ = ctxOf L} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₂)) b)) ]′ v}
       (bridgeᶠ⇒ ds (reˡ {Γ = ctxOf L} {Ψ₁ = Ψs} {Ψ₂ = Ψₗ ⊔ᵘ Ψᵣ} re) er)
@@ -529,7 +529,7 @@ module _ {δ : DefSem} where
   -- reduces to the same pure post-op the LHS applies (modulo the `++ []` bookkeeping).
   bridge⇒ {L = L} {A = A} (u-id-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = A} (trans (sym (>>=ᵖ-idʳ _)) (Comb.appC-sem {δ = δ} {A = T} {B = T} (λ v → v) (⊢idᶜ ⊑-pure) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r))
-       (≡ʳ (cong ((SD.⟦ realize⇒ d ⟧ˢ fmt σ) (resᵐ {Γ = ctxOf L} dγ₂) >>=∞_) (liftFn-id {0} {A}))
+       (≡ʳ (cong ((SD.⟦ realize⇒ (shape-of _) d ⟧ˢ fmt σ) (resᵐ {Γ = ctxOf L} dγ₂) >>=∞_) (liftFn-id {0} {A}))
        (fmapʳ-R (λ r → r) (bridgeᶠ⇒ d (reᵐ re) er)))
   bridge⇒ {L = L} {A = Aₓ} (u-fst-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = A * B} {B = A} _ (⊢fstᶜ ⊑-pure) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
@@ -620,7 +620,7 @@ module _ {δ : DefSem} where
          RelGᵖᵉ-bind {A = A ⇒[ mk-kind Many π ] B} {B = B} {P = RelGM π B} (bridgeᶠ⇒ df (reˡ re) er)
            (λ rf → RelGᵖᵉ-bind {A = A} {B = B} {P = RelGM π B} (bridgeᶠ⇐ dx (reᵐ re) er) (λ rx → proj₁ rf rx) (λ e h → retargetʳ-R e h))
            (λ e h → retargetʳ-R e h))
-    , ret-inv (SD-rel σ-self (realize⇒ d) (self↾ re)) ))
+    , ret-inv (SD-rel σ-self (realize⇒ (shape-of _) d) (self↾ re)) ))
   -- D230: the spine — the head's domain-given meaning, applied to the argument's.
   bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df) r re er =
     ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
@@ -751,17 +751,17 @@ module _ {δ : DefSem} where
   -- `q'` (the binder) decides whether it enters the environment. Six clauses,
   -- mirroring `⟦_⟧ᶜ`'s own split — `q' ≤q q` rules the rest out.
   bridge⇐ {L = L} dl@(u-lam {A = A} {B = B} {q = Zero} {π = π} {q′ = Zero} le d) r re er =
-    return∞-R (RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er) , ret-inv (SD-rel σ-self (realize⇐ dl) (self↾ re)))
+    return∞-R (RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er) , ret-inv (SD-rel σ-self (realize⇐ (shape-of _) dl) (self↾ re)))
   bridge⇐ {L = L} dl@(u-lam {A = A} {B = B} {q = One} {π = π} {q′ = Zero} le d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er)) , ret-inv (SD-rel σ-self (realize⇐ dl) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er)) , ret-inv (SD-rel σ-self (realize⇐ (shape-of _) dl) (self↾ re)))
   bridge⇐ {L = L} dl@(u-lam {A = A} {B = B} {q = Many} {π = π} {q′ = Zero} le d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er)) , ret-inv (SD-rel σ-self (realize⇐ dl) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er)) , ret-inv (SD-rel σ-self (realize⇐ (shape-of _) dl) (self↾ re)))
   bridge⇐ {L = L} dl@(u-lam {A = A} {B = B} {q = One} {π = π} {q′ = One} le d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind-R {Γ = ctxOf L} {A = A} One a r) (rel-bind One re rv) er)) , ret-inv (SD-rel σ-self (realize⇐ dl) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind-R {Γ = ctxOf L} {A = A} One a r) (rel-bind One re rv) er)) , ret-inv (SD-rel σ-self (realize⇐ (shape-of _) dl) (self↾ re)))
   bridge⇐ {L = L} dl@(u-lam {A = A} {B = B} {q = Many} {π = π} {q′ = One} le d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind-R {Γ = ctxOf L} {A = A} One a r) (rel-bind One re rv) er)) , ret-inv (SD-rel σ-self (realize⇐ dl) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind-R {Γ = ctxOf L} {A = A} One a r) (rel-bind One re rv) er)) , ret-inv (SD-rel σ-self (realize⇐ (shape-of _) dl) (self↾ re)))
   bridge⇐ {L = L} dl@(u-lam {A = A} {B = B} {q = Many} {π = π} {q′ = Many} le d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind-R {Γ = ctxOf L} {A = A} Many a r) (rel-bind Many re rv) er)) , ret-inv (SD-rel σ-self (realize⇐ dl) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇐ d (bind-R {Γ = ctxOf L} {A = A} Many a r) (rel-bind Many re rv) er)) , ret-inv (SD-rel σ-self (realize⇐ (shape-of _) dl) (self↾ re)))
   bridge⇐ {L = L} {A = Aₓ} (u-pair-lit {A = A} {B = B} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} da db) r re er =
     ≡ˡ {A = Aₓ} (binK {K = λ ab → ab}
          (Comb.arm {δ = δ} (typ⇐ da) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
@@ -803,11 +803,11 @@ module _ {δ : DefSem} where
     ≡ˡ {A = Aₓ ⇒[ mk-kind Many πₓ ] Bₓ} (cong ⟦ sub-arr {q = Many} a (<:-refl B) g ⟧<:ᵛ (Comb.arm {δ = δ} (typ⇒ w) r))
        (RelGT-sub (sub-arr {q = Many} a (<:-refl B) g) (bridgeᶠ⇒ w re er))
   bridge↦ {L = L} dd@(u-lam {A = A} {B = B} {π = π} {q′ = Zero} d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇒ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er)) , ret-inv (SD-rel σ-self (realize↦ dd) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇒ d (bind0-R {Γ = ctxOf L} {A = A} tt r) (rel-bind0 re) er)) , ret-inv (SD-rel σ-self (realize↦ (shape-of _) dd) (self↾ re)))
   bridge↦ {L = L} dd@(u-lam {A = A} {B = B} {π = π} {q′ = One} d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇒ d (bind-R {Γ = ctxOf L} {A = A} One a r) (rel-bind One re rv) er)) , ret-inv (SD-rel σ-self (realize↦ dd) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇒ d (bind-R {Γ = ctxOf L} {A = A} One a r) (rel-bind One re rv) er)) , ret-inv (SD-rel σ-self (realize↦ (shape-of _) dd) (self↾ re)))
   bridge↦ {L = L} dd@(u-lam {A = A} {B = B} {π = π} {q′ = Many} d) r re er =
-    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇒ d (bind-R {Γ = ctxOf L} {A = A} Many a r) (rel-bind Many re rv) er)) , ret-inv (SD-rel σ-self (realize↦ dd) (self↾ re)))
+    return∞-R ((λ {a} {b} rv → RelGM-ret (pure-⊑ π) {B} (bridge⇒ d (bind-R {Γ = ctxOf L} {A = A} Many a r) (rel-bind Many re rv) er)) , ret-inv (SD-rel σ-self (realize↦ (shape-of _) dd) (self↾ re)))
   bridge↦ {A = Aₓ} {B = Bₓ} {π = πₓ} (u-compose {A = A} {M = M} {B = B} {π = π} dg df) r re er =
     ≡ˡ {A = Aₓ ⇒[ mk-kind Many πₓ ] Bₓ} (Comb.compose-sem {δ = δ} (typ↦ df) (typ↦ dg) _ _ (Comb.arm {δ = δ} (typ↦ df)) (Comb.arm {δ = δ} (typ↦ dg)) r)
        (RelGᵖ-bind {A = M ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] B}

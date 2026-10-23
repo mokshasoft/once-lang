@@ -51,15 +51,27 @@ _⊢_⇐_↝_ = SU._⊢_⇐_↝_ Δ
 _⊢_⇐_⇒[_]↦_↝_ : ∀ {n} → Locals m n → Expr → Ty m → Purity → Ty m → Tm S m n → Set
 _⊢_⇐_⇒[_]↦_↝_ = SU._⊢_⇐_⇒[_]↦_↝_ Δ
 
--- The locals' types, as the context the realization runs in.
+-- A context with the locals' types, in order (the names forgotten).
+data Shape : ∀ {n} → Locals m n → Ctx m n → Set where
+  sh-∅ : Shape ∅ Once.Spec.Context.∅
+  sh-▸ : ∀ {n} {L : Locals m n} {Γ x A} → Shape L Γ → Shape (L ▹ x ∶ A) (Γ ▸ A)
+
+-- The local a name finds has the type a context of that shape gives it.
+lookup-shape : ∀ {n} {L : Locals m n} {Γ x A i} → Shape L Γ → L ∋ x ⦂ A at i → lookup Γ i ≡ A
+lookup-shape (sh-▸ sh) here        = refl
+lookup-shape (sh-▸ sh) (there _ v) = lookup-shape sh v
+
+-- The locals' own context.
 ctxOf : ∀ {n} → Locals m n → Ctx m n
 ctxOf ∅           = Once.Spec.Context.∅
 ctxOf (L ▹ _ ∶ A) = ctxOf L ▸ A
 
--- The local a name finds has the type the context gives it.
+shape-of : ∀ {n} (L : Locals m n) → Shape L (ctxOf L)
+shape-of ∅           = sh-∅
+shape-of (L ▹ _ ∶ A) = sh-▸ (shape-of L)
+
 lookup-at : ∀ {n} {L : Locals m n} {x A i} → L ∋ x ⦂ A at i → lookup (ctxOf L) i ≡ A
-lookup-at here        = refl
-lookup-at (there _ v) = lookup-at v
+lookup-at {L = L} = lookup-shape (shape-of L)
 
 ------------------------------------------------------------------------
 -- The annotation

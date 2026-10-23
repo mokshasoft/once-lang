@@ -57,104 +57,104 @@ ref : ∀ {n} {Γ : Once.Spec.Context.Ctx m n} (d : Fin s) (T : Ty m) → Bool �
 ref d T true  = poly (showCanonical (nm d)) T
 ref d T false = closure (showCanonical (nm d))
 
-realize⇒ : ∀ {n} {L : Locals m n} {e A t Ψ} {d : L ⊢ e ⇒ A ↝ t} → Use⇒ d Ψ → Expr (ctxOf L) Ψ A
-realize⇐ : ∀ {n} {L : Locals m n} {e A t Ψ} {d : L ⊢ e ⇐ A ↝ t} → Use⇐ d Ψ → Expr (ctxOf L) Ψ A
-realize↦ : ∀ {n} {L : Locals m n} {e A π B t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} → Use↦ d Ψ
-         → Expr (ctxOf L) Ψ (A ⇒[ mk-kind Many π ] B)
+realize⇒ : ∀ {n} {L : Locals m n} {Γ} {e A t Ψ} {d : L ⊢ e ⇒ A ↝ t} → Shape L Γ → Use⇒ d Ψ → Expr Γ Ψ A
+realize⇐ : ∀ {n} {L : Locals m n} {Γ} {e A t Ψ} {d : L ⊢ e ⇐ A ↝ t} → Shape L Γ → Use⇐ d Ψ → Expr Γ Ψ A
+realize↦ : ∀ {n} {L : Locals m n} {Γ} {e A π B t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} → Shape L Γ → Use↦ d Ψ
+         → Expr Γ Ψ (A ⇒[ mk-kind Many π ] B)
 
-realize⇒ (u-int {i})             = int i
-realize⇒ (u-float {i} {f} {l})   = float (decimalOf i f l)
-realize⇒ u-unit                  = unit
-realize⇒ u-unit-g                = unit
-realize⇒ (u-var {v = v})         = subst (Expr _ _) (lookup-at v) (var _)
-realize⇒ (u-sigop {c = c} k e)   = subst (Expr _ _) (sym e) (sigOp c k)
-realize⇒ (u-def {d = d} {τ = τ}) = ref d (type (S !! d) ⟨ τ ⟩) (inline d)
-realize⇒ (u-annot u)             = realize⇐ u
-realize⇒ (u-pair ua ub)          = pair (realize⇒ ua) (realize⇒ ub)
-realize⇒ (u-neg u)               = neg (realize⇒ u)
-realize⇒ (u-neg-float {i} {f} {l}) = float (negate (decimalOf i f l))
-realize⇒ (u-let u₁ u₂)           = let' (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-case {j = j} us ul ur) =
-  case' (realize⇒ us) (coerce (<:ᶜ⇒<: (left j)) (realize⇒ ul)) (coerce (<:ᶜ⇒<: (right j)) (realize⇒ ur))
-realize⇒ (u-arith {o = ia-add} u₁ u₂) = add  (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith {o = ia-sub} u₁ u₂) = sub  (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith {o = ia-mul} u₁ u₂) = mul  (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith {o = ia-div} u₁ u₂) = div  (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith {o = ia-mod} u₁ u₂) = mod' (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith-float {o = fa-add} u₁ u₂) = fadd (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith-float {o = fa-sub} u₁ u₂) = fsub (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith-float {o = fa-mul} u₁ u₂) = fmul (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-arith-float {o = fa-div} u₁ u₂) = fdiv (realize⇒ u₁) (realize⇒ u₂)
+realize⇒ sh (u-int {i})             = int i
+realize⇒ sh (u-float {i} {f} {l})   = float (decimalOf i f l)
+realize⇒ sh u-unit                  = unit
+realize⇒ sh u-unit-g                = unit
+realize⇒ sh (u-var {v = v})         = subst (Expr _ _) (lookup-shape sh v) (var _)
+realize⇒ sh (u-sigop {c = c} k e)   = subst (Expr _ _) (sym e) (sigOp c k)
+realize⇒ sh (u-def {d = d} {τ = τ}) = ref d (type (S !! d) ⟨ τ ⟩) (inline d)
+realize⇒ sh (u-annot u)             = realize⇐ sh u
+realize⇒ sh (u-pair ua ub)          = pair (realize⇒ sh ua) (realize⇒ sh ub)
+realize⇒ sh (u-neg u)               = neg (realize⇒ sh u)
+realize⇒ sh (u-neg-float {i} {f} {l}) = float (negate (decimalOf i f l))
+realize⇒ sh (u-let u₁ u₂)           = let' (realize⇒ sh u₁) (realize⇒ (sh-▸ sh) u₂)
+realize⇒ sh (u-case {j = j} us ul ur) =
+  case' (realize⇒ sh us) (coerce (<:ᶜ⇒<: (left j)) (realize⇒ (sh-▸ sh) ul)) (coerce (<:ᶜ⇒<: (right j)) (realize⇒ (sh-▸ sh) ur))
+realize⇒ sh (u-arith {o = ia-add} u₁ u₂) = add  (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith {o = ia-sub} u₁ u₂) = sub  (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith {o = ia-mul} u₁ u₂) = mul  (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith {o = ia-div} u₁ u₂) = div  (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith {o = ia-mod} u₁ u₂) = mod' (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float {o = fa-add} u₁ u₂) = fadd (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float {o = fa-sub} u₁ u₂) = fsub (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float {o = fa-mul} u₁ u₂) = fmul (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float {o = fa-div} u₁ u₂) = fdiv (realize⇒ sh u₁) (realize⇒ sh u₂)
 -- D125: the `Int` side of a mixed operation widens.
-realize⇒ (u-arith-float-il {o = fa-add} u₁ u₂) = fadd (i2f (realize⇒ u₁)) (realize⇒ u₂)
-realize⇒ (u-arith-float-il {o = fa-sub} u₁ u₂) = fsub (i2f (realize⇒ u₁)) (realize⇒ u₂)
-realize⇒ (u-arith-float-il {o = fa-mul} u₁ u₂) = fmul (i2f (realize⇒ u₁)) (realize⇒ u₂)
-realize⇒ (u-arith-float-il {o = fa-div} u₁ u₂) = fdiv (i2f (realize⇒ u₁)) (realize⇒ u₂)
-realize⇒ (u-arith-float-ir {o = fa-add} u₁ u₂) = fadd (realize⇒ u₁) (i2f (realize⇒ u₂))
-realize⇒ (u-arith-float-ir {o = fa-sub} u₁ u₂) = fsub (realize⇒ u₁) (i2f (realize⇒ u₂))
-realize⇒ (u-arith-float-ir {o = fa-mul} u₁ u₂) = fmul (realize⇒ u₁) (i2f (realize⇒ u₂))
-realize⇒ (u-arith-float-ir {o = fa-div} u₁ u₂) = fdiv (realize⇒ u₁) (i2f (realize⇒ u₂))
-realize⇒ (u-compare {o = cmp-lt} u₁ u₂) = lt (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-compare {o = cmp-le} u₁ u₂) = le (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-compare {o = cmp-gt} u₁ u₂) = gt (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-compare {o = cmp-ge} u₁ u₂) = ge (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-compare {o = cmp-eq} u₁ u₂) = eq (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-compare {o = cmp-ne} u₁ u₂) = ne (realize⇒ u₁) (realize⇒ u₂)
-realize⇒ (u-id-app u)            = morph-app IR.id (realize⇒ u)
-realize⇒ (u-fst-app u)           = morph-app IR.fst (realize⇒ u)
-realize⇒ (u-snd-app u)           = morph-app IR.snd (realize⇒ u)
-realize⇒ (u-terminal-app u)      = morph-app IR.terminal (realize⇒ u)
-realize⇒ (u-apply-app u)         = morph-app IR.apply (realize⇒ u)
+realize⇒ sh (u-arith-float-il {o = fa-add} u₁ u₂) = fadd (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float-il {o = fa-sub} u₁ u₂) = fsub (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float-il {o = fa-mul} u₁ u₂) = fmul (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float-il {o = fa-div} u₁ u₂) = fdiv (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
+realize⇒ sh (u-arith-float-ir {o = fa-add} u₁ u₂) = fadd (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
+realize⇒ sh (u-arith-float-ir {o = fa-sub} u₁ u₂) = fsub (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
+realize⇒ sh (u-arith-float-ir {o = fa-mul} u₁ u₂) = fmul (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
+realize⇒ sh (u-arith-float-ir {o = fa-div} u₁ u₂) = fdiv (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
+realize⇒ sh (u-compare {o = cmp-lt} u₁ u₂) = lt (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-compare {o = cmp-le} u₁ u₂) = le (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-compare {o = cmp-gt} u₁ u₂) = gt (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-compare {o = cmp-ge} u₁ u₂) = ge (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-compare {o = cmp-eq} u₁ u₂) = eq (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-compare {o = cmp-ne} u₁ u₂) = ne (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-id-app u)            = morph-app IR.id (realize⇒ sh u)
+realize⇒ sh (u-fst-app u)           = morph-app IR.fst (realize⇒ sh u)
+realize⇒ sh (u-snd-app u)           = morph-app IR.snd (realize⇒ sh u)
+realize⇒ sh (u-terminal-app u)      = morph-app IR.terminal (realize⇒ sh u)
+realize⇒ sh (u-apply-app u)         = morph-app IR.apply (realize⇒ sh u)
 -- D222: `apply` at an effectful arrow builds the suspension `curry (apply ∘ fst)`.
-realize⇒ (u-apply-eff-app u)     = morph-app (IR.curry (IR.apply IR.∘ IR.fst)) (realize⇒ u)
+realize⇒ sh (u-apply-eff-app u)     = morph-app (IR.curry (IR.apply IR.∘ IR.fst)) (realize⇒ sh u)
 -- D194: the ν eliminator; D233: at an acting stream the force is suspended.
-realize⇒ (u-Out-app {F = F} {w = w} u) =
-  morph-app (subst (λ o → IR ⌊ ν F pureᶠ ⌋ o) (sym (⌊⟧T-commute F (ν F pureᶠ))) (IR.Out (wf-⌊⌋ w))) (realize⇒ u)
-realize⇒ (u-Out-act-app {F = F} {w = w} u) =
+realize⇒ sh (u-Out-app {F = F} {w = w} u) =
+  morph-app (subst (λ o → IR ⌊ ν F pureᶠ ⌋ o) (sym (⌊⟧T-commute F (ν F pureᶠ))) (IR.Out (wf-⌊⌋ w))) (realize⇒ sh u)
+realize⇒ sh (u-Out-act-app {F = F} {w = w} u) =
   morph-app (IR.curry (subst (λ o → IR ⌊ ν F actᶠ ⌋ o) (sym (⌊⟧T-commute F (ν F actᶠ))) (IR.Out (wf-⌊⌋ w)) IR.∘ IR.fst))
-            (realize⇒ u)
-realize⇒ (u-app uf ux)           = app (realize⇒ uf) (realize⇐ ux)
-realize⇒ (u-effApp {g = g} uf ux) = effApp {g = g} (realize⇒ uf) (realize⇐ ux)
-realize⇒ (u-app-spine ux uf)     = app (realize↦ uf) (realize⇒ ux)
+            (realize⇒ sh u)
+realize⇒ sh (u-app uf ux)           = app (realize⇒ sh uf) (realize⇐ sh ux)
+realize⇒ sh (u-effApp {g = g} uf ux) = effApp {g = g} (realize⇒ sh uf) (realize⇐ sh ux)
+realize⇒ sh (u-app-spine ux uf)     = app (realize↦ sh uf) (realize⇒ sh ux)
 
-realize⇐ u-id                    = lift-morphism IR.id
-realize⇐ u-fst                   = lift-morphism IR.fst
-realize⇐ u-snd                   = lift-morphism IR.snd
-realize⇐ u-terminal              = lift-morphism IR.terminal
-realize⇐ u-initial               = lift-morphism IR.initial
-realize⇐ u-inl                   = lift-morphism IR.inl
-realize⇐ u-inr                   = lift-morphism IR.inr
-realize⇐ (u-compose-g ug uf)     = comp' (realize⇐ uf) (realize↦ ug)
-realize⇐ (u-compose-f {p = p} uf ug) = comp' (coerce p (realize⇒ uf)) (realize⇐ ug)
-realize⇐ (u-case uf ug)          = copair' (realize⇐ uf) (realize⇐ ug)
-realize⇐ (u-pair uf ug)          = fork' (realize⇐ uf) (realize⇐ ug)
-realize⇐ (u-curry u)             = curry' (realize⇐ u)
-realize⇐ (u-cata {w = w} u)      = cata w (realize⇐ u)
-realize⇐ (u-ana {w = w} u)       = ana w (realize⇐ u)
-realize⇐ (u-loop u)              = loop (realize⇐ u)
-realize⇐ (u-sub {p = p} u)       = coerce p (realize⇒ u)
-realize⇐ (u-lam {q = q} ≤p u)    = lam q ≤p (realize⇐ u)
-realize⇐ (u-pair-lit ua ub)      = pair (realize⇐ ua) (realize⇐ ub)
-realize⇐ (u-In-app {F = F} {w = w} u) =
-  morph-app (subst (λ o → IR o ⌊ μ F ⌋) (sym (⌊⟧T-commute F (μ F))) (IR.In (wf-⌊⌋ w))) (realize⇐ u)
-realize⇐ (u-apply-app u)         = morph-app IR.apply (realize⇒ u)
-realize⇐ (u-inl-app u)           = morph-app IR.inl (realize⇐ u)
-realize⇐ (u-inr-app u)           = morph-app IR.inr (realize⇐ u)
-realize⇐ (u-initial-app u)       = morph-app IR.initial (realize⇐ u)
-realize⇐ (u-poly {d = d} {τ = τ}) = ref d (type (S !! d) ⟨ τ ⟩) (inline d)
+realize⇐ sh u-id                    = lift-morphism IR.id
+realize⇐ sh u-fst                   = lift-morphism IR.fst
+realize⇐ sh u-snd                   = lift-morphism IR.snd
+realize⇐ sh u-terminal              = lift-morphism IR.terminal
+realize⇐ sh u-initial               = lift-morphism IR.initial
+realize⇐ sh u-inl                   = lift-morphism IR.inl
+realize⇐ sh u-inr                   = lift-morphism IR.inr
+realize⇐ sh (u-compose-g ug uf)     = comp' (realize⇐ sh uf) (realize↦ sh ug)
+realize⇐ sh (u-compose-f {p = p} uf ug) = comp' (coerce p (realize⇒ sh uf)) (realize⇐ sh ug)
+realize⇐ sh (u-case uf ug)          = copair' (realize⇐ sh uf) (realize⇐ sh ug)
+realize⇐ sh (u-pair uf ug)          = fork' (realize⇐ sh uf) (realize⇐ sh ug)
+realize⇐ sh (u-curry u)             = curry' (realize⇐ sh u)
+realize⇐ sh (u-cata {w = w} u)      = cata w (realize⇐ sh u)
+realize⇐ sh (u-ana {w = w} u)       = ana w (realize⇐ sh u)
+realize⇐ sh (u-loop u)              = loop (realize⇐ sh u)
+realize⇐ sh (u-sub {p = p} u)       = coerce p (realize⇒ sh u)
+realize⇐ sh (u-lam {q = q} ≤p u)    = lam q ≤p (realize⇐ (sh-▸ sh) u)
+realize⇐ sh (u-pair-lit ua ub)      = pair (realize⇐ sh ua) (realize⇐ sh ub)
+realize⇐ sh (u-In-app {F = F} {w = w} u) =
+  morph-app (subst (λ o → IR o ⌊ μ F ⌋) (sym (⌊⟧T-commute F (μ F))) (IR.In (wf-⌊⌋ w))) (realize⇐ sh u)
+realize⇐ sh (u-apply-app u)         = morph-app IR.apply (realize⇒ sh u)
+realize⇐ sh (u-inl-app u)           = morph-app IR.inl (realize⇐ sh u)
+realize⇐ sh (u-inr-app u)           = morph-app IR.inr (realize⇐ sh u)
+realize⇐ sh (u-initial-app u)       = morph-app IR.initial (realize⇐ sh u)
+realize⇐ sh (u-poly {d = d} {τ = τ}) = ref d (type (S !! d) ⟨ τ ⟩) (inline d)
 
-realize↦ (u-infer {B = B} {p = p} {o = o} u) = coerce (sub-arr p (<:-refl B) o) (realize⇒ u)
-realize↦ (u-poly {d = d} {π′ = π′} {A = A} {B = B} {o = o}) =
+realize↦ sh (u-infer {B = B} {p = p} {o = o} u) = coerce (sub-arr p (<:-refl B) o) (realize⇒ sh u)
+realize↦ sh (u-poly {d = d} {π′ = π′} {A = A} {B = B} {o = o}) =
   coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o) (ref d (A ⇒[ mk-kind Many π′ ] B) (inline d))
-realize↦ (u-lam {q′ = q′} u)     = lam Many (≤q-Many q′) (realize⇒ u)
-realize↦ (u-compose ug uf)       = comp' (realize↦ uf) (realize↦ ug)
-realize↦ u-id                    = lift-morphism IR.id
-realize↦ u-fst                   = lift-morphism IR.fst
-realize↦ u-snd                   = lift-morphism IR.snd
-realize↦ u-terminal              = lift-morphism IR.terminal
-realize↦ u-initial               = lift-morphism IR.initial
-realize↦ (u-case {j = j} uf ug)  =
-  copair' (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (left j)) (⊑π-refl _)) (realize↦ uf))
-          (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (right j)) (⊑π-refl _)) (realize↦ ug))
-realize↦ (u-pair uf ug)          = fork' (realize↦ uf) (realize↦ ug)
-realize↦ (u-cata {w = w} u)      = cata w (realize⇒ u)
+realize↦ sh (u-lam {q′ = q′} u)     = lam Many (≤q-Many q′) (realize⇒ (sh-▸ sh) u)
+realize↦ sh (u-compose ug uf)       = comp' (realize↦ sh uf) (realize↦ sh ug)
+realize↦ sh u-id                    = lift-morphism IR.id
+realize↦ sh u-fst                   = lift-morphism IR.fst
+realize↦ sh u-snd                   = lift-morphism IR.snd
+realize↦ sh u-terminal              = lift-morphism IR.terminal
+realize↦ sh u-initial               = lift-morphism IR.initial
+realize↦ sh (u-case {j = j} uf ug)  =
+  copair' (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (left j)) (⊑π-refl _)) (realize↦ sh uf))
+          (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (right j)) (⊑π-refl _)) (realize↦ sh ug))
+realize↦ sh (u-pair uf ug)          = fork' (realize↦ sh uf) (realize↦ sh ug)
+realize↦ sh (u-cata {w = w} u)      = cata w (realize⇒ sh u)
