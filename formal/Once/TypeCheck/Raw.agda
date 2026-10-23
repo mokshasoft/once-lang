@@ -14,7 +14,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Internal.Syntax
   using ( RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt
-        ; RFloat; RAnnot; RBinOp; RUnaryOp; RAna
+        ; RFloat; RAnnot; RBinOp; RUnaryOp
         ; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit
         ; cls-annot; cls-binop )
 
@@ -35,7 +35,6 @@ closedLiftShape? (RPair _ _)           = nothing
 closedLiftShape? (RInt _)              = nothing
 closedLiftShape? (RFloat _ _ _ _)      = nothing
 closedLiftShape? (RUnaryOp _ _)        = nothing
-closedLiftShape? (RAna _ _)            = nothing
 
 -- | …and agrees with the witness, which is what makes the elaborator's
 -- dispatch reduce in the completeness proof.

@@ -7,8 +7,7 @@
 --
 -- `Decl.parses→` reads a compiler parse as the Spec's, given the parsed
 -- declarations' Spec images (`DEmb`). Every parse has them: the grammar
--- builds only expressions the Spec's syntax has (no `RAna`, the one
--- compiler-only form, which no rule produces) and only owner-less
+-- builds only expressions the Spec's syntax has and only owner-less
 -- signatures (`parses-emb`).
 ------------------------------------------------------------------------
 

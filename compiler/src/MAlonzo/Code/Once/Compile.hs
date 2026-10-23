@@ -175,7 +175,7 @@ d_firstChecking_36 v0 v1 v2 v3
         -> coe
              d_fc'45'step_46 (coe v0) (coe v1) (coe v2) (coe v4) (coe v5)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6624 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6618 (coe v0)
                 (coe v1) (coe v2) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.fc-step
@@ -464,7 +464,7 @@ du_compileFunBody_184 v0 v1 v2 v3 v4 v5 v6
          (\ v7 -> coe MAlonzo.Code.Once.Spec.Type.du_'8709''8342'_142))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6624
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6618
          (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -773,7 +773,7 @@ du_compileFunBodyI_412 v0 v1 v2 v3 v4 v5 v6
          (\ v7 -> coe MAlonzo.Code.Once.Spec.Type.du_'8709''8342'_142))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6614
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6608
          (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -974,7 +974,7 @@ d_inferType_578 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6614
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6608
                  (coe (0 :: Integer))
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -1549,7 +1549,7 @@ d_ce'45'poly'45'p_786 v0 v1 v2 v3 v4 v5
              (coe
                 du_checkOK_632
                 (coe
-                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6624
+                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6618
                    (coe
                       MAlonzo.Code.Once.Internal.Type.Instance.d_arityOf_88
                       (coe MAlonzo.Code.Once.Parser.d_pfunType_126 (coe v3)))
@@ -1769,13 +1769,13 @@ d_lw'45'bodyM_1110 v0 v1 v2 v3
         -> coe
              d_lw'45'body_1096 (coe v1) (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6624
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6618
                 (coe (0 :: Integer)) (coe v1) (coe v2) (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
              d_lw'45'bodyI_1102 (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6614
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6608
                 (coe (0 :: Integer)) (coe v1) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.lw-name
@@ -2882,7 +2882,7 @@ d_litRangeError_1682 v0 v1
   = coe
       du_badLit_1694 (coe v0)
       (coe
-         MAlonzo.Code.Once.Denotation.Admissible.d_firstBadLit_106 (coe v0)
+         MAlonzo.Code.Once.Denotation.Admissible.d_firstBadLit_104 (coe v0)
          (coe v1))
 -- Once.Compile._.bits
 d_bits_1692 ::
@@ -3008,7 +3008,7 @@ d_cfm'45'file'45'ef_1726 v0 v1 v2 v3 v4
              d_cfm'45'file'45'gated_1702 (coe v0) (coe v1) (coe v2) (coe v3)
              (coe v5)
              (coe
-                MAlonzo.Code.Once.Denotation.Admissible.d_admissibleM'63'_74
+                MAlonzo.Code.Once.Denotation.Admissible.d_admissibleM'63'_72
                 (coe v2) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFileFromModule
@@ -3052,7 +3052,7 @@ d_cfm'45'stage'45'aux_1760 v0 v1 v2 v3 v4 v5
                 d_cfm'45'file'45'gated_1702 (coe v0) (coe v2) (coe v3) (coe v4)
                 (coe v5)
                 (coe
-                   MAlonzo.Code.Once.Denotation.Admissible.d_admissibleM'63'_74
+                   MAlonzo.Code.Once.Denotation.Admissible.d_admissibleM'63'_72
                    (coe v3) (coe v4)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.cfm-ef-aux

@@ -52,7 +52,7 @@ open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
 open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.CanonicalName using (genWord?)
-open import Once.Internal.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
+open import Once.Internal.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
 
 ------------------------------------------------------------------------
 -- ModuleMap: path → resolved Module
@@ -242,7 +242,6 @@ canonExpr bound um am (RFloat i f l p)    = RFloat i f l p
 canonExpr bound um am (RAnnot e t)        = RAnnot (canonExpr bound um am e) t
 canonExpr bound um am (RBinOp op a b)     = RBinOp op (canonExpr bound um am a) (canonExpr bound um am b)
 canonExpr bound um am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound um am e)
-canonExpr bound um am (RAna F c)          = RAna F (canonExpr bound um am c)
 
 -- | D126: resolution PRESERVES the closed-lift side condition. It has to —
 -- otherwise a derivation using the lift would not survive `canonExpr`. The two
@@ -289,7 +288,6 @@ cls-reflect bound um am (RPair _ _) ()
 cls-reflect bound um am (RInt _) ()
 cls-reflect bound um am (RFloat _ _ _ _) ()
 cls-reflect bound um am (RUnaryOp _ _) ()
-cls-reflect bound um am (RAna _ _) ()
 
 -- | Apply `canonExpr` to a decl's function body; everything else is untouched
 -- (signatures/imports/type-aliases carry no expression refs).

@@ -65,8 +65,6 @@ data RawExpr : Set where
   RAnnot     : RawExpr → Type → RawExpr               -- (e : T)
   RBinOp     : BinOp → RawExpr → RawExpr → RawExpr
   RUnaryOp   : UnaryOp → RawExpr → RawExpr
-  -- The unfold into `ν F`, carrying `F`. Not produced by the parser.
-  RAna       : Fun 0 → RawExpr → RawExpr
 
 ------------------------------------------------------------------------
 -- Operator classes (the typing rules for operators are stated by class)

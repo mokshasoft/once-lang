@@ -52,7 +52,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Spec.Word as OnceWord
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna; OpNeg)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; OpNeg)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
    DImport)
@@ -96,7 +96,6 @@ rawIntLits (RDestruct s _ l _ r) = rawIntLits s ++ rawIntLits l ++ rawIntLits r
 rawIntLits (RAnnot e _)         = rawIntLits e
 rawIntLits (RBinOp _ a b)       = rawIntLits a ++ rawIntLits b
 rawIntLits (RUnaryOp OpNeg e)   = negLits e
-rawIntLits (RAna _ e)           = rawIntLits e
 -- leaves that carry no `Int` literal
 rawIntLits (RVar _)             = []
 rawIntLits (RQualified _ _)     = []

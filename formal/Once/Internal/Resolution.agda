@@ -40,7 +40,7 @@ open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Internal.ResolvedRefs using (GoodRefs)
 open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp;
   RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
-  RBinOp; RUnaryOp; RAna)
+  RBinOp; RUnaryOp)
 open import Once.Parser.Module.Core using (Module; mkModule; Decl;
   DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import)
 open import Once.Parser.Module.Resolve using (ModuleMap;
@@ -186,9 +186,6 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
           → ResolvesExpr um am bound e e'
           → ResolvesExpr um am bound (RUnaryOp op e) (RUnaryOp op e')
 
-  re-ana : ∀ {bound F c c'}
-         → ResolvesExpr um am bound c c'
-         → ResolvesExpr um am bound (RAna F c) (RAna F c')
 
   -- Literals are fixed points.
   re-unit  : ∀ {bound} → ResolvesExpr um am bound RUnit RUnit

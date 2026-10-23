@@ -56,7 +56,7 @@ open import Once.Target.Arch using (Arch; arch-float-format)
 open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
 open import Once.Spec.Float.Decimal
   using (decimalOf; round; roundSig; storedExp; maxFiniteExp)
-open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp; RAna)
+open import Once.Internal.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RUnaryOp)
 open import Once.Compile using (silentRoundDefs)
 open import Once.Parser.Module.Core using
   (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
@@ -200,7 +200,6 @@ rawFloatLits (RBinOp _ a b)      = rawFloatLits a ++ rawFloatLits b
 -- `∣ sig d ∣`, so a negated literal rounds with the same absolute error and
 -- the same ulp count as its positive twin.
 rawFloatLits (RUnaryOp _ e)      = rawFloatLits e
-rawFloatLits (RAna _ e)          = rawFloatLits e
 rawFloatLits (RVar _)            = []
 rawFloatLits (RQualified _ _)    = []
 rawFloatLits (RResolved _)       = []

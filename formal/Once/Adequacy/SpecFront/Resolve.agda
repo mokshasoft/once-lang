@@ -30,7 +30,7 @@ import Once.Spec.Surface.Syntax as S
 open import Once.Internal.Resolution as LR
   using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own;
          ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
-         re-binop; re-unop; re-ana; re-unit; re-int; re-float; ExpandsTo; ex-nil; ex-I; ex-other)
+         re-binop; re-unop; re-unit; re-int; re-float; ExpandsTo; ex-nil; ex-I; ex-other)
 open import Once.Spec.Surface.Resolution as SR
   using (Env; env; Resolves; ResolvesName; rn-gen; rn-import; rn-own;
          r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;

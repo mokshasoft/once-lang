@@ -1011,8 +1011,6 @@ d_classifyAppHeadView_352 v0
                -> coe C_ahv'45'other_348
              MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62 v4
                -> coe C_ahv'45'other_348
-             MAlonzo.Code.Once.Internal.Syntax.C_RAna_64 v3 v4
-               -> coe C_ahv'45'other_348
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Internal.Syntax.C_RLam_44 v1 v2
         -> coe C_ahv'45'other_348
@@ -1033,8 +1031,6 @@ d_classifyAppHeadView_352 v0
       MAlonzo.Code.Once.Internal.Syntax.C_RBinOp_60 v1 v2 v3
         -> coe C_ahv'45'other_348
       MAlonzo.Code.Once.Internal.Syntax.C_RUnaryOp_62 v2
-        -> coe C_ahv'45'other_348
-      MAlonzo.Code.Once.Internal.Syntax.C_RAna_64 v1 v2
         -> coe C_ahv'45'other_348
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Typing.Scope.viewToPba

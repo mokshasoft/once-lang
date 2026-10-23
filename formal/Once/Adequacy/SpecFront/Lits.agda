@@ -61,7 +61,6 @@ mutual
   res-lits (LR.re-annot e) = res-lits e
   res-lits (LR.re-binop a b) = cong₂ _++_ (res-lits a) (res-lits b)
   res-lits (LR.re-unop {op = OpNeg} e) = res-neg e
-  res-lits (LR.re-ana e) = res-lits e
   res-lits LR.re-unit = refl
   res-lits LR.re-int = refl
   res-lits LR.re-float = refl
@@ -80,7 +79,6 @@ mutual
   res-neg (LR.re-annot e) = res-lits e
   res-neg (LR.re-binop a b) = cong₂ _++_ (res-lits a) (res-lits b)
   res-neg (LR.re-unop {op = OpNeg} e) = res-neg e
-  res-neg (LR.re-ana e) = res-lits e
   res-neg LR.re-unit = refl
   res-neg LR.re-int = refl
   res-neg LR.re-float = refl

@@ -204,7 +204,7 @@ moduleHasMain (Module m) = MEN.d_module'45'has'45'main_6 m
 -- was only half true — the refusal was gone and the replacement unreachable.
 moduleWarnings :: Arch -> Module -> [Text]
 moduleWarnings arch (Module m) =
-  map agdaToText (MW.d_warningsFor_422 (toMArch arch) (unsafeCoerce m))
+  map agdaToText (MW.d_warningsFor_420 (toMArch arch) (unsafeCoerce m))
 
 -- | Flatten imports: for each `DImport path (just alias)` in the
 -- user's module, substitute the primitives of the imported module
@@ -220,7 +220,7 @@ resolveImports
   -> Either Text Module
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MMR.d_resolveImports_882 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MMR.d_resolveImports_866 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
