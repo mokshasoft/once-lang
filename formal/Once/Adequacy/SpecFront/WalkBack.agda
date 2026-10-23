@@ -184,6 +184,9 @@ open import Data.List.Relation.Unary.All using (All; _∷_)
 open import Data.Sum using (inj₂)
 open import Data.Bool using (false)
 open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
+import Once.Internal.Typing
+import Once.Internal.Typing.Scope
+import Once.TypeCheck.DualWitness
 open import Once.Internal.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoDef; polyDef; monoSchema)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf)
@@ -192,7 +195,18 @@ import Once.Parser as Parser
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
-open import Once.TypeCheck.Completeness using (infer-complete)
+open import Once.TypeCheck.Completeness using (infer-complete; check-completeV)
+
+-- The checker's witness for a body the compiler's judgment types: by
+-- completeness, the checker accepts it, and its witness is its own.
+private
+  wit-c : ∀ {m} {ctx : Once.Internal.Typing.Scope.NamedCtx m} {e A Ψ} → Once.Internal.Typing._⊢ᶜ_∶_⨾_ ctx e A Ψ
+        → Σ[ eE ∈ _ ] Once.TypeCheck.DualWitness.DC ctx e A Ψ eE
+  wit-c D = let (eE , _ , _ , w , _) = check-completeV D in eE , w
+
+  wit-i : ∀ {m} {ctx : Once.Internal.Typing.Scope.NamedCtx m} {e A Ψ} → Once.Internal.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ
+        → Σ[ eE ∈ _ ] Once.TypeCheck.DualWitness.DI ctx e A Ψ eE
+  wit-i {ctx = ctx} {e} D = let (eE , _ , _ , eq) = infer-complete D in eE , subst (TE.soundOf ctx e) eq (proj₂ (TE.inferElabV ctx e))
 open import Once.Adequacy.SpecCore.Type using (TyR-≡; tyR; r-unit; r-void; r-int; r-float; r-*; r-+; r-⇒; r-μ; r-ν; r-var;
                                                FunR; r-K; r-Id; r-⊕; r-⊗)
 open import Once.Adequacy.SpecFront.SchemaRen using (ren-0)
@@ -262,7 +276,7 @@ walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-alias al)  w o = walk
 walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-import al) w o = walk← tl ss is ts nm r wk al w o
 -- a monomorphic definition with a signature
 walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig {sc = sc} so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ rx al) w o =
-  mono refl refl P D mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
+  mono refl refl P D (wit-c D) mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
   where
     fi = Parser.mkFunInfo x (just ty) e false
     st = Step.step ss is ts nm w r ST.∅ₖ (tyR ty) so₂ so b pr rx
@@ -280,7 +294,7 @@ walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig {sc = sc} so b pr wk) 
     eff-at = entry-eff (schemaOf-ren so₂ so)
 -- a telescope definition
 walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig so b pr wk) (al-poly {x = x} {T = T} {e = e} so₂ nmono rx al) w o =
-  poly P D mt , (λ { (_ , hs) → ms hs }) , (λ { (inj₁ (_ , en)) → ⊥-elim (not-entry en) ; (inj₂ m) → mi m })
+  poly P D (wit-c D) mt , (λ { (_ , hs) → ms hs }) , (λ { (inj₁ (_ , en)) → ⊥-elim (not-entry en) ; (inj₂ m) → mi m })
   where
     pfi = Parser.mkPolyFunInfo x T e
     κ = kindsOf T
@@ -302,7 +316,7 @@ walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig so b pr wk) (al-poly {
       in nothing≢just (trans (sym (nmono g′)) eq)
 -- one without a signature: the type its body synthesizes
 walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-nosig syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
-  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P D mt
+  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P D (wit-i D) mt
   , (λ { (h , hs) → (λ m → sub-L (h m) rA r-EffUU) , ms hs }) , (λ { (inj₁ (m , p)) → inj₁ (m , sub-L p rA r-EffUU) ; (inj₂ m) → inj₂ (mi m) })
   where
     st = Step.step-nosig ss is ts nm w r syn typ pr rx

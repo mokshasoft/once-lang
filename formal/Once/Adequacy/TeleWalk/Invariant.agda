@@ -582,9 +582,9 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
 mainIn-name : ∀ {sc es} (mt : ModTele sc es) → MainIn mt → Any ("main" ≡_) (map entryName es)
 mainIn-name []                          ()
 mainIn-name (ffi _ _ _ _ rest)        mi          = there (mainIn-name rest mi)
-mainIn-name (poly _ _ rest)             mi          = there (mainIn-name rest mi)
-mainIn-name (mono _ _ _ _ rest)     (inj₁ (p , _)) = here (sym p)
-mainIn-name (mono _ _ _ _ rest)     (inj₂ mi)   = there (mainIn-name rest mi)
+mainIn-name (poly _ _ _ rest)             mi          = there (mainIn-name rest mi)
+mainIn-name (mono _ _ _ _ _ rest)     (inj₁ (p , _)) = here (sym p)
+mainIn-name (mono _ _ _ _ _ rest)     (inj₂ mi)   = there (mainIn-name rest mi)
 
 not-in : ∀ {x : String} {ys} → All (x ≢_) ys → Any (x ≡_) ys → ⊥
 not-in (h ∷ _)  (here e)  = h e

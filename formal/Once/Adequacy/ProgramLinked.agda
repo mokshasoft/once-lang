@@ -616,10 +616,10 @@ link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h res
 ... | refl = link-walk rest rest-b pre (linv-sig (funName fi) ty (u (here refl)) inv)
                (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m))
 link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) pre inv fr u
-link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr D rest) (FB.bpoly fc ce rest-b) pre inv fr u =
+link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr D _ rest) (FB.bpoly fc ce rest-b) pre inv fr u =
   link-walk rest rest-b pre (linv-poly D (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
             (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr D rest)
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr D _ rest)
           (FB.bcons {ty = ty′} {Ψ = Once.Spec.Context.[]} {irFun = irFun} refl rf fc ce cf rest-b) pre inv fr u
   with inj₂-injective (trans (sym er) rf)
 ... | refl = link-walk rest rest-b _

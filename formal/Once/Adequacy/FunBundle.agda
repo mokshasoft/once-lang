@@ -25,7 +25,7 @@ module Once.Adequacy.FunBundle where
 import Once.TypeCheck.DualWitness
 open import Once.Internal.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoBody)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoBody; MonoWit)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -39,7 +39,7 @@ open import Data.String using (String; _==_) renaming ()
 open import Once.Spec.Name using (bare)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Function using (case_of_)
 
 open import Once.IR using (IR)
@@ -100,6 +100,12 @@ elabOK-sound : ∀ (ft : Maybe Type) (ctx : NamedCtx 0) (e : RawExpr) (ty : Type
              → ElabOK ft ctx e ty Ψ se d f → MonoBody ft ctx e ty Ψ
 elabOK-sound (just _) ctx e ty ce = check-sound ctx e ty ce
 elabOK-sound nothing  ctx e ty ce = infer-soundV ctx e ce
+
+-- …and its witness: the checker's own, at the result the equation names.
+elabOK-wit : ∀ (ft : Maybe Type) (ctx : NamedCtx 0) (e : RawExpr) (ty : Type) {Ψ se d f}
+           → ElabOK ft ctx e ty Ψ se d f → MonoWit ft ctx e ty Ψ
+elabOK-wit (just _) ctx e ty {se = se} ce = se , subst (TE.checkSoundOf ctx e ty) ce (proj₂ (TE.checkElabV ctx e ty))
+elabOK-wit nothing  ctx e ty {se = se} ce = se , subst (TE.soundOf ctx e) ce (proj₂ (TE.inferElabV ctx e))
 
 data FunBundle : C.CScope → List Parser.Entry → Set where
   bnil  : ∀ {sc} → FunBundle sc []
@@ -230,10 +236,14 @@ bundle→typed : ∀ {sc es} → FunBundle sc es → ModTele (AS.scopeOf sc) es
 bundle→typed bnil = []
 bundle→typed (bffi {c = c} {h = h} ep et _ _ rest) = ffi ep et c h (bundle→typed rest)
 bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf fc ce cf rest) =
-  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty) fc) (elabOK-sound (funType fi) (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
-bundle→typed {sc} (bpoly {pfi = pfi} fc ce rest) =
+  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty) fc) (elabOK-sound (funType fi) (ctxC sc) (funBody fi) ty ce)
+       (elabOK-wit (funType fi) (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
+bundle→typed {sc} (bpoly {pfi = pfi} {se = se} fc ce rest) =
   poly (firstChecking-sound (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) fc)
-       (check-sound (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
+       (check-sound (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ce)
+       (se , subst (TE.checkSoundOf (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ce
+                   (proj₂ (TE.checkElabV (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))))
+       (bundle→typed rest)
 
 bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
 bundle→compiled bnil = []

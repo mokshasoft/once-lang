@@ -184,7 +184,7 @@ walk tl ss is ts nm [] al-nil w o = w-end
 {-# CATCHALL #-}
 walk tl ss is ts nm (ffi ep _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
 -- a telescope definition
-walk {S = S} {imps} {tele} tl ss is ts nm (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D rest) (al-poly so _ rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts nm (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D _ rest) (al-poly so _ rx al) w o =
   w-sig so b (AtState.principal ss is ts nm w κ pr rx (tyR _))
     (walk (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
           (canonical (x ∷ []) ∷ⁿ nm) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
@@ -198,7 +198,7 @@ walk {S = S} {imps} {tele} tl ss is ts nm (poly {pfi = pfi@(Parser.mkPolyFunInfo
       ; typed = u0 (proj₂ el)
       }
 -- a monomorphic definition with a signature
-walk {S = S} {imps} {tele} tl ss is ts nm (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr D rest) (al-mono so rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts nm (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr D _ rest) (al-mono so rx al) w o =
   w-sig so b (AtState.principal ss is ts nm w ST.∅ₖ pr rx (tyR _))
     (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (x Data.String.== "main") is) (wkT ts)
           (canonical (x ∷ []) ∷ⁿ nm) rest al
@@ -212,7 +212,7 @@ walk {S = S} {imps} {tele} tl ss is ts nm (mono {fi = fi@(Parser.mkFunInfo x (ju
       ; typed = u0 (proj₂ el)
       }
 -- one without: the type its body synthesizes
-walk {S = S} {imps} {tele} tl ss is ts nm (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr D rest) (al-nosig rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts nm (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr D _ rest) (al-nosig rx al) w o =
   w-nosig
     (subst (λ A′ → Once.Spec.Surface.Typing._⊢_⇒_↝_ Σ S nm ST.∅ₖ Once.Spec.Surface.Typing.∅ _ A′ _)
            (sym (TyR-≡ (proj₁ (proj₂ syn)))) (proj₂ (proj₂ syn)))

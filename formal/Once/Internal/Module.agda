@@ -31,7 +31,7 @@ open import Once.Internal.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (KCtx)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; Σ-syntax; proj₁)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
@@ -55,6 +55,8 @@ open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
 open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 import Once.Internal.Context as Surface
+import Once.Surface.Syntax as SS
+open import Once.TypeCheck.DualWitness using (DI; DC)
 open import Once.Internal.Syntax using (RawExpr)
 
 open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
@@ -106,6 +108,17 @@ MonoBody : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Us
 MonoBody (just _) ctx e ty Ψ = ctx ⊢ᶜ e ∶ ty ⨾ Ψ
 MonoBody nothing  ctx e ty Ψ = ctx ⊢ᵢ e ∶ ty ⨾ Ψ
 
+-- …and its witness: the Spec's derivation, whose realization is the term the
+-- checker built (`TypeCheck.SpecWitness`; plan 0.122 §5.6, stage e).
+MonoWit : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
+MonoWit (just _) ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] DC ctx e ty Ψ eE
+MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] DI ctx e ty Ψ eE
+
+-- The compiler's derivation the witness carries.
+mder : ∀ ft {ctx e ty Ψ} → MonoWit ft ctx e ty Ψ → MonoBody ft ctx e ty Ψ
+mder (just _) (_ , w) = proj₁ w
+mder nothing  (_ , w) = proj₁ w
+
 data ModTele : Scope → List Parser.Entry → Set where
   []   : ∀ {sc} → ModTele sc []
   -- An FFI declaration: its type, CONCRETE — a SigOp is a first-order
@@ -124,6 +137,7 @@ data ModTele : Scope → List Parser.Entry → Set where
        → C.resolveFunType (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty
        → PrincipalAt (ctxOf sc) (funBody fi) ty
        → MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ
+       → MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (Parser.e-fun fi ∷ es)
   -- D243: a telescope definition, typed ONCE, over its schema's parameters
@@ -131,6 +145,8 @@ data ModTele : Scope → List Parser.Entry → Set where
   poly : ∀ {sc pfi es Ψ}
        → PrincipalAt (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi))
        → ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
+       → Σ[ eE ∈ SS.Expr (NamedCtx.debruijn (ctxOfAt (kindsOf (pfunType pfi)) sc)) Ψ (rigidOf (pfunType pfi)) ]
+           DC (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi)) Ψ eE
        → ModTele (addPoly sc pfi) es
        → ModTele sc (Parser.e-poly pfi ∷ es)
 
@@ -155,8 +171,8 @@ entrySig (Parser.e-poly _ ∷ es) = entrySig es
 teleSig : ∀ {sc es} → ModTele sc es → ISig
 teleSig []                                    = []
 teleSig (ffi {fi = fi} {ty = ty} _ _ _ _ rest) = (funName fi , ty) ∷ teleSig rest
-teleSig (mono _ _ _ _ rest)                    = teleSig rest
-teleSig (poly _ _ rest)                        = teleSig rest
+teleSig (mono _ _ _ _ _ rest)                    = teleSig rest
+teleSig (poly _ _ _ rest)                        = teleSig rest
 
 
 -- A module's signatures, when it extracts.
@@ -186,15 +202,15 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 MainsEffUU : ∀ {sc es} → ModTele sc es → Set
 MainsEffUU []                                  = ⊤
 MainsEffUU (ffi _ _ _ _ rest)                = MainsEffUU rest
-MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ _ rest) = (funName fi ≡ "main" → ty <: EffUU) × MainsEffUU rest
-MainsEffUU (poly _ _ rest)                     = MainsEffUU rest
+MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ _ _ rest) = (funName fi ≡ "main" → ty <: EffUU) × MainsEffUU rest
+MainsEffUU (poly _ _ _ rest)                     = MainsEffUU rest
 
 -- Some monomorphic definition is `main`, usable as `Eff Unit Unit`.
 MainIn : ∀ {sc es} → ModTele sc es → Set
 MainIn []                                  = ⊥
 MainIn (ffi _ _ _ _ rest)                = MainIn rest
-MainIn (mono {fi = fi} {ty = ty} _ _ _ _ rest) = ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest
-MainIn (poly _ _ rest)                     = MainIn rest
+MainIn (mono {fi = fi} {ty = ty} _ _ _ _ _ rest) = ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest
+MainIn (poly _ _ _ rest)                     = MainIn rest
 
 HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) → ModuleTyped-ef m ef → Set
 HasValidMain-ef m (inj₂ _) mt = MainsEffUU mt × MainIn mt

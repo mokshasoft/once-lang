@@ -72,7 +72,7 @@ open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoBody)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoBody; MonoWit)
 open import Once.Internal.Principal using (PrincipalAt)
 open import Once.Spec.Core.Syntax using (Defs; _!!_)
 open import Once.Spec.Core.Program Σ using (Tele; Entry; noVars)
@@ -227,9 +227,9 @@ from-sem : ∀ {s} {S : Defs s} {sc es} (tl : Tele S) (ss : SigSig (Once.Interna
          → runCore fmt (TR.toProgramFrom tl ss is ts d e rest u) mo ≡ runCore fmt (program tl d e) mo
 from-sem tl ss is ts d e [] u = refl
 from-sem tl ss is ts d e (ffi _ _ c h rest) u = from-sem tl (s-ffi c h (u (here refl)) ss) is ts d e rest (λ m → u (there m))
-from-sem {S = S} {sc} tl ss is ts d e (poly {pfi = pfi} {Ψ = Ψ} pr D rest) u =
+from-sem {S = S} {sc} tl ss is ts d e (poly {pfi = pfi} {Ψ = Ψ} pr D _ rest) u =
   from-sem (TR.polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts)) (suc d) e rest u
-from-sem {S = S} {sc} tl ss is ts d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D rest) u =
+from-sem {S = S} {sc} tl ss is ts d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D _ rest) u =
   from-sem (TR.monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Str.== "main") is) (wkT ts) (suc d) e rest u
 
 -- `main` (D315): its run at its own type, converted, against the compiled
@@ -290,19 +290,20 @@ mutual
                  (inv-sig {x = funName fi} {ty = ty} {k = c} {h = h} {m = u (here refl)} inv)
                  (λ m → u (there m)) (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr)
   walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) mi tl ss is ts pre inv u fr
-  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = SCx.[]} pr D rest) (FB.bpoly fc ce rest-b) mi tl ss is ts pre inv u fr =
+  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = SCx.[]} pr D _ rest) (FB.bpoly fc ce rest-b) mi tl ss is ts pre inv u fr =
     walk rest rest-b mi _ ss (wkI is) (t-def zero refl (wkT ts)) pre
          (inv-poly D inv (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr)) u
          (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr)
-  walk (mono {fi = Parser.mkFunInfo x ft bd prim} {ty = ty} {Ψ = SCx.[]} refl er pr D rest)
+  walk (mono {fi = Parser.mkFunInfo x ft bd prim} {ty = ty} {Ψ = SCx.[]} refl er pr D W rest)
        (FB.bcons {ty = ty′} {Ψ = SCx.[]} {irFun = irFun} refl rf fc ce cf rest-b) mi tl ss is ts pre inv u fr
     with inj₂-injective (trans (sym er) rf)
-  ... | refl = walk-mono er pr D rest cf rest-b mi tl ss is ts pre inv u fr
+  ... | refl = walk-mono er pr D W rest cf rest-b mi tl ss is ts pre inv u fr
                  (bare x ≟ᶜ bare "main") (ty <:? EffUU)
 
   walk-mono : ∀ {csc es x ft bd ty} (er : C.resolveFunType (C.ctop csc) (C.cpolys csc) ft bd ≡ inj₂ ty)
                 (pr : PrincipalAt (ctxOf (AS.scopeOf csc)) bd ty)
                 (D : MonoBody ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[])
+                (W : MonoWit ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[])
                 (rest : ModTele (AS.scopeOf (C.extendScope csc x ty)) es)
                 {irFun} (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                                 x ty bd ≡ Data.Sum.inj₂ irFun)
@@ -313,10 +314,10 @@ mutual
                 → (nd′ : Dec (bare x ≡ bare "main")) (td : Dec (ty <: EffUU))
             → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
                      (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
-                     (toProgram tl ss is ts (mono {fi = Parser.mkFunInfo x ft bd false} {Ψ = SCx.[]} refl er pr D rest) mi u)
-  walk-mono {csc} {es} {ft = ft} {bd} er pr D rest cf rest-b (inj₁ (refl , p)) {S = S} tl ss is ts pre inv u ((hd ∷ _) , _) nd′ td =
+                     (toProgram tl ss is ts (mono {fi = Parser.mkFunInfo x ft bd false} {Ψ = SCx.[]} refl er pr D W rest) mi u)
+  walk-mono {csc} {es} {ft = ft} {bd} er pr D W rest cf rest-b (inj₁ (refl , p)) {S = S} tl ss is ts pre inv u ((hd ∷ _) , _) nd′ td =
     here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} p D cf {es} rest rest-b inv u hd nd′ td
-  walk-mono {x = x} {ty = ty} er pr D rest cf rest-b (inj₂ mi′) tl ss is ts pre inv u fr nd′ td =
+  walk-mono {x = x} {ty = ty} er pr D W rest cf rest-b (inj₂ mi′) tl ss is ts pre inv u fr nd′ td =
     walk-mono-d D rest cf rest-b mi′ tl ss is ts pre inv u fr (x Str.≟ "main") (ty <:? EffUU) nd′ td
 
   walk-mono-d : ∀ {csc es x ft bd ty}
