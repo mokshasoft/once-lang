@@ -40,7 +40,8 @@ open import Once.Internal.Type.Poly as T using (PolyType; PolyFunctor; Ground; G
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
 open import Once.Type.Determined using (cod-determined)
 open import Data.String using (String)
-open import Once.Internal.Syntax as Raw using (RawExpr; RResolved; RApp; BinOp; isArithmeticOp; isComparisonOp)
+open import Once.Spec.Surface.Syntax as Raw using (RResolved; RApp; BinOp)
+open import Once.Internal.Syntax as Raw using (RawExpr; isArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (gen)
 open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.Internal.Typing

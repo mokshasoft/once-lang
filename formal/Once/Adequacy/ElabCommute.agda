@@ -45,7 +45,7 @@ open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Internal.Laws.SubLaws using (<:-unique)
 open import Once.Internal.Typing.Scope using (mkCtx)
 open import Once.Internal.Typing
-open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 import Once.Metatheory.TermModel.TySubst Σ S as TS
 open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk; module Deriv)
 open Deriv τ r

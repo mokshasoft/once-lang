@@ -16,6 +16,8 @@
 
 module Once.Adequacy.SpecFront.Resolve where
 
+import Once.Spec.Surface.Syntax as O
+
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String)
 

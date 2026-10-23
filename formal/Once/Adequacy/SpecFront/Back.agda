@@ -90,7 +90,8 @@ import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as SX
 import Once.Internal.Context as LC
 open import Once.Internal.Context using (svar)
-open import Once.Internal.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.Typing
 open import Once.Internal.Typing.Scope using (NamedCtx; mkCtx; classifyAppHead; classifyAppHeadView; viewToPba; AppHeadView;
   Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
@@ -150,7 +151,7 @@ record BDom {n} (Γn : List (Binding m)) (Γd : LC.Ctx m n) (e : RawExpr) (A : S
 
 -- (a resolved name, read by another equal name)
 bdom-at : ∀ {n Γn Γd c c′ A π B′ Φ} → c ≡ c′
-        → BDom {n} Γn Γd (Once.Internal.Syntax.RResolved c′) A π B′ Φ → BDom Γn Γd (Once.Internal.Syntax.RResolved c) A π B′ Φ
+        → BDom {n} Γn Γd (Once.Spec.Surface.Syntax.RResolved c′) A π B′ Φ → BDom Γn Γd (Once.Spec.Surface.Syntax.RResolved c) A π B′ Φ
 bdom-at refl b = b
 
 ------------------------------------------------------------------------
@@ -381,49 +382,49 @@ private
   module _ {n} {Γn : List (Binding m)} {Γd : LC.Ctx m n} where
 
     pair-syn : ∀ {ea eb A′ B′ Φ₁ Φ₂ Φ} → Φ₁ SCx.+ᵘ Φ₂ SCx.⊑ᵘ Φ
-             → BSyn Γn Γd ea A′ Φ₁ → BSyn Γn Γd eb B′ Φ₂ → BSyn Γn Γd (Once.Internal.Syntax.RPair ea eb) (A′ ST.* B′) Φ
+             → BSyn Γn Γd ea A′ Φ₁ → BSyn Γn Γd eb B′ Φ₂ → BSyn Γn Γd (Once.Spec.Surface.Syntax.RPair ea eb) (A′ ST.* B′) Φ
     pair-syn u (bsyn ra {Ψa} da ua) (bsyn rb {Ψb} db ub) = bsyn (r-* ra rb) (t-pair da db) (⊑ᵘ-trans (sum-use Ψa Ψb ua ub) u)
 
     neg-syn : ∀ {e Φ₀ Φ} → Φ₀ SCx.⊑ᵘ Φ → BSyn Γn Γd e ST.Int Φ₀
-            → BSyn Γn Γd (Once.Internal.Syntax.RNeg e) ST.Int Φ
+            → BSyn Γn Γd (Once.Spec.Surface.Syntax.RNeg e) ST.Int Φ
     neg-syn u (bsyn r-int d u₀) = bsyn r-int (t-neg d) (⊑ᵘ-trans u₀ u)
 
     -- `x : A` in scope, then the body
     let-syn : ∀ {x e₁ e₂ A′ B′ q Φ₁ Φ₂ Φ} → Φ₂ SCx.+ᵘ q SCx.*ᵘ Φ₁ SCx.⊑ᵘ Φ
             → (s₁ : BSyn Γn Γd e₁ A′ Φ₁)
             → BSyn (LTS.mkBinding x (BSyn.A s₁) LG.Many ∷ Γn) (Γd SCx.▸ BSyn.A s₁) e₂ B′ (q SCx.∷ Φ₂)
-            → BSyn Γn Γd (Once.Internal.Syntax.RLet x e₁ e₂) B′ Φ
+            → BSyn Γn Γd (Once.Spec.Surface.Syntax.RLet x e₁ e₂) B′ Φ
     let-syn u (bsyn r₁ {Ψ₁} d₁ u₁) (bsyn r₂ {q₀ SCx.∷ Ψ₂} d₂ u₂) =
       bsyn r₂ (t-let d₁ d₂) (⊑ᵘ-trans (app-use Ψ₂ Ψ₁ q₀ (⊑-tail u₂) u₁ (⊑-head u₂)) u)
 
     -- the binary operators
     arith-syn : ∀ {op e₁ e₂ Φ₁ Φ₂ Φ} → Once.Internal.Syntax.isArithmeticOp op ≡ true → Φ₁ SCx.+ᵘ Φ₂ SCx.⊑ᵘ Φ
               → BSyn Γn Γd e₁ ST.Int Φ₁ → BSyn Γn Γd e₂ ST.Int Φ₂
-              → BSyn Γn Γd (Once.Internal.Syntax.RBinOp op e₁ e₂) ST.Int Φ
+              → BSyn Γn Γd (Once.Spec.Surface.Syntax.RBinOp op e₁ e₂) ST.Int Φ
     arith-syn ok u (bsyn r-int {Ψ₁} d₁ u₁) (bsyn r-int {Ψ₂} d₂ u₂) =
       bsyn r-int (t-binop-arith ok d₁ d₂) (⊑ᵘ-trans (sum-use Ψ₁ Ψ₂ u₁ u₂) u)
 
     farith-syn : ∀ {op e₁ e₂ Φ₁ Φ₂ Φ} → Once.Internal.Syntax.isFloatArithmeticOp op ≡ true → Φ₁ SCx.+ᵘ Φ₂ SCx.⊑ᵘ Φ
                → BSyn Γn Γd e₁ ST.Float Φ₁ → BSyn Γn Γd e₂ ST.Float Φ₂
-               → BSyn Γn Γd (Once.Internal.Syntax.RBinOp op e₁ e₂) ST.Float Φ
+               → BSyn Γn Γd (Once.Spec.Surface.Syntax.RBinOp op e₁ e₂) ST.Float Φ
     farith-syn ok u (bsyn r-float {Ψ₁} d₁ u₁) (bsyn r-float {Ψ₂} d₂ u₂) =
       bsyn r-float (t-binop-arith-float ok d₁ d₂) (⊑ᵘ-trans (sum-use Ψ₁ Ψ₂ u₁ u₂) u)
 
     farith-il-syn : ∀ {op e₁ e₂ Φ₁ Φ₂ Φ} → Once.Internal.Syntax.isFloatArithmeticOp op ≡ true → Φ₁ SCx.+ᵘ Φ₂ SCx.⊑ᵘ Φ
                   → BSyn Γn Γd e₁ ST.Int Φ₁ → BSyn Γn Γd e₂ ST.Float Φ₂
-                  → BSyn Γn Γd (Once.Internal.Syntax.RBinOp op e₁ e₂) ST.Float Φ
+                  → BSyn Γn Γd (Once.Spec.Surface.Syntax.RBinOp op e₁ e₂) ST.Float Φ
     farith-il-syn ok u (bsyn r-int {Ψ₁} d₁ u₁) (bsyn r-float {Ψ₂} d₂ u₂) =
       bsyn r-float (t-binop-arith-float-il ok d₁ d₂) (⊑ᵘ-trans (sum-use Ψ₁ Ψ₂ u₁ u₂) u)
 
     farith-ir-syn : ∀ {op e₁ e₂ Φ₁ Φ₂ Φ} → Once.Internal.Syntax.isFloatArithmeticOp op ≡ true → Φ₁ SCx.+ᵘ Φ₂ SCx.⊑ᵘ Φ
                   → BSyn Γn Γd e₁ ST.Float Φ₁ → BSyn Γn Γd e₂ ST.Int Φ₂
-                  → BSyn Γn Γd (Once.Internal.Syntax.RBinOp op e₁ e₂) ST.Float Φ
+                  → BSyn Γn Γd (Once.Spec.Surface.Syntax.RBinOp op e₁ e₂) ST.Float Φ
     farith-ir-syn ok u (bsyn r-float {Ψ₁} d₁ u₁) (bsyn r-int {Ψ₂} d₂ u₂) =
       bsyn r-float (t-binop-arith-float-ir ok d₁ d₂) (⊑ᵘ-trans (sum-use Ψ₁ Ψ₂ u₁ u₂) u)
 
     cmp-syn : ∀ {op e₁ e₂ Φ₁ Φ₂ Φ} → Once.Internal.Syntax.isComparisonOp op ≡ true → Φ₁ SCx.+ᵘ Φ₂ SCx.⊑ᵘ Φ
             → BSyn Γn Γd e₁ ST.Int Φ₁ → BSyn Γn Γd e₂ ST.Int Φ₂
-            → BSyn Γn Γd (Once.Internal.Syntax.RBinOp op e₁ e₂) (ST.Unit ST.+ ST.Unit) Φ
+            → BSyn Γn Γd (Once.Spec.Surface.Syntax.RBinOp op e₁ e₂) (ST.Unit ST.+ ST.Unit) Φ
     cmp-syn ok u (bsyn r-int {Ψ₁} d₁ u₁) (bsyn r-int {Ψ₂} d₂ u₂) =
       bsyn (r-+ r-unit r-unit) (t-binop-cmp ok d₁ d₂) (⊑ᵘ-trans (sum-use Ψ₁ Ψ₂ u₁ u₂) u)
 
@@ -431,17 +432,17 @@ private
     -- definition, or a ground telescope entry (R11, D330)
     def-ref : ∀ {c Φ} (d : Fin s) (τ : ST.TySub (SC.Schema.arity (S′ SC.!! d)) m) → nm d ≡ c
             → c ≢ canonical ("main" ∷ []) → SC.Schema.arity (S′ SC.!! d) ≡ 0
-            → BSyn Γn Γd (Once.Internal.Syntax.RResolved c) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
+            → BSyn Γn Γd (Once.Spec.Surface.Syntax.RResolved c) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
     def-ref d τ e nm′ ar = at (h-name d) e nm′
       where
         at : ∀ {c Φ} → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []) → nm d ≡ c → c ≢ canonical ("main" ∷ [])
-           → BSyn Γn Γd (Once.Internal.Syntax.RResolved c) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
+           → BSyn Γn Γd (Once.Spec.Surface.Syntax.RResolved c) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) Φ
         at (x , ex) refl nm′ = pick (x ∈? ps)
           where
-            at-own : ∀ {T Ψ} → C _ Γn Γd ⊢ᵢ Once.Internal.Syntax.RResolved (canonical (x ∷ [])) ∶ T ⨾ Ψ
-                   → C _ Γn Γd ⊢ᵢ Once.Internal.Syntax.RResolved (nm d) ∶ T ⨾ Ψ
-            at-own = subst (λ c → C _ Γn Γd ⊢ᵢ Once.Internal.Syntax.RResolved c ∶ _ ⨾ _) (sym ex)
-            pick : Dec (x ∈ ps) → BSyn Γn Γd (Once.Internal.Syntax.RResolved (nm d)) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) _
+            at-own : ∀ {T Ψ} → C _ Γn Γd ⊢ᵢ Once.Spec.Surface.Syntax.RResolved (canonical (x ∷ [])) ∶ T ⨾ Ψ
+                   → C _ Γn Γd ⊢ᵢ Once.Spec.Surface.Syntax.RResolved (nm d) ∶ T ⨾ Ψ
+            at-own = subst (λ c → C _ Γn Γd ⊢ᵢ Once.Spec.Surface.Syntax.RResolved c ∶ _ ⨾ _) (sym ex)
+            pick : Dec (x ∈ ps) → BSyn Γn Γd (Once.Spec.Surface.Syntax.RResolved (nm d)) (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩) _
             pick (no x∉) =
               let (lks , T , lki , rT) = h-mono ex x∉ (λ x≡ → nm′ (trans ex (cong (λ y → canonical (y ∷ [])) x≡)))
               in bsyn (rT τ) (at-own (t-var-own lks lki refl)) zero-use
@@ -453,13 +454,13 @@ private
     poly-chk : ∀ {c A Φ} (d : Fin s) → nm d ≡ c → 0 < SC.Schema.arity (S′ SC.!! d)
              → (τ : ST.TySub (SC.Schema.arity (S′ SC.!! d)) m) → ST.Respects (SC.Schema.kinds (S′ SC.!! d)) Δ τ
              → TyR Δ A (SC.Schema.type (S′ SC.!! d) ST.⟨ τ ⟩)
-             → BChk Γn Γd (Once.Internal.Syntax.RResolved c) A Φ
+             → BChk Γn Γd (Once.Spec.Surface.Syntax.RResolved c) A Φ
     poly-chk d e pos τ resp rA = at (h-name d) e
       where
-        at : ∀ {c Φ} → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []) → nm d ≡ c → BChk Γn Γd (Once.Internal.Syntax.RResolved c) _ Φ
+        at : ∀ {c Φ} → Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []) → nm d ≡ c → BChk Γn Γd (Once.Spec.Surface.Syntax.RResolved c) _ Φ
         at (x , ex) refl =
           let x∈ = h-ps ex pos ; pa = h-poly ex x∈
-          in bchk (subst (λ c → C _ Γn Γd ⊢ᶜ Once.Internal.Syntax.RResolved c ∶ _ ⨾ _) (sym ex)
+          in bchk (subst (λ c → C _ Γn Γd ⊢ᶜ Once.Spec.Surface.Syntax.RResolved c ∶ _ ⨾ _) (sym ex)
                     (t-var-poly-instantiate (h-psig x∈) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) (Sc.PolyAt.open′ pa pos)
                                             (Sc.PolyAt.inst pa τ resp rA)))
                   zero-use
@@ -524,7 +525,7 @@ private
            (w : Φ₁ SCx.+ᵘ q SCx.*ᵘ Φ₂ SCx.⊑ᵘ Φ) (eq : q ≡ SG.Many) where
 
     G : String → RawExpr
-    G g = Once.Internal.Syntax.RApp (Once.Internal.Syntax.RResolved (Once.Spec.Name.gen g)) e
+    G g = Once.Spec.Surface.Syntax.RApp (Once.Spec.Surface.Syntax.RResolved (Once.Spec.Name.gen g)) e
 
     id-gen : ∀ {T} → BSyn Γn Γd e T Φ₂ → BSyn Γn Γd (G "id") T Φ
     id-gen (bsyn ra {Ψ} der u) = bsyn ra (t-id-app der) (gen-use Ψ u eq w)
@@ -667,7 +668,7 @@ private
             → ∀ {Ψ₀ : LC.Usage (suc n)}
             → C (suc n) (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd SCx.▸ A₁) ⊢ᶜ body ∶ A₂ ⨾ Ψ₀
             → uS Ψ₀ SCx.⊑ᵘ (q′ SCx.∷ Ψ) → q′ SG.≤q q → Ψ SCx.⊑ᵘ Φ
-            → BChk Γn Γd (Once.Internal.Syntax.RLam x body) (A₁ LT.⇒[ k ] A₂) Φ
+            → BChk Γn Γd (Once.Spec.Surface.Syntax.RLam x body) (A₁ LT.⇒[ k ] A₂) Φ
     lam-chk k ek {q₀ SCx.∷ Ψ₀} der u le w =
       bchk (t-lam {u = pure-⊑ _}
                   (≤q-L q₀ (LG.ArrowKind.quantity k)
@@ -678,13 +679,13 @@ private
     -- `x : A` in scope, a body synthesized
     lam-dom : ∀ {x body A₁ B′ π} {q′ : SG.Quantity} {Ψ Φ : SCx.Usage n}
             → BSyn (LTS.mkBinding x A₁ LG.Many ∷ Γn) (Γd SCx.▸ A₁) body B′ (q′ SCx.∷ Ψ) → Ψ SCx.⊑ᵘ Φ
-            → BDom Γn Γd (Once.Internal.Syntax.RLam x body) A₁ π B′ Φ
+            → BDom Γn Γd (Once.Spec.Surface.Syntax.RLam x body) A₁ π B′ Φ
     lam-dom (bsyn rb {q₀ SCx.∷ Ψ₀} der u) w = bdom rb (d-lam {u = pure-⊑ _} der) (⊑ᵘ-trans (⊑-tail u) w)
 
     -- `apply p` checked: `p`'s pair, its domain one type
     apply-chk : ∀ {e As Bs Bc Φ₁ Φ₂ Φ q} → BSyn Γn Γd e ((As SU.⇒⟨ SG.pure ⟩ Bs) ST.* As) Φ₂ → TyR Δ Bc Bs
               → q ≡ SG.Many → Φ₁ SCx.+ᵘ q SCx.*ᵘ Φ₂ SCx.⊑ᵘ Φ
-              → BChk Γn Γd (Once.Internal.Syntax.RApp (Once.Internal.Syntax.RResolved (Once.Spec.Name.gen "apply")) e) Bc Φ
+              → BChk Γn Γd (Once.Spec.Surface.Syntax.RApp (Once.Spec.Surface.Syntax.RResolved (Once.Spec.Name.gen "apply")) e) Bc Φ
     apply-chk {e = e} {As} {Bs} (bsyn (r-* rf ra′) {Ψ} der u) rB eq w = go (split-arr rf) ra′ der
       where
         go : ∀ {Af Aa} → Σ[ πc ∈ LG.Purity ] Σ[ A₁ ∈ ST.Ty m ] Σ[ A₂ ∈ ST.Ty m ]
@@ -841,7 +842,7 @@ mutual
     in eT , spine-go sx dF eq (IApp.use a)
     where
       spine-go : ∀ {Φ₁ Φ₂ q Φ} → (sx : BSyn Γn Γd a₀ Xs Φ₂) → BDom Γn Γd f (BSyn.A sx) LG.pure Ts Φ₁
-               → q ≡ SG.Many → Φ₁ SCx.+ᵘ q SCx.*ᵘ Φ₂ SCx.⊑ᵘ Φ → BSyn Γn Γd (Once.Internal.Syntax.RApp f a₀) Ts Φ
+               → q ≡ SG.Many → Φ₁ SCx.+ᵘ q SCx.*ᵘ Φ₂ SCx.⊑ᵘ Φ → BSyn Γn Γd (Once.Spec.Surface.Syntax.RApp f a₀) Ts Φ
       spine-go (bsyn rx {Ψ₂} derX uX) (bdom rb {Ψ₁} derF uF) eqq w =
         bsyn rb (t-app-spine (special⁻ (classifyAppHeadView f) xf nsh) derX derF)
              (⊑ᵘ-trans (app-use Ψ₁ Ψ₂ LG.Many uF uX (≤q-≡ (sym eqq))) w)

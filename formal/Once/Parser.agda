@@ -33,7 +33,8 @@ open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Internal.Type.Poly using (PolyType; extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Internal.Syntax using (RawExpr; RVar)
+open import Once.Spec.Surface.Syntax using (RVar)
+open import Once.Internal.Syntax using (RawExpr)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue; isOpNameChar)

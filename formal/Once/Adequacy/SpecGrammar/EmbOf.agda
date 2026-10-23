@@ -18,7 +18,8 @@ open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Internal.Syntax using (RawExpr; RVar; RApp; RBinOp; RLam; RLet; RPair; RDestruct; RAnnot; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RApp; RBinOp; RLam; RLet; RPair; RDestruct; RAnnot; RNeg)
+open import Once.Internal.Syntax using (RawExpr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Parser.ExprRelation as E
 open import Once.Adequacy.SpecGrammar.Expr

@@ -32,7 +32,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RApp)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RApp)
+open import Once.Internal.Syntax as Raw using (RawExpr)
 
 ------------------------------------------------------------------------
 -- Lightweight Maybe-valued type equality (positive cases only — a

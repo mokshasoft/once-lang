@@ -99,6 +99,7 @@ library
       MAlonzo.Code.Once.Spec.Grade
       MAlonzo.Code.Once.Spec.Signature
       MAlonzo.Code.Once.Spec.Sub
+      MAlonzo.Code.Once.Spec.Surface.Syntax
       MAlonzo.Code.Once.Spec.Type
       MAlonzo.Code.Once.Target.SymbolFresh
       MAlonzo.Code.Once.Denotation.Admissible

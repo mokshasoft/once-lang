@@ -82,7 +82,8 @@ open import Once.Internal.Name using (showCanonical)
 open import Once.Internal.Core.Decl using (⌜declS⌝)
 open import Once.Internal.Type.Schema using (kinded-instance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Internal.Syntax using (RawExpr; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.Typing
 open import Once.Internal.Typing.Scope using (NamedCtx; mkCtx; classifyAppHead; Binding)
 import Data.List.Relation.Unary.Any
@@ -139,7 +140,7 @@ record Dom {n} (L : SU.Locals m n) (e′ : SX.Expr) (A′ : ST.Ty m) (π : LG.Pu
 ------------------------------------------------------------------------
 
 private
-  gen-head : ∀ {g} → g ∈ SU.specialGenerators → classifyAppHead (Once.Internal.Syntax.RResolved (Once.Spec.Name.gen g)) ≡ nothing → ⊥
+  gen-head : ∀ {g} → g ∈ SU.specialGenerators → classifyAppHead (Once.Spec.Surface.Syntax.RResolved (Once.Spec.Name.gen g)) ≡ nothing → ⊥
   gen-head (Data.List.Relation.Unary.Any.here refl) ()
   gen-head (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl)) ()
   gen-head (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.there (Data.List.Relation.Unary.Any.here refl))) ()

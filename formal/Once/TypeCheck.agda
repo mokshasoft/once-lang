@@ -19,7 +19,8 @@ module Once.TypeCheck where
 -- Types
 
 -- Raw syntax (parser output)
-open import Once.Internal.Syntax using (RawExpr; RVar; RApp; RLam; RUnit; RInt; RBinOp; OpAdd; OpLt)
+open import Once.Spec.Surface.Syntax using (RVar; RApp; RLam; RUnit; RInt; RBinOp; OpAdd; OpLt)
+open import Once.Internal.Syntax using (RawExpr)
 
 -- Typing contexts
 import Once.TypeCheck.Context

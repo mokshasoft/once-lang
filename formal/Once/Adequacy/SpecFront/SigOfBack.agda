@@ -30,7 +30,7 @@ import Once.Internal.Resolution as LR
 open import Once.Internal.Module using (entrySig)
 open import Once.Spec.Name using (canonical)
 open import Once.Internal.Name using (showCanonical)
-open import Once.Internal.Syntax using (RVar)
+open import Once.Spec.Surface.Syntax using (RVar)
 open import Once.Spec.Signature using (Signature; WellFormed; []; _∷_)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Resolution as SR

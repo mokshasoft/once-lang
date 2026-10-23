@@ -24,13 +24,13 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Maybe.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
-import qualified MAlonzo.Code.Once.Internal.Syntax
 import qualified MAlonzo.Code.Once.Internal.Type.Poly
 import qualified MAlonzo.Code.Once.Parser.Expr
 import qualified MAlonzo.Code.Once.Parser.ExprRelation
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
+import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Parser.Module.Core.Import
@@ -58,7 +58,7 @@ data T_Decl_20
   = C_DTypeSig_22 MAlonzo.Code.Agda.Builtin.String.T_String_6
                   MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 |
     C_DFunDef_24 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                 MAlonzo.Code.Once.Internal.Syntax.T_RawExpr_30 |
+                 MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 |
     C_DSignature_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe [MAlonzo.Code.Agda.Builtin.String.T_String_6])
                     MAlonzo.Code.Once.Internal.Type.Poly.T_PolyType_10 |

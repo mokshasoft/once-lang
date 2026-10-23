@@ -29,7 +29,8 @@ open import Once.Spec.Type as T using (Type; _+_; _⇒[_]_)
 import Once.Spec.Grade as T
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Grade using (_⊑π_)
-open import Once.Internal.Syntax as Raw using (BinOp; isArithmeticOp; isComparisonOp)
+open import Once.Spec.Surface.Syntax as Raw using (BinOp)
+open import Once.Internal.Syntax as Raw using (isArithmeticOp; isComparisonOp)
 open import Once.Internal.Typing.Scope using (NamedCtx; extendNamedCtx; classifyAppHead)
 open import Once.Internal.Typing
 open import Once.Internal.Laws.ModeAgreement

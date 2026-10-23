@@ -40,7 +40,7 @@ open import Once.Spec.Type using (Ty; Type; KCtx)
 open import Once.Internal.Type.Poly using (PolyType)
 open import Once.Spec.Name using (canonical; gen; generatorNS)
 open import Once.Internal.Syntax using (RawExpr)
-import Once.Internal.Syntax as Raw
+import Once.Spec.Surface.Syntax as Raw
 open import Once.Internal.Context using (SVar; svar)
 open import Once.Spec.Context using (_▸_)
 import Once.Internal.Context as Surface

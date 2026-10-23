@@ -45,7 +45,8 @@ import Once.Internal.Type as T
 import Once.Type as T
 import Once.Internal.Type.Poly as T
 import Once.Spec.Grade as T
-open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RResolved)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RResolved)
+open import Once.Internal.Syntax as Raw using (RawExpr)
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
 open import Once.Internal.Name using (showCanonical)
 open import Once.CanonicalName using (bare-NotGenerator)

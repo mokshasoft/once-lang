@@ -17,6 +17,8 @@
 
 module Once.Adequacy.SpecFront.ResolveBack where
 
+import Once.Spec.Surface.Syntax as O
+
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Membership.Propositional using (_∈_)

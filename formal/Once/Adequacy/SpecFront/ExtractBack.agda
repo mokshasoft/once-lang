@@ -24,7 +24,7 @@ open import Data.Unit using (tt)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Internal.Syntax using (RVar)
+open import Once.Spec.Surface.Syntax using (RVar)
 open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser
   using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; sigsAdjacent; sigsAdjacent-def)

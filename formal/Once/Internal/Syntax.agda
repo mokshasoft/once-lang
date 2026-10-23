@@ -6,7 +6,7 @@
 -- Once.Internal.Syntax — the terms a programmer writes.
 --
 -- `RawExpr` is the abstract syntax of an expression after parsing, with named
--- variables. A qualified reference is first `RQualified name alias`; name
+-- variables: the Spec's `Spec.Surface.Syntax.Expr`. A qualified reference is first `RQualified name alias`; name
 -- resolution (`Spec.Resolution`) replaces it by `RResolved` of the canonical
 -- name it denotes (`Spec.Name`). The typing judgment (`Spec.Typing`) is stated
 -- over resolved terms.
@@ -21,47 +21,17 @@ open import Data.String using (String)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type using (Fun)
 open import Once.Spec.Name using (CanonicalName)
+open import Once.Spec.Surface.Syntax
+  using (Expr; BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
+         RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 
 ------------------------------------------------------------------------
--- Operators
+-- Expressions: the Spec's (plan 0.122). `RawExpr` is the compiler's name
+-- for them, apart from its elaborated `Surface.Syntax.Expr`.
 ------------------------------------------------------------------------
 
-data BinOp : Set where
-  OpAdd : BinOp    -- a + b
-  OpSub : BinOp    -- a - b
-  OpMul : BinOp    -- a * b
-  OpDiv : BinOp    -- a / b
-  OpMod : BinOp    -- a % b
-  OpLt  : BinOp    -- a < b
-  OpLe  : BinOp    -- a <= b
-  OpGt  : BinOp    -- a > b
-  OpGe  : BinOp    -- a >= b
-  OpEq  : BinOp    -- a == b
-  OpNe  : BinOp    -- a != b
-
-------------------------------------------------------------------------
--- Expressions
-------------------------------------------------------------------------
-
-data RawExpr : Set where
-  RVar       : String → RawExpr                       -- x
-  RQualified : String → String → RawExpr              -- name@alias
-  RResolved  : CanonicalName → RawExpr                -- a resolved reference
-  RApp       : RawExpr → RawExpr → RawExpr            -- f a
-  RLam       : String → RawExpr → RawExpr             -- \x -> e
-  RLet       : String → RawExpr → RawExpr → RawExpr   -- let x = e₁ in e₂
-  RPair      : RawExpr → RawExpr → RawExpr            -- (e₁, e₂)
-  -- destruct e | x -> e₁ | y -> e₂: the first branch takes the left
-  -- injection, the second the right one.
-  RDestruct  : RawExpr → String → RawExpr → String → RawExpr → RawExpr
-  RUnit      : RawExpr                                -- ()
-  RInt       : ℤ → RawExpr                            -- an integer literal
-  -- A decimal literal as written: integer part, fraction digits, number of
-  -- fraction digits (its source offset stays on the token, for warnings).
-  RFloat     : ℕ → ℕ → ℕ → RawExpr
-  RAnnot     : RawExpr → Type → RawExpr               -- (e : T)
-  RBinOp     : BinOp → RawExpr → RawExpr → RawExpr
-  RNeg       : RawExpr → RawExpr                    -- -e
+RawExpr : Set
+RawExpr = Expr
 
 ------------------------------------------------------------------------
 -- Operator classes (the typing rules for operators are stated by class)

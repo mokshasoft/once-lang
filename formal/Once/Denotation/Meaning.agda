@@ -70,7 +70,7 @@ open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx; Imports; lookup
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
 open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Spec.Sub using (sub-arr)
 open import Once.Spec.Sub using (_⊔_≔_)

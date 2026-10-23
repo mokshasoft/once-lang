@@ -49,7 +49,7 @@ open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF; IsConcrete)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Internal.Name using (showCanonical)
-open import Once.Internal.Syntax using (RResolved)
+open import Once.Spec.Surface.Syntax using (RResolved)
 import Once.Internal.Context as Surface
 open import Once.Spec.Context using (_▸_; _⟨_⟩ᶜ)
 open import Once.Internal.Context using (svar; singleUse) renaming (Ctx to SCtx; ∅ to S∅)

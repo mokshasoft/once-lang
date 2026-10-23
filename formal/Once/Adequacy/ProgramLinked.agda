@@ -86,7 +86,7 @@ open import Once.TypeCheck.Instance using (inst-at)
 open import Once.TypeCheck.Completeness using (check-complete)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 open import Once.Internal.Typing
-open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.IRTy using (⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)

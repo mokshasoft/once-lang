@@ -431,7 +431,7 @@ module Comb {Δ : KCtx 0} {δ : DefSem} {n} {Γ : Ctx 0 n} where
 -- The bridge
 ------------------------------------------------------------------------
 
-open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Denotation.Meaning Σ σ₀ using (EnvRun)
 
 module _ {δ : DefSem} where

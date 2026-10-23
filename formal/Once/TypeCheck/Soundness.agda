@@ -43,7 +43,8 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Spec.Grade as T using (Quantity)
 open import Once.Spec.Type as T using (Type)
 open import Once.Spec.Name using (gen)
-open import Once.Internal.Syntax as Raw using (RawExpr; RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RNeg; RBinOp; BinOp)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RApp; RInt; RUnit; RAnnot; RPair; RLam; RLet; RDestruct; RNeg; RBinOp; BinOp)
+open import Once.Internal.Syntax as Raw using (RawExpr)
 import Data.String.Properties
 import Once.Internal.Type.DecEq
 open import Once.TypeCheck.Elaborate

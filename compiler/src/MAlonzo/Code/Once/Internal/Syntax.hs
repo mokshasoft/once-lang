@@ -20,86 +20,99 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Bool
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Type
 
--- Once.Internal.Syntax.BinOp
-d_BinOp_6 = ()
-data T_BinOp_6
-  = C_OpAdd_8 | C_OpSub_10 | C_OpMul_12 | C_OpDiv_14 | C_OpMod_16 |
-    C_OpLt_18 | C_OpLe_20 | C_OpGt_22 | C_OpGe_24 | C_OpEq_26 |
-    C_OpNe_28
 -- Once.Internal.Syntax.RawExpr
-d_RawExpr_30 = ()
-data T_RawExpr_30
-  = C_RVar_32 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RQualified_34 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                    MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RResolved_36 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 |
-    C_RApp_38 T_RawExpr_30 T_RawExpr_30 |
-    C_RLam_40 MAlonzo.Code.Agda.Builtin.String.T_String_6
-              T_RawExpr_30 |
-    C_RLet_42 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_30
-              T_RawExpr_30 |
-    C_RPair_44 T_RawExpr_30 T_RawExpr_30 |
-    C_RDestruct_46 T_RawExpr_30
-                   MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_30
-                   MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_30 |
-    C_RUnit_48 | C_RInt_50 Integer |
-    C_RFloat_52 Integer Integer Integer |
-    C_RAnnot_54 T_RawExpr_30 MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
-    C_RBinOp_56 T_BinOp_6 T_RawExpr_30 T_RawExpr_30 |
-    C_RNeg_58 T_RawExpr_30
+d_RawExpr_6 :: ()
+d_RawExpr_6 = erased
 -- Once.Internal.Syntax.isComparisonOp
-d_isComparisonOp_60 :: T_BinOp_6 -> Bool
-d_isComparisonOp_60 v0
+d_isComparisonOp_8 ::
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_BinOp_44 -> Bool
+d_isComparisonOp_8 v0
   = case coe v0 of
-      C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpGt_22 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpGe_24 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpAdd_46
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpSub_48
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMul_50
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpDiv_52
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMod_54
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLt_56
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLe_58
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGt_60
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGe_62
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpEq_64
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpNe_66
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Syntax.isFloatArithmeticOp
-d_isFloatArithmeticOp_62 :: T_BinOp_6 -> Bool
-d_isFloatArithmeticOp_62 v0
+d_isFloatArithmeticOp_10 ::
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_BinOp_44 -> Bool
+d_isFloatArithmeticOp_10 v0
   = case coe v0 of
-      C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpGt_22 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpGe_24 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpAdd_46
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpSub_48
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMul_50
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpDiv_52
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMod_54
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLt_56
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLe_58
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGt_60
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGe_62
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpEq_64
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpNe_66
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Syntax.isArithmeticOp
-d_isArithmeticOp_64 :: T_BinOp_6 -> Bool
-d_isArithmeticOp_64 v0
+d_isArithmeticOp_12 ::
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_BinOp_44 -> Bool
+d_isArithmeticOp_12 v0
   = case coe v0 of
-      C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpGt_22 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpGe_24 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
-      C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpAdd_46
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpSub_48
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMul_50
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpDiv_52
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMod_54
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLt_56
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLe_58
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGt_60
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGe_62
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpEq_64
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpNe_66
+        -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Syntax.ClosedLiftShape
-d_ClosedLiftShape_66 a0 = ()
-data T_ClosedLiftShape_66
-  = C_cls'45'var_70 | C_cls'45'qual_76 | C_cls'45'res_80 |
-    C_cls'45'let_88 | C_cls'45'destr_100 | C_cls'45'unit_102 |
-    C_cls'45'annot_108 | C_cls'45'binop_116
+d_ClosedLiftShape_14 a0 = ()
+data T_ClosedLiftShape_14
+  = C_cls'45'var_18 | C_cls'45'qual_24 | C_cls'45'res_28 |
+    C_cls'45'let_36 | C_cls'45'destr_48 | C_cls'45'unit_50 |
+    C_cls'45'annot_56 | C_cls'45'binop_64

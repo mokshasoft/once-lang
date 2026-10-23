@@ -20,8 +20,8 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (String)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Internal.Syntax
-  using (RawExpr; RVar; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Internal.Syntax using (RawExpr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Adequacy.SpecGrammar.Conv using (toTy)

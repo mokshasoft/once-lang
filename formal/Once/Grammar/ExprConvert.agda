@@ -24,6 +24,7 @@ open import Data.Integer using (+_)
 
 import Once.Grammar as G
 open G using (GExpr)
+open import Once.Spec.Surface.Syntax using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Internal.Syntax
 open import Once.TypeCheck.Raw
 open import Once.Grammar.ExprPrinter using

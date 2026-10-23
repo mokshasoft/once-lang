@@ -65,7 +65,7 @@ open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
 open import Once.Spec.Context using (Ctx)
 open import Once.Internal.Context using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; svar)
-open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Internal.Typing
 open import Once.Spec.Core.Syntax

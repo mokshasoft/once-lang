@@ -59,6 +59,7 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Name using (CanonicalName; gen; own)
 open import Once.Internal.Name using (showCanonical)
 open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Internal.Syntax as Raw
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable)

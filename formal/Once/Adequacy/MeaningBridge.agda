@@ -91,7 +91,7 @@ open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; 
 open import Once.Type.Sub
 open import Once.Internal.Laws.SubLaws
 open import Once.Denotation.Sub using (⟦_⟧<:)
-open import Once.Internal.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;

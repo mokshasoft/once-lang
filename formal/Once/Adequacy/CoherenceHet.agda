@@ -43,6 +43,7 @@ open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Internal.Type.Join using (join-unique)
 open import Once.Internal.Syntax as Raw using (RawExpr)
+import Once.Spec.Surface.Syntax as Raw
 open import Once.Spec.Name using (NotGenerator)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
