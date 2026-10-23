@@ -167,19 +167,6 @@ mutual
               → A ≡ wk₀ T
               → ctx ⊢ᵢ RResolved (own x) ∶ A ⨾ zeroUsage
 
-    -- D136: a RESERVED WORD is never a bare reference to an import or an
-    -- own-module definition — it is the generator. This is the one rule that
-    -- did name resolution on a String inside the judgment, and `¬ GenWord x`
-    -- is what stops it resolving a name the resolver has already claimed.
-    -- Stated as a PROPERTY (D134); `Resolve.isBuiltinName` is the decider.
-    t-var-import : ∀ {ctx : NamedCtx m} {x : String} {T : Type} {A : Ty m}
-                  → ¬ GenWord x
-                  → lookupLocal ctx x ≡ nothing
-                 → lookupImport (NamedCtx.imports ctx) x ≡ just T
-                 → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
-                 → A ≡ wk₀ T
-                 → ctx ⊢ᵢ RVar x ∶ A ⨾ zeroUsage
-
     -- Plan 0.58 / D071: infer-mode reference to a GROUND own-module telescope
     -- def (incl. ground-NON-concrete, e.g. a cata at `μNat → Int`). A ground
     -- schema has exactly ONE type, so the reference INFERS at the declared type

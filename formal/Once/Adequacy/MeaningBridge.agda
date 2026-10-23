@@ -103,7 +103,7 @@ open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check; t-loop-check;
   t-int; t-float; t-unit; t-unit-var; t-var-local;
-  t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
+  t-var-resolved; t-var-own; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp;
   t-sub; t-lam; t-pair-lit-check;
@@ -645,12 +645,6 @@ module _ {s : ℕ} (S : Defs s) (σ-self : RelDefs fmt σ σ) where
          (RelGM-wk₀ {π = pure} {A = T} (proj₂ (proj₂ er) {cn = cn} wn lk conc))
     -- D248: an own-module DEFINITION's reference is a call of it, as a bare one.
     bridge-i {ctx = ctx} {A = Aₓ} V ag (t-var-own {x = x} {T = T} _ lk refl) {γ = γ} r re er =
-      ≡ˡ {A = Aₓ} (trans (Agree.agree-import ag lk) (sym (importE-sem δ (imported V lk) γ)))
-         (subst (RelGM pure (wk₀ T) _) (sym (T∞-wk₀ (callSD x) T)) (RelGM-wk₀ {π = pure} {A = T} (imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk)))
-    -- D246: a module entry's reference is a CALL of it on the SD side and the
-    -- entry's meaning on the Spec side — related by the import half of the
-    -- environment relation.
-    bridge-i {ctx = ctx} {A = Aₓ} V ag (t-var-import {x = x} {T = T} _ _ lk k refl) {γ = γ} r re er =
       ≡ˡ {A = Aₓ} (trans (Agree.agree-import ag lk) (sym (importE-sem δ (imported V lk) γ)))
          (subst (RelGM pure (wk₀ T) _) (sym (T∞-wk₀ (callSD x) T)) (RelGM-wk₀ {π = pure} {A = T} (imprel-at (NamedCtx.imports ctx) x (proj₁ (proj₂ er)) lk)))
     -- Plan 0.103 phase 1c: a ground telescope reference is a definition VARIABLE

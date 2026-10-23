@@ -229,8 +229,6 @@ mutual
     lookup-ρ̂ D i ⇝ᵢ t-var-local (lk-just x Γ D i eq)
   subst-i′ (t-var-resolved {T = T} ng wn li c eq) = t-var-resolved ng wn li c (ρ̂-ground T eq)
   subst-i′ (t-var-own {T = T} ns li eq) = t-var-own ns li (ρ̂-ground T eq)
-  subst-i′ {Γ = Γ} {D = D} (t-var-import {x = x} {T = T} gw ln li c eq) =
-    t-var-import gw (lk-nothing x Γ D ln) li c (ρ̂-ground T eq)
   subst-i′ (t-var-poly-instantiate-infer {schema = s} {g = g} ln li lp gr eq) =
     t-var-poly-instantiate-infer {g = g} ln li lp gr (trans (cong ρ̂ eq) (extractGround-⟨⟩ s g))
   subst-i′ (t-annot {T = T} d eq) = t-annot (subst-c′ d) (ρ̂-ground T eq)

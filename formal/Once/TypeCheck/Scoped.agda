@@ -5,12 +5,9 @@
 -- Once.TypeCheck.Scoped — the checker's scope as the Spec names it (plan
 -- 0.122 §2b-3, stage d).
 --
--- A resolved expression is scoped (`Scoped`): a bare name is a variable a
--- binder encloses, and a resolved one is never the entry `main` (D324). The
--- checker's locals — names over a de Bruijn context — are the Spec's
+-- The checker's locals — names over a de Bruijn context — are the Spec's
 -- `Locals` (`LocalsOf`), and a name the checker finds there is the Spec's
--- local of that type at that index (`found`); one it does not find is bound
--- by none (`not-found`).
+-- local of that type at that index (`found`).
 ------------------------------------------------------------------------
 
 module Once.TypeCheck.Scoped where
@@ -37,30 +34,6 @@ open import Once.Internal.Context using (svar; SVar)
 open import Once.Internal.Typing.Scope using (Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
 open Binding using (name)
 import Once.Spec.Surface.Typing as SUT
-
--- The names the locals bind.
-names : ∀ {m} → List (Binding m) → List String
-names = map name
-
-------------------------------------------------------------------------
--- Scoped expressions
-------------------------------------------------------------------------
-
-data Scoped (bound : List String) : Expr → Set where
-  s-local    : ∀ {x} → x ∈ bound → Scoped bound (RVar x)
-  s-res      : ∀ {c} → c ≢ canonical ("main" ∷ []) → Scoped bound (RResolved c)
-  s-app      : ∀ {f a} → Scoped bound f → Scoped bound a → Scoped bound (RApp f a)
-  s-lam      : ∀ {x b} → Scoped (x ∷ bound) b → Scoped bound (RLam x b)
-  s-let      : ∀ {x e b} → Scoped bound e → Scoped (x ∷ bound) b → Scoped bound (RLet x e b)
-  s-pair     : ∀ {a b} → Scoped bound a → Scoped bound b → Scoped bound (RPair a b)
-  s-destruct : ∀ {e xl l xr r} → Scoped bound e → Scoped (xl ∷ bound) l → Scoped (xr ∷ bound) r
-             → Scoped bound (RDestruct e xl l xr r)
-  s-unit     : Scoped bound RUnit
-  s-int      : ∀ {n} → Scoped bound (RInt n)
-  s-float    : ∀ {i f l} → Scoped bound (RFloat i f l)
-  s-annot    : ∀ {e T} → Scoped bound e → Scoped bound (RAnnot e T)
-  s-binop    : ∀ {op a b} → Scoped bound a → Scoped bound b → Scoped bound (RBinOp op a b)
-  s-neg      : ∀ {e} → Scoped bound e → Scoped bound (RNeg e)
 
 ------------------------------------------------------------------------
 -- The locals
@@ -121,13 +94,3 @@ module Locals (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalN
     where ⊥-elim′ : ⊥ → _
           ⊥-elim′ ()
   found-at {x = x} {Γn = Γn} {Γd} lo (suc i) (no ¬e) eq = there ¬e (found lo i (next-suc (lookupLocal-go x Γn Γd) i eq))
-
-  -- A bound name the checker does not find is bound by none.
-  not-found : ∀ {n x} {Γn} {Γd : SCx.Ctx m n} {L} → LocalsOf Γn Γd L → x ∈ names Γn → lookupLocal-go x Γn Γd ≡ nothing → ⊥
-  not-found-at : ∀ {n x} {b} {Γn} {Γd : SCx.Ctx m n} {L B} → LocalsOf Γn Γd L → x ∈ names (b ∷ Γn) → (d : Dec (x ≡ name b))
-               → lookupLocal-at x b Γn Γd {B = B} d ≡ nothing → ⊥
-  not-found lo-∅ () e
-  not-found {x = x} (lo-▸ {b = b} lo) mem e = not-found-at lo mem (x ≟ name b) e
-  not-found-at lo mem (yes _) ()
-  not-found-at lo (here e) (no ¬e) _ = ¬e e
-  not-found-at {x = x} {Γn = Γn} {Γd} lo (there mem) (no _) e = not-found lo mem (next-nothing (lookupLocal-go x Γn Γd) e)

@@ -174,7 +174,7 @@ d_firstChecking_36 v0 v1 v2 v3
         -> coe
              d_fc'45'step_46 (coe v0) (coe v1) (coe v2) (coe v4) (coe v5)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6500 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6438 (coe v0)
                 (coe v1) (coe v2) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.fc-step
@@ -463,7 +463,7 @@ du_compileFunBody_184 v0 v1 v2 v3 v4 v5 v6
          (\ v7 -> coe MAlonzo.Code.Once.Spec.Type.du_'8709''8342'_142))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6500
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6438
          (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -773,7 +773,7 @@ du_compileFunBodyI_414 v0 v1 v2 v3 v4 v5 v6
          (\ v7 -> coe MAlonzo.Code.Once.Spec.Type.du_'8709''8342'_142))
       (coe v6) (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6490
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6428
          (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -974,7 +974,7 @@ d_inferType_580 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6490
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6428
                  (coe (0 :: Integer))
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -1497,7 +1497,7 @@ d_ce'45'poly'45'p_782 v0 v1 v2 v3 v4 v5
              (coe
                 du_checkOK_634
                 (coe
-                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6500
+                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6438
                    (coe
                       MAlonzo.Code.Once.Internal.Type.Instance.d_arityOf_88
                       (coe MAlonzo.Code.Once.Parser.d_pfunType_106 (coe v3)))
@@ -1716,13 +1716,13 @@ d_lw'45'bodyM_1070 v0 v1 v2 v3
         -> coe
              d_lw'45'body_1056 (coe v1) (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6500
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV_6438
                 (coe (0 :: Integer)) (coe v1) (coe v2) (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
              d_lw'45'bodyI_1062 (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6490
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_6428
                 (coe (0 :: Integer)) (coe v1) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.lw-name

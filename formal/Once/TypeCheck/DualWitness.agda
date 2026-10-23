@@ -32,7 +32,6 @@ open import Once.Internal.Typing.Scope using (NamedCtx; Binding; Imports; PolyCt
 open NamedCtx
 import Once.Spec.Surface.Typing as SUT
 import Once.TypeCheck.Scoped as Sc
-open Sc using (Scoped; names; s-local; s-res; s-app; s-lam; s-let; s-pair; s-destruct; s-unit; s-int; s-float; s-annot; s-binop; s-neg)
 import Once.TypeCheck.Witness as WM
 
 open import Data.Bool using (true)
@@ -60,7 +59,7 @@ open import Data.Unit using (⊤)
 
 open import Once.Internal.Typing
   using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_;
-         t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-resolved; t-var-own; t-var-import;
+         t-int; t-float; t-unit; t-unit-var; t-var-local; t-var-resolved; t-var-own;
          t-var-poly-instantiate-infer; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer;
@@ -123,9 +122,6 @@ module _ {m} {ctx : NamedCtx m} where
 
   dt-var-own : ∀ {x T A} → lookupImport (sig ctx) x ≡ nothing → (lk : lookupImport (imports ctx) x ≡ just T) → (eq : A ≡ wk₀ T) → DI ctx (SX.RResolved (own x)) A SCx.zeroUsage (subst (E SCx.zeroUsage) (sym eq) (SS.closure x))
   dt-var-own a0 lk eq = t-var-own a0 lk eq , wt-var-own a0 lk eq
-
-  dt-var-import : ∀ {x T A} → ¬ Once.Spec.Name.GenWord x → lookupLocal ctx x ≡ nothing → lookupImport (imports ctx) x ≡ just T → IsConcrete T → (eq : A ≡ wk₀ T) → DI ctx (SX.RVar x) A SCx.zeroUsage (subst (E SCx.zeroUsage) (sym eq) (SS.closure x))
-  dt-var-import a0 a1 a2 a3 eq = t-var-import a0 a1 a2 a3 eq , wt-var-import a0 a1 a2 a3 eq
 
   dt-var-poly-instantiate-infer : ∀ {x T sc body prefix} {g : TP.Ground sc} → lookupImport (sig ctx) x ≡ nothing → lookupImport (imports ctx) x ≡ nothing → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , body , prefix)) → TP.Ground sc → T ≡ TP.extractGround sc g → DI ctx (SX.RResolved (own x)) T SCx.zeroUsage (SS.poly x T)
   dt-var-poly-instantiate-infer {g = g} a0 a1 lp a3 a4 = t-var-poly-instantiate-infer {g = g} a0 a1 lp a3 a4 , wt-var-poly-instantiate-infer {g = g} a0 a1 lp a3 a4

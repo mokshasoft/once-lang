@@ -1336,39 +1336,16 @@ inferElabV-RResolved-own-aux ctx x ns (just ty) eq = success (wk₀ ty) _ (Surfa
 -- R11 (D330): an own POLYMORPHIC definition — the telescope.
 inferElabV-RResolved-own-aux ctx x ns nothing eq = inferElabV-RVar-poly-aux ctx x ns eq
 
--- Plan 0.58: DE-WITH the import-value concreteness decision.
--- D136: the reserved-word decision is DE-WITHED like the concreteness one,
--- because it is what discharges `dt-var-import`'s `¬ GenWord x`. A reserved
--- word in the import table is unreachable bare (write `x@this`), so it
--- reports the same `UnboundVariable` a missing name would.
-inferElabV-RVar-import-value-aux : ∀ {m} (ctx : NamedCtx m) (x : String)
-  → lookupLocal ctx x ≡ nothing
-  → (ty : Type) → lookupImport (NamedCtx.imports ctx) x ≡ just ty
-  → (gw : Dec (GenWord x)) → genWord? x ≡ gw
-  → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
-  → VerifiedInferResult ctx (Raw.RVar x)
-inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
-  -- D246: a module entry's reference is a CALL of the entry, not a SigOp.
-  success (wk₀ ty) _ (Surface.closure x) 0 0
-  , dt-var-import ¬gw eq-loc eq-imp conc refl
-inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ nothing _ =
-  failure (NonConcreteSigOpType x ty) , tt
-inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (yes _) _ _ _ =
-  failure (UnboundVariable x) , tt
-
+-- A bare name is a local: the resolver resolves every other name (a global is
+-- referred to by its canonical name, R11/D330), so one bound by no local is
+-- bound to nothing — the Spec's `s-var` is the only rule for a bare name.
 inferElabV-RVar-lookup-aux : ∀ {m} (ctx : NamedCtx m) (x : String)
   → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
   → lookupLocal ctx x ≡ locLhs
-  → (impLhs : Maybe Type)
-  → lookupImport (NamedCtx.imports ctx) x ≡ impLhs
   → VerifiedInferResult ctx (Raw.RVar x)
-inferElabV-RVar-lookup-aux ctx x (just (A , Ψ , eV)) eq-loc _ _ =
+inferElabV-RVar-lookup-aux ctx x (just (A , Ψ , eV)) eq-loc =
   success A Ψ (Surface.svar→expr eV) 0 0 , dt-var-local eq-loc
-inferElabV-RVar-lookup-aux ctx x nothing eq-loc (just ty) eq-imp =
-  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl
--- Both lookups failed: an own definition is referred to by its canonical
--- name (R11/D330), so a bare name is bound to nothing.
-inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp = failure (UnboundVariable x) , tt
+inferElabV-RVar-lookup-aux ctx x nothing eq-loc = failure (UnboundVariable x) , tt
 
 -- Plan 0.4 T2: bbc-X failure-branch aux helpers. Each is hardcoded
 -- to its builtin name (forced by the `bbc-X` constructor at the call
@@ -2275,7 +2252,7 @@ mutual
   -- an unshadowed generator into `RResolved (gen g)`. So this path is ordinary
   -- variables only, and the `"unit"` special case moved to `RResolved` below.
   inferElabV ctx (Raw.RVar x) =
-    inferElabV-RVar-lookup-aux ctx x _ refl _ refl
+    inferElabV-RVar-lookup-aux ctx x _ refl
 
   inferElabV ctx (Raw.RNeg e) = inferElabV-neg-dispatch ctx e
 

@@ -410,16 +410,6 @@ module _ {m} {ctx : NamedCtx m} where
   local-h l l′ = local-go (trans (sym l) l′) l l′
 
   private
-    import-go : ∀ {x} {T T′ : Type} {g g′ ln ln′ c c′} (eT : just T ≡ just T′)
-                  (i : lookupImport (NamedCtx.imports ctx) x ≡ just T) (i′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-              → RI (t-var-import {ctx = ctx} g ln i c refl) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
-    import-go refl i i′ = ≅-refl
-
-  import-h : ∀ {x} {T T′ : Type} {g g′ ln ln′ c c′} (i : lookupImport (NamedCtx.imports ctx) x ≡ just T) (i′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-           → RI (t-var-import {ctx = ctx} g ln i c refl) ≅ RI (t-var-import {ctx = ctx} g′ ln′ i′ c′ refl)
-  import-h {g = g} {g′} {ln} {ln′} {c} {c′} i i′ = import-go {g = g} {g′} {ln} {ln′} {c} {c′} (trans (sym i) i′) i i′
-
-  private
     poly-ty : ∀ {T T′ : Ty m} {x} → T ≡ T′ → poly {Γ = NamedCtx.debruijn ctx} x T ≅ poly x T′
     poly-ty refl = ≅-refl
 

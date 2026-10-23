@@ -284,7 +284,6 @@ given-infer-route {ctx = ctx} (t-var-resolved {cn = cn} ng wn _ _ refl) A π (_ 
   leaf-route ctx cn A π (inferElabV ctx (RResolved cn)) ng (classifyAppHeadView (RResolved cn)) ok
 given-infer-route {ctx = ctx} (t-var-own {x = x} _ _ refl) A π (_ , _ , _ , ok) =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
-given-infer-route (t-var-import _ _ _ _ _) A π _ = refl
 given-infer-route {ctx = ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
 given-infer-route (t-annot _ _) A π _ = refl
@@ -639,9 +638,6 @@ mutual
   iFromInferSub {ctx = ctx} (t-var-own {x = x} {T = T} ns eqImp refl) sb =
     let (_ , _ , _ , eqI) = infer-complete {ctx = ctx} (t-var-own ns eqImp refl)
     in checkElab-fallback-RResolved {ctx = ctx} (own x) (wk₀ T) eqI sb
-  iFromInferSub {ctx = ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc refl) sb =
-    let (_ , _ , _ , eqI) = infer-complete {ctx = ctx} (t-var-import ¬gw eqLoc eqImp conc refl)
-    in checkElab-fallback-RVar {ctx = ctx} x (wk₀ T) eqI sb
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
   iFromInferSub {ctx = ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
@@ -743,8 +739,6 @@ mutual
     infer-complete-RResolved {ctx = ctx} {cn} ng wn eqImp conc
   infer-complete {ctx = ctx} (t-var-own ns eqImp refl) =
     infer-complete-RResolved-own {ctx = ctx} ns eqImp
-  infer-complete {ctx = ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc refl) =
-    infer-complete-RVar-import {ctx = ctx} x ¬gw eqLoc eqImp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the
   -- type-pin equation as `refl` aligns the conclusion `T` with the declared
   -- `extractGround schema g`, so the elaborator's poly-fallback success

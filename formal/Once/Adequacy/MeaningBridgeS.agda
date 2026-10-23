@@ -93,7 +93,7 @@ open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-case-copair-check; t-pair-morph-check;
   t-curry-check; t-cata-check; t-ana-check; t-loop-check;
   t-int; t-float; t-unit; t-unit-var; t-var-local;
-  t-var-resolved; t-var-own; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
+  t-var-resolved; t-var-own; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp;
   t-sub; t-lam; t-pair-lit-check;

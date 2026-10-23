@@ -162,9 +162,6 @@ mutual
   {-# CATCHALL #-}
   route-ii (t-var-resolved _ wn l _ refl) (t-var-own n _ refl) = ⊥-elim (just≢nothing (trans (sym l) n))
   route-ii (t-var-local _) (t-var-local _) = ii-local
-  route-ii (t-var-local l) (t-var-import _ ln _ _ refl) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  route-ii (t-var-import _ ln _ _ refl) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  route-ii (t-var-import _ _ _ _ refl) (t-var-import _ _ _ _ refl) = ii-import
   route-ii (t-var-own _ i refl) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
   route-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-own _ i refl) = ⊥-elim (just≢nothing (trans (sym i) inn))
   {-# CATCHALL #-}

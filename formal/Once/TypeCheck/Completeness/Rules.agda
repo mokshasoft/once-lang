@@ -57,7 +57,7 @@ open import Once.Internal.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
-open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; inferElabV-RVar-import-value-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
+open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
 import Once.Internal.Typing.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
@@ -507,43 +507,9 @@ infer-complete-RVar-local {ctx = ctx} x {A} {Ψ} {eE'} eqLoc
     open Once.TypeCheck.ElaborateProofs using ()
     helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
            → (eq' : lookupLocal ctx x ≡ lhs)
-           → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
-             ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
+           → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl
+             ≡ inferElabV-RVar-lookup-aux ctx x lhs eq'
     helper _ refl = refl
-
--- D136: the elaborator de-withes the reserved-word decision alongside the
--- concreteness one, so completeness drives BOTH — `genWord?-no` turns the
--- rule's `¬ GenWord x` premise into the decider's reduced `no` form.
-infer-complete-RVar-import : ∀ {m} {ctx : NamedCtx m} (x : String) {T : Type}
-  → ¬ GenWord x
-  → lookupLocal ctx x ≡ nothing
-  → lookupImport (Classify.NamedCtx.imports ctx) x ≡ just T
-  → IsConcrete T  -- Plan 0.58: FFI reference is concrete
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      inferElab ctx (RVar x) ≡ success (wk₀ T) zeroUsage eE d f
-infer-complete-RVar-import {ctx = ctx} x {T} ¬gw eqLoc eqImp conc
-             = _ , _ , _ , cong proj₁
-                 (trans (trans (helperLoc _ eqLoc) (helperImp _ eqImp))
-                        (helperImpVal _ (proj₂ (genWord?-no x ¬gw))
-                                     _ (proj₂ (isConcrete?-complete conc))))
-  where
-    open Once.TypeCheck.ElaborateProofs using ()
-    helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
-              → (eq' : lookupLocal ctx x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
-                ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
-    helperLoc _ refl = refl
-    helperImp : ∀ (lhs : Maybe (Ty _))
-              → (eq' : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (Classify.NamedCtx.imports ctx) x) refl
-                ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc lhs eq'
-    helperImp _ refl = refl
-    helperImpVal : (gw : Dec (GenWord x)) (eqg : genWord? x ≡ gw)
-                   (mc : Maybe (IsConcrete T)) (eqc : isConcrete? T ≡ mc)
-                 → inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp
-                     (genWord? x) refl (isConcrete? T) refl
-                   ≡ inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp gw eqg mc eqc
-    helperImpVal _ refl _ refl = refl
 
 ------------------------------------------------------------------------
 -- RBinOp (arithmetic and comparison)

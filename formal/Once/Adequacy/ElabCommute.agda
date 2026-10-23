@@ -297,8 +297,6 @@ mutual
           mem = TView.Declared.member (declares lk)
   cm-i {D = D} (t-var-own {T = T} ns lk eq) =
     comm (imp-tm {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq)) (imp-dr {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq))
-  cm-i {D = D} (t-var-import {T = T} gw ln lk c eq) =
-    comm (imp-tm {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq)) (imp-dr {Γ = D} (imported lk) eq (RS.ρ̂-ground T eq))
   cm-i {D = D} (t-var-poly-instantiate-infer {schema = sc} {g = g} ln li lp gr eq) =
     comm (trans (rE-tm e₁ X₁) (trans (poly-tm {Γ = D} lp (ground-kinded sc g) (ground-kinded sc g) refl) (cong (_⟪ τ ⟫ₜ) (sym (rE-tm (sym eq) X₀)))))
          (H.trans (rE-dr e₁ X₁) (H.trans (poly-dr {Γ = D} lp (ground-kinded sc g) (ground-kinded sc g) refl) (H.sym (ty-rE (sym eq) X₀))))

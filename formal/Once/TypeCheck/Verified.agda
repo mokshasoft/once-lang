@@ -301,7 +301,6 @@ record VerifiedTypeChecker {m} : Set₁ where
     -- ordinary variable and CAN be unbound.
     tc-err-var-unbound : ∀ (ctx : NamedCtx m) (x : String) {err : TypeError}
       → lookupLocal ctx x ≡ nothing
-      → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
       → tcInfer ctx (RVar x) ≡ failure err
       → err ≡ (UnboundVariable x)
 
@@ -655,15 +654,6 @@ record VerifiedTypeChecker {m} : Set₁ where
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RVar x) ≡ success A Ψ eE d f
 
-    -- D136: a reserved word is never a bare import reference — it is the
-    -- generator — so completeness only speaks about names that are not.
-    tcInfer-complete-RVar-import : ∀ (ctx : NamedCtx m) (x : String) {T : Type}
-      → ¬ GenWord x
-      → lookupLocal ctx x ≡ nothing
-      → lookupImport (Classify.NamedCtx.imports ctx) x ≡ just T
-      → IsConcrete T
-      → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RVar x) ≡ success (wk₀ T) Surface.zeroUsage eE d f
 
     -- RBinOp (arithmetic / comparison families)
     tcInfer-complete-RBinOp-arith : ∀ (ctx : NamedCtx m) (op : BinOp) (arithEq : Raw.isArithmeticOp op ≡ Data.Bool.true)
@@ -905,7 +895,6 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RApp-snd     = λ ctx → CmpR.infer-complete-RApp-snd
   ; tcInfer-complete-RApp-terminal = λ ctx → CmpR.infer-complete-RApp-terminal
   ; tcInfer-complete-RVar-local   = λ ctx → CmpR.infer-complete-RVar-local {ctx = ctx}
-  ; tcInfer-complete-RVar-import  = λ ctx → CmpR.infer-complete-RVar-import {ctx = ctx}
   ; tcInfer-complete-RBinOp-arith = λ ctx → CmpR.infer-complete-RBinOp-arith
   ; tcInfer-complete-RBinOp-cmp   = λ ctx → CmpR.infer-complete-RBinOp-cmp
   ; tcInfer-complete-RDestruct    = λ ctx → CmpR.infer-complete-RDestruct

@@ -55,7 +55,7 @@ open import Once.Internal.Typing
          t-inr-morph-check; t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check;
          t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-loop-check; t-int; t-float;
          t-unit; t-unit-var; t-var-local; t-var-resolved; t-var-own;
-         t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
+         t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp; t-sub; t-lam;
@@ -157,7 +157,6 @@ realize-infer (t-var-local {eV = eV} _) = svar→expr eV
 realize-infer (t-var-resolved {cn = cn} _ wn _ conc PE.refl) = sigOp cn conc
 realize-infer (t-var-own {x = x} _ _ PE.refl) = closure x
 -- D246: a module entry's reference is a call of the entry.
-realize-infer (t-var-import {x = x} _ _ _ conc PE.refl) = closure x
 -- Plan 0.103 phase 1c: a ground telescope reference is a VARIABLE of the
 -- definitions context, so its reference elaboration is the open term
 -- `poly x T` — exactly what the elaborator emits. Its meaning is read from the

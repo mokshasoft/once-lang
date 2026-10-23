@@ -178,7 +178,6 @@ elabᵢ V t-unit-var        = unit , ⊢unit
 elabᵢ V (t-var-local {eV = svar i} _) = var i , ⊢var i
 elabᵢ V (t-var-resolved {cn = cn} _ w lk k eq) = sigE cn w k (declares V lk) eq
 elabᵢ V (t-var-own _ lk eq)                  = importE (imported V lk) eq
-elabᵢ V (t-var-import _ _ lk k eq)           = importE (imported V lk) eq
 elabᵢ V (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ eq) = retypeE (sym eq) (polyE V lp (ground-kinded sc g))
 elabᵢ V (t-annot d _)     = elabᶜ V d
 elabᵢ V (t-pair da db)    = lift2 pair ⊢pair (elabᵢ V da) (elabᵢ V db)

@@ -231,31 +231,25 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
 -- broader story for check-mode error normalization.
 
 ------------------------------------------------------------------------
--- Variable lookup: unbound (neither "unit", local, nor import).
+-- Variable lookup: a bare name bound by no local is unbound.
 ------------------------------------------------------------------------
 
 var-unbound-is-UnboundVariable : ∀ {m} (ctx : NamedCtx m) (x : String)
     {err : TypeError}
   → lookupLocal ctx x ≡ nothing
-  → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
   → inferElab ctx (Raw.RVar x) ≡ failure err
   → err ≡ UnboundVariable x
 -- D136: the `¬ (x ≡ "unit")` premise is gone — `unit` is `RResolved (gen
 -- "unit")` now, so a bare `unit` is an ordinary variable that CAN be unbound.
-var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
-  = go (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
+var-unbound-is-UnboundVariable ctx x eqLoc eqOuter
+  = go (trans (sym (cong proj₁ (helperLoc _ eqLoc))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
     helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Surface.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
-                ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
+              → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl
+                ≡ inferElabV-RVar-lookup-aux ctx x lhs eq'
     helperLoc _ refl = refl
-    helperImp : ∀ (lhs : Maybe (Ty _))
-              → (eq' : lookupImport (Classify.NamedCtx.imports ctx) x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (Classify.NamedCtx.imports ctx) x) refl
-                ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc lhs eq'
-    helperImp _ refl = refl
     go : ∀ {err} → failure (UnboundVariable x) ≡ failure err
        → err ≡ UnboundVariable x
     go refl = refl

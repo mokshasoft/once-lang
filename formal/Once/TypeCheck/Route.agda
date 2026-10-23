@@ -67,7 +67,6 @@ mutual
     ii-own : ∀ {T₁ T₂ : T.Type} {eq eq′ x ns ns′ l l′} → Rii {ctx = ctx} (t-var-own {x = x} {T = T₁} {A = A} ns l eq) (t-var-own {T = T₂} {A = A′} ns′ l′ eq′)
     ii-local : ∀ {x Ψ Ψ′ eV eV′ l l′}
       → Rii {ctx = ctx} (t-var-local {x = x} {A = A} {Ψ = Ψ} {eV = eV} l) (t-var-local {A = A′} {Ψ = Ψ′} {eV = eV′} l′)
-    ii-import : ∀ {T₁ T₂ : T.Type} {eq eq′ x g g′ ln ln′ i i′ c c′} → Rii {ctx = ctx} (t-var-import {x = x} {T = T₁} {A = A} g ln i c eq) (t-var-import {T = T₂} {A = A′} g′ ln′ i′ c′ eq′)
     ii-poly-infer : ∀ {x s s′ b b′ pr pr′ g g′ ln ln′ li li′ p p′ gr gr′ eq eq′}
       → Rii {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {T = T} {schema = s} {body = b} {prefix = pr} {g = g} ln li p gr eq)
                   (t-var-poly-instantiate-infer {T = T′} {schema = s′} {body = b′} {prefix = pr′} {g = g′} ln′ li′ p′ gr′ eq′)

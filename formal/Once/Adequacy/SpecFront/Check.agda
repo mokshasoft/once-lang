@@ -287,7 +287,6 @@ mutual
   fwdᵢ (t-var-own _ lk eq) lr (x-res _) =
     syn-retype (sym eq) _ (refS (TView.ImportAt.entryOf (TView.View.imported V lk)) (h-imp lk) (TView.ImportAt.mono (TView.View.imported V lk)) _ _
                                 (cong SC.Schema.arity (TView.ImportAt.mono (TView.View.imported V lk))))
-  fwdᵢ (t-var-import _ lkl _ _ _) lr (x-local inb) = ⊥-elim (lk-out lr inb lkl)
   fwdᵢ (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ eq) lr (x-res _) =
     let ki = kinded-instance sc (ground-kinded sc g) in
     syn-retype (sym eq) _ (syn-retype (proj₂ (proj₂ ki)) _

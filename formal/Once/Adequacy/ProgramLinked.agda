@@ -198,7 +198,6 @@ realize-refs-i t-unit-var        = tt
 realize-refs-i (t-var-local {eV = svar i} _) = tt
 realize-refs-i (t-var-resolved _ wn lk conc refl) = lk
 realize-refs-i (t-var-own _ lk refl) = _ , lk , refl
-realize-refs-i (t-var-import _ _ lk conc refl) = _ , lk , refl
 realize-refs-i {ctx = ctx} (t-var-poly-instantiate-infer {schema = schema} {g = g} eL eI eP gr T≡) =
   _ , eP , subst (KindedInstance (NamedCtx.kinds ctx) schema) (sym T≡) (ground-kinded schema g)
 realize-refs-i (t-annot d _)     = realize-refs d

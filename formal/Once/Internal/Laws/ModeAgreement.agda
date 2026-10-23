@@ -247,10 +247,6 @@ mutual
   agree-ii (t-var-resolved _ wn l _ refl) (t-var-own n _ refl) = ⊥-elim (just≢nothing (trans (sym l) n))
   agree-ii (t-var-local l) (t-var-local l′) with trans (sym l) l′
   ... | refl = refl , refl
-  agree-ii (t-var-local l) (t-var-import _ ln _ _ refl) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-import _ ln _ _ refl) (t-var-local l) = ⊥-elim (just≢nothing (trans (sym l) ln))
-  agree-ii (t-var-import _ _ i _ refl) (t-var-import _ _ i′ _ refl) with trans (sym i) i′
-  ... | refl = refl , refl
   agree-ii (t-var-own _ i refl) (t-var-poly-instantiate-infer _ inn _ _ _) = ⊥-elim (just≢nothing (trans (sym i) inn))
   agree-ii (t-var-poly-instantiate-infer _ inn _ _ _) (t-var-own _ i refl) = ⊥-elim (just≢nothing (trans (sym i) inn))
   {-# CATCHALL #-}
