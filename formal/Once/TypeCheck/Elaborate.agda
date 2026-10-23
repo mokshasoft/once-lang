@@ -92,8 +92,7 @@ open Once.Spec.Sub._⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-r
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.Instance using (instantiate-sound)
 open import Once.Internal.Type.Instance using (KindedInstance)
-open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Type.Rigid using (kindedInstance?; rigidFree?)
+open import Once.Type.Rigid using (kindedInstance?)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.Internal.Typing
@@ -1058,12 +1057,11 @@ inferElabV-RPair-aux ctx a b (success A Ψ₁ aE da fa , wA) (success B Ψ₂ bE
 inferElabV-RPair-aux ctx a b (failure err , _) _ = failure err , tt
 inferElabV-RPair-aux ctx a b (success _ _ _ _ _ , _) (failure err , _) = failure err , tt
 
--- D252: the annotation must be rigid-free, decided before its check is used.
-inferElabV-RAnnot-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Type) → Maybe (RigidFree T)
+-- D252: an annotation is a ground type, checked at its weakening.
+inferElabV-RAnnot-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Type)
   → VerifiedCheckResult ctx e (wk₀ T) → VerifiedInferResult ctx (Raw.RAnnot e T)
-inferElabV-RAnnot-aux ctx e T nothing   _                          = failure (AnnotationMentionsParameter T) , tt
-inferElabV-RAnnot-aux ctx e T (just rf) (success Ψ eE d fr , witness) = success (wk₀ T) Ψ eE d fr , t-annot rf witness refl
-inferElabV-RAnnot-aux ctx e T (just rf) (failure err , _)             = failure err , tt
+inferElabV-RAnnot-aux ctx e T (success Ψ eE d fr , witness) = success (wk₀ T) Ψ eE d fr , t-annot witness refl
+inferElabV-RAnnot-aux ctx e T (failure err , _)             = failure err , tt
 
 inferElabV-RNeg-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
   → VerifiedInferResult ctx e → VerifiedInferResult ctx (Raw.RNeg e)
@@ -2300,7 +2298,7 @@ mutual
   inferElabV ctx (Raw.RLam _ _) =
     failure LambdaInInferMode , tt
 
-  inferElabV ctx (Raw.RAnnot e T) = inferElabV-RAnnot-aux ctx e T (rigidFree? T) (checkElabV ctx e (wk₀ T))
+  inferElabV ctx (Raw.RAnnot e T) = inferElabV-RAnnot-aux ctx e T (checkElabV ctx e (wk₀ T))
 
   inferElabV ctx (Raw.RPair a b) =
     inferElabV-RPair-aux ctx a b (inferElabV ctx a) (inferElabV ctx b)

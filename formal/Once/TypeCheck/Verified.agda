@@ -88,7 +88,6 @@ import Relation.Binary.Structures
 open import Once.Internal.Typing using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
-open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Spec.Surface.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RNeg; RBinOp; RLam; RApp; BinOp)
 open import Once.Spec.Name using (gen; GenWord)
 import Once.Grammar.Convert       as Conv
@@ -592,7 +591,6 @@ record VerifiedTypeChecker {m} : Set₁ where
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
         {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (wk₀ T)}
         {d' f' : _}
-      → RigidFree T   -- D252: an annotation is a surface type
       → tcCheck ctx e (wk₀ T) ≡ success Ψ eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RAnnot e T) ≡ success (wk₀ T) Ψ eE d f

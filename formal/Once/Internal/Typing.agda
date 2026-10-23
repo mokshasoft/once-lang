@@ -56,7 +56,6 @@ open import Data.String using (_++_)
 -- Plan 0.58 (OCP-0006): IR-FREE `Once.Surface.Context` (not `Surface.Syntax`);
 -- `t-var-local` now carries the de-Bruijn `Fin` index, so no `SExpr` is needed.
 open import Once.Internal.Type.Instance using (KindedInstance)
-open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Context using (_∷_)
 
@@ -220,11 +219,10 @@ mutual
     ----------------------------------------------------------------
 
     -- D252: an annotation is a SURFACE type, so it mentions no definition's
-    -- parameter (`rigid` is the once-typed schema's internal constant, D243).
-    -- This is what makes a body's typing stable under instantiation.
+    -- parameter (a ground `Type`, plan 0.122). This is what makes a body's
+    -- typing stable under instantiation.
     t-annot : ∀ {ctx : NamedCtx m} {e : RawExpr} {T : Type} {A : Ty m}
               {Ψ : Surface.Usage (NamedCtx.size ctx)}
-            → RigidFree T
             → ctx ⊢ᶜ e ∶ A ⨾ Ψ   -- check sub in check mode
             → A ≡ wk₀ T
             → ctx ⊢ᵢ RAnnot e T ∶ A ⨾ Ψ

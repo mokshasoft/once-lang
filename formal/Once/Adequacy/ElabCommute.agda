@@ -302,7 +302,7 @@ mutual
     where e₁ = sym (trans (cong ρ̂ eq) (RS.extractGround-⟨⟩ sc g))
           X₁ = polyE {Γ = D ⟨ τ ⟩ᶜ} V lp (ground-kinded sc g)
           X₀ = polyE {Γ = D} V lp (ground-kinded sc g)
-  cm-i (t-annot rf d eq) = cm-c d
+  cm-i (t-annot d eq) = cm-c d
   cm-i (t-pair a b) =
     comm (cong₂ pair (tm A) (tm B)) (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl (tm A) (dr A) refl (tm B) (dr B))
     where A = cm-i a

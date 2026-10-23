@@ -89,12 +89,12 @@ named-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope
             (nm : Fin s → CanonicalName) (mt : ModTele sc es) (ks : All EntryKind es) {L}
           → NamedIn nm L → ∀ d → Σ[ x ∈ String ] (End.nm (endOf tl ss is ts nm mt ks) d ≡ canonical (x ∷ [])) × (x ∈ L ⊎ x ∈ names es)
 named-end tl ss is ts nm [] ks n d = let (x , e , m) = n d in x , e , inj₁ m
-named-end tl ss is ts nm (ffi ep _ _ _ _ _) ks n d = ⊥-elim (no-ffi ep ks)
+named-end tl ss is ts nm (ffi ep _ _ _ _) ks n d = ⊥-elim (no-ffi ep ks)
 named-end {S = S} {sc} tl ss is ts nm (poly {pfi = pfi} {Ψ = Ψ} pr D rest) ks {L} n d =
   let (x , e , m) = named-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
                               (canonical (pfunName pfi ∷ []) ∷ⁿ nm) rest (all-tail ks) (step-named {L = L} n) d
   in x , e , back m
-named-end {S = S} {sc} tl ss is ts nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr g D rest) ks {L} n d =
+named-end {S = S} {sc} tl ss is ts nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D rest) ks {L} n d =
   let (x , e , m) = named-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
                               (canonical (funName fi ∷ []) ∷ⁿ nm) rest (all-tail ks) (step-named {L = L} n) d
   in x , e , back m
@@ -105,10 +105,10 @@ distinct-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Sc
              → Injective _≡_ _≡_ nm → AllPairs _≢_ (names es) → All (Fresh nm) (names es)
              → Injective _≡_ _≡_ (End.nm (endOf tl ss is ts nm mt ks))
 distinct-end tl ss is ts nm [] ks i u f = i
-distinct-end tl ss is ts nm (ffi ep _ _ _ _ _) ks i u f = ⊥-elim (no-ffi ep ks)
+distinct-end tl ss is ts nm (ffi ep _ _ _ _) ks i u f = ⊥-elim (no-ffi ep ks)
 distinct-end {S = S} {sc} tl ss is ts nm (poly {pfi = pfi} {Ψ = Ψ} pr D rest) ks i (h ∷ u) (f ∷ fs) =
   distinct-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D) ss (wkI is) (t-def zero refl (wkT ts))
                (canonical (pfunName pfi ∷ []) ∷ⁿ nm) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)
-distinct-end {S = S} {sc} tl ss is ts nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr g D rest) ks i (h ∷ u) (f ∷ fs) =
+distinct-end {S = S} {sc} tl ss is ts nm (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D rest) ks i (h ∷ u) (f ∷ fs) =
   distinct-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
                (canonical (funName fi ∷ []) ∷ⁿ nm) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)

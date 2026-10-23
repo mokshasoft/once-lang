@@ -50,8 +50,7 @@ data T__'8866''7522'_'8758'_'10814'__12
                                                    MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68
                                                    [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] AgdaAny
                                                    AgdaAny |
-    C_t'45'annot_126 MAlonzo.Code.Once.Internal.Type.WellFormed.T_RigidFree_58
-                     T__'8866''7580'_'8758'_'10814'__20 |
+    C_t'45'annot_126 T__'8866''7580'_'8758'_'10814'__20 |
     C_t'45'pair_142 MAlonzo.Code.Once.Spec.Context.T_Usage_34
                     MAlonzo.Code.Once.Spec.Context.T_Usage_34
                     T__'8866''7522'_'8758'_'10814'__12

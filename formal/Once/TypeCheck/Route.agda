@@ -71,7 +71,7 @@ mutual
     ii-poly-infer : ∀ {x s s′ b b′ pr pr′ g g′ ln ln′ li li′ p p′ gr gr′ eq eq′}
       → Rii {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {T = T} {schema = s} {body = b} {prefix = pr} {g = g} ln li p gr eq)
                   (t-var-poly-instantiate-infer {T = T′} {schema = s′} {body = b′} {prefix = pr′} {g = g′} ln′ li′ p′ gr′ eq′)
-    ii-annot : ∀ {T₀ : T.Type} {Ψ Ψ′ r r′ eq eq′} {c : ctx ⊢ᶜ e ∶ T ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ T ⨾ Ψ′} → Rcc c c′ → Rii (t-annot {T = T₀} r c eq) (t-annot {T = T₀} r′ c′ eq′)
+    ii-annot : ∀ {T₀ : T.Type} {Ψ Ψ′ eq eq′} {c : ctx ⊢ᶜ e ∶ T ⨾ Ψ} {c′ : ctx ⊢ᶜ e ∶ T ⨾ Ψ′} → Rcc c c′ → Rii (t-annot {T = T₀} c eq) (t-annot {T = T₀} c′ eq′)
     ii-pair : ∀ {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′} {a : ctx ⊢ᵢ e₁ ∶ A ⨾ Ψ₁} {a′ : ctx ⊢ᵢ e₁ ∶ A′ ⨾ Ψ₁′} {b : ctx ⊢ᵢ e₂ ∶ B ⨾ Ψ₂} {b′ : ctx ⊢ᵢ e₂ ∶ B′ ⨾ Ψ₂′}
             → Rii a a′ → Rii b b′ → Rii (t-pair a b) (t-pair a′ b′)
     ii-neg : ∀ {Ψ Ψ′} {d : ctx ⊢ᵢ e ∶ Int ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ Int ⨾ Ψ′} → Rii d d′ → Rii (t-neg d) (t-neg d′)

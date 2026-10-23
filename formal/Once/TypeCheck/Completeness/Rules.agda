@@ -66,8 +66,6 @@ open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete; con-ba
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (wfFun?-complete-at)
-open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
 open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
 import Once.Spec.Context as SCx
@@ -327,13 +325,12 @@ infer-complete-RAnnot : ∀ {m} {ctx : NamedCtx m} (e : RawExpr) (T : Type)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (wk₀ T)}
     {d' f' : ℕ}
-  → RigidFree T
   → checkElab ctx e (wk₀ T) ≡ success Ψ eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RAnnot e T) ≡ success (wk₀ T) Ψ eE d f
-infer-complete-RAnnot {ctx = ctx} e T rf eqC
-  with rigidFree? T | rigidFree?-complete rf | checkElabV ctx e (wk₀ T) | eqC
-... | just _ | refl | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RAnnot {ctx = ctx} e T eqC
+  with checkElabV ctx e (wk₀ T) | eqC
+... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
 -- Completeness notes

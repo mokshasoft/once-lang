@@ -512,7 +512,7 @@ module _ {δ : DefSem} where
   bridge-i V ag (t-var-import _ _ lk k refl) {γ = γ} r = trans (Agree.agree-import ag lk) (sym (importE-sem δ (imported V lk) γ))
   bridge-i V ag (t-var-poly-instantiate-infer {schema = sc} {g = g} _ _ lp _ refl) {γ = γ} r =
     trans (Agree.agree-inst ag lp (ground-kinded sc g)) (sym (polyE-sem δ V lp (ground-kinded sc g) γ))
-  bridge-i V ag (t-annot _ d refl) r = bridge-c V ag d r
+  bridge-i V ag (t-annot d refl) r = bridge-c V ag d r
   bridge-i {ctx = ctx} V ag (t-pair da db) r =
     binK {K = λ ab → ab}
          (bridge-i V ag da (split-R′ {Γ = NamedCtx.debruijn ctx} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))

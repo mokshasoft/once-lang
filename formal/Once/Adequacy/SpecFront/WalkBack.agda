@@ -216,26 +216,6 @@ private
   all-head : ∀ {X : Set} {P : X → Set} {x xs} → All P (x ∷ xs) → P x
   all-head (h ∷ _) = h
 
-  -- a type with no variables in scope is free of them
-  mutual
-    tyR0-rf : ∀ {Δ : ST.KCtx 0} {A A′} → TyR Δ A A′ → LW.RigidFree A
-    tyR0-rf r-unit         = LW.rf-Unit
-    tyR0-rf r-void         = LW.rf-Void
-    tyR0-rf r-int          = LW.rf-Int
-    tyR0-rf r-float        = LW.rf-Float
-    tyR0-rf (r-* a b)      = LW.rf-* (tyR0-rf a) (tyR0-rf b)
-    tyR0-rf (r-+ a b)      = LW.rf-+ (tyR0-rf a) (tyR0-rf b)
-    tyR0-rf (r-⇒ _ a b)    = LW.rf-⇒ (tyR0-rf a) (tyR0-rf b)
-    tyR0-rf (r-μ f)        = LW.rf-μ (funR0-rf f)
-    tyR0-rf (r-ν _ f)      = LW.rf-ν (funR0-rf f)
-    tyR0-rf (r-var ())
-
-    funR0-rf : ∀ {Δ : ST.KCtx 0} {F F′} → FunR Δ F F′ → LW.RigidFreeF F
-    funR0-rf (r-K a)   = LW.rf-K (tyR0-rf a)
-    funR0-rf r-Id      = LW.rf-Id
-    funR0-rf (r-⊕ f g) = LW.rf-⊕ (funR0-rf f) (funR0-rf g)
-    funR0-rf (r-⊗ f g) = LW.rf-⊗ (funR0-rf f) (funR0-rf g)
-
   -- (mirrors `inferType`'s `with`)
   infer-ok : ∀ ctx polys body {A Ψ eE d f} → TE.inferElab (ctxWithImportsAndPolys ctx polys) body ≡ TE.success A Ψ eE d f
            → C.inferType ctx polys body ≡ inj₂ A
@@ -281,8 +261,8 @@ walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-sig al)    w o = walk
 walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-alias al)  w o = walk← tl ss is ts nm r wk al w o
 walk← tl ss is ts nm r (SPr.w-skip _ wk) (al-skip SPr.nd-import al) w o = walk← tl ss is ts nm r wk al w o
 -- a monomorphic definition with a signature
-walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig {sc = sc} so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ g rx al) w o =
-  mono refl refl P g D mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
+walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig {sc = sc} so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ rx al) w o =
+  mono refl refl P D mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
   where
     fi = Parser.mkFunInfo x (just ty) e false
     st = Step.step ss is ts nm w r ST.∅ₖ (tyR ty) so₂ so b pr rx
@@ -322,7 +302,7 @@ walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-sig so b pr wk) (al-poly {
       in nothing≢just (trans (sym (nmono g′)) eq)
 -- one without a signature: the type its body synthesizes
 walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-nosig syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
-  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P g D mt
+  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P D mt
   , (λ { (h , hs) → (λ m → sub-L (h m) rA r-EffUU) , ms hs }) , (λ { (inj₁ (m , p)) → inj₁ (m , sub-L p rA r-EffUU) ; (inj₂ m) → inj₂ (mi m) })
   where
     st = Step.step-nosig ss is ts nm w r syn typ pr rx
@@ -331,7 +311,6 @@ walk← {S = S} {imps} {tele} tl ss is ts nm r (SPr.w-nosig syn typ pr wk) (al-n
     Ψ = proj₁ (proj₁ (proj₂ (proj₂ st)))
     D = proj₂ (proj₁ (proj₂ (proj₂ st)))
     P = proj₂ (proj₂ (proj₂ st))
-    g = tyR0-rf rA
     fi = Parser.mkFunInfo x nothing e false
     rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D) ss
                  (impDefs (x Data.String.== "main") is) (wkT ts) (canonical (x ∷ []) ∷ⁿ nm)

@@ -51,8 +51,6 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Internal.Module
   using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped; MonoBody)
 open import Once.Internal.Type.Instance using (rigidOf)
-open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Type.Rigid using (rigidFree?)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Honest using (HonestFFI; honest?)
@@ -230,17 +228,15 @@ ce-fun-sound doOpt sc fi es false ep eq =
 
 ce-prim-sound doOpt sc fi es ep nothing et ()
 ce-prim-sound doOpt sc fi es ep (just ty) et eq =
-  conc (isConcrete? ty) refl (honest? ty) refl (rigidFree? ty) refl eq
+  conc (isConcrete? ty) refl (honest? ty) refl eq
   where
     conc : (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
-         → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
-         → (mg : Maybe (RigidFree ty)) → rigidFree? ty ≡ mg → ∀ {cfs}
-         → C.ce-prim-conc IR.Heap doOpt sc fi es ty mc mh mg ≡ inj₂ cfs → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
-    conc nothing _ _ _ _ _ ()
-    conc (just _) _ nothing _ _ _ ()
-    conc (just _) _ (just _) _ nothing _ ()
-    conc (just c) _ (just h) _ (just g) _ eq′ =
-      ffi ep et c h g (ce-sound doOpt (C.extendSig sc (Parser.FunInfo.funName fi) ty) es eq′)
+         → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh → ∀ {cfs}
+         → C.ce-prim-conc IR.Heap doOpt sc fi es ty mc mh ≡ inj₂ cfs → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
+    conc nothing _ _ _ ()
+    conc (just _) _ nothing _ ()
+    conc (just c) _ (just h) _ eq′ =
+      ffi ep et c h (ce-sound doOpt (C.extendSig sc (Parser.FunInfo.funName fi) ty) es eq′)
 
 ce-mono-sound doOpt sc fi es ep (inj₁ _) er ()
 ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = pstep _ refl eq
@@ -251,12 +247,11 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = pstep _ refl eq
           → ∀ {cfs} → C.ce-mono-p IR.Heap doOpt sc fi es ty mx ≡ inj₂ cfs
           → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
     grd : C.firstChecking ctx (Parser.FunInfo.funBody fi) (below ty) ≡ nothing
-        → (mg : Maybe (RigidFree ty)) → ∀ {cfs} → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ cfs
+        → ∀ {cfs} → C.ce-mono-p IR.Heap doOpt sc fi es ty nothing ≡ inj₂ cfs
         → ModTele (scopeOf sc) (Parser.e-fun fi ∷ es)
     pstep (just _) _ ()
-    pstep nothing fc eqp = grd fc (rigidFree? ty) eqp
-    grd fc nothing ()
-    grd fc (just g) eqg = step
+    pstep nothing fc eqp = grd fc eqp
+    grd fc eqg = step
       (C.compileFunM (Parser.FunInfo.funType fi) IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
          (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi)) refl eqg
       where
@@ -268,7 +263,7 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = pstep _ refl eq
         step (inj₂ ir) cf eq′ =
           let (Ψ , jud) = compileFunM-sound (Parser.FunInfo.funType fi) doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                             (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf
-          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty) fc) g jud
+          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty) fc) jud
                (ce-sound doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
 ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq

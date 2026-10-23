@@ -723,8 +723,8 @@ mutual
   bwdᵢ (SU.s-sigop ng mem) (x-res _) lr T =
     let (T₀ , lk , k , r) = h-sig ng mem in inv-sigop T , bsyn r (t-var-resolved ng (h-word mem) lk k refl) zero-use
   bwdᵢ (SU.s-def d e τ ar) (x-res nm′) lr T = inv-ref T , def-ref d τ e nm′ ar
-  bwdᵢ (SU.s-annot d) (x-annot rf x) lr T =
-    let (eq , bchk der u) = bwdᶜ d x lr (annot-R _ rf) T in eq , bsyn (annot-R _ rf) (t-annot rf der refl) u
+  bwdᵢ (SU.s-annot d) (x-annot {T = A} x) lr T =
+    let (eq , bchk der u) = bwdᶜ d x lr (annot-R {A} _) T in eq , bsyn (annot-R {A} _) (t-annot der refl) u
   bwdᵢ (SU.s-pair da db) (x-pair xa xb) lr T =
     let r = inv-pair T ; (ea , sa) = bwdᵢ da xa lr (IPair.da r) ; (eb , sb) = bwdᵢ db xb lr (IPair.db r)
     in trans (IPair.ty r) (cong₂ ST._*_ ea eb) , pair-syn (IPair.use r) sa sb

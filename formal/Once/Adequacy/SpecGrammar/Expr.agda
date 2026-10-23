@@ -44,8 +44,6 @@ import Once.Parser.TypeRelation
 open import Once.Adequacy.SpecGrammar.ExprHeads
 open import Once.Adequacy.SpecGrammar.Conv using (toTy)
 open import Once.Adequacy.SpecGrammar.GroundTypes using (annot→; annot←)
-open import Once.Adequacy.SpecGrammar.TypeRF using (type-rf)
-open import Once.Internal.Type.WellFormed using (RigidFree)
 
 private
   F : List P.Token → List Token
@@ -75,7 +73,7 @@ data Emb : RawExpr → S.Expr → Set where
   e-int      : ∀ {n} → Emb (RInt n) (S.RInt n)
   e-float    : ∀ {i f l} → Emb (RFloat i f l) (S.RFloat i f l)
   -- (a parsed annotation is a surface type: no rigid parameter)
-  e-annot    : ∀ {e e′ T} → RigidFree T → Emb e e′ → Emb (RAnnot e T) (S.RAnnot e′ (toTy T))
+  e-annot    : ∀ {e e′ T} → Emb e e′ → Emb (RAnnot e T) (S.RAnnot e′ (toTy T))
   e-binop    : ∀ {op a b a′ b′} → Emb a a′ → Emb b b′ → Emb (RBinOp op a b) (S.RBinOp (opS op) a′ b′)
   e-neg      : ∀ {e e′} → Emb e e′ → Emb (RNeg e) (S.RNeg e′)
 
@@ -215,7 +213,7 @@ lam→ (plp-arg dl) (e-lam eb) = lam-arg (lam→ dl eb)
 
 pcont→ ppc-close em = _ , em , paren-close
 pcont→ (ppc-pair de ppt-close) (e-pair ea eb) = _ , ea , paren-pair (expr→ de eb)
-pcont→ (ppc-annot dT) (e-annot _ ee) = _ , ee , paren-annot (annot→ dT)
+pcont→ (ppc-annot dT) (e-annot ee) = _ , ee , paren-annot (annot→ dT)
 
 op→ poe-close = _ , refl , op-close
 op→ (poe-dot d) = opc oc-dot (op→ d)
@@ -480,7 +478,7 @@ private
           → Σ[ rest ∈ List P.Token ] (rest₁ ≡ P.TRParen ∷ rest × F rest ≡ r)
           → BackET E.ParsesParenCont e (P.TColon ∷ toks) (S.RAnnot e′ (toTy T)) r
   annot←₁ em (T , rest₁ , dT , refl , e₁) = annot←₂ em dT (peel refl e₁)
-  annot←₂ em dT (rest , refl , e₂) = _ , rest , ppc-annot dT , e-annot (type-rf dT) em , e₂
+  annot←₂ em dT (rest , refl , e₂) = _ , rest , ppc-annot dT , e-annot em , e₂
 
   opc← : ∀ {toks acc ch s r} (t : P.Token)
        → (∀ {acc toks e rest} → ParsesOpExpr (ch ∷ acc) toks e rest → ParsesOpExpr acc (t ∷ toks) e rest)

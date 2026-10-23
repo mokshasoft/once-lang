@@ -31,8 +31,6 @@ open import Once.Internal.Syntax using (RawExpr)
 
 open import Data.Maybe using (just; nothing)
 import Relation.Binary.PropositionalEquality
-open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Type.Rigid using (rigidFree?; rigidFree?-complete)
 
 -- A canonical name that is not `main`.
 GoodName : CanonicalName → Set
@@ -50,7 +48,7 @@ GoodRefs (RDestruct s _ l _ r) = GoodRefs s × GoodRefs l × GoodRefs r
 GoodRefs RUnit                 = ⊤
 GoodRefs (RInt _)              = ⊤
 GoodRefs (RFloat _ _ _)      = ⊤
-GoodRefs (RAnnot e T)          = RigidFree T × GoodRefs e
+GoodRefs (RAnnot e T)          = GoodRefs e
 GoodRefs (RBinOp _ a b)        = GoodRefs a × GoodRefs b
 GoodRefs (RNeg e)        = GoodRefs e
 
@@ -61,17 +59,6 @@ private
   one-name : ∀ x → Dec (x ≡ "main") → Dec (GoodName (canonical (x ∷ [])))
   one-name x (yes m) = no (λ g → g refl m)
   one-name x (no nm) = yes (λ { refl → nm })
-
--- (an annotation is a surface type: no rigid constant)
-rigidFree-dec : ∀ T → Dec (RigidFree T)
-rigidFree-dec T = from (rigidFree? T) refl
-  where
-    from : ∀ m → rigidFree? T ≡ m → Dec (RigidFree T)
-    from (just r) _ = yes r
-    from nothing  e = no (λ r → nothing≢just (Relation.Binary.PropositionalEquality.trans (Relation.Binary.PropositionalEquality.sym e) (rigidFree?-complete r)))
-      where
-        nothing≢just : ∀ {A : Set} {a : A} → nothing ≡ just a → Data.Empty.⊥
-        nothing≢just ()
 
 goodName? : ∀ c → Dec (GoodName c)
 goodName? (canonical [])           = yes (λ e → ⊥-elim′ (parts≢ (λ ()) e))
@@ -96,6 +83,6 @@ goodRefs? (RDestruct s _ l _ r) = goodRefs? s ×-dec (goodRefs? l ×-dec goodRef
 goodRefs? RUnit                 = yes tt
 goodRefs? (RInt _)              = yes tt
 goodRefs? (RFloat _ _ _)      = yes tt
-goodRefs? (RAnnot e T)          = rigidFree-dec T ×-dec goodRefs? e
+goodRefs? (RAnnot e T)          = goodRefs? e
 goodRefs? (RBinOp _ a b)        = goodRefs? a ×-dec goodRefs? b
 goodRefs? (RNeg e)        = goodRefs? e

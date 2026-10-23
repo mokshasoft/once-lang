@@ -32,17 +32,3 @@ data T_IsConcrete_30
 -- Once.Internal.Type.WellFormed.WellFormedF
 d_WellFormedF_44 :: MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> ()
 d_WellFormedF_44 = erased
--- Once.Internal.Type.WellFormed.RigidFree
-d_RigidFree_58 a0 = ()
-data T_RigidFree_58
-  = C_rf'45'Unit_62 | C_rf'45'Void_64 | C_rf'45'Int_66 |
-    C_rf'45'Float_68 | C_rf'45''42'_74 T_RigidFree_58 T_RigidFree_58 |
-    C_rf'45''43'_80 T_RigidFree_58 T_RigidFree_58 |
-    C_rf'45''8658'_88 T_RigidFree_58 T_RigidFree_58 |
-    C_rf'45'μ_92 T_RigidFreeF_60 | C_rf'45'ν_98 T_RigidFreeF_60
--- Once.Internal.Type.WellFormed.RigidFreeF
-d_RigidFreeF_60 a0 = ()
-data T_RigidFreeF_60
-  = C_rf'45'K_102 T_RigidFree_58 | C_rf'45'Id_104 |
-    C_rf'45''8853'_110 T_RigidFreeF_60 T_RigidFreeF_60 |
-    C_rf'45''8855'_116 T_RigidFreeF_60 T_RigidFreeF_60

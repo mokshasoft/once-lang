@@ -40,23 +40,3 @@ WellFormedF = WFFun ∅ₖ
 pattern wf-Sum f g = wf-⊕ f g
 pattern wf-Prod f g = wf-⊗ f g
 
--- | A type with no type parameter in it. Every ground `Type` is one (plan
--- 0.122: a parameter is a `var` of `Ty m`, never part of a `Type`); the
--- relation goes when its users are renamed.
-mutual
-  data RigidFree : Type → Set where
-    rf-Unit   : RigidFree Unit
-    rf-Void   : RigidFree Void
-    rf-Int    : RigidFree Int
-    rf-Float  : RigidFree Float
-    rf-*      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A * B)
-    rf-+      : ∀ {A B} → RigidFree A → RigidFree B → RigidFree (A + B)
-    rf-⇒      : ∀ {A B k} → RigidFree A → RigidFree B → RigidFree (A ⇒[ k ] B)
-    rf-μ      : ∀ {F} → RigidFreeF F → RigidFree (μ F)
-    rf-ν      : ∀ {F π} → RigidFreeF F → RigidFree (ν F π)
-
-  data RigidFreeF : Fun 0 → Set where
-    rf-K  : ∀ {A} → RigidFree A → RigidFreeF (K A)
-    rf-Id : RigidFreeF Id
-    rf-⊕  : ∀ {F G} → RigidFreeF F → RigidFreeF G → RigidFreeF (F ⊕ G)
-    rf-⊗  : ∀ {F G} → RigidFreeF F → RigidFreeF G → RigidFreeF (F ⊗ G)

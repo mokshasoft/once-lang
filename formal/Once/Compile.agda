@@ -122,8 +122,6 @@ open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
 open import Once.Internal.Type.Instance using (rigidOf; kindsOf; arityOf)
-open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Type.Rigid using (rigidFree?)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Honest using (HonestFFI; honest?)
@@ -463,11 +461,9 @@ compileEntries : AllocMode → Bool → CScope → List Entry → String ⊎ Lis
 ce-fun         : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → Bool → String ⊎ List CompiledFun
 ce-prim        : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → Maybe Type → String ⊎ List CompiledFun
 ce-prim-conc   : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
-               → Maybe (IsConcrete ty) → Maybe (HonestFFI ty) → Maybe (RigidFree ty) → String ⊎ List CompiledFun
+               → Maybe (IsConcrete ty) → Maybe (HonestFFI ty) → String ⊎ List CompiledFun
 ce-mono        : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → String ⊎ Type → String ⊎ List CompiledFun
 ce-mono-p      : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type) → Maybe Type → String ⊎ List CompiledFun
-ce-mono-g      : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
-               → Maybe (RigidFree ty) → String ⊎ List CompiledFun
 ce-mono-ir     : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
                → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
 ce-poly-p      : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → Maybe (Ty (arityOf (pfunType pfi))) → String ⊎ List CompiledFun
@@ -486,14 +482,12 @@ ce-fun m doOpt sc fi es false =
 -- An FFI declaration has NO body to type (D241) and is not compiled: it is a
 -- generator of the signature Σ (D274), and a reference to it is the SigOp.
 ce-prim m doOpt sc fi es nothing   = inj₁ ("FFI signature without a type: " ++ funName fi)
-ce-prim m doOpt sc fi es (just ty) = ce-prim-conc m doOpt sc fi es ty (isConcrete? ty) (honest? ty) (rigidFree? ty)
-ce-prim-conc m doOpt sc fi es ty nothing _ _ =
+ce-prim m doOpt sc fi es (just ty) = ce-prim-conc m doOpt sc fi es ty (isConcrete? ty) (honest? ty)
+ce-prim-conc m doOpt sc fi es ty nothing _ =
   inj₁ ("FFI signature `" ++ funName fi ++ "` is not concrete: " ++ showType ty)
-ce-prim-conc m doOpt sc fi es ty (just _) nothing _ =
+ce-prim-conc m doOpt sc fi es ty (just _) nothing =
   inj₁ ("FFI signature `" ++ funName fi ++ "` hides an effect: " ++ showType ty)
-ce-prim-conc m doOpt sc fi es ty (just _) (just _) nothing =
-  inj₁ ("FFI signature `" ++ funName fi ++ "` is not ground: " ++ showType ty)
-ce-prim-conc m doOpt sc fi es ty (just conc) (just _) (just _) =
+ce-prim-conc m doOpt sc fi es ty (just conc) (just _) =
   compileEntries m doOpt (extendSig sc (funName fi) ty) es
 
 ce-mono m doOpt sc fi es (inj₁ err) = inj₁ err
@@ -505,11 +499,6 @@ ce-mono-p m doOpt sc fi es ty (just X) =
         ++ showType X ++ ". A signature states the body's own type: write the more precise one, or give the body"
         ++ " the wider type with an annotation, " ++ funName fi ++ " = (... : " ++ showType ty ++ ")")
 ce-mono-p m doOpt sc fi es ty nothing =
-  ce-mono-g m doOpt sc fi es ty (rigidFree? ty)
--- D243: a monomorphic definition's type is ground.
-ce-mono-g m doOpt sc fi es ty nothing =
-  inj₁ ("The type of `" ++ funName fi ++ "` mentions a type parameter: " ++ showType ty)
-ce-mono-g m doOpt sc fi es ty (just _) =
   ce-mono-ir m doOpt sc fi es ty
     (compileFunM (funType fi) m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (funName fi) ty (funBody fi))
 ce-mono-ir m doOpt sc fi es ty (inj₁ err) = inj₁ err

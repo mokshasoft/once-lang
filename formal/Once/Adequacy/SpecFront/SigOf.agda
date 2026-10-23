@@ -81,7 +81,7 @@ private
   -- the FFI entries' table distributes
   entrySig-++ : ∀ (fs es : List Parser.Entry) → All FFIFacts fs → entrySig (fs ++ es) ≡ entrySig fs ++ entrySig es
   entrySig-++ [] es [] = refl
-  entrySig-++ (Parser.e-fun (Parser.mkFunInfo n (just ty) b true) ∷ fs) es ((refl , _ , refl , _ , _ , _) ∷ fa) = cong (_ ∷_) (entrySig-++ fs es fa)
+  entrySig-++ (Parser.e-fun (Parser.mkFunInfo n (just ty) b true) ∷ fs) es ((refl , _ , refl , _ , _) ∷ fa) = cong (_ ∷_) (entrySig-++ fs es fa)
 
 ------------------------------------------------------------------------
 -- The module's own signatures
@@ -90,7 +90,7 @@ private
 own-part : ∀ {al dsU ds′ fs} → Pointwise DEmb dsU ds′ → XAlign al (Parser.ownSigs dsU) fs → All FFIFacts fs
          → Σ[ Σ₀ ∈ Signature ] SignaturesOf [] ds′ Σ₀ × (toISig Σ₀ ≡ entrySig fs)
 own-part [] xa-nil [] = [] , so-nil , refl
-own-part {al} (d-signature {x = x} {A = A} ∷ pw) (xa-sig ps xa) ((_ , ty , refl , c , h , _) ∷ fa) =
+own-part {al} (d-signature {x = x} {A = A} ∷ pw) (xa-sig ps xa) ((_ , ty , refl , c , h) ∷ fa) =
   let (t , dto , e) = read-sig al x A ps c h ; (Σ₀ , so , ti) = own-part pw xa fa
   in _ , so-sig dto so , cong₂ _∷_ (cong (x ,_) e) ti
 own-part (d-typesig ∷ pw)  xa fa = let (Σ₀ , so , ti) = own-part pw xa fa in Σ₀ , so-other ns-tsig so , ti
@@ -106,7 +106,7 @@ own-part (d-import ∷ pw)   xa fa = let (Σ₀ , so , ti) = own-part pw xa fa i
 imp-module : ∀ {al p′ ds₂ ds₂′ fs} → Pointwise DEmb ds₂ ds₂′ → XAlign al (signaturesWithOwner (just p′) ds₂) fs → All FFIFacts fs
            → Σ[ Σ₁ ∈ Signature ] SignaturesOf p′ ds₂′ Σ₁ × (toISig Σ₁ ≡ entrySig fs)
 imp-module [] xa-nil [] = [] , so-nil , refl
-imp-module {al} {p′} (d-signature {x = x} {A = A} ∷ pw) (xa-isig ps xa) ((_ , ty , refl , c , h , _) ∷ fa) =
+imp-module {al} {p′} (d-signature {x = x} {A = A} ∷ pw) (xa-isig ps xa) ((_ , ty , refl , c , h) ∷ fa) =
   let (t , dto , e) = read-sig al (showCanonical (canonical (p′ ++ x ∷ []))) A ps c h ; (Σ₁ , so , ti) = imp-module pw xa fa
   in _ , so-sig dto so , cong₂ _∷_ (cong (_ ,_) e) ti
 imp-module (d-typesig ∷ pw)  xa fa = let (Σ₁ , so , ti) = imp-module pw xa fa in Σ₁ , so-other ns-tsig so , ti

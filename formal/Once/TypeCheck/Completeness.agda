@@ -285,7 +285,7 @@ given-infer-route {ctx = ctx} (t-var-own {x = x} _ _ refl) A π (_ , _ , _ , ok)
 given-infer-route (t-var-import _ _ _ _ _) A π _ = refl
 given-infer-route {ctx = ctx} (t-var-poly-instantiate-infer {x = x} _ _ _ _ _) A π (_ , _ , _ , ok) =
   leaf-route ctx (own x) A π (inferElabV ctx (RResolved (own x))) (bare-NotGenerator x) (classifyAppHeadView (RResolved (own x))) ok
-given-infer-route (t-annot _ _ _) A π _ = refl
+given-infer-route (t-annot _ _) A π _ = refl
 given-infer-route (t-pair _ _) A π _ = refl
 given-infer-route (t-neg _) A π _ = refl
 given-infer-route (t-neg-float _ _ _) A π _ = refl
@@ -645,8 +645,8 @@ mutual
   iFromInferSub {ctx = ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) sb =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RResolved {ctx = ctx} (own x) T eqI sb
-  iFromInferSub (t-annot {e = e} {T = T} rf d refl) sb =
-    let (_ , _ , _ , eqI) = infer-complete (t-annot rf d refl)
+  iFromInferSub (t-annot {e = e} {T = T} d refl) sb =
+    let (_ , _ , _ , eqI) = infer-complete (t-annot d refl)
     in checkElab-fallback-RAnnot e T eqI sb
   -- INTRO form: pair components were synthesized (d₁/d₂ : ⊢ᵢ) but `checkPairLit`
   -- re-CHECKS them — recurse the SWITCH on the genuine sub-derivations.
@@ -752,9 +752,9 @@ mutual
     checkElab-fallback-RVar-poly-infer {ctx = ctx} x eqLoc eqImp
       (lookupPolyPrefix⇒lookupPoly (Classify.NamedCtx.polys ctx) x polyE)
       (isGround-complete-at schema g)
-  infer-complete (t-annot {e = e} {T = T} rf d refl) =
+  infer-complete (t-annot {e = e} {T = T} d refl) =
     let (_ , _ , _ , eqC) = check-complete d
-    in infer-complete-RAnnot e T rf eqC
+    in infer-complete-RAnnot e T eqC
   infer-complete (t-pair {a = a} {b = b} d₁ d₂) =
     let (_ , _ , _ , eq₁) = infer-complete d₁
         (_ , _ , _ , eq₂) = infer-complete d₂

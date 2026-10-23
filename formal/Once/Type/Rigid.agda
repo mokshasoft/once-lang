@@ -27,7 +27,7 @@ open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (Ty; KCtx; Base; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Internal.Type.WellFormed using (IsBaseType; RigidFree; RigidFreeF; rf-Unit; rf-Void; rf-Int; rf-Float; rf-*; rf-+; rf-⇒; rf-μ; rf-ν; rf-K; rf-Id; rf-⊕; rf-⊗)
+open import Once.Internal.Type.WellFormed using (IsBaseType)
 open import Once.Internal.Type.Instance
 
 ------------------------------------------------------------------------
@@ -183,71 +183,3 @@ kindedInstance? Δ s T with instantiate s T in eqi
 ...     | no ¬h = no λ (θ′ , e′ , h′) →
             ¬h (λ {x} m → subst (Base Δ) (sym (agree-from θ θ′ s (trans e (sym e′)) (ftvK⊆ftv s m))) (h′ m))
 
-private
-  both : ∀ {X Y Z : Set} → (X → Y → Z) → Maybe X → Maybe Y → Maybe Z
-  both f (just x) (just y) = just (f x y)
-  {-# CATCHALL #-}
-  both f _        _        = nothing
-
-  one : ∀ {X Z : Set} → (X → Z) → Maybe X → Maybe Z
-  one f (just x) = just (f x)
-  one f nothing  = nothing
-
-mutual
-  rigidFree? : (A : Type) → Maybe (RigidFree A)
-  rigidFree? Unit         = just rf-Unit
-  rigidFree? Void         = just rf-Void
-  rigidFree? Int          = just rf-Int
-  rigidFree? Float        = just rf-Float
-  rigidFree? (A * B)      = both rf-* (rigidFree? A) (rigidFree? B)
-  rigidFree? (A + B)      = both rf-+ (rigidFree? A) (rigidFree? B)
-  rigidFree? (A ⇒[ k ] B) = both rf-⇒ (rigidFree? A) (rigidFree? B)
-  rigidFree? (μ F)   = one rf-μ (rigidFreeF? F)
-  rigidFree? (ν F π) = one rf-ν (rigidFreeF? F)
-
-  rigidFreeF? : (F : Fun 0) → Maybe (RigidFreeF F)
-  rigidFreeF? (K A)   = one rf-K (rigidFree? A)
-  rigidFreeF? Id      = just rf-Id
-  rigidFreeF? (F ⊕ G) = both rf-⊕ (rigidFreeF? F) (rigidFreeF? G)
-  rigidFreeF? (F ⊗ G) = both rf-⊗ (rigidFreeF? F) (rigidFreeF? G)
-
-mutual
-  rigidFree?-complete : ∀ {A} (r : RigidFree A) → rigidFree? A ≡ just r
-  rigidFree?-complete rf-Unit   = refl
-  rigidFree?-complete rf-Void   = refl
-  rigidFree?-complete rf-Int    = refl
-  rigidFree?-complete rf-Float  = refl
-  rigidFree?-complete (rf-* a b) rewrite rigidFree?-complete a | rigidFree?-complete b = refl
-  rigidFree?-complete (rf-+ a b) rewrite rigidFree?-complete a | rigidFree?-complete b = refl
-  rigidFree?-complete (rf-⇒ a b) rewrite rigidFree?-complete a | rigidFree?-complete b = refl
-  rigidFree?-complete (rf-μ f) rewrite rigidFreeF?-complete f = refl
-  rigidFree?-complete (rf-ν f) rewrite rigidFreeF?-complete f = refl
-
-  rigidFreeF?-complete : ∀ {F} (r : RigidFreeF F) → rigidFreeF? F ≡ just r
-  rigidFreeF?-complete (rf-K a) rewrite rigidFree?-complete a = refl
-  rigidFreeF?-complete rf-Id = refl
-  rigidFreeF?-complete (rf-⊕ f g) rewrite rigidFreeF?-complete f | rigidFreeF?-complete g = refl
-  rigidFreeF?-complete (rf-⊗ f g) rewrite rigidFreeF?-complete f | rigidFreeF?-complete g = refl
-
--- A ground schema's type mentions no parameter, so it is rigid-free (D252: a
--- ground instance may annotate).
-mutual
-  extractGround-rf : ∀ (A : PolyType) (g : Ground A) → RigidFree (extractGround A g)
-  extractGround-rf (PTVar _)     ()
-  extractGround-rf PUnit         _         = rf-Unit
-  extractGround-rf PVoid         _         = rf-Void
-  extractGround-rf PInt          _         = rf-Int
-  extractGround-rf PFloat        _         = rf-Float
-  extractGround-rf (A P* B)      (gA , gB) = rf-* (extractGround-rf A gA) (extractGround-rf B gB)
-  extractGround-rf (A P+ B)      (gA , gB) = rf-+ (extractGround-rf A gA) (extractGround-rf B gB)
-  extractGround-rf (A P⇒[ q ] B) (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
-  extractGround-rf (PEff A B)    (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
-  extractGround-rf (PAct A B)    (gA , gB) = rf-⇒ (extractGround-rf A gA) (extractGround-rf B gB)
-  extractGround-rf (Pμ-type F)   g         = rf-μ (extractGroundF-rf F g)
-  extractGround-rf (Pν-type F π) g         = rf-ν (extractGroundF-rf F g)
-
-  extractGroundF-rf : ∀ (F : PolyFunctor) (g : GroundF F) → RigidFreeF (extractGroundF F g)
-  extractGroundF-rf (PK A)   g         = rf-K (extractGround-rf A g)
-  extractGroundF-rf PId      _         = rf-Id
-  extractGroundF-rf (F P⊕ G) (gF , gG) = rf-⊕ (extractGroundF-rf F gF) (extractGroundF-rf G gG)
-  extractGroundF-rf (F P⊗ G) (gF , gG) = rf-⊗ (extractGroundF-rf F gF) (extractGroundF-rf G gG)

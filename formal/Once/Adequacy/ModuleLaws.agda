@@ -21,7 +21,6 @@ open import Once.Internal.Contract using (ISig)
 open import Once.Spec.Grade using (mk-kind; Many; eff)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Internal.Type.Instance using (rigidOf)
-open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Honest using (HonestFFI)
 import Once.Compile as C
@@ -38,8 +37,8 @@ teleSig≡entrySig : ∀ {sc es} (mt : ModTele sc es) → teleSig mt ≡ entrySi
 
 teleSig≡entrySig []                                       = refl
 
-teleSig≡entrySig (ffi {fi = fi} {ty = ty} ep et _ _ _ rest) rewrite ep | et = cong ((funName fi , ty) ∷_) (teleSig≡entrySig rest)
+teleSig≡entrySig (ffi {fi = fi} {ty = ty} ep et _ _ rest) rewrite ep | et = cong ((funName fi , ty) ∷_) (teleSig≡entrySig rest)
 
-teleSig≡entrySig (mono {fi = fi} ep _ _ _ _ rest)          rewrite ep = teleSig≡entrySig rest
+teleSig≡entrySig (mono {fi = fi} ep _ _ _ rest)          rewrite ep = teleSig≡entrySig rest
 
 teleSig≡entrySig (poly _ _ rest)                          = teleSig≡entrySig rest

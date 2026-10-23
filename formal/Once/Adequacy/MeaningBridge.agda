@@ -609,7 +609,7 @@ module _ (σ-self : RelDefs fmt σ σ) where
     envrel-at (NamedCtx.polys ctx) x (proj₁ er) lp (extractGround s g) (ground-kinded s g)
 
   -- Annotation switches to check mode.
-  bridge-i (t-annot _ d refl) re er = bridge-c d re er
+  bridge-i (t-annot d refl) re er = bridge-c d re er
 
   -- Pair — two sequenced infers, product value.
   -- D179: via `RelGᵖ-bind`, not by threading budgets by hand. `_>>=T_` runs the

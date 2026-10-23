@@ -977,7 +977,7 @@ d_consDecl_748 v0 v1
            -> coe
                 d_consDecl'45'at_754 (coe v3) (coe v4)
                 (coe
-                   MAlonzo.Code.Once.Internal.ResolvedRefs.d_goodRefs'63'_136
+                   MAlonzo.Code.Once.Internal.ResolvedRefs.d_goodRefs'63'_106
                    (coe v4))
                 (coe v1)
          _ -> coe v2)

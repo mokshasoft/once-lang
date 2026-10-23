@@ -258,7 +258,7 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᵛ
 -- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
 ⟦_⟧ᵢ {ctx = ctx} (t-var-poly-instantiate-infer {x = x} {schema = s} {g = g} _ _ lp _ eT) fmt ρ dγ =
   subst (λ X → ⟦ X ⟧ᵛ) (sym eT) (defAt (NamedCtx.polys ctx) x (defs ρ) lp (extractGround s g) (ground-kinded {Δ = NamedCtx.kinds ctx} s g))
-⟦_⟧ᵢ {ctx = ctx} (t-annot _ d refl) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
+⟦_⟧ᵢ {ctx = ctx} (t-annot d refl) fmt ρ dγ = (⟦ d ⟧ᶜ fmt ρ) dγ
 ⟦_⟧ᵢ {ctx = ctx} (t-pair da db) fmt ρ dγ = (⟦ da ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=ᵖ λ a → (⟦ db ⟧ᵢ fmt ρ) (restrictᵛ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=ᵖ λ b → returnᵖ (a , b)
 ⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt ρ dγ = (⟦ d ⟧ᵢ fmt ρ) dγ >>=ᵖ λ v → semP neg-info int-prim fmt v
 -- PLAN 0.73 F3. `-3.14` MEANS the target's representation of the decimal

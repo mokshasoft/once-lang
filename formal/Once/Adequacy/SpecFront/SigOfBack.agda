@@ -40,7 +40,7 @@ open import Once.Spec.Surface.Program
 open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; IsSig; is-sig; FFIFacts)
-open import Once.Adequacy.SpecFront.SigBack using (project-of; decl-honest; declTy-concrete; declTy-rf)
+open import Once.Adequacy.SpecFront.SigBack using (project-of; decl-honest; declTy-concrete)
 open import Once.Adequacy.SpecInterp using (declTy)
 open import Once.Spec.Signature using (WellFormedDecl)
 open import Once.Spec.Surface.Program using (DeclTypeOf)
@@ -97,7 +97,7 @@ private
 
 -- An FFI entry the Spec reads has the telescope's facts.
 ffi-facts : ∀ {P} t {n b} → DeclTypeOf P t → WellFormedDecl t → FFIFacts (e-fun (mkFunInfo n (just (declTy t)) b true))
-ffi-facts t dto w = refl , declTy t , refl , declTy-concrete t , decl-honest dto w , declTy-rf t
+ffi-facts t dto w = refl , declTy t , refl , declTy-concrete t , decl-honest dto w
 
 all-++ : ∀ {A : Set} {P : A → Set} {xs ys} → All P xs → All P ys → All P (xs ++ ys)
 all-++ []       q = q

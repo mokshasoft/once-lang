@@ -56,7 +56,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.Instance using (KindedInstance)
-open import Once.Internal.Type.WellFormed using (RigidFree)
 open import Once.Internal.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
@@ -582,10 +581,10 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} D inv fr = recor
 -- A `main` later in the telescope has a name there.
 mainIn-name : ∀ {sc es} (mt : ModTele sc es) → MainIn mt → Any ("main" ≡_) (map entryName es)
 mainIn-name []                          ()
-mainIn-name (ffi _ _ _ _ _ rest)        mi          = there (mainIn-name rest mi)
+mainIn-name (ffi _ _ _ _ rest)        mi          = there (mainIn-name rest mi)
 mainIn-name (poly _ _ rest)             mi          = there (mainIn-name rest mi)
-mainIn-name (mono _ _ _ _ _ rest)     (inj₁ (p , _)) = here (sym p)
-mainIn-name (mono _ _ _ _ _ rest)     (inj₂ mi)   = there (mainIn-name rest mi)
+mainIn-name (mono _ _ _ _ rest)     (inj₁ (p , _)) = here (sym p)
+mainIn-name (mono _ _ _ _ rest)     (inj₂ mi)   = there (mainIn-name rest mi)
 
 not-in : ∀ {x : String} {ys} → All (x ≢_) ys → Any (x ≡_) ys → ⊥
 not-in (h ∷ _)  (here e)  = h e
@@ -607,8 +606,8 @@ later-ns : ∀ {sc es} (b : FB.FunBundle sc es) (imps : C.FunCtx)
          → All (λ y → All (λ p → y ≢ proj₁ p) imps) (map entryName es)
          → ∀ (xs : List IRFun) → All (NS imps) xs → All (NS imps) (tableOf-go (FB.bundle→compiled b) xs)
 later-ns FB.bnil imps _ xs a = a
-later-ns (FB.bffi _ _ _ _ _ rest) imps (_ ∷ hs) xs a = later-ns rest imps hs xs a
-later-ns (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ rest) imps (h ∷ hs) xs a =
+later-ns (FB.bffi _ _ _ _ rest) imps (_ ∷ hs) xs a = later-ns rest imps hs xs a
+later-ns (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ rest) imps (h ∷ hs) xs a =
   later-ns rest imps hs (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ xs)
            (ns-of imps h (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun)) refl ∷ a)
 later-ns (FB.bpoly _ _ rest) imps (_ ∷ hs) xs a = later-ns rest imps hs xs a

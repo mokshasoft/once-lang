@@ -94,44 +94,48 @@ join-L {C′ = C′} J ra rb = C′ , tyR C′ , subst₂ (λ X Y → X SS.⊔ Y
 
 -- An annotation's type (a surface type, so ground: read at any instance).
 mutual
-  annot-R : ∀ {T} (σ : ST.TySub 0 m) → LW.RigidFree T → TyR Δ (LT.wk₀ T) (toTy T ST.⟨ σ ⟩)
-  annot-R σ LW.rf-Unit   = r-unit
-  annot-R σ LW.rf-Void   = r-void
-  annot-R σ LW.rf-Int    = r-int
-  annot-R σ LW.rf-Float  = r-float
-  annot-R σ (LW.rf-* a b) = r-* (annot-R σ a) (annot-R σ b)
-  annot-R σ (LW.rf-+ a b) = r-+ (annot-R σ a) (annot-R σ b)
-  annot-R σ (LW.rf-⇒ a b) = r-⇒ refl (annot-R σ a) (annot-R σ b)
-  annot-R σ (LW.rf-μ f)   = r-μ (annotF-R σ f)
-  annot-R σ (LW.rf-ν f)   = r-ν refl (annotF-R σ f)
+  annot-R : ∀ {T} (σ : ST.TySub 0 m) → TyR Δ (LT.wk₀ T) (toTy T ST.⟨ σ ⟩)
+  annot-R {T} σ = annot-at σ T
 
-  annotF-R : ∀ {F} (σ : ST.TySub 0 m) → LW.RigidFreeF F → FunR Δ (LT.wk₀F F) (toFun F ST.⟨ σ ⟩F)
-  annotF-R σ (LW.rf-K a)   = r-K (annot-R σ a)
-  annotF-R σ LW.rf-Id      = r-Id
-  annotF-R σ (LW.rf-⊕ f g) = r-⊕ (annotF-R σ f) (annotF-R σ g)
-  annotF-R σ (LW.rf-⊗ f g) = r-⊗ (annotF-R σ f) (annotF-R σ g)
+  annot-at : ∀ (σ : ST.TySub 0 m) (T : LT.Type) → TyR Δ (LT.wk₀ T) (toTy T ST.⟨ σ ⟩)
+  annot-at σ (ST.var ())
+  annot-at σ LT.Unit    = r-unit
+  annot-at σ LT.Void    = r-void
+  annot-at σ LT.Int     = r-int
+  annot-at σ LT.Float   = r-float
+  annot-at σ (A LT.* B) = r-* (annot-at σ A) (annot-at σ B)
+  annot-at σ (A LT.+ B) = r-+ (annot-at σ A) (annot-at σ B)
+  annot-at σ (A LT.⇒[ k ] B) = r-⇒ refl (annot-at σ A) (annot-at σ B)
+  annot-at σ (LT.μ F)   = r-μ (annotF-at σ F)
+  annot-at σ (LT.ν F φ) = r-ν refl (annotF-at σ F)
+
+  annotF-at : ∀ (σ : ST.TySub 0 m) (F : LT.Fun 0) → FunR Δ (LT.wk₀F F) (toFun F ST.⟨ σ ⟩F)
+  annotF-at σ (LT.K A)   = r-K (annot-at σ A)
+  annotF-at σ LT.Id      = r-Id
+  annotF-at σ (F LT.⊕ G) = r-⊕ (annotF-at σ F) (annotF-at σ G)
+  annotF-at σ (F LT.⊗ G) = r-⊗ (annotF-at σ F) (annotF-at σ G)
 
 -- A declaration's type.
-base-R : ∀ {A} → LW.IsBaseType A → LW.RigidFree A → TyR Δ (LT.wk₀ A) ⌜ toB A ⌝
-base-R LW.base-Unit  _ = r-unit
-base-R LW.base-Void  _ = r-void
-base-R LW.base-Int   _ = r-int
-base-R LW.base-Float _ = r-float
-base-R (LW.base-Prod a b) (LW.rf-* ra rb) = r-* (base-R a ra) (base-R b rb)
-base-R (LW.base-Sum a b)  (LW.rf-+ ra rb) = r-+ (base-R a ra) (base-R b rb)
+base-R : ∀ {A} → LW.IsBaseType A → TyR Δ (LT.wk₀ A) ⌜ toB A ⌝
+base-R LW.base-Unit  = r-unit
+base-R LW.base-Void  = r-void
+base-R LW.base-Int   = r-int
+base-R LW.base-Float = r-float
+base-R (LW.base-Prod a b) = r-* (base-R a) (base-R b)
+base-R (LW.base-Sum a b)  = r-+ (base-R a) (base-R b)
 
-decl-R : ∀ {A} → LW.IsConcrete A → LH.HonestFFI A → LW.RigidFree A → TyR Δ (LT.wk₀ A) ⌜ declS A ⌝ᵈ
-decl-R {A LT.⇒[ LG.mk-kind q LG.pure ] B} (LW.con-fun a b) h (LW.rf-⇒ ra rb) = r-⇒ refl (base-R a ra) (base-R b rb)
-decl-R {A LT.⇒[ LG.mk-kind q LG.act ] B}  (LW.con-fun a b) h (LW.rf-⇒ ra rb) = r-⇒ refl (base-R a ra) (base-R b rb)
-decl-R {A LT.⇒[ LG.mk-kind LG.Zero LG.eff ] B} _ () _
-decl-R {A LT.⇒[ LG.mk-kind LG.One  LG.eff ] B} _ () _
-decl-R {A LT.⇒[ LG.mk-kind LG.Many LG.eff ] B} _ () _
-decl-R (LW.con-base LW.base-Unit) () _
-decl-R (LW.con-base LW.base-Void) () _
-decl-R (LW.con-base LW.base-Int) _ _ = r-int
-decl-R (LW.con-base LW.base-Float) _ _ = r-float
-decl-R (LW.con-base b@(LW.base-Prod _ _)) _ r = base-R b r
-decl-R (LW.con-base b@(LW.base-Sum _ _)) _ r = base-R b r
+decl-R : ∀ {A} → LW.IsConcrete A → LH.HonestFFI A → TyR Δ (LT.wk₀ A) ⌜ declS A ⌝ᵈ
+decl-R {A LT.⇒[ LG.mk-kind q LG.pure ] B} (LW.con-fun a b) h = r-⇒ refl (base-R a) (base-R b)
+decl-R {A LT.⇒[ LG.mk-kind q LG.act ] B}  (LW.con-fun a b) h = r-⇒ refl (base-R a) (base-R b)
+decl-R {A LT.⇒[ LG.mk-kind LG.Zero LG.eff ] B} _ ()
+decl-R {A LT.⇒[ LG.mk-kind LG.One  LG.eff ] B} _ ()
+decl-R {A LT.⇒[ LG.mk-kind LG.Many LG.eff ] B} _ ()
+decl-R (LW.con-base LW.base-Unit) ()
+decl-R (LW.con-base LW.base-Void) ()
+decl-R (LW.con-base LW.base-Int) _ = r-int
+decl-R (LW.con-base LW.base-Float) _ = r-float
+decl-R (LW.con-base b@(LW.base-Prod _ _)) _ = base-R b
+decl-R (LW.con-base b@(LW.base-Sum _ _)) _ = base-R b
 
 -- An effectful grade.
 eff-S : ∀ {π} → LG.EffGrade π → SG.EffGrade (πS π)

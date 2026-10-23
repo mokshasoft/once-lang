@@ -93,7 +93,7 @@ res-expr (re-pair a b) (e-pair ea eb) (ga , gb) =
 res-expr (re-destruct s l r) (e-destruct es el er) (gs , gl , gr) =
   let (s′ , rs , xs) = res-expr s es gs ; (l′ , rl , xl) = res-expr l el gl ; (r′ , rr , xr) = res-expr r er gr
   in _ , r-destruct rs rl rr , x-destruct xs xl xr
-res-expr (re-annot e) (e-annot _ ee) (rf , g) = let (e′ , re′ , xe) = res-expr e ee g in _ , r-annot re′ , x-annot rf xe
+res-expr (re-annot e) (e-annot ee) g = let (e′ , re′ , xe) = res-expr e ee g in _ , r-annot re′ , x-annot xe
 res-expr (re-binop a b) (e-binop ea eb) (ga , gb) =
   let (a′ , ra , xa) = res-expr a ea ga ; (b′ , rb , xb) = res-expr b eb gb in _ , r-binop ra rb , x-binop xa xb
 res-expr (re-unop e) (e-neg ee) g = let (e′ , re′ , xe) = res-expr e ee g in _ , r-neg re′ , x-neg xe

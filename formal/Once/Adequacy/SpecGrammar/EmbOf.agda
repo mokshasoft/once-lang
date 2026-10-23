@@ -24,7 +24,6 @@ import Once.Spec.Surface.Syntax as S
 open import Once.Parser.ExprRelation as E
 open import Once.Adequacy.SpecGrammar.Expr
   using (Emb; e-var; e-qual; e-app; e-lam; e-let; e-pair; e-destruct; e-unit; e-int; e-float; e-annot; e-binop; e-neg)
-open import Once.Adequacy.SpecGrammar.TypeRF using (type-rf)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import; emb-wrap)
 open import Once.Parser.Module.Core using (Decl; DImport; mkImport)
 import Once.Parser.Module.Core
@@ -116,7 +115,7 @@ mutual
   h-pcont : ∀ {e toks eo rest} → ParsesParenCont e toks eo rest → Has e → Has eo
   h-pcont ppc-close h = h
   h-pcont (ppc-pair de ppt-close) (_ , ea) = let (_ , eb) = h-expr de in _ , e-pair ea eb
-  h-pcont (ppc-annot dT) (_ , ee) = _ , e-annot (type-rf dT) ee
+  h-pcont (ppc-annot dT) (_ , ee) = _ , e-annot ee
 
   h-op : ∀ {acc toks e rest} → ParsesOpExpr acc toks e rest → Has e
   h-op poe-close = _ , e-var

@@ -232,7 +232,7 @@ mutual
     t-var-import gw (lk-nothing x Γ D ln) li c (ρ̂-ground T eq)
   subst-i′ (t-var-poly-instantiate-infer {schema = s} {g = g} ln li lp gr eq) =
     t-var-poly-instantiate-infer {g = g} ln li lp gr (trans (cong ρ̂ eq) (extractGround-⟨⟩ s g))
-  subst-i′ (t-annot {T = T} rf d eq) = t-annot rf (subst-c′ d) (ρ̂-ground T eq)
+  subst-i′ (t-annot {T = T} d eq) = t-annot (subst-c′ d) (ρ̂-ground T eq)
   subst-i′ (t-pair a b)         = t-pair (subst-i′ a) (subst-i′ b)
   subst-i′ (t-neg d)            = t-neg (subst-i′ d)
   subst-i′ (t-neg-float i f l) = t-neg-float i f l

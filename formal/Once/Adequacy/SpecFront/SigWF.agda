@@ -83,5 +83,5 @@ wf-of Σ fs e fa = go Σ (λ m → m)
     go : ∀ Σ′ → (∀ {d} → d ∈ Σ′ → d ∈ Σ) → WellFormed Σ′
     go [] _ = []
     go ((c ∶ t) ∷ Σ′) sub =
-      honest-wf t (proj₁ (proj₂ (facts-at fa (subst (_ ∈_) e (mem-toISig (sub (here refl)))))))
+      honest-wf t ((proj₂ (facts-at fa (subst (_ ∈_) e (mem-toISig (sub (here refl)))))))
         ∷ go Σ′ (λ m → sub (there m))

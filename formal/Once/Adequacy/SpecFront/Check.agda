@@ -288,8 +288,8 @@ mutual
     let ki = kinded-instance sc (ground-kinded sc g) in
     syn-retype (sym eq) _ (syn-retype (proj₂ (proj₂ ki)) _
       (refS (E.View.entry V lp) (h-poly lp) (E.View.entryIs V lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-ground lp g)))
-  fwdᵢ (t-annot rf d refl) lr (x-annot _ x) =
-    let chk rt der = fwdᶜ d lr x (annot-R _ rf) in syn (annot-R _ rf) rt (SU.s-annot der)
+  fwdᵢ (t-annot {T = T} d refl) lr (x-annot x) =
+    let chk rt der = fwdᶜ d lr x (annot-R {T} _) in syn (annot-R {T} _) rt (SU.s-annot der)
   fwdᵢ (t-pair da db) lr (x-pair xa xb) =
     let syn ra rta da′ = fwdᵢ da lr xa ; syn rb rtb db′ = fwdᵢ db lr xb in syn (r-* ra rb) (r-pair rta rtb) (SU.s-pair da′ db′)
   fwdᵢ (t-neg d) lr (x-neg x) =

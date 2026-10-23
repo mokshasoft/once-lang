@@ -170,22 +170,9 @@ private
   base-b (a S.* b) = LW.base-Prod (base-b a) (base-b b)
   base-b (a S.+ b) = LW.base-Sum (base-b a) (base-b b)
 
-  base-rf : ∀ b → LW.RigidFree ⌞ b ⌟
-  base-rf S.unit    = LW.rf-Unit
-  base-rf S.void    = LW.rf-Void
-  base-rf S.int     = LW.rf-Int
-  base-rf S.float   = LW.rf-Float
-  base-rf (a S.* b) = LW.rf-* (base-rf a) (base-rf b)
-  base-rf (a S.+ b) = LW.rf-+ (base-rf a) (base-rf b)
-
--- A declaration's type is concrete and free of parameters.
+-- A declaration's type is concrete.
 declTy-concrete : ∀ t → LW.IsConcrete (declTy t)
 declTy-concrete (constant b)      = LW.con-base (base-b b)
 declTy-concrete (S.value a q b)   = LW.con-fun (base-b a) (base-b b)
 declTy-concrete (S.operation a q b) = LW.con-fun (base-b a) (base-b b)
-
-declTy-rf : ∀ t → LW.RigidFree (declTy t)
-declTy-rf (constant b)        = base-rf b
-declTy-rf (S.value a q b)     = LW.rf-⇒ (base-rf a) (base-rf b)
-declTy-rf (S.operation a q b) = LW.rf-⇒ (base-rf a) (base-rf b)
 

@@ -50,8 +50,6 @@ import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Internal.Type.Instance using (rigidOf; kindsOf; arityOf)
 open import Once.TypeCheck.Classify using (ctxAt)
-open import Once.Internal.Type.WellFormed using (RigidFree)
-open import Once.Type.Rigid using (rigidFree?)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Honest using (HonestFFI; honest?)
@@ -104,9 +102,9 @@ elabOK-sound nothing  ctx e ty ce = infer-soundV ctx e ce
 
 data FunBundle : C.CScope → List Parser.Entry → Set where
   bnil  : ∀ {sc} → FunBundle sc []
-  bffi  : ∀ {sc fi ty es} {c : IsConcrete ty} {h : HonestFFI ty} {g : RigidFree ty}
+  bffi  : ∀ {sc fi ty es} {c : IsConcrete ty} {h : HonestFFI ty}
         → funIsPrimitive fi ≡ true → funType fi ≡ just ty
-        → isConcrete? ty ≡ just c → honest? ty ≡ just h → rigidFree? ty ≡ just g
+        → isConcrete? ty ≡ just c → honest? ty ≡ just h
         → FunBundle (C.extendSig sc (funName fi) ty) es      -- D274: Σ grows
         → FunBundle sc (Parser.e-fun fi ∷ es)
   bcons : ∀ {sc fi es ty}
@@ -117,7 +115,6 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     (ep : funIsPrimitive fi ≡ false) →
     (rf : C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ inj₂ ty) →
     (fc : C.firstChecking (ctxC sc) (funBody fi) (below ty) ≡ nothing) →
-    {g : RigidFree ty} → (eg : rigidFree? ty ≡ just g) →
     (ce : ElabOK (funType fi) (ctxC sc) (funBody fi) ty Ψ se d f) →
     (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
             (funName fi) ty (funBody fi) ≡ inj₂ irFun) →
@@ -230,17 +227,17 @@ compileFunM-ce nothing  polys impsOf ctx ty fi irFun _ eq = compileFunI-ce polys
 
 bundle→typed : ∀ {sc es} → FunBundle sc es → ModTele (AS.scopeOf sc) es
 bundle→typed bnil = []
-bundle→typed (bffi {c = c} {h = h} {g = g} ep et _ _ _ rest) = ffi ep et c h g (bundle→typed rest)
-bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf fc {g} eg ce cf rest) =
-  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty) fc) g (elabOK-sound (funType fi) (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
+bundle→typed (bffi {c = c} {h = h} ep et _ _ rest) = ffi ep et c h (bundle→typed rest)
+bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf fc ce cf rest) =
+  mono ep rf (firstChecking-sound (ctxC sc) (funBody fi) (below ty) fc) (elabOK-sound (funType fi) (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
 bundle→typed {sc} (bpoly {pfi = pfi} fc ce rest) =
   poly (firstChecking-sound (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) fc)
        (check-sound (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ce) (bundle→typed rest)
 
 bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
 bundle→compiled bnil = []
-bundle→compiled (bffi _ _ _ _ _ rest) = bundle→compiled rest
-bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
+bundle→compiled (bffi _ _ _ _ rest) = bundle→compiled rest
+bundle→compiled (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc ce cf rest) =
   C.mkCompiledFun (bare (funName fi)) ty irFun ∷ bundle→compiled rest
 bundle→compiled (bpoly fc ce rest) = bundle→compiled rest
 
@@ -278,26 +275,21 @@ cgb-fun sc fi es compiled false ep eq =
   cgb-mono sc fi es compiled ep (C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi)) refl eq
 
 cgb-prim sc fi es compiled ep nothing et ()
-cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (honest? ty) refl (rigidFree? ty) refl eq
+cgb-prim sc fi es compiled ep (just ty) et eq = conc (isConcrete? ty) refl (honest? ty) refl eq
   where
     conc : (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc → (mh : Maybe (HonestFFI ty)) → honest? ty ≡ mh
-         → (mg : Maybe (RigidFree ty)) → rigidFree? ty ≡ mg
-         → C.ce-prim-conc IR.Heap false sc fi es ty mc mh mg ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
-    conc nothing _ _ _ _ _ ()
-    conc (just _) _ nothing _ _ _ ()
-    conc (just _) _ (just _) _ nothing _ ()
-    conc (just c) ec (just h) eh (just g) eg eq′ =
+         → C.ce-prim-conc IR.Heap false sc fi es ty mc mh ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
+    conc nothing _ _ _ ()
+    conc (just _) _ nothing _ ()
+    conc (just c) ec (just h) eh eq′ =
       let (b , beq) = ce-bundleP (C.extendSig sc (funName fi) ty) es compiled eq′
-      in bffi {c = c} {h = h} {g = g} ep et ec eh eg b , beq
+      in bffi {c = c} {h = h} ep et ec eh b , beq
 
 cgb-mono sc fi es compiled ep (inj₁ _) er ()
 cgb-mono sc fi es compiled ep (inj₂ ty) er eq
   with C.firstChecking (ctxC sc) (funBody fi) (below ty) in fc
 ... | just _ = case eq of λ ()
 ... | nothing
-  with rigidFree? ty in eg
-... | nothing = case eq of λ ()
-... | just g
   with C.compileFunM (funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (funName fi) ty (funBody fi) in cf
 ... | inj₁ _ = case eq of λ ()
 ... | inj₂ irFun
@@ -306,7 +298,7 @@ cgb-mono sc fi es compiled ep (inj₂ ty) er eq
 ...   | inj₂ rest =
         let (Ψ , se , d , f , ce) = compileFunM-ce (funType fi) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (C.ctop sc) ty fi irFun refl cf
             (b , beq) = ce-bundleP (C.extendScope sc (funName fi) ty) es rest rec
-        in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er fc eg ce cf b
+        in bcons {Ψ = Ψ} {se = se} {d = d} {f = f} {irFun = irFun} ep er fc ce cf b
          , trans (cong (C.mkCompiledFun (bare (funName fi)) ty irFun ∷_) beq)
                  (inj₂-injective eq)
 
@@ -328,8 +320,8 @@ bundle→compiled≡compiled sc es compiled eq = proj₂ (ce-bundleP sc es compi
 
 BMainExists : ∀ {sc es} → FunBundle sc es → Set
 BMainExists bnil = ⊥
-BMainExists (bffi _ _ _ _ _ rest) = BMainExists rest
-BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ _ _ rest) =
+BMainExists (bffi _ _ _ _ rest) = BMainExists rest
+BMainExists (bcons {fi = fi} {ty = ty} _ _ _ _ _ rest) =
   ((funName fi ≡ "main") × (funIsPrimitive fi ≡ false) × (ty <: EffUU)) ⊎ BMainExists rest
 BMainExists (bpoly _ _ rest) = BMainExists rest
 
@@ -337,25 +329,25 @@ BMainExists (bpoly _ _ rest) = BMainExists rest
 -- bundle finds it with the compiler's own decisions (`findMain-here`).
 bundle-find : ∀ {sc es} → FunBundle sc es → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
 bundle-find bnil = nothing
-bundle-find (bffi _ _ _ _ _ rest) = bundle-find rest
-bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
+bundle-find (bffi _ _ _ _ rest) = bundle-find rest
+bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc ce cf rest) =
   findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
     (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) (bundle-find rest)
 bundle-find (bpoly _ _ rest) = bundle-find rest
 
 find-agree : ∀ {sc es} (b : FunBundle sc es) → findMain (bundle→compiled b) ≡ bundle-find b
 find-agree bnil = refl
-find-agree (bffi _ _ _ _ _ rest) = find-agree rest
-find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) =
+find-agree (bffi _ _ _ _ rest) = find-agree rest
+find-agree {sc} (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc ce cf rest) =
   cong (findMain-here (C.mkCompiledFun (bare (funName fi)) ty irFun)
           (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU))
        (find-agree rest)
 find-agree (bpoly _ _ rest) = find-agree rest
 
 bme→me : ∀ {sc es} (b : FunBundle sc es) → BMainExists b → MainIn (bundle→typed b)
-bme→me (bffi _ _ _ _ _ rest) w = bme→me rest w
-bme→me (bcons _ _ _ _ _ _ rest) (inj₁ (p , _ , e)) = inj₁ (p , e)
-bme→me (bcons _ _ _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
+bme→me (bffi _ _ _ _ rest) w = bme→me rest w
+bme→me (bcons _ _ _ _ _ rest) (inj₁ (p , _ , e)) = inj₁ (p , e)
+bme→me (bcons _ _ _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
 bme→me (bpoly _ _ rest) w = bme→me rest w
 
 -- The program's `main` is only ever the entry's call (`mainEntry`, D315).
@@ -382,18 +374,18 @@ private
 
 bundle-find-call : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → bundle-find b ≡ just ir → IsEntry ir
 bundle-find-call bnil ()
-bundle-find-call (bffi _ _ _ _ _ rest) eq = bundle-find-call rest eq
+bundle-find-call (bffi _ _ _ _ rest) eq = bundle-find-call rest eq
 bundle-find-call (bpoly _ _ rest) eq = bundle-find-call rest eq
-bundle-find-call (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) eq =
+bundle-find-call (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc ce cf rest) eq =
   here-call (C.mkCompiledFun (bare (funName fi)) ty irFun)
     (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) (bundle-find rest) (bundle-find-call rest) eq
 
 bundle-find-exists : ∀ {sc es} (b : FunBundle sc es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
   → bundle-find b ≡ just ir → BMainExists b
 bundle-find-exists bnil ()
-bundle-find-exists (bffi _ _ _ _ _ rest) eq = bundle-find-exists rest eq
+bundle-find-exists (bffi _ _ _ _ rest) eq = bundle-find-exists rest eq
 bundle-find-exists (bpoly _ _ rest) eq = bundle-find-exists rest eq
-bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc eg ce cf rest) eq =
+bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc ce cf rest) eq =
   here-exists fi {irFun = irFun} rest ep (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU)
     (bundle-find-exists rest) eq
 

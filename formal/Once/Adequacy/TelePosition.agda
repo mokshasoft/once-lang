@@ -26,7 +26,6 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
 
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type.WellFormed using (RigidFree)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
@@ -66,21 +65,6 @@ open import Once.Surface.Elaborate using (elaborateFull)
 -- A declaration-import map that agrees with the scope's telescope entries.
 IAgree : (String → TopCtx) → List (Parser.PolyFunInfo × TopCtx) → Set
 IAgree I tele = All (λ q → I (pfunName (proj₁ q)) ≡ proj₂ q) tele
-
--- The scope's imports are rigid-free.
-ImportsRF : Imports → Set
-ImportsRF imps = ∀ {x T} → Once.Internal.Typing.Scope.lookupImport imps x ≡ just T → RigidFree T
-
-irf-cons : ∀ {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps → ImportsRF ((y , ty) ∷ imps)
-irf-cons {y = y} g old {x} lk with y Str.≟ x
-... | yes _ = subst RigidFree (just-injective lk) g
-... | no _  = old lk
-
--- D324: the definitions' context, `main` left out (`C.extendDefs`).
-irf-defs : ∀ (b : Bool) {imps : Imports} {y : String} {ty : Type} → RigidFree ty → ImportsRF imps
-         → ImportsRF (C.extendDefs-at b imps y ty)
-irf-defs true  {imps} {y} {ty} g old = old
-irf-defs false {imps} {y} {ty} g old = irf-cons {imps} {y} {ty} g old
 
 -- The remaining entries' names: distinct, and new to the scope.
 entryName : Parser.Entry → String

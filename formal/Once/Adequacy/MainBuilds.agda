@@ -30,7 +30,6 @@ open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Honest using (honest?)
 open import Once.Internal.Type.Instance using (rigidOf; arityOf; kindsOf)
 open import Once.Internal.Principal using (below)
-open import Once.Type.Rigid using (rigidFree?)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -168,9 +167,9 @@ ce-mono-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : L
 ce-mono-p-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : List Parser.Entry) (ty : Type.Type) (mx : Maybe Type.Type) {c}
               → C.ce-mono-p IR.Heap false sc fi es ty mx ≡ inj₂ c
               → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-p IR.Heap doOpt sc fi es ty mx ≡ inj₂ c')
-ce-mono-g-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : List Parser.Entry) (ty : Type.Type) mg {c}
-              → C.ce-mono-g IR.Heap false sc fi es ty mg ≡ inj₂ c
-              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-g IR.Heap doOpt sc fi es ty mg ≡ inj₂ c')
+ce-mono-g-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : List Parser.Entry) (ty : Type.Type) {c}
+              → C.ce-mono-p IR.Heap false sc fi es ty nothing ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-p IR.Heap doOpt sc fi es ty nothing ≡ inj₂ c')
 ce-poly-p-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (mx : Maybe (Type.Ty (arityOf (Parser.PolyFunInfo.pfunType pfi)))) {c}
               → C.ce-poly-p IR.Heap false sc pfi es mx ≡ inj₂ c
               → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-poly-p IR.Heap doOpt sc pfi es mx ≡ inj₂ c')
@@ -189,15 +188,14 @@ ce-fun-doOpt doOpt sc fi es false eq =
   ce-mono-doOpt doOpt sc fi es (C.resolveFunType (C.ctop sc) (C.cpolys sc) (Parser.FunInfo.funType fi) (Parser.FunInfo.funBody fi)) eq
 
 ce-prim-doOpt doOpt sc fi es nothing ()
-ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) (rigidFree? ty) eq
+ce-prim-doOpt doOpt sc fi es (just ty) eq = conc (isConcrete? ty) (honest? ty) eq
   where
-    conc : ∀ mc mh mg {c} → C.ce-prim-conc IR.Heap false sc fi es ty mc mh mg ≡ inj₂ c
-         → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-prim-conc IR.Heap doOpt sc fi es ty mc mh mg ≡ inj₂ c')
-    conc nothing _ _ ()
-    conc (just _) nothing _ ()
-    conc (just _) (just _) nothing ()
+    conc : ∀ mc mh {c} → C.ce-prim-conc IR.Heap false sc fi es ty mc mh ≡ inj₂ c
+         → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-prim-conc IR.Heap doOpt sc fi es ty mc mh ≡ inj₂ c')
+    conc nothing _ ()
+    conc (just _) nothing ()
     -- D274: an FFI declaration extends Σ only.
-    conc (just cc) (just _) (just _) eq′ = ce-doOpt doOpt (C.extendSig sc (Parser.FunInfo.funName fi) ty) es eq′
+    conc (just cc) (just _) eq′ = ce-doOpt doOpt (C.extendSig sc (Parser.FunInfo.funName fi) ty) es eq′
 
 ce-mono-doOpt doOpt sc fi es (inj₁ _) ()
 ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq =
@@ -206,10 +204,9 @@ ce-mono-doOpt doOpt sc fi es (inj₂ ty) eq =
 
 ce-mono-p-doOpt doOpt sc fi es ty (just _) ()
 ce-mono-p-doOpt doOpt sc fi es ty nothing eq =
-  ce-mono-g-doOpt doOpt sc fi es ty (rigidFree? ty) eq
+  ce-mono-g-doOpt doOpt sc fi es ty eq
 
-ce-mono-g-doOpt doOpt sc fi es ty nothing ()
-ce-mono-g-doOpt doOpt sc fi es ty (just _) eqg
+ce-mono-g-doOpt doOpt sc fi es ty eqg
   with C.compileFunM (Parser.FunInfo.funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
          (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) in cf-eq
 ... | inj₁ _ = case eqg of λ ()

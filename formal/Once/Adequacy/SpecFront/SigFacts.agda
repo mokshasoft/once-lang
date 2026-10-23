@@ -38,7 +38,7 @@ import Data.String.Properties as StrProp
 open import Once.Internal.Contract using (ISig)
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
-open import Once.Internal.Type.WellFormed using (IsConcrete; RigidFree)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Honest using (HonestFFI)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; Decl; _∶_; OneName; ⌜_⌝ᵈ)
@@ -158,9 +158,9 @@ mem-toISig {(c ∶ t) ∷ Σ} (here refl) = here refl
 mem-toISig {_ ∷ Σ}       (there m)   = there (mem-toISig m)
 
 -- the FFI entries' facts, at a key of their table
-facts-at : ∀ {fs k T} → All FFIFacts fs → (k , T) ∈ entrySig fs → IsConcrete T × HonestFFI T × RigidFree T
-facts-at {Parser.e-fun (Parser.mkFunInfo n ft b p) ∷ fs} ((refl , ty , refl , c , h , g) ∷ fa) (here refl) = c , h , g
-facts-at {Parser.e-fun (Parser.mkFunInfo n ft b p) ∷ fs} ((refl , ty , refl , c , h , g) ∷ fa) (there m)   = facts-at fa m
+facts-at : ∀ {fs k T} → All FFIFacts fs → (k , T) ∈ entrySig fs → IsConcrete T × HonestFFI T
+facts-at {Parser.e-fun (Parser.mkFunInfo n ft b p) ∷ fs} ((refl , ty , refl , c , h) ∷ fa) (here refl) = c , h
+facts-at {Parser.e-fun (Parser.mkFunInfo n ft b p) ∷ fs} ((refl , ty , refl , c , h) ∷ fa) (there m)   = facts-at fa m
 facts-at {Parser.e-poly _ ∷ fs} (() ∷ fa) m
 
 -- A declaration of Σ, in the scope's (reversed) table at its rendered name.
@@ -179,9 +179,9 @@ h-sig-of : ∀ Σ fs → toISig Σ ≡ entrySig fs → AllPairs _≢_ (keys (ent
          → ∀ {m} (Δ : ST.KCtx m) {c t} → (c ∶ t) ∈ Σ
          → Σ[ T ∈ LT.Type ] (lookupImport (entrySig fs ʳ++ []) (showCanonical c) ≡ just T) × IsConcrete T × TyR Δ (Once.Internal.Type.wk₀ T) ⌜ t ⌝ᵈ
 h-sig-of Σ fs e u fa Δ {c} {t} M =
-  let (k , h , g) = facts-at fa (subst (_ ∈_) e (mem-toISig M))
+  let (k , h) = facts-at fa (subst (_ ∈_) e (mem-toISig M))
   in declTy t , sig-at Σ fs e u M , k
-     , subst (λ t′ → TyR Δ (Once.Internal.Type.wk₀ (declTy t)) ⌜ t′ ⌝ᵈ) (declS-declTy t) (Once.Adequacy.SpecFront.Types.decl-R Δ k h g)
+     , subst (λ t′ → TyR Δ (Once.Internal.Type.wk₀ (declTy t)) ⌜ t′ ⌝ᵈ) (declS-declTy t) (Once.Adequacy.SpecFront.Types.decl-R Δ k h)
 
 -- A declaration `toISig` records, read at a word name rendering to its key,
 -- is the declaration of Σ (D329: word names render injectively).

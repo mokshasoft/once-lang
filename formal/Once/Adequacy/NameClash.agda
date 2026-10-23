@@ -60,7 +60,6 @@ import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.Classify as Classify
 open import Once.Internal.Type.Instance using (rigidOf)
 open import Once.Internal.Principal using (below)
-open import Once.Type.Rigid using (rigidFree?)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Honest using (honest?)
 
@@ -213,11 +212,10 @@ ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
 
 ce-syms-fun doOpt sc fi es true ep cfs eq with FunInfo.funType fi
 ... | nothing = case eq of λ ()
-... | just ty with isConcrete? ty | honest? ty | rigidFree? ty
-...   | nothing | _ | _ = case eq of λ ()
-...   | just _ | nothing | _ = case eq of λ ()
-...   | just _ | just _ | nothing = case eq of λ ()
-...   | just _ | just _ | just _ =
+... | just ty with isConcrete? ty | honest? ty
+...   | nothing | _ = case eq of λ ()
+...   | just _ | nothing = case eq of λ ()
+...   | just _ | just _ =
           -- D274: an FFI declaration extends Σ only — no compiled function.
           subst (λ b → C.emittedSyms cfs
                        ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames (funsOf es))))
@@ -228,9 +226,7 @@ ce-syms-fun doOpt sc fi es false ep cfs eq
 ... | inj₂ ty
   with C.firstChecking (Classify.ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (FunInfo.funBody fi) (below ty)
 ...   | just _ = case eq of λ ()
-...   | nothing with rigidFree? ty
-...       | nothing = case eq of λ ()
-...       | just _
+...   | nothing
     with C.compileFunM (FunInfo.funType fi) IR.Heap doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)
 ...         | inj₁ _ = case eq of λ ()
 ...         | inj₂ irFun

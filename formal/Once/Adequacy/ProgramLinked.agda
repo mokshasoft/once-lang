@@ -56,7 +56,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Spec.Type using (Type; Unit)
 open import Once.Internal.Type.Poly using (PolyType)
 open import Once.Internal.Type.Instance using (KindedInstance; rigidOf)
-open import Once.Internal.Type.WellFormed using (RigidFree; con-fun)
+open import Once.Internal.Type.WellFormed using (con-fun)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Internal.Name using (showCanonical)
 open import Once.Internal.Contract using (ISig)
@@ -201,7 +201,7 @@ realize-refs-i (t-var-own _ lk refl) = _ , lk , refl
 realize-refs-i (t-var-import _ _ lk conc refl) = _ , lk , refl
 realize-refs-i {ctx = ctx} (t-var-poly-instantiate-infer {schema = schema} {g = g} eL eI eP gr T≡) =
   _ , eP , subst (KindedInstance (NamedCtx.kinds ctx) schema) (sym T≡) (ground-kinded schema g)
-realize-refs-i (t-annot _ d _)     = realize-refs d
+realize-refs-i (t-annot d _)     = realize-refs d
 realize-refs-i (t-pair da db)    = realize-refs-i da , realize-refs-i db
 realize-refs-i (t-neg d)         = realize-refs-i d
 realize-refs-i (t-neg-float i f l) = tt
@@ -612,16 +612,16 @@ link-walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle cs
           → (∀ {d} → d ∈ teleSig mt → d ∈ σ)
           → All (λ e → Linked σ (tableOf-go (FB.bundle→compiled b) pre) (fbody e)) (tableOf-go (FB.bundle→compiled b) pre)
 link-walk [] FB.bnil pre inv fr u = LInv.ent-ok inv
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h g rest) (FB.bffi {ty = ty′} ep′ et′ ec eh eg rest-b) pre inv fr u
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b) pre inv fr u
   with just-injective (trans (sym et) et′)
 ... | refl = link-walk rest rest-b pre (linv-sig (funName fi) ty (u (here refl)) inv)
                (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m))
-link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h g rest) (FB.bcons () rf fc eg ce cf rest-b) pre inv fr u
+link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) pre inv fr u
 link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr D rest) (FB.bpoly fc ce rest-b) pre inv fr u =
   link-walk rest rest-b pre (linv-poly D (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
             (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr g D rest)
-          (FB.bcons {ty = ty′} {Ψ = Once.Spec.Context.[]} {irFun = irFun} refl rf fc eg ce cf rest-b) pre inv fr u
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr D rest)
+          (FB.bcons {ty = ty′} {Ψ = Once.Spec.Context.[]} {irFun = irFun} refl rf fc ce cf rest-b) pre inv fr u
   with inj₂-injective (trans (sym er) rf)
 ... | refl = link-walk rest rest-b _
                (linv-entry (funName fi) ty irFun
@@ -645,9 +645,9 @@ private
 main-linked : ∀ {σ : ISig} {csc es} (b : FB.FunBundle csc es) (pre : List IRFun) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
             → FB.bundle-find b ≡ just ir → Linked σ (tableOf-go (FB.bundle→compiled b) pre) ir
 main-linked FB.bnil pre ()
-main-linked (FB.bffi _ _ _ _ _ rest) pre q₀ = main-linked rest pre q₀
+main-linked (FB.bffi _ _ _ _ rest) pre q₀ = main-linked rest pre q₀
 main-linked (FB.bpoly _ _ rest) pre q₀ = main-linked rest pre q₀
-main-linked {σ} (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ rest) pre q₀ =
+main-linked {σ} (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ rest) pre q₀ =
   atMain (funName fi) refl (bare (funName fi) ≟ᶜ bare "main") (ty <:? EffUU) q₀
   where
     T = FB.bundle→compiled rest

@@ -173,11 +173,11 @@ mutual
   toProgram : ∀ {s} {S : Defs s} {sc es} → Tele S → SigSig (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
             → (mt : ModTele sc es) → MainIn mt → SigIn mt → Program
   toProgram tl ss is ts [] () u
-  toProgram tl ss is ts (ffi _ _ c h g rest) mi u = toProgram tl (s-ffi c h (u (here refl)) ss) is ts rest mi (λ m → u (there m))
+  toProgram tl ss is ts (ffi _ _ c h rest) mi u = toProgram tl (s-ffi c h (u (here refl)) ss) is ts rest mi (λ m → u (there m))
   toProgram {S = S} {sc = sc} tl ss is ts (poly {pfi = pfi} {Ψ = Ψ} pr D rest) mi u =
     toProgram (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D)
               ss (wkI is) (t-def zero refl (wkT ts)) rest mi u
-  toProgram {S = S} {sc = sc} tl ss is ts (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr g D rest) mi u =
+  toProgram {S = S} {sc = sc} tl ss is ts (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D rest) mi u =
     monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D rest mi u
 
   monoPick : ∀ {s} {S : Defs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → TeleSig S (Scope.tele sc)
@@ -219,11 +219,11 @@ mutual
   toProgramFrom : ∀ {s} {S : Defs s} {sc es} → Tele S → SigSig (Scope.sig sc) → ImpSig S (Scope.imps sc) → TeleSig S (Scope.tele sc)
                 → (d : Fin s) → Entry (S !! d) → (mt : ModTele sc es) → SigIn mt → Program
   toProgramFrom tl ss is ts d e [] u = programAt tl d e
-  toProgramFrom tl ss is ts d e (ffi _ _ c h g rest) u = toProgramFrom tl (s-ffi c h (u (here refl)) ss) is ts d e rest (λ m → u (there m))
+  toProgramFrom tl ss is ts d e (ffi _ _ c h rest) u = toProgramFrom tl (s-ffi c h (u (here refl)) ss) is ts d e rest (λ m → u (there m))
   toProgramFrom {S = S} {sc = sc} tl ss is ts d e (poly {pfi = pfi} {Ψ = Ψ} pr D rest) u =
     toProgramFrom (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts D)
                   ss (wkI is) (t-def zero refl (wkT ts)) (suc d) e rest u
-  toProgramFrom {S = S} {sc = sc} tl ss is ts d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr g D rest) u =
+  toProgramFrom {S = S} {sc = sc} tl ss is ts d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr D rest) u =
     toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts D)
                   ss (impDefs (funName fi ==str "main") is) (wkT ts) (suc d) e rest u
 

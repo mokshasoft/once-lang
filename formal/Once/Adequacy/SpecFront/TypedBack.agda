@@ -145,7 +145,7 @@ private
   sigsig-of : ∀ {Σ} → (∀ {c t} → (c ∶ t) ∈ Σ → WordName c) → ∀ fs {acc} → All FFIFacts fs
             → (∀ {d} → d ∈ entrySig fs → d ∈ toISig Σ) → SigSig Σ acc → SigSig Σ (entrySig fs ʳ++ acc)
   sigsig-of w [] [] _ ss = ss
-  sigsig-of {Σ} w (Parser.e-fun (Parser.mkFunInfo x _ _ _) ∷ fs) ((refl , ty , refl , c , h , g) ∷ fa) inF ss =
+  sigsig-of {Σ} w (Parser.e-fun (Parser.mkFunInfo x _ _ _) ∷ fs) ((refl , ty , refl , c , h) ∷ fa) inF ss =
     sigsig-of w fs fa (λ m → inF (there m)) (s-ffi c h (sig-in Σ w (inF (here refl))) ss)
   sigsig-of w (Parser.e-poly _ ∷ fs) (() ∷ fa) inF ss
 

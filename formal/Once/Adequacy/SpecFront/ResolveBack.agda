@@ -155,8 +155,8 @@ res-expr← nu na (r-destruct rs rl rr) (e-destruct es el er) (ws , wl , wr) =
   let (s , ds , xs , gs) = res-expr← nu na rs es ws ; (l , dl , xl , gl) = res-expr← nu na rl el wl
       (r , dr , xr , gr) = res-expr← nu na rr er wr
   in _ , re-destruct ds dl dr , x-destruct xs xl xr , gs , gl , gr
-res-expr← nu na (r-annot re) (e-annot rf ee) w =
-  let (e , de , xe , ge) = res-expr← nu na re ee w in _ , re-annot de , x-annot rf xe , rf , ge
+res-expr← nu na (r-annot re) (e-annot ee) w =
+  let (e , de , xe , ge) = res-expr← nu na re ee w in _ , re-annot de , x-annot xe , ge
 res-expr← nu na (r-binop ra rb) (e-binop ea eb) (wa , wb) =
   let (a , da , xa , ga) = res-expr← nu na ra ea wa ; (b , db , xb , gb) = res-expr← nu na rb eb wb
   in _ , re-binop da db , x-binop xa xb , ga , gb

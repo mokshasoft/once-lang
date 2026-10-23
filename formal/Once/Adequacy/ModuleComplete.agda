@@ -31,7 +31,7 @@ open import Data.String using (String)
 import Data.String as Str
 open import Once.Spec.Name using (bare)
 open import Relation.Nullary using (yes; no; Dec; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Function using (case_of_)
 open import Once.Compile using (findMain; moduleToIR; moduleToIR-aux; mainEntry)
@@ -55,7 +55,6 @@ open import Once.Internal.Module
 import Once.TypeCheck.Elaborate as TE
 open import Once.Functor.Decide using (isConcrete?-complete)
 open import Once.Type.Honest using (honest?-complete)
-open import Once.Type.Rigid using (rigidFree?-complete; rigidFree?)
 open import Once.Internal.Type.Instance using (rigidOf)
 
 cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a′ b b′ c c′} → a ≡ a′ → b ≡ b′ → c ≡ c′ → f a b c ≡ f a′ b′ c′
@@ -189,21 +188,21 @@ checkOK-complete (TE.success _ _ _ _ , _) _ = refl
 ce-complete : ∀ (sc : C.CScope) {es : List Parser.Entry} (mt : ModTele (scopeOf sc) es) → MainsEffUU mt →
   Σ-syntax (List C.CompiledFun) (λ cfs → C.compileEntries IR.Heap false sc es ≡ inj₂ cfs)
 ce-complete sc [] _ = [] , refl
-ce-complete sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h g rest) mrest =
+ce-complete sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h rest) mrest =
   let (cfs , rec) = ce-complete (C.extendSig sc (funName fi) ty) rest mrest
       (c′ , ec) = isConcrete?-complete c
       (h′ , eh) = honest?-complete {ty} h
   in _ , trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
            (trans (cong (C.ce-prim IR.Heap false sc fi es) et)
-             (trans (cong₃ (C.ce-prim-conc IR.Heap false sc fi es ty) ec eh (rigidFree?-complete g))
+             (trans (cong₂ (C.ce-prim-conc IR.Heap false sc fi es ty) ec eh)
                     rec))
-ce-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (main-ok , mrest) =
+ce-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr deriv rest) (main-ok , mrest) =
   let (irFun , cf-eq) = compileFunM-complete (funType fi) (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                           (funName fi) ty (funBody fi) main-ok deriv
       (cfs , rec) = ce-complete (C.extendScope sc (funName fi) ty) rest mrest
   in _ , trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
            (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr)))
-             (trans (cong (C.ce-mono-g IR.Heap false sc fi es ty) (rigidFree?-complete g))
+             (trans refl
              (trans (cong (C.ce-mono-ir IR.Heap false sc fi es ty) cf-eq)
                     (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun)) rec))))
 ce-complete sc (poly {pfi = pfi} {es = es} pr deriv rest) mrest =
@@ -220,21 +219,21 @@ FindResult sc es =
 ce-find-complete : ∀ (sc : C.CScope) {es : List Parser.Entry} (mt : ModTele (scopeOf sc) es) →
   MainsEffUU mt → MainIn mt → FindResult sc es
 ce-find-complete sc [] _ ()
-ce-find-complete sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h g rest) mrest mi =
+ce-find-complete sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h rest) mrest mi =
   let (cfs , ir , rec , fm) = ce-find-complete (C.extendSig sc (funName fi) ty) rest mrest mi
       (c′ , ec) = isConcrete?-complete c
       (h′ , eh) = honest?-complete {ty} h
   in _ , ir
      , trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
          (trans (cong (C.ce-prim IR.Heap false sc fi es) et)
-           (trans (cong₃ (C.ce-prim-conc IR.Heap false sc fi es ty) ec eh (rigidFree?-complete g))
+           (trans (cong₂ (C.ce-prim-conc IR.Heap false sc fi es ty) ec eh)
                   rec))
      , fm
 ce-find-complete sc (poly {pfi = pfi} {es = es} pr deriv rest) mrest mi =
   let (_ , _ , _ , ce) = check-complete deriv
       (cfs , ir , rec , fm) = ce-find-complete (C.addEntry sc pfi) rest mrest mi
   in cfs , ir , trans (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) rec , fm
-ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (main-ok , mrest) mi =
+ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr deriv rest) (main-ok , mrest) mi =
   step mi (funName fi Str.≟ "main")
   where
     cfc = compileFunM-complete (funType fi) (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
@@ -244,7 +243,7 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) (
           → C.compileEntries IR.Heap false sc (Parser.e-fun fi ∷ es) ≡ C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun) r
     chain rec = trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
                   (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr)))
-                    (trans (cong (C.ce-mono-g IR.Heap false sc fi es ty) (rigidFree?-complete g))
+                    (trans refl
                     (trans (cong (C.ce-mono-ir IR.Heap false sc fi es ty) (proj₂ cfc))
                            (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun)) rec))))
     cf0 : C.CompiledFun
@@ -289,22 +288,22 @@ moduleToIR-complete m mt hvm with Parser.extractFunctions (Parser.extractAliases
 ce-mains : ∀ (sc : C.CScope) {es} (mt : ModTele (scopeOf sc) es) {cfs}
   → C.compileEntries IR.Heap false sc es ≡ inj₂ cfs → MainsEffUU mt
 ce-mains sc [] _ = tt
-ce-mains sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h g rest) eq =
+ce-mains sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h rest) eq =
   ce-mains (C.extendSig sc (funName fi) ty) rest
     (subst (λ r → r ≡ inj₂ _)
       (trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
         (trans (cong (C.ce-prim IR.Heap false sc fi es) et)
-               (cong₃ (C.ce-prim-conc IR.Heap false sc fi es ty) (proj₂ (isConcrete?-complete c)) (proj₂ (honest?-complete {ty} h)) (rigidFree?-complete g))))
+               (cong₂ (C.ce-prim-conc IR.Heap false sc fi es ty) (proj₂ (isConcrete?-complete c)) (proj₂ (honest?-complete {ty} h)))))
       eq)
 ce-mains sc (poly {pfi = pfi} {es = es} pr deriv rest) eq =
   let (_ , _ , _ , ce) = check-complete deriv
   in ce-mains (C.addEntry sc pfi) rest
        (subst (λ r → r ≡ inj₂ _) (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) eq)
-ce-mains sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) {cfs} eq = go _ refl
+ce-mains sc (mono {fi = fi} {ty = ty} {es = es} ep er pr deriv rest) {cfs} eq = go _ refl
   where
     eq′ = subst (λ r → r ≡ inj₂ cfs)
             (trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
-              (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr))) (cong (C.ce-mono-g IR.Heap false sc fi es ty) (rigidFree?-complete g)))) eq
+              (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr))) refl)) eq
     go : ∀ ri → C.compileFunM (funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                   (funName fi) ty (funBody fi) ≡ ri
        → (funName fi ≡ "main" → ty <: EffUU) × MainsEffUU rest
@@ -318,22 +317,22 @@ ce-mains sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) {cfs} eq 
 ce-mainexists : ∀ (sc : C.CScope) {es} (mt : ModTele (scopeOf sc) es) {cfs} {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋}
   → C.compileEntries IR.Heap false sc es ≡ inj₂ cfs → findMain cfs ≡ just ir → MainIn mt
 ce-mainexists sc [] eq fm = case subst (λ c → findMain c ≡ just _) (sym (inj₂-injective eq)) fm of λ ()
-ce-mainexists sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h g rest) {cfs} {ir} eq fm =
+ce-mainexists sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h rest) {cfs} {ir} eq fm =
   let eq′ = subst (λ r → r ≡ inj₂ cfs)
               (trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
                 (trans (cong (C.ce-prim IR.Heap false sc fi es) et)
-                       (cong₃ (C.ce-prim-conc IR.Heap false sc fi es ty) (proj₂ (isConcrete?-complete c)) (proj₂ (honest?-complete {ty} h)) (rigidFree?-complete g))))
+                       (cong₂ (C.ce-prim-conc IR.Heap false sc fi es ty) (proj₂ (isConcrete?-complete c)) (proj₂ (honest?-complete {ty} h)))))
               eq
   in ce-mainexists (C.extendSig sc (funName fi) ty) rest eq′ fm
 ce-mainexists sc (poly {pfi = pfi} {es = es} pr deriv rest) eq fm =
   let (_ , _ , _ , ce) = check-complete deriv
   in ce-mainexists (C.addEntry sc pfi) rest
        (subst (λ r → r ≡ inj₂ _) (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) eq) fm
-ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er pr g deriv rest) {cfs} {ir} eq fm = go _ refl
+ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er pr deriv rest) {cfs} {ir} eq fm = go _ refl
   where
     eq′ = subst (λ r → r ≡ inj₂ cfs)
             (trans (cong (C.ce-fun IR.Heap false sc fi es) ep)
-              (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr))) (cong (C.ce-mono-g IR.Heap false sc fi es ty) (rigidFree?-complete g)))) eq
+              (trans (trans (cong (C.ce-mono IR.Heap false sc fi es) er) (cong (C.ce-mono-p IR.Heap false sc fi es ty) (firstChecking-complete (ctxWithImportsAndPolys (C.ctop sc) (C.cpolys sc)) (funBody fi) (below ty) pr))) refl)) eq
     go : ∀ ri → C.compileFunM (funType fi) IR.Heap false (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                   (funName fi) ty (funBody fi) ≡ ri
        → ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest

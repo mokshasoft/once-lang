@@ -164,7 +164,7 @@ realize-infer (t-var-import {x = x} _ _ _ conc PE.refl) = closure x
 -- definitions environment of the surface semantics, built once from the
 -- entries' declaration-time derivations (`Spec.Module.PolysTyped`).
 realize-infer (t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _) = poly x T
-realize-infer (t-annot _ d _)     = realize d
+realize-infer (t-annot d _)     = realize d
 realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)
 realize-infer (t-neg d)         = neg (realize-infer d)
 -- PLAN 0.73 F3. Unlike the `Int` fold — where `realize-infer` keeps

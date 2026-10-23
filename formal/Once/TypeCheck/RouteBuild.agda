@@ -171,7 +171,7 @@ mutual
   route-ii (t-var-resolved _ _ l _ refl) (t-var-poly-instantiate-infer ns _ _ _ _) = ⊥-elim (just≢nothing (trans (sym l) ns))
   route-ii (t-var-poly-instantiate-infer ns _ _ _ _) (t-var-resolved _ _ l _ refl) = ⊥-elim (just≢nothing (trans (sym l) ns))
   route-ii (t-var-poly-instantiate-infer _ _ _ _ _) (t-var-poly-instantiate-infer _ _ _ _ _) = ii-poly-infer
-  route-ii (t-annot _ c refl) (t-annot _ c′ refl) = ii-annot (route-cc c c′)
+  route-ii (t-annot c refl) (t-annot c′ refl) = ii-annot (route-cc c c′)
   route-ii (t-pair a b) (t-pair a′ b′) = ii-pair (route-ii a a′) (route-ii b b′)
   route-ii (t-neg d) (t-neg d′) = ii-neg (route-ii d d′)
   route-ii (t-neg ()) (t-neg-float _ _ _)
