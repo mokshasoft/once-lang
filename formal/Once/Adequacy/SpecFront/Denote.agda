@@ -53,7 +53,8 @@ import Once.Spec.Core.Syntax as SC
 import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 open import Once.Parser.Module.Core using (Decl; mkModule)
-open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases)
+import Once.Parser.Module.Core as Core
+open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; importedOf)
 import Once.Internal.Resolution as LR
 open import Once.Internal.Module using (ModTele; MainIn; emptyScope; entrySig)
 open import Once.Internal.Core.Translate using ([])
@@ -133,16 +134,16 @@ denote : ∀ {mm mm′ dsU dsR ds′ es}
        → ModRel mm mm′
        → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
        → Pointwise DEmb dsU ds′
-       → Parser.extractFunctions (mkModule dsR) ≡ inj₂ es
+       → Parser.extractFunctions (Core.resolved (mkModule dsR) (importedOf mm dsU)) ≡ inj₂ es
        → (mt : ModTele emptyScope es) (mi : MainIn mt) → Denoted mm′ ds′ mt mi
 denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
   go fs es′ ees mt mi guard xn ffiE sigk
   where
-    r₀ = Parser.thenExtract (Parser.sigsAdjacent dsR nothing) (Parser.extractFunctions-go (Parser.sigsFirst dsR) nothing)
+    r₀ = Parser.thenExtract (Parser.sigsAdjacent dsR nothing) (Parser.extractFunctions-go (Parser.sigsFirst dsR (importedOf mm dsU)) nothing)
     adjE = proj₁ (then-ok _ _ (guard-ok r₀ ef))
     goE  = proj₂ (then-ok _ _ (guard-ok r₀ ef))
     guard = NC.guard-entries r₀ ef
-    sp = SigOf.signature-of mr rds pw (extract-align (Parser.sigsFirst dsR) goE)
+    sp = SigOf.signature-of mr rds pw (extract-align (Parser.sigsFirst dsR (importedOf mm dsU)) goE)
     fs = proj₁ sp
     es′ = proj₁ (proj₂ sp)
     ees = proj₁ (proj₂ (proj₂ sp))

@@ -35,7 +35,7 @@ open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
-open import Once.Parser.Module.Core using (Module)
+import Once.Parser.Module.Core as Core
 import Once.Compile as C
 import Once.IR as IR
 open import Once.Adequacy.Compile using (AsmWF-of)
@@ -60,10 +60,10 @@ private
   map-fst f (x ∷ xs) = cong (proj₁ x ∷_) (map-fst f xs)
 
   -- the program image and the library image are nested-free
-  prog-nn : ∀ (m : Module) ir → NoNested (C.image-of (irProgram (C.moduleTable m) ir))
+  prog-nn : ∀ (m : Core.Resolved) ir → NoNested (C.image-of (irProgram (C.moduleTable m) ir))
   prog-nn m ir = no-nested-of-all _ (image-frame-free (C.rewrite-table (C.moduleTable m)) (proj₁ (rewrite-ir ir)))
 
-  lib-nn : ∀ (m : Module) → NoNested (C.lib-image (C.moduleTable m))
+  lib-nn : ∀ (m : Core.Resolved) → NoNested (C.lib-image (C.moduleTable m))
   lib-nn m = no-nested-of-all _ (All-map (λ {i} → emittable-image i) (fns-frame-free 0 (C.rewrite-table (C.moduleTable m))))
 
   -- an `AsmWF`-shaped conclusion, transported along the two equations
@@ -79,7 +79,7 @@ module X8664W where
   import Once.CCC.Target.X86-64.AbstractToX86 as L
   open import Once.CCC.Target.X86-64.FileSymbols using (defs-lower; refs-lower)
 
-  prog-wf : ∀ (m : Module) ir → C.moduleToIR m ≡ just ir
+  prog-wf : ∀ (m : Core.Resolved) ir → C.moduleToIR m ≡ just ir
           → F.AsmWF (C.emitProgram x86-64 (irProgram (C.moduleTable m) ir))
   prog-wf m ir mi = record
     { defined-once = subst Unique (sym defs≡) (prog-unique m ir)
@@ -99,7 +99,7 @@ module X8664W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
 
-  lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
+  lib-wf : ∀ (m : Core.Resolved) → C.moduleToIR m ≡ nothing
          → F.AsmWF (C.emitLibrary x86-64 (C.moduleTable m))
   lib-wf m mi = record
     { defined-once = subst Unique (sym defs≡) (lib-unique m)
@@ -119,7 +119,7 @@ module X8664W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
-  file-wf : ∀ (m : Module) (G : C.FileOf x86-64) → C.compileFileFromModule IR.Heap false x86-64 m ≡ inj₂ G
+  file-wf : ∀ (m : Core.Resolved) (G : C.FileOf x86-64) → C.compileFileFromModule IR.Heap false x86-64 m ≡ inj₂ G
           → AsmWF-of x86-64 G
   file-wf m G eq = by (C.moduleToIR m) refl
     where
@@ -135,7 +135,7 @@ module X8632W where
   import Once.CCC.Target.X86-32.AbstractToX86-32 as L
   open import Once.CCC.Target.X86-32.FileSymbols using (defs-lower; refs-lower)
 
-  prog-wf : ∀ (m : Module) ir → C.moduleToIR m ≡ just ir
+  prog-wf : ∀ (m : Core.Resolved) ir → C.moduleToIR m ≡ just ir
           → F.AsmWF (C.emitProgram x86-32 (irProgram (C.moduleTable m) ir))
   prog-wf m ir mi = record
     { defined-once = subst Unique (sym defs≡) (prog-unique m ir)
@@ -155,7 +155,7 @@ module X8632W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
 
-  lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
+  lib-wf : ∀ (m : Core.Resolved) → C.moduleToIR m ≡ nothing
          → F.AsmWF (C.emitLibrary x86-32 (C.moduleTable m))
   lib-wf m mi = record
     { defined-once = subst Unique (sym defs≡) (lib-unique m)
@@ -175,7 +175,7 @@ module X8632W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
-  file-wf : ∀ (m : Module) (G : C.FileOf x86-32) → C.compileFileFromModule IR.Heap false x86-32 m ≡ inj₂ G
+  file-wf : ∀ (m : Core.Resolved) (G : C.FileOf x86-32) → C.compileFileFromModule IR.Heap false x86-32 m ≡ inj₂ G
           → AsmWF-of x86-32 G
   file-wf m G eq = by (C.moduleToIR m) refl
     where
@@ -191,7 +191,7 @@ module RiscV64W where
   import Once.CCC.Target.RiscV64.AbstractToRiscV as L
   open import Once.CCC.Target.RiscV64.FileSymbols using (defs-lower; refs-lower)
 
-  prog-wf : ∀ (m : Module) ir → C.moduleToIR m ≡ just ir
+  prog-wf : ∀ (m : Core.Resolved) ir → C.moduleToIR m ≡ just ir
           → F.AsmWF (C.emitProgram riscv64 (irProgram (C.moduleTable m) ir))
   prog-wf m ir mi = record
     { defined-once = subst Unique (sym defs≡) (prog-unique m ir)
@@ -211,7 +211,7 @@ module RiscV64W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
 
-  lib-wf : ∀ (m : Module) → C.moduleToIR m ≡ nothing
+  lib-wf : ∀ (m : Core.Resolved) → C.moduleToIR m ≡ nothing
          → F.AsmWF (C.emitLibrary riscv64 (C.moduleTable m))
   lib-wf m mi = record
     { defined-once = subst Unique (sym defs≡) (lib-unique m)
@@ -231,7 +231,7 @@ module RiscV64W where
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image (C.moduleTable m))
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image (C.moduleTable m)))
 
-  file-wf : ∀ (m : Module) (G : C.FileOf riscv64) → C.compileFileFromModule IR.Heap false riscv64 m ≡ inj₂ G
+  file-wf : ∀ (m : Core.Resolved) (G : C.FileOf riscv64) → C.compileFileFromModule IR.Heap false riscv64 m ≡ inj₂ G
           → AsmWF-of riscv64 G
   file-wf m G eq = by (C.moduleToIR m) refl
     where
@@ -242,7 +242,7 @@ module RiscV64W where
 ------------------------------------------------------------------------
 -- THE THEOREM (was a postulate, D262).
 ------------------------------------------------------------------------
-file-wf : ∀ (arch : Arch) (m : Module) (F : C.FileOf arch)
+file-wf : ∀ (arch : Arch) (m : Core.Resolved) (F : C.FileOf arch)
         → C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F
         → AsmWF-of arch F
 file-wf x86-64  = X8664W.file-wf

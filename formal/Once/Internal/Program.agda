@@ -54,7 +54,7 @@ open Once.Denotation.Behavior.Source public using (srcText; srcImports)
 -- definition, monomorphic or polymorphic, typed ONCE in the scope of the
 -- definitions declared before it, used or not.
 Typed : Set
-Typed = Σ-syntax P.Module (λ m → Σ-syntax (ModuleTyped m) (λ mt → HasValidMain m mt))
+Typed = Σ-syntax P.Resolved (λ m → Σ-syntax (ModuleTyped m) (λ mt → HasValidMain m mt))
 
 ------------------------------------------------------------------------
 -- `src ⊢R tp` — the source TEXT denotes `tp`'s module, by the grammar

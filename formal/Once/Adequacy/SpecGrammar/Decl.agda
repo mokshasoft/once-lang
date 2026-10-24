@@ -87,7 +87,7 @@ private
 data DEmb : Decl → S.Decl → Set where
   d-typesig   : ∀ {x A} → DEmb (DTypeSig x A) (S.DTypeSig x (toPoly A))
   d-fundef    : ∀ {x e} → DEmb (DFunDef x e) (S.DFunDef x e)
-  d-signature : ∀ {x A} → DEmb (DSignature x nothing A) (S.DSignature x (toPoly A))
+  d-signature : ∀ {x A} → DEmb (DSignature x A) (S.DSignature x (toPoly A))
   d-alias     : ∀ {x ps T} → DEmb (DTypeAlias x ps T) (S.DTypeAlias x ps T)
   d-import    : ∀ {p a} → DEmb (DImport (mkImport p a)) (S.DImport (S.mkImport p a))
 

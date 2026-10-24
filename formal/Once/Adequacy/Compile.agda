@@ -208,7 +208,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- entry point an instruction. A PROOF obligation: the compiler must SHOW
     -- what the toolchain will check (D100/D167 were its postulated halves).
     file-wf :
-      ∀ (m : P.Module) (F : C.FileOf arch) →
+      ∀ (m : P.Resolved) (F : C.FileOf arch) →
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       AsmWF-of arch F
     -- RUNNING THE FILE HAS THE TRACE OF THE PROGRAM IT WAS EMITTED FROM (D320):
@@ -217,7 +217,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- disagreement between what is emitted and what the proofs reason about is a
     -- failed proof, not a hidden one (D261).
     file-tr :
-      ∀ (m : P.Module) (F : C.FileOf arch) →
+      ∀ (m : P.Resolved) (F : C.FileOf arch) →
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
@@ -225,12 +225,12 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
 
 -- The CLI's text and the verified compiler's file are ONE pipeline (plan 0.107):
 -- the Build stage is the print of the file.
-build≡file-ef : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) (ef : String ⊎ List Parser.Entry)
+build≡file-ef : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) (ef : String ⊎ List Parser.Entry)
               → C.cfm-ef-aux IR.Heap C.Build doOpt arch m ef ≡ C.built-of arch (C.cfm-file-ef IR.Heap doOpt arch m ef)
 build≡file-ef doOpt arch m (inj₁ err) = refl
 build≡file-ef doOpt arch m (inj₂ es)  = refl
 
-build≡file : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
+build≡file : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved)
            → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.built-of arch (C.compileFileFromModule IR.Heap doOpt arch m)
 build≡file doOpt arch m = build≡file-ef doOpt arch m (Parser.extractFunctions m)
 
@@ -295,11 +295,11 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   compile-fe arch (inj₁ _) = nothing
   compile-fe arch (inj₂ F) = just (file-bytes arch F)
 
-  compile-mir : Arch → Bool → P.Module → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe (List Byte)
+  compile-mir : Arch → Bool → P.Resolved → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
   compile-mir arch doOpt m (just _)  = compile-fe arch (C.compileFileFromModule IR.Heap doOpt arch m)
 
-  compile-gm : Arch → Bool → Maybe P.Module → Maybe (List Byte)
+  compile-gm : Arch → Bool → Maybe P.Resolved → Maybe (List Byte)
   compile-gm arch doOpt nothing   = nothing
   compile-gm arch doOpt (just m)  = compile-mir arch doOpt m (moduleToIR m)
 
@@ -316,28 +316,28 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- module were admissible we would have a contradiction with `¬adm`. That is
   -- what makes this the compiler's refusal rather than a coincidence about
   -- some other path returning `nothing`.
-  refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+  refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                    (es : List Parser.Entry)
-                   (d : Dec (AdmissibleM arch m)) → ¬ AdmissibleM arch m
+                   (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
                → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ nothing
   refuse-gated arch doOpt m es (yes p) ¬adm = ⊥-elim (¬adm p)
   refuse-gated arch doOpt m es (no  _) ¬adm = refl
 
-  refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                (ef : String ⊎ List Parser.Entry) → ¬ AdmissibleM arch m
+  refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
+                (ef : String ⊎ List Parser.Entry) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
             → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ nothing
   refuse-ef arch doOpt m (inj₁ err)            ¬adm = refl
   refuse-ef arch doOpt m (inj₂ es) ¬adm =
-    refuse-gated arch doOpt m es (admissibleM? arch m) ¬adm
+    refuse-gated arch doOpt m es (admissibleM? arch (P.Resolved.rmodule m)) ¬adm
 
-  refuse-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                 (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) → ¬ AdmissibleM arch m
+  refuse-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
+                 (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
              → compile-mir arch doOpt m mir ≡ nothing
   refuse-mir arch doOpt m nothing   ¬adm = refl
   refuse-mir arch doOpt m (just ir) ¬adm =
     refuse-ef arch doOpt m (Parser.extractFunctions m) ¬adm
 
-  refuse-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) → ¬ AdmissibleM arch m
+  refuse-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
             → compile-gm arch doOpt (just m) ≡ nothing
   refuse-gm arch doOpt m ¬adm = refuse-mir arch doOpt m (moduleToIR m) ¬adm
 
@@ -346,31 +346,31 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- branches are ABSURD (`cfm-build-gated` yields `Error`, so `compile-cr` is
   -- `nothing`, which is not `just`), which is precisely the statement that the
   -- gate is what stands between an inadmissible program and an output.
-  accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+  accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                    (es : List Parser.Entry)
-                   (d : Dec (AdmissibleM arch m)) {bytes : List Byte}
+                   (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) {bytes : List Byte}
                → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ just bytes
-               → AdmissibleM arch m
+               → AdmissibleM arch (P.Resolved.rmodule m)
   accept-gated arch doOpt m es (yes p) eq = p
   accept-gated arch doOpt m es (no  _) ()
 
-  accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+  accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                 (ef : String ⊎ List Parser.Entry) {bytes : List Byte}
             → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ just bytes
-            → AdmissibleM arch m
+            → AdmissibleM arch (P.Resolved.rmodule m)
   accept-ef arch doOpt m (inj₁ err)            ()
   accept-ef arch doOpt m (inj₂ es) eq =
-    accept-gated arch doOpt m es (admissibleM? arch m) eq
+    accept-gated arch doOpt m es (admissibleM? arch (P.Resolved.rmodule m)) eq
 
-  accept-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+  accept-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                  (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) {bytes : List Byte}
-             → compile-mir arch doOpt m mir ≡ just bytes → AdmissibleM arch m
+             → compile-mir arch doOpt m mir ≡ just bytes → AdmissibleM arch (P.Resolved.rmodule m)
   accept-mir arch doOpt m nothing   ()
   accept-mir arch doOpt m (just ir) eq =
     accept-ef arch doOpt m (Parser.extractFunctions m) eq
 
-  accept-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) {bytes : List Byte}
-            → compile-gm arch doOpt (just m) ≡ just bytes → AdmissibleM arch m
+  accept-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) {bytes : List Byte}
+            → compile-gm arch doOpt (just m) ≡ just bytes → AdmissibleM arch (P.Resolved.rmodule m)
   accept-gm arch doOpt m eq = accept-mir arch doOpt m (moduleToIR m) eq
 
   -- The typed program and its parse relation are the Spec's (plan 0.81), and
@@ -386,7 +386,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- executable gate; reuses nothing new — pure case analysis on `moduleToIR`.)
   -- `m` is the resolved module (`srcToModule src ≡ just m`), since that is what
   -- `compile`/`moduleToIR` run on.
-  compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Module) (bytes : List Byte) →
+  compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Resolved) (bytes : List Byte) →
     srcToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
     Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir → moduleToIR m ≡ just ir)
   compile-just-ir arch doOpt src m bytes g-eq pf with moduleToIR m in mi
@@ -406,7 +406,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- can refuse. It is exactly what shows the refusal cannot fire for a program
   -- the target CAN express.
   correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
-    src ⊢R tp → AdmissibleM arch (proj₁ tp) →
+    src ⊢R tp → AdmissibleM arch (P.Resolved.rmodule (proj₁ tp)) →
     Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
   -- Plan 0.81: `tp` IS the resolved module, so its typing is in hand and the
   -- forward transport (`resolver-preserves-typing`) is gone too. `⊢R` now hands
@@ -435,9 +435,9 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- runs anything, so no interpretation is involved — which is what lets ONE
   -- typed program stand for the source in every world.
   accept-typed-aux : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte)
-                     (mm : Maybe P.Module) → srcToModule src ≡ mm →
+                     (mm : Maybe P.Resolved) → srcToModule src ≡ mm →
                      compile arch doOpt src ≡ just bytes →
-                     Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
+                     Σ-syntax P.Resolved (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
   accept-typed-aux arch doOpt src bytes nothing  g-eq pf =
     ⊥-elim (case trans (sym c≡n) pf of λ ())
     where c≡n : compile arch doOpt src ≡ nothing
@@ -447,11 +447,11 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   accept-typed : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
     compile arch doOpt src ≡ just bytes →
-    Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
+    Σ-syntax P.Resolved (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
   accept-typed arch doOpt src bytes pf = accept-typed-aux arch doOpt src bytes (srcToModule src) refl pf
 
   Admissible : Arch → Typed → Set
-  Admissible arch (m , _ , _) = AdmissibleM arch m
+  Admissible arch (m , _ , _) = AdmissibleM arch (P.Resolved.rmodule m)
 
   -- Plan 0.105: the interpretation signatures a typed module is compiled
   -- against — its FFI declarations.
@@ -503,7 +503,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- preserves the program's trace (`rewrite-program-trace`). Every link but the
     -- first is a proof.
     file-correct :
-      ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+      ∀ (arch : Arch) (m : P.Resolved) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       moduleToIR m ≡ just ir →
       moduleSig m ≡ sig ι →
@@ -553,13 +553,13 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- It must be gated on the SAME decision the backend refuses on, or `correct`
     -- is false in one direction or the other: a program the compiler rejects but
     -- the meaning accepts breaks completeness, and the reverse breaks soundness.
-    ⟦_⟧⊥-adm : (m : P.Module) → (arch : Arch) → Dec (AdmissibleM arch m) → Maybe (Tr Data.Unit.⊤)
+    ⟦_⟧⊥-adm : (m : P.Resolved) → (arch : Arch) → Dec (AdmissibleM arch (P.Resolved.rmodule m)) → Maybe (Tr Data.Unit.⊤)
     ⟦ m ⟧⊥-adm arch (no  _) = nothing
     ⟦ m ⟧⊥-adm arch (yes _) = ⟦ programAt (moduleTable m) (moduleToIR m) ⟧⊥-ir arch
 
-    ⟦_⟧⊥-m : Maybe P.Module → Arch → Maybe (Tr Data.Unit.⊤)
+    ⟦_⟧⊥-m : Maybe P.Resolved → Arch → Maybe (Tr Data.Unit.⊤)
     ⟦ nothing ⟧⊥-m _    = nothing
-    ⟦ just m  ⟧⊥-m arch = ⟦ m ⟧⊥-adm arch (admissibleM? arch m)
+    ⟦ just m  ⟧⊥-m arch = ⟦ m ⟧⊥-adm arch (admissibleM? arch (P.Resolved.rmodule m))
     ⟦_⟧⊥ : Source → Arch → Maybe (Tr Data.Unit.⊤)
     ⟦ src ⟧⊥ arch = ⟦ srcToModule src ⟧⊥-m arch
 
@@ -577,23 +577,23 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- Dispatch on the SAME gate the meaning does. An inadmissible module has no
     -- meaning, so `⟦ … ⟧⊥-m ≡ just beh` is absurd there — which is what makes
     -- the `no` branch a `()` rather than an obligation.
-    ⟦⟧⊥-adm-sound : ∀ (m : P.Module) (arch : Arch) (d : Dec (AdmissibleM arch m))
+    ⟦⟧⊥-adm-sound : ∀ (m : P.Resolved) (arch : Arch) (d : Dec (AdmissibleM arch (P.Resolved.rmodule m)))
                       (beh : Tr Data.Unit.⊤) →
       ⟦ m ⟧⊥-adm arch d ≡ just beh → ModuleTyped m
     ⟦⟧⊥-adm-sound m arch (no  _) beh ()
     ⟦⟧⊥-adm-sound m arch (yes _) beh eq =
       moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleTable m) (moduleToIR m) arch beh eq))
 
-    ⟦⟧⊥-m-sound : ∀ (mm : Maybe P.Module) (arch : Arch) (beh : Tr Data.Unit.⊤) →
+    ⟦⟧⊥-m-sound : ∀ (mm : Maybe P.Resolved) (arch : Arch) (beh : Tr Data.Unit.⊤) →
       ⟦ mm ⟧⊥-m arch ≡ just beh →
-      Σ-syntax P.Module (λ m → (mm ≡ just m) × ModuleTyped m)
+      Σ-syntax P.Resolved (λ m → (mm ≡ just m) × ModuleTyped m)
     ⟦⟧⊥-m-sound nothing  arch beh ()
     ⟦⟧⊥-m-sound (just m) arch beh eq =
-      m , refl , ⟦⟧⊥-adm-sound m arch (admissibleM? arch m) beh eq
+      m , refl , ⟦⟧⊥-adm-sound m arch (admissibleM? arch (P.Resolved.rmodule m)) beh eq
 
     ⟦⟧⊥-sound : ∀ (src : Source) (arch : Arch) (beh : Tr Data.Unit.⊤) →
       ⟦ src ⟧⊥ arch ≡ just beh →
-      Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
+      Σ-syntax P.Resolved (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
     ⟦⟧⊥-sound src arch beh eq = ⟦⟧⊥-m-sound (srcToModule src) arch beh eq
 
     -- Named Phase-0 gaps (NOT the theorem). `built⇒main` is GONE: gating
@@ -604,7 +604,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- optimize lift). The doOpt=false trace is PROVEN from the codegen chain
     -- (`trace-false` below).
     postulate
-      opt-trace : ∀ (arch : Arch) (m : P.Module) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+      opt-trace : ∀ (arch : Arch) (m : P.Resolved) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
         C.compileFileFromModule IR.Heap true arch m ≡ inj₂ F →
         moduleToIR m ≡ just ir →
         -- plan 0.105: in a world that declares the module's signatures
@@ -616,7 +616,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
     -- source meaning `⟦ just ir ⟧IR`. Supplied per `doOpt` by `correct` below
     -- (the proven codegen chain for `false`; `opt-trace` for `true`).
-    TraceAt : Arch → Bool → P.Module → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
+    TraceAt : Arch → Bool → P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
     TraceAt arch doOpt m ir =
       ∀ (F : C.FileOf arch) → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
@@ -624,8 +624,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
     -- supplied trace witness; the three reject results are ruled out by
     -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
-    correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
-                   (fe : String ⊎ C.FileOf arch) → AdmissibleM arch m →
+    correct-fe : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
+                   (fe : String ⊎ C.FileOf arch) → AdmissibleM arch (P.Resolved.rmodule m) →
                    C.compileFileFromModule IR.Heap doOpt arch m ≡ fe →
                    moduleToIR m ≡ just ir →
                    TraceAt arch doOpt m ir →
@@ -639,8 +639,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
     -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
     -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
-    correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) →
-                    AdmissibleM arch m →
+    correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (mir : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)) →
+                    AdmissibleM arch (P.Resolved.rmodule m) →
                     moduleToIR m ≡ mir →
                     (∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
                     Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ programAt (moduleTable m) mir ⟧⊥-ir arch)
@@ -651,8 +651,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
     -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
     -- parseable ⇒ defer to `correct-mir`.
-    correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Module) →
-                   (∀ (m : P.Module) → gm ≡ just m →
+    correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Resolved) →
+                   (∀ (m : P.Resolved) → gm ≡ just m →
                       ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
                    Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt gm)) (⟦ gm ⟧⊥-m arch)
     -- D115: dispatch on the SAME gate the meaning uses. Inadmissible ⇒ the
@@ -660,8 +660,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- `compile-cr` is `nothing` too — both sides absent, `PW.nothing`. That the
     -- two agree is not a coincidence to be argued: it is one decision procedure
     -- consulted twice.
-    correct-gm-adm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
-                       (d : Dec (AdmissibleM arch m)) →
+    correct-gm-adm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
+                       (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) →
                        (∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
                        Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt (just m)))
                                      (⟦ m ⟧⊥-adm arch d)
@@ -672,7 +672,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
     correct-gm arch doOpt nothing  tw = PW.nothing
     correct-gm arch doOpt (just m) tw =
-      correct-gm-adm arch doOpt m (admissibleM? arch m) (λ ir mi → tw m refl ir mi)
+      correct-gm-adm arch doOpt m (admissibleM? arch (P.Resolved.rmodule m)) (λ ir mi → tw m refl ir mi)
 
     -- THE unconditional claim (Plan 0.48), COMPOSED from three layers. They
     -- walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
@@ -746,22 +746,22 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToProgram m ⟧IR)`.
     -- D115: only for an ADMISSIBLE module. Inadmissible ones have no meaning
     -- here, which is the whole point of the gate.
-    ⟦⟧⊥-just-adm : ∀ (arch : Arch) (m : P.Module) (d : Dec (AdmissibleM arch m))
-                 → AdmissibleM arch m
+    ⟦⟧⊥-just-adm : ∀ (arch : Arch) (m : P.Resolved) (d : Dec (AdmissibleM arch (P.Resolved.rmodule m)))
+                 → AdmissibleM arch (P.Resolved.rmodule m)
                  → ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToProgram m ⟧⊥-ir arch
     ⟦⟧⊥-just-adm arch m (yes _)   adm = refl
     ⟦⟧⊥-just-adm arch m (no ¬adm) adm = ⊥-elim (¬adm adm)
 
-    ⟦⟧⊥-just : ∀ (src : Source) (arch : Arch) (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
-      AdmissibleM arch m →
+    ⟦⟧⊥-just : ∀ (src : Source) (arch : Arch) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+      AdmissibleM arch (P.Resolved.rmodule m) →
       srcToModule src ≡ just m → moduleToIR m ≡ just ir →
       ⟦ src ⟧⊥ arch ≡ just (⟦ moduleToProgram m ⟧IRᵗ (arch-numerics arch) ι)
     ⟦⟧⊥-just src arch m ir adm g-eq mi rewrite g-eq =
-      trans (go (admissibleM? arch m) adm)
+      trans (go (admissibleM? arch (P.Resolved.rmodule m)) adm)
             (trans (cong (λ x → ⟦ programAt (moduleTable m) x ⟧⊥-ir arch) mi)
                    (cong (λ x → just (⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) ι)) (sym mi)))
       where
-        go : ∀ (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
+        go : ∀ (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) → AdmissibleM arch (P.Resolved.rmodule m) →
              ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToProgram m ⟧⊥-ir arch
         go (yes _)   _ = refl
         go (no ¬adm) a = ⊥-elim (¬adm a)
@@ -779,7 +779,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- (`program-core`, D253), with no `mU`/`mR` trace step in between.
     sound-trace : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
       compile arch doOpt src ≡ just bytes →
-      ∀ (mR : P.Module) (stm-eq : srcToModule src ≡ just mR)
+      ∀ (mR : P.Resolved) (stm-eq : srcToModule src ≡ just mR)
         (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR mR ≡ just ir) →
       moduleSig mR ≡ sig ι →
       exec arch bytes ≋ ⟦ moduleToProgram mR ⟧IRᵗ (arch-numerics arch) ι

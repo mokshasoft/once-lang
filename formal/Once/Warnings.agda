@@ -61,7 +61,7 @@ open import Once.Parser.Lexer using (tokenize)
 open import Data.String using (toList)
 open import Once.Compile using (silentRoundDefs)
 open import Once.Parser.Module.Core using
-  (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
+  (Module; mkModule; Resolved; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
    DImport)
 
 ------------------------------------------------------------------------
@@ -332,7 +332,7 @@ renderWarning (SilentRound fn) =
 
 -- | plan 0.119 D5: the loops whose round performs no event, one warning per
 -- definition (`Once.Compile.silentRoundDefs`).
-loopWarnings : Module → List Warning
+loopWarnings : Resolved → List Warning
 loopWarnings m = go (silentRoundDefs m)
   where
     go : List String → List Warning
@@ -342,7 +342,7 @@ loopWarnings m = go (silentRoundDefs m)
 -- | The compiler's entry point: every rounding warning this module has for
 -- this target, rendered. `Once.Compile` re-exports it and the CLI prints it,
 -- which is what keeps this module ON the apex path rather than beside it.
-warningsFor : Arch → String → Module → List String
+warningsFor : Arch → String → Resolved → List String
 warningsFor arch src m = go (roundingWarnings arch (tokenize (toList src)) ++ loopWarnings m)
   where
     go : List Warning → List String

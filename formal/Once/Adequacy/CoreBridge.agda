@@ -79,14 +79,14 @@ open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans
 ------------------------------------------------------------------------
 
 -- Σ declares the module's FFI declarations, each under its word names.
-SigView-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → Signature → Set
+SigView-ef : ∀ (m : P.Resolved) ef (mt : ModuleTyped-ef m ef) → Signature → Set
 SigView-ef m (inj₁ _)  ()
 SigView-ef m (inj₂ es) mt Σ = TR.SigIn Σ mt
 
 SigView : Typed → Signature → Set
 SigView (m , mt , hvm) = SigView-ef m (Parser.extractFunctions m) mt
 
-typedProgram-ef : ∀ (m : P.Module) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt
+typedProgram-ef : ∀ (m : P.Resolved) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt
                 → (Σ : Signature) → SigView-ef m ef mt Σ → TL.Program Σ
 typedProgram-ef m (inj₁ _)  () _
 typedProgram-ef m (inj₂ es) mt (_ , mi) Σ u = MP.toProgram₀ Σ mt mi u
@@ -118,7 +118,7 @@ module _ (fmt : TargetNum) where
              → TW.AgreeM fmt Σ wf J uniq tbl m P → TW.Agree fmt Σ wf J uniq tbl ir P
     agree-at refl a = a
 
-    core-ef-tr : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
+    core-ef-tr : ∀ (m : P.Resolved) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
                    {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
                  → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → FB.bundle-find b ≡ just ir
                  → (Σ : Signature) (u : SigView-ef m ef mt Σ)
@@ -138,7 +138,7 @@ module _ (fmt : TargetNum) where
   -- names, and EVERY Interpretation `J` of it: the compiled program's trace
   -- in the world `J` makes is the core program's in `J`'s.
   program-core-tr :
-    ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
+    ∀ (m : P.Resolved) (mt : ModuleTyped m) (hvm : HasValidMain m mt)
       (Σ : Signature) (u : SigView (m , mt , hvm) Σ)
       (wf : WellFormed Σ) (J : Obs.Interp Σ) (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ))
       (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)

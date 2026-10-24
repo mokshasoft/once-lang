@@ -101,7 +101,7 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 -- Re-export Parser (for module loading)
 open import Once.Parser
 open import Once.Parser.Module
-open import Once.Parser.Module.Core using (Module)
+open import Once.Parser.Module.Core using (Module; Resolved; resolved)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Spec.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -375,8 +375,8 @@ parseSourceToModule = parseStrict
 -- | Compile a pre-parsed, pre-resolved Module. Same as `compileModule`
 -- but starting from an AST rather than source text. Used by the
 -- import-aware pipeline: Haskell parses each file separately, calls
--- `resolveImports` to flatten imports into owner-tagged primitives,
--- then hands the flat Module to this entry point.
+-- `resolveImports` (references resolved, the imported signatures read),
+-- then hands the result to this entry point.
 -- Explicit-argument aux form (Plan 0.48): dispatch on the `extractFunctions`
 -- result so the proof relating this to `compileFromModule` (which shares the
 -- same call) can match a bound `⊎` variable.
@@ -517,11 +517,11 @@ ce-poly-p m doOpt sc pfi es nothing =
 ce-poly m doOpt sc pfi es (inj₁ err) = inj₁ ("Type error in " ++ pfunName pfi ++ ": " ++ err)
 ce-poly m doOpt sc pfi es (inj₂ _)   = compileEntries m doOpt (addEntry sc pfi) es
 
-compileResolvedModule-aux : AllocMode → Bool → Module → String ⊎ List Entry → String ⊎ List CompiledFun
+compileResolvedModule-aux : AllocMode → Bool → Resolved → String ⊎ List Entry → String ⊎ List CompiledFun
 compileResolvedModule-aux m doOpt mod (inj₁ err) = inj₁ err
 compileResolvedModule-aux m doOpt mod (inj₂ es)  = compileEntries m doOpt emptyCScope es
 
-compileResolvedModule : AllocMode → Bool → Module → String ⊎ List CompiledFun
+compileResolvedModule : AllocMode → Bool → Resolved → String ⊎ List CompiledFun
 compileResolvedModule m doOpt mod =
   compileResolvedModule-aux m doOpt mod (extractFunctions mod)
 
@@ -562,7 +562,7 @@ silentRoundDefs-aux : String ⊎ List Entry → List String
 silentRoundDefs-aux (inj₁ _)  = []
 silentRoundDefs-aux (inj₂ es) = lw-entries emptyCScope es
 
-silentRoundDefs : Module → List String
+silentRoundDefs : Resolved → List String
 silentRoundDefs mod = silentRoundDefs-aux (extractFunctions mod)
 
 -- | Compile source text to list of compiled functions
@@ -577,7 +577,7 @@ compileModule : AllocMode → Bool → String → String ⊎ List CompiledFun
 compileModule m doOpt source with parse source
 ... | nothing = inj₁ "Parse error: failed to parse module"
 ... | just mod =
-      case extractFunctions mod of λ where
+      case extractFunctions (resolved mod []) of λ where
            (inj₁ err) → inj₁ err
            (inj₂ es)  → compileEntries m doOpt emptyCScope es
 
@@ -592,7 +592,7 @@ moduleSyms-aux : String ⊎ List CompiledFun → List String
 moduleSyms-aux (inj₁ _)   = []
 moduleSyms-aux (inj₂ cfs) = emittedSyms cfs
 
-moduleSyms : AllocMode → Bool → Module → List String
+moduleSyms : AllocMode → Bool → Resolved → List String
 moduleSyms m doOpt mod = moduleSyms-aux (compileResolvedModule m doOpt mod)
 
 ------------------------------------------------------------------------
@@ -656,7 +656,7 @@ moduleToIR-aux : String ⊎ List CompiledFun → Maybe (IR ⌊ Unit {0} ⌋ ⌊ 
 moduleToIR-aux (inj₁ _)    = nothing
 moduleToIR-aux (inj₂ funs) = findMain funs
 
-moduleToIR : Module → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
+moduleToIR : Resolved → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
 moduleToIR mod = moduleToIR-aux (compileResolvedModule Heap false mod)
 
 -- D244: the function table, LATEST-FIRST; each entry the DIRECT-CALL morphism
@@ -676,14 +676,14 @@ tableOfResult : String ⊎ List CompiledFun → List IRFun
 tableOfResult (inj₁ _)    = []
 tableOfResult (inj₂ funs) = tableOf funs
 
-moduleTable : Module → List IRFun
+moduleTable : Resolved → List IRFun
 moduleTable mod = tableOfResult (compileResolvedModule Heap false mod)
 
 programAt : List IRFun → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe IRProgram
 programAt tbl nothing   = nothing
 programAt tbl (just ir) = just (irProgram tbl ir)
 
-moduleToProgram : Module → Maybe IRProgram
+moduleToProgram : Resolved → Maybe IRProgram
 moduleToProgram mod = programAt (moduleTable mod) (moduleToIR mod)
 
 -- D165/D244: THE PROGRAM THE BACKEND COMPILES — every definition arith-lifted.
@@ -894,7 +894,7 @@ compile : AllocMode → Stage → Bool → Arch → String → CompileResult
 compile m stage doOpt arch source with parseStrict source
 ... | inj₁ err = Error err
 ... | inj₂ mod =
-  case extractFunctions mod of λ where
+  case extractFunctions (resolved mod []) of λ where
        (inj₁ err) → Error err
        (inj₂ es)  →
          case stage of λ where
@@ -906,10 +906,10 @@ compile m stage doOpt arch source with parseStrict source
              (inj₁ err) → Error err
              (inj₂ compiled) → built-of arch (emitFromCompiled arch (inj₂ compiled))
 
--- | Same as `compile` but starting from a pre-resolved `Module`.
+-- | Same as `compile` but starting from a resolved module (`Resolved`).
 -- Haskell uses this after driving transitive-import I/O and calling
--- `resolveImports` to flatten `DImport` decls into owner-tagged
--- `DSignature` decls. Skips the `parse source` step of `compile`.
+-- `resolveImports`, which resolves the references and reads the imported
+-- modules' signatures. Skips the `parse source` step of `compile`.
 -- Plan 0.14 follow-up: takes AllocMode from CLI --alloc flag.
 -- Explicit-argument aux form (Plan 0.48): `cfm-ef-aux` dispatches on
 -- `extractFunctions`, `cfm-stage-aux` on the stage, and the Check/Build emit
@@ -980,32 +980,32 @@ litRangeError arch mod = badLit (firstBadLit arch mod)
 -- decision stays a subterm downstream proofs can rewrite by.
 -- plan 0.107: THE FILE the gated build produces — the verified compiler
 -- assembles it, the CLI prints it. One pipeline, two consumers.
-cfm-file-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
+cfm-file-gated : AllocMode → Bool → (arch : Arch) → (mod : Resolved)
                → List Entry
-               → Dec (AdmissibleM arch mod) → String ⊎ FileOf arch
-cfm-file-gated m doOpt arch mod es (no  _) = inj₁ (litRangeError arch mod)
+               → Dec (AdmissibleM arch (Resolved.rmodule mod)) → String ⊎ FileOf arch
+cfm-file-gated m doOpt arch mod es (no  _) = inj₁ (litRangeError arch (Resolved.rmodule mod))
 cfm-file-gated m doOpt arch mod es (yes _) =
   emitFromCompiled arch (compileEntries m doOpt emptyCScope es)
 
-cfm-file-ef : AllocMode → Bool → (arch : Arch) → Module → String ⊎ List Entry → String ⊎ FileOf arch
+cfm-file-ef : AllocMode → Bool → (arch : Arch) → Resolved → String ⊎ List Entry → String ⊎ FileOf arch
 cfm-file-ef m doOpt arch mod (inj₁ err) = inj₁ err
-cfm-file-ef m doOpt arch mod (inj₂ es)  = cfm-file-gated m doOpt arch mod es (admissibleM? arch mod)
+cfm-file-ef m doOpt arch mod (inj₂ es)  = cfm-file-gated m doOpt arch mod es (admissibleM? arch (Resolved.rmodule mod))
 
-compileFileFromModule : AllocMode → Bool → (arch : Arch) → Module → String ⊎ FileOf arch
+compileFileFromModule : AllocMode → Bool → (arch : Arch) → Resolved → String ⊎ FileOf arch
 compileFileFromModule m doOpt arch mod =
   cfm-file-ef m doOpt arch mod (extractFunctions mod)
 
-cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List Entry → CompileResult
+cfm-stage-aux : AllocMode → Stage → Bool → Arch → Resolved → List Entry → CompileResult
 cfm-stage-aux m Parse doOpt arch mod es = Parsed (funsOf es) (polysOf es)
 cfm-stage-aux m Check doOpt arch mod es =
   cfm-check-emit (compileEntries m doOpt emptyCScope es)
 cfm-stage-aux m Build doOpt arch mod es =
-  built-of arch (cfm-file-gated m doOpt arch mod es (admissibleM? arch mod))
+  built-of arch (cfm-file-gated m doOpt arch mod es (admissibleM? arch (Resolved.rmodule mod)))
 
-cfm-ef-aux : AllocMode → Stage → Bool → Arch → Module → String ⊎ List Entry → CompileResult
+cfm-ef-aux : AllocMode → Stage → Bool → Arch → Resolved → String ⊎ List Entry → CompileResult
 cfm-ef-aux m stage doOpt arch mod (inj₁ err) = Error err
 cfm-ef-aux m stage doOpt arch mod (inj₂ es)  = cfm-stage-aux m stage doOpt arch mod es
 
-compileFromModule : AllocMode → Stage → Bool → Arch → Module → CompileResult
+compileFromModule : AllocMode → Stage → Bool → Arch → Resolved → CompileResult
 compileFromModule m stage doOpt arch mod =
   cfm-ef-aux m stage doOpt arch mod (extractFunctions mod)

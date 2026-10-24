@@ -71,7 +71,7 @@ open import Once.Internal.Contract using (ISig)
 import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM
-open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases)
+open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)
 import Once.Internal.Parsing as LPa
 import Once.Internal.Resolution as LR
 import Once.Internal.Module as LM
@@ -219,7 +219,7 @@ private
   just-inj refl = refl
 
   -- `sound`'s conclusion, over the extractor's result (so the compiler's readings reduce)
-  Goal-ef : Arch → Source → (m : PM.Module) (ef : String ⊎ List Parser.Entry)
+  Goal-ef : Arch → Source → (m : PM.Resolved) (ef : String ⊎ List Parser.Entry)
           → (mt : LM.ModuleTyped-ef m ef) → LM.HasValidMain-ef m ef mt → Set
   Goal-ef arch src m ef mt hvm =
     Σ[ tp′ ∈ Typed ]
@@ -235,9 +235,10 @@ private
            → LPa.ParsesText (SP.Source.text src) (PM.mkModule dsU)
            → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
            → AdmissibleM arch (PM.mkModule dsR)
-           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (PM.mkModule dsR) ≡ ef
-           → (mt : LM.ModuleTyped-ef (PM.mkModule dsR) ef) (hvm : LM.HasValidMain-ef (PM.mkModule dsR) ef mt)
-           → Goal-ef arch src (PM.mkModule dsR) ef mt hvm
+           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ≡ ef
+           → (mt : LM.ModuleTyped-ef (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ef)
+             (hvm : LM.HasValidMain-ef (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ef mt)
+           → Goal-ef arch src (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ef mt hvm
   sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (_ , mi) =
     tp′ , (mm′ , GD.parses→ {SP.Source.text src} pt em , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds em adm ,
     Mn.view D , trans (sym (Dn.Denoted.sig-eq D)) (teleSig≡entrySig mt) , Dn.Denoted.uniq D , Mn.same-trace D
@@ -287,7 +288,7 @@ complete-of : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
               × Σ[ tp ∈ VC.Typed ] (srcC VC.⊢R tp) × VC.Admissible arch tp
 complete-of arch src tp′ (mm′ , pt′ , pms , den) adm =
   B.mkSource mm (SP.Source.text src) , ts
-  , (PM.mkModule (TC.dsR T) , TC.mt T , TC.hvm T) , (mU , ptU , LR.rm (TC.rds T)) , Lits.admissible← arch (TC.rds T) pwU adm
+  , (PM.resolved (PM.mkModule (TC.dsR T)) _ , TC.mt T , TC.hvm T) , (mU , ptU , LR.rm (TC.rds T)) , Lits.admissible← arch (TC.rds T) pwU adm
   where
     module TB = Once.Adequacy.SpecFront.TypedBack (arch-numerics arch)
     module TC = TB.TypedC

@@ -287,20 +287,20 @@ ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
     pstep (just _) _ ()
     pstep nothing fc eqp = step fc _ refl eqp
 
-crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
+crm-aux-sound : ∀ (doOpt : Bool) (m : P.Resolved)
   (ef : String ⊎ List Parser.Entry) {compiled : List C.CompiledFun} →
   C.compileResolvedModule-aux IR.Heap doOpt m ef ≡ inj₂ compiled →
   ModuleTyped-ef m ef
 crm-aux-sound doOpt m (inj₁ err) ()
 crm-aux-sound doOpt m (inj₂ es) eq = ce-sound doOpt C.emptyCScope es eq
 
-crm-sound : ∀ (doOpt : Bool) (m : P.Module) {compiled : List C.CompiledFun} →
+crm-sound : ∀ (doOpt : Bool) (m : P.Resolved) {compiled : List C.CompiledFun} →
   C.compileResolvedModule IR.Heap doOpt m ≡ inj₂ compiled →
   ModuleTyped m
 crm-sound doOpt m eq =
   crm-aux-sound doOpt m (Parser.extractFunctions m) eq
 
-moduleToIR-typed : ∀ (m : P.Module) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
+moduleToIR-typed : ∀ (m : P.Resolved) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR m ≡ just ir →
   ModuleTyped m
 moduleToIR-typed m mi =

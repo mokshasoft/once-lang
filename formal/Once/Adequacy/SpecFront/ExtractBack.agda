@@ -30,7 +30,7 @@ open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; 
 open import Once.Parser
   using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; sigsAdjacent; sigsAdjacent-def)
 open import Once.Adequacy.SpecFront.Extract
-  using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; pa-alias; pa-import;
+  using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; pa-alias; pa-import;
          SigReading; sr-mono; sr-open; sr-nonc)
 open import Once.Adequacy.SpecFront.Polys using (Adj; adj-nil; adj-sig; adj-other; nt-def; nt-sig; nt-alias; nt-import)
 
@@ -56,7 +56,6 @@ align-extract (xa-poly {x = x} (sr-nonc g ig ic) xa) rewrite ig | ic with x ≟ 
   where import Data.Empty
 align-extract (xa-nosig xa) rewrite align-extract xa = refl
 align-extract (xa-sig ps xa) rewrite ps | align-extract xa = refl
-align-extract (xa-isig ps xa) rewrite ps | align-extract xa = refl
 
 ------------------------------------------------------------------------
 -- Each type signature immediately before its definition: `sigsAdjacent`
@@ -112,12 +111,7 @@ walk-adj (SPr.w-sig _ _ _ w)          = sadj-sig (walk-adj w)
 walk-adj (SPr.w-nosig _ _ _ w)        = sadj-other snt-def (walk-adj w)
 
 module _ (Σ : Signature) where
-  open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias; ImportedSig)
-
-  private
-    sigs-adj : ∀ {sigs dc} → All ImportedSig sigs → Adj dc → Adj (sigs ++ dc)
-    sigs-adj []                          a = a
-    sigs-adj ((_ , _ , _ , refl) ∷ ss) a = adj-other nt-sig (sigs-adj ss a)
+  open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias)
 
   -- the compiler's resolved declarations keep the Spec's adjacency
   dr-adj : ∀ {ds dc} → DR ds dc → SAdj ds → Adj dc
@@ -126,7 +120,7 @@ module _ (Σ : Signature) where
   dr-adj (dr-def _ dr) (sadj-other snt-def a) = adj-other nt-def (dr-adj dr a)
   dr-adj (dr-sig dr) (sadj-other snt-sig a) = adj-other nt-sig (dr-adj dr a)
   dr-adj (dr-alias dr) (sadj-other snt-alias a) = adj-other nt-alias (dr-adj dr a)
-  dr-adj (dr-import ss dr) (sadj-other snt-import a) = adj-other nt-import (sigs-adj ss (dr-adj dr a))
+  dr-adj (dr-import dr) (sadj-other snt-import a) = adj-other nt-import (dr-adj dr a)
 
 -- …and without the `signature` declarations
 nonSigs-adj : ∀ {ds} → Adj ds → Adj (Parser.nonSigs ds)

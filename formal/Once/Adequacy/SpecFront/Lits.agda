@@ -29,7 +29,6 @@ import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
 open import Once.Denotation.Admissible using (rawIntLits; negLits; declIntLits; moduleIntLits; AdmissibleM)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
-open import Once.Parser.Module.Resolve using (signaturesWithOwner)
 import Once.Internal.Resolution as LR
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Target.Arch using (Arch; arch-numerics)
@@ -87,14 +86,6 @@ private
   go []       = []
   go (d ∷ ds) = declIntLits d ++ go ds
 
-  go-owned : ∀ o ds rest → go (signaturesWithOwner o ds ++ rest) ≡ go rest
-  go-owned o [] rest = refl
-  go-owned o (DSignature _ _ _ ∷ ds) rest = go-owned o ds rest
-  go-owned o (DTypeSig _ _ ∷ ds) rest = go-owned o ds rest
-  go-owned o (DFunDef _ _ ∷ ds) rest = go-owned o ds rest
-  go-owned o (DTypeAlias _ _ _ ∷ ds) rest = go-owned o ds rest
-  go-owned o (DImport _ ∷ ds) rest = go-owned o ds rest
-
 -- (`moduleIntLits`' walk, on the resolved declarations)
 decls-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR → go dsR ≡ go dsU
 decls-res LR.rds-nil = refl
@@ -102,7 +93,7 @@ decls-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb _) rds) = cong₂ _++_ (re
 decls-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) = decls-res rds
 decls-res (LR.rds-cons LR.nim-sig LR.rd-signature rds) = decls-res rds
 decls-res (LR.rds-cons LR.nim-alias LR.rd-typealias rds) = decls-res rds
-decls-res (LR.rds-import {impDs = impDs} {ds' = dsR′} _ rds) = trans (go-owned _ impDs dsR′) (decls-res rds)
+decls-res (LR.rds-import _ rds) = decls-res rds
 
 ------------------------------------------------------------------------
 -- The Spec image keeps the literals

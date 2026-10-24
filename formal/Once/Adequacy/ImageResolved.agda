@@ -54,7 +54,7 @@ import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Compile using (moduleToIR; moduleTable)
 open import Once.Parser.Module using ()
-open import Once.Parser.Module.Core using (Module)
+import Once.Parser.Module.Core as Core
 open import Once.Compile using (externs-of; prog-externs)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
@@ -130,7 +130,7 @@ module Fns (G : String → Set) (D : List String) (σ : ISig) (tbl : List IRFun)
 -- THE PROGRAM.
 ------------------------------------------------------------------------
 
-module Prog (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) where
+module Prog (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) where
 
   p   = irProgram (moduleTable m) ir
   rp  = C.rewrite-program p
@@ -206,7 +206,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : modul
         flat (inj₂ (inj₂ y)) = inj₂ y
 
 -- THE THEOREM (was `ImageWF.prog-resolved`, a postulate).
-prog-resolved : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
+prog-resolved : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
               → Resolved (prog-defs (irProgram (moduleTable m) ir)) (prog-externs (irProgram (moduleTable m) ir))
                          (arefs (C.image-of (irProgram (moduleTable m) ir)))
 prog-resolved m ir mi = Prog.resolved m ir mi (proj₁ (prog-sigops m ir mi)) (proj₂ (prog-sigops m ir mi))
@@ -237,7 +237,7 @@ open import Once.Adequacy.TelePosition using (entries-distinct; none-in-empty)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
 
-module Lib (m : Module) where
+module Lib (m : Core.Resolved) where
 
   tbl = moduleTable m
   lp  = C.lib-program tbl
@@ -314,6 +314,6 @@ module Lib (m : Module) where
       flat (inj₂ (inj₂ y)) = inj₂ y
 
 -- THE THEOREM (was `ImageWF.lib-resolved`, a postulate): for every module.
-lib-resolved : ∀ (m : Module)
+lib-resolved : ∀ (m : Core.Resolved)
              → Resolved (lib-defs m) (externs-of (C.lib-program (moduleTable m))) (arefs (C.lib-image (moduleTable m)))
 lib-resolved = Lib.resolved

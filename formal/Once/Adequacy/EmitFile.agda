@@ -29,7 +29,7 @@ open import Once.Compile
   using (CompiledFun; compileFileFromModule; cfm-file-ef; cfm-file-gated; emitFromCompiled; emitProgram; emitLibrary; FileOf; compileEntries; emptyCScope; compileResolvedModule-aux; moduleToIR; moduleToIR-aux; moduleTable; tableOfResult)
 open import Once.Parser using (Entry; extractFunctions)
 open import Once.Parser.Module using ()
-open import Once.Parser.Module.Core using (Module)
+open import Once.Parser.Module.Core using (Resolved)
 
 private
   inj₂-inj : ∀ {A B : Set} {x y : B} → inj₂ {A = A} x ≡ inj₂ y → x ≡ y
@@ -42,7 +42,7 @@ private
   at-funs arch (inj₂ funs) F ir eq mi =
     trans (sym (inj₂-inj eq)) (cong (λ x → Once.Compile.emit-at arch funs x) mi)
 
-  at-gate : ∀ (arch : Arch) (m : Module) (es : List Entry) (d : Dec (AdmissibleM arch m))
+  at-gate : ∀ (arch : Arch) (m : Resolved) (es : List Entry) (d : Dec (AdmissibleM arch (Resolved.rmodule m)))
               (F : FileOf arch) ir
           → cfm-file-gated Heap false arch m es d ≡ inj₂ F
           → moduleToIR-aux (compileEntries Heap false emptyCScope es) ≡ just ir
@@ -50,12 +50,12 @@ private
   at-gate arch m es (no _)  F ir () _
   at-gate arch m es (yes _) F ir eq mi = at-funs arch (compileEntries Heap false emptyCScope es) F ir eq mi
 
-  at-ef : ∀ (arch : Arch) (m : Module) (ef : String ⊎ List Entry) (F : FileOf arch) ir
+  at-ef : ∀ (arch : Arch) (m : Resolved) (ef : String ⊎ List Entry) (F : FileOf arch) ir
         → cfm-file-ef Heap false arch m ef ≡ inj₂ F
         → moduleToIR-aux (compileResolvedModule-aux Heap false m ef) ≡ just ir
         → F ≡ emitProgram arch (irProgram (tableOfResult (compileResolvedModule-aux Heap false m ef)) ir)
   at-ef arch m (inj₁ _)  F ir () _
-  at-ef arch m (inj₂ es) F ir eq mi = at-gate arch m es (admissibleM? arch m) F ir eq mi
+  at-ef arch m (inj₂ es) F ir eq mi = at-gate arch m es (admissibleM? arch (Resolved.rmodule m)) F ir eq mi
 
   -- plan 0.107 phase d: the same three steps for a module WITHOUT `main`.
   lib-funs : ∀ (arch : Arch) (r : String ⊎ List CompiledFun) (F : FileOf arch)
@@ -65,23 +65,23 @@ private
   lib-funs arch (inj₂ funs) F eq mi =
     trans (sym (inj₂-inj eq)) (cong (λ x → Once.Compile.emit-at arch funs x) mi)
 
-  lib-gate : ∀ (arch : Arch) (m : Module) (es : List Entry) (d : Dec (AdmissibleM arch m)) (F : FileOf arch)
+  lib-gate : ∀ (arch : Arch) (m : Resolved) (es : List Entry) (d : Dec (AdmissibleM arch (Resolved.rmodule m))) (F : FileOf arch)
            → cfm-file-gated Heap false arch m es d ≡ inj₂ F
            → moduleToIR-aux (compileEntries Heap false emptyCScope es) ≡ nothing
            → F ≡ emitLibrary arch (tableOfResult (compileEntries Heap false emptyCScope es))
   lib-gate arch m es (no _)  F () _
   lib-gate arch m es (yes _) F eq mi = lib-funs arch (compileEntries Heap false emptyCScope es) F eq mi
 
-  lib-ef : ∀ (arch : Arch) (m : Module) (ef : String ⊎ List Entry) (F : FileOf arch)
+  lib-ef : ∀ (arch : Arch) (m : Resolved) (ef : String ⊎ List Entry) (F : FileOf arch)
          → cfm-file-ef Heap false arch m ef ≡ inj₂ F
          → moduleToIR-aux (compileResolvedModule-aux Heap false m ef) ≡ nothing
          → F ≡ emitLibrary arch (tableOfResult (compileResolvedModule-aux Heap false m ef))
   lib-ef arch m (inj₁ _)  F () _
-  lib-ef arch m (inj₂ es) F eq mi = lib-gate arch m es (admissibleM? arch m) F eq mi
+  lib-ef arch m (inj₂ es) F eq mi = lib-gate arch m es (admissibleM? arch (Resolved.rmodule m)) F eq mi
 
 -- THE FILE OF A PROGRAM: what `compileFileFromModule` returns for a module
 -- whose `main` is `ir` is the emission of that module's program.
-file-is-emit : ∀ (arch : Arch) (m : Module) (F : FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
+file-is-emit : ∀ (arch : Arch) (m : Resolved) (F : FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
              → compileFileFromModule Heap false arch m ≡ inj₂ F
              → moduleToIR m ≡ just ir
              → F ≡ emitProgram arch (irProgram (moduleTable m) ir)
@@ -90,7 +90,7 @@ file-is-emit arch m F ir eq mi =
 
 -- …and THE FILE OF A LIBRARY: a module without `main` compiles to its
 -- functions only.
-file-is-lib : ∀ (arch : Arch) (m : Module) (F : FileOf arch)
+file-is-lib : ∀ (arch : Arch) (m : Resolved) (F : FileOf arch)
             → compileFileFromModule Heap false arch m ≡ inj₂ F
             → moduleToIR m ≡ nothing
             → F ≡ emitLibrary arch (moduleTable m)

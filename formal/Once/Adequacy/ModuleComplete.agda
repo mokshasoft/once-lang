@@ -286,7 +286,7 @@ ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr W rest) (main-o
       let (cfs , ir , rec , fm) = ce-find-complete (C.extendScope sc (funName fi) ty) rest mrest mi′
       in cf0 ∷ cfs , ir , chain rec , trans (findMain-skip cf0 cfs (λ e → ¬nm (bare-injective e))) fm
 
-moduleToIR-complete : ∀ (m : Core.Module) (mt : ModuleTyped m) → HasValidMain m mt →
+moduleToIR-complete : ∀ (m : Core.Resolved) (mt : ModuleTyped m) → HasValidMain m mt →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (λ ir → moduleToIR m ≡ just ir)
 moduleToIR-complete m mt hvm with Parser.extractFunctions m
 ... | inj₂ es with ce-find-complete C.emptyCScope mt (proj₁ hvm) (proj₂ hvm)
@@ -363,7 +363,7 @@ ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er pr W rest) {cfs} {ir}
           in inj₂ (ce-mainexists (C.extendScope sc (funName fi) ty) rest rec
                      (trans (sym (findMain-skip cf0 rest-cfs (λ e → ¬p (bare-injective e)))) fm′))
 
-moduleToIR-sound : ∀ (m : Core.Module) (mt : ModuleTyped m) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
+moduleToIR-sound : ∀ (m : Core.Resolved) (mt : ModuleTyped m) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR m ≡ just ir → HasValidMain m mt
 moduleToIR-sound m mt mi with Parser.extractFunctions m
 ... | inj₂ es with C.compileEntries IR.Heap false C.emptyCScope es in ce-eq

@@ -180,14 +180,14 @@ moduleSig-ef : (String ⊎ List Parser.Entry) → ISig
 moduleSig-ef (inj₁ _)  = []
 moduleSig-ef (inj₂ es) = entrySig es
 
-moduleSig : P.Module → ISig
+moduleSig : P.Resolved → ISig
 moduleSig m = moduleSig-ef (Parser.extractFunctions m)
 
-ModuleTyped-ef : P.Module → (String ⊎ List Parser.Entry) → Set
+ModuleTyped-ef : P.Resolved → (String ⊎ List Parser.Entry) → Set
 ModuleTyped-ef m (inj₁ _)  = ⊥
 ModuleTyped-ef m (inj₂ es) = ModTele emptyScope es
 
-ModuleTyped : P.Module → Set
+ModuleTyped : P.Resolved → Set
 ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions m)
 
 ------------------------------------------------------------------------
@@ -212,8 +212,8 @@ MainIn (ffi _ _ _ _ rest)                = MainIn rest
 MainIn (mono {fi = fi} {ty = ty} _ _ _ _ rest) = ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest
 MainIn (poly _ _ rest)                     = MainIn rest
 
-HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) → ModuleTyped-ef m ef → Set
+HasValidMain-ef : ∀ (m : P.Resolved) (ef : String ⊎ List Parser.Entry) → ModuleTyped-ef m ef → Set
 HasValidMain-ef m (inj₂ _) mt = MainsEffUU mt × MainIn mt
 
-HasValidMain : ∀ (m : P.Module) → ModuleTyped m → Set
+HasValidMain : ∀ (m : P.Resolved) → ModuleTyped m → Set
 HasValidMain m mt = HasValidMain-ef m (Parser.extractFunctions m) mt

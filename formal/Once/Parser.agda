@@ -41,7 +41,7 @@ open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue; isOpNameChar)
 open import Once.Parser.Type using (isUpperWord)
 open import Once.Parser.Module
-open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
+open import Once.Parser.Module.Core using (Module; mkModule; Resolved; resolved; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
 
 -- Parser smoke tests (plan 0.3 G1): pull into the compilation graph
 -- so a regression in parser behaviour fails `make parser`.
@@ -335,22 +335,15 @@ extractFunctions-go (DFunDef name body ∷ rest) (just (sigName , inj₂ pty)) w
 -- sig-less definition bare, so the two classifications agree.
 extractFunctions-go (DFunDef name body ∷ rest) nothing =
   extractFunctions-sigless name body rest (name ≟ "main")
--- Primitives: use RVar as placeholder body (actual impl is external).
--- Owned primitives (from resolved imports) get qualified names
--- `alias.name` — same textual form that the typechecker's
--- `lookupImport` uses for `RQualified`, so user code `exit@S`
--- resolves to this FunInfo without further wiring. Primitives must
--- be ground; polymorphic primitive signatures are rejected by
--- `projectSig`.
-extractFunctions-go (DSignature name owner ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
-extractFunctions-go (DSignature name nothing ty ∷ rest) nothing with projectSig name ty
+-- Primitives: use RVar as placeholder body (actual impl is external). A
+-- primitive's name is the one a reference to it resolves to: an own one's
+-- bare, an imported one's qualified by its module's path (`Resolved.imported`,
+-- the same textual form `lookupImport` uses). Primitives must be ground;
+-- polymorphic primitive signatures are rejected by `projectSig`.
+extractFunctions-go (DSignature name ty ∷ rest) (just (s , _)) = inj₁ (danglingSig s)
+extractFunctions-go (DSignature name ty ∷ rest) nothing with projectSig name ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go rest nothing) (mkFunInfo name (just gty) (RVar name) true)
-extractFunctions-go (DSignature name (just owner) ty ∷ rest) nothing with projectSig (showCanonical (canonical (owner ++ₗ name ∷ []))) ty
-... | inj₁ err  = inj₁ err
-... | inj₂ gty  =
-         let qname = showCanonical (canonical (owner ++ₗ name ∷ []))
-         in extractFunctions-consFun (extractFunctions-go rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
 {-# CATCHALL #-}
 extractFunctions-go (_ ∷ rest) nothing = extractFunctions-go rest nothing
 {-# CATCHALL #-}
@@ -498,33 +491,32 @@ sigsAdjacent-def s n (no _)  _   = inj₁ (danglingSig s)
 -- of its imports (the Spec's `Σ₀ ++ Σᵢ`), and every definition sees all of
 -- it: the signature entries come first, in that order.
 ownSigs : List Decl → List Decl
-ownSigs []                             = []
-ownSigs (DSignature n nothing t ∷ ds)  = DSignature n nothing t ∷ ownSigs ds
+ownSigs []                        = []
+ownSigs (DSignature n t ∷ ds)     = DSignature n t ∷ ownSigs ds
 {-# CATCHALL #-}
-ownSigs (_ ∷ ds)                       = ownSigs ds
+ownSigs (_ ∷ ds)                  = ownSigs ds
 
-importedSigs : List Decl → List Decl
-importedSigs []                            = []
-importedSigs (DSignature n (just o) t ∷ ds) = DSignature n (just o) t ∷ importedSigs ds
-{-# CATCHALL #-}
-importedSigs (_ ∷ ds)                      = importedSigs ds
+-- (an imported signature, under its resolved name)
+importedSigs : List (String × PolyType) → List Decl
+importedSigs []             = []
+importedSigs ((n , t) ∷ is) = DSignature n t ∷ importedSigs is
 
 nonSigs : List Decl → List Decl
-nonSigs []                       = []
-nonSigs (DSignature _ _ _ ∷ ds)  = nonSigs ds
+nonSigs []                    = []
+nonSigs (DSignature _ _ ∷ ds) = nonSigs ds
 {-# CATCHALL #-}
-nonSigs (d ∷ ds)                 = d ∷ nonSigs ds
+nonSigs (d ∷ ds)              = d ∷ nonSigs ds
 
-sigsFirst : List Decl → List Decl
-sigsFirst ds = ownSigs ds ++ₗ (importedSigs ds ++ₗ nonSigs ds)
+sigsFirst : List Decl → List (String × PolyType) → List Decl
+sigsFirst ds is = ownSigs ds ++ₗ (importedSigs is ++ₗ nonSigs ds)
 
 thenExtract : String ⊎ ⊤ → EFResult → EFResult
 thenExtract (inj₁ err) _ = inj₁ err
 thenExtract (inj₂ _)   r = r
 
-extractFunctions : Module → String ⊎ List Entry
-extractFunctions (mkModule ds) =
-  guardDistinct (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (sigsFirst ds) nothing))
+extractFunctions : Resolved → String ⊎ List Entry
+extractFunctions (resolved (mkModule ds) is) =
+  guardDistinct (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (sigsFirst ds is) nothing))
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all
 -- removed. The eager RawExpr-level inlining pipeline is replaced by

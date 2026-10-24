@@ -46,7 +46,7 @@ open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.NodesOK using (SigLeaves; sigop-syms)
 open import Once.Compile using (moduleToIR; moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; block-syms; calls-of; externs-of; prog-externs; is-extern?)
 open import Once.Parser.Module using ()
-open import Once.Parser.Module.Core using (Module)
+import Once.Parser.Module.Core as Core
 open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
 open import Once.Denotation.Program using (IRFun)
 open import Data.List.Relation.Unary.All using ([]; _∷_; tabulate)
@@ -66,7 +66,7 @@ prog-defs : IRProgram → List String
 prog-defs p = heap-symbol ∷ "_start" ∷ adefs (image-of p) ++ block-syms (program-blocks p)
 
 -- …and a library's (no `_start`).
-lib-defs : Module → List String
+lib-defs : Core.Resolved → List String
 lib-defs m = heap-symbol ∷ adefs (lib-image (moduleTable m)) ++ block-syms (lib-blocks (moduleTable m))
 
 Resolved : List String → List String → List String → Set
@@ -75,10 +75,10 @@ Resolved defs ext refs = All (λ s → s ∈ defs ⊎ s ∈ ext) refs
 -- What a program's code may name: a symbol its file defines (its blocks), or a
 -- symbol it calls that is defined elsewhere — an interpretation's (D274) or the
 -- Host's `leave` (D320).
-ProgG : Module → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → String → Set
+ProgG : Core.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → String → Set
 ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ prog-externs (irProgram (moduleTable m) ir)
 
-ProgP : Module → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → ∀ {A B} → SigOpInfo A B → Set
+ProgP : Core.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → ∀ {A B} → SigOpInfo A B → Set
 ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 
 -- That each file defines every symbol once is `Once.Adequacy.ImageUnique`'s
@@ -93,7 +93,7 @@ ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 ------------------------------------------------------------------------
 
 private
-  calls-ok : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
+  calls-ok : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
            → All (ProgG m ir) (calls-of (rewrite-program (irProgram (moduleTable m) ir)))
   calls-ok m ir = tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? block-syms (program-blocks p)))
     where
@@ -109,7 +109,7 @@ private
   table-ok (e ∷ es) a = leaf-syms-leaves (fbody e) (proj₁ (++⁻ (leaf-syms (fbody e)) a))
                       ∷ table-ok es (proj₂ (++⁻ (leaf-syms (fbody e)) a))
 
-prog-sigops : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir
+prog-sigops : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir
             → SigLeaves (ProgP m ir) (main (rewrite-program (irProgram (moduleTable m) ir)))
             × All (λ e → SigLeaves (ProgP m ir) (fbody e)) (table (rewrite-program (irProgram (moduleTable m) ir)))
 prog-sigops m ir _ =

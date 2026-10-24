@@ -227,14 +227,14 @@ ce-poly-p-doOpt doOpt sc pfi es nothing eq =
 ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
 ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq
 
-crm-aux-doOpt : ∀ (doOpt : Bool) (m : P.Module)
+crm-aux-doOpt : ∀ (doOpt : Bool) (m : P.Resolved)
   (ef : String ⊎ List Parser.Entry) {c : List C.CompiledFun} →
   C.compileResolvedModule-aux IR.Heap false m ef ≡ inj₂ c →
   Σ-syntax (List C.CompiledFun) (λ c' → C.compileResolvedModule-aux IR.Heap doOpt m ef ≡ inj₂ c')
 crm-aux-doOpt doOpt m (inj₁ err) ()
 crm-aux-doOpt doOpt m (inj₂ es) eq = ce-doOpt doOpt C.emptyCScope es eq
 
-crm-doOpt : ∀ (doOpt : Bool) (m : P.Module) {c : List C.CompiledFun} →
+crm-doOpt : ∀ (doOpt : Bool) (m : P.Resolved) {c : List C.CompiledFun} →
   C.compileResolvedModule IR.Heap false m ≡ inj₂ c →
   Σ-syntax (List C.CompiledFun) (λ c' → C.compileResolvedModule IR.Heap doOpt m ≡ inj₂ c')
 crm-doOpt doOpt m eq =
@@ -251,23 +251,23 @@ crm-doOpt doOpt m eq =
 -- which is exactly the point: an inadmissible module must NOT build.
 --
 -- Dispatching on the DECISION (explicit argument, no `with`) keeps the gate a
-cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) (es : List Parser.Entry)
-  (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
+cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) (es : List Parser.Entry)
+  (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) → AdmissibleM arch (P.Resolved.rmodule m) →
   {c : List C.CompiledFun} →
   C.compileEntries IR.Heap doOpt C.emptyCScope es ≡ inj₂ c →
   Σ-syntax String (λ asm → C.built-of arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ C.Built asm)
 cfm-built-gated doOpt arch m es (yes _)  adm eq = _ , cong (λ r → C.built-of arch (C.emitFromCompiled arch r)) eq
 cfm-built-gated doOpt arch m es (no ¬adm) adm eq = ⊥-elim (¬adm adm)
 
-cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
+cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) → AdmissibleM arch (P.Resolved.rmodule m) →
   (ef : String ⊎ List Parser.Entry) {c : List C.CompiledFun} →
   C.compileResolvedModule-aux IR.Heap doOpt m ef ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-ef-aux IR.Heap C.Build doOpt arch m ef ≡ C.Built asm)
 cfm-built-aux doOpt arch m adm (inj₁ err) ()
 cfm-built-aux doOpt arch m adm (inj₂ es) eq =
-  cfm-built-gated doOpt arch m es (admissibleM? arch m) adm eq
+  cfm-built-gated doOpt arch m es (admissibleM? arch (P.Resolved.rmodule m)) adm eq
 
-cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
+cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) → AdmissibleM arch (P.Resolved.rmodule m) →
   {c : List C.CompiledFun} →
   C.compileResolvedModule IR.Heap doOpt m ≡ inj₂ c →
   Σ-syntax String (λ asm → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.Built asm)
@@ -284,7 +284,7 @@ mtir-aux-inj₂ : ∀ (r : String ⊎ List C.CompiledFun) {ir : IR ⌊ Unit {0} 
 mtir-aux-inj₂ (inj₁ _) ()
 mtir-aux-inj₂ (inj₂ funs) eq = funs , refl
 
-moduleToIR-inj₂ : ∀ (m : P.Module) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
+moduleToIR-inj₂ : ∀ (m : P.Resolved) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} →
   moduleToIR m ≡ just ir →
   Σ-syntax (List C.CompiledFun) (λ funs → C.compileResolvedModule IR.Heap false m ≡ inj₂ funs)
 moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule IR.Heap false m) eq
@@ -302,8 +302,8 @@ moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule IR.Heap false 
 -- lived here while the IR gate did. Both are gone — the gate was a detector,
 -- it detected, and the defect it found is fixed. The invariant it stood for is
 -- recorded at the gate's old site in `Once.Compile`.
-main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
-  AdmissibleM arch m →
+main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+  AdmissibleM arch (P.Resolved.rmodule m) →
   moduleToIR m ≡ just ir →
   Σ-syntax String (λ asm → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.Built asm)
 main⇒built arch doOpt m ir adm mi =

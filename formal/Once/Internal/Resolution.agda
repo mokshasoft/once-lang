@@ -40,10 +40,10 @@ open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Internal.ResolvedRefs using (GoodRefs)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Internal.Syntax using (RawExpr)
-open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Parser.Module.Core using (Module; mkModule; Resolved; resolved; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Spec.Surface.Syntax using (Import)
 open import Once.Parser.Module.Resolve using (ModuleMap;
-  signaturesWithOwner; ownerOf; collectAliases; collectUnaliased)
+  importedOf; collectAliases; collectUnaliased)
 
 ------------------------------------------------------------------------
 -- Environments, as DATA (they are tables, not procedures).
@@ -208,7 +208,7 @@ data ResolvesDecl (um : UnaliasedMap) (am : AliasMap)
   -- than a catch-all with a negative side condition: the reader sees that every
   -- declaration form has been considered, and nothing has to supply a `≢`.
   rd-typesig   : ∀ {n t}     → ResolvesDecl um am (DTypeSig n t) (DTypeSig n t)
-  rd-signature : ∀ {n o t} → ResolvesDecl um am (DSignature n o t) (DSignature n o t)
+  rd-signature : ∀ {n t} → ResolvesDecl um am (DSignature n t) (DSignature n t)
   rd-typealias : ∀ {n ps t}  → ResolvesDecl um am (DTypeAlias n ps t) (DTypeAlias n ps t)
   rd-import    : ∀ {imp}     → ResolvesDecl um am (DImport imp) (DImport imp)
 
@@ -219,19 +219,18 @@ data ResolvesDecl (um : UnaliasedMap) (am : AliasMap)
 -- WHERE THE LINE IS. This plan specifies the NAME MAP — which canonical name a
 -- written reference denotes. It does NOT relationalise every helper: the module
 -- table lookup is `FirstAt` (a real relation, because first-match matters), but
--- `signaturesWithOwner`, `ownerOf`, `collectAliases` and `collectUnaliased` are
+-- `importedOf`, `collectAliases` and `collectUnaliased` are
 -- structural projections and pure renderers, and are named directly — the same
 -- status `showCanonical` already has inside the typing rules. Nothing here
 -- names a DECIDER about what a name means, which is the property that makes the
 -- bridge lemmas non-trivial.
--- A declaration that is not an import. `resolveDecls` REPLACES an import and
--- maps `canonDecl` over everything else, so the two cases must be kept apart:
--- without this, `rds-cons` could also derive "a `DImport` survives", which is
--- not what the resolver does.
+-- A declaration that is not an import. `resolveDecls` keeps an import as it
+-- is and maps `canonDecl` over everything else, so the two cases are kept
+-- apart.
 data NotImport : Decl → Set where
   nim-typesig : ∀ {n t}     → NotImport (DTypeSig n t)
   nim-fundef  : ∀ {n b}     → NotImport (DFunDef n b)
-  nim-sig     : ∀ {n o t} → NotImport (DSignature n o t)
+  nim-sig     : ∀ {n t}     → NotImport (DSignature n t)
   nim-alias   : ∀ {n ps t}  → NotImport (DTypeAlias n ps t)
 
 data ResolvesDecls (mm : ModuleMap)
@@ -243,17 +242,16 @@ data ResolvesDecls (mm : ModuleMap)
            → ResolvesDecl um am d d'
            → ResolvesDecls mm um am ds ds'
            → ResolvesDecls mm um am (d ∷ ds) (d' ∷ ds')
-  -- An import is FOLLOWED by the imported module's signatures, owned by the
-  -- importing site; it stays where it was written (R10: a type signature an
-  -- import separates from its definition is still separated). The module table
-  -- is consulted by first match.
+  -- An import stays where it was written (R10: a type signature an import
+  -- separates from its definition is still separated); the module it names
+  -- is one of the table's, consulted by first match. Its signatures are read
+  -- from the table (`importedOf`), not copied in (plan 0.122).
   rds-import : ∀ {imp impDs ds ds'}
              → FirstAt (Import.path imp) (mkModule impDs) mm
              → ResolvesDecls mm um am ds ds'
-             → ResolvesDecls mm um am (DImport imp ∷ ds)
-                             (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ ds')
+             → ResolvesDecls mm um am (DImport imp ∷ ds) (DImport imp ∷ ds')
 
-data ResolvesModule (mm : ModuleMap) : Module → Module → Set where
+data ResolvesModule (mm : ModuleMap) : Module → Resolved → Set where
   rm : ∀ {ds ds'}
      → ResolvesDecls mm (collectUnaliased mm ds) (collectAliases ds) ds ds'
-     → ResolvesModule mm (mkModule ds) (mkModule ds')
+     → ResolvesModule mm (mkModule ds) (resolved (mkModule ds') (importedOf mm ds))

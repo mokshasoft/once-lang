@@ -47,16 +47,13 @@ data Decl : Set where
   -- via `isGround`/`extractGround`. Plan 0.6 Phase B.
   DTypeSig   : String → PolyType → Decl
   DFunDef    : String → RawExpr → Decl
-  -- | `DSignature name owner ty`
-  -- `owner = nothing`  : source-level primitive (user-written).
-  -- `owner = just p`   : primitive inlined by import resolution, owned by
-  --                      the imported module's full path `p` (plan 0.121:
-  --                      its key is `showCanonical (canonical (p ++ [name]))`,
-  --                      the name a reference to it resolves to).
+  -- | `DSignature name ty`: a primitive the module declares. An imported
+  -- module's are read from the module map (`Resolved.imported`), as the
+  -- Spec's `Imported` reads them; never copied in (plan 0.122).
   -- Plan 0.98 E / D226: no effect annotation. An external arrow's effect is
   -- its CODOMAIN (`Void` halts, `Unit` emits), so `! halts` had nothing left
   -- to say.
-  DSignature : String → Maybe (List String) → PolyType → Decl
+  DSignature : String → PolyType → Decl
   DTypeAlias : String → List String → PolyType → Decl
   DImport    : Import → Decl
 
@@ -64,6 +61,17 @@ record Module : Set where
   constructor mkModule
   field
     decls : List Decl
+
+-- | A module after import resolution: its declarations, references resolved
+-- (the imports kept where they are written), and the signatures of the
+-- modules it imports, each under the name a reference to it resolves to
+-- (`showCanonical (canonical (path ++ [name]))`) — the Spec's `Imported`
+-- part of the program's signature (plan 0.122).
+record Resolved : Set where
+  constructor resolved
+  field
+    rmodule  : Module
+    imported : List (String × PolyType)
 
 ------------------------------------------------------------------------
 -- Length-bound wrappers for sub-parsers.

@@ -43,7 +43,7 @@ open import Once.Arith.SigOp.Block using (block-name)
 open Once.Arith.Machine.IR.ArithBlock using (block-body)
 open import Once.Compile using (moduleTable; image-of; program-blocks; rewrite-program; lib-image; lib-blocks; dedup-go; dedup-blocks; block-symbol; block-syms; calls-of; externs-of; prog-externs; is-extern?)
 open import Once.Parser.Module using ()
-open import Once.Parser.Module.Core using (Module)
+open import Once.Parser.Module.Core using (Resolved)
 open import Once.Adequacy.ImageWF using (prog-defs; lib-defs)
 
 ------------------------------------------------------------------------
@@ -150,7 +150,7 @@ private
 prog-defs-valid : ∀ (p : IRProgram) → All AsmSym (prog-defs p)
 prog-defs-valid p = heap-asm ∷ start-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))
 
-lib-defs-valid : ∀ (m : Module) → All AsmSym (lib-defs m)
+lib-defs-valid : ∀ (m : Resolved) → All AsmSym (lib-defs m)
 lib-defs-valid m = heap-asm ∷ ++⁺ (adefs-asm (lib-image (moduleTable m))) (block-syms-asm (lib-blocks (moduleTable m)))
 
 -- Every symbol a SigOp calls — itself or (a comparison) its block.

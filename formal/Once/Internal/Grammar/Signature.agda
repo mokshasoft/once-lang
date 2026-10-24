@@ -26,4 +26,4 @@ data ParsesSignature : List Token → Decl → List Token → Set where
   psig-mk : ∀ {name residual ty rest'} →
             colonHead residual ≡ true →
             ParsesPolyType (colDrop1 residual) ty rest' →
-            ParsesSignature (TWord name ∷ residual) (DSignature name nothing ty) rest'
+            ParsesSignature (TWord name ∷ residual) (DSignature name ty) rest'

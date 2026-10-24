@@ -41,7 +41,7 @@ import Once.Internal.Resolution as LR
 import Data.List.Relation.Unary.All as All
 open import Data.Product using (Σ-syntax)
 open import Once.Adequacy.SpecFront.Extract
-  using (IsSig; is-sig; XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; pa-alias; pa-import;
+  using (IsSig; is-sig; XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; pa-alias; pa-import;
          SigReading; sr-mono; sr-open; sr-nonc)
 
 -- The telescope entries' names.
@@ -63,7 +63,7 @@ poly-names (Parser.e-fun _ ∷ es)  m           = there (poly-names es m)
 -- Each type signature immediately followed by its definition.
 data NotTSig : Decl → Set where
   nt-def    : ∀ {x b}       → NotTSig (DFunDef x b)
-  nt-sig    : ∀ {x o T}     → NotTSig (DSignature x o T)
+  nt-sig    : ∀ {x T}       → NotTSig (DSignature x T)
   nt-alias  : ∀ {x ps′ t}   → NotTSig (DTypeAlias x ps′ t)
   nt-import : ∀ {i}         → NotTSig (DImport i)
 
@@ -78,7 +78,7 @@ mutual
   adj-of [] _ = adj-nil
   adj-of (DTypeSig n _ ∷ ds) e = adj-pend n ds e
   adj-of (DFunDef n _ ∷ ds) e = adj-other nt-def (adj-of ds e)
-  adj-of (DSignature _ _ _ ∷ ds) e = adj-other nt-sig (adj-of ds e)
+  adj-of (DSignature _ _ ∷ ds) e = adj-other nt-sig (adj-of ds e)
   adj-of (DTypeAlias _ _ _ ∷ ds) e = adj-other nt-alias (adj-of ds e)
   adj-of (DImport _ ∷ ds) e = adj-other nt-import (adj-of ds e)
 
@@ -86,7 +86,7 @@ mutual
   adj-pend s [] ()
   adj-pend s (DTypeSig _ _ ∷ ds) ()
   adj-pend s (DFunDef n b ∷ ds) e = adj-def s n b ds (s ≟ n) e
-  adj-pend s (DSignature _ _ _ ∷ ds) ()
+  adj-pend s (DSignature _ _ ∷ ds) ()
   adj-pend s (DTypeAlias _ _ _ ∷ ds) ()
   adj-pend s (DImport _ ∷ ds) ()
 
@@ -110,7 +110,6 @@ defs-of (_ ∷ _ ∷ n) (xa-mono _ xa) = de-fun refl ∷ defs-of n xa
 defs-of (_ ∷ _ ∷ n) (xa-poly _ xa) = de-poly ∷ defs-of n xa
 defs-of (_ ∷ n) (xa-nosig xa) = de-fun refl ∷ defs-of n xa
 defs-of (n ∷ _) (xa-sig _ _) = ⊥-elim (n is-sig)
-defs-of (n ∷ _) (xa-isig _ _) = ⊥-elim (n is-sig)
 
 -- An entry's kind: a definition, polymorphic exactly when one of `ps`.
 EntryKind : List String → Parser.Entry → Set

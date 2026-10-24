@@ -57,7 +57,7 @@ open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo; FunInfo; PolyFun
 open import Once.Parser.Lexer using (isIdentStart; isOpNameChar; opNameChars)
 import Once.Parser.Module.Core as PC
 open import Once.Parser.Module.Core using (DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig; IsSig; is-sig; FFIEntry)
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; IsSig; is-sig; FFIEntry)
 open import Once.Adequacy.SpecFront.Render using (render-inj)
 open import Once.Adequacy.SpecFront.Words using (Ident; DefName; IdentName; KeysI; KeysW; ident-word; DeclW)
 open import Once.Adequacy.SpecFront.SigFacts using (rname)
@@ -297,7 +297,7 @@ defNamesC : List PC.Decl → List String
 defNamesC []                        = []
 defNamesC (DFunDef x _ ∷ ds)        = x ∷ defNamesC ds
 defNamesC (DTypeSig _ _ ∷ ds)       = defNamesC ds
-defNamesC (DSignature _ _ _ ∷ ds)   = defNamesC ds
+defNamesC (DSignature _ _ ∷ ds)   = defNamesC ds
 defNamesC (DTypeAlias _ _ _ ∷ ds)   = defNamesC ds
 defNamesC (DImport _ ∷ ds)          = defNamesC ds
 
@@ -360,23 +360,17 @@ xa-names (xa-mono _ xa)  (_ ∷ _ ∷ ns) = let (a , e) = xa-names xa ns in de-f
 xa-names (xa-poly _ xa)  (_ ∷ _ ∷ ns) = let (a , e) = xa-names xa ns in de-poly ∷ a , cong (_ ∷_) e
 xa-names (xa-nosig xa)   (_ ∷ ns)     = let (a , e) = xa-names xa ns in de-fun ∷ a , cong (_ ∷_) e
 xa-names (xa-sig _ _)    (n ∷ _)      = ⊥-elim (n is-sig)
-xa-names (xa-isig _ _)   (n ∷ _)      = ⊥-elim (n is-sig)
 
 nonSigs-names : ∀ ds → defNamesC (Parser.nonSigs ds) ≡ defNamesC ds
 nonSigs-names []                       = refl
 nonSigs-names (DFunDef _ _ ∷ ds)       = cong (_ ∷_) (nonSigs-names ds)
 nonSigs-names (DTypeSig _ _ ∷ ds)      = nonSigs-names ds
-nonSigs-names (DSignature _ _ _ ∷ ds)  = nonSigs-names ds
+nonSigs-names (DSignature _ _ ∷ ds)  = nonSigs-names ds
 nonSigs-names (DTypeAlias _ _ _ ∷ ds)  = nonSigs-names ds
 nonSigs-names (DImport _ ∷ ds)         = nonSigs-names ds
 
 module _ (Σ : Signature) where
-  open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias; ImportedSig)
-
-  private
-    sigs-names : ∀ {sigs} dc → All ImportedSig sigs → defNamesC (sigs ++ dc) ≡ defNamesC dc
-    sigs-names dc []                        = refl
-    sigs-names dc ((_ , _ , _ , refl) ∷ ss) = sigs-names dc ss
+  open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias)
 
   -- The compiler's resolved declarations define the Spec's names.
   dr-names : ∀ {ds dc} → DR ds dc → defNamesC dc ≡ defNamesS ds
@@ -384,5 +378,5 @@ module _ (Σ : Signature) where
   dr-names (dr-tsig dr)      = dr-names dr
   dr-names (dr-def _ dr)     = cong (_ ∷_) (dr-names dr)
   dr-names (dr-sig dr)       = dr-names dr
-  dr-names (dr-import {dc = dc} ss dr) = trans (sigs-names dc ss) (dr-names dr)
+  dr-names (dr-import dr)   = dr-names dr
   dr-names (dr-alias dr)     = dr-names dr

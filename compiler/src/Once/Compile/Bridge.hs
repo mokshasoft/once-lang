@@ -24,6 +24,8 @@ module Once.Compile.Bridge
   , PolyFunSig (..)
     -- * Module AST (opaque handle + import inspection)
   , Module
+  , Resolved
+  , resolvedModule
   , ImportRef (..)
     -- * One-shot compilation (legacy)
   , compile
@@ -91,6 +93,14 @@ data CompileResult
 -- | Opaque Module handle — a wrapped Agda `Module` AST. Haskell
 -- doesn't introspect the internals except through `moduleImports`.
 newtype Module = Module MMC.T_Module_20
+
+-- | Opaque resolved-module handle: the resolved module, and the signatures
+-- of the modules it imports (the Agda `Resolved`).
+newtype Resolved = Resolved MMC.T_Resolved_XX
+
+-- | The resolved module itself.
+resolvedModule :: Resolved -> Module
+resolvedModule (Resolved r) = Module (MMC.d_rmodule_XX r)
 
 -- | An `import` decl seen inside a parsed module. Haskell uses this
 -- to decide which files to load before calling `resolveImports`.
@@ -202,28 +212,27 @@ moduleHasMain (Module m) = MEN.d_module'45'has'45'main_6 m
 --
 -- Until this existed, D116's "K3 removed the refusal; this is what replaces it"
 -- was only half true — the refusal was gone and the replacement unreachable.
-moduleWarnings :: Arch -> Text -> Module -> [Text]
-moduleWarnings arch src (Module m) =
+moduleWarnings :: Arch -> Text -> Resolved -> [Text]
+moduleWarnings arch src (Resolved m) =
   map agdaToText (MW.d_warningsFor_378 (toMArch arch) (textToAgda src) (unsafeCoerce m))
 
--- | Flatten imports: for each `DImport path (just alias)` in the
--- user's module, substitute the primitives of the imported module
--- (owner-tagged with the alias), dropping the `DImport` itself.
+-- | Resolve the user's module against the module map: its references are
+-- resolved, and the signatures of the modules it imports are read from the
+-- map (the Spec's `Imported`).
 --
--- The caller must supply a `ModuleMap` containing every transitive
--- dependency, already fully resolved (i.e. each entry's own
--- `DImport`s have been flattened). Haskell builds this by
--- topologically sorting and resolving bottom-up.
+-- The caller must supply a `ModuleMap` containing every module the user's
+-- module imports, as written. Haskell builds this bottom-up, resolving each
+-- imported module to check it.
 resolveImports
-  :: [([Text], Module)]   -- ^ Map from dotted import path to resolved Module
+  :: [([Text], Module)]   -- ^ Map from dotted import path to the written Module
   -> Module               -- ^ User's module
-  -> Either Text Module
+  -> Either Text Resolved
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
       agdaResult = MMR.d_resolveImports_862 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
-       MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
+       MSum.C_inj'8322'_42 r   -> Right (Resolved (unsafeCoerce r))
   where
     mapEntry :: ([Text], Module) -> MSigma.T_Σ_14
     mapEntry (path, Module m) =
@@ -250,8 +259,8 @@ toMAllocMode :: AllocMode -> MCIR.T_AllocMode_4
 toMAllocMode AllocStack = MCIR.C_Stack_6
 toMAllocMode AllocHeap  = MCIR.C_Heap_8
 
-compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Module -> CompileResult
-compileFromModule m stage doOpt arch (Module mod_) =
+compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Resolved -> CompileResult
+compileFromModule m stage doOpt arch (Resolved mod_) =
   fromMResult
     (MC.d_compileFromModule_1782
        (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))

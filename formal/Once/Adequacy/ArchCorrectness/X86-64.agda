@@ -421,7 +421,7 @@ BlockRunsHyp-x86-64 = FFOx.BlockRunsT
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
 file-tr-x86-64 :
-  ∀ (brs : BlockRunsHyp-x86-64) (m : P.Module) (F : RF.Image)
+  ∀ (brs : BlockRunsHyp-x86-64) (m : P.Resolved) (F : RF.Image)
   → C.compileFileFromModule IR.Heap false x86-64 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
   → (oq : o ≡ C.entry-owner)

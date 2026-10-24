@@ -37,12 +37,15 @@ import Once.Spec.Surface.Program as SPr
 import Once.Internal.Resolution as LR
 import Once.Parser as Parser
 open import Once.Parser using (Entry; entryNameOf)
-open import Once.Parser.Module.Core using (Decl; mkModule)
+open import Once.Parser.Module.Core using (Decl; mkModule; resolved)
+open import Once.Parser.Module.Resolve using (importedOf)
+open import Once.Spec.Surface.Syntax using (PolyType)
+open import Data.String using (String)
 open import Once.Internal.Module using (entrySig)
 open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Decl using (DEmb)
 open import Once.Adequacy.SpecFront.ModRel using (ModRel)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-sig; xa-isig; IsSig; is-sig; own-sigs; imported-sigs; nonSigs-none; ffi-of; FFIFacts)
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-sig; IsSig; is-sig; own-sigs; imported-sigs; nonSigs-none; ffi-of; FFIFacts)
 open import Once.Adequacy.SpecFront.ExtractBack using (align-extract; adj-ok; walk-adj; dr-adj; nonSigs-adj; xalign-of)
 open import Once.Adequacy.SpecFront.SigOf using (own-res)
 open import Once.Adequacy.SpecFront.SigOfBack using (xa-++; sigs-table-++; toISig-++; wf-++; own-part←; imp-part←; all-++)
@@ -59,7 +62,6 @@ private
   sig-names []           xa-nil        = refl
   sig-names (is-sig ∷ a) (xa-pass () _)
   sig-names (is-sig ∷ a) (xa-sig _ x)  = cong (_ ∷_) (sig-names a x)
-  sig-names (is-sig ∷ a) (xa-isig _ x) = cong (_ ∷_) (sig-names a x)
 
   zip : ∀ {A : Set} {P Q R : A → Set} → (∀ {x} → P x → Q x → R x) → ∀ {xs} → All P xs → All Q xs → All R xs
   zip f []       []       = []
@@ -74,11 +76,11 @@ private
 
 -- What the extractor makes of the module: the FFI declarations' entries,
 -- then the definitions'.
-record Extracted (dsR : List Decl) (Σ : Signature) : Set where
+record Extracted (dsR : List Decl) (is : List (String × PolyType)) (Σ : Signature) : Set where
   field
     fs esN    : List Entry
-    extracted : Parser.extractFunctions (mkModule dsR) ≡ inj₂ (fs ++ esN)
-    sigs      : XAlign (Parser.ownSigs dsR ++ Parser.importedSigs dsR) fs
+    extracted : Parser.extractFunctions (resolved (mkModule dsR) is) ≡ inj₂ (fs ++ esN)
+    sigs      : XAlign (Parser.ownSigs dsR ++ Parser.importedSigs is) fs
     defs      : XAlign (Parser.nonSigs dsR) esN
     table     : toISig Σ ≡ entrySig fs
     facts     : All FFIFacts fs
@@ -90,8 +92,8 @@ extract-ok : ∀ {mm mm′ um am dsU dsR ds′ dsR′ Σ E s′} {S′ : _} {nm�
            → SPr.ResolvesDecls E ds′ dsR′ → DR Σ dsR′ dsR
            → SPr.SignatureOf mm′ ds′ Σ → WellFormed Σ → OneName Σ
            → SPr.Walk Σ S₀ nm₀ tl₀ dsR′ S′ nm′ tl′ → Injective _≡_ _≡_ nm′ → (∀ i {t} → ¬ ((nm′ i ∶ t) ∈ Σ))
-           → Extracted dsR Σ
-extract-ok {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} wm wd mr rds pw rd dr sig@(Σ₀ , Σᵢ , so , im , refl) wf one w inj ns =
+           → Extracted dsR (importedOf mm dsU) Σ
+extract-ok {mm = mm} {dsU = dsU} {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} wm wd mr rds pw rd dr sig@(Σ₀ , Σᵢ , so , im , refl) wf one w inj ns =
   record
     { fs = fs ; esN = esN
     ; extracted = trans (cong₂ (λ a r → Parser.guardDistinct (Parser.thenExtract a r)) (adj-ok adj) (align-extract xw))
@@ -113,9 +115,9 @@ extract-ok {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} wm wd mr rds pw rd dr sig@(Σ
     xN = proj₂ pN
     fs = fs₀ ++ fsᵢ
     xs = xa-++ x₀ xᵢ
-    xw : XAlign (Parser.sigsFirst dsR) (fs ++ esN)
-    xw = subst (XAlign (Parser.sigsFirst dsR)) (sym (++-assoc fs₀ fsᵢ esN)) (xa-++ x₀ (xa-++ xᵢ xN))
-    isF = AllP.++⁺ (own-sigs dsR) (imported-sigs dsR)
+    xw : XAlign (Parser.sigsFirst dsR (importedOf mm dsU)) (fs ++ esN)
+    xw = subst (XAlign (Parser.sigsFirst dsR (importedOf mm dsU))) (sym (++-assoc fs₀ fsᵢ esN)) (xa-++ x₀ (xa-++ xᵢ xN))
+    isF = AllP.++⁺ (own-sigs dsR) (imported-sigs (importedOf mm dsU))
     table : toISig Σ ≡ entrySig fs
     table = trans (toISig-++ Σ₀ Σᵢ)
                   (trans (cong₂ _++_ (proj₁ (proj₂ (proj₂ p₀))) (proj₁ (proj₂ (proj₂ pᵢ)))) (sym (sigs-table-++ (own-sigs dsR) x₀ fsᵢ)))

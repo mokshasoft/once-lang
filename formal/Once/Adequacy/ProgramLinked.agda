@@ -540,12 +540,12 @@ linv₀ = record { iself = [] ; imp-ok = λ () ; tel-ok = λ _ _ {x} {A} pr _ �
         no-poly (_ , () , _)
 
 private
-  typed-ef : ∀ (m : P.Module) (ef : _) → ModuleTyped-ef m ef → ∀ {es} → ef ≡ inj₂ es → ModTele (AS.scopeOf C.emptyCScope) es
+  typed-ef : ∀ (m : P.Resolved) (ef : _) → ModuleTyped-ef m ef → ∀ {es} → ef ≡ inj₂ es → ModTele (AS.scopeOf C.emptyCScope) es
   typed-ef m .(inj₂ _) mt refl = mt
 
 -- plan 0.105: linked against the interpretation signatures the module is
 -- compiled against (`moduleSig`, its FFI declarations).
-moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
+moduleToProgram-linked : ∀ (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
                        → moduleToIR m ≡ just ir → LinkedProgram (moduleSig m) (irProgram (moduleTable m) ir)
 moduleToProgram-linked m ir mi with FB.program-node m ir mi
 ... | es , ef , b , ceq =

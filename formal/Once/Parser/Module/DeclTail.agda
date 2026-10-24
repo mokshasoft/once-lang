@@ -107,7 +107,7 @@ psig-poly : (toks : List Token) (name : String) (residual : List Token)
             ParseAtB {Decl} toks
 psig-poly toks name residual bnd nothing = nothing
 psig-poly toks name residual bnd (just (ty , rest' , bnd')) =
-  just (DSignature name nothing ty
+  just (DSignature name ty
        , rest'
        , <-trans (<-≤-trans bnd' (colDrop1-≤ residual)) bnd)
 

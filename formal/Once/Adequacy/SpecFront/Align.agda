@@ -9,8 +9,8 @@
 -- reads its resolved declarations into entries, the `signature`s first
 -- (`sigsFirst`), the definitions after (`Extract.XAlign` of `nonSigs`). Given
 -- the two declaration lists related one by one (`DR`: a definition's body by
--- `RX`, a type signature by its reading, an own signature, an import followed
--- by its module's signatures, an alias) and each compiler type signature
+-- `RX`, a type signature by its reading, an own signature, an import, an
+-- alias) and each compiler type signature
 -- followed by its definition (`Adj`, the extractor's check), the definitions'
 -- entries are aligned with the Spec's declarations as the walk needs
 -- (`Align`, `align-of`).
@@ -58,7 +58,7 @@ open import Once.Internal.Core.Translate Σ using (monoSchema)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open import Once.Adequacy.SpecFront.Expr using (RX)
 open import Once.Adequacy.SpecFront.SchemaOf using (schemaOf-S)
-open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig;
+open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig;
   pa-alias; pa-import; SigReading; sr-mono; sr-open; sr-nonc)
 
 ------------------------------------------------------------------------
@@ -86,16 +86,12 @@ data Align : List SX.Decl → List Parser.Entry → Set where
 -- The two resolved declaration lists
 ------------------------------------------------------------------------
 
--- Imported signatures, owned by the importing site.
-ImportedSig : Decl → Set
-ImportedSig d = Σ[ x ∈ String ] Σ[ o ∈ List String ] Σ[ T ∈ PolyType ] d ≡ DSignature x (just o) T
-
 data DR : List SX.Decl → List Decl → Set where
   dr-nil    : DR [] []
   dr-tsig   : ∀ {x T ds dc} → DR ds dc → DR (SX.DTypeSig x (toPoly T) ∷ ds) (DTypeSig x T ∷ dc)
   dr-def    : ∀ {x e e′ ds dc} → RX [] e e′ → DR ds dc → DR (SX.DFunDef x e′ ∷ ds) (DFunDef x e ∷ dc)
-  dr-sig    : ∀ {x T′ T ds dc} → DR ds dc → DR (SX.DSignature x T′ ∷ ds) (DSignature x nothing T ∷ dc)
-  dr-import : ∀ {i i′ sigs ds dc} → All ImportedSig sigs → DR ds dc → DR (SX.DImport i′ ∷ ds) (DImport i ∷ sigs ++ dc)
+  dr-sig    : ∀ {x T′ T ds dc} → DR ds dc → DR (SX.DSignature x T′ ∷ ds) (DSignature x T ∷ dc)
+  dr-import : ∀ {i i′ ds dc} → DR ds dc → DR (SX.DImport i′ ∷ ds) (DImport i ∷ dc)
   dr-alias  : ∀ {x ps′ t x′ ps″ t′ ds dc} → DR ds dc → DR (SX.DTypeAlias x′ ps″ t′ ∷ ds) (DTypeAlias x ps′ t ∷ dc)
 
 ------------------------------------------------------------------------
@@ -141,10 +137,6 @@ ground-schemaOf T g =
 ------------------------------------------------------------------------
 
 private
-  nonSigs-imported : ∀ (sigs dc : List Decl) → All ImportedSig sigs → Parser.nonSigs (sigs ++ dc) ≡ Parser.nonSigs dc
-  nonSigs-imported []          dc []                       = refl
-  nonSigs-imported (_ ∷ sigs)  dc ((x , o , T , refl) ∷ as) = nonSigs-imported sigs dc as
-
   -- the reading's schema
   mono-schema : ∀ {T ty} → SigReading T (just ty) → SchemaOf (toPoly T) ((monoSchema ty))
   mono-schema {T} (sr-mono g c _ _) = ground-schemaOf T g
@@ -159,12 +151,7 @@ private
 align-of : ∀ {ds dc es} → DR ds dc → Adj dc → XAlign (Parser.nonSigs dc) es → Align ds es
 align-of dr-nil adj-nil xa-nil = al-nil
 align-of (dr-sig r) (adj-other _ a) xa = al-skip nd-sig (align-of r a xa)
-align-of (dr-import {sigs = sigs} {dc = dc} as r) (adj-other _ a) (xa-pass pa-import xa) =
-  al-skip nd-import (align-of r (adj-rest sigs as a) (subst (λ l → XAlign l _) (nonSigs-imported sigs dc as) xa))
-  where
-    adj-rest : ∀ (sigs : List Decl) {dc} → All ImportedSig sigs → Adj (sigs ++ dc) → Adj dc
-    adj-rest []         []                       a′ = a′
-    adj-rest (_ ∷ sigs) ((x , o , T , refl) ∷ as′) (adj-other _ a′) = adj-rest sigs as′ a′
+align-of (dr-import r) (adj-other _ a) (xa-pass pa-import xa) = al-skip nd-import (align-of r a xa)
 align-of (dr-alias r) (adj-other _ a) (xa-pass pa-alias xa) = al-skip nd-alias (align-of r a xa)
 align-of (dr-def rx r) (adj-other _ a) (xa-nosig xa) = al-nosig rx (align-of r a xa)
 align-of (dr-tsig (dr-def rx r)) (adj-sig a) (xa-mono sr xa) = al-mono (mono-schema sr) rx (align-of r a xa)

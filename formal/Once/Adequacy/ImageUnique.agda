@@ -436,7 +436,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 import Data.List.Relation.Unary.Any.Properties
 open import Once.Parser using (extractFunctions-go; funsOf; emittedNames)
-open import Once.Parser.Module.Core using (Module; mkModule)
+open import Once.Parser.Module.Core using (Module; mkModule; Resolved; resolved)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidName)
 open import Once.Adequacy.NameClash using (guard-true; namesDistinct-sound; allValidNameB-sound; map-allpairs-own; ce-syms; ∧-elimˡ; ∧-elimʳ)
@@ -466,8 +466,8 @@ private
   no-names : TableNames []
   no-names = record { names = [] ; syms≡ = refl ; dist = [] ; valid = [] }
 
-table-names : ∀ (m : Module) → TableNames (C.moduleTable m)
-table-names (mkModule ds) with Parser.extractFunctions (mkModule ds) in efeq
+table-names : ∀ (m : Resolved) → TableNames (C.moduleTable m)
+table-names (resolved (mkModule ds) is) with Parser.extractFunctions (resolved (mkModule ds) is) in efeq
 ... | inj₁ _ = no-names
 ... | inj₂ es with C.compileEntries IR.Heap false C.emptyCScope es in caeq
 ...   | inj₁ _ = no-names
@@ -478,7 +478,7 @@ table-names (mkModule ds) with Parser.extractFunctions (mkModule ds) in efeq
         ; valid = allValidNameB-sound _ (∧-elimʳ guard)
         }
   where
-    guard = guard-true (Parser.thenExtract (Parser.sigsAdjacent ds nothing) (extractFunctions-go (Parser.sigsFirst ds) nothing)) efeq
+    guard = guard-true (Parser.thenExtract (Parser.sigsAdjacent ds nothing) (extractFunctions-go (Parser.sigsFirst ds is) nothing)) efeq
 
 -- distinctness survives reversal
 ap-reverse : ∀ {xs : List String} → AllPairs _≢_ xs → AllPairs _≢_ (reverse xs)
@@ -752,7 +752,7 @@ private
     start-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map start≢def cD) (Data.List.Relation.Unary.All.map start≢blk cB)
 
 -- THE PROGRAM (was `ImageWF.prog-unique`, a postulate).
-prog-unique : ∀ (m : Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
+prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
 prog-unique m ir =
   ((λ ()) ∷ heap-fresh D B cD cB) ∷ start-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
   where
@@ -772,7 +772,7 @@ prog-unique m ir =
     uD = adefs-unique img (image-cl C.entry-owner q) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
 
 -- THE LIBRARY (was `ImageWF.lib-unique`, a postulate).
-lib-unique : ∀ (m : Module) → Unique (lib-defs m)
+lib-unique : ∀ (m : Resolved) → Unique (lib-defs m)
 lib-unique m =
   heap-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.lib-blocks T))
   where

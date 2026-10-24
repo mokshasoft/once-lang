@@ -49,7 +49,7 @@ open import Once.Parser using
   ; namesDistinct; allValidNameB; validNameB; validCharsB; allOpNameChars; opCharsB
   ; emittedNames; emittedNames-cons
   ; allIdentContinue; guardDistinct; distinctOrErr; entryNameOf )
-open import Once.Parser.Module.Core using (Module; mkModule)
+open import Once.Parser.Module.Core using (Module; mkModule; Resolved; resolved)
 open import Once.Parser.Lexer using (isIdentContinue; isOpNameChar)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidName; ValidIdentChars; OpNameChars; NameChars; once-symbol-own-≢)
@@ -151,7 +151,7 @@ map-allpairs-own (x ∷ xs) (px ∷ ap) (vx ∷ vxs) =
 -- error rather than a runtime regression.
 ------------------------------------------------------------------------
 
-DistinctSymbols : Module → Set
+DistinctSymbols : Resolved → Set
 DistinctSymbols m = AllPairs _≢_ (C.moduleSyms IR.Heap false m)
 
 -- (a) the extractor guard fired ⇒ the well-formedness Bool was `true`.
@@ -239,9 +239,9 @@ ce-syms-fun doOpt sc fi es false ep cfs eq
                               ≡ map once-symbol-own (emittedNames-cons b fi (emittedNames (funsOf es))))
                        (sym ep) (cong (once-symbol-own (FunInfo.funName fi) ∷_) (ce-syms doOpt (C.extendScope sc (FunInfo.funName fi) ty) es rest rec)))
 
-program-no-clash : ∀ (m : Module) → DistinctSymbols m
-program-no-clash (mkModule ds)
-  with extractFunctions (mkModule ds) in efeq
+program-no-clash : ∀ (m : Resolved) → DistinctSymbols m
+program-no-clash (resolved (mkModule ds) is)
+  with extractFunctions (resolved (mkModule ds) is) in efeq
 ... | inj₁ _ = []
 ... | inj₂ es
     with C.compileEntries IR.Heap false C.emptyCScope es in caeq
@@ -253,6 +253,6 @@ program-no-clash (mkModule ds)
             (allValidNameB-sound _ (∧-elimʳ guard)))
       where
         guard : (namesDistinct (emittedNames (funsOf es)) ∧ allValidNameB (emittedNames (funsOf es))) ≡ true
-        guard = guard-true (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (sigsFirst ds) nothing)) efeq
+        guard = guard-true (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (sigsFirst ds is) nothing)) efeq
         bridge : C.emittedSyms cfs ≡ map once-symbol-own (emittedNames (funsOf es))
         bridge = ce-syms false C.emptyCScope es cfs caeq

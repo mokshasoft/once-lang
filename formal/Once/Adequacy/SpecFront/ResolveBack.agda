@@ -171,19 +171,12 @@ res-expr← nu na r-float w = _ , re-float , x-float , tt
 
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Surface.Syntax using (Import)
-open import Once.Parser.Module.Resolve using (signaturesWithOwner; ownerOf)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
 import Once.Spec.Surface.Program as SPr
 import Once.Adequacy.SpecFront.Resolve
 
 module Decls (Σ : Signature) where
-  open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias; ImportedSig)
-  open Once.Adequacy.SpecFront.Resolve.Decls Σ using (owned)
-
-  private
-    owned-at : ∀ (i : Import) ds → All ImportedSig (signaturesWithOwner (ownerOf i) ds)
-    owned-at (mkImport p (just _)) ds = owned _ ds
-    owned-at (mkImport p nothing)  ds = owned _ ds
+  open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias)
 
   -- every import's module is found (the Spec's signature found it)
   res-decls← : ∀ {mm mm′ um am dsU ds′ dsR′ Σᵢ} → ModRel mm mm′ → PathsNE um → PathsNE am
@@ -200,6 +193,6 @@ module Decls (Σ : Signature) where
     let (ds , rds , dr) = res-decls← mr nu na rd pw ws im in _ , LR.rds-cons LR.nim-sig LR.rd-signature rds , dr-sig dr
   res-decls← mr nu na (SPr.rd-other SPr.nf-alias rd) (d-alias ∷ pw) (_ ∷ ws) (SPr.im-other SPr.ni-alias im) =
     let (ds , rds , dr) = res-decls← mr nu na rd pw ws im in _ , LR.rds-cons LR.nim-alias LR.rd-typealias rds , dr-alias dr
-  res-decls← mr nu na (SPr.rd-other SPr.nf-import rd) (d-import {p = p} {a = a} ∷ pw) (_ ∷ ws) (SPr.im-import fa _ _ im) =
-    let (dsc , fa′ , _) = find← mr fa ; (ds , rds , dr) = res-decls← mr nu na rd pw ws im
-    in _ , LR.rds-import fa′ rds , dr-import (owned-at (mkImport p a) dsc) dr
+  res-decls← mr nu na (SPr.rd-other SPr.nf-import rd) (d-import ∷ pw) (_ ∷ ws) (SPr.im-import fa _ _ im) =
+    let (_ , fa′ , _) = find← mr fa ; (ds , rds , dr) = res-decls← mr nu na rd pw ws im
+    in _ , LR.rds-import fa′ rds , dr-import dr

@@ -45,8 +45,9 @@ import Once.Spec.Surface.Resolution as SR
 import Once.Spec.Core.Program as CoreProgram
 import Once.Parser as Parser
 open import Once.Parser.Module.Core using (Decl; mkModule; DImport)
+import Once.Parser.Module.Core as Core
 open import Once.Spec.Surface.Syntax using (mkImport)
-open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule; sigNames)
+open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule; sigNames; importedOf)
 import Once.Internal.Resolution as LR
 import Once.Internal.Module as LM
 open import Once.Internal.Module using (ModTele; emptyScope; scope; entrySig; MainsEffUU; MainIn)
@@ -169,8 +170,8 @@ record TypedC (mm : ModuleMap) (dsU : List Decl) : Set where
   field
     dsR : List Decl
     rds : LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
-    mt  : LM.ModuleTyped (mkModule dsR)
-    hvm : LM.HasValidMain (mkModule dsR) mt
+    mt  : LM.ModuleTyped (Core.resolved (mkModule dsR) (importedOf mm dsU))
+    hvm : LM.HasValidMain (Core.resolved (mkModule dsR) (importedOf mm dsU)) mt
 
 private
   typed-at : ∀ m (ef : String ⊎ List Parser.Entry) {es} → ef ≡ inj₂ es → (mt : ModTele emptyScope es) → MainsEffUU mt → MainIn mt
@@ -230,6 +231,6 @@ typed← {mm} {mm′} {dsU} {ds′} {Σ} {p} wm wd wr mr pw D = record { dsR = d
     w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Internal.Core.Translate.ImpSig.[] Once.Internal.Core.Translate.TeleSig.[] (Once.Adequacy.ModuleProgram.names₀ Σ) rel₀ walk align
                  (WS.winv-empty Σ ps) eok
     pf = prefix← {sc = emptyScope} fs (Extracted.facts X) (proj₁ w←)
-    th = typed-at (mkModule dsR) _ (Extracted.extracted X) (proj₁ pf)
+    th = typed-at (Core.resolved (mkModule dsR) (importedOf mm dsU)) _ (Extracted.extracted X) (proj₁ pf)
                   (proj₁ (proj₂ pf) (proj₁ (proj₂ w←) (WM.walk-mains Σ walk H)))
                   (proj₂ (proj₂ pf) (proj₂ (proj₂ w←) (WM.walk-main Σ walk (main-defined walk P.main entry) H)))

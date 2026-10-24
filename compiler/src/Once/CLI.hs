@@ -350,10 +350,10 @@ runBuild opts = do
 --
 -- Arch-relative on purpose (D113): the same literal is exact at one target's
 -- format and rounded at another's.
-emitWarnings :: Bridge.Arch -> T.Text -> Bridge.Module -> IO ()
+emitWarnings :: Bridge.Arch -> T.Text -> Bridge.Resolved -> IO ()
 emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarnings arch src m)
 
-runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Module
+runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
   let allocMode = case buildAlloc opts of
@@ -372,7 +372,7 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
       -- Write assembly file
       TIO.writeFile asmPath asmText
 
-      let hasMain = Bridge.moduleHasMain mod_
+      let hasMain = Bridge.moduleHasMain (Bridge.resolvedModule mod_)
       effMode <- case buildMode opts of
         Infer   -> pure (if hasMain then Executable else Library)
         Library -> pure Library
@@ -634,12 +634,12 @@ findStrataDir inputPath mStrataOpt = case mStrataOpt of
 -- | Resolve imports at the AST level: parse the user's source via
 -- Agda, recursively parse + resolve transitive imports, call Agda's
 -- verified `resolveImports` with the populated ModuleMap, return the
--- flat Module ready for `compileFromModule`.
+-- resolved module ready for `compileFromModule`.
 --
 -- Import cycles are detected during the recursive descent (any path
 -- visited twice on the same chain triggers an error).
 loadAndResolve :: FilePath -> Maybe FilePath -> T.Text
-               -> IO (Either String (Bridge.Module, FilePath, [[T.Text]]))
+               -> IO (Either String (Bridge.Resolved, FilePath, [[T.Text]]))
 loadAndResolve inputPath mStrataOpt source = do
   strataDir <- findStrataDir inputPath mStrataOpt
   case Bridge.parseSource source of
@@ -653,10 +653,10 @@ loadAndResolve inputPath mStrataOpt source = do
             Left err    -> pure (Left (T.unpack err))
             Right flat  -> pure (Right (flat, strataDir, map fst modMap))
   where
-    -- | Recursively load all transitive imports. Returns a ModuleMap
-    -- where every entry is already fully resolved (its own DImport
-    -- decls flattened), so a single call to the Agda resolver at the
-    -- top suffices.
+    -- | Recursively load all transitive imports. Returns a ModuleMap of
+    -- the modules as written (the Spec's `ModuleMap`); each is resolved
+    -- against its own imports to check it, so a single call to the Agda
+    -- resolver at the top suffices.
     --
     -- The `inProgress` list is the chain of paths currently being
     -- resolved; re-entering one means a cycle.
@@ -690,14 +690,14 @@ loadAndResolve inputPath mStrataOpt source = do
                     Right subMap  ->
                       case Bridge.resolveImports subMap subM of
                         Left err     -> pure (Left (T.unpack err))
-                        Right subFlat -> do
+                        Right _ -> do
                           -- Continue with siblings, carrying this
-                          -- module's resolved entry + sub-deps.
+                          -- module's entry + sub-deps.
                           tailResult <- buildModuleMap strataDir inProgress rest
                           case tailResult of
                             Left err       -> pure (Left err)
                             Right tailMap  ->
-                              pure (Right ((path, subFlat) : subMap ++ tailMap))
+                              pure (Right ((path, subM) : subMap ++ tailMap))
 
     showPath :: [T.Text] -> String
     showPath = intercalate "." . map T.unpack

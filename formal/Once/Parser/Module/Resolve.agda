@@ -44,7 +44,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 
 open import Once.Parser.Module.Core
-open import Once.Spec.Surface.Syntax using (Import; mkImport)
+open import Once.Spec.Surface.Syntax using (Import; mkImport; PolyType)
 open import Once.Spec.Surface.Syntax using (RLam)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.ResolvedRefs using (GoodRefs; goodRefs?)
@@ -53,6 +53,7 @@ open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
 open import Once.Spec.Name using (canonical; gen; GenWord)
+open import Once.Internal.Name using (showCanonical)
 open import Once.CanonicalName using (genWord?)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Internal.Syntax using (ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
@@ -133,11 +134,11 @@ lookupImportAlias ((a , p) ∷ rest) x with a ≟ x
 UnaliasedMap : Set
 UnaliasedMap = List (String × List String)
 
--- | The names a (resolved) module exports = its `DSignature` names (the same
--- primitives `signaturesWithOwner` inlines).
+-- | The names a module exports = its `DSignature` names (the ones
+-- `sigsOf` reads).
 sigNames : List Decl → List String
 sigNames []                          = []
-sigNames (DSignature name _ _ ∷ r) = name ∷ sigNames r
+sigNames (DSignature name _ ∷ r) = name ∷ sigNames r
 {-# CATCHALL #-}
 sigNames (_ ∷ r)                     = sigNames r
 
@@ -300,42 +301,47 @@ canonDecl um am (DFunDef name body) = DFunDef name (canonExpr [] um am body)
 canonDecl um am d                   = d
 
 ------------------------------------------------------------------------
--- Primitive extraction with owner tagging
+-- The imported modules' signatures (the Spec's `Imported`)
 ------------------------------------------------------------------------
 
--- | Pull out just the DSignature decls from a module, retagging each
--- with the given owner. Non-primitive decls are dropped — they
--- belong to the imported module's own scope, not the importer's.
-signaturesWithOwner : Maybe (List String) → List Decl → List Decl
-signaturesWithOwner _     []                                   = []
-signaturesWithOwner owner (DSignature name _ ty ∷ rest)   =
-  DSignature name owner ty ∷ signaturesWithOwner owner rest
-{-# CATCHALL #-}
-signaturesWithOwner owner (_ ∷ rest)                           =
-  signaturesWithOwner owner rest
+-- | A module's `signature` declarations, each under the name a reference to
+-- it resolves to: the import's full path, then the name (the Spec's
+-- `SignaturesOf p′`). Plan 0.50 (clash-freedom): distinct imported modules'
+-- same-named primitives get distinct symbols.
+sigsOf : List String → List Decl → List (String × PolyType)
+sigsOf p []                     = []
+sigsOf p (DSignature x A ∷ ds)  = (showCanonical (canonical (p ++L (x ∷ []))) , A) ∷ sigsOf p ds
+sigsOf p (DTypeSig _ _ ∷ ds)    = sigsOf p ds
+sigsOf p (DFunDef _ _ ∷ ds)     = sigsOf p ds
+sigsOf p (DTypeAlias _ _ _ ∷ ds) = sigsOf p ds
+sigsOf p (DImport _ ∷ ds)       = sigsOf p ds
 
--- | Owner tag for an import's inlined signatures. An ALIASED import is
--- keyed by its full dotted path (matching the resolved canonical names);
--- an UNALIASED import stays `nothing` (bare, milestone-1).
--- Plan 0.50 (clash-freedom): BOTH aliased and unaliased imports key their
--- inlined signatures by the FULL dotted path, matching the canonical names
--- `canon` produces (`RQualified`/`RVar` → `RResolved (canonical (path++[name]))`).
--- So the import-table key = `showCanonical cn` by construction, and distinct
--- imported modules' same-named primitives get distinct symbols.
-ownerOf : Import → Maybe (List String)
-ownerOf (mkImport path (just _)) = just (expandPath path)
-ownerOf (mkImport path nothing)  = just (expandPath path)
+-- | The signatures of the modules a module imports, import by import, each
+-- read from the module map (a module the map lacks is `resolveDecls`'s
+-- error, never reached here).
+importedAt : List String → Maybe Module → List (String × PolyType)
+importedAt p nothing             = []
+importedAt p (just (mkModule ds)) = sigsOf p ds
+
+importedOf : ModuleMap → List Decl → List (String × PolyType)
+importedOf mm []                     = []
+importedOf mm (DImport imp ∷ ds)     =
+  importedAt (expandPath (Import.path imp)) (lookupModule mm (Import.path imp)) ++L importedOf mm ds
+importedOf mm (DSignature _ _ ∷ ds)  = importedOf mm ds
+importedOf mm (DTypeSig _ _ ∷ ds)    = importedOf mm ds
+importedOf mm (DFunDef _ _ ∷ ds)     = importedOf mm ds
+importedOf mm (DTypeAlias _ _ _ ∷ ds) = importedOf mm ds
 
 ------------------------------------------------------------------------
 -- resolveImports
 ------------------------------------------------------------------------
 
--- | For each DImport in `ds`, add the imported module's primitives
--- (owner-tagged by the import's canonical path) after it. The DImport
--- itself STAYS where it was written (R10, plan 0.121): a type signature
--- separated from its definition by an import is still separated, as the
--- Spec's walk reads it. Non-import decls pass through, with `RQualified`
--- refs in function bodies rewritten to `RResolved` via `am`.
+-- | Each DImport STAYS where it was written (R10, plan 0.121): a type
+-- signature separated from its definition by an import is still separated,
+-- as the Spec's walk reads it; the imported module's signatures are not
+-- copied in (`importedOf` reads them, plan 0.122). Non-import decls pass
+-- through, with `RQualified` refs in function bodies rewritten to
+-- `RResolved` via `am`.
 --
 -- Returns `inj₁ err` only if a referenced module path is missing from
 -- the map — a Haskell-layer bug, since the map should contain every
@@ -373,7 +379,7 @@ resolveDecls-import-aux um am mm imp rest nothing _ _ _ =
 resolveDecls-import-aux um am mm imp rest (just (mkModule impDs)) _ (inj₁ err) _ =
   inj₁ err
 resolveDecls-import-aux um am mm imp rest (just (mkModule impDs)) _ (inj₂ tailDs) _ =
-  inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
+  inj₂ (DImport imp ∷ tailDs)
 
 resolveDecls-cons-aux um am d (inj₁ err)    = inj₁ err
 resolveDecls-cons-aux um am d (inj₂ tailDs) = consDecl (canonDecl um am d) tailDs
@@ -390,8 +396,8 @@ consDecl-at name body (no _)  tl =
 
 -- | Public entry. Haskell populates the map, calls this, and feeds
 -- the resolved module to `compileResolved`.
-resolveImports : ModuleMap → Module → String ⊎ Module
+resolveImports : ModuleMap → Module → String ⊎ Resolved
 resolveImports modMap (mkModule ds)
   with resolveDecls (collectUnaliased modMap ds) (collectAliases ds) modMap ds
 ... | inj₁ err   = inj₁ err
-... | inj₂ ds'   = inj₂ (mkModule ds')
+... | inj₂ ds'   = inj₂ (resolved (mkModule ds') (importedOf modMap ds))

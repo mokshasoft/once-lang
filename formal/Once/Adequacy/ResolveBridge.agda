@@ -53,11 +53,11 @@ open import Once.Parser.Module.Resolve
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Internal.Resolution
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Parser.Module.Core using (Module; mkModule)
+open import Once.Parser.Module.Core using (Module; mkModule; Resolved; resolved)
 open import Once.Spec.Surface.Syntax using (Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports;
   resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux; consDecl; consDecl-at;
-  lookupModule; _path≟_; signaturesWithOwner; ownerOf;
+  lookupModule; _path≟_; importedOf;
   collectAliases; collectUnaliased)
 
 ------------------------------------------------------------------------
@@ -294,7 +294,7 @@ resolvesDecl-complete : ∀ (um : UnaliasedMap) (am : AliasMap)
 resolvesDecl-complete um am (DFunDef n b) g =
   rd-fundef (resolves-complete um am [] b) g
 resolvesDecl-complete um am (DTypeSig n t)      _ = rd-typesig
-resolvesDecl-complete um am (DSignature n o t)  _ = rd-signature
+resolvesDecl-complete um am (DSignature n t)  _ = rd-signature
 resolvesDecl-complete um am (DTypeAlias n ps t) _ = rd-typealias
 resolvesDecl-complete um am (DImport imp)       _ = rd-import
 
@@ -319,7 +319,7 @@ consDecl-inv (DFunDef n b) tl ds' eq = at (goodRefs? b) eq
     at (yes g) refl = refl , g
     at (no _) ()
 consDecl-inv (DTypeSig n t)      tl _ refl = refl , tt
-consDecl-inv (DSignature n o t)  tl _ refl = refl , tt
+consDecl-inv (DSignature n t)  tl _ refl = refl , tt
 consDecl-inv (DTypeAlias n ps t) tl _ refl = refl , tt
 consDecl-inv (DImport imp)       tl _ refl = refl , tt
 
@@ -361,13 +361,13 @@ import-red : ∀ (um : UnaliasedMap) (am : AliasMap)
            → lookupModule mm (Import.path imp) ≡ just (mkModule impDs)
            → resolveDecls um am mm rest ≡ inj₂ tailDs
            → resolveDecls um am mm (DImport imp ∷ rest)
-               ≡ inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
+               ≡ inj₂ (DImport imp ∷ tailDs)
 import-red um am mm imp rest impDs tailDs elm err = go _ refl _ refl
   where
     go : ∀ (lm : Maybe Module) (e1 : lookupModule mm (Import.path imp) ≡ lm)
            (rr : String ⊎ List Decl) (e2 : resolveDecls um am mm rest ≡ rr)
        → resolveDecls-import-aux um am mm imp rest lm e1 rr e2
-           ≡ inj₂ (DImport imp ∷ signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
+           ≡ inj₂ (DImport imp ∷ tailDs)
     go lm e1 rr e2 with trans (sym e1) elm | trans (sym e2) err
     ... | refl | refl = refl
 
@@ -394,7 +394,7 @@ resolvesDecls-sound mm um am _ _
     (lookupMod-complete mm (Import.path imp) (mkModule impDs) fa)
     (resolvesDecls-sound mm um am ds ds' rds)
 
-resolvesModule-sound : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
+resolvesModule-sound : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Resolved)
                      → ResolvesModule mm (mkModule ds) mR
                      → resolveImports mm (mkModule ds) ≡ inj₂ mR
 resolvesModule-sound mm ds _ (rm rds)
@@ -434,8 +434,8 @@ mutual
   resolvesDecls-complete mm um am (DFunDef n b ∷ rest) ds' eq =
     rdc-cons mm um am (DFunDef n b) nim-fundef rest ds'
       (resolveDecls um am mm rest) refl eq
-  resolvesDecls-complete mm um am (DSignature n o t ∷ rest) ds' eq =
-    rdc-cons mm um am (DSignature n o t) nim-sig rest ds'
+  resolvesDecls-complete mm um am (DSignature n t ∷ rest) ds' eq =
+    rdc-cons mm um am (DSignature n t) nim-sig rest ds'
       (resolveDecls um am mm rest) refl eq
   resolvesDecls-complete mm um am (DTypeAlias n ps t ∷ rest) ds' eq =
     rdc-cons mm um am (DTypeAlias n ps t) nim-alias rest ds'
@@ -469,7 +469,7 @@ mutual
 resolveImports-ok : ∀ (mm : ModuleMap) (ds ds' : List Decl)
                   → resolveDecls (collectUnaliased mm ds)
                                  (collectAliases ds) mm ds ≡ inj₂ ds'
-                  → resolveImports mm (mkModule ds) ≡ inj₂ (mkModule ds')
+                  → resolveImports mm (mkModule ds) ≡ inj₂ (resolved (mkModule ds') (importedOf mm ds))
 resolveImports-ok mm ds ds' err rewrite err = refl
 
 resolveImports-bad : ∀ (mm : ModuleMap) (ds : List Decl) (e : String)
@@ -478,7 +478,7 @@ resolveImports-bad : ∀ (mm : ModuleMap) (ds : List Decl) (e : String)
                    → resolveImports mm (mkModule ds) ≡ inj₁ e
 resolveImports-bad mm ds e err rewrite err = refl
 
-resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
+resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Resolved)
                         → resolveImports mm (mkModule ds) ≡ inj₂ mR
                         → ResolvesModule mm (mkModule ds) mR
 resolvesModule-complete mm ds mR eqR =

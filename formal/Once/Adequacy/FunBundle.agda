@@ -395,7 +395,7 @@ bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} ep rf fc ce cf res
 -- compile bundle, and the compile result it is.
 ------------------------------------------------------------------------
 
-ProgramNode : Core.Module → Set
+ProgramNode : Core.Resolved → Set
 ProgramNode m =
   Σ-syntax (List Parser.Entry) (λ es →
   Σ-syntax (Parser.extractFunctions m ≡ inj₂ es) (λ _ →
@@ -403,7 +403,7 @@ ProgramNode m =
     C.compileResolvedModule IR.Heap false m ≡ inj₂ (bundle→compiled b))))
 
 private
-  node-ce : ∀ (m : Core.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (es : List Parser.Entry) (cv : String ⊎ List C.CompiledFun)
+  node-ce : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (es : List Parser.Entry) (cv : String ⊎ List C.CompiledFun)
           → C.compileEntries IR.Heap false C.emptyCScope es ≡ cv → moduleToIR-aux cv ≡ just ir
           → Parser.extractFunctions m ≡ inj₂ es → ProgramNode m
   node-ce m ir es (inj₁ _) ce mi ef = case mi of λ ()
@@ -412,12 +412,12 @@ private
        , trans (cong (C.compileResolvedModule-aux IR.Heap false m) ef)
                (trans ce (cong inj₂ (sym (bundle→compiled≡compiled C.emptyCScope es compiled ce))))
 
-  node-ef : ∀ (m : Core.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (efv : String ⊎ List Parser.Entry)
+  node-ef : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (efv : String ⊎ List Parser.Entry)
           → Parser.extractFunctions m ≡ efv
           → moduleToIR-aux (C.compileResolvedModule-aux IR.Heap false m efv) ≡ just ir → ProgramNode m
   node-ef m ir (inj₁ _)  ef mi = case mi of λ ()
   node-ef m ir (inj₂ es) ef mi = node-ce m ir es (C.compileEntries IR.Heap false C.emptyCScope es) refl mi ef
 
-program-node : ∀ (m : Core.Module) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir → ProgramNode m
+program-node : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir → ProgramNode m
 program-node m ir mi = node-ef m ir (Parser.extractFunctions m) refl mi
 

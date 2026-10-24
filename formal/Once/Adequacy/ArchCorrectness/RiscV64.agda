@@ -338,7 +338,7 @@ BlockRunsHyp-riscv64 = FFOr.BlockRunsT
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
 file-tr-riscv64 :
-  ∀ (brs : BlockRunsHyp-riscv64) (m : P.Module) (F : RF.Image)
+  ∀ (brs : BlockRunsHyp-riscv64) (m : P.Resolved) (F : RF.Image)
   → C.compileFileFromModule IR.Heap false riscv64 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
   → (oq : o ≡ C.entry-owner)
