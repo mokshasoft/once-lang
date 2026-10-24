@@ -82,7 +82,7 @@ open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookup
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV; success; failure)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF)
-open import Once.TypeCheck.CompletenessS using (check-completeS)
+open import Once.TypeCheck.Completeness using (check-completeS)
 open import Once.TypeCheck.SpecWitness using (OkOf; OkSOf)
 import Once.TypeCheck.WitnessSubst
 open import Once.Internal.Type.Schema using (kinded-instance)
@@ -351,8 +351,8 @@ body-linked {σ = σ} {csc = csc} {pre = pre} inv x ty {body} {se = se} cf ce =
                    (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se refs)))
   where -- the checker's term refers only into its scope (its witness says so)
         refs : InScope (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) se
-        refs = proj₁ (proj₂ (subst (checkSoundOf (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty) ce
-                                   (proj₂ (checkElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty))))
+        refs = proj₁ (subst (checkSoundOf (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty) ce
+                                   (proj₂ (checkElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty)))
         uf : Imports
         uf = (x , ty) ∷ C.CScope.cimps csc
 
@@ -372,8 +372,8 @@ body-linkedI {σ = σ} {csc = csc} {pre = pre} inv x ty {body} {se = se} cf ce =
          (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef (C.CScope.cimps csc)} {Pp = PolyRef (C.cpolys csc) ∅ₖ} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef (C.cpolys csc) ∅ₖ}
                    (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se refs)))
   where refs : InScope (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) se
-        refs = proj₁ (proj₂ (subst (soundOf (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body) ce
-                                   (proj₂ (inferElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body))))
+        refs = proj₁ (subst (soundOf (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body) ce
+                                   (proj₂ (inferElabV (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body)))
         uf : Imports
         uf = (x , ty) ∷ C.CScope.cimps csc
 
@@ -389,7 +389,7 @@ body-linkedM inv Data.Maybe.nothing  x ty {Ψ = Once.Spec.Context.[]} cf ce = bo
 -- A telescope entry joins the scope. Its splice at a kinded instance is
 -- linked: its body's witness, over the schema's parameters, instantiated, is
 -- a Spec derivation at the instance (`WitnessSubst`), which the checker
--- accepts (`CompletenessS`, at the scope's Pack); the splice is that check's
+-- accepts (`Completeness`, at the scope's Pack); the splice is that check's
 -- term, whose references are the scope's (`InScope`), resolved
 -- (`resolve-refs`).
 private
@@ -441,13 +441,13 @@ linv-poly {σ = σ} {Σ} {S = S} {csc} {pre} {pfi} {Once.Spec.Context.[]} ss is 
             (splice-at pre polys ac I uf fresh y A cr ce
               (resolve-refs pre polys I (LInv.tel-ok inv I ia) ac uf fresh se
                  (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef imps} {Pp = PolyRef polys ∅ₖ} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef polys ∅ₖ}
-                           (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se (proj₁ (proj₂ (wit-of cr ce))))))
+                           (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se (proj₁ (wit-of cr ce)))))
       where
         K  = kinded-instance scT ki
         module WS = Once.TypeCheck.WitnessSubst Σ S (MP.Names.nm N) (OkOf P) (OkSOf P) κ ∅ₖ (proj₁ K) (proj₁ (proj₂ K))
         -- the witness over the parameters, at the instance
         wΔ = proj₁ (proj₂ (proj₂ (proj₂ W)))
-        uΔ = proj₁ (proj₂ (proj₂ (proj₂ wΔ) Pκ))
+        uΔ = proj₁ (proj₂ (proj₂ wΔ Pκ))
         su = WS.subW⇐ (proj₂ uΔ)
         cr = checkElabV (ctxWithImportsAndPolys top polys) bd A
         cc = subst (λ X → ∃[ se ] ∃[ d ] ∃[ f ] Once.TypeCheck.Elaborate.checkElab (ctxWithImportsAndPolys top polys) bd X

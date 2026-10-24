@@ -4,21 +4,8 @@
 ------------------------------------------------------------------------
 -- Once.TypeCheck.Classify
 --
--- Classifier helpers and named contexts shared between the elaborator
--- and the judgment.
---
--- Extracted from `Once.TypeCheck.Elaborate` (Plan 0.4 T0 Option B
--- preparation) to break the import cycle that prevented
--- `Elaborate.agda` from importing `Judgment.agda`. After the split:
---
---   * `Once.Internal.Typing`  imports `Classify` (no longer
---     `Elaborate`).
---   * `Once.TypeCheck.Elaborate` imports `Classify` and re-exports
---     it `public` for backward compatibility, then imports
---     `Judgment` (the cycle being broken makes this admissible).
---
--- Contents are unchanged from their previous location in
--- `Elaborate.agda`; only the host module has changed.
+-- Classifier helpers and named contexts the elaborator and its proofs
+-- share (split from `Once.TypeCheck.Elaborate`, plan 0.4 T0).
 ------------------------------------------------------------------------
 
 module Once.TypeCheck.Classify where

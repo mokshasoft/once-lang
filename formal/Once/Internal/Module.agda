@@ -56,7 +56,7 @@ open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
 import Once.Internal.Context as Surface
 import Once.Surface.Syntax as SS
-open import Once.TypeCheck.DualWitness using (DI; DC)
+open import Once.TypeCheck.SpecWitness using (WI; WC)
 import Once.TypeCheck.Elaborate as TE
 open import Data.Nat using (ℕ)
 open import Once.Internal.Syntax using (RawExpr)
@@ -110,12 +110,12 @@ addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 -- derivation, whose realization that term is (`TypeCheck.SpecWitness`; plan
 -- 0.122 §5.6).
 CheckRun : ∀ {m} (ctx : NamedCtx m) → RawExpr → (A : Ty m) → Surface.Usage (NamedCtx.size ctx) → Set
-CheckRun ctx e A Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ A ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ DC ctx e A Ψ eE ]
+CheckRun ctx e A Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ A ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ WC ctx e A Ψ eE ]
                        (TE.checkElabV ctx e A ≡ (TE.success Ψ eE d f , w))
 
 MonoWit : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
 MonoWit (just _) ctx e ty Ψ = CheckRun ctx e ty Ψ
-MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ DI ctx e ty Ψ eE ]
+MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ WI ctx e ty Ψ eE ]
                                 (TE.inferElabV ctx e ≡ (TE.success ty Ψ eE d f , w))
 
 -- A pair, read along an equation on its first component.

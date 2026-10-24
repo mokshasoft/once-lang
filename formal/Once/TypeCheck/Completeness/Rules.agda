@@ -2,27 +2,12 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.TypeCheck.Completeness
+-- Once.TypeCheck.Completeness.Rules — the checker at each rule (plan 0.3
+-- G2; plan 0.122 §5.6).
 --
--- Plan 0.3, gap G2 (completeness direction): if the declarative
--- judgment derives `ctx ⊢ e ∶ A ⨾ Ψ`, the operational type-checker
--- succeeds with the matching type + usage.
---
--- Soundness (in `Once.TypeCheck.Soundness`) goes the other way:
--- if the elaborator succeeds, the judgment holds. Together they
--- give `inferElab-succeeds ⟺ judgment-derivable`.
---
--- Structure:
---   * `infer-complete`: for judgments whose outermost rule matches
---     an infer-mode clause (all rules except `t-lam`), show
---     `inferElab` succeeds. `t-lam`'s derivation has shape
---     `ctx ⊢ RLam x body ∶ (A ⇒[ q ] B) ⨾ Ψ`, and `inferElab`
---     rejects `RLam` regardless of its sub-derivation — so the
---     single `t-lam` case has to be excluded.
---   * `check-complete-lam`: for the `t-lam` rule, show `checkElab`
---     at the function type succeeds.
---
--- Reference: plans/0.3-frontend-verification-gaps.md, gap G2.
+-- For each rule of the Spec's surface typing, the checker succeeds on the
+-- expression once it succeeds on the premises, with the type and usage the
+-- rule gives: the steps `Completeness` composes.
 ------------------------------------------------------------------------
 -- Plan 0.105: the per-rule completeness lemmas, split from
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.

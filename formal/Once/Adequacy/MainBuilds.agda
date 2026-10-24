@@ -15,7 +15,7 @@
 
 module Once.Adequacy.MainBuilds where
 
-import Once.TypeCheck.DualWitness
+import Once.TypeCheck.SpecWitness
 import Once.Internal.Context as Srf
 
 open import Once.TypeCheck.Classify using (TopCtx)
@@ -49,7 +49,6 @@ open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Internal.Typing.Scope as Classify
-import Once.Internal.Typing
 open import Once.Internal.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Classify as Classify
 open import Once.Internal.Syntax using (RawExpr)
@@ -114,7 +113,7 @@ cfbI-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsO
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfbI-doOpt doOpt ctx polys impsOf name ty expr eq = aux (TE.inferElabV (Classify.ctxWithImportsAndPolys ctx polys) expr) eq
   where
-    at : ∀ {T Ψ eE} (w : Once.TypeCheck.DualWitness.DI (Classify.ctxWithImportsAndPolys ctx polys) expr T Ψ eE) (d : Dec (T ≡ ty)) {ir}
+    at : ∀ {T Ψ eE} (w : Once.TypeCheck.SpecWitness.WI (Classify.ctxWithImportsAndPolys ctx polys) expr T Ψ eE) (d : Dec (T ≡ ty)) {ir}
        → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ ir
        → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty refl w d ≡ inj₂ ir')
     at w (yes refl) _ = _ , refl

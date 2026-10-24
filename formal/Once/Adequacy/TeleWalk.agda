@@ -68,7 +68,6 @@ import Once.IR
 open import Once.IRTy using (⌊_⌋)
 import Once.Internal.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
@@ -103,7 +102,6 @@ import Once.Adequacy.MeaningBridge as MB
 import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.MonoEntry as ME
-import Once.Internal.Elaboration as ElabM
 
 open import Once.Adequacy.TeleWalk.Invariant fmt Σ wf J uniq
 
@@ -117,10 +115,8 @@ open import Once.Denotation.EvalRel using (eval-rel; table-self)
 open import Once.Spec.Grade using (eff)
 open import Once.Internal.Trace using (projTrace)
 
-import Once.Adequacy.ElabInst as EI
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
-import Once.TypeCheck.Completeness
 import Once.TypeCheck.Elaborate
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Program using (tableEnv)

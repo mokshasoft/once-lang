@@ -71,21 +71,6 @@ open import Once.Arith.SigOp.Builders
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
          fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
-open import Once.Internal.Typing
-  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵈ_∶_⇒[_]↦_⨾_;
-         t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
-         t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
-         t-compose-check-g; t-compose-check-f; d-infer; d-lam; d-compose; d-id; d-fst; d-snd; d-terminal; d-initial; d-case; d-pair; d-cata; t-case-copair-check; t-pair-morph-check;
-         t-curry-check; t-cata-check; t-ana-check; t-loop-check;
-         t-sub; t-lam; t-pair-lit-check;
-         t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
-         t-initial-app-check; t-app-spine;
-         t-var-poly-instantiate;
-         t-var-poly-instantiate-infer; d-poly;
-         t-int; t-float; t-unit; t-unit-var; t-var-local;
-         t-var-resolved; t-var-own; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
-         t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-Out-eff-app-infer; t-app; t-effApp)
 
 ------------------------------------------------------------------------
 -- P1 scaffolds (discharged in P2). NAMED and narrow — each is exactly one

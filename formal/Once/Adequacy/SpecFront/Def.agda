@@ -10,7 +10,7 @@
 -- a Spec check of a body, typed in the core, is annotated (`Annotate`, a
 -- reference read by its name — the walk's scope facts and the distinct names
 -- give the View's lookup that finds it), and the checker accepts the
--- annotated derivation (`CompletenessS`). So
+-- annotated derivation (`Completeness`). So
 --   * the Spec's check or synthesis of a body is the checker's run
 --     (`body-check←`, `body-synth←`);
 --   * the compiler's principality (the checker rejects the body at every
@@ -72,7 +72,7 @@ import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.View as TV
 open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf)
 import Once.TypeCheck.UseCore as UC
-open import Once.TypeCheck.CompletenessS using (check-completeVS; infer-completeVS)
+open import Once.TypeCheck.Completeness using (check-completeVS; infer-completeVS)
 open import Once.Adequacy.ModuleProgram Σ using (Names; packOfAt)
 open import Once.Adequacy.SpecFront.Below using (below-sound)
 open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
@@ -159,6 +159,6 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
   ... | TE.failure _ , _ = Once.Internal.Principal.fails
   ... | TE.success Ψ eE dd f , wt =
     let (sX , nX) = below-sound A m
-        (t , (D , u) , _) = proj₂ (proj₂ wt) P
+        (t , (D , u) , _) = proj₂ wt P
         D′ = subst (λ z → SUT._⊢_⇐_↝_ Σ S nm κ SUT.∅ z X t) (rx-≡ rx) D
     in ⊥-elim (nX (pr sX D′ (u0 (UC.typ⇐ Σ S nm (OkOf P) (OkSOf P) κ u))))

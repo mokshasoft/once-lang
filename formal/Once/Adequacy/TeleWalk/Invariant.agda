@@ -70,7 +70,6 @@ import Once.Internal.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.Internal.Typing.Scope using (Imports)
 open import Once.Internal.Type.Instance using (rigidOf)
-open import Once.Denotation.Realize using (realize; realize-infer)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
@@ -110,7 +109,6 @@ import Once.Adequacy.MeaningBridge as MB
 import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.MonoEntry as ME
-import Once.Internal.Elaboration as ElabM
 import Once.TypeCheck.View as TView
 open import Once.Internal.Type using (none; noResp)
 open import Once.Internal.Type.Schema using (kinded-instance)
@@ -151,8 +149,7 @@ open import Once.Adequacy.CoherenceLaws fmt using (module _≈_)
 open _≈_ using (≈-out)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
-open import Once.Adequacy.Coherence fmt using (realize-invariant; realize-invariant-i)
-open import Once.TypeCheck.CompletenessS using (check-completeS)
+open import Once.TypeCheck.Completeness using (check-completeS)
 import Once.TypeCheck.Elaborate
 import Data.Maybe
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
@@ -372,7 +369,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
   relC (eE , d , f , w , ce) cf′ =
     TE.abi-rel ty _ M (GM-D Once.Spec.Grade.pure ty relA chain)
     where
-      u = proj₁ (proj₂ (proj₂ (proj₂ w) P))
+      u = proj₁ (proj₂ (proj₂ w P))
       chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ eE ⟧ˢ fmt σx tt)
       chain =
         ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
@@ -380,7 +377,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
            (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE tt)
                (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE)))
       relA : RelGM Once.Spec.Grade.pure ty _ (SD.⟦ eE ⟧ˢ fmt σx tt)
-      relA = subst (λ t → RelGM Once.Spec.Grade.pure ty _ (SD.⟦ t ⟧ˢ fmt σx tt)) (proj₂ (proj₂ (proj₂ (proj₂ w) P)))
+      relA = subst (λ t → RelGM Once.Spec.Grade.pure ty _ (SD.⟦ t ⟧ˢ fmt σx tt)) (proj₂ (proj₂ (proj₂ w P)))
                    (MBS.bridge⇐ (proj₂ u) {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt) refsR)
 
   -- R8, without a signature: the same chain, through the synthesis.
@@ -391,7 +388,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
   relI (eE , d , f , w , ce) cf′ =
     TE.abi-rel ty _ M (GM-D Once.Spec.Grade.pure ty relA chain)
     where
-      u = proj₁ (proj₂ (proj₂ (proj₂ w) P))
+      u = proj₁ (proj₂ (proj₂ w P))
       chain : RelS (RelD ty) (subst T∞ (cohᴰ ty) M) (SD.⟦ eE ⟧ˢ fmt σx tt)
       chain =
         ≡ˡ (cong (λ ir → subst T∞ (cohᴰ ty) (evalᴰ fmt (tableEnv fmt φ pre) ir tt))
@@ -399,7 +396,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
            (≡ʳ (RF.resolveExpr-faithful fmt (tableEnv fmt φ pre) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE tt)
                (SF.faithful∅ fmt (tableEnv fmt φ pre) (table-self fmt φ pre) (resolveExpr (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) uf 0 eE)))
       relA : RelGM Once.Spec.Grade.pure ty _ (SD.⟦ eE ⟧ˢ fmt σx tt)
-      relA = subst (λ t → RelGM Once.Spec.Grade.pure ty _ (SD.⟦ t ⟧ˢ fmt σx tt)) (proj₂ (proj₂ (proj₂ (proj₂ w) P)))
+      relA = subst (λ t → RelGM Once.Spec.Grade.pure ty _ (SD.⟦ t ⟧ˢ fmt σx tt)) (proj₂ (proj₂ (proj₂ w P)))
                    (MBS.bridge⇒ (proj₂ u) {dγ₁ = tt} {γ = tt} {dγ₂ = tt} tt (MB.mk↾ tt) refsR)
 
   relM-at : (ft : Data.Maybe.Maybe Type) (W′ : MonoWit ft ctx (funBody fi) ty SCx.[])
@@ -616,7 +613,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N W inv fr = rec
             module UCm = Once.Adequacy.UseCommute Σ S (Names.nm N) (OkOf P) (OkSOf P) κ ∅ₖ τ r
             -- the witness over the parameters, and at the instance
             wΔ  = proj₁ (proj₂ (proj₂ (proj₂ W)))
-            uΔ  = proj₁ (proj₂ (proj₂ (proj₂ wΔ) Pκ))
+            uΔ  = proj₁ (proj₂ (proj₂ wΔ Pκ))
             su  = WS.subW⇐ (proj₂ uΔ)
             -- the checker at the instance: it accepts the instantiated witness
             cc  = subst (λ X → ∃[ se ] ∃[ d ] ∃[ f ] Once.TypeCheck.Elaborate.checkElab ctxT (pfunBody pfi) X
@@ -625,7 +622,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N W inv fr = rec
             se  = proj₁ cc
             ce  = proj₂ (proj₂ (proj₂ cc))
             cr  = Once.TypeCheck.Elaborate.checkElabV ctxT (pfunBody pfi) U
-            rU  = proj₂ (proj₂ (wit-of cr ce)) P
+            rU  = proj₂ (wit-of cr ce) P
             uU  = proj₁ (proj₂ rU)
             hU  = COH.coh⇐ UM.sh-∅ (proj₂ uU) (proj₂ su) (sym (proj₂ (proj₂ K)))
             -- the reference is the splice, the checker's term, the instance's realization

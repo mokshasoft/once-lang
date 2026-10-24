@@ -60,7 +60,7 @@ import Once.Parser as Parser
 open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp; MonoWit; CheckRun)
 import Once.Internal.Typing.Scope
 import Once.Surface.Syntax as SS
-open import Once.TypeCheck.DualWitness using (DC)
+open import Once.TypeCheck.SpecWitness using (WC)
 open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
 open import Once.Internal.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; []; s-ffi; i-def; t-def; wkI; wkT; impDefs; viewOf; impAt; telFind; monoSchema; u0;
@@ -213,20 +213,20 @@ monoBody : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : 
          → (N : Names S is ts) → ∀ ft {e ty Ψ} → MonoWit ft (ctxOf sc) e ty Ψ
          → Σ[ t ∈ SC.Tm S 0 0 ] Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S ST.∅ₖ Once.Spec.Context.∅ [] t ty LG.pure
 monoBody ss is ts N (just _) (_ , _ , _ , w , _) =
-  let (t , u , _) = proj₂ (proj₂ w) (packOf ss is ts N) in t , u0 (UC.typ⇐ Σ _ (nm N) _ _ ST.∅ₖ (proj₂ u))
+  let (t , u , _) = proj₂ w (packOf ss is ts N) in t , u0 (UC.typ⇐ Σ _ (nm N) _ _ ST.∅ₖ (proj₂ u))
 monoBody ss is ts N nothing (_ , _ , _ , w , _) =
-  let (t , u , _) = proj₂ (proj₂ w) (packOf ss is ts N) in t , u0 (UC.typ⇒ Σ _ (nm N) _ _ ST.∅ₖ (proj₂ u))
+  let (t , u , _) = proj₂ w (packOf ss is ts N) in t , u0 (UC.typ⇒ Σ _ (nm N) _ _ ST.∅ₖ (proj₂ u))
 
 -- …and the Spec's derivation of the body, naming that term.
 monoCheck : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
           → (N : Names S is ts) → ∀ {A e ty Ψ} (W : MonoWit (just A) (ctxOf sc) e ty Ψ)
           → SUT._⊢_⇐_↝_ Σ S (nm N) ST.∅ₖ SUT.∅ e ty (proj₁ (monoBody ss is ts N (just A) W))
-monoCheck ss is ts N (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ (proj₂ w) (packOf ss is ts N))))
+monoCheck ss is ts N (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ w (packOf ss is ts N))))
 
 monoSynth : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
           → (N : Names S is ts) → ∀ {e ty Ψ} (W : MonoWit nothing (ctxOf sc) e ty Ψ)
           → SUT._⊢_⇒_↝_ Σ S (nm N) ST.∅ₖ SUT.∅ e ty (proj₁ (monoBody ss is ts N nothing W))
-monoSynth ss is ts N (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ (proj₂ w) (packOf ss is ts N))))
+monoSynth ss is ts N (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ w (packOf ss is ts N))))
 
 -- A telescope definition's witness: the checker's run of its body over its
 -- parameters.
@@ -240,14 +240,14 @@ polyBody : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : 
          → Σ[ t ∈ SC.Tm S (SC.Schema.arity (schemaOf (pfunType pfi))) 0 ]
              Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S (kindsOf (pfunType pfi)) Once.Spec.Context.∅ [] t (rigidOf (pfunType pfi)) LG.pure
 polyBody ss is ts N {pfi} (_ , _ , _ , w , _) =
-  let (t , u , _) = proj₂ (proj₂ w) (packOfAt (kindsOf (pfunType pfi)) ss is ts N)
+  let (t , u , _) = proj₂ w (packOfAt (kindsOf (pfunType pfi)) ss is ts N)
   in t , u0 (UC.typ⇐ Σ _ (nm N) _ _ (kindsOf (pfunType pfi)) (proj₂ u))
 
 -- …and the Spec's derivation of the body, naming that term.
 polyCheck : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
           → (N : Names S is ts) → ∀ {pfi Ψ} (W : PolyWit sc pfi Ψ)
           → SUT._⊢_⇐_↝_ Σ S (nm N) (kindsOf (pfunType pfi)) SUT.∅ (pfunBody pfi) (rigidOf (pfunType pfi)) (proj₁ (polyBody ss is ts N {pfi} {Ψ} W))
-polyCheck ss is ts N {pfi} (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ (proj₂ w) (packOfAt (kindsOf (pfunType pfi)) ss is ts N))))
+polyCheck ss is ts N {pfi} (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ w (packOfAt (kindsOf (pfunType pfi)) ss is ts N))))
 
 -- A telescope definition: an entry at its schema, its body the witness's term.
 polyDef : ∀ {s} {S : Defs s} {sc pfi Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))

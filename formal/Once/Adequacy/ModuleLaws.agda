@@ -28,7 +28,6 @@ import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
 open import Once.Internal.Module
 open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunType; pfunBody)

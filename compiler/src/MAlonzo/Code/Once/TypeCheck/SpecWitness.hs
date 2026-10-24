@@ -417,7 +417,7 @@ d_ok'45'sig_432 ::
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.TypeCheck.View.T_InView_156 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_ok'45'sig_432 = erased
 -- Once.TypeCheck.SpecWitness._.ok-inj
@@ -439,8 +439,8 @@ d_oks'45'fun_526 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_oks'45'fun_526 = erased
 -- Once.TypeCheck.SpecWitness._.rz⇒
@@ -2424,7 +2424,7 @@ d_w'45'sigop_922 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -2435,7 +2435,7 @@ du_w'45'sigop_922 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -5817,7 +5817,7 @@ d_w'45'sigop_2136 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -5828,7 +5828,7 @@ du_w'45'sigop_2136 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -8687,7 +8687,7 @@ d_w'45'sigop_3144 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -8698,7 +8698,7 @@ du_w'45'sigop_3144 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -11648,7 +11648,7 @@ d_w'45'sigop_3740 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -11659,7 +11659,7 @@ du_w'45'sigop_3740 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -14314,7 +14314,7 @@ d_w'45'sigop_4324 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -14325,7 +14325,7 @@ du_w'45'sigop_4324 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -16931,7 +16931,7 @@ d_w'45'sigop_4908 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -16942,7 +16942,7 @@ du_w'45'sigop_4908 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -20577,7 +20577,7 @@ d_w'45'sigop_5504 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -20589,7 +20589,7 @@ du_w'45'sigop_5504 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -21112,7 +21112,8 @@ du_res_5956 v0 v1 v2 v3 v4 v5 v6
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
                    MAlonzo.Code.Once.TypeCheck.Witness.du_w'45'sigop_820 (coe v1)
-                   (coe v4) (coe v2) (coe v8 v0 v3 erased) (coe v5) (coe v7))
+                   (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v4) (coe v3))
+                   (coe v2) (coe v8 v0 v3 erased) (coe v5) (coe v7))
                 erased)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.SpecWitness._._._.W↦
@@ -24425,7 +24426,7 @@ d_w'45'sigop_6126 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -24437,7 +24438,7 @@ du_w'45'sigop_6126 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -27649,7 +27650,7 @@ d_w'45'sigop_6730 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -27660,7 +27661,7 @@ du_w'45'sigop_6730 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -31451,7 +31452,7 @@ d_w'45'sigop_7348 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -31464,7 +31465,7 @@ du_w'45'sigop_7348 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -34786,7 +34787,7 @@ d_w'45'sigop_7976 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -34798,7 +34799,7 @@ du_w'45'sigop_7976 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -38499,7 +38500,7 @@ d_w'45'sigop_8586 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -38512,7 +38513,7 @@ du_w'45'sigop_8586 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -41705,7 +41706,7 @@ d_w'45'sigop_9186 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -41716,7 +41717,7 @@ du_w'45'sigop_9186 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -44717,7 +44718,7 @@ d_w'45'sigop_9786 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -44728,7 +44729,7 @@ du_w'45'sigop_9786 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -48579,7 +48580,7 @@ d_w'45'sigop_10402 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -48592,7 +48593,7 @@ du_w'45'sigop_10402 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -53486,7 +53487,7 @@ d_w'45'sigop_11056 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -53500,7 +53501,7 @@ du_w'45'sigop_11056 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -57472,7 +57473,7 @@ d_w'45'sigop_11682 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -57485,7 +57486,7 @@ du_w'45'sigop_11682 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -61284,7 +61285,7 @@ d_w'45'sigop_12298 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -61297,7 +61298,7 @@ du_w'45'sigop_12298 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -65099,7 +65100,7 @@ d_w'45'sigop_12914 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -65112,7 +65113,7 @@ du_w'45'sigop_12914 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -68914,7 +68915,7 @@ d_w'45'sigop_13534 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -68927,7 +68928,7 @@ du_w'45'sigop_13534 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -72726,7 +72727,7 @@ d_w'45'sigop_14154 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -72739,7 +72740,7 @@ du_w'45'sigop_14154 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -76048,7 +76049,7 @@ d_w'45'sigop_14756 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -76060,7 +76061,7 @@ du_w'45'sigop_14756 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -79373,7 +79374,7 @@ d_w'45'sigop_15356 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -79385,7 +79386,7 @@ du_w'45'sigop_15356 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -82711,7 +82712,7 @@ d_w'45'sigop_15956 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -82723,7 +82724,7 @@ du_w'45'sigop_15956 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -85961,7 +85962,7 @@ d_w'45'sigop_16554 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -85973,7 +85974,7 @@ du_w'45'sigop_16554 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -89310,7 +89311,7 @@ d_w'45'sigop_17154 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -89322,7 +89323,7 @@ du_w'45'sigop_17154 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -92874,7 +92875,7 @@ d_w'45'sigop_17760 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -92886,7 +92887,7 @@ du_w'45'sigop_17760 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -96242,7 +96243,7 @@ d_w'45'sigop_18370 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -96254,7 +96255,7 @@ du_w'45'sigop_18370 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -99603,7 +99604,7 @@ d_w'45'sigop_18984 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -99615,7 +99616,7 @@ du_w'45'sigop_18984 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -103505,7 +103506,7 @@ d_w'45'sigop_19598 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -103518,7 +103519,7 @@ du_w'45'sigop_19598 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -107603,7 +107604,7 @@ d_w'45'sigop_20218 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -107616,7 +107617,7 @@ du_w'45'sigop_20218 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -111539,7 +111540,7 @@ d_w'45'sigop_20832 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -111552,7 +111553,7 @@ du_w'45'sigop_20832 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -114729,7 +114730,7 @@ d_w'45'sigop_21454 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -114740,7 +114741,7 @@ du_w'45'sigop_21454 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -117819,7 +117820,7 @@ d_w'45'sigop_22046 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -117831,7 +117832,7 @@ du_w'45'sigop_22046 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -120924,7 +120925,7 @@ d_w'45'sigop_22638 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -120936,7 +120937,7 @@ du_w'45'sigop_22638 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -123938,7 +123939,7 @@ d_w'45'sigop_23228 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -123949,7 +123950,7 @@ du_w'45'sigop_23228 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -126937,7 +126938,7 @@ d_w'45'sigop_23818 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -126948,7 +126949,7 @@ du_w'45'sigop_23818 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -130027,7 +130028,7 @@ d_w'45'sigop_24410 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -130039,7 +130040,7 @@ du_w'45'sigop_24410 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -133132,7 +133133,7 @@ d_w'45'sigop_25002 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -133144,7 +133145,7 @@ du_w'45'sigop_25002 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -137012,7 +137013,7 @@ d_w'45'sigop_25610 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -137025,7 +137026,7 @@ du_w'45'sigop_25610 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -141288,7 +141289,7 @@ d_w'45'sigop_26234 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -141301,7 +141302,7 @@ du_w'45'sigop_26234 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -145340,7 +145341,7 @@ d_w'45'sigop_26854 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -145353,7 +145354,7 @@ du_w'45'sigop_26854 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -149352,7 +149353,7 @@ d_w'45'sigop_27470 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -149365,7 +149366,7 @@ du_w'45'sigop_27470 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -153203,7 +153204,7 @@ d_w'45'sigop_28082 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -153216,7 +153217,7 @@ du_w'45'sigop_28082 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -156912,7 +156913,7 @@ d_w'45'sigop_28690 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -156925,7 +156926,7 @@ du_w'45'sigop_28690 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -160779,7 +160780,7 @@ d_w'45'sigop_29304 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -160792,7 +160793,7 @@ du_w'45'sigop_29304 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -164212,7 +164213,7 @@ d_w'45'sigop_29904 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -164224,7 +164225,7 @@ du_w'45'sigop_29904 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -167630,7 +167631,7 @@ d_w'45'sigop_30508 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -167642,7 +167643,7 @@ du_w'45'sigop_30508 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -171541,7 +171542,7 @@ d_w'45'sigop_31128 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -171554,7 +171555,7 @@ du_w'45'sigop_31128 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -175376,7 +175377,7 @@ d_w'45'sigop_31736 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -175389,7 +175390,7 @@ du_w'45'sigop_31736 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -178782,7 +178783,7 @@ d_w'45'sigop_32346 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -178794,7 +178795,7 @@ du_w'45'sigop_32346 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -182144,7 +182145,7 @@ d_w'45'sigop_32948 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -182156,7 +182157,7 @@ du_w'45'sigop_32948 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -185482,7 +185483,7 @@ d_w'45'sigop_33548 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -185494,7 +185495,7 @@ du_w'45'sigop_33548 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -188820,7 +188821,7 @@ d_w'45'sigop_34148 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -188832,7 +188833,7 @@ du_w'45'sigop_34148 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -192070,7 +192071,7 @@ d_w'45'sigop_34746 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -192082,7 +192083,7 @@ du_w'45'sigop_34746 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -195819,7 +195820,7 @@ d_w'45'sigop_35358 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -195832,7 +195833,7 @@ du_w'45'sigop_35358 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -199737,7 +199738,7 @@ d_w'45'sigop_35996 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -199750,7 +199751,7 @@ du_w'45'sigop_35996 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -204465,7 +204466,7 @@ d_w'45'sigop_36630 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -204478,7 +204479,7 @@ du_w'45'sigop_36630 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -208398,7 +208399,7 @@ d_w'45'sigop_37260 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -208411,7 +208412,7 @@ du_w'45'sigop_37260 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -212381,7 +212382,7 @@ d_w'45'sigop_37872 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -212394,7 +212395,7 @@ du_w'45'sigop_37872 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -215528,7 +215529,7 @@ d_w'45'sigop_38470 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -215539,7 +215540,7 @@ du_w'45'sigop_38470 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -218618,7 +218619,7 @@ d_w'45'sigop_39062 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -218630,7 +218631,7 @@ du_w'45'sigop_39062 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -221723,7 +221724,7 @@ d_w'45'sigop_39654 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -221735,7 +221736,7 @@ du_w'45'sigop_39654 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -224738,7 +224739,7 @@ d_w'45'sigop_40244 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -224749,7 +224750,7 @@ du_w'45'sigop_40244 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -227651,7 +227652,7 @@ d_w'45'sigop_40832 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -227662,7 +227663,7 @@ du_w'45'sigop_40832 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -231768,7 +231769,7 @@ d_w'45'sigop_41454 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -231781,7 +231782,7 @@ du_w'45'sigop_41454 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -235819,7 +235820,7 @@ d_w'45'sigop_42074 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -235832,7 +235833,7 @@ du_w'45'sigop_42074 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -239559,7 +239560,7 @@ d_w'45'sigop_42686 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
@@ -239572,7 +239573,7 @@ du_w'45'sigop_42686 ::
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
   MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->

@@ -49,9 +49,9 @@ import qualified MAlonzo.Code.Once.Surface.Elaborate
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type.Sub
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
-import qualified MAlonzo.Code.Once.TypeCheck.DualWitness
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
 import qualified MAlonzo.Code.Once.TypeCheck.Error
+import qualified MAlonzo.Code.Once.TypeCheck.SpecWitness
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
@@ -1074,12 +1074,11 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'terminal'45'morph'45'check_714
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23062
                          (coe v0)
                          (coe
                             MAlonzo.Code.Once.Spec.Grade.C_fin_42
-                            (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36))
-                         (coe v1))
+                            (coe MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36)))
                       erased)))
       MAlonzo.Code.Once.Spec.Grade.C_'8849''45'pa_54
         -> coe
@@ -1094,12 +1093,11 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'terminal'45'morph'45'check_714
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23062
                          (coe v0)
                          (coe
                             MAlonzo.Code.Once.Spec.Grade.C_fin_42
-                            (coe MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38))
-                         (coe v1))
+                            (coe MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38)))
                       erased)))
       MAlonzo.Code.Once.Spec.Grade.C_'8849''45'pe_56
         -> coe
@@ -1114,8 +1112,8 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'terminal'45'morph'45'check_714
-                         (coe v0) (coe MAlonzo.Code.Once.Spec.Grade.C_eff_44) (coe v1))
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23062
+                         (coe v0) (coe MAlonzo.Code.Once.Spec.Grade.C_eff_44))
                       erased)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.ElaborateProofs.checkElab-fallback-RVar-initial

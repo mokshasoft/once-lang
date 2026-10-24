@@ -5,20 +5,20 @@
 -- Once.Adequacy.AcceptSound — front-end SOUNDNESS (Plan 0.48 Phase 1)
 --
 -- The compiler's front-end accepts ONLY genuinely well-typed programs:
--- if `compileResolvedModule` succeeds, every function has a DECLARATIVE
--- typing derivation `ctx ⊢ᶜ body ∶ ty ⨾ Ψ` (the judgment in
--- `Once.Internal.Typing`, INDEPENDENT of the elaborator function). This
--- is what makes `⟦_⟧⊥`'s domain genuine rather than true-by-construction:
--- the meaning is defined only for programs the independent judgment admits.
+-- if `compileResolvedModule` succeeds, the module is a typed telescope
+-- (`ModTele`): every definition carries the checker's run with its witness —
+-- the Spec's derivation of the body, at every scope Pack (`SpecWitness`) —
+-- and its type is principal (the checker rejects every type below). This is
+-- what makes `⟦_⟧⊥`'s domain genuine rather than true-by-construction: the
+-- meaning is defined only for programs the Spec types.
 --
--- Built on `VerifiedTypeChecker.tcCheck-sound` (`checkElab ≡ success ⇒ ⊢ᶜ`),
--- lifted through the explicit-arg `…-aux` compile pipeline (no `with`-bite),
+-- Lifted through the explicit-arg `…-aux` compile pipeline (no `with`-bite),
 -- mirroring `Once.Adequacy.MainBuilds`.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.AcceptSound where
 
-open import Once.TypeCheck.DualWitness using (DI)
+open import Once.TypeCheck.SpecWitness using (WI)
 open import Once.Internal.Type.Instance using (kindsOf; arityOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
@@ -46,7 +46,6 @@ open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Internal.Typing.Scope as Classify
 open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.Internal.Syntax using (RawExpr)
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Internal.Module
@@ -58,10 +57,6 @@ open import Once.Internal.Type.Honest using (HonestFFI; honest?)
 open import Once.Internal.Context using (zeroUsage)
 import Once.Surface.Context
 open import Data.Maybe using (Maybe; nothing)
--- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which
--- transitively pulls in the still-rotted `ErrorProofs`; soundness needs only
--- this): `checkElab ctx e T ≡ success … ⇒ ctx ⊢ᶜ e ∶ T ⨾ Ψ`.
-open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Compile using (moduleToIR)
 open import Once.Adequacy.MainBuilds using (moduleToIR-inj₂)
 import Once.Parser.Module.Core as P
@@ -146,7 +141,7 @@ compileFun-sound doOpt ctx polys impsOf name ty expr eq =
 compileFunBodyI-at-success : ∀ {nctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size nctx)} {eE : Srf.Expr (NamedCtx.debruijn nctx) Ψ T}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (w : DI nctx body T Ψ eE) {dd ff : ℕ} → TE.inferElabV nctx body ≡ (TE.success T Ψ eE dd ff , w) → (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  (w : WI nctx body T Ψ eE) {dd ff : ℕ} → TE.inferElabV nctx body ≡ (TE.success T Ψ eE dd ff , w) → (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty δ w d ≡ inj₂ ir → MonoWit nothing nctx body ty Ψ
 compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w ei (yes refl) _ = _ , _ , _ , w , ei
 compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w ei (no _) ()

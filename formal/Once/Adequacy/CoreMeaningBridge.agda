@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.CoreMeaningBridge — the core meaning of an elaboration, as
+-- Once.Adequacy.CoreMeaningBridge — the Spec's core meaning of a term, as
 -- the bridge to the implementation reads it (plan 0.103 6b; plan 0.122 §2b-3:
 -- the Spec's core meaning is the only meaning of a derivation).
 --
@@ -57,7 +57,6 @@ open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Internal.Type.Sub using (·p-diag)
 open import Once.Denotation.PureBind using (_>>=ᵖ_; >>=ᵖ-β; >>=ᵖ-idʳ)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
-open import Once.Internal.Typing
 open import Once.Denotation.DefEnv using (defAt; impAt)
 import Once.Denotation.RefMeanings Σ σ₀ as RM
 open RM using (MeaningsOf; Meanings)
@@ -72,8 +71,6 @@ open SM using (DefSem; Env; envˡ; envʳ; env*One; env*Many; restrict; slot)
 open import Once.Metatheory.Coherence.Env Σ fmt S
   using (envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
 open import Once.Spec.Core.Typing Σ S
-open import Once.Internal.Elaboration Σ S
-  using (elabᶜ; elabᵢ; elabᵈ; Elab; refAt; sigE; importE; polyE; retypeD; retypeE)
 open import Once.TypeCheck.View Σ S using (Views; View; ImportAt; Declared; declared; def)
 open View
 open import Once.Adequacy.SurfaceEnv Σ fmt S σ₀
@@ -145,42 +142,6 @@ record Agree {imps sg : Imports} {polys : PolyCtx} (V : View imps sg polys) (ρ 
     -- declaration.
     agree-resolved : ∀ {cn T} (wn : WordName cn) (lk : lookupImport sg (showCanonical cn) ≡ just T) (k : IsConcrete T)
                    → subst id (sym (⟦wk₀⟧ᵛ T)) (sigs ρ {cn = cn} wn lk k) ≡ sigSem δ cn wn k (declares V lk)
-
-------------------------------------------------------------------------
--- The references' core meanings
-------------------------------------------------------------------------
-
-module _ {Δ : KCtx 0} {n} {Γ : Ctx 0 n} (δ : DefSem) where
-
-  ⟦⟧-retypeD : ∀ {Ψ t A B π} (e : A ≡ B) (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) (γ : Env σ₀ Γ Ψ)
-             → ⟦ retypeD e d ⟧ₛ δ γ ≡ subst (λ X → M π ⟦ X ⟧ᵛ) e (⟦ d ⟧ₛ δ γ)
-  ⟦⟧-retypeD refl d γ = refl
-
-  ⟦⟧-retypeE : ∀ {Ψ A B} (e : A ≡ B) (el : Elab Δ Γ Ψ A) (γ : Env σ₀ Γ Ψ)
-             → ⟦ proj₂ (retypeE e el) ⟧ₛ δ γ ≡ subst (λ X → ⟦ X ⟧ᵛ) e (⟦ proj₂ el ⟧ₛ δ γ)
-  ⟦⟧-retypeE refl el γ = refl
-
-  refAt-sem : (d : Fin s) {sc : Schema} (e : S !! d ≡ sc) (τ : TySub (arity sc) 0) (r : Respects (kinds sc) Δ τ) (γ : Env σ₀ Γ _)
-            → ⟦ proj₂ (refAt {Γ = Γ} d e τ r) ⟧ₛ δ γ ≡ refSemAt δ d e τ r
-  refAt-sem d refl τ r γ = refl
-
-  polyE-sem : ∀ {imps sg polys} (V : View imps sg polys) {x sc body prefix U}
-                (lp : lookupPolyPrefix polys x ≡ just (sc , body , prefix)) (ki : KindedInstance Δ sc U) (γ : Env σ₀ Γ _)
-            → ⟦ proj₂ (polyE {Γ = Γ} V lp ki) ⟧ₛ δ γ ≡ polySem δ V lp ki
-  polyE-sem V {sc = sc} lp ki γ =
-    trans (⟦⟧-retypeE (proj₂ (proj₂ (kinded-instance sc ki))) _ γ)
-          (cong (subst (λ X → ⟦ X ⟧ᵛ) (proj₂ (proj₂ (kinded-instance sc ki))))
-                (refAt-sem (entry V lp) (entryIs V lp) _ _ γ))
-
-  importE-sem : ∀ {x T} (i : ImportAt x T) (γ : Env σ₀ Γ _) → ⟦ proj₂ (importE {Γ = Γ} i refl) ⟧ₛ δ γ ≡ impSem δ {Δ} i
-  importE-sem (def d mono) γ = refAt-sem d mono none (λ ()) γ
-
-  sigE-sem : ∀ (c : CanonicalName) {T} (wn : WordName c) (k : IsConcrete T) (D : Declared (showCanonical c) T) (γ : Env σ₀ Γ _)
-           → ⟦ proj₂ (sigE {Γ = Γ} c wn k D refl) ⟧ₛ δ γ ≡ sigSem δ c wn k D
-  sigE-sem c {T} wn k (declared h mem) γ =
-    trans (⟦⟧-retypeD (trans (⌜declS⌝ k h) refl) _ γ)
-          (cong (λ e → subst (λ X → ⟦ X ⟧ᵛ) e (SM.sigopᵛ σ₀ c (declS T) (mem {c} wn refl) (SM.DefSem.model δ)))
-                (trans-reflʳ (⌜declS⌝ k h)))
 
 ------------------------------------------------------------------------
 -- The pure bind

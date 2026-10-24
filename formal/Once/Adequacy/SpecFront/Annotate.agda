@@ -68,7 +68,6 @@ open import Once.Adequacy.SpecFront.Expr using (RX; x-local; x-res; x-lam; x-let
   x-annot; x-pair; x-neg; x-binop; x-app)
 open import Once.Adequacy.SpecFront.CoreInv Σ S {Δ = Δ}
 open import Once.Adequacy.SpecFront.GenInv Σ S {Δ = Δ}
-open import Once.Adequacy.SpecCore.Context using (≤q-L)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-+; ⊑ᵘ-*ʳ; ⊑ᵘ-*ˡ; One*ᵘ)
 
 private
@@ -122,6 +121,16 @@ private
 
   ≤q-≡ : ∀ {p q} → p ≡ q → p ≤q q
   ≤q-≡ {p} refl = ≤q-refl p
+
+  -- a usage order, decided
+  ≤q-L : ∀ p q → p ≤q q → (p Once.Type.Grade.≤qᵇ q) ≡ true
+  ≤q-L Zero q    _ = refl
+  ≤q-L One  One  _ = refl
+  ≤q-L One  Many _ = refl
+  ≤q-L Many Many _ = refl
+  ≤q-L One  Zero ()
+  ≤q-L Many Zero ()
+  ≤q-L Many One  ()
 
   ⊑-head : ∀ {n p q} {Ψ Φ : Usage n} → (p ∷ Ψ) ⊑ᵘ (q ∷ Φ) → p ≤q q
   ⊑-head (h ⊑∷ _) = h

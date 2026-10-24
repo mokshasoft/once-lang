@@ -54,8 +54,6 @@ import Once.Spec.Surface.Program as SPr
 import Once.Spec.Grade as SG
 import Once.Spec.Context as SCx
 import Once.Spec.Sub as SS
-import Once.Internal.Elaboration as E
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Internal.Principal using (PrincipalAt)
 open import Once.Internal.Module using (Scope; scope; ctxOf; ctxOfAt)
 open import Once.Internal.Core.Translate Σ using (SigSig; ImpSig; TeleSig; viewOf)

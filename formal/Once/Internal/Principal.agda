@@ -12,7 +12,7 @@
 -- `below T` lists the ones strictly below, all of them (`below-complete`), and
 -- the decision is the checker run on each: the body's type is principal when
 -- the checker rejects the body at each (`PrincipalAt`). The checker is sound
--- and complete for the Spec's derivation (`SpecWitness`, `CompletenessS`), so
+-- and complete for the Spec's derivation (`SpecWitness`, `Completeness`), so
 -- that is the Spec's principality (`SpecFront.Def`).
 --
 -- Not just the types one step down: checking is not closed upward along

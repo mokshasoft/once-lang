@@ -60,8 +60,8 @@ import qualified MAlonzo.Code.Once.Type.Match
 import qualified MAlonzo.Code.Once.Type.Rigid
 import qualified MAlonzo.Code.Once.Type.Sub
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
-import qualified MAlonzo.Code.Once.TypeCheck.DualWitness
 import qualified MAlonzo.Code.Once.TypeCheck.Error
+import qualified MAlonzo.Code.Once.TypeCheck.SpecWitness
 import qualified MAlonzo.Code.Once.TypeCheck.TargetView
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
@@ -301,7 +301,7 @@ du_given'45'infer'45'dec_368 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                                       v7)
                                                    (coe v8) (coe v9))
                                                 (coe
-                                                   MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'infer_1150
+                                                   MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'infer_35822
                                                    (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
                                                    (coe v10) (coe v15) (coe v18))
                                          _ -> MAlonzo.RTE.mazUnreachableError
@@ -521,8 +521,8 @@ du_given'45'cata'45'dec_560 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                      v3 v6)
                                   (coe addInt (coe (1 :: Integer)) (coe v7)) (coe v8))
                                (coe
-                                  MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'cata_1386
-                                  (coe v1) (coe v2) (coe v5) (coe v13) (coe v3) (coe v9)))))
+                                  MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'cata_42516
+                                  (coe v1) (coe v2) (coe v5) (coe v3) (coe v9)))))
              else coe
                     seq (coe v12)
                     (coe
@@ -634,7 +634,7 @@ du_embedOrSubsume'45'dec_696 v0 v1 v2 v3 v4 v5 v6 v7 v8
                               (coe MAlonzo.Code.Once.Surface.Syntax.C_coerce_380 v3 v11 v4)
                               (coe v5) (coe v6))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'sub_976 (coe v3)
+                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'sub_30338 (coe v3)
                               (coe v2) (coe v7) (coe v11))
                     _ -> MAlonzo.RTE.mazUnreachableError
              else coe
@@ -2128,9 +2128,10 @@ du_given'45'poly'45'k_1462 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                  (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_406 v1))
                               (coe (0 :: Integer)) (coe (0 :: Integer)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'poly_1184 (coe v1)
-                              (coe v2) (coe v3) (coe v4) (coe v5) (coe v7) (coe v8) (coe v9)
-                              (coe v10) (coe v11) (coe v12) (coe v13) (coe v18) (coe v14))
+                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'poly_36442
+                              (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v7) (coe v8)
+                              (coe v9) (coe v10) (coe v11) erased (coe v12) (coe v13) (coe v18)
+                              (coe v14))
                     _ -> MAlonzo.RTE.mazUnreachableError
              else coe
                     seq (coe v17)
@@ -2629,8 +2630,8 @@ du_checkElabV'45'RVar'45'poly'45'inst'45'aux_2020 v0 v1 v2 v3 v4 v5
                               (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_406 v1)
                               (coe (0 :: Integer)) (coe (0 :: Integer)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'var'45'poly'45'instantiate_1118
-                              (coe v1) (coe v3) (coe v4) (coe v5) (coe v9))
+                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'var'45'poly'45'instantiate_35180
+                              (coe v1) (coe v3) (coe v4) (coe v5) erased (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              else coe
                     seq (coe v8)
@@ -2796,7 +2797,7 @@ du_inferElabV'45'RVar'45'poly'45'ground'45'aux_2184 v0 v1 v2 v3 v4
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_406 v2)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
              (coe
-                MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'var'45'poly'45'instantiate'45'infer_188
+                MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'var'45'poly'45'instantiate'45'infer_7170
                 (coe v2) (coe v3) (coe v4)
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -2804,7 +2805,7 @@ du_inferElabV'45'RVar'45'poly'45'ground'45'aux_2184 v0 v1 v2 v3 v4
                       MAlonzo.Code.Once.TypeCheck.Classify.du_lookupPoly'8658'lookupPolyPrefix_274
                       (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_polys_140 (coe v1))
                       (coe v2)))
-                (coe v6) (coe v6))
+                erased)
       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v6
         -> coe
              seq (coe v6)
@@ -2919,8 +2920,8 @@ d_elabGivenLeaf_2274 v0 v1 v2 v3 v4 v5 v6
                               (coe MAlonzo.Code.Once.IR.C_id_20))
                            (coe (0 :: Integer)) (coe (0 :: Integer)))
                         (coe
-                           MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'id_1260 (coe v3)
-                           (coe v4) (coe v8))))
+                           MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'id_38304 (coe v3)
+                           (coe v4))))
          MAlonzo.Code.Once.Internal.Typing.Scope.C_ahv'45'fst_310
            -> let v8
                     = coe
@@ -2961,8 +2962,8 @@ d_elabGivenLeaf_2274 v0 v1 v2 v3 v4 v5 v6
                                         (coe MAlonzo.Code.Once.IR.C_fst_42))
                                      (coe (0 :: Integer)) (coe (0 :: Integer)))
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'fst_1272
-                                     (coe v9) (coe v10) (coe v4) (coe v11))))
+                                     MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'fst_38896
+                                     (coe v9) (coe v10) (coe v4))))
                    _ -> coe v8)
          MAlonzo.Code.Once.Internal.Typing.Scope.C_ahv'45'snd_312
            -> let v8
@@ -3004,8 +3005,8 @@ d_elabGivenLeaf_2274 v0 v1 v2 v3 v4 v5 v6
                                         (coe MAlonzo.Code.Once.IR.C_snd_48))
                                      (coe (0 :: Integer)) (coe (0 :: Integer)))
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'snd_1284
-                                     (coe v9) (coe v10) (coe v4) (coe v11))))
+                                     MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'snd_39488
+                                     (coe v9) (coe v10) (coe v4))))
                    _ -> coe v8)
          MAlonzo.Code.Once.Internal.Typing.Scope.C_ahv'45'terminal_314
            -> coe
@@ -3033,8 +3034,8 @@ d_elabGivenLeaf_2274 v0 v1 v2 v3 v4 v5 v6
                               (coe MAlonzo.Code.Once.IR.C_terminal_72))
                            (coe (0 :: Integer)) (coe (0 :: Integer)))
                         (coe
-                           MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'terminal_1294
-                           (coe v3) (coe v4) (coe v8))))
+                           MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'terminal_40078
+                           (coe v3) (coe v4))))
          MAlonzo.Code.Once.Internal.Typing.Scope.C_ahv'45'initial_320
            -> let v8
                     = coe
@@ -3075,8 +3076,8 @@ d_elabGivenLeaf_2274 v0 v1 v2 v3 v4 v5 v6
                                         (coe MAlonzo.Code.Once.IR.C_initial_76))
                                      (coe (0 :: Integer)) (coe (0 :: Integer)))
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'initial_1302
-                                     (coe v4) (coe v9))))
+                                     MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'initial_40666
+                                     (coe v4))))
                    _ -> coe v8)
          _ -> coe v7)
 -- Once.TypeCheck.Elaborate.outIR
@@ -3153,7 +3154,7 @@ du_inferOutGo_2380 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                           (coe du_outIR_2348 (coe v2) (coe v10)) v5)
                        (coe addInt (coe (1 :: Integer)) (coe v6)) (coe v7))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'Out'45'app'45'infer_560
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'Out'45'app'45'infer_18198
                        (coe v2) (coe v4) (coe v10) (coe v8))
              MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38
                -> coe
@@ -3192,7 +3193,7 @@ du_inferOutGo_2380 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                           v5)
                        (coe addInt (coe (1 :: Integer)) (coe v6)) (coe v7))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'Out'45'eff'45'app'45'infer_586
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'Out'45'eff'45'app'45'infer_18812
                        (coe v2) (coe v4) (coe v10) (coe v8))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -3328,7 +3329,7 @@ du_inferFstAt_2536 v0 v1 v2 v3 v4 v5 v6 v7
                           (coe MAlonzo.Code.Once.IR.C_fst_42) v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4)) (coe v5))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'fst'45'app_480
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'fst'45'app_15188
                        (coe v10) (coe v11) (coe v2) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.TargetView.C_prod'45'other_332
@@ -3413,7 +3414,7 @@ du_inferSndAt_2616 v0 v1 v2 v3 v4 v5 v6 v7
                           (coe MAlonzo.Code.Once.IR.C_snd_48) v3)
                        (coe addInt (coe (1 :: Integer)) (coe v4)) (coe v5))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'snd'45'app_494
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'snd'45'app_15788
                        (coe v10) (coe v11) (coe v2) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.TargetView.C_prod'45'other_332
@@ -3539,7 +3540,7 @@ du_inferApplyAt_2696 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                                           (coe v5))
                                                                        (coe v6))
                                                                     (coe
-                                                                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'apply'45'app'45'infer_520
+                                                                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'apply'45'app'45'infer_16986
                                                                        (coe v15) (coe v17) (coe v3)
                                                                        (coe v7)))
                                                           else coe
@@ -3638,7 +3639,7 @@ du_inferApplyAt_2696 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                                           (coe v5))
                                                                        (coe v6))
                                                                     (coe
-                                                                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'apply'45'eff'45'app'45'infer_538
+                                                                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'apply'45'eff'45'app'45'infer_17590
                                                                        (coe v15) (coe v17) (coe v3)
                                                                        (coe v19)
                                                                        (coe
@@ -3739,7 +3740,7 @@ du_inferApplyAt_2696 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                                    (coe v5))
                                                                 (coe v6))
                                                              (coe
-                                                                MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'apply'45'eff'45'app'45'infer_538
+                                                                MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'apply'45'eff'45'app'45'infer_17590
                                                                 (coe v15) (coe v17) (coe v3)
                                                                 (coe v19)
                                                                 (coe
@@ -3840,7 +3841,7 @@ du_inferElabV'45'RPair'45'aux_2942 v0 v1
                                         (coe v14))
                                      (coe v15))
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'pair_234
+                                     MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'pair_8416
                                      (coe v5) (coe v12) (coe v3) (coe v10))
                            C_failure_100 v11
                              -> coe
@@ -3882,7 +3883,7 @@ du_inferElabV'45'RAnnot'45'aux_2998 v0 v1 v2
                           MAlonzo.Code.Once.Internal.Type.d_wk'8320'_12 (coe v0) (coe v1))
                        (coe v5) (coe v6) (coe v7) (coe v8))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'annot_212
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'annot_7788
                        (coe v4))
              C_failure_128 v5
                -> coe
@@ -3992,7 +3993,7 @@ du_inferElabV'45'RNeg'45'aux_3030 v0 v1
                               (coe MAlonzo.Code.Once.Surface.Syntax.C_neg_308 v6)
                               (coe addInt (coe (1 :: Integer)) (coe v7)) (coe v8))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'neg_246 (coe v3))
+                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'neg_9018 (coe v3))
                     MAlonzo.Code.Once.Spec.Type.C_Float_34
                       -> coe
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -4043,12 +4044,12 @@ d_checkElabV'45'neg'45'int'45'aux_3118 v0 v1 v2 v3
                                        (coe MAlonzo.Code.Once.Surface.Syntax.C_int_194 v2)))
                                  (coe (2 :: Integer)) (coe (0 :: Integer)))
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'sub_976
+                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'sub_30338
                                  (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v3)
                                  (coe
-                                    MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'neg_246
+                                    MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'neg_9018
                                     (coe
-                                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'int_100
+                                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'int_2976
                                        (coe v2)))
                                  (coe v7))
                        _ -> MAlonzo.RTE.mazUnreachableError
@@ -4101,10 +4102,10 @@ d_checkElabV'45'neg'45'float'45'aux_3156 v0 v1 v2 v3 v4 v5
                                              (coe v2) (coe v3) (coe v4)))))
                                  (coe (1 :: Integer)) (coe (0 :: Integer)))
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'sub_976
+                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'sub_30338
                                  (coe MAlonzo.Code.Once.Spec.Type.C_Float_34) (coe v5)
                                  (coe
-                                    MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'neg'45'float_256
+                                    MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'neg'45'float_9614
                                     (coe v2) (coe v3) (coe v4))
                                  (coe v9))
                        _ -> MAlonzo.RTE.mazUnreachableError
@@ -4345,7 +4346,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith_354
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith_11508
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpSub_48
@@ -4364,7 +4365,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith_354
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith_11508
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMul_50
@@ -4383,7 +4384,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith_354
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith_11508
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpDiv_52
@@ -4402,7 +4403,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith_354
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith_11508
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMod_54
@@ -4421,7 +4422,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith_354
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith_11508
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLt_56
@@ -4446,7 +4447,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'cmp_450
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'cmp_13980
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLe_58
@@ -4471,7 +4472,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'cmp_450
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'cmp_13980
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGt_60
@@ -4496,7 +4497,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'cmp_450
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'cmp_13980
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGe_62
@@ -4521,7 +4522,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'cmp_450
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'cmp_13980
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpEq_64
@@ -4546,7 +4547,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'cmp_450
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'cmp_13980
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpNe_66
@@ -4571,7 +4572,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'cmp_450
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'cmp_13980
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 _ -> MAlonzo.RTE.mazUnreachableError
@@ -4597,7 +4598,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'il_402
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'il_12740
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpSub_48
@@ -4620,7 +4621,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'il_402
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'il_12740
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMul_50
@@ -4643,7 +4644,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'il_402
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'il_12740
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpDiv_52
@@ -4666,7 +4667,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'il_402
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'il_12740
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMod_54
@@ -4881,7 +4882,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'ir_426
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'ir_13360
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpSub_48
@@ -4903,7 +4904,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'ir_426
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'ir_13360
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMul_50
@@ -4925,7 +4926,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'ir_426
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'ir_13360
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpDiv_52
@@ -4947,7 +4948,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float'45'ir_426
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float'45'ir_13360
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMod_54
@@ -5053,7 +5054,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float_378
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float_12124
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpSub_48
@@ -5072,7 +5073,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float_378
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float_12124
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMul_50
@@ -5091,7 +5092,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float_378
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float_12124
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpDiv_52
@@ -5110,7 +5111,7 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe v9) (coe v16))
                                                           (coe v17))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'binop'45'arith'45'float_378
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'binop'45'arith'45'float_12124
                                                           (coe v1) (coe v7) (coe v14) (coe v5)
                                                           (coe v12))
                                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpMod_54
@@ -5283,7 +5284,7 @@ du_inferElabV'45'RLet'45'aux2_4240 v0 v1 v2 v3 v4 v5 v6
                                  (coe addInt (coe (1 :: Integer)) (coe v12)))
                               (coe v13))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'let_284 (coe v0)
+                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'let_10224 (coe v0)
                               (coe v1) (coe v15) (coe v2) (coe v16) (coe v5) (coe v8))
                     _ -> MAlonzo.RTE.mazUnreachableError
              C_failure_100 v9
@@ -5398,9 +5399,10 @@ du_inferElabV'45'RDestruct'45'join_4342 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    (coe addInt (coe (1 :: Integer)) (coe v18)))
                 (coe v19))
              (coe
-                MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'case_328 (coe v0)
-                (coe v1) (coe v2) (coe v3) (coe v8) (coe v14) (coe v22) (coe v9)
-                (coe v15) (coe v4) (coe v10) (coe v16) (coe v7) (coe v13) (coe v20)
+                MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'case_10866
+                (coe v0) (coe v1) (coe v2) (coe v3) (coe v8) (coe v14) (coe v22)
+                (coe v9) (coe v15) (coe v4) (coe v10) (coe v16) (coe v7) (coe v13)
+                (coe v20)
                 (coe
                    MAlonzo.Code.Once.Internal.Type.Join.du_sound_716 (coe v8)
                    (coe v14) (coe v22) (coe v23)))
@@ -5520,9 +5522,9 @@ du_given'45'case'45'join_4456 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                    (coe MAlonzo.Code.Data.Nat.Base.d__'8852'__208 (coe v7) (coe v12)))
                 (coe v13))
              (coe
-                MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'case_1332 (coe v1)
-                (coe v2) (coe v4) (coe v9) (coe v16) (coe v3) (coe v5) (coe v10)
-                (coe v8) (coe v14)
+                MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'case_41276
+                (coe v1) (coe v2) (coe v4) (coe v9) (coe v16) (coe v3) (coe v5)
+                (coe v10) (coe v8) (coe v14)
                 (coe
                    MAlonzo.Code.Once.Internal.Type.Join.du_sound_716 (coe v4) (coe v9)
                    (coe v16) (coe v17)))
@@ -5701,7 +5703,7 @@ du_inferElabV'45'RResolved'45'arrow'45'aux_4684 v0 v1 v2 v3 v4 v5
                                      v10))
                                (coe (0 :: Integer)) (coe (0 :: Integer)))
                             (coe
-                               MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'var'45'resolved_144
+                               MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'var'45'resolved_5932
                                (coe v2)
                                (coe
                                   MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v4)
@@ -5709,7 +5711,7 @@ du_inferElabV'45'RResolved'45'arrow'45'aux_4684 v0 v1 v2 v3 v4 v5
                                      MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
                                      (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v6))
                                   (coe v5))
-                               (coe v3) (coe v11)
+                               (coe v3) (coe v11) erased
                                (coe
                                   MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_42 v9
                                   v10))))
@@ -5787,8 +5789,8 @@ du_inferElabV'45'RResolved'45'value'45'aux_4744 v0 v1 v2 v3 v4 v5
                         (coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_388 v4 v2 v6)
                         (coe (0 :: Integer)) (coe (0 :: Integer)))
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'var'45'resolved_144
-                        (coe v2) (coe v4) (coe v3) (coe v7) (coe v6))))
+                        MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'var'45'resolved_5932
+                        (coe v2) (coe v4) (coe v3) (coe v7) erased (coe v6))))
              (coe MAlonzo.Code.Once.Internal.Name.d_wordNameB_36 (coe v2))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -5875,8 +5877,8 @@ du_inferElabV'45'RResolved'45'own'45'aux_4786 v0 v1 v2 v3
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_closure_396 v2)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
              (coe
-                MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'var'45'own_166
-                (coe v2) (coe v4))
+                MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'var'45'own_6560
+                (coe v2) (coe v4) erased)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
              du_inferElabV'45'RVar'45'poly'45'aux_2254 (coe v0) (coe v1)
@@ -5963,7 +5965,7 @@ du_inferElabV'45'RVar'45'lookup'45'aux_4870 v0 v1 v2 v3
                                  MAlonzo.Code.Once.Surface.Syntax.du_svar'8594'expr_568 (coe v8))
                               (coe (0 :: Integer)) (coe (0 :: Integer)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'var'45'local_130
+                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'var'45'local_5334
                               (coe v0) (coe v1) (coe v2) (coe v8))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -6062,8 +6064,8 @@ d_checkElabV'45'RVar'45'bbc'45'id'45'failure'45'aux_4898 v0 v1 v2
                                                              (coe MAlonzo.Code.Once.IR.C_id_20))
                                                           (coe (0 :: Integer)) (coe (0 :: Integer)))
                                                        (coe
-                                                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'id'45'check_680
-                                                          (coe v4) (coe v8) (coe v12)))))
+                                                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'id'45'check_21288
+                                                          (coe v4) (coe v8)))))
                                      else coe
                                             seq (coe v11)
                                             (coe
@@ -6204,9 +6206,8 @@ d_checkElabV'45'RVar'45'bbc'45'fst'45'failure'45'aux_4990 v0 v1 v2
                                                                  (coe (0 :: Integer))
                                                                  (coe (0 :: Integer)))
                                                               (coe
-                                                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'fst'45'check_692
-                                                                 (coe v7) (coe v8) (coe v10)
-                                                                 (coe v14)))))
+                                                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'fst'45'check_21880
+                                                                 (coe v7) (coe v8) (coe v10)))))
                                             else coe
                                                    seq (coe v13)
                                                    (coe
@@ -6378,9 +6379,8 @@ d_checkElabV'45'RVar'45'bbc'45'snd'45'failure'45'aux_5126 v0 v1 v2
                                                                  (coe (0 :: Integer))
                                                                  (coe (0 :: Integer)))
                                                               (coe
-                                                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'snd'45'check_704
-                                                                 (coe v7) (coe v8) (coe v10)
-                                                                 (coe v14)))))
+                                                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'snd'45'check_22472
+                                                                 (coe v7) (coe v8) (coe v10)))))
                                             else coe
                                                    seq (coe v13)
                                                    (coe
@@ -6538,8 +6538,8 @@ du_checkElabV'45'RVar'45'bbc'45'terminal'45'failure'45'aux_5262 v0
                                                 (coe MAlonzo.Code.Once.IR.C_terminal_72))
                                              (coe (0 :: Integer)) (coe (0 :: Integer)))
                                           (coe
-                                             MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'terminal'45'morph'45'check_714
-                                             (coe v3) (coe v7) (coe v8))))
+                                             MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23062
+                                             (coe v3) (coe v7))))
                            MAlonzo.Code.Once.Spec.Type.C_var_16 v8
                              -> coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -6707,8 +6707,8 @@ du_checkElabV'45'RVar'45'bbc'45'initial'45'failure'45'aux_5366 v0
                                                 (coe MAlonzo.Code.Once.IR.C_initial_76))
                                              (coe (0 :: Integer)) (coe (0 :: Integer)))
                                           (coe
-                                             MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'initial'45'morph'45'check_724
-                                             (coe v5) (coe v7) (coe v8))))
+                                             MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'initial'45'morph'45'check_23652
+                                             (coe v5) (coe v7))))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v6 v7
@@ -6863,9 +6863,8 @@ d_checkElabV'45'RVar'45'bbc'45'inl'45'failure'45'aux_5470 v0 v1 v2
                                                                  (coe (0 :: Integer))
                                                                  (coe (0 :: Integer)))
                                                               (coe
-                                                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'inl'45'morph'45'check_736
-                                                                 (coe v4) (coe v10) (coe v8)
-                                                                 (coe v14)))))
+                                                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'inl'45'morph'45'check_24244
+                                                                 (coe v4) (coe v10) (coe v8)))))
                                             else coe
                                                    seq (coe v13)
                                                    (coe
@@ -7041,9 +7040,8 @@ d_checkElabV'45'RVar'45'bbc'45'inr'45'failure'45'aux_5606 v0 v1 v2
                                                                  (coe (0 :: Integer))
                                                                  (coe (0 :: Integer)))
                                                               (coe
-                                                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'inr'45'morph'45'check_748
-                                                                 (coe v9) (coe v4) (coe v8)
-                                                                 (coe v14)))))
+                                                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'inr'45'morph'45'check_24836
+                                                                 (coe v9) (coe v4) (coe v8)))))
                                             else coe
                                                    seq (coe v13)
                                                    (coe
@@ -7340,7 +7338,7 @@ d_inferElabV'45'RResolved'45'dispatch_5880 v0 v1 v2 v3
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_unit_162)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
              (coe
-                MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'unit'45'var_120)
+                MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'unit'45'var_4742)
       MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'other_660 v5
         -> coe
              du_inferElabV'45'RResolved'45'aux_4796 (coe v0) (coe v1) (coe v2)
@@ -7506,10 +7504,10 @@ d_checkElabV'45'RFloat'45'aux_6056 v0 v1 v2 v3 v4 v5
                                           (coe v2) (coe v3) (coe v4))))
                                  (coe (0 :: Integer)) (coe (0 :: Integer)))
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'sub_976
+                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'sub_30338
                                  (coe MAlonzo.Code.Once.Spec.Type.C_Float_34) (coe v5)
                                  (coe
-                                    MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'float_110
+                                    MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'float_3568
                                     (coe v2) (coe v3) (coe v4))
                                  (coe v9))
                        _ -> MAlonzo.RTE.mazUnreachableError
@@ -7550,8 +7548,8 @@ du_inferElabV'45'RFloat'45'aux_6104 v0 v1 v2 v3
                (coe v1) (coe v2) (coe v3)))
          (coe (0 :: Integer)) (coe (0 :: Integer)))
       (coe
-         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'float_110 (coe v1)
-         (coe v2) (coe v3))
+         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'float_3568
+         (coe v1) (coe v2) (coe v3))
 -- Once.TypeCheck.Elaborate.checkPair
 d_checkPair_6124 ::
   Integer ->
@@ -7670,7 +7668,7 @@ d_checkPairOn_6136 v0 v1 v2 v3 v4 v5
                                                                              (coe v22) (coe v29)))
                                                                        (coe v30))
                                                                     (coe
-                                                                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'pair'45'morph'45'check_864
+                                                                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'pair'45'morph'45'check_27300
                                                                        (coe v10) (coe v14) (coe v20)
                                                                        (coe v27) (coe v19)
                                                                        (coe v26))
@@ -7740,7 +7738,7 @@ d_checkPairLit_6150 v0 v1 v2 v3 v4 v5
                                               (coe v18))
                                            (coe v19))
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'pair'45'lit'45'check_1028
+                                           MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'pair'45'lit'45'check_31566
                                            (coe v9) (coe v16) (coe v8) (coe v15))
                                  C_failure_128 v16
                                    -> coe
@@ -7894,7 +7892,7 @@ d_checkCaseGo_6192 v0 v1 v2 v3 v4 v5 v6 v7
                                                  (coe v20)))
                                            (coe v14))
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'case'45'copair'45'check_836
+                                           MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'case'45'copair'45'check_26684
                                            (coe v4) (coe v5) (coe v7) (coe v11) (coe v18) (coe v10)
                                            (coe v17))
                                  C_failure_128 v18
@@ -8068,9 +8066,9 @@ d_elabGivenV_6228 v0 v1 v2 v3 v4
                                                                 (coe v14))
                                                              (coe v15))
                                                           (coe
-                                                             MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'lam_1220
+                                                             MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'lam_37084
                                                              (coe v6) (coe v3) (coe v17) (coe v4)
-                                                             (coe v21) (coe v10))))
+                                                             (coe v10))))
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                              -> coe
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -8182,7 +8180,7 @@ d_elabGivenApp_6242 v0 v1 v2 v3 v4 v5 v6 v7
                                                                   (coe v18) (coe v26)))
                                                             (coe v27))
                                                          (coe
-                                                            MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'pair_1362
+                                                            MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'pair_41904
                                                             (coe v4) (coe v5) (coe v16) (coe v24)
                                                             (coe v14) (coe v22))
                                                   C_failure_282 v23
@@ -8239,7 +8237,7 @@ d_elabGivenApp_6242 v0 v1 v2 v3 v4 v5 v6 v7
                                                                   (coe v26) (coe v18)))
                                                             (coe v27))
                                                          (coe
-                                                            MAlonzo.Code.Once.TypeCheck.DualWitness.du_dd'45'compose_1246
+                                                            MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wd'45'compose_37702
                                                             (coe v4) (coe v15) (coe v5) (coe v24)
                                                             (coe v16) (coe v14) (coe v22))
                                                   C_failure_282 v23
@@ -8365,7 +8363,7 @@ d_checkCompose'45'g_6258 v0 v1 v2 v3 v4 v5 v6 v7
                                               (coe v13)))
                                         (coe v21))
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'compose'45'check'45'g_772
+                                        MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'compose'45'check'45'g_25440
                                         (coe v4) (coe v10) (coe v6) (coe v18) (coe v11) (coe v9)
                                         (coe v17))
                               C_failure_128 v18
@@ -8490,7 +8488,7 @@ d_checkCompose'45'f_6274 v0 v1 v2 v3 v4 v5 v6
                                                                                            (coe
                                                                                               v31))
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'compose'45'check'45'f_806
+                                                                                           MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'compose'45'check'45'f_26062
                                                                                            (coe v4)
                                                                                            (coe v16)
                                                                                            (coe v5)
@@ -8604,10 +8602,9 @@ d_checkCurryOn_6294 v0 v1 v2 v3 v4
                                                                         (coe v25))
                                                                      (coe v26))
                                                                   (coe
-                                                                     MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'curry'45'check_890
+                                                                     MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'curry'45'check_27914
                                                                      (coe v10) (coe v15) (coe v14)
-                                                                     (coe v19) (coe v27)
-                                                                     (coe v22))))
+                                                                     (coe v19) (coe v22))))
                                                    C_failure_128 v23
                                                      -> coe
                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -8740,7 +8737,7 @@ du_checkInGo_6334 v0 v1 v2 v3 v4
                                     v10)
                                  (coe addInt (coe (1 :: Integer)) (coe v11)) (coe v12))
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'In'45'app'45'check_1046
+                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'In'45'app'45'check_32174
                                  (coe v3) (coe v9) (coe v5) (coe v8))
                        C_failure_128 v9
                          -> coe
@@ -8878,8 +8875,8 @@ du_checkCataGo_6370 v0 v1 v2 v3 v4 v5 v6
                                             v7 v12)
                                          (coe addInt (coe (1 :: Integer)) (coe v13)) (coe v14))
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'cata'45'check_912
-                                         (coe v3) (coe v5) (coe v11) (coe v15) (coe v7) (coe v10))))
+                                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'cata'45'check_28520
+                                         (coe v3) (coe v5) (coe v11) (coe v7) (coe v10))))
                        C_failure_128 v11
                          -> coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v9)
@@ -9037,9 +9034,9 @@ du_checkAnaGo_6408 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                             v9 v14)
                                          (coe addInt (coe (1 :: Integer)) (coe v15)) (coe v16))
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'ana'45'check_940
-                                         (coe v3) (coe v4) (coe v5) (coe v13) (coe v17) (coe v7)
-                                         (coe v9) (coe v12))))
+                                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'ana'45'check_29132
+                                         (coe v3) (coe v4) (coe v5) (coe v13) (coe v7) (coe v9)
+                                         (coe v12))))
                        C_failure_128 v13
                          -> coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v11)
@@ -9085,7 +9082,7 @@ du_checkLoop_6420 v0 v1
                        (coe MAlonzo.Code.Once.Surface.Syntax.C_loop_556 v4 v5)
                        (coe addInt (coe (1 :: Integer)) (coe v6)) (coe v7))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'loop'45'check_960
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'loop'45'check_29736
                        (coe v0) (coe v4) (coe v3))
              C_failure_128 v4
                -> coe
@@ -9161,7 +9158,7 @@ d_inferElabV_6428 v0 v1 v2
                    (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_unit_162)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
-             (coe MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'unit_118)
+             (coe MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'unit_4158)
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_88 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -9173,7 +9170,7 @@ d_inferElabV_6428 v0 v1 v2
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_int_194 v3)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
              (coe
-                MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'int_100 (coe v3))
+                MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'int_2976 (coe v3))
       MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_90 v3 v4 v5
         -> coe
              du_inferElabV'45'RFloat'45'aux_6104 (coe v1) (coe v3) (coe v4)
@@ -9332,11 +9329,10 @@ du_checkElabV'45'wf_6448 v0 v1 v2 v3
                                                                                  (coe v18))
                                                                               (coe v19))
                                                                            (coe
-                                                                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'lam_1004
+                                                                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'lam_30952
                                                                               (coe v5) (coe v8)
                                                                               (coe v11) (coe v21)
-                                                                              (coe v12) (coe v25)
-                                                                              (coe v15))))
+                                                                              (coe v12) (coe v15))))
                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                               -> coe
                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -9423,9 +9419,10 @@ d_inferElabV'45'neg'45'aux_6474 v0 v1 v2 v3
                           (coe MAlonzo.Code.Once.Surface.Syntax.C_int_194 v5))
                        (coe (2 :: Integer)) (coe (0 :: Integer)))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'neg_246
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'neg_9018
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'int_100 (coe v5)))
+                          MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'int_2976
+                          (coe v5)))
              _ -> MAlonzo.RTE.mazUnreachableError
       C_nov'45'float_142
         -> case coe v2 of
@@ -9445,7 +9442,7 @@ d_inferElabV'45'neg'45'aux_6474 v0 v1 v2 v3
                                 (coe v8) (coe v9))))
                        (coe (1 :: Integer)) (coe (0 :: Integer)))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'neg'45'float_256
+                       MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'neg'45'float_9614
                        (coe v7) (coe v8) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
       C_nov'45'other_146
@@ -9814,7 +9811,7 @@ du_inferElabV'45'RApp'45'other'45'aux_6554 v0 v1 v2 v3 v4
                                                                                  (coe v24))
                                                                               (coe v25))
                                                                            (coe
-                                                                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'app_612
+                                                                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'app_19426
                                                                               (coe v13) (coe v16)
                                                                               (coe v9) (coe v22)
                                                                               (coe v7) (coe v21))
@@ -9889,7 +9886,7 @@ du_inferElabV'45'RApp'45'other'45'aux_6554 v0 v1 v2 v3 v4
                                                                                         (coe v24))
                                                                                      (coe v25))
                                                                                   (coe
-                                                                                     MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'effApp_640
+                                                                                     MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'effApp_20044
                                                                                      (coe v13)
                                                                                      (coe v9)
                                                                                      (coe v22)
@@ -9970,7 +9967,7 @@ du_inferElabV'45'RApp'45'other'45'aux_6554 v0 v1 v2 v3 v4
                                                                                  (coe v23))
                                                                               (coe v24))
                                                                            (coe
-                                                                              MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'effApp_640
+                                                                              MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'effApp_20044
                                                                               (coe v13) (coe v9)
                                                                               (coe v21) (coe v17)
                                                                               (coe
@@ -10078,7 +10075,7 @@ du_inferElabV'45'RApp'45'dispatch_6566 v0 v1 v2 v3 v4
                                     (coe MAlonzo.Code.Once.IR.C_id_20) v10)
                                  (coe addInt (coe (1 :: Integer)) (coe v11)) (coe v12))
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'id'45'app_466
+                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'id'45'app_14588
                                  (coe v8) (coe v9) (coe v7))
                        C_failure_100 v8
                          -> coe
@@ -10119,7 +10116,7 @@ du_inferElabV'45'RApp'45'dispatch_6566 v0 v1 v2 v3 v4
                                     (coe MAlonzo.Code.Once.IR.C_terminal_72) v10)
                                  (coe addInt (coe (1 :: Integer)) (coe v11)) (coe v12))
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'terminal'45'app_506
+                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'app_16386
                                  (coe v8) (coe v9) (coe v7))
                        C_failure_100 v8
                          -> coe
@@ -10270,7 +10267,7 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                             v9 (coe MAlonzo.Code.Once.IR.C_id_20) v11)
                                          (coe addInt (coe (1 :: Integer)) (coe v12)) (coe v13))
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'id'45'app_466
+                                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'id'45'app_14588
                                          (coe v9) (coe v10) (coe v8)) in
                             coe (coe du_embedOrSubsume_740 (coe v0) (coe v4) (coe v14))
                        C_failure_100 v9
@@ -10342,7 +10339,7 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                             v9 (coe MAlonzo.Code.Once.IR.C_terminal_72) v11)
                                          (coe addInt (coe (1 :: Integer)) (coe v12)) (coe v13))
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'terminal'45'app_506
+                                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'app_16386
                                          (coe v9) (coe v10) (coe v8)) in
                             coe (coe du_embedOrSubsume_740 (coe v0) (coe v4) (coe v14))
                        C_failure_100 v9
@@ -10409,7 +10406,7 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                            v6 (coe MAlonzo.Code.Once.IR.C_inl_54) v12)
                                         (coe addInt (coe (1 :: Integer)) (coe v13)) (coe v14))
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'inl'45'app'45'check_1076
+                                        MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'inl'45'app'45'check_33380
                                         (coe v6) (coe v7) (coe v11) (coe v10))
                               C_failure_128 v11
                                 -> coe
@@ -10510,7 +10507,7 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                            v7 (coe MAlonzo.Code.Once.IR.C_inr_60) v12)
                                         (coe addInt (coe (1 :: Integer)) (coe v13)) (coe v14))
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'inr'45'app'45'check_1090
+                                        MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'inr'45'app'45'check_33980
                                         (coe v6) (coe v7) (coe v11) (coe v10))
                               C_failure_128 v11
                                 -> coe
@@ -10583,7 +10580,7 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                     (coe MAlonzo.Code.Once.IR.C_initial_76) v10)
                                  (coe addInt (coe (1 :: Integer)) (coe v11)) (coe v12))
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'initial'45'app'45'check_1102
+                                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'initial'45'app'45'check_34578
                                  (coe v4) (coe v9) (coe v8))
                        C_failure_128 v9
                          -> coe
@@ -10772,7 +10769,7 @@ du_inferSpine_6590 v0 v1 v2 v3
                                               (coe v9)))
                                         (coe v18))
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'app'45'spine_666
+                                        MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'app'45'spine_20660
                                         (coe v6) (coe v15) (coe v7) (coe v5) (coe v13))
                               C_failure_282 v14
                                 -> coe
@@ -10806,7 +10803,7 @@ d_checkElabV'45'RInt'45'aux_6600 v0 v1 v2 v3
                  (coe MAlonzo.Code.Once.Surface.Syntax.C_int_194 v2)
                  (coe (0 :: Integer)) (coe (0 :: Integer)))
               (coe
-                 MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'int_100
+                 MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'int_2976
                  (coe v2)) in
     coe (coe du_embedOrSubsume_740 (coe v0) (coe v3) (coe v4))
 -- Once.TypeCheck.Elaborate.checkElabV-RPair-aux
@@ -11086,7 +11083,7 @@ d_checkApply_10166 v0 v1 v2 v3
                                                                                                             (coe
                                                                                                                v11))
                                                                                                          (coe
-                                                                                                            MAlonzo.Code.Once.TypeCheck.DualWitness.du_dt'45'apply'45'check_1062
+                                                                                                            MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'apply'45'check_32780
                                                                                                             (coe
                                                                                                                v14)
                                                                                                             (coe

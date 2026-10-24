@@ -32,10 +32,9 @@ import Once.Parser as Parser
 open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName)
 open import Once.Internal.Typing.Scope using (Imports)
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Internal.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Elaborate
-import Once.TypeCheck.DualWitness
+import Once.TypeCheck.SpecWitness
 import Once.Internal.Typing.Scope
 import Once.TypeCheck.Classify
 import Once.Parser
@@ -57,7 +56,6 @@ import Once.Type
 import Once.Internal.Context as Ctx
 open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (TopCtx)
-open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.Compile using (irFunOf; tableOf-go)
 open import Once.Denotation.Program using (IRFun)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
@@ -139,23 +137,11 @@ fresh-poly {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) =
   tl , insert-all (map proj₁ (C.CScope.cimps csc)) (map (λ q → pfunName (proj₁ q)) (C.CScope.ctele csc))
                   (map entryName es) hd hs
 
--- The checker's derivation, read off its verified result.
-sound-of : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
-             (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
-         → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → ctx ⊢ᶜ e ∶ T ⨾ Ψ
-sound-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = Data.Product.proj₁ w
-
--- …and its witness: the term it built is the realization of the Spec's derivation.
+-- The checker's witness, read off its verified result: the term it built is the realization of the Spec's derivation.
 wit-of : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
            (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
-       → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → Once.TypeCheck.DualWitness.DC ctx e T Ψ se
+       → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → Once.TypeCheck.SpecWitness.WC ctx e T Ψ se
 wit-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = w
-
--- R8: the synthesizer's derivation, read off its verified result.
-sound-of-i : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
-               (cr : Once.TypeCheck.Elaborate.VerifiedInferResult ctx e)
-           → proj₁ cr ≡ Once.TypeCheck.Elaborate.success T Ψ se d f → ctx ⊢ᵢ e ∶ T ⨾ Ψ
-sound-of-i (Once.TypeCheck.Elaborate.success _ _ _ _ _ , w) refl = Data.Product.proj₁ w
 
 
 ------------------------------------------------------------------------

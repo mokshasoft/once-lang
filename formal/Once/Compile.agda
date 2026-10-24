@@ -31,7 +31,7 @@ import Data.List as DL
 import Data.Bool.ListAction as BLA
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; ∃-syntax; proj₁; proj₂)
-open import Once.TypeCheck.DualWitness using (DI; DC; DD)
+open import Once.TypeCheck.SpecWitness using (WI; WC; WD)
 open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -118,7 +118,6 @@ import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
 open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx)
-open import Once.Internal.Typing using (_⊢ᵢ_∶_⨾_)
 open import Once.TypeCheck.Classify using (TopCtx; topCtx; emptyTopCtx; ctxWithImportsAndPolys; ctxAt; emptyPolyCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
@@ -133,7 +132,6 @@ import Data.Nat
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborateFull)
-open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.Surface.LoopWarn using (silentLoops)
 open import Once.Internal.Principal using (below)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
@@ -273,7 +271,7 @@ compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx po
 compileFunBodyI-at : ∀ {ctx : NamedCtx 0} {body : RawExpr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size ctx)} {eE : Srf.Expr (NamedCtx.debruijn ctx) Ψ T}
   → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
   → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
-  → DI ctx body T Ψ eE → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
+  → WI ctx body T Ψ eE → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (no _) =
   inj₁ ("Type error in " ++ name ++ ": its body synthesizes another type than " ++ showType ty)
 compileFunBodyI-at {eE = eE} m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =

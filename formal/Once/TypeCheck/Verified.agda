@@ -72,8 +72,7 @@ import Data.Empty
 
 import Once.TypeCheck.Determinism  as Det
 import Once.TypeCheck.Totality     as Tot
-import Once.TypeCheck.Soundness    as Snd
-import Once.TypeCheck.Completeness as Cmp
+import Once.TypeCheck.Completeness as CS
 import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
@@ -85,7 +84,10 @@ import Once.Surface.GradeMatrix as GM
 import Algebra.Structures
 import Algebra.Module.Structures
 import Relation.Binary.Structures
-open import Once.Internal.Typing using (_⊢_∶_⨾_; _⊢ᶜ_∶_⨾_)
+open import Once.TypeCheck.SpecWitness using (Pack; WI; WC)
+open import Once.TypeCheck.Elaborate using (inferElabV; checkElabV; VerifiedInferResult; VerifiedCheckResult)
+open import Data.Product using (proj₁)
+open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Surface.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RNeg; RBinOp; RLam; RApp; BinOp)
@@ -148,106 +150,33 @@ record VerifiedTypeChecker {m} : Set₁ where
                   ⊎ IsCheckFailure (tcCheck ctx e T)
 
     ----------------------------------------------------------------
-    -- Plan 0.4 T0 (2026-04-30): top-level soundness theorems.
+    -- Soundness and completeness against the Spec (plan 0.122).
     --
-    -- These two fields enforce that EVERY successful elaborator
-    -- result has a corresponding judgment derivation. Adding a new
-    -- elaborator code path without a matching judgment rule will
-    -- fail to inhabit these fields, forcing spec/impl to stay in
-    -- sync. Per-shape lemmas below remain for fine-grained reuse.
+    -- Every success carries the Spec's derivation of the expression,
+    -- annotated with its usage, at every scope Pack, whose realization
+    -- is the term built (`SpecWitness.WI`/`WC`); and the checker
+    -- accepts every Use-annotated Spec derivation, at its type and
+    -- usage (`Completeness`). A new elaborator path without its Spec
+    -- rule, or a Spec rule the checker misses, fails to inhabit these.
     ----------------------------------------------------------------
 
     tcInfer-sound : ∀ (ctx : NamedCtx m) (e : RawExpr)
       {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
       {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
       → tcInfer ctx e ≡ success A Ψ eE d f
-      → ctx ⊢ e ∶ A ⨾ Ψ
+      → WI ctx e A Ψ eE
 
     tcCheck-sound : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
       {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
       {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T} {d f : _}
       → tcCheck ctx e T ≡ success Ψ eE d f
-      → ctx ⊢ᶜ e ∶ T ⨾ Ψ
+      → WC ctx e T Ψ eE
 
-    ----------------------------------------------------------------
-    -- G2 (partial): per-shape soundness lemmas — kept for
-    -- fine-grained reuse alongside the global theorems above.
-    -- Adding new per-shape lemmas remains valuable; the global
-    -- theorem composes them.
-    ----------------------------------------------------------------
+    tcCheck-complete : ∀ {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {D : CS.Chk P e A t}
+      → CS.U⇐ P D Ψ → ∃[ eE ] ∃[ d ] ∃[ f ] tcCheck ctx e A ≡ success Ψ eE d f
 
-    tcInfer-sound-RInt : ∀ (ctx : NamedCtx m) (n : ℤ)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → tcInfer ctx (RInt n) ≡ success A Ψ eE d f
-      → ctx ⊢ RInt n ∶ A ⨾ Ψ
-
-
-    tcInfer-sound-RUnit : ∀ (ctx : NamedCtx m)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → tcInfer ctx RUnit ≡ success A Ψ eE d f
-      → ctx ⊢ RUnit ∶ A ⨾ Ψ
-
-    tcInfer-sound-RVar-unit : ∀ (ctx : NamedCtx m)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → tcInfer ctx (RResolved (gen "unit")) ≡ success A Ψ eE d f
-      → ctx ⊢ RResolved (gen "unit") ∶ A ⨾ Ψ
-
-    -- Full RVar soundness: covers the `"unit"` builtin path, local
-    -- bindings, and import lookup — unblocked by refactoring the
-    -- elaborator to use decidable equality on `x ≟ "unit"` instead
-    -- of a literal string pattern.
-    tcInfer-sound-RVar : ∀ (ctx : NamedCtx m) (x : String)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → tcInfer ctx (RVar x) ≡ success A Ψ eE d f
-      → ctx ⊢ RVar x ∶ A ⨾ Ψ
-
-    -- Recursive RawExpr cases: soundness is parameterised by an IH
-    -- for the sub-expression(s). A top-level structural recursion
-    -- over RawExpr stitches these lemmas together — omitted here
-    -- for modularity but trivial to assemble.
-    tcInfer-sound-RNeg : ∀ (ctx : NamedCtx m) (e : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH : ∀ {A' Ψ' eE' d' f'}
-            → tcInfer ctx e ≡ success A' Ψ' eE' d' f'
-            → ctx ⊢ e ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RNeg e) ≡ success A Ψ eE d f
-      → ctx ⊢ RNeg e ∶ A ⨾ Ψ
-
-    -- Plan 0.4 T0 (2026-04-30): IH now gives ⊢ᶜ (matches what
-    -- check-sound returns). Previously claimed to give ⊢ᵢ from a
-    -- checkElab success — a direction mismatch that no real
-    -- caller could satisfy. Surfaced when scaffolding infer-sound.
-    tcInfer-sound-RAnnot : ∀ (ctx : NamedCtx m) (e : RawExpr) (T : Type)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH : ∀ {Ψ' eE' d' f'}
-            → tcCheck ctx e (wk₀ T) ≡ success Ψ' eE' d' f'
-            → ctx ⊢ᶜ e ∶ wk₀ T ⨾ Ψ')
-      → tcInfer ctx (RAnnot e T) ≡ success A Ψ eE d f
-      → ctx ⊢ RAnnot e T ∶ A ⨾ Ψ
-
-    tcInfer-sound-RPair : ∀ (ctx : NamedCtx m) (a b : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IHa : ∀ {A' Ψ' eE' d' f'}
-             → tcInfer ctx a ≡ success A' Ψ' eE' d' f'
-             → ctx ⊢ a ∶ A' ⨾ Ψ')
-      → (IHb : ∀ {B' Ψ' eE' d' f'}
-             → tcInfer ctx b ≡ success B' Ψ' eE' d' f'
-             → ctx ⊢ b ∶ B' ⨾ Ψ')
-      → tcInfer ctx (RPair a b) ≡ success A Ψ eE d f
-      → ctx ⊢ RPair a b ∶ A ⨾ Ψ
-
-    tcInfer-sound-RQualified : ∀ (ctx : NamedCtx m) (name alias : String)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → tcInfer ctx (RQualified name alias) ≡ success A Ψ eE d f
-      → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
+    tcInfer-complete : ∀ {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {D : CS.Syn P e A t}
+      → CS.U⇒ P D Ψ → ∃[ eE ] ∃[ d ] ∃[ f ] tcInfer ctx e ≡ success A Ψ eE d f
 
     ----------------------------------------------------------------
     -- G4 (partial): structured-error preservation.
@@ -430,126 +359,11 @@ record VerifiedTypeChecker {m} : Set₁ where
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
-    ----------------------------------------------------------------
-    -- G2 (continued): remaining soundness fields.
-    ----------------------------------------------------------------
-
     -- RApp polymorphic builtin specialisations
-    tcInfer-sound-RApp-id : ∀ (ctx : NamedCtx m) (arg : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH : ∀ {A' Ψ' eE' d' f'}
-            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
-            → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RResolved (gen "id")) arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RResolved (gen "id")) arg ∶ A ⨾ Ψ
-
-    tcInfer-sound-RApp-fst : ∀ (ctx : NamedCtx m) (arg : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH : ∀ {A' Ψ' eE' d' f'}
-            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
-            → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RResolved (gen "fst")) arg ∶ A ⨾ Ψ
-
-    tcInfer-sound-RApp-snd : ∀ (ctx : NamedCtx m) (arg : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH : ∀ {A' Ψ' eE' d' f'}
-            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
-            → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RResolved (gen "snd")) arg ∶ A ⨾ Ψ
-
-    tcInfer-sound-RApp-terminal : ∀ (ctx : NamedCtx m) (arg : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH : ∀ {A' Ψ' eE' d' f'}
-            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
-            → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RResolved (gen "terminal")) arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RResolved (gen "terminal")) arg ∶ A ⨾ Ψ
-
-    -- Generic function application. Premise:
-    -- `classifyAppHead f ≡ nothing`, i.e. `f` is not one of the
-    -- seven polymorphic builtins. Completes the 15 / 15 RawExpr
-    -- soundness coverage for infer mode.
-    --
-    -- Plan 0.4 T1, change 1 (2026-04-30): IH_x's premise is now
-    -- `tcCheck ctx x A' ≡ success`, matching the bidirectional
-    -- inferElab rule (infer f, check x at f's domain). The result
-    -- is a check-mode `⊢ᶜ x ∶ A'` derivation, fed straight into
-    -- t-app/t-effApp's updated check-mode premise.
-    tcInfer-sound-RApp-generic : ∀ (ctx : NamedCtx m) (f x : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d fresh : _}
-      → Classify.classifyAppHead f ≡ nothing
-      → (IH_f : ∀ {F' Ψ' eE' d' f'}
-             → tcInfer ctx f ≡ success F' Ψ' eE' d' f'
-             → ctx ⊢ f ∶ F' ⨾ Ψ')
-      → (IH_x : ∀ {A' Ψ' eE' d' f'}
-             → tcCheck ctx x A' ≡ success Ψ' eE' d' f'
-             → ctx ⊢ᶜ x ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp f x) ≡ success A Ψ eE d fresh
-      → ctx ⊢ RApp f x ∶ A ⨾ Ψ
-
-    tcInfer-sound-RBinOp : ∀ (ctx : NamedCtx m) (op : BinOp) (e₁ e₂ : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH₁ : ∀ {A' Ψ' eE' d' f'}
-             → tcInfer ctx e₁ ≡ success A' Ψ' eE' d' f'
-             → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
-      → (IH₂ : ∀ {B' Ψ' eE' d' f'}
-             → tcInfer ctx e₂ ≡ success B' Ψ' eE' d' f'
-             → ctx ⊢ e₂ ∶ B' ⨾ Ψ')
-      → tcInfer ctx (RBinOp op e₁ e₂) ≡ success A Ψ eE d f
-      → ctx ⊢ RBinOp op e₁ e₂ ∶ A ⨾ Ψ
-
-    tcInfer-sound-RDestruct : ∀ (ctx : NamedCtx m) (scrut : RawExpr) (xL : String) (eL : RawExpr)
-        (xR : String) (eR : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IHs : ∀ {T' Ψ' eE' d' f'}
-             → tcInfer ctx scrut ≡ success T' Ψ' eE' d' f'
-             → ctx ⊢ scrut ∶ T' ⨾ Ψ')
-      → (IHL : ∀ {Aty B' Ψ' eE' d' f'}
-             → tcInfer (extendNamedCtx ctx xL Aty) eL ≡ success B' Ψ' eE' d' f'
-             → (extendNamedCtx ctx xL Aty) ⊢ eL ∶ B' ⨾ Ψ')
-      → (IHR : ∀ {Bty C' Ψ' eE' d' f'}
-             → tcInfer (extendNamedCtx ctx xR Bty) eR ≡ success C' Ψ' eE' d' f'
-             → (extendNamedCtx ctx xR Bty) ⊢ eR ∶ C' ⨾ Ψ')
-      → tcInfer ctx (RDestruct scrut xL eL xR eR) ≡ success A Ψ eE d f
-      → ctx ⊢ RDestruct scrut xL eL xR eR ∶ A ⨾ Ψ
-
-    tcCheck-sound-RLam : ∀ (ctx : NamedCtx m) (x : String) (body : RawExpr)
-        (A : Ty m) (q : _) (B : Ty m)
-        {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B)}
-        {d f : _}
-      → (IH : ∀ {Ψ' eE' d' f'}
-            → tcCheck (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
-            → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
-      → tcCheck ctx (RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) ≡ success Ψ eE d f
-      → ctx ⊢ᶜ RLam x body ∶ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) ⨾ Ψ
-
-    tcInfer-sound-RLet : ∀ (ctx : NamedCtx m) (x : String) (e₁ e₂ : RawExpr)
-        {A : Ty m} {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → (IH₁ : ∀ {A' Ψ' eE' d' f'}
-             → tcInfer ctx e₁ ≡ success A' Ψ' eE' d' f'
-             → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
-      → (IH₂ : ∀ {Aty B' Ψ' eE' d' f'}
-             → tcInfer (extendNamedCtx ctx x Aty) e₂ ≡ success B' Ψ' eE' d' f'
-             → (extendNamedCtx ctx x Aty) ⊢ e₂ ∶ B' ⨾ Ψ')
-      → tcInfer ctx (RLet x e₁ e₂) ≡ success A Ψ eE d f
-      → ctx ⊢ RLet x e₁ e₂ ∶ A ⨾ Ψ
-
     ----------------------------------------------------------------
     -- G2 (completeness direction): if the elaborator's sub-expressions
-    -- succeed (from IHs), the outer elaborator succeeds. These lemmas
-    -- are the forward counterparts of the soundness theorems; combined
-    -- they give iff-completeness for each construct.
+    -- succeed (from IHs), the outer elaborator succeeds: the steps
+    -- `tcCheck-complete` composes.
     ----------------------------------------------------------------
 
     tcInfer-complete-RInt : ∀ (ctx : NamedCtx m) (n : ℤ)
@@ -831,6 +645,22 @@ record VerifiedTypeChecker {m} : Set₁ where
 -- proof is missing or incorrect.
 ------------------------------------------------------------------------
 
+-- A success's witness, read off the verified result.
+private
+  infer-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) {A Ψ eE d f}
+              → inferElab ctx e ≡ success A Ψ eE d f → WI ctx e A Ψ eE
+  infer-sound ctx e = go (inferElabV ctx e)
+    where
+      go : ∀ {A Ψ eE d f} (r : VerifiedInferResult ctx e) → proj₁ r ≡ success A Ψ eE d f → WI ctx e A Ψ eE
+      go (success _ _ _ _ _ , w) refl = w
+
+  check-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m) {Ψ eE d f}
+              → checkElab ctx e T ≡ success Ψ eE d f → WC ctx e T Ψ eE
+  check-sound ctx e T = go (checkElabV ctx e T)
+    where
+      go : ∀ {Ψ eE d f} (r : VerifiedCheckResult ctx e T) → proj₁ r ≡ success Ψ eE d f → WC ctx e T Ψ eE
+      go (success _ _ _ _ , w) refl = w
+
 verifiedTypeChecker : ∀ {m} → VerifiedTypeChecker {m}
 verifiedTypeChecker = record
   { tcInfer                   = inferElab
@@ -841,25 +671,10 @@ verifiedTypeChecker = record
   ; tcCheck-cong              = Det.checkElab-cong
   ; tcInfer-total             = Tot.inferElab-total
   ; tcCheck-total             = Tot.checkElab-total
-  ; tcInfer-sound                 = Snd.infer-sound
-  ; tcCheck-sound                 = Snd.check-sound
-  ; tcInfer-sound-RInt            = Snd.sound-RInt
-  ; tcInfer-sound-RUnit           = Snd.sound-RUnit
-  ; tcInfer-sound-RVar-unit       = Snd.sound-RVar-unit
-  ; tcInfer-sound-RVar            = Snd.sound-RVar
-  ; tcInfer-sound-RNeg    = Snd.sound-RNeg
-  ; tcInfer-sound-RAnnot          = Snd.sound-RAnnot
-  ; tcInfer-sound-RPair           = Snd.sound-RPair
-  ; tcInfer-sound-RQualified      = Snd.sound-RQualified
-  ; tcInfer-sound-RLet            = Snd.sound-RLet
-  ; tcInfer-sound-RDestruct       = Snd.sound-RDestruct
-  ; tcInfer-sound-RApp-id         = Snd.sound-RApp-id
-  ; tcInfer-sound-RApp-fst        = Snd.sound-RApp-fst
-  ; tcInfer-sound-RApp-snd        = Snd.sound-RApp-snd
-  ; tcInfer-sound-RApp-terminal   = Snd.sound-RApp-terminal
-  ; tcInfer-sound-RApp-generic    = Snd.sound-RApp-generic
-  ; tcInfer-sound-RBinOp          = Snd.sound-RBinOp
-  ; tcCheck-sound-RLam            = Snd.sound-check-RLam
+  ; tcInfer-sound                 = infer-sound
+  ; tcCheck-sound                 = check-sound
+  ; tcCheck-complete              = CS.check-completeS
+  ; tcInfer-complete              = CS.infer-completeS
   ; tc-err-lam-infer              = EP.lam-infer-is-LambdaInInferMode
   ; tc-err-inl-infer              = EP.inl-app-infer-is-InlInInferMode
   ; tc-err-inr-infer              = EP.inr-app-infer-is-InrInInferMode

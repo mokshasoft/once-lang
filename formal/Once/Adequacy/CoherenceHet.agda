@@ -7,10 +7,11 @@
 --
 -- `a ≅ b` relates two terms whose types and usages are equal but not
 -- (yet) identical: it carries the two equations and, under them, `a ≈ b`.
--- A route is heterogeneous (`TypeCheck.Route`), so coherence produces `≅`;
--- each lemma here takes its premises' `≅`, matches the carried equations —
--- here, at top level, never in a `with` — and applies the homogeneous law
--- (`CoherenceLaws`).
+-- Two annotations of one expression realize at types and usages known equal
+-- only by their derivations, so coherence (`CoherenceS`) produces `≅`; each
+-- lemma here, one per term former, takes its parts' `≅`, matches the carried
+-- equations — at top level, never in a `with` — and applies the homogeneous
+-- law (`CoherenceLaws`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Type using (Ty; Type; Fun; KCtx; WFFun)
@@ -49,9 +50,6 @@ open import Once.Spec.Name using (NotGenerator)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
-open import Once.Internal.Typing
-open import Once.Internal.Laws.ModeAgreement using (extractGround-irr; dpoly-det)
-open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.Internal.Type.WellFormed using (IsConcrete; WellFormedF)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 import Once.Internal.Context as Surface
@@ -59,17 +57,12 @@ open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Internal.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
-open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 import Once.Denotation.SourceDenote as SD
 open SD using (⟦_⟧ˢ)
 open import Once.Adequacy.CoherenceLaws fmt
 open import Once.Adequacy.CoherenceLawsWrap fmt
 
 private
-  RI = realize-infer
-  RC = realize
-  RD = realize-d
-
   uip : ∀ {ℓ} {X : Set ℓ} {x y : X} (p q : x ≡ y) → p ≡ q
   uip refl refl = refl
 
@@ -368,236 +361,3 @@ module _ {m} {Γ : Ctx m n} where
          (a₀ : A <: A₀) (g₀ : π₀ ⊑π π) (a : A <: A′) (g : π′ ⊑π π)
        → x ≅ y → coerce (sub-arr a₀ (<:-refl B) g₀) x ≅ coerce (sub-arr {q = q} a (<:-refl B′) g) y
   di-h a₀ g₀ a g (≅i refl refl h) = ≅i refl refl (≈-trans (coerce-cong _ h) (coerce-uniq _ _ _))
-
-------------------------------------------------------------------------
--- Realized forms: the leaves, the primitives, the IR embeddings
-------------------------------------------------------------------------
-
-module _ {m} {ctx : NamedCtx m} where
-  private U = Surface.Usage (NamedCtx.size ctx)
-
-  -- A resolved reference's derivation is determined by its name and type.
-  private
-    resolved-go : ∀ {T T′ : Type} {cn} (eT : just T ≡ just T′) (n n′ : NotGenerator cn) (wn wn′ : WordName cn)
-                    (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T)
-                    (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c : IsConcrete T) (c′ : IsConcrete T′)
-                → RI (t-var-resolved {ctx = ctx} n wn l c refl) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
-    resolved-go refl n n′ wn wn′ l l′ c c′ rewrite IsConcrete-irrelevant c c′ = ≅-refl
-
-  resolved-h : ∀ {T T′ : Type} {cn} (n : NotGenerator cn) (wn : WordName cn) (l : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T) (c : IsConcrete T)
-                 (n′ : NotGenerator cn) (wn′ : WordName cn) (l′ : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just T′) (c′ : IsConcrete T′)
-             → RI (t-var-resolved {ctx = ctx} n wn l c refl) ≅ RI (t-var-resolved {ctx = ctx} n′ wn′ l′ c′ refl)
-  resolved-h {cn = cn} n wn l c n′ wn′ l′ c′ = resolved-go {cn = cn} (trans (sym l) l′) n n′ wn wn′ l l′ c c′
-
-  private
-    own-go : ∀ {T T′ : Type} {x ns ns′} (eT : just T ≡ just T′)
-               (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-           → RI (t-var-own {ctx = ctx} ns l refl) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
-    own-go refl l l′ = ≅-refl
-
-  own-h : ∀ {T T′ : Type} {x ns ns′} (l : lookupImport (NamedCtx.imports ctx) x ≡ just T) (l′ : lookupImport (NamedCtx.imports ctx) x ≡ just T′)
-        → RI (t-var-own {ctx = ctx} ns l refl) ≅ RI (t-var-own {ctx = ctx} ns′ l′ refl)
-  own-h {ns = ns} {ns′ = ns′} l l′ = own-go {ns = ns} {ns′} (trans (sym l) l′) l l′
-
-  private
-    local-go : ∀ {x A A′} {Ψ Ψ′ : U} {eV eV′} (eq : just (A , Ψ , eV) ≡ just (A′ , Ψ′ , eV′))
-                 (l : lookupLocal ctx x ≡ just (A , Ψ , eV)) (l′ : lookupLocal ctx x ≡ just (A′ , Ψ′ , eV′))
-             → RI (t-var-local {ctx = ctx} l) ≅ RI (t-var-local {ctx = ctx} l′)
-    local-go refl l l′ = ≅-refl
-
-  local-h : ∀ {x A A′} {Ψ Ψ′ : U} {eV eV′} (l : lookupLocal ctx x ≡ just (A , Ψ , eV)) (l′ : lookupLocal ctx x ≡ just (A′ , Ψ′ , eV′))
-          → RI (t-var-local {ctx = ctx} l) ≅ RI (t-var-local {ctx = ctx} l′)
-  local-h l l′ = local-go (trans (sym l) l′) l l′
-
-  private
-    poly-ty : ∀ {T T′ : Ty m} {x} → T ≡ T′ → poly {Γ = NamedCtx.debruijn ctx} x T ≅ poly x T′
-    poly-ty refl = ≅-refl
-
-    polyinf-go : ∀ {T T′ : Ty m} {x s s′} {b b′ : RawExpr} {pr pr′ : PolyCtx} {g : T.Ground s} {g′ : T.Ground s′} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
-                   (eq : T ≡ T.extractGround s g) (eq′ : T′ ≡ T.extractGround s′ g′)
-               → poly {Γ = NamedCtx.debruijn ctx} x T ≅ poly x T′
-    polyinf-go {s = s} {g = g} {g′ = g′} refl eq eq′ = poly-ty (trans eq (trans (extractGround-irr s g g′) (sym eq′)))
-
-  polyinf-h : ∀ {T T′ : Ty m} {x s s′} {b b′ : RawExpr} {pr pr′ : PolyCtx} {g : T.Ground s} {g′ : T.Ground s′} {ln ln′ li li′ gr gr′}
-                (p : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (s , b , pr)) (eq : T ≡ T.extractGround s g)
-                (p′ : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (s′ , b′ , pr′)) (eq′ : T′ ≡ T.extractGround s′ g′)
-            → RI (t-var-poly-instantiate-infer {ctx = ctx} {x = x} {T = T} {g = g} ln li p gr eq)
-              ≅ RI (t-var-poly-instantiate-infer {ctx = ctx} {T = T′} {g = g′} ln′ li′ p′ gr′ eq′)
-  polyinf-h p eq p′ eq′ = polyinf-go (trans (sym p) p′) eq eq′
-
-  -- The binary primitives: the operator chooses the former.
-  arith-h : ∀ {op} (a a′ : Raw.isArithmeticOp op ≡ true) {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U}
-              {d₁ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂′}
-          → RI d₁ ≅ RI d₁′ → RI d₂ ≅ RI d₂′ → RI (t-binop-arith a d₁ d₂) ≅ RI (t-binop-arith a′ d₁′ d₂′)
-  arith-h {op = Raw.OpAdd} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (add-cong h k)
-  arith-h {op = Raw.OpSub} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (sub-cong h k)
-  arith-h {op = Raw.OpMul} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (mul-cong h k)
-  arith-h {op = Raw.OpDiv} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (div-cong h k)
-  arith-h {op = Raw.OpMod} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (mod-cong h k)
-  arith-h {op = Raw.OpLt} () _ _ _
-  arith-h {op = Raw.OpLe} () _ _ _
-  arith-h {op = Raw.OpGt} () _ _ _
-  arith-h {op = Raw.OpGe} () _ _ _
-  arith-h {op = Raw.OpEq} () _ _ _
-  arith-h {op = Raw.OpNe} () _ _ _
-
-  farith-h : ∀ {op} (a a′ : Raw.isFloatArithmeticOp op ≡ true) {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U}
-               {d₁ : ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂′}
-           → RI d₁ ≅ RI d₁′ → RI d₂ ≅ RI d₂′ → RI (t-binop-arith-float a d₁ d₂) ≅ RI (t-binop-arith-float a′ d₁′ d₂′)
-  farith-h {op = Raw.OpAdd} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fadd-cong h k)
-  farith-h {op = Raw.OpSub} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fsub-cong h k)
-  farith-h {op = Raw.OpMul} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fmul-cong h k)
-  farith-h {op = Raw.OpDiv} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fdiv-cong h k)
-  farith-h {op = Raw.OpMod} () _ _ _
-  farith-h {op = Raw.OpLt} () _ _ _
-  farith-h {op = Raw.OpLe} () _ _ _
-  farith-h {op = Raw.OpGt} () _ _ _
-  farith-h {op = Raw.OpGe} () _ _ _
-  farith-h {op = Raw.OpEq} () _ _ _
-  farith-h {op = Raw.OpNe} () _ _ _
-
-  il-h : ∀ {op} (a a′ : Raw.isFloatArithmeticOp op ≡ true) {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U}
-           {d₁ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂′}
-       → RI d₁ ≅ RI d₁′ → RI d₂ ≅ RI d₂′ → RI (t-binop-arith-float-il a d₁ d₂) ≅ RI (t-binop-arith-float-il a′ d₁′ d₂′)
-  il-h {op = Raw.OpAdd} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fadd-cong (i2f-cong h) k)
-  il-h {op = Raw.OpSub} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fsub-cong (i2f-cong h) k)
-  il-h {op = Raw.OpMul} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fmul-cong (i2f-cong h) k)
-  il-h {op = Raw.OpDiv} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fdiv-cong (i2f-cong h) k)
-  il-h {op = Raw.OpMod} () _ _ _
-  il-h {op = Raw.OpLt} () _ _ _
-  il-h {op = Raw.OpLe} () _ _ _
-  il-h {op = Raw.OpGt} () _ _ _
-  il-h {op = Raw.OpGe} () _ _ _
-  il-h {op = Raw.OpEq} () _ _ _
-  il-h {op = Raw.OpNe} () _ _ _
-
-  ir-h : ∀ {op} (a a′ : Raw.isFloatArithmeticOp op ≡ true) {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U}
-           {d₁ : ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂′}
-       → RI d₁ ≅ RI d₁′ → RI d₂ ≅ RI d₂′ → RI (t-binop-arith-float-ir a d₁ d₂) ≅ RI (t-binop-arith-float-ir a′ d₁′ d₂′)
-  ir-h {op = Raw.OpAdd} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fadd-cong h (i2f-cong k))
-  ir-h {op = Raw.OpSub} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fsub-cong h (i2f-cong k))
-  ir-h {op = Raw.OpMul} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fmul-cong h (i2f-cong k))
-  ir-h {op = Raw.OpDiv} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (fdiv-cong h (i2f-cong k))
-  ir-h {op = Raw.OpMod} () _ _ _
-  ir-h {op = Raw.OpLt} () _ _ _
-  ir-h {op = Raw.OpLe} () _ _ _
-  ir-h {op = Raw.OpGt} () _ _ _
-  ir-h {op = Raw.OpGe} () _ _ _
-  ir-h {op = Raw.OpEq} () _ _ _
-  ir-h {op = Raw.OpNe} () _ _ _
-
-  cmp-h : ∀ {op} (a a′ : Raw.isComparisonOp op ≡ true) {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : U}
-            {d₁ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁} {d₁′ : ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁′} {d₂ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂} {d₂′ : ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂′}
-        → RI d₁ ≅ RI d₁′ → RI d₂ ≅ RI d₂′ → RI (t-binop-cmp a d₁ d₂) ≅ RI (t-binop-cmp a′ d₁′ d₂′)
-  cmp-h {op = Raw.OpLt} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (lt-cong h k)
-  cmp-h {op = Raw.OpLe} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (le-cong h k)
-  cmp-h {op = Raw.OpGt} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (gt-cong h k)
-  cmp-h {op = Raw.OpGe} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (ge-cong h k)
-  cmp-h {op = Raw.OpEq} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (eq-cong h k)
-  cmp-h {op = Raw.OpNe} _ _ (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (ne-cong h k)
-  cmp-h {op = Raw.OpAdd} () _ _ _
-  cmp-h {op = Raw.OpSub} () _ _ _
-  cmp-h {op = Raw.OpMul} () _ _ _
-  cmp-h {op = Raw.OpDiv} () _ _ _
-  cmp-h {op = Raw.OpMod} () _ _ _
-
-  -- The IR embeddings (`morph-app` of a fixed morphism).
-  idapp-h : ∀ {A A′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′}
-          → RI d ≅ RI d′ → RI (t-id-app d) ≅ RI (t-id-app d′)
-  idapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.id h)
-
-  fstapp-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ (A * B) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ (A′ * B′) ⨾ Ψ′}
-           → RI d ≅ RI d′ → RI (t-fst-app d) ≅ RI (t-fst-app d′)
-  fstapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.fst h)
-
-  sndapp-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ (A * B) ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ (A′ * B′) ⨾ Ψ′}
-           → RI d ≅ RI d′ → RI (t-snd-app d) ≅ RI (t-snd-app d′)
-  sndapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.snd h)
-
-  termapp-h : ∀ {A A′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ A′ ⨾ Ψ′}
-            → RI d ≅ RI d′ → RI (t-terminal-app d) ≅ RI (t-terminal-app d′)
-  termapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.terminal h)
-
-  apply-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
-              {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B′) * A′) ⨾ Ψ′}
-          → RI d ≅ RI d′ → RI (t-apply-app-infer d) ≅ RI (t-apply-app-infer d′)
-  apply-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.apply h)
-
-  applyeff-h : ∀ {A A′ B B′ : Ty m} {Ψ Ψ′ : U} {π π′} {g : T.EffGrade π} {g′ : T.EffGrade π′}
-                 {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many π ] B) * A) ⨾ Ψ}
-                 {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many π′ ] B′) * A′) ⨾ Ψ′}
-             → RI d ≅ RI d′ → RI (t-apply-eff-app-infer {g = g} d) ≅ RI (t-apply-eff-app-infer {g = g′} d′)
-  applyeff-h (≅i refl refl h) = ≅i refl refl (morph-app-cong (IR.curry (IR.apply IR.∘ IR.fst)) h)
-
-  out-h : ∀ {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun (NamedCtx.kinds ctx) F) (w′ : WFFun (NamedCtx.kinds ctx) F′)
-            {d : ctx ⊢ᵢ e ∶ ν F T.pureᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν F′ T.pureᶠ ⨾ Ψ′}
-        → RI d ≅ RI d′ → RI (t-Out-app-infer w refl d) ≅ RI (t-Out-app-infer w′ refl d′)
-  out-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-app-infer v refl d′)) (WFFun-irrelevant w w′))))
-
-  outeff-h : ∀ {F F′ : Fun m} {Ψ Ψ′ : U} (w : WFFun (NamedCtx.kinds ctx) F) (w′ : WFFun (NamedCtx.kinds ctx) F′)
-               {d : ctx ⊢ᵢ e ∶ ν F T.actᶠ ⨾ Ψ} {d′ : ctx ⊢ᵢ e ∶ ν F′ T.actᶠ ⨾ Ψ′}
-           → RI d ≅ RI d′ → RI (t-Out-eff-app-infer w refl d) ≅ RI (t-Out-eff-app-infer w′ refl d′)
-  outeff-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RI (t-Out-eff-app-infer v refl d′)) (WFFun-irrelevant w w′))))
-
-  applychk-h : ∀ {A A′ B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
-                 {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B) * A′) ⨾ Ψ′}
-             → RI d ≅ RI d′ → RC (t-apply-check d) ≅ RC (t-apply-check d′)
-  applychk-h (≅i refl refl h) = ≅i refl refl (morph-app-cong IR.apply h)
-
-  -- A synthesized `apply`, converted, against the checked one.
-  applyic-h : ∀ {A A′ B B′ B₂ : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᵢ e ∶ ((A ⇒[ mk-kind Many T.pure ] B) * A) ⨾ Ψ}
-                {d′ : ctx ⊢ᵢ e ∶ ((A′ ⇒[ mk-kind Many T.pure ] B′) * A′) ⨾ Ψ′} (p : B <: B₂)
-            → B′ ≡ B₂ → RI d ≅ RI d′ → coerce p (RI (t-apply-app-infer d)) ≅ RC (t-apply-check d′)
-  applyic-h p refl (≅i refl refl h) =
-    ≅i refl refl (≈-trans (coerce-uniq p (<:-refl _) _) (≈-trans (coerce-refl _) (morph-app-cong IR.apply h)))
-
-  In-h : ∀ {F : Fun m} {Ψ Ψ′ : U} (w w′ : WFFun (NamedCtx.kinds ctx) F) {d : ctx ⊢ᶜ e ∶ ⟦ F ⟧F (μ F) ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ ⟦ F ⟧F (μ F) ⨾ Ψ′}
-       → RC d ≅ RC d′ → RC (t-In-app-check w d) ≅ RC (t-In-app-check w′ d′)
-  In-h w w′ {d′ = d′} (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong _ h) (≡→≈ (cong (λ v → RC (t-In-app-check v d′)) (WFFun-irrelevant w w′))))
-
-  inlapp-h : ∀ {A B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ A ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ A ⨾ Ψ′}
-           → RC d ≅ RC d′ → RC (t-inl-app-check {B = B} d) ≅ RC (t-inl-app-check d′)
-  inlapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong _ h)
-
-  inrapp-h : ∀ {A B : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ B ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ B ⨾ Ψ′}
-           → RC d ≅ RC d′ → RC (t-inr-app-check {A = A} d) ≅ RC (t-inr-app-check d′)
-  inrapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong _ h)
-
-  initapp-h : ∀ {A : Ty m} {Ψ Ψ′ : U} {d : ctx ⊢ᶜ e ∶ Void ⨾ Ψ} {d′ : ctx ⊢ᶜ e ∶ Void ⨾ Ψ′}
-            → RC d ≅ RC d′ → RC (t-initial-app-check {T = A} d) ≅ RC (t-initial-app-check d′)
-  initapp-h (≅i refl refl h) = ≅i refl refl (morph-app-cong _ h)
-
-  -- A polymorphic head: one schema, so one grade and (its codomain variables
-  -- occurring in its domain) one codomain at a given domain.
-  private
-    polydc-go : ∀ {A B B′ : Ty m} {x π π′} (eπ : π′ ≡ π) (eB : B ≡ B′) (g : π′ ⊑π π) (q : B <: B′)
-              → coerce (sub-arr (<:-refl A) q (⊑π-refl π))
-                  (coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly {Γ = NamedCtx.debruijn ctx} x (A ⇒[ mk-kind Many π′ ] B)))
-                ≅ poly x (A ⇒[ mk-kind Many π ] B′)
-    polydc-go refl refl g q = ≅-of (≈-trans (coerce-trans _ _ _) (≈-trans (coerce-uniq _ (<:-refl _) _) (coerce-refl _)))
-
-    polydd-go : ∀ {A B B′ : Ty m} {x π π′ π₀} (eπ : π′ ≡ π₀) (eB : B ≡ B′) (g : π′ ⊑π π) (g′ : π₀ ⊑π π)
-              → coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly {Γ = NamedCtx.debruijn ctx} x (A ⇒[ mk-kind Many π′ ] B))
-                ≅ coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B′) g′) (poly x (A ⇒[ mk-kind Many π₀ ] B′))
-    polydd-go refl refl g g′ = ≅-of (coerce-uniq _ _ _)
-
-  polydc-h : ∀ {A B B′ : Ty m} {x π π′ s s′ sd sc} {b b′ : RawExpr} {pr pr′ : PolyCtx} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
-               (as : T.ArrowSchema s sd sc π′) (inc : T.CodVarsInDom sd sc)
-               (θ : _) (e : T.substPoly θ s ≡ (A ⇒[ mk-kind Many π′ ] B))
-               (θ′ : _) (e′ : T.substPoly θ′ s′ ≡ (A ⇒[ mk-kind Many π ] B′)) (g : π′ ⊑π π) (q : B <: B′)
-             → coerce (sub-arr (<:-refl A) q (⊑π-refl π))
-                 (coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly {Γ = NamedCtx.debruijn ctx} x (A ⇒[ mk-kind Many π′ ] B)))
-               ≅ poly x (A ⇒[ mk-kind Many π ] B′)
-  polydc-h refl as inc θ e θ′ e′ g q =
-    polydc-go (as-grade as (arrow-at θ′ as e′)) (dpoly-det as (arrow-at θ′ as e′) inc θ θ′ e e′) g q
-
-  polydd-h : ∀ {A B B′ : Ty m} {x π π′ π₀ s s′ sd sc sd′ sc′} {b b′ : RawExpr} {pr pr′ : PolyCtx} (ep : just (s , b , pr) ≡ just (s′ , b′ , pr′))
-               (as : T.ArrowSchema s sd sc π′) (as′ : T.ArrowSchema s′ sd′ sc′ π₀) (inc : T.CodVarsInDom sd sc)
-               (θ : _) (e : T.substPoly θ s ≡ (A ⇒[ mk-kind Many π′ ] B))
-               (θ′ : _) (e′ : T.substPoly θ′ s′ ≡ (A ⇒[ mk-kind Many π₀ ] B′)) (g : π′ ⊑π π) (g′ : π₀ ⊑π π)
-             → coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) g) (poly {Γ = NamedCtx.debruijn ctx} x (A ⇒[ mk-kind Many π′ ] B))
-               ≅ coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B′) g′) (poly x (A ⇒[ mk-kind Many π₀ ] B′))
-  polydd-h refl as as′ inc θ e θ′ e′ g g′ = polydd-go (as-grade as as′) (dpoly-det as as′ inc θ θ′ e e′) g g′

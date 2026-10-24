@@ -4,8 +4,8 @@
 ------------------------------------------------------------------------
 -- Once.TypeCheck.ShapeHet — the INDICES of two realized terms agree (plan
 -- 0.122 §5.6, stage f): `CoherenceHet`'s relation without its meaning, so
--- the same route lemmas prove that two derivations of one expression have one
--- type and one usage, at no target.
+-- the same lemmas prove that two annotated derivations of one expression have
+-- one type and one usage, at no target (`UseAgree`).
 --
 -- `a ≅ b` relates two terms whose types and usages are equal but not (yet)
 -- identical; each lemma has `CoherenceHet`'s statement and matches the
@@ -47,9 +47,6 @@ open import Once.Spec.Name using (NotGenerator)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
-open import Once.Internal.Typing
-open import Once.Internal.Laws.ModeAgreement using (extractGround-irr; dpoly-det)
-open import Once.TypeCheck.ModeSub using (arrow-at)
 open import Once.Internal.Type.WellFormed using (IsConcrete; WellFormedF)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 import Once.Internal.Context as Surface
@@ -57,13 +54,8 @@ open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Internal.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
-open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
 
 private
-  RI = realize-infer
-  RC = realize
-  RD = realize-d
-
   uip : ∀ {ℓ} {X : Set ℓ} {x y : X} (p q : x ≡ y) → p ≡ q
   uip refl refl = refl
 

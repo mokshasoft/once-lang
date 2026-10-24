@@ -16,7 +16,7 @@
 
 module Once.Adequacy.ModuleComplete where
 
-import Once.TypeCheck.DualWitness
+import Once.TypeCheck.SpecWitness
 open import Once.Internal.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (Ty)
@@ -136,7 +136,7 @@ compileFunBodyI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String
 compileFunBodyI-complete ctx polys impsOf name ty body {[]} deriv =
   succ (TE.inferElabV (ctxWithImportsAndPolys ctx polys) body) (proj₂ (proj₂ (proj₂ deriv)))
   where
-    at : ∀ {eE} (w : Once.TypeCheck.DualWitness.DI (ctxWithImportsAndPolys ctx polys) body ty [] eE) (d : Dec (ty ≡ ty))
+    at : ∀ {eE} (w : Once.TypeCheck.SpecWitness.WI (ctxWithImportsAndPolys ctx polys) body ty [] eE) (d : Dec (ty ≡ ty))
        → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ irFun)
     at w (yes refl) = _ , refl
     at w (no ¬p)    = ⊥-elim (¬p refl)

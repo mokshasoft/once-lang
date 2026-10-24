@@ -105,7 +105,6 @@ library
       MAlonzo.Code.Once.Denotation.Admissible
       MAlonzo.Code.Once.Denotation.DenotTrace
       MAlonzo.Code.Once.Denotation.Program
-      MAlonzo.Code.Once.Denotation.Realize
       MAlonzo.Code.Once.Denotation.ValueDomain
       MAlonzo.Code.Once.Extract.Names
       MAlonzo.Code.Once.Functor.Decide
@@ -151,7 +150,6 @@ library
       MAlonzo.Code.Once.Internal.Type.Poly
       MAlonzo.Code.Once.Internal.Type.Sub
       MAlonzo.Code.Once.Internal.Type.WellFormed
-      MAlonzo.Code.Once.Internal.Typing
       MAlonzo.Code.Once.Internal.Typing.Scope
       MAlonzo.Code.Once.Internal.Value
       MAlonzo.Code.Once.Memory.HeapAddress
@@ -227,7 +225,6 @@ library
       MAlonzo.Code.Once.Spec.Core.Derived
       MAlonzo.Code.Once.Spec.Core.Syntax
       MAlonzo.Code.Once.Spec.Surface.Typing
-      MAlonzo.Code.Once.TypeCheck.DualWitness
       MAlonzo.Code.Once.TypeCheck.Scoped
       MAlonzo.Code.Once.TypeCheck.SpecWitness
       MAlonzo.Code.Once.TypeCheck.Use
