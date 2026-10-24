@@ -90,11 +90,10 @@ module _ {FS : FrameSemantics} where
   validAtWF-set-halted b (valid-μ-wf wf x v) =
     valid-μ-wf wf x (validAtWF-set-halted b v)
   -- D189: seed cell + code cell, transported exactly as the closure's are.
-  -- `coalg`/`seed` are pinned for the usual D180 reason: the conclusion's
-  -- value index is an `evalᴰ` application, which determines neither.
+  -- (plan 0.88: the origin carries the seed, so nothing needs pinning.)
   validAtWF-set-halted {s = s} b
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} {ν-loc = nl} lm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lm (cellAt-set-halted b nl sc)
+    (valid-ν-susp-wf org {ν-loc = nl} lm sc cp slb) =
+    valid-ν-susp-wf org lm (cellAt-set-halted b nl sc)
       (trans (rl s b (sucLoc nl)) cp) slb
   validAtWF-set-halted {s = s} b (valid-int-wf {loc = loc} bf r) = valid-int-wf bf (trans (rl s b loc) r)
   validAtWF-set-halted {s = s} b (valid-float-wf {loc = loc} bf r) = valid-float-wf bf (trans (rl s b loc) r)

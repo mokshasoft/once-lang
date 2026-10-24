@@ -19407,3 +19407,29 @@ the code so as little as possible makes it into the compiler?").
    plan 0.93 S3, recorded in D328).
 3. **The unused imports in `Spec/Float/{Arith,Decimal,Dyadic}` are removed** — a Spec patch, with item 1's.
 4. **Plan 0.122** (the internal language collapsed onto the Spec) **is done after the merge** (D333).
+
+## D336 — A ν IS INDEXED BY ITS ORIGIN; `obs-correct-in-ν` PROVED, `obs-correct-sigop-rest` NARROWED (2026-10-24)
+
+**Follows** D189 (the two-cell ν), D199 (`Out` forces through `CoalgRuns`), D273. **Asked** by the user
+2026-10-24 (plan 0.88, "the cleaner option": generalise `CoalgRuns` rather than add a sibling field).
+
+### Decision
+* `valid-ν-susp-wf` is indexed by the ν's ORIGIN, `νOrigin F T seed v` (`ClosureWellFormed`): `from-ana`
+  (cell 0 holds the seed `(e , a)`, `v` is the unfold) or `from-layer` (cell 0 holds an `in-ν`'s layer,
+  `v` is `in-νᴵ` of it). Its value index is an ordinary variable. One constructor, not two, so every
+  transport stays one clause.
+* `CoalgRuns` (a field of `BlockRuns`, the apex's assumed `BlockRunsT`, owned by plan 0.93) is restated
+  over every origin. Its premise is the suspension's own fields — origin, seed cell, code cell — so the
+  block named by the code cell runs on exactly what the origin put in cell 0; for an `in-ν` that block is
+  the identity stub. At `from-ana` it assumes no more than before: the seed the block receives is the
+  one in the witness's own cell, where before it was a separately quantified seed.
+* `obs-correct-sigop-rest` takes `StructuredBase ib` (a product, a sum, a rigid parameter). The `Unit`
+  codomain (Pure, or an answering call — `callAnswer-at`'s `yes u` clause) and the `Void` codomain (no
+  value exists) are proofs in `IRObsCorrect.SigOp`.
+
+### Consequences
+* `obs-correct-in-ν` is a proof (`IRObsCorrect.TwoCell`), the same ten-instruction run as `Ana`. Plan
+  0.88's rows: 4 → 3.
+* `Out` no longer forces the ν's value index, so its `WellFormedFI-irrelevant` rewrite is gone.
+* What `obs-correct-sigop-rest` still assumes cannot be proved as the machine stands: there the output is
+  the postulated `structured-pure-sigop-output`. Closing it is an emitter or an IR restriction, not a proof.

@@ -339,11 +339,10 @@ module ApplyC {FS : FrameSemantics} where
   -- that is pointwise equal.
   --
   -- What the ν's witness supplies that a closure's does not is the SEED.
-  -- `valid-ν-susp-wf` names the coalgebra and the seed the suspension was built
-  -- from, so matching on it pins the input `x` to
-  -- `valueT (evalᴰ (Ana wf coalg) seed) 0` — exactly the ν that `CoalgRuns` is
-  -- conditioned on. That is why this clause needs no `denot-eq` step where
-  -- `apply` spends `f-is-closure`: the block's claim and the goal are the same
-  -- term, once the two functor witnesses are identified.
+  -- `valid-ν-susp-wf` names the ν's ORIGIN (`νOrigin`, plan 0.88: an `Ana`
+  -- seed or an `in-ν` layer) and the cell holding it, and `CoalgRuns` is
+  -- stated over exactly those fields at the ν's own value index. That is why
+  -- this clause needs no `denot-eq` step where `apply` spends
+  -- `f-is-closure`: the block's claim and the goal are the same term.
   ------------------------------------------------------------------------
 

@@ -1171,7 +1171,8 @@ ir-to-trace' n l (in-ν _) =
 -- same reason: both are "a value plus the code that consumes it". `Out`
 -- forces one layer by calling ν[1] on ν[0] — which is what `apply` does to
 -- a closure. That correspondence is the whole design: no new machinery,
--- and `valid-ν-susp-wf` mirrors `valid-closure-wf` cell for cell.
+-- and `valid-ν-susp-wf` mirrors `valid-closure-wf` cell for cell (indexed,
+-- since plan 0.88, by the ν's origin: this clause or `in-ν`'s).
 --
 -- The coalgebra is a NAMED BLOCK, generated at frontier 0 exactly as
 -- `curry`'s body is: it runs in its own frame when forced, so its slots do

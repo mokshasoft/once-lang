@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; sv-as-loc; module LocState)
 open LocState using (regs; halted)
-open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; ν-type; ⟦_⟧TI)
+open import Once.IRTy using (WellFormedFI; ν-type; ⟦_⟧TI)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -119,34 +119,32 @@ module OutC {FS : FrameSemantics} where
       go : ∀ (v : ⟦ ν-type F ⟧)
          → ValidAtWF mIn alloc {ν-type F} v ν-loc s
          → MachineRefinesObsF prog base n l (Out wf) v s alloc cl k
-      -- The two functor witnesses — the one on the `Out` node and the one the
-      -- suspension was built with — are identified ONCE, by `rewrite`, rather
-      -- than transported at each use. Carrying the equation instead costs two
-      -- `subst`s whose motives mention `evalᴰ (Out w) x`, and normalising that
-      -- motive is what made this clause alone double the module's peak memory.
-      go _ (valid-ν-susp-wf {E = E} {A = A} wf' {coalg = coalg} {seed = seed}
-                            {coalg-label = lbl} lmm sc cp slb)
-        rewrite WellFormedFI-irrelevant wf' wf = assemble sc
+      -- plan 0.88: the witness's value index is a VARIABLE now (its origin
+      -- says which ν it is), so the match no longer forces it, and the
+      -- functor witness the suspension was built with never meets the one on
+      -- the `Out` node — `CoalgRuns` is stated at the latter.
+      go v (valid-ν-susp-wf {T = T} {seed = seed} org
+                            {coalg-label = lbl} lmm sc cp slb) = assemble sc
         where
           -- The seed's residence, split exactly as `apply` splits its
           -- argument's — and the MODE comes out of the split too, because a
           -- boxed seed is `in-loc` at the cell's own mode and an inline one is
           -- `in-reg`, which has no mode at all.
-          seed-sv-of : CellAt alloc (E IRTy′.* A) seed ν-loc s → StoredValue FS
+          seed-sv-of : CellAt alloc T seed ν-loc s → StoredValue FS
           seed-sv-of (cell-ptr {comp-loc = cl'} _ _ _) = SV-Ptr cl'
           seed-sv-of (cell-inline rep _)               = inline-sv rep seed
 
-          seed-cell-of : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
+          seed-cell-of : (c : CellAt alloc T seed ν-loc s)
                        → SMCore.MemOps.readLoc s ν-loc ≡ just (seed-sv-of c)
           seed-cell-of (cell-ptr q _ _)  = q
           seed-cell-of (cell-inline _ q) = q
 
-          mode-of : CellAt alloc (E IRTy′.* A) seed ν-loc s → AllocMode
+          mode-of : CellAt alloc T seed ν-loc s → AllocMode
           mode-of (cell-ptr {mC = m} _ _ _) = m
           mode-of (cell-inline _ _)         = Heap
 
-          input-of : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
-                   → InputAt {E IRTy′.* A} (mode-of c) alloc seed (floc OSP.b3)
+          input-of : (c : CellAt alloc T seed ν-loc s)
+                   → InputAt {T} (mode-of c) alloc seed (floc OSP.b3)
           input-of (cell-ptr {comp-loc = cl'} q cbf cv) =
             in-loc cl' (OSP.carry seed cl' cbf cv) cbf
                    (OSP.input1-b3 ν-loc (SV-Ptr cl') rdi q)
@@ -155,11 +153,9 @@ module OutC {FS : FrameSemantics} where
           input-of (cell-inline (rep-unit ueq sv) q) = in-unit ueq
 
           ν-val : ⟦ ν-type F ⟧
-          ν-val = retVal (evalᴰ (Ana wf coalg) seed)
+          ν-val = v
 
-          cinfo = BlockRuns.coalgs cr wf coalg seed lbl
-                    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed}
-                                     {coalg-label = lbl} lmm sc cp slb) cp
+          cinfo = BlockRuns.coalgs cr wf org lbl lmm sc cp slb
 
           j      = proj₁ cinfo
           feq    = proj₁ (proj₂ cinfo)
@@ -183,7 +179,7 @@ module OutC {FS : FrameSemantics} where
              (trans (cong (λ z → do-call-code prog z OSP.b3) code-cell-b3)
                     (cong (λ z → do-call-at z OSP.b3) feq))
 
-          assemble : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
+          assemble : (c : CellAt alloc T seed ν-loc s)
                    → MachineRefinesObsF prog base n l (Out wf) ν-val s alloc cl k
           assemble c = record
             { value-realized =
@@ -225,7 +221,7 @@ module OutC {FS : FrameSemantics} where
                        (trans (cong (λ st → halted (floc st)) call-eq) nh3)
                        (trans (cong fret call-eq) refl)
                        (trans (cong falloc call-eq) refl)
-                       (subst (λ st → InputAt {E IRTy′.* A} (mode-of c) (falloc OSP.b3) seed st)
+                       (subst (λ st → InputAt {T} (mode-of c) (falloc OSP.b3) seed st)
                               (sym (cong floc call-eq)) (input-of c))
 
               run4 : FlatSteps prog 4 (entry-flat base s alloc cl)

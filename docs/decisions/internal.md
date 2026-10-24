@@ -72,7 +72,9 @@ decision-log entry updates the rule it changes here, in the same commit.
   reference resolves (`EmittedWF`, proved). (D089, D082, D100)
 - **A ν is a two-cell heap suspension** (seed, coalgebra code), the same
   machine object as a closure; `Out` forces it; `Ana` re-suspends by
-  allocating fresh nodes, `in-ν` does not. (D189, D199)
+  allocating fresh nodes, `in-ν` does not. Its witness is indexed by its
+  ORIGIN (`νOrigin`: an `Ana` seed, or an `in-ν` layer under the identity
+  block). (D336 ← D189, D199)
 - **Float constants are emitted as IEEE bit patterns** (x86-32 still `ud2`).
   (D079)
 - **Every prologue is `c-entry`'s own lowering**, never a hand-written frame.
@@ -131,9 +133,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   preservation below its own frontier (split into stack and heap), frontier
   monotonicity and frame preservation; it takes the block channel
   (`BlocksAt`). (D152, D155, D180, D202, D204, D206, D208, D210, D215)
-- **`apply` is proved against `CalleeRuns`**; the ν code cell has `CoalgRuns`.
+- **`apply` is proved against `CalleeRuns`**; the ν code cell has `CoalgRuns`,
+  stated over every ν origin and keyed on the suspension's own cells.
   The global discharge is carried as the apex hypotheses
-  `BlockRunsHyp-<arch>`, not as a postulate. (D188, D198, D218)
+  `BlockRunsHyp-<arch>`, not as a postulate. (D336, D188, D198, D218)
 - **The machine relation is a function on types, not a datatype**: `RelV`/`RelT`
   by recursion on the IR type, the arrow clause a Π over related inputs, the
   computation relation indexed by the event budget, stopping at μ/ν (no

@@ -7,7 +7,7 @@
 -- D200: the clauses whose whole content is "one register move, then run off
 -- the end of the fragment" — `id`, `terminal`, `initial`, `free-heap`, `fst`,
 -- `snd`, `out-μ`, `const` — together with the postulate block for the shapes
--- that are still open (`In`, `pair`, `case`, `Para`, `in-ν`, `Hylo`, `Fuse`).
+-- that is still open (`In`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -415,6 +415,8 @@ module Simp {FS : FrameSemantics} where
   -- `Out` and was a theorem about `inject x`, a ν that could not emit. When
   -- `Ana` gets an emitter, THIS case is the one that must be reproved for real
   -- — against a machine that forces layers, not one that moves a pointer.
+  -- (Both happened: D189 gave `Ana` and `in-ν` their two-cell emitter, and
+  -- D199 reproved `Out` against it, in `IRObsCorrect.Out`.)
 
   -- ── `const` — DISCHARGED, and it is the first REGISTER-resident result of
   -- class A. `emitted n l (const fit v) = instr-load-const fitˢ v ∷ []`, whose
@@ -652,9 +654,11 @@ module Simp {FS : FrameSemantics} where
     -- constructors are DELETED, so `obs-correct-Para`/`-Hylo`/`-Fuse` are gone
     -- rather than assumed. They were derived schemes (D062), unreachable from
     -- source, and their meaning was the last consumer of the pure `eval`.
-    -- `in-ν` is the one left, and it is a real codegen gap.
-    obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F)
-                     → IRObsCorrectF (in-ν wf)
+    --
+    -- (`obs-correct-in-ν` MOVED OUT — discharged in `TwoCell`, plan 0.88. It
+    -- was not a codegen gap: D189 gave it the two-cell emitter. What it lacked
+    -- was a WITNESS — the ν constructor spoke only of `Ana` — and `νOrigin`
+    -- now indexes it by where the ν came from.)
     -- D189: `obs-correct-Ana` LEFT this class — the emitter exists and the case
     -- is discharged below. D199: `obs-correct-Out` left it too, from the other
     -- direction — it was FALSE while the machine did not re-suspend, and is

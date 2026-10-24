@@ -7,7 +7,8 @@
 -- D200: the TWO-CELL BUILDS — `curry` and `Ana` emit the SAME ten
 -- instructions (D190), differing only in what goes in the code cell and where
 -- the result is placed, so `TwoCellBuild` is factored out and each clause
--- supplies only its `ResultPlace`.
+-- supplies only its `ResultPlace`. `in-ν` (plan 0.88) is the same build again,
+-- with a layer in cell 0 and the identity block in cell 1.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -178,11 +179,67 @@ module TwoCellC {FS : FrameSemantics} where
 
       mk-valid : ValidAtWF Heap (falloc TCR.fs10)
                    (retVal (evalᴰ (Ana wf coalg) x)) TCR.obj-loc (floc TCR.fs10)
-      mk-valid = valid-ν-susp-wf wf {coalg = coalg} {seed = x} tt
+      mk-valid = valid-ν-susp-wf (from-ana wf {coalg = coalg} {seed = x}) tt
                    (cell-of inp) TCB.code-fs10 TCB.before-suc
 
       place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (Ana wf coalg) x)) (floc TCR.fs10)
+      place = at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
+
+  ------------------------------------------------------------------------
+  -- plan 0.88: `in-ν` — DISCHARGED, and it is `obs-correct-Ana` at the other
+  -- ORIGIN. `ir-to-trace' n l (in-ν _)` is `two-cell-trace n l` (D189: the
+  -- layer goes in cell 0, the identity block's address in cell 1), so the run
+  -- is `TwoCellRun`'s; what differs is only the cell-0 content the witness
+  -- names (`from-layer`).
+  --
+  -- Unlike a seed `(e , a)`, a layer CAN be `Unit` (`⟦ K Unit ⟧TI X`), so its
+  -- cell has all three residences, as a closure's environment does.
+  ------------------------------------------------------------------------
+  obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (in-ν wf)
+  obs-correct-in-ν {F} wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+    record
+      { traces-agree   = sym (denot-[] k)
+      ; value-realized =
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
+                   (m≤m+n k _)
+                   (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
+                   (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
+                   (λ _ → TCB.cf-fs10)
+                   (λ _ m loc' bf' → frontier-monotone
+                                     (record alloc { next-slot = m })
+                                     (record (falloc TCR.fs10) { next-slot = m })
+                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
+      }
+    where
+      module TCR = TwoCellRun n l prog base s alloc cl n≤ nh span
+      module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
+
+      -- Wrapping a layer RUNS NOTHING.
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (in-ν wf) x ⟫ k) ≡ []
+      denot-[] k = refl
+
+      cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
+      cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
+
+      cell-of : InputAt mIn alloc x s
+              → CellAt (falloc TCR.fs10) (⟦ F ⟧TI (ν-type F)) x TCR.obj-loc (floc TCR.fs10)
+      cell-of (in-reg fit eq) =
+        cell-inline (rep-prim fit)
+          (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
+      cell-of (in-unit ueq) =
+        cell-inline (rep-unit ueq TCR.cell0v) TCB.cell0-fs10
+      cell-of (in-loc loc valid bf eq) =
+        cell-ptr (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
+                 (TCB.bf-advance bf) (TCB.valid-transport x loc bf valid)
+
+      mk-valid : ValidAtWF Heap (falloc TCR.fs10)
+                   (retVal (evalᴰ (in-ν wf) x)) TCR.obj-loc (floc TCR.fs10)
+      mk-valid = valid-ν-susp-wf (from-layer wf {layer = x}) tt
+                   (cell-of inp) TCB.code-fs10 TCB.before-suc
+
+      place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
+                          (retVal (evalᴰ (in-ν wf) x)) (floc TCR.fs10)
       place = at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
 
   ------------------------------------------------------------------------

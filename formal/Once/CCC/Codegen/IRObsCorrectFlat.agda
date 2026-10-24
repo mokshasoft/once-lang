@@ -12,7 +12,7 @@
 --
 -- D200: this file is now the ASSEMBLY only. It was 4358 lines, and a genuine
 -- recheck cost 728 s / 2.2 GB — a price paid on every iteration of the ten
--- postulates still open in it. The per-constructor clauses live in
+-- postulates then open in it (three now; see `Interface`). The per-constructor clauses live in
 -- `Once.CCC.Codegen.IRObsCorrect.*` and are re-exported here, so every
 -- importer of this module sees exactly what it saw before.
 --
@@ -27,11 +27,10 @@
 --   Interface  `IRObsCorrectF` and everything its statement mentions
 --   Machine    the step/memory lemmas + the straight-line setup skeletons
 --   Simple     id, terminal, initial, free-heap, fst, snd, out-μ, const
---              (+ the postulates still open: In, case, Para, in-ν,
---               Hylo, Fuse)
+--              (+ the postulate still open: In)
 --   SigOp      the SigOp clause
 --   Sum        inl, inr
---   TwoCell    curry, Ana (the shared ten-instruction build)
+--   TwoCell    curry, Ana, in-ν (the shared ten-instruction build)
 --   Apply      apply
 --   Out        Out  (D199)
 --   Comp       g ∘ f

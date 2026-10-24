@@ -308,7 +308,7 @@ module Project (o : CanonicalName) (tbl : List IRFun) where
     shape-inr-reg {b = bv} lm (tag-of m 1 _ _ tg) (rep-unit-at u sv) r b
   valid→shape (valid-μ-wf wf x lv) = shape-μ wf (valid→shape lv)
   -- D189: the suspension projects cell-wise, exactly as the closure does.
-  valid→shape (valid-ν-susp-wf wf lm sc cp slb) =
+  valid→shape (valid-ν-susp-wf org lm sc cp slb) =
     shape-ν-susp lm (cell→shape sc) cp slb
   valid→shape (valid-int-wf b r)   = shape-int b r
   valid→shape (valid-float-wf b r) = shape-float b r

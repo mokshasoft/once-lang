@@ -9,8 +9,9 @@
 --
 -- Why the split. `IRObsCorrectFlat` was one 4358-line module, and a genuine
 -- recheck of it costs 728 s / 2.2 GB (measured, with every dependency cached).
--- Ten postulates are still open in it, so that price was going to be paid a
--- few dozen more times. `ir-obs-correct` is the ONLY recursive definition —
+-- Ten postulates were still open in it then (three now: `cata-correct`,
+-- `obs-correct-sigop-rest`, `obs-correct-In`), so that price was going to be
+-- paid a few dozen more times. `ir-obs-correct` is the ONLY recursive definition —
 -- its two recursive cases (`comp-obs-correct`, `cata-correct`) take the
 -- induction hypothesis as an ARGUMENT rather than calling back — so the
 -- per-constructor clauses do not depend on each other at all, and each can
@@ -28,6 +29,7 @@ open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedAt
 module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
+open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -172,7 +174,7 @@ module Core {FS : FrameSemantics} where
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedDef {FS}
-    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
+    using (ValidAtWF; νOrigin; from-ana; from-layer; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -793,30 +795,38 @@ module Core {FS : FrameSemantics} where
   -- `Input1` at it, while `Out` puts the SEED in `Input1` directly. That is
   -- what makes a ν's code cell a coalgebra rather than a closure body, so one
   -- premise cannot serve both.
+  --
+  -- plan 0.88: over EVERY ν origin (`νOrigin`), not only `Ana`'s. The premise
+  -- is the suspension's own fields — its origin, its seed cell and its code
+  -- cell — so the block named by `ℓ` is run on exactly the thing the origin
+  -- put in cell 0: an `Ana`'s seed `(e , a)` (D273), or an `in-ν`'s layer, for
+  -- which the block is the identity.
   CoalgRuns : AbstractTrace → Set
   CoalgRuns prog =
-    -- D273: the seed is the PAIR `(e , a)` of the parameterized `Ana`.
-    ∀ {E A : IRTy} {F : Once.IRTy.IRFunctor} (wf : WellFormedFI F)
-      (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A)) (seed : ⟦ E IRTy′.* A ⟧) (ℓ : LabelId)
-      {m : AllocMode} {alloc' : AllocState {FS}}
+    ∀ {F : Once.IRTy.IRFunctor} (wf : WellFormedFI F)
+      {T : IRTy} {seed : ⟦ T ⟧} {v : ⟦ ν-type F ⟧}
+      (org : νOrigin F T seed v) (ℓ : LabelId)
+      {alloc' : AllocState {FS}}
       {vloc : ValueLocation FS} {st : LocState FS}
-    → ValidAtWF m alloc' {ν-type F}
-        (retVal (evalᴰ (Ana wf coalg) seed)) vloc st
+    → LocMatchesMode Heap vloc
+    → CellAt alloc' T seed vloc st
     → SMCore.MemOps.readLoc st (sucLoc vloc) ≡ just (SV-Code ℓ)
+    → BeforeFrontier alloc' (sucLoc vloc)
     → ∃[ j ]
         ( (find-thunk prog ℓ ≡ just j)
         × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
              (ret-pc k : ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {E IRTy′.* A} mIn' pre-alloc seed (floc fs)
-           -- D199: the block is the coalgebra FOLLOWED BY the re-suspension of
-           -- every recursive position, so what it computes is not `coalg` but
-           -- the FORCED LAYER — `evalᴰ (Out wf)` of the very ν whose code cell
-           -- named this label. That is `mapAnaᵈ H H coalg (valueT (coalg a))`,
-           -- which is precisely the half of `forceᵈ` the emitter used to skip.
+           → InputAt {T} mIn' pre-alloc seed (floc fs)
+           -- D199: an `Ana` block is the coalgebra FOLLOWED BY the
+           -- re-suspension of every recursive position, so what it computes is
+           -- not `coalg` but the FORCED LAYER — `evalᴰ (Out wf)` of the very ν
+           -- whose code cell named this label. That is `mapAnaᵈ H H coalg
+           -- (valueT (coalg a))`, which is precisely the half of `forceᵈ` the
+           -- emitter used to skip. For `in-ν` it is the stored layer.
            → CalleeRun prog fs ret-pc (⟦ F ⟧TI (ν-type F))
-               (evalᴰ (Out wf) (retVal (evalᴰ (Ana wf coalg) seed))) k))
+               (evalᴰ (Out wf) v) k))
 
   -- D245: the third block kind, the program's own FUNCTIONS. A direct call
   -- (`Call f`, lowered to `c-call-fn f`) names its callee statically, so the
@@ -975,6 +985,8 @@ module Core {FS : FrameSemantics} where
   --     compares `[]` against a non-empty prefix. Refutable, for a reason that
   --     has nothing to do with labels — and no proof discharges it, because
   --     what is missing is the emitter.
+  --     (Resolved since: D189 gave `Ana` and `in-ν` emitters, and plan 0.98
+  --     deleted `Para`/`Hylo`/`Fuse`.)
   --
   -- Enumerated, each is independently attackable and a false one is isolated
   -- instead of laundered through its neighbours. The count rising from one to

@@ -61,7 +61,7 @@ open import Once.Internal.Iterative using (T∞; valueNow)
 -- `SV-Lit` (SMCore's `SV-Lit` is Type-indexed) in the strengthened primitive leaves.
 open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.IR
-open import Once.IRTy using (IRTy; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; WellFormedFI; ⟦_⟧TI; ν-type; _+_; μ-type; Int; Float)
+open import Once.IRTy using (IRTy; IRFunctor; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; WellFormedFI; ⟦_⟧TI; ν-type; _+_; μ-type; Int; Float)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 import Once.Semantics.Machine as EvV
 open import Once.IR.Size
@@ -193,6 +193,24 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   inline-sv : ∀ {A : IRTy} → InlineRep A → ⟦ A ⟧ → StoredValue FS
   inline-sv (rep-prim fit)  a = prim-sv fit a
   inline-sv (rep-unit _ sv) _ = sv
+
+  ------------------------------------------------------------------------
+  -- plan 0.88: WHERE A ν CAME FROM. Both ν introductions build the same two
+  -- cells (D189) — cell 0 the thing to force from, cell 1 the code that
+  -- forces it — and differ only in what cell 0 holds and what it means:
+  --   * `Ana` stores the SEED `(e , a)`, and the code is the coalgebra;
+  --   * `in-ν` stores an already-available LAYER, and the code is the
+  --     identity block.
+  -- One ν constructor indexed by its origin, rather than a second
+  -- constructor, so every transport below stays one clause and `Out` forces
+  -- either kind the same way.
+  ------------------------------------------------------------------------
+  data νOrigin (F : IRFunctor) : (T : IRTy) → ⟦ T ⟧ → ⟦ ν-type F ⟧ → Set where
+    from-ana   : ∀ {E A} (wf : WellFormedFI F)
+                   {coalg : IR (E * A) (⟦ F ⟧TI A)} {seed : ⟦ E * A ⟧} →
+                 νOrigin F (E * A) seed (valueNow (evalᴰ (Ana wf coalg) seed))
+    from-layer : (wf : WellFormedFI F) {layer : ⟦ ⟦ F ⟧TI (ν-type F) ⟧} →
+                 νOrigin F (⟦ F ⟧TI (ν-type F)) layer (valueNow (evalᴰ (in-ν wf) layer))
 
   mutual
 
@@ -383,20 +401,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       -- cell held, so a `Unit` or register-literal seed lands inline, exactly
       -- as a closure's environment does.
       ------------------------------------------------------------------------
-      -- D273: the seed is the PAIR `(e , a)` the parameterized `Ana` reads.
-      valid-ν-susp-wf : ∀ {F E A}
-        (wf : WellFormedFI F)
-        {coalg : IR (E * A) (⟦ F ⟧TI A)}
-        {seed : ⟦ E * A ⟧}
+      -- D273: an `Ana` seed is the PAIR `(e , a)` the parameterized `Ana`
+      -- reads. plan 0.88: `in-ν` builds the same two cells with its layer in
+      -- cell 0, so the constructor is indexed by the ν's ORIGIN, and its value
+      -- index is an ordinary variable (`νOrigin` says which ν it is).
+      valid-ν-susp-wf : ∀ {F T}
+        {seed : ⟦ T ⟧} {v : ⟦ ν-type F ⟧}
+        (org : νOrigin F T seed v)
         {alloc : AllocState {FS}}
         {ν-loc : ValueLocation FS} {s : LocState FS}
         {coalg-label : LabelId} →
         LocMatchesMode Heap ν-loc →
-        CellAt alloc (E * A) seed ν-loc s →
+        CellAt alloc T seed ν-loc s →
         readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
         BeforeFrontier alloc (sucLoc ν-loc) →
-        ValidAtWF Heap alloc {ν-type F}
-          (valueNow (evalᴰ (Ana wf coalg) seed)) ν-loc s
+        ValidAtWF Heap alloc {ν-type F} v ν-loc s
 
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
@@ -1055,8 +1074,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   -- same way a pair's component does.
   validityWF-mem-only {alloc = alloc} _
     loc s₁ s₂ stack-eq heap-eq
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc)
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc sc)
       (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp) slb
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
@@ -1161,8 +1180,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
 
   validityWF-write-at-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc loc-before sc)
       (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
@@ -1250,8 +1269,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
 
   validityWF-write-at-suc-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc loc-before sc)
       (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
@@ -1352,8 +1371,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
 
   validityWF-write-sv-at-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc loc-before sc)
       (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
@@ -1448,8 +1467,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
 
   validityWF-write-sv-at-suc-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc loc-before sc)
       (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
@@ -1547,8 +1566,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (stack-alloc-advances alloc n (sucLoc loc) slb)
 
   validityWF-alloc-advance {alloc = alloc} _ loc s n
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc) cp
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc sc) cp
       (stack-alloc-advances alloc n (sucLoc loc) slb)
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → CellAt alloc C c cl s
@@ -1642,8 +1661,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
 
   validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc) cp
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc sc) cp
       (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
@@ -1733,8 +1752,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp (bf (sucLoc loc) slb)
 
   validityWF-with-bf-transfer _ loc s a₁ a₂ bf
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc) cp (bf (sucLoc loc) slb)
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc sc) cp (bf (sucLoc loc) slb)
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
          → CellAt a₁ C c cl s → CellAt a₂ C c cl s
@@ -1821,8 +1840,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       (trans (mem-eq loc loc-before) ep) (trans (mem-eq (sucLoc loc) slb) cp) slb
 
   validityWF-mem-preserved {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+    (valid-ν-susp-wf org lmm sc cp slb) =
+    valid-ν-susp-wf org lmm (go loc loc-before sc)
       (trans (mem-eq (sucLoc loc) slb) cp) slb
     where
       go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
