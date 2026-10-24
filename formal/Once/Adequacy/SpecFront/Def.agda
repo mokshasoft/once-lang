@@ -34,13 +34,12 @@ import Once.Internal.Type.WellFormed as LW
 open import Once.Internal.Type using (wk₀)
 import Once.Spec.Type as ST
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
-open import Once.Adequacy.SpecCore.Type using (TyR)
 
 module Once.Adequacy.SpecFront.Def
   (Σ : Signature) (ps : List String) (sg : Imports)
   -- a declaration of Σ is the signature table's, at its type
-  (h-sig : ∀ {m} (Δ : ST.KCtx m) {c t} → NotGenerator c → (c ∶ t) ∈ Σ
-         → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ (wk₀ T) ⌜ t ⌝ᵈ)
+  (h-sig : ∀ {m} {c t} → NotGenerator c → (c ∶ t) ∈ Σ
+         → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × (wk₀ {m} T ≡ ⌜ t ⌝ᵈ))
   -- a polymorphic definition's name is no FFI declaration's (R11, D330)
   (h-psig : ∀ {x} → x ∈ ps → lookupImport sg x ≡ nothing)
   -- every declaration of Σ has a word name (D329)
@@ -79,7 +78,6 @@ open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (WInv)
 import Once.Adequacy.SpecFront.Scope as Sc
 import Once.Adequacy.SpecFront.Annotate as Annotate
-open import Once.Adequacy.SpecCore.Type using (TyR-≡)
 
 module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele)
          (N : Names S is ts) (w : WInv S (scope sg imps tele) is ts (Names.nm N)) {m} (κ : ST.KCtx m) where
@@ -98,11 +96,11 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
         at : Σ[ x ∈ String ] nm d ≡ canonical (x ∷ []) → OkOf P d
         at (x , ex) with x ∈? ps
         ... | yes x∈ =
-          let pa = WInv.poly-at w κ ex x∈
+          let pa = WInv.poly-at w ex x∈
               e  = trans (Pack.h-poly P (Sc.PolyAt.lp pa)) (sym ex)
           in TV.iv-poly (h-psig x∈) (Sc.PolyAt.lki pa) (Sc.PolyAt.lp pa) (WInv.inj w e (λ mn → nmain (trans (sym e) mn)))
         ... | no x∉ =
-          let (nsig , T , lk , _) = WInv.mono-at w κ ex x∉ (λ xm → nmain (trans ex (cong (λ y → canonical (y ∷ [])) xm)))
+          let (nsig , T , lk) = WInv.mono-at w ex x∉ (λ xm → nmain (trans ex (cong (λ y → canonical (y ∷ [])) xm)))
               e = trans (Pack.h-imp P lk) (sym ex)
           in TV.iv-imp nsig lk (WInv.inj w e (λ mn → nmain (trans (sym e) mn)))
 
@@ -111,10 +109,10 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
            → Σ[ T ∈ ST.Type ] ((c ∶ Once.Internal.Core.Decl.declS T) ∈ Σ) × (⌜ t ⌝ᵈ ≡ ⌜ Once.Internal.Core.Decl.declS T ⌝ᵈ)
                × OkSOf P c T × LW.IsConcrete T × Once.Internal.Type.Honest.HonestFFI T
     ok-sig ng mem =
-      let (T , lk , k , r) = h-sig κ ng mem
+      let (T , lk , k , r) = h-sig {m} ng mem
           dc = TV.View.declares (Pack.V P) lk
           h  = TV.Declared.honest dc
-      in T , TV.Declared.member dc (h-word mem) refl , trans (sym (TyR-≡ r)) (sym (⌜declS⌝ k h)) , (lk , h-word mem) , k , h
+      in T , TV.Declared.member dc (h-word mem) refl , trans (sym r) (sym (⌜declS⌝ k h)) , (lk , h-word mem) , k , h
 
     module A = Annotate Σ S nm (OkOf P) (OkSOf P) κ ok-def ok-sig
 

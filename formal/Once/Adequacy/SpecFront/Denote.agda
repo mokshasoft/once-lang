@@ -175,7 +175,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         ukeys = subst (λ l → AllPairs _≢_ (keys l)) te (keys-distinct (fs ++ es′) guard)
         guard′ = distinct-rest fs es′ guard
         ps = polyNames es′
-        h-sig = λ {m} Δ {c} {t} (_ : Once.Spec.Name.NotGenerator c) M → h-sig-of Σₛ fs tf ukeys facts {m} Δ {c} {t} M
+        h-sig = λ {m} {c} {t} (_ : Once.Spec.Name.NotGenerator c) M → h-sig-of Σₛ fs tf ukeys facts {m} {c} {t} M
         -- a telescope entry is no FFI declaration (the extractor's guard)
         h-psig : ∀ {x} → x ∈ ps → Once.Internal.Typing.Scope.lookupImport sg x ≡ nothing
         h-psig x∈ = Data.List.Relation.Unary.All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)

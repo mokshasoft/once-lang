@@ -209,8 +209,8 @@ typed← {mm} {mm′} {dsU} {ds′} {Σ} {p} wm wd wr mr pw D = record { dsR = d
     ukeys = keys-distinct fs (ap-pre (map Parser.entryNameOf fs) (subst (AllPairs _≢_) (map-++ Parser.entryNameOf fs es′) guard))
     sg = entrySig fs ʳ++ []
     ps = polyNames es′
-    h-sig = λ {m} Δ {c} {t} (_ : Once.Spec.Name.NotGenerator c) (M : (c ∶ t) Data.List.Membership.Propositional.∈ Σ)
-            → h-sig-of Σ fs tf ukeys (Extracted.facts X) {m} Δ M
+    h-sig = λ {m} {c} {t} (_ : Once.Spec.Name.NotGenerator c) (M : (c ∶ t) Data.List.Membership.Propositional.∈ Σ)
+            → h-sig-of Σ fs tf ukeys (Extracted.facts X) {m} M
     h-own = λ {x} {t} (x∈ : x ∈ ps) M → not-sig Σ fs es′ tf guard {x} {t} (poly-names es′ x∈) M
     h-psig = λ {x} (x∈ : x ∈ ps) → All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
     module W = WB Σ ps sg h-sig h-own h-psig (key-word kw)

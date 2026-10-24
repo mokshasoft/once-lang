@@ -7,8 +7,6 @@
 --
 -- Plan 0.122: the compiler's schemas and definitions table ARE the Spec's;
 -- the translations are identities (kept as the front-end bridge reads them).
--- Instantiating relates (`TyR-inst`), and an instance that respects the kinds
--- does on both sides (`respects-S`).
 ------------------------------------------------------------------------
 
 module Once.Adequacy.SpecCore.Schema where
@@ -19,8 +17,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SS
-open import Once.Adequacy.SpecCore.Type
-  using (TyR; FunR; r-unit; r-void; r-int; r-float; r-*; r-+; r-⇒; r-μ; r-ν; r-var; r-K; r-Id; r-⊕; r-⊗; tyR; funR; base-S)
 
 ------------------------------------------------------------------------
 -- Schemas: one grammar (plan 0.122)
@@ -92,55 +88,3 @@ CleanSig S = ∀ d → Clean (SS.Schema.type (S SS.!! d))
 
 cleanSig : ∀ {s} (S : SS.Defs s) → CleanSig S
 cleanSig S d = clean _
-
-------------------------------------------------------------------------
--- Instances
-------------------------------------------------------------------------
-
-module _ {m} {Δ : ST.KCtx m} where
-
-  -- `τ′` is `τ` (the identity's graph, pointwise)
-  InstR : ∀ {a} → ST.TySub a m → ST.TySub a m → Set
-  InstR τ τ′ = ∀ i → TyR Δ (τ i) (τ′ i)
-
-  mutual
-    TyR-inst : ∀ {a} {A : ST.Ty a} {τ τ′} → Clean A → InstR τ τ′ → TyR Δ (A ST.⟨ τ ⟩) (ptyS A ST.⟨ τ′ ⟩)
-    TyR-inst {A = ST.var i} c-var r = r i
-    TyR-inst c-Unit  r = r-unit
-    TyR-inst c-Void  r = r-void
-    TyR-inst c-Int   r = r-int
-    TyR-inst c-Float r = r-float
-    TyR-inst (c-* a b) r = r-* (TyR-inst a r) (TyR-inst b r)
-    TyR-inst (c-+ a b) r = r-+ (TyR-inst a r) (TyR-inst b r)
-    TyR-inst {A = A ST.⇒[ k ] B} (c-⇒ a b) r = r-⇒ (kS-id k) (TyR-inst a r) (TyR-inst b r)
-      where
-        open import Once.Adequacy.SpecGrammar.Conv using (kS)
-        import Once.Spec.Grade as LG
-        kS-id : ∀ k → kS k ≡ k
-        kS-id (LG.mk-kind LG.Zero LG.pure) = refl
-        kS-id (LG.mk-kind LG.Zero LG.act)  = refl
-        kS-id (LG.mk-kind LG.Zero LG.eff)  = refl
-        kS-id (LG.mk-kind LG.One  LG.pure) = refl
-        kS-id (LG.mk-kind LG.One  LG.act)  = refl
-        kS-id (LG.mk-kind LG.One  LG.eff)  = refl
-        kS-id (LG.mk-kind LG.Many LG.pure) = refl
-        kS-id (LG.mk-kind LG.Many LG.act)  = refl
-        kS-id (LG.mk-kind LG.Many LG.eff)  = refl
-    TyR-inst (c-μ f)   r = r-μ (FunR-inst f r)
-    TyR-inst {A = ST.ν F φ} (c-ν f) r = r-ν (φS-id φ) (FunR-inst f r)
-      where
-        open import Once.Adequacy.SpecGrammar.Conv using (φS)
-        import Once.Spec.Grade as LG
-        φS-id : ∀ φ → φS φ ≡ φ
-        φS-id LG.pureᶠ = refl
-        φS-id LG.actᶠ  = refl
-
-    FunR-inst : ∀ {a} {F : ST.Fun a} {τ τ′} → CleanF F → InstR τ τ′ → FunR Δ (F ST.⟨ τ ⟩F) (pfunS F ST.⟨ τ′ ⟩F)
-    FunR-inst (c-K a)   r = r-K (TyR-inst a r)
-    FunR-inst c-Id      r = r-Id
-    FunR-inst (c-⊕ f g) r = r-⊕ (FunR-inst f r) (FunR-inst g r)
-    FunR-inst (c-⊗ f g) r = r-⊗ (FunR-inst f r) (FunR-inst g r)
-
-  -- An instance respecting the kinds does on both sides.
-  respects-S : ∀ {a} {κ : ST.KCtx a} {τ τ′} → ST.Respects κ Δ τ → InstR τ τ′ → ST.Respects (kindsS κ) Δ τ′
-  respects-S rs r i e = base-S (rs i e) (r i)

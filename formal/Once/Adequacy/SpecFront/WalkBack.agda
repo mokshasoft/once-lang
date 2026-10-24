@@ -31,12 +31,11 @@ import Once.Internal.Type.WellFormed as LW
 open import Once.Internal.Type using (wk₀)
 import Once.Spec.Type as ST
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
-open import Once.Adequacy.SpecCore.Type using (TyR; TyR-≡)
 
 module Once.Adequacy.SpecFront.WalkBack
   (Σ : Signature) (ps : List String) (sg : Imports)
-  (h-sig : ∀ {m} (Δ : ST.KCtx m) {c t} → NotGenerator c → (c ∶ t) ∈ Σ
-         → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ (wk₀ T) ⌜ t ⌝ᵈ)
+  (h-sig : ∀ {m} {c t} → NotGenerator c → (c ∶ t) ∈ Σ
+         → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × (wk₀ {m} T ≡ ⌜ t ⌝ᵈ))
   (h-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
   (h-psig : ∀ {x} → x ∈ ps → lookupImport sg x ≡ nothing)
   (h-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
@@ -111,11 +110,11 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
     module SC₂ = Once.Spec.Core.Typing Σ S
 
   -- The body checks in the compiler, at its type, which is principal there.
-  step : ∀ {a} (κ : ST.KCtx a) {T sc e e′ A A′}
-       → TyR κ A A′ → SPr.SchemaOf T (SC.schema a κ A′) → SPr.SchemaOf T sc
+  step : ∀ {a} (κ : ST.KCtx a) {T sc e e′ A′}
+       → SPr.SchemaOf T (SC.schema a κ A′) → SPr.SchemaOf T sc
        → SPr.Body Σ S′ nm sc e′ → SPr.Principal Σ S′ nm sc e′ → RX [] e e′
-       → (Σ[ Ψ ∈ LCx.Usage 0 ] CheckRun (ctxOfAt κ (scope sg imps tele)) e A Ψ) × PrincipalAt (ctxOfAt κ (scope sg imps tele)) e A
-  step {a} κ {T} {sc} {e} {e′} {A} {A′} rA so₂ so b pr rx = go (TyR-≡ rA)
+       → (Σ[ Ψ ∈ LCx.Usage 0 ] CheckRun (ctxOfAt κ (scope sg imps tele)) e A′ Ψ) × PrincipalAt (ctxOfAt κ (scope sg imps tele)) e A′
+  step {a} κ {T} {sc} {e} {e′} {A′} so₂ so b pr rx = chk , principal← ss is ts N w κ rx pr₂
     where
       sc₂ = SC.schema a κ A′
       σ  = ρ-of so₂ so
@@ -152,9 +151,6 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
                            (B⁻.chk (DR⇐.chk (ren⇐ r) c))
                            (TS.ty-subst-⊢ B⁻.sv B⁻.rσ (DR⇐.core (ren⇐ r) T₀))))
                      to-A′)
-
-      go : A ≡ A′ → (Σ[ Ψ ∈ LCx.Usage 0 ] CheckRun (ctxOfAt κ (scope sg imps tele)) e A Ψ) × PrincipalAt (ctxOfAt κ (scope sg imps tele)) e A
-      go refl = chk , principal← ss is ts N w κ rx pr₂
 
   private
     module SU′ = Once.Spec.Surface.Typing Σ S′ nm
@@ -194,8 +190,6 @@ import Once.Parser as Parser
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
-open import Once.Adequacy.SpecCore.Type using (tyR; r-unit; r-void; r-int; r-float; r-*; r-+; r-⇒; r-μ; r-ν; r-var;
-                                               FunR; r-K; r-Id; r-⊕; r-⊗)
 open import Once.Adequacy.SpecFront.SchemaRen using (ren-0)
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (winv-mono; winv-poly; _∷ⁿ_)
 open import Once.Adequacy.SpecFront.Walk Σ ps sg h-sig h-own-sig h-psig h-word using (EntriesOK; eok-mono; eok-poly)
@@ -206,7 +200,6 @@ open import Once.Internal.Module using (MainsEffUU; MainIn)
 import Once.Spec.Sub as LS
 import Once.Spec.Grade as LG
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
-open import Once.Adequacy.SpecCore.Type using (sub-L)
 open import Once.Functor.Decide using (isConcrete?-complete)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
@@ -222,9 +215,6 @@ private
            → C.inferType ctx polys body ≡ inj₂ A
   infer-ok ctx polys body eq rewrite eq = refl
 
-  r-EffUU : ∀ {Δ : ST.KCtx 0} → TyR Δ (LT.Unit LT.⇒[ LG.mk-kind LG.Many LG.eff ] LT.Unit) EffUU
-  r-EffUU = r-⇒ refl r-unit r-unit
-
   nothing≢just : ∀ {A : Set} {a : A} → nothing ≡ just a → ⊥
   nothing≢just ()
 
@@ -236,7 +226,7 @@ private
   entry-eff {ty} {ρ = ρ} R (entry {A = A} p) =
     let eqA = trans (sym (TR0.⟨⟩-id A)) (trans (TR0.⟨⟩-pt A {τ = ST.var} {τ′ = λ i → ST.var (ρ i)} (λ ()))
                                                (trans (SchRen.ty R ST.var) (TR0.⟨⟩-id _)))
-    in sub-L p (subst (TyR ST.∅ₖ ty) (sym eqA) (tyR ty)) r-EffUU
+    in subst (LS._<: _) eqA p
 
 -- A definition without variables extends the relation.
 rel-▷0 : ∀ {s} {S′ S₂ : SC.Defs s} {k₁ k₂ : ST.KCtx 0} {A A₂} → Rel S′ S₂ → A ≡ A₂
@@ -266,7 +256,7 @@ walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig {sc = sc} so b pr wk) (
   mono refl refl P W mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
   where
     fi = Parser.mkFunInfo x (just ty) e false
-    st = Step.step ss is ts N w r ST.∅ₖ (tyR ty) so₂ so b pr rx
+    st = Step.step ss is ts N w r ST.∅ₖ so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
     W = proj₂ (proj₁ st)
     P = proj₂ st
@@ -285,7 +275,7 @@ walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig so b pr wk) (al-poly {x
   where
     pfi = Parser.mkPolyFunInfo x T e
     κ = kindsOf T
-    st = Step.step ss is ts N w r κ (tyR _) so₂ so b pr rx
+    st = Step.step ss is ts N w r κ so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
     W = proj₂ (proj₁ st)
     P = proj₂ st
@@ -304,12 +294,10 @@ walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig so b pr wk) (al-poly {x
 -- one without a signature: the type its body synthesizes
 walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-nosig {A = A₀} syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
   mono refl (infer-ok _ _ e (cong proj₁ (proj₂ (proj₂ (proj₂ (proj₂ W)))))) P W mt
-  , (λ { (h , hs) → (λ m → sub-L (h m) rA r-EffUU) , ms hs }) , (λ { (inj₁ (m , p)) → inj₁ (m , sub-L p rA r-EffUU) ; (inj₂ m) → inj₂ (mi m) })
+  , (λ { (h , hs) → h , ms hs }) , (λ { (inj₁ (m , p)) → inj₁ (m , p) ; (inj₂ m) → inj₂ (mi m) })
   where
     st = Step.step-nosig ss is ts N w r syn typ pr rx
     ty = A₀
-    rA : TyR ST.∅ₖ ty ty
-    rA = tyR ty
     Ψ = proj₁ (proj₁ st)
     W = proj₂ (proj₁ st)
     P = proj₂ st

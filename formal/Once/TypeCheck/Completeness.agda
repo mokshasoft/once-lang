@@ -298,7 +298,7 @@ private
   arrow-of : ∀ {m} {Δ : ST.KCtx m} {sch} (sc : Raw.PolyType) → sch ≡ schemaOf sc
            → ∀ {sd sco π′} → type sch ≡ sd ST.⇒[ LG.mk-kind LG.Many π′ ] sco → (∀ i → ST.Occurs i sco → ST.Occurs i sd)
            → Σ[ sd₀ ∈ Raw.PolyType ] Σ[ sc₀ ∈ Raw.PolyType ] TP.ArrowSchema sc sd₀ sc₀ π′ × TP.CodVarsInDom sd₀ sc₀
-  arrow-of {Δ = Δ} sc refl {π′ = π′} ty oc = In.arrow-at Δ sc (schemaOf sc) refl ty oc π′ refl
+  arrow-of {Δ = Δ} sc refl {π′ = π′} ty oc = In.arrow-at sc (schemaOf sc) refl ty oc π′ refl
 
   arr-inst : ∀ {m} {sch : Schema} (τ : ST.TySub (arity sch) m) {sd sco : ST.Ty (arity sch)} {A B : ST.Ty m} {π′}
            → type sch ≡ sd ST.⇒[ LG.mk-kind LG.Many π′ ] sco → sd ST.⟨ τ ⟩ ≡ A → sco ST.⟨ τ ⟩ ≡ B

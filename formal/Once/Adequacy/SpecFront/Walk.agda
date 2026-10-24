@@ -36,13 +36,12 @@ import Once.Internal.Type.WellFormed as LW
 import Once.Spec.Type as ST
 open import Once.Internal.Type using (wk₀)
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
-open import Once.Adequacy.SpecCore.Type using (TyR)
 
 module Once.Adequacy.SpecFront.Walk
   (Σ : Signature) (ps : List String) (sg : Imports)
   -- the program's signature is the scope's FFI table (`Back`'s `h-sig`)…
-  (h-sig : ∀ {m} (Δ : ST.KCtx m) {c t} → NotGenerator c → (c ∶ t) ∈ Σ
-         → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × TyR Δ (wk₀ T) ⌜ t ⌝ᵈ)
+  (h-sig : ∀ {m} {c t} → NotGenerator c → (c ∶ t) ∈ Σ
+         → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × (wk₀ {m} T ≡ ⌜ t ⌝ᵈ))
   -- …and no polymorphic definition's name is a declaration's
   (h-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
   -- …nor an FFI declaration's (R11, D330)
@@ -79,7 +78,6 @@ open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
 open import Once.Internal.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; viewOf; telFind; u0)
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
-open import Once.Adequacy.SpecCore.Type using (tyR; TyR-≡)
 open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
 import Once.Adequacy.SpecFront.ScopeNames as SN
 open import Once.Adequacy.SpecFront.WalkState Σ ps

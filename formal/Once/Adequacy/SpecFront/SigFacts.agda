@@ -47,12 +47,10 @@ import Once.Parser as Parser
 open import Once.Internal.Module using (entrySig)
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecInterp using (declTy)
-open import Once.Internal.Core.Decl using (toISig; declS; declS-⌜⌝ᵈ)
+open import Once.Internal.Core.Decl using (toISig; declS; declS-⌜⌝ᵈ; ⌜declS⌝)
 open import Once.Adequacy.SpecFront.Render using (render-inj)
-open import Once.Adequacy.SpecCore.Type using (TyR)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts)
-import Once.Adequacy.SpecFront.Types
 import Once.Internal.Module
 
 keys : ISig → List String
@@ -176,12 +174,12 @@ sig-at Σ fs e u M =
 
 -- `Walk`'s `h-sig`, for the scope past the FFI declarations.
 h-sig-of : ∀ Σ fs → toISig Σ ≡ entrySig fs → AllPairs _≢_ (keys (entrySig fs)) → All FFIFacts fs
-         → ∀ {m} (Δ : ST.KCtx m) {c t} → (c ∶ t) ∈ Σ
-         → Σ[ T ∈ LT.Type ] (lookupImport (entrySig fs ʳ++ []) (showCanonical c) ≡ just T) × IsConcrete T × TyR Δ (Once.Internal.Type.wk₀ T) ⌜ t ⌝ᵈ
-h-sig-of Σ fs e u fa Δ {c} {t} M =
+         → ∀ {m} {c t} → (c ∶ t) ∈ Σ
+         → Σ[ T ∈ LT.Type ] (lookupImport (entrySig fs ʳ++ []) (showCanonical c) ≡ just T) × IsConcrete T × (Once.Internal.Type.wk₀ {m} T ≡ ⌜ t ⌝ᵈ)
+h-sig-of Σ fs e u fa {m} {c} {t} M =
   let (k , h) = facts-at fa (subst (_ ∈_) e (mem-toISig M))
   in declTy t , sig-at Σ fs e u M , k
-     , subst (λ t′ → TyR Δ (Once.Internal.Type.wk₀ (declTy t)) ⌜ t′ ⌝ᵈ) (declS-declTy t) (Once.Adequacy.SpecFront.Types.decl-R Δ k h)
+     , subst (λ t′ → Once.Internal.Type.wk₀ {m} (declTy t) ≡ ⌜ t′ ⌝ᵈ) (declS-declTy t) (sym (⌜declS⌝ k h))
 
 -- A declaration `toISig` records, read at a word name rendering to its key,
 -- is the declaration of Σ (D329: word names render injectively).
