@@ -82,7 +82,7 @@ data SumR {X X′ Y Y′ : Set} (R : X → Y → Set) (S : X′ → Y′ → Set
 record RunR {X Y : Set} (R : X → Y → Set) (m : SE.T∞ X) (n : LI.T∞ Y) : Set where
   coinductive
   field forceR : BlockR (SumR R (RunR R)) (SE.force m) (LI.T∞.force n)
-open RunR public
+open RunR
 
 ------------------------------------------------------------------------
 -- Blocks: the bind and the map

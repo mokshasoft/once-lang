@@ -49,6 +49,7 @@ open _≈ᵗ⟨_⟩_ using (same)
 open import Once.Spec.Observation Σ using (World; module World; trace; blockD; after)
 import Once.Spec.Effect Σ as SE
 open import Once.Adequacy.SpecRun Σ
+open RunR using (forceR)
 
 ------------------------------------------------------------------------
 -- The interpretation and the world agree on related calls

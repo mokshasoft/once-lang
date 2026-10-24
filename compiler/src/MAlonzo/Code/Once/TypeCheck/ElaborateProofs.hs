@@ -1074,7 +1074,7 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23062
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23274
                          (coe v0)
                          (coe
                             MAlonzo.Code.Once.Spec.Grade.C_fin_42
@@ -1093,7 +1093,7 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23062
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23274
                          (coe v0)
                          (coe
                             MAlonzo.Code.Once.Spec.Grade.C_fin_42
@@ -1112,7 +1112,7 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23062
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23274
                          (coe v0) (coe MAlonzo.Code.Once.Spec.Grade.C_eff_44))
                       erased)))
       _ -> MAlonzo.RTE.mazUnreachableError

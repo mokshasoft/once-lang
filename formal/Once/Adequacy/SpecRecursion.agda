@@ -50,9 +50,11 @@ import Once.Spec.Polynomial as SPoly
 open import Once.Denotation.SpecDomain Σ σ using (⟦_⟧ᵛ; M; cata-semᵛ; ana-semᵛ)
 open import Once.Adequacy.GradedRelation Σ σ
   using (RelGV; RelGM; RelM; RelM-return; RelM-bind; RelM-fmap; BR; LayerR; μR; inR;
-         _∼ᵖᵈ_; _∼ᵈ_; force-∼ᵖᵈ; force-∼;
-         RunR; forceR; BlockR; ret; call; halt; SumR; left; right)
-open import Once.Adequacy.SpecRun Σ using (fmapʳ-R)
+         _∼ᵖᵈ_; _∼ᵈ_)
+open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
+open _∼ᵈ_ using (force-∼)
+open import Once.Adequacy.SpecRun Σ using (fmapʳ-R; RunR; BlockR; ret; call; halt; SumR; left; right)
+open RunR using (forceR)
 
 ------------------------------------------------------------------------
 -- Base values: the same value on both sides

@@ -46,8 +46,9 @@ open RelS using (forceS)
 open import Once.Denotation.ValueRel using (retargetˡ; retargetʳ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ)
-open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGV; RelGM; RunR; forceR; BlockR; SumR; ret; left; return∞-R)
-open import Once.Adequacy.SpecRun Σ using (≡ʳ-R; retargetʳ-R)
+open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGV; RelGM)
+open import Once.Adequacy.SpecRun Σ using (≡ʳ-R; retargetʳ-R; RunR; BlockR; SumR; ret; left; return∞-R)
+open RunR using (forceR)
 import Once.Spec.Effect Σ as SE
 open import Once.Adequacy.TableCall fmt φ using (abiT)
 

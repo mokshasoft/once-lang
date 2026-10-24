@@ -55,8 +55,9 @@ import Once.Spec.Domain Σ as SD
 open import Once.Internal.Type using (wk₀)
 open import Once.Internal.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.Denotation.SpecDomain Σ σ using (⟦wk₀⟧ᵛ)
-open import Once.Adequacy.SpecRun Σ public
-  using (RunR; forceR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-R; embed-bind-R; bindT-R; mapT-R; BlockR-mono; RunR-mono; CallR; cr)
+open import Once.Adequacy.SpecRun Σ
+  using (RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-R; embed-bind-R; bindT-R; mapT-R; BlockR-mono; RunR-mono; CallR; cr)
+open RunR using (forceR)
 import Once.Adequacy.SpecInterp as SI
 
 ------------------------------------------------------------------------
@@ -102,7 +103,7 @@ record _∼ᵖᵈ_ {F : Fun 0} (x : SE.νM pureᶠ (SD.code (F ⟨ σ ⟩F))) (y
   field
     force-∼ᵖᵈ : RunR (LayerR F (_∼ᵖᵈ_ {F})) (SE.return∞ (outν x)) (forceᴵ y)
 
-open _∼ᵖᵈ_ public
+open _∼ᵖᵈ_
 
 -- An `act` stream's layer is a finite block: the IR's force makes the same
 -- calls, step for step, ending in a related layer.
@@ -111,7 +112,7 @@ record _∼ᵈ_ {F : Fun 0} (x : SE.νM actᶠ (SD.code (F ⟨ σ ⟩F))) (y : �
   field
     force-∼ : RunR (LayerR F (_∼ᵈ_ {F})) (SE.embed (outν x)) (forceᴵ y)
 
-open _∼ᵈ_ public
+open _∼ᵈ_
 
 ------------------------------------------------------------------------
 -- The relation, by recursion on the type.

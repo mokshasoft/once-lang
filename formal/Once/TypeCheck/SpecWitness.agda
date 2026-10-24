@@ -257,9 +257,12 @@ mutual
 wk₀≡↑ : ∀ {m} (T : ST.Type) → wk₀ {m} T ≡ T ST.⟨ (λ ()) ⟩
 wk₀≡↑ T = sub0 T none (λ ())
 
--- The Spec's rules and the compiler's View, at a pack.
+-- The Spec's annotated rules, at a pack.
+module WMP {m} {ctx : NamedCtx m} (P : Pack ctx) = WM (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (kinds ctx)
+
+-- …and the compiler's View there.
 module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
-  open WM (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (kinds ctx) public
+  open WMP P
   open Sc.Locals (Sg P) (S P) (nm P) public using (found)
   open RS (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (inline P) (kinds ctx) public using (realize⇒; realize⇐; realize↦; ref)
   module SU = SUT (Sg P) (S P) (nm P)
@@ -497,6 +500,7 @@ private
 
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
   open At P
+  open WMP P
 
   -- The realization of an operator's rule is its term former.
   rz-arith : ∀ {op e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} (ia : isArithmeticOp op ≡ true)
@@ -587,20 +591,20 @@ module _ {m} {ctx : NamedCtx m} where
     E = SExpr (debruijn ctx)
 
   wt-int : (n : ℤ) → WI ctx (SX.RInt n) ST.Int SCx.zeroUsage (SS.int n)
-  wt-int n = tt , λ P → let open At P in _ , w-int n , refl
+  wt-int n = tt , λ P → let open At P ; open WMP P in _ , w-int n , refl
 
   wt-float : ∀ i f l → WI ctx (SX.RFloat i f l) ST.Float SCx.zeroUsage (SS.float (decimalOf i f l))
-  wt-float i f l = tt , λ P → let open At P in _ , w-float i f l , refl
+  wt-float i f l = tt , λ P → let open At P ; open WMP P in _ , w-float i f l , refl
 
   wt-unit : WI ctx SX.RUnit ST.Unit SCx.zeroUsage SS.unit
-  wt-unit = tt , λ P → let open At P in _ , w-unit , refl
+  wt-unit = tt , λ P → let open At P ; open WMP P in _ , w-unit , refl
 
   wt-unit-var : WI ctx (SX.RResolved (gen "unit")) ST.Unit SCx.zeroUsage SS.unit
-  wt-unit-var = tt , λ P → let open At P in _ , w-unit-g , refl
+  wt-unit-var = tt , λ P → let open At P ; open WMP P in _ , w-unit-g , refl
 
   wt-var-local : ∀ {x A Ψ} {eV : Once.Internal.Context.SVar (debruijn ctx) Ψ A}
                → lookupLocal ctx x ≡ just (A , Ψ , eV) → WI ctx (SX.RVar x) A Ψ (SS.svar→expr eV)
-  wt-var-local {eV = svar i} lk = tt , λ P → let open At P in _ , w-var (found (lr P) i lk) , subst-K _ _
+  wt-var-local {eV = svar i} lk = tt , λ P → let open At P ; open WMP P in _ , w-var (found (lr P) i lk) , subst-K _ _
 
   wt-var-resolved : ∀ {cn T A} → Once.Spec.Name.NotGenerator cn → WordName cn
                   → lookupImport (sig ctx) (showCanonical cn) ≡ just T → (k : IsConcrete T) → (eq : A ≡ wk₀ T)
@@ -611,14 +615,14 @@ module _ {m} {ctx : NamedCtx m} where
           → Σ[ t ∈ SC.Tm (S P) _ (size ctx) ] Σ[ w ∈ WM.W⇒ (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (kinds ctx) (L P) (SX.RResolved cn) (wk₀ T) t SCx.zeroUsage ]
               rz⇒ P w ≡ SS.sigOp cn k
       res P (TView.declared h mem) =
-        let open At P in
+        let open At P ; open WMP P in
         let p = ⌜declS⌝ k h
             w = w-sigop {ok = lk , wn} ng (mem wn refl) k h
         in _ , retype⇒ p w , trans (rt⇒ p w) (subst-twice (⌜declS⌝ k h) p _)
 
   wt-var-own : ∀ {x T A} → lookupImport (sig ctx) x ≡ nothing → (lk : lookupImport (imports ctx) x ≡ just T) → (eq : A ≡ wk₀ T)
              → WI ctx (SX.RResolved (own x)) A SCx.zeroUsage (subst (E SCx.zeroUsage) (sym eq) (SS.closure x))
-  wt-var-own ns lk refl = (_ , lk , refl) , λ P → let open At P in
+  wt-var-own ns lk refl = (_ , lk , refl) , λ P → let open At P ; open WMP P in
     let d = TView.ImportAt.entryOf (TView.View.imported (V P) lk)
         (t , w , r) = (refS d (TView.iv-imp ns lk refl) (h-imp P lk) (TView.ImportAt.mono (TView.View.imported (V P) lk)) none
                             (cong SC.Schema.arity (TView.ImportAt.mono (TView.View.imported (V P) lk))))
@@ -629,7 +633,7 @@ module _ {m} {ctx : NamedCtx m} where
                                 → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , body , prefix))
                                 → TP.Ground sc → T ≡ TP.extractGround sc g
                                 → WI ctx (SX.RResolved (own x)) T SCx.zeroUsage (SS.poly x T)
-  wt-var-poly-instantiate-infer {sc = sc} {g = g} nsg nim lp _ eq = (_ , lp , subst (KindedInstance (kinds ctx) sc) (sym eq) (ground-kinded {Δ = kinds ctx} sc g)) , λ P → let open At P in
+  wt-var-poly-instantiate-infer {sc = sc} {g = g} nsg nim lp _ eq = (_ , lp , subst (KindedInstance (kinds ctx) sc) (sym eq) (ground-kinded {Δ = kinds ctx} sc g)) , λ P → let open At P ; open WMP P in
     let ki = kinded-instance sc (ground-kinded {Δ = kinds ctx} sc g)
         d = TView.View.entry (V P) lp
         (t , w , r) = (refS d (TView.iv-poly nsg nim lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (h-ground P lp g))
@@ -638,7 +642,7 @@ module _ {m} {ctx : NamedCtx m} where
        , trans (rt⇒ p w) (trans (cong (subst (E SCx.zeroUsage) p) (trans r (ref-poly d (h-poly-inline P lp) (h-poly P lp)))) (subst-poly p))
 
   wt-annot : ∀ {e T A Ψ eE} → WC ctx e A Ψ eE → A ≡ wk₀ T → WI ctx (SX.RAnnot e T) A Ψ eE
-  wt-annot {T = T} w refl = proj₁ w , λ P → let open At P in
+  wt-annot {T = T} w refl = proj₁ w , λ P → let open At P ; open WMP P in
     let a = wk₀≡↑ T
         (_ , w′ , r) = proj₂ w P
     in _ , retype⇒ (sym a) (w-annot (retype⇐ a w′))
@@ -649,18 +653,18 @@ module _ {m} {ctx : NamedCtx m} where
 
   wt-pair : ∀ {a b A B Ψ₁ Ψ₂ aE bE} → WI ctx a A Ψ₁ aE → WI ctx b B Ψ₂ bE
           → WI ctx (SX.RPair a b) (A ST.* B) (Ψ₁ SCx.+ᵘ Ψ₂) (SS.pair aE bE)
-  wt-pair wa wb = (proj₁ wa , proj₁ wb) , λ P → let open At P in
+  wt-pair wa wb = (proj₁ wa , proj₁ wb) , λ P → let open At P ; open WMP P in
     let (_ , ua , ra) = proj₂ wa P ; (_ , ub , rb) = proj₂ wb P in _ , w-pair ua ub , cong₂ SS.pair ra rb
 
   wt-neg : ∀ {e Ψ eE} → WI ctx e ST.Int Ψ eE → WI ctx (SX.RNeg e) ST.Int Ψ (SS.neg eE)
-  wt-neg w = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-neg u , cong SS.neg r
+  wt-neg w = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-neg u , cong SS.neg r
 
   wt-neg-float : ∀ i f l → WI ctx (SX.RNeg (SX.RFloat i f l)) ST.Float SCx.zeroUsage (SS.float (negate (decimalOf i f l)))
-  wt-neg-float i f l = tt , λ P → let open At P in _ , w-neg-float i f l , refl
+  wt-neg-float i f l = tt , λ P → let open At P ; open WMP P in _ , w-neg-float i f l , refl
 
   wt-let : ∀ {x e₁ e₂ A B q Ψ₁ Ψ₂ e₁E e₂E} → WI ctx e₁ A Ψ₁ e₁E → WI (extendNamedCtx ctx x A) e₂ B (q SCx.∷ Ψ₂) e₂E
          → WI ctx (SX.RLet x e₁ e₂) B (Ψ₂ SCx.+ᵘ (q SCx.*ᵘ Ψ₁)) (SS.let' e₁E e₂E)
-  wt-let {x = x} {A = A} {q = q} {e₂E = e₂E} w₁ w₂ = (proj₁ w₁ , ext-refs {ctx = ctx} {x = x} {A = A} {e = e₂E} (proj₁ w₂)) , λ P → let open At P in
+  wt-let {x = x} {A = A} {q = q} {e₂E = e₂E} w₁ w₂ = (proj₁ w₁ , ext-refs {ctx = ctx} {x = x} {A = A} {e = e₂E} (proj₁ w₂)) , λ P → let open At P ; open WMP P in
     let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ (pack▸ x A P) in _ , w-let q u₁ u₂ , cong₂ SS.let' r₁ r₂
 
   wt-case : ∀ {e xl el xr er A B Cl Cr C ql qr Ψs Ψₗ Ψᵣ sE lE rE}
@@ -669,72 +673,72 @@ module _ {m} {ctx : NamedCtx m} where
           → (j : Cl ⊔ Cr ≔ C)
           → WI ctx (SX.RDestruct e xl el xr er) C (Ψs SCx.+ᵘ (Ψₗ ⊔ᵘ Ψᵣ))
                (SS.case' sE (SS.coerce (<:ᶜ⇒<: (left j)) lE) (SS.coerce (<:ᶜ⇒<: (right j)) rE))
-  wt-case {xl = xl} {xr = xr} {A = A} {B = B} {ql = ql} {qr = qr} {lE = lE} {rE = rE} ws wl wr j = (proj₁ ws , ext-refs {ctx = ctx} {x = xl} {A = A} {e = lE} (proj₁ wl) , ext-refs {ctx = ctx} {x = xr} {A = B} {e = rE} (proj₁ wr)) , λ P → let open At P in
+  wt-case {xl = xl} {xr = xr} {A = A} {B = B} {ql = ql} {qr = qr} {lE = lE} {rE = rE} ws wl wr j = (proj₁ ws , ext-refs {ctx = ctx} {x = xl} {A = A} {e = lE} (proj₁ wl) , ext-refs {ctx = ctx} {x = xr} {A = B} {e = rE} (proj₁ wr)) , λ P → let open At P ; open WMP P in
     let (_ , us , rs) = proj₂ ws P ; (_ , ul , rl) = proj₂ wl (pack▸ xl A P) ; (_ , ur , rr) = proj₂ wr (pack▸ xr B P)
     in _ , w-case ql qr us ul ur j
        , cong₃ (λ a b c → SS.case' a (SS.coerce (<:ᶜ⇒<: (left j)) b) (SS.coerce (<:ᶜ⇒<: (right j)) c)) rs rl rr
 
   wt-binop-arith : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (ia : isArithmeticOp op ≡ true) → WI ctx e₁ ST.Int Ψ₁ e₁E → WI ctx e₂ ST.Int Ψ₂ e₂E
                  → WI ctx (SX.RBinOp op e₁ e₂) ST.Int (Ψ₁ SCx.+ᵘ Ψ₂) (arithE op ia e₁E e₂E)
-  wt-binop-arith {op} ia w₁ w₂ = refs-arithE {ctx = ctx} op ia (proj₁ w₁) (proj₁ w₂) , λ P → let open At P in
+  wt-binop-arith {op} ia w₁ w₂ = refs-arithE {ctx = ctx} op ia (proj₁ w₁) (proj₁ w₂) , λ P → let open At P ; open WMP P in
     let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
     in _ , w-arith (proj₂ (arith-of ia)) u₁ u₂ , trans (rz-arith P ia u₁ u₂) (cong₂ (arithE op ia) r₁ r₂)
 
   wt-binop-arith-float : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (fa : isFloatArithmeticOp op ≡ true) → WI ctx e₁ ST.Float Ψ₁ e₁E → WI ctx e₂ ST.Float Ψ₂ e₂E
                        → WI ctx (SX.RBinOp op e₁ e₂) ST.Float (Ψ₁ SCx.+ᵘ Ψ₂) (floatE op fa e₁E e₂E)
-  wt-binop-arith-float {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P in
+  wt-binop-arith-float {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P ; open WMP P in
     let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
     in _ , w-arith-float (proj₂ (float-of fa)) u₁ u₂ , trans (rz-float P fa u₁ u₂) (cong₂ (floatE op fa) r₁ r₂)
 
   wt-binop-arith-float-il : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (fa : isFloatArithmeticOp op ≡ true) → WI ctx e₁ ST.Int Ψ₁ e₁E → WI ctx e₂ ST.Float Ψ₂ e₂E
                           → WI ctx (SX.RBinOp op e₁ e₂) ST.Float (Ψ₁ SCx.+ᵘ Ψ₂) (floatE op fa (SS.i2f e₁E) e₂E)
-  wt-binop-arith-float-il {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P in
+  wt-binop-arith-float-il {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P ; open WMP P in
     let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
     in _ , w-arith-float-il (proj₂ (float-of fa)) u₁ u₂ , trans (rz-float-il P fa u₁ u₂) (cong₂ (λ a b → floatE op fa (SS.i2f a) b) r₁ r₂)
 
   wt-binop-arith-float-ir : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (fa : isFloatArithmeticOp op ≡ true) → WI ctx e₁ ST.Float Ψ₁ e₁E → WI ctx e₂ ST.Int Ψ₂ e₂E
                           → WI ctx (SX.RBinOp op e₁ e₂) ST.Float (Ψ₁ SCx.+ᵘ Ψ₂) (floatE op fa e₁E (SS.i2f e₂E))
-  wt-binop-arith-float-ir {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P in
+  wt-binop-arith-float-ir {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P ; open WMP P in
     let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
     in _ , w-arith-float-ir (proj₂ (float-of fa)) u₁ u₂ , trans (rz-float-ir P fa u₁ u₂) (cong₂ (λ a b → floatE op fa a (SS.i2f b)) r₁ r₂)
 
   wt-binop-cmp : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (c : isComparisonOp op ≡ true) → WI ctx e₁ ST.Int Ψ₁ e₁E → WI ctx e₂ ST.Int Ψ₂ e₂E
                → WI ctx (SX.RBinOp op e₁ e₂) (ST.Unit ST.+ ST.Unit) (Ψ₁ SCx.+ᵘ Ψ₂) (cmpE op c e₁E e₂E)
-  wt-binop-cmp {op} c w₁ w₂ = refs-cmpE {ctx = ctx} op c (proj₁ w₁) (proj₁ w₂) , λ P → let open At P in
+  wt-binop-cmp {op} c w₁ w₂ = refs-cmpE {ctx = ctx} op c (proj₁ w₁) (proj₁ w₂) , λ P → let open At P ; open WMP P in
     let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
     in _ , w-compare (proj₂ (cmp-of c)) u₁ u₂ , trans (rz-cmp P c u₁ u₂) (cong₂ (cmpE op c) r₁ r₂)
 
   -- A generator applied to a synthesizing argument.
   wt-id-app : ∀ {e T Ψ eE} → WI ctx e T Ψ eE
             → WI ctx (SX.RApp (SX.RResolved (gen "id")) e) T (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.id eE)
-  wt-id-app w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-id-app u , cong (SS.morph-app IR.id) r
+  wt-id-app w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-id-app u , cong (SS.morph-app IR.id) r
 
   wt-fst-app : ∀ {e A B Ψ eE} → WI ctx e (A ST.* B) Ψ eE
              → WI ctx (SX.RApp (SX.RResolved (gen "fst")) e) A (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.fst eE)
-  wt-fst-app w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-fst-app u , cong (SS.morph-app IR.fst) r
+  wt-fst-app w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-fst-app u , cong (SS.morph-app IR.fst) r
 
   wt-snd-app : ∀ {e A B Ψ eE} → WI ctx e (A ST.* B) Ψ eE
              → WI ctx (SX.RApp (SX.RResolved (gen "snd")) e) B (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.snd eE)
-  wt-snd-app w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-snd-app u , cong (SS.morph-app IR.snd) r
+  wt-snd-app w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-snd-app u , cong (SS.morph-app IR.snd) r
 
   wt-terminal-app : ∀ {e T Ψ eE} → WI ctx e T Ψ eE
                   → WI ctx (SX.RApp (SX.RResolved (gen "terminal")) e) ST.Unit (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.terminal eE)
-  wt-terminal-app w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-terminal-app u , cong (SS.morph-app IR.terminal) r
+  wt-terminal-app w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-terminal-app u , cong (SS.morph-app IR.terminal) r
 
   wt-apply-app-infer : ∀ {e A B Ψ eE} → WI ctx e ((A ST.⇒[ LG.mk-kind LG.Many LG.pure ] B) ST.* A) Ψ eE
                      → WI ctx (SX.RApp (SX.RResolved (gen "apply")) e) B (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.apply eE)
-  wt-apply-app-infer w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-apply-app u , cong (SS.morph-app IR.apply) r
+  wt-apply-app-infer w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-apply-app u , cong (SS.morph-app IR.apply) r
 
   wt-apply-eff-app-infer : ∀ {e A B Ψ π eE} {g : LG.EffGrade π} → WI ctx e ((A ST.⇒[ LG.mk-kind LG.Many π ] B) ST.* A) Ψ eE
                          → WI ctx (SX.RApp (SX.RResolved (gen "apply")) e) (ST.Unit ST.⇒[ LG.mk-kind LG.Many π ] B)
                               (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) eE)
-  wt-apply-eff-app-infer {g = g} w = ((tt , tt) , proj₁ w) , λ P → let open At P in
+  wt-apply-eff-app-infer {g = g} w = ((tt , tt) , proj₁ w) , λ P → let open At P ; open WMP P in
     let (_ , u , r) = proj₂ w P in _ , w-apply-eff-app g u , cong (SS.morph-app (IR.curry (IR.apply IR.∘ IR.fst))) r
 
   wt-Out-app-infer : ∀ {e F C Ψ eE} → (wf : ST.WFFun (kinds ctx) F) → (ce : ST.⟦ F ⟧F (ST.ν F LG.pureᶠ) ≡ C) → WI ctx e (ST.ν F LG.pureᶠ) Ψ eE
                    → WI ctx (SX.RApp (SX.RResolved (gen "Out")) e) C (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
                         (subst (E _) ce (SS.morph-app (subst (λ o → IR ⌊ ST.ν F LG.pureᶠ ⌋ o) (sym (⌊⟧T-commute F (ST.ν F LG.pureᶠ))) (IR.Out (wf-⌊⌋ wf))) eE))
-  wt-Out-app-infer {F = F} wf refl w = (Linked-substʳ (sym (⌊⟧T-commute F (ST.ν F LG.pureᶠ))) (IR.Out (wf-⌊⌋ wf)) tt , proj₁ w) , λ P → let open At P in
+  wt-Out-app-infer {F = F} wf refl w = (Linked-substʳ (sym (⌊⟧T-commute F (ST.ν F LG.pureᶠ))) (IR.Out (wf-⌊⌋ wf)) tt , proj₁ w) , λ P → let open At P ; open WMP P in
     let (_ , u , r) = proj₂ w P
     in _ , w-Out-app wf u
        , cong (SS.morph-app (subst (λ o → IR ⌊ ST.ν F LG.pureᶠ ⌋ o) (sym (⌊⟧T-commute F (ST.ν F LG.pureᶠ))) (IR.Out (wf-⌊⌋ wf)))) r
@@ -744,7 +748,7 @@ module _ {m} {ctx : NamedCtx m} where
                             (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
                             (subst (λ X → E _ (ST.Unit ST.⇒[ LG.mk-kind LG.Many LG.act ] X)) ce
                               (SS.morph-app (IR.curry (subst (λ o → IR ⌊ ST.ν F LG.actᶠ ⌋ o) (sym (⌊⟧T-commute F (ST.ν F LG.actᶠ))) (IR.Out (wf-⌊⌋ wf)) IR.∘ IR.fst)) eE))
-  wt-Out-eff-app-infer {F = F} wf refl w = ((Linked-substʳ (sym (⌊⟧T-commute F (ST.ν F LG.actᶠ))) (IR.Out (wf-⌊⌋ wf)) tt , tt) , proj₁ w) , λ P → let open At P in
+  wt-Out-eff-app-infer {F = F} wf refl w = ((Linked-substʳ (sym (⌊⟧T-commute F (ST.ν F LG.actᶠ))) (IR.Out (wf-⌊⌋ wf)) tt , tt) , proj₁ w) , λ P → let open At P ; open WMP P in
     let (_ , u , r) = proj₂ w P
     in _ , w-Out-act-app wf u
        , cong (SS.morph-app (IR.curry (subst (λ o → IR ⌊ ST.ν F LG.actᶠ ⌋ o) (sym (⌊⟧T-commute F (ST.ν F LG.actᶠ))) (IR.Out (wf-⌊⌋ wf)) IR.∘ IR.fst))) r
@@ -753,20 +757,20 @@ module _ {m} {ctx : NamedCtx m} where
   wt-app : ∀ {f x A B q Ψ₁ Ψ₂ fE xE} → classifyAppHead f ≡ nothing
          → WI ctx f (A ST.⇒[ LG.mk-kind q LG.pure ] B) Ψ₁ fE → WC ctx x A Ψ₂ xE
          → WI ctx (SX.RApp f x) B (Ψ₁ SCx.+ᵘ (q SCx.*ᵘ Ψ₂)) (SS.app fE xE)
-  wt-app nh wf wx = (proj₁ wf , proj₁ wx) , λ P → let open At P in
+  wt-app nh wf wx = (proj₁ wf , proj₁ wx) , λ P → let open At P ; open WMP P in
     let (_ , uf , rf) = proj₂ wf P ; (_ , ux , rx) = proj₂ wx P in _ , w-app (not-special nh) uf ux , cong₂ SS.app rf rx
 
   wt-effApp : ∀ {f x A B Ψ₁ Ψ₂ π fE xE} {g : LG.EffGrade π} → classifyAppHead f ≡ nothing
             → WI ctx f (A ST.⇒[ LG.mk-kind LG.Many π ] B) Ψ₁ fE → WC ctx x A Ψ₂ xE
             → WI ctx (SX.RApp f x) (ST.Unit ST.⇒[ LG.mk-kind LG.Many π ] B) (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) (SS.effApp {g = g} fE xE)
-  wt-effApp {g = g} nh wf wx = (proj₁ wf , proj₁ wx) , λ P → let open At P in
+  wt-effApp {g = g} nh wf wx = (proj₁ wf , proj₁ wx) , λ P → let open At P ; open WMP P in
     let (_ , uf , rf) = proj₂ wf P ; (_ , ux , rx) = proj₂ wx P in _ , w-effApp (not-special nh) g uf ux , cong₂ (SS.effApp {g = g}) rf rx
 
   -- …or the argument's type synthesized and the head checked from that domain.
   wt-app-spine : ∀ {f x X T Ψ₁ Ψ₂ fE xE} → classifyAppHead f ≡ nothing
                → WI ctx x X Ψ₂ xE → WD ctx f X LG.pure T Ψ₁ fE
                → WI ctx (SX.RApp f x) T (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) (SS.app fE xE)
-  wt-app-spine nh wx wf = (proj₁ wf , proj₁ wx) , λ P → let open At P in
+  wt-app-spine nh wx wf = (proj₁ wf , proj₁ wx) , λ P → let open At P ; open WMP P in
     let (_ , ux , rx) = proj₂ wx P ; (_ , uf , rf) = proj₂ wf P in _ , w-app-spine (not-special nh) ux uf , cong₂ SS.app rf rx
 
 ------------------------------------------------------------------------
@@ -786,96 +790,96 @@ module _ {m} {ctx : NamedCtx m} where
 
   -- The generators as morphisms, at any grade.
   wt-id-check : ∀ {T π} {u : LG.pure LG.⊑π π} → WC ctx (gn "id") (T ⇒⟨ π ⟩ T) Z (SS.lift-morphism IR.id)
-  wt-id-check = tt , λ P → let open At P in _ , w-id , refl
+  wt-id-check = tt , λ P → let open At P ; open WMP P in _ , w-id , refl
   wt-fst-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "fst") ((A ST.* B) ⇒⟨ π ⟩ A) Z (SS.lift-morphism IR.fst)
-  wt-fst-check = tt , λ P → let open At P in _ , w-fst , refl
+  wt-fst-check = tt , λ P → let open At P ; open WMP P in _ , w-fst , refl
   wt-snd-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "snd") ((A ST.* B) ⇒⟨ π ⟩ B) Z (SS.lift-morphism IR.snd)
-  wt-snd-check = tt , λ P → let open At P in _ , w-snd , refl
+  wt-snd-check = tt , λ P → let open At P ; open WMP P in _ , w-snd , refl
   wt-terminal-morph-check : ∀ {A π} {u : LG.pure LG.⊑π π} → WC ctx (gn "terminal") (A ⇒⟨ π ⟩ ST.Unit) Z (SS.lift-morphism IR.terminal)
-  wt-terminal-morph-check = tt , λ P → let open At P in _ , w-terminal , refl
+  wt-terminal-morph-check = tt , λ P → let open At P ; open WMP P in _ , w-terminal , refl
   wt-initial-morph-check : ∀ {A π} {u : LG.pure LG.⊑π π} → WC ctx (gn "initial") (ST.Void ⇒⟨ π ⟩ A) Z (SS.lift-morphism IR.initial)
-  wt-initial-morph-check = tt , λ P → let open At P in _ , w-initial , refl
+  wt-initial-morph-check = tt , λ P → let open At P ; open WMP P in _ , w-initial , refl
   wt-inl-morph-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "inl") (A ⇒⟨ π ⟩ (A ST.+ B)) Z (SS.lift-morphism IR.inl)
-  wt-inl-morph-check = tt , λ P → let open At P in _ , w-inl , refl
+  wt-inl-morph-check = tt , λ P → let open At P ; open WMP P in _ , w-inl , refl
   wt-inr-morph-check : ∀ {A B π} {u : LG.pure LG.⊑π π} → WC ctx (gn "inr") (B ⇒⟨ π ⟩ (A ST.+ B)) Z (SS.lift-morphism IR.inr)
-  wt-inr-morph-check = tt , λ P → let open At P in _ , w-inr , refl
+  wt-inr-morph-check = tt , λ P → let open At P ; open WMP P in _ , w-inr , refl
 
   -- `compose f g`: `g`'s codomain from its domain, or `f`'s type synthesized.
   wt-compose-check-g : ∀ {f g A B C π Ψ₁ Ψ₂ fE gE} → WD ctx g A π B Ψ₂ gE → WC ctx f (B ⇒⟨ π ⟩ C) Ψ₁ fE
                      → WC ctx (SX.RApp (SX.RApp (gn "compose") f) g) (A ⇒⟨ π ⟩ C) (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) (SS.comp' fE gE)
-  wt-compose-check-g wg wf = (proj₁ wf , proj₁ wg) , λ P → let open At P in
+  wt-compose-check-g wg wf = (proj₁ wf , proj₁ wg) , λ P → let open At P ; open WMP P in
     let (_ , ug , rg) = proj₂ wg P ; (_ , uf , rf) = proj₂ wf P in _ , w-compose-g ug uf , cong₂ SS.comp' rf rg
 
   wt-compose-check-f : ∀ {f g A B C C′ π π′ Ψ₁ Ψ₂ fE gE} → WI ctx f (B ⇒⟨ π′ ⟩ C′) Ψ₁ fE → (p : (B ⇒⟨ π′ ⟩ C′) <: (B ⇒⟨ π ⟩ C))
                      → WC ctx g (A ⇒⟨ π ⟩ B) Ψ₂ gE
                      → WC ctx (SX.RApp (SX.RApp (gn "compose") f) g) (A ⇒⟨ π ⟩ C) (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) (SS.comp' (SS.coerce p fE) gE)
-  wt-compose-check-f wf p wg = (proj₁ wf , proj₁ wg) , λ P → let open At P in
+  wt-compose-check-f wf p wg = (proj₁ wf , proj₁ wg) , λ P → let open At P ; open WMP P in
     let (_ , uf , rf) = proj₂ wf P ; (_ , ug , rg) = proj₂ wg P in _ , w-compose-f uf p ug , cong₂ (λ a b → SS.comp' (SS.coerce p a) b) rf rg
 
   wt-case-copair-check : ∀ {f g A B C π Ψ₁ Ψ₂ fE gE} → WC ctx f (A ⇒⟨ π ⟩ C) Ψ₁ fE → WC ctx g (B ⇒⟨ π ⟩ C) Ψ₂ gE
                        → WC ctx (SX.RApp (SX.RApp (gn "case") f) g) ((A ST.+ B) ⇒⟨ π ⟩ C) (Ψ₁ SCx.+ᵘ Ψ₂) (SS.copair' fE gE)
-  wt-case-copair-check wf wg = (proj₁ wf , proj₁ wg) , λ P → let open At P in
+  wt-case-copair-check wf wg = (proj₁ wf , proj₁ wg) , λ P → let open At P ; open WMP P in
     let (_ , uf , rf) = proj₂ wf P ; (_ , ug , rg) = proj₂ wg P in _ , w-case′ uf ug , cong₂ SS.copair' rf rg
 
   wt-pair-morph-check : ∀ {f g A B C π Ψ₁ Ψ₂ fE gE} → WC ctx f (A ⇒⟨ π ⟩ B) Ψ₁ fE → WC ctx g (A ⇒⟨ π ⟩ C) Ψ₂ gE
                       → WC ctx (SX.RApp (SX.RApp (gn "pair") f) g) (A ⇒⟨ π ⟩ (B ST.* C)) (Ψ₁ SCx.+ᵘ Ψ₂) (SS.fork' fE gE)
-  wt-pair-morph-check wf wg = (proj₁ wf , proj₁ wg) , λ P → let open At P in
+  wt-pair-morph-check wf wg = (proj₁ wf , proj₁ wg) , λ P → let open At P ; open WMP P in
     let (_ , uf , rf) = proj₂ wf P ; (_ , ug , rg) = proj₂ wg P in _ , w-pair′ uf ug , cong₂ SS.fork' rf rg
 
   wt-curry-check : ∀ {f A B C π₀ π Ψ eE} {u : LG.pure LG.⊑π π₀} → WC ctx f ((A ST.* B) ⇒⟨ π ⟩ C) Ψ eE
                  → WC ctx (SX.RApp (gn "curry") f) (A ⇒⟨ π₀ ⟩ (B ⇒⟨ π ⟩ C)) Ψ (SS.curry' eE)
-  wt-curry-check w = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-curry u , cong SS.curry' r
+  wt-curry-check w = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-curry u , cong SS.curry' r
 
   wt-cata-check : ∀ {alg F A π Ψ eE} {u : LG.pure LG.⊑π π} → (wf : ST.WFFun (kinds ctx) F) → WC ctx alg (ST.⟦ F ⟧F A ⇒⟨ π ⟩ A) Ψ eE
                 → WC ctx (SX.RApp (gn "cata") alg) (ST.μ F ⇒⟨ π ⟩ A) (LG.Many SCx.*ᵘ Ψ) (SS.cata wf eE)
-  wt-cata-check wf w = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-cata wf u , cong (SS.cata wf) r
+  wt-cata-check wf w = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-cata wf u , cong (SS.cata wf) r
 
   wt-ana-check : ∀ {c F A π₀ φ Ψ eE} {u : LG.pure LG.⊑π π₀} {ua : π₀ LG.⊑π LG.act} → (wf : ST.WFFun (kinds ctx) F)
                → WC ctx c (A ⇒⟨ LG.fin φ ⟩ ST.⟦ F ⟧F A) Ψ eE
                → WC ctx (SX.RApp (gn "ana") c) (A ⇒⟨ π₀ ⟩ ST.ν F φ) (LG.Many SCx.*ᵘ Ψ) (SS.ana wf eE)
-  wt-ana-check {ua = ua} wf w = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-ana ua wf u , cong (SS.ana wf) r
+  wt-ana-check {ua = ua} wf w = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-ana ua wf u , cong (SS.ana wf) r
 
   wt-loop-check : ∀ {c A B Ψ eE} → WC ctx c (A ⇒⟨ LG.act ⟩ (B ST.+ A)) Ψ eE
                 → WC ctx (SX.RApp (gn "ana") c) (A ⇒⟨ LG.eff ⟩ B) (LG.Many SCx.*ᵘ Ψ) (SS.loop eE)
-  wt-loop-check w = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-loop u , cong SS.loop r
+  wt-loop-check w = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-loop u , cong SS.loop r
 
   -- A synthesized type where a supertype is expected: its conversion.
   wt-sub : ∀ {e A B Ψ eE} → WI ctx e A Ψ eE → (p : A <: B) → WC ctx e B Ψ (SS.coerce p eE)
-  wt-sub w p = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-sub u p , cong (SS.coerce p) r
+  wt-sub w p = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-sub u p , cong (SS.coerce p) r
 
   wt-lam : ∀ {x body A B q q′ π Ψ eE} {u : LG.pure LG.⊑π π} → (≤p : (q′ ≤qᵇ q) ≡ true)
          → WC (extendNamedCtx ctx x A) body B (q′ SCx.∷ Ψ) eE
          → WC ctx (SX.RLam x body) (A ST.⇒[ LG.mk-kind q π ] B) Ψ (SS.lam q ≤p eE)
-  wt-lam {x = x} {A = A} {eE = eE} ≤p w = ext-refs {ctx = ctx} {x = x} {A = A} {e = eE} (proj₁ w) , λ P → let open At P in
+  wt-lam {x = x} {A = A} {eE = eE} ≤p w = ext-refs {ctx = ctx} {x = x} {A = A} {e = eE} (proj₁ w) , λ P → let open At P ; open WMP P in
     let (_ , u , r) = proj₂ w (pack▸ x A P) in _ , w-lam ≤p u , cong (SS.lam _ ≤p) r
 
   wt-pair-lit-check : ∀ {a b A B Ψ₁ Ψ₂ aE bE} → WC ctx a A Ψ₁ aE → WC ctx b B Ψ₂ bE
                     → WC ctx (SX.RPair a b) (A ST.* B) (Ψ₁ SCx.+ᵘ Ψ₂) (SS.pair aE bE)
-  wt-pair-lit-check wa wb = (proj₁ wa , proj₁ wb) , λ P → let open At P in
+  wt-pair-lit-check wa wb = (proj₁ wa , proj₁ wb) , λ P → let open At P ; open WMP P in
     let (_ , ua , ra) = proj₂ wa P ; (_ , ub , rb) = proj₂ wb P in _ , w-pair-lit ua ub , cong₂ SS.pair ra rb
 
   wt-In-app-check : ∀ {e F Ψ eE} → (wf : ST.WFFun (kinds ctx) F) → WC ctx e (ST.⟦ F ⟧F (ST.μ F)) Ψ eE
                   → WC ctx (SX.RApp (gn "In") e) (ST.μ F) (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ))
                        (SS.morph-app (subst (λ o → IR o ⌊ ST.μ F ⌋) (sym (⌊⟧T-commute F (ST.μ F))) (IR.In (wf-⌊⌋ wf))) eE)
-  wt-In-app-check {F = F} wf w = (Linked-substˡ (sym (⌊⟧T-commute F (ST.μ F))) (IR.In (wf-⌊⌋ wf)) tt , proj₁ w) , λ P → let open At P in
+  wt-In-app-check {F = F} wf w = (Linked-substˡ (sym (⌊⟧T-commute F (ST.μ F))) (IR.In (wf-⌊⌋ wf)) tt , proj₁ w) , λ P → let open At P ; open WMP P in
     let (_ , u , r) = proj₂ w P
     in _ , w-In-app wf u , cong (SS.morph-app (subst (λ o → IR o ⌊ ST.μ F ⌋) (sym (⌊⟧T-commute F (ST.μ F))) (IR.In (wf-⌊⌋ wf)))) r
 
   wt-apply-check : ∀ {e A B Ψ eE} → WI ctx e ((A ⇒⟨ LG.pure ⟩ B) ST.* A) Ψ eE
                  → WC ctx (SX.RApp (gn "apply") e) B (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.apply eE)
-  wt-apply-check w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-apply-app′ u , cong (SS.morph-app IR.apply) r
+  wt-apply-check w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-apply-app′ u , cong (SS.morph-app IR.apply) r
 
   wt-inl-app-check : ∀ {e A B Ψ eE} → WC ctx e A Ψ eE
                    → WC ctx (SX.RApp (gn "inl") e) (A ST.+ B) (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.inl eE)
-  wt-inl-app-check w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-inl-app u , cong (SS.morph-app IR.inl) r
+  wt-inl-app-check w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-inl-app u , cong (SS.morph-app IR.inl) r
 
   wt-inr-app-check : ∀ {e A B Ψ eE} → WC ctx e B Ψ eE
                    → WC ctx (SX.RApp (gn "inr") e) (A ST.+ B) (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.inr eE)
-  wt-inr-app-check w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-inr-app u , cong (SS.morph-app IR.inr) r
+  wt-inr-app-check w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-inr-app u , cong (SS.morph-app IR.inr) r
 
   wt-initial-app-check : ∀ {e T Ψ eE} → WC ctx e ST.Void Ψ eE
                        → WC ctx (SX.RApp (gn "initial") e) T (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) (SS.morph-app IR.initial eE)
-  wt-initial-app-check w = (tt , proj₁ w) , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-initial-app u , cong (SS.morph-app IR.initial) r
+  wt-initial-app-check w = (tt , proj₁ w) , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-initial-app u , cong (SS.morph-app IR.initial) r
 
   -- A polymorphic telescope definition, at a kinded instance.
   wt-var-poly-instantiate : ∀ {x T sc body prefix}
@@ -883,7 +887,7 @@ module _ {m} {ctx : NamedCtx m} where
                           → (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , body , prefix))
                           → ¬ TP.Ground sc → KindedInstance (kinds ctx) sc T
                           → WC ctx (SX.RResolved (own x)) T Z (SS.poly x T)
-  wt-var-poly-instantiate {sc = sc} nsg nim lp ng ins = (_ , lp , ins) , λ P → let open At P in
+  wt-var-poly-instantiate {sc = sc} nsg nim lp ng ins = (_ , lp , ins) , λ P → let open At P ; open WMP P in
     let ki = kinded-instance sc ins
         d = TView.View.entry (V P) lp
         (t , w , r) = (refC d (TView.iv-poly nsg nim lp refl) (h-poly P lp) (TView.View.entryIs (V P) lp) (proj₁ ki) (proj₁ (proj₂ ki)) (h-open P lp ng))
@@ -904,7 +908,7 @@ module _ {m} {ctx : NamedCtx m} where
 
   wd-infer : ∀ {g A A′ B π π′ Ψ eE} → WI ctx g (A′ ST.⇒[ LG.mk-kind LG.Many π′ ] B) Ψ eE → (a : A <: A′) → (o : π′ LG.⊑π π)
            → WD ctx g A π B Ψ (SS.coerce (sub-arr {q = LG.Many} a (<:-refl B) o) eE)
-  wd-infer {B = B} w a o = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-infer u a o , cong (SS.coerce (sub-arr a (<:-refl B) o)) r
+  wd-infer {B = B} w a o = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-infer u a o , cong (SS.coerce (sub-arr a (<:-refl B) o)) r
 
   -- A polymorphic definition whose codomain's variables occur in its domain.
   wd-poly : ∀ {x A B π π′ sc sd sco body prefix}
@@ -914,7 +918,7 @@ module _ {m} {ctx : NamedCtx m} where
           → KindedInstance (kinds ctx) sc (A ST.⇒[ LG.mk-kind LG.Many π′ ] B) → (g : π′ LG.⊑π π)
           → WD ctx (SX.RResolved (own x)) A π B Z
                (SS.coerce (sub-arr {q = LG.Many} (<:-refl A) (<:-refl B) g) (SS.poly x (A ST.⇒[ LG.mk-kind LG.Many π′ ] B)))
-  wd-poly {A = A} {B = B} {sc = sc} nsg nim lp ng arr cvd ins g = (_ , lp , ins) , λ P → let open At P in
+  wd-poly {A = A} {B = B} {sc = sc} nsg nim lp ng arr cvd ins g = (_ , lp , ins) , λ P → let open At P ; open WMP P in
     let (X , Y , te , incl) = h-arrow P lp arr cvd
         ki = kinded-instance sc ins
         d = TView.View.entry (V P) lp
@@ -924,30 +928,30 @@ module _ {m} {ctx : NamedCtx m} where
 
   wd-lam : ∀ {x body A B q′ π Ψ eE} {u : LG.pure LG.⊑π π} → WI (extendNamedCtx ctx x A) body B (q′ SCx.∷ Ψ) eE
          → WD ctx (SX.RLam x body) A π B Ψ (SS.lam LG.Many (≤q-Many q′) eE)
-  wd-lam {x = x} {A = A} {q′ = q′} {eE = eE} w = ext-refs {ctx = ctx} {x = x} {A = A} {e = eE} (proj₁ w) , λ P → let open At P in
+  wd-lam {x = x} {A = A} {q′ = q′} {eE = eE} w = ext-refs {ctx = ctx} {x = x} {A = A} {e = eE} (proj₁ w) , λ P → let open At P ; open WMP P in
     let (_ , u , r) = proj₂ w (pack▸ x A P) in _ , w-lam↦ u , cong (SS.lam LG.Many (≤q-Many q′)) r
 
   wd-compose : ∀ {f g A M B π Ψ₁ Ψ₂ fE gE} → WD ctx g A π M Ψ₂ gE → WD ctx f M π B Ψ₁ fE
              → WD ctx (SX.RApp (SX.RApp (gn "compose") f) g) A π B (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) (SS.comp' fE gE)
-  wd-compose wg wf = (proj₁ wf , proj₁ wg) , λ P → let open At P in
+  wd-compose wg wf = (proj₁ wf , proj₁ wg) , λ P → let open At P ; open WMP P in
     let (_ , ug , rg) = proj₂ wg P ; (_ , uf , rf) = proj₂ wf P in _ , w-compose↦ ug uf , cong₂ SS.comp' rf rg
 
   wd-id : ∀ {A π} {u : LG.pure LG.⊑π π} → WD ctx (gn "id") A π A Z (SS.lift-morphism IR.id)
-  wd-id = tt , λ P → let open At P in _ , w-id↦ , refl
+  wd-id = tt , λ P → let open At P ; open WMP P in _ , w-id↦ , refl
   wd-fst : ∀ {A B π} {u : LG.pure LG.⊑π π} → WD ctx (gn "fst") (A ST.* B) π A Z (SS.lift-morphism IR.fst)
-  wd-fst = tt , λ P → let open At P in _ , w-fst↦ , refl
+  wd-fst = tt , λ P → let open At P ; open WMP P in _ , w-fst↦ , refl
   wd-snd : ∀ {A B π} {u : LG.pure LG.⊑π π} → WD ctx (gn "snd") (A ST.* B) π B Z (SS.lift-morphism IR.snd)
-  wd-snd = tt , λ P → let open At P in _ , w-snd↦ , refl
+  wd-snd = tt , λ P → let open At P ; open WMP P in _ , w-snd↦ , refl
   wd-terminal : ∀ {A π} {u : LG.pure LG.⊑π π} → WD ctx (gn "terminal") A π ST.Unit Z (SS.lift-morphism IR.terminal)
-  wd-terminal = tt , λ P → let open At P in _ , w-terminal↦ , refl
+  wd-terminal = tt , λ P → let open At P ; open WMP P in _ , w-terminal↦ , refl
   wd-initial : ∀ {π} {u : LG.pure LG.⊑π π} → WD ctx (gn "initial") ST.Void π ST.Void Z (SS.lift-morphism IR.initial)
-  wd-initial = tt , λ P → let open At P in _ , w-initial↦ , refl
+  wd-initial = tt , λ P → let open At P ; open WMP P in _ , w-initial↦ , refl
 
   wd-case : ∀ {f g A B Cf Cg C π Ψ₁ Ψ₂ fE gE} → WD ctx f A π Cf Ψ₁ fE → WD ctx g B π Cg Ψ₂ gE → (j : Cf ⊔ Cg ≔ C)
           → WD ctx (SX.RApp (SX.RApp (gn "case") f) g) (A ST.+ B) π C (Ψ₁ SCx.+ᵘ Ψ₂)
                (SS.copair' (SS.coerce (sub-arr (<:-refl A) (<:ᶜ⇒<: (left j)) (⊑π-refl π)) fE)
                            (SS.coerce (sub-arr (<:-refl B) (<:ᶜ⇒<: (right j)) (⊑π-refl π)) gE))
-  wd-case {A = A} {B = B} {π = π} wf wg j = (proj₁ wf , proj₁ wg) , λ P → let open At P in
+  wd-case {A = A} {B = B} {π = π} wf wg j = (proj₁ wf , proj₁ wg) , λ P → let open At P ; open WMP P in
     let (_ , uf , rf) = proj₂ wf P ; (_ , ug , rg) = proj₂ wg P
     in _ , w-case↦ uf ug j
        , cong₂ (λ a b → SS.copair' (SS.coerce (sub-arr (<:-refl A) (<:ᶜ⇒<: (left j)) (⊑π-refl π)) a)
@@ -955,10 +959,10 @@ module _ {m} {ctx : NamedCtx m} where
 
   wd-pair : ∀ {f g A B C π Ψ₁ Ψ₂ fE gE} → WD ctx f A π B Ψ₁ fE → WD ctx g A π C Ψ₂ gE
           → WD ctx (SX.RApp (SX.RApp (gn "pair") f) g) A π (B ST.* C) (Ψ₁ SCx.+ᵘ Ψ₂) (SS.fork' fE gE)
-  wd-pair wf wg = (proj₁ wf , proj₁ wg) , λ P → let open At P in
+  wd-pair wf wg = (proj₁ wf , proj₁ wg) , λ P → let open At P ; open WMP P in
     let (_ , uf , rf) = proj₂ wf P ; (_ , ug , rg) = proj₂ wg P in _ , w-pair↦ uf ug , cong₂ SS.fork' rf rg
 
   wd-cata : ∀ {alg F A π Ψ eE} {u : LG.pure LG.⊑π π} → (wf : ST.WFFun (kinds ctx) F)
           → WI ctx alg (ST.⟦ F ⟧F A ST.⇒[ LG.mk-kind LG.Many π ] A) Ψ eE
           → WD ctx (SX.RApp (gn "cata") alg) (ST.μ F) π A (LG.Many SCx.*ᵘ Ψ) (SS.cata wf eE)
-  wd-cata wf w = proj₁ w , λ P → let open At P in let (_ , u , r) = proj₂ w P in _ , w-cata↦ wf u , cong (SS.cata wf) r
+  wd-cata wf w = proj₁ w , λ P → let open At P ; open WMP P in let (_ , u , r) = proj₂ w P in _ , w-cata↦ wf u , cong (SS.cata wf) r

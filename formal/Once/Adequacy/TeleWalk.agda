@@ -107,7 +107,8 @@ open import Once.Adequacy.TeleWalk.Invariant fmt Σ wf J uniq
 
 open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGV; RelGM; GM-D)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ)
-open import Once.Adequacy.SpecRun Σ using (RunR; BlockR; SumR; ret; left; forceR; fmapˡ-R; embed-mapˡ-R; bind∞-R; embed-bind-R)
+open import Once.Adequacy.SpecRun Σ using (RunR; BlockR; SumR; ret; left; fmapˡ-R; embed-mapˡ-R; bind∞-R; embed-bind-R)
+open RunR using (forceR)
 open import Once.Internal.Iterative using (T∞; return∞)
 open T∞ using (force)
 open import Once.Denotation.ValueRel using (retargetˡ)

@@ -115,9 +115,11 @@ open import Once.Internal.Name using (showCanonical; WordName)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation Σ σ₀
   using (RelGV; RelGT; RelGM; RelM; RelM-fmap; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret;
-         RelGM-fmap; embνᵃ-∼; right-self; GM-D; RelGᵖ-app; RelGM-wk₀; LayerR; μR; inR; _∼ᵖᵈ_; _∼ᵈ_; force-∼ᵖᵈ; force-∼;
-         RunR; forceR; BlockR; ret; left; return∞-R)
-open import Once.Adequacy.SpecRun Σ using (≡ʳ-R; retargetʳ-R; retargetˡ-R; fmapʳ-R; loop-iter-R)
+         RelGM-fmap; embνᵃ-∼; right-self; GM-D; RelGᵖ-app; RelGM-wk₀; LayerR; μR; inR; _∼ᵖᵈ_; _∼ᵈ_)
+open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
+open _∼ᵈ_ using (force-∼)
+open import Once.Adequacy.SpecRun Σ using (≡ʳ-R; retargetʳ-R; retargetˡ-R; fmapʳ-R; loop-iter-R; RunR; BlockR; ret; left; return∞-R)
+open RunR using (forceR)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
 open import Once.Internal.FunctorMeaning using (translateF)
