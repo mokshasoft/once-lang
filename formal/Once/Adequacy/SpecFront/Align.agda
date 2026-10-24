@@ -56,7 +56,6 @@ import Once.Parser as Parser
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Core.Translate Σ using (monoSchema)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
-open import Once.Adequacy.SpecCore.Schema using (schS; ptyS; pfunS)
 open import Once.Adequacy.SpecFront.Expr using (RX)
 open import Once.Adequacy.SpecFront.SchemaOf using (schemaOf-S)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; xa-isig;
@@ -76,11 +75,11 @@ NotMono T = ∀ (g : Ground T) → isConcrete? (extractGround T g) ≡ nothing
 data Align : List SX.Decl → List Parser.Entry → Set where
   al-nil   : Align [] []
   al-skip  : ∀ {d ds es} → NotDefinition Σ d → Align ds es → Align (d ∷ ds) es
-  al-mono  : ∀ {x T′ e e′ ty ds es} → SchemaOf T′ (schS (monoSchema ty)) → RX [] e e′ → Align ds es
+  al-mono  : ∀ {x T′ e e′ ty ds es} → SchemaOf T′ ((monoSchema ty)) → RX [] e e′ → Align ds es
            → Align (SX.DTypeSig x T′ ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x (just ty) e false) ∷ es)
   al-nosig : ∀ {x e e′ ds es} → RX [] e e′ → Align ds es
            → Align (SX.DFunDef x e′ ∷ ds) (Parser.e-fun (Parser.mkFunInfo x nothing e false) ∷ es)
-  al-poly  : ∀ {x T e e′ ds es} → SchemaOf (toPoly T) (schS (schemaOf T)) → NotMono T → RX [] e e′ → Align ds es
+  al-poly  : ∀ {x T e e′ ds es} → SchemaOf (toPoly T) ((schemaOf T)) → NotMono T → RX [] e e′ → Align ds es
            → Align (SX.DTypeSig x (toPoly T) ∷ SX.DFunDef x e′ ∷ ds) (Parser.e-poly (Parser.mkPolyFunInfo x T e) ∷ es)
 
 ------------------------------------------------------------------------
@@ -111,7 +110,7 @@ private
   no-names ()
 
   mutual
-    reads-ground : ∀ (T : PolyType) (g : Ground T) → TypeOf no-names (toPoly T) (ptyS (extractGround {0} T g))
+    reads-ground : ∀ (T : PolyType) (g : Ground T) → TypeOf no-names (toPoly T) ((extractGround {0} T g))
     reads-ground PUnit _  = to-unit
     reads-ground PVoid _  = to-void
     reads-ground PInt _   = to-int
@@ -125,14 +124,14 @@ private
     reads-ground (Pμ F) g = to-μ (readsF-ground F g)
     reads-ground (Pν F φ) g = to-ν (readsF-ground F g)
 
-    readsF-ground : ∀ (F : PolyFunctor) (g : GroundF F) → FunOf no-names (toPolyF F) (Once.Adequacy.SpecCore.Schema.pfunS (extractGroundF {0} F g))
+    readsF-ground : ∀ (F : PolyFunctor) (g : GroundF F) → FunOf no-names (toPolyF F) ((extractGroundF {0} F g))
     readsF-ground (PK A) g = fo-K (reads-ground A g)
     readsF-ground PId _ = fo-Id
     readsF-ground (F P⊕ G) (gf , gg) = fo-⊕ (readsF-ground F gf) (readsF-ground G gg)
     readsF-ground (F P⊗ G) (gf , gg) = fo-⊗ (readsF-ground F gf) (readsF-ground G gg)
 
 -- A ground signature, read by the Spec, is the monomorphic entry's schema.
-ground-schemaOf : ∀ (T : PolyType) (g : Ground T) → SchemaOf (toPoly T) (schS (monoSchema (extractGround T g)))
+ground-schemaOf : ∀ (T : PolyType) (g : Ground T) → SchemaOf (toPoly T) ((monoSchema (extractGround T g)))
 ground-schemaOf T g =
   record { names = no-names ; distinct = λ {i} → ⊥-elim (fin0 i) ; reads = reads-ground T g
             ; used = λ i → ⊥-elim (fin0 i) ; kinded = λ i → ⊥-elim (fin0 i) }
@@ -147,7 +146,7 @@ private
   nonSigs-imported (_ ∷ sigs)  dc ((x , o , T , refl) ∷ as) = nonSigs-imported sigs dc as
 
   -- the reading's schema
-  mono-schema : ∀ {T ty} → SigReading T (just ty) → SchemaOf (toPoly T) (schS (monoSchema ty))
+  mono-schema : ∀ {T ty} → SigReading T (just ty) → SchemaOf (toPoly T) ((monoSchema ty))
   mono-schema {T} (sr-mono g c _ _) = ground-schemaOf T g
 
   poly-why : ∀ {T} → SigReading T nothing → NotMono T

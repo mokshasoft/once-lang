@@ -67,7 +67,6 @@ open import Once.Postulates using (extensionality)
 open import Once.Internal.Type.Instance using (KindedInstance; RespectsKinds)
 open import Once.Internal.Type.Schema using (τOf; part-inst; kinded-instance)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
-open import Once.Adequacy.SpecCore.Schema using (ptyS; pfunS; schS; kindsS)
 
 ------------------------------------------------------------------------
 -- The parameters: no repetition, all of the type's variables
@@ -162,7 +161,7 @@ module Parts (T : PolyType) where
   j : ∀ {x} → x ∈ ftv T → Fin (arityOf T)
   j m = proj₁ (at m)
 
-  var-ab : ∀ {x} (m : x ∈ ftv T) → ptyS (rigidSubst T x) ≡ ST.var (j m)
+  var-ab : ∀ {x} (m : x ∈ ftv T) → (rigidSubst T x) ≡ ST.var (j m)
   var-ab m = cong (maybe′ ST.var ST.Unit) (proj₁ (proj₂ (at m)))
 
   name-j : ∀ {x} (m : x ∈ ftv T) → names (j m) ≡ x
@@ -185,7 +184,7 @@ module Parts (T : PolyType) where
 
   -- The written part, read through the parameters' names.
   mutual
-    reads : ∀ A → (∀ {x} → x ∈ ftv A → x ∈ ftv T) → TypeOf names (toPoly A) (ptyS (ab A))
+    reads : ∀ A → (∀ {x} → x ∈ ftv A → x ∈ ftv T) → TypeOf names (toPoly A) ((ab A))
     reads (PTVar x) s = subst (TypeOf names (SS.PTVar x)) (sym (var-ab (s (here refl)))) (to-var (j (s (here refl))) (name-j (s (here refl))))
     reads PUnit  _ = to-unit
     reads PVoid  _ = to-void
@@ -199,7 +198,7 @@ module Parts (T : PolyType) where
     reads (Pμ F)   s = to-μ (readsF F s)
     reads (Pν F φ) s = to-ν (readsF F s)
 
-    readsF : ∀ F → (∀ {x} → x ∈ ftvF F → x ∈ ftv T) → FunOf names (toPolyF F) (pfunS (abF F))
+    readsF : ∀ F → (∀ {x} → x ∈ ftvF F → x ∈ ftv T) → FunOf names (toPolyF F) ((abF F))
     readsF (PK A)   s = fo-K (reads A s)
     readsF PId      s = fo-Id
     readsF (F P⊕ G) s = fo-⊕ (readsF F (ˡ s)) (readsF G (ʳ (ftvF F) s))
@@ -207,20 +206,20 @@ module Parts (T : PolyType) where
 
   -- A variable of the part occurs in it, at its parameter.
   mutual
-    occ : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) {x} (m : x ∈ ftv A) → Occurs (j (s m)) (ptyS (ab A))
+    occ : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) {x} (m : x ∈ ftv A) → Occurs (j (s m)) ((ab A))
     occ (PTVar x) s (here refl) = subst (Occurs _) (sym (var-ab (s (here refl)))) o-var
-    occ (A P* B)      s m = split A B s {λ k → Occurs k (ptyS (ab (A P* B)))} (λ m′ → o-*ˡ (occ A (ˡ s) m′)) (λ m′ → o-*ʳ (occ B (ʳ (ftv A) s) m′)) m
-    occ (A P+ B)      s m = split A B s {λ k → Occurs k (ptyS (ab (A P+ B)))} (λ m′ → o-+ˡ (occ A (ˡ s) m′)) (λ m′ → o-+ʳ (occ B (ʳ (ftv A) s) m′)) m
-    occ (A P⇒[ q ] B) s m = split A B s {λ k → Occurs k (ptyS (ab (A P⇒[ q ] B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
-    occ (PEff A B)    s m = split A B s {λ k → Occurs k (ptyS (ab (PEff A B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
-    occ (PAct A B)    s m = split A B s {λ k → Occurs k (ptyS (ab (PAct A B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
+    occ (A P* B)      s m = split A B s {λ k → Occurs k ((ab (A P* B)))} (λ m′ → o-*ˡ (occ A (ˡ s) m′)) (λ m′ → o-*ʳ (occ B (ʳ (ftv A) s) m′)) m
+    occ (A P+ B)      s m = split A B s {λ k → Occurs k ((ab (A P+ B)))} (λ m′ → o-+ˡ (occ A (ˡ s) m′)) (λ m′ → o-+ʳ (occ B (ʳ (ftv A) s) m′)) m
+    occ (A P⇒[ q ] B) s m = split A B s {λ k → Occurs k ((ab (A P⇒[ q ] B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
+    occ (PEff A B)    s m = split A B s {λ k → Occurs k ((ab (PEff A B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
+    occ (PAct A B)    s m = split A B s {λ k → Occurs k ((ab (PAct A B)))} (λ m′ → o-⇒ˡ (occ A (ˡ s) m′)) (λ m′ → o-⇒ʳ (occ B (ʳ (ftv A) s) m′)) m
     occ (Pμ F)   s m = o-μ (occF F s m)
     occ (Pν F φ) s m = o-ν (occF F s m)
 
-    occF : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {x} (m : x ∈ ftvF F) → OccursF (j (s m)) (pfunS (abF F))
+    occF : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {x} (m : x ∈ ftvF F) → OccursF (j (s m)) ((abF F))
     occF (PK A)   s m = o-K (occ A s m)
-    occF (F P⊕ G) s m = splitF F G s {λ k → OccursF k (pfunS (abF (F P⊕ G)))} (λ m′ → o-⊕ˡ (occF F (ˡ s) m′)) (λ m′ → o-⊕ʳ (occF G (ʳ (ftvF F) s) m′)) m
-    occF (F P⊗ G) s m = splitF F G s {λ k → OccursF k (pfunS (abF (F P⊗ G)))} (λ m′ → o-⊗ˡ (occF F (ˡ s) m′)) (λ m′ → o-⊗ʳ (occF G (ʳ (ftvF F) s) m′)) m
+    occF (F P⊕ G) s m = splitF F G s {λ k → OccursF k ((abF (F P⊕ G)))} (λ m′ → o-⊕ˡ (occF F (ˡ s) m′)) (λ m′ → o-⊕ʳ (occF G (ʳ (ftvF F) s) m′)) m
+    occF (F P⊗ G) s m = splitF F G s {λ k → OccursF k ((abF (F P⊗ G)))} (λ m′ → o-⊗ˡ (occF F (ˡ s) m′)) (λ m′ → o-⊗ʳ (occF G (ʳ (ftvF F) s) m′)) m
 
     -- a variable of `A ++ B`: of one side (the parameter is the same)
     split : ∀ A B (s : ∀ {x} → x ∈ ftv A ++ ftv B → x ∈ ftv T) {P : Fin (arityOf T) → Set}
@@ -247,7 +246,7 @@ module Parts (T : PolyType) where
 
   -- A variable occurring in the part is one of the part's.
   mutual
-    occ⁻ : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) {i} → Occurs i (ptyS (ab A)) → names i ∈ ftv A
+    occ⁻ : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) {i} → Occurs i ((ab A)) → names i ∈ ftv A
     occ⁻ (PTVar x) s {i} o =
       subst (_∈ (x ∷ [])) (sym (trans (cong names (occ-var (subst (Occurs i) (var-ab (s (here refl))) o))) (name-j (s (here refl))))) (here refl)
     occ⁻ (A P* B) s (o-*ˡ o)      = ∈-++⁺ˡ (occ⁻ A (ˡ s) o)
@@ -263,7 +262,7 @@ module Parts (T : PolyType) where
     occ⁻ (Pμ F) s (o-μ o)    = occF⁻ F s o
     occ⁻ (Pν F φ) s (o-ν o)  = occF⁻ F s o
 
-    occF⁻ : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {i} → OccursF i (pfunS (abF F)) → names i ∈ ftvF F
+    occF⁻ : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {i} → OccursF i ((abF F)) → names i ∈ ftvF F
     occF⁻ (PK A) s (o-K o)      = occ⁻ A s o
     occF⁻ (F P⊕ G) s (o-⊕ˡ o)   = ∈-++⁺ˡ (occF⁻ F (ˡ s) o)
     occF⁻ (F P⊕ G) s (o-⊕ʳ o)   = ∈-++⁺ʳ (ftvF F) (occF⁻ G (ʳ (ftvF F) s) o)
@@ -271,12 +270,12 @@ module Parts (T : PolyType) where
     occF⁻ (F P⊗ G) s (o-⊗ʳ o)   = ∈-++⁺ʳ (ftvF F) (occF⁻ G (ʳ (ftvF F) s) o)
 
   -- …at any of its parameters' indices.
-  occ-at : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) i → names i ∈ ftv A → Occurs i (ptyS (ab A))
-  occ-at A s i m = subst (λ k → Occurs k (ptyS (ab A))) (trans (j-irr (s m) (in-ftv i)) (j-names i (in-ftv i))) (occ A s m)
+  occ-at : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) i → names i ∈ ftv A → Occurs i ((ab A))
+  occ-at A s i m = subst (λ k → Occurs k ((ab A))) (trans (j-irr (s m) (in-ftv i)) (j-names i (in-ftv i))) (occ A s m)
 
   -- Under a functor constant: exactly the variables `ftvK` lists.
   mutual
-    underK⁻ : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) {i} → UnderK i (ptyS (ab A)) → names i ∈ ftvK A
+    underK⁻ : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) {i} → UnderK i ((ab A)) → names i ∈ ftvK A
     underK⁻ (A P* B) s (uk-*ˡ u)      = ∈-++⁺ˡ (underK⁻ A (ˡ s) u)
     underK⁻ (A P* B) s (uk-*ʳ u)      = ∈-++⁺ʳ (ftvK A) (underK⁻ B (ʳ (ftv A) s) u)
     underK⁻ (A P+ B) s (uk-+ˡ u)      = ∈-++⁺ˡ (underK⁻ A (ˡ s) u)
@@ -294,7 +293,7 @@ module Parts (T : PolyType) where
         no-var : ∀ {k} → UnderK i (ST.var k) → ⊥
         no-var ()
 
-    underKF⁻ : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {i} → UnderKF i (pfunS (abF F)) → names i ∈ ftvKF F
+    underKF⁻ : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) {i} → UnderKF i ((abF F)) → names i ∈ ftvKF F
     underKF⁻ (PK A) s (uk-K o)     = occ⁻ A s o
     underKF⁻ (F P⊕ G) s (uk-⊕ˡ u)  = ∈-++⁺ˡ (underKF⁻ F (ˡ s) u)
     underKF⁻ (F P⊕ G) s (uk-⊕ʳ u)  = ∈-++⁺ʳ (ftvKF F) (underKF⁻ G (ʳ (ftvF F) s) u)
@@ -302,7 +301,7 @@ module Parts (T : PolyType) where
     underKF⁻ (F P⊗ G) s (uk-⊗ʳ u)  = ∈-++⁺ʳ (ftvKF F) (underKF⁻ G (ʳ (ftvF F) s) u)
 
   mutual
-    underK : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) i → names i ∈ ftvK A → UnderK i (ptyS (ab A))
+    underK : ∀ A (s : ∀ {x} → x ∈ ftv A → x ∈ ftv T) i → names i ∈ ftvK A → UnderK i ((ab A))
     underK (A P* B) s i m = sideK (∈-++⁻ (ftvK A) m) (λ m′ → uk-*ˡ (underK A (ˡ s) i m′)) (λ m′ → uk-*ʳ (underK B (ʳ (ftv A) s) i m′))
     underK (A P+ B) s i m = sideK (∈-++⁻ (ftvK A) m) (λ m′ → uk-+ˡ (underK A (ˡ s) i m′)) (λ m′ → uk-+ʳ (underK B (ʳ (ftv A) s) i m′))
     underK (A P⇒[ q ] B) s i m = sideK (∈-++⁻ (ftvK A) m) (λ m′ → uk-⇒ˡ (underK A (ˡ s) i m′)) (λ m′ → uk-⇒ʳ (underK B (ʳ (ftv A) s) i m′))
@@ -311,7 +310,7 @@ module Parts (T : PolyType) where
     underK (Pμ F) s i m = uk-μ (underKF F s i m)
     underK (Pν F φ) s i m = uk-ν (underKF F s i m)
 
-    underKF : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) i → names i ∈ ftvKF F → UnderKF i (pfunS (abF F))
+    underKF : ∀ F (s : ∀ {x} → x ∈ ftvF F → x ∈ ftv T) i → names i ∈ ftvKF F → UnderKF i ((abF F))
     underKF (PK A) s i m = uk-K (occ-at A s i m)
     underKF (F P⊕ G) s i m = sideK (∈-++⁻ (ftvKF F) m) (λ m′ → uk-⊕ˡ (underKF F (ˡ s) i m′)) (λ m′ → uk-⊕ʳ (underKF G (ʳ (ftvF F) s) i m′))
     underKF (F P⊗ G) s i m = sideK (∈-++⁻ (ftvKF F) m) (λ m′ → uk-⊗ˡ (underKF F (ˡ s) i m′)) (λ m′ → uk-⊗ʳ (underKF G (ʳ (ftvF F) s) i m′))
@@ -324,7 +323,7 @@ module Parts (T : PolyType) where
 -- The schema
 ------------------------------------------------------------------------
 
-schemaOf-S : ∀ T → SchemaOf (toPoly T) (schS (schemaOf T))
+schemaOf-S : ∀ T → SchemaOf (toPoly T) ((schemaOf T))
 schemaOf-S T = record
   { names    = names
   ; distinct = lookup-injective ps (nub-unique [] (ftv T))
@@ -335,7 +334,7 @@ schemaOf-S T = record
   }
   where
     open Parts T
-    to-base : ∀ i → memberB (names i) (ftvK T) ≡ true → kindsS κ i ≡ ST.base
+    to-base : ∀ i → memberB (names i) (ftvK T) ≡ true → κ i ≡ ST.base
     to-base i e = cong (λ b → if b then LT.base else LT.any) e
     from-base : ∀ i b → memberB (names i) (ftvK T) ≡ b → (if b then LT.base else LT.any) ≡ ST.base
               → names i ∈ ftvK T
@@ -382,13 +381,13 @@ open-arity sc ng = go (ftv sc) refl
     go (x ∷ l) e = subst (λ l′ → 0 < length (nubFrom [] l′)) (sym e) (s≤s z≤n)
 
 -- Every parameter occurs in the schema's type.
-schema-occ : ∀ sc i → Occurs i (ptyS (SC.Schema.type (schemaOf sc)))
+schema-occ : ∀ sc i → Occurs i ((SC.Schema.type (schemaOf sc)))
 schema-occ sc = SchemaOf.used (schemaOf-S sc)
 
 private
   -- (the arrow's two halves are the schema's parts)
   incl′ : ∀ sc sd sco → (∀ {x} → x ∈ ftv sd ++ ftv sco → x ∈ ftv sc) → CodVarsInDom sd sco
-        → ∀ i → Occurs i (ptyS (Parts.ab sc sco)) → Occurs i (ptyS (Parts.ab sc sd))
+        → ∀ i → Occurs i ((Parts.ab sc sco)) → Occurs i ((Parts.ab sc sd))
   incl′ sc sd sco s cv i o =
     Parts.occ-at sc sd (λ m → s (∈-++⁺ˡ m)) i (cv (Parts.occ⁻ sc sco (λ m → s (∈-++⁺ʳ (ftv sd) m)) o))
 
@@ -396,7 +395,7 @@ private
 schema-arrow : ∀ sc {sd sco π′} → ArrowSchema sc sd sco π′ → CodVarsInDom sd sco
              → Σ[ X ∈ ST.Ty (arityOf sc) ] Σ[ Y ∈ ST.Ty (arityOf sc) ]
                  (SC.Schema.type (schemaOf sc) ≡ X ST.⇒[ mk-kind Many π′ ] Y)
-                 × (∀ i → Occurs i (ptyS Y) → Occurs i (ptyS X))
+                 × (∀ i → Occurs i (Y) → Occurs i (X))
 schema-arrow (sd P⇒[ Many ] sco) as-pure cv = Parts.ab (sd P⇒[ Many ] sco) sd , Parts.ab (sd P⇒[ Many ] sco) sco , refl , incl′ (sd P⇒[ Many ] sco) sd sco (λ m → m) cv
 schema-arrow (PEff sd sco) as-eff cv = Parts.ab (PEff sd sco) sd , Parts.ab (PEff sd sco) sco , refl , incl′ (PEff sd sco) sd sco (λ m → m) cv
 schema-arrow (PAct sd sco) as-act cv = Parts.ab (PAct sd sco) sd , Parts.ab (PAct sd sco) sco , refl , incl′ (PAct sd sco) sd sco (λ m → m) cv

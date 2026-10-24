@@ -32,7 +32,6 @@ open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads
   using (star-false→; star-false←; star-true; plus-false→; plus-false←; plus-true; ArrowView; arrow-view;
          av-g1; av-g0; av-gw; av-a; av-r; av-d; ic0; ic1; icw)
-open import Once.Adequacy.SpecGrammar.Conv using (qS)
 
 private
   F : List P.Token → List Token
@@ -54,7 +53,7 @@ module _ (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′) where
       h-sum   : ∀ a b → h (O.aSum a b) ≡ S.aSum (h a) (h b)
       h-eff   : ∀ a b → h (O.aEff a b) ≡ S.aEff (h a) (h b)
       h-act   : ∀ a b → h (O.aAct a b) ≡ S.aAct (h a) (h b)
-      h-arrow : ∀ q a b → h (O.aArrow q a b) ≡ S.aArrow (qS q) (h a) (h b)
+      h-arrow : ∀ q a b → h (O.aArrow q a b) ≡ S.aArrow q (h a) (h b)
       h-mu    : ∀ f → h (O.aMu f) ≡ S.aMu (hF f)
       h-nu    : ∀ f → h (O.aNu f) ≡ S.aNu SG.pureᶠ (hF f)
       h-nuact : ∀ f → h (O.aNuAct f) ≡ S.aNu SG.actᶠ (hF f)
@@ -304,7 +303,7 @@ module Bridge (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′)
     done-dir : ∀ toks {k} → ¬ (Starts (F toks) TArrow) → ¬ (Starts (F toks) TCaret0) → ¬ (Starts (F toks) TCaret1)
              → ¬ (Starts (F toks) TCaretW) → ArrowView toks k → k ≡ adD
     graded : ∀ {l q′ toks₁ B′ l′ r′} (g : P.Token) (q : LG.Quantity) → (∀ t → arrowDir (g ∷ P.TArrow ∷ t) ≡ adG q)
-           → qS q ≡ q′ → h l ≡ l′ → Back ParsesTypeG toks₁ B′ r′
+           → q ≡ q′ → h l ≡ l′ → Back ParsesTypeG toks₁ B′ r′
            → BackT ParsesArrowTailG l (g ∷ P.TArrow ∷ toks₁) (S.aArrow q′ l′ B′) r′
     plain : ∀ {l toks₁ B′ l′ r′} → h l ≡ l′ → Back ParsesTypeG toks₁ B′ r′
           → BackT ParsesArrowTailG l (P.TArrow ∷ toks₁) (S.aArrow SG.Many l′ B′) r′
@@ -324,7 +323,7 @@ module Bridge (alg : TyAlg) {R′ RF′ : Set} (salg : TypeAlg R′ RF′)
   done-dir toks a b c d (av-d _ _ _ _) = refl
 
   graded {l = l} g q dir refl hl (B , rest , dB , hB , er) =
-    aArrow q l B , rest , pat-arrow-g (dir _) dB , trans (h-arrow q l B) (cong₂ (S.aArrow (qS q)) hl hB) , er
+    aArrow q l B , rest , pat-arrow-g (dir _) dB , trans (h-arrow q l B) (cong₂ (S.aArrow q) hl hB) , er
   plain {l = l} hl (B , rest , dB , hB , er) =
     aArrow LG.Many l B , rest , pat-arrow refl dB , trans (h-arrow LG.Many l B) (cong₂ (S.aArrow SG.Many) hl hB) , er
 

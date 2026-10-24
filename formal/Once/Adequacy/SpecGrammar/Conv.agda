@@ -2,8 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.SpecGrammar.Conv — the compiler's grades and types read
--- as the Spec's.
+-- Once.Adequacy.SpecGrammar.Conv — the compiler's types read as the Spec's.
 --
 -- `toTy` and `toPolyG` send a type the annotation and alias parsers
 -- produce to the Spec's; a `rigid` parameter is never parsed, and goes
@@ -12,8 +11,6 @@
 
 module Once.Adequacy.SpecGrammar.Conv where
 
-import Once.Spec.Grade as LG
-import Once.Spec.Grade as SG
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Spec.Type as LT
@@ -21,21 +18,6 @@ import Once.Spec.Surface.Syntax as LP
 import Once.Internal.Type.Poly as LP
 import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
-
--- Plan 0.122: the compiler's grades ARE the Spec's; the readings are the
--- identity (kept as names the bridges are written with).
-qS : LG.Quantity → SG.Quantity
-qS q = q
-
-πS : LG.Purity → SG.Purity
-πS π = π
-
--- A ν's grade is finite on both sides (D318 item 13).
-φS : LG.Finite → SG.Finite
-φS φ = φ
-
-kS : LG.ArrowKind → SG.ArrowKind
-kS k = k
 
 -- Schemas.
 toPoly : LP.PolyType → SS.PolyType

@@ -32,14 +32,8 @@ import Once.Spec.Grade as SG
 open import Once.Spec.Signature using (BTy; unit; void; int; float; DeclType; constant; value; operation)
 import Once.Spec.Signature as SSig
 open import Once.Spec.Surface.Program using (BaseType; bt-unit; bt-void; bt-int; bt-float; bt-*; bt-+; DeclTypeOf; dt-const; dt-pure; dt-act)
-open import Once.Adequacy.SpecGrammar.Conv using (toPoly; qS)
+open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
 open import Once.Adequacy.SpecInterp using (⌞_⌟; declTy)
-
-private
-  qS-id : ∀ q → qS q ≡ q
-  qS-id LG.Zero = refl
-  qS-id LG.One  = refl
-  qS-id LG.Many = refl
 
 ------------------------------------------------------------------------
 -- The Spec's reading is the compiler's type
@@ -62,8 +56,7 @@ base-eq (Pν F φ) _ ()
 decl-eq : ∀ (T : PolyType) (g : Ground T) {t} → DeclTypeOf (toPoly T) t → declTy t ≡ extractGround T g
 decl-eq T g (dt-const b) = base-eq T g b
 decl-eq (A P⇒[ q ] B) (ga , gb) (dt-pure a b) =
-  trans (cong₂ (λ x y → x LT.⇒[ LG.mk-kind (qS q) LG.pure ] y) (base-eq A ga a) (base-eq B gb b))
-        (cong (λ q′ → extractGround A ga LT.⇒[ LG.mk-kind q′ LG.pure ] extractGround B gb) (qS-id q))
+  cong₂ (λ x y → x LT.⇒[ LG.mk-kind q LG.pure ] y) (base-eq A ga a) (base-eq B gb b)
 decl-eq (PAct A B) (ga , gb) (dt-act a b) = cong₂ (λ x y → x LT.⇒[ LG.mk-kind LG.Many LG.act ] y) (base-eq A ga a) (base-eq B gb b)
 
 ------------------------------------------------------------------------
@@ -93,7 +86,7 @@ private
 decl-of : ∀ (T : PolyType) (g : Ground T) → IsConcrete (extractGround T g) → HonestFFI (extractGround T g)
         → Σ[ t ∈ DeclType ] DeclTypeOf (toPoly T) t
 decl-of (A P⇒[ q ] B) (ga , gb) (con-fun a b) h =
-  let (x , bx) = base-of A ga a ; (y , by) = base-of B gb b in value x (qS q) y , dt-pure bx by
+  let (x , bx) = base-of A ga a ; (y , by) = base-of B gb b in value x q y , dt-pure bx by
 decl-of (A P⇒[ q ] B) _ (con-base ()) _
 decl-of (PAct A B) (ga , gb) (con-fun a b) h =
   let (x , bx) = base-of A ga a ; (y , by) = base-of B gb b in operation x SG.Many y , dt-act bx by

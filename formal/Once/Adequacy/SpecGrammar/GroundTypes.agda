@@ -33,7 +33,7 @@ open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads
   using (notStar→TStar; notStar←; notPlus→TPlus; notPlus←;
          notArrow→TArrow; notArrow→TCaret0; notArrow→TCaret1; notArrow→TCaretW; notArrow←)
-open import Once.Adequacy.SpecGrammar.Conv using (qS; πS; φS; toTy; toFun)
+open import Once.Adequacy.SpecGrammar.Conv using (toTy; toFun)
 open import Once.Internal.Type.Poly using (polyOf; polyOfF)
 open import Once.Adequacy.SpecGrammar.SigTypes using (writtenS)
 
@@ -54,9 +54,9 @@ module _ {R′ RF′ : Set} (salg : TypeAlg R′ RF′) where
       h-sum   : ∀ a b → h (a + b) ≡ S.aSum (h a) (h b)
       h-eff   : ∀ a b → h (a ⇒[ LG.mk-kind LG.Many LG.eff ] b) ≡ S.aEff (h a) (h b)
       h-act   : ∀ a b → h (a ⇒[ LG.mk-kind LG.Many LG.act ] b) ≡ S.aAct (h a) (h b)
-      h-arrow : ∀ q a b → h (a ⇒[ LG.mk-kind q LG.pure ] b) ≡ S.aArrow (qS q) (h a) (h b)
+      h-arrow : ∀ q a b → h (a ⇒[ LG.mk-kind q LG.pure ] b) ≡ S.aArrow q (h a) (h b)
       h-mu    : ∀ f → h (μ f) ≡ S.aMu (hF f)
-      h-nu    : ∀ f π → h (ν f π) ≡ S.aNu (φS π) (hF f)
+      h-nu    : ∀ f π → h (ν f π) ≡ S.aNu π (hF f)
       hF-k    : ∀ a → hF (K a) ≡ S.fK (h a)
       hF-id   : hF Id ≡ S.fId
       hF-sum  : ∀ f g → hF (f ⊕ g) ≡ S.fSum (hF f) (hF g)
@@ -89,7 +89,7 @@ module Bridge {R′ RF′ : Set} (salg : TypeAlg R′ RF′) (h : Type → R′)
     atomAt : ∀ {ts r x y} → x ≡ y → Types.ParsesAtom salg ts x r → Types.ParsesAtom salg ts y r
     atomAt e d = subst (λ z → Types.ParsesAtom salg _ z _) e d
 
-    grade : ∀ q → GradeToken (forget (quantityTokenOf q)) (qS q)
+    grade : ∀ q → GradeToken (forget (quantityTokenOf q)) q
     grade LG.Zero = g0
     grade LG.One  = g1
     grade LG.Many = gw
@@ -256,7 +256,7 @@ module Bridge {R′ RF′ : Set} (salg : TypeAlg R′ RF′) (h : Type → R′)
     type₁ : ∀ {toks a′ ts₁ T′ r′} → Back ParsesSum toks a′ ts₁ → Types.ParsesArrowTail salg a′ ts₁ T′ r′ → Back ParsesType toks T′ r′
     type₂ : ∀ {toks a toks₁ T′ r′} → ParsesSum toks a toks₁ → BackT ParsesArrowTail a toks₁ T′ r′ → Back ParsesType toks T′ r′
     graded : ∀ {l toks₁ B′ l′ r′} (q : LG.Quantity) → h l ≡ l′ → Back ParsesType toks₁ B′ r′
-           → BackT ParsesArrowTail l (quantityTokenOf q ∷ P.TArrow ∷ toks₁) (S.aArrow (qS q) l′ B′) r′
+           → BackT ParsesArrowTail l (quantityTokenOf q ∷ P.TArrow ∷ toks₁) (S.aArrow q l′ B′) r′
     plain : ∀ {l toks₁ B′ l′ r′} → h l ≡ l′ → Back ParsesType toks₁ B′ r′
           → BackT ParsesArrowTail l (P.TArrow ∷ toks₁) (S.aArrow SG.Many l′ B′) r′
 
@@ -266,7 +266,7 @@ module Bridge {R′ RF′ : Set} (salg : TypeAlg R′ RF′) (h : Type → R′)
   type← (type dS dA) toks e = type₁ (sum← dS toks e) dA
 
   graded {l = l} q hl (B , rest , dB , hB , er) =
-    _ , rest , pat-arrow-g {q = q} dB , trans (h-arrow q l B) (cong₂ (S.aArrow (qS q)) hl hB) , er
+    _ , rest , pat-arrow-g {q = q} dB , trans (h-arrow q l B) (cong₂ (S.aArrow q) hl hB) , er
   plain {l = l} hl (B , rest , dB , hB , er) =
     _ , rest , pat-arrow dB , trans (h-arrow LG.Many l B) (cong₂ (S.aArrow SG.Many) hl hB) , er
 

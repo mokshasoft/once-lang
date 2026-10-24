@@ -30,8 +30,6 @@ open import Once.Internal.Type.Instance using (arityOf)
 open import Once.Internal.Type.Schema using (schemaOf)
 import Once.Spec.Grade as SG
 import Once.Spec.Core.Syntax as SC
-open import Once.Adequacy.SpecGrammar.Conv using (πS)
-open import Once.Adequacy.SpecCore.Schema using (ptyS; schS)
 open import Once.Adequacy.SpecFront.SchemaOf using (module Parts)
 
 -- An arrow: the schema is an arrow schema, its codomain's variables in its
@@ -42,7 +40,7 @@ private
 
   -- (the arrow's halves are the schema's parts)
   cod-in : ∀ sc A B → (∀ {x} → x ∈ ftv A Data.List.++ ftv B → x ∈ ftv sc)
-         → ∀ {sd sco : ST.Ty (arityOf sc)} {k} → ptyS (Parts.ab sc A) ST.⇒[ k ] ptyS (Parts.ab sc B) ≡ sd ST.⇒[ k ] sco
+         → ∀ {sd sco : ST.Ty (arityOf sc)} {k} → (Parts.ab sc A) ST.⇒[ k ] (Parts.ab sc B) ≡ sd ST.⇒[ k ] sco
          → (∀ i → ST.Occurs i sco → ST.Occurs i sd) → CodVarsInDom A B
   cod-in sc A B s refl incl {x} mB =
     let sA = λ {y} (m′ : y ∈ ftv A) → s (Data.List.Membership.Propositional.Properties.∈-++⁺ˡ m′)
@@ -51,9 +49,9 @@ private
     in subst (_∈ ftv A) (Parts.name-j sc (sB mB)) (Parts.occ⁻ sc A sA o)
 
   arrow-go : ∀ (sc : PolyType) {sd sco : ST.Ty (arityOf sc)} {π′}
-           → ptyS (Parts.ab sc sc) ≡ sd ST.⇒[ SG.mk-kind SG.Many π′ ] sco
+           → (Parts.ab sc sc) ≡ sd ST.⇒[ SG.mk-kind SG.Many π′ ] sco
            → (∀ i → ST.Occurs i sco → ST.Occurs i sd)
-           → ∀ π → πS π ≡ π′ → Σ[ sd₀ ∈ PolyType ] Σ[ sc₀ ∈ PolyType ] ArrowSchema sc sd₀ sc₀ π × CodVarsInDom sd₀ sc₀
+           → ∀ π → π ≡ π′ → Σ[ sd₀ ∈ PolyType ] Σ[ sc₀ ∈ PolyType ] ArrowSchema sc sd₀ sc₀ π × CodVarsInDom sd₀ sc₀
   arrow-go (PTVar x) e _ _ _ = ⊥-elim (no-arr (trans (sym (Parts.var-ab (PTVar x) (here refl))) e))
   arrow-go PUnit  () _ _ _
   arrow-go PVoid  () _ _ _
@@ -75,8 +73,8 @@ private
   arrow-go (PAct A B) refl incl pure ()
   arrow-go (PAct A B) refl incl eff ()
 
-arrow-at : ∀ (sc : PolyType) (sch : SC.Schema) → sch ≡ schS (schemaOf sc)
+arrow-at : ∀ (sc : PolyType) (sch : SC.Schema) → sch ≡ (schemaOf sc)
          → ∀ {sd sco π′} → SC.Schema.type sch ≡ sd ST.⇒[ SG.mk-kind SG.Many π′ ] sco
          → (∀ i → ST.Occurs i sco → ST.Occurs i sd)
-         → ∀ π → πS π ≡ π′ → Σ[ sd₀ ∈ PolyType ] Σ[ sc₀ ∈ PolyType ] ArrowSchema sc sd₀ sc₀ π × CodVarsInDom sd₀ sc₀
-arrow-at sc .(schS (schemaOf sc)) refl e incl π pe = arrow-go sc e incl π pe
+         → ∀ π → π ≡ π′ → Σ[ sd₀ ∈ PolyType ] Σ[ sc₀ ∈ PolyType ] ArrowSchema sc sd₀ sc₀ π × CodVarsInDom sd₀ sc₀
+arrow-at sc .((schemaOf sc)) refl e incl π pe = arrow-go sc e incl π pe

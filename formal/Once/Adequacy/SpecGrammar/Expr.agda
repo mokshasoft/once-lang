@@ -55,10 +55,6 @@ private
 -- The compiler's derivation gives the Spec's
 ------------------------------------------------------------------------
 
--- (the compiler's operators are the Spec's: plan 0.122)
-opS : O.BinOp → S.BinOp
-opS op = op
-
 expr→   : ∀ {toks e rest} → E.ParsesExpr toks e rest → G.ParsesExpr (F toks) e (F rest)
 comp→   : ∀ {toks e rest} → E.ParsesComp toks e rest → G.ParsesExpr (F toks) e (F rest)
 ctail→  : ∀ {l toks e rest} → E.ParsesCompTail l toks e rest → G.ParsesCompTail l (F toks) e (F rest)
