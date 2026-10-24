@@ -41,6 +41,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 import Data.String.Properties as StrProp
+open import Data.List.Membership.DecPropositional StrProp._≟_ using (_∈?_)
 
 import Once.Spec.Type as LT
 import Once.Internal.Type.WellFormed as LW
@@ -150,6 +151,8 @@ record WInv {s} (S : SC.Defs s) (sc : Scope) (is : ImpSig S (Scope.imps sc)) (ts
     -- a polymorphic definition: the telescope's
     poly-at    : ∀ {m} (Δ : ST.KCtx m) {d x} → nm d ≡ canonical (x ∷ []) → x ∈ ps
                → Sc.PolyAt (S) (Scope.imps sc) (C.buildPolyCtx (Scope.tele sc)) Δ d x
+    -- the entries' names are distinct (`main`'s aside: it leaves the scope, D324)
+    inj        : ∀ {d d′} → nm d ≡ nm d′ → nm d ≢ canonical ("main" ∷ []) → d ≡ d′
 open WInv
 
 -- The start: nothing in scope.
@@ -161,6 +164,7 @@ winv-empty = record
   ; mono-at    = λ Δ {d} → ⊥-elim (fin0 d)
   ; ps-at      = λ {d} → ⊥-elim (fin0 d)
   ; poly-at    = λ Δ {d} → ⊥-elim (fin0 d)
+  ; inj        = λ {d} → ⊥-elim (fin0 d)
   }
   where
     fin0 : Fin 0 → ⊥
@@ -169,6 +173,29 @@ winv-empty = record
 ------------------------------------------------------------------------
 -- Weakening the records
 ------------------------------------------------------------------------
+
+private
+  -- an entry's name, not `main`, is one of the scope's
+  in-scope : ∀ {s} {S : SC.Defs s} {sc is ts nm} → WInv S sc is ts nm
+           → ∀ {d x} → nm d ≡ canonical (x ∷ []) → x ≢ "main" → x ∈ defNames sc
+  in-scope {sc = sc} w {x = x} e xm with x ∈? ps
+  ... | yes x∈ = ∈-++⁺ʳ (map proj₁ (Scope.imps sc)) (tele-in (Scope.tele sc) (Sc.PolyAt.lp (poly-at w ST.∅ₖ e x∈)))
+  ... | no x∉  = ∈-++⁺ˡ (imp-in (Scope.imps sc) (proj₁ (proj₂ (proj₂ (mono-at w ST.∅ₖ e x∉ xm)))))
+
+  -- …so a new name, fresh to the scope, is no entry's but `main`'s
+  inj-new : ∀ {s} {S : SC.Defs s} {sc is ts nm} {x} → WInv S sc is ts nm → All (x ≢_) (defNames sc)
+          → ∀ {d} → canonical (x ∷ []) ≡ nm d → canonical (x ∷ []) ≢ canonical ("main" ∷ []) → ⊥
+  inj-new {x = x} w fr e ne = ∉-all fr (in-scope w (sym e) (λ xm → ne (cong (λ y → canonical (y ∷ [])) xm)))
+
+  -- the distinct names of a longer table, the new one fresh
+  inj-ext : ∀ {s} {nm : Fin s → CanonicalName} {c}
+          → (∀ {d d′} → nm d ≡ nm d′ → nm d ≢ canonical ("main" ∷ []) → d ≡ d′)
+          → (∀ {d} → c ≡ nm d → c ≢ canonical ("main" ∷ []) → ⊥)
+          → ∀ {d d′} → (c ∷ⁿ nm) d ≡ (c ∷ⁿ nm) d′ → (c ∷ⁿ nm) d ≢ canonical ("main" ∷ []) → d ≡ d′
+  inj-ext i new {zero}  {zero}   e ne = refl
+  inj-ext i new {zero}  {suc d′} e ne = ⊥-elim (new e ne)
+  inj-ext i new {suc d} {zero}   e ne = ⊥-elim (new (sym e) (λ m → ne (trans e m)))
+  inj-ext i new {suc d} {suc d′} e ne = cong suc (i e ne)
 
 private
   imp-named-wk : ∀ {s} {S : SC.Defs s} {sc′ c nm imps} (is : ImpSig S imps)
@@ -218,6 +245,7 @@ private
     ; mono-at    = mono
     ; ps-at      = λ { {zero} e () ; {suc d} e pos → ps-at w e pos }
     ; poly-at    = λ { Δ {zero} e x∈ → ⊥-elim (x∉ (subst (_∈ ps) (sym (canon-inj e)) x∈)) ; Δ {suc d} e x∈ → polyAt-wk (poly-at w Δ e x∈) }
+    ; inj        = inj-ext (inj w) (λ _ ne → ne (cong (λ y → canonical (y ∷ [])) xm))
     }
     where
       mono : ∀ {m} (Δ : ST.KCtx m) {d y} → (canonical (x ∷ []) ∷ⁿ nm) d ≡ canonical (y ∷ []) → ¬ (y ∈ ps) → y ≢ "main" → _
@@ -236,6 +264,7 @@ private
     ; mono-at    = mono
     ; ps-at      = λ { {zero} e () ; {suc d} e pos → ps-at w e pos }
     ; poly-at    = poly
+    ; inj        = inj-ext (inj w) (inj-new w fr)
     }
     where
       mono : ∀ {m} (Δ : ST.KCtx m) {d y} → (canonical (x ∷ []) ∷ⁿ nm) d ≡ canonical (y ∷ []) → ¬ (y ∈ ps) → y ≢ "main"
@@ -283,6 +312,7 @@ winv-poly {s} {S} {sc} {is} {ts} {nm} pfi w x∈ fr = record
   ; mono-at    = mono
   ; ps-at      = λ { {zero} refl _ → x∈ ; {suc d} e pos → ps-at w e pos }
   ; poly-at    = poly
+  ; inj        = inj-ext (inj w) (inj-new w fr)
   }
   where
     x = pfunName pfi

@@ -17,9 +17,10 @@
 --     `Once.TypeCheck.Elaborate` — the ELABORATOR — and `resolveFunType`,
 --     `extendFunCtx`, `buildPolyCtx`, `collectSigEffects` from `Once.Compile`.
 --
--- Its BODY premise is honest: `_⊢ᶜ_∶_⨾_`, the declarative judgment, with no
--- elaborator function in it. It is the CONTEXT CONSTRUCTION and the function
--- list that come from the implementation.
+-- Its BODY premise is the checker's own run with its witness: the Spec's
+-- derivation and the term it realizes to (`MonoWit`, `TypeCheck.SpecWitness`;
+-- plan 0.122). It is the CONTEXT CONSTRUCTION and the function list that come
+-- from the implementation.
 --
 -- Recorded as D137's open hole; **plan 0.59 owns closing it.** Do not paper
 -- over it by moving these definitions back next to their proofs.
@@ -43,7 +44,7 @@ open import Once.Internal.Contract using (ISig)
 
 open import Once.Spec.Grade using (mk-kind; Many; eff)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
+open import Once.Spec.Type using (Type; Ty; Unit; _⇒[_]_)
 open import Once.Internal.Type.Instance using (rigidOf)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Honest using (HonestFFI)
@@ -53,7 +54,6 @@ import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 import Once.Internal.Context as Surface
 import Once.Surface.Syntax as SS
 open import Once.TypeCheck.DualWitness using (DI; DC)
@@ -106,23 +106,17 @@ addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 
 -- R8 (plan 0.121): a monomorphic definition's body — CHECKED at its signature,
 -- or, without one, SYNTHESIZING its type (D323; the Spec's `w-sig`/`w-nosig`).
-MonoBody : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
-MonoBody (just _) ctx e ty Ψ = ctx ⊢ᶜ e ∶ ty ⨾ Ψ
-MonoBody nothing  ctx e ty Ψ = ctx ⊢ᵢ e ∶ ty ⨾ Ψ
+-- Its witness is the checker's own result: the term it built and the Spec's
+-- derivation, whose realization that term is (`TypeCheck.SpecWitness`; plan
+-- 0.122 §5.6).
+CheckRun : ∀ {m} (ctx : NamedCtx m) → RawExpr → (A : Ty m) → Surface.Usage (NamedCtx.size ctx) → Set
+CheckRun ctx e A Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ A ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ DC ctx e A Ψ eE ]
+                       (TE.checkElabV ctx e A ≡ (TE.success Ψ eE d f , w))
 
--- …and its witness: the checker's own result — the term it built and the
--- Spec's derivation, whose realization that term is (`TypeCheck.SpecWitness`;
--- plan 0.122 §5.6, stage e).
 MonoWit : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
-MonoWit (just _) ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ DC ctx e ty Ψ eE ]
-                                (TE.checkElabV ctx e ty ≡ (TE.success Ψ eE d f , w))
+MonoWit (just _) ctx e ty Ψ = CheckRun ctx e ty Ψ
 MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ DI ctx e ty Ψ eE ]
                                 (TE.inferElabV ctx e ≡ (TE.success ty Ψ eE d f , w))
-
--- The compiler's derivation the witness carries.
-mder : ∀ ft {ctx e ty Ψ} → MonoWit ft ctx e ty Ψ → MonoBody ft ctx e ty Ψ
-mder (just _) (_ , _ , _ , w , _) = proj₁ w
-mder nothing  (_ , _ , _ , w , _) = proj₁ w
 
 -- A pair, read along an equation on its first component.
 pair-at : ∀ {a b} {A : Set a} {B : A → Set b} (r : Σ A B) {x : A} (q : proj₁ r ≡ x) → r ≡ (x , subst B q (proj₂ r))
@@ -145,7 +139,6 @@ data ModTele : Scope → List Parser.Entry → Set where
        → funIsPrimitive fi ≡ false
        → C.resolveFunType (topCtx (Scope.sig sc) (Scope.imps sc)) (C.buildPolyCtx (Scope.tele sc)) (funType fi) (funBody fi) ≡ inj₂ ty
        → PrincipalAt (ctxOf sc) (funBody fi) ty
-       → MonoBody (funType fi) (ctxOf sc) (funBody fi) ty Ψ
        → MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ
        → ModTele (addImp sc (funName fi) ty) es
        → ModTele sc (Parser.e-fun fi ∷ es)
@@ -153,9 +146,7 @@ data ModTele : Scope → List Parser.Entry → Set where
   -- (plan 0.122). A use is at a kinded instance of it.
   poly : ∀ {sc pfi es Ψ}
        → PrincipalAt (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi))
-       → ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
-       → Σ[ eE ∈ SS.Expr (NamedCtx.debruijn (ctxOfAt (kindsOf (pfunType pfi)) sc)) Ψ (rigidOf (pfunType pfi)) ]
-           DC (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi)) Ψ eE
+       → CheckRun (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi) (rigidOf (pfunType pfi)) Ψ
        → ModTele (addPoly sc pfi) es
        → ModTele sc (Parser.e-poly pfi ∷ es)
 
@@ -180,8 +171,8 @@ entrySig (Parser.e-poly _ ∷ es) = entrySig es
 teleSig : ∀ {sc es} → ModTele sc es → ISig
 teleSig []                                    = []
 teleSig (ffi {fi = fi} {ty = ty} _ _ _ _ rest) = (funName fi , ty) ∷ teleSig rest
-teleSig (mono _ _ _ _ _ rest)                    = teleSig rest
-teleSig (poly _ _ _ rest)                        = teleSig rest
+teleSig (mono _ _ _ _ rest)                    = teleSig rest
+teleSig (poly _ _ rest)                        = teleSig rest
 
 
 -- A module's signatures, when it extracts.
@@ -211,15 +202,15 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 MainsEffUU : ∀ {sc es} → ModTele sc es → Set
 MainsEffUU []                                  = ⊤
 MainsEffUU (ffi _ _ _ _ rest)                = MainsEffUU rest
-MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ _ _ rest) = (funName fi ≡ "main" → ty <: EffUU) × MainsEffUU rest
-MainsEffUU (poly _ _ _ rest)                     = MainsEffUU rest
+MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ _ rest) = (funName fi ≡ "main" → ty <: EffUU) × MainsEffUU rest
+MainsEffUU (poly _ _ rest)                     = MainsEffUU rest
 
 -- Some monomorphic definition is `main`, usable as `Eff Unit Unit`.
 MainIn : ∀ {sc es} → ModTele sc es → Set
 MainIn []                                  = ⊥
 MainIn (ffi _ _ _ _ rest)                = MainIn rest
-MainIn (mono {fi = fi} {ty = ty} _ _ _ _ _ rest) = ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest
-MainIn (poly _ _ _ rest)                     = MainIn rest
+MainIn (mono {fi = fi} {ty = ty} _ _ _ _ rest) = ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest
+MainIn (poly _ _ rest)                     = MainIn rest
 
 HasValidMain-ef : ∀ (m : P.Module) (ef : String ⊎ List Parser.Entry) → ModuleTyped-ef m ef → Set
 HasValidMain-ef m (inj₂ _) mt = MainsEffUU mt × MainIn mt

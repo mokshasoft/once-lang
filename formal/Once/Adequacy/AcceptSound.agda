@@ -50,7 +50,7 @@ open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Internal.Module
-  using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped; MonoBody; MonoWit; mder)
+  using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped; MonoWit)
 open import Once.Internal.Type.Instance using (rigidOf)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
@@ -271,7 +271,7 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = pstep _ refl eq
         step (inj₂ ir) cf eq′ =
           let (Ψ , jud) = compileFunM-sound (Parser.FunInfo.funType fi) doOpt (C.ctop sc) (C.cpolys sc) (C.declImps (C.CScope.ctele sc))
                             (Parser.FunInfo.funName fi) ty (Parser.FunInfo.funBody fi) cf
-          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty) fc) (mder (Parser.FunInfo.funType fi) jud) jud
+          in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty) fc) jud
                (ce-sound doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
 ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
@@ -284,8 +284,8 @@ ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
          → ∀ {cfs} → C.ce-poly IR.Heap doOpt sc pfi es (C.checkOK r) ≡ inj₂ cfs
          → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)
     step fc r@(TE.failure _ , _) _ ()
-    step fc r@(TE.success Ψ se _ _ , w) _ eq′ =
-      poly (firstChecking-sound ctx (Parser.PolyFunInfo.pfunBody pfi) low fc) (proj₁ w) (se , w) (ce-sound doOpt (C.addEntry sc pfi) es eq′)
+    step fc r@(TE.success Ψ se _ _ , w) req eq′ =
+      poly (firstChecking-sound ctx (Parser.PolyFunInfo.pfunBody pfi) low fc) (se , _ , _ , w , req) (ce-sound doOpt (C.addEntry sc pfi) es eq′)
     pstep : (mx : Maybe (Once.Spec.Type.Ty (arityOf (Parser.PolyFunInfo.pfunType pfi)))) → C.firstChecking ctx (Parser.PolyFunInfo.pfunBody pfi) low ≡ mx
           → ∀ {cfs} → C.ce-poly-p IR.Heap doOpt sc pfi es mx ≡ inj₂ cfs
           → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)

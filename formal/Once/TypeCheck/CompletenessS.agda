@@ -245,7 +245,7 @@ open import Once.TypeCheck.Elaborate
   using (inferElabV; checkElabV; elabGivenV; given-infer; elabGivenLeaf; elabGivenApp; checkCompose-g; checkLoop; failure;
          VerifiedInferResult; VerifiedGivenResult; checkCaseGo)
 import Once.TypeCheck.Elaborate as E
-open import Once.TypeCheck.DualWitness using (DC; dt-case-copair-check)
+open import Once.TypeCheck.DualWitness using (DC; DI; dt-case-copair-check)
 open import Once.TypeCheck.ElaborateProofs
   using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
          checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal;
@@ -497,6 +497,11 @@ mutual
   check-completeVS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {d : Chk P e A t}
                    → U⇐ P d Ψ → ∃[ eE ] ∃[ dd ] ∃[ f ] Σ[ w ∈ DC ctx e A Ψ eE ] (checkElabV ctx e A ≡ (success Ψ eE dd f , w))
   check-completeVS {ctx = ctx} P {e} {A} u with checkElabV ctx e A | check-completeS P u
+  ... | r , w0 | eE , d′ , f , eq rewrite eq = eE , d′ , f , w0 , refl
+
+  infer-completeVS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {d : Syn P e A t}
+                   → U⇒ P d Ψ → ∃[ eE ] ∃[ dd ] ∃[ f ] Σ[ w ∈ DI ctx e A Ψ eE ] (inferElabV ctx e ≡ (success A Ψ eE dd f , w))
+  infer-completeVS {ctx = ctx} P {e} u with inferElabV ctx e | infer-completeS P u
   ... | r , w0 | eE , d′ , f , eq rewrite eq = eE , d′ , f , w0 , refl
 
   check-completeVS-from-infer : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A B t Ψ} {d : Syn P e A t}

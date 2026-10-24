@@ -17,8 +17,8 @@
 -- compiler's telescope holds and its type is principal (`Def`), in a scope
 -- the walk keeps (`WalkState`).
 --
--- Plan 0.122: the compiler's telescope IS the Spec's (`Translate` elaborates
--- into the Spec's core); a definition's term is its elaboration.
+-- Plan 0.122: a definition's term is its witness's, the Spec's derivation
+-- the checker built (`ModuleProgram`).
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
@@ -73,20 +73,17 @@ import Once.Compile as C
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
-open import Once.Internal.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly; ctxOf; MonoBody)
+open import Once.Internal.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly; ctxOf)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
-import Once.Internal.Elaboration as E
 open import Once.Internal.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; viewOf; telFind; u0)
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
 open import Once.Adequacy.SpecCore.Type using (tyR; TyR-≡)
 open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
 import Once.Adequacy.SpecFront.ScopeNames as SN
-open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; schema-arrow)
 open import Once.Adequacy.SpecFront.WalkState Σ ps
 open import Once.Adequacy.SpecFront.End Σ ps using (EntryKind; End; end; endOf; no-ffi; all-tail)
-import Once.Adequacy.SpecFront.Def as Def
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 
 open SPr using (Body; Principal; Walk; w-end; w-skip; w-sig; w-nosig)
@@ -95,22 +92,7 @@ open SPr using (Body; Principal; Walk; w-end; w-skip; w-sig; w-nosig)
 -- The bridges at a walk state
 ------------------------------------------------------------------------
 
-private
-  arrow-at : ∀ {sc} (sch : SC.Schema) → sch ≡ schemaOf sc → ∀ {sd sco π′} → TP.ArrowSchema sc sd sco π′ → TP.CodVarsInDom sd sco
-           → Σ[ X ∈ ST.Ty (SC.Schema.arity sch) ] Σ[ Y ∈ ST.Ty (SC.Schema.arity sch) ]
-               (SC.Schema.type sch ≡ X ST.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] Y)
-               × (∀ i → ST.Occurs i Y → ST.Occurs i X)
-  arrow-at {sc} .(schemaOf sc) refl = schema-arrow sc
-
-module AtState {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele)
-               (nm : Fin s → CanonicalName) (w : WInv S (scope sg imps tele) is ts nm) =
-  Def Σ S nm {imps} {sg} {C.buildPolyCtx tele} {ps} (viewOf {S = S} ss is ts)
-      (λ lk → proj₁ (SN.h-imp-of Σ S nm is (WInv.imp-named w) lk))
-      (SN.h-poly-of Σ S nm ts (WInv.tele-named w))
-      (λ {x} {sc} lp g → trans (cong SC.Schema.arity (proj₂ (telFind {S = S} ts lp))) (ground-arity sc g))
-      (λ {x} {sc} lp ng → subst (0 <_) (sym (cong SC.Schema.arity (proj₂ (telFind {S = S} ts lp)))) (open-arity sc ng))
-      (λ {x} {sc} lp → arrow-at {sc} _ (proj₂ (telFind {S = S} ts lp)))
-      (WInv.named w) h-sig (WInv.mono-at w) (WInv.ps-at w) (WInv.poly-at w) h-own-sig h-psig h-word
+open import Once.Adequacy.SpecFront.Def Σ ps sg h-sig h-psig h-word using (principal)
 
 ------------------------------------------------------------------------
 -- The declarations and the entries
@@ -185,8 +167,8 @@ walk tl ss is ts N [] al-nil w o = w-end
 {-# CATCHALL #-}
 walk tl ss is ts N (ffi ep _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
 -- a telescope definition
-walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr D W rest) (al-poly so _ rx al) w o =
-  w-sig so b (AtState.principal ss is ts (Names.nm N) w κ pr rx (tyR _))
+walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr W rest) (al-poly so _ rx al) w o =
+  w-sig so b (principal ss is ts N w κ pr rx)
     (walk (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
           (names-poly pfi N) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
   where
@@ -201,8 +183,8 @@ walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo 
       }
 -- a monomorphic definition with a signature: the Spec's derivation is the
 -- checker's witness, at the scope's Pack
-walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr D W rest) (al-mono so rx al) w o =
-  w-sig so b (AtState.principal ss is ts (Names.nm N) w ST.∅ₖ pr rx (tyR _))
+walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr W rest) (al-mono so rx al) w o =
+  w-sig so b (principal ss is ts N w ST.∅ₖ pr rx)
     (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (x Data.String.== "main") is) (wkT ts)
           (names-mono (x Data.String.== "main") x ty N) rest al
           (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))
@@ -216,12 +198,12 @@ walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x (jus
       ; typed = proj₂ mb
       }
 -- one without: the type its body synthesizes
-walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr D W rest) (al-nosig rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr W rest) (al-nosig rx al) w o =
   w-nosig
     (subst (λ e′ → Once.Spec.Surface.Typing._⊢_⇒_↝_ Σ S (Names.nm N) ST.∅ₖ Once.Spec.Surface.Typing.∅ e′ ty (proj₁ mb))
            (rx-≡ rx) (monoSynth {sc = scope sg imps tele} ss is ts N W))
     (proj₂ mb)
-    (AtState.principal ss is ts (Names.nm N) w ST.∅ₖ pr rx (tyR _))
+    (principal ss is ts N w ST.∅ₖ pr rx)
     (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (x Data.String.== "main") is) (wkT ts)
           (names-mono (x Data.String.== "main") x ty N) rest al
           (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))

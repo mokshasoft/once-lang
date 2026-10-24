@@ -229,6 +229,10 @@ open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
 open import Once.Internal.Module using (moduleSig-ef; teleSig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.ProgramLinked using (link-walk; linv₀)
+open import Once.Adequacy.ModuleSig using (sigOf; sig-in)
+import Once.Spec.Core.Syntax
+import Once.Internal.Core.Translate
+import Once.Adequacy.ModuleProgram
 open import Once.Adequacy.TelePosition using (entries-distinct; none-in-empty)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
@@ -257,7 +261,8 @@ module Lib (m : Module) where
     ce-linked es ef (inj₂ cfs) ceq =
       subst (λ cs → All (λ e → Linked (moduleSig-ef (inj₂ es)) (C.tableOf cs) (fbody e)) (C.tableOf cs))
             (FB.bundle→compiled≡compiled C.emptyCScope es cfs ceq)
-            (link-walk mt b [] linv₀ (entries-distinct m ef , none-in-empty _) u)
+            (link-walk mt b {S = Once.Spec.Core.Syntax.[]} Once.Internal.Core.Translate.[] Once.Internal.Core.Translate.[] Once.Internal.Core.Translate.[]
+                       (Once.Adequacy.ModuleProgram.names₀ (sigOf (teleSig mt))) [] linv₀ (entries-distinct m ef , none-in-empty _) u (sig-in mt))
       where
         b  = FB.ce-bundle C.emptyCScope es ceq
         mt = AS.ce-sound false C.emptyCScope es ceq

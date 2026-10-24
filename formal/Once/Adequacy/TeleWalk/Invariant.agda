@@ -46,7 +46,7 @@ import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.String using (String)
 import Data.String as Str
 open import Data.Unit using (tt)
@@ -69,13 +69,12 @@ open import Once.IRTy using (⌊_⌋)
 import Once.Internal.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.Internal.Typing.Scope using (Imports)
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_)
 open import Once.Internal.Type.Instance using (rigidOf)
 open import Once.Denotation.Realize using (realize; realize-infer)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoBody; MonoWit)
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoWit)
 open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; monoBody; packOf; packOfAt; polyDef; PolyWit)
 open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; ok-gen; ok-sig; ok-inj; oks-fun)
 import Once.Adequacy.ScopeRefs as SR
@@ -140,7 +139,6 @@ open import Once.Adequacy.TeleEnvLemmas fmt φ Σ σ₀ using (σW; σW-self; ca
   imprel-transport; calls-same)
 import Once.Adequacy.TeleEntry fmt ι Σ σ₀ as TE
 
-import Once.Adequacy.ElabInst as EI
 import Once.Adequacy.CoherenceS
 import Once.Spec.Core.Typing
 import Once.Adequacy.UseCommute
@@ -154,7 +152,7 @@ open _≈_ using (≈-out)
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
 open import Once.Adequacy.Coherence fmt using (realize-invariant; realize-invariant-i)
-import Once.TypeCheck.Completeness
+open import Once.TypeCheck.CompletenessS using (check-completeS)
 import Once.TypeCheck.Elaborate
 import Data.Maybe
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
@@ -522,13 +520,12 @@ inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} N W
 -- (`CoherenceS`), whose term the checker built.
 inv-poly : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {pfi : Parser.PolyFunInfo} {Ψ : Ctx.Usage 0}
              (N : Names S is ts)
-             (D : ctxOfAt (kindsOf (pfunType pfi)) (AS.scopeOf csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ)
              (W : PolyWit (AS.scopeOf csc) pfi Ψ)
          → Inv {S = S} csc tl ss is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
          → Inv (C.addEntry csc pfi)
                (polyDef {S = S} {sc = AS.scopeOf csc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W)
                ss (wkI is) (t-def zero refl (wkT ts)) pre
-inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N D W inv fr = record
+inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N W inv fr = record
   { iself = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (y Str.≟ y)
             ∷ iself-step (pfi , C.ctop csc) (C.CScope.ctele csc) (C.CScope.ctele csc) frT (Inv.iself inv)
   ; rel   = rel′
@@ -618,11 +615,13 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N D W inv fr = r
             module WS = Once.TypeCheck.WitnessSubst Σ S (Names.nm N) (OkOf P) (OkSOf P) κ ∅ₖ τ r
             module UCm = Once.Adequacy.UseCommute Σ S (Names.nm N) (OkOf P) (OkSOf P) κ ∅ₖ τ r
             -- the witness over the parameters, and at the instance
-            uΔ  = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ W)) Pκ))
+            wΔ  = proj₁ (proj₂ (proj₂ (proj₂ W)))
+            uΔ  = proj₁ (proj₂ (proj₂ (proj₂ wΔ) Pκ))
             su  = WS.subW⇐ (proj₂ uΔ)
-            -- the checker at the instance
-            D-U = EI.inst-at Σ fmt S σ₀ scT D ki
-            cc  = Once.TypeCheck.Completeness.check-complete D-U
+            -- the checker at the instance: it accepts the instantiated witness
+            cc  = subst (λ X → ∃[ se ] ∃[ d ] ∃[ f ] Once.TypeCheck.Elaborate.checkElab ctxT (pfunBody pfi) X
+                                                      ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
+                        (proj₂ (proj₂ K)) (check-completeS P (proj₂ su))
             se  = proj₁ cc
             ce  = proj₂ (proj₂ (proj₂ cc))
             cr  = Once.TypeCheck.Elaborate.checkElabV ctxT (pfunBody pfi) U
@@ -664,9 +663,9 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N D W inv fr = r
 mainIn-name : ∀ {sc es} (mt : ModTele sc es) → MainIn mt → Any ("main" ≡_) (map entryName es)
 mainIn-name []                          ()
 mainIn-name (ffi _ _ _ _ rest)        mi          = there (mainIn-name rest mi)
-mainIn-name (poly _ _ _ rest)             mi          = there (mainIn-name rest mi)
-mainIn-name (mono _ _ _ _ _ rest)     (inj₁ (p , _)) = here (sym p)
-mainIn-name (mono _ _ _ _ _ rest)     (inj₂ mi)   = there (mainIn-name rest mi)
+mainIn-name (poly _ _ rest)             mi          = there (mainIn-name rest mi)
+mainIn-name (mono _ _ _ _ rest)     (inj₁ (p , _)) = here (sym p)
+mainIn-name (mono _ _ _ _ rest)     (inj₂ mi)   = there (mainIn-name rest mi)
 
 not-in : ∀ {x : String} {ys} → All (x ≢_) ys → Any (x ≡_) ys → ⊥
 not-in (h ∷ _)  (here e)  = h e

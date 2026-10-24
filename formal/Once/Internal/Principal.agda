@@ -10,7 +10,10 @@
 -- type has finitely many types below it: each covariant position is itself or
 -- something below it (`Void` for a whole type), each grade is itself or lower.
 -- `below T` lists the ones strictly below, all of them (`below-complete`), and
--- the decision is the checker run on each.
+-- the decision is the checker run on each: the body's type is principal when
+-- the checker rejects the body at each (`PrincipalAt`). The checker is sound
+-- and complete for the Spec's derivation (`SpecWitness`, `CompletenessS`), so
+-- that is the Spec's principality (`SpecFront.Def`).
 --
 -- Not just the types one step down: checking is not closed upward along
 -- `<:ᶜ` (`compose (\x -> x) (cata alg)` checks as a pure arrow and not as an
@@ -36,10 +39,10 @@ open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Internal.Type.Sub using (subᶜ-prod; subᶜ-sum; subᶜ-rigid)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Data.Product using (proj₁)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.Typing.Scope using (NamedCtx)
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Internal.Context using (Usage)
+import Once.TypeCheck.Elaborate as TE
 
 -- the grades strictly below a grade, on the chain `pure ≤ act ≤ eff`
 gradesBelow : Purity → List Purity
@@ -69,9 +72,13 @@ below (A ⇒[ mk-kind q π ] B) =
   Void ∷ (cartesianProductWith (λ π′ B′ → A ⇒[ mk-kind q π′ ] B′) (gradesBelow π) (B ∷ [])
           ++ cartesianProductWith (λ π′ B′ → A ⇒[ mk-kind q π′ ] B′) (π ∷ gradesBelow π) (below B))
 
--- The body checks at no type strictly below its type.
+-- A check that fails.
+data Fails {m n Γ A} : TE.CheckElabResult {m} {n} Γ A → Set where
+  fails : ∀ {err} → Fails (TE.failure err)
+
+-- The checker rejects the body at every type strictly below its type.
 PrincipalAt : ∀ {m} → (ctx : NamedCtx m) → RawExpr → Ty m → Set
-PrincipalAt ctx e T = ∀ {X} → X ∈ below T → ∀ {Ψ : Usage (NamedCtx.size ctx)} → ¬ (ctx ⊢ᶜ e ∶ X ⨾ Ψ)
+PrincipalAt ctx e T = ∀ {X} → X ∈ below T → Fails (proj₁ (TE.checkElabV ctx e X))
 
 ------------------------------------------------------------------------
 -- `below` lists everything strictly below

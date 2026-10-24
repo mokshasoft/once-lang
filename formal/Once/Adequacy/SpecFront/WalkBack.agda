@@ -31,7 +31,7 @@ import Once.Internal.Type.WellFormed as LW
 open import Once.Internal.Type using (wk₀)
 import Once.Spec.Type as ST
 open import Once.Internal.Typing.Scope using (Imports; lookupImport)
-open import Once.Adequacy.SpecCore.Type using (TyR)
+open import Once.Adequacy.SpecCore.Type using (TyR; TyR-≡)
 
 module Once.Adequacy.SpecFront.WalkBack
   (Σ : Signature) (ps : List String) (sg : Imports)
@@ -67,7 +67,9 @@ import Once.Adequacy.SpecFront.DefsRen as DefsRen
 import Once.Adequacy.SpecFront.TyRen as TyRen
 import Once.Metatheory.TermModel.TySubst as TySubst
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (WInv)
-open import Once.Adequacy.SpecFront.Walk Σ ps sg h-sig h-own-sig h-psig h-word using (module AtState)
+open import Once.Adequacy.SpecFront.Def Σ ps sg h-sig h-psig h-word using (body-check←; body-synth←; principal←)
+open import Once.Internal.Module using (CheckRun; MonoWit)
+open import Once.Adequacy.ModuleProgram Σ using (Names)
 
 ------------------------------------------------------------------------
 -- The two definitions tables, up to numbering
@@ -98,11 +100,11 @@ rel-▷ r so so₂ = record
 ------------------------------------------------------------------------
 
 module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele)
-            (nm : Fin s → CanonicalName) (w : WInv S (scope sg imps tele) is ts nm)
+            (N : Names S is ts) (w : WInv S (scope sg imps tele) is ts (Names.nm N))
             {S′ : SC.Defs s} (r : Rel S′ S) where
 
-  module At = AtState ss is ts nm w
   private
+    nm = Names.nm N
     module TR  = TyRen Σ S′ nm
     module TS  = TySubst Σ S′
     module DR⇒ = DefsRen Σ S′ S nm (ρ⇒ r)
@@ -114,8 +116,8 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
   step : ∀ {a} (κ : ST.KCtx a) {T sc e e′ A A′}
        → TyR κ A A′ → SPr.SchemaOf T (SC.schema a κ A′) → SPr.SchemaOf T sc
        → SPr.Body Σ S′ nm sc e′ → SPr.Principal Σ S′ nm sc e′ → RX [] e e′
-       → (Σ[ Ψ ∈ LCx.Usage 0 ] ctxOfAt κ (scope sg imps tele) ⊢ᶜ e ∶ A ⨾ Ψ) × PrincipalAt (ctxOfAt κ (scope sg imps tele)) e A
-  step {a} κ {T} {sc} {e} {e′} {A} {A′} rA so₂ so b pr rx = chk , At.principal← κ rx rA pr₂
+       → (Σ[ Ψ ∈ LCx.Usage 0 ] CheckRun (ctxOfAt κ (scope sg imps tele)) e A Ψ) × PrincipalAt (ctxOfAt κ (scope sg imps tele)) e A
+  step {a} κ {T} {sc} {e} {e′} {A} {A′} rA so₂ so b pr rx = go (TyR-≡ rA)
     where
       sc₂ = SC.schema a κ A′
       σ  = ρ-of so₂ so
@@ -133,12 +135,12 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
       -- the body's term, renumbered and moved to the compiler's table
       tm = DR⇒.rn (SPr.Body.term b SC.⟪ B.sv ⟫ₜ)
 
-      chk : Σ[ Ψ ∈ LCx.Usage 0 ] ctxOfAt κ (scope sg imps tele) ⊢ᶜ e ∶ A ⨾ Ψ
-      chk = At.body-check← κ
+      chk : Σ[ Ψ ∈ LCx.Usage 0 ] CheckRun (ctxOfAt κ (scope sg imps tele)) e A′ Ψ
+      chk = body-check← ss is ts N w κ
               (subst (λ X → SU₂._⊢_⇐_↝_ κ SU₂.∅ e′ X tm) to-A′ (DR⇒.chk (ren⇒ r) (B.chk (SPr.Body.check b))))
               (subst (λ X → SC₂._⊩_⊢[_]_∷_!_ κ SCx.∅ SCx.[] tm X SG.pure) to-A′
                      (DR⇒.core (ren⇒ r) (TS.ty-subst-⊢ B.sv B.rσ (SPr.Body.typed b))))
-              rx rA
+              rx
 
       -- the compiler's reading of the Spec's principality
       pr₂ : ∀ {X t} → X SS.<:ᶜ A′
@@ -153,6 +155,9 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
                            (TS.ty-subst-⊢ B⁻.sv B⁻.rσ (DR⇐.core (ren⇐ r) T₀))))
                      to-A′)
 
+      go : A ≡ A′ → (Σ[ Ψ ∈ LCx.Usage 0 ] CheckRun (ctxOfAt κ (scope sg imps tele)) e A Ψ) × PrincipalAt (ctxOfAt κ (scope sg imps tele)) e A
+      go refl = chk , principal← ss is ts N w κ rx pr₂
+
   private
     module SU′ = Once.Spec.Surface.Typing Σ S′ nm
     module SC′ = Once.Spec.Core.Typing Σ S′
@@ -162,11 +167,9 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
   step-nosig : ∀ {e e′ A t}
              → SU′._⊢_⇒_↝_ ST.∅ₖ SU′.∅ e′ A t → SC′._⊩_⊢[_]_∷_!_ ST.∅ₖ SCx.∅ SCx.[] t A SG.pure
              → SPr.Principal Σ S′ nm (SC.schema 0 ST.∅ₖ A) e′ → RX [] e e′
-             → Σ[ ty ∈ ST.Type ] TyR ST.∅ₖ ty A
-                 × (Σ[ Ψ ∈ LCx.Usage 0 ] ctxOf (scope sg imps tele) ⊢ᵢ e ∶ ty ⨾ Ψ) × PrincipalAt (ctxOf (scope sg imps tele)) e ty
+             → (Σ[ Ψ ∈ LCx.Usage 0 ] MonoWit nothing (ctxOf (scope sg imps tele)) e A Ψ) × PrincipalAt (ctxOf (scope sg imps tele)) e A
   step-nosig {e} {e′} {A} {t} syn typ pr rx =
-    let (ty , rA , Ψ , D) = At.body-synth← ST.∅ₖ (DR⇒.syn (ren⇒ r) syn) (DR⇒.core (ren⇒ r) typ) rx
-    in ty , rA , (Ψ , D) , At.principal← ST.∅ₖ rx rA pr₂
+    body-synth← ss is ts N w ST.∅ₖ (DR⇒.syn (ren⇒ r) syn) (DR⇒.core (ren⇒ r) typ) rx , principal← ss is ts N w ST.∅ₖ rx pr₂
     where
 
       pr₂ : ∀ {X t′} → X SS.<:ᶜ A
@@ -183,12 +186,9 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
 open import Data.List.Relation.Unary.All using (All; _∷_)
 open import Data.Sum using (inj₂)
 open import Data.Bool using (false)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly; MonoWit; pair-at)
-import Once.Internal.Typing
-import Once.Internal.Typing.Scope
-import Once.TypeCheck.DualWitness
+open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
 open import Once.Internal.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoSchema)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef)
+open import Once.Adequacy.ModuleProgram Σ using (names-mono; names-poly; monoDef; polyDef)
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Type.Instance using (kindsOf)
 import Once.Internal.Type.Instance
@@ -196,22 +196,7 @@ import Once.Parser as Parser
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
-open import Once.TypeCheck.Completeness using (infer-complete; check-completeV)
-
--- The checker's witness for a body the compiler's judgment types: by
--- completeness, the checker accepts it, and its witness is its own.
-private
-  wit-c : ∀ {m} {ctx : Once.Internal.Typing.Scope.NamedCtx m} {e A Ψ} → Once.Internal.Typing._⊢ᶜ_∶_⨾_ ctx e A Ψ
-        → Σ[ eE ∈ _ ] Once.TypeCheck.DualWitness.DC ctx e A Ψ eE
-  wit-c D = let (eE , _ , _ , w , _) = check-completeV D in eE , w
-
-  -- …the checker's own result (a monomorphic body's)
-  mwit-c : ∀ {ctx e A Ψ} → Once.Internal.Typing._⊢ᶜ_∶_⨾_ ctx e A Ψ → MonoWit (just A) ctx e A Ψ
-  mwit-c D = check-completeV D
-
-  mwit-i : ∀ {ctx e A Ψ} → Once.Internal.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ → MonoWit nothing ctx e A Ψ
-  mwit-i {ctx = ctx} {e} D = let (eE , d , f , eq) = infer-complete D in eE , d , f , _ , pair-at (TE.inferElabV ctx e) eq
-open import Once.Adequacy.SpecCore.Type using (TyR-≡; tyR; r-unit; r-void; r-int; r-float; r-*; r-+; r-⇒; r-μ; r-ν; r-var;
+open import Once.Adequacy.SpecCore.Type using (tyR; r-unit; r-void; r-int; r-float; r-*; r-+; r-⇒; r-μ; r-ν; r-var;
                                                FunR; r-K; r-Id; r-⊕; r-⊗)
 open import Once.Adequacy.SpecFront.SchemaRen using (ren-0)
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (winv-mono; winv-poly; _∷ⁿ_)
@@ -280,14 +265,14 @@ walk← tl ss is ts N r (SPr.w-skip _ wk) (al-skip SPr.nd-alias al)  w o = walk�
 walk← tl ss is ts N r (SPr.w-skip _ wk) (al-skip SPr.nd-import al) w o = walk← tl ss is ts N r wk al w o
 -- a monomorphic definition with a signature
 walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig {sc = sc} so b pr wk) (al-mono {x = x} {e = e} {ty = ty} so₂ rx al) w o =
-  mono refl refl P D (mwit-c D) mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
+  mono refl refl P W mt , (λ { (h , hs) → (λ m → eff-at (h m)) , ms hs }) , (λ { (inj₁ (m , en)) → inj₁ (m , eff-at en) ; (inj₂ m) → inj₂ (mi m) })
   where
     fi = Parser.mkFunInfo x (just ty) e false
-    st = Step.step ss is ts (Names.nm N) w r ST.∅ₖ (tyR ty) so₂ so b pr rx
+    st = Step.step ss is ts N w r ST.∅ₖ (tyR ty) so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
-    D = proj₂ (proj₁ st)
+    W = proj₂ (proj₁ st)
     P = proj₂ st
-    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N (mwit-c D)) ss
+    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss
                  (impDefs (x Data.String.== "main") is) (wkT ts) (names-mono (x Data.String.== "main") x ty N) (rel-▷ r so so₂) wk al
                  (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o)
     mt = proj₁ rest
@@ -298,15 +283,15 @@ walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig {sc = sc} so b pr wk) (
     eff-at = entry-eff (schemaOf-ren so₂ so)
 -- a telescope definition
 walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig so b pr wk) (al-poly {x = x} {T = T} {e = e} so₂ nmono rx al) w o =
-  poly P D (wit-c D) mt , (λ { (_ , hs) → ms hs }) , (λ { (inj₁ (_ , en)) → ⊥-elim (not-entry en) ; (inj₂ m) → mi m })
+  poly P W mt , (λ { (_ , hs) → ms hs }) , (λ { (inj₁ (_ , en)) → ⊥-elim (not-entry en) ; (inj₂ m) → mi m })
   where
     pfi = Parser.mkPolyFunInfo x T e
     κ = kindsOf T
-    st = Step.step ss is ts (Names.nm N) w r κ (tyR _) so₂ so b pr rx
+    st = Step.step ss is ts N w r κ (tyR _) so₂ so b pr rx
     Ψ = proj₁ (proj₁ st)
-    D = proj₂ (proj₁ st)
+    W = proj₂ (proj₁ st)
     P = proj₂ st
-    rest = walk← (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts N (wit-c D)) ss (wkI is) (t-def zero refl (wkT ts))
+    rest = walk← (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
                  (names-poly pfi N) (rel-▷ r so so₂) wk al
                  (winv-poly pfi w (all-head (kinds o)) (all-head (fresh o))) (eok-poly o)
     mt = proj₁ rest
@@ -319,20 +304,21 @@ walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-sig so b pr wk) (al-poly {x
           (c′ , eq) = isConcrete?-complete c
       in nothing≢just (trans (sym (nmono g′)) eq)
 -- one without a signature: the type its body synthesizes
-walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-nosig syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
-  mono refl (infer-ok _ _ e (proj₂ (proj₂ (proj₂ (infer-complete D))))) P D (mwit-i D) mt
+walk← {S = S} {imps} {tele} tl ss is ts N r (SPr.w-nosig {A = A₀} syn typ pr wk) (al-nosig {x = x} {e = e} rx al) w o =
+  mono refl (infer-ok _ _ e (cong proj₁ (proj₂ (proj₂ (proj₂ (proj₂ W)))))) P W mt
   , (λ { (h , hs) → (λ m → sub-L (h m) rA r-EffUU) , ms hs }) , (λ { (inj₁ (m , p)) → inj₁ (m , sub-L p rA r-EffUU) ; (inj₂ m) → inj₂ (mi m) })
   where
-    st = Step.step-nosig ss is ts (Names.nm N) w r syn typ pr rx
-    ty = proj₁ st
-    rA = proj₁ (proj₂ st)
-    Ψ = proj₁ (proj₁ (proj₂ (proj₂ st)))
-    D = proj₂ (proj₁ (proj₂ (proj₂ st)))
-    P = proj₂ (proj₂ (proj₂ st))
+    st = Step.step-nosig ss is ts N w r syn typ pr rx
+    ty = A₀
+    rA : TyR ST.∅ₖ ty ty
+    rA = tyR ty
+    Ψ = proj₁ (proj₁ st)
+    W = proj₂ (proj₁ st)
+    P = proj₂ st
     fi = Parser.mkFunInfo x nothing e false
-    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N (mwit-i D)) ss
+    rest = walk← (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss
                  (impDefs (x Data.String.== "main") is) (wkT ts) (names-mono (x Data.String.== "main") x ty N)
-                 (rel-▷0 r (sym (TyR-≡ rA))) wk al
+                 (rel-▷0 r refl) wk al
                  (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o)
     mt = proj₁ rest
     ms = proj₁ (proj₂ rest)

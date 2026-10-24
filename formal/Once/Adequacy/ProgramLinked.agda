@@ -38,7 +38,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Data.Unit using (tt)
@@ -82,10 +82,17 @@ open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookup
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV; success; failure)
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF)
-open import Once.TypeCheck.Instance using (inst-at)
-open import Once.TypeCheck.Completeness using (check-complete)
-open import Once.Denotation.Realize using (realize; realize-infer; realize-d)
-open import Once.Internal.Typing
+open import Once.TypeCheck.CompletenessS using (check-completeS)
+open import Once.TypeCheck.SpecWitness using (OkOf; OkSOf)
+import Once.TypeCheck.WitnessSubst
+open import Once.Internal.Type.Schema using (kinded-instance)
+open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Core.Syntax using (Defs)
+import Once.Spec.Core.Syntax
+import Once.Internal.Core.Translate as TR
+import Once.Adequacy.ModuleProgram as MP
+open import Once.Adequacy.ModuleSig using (sigOf; sig-in)
+open import Data.Fin using (zero)
 open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.IRTy using (⌊⟧T-commute)
@@ -123,164 +130,6 @@ SpliceOK σ tbl polys I x A =
   ∀ {s b pre} → lookupPolyPrefix polys x ≡ just (s , b , pre)
   → ∀ (ac : Acc _<_ (length pre)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx _ n}
   → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (spliceWith {Γ = Γ} pre ac I uf fresh x A (checkElabV (ctxAt baseKinds (I x) pre) b A))
-
-------------------------------------------------------------------------
--- (C) In `realize`, a reference is one its rule found in scope: an import
--- at its type (`t-var-import`, an own-module `t-var-resolved`), or a telescope
--- entry at a kinded instance of its schema (the `poly` rules).
-------------------------------------------------------------------------
-
-private
-  Refs-substA : ∀ {m} {Ps : CanonicalName → Type → Set} {Pc Pp : String → Ty m → Set} {n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (eq : A ≡ B) (e : Expr Γ Ψ A)
-              → Refs Ps Pc Pp e → Refs Ps Pc Pp (subst (Expr Γ Ψ) eq e)
-  Refs-substA refl e r = r
-
-  Refs-substF : ∀ {m} {Ps : CanonicalName → Type → Set} {Pc Pp : String → Ty m → Set} {n} {Γ : Ctx m n} {Ψ : Usage n} (G : Ty m → Ty m) {A B : Ty m} (eq : A ≡ B)
-                (e : Expr Γ Ψ (G A)) → Refs Ps Pc Pp e → Refs Ps Pc Pp (subst (λ Z → Expr Γ Ψ (G Z)) eq e)
-  Refs-substF G refl e r = r
-
-  Linked-substˡ : ∀ {tbl : List IRFun} {X Y Z : IRTy} (eq : X ≡ Y) (ir : IR X Z)
-                → Linked σ tbl ir → Linked σ tbl (subst (λ o → IR o Z) eq ir)
-  Linked-substˡ refl ir l = l
-
-  Linked-substʳ : ∀ {tbl : List IRFun} {X Y Z : IRTy} (eq : Y ≡ Z) (ir : IR X Y)
-                → Linked σ tbl ir → Linked σ tbl (subst (λ o → IR X o) eq ir)
-  Linked-substʳ refl ir l = l
-
-RR : ∀ {m} → (ctx : NamedCtx m) → ∀ {Ψ : Usage (NamedCtx.size ctx)} {A : Ty m} → Expr (NamedCtx.debruijn ctx) Ψ A → Set
-RR ctx = Refs (FFIRef (NamedCtx.sig ctx)) (ImpRef (NamedCtx.imports ctx)) (PolyRef (NamedCtx.polys ctx) (NamedCtx.kinds ctx))
-
-realize-refs   : ∀ {m} {A : Ty m} {ctx e} {Ψ : Usage (NamedCtx.size ctx)} (D : ctx ⊢ᶜ e ∶ A ⨾ Ψ) → RR ctx (realize D)
-realize-refs-i : ∀ {m} {A : Ty m} {ctx e} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Internal.Typing._⊢ᵢ_∶_⨾_ ctx e A Ψ) → RR ctx (realize-infer D)
-realize-refs-d : ∀ {m} {A B : Ty m} {ctx e π} {Ψ : Usage (NamedCtx.size ctx)} (D : Once.Internal.Typing._⊢ᵈ_∶_⇒[_]↦_⨾_ ctx e A π B Ψ)
-               → RR ctx (realize-d D)
-
-realize-refs t-id-check             = tt
-realize-refs t-fst-check            = tt
-realize-refs t-snd-check            = tt
-realize-refs t-terminal-morph-check = tt
-realize-refs t-initial-morph-check  = tt
-realize-refs t-inl-morph-check      = tt
-realize-refs t-inr-morph-check      = tt
-realize-refs (t-compose-check-g dg df)   = realize-refs df , realize-refs-d dg
-realize-refs (t-compose-check-f wf p dg) = realize-refs-i wf , realize-refs dg
-realize-refs (t-case-copair-check df dg) = realize-refs df , realize-refs dg
-realize-refs (t-pair-morph-check df dg)  = realize-refs df , realize-refs dg
-realize-refs (t-curry-check df)          = realize-refs df
-realize-refs (t-cata-check wfF dalg)     = realize-refs dalg
-realize-refs (t-ana-check wfF dcoalg)    = realize-refs dcoalg
-realize-refs (t-loop-check dround)       = realize-refs dround
-realize-refs (t-sub d p)                 = realize-refs-i d
-realize-refs (t-lam ≤p d)                = realize-refs d
-realize-refs (t-pair-lit-check da db)    = realize-refs da , realize-refs db
-realize-refs (t-In-app-check {F = F} wfF d) =
-  Linked-substˡ (sym (⌊⟧T-commute F (μ F))) (IR.In (wf-⌊⌋ wfF)) tt , realize-refs d
-realize-refs (t-apply-check dp)      = tt , realize-refs-i dp
-realize-refs (t-inl-app-check d)     = tt , realize-refs d
-realize-refs (t-inr-app-check d)     = tt , realize-refs d
-realize-refs (t-initial-app-check d) = tt , realize-refs d
-realize-refs (t-var-poly-instantiate eL eI eP ¬g ki) = _ , eP , ki
-
-realize-refs-i (t-int n)         = tt
-realize-refs-i (t-float i f l) = tt
-realize-refs-i t-unit            = tt
-realize-refs-i t-unit-var        = tt
-realize-refs-i (t-var-local {eV = svar i} _) = tt
-realize-refs-i (t-var-resolved _ wn lk conc refl) = lk
-realize-refs-i (t-var-own _ lk refl) = _ , lk , refl
-realize-refs-i {ctx = ctx} (t-var-poly-instantiate-infer {schema = schema} {g = g} eL eI eP gr T≡) =
-  _ , eP , subst (KindedInstance (NamedCtx.kinds ctx) schema) (sym T≡) (ground-kinded schema g)
-realize-refs-i (t-annot d _)     = realize-refs d
-realize-refs-i (t-pair da db)    = realize-refs-i da , realize-refs-i db
-realize-refs-i (t-neg d)         = realize-refs-i d
-realize-refs-i (t-neg-float i f l) = tt
-realize-refs-i (t-let d₁ d₂)     = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-case ds dl dr _) = realize-refs-i ds , realize-refs-i dl , realize-refs-i dr
-realize-refs-i (t-binop-arith {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith {op = OpMod} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith {op = OpLt} () _ _)
-realize-refs-i (t-binop-arith {op = OpLe} () _ _)
-realize-refs-i (t-binop-arith {op = OpGt} () _ _)
-realize-refs-i (t-binop-arith {op = OpGe} () _ _)
-realize-refs-i (t-binop-arith {op = OpEq} () _ _)
-realize-refs-i (t-binop-arith {op = OpNe} () _ _)
-realize-refs-i (t-binop-arith-float {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float {op = OpMod} () _ _)
-realize-refs-i (t-binop-arith-float {op = OpLt} () _ _)
-realize-refs-i (t-binop-arith-float {op = OpLe} () _ _)
-realize-refs-i (t-binop-arith-float {op = OpGt} () _ _)
-realize-refs-i (t-binop-arith-float {op = OpGe} () _ _)
-realize-refs-i (t-binop-arith-float {op = OpEq} () _ _)
-realize-refs-i (t-binop-arith-float {op = OpNe} () _ _)
-realize-refs-i (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-il {op = OpMod} () _ _)
-realize-refs-i (t-binop-arith-float-il {op = OpLt} () _ _)
-realize-refs-i (t-binop-arith-float-il {op = OpLe} () _ _)
-realize-refs-i (t-binop-arith-float-il {op = OpGt} () _ _)
-realize-refs-i (t-binop-arith-float-il {op = OpGe} () _ _)
-realize-refs-i (t-binop-arith-float-il {op = OpEq} () _ _)
-realize-refs-i (t-binop-arith-float-il {op = OpNe} () _ _)
-realize-refs-i (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-arith-float-ir {op = OpMod} () _ _)
-realize-refs-i (t-binop-arith-float-ir {op = OpLt} () _ _)
-realize-refs-i (t-binop-arith-float-ir {op = OpLe} () _ _)
-realize-refs-i (t-binop-arith-float-ir {op = OpGt} () _ _)
-realize-refs-i (t-binop-arith-float-ir {op = OpGe} () _ _)
-realize-refs-i (t-binop-arith-float-ir {op = OpEq} () _ _)
-realize-refs-i (t-binop-arith-float-ir {op = OpNe} () _ _)
-realize-refs-i (t-binop-cmp {op = OpLt} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-cmp {op = OpLe} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-cmp {op = OpGt} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-cmp {op = OpGe} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-cmp {op = OpEq} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-cmp {op = OpNe} _ d₁ d₂) = realize-refs-i d₁ , realize-refs-i d₂
-realize-refs-i (t-binop-cmp {op = OpAdd} () _ _)
-realize-refs-i (t-binop-cmp {op = OpSub} () _ _)
-realize-refs-i (t-binop-cmp {op = OpMul} () _ _)
-realize-refs-i (t-binop-cmp {op = OpDiv} () _ _)
-realize-refs-i (t-binop-cmp {op = OpMod} () _ _)
-realize-refs-i (t-id-app d)       = tt , realize-refs-i d
-realize-refs-i (t-fst-app d)      = tt , realize-refs-i d
-realize-refs-i (t-snd-app d)      = tt , realize-refs-i d
-realize-refs-i (t-Out-app-infer {F = F} wfF ceq d) =
-  Refs-substA ceq _
-    ( Linked-substʳ (sym (⌊⟧T-commute F (ν F Once.Spec.Grade.pureᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt
-    , realize-refs-i d)
-realize-refs-i (t-Out-eff-app-infer {F = F} wfF ceq d) =
-  Refs-substF (λ Z → Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] Z) ceq _
-    ( (Linked-substʳ (sym (⌊⟧T-commute F (ν F Once.Spec.Grade.actᶠ))) (IR.Out (wf-⌊⌋ wfF)) tt , tt)
-    , realize-refs-i d)
-realize-refs-i (t-terminal-app d) = tt , realize-refs-i d
-realize-refs-i (t-apply-app-infer d) = tt , realize-refs-i d
-realize-refs-i (t-apply-eff-app-infer d) = (tt , tt) , realize-refs-i d
-realize-refs-i (t-app _ df dx)    = realize-refs-i df , realize-refs dx
-realize-refs-i (t-effApp _ df dx) = realize-refs-i df , realize-refs dx
-realize-refs-i (t-app-spine _ dx df) = realize-refs-d df , realize-refs-i dx
-
-realize-refs-d (d-infer w a g) = realize-refs-i w
-realize-refs-d (d-poly eL eI eP ¬g as inc ki g) = _ , eP , ki
-realize-refs-d (d-lam d)         = realize-refs-i d
-realize-refs-d (d-compose dg df) = realize-refs-d df , realize-refs-d dg
-realize-refs-d d-id       = tt
-realize-refs-d d-fst      = tt
-realize-refs-d d-snd      = tt
-realize-refs-d d-terminal = tt
-realize-refs-d d-initial  = tt
-realize-refs-d (d-case df dg _) = realize-refs-d df , realize-refs-d dg
-realize-refs-d (d-pair df dg) = realize-refs-d df , realize-refs-d dg
-realize-refs-d (d-cata wfF dalg) = realize-refs-i dalg
 
 ------------------------------------------------------------------------
 -- (C′) The resolver turns each telescope reference into its splice.
@@ -538,10 +387,11 @@ body-linkedM inv (Data.Maybe.just _) x ty {Ψ = Once.Spec.Context.[]} cf ce = bo
 body-linkedM inv Data.Maybe.nothing  x ty {Ψ = Once.Spec.Context.[]} cf ce = body-linkedI inv x ty cf ce
 
 -- A telescope entry joins the scope. Its splice at a kinded instance is
--- linked: its body, typed once over the schema's parameters, types at the instance
--- (`inst-at`, D243/D252), so the checker succeeds there (completeness); the
--- splice is the realization of that derivation, whose references are the
--- scope's (`realize-refs`), resolved (`resolve-refs`).
+-- linked: its body's witness, over the schema's parameters, instantiated, is
+-- a Spec derivation at the instance (`WitnessSubst`), which the checker
+-- accepts (`CompletenessS`, at the scope's Pack); the splice is that check's
+-- term, whose references are the scope's (`InScope`), resolved
+-- (`resolve-refs`).
 private
   splice-at : ∀ (tbl : List IRFun) (pre : PolyCtx) (ac : Acc _<_ (length pre)) (I : String → TopCtx) (uf : Imports)
                 (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx 0 n} {Xs : TopCtx} {b : RawExpr} {se : _} {d f : ℕ}
@@ -551,11 +401,13 @@ private
             → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (spliceWith {Γ = Γ} pre ac I uf fresh x A cr)
   splice-at tbl pre ac I uf fresh x A (success Once.Spec.Context.[] _ _ _ , w) refl r = r
 
-linv-poly : ∀ {csc pre} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0}
-          → ctxAt (kindsOf (pfunType pfi)) (C.ctop csc) (C.cpolys csc) ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ
+linv-poly : ∀ {Σ : Signature} {s} {S : Defs s} {csc pre} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0}
+            (ss : TR.SigSig Σ (C.CScope.csig csc)) (is : TR.ImpSig Σ S (C.CScope.cimps csc))
+            (ts : TR.TeleSig Σ S (C.telePolys (C.CScope.ctele csc))) (N : MP.Names Σ S is ts)
+          → MP.PolyWit Σ (AS.scopeOf csc) pfi Ψ
           → All (pfunName pfi ≢_) (scopeNames csc)
           → LInv σ csc pre → LInv σ (C.addEntry csc pfi) pre
-linv-poly {σ = σ} {csc} {pre} {pfi} {Once.Spec.Context.[]} D fr inv = record
+linv-poly {σ = σ} {Σ} {S = S} {csc} {pre} {pfi} {Once.Spec.Context.[]} ss is ts N W fr inv = record
   { iself  = declImps-head (pfi , C.ctop csc) (C.CScope.ctele csc) (pfunName pfi Str.≟ pfunName pfi)
              ∷ iself-step (pfi , C.ctop csc) (C.CScope.ctele csc) (C.CScope.ctele csc)
                           (++⁻ʳ (Data.List.map proj₁ (C.CScope.cimps csc)) fr) (LInv.iself inv)
@@ -572,6 +424,11 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Once.Spec.Context.[]} D fr inv = record
     imps  = C.CScope.cimps csc
     top   = C.ctop csc
 
+    -- the scope's Pack, and over the parameters
+    P  = MP.packOf Σ {S = S} {sc = AS.scopeOf csc} ss is ts N
+    κ  = kindsOf scT
+    Pκ = MP.packOfAt Σ κ {S = S} {sc = AS.scopeOf csc} ss is ts N
+
     -- the head: its body at the instance, in its declaration scope
     head-ok : ∀ (I : String → TopCtx) → I y ≡ top → IAgree I (C.CScope.ctele csc) → ∀ {A : Type} → KindedInstance ∅ₖ scT A
             → ∀ (ac : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) {n} {Γ : Ctx 0 n}
@@ -586,11 +443,18 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Once.Spec.Context.[]} D fr inv = record
                  (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef imps} {Pp = PolyRef polys ∅ₖ} {Pc′ = RefLinked σ pre} {Pp′ = PolyRef polys ∅ₖ}
                            (LInv.sig-ok inv) (imp-ref inv) (λ r → r) se (proj₁ (proj₂ (wit-of cr ce))))))
       where
-        D-A = inst-at scT D ki
-        cr  = checkElabV (ctxWithImportsAndPolys top polys) bd A
-        cc  = check-complete D-A
-        se  = proj₁ cc
-        ce  = proj₂ (proj₂ (proj₂ cc))
+        K  = kinded-instance scT ki
+        module WS = Once.TypeCheck.WitnessSubst Σ S (MP.Names.nm N) (OkOf P) (OkSOf P) κ ∅ₖ (proj₁ K) (proj₁ (proj₂ K))
+        -- the witness over the parameters, at the instance
+        wΔ = proj₁ (proj₂ (proj₂ (proj₂ W)))
+        uΔ = proj₁ (proj₂ (proj₂ (proj₂ wΔ) Pκ))
+        su = WS.subW⇐ (proj₂ uΔ)
+        cr = checkElabV (ctxWithImportsAndPolys top polys) bd A
+        cc = subst (λ X → ∃[ se ] ∃[ d ] ∃[ f ] Once.TypeCheck.Elaborate.checkElab (ctxWithImportsAndPolys top polys) bd X
+                                                  ≡ success Once.Spec.Context.[] se d f)
+                   (proj₂ (proj₂ K)) (check-completeS P (proj₂ su))
+        se = proj₁ cc
+        ce = proj₂ (proj₂ (proj₂ cc))
 
     tel′ : ∀ (I : String → TopCtx) → IAgree I ((pfi , top) ∷ C.CScope.ctele csc)
          → ∀ {x} {A : Type} → PolyRef (C.cpolys (C.addEntry csc pfi)) ∅ₖ x A → SpliceOK σ pre (C.cpolys (C.addEntry csc pfi)) I x A
@@ -601,28 +465,33 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Once.Spec.Context.[]} D fr inv = record
     tel′ I (iy ∷ ia) {x} {A} pr {s} {b} {pre′} lk ac uf fresh {Γ = Γ} | no _ =
       LInv.tel-ok inv I ia pr lk ac uf fresh {Γ = Γ}
 
--- plan 0.105: and the FFI declarations ahead are in the signatures `σ`.
-link-walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es) (pre : List IRFun)
+-- plan 0.105: and the FFI declarations ahead are in the signatures `σ`. The
+-- table and its names are built along (`ModuleProgram`), over a Spec
+-- signature declaring the module's FFI declarations (`SigIn`).
+link-walk : ∀ {Σ : Signature} {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es)
+              {s} {S : Defs s} (ss : TR.SigSig Σ (C.CScope.csig csc)) (is : TR.ImpSig Σ S (C.CScope.cimps csc))
+              (ts : TR.TeleSig Σ S (C.telePolys (C.CScope.ctele csc))) (N : MP.Names Σ S is ts) (pre : List IRFun)
           → LInv σ csc pre → Fresh csc es
-          → (∀ {d} → d ∈ teleSig mt → d ∈ σ)
+          → (∀ {d} → d ∈ teleSig mt → d ∈ σ) → TR.SigIn Σ mt
           → All (λ e → Linked σ (tableOf-go (FB.bundle→compiled b) pre) (fbody e)) (tableOf-go (FB.bundle→compiled b) pre)
-link-walk [] FB.bnil pre inv fr u = LInv.ent-ok inv
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b) pre inv fr u
+link-walk [] FB.bnil ss is ts N pre inv fr u uΣ = LInv.ent-ok inv
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b) ss is ts N pre inv fr u uΣ
   with just-injective (trans (sym et) et′)
-... | refl = link-walk rest rest-b pre (linv-sig (funName fi) ty (u (here refl)) inv)
-               (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m))
-link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) pre inv fr u
-link-walk {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr D _ rest) (FB.bpoly fc ce rest-b) pre inv fr u =
-  link-walk rest rest-b pre (linv-poly D (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
-            (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr D _ rest)
-          (FB.bcons {ty = ty′} {Ψ = Once.Spec.Context.[]} {irFun = irFun} refl rf fc ce cf rest-b) pre inv fr u
+... | refl = link-walk rest rest-b (TR.s-ffi c h (uΣ (here refl)) ss) is ts N pre (linv-sig (funName fi) ty (u (here refl)) inv)
+               (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m)) (λ m → uΣ (there m))
+link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) ss is ts N pre inv fr u uΣ
+link-walk {Σ = Σ} {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr W rest) (FB.bpoly fc ce rest-b) ss is ts N pre inv fr u uΣ =
+  link-walk rest rest-b ss (TR.wkI Σ is) (TR.t-def zero refl (TR.wkT Σ ts)) (MP.names-poly Σ pfi N) pre
+            (linv-poly ss is ts N W (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
+            (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u uΣ
+link-walk {Σ = Σ} {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr _ rest)
+          (FB.bcons {ty = ty′} {Ψ = Once.Spec.Context.[]} {irFun = irFun} refl rf fc ce cf rest-b) ss is ts N pre inv fr u uΣ
   with inj₂-injective (trans (sym er) rf)
-... | refl = link-walk rest rest-b _
+... | refl = link-walk rest rest-b ss (TR.impDefs Σ (funName fi Str.== "main") is) (TR.wkT Σ ts) (MP.names-mono Σ (funName fi Str.== "main") (funName fi) ty N) _
                (linv-entry (funName fi) ty irFun
                   (dc-linked pre ty irFun (body-linkedM inv (Parser.FunInfo.funType fi) (funName fi) ty cf ce))
                   inv)
-               (fresh-fun {csc = csc} {fi = fi} {ty = ty} {es = es} fr) u
+               (fresh-fun {csc = csc} {fi = fi} {ty = ty} {es = es} fr) u uΣ
 
 -- The program's entry is linked: it calls `main`, which the table holds at its
 -- own direct-call objects (D315: `main` at its type below `Eff Unit Unit`; a
@@ -682,7 +551,8 @@ moduleToProgram-linked m ir mi with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   subst (λ t → LinkedProgram (moduleSig m) (irProgram t ir)) (sym (cong tableOfResult ceq))
     ( main-linked b [] bf
-    , link-walk mt₀ b [] linv₀ (entries-distinct m ef , none-in-empty _) u)
+    , link-walk mt₀ b {S = Once.Spec.Core.Syntax.[]} TR.[] TR.[] TR.[] (MP.names₀ (sigOf (teleSig mt₀))) [] linv₀
+                (entries-distinct m ef , none-in-empty _) u (sig-in mt₀))
   where
     T  = tableOf-go (FB.bundle→compiled b) []
     bf = trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi)

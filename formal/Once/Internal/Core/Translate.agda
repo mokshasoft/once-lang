@@ -10,8 +10,7 @@
 -- surface scope and the core table — each FFI declaration one of Σ's
 -- (`SigSig`), each monomorphic definition an arity-0 entry (`ImpSig`), each
 -- telescope definition an entry at its schema (`TeleSig`) — which the
--- checker's `View` is built from, and a telescope definition's entry, its
--- body elaborated over its parameters (`polyDef`).
+-- checker's `View` is built from.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -52,8 +51,7 @@ open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
 open import Once.Internal.Context as Ctx using (Usage)
 open import Once.Spec.Context using ([])
 import Once.Spec.Context as SCx
-open import Once.Internal.Typing using (_⊢ᶜ_∶_⨾_)
-open import Once.Internal.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp; MonoBody)
+open import Once.Internal.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp)
 import Once.Internal.Module as Mod
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -64,7 +62,6 @@ open import Once.Internal.Core.Telescope Σ using (Program; program)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Type.Sub using (_<:?_)
 import Once.Spec.Core.Typing as Ty
-import Once.Internal.Elaboration as E
 import Once.TypeCheck.View as TView
 
 monoSchema : Type → Schema
@@ -100,7 +97,6 @@ wkT (t-def d e ts) = t-def (suc d) e (wkT ts)
 
 module _ {s} {S : Defs s} where
 
-  module ES = E Σ S
   module VS = TView Σ S
 
   impAt : ∀ {imps} → ImpSig S imps → ∀ {x T′} → lookupImport imps x ≡ just T′ → VS.ImportAt x T′
@@ -137,13 +133,6 @@ module _ {s} {S : Defs s} where
 u0 : ∀ {m s} {S : Defs s} {Δ : Once.Spec.Type.KCtx m} {Ψ : Usage 0} {t A π}
    → Ty._⊩_⊢[_]_∷_!_ Σ S Δ SCx.∅ Ψ t A π → Ty._⊩_⊢[_]_∷_!_ Σ S Δ SCx.∅ [] t A π
 u0 {Ψ = []} d = d
-
--- A telescope definition: an entry at its schema, its body elaborated over its
--- parameters.
-polyDef : ∀ {s} {S : Defs s} {sc pfi Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-        → ctxOfAt (kindsOf (pfunType pfi)) sc ⊢ᶜ pfunBody pfi ∶ rigidOf (pfunType pfi) ⨾ Ψ → Tele (S ▷ schemaOf (pfunType pfi))
-polyDef {S = S} {pfi = pfi} tl ss is ts D =
-  let (t , d) = E.elabᶜ Σ S (viewOf ss is ts) D in def tl (schemaOf (pfunType pfi)) t (u0 d)
 
 programAt : ∀ {s} {S : Defs s} → Tele S → (d : Fin s) → Entry (S !! d) → Program
 programAt tl d e = program tl d e
