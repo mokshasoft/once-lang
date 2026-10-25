@@ -53,6 +53,7 @@ open import Once.IRTy using (IRTy)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)
 import Once.Internal.Context as Srf
+import Once.Spec.Context as Srf
 import Once.Spec.Context as SCx
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD

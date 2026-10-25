@@ -52,7 +52,9 @@ open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_�
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (Base; WFFun; b-Unit; ∅ₖ)
 import Data.List as L
-open import Once.Internal.Context using (Ctx; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
+open import Once.Internal.Context using (svar; SVar; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _⊔ᵘ_) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; zeroUsage)
+open import Once.Spec.Context using () renaming (lookup to lookupᵗ)
 open import Once.Spec.Context using (_▸_)
 open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)

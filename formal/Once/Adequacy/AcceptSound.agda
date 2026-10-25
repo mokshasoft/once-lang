@@ -41,6 +41,8 @@ import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
 import Once.Internal.Context as Srf
+open import Once.Spec.Context using (zeroUsage)
+import Once.Spec.Context as Srf
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Internal.Typing.Scope as Classify
@@ -54,7 +56,6 @@ open import Once.Internal.Type.Instance using (rigidOf)
 open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Honest using (HonestFFI; honest?)
-open import Once.Internal.Context using (zeroUsage)
 import Once.Surface.Context
 open import Data.Maybe using (Maybe; nothing)
 open import Once.Compile using (moduleToIR)

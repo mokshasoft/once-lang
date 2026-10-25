@@ -14,6 +14,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Context using (Usage)
 
 module Once.Internal.Core.Translate (Σ : Signature) where
 
@@ -48,7 +49,7 @@ import Once.Parser as Parser
 open Parser.FunInfo using (funName; funBody; funType)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.Internal.Context as Ctx using (Usage)
+import Once.Spec.Context as Ctx
 open import Once.Spec.Context using ([])
 import Once.Spec.Context as SCx
 open import Once.Internal.Module using (Scope; emptyScope; ModTele; teleSig; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp)

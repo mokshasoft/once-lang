@@ -113,8 +113,8 @@ du_usage'45''8849''45'isPartialOrder_94
          (coe
             (\ v0 v1 v2 ->
                coe
-                 MAlonzo.Code.Once.Internal.Context.du_'8849''7512''45'refl_138
+                 MAlonzo.Code.Once.Internal.Context.du_'8849''7512''45'refl_102
                  (coe v0)))
          (coe
-            MAlonzo.Code.Once.Internal.Context.du_'8849''7512''45'trans_218))
+            MAlonzo.Code.Once.Internal.Context.du_'8849''7512''45'trans_182))
       erased

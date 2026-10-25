@@ -11,6 +11,7 @@
 -- `f`-route, the spine, and the bare-generator fallbacks.
 ------------------------------------------------------------------------
 import Once.Type.Grade
+open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; zeroUsage)
 module Once.TypeCheck.Completeness.Routes where
 
 import Once.Surface.Syntax as Srf
@@ -54,7 +55,7 @@ open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wfFun?-complete-at)
 import Once.Internal.Typing.Scope
 import Once.TypeCheck.Classify
-open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+import Once.Spec.Context as Surface
 import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Relation.Nullary using (¬_)

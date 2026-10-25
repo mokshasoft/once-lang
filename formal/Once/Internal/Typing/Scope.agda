@@ -44,6 +44,7 @@ import Once.Spec.Surface.Syntax as Raw
 open import Once.Internal.Context using (SVar; svar)
 open import Once.Spec.Context using (_▸_)
 import Once.Internal.Context as Surface
+import Once.Spec.Context as Surface
 
 ------------------------------------------------------------------------
 -- Local variables, by name

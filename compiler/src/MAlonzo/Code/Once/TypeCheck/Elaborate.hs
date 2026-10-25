@@ -2026,12 +2026,13 @@ du_inferElab'45'RApp'45'id_1398 v0 v1
         -> coe
              C_success_98 (coe v2)
              (coe
-                MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                (coe
+                   MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                    (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v0)))
                 (coe
-                   MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v3))
+                   MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                   (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v3)))
              (coe
                 MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v3 v2
                 (coe MAlonzo.Code.Once.IR.C_id_20) v4)
@@ -2106,7 +2107,7 @@ du_given'45'poly'45'k_1462 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                            (coe
                               C_success_280 (coe v3)
                               (coe
-                                 MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                 MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                  (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v0)))
                               (coe
                                  MAlonzo.Code.Once.Surface.Syntax.C_coerce_380
@@ -2625,7 +2626,7 @@ du_checkElabV'45'RVar'45'poly'45'inst'45'aux_2020 v0 v1 v2 v3 v4 v5
                            (coe
                               C_success_126
                               (coe
-                                 MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                 MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                  (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v0)))
                               (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_406 v1)
                               (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -2792,7 +2793,7 @@ du_inferElabV'45'RVar'45'poly'45'ground'45'aux_2184 v0 v1 v2 v3 v4
                    MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56 (coe v0)
                    (coe v3) (coe v6))
                 (coe
-                   MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                   MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                    (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_406 v2)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -3142,12 +3143,13 @@ du_inferOutGo_2380 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                           MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v2)
                           (coe MAlonzo.Code.Once.Spec.Type.C_ν_30 (coe v2) (coe v3)))
                        (coe
-                          MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                          (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                          MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                              (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                           (coe
-                             MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v4))
+                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v4)))
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v4
                           (coe MAlonzo.Code.Once.Spec.Type.C_ν_30 (coe v2) (coe v3))
@@ -3172,12 +3174,13 @@ du_inferOutGo_2380 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                              MAlonzo.Code.Once.Spec.Type.du_'10214'_'10215'F_50 (coe v2)
                              (coe MAlonzo.Code.Once.Spec.Type.C_ν_30 (coe v2) (coe v3))))
                        (coe
-                          MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                          (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                          MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                              (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                           (coe
-                             MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v4))
+                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v4)))
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v4
                           (coe MAlonzo.Code.Once.Spec.Type.C_ν_30 (coe v2) (coe v3))
@@ -3318,12 +3321,13 @@ du_inferFstAt_2536 v0 v1 v2 v3 v4 v5 v6 v7
                     (coe
                        C_success_98 (coe v10)
                        (coe
-                          MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                          (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                          MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                              (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v0)))
                           (coe
-                             MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v2))
+                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v2)))
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v2 v1
                           (coe MAlonzo.Code.Once.IR.C_fst_42) v3)
@@ -3403,12 +3407,13 @@ du_inferSndAt_2616 v0 v1 v2 v3 v4 v5 v6 v7
                     (coe
                        C_success_98 (coe v11)
                        (coe
-                          MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                          (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                          MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                          (coe
+                             MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                              (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v0)))
                           (coe
-                             MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v2))
+                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                             (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v2)))
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v2 v1
                           (coe MAlonzo.Code.Once.IR.C_snd_48) v3)
@@ -3506,16 +3511,17 @@ du_inferApplyAt_2696 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                                     (coe
                                                                        C_success_98 (coe v17)
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                          (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                          MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                          (coe
+                                                                             MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                                 (coe v1)))
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
+                                                                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Spec.Grade.C_Many_12)
-                                                                             v3))
+                                                                             (coe v3)))
                                                                        (coe
                                                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438
                                                                           v3
@@ -3583,16 +3589,17 @@ du_inferApplyAt_2696 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                                              (coe v19))
                                                                           (coe v17))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                          (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                          MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                          (coe
+                                                                             MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                                 (coe v1)))
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
+                                                                             MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                                                                              (coe
                                                                                 MAlonzo.Code.Once.Spec.Grade.C_Many_12)
-                                                                             v3))
+                                                                             (coe v3)))
                                                                        (coe
                                                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438
                                                                           v3
@@ -3686,16 +3693,17 @@ du_inferApplyAt_2696 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                                       (coe v19))
                                                                    (coe v17))
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                   (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                   MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                   (coe
+                                                                      MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                       (coe
                                                                          MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                          (coe v1)))
                                                                    (coe
-                                                                      MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
+                                                                      MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                                                                       (coe
                                                                          MAlonzo.Code.Once.Spec.Grade.C_Many_12)
-                                                                      v3))
+                                                                      (coe v3)))
                                                                 (coe
                                                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438
                                                                    v3
@@ -3833,8 +3841,8 @@ du_inferElabV'45'RPair'45'aux_2942 v0 v1
                                      (coe
                                         MAlonzo.Code.Once.Spec.Type.C__'42'__22 (coe v4) (coe v11))
                                      (coe
-                                        MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v5
-                                        v12)
+                                        MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v5)
+                                        (coe v12))
                                      (coe MAlonzo.Code.Once.Surface.Syntax.C_pair_86 v5 v12 v6 v13)
                                      (coe
                                         MAlonzo.Code.Data.Nat.Base.d__'8852'__208 (coe v7)
@@ -4033,7 +4041,7 @@ d_checkElabV'45'neg'45'int'45'aux_3118 v0 v1 v2 v3
                               (coe
                                  C_success_126
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                     (coe
                                        MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                                  (coe
@@ -4088,7 +4096,7 @@ d_checkElabV'45'neg'45'float'45'aux_3156 v0 v1 v2 v3 v4 v5
                               (coe
                                  C_success_126
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                     (coe
                                        MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                                  (coe
@@ -4336,8 +4344,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_add_212
                                                              v7 v14 v8 v15)
@@ -4355,8 +4363,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_sub_222
                                                              v7 v14 v8 v15)
@@ -4374,8 +4382,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_mul_232
                                                              v7 v14 v8 v15)
@@ -4393,8 +4401,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_div_290
                                                              v7 v14 v8 v15)
@@ -4412,8 +4420,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_mod''_300
                                                              v7 v14 v8 v15)
@@ -4437,8 +4445,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe
                                                                 MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_lt_318
                                                              v7 v14 v8 v15)
@@ -4462,8 +4470,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe
                                                                 MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_le_328
                                                              v7 v14 v8 v15)
@@ -4487,8 +4495,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe
                                                                 MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_gt_338
                                                              v7 v14 v8 v15)
@@ -4512,8 +4520,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe
                                                                 MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_ge_348
                                                              v7 v14 v8 v15)
@@ -4537,8 +4545,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe
                                                                 MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_eq_358
                                                              v7 v14 v8 v15)
@@ -4562,8 +4570,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                              (coe
                                                                 MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_ne_368
                                                              v7 v14 v8 v15)
@@ -4584,8 +4592,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fadd_242
                                                              v7 v14
@@ -4607,8 +4615,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fsub_252
                                                              v7 v14
@@ -4630,8 +4638,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fmul_262
                                                              v7 v14
@@ -4653,8 +4661,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fdiv_272
                                                              v7 v14
@@ -4869,8 +4877,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v6)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fadd_242
                                                              v7 v14 v8
@@ -4891,8 +4899,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v6)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fsub_252
                                                              v7 v14 v8
@@ -4913,8 +4921,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v6)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fmul_262
                                                              v7 v14 v8
@@ -4935,8 +4943,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v6)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fdiv_272
                                                              v7 v14 v8
@@ -5044,8 +5052,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fadd_242
                                                              v7 v14 v8 v15)
@@ -5063,8 +5071,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fsub_252
                                                              v7 v14 v8 v15)
@@ -5082,8 +5090,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fmul_262
                                                              v7 v14 v8 v15)
@@ -5101,8 +5109,8 @@ du_inferElabV'45'RBinOp'45'aux_3204 v0 v1 v2 v3
                                                        (coe
                                                           C_success_98 (coe v13)
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                             v7 v14)
+                                                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                             (coe v7) (coe v14))
                                                           (coe
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fdiv_272
                                                              v7 v14 v8 v15)
@@ -5275,8 +5283,10 @@ du_inferElabV'45'RLet'45'aux2_4240 v0 v1 v2 v3 v4 v5 v6
                            (coe
                               C_success_98 (coe v9)
                               (coe
-                                 MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v16
-                                 (coe MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48 v15 v2))
+                                 MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v16)
+                                 (coe
+                                    MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72 (coe v15)
+                                    (coe v2)))
                               (coe
                                  MAlonzo.Code.Once.Surface.Syntax.C_let''_188 v2 v16 v15 v1 v3 v11)
                               (coe
@@ -5362,9 +5372,9 @@ du_inferElabV'45'RDestruct'45'join_4342 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 C_success_98 (coe v22)
                 (coe
-                   MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v4
+                   MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v4)
                    (coe
-                      MAlonzo.Code.Once.Internal.Context.du__'8852''7512'__52 (coe v10)
+                      MAlonzo.Code.Once.Internal.Context.du__'8852''7512'__24 (coe v10)
                       (coe v16)))
                 (coe
                    MAlonzo.Code.Once.Surface.Syntax.C_case''_156 v4 v10 v16 v9 v15 v2
@@ -5466,7 +5476,9 @@ du_given'45'case'45'join_4456 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 C_success_280 (coe v16)
-                (coe MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v5 v10)
+                (coe
+                   MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v5)
+                   (coe v10))
                 (coe
                    MAlonzo.Code.Once.Surface.Syntax.C_copair''_474 v5 v10
                    (coe
@@ -5687,7 +5699,7 @@ du_inferElabV'45'RResolved'45'arrow'45'aux_4684 v0 v1 v2 v3 v4 v5
                                         (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v6))
                                      (coe v5)))
                                (coe
-                                  MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                  MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                   (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                                (coe
                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_388
@@ -5784,7 +5796,7 @@ du_inferElabV'45'RResolved'45'value'45'aux_4744 v0 v1 v2 v3 v4 v5
                         (coe
                            MAlonzo.Code.Once.Internal.Type.d_wk'8320'_12 (coe v0) (coe v4))
                         (coe
-                           MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                           MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                            (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                         (coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_388 v4 v2 v6)
                         (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -5872,7 +5884,7 @@ du_inferElabV'45'RResolved'45'own'45'aux_4786 v0 v1 v2 v3
                 (coe
                    MAlonzo.Code.Once.Internal.Type.d_wk'8320'_12 (coe v0) (coe v4))
                 (coe
-                   MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                   MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                    (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_closure_396 v2)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -6055,7 +6067,7 @@ d_checkElabV'45'RVar'45'bbc'45'id'45'failure'45'aux_4898 v0 v1 v2
                                                        (coe
                                                           C_success_126
                                                           (coe
-                                                             MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                             MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                              (coe
                                                                 MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                 (coe v1)))
@@ -6195,7 +6207,7 @@ d_checkElabV'45'RVar'45'bbc'45'fst'45'failure'45'aux_4990 v0 v1 v2
                                                               (coe
                                                                  C_success_126
                                                                  (coe
-                                                                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                     (coe
                                                                        MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                        (coe v1)))
@@ -6368,7 +6380,7 @@ d_checkElabV'45'RVar'45'bbc'45'snd'45'failure'45'aux_5126 v0 v1 v2
                                                               (coe
                                                                  C_success_126
                                                                  (coe
-                                                                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                     (coe
                                                                        MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                        (coe v1)))
@@ -6529,7 +6541,7 @@ du_checkElabV'45'RVar'45'bbc'45'terminal'45'failure'45'aux_5262 v0
                                           (coe
                                              C_success_126
                                              (coe
-                                                MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                 (coe
                                                    MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                    (coe v0)))
@@ -6698,7 +6710,7 @@ du_checkElabV'45'RVar'45'bbc'45'initial'45'failure'45'aux_5366 v0
                                           (coe
                                              C_success_126
                                              (coe
-                                                MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                 (coe
                                                    MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                    (coe v0)))
@@ -6852,7 +6864,7 @@ d_checkElabV'45'RVar'45'bbc'45'inl'45'failure'45'aux_5470 v0 v1 v2
                                                               (coe
                                                                  C_success_126
                                                                  (coe
-                                                                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                     (coe
                                                                        MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                        (coe v1)))
@@ -7029,7 +7041,7 @@ d_checkElabV'45'RVar'45'bbc'45'inr'45'failure'45'aux_5606 v0 v1 v2
                                                               (coe
                                                                  C_success_126
                                                                  (coe
-                                                                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                     (coe
                                                                        MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                        (coe v1)))
@@ -7333,7 +7345,7 @@ d_inferElabV'45'RResolved'45'dispatch_5880 v0 v1 v2 v3
              (coe
                 C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18)
                 (coe
-                   MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                   MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                    (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_unit_162)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -7492,7 +7504,7 @@ d_checkElabV'45'RFloat'45'aux_6056 v0 v1 v2 v3 v4 v5
                               (coe
                                  C_success_126
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                     (coe
                                        MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                                  (coe
@@ -7540,7 +7552,7 @@ du_inferElabV'45'RFloat'45'aux_6104 v0 v1 v2 v3
       (coe
          C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
          (coe
-            MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+            MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
             (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v0)))
          (coe
             MAlonzo.Code.Once.Surface.Syntax.C_float_202
@@ -7655,8 +7667,8 @@ d_checkPairOn_6136 v0 v1 v2 v3 v4 v5
                                                                     (coe
                                                                        C_success_126
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                          v20 v27)
+                                                                          MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                          (coe v20) (coe v27))
                                                                        (coe
                                                                           MAlonzo.Code.Once.Surface.Syntax.C_fork''_492
                                                                           v20 v27 v21 v28)
@@ -7728,8 +7740,8 @@ d_checkPairLit_6150 v0 v1 v2 v3 v4 v5
                                         (coe
                                            C_success_126
                                            (coe
-                                              MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                              v9 v16)
+                                              MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                              (coe v9) (coe v16))
                                            (coe
                                               MAlonzo.Code.Once.Surface.Syntax.C_pair_86 v9 v16 v10
                                               v17)
@@ -7880,8 +7892,8 @@ d_checkCaseGo_6192 v0 v1 v2 v3 v4 v5 v6 v7
                                         (coe
                                            C_success_126
                                            (coe
-                                              MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                              v11 v18)
+                                              MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                              (coe v11) (coe v18))
                                            (coe
                                               MAlonzo.Code.Once.Surface.Syntax.C_copair''_474 v11
                                               v18 v12 v19)
@@ -8168,8 +8180,8 @@ d_elabGivenApp_6242 v0 v1 v2 v3 v4 v5 v6 v7
                                                                MAlonzo.Code.Once.Spec.Type.C__'42'__22
                                                                (coe v15) (coe v23))
                                                             (coe
-                                                               MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                               v16 v24)
+                                                               MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                               (coe v16) (coe v24))
                                                             (coe
                                                                MAlonzo.Code.Once.Surface.Syntax.C_fork''_492
                                                                v16 v24 v17 v25)
@@ -8220,13 +8232,13 @@ d_elabGivenApp_6242 v0 v1 v2 v3 v4 v5 v6 v7
                                                          (coe
                                                             C_success_280 (coe v23)
                                                             (coe
-                                                               MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                               v24
+                                                               MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                               (coe v24)
                                                                (coe
-                                                                  MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
+                                                                  MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
                                                                   (coe
                                                                      MAlonzo.Code.Once.Spec.Grade.C_Many_12)
-                                                                  v16))
+                                                                  (coe v16)))
                                                             (coe
                                                                MAlonzo.Code.Once.Surface.Syntax.C_comp''_456
                                                                v24 v16 v15 v25 v17)
@@ -8349,10 +8361,12 @@ d_checkCompose'45'g_6258 v0 v1 v2 v3 v4 v5 v6 v7
                                      (coe
                                         C_success_126
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v18
+                                           MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                           (coe v18)
                                            (coe
-                                              MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v11))
+                                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                              (coe v11)))
                                         (coe
                                            MAlonzo.Code.Once.Surface.Syntax.C_comp''_456 v18 v11 v10
                                            v19 v12)
@@ -8457,12 +8471,15 @@ d_checkCompose'45'f_6274 v0 v1 v2 v3 v4 v5 v6
                                                                                         (coe
                                                                                            C_success_126
                                                                                            (coe
-                                                                                              MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                                              v12
+                                                                                              MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
                                                                                               (coe
-                                                                                                 MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                                                                                 v19
-                                                                                                 v28))
+                                                                                                 v12)
+                                                                                              (coe
+                                                                                                 MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                                                                                 (coe
+                                                                                                    v19)
+                                                                                                 (coe
+                                                                                                    v28)))
                                                                                            (coe
                                                                                               MAlonzo.Code.Once.Surface.Syntax.C_comp''_456
                                                                                               v12
@@ -8716,14 +8733,15 @@ du_checkInGo_6334 v0 v1 v2 v3 v4
                               (coe
                                  C_success_126
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                    (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                    MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                    (coe
+                                       MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                        (coe
                                           MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                           (coe v1)))
                                     (coe
-                                       MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v9))
+                                       MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v9)))
                                  (coe
                                     MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v9
                                     (coe
@@ -9077,8 +9095,8 @@ du_checkLoop_6420 v0 v1
                     (coe
                        C_success_126
                        (coe
-                          MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                          (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v4)
+                          MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                          (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v4))
                        (coe MAlonzo.Code.Once.Surface.Syntax.C_loop_556 v4 v5)
                        (coe addInt (coe (1 :: Integer)) (coe v6)) (coe v7))
                     (coe
@@ -9154,7 +9172,7 @@ d_inferElabV_6428 v0 v1 v2
              (coe
                 C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18)
                 (coe
-                   MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                   MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                    (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_unit_162)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -9165,7 +9183,7 @@ d_inferElabV_6428 v0 v1 v2
              (coe
                 C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                 (coe
-                   MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                   MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                    (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                 (coe MAlonzo.Code.Once.Surface.Syntax.C_int_194 v3)
                 (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -9412,7 +9430,7 @@ d_inferElabV'45'neg'45'aux_6474 v0 v1 v2 v3
                     (coe
                        C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe
-                          MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                          MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                           (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_neg_308
@@ -9432,7 +9450,7 @@ d_inferElabV'45'neg'45'aux_6474 v0 v1 v2 v3
                     (coe
                        C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
                        (coe
-                          MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                          MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                           (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_float_202
@@ -9796,11 +9814,12 @@ du_inferElabV'45'RApp'45'other'45'aux_6554 v0 v1 v2 v3 v4
                                                                            (coe
                                                                               C_success_98 (coe v15)
                                                                               (coe
-                                                                                 MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                                 v9
+                                                                                 MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                                 (coe v9)
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                                                                    v16 v22))
+                                                                                    MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                                                                    (coe v16)
+                                                                                    (coe v22)))
                                                                               (coe
                                                                                  MAlonzo.Code.Once.Surface.Syntax.C_app_54
                                                                                  v9 v22 v13 v16 v10
@@ -9869,11 +9888,13 @@ du_inferElabV'45'RApp'45'other'45'aux_6554 v0 v1 v2 v3 v4
                                                                                         (coe v14)
                                                                                         (coe v15))
                                                                                      (coe
-                                                                                        MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                                        v9
+                                                                                        MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                                        (coe v9)
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                                                                           v16 v22))
+                                                                                           MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                                                                           (coe v16)
+                                                                                           (coe
+                                                                                              v22)))
                                                                                      (coe
                                                                                         MAlonzo.Code.Once.Surface.Syntax.C_effApp_72
                                                                                         v9 v22 v13
@@ -9950,11 +9971,12 @@ du_inferElabV'45'RApp'45'other'45'aux_6554 v0 v1 v2 v3 v4
                                                                                  (coe v14)
                                                                                  (coe v15))
                                                                               (coe
-                                                                                 MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                                 v9
+                                                                                 MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                                 (coe v9)
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                                                                    v16 v21))
+                                                                                    MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                                                                    (coe v16)
+                                                                                    (coe v21)))
                                                                               (coe
                                                                                  MAlonzo.Code.Once.Surface.Syntax.C_effApp_72
                                                                                  v9 v21 v13
@@ -10062,14 +10084,15 @@ du_inferElabV'45'RApp'45'dispatch_6566 v0 v1 v2 v3 v4
                               (coe
                                  C_success_98 (coe v8)
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                    (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                    MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                    (coe
+                                       MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                        (coe
                                           MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                           (coe v1)))
                                     (coe
-                                       MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v9))
+                                       MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v9)))
                                  (coe
                                     MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v9 v8
                                     (coe MAlonzo.Code.Once.IR.C_id_20) v10)
@@ -10103,14 +10126,15 @@ du_inferElabV'45'RApp'45'dispatch_6566 v0 v1 v2 v3 v4
                               (coe
                                  C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18)
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                    (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                    MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                    (coe
+                                       MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                        (coe
                                           MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                           (coe v1)))
                                     (coe
-                                       MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v9))
+                                       MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v9)))
                                  (coe
                                     MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v9 v8
                                     (coe MAlonzo.Code.Once.IR.C_terminal_72) v10)
@@ -10254,14 +10278,16 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                       (coe
                                          C_success_98 (coe v9)
                                          (coe
-                                            MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                            (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                            MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                            (coe
+                                               MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                (coe
                                                   MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                   (coe v1)))
                                             (coe
-                                               MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                               (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v10))
+                                               MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                               (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                               (coe v10)))
                                          (coe
                                             MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v10
                                             v9 (coe MAlonzo.Code.Once.IR.C_id_20) v11)
@@ -10326,14 +10352,16 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                       (coe
                                          C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18)
                                          (coe
-                                            MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                            (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                            MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                            (coe
+                                               MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                (coe
                                                   MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                   (coe v1)))
                                             (coe
-                                               MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                               (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v10))
+                                               MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                               (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                               (coe v10)))
                                          (coe
                                             MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v10
                                             v9 (coe MAlonzo.Code.Once.IR.C_terminal_72) v11)
@@ -10393,14 +10421,16 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                      (coe
                                         C_success_126
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                           (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                           MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                           (coe
+                                              MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                               (coe
                                                  MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                  (coe v1)))
                                            (coe
-                                              MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v11))
+                                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                              (coe v11)))
                                         (coe
                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v11
                                            v6 (coe MAlonzo.Code.Once.IR.C_inl_54) v12)
@@ -10494,14 +10524,16 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                                      (coe
                                         C_success_126
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                           (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                           MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                           (coe
+                                              MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                               (coe
                                                  MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                  (coe v1)))
                                            (coe
-                                              MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v11))
+                                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                              (coe v11)))
                                         (coe
                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v11
                                            v7 (coe MAlonzo.Code.Once.IR.C_inr_60) v12)
@@ -10566,14 +10598,15 @@ du_checkElabV'45'RApp'45'dispatch_6580 v0 v1 v2 v3 v4 v5
                               (coe
                                  C_success_126
                                  (coe
-                                    MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                    (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                    MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                    (coe
+                                       MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                        (coe
                                           MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                           (coe v1)))
                                     (coe
-                                       MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v9))
+                                       MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v9)))
                                  (coe
                                     MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438 v9
                                     (coe MAlonzo.Code.Once.Spec.Type.C_Void_20)
@@ -10755,10 +10788,12 @@ du_inferSpine_6590 v0 v1 v2 v3
                                      (coe
                                         C_success_98 (coe v14)
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v15
+                                           MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                           (coe v15)
                                            (coe
-                                              MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v7))
+                                              MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                              (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
+                                              (coe v7)))
                                         (coe
                                            MAlonzo.Code.Once.Surface.Syntax.C_app_54 v15 v7 v6
                                            (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v16 v8)
@@ -10798,7 +10833,7 @@ d_checkElabV'45'RInt'45'aux_6600 v0 v1 v2 v3
               (coe
                  C_success_98 (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                  (coe
-                    MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                    MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                     (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132 (coe v1)))
                  (coe MAlonzo.Code.Once.Surface.Syntax.C_int_194 v2)
                  (coe (0 :: Integer)) (coe (0 :: Integer)))
@@ -11051,16 +11086,19 @@ d_checkApply_10166 v0 v1 v2 v3
                                                                                                          (coe
                                                                                                             C_success_126
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44
-                                                                                                               (MAlonzo.Code.Once.Internal.Context.d_zeroUsage_36
+                                                                                                               MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60
+                                                                                                               (coe
+                                                                                                                  MAlonzo.Code.Once.Spec.Context.d_zeroUsage_44
                                                                                                                   (coe
                                                                                                                      MAlonzo.Code.Once.Internal.Typing.Scope.d_size_132
                                                                                                                      (coe
                                                                                                                         v1)))
                                                                                                                (coe
-                                                                                                                  MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                                                                                                  v17
-                                                                                                                  v8))
+                                                                                                                  MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                                                                                                  (coe
+                                                                                                                     v17)
+                                                                                                                  (coe
+                                                                                                                     v8)))
                                                                                                             (coe
                                                                                                                MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_438
                                                                                                                v8
@@ -11279,8 +11317,10 @@ d_inferElab'45'RApp'45'other_10434 v0 v1 v2 v3
                      -> coe
                           C_success_98 (coe v7)
                           (coe
-                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v8
-                             (coe MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48 v6 v13))
+                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v8)
+                             (coe
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72 (coe v6)
+                                (coe v13)))
                           (coe MAlonzo.Code.Once.Surface.Syntax.C_app_54 v8 v13 v5 v6 v9 v14)
                           (coe MAlonzo.Code.Data.Nat.Base.d__'8852'__208 (coe v10) (coe v15))
                           (coe v16)
@@ -11304,10 +11344,10 @@ d_inferElab'45'RApp'45'other_10434 v0 v1 v2 v3
                                 (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v5))
                              (coe v8))
                           (coe
-                             MAlonzo.Code.Once.Internal.Context.du__'43''7512'__44 v9
+                             MAlonzo.Code.Once.Spec.Context.du__'43''7512'__60 (coe v9)
                              (coe
-                                MAlonzo.Code.Once.Internal.Context.du__'42''7512'__48
-                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) v14))
+                                MAlonzo.Code.Once.Spec.Context.du__'42''7512'__72
+                                (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v14)))
                           (coe
                              MAlonzo.Code.Once.Surface.Syntax.C_effApp_72 v9 v14 v7 v6 v10 v15)
                           (coe MAlonzo.Code.Data.Nat.Base.d__'8852'__208 (coe v11) (coe v16))

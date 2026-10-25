@@ -179,7 +179,8 @@ diag-bind act  m k = refl
 -- environments, given their arms' bridges.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Context using (_+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; ⊑ᵘ-*One; zeroUsage; _⊑ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-refl)
+open import Once.Internal.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; ⊑ᵘ-*One; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-refl)
+open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; _⊑ᵘ_; zeroUsage)
 open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)

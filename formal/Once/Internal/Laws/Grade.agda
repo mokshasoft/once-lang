@@ -7,7 +7,7 @@
 --
 --   * usage `(Quantity, +q, *q, Zero, One)` is a commutative semiring;
 --   * `⊔q` is a semilattice (the usage of a case), and the order relation
---     `_≤q'_` is a decidable total order whose Boolean form is `_≤q_`;
+--     `_≤q_` is a decidable total order whose Boolean form is `_≤qᵇ_`;
 --   * effect `(Purity, ·p, pure)` is a commutative monoid ordered by `_⊑π_`
 --     (sequencing, D311), and `⊔p` its join — a semilattice with top `eff`;
 --     on the chain (D314) sequencing is the join.
@@ -29,7 +29,8 @@ open import Relation.Binary.Structures using (IsDecTotalOrder)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_; Purity; pure; act; eff; _·p_)
 open import Once.Type.Grade using (_⊔q_; _≤qᵇ_; _⊔p_)
-open import Once.Internal.Context using (_≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Internal.Context using (z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Grade using (_≤q_)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Type.DecEq using (_≟q_)
 
@@ -203,12 +204,12 @@ quantity-⊔-isCommutativeBand = record
 -- Usage: the order 0 ≤ 1 ≤ ω
 ------------------------------------------------------------------------
 
-≤q'-refl : ∀ {a} → a ≤q' a
+≤q'-refl : ∀ {a} → a ≤q a
 ≤q'-refl {Zero} = z≤z
 ≤q'-refl {One} = o≤o
 ≤q'-refl {Many} = m≤m
 
-≤q'-trans : ∀ {a b c} → a ≤q' b → b ≤q' c → a ≤q' c
+≤q'-trans : ∀ {a b c} → a ≤q b → b ≤q c → a ≤q c
 ≤q'-trans z≤z q = q
 ≤q'-trans z≤o o≤o = z≤o
 ≤q'-trans z≤o o≤m = z≤m
@@ -217,12 +218,12 @@ quantity-⊔-isCommutativeBand = record
 ≤q'-trans o≤m m≤m = o≤m
 ≤q'-trans m≤m m≤m = m≤m
 
-≤q'-antisym : ∀ {a b} → a ≤q' b → b ≤q' a → a ≡ b
+≤q'-antisym : ∀ {a b} → a ≤q b → b ≤q a → a ≡ b
 ≤q'-antisym z≤z _ = refl
 ≤q'-antisym o≤o _ = refl
 ≤q'-antisym m≤m _ = refl
 
-≤q'-total : ∀ a b → (a ≤q' b) ⊎ (b ≤q' a)
+≤q'-total : ∀ a b → (a ≤q b) ⊎ (b ≤q a)
 ≤q'-total Zero Zero = inj₁ z≤z
 ≤q'-total Zero One = inj₁ z≤o
 ≤q'-total Zero Many = inj₁ z≤m
@@ -233,7 +234,7 @@ quantity-⊔-isCommutativeBand = record
 ≤q'-total Many One = inj₂ o≤m
 ≤q'-total Many Many = inj₁ m≤m
 
-_≤q'?_ : ∀ a b → Dec (a ≤q' b)
+_≤q'?_ : ∀ a b → Dec (a ≤q b)
 Zero ≤q'? Zero = yes z≤z
 Zero ≤q'? One = yes z≤o
 Zero ≤q'? Many = yes z≤m
@@ -244,7 +245,7 @@ Many ≤q'? Zero = no λ ()
 Many ≤q'? One = no λ ()
 Many ≤q'? Many = yes m≤m
 
-quantity-≤-isDecTotalOrder : IsDecTotalOrder _≡_ _≤q'_
+quantity-≤-isDecTotalOrder : IsDecTotalOrder _≡_ _≤q_
 quantity-≤-isDecTotalOrder = record
   { isTotalOrder = record
     { isPartialOrder = record
@@ -257,8 +258,8 @@ quantity-≤-isDecTotalOrder = record
   ; _≟_ = _≟q_
   ; _≤?_ = _≤q'?_ }
 
--- The Boolean `_≤q_` decides the relation `_≤q'_`.
-≤q-sound : ∀ a b → a ≤qᵇ b ≡ true → a ≤q' b
+-- The Boolean `_≤q_` decides the relation `_≤q_`.
+≤q-sound : ∀ a b → a ≤qᵇ b ≡ true → a ≤q b
 ≤q-sound Zero Zero _ = z≤z
 ≤q-sound Zero One _ = z≤o
 ≤q-sound Zero Many _ = z≤m
@@ -269,7 +270,7 @@ quantity-≤-isDecTotalOrder = record
 ≤q-sound Many One ()
 ≤q-sound Many Many _ = m≤m
 
-≤q-complete : ∀ {a b} → a ≤q' b → a ≤qᵇ b ≡ true
+≤q-complete : ∀ {a b} → a ≤q b → a ≤qᵇ b ≡ true
 ≤q-complete z≤z = refl
 ≤q-complete z≤o = refl
 ≤q-complete z≤m = refl

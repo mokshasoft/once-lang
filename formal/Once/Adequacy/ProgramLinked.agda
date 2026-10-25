@@ -73,6 +73,7 @@ open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 import Once.Parser.Module.Core as P
 import Once.Surface.Context as Ctx
 open import Once.Internal.Context hiding (_,_)
+open import Once.Spec.Context using (Ctx; Usage; zeroUsage)
 open import Once.Spec.Context using ([]; _∷_)
 import Once.Spec.Context
 open import Once.Surface.Context

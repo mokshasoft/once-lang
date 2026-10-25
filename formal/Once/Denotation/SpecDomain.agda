@@ -32,7 +32,8 @@ import Once.Spec.Type as SpT
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 import Once.Spec.Context
-open import Once.Internal.Context using (Ctx; Usage; lookup; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse)
+open import Once.Internal.Context using (⟦_⟧ᶜ; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Context using (Ctx; Usage; []; _⊑ᵘ_; lookup; singleUse; ∅)
 open import Once.Internal.Type using (wk₀)
 open import Once.Internal.Weaken using (wk₀-id)
 open import Once.Spec.Polynomial using (inS)
@@ -110,7 +111,7 @@ lookupᵛUsed (Γ ▸ A) Data.Fin.zero    dγ = proj₂ dγ
 lookupᵛUsed (Γ ▸ A) (Data.Fin.suc i) dγ = lookupᵛUsed Γ i dγ
 
 restrictᵛ : ∀ {n} {Γ : Ctx 0 n} {Ψ Ψ' : Usage n} → Ψ' ⊑ᵘ Ψ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᵛ → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᵛ
-restrictᵛ {Γ = ∅}     ⊑[]          dγ = dγ
+restrictᵛ {Γ = ∅}     []          dγ = dγ
 restrictᵛ {Γ = Γ ▸ A} (z≤z ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule dγ
 restrictᵛ {Γ = Γ ▸ A} (z≤o ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ)
 restrictᵛ {Γ = Γ ▸ A} (z≤m ⊑∷ ule) dγ = restrictᵛ {Γ = Γ} ule (proj₁ dγ)

@@ -66,7 +66,7 @@ du_idx_72 v0
                -> case coe v3 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                       -> case coe v5 of
-                           MAlonzo.Code.Once.Internal.Context.C_svar_76 v8
+                           MAlonzo.Code.Once.Internal.Context.C_svar_48 v8
                              -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v8)
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError

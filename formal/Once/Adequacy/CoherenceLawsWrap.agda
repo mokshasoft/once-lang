@@ -20,6 +20,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Context using (Ctx)
 open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -38,7 +39,6 @@ open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Laws.SubLaws using (<:-trans)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
 open import Once.Spec.Sub using (sub-*)
-open import Once.Internal.Context using (Ctx)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 import Once.Type

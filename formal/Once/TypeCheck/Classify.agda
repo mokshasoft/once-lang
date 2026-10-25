@@ -52,7 +52,8 @@ open Once.Internal.Typing.Scope.Binding using (name)
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
 -- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
-open import Once.Internal.Context as Surface using () renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_)
+open import Once.Internal.Context as Surface using () renaming (_,_ to _S,_)
+open import Once.Spec.Context using () renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Spec.Context using (_▸_)
 
 ------------------------------------------------------------------------

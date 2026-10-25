@@ -53,8 +53,8 @@ open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 import Once.Internal.Context as Surface
+open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Spec.Context using (_∷_; _▸_)
-open import Once.Internal.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
 import Once.Denotation.SourceDenote as SD

@@ -21,6 +21,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Bool using (Bool)
+open import Once.Spec.Context using (Ctx; Usage; _+ᵘ_)
 open import Data.Fin using (Fin)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -55,7 +56,6 @@ open Schema using (type; arity)
 open import Once.Spec.Context using (lookup; singleUse; zeroUsage; _∷_)
 import Once.Spec.Surface.Syntax as R
 open import Once.Spec.Name using (gen; genNames)
-open import Once.Internal.Context using (Ctx; Usage; _+ᵘ_)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Internal.Laws.SubLaws using (<:-trans)
 open import Once.Internal.Type.WellFormed using (IsConcrete)

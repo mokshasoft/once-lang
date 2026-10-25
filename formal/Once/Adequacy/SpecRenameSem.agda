@@ -36,7 +36,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; eff; fin; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Ty; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑∷_; _⊑ᵘ_; singleUse; lookup)
-open import Once.Internal.Context using (_+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-unique)
+open import Once.Internal.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-unique)
+open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_)
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
 open import Once.Spec.Core.Typing Σ S

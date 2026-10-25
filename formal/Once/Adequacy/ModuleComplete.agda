@@ -17,6 +17,7 @@
 module Once.Adequacy.ModuleComplete where
 
 import Once.TypeCheck.SpecWitness
+open import Once.Spec.Context using (Usage)
 open import Once.Internal.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (Ty)
@@ -47,7 +48,6 @@ open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-sub; 
 open import Once.Spec.Type using (Type; Unit)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Internal.Context using (Usage)
 open import Once.Spec.Context using ([])
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.

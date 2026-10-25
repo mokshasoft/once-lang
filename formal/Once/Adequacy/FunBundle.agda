@@ -23,6 +23,7 @@ module Once.Adequacy.FunBundle where
 
 
 import Once.TypeCheck.SpecWitness
+open import Once.Spec.Context using (Usage)
 open import Once.Internal.Typing.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoWit; pair-at)
@@ -55,7 +56,6 @@ open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Internal.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
-open import Once.Internal.Context using (Usage)
 open import Once.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)

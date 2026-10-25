@@ -45,7 +45,9 @@ open import Once.TypeCheck.Elaborate
 open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Error using (TypeError)
 
-open import Once.Internal.Context as Surface using () renaming (Ctx to SCtx)
+open import Once.Internal.Context as Surface using ()
+import Once.Spec.Context as Surface
+open import Once.Spec.Context using () renaming (Ctx to SCtx)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 
 ------------------------------------------------------------------------

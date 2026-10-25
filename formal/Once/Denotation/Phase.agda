@@ -28,7 +28,8 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 -- Imported from `Surface.Context` (the DEFINING module) rather than through
 -- `Surface.Syntax`'s re-export: `_↾_` is recursive, and a recursive function
 -- reached through a re-export does not always reduce at the use site.
-open import Once.Internal.Context using (Ctx; Usage; lookup; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse)
+open import Once.Internal.Context using (⟦_⟧ᶜ; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Context using (Ctx; Usage; []; _⊑ᵘ_; lookup; singleUse; ∅)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 
@@ -53,7 +54,7 @@ lookupᴰUsed (Γ ▸ A) (fsuc i) dγ = lookupᴰUsed Γ i dγ
 --   smaller usage. `fst` where a variable is dropped, keep it otherwise.
 restrictᴰ : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n}
           → Ψ' ⊑ᵘ Ψ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ → ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜ ⟧ᴰ
-restrictᴰ {Γ = ∅}         ⊑[]              dγ = dγ
+restrictᴰ {Γ = ∅}         []              dγ = dγ
 restrictᴰ {Γ = Γ ▸ A} (z≤z ⊑∷ ule) dγ = restrictᴰ {Γ = Γ} ule dγ
 restrictᴰ {Γ = Γ ▸ A} (z≤o ⊑∷ ule) dγ = restrictᴰ {Γ = Γ} ule (proj₁ dγ)
 restrictᴰ {Γ = Γ ▸ A} (z≤m ⊑∷ ule) dγ = restrictᴰ {Γ = Γ} ule (proj₁ dγ)

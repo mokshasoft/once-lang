@@ -19293,7 +19293,7 @@ d_wt'45'var'45'local_5376 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
-  MAlonzo.Code.Once.Internal.Context.T_SVar_66 ->
+  MAlonzo.Code.Once.Internal.Context.T_SVar_38 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_wt'45'var'45'local_5376 v0 v1 v2 ~v3 ~v4 v5 ~v6
@@ -19302,11 +19302,11 @@ du_wt'45'var'45'local_5376 ::
   Integer ->
   MAlonzo.Code.Once.Internal.Typing.Scope.T_NamedCtx_114 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Internal.Context.T_SVar_66 ->
+  MAlonzo.Code.Once.Internal.Context.T_SVar_38 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_wt'45'var'45'local_5376 v0 v1 v2 v3
   = case coe v3 of
-      MAlonzo.Code.Once.Internal.Context.C_svar_76 v6
+      MAlonzo.Code.Once.Internal.Context.C_svar_48 v6
         -> case coe v1 of
              MAlonzo.Code.Once.Internal.Typing.Scope.C_mkCtx_146 v7 v8 v9 v10 v11 v12 v13
                -> coe

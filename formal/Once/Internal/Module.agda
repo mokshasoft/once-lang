@@ -55,6 +55,7 @@ import Once.Parser.Module.Core as P
 open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; topCtx)
 import Once.Internal.Context as Surface
+import Once.Spec.Context as Surface
 import Once.Surface.Syntax as SS
 open import Once.TypeCheck.SpecWitness using (WI; WC)
 import Once.TypeCheck.Elaborate as TE

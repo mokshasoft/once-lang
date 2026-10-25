@@ -67,6 +67,7 @@ open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
 import Once.Internal.Context as Ctx
+import Once.Spec.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.Internal.Typing.Scope using (Imports)
 open import Once.Internal.Type.Instance using (rigidOf)

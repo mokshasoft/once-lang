@@ -24,7 +24,9 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_)
-open import Once.Internal.Context using (Usage; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; _⊑ᵘ_; ⊑[]; _≤q'_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Internal.Context using (_⊔ᵘ_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Context using (Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; singleUse; zeroUsage)
+open import Once.Spec.Grade using (_≤q_)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_)
 open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroˡ; *ᵘ-zeroʳ; *ᵘ-identityˡ; +q-identityʳ)
 
@@ -47,7 +49,7 @@ open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identity�
 *q-oneʳ : ∀ (a : Quantity) → a *q One ≡ a
 *q-oneʳ = G.*q-identityʳ
 
-+q-mono : ∀ {a a′ b b′ : Quantity} → a ≤q' a′ → b ≤q' b′ → (a +q b) ≤q' (a′ +q b′)
++q-mono : ∀ {a a′ b b′ : Quantity} → a ≤q a′ → b ≤q b′ → (a +q b) ≤q (a′ +q b′)
 +q-mono z≤z z≤z = z≤z
 +q-mono z≤z z≤o = z≤o
 +q-mono z≤z z≤m = z≤m
@@ -85,7 +87,7 @@ open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identity�
 +q-mono m≤m o≤m = m≤m
 +q-mono m≤m m≤m = m≤m
 
-*q-monoˡ : ∀ {a a′ : Quantity} (c : Quantity) → a ≤q' a′ → (a *q c) ≤q' (a′ *q c)
+*q-monoˡ : ∀ {a a′ : Quantity} (c : Quantity) → a ≤q a′ → (a *q c) ≤q (a′ *q c)
 *q-monoˡ Zero z≤z = z≤z
 *q-monoˡ One z≤z = z≤z
 *q-monoˡ Many z≤z = z≤z
@@ -105,7 +107,7 @@ open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identity�
 *q-monoˡ One m≤m = m≤m
 *q-monoˡ Many m≤m = m≤m
 
-≤q'-refl : ∀ (q : Quantity) → q ≤q' q
+≤q'-refl : ∀ (q : Quantity) → q ≤q q
 ≤q'-refl Zero = z≤z
 ≤q'-refl One = o≤o
 ≤q'-refl Many = m≤m
@@ -134,11 +136,11 @@ open import Once.Surface.Properties using (+ᵘ-comm; +ᵘ-assoc; +ᵘ-identity�
            (sym (+ᵘ-assoc A C (B +ᵘ D))))
 
 +ᵘ-mono : ∀ {n} {A A′ B B′ : Usage n} → A ⊑ᵘ A′ → B ⊑ᵘ B′ → (A +ᵘ B) ⊑ᵘ (A′ +ᵘ B′)
-+ᵘ-mono ⊑[]      ⊑[]      = ⊑[]
++ᵘ-mono []      []      = []
 +ᵘ-mono (p ⊑∷ u) (r ⊑∷ v) = +q-mono p r ⊑∷ +ᵘ-mono u v
 
-*ᵘ-monoˡ : ∀ {n} {a a′ : Quantity} (Ψ : Usage n) → a ≤q' a′ → (a *ᵘ Ψ) ⊑ᵘ (a′ *ᵘ Ψ)
-*ᵘ-monoˡ []      p = ⊑[]
+*ᵘ-monoˡ : ∀ {n} {a a′ : Quantity} (Ψ : Usage n) → a ≤q a′ → (a *ᵘ Ψ) ⊑ᵘ (a′ *ᵘ Ψ)
+*ᵘ-monoˡ []      p = []
 *ᵘ-monoˡ (q ∷ Ψ) p = *q-monoˡ q p ⊑∷ *ᵘ-monoˡ Ψ p
 
 ------------------------------------------------------------------------
@@ -175,10 +177,10 @@ _⋆_ : ∀ {n m} → Usage n → Grades n m → Usage m
                            (trans (+ᵘ-identityˡ _) (⋆-single i (λ j → Φ (suc j))))
 
 ⋆-mono : ∀ {n m} {Ψ Ψ′ : Usage n} (Φ : Grades n m) → Ψ ⊑ᵘ Ψ′ → (Ψ ⋆ Φ) ⊑ᵘ (Ψ′ ⋆ Φ)
-⋆-mono Φ ⊑[]      = ⊑ᵘ-refl′ zeroUsage
+⋆-mono Φ []      = ⊑ᵘ-refl′ zeroUsage
   where
     ⊑ᵘ-refl′ : ∀ {m} (Ψ : Usage m) → Ψ ⊑ᵘ Ψ
-    ⊑ᵘ-refl′ []      = ⊑[]
+    ⊑ᵘ-refl′ []      = []
     ⊑ᵘ-refl′ (q ∷ Ψ) = ≤q'-refl q ⊑∷ ⊑ᵘ-refl′ Ψ
 ⋆-mono Φ (p ⊑∷ u) = +ᵘ-mono (*ᵘ-monoˡ (Φ zero) p) (⋆-mono (λ i → Φ (suc i)) u)
 

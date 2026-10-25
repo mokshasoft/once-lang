@@ -23,6 +23,7 @@
 module Once.Compile where
 
 import Once.Internal.Context as Srf
+import Once.Spec.Context as Srf
 
 open import Once.Spec.Type using (Ty)
 open import Data.Bool using (Bool; true; false; if_then_else_)

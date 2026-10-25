@@ -30,11 +30,12 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; 0≤q; 1≤1; 1≤
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑∷_; _⊑ᵘ_; singleUse; lookup)
 open import Once.Internal.Context using (_↾_; ⊑ᵘ-unique) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_)
 open import Once.Denotation.SpecDomain Σ σ using (⟦_⟧ᵛ; restrictᵛ; bindᵛ; bindᵛ0; lookupᵛUsed)
 open import Once.Spec.Core.Meaning Σ fmt S using (Env; restrict; slot; lookupᵛ; envˡ; envʳ; env*One; env*Many)
 open import Once.Metatheory.Coherence.Env Σ fmt S
   using (envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
-open import Once.Internal.Context using (_+ᵘ_; _*ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Internal.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 
 -- The surface's environment.
 SEnv : ∀ {n} → Ctx 0 n → Usage n → Set

@@ -9,6 +9,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Type.Grade using (_≤qᵇ_)
+open import Once.Spec.Context using (Ctx; Usage; zeroUsage; ∅)
 module Once.Surface.Context where
 
 open import Data.Bool using (Bool; true; _∧_)
@@ -16,7 +17,6 @@ open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Zero; One; Many)
-open import Once.Internal.Context using (Ctx; ∅; Usage; zeroUsage)
 open import Once.Spec.Context using ([]; _∷_; _▸_)
 
 -- | Is this usage vector all zero, i.e. does the expression read no local

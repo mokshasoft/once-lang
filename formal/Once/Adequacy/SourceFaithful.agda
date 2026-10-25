@@ -59,7 +59,8 @@ open import Once.IRTy using (⌊wk₀⌋)
 open import Once.Surface.Elaborate using (sigOpIR)
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (b-Unit)
-open import Once.Internal.Context using (Ctx; Usage; lookup; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
+open import Once.Internal.Context using (⟦_⟧ᶜ; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
+open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; lookup; singleUse; zeroUsage; ∅)
 import Once.Spec.Context as SCx
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax using (Expr)
@@ -135,7 +136,7 @@ sigOp-rel si r with base-eq (baseA si) r
 
 now-restrict : ∀ {m} {n} {Γ : Ctx m n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ) (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ)
              → Now (liftFn fmt ρ {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} (restrictEnv {Γ = Γ} IR.Heap ule) dγ) (restrictᴰ {Γ = Γ} ule dγ)
-now-restrict {Γ = Γ@∅}       ⊑[]          dγ = now-id {A = ⟦ Γ ⟧ᶜ} dγ
+now-restrict {Γ = Γ@∅}       []          dγ = now-id {A = ⟦ Γ ⟧ᶜ} dγ
 now-restrict {Γ = Γ ▸ A} (z≤z ⊑∷ ule) dγ = now-restrict {Γ = Γ} ule dγ
 now-restrict {Γ = Γ ▸ A} {Ψ = _ ∷ Ψ} {Ψ' = _ ∷ Ψ'} (z≤o ⊑∷ ule) dγ =
   now-∘ {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {⟦ Γ ↾ Ψ' ⟧ᶜ} {⟦ Γ ↾ Ψ ⟧ᶜ * A} {restrictEnv {Γ = Γ} IR.Heap ule} {fst} (now-fst {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} dγ) (now-restrict {Γ = Γ} ule (proj₁ dγ))
@@ -188,7 +189,7 @@ proj-lookup {Γ = Γ ▸ A} (suc i) dγ = proj-lookup {Γ = Γ} i dγ
 -- Narrowing along a witness whose two usages are the SAME is the identity...
 restrictᴰ-id : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} (ule : Ψ ⊑ᵘ Ψ)
                (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ) → restrictᴰ {Γ = Γ} ule dγ ≡ dγ
-restrictᴰ-id {Γ = ∅}         ⊑[]          dγ = refl
+restrictᴰ-id {Γ = ∅}         []          dγ = refl
 restrictᴰ-id {Γ = Γ ▸ A} (z≤z ⊑∷ ule) dγ = restrictᴰ-id {Γ = Γ} ule dγ
 restrictᴰ-id {Γ = Γ ▸ A} (o≤o ⊑∷ ule) dγ = cong (_, proj₂ dγ) (restrictᴰ-id {Γ = Γ} ule (proj₁ dγ))
 restrictᴰ-id {Γ = Γ ▸ A} (m≤m ⊑∷ ule) dγ = cong (_, proj₂ dγ) (restrictᴰ-id {Γ = Γ} ule (proj₁ dγ))

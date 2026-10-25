@@ -58,7 +58,9 @@ import Once.Spec.Type as T
 import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun; con-base)
-open import Once.Internal.Context as Srf using (Usage; ⟦_⟧ᶜ)
+open import Once.Internal.Context as Srf using (⟦_⟧ᶜ)
+open import Once.Spec.Context using (Usage)
+import Once.Spec.Context as Srf
 import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Denotation.DenotTrace using (evalᴰ)

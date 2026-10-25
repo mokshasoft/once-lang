@@ -28,9 +28,11 @@ open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Flo
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Internal.Context using (_⊑ᵘ_; ⊑[]; z≤z)
+open import Once.Internal.Context using (z≤z)
+open import Once.Spec.Context using ([]; _⊑ᵘ_; lookup; Usage; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
-open import Once.Internal.Context as Surface renaming (Ctx to SCtx; ∅ to S∅; _,_ to _S,_)
+open import Once.Internal.Context as Surface renaming (_,_ to _S,_)
+open import Once.Spec.Context using () renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Surface.Context as Surface
 
 ------------------------------------------------------------------------
@@ -138,7 +140,7 @@ thin-usage-⊔ᵘ (keep θ) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂)
 thin-usage-⊑ᵘ : ∀ {mₜ} {n m} {Γ : SCtx mₜ n} {Δ : SCtx mₜ m}
               → (θ : Γ ⊆ Δ) {Ψ Ψ′ : Usage n}
               → Ψ ⊑ᵘ Ψ′ → thin-usage θ Ψ ⊑ᵘ thin-usage θ Ψ′
-thin-usage-⊑ᵘ done     ⊑[]       = ⊑[]
+thin-usage-⊑ᵘ done     []       = []
 thin-usage-⊑ᵘ (skip θ) p         = z≤z ⊑∷ thin-usage-⊑ᵘ θ p
 thin-usage-⊑ᵘ (keep θ) (q ⊑∷ p)  = q ⊑∷ thin-usage-⊑ᵘ θ p
 

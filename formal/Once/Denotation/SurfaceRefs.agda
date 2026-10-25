@@ -28,6 +28,7 @@ open import Once.Internal.Type using (wk₀)
 open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.Internal.Context hiding (_,_)
+open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
 open import Once.Denotation.Program using (Linked)

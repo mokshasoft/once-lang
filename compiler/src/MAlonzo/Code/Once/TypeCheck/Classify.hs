@@ -428,7 +428,7 @@ d_LookupLocalView_376 a0 a1 a2 = ()
 data T_LookupLocalView_376
   = C_llv'45'found_390 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                        MAlonzo.Code.Once.Spec.Context.T_Usage_34
-                       MAlonzo.Code.Once.Internal.Context.T_SVar_66 |
+                       MAlonzo.Code.Once.Internal.Context.T_SVar_38 |
     C_llv'45'not'45'found_392
 -- Once.TypeCheck.Classify.inspectLookupLocal
 d_inspectLookupLocal_400 ::

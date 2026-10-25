@@ -20,8 +20,8 @@ open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; pureᶠ; act
 open import Once.Spec.Type using (Type; _*_; _+_)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Internal.Context
-  using (Usage; _⊑ᵘ_; ⊑[]; ⊑ᵘ-refl; ⊑ᵘ-trans)
+open import Once.Internal.Context using (⊑ᵘ-refl; ⊑ᵘ-trans)
+open import Once.Spec.Context using (Usage; _⊑ᵘ_)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_)
 open import Once.Internal.Laws.SubLaws using (⊑π-trans; <:-trans)
 open import Once.Internal.Type.Sub using (⊑π-refl; <:-refl)
@@ -78,7 +78,7 @@ subtype-isPartialOrder = record
 ------------------------------------------------------------------------
 
 ⊑ᵘ-antisym : ∀ {n} {Ψ Φ : Usage n} → Ψ ⊑ᵘ Φ → Φ ⊑ᵘ Ψ → Ψ ≡ Φ
-⊑ᵘ-antisym ⊑[] ⊑[] = refl
+⊑ᵘ-antisym [] [] = refl
 ⊑ᵘ-antisym (p ⊑∷ ps) (q ⊑∷ qs) = cong₂ _∷_ (≤q'-antisym p q) (⊑ᵘ-antisym ps qs)
 
 usage-⊑-isPartialOrder : ∀ {n} → IsPartialOrder _≡_ (_⊑ᵘ_ {n})

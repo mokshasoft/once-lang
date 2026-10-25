@@ -23,6 +23,7 @@ module Once.TypeCheck.Completeness.Rules where
 
 
 import Once.Internal.Context as Srf
+open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; zeroUsage)
 open import Data.Nat using (ℕ)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
@@ -54,7 +55,8 @@ open import Once.Spec.Type using (Base; WFFun; ∅ₖ)
 open import Once.TypeCheck.DeciderComplete
   using (wfFun?-complete-at)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
-open import Once.Internal.Context as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+import Once.Spec.Context as Surface
+import Once.Internal.Context as Surface
 import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ

@@ -42,6 +42,8 @@ module Once.TypeCheck.Verified where
 
 
 import Once.Internal.Context as Surface
+open import Once.Spec.Context using (Ctx)
+import Once.Spec.Context as Surface
 
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_; _×_; ∃-syntax)
@@ -588,17 +590,17 @@ record VerifiedTypeChecker {m} : Set₁ where
     id-⊔q-idem : ∀ (q : _) → q Once.Type.Grade.⊔q q ≡ q
 
     -- Usage-vector algebra
-    id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Internal.Context.Usage n)
+    id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Spec.Context.Usage n)
                 → Ψ₁ Surface.+ᵘ Ψ₂ ≡ Ψ₂ Surface.+ᵘ Ψ₁
-    id-+ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Once.Internal.Context.Usage n)
+    id-+ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Once.Spec.Context.Usage n)
                  → Ψ₁ Surface.+ᵘ (Ψ₂ Surface.+ᵘ Ψ₃)
                    ≡ (Ψ₁ Surface.+ᵘ Ψ₂) Surface.+ᵘ Ψ₃
-    id-⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Internal.Context.Usage n)
+    id-⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Spec.Context.Usage n)
                 → Ψ₁ Surface.⊔ᵘ Ψ₂ ≡ Ψ₂ Surface.⊔ᵘ Ψ₁
-    id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Internal.Context.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
-    id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Internal.Context.Usage n)
+    id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Spec.Context.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
+    id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Spec.Context.Usage n)
                        → Once.Spec.Grade.One Surface.*ᵘ Ψ ≡ Ψ
-    id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Internal.Context.Usage n)
+    id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Spec.Context.Usage n)
                         → Surface.zeroUsage Surface.+ᵘ Ψ ≡ Ψ
 
     -- The grade algebra as the structures it is (plan 0.112 B2–B4): the
@@ -609,19 +611,19 @@ record VerifiedTypeChecker {m} : Set₁ where
     grade-join       : Algebra.Structures.IsCommutativeBand {A = Once.Spec.Grade.Quantity} _≡_
                          Once.Type.Grade._⊔q_
     grade-order      : Relation.Binary.Structures.IsDecTotalOrder {A = Once.Spec.Grade.Quantity} _≡_
-                         Once.Internal.Context._≤q'_
+                         Once.Spec.Grade._≤q_
     effect-monoid    : Algebra.Structures.IsCommutativeMonoid {A = Once.Spec.Grade.Purity} _≡_
                          Once.Spec.Grade._·p_ Once.Spec.Grade.pure
     usage-semimodule : ∀ {n} → Algebra.Module.Structures.IsLeftSemimodule GM.quantity-semiring _≡_
-                         (Once.Internal.Context._+ᵘ_ {n}) Once.Internal.Context.zeroUsage Once.Internal.Context._*ᵘ_
-    usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Internal.Context.Usage n} _≡_
+                         (Once.Spec.Context._+ᵘ_ {n}) Once.Spec.Context.zeroUsage Once.Spec.Context._*ᵘ_
+    usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Spec.Context.Usage n} _≡_
                          Once.Internal.Context._⊔ᵘ_
     -- The orders are partial orders (plan 0.112 B6).
     subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Ty m} _≡_ Once.Spec.Sub._<:_
     effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Grade.Purity} _≡_
                          Once.Spec.Grade._⊑π_
-    usage-order      : ∀ {n} → Relation.Binary.Structures.IsPartialOrder {A = Once.Internal.Context.Usage n} _≡_
-                         Once.Internal.Context._⊑ᵘ_
+    usage-order      : ∀ {n} → Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Context.Usage n} _≡_
+                         Once.Spec.Context._⊑ᵘ_
 
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips

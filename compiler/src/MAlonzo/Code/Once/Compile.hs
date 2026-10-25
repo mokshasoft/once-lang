@@ -364,7 +364,7 @@ du_compileFunBody'45'aux_134 v0 v1 v2 v3 v4 v5 v6 v7
                           (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
                              (coe (0 :: Integer))
                              (coe
-                                MAlonzo.Code.Once.Internal.Context.du_'10214'_'10215''7580'_26
+                                MAlonzo.Code.Once.Internal.Context.du_'10214'_'10215''7580'_16
                                 (coe
                                    MAlonzo.Code.Once.Internal.Typing.Scope.d_debruijn_136
                                    (coe v0))))
@@ -607,7 +607,7 @@ du_compileFunBodyI'45'at_318 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                              (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
                                 (coe (0 :: Integer))
                                 (coe
-                                   MAlonzo.Code.Once.Internal.Context.du_'10214'_'10215''7580'_26
+                                   MAlonzo.Code.Once.Internal.Context.du_'10214'_'10215''7580'_16
                                    (coe
                                       MAlonzo.Code.Once.Internal.Typing.Scope.d_debruijn_136
                                       (coe v0))))

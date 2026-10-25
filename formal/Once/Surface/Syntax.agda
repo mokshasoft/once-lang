@@ -42,6 +42,7 @@ open import Once.Spec.Name using (CanonicalName)
 -- `Once.Surface.Context` and re-exported here (consumers unchanged), so the
 -- typing judgment / direct denotation can use it without `Once.IR`.
 open import Once.Internal.Context
+open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; _+ᵘ_; lookup; singleUse; zeroUsage; ∅)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 

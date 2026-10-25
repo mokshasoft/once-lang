@@ -13,12 +13,12 @@
 module Once.TypeCheck.ElaborateProofs where
 
 open import Once.Spec.Type using (base)
+open import Once.Spec.Context using (_+ᵘ_; zeroUsage)
 open import Once.Functor.Decide using (wfFun?)
 open import Once.Internal.Type using (wk₀)
 open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Elaborate
-open import Once.Internal.Context using (zeroUsage)
 import Once.Spec.Context as SCx
 open import Data.Unit using (tt; ⊤)
 open import Once.TypeCheck.Classify using (emptyCtx)
@@ -64,7 +64,7 @@ open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatAri
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable)
 import Once.TypeCheck.Context
-open import Once.Internal.Context as Surface using (_+ᵘ_)
+import Once.Spec.Context as Surface
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Surface.Elaborate as Elab using ()
 open import Once.Internal.Typing.Scope
@@ -812,7 +812,7 @@ resolveExpr-var _ _ _ _ _ = refl
 resolveExpr-lam : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n} {q'} {A B : Ty m} {π : Once.Spec.Grade.Purity}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (q : Quantity) (prf : (q' Once.Type.Grade.≤qᵇ q) ≡ true)
-    (b : Surface.Expr (Γ Surface., A) (q' SCx.∷ Ψ) B)
+    (b : Surface.Expr (Γ Surface.▸ A) (q' SCx.∷ Ψ) B)
   → resolveExpr polys imps userFns fresh (Surface.lam {π = π} q prf b)
       ≡ Surface.lam {π = π} q prf (resolveExpr polys imps userFns fresh b)
 resolveExpr-lam _ _ _ _ _ _ _ = refl
@@ -878,8 +878,8 @@ resolveExpr-inr' _ _ _ _ _ = refl
 resolveExpr-case' : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψs Ψₗ Ψᵣ : Surface.Usage n} {qℓ qr} {A B C : Ty m}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (s : Surface.Expr Γ Ψs (A Once.Spec.Type.+ B))
-    (l : Surface.Expr (Γ Surface., A) (qℓ SCx.∷ Ψₗ) C)
-    (r : Surface.Expr (Γ Surface., B) (qr SCx.∷ Ψᵣ) C)
+    (l : Surface.Expr (Γ Surface.▸ A) (qℓ SCx.∷ Ψₗ) C)
+    (r : Surface.Expr (Γ Surface.▸ B) (qr SCx.∷ Ψᵣ) C)
   → resolveExpr polys imps userFns fresh (Surface.case' s l r)
       ≡ Surface.case' (resolveExpr polys imps userFns fresh s)
                       (resolveExpr polys imps userFns fresh l)
@@ -903,7 +903,7 @@ resolveExpr-absurd _ _ _ _ _ = refl
 resolveExpr-let' : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n} {q} {A B : Ty m}
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
     (e₁ : Surface.Expr Γ Ψ₁ A)
-    (e₂ : Surface.Expr (Γ Surface., A) (q SCx.∷ Ψ₂) B)
+    (e₂ : Surface.Expr (Γ Surface.▸ A) (q SCx.∷ Ψ₂) B)
   → resolveExpr polys imps userFns fresh (Surface.let' e₁ e₂)
       ≡ Surface.let' (resolveExpr polys imps userFns fresh e₁) (resolveExpr polys imps userFns fresh e₂)
 resolveExpr-let' _ _ _ _ _ _ = refl

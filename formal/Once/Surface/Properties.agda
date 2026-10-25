@@ -20,6 +20,7 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P�
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.Internal.Context
+open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; _+ᵘ_; zeroUsage; ∅)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax

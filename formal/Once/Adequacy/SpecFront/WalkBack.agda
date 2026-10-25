@@ -47,6 +47,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 
 import Once.Spec.Core.Program Σ as SP
 import Once.Internal.Context as LCx
+import Once.Spec.Context as LCx
 import Once.Spec.Core.Syntax as SC
 open SC.Schema using (arity; kinds; type)
 import Once.Spec.Surface.Program as SPr

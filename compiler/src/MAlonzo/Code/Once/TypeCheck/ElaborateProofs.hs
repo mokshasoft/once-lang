@@ -2440,8 +2440,6 @@ du_resolveExpr_4170 v0 v1 v2 v3 v4 v5 v6
       (coe v5) (coe v6)
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-var
 d_resolveExpr'45'var_4198 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -2453,8 +2451,6 @@ d_resolveExpr'45'var_4198 ::
 d_resolveExpr'45'var_4198 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-lam
 d_resolveExpr'45'lam_4230 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
@@ -2473,8 +2469,6 @@ d_resolveExpr'45'lam_4230 ::
 d_resolveExpr'45'lam_4230 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-app
 d_resolveExpr'45'app_4260 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2492,8 +2486,6 @@ d_resolveExpr'45'app_4260 ::
 d_resolveExpr'45'app_4260 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-pair
 d_resolveExpr'45'pair_4288 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2510,8 +2502,6 @@ d_resolveExpr'45'pair_4288 ::
 d_resolveExpr'45'pair_4288 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-effApp
 d_resolveExpr'45'effApp_4320 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2530,8 +2520,6 @@ d_resolveExpr'45'effApp_4320 ::
 d_resolveExpr'45'effApp_4320 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-fst'
 d_resolveExpr'45'fst''_4344 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -2546,8 +2534,6 @@ d_resolveExpr'45'fst''_4344 ::
 d_resolveExpr'45'fst''_4344 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-snd'
 d_resolveExpr'45'snd''_4368 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -2562,8 +2548,6 @@ d_resolveExpr'45'snd''_4368 ::
 d_resolveExpr'45'snd''_4368 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-inl'
 d_resolveExpr'45'inl''_4392 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -2578,8 +2562,6 @@ d_resolveExpr'45'inl''_4392 ::
 d_resolveExpr'45'inl''_4392 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-inr'
 d_resolveExpr'45'inr''_4416 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -2594,8 +2576,6 @@ d_resolveExpr'45'inr''_4416 ::
 d_resolveExpr'45'inr''_4416 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-case'
 d_resolveExpr'45'case''_4454 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2617,8 +2597,6 @@ d_resolveExpr'45'case''_4454 ::
 d_resolveExpr'45'case''_4454 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-unit
 d_resolveExpr'45'unit_4470 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -2628,8 +2606,6 @@ d_resolveExpr'45'unit_4470 ::
 d_resolveExpr'45'unit_4470 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-absurd
 d_resolveExpr'45'absurd_4492 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -2643,8 +2619,6 @@ d_resolveExpr'45'absurd_4492 ::
 d_resolveExpr'45'absurd_4492 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-let'
 d_resolveExpr'45'let''_4522 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2662,8 +2636,6 @@ d_resolveExpr'45'let''_4522 ::
 d_resolveExpr'45'let''_4522 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-int
 d_resolveExpr'45'int_4540 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -2674,8 +2646,6 @@ d_resolveExpr'45'int_4540 ::
 d_resolveExpr'45'int_4540 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-add
 d_resolveExpr'45'add_4564 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2690,8 +2660,6 @@ d_resolveExpr'45'add_4564 ::
 d_resolveExpr'45'add_4564 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-sub
 d_resolveExpr'45'sub_4588 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2706,8 +2674,6 @@ d_resolveExpr'45'sub_4588 ::
 d_resolveExpr'45'sub_4588 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-mul
 d_resolveExpr'45'mul_4612 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2722,8 +2688,6 @@ d_resolveExpr'45'mul_4612 ::
 d_resolveExpr'45'mul_4612 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-div
 d_resolveExpr'45'div_4636 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2738,8 +2702,6 @@ d_resolveExpr'45'div_4636 ::
 d_resolveExpr'45'div_4636 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-mod'
 d_resolveExpr'45'mod''_4660 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2754,8 +2716,6 @@ d_resolveExpr'45'mod''_4660 ::
 d_resolveExpr'45'mod''_4660 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-neg
 d_resolveExpr'45'neg_4680 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -2768,8 +2728,6 @@ d_resolveExpr'45'neg_4680 ::
 d_resolveExpr'45'neg_4680 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-lt
 d_resolveExpr'45'lt_4704 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2784,8 +2742,6 @@ d_resolveExpr'45'lt_4704 ::
 d_resolveExpr'45'lt_4704 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-le
 d_resolveExpr'45'le_4728 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2800,8 +2756,6 @@ d_resolveExpr'45'le_4728 ::
 d_resolveExpr'45'le_4728 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-gt
 d_resolveExpr'45'gt_4752 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2816,8 +2770,6 @@ d_resolveExpr'45'gt_4752 ::
 d_resolveExpr'45'gt_4752 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-ge
 d_resolveExpr'45'ge_4776 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2832,8 +2784,6 @@ d_resolveExpr'45'ge_4776 ::
 d_resolveExpr'45'ge_4776 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-eq
 d_resolveExpr'45'eq_4800 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2848,8 +2798,6 @@ d_resolveExpr'45'eq_4800 ::
 d_resolveExpr'45'eq_4800 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-ne
 d_resolveExpr'45'ne_4824 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
@@ -2864,8 +2812,6 @@ d_resolveExpr'45'ne_4824 ::
 d_resolveExpr'45'ne_4824 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-coerce
 d_resolveExpr'45'coerce_4850 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -2881,8 +2827,6 @@ d_resolveExpr'45'coerce_4850 ::
 d_resolveExpr'45'coerce_4850 = erased
 -- Once.TypeCheck.ElaborateProofs.resolveExpr-sigOp-extern
 d_resolveExpr'45'sigOp'45'extern_4872 ::
-  Integer ->
-  Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->

@@ -294,24 +294,24 @@ du_lookupLocal'45'next_190 v0 v1 v2 v3
                -> case coe v6 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                       -> case coe v8 of
-                           MAlonzo.Code.Once.Internal.Context.C_svar_76 v11
+                           MAlonzo.Code.Once.Internal.Context.C_svar_48 v11
                              -> coe
                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                      (coe
-                                        MAlonzo.Code.Once.Internal.Context.du_lookup_20
+                                        MAlonzo.Code.Once.Spec.Context.du_lookup_22
                                         (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v1 v2)
                                         (coe MAlonzo.Code.Data.Fin.Base.C_suc_16 v11))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Context.d_singleUse_40
-                                           (addInt (coe (1 :: Integer)) (coe v0))
+                                           MAlonzo.Code.Once.Spec.Context.d_singleUse_50
+                                           (coe addInt (coe (1 :: Integer)) (coe v0))
                                            (coe MAlonzo.Code.Data.Fin.Base.C_suc_16 v11)
                                            (coe MAlonzo.Code.Once.Spec.Grade.C_One_10))
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Context.C_svar_76
+                                           MAlonzo.Code.Once.Internal.Context.C_svar_48
                                            (coe MAlonzo.Code.Data.Fin.Base.C_suc_16 v11))))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -351,18 +351,18 @@ du_lookupLocal'45'at_216 v0 v1 v2 v3 v4 v5 v6
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
-                             MAlonzo.Code.Once.Internal.Context.du_lookup_20
+                             MAlonzo.Code.Once.Spec.Context.du_lookup_22
                              (coe MAlonzo.Code.Once.Spec.Context.C__'9656'__16 v4 v5)
                              (coe MAlonzo.Code.Data.Fin.Base.C_zero_12))
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                              (coe
-                                MAlonzo.Code.Once.Internal.Context.d_singleUse_40
-                                (addInt (coe (1 :: Integer)) (coe v1))
+                                MAlonzo.Code.Once.Spec.Context.d_singleUse_50
+                                (coe addInt (coe (1 :: Integer)) (coe v1))
                                 (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)
                                 (coe MAlonzo.Code.Once.Spec.Grade.C_One_10))
                              (coe
-                                MAlonzo.Code.Once.Internal.Context.C_svar_76
+                                MAlonzo.Code.Once.Internal.Context.C_svar_48
                                 (coe MAlonzo.Code.Data.Fin.Base.C_zero_12)))))
              else coe
                     seq (coe v8)

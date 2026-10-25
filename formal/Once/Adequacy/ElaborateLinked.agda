@@ -42,6 +42,7 @@ open import Once.IR.Ref using (refIR)
 open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void)
 open import Once.Internal.Context hiding (_,_)
+open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _⊑ᵘ_; lookup; zeroUsage; ∅)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
@@ -237,7 +238,7 @@ linked-[] : ∀ {tbl : List IRFun} {A B} (ir : IR A B) → Linked σ [] ir → L
 linked-[] {tbl = tbl} = linked-mono (λ {f} {A} {B} → linkedAt-[] {tbl} {f} {A} {B})
 
 restrictEnv-cf : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ Ψ′ : Usage n} (m : _) (ule : Ψ′ ⊑ᵘ Ψ) → Linked σ [] (restrictEnv {Γ = Γ} m ule)
-restrictEnv-cf {Γ = ∅}         m ⊑[]          = tt
+restrictEnv-cf {Γ = ∅}         m []          = tt
 restrictEnv-cf {Γ = Γ ▸ A} m (z≤z ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule
 restrictEnv-cf {Γ = Γ ▸ A} m (z≤o ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule , tt
 restrictEnv-cf {Γ = Γ ▸ A} m (z≤m ⊑∷ ule) = restrictEnv-cf {Γ = Γ} m ule , tt

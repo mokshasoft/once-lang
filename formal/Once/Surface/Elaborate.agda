@@ -24,6 +24,7 @@ open import Once.IR
 open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; ⌊⟧T-commute; ⌊wk₀⌋)
 open import Once.IR.Ref using (refIR)
 open import Once.Internal.Context
+open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; lookup; singleUse; zeroUsage; ∅)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
@@ -174,7 +175,7 @@ proj {Γ = Γ ▸ A} (Fin.suc i) = proj {Γ = Γ} i ∘ fst
 -- `⟨ … ∘ fst , snd ⟩` where it is kept.
 restrictEnv : ∀ {mₜ} {n} {Γ : Ctx mₜ n} {Ψ Ψ' : Usage n} (m : AllocMode)
             → Ψ' ⊑ᵘ Ψ → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ' ⟧ᶜ ⌋
-restrictEnv {Γ = ∅}         m ⊑[]                    = id
+restrictEnv {Γ = ∅}         m []                    = id
 -- dropped on both sides — the variable is in neither environment
 restrictEnv {Γ = Γ ▸ A} m (z≤z ⊑∷ ule) = restrictEnv {Γ = Γ} m ule
 -- live in Ψ, dead in Ψ' — this is the narrowing that reclaims it
