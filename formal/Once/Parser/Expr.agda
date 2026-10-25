@@ -5,7 +5,7 @@
 -- Once.Parser.Expr
 --
 -- Parser for Once expressions.
--- Produces Once.Internal.Syntax.RawExpr directly.
+-- Produces Once.Spec.Surface.Syntax.Expr directly.
 --
 -- Precedence (low to high):
 --   1. Type annotation (:)
@@ -24,7 +24,7 @@
 -- sub-calls are derived from sub-derivations via `ParsesX-shrinks`.
 -- Per plan 0.3 task #38 (Phase 3b).
 --
--- External callers use `parseExpr : Parser RawExpr` (the top-level
+-- External callers use `parseExpr : Parser Expr` (the top-level
 -- wrapper at the end of this file) which forgets the derivation.
 ------------------------------------------------------------------------
 
@@ -45,7 +45,7 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.Type using (parseTypeWF)
@@ -69,81 +69,81 @@ open import Once.Parser.ExprRelation
 ------------------------------------------------------------------------
 
 ParseExprD : List Token → Set
-ParseExprD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesExpr toks e rest)
+ParseExprD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesExpr toks e rest)
 
 ParseCompD : List Token → Set
-ParseCompD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesComp toks e rest)
+ParseCompD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesComp toks e rest)
 
 ParseCmpD : List Token → Set
-ParseCmpD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesCmp toks e rest)
+ParseCmpD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesCmp toks e rest)
 
 ParseAddD : List Token → Set
-ParseAddD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesAdd toks e rest)
+ParseAddD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesAdd toks e rest)
 
 ParseMulD : List Token → Set
-ParseMulD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesMul toks e rest)
+ParseMulD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesMul toks e rest)
 
 ParseUnaryD : List Token → Set
-ParseUnaryD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesUnary toks e rest)
+ParseUnaryD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesUnary toks e rest)
 
 ParseAppD : List Token → Set
-ParseAppD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesApp toks e rest)
+ParseAppD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesApp toks e rest)
 
 ParseAtomExprD : List Token → Set
-ParseAtomExprD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesAtomExpr toks e rest)
+ParseAtomExprD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesAtomExpr toks e rest)
 
-ParseAppTailD : RawExpr → List Token → Set
+ParseAppTailD : Expr → List Token → Set
 ParseAppTailD left toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesAppTail left toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesAppTail left toks e rest)
 
-ParseMulTailD : RawExpr → List Token → Set
+ParseMulTailD : Expr → List Token → Set
 ParseMulTailD left toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesMulTail left toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesMulTail left toks e rest)
 
-ParseAddTailD : RawExpr → List Token → Set
+ParseAddTailD : Expr → List Token → Set
 ParseAddTailD left toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesAddTail left toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesAddTail left toks e rest)
 
-ParseCompTailD : RawExpr → List Token → Set
+ParseCompTailD : Expr → List Token → Set
 ParseCompTailD left toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesCompTail left toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesCompTail left toks e rest)
 
 ParseLamParamsD : List Token → Set
-ParseLamParamsD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesLamParams toks e rest)
+ParseLamParamsD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesLamParams toks e rest)
 
 ParseLetD : List Token → Set
-ParseLetD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesLet toks e rest)
+ParseLetD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesLet toks e rest)
 
-ParseLetInD : String → RawExpr → List Token → Set
+ParseLetInD : String → Expr → List Token → Set
 ParseLetInD name val toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesLetIn name val toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesLetIn name val toks e rest)
 
 ParseDestructD : List Token → Set
-ParseDestructD toks = Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesDestruct toks e rest)
+ParseDestructD toks = Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesDestruct toks e rest)
 
-ParseDestructOfD : RawExpr → List Token → Set
+ParseDestructOfD : Expr → List Token → Set
 ParseDestructOfD scrut toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesDestructOf scrut toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesDestructOf scrut toks e rest)
 
-ParseDestructBranchesD : RawExpr → List Token → Set
+ParseDestructBranchesD : Expr → List Token → Set
 ParseDestructBranchesD scrut toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesDestructBranches scrut toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesDestructBranches scrut toks e rest)
 
-ParseRightBranchD : RawExpr → String → RawExpr → List Token → Set
+ParseRightBranchD : Expr → String → Expr → List Token → Set
 ParseRightBranchD scrut x left toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesRightBranch scrut x left toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesRightBranch scrut x left toks e rest)
 
-ParseParenContD : RawExpr → List Token → Set
+ParseParenContD : Expr → List Token → Set
 ParseParenContD e toks =
-  Maybe (Σ[ eOut ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesParenCont e toks eOut rest)
+  Maybe (Σ[ eOut ∈ Expr ] Σ[ rest ∈ List Token ] ParsesParenCont e toks eOut rest)
 
-ParseParenTripleD : RawExpr → RawExpr → List Token → Set
+ParseParenTripleD : Expr → Expr → List Token → Set
 ParseParenTripleD e1 e2 toks =
   Maybe (Σ[ rest ∈ List Token ] ParsesParenTriple e1 e2 toks rest)
 
 ParseOpExprD : List Char → List Token → Set
 ParseOpExprD chars toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesOpExpr chars toks e rest)
+  Maybe (Σ[ e ∈ Expr ] Σ[ rest ∈ List Token ] ParsesOpExpr chars toks e rest)
 
 ------------------------------------------------------------------------
 -- Operator-as-expression parser: (&), (.), (|>), etc.
@@ -234,28 +234,28 @@ parseLamParamsWF   : (toks : List Token) → Acc _<_ (length toks) → ParseLamP
 parseLetWF         : (toks : List Token) → Acc _<_ (length toks) → ParseLetD toks
 parseDestructWF    : (toks : List Token) → Acc _<_ (length toks) → ParseDestructD toks
 
-parseLetContWF     : (name : String) (val : RawExpr)
+parseLetContWF     : (name : String) (val : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseLetInD name val toks
 parseDestructBranchesWF :
-                     (scrut : RawExpr)
+                     (scrut : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseDestructBranchesD scrut toks
-parseDestructOfWF  : (scrut : RawExpr)
+parseDestructOfWF  : (scrut : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseDestructOfD scrut toks
-parseRightBranchWF : (scrut : RawExpr) (x : String) (left : RawExpr)
+parseRightBranchWF : (scrut : Expr) (x : String) (left : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseRightBranchD scrut x left toks
-parseParenTripleWF : (e e2 : RawExpr)
+parseParenTripleWF : (e e2 : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseParenTripleD e e2 toks
-parseParenContWF   : (e : RawExpr)
+parseParenContWF   : (e : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseParenContD e toks
 
 -- Tail parsers (may no-op, non-strict decrease)
-parseAppTailWF     : (left : RawExpr)
+parseAppTailWF     : (left : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseAppTailD left toks
-parseMulTailWF     : (left : RawExpr)
+parseMulTailWF     : (left : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseMulTailD left toks
-parseAddTailWF     : (left : RawExpr)
+parseAddTailWF     : (left : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseAddTailD left toks
-parseCompTailWF    : (left : RawExpr)
+parseCompTailWF    : (left : Expr)
                    → (toks : List Token) → Acc _<_ (length toks) → ParseCompTailD left toks
 
 ------------------------------------------------------------------------
@@ -1373,9 +1373,9 @@ parseExprWF toks a with parseCompWF toks a
 -- in `Once.Parser.Type`. Used by `Once.Grammar.ExprBridge` to state
 -- parser success directly in terms of a raw `(e, rest)` pair, where
 -- the derivation then follows from an inversion lemma.
-stripExpr : (toks : List Token) → ParseExprD toks → Maybe (RawExpr × List Token)
+stripExpr : (toks : List Token) → ParseExprD toks → Maybe (Expr × List Token)
 stripExpr _ nothing = nothing
 stripExpr _ (just (e , rest , _)) = just (e , rest)
 
-parseExpr : Parser RawExpr
+parseExpr : Parser Expr
 parseExpr toks = stripExpr toks (parseExprWF toks (<-wellFounded (length toks)))

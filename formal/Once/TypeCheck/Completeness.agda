@@ -92,7 +92,7 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
 -- References: the entry a name's lookups found, at the checker's type
 ------------------------------------------------------------------------
 
-open import Once.Postulates using (extensionality)
+open import Once.Type.Closed using (sub0; sub0≡)
 open import Once.Internal.Type using (wk₀; none)
 open import Once.Internal.Type.Instance using (KindedInstance; rigidOf)
 open import Once.Internal.Type.Schema using (schemaOf; kinded-instance)
@@ -128,7 +128,7 @@ lt0 ()
 private
   -- a closed type at any instance
   mono-ty : ∀ {m} {sc T} (e : sc ≡ schema 0 ST.∅ₖ T) (τ : ST.TySub (arity sc) m) → type sc ST.⟨ τ ⟩ ≡ wk₀ T
-  mono-ty {T = T} refl τ = cong (T ST.⟨_⟩) (extensionality λ ())
+  mono-ty {T = T} refl τ = sub0 T τ _
 
   -- a monomorphic entry has no type variables
   mono-arity : ∀ {sc T} → sc ≡ schema 0 ST.∅ₖ T → arity sc ≡ 0
@@ -145,9 +145,7 @@ private
             → type sc′ ST.⟨ τ ⟩ ≡ TP.extractGround sc g
   ground-ty {Δ = Δ} sc refl g τ =
     let K = kinded-instance sc (ground-kinded {Δ = Δ} sc g)
-    in trans (cong (type (schemaOf sc) ST.⟨_⟩) (extensionality λ i → ⊥-elim (fin0 (ground-arity sc g) i))) (proj₂ (proj₂ K))
-    where fin0 : ∀ {n} → n ≡ 0 → Fin n → ⊥
-          fin0 refl ()
+    in trans (sub0≡ (ground-arity sc g) (type (schemaOf sc)) τ _) (proj₂ (proj₂ K))
 
   -- a kinded instance of the entry's schema
   poly-inst : ∀ {m} {Δ : ST.KCtx m} {sc′} (sc : Raw.PolyType) (e : sc′ ≡ schemaOf sc) (τ : ST.TySub (arity sc′) m)
@@ -167,11 +165,11 @@ at-nameC ctx refl r = r
 
 -- a closed type, lifted
 ↑≡wk₀ : ∀ {Σ s S nm m} (T : ST.Type) → SUT.↑ Σ {s} S nm {m} T ≡ wk₀ T
-↑≡wk₀ T = cong (T ST.⟨_⟩) (extensionality λ ())
+↑≡wk₀ T = sub0 T _ _
 
 -- the Spec's operator classes are the checker's
 open import Once.Spec.Surface.Syntax using (BinOp)
-import Once.Internal.Syntax as IS
+import Once.TypeCheck.Raw as IS
 ia-op : ∀ {Σ s S nm op p} → SUT.IntArith Σ {s} S nm op p → IS.isArithmeticOp op ≡ true
 ia-op SUT.ia-add = refl
 ia-op SUT.ia-sub = refl
@@ -257,7 +255,8 @@ open import Once.TypeCheck.ElaborateProofs
          checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; checkLoopV-J; withUnit-elim)
 open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at)
 open import Once.Internal.Type.Join using (join?-complete)
-open import Once.Internal.Type.Sub using (pure-⊑; <:-refl; sub-prod)
+open import Once.Internal.Type.Sub using (pure-⊑; <:-refl)
+open import Once.Spec.Sub using (sub-*)
 open import Once.Spec.Grade using (⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-*)
 import Once.TypeCheck.Error as Error

@@ -15,11 +15,11 @@
 module Once.Semantics.Value.Laws (IntRep : Set) (FloatRep : Set) where
 
 open import Data.Product using (_×_; _,_)
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
 open import Once.Spec.Type using (Fun)
-open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Internal.Polynomial
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS; cataS)
@@ -41,7 +41,7 @@ postulate
 ------------------------------------------------------------------------
 
 -- | Identity catamorphism: cata with In algebra is identity (PROVEN).
-sem-cata-In-id : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-cata wf (sem-In F) x ≡ x
+sem-cata-In-id : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦μ⟧ F) → sem-cata wf (sem-In F) x ≡ x
 sem-cata-In-id {F} wf x =
   let TF = translateF IntRep FloatRep F
       alg′ : ⟦ TF ⟧SF (μS TF) → μS TF
@@ -75,7 +75,7 @@ private
   sfmap-∼S-refl (G₁ S⊗ G₂) (v₁ , v₂) = sfmap-∼S-refl G₁ v₁ , sfmap-∼S-refl G₂ v₂
 
   -- | Bisimulation proof for CoIn-CoOut law. Non-recursive.
-  CoIn-CoOut-bisim : ∀ {F} (wf : WellFormedF F) (y : ⟦ν⟧ F)
+  CoIn-CoOut-bisim : ∀ {F} (wf : WFFun ∅ₖ F) (y : ⟦ν⟧ F)
                    → sem-CoIn F (sem-CoOut wf y) ∼S y
   unfoldS-∼ (CoIn-CoOut-bisim {F} wf y) =
     let TF = translateF IntRep FloatRep F
@@ -83,12 +83,12 @@ private
         eq = coerce-μ⁻¹-round-trip wf (⟦ν⟧ F) (unfoldS y)
     in subst (λ z → ⟦ TF ⟧SF-rel _∼S_ z (unfoldS y)) (sym eq) (sfmap-∼S-refl TF (unfoldS y))
 
-sem-CoIn-CoOut : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
+sem-CoIn-CoOut : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦ν⟧ F)
                → sem-CoIn F (sem-CoOut wf x) ≡ x
 sem-CoIn-CoOut {F} wf x = bisimS-to-eq (sem-CoIn F (sem-CoOut wf x)) x (CoIn-CoOut-bisim wf x)
 
 -- | coerce-ν-in after sem-CoOut equals unfoldS (PROVEN, coercion round-trip).
-coerce-ν-in-sem-CoOut : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
+coerce-ν-in-sem-CoOut : ∀ {F} → (wf : WFFun ∅ₖ F) → (x : ⟦ν⟧ F)
                       → coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x) ≡ unfoldS x
 coerce-ν-in-sem-CoOut wf x = coerce-μ⁻¹-round-trip wf _ (unfoldS x)
 
@@ -107,14 +107,14 @@ private
   ×injʳ refl = refl
 
 mutual
-  sem-ana-Out-bisim : ∀ {F} (wf : WellFormedF F) (v w : ⟦ν⟧ F)
+  sem-ana-Out-bisim : ∀ {F} (wf : WFFun ∅ₖ F) (v w : ⟦ν⟧ F)
                     → v ≡ w → sem-ana F (sem-CoOut wf) v ∼S w
   unfoldS-∼ (sem-ana-Out-bisim {F} wf v w v≡w) =
     sem-ana-Out-rel wf (translateF IntRep FloatRep F)
       (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf v)) (unfoldS w)
       (trans (coerce-ν-in-sem-CoOut wf v) (cong unfoldS v≡w))
 
-  sem-ana-Out-rel : ∀ {F} (wf : WellFormedF F) (H : SFunctor)
+  sem-ana-Out-rel : ∀ {F} (wf : WFFun ∅ₖ F) (H : SFunctor)
                     (a b : ⟦ H ⟧SF (⟦ν⟧ F)) → a ≡ b
                   → ⟦ H ⟧SF-rel (_∼S_ {translateF IntRep FloatRep F})
                       (sfmapSemAna F H (sem-CoOut wf) a) b
@@ -128,6 +128,6 @@ mutual
     sem-ana-Out-rel wf H₁ a₁ b₁ (×injˡ eq) , sem-ana-Out-rel wf H₂ a₂ b₂ (×injʳ eq)
 
 -- | Identity anamorphism: ana with CoOut coalgebra is identity (PROVEN).
-sem-ana-Out-id : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut wf) x ≡ x
+sem-ana-Out-id : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut wf) x ≡ x
 sem-ana-Out-id {F} wf x =
   bisimS-to-eq (sem-ana F (sem-CoOut wf) x) x (sem-ana-Out-bisim wf x x refl)

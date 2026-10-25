@@ -17,6 +17,7 @@ open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_
 open import Once.Internal.Type.DecEq using (_≟q_)
 open import Once.Internal.Type.DecEq using (_≟F_; _≟T_)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-*; sub-+; sub-var)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
@@ -54,15 +55,15 @@ open import Once.Type.Sub
 <:-unique (sub-arr a b g) (sub-arr a′ b′ g′)
   rewrite <:-unique a a′ | <:-unique b b′ | ⊑π-unique g g′ = refl
 
-<:-unique (sub-prod a b) (sub-prod a′ b′) = cong₂ sub-prod (<:-unique a a′) (<:-unique b b′)
+<:-unique (sub-* a b) (sub-* a′ b′) = cong₂ sub-* (<:-unique a a′) (<:-unique b b′)
 
-<:-unique (sub-sum a b)  (sub-sum a′ b′)  = cong₂ sub-sum  (<:-unique a a′) (<:-unique b b′)
+<:-unique (sub-+ a b)  (sub-+ a′ b′)  = cong₂ sub-+  (<:-unique a a′) (<:-unique b b′)
 
 <:-unique sub-μ sub-μ = refl
 
 <:-unique (sub-ν g) (sub-ν h) = cong sub-ν (⊑π-unique g h)
 
-<:-unique sub-rigid sub-rigid = refl
+<:-unique sub-var sub-var = refl
 
 <:-trans : ∀ {m} {A B C : Ty m} → A <: B → B <: C → A <: C
 
@@ -76,12 +77,12 @@ open import Once.Type.Sub
 
 <:-trans (sub-arr a b g) (sub-arr a′ b′ g′) = sub-arr (<:-trans a′ a) (<:-trans b b′) (⊑π-trans g g′)
 
-<:-trans (sub-prod a b)  (sub-prod a′ b′)   = sub-prod (<:-trans a a′) (<:-trans b b′)
+<:-trans (sub-* a b)  (sub-* a′ b′)   = sub-* (<:-trans a a′) (<:-trans b b′)
 
-<:-trans (sub-sum a b)   (sub-sum a′ b′)    = sub-sum  (<:-trans a a′) (<:-trans b b′)
+<:-trans (sub-+ a b)   (sub-+ a′ b′)    = sub-+  (<:-trans a a′) (<:-trans b b′)
 
 <:-trans sub-μ q = q
 
 <:-trans (sub-ν g) (sub-ν h) = sub-ν (⊑π-trans g h)
 
-<:-trans sub-rigid q = q
+<:-trans sub-var q = q

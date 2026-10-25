@@ -20,15 +20,9 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Type
 
--- Once.Internal.Type.WellFormed.IsBaseType
-d_IsBaseType_8 :: MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> ()
-d_IsBaseType_8 = erased
 -- Once.Internal.Type.WellFormed.IsConcrete
-d_IsConcrete_30 a0 = ()
-data T_IsConcrete_30
-  = C_con'45'base_34 MAlonzo.Code.Once.Spec.Type.T_Base_84 |
-    C_con'45'fun_42 MAlonzo.Code.Once.Spec.Type.T_Base_84
+d_IsConcrete_8 a0 = ()
+data T_IsConcrete_8
+  = C_con'45'base_12 MAlonzo.Code.Once.Spec.Type.T_Base_84 |
+    C_con'45'fun_20 MAlonzo.Code.Once.Spec.Type.T_Base_84
                     MAlonzo.Code.Once.Spec.Type.T_Base_84
--- Once.Internal.Type.WellFormed.WellFormedF
-d_WellFormedF_44 :: MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> ()
-d_WellFormedF_44 = erased

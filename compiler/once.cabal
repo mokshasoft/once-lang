@@ -139,7 +139,6 @@ library
       MAlonzo.Code.Once.Internal.Res
       MAlonzo.Code.Once.Internal.Stream
       MAlonzo.Code.Once.Internal.StreamInf
-      MAlonzo.Code.Once.Internal.Syntax
       MAlonzo.Code.Once.Internal.Trace
       MAlonzo.Code.Once.Internal.Type
       MAlonzo.Code.Once.Internal.Type.DecEq
@@ -213,6 +212,7 @@ library
       MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
       MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
       MAlonzo.Code.Once.Type
+      MAlonzo.Code.Once.Type.Closed
       MAlonzo.Code.Once.Type.Determined
       MAlonzo.Code.Once.Type.Instance
       MAlonzo.Code.Once.Type.Match

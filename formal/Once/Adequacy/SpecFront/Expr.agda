@@ -20,11 +20,11 @@ open import Data.String using (String)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Surface.Syntax using (RVar; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Adequacy.SpecGrammar.Conv using (toTy)
 
-data RX (bound : List String) : RawExpr → S.Expr → Set where
+data RX (bound : List String) : Expr → S.Expr → Set where
   x-local    : ∀ {x} → x ∈ bound → RX bound (RVar x) (S.RVar x)
   x-res      : ∀ {c} → c ≢ canonical ("main" ∷ []) → RX bound (RResolved c) (S.RResolved c)
   x-app      : ∀ {f a f′ a′} → RX bound f f′ → RX bound a a′ → RX bound (RApp f a) (S.RApp f′ a′)

@@ -30,6 +30,7 @@ import Once.Internal.Type as T
 import Once.Spec.Type as T
 import Once.Spec.Type as T
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
@@ -57,8 +58,8 @@ coeIR sub-float  = id
 coeIR (sub-arr {q = Zero} a b _) = wrapArr₀ (coeIR b)
 coeIR (sub-arr {q = One}  a b _) = wrapArr (coeIR a) (coeIR b)
 coeIR (sub-arr {q = Many} a b _) = wrapArr (coeIR a) (coeIR b)
-coeIR (sub-prod a b) = ⟨ coeIR a ∘ fst , coeIR b ∘ snd ⟩
-coeIR (sub-sum a b)  = case (inl ∘ coeIR a) (inr ∘ coeIR b)
+coeIR (sub-* a b) = ⟨ coeIR a ∘ fst , coeIR b ∘ snd ⟩
+coeIR (sub-+ a b)  = case (inl ∘ coeIR a) (inr ∘ coeIR b)
 coeIR sub-μ = id
 coeIR (sub-ν _) = id
 coeIR sub-var = id
@@ -76,9 +77,9 @@ data VoidFree {m} : ∀ {A B : Ty m} → A <: B → Set where
   vf-arr    : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
             → VoidFree a → VoidFree b → VoidFree (sub-arr {q = q} a b g)
   vf-prod   : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
-            → VoidFree a → VoidFree b → VoidFree (sub-prod a b)
+            → VoidFree a → VoidFree b → VoidFree (sub-* a b)
   vf-sum    : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
-            → VoidFree a → VoidFree b → VoidFree (sub-sum a b)
+            → VoidFree a → VoidFree b → VoidFree (sub-+ a b)
   vf-μ      : ∀ {F} → VoidFree (sub-μ {F = F})
   vf-ν      : ∀ {F φ φ′} {g : T.fin φ ⊑π T.fin φ′} → VoidFree (sub-ν {F = F} {f = φ} {f′ = φ′} g)
 
@@ -94,13 +95,13 @@ private
   arr-b : ∀ {m} {A A′ B B′ : Ty m} {q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
         → VoidFree (sub-arr {q = q} a b g) → VoidFree b
   arr-b (vf-arr _ vb) = vb
-  prod-a : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree a
+  prod-a : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-* a b) → VoidFree a
   prod-a (vf-prod va _) = va
-  prod-b : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-prod a b) → VoidFree b
+  prod-b : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-* a b) → VoidFree b
   prod-b (vf-prod _ vb) = vb
-  sum-a : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree a
+  sum-a : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-+ a b) → VoidFree a
   sum-a (vf-sum va _) = va
-  sum-b : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-sum a b) → VoidFree b
+  sum-b : ∀ {m} {A A′ B B′ : Ty m} {a : A <: A′} {b : B <: B′} → VoidFree (sub-+ a b) → VoidFree b
   sum-b (vf-sum _ vb) = vb
 
 voidFree? : ∀ {m} {A B : Ty m} (p : A <: B) → Dec (VoidFree p)
@@ -117,8 +118,8 @@ voidFree? sub-unit   = yes vf-unit
 voidFree? sub-int    = yes vf-int
 voidFree? sub-float  = yes vf-float
 voidFree? (sub-arr a b g) = two vf-arr arr-a arr-b (voidFree? a) (voidFree? b)
-voidFree? (sub-prod a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b)
-voidFree? (sub-sum a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
+voidFree? (sub-* a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b)
+voidFree? (sub-+ a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
 voidFree? sub-μ = yes vf-μ
 voidFree? (sub-ν _) = yes vf-ν
 voidFree? sub-var = yes vf-var
@@ -134,8 +135,8 @@ erase-eq _ vf-var    = refl
 erase-eq (sub-arr {q = Zero} a b _) (vf-arr va vb) = cong (Unit ⇛_) (erase-eq b vb)
 erase-eq (sub-arr {q = One}  a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
 erase-eq (sub-arr {q = Many} a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
-erase-eq (sub-prod a b) (vf-prod va vb) = cong₂ _*_ (erase-eq a va) (erase-eq b vb)
-erase-eq (sub-sum a b)  (vf-sum va vb)  = cong₂ _+_ (erase-eq a va) (erase-eq b vb)
+erase-eq (sub-* a b) (vf-prod va vb) = cong₂ _*_ (erase-eq a va) (erase-eq b vb)
+erase-eq (sub-+ a b)  (vf-sum va vb)  = cong₂ _+_ (erase-eq a va) (erase-eq b vb)
 erase-eq _ vf-μ = refl
 erase-eq _ vf-ν = refl
 

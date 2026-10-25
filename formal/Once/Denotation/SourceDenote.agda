@@ -53,7 +53,8 @@ open TargetNum using (int-bits; float-format)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.IR.Ref using (refIR)
-open import Once.Internal.Type.WellFormed using (WellFormedF; con-base; con-fun; base-Unit)
+open import Once.Internal.Type.WellFormed using (con-base; con-fun)
+open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
 open import Once.Semantics.Machine
   using (sem-cata; ⟦_⟧F)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
@@ -167,12 +168,12 @@ sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (call
 -- over the definition's type variables, `wk₀ A`, which means the same).
 sigOpSem : (A : Type) → Once.Spec.Name.CanonicalName → Once.Internal.Type.WellFormed.IsConcrete A → TargetNum → DefsSem → T∞ ⟦ A ⟧ᴰ
 sigOpSem (Dom ⇒[ mk-kind Zero Once.Spec.Grade.pure ] Cod) name (con-fun bDom bCod) fmt σ =
-  return∞ (λ _ → sigOpˢ fmt σ (value-info name base-Unit bCod) tt)
+  return∞ (λ _ → sigOpˢ fmt σ (value-info name b-Unit bCod) tt)
 -- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.
 sigOpSem (Dom ⇒[ mk-kind Zero Once.Spec.Grade.eff ] Cod) name (con-fun bDom bCod) fmt σ =
-  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) name base-Unit bCod) tt)
+  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) name b-Unit bCod) tt)
 sigOpSem (Dom ⇒[ mk-kind Zero Once.Spec.Grade.act ] Cod) name (con-fun bDom bCod) fmt σ =
-  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) name base-Unit bCod) tt)
+  return∞ (λ _ → sigOpˢ fmt σ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) name b-Unit bCod) tt)
 sigOpSem (Dom ⇒[ mk-kind One π ] Cod) name (con-fun bDom bCod) fmt σ =
   return∞ (λ arg → sigOpˢ fmt σ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom bCod) arg)
 sigOpSem (Dom ⇒[ mk-kind Many π ] Cod) name (con-fun bDom bCod) fmt σ =
@@ -182,7 +183,7 @@ sigOpSem (Dom ⇒[ mk-kind Many π ] Cod) name (con-fun bDom bCod) fmt σ =
 -- Matches elaborate's `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays
 -- `refl`.
 {-# CATCHALL #-}
-sigOpSem A name (con-base ib) fmt σ = sigOpˢ fmt σ (value-info {Unit} {A} name base-Unit ib) tt
+sigOpSem A name (con-base ib) fmt σ = sigOpˢ fmt σ (value-info {Unit} {A} name b-Unit ib) tt
 
 ⟦_⟧ˢ : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m}
      → Expr Γ Ψ A → TargetNum → DefsSem → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ → T∞ ⟦ A ⟧ᴰ

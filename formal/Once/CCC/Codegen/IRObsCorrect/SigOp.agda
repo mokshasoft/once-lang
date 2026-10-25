@@ -22,6 +22,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
@@ -35,7 +36,6 @@ open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocS
 open LocState using (regs; halted)
 import Once.Internal.Type as SpecTy
 import Once.Spec.Type as SpecTy
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Internal.Event using (mk-event)
@@ -124,42 +124,42 @@ module SigOpC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   -- Behind a pointer, every base type is read by `readTyped` (`Unit` reads `tt`
   -- either way).
-  decode-ptr : ∀ {A : Type} (bt : IsBaseType A) (loc : ValueLocation FS) (s : LocState FS)
+  decode-ptr : ∀ {A : Type} (bt : Base ∅ₖ A) (loc : ValueLocation FS) (s : LocState FS)
              → decode-at bt (SV-Ptr loc) s ≡ readTyped A loc s
-  decode-ptr base-Unit       _ _ = refl
-  decode-ptr base-Void       _ _ = refl
-  decode-ptr base-Int        _ _ = refl
-  decode-ptr base-Float      _ _ = refl
-  decode-ptr (base-Prod _ _) _ _ = refl
-  decode-ptr (base-Sum _ _)  _ _ = refl
+  decode-ptr b-Unit       _ _ = refl
+  decode-ptr b-Void       _ _ = refl
+  decode-ptr b-Int        _ _ = refl
+  decode-ptr b-Float      _ _ = refl
+  decode-ptr (b-* _ _) _ _ = refl
+  decode-ptr (b-+ _ _)  _ _ = refl
 
   -- A register holds an `Int` or a `Float`, nothing else.
-  arg-reg : ∀ {A : Type} (bt : IsBaseType A) (fit : FitsInRegI ⌊ A ⌋)
+  arg-reg : ∀ {A : Type} (bt : Base ∅ₖ A) (fit : FitsInRegI ⌊ A ⌋)
               (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
           → readReg (regs s) Input1 ≡ prim-sv fit x
           → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
-  arg-reg base-Int   fits-int   x s eq rewrite eq = refl
-  arg-reg base-Float fits-float x s eq rewrite eq = refl
-  arg-reg base-Unit       () x s eq
-  arg-reg base-Void       () x s eq
-  arg-reg (base-Prod _ _) () x s eq
-  arg-reg (base-Sum _ _)  () x s eq
+  arg-reg b-Int   fits-int   x s eq rewrite eq = refl
+  arg-reg b-Float fits-float x s eq rewrite eq = refl
+  arg-reg b-Unit       () x s eq
+  arg-reg b-Void       () x s eq
+  arg-reg (b-* _ _) () x s eq
+  arg-reg (b-+ _ _)  () x s eq
 
-  arg-agree : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
+  arg-agree : ∀ {A : Type} (bt : Base ∅ₖ A) {mIn alloc}
                 (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
             → InputAt {⌊ A ⌋} mIn alloc x s
             → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
-  arg-agree base-Unit  x  s inp = refl
-  arg-agree base-Void  () s inp
+  arg-agree b-Unit  x  s inp = refl
+  arg-agree b-Void  () s inp
   {-# CATCHALL #-}
   arg-agree bt x s (in-loc loc v _ eq) rewrite eq =
     trans (decode-ptr bt loc s) (readTyped-adequate (readable-base bt) bt v)
   {-# CATCHALL #-}
   arg-agree bt x s (in-reg fit eq) = arg-reg bt fit x s eq
-  arg-agree base-Int        x s (in-unit ())
-  arg-agree base-Float      x s (in-unit ())
-  arg-agree (base-Prod _ _) x s (in-unit ())
-  arg-agree (base-Sum _ _)  x s (in-unit ())
+  arg-agree b-Int        x s (in-unit ())
+  arg-agree b-Float      x s (in-unit ())
+  arg-agree (b-* _ _) x s (in-unit ())
+  arg-agree (b-+ _ _)  x s (in-unit ())
 
   -- The events a calling SigOp's step logs ARE the call the denotation makes.
   event-agree : ∀ {A B} (si : SigOpInfo A B) {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
@@ -226,17 +226,17 @@ module SigOpC {FS : FrameSemantics} where
         bl≡ : budgetLeft k (resultAt s (⟪ evalᴰ (SigOp si) x ⟫ k)) ≡ k
         bl≡ = trans (cong (λ ρ → budgetLeft k (proj₂ ρ)) (R k)) (budgetLeft-tag k (resultAt s E))
 
-  res-reg : ∀ {B} (fit : FitsInReg B) (ib : IsBaseType B) (v : EvV.⟦ B ⟧)
+  res-reg : ∀ {B} (fit : FitsInReg B) (ib : Base ∅ₖ B) (v : EvV.⟦ B ⟧)
           → SV-Lit fit v ≡ prim-sv (fits-erase fit) (subst idᶠ (sym (cohᴰ B)) (injectᵇ ib v))
-  res-reg fits-intˢ   base-Int   v = refl
-  res-reg fits-floatˢ base-Float v = refl
+  res-reg fits-intˢ   b-Int   v = refl
+  res-reg fits-floatˢ b-Float v = refl
 
   -- A register-fitting input crosses unchanged.
-  forget-reg : ∀ (bt : IsBaseType Intˢ) (x : EvV.⟦ Intˢ {0} ⟧) → x ≡ forgetᵇ bt x
-  forget-reg base-Int x = refl
+  forget-reg : ∀ (bt : Base ∅ₖ Intˢ) (x : EvV.⟦ Intˢ {0} ⟧) → x ≡ forgetᵇ bt x
+  forget-reg b-Int x = refl
 
-  forget-reg-float : ∀ (bt : IsBaseType SpecTy.Float) (x : EvV.⟦ SpecTy.Float {0} ⟧) → x ≡ forgetᵇ bt x
-  forget-reg-float base-Float x = refl
+  forget-reg-float : ∀ (bt : Base ∅ₖ SpecTy.Float) (x : EvV.⟦ SpecTy.Float {0} ⟧) → x ≡ forgetᵇ bt x
+  forget-reg-float b-Float x = refl
 
   -- THE INPUT A CALL-FREE CONTRACT READS is the denotation's argument, in
   -- every residence: through the pointer (`readTyped-adequate`, at the info's

@@ -26,7 +26,8 @@ import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
 open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
 open import Once.Internal.Type.Poly using (Ground; extractGround)
-open import Once.Internal.Type.WellFormed using (IsBaseType; IsConcrete; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; con-base; con-fun)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 open import Once.Internal.Type.Honest using (HonestFFI)
 import Once.Spec.Grade as SG
 open import Once.Spec.Signature using (BTy; unit; void; int; float; DeclType; constant; value; operation)
@@ -63,14 +64,14 @@ decl-eq (PAct A B) (ga , gb) (dt-act a b) = cong₂ (λ x y → x LT.⇒[ LG.mk-
 -- The compiler's type has a Spec reading
 ------------------------------------------------------------------------
 
-base-of : ∀ (A : PolyType) (g : Ground A) → IsBaseType (extractGround A g) → Σ[ a ∈ BTy ] BaseType (toPoly A) a
+base-of : ∀ (A : PolyType) (g : Ground A) → Base ∅ₖ (extractGround A g) → Σ[ a ∈ BTy ] BaseType (toPoly A) a
 base-of PUnit  _ _ = unit , bt-unit
 base-of PVoid  _ _ = void , bt-void
 base-of PInt   _ _ = int , bt-int
 base-of PFloat _ _ = float , bt-float
-base-of (A P* B) (ga , gb) (base-Prod a b) =
+base-of (A P* B) (ga , gb) (b-* a b) =
   let (x , bx) = base-of A ga a ; (y , by) = base-of B gb b in x SSig.* y , bt-* bx by
-base-of (A P+ B) (ga , gb) (base-Sum a b) =
+base-of (A P+ B) (ga , gb) (b-+ a b) =
   let (x , bx) = base-of A ga a ; (y , by) = base-of B gb b in x SSig.+ y , bt-+ bx by
 base-of (PTVar _) () _
 base-of (A P⇒[ q ] B) _ ()
@@ -80,7 +81,7 @@ base-of (Pμ F) _ ()
 base-of (Pν F φ) _ ()
 
 private
-  const-of : ∀ (T : PolyType) (g : Ground T) → IsBaseType (extractGround T g) → Σ[ t ∈ DeclType ] DeclTypeOf (toPoly T) t
+  const-of : ∀ (T : PolyType) (g : Ground T) → Base ∅ₖ (extractGround T g) → Σ[ t ∈ DeclType ] DeclTypeOf (toPoly T) t
   const-of T g b = let (a , ba) = base-of T g b in constant a , dt-const ba
 
 decl-of : ∀ (T : PolyType) (g : Ground T) → IsConcrete (extractGround T g) → HonestFFI (extractGround T g)

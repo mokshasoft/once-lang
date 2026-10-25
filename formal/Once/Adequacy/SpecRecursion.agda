@@ -17,6 +17,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗)
 open import Once.Spec.Type using (TySub)
 
 module Once.Adequacy.SpecRecursion (Σ : Signature) (σ : TySub 0 0) where
@@ -34,7 +35,6 @@ open import Once.Spec.Type
   using (Type; Fun; KCtx; WFFun; Base; _⟨_⟩; _⟨_⟩F; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
          wf-K; wf-Id; b-var)
 import Once.Spec.Type as SpT
-open import Once.Internal.Type.WellFormed using (wf-Sum; wf-Prod; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 import Once.Internal.Polynomial as LPoly
 open import Once.Semantics.Machine using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
@@ -80,35 +80,35 @@ module _ {Δ : KCtx 0} where
   -- into a layer: the implementation forgets to the machine value, then to
   -- the polynomial's constant
   base-in : ∀ {A : Type} (ib : Base Δ A) {a b} → RelGV A a b → BR A a (coerce-full-to-base A (forgetᵇ ib b))
-  base-in base-Unit r = tt
-  base-in base-Void {()}
-  base-in base-Int r = r
-  base-in base-Float r = r
-  base-in (base-Prod ia ib) {_ , _} {_ , _} (r , s) = base-in ia r , base-in ib s
-  base-in (base-Sum ia ib) {inj₁ _} {inj₁ _} r = base-in ia r
-  base-in (base-Sum ia ib) {inj₂ _} {inj₂ _} r = base-in ib r
+  base-in b-Unit r = tt
+  base-in b-Void {()}
+  base-in b-Int r = r
+  base-in b-Float r = r
+  base-in (b-* ia ib) {_ , _} {_ , _} (r , s) = base-in ia r , base-in ib s
+  base-in (b-+ ia ib) {inj₁ _} {inj₁ _} r = base-in ia r
+  base-in (b-+ ia ib) {inj₂ _} {inj₂ _} r = base-in ib r
   base-in (b-var {i = ()} _)
 
   -- out of a layer, into the machine value
   base-mid : ∀ {A : Type} (ib : Base Δ A) {a y} → BR A a y → BV A a (coerce-base-to-full ib y)
-  base-mid base-Unit r = tt
-  base-mid base-Void {()}
-  base-mid base-Int r = r
-  base-mid base-Float r = r
-  base-mid (base-Prod ia ib) {_ , _} {_ , _} (r , s) = base-mid ia r , base-mid ib s
-  base-mid (base-Sum ia ib) {inj₁ _} {inj₁ _} r = base-mid ia r
-  base-mid (base-Sum ia ib) {inj₂ _} {inj₂ _} r = base-mid ib r
+  base-mid b-Unit r = tt
+  base-mid b-Void {()}
+  base-mid b-Int r = r
+  base-mid b-Float r = r
+  base-mid (b-* ia ib) {_ , _} {_ , _} (r , s) = base-mid ia r , base-mid ib s
+  base-mid (b-+ ia ib) {inj₁ _} {inj₁ _} r = base-mid ia r
+  base-mid (b-+ ia ib) {inj₂ _} {inj₂ _} r = base-mid ib r
   base-mid (b-var {i = ()} _)
 
   -- …and back into the Kleisli domain
   base-out : ∀ {A : Type} (ib : Base Δ A) {a y} → BV A a y → RelGV A a (injectᵇ ib y)
-  base-out base-Unit r = tt
-  base-out base-Void {()}
-  base-out base-Int r = r
-  base-out base-Float r = r
-  base-out (base-Prod ia ib) {_ , _} {_ , _} (r , s) = base-out ia r , base-out ib s
-  base-out (base-Sum ia ib) {inj₁ _} {inj₁ _} r = base-out ia r
-  base-out (base-Sum ia ib) {inj₂ _} {inj₂ _} r = base-out ib r
+  base-out b-Unit r = tt
+  base-out b-Void {()}
+  base-out b-Int r = r
+  base-out b-Float r = r
+  base-out (b-* ia ib) {_ , _} {_ , _} (r , s) = base-out ia r , base-out ib s
+  base-out (b-+ ia ib) {inj₁ _} {inj₁ _} r = base-out ia r
+  base-out (b-+ ia ib) {inj₂ _} {inj₂ _} r = base-out ib r
   base-out (b-var {i = ()} _)
 
 ------------------------------------------------------------------------
@@ -133,27 +133,27 @@ module _ {Δ : KCtx 0} where
           → LayerR H (RelGV A) (SD.toL σ H A l) (coerce-μ-in H ⟦ A ⟧ᴰ (coerce-functor-D wf A r))
   toL-rel (wf-K ib)        A r = base-in ib r
   toL-rel wf-Id            A r = r
-  toL-rel (wf-Sum wf₁ wf₂) A {inj₁ _} {inj₁ _} r = toL-rel wf₁ A r
-  toL-rel (wf-Sum wf₁ wf₂) A {inj₂ _} {inj₂ _} r = toL-rel wf₂ A r
-  toL-rel (wf-Prod wf₁ wf₂) A {_ , _} {_ , _} (r , s) = toL-rel wf₁ A r , toL-rel wf₂ A s
+  toL-rel (wf-⊕ wf₁ wf₂) A {inj₁ _} {inj₁ _} r = toL-rel wf₁ A r
+  toL-rel (wf-⊕ wf₁ wf₂) A {inj₂ _} {inj₂ _} r = toL-rel wf₂ A r
+  toL-rel (wf-⊗ wf₁ wf₂) A {_ , _} {_ , _} (r , s) = toL-rel wf₁ A r , toL-rel wf₂ A s
 
   -- A polynomial layer, out of the layer on both sides.
   outL-rel : ∀ {H : Fun 0} (wf : WFFun Δ H) {X Y : Set} {R : X → Y → Set} {l l′}
            → LayerR H R l l′ → VLayerR H R l (coerce-μ-out wf Y l′)
   outL-rel (wf-K ib)        r = base-mid ib r
   outL-rel wf-Id            r = r
-  outL-rel (wf-Sum wf₁ wf₂) {l = inj₁ _} {inj₁ _} r = outL-rel wf₁ r
-  outL-rel (wf-Sum wf₁ wf₂) {l = inj₂ _} {inj₂ _} r = outL-rel wf₂ r
-  outL-rel (wf-Prod wf₁ wf₂) {l = _ , _} {_ , _} (r , s) = outL-rel wf₁ r , outL-rel wf₂ s
+  outL-rel (wf-⊕ wf₁ wf₂) {l = inj₁ _} {inj₁ _} r = outL-rel wf₁ r
+  outL-rel (wf-⊕ wf₁ wf₂) {l = inj₂ _} {inj₂ _} r = outL-rel wf₂ r
+  outL-rel (wf-⊗ wf₁ wf₂) {l = _ , _} {_ , _} (r , s) = outL-rel wf₁ r , outL-rel wf₂ s
 
   -- A machine layer, back into a value of `⟦ H ⟧F A` on both sides.
   fromL-rel : ∀ {H : Fun 0} (wf : WFFun Δ H) (A : Type) {l l′}
             → VLayerR H (RelGV A) l l′ → RelGV (SpT.⟦ H ⟧F A) (SD.fromL σ H A l) (coerce-functor⁻¹-D wf A l′)
   fromL-rel (wf-K ib)        A r = base-out ib r
   fromL-rel wf-Id            A r = r
-  fromL-rel (wf-Sum wf₁ wf₂) A {inj₁ _} {inj₁ _} r = fromL-rel wf₁ A r
-  fromL-rel (wf-Sum wf₁ wf₂) A {inj₂ _} {inj₂ _} r = fromL-rel wf₂ A r
-  fromL-rel (wf-Prod wf₁ wf₂) A {_ , _} {_ , _} (r , s) = fromL-rel wf₁ A r , fromL-rel wf₂ A s
+  fromL-rel (wf-⊕ wf₁ wf₂) A {inj₁ _} {inj₁ _} r = fromL-rel wf₁ A r
+  fromL-rel (wf-⊕ wf₁ wf₂) A {inj₂ _} {inj₂ _} r = fromL-rel wf₂ A r
+  fromL-rel (wf-⊗ wf₁ wf₂) A {_ , _} {_ , _} (r , s) = fromL-rel wf₁ A r , fromL-rel wf₂ A s
 
 ------------------------------------------------------------------------
 -- THE FOLD BRIDGE: related algebras fold related data to related results.
@@ -181,9 +181,9 @@ module _ {π : Purity} {Δ : KCtx 0} {F : Fun 0} {A : Type} (wfF : WFFun Δ F)
   fold-R (inR lr) = RelM-bind π (layer-R wfF lr) (λ r → algR (fromL-rel wfF A r))
   layer-R (wf-K ib) lr = RelM-return π (base-mid ib lr)
   layer-R wf-Id     lr = fold-R lr
-  layer-R (wf-Sum wf₁ wf₂) {inj₁ _} {inj₁ _} lr = RelM-fmap π (layer-R wf₁ lr) (λ r → r)
-  layer-R (wf-Sum wf₁ wf₂) {inj₂ _} {inj₂ _} lr = RelM-fmap π (layer-R wf₂ lr) (λ r → r)
-  layer-R (wf-Prod wf₁ wf₂) {_ , _} {_ , _} (lr₁ , lr₂) =
+  layer-R (wf-⊕ wf₁ wf₂) {inj₁ _} {inj₁ _} lr = RelM-fmap π (layer-R wf₁ lr) (λ r → r)
+  layer-R (wf-⊕ wf₁ wf₂) {inj₂ _} {inj₂ _} lr = RelM-fmap π (layer-R wf₂ lr) (λ r → r)
+  layer-R (wf-⊗ wf₁ wf₂) {_ , _} {_ , _} (lr₁ , lr₂) =
     RelM-bind π (layer-R wf₁ lr₁) λ r₁ → RelM-bind π (layer-R wf₂ lr₂) λ r₂ → RelM-return π (r₁ , r₂)
 
 cata-bridgeᵍ : ∀ {π : Purity} (u : pure ⊑π π) {Δ : KCtx 0} {F : Fun 0} {A : Type} {wfF : WFFun Δ F}

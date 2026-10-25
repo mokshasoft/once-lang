@@ -9,7 +9,7 @@
 -- as theorems and bundled into `VerifiedTypeChecker`.
 --
 -- Identities landed here:
---   * `classifyAppHead`-determinism: classifying the same RawExpr
+--   * `classifyAppHead`-determinism: classifying the same Expr
 --     twice yields the same result (trivially `refl`, but stated as
 --     a citable theorem).
 --   * `decideLeq` returns `just _` exactly when `q' ≤qᵇ q ≡ true`
@@ -39,7 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; RResolved)
-open import Once.Internal.Syntax using (isArithmeticOp; isComparisonOp; RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.TypeCheck.Raw using (isArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
@@ -50,9 +51,9 @@ import Once.Internal.Typing.Scope as Classify
 -- classifyAppHead determinism
 ------------------------------------------------------------------------
 
--- Calling the classifier twice on the same RawExpr gives the same
+-- Calling the classifier twice on the same Expr gives the same
 -- answer (trivially refl; stated for downstream use).
-classifyAppHead-deterministic : ∀ (e : RawExpr) → classifyAppHead e ≡ classifyAppHead e
+classifyAppHead-deterministic : ∀ (e : Expr) → classifyAppHead e ≡ classifyAppHead e
 classifyAppHead-deterministic _ = refl
 
 ------------------------------------------------------------------------

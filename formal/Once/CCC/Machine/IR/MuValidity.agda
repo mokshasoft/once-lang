@@ -9,7 +9,7 @@
 -- unifying ⟦ F ⟧T (μ-type F) with other types during pattern matching.
 --
 -- APPROACH:
--- 1. Define μLayerValid/νLayerValid by induction on WellFormedF
+-- 1. Define μLayerValid/νLayerValid by induction on WFFun ∅ₖ
 -- 2. These predicates capture that F-layer memory layout is correct
 -- 3. ValidAtWF constructors reference these predicates opaquely
 -- 4. Pattern matching on ValidAtWF doesn't need to inspect layer types
@@ -18,6 +18,7 @@
 module Once.CCC.Machine.IR.MuValidity where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_)
+open import Once.Spec.Type using (Base; WFFun; wf-⊕; wf-⊗; ∅ₖ)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -30,7 +31,6 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.Spec.Type using (Type; K; Id; _⊕_; _⊗_; _+_; _*_)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 -- Import semantic operations
@@ -44,10 +44,10 @@ open import Once.Internal.Value Carrier Carrier using (⟦μ⟧; ⟦ν⟧; ⟦_�
 -- μLayerValid: Validity for F-layers by functor induction
 --
 -- This predicate captures that an F-layer has correct memory layout.
--- Defined by induction on WellFormedF to avoid the type computation
+-- Defined by induction on WFFun ∅ₖ to avoid the type computation
 -- issues that occur with ValidAtWF.
 --
--- KEY PROPERTY: Pattern matching on WellFormedF determines the layer
+-- KEY PROPERTY: Pattern matching on WFFun ∅ₖ determines the layer
 -- type statically, so we don't get unification failures.
 ------------------------------------------------------------------------
 
@@ -62,7 +62,7 @@ module MuValidityImpl {FS : FrameSemantics} where
 
   -- | μLayerValid: F-layer at a location is memory-valid
   --
-  -- Defined by induction on WellFormedF:
+  -- Defined by induction on WFFun ∅ₖ:
   -- - K: Base type at location, just needs BeforeFrontier
   -- - Id: Recursive position contains μ-value, needs μValid
   -- - Sum: Tag + one branch valid
@@ -81,50 +81,50 @@ module MuValidityImpl {FS : FrameSemantics} where
     --   s : machine state
     --
     data μLayerValid (alloc : AllocState {FS}) :
-         ∀ {F G} → WellFormedF F → WellFormedF G →
+         ∀ {F G} → WFFun ∅ₖ F → WFFun ∅ₖ G →
          ⟦ F ⟧F (⟦μ⟧ G) → ValueLocation FS → LocState FS → Set where
 
       -- K-layer: constant type, no recursive positions
       -- Just needs the location to be before frontier
-      μlayer-K : ∀ {G baseType} {wfG : WellFormedF G}
-        {isBase : IsBaseType baseType}
+      μlayer-K : ∀ {G baseType} {wfG : WFFun ∅ₖ G}
+        {isBase : Base ∅ₖ baseType}
         {x : ⟦ baseType ⟧} {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →
         μLayerValid alloc (wf-K isBase) wfG x loc s
 
       -- Id-layer: single recursive position containing μG value
       -- The recursive μG value must be valid
-      μlayer-Id : ∀ {G} {wfG : WellFormedF G}
+      μlayer-Id : ∀ {G} {wfG : WFFun ∅ₖ G}
         {x : ⟦μ⟧ G} {loc : ValueLocation FS} {s : LocState FS} →
         μValid alloc wfG x loc s →
         μLayerValid alloc wf-Id wfG x loc s
 
       -- Sum-layer inl: left branch taken
       -- Tag at loc, payload pointer at sucLoc loc
-      μlayer-inl : ∀ {F F' G} {wfF : WellFormedF F} {wfF' : WellFormedF F'}
-        {wfG : WellFormedF G}
+      μlayer-inl : ∀ {F F' G} {wfF : WFFun ∅ₖ F} {wfF' : WFFun ∅ₖ F'}
+        {wfG : WFFun ∅ₖ G}
         {x : ⟦ F ⟧F (⟦μ⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
         readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         μLayerValid alloc wfF wfG x payload-loc s →
-        μLayerValid alloc (wf-Sum wfF wfF') wfG (inj₁ x) sum-loc s
+        μLayerValid alloc (wf-⊕ wfF wfF') wfG (inj₁ x) sum-loc s
 
       -- Sum-layer inr: right branch taken
-      μlayer-inr : ∀ {F F' G} {wfF : WellFormedF F} {wfF' : WellFormedF F'}
-        {wfG : WellFormedF G}
+      μlayer-inr : ∀ {F F' G} {wfF : WFFun ∅ₖ F} {wfF' : WFFun ∅ₖ F'}
+        {wfG : WFFun ∅ₖ G}
         {y : ⟦ F' ⟧F (⟦μ⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
         readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         μLayerValid alloc wfF' wfG y payload-loc s →
-        μLayerValid alloc (wf-Sum wfF wfF') wfG (inj₂ y) sum-loc s
+        μLayerValid alloc (wf-⊕ wfF wfF') wfG (inj₂ y) sum-loc s
 
       -- Product-layer: both components at consecutive locations
-      μlayer-prod : ∀ {F F' G} {wfF : WellFormedF F} {wfF' : WellFormedF F'}
-        {wfG : WellFormedF G}
+      μlayer-prod : ∀ {F F' G} {wfF : WFFun ∅ₖ F} {wfF' : WFFun ∅ₖ F'}
+        {wfG : WFFun ∅ₖ G}
         {x : ⟦ F ⟧F (⟦μ⟧ G)} {y : ⟦ F' ⟧F (⟦μ⟧ G)}
         {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS} →
         readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
@@ -134,7 +134,7 @@ module MuValidityImpl {FS : FrameSemantics} where
         BeforeFrontier alloc (sucLoc pair-loc) →
         μLayerValid alloc wfF wfG x fst-loc s →
         μLayerValid alloc wfF' wfG y snd-loc s →
-        μLayerValid alloc (wf-Prod wfF wfF') wfG (x , y) pair-loc s
+        μLayerValid alloc (wf-⊗ wfF wfF') wfG (x , y) pair-loc s
 
     -- | μValid: A μ-value is valid if its layer is valid
     --
@@ -143,8 +143,8 @@ module MuValidityImpl {FS : FrameSemantics} where
     --
     -- This captures: no memory movement occurs in In/Out, so validity transfers.
     data μValid (alloc : AllocState {FS}) :
-         ∀ {F} → WellFormedF F → ⟦μ⟧ F → ValueLocation FS → LocState FS → Set where
-      μ-valid : ∀ {F} {wf : WellFormedF F}
+         ∀ {F} → WFFun ∅ₖ F → ⟦μ⟧ F → ValueLocation FS → LocState FS → Set where
+      μ-valid : ∀ {F} {wf : WFFun ∅ₖ F}
         {x : ⟦μ⟧ F} {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →
         μLayerValid alloc wf wf (sem-Out wf x) loc s →
@@ -160,42 +160,42 @@ module MuValidityImpl {FS : FrameSemantics} where
 
   mutual
     data νLayerValid (alloc : AllocState {FS}) :
-         ∀ {F G} → WellFormedF F → WellFormedF G →
+         ∀ {F G} → WFFun ∅ₖ F → WFFun ∅ₖ G →
          ⟦ F ⟧F (⟦ν⟧ G) → ValueLocation FS → LocState FS → Set where
 
-      νlayer-K : ∀ {G baseType} {wfG : WellFormedF G}
-        {isBase : IsBaseType baseType}
+      νlayer-K : ∀ {G baseType} {wfG : WFFun ∅ₖ G}
+        {isBase : Base ∅ₖ baseType}
         {x : ⟦ baseType ⟧} {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →
         νLayerValid alloc (wf-K isBase) wfG x loc s
 
-      νlayer-Id : ∀ {G} {wfG : WellFormedF G}
+      νlayer-Id : ∀ {G} {wfG : WFFun ∅ₖ G}
         {x : ⟦ν⟧ G} {loc : ValueLocation FS} {s : LocState FS} →
         νValid alloc wfG x loc s →
         νLayerValid alloc wf-Id wfG x loc s
 
-      νlayer-inl : ∀ {F F' G} {wfF : WellFormedF F} {wfF' : WellFormedF F'}
-        {wfG : WellFormedF G}
+      νlayer-inl : ∀ {F F' G} {wfF : WFFun ∅ₖ F} {wfF' : WFFun ∅ₖ F'}
+        {wfG : WFFun ∅ₖ G}
         {x : ⟦ F ⟧F (⟦ν⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
         readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         νLayerValid alloc wfF wfG x payload-loc s →
-        νLayerValid alloc (wf-Sum wfF wfF') wfG (inj₁ x) sum-loc s
+        νLayerValid alloc (wf-⊕ wfF wfF') wfG (inj₁ x) sum-loc s
 
-      νlayer-inr : ∀ {F F' G} {wfF : WellFormedF F} {wfF' : WellFormedF F'}
-        {wfG : WellFormedF G}
+      νlayer-inr : ∀ {F F' G} {wfF : WFFun ∅ₖ F} {wfF' : WFFun ∅ₖ F'}
+        {wfG : WFFun ∅ₖ G}
         {y : ⟦ F' ⟧F (⟦ν⟧ G)}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
         readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
         BeforeFrontier alloc payload-loc →
         BeforeFrontier alloc (sucLoc sum-loc) →
         νLayerValid alloc wfF' wfG y payload-loc s →
-        νLayerValid alloc (wf-Sum wfF wfF') wfG (inj₂ y) sum-loc s
+        νLayerValid alloc (wf-⊕ wfF wfF') wfG (inj₂ y) sum-loc s
 
-      νlayer-prod : ∀ {F F' G} {wfF : WellFormedF F} {wfF' : WellFormedF F'}
-        {wfG : WellFormedF G}
+      νlayer-prod : ∀ {F F' G} {wfF : WFFun ∅ₖ F} {wfF' : WFFun ∅ₖ F'}
+        {wfG : WFFun ∅ₖ G}
         {x : ⟦ F ⟧F (⟦ν⟧ G)} {y : ⟦ F' ⟧F (⟦ν⟧ G)}
         {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS} →
         readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
@@ -205,11 +205,11 @@ module MuValidityImpl {FS : FrameSemantics} where
         BeforeFrontier alloc (sucLoc pair-loc) →
         νLayerValid alloc wfF wfG x fst-loc s →
         νLayerValid alloc wfF' wfG y snd-loc s →
-        νLayerValid alloc (wf-Prod wfF wfF') wfG (x , y) pair-loc s
+        νLayerValid alloc (wf-⊗ wfF wfF') wfG (x , y) pair-loc s
 
     data νValid (alloc : AllocState {FS}) :
-         ∀ {F} → WellFormedF F → ⟦ν⟧ F → ValueLocation FS → LocState FS → Set where
-      ν-valid : ∀ {F} {wf : WellFormedF F}
+         ∀ {F} → WFFun ∅ₖ F → ⟦ν⟧ F → ValueLocation FS → LocState FS → Set where
+      ν-valid : ∀ {F} {wf : WFFun ∅ₖ F}
         {x : ⟦ν⟧ F} {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →
         νLayerValid alloc wf wf (sem-CoOut wf x) loc s →
@@ -230,7 +230,7 @@ module MuValidityImpl {FS : FrameSemantics} where
   mutual
     -- | μLayerValid preservation under memory equivalence
     μLayerValid-mem-only : ∀ {F G} (alloc : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦μ⟧ G)) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       stackMem s₂ ≡ stackMem s₁ → heapMem s₂ ≡ heapMem s₁ →
@@ -243,19 +243,19 @@ module MuValidityImpl {FS : FrameSemantics} where
     μLayerValid-mem-only alloc wf-Id wfG x loc s₁ s₂ sm hm (μlayer-Id μv) =
       μlayer-Id (μValid-mem-only alloc wfG x loc s₁ s₂ sm hm μv)
 
-    μLayerValid-mem-only alloc (wf-Sum wfF wfF') wfG (inj₁ x) loc s₁ s₂ sm hm
+    μLayerValid-mem-only alloc (wf-⊕ wfF wfF') wfG (inj₁ x) loc s₁ s₂ sm hm
       (μlayer-inl pp pb slb lv) =
       μlayer-inl (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) sm hm) pp)
                  pb slb
                  (μLayerValid-mem-only alloc wfF wfG x _ s₁ s₂ sm hm lv)
 
-    μLayerValid-mem-only alloc (wf-Sum wfF wfF') wfG (inj₂ y) loc s₁ s₂ sm hm
+    μLayerValid-mem-only alloc (wf-⊕ wfF wfF') wfG (inj₂ y) loc s₁ s₂ sm hm
       (μlayer-inr pp pb slb lv) =
       μlayer-inr (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) sm hm) pp)
                  pb slb
                  (μLayerValid-mem-only alloc wfF' wfG y _ s₁ s₂ sm hm lv)
 
-    μLayerValid-mem-only alloc (wf-Prod wfF wfF') wfG (x , y) loc s₁ s₂ sm hm
+    μLayerValid-mem-only alloc (wf-⊗ wfF wfF') wfG (x , y) loc s₁ s₂ sm hm
       (μlayer-prod fp sp fb sb slb fv sv) =
       μlayer-prod (trans (readLoc-stack-heap-eq s₂ s₁ loc sm hm) fp)
                   (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) sm hm) sp)
@@ -264,7 +264,7 @@ module MuValidityImpl {FS : FrameSemantics} where
                   (μLayerValid-mem-only alloc wfF' wfG y _ s₁ s₂ sm hm sv)
 
     -- | μValid preservation under memory equivalence
-    μValid-mem-only : ∀ (alloc : AllocState {FS}) {F} (wf : WellFormedF F)
+    μValid-mem-only : ∀ (alloc : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦μ⟧ F) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       stackMem s₂ ≡ stackMem s₁ → heapMem s₂ ≡ heapMem s₁ →
@@ -276,7 +276,7 @@ module MuValidityImpl {FS : FrameSemantics} where
   -- | νValid preservation under memory equivalence (dual of μValid)
   mutual
     νLayerValid-mem-only : ∀ {F G} (alloc : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦ν⟧ G)) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       stackMem s₂ ≡ stackMem s₁ → heapMem s₂ ≡ heapMem s₁ →
@@ -289,19 +289,19 @@ module MuValidityImpl {FS : FrameSemantics} where
     νLayerValid-mem-only alloc wf-Id wfG x loc s₁ s₂ sm hm (νlayer-Id νv) =
       νlayer-Id (νValid-mem-only alloc wfG x loc s₁ s₂ sm hm νv)
 
-    νLayerValid-mem-only alloc (wf-Sum wfF wfF') wfG (inj₁ x) loc s₁ s₂ sm hm
+    νLayerValid-mem-only alloc (wf-⊕ wfF wfF') wfG (inj₁ x) loc s₁ s₂ sm hm
       (νlayer-inl pp pb slb lv) =
       νlayer-inl (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) sm hm) pp)
                  pb slb
                  (νLayerValid-mem-only alloc wfF wfG x _ s₁ s₂ sm hm lv)
 
-    νLayerValid-mem-only alloc (wf-Sum wfF wfF') wfG (inj₂ y) loc s₁ s₂ sm hm
+    νLayerValid-mem-only alloc (wf-⊕ wfF wfF') wfG (inj₂ y) loc s₁ s₂ sm hm
       (νlayer-inr pp pb slb lv) =
       νlayer-inr (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) sm hm) pp)
                  pb slb
                  (νLayerValid-mem-only alloc wfF' wfG y _ s₁ s₂ sm hm lv)
 
-    νLayerValid-mem-only alloc (wf-Prod wfF wfF') wfG (x , y) loc s₁ s₂ sm hm
+    νLayerValid-mem-only alloc (wf-⊗ wfF wfF') wfG (x , y) loc s₁ s₂ sm hm
       (νlayer-prod fp sp fb sb slb fv sv) =
       νlayer-prod (trans (readLoc-stack-heap-eq s₂ s₁ loc sm hm) fp)
                   (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) sm hm) sp)
@@ -309,7 +309,7 @@ module MuValidityImpl {FS : FrameSemantics} where
                   (νLayerValid-mem-only alloc wfF wfG x _ s₁ s₂ sm hm fv)
                   (νLayerValid-mem-only alloc wfF' wfG y _ s₁ s₂ sm hm sv)
 
-    νValid-mem-only : ∀ (alloc : AllocState {FS}) {F} (wf : WellFormedF F)
+    νValid-mem-only : ∀ (alloc : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦ν⟧ F) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       stackMem s₂ ≡ stackMem s₁ → heapMem s₂ ≡ heapMem s₁ →
@@ -327,7 +327,7 @@ module MuValidityImpl {FS : FrameSemantics} where
 
   mutual
     μLayerValid-frontier-advance : ∀ {F G} (alloc alloc' : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦μ⟧ G)) (loc : ValueLocation FS) (s : LocState FS) →
       current-frame alloc' ≡ current-frame alloc →
       next-slot alloc ≤ next-slot alloc' →
@@ -341,21 +341,21 @@ module MuValidityImpl {FS : FrameSemantics} where
     μLayerValid-frontier-advance alloc alloc' wf-Id wfG x loc s cf-eq sl-≤ hp-≤ (μlayer-Id μv) =
       μlayer-Id (μValid-frontier-advance alloc alloc' wfG x loc s cf-eq sl-≤ hp-≤ μv)
 
-    μLayerValid-frontier-advance alloc alloc' (wf-Sum wfF wfF') wfG (inj₁ x) loc s cf-eq sl-≤ hp-≤
+    μLayerValid-frontier-advance alloc alloc' (wf-⊕ wfF wfF') wfG (inj₁ x) loc s cf-eq sl-≤ hp-≤
       (μlayer-inl pp pb slb lv) =
       μlayer-inl pp
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ pb)
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ slb)
                  (μLayerValid-frontier-advance alloc alloc' wfF wfG x _ s cf-eq sl-≤ hp-≤ lv)
 
-    μLayerValid-frontier-advance alloc alloc' (wf-Sum wfF wfF') wfG (inj₂ y) loc s cf-eq sl-≤ hp-≤
+    μLayerValid-frontier-advance alloc alloc' (wf-⊕ wfF wfF') wfG (inj₂ y) loc s cf-eq sl-≤ hp-≤
       (μlayer-inr pp pb slb lv) =
       μlayer-inr pp
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ pb)
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ slb)
                  (μLayerValid-frontier-advance alloc alloc' wfF' wfG y _ s cf-eq sl-≤ hp-≤ lv)
 
-    μLayerValid-frontier-advance alloc alloc' (wf-Prod wfF wfF') wfG (x , y) loc s cf-eq sl-≤ hp-≤
+    μLayerValid-frontier-advance alloc alloc' (wf-⊗ wfF wfF') wfG (x , y) loc s cf-eq sl-≤ hp-≤
       (μlayer-prod fp sp fb sb slb fv sv) =
       μlayer-prod fp sp
                   (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ fb)
@@ -364,7 +364,7 @@ module MuValidityImpl {FS : FrameSemantics} where
                   (μLayerValid-frontier-advance alloc alloc' wfF wfG x _ s cf-eq sl-≤ hp-≤ fv)
                   (μLayerValid-frontier-advance alloc alloc' wfF' wfG y _ s cf-eq sl-≤ hp-≤ sv)
 
-    μValid-frontier-advance : ∀ (alloc alloc' : AllocState {FS}) {F} (wf : WellFormedF F)
+    μValid-frontier-advance : ∀ (alloc alloc' : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦μ⟧ F) (loc : ValueLocation FS) (s : LocState FS) →
       current-frame alloc' ≡ current-frame alloc →
       next-slot alloc ≤ next-slot alloc' →
@@ -377,7 +377,7 @@ module MuValidityImpl {FS : FrameSemantics} where
 
   mutual
     νLayerValid-frontier-advance : ∀ {F G} (alloc alloc' : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦ν⟧ G)) (loc : ValueLocation FS) (s : LocState FS) →
       current-frame alloc' ≡ current-frame alloc →
       next-slot alloc ≤ next-slot alloc' →
@@ -391,21 +391,21 @@ module MuValidityImpl {FS : FrameSemantics} where
     νLayerValid-frontier-advance alloc alloc' wf-Id wfG x loc s cf-eq sl-≤ hp-≤ (νlayer-Id νv) =
       νlayer-Id (νValid-frontier-advance alloc alloc' wfG x loc s cf-eq sl-≤ hp-≤ νv)
 
-    νLayerValid-frontier-advance alloc alloc' (wf-Sum wfF wfF') wfG (inj₁ x) loc s cf-eq sl-≤ hp-≤
+    νLayerValid-frontier-advance alloc alloc' (wf-⊕ wfF wfF') wfG (inj₁ x) loc s cf-eq sl-≤ hp-≤
       (νlayer-inl pp pb slb lv) =
       νlayer-inl pp
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ pb)
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ slb)
                  (νLayerValid-frontier-advance alloc alloc' wfF wfG x _ s cf-eq sl-≤ hp-≤ lv)
 
-    νLayerValid-frontier-advance alloc alloc' (wf-Sum wfF wfF') wfG (inj₂ y) loc s cf-eq sl-≤ hp-≤
+    νLayerValid-frontier-advance alloc alloc' (wf-⊕ wfF wfF') wfG (inj₂ y) loc s cf-eq sl-≤ hp-≤
       (νlayer-inr pp pb slb lv) =
       νlayer-inr pp
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ pb)
                  (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ slb)
                  (νLayerValid-frontier-advance alloc alloc' wfF' wfG y _ s cf-eq sl-≤ hp-≤ lv)
 
-    νLayerValid-frontier-advance alloc alloc' (wf-Prod wfF wfF') wfG (x , y) loc s cf-eq sl-≤ hp-≤
+    νLayerValid-frontier-advance alloc alloc' (wf-⊗ wfF wfF') wfG (x , y) loc s cf-eq sl-≤ hp-≤
       (νlayer-prod fp sp fb sb slb fv sv) =
       νlayer-prod fp sp
                   (frontier-monotone alloc alloc' (sym cf-eq) sl-≤ hp-≤ _ fb)
@@ -414,7 +414,7 @@ module MuValidityImpl {FS : FrameSemantics} where
                   (νLayerValid-frontier-advance alloc alloc' wfF wfG x _ s cf-eq sl-≤ hp-≤ fv)
                   (νLayerValid-frontier-advance alloc alloc' wfF' wfG y _ s cf-eq sl-≤ hp-≤ sv)
 
-    νValid-frontier-advance : ∀ (alloc alloc' : AllocState {FS}) {F} (wf : WellFormedF F)
+    νValid-frontier-advance : ∀ (alloc alloc' : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦ν⟧ F) (loc : ValueLocation FS) (s : LocState FS) →
       current-frame alloc' ≡ current-frame alloc →
       next-slot alloc ≤ next-slot alloc' →
@@ -435,7 +435,7 @@ module MuValidityImpl {FS : FrameSemantics} where
   mutual
     μLayerValid-bf-transfer : ∀ {F G}
       (a₁ a₂ : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦μ⟧ G)) (loc : ValueLocation FS) (s : LocState FS) →
       (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
       μLayerValid a₁ wfF wfG layer loc s →
@@ -447,23 +447,23 @@ module MuValidityImpl {FS : FrameSemantics} where
     μLayerValid-bf-transfer a₁ a₂ wf-Id wfG x loc s bf (μlayer-Id μv) =
       μlayer-Id (μValid-bf-transfer a₁ a₂ wfG x loc s bf μv)
 
-    μLayerValid-bf-transfer a₁ a₂ (wf-Sum wfF wfF') wfG (inj₁ x) loc s bf
+    μLayerValid-bf-transfer a₁ a₂ (wf-⊕ wfF wfF') wfG (inj₁ x) loc s bf
       (μlayer-inl pp pb slb lv) =
       μlayer-inl pp (bf _ pb) (bf _ slb)
                  (μLayerValid-bf-transfer a₁ a₂ wfF wfG x _ s bf lv)
 
-    μLayerValid-bf-transfer a₁ a₂ (wf-Sum wfF wfF') wfG (inj₂ y) loc s bf
+    μLayerValid-bf-transfer a₁ a₂ (wf-⊕ wfF wfF') wfG (inj₂ y) loc s bf
       (μlayer-inr pp pb slb lv) =
       μlayer-inr pp (bf _ pb) (bf _ slb)
                  (μLayerValid-bf-transfer a₁ a₂ wfF' wfG y _ s bf lv)
 
-    μLayerValid-bf-transfer a₁ a₂ (wf-Prod wfF wfF') wfG (x , y) loc s bf
+    μLayerValid-bf-transfer a₁ a₂ (wf-⊗ wfF wfF') wfG (x , y) loc s bf
       (μlayer-prod fp sp fb sb slb fv sv) =
       μlayer-prod fp sp (bf _ fb) (bf _ sb) (bf _ slb)
                   (μLayerValid-bf-transfer a₁ a₂ wfF wfG x _ s bf fv)
                   (μLayerValid-bf-transfer a₁ a₂ wfF' wfG y _ s bf sv)
 
-    μValid-bf-transfer : ∀ (a₁ a₂ : AllocState {FS}) {F} (wf : WellFormedF F)
+    μValid-bf-transfer : ∀ (a₁ a₂ : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦μ⟧ F) (loc : ValueLocation FS) (s : LocState FS) →
       (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
       μValid a₁ wf x loc s →
@@ -474,7 +474,7 @@ module MuValidityImpl {FS : FrameSemantics} where
   mutual
     νLayerValid-bf-transfer : ∀ {F G}
       (a₁ a₂ : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦ν⟧ G)) (loc : ValueLocation FS) (s : LocState FS) →
       (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
       νLayerValid a₁ wfF wfG layer loc s →
@@ -486,23 +486,23 @@ module MuValidityImpl {FS : FrameSemantics} where
     νLayerValid-bf-transfer a₁ a₂ wf-Id wfG x loc s bf (νlayer-Id νv) =
       νlayer-Id (νValid-bf-transfer a₁ a₂ wfG x loc s bf νv)
 
-    νLayerValid-bf-transfer a₁ a₂ (wf-Sum wfF wfF') wfG (inj₁ x) loc s bf
+    νLayerValid-bf-transfer a₁ a₂ (wf-⊕ wfF wfF') wfG (inj₁ x) loc s bf
       (νlayer-inl pp pb slb lv) =
       νlayer-inl pp (bf _ pb) (bf _ slb)
                  (νLayerValid-bf-transfer a₁ a₂ wfF wfG x _ s bf lv)
 
-    νLayerValid-bf-transfer a₁ a₂ (wf-Sum wfF wfF') wfG (inj₂ y) loc s bf
+    νLayerValid-bf-transfer a₁ a₂ (wf-⊕ wfF wfF') wfG (inj₂ y) loc s bf
       (νlayer-inr pp pb slb lv) =
       νlayer-inr pp (bf _ pb) (bf _ slb)
                  (νLayerValid-bf-transfer a₁ a₂ wfF' wfG y _ s bf lv)
 
-    νLayerValid-bf-transfer a₁ a₂ (wf-Prod wfF wfF') wfG (x , y) loc s bf
+    νLayerValid-bf-transfer a₁ a₂ (wf-⊗ wfF wfF') wfG (x , y) loc s bf
       (νlayer-prod fp sp fb sb slb fv sv) =
       νlayer-prod fp sp (bf _ fb) (bf _ sb) (bf _ slb)
                   (νLayerValid-bf-transfer a₁ a₂ wfF wfG x _ s bf fv)
                   (νLayerValid-bf-transfer a₁ a₂ wfF' wfG y _ s bf sv)
 
-    νValid-bf-transfer : ∀ (a₁ a₂ : AllocState {FS}) {F} (wf : WellFormedF F)
+    νValid-bf-transfer : ∀ (a₁ a₂ : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦ν⟧ F) (loc : ValueLocation FS) (s : LocState FS) →
       (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
       νValid a₁ wf x loc s →
@@ -519,7 +519,7 @@ module MuValidityImpl {FS : FrameSemantics} where
 
   mutual
     μLayerValid-mem-preserved : ∀ {F G} (alloc : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦μ⟧ G)) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       BeforeFrontier alloc loc →
@@ -533,17 +533,17 @@ module MuValidityImpl {FS : FrameSemantics} where
     μLayerValid-mem-preserved alloc wf-Id wfG x loc s₁ s₂ loc-bf mem-eq (μlayer-Id μv) =
       μlayer-Id (μValid-mem-preserved alloc wfG x loc s₁ s₂ loc-bf mem-eq μv)
 
-    μLayerValid-mem-preserved alloc (wf-Sum wfF wfF') wfG (inj₁ x) loc s₁ s₂ loc-bf mem-eq
+    μLayerValid-mem-preserved alloc (wf-⊕ wfF wfF') wfG (inj₁ x) loc s₁ s₂ loc-bf mem-eq
       (μlayer-inl pp pb slb lv) =
       μlayer-inl (trans (mem-eq (sucLoc loc) slb) pp) pb slb
                  (μLayerValid-mem-preserved alloc wfF wfG x _ s₁ s₂ pb mem-eq lv)
 
-    μLayerValid-mem-preserved alloc (wf-Sum wfF wfF') wfG (inj₂ y) loc s₁ s₂ loc-bf mem-eq
+    μLayerValid-mem-preserved alloc (wf-⊕ wfF wfF') wfG (inj₂ y) loc s₁ s₂ loc-bf mem-eq
       (μlayer-inr pp pb slb lv) =
       μlayer-inr (trans (mem-eq (sucLoc loc) slb) pp) pb slb
                  (μLayerValid-mem-preserved alloc wfF' wfG y _ s₁ s₂ pb mem-eq lv)
 
-    μLayerValid-mem-preserved alloc (wf-Prod wfF wfF') wfG (x , y) loc s₁ s₂ loc-bf mem-eq
+    μLayerValid-mem-preserved alloc (wf-⊗ wfF wfF') wfG (x , y) loc s₁ s₂ loc-bf mem-eq
       (μlayer-prod fp sp fb sb slb fv sv) =
       μlayer-prod (trans (mem-eq loc loc-bf) fp)
                   (trans (mem-eq (sucLoc loc) slb) sp)
@@ -551,7 +551,7 @@ module MuValidityImpl {FS : FrameSemantics} where
                   (μLayerValid-mem-preserved alloc wfF wfG x _ s₁ s₂ fb mem-eq fv)
                   (μLayerValid-mem-preserved alloc wfF' wfG y _ s₁ s₂ sb mem-eq sv)
 
-    μValid-mem-preserved : ∀ (alloc : AllocState {FS}) {F} (wf : WellFormedF F)
+    μValid-mem-preserved : ∀ (alloc : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦μ⟧ F) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       BeforeFrontier alloc loc →
@@ -563,7 +563,7 @@ module MuValidityImpl {FS : FrameSemantics} where
 
   mutual
     νLayerValid-mem-preserved : ∀ {F G} (alloc : AllocState {FS})
-      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G)
       (layer : ⟦ F ⟧F (⟦ν⟧ G)) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       BeforeFrontier alloc loc →
@@ -577,17 +577,17 @@ module MuValidityImpl {FS : FrameSemantics} where
     νLayerValid-mem-preserved alloc wf-Id wfG x loc s₁ s₂ loc-bf mem-eq (νlayer-Id νv) =
       νlayer-Id (νValid-mem-preserved alloc wfG x loc s₁ s₂ loc-bf mem-eq νv)
 
-    νLayerValid-mem-preserved alloc (wf-Sum wfF wfF') wfG (inj₁ x) loc s₁ s₂ loc-bf mem-eq
+    νLayerValid-mem-preserved alloc (wf-⊕ wfF wfF') wfG (inj₁ x) loc s₁ s₂ loc-bf mem-eq
       (νlayer-inl pp pb slb lv) =
       νlayer-inl (trans (mem-eq (sucLoc loc) slb) pp) pb slb
                  (νLayerValid-mem-preserved alloc wfF wfG x _ s₁ s₂ pb mem-eq lv)
 
-    νLayerValid-mem-preserved alloc (wf-Sum wfF wfF') wfG (inj₂ y) loc s₁ s₂ loc-bf mem-eq
+    νLayerValid-mem-preserved alloc (wf-⊕ wfF wfF') wfG (inj₂ y) loc s₁ s₂ loc-bf mem-eq
       (νlayer-inr pp pb slb lv) =
       νlayer-inr (trans (mem-eq (sucLoc loc) slb) pp) pb slb
                  (νLayerValid-mem-preserved alloc wfF' wfG y _ s₁ s₂ pb mem-eq lv)
 
-    νLayerValid-mem-preserved alloc (wf-Prod wfF wfF') wfG (x , y) loc s₁ s₂ loc-bf mem-eq
+    νLayerValid-mem-preserved alloc (wf-⊗ wfF wfF') wfG (x , y) loc s₁ s₂ loc-bf mem-eq
       (νlayer-prod fp sp fb sb slb fv sv) =
       νlayer-prod (trans (mem-eq loc loc-bf) fp)
                   (trans (mem-eq (sucLoc loc) slb) sp)
@@ -595,7 +595,7 @@ module MuValidityImpl {FS : FrameSemantics} where
                   (νLayerValid-mem-preserved alloc wfF wfG x _ s₁ s₂ fb mem-eq fv)
                   (νLayerValid-mem-preserved alloc wfF' wfG y _ s₁ s₂ sb mem-eq sv)
 
-    νValid-mem-preserved : ∀ (alloc : AllocState {FS}) {F} (wf : WellFormedF F)
+    νValid-mem-preserved : ∀ (alloc : AllocState {FS}) {F} (wf : WFFun ∅ₖ F)
       (x : ⟦ν⟧ F) (loc : ValueLocation FS)
       (s₁ s₂ : LocState FS) →
       BeforeFrontier alloc loc →

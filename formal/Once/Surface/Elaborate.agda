@@ -52,7 +52,8 @@ open import Data.Integer using (ℤ)
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
 open import Once.Arith.SigOp.Builders
 open import Once.Spec.Name using (bare)
-open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF; IsConcrete)
+open import Once.Internal.Type.WellFormed using (con-base; con-fun; IsConcrete)
+open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
 
 -- Literals: constant morphisms that ignore input environment.
 --
@@ -346,17 +347,17 @@ loopM m = curry (Iter (apply ∘ ⟨ fst , snd ⟩))
 -- over the definition's type variables, `wk₀ A`, which erases the same).
 sigOpIR : ∀ {X} (A : Type) → Once.Spec.Name.CanonicalName → IsConcrete A → IR X ⌊ A ⌋
 sigOpIR (Dom ⇒[ mk-kind Zero pure ] Cod) name (con-fun bDom cCod) =
-  curry (SigOp (value-info name base-Unit cCod) ∘ snd)
+  curry (SigOp (value-info name b-Unit cCod) ∘ snd)
 sigOpIR (Dom ⇒[ mk-kind Zero eff ] Cod) name (con-fun bDom cCod) =
-  curry (SigOp (arrow-info (mk-kind Zero eff) name base-Unit cCod) ∘ snd)
+  curry (SigOp (arrow-info (mk-kind Zero eff) name b-Unit cCod) ∘ snd)
 sigOpIR (Dom ⇒[ mk-kind Zero act ] Cod) name (con-fun bDom cCod) =
-  curry (SigOp (arrow-info (mk-kind Zero act) name base-Unit cCod) ∘ snd)
+  curry (SigOp (arrow-info (mk-kind Zero act) name b-Unit cCod) ∘ snd)
 sigOpIR (Dom ⇒[ mk-kind One π ] Cod) name (con-fun bDom cCod) =
   curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd)
 sigOpIR (Dom ⇒[ mk-kind Many π ] Cod) name (con-fun bDom cCod) =
   curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd)
 {-# CATCHALL #-}
-sigOpIR _ name (con-base ib) = SigOp (value-info name base-Unit ib) ∘ terminal
+sigOpIR _ name (con-base ib) = SigOp (value-info name b-Unit ib) ∘ terminal
 
 elaborate : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ A ⌋
 

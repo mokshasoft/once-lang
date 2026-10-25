@@ -11,12 +11,12 @@
 module Once.Type.Sub where
 
 open import Relation.Nullary using (Dec; yes; no)
+open import Once.Spec.Sub using (sub-*; sub-+)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
-open import Once.Internal.Type.Sub using (sub-prod; sub-sum)
 open import Once.Spec.Sub using (sub-var)
 open import Data.Fin using (Fin)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
@@ -54,14 +54,14 @@ private
   arr-aux (yes refl) (yes _) (yes _) (no ¬g) = no λ { (sub-arr _ _ g) → ¬g g }
 
   prod-aux : ∀ {m} {A A′ B B′ : Ty m} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A * B) <: (A′ * B′))
-  prod-aux (yes a) (yes b) = yes (sub-prod a b)
-  prod-aux (no ¬a) _       = no λ { (sub-prod a _) → ¬a a }
-  prod-aux (yes _) (no ¬b) = no λ { (sub-prod _ b) → ¬b b }
+  prod-aux (yes a) (yes b) = yes (sub-* a b)
+  prod-aux (no ¬a) _       = no λ { (sub-* a _) → ¬a a }
+  prod-aux (yes _) (no ¬b) = no λ { (sub-* _ b) → ¬b b }
 
   sum-aux : ∀ {m} {A A′ B B′ : Ty m} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A + B) <: (A′ + B′))
-  sum-aux (yes a) (yes b) = yes (sub-sum a b)
-  sum-aux (no ¬a) _       = no λ { (sub-sum a _) → ¬a a }
-  sum-aux (yes _) (no ¬b) = no λ { (sub-sum _ b) → ¬b b }
+  sum-aux (yes a) (yes b) = yes (sub-+ a b)
+  sum-aux (no ¬a) _       = no λ { (sub-+ a _) → ¬a a }
+  sum-aux (yes _) (no ¬b) = no λ { (sub-+ _ b) → ¬b b }
 
   μ-aux : ∀ {m} {F G : Fun m} → Dec (F ≡ G) → Dec (μ F <: μ G)
   μ-aux (yes refl) = yes sub-μ

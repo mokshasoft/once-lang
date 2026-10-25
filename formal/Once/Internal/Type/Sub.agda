@@ -28,9 +28,8 @@
 -- `A ⊔ B ≔ C`: `C` is the join of `A` and `B` in `<:ᶜ` (D322): two branches
 -- of one `case` meet there. `Once.Internal.Type.Join` decides it.
 --
--- The relations are the Spec's (`Once.Spec.Sub`); this module keeps the
--- compiler's older constructor names while plan 0.122 renames their users, and
--- proves reflexivity and that keeping the domains is a special case.
+-- The relations are the Spec's (`Once.Spec.Sub`); this module proves
+-- reflexivity and that keeping the domains is a special case.
 ------------------------------------------------------------------------
 
 module Once.Internal.Type.Sub where
@@ -40,12 +39,6 @@ open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _�
 open import Once.Spec.Sub
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-pattern sub-prod a b = sub-* a b
-pattern sub-sum a b = sub-+ a b
-pattern sub-rigid = sub-var
-pattern subᶜ-prod a b = subᶜ-* a b
-pattern subᶜ-sum a b = subᶜ-+ a b
-pattern subᶜ-rigid = subᶜ-var
 
 -- Running a grade twice stays within it (the product is idempotent). What a rule with one grade for two sequenced parts
 -- reads its product as.

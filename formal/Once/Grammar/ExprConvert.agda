@@ -5,7 +5,7 @@
 -- Once.Grammar.ExprConvert
 --
 -- Plan 0.3 task #38: conversion from `GExpr` (with a `ConcreteExpr`
--- witness) to `RawExpr`, the parser's output type.
+-- witness) to `Expr`, the parser's output type.
 --
 -- Parallel to `Once.Grammar.Convert.gtypeToType` / `toType`, but for
 -- expressions. Only defined on `ConcreteExpr` witnesses because the
@@ -25,7 +25,8 @@ open import Data.Integer using (+_)
 import Once.Grammar as G
 open G using (GExpr)
 open import Once.Spec.Surface.Syntax using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax
+open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw
 open import Once.Grammar.ExprPrinter using
   (ConcreteExpr; c-e-unit; c-e-int; c-e-var; c-e-qual;
@@ -61,11 +62,11 @@ open import Once.Grammar.ParserRelation using (toType)
 -- Main converter
 ------------------------------------------------------------------------
 
--- | Convert a ConcreteExpr witness to a RawExpr.
+-- | Convert a ConcreteExpr witness to a Expr.
 --
 -- Direct structural recursion. Used by the round-trip theorem to
 -- express the expected parser output.
-gexprToRaw : ∀ {g : GExpr} → ConcreteExpr g → RawExpr
+gexprToRaw : ∀ {g : GExpr} → ConcreteExpr g → Expr
 gexprToRaw c-e-unit                   = RUnit
 gexprToRaw (c-e-int {n})              = RInt (+ n)
 gexprToRaw (c-e-var {name} _)         = RVar name

@@ -27,7 +27,8 @@ open import Relation.Binary.PropositionalEquality using
 import Once.Grammar as G
 open G using (GExpr)
 open import Once.Spec.Surface.Syntax using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax
+open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw
 open import Once.Parser.Token
 open import Once.Parser.ExprRelation

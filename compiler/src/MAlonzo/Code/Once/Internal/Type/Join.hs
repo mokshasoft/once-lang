@@ -76,7 +76,7 @@ d_'8852'p'45''691'_18 v0 v1
         -> case coe v2 of
              MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36
                -> coe
-                    MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_42 (coe v1)
+                    MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_14 (coe v1)
              MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38
                -> case coe v1 of
                     MAlonzo.Code.Once.Spec.Grade.C_fin_42 v3
@@ -168,7 +168,7 @@ d_'8852'f'45''691'_50 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Grade.C_pure'7584'_36
         -> coe
-             MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_42
+             MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_14
              (coe MAlonzo.Code.Once.Spec.Grade.C_fin_42 (coe v1))
       MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38
         -> case coe v1 of
@@ -258,10 +258,10 @@ du_reflJ_184 v0
   = coe
       MAlonzo.Code.Once.Spec.Sub.C_constructor_174
       (coe
-         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_114
+         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_86
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_114
+         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_86
          (coe v0))
       (coe (\ v1 v2 v3 -> v2))
 -- Once.Internal.Type.Join.voidˡ
@@ -278,7 +278,7 @@ du_void'737'_196 v0
       MAlonzo.Code.Once.Spec.Sub.C_constructor_174
       (coe MAlonzo.Code.Once.Spec.Sub.C_sub'7580''45'void_82)
       (coe
-         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_114
+         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_86
          (coe v0))
       (coe (\ v1 v2 v3 -> v3))
 -- Once.Internal.Type.Join.voidʳ
@@ -294,7 +294,7 @@ du_void'691'_208 v0
   = coe
       MAlonzo.Code.Once.Spec.Sub.C_constructor_174
       (coe
-         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_114
+         MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''45'refl_86
          (coe v0))
       (coe MAlonzo.Code.Once.Spec.Sub.C_sub'7580''45'void_82)
       (coe (\ v1 v2 v3 -> v2))

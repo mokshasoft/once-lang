@@ -39,7 +39,7 @@ open import Once.Spec.Grade using (Quantity; Many)
 open import Once.Spec.Type using (Ty; Type; KCtx)
 open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Spec.Name using (canonical; gen; generatorNS)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as Raw
 open import Once.Internal.Context using (SVar; svar)
 open import Once.Spec.Context using (_▸_)
@@ -76,7 +76,7 @@ Imports = List (String × Type)
 
 -- Polymorphic definitions: name, schema and body, most recent first.
 PolyCtx : Set
-PolyCtx = List (String × PolyType × RawExpr)
+PolyCtx = List (String × PolyType × Expr)
 
 lookupImport : Imports → String → Maybe Type
 lookupImport [] _ = nothing
@@ -86,7 +86,7 @@ lookupImport ((n , ty) ∷ rest) x with StrProp._≟_ n x
 
 -- A polymorphic definition and its prefix: the definitions its body may
 -- refer to.
-lookupPolyPrefix : PolyCtx → String → Maybe (PolyType × RawExpr × PolyCtx)
+lookupPolyPrefix : PolyCtx → String → Maybe (PolyType × Expr × PolyCtx)
 lookupPolyPrefix [] _ = nothing
 lookupPolyPrefix ((n , s , b) ∷ rest) x with StrProp._≟_ n x
 ... | yes _ = just (s , b , rest)
@@ -163,7 +163,7 @@ data PolyBuiltinApp : Set where
   pba-ana  : PolyBuiltinApp                             -- 1-arg `ana coalg`, check mode (unfold)
   pba-Out  : PolyBuiltinApp                             -- 1-arg `Out v`, INFER mode (force)
 
-data AppHeadView : RawExpr → Set where
+data AppHeadView : Expr → Set where
   ahv-id       : AppHeadView (Raw.RResolved (gen "id"))
   ahv-fst      : AppHeadView (Raw.RResolved (gen "fst"))
   ahv-snd      : AppHeadView (Raw.RResolved (gen "snd"))
@@ -182,7 +182,7 @@ data AppHeadView : RawExpr → Set where
   ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "case")) f')
   ahv-other    : ∀ {f} → AppHeadView f
 
-classifyAppHeadView : (f : RawExpr) → AppHeadView f
+classifyAppHeadView : (f : Expr) → AppHeadView f
 classifyAppHeadView (Raw.RResolved (canonical (ns ∷ g ∷ []))) with ns ≟ₛ generatorNS
 ... | no _ = ahv-other
 ... | yes refl with g ≟ₛ "id"
@@ -272,5 +272,5 @@ viewToPba ahv-compose-applied = just pba-compose-applied
 viewToPba ahv-case-applied    = just pba-case-applied
 viewToPba ahv-other           = nothing
 
-classifyAppHead : RawExpr → Maybe PolyBuiltinApp
+classifyAppHead : Expr → Maybe PolyBuiltinApp
 classifyAppHead f = viewToPba (classifyAppHeadView f)

@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Surface.Syntax as O using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax as O using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals;
   TArrow; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe;
@@ -197,10 +197,10 @@ ct-ns ct-eq ()
 ct-ns ct-ne ()
 
 -- A compiler derivation over `toks` of the tree.
-BackE : (List P.Token → RawExpr → List P.Token → Set) → List P.Token → S.Expr → List Token → Set
+BackE : (List P.Token → Expr → List P.Token → Set) → List P.Token → S.Expr → List Token → Set
 BackE Rel toks e r = Σ[ rest ∈ List P.Token ] (Rel toks e rest × F rest ≡ r)
 
-BackET : (RawExpr → List P.Token → RawExpr → List P.Token → Set) → RawExpr → List P.Token → S.Expr → List Token → Set
+BackET : (Expr → List P.Token → Expr → List P.Token → Set) → Expr → List P.Token → S.Expr → List Token → Set
 BackET Rel l toks e r = Σ[ rest ∈ List P.Token ] (Rel l toks e rest × F rest ≡ r)
 
 expr←   : ∀ {ts e r} → G.ParsesExpr ts e r → ∀ toks → F toks ≡ ts → N r → BackE E.ParsesExpr toks e r

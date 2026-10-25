@@ -9,6 +9,7 @@
 module Once.Denotation.TraceMonadLaws where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _<_; z≤n; s≤s)
+open import Once.Spec.Type using (Base; b-Unit; ∅ₖ)
 open import Data.Nat.Properties using (0∸n≡0)
 open import Data.List using (List; []; _∷_; _++_; length; take; [_])
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
@@ -25,13 +26,11 @@ open import Once.Internal.Type using (isUnit?)
 import Once.Internal.Type as SpecTy
 import Once.Spec.Type as SpecTy
 import Once.Type as Ty
-open import Once.Internal.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName; gen)
 open import Once.Internal.Name using (showCanonical)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Internal.Type.WellFormed using (base-Unit)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent; mk-event)

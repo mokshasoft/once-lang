@@ -98,7 +98,7 @@ data T_Expr_10
                  MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 T_Expr_10 |
     C_sigOp_388 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
-                MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 |
+                MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 |
     C_closure_396 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_poly_406 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_closed_414 T_Expr_10 |

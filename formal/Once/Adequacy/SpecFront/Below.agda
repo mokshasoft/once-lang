@@ -26,7 +26,8 @@ import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-arr; subᶜ-ν)
-open import Once.Internal.Type.Sub using (<:ᶜ-refl; subᶜ-prod; subᶜ-sum)
+open import Once.Internal.Type.Sub using (<:ᶜ-refl)
+open import Once.Spec.Sub using (subᶜ-*; subᶜ-+)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Principal using (below; gradesBelow; finBelow)
 
@@ -78,10 +79,10 @@ below-sound (A * B) {X} (there m) = cases (∈-++⁻ (cartesianProductWith _*_ (
     Goal = (X <:ᶜ A * B) × (X ≢ A * B)
     one : (∃₂ λ x y → (x ∈ below A) × (y ∈ B ∷ []) × (X ≡ x * y)) → Goal
     one (x , .B , x∈ , here refl , refl) =
-      let (sx , nx) = below-sound A x∈ in subᶜ-prod sx (<:ᶜ-refl B) , λ e → nx (proj₁ (*-inj e))
+      let (sx , nx) = below-sound A x∈ in subᶜ-* sx (<:ᶜ-refl B) , λ e → nx (proj₁ (*-inj e))
     two : (∃₂ λ x y → (x ∈ A ∷ below A) × (y ∈ below B) × (X ≡ x * y)) → Goal
     two (x , y , x∈ , y∈ , refl) =
-      let (sy , ny) = below-sound B y∈ in subᶜ-prod (first A x∈) sy , λ e → ny (proj₂ (*-inj e))
+      let (sy , ny) = below-sound B y∈ in subᶜ-* (first A x∈) sy , λ e → ny (proj₂ (*-inj e))
     cases : (X ∈ cartesianProductWith _*_ (below A) (B ∷ [])) ⊎ (X ∈ cartesianProductWith _*_ (A ∷ below A) (below B)) → Goal
     cases (inj₁ m₁) = one (∈-cartesianProductWith⁻ _*_ (below A) (B ∷ []) m₁)
     cases (inj₂ m₂) = two (∈-cartesianProductWith⁻ _*_ (A ∷ below A) (below B) m₂)
@@ -91,10 +92,10 @@ below-sound (A + B) {X} (there m) = cases (∈-++⁻ (cartesianProductWith _+_ (
     Goal = (X <:ᶜ A + B) × (X ≢ A + B)
     one : (∃₂ λ x y → (x ∈ below A) × (y ∈ B ∷ []) × (X ≡ x + y)) → Goal
     one (x , .B , x∈ , here refl , refl) =
-      let (sx , nx) = below-sound A x∈ in subᶜ-sum sx (<:ᶜ-refl B) , λ e → nx (proj₁ (+-inj e))
+      let (sx , nx) = below-sound A x∈ in subᶜ-+ sx (<:ᶜ-refl B) , λ e → nx (proj₁ (+-inj e))
     two : (∃₂ λ x y → (x ∈ A ∷ below A) × (y ∈ below B) × (X ≡ x + y)) → Goal
     two (x , y , x∈ , y∈ , refl) =
-      let (sy , ny) = below-sound B y∈ in subᶜ-sum (first A x∈) sy , λ e → ny (proj₂ (+-inj e))
+      let (sy , ny) = below-sound B y∈ in subᶜ-+ (first A x∈) sy , λ e → ny (proj₂ (+-inj e))
     cases : (X ∈ cartesianProductWith _+_ (below A) (B ∷ [])) ⊎ (X ∈ cartesianProductWith _+_ (A ∷ below A) (below B)) → Goal
     cases (inj₁ m₁) = one (∈-cartesianProductWith⁻ _+_ (below A) (B ∷ []) m₁)
     cases (inj₂ m₂) = two (∈-cartesianProductWith⁻ _+_ (A ∷ below A) (below B) m₂)

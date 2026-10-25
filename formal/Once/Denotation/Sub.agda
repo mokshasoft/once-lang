@@ -31,6 +31,7 @@ open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type; _⇒[_]_; Void)
 import Once.Spec.Type as ST
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
@@ -51,9 +52,9 @@ open import Once.Internal.Iterative using (T∞; fmap∞)
 ⟦ sub-arr {q = Zero} a b _ ⟧<: f = λ u → fmap∞ ⟦ b ⟧<: (f u)
 ⟦ sub-arr {q = One}  a b _ ⟧<: f = λ x → fmap∞ ⟦ b ⟧<: (f (⟦ a ⟧<: x))
 ⟦ sub-arr {q = Many} a b _ ⟧<: f = λ x → fmap∞ ⟦ b ⟧<: (f (⟦ a ⟧<: x))
-⟦ sub-prod a b ⟧<: (x , y) = ⟦ a ⟧<: x , ⟦ b ⟧<: y
-⟦ sub-sum a b ⟧<: (inj₁ x) = inj₁ (⟦ a ⟧<: x)
-⟦ sub-sum a b ⟧<: (inj₂ y) = inj₂ (⟦ b ⟧<: y)
+⟦ sub-* a b ⟧<: (x , y) = ⟦ a ⟧<: x , ⟦ b ⟧<: y
+⟦ sub-+ a b ⟧<: (inj₁ x) = inj₁ (⟦ a ⟧<: x)
+⟦ sub-+ a b ⟧<: (inj₂ y) = inj₂ (⟦ b ⟧<: y)
 ⟦ sub-μ ⟧<: x = x
 ⟦ sub-ν _ ⟧<: x = x
 

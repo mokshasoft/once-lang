@@ -23,12 +23,14 @@ open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Surface.Syntax using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax
+open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
 open import Once.Denotation.Admissible using (rawIntLits; negLits; declIntLits; moduleIntLits; AdmissibleM)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
 import Once.Internal.Resolution as LR
+import Once.Spec.Surface.Program
 open import Once.Target.Arch using (Arch; arch-numerics)
 
 ------------------------------------------------------------------------
@@ -87,10 +89,10 @@ private
 -- (`moduleIntLits`' walk, on the resolved declarations)
 decls-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR → go dsR ≡ go dsU
 decls-res LR.rds-nil = refl
-decls-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb _) rds) = cong₂ _++_ (res-lits rb) (decls-res rds)
-decls-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) = decls-res rds
-decls-res (LR.rds-cons LR.nim-sig LR.rd-signature rds) = decls-res rds
-decls-res (LR.rds-cons LR.nim-alias LR.rd-typealias rds) = decls-res rds
+decls-res (LR.rds-cons Once.Spec.Surface.Program.ni-def (LR.rd-fundef rb _) rds) = cong₂ _++_ (res-lits rb) (decls-res rds)
+decls-res (LR.rds-cons Once.Spec.Surface.Program.ni-tsig LR.rd-typesig rds) = decls-res rds
+decls-res (LR.rds-cons Once.Spec.Surface.Program.ni-sig LR.rd-signature rds) = decls-res rds
+decls-res (LR.rds-cons Once.Spec.Surface.Program.ni-alias LR.rd-typealias rds) = decls-res rds
 decls-res (LR.rds-import _ rds) = decls-res rds
 
 ------------------------------------------------------------------------

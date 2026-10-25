@@ -128,7 +128,7 @@ d_'8988'toB'8989'_56 = erased
 d_'8988'declS'8989'_70 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8988'declS'8989'_70 = erased
 -- Once.Internal.Core.Decl.toISig
@@ -207,21 +207,21 @@ d_'8988''8989''45'base_164 v0
 -- Once.Internal.Core.Decl.⌜⌝ᵈ-concrete
 d_'8988''8989''7496''45'concrete_176 ::
   MAlonzo.Code.Once.Spec.Signature.T_DeclType_106 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8
 d_'8988''8989''7496''45'concrete_176 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Signature.C_constant_108 v1
         -> coe
-             MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_34
+             MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12
              (d_'8988''8989''45'base_164 (coe v1))
       MAlonzo.Code.Once.Spec.Signature.C_value_110 v1 v2 v3
         -> coe
-             MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_42
+             MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_20
              (d_'8988''8989''45'base_164 (coe v1))
              (d_'8988''8989''45'base_164 (coe v3))
       MAlonzo.Code.Once.Spec.Signature.C_operation_112 v1 v2 v3
         -> coe
-             MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_42
+             MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_20
              (d_'8988''8989''45'base_164 (coe v1))
              (d_'8988''8989''45'base_164 (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError

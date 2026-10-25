@@ -35,6 +35,7 @@ open import Once.Type
 open import Once.Internal.Polynomial
 open import Once.Semantics.Functor
 open import Once.Internal.Type.WellFormed
+open import Once.Spec.Type using (Base; WFFun; b-Unit; wf-⊕; ∅ₖ)
 open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
 open import Once.Internal.FunctorMeaning
 -- | Translation preserves interpretation
@@ -49,9 +50,9 @@ translate-coherence IntRep FloatRep (F ⊗ G) X
         | translate-coherence IntRep FloatRep G X = refl
 
 ------------------------------------------------------------------------
--- Proof Irrelevance for IsBaseType and WellFormedF
+-- Proof Irrelevance for Base ∅ₖ and WFFun ∅ₖ
 --
--- These proofs show that any two proofs of IsBaseType or WellFormedF
+-- These proofs show that any two proofs of Base ∅ₖ or WFFun ∅ₖ
 -- for the same type/functor are equal. This enables pattern matching
 -- on validity proofs without worrying about which proof was used.
 ------------------------------------------------------------------------
@@ -72,7 +73,7 @@ Base-irrelevant (b-+ a b) (b-+ a′ b′) = cong₂ b-+ (Base-irrelevant a a′)
 -- | IsConcrete is proof-irrelevant
 --
 -- At an arrow type only `con-fun` is inhabited (an arrow is not a base type,
--- so `con-base` would need `IsBaseType (A ⇒[ k ] B)`, which is empty); at any
+-- so `con-base` would need `Base ∅ₖ (A ⇒[ k ] B)`, which is empty); at any
 -- other type only `con-base`. Hence the mixed cases are absurd.
 IsConcrete-irrelevant : ∀ {A} (c₁ c₂ : IsConcrete A) → c₁ ≡ c₂
 IsConcrete-irrelevant (con-base ib₁) (con-base ib₂) =
@@ -103,5 +104,5 @@ WFFun-irrelevant (wf-⊗ f g) (wf-⊗ f′ g′) = cong₂ wf-⊗ (WFFun-irrelev
 -- For base type A, translateF (ListF A) = SK ⊤ S⊕ (SK (⟦A⟧-base) S⊗ SId)
 
 -- | Well-formedness of standard functors
-wf-NatF : WellFormedF NatF
-wf-NatF = wf-Sum (wf-K base-Unit) wf-Id
+wf-NatF : WFFun ∅ₖ NatF
+wf-NatF = wf-⊕ (wf-K b-Unit) wf-Id

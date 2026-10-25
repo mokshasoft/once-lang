@@ -32,18 +32,18 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 
 DefEnvOf : (PolyType → Set) → PolyCtx → Set
 DefEnvOf F []                    = ⊤
 DefEnvOf F ((_ , s , _) ∷ rest)  = F s × DefEnvOf F rest
 
 -- The head entry, transported along the lookup's answer.
-defAt-found : ∀ {F : PolyType → Set} {s′ s : PolyType} {b′ b : RawExpr} {rest prefix : PolyCtx}
+defAt-found : ∀ {F : PolyType → Set} {s′ s : PolyType} {b′ b : Expr} {rest prefix : PolyCtx}
   → just (s′ , b′ , rest) ≡ just (s , b , prefix) → F s′ → F s
 defAt-found refl e = e
 
-tailAt-found : ∀ {F : PolyType → Set} {s′ s : PolyType} {b′ b : RawExpr} {rest prefix : PolyCtx}
+tailAt-found : ∀ {F : PolyType → Set} {s′ s : PolyType} {b′ b : Expr} {rest prefix : PolyCtx}
   → just (s′ , b′ , rest) ≡ just (s , b , prefix) → DefEnvOf F rest → DefEnvOf F prefix
 tailAt-found refl ρ = ρ
 

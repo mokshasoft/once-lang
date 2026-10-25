@@ -24,6 +24,7 @@
 module Once.Internal.Principal where
 
 open import Once.Spec.Type using (var; Ty)
+open import Once.Spec.Sub using (subᶜ-*; subᶜ-+; subᶜ-var)
 open import Data.List using (List; []; _∷_; _++_; map; cartesianProductWith)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺; ∈-++⁺ˡ; ∈-++⁺ʳ; ∈-cartesianProductWith⁺)
@@ -37,10 +38,9 @@ import Once.Spec.Grade as G
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
-open import Once.Internal.Type.Sub using (subᶜ-prod; subᶜ-sum; subᶜ-rigid)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Data.Product using (proj₁)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Internal.Typing.Scope using (NamedCtx)
 import Once.TypeCheck.Elaborate as TE
 
@@ -77,7 +77,7 @@ data Fails {m n Γ A} : TE.CheckElabResult {m} {n} Γ A → Set where
   fails : ∀ {err} → Fails (TE.failure err)
 
 -- The checker rejects the body at every type strictly below its type.
-PrincipalAt : ∀ {m} → (ctx : NamedCtx m) → RawExpr → Ty m → Set
+PrincipalAt : ∀ {m} → (ctx : NamedCtx m) → Expr → Ty m → Set
 PrincipalAt ctx e T = ∀ {X} → X ∈ below T → Fails (proj₁ (TE.checkElabV ctx e X))
 
 ------------------------------------------------------------------------
@@ -131,9 +131,9 @@ at-or-below-<:ᶜ subᶜ-unit  = inj₁ refl
 at-or-below-<:ᶜ subᶜ-int   = inj₁ refl
 at-or-below-<:ᶜ subᶜ-float = inj₁ refl
 at-or-below-<:ᶜ subᶜ-μ     = inj₁ refl
-at-or-below-<:ᶜ subᶜ-rigid = inj₁ refl
-at-or-below-<:ᶜ (subᶜ-prod a b) = tail (pair-below _*_ (at-or-below-<:ᶜ a) (at-or-below-<:ᶜ b))
-at-or-below-<:ᶜ (subᶜ-sum a b)  = tail (pair-below _+_ (at-or-below-<:ᶜ a) (at-or-below-<:ᶜ b))
+at-or-below-<:ᶜ subᶜ-var = inj₁ refl
+at-or-below-<:ᶜ (subᶜ-* a b) = tail (pair-below _*_ (at-or-below-<:ᶜ a) (at-or-below-<:ᶜ b))
+at-or-below-<:ᶜ (subᶜ-+ a b)  = tail (pair-below _+_ (at-or-below-<:ᶜ a) (at-or-below-<:ᶜ b))
 at-or-below-<:ᶜ (subᶜ-arr {A = A} {q = q} b g) =
   tail (pair-below (λ π′ B′ → A ⇒[ mk-kind q π′ ] B′) (grade-at-or-below g) (at-or-below-<:ᶜ b))
 at-or-below-<:ᶜ (subᶜ-ν {F = F} {f = φ} {f′ = φ′} g) = ν-step (fin-at-or-below φ φ′ g)

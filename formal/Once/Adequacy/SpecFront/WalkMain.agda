@@ -120,7 +120,8 @@ open import Once.Internal.Type.Poly as LP using (Ground; GroundF; extractGround)
 import Once.Internal.Type as LT
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
-open import Once.Internal.Type.WellFormed using (IsConcrete; IsBaseType; con-base; con-fun; base-Unit; base-Void)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (Base; b-Unit; b-Void; ∅ₖ)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open SPr using (TypeOf; FunOf; SchemaOf; to-var; to-unit; to-void; to-int; to-float; to-*; to-+; to-⇒; to-act; to-eff; to-μ; to-ν;
                 fo-K; fo-Id; fo-⊕; fo-⊗)
@@ -150,8 +151,8 @@ private
 
   -- a domain above `Unit` is `Unit`
   dom-base : ∀ (T : PolyType) {ns : Fin 0 → String} {X} (r : TypeOf ns (toPoly T) X) → ST.Unit SS.<: X
-           → IsBaseType (extractGround T (g0 T r))
-  dom-base LP.PUnit to-unit SS.sub-unit = base-Unit
+           → Base ∅ₖ (extractGround T (g0 T r))
+  dom-base LP.PUnit to-unit SS.sub-unit = b-Unit
   dom-base LP.PVoid to-void ()
   dom-base LP.PInt to-int ()
   dom-base LP.PFloat to-float ()
@@ -166,9 +167,9 @@ private
 
   -- a codomain below `Unit` is `Unit` or `Void`
   cod-base : ∀ (T : PolyType) {ns : Fin 0 → String} {X} (r : TypeOf ns (toPoly T) X) → X SS.<: ST.Unit
-           → IsBaseType (extractGround T (g0 T r))
-  cod-base LP.PUnit to-unit SS.sub-unit = base-Unit
-  cod-base LP.PVoid to-void SS.sub-void = base-Void
+           → Base ∅ₖ (extractGround T (g0 T r))
+  cod-base LP.PUnit to-unit SS.sub-unit = b-Unit
+  cod-base LP.PVoid to-void SS.sub-void = b-Void
   cod-base LP.PInt to-int ()
   cod-base LP.PFloat to-float ()
   cod-base (A LP.P* B) (to-* a b) ()
@@ -182,7 +183,7 @@ private
 
   conc : ∀ (T : PolyType) {ns : Fin 0 → String} {A} (r : TypeOf ns (toPoly T) A) → A SS.<: EffUU
        → IsConcrete (extractGround T (g0 T r))
-  conc LP.PVoid to-void SS.sub-void = con-base base-Void
+  conc LP.PVoid to-void SS.sub-void = con-base b-Void
   conc LP.PUnit to-unit ()
   conc LP.PInt to-int ()
   conc LP.PFloat to-float ()

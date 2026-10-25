@@ -62,7 +62,7 @@ open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Token
 open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
 
@@ -312,19 +312,19 @@ wordEq-view w t with w ≟ t
 mutual
 
   -- Top-level: ParsesExpr ≡ ParsesComp.
-  data ParsesExpr : List Token → RawExpr → List Token → Set where
+  data ParsesExpr : List Token → Expr → List Token → Set where
     pe-mk : ∀ {toks e rest}
           → ParsesComp toks e rest
           → ParsesExpr toks e rest
 
   -- cmp (. cmp)*, left-assoc, desugar to compose.
-  data ParsesComp : List Token → RawExpr → List Token → Set where
+  data ParsesComp : List Token → Expr → List Token → Set where
     pc-mk : ∀ {toks toks1 rest e1 e}
           → ParsesCmp toks e1 toks1
           → ParsesCompTail e1 toks1 e rest
           → ParsesComp toks e rest
 
-  data ParsesCompTail : RawExpr → List Token → RawExpr → List Token → Set where
+  data ParsesCompTail : Expr → List Token → Expr → List Token → Set where
     pct-done : ∀ {left toks}
              → NotDot toks
              → ParsesCompTail left toks left toks
@@ -337,7 +337,7 @@ mutual
   -- add (cmpOp add)?  — non-associative.
   -- `pcm-noop` : no comparison operator follows, pass through.
   -- `pcm-*` : compound comparison (non-associative, single level).
-  data ParsesCmp : List Token → RawExpr → List Token → Set where
+  data ParsesCmp : List Token → Expr → List Token → Set where
     pcm-noop : ∀ {toks e rest}
              → ParsesAdd toks e rest
              → NotCmp rest
@@ -368,13 +368,13 @@ mutual
              → ParsesCmp toks (RBinOp OpNe l r) rest
 
   -- mul (+/- mul)*, left-assoc.
-  data ParsesAdd : List Token → RawExpr → List Token → Set where
+  data ParsesAdd : List Token → Expr → List Token → Set where
     pa-mk : ∀ {toks toks1 rest e1 e}
           → ParsesMul toks e1 toks1
           → ParsesAddTail e1 toks1 e rest
           → ParsesAdd toks e rest
 
-  data ParsesAddTail : RawExpr → List Token → RawExpr → List Token → Set where
+  data ParsesAddTail : Expr → List Token → Expr → List Token → Set where
     pat-done  : ∀ {left toks}
               → NotAdd toks
               → ParsesAddTail left toks left toks
@@ -388,13 +388,13 @@ mutual
               → ParsesAddTail left (TMinus ∷ toks1) e rest
 
   -- unary (*,/,% unary)*, left-assoc.
-  data ParsesMul : List Token → RawExpr → List Token → Set where
+  data ParsesMul : List Token → Expr → List Token → Set where
     pm-mk : ∀ {toks toks1 rest e1 e}
           → ParsesUnary toks e1 toks1
           → ParsesMulTail e1 toks1 e rest
           → ParsesMul toks e rest
 
-  data ParsesMulTail : RawExpr → List Token → RawExpr → List Token → Set where
+  data ParsesMulTail : Expr → List Token → Expr → List Token → Set where
     pmt-done    : ∀ {left toks}
                 → NotMul toks
                 → ParsesMulTail left toks left toks
@@ -412,7 +412,7 @@ mutual
                 → ParsesMulTail left (TPercent ∷ toks1) e rest
 
   -- (-)? app
-  data ParsesUnary : List Token → RawExpr → List Token → Set where
+  data ParsesUnary : List Token → Expr → List Token → Set where
     pu-neg : ∀ {toks rest e}
            → ParsesUnary toks e rest
            → ParsesUnary (TMinus ∷ toks) (RNeg e) rest
@@ -421,13 +421,13 @@ mutual
            → ParsesUnary toks e rest
 
   -- atomExpr (atomExpr)*, left-assoc juxtaposition.
-  data ParsesApp : List Token → RawExpr → List Token → Set where
+  data ParsesApp : List Token → Expr → List Token → Set where
     papp-mk : ∀ {toks toks1 rest f e}
             → ParsesAtomExpr toks f toks1
             → ParsesAppTail f toks1 e rest
             → ParsesApp toks e rest
 
-  data ParsesAppTail : RawExpr → List Token → RawExpr → List Token → Set where
+  data ParsesAppTail : Expr → List Token → Expr → List Token → Set where
     papp-done : ∀ {left toks}
               → NotAtomStart toks
               → ParsesAppTail left toks left toks
@@ -438,7 +438,7 @@ mutual
               → ParsesAppTail left toks1 e rest
 
   -- Atoms: variables, literals, parens, lambdas, let, destruct.
-  data ParsesAtomExpr : List Token → RawExpr → List Token → Set where
+  data ParsesAtomExpr : List Token → Expr → List Token → Set where
     pae-unit : ∀ {rest}
              → ParsesAtomExpr (TLParen ∷ TRParen ∷ rest) RUnit rest
 
@@ -486,7 +486,7 @@ mutual
                  → ParsesAtomExpr (TLParen ∷ toks) e rest
 
   -- `param1 ... paramN -> body`.
-  data ParsesLamParams : List Token → RawExpr → List Token → Set where
+  data ParsesLamParams : List Token → Expr → List Token → Set where
     plp-body : ∀ {rest e restOut}
              → ParsesExpr rest e restOut
              → ParsesLamParams (TArrow ∷ rest) e restOut
@@ -495,7 +495,7 @@ mutual
              → ParsesLamParams (TWord name ∷ rest) (RLam name e) restOut
 
   -- `name = val in body`. Single-binding only (ConcreteExpr's c-e-let1).
-  data ParsesLet : List Token → RawExpr → List Token → Set where
+  data ParsesLet : List Token → Expr → List Token → Set where
     plet-single :
         ∀ {name toks toks1 rest val body}
       → ParsesExpr toks val toks1
@@ -503,27 +503,27 @@ mutual
       → ParsesLet (TWord name ∷ TEquals ∷ toks) body rest
 
   data ParsesLetIn :
-       String → RawExpr → List Token → RawExpr → List Token → Set where
+       String → Expr → List Token → Expr → List Token → Set where
     plin : ∀ {name val toks body rest}
          → ParsesExpr toks body rest
          → ParsesLetIn name val (TWord "in" ∷ toks) (RLet name val body) rest
 
   -- `scrut of { Left x -> e1 ; Right y -> e2 }`.
-  data ParsesDestruct : List Token → RawExpr → List Token → Set where
+  data ParsesDestruct : List Token → Expr → List Token → Set where
     pd-mk : ∀ {toks toks1 rest scrut body}
           → ParsesExpr toks scrut toks1
           → ParsesDestructOf scrut toks1 body rest
           → ParsesDestruct toks body rest
 
   data ParsesDestructOf :
-       RawExpr → List Token → RawExpr → List Token → Set where
+       Expr → List Token → Expr → List Token → Set where
     pdof : ∀ {scrut rest body restOut}
          → ParsesDestructBranches scrut rest body restOut
          → ParsesDestructOf scrut
              (TWord "of" ∷ TLBrace ∷ rest) body restOut
 
   data ParsesDestructBranches :
-       RawExpr → List Token → RawExpr → List Token → Set where
+       Expr → List Token → Expr → List Token → Set where
     pdb : ∀ {scrut x rest toks1 left body restOut}
         → ParsesExpr rest left toks1
         → ParsesRightBranch scrut x left toks1 body restOut
@@ -531,8 +531,8 @@ mutual
             (TWord "Left" ∷ TWord x ∷ TArrow ∷ rest) body restOut
 
   data ParsesRightBranch :
-       RawExpr → String → RawExpr →
-       List Token → RawExpr → List Token → Set where
+       Expr → String → Expr →
+       List Token → Expr → List Token → Set where
     prb : ∀ {scrut x left y rest right restOut}
         → ParsesExpr rest right (TRBrace ∷ restOut)
         → ParsesRightBranch scrut x left
@@ -543,7 +543,7 @@ mutual
   -- `parseOpExprWF`. Indexed by the current accumulator state so
   -- `poe-close` can fix the RVar name from the accumulated chars,
   -- matching the parser's deterministic behaviour.
-  data ParsesOpExpr : List Char → List Token → RawExpr → List Token → Set where
+  data ParsesOpExpr : List Char → List Token → Expr → List Token → Set where
     poe-close : ∀ {c acc rest}
               → ParsesOpExpr (c ∷ acc)
                   (TRParen ∷ rest)
@@ -575,7 +575,7 @@ mutual
   -- After `( expr`, the continuation is `)` (simple parens),
   -- `, expr ...)` (pair/triple), or `: type )` (annotation).
   data ParsesParenCont :
-       RawExpr → List Token → RawExpr → List Token → Set where
+       Expr → List Token → Expr → List Token → Set where
     ppc-close : ∀ {e rest}
               → ParsesParenCont e (TRParen ∷ rest) e rest
     ppc-pair  : ∀ {e toks toks1 rest body}
@@ -587,7 +587,7 @@ mutual
               → ParsesParenCont e (TColon ∷ toks) (RAnnot e ty) rest
 
   data ParsesParenTriple :
-       RawExpr → RawExpr → List Token → List Token → Set where
+       Expr → Expr → List Token → List Token → Set where
     ppt-close : ∀ {e1 e2 rest}
               → ParsesParenTriple e1 e2 (TRParen ∷ rest) rest
 

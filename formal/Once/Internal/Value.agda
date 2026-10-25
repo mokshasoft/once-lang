@@ -18,6 +18,7 @@
 module Once.Internal.Value (IntRep : Set) (FloatRep : Set) where
 
 open import Once.Spec.Type using (Base)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx; WFFun)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -30,10 +31,8 @@ open import Once.Spec.Type using (μ; ν)
 import Once.Spec.Type as ST
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Internal.Res using (Res; stopped; returns; mapRes)
-open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-Sum; wf-Prod)
 open import Once.Internal.Polynomial
 open Once.Internal.Polynomial.νS using (unfoldS)
 
@@ -232,27 +231,27 @@ coerce-full-to-base (var _) ()
 -- Well-Formed Type Coercion
 --
 -- OCP-0003: Coercion from base to full interpretation requires an
--- IsBaseType proof, which is what makes it total.
+-- Base ∅ₖ proof, which is what makes it total.
 --
 -- For base types, the coercion is an identity (structurally).
 -- Complex types (functions, μ-type, ν-type, GuardedT) are excluded
--- by the IsBaseType predicate, so we never need to produce values
+-- by the Base ∅ₖ predicate, so we never need to produce values
 -- we can't construct.
 ------------------------------------------------------------------------
 
 -- | Coerce from base to full interpretation
 --
--- Requires an IsBaseType proof, which is what makes it total.
+-- Requires an Base ∅ₖ proof, which is what makes it total.
 --
 coerce-base-to-full : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ⟦ IntRep , FloatRep ⟧-base A → ⟦ A ⟧
-coerce-base-to-full base-Unit x = x
-coerce-base-to-full base-Void ()
-coerce-base-to-full base-Int x = x
-coerce-base-to-full base-Float x = x
-coerce-base-to-full (base-Prod pA pB) (a , b) =
+coerce-base-to-full b-Unit x = x
+coerce-base-to-full b-Void ()
+coerce-base-to-full b-Int x = x
+coerce-base-to-full b-Float x = x
+coerce-base-to-full (b-* pA pB) (a , b) =
   (coerce-base-to-full pA a , coerce-base-to-full pB b)
-coerce-base-to-full (base-Sum pA pB) (inj₁ a) = inj₁ (coerce-base-to-full pA a)
-coerce-base-to-full (base-Sum pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB b)
+coerce-base-to-full (b-+ pA pB) (inj₁ a) = inj₁ (coerce-base-to-full pA a)
+coerce-base-to-full (b-+ pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB b)
 coerce-base-to-full (b-var _) ()
 
 ------------------------------------------------------------------------
@@ -273,14 +272,14 @@ coerce-μ-in (F ⊗ G) X (x , y) = (coerce-μ-in F X x , coerce-μ-in G X y)
 
 -- | Coerce from ⟦ translateF F ⟧SF to ⟦ F ⟧F (for μ-type operations)
 --
--- Requires a WellFormedF proof to ensure K positions only use base types.
+-- Requires a WFFun ∅ₖ proof to ensure K positions only use base types.
 --
 coerce-μ-out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
 coerce-μ-out (wf-K pA) X x = coerce-base-to-full pA x
 coerce-μ-out wf-Id X x = x
-coerce-μ-out (wf-Sum wfF wfG) X (inj₁ x) = inj₁ (coerce-μ-out wfF X x)
-coerce-μ-out (wf-Sum wfF wfG) X (inj₂ y) = inj₂ (coerce-μ-out wfG X y)
-coerce-μ-out (wf-Prod wfF wfG) X (x , y) = (coerce-μ-out wfF X x , coerce-μ-out wfG X y)
+coerce-μ-out (wf-⊕ wfF wfG) X (inj₁ x) = inj₁ (coerce-μ-out wfF X x)
+coerce-μ-out (wf-⊕ wfF wfG) X (inj₂ y) = inj₂ (coerce-μ-out wfG X y)
+coerce-μ-out (wf-⊗ wfF wfG) X (x , y) = (coerce-μ-out wfF X x , coerce-μ-out wfG X y)
 
 ------------------------------------------------------------------------
 -- μ-type Operations (OCP-0003: Defined via Once.Semantics.Functor)
@@ -299,7 +298,7 @@ sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
 -- | Out: μF → F(μF) (destructor, inverse of In)
 --
 -- OCP-0003: Defined via Semantics.Functor's outS with coercion.
--- Requires a WellFormedF proof, which is what defines the coercion.
+-- Requires a WFFun ∅ₖ proof, which is what defines the coercion.
 --
 sem-Out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
 sem-Out {F = F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep FloatRep F) x)
@@ -307,7 +306,7 @@ sem-Out {F = F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep Fl
 -- | Catamorphism: given algebra F(A) → A, fold μF → A
 --
 -- OCP-0003: Defined via Semantics.Functor's cataS with coercions.
--- Requires a WellFormedF proof, which is what defines the coercion.
+-- Requires a WFFun ∅ₖ proof, which is what defines the coercion.
 --
 sem-cata : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
 sem-cata {F = F} wf {A} alg = cataS {translateF IntRep FloatRep F} (λ x → alg (coerce-μ-out wf A x))
@@ -339,7 +338,7 @@ coerce-ν-in : ∀ {m} (F : Fun m) (X : Set) → ⟦ F ⟧F X → ⟦ translateF
 coerce-ν-in = coerce-μ-in  -- Same structure
 
 -- | Coerce from ⟦ translateF F ⟧SF to ⟦ F ⟧F (for ν-type operations)
--- Requires a WellFormedF proof, which is what defines the coercion.
+-- Requires a WFFun ∅ₖ proof, which is what defines the coercion.
 coerce-ν-out : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
 coerce-ν-out = coerce-μ-out  -- Same structure
 
@@ -350,7 +349,7 @@ coerce-ν-out = coerce-μ-out  -- Same structure
 -- | CoOut: νF → F(νF) (observation)
 --
 -- OCP-0003: Defined via Semantics.Functor's unfoldS with coercion.
--- Requires a WellFormedF proof, which is what defines the coercion.
+-- Requires a WFFun ∅ₖ proof, which is what defines the coercion.
 --
 -- plan 0.98: `Res`-valued — forcing a possibly-finite stream may find no
 -- layer. This is `Out`'s pure counterpart and it stops exactly where `Out`'s

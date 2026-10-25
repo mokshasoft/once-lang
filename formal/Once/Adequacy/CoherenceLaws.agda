@@ -24,6 +24,7 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
+open import Once.Spec.Type using (WFFun; wf-⊕; wf-⊗; ∅ₖ)
 
 open import Data.Nat using (ℕ)
 open import Once.Internal.Weaken using (RelD-bool)
@@ -44,10 +45,10 @@ open import Once.Spec.Grade using (mk-kind; Many; One; Zero; Purity; Quantity; f
 open import Once.Spec.Type using (Type; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (μ)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-void)
-open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Laws.SubLaws using (<:-trans; <:-unique)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Spec.Sub using (sub-*)
 open import Once.Internal.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_; zeroUsage; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
@@ -57,7 +58,6 @@ open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
 open import Once.Semantics.Machine using (sem-cata; coerce-μ-out; ⟦_⟧F; ⟦μ⟧)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
@@ -278,7 +278,7 @@ module _ {m n} {Γ : Ctx m n} where
   coerce-uniqˢ p q e rewrite <:-unique p q = λ σ rσ r → SD-rel rσ (coerce q e) r
 
   pair-coerceˢ : ∀ {A A′ B B′ : Ty m} {Ψ₁ Ψ₂} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B)
-              → pair (coerce pa a) (coerce pb b) ≈ˢ coerce (sub-prod pa pb) (pair a b)
+              → pair (coerce pa a) (coerce pb b) ≈ˢ coerce (sub-* pa pb) (pair a b)
   pair-coerceˢ pa pb a b σ rσ r =
     RelS-assoc₂ (SD-rel rσ a (restrict-rel {Γ = Γ} _ r)) λ ra →
       retargetˡ refl (RelS-assoc₂ (SD-rel rσ b (restrict-rel {Γ = Γ} _ r)) λ rb →
@@ -339,7 +339,7 @@ module _ {m n} {Γ : Ctx m n} where
   fork-coerceˢ : ∀ {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π)
                   (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C))
               → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g)
-                ≈ˢ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
+                ≈ˢ coerce (sub-arr (<:-refl A) (sub-* pb pc) r) (fork' f g)
   fork-coerceˢ {A = A} pb pc r f g σ rσ re =
     RelS-assoc₂ (SD-rel rσ f (restrict-rel {Γ = Γ} _ re)) λ rf →
       retargetˡ refl (RelS-assoc₂ (SD-rel rσ g (restrict-rel {Γ = Γ} _ re)) λ rg →
@@ -380,11 +380,11 @@ out-rel : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {X₁ X₂ : Set} 
         → RelF F R (coerce-μ-out wf X₁ y₁) (coerce-μ-out wf X₂ y₂)
 out-rel (wf-K pA) R refl = refl
 out-rel wf-Id R r = r
-out-rel (wf-Sum wfF wfG) R {inj₁ _} {inj₁ _} r = out-rel wfF R r
-out-rel (wf-Sum wfF wfG) R {inj₂ _} {inj₂ _} r = out-rel wfG R r
-out-rel (wf-Sum wfF wfG) R {inj₁ _} {inj₂ _} ()
-out-rel (wf-Sum wfF wfG) R {inj₂ _} {inj₁ _} ()
-out-rel (wf-Prod wfF wfG) R {_ , _} {_ , _} (r₁ , r₂) = out-rel wfF R r₁ , out-rel wfG R r₂
+out-rel (wf-⊕ wfF wfG) R {inj₁ _} {inj₁ _} r = out-rel wfF R r
+out-rel (wf-⊕ wfF wfG) R {inj₂ _} {inj₂ _} r = out-rel wfG R r
+out-rel (wf-⊕ wfF wfG) R {inj₁ _} {inj₂ _} ()
+out-rel (wf-⊕ wfF wfG) R {inj₂ _} {inj₁ _} ()
+out-rel (wf-⊗ wfF wfG) R {_ , _} {_ , _} (r₁ , r₂) = out-rel wfF R r₁ , out-rel wfG R r₂
 
 module _ {m : ℕ} {A A′ : Ty m} (p : A <: A′) where
   -- The carrier relation: converted fold against the original fold mapped,
@@ -427,11 +427,11 @@ layer-rel wf-Id {A} d p {l₁} {l₂} (ra , rb) = RelD-trans A (<:-rel d ra) bac
     back : RelD A (⟦ d ⟧<: (⟦ p ⟧<: l₂)) l₂
     back with <:-trans-rel p d rb
     ... | t rewrite <:-unique (<:-trans p d) (<:-refl A) = RelD-trans A t (<:-refl-rel A rb)
-layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₁ _} r = layer-rel w₁ d₁ p r
-layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₂ _} r = layer-rel w₂ d₂ p r
-layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₁ _} {inj₂ _} ()
-layer-rel (wf-Sum w₁ w₂) (Once.Internal.Type.Sub.sub-sum d₁ d₂) p {inj₂ _} {inj₁ _} ()
-layer-rel (wf-Prod w₁ w₂) (sub-prod d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
+layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₁ _} {inj₁ _} r = layer-rel w₁ d₁ p r
+layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₂ _} {inj₂ _} r = layer-rel w₂ d₂ p r
+layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₁ _} {inj₂ _} ()
+layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₂ _} {inj₁ _} ()
+layer-rel (wf-⊗ w₁ w₂) (sub-* d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
 
 cata-core : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} {π π′ : Purity}
               (d : SpT.⟦ F ⟧F A′ <: SpT.⟦ F ⟧F A) (p : A <: A′) (g : π ⊑π π′)

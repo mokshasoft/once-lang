@@ -27,7 +27,7 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Nullary.Decidable using (_×-dec_)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 
 open import Data.Maybe using (just; nothing)
 import Relation.Binary.PropositionalEquality
@@ -36,7 +36,7 @@ import Relation.Binary.PropositionalEquality
 GoodName : CanonicalName → Set
 GoodName c = ∀ {x} → c ≡ canonical (x ∷ []) → x ≢ "main"
 
-GoodRefs : RawExpr → Set
+GoodRefs : Expr → Set
 GoodRefs (RVar _)              = ⊤
 GoodRefs (RQualified _ _)      = ⊤
 GoodRefs (RResolved c)         = GoodName c

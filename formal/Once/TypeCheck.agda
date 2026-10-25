@@ -20,7 +20,7 @@ module Once.TypeCheck where
 
 -- Raw syntax (parser output)
 open import Once.Spec.Surface.Syntax using (RVar; RApp; RLam; RUnit; RInt; RBinOp; OpAdd; OpLt)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 
 -- Typing contexts
 import Once.TypeCheck.Context
@@ -61,7 +61,7 @@ open import Once.Internal.Context using () renaming (∅ to S∅)
 
 -- | Type check an expression in the empty context
 -- Returns an intrinsically-typed result (soundness by construction)
-typeCheck : RawExpr → InferElabResult S∅
+typeCheck : Expr → InferElabResult S∅
 typeCheck e = inferElab emptyCtx e
 
 ------------------------------------------------------------------------

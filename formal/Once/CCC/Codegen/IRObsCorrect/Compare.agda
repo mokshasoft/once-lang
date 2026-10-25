@@ -22,6 +22,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Int; b-Unit; ∅ₖ)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
@@ -35,7 +36,6 @@ open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
 import Once.Internal.Type as SpecTy
 import Once.Spec.Type as SpecTy
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Prod; base-Sum)
 open import Function using () renaming (id to idᶠ)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
 open import Once.Internal.Res using (returns)
@@ -81,11 +81,11 @@ module CompareC {FS : FrameSemantics} where
   -- A comparison's argument and result are each ONE base type, so the info's
   -- witnesses are the canonical ones — which is what lets the block's own
   -- info (`cmp-block-info`) decode the same argument.
-  bt-II : (b : IsBaseType (SpecTy.Int SpecTy.* SpecTy.Int)) → b ≡ base-Prod base-Int base-Int
-  bt-II (base-Prod base-Int base-Int) = refl
+  bt-II : (b : Base ∅ₖ (SpecTy.Int SpecTy.* SpecTy.Int)) → b ≡ b-* b-Int b-Int
+  bt-II (b-* b-Int b-Int) = refl
 
-  bt-UU : (b : IsBaseType (SpecTy.Unit SpecTy.+ SpecTy.Unit)) → b ≡ base-Sum base-Unit base-Unit
-  bt-UU (base-Sum base-Unit base-Unit) = refl
+  bt-UU : (b : Base ∅ₖ (SpecTy.Unit SpecTy.+ SpecTy.Unit)) → b ≡ b-+ b-Unit b-Unit
+  bt-UU (b-+ b-Unit b-Unit) = refl
 
   -- `out-nz` on a 0/1 word is that word as a tag.
   nz-bit : ∀ (c : Bool) → (if (if c then 1 else 0) ℕ.≡ᵇ 0 then 0 else 1) ≡ (if c then 1 else 0)

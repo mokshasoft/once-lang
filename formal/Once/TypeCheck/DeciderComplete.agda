@@ -7,7 +7,7 @@
 -- PLAN 0.80 Phase A. The typing rules used to carry premises like
 -- `wellFormedF? F ≡ just wfF` and `isGround schema ≡ inj₂ tt` — equations
 -- about a DECISION PROCEDURE, sitting in the language definition. The rules
--- now carry the PROPERTIES (`WellFormedF F`, `¬ (Ground schema)`) instead, and
+-- now carry the PROPERTIES (`WFFun ∅ₖ F`, `¬ (Ground schema)`) instead, and
 -- this module holds what makes the two interchangeable, proven once:
 --
 --   * the elaborator has the decider's answer and owes the rule a property
@@ -27,6 +27,7 @@
 module Once.TypeCheck.DeciderComplete where
 
 open import Data.Maybe using (just)
+open import Once.Spec.Type using (WFFun; wf-⊕; wf-⊗; ∅ₖ)
 open import Data.Product using (∃-syntax; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -38,32 +39,31 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid;
 open import Once.Internal.Type.Poly using (Ground; GroundF)
 open import Once.Type using (isGround; isGroundF)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod)
 open import Once.Functor.Translate using (WFFun-irrelevant)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?-complete; wfFun?; base?-complete)
 open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
 
 ------------------------------------------------------------------------
--- `wellFormedF?` is complete for `WellFormedF` (the `isBaseType?-complete`
+-- `wellFormedF?` is complete for `WFFun ∅ₖ` (the `isBaseType?-complete`
 -- pattern, one level up).
 ------------------------------------------------------------------------
 
-wellFormedF?-complete : ∀ {F} → WellFormedF F → ∃[ w ] wellFormedF? F ≡ just w
+wellFormedF?-complete : ∀ {F} → WFFun ∅ₖ F → ∃[ w ] wellFormedF? F ≡ just w
 wellFormedF?-complete (wf-K bA) with isBaseType?-complete bA
 ... | (b , eq) rewrite eq = wf-K b , refl
 wellFormedF?-complete wf-Id = wf-Id , refl
-wellFormedF?-complete (wf-Sum wF wG)
+wellFormedF?-complete (wf-⊕ wF wG)
   with wellFormedF?-complete wF | wellFormedF?-complete wG
-... | (f , eqF) | (g , eqG) rewrite eqF | eqG = wf-Sum f g , refl
-wellFormedF?-complete (wf-Prod wF wG)
+... | (f , eqF) | (g , eqG) rewrite eqF | eqG = wf-⊕ f g , refl
+wellFormedF?-complete (wf-⊗ wF wG)
   with wellFormedF?-complete wF | wellFormedF?-complete wG
-... | (f , eqF) | (g , eqG) rewrite eqF | eqG = wf-Prod f g , refl
+... | (f , eqF) | (g , eqG) rewrite eqF | eqG = wf-⊗ f g , refl
 
 -- The form the proofs use: the decider's answer AT the derivation's own
 -- witness. `WFFun-irrelevant` (already proven next to the definition) is
 -- what lets the two be identified — which is the whole reason the rule never
 -- needed to pin one of them.
-wellFormedF?-complete-at : ∀ {F} (w : WellFormedF F) → wellFormedF? F ≡ just w
+wellFormedF?-complete-at : ∀ {F} (w : WFFun ∅ₖ F) → wellFormedF? F ≡ just w
 wellFormedF?-complete-at w with wellFormedF?-complete w
 ... | (w' , eq') rewrite WFFun-irrelevant w' w = eq'
 

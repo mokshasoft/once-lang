@@ -77,7 +77,7 @@ open import Once.Spec.Context using ([]; _∷_)
 import Once.Spec.Context
 open import Once.Surface.Context
 open import Once.Surface.Syntax
-open import Once.Internal.Syntax using (RawExpr)
+import Once.Spec.Surface.Syntax as Syn
 open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV; success; failure)
@@ -118,7 +118,7 @@ private variable σ : ISig
 -- The resolver's splice of a telescope reference, read off the checker's
 -- answer at the instance (`applySplice` without its termination bookkeeping).
 spliceWith : ∀ {m} {n} {Γ : Ctx m n} (pre : PolyCtx) → Acc _<_ (length pre) → (String → TopCtx) → Imports → ℕ
-           → (x : String) (A : Ty m) {Xs : TopCtx} {b : RawExpr}
+           → (x : String) (A : Ty m) {Xs : TopCtx} {b : Syn.Expr}
            → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Expr Γ zeroUsage A
 spliceWith pre ac I uf fresh x A (failure _ , _)             = poly x A
 spliceWith pre ac I uf fresh x A (success Once.Spec.Context.[] eE _ _ , _) = closed (resolveExprWF pre ac I uf fresh eE)
@@ -152,7 +152,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
       h (rec (Once.TypeCheck.Classify.lookupPolyPrefix-decreases x polys polyEq))
 
     rp-case : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Ty m) {n} {Γ : Ctx m n}
-                (look : Maybe (PolyType × RawExpr × PolyCtx)) (lq : lookupPolyPrefix polys x ≡ look)
+                (look : Maybe (PolyType × Syn.Expr × PolyCtx)) (lq : lookupPolyPrefix polys x ≡ look)
             → PolyRef polys Δ x A
             → Refs (DeclIn σ) L L (Once.TypeCheck.ElaborateProofs.resolvePolyCase {Γ = Γ} polys pAcc I uf fresh x A look lq)
     rp-case pAcc uf fresh x A nothing lq ((_ , eP , _)) = ⊥-elim (nothing≢just (trans (sym lq) eP))
@@ -335,7 +335,7 @@ imp-ref : ∀ {csc pre} → LInv σ csc pre → ∀ {A : Type} {x} → ImpRef (C
 imp-ref {σ = σ} {pre = pre} inv {x = x} (T , lk , e) = subst (RefLinked σ pre x) (sym (trans e (wk₀-id T))) (LInv.imp-ok inv lk)
 
 -- A definition's body, checked in its scope, compiles to linked IR.
-body-linked : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : RawExpr} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
+body-linked : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : Syn.Expr} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
                 {se : _} {d f : ℕ}
             → C.compileFun IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
             → (ce : Once.TypeCheck.Elaborate.checkElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty
@@ -357,7 +357,7 @@ body-linked {σ = σ} {csc = csc} {pre = pre} inv x ty {body} {se = se} cf ce =
         uf = (x , ty) ∷ C.CScope.cimps csc
 
 -- R8: likewise a definition without a signature, compiled from its synthesis.
-body-linkedI : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : RawExpr} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
+body-linkedI : ∀ {csc pre} → LInv σ csc pre → (x : String) (ty : Type) {body : Syn.Expr} {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
                  {se : _} {d f : ℕ}
              → C.compileFunI IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
              → (ce : Once.TypeCheck.Elaborate.inferElab (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body
@@ -378,7 +378,7 @@ body-linkedI {σ = σ} {csc = csc} {pre = pre} inv x ty {body} {se = se} cf ce =
         uf = (x , ty) ∷ C.CScope.cimps csc
 
 -- A definition, in its own mode.
-body-linkedM : ∀ {csc pre} → LInv σ csc pre → (ft : Data.Maybe.Maybe Type) (x : String) (ty : Type) {body : RawExpr}
+body-linkedM : ∀ {csc pre} → LInv σ csc pre → (ft : Data.Maybe.Maybe Type) (x : String) (ty : Type) {body : Syn.Expr}
                  {irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} {Ψ : Usage 0} {se : _} {d f : ℕ}
              → C.compileFunM ft IR′.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ irFun
              → FB.ElabOK ft (ctxWithImportsAndPolys (C.ctop csc) (C.cpolys csc)) body ty Ψ se d f
@@ -394,7 +394,7 @@ body-linkedM inv Data.Maybe.nothing  x ty {Ψ = Once.Spec.Context.[]} cf ce = bo
 -- (`resolve-refs`).
 private
   splice-at : ∀ (tbl : List IRFun) (pre : PolyCtx) (ac : Acc _<_ (length pre)) (I : String → TopCtx) (uf : Imports)
-                (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx 0 n} {Xs : TopCtx} {b : RawExpr} {se : _} {d f : ℕ}
+                (fresh : ℕ) (x : String) (A : Type) {n} {Γ : Ctx 0 n} {Xs : TopCtx} {b : Syn.Expr} {se : _} {d f : ℕ}
                 (cr : VerifiedCheckResult (ctxAt baseKinds Xs pre) b A)
                 (ce : proj₁ cr ≡ success Once.Spec.Context.[] se d f)
             → Refs (DeclIn σ) (RefLinked σ tbl) (RefLinked σ tbl) (resolveExprWF pre ac I uf fresh se)

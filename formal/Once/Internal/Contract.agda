@@ -15,6 +15,7 @@
 module Once.Internal.Contract where
 
 open import Data.List using (List; []; _∷_)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.String using (String) renaming (_≟_ to _≟ˢ_)
 open import Relation.Nullary using (Dec; yes; no)
@@ -27,7 +28,6 @@ open import Once.Internal.Type using (isVoid?; isUnit?)
 import Once.Spec.Grade as Ty
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent)

@@ -60,7 +60,7 @@ open import Once.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
 open import Once.Internal.Typing.Scope using (NamedCtx)
-open import Once.Internal.Syntax using (RawExpr)
+import Once.Spec.Surface.Syntax as Syn
 open import Once.Internal.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Once.Parser using (FunInfo)
@@ -88,13 +88,13 @@ ctxP sc pfi = ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.c
 
 -- R8: a definition's elaboration succeeded in its own mode — checked at its
 -- signature, or synthesized.
-ElabOK : Maybe Type → (ctx : NamedCtx 0) → RawExpr → (ty : Type) → (Ψ : Usage (NamedCtx.size ctx))
+ElabOK : Maybe Type → (ctx : NamedCtx 0) → Syn.Expr → (ty : Type) → (Ψ : Usage (NamedCtx.size ctx))
        → Expr (NamedCtx.debruijn ctx) Ψ ty → ℕ → ℕ → Set
 ElabOK (just _) ctx e ty Ψ se d f = checkElab ctx e ty ≡ TE.success Ψ se d f
 ElabOK nothing  ctx e ty Ψ se d f = TE.inferElab ctx e ≡ TE.success ty Ψ se d f
 
 -- …and so its witness: the checker's own, at the result the equation names.
-elabOK-wit : ∀ (ft : Maybe Type) (ctx : NamedCtx 0) (e : RawExpr) (ty : Type) {Ψ se d f}
+elabOK-wit : ∀ (ft : Maybe Type) (ctx : NamedCtx 0) (e : Syn.Expr) (ty : Type) {Ψ se d f}
            → ElabOK ft ctx e ty Ψ se d f → MonoWit ft ctx e ty Ψ
 elabOK-wit (just _) ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TE.checkElabV ctx e ty) ce
 elabOK-wit nothing  ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TE.inferElabV ctx e) ce
@@ -129,7 +129,7 @@ data FunBundle : C.CScope → List Parser.Entry → Set where
     FunBundle sc (Parser.e-poly pfi ∷ es)
 
 compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Type) (expr : Syn.Expr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -140,7 +140,7 @@ compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
     (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Type) (expr : Syn.Expr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →
@@ -151,7 +151,7 @@ compileFun-main-aux-ce doOpt ctx polys impsOf name ty expr (inj₂ _) eq =
   compileFunBody-ce doOpt ctx polys impsOf name ty expr eq
 
 compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Type) (expr : Syn.Expr) (b : Bool) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFun-aux IR.Heap doOpt ctx polys impsOf name ty expr b ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) Ψ ty) (λ se →

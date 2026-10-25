@@ -49,7 +49,8 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ;
 open import Once.Denotation.DenotTrace using (sigOpT)
 open import Once.Denotation.Phase using (lookupᴰUsed)
 open import Once.Semantics.Machine using (sem-In; sem-cata; coerce-ν-out; ⟦_⟧F)
-open import Once.Internal.Type.WellFormed using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (Base; WFFun; b-Unit; ∅ₖ)
 import Data.List as L
 open import Once.Internal.Context using (Ctx; svar; SVar; Usage; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _*ᵘ_; _⊔ᵘ_; zeroUsage) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.Spec.Context using (_▸_)
@@ -117,7 +118,7 @@ in-value {F = F} wf x = sem-In F (coerce-functor-D wf (μ F) x)
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free — a pure
 -- FFI contract (`value-info` is `ffiV`, plan 0.105), so its value is the
 -- interpretation's pure half at the argument.
-named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → IsBaseType A → IsBaseType B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
+named-sem : ∀ {A B : Type} → TargetNum → FFIAnswers → CanonicalName → Base ∅ₖ A → Base ∅ₖ B → ⟦ A ⟧ᴰ → T∞ ⟦ B ⟧ᴰ
 named-sem {A = A} {B = B} fmt φ cn bA bB a =
   embed (fmapT (injectᵇ bB) (sigOpT fmt φ (value-info {A} {B} cn bA bB) (forgetᵇ bA a)))
 
@@ -142,17 +143,17 @@ sigOpValᴰ fmt φ si = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt φ si tt)
 -- APPLICATION (`arrow-info` respects the arrow's `Purity`). Split on the
 -- WITNESS (not `A`'s shape) so `con-base` reduces at an abstract base `A`.
 sigOpRefᴰ : ∀ {A : Type} → TargetNum → FFIAnswers → CanonicalName → IsConcrete A → T∞ ⟦ A ⟧ᴰ
-sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn base-Unit ib)
+sigOpRefᴰ {A = A} fmt φ cn (con-base ib) = sigOpValᴰ fmt φ (value-info {Unit} {A} cn b-Unit ib)
 -- D143: at an ERASED arrow the symbol never receives its argument, so the
 -- reference degenerates to the value form, as in `Elaborate` and `SourceDenote`.
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.pure} bDom bCod) =
-  return∞ (λ _ → sigOpValᴰ fmt φ (value-info cn base-Unit bCod))
+  return∞ (λ _ → sigOpValᴰ fmt φ (value-info cn b-Unit bCod))
 -- plan 0.113 A3: only a PURE erased arrow is a value; an effectful one is a call
 -- with the erased slot `tt` (as `Elaborate` and `SourceDenote`).
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.eff} bDom bCod) =
-  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) cn base-Unit bCod) tt)))
+  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.eff) cn b-Unit bCod) tt)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero Once.Spec.Grade.act} bDom bCod) =
-  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) cn base-Unit bCod) tt)))
+  return∞ (λ _ → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Unit} {Cod} (mk-kind Zero Once.Spec.Grade.act) cn b-Unit bCod) tt)))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom bCod) =
   return∞ (λ arg → embed (fmapT (injectᵇ bCod) (sigOpT fmt φ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom bCod) (forgetᵇ bDom arg))))
 sigOpRefᴰ fmt φ cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom bCod) =

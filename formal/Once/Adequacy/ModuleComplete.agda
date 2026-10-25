@@ -51,7 +51,7 @@ open import Once.Internal.Context using (Usage)
 open import Once.Spec.Context using ([])
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Internal.Module
   using (EffUU; ModTele; []; ffi; mono; poly; ModuleTyped; MainsEffUU; MainIn; HasValidMain; MonoWit)
 import Once.TypeCheck.Elaborate as TE
@@ -82,16 +82,16 @@ open FunInfo
 ------------------------------------------------------------------------
 
 -- the checker accepts a body, at a usage
-Accepts : ∀ (ctx : TopCtx) (polys : PolyCtx) (body : RawExpr) (ty : Type) (Ψ : Usage 0) → Set
+Accepts : ∀ (ctx : TopCtx) (polys : PolyCtx) (body : Expr) (ty : Type) (Ψ : Usage 0) → Set
 Accepts ctx polys body ty Ψ =
   ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ (TE.checkElabV (ctxWithImportsAndPolys ctx polys) body ty) ≡ TE.success Ψ eE d f
 
-AcceptsI : ∀ (ctx : TopCtx) (polys : PolyCtx) (body : RawExpr) (ty : Type) (Ψ : Usage 0) → Set
+AcceptsI : ∀ (ctx : TopCtx) (polys : PolyCtx) (body : Expr) (ty : Type) (Ψ : Usage 0) → Set
 AcceptsI ctx polys body ty Ψ =
   ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ (TE.inferElabV (ctxWithImportsAndPolys ctx polys) body) ≡ TE.success ty Ψ eE d f
 
 compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+  (name : String) (ty : Type) (body : Expr) {Ψ : Usage 0} →
   Accepts ctx polys body ty Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBody IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
@@ -112,7 +112,7 @@ compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
 ------------------------------------------------------------------------
 
 compileFun-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+  (name : String) (ty : Type) (body : Expr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   Accepts ctx polys body ty Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
@@ -129,7 +129,7 @@ compileFun-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
 
 -- R8: a definition without a signature compiles from its synthesis.
 compileFunBodyI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+  (name : String) (ty : Type) (body : Expr) {Ψ : Usage 0} →
   AcceptsI ctx polys body ty Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBodyI IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
@@ -146,7 +146,7 @@ compileFunBodyI-complete ctx polys impsOf name ty body {[]} deriv =
     succ (TE.success _ _ _ _ _ , w) refl = at w (ty ≟T ty)
 
 compileFunI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+  (name : String) (ty : Type) (body : Expr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   AcceptsI ctx polys body ty Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
@@ -163,7 +163,7 @@ compileFunI-complete ctx polys impsOf name ty body main-ok deriv with name Str.�
 
 -- A definition, in its own mode.
 compileFunM-complete : ∀ (ft : Maybe Type) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
+  (name : String) (ty : Type) (body : Expr) {Ψ : Usage 0} →
   (name ≡ "main" → ty <: EffUU) →
   MonoWit ft (ctxWithImportsAndPolys ctx polys) body ty Ψ →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →

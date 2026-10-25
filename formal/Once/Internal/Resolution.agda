@@ -39,7 +39,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Internal.ResolvedRefs using (GoodRefs)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Module.Core using (Resolved; resolved)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Spec.Surface.Syntax using (Import)
@@ -60,34 +60,24 @@ AliasMap = List (String × List String)
 UnaliasedMap : Set
 UnaliasedMap = List (String × List String)
 
--- Association-list lookup is FIRST-MATCH, and the relation has to say so:
--- `(x , p) ∈ um` would also hold for a LATER duplicate, and then the resolver
--- (which takes the first) would not implement the relation. Found by trying to
--- prove `resolves-sound` — the permissive version is unprovable, which is
--- exactly the kind of thing an independent relation is for.
-data FirstAt {K A : Set} (x : K) (p : A) : List (K × A) → Set where
-  fa-here  : ∀ {rest} → FirstAt x p ((x , p) ∷ rest)
-  fa-there : ∀ {y q rest} → y ≢ x → FirstAt x p rest → FirstAt x p ((y , q) ∷ rest)
-
--- `x` names no entry of the table.
-Absent : {K A : Set} → K → List (K × A) → Set
-Absent x = All (λ e → proj₁ e ≢ x)
+-- Association-list lookup is FIRST-MATCH, and the relation has to say so
+-- (the Spec's `FirstAt`): `(x , p) ∈ um` would also hold for a LATER
+-- duplicate, and then the resolver (which takes the first) would not implement
+-- the relation.
+open import Once.Spec.Surface.Resolution using (FirstAt; fa-here; fa-there; Absent)
 
 ------------------------------------------------------------------------
 -- The `I` path abbreviation: a leading `I` abbreviates `Interpretations`.
--- Two rules rather than a call to `expandPath`.
+-- Two rules rather than a call to `expandPath`: the Spec's `Expands`.
 ------------------------------------------------------------------------
 
-data ExpandsTo : List String → List String → Set where
-  ex-nil   : ExpandsTo [] []
-  ex-I     : ∀ {rest} → ExpandsTo ("I" ∷ rest) ("Interpretations" ∷ rest)
-  ex-other : ∀ {c rest} → c ≢ "I" → ExpandsTo (c ∷ rest) (c ∷ rest)
+open import Once.Spec.Surface.Resolution using (Expands; ex-nil; ex-I; ex-other)
 
 ------------------------------------------------------------------------
 -- A bare reference. THE four-way decision, and the whole of D136.
 ------------------------------------------------------------------------
 
-data ResolvesVar (bound : List String) (um : UnaliasedMap) : String → RawExpr → Set where
+data ResolvesVar (bound : List String) (um : UnaliasedMap) : String → Expr → Set where
 
   -- A lexical binder shadows everything, generators included.
   rv-binder : ∀ {x}
@@ -104,7 +94,7 @@ data ResolvesVar (bound : List String) (um : UnaliasedMap) : String → RawExpr 
   -- Neither: an unaliased import that exports it, at that module's full path.
   rv-import : ∀ {x path path'}
             → ¬ (x ∈ bound) → ¬ GenWord x
-            → FirstAt x path um → ExpandsTo path path'
+            → FirstAt x path um → Expands path path'
             → ResolvesVar bound um x (RResolved (canonical (path' ++ (x ∷ []))))
 
   -- Neither, and no import claims it: the OWN module, polymorphic or not
@@ -119,7 +109,7 @@ data ResolvesVar (bound : List String) (um : UnaliasedMap) : String → RawExpr 
 ------------------------------------------------------------------------
 
 data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
-                  : List String → RawExpr → RawExpr → Set where
+                  : List String → Expr → Expr → Set where
 
   re-var : ∀ {bound x e}
          → ResolvesVar bound um x e
@@ -137,7 +127,7 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
   -- read as a path of ONE component, `A.name` (the Spec's `r-qual-path`).
   re-qual : ∀ {bound name alias path path'}
           → alias ≢ "this"
-          → FirstAt alias path am → ExpandsTo path path'
+          → FirstAt alias path am → Expands path path'
           → ResolvesExpr um am bound (RQualified name alias)
                                      (RResolved (canonical (path' ++ (name ∷ []))))
   re-qual-path : ∀ {bound name alias}
@@ -228,11 +218,7 @@ data ResolvesDecl (um : UnaliasedMap) (am : AliasMap)
 -- A declaration that is not an import. `resolveDecls` keeps an import as it
 -- is and maps `canonDecl` over everything else, so the two cases are kept
 -- apart.
-data NotImport : Decl → Set where
-  nim-typesig : ∀ {n t}     → NotImport (DTypeSig n t)
-  nim-fundef  : ∀ {n b}     → NotImport (DFunDef n b)
-  nim-sig     : ∀ {n t}     → NotImport (DSignature n t)
-  nim-alias   : ∀ {n ps t}  → NotImport (DTypeAlias n ps t)
+open import Once.Spec.Surface.Program using (NotImport; ni-sig; ni-tsig; ni-def; ni-alias)
 
 data ResolvesDecls (mm : ModuleMap)
                    (um : UnaliasedMap) (am : AliasMap)

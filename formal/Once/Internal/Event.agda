@@ -12,7 +12,7 @@
 module Once.Internal.Event where
 
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type.WellFormed using (IsBaseType)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
 open import Data.Product using (_,_)
@@ -24,13 +24,13 @@ record SigOpEvent : Set where
   field
     ev-name  : CanonicalName   -- Plan 0.50: the resolved identity (was String)
     ev-dom   : Type            -- the SigOp's argument type
-    -- IRRELEVANT: `IsBaseType` is an h-prop in practice, and two events with
+    -- IRRELEVANT: `Base ∅ₖ` is an h-prop in practice, and two events with
     -- the same name, domain and value must be `≡` regardless of which witness
     -- they carry. It is kept rather than dropped because it is what rules out
     -- an `ev-dom` whose `⟦_⟧` is a function type — an observation the ABI
     -- could not pass and no funext-free bridge could relate. `SigOpInfo.baseA`
     -- already calls itself proof-irrelevant; this makes that enforceable.
-    .ev-base : IsBaseType ev-dom
+    .ev-base : Base ∅ₖ ev-dom
     ev-arg   : M.⟦ ev-dom ⟧
 
 
@@ -44,20 +44,19 @@ import Once.Internal.Type as T
 import Once.Spec.Type as T
 
 import Once.Spec.Type as T
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 import Once.Spec.Signature as S
 
 private
-  baseˡ : ∀ {A B} → IsBaseType (A T.* B) → IsBaseType A
-  baseˡ (base-Prod a _) = a
-  baseʳ : ∀ {A B} → IsBaseType (A T.* B) → IsBaseType B
-  baseʳ (base-Prod _ b) = b
-  sumˡ : ∀ {A B} → IsBaseType (A T.+ B) → IsBaseType A
-  sumˡ (base-Sum a _) = a
-  sumʳ : ∀ {A B} → IsBaseType (A T.+ B) → IsBaseType B
-  sumʳ (base-Sum _ b) = b
+  baseˡ : ∀ {A B} → Base ∅ₖ (A T.* B) → Base ∅ₖ A
+  baseˡ (b-* a _) = a
+  baseʳ : ∀ {A B} → Base ∅ₖ (A T.* B) → Base ∅ₖ B
+  baseʳ (b-* _ b) = b
+  sumˡ : ∀ {A B} → Base ∅ₖ (A T.+ B) → Base ∅ₖ A
+  sumˡ (b-+ a _) = a
+  sumʳ : ∀ {A B} → Base ∅ₖ (A T.+ B) → Base ∅ₖ B
+  sumʳ (b-+ _ b) = b
 
-baseOf : (A : Type) → .(IsBaseType A) → S.BTy
+baseOf : (A : Type) → .(Base ∅ₖ A) → S.BTy
 baseOf T.Unit           _ = S.unit
 baseOf T.Void           _ = S.void
 baseOf T.Int            _ = S.int
@@ -68,7 +67,7 @@ baseOf (_ T.⇒[ _ ] _)   ()
 baseOf (T.μ _)     ()
 baseOf (T.ν _ _)   ()
 
-valOf : (A : Type) → .(b : IsBaseType A) → M.⟦ A ⟧ → S.⟦ baseOf A b ⟧ᵇ
+valOf : (A : Type) → .(b : Base ∅ₖ A) → M.⟦ A ⟧ → S.⟦ baseOf A b ⟧ᵇ
 valOf T.Unit        _ v = v
 valOf T.Void        _ v = v
 valOf T.Int         _ v = v

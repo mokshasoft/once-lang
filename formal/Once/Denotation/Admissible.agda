@@ -53,7 +53,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Spec.Word as OnceWord
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 
 ------------------------------------------------------------------------
@@ -83,8 +83,8 @@ open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DF
 -- `negLits` delegates every other operand straight back to `rawIntLits`: the
 -- delegation is not a catch-all that could swallow a literal, since
 -- `rawIntLits` is itself exhaustive.
-rawIntLits : RawExpr → List ℤ
-negLits    : RawExpr → List ℤ   -- the operand of a unary minus
+rawIntLits : Expr → List ℤ
+negLits    : Expr → List ℤ   -- the operand of a unary minus
 
 rawIntLits (RInt n)             = n ∷ []
 rawIntLits (RApp f x)           = rawIntLits f ++ rawIntLits x

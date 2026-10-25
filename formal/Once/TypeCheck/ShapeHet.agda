@@ -35,19 +35,19 @@ import Once.Internal.Type.Poly as T
 open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; sub-arr)
-open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
 open import Once.Spec.Sub using (_⊔_≔_)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Spec.Sub using (sub-*)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Internal.Type.Join using (join-unique)
-open import Once.Internal.Syntax as Raw using (RawExpr)
 import Once.Spec.Surface.Syntax as Raw
 open import Once.Spec.Name using (NotGenerator)
 open import Once.Internal.Name using (showCanonical; WordName)
 open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
-open import Once.Internal.Type.WellFormed using (IsConcrete; WellFormedF)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 import Once.Internal.Context as Surface
 open import Once.Spec.Context using (_∷_; _▸_)
@@ -80,7 +80,7 @@ private
     A A′ A₀ B B′ B₁ C C′ C₁ M T₀ X : Ty mᵥ
     π π′ π₀ : Purity
     q q′ q₁ q₁′ : Quantity
-    e e₁ e₂ : RawExpr
+    e e₁ e₂ : Raw.Expr
 
 ------------------------------------------------------------------------
 -- The relation
@@ -220,7 +220,7 @@ module _ {m} {Γ : Ctx m n} where
 
   -- A synthesized pair, converted, against the pair literal checked.
   pairc-h : {a : Expr Γ Ψ₁ A} {a′ : Expr Γ Ψ₁′ A′} {b : Expr Γ Ψ₂ B} {b′ : Expr Γ Ψ₂′ B′} (pa : A <: A′) (pb : B <: B′)
-          → coerce pa a ≅ a′ → coerce pb b ≅ b′ → coerce (sub-prod pa pb) (pair a b) ≅ pair a′ b′
+          → coerce pa a ≅ a′ → coerce pb b ≅ b′ → coerce (sub-* pa pb) (pair a b) ≅ pair a′ b′
   pairc-h {a = a} {b = b} pa pb (≅i refl refl) (≅i refl refl) =
     ≅i refl refl
 
@@ -315,7 +315,7 @@ module _ {m} {Γ : Ctx m n} where
             {g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)} {g′ : Expr Γ Ψ₂′ (A ⇒[ mk-kind Many π ] C′)}
             (pb : B <: B′) (pc : C <: C′)
           → coerce (sub-arr (<:-refl A) pb (⊑π-refl π)) f ≅ f′ → coerce (sub-arr (<:-refl A) pc (⊑π-refl π)) g ≅ g′
-          → coerce (sub-arr (<:-refl A) (sub-prod pb pc) (⊑π-refl π)) (fork' f g) ≅ fork' f′ g′
+          → coerce (sub-arr (<:-refl A) (sub-* pb pc) (⊑π-refl π)) (fork' f g) ≅ fork' f′ g′
   forkc-h {f = f} {g = g} pb pc (≅i refl refl) (≅i refl refl) =
     ≅i refl refl
 

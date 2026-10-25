@@ -19,6 +19,7 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 
 open import Data.Nat using (ℕ)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
@@ -56,7 +57,6 @@ open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type using (μ)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 open import Once.Denotation.DenotTrace using (liftFn; sigOpT; module CallEnv)
 open CallEnv using (ffiE)
@@ -182,7 +182,7 @@ push-× refl refl a b = refl
 
 ------------------------------------------------------------------------
 -- `subst-SK` push + `base-z`: the K-node base-constant coherence (induction on
--- `IsBaseType`; atomic bases `refl`, Prod/Sum push+recurse). Discharges the K
+-- `Base ∅ₖ`; atomic bases `refl`, Prod/Sum push+recurse). Discharges the K
 -- case of `layer-z`.
 ------------------------------------------------------------------------
 
@@ -190,15 +190,15 @@ subst-SK : ∀ {S₁ S₂ X : Set} (e : S₁ ≡ S₂) (a : S₂)
   → subst (λ H → ⟦ H ⟧SF X) (sym (cong SK e)) a ≡ subst (λ z → z) (sym e) a
 subst-SK refl a = refl
 
--- The K-node base-constant coherence (induction on `IsBaseType`): master's
+-- The K-node base-constant coherence (induction on `Base ∅ₖ`): master's
 -- `base-z`, at `injectᵇ` (plan 0.113 A2; D258 removed Str/Buffer).
 base-z : ∀ {m} {Δₖ : KCtx m} {A : Ty m} (ib : Base Δₖ A) (y : ⟦ Carrier , Carrier ⟧-base A)
   → injectᵇ (base-⌈⌉ (base-⌊⌋ ib)) (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) (subst (λ z → z) (sym (base-coh A)) y))
     ≡ subst (λ z → z) (sym (cohᴰ A)) (injectᵇ ib (coerce-base-to-full ib y))
-base-z base-Unit   y = refl
-base-z base-Void   ()
-base-z base-Int    y = refl
-base-z base-Float  y = refl
+base-z b-Unit   y = refl
+base-z b-Void   ()
+base-z b-Int    y = refl
+base-z b-Float  y = refl
 base-z (b-* {A = A} {B = B} pA pB) (a , b)
   rewrite push-× (base-coh A) (base-coh B) a b
         | push-× (cohᴰ A) (cohᴰ B) (injectᵇ pA (coerce-base-to-full pA a)) (injectᵇ pB (coerce-base-to-full pB b))
@@ -253,7 +253,7 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
     ≡ˡᴰ X refl r = r
 
   sum₁-step : ∀ {Fa Gb} (wfF : WFFun Δₖ Fa) (wfG : WFFun Δₖ Gb) l r
-            → LayerRel wfF l r → LayerRel (wf-Sum wfF wfG) (inj₁ l) (inj₁ r)
+            → LayerRel wfF l r → LayerRel (wf-⊕ wfF wfG) (inj₁ l) (inj₁ r)
   sum₁-step {Fa} {Gb} wfF wfG l r e =
     ≡ˡᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')
       (trans (cong (subst (λ z → z) (cohᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')))
@@ -265,7 +265,7 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
       e
 
   sum₂-step : ∀ {Fa Gb} (wfF : WFFun Δₖ Fa) (wfG : WFFun Δₖ Gb) l r
-            → LayerRel wfG l r → LayerRel (wf-Sum wfF wfG) (inj₂ l) (inj₂ r)
+            → LayerRel wfG l r → LayerRel (wf-⊕ wfF wfG) (inj₂ l) (inj₂ r)
   sum₂-step {Fa} {Gb} wfF wfG l r e =
     ≡ˡᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')
       (trans (cong (subst (λ z → z) (cohᴰ (SpT.⟦ Fa ⟧F A' TT.+ SpT.⟦ Gb ⟧F A')))
@@ -277,7 +277,7 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
       e
 
   prod-step : ∀ {Fa Gb} (wfF : WFFun Δₖ Fa) (wfG : WFFun Δₖ Gb) l r l′ r′
-            → LayerRel wfF l r → LayerRel wfG l′ r′ → LayerRel (wf-Prod wfF wfG) (l , l′) (r , r′)
+            → LayerRel wfF l r → LayerRel wfG l′ r′ → LayerRel (wf-⊗ wfF wfG) (l , l′) (r , r′)
   prod-step {Fa} {Gb} wfF wfG l r l′ r′ e e′ =
     ≡ˡᴰ (SpT.⟦ Fa ⟧F A' TT.* SpT.⟦ Gb ⟧F A')
       (trans (cong (subst (λ z → z) (cohᴰ (SpT.⟦ Fa ⟧F A' TT.* SpT.⟦ Gb ⟧F A')))
@@ -316,8 +316,8 @@ module _ {m : ℕ} {Δₖ : KCtx m} {A' : Ty m} where
   layer-rel (wf-⊕ {F = Fa} {G = Gb} wfF wfG) {inj₂ y₁} {inj₂ y₂} rsf
     rewrite subst-S⊕-inj₂ (tF-coh Fa) (tF-coh Gb) y₁ =
     RelS-fmap (layer-rel wfG rsf) (λ {l} {r} → sum₂-step wfF wfG l r)
-  layer-rel (wf-Sum wfF wfG) {inj₁ _} {inj₂ _} ()
-  layer-rel (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} ()
+  layer-rel (wf-⊕ wfF wfG) {inj₁ _} {inj₂ _} ()
+  layer-rel (wf-⊕ wfF wfG) {inj₂ _} {inj₁ _} ()
   layer-rel (wf-⊗ {F = Fa} {G = Gb} wfF wfG) {x₁ , z₁} {x₂ , z₂} (rf , rg)
     rewrite subst-S⊗ (tF-coh Fa) (tF-coh Gb) x₁ z₁ =
     RelS-bind (layer-rel wfF rf) λ {l} {r} e →

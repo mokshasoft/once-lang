@@ -33,6 +33,7 @@
 module Once.SigOp.Info where
 
 open import Data.Unit using (tt)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (Dec)
@@ -45,9 +46,8 @@ open import Once.Internal.Res using (Res; stopped; returns)
 open import Once.Internal.Trace using (FFIAnswers)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
--- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
+-- and result types must be CONCRETE (`Base ∅ₖ` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 
 -- | Frontend / proof-level interpretation (Int ≡ ℤ).
 -- (Core ℤ `as I` removed: semI deleted — the machine `semM` is the meaning.)
@@ -179,12 +179,12 @@ record SigOpInfo (A B : Type) : Set where
     sem  : SigOpSem A B              -- proven value (internal) OR effect contract (external)
     -- Plan 0.58: the ARGUMENT is a base type (a register/ABI scalar — a
     -- higher-order callback arg is out of scope). Proof-irrelevant.
-    baseA : IsBaseType A
+    baseA : Base ∅ₖ A
     -- plan 0.105: the RESULT is a base type too — a register/ABI value, never
     -- a closure. (Plan 0.58 had `IsConcrete B`; D245 moved definition
     -- references to `Call`, and FFI contracts are first-order, so no SigOp
     -- returns a function.)
-    conB  : IsBaseType B
+    conB  : Base ∅ₖ B
 
 open SigOpInfo
 
@@ -286,7 +286,7 @@ semP {A} {B} si = semP-of (sem si)
 ------------------------------------------------------------------------
 
 mk-info : ∀ {A B} → CanonicalName → (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ) → EffectShape B
-        → IsBaseType A → IsBaseType B → SigOpInfo A B
+        → Base ∅ₖ A → Base ∅ₖ B → SigOpInfo A B
 mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA cB
 mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA cB
 mk-info nm f (Halts e) bA cB = mk-info' nm (haltsV e)    bA cB

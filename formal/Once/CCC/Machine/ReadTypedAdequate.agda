@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
 -- labels. `o` is constant for a whole definition, so it belongs on the module
@@ -39,7 +40,6 @@ open import Function using (id)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_)
 import Once.Type
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
@@ -62,13 +62,13 @@ data Readable : Type → Set where
   r-void  : Readable Void
 
 -- Every base type is readable (D258).
-readable-base : ∀ {A} → IsBaseType A → Readable A
-readable-base base-Unit       = r-unit
-readable-base base-Void       = r-void
-readable-base base-Int        = r-int
-readable-base base-Float      = r-float
-readable-base (base-Prod a b) = r-pair (readable-base a) (readable-base b)
-readable-base (base-Sum a b)  = r-sum (readable-base a) (readable-base b)
+readable-base : ∀ {A} → Base ∅ₖ A → Readable A
+readable-base b-Unit       = r-unit
+readable-base b-Void       = r-void
+readable-base b-Int        = r-int
+readable-base b-Float      = r-float
+readable-base (b-* a b) = r-pair (readable-base a) (readable-base b)
+readable-base (b-+ a b)  = r-sum (readable-base a) (readable-base b)
 
 -- Decision procedure, so the SigOp dispatch can ROUTE on readability: a Pure
 -- SigOp over a readable input gets the real computed value; anything else falls
@@ -119,44 +119,44 @@ sumtag-eq {Once.IR.Stack} e = e
 -- carries; the lemma takes the witness, so the consumer passes its own). Stating adequacy in that
 -- same form is what lets the consumer's `rewrite` close by `refl`; a
 -- separately-invented coherence would have needed a bridge lemma to `coh`.
-readTyped-cell-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {cl s alloc} {c : ⟦ ⌊ A ⌋ ⟧ᴵ}
+readTyped-cell-adequate : ∀ {A} (r : Readable A) (ib : Base ∅ₖ A) → ∀ {cl s alloc} {c : ⟦ ⌊ A ⌋ ⟧ᴵ}
                         → CellAt alloc ⌊ A ⌋ c cl s
                         → readTyped-cell (λ l → readTyped A l s) (readReg-typed A)
                             (readLoc s cl)
                           ≡ just (forgetᵇ ib (subst id (cohᴰ A) c))
-readTyped-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
+readTyped-adequate : ∀ {A} (r : Readable A) (ib : Base ∅ₖ A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
                    → ValidAtWF m alloc {⌊ A ⌋} v loc s
                    → readTyped A loc s ≡ just (forgetᵇ ib (subst id (cohᴰ A) v))
-readTyped-adequate r-unit base-Unit valid-unit-wf = refl
-readTyped-adequate r-int base-Int (valid-int-wf bf rl) rewrite rl = refl
-readTyped-adequate r-float base-Float (valid-float-wf bf rl) rewrite rl = refl
+readTyped-adequate r-unit b-Unit valid-unit-wf = refl
+readTyped-adequate r-int b-Int (valid-int-wf bf rl) rewrite rl = refl
+readTyped-adequate r-float b-Float (valid-float-wf bf rl) rewrite rl = refl
 readTyped-adequate r-void  _ {v = ()} _
 -- A sum: the tag selects the injection, the payload cell is a pair-style cell.
-readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} (valid-inl-wf {a = a} _ tg pl bfp _ va)
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inl-wf {a = a} _ tg pl bfp _ va)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₁) (readTyped-cell-adequate rA iA (cell-ptr {cell-loc = sucLoc loc} {s = s} pl bfp va)))
-        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
-readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} (valid-inr-wf {b = b} _ tg pl bfp _ vb)
+        (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inr-wf {b = b} _ tg pl bfp _ vb)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate rB iB (cell-ptr {cell-loc = sucLoc loc} {s = s} pl bfp vb)))
-        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
-readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inl-reg-wf {a = a} _ tg rep rl _)
+        (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} {_} {alloc} (valid-inl-reg-wf {a = a} _ tg rep rl _)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₁) (readTyped-cell-adequate rA iA {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
-        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
-readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inr-reg-wf {b = b} _ tg rep rl _)
+        (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} {_} {alloc} (valid-inr-reg-wf {b = b} _ tg rep rl _)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate rB iB {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
-        (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
-readTyped-adequate (r-pair {A} {B} rA rB) (base-Prod iA iB) {v = v} (valid-pair-wf lmm slb fc sc)
+        (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
+readTyped-adequate (r-pair {A} {B} rA rB) (b-* iA iB) {v = v} (valid-pair-wf lmm slb fc sc)
   rewrite readTyped-cell-adequate rA iA fc | readTyped-cell-adequate rB iB sc =
-  cong just (cong (forgetᵇ (base-Prod iA iB)) (sym (subst-×-cong₂ (cohᴰ A) (cohᴰ B) (proj₁ v) (proj₂ v))))
+  cong just (cong (forgetᵇ (b-* iA iB)) (sym (subst-×-cong₂ (cohᴰ A) (cohᴰ B) (proj₁ v) (proj₂ v))))
 
 -- D187: the CELL-level half. A pair cell is a pointer or the component
 -- itself, and `readTyped-cell` dispatches on exactly that — so this lemma has
 -- one clause per residence and neither invents anything.
-readTyped-cell-adequate r-unit base-Unit (cell-ptr r bf v)    rewrite r = refl
-readTyped-cell-adequate r-unit base-Unit {s = s} (cell-inline rep r)  rewrite r = unit-cell rep
+readTyped-cell-adequate r-unit b-Unit (cell-ptr r bf v)    rewrite r = refl
+readTyped-cell-adequate r-unit b-Unit {s = s} (cell-inline rep r)  rewrite r = unit-cell rep
   where
     unit-cell : ∀ {c} (rep : InlineRep ⌊ Unit {0} ⌋)
               → readTyped-cell (λ l → readTyped Unit l s) (readReg-typed Unit)
@@ -167,18 +167,18 @@ readTyped-cell-adequate r-unit base-Unit {s = s} (cell-inline rep r)  rewrite r 
     unit-cell (rep-unit _ (SV-Tag _))   = refl
     unit-cell (rep-unit _ (SV-Lit _ _)) = refl
     unit-cell (rep-unit _ (SV-Code _))  = refl
-readTyped-cell-adequate r-int base-Int (cell-ptr r bf v)
-  rewrite r = readTyped-adequate r-int base-Int v
-readTyped-cell-adequate r-int base-Int (cell-inline (rep-prim fits-int) r) rewrite r = refl
-readTyped-cell-adequate r-int base-Int (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate r-int b-Int (cell-ptr r bf v)
+  rewrite r = readTyped-adequate r-int b-Int v
+readTyped-cell-adequate r-int b-Int (cell-inline (rep-prim fits-int) r) rewrite r = refl
+readTyped-cell-adequate r-int b-Int (cell-inline (rep-unit () _) r)
 readTyped-cell-adequate (r-pair rA rB) ib (cell-ptr r bf v)
   rewrite r = readTyped-adequate (r-pair rA rB) ib v
 readTyped-cell-adequate (r-pair rA rB) _ (cell-inline (rep-prim ()) r)
 readTyped-cell-adequate (r-pair rA rB) _ (cell-inline (rep-unit () _) r)
-readTyped-cell-adequate r-float base-Float (cell-ptr r bf v)
-  rewrite r = readTyped-adequate r-float base-Float v
-readTyped-cell-adequate r-float base-Float (cell-inline (rep-prim fits-float) r) rewrite r = refl
-readTyped-cell-adequate r-float base-Float (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate r-float b-Float (cell-ptr r bf v)
+  rewrite r = readTyped-adequate r-float b-Float v
+readTyped-cell-adequate r-float b-Float (cell-inline (rep-prim fits-float) r) rewrite r = refl
+readTyped-cell-adequate r-float b-Float (cell-inline (rep-unit () _) r)
 readTyped-cell-adequate (r-sum rA rB) ib (cell-ptr r bf v)
   rewrite r = readTyped-adequate (r-sum rA rB) ib v
 readTyped-cell-adequate (r-sum rA rB) _ (cell-inline (rep-prim ()) r)

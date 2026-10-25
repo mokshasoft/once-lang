@@ -30,7 +30,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 
 open import Once.Spec.Name using (CanonicalName; canonical; gen)
-open import Once.Internal.Syntax as O using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 import Once.Internal.Resolution as LR
 import Once.Spec.Surface.Resolution as SR
@@ -59,14 +59,6 @@ PathsNE : List (String × List String) → Set
 PathsNE = All (λ q → proj₂ q ≢ [])
 
 private
-  fa← : ∀ {K V : Set} {x : K} {v : V} {t} → SR.FirstAt x v t → LR.FirstAt x v t
-  fa← SR.fa-here         = LR.fa-here
-  fa← (SR.fa-there ne f) = LR.fa-there ne (fa← f)
-
-  ex← : ∀ {p p′} → SR.Expands p p′ → LR.ExpandsTo p p′
-  ex← SR.ex-nil       = LR.ex-nil
-  ex← SR.ex-I         = LR.ex-I
-  ex← (SR.ex-other n) = LR.ex-other n
 
   at-ne : ∀ {x p t} → PathsNE t → SR.FirstAt x p t → p ≢ []
   at-ne (n ∷ _) SR.fa-here        = n
@@ -99,7 +91,7 @@ private
 unaliased-eq : ∀ {mm dsU u} → SR.Unaliased mm dsU u → u ≡ collectUnaliased mm dsU
 unaliased-eq SR.un-nil = refl
 unaliased-eq {mm} (SR.un-import {p = p} {ds′ = ds″} fa un)
-  with lookupModule mm p | lookupMod-complete mm p (mkModule ds″) (fa← fa)
+  with lookupModule mm p | lookupMod-complete mm p (mkModule ds″) fa
 ... | .(just (mkModule ds″)) | refl =
   cong₂ _++_ (sym (trans (cong (Data.List.map (λ n → (n , p))) (names-eq ds″)) (map-path p (SR.exports ds″))))
              (unaliased-eq un)
@@ -115,17 +107,17 @@ unaliased-eq (SR.un-other SR.nu-alias un)   = unaliased-eq un
 
 res-expr← : ∀ {um am bound eU eS} → PathsNE um → PathsNE am
           → Resolves (env um am) bound eU eS → Written eU
-          → Σ[ eC ∈ RawExpr ] ResolvesExpr um am bound eU eC × RX bound eC eS × GoodRefs eC
+          → Σ[ eC ∈ Expr ] ResolvesExpr um am bound eU eC × RX bound eC eS × GoodRefs eC
 res-expr← nu na (r-local m) w = _ , re-var (rv-binder m) , x-local m , tt
 res-expr← nu na (r-name nb (rn-gen gw)) w = _ , re-var (rv-gen nb gw) , x-good (good-gen _) , good-gen _
 res-expr← nu na (r-name nb (rn-import {x = x} {p} {p′} ngw fa ex)) w =
   let g = good-long p′ x (ex-ne ex (at-ne nu fa))
-  in _ , re-var (rv-import nb ngw (fa← fa) (ex← ex)) , x-good g , g
+  in _ , re-var (rv-import nb ngw fa ex) , x-good g , g
 res-expr← nu na (r-name nb (rn-own ngw ab xm)) w = _ , re-var (rv-own nb ngw ab) , x-good (good-own xm) , good-own xm
 res-expr← nu na (r-this xm) w = _ , re-this , x-good (good-own xm) , good-own xm
 res-expr← nu na (r-qual {x = x} {p′ = p′} na′ fa ex) w =
   let g = good-long p′ x (ex-ne ex (at-ne na fa))
-  in _ , re-qual na′ (fa← fa) (ex← ex) , x-good g , g
+  in _ , re-qual na′ fa ex , x-good g , g
 res-expr← nu na (r-qual-path {x = x} {a} na′ ab) w = _ , re-qual-path na′ ab , x-good (good-path a x) , good-path a x
 res-expr← nu na r-res ()
 res-expr← nu na (r-app rf ra) (wf , wa) =
@@ -175,13 +167,13 @@ module Decls (Σ : Signature) where
   res-decls← nu na SPr.rd-nil [] SPr.im-nil = [] , LR.rds-nil , dr-nil
   res-decls← nu na (SPr.rd-def re rd) (w ∷ ws) (SPr.im-other SPr.ni-def im) =
     let (e , de , xe , g) = res-expr← nu na re w ; (ds , rds , dr) = res-decls← nu na rd ws im
-    in _ , LR.rds-cons LR.nim-fundef (LR.rd-fundef de g) rds , dr-def xe dr
+    in _ , LR.rds-cons SPr.ni-def (LR.rd-fundef de g) rds , dr-def xe dr
   res-decls← nu na (SPr.rd-other SPr.nf-tsig rd) (_ ∷ ws) (SPr.im-other SPr.ni-tsig im) =
-    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons LR.nim-typesig LR.rd-typesig rds , dr-tsig dr
+    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons SPr.ni-tsig LR.rd-typesig rds , dr-tsig dr
   res-decls← nu na (SPr.rd-other SPr.nf-sig rd) (_ ∷ ws) (SPr.im-other SPr.ni-sig im) =
-    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons LR.nim-sig LR.rd-signature rds , dr-sig dr
+    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons SPr.ni-sig LR.rd-signature rds , dr-sig dr
   res-decls← nu na (SPr.rd-other SPr.nf-alias rd) (_ ∷ ws) (SPr.im-other SPr.ni-alias im) =
-    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons LR.nim-alias LR.rd-typealias rds , dr-alias dr
+    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons SPr.ni-alias LR.rd-typealias rds , dr-alias dr
   res-decls← nu na (SPr.rd-other SPr.nf-import rd) (_ ∷ ws) (SPr.im-import fa _ _ im) =
     let (ds , rds , dr) = res-decls← nu na rd ws im
-    in _ , LR.rds-import (fa← fa) rds , dr-import dr
+    in _ , LR.rds-import fa rds , dr-import dr

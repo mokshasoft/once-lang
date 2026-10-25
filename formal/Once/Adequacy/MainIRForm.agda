@@ -41,7 +41,7 @@ open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure; eff)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate using ()
 import Once.Compile as C
 
@@ -66,7 +66,7 @@ validateMain-sub ty eq = validateMain-at-sub ty (ty <:? EffUU) eq
 ------------------------------------------------------------------------
 
 compileFun-main-sub : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
+  (ty : Type) (body : Expr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFun IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in veq
@@ -75,7 +75,7 @@ compileFun-main-sub ctx polys impsOf ty body irFun eq with C.validateMain ty in 
 
 -- R8: `main` without a signature, compiled from its synthesis.
 compileFunI-main-sub : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
+  (ty : Type) (body : Expr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFunI IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFunI-main-sub ctx polys impsOf ty body irFun eq = go (C.validateMain ty) refl eq
@@ -86,7 +86,7 @@ compileFunI-main-sub ctx polys impsOf ty body irFun eq = go (C.validateMain ty) 
     go (inj₁ _)  _   ()
 
 compileFunM-main-sub : ∀ (ft : Maybe Type) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
-  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
+  (ty : Type) (body : Expr) (irFun : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) →
   C.compileFunM ft IR.Heap false ctx polys impsOf "main" ty body ≡ inj₂ irFun →
   ty <: EffUU
 compileFunM-main-sub (Data.Maybe.just _) = compileFun-main-sub

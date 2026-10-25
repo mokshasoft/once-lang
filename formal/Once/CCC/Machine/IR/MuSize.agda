@@ -14,6 +14,7 @@
 module Once.CCC.Machine.IR.MuSize where
 
 open import Once.Spec.Type using (Ty; Fun)
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
 import Data.Nat as ℕ
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; n≤1+n; n<1+n;
@@ -25,7 +26,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 
 open import Once.Spec.Type using (Fun)
-open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap; sem-Out; sem-In)
 open import Once.Semantics.Value Carrier Carrier using (sem-In-Out; sem-cata-compute)
@@ -53,12 +53,12 @@ sum-Id (F₁ ⊗ F₂) (x , y)   = sum-Id F₁ x ℕ.+ sum-Id F₂ y
 -- reductions (sum-Id (F⊕G)(inj₁ …) = sum-Id F …, etc.) still hold.
 ------------------------------------------------------------------------
 abstract
-  μ-size : ∀ {G} → WellFormedF G → ⟦μ⟧ G → ℕ
+  μ-size : ∀ {G} → WFFun ∅ₖ G → ⟦μ⟧ G → ℕ
   μ-size {G} wfG = sem-cata wfG (λ layer → suc (sum-Id G layer))
 
   -- The catamorphism recurrence: a node's size is suc of the sum of its
   -- children's sizes (the children being the Id-positions of its layer).
-  μ-size-unfold : ∀ {G} (wfG : WellFormedF G) (x : ⟦μ⟧ G)
+  μ-size-unfold : ∀ {G} (wfG : WFFun ∅ₖ G) (x : ⟦μ⟧ G)
     → μ-size wfG x ≡ suc (sum-Id G (sem-fmap G (μ-size wfG) (sem-Out wfG x)))
   μ-size-unfold {G} wfG x =
     trans (cong (μ-size wfG) (sym (sem-In-Out wfG x)))
@@ -80,11 +80,11 @@ abstract
   -- via the refl-proved stepping lemmas below. (extract-proofs-from-where
   -- + agda-typecheck-oom-abstract.)
   ------------------------------------------------------------------------
-  child-measure : ∀ (F : Fun 0) {G} (wfG : WellFormedF G) → ⟦ F ⟧F (⟦μ⟧ G) → ℕ
+  child-measure : ∀ (F : Fun 0) {G} (wfG : WFFun ∅ₖ G) → ⟦ F ⟧F (⟦μ⟧ G) → ℕ
   child-measure F wfG layer = sum-Id F (sem-fmap F (μ-size wfG) layer)
 
   -- The total child-size of x's layer is strictly less than μ-size x.
-  child-sum-< : ∀ {G} (wfG : WellFormedF G) (x : ⟦μ⟧ G)
+  child-sum-< : ∀ {G} (wfG : WFFun ∅ₖ G) (x : ⟦μ⟧ G)
     → child-measure G wfG (sem-Out wfG x) < μ-size wfG x
   child-sum-< {G} wfG x rewrite μ-size-unfold wfG x = n<1+n _
 
@@ -98,26 +98,26 @@ abstract
   ----------------------------------------------------------------------
 
   -- Id position: the child μ-value's own μ-size is the bound.
-  child-bound-Id : ∀ {G n} (wfG : WellFormedF G) (c : ⟦μ⟧ G)
+  child-bound-Id : ∀ {G n} (wfG : WFFun ∅ₖ G) (c : ⟦μ⟧ G)
     → child-measure Id wfG c < n → μ-size wfG c < n
   child-bound-Id wfG c h = h
 
   -- Sum: descending into a branch keeps the same child-measure.
-  child-bound-inj₁ : ∀ {FL FR G n} (wfG : WellFormedF G) (l : ⟦ FL ⟧F (⟦μ⟧ G))
+  child-bound-inj₁ : ∀ {FL FR G n} (wfG : WFFun ∅ₖ G) (l : ⟦ FL ⟧F (⟦μ⟧ G))
     → child-measure (FL ⊕ FR) wfG (inj₁ l) < n → child-measure FL wfG l < n
   child-bound-inj₁ wfG l h = h
 
-  child-bound-inj₂ : ∀ {FL FR G n} (wfG : WellFormedF G) (r : ⟦ FR ⟧F (⟦μ⟧ G))
+  child-bound-inj₂ : ∀ {FL FR G n} (wfG : WFFun ∅ₖ G) (r : ⟦ FR ⟧F (⟦μ⟧ G))
     → child-measure (FL ⊕ FR) wfG (inj₂ r) < n → child-measure FR wfG r < n
   child-bound-inj₂ wfG r h = h
 
   -- Prod: each component's child-measure is ≤ the total, hence < n.
-  child-bound-prod-left : ∀ {FL FR G n} (wfG : WellFormedF G)
+  child-bound-prod-left : ∀ {FL FR G n} (wfG : WFFun ∅ₖ G)
     (l : ⟦ FL ⟧F (⟦μ⟧ G)) (r : ⟦ FR ⟧F (⟦μ⟧ G))
     → child-measure (FL ⊗ FR) wfG (l , r) < n → child-measure FL wfG l < n
   child-bound-prod-left wfG l r h = ≤-<-trans (m≤m+n _ _) h
 
-  child-bound-prod-right : ∀ {FL FR G n} (wfG : WellFormedF G)
+  child-bound-prod-right : ∀ {FL FR G n} (wfG : WFFun ∅ₖ G)
     (l : ⟦ FL ⟧F (⟦μ⟧ G)) (r : ⟦ FR ⟧F (⟦μ⟧ G))
     → child-measure (FL ⊗ FR) wfG (l , r) < n → child-measure FR wfG r < n
   child-bound-prod-right wfG l r h = ≤-<-trans (m≤n+m _ _) h

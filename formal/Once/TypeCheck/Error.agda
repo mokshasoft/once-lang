@@ -43,7 +43,7 @@ open import Once.Type using (showQuantity; showType)
 -- | Machine-readable typechecker error variants.
 --
 -- Each variant corresponds to a distinct semantic failure mode. The
--- variants are grouped by the RawExpr form that produces them:
+-- variants are grouped by the Expr form that produces them:
 --
 --   * Variable lookups — `UnboundVariable`, `UnboundQualified`.
 --   * Mode mismatches — `LambdaInInferMode`, `InlInInferMode`, etc.

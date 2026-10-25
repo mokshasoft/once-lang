@@ -33,7 +33,7 @@ import Once.Spec.Surface.Syntax as T
 import Once.Internal.Type.Poly as T
 import Once.Spec.Grade as T
 open import Once.Spec.Surface.Syntax as Raw using (RVar; RResolved)
-open import Once.Internal.Syntax as Raw using (RawExpr)
+import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
 open import Once.Internal.Name using (showCanonical)
 open import Once.CanonicalName using (bare-NotGenerator)
@@ -45,7 +45,8 @@ import Once.TypeCheck.Error as Error
 import Once.TypeCheck.Elaborate as E
 open import Once.Internal.Type.Join using (join?-complete)
 import Data.Unit
-open import Once.Internal.Type.WellFormed using (WellFormedF; IsConcrete)
+open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Functor.Decide using (isConcrete?; isConcrete?-complete)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
@@ -62,10 +63,10 @@ import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Spec.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-arr)
-open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Type.Sub using (_<:?_; _⊑π?_)
 open import Once.Internal.Type.Sub using (<:-refl)
+open import Once.Spec.Sub using (sub-*)
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Once.Internal.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
@@ -123,7 +124,7 @@ private
   leaf-route ctx cn A π r _ ahv-other ok = res-route ctx cn A π r ok
 
 
-  app-other-route : ∀ {m} (ctx : NamedCtx m) (f x : RawExpr) (A : Ty m) (π : T.Purity)
+  app-other-route : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (A : Ty m) (π : T.Purity)
                       (r : VerifiedInferResult ctx (Raw.RApp f x))
                   → classifyAppHeadView f ≡ ahv-other
                   → elabGivenApp ctx f x A π (classifyAppHeadView f) r ≡ given-infer ctx (Raw.RApp f x) A π r
@@ -253,7 +254,7 @@ poly-head-fails ctx x {schema} eS eI eP ¬g =
        (Once.TypeCheck.Classify.lookupPolyPrefix⇒lookupPoly (Classify.NamedCtx.polys ctx) x eP) (¬Ground-isGround-inj₂ schema ¬g))
 
 -- `d-infer`: the inferred arrow's domain converts back, its grade up.
-given-infer-complete : ∀ {m} {ctx : NamedCtx m} {e : RawExpr} {A A′ B : Ty m} {π π′ : T.Purity}
+given-infer-complete : ∀ {m} {ctx : NamedCtx m} {e : Syn.Expr} {A A′ B : Ty m} {π π′ : T.Purity}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
     (r : VerifiedInferResult ctx e)
   → proj₁ r ≡ success (A′ T.⇒[ T.mk-kind T.Many π′ ] B) Ψ eE d f
@@ -266,7 +267,7 @@ given-infer-complete {A = A} {A′ = A′} {π = π} {π′ = π′} (success _ 
 ... | yes _ | no ¬g = ⊥-elim (¬g g)
 
 -- `d-cata`: the algebra synthesizes the arrow the fold needs.
-given-cata-complete : ∀ {m} {ctx : NamedCtx m} {alg : RawExpr} {F : Fun m} {A : Ty m} {π : T.Purity}
+given-cata-complete : ∀ {m} {ctx : NamedCtx m} {alg : Syn.Expr} {F : Fun m} {A : Ty m} {π : T.Purity}
     (wfF : WFFun (Classify.NamedCtx.kinds ctx) F) {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
     (u : T.pure ⊑π π) (r : VerifiedInferResult ctx alg)
   → proj₁ r ≡ success (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
@@ -280,7 +281,7 @@ given-cata-complete {F = F} {A = A} {π = π} wfF {Ψ = Ψ} u (success _ _ _ _ _
 
 -- compose, `f`'s route: `f` synthesizes, converts, and `g` is checked at the
 -- middle it names.
-compose-f-complete : ∀ {m} {ctx : NamedCtx m} (f g : RawExpr) (A B C C′ : Ty m) (π π′ : T.Purity)
+compose-f-complete : ∀ {m} {ctx : NamedCtx m} (f g : Syn.Expr) (A B C C′ : Ty m) (π π′ : T.Purity)
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)} {fE : _} {gE : _} {df ff dg fg : ℕ}
   → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
   → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
@@ -295,7 +296,7 @@ compose-f-complete {ctx = ctx} f g A B C C′ π π′ eqF p eqG
 ...     | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 -- The spine, once the head is known not to synthesize.
-infer-complete-RApp-spine : ∀ {m} {ctx : NamedCtx m} (f x : RawExpr) {X B : Ty m} {err : _}
+infer-complete-RApp-spine : ∀ {m} {ctx : NamedCtx m} (f x : Syn.Expr) {X B : Ty m} {err : _}
     {Ψf Ψx : Surface.Usage (Classify.NamedCtx.size ctx)} {fE : _} {xE : _} {df ff dx fx : ℕ}
   → Classify.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ failure err
@@ -371,7 +372,7 @@ checkElab-fallback-RVar {ctx = ctx} {τ = τ} x T eqInf sb
 -- inferElab equation on the sub-expression(s), produce the outer
 -- checkElab equation. The proofs walk checkElabV-RApp-dispatch at the
 -- corresponding ahv-X branch.
-completeness-gap-inl-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : RawExpr) (A B : Ty m)
+completeness-gap-inl-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (A B : Ty m)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ A}
     {d f : ℕ}
@@ -383,7 +384,7 @@ completeness-gap-inl-app-check-eq {ctx = ctx} arg A B eqC
   with checkElabV ctx arg A | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
-completeness-gap-inr-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : RawExpr) (A B : Ty m)
+completeness-gap-inr-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (A B : Ty m)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ B}
     {d f : ℕ}
@@ -395,7 +396,7 @@ completeness-gap-inr-app-check-eq {ctx = ctx} arg A B eqC
   with checkElabV ctx arg B | eqC
 ... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
 
-completeness-gap-initial-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : RawExpr) (T : Ty m)
+completeness-gap-initial-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (T : Ty m)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {eE : SExpr (Classify.NamedCtx.debruijn ctx) Ψ T.Void}
     {d f : ℕ}
@@ -451,7 +452,7 @@ private
 -- `checkElabV (RPair a b) (A * B)` reduces via `checkPairLit` (checkElabV a A /
 -- checkElabV b B). Given the two paired component equations, `rewrite` drives it
 -- to its `success` leaf.
-pair-lit-reduce : ∀ {m} {ctx : NamedCtx m} {a b : RawExpr} {A B : Ty m}
+pair-lit-reduce : ∀ {m} {ctx : NamedCtx m} {a b : Syn.Expr} {A B : Ty m}
   {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
   {aE da fa wA bE db fb wB}
   → checkElabV ctx a A ≡ (success Ψ₁ aE da fa , wA)

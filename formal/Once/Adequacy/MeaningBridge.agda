@@ -57,7 +57,8 @@ open import Once.Adequacy.SourceRefl fmt using (SD-rel; <:-rel; cata-clo-rel; an
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Int; Float; Unit)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 open import Once.Semantics.Machine using (sem-In; sem-cata)
 open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
@@ -86,6 +87,7 @@ open import Once.Type.Rigid using (ground-kinded)
 open import Once.Internal.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
@@ -298,11 +300,11 @@ ret-inv h = inv (forceS h)
 
 
 -- The same finite tree of first-order values, related to itself.
-emb-self : ∀ {C} (bC : IsBaseType C) (t : T Val.⟦ C ⟧) → RelS (RelD C) (embed (fmapT (injectᵇ bC) t)) (embed (fmapT (injectᵇ bC) t))
+emb-self : ∀ {C} (bC : Base ∅ₖ C) (t : T Val.⟦ C ⟧) → RelS (RelD C) (embed (fmapT (injectᵇ bC) t)) (embed (fmapT (injectᵇ bC) t))
 emb-self bC t = RelS-embed (RelT′-refl (base-refl bC) (fmapT (injectᵇ bC) t))
 
 -- A first-order pointer is related to itself.
-ptr-self : ∀ {Dom Cod} (bDom : IsBaseType Dom) (bCod : IsBaseType Cod) (f : Val.⟦ Dom ⟧ → T Val.⟦ Cod ⟧)
+ptr-self : ∀ {Dom Cod} (bDom : Base ∅ₖ Dom) (bCod : Base ∅ₖ Cod) (f : Val.⟦ Dom ⟧ → T Val.⟦ Cod ⟧)
              {a a′ : ⟦ Dom ⟧ᴰ} → RelD Dom a a′
          → RelS (RelD Cod) (embed (fmapT (injectᵇ bCod) (f (forgetᵇ bDom a)))) (embed (fmapT (injectᵇ bCod) (f (forgetᵇ bDom a′))))
 ptr-self bDom bCod f {a} r with base-eq bDom r
@@ -396,8 +398,8 @@ step-≡ h h' hr {x} refl = hr x
 
 -- The comparison codomain: `Unit + Unit` erases to itself, injection for
 -- injection.
-⊎⊤-base : IsBaseType (Unit {0} + Unit)
-⊎⊤-base = base-Sum base-Unit base-Unit
+⊎⊤-base : Base ∅ₖ (Unit {0} + Unit)
+⊎⊤-base = b-+ b-Unit b-Unit
 
 ⊎⊤-rel : (v : Val.⟦ Unit {0} + Unit ⟧ᵍ)
        → RelGM pure (Unit {0} + Unit) v (embed (ret (injectᵇ ⊎⊤-base (Val.eraseᵍ {B = Unit {0} + Unit} v))))
@@ -443,11 +445,11 @@ mutual
   RelGV-sub p@(sub-arr {q = Zero} a b g) (r , s) = RelGM-sub g b r , <:-rel p s
   RelGV-sub p@(sub-arr {q = One}  a b g) (r , s) = (λ ra → RelGM-sub g b (r (RelGV-sub a ra))) , <:-rel p s
   RelGV-sub p@(sub-arr {q = Many} a b g) (r , s) = (λ ra → RelGM-sub g b (r (RelGV-sub a ra))) , <:-rel p s
-  RelGV-sub (sub-prod a b) {x₁ , y₁} {x₂ , y₂} (ra , rb) = RelGV-sub a ra , RelGV-sub b rb
-  RelGV-sub (sub-sum a b) {inj₁ _} {inj₁ _} r = RelGV-sub a r
-  RelGV-sub (sub-sum a b) {inj₂ _} {inj₂ _} r = RelGV-sub b r
-  RelGV-sub (sub-sum a b) {inj₁ _} {inj₂ _} ()
-  RelGV-sub (sub-sum a b) {inj₂ _} {inj₁ _} ()
+  RelGV-sub (sub-* a b) {x₁ , y₁} {x₂ , y₂} (ra , rb) = RelGV-sub a ra , RelGV-sub b rb
+  RelGV-sub (sub-+ a b) {inj₁ _} {inj₁ _} r = RelGV-sub a r
+  RelGV-sub (sub-+ a b) {inj₂ _} {inj₂ _} r = RelGV-sub b r
+  RelGV-sub (sub-+ a b) {inj₁ _} {inj₂ _} ()
+  RelGV-sub (sub-+ a b) {inj₂ _} {inj₁ _} ()
 
   RelGM-sub : ∀ {B B′ : Type} {π π′} (g : π ⊑π π′) (b : B <: B′) {m : M π ⟦ B ⟧ᵛ} {t : T∞ ⟦ B ⟧ᴰ}
             → RelGM π B m t → RelGM π′ B′ (subM g (fmapM π ⟦ b ⟧<:ᵛ m)) (fmap∞ ⟦ b ⟧<: t)

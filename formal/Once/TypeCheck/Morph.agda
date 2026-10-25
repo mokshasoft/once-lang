@@ -33,7 +33,7 @@ open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Surface.Syntax as Raw using (RVar; RApp)
-open import Once.Internal.Syntax as Raw using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 
 ------------------------------------------------------------------------
 -- Lightweight Maybe-valued type equality (positive cases only — a
@@ -60,7 +60,7 @@ _ ≡T? _ = nothing
 -- The closed point-free morphism forms.
 ------------------------------------------------------------------------
 
-data MorphRaw : RawExpr → Set where
+data MorphRaw : Expr → Set where
   mr-id       : MorphRaw (RVar "id")
   mr-fst      : MorphRaw (RVar "fst")
   mr-snd      : MorphRaw (RVar "snd")
@@ -72,10 +72,10 @@ data MorphRaw : RawExpr → Set where
               → MorphRaw (RApp (RApp (RVar "case") f) g)
 
 ------------------------------------------------------------------------
--- Decide whether a RawExpr is a point-free morphism form.
+-- Decide whether a Expr is a point-free morphism form.
 ------------------------------------------------------------------------
 
-morphRaw? : (e : RawExpr) → Maybe (MorphRaw e)
+morphRaw? : (e : Expr) → Maybe (MorphRaw e)
 morphRaw? (RVar x) with StrProp._≟_ x "id"
 ... | yes refl = just mr-id
 ... | no _ with StrProp._≟_ x "fst"

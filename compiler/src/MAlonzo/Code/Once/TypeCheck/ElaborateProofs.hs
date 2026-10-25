@@ -1074,7 +1074,7 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23274
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23162
                          (coe v0)
                          (coe
                             MAlonzo.Code.Once.Spec.Grade.C_fin_42
@@ -1093,7 +1093,7 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23274
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23162
                          (coe v0)
                          (coe
                             MAlonzo.Code.Once.Spec.Grade.C_fin_42
@@ -1112,7 +1112,7 @@ du_checkElab'45'fallback'45'RVar'45'terminalV_2768 v0 v1
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23274
+                         MAlonzo.Code.Once.TypeCheck.SpecWitness.du_wt'45'terminal'45'morph'45'check_23162
                          (coe v0) (coe MAlonzo.Code.Once.Spec.Grade.C_eff_44))
                       erased)))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -2891,7 +2891,7 @@ d_resolveExpr'45'sigOp'45'extern_4872 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_resolveExpr'45'sigOp'45'extern_4872 = erased

@@ -35,7 +35,7 @@ open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Spec.Surface.Syntax using (RVar)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 -- D072 M3: the principal-type oracle's sig-less schema criterion.
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue; isOpNameChar)
@@ -216,7 +216,7 @@ record FunInfo : Set where
     -- always carry `just`. (Was `Type`; the `nothing` case was previously
     -- DROPPED in `extractFunctions`, contradicting D007.)
     funType  : Maybe Type
-    funBody  : RawExpr
+    funBody  : Expr
     -- | Plan 0.11: `true` for signatures (external declarations
     -- whose implementations live in `Strata/Interpretations/<…>.<arch>`
     -- as `once_<name>` symbols), `false` for user-defined function
@@ -234,7 +234,7 @@ record PolyFunInfo : Set where
   field
     pfunName  : String
     pfunType  : PolyType
-    pfunBody  : RawExpr
+    pfunBody  : Expr
 
 -- | D241/D242: the module is ONE declaration-ordered telescope. Every
 -- definition sees exactly the definitions declared before it; an FFI
@@ -295,7 +295,7 @@ extractFunctions-consFun : EFResult → FunInfo → EFResult
 extractFunctions-consFun (inj₁ err) _  = inj₁ err
 extractFunctions-consFun (inj₂ es)  fi = inj₂ (e-fun fi ∷ es)
 
-extractFunctions-consPoly : EFResult → String → PolyType → RawExpr → EFResult
+extractFunctions-consPoly : EFResult → String → PolyType → Expr → EFResult
 extractFunctions-consPoly (inj₁ err) _ _ _ = inj₁ err
 extractFunctions-consPoly (inj₂ es)  n t b = inj₂ (e-poly (mkPolyFunInfo n t b) ∷ es)
 
@@ -305,7 +305,7 @@ danglingSig : String → String
 danglingSig s = "The signature of `" ++ s ++ "` is not followed by its definition"
 
 extractFunctions-go : List Decl → Maybe PendingSig → EFResult
-extractFunctions-sigless : (name : String) → RawExpr → List Decl → Dec (name ≡ "main") → EFResult
+extractFunctions-sigless : (name : String) → Expr → List Decl → Dec (name ≡ "main") → EFResult
 extractFunctions-go [] nothing = inj₂ []
 extractFunctions-go [] (just (s , _)) = inj₁ (danglingSig s)
 -- Signatures are classified now: ground types get expanded eagerly;
@@ -520,7 +520,7 @@ extractFunctions (resolved (mkModule ds) is) =
   guardDistinct (thenExtract (sigsAdjacent ds nothing) (extractFunctions-go (sigsFirst ds is) nothing))
 
 -- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all
--- removed. The eager RawExpr-level inlining pipeline is replaced by
+-- removed. The eager Expr-level inlining pipeline is replaced by
 -- typecheck-time schema instantiation via `PolyCtx`
 -- (Once.TypeCheck.Elaborate). Ground function cross-references flow
 -- through the `FunCtx` import list; user polymorphic definitions

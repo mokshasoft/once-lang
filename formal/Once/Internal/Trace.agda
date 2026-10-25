@@ -32,6 +32,7 @@
 module Once.Internal.Trace where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _<_; z≤n; s≤s)
+open import Once.Spec.Type using (Base; b-Unit; ∅ₖ)
 open import Data.Nat.Properties using (0∸n≡0)
 open import Data.List using (List; []; _∷_; _++_; length; take; [_])
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
@@ -47,13 +48,11 @@ open import Once.Spec.Type using (Type)
 open import Once.Internal.Type using (isUnit?)
 import Once.Internal.Type as SpecTy
 import Once.Spec.Type as SpecTy
-open import Once.Internal.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (CanonicalName; gen)
 open import Once.Internal.Name using (showCanonical)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Internal.Type.WellFormed using (base-Unit)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent; mk-event)
@@ -70,7 +69,7 @@ record CallOp : Set where
   field
     cname  : CanonicalName
     cdom   : Type
-    cbase  : IsBaseType cdom
+    cbase  : Base ∅ₖ cdom
     ccod   : Type
 open CallOp
 
@@ -79,7 +78,7 @@ record HaltOp : Set where
   field
     hname  : CanonicalName
     hdom   : Type
-    hbase  : IsBaseType hdom
+    hbase  : Base ∅ₖ hdom
 open HaltOp
 
 -- The observable of a call is the call itself: its identity, domain and argument.
@@ -155,7 +154,7 @@ pure ι = pureI (impl ι)
 -- The RESERVED operation an unlinked call halts on: a call the world does not
 -- provide, or an internal call the table does not define (D244).
 unlinkedOp : HaltOp
-unlinkedOp = haltOp (gen "unlinked") SpecTy.Unit base-Unit
+unlinkedOp = haltOp (gen "unlinked") SpecTy.Unit b-Unit
 
 -- Halting on it.
 unlinkedT : ∀ {X} → T X

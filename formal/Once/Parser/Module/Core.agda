@@ -23,7 +23,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (PolyType; Module)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseTypeWF)
 open import Once.Parser.TypeRelation using (ParsesType-shrinks)
@@ -80,12 +80,12 @@ parseTypeB toks = parseTypeB-adapt toks
 open import Once.Parser.Expr using (ParseExprD)
 
 parseExprB-adapt : ∀ (toks : List Token) → ParseExprD toks →
-                   Maybe (Σ[ a ∈ RawExpr ] Σ[ rest ∈ List Token ]
+                   Maybe (Σ[ a ∈ Expr ] Σ[ rest ∈ List Token ]
                             length rest < length toks)
 parseExprB-adapt _ nothing = nothing
 parseExprB-adapt _ (just (e , rest , d)) = just (e , rest , ParsesExpr-shrinks d)
 
-parseExprB : (toks : List Token) → ParseAtB {RawExpr} toks
+parseExprB : (toks : List Token) → ParseAtB {Expr} toks
 parseExprB toks = parseExprB-adapt toks
                     (parseExprWF toks (<-wellFounded (length toks)))
 

@@ -48,7 +48,7 @@ d_purity'45''8849''45'isPartialOrder_14
             MAlonzo.Code.Relation.Binary.PropositionalEquality.Properties.du_isEquivalence_396)
          (coe
             (\ v0 v1 v2 ->
-               MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_42 (coe v0)))
+               MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_14 (coe v0)))
          (\ v0 v1 v2 v3 v4 ->
             coe
               MAlonzo.Code.Once.Internal.Laws.SubLaws.du_'8849'π'45'trans_24 v3
@@ -81,7 +81,7 @@ du_subtype'45'isPartialOrder_70
          (coe
             (\ v0 v1 v2 ->
                coe
-                 MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''45'refl_62
+                 MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''45'refl_34
                  (coe v0)))
          (coe
             MAlonzo.Code.Once.Internal.Laws.SubLaws.du_'60''58''45'trans_90))

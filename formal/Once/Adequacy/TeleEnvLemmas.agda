@@ -65,7 +65,7 @@ open CallEnv using (callsE)
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.RefMeanings Σ σ₀ using (DefMeanings; ImpMeanings)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
@@ -96,12 +96,12 @@ acc-irrel (acc f) (acc g) =
 module _ (I : String → TopCtx) (uf : Imports) where
 
   -- D254: the spliced body is the realization of its derivation.
-  spliceClosed : ∀ {A : Type} {b : RawExpr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
+  spliceClosed : ∀ {A : Type} {b : Expr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
                → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
   spliceClosed {A = A} pre x (failure _ , _)             = Srf.poly x A
   spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 eE)
 
-  polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × RawExpr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
+  polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × Expr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
   polyVal x A nothing                 = Srf.poly x A
   polyVal x A (just (_ , body , pre)) = spliceClosed pre x (checkElabV (ctxAt baseKinds (I x) pre) body A)
 

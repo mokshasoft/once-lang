@@ -225,7 +225,7 @@ open import Once.Internal.Type.WellFormed using (IsConcrete)
 open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Type.Schema using (kinded-instance)
 open import Once.Internal.Context using (svar; _⊔ᵘ_)
-open import Once.Internal.Syntax using (isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
+open import Once.TypeCheck.Raw using (isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.Internal.Typing.Scope using (lookupLocal; classifyAppHead)
 open import Once.Internal.Core.Decl using (⌜declS⌝)
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -233,26 +233,8 @@ open import Once.Type.Rigid using (ground-kinded)
 open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; BinOp)
 open import Data.Unit using (⊤; tt)
 
--- A type of no variables is the same type under any substitution: the
--- compiler's weakening is the Spec's `↑`.
-mutual
-  sub0 : ∀ {m} (T : ST.Ty 0) (σ σ′ : ST.TySub 0 m) → T ST.⟨ σ ⟩ ≡ T ST.⟨ σ′ ⟩
-  sub0 (ST.var ()) σ σ′
-  sub0 ST.Unit  σ σ′ = refl
-  sub0 ST.Void  σ σ′ = refl
-  sub0 ST.Int   σ σ′ = refl
-  sub0 ST.Float σ σ′ = refl
-  sub0 (A ST.* B) σ σ′ = cong₂ ST._*_ (sub0 A σ σ′) (sub0 B σ σ′)
-  sub0 (A ST.+ B) σ σ′ = cong₂ ST._+_ (sub0 A σ σ′) (sub0 B σ σ′)
-  sub0 (A ST.⇒[ k ] B) σ σ′ = cong₂ (λ X Y → X ST.⇒[ k ] Y) (sub0 A σ σ′) (sub0 B σ σ′)
-  sub0 (ST.μ F) σ σ′ = cong ST.μ (sub0F F σ σ′)
-  sub0 (ST.ν F φ) σ σ′ = cong (λ G → ST.ν G φ) (sub0F F σ σ′)
-
-  sub0F : ∀ {m} (F : ST.Fun 0) (σ σ′ : ST.TySub 0 m) → F ST.⟨ σ ⟩F ≡ F ST.⟨ σ′ ⟩F
-  sub0F (ST.K A) σ σ′ = cong ST.K (sub0 A σ σ′)
-  sub0F ST.Id σ σ′ = refl
-  sub0F (F ST.⊕ G) σ σ′ = cong₂ ST._⊕_ (sub0F F σ σ′) (sub0F G σ σ′)
-  sub0F (F ST.⊗ G) σ σ′ = cong₂ ST._⊗_ (sub0F F σ σ′) (sub0F G σ σ′)
+-- The compiler's weakening is the Spec's `↑`.
+open import Once.Type.Closed using (sub0)
 
 wk₀≡↑ : ∀ {m} (T : ST.Type) → wk₀ {m} T ≡ T ST.⟨ (λ ()) ⟩
 wk₀≡↑ T = sub0 T none (λ ())

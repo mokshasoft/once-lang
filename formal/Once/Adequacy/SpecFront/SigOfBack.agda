@@ -45,7 +45,6 @@ open import Once.Adequacy.SpecInterp using (declTy)
 open import Once.Spec.Signature using (WellFormedDecl)
 open import Once.Spec.Surface.Program using (DeclTypeOf)
 open import Once.Adequacy.SpecFront.SigOf using (importedSigs-++; expands-of)
-open import Once.Adequacy.SpecFront.Resolve using (first→)
 
 ------------------------------------------------------------------------
 -- Lists of entries
@@ -137,14 +136,14 @@ imp-part← : ∀ {mm um am dsU dsR Σᵢ} → LR.ResolvesDecls mm um am dsU dsR
           → Imported mm dsU Σᵢ → WellFormed Σᵢ
           → Σ[ fs ∈ List Entry ] XAlign (Parser.importedSigs (importedOf mm dsU)) fs × (toISig Σᵢ ≡ entrySig fs) × All FFIFacts fs
 imp-part← LR.rds-nil im-nil [] = [] , xa-nil , refl , []
-imp-part← (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (im-other ni-def im) ws = imp-part← rds im ws
-imp-part← (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (im-other ni-tsig im) ws = imp-part← rds im ws
-imp-part← (LR.rds-cons LR.nim-sig LR.rd-signature rds) (im-other ni-sig im) ws = imp-part← rds im ws
-imp-part← (LR.rds-cons LR.nim-alias LR.rd-typealias rds) (im-other ni-alias im) ws = imp-part← rds im ws
+imp-part← (LR.rds-cons Once.Spec.Surface.Program.ni-def (LR.rd-fundef _ _) rds) (im-other ni-def im) ws = imp-part← rds im ws
+imp-part← (LR.rds-cons Once.Spec.Surface.Program.ni-tsig LR.rd-typesig rds) (im-other ni-tsig im) ws = imp-part← rds im ws
+imp-part← (LR.rds-cons Once.Spec.Surface.Program.ni-sig LR.rd-signature rds) (im-other ni-sig im) ws = imp-part← rds im ws
+imp-part← (LR.rds-cons Once.Spec.Surface.Program.ni-alias LR.rd-typealias rds) (im-other ni-alias im) ws = imp-part← rds im ws
 imp-part← {mm = mm} {dsU = DImport (mkImport p a) ∷ dsU′} (LR.rds-import {impDs = impDs} fa rds)
           (im-import {Σ₁ = Σ₁} {Σ₂ = Σ₂} fa₂ ex so₁ im₂) ws =
   let so₁′ = subst (λ q → SignaturesOf q impDs Σ₁) (expands-unique ex (expands-of p))
-               (subst (λ ds → SignaturesOf _ ds Σ₁) (first-unique fa₂ (first→ fa)) so₁)
+               (subst (λ ds → SignaturesOf _ ds Σ₁) (first-unique fa₂ fa) so₁)
       (w₁ , w₂) = wf-++ Σ₁ ws
       X = sigsOf (expandPath p) impDs
       (fsX , xX , tX , fX) = imp-module← so₁′ w₁

@@ -223,8 +223,7 @@ data T_Use'8658'_510
   = C_u'45'int_546 | C_u'45'float_554 | C_u'45'unit_556 |
     C_u'45'unit'45'g_558 | C_u'45'var_568 |
     C_u'45'sigop_580 MAlonzo.Code.Once.Spec.Type.T_Ty_8 AgdaAny
-                     MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30
-                     AgdaAny |
+                     MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 AgdaAny |
     C_u'45'def_594 AgdaAny | C_u'45'annot_606 T_Use'8656'_522 |
     C_u'45'pair_628 MAlonzo.Code.Once.Spec.Context.T_Usage_34
                     MAlonzo.Code.Once.Spec.Context.T_Usage_34 T_Use'8658'_510

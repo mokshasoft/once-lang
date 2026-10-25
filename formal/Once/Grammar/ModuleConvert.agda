@@ -70,7 +70,7 @@ gtypeToPolyFunctor (G.GFProd f g) = gtypeToPolyFunctor f P⊗ gtypeToPolyFunctor
 
 ------------------------------------------------------------------------
 -- Fold a function's parameter list into nested lambdas, so the body
--- converts to a `RawExpr` with the parameters lambda-bound (the
+-- converts to an `Expr` with the parameters lambda-bound (the
 -- parser's `Decl.DFunDef` representation).
 ------------------------------------------------------------------------
 

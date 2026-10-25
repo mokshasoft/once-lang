@@ -20,6 +20,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Type using (Fun; KCtx; WFFun; Base; b-var)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -56,7 +57,6 @@ open import Once.Internal.Stream
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
 open import Once.Spec.Type using (wf-K; wf-Id; b-*; b-+)
-open import Once.Internal.Type.WellFormed using (WellFormedF; wf-Sum; wf-Prod; IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉; base-⌊⌋; base-⌈⌉)
 
 ------------------------------------------------------------------------
@@ -253,25 +253,25 @@ private
 base-in-D : ∀ {m} {Δ : KCtx m} {B : TT.Ty m} (b : Base Δ B) (v0 : ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
   → subst id (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ b)) v0))
     ≡ coerce-full-to-base B (forgetᵇ b (subst id (cohᴰ B) v0))
-base-in-D base-Unit   v0 = refl
-base-in-D base-Int    v0 = refl
-base-in-D base-Float  v0 = refl
-base-in-D base-Void   ()
+base-in-D b-Unit   v0 = refl
+base-in-D b-Int    v0 = refl
+base-in-D b-Float  v0 = refl
+base-in-D b-Void   ()
 base-in-D (b-var _)   ()
 base-in-D (b-* {A = A} {B = B} ba bb) (a , b) =
   trans (push× (base-coh A) (base-coh B)
                (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ ba)) a))
                (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ bb)) b)))
     (trans (cong₂ _,_ (base-in-D ba a) (base-in-D bb b))
-           (sym (cong (λ z → coerce-full-to-base (A * B) (forgetᵇ (base-Prod ba bb) z)) (push× (cohᴰ A) (cohᴰ B) a b))))
+           (sym (cong (λ z → coerce-full-to-base (A * B) (forgetᵇ (b-* ba bb) z)) (push× (cohᴰ A) (cohᴰ B) a b))))
 base-in-D (b-+ {A = A} {B = B} ba bb) (inj₁ a) =
   trans (push⊎₁ (base-coh A) (base-coh B) (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ ba)) a)))
     (trans (cong inj₁ (base-in-D ba a))
-           (sym (cong (λ z → coerce-full-to-base (A + B) (forgetᵇ (base-Sum ba bb) z)) (push⊎₁ (cohᴰ A) (cohᴰ B) a))))
+           (sym (cong (λ z → coerce-full-to-base (A + B) (forgetᵇ (b-+ ba bb) z)) (push⊎₁ (cohᴰ A) (cohᴰ B) a))))
 base-in-D (b-+ {A = A} {B = B} ba bb) (inj₂ b) =
   trans (push⊎₂ (base-coh A) (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ bb)) b)))
     (trans (cong inj₂ (base-in-D bb b))
-           (sym (cong (λ z → coerce-full-to-base (A + B) (forgetᵇ (base-Sum ba bb) z)) (push⊎₂ (cohᴰ A) (cohᴰ B) b))))
+           (sym (cong (λ z → coerce-full-to-base (A + B) (forgetᵇ (b-+ ba bb) z)) (push⊎₂ (cohᴰ A) (cohᴰ B) b))))
 
 -- The erased and the surface ν introduction agree on a layer: structural on
 -- the functor's well-formedness (plan 0.105: the coercion forgets only at a
@@ -290,11 +290,11 @@ coerce-νin-erase-D {G = TT.K B} (wf-K b) A v0 =
   ⟫ pushSK (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forgetᵇ (base-⌈⌉ (base-⌊⌋ b)) v0))
   ⟫ base-in-D b v0
 coerce-νin-erase-D wf-Id A v0 = refl
-coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₁ x0) =
+coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-⊕ w₁ w₂) A (inj₁ x0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ
              (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (cohᴰ A)
-               (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ (wf-Sum w₁ w₂))) ⌈ ⌊ A ⌋ ⌉ z))))
+               (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ (wf-⊕ w₁ w₂))) ⌈ ⌊ A ⌋ ⌉ z))))
          (ve-split⊕₁ᴰ G₁ G₂ A x0)
   ⟫ cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ z))
@@ -305,13 +305,13 @@ coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₁ x0) =
         (subst (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (cohᴰ A)
           (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ w₁)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₁ A x0))))
   ⟫ cong inj₁ (coerce-νin-erase-D w₁ A x0)
-  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Sum w₁ w₂) A z))
+  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-⊕ w₁ w₂) A z))
               (push⊎₁ (cohᴰ (TT.⟦ G₁ ⟧F A)) (cohᴰ (TT.⟦ G₂ ⟧F A)) x0))
-coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₂ y0) =
+coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-⊕ w₁ w₂) A (inj₂ y0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ
              (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (cohᴰ A)
-               (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ (wf-Sum w₁ w₂))) ⌈ ⌊ A ⌋ ⌉ z))))
+               (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ (wf-⊕ w₁ w₂))) ⌈ ⌊ A ⌋ ⌉ z))))
          (ve-split⊕₂ᴰ G₁ G₂ A y0)
   ⟫ cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ z))
@@ -322,13 +322,13 @@ coerce-νin-erase-D {G = G₁ TT.⊕ G₂} (wf-Sum w₁ w₂) A (inj₂ y0) =
         (subst (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (cohᴰ A)
           (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ w₂)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0))))
   ⟫ cong inj₂ (coerce-νin-erase-D w₂ A y0)
-  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Sum w₁ w₂) A z))
+  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-⊕ w₁ w₂) A z))
               (push⊎₂ (cohᴰ (TT.⟦ G₁ ⟧F A)) (cohᴰ (TT.⟦ G₂ ⟧F A)) y0))
-coerce-νin-erase-D {G = G₁ TT.⊗ G₂} (wf-Prod w₁ w₂) A (x0 , y0) =
+coerce-νin-erase-D {G = G₁ TT.⊗ G₂} (wf-⊗ w₁ w₂) A (x0 , y0) =
     cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊗ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧ᴰ
              (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟧F Z) (cohᴰ A)
-               (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ (wf-Prod w₁ w₂))) ⌈ ⌊ A ⌋ ⌉ z))))
+               (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ (wf-⊗ w₁ w₂))) ⌈ ⌊ A ⌋ ⌉ z))))
          (ve-split⊗ᴰ G₁ G₂ A x0 y0)
   ⟫ cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊗ G₂))
            (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧ᴰ z))
@@ -343,5 +343,5 @@ coerce-νin-erase-D {G = G₁ TT.⊗ G₂} (wf-Prod w₁ w₂) A (x0 , y0) =
         (subst (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (cohᴰ A)
           (coerce-functor-D (wf-⌈⌉ (wf-⌊⌋ w₂)) ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0))))
   ⟫ cong₂ _,_ (coerce-νin-erase-D w₁ A x0) (coerce-νin-erase-D w₂ A y0)
-  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊗ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-Prod w₁ w₂) A z))
+  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊗ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (wf-⊗ w₁ w₂) A z))
               (push× (cohᴰ (TT.⟦ G₁ ⟧F A)) (cohᴰ (TT.⟦ G₂ ⟧F A)) x0 y0))

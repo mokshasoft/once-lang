@@ -13,11 +13,11 @@
 module Once.Surface.Desugar where
 
 open import Once.Spec.Type using (Ty)
+open import Once.Spec.Type using (Base; ∅ₖ)
 open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.IR as C
 import Once.IRTy as IRTy
 open import Once.Arith.SigOp.Builders using (generic-info)
-open import Once.Internal.Type.WellFormed using (IsBaseType)
 open import Once.Spec.Name using (bare)
 
 open import Data.String using (String)
@@ -38,7 +38,7 @@ open import Data.String using (String)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-sigOp-desugar : ∀ {A B : Once.Spec.Type.Type} → IsBaseType A → IsBaseType B → String → C.IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋
+sigOp-desugar : ∀ {A B : Once.Spec.Type.Type} → Base ∅ₖ A → Base ∅ₖ B → String → C.IR IRTy.⌊ A ⌋ IRTy.⌊ B ⌋
 sigOp-desugar bA bB name = C.SigOp (generic-info (bare name) bA bB)
 
 ------------------------------------------------------------------------

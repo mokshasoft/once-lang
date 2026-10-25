@@ -18,7 +18,7 @@ open import Data.Product using (_,_)
 open import Data.String using (String)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Token using (TEquals; Token)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Data.Nat.Properties using (<-≤-trans; m≤n⇒m≤1+n; ≤-refl)
 open import Data.Nat using (_≤_)
 open import Data.List using (List; []; _∷_; length)
@@ -48,7 +48,7 @@ parseFunBodyB : String → List String →
 pfb-eq : (name : String) (params : List String)
          (toks : List Token) → Bool → ParseAtB {Decl} toks
 pfb-body : (name : String) (params : List String)
-           (toks : List Token) → ParseAtB {RawExpr} (drop1 toks) → ParseAtB {Decl} toks
+           (toks : List Token) → ParseAtB {Expr} (drop1 toks) → ParseAtB {Decl} toks
 
 parseFunBodyB name params toks = pfb-eq name params toks (eqHead toks)
 

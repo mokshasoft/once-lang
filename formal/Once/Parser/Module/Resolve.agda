@@ -46,7 +46,7 @@ open import Once.Parser.Module.Core
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Module; mkModule)
 open import Once.Spec.Surface.Syntax using (Import; mkImport; PolyType)
 open import Once.Spec.Surface.Syntax using (RLam)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Internal.ResolvedRefs using (GoodRefs; goodRefs?)
 open import Once.Internal.Type.Poly using (extractGround)
 open import Once.Type using (isGround)
@@ -56,7 +56,7 @@ open import Once.Spec.Name using (canonical; gen; GenWord)
 open import Once.Internal.Name using (showCanonical)
 open import Once.CanonicalName using (genWord?)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Internal.Syntax using (ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
+open import Once.TypeCheck.Raw using (ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr; cls-unit; cls-annot; cls-binop)
 
 ------------------------------------------------------------------------
 -- ModuleMap: path → resolved Module
@@ -213,7 +213,7 @@ expandPath (c ∷ rest) with c ≟ "I"
 -- whose name a generator has taken is reached as `name@this`.
 -- The own module's definitions come last, after generators and imports (the
 -- Spec's order, `rn-gen`/`rn-import`/`rn-own`), polymorphic or not (R11, D330).
-canonVar : Bool → Bool → Maybe (List String) → String → RawExpr
+canonVar : Bool → Bool → Maybe (List String) → String → Expr
 canonVar true  _     _           x = RVar x                                             -- lexical binder shadows
 canonVar false true  _           x = RResolved (gen x)                                  -- a GENERATOR
 canonVar false false (just path) x = RResolved (canonical (expandPath path ++L (x ∷ []))) -- unaliased import: full path
@@ -223,7 +223,7 @@ canonVar false false nothing     x = RResolved (canonical (x ∷ []))           
 -- `RResolved`; recurse structurally, threading the bound-variable set `bound`
 -- (lambda/let/destruct binders) so LOCALS are never canonicalized. `um`
 -- carries unaliased-import name→path for full-path resolution.
-canonExpr : List String → UnaliasedMap → AliasMap → RawExpr → RawExpr
+canonExpr : List String → UnaliasedMap → AliasMap → Expr → Expr
 -- D136: `name@this` reaches the OWN module — the escape hatch for a definition
 -- whose name a generator has taken. `this` is a RESERVED alias and is decided
 -- BEFORE the alias table, so an `import … as this` cannot capture it.
@@ -253,7 +253,7 @@ canonExpr bound um am (RNeg e)     = RNeg (canonExpr bound um am e)
 -- a bare `RVar` becomes `RResolved` (or stays), and `RQualified` always
 -- becomes `RResolved`.
 cls-canon : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
-              {e : RawExpr}
+              {e : Expr}
           → ClosedLiftShape e → ClosedLiftShape (canonExpr bound um am e)
 cls-canon bound um am (cls-var {x = x})
   with does (x ∈? bound) | isBuiltinName x | lookupUnaliased um x
@@ -276,7 +276,7 @@ cls-canon bound um am cls-binop = cls-binop
 -- | …and REFLECTS it: `canonExpr` never turns a check-directed shape into a
 -- liftable one, so the seven non-liftable shapes are absurd on the left.
 cls-reflect : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
-                (e : RawExpr)
+                (e : Expr)
             → ClosedLiftShape (canonExpr bound um am e) → ClosedLiftShape e
 cls-reflect bound um am (RVar _) _              = cls-var
 cls-reflect bound um am (RQualified _ _) _      = cls-qual
@@ -360,7 +360,7 @@ resolveDecls-import-aux :
   → (rr : String ⊎ List Decl) → resolveDecls um am mm rest ≡ rr
   → String ⊎ List Decl
 consDecl : Decl → List Decl → String ⊎ List Decl
-consDecl-at : (name : String) (body : RawExpr) → Dec (GoodRefs body) → List Decl → String ⊎ List Decl
+consDecl-at : (name : String) (body : Expr) → Dec (GoodRefs body) → List Decl → String ⊎ List Decl
 resolveDecls-cons-aux :
   ∀ (um : UnaliasedMap) (am : AliasMap) (d : Decl)
   → (rr : String ⊎ List Decl) → String ⊎ List Decl

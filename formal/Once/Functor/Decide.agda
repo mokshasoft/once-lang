@@ -4,9 +4,9 @@
 ------------------------------------------------------------------------
 -- Once.Functor.Decide
 --
--- Structural deciders for `IsBaseType` and `WellFormedF`. These let the
+-- Structural deciders for `Base ∅ₖ` and `WFFun ∅ₖ`. These let the
 -- elaborator turn a *parsed* functor (`Once.Type.Functor`, e.g. the body
--- of a `Mu F` type) into the `WellFormedF F` witness that the CCC
+-- of a `Mu F` type) into the `WFFun ∅ₖ F` witness that the CCC
 -- recursion-scheme IR constructors (`In` / `Cata` / `out-μ`) require.
 --
 -- Both return `Maybe` (a `nothing` means the functor is not well-formed,
@@ -25,20 +25,21 @@ open import Once.Spec.Type using (Ty; Fun; WFFun; wf-⊕; wf-⊗; KCtx; Kind; ba
 
 open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; IsConcrete; con-base; con-fun; WellFormedF; wf-Sum; wf-Prod)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 
 -- | Decide whether a type is a base type (no functions / μ / ν).
-isBaseType? : (A : Type) → Maybe (IsBaseType A)
-isBaseType? Unit   = just base-Unit
-isBaseType? Void   = just base-Void
-isBaseType? Int    = just base-Int
-isBaseType? Float  = just base-Float
+isBaseType? : (A : Type) → Maybe (Base ∅ₖ A)
+isBaseType? Unit   = just b-Unit
+isBaseType? Void   = just b-Void
+isBaseType? Int    = just b-Int
+isBaseType? Float  = just b-Float
 isBaseType? (A * B) with isBaseType? A | isBaseType? B
-... | just bA | just bB = just (base-Prod bA bB)
+... | just bA | just bB = just (b-* bA bB)
 {-# CATCHALL #-}
 ... | _       | _       = nothing
 isBaseType? (A + B) with isBaseType? A | isBaseType? B
-... | just bA | just bB = just (base-Sum bA bB)
+... | just bA | just bB = just (b-+ bA bB)
 {-# CATCHALL #-}
 ... | _       | _       = nothing
 isBaseType? (_ ⇒[ _ ] _) = nothing
@@ -58,48 +59,48 @@ isConcrete? A with isBaseType? A
 ... | just bA = just (con-base bA)
 ... | nothing = nothing
 
--- | Completeness: a genuine `IsBaseType`/`IsConcrete` witness means the decider
+-- | Completeness: a genuine `Base ∅ₖ`/`IsConcrete` witness means the decider
 -- returns `just` (Plan 0.58 — needed to reduce the elaborator's new
 -- concreteness-guarded branches in Completeness/fallback proofs).
-isBaseType?-complete : ∀ {A} → IsBaseType A → ∃[ b ] isBaseType? A ≡ just b
-isBaseType?-complete base-Unit   = base-Unit , refl
-isBaseType?-complete base-Void   = base-Void , refl
-isBaseType?-complete base-Int    = base-Int , refl
-isBaseType?-complete base-Float  = base-Float , refl
-isBaseType?-complete (base-Prod bA bB)
+isBaseType?-complete : ∀ {A} → Base ∅ₖ A → ∃[ b ] isBaseType? A ≡ just b
+isBaseType?-complete b-Unit   = b-Unit , refl
+isBaseType?-complete b-Void   = b-Void , refl
+isBaseType?-complete b-Int    = b-Int , refl
+isBaseType?-complete b-Float  = b-Float , refl
+isBaseType?-complete (b-* bA bB)
   with isBaseType?-complete bA | isBaseType?-complete bB
-... | (a , eqA) | (b , eqB) rewrite eqA | eqB = base-Prod a b , refl
-isBaseType?-complete (base-Sum bA bB)
+... | (a , eqA) | (b , eqB) rewrite eqA | eqB = b-* a b , refl
+isBaseType?-complete (b-+ bA bB)
   with isBaseType?-complete bA | isBaseType?-complete bB
-... | (a , eqA) | (b , eqB) rewrite eqA | eqB = base-Sum a b , refl
+... | (a , eqA) | (b , eqB) rewrite eqA | eqB = b-+ a b , refl
 
 isConcrete?-complete : ∀ {A} → IsConcrete A → ∃[ c ] isConcrete? A ≡ just c
-isConcrete?-complete (con-base base-Unit)   = con-base base-Unit , refl
-isConcrete?-complete (con-base base-Void)   = con-base base-Void , refl
-isConcrete?-complete (con-base base-Int)    = con-base base-Int , refl
-isConcrete?-complete (con-base base-Float)  = con-base base-Float , refl
-isConcrete?-complete (con-base (base-Prod bA bB))
-  with isBaseType?-complete (base-Prod bA bB)
+isConcrete?-complete (con-base b-Unit)   = con-base b-Unit , refl
+isConcrete?-complete (con-base b-Void)   = con-base b-Void , refl
+isConcrete?-complete (con-base b-Int)    = con-base b-Int , refl
+isConcrete?-complete (con-base b-Float)  = con-base b-Float , refl
+isConcrete?-complete (con-base (b-* bA bB))
+  with isBaseType?-complete (b-* bA bB)
 ... | (b , eq) rewrite eq = con-base b , refl
-isConcrete?-complete (con-base (base-Sum bA bB))
-  with isBaseType?-complete (base-Sum bA bB)
+isConcrete?-complete (con-base (b-+ bA bB))
+  with isBaseType?-complete (b-+ bA bB)
 ... | (b , eq) rewrite eq = con-base b , refl
 isConcrete?-complete (con-fun bA bB)
   with isBaseType?-complete bA | isBaseType?-complete bB
 ... | (b , eqB) | (c , eqC) rewrite eqB | eqC = con-fun b c , refl
 
 -- | Decide whether a functor is well-formed (K positions are base types).
-wellFormedF? : (F : Fun 0) → Maybe (WellFormedF F)
+wellFormedF? : (F : Fun 0) → Maybe (WFFun ∅ₖ F)
 wellFormedF? (K A) with isBaseType? A
 ... | just bA = just (wf-K bA)
 ... | nothing = nothing
 wellFormedF? Id = just wf-Id
 wellFormedF? (F ⊕ G) with wellFormedF? F | wellFormedF? G
-... | just wF | just wG = just (wf-Sum wF wG)
+... | just wF | just wG = just (wf-⊕ wF wG)
 {-# CATCHALL #-}
 ... | _       | _       = nothing
 wellFormedF? (F ⊗ G) with wellFormedF? F | wellFormedF? G
-... | just wF | just wG = just (wf-Prod wF wG)
+... | just wF | just wG = just (wf-⊗ wF wG)
 {-# CATCHALL #-}
 ... | _       | _       = nothing
 

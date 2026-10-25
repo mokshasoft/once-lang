@@ -24,7 +24,6 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Internal.Name using (showCanonical)
 open import Once.Spec.Type using (Ty; Type; KCtx)
 open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Internal.Syntax using (RawExpr)
 open import Once.Internal.Type using (wk₀)
 open import Once.Internal.Type.Instance using (KindedInstance)
 open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
@@ -100,7 +99,7 @@ ImpRef imps x A = Σ Type (λ T → (lookupImport imps x ≡ just T) × (A ≡ w
 
 -- A telescope definition, at a kinded instance of its schema.
 PolyRef : ∀ {m} → PolyCtx → KCtx m → String → Ty m → Set
-PolyRef polys Δ x A = Σ (PolyType × RawExpr × PolyCtx) (λ r → (lookupPolyPrefix polys x ≡ just r) × KindedInstance Δ (Data.Product.proj₁ r) A)
+PolyRef polys Δ x A = Σ (PolyType × Once.Spec.Surface.Syntax.Expr × PolyCtx) (λ r → (lookupPolyPrefix polys x ≡ just r) × KindedInstance Δ (Data.Product.proj₁ r) A)
   where import Data.Product
 
 InScope : ∀ {m} → (ctx : NamedCtx m) → ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → Set

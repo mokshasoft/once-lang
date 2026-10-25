@@ -17,6 +17,7 @@
 module Once.Denotation.ValueRel where
 
 import Once.Spec.Type as SpT
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 open import Once.Spec.Type using (Base)
 open import Once.Spec.Type using (var; b-var; Ty; Fun; KCtx; WFFun)
 open import Data.Empty using (⊥)
@@ -109,32 +110,30 @@ SRel R (F S⊗ G) (x , y)  (x′ , y′) = SRel R F x x′ × SRel R G y y′
 -- Base types: related is equal, and equal is related.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum;
-                                             WellFormedF; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
 
 base-eq : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ∀ {x y : ⟦ A ⟧ᴰ} → RelD A x y → x ≡ y
-base-eq base-Unit       _ = refl
-base-eq base-Void {()}
-base-eq base-Int        r = r
-base-eq base-Float      r = r
-base-eq (base-Prod a b) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with base-eq a r₁ | base-eq b r₂
+base-eq b-Unit       _ = refl
+base-eq b-Void {()}
+base-eq b-Int        r = r
+base-eq b-Float      r = r
+base-eq (b-* a b) {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) with base-eq a r₁ | base-eq b r₂
 ... | refl | refl = refl
-base-eq (base-Sum a b) {inj₁ x} {inj₁ y} r = cong inj₁ (base-eq a r)
-base-eq (base-Sum a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eq b r)
-base-eq (base-Sum a b) {inj₁ _} {inj₂ _} ()
-base-eq (base-Sum a b) {inj₂ _} {inj₁ _} ()
+base-eq (b-+ a b) {inj₁ x} {inj₁ y} r = cong inj₁ (base-eq a r)
+base-eq (b-+ a b) {inj₂ x} {inj₂ y} r = cong inj₂ (base-eq b r)
+base-eq (b-+ a b) {inj₁ _} {inj₂ _} ()
+base-eq (b-+ a b) {inj₂ _} {inj₁ _} ()
 base-eq (b-var _) {()}
 
 base-refl : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ∀ (x : ⟦ A ⟧ᴰ) → RelD A x x
-base-refl base-Unit       x = tt
-base-refl base-Void       ()
-base-refl base-Int        x = refl
-base-refl base-Float      x = refl
-base-refl (base-Prod a b) (x , y) = base-refl a x , base-refl b y
-base-refl (base-Sum a b)  (inj₁ x) = base-refl a x
-base-refl (base-Sum a b)  (inj₂ y) = base-refl b y
+base-refl b-Unit       x = tt
+base-refl b-Void       ()
+base-refl b-Int        x = refl
+base-refl b-Float      x = refl
+base-refl (b-* a b) (x , y) = base-refl a x , base-refl b y
+base-refl (b-+ a b)  (inj₁ x) = base-refl a x
+base-refl (b-+ a b)  (inj₂ y) = base-refl b y
 base-refl (b-var _)      ()
 
 ------------------------------------------------------------------------
@@ -275,19 +274,19 @@ cfD-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {
         → RelD (SpT.⟦ F ⟧F C) x y → FRel (RelD C) F (coerce-functor-D wf C x) (coerce-functor-D wf C y)
 cfD-rel (wf-K b) C r = fr-K≡ (cong (forgetᵇ b) (base-eq b r))
 cfD-rel wf-Id C r = fr-Id r
-cfD-rel (wf-Sum wf wg) C {inj₁ x} {inj₁ y} r = fr-inl (cfD-rel wf C r)
-cfD-rel (wf-Sum wf wg) C {inj₂ x} {inj₂ y} r = fr-inr (cfD-rel wg C r)
-cfD-rel (wf-Sum wf wg) C {inj₁ _} {inj₂ _} ()
-cfD-rel (wf-Sum wf wg) C {inj₂ _} {inj₁ _} ()
-cfD-rel (wf-Prod wf wg) C {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = fr-pair (cfD-rel wf C r₁) (cfD-rel wg C r₂)
+cfD-rel (wf-⊕ wf wg) C {inj₁ x} {inj₁ y} r = fr-inl (cfD-rel wf C r)
+cfD-rel (wf-⊕ wf wg) C {inj₂ x} {inj₂ y} r = fr-inr (cfD-rel wg C r)
+cfD-rel (wf-⊕ wf wg) C {inj₁ _} {inj₂ _} ()
+cfD-rel (wf-⊕ wf wg) C {inj₂ _} {inj₁ _} ()
+cfD-rel (wf-⊗ wf wg) C {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) = fr-pair (cfD-rel wf C r₁) (cfD-rel wg C r₂)
 
 cfD⁻¹-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) (C : Ty m) {x y : ⟦ F ⟧F ⟦ C ⟧ᴰ}
           → FRel (RelD C) F x y → RelD (SpT.⟦ F ⟧F C) (coerce-functor⁻¹-D wf C x) (coerce-functor⁻¹-D wf C y)
 cfD⁻¹-rel (wf-K b) C {x} fr-K = base-refl b (injectᵇ b x)
 cfD⁻¹-rel wf-Id C (fr-Id r) = r
-cfD⁻¹-rel (wf-Sum wf wg) C (fr-inl r) = cfD⁻¹-rel wf C r
-cfD⁻¹-rel (wf-Sum wf wg) C (fr-inr r) = cfD⁻¹-rel wg C r
-cfD⁻¹-rel (wf-Prod wf wg) C (fr-pair r s) = cfD⁻¹-rel wf C r , cfD⁻¹-rel wg C s
+cfD⁻¹-rel (wf-⊕ wf wg) C (fr-inl r) = cfD⁻¹-rel wf C r
+cfD⁻¹-rel (wf-⊕ wf wg) C (fr-inr r) = cfD⁻¹-rel wg C r
+cfD⁻¹-rel (wf-⊗ wf wg) C (fr-pair r s) = cfD⁻¹-rel wf C r , cfD⁻¹-rel wg C s
 
 ------------------------------------------------------------------------
 -- The source-functor ↔ semantic-functor coercions preserve relatedness.
@@ -307,11 +306,11 @@ cμout-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {X : Set}
           → SRel R (translateF Carrier Carrier F) x y → FRel R F (coerce-μ-out wf X x) (coerce-μ-out wf X y)
 cμout-rel (wf-K pA) e = fr-K≡ (cong (coerce-base-to-full pA) e)
 cμout-rel wf-Id r = fr-Id r
-cμout-rel (wf-Sum wf wg) {x = inj₁ x} {inj₁ y} r = fr-inl (cμout-rel wf r)
-cμout-rel (wf-Sum wf wg) {x = inj₂ x} {inj₂ y} r = fr-inr (cμout-rel wg r)
-cμout-rel (wf-Sum wf wg) {x = inj₁ _} {inj₂ _} ()
-cμout-rel (wf-Sum wf wg) {x = inj₂ _} {inj₁ _} ()
-cμout-rel (wf-Prod wf wg) {x = x₁ , x₂} {y₁ , y₂} (r , s) = fr-pair (cμout-rel wf r) (cμout-rel wg s)
+cμout-rel (wf-⊕ wf wg) {x = inj₁ x} {inj₁ y} r = fr-inl (cμout-rel wf r)
+cμout-rel (wf-⊕ wf wg) {x = inj₂ x} {inj₂ y} r = fr-inr (cμout-rel wg r)
+cμout-rel (wf-⊕ wf wg) {x = inj₁ _} {inj₂ _} ()
+cμout-rel (wf-⊕ wf wg) {x = inj₂ _} {inj₁ _} ()
+cμout-rel (wf-⊗ wf wg) {x = x₁ , x₂} {y₁ , y₂} (r , s) = fr-pair (cμout-rel wf r) (cμout-rel wg s)
 
 ------------------------------------------------------------------------
 -- The fold: related algebras fold the same value to related results.

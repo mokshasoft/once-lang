@@ -27,12 +27,12 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong)
 
 open import Once.Spec.Name using (CanonicalName; canonical; gen)
-open import Once.Internal.Syntax as O using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Internal.Resolution as LR
   using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own;
          ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
-         re-binop; re-unop; re-unit; re-int; re-float; ExpandsTo; ex-nil; ex-I; ex-other)
+         re-binop; re-unop; re-unit; re-int; re-float)
 open import Once.Spec.Surface.Resolution as SR
   using (Env; env; Resolves; ResolvesName; rn-gen; rn-import; rn-own;
          r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
@@ -46,17 +46,7 @@ open import Once.Adequacy.SpecFront.Expr
 -- The tables
 ------------------------------------------------------------------------
 
--- A key the compiler finds in a table, the Spec finds at the same place.
-first→ : ∀ {K V : Set} {x : K} {v : V} {t} → LR.FirstAt x v t → SR.FirstAt x v t
-first→ LR.fa-here         = fa-here
-first→ (LR.fa-there ne f) = fa-there ne (first→ f)
-
 private
-  ex→ : ∀ {p p′} → ExpandsTo p p′ → Expands p p′
-  ex→ ex-nil       = SR.ex-nil
-  ex→ ex-I         = SR.ex-I
-  ex→ (ex-other n) = SR.ex-other n
-
   -- a good name is not `main`
   good-main : ∀ {c} → GoodName c → c ≢ canonical ("main" ∷ [])
   good-main g e = g e refl
@@ -76,10 +66,10 @@ res-expr : ∀ {um am bound eU eC} → ResolvesExpr um am bound eU eC → GoodRe
          → Σ[ eS ∈ S.Expr ] Resolves (env um am) bound eU eS × RX bound eC eS
 res-expr (re-var (rv-binder m)) g = _ , r-local m , x-local m
 res-expr (re-var (rv-gen nb gw)) g = _ , r-name nb (rn-gen gw) , x-good (gen-good _)
-res-expr (re-var (rv-import nb ngw fa ex)) g = _ , r-name nb (rn-import ngw (first→ fa) (ex→ ex)) , x-good g
+res-expr (re-var (rv-import nb ngw fa ex)) g = _ , r-name nb (rn-import ngw fa ex) , x-good g
 res-expr (re-var (rv-own {x = x} nb ngw ab)) g = _ , r-name nb (rn-own ngw ab (g refl)) , x-good g
 res-expr re-this g = _ , r-this (g refl) , x-good g
-res-expr (re-qual na fa ex) g = _ , r-qual na (first→ fa) (ex→ ex) , x-good g
+res-expr (re-qual na fa ex) g = _ , r-qual na fa ex , x-good g
 res-expr (re-qual-path na ab) g = _ , r-qual-path na ab , x-good g
 res-expr re-res g = _ , r-res , x-good g
 res-expr (re-app f a) (gf , ga) =
@@ -119,14 +109,14 @@ module Decls (Σ : Signature) where
   res-decls : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR
             → Σ[ dsR′ ∈ List S.Decl ] SPr.ResolvesDecls (env um am) dsU dsR′ × DR dsR′ dsR
   res-decls LR.rds-nil = [] , SPr.rd-nil , dr-nil
-  res-decls (LR.rds-cons LR.nim-fundef (LR.rd-fundef rb g) rds) =
+  res-decls (LR.rds-cons SPr.ni-def (LR.rd-fundef rb g) rds) =
     let (e′ , re′ , rx) = res-expr rb g ; (ds′ , rd , dr) = res-decls rds
     in _ , SPr.rd-def re′ rd , dr-def rx dr
-  res-decls (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) =
+  res-decls (LR.rds-cons SPr.ni-tsig LR.rd-typesig rds) =
     let (ds′ , rd , dr) = res-decls rds in _ , SPr.rd-other SPr.nf-tsig rd , dr-tsig dr
-  res-decls (LR.rds-cons LR.nim-sig LR.rd-signature rds) =
+  res-decls (LR.rds-cons SPr.ni-sig LR.rd-signature rds) =
     let (ds′ , rd , dr) = res-decls rds in _ , SPr.rd-other SPr.nf-sig rd , dr-sig dr
-  res-decls (LR.rds-cons LR.nim-alias LR.rd-typealias rds) =
+  res-decls (LR.rds-cons SPr.ni-alias LR.rd-typealias rds) =
     let (ds′ , rd , dr) = res-decls rds in _ , SPr.rd-other SPr.nf-alias rd , dr-alias dr
   res-decls (LR.rds-import _ rds) =
     let (ds′ , rd , dr) = res-decls rds in _ , SPr.rd-other SPr.nf-import rd , dr-import dr
@@ -170,13 +160,13 @@ aliases-eq (DImport (mkImport _ nothing) ∷ ds)  = aliases-eq ds
 unaliased-of : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR
              → SR.Unaliased mm dsU (collectUnaliased mm dsU)
 unaliased-of LR.rds-nil = SR.un-nil
-unaliased-of (LR.rds-cons LR.nim-fundef _ rds) = SR.un-other SR.nu-def (unaliased-of rds)
-unaliased-of (LR.rds-cons LR.nim-typesig _ rds) = SR.un-other SR.nu-tsig (unaliased-of rds)
-unaliased-of (LR.rds-cons LR.nim-sig _ rds) = SR.un-other SR.nu-sig (unaliased-of rds)
-unaliased-of (LR.rds-cons LR.nim-alias _ rds) = SR.un-other SR.nu-alias (unaliased-of rds)
+unaliased-of (LR.rds-cons SPr.ni-def _ rds) = SR.un-other SR.nu-def (unaliased-of rds)
+unaliased-of (LR.rds-cons SPr.ni-tsig _ rds) = SR.un-other SR.nu-tsig (unaliased-of rds)
+unaliased-of (LR.rds-cons SPr.ni-sig _ rds) = SR.un-other SR.nu-sig (unaliased-of rds)
+unaliased-of (LR.rds-cons SPr.ni-alias _ rds) = SR.un-other SR.nu-alias (unaliased-of rds)
 unaliased-of (LR.rds-import {imp = mkImport p (just a)} fa rds) = SR.un-other SR.nu-aliased (unaliased-of rds)
 unaliased-of {mm = mm} (LR.rds-import {imp = mkImport p nothing} {impDs = impDs} {ds = rest} fa rds)
   rewrite lookupMod-complete mm p (mkModule impDs) fa =
   subst (λ u → SR.Unaliased mm (S.DImport (S.mkImport p nothing) ∷ _) (u Data.List.++ collectUnaliased mm rest))
         (sym (trans (cong (Data.List.map (λ n → (n , p))) (names-eq impDs)) (map-path p (SR.exports impDs))))
-        (SR.un-import (first→ fa) (unaliased-of rds))
+        (SR.un-import fa (unaliased-of rds))

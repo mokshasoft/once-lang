@@ -63,7 +63,6 @@ open import Once.Adequacy.SpecInterp using (declTy)
 open import Once.Internal.Core.Decl using (toISig)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts; nonSigs-none; FFIEntry; ffi-of)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-of; decl-eq)
-open import Once.Adequacy.SpecFront.Resolve using (first→)
 
 private
   -- a signature's Spec reading, at the compiler's type
@@ -121,10 +120,10 @@ importedSigs-++ (x ∷ xs) ys = cong (_ ∷_) (importedSigs-++ xs ys)
 -- resolution keeps the module's own signatures
 own-res : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR → Parser.ownSigs dsR ≡ Parser.ownSigs dsU
 own-res LR.rds-nil = refl
-own-res (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) = own-res rds
-own-res (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) = own-res rds
-own-res (LR.rds-cons LR.nim-sig LR.rd-signature rds) = cong (_ ∷_) (own-res rds)
-own-res (LR.rds-cons LR.nim-alias LR.rd-typealias rds) = own-res rds
+own-res (LR.rds-cons Once.Spec.Surface.Program.ni-def (LR.rd-fundef _ _) rds) = own-res rds
+own-res (LR.rds-cons Once.Spec.Surface.Program.ni-tsig LR.rd-typesig rds) = own-res rds
+own-res (LR.rds-cons Once.Spec.Surface.Program.ni-sig LR.rd-signature rds) = cong (_ ∷_) (own-res rds)
+own-res (LR.rds-cons Once.Spec.Surface.Program.ni-alias LR.rd-typealias rds) = own-res rds
 own-res (LR.rds-import _ rds) = own-res rds
 
 expands-of : ∀ p → SR.Expands p (expandPath p)
@@ -139,13 +138,13 @@ imp-part : ∀ {mm um am dsU dsR fs} → LR.ResolvesDecls mm um am dsU dsR
          → XAlign (Parser.importedSigs (importedOf mm dsU)) fs → All FFIFacts fs
          → Σ[ Σᵢ ∈ Signature ] Imported mm dsU Σᵢ × (toISig Σᵢ ≡ entrySig fs)
 imp-part LR.rds-nil xa-nil [] = [] , im-nil , refl
-imp-part (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) xa fa =
+imp-part (LR.rds-cons Once.Spec.Surface.Program.ni-def (LR.rd-fundef _ _) rds) xa fa =
   let (Σᵢ , im , ti) = imp-part rds xa fa in Σᵢ , im-other ni-def im , ti
-imp-part (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) xa fa =
+imp-part (LR.rds-cons Once.Spec.Surface.Program.ni-tsig LR.rd-typesig rds) xa fa =
   let (Σᵢ , im , ti) = imp-part rds xa fa in Σᵢ , im-other ni-tsig im , ti
-imp-part (LR.rds-cons LR.nim-sig LR.rd-signature rds) xa fa =
+imp-part (LR.rds-cons Once.Spec.Surface.Program.ni-sig LR.rd-signature rds) xa fa =
   let (Σᵢ , im , ti) = imp-part rds xa fa in Σᵢ , im-other ni-sig im , ti
-imp-part (LR.rds-cons LR.nim-alias LR.rd-typealias rds) xa fa =
+imp-part (LR.rds-cons Once.Spec.Surface.Program.ni-alias LR.rd-typealias rds) xa fa =
   let (Σᵢ , im , ti) = imp-part rds xa fa in Σᵢ , im-other ni-alias im , ti
 imp-part {mm = mm} {dsU = DImport (mkImport p a) ∷ dsU′} (LR.rds-import {impDs = impDs} fa rds) xa fs-ok =
   let X   = sigsOf (expandPath p) impDs
@@ -158,7 +157,7 @@ imp-part {mm = mm} {dsU = DImport (mkImport p a) ∷ dsU′} (LR.rds-import {imp
       faR = AllP.++⁻ʳ fsX fa″
       (Σ₁ , so₁ , ti₁) = imp-module impDs xX faX
       (Σ₂ , im₂ , ti₂) = imp-part rds xr faR
-  in Σ₁ ++ Σ₂ , im-import (first→ fa) (expands-of p) so₁ im₂
+  in Σ₁ ++ Σ₂ , im-import fa (expands-of p) so₁ im₂
      , trans (toISig-++ Σ₁ Σ₂) (trans (cong₂ _++_ ti₁ ti₂) (sym (trans (cong entrySig e) (entrySig-++ fsX fs′ faX))))
 
 ------------------------------------------------------------------------

@@ -26,6 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-*; sub-+; sub-var)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
@@ -38,7 +39,8 @@ import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_; ⌊wk₀⌋)
 import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void)
 open import Once.Internal.Context hiding (_,_)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
@@ -266,11 +268,11 @@ coeIR-cf sub-float  = tt
 coeIR-cf (sub-arr {q = Zero} a b _) = coeIR-cf b , tt
 coeIR-cf (sub-arr {q = One}  a b _) = coeIR-cf b , (tt , (tt , (coeIR-cf a , tt)))
 coeIR-cf (sub-arr {q = Many} a b _) = coeIR-cf b , (tt , (tt , (coeIR-cf a , tt)))
-coeIR-cf (sub-prod a b) = (coeIR-cf a , tt) , (coeIR-cf b , tt)
-coeIR-cf (sub-sum a b)  = (tt , coeIR-cf a) , (tt , coeIR-cf b)
+coeIR-cf (sub-* a b) = (coeIR-cf a , tt) , (coeIR-cf b , tt)
+coeIR-cf (sub-+ a b)  = (tt , coeIR-cf a) , (tt , coeIR-cf b)
 coeIR-cf sub-μ = tt
 coeIR-cf (sub-ν _) = tt
-coeIR-cf sub-rigid = tt
+coeIR-cf sub-var = tt
 
 runCoe-linked : ∀ {m} {tbl : List IRFun} {A B : Ty m} {Z} (p : A <: B) (f : IR Z ⌊ A ⌋) → Linked σ tbl f → Linked σ tbl (runCoe p f)
 runCoe-linked {σ = σ} {tbl = tbl} {Z = Z} p f l = go (voidFree? p)
@@ -302,7 +304,7 @@ sigOpIR-linked : ∀ {tbl} {X} {A : Type} (name : CanonicalName) (conc : IsConcr
 sigOpIR-linked name (con-fun {k = mk-kind Zero Ty.pure} bDom cCod) d = value-∈ d refl , tt
 -- plan 0.113 A3: an effectful erased arrow is a call with a `Unit` slot.
 sigOpIR-linked name (con-fun {B = Cod} {k = mk-kind Zero Ty.eff} bDom cCod) d =
-  eff-decl (arrow-info (mk-kind Zero Ty.eff) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
+  eff-decl (arrow-info (mk-kind Zero Ty.eff) name b-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOpIR-linked name (con-fun {k = mk-kind One  Ty.pure} bDom cCod) d = value-∈ d refl , tt
 sigOpIR-linked name (con-fun {k = mk-kind Many Ty.pure} bDom cCod) d = value-∈ d refl , tt
 sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff} bDom cCod) d =
@@ -310,17 +312,17 @@ sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.eff} bDom c
 sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.eff} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Many Ty.eff) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOpIR-linked name (con-fun {B = Cod} {k = mk-kind Zero Ty.act} bDom cCod) d =
-  eff-decl (arrow-info (mk-kind Zero Ty.act) name base-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
+  eff-decl (arrow-info (mk-kind Zero Ty.act) name b-Unit cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind One Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind One Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
 sigOpIR-linked name (con-fun {A = Dom} {B = Cod} {k = mk-kind Many Ty.act} bDom cCod) d =
   eff-decl (arrow-info (mk-kind Many Ty.act) name bDom cCod) (isVoid? Cod) (isUnit? Cod) d refl , tt
-sigOpIR-linked name (con-base base-Unit) d = value-∈ d refl , tt
-sigOpIR-linked name (con-base base-Void) d = value-∈ d refl , tt
-sigOpIR-linked name (con-base base-Int) d = value-∈ d refl , tt
-sigOpIR-linked name (con-base base-Float) d = value-∈ d refl , tt
-sigOpIR-linked name (con-base (base-Prod a b)) d = value-∈ d refl , tt
-sigOpIR-linked name (con-base (base-Sum a b)) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base b-Unit) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base b-Void) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base b-Int) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base b-Float) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base (b-* a b)) d = value-∈ d refl , tt
+sigOpIR-linked name (con-base (b-+ a b)) d = value-∈ d refl , tt
 
 sigOp-linked : ∀ {mₜ} {tbl} {n} {Γ : Ctx mₜ n} {A : Type} (m : _) (name : CanonicalName) (conc : IsConcrete A)
              → (showCanonical name , A) ∈ σ → Linked σ tbl (elaborate {Γ = Γ} m (sigOp name conc))

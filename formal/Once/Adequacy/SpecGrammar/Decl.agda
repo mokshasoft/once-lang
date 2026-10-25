@@ -30,7 +30,7 @@ open import Data.String.Properties using (_≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; yes; no)
 
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Lexing using (Token; TString; TWord; TLParen; TRParen; TColon; TEquals; TDot; TNewline; TEOF; Lexes)
 open import Once.Spec.Surface.Grammar as G

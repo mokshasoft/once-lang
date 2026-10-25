@@ -25,12 +25,12 @@
 module Once.Arith.SigOp.IntLit where
 
 open import Data.Integer using (ℤ)
+open import Once.Spec.Type using (b-Int; b-Unit)
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.String using (String; _++_)
 
 open import Once.Spec.Type using (Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Int)
 open import Once.Spec.Name using (bare)
 import Once.Spec.Word as OnceWord
 open import Once.Spec.Numerics using (module TargetNum)
@@ -62,4 +62,4 @@ lit-int-info n = mk-info
   (bare (lit-int-name n))
   (λ tn _ → OnceWord.Width.fromℤ (int-bits tn) n)
   Pure           -- effect: constants are observably pure
-  base-Unit base-Int
+  b-Unit b-Int

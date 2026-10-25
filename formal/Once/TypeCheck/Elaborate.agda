@@ -5,7 +5,7 @@
 -- Once.TypeCheck.Elaborate
 --
 -- Combined type inference and elaboration.
--- Produces intrinsically-typed Surface.Syntax.Expr directly from RawExpr.
+-- Produces intrinsically-typed Surface.Syntax.Expr directly from Syn.Expr.
 --
 -- This avoids the problem with separate Resolve step needing subexpression
 -- types that aren't available.
@@ -51,9 +51,9 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Spec.Name using (CanonicalName; canonical; own; bare; gen; NotGenerator; GenWord)
 open import Once.Internal.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?)
-open import Once.Internal.Syntax using (RawExpr)
+import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax as Raw
+open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
   LambdaInInferMode; LambdaRequiresFunctionType;
@@ -74,8 +74,9 @@ open import Once.Internal.Typing.Scope
 open import Once.TypeCheck.SpecWitness
 open import Once.TypeCheck.Classify
 import Once.Internal.Type.WellFormed
+open import Once.Spec.Type using (Base; ∅ₖ)
 import Once.Spec.Type
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun; IsBaseType)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun)
 open import Once.Functor.Decide using (wellFormedF?; wfFun?; isConcrete?; isBaseType?)
 open import Once.Spec.Float.Decimal using (decimalOf)
 import Once.Spec.Float.Decimal as Decimal
@@ -217,36 +218,36 @@ open import Data.Unit using (⊤; tt)
 -- cannot occur, with nothing in the types saying so. Three constructors, three
 -- cases, no absurd cell.
 --
--- `RawExpr` is a plain datatype, so the catch-all is safe: it reduces for every
+-- `Syn.Expr` is a plain datatype, so the catch-all is safe: it reduces for every
 -- concrete head, and the caller never matches on `e`. (Non-exact under
 -- `--exact-split`, as its `isRIntView` predecessor was; see the census target.)
-data NegOperandView : RawExpr → Set where
+data NegOperandView : Syn.Expr → Set where
   nov-int   : (n : ℤ)       → NegOperandView (Raw.RInt n)
   nov-float : (i f l : ℕ) → NegOperandView (Raw.RFloat i f l)
-  nov-other : (e : RawExpr) → NegOperandView e
+  nov-other : (e : Syn.Expr) → NegOperandView e
 
-negOperandView : (e : RawExpr) → NegOperandView e
+negOperandView : (e : Syn.Expr) → NegOperandView e
 negOperandView (Raw.RInt n)         = nov-int n
 negOperandView (Raw.RFloat i f l) = nov-float i f l
 {-# CATCHALL #-}
 negOperandView e                    = nov-other e
 
-soundOf : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
+soundOf : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
         → InferElabResult (NamedCtx.debruijn ctx) → Set
 soundOf ctx e (success A Ψ eE d f) = WI ctx e A Ψ eE
 soundOf ctx e (failure _) = ⊤
 
-VerifiedInferResult : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) → Set
+VerifiedInferResult : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) → Set
 VerifiedInferResult ctx e =
   ∃-syntax (λ r → soundOf ctx e r)
 
 -- Check-mode dual: success carries a check-mode judgment.
-checkSoundOf : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+checkSoundOf : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
              → CheckElabResult (NamedCtx.debruijn ctx) T → Set
 checkSoundOf ctx e T (success Ψ eE d f) = WC ctx e T Ψ eE
 checkSoundOf ctx e T (failure _) = ⊤
 
-VerifiedCheckResult : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Ty m) → Set
+VerifiedCheckResult : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m) → Set
 VerifiedCheckResult ctx e T =
   ∃-syntax (λ r → checkSoundOf ctx e T r)
 
@@ -259,17 +260,17 @@ data GivenElabResult {m} {n : ℕ} (Δ : SCtx m n) (A : Ty m) (π : Once.Spec.Gr
           → GivenElabResult Δ A π
   failure : TypeError → GivenElabResult Δ A π
 
-givenSoundOf : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (A : Ty m) (π : Once.Spec.Grade.Purity)
+givenSoundOf : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
              → GivenElabResult (NamedCtx.debruijn ctx) A π → Set
 givenSoundOf ctx e A π (success B Ψ eE d f) = WD ctx e A π B Ψ eE
 givenSoundOf ctx e A π (failure _) = ⊤
 
-VerifiedGivenResult : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (A : Ty m) (π : Once.Spec.Grade.Purity) → Set
+VerifiedGivenResult : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity) → Set
 VerifiedGivenResult ctx e A π = ∃-syntax (λ r → givenSoundOf ctx e A π r)
 
 -- The `wd-infer` step: an inferred arrow, its domain converted backwards and its
 -- grade raised. Every decision is an ARGUMENT, so a proof can reduce this.
-given-infer-dec : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (A A′ B : Ty m) (π π′ : Once.Spec.Grade.Purity)
+given-infer-dec : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (A A′ B : Ty m) (π π′ : Once.Spec.Grade.Purity)
                     {Ψ : Surface.Usage (NamedCtx.size ctx)}
                 → (eE : SExpr (NamedCtx.debruijn ctx) Ψ (A′ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] B))
                 → (depth fresh : ℕ)
@@ -285,7 +286,7 @@ given-infer-dec ctx e A A′ B π π′ eE d fr w (yes _) (no _) =
                         (A′ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] B)) , tt
 
 -- The inferred result, viewed: only a `Many` arrow has a determined output.
-given-infer : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (A : Ty m) (π : Once.Spec.Grade.Purity)
+given-infer : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
             → VerifiedInferResult ctx e → VerifiedGivenResult ctx e A π
 given-infer ctx e A π (failure err , _) = failure err , tt
 given-infer ctx e A π (success (A′ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] B) Ψ eE d fr , w) =
@@ -303,7 +304,7 @@ withUnit r π k = withUnit-aux r (Once.Spec.Grade.pure ⊑π? π) k
 
 -- The `wd-cata` step: the algebra's synthesized arrow must be `⟦ F ⟧T A ⇒ A` at
 -- the given grade; then its codomain `A` is the fold's output.
-given-cata-dec : ∀ {m} (ctx : NamedCtx m) (alg : RawExpr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity)
+given-cata-dec : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity)
                    (wfF : Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F) (X A : Ty m) (k : Once.Spec.Grade.ArrowKind)
                    (Ψ : Surface.Usage (NamedCtx.size ctx))
                → (algE : SExpr (NamedCtx.debruijn ctx) Ψ (X Once.Spec.Type.⇒[ k ] A))
@@ -316,7 +317,7 @@ given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (yes refl) = withUnit (fail
   success A (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr , wd-cata {u = u} wfF w
 given-cata-dec ctx alg F π wfF X A k Ψ algE d fr w (no _) = failure (BuiltinTypeMismatch "cata") , tt
 
-given-cata : ∀ {m} (ctx : NamedCtx m) (alg : RawExpr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity)
+given-cata : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity)
                (wfF : Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)
            → VerifiedInferResult ctx alg
            → VerifiedGivenResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Spec.Type.μ F) π
@@ -338,14 +339,14 @@ given-cata ctx alg F π wfF (success _ _ _ _ _ , _) = failure (BuiltinTypeMismat
 -- here, so conversion is uniform and `check-complete` has a single bridge.
 -- The decision is an ARGUMENT (not a `with`), so a proof holding an abstract
 -- inferred type can still reduce this.
-embedOrSubsume-dec : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
+embedOrSubsume-dec : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr)
                        {Ψ : Surface.Usage (NamedCtx.size ctx)} (T T' : Ty m)
                    → (eE : SExpr (NamedCtx.debruijn ctx) Ψ T') → (depth fresh : ℕ)
                    → WI ctx e T' Ψ eE → Dec (T' <: T) → VerifiedCheckResult ctx e T
 embedOrSubsume-dec ctx e T T' eE depth fresh w (yes p) = success _ (Surface.coerce p eE) depth fresh , wt-sub w p
 embedOrSubsume-dec ctx e T T' eE depth fresh w (no _)  = failure (TypeMismatch T T') , tt
 
-embedOrSubsume : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+embedOrSubsume : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
                → VerifiedInferResult ctx e → VerifiedCheckResult ctx e T
 embedOrSubsume ctx e T (failure err , _) = failure err , tt
 embedOrSubsume ctx e T (success T' Ψ eE d fr , w) = embedOrSubsume-dec ctx e T T' eE d fr w (T' <:? T)
@@ -531,13 +532,13 @@ inspectWellFormedF Δ F with wfFun? Δ F in eq
 record AppSpine : Set where
   constructor mkSpine
   field
-    head : RawExpr
-    args : List RawExpr
+    head : Syn.Expr
+    args : List Syn.Expr
 
-spineOf : RawExpr → AppSpine
+spineOf : Syn.Expr → AppSpine
 spineOf e = go e []
   where
-    go : RawExpr → List RawExpr → AppSpine
+    go : Syn.Expr → List Syn.Expr → AppSpine
     go (Raw.RApp f x)        args = go f (x ∷ args)
     go (Raw.RVar n)          args = mkSpine (Raw.RVar n) args
     go (Raw.RQualified m n)  args = mkSpine (Raw.RQualified m n) args
@@ -725,7 +726,7 @@ inferElab-RApp-id ctx (success T Ψ argE d f') =
 ------------------------------------------------------------------------
 
 -- Plan 0.6.2 Phase 4: two-phase architecture. Phase 1 (this mutual
--- block) is purely structural on `RawExpr` — at user-polymorphic
+-- block) is purely structural on `Syn.Expr` — at user-polymorphic
 -- references, it emits a `Surface.poly x T` placeholder rather than
 -- recursing into the def's body. Phase 2 (`resolveExpr` below)
 -- tree-walks the emitted Expr and splices bodies at `poly` nodes,
@@ -743,7 +744,7 @@ isGround-inj₂→¬Ground s eq g with trans (sym eq) (isGround-complete-at s g)
 -- Plan 0.103 phase 2b: the domain-given POLYMORPHIC head (`wd-poly`), de-withed:
 -- each decision is an explicit argument with its equation.
 given-poly-k : ∀ {m} (ctx : NamedCtx m) (x : String) (A B : Ty m) (π π′ : Once.Spec.Grade.Purity) (err : TypeError)
-  {schema sd sc : PolyType} {body : RawExpr} {prefix : PolyCtx}
+  {schema sd sc : PolyType} {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc → π′ ⊑π π
@@ -758,7 +759,7 @@ given-poly-k ctx x A B π π′ err eL eI eP ¬g as inc g (yes ki) =
   , wd-poly eL eI eP ¬g as inc ki g
 
 given-poly-π : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Spec.Grade.Purity) (err : TypeError)
-  {schema sd sc : PolyType} {π′ : Once.Spec.Grade.Purity} {body : RawExpr} {prefix : PolyCtx}
+  {schema sd sc : PolyType} {π′ : Once.Spec.Grade.Purity} {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc
@@ -770,7 +771,7 @@ given-poly-π ctx x A π err {schema = schema} {sc = sc} {π′ = π′} eL eI e
     (kindedInstance? (NamedCtx.kinds ctx) schema (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] substPoly θ sc))
 
 given-poly-m : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Spec.Grade.Purity) (err : TypeError)
-  {schema sd sc : PolyType} {π′ : Once.Spec.Grade.Purity} {body : RawExpr} {prefix : PolyCtx}
+  {schema sd sc : PolyType} {π′ : Once.Spec.Grade.Purity} {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc
@@ -781,7 +782,7 @@ given-poly-m ctx x A π err {sd = sd} {π′ = π′} eL eI eP ¬g as inc (just 
     (Data.Product.proj₁ (instantiate-sound sd A eS)) (Data.Product.proj₂ (instantiate-sound sd A eS)) (π′ ⊑π? π)
 
 given-poly-d : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Spec.Grade.Purity) (err : TypeError)
-  {schema sd sc : PolyType} {π′ : Once.Spec.Grade.Purity} {body : RawExpr} {prefix : PolyCtx}
+  {schema sd sc : PolyType} {π′ : Once.Spec.Grade.Purity} {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema → ArrowSchema schema sd sc π′
@@ -791,7 +792,7 @@ given-poly-d ctx x A π err {sd = sd} eL eI eP ¬g as (yes inc) =
   given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl
 
 given-poly-a : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Spec.Grade.Purity) (err : TypeError)
-  {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
+  {schema : PolyType} {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema → Maybe (ArrowView schema) → VerifiedGivenResult ctx (Raw.RResolved (own x)) A π
@@ -800,7 +801,7 @@ given-poly-a ctx x A π err eL eI eP ¬g (just (sd , sc , π′ , as)) =
   given-poly-d ctx x A π err eL eI eP ¬g as (codVarsInDom? sd sc)
 
 given-poly-g : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Spec.Grade.Purity) (err : TypeError)
-  (schema : PolyType) {body : RawExpr} {prefix : PolyCtx}
+  (schema : PolyType) {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → (ig : Ground schema ⊎ ⊤) → isGround schema ≡ ig → VerifiedGivenResult ctx (Raw.RResolved (own x)) A π
@@ -811,7 +812,7 @@ given-poly-g ctx x A π err schema eL eI eP (inj₂ tt) eG =
 given-poly : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Spec.Grade.Purity) (err : TypeError)
   → (ls : Maybe Type) → lookupImport (NamedCtx.sig ctx) x ≡ ls
   → (li : Maybe Type) → lookupImport (NamedCtx.imports ctx) x ≡ li
-  → (lp : Maybe (PolyType × RawExpr × PolyCtx)) → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ lp
+  → (lp : Maybe (PolyType × Syn.Expr × PolyCtx)) → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ lp
   → VerifiedGivenResult ctx (Raw.RResolved (own x)) A π
 given-poly ctx x A π err (just _) _ _ _ _ _ = failure err , tt
 given-poly ctx x A π err nothing _ (just _) _ _ _ = failure err , tt
@@ -833,7 +834,7 @@ given-res ctx (canonical (_ ∷ _ ∷ _))   A π (failure err , _) = failure err
 -- The check-mode polymorphic reference, de-withed: each decision is an
 -- explicit argument with its equation, so the proofs reduce each stage.
 checkElabV-RVar-poly-inst-aux : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError)
-    {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
+    {schema : PolyType} {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema
@@ -845,7 +846,7 @@ checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (yes ki) =
   , wt-var-poly-instantiate eL eI eP ¬g ki
 
 checkElabV-RVar-poly-ground-aux : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError)
-    (schema : PolyType) {body : RawExpr} {prefix : PolyCtx}
+    (schema : PolyType) {body : Syn.Expr} {prefix : PolyCtx}
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → (ig : Ground schema ⊎ ⊤) → isGround schema ≡ ig
@@ -857,7 +858,7 @@ checkElabV-RVar-poly-ground-aux ctx x T err schema eL eI eP (inj₂ tt) eG =
 checkElabV-RVar-poly-check-aux : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError)
   → (ls : Maybe Type) → lookupImport (NamedCtx.sig ctx) x ≡ ls
   → (li : Maybe Type) → lookupImport (NamedCtx.imports ctx) x ≡ li
-  → (lp : Maybe (PolyType × RawExpr × PolyCtx)) → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ lp
+  → (lp : Maybe (PolyType × Syn.Expr × PolyCtx)) → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ lp
   → VerifiedCheckResult ctx (Raw.RResolved (own x)) T
 checkElabV-RVar-poly-check-aux ctx x T err (just _) _ _ _ _ _ = failure err , tt
 checkElabV-RVar-poly-check-aux ctx x T err nothing _ (just _) _ _ _ = failure err , tt
@@ -882,7 +883,7 @@ checkElabV-RVar-poly-check-aux ctx x T err nothing eL nothing eI (just (schema ,
 
 inferElabV-RVar-poly-ground-aux : ∀ {m} (ctx : NamedCtx m) (x : String)
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
-  → (schema : PolyType) (body : RawExpr) → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+  → (schema : PolyType) (body : Syn.Expr) → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
   → (ig : (Ground schema) ⊎ ⊤) → isGround schema ≡ ig
   → VerifiedInferResult ctx (Raw.RResolved (own x))
 inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp (inj₂ tt) _ =
@@ -897,7 +898,7 @@ inferElabV-RVar-poly-ground-aux ctx x eL eI schema body eqLp (inj₁ g) _ =
 
 inferElabV-RVar-poly-lookup-aux : ∀ {m} (ctx : NamedCtx m) (x : String)
   → lookupImport (NamedCtx.sig ctx) x ≡ nothing → lookupImport (NamedCtx.imports ctx) x ≡ nothing
-  → (lp : Maybe (PolyType × RawExpr)) → lookupPoly (NamedCtx.polys ctx) x ≡ lp
+  → (lp : Maybe (PolyType × Syn.Expr)) → lookupPoly (NamedCtx.polys ctx) x ≡ lp
   → VerifiedInferResult ctx (Raw.RResolved (own x))
 inferElabV-RVar-poly-lookup-aux ctx x eL eI nothing _ = failure (UnboundVariable x) , tt
 inferElabV-RVar-poly-lookup-aux ctx x eL eI (just (schema , body)) eqLp =
@@ -951,7 +952,7 @@ outIR F φ wfF =
         (sym (⌊⟧T-commute F (Once.Spec.Type.ν F φ)))
         (IR.Out (wf-⌊⌋ wfF))
 
-inferOutGo : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) (F : Once.Spec.Type.Fun m) (φ : Once.Spec.Grade.Finite)
+inferOutGo : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.Spec.Type.Fun m) (φ : Once.Spec.Grade.Finite)
              (Ψ : Surface.Usage (NamedCtx.size ctx))
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.ν F φ))
              (d fr : ℕ)
@@ -974,43 +975,43 @@ inferOutGo ctx arg F Once.Spec.Grade.actᶠ Ψ argE d fr w (just wfF) eqW =
   , wt-Out-eff-app-infer wfF refl w
 -- D311: no surface `Out` of a `prod` stream yet (plan 0.117 F).
 
-inferOutAt : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
+inferOutAt : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → WI ctx arg T Ψ argE → NuView T
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
 inferOutAt ctx arg Ψ argE d fr w (nu-at F π) = inferOutGo ctx arg F π Ψ argE d fr w (wfFun? (NamedCtx.kinds ctx) F) refl
 inferOutAt ctx arg Ψ argE d fr w nu-other = failure (BuiltinTypeMismatch "Out") , tt
 
 -- `Out` / `apply` at the argument's result, then at its type's view.
-inferOutOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) → VerifiedInferResult ctx arg
+inferOutOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) → VerifiedInferResult ctx arg
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
 inferOutOn ctx arg (failure err , _) = failure err , tt
 inferOutOn ctx arg (success T Ψ argE d fr , w) = inferOutAt ctx arg Ψ argE d fr w (nuView T)
 
-inferFstAt : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
+inferFstAt : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → WI ctx arg T Ψ argE → ProdView T
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg)
 inferFstAt ctx arg Ψ argE d fr w (prod-at A B) =
   success A _ (Surface.morph-app (IR.fst) argE) (suc d) fr , wt-fst-app w
 inferFstAt ctx arg Ψ argE d fr w prod-other = failure FstNeedsPair , tt
 
-inferFstOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) → VerifiedInferResult ctx arg
+inferFstOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) → VerifiedInferResult ctx arg
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg)
 inferFstOn ctx arg (failure err , _) = failure err , tt
 inferFstOn ctx arg (success T Ψ argE d fr , w) = inferFstAt ctx arg Ψ argE d fr w (prodView T)
 
-inferSndAt : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
+inferSndAt : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
              (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → WI ctx arg T Ψ argE → ProdView T
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg)
 inferSndAt ctx arg Ψ argE d fr w (prod-at A B) =
   success B _ (Surface.morph-app (IR.snd) argE) (suc d) fr , wt-snd-app w
 inferSndAt ctx arg Ψ argE d fr w prod-other = failure SndNeedsPair , tt
 
-inferSndOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) → VerifiedInferResult ctx arg
+inferSndOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) → VerifiedInferResult ctx arg
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg)
 inferSndOn ctx arg (failure err , _) = failure err , tt
 inferSndOn ctx arg (success T Ψ argE d fr , w) = inferSndAt ctx arg Ψ argE d fr w (prodView T)
 
-inferApplyAt : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
+inferApplyAt : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx))
                (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → WI ctx arg T Ψ argE → ApplyView T
              → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
 inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.pure B A') with A ≟T A'
@@ -1035,7 +1036,7 @@ inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.act B A') with A
 -- D311: no surface application of a `prod` closure yet (plan 0.117 F).
 inferApplyAt ctx arg Ψ argE d fr w apply-other = failure (BuiltinTypeMismatch "apply") , tt
 
-inferApplyOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) → VerifiedInferResult ctx arg
+inferApplyOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) → VerifiedInferResult ctx arg
              → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
 inferApplyOn ctx arg (failure err , _) = failure err , tt
 inferApplyOn ctx arg (success T Ψ argE d fr , w) = inferApplyAt ctx arg Ψ argE d fr w (applyView T)
@@ -1043,7 +1044,7 @@ inferApplyOn ctx arg (success T Ψ argE d fr , w) = inferApplyAt ctx arg Ψ argE
 -- RPair dispatch as a top-level aux taking the two sub-results explicitly
 -- (no inline `with` → no opaque `with`-helper → downstream proofs recurse
 -- directly; [[feedback_with_clauses_painful]]).
-inferElabV-RPair-aux : ∀ {m} → (ctx : NamedCtx m) (a b : RawExpr)
+inferElabV-RPair-aux : ∀ {m} → (ctx : NamedCtx m) (a b : Syn.Expr)
   → VerifiedInferResult ctx a → VerifiedInferResult ctx b
   → VerifiedInferResult ctx (Raw.RPair a b)
 -- RPair: pair the two sub-results (a-failure short-circuits without forcing
@@ -1054,12 +1055,12 @@ inferElabV-RPair-aux ctx a b (failure err , _) _ = failure err , tt
 inferElabV-RPair-aux ctx a b (success _ _ _ _ _ , _) (failure err , _) = failure err , tt
 
 -- D252: an annotation is a ground type, checked at its weakening.
-inferElabV-RAnnot-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Type)
+inferElabV-RAnnot-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Type)
   → VerifiedCheckResult ctx e (wk₀ T) → VerifiedInferResult ctx (Raw.RAnnot e T)
 inferElabV-RAnnot-aux ctx e T (success Ψ eE d fr , witness) = success (wk₀ T) Ψ eE d fr , wt-annot witness refl
 inferElabV-RAnnot-aux ctx e T (failure err , _)             = failure err , tt
 
-inferElabV-RNeg-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
+inferElabV-RNeg-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
   → VerifiedInferResult ctx e → VerifiedInferResult ctx (Raw.RNeg e)
 inferElabV-RNeg-aux ctx e (failure err , _)                = failure err , tt
 inferElabV-RNeg-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch {0} Int Unit) , tt
@@ -1092,7 +1093,7 @@ checkElabV-neg-float-aux ctx i f l T with Once.Spec.Type.Float <:? T
             , wt-sub (wt-neg-float i f l) s
 ... | no _  = failure (TypeMismatch T Once.Spec.Type.Float) , tt
 
-inferElabV-RBinOp-aux : ∀ {m} → (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
+inferElabV-RBinOp-aux : ∀ {m} → (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Syn.Expr)
   → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
   → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
 -- left non-Int → BinOpLeftError
@@ -1205,7 +1206,7 @@ inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _ , _) (succes
 inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch {0} Float Int)) , tt
 inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch {0} Float Int)) , tt
 
-inferElabV-RLet-aux2 : ∀ {m} → (ctx : NamedCtx m) (x : String) (e₁ e₂ : RawExpr)
+inferElabV-RLet-aux2 : ∀ {m} → (ctx : NamedCtx m) (x : String) (e₁ e₂ : Syn.Expr)
   {A : Ty m} {Ψ₁ : Surface.Usage (NamedCtx.size ctx)}
   (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ)
   (w₁ : WI ctx e₁ A Ψ₁ e₁E)
@@ -1217,7 +1218,7 @@ inferElabV-RLet-aux2 ctx x e₁ e₂ e₁E d₁ f₁ w₁ (success B (q ∷ᵘ �
 
 -- D322: the branches meet at their join, each converted into it; branches
 -- with no upper bound are a mismatch.
-inferElabV-RDestruct-join : ∀ {m} → (ctx : NamedCtx m) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+inferElabV-RDestruct-join : ∀ {m} → (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr)
   (A B : Ty m) {Ψs : Surface.Usage (NamedCtx.size ctx)}
   (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Spec.Type.+ B)) (ds : ℕ)
   (wS : WI ctx scrut (A Once.Spec.Type.+ B) Ψs scrutE)
@@ -1237,7 +1238,7 @@ inferElabV-RDestruct-join ctx scrut xL eL xR eR A B scrutE ds wS eLE dL wL eRE d
 
 -- D322: the arms of a copair meet at the join of their outputs, each
 -- converted into it; arms with no upper bound are a mismatch.
-given-case-join : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (A B : Ty m) (π : Once.Spec.Grade.Purity)
+given-case-join : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (A B : Ty m) (π : Once.Spec.Grade.Purity)
   {C : Ty m} {Ψf : Surface.Usage (NamedCtx.size ctx)}
   (fE : SExpr (NamedCtx.debruijn ctx) Ψf (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C))
   (df : ℕ) (wF : WD ctx f A π C Ψf fE)
@@ -1252,7 +1253,7 @@ given-case-join ctx f g A B π fE df wF gE dg frg wG (joined D J) =
                                (Surface.coerce (sub-arr (<:-refl B) (<:ᶜ⇒<: (⊔-right (sound J))) (⊑π-refl π)) gE))
           (suc (df Data.Nat.⊔ dg)) frg , wd-case wF wG (sound J)
 
-inferElabV-RDestruct-auxR : ∀ {m} → (ctx : NamedCtx m) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+inferElabV-RDestruct-auxR : ∀ {m} → (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr)
   (A B : Ty m) {Ψs : Surface.Usage (NamedCtx.size ctx)}
   (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Spec.Type.+ B)) (ds fs : ℕ)
   (wS : WI ctx scrut (A Once.Spec.Type.+ B) Ψs scrutE)
@@ -1280,8 +1281,8 @@ inferElabV-RResolved-word ctx cn k true  e = k (subst T (sym e) tt)
 inferElabV-RResolved-arrow-aux : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) → NotGenerator cn → ∀ {A B : Type} {π : Once.Spec.Grade.Purity}
   → lookupImport (NamedCtx.sig ctx) (showCanonical cn)
       ≡ just (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)
-  → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
-  → (mcB : Maybe (IsBaseType B)) → isBaseType? B ≡ mcB
+  → (mbA : Maybe (Base ∅ₖ A)) → isBaseType? A ≡ mbA
+  → (mcB : Maybe (Base ∅ₖ B)) → isBaseType? B ≡ mcB
   → VerifiedInferResult ctx (Raw.RResolved cn)
 -- Concreteness-driven arrow value emission (de-withed for Completeness).
 inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
@@ -1725,74 +1726,74 @@ mutual
   -- Pair classifier helper (plan 0.6 Phase C.7 POC-2). Checks a
   -- 2-arg `pair f g` expression in check mode against the canonical
   -- `A ⇒[Many] (B * C)` shape.
-  checkPair : ∀ {m} → (ctx : NamedCtx m) → (pairHead arg : RawExpr) → (T : Ty m)
+  checkPair : ∀ {m} → (ctx : NamedCtx m) → (pairHead arg : Syn.Expr) → (T : Ty m)
             → VerifiedCheckResult ctx (Raw.RApp pairHead arg) T
   -- The rule at its target view (`Once.TypeCheck.TargetView`); likewise below.
-  checkPairOn : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (T : Ty m) → PairTarget T
+  checkPairOn : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m) → PairTarget T
               → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "pair")) f) g) T
   -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
   -- `(a , b)` at a product type — checks components bidirectionally.
-  checkPairLit : ∀ {m} → (ctx : NamedCtx m) → (a b : RawExpr) → (A B : Ty m)
+  checkPairLit : ∀ {m} → (ctx : NamedCtx m) → (a b : Syn.Expr) → (A B : Ty m)
                → VerifiedCheckResult ctx (Raw.RPair a b) (A Once.Spec.Type.* B)
   -- Case (copair) classifier helper (Plan 0.28 Commit 1). Checks a
   -- 2-arg `case f g` expression in check mode against the canonical
   -- `(A + B) ⇒[Many] C` shape.
-  checkCase : ∀ {m} → (ctx : NamedCtx m) → (caseHead arg : RawExpr) → (T : Ty m)
+  checkCase : ∀ {m} → (ctx : NamedCtx m) → (caseHead arg : Syn.Expr) → (T : Ty m)
             → VerifiedCheckResult ctx (Raw.RApp caseHead arg) T
-  checkCaseOn : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (T : Ty m) → CaseTarget T
+  checkCaseOn : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m) → CaseTarget T
               → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g) T
   -- The arm-checking core of `case`, parameterised by the copair domains A B, codomain C, and grade π.
   -- Extracting it lets the eff-subsumption clause of `checkCase` call it at two
   -- grades (try eff; else pure + arr'/t-subsume) without duplicating the body.
-  checkCaseGo : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (A B C : Ty m) (π : Once.Spec.Grade.Purity)
+  checkCaseGo : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (A B C : Ty m) (π : Once.Spec.Grade.Purity)
               → VerifiedCheckResult ctx
                   (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g)
                   ((A Once.Spec.Type.+ B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
   -- Compose / curry / apply classifier helpers (plan 0.6 Phase C.7
   -- POC-3).
-  checkCompose : ∀ {m} → (ctx : NamedCtx m) → (composeHead arg : RawExpr) → (T : Ty m)
+  checkCompose : ∀ {m} → (ctx : NamedCtx m) → (composeHead arg : Syn.Expr) → (T : Ty m)
                → VerifiedCheckResult ctx (Raw.RApp composeHead arg) T
-  checkComposeOn : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (T : Ty m) → ArrowTarget T
+  checkComposeOn : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m) → ArrowTarget T
                  → VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) T
   -- Plan 0.94 §10: the middle type, locally determined. `g`'s side first (the
   -- domain-given mode), then `f`'s (its synthesized input), else an annotation
   -- is needed.
-  elabGivenV : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (A : Ty m) (π : Once.Spec.Grade.Purity)
+  elabGivenV : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
              → VerifiedGivenResult ctx e A π
-  elabGivenApp : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (A : Ty m) (π : Once.Spec.Grade.Purity)
+  elabGivenApp : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
                → AppHeadView f → VerifiedInferResult ctx (Raw.RApp f g)
                → VerifiedGivenResult ctx (Raw.RApp f g) A π
-  checkCompose-g : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
+  checkCompose-g : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
                  → VerifiedGivenResult ctx g A π
                  → VerifiedCheckResult ctx
                      (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g)
                      (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  checkCompose-f : ∀ {m} → (ctx : NamedCtx m) (f g : RawExpr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
+  checkCompose-f : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
                  → VerifiedCheckResult ctx
                      (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g)
                      (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  checkCurry : ∀ {m} → (ctx : NamedCtx m) → (arg : RawExpr) → (T : Ty m)
+  checkCurry : ∀ {m} → (ctx : NamedCtx m) → (arg : Syn.Expr) → (T : Ty m)
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T
-  checkCurryOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) (T : Ty m) → CurryTarget T
+  checkCurryOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m) → CurryTarget T
                → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T
-  inferOut : ∀ {m} → (ctx : NamedCtx m) → (arg : RawExpr)
+  inferOut : ∀ {m} → (ctx : NamedCtx m) → (arg : Syn.Expr)
            → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
 
-  checkIn : ∀ {m} → (ctx : NamedCtx m) → (arg : RawExpr) → (T : Ty m)
+  checkIn : ∀ {m} → (ctx : NamedCtx m) → (arg : Syn.Expr) → (T : Ty m)
           → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T
-  checkInOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) (T : Ty m) → InTarget T
+  checkInOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m) → InTarget T
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T
-  checkInGo : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) (F : Once.Spec.Type.Fun m)
+  checkInGo : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.Spec.Type.Fun m)
             → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
             → wfFun? (NamedCtx.kinds ctx) F ≡ mw
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Spec.Type.μ F)
-  checkCata : ∀ {m} → (ctx : NamedCtx m) → (arg : RawExpr) → (T : Ty m)
+  checkCata : ∀ {m} → (ctx : NamedCtx m) → (arg : Syn.Expr) → (T : Ty m)
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) arg) T
-  checkCataOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) (T : Ty m) → CataTarget T
+  checkCataOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m) → CataTarget T
               → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) arg) T
   -- Plan 0.36 Phase 2a: dispatch on `wellFormedF? F`; the algebra is
   -- elaborated as an ordinary function in the EMPTY context (see clause).
-  checkCataGo : ∀ {m} → (ctx : NamedCtx m) (alg : RawExpr) (F : Once.Spec.Type.Fun m) (A : Ty m)
+  checkCataGo : ∀ {m} → (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m)
                 (π : Once.Spec.Grade.Purity)
               → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)) → wfFun? (NamedCtx.kinds ctx) F ≡ mw
               → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
@@ -1801,11 +1802,11 @@ mutual
   -- D192: `ana coalg` — `checkCata`'s dual, declared beside it so the mirror
   -- is visible. `F` is read from the expected `A ⇒ ν-type F`, exactly as the
   -- cata reads it from `μ-type F ⇒ A`.
-  checkAna : ∀ {m} → (ctx : NamedCtx m) → (arg : RawExpr) → (T : Ty m)
+  checkAna : ∀ {m} → (ctx : NamedCtx m) → (arg : Syn.Expr) → (T : Ty m)
            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
-  checkAnaOn : ∀ {m} → (ctx : NamedCtx m) (arg : RawExpr) (T : Ty m) → AnaTarget T
+  checkAnaOn : ∀ {m} → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m) → AnaTarget T
              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
-  checkAnaGo : ∀ {m} → (ctx : NamedCtx m) (coalg : RawExpr) (F : Once.Spec.Type.Fun m) (A : Ty m)
+  checkAnaGo : ∀ {m} → (ctx : NamedCtx m) (coalg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m)
                (π₀ : Once.Spec.Grade.Purity) (φ : Once.Spec.Grade.Finite)
              → π₀ ⊑π Once.Spec.Grade.act
              → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)) → wfFun? (NamedCtx.kinds ctx) F ≡ mw
@@ -1813,7 +1814,7 @@ mutual
                                        (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π₀ ] Once.Spec.Type.ν F φ)
   -- D317/D319: `ana round` at `A ⇒[eff] B` — the loop. Decided on the round's
   -- own check result (a helper, not a `with`).
-  checkLoop : ∀ {m} → (ctx : NamedCtx m) (round : RawExpr) (A B : Ty m)
+  checkLoop : ∀ {m} → (ctx : NamedCtx m) (round : Syn.Expr) (A B : Ty m)
             → VerifiedCheckResult ctx round
                 (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A))
             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) round)
@@ -1821,29 +1822,29 @@ mutual
 
 
   -- Plan 0.4 T0 Option B — verified elaborator declarations.
-  inferElabV : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) → VerifiedInferResult ctx e
-  checkElabV : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Ty m) → VerifiedCheckResult ctx e T
+  inferElabV : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) → VerifiedInferResult ctx e
+  checkElabV : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m) → VerifiedCheckResult ctx e T
   -- Plan 0.58 E1-full: the WORKER carries a well-founded `Acc` on `length polys`
   -- so the poly-reference case can resolve INLINE (re-elaborate the def body in its
   -- strictly-smaller prefix). Non-poly recursion goes through the Acc-free wrapper
   -- `checkElabV` (which re-derives a FRESH `<-wellFounded` — sound per POC-B), so the
   -- ~300 existing call sites are unchanged.
   checkElabV-wf : ∀ {m} → (ctx : NamedCtx m) → Acc _<_ (length (NamedCtx.polys ctx))
-                → (e : RawExpr) (T : Ty m) → VerifiedCheckResult ctx e T
+                → (e : Syn.Expr) (T : Ty m) → VerifiedCheckResult ctx e T
   -- compose check-mode helper, threading the inner checkElabV results
   -- as explicit arguments + (unused) equations. The eqs are unused in
   -- the body (they're just placeholders for the J-style bridge in
   -- proofs). This lets external proofs substitute checkElab-success
   -- premises into the dispatch chain without navigating opaque
   -- `with`-helpers.
-  inferElabV-RApp-other : ∀ {m} → (ctx : NamedCtx m) (f x : RawExpr) → VerifiedInferResult ctx (Raw.RApp f x)
+  inferElabV-RApp-other : ∀ {m} → (ctx : NamedCtx m) (f x : Syn.Expr) → VerifiedInferResult ctx (Raw.RApp f x)
   -- PLAN 0.74 J6 step 3: a minus directly on a NUMERAL is one literal, not a
   -- runtime negation of another one. Split out as a named dispatch (the
   -- file's `inferElabV-RApp-dispatch` convention) so the definitional
   -- reduction that stops holding is confined to this function.
-  inferElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
+  inferElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
     → VerifiedInferResult ctx (Raw.RNeg e)
-  inferElabV-neg-aux : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr)
+  inferElabV-neg-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
     → NegOperandView e
     → VerifiedInferResult ctx (Raw.RNeg e)
   -- CHECK-mode twin of the same dispatch. A negated literal at a pure-arrow
@@ -1862,39 +1863,39 @@ mutual
   -- know it: the fold has no premise) and only the non-literal branch calls
   -- into inference, at the OPERAND, which is what `inferElabV-RNeg-aux`
   -- takes anyway.
-  checkElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+  checkElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
     → NegOperandView e
     → VerifiedCheckResult ctx (Raw.RNeg e) T
   -- RLet/RDestruct: the later sub-expressions live in EXTENDED contexts whose
   -- types come from the earlier sub-results, so they fold through nested auxes
   -- (each takes the prior result's data explicitly — no inline `with`).
-  inferElabV-RLet-aux : ∀ {m} → (ctx : NamedCtx m) (x : String) (e₁ e₂ : RawExpr)
+  inferElabV-RLet-aux : ∀ {m} → (ctx : NamedCtx m) (x : String) (e₁ e₂ : Syn.Expr)
     → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx (Raw.RLet x e₁ e₂)
   -- RDestruct de-withed into three nested auxes (one per `with` level):
   -- `-aux` dispatches the scrutinee type, `-auxL` the left branch (in `ctx,xL:A`),
   -- `-auxR` the right branch (in `ctx,xR:B`) + the branch-type match. Behaviour-
   -- preserving extraction of the old inline `with` chain so external proofs can
   -- case the dispatch without `with`-opacity.
-  inferElabV-RDestruct-aux : ∀ {m} → (ctx : NamedCtx m) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+  inferElabV-RDestruct-aux : ∀ {m} → (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr)
     → VerifiedInferResult ctx scrut
     → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
-  inferElabV-RDestruct-auxL : ∀ {m} → (ctx : NamedCtx m) (scrut : RawExpr) (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+  inferElabV-RDestruct-auxL : ∀ {m} → (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr)
     (A B : Ty m) {Ψs : Surface.Usage (NamedCtx.size ctx)}
     (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Spec.Type.+ B)) (ds fs : ℕ)
     (wS : WI ctx scrut (A Once.Spec.Type.+ B) Ψs scrutE)
     → VerifiedInferResult (extendNamedCtx ctx xL A) eL
     → VerifiedInferResult ctx (Raw.RDestruct scrut xL eL xR eR)
-  inferElabV-RApp-other-aux : ∀ {m} (ctx : NamedCtx m) (f x : RawExpr) (lhs : Maybe PolyBuiltinApp)
+  inferElabV-RApp-other-aux : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (lhs : Maybe PolyBuiltinApp)
     → classifyAppHead f ≡ lhs
     → VerifiedInferResult ctx (Raw.RApp f x)
-  inferElabV-RApp-dispatch : ∀ {m} (ctx : NamedCtx m) (f arg : RawExpr) (vw : AppHeadView f)
+  inferElabV-RApp-dispatch : ∀ {m} (ctx : NamedCtx m) (f arg : Syn.Expr) (vw : AppHeadView f)
     → classifyAppHeadView f ≡ vw
     → VerifiedInferResult ctx (Raw.RApp f arg)
-  checkElabV-RApp-dispatch : ∀ {m} (ctx : NamedCtx m) (f arg : RawExpr) (T : Ty m) (vw : AppHeadView f)
+  checkElabV-RApp-dispatch : ∀ {m} (ctx : NamedCtx m) (f arg : Syn.Expr) (T : Ty m) (vw : AppHeadView f)
     → classifyAppHeadView f ≡ vw
     → VerifiedCheckResult ctx (Raw.RApp f arg) T
   -- D230: the spine — the head's domain-given mode at the argument's synthesized type.
-  inferSpine : ∀ {m} (ctx : NamedCtx m) (f x : RawExpr) → classifyAppHead f ≡ nothing
+  inferSpine : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) → classifyAppHead f ≡ nothing
     → VerifiedInferResult ctx x
     → VerifiedInferResult ctx (Raw.RApp f x)
 
@@ -1908,7 +1909,7 @@ mutual
 
   -- RPair check-mode dispatch, taking the target classification explicitly
   -- (product / pure-arrow-to-product / other). One scrutinee, no overlap.
-  checkElabV-RPair-aux : ∀ {m} (ctx : NamedCtx m) (a b : RawExpr) (T : Ty m)
+  checkElabV-RPair-aux : ∀ {m} (ctx : NamedCtx m) (a b : Syn.Expr) (T : Ty m)
     → RPairTarget T
     → VerifiedCheckResult ctx (Raw.RPair a b) T
 
@@ -2158,7 +2159,7 @@ mutual
             , wt-cata-check {u = u} wfF wArg
 
   -- D192: the unfold. Same three moves as the fold — read `F` from the
-  -- expected type, decide `WellFormedF F`, check the coalgebra — with the
+  -- expected type, decide `WFFun ∅ₖ F`, check the coalgebra — with the
   -- coalgebra's arrow pointing the other way. PLAN 0.101 (D273): checked in
   -- the AMBIENT context — it may capture locals — and its usage is the ana's.
   checkAna ctx coalg T = checkAnaOn ctx coalg T (anaTarget T)
@@ -2184,7 +2185,7 @@ mutual
 ------------------------------------------------------------------------
 -- Generic-fallback lemmas (G2 completeness — check-mode).
 --
--- These hoisted-helpers say: for each RawExpr shape whose check-mode
+-- These hoisted-helpers say: for each Syn.Expr shape whose check-mode
 -- clause is NOT specialised (i.e. falls through to the generic
 -- `with inferElab ctx e` fallback at line ~895), a successful
 -- inferElab result transports to a successful checkElab result at the
@@ -2281,7 +2282,7 @@ mutual
 
   ----------------------------------------------------------------------
   -- Phase D — `checkElab` clauses.
-  -- Specialised RawExpr shapes (RVar, RApp, RLam) are still TODO; they
+  -- Specialised Syn.Expr shapes (RVar, RApp, RLam) are still TODO; they
   -- delegate to the existing `checkElab`. Everything else uses the
   -- generic infer-and-match fallback, with the witness lifted via
   -- `t-embed`.
@@ -2405,7 +2406,7 @@ mutual
   -- so `inferElabV ctx (RNeg e)` still unfolds for an ABSTRACT `e`.
   -- That is the difference between this and the first attempt: matching `e`
   -- here would have forced every downstream proof to enumerate all sixteen
-  -- `RawExpr` heads just to make the dispatch reduce. Downstream now does
+  -- `Syn.Expr` heads just to make the dispatch reduce. Downstream now does
   -- `with negOperandView e` and handles three cases. Same convention as
   -- `cfm-build-gated` taking its `Dec`.
   inferElabV-neg-dispatch ctx e = inferElabV-neg-aux ctx e (negOperandView e)
@@ -2632,13 +2633,13 @@ mutual
   ... | r = embedOrSubsume ctx (Raw.RPair a b) T r
 
 
-inferElab : ∀ {m} → (ctx : NamedCtx m) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+inferElab : ∀ {m} → (ctx : NamedCtx m) → Syn.Expr → InferElabResult (NamedCtx.debruijn ctx)
 -- Literals
 -- inferElab as projection of the verified version.
 inferElab ctx e = proj₁ (inferElabV ctx e)
   where open import Data.Product using (proj₁)
 
-checkElab : ∀ {m} → (ctx : NamedCtx m) → RawExpr → (A : Ty m) → CheckElabResult (NamedCtx.debruijn ctx) A
+checkElab : ∀ {m} → (ctx : NamedCtx m) → Syn.Expr → (A : Ty m) → CheckElabResult (NamedCtx.debruijn ctx) A
 -- Lambda in check mode: destruct expected function type
 --
 -- The body's first-position usage `q'` must satisfy `q' ≤q q`; we
@@ -2650,7 +2651,7 @@ checkElab : ∀ {m} → (ctx : NamedCtx m) → RawExpr → (A : Ty m) → CheckE
 checkElab ctx e T = proj₁ (checkElabV ctx e T)
   where open import Data.Product using (proj₁)
 
-checkApply : ∀ {m} → (ctx : NamedCtx m) → (arg : RawExpr) → (T : Ty m)
+checkApply : ∀ {m} → (ctx : NamedCtx m) → (arg : Syn.Expr) → (T : Ty m)
            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) T
 -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
 -- Check mode falls through to infer (apply's infer mode succeeds
@@ -2697,7 +2698,7 @@ checkApply ctx arg T | success (Once.Spec.Type.ν _ _) _ _ _ _ , _ = failure (Bu
 -- `inferElab` case tree's anonymous with-helper. Soundness for the
 -- `ahv-other` view branch (`spec-gap-RApp-ahv-other`) can pattern-
 -- match through this helper transparently.
-inferElab-RApp-other : ∀ {m} → (ctx : NamedCtx m) (f x : RawExpr) → InferElabResult (NamedCtx.debruijn ctx)
+inferElab-RApp-other : ∀ {m} → (ctx : NamedCtx m) (f x : Syn.Expr) → InferElabResult (NamedCtx.debruijn ctx)
 -- Body for the hoisted `ahv-other` (generic application) branch.
 inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
 ... | notFun err = failure err

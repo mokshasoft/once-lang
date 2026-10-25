@@ -38,7 +38,7 @@ open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Syntax using (RawExpr)
+import Once.Spec.Surface.Syntax as Syn
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
@@ -89,7 +89,7 @@ data IsCheckFailure {m} {n : ℕ} {Δ : SCtx m n} {A : Ty m}
 --
 -- Combined with Agda's coverage checking, this is a closed statement
 -- of totality: no input shape is unhandled, no result is stuck.
-inferElab-total : ∀ {m} (ctx : NamedCtx m) (e : RawExpr)
+inferElab-total : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr)
                 → IsInferSuccess (inferElab ctx e)
                 ⊎ IsInferFailure (inferElab ctx e)
 inferElab-total ctx e with inferElab ctx e
@@ -97,7 +97,7 @@ inferElab-total ctx e with inferElab ctx e
 ... | failure err        = inj₂ (isInferFailure err)
 
 -- | Same dichotomy for `checkElab`.
-checkElab-total : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (T : Ty m)
+checkElab-total : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
                 → IsCheckSuccess (checkElab ctx e T)
                 ⊎ IsCheckFailure (checkElab ctx e T)
 checkElab-total ctx e T with checkElab ctx e T

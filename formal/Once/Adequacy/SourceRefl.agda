@@ -32,13 +32,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; eff; act; fin)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Internal.Type.WellFormed using (con-base; con-fun; base-Unit; WellFormedF)
+open import Once.Internal.Type.WellFormed using (con-base; con-fun)
+open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
 open import Once.Semantics.Machine using (sem-cata)
 open import Once.Internal.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (coerce-functor-D)
 open import Once.Internal.Context using (Ctx; Usage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
@@ -97,11 +99,11 @@ RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ {m} (x : String) 
 <:-rel (sub-arr {q = Zero} a b _) r = RelS-fmap r (<:-rel b)
 <:-rel (sub-arr {q = One}  a b _) r ra = RelS-fmap (r (<:-rel a ra)) (<:-rel b)
 <:-rel (sub-arr {q = Many} a b _) r ra = RelS-fmap (r (<:-rel a ra)) (<:-rel b)
-<:-rel (sub-prod a b) {_ , _} {_ , _} (r , s) = <:-rel a r , <:-rel b s
-<:-rel (sub-sum a b) {inj₁ _} {inj₁ _} r = <:-rel a r
-<:-rel (sub-sum a b) {inj₂ _} {inj₂ _} r = <:-rel b r
-<:-rel (sub-sum a b) {inj₁ _} {inj₂ _} ()
-<:-rel (sub-sum a b) {inj₂ _} {inj₁ _} ()
+<:-rel (sub-* a b) {_ , _} {_ , _} (r , s) = <:-rel a r , <:-rel b s
+<:-rel (sub-+ a b) {inj₁ _} {inj₁ _} r = <:-rel a r
+<:-rel (sub-+ a b) {inj₂ _} {inj₂ _} r = <:-rel b r
+<:-rel (sub-+ a b) {inj₁ _} {inj₂ _} ()
+<:-rel (sub-+ a b) {inj₂ _} {inj₁ _} ()
 
 -- Two conversions in sequence relate to the composite conversion.
 <:-trans-rel : ∀ {m} {A B C : Ty m} (p : A <: B) (q : B <: C) {x y : ⟦ A ⟧ᴰ} → RelD A x y
@@ -118,11 +120,11 @@ RelDefs σ σ′ = RelEnv fmt (calls σ) (calls σ′) × (∀ {m} (x : String) 
   RelS-fmapˡ (RelS-fmap (r (<:-trans-rel a′ a rx)) (<:-trans-rel b b′)) (λ z → z)
 <:-trans-rel (sub-arr {q = Many} a b _) (sub-arr a′ b′ _) r rx =
   RelS-fmapˡ (RelS-fmap (r (<:-trans-rel a′ a rx)) (<:-trans-rel b b′)) (λ z → z)
-<:-trans-rel (sub-prod a b) (sub-prod a′ b′) {_ , _} {_ , _} (r , s) = <:-trans-rel a a′ r , <:-trans-rel b b′ s
-<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₁ _} {inj₁ _} r = <:-trans-rel a a′ r
-<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₂ _} {inj₂ _} r = <:-trans-rel b b′ r
-<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₁ _} {inj₂ _} ()
-<:-trans-rel (sub-sum a b) (sub-sum a′ b′) {inj₂ _} {inj₁ _} ()
+<:-trans-rel (sub-* a b) (sub-* a′ b′) {_ , _} {_ , _} (r , s) = <:-trans-rel a a′ r , <:-trans-rel b b′ s
+<:-trans-rel (sub-+ a b) (sub-+ a′ b′) {inj₁ _} {inj₁ _} r = <:-trans-rel a a′ r
+<:-trans-rel (sub-+ a b) (sub-+ a′ b′) {inj₂ _} {inj₂ _} r = <:-trans-rel b b′ r
+<:-trans-rel (sub-+ a b) (sub-+ a′ b′) {inj₁ _} {inj₂ _} ()
+<:-trans-rel (sub-+ a b) (sub-+ a′ b′) {inj₂ _} {inj₁ _} ()
 <:-trans-rel (sub-ν _) (sub-ν _) r = r
 
 -- The identity conversion on the right.
@@ -145,17 +147,17 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   -- An external operation's meaning, related at its ground type.
   sigOpSem-rel : (A : Type) (name : Once.Spec.Name.CanonicalName) (c : Once.Internal.Type.WellFormed.IsConcrete A)
                → RelS (RelD A) (SD.sigOpSem A name c fmt σ) (SD.sigOpSem A name c fmt σ′)
-  sigOpSem-rel (Dom ⇒[ mk-kind Zero pure ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (value-info name base-Unit bC) tt)
-  sigOpSem-rel (Dom ⇒[ mk-kind Zero eff ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Zero eff) name base-Unit bC) tt)
-  sigOpSem-rel (Dom ⇒[ mk-kind Zero act ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Zero act) name base-Unit bC) tt)
+  sigOpSem-rel (Dom ⇒[ mk-kind Zero pure ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (value-info name b-Unit bC) tt)
+  sigOpSem-rel (Dom ⇒[ mk-kind Zero eff ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Zero eff) name b-Unit bC) tt)
+  sigOpSem-rel (Dom ⇒[ mk-kind Zero act ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Zero act) name b-Unit bC) tt)
   sigOpSem-rel (Dom ⇒[ mk-kind One π ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind One π) name bD bC))
   sigOpSem-rel (Dom ⇒[ mk-kind Many π ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Many π) name bD bC))
-  sigOpSem-rel Unit name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
-  sigOpSem-rel Void name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
-  sigOpSem-rel Int name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
-  sigOpSem-rel Float name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
-  sigOpSem-rel (_ * _) name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
-  sigOpSem-rel (_ + _) name (con-base ib) = sigOp-rel (value-info name base-Unit ib) tt
+  sigOpSem-rel Unit name (con-base ib) = sigOp-rel (value-info name b-Unit ib) tt
+  sigOpSem-rel Void name (con-base ib) = sigOp-rel (value-info name b-Unit ib) tt
+  sigOpSem-rel Int name (con-base ib) = sigOp-rel (value-info name b-Unit ib) tt
+  sigOpSem-rel Float name (con-base ib) = sigOp-rel (value-info name b-Unit ib) tt
+  sigOpSem-rel (_ * _) name (con-base ib) = sigOp-rel (value-info name b-Unit ib) tt
+  sigOpSem-rel (_ + _) name (con-base ib) = sigOp-rel (value-info name b-Unit ib) tt
   sigOpSem-rel (μ _) name (con-base ())
   sigOpSem-rel (ν _ _) name (con-base ())
   sigOpSem-rel (_ ⇒[ _ ] _) name (con-base ())

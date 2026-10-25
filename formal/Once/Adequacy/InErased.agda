@@ -15,6 +15,7 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 
 open import Once.Spec.Type using (Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
@@ -34,7 +35,6 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (μ)
-open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)

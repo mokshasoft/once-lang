@@ -44,13 +44,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Spec.Name using (GenWord)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; canonDecl; isBuiltinName; expandPath;
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Internal.Resolution
+open import Once.Spec.Surface.Program using (NotImport; ni-sig; ni-tsig; ni-def; ni-alias)
+open import Once.Spec.Surface.Resolution using (FirstAt; fa-here; fa-there; Absent; Expands; ex-nil; ex-I; ex-other)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser.Module.Core using (Resolved; resolved)
 open import Once.Spec.Surface.Syntax using (Module; mkModule)
@@ -138,7 +140,7 @@ lookupAl-nothing ((n , q) ∷ rs) a () | yes _
 -- Decider bridge 4: the `I` path abbreviation.
 ------------------------------------------------------------------------
 
-expandPath-complete : ∀ (p q : List String) → ExpandsTo p q → expandPath p ≡ q
+expandPath-complete : ∀ (p q : List String) → Expands p q → expandPath p ≡ q
 expandPath-complete [] [] ex-nil = refl
 expandPath-complete ("I" ∷ rest) _ ex-I with "I" ≟ "I"
 ... | yes _ = refl
@@ -148,7 +150,7 @@ expandPath-complete (c ∷ rest) _ (ex-other c≢I) with c ≟ "I"
 ... | yes e = ⊥-elim (c≢I e)
 ... | no  _ = refl
 
-expandPath-sound : ∀ (p : List String) → ExpandsTo p (expandPath p)
+expandPath-sound : ∀ (p : List String) → Expands p (expandPath p)
 expandPath-sound []       = ex-nil
 expandPath-sound (c ∷ rest) with c ≟ "I"
 ... | yes refl = ex-I
@@ -165,7 +167,7 @@ GenWord-isBuiltinName x gw with isBuiltinName x in eb
 -- THE BRIDGE, at a bare reference. Four arms, one per rule.
 ------------------------------------------------------------------------
 
-resolvesVar-sound : ∀ (bound : List String) (um : UnaliasedMap) (x : String) (e : RawExpr)
+resolvesVar-sound : ∀ (bound : List String) (um : UnaliasedMap) (x : String) (e : Expr)
                   → ResolvesVar bound um x e
                   → canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x ≡ e
 resolvesVar-sound bound um x _ (rv-binder i)
@@ -198,7 +200,7 @@ resolvesVar-complete bound um x with does (x ∈? bound) in eb
 ------------------------------------------------------------------------
 
 resolves-sound : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String)
-                 (e e' : RawExpr)
+                 (e e' : Expr)
                → ResolvesExpr um am bound e e' → canonExpr bound um am e ≡ e'
 resolves-sound um am bound _ _ (re-var rv) = resolvesVar-sound bound um _ _ rv
 resolves-sound um am bound _ _ (re-this {name = n}) with "this" ≟ "this"
@@ -240,7 +242,7 @@ resolves-sound um am bound _ _ re-int   = refl
 resolves-sound um am bound _ _ re-float = refl
 
 resolves-complete : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String)
-                    (e : RawExpr)
+                    (e : Expr)
                   → ResolvesExpr um am bound e (canonExpr bound um am e)
 resolves-complete um am bound (RVar x) = re-var (resolvesVar-complete bound um x)
 resolves-complete um am bound (RQualified n a) with a ≟ "this"
@@ -376,16 +378,16 @@ resolvesDecls-sound : ∀ (mm : ModuleMap)
                     → ResolvesDecls mm um am ds ds'
                     → resolveDecls um am mm ds ≡ inj₂ ds'
 resolvesDecls-sound mm um am _ _ rds-nil = refl
-resolvesDecls-sound mm um am _ _ (rds-cons nim-typesig rd rds)
+resolvesDecls-sound mm um am _ _ (rds-cons ni-tsig rd rds)
   rewrite resolvesDecls-sound mm um am _ _ rds
         | resolvesDecl-sound um am _ _ rd = refl
-resolvesDecls-sound mm um am _ _ (rds-cons {d = d} {d' = d'} {ds' = ds'} nim-fundef rd rds) =
+resolvesDecls-sound mm um am _ _ (rds-cons {d = d} {d' = d'} {ds' = ds'} ni-def rd rds) =
   trans (cong (resolveDecls-cons-aux um am d) (resolvesDecls-sound mm um am _ _ rds))
         (trans (cong (λ d″ → consDecl d″ ds') (resolvesDecl-sound um am _ _ rd)) (consDecl-ok ds' rd))
-resolvesDecls-sound mm um am _ _ (rds-cons nim-sig rd rds)
+resolvesDecls-sound mm um am _ _ (rds-cons ni-sig rd rds)
   rewrite resolvesDecls-sound mm um am _ _ rds
         | resolvesDecl-sound um am _ _ rd = refl
-resolvesDecls-sound mm um am _ _ (rds-cons nim-alias rd rds)
+resolvesDecls-sound mm um am _ _ (rds-cons ni-alias rd rds)
   rewrite resolvesDecls-sound mm um am _ _ rds
         | resolvesDecl-sound um am _ _ rd = refl
 resolvesDecls-sound mm um am _ _
@@ -429,16 +431,16 @@ mutual
       (lookupModule mm (Import.path imp)) refl
       (resolveDecls um am mm rest) refl eq
   resolvesDecls-complete mm um am (DTypeSig n t ∷ rest) ds' eq =
-    rdc-cons mm um am (DTypeSig n t) nim-typesig rest ds'
+    rdc-cons mm um am (DTypeSig n t) ni-tsig rest ds'
       (resolveDecls um am mm rest) refl eq
   resolvesDecls-complete mm um am (DFunDef n b ∷ rest) ds' eq =
-    rdc-cons mm um am (DFunDef n b) nim-fundef rest ds'
+    rdc-cons mm um am (DFunDef n b) ni-def rest ds'
       (resolveDecls um am mm rest) refl eq
   resolvesDecls-complete mm um am (DSignature n t ∷ rest) ds' eq =
-    rdc-cons mm um am (DSignature n t) nim-sig rest ds'
+    rdc-cons mm um am (DSignature n t) ni-sig rest ds'
       (resolveDecls um am mm rest) refl eq
   resolvesDecls-complete mm um am (DTypeAlias n ps t ∷ rest) ds' eq =
-    rdc-cons mm um am (DTypeAlias n ps t) nim-alias rest ds'
+    rdc-cons mm um am (DTypeAlias n ps t) ni-alias rest ds'
       (resolveDecls um am mm rest) refl eq
 
   rdc-import : ∀ (mm : ModuleMap) (um : UnaliasedMap)

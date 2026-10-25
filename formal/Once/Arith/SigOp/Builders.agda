@@ -22,6 +22,7 @@
 module Once.Arith.SigOp.Builders where
 
 import Data.Integer as ℤ
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; ∅ₖ)
 import Data.Nat as ℕ
 
 open import Once.Spec.Grade using (ArrowKind; mk-kind; pure; act; eff)
@@ -31,7 +32,6 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Once.Arith.Prim using (p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -107,51 +107,51 @@ import Once.Internal.Value Carrier Carrier as M
 
 -- Base-type witnesses for the internal arith SigOp types (both sides are base:
 -- plan 0.105 makes every SigOp first-order).
-base-I×I : IsBaseType (Int * Int)
-base-I×I = base-Prod base-Int base-Int
-base-U+U : IsBaseType (Unit + Unit)
-base-U+U = base-Sum base-Unit base-Unit
+base-I×I : Base ∅ₖ (Int * Int)
+base-I×I = b-* b-Int b-Int
+base-U+U : Base ∅ₖ (Unit + Unit)
+base-U+U = b-+ b-Unit b-Unit
 
 -- Binary arithmetic
 add-info : SigOpInfo (Int * Int) Int
-add-info = mk-info' (bare "arith.add.int") (primV p-add) base-I×I base-Int
+add-info = mk-info' (bare "arith.add.int") (primV p-add) base-I×I b-Int
 
 sub-info : SigOpInfo (Int * Int) Int
-sub-info = mk-info' (bare "arith.sub.int") (primV p-sub) base-I×I base-Int
+sub-info = mk-info' (bare "arith.sub.int") (primV p-sub) base-I×I b-Int
 
 mul-info : SigOpInfo (Int * Int) Int
-mul-info = mk-info' (bare "arith.mul.int") (primV p-mul) base-I×I base-Int
+mul-info = mk-info' (bare "arith.mul.int") (primV p-mul) base-I×I b-Int
 
 div-info : SigOpInfo (Int * Int) Int
-div-info = mk-info' (bare "arith.div.int") (primV p-div) base-I×I base-Int
+div-info = mk-info' (bare "arith.div.int") (primV p-div) base-I×I b-Int
 
 mod-info : SigOpInfo (Int * Int) Int
-mod-info = mk-info' (bare "arith.mod.int") (primV p-mod) base-I×I base-Int
+mod-info = mk-info' (bare "arith.mod.int") (primV p-mod) base-I×I b-Int
 
 -- Unary arithmetic
 neg-info : SigOpInfo Int Int
-neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) base-Int base-Int
+neg-info = mk-info' (bare "arith.neg.int") (primV p-neg) b-Int b-Int
 
 -- Float arithmetic (plan 0.75 F4). Distinct NAMES, not overloads: the SigOp
 -- name is the identity the backend dispatches on, and `arith.add.int` and
 -- `arith.add.float` are different instructions on every target.
-base-F×F : IsBaseType (Once.Spec.Type.Float * Once.Spec.Type.Float)
-base-F×F = base-Prod base-Float base-Float
+base-F×F : Base ∅ₖ (Once.Spec.Type.Float * Once.Spec.Type.Float)
+base-F×F = b-* b-Float b-Float
 
 fadd-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
-fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F base-Float
+fadd-info = mk-info' (bare "arith.add.float") (primV p-fadd) base-F×F b-Float
 
 fsub-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
-fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F base-Float
+fsub-info = mk-info' (bare "arith.sub.float") (primV p-fsub) base-F×F b-Float
 
 fmul-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
-fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F base-Float
+fmul-info = mk-info' (bare "arith.mul.float") (primV p-fmul) base-F×F b-Float
 
 fdiv-info : SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) Once.Spec.Type.Float
-fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F base-Float
+fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F b-Float
 
 i2f-info : SigOpInfo Int Once.Spec.Type.Float
-i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) base-Int base-Float
+i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) b-Int b-Float
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
@@ -192,7 +192,7 @@ ne-info = mk-info' (bare "arith.ne.int") (primV (p-cmp c-ne)) base-I×I base-U+U
 -- Its effect is `Pure`: an effect lives on an *arrow* (realized only on
 -- application, D018 suspended-Eff), and an effectful arrow's effect comes from
 -- its DECLARED `! <shape>` (`arrow-info`, `ext-arrow-info`).
-value-info : ∀ {A B} → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B
+value-info : ∀ {A B} → CanonicalName → Base ∅ₖ A → Base ∅ₖ B → SigOpInfo A B
 value-info name bA bB = mk-info' name ffiV bA bB
 
 
@@ -205,7 +205,7 @@ value-info name bA bB = mk-info' name ffiV bA bB
 -- Keeping the names (vs. inlining) avoids churning those three modules and
 -- keeps `faithful` definitionally `refl` (both presentations use the same
 -- shim).
-generic-info : ∀ {A B} → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B
+generic-info : ∀ {A B} → CanonicalName → Base ∅ₖ A → Base ∅ₖ B → SigOpInfo A B
 generic-info = value-info
 
 -- The effect is a LEAF annotation read off the arrow's `Purity`; WHICH effect
@@ -234,5 +234,5 @@ arrow-sem {B = B} (mk-kind _ eff) = arrow-sem-eff (isVoid? B) (isUnit? B)
 -- D313: a foreign operation at `act` is one call, as at `eff`.
 arrow-sem {B = B} (mk-kind _ act)  = arrow-sem-eff (isVoid? B) (isUnit? B)
 
-arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsBaseType B → SigOpInfo A B
+arrow-info : ∀ {A B} → ArrowKind → CanonicalName → Base ∅ₖ A → Base ∅ₖ B → SigOpInfo A B
 arrow-info k name bA bB = mk-info' name (arrow-sem k) bA bB

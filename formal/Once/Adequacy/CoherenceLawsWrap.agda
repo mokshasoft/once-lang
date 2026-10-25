@@ -20,6 +20,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Type.Grade using (_≤qᵇ_)
@@ -33,15 +34,14 @@ open import Once.Spec.Grade using (mk-kind; Many; Quantity)
 open import Once.Spec.Type using (Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-void)
-open import Once.Internal.Type.Sub using (sub-prod)
 open import Once.Spec.Grade using (_⊑π_)
 open import Once.Internal.Laws.SubLaws using (<:-trans)
 open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl)
+open import Once.Spec.Sub using (sub-*)
 open import Once.Internal.Context using (Ctx)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 import Once.Type
-open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
@@ -194,7 +194,7 @@ module _ {m n} {Γ : Ctx m n} where
   coerce-uniq {A = A} {B = B} {Ψ = Ψ} p q e = ≈-intro (coerce-uniqˢ {Γ = Γ} {A = A} {B = B} {Ψ = Ψ} p q e)
 
 module _ {m n} {Γ : Ctx m n} where
-  pair-coerce : ∀ {A A′ B B′ : Ty m} {Ψ₁ Ψ₂} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) → pair (coerce pa a) (coerce pb b) ≈ coerce (sub-prod pa pb) (pair a b)
+  pair-coerce : ∀ {A A′ B B′ : Ty m} {Ψ₁ Ψ₂} (pa : A <: A′) (pb : B <: B′) (a : Expr Γ Ψ₁ A) (b : Expr Γ Ψ₂ B) → pair (coerce pa a) (coerce pb b) ≈ coerce (sub-* pa pb) (pair a b)
   pair-coerce {A = A} {A′ = A′} {B = B} {B′ = B′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} pa pb a b = ≈-intro (pair-coerceˢ {Γ = Γ} {A = A} {A′ = A′} {B = B} {B′ = B′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} pa pb a b)
 
 module _ {m n} {Γ : Ctx m n} where
@@ -218,7 +218,7 @@ module _ {m n} {Γ : Ctx m n} where
   copair-coerce {A = A} {B = B} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} p r f g = ≈-intro (copair-coerceˢ {Γ = Γ} {A = A} {B = B} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} p r f g)
 
 module _ {m n} {Γ : Ctx m n} where
-  fork-coerce : ∀ {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)) → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g) ≈ coerce (sub-arr (<:-refl A) (sub-prod pb pc) r) (fork' f g)
+  fork-coerce : ∀ {A B B′ C C′ : Ty m} {Ψ₁ Ψ₂ π} (pb : B <: B′) (pc : C <: C′) (r : π ⊑π π) (f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)) → fork' (coerce (sub-arr (<:-refl A) pb r) f) (coerce (sub-arr (<:-refl A) pc r) g) ≈ coerce (sub-arr (<:-refl A) (sub-* pb pc) r) (fork' f g)
   fork-coerce {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} pb pc r f g = ≈-intro (fork-coerceˢ {Γ = Γ} {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} pb pc r f g)
 
 module _ {m n} {Γ : Ctx m n} where

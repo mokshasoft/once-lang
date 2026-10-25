@@ -19,13 +19,13 @@ open import Relation.Binary.Structures using (IsPartialOrder)
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Type; _*_; _+_)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
-open import Once.Internal.Type.Sub using (sub-prod; sub-sum; sub-rigid)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Context
   using (Usage; _⊑ᵘ_; ⊑[]; ⊑ᵘ-refl; ⊑ᵘ-trans)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_)
 open import Once.Internal.Laws.SubLaws using (⊑π-trans; <:-trans)
 open import Once.Internal.Type.Sub using (⊑π-refl; <:-refl)
+open import Once.Spec.Sub using (sub-*; sub-+; sub-var)
 open import Once.Internal.Laws.Grade using (≤q'-antisym)
 
 ------------------------------------------------------------------------
@@ -56,14 +56,14 @@ purity-⊑-isPartialOrder = record
 <:-antisym sub-float sub-float = refl
 <:-antisym (sub-arr a b g) (sub-arr a′ b′ g′)
   rewrite <:-antisym a′ a | <:-antisym b b′ | ⊑π-antisym g g′ = refl
-<:-antisym (sub-prod a b) (sub-prod a′ b′) = cong₂ _*_ (<:-antisym a a′) (<:-antisym b b′)
-<:-antisym (sub-sum a b) (sub-sum a′ b′) = cong₂ _+_ (<:-antisym a a′) (<:-antisym b b′)
+<:-antisym (sub-* a b) (sub-* a′ b′) = cong₂ _*_ (<:-antisym a a′) (<:-antisym b b′)
+<:-antisym (sub-+ a b) (sub-+ a′ b′) = cong₂ _+_ (<:-antisym a a′) (<:-antisym b b′)
 <:-antisym sub-μ sub-μ = refl
 <:-antisym (sub-ν {f = pureᶠ} {pureᶠ} _) (sub-ν _)  = refl
 <:-antisym (sub-ν {f = actᶠ}  {actᶠ}  _) (sub-ν _)  = refl
 <:-antisym (sub-ν {f = pureᶠ} {actᶠ}  _) (sub-ν ())
 <:-antisym (sub-ν {f = actᶠ}  {pureᶠ} ()) _
-<:-antisym sub-rigid sub-rigid = refl
+<:-antisym sub-var sub-var = refl
 
 subtype-isPartialOrder : ∀ {m} → IsPartialOrder {A = Ty m} _≡_ _<:_
 subtype-isPartialOrder = record

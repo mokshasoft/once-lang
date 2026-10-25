@@ -19,6 +19,7 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
@@ -39,7 +40,6 @@ open import Once.Spec.Type using (μ; ν)
 import Once.Internal.Type as TT
 import Once.Spec.Type as TT
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; Ana)
-open import Once.Internal.Type.WellFormed using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)

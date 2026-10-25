@@ -59,7 +59,7 @@ import Once.Surface.Syntax as SS
 open import Once.TypeCheck.SpecWitness using (WI; WC)
 import Once.TypeCheck.Elaborate as TE
 open import Data.Nat using (ℕ)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 
 open Parser.FunInfo using (funName; funBody; funType; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunType; pfunBody)
@@ -109,11 +109,11 @@ addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 -- Its witness is the checker's own result: the term it built and the Spec's
 -- derivation, whose realization that term is (`TypeCheck.SpecWitness`; plan
 -- 0.122 §5.6).
-CheckRun : ∀ {m} (ctx : NamedCtx m) → RawExpr → (A : Ty m) → Surface.Usage (NamedCtx.size ctx) → Set
+CheckRun : ∀ {m} (ctx : NamedCtx m) → Expr → (A : Ty m) → Surface.Usage (NamedCtx.size ctx) → Set
 CheckRun ctx e A Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ A ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ WC ctx e A Ψ eE ]
                        (TE.checkElabV ctx e A ≡ (TE.success Ψ eE d f , w))
 
-MonoWit : Maybe Type → (ctx : NamedCtx 0) → RawExpr → Type → Surface.Usage (NamedCtx.size ctx) → Set
+MonoWit : Maybe Type → (ctx : NamedCtx 0) → Expr → Type → Surface.Usage (NamedCtx.size ctx) → Set
 MonoWit (just _) ctx e ty Ψ = CheckRun ctx e ty Ψ
 MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ WI ctx e ty Ψ eE ]
                                 (TE.inferElabV ctx e ≡ (TE.success ty Ψ eE d f , w))

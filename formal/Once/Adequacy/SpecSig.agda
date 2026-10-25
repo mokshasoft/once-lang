@@ -133,7 +133,7 @@ wf-at (_ S.∷ ws) (there m)   = wf-at ws m
 -- Base types and values
 ------------------------------------------------------------------------
 
-base-of : ∀ b .(ib : LW.IsBaseType ⌞ b ⌟) → baseOf ⌞ b ⌟ ib ≡ b
+base-of : ∀ b .(ib : (LW.Base LW.∅ₖ) ⌞ b ⌟) → baseOf ⌞ b ⌟ ib ≡ b
 base-of S.unit    _ = refl
 base-of S.void    _ = refl
 base-of S.int     _ = refl
@@ -175,7 +175,7 @@ private
         → _≡_ {A = BV′} (a″ S.+ proj₁ q , inj₂ (proj₂ q)) (a′ S.+ b′ , inj₂ y′)
   ev-r refl refl = refl
 
-ev-val : ∀ a .(ib : LW.IsBaseType ⌞ a ⌟) (x : M.⟦ ⌞ a ⌟ ⟧)
+ev-val : ∀ a .(ib : (LW.Base LW.∅ₖ) ⌞ a ⌟) (x : M.⟦ ⌞ a ⌟ ⟧)
        → _≡_ {A = BV′} (baseOf ⌞ a ⌟ ib , valOf ⌞ a ⌟ ib x) (a , SI.toB a x)
 ev-val S.unit  _ x = refl
 ev-val S.void  _ x = refl
@@ -279,7 +279,7 @@ ans-op {h} (ag m′ ne) m e p d x = ao (one-decl uniq m′ m (cong kname e)) e x
 
 private
   -- a constant's type is a base type
-  const-k : ∀ b (k : LW.IsConcrete ⌞ b ⌟) → Σ[ ib ∈ LW.IsBaseType ⌞ b ⌟ ] (k ≡ LW.con-base ib)
+  const-k : ∀ b (k : LW.IsConcrete ⌞ b ⌟) → Σ[ ib ∈ (LW.Base LW.∅ₖ) ⌞ b ⌟ ] (k ≡ LW.con-base ib)
   const-k S.unit      (LW.con-base ib) = ib , refl
   const-k S.void      (LW.con-base ib) = ib , refl
   const-k S.int       (LW.con-base ib) = ib , refl
@@ -331,10 +331,10 @@ toB-R (a S.+ b) {inj₂ _} {inj₂ _} r = cong inj₂ (toB-R b r)
 -- The implementation's closures over first-order values are related to
 -- themselves.
 private
-  emb-self : ∀ {C} (bC : LW.IsBaseType C) (t : LTr.T M.⟦ C ⟧) → RelS (RelD C) (embed (LTr.fmapT (injectᵇ bC) t)) (embed (LTr.fmapT (injectᵇ bC) t))
+  emb-self : ∀ {C} (bC : (LW.Base LW.∅ₖ) C) (t : LTr.T M.⟦ C ⟧) → RelS (RelD C) (embed (LTr.fmapT (injectᵇ bC) t)) (embed (LTr.fmapT (injectᵇ bC) t))
   emb-self bC t = RelS-embed (RelT′-refl (base-refl bC) (LTr.fmapT (injectᵇ bC) t))
 
-  ptr-self : ∀ {Dom Cod} (bDom : LW.IsBaseType Dom) (bCod : LW.IsBaseType Cod) (f : M.⟦ Dom ⟧ → LTr.T M.⟦ Cod ⟧)
+  ptr-self : ∀ {Dom Cod} (bDom : (LW.Base LW.∅ₖ) Dom) (bCod : (LW.Base LW.∅ₖ) Cod) (f : M.⟦ Dom ⟧ → LTr.T M.⟦ Cod ⟧)
                {a a′ : ⟦ Dom ⟧ᴰ} → RelD Dom a a′
            → RelS (RelD Cod) (embed (LTr.fmapT (injectᵇ bCod) (f (forgetᵇ bDom a)))) (embed (LTr.fmapT (injectᵇ bCod) (f (forgetᵇ bDom a′))))
   ptr-self bDom bCod f {a} r with base-eq bDom r
@@ -367,7 +367,7 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
     ψ = CallEnv.ffiE (SDn.DefsSem.calls σ)
 
     -- an operation's call, by the form its answer type decides
-    op-R : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : LW.IsBaseType ⌞ argAt q a ⌟) {x y}
+    op-R : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : (LW.Base LW.∅ₖ) ⌞ argAt q a ⌟) {x y}
          → SI.toB (argAt q a) x ≡ y → ∀ dv du
          → RunR (RelGV (S.⌜ b ⌝)) (SE.embed (SE.performT (S.call (op M) y (SD.fromB σ₀ b))))
                 (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (sigOpT fmt ψ (mk-info' c (arrow-sem-eff dv du) bDom (⌜⌝-base b)) x)))
@@ -404,8 +404,8 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
                                                (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R a r))))
               , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.Many G.pure) c (⌜⌝-base a) (⌜⌝-base b)) x) )
   sig-SD {c} (operation a SG.Zero b) M =
-    return∞-R ( op-R M LW.base-Unit refl (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
-              , emb-self (⌜⌝-base b) (sigOpT fmt ψ (arrow-info (G.mk-kind SG.Zero G.act) c LW.base-Unit (⌜⌝-base b)) tt) )
+    return∞-R ( op-R M LW.b-Unit refl (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
+              , emb-self (⌜⌝-base b) (sigOpT fmt ψ (arrow-info (G.mk-kind SG.Zero G.act) c LW.b-Unit (⌜⌝-base b)) tt) )
   sig-SD {c} (operation a SG.One b) M =
     return∞-R ( (λ {x} {y} r → op-R M (⌜⌝-base a) (toB-R a r) (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟))
               , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.One G.act) c (⌜⌝-base a) (⌜⌝-base b)) x) )
@@ -473,7 +473,7 @@ private
                      (cong (λ z → SI.fromB b (World.answer w (op M) (map toEvent h) z p)) ra)
   ans-at {b = b} M ne ra h p d (no ¬u) (no ¬k) = ⊥-elim (¬k (ans-in M (λ e → ne-void ne (⌞⌟-void b e)) ¬u))
 
-  ev-eq : ∀ {cn} a .(bA : LW.IsBaseType ⌞ a ⌟) {x y} → SI.toB a x ≡ y
+  ev-eq : ∀ {cn} a .(bA : (LW.Base LW.∅ₖ) ⌞ a ⌟) {x y} → SI.toB a x ≡ y
         → toEvent (Once.Internal.Event.mk-event cn ⌞ a ⌟ bA x) ≡ S.event cn a y
   ev-eq {cn} a bA {x} ra = cong (λ { (b , v) → S.event cn b v }) (trans (ev-val a bA x) (cong (a ,_) ra))
 

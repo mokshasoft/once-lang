@@ -23,6 +23,7 @@
 module Once.CCC.Machine.SMCore where
 
 open import Relation.Binary.Definitions using (DecidableEquality)
+open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; ∅ₖ)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_)
 open import Data.Nat.Properties using (_≟_)
@@ -44,7 +45,6 @@ open import Once.Internal.Event using (SigOpEvent; mk-event)
 open import Once.Internal.Trace using (callOp; answer; callKey; calls)
 open import Once.Internal.Contract using (_∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
@@ -1765,13 +1765,13 @@ module AbstractExec {FS : FrameSemantics} where
   -- THE ARGUMENT, READ FROM MEMORY (plan 0.105 §g). A scalar argument sits in
   -- `Input1` itself; a compound one is a pointer, read back through `readTyped`
   -- (whose adequacy is `ReadTypedAdequate`). What cannot be read decodes to
-  -- `nothing`. (Replaces D114's `decode-unread : IsBaseType A → StoredValue →
-  -- ⟦ A ⟧`, which gave `⊥` at `base-Void` once an interpretation was
+  -- `nothing`. (Replaces D114's `decode-unread : Base ∅ₖ A → StoredValue →
+  -- ⟦ A ⟧`, which gave `⊥` at `b-Void` once an interpretation was
   -- inhabited, and decoded a boxed value from the pointer alone.)
-  decode-at : ∀ {A} → IsBaseType A → StoredValue FS → LocState FS → Maybe ⟦ A ⟧
-  decode-at base-Unit  _                      _ = just tt
-  decode-at base-Int   (SV-Lit fits-int   v)  _ = just v
-  decode-at base-Float (SV-Lit fits-float v)  _ = just v
+  decode-at : ∀ {A} → Base ∅ₖ A → StoredValue FS → LocState FS → Maybe ⟦ A ⟧
+  decode-at b-Unit  _                      _ = just tt
+  decode-at b-Int   (SV-Lit fits-int   v)  _ = just v
+  decode-at b-Float (SV-Lit fits-float v)  _ = just v
   {-# CATCHALL #-}
   decode-at {A} _      (SV-Ptr loc)           s = readTyped A loc s
   {-# CATCHALL #-}

@@ -24,6 +24,7 @@
 module Once.Arith.SigOp.Block where
 
 open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; cmp-bit)
+open import Once.Spec.Type using (Base; b-*; b-Float; b-Int; b-Unit; ∅ₖ)
 open import Data.Integer using (ℤ; +_; -[1+_]) renaming ()
 import Data.Integer as ℤ
 open import Data.Nat using (suc)
@@ -34,7 +35,6 @@ open import Data.Product using (_,_)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod)
 open import Once.Spec.Name using (bare)
 
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
@@ -233,16 +233,16 @@ block-semM (acmp o a b)    tn inp = cmp-bit (int-bits tn) o (block-semM a tn inp
 -- semantics gets the arith result directly. `semM` is the
 -- definitional modular-`Word` evaluator (`block-semM`).
 -- A block's input shape is a tuple of `Unit`/`Int` ⇒ its `shape-as-type` is base.
-shape-as-type-base : ∀ (sh : InputShape) → IsBaseType (shape-as-type sh)
-shape-as-type-base shape-unit       = base-Unit
-shape-as-type-base shape-int        = base-Int
-shape-as-type-base shape-float      = base-Float
-shape-as-type-base (shape-pair l r) = base-Prod (shape-as-type-base l) (shape-as-type-base r)
+shape-as-type-base : ∀ (sh : InputShape) → Base ∅ₖ (shape-as-type sh)
+shape-as-type-base shape-unit       = b-Unit
+shape-as-type-base shape-int        = b-Int
+shape-as-type-base shape-float      = b-Float
+shape-as-type-base (shape-pair l r) = b-* (shape-as-type-base l) (shape-as-type-base r)
 
--- …and the codomain's, which used to be the constant `base-Int`.
-numtype-as-type-base : ∀ (n : NumType) → IsBaseType (numtype-as-type n)
-numtype-as-type-base NInt   = base-Int
-numtype-as-type-base NFloat = base-Float
+-- …and the codomain's, which used to be the constant `b-Int`.
+numtype-as-type-base : ∀ (n : NumType) → Base ∅ₖ (numtype-as-type n)
+numtype-as-type-base NInt   = b-Int
+numtype-as-type-base NFloat = b-Float
 
 -- Split on the kind so `M.⟦ numtype-as-type n ⟧` reduces to `block-semM`'s
 -- `Carrier`; the two branches are otherwise identical.

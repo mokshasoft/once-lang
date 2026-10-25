@@ -30,6 +30,7 @@ open import Data.Fin using (Fin)
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-*; sub-+; subᶜ-*; subᶜ-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Internal.Type.DecEq using (_≟T_; _≟F_; _≟q_)
@@ -110,8 +111,8 @@ shape (var _)        = 9
 <:ᶜ-shape subᶜ-int        _ = refl
 <:ᶜ-shape subᶜ-float      _ = refl
 <:ᶜ-shape (subᶜ-arr _ _)  _ = refl
-<:ᶜ-shape (subᶜ-prod _ _) _ = refl
-<:ᶜ-shape (subᶜ-sum _ _)  _ = refl
+<:ᶜ-shape (subᶜ-* _ _) _ = refl
+<:ᶜ-shape (subᶜ-+ _ _)  _ = refl
 <:ᶜ-shape subᶜ-μ          _ = refl
 <:ᶜ-shape (subᶜ-ν _)      _ = refl
 <:ᶜ-shape subᶜ-var        _ = refl
@@ -157,13 +158,13 @@ clashJ         ne (no a)     (no b)     =
 
 -- Products and sums: componentwise.
 prod-least : ∀ {m} {A A′ B B′ C E D : Ty m} → A ⊔ A′ ≔ C → B ⊔ B′ ≔ E → (A * B) <:ᶜ D → (A′ * B′) <:ᶜ D → (C * E) <:ᶜ D
-prod-least j k (subᶜ-prod p q) (subᶜ-prod p′ q′) = subᶜ-prod (least j p p′) (least k q q′)
+prod-least j k (subᶜ-* p q) (subᶜ-* p′ q′) = subᶜ-* (least j p p′) (least k q q′)
 
 prod-fst : ∀ {m} {A A′ B B′ : Ty m} → UB (A * B) (A′ * B′) → UB A A′
-prod-fst (_ , subᶜ-prod p _ , subᶜ-prod p′ _) = _ , p , p′
+prod-fst (_ , subᶜ-* p _ , subᶜ-* p′ _) = _ , p , p′
 
 prod-snd : ∀ {m} {A A′ B B′ : Ty m} → UB (A * B) (A′ * B′) → UB B B′
-prod-snd (_ , subᶜ-prod _ q , subᶜ-prod _ q′) = _ , q , q′
+prod-snd (_ , subᶜ-* _ q , subᶜ-* _ q′) = _ , q , q′
 
 prodJ : ∀ {m} {A A′ B B′ : Ty m} → Join? A A′ → Join? B B′ → Join? (A * B) (A′ * B′)
 prodJ (joined C j) (joined E k) = joined (C * E) (j-prod j k)
@@ -171,13 +172,13 @@ prodJ (apart n)    _            = apart (λ u → n (prod-fst u))
 prodJ (joined _ _) (apart n)    = apart (λ u → n (prod-snd u))
 
 sum-least : ∀ {m} {A A′ B B′ C E D : Ty m} → A ⊔ A′ ≔ C → B ⊔ B′ ≔ E → (A + B) <:ᶜ D → (A′ + B′) <:ᶜ D → (C + E) <:ᶜ D
-sum-least j k (subᶜ-sum p q) (subᶜ-sum p′ q′) = subᶜ-sum (least j p p′) (least k q q′)
+sum-least j k (subᶜ-+ p q) (subᶜ-+ p′ q′) = subᶜ-+ (least j p p′) (least k q q′)
 
 sum-inl : ∀ {m} {A A′ B B′ : Ty m} → UB (A + B) (A′ + B′) → UB A A′
-sum-inl (_ , subᶜ-sum p _ , subᶜ-sum p′ _) = _ , p , p′
+sum-inl (_ , subᶜ-+ p _ , subᶜ-+ p′ _) = _ , p , p′
 
 sum-inr : ∀ {m} {A A′ B B′ : Ty m} → UB (A + B) (A′ + B′) → UB B B′
-sum-inr (_ , subᶜ-sum _ q , subᶜ-sum _ q′) = _ , q , q′
+sum-inr (_ , subᶜ-+ _ q , subᶜ-+ _ q′) = _ , q , q′
 
 sumJ : ∀ {m} {A A′ B B′ : Ty m} → Join? A A′ → Join? B B′ → Join? (A + B) (A′ + B′)
 sumJ (joined C j) (joined E k) = joined (C + E) (j-sum j k)
@@ -259,11 +260,11 @@ sound : ∀ {m} {A B C : Ty m} → Joins A B C → A ⊔ B ≔ C
 sound j-refl      = reflJ _
 sound j-voidˡ     = voidˡ _
 sound j-voidʳ     = voidʳ _
-sound (j-prod r s) = record { left = subᶜ-prod (left (sound r)) (left (sound s))
-                            ; right = subᶜ-prod (right (sound r)) (right (sound s))
+sound (j-prod r s) = record { left = subᶜ-* (left (sound r)) (left (sound s))
+                            ; right = subᶜ-* (right (sound r)) (right (sound s))
                             ; least = prod-least (sound r) (sound s) }
-sound (j-sum r s)  = record { left = subᶜ-sum (left (sound r)) (left (sound s))
-                            ; right = subᶜ-sum (right (sound r)) (right (sound s))
+sound (j-sum r s)  = record { left = subᶜ-+ (left (sound r)) (left (sound s))
+                            ; right = subᶜ-+ (right (sound r)) (right (sound s))
                             ; least = sum-least (sound r) (sound s) }
 sound (j-arr {π = π} {π′} r) = record { left = subᶜ-arr (left (sound r)) (⊔p-ˡ π π′)
                                      ; right = subᶜ-arr (right (sound r)) (⊔p-ʳ π π′)
@@ -285,8 +286,8 @@ private
 <:ᶜ-antisym subᶜ-int         _                  = refl
 <:ᶜ-antisym subᶜ-float       _                  = refl
 <:ᶜ-antisym (subᶜ-arr b g)   (subᶜ-arr b′ g′)   = arr-≡ (⊑π-antisym g g′) (<:ᶜ-antisym b b′)
-<:ᶜ-antisym (subᶜ-prod a b)  (subᶜ-prod a′ b′)  = cong₂ _*_ (<:ᶜ-antisym a a′) (<:ᶜ-antisym b b′)
-<:ᶜ-antisym (subᶜ-sum a b)   (subᶜ-sum a′ b′)   = cong₂ _+_ (<:ᶜ-antisym a a′) (<:ᶜ-antisym b b′)
+<:ᶜ-antisym (subᶜ-* a b)  (subᶜ-* a′ b′)  = cong₂ _*_ (<:ᶜ-antisym a a′) (<:ᶜ-antisym b b′)
+<:ᶜ-antisym (subᶜ-+ a b)   (subᶜ-+ a′ b′)   = cong₂ _+_ (<:ᶜ-antisym a a′) (<:ᶜ-antisym b b′)
 <:ᶜ-antisym subᶜ-μ           _                  = refl
 <:ᶜ-antisym (subᶜ-ν {F = F} g) (subᶜ-ν g′)      = cong (ν F) (fin-inj (⊑π-antisym g g′))
 <:ᶜ-antisym subᶜ-var         _                  = refl
@@ -307,8 +308,8 @@ Joins-least-<: : ∀ {m} {A B C D : Ty m} → Joins A B C → A <: D → B <: D 
 Joins-least-<: j-refl        p _ = p
 Joins-least-<: j-voidˡ       _ q = q
 Joins-least-<: j-voidʳ       p _ = p
-Joins-least-<: (j-prod r s)  (sub-prod p₁ p₂) (sub-prod q₁ q₂) = sub-prod (Joins-least-<: r p₁ q₁) (Joins-least-<: s p₂ q₂)
-Joins-least-<: (j-sum r s)   (sub-sum p₁ p₂)  (sub-sum q₁ q₂)  = sub-sum (Joins-least-<: r p₁ q₁) (Joins-least-<: s p₂ q₂)
+Joins-least-<: (j-prod r s)  (sub-* p₁ p₂) (sub-* q₁ q₂) = sub-* (Joins-least-<: r p₁ q₁) (Joins-least-<: s p₂ q₂)
+Joins-least-<: (j-sum r s)   (sub-+ p₁ p₂)  (sub-+ q₁ q₂)  = sub-+ (Joins-least-<: r p₁ q₁) (Joins-least-<: s p₂ q₂)
 Joins-least-<: (j-arr r)     (sub-arr a b g)  (sub-arr _ b′ g′) = sub-arr a (Joins-least-<: r b b′) (⊔p-least g g′)
 Joins-least-<: j-ν           (sub-ν g)        (sub-ν h)         = sub-ν (⊔f-least g h)
 

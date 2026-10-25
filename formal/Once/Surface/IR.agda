@@ -13,13 +13,13 @@
 module Once.Surface.IR where
 
 open import Once.Spec.Grade
+open import Once.Spec.Type using (Base; ∅ₖ)
 open import Once.Type.Grade
 open import Once.Internal.Type
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Internal.Type.WellFormed using (IsBaseType)
 
 open import Data.String using (String)
 
@@ -88,7 +88,7 @@ data SurfaceIR : Type → Type → Set where
   --
   -- Examples: syscalls, arithmetic, string operations
   --
-  SigOp    : ∀ {A B} → String → IsBaseType A → IsBaseType B → SurfaceIR A B
+  SigOp    : ∀ {A B} → String → Base ∅ₖ A → Base ∅ₖ B → SurfaceIR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

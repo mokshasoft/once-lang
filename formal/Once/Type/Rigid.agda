@@ -12,6 +12,7 @@
 module Once.Type.Rigid where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Once.Spec.Type using (Base; ∅ₖ)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (Σ-syntax; _×_; _,_)
@@ -28,7 +29,6 @@ open import Once.Spec.Type using (Ty; KCtx; Base; Type; Unit; Void; _*_; _+_; _�
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Internal.Type.WellFormed using (IsBaseType)
 open import Once.Internal.Type.Instance
 
 ------------------------------------------------------------------------

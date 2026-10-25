@@ -38,6 +38,7 @@ open import Once.Spec.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
 import Once.Internal.Type as Ty
 import Once.Spec.Type as Ty
 open import Once.Internal.Type.Sub
+open import Once.Spec.Sub using (sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Type.Sub
@@ -143,8 +144,8 @@ mutual
               (cong-app (liftFn-∘ {B = B′} {C = A′ + B′} {A = B} inr (coeIR b)) y))
        (retargetʳ {n′ = return∞ (⟦ b ⟧<: y′) >>=∞ λ u → return∞ (inj₂ u)} refl
          (RelS-bind (coeIR-rel b r) λ {u} {u′} ru → ≡ˡ (cong-app (liftFn-inr {B = B′} {A = A′}) u) (relS-ret ru)))
-  coeIR-rel (sub-sum a b) {inj₁ _} {inj₂ _} ()
-  coeIR-rel (sub-sum a b) {inj₂ _} {inj₁ _} ()
+  coeIR-rel (sub-+ a b) {inj₁ _} {inj₂ _} ()
+  coeIR-rel (sub-+ a b) {inj₂ _} {inj₁ _} ()
   coeIR-rel sub-var {()}   -- a type variable has no value
 
   -- A component projected, then converted.

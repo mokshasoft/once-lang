@@ -33,7 +33,7 @@ open import Once.Spec.Type.Substitution using (⟨⟩-∘; respects-∘)
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; pureᶠ; actᶠ)
 open import Once.Spec.Signature using (DeclType; constant; value; operation; ⌜_⌝ᵈ; ⌜_⌝; BTy)
 module BT = Once.Spec.Signature.BTy
-import Once.Postulates
+open import Once.Type.Closed using (sub0)
 import Once.Spec.Core.Derived
 open import Function using (_$_)
 open import Once.Spec.Core.Syntax using (Tm; _⟪_⟫ₜ; _!!_; coerce; module Schema)
@@ -67,10 +67,7 @@ _⟨_⟩ˡ : ∀ {n} → Locals m n → TySub m k → Locals k n
 private
   mutual
     closed : (A : Ty 0) (τ : TySub 0 m) → A ⟨ τ ⟩ ⟨ σ ⟩ ≡ A ⟨ (λ ()) ⟩
-    closed A τ = trans (⟨⟩-∘ A τ σ) (cong (A ⟨_⟩) (fin0-ext _ _))
-
-    fin0-ext : ∀ {l} (f g : TySub 0 l) → f ≡ g
-    fin0-ext f g = Once.Postulates.extensionality (λ ())
+    closed A τ = trans (⟨⟩-∘ A τ σ) (sub0 A _ _)
 
 ↑-⟨⟩ : ∀ (T : Type) → ↑ {m} T ⟨ σ ⟩ ≡ ↑ {k} T
 ↑-⟨⟩ T = closed T (λ ())

@@ -16,6 +16,7 @@
 module Once.Denotation.ValueDomain where
 
 import Once.Spec.Type as SpT
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 open import Once.Spec.Type using (Base)
 open import Once.Spec.Type using (var; Ty; Fun; KCtx; WFFun)
 open import Data.Unit using (⊤)
@@ -40,7 +41,6 @@ open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedF; wf-Sum; wf-Prod)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
 
@@ -151,22 +151,22 @@ cohᴰ (var _)  = refl
 ------------------------------------------------------------------------
 
 forgetᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → ⟦ A ⟧ᴰ → Val.⟦ A ⟧
-forgetᵇ base-Unit   x = x
-forgetᵇ base-Void   ()
-forgetᵇ base-Int    x = x
-forgetᵇ base-Float  x = x
-forgetᵇ (base-Prod a b) (x , y) = forgetᵇ a x , forgetᵇ b y
-forgetᵇ (base-Sum a b) (inj₁ x) = inj₁ (forgetᵇ a x)
-forgetᵇ (base-Sum a b) (inj₂ y) = inj₂ (forgetᵇ b y)
+forgetᵇ b-Unit   x = x
+forgetᵇ b-Void   ()
+forgetᵇ b-Int    x = x
+forgetᵇ b-Float  x = x
+forgetᵇ (b-* a b) (x , y) = forgetᵇ a x , forgetᵇ b y
+forgetᵇ (b-+ a b) (inj₁ x) = inj₁ (forgetᵇ a x)
+forgetᵇ (b-+ a b) (inj₂ y) = inj₂ (forgetᵇ b y)
 
 injectᵇ : ∀ {m} {Δₖ : KCtx m} {A : Ty m} → Base Δₖ A → Val.⟦ A ⟧ → ⟦ A ⟧ᴰ
-injectᵇ base-Unit   x = x
-injectᵇ base-Void   ()
-injectᵇ base-Int    x = x
-injectᵇ base-Float  x = x
-injectᵇ (base-Prod a b) (x , y) = injectᵇ a x , injectᵇ b y
-injectᵇ (base-Sum a b) (inj₁ x) = inj₁ (injectᵇ a x)
-injectᵇ (base-Sum a b) (inj₂ y) = inj₂ (injectᵇ b y)
+injectᵇ b-Unit   x = x
+injectᵇ b-Void   ()
+injectᵇ b-Int    x = x
+injectᵇ b-Float  x = x
+injectᵇ (b-* a b) (x , y) = injectᵇ a x , injectᵇ b y
+injectᵇ (b-+ a b) (inj₁ x) = inj₁ (injectᵇ a x)
+injectᵇ (b-+ a b) (inj₂ y) = inj₂ (injectᵇ b y)
 
 ------------------------------------------------------------------------
 -- Plan 0.58: the `⟦_⟧ᴰ`-level functor coercion — the trace-preserving mirror
@@ -175,21 +175,21 @@ injectᵇ (base-Sum a b) (inj₂ y) = inj₂ (injectᵇ b y)
 -- effects (the `Val`-fold's `forget`-per-layer silently dropped them). Purely
 -- structural: `Id`→carrier, `⊕`/`⊗`→structural, `K A`→`inject` (a `K` value is
 -- `Val.⟦A⟧`; `inject` lifts it to `⟦A⟧ᴰ`, the identity at the base types `K`
--- holds for a `WellFormedF`).
+-- holds for a `WFFun ∅ₖ`).
 -- The FORWARD direction, the mirror of `coerce-functor` at the `ᴰ` level.
 -- `Ana` needs it to hand its coalgebra to `anaᵈ`. At `K` it forgets, exactly
--- as the inverse injects — and `WellFormedF` puts `K` only at base types,
+-- as the inverse injects — and `WFFun ∅ₖ` puts `K` only at base types,
 -- where `forget` is the identity.
 coerce-functor-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ SpT.⟦ F ⟧F C ⟧ᴰ → ⟦ F ⟧F ⟦ C ⟧ᴰ
 coerce-functor-D (wf-K b)          C x        = forgetᵇ b x
 coerce-functor-D wf-Id             C x        = x
-coerce-functor-D (wf-Sum wf wg)    C (inj₁ x) = inj₁ (coerce-functor-D wf C x)
-coerce-functor-D (wf-Sum wf wg)    C (inj₂ y) = inj₂ (coerce-functor-D wg C y)
-coerce-functor-D (wf-Prod wf wg)   C (x , y)  = (coerce-functor-D wf C x , coerce-functor-D wg C y)
+coerce-functor-D (wf-⊕ wf wg)    C (inj₁ x) = inj₁ (coerce-functor-D wf C x)
+coerce-functor-D (wf-⊕ wf wg)    C (inj₂ y) = inj₂ (coerce-functor-D wg C y)
+coerce-functor-D (wf-⊗ wf wg)   C (x , y)  = (coerce-functor-D wf C x , coerce-functor-D wg C y)
 
 coerce-functor⁻¹-D : ∀ {m} {Δₖ : KCtx m} {F : Fun m} → WFFun Δₖ F → ∀ C → ⟦ F ⟧F ⟦ C ⟧ᴰ → ⟦ SpT.⟦ F ⟧F C ⟧ᴰ
 coerce-functor⁻¹-D (wf-K b)        C x        = injectᵇ b x
 coerce-functor⁻¹-D wf-Id           C x        = x
-coerce-functor⁻¹-D (wf-Sum wf wg)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D wf C x)
-coerce-functor⁻¹-D (wf-Sum wf wg)  C (inj₂ y) = inj₂ (coerce-functor⁻¹-D wg C y)
-coerce-functor⁻¹-D (wf-Prod wf wg) C (x , y)  = (coerce-functor⁻¹-D wf C x , coerce-functor⁻¹-D wg C y)
+coerce-functor⁻¹-D (wf-⊕ wf wg)  C (inj₁ x) = inj₁ (coerce-functor⁻¹-D wf C x)
+coerce-functor⁻¹-D (wf-⊕ wf wg)  C (inj₂ y) = inj₂ (coerce-functor⁻¹-D wg C y)
+coerce-functor⁻¹-D (wf-⊗ wf wg) C (x , y)  = (coerce-functor⁻¹-D wf C x , coerce-functor⁻¹-D wg C y)

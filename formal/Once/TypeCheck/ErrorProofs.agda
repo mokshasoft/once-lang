@@ -45,7 +45,7 @@ import Once.Spec.Type as T
 import Once.Internal.Type.Poly as T
 import Once.Type as T
 open import Once.Spec.Surface.Syntax as Raw using (RLam; RQualified)
-open import Once.Internal.Syntax as Raw using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Once.Internal.Type.Join using (UB; join?-apart)
 open import Once.Spec.Sub using (sub-int; sub-unit)
@@ -65,31 +65,31 @@ import Once.Internal.Context
 -- Unconditional-failure paths (now trivial after refactor)
 ------------------------------------------------------------------------
 
-lam-infer-is-LambdaInInferMode : ∀ {m} (ctx : NamedCtx m) (x : String) (body : RawExpr) {err : TypeError}
+lam-infer-is-LambdaInInferMode : ∀ {m} (ctx : NamedCtx m) (x : String) (body : Expr) {err : TypeError}
   → inferElab ctx (RLam x body) ≡ failure err
   → err ≡ LambdaInInferMode
 lam-infer-is-LambdaInInferMode ctx x body refl = refl
 
-inl-app-infer-is-InlInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
+inl-app-infer-is-InlInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : Expr) {err : TypeError}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) ≡ failure err
   → err ≡ InlInInferMode
 inl-app-infer-is-InlInInferMode ctx arg refl = refl
 
-inr-app-infer-is-InrInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
+inr-app-infer-is-InrInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : Expr) {err : TypeError}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "inr")) arg) ≡ failure err
   → err ≡ InrInInferMode
 inr-app-infer-is-InrInInferMode ctx arg refl = refl
 
-initial-app-infer-is-InitialInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
+initial-app-infer-is-InitialInInferMode : ∀ {m} (ctx : NamedCtx m) (arg : Expr) {err : TypeError}
   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "initial")) arg) ≡ failure err
   → err ≡ InitialInInferMode
 initial-app-infer-is-InitialInInferMode ctx arg refl = refl
-inl-check-Unit : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
+inl-check-Unit : ∀ {m} (ctx : NamedCtx m) (arg : Expr) {err : TypeError}
                → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Unit ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Unit ctx arg refl = refl
 
-inl-check-Void : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
+inl-check-Void : ∀ {m} (ctx : NamedCtx m) (arg : Expr) {err : TypeError}
                → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Void ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Void ctx arg refl = refl
@@ -109,7 +109,7 @@ private
   fail-inj refl = refl
 
   -- `rule` at a result whose type the rule rejects with `e₀`.
-  rejects : ∀ {m} {ctx : NamedCtx m} {x y : RawExpr} (rule : VerifiedInferResult ctx x → VerifiedInferResult ctx y)
+  rejects : ∀ {m} {ctx : NamedCtx m} {x y : Expr} (rule : VerifiedInferResult ctx x → VerifiedInferResult ctx y)
             (r : VerifiedInferResult ctx x) {T : Ty m} {Ψ' eE' d' f'} {e₀ err : TypeError}
           → proj₁ r ≡ success T Ψ' eE' d' f'
           → (∀ {w} → proj₁ (rule (success T Ψ' eE' d' f' , w)) ≡ failure e₀)
@@ -119,7 +119,7 @@ private
 
   -- `-e`: a literal operand folds (the outer equation is `success ≡ failure`);
   -- any other operand goes through `inferElabV-RNeg-aux` at its result.
-  neg-rejects : ∀ {m} {ctx : NamedCtx m} (e : RawExpr) (v : NegOperandView e) {T : Ty m} {Ψ' eE' d' f'} {e₀ err : TypeError}
+  neg-rejects : ∀ {m} {ctx : NamedCtx m} (e : Expr) (v : NegOperandView e) {T : Ty m} {Ψ' eE' d' f'} {e₀ err : TypeError}
               → proj₁ (inferElabV ctx e) ≡ success T Ψ' eE' d' f'
               → (∀ {w} → proj₁ (inferElabV-RNeg-aux ctx e (success T Ψ' eE' d' f' , w)) ≡ failure e₀)
               → proj₁ (inferElabV-neg-aux ctx e v) ≡ failure err
@@ -128,7 +128,7 @@ private
   neg-rejects .(Raw.RFloat i f l) (nov-float i f l) _ _ ()
   neg-rejects {ctx = ctx} e (nov-other .e) eqI fact eqO = rejects (inferElabV-RNeg-aux ctx e) (inferElabV ctx e) eqI fact eqO
 
-inl-check-Int : ∀ {m} (ctx : NamedCtx m) (arg : RawExpr) {err : TypeError}
+inl-check-Int : ∀ {m} (ctx : NamedCtx m) (arg : Expr) {err : TypeError}
                → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Int ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Int ctx arg refl = refl
@@ -137,58 +137,58 @@ qualified-not-found-is-UnboundQualified : ∀ {m} (ctx : NamedCtx m) (name alias
   → inferElab ctx (RQualified name alias) ≡ failure err
   → err ≡ UnboundQualified name alias
 qualified-not-found-is-UnboundQualified ctx name alias refl = refl
-fst-non-pair-Unit : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
+fst-non-pair-Unit : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                     → err ≡ FstNeedsPair
 fst-non-pair-Unit ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-fst-non-pair-Int : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
+fst-non-pair-Int : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Int Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                    → err ≡ FstNeedsPair
 fst-non-pair-Int ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-snd-non-pair-Unit : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
+snd-non-pair-Unit : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                     → err ≡ SndNeedsPair
 snd-non-pair-Unit ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-snd-non-pair-Int : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
+snd-non-pair-Int : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Int Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                    → err ≡ SndNeedsPair
 snd-non-pair-Int ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-neg-non-Int-Unit : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr)
+neg-non-Int-Unit : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
                    → inferElab ctx (Raw.RNeg e) ≡ failure err
                    → err ≡ TypeMismatch {0} Int Unit
 neg-non-Int-Unit ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
-case-scrut-Unit : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                    (xL : String) (eL : Raw.RawExpr)
-                    (xR : String) (eR : Raw.RawExpr)
+case-scrut-Unit : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                    (xL : String) (eL : Raw.Expr)
+                    (xR : String) (eR : Raw.Expr)
                     {Ψ' eE' d' f' err}
                   → inferElab ctx scrut ≡ success Unit Ψ' eE' d' f'
                   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                   → err ≡ CaseScrutineeNotSum
 case-scrut-Unit ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-case-scrut-Int : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                   (xL : String) (eL : Raw.RawExpr)
-                   (xR : String) (eR : Raw.RawExpr)
+case-scrut-Int : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                   (xL : String) (eL : Raw.Expr)
+                   (xR : String) (eR : Raw.Expr)
                    {Ψ' eE' d' f' err}
                  → inferElab ctx scrut ≡ success Int Ψ' eE' d' f'
                  → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                  → err ≡ CaseScrutineeNotSum
 case-scrut-Int ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-case-branch-mismatch-is-CaseBranchMismatch : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-    (xL : String) (eL : Raw.RawExpr)
-    (xR : String) (eR : Raw.RawExpr)
+case-branch-mismatch-is-CaseBranchMismatch : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+    (xL : String) (eL : Raw.Expr)
+    (xR : String) (eR : Raw.Expr)
     (A B : Ty m)
     {Ψs scrutE ds fs}
     (C₁ C₂ : Ty m) {qℓ qr}
@@ -282,7 +282,7 @@ check-RUnit-type-mismatch ctx T ¬eq eq
 ... | yes sub-unit | _    = ⊥-elim (¬eq refl)
 ... | no _         | refl = refl
 
-lam-usage-violation-is-UsageViolation : ∀ {m} (ctx : NamedCtx m) (x : String) (body : Raw.RawExpr)
+lam-usage-violation-is-UsageViolation : ∀ {m} (ctx : NamedCtx m) (x : String) (body : Raw.Expr)
     (A : Ty m) (q : _) (B : Ty m)
     (q' : _) {Ψ' eE' d' f' err}
   → Once.TypeCheck.Elaborate.checkElab
@@ -323,7 +323,7 @@ lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
 --
 -- `binop-right-err-wraps` below needs no such repair: it requires the LEFT to
 -- be `Int`, and an `Int` left with a `Float` right IS still an error.
-binop-left-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+binop-left-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.Expr)
     {sub-err outer-err}
   → Once.TypeCheck.Elaborate.notNumeric (inferElab ctx e₁) ≡ just sub-err
   → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
@@ -446,7 +446,7 @@ binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
 ...   | refl with eqOuter
 ...     | refl = refl
 
-binop-right-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+binop-right-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.Expr)
     {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
   → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
       ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁
@@ -577,25 +577,25 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success (T.ν _ _) _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter
 ...   | refl = refl
-fst-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
+fst-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                     → err ≡ FstNeedsPair
 fst-non-pair-Float ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-fst-non-pair-Sum : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m}
+fst-non-pair-Sum : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {A B : Ty m}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.+ B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                   → err ≡ FstNeedsPair
 fst-non-pair-Sum ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-fst-non-pair-Fun : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m} {q : _}
+fst-non-pair-Fun : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {A B : Ty m} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                   → err ≡ FstNeedsPair
 fst-non-pair-Fun ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-neg-non-Int-Float : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr)
+neg-non-Int-Float : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
                    → inferElab ctx (Raw.RNeg e) ≡ failure err
@@ -613,148 +613,148 @@ neg-non-Int-Float : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr)
 neg-non-Int-Float ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 
-neg-non-Int-Product : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m}
+neg-non-Int-Product : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m}
                        {Ψ' eE' d' f' err}
                      → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
                      → inferElab ctx (Raw.RNeg e) ≡ failure err
                      → err ≡ TypeMismatch Int (A T.* B)
 neg-non-Int-Product ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
-neg-non-Int-Sum : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m}
+neg-non-Int-Sum : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m}
                    {Ψ' eE' d' f' err}
                  → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
                  → inferElab ctx (Raw.RNeg e) ≡ failure err
                  → err ≡ TypeMismatch Int (A T.+ B)
 neg-non-Int-Sum ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
-snd-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr)
+snd-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
                     → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                     → err ≡ SndNeedsPair
 snd-non-pair-Float ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-snd-non-pair-Sum : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m}
+snd-non-pair-Sum : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {A B : Ty m}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.+ B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                   → err ≡ SndNeedsPair
 snd-non-pair-Sum ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-snd-non-pair-Fun : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m} {q : _}
+snd-non-pair-Fun : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {A B : Ty m} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                   → err ≡ SndNeedsPair
 snd-non-pair-Fun ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-case-scrut-Float : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                      (xL : String) (eL : Raw.RawExpr)
-                      (xR : String) (eR : Raw.RawExpr)
+case-scrut-Float : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                      (xL : String) (eL : Raw.Expr)
+                      (xR : String) (eR : Raw.Expr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx scrut ≡ success T.Float Ψ' eE' d' f'
                     → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                     → err ≡ CaseScrutineeNotSum
 case-scrut-Float ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-case-scrut-Product : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                      (xL : String) (eL : Raw.RawExpr)
-                      (xR : String) (eR : Raw.RawExpr)
+case-scrut-Product : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                      (xL : String) (eL : Raw.Expr)
+                      (xR : String) (eR : Raw.Expr)
                       {A B : Ty m} {Ψ' eE' d' f' err}
                     → inferElab ctx scrut ≡ success (A T.* B) Ψ' eE' d' f'
                     → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                     → err ≡ CaseScrutineeNotSum
 case-scrut-Product ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-case-scrut-Fun : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                      (xL : String) (eL : Raw.RawExpr)
-                      (xR : String) (eR : Raw.RawExpr)
+case-scrut-Fun : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                      (xL : String) (eL : Raw.Expr)
+                      (xR : String) (eR : Raw.Expr)
                       {A B : Ty m} {q : _} {Ψ' eE' d' f' err}
                     → inferElab ctx scrut ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                     → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                     → err ≡ CaseScrutineeNotSum
 case-scrut-Fun ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-fst-non-pair-Eff : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m}
+fst-non-pair-Eff : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {A B : Ty m}
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                    → err ≡ FstNeedsPair
 fst-non-pair-Eff ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-fst-non-pair-μ : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m}
+fst-non-pair-μ : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {F : Fun m}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.μ F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                 → err ≡ FstNeedsPair
 fst-non-pair-μ ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-fst-non-pair-ν : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m} {π}
+fst-non-pair-ν : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {F : Fun m} {π}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.ν F π) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                 → err ≡ FstNeedsPair
 fst-non-pair-ν ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-snd-non-pair-Eff : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {A B : Ty m}
+snd-non-pair-Eff : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {A B : Ty m}
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                    → err ≡ SndNeedsPair
 snd-non-pair-Eff ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-snd-non-pair-μ : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m}
+snd-non-pair-μ : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {F : Fun m}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.μ F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                 → err ≡ SndNeedsPair
 snd-non-pair-μ ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-snd-non-pair-ν : ∀ {m} (ctx : NamedCtx m) (arg : Raw.RawExpr) {F : Fun m} {π}
+snd-non-pair-ν : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {F : Fun m} {π}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.ν F π) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                 → err ≡ SndNeedsPair
 snd-non-pair-ν ctx arg eqInner eqOuter = rejects (inferSndOn ctx arg) (inferElabV ctx arg) eqInner refl eqOuter
-neg-non-Int-Eff : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m}
+neg-non-Int-Eff : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind T.Many T.eff ] B)
 neg-non-Int-Eff ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
-neg-non-Int-μ : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {F : Fun m}
+neg-non-Int-μ : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {F : Fun m}
                  {Ψ' eE' d' f' err}
                → inferElab ctx e ≡ success (T.μ F) Ψ' eE' d' f'
                → inferElab ctx (Raw.RNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.μ F)
 neg-non-Int-μ ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
-neg-non-Int-ν : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {F : Fun m} {π}
+neg-non-Int-ν : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {F : Fun m} {π}
                  {Ψ' eE' d' f' err}
                → inferElab ctx e ≡ success (T.ν F π) Ψ' eE' d' f'
                → inferElab ctx (Raw.RNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.ν F π)
 neg-non-Int-ν ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
-neg-non-Int-Fun : ∀ {m} (ctx : NamedCtx m) (e : Raw.RawExpr) {A B : Ty m} {q : _}
+neg-non-Int-Fun : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind q T.pure ] B)
 neg-non-Int-Fun ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
-case-scrut-Eff : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                    (xL : String) (eL : Raw.RawExpr)
-                    (xR : String) (eR : Raw.RawExpr)
+case-scrut-Eff : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                    (xL : String) (eL : Raw.Expr)
+                    (xR : String) (eR : Raw.Expr)
                     {A B : Ty m} {Ψ' eE' d' f' err}
                   → inferElab ctx scrut ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                   → err ≡ CaseScrutineeNotSum
 case-scrut-Eff ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-case-scrut-μ : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                  (xL : String) (eL : Raw.RawExpr)
-                  (xR : String) (eR : Raw.RawExpr)
+case-scrut-μ : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                  (xL : String) (eL : Raw.Expr)
+                  (xR : String) (eR : Raw.Expr)
                   {F : Fun m} {Ψ' eE' d' f' err}
                 → inferElab ctx scrut ≡ success (T.μ F) Ψ' eE' d' f'
                 → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
                 → err ≡ CaseScrutineeNotSum
 case-scrut-μ ctx scrut xL eL xR eR eqInner eqOuter =
   rejects (inferElabV-RDestruct-aux ctx scrut xL eL xR eR) (inferElabV ctx scrut) eqInner refl eqOuter
-case-scrut-ν : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.RawExpr)
-                (xL : String) (eL : Raw.RawExpr)
-                (xR : String) (eR : Raw.RawExpr)
+case-scrut-ν : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
+                (xL : String) (eL : Raw.Expr)
+                (xR : String) (eR : Raw.Expr)
                 {F : Fun m} {π} {Ψ' eE' d' f' err}
               → inferElab ctx scrut ≡ success (T.ν F π) Ψ' eE' d' f'
               → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err

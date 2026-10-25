@@ -36,9 +36,10 @@ open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Flo
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly
 open import Once.Type
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.Internal.Syntax as Raw
+open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw as Raw
 open import Once.Spec.Name using (CanonicalName; canonical; gen; NotGenerator)
 open import Once.Spec.Name using (generatorNS)
@@ -66,7 +67,7 @@ emptyPolyCtx : PolyCtx
 emptyPolyCtx = []
 
 -- | Lookup a polymorphic def by name.
-lookupPoly : PolyCtx → String → Maybe (PolyType × RawExpr)
+lookupPoly : PolyCtx → String → Maybe (PolyType × Expr)
 lookupPoly [] _ = nothing
 lookupPoly ((n , schema , body) ∷ rest) x with StrProp._≟_ n x
 ... | yes _ = just (schema , body)
@@ -89,7 +90,7 @@ removePoly x ((n , s , b) ∷ rest) with StrProp._≟_ n x
 -- Load-bearing for well-founded termination of the poly-splice recursion
 -- in `resolveExpr`. Plan 0.6.2 Phase 4 (final).
 removePoly-decreases :
-  ∀ {r : PolyType × RawExpr} (x : String) (polys : PolyCtx)
+  ∀ {r : PolyType × Expr} (x : String) (polys : PolyCtx)
   → lookupPoly polys x ≡ just r
   → length (removePoly x polys) < length polys
 removePoly-decreases x [] ()
@@ -102,7 +103,7 @@ removePoly-decreases x ((n , s , b) ∷ rest) eq with StrProp._≟_ n x
 -- resolution (Plan 0.58 E1: `checkElab` re-elaborates a def's body in
 -- its prefix, terminating because the prefix strictly shrinks).
 lookupPolyPrefix-decreases :
-  ∀ (x : String) (polys : PolyCtx) {s : PolyType} {b : RawExpr} {prefix : PolyCtx}
+  ∀ (x : String) (polys : PolyCtx) {s : PolyType} {b : Expr} {prefix : PolyCtx}
   → lookupPolyPrefix polys x ≡ just (s , b , prefix)
   → length prefix < length polys
 lookupPolyPrefix-decreases x [] ()
@@ -333,9 +334,9 @@ classifyGen (canonical (_ ∷ _ ∷ _ ∷ _)) = gv-other (notGen-shape λ ())
 -- Lets callers recover a term-level witness `classifyAppHeadView f ≡ v`
 -- after a `with`-match — used to feed the reverse bridge
 -- `view-other⇒classifyAppHead-nothing`.
-ViewBundle : RawExpr → Set
+ViewBundle : Expr → Set
 ViewBundle f =
   ∃-syntax (λ v → classifyAppHeadView f ≡ v)
 
-viewBundle : (f : RawExpr) → ViewBundle f
+viewBundle : (f : Expr) → ViewBundle f
 viewBundle f = classifyAppHeadView f , refl

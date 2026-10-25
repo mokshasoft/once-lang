@@ -57,7 +57,8 @@ open import Once.Spec.Type using (μ; ν)
 open import Once.Internal.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.IRTy using (⌊wk₀⌋)
 open import Once.Surface.Elaborate using (sigOpIR)
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun; base-Unit)
+open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Spec.Type using (b-Unit)
 open import Once.Internal.Context using (Ctx; Usage; lookup; ⟦_⟧ᶜ; _↾_; zeroUsage; singleUse; ∅; _⊑ᵘ_; ⊑[]; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 import Once.Spec.Context as SCx
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
@@ -702,11 +703,11 @@ mutual
   sigop-faithful : ∀ {n} {Γ : Ctx 0 n} (A : Type) name (c : IsConcrete A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
                  → RelS (RelD A) (liftFn fmt ρ {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A} (sigOpIR A name c) dγ) (SD.sigOpSem A name c fmt σ₀)
   sigop-faithful {Γ = Γ} (Dom ⇒[ mk-kind Zero pure ] Cod) name (con-fun bDom cCod) dγ =
-    sigop-arr₀ {Γ = Γ} {Dom = Dom} {Cod = Cod} {pure} (value-info name base-Unit cCod) dγ
+    sigop-arr₀ {Γ = Γ} {Dom = Dom} {Cod = Cod} {pure} (value-info name b-Unit cCod) dγ
   sigop-faithful {Γ = Γ} (Dom ⇒[ mk-kind Zero eff ] Cod) name (con-fun bDom cCod) dγ =
-    sigop-arr₀ {Γ = Γ} {Dom = Dom} {Cod = Cod} {eff} (arrow-info (mk-kind Zero eff) name base-Unit cCod) dγ
+    sigop-arr₀ {Γ = Γ} {Dom = Dom} {Cod = Cod} {eff} (arrow-info (mk-kind Zero eff) name b-Unit cCod) dγ
   sigop-faithful {Γ = Γ} (Dom ⇒[ mk-kind Zero act ] Cod) name (con-fun bDom cCod) dγ =
-    sigop-arr₀ {Γ = Γ} {Dom = Dom} {Cod = Cod} {act} (arrow-info (mk-kind Zero act) name base-Unit cCod) dγ
+    sigop-arr₀ {Γ = Γ} {Dom = Dom} {Cod = Cod} {act} (arrow-info (mk-kind Zero act) name b-Unit cCod) dγ
   sigop-faithful {Γ = Γ} (Dom ⇒[ mk-kind One π ] Cod) name (con-fun bDom cCod) dγ =
     ≡ˡ (cong-app (liftFn-curry₁ {_} {⟦ Γ ↾ zeroUsage ⟧ᶜ} {Dom} {Cod} {π} (SigOp si ∘ snd)) dγ)
        (relS-ret λ {a} ra → retargetˡ (force-∘ {_} {Dom} {Cod} {⟦ Γ ↾ zeroUsage ⟧ᶜ * Dom} {SigOp si} {snd} (now-snd {_} {⟦ Γ ↾ zeroUsage ⟧ᶜ} {Dom} (dγ , a)))
@@ -719,13 +720,13 @@ mutual
     where si = arrow-info (mk-kind Many π) name bDom cCod
   -- NON-ARROW `sigOp`: `elaborate`/`⟦_⟧ˢ` dispatch on `A`'s shape, so split the
   -- non-arrow type constructors.
-  sigop-faithful {Γ = Γ} Unit name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
-  sigop-faithful {Γ = Γ} Void name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
-  sigop-faithful {Γ = Γ} Int name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
-  sigop-faithful {Γ = Γ} Float name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
+  sigop-faithful {Γ = Γ} Unit name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name b-Unit ib) dγ
+  sigop-faithful {Γ = Γ} Void name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name b-Unit ib) dγ
+  sigop-faithful {Γ = Γ} Int name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name b-Unit ib) dγ
+  sigop-faithful {Γ = Γ} Float name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name b-Unit ib) dγ
   sigop-faithful (tvar ()) name _ _
-  sigop-faithful {Γ = Γ} (_ * _) name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
-  sigop-faithful {Γ = Γ} (_ + _) name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name base-Unit ib) dγ
+  sigop-faithful {Γ = Γ} (_ * _) name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name b-Unit ib) dγ
+  sigop-faithful {Γ = Γ} (_ + _) name (con-base ib) dγ = sigop-value {Γ = Γ} (value-info name b-Unit ib) dγ
   sigop-faithful (μ _) name (con-base ()) _
   sigop-faithful (ν _ _) name (con-base ()) _
   sigop-faithful (_ ⇒[ _ ] _) name (con-base ()) _

@@ -9,6 +9,7 @@
 module Once.Internal.ContractLaws where
 
 open import Data.List using (List; []; _∷_)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.String using (String) renaming (_≟_ to _≟ˢ_)
 open import Relation.Nullary using (Dec; yes; no)
@@ -21,7 +22,6 @@ open import Once.Internal.Type using (isVoid?; isUnit?)
 import Once.Type as Ty
 open import Once.Internal.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
-open import Once.Internal.Type.WellFormed using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent)
@@ -63,17 +63,17 @@ answer-∈ {(c , T) ∷ Σ} (here refl) eq rewrite eq = here refl
 answer-∈ {(c , T) ∷ Σ} (there m)   eq = answer-there (contractOf c T) (answer-∈ m eq)
 
 -- A first-order constant (not an arrow) is a value contract at `Unit → A`.
-base-contract : ∀ {A} (x : String) → IsBaseType A → contractOf x A ≡ value (key x UnitT A)
+base-contract : ∀ {A} (x : String) → Base ∅ₖ A → contractOf x A ≡ value (key x UnitT A)
 
-base-contract x base-Unit        = refl
+base-contract x b-Unit        = refl
 
-base-contract x base-Void        = refl
+base-contract x b-Void        = refl
 
-base-contract x base-Int         = refl
+base-contract x b-Int         = refl
 
-base-contract x base-Float       = refl
+base-contract x b-Float       = refl
 
-base-contract x (base-Prod a b)  = refl
+base-contract x (b-* a b)  = refl
 
-base-contract x (base-Sum a b)   = refl
+base-contract x (b-+ a b)   = refl
 

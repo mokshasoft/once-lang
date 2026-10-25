@@ -159,13 +159,13 @@ module _ (fmt : TargetNum) where
       relS-ret (RelD-subst (sym (⌈⟧TI-commute F (II.μ-type F)))
                  (cfD⁻¹-rel (wf-⌈⌉ w) ⌈ II.μ-type F ⌉ (frefl (wf-⌈⌉ w) _)))
       where
-        frefl : ∀ {G : Fun _} (wg : LW.WellFormedF G) (l : ⟦ G ⟧F′ ⟦ ⌈ II.μ-type F ⌉ ⟧ᴰ)
+        frefl : ∀ {G : Fun _} (wg : (LW.WFFun LW.∅ₖ) G) (l : ⟦ G ⟧F′ ⟦ ⌈ II.μ-type F ⌉ ⟧ᴰ)
               → FRel (RelD ⌈ II.μ-type F ⌉) G l l
         frefl (LW.wf-K b) l = fr-K
         frefl LW.wf-Id l = fr-Id refl
-        frefl (LW.wf-Sum wf wg) (inj₁ l) = fr-inl (frefl wf l)
-        frefl (LW.wf-Sum wf wg) (inj₂ l) = fr-inr (frefl wg l)
-        frefl (LW.wf-Prod wf wg) (l , l′) = fr-pair (frefl wf l) (frefl wg l′)
+        frefl (LW.wf-⊕ wf wg) (inj₁ l) = fr-inl (frefl wf l)
+        frefl (LW.wf-⊕ wf wg) (inj₂ l) = fr-inr (frefl wg l)
+        frefl (LW.wf-⊗ wf wg) (l , l′) = fr-pair (frefl wf l) (frefl wg l′)
     eval-rel (Cata {F} w {E₀} {C} alg) {e , x} {e′ , x′} (re′ , refl) =
       sem-cata-rel (wf-⌈⌉ w) (λ fr → alg-step fr) x
       where

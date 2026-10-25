@@ -52,6 +52,7 @@
 module Once.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 
 import Once.Spec.Type as SpT
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 open import Once.Spec.Type using (Ty; Fun; KCtx; Base; b-var)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -96,10 +97,8 @@ open import Once.Internal.Res using (Res; stopped; returns; mapRes)
 -- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Type.WellFormed using (IsBaseType; WellFormedF)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-Sum; wf-Prod)
 open import Once.Internal.Polynomial
 open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)
 open Once.Internal.Polynomial.νS using (unfoldS)
@@ -265,7 +264,7 @@ fmap-struct-coherence′ (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-struct-coherenc
 ------------------------------------------------------------------------
 -- Type Coercion Round-Trip Properties (Well-Formed Only)
 --
--- For base types (IsBaseType A), the coercions are definitionally identity.
+-- For base types (Base ∅ₖ A), the coercions are definitionally identity.
 -- So well-formed functors have a fully computed path through the coercions.
 ------------------------------------------------------------------------
 
@@ -275,31 +274,31 @@ fmap-struct-coherence′ (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-struct-coherenc
 --
 coerce-base-type-round-trip : ∀ {m} {Δ : KCtx m} {A : Ty m} → (pA : Base Δ A) → (x : ⟦ A ⟧)
                             → coerce-base-to-full pA (coerce-full-to-base A x) ≡ x
-coerce-base-type-round-trip base-Unit x = refl
-coerce-base-type-round-trip base-Void ()
+coerce-base-type-round-trip b-Unit x = refl
+coerce-base-type-round-trip b-Void ()
 coerce-base-type-round-trip (b-var _) ()
-coerce-base-type-round-trip base-Int x = refl
-coerce-base-type-round-trip base-Float x = refl
-coerce-base-type-round-trip (base-Prod pA pB) (a , b) =
+coerce-base-type-round-trip b-Int x = refl
+coerce-base-type-round-trip b-Float x = refl
+coerce-base-type-round-trip (b-* pA pB) (a , b) =
   cong₂ _,_ (coerce-base-type-round-trip pA a) (coerce-base-type-round-trip pB b)
-coerce-base-type-round-trip (base-Sum pA pB) (inj₁ a) =
+coerce-base-type-round-trip (b-+ pA pB) (inj₁ a) =
   cong inj₁ (coerce-base-type-round-trip pA a)
-coerce-base-type-round-trip (base-Sum pA pB) (inj₂ b) =
+coerce-base-type-round-trip (b-+ pA pB) (inj₂ b) =
   cong inj₂ (coerce-base-type-round-trip pB b)
 
 -- | For base types, coerce-full-to-base ∘ coerce-base-to-full = id (PROVEN)
 --
-coerce-base-type⁻¹-round-trip : ∀ {A} → (pA : IsBaseType A) → (x : ⟦ IntRep , FloatRep ⟧-base A)
+coerce-base-type⁻¹-round-trip : ∀ {A} → (pA : Base ∅ₖ A) → (x : ⟦ IntRep , FloatRep ⟧-base A)
                               → coerce-full-to-base A (coerce-base-to-full pA x) ≡ x
-coerce-base-type⁻¹-round-trip base-Unit x = refl
-coerce-base-type⁻¹-round-trip base-Void ()
-coerce-base-type⁻¹-round-trip base-Int x = refl
-coerce-base-type⁻¹-round-trip base-Float x = refl
-coerce-base-type⁻¹-round-trip (base-Prod pA pB) (a , b) =
+coerce-base-type⁻¹-round-trip b-Unit x = refl
+coerce-base-type⁻¹-round-trip b-Void ()
+coerce-base-type⁻¹-round-trip b-Int x = refl
+coerce-base-type⁻¹-round-trip b-Float x = refl
+coerce-base-type⁻¹-round-trip (b-* pA pB) (a , b) =
   cong₂ _,_ (coerce-base-type⁻¹-round-trip pA a) (coerce-base-type⁻¹-round-trip pB b)
-coerce-base-type⁻¹-round-trip (base-Sum pA pB) (inj₁ a) =
+coerce-base-type⁻¹-round-trip (b-+ pA pB) (inj₁ a) =
   cong inj₁ (coerce-base-type⁻¹-round-trip pA a)
-coerce-base-type⁻¹-round-trip (base-Sum pA pB) (inj₂ b) =
+coerce-base-type⁻¹-round-trip (b-+ pA pB) (inj₂ b) =
   cong inj₂ (coerce-base-type⁻¹-round-trip pB b)
 
 ------------------------------------------------------------------------
@@ -311,28 +310,28 @@ coerce-base-type⁻¹-round-trip (base-Sum pA pB) (inj₂ b) =
 
 -- | coerce-μ-out ∘ coerce-μ-in = id (PROVEN)
 --
-coerce-μ-round-trip : ∀ {F} → (wf : WellFormedF F) → ∀ (X : Set) (x : ⟦ F ⟧F X)
+coerce-μ-round-trip : ∀ {F} → (wf : WFFun ∅ₖ F) → ∀ (X : Set) (x : ⟦ F ⟧F X)
                     → coerce-μ-out wf X (coerce-μ-in F X x) ≡ x
 coerce-μ-round-trip (wf-K pA) X x = coerce-base-type-round-trip pA x
 coerce-μ-round-trip wf-Id X x = refl
-coerce-μ-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
+coerce-μ-round-trip (wf-⊕ wfF wfG) X (inj₁ x) =
   cong inj₁ (coerce-μ-round-trip wfF X x)
-coerce-μ-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
+coerce-μ-round-trip (wf-⊕ wfF wfG) X (inj₂ y) =
   cong inj₂ (coerce-μ-round-trip wfG X y)
-coerce-μ-round-trip (wf-Prod wfF wfG) X (x , y) =
+coerce-μ-round-trip (wf-⊗ wfF wfG) X (x , y) =
   cong₂ _,_ (coerce-μ-round-trip wfF X x) (coerce-μ-round-trip wfG X y)
 
 -- | coerce-μ-in ∘ coerce-μ-out = id (PROVEN)
 --
-coerce-μ⁻¹-round-trip : ∀ {F} → (wf : WellFormedF F) → ∀ (X : Set) (x : ⟦ translateF IntRep FloatRep F ⟧SF X)
+coerce-μ⁻¹-round-trip : ∀ {F} → (wf : WFFun ∅ₖ F) → ∀ (X : Set) (x : ⟦ translateF IntRep FloatRep F ⟧SF X)
                       → coerce-μ-in F X (coerce-μ-out wf X x) ≡ x
 coerce-μ⁻¹-round-trip (wf-K pA) X x = coerce-base-type⁻¹-round-trip pA x
 coerce-μ⁻¹-round-trip wf-Id X x = refl
-coerce-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
+coerce-μ⁻¹-round-trip (wf-⊕ wfF wfG) X (inj₁ x) =
   cong inj₁ (coerce-μ⁻¹-round-trip wfF X x)
-coerce-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
+coerce-μ⁻¹-round-trip (wf-⊕ wfF wfG) X (inj₂ y) =
   cong inj₂ (coerce-μ⁻¹-round-trip wfG X y)
-coerce-μ⁻¹-round-trip (wf-Prod wfF wfG) X (x , y) =
+coerce-μ⁻¹-round-trip (wf-⊗ wfF wfG) X (x , y) =
   cong₂ _,_ (coerce-μ⁻¹-round-trip wfF X x) (coerce-μ⁻¹-round-trip wfG X y)
 
 ------------------------------------------------------------------------
@@ -350,7 +349,7 @@ coerce-μ⁻¹-round-trip (wf-Prod wfF wfG) X (x , y) =
 --                                    = coerce-ν-out wf (coerce-ν-in F x)
 --                                    = x  (by round-trip)
 --
-sem-CoOut-CoIn : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦ν⟧ F))
+sem-CoOut-CoIn : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦ F ⟧F (⟦ν⟧ F))
                → sem-CoOut wf (sem-CoIn F x) ≡ returns x
 sem-CoOut-CoIn {F} wf x = cong returns (coerce-μ-round-trip wf (⟦ν⟧ F) x)
 
@@ -399,7 +398,7 @@ sfmapSemAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
 -- When such IR morphisms use only structural operations (no Cata/Ana/etc.),
 -- they evaluate to natural transformations.
 --
-sem-fuseNat : ∀ (F G : Fun 0) → WellFormedF F → WellFormedF G → {B : Set}
+sem-fuseNat : ∀ (F G : Fun 0) → WFFun ∅ₖ F → WFFun ∅ₖ G → {B : Set}
             → (∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)   -- natural transform: G → F
             → (⟦ F ⟧F B → B)                   -- algebra: F(B) → B
             → ⟦μ⟧ G → B
@@ -413,7 +412,7 @@ sem-fuseNat F G wfF wfG {B} transform alg =
 -- fusion correctness proofs lift `appNatTr-F (map-nt t) ≡ appNatTr-F t` and the
 -- algebra correctness through the `Fuse`/`Hylo` meaning.) Reduces to
 -- `cataS-cong` since `sem-fuseNat … = cataS (alg ∘ transform ∘ coercions)`.
-sem-fuseNat-cong : ∀ (F G : Fun 0) (wfF : WellFormedF F) (wfG : WellFormedF G) {B : Set}
+sem-fuseNat-cong : ∀ (F G : Fun 0) (wfF : WFFun ∅ₖ F) (wfG : WFFun ∅ₖ G) {B : Set}
                  → (φ ψ : ∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)
                  → (alg₁ alg₂ : ⟦ F ⟧F B → B)
                  → (∀ {A} (g : ⟦ G ⟧F A) → φ g ≡ ψ g)
@@ -440,7 +439,7 @@ sem-fuseNat-cong F G wfF wfG {B} φ ψ alg₁ alg₂ φψ-eq alg-eq x =
 -- SigOp trace of the (structural, total) fused hylomorphism. Pragma-free:
 -- `fuseNatW` is `cataS`-derived. Replaces the `fuseW`-based `sem-fuse-events`.
 sem-fuseNat-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
-                     (F G : Fun 0) → WellFormedF F → WellFormedF G → {B : Set}
+                     (F G : Fun 0) → WFFun ∅ₖ F → WFFun ∅ₖ G → {B : Set}
                    → (∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)   -- natural transform: G ⇒ F
                    → (⟦ F ⟧F B → M × B)               -- algebra: F(B) → (M , B)
                    → ⟦μ⟧ G → M × B
@@ -458,8 +457,8 @@ sem-fuseNat-events {M} _·_ ε F G wfF wfG {B} transform alg =
 ------------------------------------------------------------------------
 
 -- | Round-trip: coerce-μ-out ∘ coerce-μ-in ≡ id
--- | coerce-μ-round-trip: Requires WellFormedF (see coerce-wf-μ-round-trip above)
--- | coerce-μ⁻¹-round-trip: Requires WellFormedF (see coerce-wf-μ⁻¹-round-trip above)
+-- | coerce-μ-round-trip: Requires WFFun ∅ₖ (see coerce-wf-μ-round-trip above)
+-- | coerce-μ⁻¹-round-trip: Requires WFFun ∅ₖ (see coerce-wf-μ⁻¹-round-trip above)
 
 ------------------------------------------------------------------------
 -- Recursion Scheme Laws (OCP-0003: Proven for Well-Formed Functors)
@@ -472,14 +471,14 @@ sem-fuseNat-events {M} _·_ ε F G wfF wfG {B} transform alg =
 --
 -- OCP-0003: Proven using coerce-μ-round-trip.
 --
-sem-Out-In : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out wf (sem-In F x) ≡ x
+sem-Out-In : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out wf (sem-In F x) ≡ x
 sem-Out-In wf x = coerce-μ-round-trip wf _ x
 
 -- | In and Out are inverses (Lambek's Lemma, other direction)
 --
 -- OCP-0003: Proven using coerce-μ⁻¹-round-trip.
 --
-sem-In-Out : ∀ {F : Fun 0} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-In F (sem-Out wf x) ≡ x
+sem-In-Out : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦μ⟧ F) → sem-In F (sem-Out wf x) ≡ x
 sem-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf _ y)
 
 ------------------------------------------------------------------------
@@ -505,13 +504,13 @@ fmap-coerce-μ-coherence (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-coerce-μ-coher
 --
 -- coerce-μ-out wf ∘ sfmap (translateF F) f ≡ sem-fmap F f ∘ coerce-μ-out wf
 --
-fmap-coerce-μ-coherence′ : ∀ {F} (wf : WellFormedF F) {X Y : Set} (f : X → Y) (x : ⟦ translateF IntRep FloatRep F ⟧SF X)
+fmap-coerce-μ-coherence′ : ∀ {F} (wf : WFFun ∅ₖ F) {X Y : Set} (f : X → Y) (x : ⟦ translateF IntRep FloatRep F ⟧SF X)
                          → coerce-μ-out wf Y (sfmap (translateF IntRep FloatRep F) f x) ≡ sem-fmap F f (coerce-μ-out wf X x)
 fmap-coerce-μ-coherence′ (wf-K pA) f x = refl
 fmap-coerce-μ-coherence′ wf-Id f x = refl
-fmap-coerce-μ-coherence′ (wf-Sum wfF wfG) f (inj₁ x) = cong inj₁ (fmap-coerce-μ-coherence′ wfF f x)
-fmap-coerce-μ-coherence′ (wf-Sum wfF wfG) f (inj₂ y) = cong inj₂ (fmap-coerce-μ-coherence′ wfG f y)
-fmap-coerce-μ-coherence′ (wf-Prod wfF wfG) f (x , y) = cong₂ _,_ (fmap-coerce-μ-coherence′ wfF f x) (fmap-coerce-μ-coherence′ wfG f y)
+fmap-coerce-μ-coherence′ (wf-⊕ wfF wfG) f (inj₁ x) = cong inj₁ (fmap-coerce-μ-coherence′ wfF f x)
+fmap-coerce-μ-coherence′ (wf-⊕ wfF wfG) f (inj₂ y) = cong inj₂ (fmap-coerce-μ-coherence′ wfG f y)
+fmap-coerce-μ-coherence′ (wf-⊗ wfF wfG) f (x , y) = cong₂ _,_ (fmap-coerce-μ-coherence′ wfF f x) (fmap-coerce-μ-coherence′ wfG f y)
 
 ------------------------------------------------------------------------
 -- Catamorphism Laws (OCP-0003: Proven)
@@ -527,7 +526,7 @@ fmap-coerce-μ-coherence′ (wf-Prod wfF wfG) f (x , y) = cong₂ _,_ (fmap-coer
 --   = (alg ∘ coerce-μ-out wf) (sfmapCata (translateF F) ... (coerce-μ-in F x))
 --   By cataS-computation and coherence properties.
 --
-sem-cata-compute : ∀ {F : Fun 0} → (wf : WellFormedF F) → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
+sem-cata-compute : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
                  → sem-cata wf alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata wf alg) x)
 sem-cata-compute {F} wf {A} alg x =
   let TF = translateF IntRep FloatRep F

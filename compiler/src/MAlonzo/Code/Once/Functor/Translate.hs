@@ -58,8 +58,8 @@ d_uip_98 = erased
 -- Once.Functor.Translate.IsConcrete-irrelevant
 d_IsConcrete'45'irrelevant_122 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
+  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_IsConcrete'45'irrelevant_122 = erased
 -- Once.Functor.Translate.WFFun-irrelevant

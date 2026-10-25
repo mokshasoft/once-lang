@@ -20,6 +20,7 @@
 module Once.Internal.Type.Instance where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Once.Spec.Type using (Base; ∅ₖ)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Nat using (ℕ; zero; suc)
@@ -35,7 +36,6 @@ import Data.Maybe as Maybe
 open import Once.Spec.Type using (Kind; any; base)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Internal.Type.Poly using (ftv; substPoly)
-open import Once.Internal.Type.WellFormed using (IsBaseType)
 
 ------------------------------------------------------------------------
 -- Parameters and kinds

@@ -160,13 +160,13 @@ project-of n T {t} dt wf = at (decl-ground T dt)
 ------------------------------------------------------------------------
 
 private
-  base-b : ∀ b → LW.IsBaseType ⌞ b ⌟
-  base-b S.unit    = LW.base-Unit
-  base-b S.void    = LW.base-Void
-  base-b S.int     = LW.base-Int
-  base-b S.float   = LW.base-Float
-  base-b (a S.* b) = LW.base-Prod (base-b a) (base-b b)
-  base-b (a S.+ b) = LW.base-Sum (base-b a) (base-b b)
+  base-b : ∀ b → (LW.Base LW.∅ₖ) ⌞ b ⌟
+  base-b S.unit    = LW.b-Unit
+  base-b S.void    = LW.b-Void
+  base-b S.int     = LW.b-Int
+  base-b S.float   = LW.b-Float
+  base-b (a S.* b) = LW.b-* (base-b a) (base-b b)
+  base-b (a S.+ b) = LW.b-+ (base-b a) (base-b b)
 
 -- A declaration's type is concrete.
 declTy-concrete : ∀ t → LW.IsConcrete (declTy t)

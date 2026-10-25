@@ -19,16 +19,16 @@ open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong)
-open import Once.Internal.Syntax using (RawExpr)
+open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Internal.Typing.Scope using (NamedCtx)
 open import Once.Internal.Principal using (Fails; fails)
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 
-firstChecking-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (Xs : List (Ty m))
+firstChecking-sound : ∀ {m} (ctx : NamedCtx m) (e : Expr) (Xs : List (Ty m))
                     → C.firstChecking ctx e Xs ≡ nothing
                     → ∀ {X} → X ∈ Xs → Fails (proj₁ (TE.checkElabV ctx e X))
-fc-step-sound : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (X : Ty m) (Xs : List (Ty m))
+fc-step-sound : ∀ {m} (ctx : NamedCtx m) (e : Expr) (X : Ty m) (Xs : List (Ty m))
                 (r : TE.VerifiedCheckResult ctx e X) → TE.checkElabV ctx e X ≡ r
               → C.fc-step ctx e X Xs r ≡ nothing
               → ∀ {Y} → Y ∈ (X ∷ Xs) → Fails (proj₁ (TE.checkElabV ctx e Y))
@@ -40,10 +40,10 @@ fc-step-sound ctx e X Xs (TE.success _ _ _ _ , _) r≡ ()
 fc-step-sound ctx e X Xs (TE.failure err , _) r≡ eq (here refl) rewrite r≡ = fails
 fc-step-sound ctx e X Xs (TE.failure err , _) r≡ eq (there m) = firstChecking-sound ctx e Xs eq m
 
-firstChecking-complete : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (Xs : List (Ty m))
+firstChecking-complete : ∀ {m} (ctx : NamedCtx m) (e : Expr) (Xs : List (Ty m))
                        → (∀ {X} → X ∈ Xs → Fails (proj₁ (TE.checkElabV ctx e X)))
                        → C.firstChecking ctx e Xs ≡ nothing
-fc-step-complete : ∀ {m} (ctx : NamedCtx m) (e : RawExpr) (X : Ty m) (Xs : List (Ty m))
+fc-step-complete : ∀ {m} (ctx : NamedCtx m) (e : Expr) (X : Ty m) (Xs : List (Ty m))
                    (r : TE.VerifiedCheckResult ctx e X) → Fails (proj₁ r)
                  → (∀ {Y} → Y ∈ Xs → Fails (proj₁ (TE.checkElabV ctx e Y)))
                  → C.fc-step ctx e X Xs r ≡ nothing

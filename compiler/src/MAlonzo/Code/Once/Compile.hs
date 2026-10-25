@@ -1275,7 +1275,7 @@ d_ce'45'prim'45'conc_766 ::
   MAlonzo.Code.Once.Parser.T_FunInfo_76 ->
   [MAlonzo.Code.Once.Parser.T_Entry_112] ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  Maybe MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_30 ->
+  Maybe MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
   Maybe AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_ce'45'prim'45'conc_766 v0 v1 v2 v3 v4 v5 v6 v7
   = case coe v6 of

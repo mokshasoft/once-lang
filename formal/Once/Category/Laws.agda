@@ -13,6 +13,7 @@ module Once.Category.Laws where
 
 
 open import Once.Spec.Type using (Ty; Fun)
+open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Internal.Type
@@ -22,7 +23,6 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P�
 open import Once.Internal.Type.Poly
 open import Once.Type
 open import Once.IR
-open import Once.Internal.Type.WellFormed using (WellFormedF)
 -- plan 0.98: RED, and the red is the work-list. This module is stated over
 -- the PURE `Once.CCC.Eval.eval`, which is REFUTED once `Halts : B ≡ Void`
 -- makes `⟦ Void ⟧ = ⊥` — no total `IR A B → ⟦A⟧ → ⟦B⟧` exists. `eval` is
@@ -323,7 +323,6 @@ open import Once.Semantics.Value Carrier Carrier
 -- 0.47: the axiom-using identity laws live in Once.Semantics.Machine.Laws.
 open import Once.Semantics.Machine.Laws using (sem-cata-In-id; sem-ana-Out-id)
 -- GuardedT/sem-unguard/sem-hylo-guarded removed: productivity follows from IR totality
-open import Once.Internal.Type.WellFormed using (WellFormedF)
 
 open import Once.Postulates using (extensionality)
 
@@ -358,9 +357,9 @@ open import Once.Postulates using (extensionality)
 -- Proven using function extensionality.
 -- The semantic foundation is sem-cata-In-id in Once.Semantics.Value.
 --
--- Note: Requires a WellFormedF proof.
+-- Note: Requires a WFFun ∅ₖ proof.
 --
-eval-cata-In-id : ∀ {F : Fun 0} → (wf : WellFormedF F) → (m : AllocMode) (x : ⟦ μ F ⟧)
+eval-cata-In-id : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (m : AllocMode) (x : ⟦ μ F ⟧)
                 → eval (Cata {F} wf (In {F} wf)) x ≡ x
 eval-cata-In-id {F} wf m x =
   let -- The algebra used by Cata evaluation: λ fa → eval (In m) (coerce⁻¹ fa)
@@ -470,7 +469,7 @@ fmap-coerce-coherence′ F f y = trans (fmap-struct-coherence′ F f y) (sym (fm
 --   = eval alg (fmap-Type F (sem-cata F alg′) x)       (by fmap-coerce-coherence)
 --   = eval alg (fmap-Type F (eval (Cata alg)) x)      (by def of eval (Cata alg))
 --
-eval-cata-In : ∀ {F : Fun 0} → (wf : WellFormedF F) → ∀ {A : Type} (alg : IR (⟦ F ⟧F A) A) (m : AllocMode)
+eval-cata-In : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → ∀ {A : Type} (alg : IR (⟦ F ⟧F A) A) (m : AllocMode)
                (x : ⟦ ⟦ F ⟧F (μ F) ⟧)
              → eval (Cata {F} wf alg ∘ In {F} wf) x ≡
                eval alg (fmap-Type F (eval (Cata {F} wf alg)) x)
@@ -519,7 +518,7 @@ eval-cata-In {F} wf {A} alg m x =
 -- So `fuse ≡ hylo` is definitional — one structural scheme, two packagings.
 -- (The old IR-coalgebra bridge `eval (Hylo alg coalg) ≡ eval (Fuse alg (coalg
 -- ∘ In))` is gone: the coalgebra is no longer a general IR morphism.)
-eval-hylo-is-fuse : ∀ {F G : Fun 0} → (wfF : WellFormedF F) → (wfG : WellFormedF G)
+eval-hylo-is-fuse : ∀ {F G : Fun 0} → (wfF : WFFun ∅ₖ F) → (wfG : WFFun ∅ₖ G)
                     → ∀ {B : Type} (alg : IR (⟦ F ⟧F B) B) (t : NatTr G F)
                     → (x : ⟦ μ G ⟧)
                     → eval (Hylo wfF wfG alg t) x ≡ eval (Fuse wfF wfG alg t) x
@@ -548,7 +547,7 @@ eval-hylo-is-fuse wfF wfG alg t x = refl
 --   = sem-ana F (sem-CoOut wf) x   [by coerce⁻¹-round-trip + extensionality]
 --   = x                            [by sem-ana-Out-id]
 --
-eval-ana-Out-id : ∀ {F : Fun 0} → (wf : WellFormedF F) (x : ⟦ ν F ⟧)
+eval-ana-Out-id : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) (x : ⟦ ν F ⟧)
                 → eval (Ana {F} wf (Out {F} wf)) x ≡ x
 eval-ana-Out-id {F} wf x =
   let -- The actual coalgebra from eval (with round-trip coercions)
