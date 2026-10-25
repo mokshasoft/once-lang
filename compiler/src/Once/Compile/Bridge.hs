@@ -96,11 +96,11 @@ newtype Module = Module MMC.T_Module_20
 
 -- | Opaque resolved-module handle: the resolved module, and the signatures
 -- of the modules it imports (the Agda `Resolved`).
-newtype Resolved = Resolved MMC.T_Resolved_XX
+newtype Resolved = Resolved MMC.T_Resolved_28
 
 -- | The resolved module itself.
 resolvedModule :: Resolved -> Module
-resolvedModule (Resolved r) = Module (MMC.d_rmodule_XX r)
+resolvedModule (Resolved r) = Module (MMC.d_rmodule_34 r)
 
 -- | An `import` decl seen inside a parsed module. Haskell uses this
 -- to decide which files to load before calling `resolveImports`.
@@ -229,7 +229,7 @@ resolveImports
   -> Either Text Resolved
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MMR.d_resolveImports_862 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MMR.d_resolveImports_904 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 r   -> Right (Resolved (unsafeCoerce r))

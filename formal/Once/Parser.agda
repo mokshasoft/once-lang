@@ -402,7 +402,7 @@ allValidNameB (x ∷ xs) = validNameB x ∧ allValidNameB xs
 -- over these. This is FORCED by the codegen-faithful no-clash proof (`caf-syms`
 -- in `Once.Adequacy.NameClash`), whose emitted-symbol set runs over exactly the
 -- non-primitive `CompiledFun`s — checking imported/injected primitives (which may
--- carry qualified/owner-tagged names) would wrongly reject valid programs.
+-- carry qualified names) would wrongly reject valid programs.
 -- de-withed (Bool-helper) so the codegen-faithfulness proof (`caf-syms`) can
 -- case on `funIsPrimitive` and reduce both this and `emittedSyms` in lockstep.
 emittedNames-cons : Bool → FunInfo → List String → List String

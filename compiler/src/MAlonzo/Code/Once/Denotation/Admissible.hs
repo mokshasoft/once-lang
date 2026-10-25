@@ -101,7 +101,7 @@ d_declIntLits_44 v0
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.Parser.Module.Core.C_DFunDef_12 v1 v2
         -> coe d_rawIntLits_6 (coe v2)
-      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_14 v1 v2 v3
+      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_14 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_16 v1 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16

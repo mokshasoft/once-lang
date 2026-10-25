@@ -81,7 +81,7 @@ d_pfb'45'eq_32 v0 v1 v2 v3
       then coe
              d_pfb'45'body_40 (coe v0) (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.Parser.Module.Core.d_parseExprB_88
+                MAlonzo.Code.Once.Parser.Module.Core.d_parseExprB_100
                 (coe d_drop1_12 (coe v2)))
       else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
 -- Once.Parser.Module.FunDef.Body.pfb-body

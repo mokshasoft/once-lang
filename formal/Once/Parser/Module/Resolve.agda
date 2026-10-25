@@ -6,12 +6,11 @@
 --
 -- AST-level import resolver.
 --
--- Given a `ModuleMap` (dictionary of already-resolved modules, keyed by
--- their dotted import path) and a user's `Module`, replaces every
--- `DImport path (just alias)` in the user's decls with the primitives
--- of the imported module, tagged with owner=`alias`. A `DImport path
--- nothing` (unaliased import) inlines primitives under owner=nothing
--- (same as if the user had written them directly).
+-- Given a `ModuleMap` (the imported modules as written, keyed by their
+-- dotted import path) and a user's `Module`, rewrites every qualified
+-- reference to its canonical name and keeps each `DImport` in place. The
+-- imported modules' signatures are not copied in: `importedOf` reads them
+-- from the map (plan 0.122), as the Spec's `Imported`/`SignaturesOf` do.
 --
 -- Haskell drives the I/O: it walks the user's module, recursively
 -- loads + parses each imported `.once` file, topo-sorts them so
@@ -101,10 +100,10 @@ showPath (x ∷ xs)    = x ++ "." ++ showPath xs
 -- A qualified ref `name@alias` is unstable: the same import can be
 -- aliased `A`, `All`, or `Cars.All`. Resolution rewrites it to its
 -- RESOLVED canonical identity `RResolved (canonical (path ++ [name]))`,
--- where `path` is the import's full module path. The owner-tag of the
--- inlined signatures is retagged to the SAME dotted path, so the import
--- table key (`owner.name`) coincides with `showCanonical cn` — the
--- typechecker's `t-var-resolved` lookup hits it by construction.
+-- where `path` is the import's full module path. `sigsOf` keys each
+-- imported signature by the SAME canonical name, so the import table key
+-- coincides with `showCanonical cn` — the typechecker's lookup hits it by
+-- construction.
 ------------------------------------------------------------------------
 
 -- | alias → full module path, collected from the user's `DImport`s.
