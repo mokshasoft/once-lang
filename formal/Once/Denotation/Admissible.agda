@@ -54,9 +54,7 @@ open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Spec.Word as OnceWord
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Internal.Syntax using (RawExpr)
-open import Once.Parser.Module.Core using
-  (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
-   DImport)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 
 ------------------------------------------------------------------------
 -- The literals a program contains

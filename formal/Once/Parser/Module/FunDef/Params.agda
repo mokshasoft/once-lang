@@ -15,18 +15,11 @@ open import Data.Maybe using (nothing; just)
 open import Data.Product using (Σ-syntax; _,_; _×_)
 open import Data.String using (String)
 open import Once.Parser.Token using (TEquals; TWord; Token)
-open import Once.Spec.Surface.Syntax using (RLam)
-open import Once.Internal.Syntax using (RawExpr)
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using (<⇒≤; ≤-refl; ≤-trans)
 open import Data.Nat using (_<_; _≤_)
 open import Data.List using (List; []; _∷_; length)
-
--- | Wrap body in lambdas for each parameter.
-wrapLams : List String → RawExpr → RawExpr
-wrapLams [] body = body
-wrapLams (p ∷ ps) body = RLam p (wrapLams ps body)
 
 -- | Separator class of the token AFTER a parameter name: `=` ends the params,
 -- another word continues, anything else stops (the word is NOT a param).

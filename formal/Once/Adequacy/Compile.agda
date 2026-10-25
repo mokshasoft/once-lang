@@ -107,6 +107,7 @@ open import Once.Target.Arch using (arch-numerics; x86-64; x86-32; riscv64)
 import Once.Compile as C
 import Once.Grammar as G
 import Once.Parser.Module.Core as P
+import Once.Spec.Surface.Syntax as Syn
 import Once.Parser.Module.Resolve as Resolve
 import Once.Parser.Module as Module
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -423,7 +424,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
           p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
           res-eq : Resolve.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
           res-eq = RBR.resolvesModule-sound (Source.srcImports src)
-                     (P.Module.decls mU) mR rmR
+                     (Syn.Module.decls mU) mR rmR
           stm-eq : srcToModule src ≡ just mR
           stm-eq = srcToModule-just src mU mR p-eq res-eq
           c≡j : compile arch doOpt src ≡ just (file-bytes arch F)
@@ -842,7 +843,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                   (mR , MT , MC.moduleToIR-sound mR MT mi)
                 , ( mU
                   , FB.parseStrict-sound (Source.srcText src) mU p-eq
-                  , RBR.resolvesModule-complete (Source.srcImports src) (P.Module.decls mU) mR res-eq )
+                  , RBR.resolvesModule-complete (Source.srcImports src) (Syn.Module.decls mU) mR res-eq )
                 , accept-gm arch doOpt mR (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
                 , (λ Σs u wf J → WB-trans trans (sound-trace (toInterp Σs wf J) arch doOpt src bytes pf mR stm-eq ir mi (sym (SigOf.same u)))
                                  (ir-core-tr arch (mR , MT , MC.moduleToIR-sound mR MT mi) Σs u wf J ir mi))

@@ -45,15 +45,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Spec.Name using (GenWord)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Internal.Syntax using (RawExpr)
-open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature;
-  DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; canonDecl; isBuiltinName; expandPath;
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Internal.Resolution
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Parser.Module.Core using (Module; mkModule; Resolved; resolved)
+open import Once.Parser.Module.Core using (Resolved; resolved)
+open import Once.Spec.Surface.Syntax using (Module; mkModule)
 open import Once.Spec.Surface.Syntax using (Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports;
   resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux; consDecl; consDecl-at;

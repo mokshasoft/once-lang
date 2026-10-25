@@ -22,7 +22,8 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DTypeAlias; wordHead)
+open import Once.Parser.Module.Core using (wordHead)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias)
 open import Once.Parser.Module.DeclTail using (taEqHead; taDrop1)
 open import Once.Parser.TypeRelation using (ParsesType)
 open import Once.Internal.Type.Poly using (polyOf)

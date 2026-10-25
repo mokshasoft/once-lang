@@ -11,6 +11,7 @@
 module Once.Parser.Module.FunDef.OpDecl where
 
 open import Once.Parser.Module.Core
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig)
 open import Data.Maybe using (nothing; just; Maybe)
 open import Data.Product using (_,_; _×_)
 open import Data.String using (String)

@@ -53,6 +53,7 @@ import qualified MAlonzo.Code.Once.Warnings as MW
 import qualified MAlonzo.Code.Once.Parser as MP
 import qualified MAlonzo.Code.Once.Extract.Names as MEN
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
+import qualified MAlonzo.Code.Once.Spec.Surface.Syntax as MSS
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve as MMR
 import qualified MAlonzo.Code.Once.Type as MT
 
@@ -92,15 +93,15 @@ data CompileResult
 
 -- | Opaque Module handle — a wrapped Agda `Module` AST. Haskell
 -- doesn't introspect the internals except through `moduleImports`.
-newtype Module = Module MMC.T_Module_20
+newtype Module = Module MSS.T_Module_122
 
 -- | Opaque resolved-module handle: the resolved module, and the signatures
 -- of the modules it imports (the Agda `Resolved`).
-newtype Resolved = Resolved MMC.T_Resolved_28
+newtype Resolved = Resolved MMC.T_Resolved_8
 
 -- | The resolved module itself.
 resolvedModule :: Resolved -> Module
-resolvedModule (Resolved r) = Module (MMC.d_rmodule_34 r)
+resolvedModule (Resolved r) = Module (MMC.d_rmodule_14 r)
 
 -- | An `import` decl seen inside a parsed module. Haskell uses this
 -- to decide which files to load before calling `resolveImports`.

@@ -21,12 +21,12 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Nat.Properties
-import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.DeclTail
 import qualified MAlonzo.Code.Once.Parser.Module.FunDef.Def
 import qualified MAlonzo.Code.Once.Parser.Module.OpName
 import qualified MAlonzo.Code.Once.Parser.PolyType
 import qualified MAlonzo.Code.Once.Parser.Token
+import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 
 -- Once.Parser.Module.FunDef.OpDecl.toda-sig
 d_toda'45'sig_14 ::
@@ -46,7 +46,7 @@ d_toda'45'sig_14 v0 v1 v2
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_10 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_112 (coe v0)
                                  (coe v4))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6)

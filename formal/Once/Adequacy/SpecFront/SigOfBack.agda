@@ -14,7 +14,6 @@
 module Once.Adequacy.SpecFront.SigOfBack where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
@@ -24,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 import Once.Parser as Parser
 open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo)
-open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; sigsOf; importedAt; importedOf; expandPath)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
@@ -40,14 +39,13 @@ open import Once.Spec.Surface.Program
   using (SignaturesOf; so-nil; so-sig; so-other; ns-tsig; ns-def; ns-alias; ns-import;
          Imported; im-nil; im-import; im-other; ni-sig; ni-tsig; ni-def; ni-alias)
 open import Once.Internal.Core.Decl using (toISig)
-open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; IsSig; is-sig; imported-sigs; FFIFacts)
 open import Once.Adequacy.SpecFront.SigBack using (project-of; decl-honest; declTy-concrete)
 open import Once.Adequacy.SpecInterp using (declTy)
 open import Once.Spec.Signature using (WellFormedDecl)
 open import Once.Spec.Surface.Program using (DeclTypeOf)
 open import Once.Adequacy.SpecFront.SigOf using (importedSigs-++; expands-of)
-open import Once.Adequacy.SpecFront.ModRel using (ModRel; find)
+open import Once.Adequacy.SpecFront.Resolve using (first→)
 
 ------------------------------------------------------------------------
 -- Lists of entries
@@ -107,52 +105,50 @@ all-++ (p ∷ ps) q = p ∷ all-++ ps q
 -- The module's own signatures
 ------------------------------------------------------------------------
 
-own-part← : ∀ {dsU ds′ Σ₀} → Pointwise DEmb dsU ds′ → SignaturesOf [] ds′ Σ₀ → WellFormed Σ₀
+own-part← : ∀ {dsU Σ₀} → SignaturesOf [] dsU Σ₀ → WellFormed Σ₀
           → Σ[ fs ∈ List Entry ] XAlign (Parser.ownSigs dsU) fs × (toISig Σ₀ ≡ entrySig fs) × All FFIFacts fs
-own-part← [] so-nil [] = [] , xa-nil , refl , []
-own-part← (d-signature {x = x} {A = A} ∷ pw) (so-sig {t = t} dto so) (w ∷ ws) =
-  let (fs , xa , ti , fa) = own-part← pw so ws
+own-part← so-nil [] = [] , xa-nil , refl , []
+own-part← (so-sig {x = x} {A = A} {t = t} dto so) (w ∷ ws) =
+  let (fs , xa , ti , fa) = own-part← so ws
   in _ , xa-sig (project-of x A dto w) xa , cong (_ ∷_) ti , ffi-facts t {n = x} {b = RVar x} dto w ∷ fa
-own-part← (d-typesig ∷ pw)  (so-other ns-tsig so)   ws = own-part← pw so ws
-own-part← (d-fundef ∷ pw) (so-other ns-def so)    ws = own-part← pw so ws
-own-part← (d-alias ∷ pw)    (so-other ns-alias so)  ws = own-part← pw so ws
-own-part← (d-import ∷ pw)   (so-other ns-import so) ws = own-part← pw so ws
+own-part← (so-other ns-tsig so)   ws = own-part← so ws
+own-part← (so-other ns-def so)    ws = own-part← so ws
+own-part← (so-other ns-alias so)  ws = own-part← so ws
+own-part← (so-other ns-import so) ws = own-part← so ws
 
 ------------------------------------------------------------------------
 -- The imports' signatures
 ------------------------------------------------------------------------
 
-imp-module← : ∀ {p′ ds₂ ds₂′ Σ₁} → Pointwise DEmb ds₂ ds₂′ → SignaturesOf p′ ds₂′ Σ₁ → WellFormed Σ₁
+imp-module← : ∀ {p′ ds₂ Σ₁} → SignaturesOf p′ ds₂ Σ₁ → WellFormed Σ₁
             → Σ[ fs ∈ List Entry ] XAlign (Parser.importedSigs (sigsOf p′ ds₂)) fs × (toISig Σ₁ ≡ entrySig fs) × All FFIFacts fs
-imp-module← [] so-nil [] = [] , xa-nil , refl , []
-imp-module← {p′} (d-signature {x = x} {A = A} ∷ pw) (so-sig {t = t} dto so) (w ∷ ws) =
-  let (fs , xa , ti , fa) = imp-module← pw so ws
+imp-module← so-nil [] = [] , xa-nil , refl , []
+imp-module← {p′} (so-sig {x = x} {A = A} {t = t} dto so) (w ∷ ws) =
+  let (fs , xa , ti , fa) = imp-module← so ws
   in _ , xa-sig (project-of n A dto w) xa , cong (_ ∷_) ti , ffi-facts t {n = n} {b = RVar n} dto w ∷ fa
   where n = showCanonical (canonical (p′ ++ x ∷ []))
-imp-module← (d-typesig ∷ pw)  (so-other ns-tsig so)   ws = imp-module← pw so ws
-imp-module← (d-fundef ∷ pw) (so-other ns-def so)    ws = imp-module← pw so ws
-imp-module← (d-alias ∷ pw)    (so-other ns-alias so)  ws = imp-module← pw so ws
-imp-module← (d-import ∷ pw)   (so-other ns-import so) ws = imp-module← pw so ws
+imp-module← (so-other ns-tsig so)   ws = imp-module← so ws
+imp-module← (so-other ns-def so)    ws = imp-module← so ws
+imp-module← (so-other ns-alias so)  ws = imp-module← so ws
+imp-module← (so-other ns-import so) ws = imp-module← so ws
 
 -- The imports' signatures, read from the module map (`importedOf`).
-imp-part← : ∀ {mm mm′ um am dsU dsR ds′ Σᵢ} → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR
-          → Pointwise DEmb dsU ds′ → Imported mm′ ds′ Σᵢ → WellFormed Σᵢ
+imp-part← : ∀ {mm um am dsU dsR Σᵢ} → LR.ResolvesDecls mm um am dsU dsR
+          → Imported mm dsU Σᵢ → WellFormed Σᵢ
           → Σ[ fs ∈ List Entry ] XAlign (Parser.importedSigs (importedOf mm dsU)) fs × (toISig Σᵢ ≡ entrySig fs) × All FFIFacts fs
-imp-part← mr LR.rds-nil [] im-nil [] = [] , xa-nil , refl , []
-imp-part← mr (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (d-fundef ∷ pw) (im-other ni-def im) ws = imp-part← mr rds pw im ws
-imp-part← mr (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (d-typesig ∷ pw) (im-other ni-tsig im) ws = imp-part← mr rds pw im ws
-imp-part← mr (LR.rds-cons LR.nim-sig LR.rd-signature rds) (d-signature ∷ pw) (im-other ni-sig im) ws =
-  imp-part← mr rds pw im ws
-imp-part← mr (LR.rds-cons LR.nim-alias LR.rd-typealias rds) (d-alias ∷ pw) (im-other ni-alias im) ws = imp-part← mr rds pw im ws
-imp-part← {mm = mm} {dsU = DImport (mkImport p a) ∷ dsU′} mr (LR.rds-import {impDs = impDs} fa rds) (d-import ∷ pw)
+imp-part← LR.rds-nil im-nil [] = [] , xa-nil , refl , []
+imp-part← (LR.rds-cons LR.nim-fundef (LR.rd-fundef _ _) rds) (im-other ni-def im) ws = imp-part← rds im ws
+imp-part← (LR.rds-cons LR.nim-typesig LR.rd-typesig rds) (im-other ni-tsig im) ws = imp-part← rds im ws
+imp-part← (LR.rds-cons LR.nim-sig LR.rd-signature rds) (im-other ni-sig im) ws = imp-part← rds im ws
+imp-part← (LR.rds-cons LR.nim-alias LR.rd-typealias rds) (im-other ni-alias im) ws = imp-part← rds im ws
+imp-part← {mm = mm} {dsU = DImport (mkImport p a) ∷ dsU′} (LR.rds-import {impDs = impDs} fa rds)
           (im-import {Σ₁ = Σ₁} {Σ₂ = Σ₂} fa₂ ex so₁ im₂) ws =
-  let (ds₂″ , fa″ , pw₂) = find mr fa
-      pw₂′ = subst (Pointwise DEmb impDs) (first-unique fa″ fa₂) pw₂
-      so₁′ = subst (λ q → SignaturesOf q _ Σ₁) (expands-unique ex (expands-of p)) so₁
+  let so₁′ = subst (λ q → SignaturesOf q impDs Σ₁) (expands-unique ex (expands-of p))
+               (subst (λ ds → SignaturesOf _ ds Σ₁) (first-unique fa₂ (first→ fa)) so₁)
       (w₁ , w₂) = wf-++ Σ₁ ws
       X = sigsOf (expandPath p) impDs
-      (fsX , xX , tX , fX) = imp-module← pw₂′ so₁′ w₁
-      (fsR , xR , tR , fR) = imp-part← mr rds pw im₂ w₂
+      (fsX , xX , tX , fX) = imp-module← so₁′ w₁
+      (fsR , xR , tR , fR) = imp-part← rds im₂ w₂
       xa = subst (λ l → XAlign l (fsX ++ fsR))
              (sym (trans (cong (λ m → Parser.importedSigs (importedAt (expandPath p) m ++ importedOf mm dsU′)) (lookupMod-complete mm p _ fa))
                          (importedSigs-++ X (importedOf mm dsU′))))

@@ -18,7 +18,7 @@ open import Data.Maybe using (nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DSignature)
+open import Once.Spec.Surface.Syntax using (Decl; DSignature)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 

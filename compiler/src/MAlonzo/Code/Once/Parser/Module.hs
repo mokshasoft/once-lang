@@ -28,7 +28,6 @@ import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Induction.WellFounded
 import qualified MAlonzo.Code.Once.Parser.Core
-import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.DeclTail
 import qualified MAlonzo.Code.Once.Parser.Module.FunDef.Body
 import qualified MAlonzo.Code.Once.Parser.Module.FunDef.Def
@@ -96,7 +95,7 @@ d_pdb'45'fb'45'sig'45'go_36 v0 v1 v2 v3 v4 v5
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_10 (coe v0)
+                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_112 (coe v0)
                    (coe v2))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v3)
@@ -606,7 +605,7 @@ d_parseModule'45'pd_372 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_26 (coe v3))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_128 (coe v3))
                        (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -615,7 +614,7 @@ d_parseModule'45'pd_372 v0 v1
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_26
+                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_128
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
                 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError

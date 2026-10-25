@@ -19,7 +19,7 @@ open import Data.String using (String) renaming (fromList to strFromList)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DTypeSig)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig)
 open import Once.Parser.Module.OpName using (otClose; otChar; opTokClass)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)

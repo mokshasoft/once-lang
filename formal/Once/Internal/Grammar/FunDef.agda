@@ -21,8 +21,10 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DFunDef; wordHead)
-open import Once.Parser.Module.FunDef.Params using (skEq; skWord; skStop; sepClass; wrapLams)
+open import Once.Parser.Module.Core using (wordHead)
+open import Once.Spec.Surface.Syntax using (Decl; DFunDef)
+open import Once.Parser.Module.FunDef.Params using (skEq; skWord; skStop; sepClass)
+open import Once.Spec.Surface.Grammar using (wrapLams)
 open import Once.Parser.Module.FunDef.Body using (eqHead; drop1)
 open import Once.Parser.ExprRelation using (ParsesExpr)
 

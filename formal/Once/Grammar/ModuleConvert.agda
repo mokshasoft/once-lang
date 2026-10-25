@@ -6,7 +6,7 @@
 --
 -- The structural conversion from the formal-grammar module AST
 -- (`Once.Grammar.GModule`) to the parser's module AST
--- (`Once.Parser.Module.Core.Module`). Discharges the `gmoduleToModule`
+-- (`Once.Spec.Surface.Syntax.Module`). Discharges the `gmoduleToModule`
 -- postulate in `Once.Adequacy.Compile`.
 --
 -- Per-decl conversion:
@@ -29,8 +29,8 @@ open import Data.String using (String)
 
 open import Once.Grammar as G
   using ( GExpr; GType; GDecl; GModule; ELam )
-open import Once.Parser.Module.Core as P
-  using (Decl; Module; mkModule)
+import Once.Spec.Surface.Syntax as Syn
+open Syn using (Decl; Module; mkModule)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Spec.Grade using (pure; pureᶠ)
 open import Once.Spec.Type using (Type)
@@ -83,18 +83,18 @@ wrapParams (p ∷ ps) body = ELam p (wrapParams ps body)
 ------------------------------------------------------------------------
 
 gdeclToDecl : GDecl → Maybe Decl
-gdeclToDecl (G.DTypeSig name ty)   = just (P.DTypeSig name (gtypeToPolyType ty))
+gdeclToDecl (G.DTypeSig name ty)   = just (Syn.DTypeSig name (gtypeToPolyType ty))
 -- Plan 0.38 M0.2: the verified grammar parser does not (yet) parse the
 -- `! <shape>` EffectShape annotation, so a GDecl-derived signature carries
 -- no declared effect (`nothing`). The live path (`Parser.Module.DeclTail`)
 -- is where `! <shape>` is parsed.
-gdeclToDecl (G.DSignature name ty) = just (P.DSignature name (gtypeToPolyType ty))
-gdeclToDecl (G.DImport path alias) = just (P.DImport (mkImport path alias))
+gdeclToDecl (G.DSignature name ty) = just (Syn.DSignature name (gtypeToPolyType ty))
+gdeclToDecl (G.DImport path alias) = just (Syn.DImport (mkImport path alias))
 gdeclToDecl (G.DTypeAlias name params ty) with gtypeToType ty
-... | just t  = just (P.DTypeAlias name params (polyOf t))
+... | just t  = just (Syn.DTypeAlias name params (polyOf t))
 ... | nothing = nothing
 gdeclToDecl (G.DFunDef name params body) with concrete? (wrapParams params body)
-... | just c  = just (P.DFunDef name (gexprToRaw c))
+... | just c  = just (Syn.DFunDef name (gexprToRaw c))
 ... | nothing = nothing
 
 ------------------------------------------------------------------------

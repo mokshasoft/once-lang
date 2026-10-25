@@ -56,7 +56,7 @@ open import Once.Parser using (Entry; e-fun; e-poly; mkFunInfo; FunInfo; PolyFun
                                validNameB; validCharsB; opCharsB; allOpNameChars; emittedNames; funsOf; polysOf; entryNameOf)
 open import Once.Parser.Lexer using (isIdentStart; isOpNameChar; opNameChars)
 import Once.Parser.Module.Core as PC
-open import Once.Parser.Module.Core using (DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; IsSig; is-sig; FFIEntry)
 open import Once.Adequacy.SpecFront.Render using (render-inj)
 open import Once.Adequacy.SpecFront.Words using (Ident; DefName; IdentName; KeysI; KeysW; ident-word; DeclW)
@@ -293,7 +293,7 @@ defNamesS (S.DTypeAlias _ _ _ ∷ ds)  = defNamesS ds
 defNamesS (S.DImport _ ∷ ds)         = defNamesS ds
 
 -- …and of the compiler's.
-defNamesC : List PC.Decl → List String
+defNamesC : List S.Decl → List String
 defNamesC []                        = []
 defNamesC (DFunDef x _ ∷ ds)        = x ∷ defNamesC ds
 defNamesC (DTypeSig _ _ ∷ ds)       = defNamesC ds

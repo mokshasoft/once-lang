@@ -16,7 +16,6 @@
 module Once.Adequacy.SpecFront.Lits where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
 open import Data.Integer using (ℤ)
 import Data.Product
 import Data.List.Relation.Unary.All
@@ -28,9 +27,8 @@ open import Once.Internal.Syntax
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
 open import Once.Denotation.Admissible using (rawIntLits; negLits; declIntLits; moduleIntLits; AdmissibleM)
-open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
 import Once.Internal.Resolution as LR
-open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Target.Arch using (Arch; arch-numerics)
 
 ------------------------------------------------------------------------
@@ -132,31 +130,31 @@ mutual
   emb-neg (RBinOp _ a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
   emb-neg (RNeg e) = emb-neg e
 
-decls-emb : ∀ {ds ds′} → Pointwise DEmb ds ds′ → SP.declLits ds′ ≡ go ds
+decls-emb : ∀ ds → SP.declLits ds ≡ go ds
 decls-emb [] = refl
-decls-emb (d-typesig ∷ pw) = decls-emb pw
-decls-emb (d-fundef {e = e} ∷ pw) = cong₂ _++_ (emb-lits e) (decls-emb pw)
-decls-emb (d-signature ∷ pw) = decls-emb pw
-decls-emb (d-alias ∷ pw) = decls-emb pw
-decls-emb (d-import ∷ pw) = decls-emb pw
+decls-emb (DTypeSig _ _ ∷ ds) = decls-emb ds
+decls-emb (DFunDef _ e ∷ ds) = cong₂ _++_ (emb-lits e) (decls-emb ds)
+decls-emb (DSignature _ _ ∷ ds) = decls-emb ds
+decls-emb (DTypeAlias _ _ _ ∷ ds) = decls-emb ds
+decls-emb (DImport _ ∷ ds) = decls-emb ds
 
 ------------------------------------------------------------------------
 -- The checks agree
 ------------------------------------------------------------------------
 
-lits-eq : ∀ {mm um am dsU dsR ds′} → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
-        → moduleIntLits (mkModule dsR) ≡ SP.declLits ds′
-lits-eq {dsR = dsR} rds pw = trans (mil dsR) (trans (decls-res rds) (sym (decls-emb pw)))
+lits-eq : ∀ {mm um am dsU dsR} → LR.ResolvesDecls mm um am dsU dsR
+        → moduleIntLits (mkModule dsR) ≡ SP.declLits dsU
+lits-eq {dsU = dsU} {dsR = dsR} rds = trans (mil dsR) (trans (decls-res rds) (sym (decls-emb dsU)))
   where
     mil : ∀ ds → moduleIntLits (mkModule ds) ≡ go ds
     mil [] = refl
     mil (d ∷ ds) = cong (declIntLits d ++_) (mil ds)
 
-admissible-of : ∀ {mm um am dsU dsR ds′} (arch : Arch) → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
-              → AdmissibleM arch (mkModule dsR) → Data.List.Relation.Unary.All.All _ (SP.declLits ds′)
-admissible-of arch rds pw a = subst (Data.List.Relation.Unary.All.All _) (lits-eq rds pw) a
+admissible-of : ∀ {mm um am dsU dsR} (arch : Arch) → LR.ResolvesDecls mm um am dsU dsR
+              → AdmissibleM arch (mkModule dsR) → Data.List.Relation.Unary.All.All _ (SP.declLits dsU)
+admissible-of arch rds a = subst (Data.List.Relation.Unary.All.All _) (lits-eq rds) a
 
 -- …and conversely (plan 0.121 `complete`).
-admissible← : ∀ {mm um am dsU dsR ds′} (arch : Arch) → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
-            → Data.List.Relation.Unary.All.All _ (SP.declLits ds′) → AdmissibleM arch (mkModule dsR)
-admissible← arch rds pw a = subst (Data.List.Relation.Unary.All.All _) (sym (lits-eq rds pw)) a
+admissible← : ∀ {mm um am dsU dsR} (arch : Arch) → LR.ResolvesDecls mm um am dsU dsR
+            → Data.List.Relation.Unary.All.All _ (SP.declLits dsU) → AdmissibleM arch (mkModule dsR)
+admissible← arch rds a = subst (Data.List.Relation.Unary.All.All _) (sym (lits-eq rds)) a

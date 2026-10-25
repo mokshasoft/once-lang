@@ -5,10 +5,13 @@
 -- Once.Adequacy.SpecGrammar.Decl — the compiler's declaration and module
 -- grammar (`Once.Internal.Grammar.*`, `Once.Internal.Parsing`) against the Spec's.
 --
---   * `parses→` : a text the compiler parses, into declarations that embed
---     (`DEmb`), is one the Spec parses into their images;
---   * `parses←` : a text the Spec parses is one the compiler parses, into
---     declarations that embed as the Spec's.
+--   * `parses→` : a text the compiler parses is one the Spec parses, into the
+--     same module;
+--   * `parses←` : a text the Spec parses is one the compiler parses, into the
+--     same module.
+--
+-- The compiler's declarations are the Spec's (plan 0.122), so the two
+-- grammars relate a text to one module.
 --
 -- A program the Spec parses has no string literal (no Spec rule reads one,
 -- and nothing but newlines may be left over), which is what the expression
@@ -20,7 +23,6 @@ module Once.Adequacy.SpecGrammar.Decl where
 open import Data.Bool using (true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; map; reverse)
-open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String; toList)
@@ -40,7 +42,8 @@ open import Once.Spec.Surface.Grammar as G
          SkipNewlines; skip-nl; skip-done; decls-stop; decls-cons; Trailing; trail-end; trail-nl; trail-eof; wrapLams)
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
-open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; wordHead)
+open import Once.Parser.Module.Core using (wordHead)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.DeclTail using (colonHead)
 open import Once.Parser.Module.OpName using (opTokClass)
@@ -79,25 +82,6 @@ private
 
   N : List Token → Set
   N r = ¬ StrHead r
-
-------------------------------------------------------------------------
--- The declarations that embed
-------------------------------------------------------------------------
-
-data DEmb : Decl → S.Decl → Set where
-  d-typesig   : ∀ {x A} → DEmb (DTypeSig x A) (S.DTypeSig x (toPoly A))
-  d-fundef    : ∀ {x e} → DEmb (DFunDef x e) (S.DFunDef x e)
-  d-signature : ∀ {x A} → DEmb (DSignature x A) (S.DSignature x (toPoly A))
-  d-alias     : ∀ {x ps T} → DEmb (DTypeAlias x ps T) (S.DTypeAlias x ps T)
-  d-import    : ∀ {p a} → DEmb (DImport (mkImport p a)) (S.DImport (S.mkImport p a))
-
--- (the compiler wraps a definition's parameters as the Spec's grammar does)
-wrap-same : ∀ ps b → LPar.wrapLams ps b ≡ wrapLams ps b
-wrap-same []       b = refl
-wrap-same (p ∷ ps) b = cong (S.RLam p) (wrap-same ps b)
-
-fundef-emb : ∀ {x} ps b → DEmb (DFunDef x (LPar.wrapLams ps b)) (S.DFunDef x (wrapLams ps b))
-fundef-emb {x} ps b = subst (λ w → DEmb (DFunDef x (LPar.wrapLams ps b)) (S.DFunDef x w)) (wrap-same ps b) d-fundef
 
 ------------------------------------------------------------------------
 -- Small facts about the views
@@ -176,13 +160,13 @@ private
   nonword-as wv-word () _
   nonword-as (wv-not n) _ s = n (starts→word s)
 
-import→ : ∀ {toks d rest d′} → LI.ParsesImport toks d rest → DEmb d d′ → G.ParsesImport (F toks) d′ (F rest)
-import→ (LI.pi-mk dp LI.pia-alias-r) d-import = import-as (path→ dp)
-import→ (LI.pi-mk dp (LI.pia-neq-r ne)) d-import = import-plain (path→ dp) (not-as ne)
-import→ (LI.pi-mk dp (LI.pia-nonword-r {toks} w)) d-import = import-plain (path→ dp) (nonword-as (word-view toks) w)
+import→ : ∀ {toks d rest} → LI.ParsesImport toks d rest → G.ParsesImport (F toks) d (F rest)
+import→ (LI.pi-mk dp LI.pia-alias-r) = import-as (path→ dp)
+import→ (LI.pi-mk dp (LI.pia-neq-r ne)) = import-plain (path→ dp) (not-as ne)
+import→ (LI.pi-mk dp (LI.pia-nonword-r {toks} w)) = import-plain (path→ dp) (nonword-as (word-view toks) w)
 
-aliasd→ : ∀ {name ps toks d rest d′} → LT.ParsesTypeAlias name ps toks d rest → DEmb d d′
-        → G.ParsesTypeAlias name ps (F toks) d′ (F rest)
+aliasd→ : ∀ {name ps toks d rest} → LT.ParsesTypeAlias name ps toks d rest
+        → G.ParsesTypeAlias name ps (F toks) d (F rest)
 
 private
   aeq : ∀ {name ps toks T rest} {b} → TaEqView toks b → b ≡ true
@@ -191,8 +175,8 @@ private
   aeq taEq-yes _ dT = alias-eq (alias→ dT)
   aeq (taEq-no _) () dT
 
-aliasd→ (LT.gta-eq-r {toks = toks} w e dT) d-alias = aeq (taEq-view toks) e dT
-aliasd→ (LT.gta-word-r d) em = alias-param (aliasd→ d em)
+aliasd→ (LT.gta-eq-r {toks = toks} w e dT) = aeq (taEq-view toks) e dT
+aliasd→ (LT.gta-word-r d) = alias-param (aliasd→ d)
 
 params→ : ∀ {toks ps rest} → LF.ParsesParams toks ps rest → G.ParsesParams (F toks) ps (F rest)
 
@@ -222,17 +206,16 @@ params→ (LF.pp-cons {tail = tail} e d) = pcons′ (sep-view tail) e d
 params→ (LF.pp-stop {tail = tail} e) = pstop′ (sep-view tail) e
 params→ (LF.pp-noword {toks} w) = pnone (word-view toks) w
 
-fundef→ : ∀ {name toks d rest d′} → LF.ParsesFunDef name toks d rest → DEmb d d′ → G.ParsesFunDef name (F toks) d′ (F rest)
+fundef→ : ∀ {name toks d rest} → LF.ParsesFunDef name toks d rest → G.ParsesFunDef name (F toks) d (F rest)
 
 private
-  body→ : ∀ {name ps toks toks″ body rest e′} {b} → LF.ParsesParams toks ps toks″ → EqView toks″ b → b ≡ true
+  body→ : ∀ {name ps toks toks″ body rest} {b} → LF.ParsesParams toks ps toks″ → EqView toks″ b → b ≡ true
         → Once.Parser.ExprRelation.ParsesExpr (Once.Parser.Module.FunDef.Body.drop1 toks″) body rest
-        → e′ ≡ wrapLams ps body
-        → G.ParsesFunDef name (F toks) (S.DFunDef name e′) (F rest)
-  body→ dp eq-yes _ de refl = fundef (params→ dp) (expr→ de)
-  body→ dp (eq-no _) () de _
+        → G.ParsesFunDef name (F toks) (S.DFunDef name (wrapLams ps body)) (F rest)
+  body→ dp eq-yes _ de = fundef (params→ dp) (expr→ de)
+  body→ dp (eq-no _) () de
 
-fundef→ (LF.pfd-mk {params = ps} dp (LF.pfb-mk {toks = toks″} e de)) d-fundef = body→ dp (eq-view toks″) e de (wrap-same ps _)
+fundef→ (LF.pfd-mk dp (LF.pfb-mk {toks = toks″} e de)) = body→ dp (eq-view toks″) e de
 
 opchars→ : ∀ {toks cs s rest} → LO.ParsesOpChars toks cs s rest → G.ParsesOpChars (F toks) cs s (F rest)
 
@@ -252,7 +235,7 @@ private
 opchars→ (LO.poc-close {tok} e) = oclose (optok-view tok) e
 opchars→ (LO.poc-char {tok} e d) = ochar (optok-view tok) e d
 
-opafter→ : ∀ {name toks d rest d′} → LO.ParsesOpAfter name toks d rest → DEmb d d′ → G.ParsesOpAfter name (F toks) d′ (F rest)
+opafter→ : ∀ {name toks d rest} → LO.ParsesOpAfter name toks d rest → G.ParsesOpAfter name (F toks) d (F rest)
 
 private
   osig : ∀ {name toks ty rest} {b} → ColonView toks b → b ≡ true
@@ -261,15 +244,15 @@ private
   osig colon-yes _ dT = op-sig (sig→ dT)
   osig (colon-no _) () dT
 
-  ofun : ∀ {name toks d rest d′} {b} → ColonView toks b → b ≡ false → LF.ParsesFunDef name toks d rest → DEmb d d′
-       → G.ParsesOpAfter name (F toks) d′ (F rest)
-  ofun colon-yes () dF em
-  ofun (colon-no n) _ dF em = op-def n (fundef→ dF em)
+  ofun : ∀ {name toks d rest} {b} → ColonView toks b → b ≡ false → LF.ParsesFunDef name toks d rest
+       → G.ParsesOpAfter name (F toks) d (F rest)
+  ofun colon-yes () dF
+  ofun (colon-no n) _ dF = op-def n (fundef→ dF)
 
-opafter→ (LO.poa-sig {toks} e dT) d-typesig = osig (colon-view toks) e dT
-opafter→ (LO.poa-fun {toks} e dF) em = ofun (colon-view toks) e dF em
+opafter→ (LO.poa-sig {toks} e dT) = osig (colon-view toks) e dT
+opafter→ (LO.poa-fun {toks} e dF) = ofun (colon-view toks) e dF
 
-decl→ : ∀ {toks d rest d′} → LD.ParsesDecl toks d rest → DEmb d d′ → G.ParsesDecl (F toks) d′ (F rest)
+decl→ : ∀ {toks d rest} → LD.ParsesDecl toks d rest → G.ParsesDecl (F toks) d (F rest)
 
 private
   dsig : ∀ {name residual ty rest} {b} → ColonView residual b → b ≡ true
@@ -286,18 +269,18 @@ private
   dtsig nk colon-yes _ dT (eq-no n) _ = decl-typesig nk (sig→ dT) n
   dtsig nk (colon-no _) () dT _ _
 
-  dfun : ∀ {w rest d rest′ d′} {b} → NotKeyword w → ColonView rest b → b ≡ false → LF.ParsesFunDef w rest d rest′ → DEmb d d′
-       → G.ParsesDecl (TWord w ∷ F rest) d′ (F rest′)
-  dfun nk colon-yes () dF em
-  dfun nk (colon-no n) _ dF em = decl-fundef nk n (fundef→ dF em)
+  dfun : ∀ {w rest d rest′} {b} → NotKeyword w → ColonView rest b → b ≡ false → LF.ParsesFunDef w rest d rest′
+       → G.ParsesDecl (TWord w ∷ F rest) d (F rest′)
+  dfun nk colon-yes () dF
+  dfun nk (colon-no n) _ dF = decl-fundef nk n (fundef→ dF)
 
-decl→ (LD.pd-import di) em = decl-import (import→ di em)
-decl→ (LD.pd-typealias (LT.pta-mk da)) em = decl-alias (aliasd→ da em)
-decl→ (LD.pd-signature (LS.psig-mk {residual = residual} e dT)) d-signature = dsig (colon-view residual) e dT
-decl→ (LD.pd-typesig {rest = rest} {rest' = rest′} a b c e dT f) d-typesig =
+decl→ (LD.pd-import di) = decl-import (import→ di)
+decl→ (LD.pd-typealias (LT.pta-mk da)) = decl-alias (aliasd→ da)
+decl→ (LD.pd-signature (LS.psig-mk {residual = residual} e dT)) = dsig (colon-view residual) e dT
+decl→ (LD.pd-typesig {rest = rest} {rest' = rest′} a b c e dT f) =
   dtsig (not-keyword a b c) (colon-view rest) e dT (eq-view rest′) f
-decl→ (LD.pd-fundef {rest = rest} a b c e dF) em = dfun (not-keyword a b c) (colon-view rest) e dF em
-decl→ (LD.pd-opdecl (LO.pod-mk dc da)) em = decl-op (opchars→ dc) (opafter→ da em)
+decl→ (LD.pd-fundef {rest = rest} a b c e dF) = dfun (not-keyword a b c) (colon-view rest) e dF
+decl→ (LD.pd-opdecl (LO.pod-mk dc da)) = decl-op (opchars→ dc) (opafter→ da)
 
 -- Newlines.
 skip-nl-eq : ∀ t {ns r} → skipNewlines t ≡ just (ns , r) → skipNewlines (P.TNewline ∷ t) ≡ just (P.TNewline ∷ ns , r)
@@ -354,19 +337,19 @@ private
       nothing≢ : ∀ {A : Set} {x : A} → nothing ≡ just x → ⊥
       nothing≢ ()
 
-decls→ : ∀ {toks ds rest ds′} → LP.ParsesDecls toks ds rest → Once.Parser.allTrailing rest ≡ true
-       → Pointwise DEmb ds ds′ → G.ParsesDecls (F toks) ds′ (F rest)
-decls→ (LP.pds-noskip {toks} e) at [] = ⊥-elim (skip-never-nothing toks e)
-decls→ (LP.pds-stop {toks} {toks' = toks′} e _) at [] =
+decls→ : ∀ {toks ds rest} → LP.ParsesDecls toks ds rest → Once.Parser.allTrailing rest ≡ true
+       → G.ParsesDecls (F toks) ds (F rest)
+decls→ (LP.pds-noskip {toks} e) at = ⊥-elim (skip-never-nothing toks e)
+decls→ (LP.pds-stop {toks} {toks' = toks′} e _) at =
   decls-stop (skip→ toks e) (λ d → trail-nodecl (trail→ toks′ at) (skip-not-nl (skip→ toks e)) d)
-decls→ (LP.pds-cons {toks} e d ds) at (em ∷ ems) = decls-cons (skip→ toks e) (decl→ d em) (decls→ ds at ems)
+decls→ (LP.pds-cons {toks} e d ds) at = decls-cons (skip→ toks e) (decl→ d) (decls→ ds at)
 
 ------------------------------------------------------------------------
 -- The Spec's derivation comes from the compiler's
 ------------------------------------------------------------------------
 
-BackD : (List P.Token → Decl → List P.Token → Set) → List P.Token → S.Decl → List Token → Set
-BackD Rel toks d′ r = Σ[ d ∈ Decl ] Σ[ rest ∈ List P.Token ] (Rel toks d rest × DEmb d d′ × F rest ≡ r)
+BackD : (List P.Token → Decl → List P.Token → Set) → List P.Token → Decl → List Token → Set
+BackD Rel toks d r = Σ[ rest ∈ List P.Token ] (Rel toks d rest × F rest ≡ r)
 
 path← : ∀ {ts p r} → G.ParsesModulePath ts p r → ∀ toks → F toks ≡ ts
       → Σ[ rest ∈ List P.Token ] (LI.ParsesModulePath toks p rest × F rest ≡ r)
@@ -403,7 +386,7 @@ import← (import-as dp) toks e = as₁ (path← dp toks e)
     as₂ : ∀ {toks p rest₁ a r} → LI.ParsesModulePath toks p rest₁
         → Σ[ rest ∈ List P.Token ] (rest₁ ≡ P.TWord "as" ∷ P.TWord a ∷ rest × F rest ≡ r)
         → BackD LI.ParsesImport toks (S.DImport (S.mkImport p (just a))) r
-    as₂ dp (rest , refl , er) = _ , rest , LI.pi-mk dp LI.pia-alias-r , d-import , er
+    as₂ dp (rest , refl , er) = rest , LI.pi-mk dp LI.pia-alias-r , er
     as₁ : ∀ {toks p a r} → Σ[ rest₁ ∈ List P.Token ] (LI.ParsesModulePath toks p rest₁ × F rest₁ ≡ TWord "as" ∷ TWord a ∷ r)
         → BackD LI.ParsesImport toks (S.DImport (S.mkImport p (just a))) r
     as₁ (rest₁ , dp , e₁) = as₂ dp (peels (TWord "as" ∷ TWord _ ∷ []) (refl ∷ refl ∷ []) e₁)
@@ -412,7 +395,7 @@ import← (import-plain dp ns) toks e = pl₁ ns (path← dp toks e)
     pl₁ : ∀ {toks p r} → ¬ Starts r (TWord "as") → Σ[ rest ∈ List P.Token ] (LI.ParsesModulePath toks p rest × F rest ≡ r)
         → BackD LI.ParsesImport toks (S.DImport (S.mkImport p nothing)) r
     pl₁ ns (rest , dp , er) =
-      _ , rest , LI.pi-mk dp (alias-plain rest (word-view rest) refl (transport (λ z → ¬ Starts z (TWord "as")) er ns)) , d-import , er
+      rest , LI.pi-mk dp (alias-plain rest (word-view rest) refl (transport (λ z → ¬ Starts z (TWord "as")) er ns)) , er
 
 aliasd← : ∀ {x ps ts d′ r} → G.ParsesTypeAlias x ps ts d′ r → ∀ toks → F toks ≡ ts → BackD (LT.ParsesTypeAlias x ps) toks d′ r
 aliasd← (alias-eq dT) toks e =
@@ -420,12 +403,12 @@ aliasd← (alias-eq dT) toks e =
   where
     ae₁ : ∀ {x ps toks′ A′ r} → Σ[ T ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.TypeRelation.ParsesType toks′ T rest × polyOf T ≡ A′ × F rest ≡ r)
         → BackD (LT.ParsesTypeAlias x ps) (P.TEquals ∷ toks′) (S.DTypeAlias x (reverse ps) A′) r
-    ae₁ (T , rest , dT , refl , er) = _ , rest , LT.gta-eq-r refl refl dT , d-alias , er
+    ae₁ (T , rest , dT , refl , er) = rest , LT.gta-eq-r refl refl dT , er
 aliasd← (alias-param da) toks e =
   step (λ z → BackD (LT.ParsesTypeAlias _ _) z _ _) refl e (λ {toks′} e′ → ap₁ (aliasd← da toks′ e′))
   where
-    ap₁ : ∀ {x p ps toks′ d′ r} → BackD (LT.ParsesTypeAlias x (p ∷ ps)) toks′ d′ r → BackD (LT.ParsesTypeAlias x ps) (P.TWord p ∷ toks′) d′ r
-    ap₁ (d , rest , da , em , er) = d , rest , LT.gta-word-r da , em , er
+    ap₁ : ∀ {x p ps toks′ d r} → BackD (LT.ParsesTypeAlias x (p ∷ ps)) toks′ d r → BackD (LT.ParsesTypeAlias x ps) (P.TWord p ∷ toks′) d r
+    ap₁ (rest , da , er) = rest , LT.gta-word-r da , er
 
 params← : ∀ {ts ps r} → G.ParsesParams ts ps r → ∀ toks → F toks ≡ ts
         → Σ[ rest ∈ List P.Token ] (LF.ParsesParams toks ps rest × F rest ≡ r)
@@ -452,7 +435,7 @@ fundef← (fundef dp de) toks e n = fd₁ n de (params← dp toks e)
     fd₃ : ∀ {x ps toks toks₁ b′ r} → LF.ParsesParams toks ps (P.TEquals ∷ toks₁)
         → Σ[ rest ∈ List P.Token ] (Once.Parser.ExprRelation.ParsesExpr toks₁ b′ rest × F rest ≡ r)
         → BackD (LF.ParsesFunDef x) toks (S.DFunDef x (wrapLams ps b′)) r
-    fd₃ {ps = ps} dp (rest , de , er) = _ , rest , LF.pfd-mk dp (LF.pfb-mk refl de) , fundef-emb ps _ , er
+    fd₃ dp (rest , de , er) = rest , LF.pfd-mk dp (LF.pfb-mk refl de) , er
     fd₂ : ∀ {x ps toks rest₁ ts₁ b′ r} → N r → G.ParsesExpr ts₁ b′ r → LF.ParsesParams toks ps rest₁
         → Σ[ toks₁ ∈ List P.Token ] (rest₁ ≡ P.TEquals ∷ toks₁ × F toks₁ ≡ ts₁)
         → BackD (LF.ParsesFunDef x) toks (S.DFunDef x (wrapLams ps b′)) r
@@ -489,25 +472,25 @@ opafter← (op-sig dT) toks e n =
   where
     os₁ : ∀ {x toks′ A′ r} → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.ParsesPolyType toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
         → BackD (LO.ParsesOpAfter x) (P.TColon ∷ toks′) (S.DTypeSig x A′) r
-    os₁ (A , rest , dA , refl , er) = _ , rest , LO.poa-sig refl dA , d-typesig , er
+    os₁ (A , rest , dA , refl , er) = rest , LO.poa-sig refl dA , er
 opafter← (op-def nc dF) toks e n = of₁ (fundef← dF toks e n)
   where
-    of₁ : ∀ {x d′ r} → BackD (LF.ParsesFunDef x) toks d′ r → BackD (LO.ParsesOpAfter x) toks d′ r
-    of₁ (d , rest , dF , em , er) =
-      d , rest , LO.poa-fun (colon-false (colon-view toks) (transport (λ z → ¬ Starts z TColon) e nc)) dF , em , er
+    of₁ : ∀ {x d r} → BackD (LF.ParsesFunDef x) toks d r → BackD (LO.ParsesOpAfter x) toks d r
+    of₁ (rest , dF , er) =
+      rest , LO.poa-fun (colon-false (colon-view toks) (transport (λ z → ¬ Starts z TColon) e nc)) dF , er
 
 decl← : ∀ {ts d′ r} → G.ParsesDecl ts d′ r → ∀ toks → F toks ≡ ts → N r → BackD LD.ParsesDecl toks d′ r
 decl← (decl-import di) toks e n =
   step (λ z → BackD LD.ParsesDecl z _ _) refl e (λ {toks′} e′ → di₁ (import← di toks′ e′))
   where
-    di₁ : ∀ {toks′ d′ r} → BackD LI.ParsesImport toks′ d′ r → BackD LD.ParsesDecl (P.TWord "import" ∷ toks′) d′ r
-    di₁ (d , rest , di , em , er) = d , rest , LD.pd-import di , em , er
+    di₁ : ∀ {toks′ d r} → BackD LI.ParsesImport toks′ d r → BackD LD.ParsesDecl (P.TWord "import" ∷ toks′) d r
+    di₁ (rest , di , er) = rest , LD.pd-import di , er
 decl← (decl-alias da) toks e n =
   step (λ z → BackD LD.ParsesDecl z _ _) refl e (λ e₁ →
   step (λ z → BackD LD.ParsesDecl (P.TWord "type" ∷ z) _ _) refl e₁ (λ {toks′} e₂ → da₁ (aliasd← da toks′ e₂)))
   where
-    da₁ : ∀ {x toks′ d′ r} → BackD (LT.ParsesTypeAlias x []) toks′ d′ r → BackD LD.ParsesDecl (P.TWord "type" ∷ P.TWord x ∷ toks′) d′ r
-    da₁ (d , rest , da , em , er) = d , rest , LD.pd-typealias (LT.pta-mk da) , em , er
+    da₁ : ∀ {x toks′ d r} → BackD (LT.ParsesTypeAlias x []) toks′ d r → BackD LD.ParsesDecl (P.TWord "type" ∷ P.TWord x ∷ toks′) d r
+    da₁ (rest , da , er) = rest , LD.pd-typealias (LT.pta-mk da) , er
 decl← (decl-signature dT) toks e n =
   step (λ z → BackD LD.ParsesDecl z _ _) refl e (λ e₁ →
   step (λ z → BackD LD.ParsesDecl (P.TWord "signature" ∷ z) _ _) refl e₁ (λ e₂ →
@@ -516,7 +499,7 @@ decl← (decl-signature dT) toks e n =
   where
     ds₁ : ∀ {x toks′ A′ r} → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.ParsesPolyType toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
         → BackD LD.ParsesDecl (P.TWord "signature" ∷ P.TWord x ∷ P.TColon ∷ toks′) (S.DSignature x A′) r
-    ds₁ (A , rest , dA , refl , er) = _ , rest , LD.pd-signature (LS.psig-mk refl dA) , d-signature , er
+    ds₁ (A , rest , dA , refl , er) = rest , LD.pd-signature (LS.psig-mk refl dA) , er
 decl← (decl-typesig (not-keyword a b c) dT ne) toks e n =
   step (λ z → BackD LD.ParsesDecl z _ _) refl e (λ e₁ →
   step (λ z → BackD LD.ParsesDecl (P.TWord _ ∷ z) _ _) refl e₁ (λ {toks′} e₂ →
@@ -526,23 +509,23 @@ decl← (decl-typesig (not-keyword a b c) dT ne) toks e n =
         → Σ[ A ∈ _ ] Σ[ rest ∈ List P.Token ] (Once.Parser.Generic.PolyInst.ParsesPolyType toks′ A rest × toPoly A ≡ A′ × F rest ≡ r)
         → BackD LD.ParsesDecl (P.TWord _ ∷ P.TColon ∷ toks′) (S.DTypeSig _ A′) r
     dt₁ ne (A , rest , dA , refl , er) =
-      _ , rest , LD.pd-typesig a b c refl dA (eq-false (eq-view rest) (transport (λ z → ¬ Starts z TEquals) er ne)) , d-typesig , er
+      rest , LD.pd-typesig a b c refl dA (eq-false (eq-view rest) (transport (λ z → ¬ Starts z TEquals) er ne)) , er
 decl← (decl-fundef (not-keyword a b c) nc dF) toks e n =
   step (λ z → BackD LD.ParsesDecl z _ _) refl e (λ {toks′} e′ →
   df₁ (colon-false (colon-view toks′) (transport (λ z → ¬ Starts z TColon) e′ nc)) (fundef← dF toks′ e′ n))
   where
-    df₁ : ∀ {toks′ d′ r} → colonHead toks′ ≡ false → BackD (LF.ParsesFunDef _) toks′ d′ r
-        → BackD LD.ParsesDecl (P.TWord _ ∷ toks′) d′ r
-    df₁ cf (d , rest , dF , em , er) = d , rest , LD.pd-fundef a b c cf dF , em , er
+    df₁ : ∀ {toks′ d r} → colonHead toks′ ≡ false → BackD (LF.ParsesFunDef _) toks′ d r
+        → BackD LD.ParsesDecl (P.TWord _ ∷ toks′) d r
+    df₁ cf (rest , dF , er) = rest , LD.pd-fundef a b c cf dF , er
 decl← (decl-op dc da) toks e n =
   step (λ z → BackD LD.ParsesDecl z _ _) refl e (λ {toks′} e′ → do₁ n da (opchars← dc toks′ e′))
   where
-    do₂ : ∀ {toks′ x rest₁ d′ r} → LO.ParsesOpChars toks′ [] x rest₁ → BackD (LO.ParsesOpAfter x) rest₁ d′ r
-        → BackD LD.ParsesDecl (P.TLParen ∷ toks′) d′ r
-    do₂ dc (d , rest , da , em , er) = d , rest , LD.pd-opdecl (LO.pod-mk dc da) , em , er
-    do₁ : ∀ {toks′ x ts₁ d′ r} → N r → G.ParsesOpAfter x ts₁ d′ r
+    do₂ : ∀ {toks′ x rest₁ d r} → LO.ParsesOpChars toks′ [] x rest₁ → BackD (LO.ParsesOpAfter x) rest₁ d r
+        → BackD LD.ParsesDecl (P.TLParen ∷ toks′) d r
+    do₂ dc (rest , da , er) = rest , LD.pd-opdecl (LO.pod-mk dc da) , er
+    do₁ : ∀ {toks′ x ts₁ d r} → N r → G.ParsesOpAfter x ts₁ d r
         → Σ[ rest₁ ∈ List P.Token ] (LO.ParsesOpChars toks′ [] x rest₁ × F rest₁ ≡ ts₁)
-        → BackD LD.ParsesDecl (P.TLParen ∷ toks′) d′ r
+        → BackD LD.ParsesDecl (P.TLParen ∷ toks′) d r
     do₁ n da (rest₁ , dc , e₁) = do₂ dc (opafter← da rest₁ e₁ n)
 
 -- Newlines, read back.
@@ -577,48 +560,45 @@ decls-ns (decls-stop (skip-nl _) _) _ ()
 decls-ns (decls-cons (skip-done _) d _) _ str-head = decl-str d
 decls-ns (decls-cons (skip-nl _) _ _) _ ()
 
-decls← : ∀ {ts ds′ r} → G.ParsesDecls ts ds′ r → Trailing r → ∀ toks → F toks ≡ ts
-       → Σ[ ds ∈ List Decl ] Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × Pointwise DEmb ds ds′ × F rest ≡ r)
+decls← : ∀ {ts ds r} → G.ParsesDecls ts ds r → Trailing r → ∀ toks → F toks ≡ ts
+       → Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × F rest ≡ r)
 decls← (decls-stop sk nd) tr toks e = st₁ tr (skip← sk toks e)
   where
     st₁ : ∀ {ts₁} → Trailing ts₁
         → Σ[ nl ∈ List P.Token ] Σ[ toks₁ ∈ List P.Token ] (skipNewlines toks ≡ just (nl , toks₁) × F toks₁ ≡ ts₁)
-        → Σ[ ds ∈ List Decl ] Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × Pointwise DEmb ds [] × F rest ≡ ts₁)
+        → Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks [] rest × F rest ≡ ts₁)
     st₁ tr (nl , toks₁ , es , refl) =
-      [] , toks₁ , LP.pds-stop es (decl-trail toks₁ tr (skip-not-nl (skip→ toks es))) , [] , refl
+      toks₁ , LP.pds-stop es (decl-trail toks₁ tr (skip-not-nl (skip→ toks es))) , refl
 decls← (decls-cons sk d ds) tr toks e = dc₁ (skip← sk toks e)
   where
-    dc₃ : ∀ {toks₁ dd rest₁ nl} → skipNewlines toks ≡ just (nl , toks₁) → LD.ParsesDecl toks₁ dd rest₁ → DEmb dd _
-        → Σ[ dds ∈ List Decl ] Σ[ rest ∈ List P.Token ] (LP.ParsesDecls rest₁ dds rest × Pointwise DEmb dds _ × F rest ≡ _)
-        → Σ[ ds ∈ List Decl ] Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × Pointwise DEmb ds _ × F rest ≡ _)
-    dc₃ es d em (dds , rest , ds , ems , er) = _ ∷ dds , rest , LP.pds-cons es d ds , em ∷ ems , er
+    dc₃ : ∀ {toks₁ dd rest₁ nl} → skipNewlines toks ≡ just (nl , toks₁) → LD.ParsesDecl toks₁ dd rest₁
+        → Σ[ rest ∈ List P.Token ] (LP.ParsesDecls rest₁ _ rest × F rest ≡ _)
+        → Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks (dd ∷ _) rest × F rest ≡ _)
+    dc₃ es d (rest , ds , er) = rest , LP.pds-cons es d ds , er
     dc₂ : ∀ {toks₁ nl} → skipNewlines toks ≡ just (nl , toks₁) → BackD LD.ParsesDecl toks₁ _ _
-        → Σ[ ds ∈ List Decl ] Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × Pointwise DEmb ds _ × F rest ≡ _)
-    dc₂ es (dd , rest₁ , d′ , em , e₂) = dc₃ es d′ em (decls← ds tr rest₁ e₂)
+        → Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks _ rest × F rest ≡ _)
+    dc₂ es (rest₁ , d′ , e₂) = dc₃ es d′ (decls← ds tr rest₁ e₂)
     dc₁ : Σ[ nl ∈ List P.Token ] Σ[ toks₁ ∈ List P.Token ] (skipNewlines toks ≡ just (nl , toks₁) × F toks₁ ≡ _)
-        → Σ[ ds ∈ List Decl ] Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × Pointwise DEmb ds _ × F rest ≡ _)
+        → Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks _ rest × F rest ≡ _)
     dc₁ (nl , toks₁ , es , e₁) = dc₂ es (decl← d toks₁ e₁ (decls-ns ds tr))
 
 ------------------------------------------------------------------------
 -- A text
 ------------------------------------------------------------------------
 
--- The compiler's parse of a text, into declarations that embed, is the Spec's.
-parses→ : ∀ {text m ds′} → LP.ParsesText text m → Pointwise DEmb (Once.Parser.Module.Core.Module.decls m) ds′
-        → G.Parses text (S.mkModule ds′)
-parses→ (toks , rest , lx , dd , at) ems = F toks , F rest , toNew lx , decls→ dd at ems , trail→ rest at
+-- The compiler's parse of a text is the Spec's.
+parses→ : ∀ {text m} → LP.ParsesText text m → G.Parses text m
+parses→ (toks , rest , lx , dd , at) = F toks , F rest , toNew lx , decls→ dd at , trail→ rest at
 
--- A text the Spec parses is one the compiler parses, into declarations that embed.
-parses← : ∀ {text m′} → G.Parses text m′
-        → Σ[ m ∈ Once.Parser.Module.Core.Module ] (LP.ParsesText text m × Pointwise DEmb (Once.Parser.Module.Core.Module.decls m) (S.Module.decls m′))
+-- A text the Spec parses is one the compiler parses, into the same module.
+parses← : ∀ {text m} → G.Parses text m → LP.ParsesText text m
 parses← {text} (ts , r , lx , dd , tr) = pr₁ dd tr (toOld lx 0)
   where
-    pr₂ : ∀ {toks ds′} → LL.LexesChars 0 (toList text) toks
-        → Σ[ ds ∈ List Decl ] Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × Pointwise DEmb ds ds′ × F rest ≡ r)
-        → Σ[ m ∈ Once.Parser.Module.Core.Module ] (LP.ParsesText text m × Pointwise DEmb (Once.Parser.Module.Core.Module.decls m) ds′)
-    pr₂ {toks} lx (ds , rest , dd , ems , refl) =
-      Once.Parser.Module.Core.mkModule ds , (toks , rest , lx , dd , trail← rest tr) , ems
-    pr₁ : ∀ {ds′} → G.ParsesDecls ts ds′ r → Trailing r
+    pr₂ : ∀ {toks ds} → LL.LexesChars 0 (toList text) toks
+        → Σ[ rest ∈ List P.Token ] (LP.ParsesDecls toks ds rest × F rest ≡ r)
+        → LP.ParsesText text (S.mkModule ds)
+    pr₂ {toks} lx (rest , dd , refl) = toks , rest , lx , dd , trail← rest tr
+    pr₁ : ∀ {ds} → G.ParsesDecls ts ds r → Trailing r
         → Σ[ toks ∈ List P.Token ] (LL.LexesChars 0 (toList text) toks × F toks ≡ ts)
-        → Σ[ m ∈ Once.Parser.Module.Core.Module ] (LP.ParsesText text m × Pointwise DEmb (Once.Parser.Module.Core.Module.decls m) ds′)
+        → LP.ParsesText text (S.mkModule ds)
     pr₁ dd tr (toks , lx , e) = pr₂ lx (decls← dd tr toks e)

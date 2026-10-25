@@ -30,6 +30,7 @@ import qualified MAlonzo.Code.Once.Internal.Type.Poly
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.PolyType
 import qualified MAlonzo.Code.Once.Parser.Token
+import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 
 -- Once.Parser.Module.DeclTail.taEqHead
 d_taEqHead_8 :: [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> Bool
@@ -87,7 +88,7 @@ du_goTypeAliasWF_26 ::
 du_goTypeAliasWF_26 v0 v1 v2
   = coe
       du_gta'45'aw_40 (coe v0) (coe v1) (coe v2)
-      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v1))
+      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_86 (coe v1))
 -- Once.Parser.Module.DeclTail.gta-aw
 d_gta'45'aw_40 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -136,7 +137,7 @@ d_gta'45'eq_48 v0 v1 v2 v3
       then coe
              d_gta'45'type_58 (coe v0) (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.Parser.Module.Core.d_parseTypeB_80
+                MAlonzo.Code.Once.Parser.Module.Core.d_parseTypeB_60
                 (coe d_taDrop1_10 (coe v1)))
       else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
 -- Once.Parser.Module.DeclTail.gta-type
@@ -158,7 +159,7 @@ d_gta'45'type_58 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_16 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeAlias_118 (coe v0)
                                  (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v2)
                                  (coe MAlonzo.Code.Once.Internal.Type.Poly.d_polyOf_150 (coe v5)))
                               (coe
@@ -215,7 +216,7 @@ d_parseTypeAliasB_174 ::
 d_parseTypeAliasB_174 v0
   = coe
       du_pta'45'aw_180
-      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0))
+      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_86 (coe v0))
 -- Once.Parser.Module.DeclTail.pta-aw
 d_pta'45'aw_180 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
@@ -285,7 +286,7 @@ d_parseTypeAlias_228 v0
           = coe
               du_pta'45'aw_180
               (coe
-                 MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0)) in
+                 MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_86 (coe v0)) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
@@ -362,7 +363,7 @@ du_psig'45'poly_264 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_14 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DSignature_116 (coe v0)
                                  (coe v5))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
@@ -405,7 +406,7 @@ d_parseSignatureB_316 ::
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseSignatureB_316 v0
   = let v1
-          = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0) in
+          = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_86 (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
@@ -426,7 +427,7 @@ d_parseSignature_334 ::
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_parseSignature_334 v0
   = let v1
-          = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0) in
+          = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_86 (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2

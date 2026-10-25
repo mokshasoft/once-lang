@@ -34,6 +34,7 @@ module Once.Internal.Program where
 open import Data.Product using (Σ-syntax; _,_; _×_)
 
 import Once.Parser.Module.Core as P
+import Once.Spec.Surface.Syntax as Syn
 
 -- The four predicates `Typed` / `_⊢R_` are built from. Named explicitly, so a
 -- reader of the criterion has the whole statement in one place.
@@ -84,6 +85,6 @@ Typed = Σ-syntax P.Resolved (λ m → Σ-syntax (ModuleTyped m) (λ mt → HasV
 
 _⊢R_ : Source → Typed → Set
 src ⊢R (mR , _ , _) =
-  Σ-syntax P.Module (λ mU →
+  Σ-syntax Syn.Module (λ mU →
     ParsesText (Source.srcText src) mU
     × ResolvesModule (Source.srcImports src) mU mR)

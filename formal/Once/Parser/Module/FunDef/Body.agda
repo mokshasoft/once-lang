@@ -12,6 +12,7 @@ module Once.Parser.Module.FunDef.Body where
 
 open import Data.Bool using (Bool; true; false)
 open import Once.Parser.Module.Core
+open import Once.Spec.Surface.Syntax using (Decl; DFunDef)
 open import Data.Maybe using (nothing; just)
 open import Data.Product using (_,_)
 open import Data.String using (String)
@@ -22,6 +23,8 @@ open import Data.Nat.Properties using (<-≤-trans; m≤n⇒m≤1+n; ≤-refl)
 open import Data.Nat using (_≤_)
 open import Data.List using (List; []; _∷_; length)
 open import Once.Parser.Module.FunDef.Params
+-- a definition's parameters wrap its body as the Spec's grammar wraps them
+open import Once.Spec.Surface.Grammar using (wrapLams)
 
 -- | Bounded parse of function body after `=`: consumes `=` plus a non-empty
 -- expression, so the residual is strictly shorter. CLASSIFIER-ROUTED (Plan 0.52

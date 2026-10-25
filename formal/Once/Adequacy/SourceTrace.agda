@@ -52,6 +52,7 @@ import Once.Compile as C
 -- `Once.Compile` beside the emitter, and read from there.
 open import Once.Compile using (moduleToIR; moduleToProgram; rewrite-fun; rewrite-table; rewrite-program)
 import Once.Parser.Module.Core as P
+import Once.Spec.Surface.Syntax as Syn
 -- D165: the arith-block lifting the BACKEND runs before codegen. Imported here
 -- so the IR the emitter actually compiles can be NAMED (`moduleToIR-emitted`).
 open import Once.Arith.Machine.Rewrite using (rewrite-ir)
@@ -241,7 +242,7 @@ eitherToMaybe : ∀ {A : Set} → String ⊎ A → Maybe A
 eitherToMaybe (inj₁ _) = nothing
 eitherToMaybe (inj₂ m) = just m
 
-srcToModule-aux : ModuleMap → Maybe P.Module → Maybe P.Resolved
+srcToModule-aux : ModuleMap → Maybe Syn.Module → Maybe P.Resolved
 srcToModule-aux mm nothing  = nothing
 srcToModule-aux mm (just m) = eitherToMaybe (resolveImports mm m)
 
@@ -256,7 +257,7 @@ srcToModule src =
 -- The front-end SUCCEEDS to `mR` exactly when the source text parses to `mU`
 -- and the resolver maps it to `mR`. (Reduction lemma the apex completeness path
 -- uses to rewrite `srcToModule src` once both halves are known.)
-srcToModule-just : ∀ (src : Source) (mU : P.Module) (mR : P.Resolved) →
+srcToModule-just : ∀ (src : Source) (mU : Syn.Module) (mR : P.Resolved) →
   parseStrict (Source.srcText src) ≡ inj₂ mU →
   resolveImports (Source.srcImports src) mU ≡ inj₂ mR →
   srcToModule src ≡ just mR
@@ -272,15 +273,15 @@ eitherToMaybe-inv : ∀ {A : Set} (e : String ⊎ A) (m : A) →
 eitherToMaybe-inv (inj₁ _)  m ()
 eitherToMaybe-inv (inj₂ m') m eq = cong inj₂ (just-injective eq)
 
-srcToModule-inv-p : ∀ (mm : ModuleMap) (pr : String ⊎ P.Module) (mR : P.Resolved) →
+srcToModule-inv-p : ∀ (mm : ModuleMap) (pr : String ⊎ Syn.Module) (mR : P.Resolved) →
   srcToModule-aux mm (eitherToMaybe pr) ≡ just mR →
-  Σ-syntax P.Module (λ mU → (pr ≡ inj₂ mU) × (resolveImports mm mU ≡ inj₂ mR))
+  Σ-syntax Syn.Module (λ mU → (pr ≡ inj₂ mU) × (resolveImports mm mU ≡ inj₂ mR))
 srcToModule-inv-p mm (inj₁ _)  mR ()
 srcToModule-inv-p mm (inj₂ mU) mR eq = mU , refl , eitherToMaybe-inv (resolveImports mm mU) mR eq
 
 srcToModule-inv : ∀ (src : Source) (mR : P.Resolved) →
   srcToModule src ≡ just mR →
-  Σ-syntax P.Module (λ mU →
+  Σ-syntax Syn.Module (λ mU →
     (parseStrict (Source.srcText src) ≡ inj₂ mU)
     × (resolveImports (Source.srcImports src) mU ≡ inj₂ mR))
 srcToModule-inv src mR eq =

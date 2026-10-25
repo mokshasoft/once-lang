@@ -19,7 +19,6 @@ open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Properties using (map-++; ++-assoc)
-open import Data.List.Relation.Binary.Pointwise using (Pointwise)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
 import Data.List.Relation.Unary.All.Properties as AllP
@@ -37,14 +36,13 @@ import Once.Spec.Surface.Program as SPr
 import Once.Internal.Resolution as LR
 import Once.Parser as Parser
 open import Once.Parser using (Entry; entryNameOf)
-open import Once.Parser.Module.Core using (Decl; mkModule; resolved)
+open import Once.Parser.Module.Core using (resolved)
+open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 open import Once.Parser.Module.Resolve using (importedOf)
 open import Once.Spec.Surface.Syntax using (PolyType)
 open import Data.String using (String)
 open import Once.Internal.Module using (entrySig)
 open import Once.Internal.Core.Decl using (toISig)
-open import Once.Adequacy.SpecGrammar.Decl using (DEmb)
-open import Once.Adequacy.SpecFront.ModRel using (ModRel)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-sig; IsSig; is-sig; own-sigs; imported-sigs; nonSigs-none; ffi-of; FFIFacts)
 open import Once.Adequacy.SpecFront.ExtractBack using (align-extract; adj-ok; walk-adj; dr-adj; nonSigs-adj; xalign-of)
 open import Once.Adequacy.SpecFront.SigOf using (own-res)
@@ -86,14 +84,14 @@ record Extracted (dsR : List Decl) (is : List (String × PolyType)) (Σ : Signat
     facts     : All FFIFacts fs
     distinct  : AllPairs _≢_ (names (fs ++ esN))
 
-extract-ok : ∀ {mm mm′ um am dsU dsR ds′ dsR′ Σ E s′} {S′ : _} {nm′ : Fin s′ → CanonicalName} {tl′}
+extract-ok : ∀ {mm um am dsU dsR dsR′ Σ E s′} {S′ : _} {nm′ : Fin s′ → CanonicalName} {tl′}
                {S₀ : _} {nm₀ : Fin 0 → CanonicalName} {tl₀}
-           → ModsW mm′ → All DeclW ds′ → ModRel mm mm′ → LR.ResolvesDecls mm um am dsU dsR → Pointwise DEmb dsU ds′
-           → SPr.ResolvesDecls E ds′ dsR′ → DR Σ dsR′ dsR
-           → SPr.SignatureOf mm′ ds′ Σ → WellFormed Σ → OneName Σ
+           → ModsW mm → All DeclW dsU → LR.ResolvesDecls mm um am dsU dsR
+           → SPr.ResolvesDecls E dsU dsR′ → DR Σ dsR′ dsR
+           → SPr.SignatureOf mm dsU Σ → WellFormed Σ → OneName Σ
            → SPr.Walk Σ S₀ nm₀ tl₀ dsR′ S′ nm′ tl′ → Injective _≡_ _≡_ nm′ → (∀ i {t} → ¬ ((nm′ i ∶ t) ∈ Σ))
            → Extracted dsR (importedOf mm dsU) Σ
-extract-ok {mm = mm} {dsU = dsU} {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} wm wd mr rds pw rd dr sig@(Σ₀ , Σᵢ , so , im , refl) wf one w inj ns =
+extract-ok {mm = mm} {dsU = dsU} {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} wm wd rds rd dr sig@(Σ₀ , Σᵢ , so , im , refl) wf one w inj ns =
   record
     { fs = fs ; esN = esN
     ; extracted = trans (cong₂ (λ a r → Parser.guardDistinct (Parser.thenExtract a r)) (adj-ok adj) (align-extract xw))
@@ -102,8 +100,8 @@ extract-ok {mm = mm} {dsU = dsU} {dsR = dsR} {dsR′ = dsR′} {Σ = Σ} wm wd m
   where
     w₀ = proj₁ (wf-++ Σ₀ wf)
     wᵢ = proj₂ (wf-++ Σ₀ wf)
-    p₀ = own-part← pw so w₀
-    pᵢ = imp-part← mr rds pw im wᵢ
+    p₀ = own-part← so w₀
+    pᵢ = imp-part← rds im wᵢ
     fs₀ = proj₁ p₀
     fsᵢ = proj₁ pᵢ
     x₀ : XAlign (Parser.ownSigs dsR) fs₀

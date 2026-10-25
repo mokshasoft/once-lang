@@ -18,6 +18,7 @@
 module Once.Parser.Module where
 
 open import Once.Parser.Module.Core
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; Module; mkModule)
 open import Data.Maybe using (nothing; just; Maybe)
 open import Data.Product using (_,_; Σ-syntax; _×_; proj₁; proj₂)
 open import Data.String using (String; _≟_)

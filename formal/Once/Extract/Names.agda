@@ -53,10 +53,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Parser.Module.Core using
-  (Module; Decl; DFunDef; DImport)
+open import Once.Spec.Surface.Syntax using (Module; Decl; DFunDef; DImport)
 open import Once.Spec.Surface.Syntax using (Import)
-open Once.Parser.Module.Core.Module using (decls)
+open Once.Spec.Surface.Syntax.Module using (decls)
 open Once.Spec.Surface.Syntax.Import using (path; alias)
 
 ------------------------------------------------------------------------

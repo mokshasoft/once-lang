@@ -101,7 +101,8 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 -- Re-export Parser (for module loading)
 open import Once.Parser
 open import Once.Parser.Module
-open import Once.Parser.Module.Core using (Module; Resolved; resolved)
+open import Once.Parser.Module.Core using (Resolved; resolved)
+open import Once.Spec.Surface.Syntax using (Module)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Spec.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

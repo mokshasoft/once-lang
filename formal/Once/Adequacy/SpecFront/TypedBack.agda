@@ -21,7 +21,6 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; _ʳ++_; map; tabulate)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-tabulate⁺; ∈-map⁻)
-open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
 import Data.List.Relation.Unary.All.Properties as AllP
@@ -44,7 +43,7 @@ import Once.Spec.Surface.Program as SPr
 import Once.Spec.Surface.Resolution as SR
 import Once.Spec.Core.Program as CoreProgram
 import Once.Parser as Parser
-open import Once.Parser.Module.Core using (Decl; mkModule; DImport)
+open import Once.Spec.Surface.Syntax using (Decl; mkModule; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 import Once.Parser.Module.Core as Core
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule; sigNames; importedOf)
@@ -53,9 +52,7 @@ import Once.Internal.Module as LM
 open import Once.Internal.Module using (ModTele; emptyScope; scope; entrySig; MainsEffUU; MainIn)
 open import Once.Internal.Core.Translate using (SigSig; s-ffi)
 open import Once.Internal.Core.Decl using (toISig)
-open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
-open import Once.Adequacy.SpecFront.ModRel using (ModRel)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts; nonSigs-none)
 open import Once.Adequacy.SpecFront.ExtractBack using (walk-adj; dr-adj)
 open import Once.Adequacy.SpecFront.ExtractOk using (Extracted; extract-ok)
@@ -92,25 +89,25 @@ private
   paths-++ (p ∷ ps) q = p ∷ paths-++ ps q
 
 -- (mirrors `collectUnaliased`'s `with`)
-um-ne : ∀ (mm : ModuleMap) {dsU ds′} → Pointwise DEmb dsU ds′ → All DeclW ds′ → PathsNE (collectUnaliased mm dsU)
+um-ne : ∀ (mm : ModuleMap) dsU → All DeclW dsU → PathsNE (collectUnaliased mm dsU)
 um-ne mm [] [] = []
-um-ne mm (d-typesig ∷ pw)  (_ ∷ ws) = um-ne mm pw ws
-um-ne mm (d-fundef ∷ pw) (_ ∷ ws) = um-ne mm pw ws
-um-ne mm (d-signature ∷ pw) (_ ∷ ws) = um-ne mm pw ws
-um-ne mm (d-alias ∷ pw)    (_ ∷ ws) = um-ne mm pw ws
-um-ne mm (d-import {p = p} {a = just _} ∷ pw) (_ ∷ ws) = um-ne mm pw ws
-um-ne mm (d-import {p = p} {a = nothing} ∷ pw) ((_ , ne) ∷ ws) with lookupModule mm p
-... | just (mkModule impDs) = paths-++ (paths-map p (sigNames impDs) ne) (um-ne mm pw ws)
-... | nothing               = um-ne mm pw ws
+um-ne mm (DTypeSig _ _ ∷ ds)     (_ ∷ ws) = um-ne mm ds ws
+um-ne mm (DFunDef _ _ ∷ ds)      (_ ∷ ws) = um-ne mm ds ws
+um-ne mm (DSignature _ _ ∷ ds)   (_ ∷ ws) = um-ne mm ds ws
+um-ne mm (DTypeAlias _ _ _ ∷ ds) (_ ∷ ws) = um-ne mm ds ws
+um-ne mm (DImport (mkImport p (just _)) ∷ ds) (_ ∷ ws) = um-ne mm ds ws
+um-ne mm (DImport (mkImport p nothing) ∷ ds) ((_ , ne) ∷ ws) with lookupModule mm p
+... | just (mkModule impDs) = paths-++ (paths-map p (sigNames impDs) ne) (um-ne mm ds ws)
+... | nothing               = um-ne mm ds ws
 
-am-ne : ∀ {dsU ds′} → Pointwise DEmb dsU ds′ → All DeclW ds′ → PathsNE (collectAliases dsU)
+am-ne : ∀ dsU → All DeclW dsU → PathsNE (collectAliases dsU)
 am-ne [] [] = []
-am-ne (d-typesig ∷ pw)  (_ ∷ ws) = am-ne pw ws
-am-ne (d-fundef ∷ pw) (_ ∷ ws) = am-ne pw ws
-am-ne (d-signature ∷ pw) (_ ∷ ws) = am-ne pw ws
-am-ne (d-alias ∷ pw)    (_ ∷ ws) = am-ne pw ws
-am-ne (d-import {a = just _} ∷ pw)  ((_ , ne) ∷ ws) = ne ∷ am-ne pw ws
-am-ne (d-import {a = nothing} ∷ pw) (_ ∷ ws)        = am-ne pw ws
+am-ne (DTypeSig _ _ ∷ ds)     (_ ∷ ws) = am-ne ds ws
+am-ne (DFunDef _ _ ∷ ds)      (_ ∷ ws) = am-ne ds ws
+am-ne (DSignature _ _ ∷ ds)   (_ ∷ ws) = am-ne ds ws
+am-ne (DTypeAlias _ _ _ ∷ ds) (_ ∷ ws) = am-ne ds ws
+am-ne (DImport (mkImport _ (just _)) ∷ ds) ((_ , ne) ∷ ws) = ne ∷ am-ne ds ws
+am-ne (DImport (mkImport _ nothing) ∷ ds)  (_ ∷ ws)        = am-ne ds ws
 
 ------------------------------------------------------------------------
 -- `main` is one of the walk's definitions
@@ -178,12 +175,11 @@ private
            → Σ[ mt′ ∈ LM.ModuleTyped-ef m ef ] LM.HasValidMain-ef m ef mt′
   typed-at m .(inj₂ _) refl mt ms mi = mt , ms , mi
 
-typed← : ∀ {mm mm′ dsU ds′ Σ p}
-       → ModsW mm′ → All DeclW ds′ → All DeclWritten ds′
-       → ModRel mm mm′ → Pointwise DEmb dsU ds′
-       → SPr.Denotes mm′ (S.mkModule ds′) Σ p
+typed← : ∀ {mm dsU Σ p}
+       → ModsW mm → All DeclW dsU → All DeclWritten dsU
+       → SPr.Denotes mm (S.mkModule dsU) Σ p
        → TypedC mm dsU
-typed← {mm} {mm′} {dsU} {ds′} {Σ} {p} wm wd wr mr pw D = record { dsR = dsR ; rds = rds ; mt = proj₁ th ; hvm = proj₂ th }
+typed← {mm} {dsU} {Σ} {p} wm wd wr D = record { dsR = dsR ; rds = rds ; mt = proj₁ th ; hvm = proj₂ th }
   where
     open SPr.Denotes D
     module P = CoreProgram.Program p
@@ -192,14 +188,14 @@ typed← {mm} {mm′} {dsU} {ds′} {Σ} {p} wm wd wr mr pw D = record { dsR = d
     Σᵢ = proj₁ (proj₂ sig)
     im = proj₁ (proj₂ (proj₂ (proj₂ sig)))
     -- the resolution, the compiler's
-    rd′ : SPr.ResolvesDecls (SR.env (collectUnaliased mm dsU) (collectAliases dsU)) ds′ resolved
-    rd′ = subst₂ (λ u a → SPr.ResolvesDecls (SR.env u a) ds′ resolved) (unaliased-eq mr pw unaliases) (sym (Res.aliases-eq pw)) resolves
-    r← = Decls.res-decls← Σ mr (um-ne mm pw wd) (am-ne pw wd) rd′ pw wr (subst (SPr.Imported mm′ ds′) refl im)
+    rd′ : SPr.ResolvesDecls (SR.env (collectUnaliased mm dsU) (collectAliases dsU)) dsU resolved
+    rd′ = subst₂ (λ u a → SPr.ResolvesDecls (SR.env u a) dsU resolved) (unaliased-eq unaliases) (sym (Res.aliases-eq dsU)) resolves
+    r← = Decls.res-decls← Σ (um-ne mm dsU wd) (am-ne dsU wd) rd′ wr im
     dsR = proj₁ r←
     rds = proj₁ (proj₂ r←)
     dr = proj₂ (proj₂ r←)
     -- the extractor's entries
-    X = extract-ok wm wd mr rds pw rd′ dr sig P.wf sig-distinct walk distinct def-not-sig
+    X = extract-ok wm wd rds rd′ dr sig P.wf sig-distinct walk distinct def-not-sig
     fs = Extracted.fs X
     es′ = Extracted.esN X
     tf = Extracted.table X

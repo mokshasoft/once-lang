@@ -30,7 +30,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token using (Token)
-open import Once.Parser.Module.Core using (Decl; Module)
+open import Once.Spec.Surface.Syntax using (Decl; Module)
 open Module using (decls)
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module using (parseDeclB)

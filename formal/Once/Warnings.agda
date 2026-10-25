@@ -60,9 +60,8 @@ open import Once.Parser.Token using (Token; TFloat)
 open import Once.Parser.Lexer using (tokenize)
 open import Data.String using (toList)
 open import Once.Compile using (silentRoundDefs)
-open import Once.Parser.Module.Core using
-  (Module; mkModule; Resolved; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
-   DImport)
+open import Once.Parser.Module.Core using (Resolved)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 
 ------------------------------------------------------------------------
 -- An exact rational, unnormalised

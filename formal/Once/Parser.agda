@@ -41,7 +41,8 @@ open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue; isOpNameChar)
 open import Once.Parser.Type using (isUpperWord)
 open import Once.Parser.Module
-open import Once.Parser.Module.Core using (Module; mkModule; Resolved; resolved; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
+open import Once.Parser.Module.Core using (Resolved; resolved)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
 
 -- Parser smoke tests (plan 0.3 G1): pull into the compilation graph
 -- so a regression in parser behaviour fails `make parser`.

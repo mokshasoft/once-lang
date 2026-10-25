@@ -5,7 +5,7 @@
 -- Once.Parser.Module.Core
 --
 -- Shared types and bounded-parser primitives used across all of the
--- `Once.Parser.Module.*` submodules: the declaration / module AST,
+-- `Once.Parser.Module.*` submodules: the resolved module,
 -- `ParseAtB` / `ParseAtB≤` wrappers, bounded lifts of the type and
 -- expression sub-parsers, and the `anyWordB` token consumer.
 ------------------------------------------------------------------------
@@ -22,7 +22,7 @@ open import Data.Nat.Properties using (≤-refl)
 open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (PolyType; Import)
+open import Once.Spec.Surface.Syntax using (PolyType; Module)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseTypeWF)
@@ -32,35 +32,10 @@ open import Once.Parser.ExprRelation using (ParsesExpr-shrinks)
 
 ------------------------------------------------------------------------
 -- Module Types
+--
+-- A declaration and a module are the Spec's (`Once.Spec.Surface.Syntax`,
+-- plan 0.122).
 ------------------------------------------------------------------------
-
--- D142: `AllocStrategy` (@stack/@heap/@pool/@arena/@const) is REMOVED from the
--- surface language. Allocation is mechanical — IR inputs/outputs are stack or
--- register-resident, bounded internals go to frontier scratch, unbounded
--- internals to the heap and are freed by the IR itself. Nothing in the source
--- picks. Supersedes D012/D013/D014; see plan 0.86.
-
-data Decl : Set where
-  -- Type signatures and primitives carry `PolyType` (not `Type`) so
-  -- user-written polymorphic signatures (`swap : a * b → b * a`)
-  -- survive parsing. Ground `Type` is recovered at `extractFunctions`
-  -- via `isGround`/`extractGround`. Plan 0.6 Phase B.
-  DTypeSig   : String → PolyType → Decl
-  DFunDef    : String → RawExpr → Decl
-  -- | `DSignature name ty`: a primitive the module declares. An imported
-  -- module's are read from the module map (`Resolved.imported`), as the
-  -- Spec's `Imported` reads them; never copied in (plan 0.122).
-  -- Plan 0.98 E / D226: no effect annotation. An external arrow's effect is
-  -- its CODOMAIN (`Void` halts, `Unit` emits), so `! halts` had nothing left
-  -- to say.
-  DSignature : String → PolyType → Decl
-  DTypeAlias : String → List String → PolyType → Decl
-  DImport    : Import → Decl
-
-record Module : Set where
-  constructor mkModule
-  field
-    decls : List Decl
 
 -- | A module after import resolution: its declarations, references resolved
 -- (the imports kept where they are written), and the signatures of the

@@ -40,7 +40,8 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Parser.Token using (Token)
-open import Once.Parser.Module.Core using (Decl; Module; mkModule; ParseAtB)
+open import Once.Parser.Module.Core using (ParseAtB)
+open import Once.Spec.Surface.Syntax using (Decl; Module; mkModule)
 open import Once.Parser.Lexer using (tokenizeString)
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module

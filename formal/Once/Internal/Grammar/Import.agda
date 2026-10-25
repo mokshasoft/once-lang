@@ -19,7 +19,8 @@ open import Data.Maybe using (just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (Decl; DImport; wordHead)
+open import Once.Parser.Module.Core using (wordHead)
+open import Once.Spec.Surface.Syntax using (Decl; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Import using (dropDot; dotHead)
 

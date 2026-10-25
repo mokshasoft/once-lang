@@ -23,20 +23,19 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Extract.Names.module-has-main
 d_module'45'has'45'main_6 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 -> Bool
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 -> Bool
 d_module'45'has'45'main_6 v0
   = coe
       du_go_26
-      (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_24 (coe v0))
+      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_126 (coe v0))
 -- Once.Extract.Names._.is-main
 d_is'45'main_14 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Bool
 d_is'45'main_14 ~v0 v1 = du_is'45'main_14 v1
 du_is'45'main_14 ::
@@ -62,10 +61,11 @@ du_is'45'main_14 v0
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Extract.Names._.go
 d_go_26 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 ->
-  [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_8] -> Bool
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_110] -> Bool
 d_go_26 ~v0 v1 = du_go_26 v1
-du_go_26 :: [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_8] -> Bool
+du_go_26 ::
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_110] -> Bool
 du_go_26 v0
   = case coe v0 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
@@ -73,7 +73,7 @@ du_go_26 v0
         -> let v3 = coe du_go_26 (coe v2) in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.Parser.Module.Core.C_DFunDef_12 v4 v5
+                MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_114 v4 v5
                   -> coe
                        MAlonzo.Code.Data.Bool.Base.d__'8744'__30
                        (coe du_is'45'main_14 (coe v4)) (coe du_go_26 (coe v2))
@@ -81,20 +81,20 @@ du_go_26 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Extract.Names.module-imports
 d_module'45'imports_34 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_module'45'imports_34 v0
   = coe
       du_go_42
-      (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_24 (coe v0))
+      (coe MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_126 (coe v0))
 -- Once.Extract.Names._.go
 d_go_42 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_20 ->
-  [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_8] ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_110] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_go_42 ~v0 v1 = du_go_42 v1
 du_go_42 ::
-  [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_8] ->
+  [MAlonzo.Code.Once.Spec.Surface.Syntax.T_Decl_110] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 du_go_42 v0
   = case coe v0 of
@@ -103,7 +103,7 @@ du_go_42 v0
         -> let v3 = coe du_go_42 (coe v2) in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.Parser.Module.Core.C_DImport_18 v4
+                MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_120 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe

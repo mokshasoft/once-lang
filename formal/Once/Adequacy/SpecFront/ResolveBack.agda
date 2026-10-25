@@ -22,7 +22,6 @@ import Once.Spec.Surface.Syntax as O
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Binary.Pointwise using (Pointwise; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
@@ -42,15 +41,13 @@ open import Once.Spec.Surface.Resolution
   using (Env; env; Resolves; rn-gen; rn-import; rn-own; r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam;
          r-let; r-pair; r-destruct; r-unit; r-int; r-float; r-annot; r-binop; r-neg)
 open import Once.Internal.ResolvedRefs using (GoodName; GoodRefs)
-open import Once.Parser.Module.Core using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
-open import Once.Adequacy.SpecGrammar.Decl using (DEmb; d-typesig; d-fundef; d-signature; d-alias; d-import)
 open import Once.Adequacy.SpecGrammar.Written using (Written)
 open import Once.Adequacy.SpecFront.Expr
   using (RX; x-local; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
-open import Once.Adequacy.SpecFront.ModRel using (ModRel)
 open import Once.Adequacy.SpecFront.Resolve using (names-eq; map-path)
 
 ------------------------------------------------------------------------
@@ -98,27 +95,19 @@ private
   x-good : ∀ {bound c} → GoodName c → RX bound (O.RResolved c) (S.RResolved c)
   x-good g = x-res (λ e → g e refl)
 
--- A module the Spec finds is one the compiler finds, written alike.
-find← : ∀ {mm mm′ p ds′} → ModRel mm mm′ → SR.FirstAt p (S.mkModule ds′) mm′
-      → Σ[ ds ∈ List Decl ] LR.FirstAt p (mkModule ds) mm × Pointwise DEmb ds ds′
-find← ((refl , pw) ∷ _) SR.fa-here = _ , LR.fa-here , pw
-find← ((refl , _) ∷ mr) (SR.fa-there ne fa) = let (ds , fa′ , pw) = find← mr fa in ds , LR.fa-there ne fa′ , pw
-
 -- The Spec's unaliased imports are the compiler's.
-unaliased-eq : ∀ {mm mm′ dsU ds′ u} → ModRel mm mm′ → Pointwise DEmb dsU ds′ → SR.Unaliased mm′ ds′ u
-             → u ≡ collectUnaliased mm dsU
-unaliased-eq mr [] SR.un-nil = refl
-unaliased-eq {mm} mr (d-import {p = p} {a = nothing} ∷ pw) (SR.un-import {ds′ = ds″} fa un)
-  with find← mr fa
-... | dsc , fa′ , pw′ with lookupModule mm p | lookupMod-complete mm p (mkModule dsc) fa′
-...   | .(just (mkModule dsc)) | refl =
-  cong₂ _++_ (sym (trans (cong (Data.List.map (λ n → (n , p))) (names-eq pw′)) (map-path p (SR.exports ds″))))
-             (unaliased-eq mr pw un)
-unaliased-eq mr (d-import {a = just _} ∷ pw) (SR.un-other SR.nu-aliased un) = unaliased-eq mr pw un
-unaliased-eq mr (d-typesig ∷ pw)   (SR.un-other SR.nu-tsig un)  = unaliased-eq mr pw un
-unaliased-eq mr (d-fundef ∷ pw)  (SR.un-other SR.nu-def un)   = unaliased-eq mr pw un
-unaliased-eq mr (d-signature ∷ pw) (SR.un-other SR.nu-sig un)   = unaliased-eq mr pw un
-unaliased-eq mr (d-alias ∷ pw)     (SR.un-other SR.nu-alias un) = unaliased-eq mr pw un
+unaliased-eq : ∀ {mm dsU u} → SR.Unaliased mm dsU u → u ≡ collectUnaliased mm dsU
+unaliased-eq SR.un-nil = refl
+unaliased-eq {mm} (SR.un-import {p = p} {ds′ = ds″} fa un)
+  with lookupModule mm p | lookupMod-complete mm p (mkModule ds″) (fa← fa)
+... | .(just (mkModule ds″)) | refl =
+  cong₂ _++_ (sym (trans (cong (Data.List.map (λ n → (n , p))) (names-eq ds″)) (map-path p (SR.exports ds″))))
+             (unaliased-eq un)
+unaliased-eq (SR.un-other SR.nu-aliased un) = unaliased-eq un
+unaliased-eq (SR.un-other SR.nu-tsig un)    = unaliased-eq un
+unaliased-eq (SR.un-other SR.nu-def un)     = unaliased-eq un
+unaliased-eq (SR.un-other SR.nu-sig un)     = unaliased-eq un
+unaliased-eq (SR.un-other SR.nu-alias un)   = unaliased-eq un
 
 ------------------------------------------------------------------------
 -- An expression
@@ -179,20 +168,20 @@ module Decls (Σ : Signature) where
   open import Once.Adequacy.SpecFront.Align Σ using (DR; dr-nil; dr-tsig; dr-def; dr-sig; dr-import; dr-alias)
 
   -- every import's module is found (the Spec's signature found it)
-  res-decls← : ∀ {mm mm′ um am dsU ds′ dsR′ Σᵢ} → ModRel mm mm′ → PathsNE um → PathsNE am
-             → SPr.ResolvesDecls (env um am) ds′ dsR′ → Pointwise DEmb dsU ds′ → All DeclWritten ds′
-             → SPr.Imported mm′ ds′ Σᵢ
+  res-decls← : ∀ {mm um am dsU dsR′ Σᵢ} → PathsNE um → PathsNE am
+             → SPr.ResolvesDecls (env um am) dsU dsR′ → All DeclWritten dsU
+             → SPr.Imported mm dsU Σᵢ
              → Σ[ dsR ∈ List Decl ] LR.ResolvesDecls mm um am dsU dsR × DR dsR′ dsR
-  res-decls← mr nu na SPr.rd-nil [] [] SPr.im-nil = [] , LR.rds-nil , dr-nil
-  res-decls← mr nu na (SPr.rd-def re rd) (d-fundef ∷ pw) (w ∷ ws) (SPr.im-other SPr.ni-def im) =
-    let (e , de , xe , g) = res-expr← nu na re w ; (ds , rds , dr) = res-decls← mr nu na rd pw ws im
+  res-decls← nu na SPr.rd-nil [] SPr.im-nil = [] , LR.rds-nil , dr-nil
+  res-decls← nu na (SPr.rd-def re rd) (w ∷ ws) (SPr.im-other SPr.ni-def im) =
+    let (e , de , xe , g) = res-expr← nu na re w ; (ds , rds , dr) = res-decls← nu na rd ws im
     in _ , LR.rds-cons LR.nim-fundef (LR.rd-fundef de g) rds , dr-def xe dr
-  res-decls← mr nu na (SPr.rd-other SPr.nf-tsig rd) (d-typesig ∷ pw) (_ ∷ ws) (SPr.im-other SPr.ni-tsig im) =
-    let (ds , rds , dr) = res-decls← mr nu na rd pw ws im in _ , LR.rds-cons LR.nim-typesig LR.rd-typesig rds , dr-tsig dr
-  res-decls← mr nu na (SPr.rd-other SPr.nf-sig rd) (d-signature ∷ pw) (_ ∷ ws) (SPr.im-other SPr.ni-sig im) =
-    let (ds , rds , dr) = res-decls← mr nu na rd pw ws im in _ , LR.rds-cons LR.nim-sig LR.rd-signature rds , dr-sig dr
-  res-decls← mr nu na (SPr.rd-other SPr.nf-alias rd) (d-alias ∷ pw) (_ ∷ ws) (SPr.im-other SPr.ni-alias im) =
-    let (ds , rds , dr) = res-decls← mr nu na rd pw ws im in _ , LR.rds-cons LR.nim-alias LR.rd-typealias rds , dr-alias dr
-  res-decls← mr nu na (SPr.rd-other SPr.nf-import rd) (d-import ∷ pw) (_ ∷ ws) (SPr.im-import fa _ _ im) =
-    let (_ , fa′ , _) = find← mr fa ; (ds , rds , dr) = res-decls← mr nu na rd pw ws im
-    in _ , LR.rds-import fa′ rds , dr-import dr
+  res-decls← nu na (SPr.rd-other SPr.nf-tsig rd) (_ ∷ ws) (SPr.im-other SPr.ni-tsig im) =
+    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons LR.nim-typesig LR.rd-typesig rds , dr-tsig dr
+  res-decls← nu na (SPr.rd-other SPr.nf-sig rd) (_ ∷ ws) (SPr.im-other SPr.ni-sig im) =
+    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons LR.nim-sig LR.rd-signature rds , dr-sig dr
+  res-decls← nu na (SPr.rd-other SPr.nf-alias rd) (_ ∷ ws) (SPr.im-other SPr.ni-alias im) =
+    let (ds , rds , dr) = res-decls← nu na rd ws im in _ , LR.rds-cons LR.nim-alias LR.rd-typealias rds , dr-alias dr
+  res-decls← nu na (SPr.rd-other SPr.nf-import rd) (_ ∷ ws) (SPr.im-import fa _ _ im) =
+    let (ds , rds , dr) = res-decls← nu na rd ws im
+    in _ , LR.rds-import (fa← fa) rds , dr-import dr

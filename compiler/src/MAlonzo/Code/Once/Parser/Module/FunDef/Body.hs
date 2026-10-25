@@ -25,8 +25,9 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.Parser.Module.Core
-import qualified MAlonzo.Code.Once.Parser.Module.FunDef.Params
 import qualified MAlonzo.Code.Once.Parser.Token
+import qualified MAlonzo.Code.Once.Spec.Surface.Grammar
+import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 
 -- Once.Parser.Module.FunDef.Body.eqHead
 d_eqHead_10 :: [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> Bool
@@ -81,7 +82,7 @@ d_pfb'45'eq_32 v0 v1 v2 v3
       then coe
              d_pfb'45'body_40 (coe v0) (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.Parser.Module.Core.d_parseExprB_100
+                MAlonzo.Code.Once.Parser.Module.Core.d_parseExprB_80
                 (coe d_drop1_12 (coe v2)))
       else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
 -- Once.Parser.Module.FunDef.Body.pfb-body
@@ -103,10 +104,10 @@ d_pfb'45'body_40 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Parser.Module.Core.C_DFunDef_12 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_114 (coe v0)
                                  (coe
-                                    MAlonzo.Code.Once.Parser.Module.FunDef.Params.d_wrapLams_10
-                                    (coe v1) (coe v5)))
+                                    MAlonzo.Code.Once.Spec.Surface.Grammar.d_wrapLams_1500 (coe v1)
+                                    (coe v5)))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
                                  (coe

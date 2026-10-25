@@ -6,7 +6,7 @@
 -- the Spec, the program the compiler builds (plan 0.121 §3.6, F6).
 --
 -- From the compiler's reading of a module — its declarations as written
--- (`dsU`, related to the Spec's `ds′` by `DEmb`), resolved (`dsR`), extracted
+-- (`dsU`, the Spec's), resolved (`dsR`), extracted
 -- into entries and typed as a telescope (`ModTele`) with a `main` — the
 -- Spec's `Denotes`: the signature (`SigOf`), the resolution (`Resolve`), the
 -- walk (`Walk`, from the FFI declarations' scope, `Prefix`/`Start`), its
@@ -30,7 +30,6 @@ open import Once.Internal.Core.Decl using (toISig)
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 open import Data.List using ([]; _∷_; _++_; _ʳ++_)
-open import Data.List.Relation.Binary.Pointwise using (Pointwise)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_; proj₁; proj₂)
@@ -52,7 +51,7 @@ import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Core.Syntax as SC
 import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
-open import Once.Parser.Module.Core using (Decl; mkModule)
+open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 import Once.Parser.Module.Core as Core
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; importedOf)
 import Once.Internal.Resolution as LR
@@ -68,9 +67,7 @@ import Once.Spec.Name
 import Once.Adequacy.SpecFront.Polys
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 import Once.Adequacy.NameClash as NC
-open import Once.Adequacy.SpecGrammar.Decl using (DEmb)
 import Once.Adequacy.SpecCore.Program as PG
-open import Once.Adequacy.SpecFront.ModRel using (ModRel)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; extract-align; nonSigs-none)
 import Once.Adequacy.SpecFront.Resolve as Res
 import Once.Adequacy.SpecFront.SigOf as SigOf
@@ -110,7 +107,7 @@ private
 ------------------------------------------------------------------------
 
 -- What the Spec's module denotes, and that it is the compiler's program.
-record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele emptyScope es) (mi : MainIn mt) : Set where
+record Denoted (mm : SR.ModuleMap) (ds : List S.Decl) {es} (mt : ModTele emptyScope es) (mi : MainIn mt) : Set where
   field
     Σₛ      : Signature
     wf      : WellFormed Σₛ
@@ -127,23 +124,21 @@ record Denoted (mm′ : SR.ModuleMap) (ds′ : List S.Decl) {es} (mt : ModTele e
                 (λ m → sig-in Σₛ (key-word keysW) (subst (_ ∈_) sig-eq m))
               ≡ TL.program tele entry isMain
     -- …which the module denotes
-    denotes : SPr.Denotes mm′ (S.mkModule ds′) Σₛ (PG.programS Σₛ fmt wf (TL.program tele entry isMain))
+    denotes : SPr.Denotes mm (S.mkModule ds) Σₛ (PG.programS Σₛ fmt wf (TL.program tele entry isMain))
 
-denote : ∀ {mm mm′ dsU dsR ds′ es}
-       → ModsW mm′ → All DeclW ds′
-       → ModRel mm mm′
+denote : ∀ {mm dsU dsR es}
+       → ModsW mm → All DeclW dsU
        → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
-       → Pointwise DEmb dsU ds′
        → Parser.extractFunctions (Core.resolved (mkModule dsR) (importedOf mm dsU)) ≡ inj₂ es
-       → (mt : ModTele emptyScope es) (mi : MainIn mt) → Denoted mm′ ds′ mt mi
-denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
+       → (mt : ModTele emptyScope es) (mi : MainIn mt) → Denoted mm dsU mt mi
+denote {mm} {dsU} {dsR} {es} wm wd rds ef mt mi =
   go fs es′ ees mt mi guard xn ffiE sigk
   where
     r₀ = Parser.thenExtract (Parser.sigsAdjacent dsR nothing) (Parser.extractFunctions-go (Parser.sigsFirst dsR (importedOf mm dsU)) nothing)
     adjE = proj₁ (then-ok _ _ (guard-ok r₀ ef))
     goE  = proj₂ (then-ok _ _ (guard-ok r₀ ef))
     guard = NC.guard-entries r₀ ef
-    sp = SigOf.signature-of mr rds pw (extract-align (Parser.sigsFirst dsR (importedOf mm dsU)) goE)
+    sp = SigOf.signature-of rds (extract-align (Parser.sigsFirst dsR (importedOf mm dsU)) goE)
     fs = proj₁ sp
     es′ = proj₁ (proj₂ sp)
     ees = proj₁ (proj₂ (proj₂ sp))
@@ -154,9 +149,9 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
 
     go : ∀ fs es′ {es} → es ≡ fs ++ es′ → (mt : ModTele emptyScope es) (mi : MainIn mt)
        → AllPairs _≢_ (names es) → XAlign (Parser.nonSigs dsR) es′ → All Once.Adequacy.SpecFront.Extract.FFIEntry fs
-       → (All Once.Adequacy.SpecFront.Extract.FFIFacts fs → Σ[ Σₛ ∈ Signature ] SPr.SignatureOf mm′ ds′ Σₛ
+       → (All Once.Adequacy.SpecFront.Extract.FFIFacts fs → Σ[ Σₛ ∈ Signature ] SPr.SignatureOf mm dsU Σₛ
             × (toISig Σₛ ≡ entrySig fs) × (entrySig es ≡ entrySig fs))
-       → Denoted mm′ ds′ mt mi
+       → Denoted mm dsU mt mi
     go fs es′ refl mt mi guard xn ffiE sigk = record
       { Σₛ = Σₛ ; wf = wf ; uniq = uniq-of Σₛ (fs ++ es′) (trans tf (sym te)) guard ; keysW = kw ; sig-eq = eqT
       ; tele = En.End.tl e ; entry = d ; isMain = me ; built = trans (Past.same P) eqP ; denotes = den }
@@ -182,7 +177,7 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         h-psig x∈ = Data.List.Relation.Unary.All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
         h-own : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σₛ)
         h-own {x} x∈ps M = not-sig Σₛ fs es′ tf guard (poly-names es′ x∈ps) M
-        rd = Res.Decls.res-decls Σₛ rds pw
+        rd = Res.Decls.res-decls Σₛ rds
         dsR′ = proj₁ rd
         align = Al.align-of Σₛ (proj₂ (proj₂ rd)) adj xn
         module W = Wk Σₛ ps sg h-sig h-own h-psig (key-word kw)
@@ -198,13 +193,13 @@ denote {mm} {mm′} {dsU} {dsR} {ds′} {es} wm wd mr rds pw ef mt mi =
         eqP = proj₁ (proj₂ (proj₂ pe))
         p = PG.programS Σₛ fmt wf (TL.program (En.End.tl e) d me)
         w = W.walk CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) align (WS.winv-empty Σₛ ps) eok
-        den : SPr.Denotes mm′ (S.mkModule ds′) Σₛ p
+        den : SPr.Denotes mm (S.mkModule dsU) Σₛ p
         den = record
           { signature = sig
           ; unaliased = collectUnaliased mm dsU
-          ; unaliases = Res.unaliased-of mr rds pw
+          ; unaliases = Res.unaliased-of rds
           ; resolved  = dsR′
-          ; resolves  = subst (λ a → SPr.ResolvesDecls (SR.env (collectUnaliased mm dsU) a) ds′ dsR′) (Res.aliases-eq pw)
+          ; resolves  = subst (λ a → SPr.ResolvesDecls (SR.env (collectUnaliased mm dsU) a) dsU dsR′) (Res.aliases-eq dsU)
                               (proj₁ (proj₂ rd))
           ; names     = En.End.nm e
           ; walk      = subst (λ n → SPr.Walk Σₛ SC.[] n CoreProgram.[] dsR′ (En.End.S e) (En.End.nm e) (En.End.tl e)) fin0-ext w

@@ -51,7 +51,7 @@ import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Program
   using (SchemaOf; TypeOf; FunOf; NotDefinition; nd-sig; nd-alias; nd-import;
          to-unit; to-void; to-int; to-float; to-*; to-+; to-⇒; to-act; to-eff; to-μ; to-ν; fo-K; fo-Id; fo-⊕; fo-⊗)
-open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 import Once.Parser as Parser
 open import Once.Internal.Type.Schema using (schemaOf)
 open import Once.Internal.Core.Translate Σ using (monoSchema)

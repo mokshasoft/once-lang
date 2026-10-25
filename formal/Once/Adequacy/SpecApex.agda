@@ -79,7 +79,6 @@ open import Once.Denotation.Admissible using (AdmissibleM)
 import Once.Adequacy.CoreBridge as CB
 import Once.Spec.Surface.Syntax as SS
 import Once.Adequacy.SpecGrammar.Decl as GD
-import Once.Adequacy.SpecGrammar.EmbOf as EmbOf
 import Once.Adequacy.SpecFront.Modules as Modules
 import Once.Adequacy.SpecFront.Lits as Lits
 import Once.Adequacy.SpecFront.Denote
@@ -232,28 +231,24 @@ private
 
   sound-ef : ∀ arch (src : Source) {mm dsU dsR}
            → parseModules (SP.Source.modules src) ≡ just mm
-           → LPa.ParsesText (SP.Source.text src) (PM.mkModule dsU)
+           → LPa.ParsesText (SP.Source.text src) (SS.mkModule dsU)
            → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
-           → AdmissibleM arch (PM.mkModule dsR)
-           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ≡ ef
-           → (mt : LM.ModuleTyped-ef (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ef)
-             (hvm : LM.HasValidMain-ef (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ef mt)
-           → Goal-ef arch src (PM.resolved (PM.mkModule dsR) (importedOf mm dsU)) ef mt hvm
+           → AdmissibleM arch (SS.mkModule dsR)
+           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ≡ ef
+           → (mt : LM.ModuleTyped-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef)
+             (hvm : LM.HasValidMain-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef mt)
+           → Goal-ef arch src (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef mt hvm
   sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (_ , mi) =
-    tp′ , (mm′ , GD.parses→ {SP.Source.text src} pt em , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds em adm ,
+    tp′ , (mm , pt′ , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds adm ,
     Mn.view D , trans (sym (Dn.Denoted.sig-eq D)) (teleSig≡entrySig mt) , Dn.Denoted.uniq D , Mn.same-trace D
     where
       module Dn = Once.Adequacy.SpecFront.Denote (arch-numerics arch)
       module Mn = Once.Adequacy.SpecFront.Meaning (arch-numerics arch)
-      mods = Modules.modules-of (SP.Source.modules src) pm
-      mm′ = proj₁ mods
-      pms = proj₁ (proj₂ mods)
-      mr = proj₂ (proj₂ mods)
-      ds′ = proj₁ (EmbOf.parses-emb {SP.Source.text src} pt)
-      em = proj₂ (EmbOf.parses-emb {SP.Source.text src} pt)
-      D = Dn.denote (Words.mods-words pms) (Words.decls-words {SP.Source.text src} (GD.parses→ {SP.Source.text src} pt em)) mr rds em eq mt mi
+      pms = Modules.modules-of (SP.Source.modules src) pm
+      pt′ = GD.parses→ {SP.Source.text src} pt
+      D = Dn.denote (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′) rds eq mt mi
       tp′ : Typed
-      tp′ = record { module′ = SS.mkModule ds′ ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
+      tp′ = record { module′ = SS.mkModule dsU ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
 
 sound-of : ∀ (arch : Arch) (src : Source) (srcC : B.Source) (tp : VC.Typed)
          → toSource src ≡ just srcC → srcC VC.⊢R tp → VC.Admissible arch tp
@@ -286,22 +281,15 @@ complete-of : ∀ (arch : Arch) (src : Source) (tp′ : Typed)
             → src ⊢ tp′ → Admissible (arch-numerics arch) tp′
             → Σ[ srcC ∈ B.Source ] (toSource src ≡ just srcC)
               × Σ[ tp ∈ VC.Typed ] (srcC VC.⊢R tp) × VC.Admissible arch tp
-complete-of arch src tp′ (mm′ , pt′ , pms , den) adm =
-  B.mkSource mm (SP.Source.text src) , ts
-  , (PM.resolved (PM.mkModule (TC.dsR T)) _ , TC.mt T , TC.hvm T) , (mU , ptU , LR.rm (TC.rds T)) , Lits.admissible← arch (TC.rds T) pwU adm
+complete-of arch src tp′ (mm , pt′ , pms , den) adm =
+  B.mkSource mm (SP.Source.text src) , Modules.source-of← src pms
+  , (PM.resolved (SS.mkModule (TC.dsR T)) _ , TC.mt T , TC.hvm T)
+  , (Typed.module′ tp′ , GD.parses← {SP.Source.text src} pt′ , LR.rm (TC.rds T)) , Lits.admissible← arch (TC.rds T) adm
   where
     module TB = Once.Adequacy.SpecFront.TypedBack (arch-numerics arch)
     module TC = TB.TypedC
-    src← = Modules.source-of← src pms
-    mm = proj₁ src←
-    ts = proj₁ (proj₂ src←)
-    mr = proj₂ (proj₂ src←)
-    p← = GD.parses← {SP.Source.text src} pt′
-    mU = proj₁ p←
-    ptU = proj₁ (proj₂ p←)
-    pwU = proj₂ (proj₂ p←)
     T = TB.typed← (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′)
-                  (Written.decls-written {SP.Source.text src} pt′) mr pwU den
+                  (Written.decls-written {SP.Source.text src} pt′) den
 
 -- The bridges, proved.
 bridges : Bridges

@@ -14,6 +14,7 @@
 module Once.Parser.Module.FunDef.Def where
 
 open import Once.Parser.Module.Core
+open import Once.Spec.Surface.Syntax using (Decl)
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; _,_)
 open import Data.String using (String)

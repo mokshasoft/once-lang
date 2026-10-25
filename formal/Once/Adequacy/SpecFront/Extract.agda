@@ -49,7 +49,7 @@ open import Once.Spec.Surface.Syntax using (RVar)
 open import Once.Internal.Syntax using (RawExpr)
 open import Once.Spec.Name using (canonical)
 open import Once.Internal.Name using (showCanonical)
-open import Once.Parser.Module.Core using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser
   using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; extractFunctions-consFun; extractFunctions-consPoly;
          projectSig; honestSig)
