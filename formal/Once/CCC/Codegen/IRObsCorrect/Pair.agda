@@ -84,9 +84,9 @@ module PairAsm {FS : FrameSemantics} where
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
     (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
-    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
     where
-      open PairProof ihf ihg n l prog base ss cr span bl la mIn x s alloc cl rs n≤ nh inp k
+      open PairProof ihf ihg n l prog base ss cr span bl la mIn x s alloc cl rs ns0 nh inp k
 
       -- `f`'s control steps, as its chain inside the pair's runs.
       ctrlsF : chain-ctrls (VR.run vrf) ≡ chain-ctrls chainF₀
@@ -430,4 +430,4 @@ module PairAsm {FS : FrameSemantics} where
   obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg n l prog base
                          ss cr span bl la mIn x s alloc cl n≤ nh inp k rs =
     PairProofB.dispatch ihf ihg n l prog base ss cr span bl la mIn x s alloc cl rs n≤ nh inp k
-      (resultAt (floc (PairChain.PR.p2 f g n l prog base s alloc cl rs n≤ nh span)) (⟪ evalᴰ f x ⟫ k)) refl
+      (resultAt (floc (PairChain.PR.p2 f g n l prog base s alloc cl rs (ns≤ {alloc} n n≤) nh span)) (⟪ evalᴰ f x ⟫ k)) refl

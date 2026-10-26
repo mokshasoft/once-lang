@@ -66,6 +66,7 @@ open import Once.Internal.Res using (Res; returns; stopped; is-stopped)
 open import Once.Internal.Iterative using (T∞; Now; valueNow)
 open import Once.Denotation.Approx using (Ap; done; cut; approx; NotCut; budgetLeft)
 open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤)
+open import Data.Nat using (z≤n)
 open import Data.Bool using (Bool)
 import Data.List.Properties
 open import Once.CCC.Machine.FlatLog using (LogFree)
@@ -895,6 +896,10 @@ module Core {FS : FrameSemantics} where
       coalgs    : CoalgRuns prog
       functions : FnRuns prog
 
+  -- D339: the old `next-slot alloc ≤ n`, from the invariant.
+  ns≤ : ∀ {alloc : AllocState {FS}} (n : ℕ) → next-slot alloc ≡ 0 → next-slot alloc ≤ n
+  ns≤ {alloc} n e = subst (_≤ n) (sym e) z≤n
+
   IRObsCorrectF : ∀ {A B} → IR A B → Set
   IRObsCorrectF {A} {B} ir =
     -- D152: quantified over the EMISSION SITE `(n , l)`, and the runtime
@@ -941,7 +946,15 @@ module Core {FS : FrameSemantics} where
     -- own induction hypothesis inapplicable (D154). No discharged shape ever
     -- used it — every one of them takes this argument as `_` — so nothing is
     -- weakened by asking only for what the invariant means.
-    next-slot alloc ≤ n →
+    -- D339: …and what the invariant IS is `next-slot alloc ≡ 0`. The entry
+    -- state has it (`FlatFromObs`), nothing at run time moves it, and every
+    -- sub-IR's state inherits it (`flat-run-keeps-next-slot`). `≤ n` was
+    -- enough while every fragment ran in its caller's frame; a body the
+    -- compiler CALLS (a `Cata` algebra, emitted at frontier 0) runs in a fresh
+    -- frame that `enter-call` gives the caller's `next-slot`, and there only
+    -- `≡ 0` says that nothing in the new frame is live. `ns≤` recovers the old
+    -- form wherever it is spent.
+    next-slot alloc ≡ 0 →
     halted s ≡ false →
     -- D153: ONE residence premise, carrying its own evidence. The separate
     -- `input-loc` / `ValidAtWF` / `BeforeFrontier` triple is gone — it made

@@ -401,7 +401,7 @@ entry-witness ir ioc brs k =
   ioc 0 0 (image ir) 1 (image-slot-stable ir)
       (brs ir) (entry-span ir) (entry-blocks ir) (entry-labels ir)
       Stack tt (floc (main-flat ir)) (falloc (main-flat ir)) (SV-Tag 0)
-      z≤n refl
+      refl refl
       -- D153: `main : IR Unit Unit`, so its input has no residence at all.
       (in-unit refl) k []
 

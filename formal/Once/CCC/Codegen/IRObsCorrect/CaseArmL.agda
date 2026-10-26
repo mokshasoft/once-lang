@@ -81,7 +81,7 @@ module ArmLC {FS : FrameSemantics} where
                 (bl : BlocksAt prog (blocks n l (case f g)))
                 (la : LabelsAt prog base (emitted n l (case f g)))
                 (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-                (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
+                (n≤ : next-slot alloc ≡ 0) (nh : halted s ≡ false)
                 {Av : ⟦ A ⟧} {mIn : AllocMode} {loc : ValueLocation FS}
                 (vd : ValidAtWF mIn alloc {A IRT.+ B} (inj₁ Av) loc s)
                 (rd : readReg (regs s) Input1 ≡ SV-Ptr loc)

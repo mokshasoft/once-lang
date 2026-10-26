@@ -41,7 +41,7 @@ module SumC {FS : FrameSemantics} where
   open Mach {FS}
 
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
-  obs-correct-inl {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
+  obs-correct-inl {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -62,6 +62,9 @@ module SumC {FS : FrameSemantics} where
                                      (sym cf-fs10) ≤-refl heapref-≤ loc' bf')) (λ _ → sf-fs10)
       }
     where
+      -- D339: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       payload-stash sum-stash : ℕ
       payload-stash = n
       sum-stash     = suc n
@@ -428,7 +431,7 @@ module SumC {FS : FrameSemantics} where
       place = place-of inp
 
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
-  obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
+  obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -449,6 +452,9 @@ module SumC {FS : FrameSemantics} where
                                      (sym cf-fs10) ≤-refl heapref-≤ loc' bf')) (λ _ → sf-fs10)
       }
     where
+      -- D339: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       payload-stash sum-stash : ℕ
       payload-stash = n
       sum-stash     = suc n

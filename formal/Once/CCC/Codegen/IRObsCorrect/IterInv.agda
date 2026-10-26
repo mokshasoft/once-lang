@@ -61,6 +61,8 @@ module IterInvC {FS : FrameSemantics} where
         s₀     : LocState FS
         alloc₀ : AllocState {FS}
         n≤₀    : next-slot alloc₀ ≤ n
+        -- D339: the invariant the body's IH takes
+        ns₀    : next-slot alloc₀ ≡ 0
         -- D337: the return stack the loop was entered on
         rs₀    : List ℕ
         e      : ⟦ E ⟧

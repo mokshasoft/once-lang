@@ -145,7 +145,7 @@ module ApplyC {FS : FrameSemantics} where
             }
             where
               module OB = ASP.Obligations pair-loc fst-loc (arg-sv-of sc') (env-sv-of ea)
-                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) bf fst-bf n≤ nh
+                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) bf fst-bf (ns≤ {alloc} n n≤) nh
 
               callee-env : (ea' : EnvAt alloc {E} env fst-loc s)
                          → SMCore.MemOps.readLoc (floc ASP.a16) (AtDynamic ASP.ahl)
@@ -191,9 +191,9 @@ module ApplyC {FS : FrameSemantics} where
                           ; fpc    = j }
               call-eq =
                 call-at prog ASP.a16 chl blbl j
-                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') n≤ bf rdi
+                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') (ns≤ {alloc} n n≤) bf rdi
                      (arg-cell-of sc') fst-cell)
-                  (ASP.code-cell fst-loc blbl n≤ OB.rdi12' OB.rdi14'
+                  (ASP.code-cell fst-loc blbl (ns≤ {alloc} n n≤) OB.rdi12' OB.rdi14'
                      (ClosureValidWF.sucLoc-before cvw) (ClosureValidWF.code-ptr cvw))
                   feq
 
@@ -322,7 +322,7 @@ module ApplyC {FS : FrameSemantics} where
                             (record (falloc ASP.a16) { next-slot = n })
                             (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf))
                       (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
-                             (ASP.setup-mem-pres n≤ OB.rdi12' OB.rdi14' loc bf))
+                             (ASP.setup-mem-pres (ns≤ {alloc} n n≤) OB.rdi12' OB.rdi14' loc bf))
 
               trc : chain-events run ≡ eventsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               trc = trans (chain-events-++ run17 (CalleeRun.run crun))

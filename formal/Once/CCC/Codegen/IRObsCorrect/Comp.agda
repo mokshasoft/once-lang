@@ -244,7 +244,7 @@ module CompC {FS : FrameSemantics} where
   comp-value-realized-of :
     ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl rs}
       (prog : AbstractTrace) (base n l k : ℕ)
-    → next-slot alloc ≤ n
+    → next-slot alloc ≡ 0
     → AllSlotStable prog
     → BlockRuns prog
     → SpanAt prog base (emitted n l (g ∘ f))
@@ -345,8 +345,8 @@ module CompC {FS : FrameSemantics} where
           nsF = trans (cong (λ st → next-slot (falloc st)) (sym runF≡))
                       (flat-run-keeps-next-slot kf prog ss base s alloc cl rs)
 
-          nsG : next-slot (falloc fsM) ≤ n1
-          nsG = ≤-trans (≤-reflexive nsF) (≤-trans ns (frontier-mono f n l))
+          nsG : next-slot (falloc fsM) ≡ 0
+          nsG = trans nsF ns
 
           -- `f` returned, so `f` did not stop.
           sfeq : stopsAt s (⟪ evalᴰ f x ⟫ k) ≡ false
@@ -563,7 +563,7 @@ module CompC {FS : FrameSemantics} where
 
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl rs}
                 (prog : AbstractTrace) (base n l k : ℕ)
-            → next-slot alloc ≤ n
+            → next-slot alloc ≡ 0
             → AllSlotStable prog
             → BlockRuns prog
             → SpanAt prog base (emitted n l (g ∘ f))

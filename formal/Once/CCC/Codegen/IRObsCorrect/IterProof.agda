@@ -56,7 +56,7 @@ module IterProofC {FS : FrameSemantics} where
     (la : LabelsAt prog base (emitted n l (Iter body)))
     (mIn : AllocMode) (e : ⟦ E ⟧) (a₀ : ⟦ A ⟧)
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
-    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false)
     (pl : ValueLocation FS) (pv : ValidAtWF mIn alloc {E IRT.* A} (e , a₀) pl s)
     (bfp : BeforeFrontier alloc pl) (rd : readReg (regs s) Input1 ≡ SV-Ptr pl)
     (k : ℕ)
@@ -65,6 +65,10 @@ module IterProofC {FS : FrameSemantics} where
     open IterShape body n l
     open IterRun body n l prog base span
     open Loop body n l base
+
+    -- D339: the old premise, from the invariant.
+    n≤ : next-slot alloc ≤ n
+    n≤ = ns≤ {alloc} n ns0
 
     fs0 fs1 fs2 σ₁ : FlatState
     fs0 = entry-flat base s alloc cl rs
@@ -125,7 +129,7 @@ module IterProofC {FS : FrameSemantics} where
 
     Z : Anchor
     Z = record
-      { s₀ = s ; alloc₀ = alloc ; n≤₀ = n≤ ; rs₀ = rs ; e = e
+      { s₀ = s ; alloc₀ = alloc ; n≤₀ = n≤ ; ns₀ = ns0 ; rs₀ = rs ; e = e
       ; fsF = fs1 ; mf = proj₁ (proj₁ FO) ; caf = alloc ; placeF = proj₂ (proj₁ FO)
       ; cf-F = refl ; ns-F = refl ; hr-F = ≤-refl
       ; mem0-F = λ lc _ → mem-eq1 lc

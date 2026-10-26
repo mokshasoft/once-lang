@@ -82,7 +82,7 @@ module ArmRC {FS : FrameSemantics} where
                 (bl : BlocksAt prog (blocks n l (case f g)))
                 (la : LabelsAt prog base (emitted n l (case f g)))
                 (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-                (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
+                (n≤ : next-slot alloc ≡ 0) (nh : halted s ≡ false)
                 {Bv : ⟦ B ⟧} {mIn : AllocMode} {loc : ValueLocation FS}
                 (vd : ValidAtWF mIn alloc {A IRT.+ B} (inj₂ Bv) loc s)
                 (rd : readReg (regs s) Input1 ≡ SV-Ptr loc)
@@ -112,8 +112,8 @@ module ArmRC {FS : FrameSemantics} where
       handG : P.r3 ≡ entry-flat (3 + base) (floc P.r3) (falloc P.r3) (fclosure P.r3) rs
       handG = handover-eq (3 + base) P.r3 rs refl refl refl
 
-      nsG : next-slot (falloc P.r3) ≤ n1
-      nsG = ≤-trans n≤ (frontier-mono f n (suc (suc l)))
+      nsG : next-slot (falloc P.r3) ≡ 0
+      nsG = n≤
 
       nh-r3 : halted (floc P.r3) ≡ false
       nh-r3 = exec-abstract-preserves-halted-WF mov-to-input (floc P.r2) (falloc P.r2) P.nh-r2 tt

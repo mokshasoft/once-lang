@@ -66,8 +66,8 @@ module IterBodyC {FS : FrameSemantics} where
     n≤n4 : n ≤ suc (suc (suc (suc n)))
     n≤n4 = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (≤-trans (n≤1+n (suc (suc n))) (n≤1+n (suc (suc (suc n))))))
 
-    nsB : next-slot (falloc σ) ≤ suc (suc (suc (suc n)))
-    nsB = ≤-trans (≤-reflexive I.ns) (≤-trans n≤₀ n≤n4)
+    nsB : next-slot (falloc σ) ≡ 0
+    nsB = trans I.ns ns₀
 
     mrb : MachineRefinesObsF prog (3 + base) (suc (suc (suc (suc n)))) (suc (suc l)) body (e , a)
             (floc σ) (falloc σ) (fclosure σ) rs₀ r

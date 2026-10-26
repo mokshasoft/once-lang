@@ -132,7 +132,8 @@ decision-log entry updates the rule it changes here, in the same commit.
   sub-IRs' correctness as arguments (star-shaped); it owes memory
   preservation below its own frontier (split into stack and heap), frontier
   monotonicity and frame preservation; it takes the block channel
-  (`BlocksAt`). It is stated over every entry return stack `rs`, owing
+  (`BlocksAt`). Its frontier premise is the run-time invariant
+  `next-slot alloc ≡ 0` (D339). It is stated over every entry return stack `rs`, owing
   `fret ≡ rs`, the frame and the frame stack beneath it only when the run
   returned. (D337, D338, D152, D155, D180, D202, D204, D206, D208, D210, D215)
 - **`apply` is proved against `CalleeRuns`**; the ν code cell has `CoalgRuns`,

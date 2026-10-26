@@ -93,7 +93,7 @@ module CompareC {FS : FrameSemantics} where
 
   cmp-obs : ∀ (si : SigOpInfo (SpecTy.Int SpecTy.* SpecTy.Int) (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (op : CmpOp)
           → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
-  cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
+  cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (cong proj₁ ER)
       ; value-realized =
@@ -113,6 +113,9 @@ module CompareC {FS : FrameSemantics} where
                                      (sym cf-fs11) ≤-refl heapref-≤ loc' bf') (λ _ → sf-fs11)
       }
     where
+      -- D339: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       tag-stash sum-stash : ℕ
       tag-stash = n
       sum-stash = suc n

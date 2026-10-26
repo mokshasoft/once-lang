@@ -51,7 +51,7 @@ module TwoCellC {FS : FrameSemantics} where
   open TwoCellBuildC {FS}
 
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
-  obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
+  obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -66,6 +66,9 @@ module TwoCellC {FS : FrameSemantics} where
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
       }
     where
+      -- D339: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       -- D190: the ten-instruction build is shared with `Ana`; `emitted n l
       -- (curry body)` IS `two-cell-trace n l`, so `span` passes straight in.
       module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
@@ -140,7 +143,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- D273: the seed is the pair `(e , a)`; nothing here depends on its shape.
   obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {E A} (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A))
                   → IRObsCorrectF (Ana wf coalg)
-  obs-correct-Ana {F} wf {E} {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
+  obs-correct-Ana {F} wf {E} {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -155,6 +158,9 @@ module TwoCellC {FS : FrameSemantics} where
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
       }
     where
+      -- D339: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
       module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
 
@@ -197,7 +203,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- cell has all three residences, as a closure's environment does.
   ------------------------------------------------------------------------
   obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (in-ν wf)
-  obs-correct-in-ν {F} wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
+  obs-correct-in-ν {F} wf n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -212,6 +218,9 @@ module TwoCellC {FS : FrameSemantics} where
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
       }
     where
+      -- D339: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
       module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
 

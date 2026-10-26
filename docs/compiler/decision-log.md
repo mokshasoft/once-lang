@@ -19487,3 +19487,27 @@ the code so as little as possible makes it into the compiler?").
   `RoundInv.sf`/`RoundsRun.frames` (`SF = saved-frames alloc₀`).
 * The assumed `BlockRuns` (plan 0.93's apex hypothesis) is stronger by this one true fact about every
   returning callee. No postulate added or removed.
+
+## D339 — THE FRONTIER PREMISE IS THE RUN-TIME INVARIANT `next-slot alloc ≡ 0` (2026-10-26)
+
+**Refines** D155 (`≤`, not `≡ n`). **Follows** D150 (`next-slot` never moves at run time), D337, D338.
+Found setting up `cata-correct` M0; the user had asked to continue unless blocked on principle.
+
+### Decision
+* `IRObsCorrectF`'s premise `next-slot alloc ≤ n` becomes `next-slot alloc ≡ 0`. `ns≤` (Interface)
+  gives back `next-slot alloc ≤ n` wherever the old form is spent; inner modules (Pair's chain, Iter's
+  `Anchor.n≤₀`) keep it and derive it once.
+
+### Why
+* A `Cata` algebra is emitted at frontier 0 and CALLED, so its IH needs `next-slot ≤ 0` in the callee's
+  frame. `enter-call` keeps the caller's `next-slot`, and `≤ n` at the cata's own site gives nothing
+  about 0. The IH is not merely unusable there: with `next-slot = 5` it would admit an input in callee
+  slot 2, which the algebra may overwrite.
+* `≡ 0` is what is actually true: the entry state has it (`FlatFromObs`, `n = 0`), D150 says nothing at
+  run time moves it, and every sub-IR's state inherits it (`flat-run-keeps-next-slot`). D155's objection
+  was to `≡ n`, which holds at one emission site only; `≡ 0` holds at all of them.
+
+### Consequences
+* Sub-IH calls pass `trans (keeps-next-slot) ns0` instead of a `≤`-chain through `frontier-mono`.
+* The same premise is what plan 0.93 will need to discharge `BlockRuns` for `curry`'s bodies.
+* No postulate added or removed.

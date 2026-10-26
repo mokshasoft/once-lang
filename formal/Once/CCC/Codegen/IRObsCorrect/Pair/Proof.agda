@@ -132,8 +132,12 @@ module PairProofC {FS : FrameSemantics} where
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
     (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
-    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
     where
+      -- D339: the inner modules keep the old premise; the IHs take the invariant.
+      n≤ : next-slot alloc ≤ n
+      n≤ = ns≤ {alloc} n ns0
+
       module PS = PairShape f g n l
       module PC = PairChain f g n l prog base s alloc cl rs n≤ nh span
       module PT = PairTrace
@@ -189,7 +193,7 @@ module PairProofC {FS : FrameSemantics} where
                 (PS.span-f prog base span) blocks-f
                 (PS.labels-f prog base la) mIn x
                 (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2)
-                PC.ns-p2 PC.nh2 (inpF-of inp) k rs
+                ns0 PC.nh2 (inpF-of inp) k rs
 
       vrf : ValueRealized prog (suc (suc base)) PS.f-start l f x
               (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2) rs k
@@ -310,8 +314,8 @@ module PairProofC {FS : FrameSemantics} where
           n≤n1 : n ≤ PS.n1
           n≤n1 = ≤-trans PC.n≤f-start (frontier-mono f PS.f-start l)
 
-          nsG : next-slot (falloc PCF.m2) ≤ PS.n1
-          nsG = ≤-trans (≤-reflexive ns-m2) (≤-trans n≤ n≤n1)
+          nsG : next-slot (falloc PCF.m2) ≡ 0
+          nsG = trans ns-m2 ns0
 
           ----------------------------------------------------------------
           -- THE KEYSTONE'S PAYOFF: after `restore-input backup`, `Input1`
