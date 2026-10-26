@@ -297,35 +297,29 @@ opToken c =
   if does (c Ch.≟ '&') then just S.TAmpersand else
   if does (c Ch.≟ '@') then just S.TAt else nothing
 
-private
-  isOpChar : Char → Bool
-  isOpChar c with opToken c
-  ... | just _  = true
-  ... | nothing = false
+isOpChar : Char → Bool
+isOpChar c with opToken c
+... | just _  = true
+... | nothing = false
 
-  allOp : List Char → Bool
-  allOp []       = false
-  allOp (c ∷ []) = isOpChar c
-  allOp (c ∷ cs@(_ ∷ _)) = isOpChar c ∧ allOp cs
+allOp : List Char → Bool
+allOp []       = false
+allOp (c ∷ []) = isOpChar c
+allOp (c ∷ cs@(_ ∷ _)) = isOpChar c ∧ allOp cs
 
-  -- An operator's characters as tokens, a blank where two would lex as
-  -- something else (`--` a comment, `->` an arrow).
-  opToks : List Char → P Doc
-  opToks []             = pure′ empty
-  opToks (c ∷ [])       = one c
-    where
-      one : Char → P Doc
-      one c with opToken c
-      ... | just x  = t x
-      ... | nothing = pure′ empty
-  opToks (c ∷ d ∷ cs)   =
-    one c ⊕ᵈ (if does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>')) then ␣ else pure′ empty)
-      ⊕ᵈ opToks (d ∷ cs)
-    where
-      one : Char → P Doc
-      one c with opToken c
-      ... | just x  = t x
-      ... | nothing = pure′ empty
+-- An operator character's token.
+opTok1 : Maybe S.Token → P Doc
+opTok1 (just x)  = t x
+opTok1 nothing   = pure′ empty
+
+-- An operator's characters as tokens, a blank where two would lex as
+-- something else (`--` a comment, `->` an arrow).
+opToks : List Char → P Doc
+opToks []             = pure′ empty
+opToks (c ∷ [])       = opTok1 (opToken c)
+opToks (c ∷ d ∷ cs)   =
+  opTok1 (opToken c) ⊕ᵈ pure′ (if does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>')) then sp else empty)
+    ⊕ᵈ opToks (d ∷ cs)
 
 isOperator : String → Bool
 isOperator s = allOp (toList s)
@@ -448,41 +442,40 @@ lams (RLam x e) = x ∷ proj₁ (lams e) , proj₂ (lams e)
 {-# CATCHALL #-}
 lams e = [] , e
 
-private
-  startsNeg : Expr → Bool
-  startsNeg (RNeg _) = true
-  {-# CATCHALL #-}
-  startsNeg _        = false
+startsNeg : Expr → Bool
+startsNeg (RNeg _) = true
+{-# CATCHALL #-}
+startsNeg _        = false
 
-  isCompose : Expr → Bool
-  isCompose (RVar x) = x == "compose"
-  {-# CATCHALL #-}
-  isCompose _        = false
+isCompose : Expr → Bool
+isCompose (RVar x) = x == "compose"
+{-# CATCHALL #-}
+isCompose _        = false
 
-  -- `compose g` applied once: the `compose` (a composition is `compose g h`).
-  headOf : Expr → Expr
-  headOf (RApp c g) = c
-  {-# CATCHALL #-}
-  headOf e          = RUnit
+-- `compose g` applied once: the `compose` (a composition is `compose g h`).
+headOf : Expr → Expr
+headOf (RApp c g) = c
+{-# CATCHALL #-}
+headOf e          = RUnit
 
-  leftLevel : ℕ → ℕ
-  leftLevel 1 = 2
-  {-# CATCHALL #-}
-  leftLevel l = l
+leftLevel : ℕ → ℕ
+leftLevel 1 = 2
+{-# CATCHALL #-}
+leftLevel l = l
 
-  -- A resolved name's path, dotted.
-  dotted : List String → P Doc
-  dotted []               = pure′ empty
-  dotted (x ∷ [])         = word x
-  dotted (x ∷ xs@(_ ∷ _)) = word x ⊕ᵈ t S.TDot ⊕ᵈ dotted xs
+-- A resolved name's path, dotted.
+dotted : List String → P Doc
+dotted []               = pure′ empty
+dotted (x ∷ [])         = word x
+dotted (x ∷ xs@(_ ∷ _)) = word x ⊕ᵈ t S.TDot ⊕ᵈ dotted xs
 
 mutual
   -- `l` the level the position asks for, `w` whether the expression is whole.
   pex : ℕ → Bool → Expr → P Doc
-  pex l wh (RApp f a)         = pcomp l f a (isCompose (headOf f))
+  pex l wh (RApp f a)         = pcomp l (isCompose (headOf f)) f a
   pex l wh (RBinOp op a b)    =
     paren (opLevel op <ᵇ l) (pbin (opLevel op) op a b) >>=′ λ d → pure′ (group (nest indent d))
-  pex l wh (RNeg e)           = paren (4 <ᵇ l) (t S.TMinus ⊕ᵈ (if startsNeg e then ␣ else pure′ empty) ⊕ᵈ pex 4 false e)
+  pex l wh (RNeg e)           = paren (4 <ᵇ l) (t S.TMinus ⊕ᵈ pure′ (if startsNeg e then sp else empty) ⊕ᵈ pex 4 false e)
   pex l wh RUnit              = t S.TLParen ⊕ᵈ t S.TRParen
   pex l wh (RInt n)           = anchor (S.TInt n)
   pex l wh (RFloat i f n)     = anchor (S.TFloat i f n)
@@ -499,10 +492,10 @@ mutual
 
   -- `compose g h`, written `g . h`; any other application as one: the head,
   -- then the arguments, broken one per line when they do not fit.
-  pcomp : ℕ → Expr → Expr → Bool → P Doc
-  pcomp l (RApp c g) h true = pcompose l g h
+  pcomp : ℕ → Bool → Expr → Expr → P Doc
+  pcomp l true (RApp c g) h = pcompose l g h
   {-# CATCHALL #-}
-  pcomp l f a _             = paren (5 <ᵇ l) (pspine f ⊕ᵈ pure′ line ⊕ᵈ pex 6 false a)
+  pcomp l _ f a             = paren (5 <ᵇ l) (pspine f ⊕ᵈ pure′ line ⊕ᵈ pex 6 false a)
                                 >>=′ λ d → pure′ (group (nest indent d))
 
   -- The head and the arguments before the last; a `compose g h` inside a
@@ -514,14 +507,14 @@ mutual
   -- A left-nested chain is one group, broken before each operator: the left
   -- operand of `.`, while it is a composition.
   pchainC : Expr → P Doc
-  pchainC (RApp f h) = pchainC′ f h (isCompose (headOf f))
+  pchainC (RApp f h) = pchainC′ (isCompose (headOf f)) f h
   {-# CATCHALL #-}
   pchainC e          = pex 1 false e
 
-  pchainC′ : Expr → Expr → Bool → P Doc
-  pchainC′ (RApp c g) h true = pchainC g ⊕ᵈ (pure′ line ⊕ᵈ t S.TDot ⊕ᵈ ␣) ⊕ᵈ pex 1 false h
+  pchainC′ : Bool → Expr → Expr → P Doc
+  pchainC′ true (RApp c g) h = pchainC g ⊕ᵈ (pure′ line ⊕ᵈ t S.TDot ⊕ᵈ ␣) ⊕ᵈ pex 1 false h
   {-# CATCHALL #-}
-  pchainC′ f a _             = pcomp 0 f a false
+  pchainC′ _ f a             = pcomp 0 false f a
 
   -- …and of an operator, while its left operand is one of the same precedence
   -- (`+`/`-`, `*`/`/`/`%`; a comparison takes no chain).
@@ -536,14 +529,14 @@ mutual
   pleft lv e               = pex (leftLevel lv) false e
 
   pspine : Expr → P Doc
-  pspine (RApp f a) = pspine′ f a (isCompose (headOf f))
+  pspine (RApp f a) = pspine′ (isCompose (headOf f)) f a
   {-# CATCHALL #-}
   pspine e          = pex 6 false e
 
-  pspine′ : Expr → Expr → Bool → P Doc
-  pspine′ (RApp c g) h true = pcompose 6 g h
+  pspine′ : Bool → Expr → Expr → P Doc
+  pspine′ true (RApp c g) h = pcompose 6 g h
   {-# CATCHALL #-}
-  pspine′ f a _             = pspine f ⊕ᵈ pure′ line ⊕ᵈ pex 6 false a
+  pspine′ _ f a             = pspine f ⊕ᵈ pure′ line ⊕ᵈ pex 6 false a
 
   -- `\x y -> b`: the parameters of the leading lambdas, then the body.
   plam : String → Expr → P Doc
@@ -580,15 +573,14 @@ mutual
 -- Declarations and the module
 ------------------------------------------------------------------------
 
-private
-  path : List String → P Doc
-  path []           = pure′ empty
-  path (x ∷ [])     = word x
-  path (x ∷ xs@(_ ∷ _)) = word x ⊕ᵈ t S.TDot ⊕ᵈ path xs
+path : List String → P Doc
+path []           = pure′ empty
+path (x ∷ [])     = word x
+path (x ∷ xs@(_ ∷ _)) = word x ⊕ᵈ t S.TDot ⊕ᵈ path xs
 
-  spaced : List String → P Doc
-  spaced []       = pure′ empty
-  spaced (x ∷ xs) = ␣ ⊕ᵈ word x ⊕ᵈ spaced xs
+spaced : List String → P Doc
+spaced []       = pure′ empty
+spaced (x ∷ xs) = ␣ ⊕ᵈ word x ⊕ᵈ spaced xs
 
 -- A declaration's text.
 pbody : Decl → P Doc
