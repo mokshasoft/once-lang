@@ -19,14 +19,14 @@ zeroI _ = 0
 nodeOp : Int * (Int * Int) -> Int
 nodeOp t = fst t + (fst (snd t) + snd (snd t))
 
-sumNode : Mu (K Unit + (Id * (K Int * Id))) -> Int
+sumNode : Mu (K Unit + Id * (K Int * Id)) -> Int
 sumNode = cata (case zeroI nodeOp)
 
-leaf : Mu (K Unit + (Id * (K Int * Id)))
+leaf : Mu (K Unit + Id * (K Int * Id))
 leaf = In (inl unit)
 
 -- node(leaf, 42, leaf)
-t : Mu (K Unit + (Id * (K Int * Id)))
+t : Mu (K Unit + Id * (K Int * Id))
 t = In (inr (leaf, (42, leaf)))
 
 main : Act Unit Void

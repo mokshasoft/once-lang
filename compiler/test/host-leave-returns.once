@@ -9,4 +9,4 @@
 -- Expected: exit code 0.
 
 main : Unit -> Unit
-main = \u -> u
+main u = u

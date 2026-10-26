@@ -92,7 +92,7 @@ signature bootinfo_domainInfo : Int -> Int
 --   paddr    : physical address of untyped
 --   sizeBits : log2 of size in bytes
 --   isDevice : 1 if device memory, 0 otherwise
-signature bootinfo_getUntyped : (Int * Int) -> (Int * Int * Int)
+signature bootinfo_getUntyped : Int * Int -> Int * Int * Int
 
 ------------------------------------------------------------------------
 -- Initial Cap Slots (standard seL4 layout)

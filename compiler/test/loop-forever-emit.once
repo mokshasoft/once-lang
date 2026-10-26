@@ -19,10 +19,10 @@ next : Int -> Void + Int
 next n = inr (n + 1)
 
 round : Act Int (Void + Int)
-round = compose next (compose snd (pair (compose emit@E id) id))
+round = next . (snd . pair (emit@E . id) id)
 
 serve : Eff Int Void
 serve = ana round
 
 main : Eff Unit Void
-main = compose serve (\_ -> 0)
+main = serve . (\_ -> 0)

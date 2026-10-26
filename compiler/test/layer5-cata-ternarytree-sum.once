@@ -17,14 +17,14 @@ import I.Linux.Syscalls as S
 -- algebra : (Int + ((Int * Int) * Int)) -> Int
 --   leaf : Int -> Int                  = id
 --   node : (Int * Int) * Int -> Int    = a + b + c
-triOp : (Int * Int) * Int -> Int
-triOp t = (fst (fst t) + snd (fst t)) + snd t
+triOp : Int * Int * Int -> Int
+triOp t = fst (fst t) + snd (fst t) + snd t
 
-sumTri : Mu (K Int + (Id * Id * Id)) -> Int
+sumTri : Mu (K Int + Id * Id * Id) -> Int
 sumTri = cata (case id triOp)
 
 -- node(leaf 40, leaf 0, leaf 2) = node(((l40, l0), l2))
-t : Mu (K Int + (Id * Id * Id))
+t : Mu (K Int + Id * Id * Id)
 t = In (inr ((In (inl 40), In (inl 0)), In (inl 2)))
 
 main : Act Unit Void

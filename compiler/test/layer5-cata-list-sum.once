@@ -17,11 +17,11 @@ zeroI _ = 0
 addPair : Int * Int -> Int
 addPair p = fst p + snd p
 
-sumList : Mu (K Unit + (K Int * Id)) -> Int
+sumList : Mu (K Unit + K Int * Id) -> Int
 sumList = cata (case zeroI addPair)
 
 -- [10, 20, 12]
-xs : Mu (K Unit + (K Int * Id))
+xs : Mu (K Unit + K Int * Id)
 xs = In (inr (10, In (inr (20, In (inr (12, In (inl unit)))))))
 
 main : Act Unit Void

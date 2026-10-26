@@ -24,14 +24,14 @@ incI n = n + 1
 addPlus1 : Int * Int -> Int
 addPlus1 p = fst p + snd p + 1
 
-size : Mu (K Unit + (Id + (Id * Id))) -> Int
+size : Mu (K Unit + (Id + Id * Id)) -> Int
 size = cata (case oneI (case incI addPlus1))
 
-empty : Mu (K Unit + (Id + (Id * Id)))
+empty : Mu (K Unit + (Id + Id * Id))
 empty = In (inl unit)
 
 -- binary(unary(empty), empty)
-t : Mu (K Unit + (Id + (Id * Id)))
+t : Mu (K Unit + (Id + Id * Id))
 t = In (inr (inr (In (inr (inl empty)), empty)))
 
 main : Act Unit Void

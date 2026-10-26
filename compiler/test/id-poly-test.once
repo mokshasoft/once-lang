@@ -6,5 +6,5 @@
 testIdUnit : Unit -> Unit
 testIdUnit = id
 
-testIdPair : (Unit * Unit) -> (Unit * Unit)
+testIdPair : Unit * Unit -> Unit * Unit
 testIdPair = id

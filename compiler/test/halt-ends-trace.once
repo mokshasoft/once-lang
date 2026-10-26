@@ -11,5 +11,4 @@ import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 main : Act Unit Unit
-main = compose (compose emit@E (\_ -> 2))
-               (compose exit@S (compose (\_ -> 3) (compose emit@E (\_ -> 1))))
+main = emit@E . (\_ -> 2) . (exit@S . ((\_ -> 3) . (emit@E . (\_ -> 1))))

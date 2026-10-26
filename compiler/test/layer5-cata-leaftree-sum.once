@@ -19,11 +19,11 @@ import I.Linux.Syscalls as S
 addPair : Int * Int -> Int
 addPair p = fst p + snd p
 
-sumTree : Mu (K Int + (Id * Id)) -> Int
+sumTree : Mu (K Int + Id * Id) -> Int
 sumTree = cata (case id addPair)
 
 -- node(leaf 40, leaf 2)
-t : Mu (K Int + (Id * Id))
+t : Mu (K Int + Id * Id)
 t = In (inr (In (inl 40), In (inl 2)))
 
 main : Act Unit Void

@@ -96,7 +96,8 @@ signature seL4_Reply : Act (Int * Int * Int * Int * Int) Unit
 --
 -- Returns: (badge, msgInfo, mr0, mr1, mr2, mr3)
 -- - Same as seL4_Recv
-signature seL4_ReplyRecv : Act (Int * Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int * Int)
+signature seL4_ReplyRecv :
+  Act (Int * Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int * Int)
 
 -- | seL4_Yield - Yield remaining timeslice
 -- Voluntarily gives up CPU time to other threads of same or

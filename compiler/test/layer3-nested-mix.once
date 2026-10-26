@@ -9,4 +9,5 @@
 import I.Linux.Syscalls as S
 
 main : Act Unit Void
-main = exit@S (destruct (fst (((inl (42, 7)) : (Int * Int) + Int), 99)) of { Left p -> fst p ; Right y -> y })
+main =
+  exit@S (destruct fst ((inl (42, 7) : Int * Int + Int), 99) of { Left p -> fst p ; Right y -> y })

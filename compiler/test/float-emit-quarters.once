@@ -25,7 +25,7 @@ import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 emitLit : Act Unit Unit
-emitLit = compose emitF@E (\_ -> 2.75)
+emitLit = emitF@E . (\_ -> 2.75)
 
 main : Act Unit Void
-main = compose exit@S (compose (\_ -> 11) emitLit)
+main = exit@S . ((\_ -> 11) . emitLit)

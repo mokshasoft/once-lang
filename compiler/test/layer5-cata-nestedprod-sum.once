@@ -15,14 +15,14 @@ import I.Linux.Syscalls as S
 -- algebra : (Unit + ((Int * Int) * Int)) -> Int
 zeroI : Unit -> Int
 zeroI _ = 0
-consOp : (Int * Int) * Int -> Int
-consOp t = (fst (fst t) + snd (fst t)) + snd t
+consOp : Int * Int * Int -> Int
+consOp t = fst (fst t) + snd (fst t) + snd t
 
-sumPairs : Mu (K Unit + ((K Int * K Int) * Id)) -> Int
+sumPairs : Mu (K Unit + K Int * (K Int) * Id) -> Int
 sumPairs = cata (case zeroI consOp)
 
 -- [(20, 22)]
-xs : Mu (K Unit + ((K Int * K Int) * Id))
+xs : Mu (K Unit + K Int * (K Int) * Id)
 xs = In (inr ((20, 22), In (inl unit)))
 
 main : Act Unit Void

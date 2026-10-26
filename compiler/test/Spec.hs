@@ -5,6 +5,7 @@ import Test.Tasty.Runners (NumThreads (..))
 
 import ArithSpec (arithTests)
 import FloatSpec (floatTests)
+import FmtSpec (fmtTests)
 import ImportSpec (importTests)
 import FloatEmitSpec (floatEmitTests)
 import LitRangeSpec (litRangeTests)
@@ -42,6 +43,7 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , qttTests
   , purityTests
   , importTests
+  , fmtTests
   , telescopeTests
   , specMatrixTests
   , generatorTests

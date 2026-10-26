@@ -15,13 +15,13 @@ identity : Unit -> Unit
 identity = id
 
 -- First projection: (A * B) -> A
-projFirst : (Unit * Unit) -> Unit
+projFirst : Unit * Unit -> Unit
 projFirst = fst
 
 -- Second projection: (A * B) -> B
-projSecond : (Unit * Unit) -> Unit
+projSecond : Unit * Unit -> Unit
 projSecond = snd
 
 -- Diagonal/copy: A -> (A * A) using pair combinator
-diagonal : Unit -> (Unit * Unit)
+diagonal : Unit -> Unit * Unit
 diagonal = pair id id
