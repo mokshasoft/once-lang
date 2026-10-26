@@ -61,8 +61,10 @@ APr = All Printable
 record Pr (m : P Doc) : Set where
   constructor pr
   field
-    run : ∀ tv k r → APr r → APr (toks (proj₁ (m tv k)) r)
-open Pr public
+    prints : ∀ tv k r → APr r → APr (toks (proj₁ (m tv k)) r)
+
+run : ∀ {m} → Pr m → ∀ tv k r → APr r → APr (toks (proj₁ (m tv k)) r)
+run = Pr.prints
 
 pr-⊕ : ∀ {a b} → Pr a → Pr b → Pr (a ⊕ᵈ b)
 pr-⊕ pa pb = pr λ tv k r ps → run pa tv k _ (run pb tv _ r ps)
