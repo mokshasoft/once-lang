@@ -593,8 +593,10 @@ private
 -- A declaration; every line it breaks is indented (an unindented line would
 -- start the next declaration).
 pdecl : Decl → P Doc
-pdecl (DImport (mkImport p nothing))  = word "import" ⊕ᵈ ␣ ⊕ᵈ path p
-pdecl (DImport (mkImport p (just a))) = word "import" ⊕ᵈ ␣ ⊕ᵈ path p ⊕ᵈ ␣ ⊕ᵈ word "as" ⊕ᵈ ␣ ⊕ᵈ word a
+pdecl (DImport (mkImport p nothing))  =
+  (word "import" ⊕ᵈ ␣ ⊕ᵈ path p) >>=′ λ d → pure′ (group (nest indent d))
+pdecl (DImport (mkImport p (just a))) =
+  (word "import" ⊕ᵈ ␣ ⊕ᵈ path p ⊕ᵈ ␣ ⊕ᵈ word "as" ⊕ᵈ ␣ ⊕ᵈ word a) >>=′ λ d → pure′ (group (nest indent d))
 pdecl (DTypeAlias x ps A) =
   (word "type" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ spaced ps ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A)
     >>=′ λ d → pure′ (group (nest indent d))
