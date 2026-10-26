@@ -13,6 +13,8 @@ module Once.CLI
   , BuildOptions (..)
   , StageOptions (..)
   , CheckOptions (..)
+  , FmtOptions (..)
+  , FmtMode (..)
   , ParseOptions (..)
   , OutputMode (..)
   , Target (..)
@@ -56,7 +58,21 @@ data Command
   | Optimize StageOptions
   | Escape StageOptions
   | CodeGen StageOptions
+  | Fmt FmtOptions
   deriving (Eq, Show)
+
+-- | `once fmt` (plan 0.124): rewrite files in place, check them, or print one.
+-- One style, no options (D341).
+data FmtMode
+  = FmtInPlace  -- ^ rewrite each file in the canonical layout
+  | FmtCheck    -- ^ fail if a file is not in the canonical layout
+  | FmtStdout   -- ^ print the formatted file (for editors)
+  deriving (Eq, Show)
+
+data FmtOptions = FmtOptions
+  { fmtMode  :: FmtMode
+  , fmtFiles :: [FilePath]
+  } deriving (Eq, Show)
 
 -- | Common options for pipeline-inspection stages
 -- (preprocess, elaborate, optimize, escape, codegen).
@@ -173,6 +189,7 @@ run cmd = case cmd of
   Optimize opts   -> runNotWired "optimize" opts
   Escape opts     -> runNotWired "escape" opts
   CodeGen opts    -> runNotWired "codegen" opts
+  Fmt opts        -> runFmt opts
 
 -- | Emit the output text to the stage's configured destination.
 -- Nothing means stdout; Just path writes to that file. "-" also means stdout.
@@ -288,6 +305,34 @@ runCheck opts = do
         _ -> do
           TIO.putStrLn "Internal error: unexpected result from check"
           exitFailure
+
+------------------------------------------------------------------------
+-- Fmt Command
+------------------------------------------------------------------------
+
+-- | Format each file; with `--check`, report the ones not in the canonical
+-- layout and fail if there is one. A file that does not parse is an error.
+runFmt :: FmtOptions -> IO ()
+runFmt opts = do
+  results <- mapM one (fmtFiles opts)
+  if and results then exitSuccess else exitFailure
+  where
+    one path = do
+      source <- TIO.readFile path
+      case Bridge.formatSource source of
+        Left err -> do
+          hPutStrLn stderr (path ++ ": " ++ T.unpack err)
+          pure False
+        Right out -> case fmtMode opts of
+          FmtStdout -> TIO.putStr out >> pure True
+          FmtCheck
+            | out == source -> pure True
+            | otherwise     -> do
+                hPutStrLn stderr (path ++ ": not formatted")
+                pure False
+          FmtInPlace -> do
+            if out == source then pure () else TIO.writeFile path out
+            pure True
 
 ------------------------------------------------------------------------
 -- Build Command
