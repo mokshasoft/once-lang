@@ -32,7 +32,6 @@ import Data.List as DL
 import Data.Bool.ListAction as BLA
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; ∃-syntax; proj₁; proj₂)
-open import Once.TypeCheck.SpecWitness using (WI; WC; WD)
 open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -114,7 +113,7 @@ open PolyFunInfo
 -- Type checking / elaboration
 open import Once.TypeCheck.Elaborate using (checkElab)
 import Once.TypeCheck.Error as Error
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
+open import Once.TypeCheck.Link using (resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
@@ -165,11 +164,11 @@ validateMain ty = validateMain-at ty (ty <:? mainType)
 -- which its body also checks (`Once.Principal`); none means the type is
 -- the body's principal type.
 firstChecking : ∀ {m} → (ctx : NamedCtx m) (e : Expr) → List (Ty m) → Maybe (Ty m)
-fc-step : ∀ {m} → (ctx : NamedCtx m) (e : Expr) (X : Ty m) → List (Ty m) → TE.VerifiedCheckResult ctx e X → Maybe (Ty m)
+fc-step : ∀ {m} → (ctx : NamedCtx m) (e : Expr) (X : Ty m) → List (Ty m) → TE.CheckElabResult (NamedCtx.debruijn ctx) X → Maybe (Ty m)
 firstChecking ctx e []       = nothing
-firstChecking ctx e (X ∷ Xs) = fc-step ctx e X Xs (TE.checkElabV ctx e X)
-fc-step ctx e X Xs (TE.success _ _ _ _ , _) = just X
-fc-step ctx e X Xs (TE.failure _ , _)       = firstChecking ctx e Xs
+firstChecking ctx e (X ∷ Xs) = fc-step ctx e X Xs (TE.checkElab ctx e X)
+fc-step ctx e X Xs (TE.success _ _ _ _) = just X
+fc-step ctx e X Xs (TE.failure _)       = firstChecking ctx e Xs
 
 -- D253: `main` is an entry like any other. It is not rewritten: its entry
 -- form is the direct-call morphism (`directCallIR`), which at `Eff Unit Unit` is
@@ -227,13 +226,13 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- to prove `doOpt`-independence of success without the `with`-bite).
 -- Plan 0.122 §5.6: the compiled term is the checker's own, which is the
 -- realization of its Spec witness (`TypeCheck.SpecWitness`).
-compileFunBody-aux : ∀ {ctx : NamedCtx 0} {body : Expr}
+compileFunBody-aux : ∀ {n} {Γ : Srf.Ctx 0 n}
   → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
-  → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
-  → TE.VerifiedCheckResult ctx body ty → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
-compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
+  → Srf.⟦ Γ ⟧ᶜ ≡ Unit
+  → TE.CheckElabResult Γ ty → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
+compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err) =
   inj₁ ("Type error in " ++ name ++ ": " ++ Error.renderError err)
-compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ eE _ _ , w) =
+compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ eE _ _) =
   -- Plan 0.19: the user-fn list (= `ctx + self`) is `userFns`. Plan 0.103
   -- phase 1c: a telescope body is linked in ITS declaration imports
   -- (`impsOf`), not in this function's. External syscalls are handled via
@@ -246,7 +245,7 @@ compileFunBody-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success _ eE _ _
 compileFunBody : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → Expr → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunBody m doOpt ctx polys impsOf name ty expr =
   compileFunBody-aux m doOpt ctx polys impsOf name ty refl
-    (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty)
+    (TE.checkElab (ctxWithImportsAndPolys ctx polys) expr ty)
 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling
@@ -270,31 +269,31 @@ compileFun m doOpt ctx polys impsOf name ty expr = compileFun-aux m doOpt ctx po
 -- SYNTHESIS — the term the Spec's `w-nosig` takes — at the type it
 -- synthesizes (D323). (Checking it at that type would elaborate differently:
 -- a pair literal component-wise, a synthesized part with an identity coercion.)
-compileFunBodyI-at : ∀ {ctx : NamedCtx 0} {body : Expr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size ctx)} {eE : Srf.Expr (NamedCtx.debruijn ctx) Ψ T}
+compileFunBodyI-at : ∀ {n} {Γ : Srf.Ctx 0 n} {T : Type} {Ψ : Srf.Usage n} (eE : Srf.Expr Γ Ψ T)
   → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
-  → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
-  → WI ctx body T Ψ eE → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
-compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (no _) =
+  → Srf.⟦ Γ ⟧ᶜ ≡ Unit
+  → Dec (T ≡ ty) → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
+compileFunBodyI-at eE m doOpt ctx polys impsOf name ty δ-unit (no _) =
   inj₁ ("Type error in " ++ name ++ ": its body synthesizes another type than " ++ showType ty)
-compileFunBodyI-at {eE = eE} m doOpt ctx polys impsOf name ty δ-unit w (yes refl) =
+compileFunBodyI-at eE m doOpt ctx polys impsOf name ty δ-unit (yes refl) =
   let userList = (name , ty) ∷ TopCtx.tdefs ctx
       resolved = resolveExpr polys impsOf userList 0 eE
       ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
-compileFunBodyI-aux : ∀ {ctx : NamedCtx 0} {body : Expr}
+compileFunBodyI-aux : ∀ {n} {Γ : Srf.Ctx 0 n}
   → AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type)
-  → Srf.⟦ NamedCtx.debruijn ctx ⟧ᶜ ≡ Unit
-  → TE.VerifiedInferResult ctx body → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
-compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err , _) =
+  → Srf.⟦ Γ ⟧ᶜ ≡ Unit
+  → TE.InferElabResult Γ → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
+compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.failure err) =
   inj₁ ("Type error in " ++ name ++ ": " ++ Error.renderError err)
-compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success T _ _ _ _ , w) =
-  compileFunBodyI-at m doOpt ctx polys impsOf name ty δ-unit w (T ≟T ty)
+compileFunBodyI-aux m doOpt ctx polys impsOf name ty δ-unit (TE.success T _ eE _ _) =
+  compileFunBodyI-at eE m doOpt ctx polys impsOf name ty δ-unit (T ≟T ty)
 
 compileFunBodyI : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → Expr → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunBodyI m doOpt ctx polys impsOf name ty expr =
   compileFunBodyI-aux m doOpt ctx polys impsOf name ty refl
-    (TE.inferElabV (ctxWithImportsAndPolys ctx polys) expr)
+    (TE.inferElab (ctxWithImportsAndPolys ctx polys) expr)
 
 compileFunI-main-aux : AllocMode → Bool → TopCtx → PolyCtx → (String → TopCtx) → (name : String) (ty : Type) → Expr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋
 compileFunI-main-aux m doOpt ctx polys impsOf name ty expr (inj₁ err) = inj₁ err
@@ -389,9 +388,9 @@ parseSourceToModule = parseStrict
 -- De-withed: every decision is an explicit argument (the proofs reduce it).
 ------------------------------------------------------------------------
 
-checkOK : ∀ {m} {ctx : NamedCtx m} {e} {T : Ty m} → TE.VerifiedCheckResult ctx e T → String ⊎ ⊤
-checkOK (TE.failure err , _)       = inj₁ (renderError err)
-checkOK (TE.success _ _ _ _ , _)   = inj₂ tt
+checkOK : ∀ {m n} {Γ : Srf.Ctx m n} {T : Ty m} → TE.CheckElabResult Γ T → String ⊎ ⊤
+checkOK (TE.failure err)       = inj₁ (renderError err)
+checkOK (TE.success _ _ _ _)   = inj₂ tt
 
 ------------------------------------------------------------------------
 -- D241 (plan 0.103 6c′): compile the module TELESCOPE, in declaration order.
@@ -515,7 +514,7 @@ ce-poly-p m doOpt sc pfi es (just X) =
         ++ ". A signature states the body's own type: write the more precise one")
 ce-poly-p m doOpt sc pfi es nothing =
   ce-poly m doOpt sc pfi es
-    (checkOK (TE.checkElabV (ctxAt (kindsOf (pfunType pfi)) (ctop sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))
+    (checkOK (TE.checkElab (ctxAt (kindsOf (pfunType pfi)) (ctop sc) (cpolys sc)) (pfunBody pfi) (rigidOf (pfunType pfi))))
 ce-poly m doOpt sc pfi es (inj₁ err) = inj₁ ("Type error in " ++ pfunName pfi ++ ": " ++ err)
 ce-poly m doOpt sc pfi es (inj₂ _)   = compileEntries m doOpt (addEntry sc pfi) es
 
@@ -535,8 +534,8 @@ lw-entries : CScope → List Entry → List String
 lw-fun     : CScope → FunInfo → List Entry → Bool → List String
 lw-prim    : CScope → FunInfo → List Entry → Maybe Type → List String
 lw-mono    : CScope → FunInfo → List Entry → String ⊎ Type → List String
-lw-body    : (ctx : NamedCtx 0) (body : Expr) (ty : Type) → TE.VerifiedCheckResult ctx body ty → Bool
-lw-bodyI   : (ctx : NamedCtx 0) (body : Expr) → TE.VerifiedInferResult ctx body → Bool
+lw-body    : (ctx : NamedCtx 0) (body : Expr) (ty : Type) → TE.CheckElabResult (NamedCtx.debruijn ctx) ty → Bool
+lw-bodyI   : (ctx : NamedCtx 0) (body : Expr) → TE.InferElabResult (NamedCtx.debruijn ctx) → Bool
 lw-bodyM   : Maybe Type → (ctx : NamedCtx 0) (body : Expr) (ty : Type) → Bool
 lw-name    : FunInfo → Bool → List String
 
@@ -551,12 +550,12 @@ lw-mono sc fi es (inj₁ _)  = []
 lw-mono sc fi es (inj₂ ty) =
   lw-name fi (lw-bodyM (funType fi) (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty)
   DL.++ lw-entries (extendScope sc (funName fi) ty) es
-lw-body ctx body ty (TE.failure _ , _)       = false
-lw-body ctx body ty (TE.success _ eE _ _ , w) = 0 <ᵇ silentLoops eE
-lw-bodyI ctx body (TE.failure _ , _)         = false
-lw-bodyI ctx body (TE.success _ _ eE _ _ , w) = 0 <ᵇ silentLoops eE
-lw-bodyM (just _) ctx body ty = lw-body ctx body ty (TE.checkElabV ctx body ty)
-lw-bodyM nothing  ctx body ty = lw-bodyI ctx body (TE.inferElabV ctx body)
+lw-body ctx body ty (TE.failure _)       = false
+lw-body ctx body ty (TE.success _ eE _ _) = 0 <ᵇ silentLoops eE
+lw-bodyI ctx body (TE.failure _)         = false
+lw-bodyI ctx body (TE.success _ _ eE _ _) = 0 <ᵇ silentLoops eE
+lw-bodyM (just _) ctx body ty = lw-body ctx body ty (TE.checkElab ctx body ty)
+lw-bodyM nothing  ctx body ty = lw-bodyI ctx body (TE.inferElab ctx body)
 lw-name fi true  = funName fi ∷ []
 lw-name fi false = []
 

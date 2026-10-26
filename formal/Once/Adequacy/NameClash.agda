@@ -207,7 +207,7 @@ ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
   with C.firstChecking (Classify.ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (below (rigidOf (PolyFunInfo.pfunType pfi)))
 ... | just _ = case eq of λ ()
 ... | nothing
-  with C.checkOK (TE.checkElabV (Classify.ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
+  with C.checkOK (TE.checkElab (Classify.ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi)))
 ...   | inj₁ _ = case eq of λ ()
 ...   | inj₂ _ = ce-syms doOpt (C.addEntry sc pfi) es cfs eq
 

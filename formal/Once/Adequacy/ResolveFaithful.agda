@@ -70,8 +70,8 @@ open import Once.Arith.SigOp.Builders
 open import Once.IR.Semantics.Iterative using (T∞; _>>=∞_; return∞; fmap∞; iter∞)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice)
-open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV)
+open import Once.TypeCheck.Link using (resolveExpr; resolvePolyCase; applySplice)
+open import Once.TypeCheck.Elaborate using (CheckElabResult; checkElab)
 import Once.TypeCheck.Elaborate as Elaborate
 open import Once.TypeCheck.Scope using (lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; ctxAt; baseKinds)
@@ -138,11 +138,11 @@ splice-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → TopCtx) (userFns : Imports)
     (fresh : ℕ) (x : String) {schema body prefix}
     (polyEq : lookupPolyPrefix polys x ≡ just (schema , body , prefix))
-    (r : VerifiedCheckResult (ctxAt baseKinds (imps x) prefix) body A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
+    (r : CheckElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn (ctxAt baseKinds (imps x) prefix)) A) (dγ : ⟦ ⟦ Γ Srf.↾ Srf.zeroUsage ⟧ᶜ ⟧ᴰ)
   → SD.⟦ applySplice {Γ = Γ} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ dγ
       ≡ SD.⟦ applySplice {Γ = Srf.∅} polys pAcc imps userFns fresh x A polyEq r ⟧ˢ fmt σ₀ tt
-splice-ctx-indep polys pAcc imps userFns fresh x polyEq (Elaborate.CheckElabResult.failure _ , _) dγ = refl
-splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (Elaborate.CheckElabResult.success SCx.[] eE _ _ , _) dγ = refl
+splice-ctx-indep polys pAcc imps userFns fresh x polyEq (Elaborate.CheckElabResult.failure _ ) dγ = refl
+splice-ctx-indep polys (acc rec) imps userFns fresh x polyEq (Elaborate.CheckElabResult.success SCx.[] eE _ _ ) dγ = refl
 
 poly-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys)) (imps : String → TopCtx) (userFns : Imports)
@@ -153,7 +153,7 @@ poly-ctx-indep : ∀ {m} {n} {Γ : Srf.Ctx m n} {A : Ty m}
 poly-ctx-indep polys pAcc imps userFns fresh x nothing eqLP dγ = refl
 poly-ctx-indep {A = A} polys pAcc imps userFns fresh x (just (_ , body , prefix)) eqLP dγ =
   splice-ctx-indep polys pAcc imps userFns fresh x eqLP
-    (checkElabV (ctxAt baseKinds (imps x) prefix) body A) dγ
+    (checkElab (ctxAt baseKinds (imps x) prefix) body A) dγ
 
 -- Two-sided bind congruence: related heads and pointwise-equal continuations
 -- give equal computations (plan 0.105: equality of trees, no budget).

@@ -78,7 +78,7 @@ data Fails {m n Γ A} : TE.CheckElabResult {m} {n} Γ A → Set where
 
 -- The checker rejects the body at every type strictly below its type.
 PrincipalAt : ∀ {m} → (ctx : NamedCtx m) → Expr → Ty m → Set
-PrincipalAt ctx e T = ∀ {X} → X ∈ below T → Fails (proj₁ (TE.checkElabV ctx e X))
+PrincipalAt ctx e T = ∀ {X} → X ∈ below T → Fails (TE.checkElab ctx e X)
 
 ------------------------------------------------------------------------
 -- `below` lists everything strictly below

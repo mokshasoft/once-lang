@@ -60,9 +60,9 @@ import Once.Spec.Type
 import Once.Type
 import Once.Context
 import Once.Spec.Surface.Syntax as Syn
+open import Once.TypeCheck.ElaborateSound
 open import Once.TypeCheck.Elaborate
-  using (inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure)
+  using (inferElab; checkElab; InferElabResult; CheckElabResult; success; failure)
 open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
 import Once.TypeCheck.Scope as Classify
 
@@ -87,7 +87,7 @@ import Algebra.Structures
 import Algebra.Module.Structures
 import Relation.Binary.Structures
 open import Once.TypeCheck.SpecWitness using (Pack; WI; WC)
-open import Once.TypeCheck.Elaborate using (inferElabV; checkElabV; VerifiedInferResult; VerifiedCheckResult)
+open import Once.TypeCheck.ElaborateSound using (inferElabV; checkElabV; VerifiedInferResult; VerifiedCheckResult)
 open import Data.Product using (proj₁)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)

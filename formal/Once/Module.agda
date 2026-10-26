@@ -59,6 +59,7 @@ import Once.Spec.Context as Surface
 import Once.Surface.Syntax as SS
 open import Once.TypeCheck.SpecWitness using (WI; WC)
 import Once.TypeCheck.Elaborate as TE
+import Once.TypeCheck.ElaborateSound as TEˢ
 open import Data.Nat using (ℕ)
 open import Once.Spec.Surface.Syntax using (Expr)
 
@@ -112,12 +113,12 @@ addPoly sc p = scope (Scope.sig sc) (Scope.imps sc) (p ∷ Scope.tele sc)
 -- 0.122 §5.6).
 CheckRun : ∀ {m} (ctx : NamedCtx m) → Expr → (A : Ty m) → Surface.Usage (NamedCtx.size ctx) → Set
 CheckRun ctx e A Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ A ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ WC ctx e A Ψ eE ]
-                       (TE.checkElabV ctx e A ≡ (TE.success Ψ eE d f , w))
+                       (TEˢ.checkElabV ctx e A ≡ (TE.success Ψ eE d f , w))
 
 MonoWit : Maybe Type → (ctx : NamedCtx 0) → Expr → Type → Surface.Usage (NamedCtx.size ctx) → Set
 MonoWit (just _) ctx e ty Ψ = CheckRun ctx e ty Ψ
 MonoWit nothing  ctx e ty Ψ = Σ[ eE ∈ SS.Expr (NamedCtx.debruijn ctx) Ψ ty ] Σ[ d ∈ ℕ ] Σ[ f ∈ ℕ ] Σ[ w ∈ WI ctx e ty Ψ eE ]
-                                (TE.inferElabV ctx e ≡ (TE.success ty Ψ eE d f , w))
+                                (TEˢ.inferElabV ctx e ≡ (TE.success ty Ψ eE d f , w))
 
 -- A pair, read along an equation on its first component.
 pair-at : ∀ {a b} {A : Set a} {B : A → Set b} (r : Σ A B) {x : A} (q : proj₁ r ≡ x) → r ≡ (x , subst B q (proj₂ r))

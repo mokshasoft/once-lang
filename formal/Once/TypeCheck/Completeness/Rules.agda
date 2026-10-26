@@ -44,7 +44,7 @@ open import Once.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
-open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
+open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; negOperandView; nov-int; nov-float; nov-other; checkElab; inferElabV-RVar-lookup-aux; InferElabResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
 import Once.TypeCheck.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
@@ -128,7 +128,7 @@ infer-complete-RResolved : ∀ {m} {ctx : NamedCtx m} {cn : CanonicalName} {T : 
 inferElabV-RResolved-J : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (gv : GenView cn)
   → classifyGen cn ≡ gv
   → inferElab ctx (RResolved cn)
-      ≡ proj₁ (E.inferElabV-RResolved-dispatch ctx cn gv)
+      ≡ (E.inferElabV-RResolved-dispatch ctx cn gv)
 inferElabV-RResolved-J ctx cn .(classifyGen cn) refl = refl
 
 -- The VIEW-PARAMETERISED body. Taking `classifyGen cn ≡ gv` as an argument is
@@ -174,7 +174,7 @@ infer-complete-RResolved-view {ctx = ctx} {cn = cn} {T = T} (gv-other ng') eqv _
               → inferElabV-RResolved-value-aux ctx cn ng' ty eq' (isConcrete? ty) refl
                 ≡ inferElabV-RResolved-value-aux ctx cn ng' ty eq' mc eqc
     helperVal _ _ refl = refl
-    helperW : ∀ (k : WordName cn → E.VerifiedInferResult ctx (RResolved cn)) (b : Bool) (e : wordNameB cn ≡ b)
+    helperW : ∀ (k : WordName cn → E.InferElabResult (NamedCtx.debruijn ctx)) (b : Bool) (e : wordNameB cn ≡ b)
             → E.inferElabV-RResolved-word ctx cn k (wordNameB cn) refl ≡ E.inferElabV-RResolved-word ctx cn k b e
     helperW _ _ refl = refl
     wt : wordNameB cn ≡ true
@@ -188,42 +188,42 @@ infer-complete-RResolved-view {ctx = ctx} {cn = cn} {T = T} (gv-other ng') eqv _
            inferElab ctx (RResolved cn) ≡ success (wk₀ T') zeroUsage eE d f
     go (A ⇒[ T.mk-kind Many π ] B) (con-fun bA cB) eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
-      (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperArr eq' _ (proj₂ (isBaseType?-complete bA))
+      (trans ((helper _ eq'))
+            ((helperArr eq' _ (proj₂ (isBaseType?-complete bA))
                                       _ (proj₂ (isBaseType?-complete cB))))))
-      (cong proj₁ (helperW _ _ wt))
+      ((helperW _ _ wt))
     go (A ⇒[ T.mk-kind One  π ] B) conc' eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
-      (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
-      (cong proj₁ (helperW _ _ wt))
+      (trans ((helper _ eq'))
+            ((helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      ((helperW _ _ wt))
     go (A ⇒[ T.mk-kind Zero π ] B) conc' eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
-      (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
-      (cong proj₁ (helperW _ _ wt))
+      (trans ((helper _ eq'))
+            ((helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      ((helperW _ _ wt))
     go Unit          _ eq' = _ , _ , _ ,
-      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
-      (cong proj₁ (helperW _ _ wt))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) ((helper _ eq')))
+      ((helperW _ _ wt))
     go Void          _ eq' = _ , _ , _ ,
-      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
-      (cong proj₁ (helperW _ _ wt))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) ((helper _ eq')))
+      ((helperW _ _ wt))
     go Int           _ eq' = _ , _ , _ ,
-      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
-      (cong proj₁ (helperW _ _ wt))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) ((helper _ eq')))
+      ((helperW _ _ wt))
     go Float         _ eq' = _ , _ , _ ,
-      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) (cong proj₁ (helper _ eq')))
-      (cong proj₁ (helperW _ _ wt))
+      trans (trans (inferElabV-RResolved-J ctx cn _ eqv) ((helper _ eq')))
+      ((helperW _ _ wt))
     go (A * B) conc' eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
-      (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
-      (cong proj₁ (helperW _ _ wt))
+      (trans ((helper _ eq'))
+            ((helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      ((helperW _ _ wt))
     go (A + B) conc' eq' = _ , _ , _ ,
       trans (trans (inferElabV-RResolved-J ctx cn _ eqv)
-      (trans (cong proj₁ (helper _ eq'))
-            (cong proj₁ (helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
-      (cong proj₁ (helperW _ _ wt))
+      (trans ((helper _ eq'))
+            ((helperVal eq' _ (proj₂ (isConcrete?-complete conc'))))))
+      ((helperW _ _ wt))
     go (T.μ F)  (con-base ()) eq'
     go (T.ν F _)  (con-base ()) eq'
 
@@ -252,8 +252,8 @@ infer-complete-RResolved-own {ctx = ctx} {x = x} {T = T} ns eq = view (classifyG
          → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (RResolved (own x)) ≡ success (wk₀ T) zeroUsage eE d f
     view (gv-other ng) eqv = _ , _ , _ ,
       trans (inferElabV-RResolved-J ctx (own x) _ eqv)
-        (trans (cong proj₁ (h1 ng _ ns))
-          (cong proj₁ (h2 _ eq)))
+        (trans ((h1 ng _ ns))
+          ((h2 _ eq)))
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.
@@ -279,10 +279,10 @@ infer-complete-RPair : ∀ {m} {ctx : NamedCtx m} (a b : Syn.Expr) {A B : Ty m}
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RPair a b) ≡ success (A * B) (Ψ₁ +ᵘ Ψ₂) eE d f
 infer-complete-RPair {ctx = ctx} a b eqA eqB
-  with inferElabV ctx a | eqA
-... | success _ _ _ _ _ , _ | refl
-    with inferElabV ctx b | eqB
-...   | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with inferElab ctx a | eqA
+... | success _ _ _ _ _  | refl
+    with inferElab ctx b | eqB
+...   | success _ _ _ _ _  | refl = _ , _ , _ , refl
 
 infer-complete-RNeg : ∀ {m} {ctx : NamedCtx m} (e : Syn.Expr)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -307,8 +307,8 @@ infer-complete-RNeg {ctx = ctx} e eqE with negOperandView e | eqE
 -- completeness is `t-neg-float`'s own clause in `infer-complete` — it never
 -- consults the operand, exactly as the `RInt` fold does not.
 ... | nov-float i f l | ()
-... | nov-other .e | _    with inferElabV ctx e | eqE
-...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
+... | nov-other .e | _    with inferElab ctx e | eqE
+...   | success Int _ _ _ _  | refl = _ , _ , _ , refl
 
 infer-complete-RAnnot : ∀ {m} {ctx : NamedCtx m} (e : Syn.Expr) (T : Type)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -318,8 +318,8 @@ infer-complete-RAnnot : ∀ {m} {ctx : NamedCtx m} (e : Syn.Expr) (T : Type)
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RAnnot e T) ≡ success (wk₀ T) Ψ eE d f
 infer-complete-RAnnot {ctx = ctx} e T eqC
-  with checkElabV ctx e (wk₀ T) | eqC
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with checkElab ctx e (wk₀ T) | eqC
+... | success _ _ _ _  | refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
 -- Completeness notes
@@ -349,10 +349,10 @@ infer-complete-RLet : ∀ {m} {ctx : NamedCtx m} (x : String) (e₁ e₂ : Syn.E
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RLet x e₁ e₂) ≡ success B (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) eE d f
 infer-complete-RLet {ctx = ctx} x e₁ e₂ {A = A} eq₁ eq₂
-  with inferElabV ctx e₁ | eq₁
-... | success _ _ _ _ _ , _ | refl
-    with inferElabV (Classify.extendNamedCtx ctx x A) e₂ | eq₂
-...   | success _ (_ SCx.∷ _) _ _ _ , _ | refl = _ , _ , _ , refl
+  with inferElab ctx e₁ | eq₁
+... | success _ _ _ _ _  | refl
+    with inferElab (Classify.extendNamedCtx ctx x A) e₂ | eq₂
+...   | success _ (_ SCx.∷ _) _ _ _  | refl = _ , _ , _ , refl
 
 infer-complete-RApp-id : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {T : Ty m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -363,8 +363,8 @@ infer-complete-RApp-id : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {T : Ty m}
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg)
         ≡ success T (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 infer-complete-RApp-id {ctx = ctx} arg eqArg
-  with inferElabV ctx arg | eqArg
-... | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with inferElab ctx arg | eqArg
+... | success _ _ _ _ _  | refl = _ , _ , _ , refl
 
 infer-complete-RApp-terminal : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {T : Ty m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -375,8 +375,8 @@ infer-complete-RApp-terminal : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {T : 
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg)
         ≡ success Unit (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 infer-complete-RApp-terminal {ctx = ctx} arg eqArg
-  with inferElabV ctx arg | eqArg
-... | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with inferElab ctx arg | eqArg
+... | success _ _ _ _ _  | refl = _ , _ , _ , refl
 
 -- D194: the `Out` head. Unlike `terminal` the result type is not a constant,
 -- so the argument's inferred `ν-type F` and the decided `wfFun? (NamedCtx.kinds ctx) F` both
@@ -395,9 +395,9 @@ infer-complete-RApp-Out : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {F : Fun m
 -- a rewrite would use mentions the very term it must abstract, so it clashes
 -- however the decision is obtained (parameter or `inspectWellFormedF` view).
 infer-complete-RApp-Out {ctx = ctx} arg {F} wfF eqArg
-  with inferElabV ctx arg | eqArg
-... | success _ Ψ' argE' d' fr' , w' | refl
-      rewrite inferOutGo-J ctx arg F T.pureᶠ Ψ' argE' d' fr' w'
+  with inferElab ctx arg | eqArg
+... | success _ Ψ' argE' d' fr'  | refl
+      rewrite inferOutGo-J ctx arg F T.pureᶠ Ψ' argE' d' fr'
                 (just wfF) (wfFun?-complete-at wfF)
       = _ , _ , _ , refl
 
@@ -415,9 +415,9 @@ infer-complete-RApp-Out-act : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {F : F
 -- a rewrite would use mentions the very term it must abstract, so it clashes
 -- however the decision is obtained (parameter or `inspectWellFormedF` view).
 infer-complete-RApp-Out-act {ctx = ctx} arg {F} wfF eqArg
-  with inferElabV ctx arg | eqArg
-... | success _ Ψ' argE' d' fr' , w' | refl
-      rewrite inferOutGo-J ctx arg F T.actᶠ Ψ' argE' d' fr' w'
+  with inferElab ctx arg | eqArg
+... | success _ Ψ' argE' d' fr'  | refl
+      rewrite inferOutGo-J ctx arg F T.actᶠ Ψ' argE' d' fr'
                 (just wfF) (wfFun?-complete-at wfF)
       = _ , _ , _ , refl
 
@@ -429,7 +429,7 @@ infer-complete-RApp-fst : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {A B : Ty 
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg)
         ≡ success A (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-fst {ctx = ctx} arg eqArg = via (E.inferFstOn ctx arg) (inferElabV ctx arg) eqArg (λ _ → _ , _ , _ , refl)
+infer-complete-RApp-fst {ctx = ctx} arg eqArg = via (E.inferFstOn ctx arg) (inferElab ctx arg) eqArg (_ , _ , _ , refl)
 
 infer-complete-RApp-snd : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {A B : Ty m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -439,7 +439,7 @@ infer-complete-RApp-snd : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) {A B : Ty 
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg)
         ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
-infer-complete-RApp-snd {ctx = ctx} arg eqArg = via (E.inferSndOn ctx arg) (inferElabV ctx arg) eqArg (λ _ → _ , _ , _ , refl)
+infer-complete-RApp-snd {ctx = ctx} arg eqArg = via (E.inferSndOn ctx arg) (inferElab ctx arg) eqArg (_ , _ , _ , refl)
 
 -- (Plan 0.52 M1: `infer-complete-RApp-arr` retired with `t-arr-app-infer`.)
 
@@ -452,7 +452,7 @@ infer-complete-RApp-apply : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (A : Ty 
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
         ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 infer-complete-RApp-apply {ctx = ctx} arg A {B} {Ψ} {argE} {d'} {f'} eqArg =
-  via (E.inferApplyOn ctx arg) (inferElabV ctx arg) eqArg (apply-pure A B Ψ argE d' f')
+  via (E.inferApplyOn ctx arg) (inferElab ctx arg) eqArg (apply-pure {arg = arg} A B Ψ argE d' f')
 
 -- D222 / plan 0.95 A′: the EFF-closure twin. `apply` at an effectful closure
 -- infers the SUSPENSION `Unit ⇒[eff] B`, so both the premise's arrow and the
@@ -467,7 +467,7 @@ infer-complete-RApp-apply-eff : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (A :
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 infer-complete-RApp-apply-eff {ctx = ctx} arg A {B} {Ψ} {argE} {d'} {f'} eqArg =
-  via (E.inferApplyOn ctx arg) (inferElabV ctx arg) eqArg (apply-eff A B Ψ argE d' f')
+  via (E.inferApplyOn ctx arg) (inferElab ctx arg) eqArg (apply-eff {arg = arg} A B Ψ argE d' f')
 
 infer-complete-RApp-apply-act : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (A : Ty m) {B : Ty m}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -478,7 +478,7 @@ infer-complete-RApp-apply-act : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (A :
       inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 infer-complete-RApp-apply-act {ctx = ctx} arg A {B} {Ψ} {argE} {d'} {f'} eqArg =
-  via (E.inferApplyOn ctx arg) (inferElabV ctx arg) eqArg (apply-act A B Ψ argE d' f')
+  via (E.inferApplyOn ctx arg) (inferElab ctx arg) eqArg (apply-act {arg = arg} A B Ψ argE d' f')
 
 ------------------------------------------------------------------------
 -- Variable lookup (local / import)
@@ -491,7 +491,7 @@ infer-complete-RVar-local : ∀ {m} {ctx : NamedCtx m} (x : String) {A : Ty m}
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RVar x) ≡ success A Ψ eE d f
 infer-complete-RVar-local {ctx = ctx} x {A} {Ψ} {eE'} eqLoc
-  = _ , _ , _ , cong proj₁ (helper _ eqLoc)
+  = _ , _ , _ , (helper _ eqLoc)
   where
     open Once.TypeCheck.ElaborateProofs using ()
     helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (Classify.NamedCtx.debruijn ctx) Ψ' A')))
@@ -516,19 +516,19 @@ infer-complete-RVar-local {ctx = ctx} x {A} {Ψ} {eE'} eqLoc
 -- side widens: the operand TYPES differ, so the two statements have genuinely
 -- different types and sharing them would need an index nothing else wants.
 infer-complete-RBinOp-arith-float-il′ : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
-    (e₁ e₂ : Syn.Expr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
+    (e₁ e₂ : Syn.Expr) (r₁ : InferElabResult (NamedCtx.debruijn ctx)) (r₂ : InferElabResult (NamedCtx.debruijn ctx))
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
     {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ T.Float}
     {d₁ d₂ f₁ f₂ : ℕ}
-  → proj₁ r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
-  → proj₁ r₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
+  → r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+  → r₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      proj₁ (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith-float-il′ Raw.OpAdd refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float-il′ Raw.OpSub refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float-il′ Raw.OpMul refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float-il′ Raw.OpDiv refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
+      (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-arith-float-il′ Raw.OpAdd refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-il′ Raw.OpSub refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-il′ Raw.OpMul refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-il′ Raw.OpDiv refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
 
 infer-complete-RBinOp-arith-float-il : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : Syn.Expr)
@@ -540,22 +540,22 @@ infer-complete-RBinOp-arith-float-il : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinO
   → inferElab ctx e₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith-float-il {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith-float-il′ op eqop e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂) eq₁ eq₂
+infer-complete-RBinOp-arith-float-il {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith-float-il′ op eqop e₁ e₂ (inferElab ctx e₁) (inferElab ctx e₂) eq₁ eq₂
 
 infer-complete-RBinOp-arith-float-ir′ : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
-    (e₁ e₂ : Syn.Expr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
+    (e₁ e₂ : Syn.Expr) (r₁ : InferElabResult (NamedCtx.debruijn ctx)) (r₂ : InferElabResult (NamedCtx.debruijn ctx))
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ T.Float}
     {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
-  → proj₁ r₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
-  → proj₁ r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+  → r₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
+  → r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      proj₁ (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith-float-ir′ Raw.OpAdd refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float-ir′ Raw.OpSub refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float-ir′ Raw.OpMul refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float-ir′ Raw.OpDiv refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
+      (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-arith-float-ir′ Raw.OpAdd refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-ir′ Raw.OpSub refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-ir′ Raw.OpMul refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-ir′ Raw.OpDiv refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
 
 infer-complete-RBinOp-arith-float-ir : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : Syn.Expr)
@@ -567,22 +567,22 @@ infer-complete-RBinOp-arith-float-ir : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinO
   → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith-float-ir {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith-float-ir′ op eqop e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂) eq₁ eq₂
+infer-complete-RBinOp-arith-float-ir {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith-float-ir′ op eqop e₁ e₂ (inferElab ctx e₁) (inferElab ctx e₂) eq₁ eq₂
 
 infer-complete-RBinOp-arith-float′ : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
-    (e₁ e₂ : Syn.Expr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
+    (e₁ e₂ : Syn.Expr) (r₁ : InferElabResult (NamedCtx.debruijn ctx)) (r₂ : InferElabResult (NamedCtx.debruijn ctx))
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ T.Float}
     {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ T.Float}
     {d₁ d₂ f₁ f₂ : ℕ}
-  → proj₁ r₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
-  → proj₁ r₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
+  → r₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
+  → r₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      proj₁ (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith-float′ Raw.OpAdd refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float′ Raw.OpSub refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float′ Raw.OpMul refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith-float′ Raw.OpDiv refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
+      (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-arith-float′ Raw.OpAdd refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float′ Raw.OpSub refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float′ Raw.OpMul refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float′ Raw.OpDiv refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
 
 infer-complete-RBinOp-arith-float : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : Syn.Expr)
@@ -594,23 +594,23 @@ infer-complete-RBinOp-arith-float : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) 
   → inferElab ctx e₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith-float {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith-float′ op eqop e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂) eq₁ eq₂
+infer-complete-RBinOp-arith-float {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith-float′ op eqop e₁ e₂ (inferElab ctx e₁) (inferElab ctx e₂) eq₁ eq₂
 
 infer-complete-RBinOp-arith′ : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isArithmeticOp op ≡ true)
-    (e₁ e₂ : Syn.Expr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
+    (e₁ e₂ : Syn.Expr) (r₁ : InferElabResult (NamedCtx.debruijn ctx)) (r₂ : InferElabResult (NamedCtx.debruijn ctx))
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
     {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
-  → proj₁ r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
-  → proj₁ r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+  → r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+  → r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      proj₁ (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success Int (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith′ Raw.OpAdd refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith′ Raw.OpSub refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith′ Raw.OpMul refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith′ Raw.OpDiv refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-arith′ Raw.OpMod refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
+      (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success Int (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-arith′ Raw.OpAdd refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith′ Raw.OpSub refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith′ Raw.OpMul refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith′ Raw.OpDiv refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith′ Raw.OpMod refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
 
 infer-complete-RBinOp-arith : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arithEq : Raw.isArithmeticOp op ≡ true)
     (e₁ e₂ : Syn.Expr)
@@ -622,24 +622,24 @@ infer-complete-RBinOp-arith : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (arith
   → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success Int (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-arith {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith′ op eqop e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂) eq₁ eq₂
+infer-complete-RBinOp-arith {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-arith′ op eqop e₁ e₂ (inferElab ctx e₁) (inferElab ctx e₂) eq₁ eq₂
 
 infer-complete-RBinOp-cmp′ : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (cmpEq : Raw.isComparisonOp op ≡ true)
-    (e₁ e₂ : Syn.Expr) (r₁ : VerifiedInferResult ctx e₁) (r₂ : VerifiedInferResult ctx e₂)
+    (e₁ e₂ : Syn.Expr) (r₁ : InferElabResult (NamedCtx.debruijn ctx)) (r₂ : InferElabResult (NamedCtx.debruijn ctx))
     {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
     {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Int}
     {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Int}
     {d₁ d₂ f₁ f₂ : ℕ}
-  → proj₁ r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
-  → proj₁ r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+  → r₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+  → r₂ ≡ success Int Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      proj₁ (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success (Unit + Unit) (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-cmp′ Raw.OpLt refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-cmp′ Raw.OpLe refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-cmp′ Raw.OpGt refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-cmp′ Raw.OpGe refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-cmp′ Raw.OpEq refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
-infer-complete-RBinOp-cmp′ Raw.OpNe refl e₁ e₂ (_ , _) (_ , _) refl refl = _ , _ , _ , refl
+      (E.inferElabV-RBinOp-aux ctx op e₁ e₂ r₁ r₂) ≡ success (Unit + Unit) (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-cmp′ Raw.OpLt refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-cmp′ Raw.OpLe refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-cmp′ Raw.OpGt refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-cmp′ Raw.OpGe refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-cmp′ Raw.OpEq refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
+infer-complete-RBinOp-cmp′ Raw.OpNe refl e₁ e₂ _ _ refl refl = _ , _ , _ , refl
 
 infer-complete-RBinOp-cmp : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (cmpEq : Raw.isComparisonOp op ≡ true)
     (e₁ e₂ : Syn.Expr)
@@ -651,7 +651,7 @@ infer-complete-RBinOp-cmp : ∀ {m} {ctx : NamedCtx m} (op : Raw.BinOp) (cmpEq :
   → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success (Unit + Unit) (Ψ₁ +ᵘ Ψ₂) eE d f
-infer-complete-RBinOp-cmp {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-cmp′ op eqop e₁ e₂ (inferElabV ctx e₁) (inferElabV ctx e₂) eq₁ eq₂
+infer-complete-RBinOp-cmp {ctx = ctx} op eqop e₁ e₂ eq₁ eq₂ = infer-complete-RBinOp-cmp′ op eqop e₁ e₂ (inferElab ctx e₁) (inferElab ctx e₂) eq₁ eq₂
 
 ------------------------------------------------------------------------
 -- RLam check mode
@@ -680,11 +680,11 @@ check-complete-RLam : ∀ {m} (ctx : NamedCtx m) (x : String) (body : Syn.Expr)
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q π ] B) ≡ success Ψ' eE d f
 check-complete-RLam ctx x body A q q' B {Ψ' = Ψ'} leqEq u eqC
-  with checkElabV (Classify.extendNamedCtx ctx x A) body B | eqC
-... | success (_ SCx.∷ _) _ _ _ , _ | refl
+  with checkElab (Classify.extendNamedCtx ctx x A) body B | eqC
+... | success (_ SCx.∷ _) _ _ _  | refl
     with E.decideLeq q' q | decideLeq-just q' q leqEq
 ...   | just _ | _ , refl =
-  withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ res ≡ success Ψ' eE d f) (λ u′ → _ , _ , _ , refl)
+  withUnit-elim _ u _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success Ψ' eE d f) (λ u′ → _ , _ , _ , refl)
 
 ------------------------------------------------------------------------
 -- RDestruct (case / sum elimination)
@@ -715,14 +715,14 @@ infer-complete-RDestruct : ∀ {m} {ctx : NamedCtx m} (scrut : Syn.Expr) (xL : S
       inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
         ≡ success C (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
 infer-complete-RDestruct {ctx = ctx} scrut xL eL xR eR {A = A} {B = B} C₁ C₂ C J eqS eqL eqR
-  with inferElabV ctx scrut | eqS
-... | success (_ + _) _ _ _ _ , _ | refl
-    with inferElabV (Classify.extendNamedCtx ctx xL A) eL | eqL
-...   | success _ (_ SCx.∷ _) _ _ _ , _ | refl
-      with inferElabV (Classify.extendNamedCtx ctx xR B) eR | eqR
-...     | success _ (_ SCx.∷ _) _ _ _ , _ | refl =
+  with inferElab ctx scrut | eqS
+... | success (_ + _) _ _ _ _  | refl
+    with inferElab (Classify.extendNamedCtx ctx xL A) eL | eqL
+...   | success _ (_ SCx.∷ _) _ _ _  | refl
+      with inferElab (Classify.extendNamedCtx ctx xR B) eR | eqR
+...     | success _ (_ SCx.∷ _) _ _ _  | refl =
   -- D322: the checker's join decision finds the derivation's join.
-  _ , _ , _ , cong (λ x → proj₁ (E.inferElabV-RDestruct-join _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x))
+  _ , _ , _ , cong (λ x → (E.inferElabV-RDestruct-join ctx scrut xL eL xR eR A B _ _ _ _ _ _ _ x))
                    (proj₂ (join?-complete J))
 
 ------------------------------------------------------------------------
@@ -761,12 +761,12 @@ otherBridge : ∀ {m} {ctx : NamedCtx m} {f x} (lhs : Maybe Classify.PolyBuiltin
 otherBridge _ refl = refl
 
 infer-complete-RApp-generic {ctx = ctx} f x A {B} {q} eqAH eqF eqX
-  rewrite cong proj₁ (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
-        | cong proj₁ (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
-  with inferElabV ctx f | eqF
-... | success _ _ _ _ _ , _ | refl
-    with checkElabV ctx x A | eqX
-...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  rewrite (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
+  with inferElab ctx f | eqF
+... | success _ _ _ _ _  | refl
+    with checkElab ctx x A | eqX
+...   | success _ _ _ _  | refl = _ , _ , _ , refl
 
 infer-complete-RApp-eff : ∀ {m} {ctx : NamedCtx m} (f x : Syn.Expr) (A : Ty m) {B : Ty m}
     {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -782,12 +782,12 @@ infer-complete-RApp-eff : ∀ {m} {ctx : NamedCtx m} (f x : Syn.Expr) (A : Ty m)
       inferElab ctx (Raw.RApp f x)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
 infer-complete-RApp-eff {ctx = ctx} f x A {B} eqAH eqF eqX
-  rewrite cong proj₁ (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
-        | cong proj₁ (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
-  with inferElabV ctx f | eqF
-... | success _ _ _ _ _ , _ | refl
-    with checkElabV ctx x A | eqX
-...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  rewrite (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
+  with inferElab ctx f | eqF
+... | success _ _ _ _ _  | refl
+    with checkElab ctx x A | eqX
+...   | success _ _ _ _  | refl = _ , _ , _ , refl
 
 infer-complete-RApp-act : ∀ {m} {ctx : NamedCtx m} (f x : Syn.Expr) (A : Ty m) {B : Ty m}
     {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -803,11 +803,11 @@ infer-complete-RApp-act : ∀ {m} {ctx : NamedCtx m} (f x : Syn.Expr) (A : Ty m)
       inferElab ctx (Raw.RApp f x)
         ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.act ] B) (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
 infer-complete-RApp-act {ctx = ctx} f x A {B} eqAH eqF eqX
-  rewrite cong proj₁ (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
-        | cong proj₁ (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
-  with inferElabV ctx f | eqF
-... | success _ _ _ _ _ , _ | refl
-    with checkElabV ctx x A | eqX
-...   | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  rewrite (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
+  with inferElab ctx f | eqF
+... | success _ _ _ _ _  | refl
+    with checkElab ctx x A | eqX
+...   | success _ _ _ _  | refl = _ , _ , _ , refl
 
 

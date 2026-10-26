@@ -8,6 +8,7 @@
 -- that module has the walk itself and `main`'s step.
 ------------------------------------------------------------------------
 
+import Once.TypeCheck.ElaborateSound
 import Once.Spec.Context as SCx
 open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
@@ -153,7 +154,7 @@ import Once.Adequacy.ResolveFaithful as RF
 open import Once.TypeCheck.Completeness using (check-completeS)
 import Once.TypeCheck.Elaborate
 import Data.Maybe
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
+open import Once.TypeCheck.Link using (resolveExpr)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.ValueDomain using (cohᴰ)
 open import Once.Denotation.Program using (tableEnv)
@@ -257,9 +258,9 @@ private
   -- The splice of a telescope body is the checker's term at the instance, resolved.
   splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.TypeCheck.Scope.PolyCtx) (y : String)
                   {Xs : TopCtx} {b : _} {A : Type} {se : _} {d f : ℕ}
-                  (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
+                  (cr : Once.TypeCheck.ElaborateSound.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
                   (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
-              → spliceClosed I uf pre y cr ≡ Srf.closed (resolveExpr pre I uf 0 se)
+              → spliceClosed I uf pre y Xs (proj₁ cr) ≡ Srf.closed (resolveExpr pre I uf 0 se)
   splice-form I uf pre y (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
 -- An earlier entry, read through the extended telescope.
@@ -622,7 +623,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N W inv fr = rec
                         (proj₂ (proj₂ K)) (check-completeS P (proj₂ su))
             se  = proj₁ cc
             ce  = proj₂ (proj₂ (proj₂ cc))
-            cr  = Once.TypeCheck.Elaborate.checkElabV ctxT (pfunBody pfi) U
+            cr  = Once.TypeCheck.ElaborateSound.checkElabV ctxT (pfunBody pfi) U
             rU  = proj₂ (wit-of cr ce) P
             uU  = proj₁ (proj₂ rU)
             hU  = COH.coh⇐ UM.sh-∅ (proj₂ uU) (proj₂ su) (sym (proj₂ (proj₂ K)))
@@ -630,8 +631,8 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N W inv fr = rec
             relRefs : SD.DefsSem.refs σ y U ≡ SD.⟦ RS.realize⇐ UM.sh-∅ (proj₂ uU) ⟧ˢ fmt σo tt
             relRefs =
               trans (refs-head I uf (tableEnv fmt φ tbl) y {pfunType pfi} {pfunBody pfi} (C.cpolys csc) U)
-                (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y
-                                          (Once.TypeCheck.Elaborate.checkElabV (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
+                (trans (cong (λ X → SD.⟦ spliceClosed I uf (C.cpolys csc) y X
+                                          (Once.TypeCheck.Elaborate.checkElab (Once.TypeCheck.Classify.ctxWithImportsAndPolys X (C.cpolys csc))
                                              (pfunBody pfi) U) ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) iy)
                   (trans (cong (λ e′ → SD.⟦ e′ ⟧ˢ fmt (RF.σ₀ fmt (tableEnv fmt φ tbl)) tt) (splice-form I uf (C.cpolys csc) y cr ce))
                     (trans (RF.resolveExpr-faithful fmt (tableEnv fmt φ tbl) (C.cpolys csc) I uf 0 se tt)

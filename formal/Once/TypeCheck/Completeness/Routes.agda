@@ -39,7 +39,7 @@ open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
 open import Once.Name using (showCanonical)
 open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.TypeCheck.Elaborate
-  using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo; checkLoop)
+  using (InferElabResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElab; failure; elabGiven; given-cata; checkElab; checkCompose-f; GivenElabResult; checkCompose-g; checkCaseGo; checkLoop)
 open import Once.TypeCheck.SpecWitness using (wt-case-copair-check)
 import Once.TypeCheck.Scope as Classify
 import Once.TypeCheck.Error as Error
@@ -89,16 +89,16 @@ open import Once.TypeCheck.Completeness.Rules
 private
   -- (a resolved head that infers is given through its inference)
   res-route : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (A : Ty m) (π : T.Purity)
-                (r : VerifiedInferResult ctx (RResolved cn)) {B : Ty m} {Ψ eE d f}
-            → proj₁ r ≡ success B Ψ eE d f
+                (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx)) {B : Ty m} {Ψ eE d f}
+            → r ≡ success B Ψ eE d f
             → E.given-res ctx cn A π r ≡ given-infer ctx (RResolved cn) A π r
-  res-route ctx cn A π (success _ _ _ _ _ , _) _ = refl
-  res-route ctx cn A π (failure _ , _) ()
+  res-route ctx cn A π (success _ _ _ _ _ ) _ = refl
+  res-route ctx cn A π (failure _ ) ()
 
   leaf-route : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (A : Ty m) (π : T.Purity)
-                 (r : VerifiedInferResult ctx (RResolved cn))
+                 (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx))
              → NotGenerator cn → (vw : AppHeadView (RResolved cn))
-             → ∀ {B : Ty m} {Ψ eE d f} → proj₁ r ≡ success B Ψ eE d f
+             → ∀ {B : Ty m} {Ψ eE d f} → r ≡ success B Ψ eE d f
              → elabGivenLeaf ctx cn A π vw r ≡ given-infer ctx (RResolved cn) A π r
   leaf-route ctx ._ A π r (¬id ∷ᴬ _) Classify.ahv-id _ = ⊥-elim (¬id refl)
   leaf-route ctx ._ A π r (_ ∷ᴬ ¬fst ∷ᴬ _) Classify.ahv-fst _ = ⊥-elim (¬fst refl)
@@ -126,7 +126,7 @@ private
 
 
   app-other-route : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (A : Ty m) (π : T.Purity)
-                      (r : VerifiedInferResult ctx (Raw.RApp f x))
+                      (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx))
                   → classifyAppHeadView f ≡ ahv-other
                   → elabGivenApp ctx f x A π (classifyAppHeadView f) r ≡ given-infer ctx (Raw.RApp f x) A π r
   app-other-route ctx f x A π r eq rewrite eq = refl
@@ -186,7 +186,7 @@ module DPoly where
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc) (θ₀ : String → Ty m) (e₀ : T.substPoly θ₀ sd ≡ A)
     → T.substPoly θ₀ sc ≡ B → π′ ⊑π π → KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B)
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        proj₁ (given-poly-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ (π′ ⊑π? π)) ≡ success B Surface.zeroUsage eE d f
+        (given-poly-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ (π′ ⊑π? π)) ≡ success B Surface.zeroUsage eE d f
   at-π ctx x A π err {π′ = π′} {schema = schema} {sc = sc} eL eI eP ¬g as inc θ₀ e₀ refl g ki with π′ ⊑π? π
   ... | no ¬g′ = ⊥-elim (¬g′ g)
   ... | yes _ with kindedInstance? (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] T.substPoly θ₀ sc)
@@ -199,7 +199,7 @@ module DPoly where
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
     (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        proj₁ (given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl) ≡ success B Surface.zeroUsage eE d f
+        (given-poly-m ctx x A π err eL eI eP ¬g as inc (instantiate sd A) refl) ≡ success B Surface.zeroUsage eE d f
   at-m ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g as inc θ eθ g ki =
     let (ed , ec) = arrow-parts θ as eθ
         (σ , eS)  = instantiate-complete sd A (θ , ed)
@@ -207,7 +207,7 @@ module DPoly where
         e₀        = proj₂ (instantiate-sound sd A eS)
         eB        = trans (cod-determined {sd = sd} {sc = sc} inc θ₀ θ (trans e₀ (sym ed))) ec
         (eE , d , f , r) = at-π ctx x A π err eL eI eP ¬g as inc θ₀ e₀ eB g ki
-    in eE , d , f , trans (cong proj₁ (gm-eq ctx x A π err eL eI eP ¬g as inc (just σ) eS)) r
+    in eE , d , f , trans ((gm-eq ctx x A π err eL eI eP ¬g as inc (just σ) eS)) r
 
   from-arrow : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : T.Purity) err
     {B : Ty m} {π′ : T.Purity} {schema sd sc : T.PolyType} {body prefix} eL eI
@@ -215,7 +215,7 @@ module DPoly where
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
     (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        proj₁ (given-poly-a ctx x A π err eL eI eP ¬g (arrowSchema? schema)) ≡ success B Surface.zeroUsage eE d f
+        (given-poly-a ctx x A π err eL eI eP ¬g (arrowSchema? schema)) ≡ success B Surface.zeroUsage eE d f
   from-arrow ctx x A π err {sd = sd} {sc = sc} eL eI eP ¬g T.as-pure inc θ eθ g ki with codVarsInDom? sd sc
   ... | yes inc′ = at-m ctx x A π err eL eI eP ¬g T.as-pure inc′ θ eθ g ki
   ... | no ¬inc = ⊥-elim (¬inc inc)
@@ -234,21 +234,21 @@ module DPoly where
     (as : T.ArrowSchema schema sd sc π′) (inc : T.CodVarsInDom sd sc)
     (θ : String → Ty m) (eθ : T.substPoly θ schema ≡ (A T.⇒[ T.mk-kind T.Many π′ ] B)) (g : π′ ⊑π π) (ki : KindedInstance (NamedCtx.kinds ctx) schema (A T.⇒[ T.mk-kind T.Many π′ ] B))
     → ∃[ eE ] ∃[ d ] ∃[ f ]
-        proj₁ (given-poly ctx x A π err (lookupImport (Classify.NamedCtx.sig ctx) x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
+        (given-poly ctx x A π err (lookupImport (Classify.NamedCtx.sig ctx) x) refl (lookupImport (Classify.NamedCtx.imports ctx) x) refl
                  (lookupPolyPrefix (Classify.NamedCtx.polys ctx) x) refl) ≡ success B Surface.zeroUsage eE d f
   from-lookups ctx x A π err {schema = schema} eL eI eP ¬g as inc θ eθ g ki =
     let eG = ¬Ground-isGround-inj₂ schema ¬g
         (eE , d , f , r) = from-arrow ctx x A π err eL eI eP (isGround-inj₂→¬Ground schema eG) as inc θ eθ g ki
     in eE , d , f ,
-       trans (cong proj₁ (gp-eq ctx x A π err nothing eL nothing eI (just _) eP))
-         (trans (cong proj₁ (gg-eq ctx x A π err schema eL eI eP (inj₂ tt) eG)) r)
+       trans ((gp-eq ctx x A π err nothing eL nothing eI (just _) eP))
+         (trans ((gg-eq ctx x A π err schema eL eI eP (inj₂ tt) eG)) r)
 
 -- A non-ground telescope entry does not infer.
 poly-head-fails : ∀ {m} (ctx : NamedCtx m) (x : String) {schema body prefix}
   → lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
   → Once.TypeCheck.Scope.lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ T.Ground schema
-  → inferElabV ctx (RResolved (own x)) ≡ (failure (Error.UnboundVariable x) , Data.Unit.tt)
+  → inferElab ctx (RResolved (own x)) ≡ (failure (Error.UnboundVariable x))
 poly-head-fails ctx x {schema} eS eI eP ¬g =
   Once.TypeCheck.ElaborateProofs.inferElabV-own-fail-bridge ctx x eS eI
     (Once.TypeCheck.ElaborateProofs.inferElabV-RVar-poly-aux-fail-nonground ctx x eS eI
@@ -257,11 +257,11 @@ poly-head-fails ctx x {schema} eS eI eP ¬g =
 -- `d-infer`: the inferred arrow's domain converts back, its grade up.
 given-infer-complete : ∀ {m} {ctx : NamedCtx m} {e : Syn.Expr} {A A′ B : Ty m} {π π′ : T.Purity}
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
-    (r : VerifiedInferResult ctx e)
-  → proj₁ r ≡ success (A′ T.⇒[ T.mk-kind T.Many π′ ] B) Ψ eE d f
+    (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx))
+  → r ≡ success (A′ T.⇒[ T.mk-kind T.Many π′ ] B) Ψ eE d f
   → A <: A′ → π′ ⊑π π
-  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-infer ctx e A π r) ≡ success B Ψ eE′ d′ f′
-given-infer-complete {A = A} {A′ = A′} {π = π} {π′ = π′} (success _ _ _ _ _ , _) refl a g
+  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] (given-infer ctx e A π r) ≡ success B Ψ eE′ d′ f′
+given-infer-complete {A = A} {A′ = A′} {π = π} {π′ = π′} (success _ _ _ _ _ ) refl a g
   with A <:? A′ | π′ ⊑π? π
 ... | yes _ | yes _ = _ , _ , _ , refl
 ... | no ¬a | _     = ⊥-elim (¬a a)
@@ -270,14 +270,14 @@ given-infer-complete {A = A} {A′ = A′} {π = π} {π′ = π′} (success _ 
 -- `d-cata`: the algebra synthesizes the arrow the fold needs.
 given-cata-complete : ∀ {m} {ctx : NamedCtx m} {alg : Syn.Expr} {F : Fun m} {A : Ty m} {π : T.Purity}
     (wfF : WFFun (Classify.NamedCtx.kinds ctx) F) {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)} {eE : _} {d f : ℕ}
-    (u : T.pure ⊑π π) (r : VerifiedInferResult ctx alg)
-  → proj₁ r ≡ success (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
-  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ (given-cata ctx alg F π wfF r) ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′   -- plan 0.113 B1
-given-cata-complete {F = F} {A = A} {π = π} wfF {Ψ = Ψ} u (success _ _ _ _ _ , _) refl
+    (u : T.pure ⊑π π) (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx))
+  → r ≡ success (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A) Ψ eE d f
+  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] (given-cata ctx alg F π wfF r) ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′   -- plan 0.113 B1
+given-cata-complete {F = F} {A = A} {π = π} wfF {Ψ = Ψ} u (success _ _ _ _ _ ) refl
   with (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A) ≟T (⟦ F ⟧F A T.⇒[ T.mk-kind T.Many π ] A)
 ... | yes refl =
   withUnit-elim _ u _
-    (λ res → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] proj₁ res ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′) (λ u′ → _ , _ , _ , refl)
+    (λ res → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] res ≡ success A (T.Many *ᵘ Ψ) eE′ d′ f′) (λ u′ → _ , _ , _ , refl)
 ... | no ¬p = ⊥-elim (¬p refl)
 
 -- compose, `f`'s route: `f` synthesizes, converts, and `g` is checked at the
@@ -287,14 +287,14 @@ compose-f-complete : ∀ {m} {ctx : NamedCtx m} (f g : Syn.Expr) (A B C C′ : T
   → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
   → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
   → checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) ≡ success Ψ₂ gE dg fg
-  → ∃[ eE ] ∃[ d ] ∃[ fr ] proj₁ (checkCompose-f ctx f g A C π) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
+  → ∃[ eE ] ∃[ d ] ∃[ fr ] (checkCompose-f ctx f g A C π) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 compose-f-complete {ctx = ctx} f g A B C C′ π π′ eqF p eqG
-  with inferElabV ctx f | eqF
-... | success _ _ _ _ _ , _ | refl
+  with inferElab ctx f | eqF
+... | success _ _ _ _ _  | refl
     with (B T.⇒[ T.mk-kind T.Many π′ ] C′) <:? (B T.⇒[ T.mk-kind T.Many π ] C)
 ...   | no ¬p = ⊥-elim (¬p p)
-...   | yes _ with checkElabV ctx g (A T.⇒[ T.mk-kind T.Many π ] B) | eqG
-...     | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+...   | yes _ with checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) | eqG
+...     | success _ _ _ _  | refl = _ , _ , _ , refl
 
 -- The spine, once the head is known not to synthesize.
 infer-complete-RApp-spine : ∀ {m} {ctx : NamedCtx m} (f x : Syn.Expr) {X B : Ty m} {err : _}
@@ -302,19 +302,19 @@ infer-complete-RApp-spine : ∀ {m} {ctx : NamedCtx m} (f x : Syn.Expr) {X B : T
   → Classify.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ failure err
   → inferElab ctx x ≡ success X Ψx xE dx fx
-  → proj₁ (elabGivenV ctx f X T.pure) ≡ success B Ψf fE df ff
+  → (elabGiven ctx f X T.pure) ≡ success B Ψf fE df ff
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x) ≡ success B (Ψf +ᵘ (T.Many *ᵘ Ψx)) eE d f'
 
 infer-complete-RApp-spine {ctx = ctx} f x {X} {B} eqAH eqF eqX eqG
-  rewrite cong proj₁ (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
-        | cong proj₁ (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
-  with inferElabV ctx f | eqF
-... | failure _ , _ | refl
-    with inferElabV ctx x | eqX
-...   | success _ _ _ _ _ , _ | refl
-      with elabGivenV ctx f X T.pure | eqG
-...     | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+  rewrite (viewBridge {ctx = ctx} {f = f} {x = x} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+        | (otherBridge {ctx = ctx} {f = f} {x = x} nothing eqAH)
+  with inferElab ctx f | eqF
+... | failure _  | refl
+    with inferElab ctx x | eqX
+...   | success _ _ _ _ _  | refl
+      with elabGiven ctx f X T.pure | eqG
+...     | success _ _ _ _ _  | refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
 -- Effectful RApp completeness
@@ -356,8 +356,8 @@ checkElab-fallback-RVar : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (x : String) (T
 -- name), so the nine-way split this proof used to mirror collapses to the
 -- single `embedOrSubsume` reduction.
 checkElab-fallback-RVar {ctx = ctx} {τ = τ} x T eqInf sb
-  with inferElabV ctx (Raw.RVar x) | eqInf
-... | success _ _ _ _ _ , _ | refl with T <:? τ
+  with inferElab ctx (Raw.RVar x) | eqInf
+... | success _ _ _ _ _  | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 
@@ -382,8 +382,8 @@ completeness-gap-inl-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) 
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) (A T.+ B)
         ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
 completeness-gap-inl-app-check-eq {ctx = ctx} arg A B eqC
-  with checkElabV ctx arg A | eqC
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with checkElab ctx arg A | eqC
+... | success _ _ _ _  | refl = _ , _ , _ , refl
 
 completeness-gap-inr-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (A B : Ty m)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -394,8 +394,8 @@ completeness-gap-inr-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) 
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "inr")) arg) (A T.+ B)
         ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
 completeness-gap-inr-app-check-eq {ctx = ctx} arg A B eqC
-  with checkElabV ctx arg B | eqC
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with checkElab ctx arg B | eqC
+... | success _ _ _ _  | refl = _ , _ , _ , refl
 
 completeness-gap-initial-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (T : Ty m)
     {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
@@ -406,13 +406,13 @@ completeness-gap-initial-app-check-eq : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Ex
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "initial")) arg) T
         ≡ success (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE' d' f'
 completeness-gap-initial-app-check-eq {ctx = ctx} arg T eqC
-  with checkElabV ctx arg T.Void | eqC
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with checkElab ctx arg T.Void | eqC
+... | success _ _ _ _  | refl = _ , _ , _ , refl
 
 -- (Plan 0.52 M1: `completeness-gap-arr-app-check-eq` retired with `t-arr-app-check`.)
 
 -- The ONE bridge for every infer-then-check site (the generic `checkElabV`
--- catch-all is definitionally `embedOrSubsume … (inferElabV …)`): embed at the
+-- catch-all is definitionally `embedOrSubsume … (inferElab …)`): embed at the
 -- pure target, SUBSUME at the eff target. (eff side: eff-arrow ≠ inferred
 -- pure-arrow, then the A/B `≟T` are reflexive.)
 -- CHECK-side J bridge + the resolved lift. Same shape as
@@ -423,23 +423,22 @@ completeness-gap-initial-app-check-eq {ctx = ctx} arg T eqC
 checkElabV-RResolved-J : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (T : Ty m) (gv : GenView cn)
   → classifyGen cn ≡ gv
   → checkElab ctx (RResolved cn) T
-      ≡ proj₁ (E.checkElabV-RResolved-dispatch
-                 ctx cn T gv (inferElabV ctx (RResolved cn)))
+      ≡ (E.checkElabV-RResolved-dispatch
+                 ctx cn T gv (inferElab ctx (RResolved cn)))
 checkElabV-RResolved-J ctx cn T .(classifyGen cn) refl = refl
 
 private
   -- The `case` twin. No `mid` argument, so no `-J` bridge is needed.
   caseGo-success : ∀ {m} {A B C : Ty m} {ctx f g} {π : T.Purity}
     {Ψf Ψg : Surface.Usage (Classify.NamedCtx.size ctx)}
-    {Ef : _} {Eg : _} {Wf : _} {Wg : _} {df ff dg fg : ℕ}
-    → checkElabV ctx f (A T.⇒[ T.mk-kind T.Many π ] C)
-        ≡ (success Ψf Ef df ff , Wf)
-    → checkElabV ctx g (B T.⇒[ T.mk-kind T.Many π ] C)
-        ≡ (success Ψg Eg dg fg , Wg)
+    {Ef : _} {Eg : _} {df ff dg fg : ℕ}
+    → checkElab ctx f (A T.⇒[ T.mk-kind T.Many π ] C)
+        ≡ (success Ψf Ef df ff )
+    → checkElab ctx g (B T.⇒[ T.mk-kind T.Many π ] C)
+        ≡ (success Ψg Eg dg fg )
     → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
         checkCaseGo ctx f g A B C π
-          ≡ (success (Ψf Surface.+ᵘ Ψg) (Srf.copair' Ef Eg) d fr
-            , wt-case-copair-check Wf Wg)
+          ≡ (success (Ψf Surface.+ᵘ Ψg) (Srf.copair' Ef Eg) d fr)
   caseGo-success eqf eqg rewrite eqf | eqg = _ , _ , refl
 
   -- D127: `cgo-usage` / `ccgo-usage` DELETED. They said compose/case emit
@@ -450,14 +449,14 @@ private
 
 
 
--- `checkElabV (RPair a b) (A * B)` reduces via `checkPairLit` (checkElabV a A /
--- checkElabV b B). Given the two paired component equations, `rewrite` drives it
+-- `checkElabV (RPair a b) (A * B)` reduces via `checkPairLit` (checkElab a A /
+-- checkElab b B). Given the two paired component equations, `rewrite` drives it
 -- to its `success` leaf.
 pair-lit-reduce : ∀ {m} {ctx : NamedCtx m} {a b : Syn.Expr} {A B : Ty m}
   {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
-  {aE da fa wA bE db fb wB}
-  → checkElabV ctx a A ≡ (success Ψ₁ aE da fa , wA)
-  → checkElabV ctx b B ≡ (success Ψ₂ bE db fb , wB)
+  {aE da fa bE db fb}
+  → checkElab ctx a A ≡ (success Ψ₁ aE da fa)
+  → checkElab ctx b B ≡ (success Ψ₂ bE db fb)
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       checkElab ctx (Raw.RPair a b) (A * B)
         ≡ success (Ψ₁ +ᵘ Ψ₂) eE d f

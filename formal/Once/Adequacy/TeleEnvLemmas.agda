@@ -70,8 +70,8 @@ open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Scope using (PolyCtx; lookupPolyPrefix; Imports)
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
-open import Once.TypeCheck.Elaborate using (success; failure; checkElabV; VerifiedCheckResult)
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF; resolvePolyCase; applySplice)
+open import Once.TypeCheck.Elaborate using (success; failure; checkElab; CheckElabResult)
+open import Once.TypeCheck.Link using (resolveExpr; resolveExprWF; resolvePolyCase; applySplice)
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
 open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM)
@@ -97,21 +97,21 @@ acc-irrel (acc f) (acc g) =
 module _ (I : String → TopCtx) (uf : Imports) where
 
   -- D254: the spliced body is the realization of its derivation.
-  spliceClosed : ∀ {A : Type} {b : Expr} (pre : PolyCtx) (x : String) {Xs : TopCtx}
-               → VerifiedCheckResult (ctxAt baseKinds Xs pre) b A → Srf.Expr Srf.∅ Srf.zeroUsage A
-  spliceClosed {A = A} pre x (failure _ , _)             = Srf.poly x A
-  spliceClosed     pre x (success SCx.[] eE _ _ , w) = Srf.closed (resolveExpr pre I uf 0 eE)
+  spliceClosed : ∀ {A : Type} (pre : PolyCtx) (x : String) (Xs : TopCtx)
+               → CheckElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn (ctxAt baseKinds Xs pre)) A → Srf.Expr Srf.∅ Srf.zeroUsage A
+  spliceClosed {A = A} pre x _ (failure _)             = Srf.poly x A
+  spliceClosed     pre x _ (success SCx.[] eE _ _) = Srf.closed (resolveExpr pre I uf 0 eE)
 
   polyVal : ∀ (x : String) (A : Type) → Maybe (PolyType × Expr × PolyCtx) → Srf.Expr Srf.∅ Srf.zeroUsage A
   polyVal x A nothing                 = Srf.poly x A
-  polyVal x A (just (_ , body , pre)) = spliceClosed pre x (checkElabV (ctxAt baseKinds (I x) pre) body A)
+  polyVal x A (just (_ , body , pre)) = spliceClosed pre x (I x) (checkElab (ctxAt baseKinds (I x) pre) body A)
 
   private
     splice-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type) {s b pre}
-      (eq : lookupPolyPrefix L x ≡ just (s , b , pre)) (r : VerifiedCheckResult (ctxAt baseKinds (I x) pre) b A)
-      → applySplice {Γ = Srf.∅} L a I uf 0 x A eq r ≡ spliceClosed pre x r
-    splice-val L a x A eq (failure _ , _) = refl
-    splice-val L (acc rec) x A {pre = pre} eq (success SCx.[] eE _ _ , w) =
+      (eq : lookupPolyPrefix L x ≡ just (s , b , pre)) (r : CheckElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn (ctxAt baseKinds (I x) pre)) A)
+      → applySplice {Γ = Srf.∅} L a I uf 0 x A eq r ≡ spliceClosed pre x (I x) r
+    splice-val L a x A eq (failure _ ) = refl
+    splice-val L (acc rec) x A {pre = pre} eq (success SCx.[] eE _ _) =
       cong (λ z → Srf.closed (resolveExprWF pre z I uf 0 eE)) (acc-irrel _ _)
 
     case-val : ∀ (L : PolyCtx) (a : Acc _<_ (length L)) (x : String) (A : Type)
@@ -119,7 +119,7 @@ module _ (I : String → TopCtx) (uf : Imports) where
       → resolvePolyCase {Γ = Srf.∅} L a I uf 0 x A look eq ≡ polyVal x A look
     case-val L a x A nothing eq = refl
     case-val L a x A (just (s , body , pre)) eq =
-      splice-val L a x A eq (checkElabV (ctxAt baseKinds (I x) pre) body A)
+      splice-val L a x A eq (checkElab (ctxAt baseKinds (I x) pre) body A)
 
   refs-lookup : ∀ (ρ : CallEnv) (L : PolyCtx) (x : String) (A : Type)
     → SD.DefsSem.refs (RF.σR fmt ρ L I uf 0) x A ≡ SD.⟦ polyVal x A (lookupPolyPrefix L x) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
@@ -137,7 +137,7 @@ module _ (I : String → TopCtx) (uf : Imports) (ρ : CallEnv) where
 
   refs-head : ∀ (n : String) {s b} (L : PolyCtx) (A : Type)
     → SD.DefsSem.refs (RF.σR fmt ρ ((n , s , b) ∷ L) I uf 0) n A
-      ≡ SD.⟦ spliceClosed I uf L n (checkElabV (ctxAt baseKinds (I n) L) b A) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
+      ≡ SD.⟦ spliceClosed I uf L n (I n) (checkElab (ctxAt baseKinds (I n) L) b A) ⟧ˢ fmt (RF.σ₀ fmt ρ) tt
   refs-head n {s} {b} L A =
     trans (refs-lookup I uf ρ ((n , s , b) ∷ L) n A)
           (cong (λ l → SD.⟦ polyVal I uf n A l ⟧ˢ fmt (RF.σ₀ fmt ρ) tt) (lookup-head n L))

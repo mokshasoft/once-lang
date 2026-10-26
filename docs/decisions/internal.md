@@ -171,6 +171,9 @@ decision-log entry updates the rule it changes here, in the same commit.
   and COMPLETE against it; the judgment's elaboration is its own (each rule
   produces its core term), so the checker's output is a derivation of it.
   (D316 amended, D305, D256)
+- **The checker is plain code; its soundness is a theorem about it**
+  (`TypeCheck.ElaborateSound`), never extracted; completeness is proved on
+  results and its strong form derived. (D340 ← D337, D334)
 - **The theorem is the Spec's**: `once-compiler` is stated over the Spec's
   source, typing and behaviour; the compiler's own proof is carried there by
   two proved bridges (`SpecApex.bridges`: what the compiler types is a Spec

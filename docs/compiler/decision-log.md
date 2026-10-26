@@ -19495,3 +19495,29 @@ prerequisite of plan 0.124, `once fmt`), and the layer-5 map on 2026-10-25.
   are the waypoints of its two-step proofs, so they move to `Once.Parser.Relation.*` and stop calling
   themselves a specification. Fusing each two-step proof into one is possible and left open.
 * What remained was not a copy of the Spec at all; D336 records how it ended.
+
+## D340 — THE CHECKER IS PLAIN CODE; ITS SOUNDNESS IS A SEPARATE THEOREM (2026-10-26)
+
+**Follows** D337 (the checker returned its Spec derivation with its result), D334 (only what the CLI runs is
+extracted). **Decided** by the user 2026-10-26 in the merge review of `collapse-internal`: "a witness is only a
+proof that should be erased"; of (1) `--erasure`/`@0` on the witness, (2) extrinsic soundness, (3) shrinking the
+generated code, the user chose (2) as the principled one.
+
+### Decision
+* `TypeCheck.Elaborate` returns the plain result (`InferElabResult`/`CheckElabResult`/`GivenElabResult`); it
+  builds no witness. `TypeCheck.ElaborateSound` proves it sound: for every function `H` of the checker,
+  `H-sound` by the same patterns, a result argument coming with its soundness, a `with` on a result
+  abstracting the result and its soundness together. The pairs `inferElabV`/`checkElabV`/`elabGivenV`
+  (result with soundness) are defined there, for the proofs that read both.
+* Completeness is proved about results (`check-completeS`); its strong form (the pair, with the witness) is
+  derived from it in one step (`pairUp`), not proved again.
+* The linker (`resolveExpr`, `applySplice`) is compiler code: it leaves the proof module `ElaborateProofs`
+  for `TypeCheck.Link`.
+* On the way: `checkPair`/`checkCase`/`checkCompose` are deleted — they matched the head by a string literal
+  with a catch-all no proof can follow (D127's lesson), and the dispatch already knows the head from its view.
+
+### Consequences
+* The extraction (closure of `Once.Extract.Root`) loses `SpecWitness`, `Witness`, `RealizeS`, `ElaborateProofs`
+  and the modules only they need; the generated `SpecWitness.hs` (242k lines) is gone.
+* The theorem and the trust base are unchanged; the compiled output is byte-identical.
+

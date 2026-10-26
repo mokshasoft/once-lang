@@ -213,7 +213,6 @@ library
       MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
       MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
       MAlonzo.Code.Once.Type
-      MAlonzo.Code.Once.Type.Closed
       MAlonzo.Code.Once.Type.Determined
       MAlonzo.Code.Once.Type.MatchCorrect
       MAlonzo.Code.Once.Type.Match
@@ -222,20 +221,8 @@ library
       MAlonzo.Code.Once.TypeCheck.Classify
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.DeciderComplete
-      MAlonzo.Code.Once.Core.Decl
-      MAlonzo.Code.Once.Type.Schema
-      MAlonzo.Code.Once.Spec.Core.Derived
-      MAlonzo.Code.Once.Spec.Core.Syntax
-      MAlonzo.Code.Once.Spec.Surface.Typing
-      MAlonzo.Code.Once.TypeCheck.Scoped
-      MAlonzo.Code.Once.TypeCheck.SpecWitness
-      MAlonzo.Code.Once.TypeCheck.Use
-      MAlonzo.Code.Once.TypeCheck.View
-      MAlonzo.Code.Once.TypeCheck.Witness
-      MAlonzo.Code.Once.Denotation.RealizeS
-      MAlonzo.Code.Once.Denotation.SurfaceRefs
       MAlonzo.Code.Once.TypeCheck.Elaborate
-      MAlonzo.Code.Once.TypeCheck.ElaborateProofs
+      MAlonzo.Code.Once.TypeCheck.Link
       MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Once.TypeCheck.TargetView

@@ -19,6 +19,8 @@ open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Elaborate
+open import Once.TypeCheck.ElaborateSound
+open import Once.TypeCheck.Link
 import Once.Spec.Context as SCx
 open import Data.Unit using (tt; ⊤)
 open import Once.TypeCheck.Classify using (emptyCtx)
@@ -138,41 +140,41 @@ checkElab-fallback-RResolved : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (cn : Cano
 -- route through `embedOrSubsume` exactly as the generic path does, so the
 -- conclusion never depended on which view it was.
 checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb
-  with classifyGen cn | inferElabV ctx (Raw.RResolved cn) | eqInf
-... | gv-id | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-id | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+  with classifyGen cn | inferElab ctx (Raw.RResolved cn) | eqInf
+... | gv-id | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-id | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-fst | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-fst | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-fst | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-fst | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-snd | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-snd | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-snd | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-snd | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-terminal | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-terminal | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-terminal | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-terminal | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-initial | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-initial | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-initial | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-initial | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inl | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inl | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inl | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inl | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inr | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inr | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inr | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inr | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-unit | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-unit | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-unit | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-unit | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-other _ | failure _ , _ | ()
-checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-other _ | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-other _ | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-other _ | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
 
@@ -188,11 +190,11 @@ checkElab-fallback-RAnnot : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (e : Syn.Expr
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RAnnot e T) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RAnnot {ctx = ctx} {τ = τ} e T eqInf sb
-  with inferElabV ctx (Raw.RAnnot e T)
-... | failure _ , _ with eqInf
+  with inferElab ctx (Raw.RAnnot e T)
+... | failure _  with eqInf
 ...   | ()
 checkElab-fallback-RAnnot {ctx = ctx} {τ = τ} e T eqInf sb
-  | success T' Ψ' eE' d' fr' , w with eqInf
+  | success T' Ψ' eE' d' fr' with eqInf
 ... | refl with wk₀ T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
@@ -213,11 +215,11 @@ checkElab-fallback-RLet : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (x : String) (e
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RLet x e₁ e₂) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RLet {ctx = ctx} {τ = τ} x e₁ e₂ T eqInf sb
-  with inferElabV ctx (Raw.RLet x e₁ e₂)
-... | failure _ , _ with eqInf
+  with inferElab ctx (Raw.RLet x e₁ e₂)
+... | failure _  with eqInf
 ...   | ()
 checkElab-fallback-RLet {ctx = ctx} {τ = τ} x e₁ e₂ T eqInf sb
-  | success T' Ψ' eE' d' fr' , w with eqInf
+  | success T' Ψ' eE' d' fr' with eqInf
 ... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
@@ -234,11 +236,11 @@ checkElab-fallback-RDestruct : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (scrut : S
       checkElab ctx (Raw.RDestruct scrut xL eL xR eR) τ
         ≡ success Ψ eE' d' f')))
 checkElab-fallback-RDestruct {ctx = ctx} {τ = τ} scrut xL eL xR eR T eqInf sb
-  with inferElabV ctx (Raw.RDestruct scrut xL eL xR eR)
-... | failure _ , _ with eqInf
+  with inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
+... | failure _  with eqInf
 ...   | ()
 checkElab-fallback-RDestruct {ctx = ctx} {τ = τ} scrut xL eL xR eR T eqInf sb
-  | success T' Ψ' eE' d' fr' , w with eqInf
+  | success T' Ψ' eE' d' fr' with eqInf
 ... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
@@ -272,12 +274,12 @@ checkElab-fallback-RNeg {m = m} {ctx = ctx} e T eqInf
 ...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 checkElab-fallback-RNeg {ctx = ctx} e T eqInf
   -- NAME THE REDUCED FORM. Under the abstracted view the goal and `eqI` both
-  -- mention `inferElabV-RNeg-aux ctx e (inferElabV ctx e)`, not
+  -- mention `inferElabV-RNeg-aux ctx e (inferElab ctx e)`, not
   -- `inferElabV ctx (RNeg e)` — that unfolds back into the view and
   -- would be stuck. Same convention as `RealizeAgrees`' neg branch.
-  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElabV ctx e) | eqI
-...   | failure _ , _ | ()
-...   | success T' Ψ' eE' d' fr' , w | refl with T <:? T
+  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElab ctx e) | eqI
+...   | failure _  | ()
+...   | success T' Ψ' eE' d' fr' | refl with T <:? T
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
 
@@ -304,9 +306,9 @@ checkElab-fallback-RNeg-sub {m = m} {ctx = ctx} {τ = τ} e T eqInf sb
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 checkElab-fallback-RNeg-sub {ctx = ctx} {τ = τ} e T eqInf sb
-  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElabV ctx e) | eqI
-...   | failure _ , _ | ()
-...   | success T' Ψ' eE' d' fr' , w | refl with T <:? τ
+  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElab ctx e) | eqI
+...   | failure _  | ()
+...   | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ...     | yes _    = _ , _ , _ , refl
 ...     | no ¬eq   = ⊥-elim (¬eq sb)
 
@@ -321,8 +323,8 @@ checkElab-fallback-RApp-apply-infer : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (ar
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-apply-infer {ctx = ctx} {τ = τ} arg T eqInf sb
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T <:? τ
+  with inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) | eqInf
+... | success T' _ _ _ _  | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 
@@ -347,9 +349,9 @@ checkElab-fallback-RVar-unit {m = m} {ctx = ctx} with Unit {m} <:? Unit
 inferElabV-own-poly-bridge : ∀ {m} (ctx : NamedCtx m) (x : String)
   → (eS : lookupImport (NamedCtx.sig ctx) x ≡ nothing)
   → (eI : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
-  → inferElabV ctx (Raw.RResolved (own x))
+  → inferElab ctx (Raw.RResolved (own x))
       ≡ inferElabV-RVar-poly-aux ctx x eS eI
-inferElabV-own-poly-bridge ctx x eS eI = own-dispatch _
+inferElabV-own-poly-bridge ctx x eS eI = own-dispatch (notGen-shape (λ ()))
   where
     -- (for whichever witness `classifyGen` carries)
     own-dispatch : ∀ ng → inferElabV-RResolved-dispatch ctx (own x) (gv-other ng) ≡ inferElabV-RVar-poly-aux ctx x eS eI
@@ -384,7 +386,7 @@ inferElabV-RVar-poly-ground-eq ctx x eL eI schema body eqLp .(isGround schema) r
 inferElabV-RVar-poly-aux-fail-nothing : ∀ {m} (ctx : NamedCtx m) (x : String) eL eI
   → lookupPoly (NamedCtx.polys ctx) x ≡ nothing
   → inferElabV-RVar-poly-aux ctx x eL eI
-      ≡ (failure (UnboundVariable x) , tt)
+      ≡ (failure (UnboundVariable x))
 inferElabV-RVar-poly-aux-fail-nothing ctx x eL eI eqLp =
   inferElabV-RVar-poly-lookup-eq ctx x eL eI nothing eqLp
 
@@ -393,7 +395,7 @@ inferElabV-RVar-poly-aux-fail-nonground : ∀ {m} (ctx : NamedCtx m) (x : String
   → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
   → isGround schema ≡ inj₂ tt
   → inferElabV-RVar-poly-aux ctx x eL eI
-      ≡ (failure (UnboundVariable x) , tt)
+      ≡ (failure (UnboundVariable x))
 inferElabV-RVar-poly-aux-fail-nonground ctx x eL eI {schema} {body} eqLp eqG =
   trans (inferElabV-RVar-poly-lookup-eq ctx x eL eI _ eqLp)
         (inferElabV-RVar-poly-ground-eq ctx x eL eI schema body eqLp (inj₂ tt) eqG)
@@ -406,9 +408,7 @@ inferElabV-RVar-poly-aux-success : ∀ {m} (ctx : NamedCtx m) (x : String) eL eI
   → isGround schema ≡ inj₁ g
   → inferElabV-RVar-poly-aux ctx x eL eI
       ≡ (success (extractGround schema g) Surface.zeroUsage
-                 (Surface.poly x (extractGround schema g)) 0 0
-         , wt-var-poly-instantiate-infer {g = g} eL eI
-             (proj₂ (lookupPoly⇒lookupPolyPrefix (NamedCtx.polys ctx) x eqLp)) g refl)
+                 (Surface.poly x (extractGround schema g)) 0 0)
 inferElabV-RVar-poly-aux-success ctx x eL eI {schema} {body} {g = g} eqLp eqG =
   trans (inferElabV-RVar-poly-lookup-eq ctx x eL eI _ eqLp)
         (inferElabV-RVar-poly-ground-eq ctx x eL eI schema body eqLp (inj₁ g) eqG)
@@ -418,8 +418,8 @@ inferElabV-own-fail-bridge : ∀ {m} (ctx : NamedCtx m) (x : String)
   → (eS : lookupImport (NamedCtx.sig ctx) x ≡ nothing)
   → (eI : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
   → inferElabV-RVar-poly-aux ctx x eS eI
-      ≡ (failure (UnboundVariable x) , tt)
-  → inferElabV ctx (Raw.RResolved (own x)) ≡ (failure (UnboundVariable x) , tt)
+      ≡ (failure (UnboundVariable x))
+  → inferElab ctx (Raw.RResolved (own x)) ≡ (failure (UnboundVariable x))
 inferElabV-own-fail-bridge ctx x eS eI polyFail =
   trans (inferElabV-own-poly-bridge ctx x eS eI) polyFail
 
@@ -441,7 +441,7 @@ checkElab-fallback-RVar-id : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.Pu
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-id {ctx = ctx} T u
   with T ≟T T
-... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → proj₁ res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
+... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 just≢nothing-Maybe : ∀ {A : Set} {x : A} → just x ≡ nothing → Data.Empty.⊥
@@ -453,7 +453,7 @@ checkElab-fallback-RVar-fst : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.P
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-fst {ctx = ctx} A B u
   with A ≟T A
-... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → proj₁ res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
+... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 checkElab-fallback-RVar-snd : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.Purity} (A B : Ty m) (u : pure ⊑π π)
@@ -462,16 +462,16 @@ checkElab-fallback-RVar-snd : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.P
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-snd {ctx = ctx} A B u
   with B ≟T B
-... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → proj₁ res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
+... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 checkElab-fallback-RVar-terminal : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.Purity} (A : Ty m) (u : pure ⊑π π)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
       checkElab ctx (Raw.RResolved (gen "terminal")) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Unit)
         ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-terminal {ctx = ctx} A u = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → proj₁ res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
+checkElab-fallback-RVar-terminal {ctx = ctx} A u = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
 
--- STRONG variant: the full checkElabV pair-equation + witness (for the
+-- STRONG variant: the full checkElab pair-equation + witness (for the
 -- strong-completeness migration's gd-completeV g-terminal case). Same reduction
 -- path as the weak one, so the body is identical modulo the extra witness slot.
 checkElab-fallback-RVar-terminalV : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.Purity} (A : Ty m) (u : pure ⊑π π)
@@ -487,7 +487,7 @@ checkElab-fallback-RVar-initial : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Gra
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
       checkElab ctx (Raw.RResolved (gen "initial")) (Void Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
-checkElab-fallback-RVar-initial {ctx = ctx} A u = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → proj₁ res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
+checkElab-fallback-RVar-initial {ctx = ctx} A u = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
 
 checkElab-fallback-RVar-inl : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.Purity} (A B : Ty m) (u : pure ⊑π π)
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
@@ -495,7 +495,7 @@ checkElab-fallback-RVar-inl : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.P
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inl {ctx = ctx} A B u
   with A ≟T A
-... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → proj₁ res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
+... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 checkElab-fallback-RVar-inr : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.Purity} (A B : Ty m) (u : pure ⊑π π)
@@ -504,7 +504,7 @@ checkElab-fallback-RVar-inr : ∀ {m} {ctx : NamedCtx m} {π : Once.Spec.Grade.P
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inr {ctx = ctx} A B u
   with B ≟T B
-... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → proj₁ res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
+... | yes refl = withUnit-elim _ u _ (λ res → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f → res ≡ success Surface.zeroUsage eE d f)))) (λ u′ → _ , _ , _ , refl)
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` at canonical
@@ -515,8 +515,8 @@ checkElab-fallback-RVar-inr {ctx = ctx} A B u
 -- pattern-matching reduction chain to close completeness.
 checkInGo-J : ∀ {m} (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.Spec.Type.Fun m)
     (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)) (eq : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-  → Data.Product.proj₁ (checkInGo ctx arg F (wfFun? (NamedCtx.kinds ctx) F) refl)
-      ≡ Data.Product.proj₁ (checkInGo ctx arg F mw eq)
+  → (checkInGo ctx arg F (wfFun? (NamedCtx.kinds ctx) F) refl)
+      ≡ (checkInGo ctx arg F mw eq)
 checkInGo-J ctx arg F .(wfFun? (NamedCtx.kinds ctx) F) refl = refl
 
 checkInGo-just-success : ∀ {m} (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.Spec.Type.Fun m)
@@ -526,11 +526,11 @@ checkInGo-just-success : ∀ {m} (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.S
     {d fr : ℕ}
   → checkElab ctx arg (Once.Spec.Type.⟦ F ⟧F (Once.Spec.Type.μ F)) ≡ success Ψ argE d fr
   → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
-      Data.Product.proj₁ (checkInGo ctx arg F (just wfF) eqW)
+      (checkInGo ctx arg F (just wfF) eqW)
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' fr')))
 checkInGo-just-success ctx arg F wfF eqW eqArg
-  with checkElabV ctx arg (Once.Spec.Type.⟦ F ⟧F (Once.Spec.Type.μ F)) | eqArg
-... | success _ _ _ _ , _ | refl = _ , _ , _ , refl
+  with checkElab ctx arg (Once.Spec.Type.⟦ F ⟧F (Once.Spec.Type.μ F)) | eqArg
+... | success _ _ _ _  | refl = _ , _ , _ , refl
 
 checkElab-fallback-RApp-In : ∀ {m} {ctx : NamedCtx m} (arg : Syn.Expr) (F : Once.Spec.Type.Fun m)
     {wfF : Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F}
@@ -560,38 +560,38 @@ checkElab-fallback-RApp-In {ctx = ctx} arg F {wfF} eqWF eqArg =
 -- rule lands wherever `k` says it does at that success. Proving the lemmas
 -- below through this, rather than `with`-abstracting `inferElabV ctx arg` out
 -- of the elaborated goal, is what keeps each of them cheap.
-via : ∀ {m} {ctx ctx' : NamedCtx m} {x y : Syn.Expr} (rule : VerifiedInferResult ctx x → VerifiedInferResult ctx' y)
-      (r : VerifiedInferResult ctx x) {T : Ty m} {Ψ e d f} {T' : Ty m} {Ψ' : Surface.Usage (NamedCtx.size ctx')}
-    → proj₁ r ≡ success T Ψ e d f
-    → (∀ w → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule (success T Ψ e d f , w)) ≡ success T' Ψ' eE d' f')
-    → ∃[ eE ] ∃[ d' ] ∃[ f' ] proj₁ (rule r) ≡ success T' Ψ' eE d' f'
-via rule (success _ _ _ _ _ , w) refl k = k w
+via : ∀ {m n n'} {Γ : Surface.Ctx m n} {Γ' : Surface.Ctx m n'} (rule : InferElabResult Γ → InferElabResult Γ')
+      (r : InferElabResult Γ) {T : Ty m} {Ψ e d f} {T' : Ty m} {Ψ' : Surface.Usage n'}
+    → r ≡ success T Ψ e d f
+    → (∃[ eE ] ∃[ d' ] ∃[ f' ] rule (success T Ψ e d f) ≡ success T' Ψ' eE d' f')
+    → ∃[ eE ] ∃[ d' ] ∃[ f' ] rule r ≡ success T' Ψ' eE d' f'
+via rule (success _ _ _ _ _) refl k = k
 
 -- `apply` at a pure / effectful closure whose domain is the argument's type.
 apply-pure : ∀ {m} {ctx : NamedCtx m} {arg : Syn.Expr} (A B : Ty m) (Ψ : Surface.Usage (NamedCtx.size ctx))
-               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.pure ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.pure ] B) Once.Spec.Type.* A)) (d fr : ℕ)
            → ∃[ eE ] ∃[ d' ] ∃[ f' ]
-               proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.pure B A))
+               (inferApplyAt ctx arg Ψ argE d fr (apply-at A Once.Spec.Grade.pure B A))
                  ≡ success B (Surface.zeroUsage +ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
-apply-pure A _ _ _ _ _ _ with A ≟T A
+apply-pure A _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
 
 apply-eff : ∀ {m} {ctx : NamedCtx m} {arg : Syn.Expr} (A B : Ty m) (Ψ : Surface.Usage (NamedCtx.size ctx))
-              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
+              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) Once.Spec.Type.* A)) (d fr : ℕ)
           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
-              proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.eff B A))
+              (inferApplyAt ctx arg Ψ argE d fr (apply-at A Once.Spec.Grade.eff B A))
                 ≡ success (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
-apply-eff A _ _ _ _ _ _ with A ≟T A
+apply-eff A _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
 
 apply-act : ∀ {m} {ctx : NamedCtx m} {arg : Syn.Expr} (A B : Ty m) (Ψ : Surface.Usage (NamedCtx.size ctx))
-              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) Once.Spec.Type.* A)) (d fr : ℕ) w
+              (argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) Once.Spec.Type.* A)) (d fr : ℕ)
           → ∃[ eE ] ∃[ d' ] ∃[ f' ]
-              proj₁ (inferApplyAt ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.act B A))
+              (inferApplyAt ctx arg Ψ argE d fr (apply-at A Once.Spec.Grade.act B A))
                 ≡ success (Once.Spec.Type.Unit Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) (Surface.zeroUsage +ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d' f'
-apply-act A _ _ _ _ _ _ with A ≟T A
+apply-act A _ _ _ _ _ with A ≟T A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq = ⊥-elim (¬eq refl)
 
@@ -605,7 +605,7 @@ checkElab-fallback-RApp-apply : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (p : Syn.
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) τ
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-apply {ctx = ctx} {τ = τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
-  with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-pure A B Ψ eE d fr)
+  with via (inferApplyOn ctx p) (inferElab ctx p) eqInf (apply-pure {arg = p} A B Ψ eE d fr)
 ... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p B eqApp sb
 
 -- D222 / plan 0.95 A′: the EFF-closure twin. `apply` at an effectful closure
@@ -622,7 +622,7 @@ checkElab-fallback-RApp-apply-effclosure : ∀ {m} {ctx : NamedCtx m} {τ : Ty m
                 τ
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-apply-effclosure {ctx = ctx} {τ = τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
-  with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-eff A B Ψ eE d fr)
+  with via (inferApplyOn ctx p) (inferElab ctx p) eqInf (apply-eff {arg = p} A B Ψ eE d fr)
 ... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p _ eqApp sb
 
 checkElab-fallback-RApp-apply-actclosure : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (p : Syn.Expr) (A B : Ty m)
@@ -636,162 +636,8 @@ checkElab-fallback-RApp-apply-actclosure : ∀ {m} {ctx : NamedCtx m} {τ : Ty m
                 τ
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-apply-actclosure {ctx = ctx} {τ = τ} p A B {Ψ} {eE} {d} {fr} eqInf sb
-  with via (inferApplyOn ctx p) (inferElabV ctx p) eqInf (apply-act A B Ψ eE d fr)
+  with via (inferApplyOn ctx p) (inferElab ctx p) eqInf (apply-act {arg = p} A B Ψ eE d fr)
 ... | _ , _ , _ , eqApp = checkElab-fallback-RApp-apply-infer p _ eqApp sb
-
--- Plan 0.103 phase 1c: LINKING. A definition reference `poly x A` is replaced
--- by the definition's body elaborated in ITS DECLARATION CONTEXT — its
--- telescope tail (`lookupPolyPrefix`) and the monomorphic defs declared before
--- it (`impsOf x`) — exactly the context `Spec.Module.PolysTyped` types it in,
--- so a ground definition is compiled as it was typed, once. The spliced term
--- is CLOSED (`closed`), so linking is substitution of closed terms.
-resolveExprWF : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n} {A : Ty m}
-              → (polys : PolyCtx) → Acc _<_ (length polys)
-              → (String → TopCtx) → Imports → ℕ
-              → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
-resolvePolyCase : ∀ {m} {n} {Γ : Surface.Ctx m n}
-                → (polys : PolyCtx) → Acc _<_ (length polys)
-                → (String → TopCtx) → Imports → ℕ → (x : String) (A : Ty m)
-                → (look : Maybe (PolyType × Syn.Expr × PolyCtx))
-                → lookupPolyPrefix polys x ≡ look
-                → Surface.Expr Γ Surface.zeroUsage A
-applySplice : ∀ {m} {n} {Γ : Surface.Ctx m n}
-            → (polys : PolyCtx) → Acc _<_ (length polys)
-            → (imps : String → TopCtx) → Imports → ℕ → (x : String) (A : Ty m)
-            → {schema : PolyType} {body : Syn.Expr} {prefix : PolyCtx}
-            → lookupPolyPrefix polys x ≡ just (schema , body , prefix)
-            → VerifiedCheckResult (ctxAt baseKinds (imps x) prefix) body A
-            → Surface.Expr Γ Surface.zeroUsage A
-
-resolveExprWF polys _ imps userFns _ (Surface.var i) = Surface.var i
-resolveExprWF polys pAcc imps userFns fresh (Surface.lam q prf b) =
-  Surface.lam q prf (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.app f a) =
-  Surface.app (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh a)
-resolveExprWF polys pAcc imps userFns fresh (Surface.effApp {g = g} f a) =
-  Surface.effApp {g = g} (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh a)
-resolveExprWF polys pAcc imps userFns fresh (Surface.pair a b) =
-  Surface.pair (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
--- D127: the combinators resolve componentwise, like `pair`.
-resolveExprWF polys pAcc imps userFns fresh (Surface.comp' f g) =
-  Surface.comp' (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh g)
-resolveExprWF polys pAcc imps userFns fresh (Surface.copair' f g) =
-  Surface.copair' (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh g)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fork' f g) =
-  Surface.fork' (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh g)
-resolveExprWF polys pAcc imps userFns fresh (Surface.curry' f) = Surface.curry' (resolveExprWF polys pAcc imps userFns fresh f)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fst' p) = Surface.fst' (resolveExprWF polys pAcc imps userFns fresh p)
-resolveExprWF polys pAcc imps userFns fresh (Surface.snd' p) = Surface.snd' (resolveExprWF polys pAcc imps userFns fresh p)
-resolveExprWF polys pAcc imps userFns fresh (Surface.inl' e) = Surface.inl' (resolveExprWF polys pAcc imps userFns fresh e)
-resolveExprWF polys pAcc imps userFns fresh (Surface.inr' e) = Surface.inr' (resolveExprWF polys pAcc imps userFns fresh e)
-resolveExprWF polys pAcc imps userFns fresh (Surface.case' s l r) =
-  Surface.case' (resolveExprWF polys pAcc imps userFns fresh s)
-                (resolveExprWF polys pAcc imps userFns fresh l)
-                (resolveExprWF polys pAcc imps userFns fresh r)
-resolveExprWF polys pAcc imps userFns fresh (Surface.closed e) = Surface.closed (resolveExprWF polys pAcc imps userFns fresh e)
-resolveExprWF polys _ imps userFns _ Surface.unit = Surface.unit
-resolveExprWF polys pAcc imps userFns fresh (Surface.absurd e) = Surface.absurd (resolveExprWF polys pAcc imps userFns fresh e)
-resolveExprWF polys pAcc imps userFns fresh (Surface.let' e₁ e₂) =
-  Surface.let' (resolveExprWF polys pAcc imps userFns fresh e₁) (resolveExprWF polys pAcc imps userFns fresh e₂)
-resolveExprWF polys _ imps userFns _ (Surface.int z) = Surface.int z
--- A float literal has no names to resolve, exactly like the other literals;
--- the witness passes through untouched.
-resolveExprWF polys _ imps userFns _ (Surface.float d) = Surface.float d
-resolveExprWF polys pAcc imps userFns fresh (Surface.add a b) =
-  Surface.add (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.sub a b) =
-  Surface.sub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.mul a b) =
-  Surface.mul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
--- PLAN 0.75 F4: the float family, structurally identical to the integer one.
-resolveExprWF polys pAcc imps userFns fresh (Surface.fadd a b) =
-  Surface.fadd (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fsub a b) =
-  Surface.fsub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fmul a b) =
-  Surface.fmul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fdiv a b) =
-  Surface.fdiv (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.i2f a) =
-  Surface.i2f (resolveExprWF polys pAcc imps userFns fresh a)
-resolveExprWF polys pAcc imps userFns fresh (Surface.div a b) =
-  Surface.div (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.mod' a b) =
-  Surface.mod' (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.neg e) = Surface.neg (resolveExprWF polys pAcc imps userFns fresh e)
-resolveExprWF polys pAcc imps userFns fresh (Surface.lt a b) =
-  Surface.lt (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.le a b) =
-  Surface.le (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.gt a b) =
-  Surface.gt (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.ge a b) =
-  Surface.ge (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.eq a b) =
-  Surface.eq (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.ne a b) =
-  Surface.ne (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.coerce p e) = Surface.coerce p (resolveExprWF polys pAcc imps userFns fresh e)
--- Plan 0.19: discriminate sigOp by whether the name is a user-defined
--- top-level fn (in `userFns`) or an external primitive (in `imps`).
--- The typechecker emits `Surface.sigOp` for every named-entry RVar
--- lookup that hits imports; the resolver post-processes by rewriting
--- to `Surface.closure` when the name belongs to the user-defined set,
--- so the elaborator's asm-emission picks the right calling convention.
--- Semantic preservation: `evalSurface (sigOp x) ≡ evalSurface (closure x)`
--- by construction (both go through `generic-semI`); the rewrite is a
--- no-op in the denotation.
--- D246: a module entry's reference is ALREADY a call (`closure`) when it reaches
--- the resolver, so a `sigOp` is a real SigOp (a qualified external or a
--- compiler-minted one) and passes through. (The old sigOp→closure rewrite at a
--- user-fn name is gone, and with it its faithfulness residual — false once a
--- definition's call means its body.)
-resolveExprWF polys _ imps userFns _ (Surface.sigOp s conc) = Surface.sigOp s conc
--- Plan 0.19: closure already classified. Pass through unchanged.
-resolveExprWF polys _ imps userFns _ (Surface.closure s) = Surface.closure s
--- Plan 0.2.4.5 D2: morphism-realm forms carry CCC IR directly (no
--- polymorphic-def references to splice in). Pass through unchanged.
-resolveExprWF polys _ imps userFns _ (Surface.lift-morphism m) = Surface.lift-morphism m
-resolveExprWF polys pAcc imps userFns fresh (Surface.morph-app m a) =
-  Surface.morph-app m (resolveExprWF polys pAcc imps userFns fresh a)
--- Plan 0.36 Phase 2a: recurse into the cata algebra (empty-context Expr)
--- so its named/poly refs get inlined like any expression. Context-
--- polymorphic, so the ∅-context algebra resolves fine.
-resolveExprWF polys pAcc imps userFns fresh (Surface.cata wfF alg) =
-  Surface.cata wfF (resolveExprWF polys pAcc imps userFns fresh alg)
--- `ana` (dual of cata): recurse into the coalgebra likewise.
-resolveExprWF polys pAcc imps userFns fresh (Surface.ana wfF coalg) =
-  Surface.ana wfF (resolveExprWF polys pAcc imps userFns fresh coalg)
--- the loop: recurse into the round likewise.
-resolveExprWF polys pAcc imps userFns fresh (Surface.loop round) =
-  Surface.loop (resolveExprWF polys pAcc imps userFns fresh round)
--- Poly = unresolved placeholder from Phase 1. Delegate to helper that
--- takes the lookup result + equation explicitly, so external proofs
--- about the sigOp case can `rewrite` the premise cleanly.
-resolveExprWF {A = A} polys pAcc imps userFns fresh (Surface.poly x _) =
-  resolvePolyCase polys pAcc imps userFns fresh x A (lookupPolyPrefix polys x) refl
-
-resolvePolyCase polys _ imps userFns _ x A nothing _ = Surface.poly x A
-resolvePolyCase polys pAcc imps userFns fresh x A (just (_ , body , prefix)) polyEq =
-  applySplice polys pAcc imps userFns fresh x A polyEq
-              (checkElabV (ctxAt baseKinds (imps x) prefix) body A)
-
--- D254, plan 0.122: the spliced body is the checker's term at the instance.
-applySplice polys _ imps userFns _ x A _ (failure _ , _) = Surface.poly x A
-applySplice polys (acc rec) imps userFns fresh x A {prefix = prefix} polyEq (success SCx.[] eE _ _ , w) =
-  Surface.closed (resolveExprWF prefix (rec (lookupPolyPrefix-decreases x polys polyEq)) imps userFns fresh eE)
-
--- Public entry. Computes `<-wellFounded` once; no callers need updating.
--- Plan 0.19: `userFns` carries the set of user-defined top-level fn
--- names. The resolver rewrites `Surface.sigOp x` to `Surface.closure x`
--- when `x ∈ userFns` (distinguishing user-defined entries from
--- external primitives). Semantically a no-op (`evalSurface (sigOp x) ≡
--- evalSurface (closure x)` by construction); the rewrite enables the
--- elaborator to emit the correct asm calling convention downstream.
-resolveExpr : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n} {A : Ty m}
-            → (polys : PolyCtx) → (String → TopCtx) → Imports → ℕ
-            → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
-resolveExpr polys imps userFns fresh e = resolveExprWF polys (<-wellFounded (length polys)) imps userFns fresh e
 
 -- ─── Resolver semantic-equivalence theorems ────────────────────────────
 -- The resolver is a pure structural traversal: it commutes with every
@@ -1042,7 +888,7 @@ poly-ground-eq ctx x T err schema eL eI eP .(isGround schema) refl = refl
 poly-inst-yes : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m) (err : TypeError) {schema : PolyType}
   {body prefix} eL eI (eP : lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)) ¬g
   → KindedInstance (NamedCtx.kinds ctx) schema T
-  → Data.Product.proj₁ (checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (kindedInstance? (NamedCtx.kinds ctx) schema T))
+  → (checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (kindedInstance? (NamedCtx.kinds ctx) schema T))
     ≡ success Surface.zeroUsage (Surface.poly x T) 0 0
 poly-inst-yes ctx x T err {schema} eL eI eP ¬g ki with kindedInstance? (NamedCtx.kinds ctx) schema T
 ... | yes _ = refl
@@ -1064,16 +910,15 @@ checkElab-fallback-RVar-poly : ∀ {m} {ctx : NamedCtx m} (x : String) (T : Ty m
 -- Plan 0.103 phase 2a: each stage of the de-withed fallback reduces on its
 -- decided premise; the kinded instance makes `kindedInstance?` say yes.
 checkElab-fallback-RVar-poly {ctx = ctx} x T {schema = schema} eqS eqImp eqP eqG inst
-  with inferElabV ctx (Raw.RResolved (own x))
+  with inferElab ctx (Raw.RResolved (own x))
      | inferElabV-own-fail-bridge ctx x eqS eqImp
          (inferElabV-RVar-poly-aux-fail-nonground ctx x eqS eqImp
             (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x eqP) eqG)
-... | (failure err , _) | refl =
+... | (failure err ) | refl =
   _ , _ , _ ,
-  trans (cong proj₁ (poly-check-eq ctx x T err nothing eqS nothing eqImp (just _) eqP))
-    (trans (cong proj₁ (poly-ground-eq ctx x T err schema eqS eqImp eqP (inj₂ tt) eqG))
-           (poly-inst-yes ctx x T err eqS eqImp eqP _ inst))
-  where open import Data.Product using (proj₁)
+  trans ((poly-check-eq ctx x T err nothing eqS nothing eqImp (just _) eqP))
+    (trans ((poly-ground-eq ctx x T err schema eqS eqImp eqP (inj₂ tt) eqG))
+           (poly-inst-yes ctx x T err eqS eqImp eqP (isGround-inj₂→¬Ground schema eqG) inst))
 
 -- Plan 0.58 / D071: the INFER-mode twin — a GROUND telescope name infers at
 -- its declared type, emitting the `poly` placeholder (Phase 2 splices).
@@ -1088,10 +933,8 @@ checkElab-fallback-RVar-poly-infer : ∀ {m} {ctx : NamedCtx m} (x : String)
         ≡ success (extractGround schema g) Surface.zeroUsage eE d fr)))
 checkElab-fallback-RVar-poly-infer {ctx = ctx} x eqS eqImp eqPoly eqG =
   _ , _ , _ ,
-  cong proj₁
-    (trans (inferElabV-own-poly-bridge ctx x eqS eqImp)
-           (inferElabV-RVar-poly-aux-success ctx x eqS eqImp eqPoly eqG))
-  where open import Data.Product using (proj₁)
+    trans (inferElabV-own-poly-bridge ctx x eqS eqImp)
+          (inferElabV-RVar-poly-aux-success ctx x eqS eqImp eqPoly eqG)
 
 checkElab-fallback-RApp-id : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg : Syn.Expr) (T : Ty m)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -1102,8 +945,8 @@ checkElab-fallback-RApp-id : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg : Syn.E
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-id {ctx = ctx} {τ = τ} arg T eqInf sb
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T <:? τ
+  with inferElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) | eqInf
+... | success T' _ _ _ _  | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 checkElab-fallback-RApp-fst : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg : Syn.Expr) (T : Ty m)
@@ -1115,8 +958,8 @@ checkElab-fallback-RApp-fst : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg : Syn.
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-fst {ctx = ctx} {τ = τ} arg T eqInf sb
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T <:? τ
+  with inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) | eqInf
+... | success T' _ _ _ _  | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 checkElab-fallback-RApp-snd : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg : Syn.Expr) (T : Ty m)
@@ -1128,12 +971,11 @@ checkElab-fallback-RApp-snd : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg : Syn.
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-snd {ctx = ctx} {τ = τ} arg T eqInf sb
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T <:? τ
+  with inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) | eqInf
+... | success T' _ _ _ _  | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 private
-  open import Data.Product using () renaming (proj₁ to checkProj₁)
   checkViewBridge : ∀ {m} {ctx : NamedCtx m} {f x T} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
                   → checkElabV-RApp-dispatch ctx f x T (classifyAppHeadView f) refl
                     ≡ checkElabV-RApp-dispatch ctx f x T vw eq
@@ -1149,9 +991,9 @@ checkElab-fallback-RApp-generic : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (f x : 
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
       checkElab ctx (Raw.RApp f x) τ ≡ success Ψ eE' d' f'')))
 checkElab-fallback-RApp-generic {ctx = ctx} {τ = τ} f x T eqAH eqInf sb
-  rewrite cong checkProj₁ (checkViewBridge {ctx = ctx} {f = f} {x = x} {T = τ} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
-  with inferElabV ctx (Raw.RApp f x) | eqInf
-... | success _ _ _ _ _ , _ | refl
+  rewrite (checkViewBridge {ctx = ctx} {f = f} {x = x} {T = τ} ahv-other (classifyAppHead-nothing⇒view-other eqAH))
+  with inferElab ctx (Raw.RApp f x) | eqInf
+... | success _ _ _ _ _  | refl
     with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
@@ -1165,11 +1007,11 @@ checkElab-fallback-RApp-generic {ctx = ctx} {τ = τ} f x T eqAH eqInf sb
 inferOutGo-J : ∀ {m} (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Finite)
     (Ψ : Surface.Usage (NamedCtx.size ctx))
     (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.ν F π))
-    (d fr : ℕ) (w : WI ctx arg (Once.Spec.Type.ν F π) Ψ argE)
+    (d fr : ℕ)
     (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)) (eq : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-  → inferOutGo ctx arg F π Ψ argE d fr w (wfFun? (NamedCtx.kinds ctx) F) refl
-    ≡ inferOutGo ctx arg F π Ψ argE d fr w mw eq
-inferOutGo-J ctx arg F π Ψ argE d fr w .(wfFun? (NamedCtx.kinds ctx) F) refl = refl
+  → inferOutGo ctx arg F π Ψ argE d fr (wfFun? (NamedCtx.kinds ctx) F) refl
+    ≡ inferOutGo ctx arg F π Ψ argE d fr mw eq
+inferOutGo-J ctx arg F π Ψ argE d fr .(wfFun? (NamedCtx.kinds ctx) F) refl = refl
 
 -- Plan 0.54: relate the two `(mw, eq)` instantiations of `checkCataGo` by
 -- singleton contractibility (mirrors compose's `go-canonical`). Used to bridge
@@ -1198,7 +1040,7 @@ checkCataGo-J ctx alg F A π .(wfFun? (NamedCtx.kinds ctx) F) refl = refl
 
 checkCataGoV-pure-J : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m)
     (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)) (eq : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
+  → checkElab ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
               (Once.Spec.Type.μ F Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.pure ] A)
       ≡ checkCataGo ctx alg F A Once.Spec.Grade.pure mw eq
 checkCataGoV-pure-J ctx alg F A .(wfFun? (NamedCtx.kinds ctx) F) refl = refl
@@ -1214,28 +1056,24 @@ checkCataGo-just-success : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once
     {algE : SExpr (NamedCtx.debruijn ctx)
                   Ψ (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)}
     {d fr : ℕ}
-    {w : WC ctx alg
-           (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
-           Ψ algE}
-  → checkElabV ctx
+  → checkElab ctx
               alg (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
-      ≡ (success Ψ algE d fr , w)
+      ≡ (success Ψ algE d fr)
   → (u : pure ⊑π π)
   → checkCataGo ctx alg F A π (just wfF) eqW
-      ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
-          , wt-cata-check {u = u} wfF w)
+      ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr)
 checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV ⊑-pure
-  with checkElabV ctx
+  with checkElab ctx
                   alg (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) | eqAlgV
-... | (success _ _ _ _ , w) | refl = refl
+... | (success _ _ _ _) | refl = refl
 checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV ⊑-pe
-  with checkElabV ctx
+  with checkElab ctx
                   alg (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) | eqAlgV
-... | (success _ _ _ _ , w) | refl = refl
+... | (success _ _ _ _) | refl = refl
 checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV ⊑-pa
-  with checkElabV ctx
+  with checkElab ctx
                   alg (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) | eqAlgV
-... | (success _ _ _ _ , w) | refl = refl
+... | (success _ _ _ _) | refl = refl
 
 -- D192: the ANA bridges. `checkAna` has no eff/pure split — it is grade-
 -- generic in one clause, because the coalgebra's grade IS the unfold's and
@@ -1252,7 +1090,7 @@ checkAnaGo-J ctx coalg F A π₀ π ua .(wfFun? (NamedCtx.kinds ctx) F) refl = r
 checkAnaGoV-J : ∀ {m} (ctx : NamedCtx m) (coalg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m)
     (π₀ : Once.Spec.Grade.Purity) (π : Once.Spec.Grade.Finite) (ua : π₀ ⊑π Once.Spec.Grade.act)
     (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)) (eq : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
+  → checkElab ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
               (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π₀ ] Once.Spec.Type.ν F π)
       ≡ checkAnaGo ctx coalg F A π₀ π ua mw eq
 checkAnaGoV-J ctx coalg F A .Once.Spec.Grade.pure π ⊑-pa  .(wfFun? (NamedCtx.kinds ctx) F) refl = refl
@@ -1265,35 +1103,31 @@ checkAnaGo-just-success : ∀ {m} (ctx : NamedCtx m) (coalg : Syn.Expr) (F : Onc
     {coalgE : SExpr (NamedCtx.debruijn ctx)
                   Ψ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A)}
     {d fr : ℕ}
-    {w : WC ctx coalg
-           (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A)
-           Ψ coalgE}
-  → checkElabV ctx
+  → checkElab ctx
               coalg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A)
-      ≡ (success Ψ coalgE d fr , w)
+      ≡ (success Ψ coalgE d fr)
   → (u : pure ⊑π π₀)
   → checkAnaGo ctx coalg F A π₀ π ua (just wfF) eqW
-      ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.ana wfF coalgE) (suc d) fr
-          , wt-ana-check {u = u} {ua = ua} wfF w)
+      ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.ana wfF coalgE) (suc d) fr)
 checkAnaGo-just-success ctx coalg F A π₀ π ua wfF eqW eqCoalgV ⊑-pure
-  with checkElabV ctx
+  with checkElab ctx
                   coalg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A) | eqCoalgV
-... | (success _ _ _ _ , w) | refl = refl
+... | (success _ _ _ _) | refl = refl
 checkAnaGo-just-success ctx coalg F A π₀ π ua wfF eqW eqCoalgV ⊑-pe
-  with checkElabV ctx
+  with checkElab ctx
                   coalg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A) | eqCoalgV
-... | (success _ _ _ _ , w) | refl = refl
+... | (success _ _ _ _) | refl = refl
 checkAnaGo-just-success ctx coalg F A π₀ π ua wfF eqW eqCoalgV ⊑-pa
-  with checkElabV ctx
+  with checkElab ctx
                   coalg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin π) ] Once.Spec.Type.⟦ F ⟧F A) | eqCoalgV
-... | (success _ _ _ _ , w) | refl = refl
+... | (success _ _ _ _) | refl = refl
 
 -- THE LOOP's dispatch: an `eff` arrow is the loop view at any codomain.
 checkLoopV-J : ∀ {m} (ctx : NamedCtx m) (round : Syn.Expr) (A B : Ty m)
-  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) round)
+  → checkElab ctx (Raw.RApp (Raw.RResolved (gen "ana")) round)
               (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B)
       ≡ checkLoop ctx round A B
-          (checkElabV ctx round (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A)))
+          (checkElab ctx round (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A)))
 checkLoopV-J ctx round A B = refl
 
 -- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause
@@ -1308,22 +1142,16 @@ checkCata-eff-strong-hlp : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once
     {algE : SExpr (NamedCtx.debruijn ctx)
                   Ψ (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] A)}
     {d fr : ℕ}
-    {w : WC ctx alg
-           (Once.Spec.Type.⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] A)
-           Ψ algE}
-    (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
-           (Once.Spec.Type.μ F Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] A))
+    (r : CheckElabResult (NamedCtx.debruijn ctx) (Once.Spec.Type.μ F Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] A))
   → checkCataGo ctx alg F A Once.Spec.Grade.eff (wfFun? (NamedCtx.kinds ctx) F) refl ≡ r
-  → r ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
-          , wt-cata-check {u = ⊑-pe} wfF w)
-  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
+  → r ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr)
+  → checkElab ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
               (Once.Spec.Type.μ F Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] A)
-      ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr
-          , wt-cata-check {u = ⊑-pe} wfF w)
-checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr , w) eqr eqStrong
+      ≡ (success (Once.Spec.Grade.Many Surface.*ᵘ Ψ) (Surface.cata wfF algE) (suc d) fr)
+checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr) eqr eqStrong
   rewrite eqr = eqStrong
-checkCata-eff-strong-hlp ctx alg F A (failure err , _) eqr eqStrong
-  with cong checkProj₁ eqStrong
+checkCata-eff-strong-hlp ctx alg F A (failure err ) eqr eqStrong
+  with eqStrong
 ... | ()
 
 -- D127/D131: `extract-morph-eff-cata` is DELETED with the extractor it was
@@ -1341,8 +1169,8 @@ checkElab-fallback-RApp-terminal : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg :
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-terminal {ctx = ctx} {τ = τ} arg T eqInf sb
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T <:? τ
+  with inferElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) | eqInf
+... | success T' _ _ _ _  | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 -- D194: the `Out` fallback — `terminal`'s verbatim. Both are infer-mode heads
@@ -1357,8 +1185,8 @@ checkElab-fallback-RApp-Out : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (arg : Syn.
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-Out {ctx = ctx} {τ = τ} arg T eqInf sb
-  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) | eqInf
-... | success T' _ _ _ _ , _ | refl with T <:? τ
+  with inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) | eqInf
+... | success T' _ _ _ _  | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 
@@ -1371,11 +1199,11 @@ checkElab-fallback-RBinOp : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (op : Raw.Bin
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RBinOp op e₁ e₂) τ ≡ success Ψ eE' d' f')))
 checkElab-fallback-RBinOp {ctx = ctx} {τ = τ} op e₁ e₂ T eqInf sb
-  with inferElabV ctx (Raw.RBinOp op e₁ e₂)
-... | failure _ , _ with eqInf
+  with inferElab ctx (Raw.RBinOp op e₁ e₂)
+... | failure _  with eqInf
 ...   | ()
 checkElab-fallback-RBinOp {ctx = ctx} {τ = τ} op e₁ e₂ T eqInf sb
-  | success T' Ψ' eE' d' fr' , w with eqInf
+  | success T' Ψ' eE' d' fr' with eqInf
 ... | refl with T <:? τ
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
@@ -1415,11 +1243,11 @@ compileExpr e with inferElab emptyCtx e
 ------------------------------------------------------------------------
 
 inferElabProj : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) → InferElabResult (NamedCtx.debruijn ctx)
-inferElabProj ctx e = proj₁ (inferElabV ctx e)
+inferElabProj ctx e = (inferElab ctx e)
   where open import Data.Product using (proj₁)
 
 checkElabProj : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m) → CheckElabResult (NamedCtx.debruijn ctx) T
-checkElabProj ctx e T = proj₁ (checkElabV ctx e T)
+checkElabProj ctx e T = (checkElab ctx e T)
   where open import Data.Product using (proj₁)
 
 ------------------------------------------------------------------------

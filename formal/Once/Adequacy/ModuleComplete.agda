@@ -62,8 +62,7 @@ open import Once.Type.Instance using (rigidOf)
 cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a′ b b′ c c′} → a ≡ a′ → b ≡ b′ → c ≡ c′ → f a b c ≡ f a′ b′ c′
 cong₃ f refl refl refl = refl
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Elaborate
-  using ()
+
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-complete)
@@ -84,11 +83,11 @@ open FunInfo
 -- the checker accepts a body, at a usage
 Accepts : ∀ (ctx : TopCtx) (polys : PolyCtx) (body : Expr) (ty : Type) (Ψ : Usage 0) → Set
 Accepts ctx polys body ty Ψ =
-  ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ (TE.checkElabV (ctxWithImportsAndPolys ctx polys) body ty) ≡ TE.success Ψ eE d f
+  ∃[ eE ] ∃[ d ] ∃[ f ] (TE.checkElab (ctxWithImportsAndPolys ctx polys) body ty) ≡ TE.success Ψ eE d f
 
 AcceptsI : ∀ (ctx : TopCtx) (polys : PolyCtx) (body : Expr) (ty : Type) (Ψ : Usage 0) → Set
 AcceptsI ctx polys body ty Ψ =
-  ∃[ eE ] ∃[ d ] ∃[ f ] proj₁ (TE.inferElabV (ctxWithImportsAndPolys ctx polys) body) ≡ TE.success ty Ψ eE d f
+  ∃[ eE ] ∃[ d ] ∃[ f ] (TE.inferElab (ctxWithImportsAndPolys ctx polys) body) ≡ TE.success ty Ψ eE d f
 
 compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (body : Expr) {Ψ : Usage 0} →
@@ -99,12 +98,12 @@ compileFunBody-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.
 -- `data` (no eta), so `∅ ↾ Ψ` is stuck until `Ψ` is `[]`, and the
 -- elaborated IR's domain `⌊ ⟦ ∅ ↾ Ψ ⟧ᶜ ⌋` will not reduce to `Unit`.
 compileFunBody-complete ctx polys impsOf name ty body {[]} deriv =
-  succ (TE.checkElabV (ctxWithImportsAndPolys ctx polys) body ty) (proj₂ (proj₂ (proj₂ deriv)))
+  succ (TE.checkElab (ctxWithImportsAndPolys ctx polys) body ty) (proj₂ (proj₂ (proj₂ deriv)))
   where
-    succ : ∀ (cr : TE.VerifiedCheckResult (ctxWithImportsAndPolys ctx polys) body ty) {eE d f}
-         → proj₁ cr ≡ TE.success [] eE d f
+    succ : ∀ (cr : TE.CheckElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) ty) {eE d f}
+         → cr ≡ TE.success [] eE d f
          → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBody-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
-    succ (TE.success _ _ _ _ , _) refl = _ , refl
+    succ (TE.success _ _ _ _ ) refl = _ , refl
 
 ------------------------------------------------------------------------
 -- (2) ⇒ the function compiles. `compileFun` dispatches on `name == "main"`
@@ -134,16 +133,16 @@ compileFunBodyI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBodyI IR.Heap false ctx polys impsOf name ty body ≡ inj₂ irFun)
 compileFunBodyI-complete ctx polys impsOf name ty body {[]} deriv =
-  succ (TE.inferElabV (ctxWithImportsAndPolys ctx polys) body) (proj₂ (proj₂ (proj₂ deriv)))
+  succ (TE.inferElab (ctxWithImportsAndPolys ctx polys) body) (proj₂ (proj₂ (proj₂ deriv)))
   where
-    at : ∀ {eE} (w : Once.TypeCheck.SpecWitness.WI (ctxWithImportsAndPolys ctx polys) body ty [] eE) (d : Dec (ty ≡ ty))
-       → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ irFun)
-    at w (yes refl) = _ , refl
-    at w (no ¬p)    = ⊥-elim (¬p refl)
-    succ : ∀ (cr : TE.VerifiedInferResult (ctxWithImportsAndPolys ctx polys) body) {eE d f}
-         → proj₁ cr ≡ TE.success ty [] eE d f
+    at : ∀ {eE : Srf.Expr (Once.TypeCheck.Scope.NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys)) [] ty} (d : Dec (ty ≡ ty))
+       → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-at eE IR.Heap false ctx polys impsOf name ty refl d ≡ inj₂ irFun)
+    at (yes refl) = _ , refl
+    at (no ¬p)    = ⊥-elim (¬p refl)
+    succ : ∀ (cr : TE.InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn (ctxWithImportsAndPolys ctx polys))) {eE d f}
+         → cr ≡ TE.success ty [] eE d f
          → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ irFun → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ irFun)
-    succ (TE.success _ _ _ _ _ , w) refl = at w (ty ≟T ty)
+    succ (TE.success _ _ _ _ _) refl = at (ty ≟T ty)
 
 compileFunI-complete : ∀ (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (body : Expr) {Ψ : Usage 0} →
@@ -189,10 +188,10 @@ compileFunM-complete nothing  ctx polys impsOf name ty body main-ok (eE , d , f 
 
 scopeOf = AS.scopeOf
 
-checkOK-complete : ∀ {m} {ctx : NamedCtx m} {e} {T : Ty m} (r : TE.VerifiedCheckResult ctx e T) {Ψ eE d f}
-  → proj₁ r ≡ TE.success Ψ eE d f → C.checkOK r ≡ inj₂ tt
-checkOK-complete (TE.failure _ , _) ()
-checkOK-complete (TE.success _ _ _ _ , _) _ = refl
+checkOK-complete : ∀ {m n} {Γ : Once.Spec.Context.Ctx m n} {T : Ty m} (r : TE.CheckElabResult Γ T) {Ψ eE d f}
+  → r ≡ TE.success Ψ eE d f → C.checkOK r ≡ inj₂ tt
+checkOK-complete (TE.failure _ ) ()
+checkOK-complete (TE.success _ _ _ _ ) _ = refl
 
 -- The telescope walk, one entry at a time: each step is a chain of
 -- `cong`s through the explicit-aux stages.

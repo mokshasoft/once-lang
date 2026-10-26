@@ -67,6 +67,7 @@ open import Once.Core.Decl using (⌜declS⌝)
 open import Once.Module using (scope; ctxOfAt)
 open import Once.Principal using (PrincipalAt; Fails; below-complete)
 open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig; u0)
+import Once.TypeCheck.ElaborateSound as TEˢ
 import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.View as TV
 open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf)
@@ -116,16 +117,16 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
 
     module A = Annotate Σ S nm (OkOf P) (OkSOf P) κ ok-def ok-sig
 
-    fails-success : ∀ {e X Ψ eE dd f} {wt : TE.checkSoundOf ctx e X (TE.success Ψ eE dd f)}
-                  → Fails (proj₁ (TE.checkElabV ctx e X)) → TE.checkElabV ctx e X ≡ (TE.success Ψ eE dd f , wt) → ⊥
+    fails-success : ∀ {e X Ψ eE dd f} {wt : TEˢ.checkSoundOf ctx e X (TE.success Ψ eE dd f)}
+                  → Fails (proj₁ (TEˢ.checkElabV ctx e X)) → TEˢ.checkElabV ctx e X ≡ (TE.success Ψ eE dd f , wt) → ⊥
     fails-success fl eq with subst (λ r → Fails (proj₁ r)) eq fl
     ... | ()
 
   -- A Spec check of the body, typed in the core, is the checker's run.
   body-check← : ∀ {e e′ A t} → SUT._⊢_⇐_↝_ Σ S nm κ SUT.∅ e′ A t
               → Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S κ SCx.∅ SCx.[] t A SG.pure → RX [] e e′
-              → ∃[ Ψ ] ∃[ eE ] ∃[ dd ] ∃[ f ] Σ[ wt ∈ TE.checkSoundOf ctx e A (TE.success Ψ eE dd f) ]
-                  (TE.checkElabV ctx e A ≡ (TE.success Ψ eE dd f , wt))
+              → ∃[ Ψ ] ∃[ eE ] ∃[ dd ] ∃[ f ] Σ[ wt ∈ TEˢ.checkSoundOf ctx e A (TE.success Ψ eE dd f) ]
+                  (TEˢ.checkElabV ctx e A ≡ (TE.success Ψ eE dd f , wt))
   body-check← {e} {e′} {A} chk T rx = go (rx-≡ rx) (proj₂ (A.ann⇐ chk rx T))
     where
       go : e ≡ e′ → A.A⇐ SUT.∅ e′ A SCx.[] → _
@@ -134,8 +135,8 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
   -- …as is a synthesis.
   body-synth← : ∀ {e e′ A t} → SUT._⊢_⇒_↝_ Σ S nm κ SUT.∅ e′ A t
               → Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S κ SCx.∅ SCx.[] t A SG.pure → RX [] e e′
-              → ∃[ Ψ ] ∃[ eE ] ∃[ dd ] ∃[ f ] Σ[ wt ∈ TE.soundOf ctx e (TE.success A Ψ eE dd f) ]
-                  (TE.inferElabV ctx e ≡ (TE.success A Ψ eE dd f , wt))
+              → ∃[ Ψ ] ∃[ eE ] ∃[ dd ] ∃[ f ] Σ[ wt ∈ TEˢ.soundOf ctx e (TE.success A Ψ eE dd f) ]
+                  (TEˢ.inferElabV ctx e ≡ (TE.success A Ψ eE dd f , wt))
   body-synth← {e} {e′} {A} syn T rx = go (rx-≡ rx) (proj₂ (A.ann⇒ syn rx T))
     where
       go : e ≡ e′ → A.A⇒ SUT.∅ e′ A SCx.[] → _
@@ -153,9 +154,9 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
   -- derivation, typed in the core by its usage, at a type the Spec's
   -- principality says is not below.
   principal← : ∀ {e e′ A} → RX [] e e′ → SPr.Principal Σ S nm (SC.schema m κ A) e′ → PrincipalAt ctx e A
-  principal← {e} {e′} {A} rx pr {X} m with TE.checkElabV ctx e X
-  ... | TE.failure _ , _ = Once.Principal.fails
-  ... | TE.success Ψ eE dd f , wt =
+  principal← {e} {e′} {A} rx pr {X} m with TE.checkElab ctx e X | TEˢ.checkElab-sound ctx e X
+  ... | TE.failure _ | _ = Once.Principal.fails
+  ... | TE.success Ψ eE dd f | wt =
     let (sX , nX) = below-sound A m
         (t , (D , u) , _) = proj₂ wt P
         D′ = subst (λ z → SUT._⊢_⇐_↝_ Σ S nm κ SUT.∅ z X t) (rx-≡ rx) D

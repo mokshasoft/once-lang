@@ -40,8 +40,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Type using (Type)
 import Once.Spec.Surface.Syntax as Syn
 open import Once.TypeCheck.Elaborate
-  using (inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure)
+  using (inferElab; checkElab; InferElabResult; CheckElabResult; success; failure)
 open import Once.TypeCheck.Scope using (NamedCtx)
 open import Once.TypeCheck.Error using (TypeError)
 

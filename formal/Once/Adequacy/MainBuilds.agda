@@ -15,7 +15,7 @@
 
 module Once.Adequacy.MainBuilds where
 
-import Once.TypeCheck.SpecWitness
+import Once.TypeCheck.Elaborate as TE
 import Once.Context as Srf
 
 open import Once.TypeCheck.Classify using (TopCtx)
@@ -47,7 +47,7 @@ import Once.Spec.Type as Type
 import Once.Spec.Name
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Elaborate as TE using ()
+
 import Once.TypeCheck.Scope as Classify
 open import Once.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Classify as Classify
@@ -61,14 +61,14 @@ import Once.Parser.Module as Module
 -- Layer 0 — `compileFunBody-aux` success is `doOpt`-independent.
 ------------------------------------------------------------------------
 
-cfb-aux-doOpt : ∀ {nctx : Classify.NamedCtx 0} {body : Expr}
+cfb-aux-doOpt : ∀ {n} {Γ}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
-  (name : String) (ty : Type.Type) (δ : Srf.⟦ Classify.NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  (name : String) (ty : Type.Type) (δ : Srf.⟦ Γ ⟧ᶜ ≡ Unit)
+  (cr : TE.CheckElabResult {0} {n} Γ ty) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux IR.Heap false ctx polys impsOf name ty δ cr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody-aux IR.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir')
-cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
-cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _ , _) eq = _ , refl
+cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.failure err ) ()
+cfb-aux-doOpt doOpt ctx polys impsOf name ty δ (TE.success _ se _ _ ) eq = _ , refl
 
 cfb-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type.Type) (expr : Expr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
@@ -76,7 +76,7 @@ cfb-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
 cfb-doOpt doOpt ctx polys impsOf name ty expr eq =
   cfb-aux-doOpt doOpt ctx polys impsOf name ty refl
-    (TE.checkElabV (Classify.ctxWithImportsAndPolys ctx polys) expr ty) eq
+    (TE.checkElab (Classify.ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` success is `doOpt`-independent.
@@ -111,18 +111,18 @@ cfbI-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsO
   (name : String) (ty : Type.Type) (expr : Expr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
   C.compileFunBodyI IR.Heap false ctx polys impsOf name ty expr ≡ inj₂ ir →
   Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir')
-cfbI-doOpt doOpt ctx polys impsOf name ty expr eq = aux (TE.inferElabV (Classify.ctxWithImportsAndPolys ctx polys) expr) eq
+cfbI-doOpt doOpt ctx polys impsOf name ty expr eq = aux (TE.inferElab (Classify.ctxWithImportsAndPolys ctx polys) expr) eq
   where
-    at : ∀ {T Ψ eE} (w : Once.TypeCheck.SpecWitness.WI (Classify.ctxWithImportsAndPolys ctx polys) expr T Ψ eE) (d : Dec (T ≡ ty)) {ir}
-       → C.compileFunBodyI-at IR.Heap false ctx polys impsOf name ty refl w d ≡ inj₂ ir
-       → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty refl w d ≡ inj₂ ir')
-    at w (yes refl) _ = _ , refl
-    at w (no _) ()
-    aux : (cr : TE.VerifiedInferResult (Classify.ctxWithImportsAndPolys ctx polys) expr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
+    at : ∀ {T Ψ} (eE : Srf.Expr (Classify.NamedCtx.debruijn (Classify.ctxWithImportsAndPolys ctx polys)) Ψ T) (d : Dec (T ≡ ty)) {ir}
+       → C.compileFunBodyI-at eE IR.Heap false ctx polys impsOf name ty refl d ≡ inj₂ ir
+       → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-at eE IR.Heap doOpt ctx polys impsOf name ty refl d ≡ inj₂ ir')
+    at eE (yes refl) _ = _ , refl
+    at eE (no _) ()
+    aux : (cr : TE.InferElabResult (Classify.NamedCtx.debruijn (Classify.ctxWithImportsAndPolys ctx polys))) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋}
         → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf name ty refl cr ≡ inj₂ ir
         → Σ-syntax (IR ⌊ Unit {0} ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBodyI-aux IR.Heap doOpt ctx polys impsOf name ty refl cr ≡ inj₂ ir')
-    aux (TE.failure _ , _) ()
-    aux (TE.success T _ _ _ _ , w) e = at w (T ≟T ty) e
+    aux (TE.failure _ ) ()
+    aux (TE.success T _ eE _ _) e = at eE (T ≟T ty) e
 
 cfunI-doOpt : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type.Type) (expr : Expr) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
@@ -222,7 +222,7 @@ ce-mono-g-doOpt doOpt sc fi es ty eqg
 ce-poly-p-doOpt doOpt sc pfi es (just _) ()
 ce-poly-p-doOpt doOpt sc pfi es nothing eq =
   ce-poly-doOpt doOpt sc pfi es
-    (C.checkOK (TE.checkElabV (Classify.ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
+    (C.checkOK (TE.checkElab (Classify.ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
 
 ce-poly-doOpt doOpt sc pfi es (inj₁ _) ()
 ce-poly-doOpt doOpt sc pfi es (inj₂ _) eq = ce-doOpt doOpt (C.addEntry sc pfi) es eq

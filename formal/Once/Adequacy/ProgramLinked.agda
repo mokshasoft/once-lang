@@ -81,8 +81,9 @@ open import Once.Surface.Syntax
 import Once.Spec.Surface.Syntax as Syn
 open import Once.TypeCheck.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys)
-open import Once.TypeCheck.Elaborate using (VerifiedCheckResult; checkElabV; success; failure)
-open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolveExprWF)
+open import Once.TypeCheck.Elaborate using (success; failure)
+open import Once.TypeCheck.ElaborateSound using (VerifiedCheckResult; checkElabV)
+open import Once.TypeCheck.Link using (resolveExpr; resolveExprWF)
 open import Once.TypeCheck.Completeness using (check-completeS)
 open import Once.TypeCheck.SpecWitness using (OkOf; OkSOf)
 import Once.TypeCheck.WitnessSubst
@@ -112,7 +113,7 @@ import Data.Maybe
 open import Once.Adequacy.TelePosition
 open import Once.Adequacy.ElaborateLinked
 open import Once.Denotation.SurfaceRefs using (Refs; FFIRef; ImpRef; PolyRef; InScope)
-open import Once.TypeCheck.Elaborate using (checkSoundOf; soundOf; inferElabV)
+open import Once.TypeCheck.ElaborateSound using (checkSoundOf; soundOf; inferElabV)
 
 private variable σ : ISig
 
@@ -147,7 +148,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
                 {s b pre} (polyEq : lookupPolyPrefix polys x ≡ just (s , b , pre))
                 (cr : VerifiedCheckResult (ctxAt baseKinds (I x) pre) b A)
             → (∀ ac → Refs (DeclIn σ) L L (spliceWith {Γ = Γ} pre ac I uf fresh x A cr))
-            → Refs (DeclIn σ) L L (Once.TypeCheck.ElaborateProofs.applySplice {Γ = Γ} polys pAcc I uf fresh x A polyEq cr)
+            → Refs (DeclIn σ) L L (Once.TypeCheck.Link.applySplice {Γ = Γ} polys pAcc I uf fresh x A polyEq (proj₁ cr))
     as-case pAcc       uf fresh x A polyEq (failure e , w) h = h (<-wellFounded _)
     as-case (acc rec) uf fresh x A polyEq (success Once.Spec.Context.[] _ _ _ , w) h =
       h (rec (Once.TypeCheck.Classify.lookupPolyPrefix-decreases x polys polyEq))
@@ -155,7 +156,7 @@ module _ {σ : ISig} (tbl : List IRFun) (polys : PolyCtx) (I : String → TopCtx
     rp-case : ∀ (pAcc : Acc _<_ (length polys)) (uf : Imports) (fresh : ℕ) (x : String) (A : Ty m) {n} {Γ : Ctx m n}
                 (look : Maybe (PolyType × Syn.Expr × PolyCtx)) (lq : lookupPolyPrefix polys x ≡ look)
             → PolyRef polys Δ x A
-            → Refs (DeclIn σ) L L (Once.TypeCheck.ElaborateProofs.resolvePolyCase {Γ = Γ} polys pAcc I uf fresh x A look lq)
+            → Refs (DeclIn σ) L L (Once.TypeCheck.Link.resolvePolyCase {Γ = Γ} polys pAcc I uf fresh x A look lq)
     rp-case pAcc uf fresh x A nothing lq ((_ , eP , _)) = ⊥-elim (nothing≢just (trans (sym lq) eP))
       where nothing≢just : ∀ {X : Set} {v : X} → nothing ≢ just v
             nothing≢just ()

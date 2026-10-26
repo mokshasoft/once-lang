@@ -42,7 +42,7 @@ open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.TypeCheck.Elaborate using ()
+
 import Once.Compile as C
 
 EffUU : Type

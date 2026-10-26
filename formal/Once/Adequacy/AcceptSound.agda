@@ -44,7 +44,8 @@ import Once.Context as Srf
 open import Once.Spec.Context using (zeroUsage)
 import Once.Spec.Context as Srf
 import Once.Surface.Syntax as Srf
-open import Once.TypeCheck.Elaborate as TE using ()
+import Once.TypeCheck.Elaborate as TE
+import Once.TypeCheck.ElaborateSound as TEˢ
 import Once.TypeCheck.Scope as Classify
 open import Once.TypeCheck.Scope using (NamedCtx)
 open import Once.Spec.Surface.Syntax using (Expr)
@@ -72,8 +73,8 @@ import Once.Parser.Module as Module
 compileFunBody-aux-success : ∀ {nctx : NamedCtx 0} {body : Expr}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (cr : TE.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
-  C.compileFunBody-aux IR.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir →
+  (cr : TEˢ.VerifiedCheckResult nctx body ty) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  C.compileFunBody-aux IR.Heap doOpt ctx polys impsOf name ty δ (proj₁ cr) ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size nctx)) (λ Ψ → Σ-syntax (Srf.Expr (NamedCtx.debruijn nctx) Ψ ty) (λ se →
     Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → proj₁ cr ≡ TE.success Ψ se d f))))
 compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.failure err , _) ()
@@ -84,8 +85,8 @@ compileFunBody-aux-success doOpt ctx polys impsOf name ty δ (TE.success Ψ se d
 compileFunBody-aux-wit : ∀ {nctx : NamedCtx 0} {body : Expr}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (cr : TE.VerifiedCheckResult nctx body ty) → TE.checkElabV nctx body ty ≡ cr → {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
-  C.compileFunBody-aux IR.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir →
+  (cr : TEˢ.VerifiedCheckResult nctx body ty) → TEˢ.checkElabV nctx body ty ≡ cr → {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  C.compileFunBody-aux IR.Heap doOpt ctx polys impsOf name ty δ (proj₁ cr) ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size nctx)) (λ Ψ → MonoWit (just ty) nctx body ty Ψ)
 compileFunBody-aux-wit doOpt ctx polys impsOf name ty δ (TE.failure err , _) _ ()
 compileFunBody-aux-wit doOpt ctx polys impsOf name ty δ (TE.success Ψ se d f , w) ec eq = Ψ , se , d , f , w , ec
@@ -96,7 +97,7 @@ compileFunBody-sound : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyC
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys)))
     (λ Ψ → MonoWit (just ty) (ctxWithImportsAndPolys ctx polys) expr ty Ψ)
 compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
-  compileFunBody-aux-wit doOpt ctx polys impsOf name ty refl (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) refl eq
+  compileFunBody-aux-wit doOpt ctx polys impsOf name ty refl (TEˢ.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) refl eq
 
 ------------------------------------------------------------------------
 -- The INDEPENDENT module-validity predicate: every function (threading the
@@ -142,16 +143,16 @@ compileFun-sound doOpt ctx polys impsOf name ty expr eq =
 compileFunBodyI-at-success : ∀ {nctx : NamedCtx 0} {body : Expr} {T : Type} {Ψ : Srf.Usage (NamedCtx.size nctx)} {eE : Srf.Expr (NamedCtx.debruijn nctx) Ψ T}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (w : WI nctx body T Ψ eE) {dd ff : ℕ} → TE.inferElabV nctx body ≡ (TE.success T Ψ eE dd ff , w) → (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
-  C.compileFunBodyI-at IR.Heap doOpt ctx polys impsOf name ty δ w d ≡ inj₂ ir → MonoWit nothing nctx body ty Ψ
+  (w : WI nctx body T Ψ eE) {dd ff : ℕ} → TEˢ.inferElabV nctx body ≡ (TE.success T Ψ eE dd ff , w) → (d : Dec (T ≡ ty)) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  C.compileFunBodyI-at eE IR.Heap doOpt ctx polys impsOf name ty δ d ≡ inj₂ ir → MonoWit nothing nctx body ty Ψ
 compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w ei (yes refl) _ = _ , _ , _ , w , ei
 compileFunBodyI-at-success doOpt ctx polys impsOf name ty δ w ei (no _) ()
 
 compileFunBodyI-aux-success : ∀ {nctx : NamedCtx 0} {body : Expr}
   (doOpt : Bool) (ctx : TopCtx) (polys : Classify.PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ NamedCtx.debruijn nctx ⟧ᶜ ≡ Unit)
-  (cr : TE.VerifiedInferResult nctx body) → TE.inferElabV nctx body ≡ cr → {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
-  C.compileFunBodyI-aux IR.Heap doOpt ctx polys impsOf name ty δ cr ≡ inj₂ ir →
+  (cr : TEˢ.VerifiedInferResult nctx body) → TEˢ.inferElabV nctx body ≡ cr → {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
+  C.compileFunBodyI-aux IR.Heap doOpt ctx polys impsOf name ty δ (proj₁ cr) ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size nctx)) (λ Ψ → MonoWit nothing nctx body ty Ψ)
 compileFunBodyI-aux-success doOpt ctx polys impsOf name ty δ (TE.failure err , _) _ ()
 compileFunBodyI-aux-success doOpt ctx polys impsOf name ty δ (TE.success T Ψ se d f , w) ei eq =
@@ -166,7 +167,7 @@ compileFunI-sound doOpt ctx polys impsOf name ty expr eq = aux (name == "main") 
   where
     body : ∀ {ir} → C.compileFunBodyI IR.Heap doOpt ctx polys impsOf name ty expr ≡ inj₂ ir
          → Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ → MonoWit nothing (ctxWithImportsAndPolys ctx polys) expr ty Ψ)
-    body e = compileFunBodyI-aux-success doOpt ctx polys impsOf name ty refl (TE.inferElabV (ctxWithImportsAndPolys ctx polys) expr) refl e
+    body e = compileFunBodyI-aux-success doOpt ctx polys impsOf name ty refl (TEˢ.inferElabV (ctxWithImportsAndPolys ctx polys) expr) refl e
     main : (vm : String ⊎ ⊤) → ∀ {ir} → C.compileFunI-main-aux IR.Heap doOpt ctx polys impsOf name ty expr vm ≡ inj₂ ir
          → Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndPolys ctx polys))) (λ Ψ → MonoWit nothing (ctxWithImportsAndPolys ctx polys) expr ty Ψ)
     main (inj₁ _) ()
@@ -275,9 +276,9 @@ ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
     ctx = ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)
     low = below (rigidOf (Parser.PolyFunInfo.pfunType pfi))
     step : C.firstChecking ctx (Parser.PolyFunInfo.pfunBody pfi) low ≡ nothing
-         → (r : TE.VerifiedCheckResult ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
-         → TE.checkElabV ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
-         → ∀ {cfs} → C.ce-poly IR.Heap doOpt sc pfi es (C.checkOK r) ≡ inj₂ cfs
+         → (r : TEˢ.VerifiedCheckResult ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
+         → TEˢ.checkElabV ctx (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
+         → ∀ {cfs} → C.ce-poly IR.Heap doOpt sc pfi es (C.checkOK (proj₁ r)) ≡ inj₂ cfs
          → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)
     step fc r@(TE.failure _ , _) _ ()
     step fc r@(TE.success Ψ se _ _ , w) req eq′ =

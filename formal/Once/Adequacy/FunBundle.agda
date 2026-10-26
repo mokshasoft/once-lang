@@ -57,6 +57,7 @@ open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
 open import Once.Surface.Syntax using (Expr)
+import Once.TypeCheck.ElaborateSound as TEˢ
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
 open import Once.TypeCheck.Scope using (NamedCtx)
@@ -96,8 +97,8 @@ ElabOK nothing  ctx e ty Ψ se d f = TE.inferElab ctx e ≡ TE.success ty Ψ se 
 -- …and so its witness: the checker's own, at the result the equation names.
 elabOK-wit : ∀ (ft : Maybe Type) (ctx : NamedCtx 0) (e : Syn.Expr) (ty : Type) {Ψ se d f}
            → ElabOK ft ctx e ty Ψ se d f → MonoWit ft ctx e ty Ψ
-elabOK-wit (just _) ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TE.checkElabV ctx e ty) ce
-elabOK-wit nothing  ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TE.inferElabV ctx e) ce
+elabOK-wit (just _) ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TEˢ.checkElabV ctx e ty) ce
+elabOK-wit nothing  ctx e ty {se = se} {d} {f} ce = se , d , f , _ , pair-at (TEˢ.inferElabV ctx e) ce
 
 data FunBundle : C.CScope → List Parser.Entry → Set where
   bnil  : ∀ {sc} → FunBundle sc []
@@ -137,7 +138,7 @@ compileFunBody-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf 
     checkElab (ctxWithImportsAndPolys ctx polys) expr ty ≡ TE.success Ψ se d f))))
 compileFunBody-ce doOpt ctx polys impsOf name ty expr eq =
   AS.compileFunBody-aux-success doOpt ctx polys impsOf name ty refl
-    (TE.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
+    (TEˢ.checkElabV (ctxWithImportsAndPolys ctx polys) expr ty) eq
 
 compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : TopCtx) (polys : PolyCtx) (impsOf : String.String → TopCtx)
   (name : String) (ty : Type) (expr : Syn.Expr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit {0} ⌋ ⌊ ty ⌋} →
@@ -182,7 +183,7 @@ compileFunI-ce : ∀ (polys : PolyCtx) (impsOf : String.String → TopCtx)
   Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
     TE.inferElab (ctxWithImportsAndPolys ctx polys) (funBody fi) ≡ TE.success ty Ψ se d f))))
 compileFunI-ce polys impsOf ctx ty fi irFun eq =
-  aux (TE.inferElabV (ctxWithImportsAndPolys ctx polys) (funBody fi)) (body (funName fi == "main") eq)
+  aux (TEˢ.inferElabV (ctxWithImportsAndPolys ctx polys) (funBody fi)) (body (funName fi == "main") eq)
   where
     nctx = ctxWithImportsAndPolys ctx polys
     body : (b : Bool) → C.compileFunI-aux IR.Heap false ctx polys impsOf (funName fi) ty (funBody fi) b ≡ inj₂ irFun
@@ -194,16 +195,16 @@ compileFunI-ce polys impsOf ctx ty fi irFun eq =
         main (inj₁ _) ()
         main (inj₂ _) e′ = e′
     body false e = e
-    at : ∀ {T Ψ eE} (w : Once.TypeCheck.SpecWitness.WI nctx (funBody fi) T Ψ eE) (dd : Dec (T ≡ ty))
-       → C.compileFunBodyI-at IR.Heap false ctx polys impsOf (funName fi) ty refl w dd ≡ inj₂ irFun → T ≡ ty
-    at w (yes e) _ = e
-    at w (no _) ()
-    aux : (cr : TE.VerifiedInferResult nctx (funBody fi))
-        → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf (funName fi) ty refl cr ≡ inj₂ irFun
+    at : ∀ {T Ψ} (eE : Expr (NamedCtx.debruijn nctx) Ψ T) (dd : Dec (T ≡ ty))
+       → C.compileFunBodyI-at eE IR.Heap false ctx polys impsOf (funName fi) ty refl dd ≡ inj₂ irFun → T ≡ ty
+    at eE (yes e) _ = e
+    at eE (no _) ()
+    aux : (cr : TEˢ.VerifiedInferResult nctx (funBody fi))
+        → C.compileFunBodyI-aux IR.Heap false ctx polys impsOf (funName fi) ty refl (proj₁ cr) ≡ inj₂ irFun
         → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ ty) (λ se →
             Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → proj₁ cr ≡ TE.success ty Ψ se d f))))
     aux (TE.failure _ , _) ()
-    aux (TE.success T Ψ se d f , w) e = fix (at w (T Once.Type.DecEq.≟T ty) e) se
+    aux (TE.success T Ψ se d f , w) e = fix (at se (T Once.Type.DecEq.≟T ty) e) se
       where
         fix : (eq′ : T ≡ ty) (se′ : Expr (NamedCtx.debruijn nctx) Ψ T)
             → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ′ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ′ ty) (λ se″ →
@@ -232,7 +233,7 @@ bundle→typed {sc} (bcons {fi = fi} {ty = ty} ep rf fc ce cf rest) =
        (elabOK-wit (funType fi) (ctxC sc) (funBody fi) ty ce) (bundle→typed rest)
 bundle→typed {sc} (bpoly {pfi = pfi} {se = se} fc ce rest) =
   poly (firstChecking-sound (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) fc)
-       (se , _ , _ , _ , pair-at (TE.checkElabV (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ce)
+       (se , _ , _ , _ , pair-at (TEˢ.checkElabV (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ce)
        (bundle→typed rest)
 
 bundle→compiled : ∀ {sc es} → FunBundle sc es → List C.CompiledFun
@@ -263,9 +264,9 @@ cgb-poly-p : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.En
   → C.ce-poly-p IR.Heap false sc pfi es mp ≡ inj₂ compiled → CGB sc (Parser.e-poly pfi ∷ es) compiled
 cgb-poly : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
   → C.firstChecking (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ nothing
-  → (r : TE.VerifiedCheckResult (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
-  → TE.checkElabV (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
-  → C.ce-poly IR.Heap false sc pfi es (C.checkOK r) ≡ inj₂ compiled → CGB sc (Parser.e-poly pfi ∷ es) compiled
+  → (r : TEˢ.VerifiedCheckResult (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)))
+  → TEˢ.checkElabV (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (rigidOf (Parser.PolyFunInfo.pfunType pfi)) ≡ r
+  → C.ce-poly IR.Heap false sc pfi es (C.checkOK (proj₁ r)) ≡ inj₂ compiled → CGB sc (Parser.e-poly pfi ∷ es) compiled
 
 ce-bundleP sc [] compiled eq = bnil , inj₂-injective eq
 ce-bundleP sc (Parser.e-fun fi ∷ es) compiled eq = cgb-fun sc fi es compiled (funIsPrimitive fi) refl eq
