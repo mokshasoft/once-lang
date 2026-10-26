@@ -16,4 +16,4 @@ pickFn : (Unit -> Int) + (Unit -> Int) -> Int
 pickFn s = destruct s of { Left f -> f () ; Right g -> g () }
 
 main : Act Unit Void
-main = exit@S (pickFn ((inl forty2) : (Unit -> Int) + (Unit -> Int)))
+main = exit@S (pickFn (inl forty2 : (Unit -> Int) + (Unit -> Int)))

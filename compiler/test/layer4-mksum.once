@@ -18,4 +18,4 @@ mkSum : Int -> Int + Void
 mkSum x = inl x
 
 main : Act Unit Void
-main = exit@S (destruct (mkSum 42) of { Left x -> x ; Right y -> 99 })
+main = exit@S (destruct mkSum 42 of { Left x -> x ; Right y -> 99 })

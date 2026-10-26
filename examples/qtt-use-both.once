@@ -5,5 +5,5 @@
 --
 -- Both parameters are used exactly once
 
-testUseBoth : Unit -> Unit -> (Unit * Unit)
-testUseBoth = \x -> \y -> (x, y)
+testUseBoth : Unit -> Unit -> Unit * Unit
+testUseBoth x y = (x, y)

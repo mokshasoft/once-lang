@@ -6,4 +6,4 @@
 -- The second parameter is not used, should be inferred as erased
 
 testConst : Unit -> Unit -> Unit
-testConst = \x -> \y -> x
+testConst x y = x

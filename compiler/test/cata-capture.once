@@ -21,13 +21,13 @@ import I.Linux.Syscalls as S
 addPair : Int * Int -> Int
 addPair p = fst p + snd p
 
-withBase : Int -> Mu (K Unit + (K Int * Id)) -> Int
+withBase : Int -> Mu (K Unit + K Int * Id) -> Int
 withBase k = cata (case (\_ -> k) addPair)
 
-viaLet : Mu (K Unit + (K Int * Id)) -> Int
-viaLet = let b = 2 in (cata (case (\_ -> b) addPair) : Mu (K Unit + (K Int * Id)) -> Int)
+viaLet : Mu (K Unit + K Int * Id) -> Int
+viaLet = let b = 2 in (cata (case (\_ -> b) addPair) : Mu (K Unit + K Int * Id) -> Int)
 
-xs : Mu (K Unit + (K Int * Id))
+xs : Mu (K Unit + K Int * Id)
 xs = In (inr (10, In (inr (20, In (inl unit)))))
 
 main : Act Unit Void

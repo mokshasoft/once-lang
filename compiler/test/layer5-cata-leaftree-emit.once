@@ -24,11 +24,11 @@ import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 -- node(leaf 40, leaf 2)
-t : Mu (K Int + (Id * Id))
+t : Mu (K Int + Id * Id)
 t = In (inr (In (inl 40), In (inl 2)))
 
 -- algebra : (Int + (Unit * Unit)) ->[eff] Unit  (leaf: emit it; node: unit)
-emitTree : Act (Mu (K Int + (Id * Id))) Unit
+emitTree : Act (Mu (K Int + Id * Id)) Unit
 emitTree = cata (case emit@E terminal)
 
 -- The fold, as a morphism `main` can compose with.
@@ -36,4 +36,4 @@ runTree : Act Unit Unit
 runTree = emitTree t
 
 main : Act Unit Void
-main = compose exit@S (compose (\_ -> 7) runTree)
+main = exit@S . ((\_ -> 7) . runTree)

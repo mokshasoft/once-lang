@@ -88,7 +88,7 @@ signature seL4_CNode_Revoke : Act (Int * Int * Int) Int
 
 -- Capability rights are a bitmask
 seL4_AllRights : Int
-seL4_AllRights = 15  -- All bits set (Read, Write, Grant, GrantReply)
+seL4_AllRights = 15 -- All bits set (Read, Write, Grant, GrantReply)
 
 seL4_CanRead : Int
 seL4_CanRead = 1

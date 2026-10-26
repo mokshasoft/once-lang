@@ -6,4 +6,4 @@
 -- Just an identity function
 
 testId : Unit -> Unit
-testId = \x -> x
+testId x = x

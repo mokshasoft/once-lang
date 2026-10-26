@@ -21,10 +21,10 @@ import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 both : Act Int (Unit * Unit)
-both = pair (compose emit@E (\_ -> 1)) (compose emit@E (\_ -> 2))
+both = pair (emit@E . (\_ -> 1)) (emit@E . (\_ -> 2))
 
 run : Act Unit Unit
-run = compose (\_ -> unit) (compose both (\_ -> 0))
+run = (\_ -> unit) . (both . (\_ -> 0))
 
 main : Act Unit Void
-main = compose exit@S (compose (\_ -> 7) run)
+main = exit@S . ((\_ -> 7) . run)

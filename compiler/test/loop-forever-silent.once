@@ -20,4 +20,4 @@ spin : Eff Int Void
 spin = ana next
 
 main : Eff Unit Void
-main = compose spin (\_ -> 0)
+main = spin . (\_ -> 0)

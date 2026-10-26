@@ -25,11 +25,11 @@ import I.Test.Emit as E
 -- BUILD: `curry f a b = f (a , b)`, so this emits whichever component `fst`
 -- selects — the APPLIED one.
 k : Int -> Act Int Unit
-k = curry (compose emit@E snd)
+k = curry (emit@E . snd)
 
 -- ELIMINATE: `(k 5, 9)` is the pair literal `(Int ⇒[eff] Unit) * Int`.
 fire : Act Unit Unit
 fire = apply (k 5, 9)
 
 main : Act Unit Void
-main = compose exit@S (compose (\_ -> 7) fire)
+main = exit@S . ((\_ -> 7) . fire)

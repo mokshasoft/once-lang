@@ -628,6 +628,7 @@ test-suite once-test
       Backend.Common
       FloatSpec
       FloatEmitSpec
+      FmtSpec
       ImportSpec
       LitRangeSpec
       GeneratorSpec

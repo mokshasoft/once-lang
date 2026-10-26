@@ -5,5 +5,5 @@
 --
 -- Parameter x is used twice - should require unrestricted (Many) quantity
 
-testDuplicate : Unit -> (Unit * Unit)
-testDuplicate = \x -> (x, x)
+testDuplicate : Unit -> Unit * Unit
+testDuplicate x = (x, x)

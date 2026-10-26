@@ -20,4 +20,4 @@ pickInt : Int + Void -> Int
 pickInt s = destruct s of { Left x -> x ; Right v -> fromVoid v }
 
 main : Act Unit Void
-main = exit@S (pickInt ((inl 42) : Int + Void))
+main = exit@S (pickInt (inl 42 : Int + Void))

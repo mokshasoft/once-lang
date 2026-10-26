@@ -13,16 +13,16 @@ import I.Linux.Syscalls as S
 stop : Int * Int -> Unit -> Int + Void
 stop p _ = inl (snd p)
 
-next : Int * Int -> Unit -> Void + (Int * Int)
+next : Int * Int -> Unit -> Void + Int * Int
 next p _ = inr (fst p - 1, snd p + fst p)
 
 -- `stop` and `next` are at their principal types (D321: a summand the body
 -- leaves open is `Void`); the `case` is at the join of the two (D322).
-step : Int * Int -> Int + (Int * Int)
+step : Int * Int -> Int + Int * Int
 step p = case (next p) (stop p) (fst p == 0)
 
 loopSum : Eff (Int * Int) Int
 loopSum = ana step
 
 main : Eff Unit Void
-main = compose exit@S (compose loopSum (\_ -> (10, 0)))
+main = exit@S . (loopSum . (\_ -> (10, 0)))

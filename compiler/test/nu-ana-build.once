@@ -38,7 +38,7 @@ mkNu = ana id
 -- instructions and the coalgebra block are emitted and run) without forcing a
 -- layer. Measured: `.text` 0x81b → 0xd2b.
 useNu : Nu (K Int) -> Int
-useNu = compose (\u -> 42) terminal
+useNu = (\u -> 42) . terminal
 
 main : Act Unit Void
 main = exit@S (useNu (mkNu 7))
