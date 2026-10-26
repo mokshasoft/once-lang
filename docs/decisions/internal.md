@@ -222,6 +222,11 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **One layout, no options**: `once fmt` writes the canonical layout, its
   style constants in code (width 100, indent 2); `--check` enforces it.
   (D341)
+- **`once fmt` is proved, outside the compile path**: formatting keeps the
+  module (`roundtrip`) and hence the apex's meaning (`format-denotes`); a
+  text without comments is formatted by its module alone and formatting is
+  idempotent on it. The layout lexes as its tokens by construction
+  (`apart`, line comments, own digits). (D342)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`
@@ -242,3 +247,6 @@ decision-log entry updates the rule it changes here, in the same commit.
 1. **D076**: whether the shape layer is complete is not recorded.
 2. **D218**: the apex still takes the three `BlockRunsHyp-<arch>` hypotheses;
    their discharge is the D283 relation (§6), in progress.
+3. **D342**: `once fmt`'s theorems take `DigitBound` (the primitive
+   `isDigit` accepts the decimal digits only) as an argument; whether it
+   becomes a tool hypothesis beside T1/T2 is open.
