@@ -9,8 +9,7 @@
 -- shape the parser must accept (or reject) with the expected result.
 --
 -- These are smoke tests, not general properties — they complement
--- the round-trip claims in `Once.Grammar.Printer` and the grammar-
--- conformance theorem in `Once.Grammar.Convert`.
+-- the grammar-conformance theorem in `Once.Grammar.Convert`.
 ------------------------------------------------------------------------
 
 module Once.Parser.Tests where

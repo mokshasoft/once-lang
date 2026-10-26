@@ -18,9 +18,7 @@
 -- in its return type, mirroring `Once.Parser.Type`'s treatment.
 --
 -- This file defines the relations and `ParsesX-shrinks` lemmas only.
--- The WF-parser bridge and round-trip theorem ride on later phases
--- (3b + 3c). See `Once.Grammar.ExprRoundtrip` for the task #38
--- roadmap.
+-- The WF-parser bridge is `Once.Grammar.ExprBridge`.
 --
 -- Design notes:
 --

@@ -219,6 +219,9 @@ decision-log entry updates the rule it changes here, in the same commit.
   (`make spec-gate`). (D306, D316 ← D300)
 - **The extraction is what the CLI runs** (`Once.Extract.Root`); the
   correctness proofs are type-checked, not extracted. (D334)
+- **One layout, no options**: `once fmt` writes the canonical layout, its
+  style constants in code (width 100, indent 2); `--check` enforces it.
+  (D341)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`

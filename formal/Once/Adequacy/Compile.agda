@@ -126,10 +126,8 @@ import Once.Adequacy.CPU as CPU
 ------------------------------------------------------------------------
 -- Per-stage adapters and trust postulates.
 --
--- Stage 1 (`gmoduleToModule`) is now a real structural conversion
--- (`Once.Grammar.ModuleConvert`), no longer a postulate. Its
--- *correctness* (`gmoduleToModule-correct`) remains an obligation
--- below.
+-- Stage 1 (`gmoduleToModule`) is a real structural conversion, no
+-- longer a postulate.
 ------------------------------------------------------------------------
 
 -- The assembler (`string-to-bytes`) is the per-arch GNU `as` trust

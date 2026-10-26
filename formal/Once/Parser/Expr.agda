@@ -53,8 +53,7 @@ open import Once.Parser.Type using (parseTypeWF)
 ------------------------------------------------------------------------
 -- `isReserved` lives in `Once.Parser.ExprRelation` (to avoid an import
 -- cycle between this module and the relations module). Re-export it
--- so downstream callers (e.g. Once.Grammar.ExprPrinter) keep importing
--- it from Once.Parser.Expr.
+-- so callers keep importing it from Once.Parser.Expr.
 ------------------------------------------------------------------------
 
 open import Once.Parser.ExprRelation public using (isReserved)
