@@ -19433,3 +19433,30 @@ the code so as little as possible makes it into the compiler?").
 * `Out` no longer forces the ν's value index, so its `WellFormedFI-irrelevant` rewrite is gone.
 * What `obs-correct-sigop-rest` still assumes cannot be proved as the machine stands: there the output is
   the postulated `structured-pure-sigop-output`. Closing it is an emitter or an IR restriction, not a proof.
+
+## D337 — THE OBLIGATION IS STATED OVER EVERY RETURN STACK; `no-ret`/`frame-pres` OWED ONLY ON RETURN (2026-10-26)
+
+**Follows** D158 (the hand-over), D188/D198 (`CalleeRuns`), D336. **Asked** by the user 2026-10-25
+(plan 0.88, `cata-correct`: "option 1" — a frame rule for `fret`).
+
+### Decision
+* `IRObsCorrectF` ends `∀ k → ∀ rs → MachineRefinesObsF … cl rs k`: the run starts from
+  `entry-flat base s alloc cl rs` with an arbitrary return stack `rs` and owes `fret settle ≡ rs`, where
+  before `rs` was `[]`. `CalleeRun`/`CalleeRuns`/`CoalgRuns`/`FnRuns` take `rs` and the premise
+  `fret fs ≡ ret-pc ∷ rs`. The program entry (`FlatFromObs`) instantiates `rs = []`, so the apex assumes
+  nothing new.
+* `no-ret` and `frame-pres` (in `ValueRealized` and `CalleeRun`) are owed when the run RETURNED
+  (`resultAt … ≡ returns (done v r)`), no longer under `NotCut`.
+
+### Why
+* `Cata` CALLS its algebra (`instr-call-closure` onto the inline `cata-body` thunk, `c-ret` back), so its
+  proof must run the algebra's own IH under a pushed return address, `rs = ret-pc ∷ rs'`. With `rs`
+  fixed at `[]` no IH applies there.
+* The `NotCut` form was FALSE, not just weak: a run that stops inside a call halts in the callee's frame
+  with `ret-pc` still on `fret`, so `BlockRuns` was unsatisfiable for any closure or function whose body
+  can exit. Conditioning on a return is what the clients use anyway.
+
+### Consequences
+* Every `IRObsCorrect.*` case threads `rs`; the local `handover-eq` copies (Comp, CaseRun, IterRun,
+  Pair/Chain) take it. `Loop.Anchor` gains `rs₀`; `RoundInv.ret : fret σ ≡ rs₀`.
+* No postulate added or removed. It unblocks `cata-correct`'s self-call lemma (plan 0.88, M0).

@@ -61,6 +61,8 @@ module IterInvC {FS : FrameSemantics} where
         s₀     : LocState FS
         alloc₀ : AllocState {FS}
         n≤₀    : next-slot alloc₀ ≤ n
+        -- D337: the return stack the loop was entered on
+        rs₀    : List ℕ
         e      : ⟦ E ⟧
         -- the state after the prologue's `load-indirect`: `Output` is `e`'s cell
         fsF    : FlatState
@@ -90,7 +92,7 @@ module IterInvC {FS : FrameSemantics} where
       record RoundInv (σ : FlatState) (a : ⟦ A ⟧) : Set where
         field
           pc   : fpc σ ≡ 3 + base
-          ret  : fret σ ≡ []
+          ret  : fret σ ≡ rs₀
           lnk  : flink σ ≡ nothing
           nh   : halted (floc σ) ≡ false
           mode : AllocMode
@@ -120,7 +122,7 @@ module IterInvC {FS : FrameSemantics} where
                      → fpc settle ≡ length (emitted n l (Iter body)) + base
           stops      : stopsAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ true
                      → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s₀
-          no-ret     : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → fret settle ≡ []
+          no-ret     : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → fret settle ≡ rs₀
           no-link    : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → flink settle ≡ nothing
           place      : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′)
                      → ResultPlace B out-mode (falloc settle) cont-alloc v (floc settle)
@@ -131,7 +133,7 @@ module IterInvC {FS : FrameSemantics} where
           mem0       : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r))
                      → ∀ (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = n }) loc
                      → SMCore.MemOps.readLoc (floc settle) loc ≡ SMCore.MemOps.readLoc s₀ loc
-          frame      : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → current-frame (falloc settle) ≡ FR
+          frame      : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → current-frame (falloc settle) ≡ FR
           bf0        : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r))
                      → ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) loc
                      → BeforeFrontier (record (falloc settle) { next-slot = m }) loc

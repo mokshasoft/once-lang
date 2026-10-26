@@ -293,8 +293,17 @@ module Core {FS : FrameSemantics} where
   -- entered only at `mkFlat` cannot RECEIVE a hand-over at all. `cl` is that
   -- component, quantified rather than fixed; `entry-flat s alloc (SV-Tag 0)`
   -- IS `mkFlat s alloc 0`, so the entry instance is unchanged.
-  entry-flat : ℕ → LocState FS → AllocState {FS} → StoredValue FS → FlatState
-  entry-flat base s alloc cl = mkFlatFull s alloc base [] cl nothing
+  --
+  -- D337: …and the RETURN STACK the fragment is entered on, `rs`. A fragment
+  -- never pops below where it was entered (every `c-ret` it reaches closes a
+  -- call it made), so what lies beneath is the caller's and the obligation is
+  -- stated over all of it — the frame rule for the return stack. The program
+  -- entry is `rs = []`; a body the compiler CALLS (a `Cata` algebra) is
+  -- entered on `ret-pc ∷ rs`, and stating the obligation only at `[]` was
+  -- D152's defect a third time: a context the emitter puts a fragment in that
+  -- the statement does not speak about.
+  entry-flat : ℕ → LocState FS → AllocState {FS} → StoredValue FS → List ℕ → FlatState
+  entry-flat base s alloc cl rs = mkFlatFull s alloc base rs cl nothing
 
   -- D158: THE FRAGMENT'S PLACEMENT, as a hypothesis rather than an identity.
   --
@@ -359,9 +368,9 @@ module Core {FS : FrameSemantics} where
   -- AT. It used to be hardwired to frontier 0, which is only ever true of the
   -- top-level `ir` — every sub-IR of a composite is emitted at a nonzero `n`.
   flat-run : ℕ → AbstractTrace → ℕ → LocState FS → AllocState {FS}
-           → StoredValue FS → FlatState
-  flat-run fuel prog base s alloc cl =
-    exec-flat fuel prog (entry-flat base s alloc cl)
+           → StoredValue FS → List ℕ → FlatState
+  flat-run fuel prog base s alloc cl rs =
+    exec-flat fuel prog (entry-flat base s alloc cl rs)
 
   -- Frame discipline (codegen-image half + machine half wired together):
   -- running any compiled IR preserves the stack-frame frontier `next-slot`.
@@ -372,10 +381,10 @@ module Core {FS : FrameSemantics} where
   -- algebra's `next-slot alloc ≡ 0` precondition holds at each layer's run.
   flat-run-keeps-next-slot :
     ∀ (fuel : ℕ) (prog : AbstractTrace) → AllSlotStable prog
-    → ∀ (base : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-    → next-slot (falloc (flat-run fuel prog base s alloc cl)) ≡ next-slot alloc
-  flat-run-keeps-next-slot fuel prog ss base s alloc cl =
-    exec-flat-keeps-next-slot prog ss fuel (entry-flat base s alloc cl)
+    → ∀ (base : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
+    → next-slot (falloc (flat-run fuel prog base s alloc cl rs)) ≡ next-slot alloc
+  flat-run-keeps-next-slot fuel prog ss base s alloc cl rs =
+    exec-flat-keeps-next-slot prog ss fuel (entry-flat base s alloc cl rs)
 
   -- Observable refinement over the flat machine.
   --
@@ -416,14 +425,14 @@ module Core {FS : FrameSemantics} where
   record ValueRealized (prog : AbstractTrace) (base : ℕ)
                        {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
                        (s : LocState FS) (alloc : AllocState {FS})
-                       (cl : StoredValue FS) (k : ℕ) : Set where
+                       (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) : Set where
     constructor realized
     field
       steps      : ℕ
       settle     : FlatState
       out-mode   : AllocMode
       cont-alloc : AllocState {FS}
-      run        : FlatSteps prog steps (entry-flat base s alloc cl) settle
+      run        : FlatSteps prog steps (entry-flat base s alloc cl rs) settle
       -- plan 0.97: CONDITIONED ON WHAT THE SPEC SAYS. `live` used to be
       -- `halted (floc settle) ≡ false` outright, which no program that exits
       -- can satisfy — the settle state of a fragment ending in a halting
@@ -442,7 +451,11 @@ module Core {FS : FrameSemantics} where
       -- D320: …and it has not LEFT: a fragment stops at a call with no answer,
       -- never at the program's `c-leave` (the run's end must read `halted`).
       stops      : stopsAt s (⟪ evalᴰ ir x ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s
-      no-ret     : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → fret settle ≡ []
+      -- D337: …and it handed back the return stack it was entered on — WHEN IT
+      -- RETURNED. Stated under `NotCut` it said the same of a STOPPED run, and
+      -- that is false wherever the stop is inside a call: a body that halts
+      -- never pops the address its call pushed.
+      no-ret     : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r) → fret settle ≡ rs
       no-link    : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → flink settle ≡ nothing
       -- Plan 0.105: THE LOG GROWS BY EXACTLY THE FRAGMENT'S CALLS. A sequel
       -- runs from `settle`, and its answers are the interpretation's at the
@@ -559,7 +572,9 @@ module Core {FS : FrameSemantics} where
       -- `cf-fs10` (Sum, TwoCell), `cf-a16` (ApplySetupPres), `cf-t1`/`cf-u3`
       -- (TenStepPres/NineStepPres) — so the field exports what was already
       -- there rather than asking for new work.
-      frame-pres : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → current-frame (falloc settle) ≡ current-frame alloc
+      -- D337: when it RETURNED, for `no-ret`'s reason — a run stopped inside a
+      -- call is sitting in the callee's frame.
+      frame-pres : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r) → current-frame (falloc settle) ≡ current-frame alloc
 
       -- D206: over an arbitrary slot bound `m`, for the same reason
       -- `CalleeRun.mem-pres` is: the run keeps the frame and only grows the
@@ -574,8 +589,8 @@ module Core {FS : FrameSemantics} where
   -- Consumers that do not care which half they are using (`valid-transport`,
   -- the call-site compositions) keep asking for this; the split is visible
   -- only to whoever needs to know that the heap half is contingent.
-  vr-mem-pres : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl k}
-              → (vr : ValueRealized prog base n l ir x s alloc cl k)
+  vr-mem-pres : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl rs k}
+              → (vr : ValueRealized prog base n l ir x s alloc cl rs k)
               → NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k))
               → ∀ (loc : ValueLocation FS)
               → BeforeFrontier (record alloc { next-slot = n }) loc
@@ -587,7 +602,7 @@ module Core {FS : FrameSemantics} where
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
                              (s : LocState FS) (alloc : AllocState {FS})
-                             (cl : StoredValue FS) (k : ℕ) : Set where
+                             (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) : Set where
     field
       -- NO completion fields (M3, D058: "productivity — not termination").
       -- `run-halts` ("the run halts") is exactly what excludes `Ana`; instead,
@@ -599,7 +614,7 @@ module Core {FS : FrameSemantics} where
       -- correctly in `evalᴰ`, observed by the `take k` event-prefix.)
       -- D158/D159: the value half comes FIRST, because the trace half is
       -- stated along ITS chain.
-      value-realized : ValueRealized prog base n l ir x s alloc cl k
+      value-realized : ValueRealized prog base n l ir x s alloc cl rs k
       -- …and the trace half, BOUNDED BY THAT CHAIN rather than by a fuel.
       --
       -- The old form was `∀ k → ∃ f` over `flat-events f (emitted n l ir)` —
@@ -681,6 +696,10 @@ module Core {FS : FrameSemantics} where
   -- `fret` HALTS, so a run that would underflow behaves differently under a
   -- deeper stack). Stating the obligation where the machine actually IS avoids
   -- inventing that.
+  -- (D337 since: the obligation is stated over every return stack, so a body
+  -- the compiler emits INLINE and calls — a `Cata` algebra — gets this record
+  -- from its own `MachineRefinesObsF`. A closure body still arrives here from
+  -- `BlockRuns`.)
   ------------------------------------------------------------------------
   -- D198: indexed by ANY `IR A B` and any input, not by a body-of-a-closure.
   -- Nothing in the fields ever used the `E * A` shape — they mention only
@@ -688,6 +707,8 @@ module Core {FS : FrameSemantics} where
   -- COALGEBRA `IR A (⟦F⟧TI A)` called on a bare seed. `apply` instantiates
   -- this at `E * A` and is otherwise unchanged.
   record CalleeRun (prog : AbstractTrace) (fs : FlatState) (ret-pc : ℕ)
+                   -- D337: the caller's return stack, under the pushed `ret-pc`.
+                   (rs : List ℕ)
                    -- D199: `B` is EXPLICIT. Indexing by the computation
                    -- rather than by `(ir , inp)` costs its inferability —
                    -- `TM.T ⟦ B ⟧` pins `⟦ B ⟧`, and `⟦_⟧` is not injective.
@@ -711,7 +732,10 @@ module Core {FS : FrameSemantics} where
       returned   : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fpc settle ≡ ret-pc
       -- D320: …without having LEFT (see `ValueRealized.stops`).
       stops      : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left (floc fs)
-      no-ret     : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → fret settle ≡ []
+      -- D337: conditioned on RETURNING (see `ValueRealized.no-ret`). Under
+      -- `NotCut` it claimed `[]` of a callee that halted mid-body, whose stack
+      -- still holds `ret-pc` — so no callee that exits could meet it.
+      no-ret     : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fret settle ≡ rs
       no-link    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → flink settle ≡ nothing
       -- plan 0.98: the premise supplies the value — see `ValueRealized.place`.
       place      : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r)
@@ -750,7 +774,8 @@ module Core {FS : FrameSemantics} where
                  → SMCore.MemOps.readLoc (floc settle) loc ≡ SMCore.MemOps.readLoc (floc fs) loc
       -- D210: …and the call's. `enter-call` SHIFTS the frame, so the claim is
       -- against the caller's `pre`, which is what a returning callee restores.
-      frame-pres : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+      -- D337: when it RETURNED — a callee halted mid-body is in its own frame.
+      frame-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
                  → current-frame (falloc settle) ≡ current-frame pre
 
       bf-mono    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
@@ -783,11 +808,11 @@ module Core {FS : FrameSemantics} where
         -- so a caller-resident component is an ancestor afterwards, and that
         -- transfer belongs with the callee's proof, not at every call site.
         × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
-             (envArg : ⟦ E IRTy′.* A ⟧) (ret-pc k : ℕ) (mIn' : AllocMode)
-           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
+             (envArg : ⟦ E IRTy′.* A ⟧) (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
+           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
            → InputAt {E IRTy′.* A} mIn' pre-alloc envArg (floc fs)
-           → CalleeRun prog fs ret-pc B (evalᴰ body envArg) k))
+           → CalleeRun prog fs ret-pc rs B (evalᴰ body envArg) k))
 
   -- D198: the ν analogue of `CalleeRuns`, and a SIBLING rather than an
   -- instance because the two block kinds are called differently BY
@@ -815,8 +840,8 @@ module Core {FS : FrameSemantics} where
     → ∃[ j ]
         ( (find-thunk prog ℓ ≡ just j)
         × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
-             (ret-pc k : ℕ) (mIn' : AllocMode)
-           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
+             (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
+           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
            → InputAt {T} mIn' pre-alloc seed (floc fs)
            -- D199: an `Ana` block is the coalgebra FOLLOWED BY the
@@ -825,7 +850,7 @@ module Core {FS : FrameSemantics} where
            -- whose code cell named this label. That is `mapAnaᵈ H H coalg
            -- (valueT (coalg a))`, which is precisely the half of `forceᵈ` the
            -- emitter used to skip. For `in-ν` it is the stored layer.
-           → CalleeRun prog fs ret-pc (⟦ F ⟧TI (ν-type F))
+           → CalleeRun prog fs ret-pc rs (⟦ F ⟧TI (ν-type F))
                (evalᴰ (Out wf) v) k))
 
   -- D245: the third block kind, the program's own FUNCTIONS. A direct call
@@ -843,11 +868,11 @@ module Core {FS : FrameSemantics} where
     → ∃[ j ]
         ( (find-fn prog f ≡ just j)
         × (∀ (fs : FlatState) (pre-alloc : AllocState {FS}) (x : ⟦ A ⟧)
-             (ret-pc k : ℕ) (mIn' : AllocMode)
-           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
+             (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
+           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
            → InputAt {A} mIn' pre-alloc x (floc fs)
-           → CalleeRun prog fs ret-pc B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k))
+           → CalleeRun prog fs ret-pc rs B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k))
 
   -- All block-table premises in ONE slot, so adding one does not re-thread the
   -- fourteen discharge clauses that only pass it along.
@@ -915,7 +940,9 @@ module Core {FS : FrameSemantics} where
     -- EVERY depth would additionally demand value-stability of `evalᴰ`, a
     -- theorem nothing here needs.
     ∀ (k : ℕ) →
-    MachineRefinesObsF prog base n l ir x s alloc cl k
+    -- D337: over every return stack the fragment may be entered on.
+    ∀ (rs : List ℕ) →
+    MachineRefinesObsF prog base n l ir x s alloc cl rs k
 
   -- `cata-correct`: the single named obligation; the record FIELDS name the
   -- parts the discharge must provide (all sharing one `enough-fuel`):

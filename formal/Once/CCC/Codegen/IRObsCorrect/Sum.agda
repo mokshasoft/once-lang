@@ -41,7 +41,7 @@ module SumC {FS : FrameSemantics} where
   open Mach {FS}
 
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
-  obs-correct-inl {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inl {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -68,11 +68,11 @@ module SumC {FS : FrameSemantics} where
 
       -- D182: this clause's instance of the shared ten-step invariant.
       module TSP = TenStepPres n (instr-load-tag-lit 0) (load-from-slot n)
-                               prog base s alloc cl
+                               prog base s alloc cl rs
 
       -- The ten instructions, in emission order (`IRToTrace`'s heap build).
       fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-      fs0  = entry-flat base s alloc cl
+      fs0  = entry-flat base s alloc cl rs
       fs1  = flat-exec-instr mov-to-output              prog fs0
       fs2  = flat-exec-instr (store-at-slot payload-stash) prog fs1
       fs3  = flat-exec-instr (instr-alloc-heap 2)       prog fs2
@@ -411,7 +411,7 @@ module SumC {FS : FrameSemantics} where
       place = place-of inp
 
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
-  obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -438,11 +438,11 @@ module SumC {FS : FrameSemantics} where
 
       -- D182: this clause's instance of the shared ten-step invariant.
       module TSP = TenStepPres n (instr-load-tag-lit 1) (load-from-slot n)
-                               prog base s alloc cl
+                               prog base s alloc cl rs
 
       -- The ten instructions, in emission order (`IRToTrace`'s heap build).
       fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-      fs0  = entry-flat base s alloc cl
+      fs0  = entry-flat base s alloc cl rs
       fs1  = flat-exec-instr mov-to-output              prog fs0
       fs2  = flat-exec-instr (store-at-slot payload-stash) prog fs1
       fs3  = flat-exec-instr (instr-alloc-heap 2)       prog fs2

@@ -396,14 +396,14 @@ main-flat ir = flat-exec-instr (instr-ctrl (c-start (ir-stack-budget ir))) (imag
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → (brs : BlockRunsT) → (k : ℕ)
               → MachineRefinesObsF (image ir) 1 0 0 ir tt (floc (main-flat ir))
-                  (falloc (main-flat ir)) (SV-Tag 0) k
+                  (falloc (main-flat ir)) (SV-Tag 0) [] k
 entry-witness ir ioc brs k =
   ioc 0 0 (image ir) 1 (image-slot-stable ir)
       (brs ir) (entry-span ir) (entry-blocks ir) (entry-labels ir)
       Stack tt (floc (main-flat ir)) (falloc (main-flat ir)) (SV-Tag 0)
       z≤n refl
       -- D153: `main : IR Unit Unit`, so its input has no residence at all.
-      (in-unit refl) k
+      (in-unit refl) k []
 
 ------------------------------------------------------------------------
 -- The entry witness. D244: the machine runs the PROGRAM IMAGE, and the meaning
@@ -419,7 +419,7 @@ IOC = ∀ {A B} (ir : IR A B) → Linked σFS tbl ir → IRObsCorrectF ir
 
 entry-vr : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → IOC → (brs : BlockRunsT) → (k : ℕ)
          → ValueRealized (image ir) 1 0 0 ir tt (floc (main-flat ir))
-             (falloc (main-flat ir)) (SV-Tag 0) k
+             (falloc (main-flat ir)) (SV-Tag 0) [] k
 entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir (proj₁ lk)) brs k)
 
 ------------------------------------------------------------------------

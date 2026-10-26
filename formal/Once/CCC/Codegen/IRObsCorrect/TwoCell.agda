@@ -51,7 +51,7 @@ module TwoCellC {FS : FrameSemantics} where
   open TwoCellBuildC {FS}
 
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
-  obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -68,8 +68,8 @@ module TwoCellC {FS : FrameSemantics} where
     where
       -- D190: the ten-instruction build is shared with `Ana`; `emitted n l
       -- (curry body)` IS `two-cell-trace n l`, so `span` passes straight in.
-      module TCR = TwoCellRun n l prog base s alloc cl n≤ nh span
-      module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
+      module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
+      module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (curry body) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -140,7 +140,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- D273: the seed is the pair `(e , a)`; nothing here depends on its shape.
   obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {E A} (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A))
                   → IRObsCorrectF (Ana wf coalg)
-  obs-correct-Ana {F} wf {E} {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-Ana {F} wf {E} {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -155,8 +155,8 @@ module TwoCellC {FS : FrameSemantics} where
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
       }
     where
-      module TCR = TwoCellRun n l prog base s alloc cl n≤ nh span
-      module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
+      module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
+      module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
 
       -- Building a suspension RUNS NOTHING: the coalgebra is stored, not
       -- called, so neither side emits. (`Out` is where the events appear.)
@@ -197,7 +197,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- cell has all three residences, as a closure's environment does.
   ------------------------------------------------------------------------
   obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (in-ν wf)
-  obs-correct-in-ν {F} wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-in-ν {F} wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -212,8 +212,8 @@ module TwoCellC {FS : FrameSemantics} where
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
       }
     where
-      module TCR = TwoCellRun n l prog base s alloc cl n≤ nh span
-      module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
+      module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
+      module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
 
       -- Wrapping a layer RUNS NOTHING.
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (in-ν wf) x ⟫ k) ≡ []

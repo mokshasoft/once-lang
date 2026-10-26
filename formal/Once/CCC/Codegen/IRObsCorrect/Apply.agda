@@ -64,14 +64,14 @@ module ApplyC {FS : FrameSemantics} where
   obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
   -- A PAIR fits no register and is not `Unit`, so the two off-pointer input
   -- residences are refuted outright.
-  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k
-  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k
+  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k rs
+  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k rs
   obs-correct-apply {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
-    (in-loc pair-loc valid bf rdi) k =
+    (in-loc pair-loc valid bf rdi) k rs =
     go (PairValidWF.fst-cell d) (PairValidWF.snd-cell d)
     where
       d = decomposePairWF valid
-      module ASP = ApplySetupPres n prog base s alloc cl
+      module ASP = ApplySetupPres n prog base s alloc cl rs
 
       -- A CLOSURE is never inline (`InlineRep (A ⇛ B)` needs `FitsInRegI` or
       -- `≡ Unit`, both absurd), and D184 pins it to the HEAP — which is also
@@ -79,7 +79,7 @@ module ApplyC {FS : FrameSemantics} where
       -- by the witness's own `LocMatchesMode`.
       go : CellAt alloc (A IRTy′.⇛ B) (proj₁ x) pair-loc s
          → CellAt alloc A (proj₂ x) (sucLoc pair-loc) s
-         → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl k
+         → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
       go (cell-inline (rep-prim ()) _) _
       go (cell-inline (rep-unit () _) _) _
       go (cell-ptr {comp-loc = AtStack _ _} _ _ fv) _ =
@@ -117,7 +117,7 @@ module ApplyC {FS : FrameSemantics} where
 
           assemble : EnvAt alloc {E} env fst-loc s
                    → CellAt alloc A (proj₂ x) (sucLoc pair-loc) s
-                   → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl k
+                   → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
           assemble ea sc' = record
             { value-realized =
                 realized (17 + CalleeRun.steps crun) (CalleeRun.settle crun)
@@ -127,14 +127,14 @@ module ApplyC {FS : FrameSemantics} where
                          (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
                               , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
                                       (chain-left run17 (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)))
-                         (λ nc → CalleeRun.no-ret crun (nc′ nc))
+                         (λ p → CalleeRun.no-ret crun (trans res-eq p))
                          (λ nc → CalleeRun.no-link crun (nc′ nc))
                          (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
                          place
                          (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
                                      (ctrls-≤ʳ run17 (CalleeRun.run crun)))
                          (λ nc fr j bf → mem-pres-apply nc (AtStack fr j) bf) (λ nc hl bf → mem-pres-apply nc (AtDynamic hl) bf)
-                         (λ nc → trans (CalleeRun.frame-pres crun (nc′ nc) (falloc ASP.a16)
+                         (λ p → trans (CalleeRun.frame-pres crun (trans res-eq p) (falloc ASP.a16)
                                    (cong falloc call-eq))
                                 OB.cf-a16)
                          bf-mono-apply
@@ -195,9 +195,9 @@ module ApplyC {FS : FrameSemantics} where
                   feq
 
               crun : CalleeRun prog (flat-exec-instr instr-call-closure prog ASP.a16)
-                       (suc (fpc ASP.a16)) B (evalᴰ body (env , proj₂ x)) k
+                       (suc (fpc ASP.a16)) rs B (evalᴰ body (env , proj₂ x)) k
               crun = runner (flat-exec-instr instr-call-closure prog ASP.a16)
-                       (falloc ASP.a16) (env , proj₂ x) (suc (fpc ASP.a16)) k Heap
+                       (falloc ASP.a16) (env , proj₂ x) (suc (fpc ASP.a16)) k rs Heap
                        (trans (cong fpc call-eq) refl)
                        (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)
                        (trans (cong fret call-eq) refl)
@@ -208,7 +208,7 @@ module ApplyC {FS : FrameSemantics} where
                                         (env , proj₂ x) st)
                               (sym (cong floc call-eq)) callee-in)
 
-              run17 : FlatSteps prog 17 (entry-flat base s alloc cl)
+              run17 : FlatSteps prog 17 (entry-flat base s alloc cl rs)
                         (flat-exec-instr instr-call-closure prog ASP.a16)
               -- Every link lands on the setup's NAMED state (`step-at`): the
               -- step is one equation between names, not a k-step chain
@@ -233,7 +233,7 @@ module ApplyC {FS : FrameSemantics} where
                   (((OB.nh16 , span 16 _ refl) ∷ [])))))))))))))))))
 
               run : FlatSteps prog (17 + CalleeRun.steps crun)
-                      (entry-flat base s alloc cl) (CalleeRun.settle crun)
+                      (entry-flat base s alloc cl rs) (CalleeRun.settle crun)
               run = FlatSteps-++ run17 (CalleeRun.run crun)
 
               -- D189 (repair): the callee's obligations are stated at

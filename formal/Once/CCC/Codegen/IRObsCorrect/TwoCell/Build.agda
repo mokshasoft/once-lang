@@ -44,11 +44,11 @@ module TwoCellBuildC {FS : FrameSemantics} where
 
   module TwoCellBuild
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (two-cell-trace n l))
     where
-    open TwoCellRun n l prog base s alloc cl n≤ nh span
+    open TwoCellRun n l prog base s alloc cl rs n≤ nh span
 
     -- ── The frontier: the allocation hands out `next-heap-ref (falloc fs2)`
     -- and moves past it, so the record is BEFORE the frontier it leaves.

@@ -93,7 +93,7 @@ module CompareC {FS : FrameSemantics} where
 
   cmp-obs : ∀ (si : SigOpInfo (SpecTy.Int SpecTy.* SpecTy.Int) (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (op : CmpOp)
           → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
-  cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs =
     record
       { traces-agree   = sym (cong proj₁ ER)
       ; value-realized =
@@ -154,7 +154,7 @@ module CompareC {FS : FrameSemantics} where
 
       -- ── THE STATES. Two register-only steps, then the nine of the build.
       fs0 fs1 fs2 : FlatState
-      fs0 = entry-flat base s alloc cl
+      fs0 = entry-flat base s alloc cl rs
       fs1 = flat-exec-instr (instr-sigop si′)      prog fs0
       fs2 = flat-exec-instr (instr-reg-op out-nz) prog fs1
 

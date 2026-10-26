@@ -48,7 +48,7 @@ module TwoCellRunC {FS : FrameSemantics} where
 
   module TwoCellRun
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (two-cell-trace n l))
     where
@@ -60,13 +60,13 @@ module TwoCellRunC {FS : FrameSemantics} where
     -- D182: this clause's instance of the shared ten-step invariant — the
     -- same shape as `inl`'s, with the two middle rows swapped.
     module TSP = TenStepPres n (load-from-slot n) (instr-load-code-addr (ℓ o l))
-                             prog base s alloc cl
+                             prog base s alloc cl rs
 
     code-lbl : LabelId
     code-lbl = ℓ o l
 
     fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-    fs0  = entry-flat base s alloc cl
+    fs0  = entry-flat base s alloc cl rs
     fs1  = flat-exec-instr mov-to-output                  prog fs0
     fs2  = flat-exec-instr (store-at-slot cell0-stash)      prog fs1
     fs3  = flat-exec-instr (instr-alloc-heap 2)           prog fs2

@@ -70,20 +70,20 @@ module IterBodyC {FS : FrameSemantics} where
     nsB = ≤-trans (≤-reflexive I.ns) (≤-trans n≤₀ n≤n4)
 
     mrb : MachineRefinesObsF prog (3 + base) (suc (suc (suc (suc n)))) (suc (suc l)) body (e , a)
-            (floc σ) (falloc σ) (fclosure σ) r
+            (floc σ) (falloc σ) (fclosure σ) rs₀ r
     mrb = ihb (suc (suc (suc (suc n)))) (suc (suc l)) prog (3 + base) ss cr
               (span-b prog base span) (blocks-b prog bl) (labels-b prog base la)
-              I.mode (e , a) (floc σ) (falloc σ) (fclosure σ) nsB I.nh I.inp r
+              I.mode (e , a) (floc σ) (falloc σ) (fclosure σ) nsB I.nh I.inp r rs₀
 
     vb : ValueRealized prog (3 + base) (suc (suc (suc (suc n)))) (suc (suc l)) body (e , a)
-           (floc σ) (falloc σ) (fclosure σ) r
+           (floc σ) (falloc σ) (fclosure σ) rs₀ r
     vb = MachineRefinesObsF.value-realized mrb
 
     S0 : FlatState
     S0 = VR.settle vb
 
-    handB : σ ≡ entry-flat (3 + base) (floc σ) (falloc σ) (fclosure σ)
-    handB = handover-eq (3 + base) σ I.pc I.ret I.lnk
+    handB : σ ≡ entry-flat (3 + base) (floc σ) (falloc σ) (fclosure σ) rs₀
+    handB = handover-eq (3 + base) σ rs₀ I.pc I.ret I.lnk
 
     chainB : FlatSteps prog (VR.steps vb) σ S0
     chainB = subst (λ st → FlatSteps prog (VR.steps vb) st S0) (sym handB) (VR.run vb)
@@ -104,11 +104,11 @@ module IterBodyC {FS : FrameSemantics} where
     -- `next-slot` never moves at run time.
     ns0 : next-slot (falloc S0) ≡ next-slot alloc₀
     ns0 = trans (trans (cong (λ st → next-slot (falloc st)) (sym runB≡))
-                       (flat-run-keeps-next-slot (VR.steps vb) prog ss (3 + base) (floc σ) (falloc σ) (fclosure σ)))
+                       (flat-run-keeps-next-slot (VR.steps vb) prog ss (3 + base) (floc σ) (falloc σ) (fclosure σ) rs₀))
                 I.ns
       where
-        runB≡ : exec-flat (VR.steps vb) prog (entry-flat (3 + base) (floc σ) (falloc σ) (fclosure σ)) ≡ S0
-        runB≡ = trans (cong (λ m → exec-flat m prog (entry-flat (3 + base) (floc σ) (falloc σ) (fclosure σ)))
+        runB≡ : exec-flat (VR.steps vb) prog (entry-flat (3 + base) (floc σ) (falloc σ) (fclosure σ) rs₀) ≡ S0
+        runB≡ = trans (cong (λ m → exec-flat m prog (entry-flat (3 + base) (floc σ) (falloc σ) (fclosure σ) rs₀))
                             (sym (+-identityʳ (VR.steps vb))))
                       (exec-flat-steps (VR.run vb) 0)
 
@@ -123,9 +123,15 @@ module IterBodyC {FS : FrameSemantics} where
     bf0σ = frontier-monotone (record alloc₀ { next-slot = n }) (record (falloc σ) { next-slot = suc (suc (suc (suc n))) })
              (sym I.cf) n≤n4 (≤-trans hr-F I.hr)
 
+    -- D337: the frame and the return stack are restored when the round
+    -- RETURNED, so these two take its equation rather than `NotCut`.
+    cf0-of : ∀ {v r′} → ρ₁ ≡ returns (done v r′) → current-frame (falloc S0) ≡ FR Z
+    cf0-of q = trans (VR.frame-pres vb q) I.cf
+
+    ret0-of : ∀ {v r′} → ρ₁ ≡ returns (done v r′) → fret S0 ≡ rs₀
+    ret0-of q = VR.no-ret vb q
+
     module NC (nc : NotCut ρ₁) where
-      cf0 : current-frame (falloc S0) ≡ FR Z
-      cf0 = trans (VR.frame-pres vb nc) I.cf
 
       hr0 : next-heap-ref (falloc fsF) ≤ next-heap-ref (falloc S0)
       hr0 = ≤-trans I.hr (vr-heap-mono vb nc)
@@ -147,9 +153,6 @@ module IterBodyC {FS : FrameSemantics} where
       bf00 : ∀ (m : ℕ) (lc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) lc
            → BeforeFrontier (record (falloc S0) { next-slot = m }) lc
       bf00 m lc bf = VR.bf-mono vb nc m lc (I.bf0 m lc bf)
-
-      ret0 : fret S0 ≡ []
-      ret0 = VR.no-ret vb nc
 
       lnk0 : flink S0 ≡ nothing
       lnk0 = VR.no-link vb nc

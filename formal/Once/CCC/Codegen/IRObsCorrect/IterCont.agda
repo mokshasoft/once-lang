@@ -90,7 +90,7 @@ module IterContC {FS : FrameSemantics} where
     (memF0 : ∀ (loc : ValueLocation FS) → BeforeFrontier (falloc (Loop.Anchor.fsF Z)) loc
            → SMCore.MemOps.readLoc (floc S0) loc ≡ SMCore.MemOps.readLoc (floc (Loop.Anchor.fsF Z)) loc)
     (env0 : SMCore.MemOps.readLoc (floc S0) (AtStack (Loop.FR body n l base Z) (suc n)) ≡ just (Loop.fv body n l base Z))
-    (ret0 : fret S0 ≡ []) (lnk0 : flink S0 ≡ nothing)
+    (ret0 : fret S0 ≡ Loop.Anchor.rs₀ Z) (lnk0 : flink S0 ≡ nothing)
     (mem00 : ∀ (loc : ValueLocation FS) → BeforeFrontier (record (Loop.Anchor.alloc₀ Z) { next-slot = n }) loc
            → SMCore.MemOps.readLoc (floc S0) loc ≡ SMCore.MemOps.readLoc (Loop.Anchor.s₀ Z) loc)
     (bf00 : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record (Loop.Anchor.alloc₀ Z) { next-slot = m }) loc
