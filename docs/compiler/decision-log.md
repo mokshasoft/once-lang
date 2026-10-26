@@ -19430,3 +19430,68 @@ question; the plan had said to collapse every same-concept module onto the Spec)
 * Plan 0.122's goal — no internal language beside the Spec — is reached: every module that restated the
   Spec now uses the Spec's definition; what remains is compiler code in the compiler's namespaces.
 * Not a Spec change: nothing under `Once.Spec` moved or changed.
+
+## D337 — PLAN 0.122'S ROUTE: THE CHECKER AND THE ELABORATOR ARE PROVED AGAINST THE SPEC DIRECTLY (2026-10-22/23)
+
+**Follows** D333 (the internal language under `Once.Internal`, its collapse plan 0.122). **Decided** by the
+user: the route of plan 0.122 §5 on 2026-10-22 (route A of §5.1), step 2 "both, the meaning collapse first"
+on 2026-10-23 (after the measurement of §5.4).
+
+### Decision
+* **Types and core are the Spec's.** The compiler's types are `Spec.Type`'s `Ty m`; a polymorphic body is
+  typed at `Ty m` under its `KCtx m` (parameter `i` is `var i`), a use instantiates the closed schema by
+  `_⟨_⟩`; `rigid` is gone. The elaborator emits `Spec.Core.Syntax.Tm` typed by `Spec.Core.Typing`; the
+  internal core and its typing are deleted. Route B (an internal core re-indexed over `Ty m`) was rejected:
+  it rewrites nearly the same code and pays most of A again at the later switch.
+* **One meaning besides the IR's.** The compiler's graded copy of the Spec's meaning (`Internal.Graded`,
+  `GradedOps`, `Core.Meaning`, `Denotation.Meaning`) is deleted; the implementation (the IR's `evalᴰ`) is
+  related to the Spec's meaning directly (`SpecRun`, `MeaningBridgeS`, `TeleWalk`, `CoreBridge`).
+* **The checker is verified against `Spec.Surface.Typing`.** Its witness is a Spec derivation annotated with
+  usages (`Use`); sound by the witness, complete by `TypeCheck.Completeness`. The compiler's own judgment
+  (`⊢ᵢ`/`⊢ᶜ`/`⊢ᵈ`), its elaboration, `Realize`, and the identity shims between it and the Spec (`TyR`,
+  `TmR`, `uS`, the grade maps `qS`/`πS`/`φS`/`kS`, `opS`) are deleted.
+* How, where a choice was made on the way:
+  - coherence of two usage-annotated derivations of one term is ONE mutual induction (`CoherenceS`); the
+    cross-mode lemmas return the conversion (no route datatype);
+  - name clashes are refuted locally: the checker's view records its negative lookups (`View.InView`), so
+    no global distinctness premise;
+  - `RX` (the resolved expression) stays: beyond the identity it carries "a resolved name is not `main`".
+
+### Consequences
+* The theorem and its trust base are unchanged; the bridges shrink to the front end's two-step proofs.
+* The runtime compiles the checker's own elaborated term (`eE`), not a realization of a second derivation.
+
+## D338 — THE RESOLVER KEEPS EACH IMPORT; NO TRANSITIVE FFI RE-EXPORT (2026-10-24)
+
+**Follows** D337, D319 (an import contributes only its signatures). **Approved** by the user 2026-10-24,
+item (1) of plan 0.122's closing sequence, as a principled behaviour change.
+
+### Decision
+* `DSignature` has no owner. The resolver keeps each `DImport` and returns `Resolved` (the module, and the
+  signatures of the modules it imports, read from the module map under their canonical names), as the
+  Spec's `Imported`/`SignaturesOf` read them. Every reader after resolution takes `Resolved`; the CLI's
+  module map holds each imported module as written.
+* So a module sees the FFI of the modules IT imports, never of those they import: when B imports C, A can
+  no longer name C's FFI as `f@B`. The Spec never allowed it, `ModRel` already assumed it away, and no FFI
+  module in the repository imports another.
+
+### Consequences
+* Assembly of every test and example is unchanged; `ImportSpec` witnesses the rule.
+
+## D339 — THE COMPILER'S DECLARATIONS AND MODULES ARE THE SPEC'S; LAYER 5'S MAP (2026-10-24/25)
+
+**Follows** D337, D338. **Approved** by the user: item (2) of the closing sequence on 2026-10-24 (the
+prerequisite of plan 0.124, `once fmt`), and the layer-5 map on 2026-10-25.
+
+### Decision
+* `Parser.Module.Core` has no `Decl`/`Module`: the compiler's are `Once.Spec.Surface.Syntax`'s, and the parser
+  wraps parameters with the Spec grammar's `wrapLams`. `DEmb`, `ModRel` and `EmbOf` are deleted; the grammar
+  bridge relates a text to one module.
+* Layer 5 (delete `Once.Internal`): a module that restates the Spec is replaced by the Spec's definition
+  (the resolution relations' copies, `RawExpr`, the type and context aliases, `Polynomial`'s codes and `μS`);
+  compiler-only code moves to the compiler's namespaces. The four `Fin 0` uses of `extensionality` (the
+  `wk₀`/`↑` gap) are `Once.Type.Closed.sub0`, proved by induction on the type.
+* The front end's lexing, grammar and resolution relations are not a second statement of the Spec's: they
+  are the waypoints of its two-step proofs, so they move to `Once.Parser.Relation.*` and stop calling
+  themselves a specification. Fusing each two-step proof into one is possible and left open.
+* What remained was not a copy of the Spec at all; D336 records how it ended.

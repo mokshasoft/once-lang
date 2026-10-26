@@ -307,6 +307,9 @@ entry updates the rule it changes here, in the same commit.
 - **No implicit imports, no prelude**; generators are always in scope.
   `import I.X as M` / `import D.X as M`; qualified references `name@M`; no
   cyclic imports. (D027, D033)
+- **An import contributes its module's own signatures only**: a module sees
+  the FFI of the modules it imports, not of theirs (no transitive re-export).
+  (D338, D319)
 
 ## 9. Interpretations, signatures and SigOps
 

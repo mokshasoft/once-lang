@@ -180,7 +180,7 @@ decision-log entry updates the rule it changes here, in the same commit.
   code in the compiler's namespaces. The IR's semantics (`Once.IR.Semantics`:
   machine values, the evaluator's computations, events) are the
   implementation's, related to the Spec's meaning by proved bridges, not a
-  copy of it. (D336 ← D333)
+  copy of it. (D336, D337 ← D333)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering
