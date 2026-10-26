@@ -10,7 +10,7 @@
 -- declaration (an indentation of at least one) no line end is a token: a
 -- broken line continues (`mid`). Between declarations, at the indentation
 -- zero, comments and empty lines add only line ends (`trivial`), and each
--- declaration starts a line (`lead`). So a module's text lexes as its
+-- declaration starts a line (`starts`). So a module's text lexes as its
 -- declarations' tokens, each after line ends and followed by one (`DS`).
 ------------------------------------------------------------------------
 
@@ -335,9 +335,11 @@ private
             (trans (cong (_++ us) (trans (sym (++-identityʳ _)) (trans (sym (seen-mid sh₁)) e₁)))
               (++-assoc (seen σ) ts us)))))
 
-  _⨟_ : ∀ {Sh₁ Sh₂ σ σ′ σ″ ts us} → Step Sh₁ σ σ′ ts → Step Sh₂ σ′ σ″ us → Step Sh₂ σ σ″ (ts ++ us)
-  _⨟_ {σ = σ} {ts = ts} {us} (step-ok _ _ e₁) (step-ok g sh e₂) =
-    step-ok g sh (trans e₂ (trans (cong (_++ us) e₁) (++-assoc (seen σ) ts us)))
+
+-- | Steps in sequence.
+_⨟_ : ∀ {Sh₁ Sh₂ σ σ′ σ″ ts us} → Step Sh₁ σ σ′ ts → Step Sh₂ σ′ σ″ us → Step Sh₂ σ σ″ (ts ++ us)
+_⨟_ {σ = σ} {ts = ts} {us} (step-ok _ _ e₁) (step-ok g sh e₂) =
+  step-ok g sh (trans e₂ (trans (cong (_++ us) e₁) (++-assoc (seen σ) ts us)))
 
 -- | What lays out as nothing.
 data Silent : Doc → Set where
@@ -373,28 +375,28 @@ private
 
 -- | A document that starts with a token starts a line: the line end before
 -- it, if any, is a token.
-lead : ∀ d i f σ → Lead d → All Printable (toks d []) → Good (St.out σ) → TopSh σ
+starts : ∀ d i f σ → Lead d → All Printable (toks d []) → Good (St.out σ) → TopSh σ
      → Step MidSh σ (layout (suc i) f d σ) (toks d [])
-lead (tk t) i f (st [] c (just zero) []) lead-tk (p ∷ []) g t-fresh =
+starts (tk t) i f (st [] c (just zero) []) lead-tk (p ∷ []) g t-fresh =
   step-ok (g-∷ p ind-tok (g-1 tt)) m-tok refl
-lead (tk t) i f (st (lnl ∷ o) c (just zero) []) lead-tk (p ∷ []) g t-line =
+starts (tk t) i f (st (lnl ∷ o) c (just zero) []) lead-tk (p ∷ []) g t-line =
   step-ok (g-∷ p ind-tok (g-∷ tt nl-ind g)) m-tok
     (trans (++-identityʳ _) (sym (++-assoc (tokens (st (lnl ∷ o) c (just zero) [])) (TNewline ∷ []) (t ∷ []))))
-lead (a <> b) i f σ (lead-l la) ps g sh with split a b ps
-... | pa , pb with lead a i f σ la pa g sh
+starts (a <> b) i f σ (lead-l la) ps g sh with split a b ps
+... | pa , pb with starts a i f σ la pa g sh
 ...   | s@(step-ok g′ sh′ _) = subst (Step MidSh σ _) (sym (toks-++ a (toks b []))) (s ⨾ mid b i f _ pb g′ sh′)
-lead (a <> b) i f σ (lead-r sa lb) ps g sh =
+starts (a <> b) i f σ (lead-r sa lb) ps g sh =
   subst (Step MidSh σ (layout (suc i) f (a <> b) σ)) (sym (silent-toks a (toks b []) sa))
     (subst (λ σ₁ → Step MidSh σ (layout (suc i) f b σ₁) (toks b [])) (sym (silent a (suc i) f σ sa))
-      (lead b i f σ lb (proj₂ (split a b ps)) g sh))
-lead (nest n d) i f σ (lead-nest l) ps g sh = lead d (i + n) f σ l ps g sh
-lead (group d)  i true  σ (lead-group l) ps g sh = lead d i true σ l ps g sh
-lead (group d)  i false σ (lead-group l) ps g sh = lead d i _ σ l ps g sh
+      (starts b i f σ lb (proj₂ (split a b ps)) g sh))
+starts (nest n d) i f σ (lead-nest l) ps g sh = starts d (i + n) f σ l ps g sh
+starts (group d)  i true  σ (lead-group l) ps g sh = starts d i true σ l ps g sh
+starts (group d)  i false σ (lead-group l) ps g sh = starts d i _ σ l ps g sh
 
 -- | A declaration, `group (nest (suc n) d)` at the indentation zero.
 declaration : ∀ d n σ → Lead d → All Printable (toks d []) → Good (St.out σ) → TopSh σ
             → Step MidSh σ (layout 0 false (group (nest (suc n) d)) σ) (toks d [])
-declaration d n σ l ps g sh = lead d n _ σ l ps g sh
+declaration d n σ l ps g sh = starts d n _ σ l ps g sh
 
 private
   ends-line : ∀ {σ σ′} → MidSh σ → tokens σ′ ≡ tokens σ → pendingNL σ′ ≡ true → seen σ′ ≡ seen σ ++ TNewline ∷ []
