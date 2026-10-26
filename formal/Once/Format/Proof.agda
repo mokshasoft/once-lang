@@ -13,8 +13,10 @@
 --                     meaning is kept (Proof.Meaning).
 --   format-canonical  two texts without comments that parse as the same
 --                     module are formatted alike (Proof.Canon).
+--   idempotent        for a text without comments, formatting the output
+--                     gives the output (Proof.Idem).
 --
--- `roundtrip` and `format-denotes` take `DigitBound`: the primitive `isDigit`
+-- `roundtrip`, `format-denotes` and `idempotent` take `DigitBound`: the primitive `isDigit`
 -- accepts the decimal digits only (a fact about the tool that Agda's
 -- conversion cannot see; a float's fraction is read back from it).
 ------------------------------------------------------------------------
@@ -24,3 +26,4 @@ module Once.Format.Proof where
 open import Once.Format.Proof.RoundTrip using (roundtrip; format-parses)
 open import Once.Format.Proof.Meaning using (format-denotes)
 open import Once.Format.Proof.Canon using (format-canonical)
+open import Once.Format.Proof.Idem using (idempotent)
