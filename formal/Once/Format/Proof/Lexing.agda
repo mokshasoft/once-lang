@@ -650,43 +650,44 @@ private
   ind-run zero    xs = refl
   ind-run (suc n) xs = refl
 
-  -- What starts a line is not a blank.
-  tok-blank : ∀ t {cs} → Printable t → ¬ Next (chars (lt t) ++ cs) ' ' × ¬ Next (chars (lt t) ++ cs) '\t'
-  tok-blank (TWord s) (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl , wordNext {s = s} eq st refl
-  tok-blank (TInt (+ n)) p-int = intNext n refl , intNext n refl
-  tok-blank (TFloat i f l) (p-float _) = floatNext i f l refl , floatNext i f l refl
-  tok-blank (TString _) (p-sym ())
-  tok-blank TLParen _ = (λ ()) , (λ ())
-  tok-blank TRParen _ = (λ ()) , (λ ())
-  tok-blank TLBrace _ = (λ ()) , (λ ())
-  tok-blank TRBrace _ = (λ ()) , (λ ())
-  tok-blank TColon _ = (λ ()) , (λ ())
-  tok-blank TEquals _ = (λ ()) , (λ ())
-  tok-blank TArrow _ = (λ ()) , (λ ())
-  tok-blank TCaret1 _ = (λ ()) , (λ ())
-  tok-blank TCaret0 _ = (λ ()) , (λ ())
-  tok-blank TCaretW _ = (λ ()) , (λ ())
-  tok-blank TLambda _ = (λ ()) , (λ ())
-  tok-blank TComma _ = (λ ()) , (λ ())
-  tok-blank TSemicolon _ = (λ ()) , (λ ())
-  tok-blank TAt _ = (λ ()) , (λ ())
-  tok-blank TPipe _ = (λ ()) , (λ ())
-  tok-blank TDot _ = (λ ()) , (λ ())
-  tok-blank TPlus _ = (λ ()) , (λ ())
-  tok-blank TMinus _ = (λ ()) , (λ ())
-  tok-blank TStar _ = (λ ()) , (λ ())
-  tok-blank TSlash _ = (λ ()) , (λ ())
-  tok-blank TPercent _ = (λ ()) , (λ ())
-  tok-blank TAmpersand _ = (λ ()) , (λ ())
-  tok-blank TLt _ = (λ ()) , (λ ())
-  tok-blank TLe _ = (λ ()) , (λ ())
-  tok-blank TGt _ = (λ ()) , (λ ())
-  tok-blank TGe _ = (λ ()) , (λ ())
-  tok-blank TEqEq _ = (λ ()) , (λ ())
-  tok-blank TNeq _ = (λ ()) , (λ ())
-  tok-blank TBang _ = (λ ()) , (λ ())
-  tok-blank TNewline (p-sym ())
-  tok-blank TEOF (p-sym ())
+
+-- | What starts a line is not a blank.
+tok-blank : ∀ t {cs} → Printable t → ¬ Next (chars (lt t) ++ cs) ' ' × ¬ Next (chars (lt t) ++ cs) '\t'
+tok-blank (TWord s) (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl , wordNext {s = s} eq st refl
+tok-blank (TInt (+ n)) p-int = intNext n refl , intNext n refl
+tok-blank (TFloat i f l) (p-float _) = floatNext i f l refl , floatNext i f l refl
+tok-blank (TString _) (p-sym ())
+tok-blank TLParen _ = (λ ()) , (λ ())
+tok-blank TRParen _ = (λ ()) , (λ ())
+tok-blank TLBrace _ = (λ ()) , (λ ())
+tok-blank TRBrace _ = (λ ()) , (λ ())
+tok-blank TColon _ = (λ ()) , (λ ())
+tok-blank TEquals _ = (λ ()) , (λ ())
+tok-blank TArrow _ = (λ ()) , (λ ())
+tok-blank TCaret1 _ = (λ ()) , (λ ())
+tok-blank TCaret0 _ = (λ ()) , (λ ())
+tok-blank TCaretW _ = (λ ()) , (λ ())
+tok-blank TLambda _ = (λ ()) , (λ ())
+tok-blank TComma _ = (λ ()) , (λ ())
+tok-blank TSemicolon _ = (λ ()) , (λ ())
+tok-blank TAt _ = (λ ()) , (λ ())
+tok-blank TPipe _ = (λ ()) , (λ ())
+tok-blank TDot _ = (λ ()) , (λ ())
+tok-blank TPlus _ = (λ ()) , (λ ())
+tok-blank TMinus _ = (λ ()) , (λ ())
+tok-blank TStar _ = (λ ()) , (λ ())
+tok-blank TSlash _ = (λ ()) , (λ ())
+tok-blank TPercent _ = (λ ()) , (λ ())
+tok-blank TAmpersand _ = (λ ()) , (λ ())
+tok-blank TLt _ = (λ ()) , (λ ())
+tok-blank TLe _ = (λ ()) , (λ ())
+tok-blank TGt _ = (λ ()) , (λ ())
+tok-blank TGe _ = (λ ()) , (λ ())
+tok-blank TEqEq _ = (λ ()) , (λ ())
+tok-blank TNeq _ = (λ ()) , (λ ())
+tok-blank TBang _ = (λ ()) , (λ ())
+tok-blank TNewline (p-sym ())
+tok-blank TEOF (p-sym ())
 
 -- | Well-formed lexemes lex as their tokens.
 lexes : ∀ xs → WS xs → LexesChars (concatMap chars xs) (run false xs)

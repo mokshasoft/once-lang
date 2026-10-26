@@ -335,6 +335,7 @@ private
   ind-run zero    xs = refl
   ind-run (suc n) xs = refl
 
+
 @@TOKBLANK@@
 
 -- | Well-formed lexemes lex as their tokens.
@@ -367,12 +368,12 @@ lexes (lnl ∷ lind zero ∷ lt t ∷ zs) (ws-∷ _ nl-ind (ws-∷ _ ind-tok w))
 lexes (lnl ∷ lind zero ∷ lcm c ∷ zs) (ws-∷ _ nl-ind (ws-∷ _ ind-cm w)) with w
 ... | ws-∷ (lc b) cm-nl w′ = lex-nl (λ ()) (λ ()) (lexes (lcm c ∷ zs) w)
 '''
-tb=["  -- What starts a line is not a blank.",
-    "  tok-blank : ∀ t {cs} → Printable t → ¬ Next (chars (lt t) ++ cs) ' ' × ¬ Next (chars (lt t) ++ cs) '\\t'"]
+tb=["-- | What starts a line is not a blank.",
+    "tok-blank : ∀ t {cs} → Printable t → ¬ Next (chars (lt t) ++ cs) ' ' × ¬ Next (chars (lt t) ++ cs) '\\t'"]
 for pat,n in TOKS:
     tp=tpat(n,pat)
-    if n in ('TString','TNewline','TEOF'): tb.append(f'  tok-blank {tp} (p-sym ())'); continue
+    if n in ('TString','TNewline','TEOF'): tb.append(f'tok-blank {tp} (p-sym ())'); continue
     r=firstneg(n,' ',0)
-    tb.append(f'  tok-blank {tp} {ppat(n)} = {r} , {r}')
+    tb.append(f'tok-blank {tp} {ppat(n)} = {r} , {r}')
 TAIL=TAIL.replace("@@TOKBLANK@@","\n".join(tb))
 open(OUT,'a').write(TAIL)
