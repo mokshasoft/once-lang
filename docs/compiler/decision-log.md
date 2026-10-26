@@ -19521,3 +19521,24 @@ generated code, the user chose (2) as the principled one.
   and the modules only they need; the generated `SpecWitness.hs` (242k lines) is gone.
 * The theorem and the trust base are unchanged; the compiled output is byte-identical.
 
+## D341 — ONE LAYOUT, NO OPTIONS: THE STYLE OF `once fmt` (2026-10-26)
+
+**Follows** plan 0.124. **Delegated** by the user 2026-10-26: "All detailed decisions about line width etc you
+can do yourself and make sensible defaults. It should not be configurable, only constants in code. Not any
+user facing configs."
+
+### Decision
+* No configuration of any kind: the style is constants in `Once.Format.Doc` (`width = 100`, `indent = 2`). A
+  style change is a code change and one commit reformatting the tree.
+* `once fmt --check` fails unless the file is exactly what `fmt` writes: LF line ends, one trailing newline,
+  no tab, no trailing blank, no line over 100 columns outside comments.
+* Canonical spellings, each parsing to the same module: a definition whose body starts with lambdas takes
+  parameters (`f x y = e`); `compose f g` is `f . g`; integers in decimal; floats as written; parentheses only
+  where the grammar needs them, and around a `Mu`/`Nu` functor other than `Id`; a lambda, `let` or
+  `destruct` parenthesized unless it is a whole expression.
+* Layout: a group is flat when it fits; a `let` chain and a left-nested chain of one operator (or `.`) are one
+  group each, broken at each `in`/operator; blank lines only between declarations, at most one.
+* Comments stay in order with their text: on their own line before a declaration, in place inside one, at
+  the end of their line after code. They are anchored to word and literal tokens, the sequence every
+  canonical spelling keeps.
+

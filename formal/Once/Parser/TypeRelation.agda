@@ -13,9 +13,7 @@
 --
 -- Kept in the `Once.Parser.*` hierarchy (not `Once.Grammar.*`) so the
 -- parser function itself can use these relations in its return type —
--- the "Dec-valued parser" design for plan 0.3 task #40. Downstream
--- grammar-side proofs (`Once.Grammar.ParserRelation` / `RelRoundtrip`
--- / `Roundtrip`) re-export from this module.
+-- the "Dec-valued parser" design for plan 0.3 task #40.
 ------------------------------------------------------------------------
 
 module Once.Parser.TypeRelation where
@@ -78,8 +76,7 @@ NotCont (TCaretW ∷ _) = Data.Empty.⊥ where open import Data.Empty
 NotCont (_ ∷ _) = Data.Unit.⊤ where open import Data.Unit
 
 ------------------------------------------------------------------------
--- Token form of a quantity annotation. Must match `quantityToken` in
--- `Once.Grammar.Printer` for the round-trip theorem to hold.
+-- Token form of a quantity annotation.
 ------------------------------------------------------------------------
 
 quantityTokenOf : Quantity → Token

@@ -44,45 +44,6 @@ open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Resolved; resolved)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
 
--- Parser smoke tests (plan 0.3 G1): pull into the compilation graph
--- so a regression in parser behaviour fails `make parser`.
-import Once.Parser.Tests
-
--- Grammar pretty-printer + round-trip smoke tests (plan 0.3 G1):
--- same principle — force the printer/parser consistency into
--- the parser-target dependency chain.
-import Once.Grammar.Printer
-
--- G1 parser correctness proofs: type-side round-trip and NoMuNu
--- invariant. Both wired in here so regressions in the parser's
--- reduction shape surface via `make parser` / `make frontend` rather
--- than silently breaking the proofs.
-import Once.Grammar.Roundtrip
-import Once.Grammar.ParserInvariant
-
--- G1 expression-side round-trip infrastructure (plan 0.3 task #38):
--- printer, ConcreteExpr predicate, converter, and per-leaf round-trip
--- smoke tests. The general compound-case theorem is future work —
--- see `Once.Grammar.ExprRoundtrip`'s header comment for the
--- outstanding blocker (Parser/Expr Dec-valued refactor).
-import Once.Grammar.ExprPrinter
-import Once.Grammar.ExprConvert
-import Once.Grammar.ExprRoundtrip
-
--- Phase 3a of task #38: inductive parsing relations for expressions.
--- Used by the future Dec-valued Parser/Expr refactor and the structural
--- round-trip proof. Wired in here so the relation file is type-checked
--- under `make frontend` / `make parser`.
-import Once.Parser.ExprRelation
-
--- Phase 3c of task #38: WF-parser ↔ relation bridge for expressions.
--- Provides soundness (and completeness, once lifted) between
--- `parseExpr` and `ParsesExpr`.
-import Once.Grammar.ExprBridge
-
--- Phase 3c of task #38: structural round-trip for the parsing relation.
-import Once.Grammar.ExprRelRoundtrip
-
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function

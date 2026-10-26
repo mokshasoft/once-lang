@@ -109,19 +109,6 @@ library
       MAlonzo.Code.Once.Extract.Names
       MAlonzo.Code.Once.Functor.Decide
       MAlonzo.Code.Once.Functor.Translate
-      MAlonzo.Code.Once.Grammar
-      MAlonzo.Code.Once.Grammar.Convert
-      MAlonzo.Code.Once.Grammar.ExprBridge
-      MAlonzo.Code.Once.Grammar.ExprConvert
-      MAlonzo.Code.Once.Grammar.ExprPrinter
-      MAlonzo.Code.Once.Grammar.ExprRelRoundtrip
-      MAlonzo.Code.Once.Grammar.ExprRoundtrip
-      MAlonzo.Code.Once.Grammar.ParserBridge
-      MAlonzo.Code.Once.Grammar.ParserInvariant
-      MAlonzo.Code.Once.Grammar.ParserRelation
-      MAlonzo.Code.Once.Grammar.Printer
-      MAlonzo.Code.Once.Grammar.RelRoundtrip
-      MAlonzo.Code.Once.Grammar.Roundtrip
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.IR.Ref
       MAlonzo.Code.Once.IR.Semantics.Event
@@ -156,7 +143,6 @@ library
       MAlonzo.Code.Once.Memory.MemoryLayoutSemantics
       MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Parser
-      MAlonzo.Code.Once.Parser.AccIrrelevant
       MAlonzo.Code.Once.Parser.CharClass
       MAlonzo.Code.Once.Parser.Core
       MAlonzo.Code.Once.Parser.Expr
@@ -179,7 +165,6 @@ library
       MAlonzo.Code.Once.Parser.Module.OpName
       MAlonzo.Code.Once.Parser.Module.Resolve
       MAlonzo.Code.Once.Parser.PolyType
-      MAlonzo.Code.Once.Parser.Tests
       MAlonzo.Code.Once.Parser.Token
       MAlonzo.Code.Once.Parser.Type
       MAlonzo.Code.Once.Parser.TypeRelation

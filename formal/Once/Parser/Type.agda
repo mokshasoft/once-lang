@@ -699,9 +699,8 @@ parseFunctorSumTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷
 --
 -- `parseType : Parser Type` matches the old `Parser Type` shape.
 -- Strips the Σ-bound. Callers in `Once.Parser.Expr`, `Once.Parser.Module`,
--- and `Once.Parser.Tests` use this. Downstream PROOFS
--- (`Once.Grammar.Roundtrip`, `Once.Grammar.ParserInvariant`) thread
--- the Acc explicitly and use the Σ-return directly.
+-- and `Once.Parser.Tests` use this. Proofs thread the Acc explicitly
+-- and use the Σ-return directly.
 ------------------------------------------------------------------------
 
 -- | Strip the derivation from a Dec-valued parser result, recovering
