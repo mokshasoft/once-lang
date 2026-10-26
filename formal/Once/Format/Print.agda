@@ -590,24 +590,22 @@ private
   spaced []       = pure′ empty
   spaced (x ∷ xs) = ␣ ⊕ᵈ word x ⊕ᵈ spaced xs
 
+-- A declaration's text.
+pbody : Decl → P Doc
+pbody (DImport (mkImport p nothing))  = word "import" ⊕ᵈ ␣ ⊕ᵈ path p
+pbody (DImport (mkImport p (just a))) = word "import" ⊕ᵈ ␣ ⊕ᵈ path p ⊕ᵈ ␣ ⊕ᵈ word "as" ⊕ᵈ ␣ ⊕ᵈ word a
+pbody (DTypeAlias x ps A) =
+  word "type" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ spaced ps ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A
+pbody (DSignature x A) =
+  word "signature" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ ␣ ⊕ᵈ t S.TColon ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A
+pbody (DTypeSig x A) = name x ⊕ᵈ ␣ ⊕ᵈ t S.TColon ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A
+pbody (DFunDef x e) =
+  name x ⊕ᵈ spaced (proj₁ (lams e)) ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pex 0 true (proj₂ (lams e))
+
 -- A declaration; every line it breaks is indented (an unindented line would
 -- start the next declaration).
 pdecl : Decl → P Doc
-pdecl (DImport (mkImport p nothing))  =
-  (word "import" ⊕ᵈ ␣ ⊕ᵈ path p) >>=′ λ d → pure′ (group (nest indent d))
-pdecl (DImport (mkImport p (just a))) =
-  (word "import" ⊕ᵈ ␣ ⊕ᵈ path p ⊕ᵈ ␣ ⊕ᵈ word "as" ⊕ᵈ ␣ ⊕ᵈ word a) >>=′ λ d → pure′ (group (nest indent d))
-pdecl (DTypeAlias x ps A) =
-  (word "type" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ spaced ps ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A)
-    >>=′ λ d → pure′ (group (nest indent d))
-pdecl (DSignature x A) =
-  (word "signature" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ ␣ ⊕ᵈ t S.TColon ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A)
-    >>=′ λ d → pure′ (group (nest indent d))
-pdecl (DTypeSig x A) =
-  (name x ⊕ᵈ ␣ ⊕ᵈ t S.TColon ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A) >>=′ λ d → pure′ (group (nest indent d))
-pdecl (DFunDef x e) =
-  (name x ⊕ᵈ spaced (proj₁ (lams e)) ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pex 0 true (proj₂ (lams e)))
-    >>=′ λ d → pure′ (group (nest indent d))
+pdecl d = pbody d >>=′ λ x → pure′ (group (nest indent x))
 
 -- No blank line between a type signature and its definition, or between two
 -- imports; one between any other two declarations (D341).
