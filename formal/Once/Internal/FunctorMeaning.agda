@@ -20,7 +20,8 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Once.Spec.Type using (var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; νS)
+open import Once.Internal.Polynomial using (νS)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; μS)
 
 ------------------------------------------------------------------------
 -- Base Type Interpretation

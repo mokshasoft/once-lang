@@ -80,7 +80,7 @@ BR (μ _)   _ _ = ⊤
 BR (ν _ _) _ _ = ⊤
 
 LayerR : ∀ (F : Fun 0) {X Y : Set} → (X → Y → Set)
-       → SPoly.⟦ SD.code (F ⟨ σ ⟩F) ⟧SF X → LPoly.⟦ translateF Carrier Carrier F ⟧SF Y → Set
+       → SPoly.⟦ SD.code (F ⟨ σ ⟩F) ⟧SF X → SPoly.⟦ translateF Carrier Carrier F ⟧SF Y → Set
 LayerR (K A)   R x y = BR A x y
 LayerR Id      R x y = R x y
 LayerR (F ⊕ G) R (inj₁ x) (inj₁ y) = LayerR F R x y
@@ -89,8 +89,8 @@ LayerR (F ⊕ G) R (inj₁ _) (inj₂ _) = ⊥
 LayerR (F ⊕ G) R (inj₂ _) (inj₁ _) = ⊥
 LayerR (F ⊗ G) R (x , x′) (y , y′) = LayerR F R x y × LayerR G R x′ y′
 
-data μR (F : Fun 0) : SPoly.μS (SD.code (F ⟨ σ ⟩F)) → LPoly.μS (translateF Carrier Carrier F) → Set where
-  inR : ∀ {x y} → LayerR F (μR F) x y → μR F (SPoly.inS x) LPoly.⟨ y ⟩
+data μR (F : Fun 0) : SPoly.μS (SD.code (F ⟨ σ ⟩F)) → SPoly.μS (translateF Carrier Carrier F) → Set where
+  inR : ∀ {x y} → LayerR F (μR F) x y → μR F (SPoly.inS x) (SPoly.inS y)
 
 ------------------------------------------------------------------------
 -- Codata: the Spec's streams against the IR's (whose layers are `T∞` runs).
@@ -302,7 +302,7 @@ module _ {X Y : Set} {R : X → Y → Set} {D : Y → Y → Set} where
 -- to the twin is a twin too.
 module _ {F : Fun 0} where
   private
-    H : LPoly.SFunctor
+    H : SPoly.SFunctor
     H = translateF Carrier Carrier F
     Lp = LayerR F (_∼ᵖᵈ_ {F})
     La = LayerR F (_∼ᵈ_ {F})

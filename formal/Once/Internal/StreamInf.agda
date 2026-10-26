@@ -26,7 +26,7 @@ open import Once.Internal.Iterative using (T∞; fmap∞)
 open T∞ using (force)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using (⟦_⟧F; coerce-ν-in)
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Internal.FunctorMeaning using (translateF)
 
 record νᴵ (F : SFunctor) : Set where

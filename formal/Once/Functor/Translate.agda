@@ -7,7 +7,7 @@
 --
 -- This module provides the bridge between:
 --   - (Once.Spec.Type.Fun 0) (K takes Type)
---   - Once.Internal.Polynomial.SFunctor (K takes Set)
+--   - Once.Spec.Polynomial.SFunctor (K takes Set)
 --
 -- The translation uses a base type interpretation that handles only
 -- base types (Unit, Int, etc.), avoiding dependency on ⟦μ⟧.
@@ -33,6 +33,7 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P�
 open import Once.Type.Poly
 open import Once.Type
 open import Once.Internal.Polynomial
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; μS; ⟦_⟧SF)
 open import Once.Semantics.Functor
 open import Once.Type.Concrete
 open import Once.Spec.Type using (Base; WFFun; b-Unit; wf-⊕; ∅ₖ)

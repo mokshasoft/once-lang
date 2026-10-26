@@ -37,7 +37,8 @@ open import Once.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
 open import Once.Internal.FunctorMeaning using (⟦_,_⟧-base; translateF)
-open import Once.Internal.Polynomial using (SK; _S⊕_; _S⊗_; μS; νS)
+open import Once.Internal.Polynomial using (νS)
+open import Once.Spec.Polynomial using (SK; _S⊕_; _S⊗_; μS)
 open import Once.Internal.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F)
 
 ------------------------------------------------------------------------

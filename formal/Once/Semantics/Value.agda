@@ -100,6 +100,7 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Polynomial
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; μS; ⟦_⟧SF)
 open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)
 open Once.Internal.Polynomial.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
@@ -479,7 +480,7 @@ sem-Out-In wf x = coerce-μ-round-trip wf _ x
 -- OCP-0003: Proven using coerce-μ⁻¹-round-trip.
 --
 sem-In-Out : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦μ⟧ F) → sem-In F (sem-Out wf x) ≡ x
-sem-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf _ y)
+sem-In-Out wf (inS y) = cong inS (coerce-μ⁻¹-round-trip wf _ y)
 
 ------------------------------------------------------------------------
 -- Fmap-Coercion Coherence for μ (OCP-0003)
@@ -522,7 +523,7 @@ fmap-coerce-μ-coherence′ (wf-⊗ wfF wfG) f (x , y) = cong₂ _,_ (fmap-coerc
 --
 -- Proof:
 --   sem-cata wf alg (sem-In F x)
---   = cataS (alg ∘ coerce-μ-out wf) ⟨ coerce-μ-in F x ⟩
+--   = cataS (alg ∘ coerce-μ-out wf) (inS (coerce-μ-in F x))
 --   = (alg ∘ coerce-μ-out wf) (sfmapCata (translateF F) ... (coerce-μ-in F x))
 --   By cataS-computation and coherence properties.
 --
@@ -531,7 +532,7 @@ sem-cata-compute : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → ∀ {A : Set} (
 sem-cata-compute {F} wf {A} alg x =
   let TF = translateF IntRep FloatRep F
       alg′ = λ y → alg (coerce-μ-out wf A y)
-      step1 : cataS {TF} alg′ ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩ ≡ alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
+      step1 : cataS {TF} alg′ (inS (coerce-μ-in F (⟦μ⟧ F) x)) ≡ alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
       step1 = cataS-computation TF alg′ (coerce-μ-in F (⟦μ⟧ F) x)
       step2 : alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
             ≡ alg (coerce-μ-out wf A (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x)))

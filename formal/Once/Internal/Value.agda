@@ -34,6 +34,7 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Polynomial
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; ⟦_⟧SF)
 open Once.Internal.Polynomial.νS using (unfoldS)
 
 -- | Semantic interpretation of μ-type (initial algebra)
@@ -284,16 +285,16 @@ coerce-μ-out (wf-⊗ wfF wfG) X (x , y) = (coerce-μ-out wfF X x , coerce-μ-ou
 ------------------------------------------------------------------------
 -- μ-type Operations (OCP-0003: Defined via Once.Semantics.Functor)
 --
--- These use Semantics.Functor's ⟨_⟩, outS, and cataS with structural
+-- These use Semantics.Functor's inS, outS, and cataS with structural
 -- coercions to bridge between our ⟦_⟧F and its ⟦_⟧SF.
 ------------------------------------------------------------------------
 
 -- | In: F(μF) → μF (algebra)
 --
--- OCP-0003: Defined via Semantics.Functor's ⟨_⟩ constructor with coercion.
+-- OCP-0003: Defined via Semantics.Functor's inS constructor with coercion.
 --
 sem-In : ∀ {m} (F : Fun m) → ⟦ F ⟧F (⟦μ⟧ F) → ⟦μ⟧ F
-sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
+sem-In F x = (inS (coerce-μ-in F (⟦μ⟧ F) x))
 
 -- | Out: μF → F(μF) (destructor, inverse of In)
 --

@@ -170,7 +170,7 @@ module _ {π : Purity} {Δ : KCtx 0} {F : Fun 0} {A : Type} (wfF : WFFun Δ F)
     alg : SPoly.⟦ G ⟧SF ⟦ A ⟧ᵛ → M π ⟦ A ⟧ᵛ
     alg l = alg₁ (SD.fromL σ F A l)
 
-    alg′ : LPoly.⟦ translateF Carrier Carrier F ⟧SF (T∞ ⟦ A ⟧ᴰ) → T∞ ⟦ A ⟧ᴰ
+    alg′ : SPoly.⟦ translateF Carrier Carrier F ⟧SF (T∞ ⟦ A ⟧ᴰ) → T∞ ⟦ A ⟧ᴰ
     alg′ x = cata-ev-algᴰ-D {F = F} {A = A} wfF alg₂ (coerce-μ-out wfF (T∞ ⟦ A ⟧ᴰ) x)
 
   fold-R  : ∀ {a b} → μR F a b → RelGM π A (SD.foldM π G alg a) (LPoly.cataS alg′ b)
@@ -226,11 +226,11 @@ module _ (F : Fun 0) {X Y : Set} {R : X → Y → Set} where
   private
     G : SPoly.SFunctor
     G = SD.code (F ⟨ σ ⟩F)
-    H : LPoly.SFunctor
+    H : SPoly.SFunctor
     H = translateF Carrier Carrier F
 
   -- A pure Spec unfold: its layer is there at once.
-  module _ {c : X → SPoly.⟦ G ⟧SF X} {c₂ : Y → T∞ (LPoly.⟦ H ⟧SF Y)}
+  module _ {c : X → SPoly.⟦ G ⟧SF X} {c₂ : Y → T∞ (SPoly.⟦ H ⟧SF Y)}
            (cr : ∀ {x y} → R x y → RunR (LayerR F R) (SE.return∞ (c x)) (c₂ y)) where
     anaP-∼    : ∀ {a b} → R a b → SE.anaP G c a ∼ᵖᵈ anaᴵ H c₂ b
     anaRunP   : ∀ {l m} → RunR (LayerR F R) (SE.return∞ l) m
@@ -250,7 +250,7 @@ module _ (F : Fun 0) {X Y : Set} {R : X → Y → Set} where
     mapP-∼ (F₁ ⊗ F₂) {_ , _} {_ , _} (r₁ , r₂) = mapP-∼ F₁ r₁ , mapP-∼ F₂ r₂
 
   -- An `act` Spec unfold: its layer is a finite block, embedded.
-  module _ {c : X → SE.T (SPoly.⟦ G ⟧SF X)} {c₂ : Y → T∞ (LPoly.⟦ H ⟧SF Y)}
+  module _ {c : X → SE.T (SPoly.⟦ G ⟧SF X)} {c₂ : Y → T∞ (SPoly.⟦ H ⟧SF Y)}
            (cr : ∀ {x y} → R x y → RunR (LayerR F R) (SE.embed (c x)) (c₂ y)) where
     anaA-∼    : ∀ {a b} → R a b → SE.anaA G c a ∼ᵈ anaᴵ H c₂ b
     anaRunA   : ∀ t {m} → RunR (LayerR F R) (SE.embed t) m

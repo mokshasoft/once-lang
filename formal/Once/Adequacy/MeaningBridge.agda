@@ -128,7 +128,7 @@ open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-fun
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Internal.Polynomial using (⟦_⟧SF)
+open import Once.Spec.Polynomial using (⟦_⟧SF)
 open import Once.SigOp.Info using (semP; int-prim; mk-info')
 open import Once.Internal.Trace using (FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-sem-eff)

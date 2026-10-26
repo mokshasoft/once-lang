@@ -41,7 +41,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
-open import Once.Internal.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
+open import Once.Internal.Polynomial using (cataS)
+open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; ⟦_⟧SF)
 open import Once.Internal.Trace using (fmapT)
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)

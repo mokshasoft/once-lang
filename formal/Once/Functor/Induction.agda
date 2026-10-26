@@ -5,7 +5,7 @@
 -- Once.Functor.Induction — a structural induction principle for the
 -- strictly-positive initial algebra `μS F`.
 --
--- `μS F` is a plain inductive type (`⟨_⟩ : ⟦ F ⟧SF (μS F) → μS F`), but
+-- `μS F` is a plain inductive type (`inS : ⟦ F ⟧SF (μS F) → μS F`), but
 -- to reason about it we need to lift a predicate over the polynomial
 -- functor's *recursive positions* and recurse there. `All-SF F P z`
 -- says `P` holds at every `SId` (recursive) position of one functor
@@ -26,7 +26,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 
 open import Once.Internal.Polynomial
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; μS; ⟦_⟧SF)
 
 ------------------------------------------------------------------------
 -- Predicate lifting over one polynomial-functor layer.
@@ -46,15 +46,15 @@ All-SF (F S⊗ G) P (x , y)  = All-SF F P x × All-SF G P y
 ------------------------------------------------------------------------
 -- Structural induction on `μS F`.
 --
--- To prove `P` for every `x : μS F`, it suffices to prove `P ⟨ y ⟩`
+-- To prove `P` for every `x : μS F`, it suffices to prove `P (inS y)`
 -- from the inductive hypotheses `All-SF F P y` (i.e. `P` at each
 -- recursive child of the layer `y`).
 ------------------------------------------------------------------------
 
 μS-ind : ∀ {F} (P : μS F → Set)
-       → (∀ (y : ⟦ F ⟧SF (μS F)) → All-SF F P y → P ⟨ y ⟩)
+       → (∀ (y : ⟦ F ⟧SF (μS F)) → All-SF F P y → P (inS y))
        → ∀ x → P x
-μS-ind {F} P step ⟨ y ⟩ = step y (gather F y)
+μS-ind {F} P step (inS y) = step y (gather F y)
   where
     -- Walk the functor structure, discharging each recursive position
     -- by the (structurally smaller) recursive call to `μS-ind`.

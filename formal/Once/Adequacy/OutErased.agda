@@ -43,7 +43,7 @@ open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
 import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
-open import Once.Internal.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Machine using (tF-coh; base-coh; coerce-ν-out)
 open import Data.Product using (Σ-syntax; _×_)
 open import Once.Internal.Iterative using (T∞; fmap∞)

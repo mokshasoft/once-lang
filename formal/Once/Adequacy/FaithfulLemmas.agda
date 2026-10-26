@@ -47,7 +47,7 @@ open import Once.Adequacy.CataErased fmt ρ using (cata-erased-rel; pairᴰ-subs
 open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘; liftFn-pair; liftFn-fst; liftFn-snd)
 open import Once.Adequacy.AnaErased fmt ρ using (VE0ᴰ; coerce-νin-erase-D)
 open import Once.Semantics.Machine using (coerce-ν-in; tF-coh; ⟦_⟧F)
-open import Once.Internal.Polynomial using (⟦_⟧SF; SFunctor)
+open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.Internal.StreamInf using (νᴵ; anaᴵ; anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
 open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-*Many)

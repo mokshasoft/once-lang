@@ -22,7 +22,8 @@ open import Once.Spec.Type
   using (Ty; Fun; Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Type.Core using (wk₀; wk₀F)
 open import Once.Internal.FunctorMeaning using (⟦_,_⟧-base; translateF; μ-sem; ν-sem)
-open import Once.Internal.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS; νS)
+open import Once.Internal.Polynomial using (νS)
+open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS)
 
 ------------------------------------------------------------------------
 -- Base values and functor codes

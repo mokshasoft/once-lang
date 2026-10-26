@@ -22,7 +22,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Once.Spec.Type using (Fun)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Internal.Polynomial
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; νS; unfoldS; anaS; cataS)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; μS; ⟦_⟧SF)
+open import Once.Internal.Polynomial using (νS; unfoldS; anaS; cataS)
 open import Once.Semantics.Functor using (cataS-In-id)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq; unfoldS-∼)
@@ -45,14 +46,14 @@ sem-cata-In-id : ∀ {F : Fun 0} → (wf : WFFun ∅ₖ F) → (x : ⟦μ⟧ F) 
 sem-cata-In-id {F} wf x =
   let TF = translateF IntRep FloatRep F
       alg′ : ⟦ TF ⟧SF (μS TF) → μS TF
-      alg′ y = ⟨ coerce-μ-in F (⟦μ⟧ F) (coerce-μ-out wf (⟦μ⟧ F) y) ⟩
-      alg′-eq : ∀ y → alg′ y ≡ ⟨ y ⟩
-      alg′-eq y = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf (⟦μ⟧ F) y)
-      alg′≡In : alg′ ≡ ⟨_⟩
+      alg′ y = (inS (coerce-μ-in F (⟦μ⟧ F) (coerce-μ-out wf (⟦μ⟧ F) y)))
+      alg′-eq : ∀ y → alg′ y ≡ (inS y)
+      alg′-eq y = cong inS (coerce-μ⁻¹-round-trip wf (⟦μ⟧ F) y)
+      alg′≡In : alg′ ≡ inS
       alg′≡In = funext alg′-eq
-      step1 : cataS {TF} alg′ x ≡ cataS ⟨_⟩ x
+      step1 : cataS {TF} alg′ x ≡ cataS inS x
       step1 = cong (λ f → cataS f x) alg′≡In
-      step2 : cataS {TF} ⟨_⟩ x ≡ x
+      step2 : cataS {TF} inS x ≡ x
       step2 = cataS-In-id x
   in trans step1 step2
 

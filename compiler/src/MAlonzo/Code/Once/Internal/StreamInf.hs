@@ -21,9 +21,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Internal.FunctorMeaning
 import qualified MAlonzo.Code.Once.Internal.Iterative
-import qualified MAlonzo.Code.Once.Internal.Polynomial
 import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Internal.Value
+import qualified MAlonzo.Code.Once.Spec.Polynomial
 import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Internal.StreamInf._.coerce-ν-in
@@ -49,7 +49,7 @@ d_force'7477'_20 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.StreamInf.in-νᴵ
 d_in'45'ν'7477'_26 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   AgdaAny -> T_ν'7477'_14
 d_in'45'ν'7477'_26 ~v0 v1 = du_in'45'ν'7477'_26 v1
 du_in'45'ν'7477'_26 :: AgdaAny -> T_ν'7477'_14
@@ -63,13 +63,13 @@ du_in'45'ν'7477'_26 v0
             (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe v0))))
 -- Once.Internal.StreamInf.anaᴵ
 d_ana'7477'_34 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny -> T_ν'7477'_14
 d_ana'7477'_34 v0 ~v1 v2 v3 = du_ana'7477'_34 v0 v2 v3
 du_ana'7477'_34 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny -> T_ν'7477'_14
 du_ana'7477'_34 v0 v1 v2
@@ -77,14 +77,14 @@ du_ana'7477'_34 v0 v1 v2
       C_constructor_22 (coe du_anaRun_40 (coe v0) (coe v1) (coe v1 v2))
 -- Once.Internal.StreamInf.anaRun
 d_anaRun_40 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
   MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 d_anaRun_40 v0 ~v1 v2 v3 = du_anaRun_40 v0 v2 v3
 du_anaRun_40 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58 ->
   MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
@@ -96,14 +96,14 @@ du_anaRun_40 v0 v1 v2
          (coe MAlonzo.Code.Once.Internal.Iterative.d_force_64 (coe v2)))
 -- Once.Internal.StreamInf.anaBlock
 d_anaBlock_46 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
   MAlonzo.Code.Once.Internal.Trace.T_T_110
 d_anaBlock_46 v0 ~v1 v2 v3 = du_anaBlock_46 v0 v2 v3
 du_anaBlock_46 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   MAlonzo.Code.Once.Internal.Trace.T_T_110 ->
   MAlonzo.Code.Once.Internal.Trace.T_T_110
@@ -132,23 +132,23 @@ du_anaBlock_46 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.StreamInf.mapAnaᴵ
 d_mapAna'7477'_54 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny -> AgdaAny
 d_mapAna'7477'_54 v0 v1 ~v2 v3 v4 = du_mapAna'7477'_54 v0 v1 v3 v4
 du_mapAna'7477'_54 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58) ->
   AgdaAny -> AgdaAny
 du_mapAna'7477'_54 v0 v1 v2 v3
   = case coe v1 of
-      MAlonzo.Code.Once.Internal.Polynomial.C_SK_8 -> coe v3
-      MAlonzo.Code.Once.Internal.Polynomial.C_SId_10
+      MAlonzo.Code.Once.Spec.Polynomial.C_SK_8 -> coe v3
+      MAlonzo.Code.Once.Spec.Polynomial.C_SId_10
         -> coe du_ana'7477'_34 (coe v0) (coe v2) (coe v3)
-      MAlonzo.Code.Once.Internal.Polynomial.C__S'8853'__12 v4 v5
+      MAlonzo.Code.Once.Spec.Polynomial.C__S'8853'__12 v4 v5
         -> case coe v3 of
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v6
                -> coe
@@ -159,7 +159,7 @@ du_mapAna'7477'_54 v0 v1 v2 v3
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
                     (coe du_mapAna'7477'_54 (coe v0) (coe v5) (coe v2) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Internal.Polynomial.C__S'8855'__14 v4 v5
+      MAlonzo.Code.Once.Spec.Polynomial.C__S'8855'__14 v4 v5
         -> case coe v3 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                -> coe

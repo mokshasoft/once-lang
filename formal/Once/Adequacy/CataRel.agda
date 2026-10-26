@@ -20,7 +20,8 @@ open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Internal.Polynomial
-open import Once.Internal.Polynomial using (SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; cataS; sfmapCata)
+open import Once.Spec.Polynomial using (SId; SK; _S⊕_; _S⊗_; inS; μS; ⟦_⟧SF)
+open import Once.Internal.Polynomial using (cataS; sfmapCata)
 
 -- Functor-lifted relation: `SK`→equality (the constant is shared, since both
 -- folds run over the SAME structure), `SId`→the carrier relation, structural.
@@ -39,7 +40,7 @@ mutual
       {alg₁ : ⟦ F ⟧SF A₁ → A₁} {alg₂ : ⟦ F ⟧SF A₂ → A₂}
     → (∀ {y₁ y₂} → RelSF F R y₁ y₂ → R (alg₁ y₁) (alg₂ y₂))
     → (x : μS F) → R (cataS alg₁ x) (cataS alg₂ x)
-  cataS-rel {F} R algR ⟨ x ⟩ = algR (sfmapCata-rel F R algR x)
+  cataS-rel {F} R algR (inS x) = algR (sfmapCata-rel F R algR x)
 
   sfmapCata-rel : ∀ F' {F} {A₁ A₂ : Set} (R : A₁ → A₂ → Set)
       {alg₁ : ⟦ F ⟧SF A₁ → A₁} {alg₂ : ⟦ F ⟧SF A₂ → A₂}

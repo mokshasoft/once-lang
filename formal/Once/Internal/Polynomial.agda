@@ -5,10 +5,9 @@
 -- Once.Internal.Polynomial — the polynomial functors on sets, their initial
 -- algebras and their final coalgebras.
 --
--- INTERNAL (D333). A code `SFunctor` is a polynomial: constants (a set), the identity,
--- sums and products; `⟦ F ⟧SF` is the functor it denotes and `sfmap` its
--- action. `μS F` is the initial algebra (`⟨_⟩`, `outS`) with its fold
--- `cataS`; `νS F` is the final coalgebra of `Res ∘ ⟦ F ⟧SF` — a stream that
+-- INTERNAL (D333). The polynomials, their functors and initial algebras are the
+-- Spec's (`Once.Spec.Polynomial`); here: the initial algebra's destructor
+-- `outS` and its fold `cataS`; `νS F` is the final coalgebra of `Res ∘ ⟦ F ⟧SF` — a stream that
 -- may end — with its unfold `anaS`. Every corecursive call sits under the
 -- copattern, so productivity is checked, not assumed.
 ------------------------------------------------------------------------
@@ -20,69 +19,12 @@ import Once.Spec.Type
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Res using (Res; stopped; returns)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS)
 
 
-------------------------------------------------------------------------
--- Semantic Functor (Set-level)
---
--- Unlike (Once.Spec.Type.Fun 0) where K takes a Type, here K takes a Set
--- directly. This breaks the dependency on the type interpretation.
-------------------------------------------------------------------------
-
--- | Semantic functor codes
---
--- These represent polynomial functors at the Set level.
--- K takes a Set directly, not a Type.
---
-data SFunctor : Set₁ where
-  SK   : Set → SFunctor              -- Constant (takes Set directly)
-  SId  : SFunctor                    -- Recursive position
-  _S⊕_ : SFunctor → SFunctor → SFunctor  -- Sum
-  _S⊗_ : SFunctor → SFunctor → SFunctor  -- Product
-
-infixr 30 _S⊕_
-infixr 40 _S⊗_
-
-------------------------------------------------------------------------
--- Functor Interpretation
-------------------------------------------------------------------------
-
--- | Interpret semantic functor as Set → Set
---
-⟦_⟧SF : SFunctor → Set → Set
-⟦ SK A ⟧SF X = A           -- A is already a Set!
-⟦ SId ⟧SF X = X            -- Recursive position
-⟦ F S⊕ G ⟧SF X = ⟦ F ⟧SF X ⊎ ⟦ G ⟧SF X
-⟦ F S⊗ G ⟧SF X = ⟦ F ⟧SF X × ⟦ G ⟧SF X
-
-------------------------------------------------------------------------
--- Functorial Map
-------------------------------------------------------------------------
-
--- | Functorial map for semantic functors
---
-sfmap : ∀ F → {X Y : Set} → (X → Y) → ⟦ F ⟧SF X → ⟦ F ⟧SF Y
-sfmap (SK A) f x = x
-sfmap SId f x = f x
-sfmap (F S⊕ G) f (inj₁ x) = inj₁ (sfmap F f x)
-sfmap (F S⊕ G) f (inj₂ y) = inj₂ (sfmap G f y)
-sfmap (F S⊗ G) f (x , y) = (sfmap F f x , sfmap G f y)
-
-------------------------------------------------------------------------
--- Fixed Points
-------------------------------------------------------------------------
-
--- | Initial algebra (least fixed point)
---
--- μS F represents the least fixed point of F.
--- μS F ≅ ⟦ F ⟧SF (μS F)
---
-data μS (F : SFunctor) : Set where
-  ⟨_⟩ : ⟦ F ⟧SF (μS F) → μS F
-
--- | Destructor for μS
+-- | The initial algebra's destructor.
 outS : ∀ (F : SFunctor) → μS F → ⟦ F ⟧SF (μS F)
-outS F ⟨ x ⟩ = x
+outS F (inS x) = x
 
 -- | Greatest fixed point (coinductive)
 --
@@ -111,7 +53,7 @@ open νS
 --
 mutual
   cataS : ∀ {F} {A : Set} → (⟦ F ⟧SF A → A) → μS F → A
-  cataS {F} alg ⟨ x ⟩ = alg (sfmapCata F alg x)
+  cataS {F} alg (inS x) = alg (sfmapCata F alg x)
 
   sfmapCata : ∀ F {G} {A : Set} → (⟦ G ⟧SF A → A) → ⟦ F ⟧SF (μS G) → ⟦ F ⟧SF A
   sfmapCata (SK B) alg x = x

@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using (⟦_⟧F)
@@ -316,13 +316,14 @@ cμout-rel (wf-⊗ wf wg) {x = x₁ , x₂} {y₁ , y₂} (r , s) = fr-pair (cμ
 -- The fold: related algebras fold the same value to related results.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Polynomial using (μS; ⟨_⟩; cataS; sfmapCata)
+open import Once.Internal.Polynomial using (cataS; sfmapCata)
+open import Once.Spec.Polynomial using (μS; inS)
 
 module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF A → A} {alg₂ : ⟦ G ⟧SF B → B}
          (h : ∀ {l₁ l₂} → SRel R G l₁ l₂ → R (alg₁ l₁) (alg₂ l₂)) where
   cataS-rel      : ∀ (x : μS G) → R (cataS alg₁ x) (cataS alg₂ x)
   sfmapCata-rel  : ∀ (F : SFunctor) (x : ⟦ F ⟧SF (μS G)) → SRel R F (sfmapCata F alg₁ x) (sfmapCata F alg₂ x)
-  cataS-rel ⟨ x ⟩ = h (sfmapCata-rel G x)
+  cataS-rel (inS x) = h (sfmapCata-rel G x)
   sfmapCata-rel (SK B′)    x        = refl
   sfmapCata-rel SId        x        = cataS-rel x
   sfmapCata-rel (F S⊕ F′) (inj₁ x) = sfmapCata-rel F x

@@ -60,7 +60,7 @@ open import Once.Semantics.Machine using (sem-cata; coerce-μ-out; ⟦_⟧F; ⟦
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.FunctorMeaning using (translateF)
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; ⟦_⟧ᴰ)
 open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;

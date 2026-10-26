@@ -22,15 +22,15 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Internal.Polynomial
 import qualified MAlonzo.Code.Once.Internal.Stream
 import qualified MAlonzo.Code.Once.Internal.Trace
+import qualified MAlonzo.Code.Once.Spec.Polynomial
 import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Denotation.ValueDomain.anaᵈ-erase
 d_ana'7496''45'erase_22 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Internal.Trace.T_T_110) ->
@@ -41,8 +41,8 @@ d_ana'7496''45'erase_22 ::
 d_ana'7496''45'erase_22 = erased
 -- Once.Denotation.ValueDomain.anaᵈ-erase-full
 d_ana'7496''45'erase'45'full_62 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   () ->
   () ->
@@ -55,8 +55,8 @@ d_ana'7496''45'erase'45'full_62 ::
 d_ana'7496''45'erase'45'full_62 = erased
 -- Once.Denotation.ValueDomain.subst-νᵈ-cong
 d_subst'45'ν'7496''45'cong_84 ::
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
-  MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
+  MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Internal.Stream.T_ν'7496'_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

@@ -13,6 +13,7 @@ open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Internal.Polynomial
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; μS; ⟦_⟧SF)
 open νS
 
 ------------------------------------------------------------------------
@@ -41,12 +42,12 @@ sfmap-comp (F S⊗ G) f g (x , y) = cong₂ _,_ (sfmap-comp F f g x) (sfmap-comp
 ------------------------------------------------------------------------
 
 -- | fold-unfold: out ∘ In = id
-fold-unfoldS : ∀ (F : SFunctor) (x : ⟦ F ⟧SF (μS F)) → outS F ⟨ x ⟩ ≡ x
+fold-unfoldS : ∀ (F : SFunctor) (x : ⟦ F ⟧SF (μS F)) → outS F (inS x) ≡ x
 fold-unfoldS F x = refl
 
 -- | unfold-fold: In ∘ out = id
-unfold-foldS : ∀ (F : SFunctor) (x : μS F) → ⟨ outS F x ⟩ ≡ x
-unfold-foldS F ⟨ x ⟩ = refl
+unfold-foldS : ∀ (F : SFunctor) (x : μS F) → (inS (outS F x)) ≡ x
+unfold-foldS F (inS x) = refl
 
 ------------------------------------------------------------------------
 -- Catamorphism Laws
@@ -64,15 +65,15 @@ mutual
 
 -- | Catamorphism computation law
 cataS-computation : ∀ (F : SFunctor) {A : Set} (alg : ⟦ F ⟧SF A → A) (x : ⟦ F ⟧SF (μS F))
-                  → cataS {F} alg ⟨ x ⟩ ≡ alg (sfmap F (cataS {F} alg) x)
+                  → cataS {F} alg (inS x) ≡ alg (sfmap F (cataS {F} alg) x)
 cataS-computation F {A} alg x = cong alg (sfmapCata-is-sfmap F {F} {A} alg x)
 
 -- | Identity catamorphism
 mutual
-  cataS-In-id : ∀ {F} (x : μS F) → cataS ⟨_⟩ x ≡ x
-  cataS-In-id {F} ⟨ x ⟩ = cong ⟨_⟩ (sfmapCata-In-id F x)
+  cataS-In-id : ∀ {F} (x : μS F) → cataS inS x ≡ x
+  cataS-In-id {F} (inS x) = cong inS (sfmapCata-In-id F x)
 
-  sfmapCata-In-id : ∀ F {G} (x : ⟦ F ⟧SF (μS G)) → sfmapCata F ⟨_⟩ x ≡ x
+  sfmapCata-In-id : ∀ F {G} (x : ⟦ F ⟧SF (μS G)) → sfmapCata F inS x ≡ x
   sfmapCata-In-id (SK B) x = refl
   sfmapCata-In-id SId x = cataS-In-id x
   sfmapCata-In-id (F S⊕ G) (inj₁ x) = cong inj₁ (sfmapCata-In-id F x)
@@ -86,7 +87,7 @@ mutual
   cataS-cong : ∀ {F} {A : Set} {alg₁ alg₂ : ⟦ F ⟧SF A → A}
              → (∀ y → alg₁ y ≡ alg₂ y) → (x : μS F)
              → cataS alg₁ x ≡ cataS alg₂ x
-  cataS-cong {F} {A} {alg₁} {alg₂} eq ⟨ x ⟩ =
+  cataS-cong {F} {A} {alg₁} {alg₂} eq (inS x) =
     trans (cong alg₁ (sfmapCata-cong F eq x)) (eq (sfmapCata F alg₂ x))
 
   sfmapCata-cong : ∀ F {G} {A : Set} {alg₁ alg₂ : ⟦ G ⟧SF A → A}
@@ -136,7 +137,7 @@ anaS-unfold F coalg a with coalg a
 -- Para's algebra receives both the recursive result AND the original
 -- substructure, enabling bounded recursion patterns like `obs`.
 --
--- Mathematically: para alg ⟨ x ⟩ = alg (sfmap (λ y → (y , para alg y)) x)
+-- Mathematically: para alg (inS x) = alg (sfmap (λ y → (y , para alg y)) x)
 --
 -- Implementation: Encode via cataS with a product that carries both
 -- the original structure and the recursive result.
@@ -145,7 +146,7 @@ paraS : ∀ {F} {A : Set} → (⟦ F ⟧SF (μS F × A) → A) → μS F → A
 paraS {F} {A} alg x = proj₂ (cataS {F} alg' x)
   where
     alg' : ⟦ F ⟧SF (μS F × A) → (μS F × A)
-    alg' fx = (⟨ sfmap F proj₁ fx ⟩ , alg fx)
+    alg' fx = ((inS (sfmap F proj₁ fx)) , alg fx)
 
 ------------------------------------------------------------------------
 -- Fusion (μ-anchored hylomorphism)

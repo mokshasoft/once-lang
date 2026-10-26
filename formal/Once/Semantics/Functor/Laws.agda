@@ -20,6 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 
 open import Once.Internal.Polynomial
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; sfmap; ⟦_⟧SF)
 open import Once.Semantics.Functor
 open Once.Internal.Polynomial.νS using (unfoldS)
 

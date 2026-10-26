@@ -20,7 +20,7 @@ open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Internal.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using (⟦_⟧F; coerce-ν-in)
-open import Once.Internal.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Internal.FunctorMeaning using (translateF)
 
 ------------------------------------------------------------------------

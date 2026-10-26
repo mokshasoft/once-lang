@@ -194,6 +194,7 @@ library
       MAlonzo.Code.Once.Spec.Float.Dyadic
       MAlonzo.Code.Once.Spec.Name
       MAlonzo.Code.Once.Spec.Numerics
+      MAlonzo.Code.Once.Spec.Polynomial
       MAlonzo.Code.Once.Spec.Surface.Grammar
       MAlonzo.Code.Once.Spec.Surface.Lexing
       MAlonzo.Code.Once.Spec.Word

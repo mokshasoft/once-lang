@@ -11,7 +11,7 @@
 -- Framed as a combinator reduction (like `LiftFnReduce.liftFn-fst`): the TRACE
 -- is `[]` (`rec-trace-D (In) = []`), the RESULT is `returns` of the coherence
 -- `in-res` (the μ-twin of `AnaErased.coerce-νin-erase`, wrapped by
--- `sem-In = ⟨_⟩∘coerce-μ-in`).
+-- `sem-In = inS∘coerce-μ-in`).
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
@@ -38,7 +38,7 @@ open import Once.Spec.Type using (μ)
 open import Once.Internal.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Internal.Polynomial using (μS; ⟨_⟩; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; inS; μS; ⟦_⟧SF)
 import Once.Internal.Polynomial
 open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
 open import Once.Internal.Iterative using (T∞; return∞)
@@ -57,7 +57,7 @@ coerce-μ-in-subst : ∀ {m} (G : Fun m) {X X' : Set} (p : X ≡ X') (x : ⟦ G 
 coerce-μ-in-subst G refl x = refl
 
 -- Split a diagonal subst `⟦H⟧SF(μS H)` into carrier-subst then functor-subst.
-subst-diag : ∀ {H₁ H₂ : Once.Internal.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
+subst-diag : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂)
                (z : ⟦ H₁ ⟧SF (μS H₁))
   → subst (λ H → ⟦ H ⟧SF (μS H)) eq z
     ≡ subst (λ H → ⟦ H ⟧SF (μS H₂)) eq (subst (λ C → ⟦ H₁ ⟧SF C) (cong μS eq) z)
@@ -69,15 +69,15 @@ In-ir {F = F} wfF = subst (λ o → IR.IR o ⌊ μ F ⌋)
                       (sym (⌊⟧T-commute F (μ F)))
                       (IR.In (wf-⌊⌋ wfF))
 
--- `⟨_⟩` (the μS "in" constructor) commutes with a subst over the functor eq.
+-- `inS` (the μS "in" constructor) commutes with a subst over the functor eq.
 -- Match-to-refl.
-⟨⟩-subst-nat : ∀ {H₁ H₂ : Once.Internal.Polynomial.SFunctor} (eq : H₁ ≡ H₂)
+⟨⟩-subst-nat : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂)
                  (z : ⟦ H₁ ⟧SF (μS H₁))
-  → subst μS eq ⟨ z ⟩ ≡ ⟨ subst (λ H → ⟦ H ⟧SF (μS H)) eq z ⟩
+  → subst μS eq (inS z) ≡ (inS (subst (λ H → ⟦ H ⟧SF (μS H)) eq z))
 ⟨⟩-subst-nat refl z = refl
 
 -- `subst id (cong μS p) = subst μS p`.  Match-to-refl.
-subst-id-μS : ∀ {H₁ H₂ : Once.Internal.Polynomial.SFunctor} (p : H₁ ≡ H₂) (z : μS H₁)
+subst-id-μS : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (z : μS H₁)
   → subst id (cong μS p) z ≡ subst μS p z
 subst-id-μS refl z = refl
 
@@ -105,7 +105,7 @@ liftFn-In {F = F} wfF v =
   (cong return∞
     (trans (subst-id-μS (tF-coh F) _)
     (trans (⟨⟩-subst-nat (tF-coh F) _)
-           (cong ⟨_⟩
+           (cong inS
              (trans (subst-diag (tF-coh F) _)
              (trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ μ F ⟧ᴰ) (tF-coh F))
                           (sym (coerce-μ-in-subst ⌈ eraseF F ⌉F (cohᴰ (μ F)) _)))
