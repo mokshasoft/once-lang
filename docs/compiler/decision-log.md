@@ -19568,7 +19568,11 @@ user facing configs."
   `destruct` parenthesized unless it is a whole expression.
 * Layout: a group is flat when it fits; a `let` chain and a left-nested chain of one operator (or `.`) are one
   group each, broken at each `in`/operator; blank lines only between declarations, at most one.
-* Comments stay in order with their text: on their own line before a declaration, in place inside one, at
-  the end of their line after code. They are anchored to word and literal tokens, the sequence every
-  canonical spelling keeps.
+* Nothing of the input's layout survives (the user, 2026-10-26: "like elm that always formats everything for
+  you"): blank lines come from the code — one between declarations, none between a signature and its
+  definition or between imports; comments are formatted — `-- x`, a prose line over the width wrapped (lines never joined),
+  preformatted lines (banners, indented code, lists) and block comments kept. A comment stays in order:
+  above the declaration it precedes, in place inside one, at the end of its line after code; a blank line
+  inside a run of comments separates its paragraphs. Comments are anchored to word and literal tokens, the
+  sequence every canonical spelling keeps.
 

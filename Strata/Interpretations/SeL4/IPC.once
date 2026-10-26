@@ -28,6 +28,7 @@
 -- - mr0-mr3: Message registers (first 4 words of message)
 --
 -- Returns: Unit (void)
+
 signature seL4_Send : Act (Int * Int * Int * Int * Int * Int) Unit
 
 -- | seL4_NBSend - Non-blocking send

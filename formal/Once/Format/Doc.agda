@@ -4,7 +4,8 @@
 ------------------------------------------------------------------------
 -- Once.Format.Doc — documents and their layout (plan 0.124 step 2).
 --
--- A document is text with places where a line may break (`line`), indented
+-- A document is tokens (`tk`, written by `spell`), blanks (`sp`) and comments
+-- (`cmt`), with places where a line may break (`line`), indented
 -- blocks (`nest`) and groups that are laid out flat when they fit the width
 -- (`group`). Two breaks are forced: `newline` ends the line unless it is
 -- already ended (so breaks never pile up into blank lines), `blank` leaves one
@@ -28,6 +29,8 @@ open import Data.String using (String; fromList; toList; length)
 open import Data.Char using (Char)
 import Data.Char as Ch
 open import Relation.Nullary using (does)
+open import Once.Spec.Surface.Lexing using (Token)
+open import Once.Format.Spell using (spell)
 
 -- | The style (D341).
 width indent : ℕ
@@ -38,7 +41,10 @@ infixr 6 _<>_
 
 data Doc : Set where
   empty   : Doc
-  text    : String → Doc       -- a piece of text with no line break in it
+  tk      : Token → Doc        -- a token, as `spell` writes it
+  sp      : Doc                -- a blank
+  cmt     : String → Doc       -- a comment on its own line (its line breaks are the document's)
+  para    : List String → Doc  -- a comment paragraph: its words filled to the width, each line `-- …`
   line    : Doc                -- a space when flat, a line break when not
   newline : Doc                -- a line break unless the line is already ended
   blank   : Doc                -- an empty line
@@ -47,20 +53,6 @@ data Doc : Set where
   nest    : ℕ → Doc → Doc      -- the lines it breaks are indented by this much more
   group   : Doc → Doc          -- flat when it fits, else broken
 
--- Text, spaces between.
-_<+>_ : Doc → Doc → Doc
-a <+> b = a <> text " " <> b
-infixr 6 _<+>_
-
--- Documents separated by soft breaks.
-sep : List Doc → Doc
-sep []       = empty
-sep (d ∷ ds) = d <> sep-rest ds
-  where
-    sep-rest : List Doc → Doc
-    sep-rest []       = empty
-    sep-rest (e ∷ es) = line <> e <> sep-rest es
-
 ------------------------------------------------------------------------
 -- Layout
 ------------------------------------------------------------------------
@@ -68,7 +60,10 @@ sep (d ∷ ds) = d <> sep-rest ds
 -- The width of a document laid out flat; `nothing` when it cannot be flat.
 flatWidth : Doc → Maybe ℕ
 flatWidth empty     = just 0
-flatWidth (text s)  = just (length s)
+flatWidth (tk t)    = just (length (spell t))
+flatWidth sp        = just 1
+flatWidth (cmt c)   = just (length c)
+flatWidth (para _)  = nothing
 flatWidth line      = just 1
 flatWidth newline   = nothing
 flatWidth blank     = nothing
@@ -123,6 +118,16 @@ private
   ... | st [] c p e = st [] 0 (just i) e
   ... | st (x ∷ o) c p e = st ('\n' ∷ x ∷ o) 0 (just i) e
 
+  -- A paragraph's words, filled: a line takes the next word while it fits
+  -- (and always one word, however long).
+  fill : ℕ → Bool → List String → St → St
+  fill i _     []       σ = σ
+  fill i false (w ∷ ws) σ = fill i true ws (emit w (emit " " σ))
+  fill i true  (w ∷ ws) (st o c p e) =
+    if (c + 1 + length w) ≤ᵇ width
+    then fill i true ws (emit w (emit " " (st o c p e)))
+    else fill i true ws (emit w (emit " " (emit "--" (brk i (st o c p e)))))
+
   fits : ℕ → Maybe ℕ → Bool
   fits c (just n) = (c + n) ≤ᵇ width
   fits c nothing  = false
@@ -130,7 +135,10 @@ private
 -- | Lay out a document at an indentation, flat or not.
 layout : ℕ → Bool → Doc → St → St
 layout i f empty      σ = σ
-layout i f (text s)   σ = emit s σ
+layout i f (tk t)     σ = emit (spell t) σ
+layout i f sp         σ = emit " " σ
+layout i f (cmt c)    σ = emit c σ
+layout i f (para ws)  σ = fill i false ws (emit "--" σ)
 layout i true  line   σ = emit " " σ
 layout i false line   σ = brk i σ
 layout i f newline    σ = brk i σ

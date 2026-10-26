@@ -1,7 +1,10 @@
 -- Layer 4: curried fn returns second arg (no capture in the body,
 -- but the curry'd closure must still propagate the env). Expected: exit 42.
+
 import I.Linux.Syscalls as S
+
 keepSnd : Int -> Int -> Int
 keepSnd x y = y
+
 main : Act Unit Void
 main = exit@S (keepSnd 99 42)

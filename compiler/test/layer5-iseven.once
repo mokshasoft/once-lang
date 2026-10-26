@@ -3,7 +3,7 @@
 
 -- Layer 5 test: a catamorphism, end-to-end.
 --
--- Nat = Mu (K Unit + Id):  zero = In (inl unit) ; suc n = In (inr n).
+-- Nat = Mu (K Unit + Id): zero = In (inl unit) ; suc n = In (inr n).
 -- isEven via cata: zero -> inl unit (even) ; suc b -> not b.
 -- two is even, so isEven two = inl unit, and case picks even42 = exit 42.
 
@@ -13,7 +13,7 @@ import I.Linux.Syscalls as S
 two : Mu (K Unit + Id)
 two = In (inr (In (inr (In (inl unit)))))
 
--- isEven : Nat -> Unit + Unit   (inl = even, inr = odd)
+-- isEven : Nat -> Unit + Unit (inl = even, inr = odd)
 -- algebra : Unit + (Unit + Unit) -> Unit + Unit, point-free (copair of
 -- closed morphisms):
 --   inl tt (zero layer)        -> inl    (zero is even)

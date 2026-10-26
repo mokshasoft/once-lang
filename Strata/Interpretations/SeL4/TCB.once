@@ -38,6 +38,7 @@
 --   ipcBufferFrame : Frame capability for IPC buffer
 --
 -- Returns: seL4_Error (0 = success)
+
 signature seL4_TCB_Configure : Act (Int * Int * Int * Int * Int * Int * Int * Int) Int
 
 -- | seL4_TCB_SetPriority - Set thread priority
@@ -137,7 +138,6 @@ signature seL4_TCB_ReadRegisters : Act (Int * Int * Int * Int * Int) Int
 ------------------------------------------------------------------------
 -- Priority Constants
 ------------------------------------------------------------------------
-
 seL4_MaxPrio : Int
 seL4_MaxPrio = 255
 

@@ -38,6 +38,7 @@
 --   rights      : Capability rights mask
 --
 -- Returns: seL4_Error (0 = success)
+
 signature seL4_CNode_Copy : Act (Int * Int * Int * Int * Int * Int * Int) Int
 
 -- | seL4_CNode_Mint - Copy capability with a badge

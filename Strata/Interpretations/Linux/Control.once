@@ -13,4 +13,5 @@
 -- | Branch on zero: returns Left () if zero, Right () if non-zero
 -- This is the fundamental way to convert Int comparisons to sum types
 -- for use with Once's case construct.
+
 signature ifZero : Int -> Unit + Unit

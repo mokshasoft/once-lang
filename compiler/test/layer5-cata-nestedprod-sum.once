@@ -15,6 +15,7 @@ import I.Linux.Syscalls as S
 -- algebra : (Unit + ((Int * Int) * Int)) -> Int
 zeroI : Unit -> Int
 zeroI _ = 0
+
 consOp : Int * Int * Int -> Int
 consOp t = fst (fst t) + snd (fst t) + snd t
 

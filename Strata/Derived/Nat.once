@@ -17,6 +17,7 @@
 ------------------------------------------------------------------------
 
 -- | zero : Nat
+
 zero : Mu (K Unit + Id)
 zero = In (inl unit)
 
@@ -38,7 +39,7 @@ three = suc two
 -- Folds (catamorphisms)
 ------------------------------------------------------------------------
 
--- | isEven : Nat -> Unit + Unit   (inl = even, inr = odd)
+-- | isEven : Nat -> Unit + Unit (inl = even, inr = odd)
 --
 -- algebra : Unit + (Unit + Unit) -> Unit + Unit
 --   inl _ (zero layer)        -> inl   (zero is even)

@@ -217,9 +217,11 @@ library
       MAlonzo.Code.Once.Word
       MAlonzo.Code.Once.Extract.Root
       MAlonzo.Code.Once.Format
+      MAlonzo.Code.Once.Format.Comment
       MAlonzo.Code.Once.Format.Doc
       MAlonzo.Code.Once.Format.Lex
       MAlonzo.Code.Once.Format.Print
+      MAlonzo.Code.Once.Format.Spell
       Paths_once
       MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
       MAlonzo.Code.Agda.Builtin.Bool

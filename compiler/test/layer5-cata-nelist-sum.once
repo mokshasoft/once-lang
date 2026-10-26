@@ -20,7 +20,7 @@ addPair p = fst p + snd p
 sumNE : Mu (K Int + K Int * Id) -> Int
 sumNE = cata (case id addPair)
 
--- 40 :: [2]   (2 is the base element)
+-- 40 :: [2] (2 is the base element)
 xs : Mu (K Int + K Int * Id)
 xs = In (inr (40, In (inl 2)))
 

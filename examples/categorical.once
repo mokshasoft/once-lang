@@ -11,6 +11,7 @@
 --   once build --target riscv64 examples/categorical.once -o categorical
 
 -- Identity function
+
 identity : Unit -> Unit
 identity = id
 

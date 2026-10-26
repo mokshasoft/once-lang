@@ -14,6 +14,7 @@
 ------------------------------------------------------------------------
 
 -- | Exit the process with code 0
+
 signature exit0 : Act Unit Void
 
 -- | Exit the process with given code
@@ -150,12 +151,12 @@ signature shutdown : Act (Int * Int) Int
 ------------------------------------------------------------------------
 
 -- | Clone flags (combine with bitwise OR)
--- CLONE_VM = 0x100          Share virtual memory
--- CLONE_FS = 0x200          Share filesystem info
--- CLONE_FILES = 0x400       Share file descriptors
--- CLONE_SIGHAND = 0x800     Share signal handlers
--- CLONE_THREAD = 0x10000    Same thread group
--- CLONE_PARENT = 0x8000     Share parent
+-- CLONE_VM = 0x100 Share virtual memory
+-- CLONE_FS = 0x200 Share filesystem info
+-- CLONE_FILES = 0x400 Share file descriptors
+-- CLONE_SIGHAND = 0x800 Share signal handlers
+-- CLONE_THREAD = 0x10000 Same thread group
+-- CLONE_PARENT = 0x8000 Share parent
 
 -- | Get thread ID
 signature gettid : Act Unit Int
