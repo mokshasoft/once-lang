@@ -275,6 +275,108 @@ w('''
   ind-body (DFunDef x e) =
     ind-name x ⊕ⁱ ind-spaced (proj₁ (lams e)) ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (proj₂ (lams e))
 ''')
+# The same printer induction, for the printer without trivia: it writes no comment.
+_text='\n'.join(o)
+_a=_text.index("  ind-opToks : ∀ cs → Ind (opToks cs)")
+_b=_text.index("    ind-name x ⊕ⁱ ind-spaced (proj₁ (lams e))")
+_b=_text.index('\n',_b)+1
+_body=_text[_a:_b]
+_nn=_body.replace('ind-','nn-').replace('Ind (','NN (').replace('⊕ⁱ','⊕ⁿ')
+NNTEXT = (r"""
+------------------------------------------------------------------------
+-- Without trivia, the printer writes no comment
+------------------------------------------------------------------------
+
+-- | A document with no comment in it.
+data NoNotes : Doc → Set where
+  nn-empty   : NoNotes empty
+  nn-tk      : ∀ {t} → NoNotes (Doc.tk t)
+  nn-sp      : NoNotes Doc.sp
+  nn-line    : NoNotes Doc.line
+  nn-newline : NoNotes Doc.newline
+  nn-blank   : NoNotes Doc.blank
+  nn-<>      : ∀ {a b} → NoNotes a → NoNotes b → NoNotes (a Doc.<> b)
+  nn-nest    : ∀ {n d} → NoNotes d → NoNotes (Doc.nest n d)
+  nn-group   : ∀ {d} → NoNotes d → NoNotes (Doc.group d)
+
+module Bare where
+  instance
+    i-empty : NoNotes empty
+    i-empty = nn-empty
+    i-tk : ∀ {t} → NoNotes (Doc.tk t)
+    i-tk = nn-tk
+    i-sp : NoNotes Doc.sp
+    i-sp = nn-sp
+    i-line : NoNotes Doc.line
+    i-line = nn-line
+    i-if : ∀ {b} → NoNotes (if b then Doc.sp else empty)
+    i-if {true}  = nn-sp
+    i-if {false} = nn-empty
+
+  -- | A printer that, without trivia, writes no comment.
+  record NN (m : P Doc) : Set where
+    constructor nn
+    field
+      quiet : ∀ k → NoNotes (proj₁ (m [] k))
+
+  nn-⊕ : ∀ {a b} → NN a → NN b → NN (a ⊕ᵈ b)
+  nn-⊕ (nn qa) (nn qb) = nn λ k → nn-<> (qa k) (qb _)
+
+  infixr 6 _⊕ⁿ_
+  _⊕ⁿ_ : ∀ {a b} → NN a → NN b → NN (a ⊕ᵈ b)
+  _⊕ⁿ_ = nn-⊕
+
+  nn-pure : ∀ {d} → ⦃ NoNotes d ⦄ → NN (pure′ d)
+  nn-pure ⦃ q ⦄ = nn λ k → q
+
+  nn-gn : ∀ {m} → NN m → NN (m >>=′ λ d → pure′ (Doc.group (Doc.nest indent d)))
+  nn-gn (nn q) = nn λ k → nn-group (nn-nest (q k))
+
+  nn-g : ∀ {m} → NN m → NN (m >>=′ λ d → pure′ (Doc.group d))
+  nn-g (nn q) = nn λ k → nn-group (q k)
+
+  nn-n : ∀ {m} → NN m → NN (m >>=′ λ d → pure′ (Doc.nest indent d))
+  nn-n (nn q) = nn λ k → nn-nest (q k)
+
+  nn-paren : ∀ b {d} → NN d → NN (paren b d)
+  nn-paren true  i = nn-pure ⊕ⁿ i ⊕ⁿ nn-pure
+  nn-paren false i = i
+
+  nn-if : ∀ b {x y} → NN x → NN y → NN (if b then x else y)
+  nn-if true  ix iy = ix
+  nn-if false ix iy = iy
+
+  nn-anchor : ∀ x → NN (anchor x)
+  nn-anchor x = nn λ k → nn-<> nn-empty (nn-<> nn-tk nn-empty)
+
+  nn-word : ∀ s → NN (word s)
+  nn-word s with s Data.String.== "compose"
+  ... | true  = nn-pure
+  ... | false = nn-anchor (TWord s)
+
+""" + _nn + r"""
+  private
+    lead-nn : ∀ prev → NoNotes (lead prev [])
+    lead-nn nothing  = nn-empty
+    lead-nn (just _) = nn-empty
+
+    ending-nn : ∀ prev → NoNotes (ending prev [])
+    ending-nn prev = nn-empty
+
+    gap-nn : ∀ prev d → NoNotes (gap prev d)
+    gap-nn nothing  d = nn-empty
+    gap-nn (just p) d with together p d
+    ... | true  = nn-empty
+    ... | false = nn-blank
+
+  -- | The module, printed without trivia, has no comment.
+  pdecls-nn : ∀ prev ds k → NoNotes (proj₁ (pdecls prev ds [] k))
+  pdecls-nn prev []       k = subst (λ ns → NoNotes (ending prev ns)) (sym (tops-[] k (suc k ∸ k))) (ending-nn prev)
+  pdecls-nn prev (d ∷ ds) k =
+    nn-<> (gap-nn prev d)
+      (nn-<> (subst (λ ns → NoNotes (lead prev ns)) (sym (tops-[] k (proj₂ (pdecl d [] k) ∸ k))) (lead-nn prev))
+        (nn-<> (NN.quiet (nn-gn (nn-body d)) k) (nn-<> nn-newline (pdecls-nn (just d) ds (proj₂ (pdecl d [] k))))))
+""")
 OUT=os.path.join(PROOF,'Canon.agda')
 open(OUT,'w').write('\n'.join(o)+'\n')
 TAIL = r'''
@@ -457,4 +559,4 @@ format-canonical t₁ t₂ m e₁ e₂ n₁ n₂ =
   trans (cong (formatParsed t₁) e₁)
     (trans (cong inj₂ (trans (format-quiet m _ n₁) (sym (format-quiet m _ n₂)))) (sym (cong (formatParsed t₂) e₂)))
 '''
-open(os.path.join(PROOF,'Canon.agda'),'a').write(TAIL)
+open(os.path.join(PROOF,'Canon.agda'),'a').write(TAIL + NNTEXT)

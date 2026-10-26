@@ -165,3 +165,8 @@ module-lexes ds tv oks with walk nothing ds tv 0 (st [] 0 (just 0) []) oks g-[] 
   subst (λ cs → Once.Spec.Surface.Lexing.LexesChars cs (ys ++ TEOF ∷ []))
     (sym (toList∘fromList (concatMap chars (lexemesOf (layout 0 false (proj₁ (pdecls nothing ds tv 0)) (st [] 0 (just 0) []))))))
     (subst (Once.Spec.Surface.Lexing.LexesChars _) (trans eq (cong (_++ TEOF ∷ []) adds)) (lexes _ ws))
+
+-- | …and the lexemes it writes are well formed.
+module-ws : ∀ ds tv → All DeclOK ds → WS (lexemes (proj₁ (pmodule (mkModule ds) tv 0)))
+module-ws ds tv oks with walk nothing ds tv 0 (st [] 0 (just 0) []) oks g-[] t-fresh
+... | ys , dsys , step-ok g sh adds = proj₁ (at-end (layout 0 false (proj₁ (pdecls nothing ds tv 0)) (st [] 0 (just 0) [])) g sh)
