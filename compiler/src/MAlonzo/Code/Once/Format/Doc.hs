@@ -421,3 +421,27 @@ d_render_328 v0
                 MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
                 (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v2)
          _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.Format.Doc.toks
+d_toks_340 ::
+  T_Doc_10 -> [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+d_toks_340 v0
+  = case coe v0 of
+      C_empty_12 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_tk_14 v1
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
+             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+      C_sp_16 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_cmt_18 v1 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_para_20 v1 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_line_22 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_newline_24 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_blank_26 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C_eol_28 v1 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      C__'60''62'__30 v1 v2
+        -> coe
+             MAlonzo.Code.Data.List.Base.du__'43''43'__32
+             (coe d_toks_340 (coe v1)) (coe d_toks_340 (coe v2))
+      C_nest_32 v1 v2 -> coe d_toks_340 (coe v2)
+      C_group_34 v1 -> coe d_toks_340 (coe v1)
+      _ -> MAlonzo.RTE.mazUnreachableError

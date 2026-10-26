@@ -205,8 +205,7 @@ pure′ : ∀ {A} → A → P A
 pure′ a _ k = a , k
 
 _>>=′_ : ∀ {A B} → P A → (A → P B) → P B
-(m >>=′ f) tv k with m tv k
-... | a , k′ = f a tv k′
+(m >>=′ f) tv k = f (proj₁ (m tv k)) tv (proj₂ (m tv k))
 
 infixl 1 _>>=′_
 
@@ -223,14 +222,16 @@ t x = pure′ (tk x)
 ␣ = pure′ sp
 
 -- An anchor: its inner comments before it, its end-of-line comments after.
+inners : List String → Doc
+inners []         = empty
+inners cs@(_ ∷ _) = newline <> commentRun cs
+
+eols : List String → Doc
+eols []       = empty
+eols (c ∷ cs) = eol (eolText c) <> eols cs
+
 anchor : S.Token → P Doc
-anchor x tv k with lookupNotes k tv
-... | notes _ inner after =
-      (inners inner <> tk x <> foldr (λ c d → eol (eolText c) <> d) empty after) , suc k
-  where
-    inners : List String → Doc
-    inners []         = empty
-    inners cs@(_ ∷ _) = newline <> commentRun cs
+anchor x tv k = (inners (Notes.inner (lookupNotes k tv)) <> tk x <> eols (Notes.after (lookupNotes k tv))) , suc k
 
 -- A word; `compose` is not an anchor.
 word : String → P Doc
@@ -367,32 +368,30 @@ mutual
   pfun l (F P⊕ G)  = paren (0 <ᵇ l) (pfun 0 F ⊕ᵈ infixOp S.TPlus ⊕ᵈ pfun 1 G)
   pfun l (F P⊗ G)  = paren (1 <ᵇ l) (pfun 1 F ⊕ᵈ infixOp S.TStar ⊕ᵈ pfun 2 G)
 
--- An annotation's (ground) type, by the same rules.
+-- An annotation's (ground) type, as it is written: a pure arrow with its
+-- grade, `Eff`/`Act` for the effectful ones.
 mutual
-  gty : ℕ → Bool → Ty 0 → P Doc
-  gty l b Unit       = word "Unit"
-  gty l b Void       = word "Void"
-  gty l b Int        = word "Int"
-  gty l b Float      = word "Float"
-  gty l b (A ⇒[ mk-kind q (fin pureᶠ) ] B) = paren (0 <ᵇ l) (gty 1 true A ⊕ᵈ grade q ⊕ᵈ ␣ ⊕ᵈ gty 0 (b ∨ (0 <ᵇ l)) B)
-  gty l b (A ⇒[ mk-kind q (fin actᶠ) ] B)  = paren (3 <ᵇ l) (word "Act" ⊕ᵈ ␣ ⊕ᵈ gty 3 false A ⊕ᵈ ␣ ⊕ᵈ gty 3 false B)
-  gty l b (A ⇒[ mk-kind q eff ] B)         = paren (3 <ᵇ l) (word "Eff" ⊕ᵈ ␣ ⊕ᵈ gty 3 false A ⊕ᵈ ␣ ⊕ᵈ gty 3 false B)
-  gty l b (A T.+ B)  = paren (1 <ᵇ l) (gty 1 false A ⊕ᵈ infixOp S.TPlus ⊕ᵈ gty 2 (b ∨ (1 <ᵇ l)) B)
-  gty l b (A T.* B)  = paren (2 <ᵇ l) (gty 2 false A ⊕ᵈ infixOp S.TStar ⊕ᵈ gty 3 (b ∨ (2 <ᵇ l)) B)
-  gty l b (μ F)      = paren (not b) (word "Mu" ⊕ᵈ ␣ ⊕ᵈ gfunArg F)
-  gty l b (ν F pureᶠ) = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ gfunArg F)
-  gty l b (ν F actᶠ)  = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ t S.TLParen ⊕ᵈ word "Act" ⊕ᵈ ␣ ⊕ᵈ gfun 0 F ⊕ᵈ t S.TRParen)
+  toPoly : Ty 0 → PolyType
+  toPoly Unit  = PUnit
+  toPoly Void  = PVoid
+  toPoly Int   = PInt
+  toPoly Float = PFloat
+  toPoly (A ⇒[ mk-kind q (fin pureᶠ) ] B) = toPoly A P⇒[ q ] toPoly B
+  toPoly (A ⇒[ mk-kind q (fin actᶠ) ] B)  = PAct (toPoly A) (toPoly B)
+  toPoly (A ⇒[ mk-kind q eff ] B)         = PEff (toPoly A) (toPoly B)
+  toPoly (A T.+ B) = toPoly A P+ toPoly B
+  toPoly (A T.* B) = toPoly A P* toPoly B
+  toPoly (μ F)     = Pμ (toPolyF F)
+  toPoly (ν F φ)   = Pν (toPolyF F) φ
 
-  gfunArg : Fun 0 → P Doc
-  gfunArg Id = word "Id"
-  {-# CATCHALL #-}
-  gfunArg F  = t S.TLParen ⊕ᵈ gfun 0 F ⊕ᵈ t S.TRParen
+  toPolyF : Fun 0 → PolyFunctor
+  toPolyF Id      = PId
+  toPolyF (K A)   = PK (toPoly A)
+  toPolyF (F ⊕ G) = toPolyF F P⊕ toPolyF G
+  toPolyF (F ⊗ G) = toPolyF F P⊗ toPolyF G
 
-  gfun : ℕ → Fun 0 → P Doc
-  gfun l Id      = word "Id"
-  gfun l (K A)   = paren (1 <ᵇ l) (word "K" ⊕ᵈ ␣ ⊕ᵈ gty 3 false A)
-  gfun l (F ⊕ G) = paren (0 <ᵇ l) (gfun 0 F ⊕ᵈ infixOp S.TPlus ⊕ᵈ gfun 1 G)
-  gfun l (F ⊗ G) = paren (1 <ᵇ l) (gfun 1 F ⊕ᵈ infixOp S.TStar ⊕ᵈ gfun 2 G)
+gty : ℕ → Bool → Ty 0 → P Doc
+gty l b T = pty l b (toPoly T)
 
 ------------------------------------------------------------------------
 -- Expressions

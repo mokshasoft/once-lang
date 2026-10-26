@@ -157,3 +157,22 @@ layout i false (group d) σ = layout i (fits (column σ) (flatWidth d)) d σ
 render : Doc → String
 render d with brk 0 (layout 0 false d (st [] 0 (just 0) []))
 ... | st o _ _ _ = fromList (reverse o)
+
+------------------------------------------------------------------------
+-- The tokens of a document
+------------------------------------------------------------------------
+
+-- | A document's tokens, in order: its layout and comments are not tokens.
+toks : Doc → List Token
+toks empty      = []
+toks (tk t)     = t ∷ []
+toks sp         = []
+toks (cmt _)    = []
+toks (para _)   = []
+toks line       = []
+toks newline    = []
+toks blank      = []
+toks (eol _)    = []
+toks (a <> b)   = toks a ++ toks b
+toks (nest _ d) = toks d
+toks (group d)  = toks d
