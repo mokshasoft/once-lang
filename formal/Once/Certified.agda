@@ -23,6 +23,8 @@
 --   • `language` — the core's metatheory (plan 0.102 B, D276): its term model
 --     is a graded category and ⟦_⟧ a functor out of it — typed substitution,
 --     and `let x = u in t` ≡ `t[u/x]` for pure `u` (referential transparency).
+--   • `formatter` — `once fmt` keeps the module and what it means, and is
+--     canonical (D342); a tool beside the compiler, not a stage of it.
 --
 -- Because both fields are stated over the actual entry points, a regression in
 -- either makes `once-certified` fail to type-check — the drift that let
@@ -93,6 +95,7 @@ open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChec
 -- Spec (`Once.Spec.Metatheory`), proved under `Once.Metatheory`.
 open import Once.Metatheory using (metatheory)
 open import Once.Certified.Models using (NonVacuous; models)
+open import Once.Format.Proof using (VerifiedFormatter; verifiedFormatter)
 
 -- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
 -- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
@@ -114,6 +117,8 @@ record CertifiedBuild : Set₁ where
     language    : Metatheory
     -- the assumptions are satisfiable: the claim is not about an empty set (D302)
     nonvacuous  : NonVacuous
+    -- `once fmt` keeps the module and what it means (D342); out of the compile path
+    formatter   : VerifiedFormatter
 
 -- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE
 -- STATEMENT.
@@ -143,4 +148,5 @@ once-certified b64 b32 brv = record
   ; typechecker = verifiedTypeChecker
   ; language    = metatheory
   ; nonvacuous  = models
+  ; formatter   = verifiedFormatter
   }
