@@ -5,7 +5,7 @@ import System.Exit (exitFailure)
 import qualified Data.Text.IO as TIO
 
 import Data.List (isPrefixOf, stripPrefix)
-import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), ParseOptions (..), StageOptions (..), OutputMode (..), Target (..), AllocStrategy (..), InterpType (..), parseTarget, parseInterpType)
+import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), ParseOptions (..), StageOptions (..), OutputMode (..), Target (..), AllocStrategy (..), InterpType (..), FmtOptions (..), FmtMode (..), parseTarget, parseInterpType)
 
 main :: IO ()
 main = do
@@ -26,7 +26,16 @@ parseArgs ("elaborate"  : rest) = Elaborate  <$> parseStageOpts rest
 parseArgs ("optimize"   : rest) = Optimize   <$> parseStageOpts rest
 parseArgs ("escape"     : rest) = Escape     <$> parseStageOpts rest
 parseArgs ("codegen"    : rest) = CodeGen    <$> parseStageOpts rest
+parseArgs ("fmt"        : rest) = parseFmt rest
 parseArgs _                     = Nothing
+
+-- | `fmt [--check | --stdout] FILE...` (`--stdout` takes one file).
+parseFmt :: [String] -> Maybe Command
+parseFmt ("--check" : files@(_ : _))   = Just (Fmt (FmtOptions FmtCheck files))
+parseFmt ("--stdout" : file : [])      = Just (Fmt (FmtOptions FmtStdout [file]))
+parseFmt files@(f : _)
+  | take 1 f /= "-"                     = Just (Fmt (FmtOptions FmtInPlace files))
+parseFmt _                              = Nothing
 
 -- | Parse [-o FILE] FILE argument combination for inspection stages.
 -- Accepts -o FILE either before or after the input path, but not both.
@@ -145,6 +154,11 @@ usage = do
   TIO.putStrLn "  optimize <file.once>          IR after categorical-law optimizer (TODO: Agda show)"
   TIO.putStrLn "  escape <file.once>            IR after escape analysis (TODO: Agda show)"
   TIO.putStrLn "  codegen <file.once>           CCC machine program, pre-asm (TODO: Agda show)"
+  TIO.putStrLn ""
+  TIO.putStrLn "Formatting (one canonical layout, no options):"
+  TIO.putStrLn "  fmt <file.once>...            Rewrite files in the canonical layout"
+  TIO.putStrLn "  fmt --check <file.once>...    Fail if a file is not in the canonical layout"
+  TIO.putStrLn "  fmt --stdout <file.once>      Print the formatted file"
   TIO.putStrLn ""
   TIO.putStrLn "Full compile:"
   TIO.putStrLn "  build [options] <file.once>   Full compile → assembly, optionally to executable"

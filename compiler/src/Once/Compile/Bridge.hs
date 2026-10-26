@@ -38,6 +38,8 @@ module Once.Compile.Bridge
   , moduleWarnings
   , resolveImports
   , compileFromModule
+    -- * Formatting (plan 0.124)
+  , formatSource
   ) where
 
 import Data.Text (Text)
@@ -56,6 +58,7 @@ import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax as MSS
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve as MMR
 import qualified MAlonzo.Code.Once.Type as MT
+import qualified MAlonzo.Code.Once.Format as MF
 
 ------------------------------------------------------------------------
 -- Haskell types (stable API)
@@ -265,3 +268,11 @@ compileFromModule m stage doOpt arch (Resolved mod_) =
   fromMResult
     (MC.d_compileFromModule_1774
        (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))
+
+-- | A source text in the canonical layout (`once fmt`, plan 0.124), or the
+-- parser's error. The formatting is Agda's (`Once.Format.formatSource`).
+formatSource :: Text -> Either Text Text
+formatSource source =
+  case MF.d_formatSource_14 (textToAgda source) of
+    MSum.C_inj'8321'_38 err -> Left (agdaToText err)
+    MSum.C_inj'8322'_42 out -> Right (agdaToText out)
