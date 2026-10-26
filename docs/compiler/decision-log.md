@@ -19571,8 +19571,43 @@ user facing configs."
 * Nothing of the input's layout survives (the user, 2026-10-26: "like elm that always formats everything for
   you"): blank lines come from the code — one between declarations, none between a signature and its
   definition or between imports; comments are formatted — `-- x`, a prose line over the width wrapped (lines never joined),
-  preformatted lines (banners, indented code, lists) and block comments kept. A comment stays in order:
+  preformatted lines (banners, indented code, lists) kept; a block comment becomes line comments (D342). A comment stays in order:
   above the declaration it precedes, in place inside one, at the end of its line after code; a blank line
   inside a run of comments separates its paragraphs. Comments are anchored to word and literal tokens, the
   sequence every canonical spelling keeps.
+
+## D342 — `once fmt` IS PROVED: THE ROUND TRIP, THE MEANING, CANONICITY (2026-10-27)
+
+**Follows** plan 0.124 step 4 (the user, 2026-10-26: "lets finalize the theorems too before merging").
+
+### Decision
+* The theorems (`Once.Format.Proof`), all against the Spec's lexing and grammar and the compiler's real
+  parser (`FrontEndBridge`):
+  - `roundtrip`: when `parseStrict` reads a text as a module, `formatSource` writes a text it reads as the
+    same module;
+  - `format-denotes`: a source with its program text formatted denotes the same typed program
+    (`Spec.Source._⊢_`), so behaviour and admissibility are kept — `fmt` stays out of the compile path and
+    this is what it owes the apex;
+  - `format-canonical`: two texts without comments that parse as the same module are formatted alike;
+  - `idempotent`: for a text without comments, formatting the output gives the output.
+* The layout is correct by construction where it can be: it writes lexemes, not characters; a blank goes
+  between two tokens that would lex as one or as something else (`apart`, which caught `x!=` lexing as the
+  word `x!`); a comment is always a line comment ending its line; the digits are the formatter's own, so
+  reading them back is a theorem. The proofs that remain are about the printer's choices (parentheses,
+  levels, follow conditions) and the module's shape (every declaration starts a line, every line inside it
+  is indented).
+* A block comment becomes line comments; what stands before a declaration's first anchor stands above the
+  declaration (it would otherwise continue the previous one); an import is indented like any declaration;
+  a comparison's left operand is a sum — the proofs found the last three (`(a < b) < c` lost its
+  parentheses).
+* The one hypothesis, `DigitBound`: the primitive `isDigit` accepts the ten decimal digits only. Agda's
+  conversion cannot see it; it is a theorem argument, not a postulate (a float's fraction is read back from
+  it). Discharging it as a tool hypothesis beside T1/T2 (`Once.Postulates`) is the user's call.
+* Spec (approved 2026-10-27): `digitsToNat`'s accumulator is the top-level `digitsFrom`, so its value can
+  be stated; nothing else of the Spec changed.
+
+### Consequences
+* Open: idempotence and comments-in-order for texts with comments (plan 0.124 §9).
+* The proofs' per-case parts are generated (`formal/scripts/gen-format-*.py`); edit the generators.
+* The tree's formatting is unchanged by all of it.
 
