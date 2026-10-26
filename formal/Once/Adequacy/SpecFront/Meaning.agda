@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 
 import Once.Spec.Core.Program as CoreProgram
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
-import Once.Internal.Core.Telescope as TL
+import Once.Core.Telescope as TL
 open import Once.Module using (ModTele; MainIn; emptyScope)
 import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP

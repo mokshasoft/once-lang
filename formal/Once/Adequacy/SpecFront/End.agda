@@ -33,7 +33,7 @@ import Data.String
 
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Program Σ as SP
-import Once.Internal.Core.Telescope Σ as TL
+import Once.Core.Telescope Σ as TL
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)

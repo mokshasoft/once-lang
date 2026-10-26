@@ -24,7 +24,7 @@ open import Data.Fin using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 import Once.Spec.Type as ST
-import Once.Internal.Core.Telescope Σ as TL
+import Once.Core.Telescope Σ as TL
 import Once.Spec.Core.Syntax as SC
 open SC.Schema using (type)
 import Once.Spec.Core.Program Σ as SP

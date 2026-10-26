@@ -35,13 +35,13 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (μ)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Spec.Polynomial using (SFunctor; inS; μS; ⟦_⟧SF)
-import Once.Internal.Polynomial
+import Once.IR.Semantics.Polynomial
 open import Once.Semantics.Machine using (tF-coh; ⟦_⟧F; coerce-μ-in)
-open import Once.Internal.Iterative using (T∞; return∞)
+open import Once.IR.Semantics.Iterative using (T∞; return∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.MeaningD using (in-value)

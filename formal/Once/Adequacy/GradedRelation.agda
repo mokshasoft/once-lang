@@ -35,13 +35,13 @@ open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; Zero; One; M
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Type using (_⟨_⟩; _⟨_⟩F; Type; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Polynomial as LPoly
+import Once.IR.Semantics.Polynomial as LPoly
 import Once.Spec.Polynomial as SPoly
-open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
-import Once.Internal.Trace as LTr
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
-import Once.Internal.Iterative as LI
-open import Once.Internal.StreamInf using (νᴵ; module νᴵ)
+open import Once.IR.Semantics.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+import Once.IR.Semantics.Trace as LTr
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
+import Once.IR.Semantics.Iterative as LI
+open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt)

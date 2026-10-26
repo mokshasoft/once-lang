@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 ------------------------------------------------------------------------
--- Once.Internal.Core.Telescope — plan 0.103 phase 4: THE CORE TELESCOPE WITH ∀.
+-- Once.Core.Telescope — plan 0.103 phase 4: THE CORE TELESCOPE WITH ∀.
 --
--- INTERNAL (D333). A module is the Spec's telescope of definitions
+-- COMPILER (D336). A module is the Spec's telescope of definitions
 -- (`Spec.Core.Program.Tele`): `d : ∀ Δ. T = e`, each body typed ONCE, over its
 -- kinds `Δ`, in its PREFIX's table (a reference reaches only earlier
 -- definitions, so acyclicity is manifest). A program is a telescope and its
@@ -20,7 +20,7 @@
 
 open import Once.Spec.Signature using (Signature)
 
-module Once.Internal.Core.Telescope (Σ : Signature) where
+module Once.Core.Telescope (Σ : Signature) where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Fin using (Fin; zero; suc)

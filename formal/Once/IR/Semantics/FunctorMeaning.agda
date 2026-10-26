@@ -2,16 +2,16 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.FunctorMeaning — a functor code, read as a polynomial functor
+-- Once.IR.Semantics.FunctorMeaning — a functor code, read as a polynomial functor
 -- on sets.
 --
--- INTERNAL (D333). A code's constant positions hold BASE types (`WellFormedF`), so they
+-- IR'S OWN (D336). A code's constant positions hold BASE types (`WellFormedF`), so they
 -- are read by `⟦_,_⟧-base` — over the carriers chosen for `Int` and `Float` —
 -- without the full meaning of types; `translateF` is the code's polynomial,
 -- and `μ-sem`/`ν-sem` its initial algebra and final coalgebra.
 ------------------------------------------------------------------------
 
-module Once.Internal.FunctorMeaning where
+module Once.IR.Semantics.FunctorMeaning where
 
 open import Once.Spec.Type using (var; Ty; Fun)
 open import Data.Unit using (⊤)
@@ -20,7 +20,7 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Once.Spec.Type using (var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Internal.Polynomial using (νS)
+open import Once.IR.Semantics.Polynomial using (νS)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; μS)
 
 ------------------------------------------------------------------------

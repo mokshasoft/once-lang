@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Internal.FunctorMeaning where
+module MAlonzo.Code.Once.IR.Semantics.FunctorMeaning where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -20,22 +20,22 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Once.Spec.Polynomial
 import qualified MAlonzo.Code.Once.Spec.Type
 
--- Once.Internal.FunctorMeaning.⟦_,_⟧-base
-d_'10214'_'44'_'10215''45'base_8 ::
+-- Once.IR.Semantics.FunctorMeaning.⟦_,_⟧-base
+d_'10214'_'44'_'10215''45'base_10 ::
   Integer -> () -> () -> MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> ()
-d_'10214'_'44'_'10215''45'base_8 = erased
--- Once.Internal.FunctorMeaning.translateF
-d_translateF_60 ::
+d_'10214'_'44'_'10215''45'base_10 = erased
+-- Once.IR.Semantics.FunctorMeaning.translateF
+d_translateF_62 ::
   Integer ->
   () ->
   () ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6
-d_translateF_60 ~v0 ~v1 ~v2 v3 = du_translateF_60 v3
-du_translateF_60 ::
+d_translateF_62 ~v0 ~v1 ~v2 v3 = du_translateF_62 v3
+du_translateF_62 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Polynomial.T_SFunctor_6
-du_translateF_60 v0
+du_translateF_62 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Type.C_K_38 v1
         -> coe MAlonzo.Code.Once.Spec.Polynomial.C_SK_8
@@ -44,22 +44,22 @@ du_translateF_60 v0
       MAlonzo.Code.Once.Spec.Type.C__'8853'__42 v1 v2
         -> coe
              MAlonzo.Code.Once.Spec.Polynomial.C__S'8853'__12
-             (coe du_translateF_60 (coe v1)) (coe du_translateF_60 (coe v2))
+             (coe du_translateF_62 (coe v1)) (coe du_translateF_62 (coe v2))
       MAlonzo.Code.Once.Spec.Type.C__'8855'__44 v1 v2
         -> coe
              MAlonzo.Code.Once.Spec.Polynomial.C__S'8855'__14
-             (coe du_translateF_60 (coe v1)) (coe du_translateF_60 (coe v2))
+             (coe du_translateF_62 (coe v1)) (coe du_translateF_62 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Internal.FunctorMeaning.μ-sem
-d_μ'45'sem_90 ::
+-- Once.IR.Semantics.FunctorMeaning.μ-sem
+d_μ'45'sem_92 ::
   Integer -> () -> () -> MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> ()
-d_μ'45'sem_90 = erased
--- Once.Internal.FunctorMeaning.ν-sem
-d_ν'45'sem_100 ::
+d_μ'45'sem_92 = erased
+-- Once.IR.Semantics.FunctorMeaning.ν-sem
+d_ν'45'sem_102 ::
   Integer -> () -> () -> MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> ()
-d_ν'45'sem_100 = erased
--- Once.Internal.FunctorMeaning.⟦_,_⟧F-base
-d_'10214'_'44'_'10215'F'45'base_110 ::
+d_ν'45'sem_102 = erased
+-- Once.IR.Semantics.FunctorMeaning.⟦_,_⟧F-base
+d_'10214'_'44'_'10215'F'45'base_112 ::
   Integer ->
   () -> () -> MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> () -> ()
-d_'10214'_'44'_'10215'F'45'base_110 = erased
+d_'10214'_'44'_'10215'F'45'base_112 = erased

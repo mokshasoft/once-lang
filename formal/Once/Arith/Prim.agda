@@ -27,7 +27,7 @@ import Once.Spec.Word as OnceWord
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Spec.Float.Arith as FA
-import Once.Internal.Value Carrier Carrier as M
+import Once.IR.Semantics.Value Carrier Carrier as M
 
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 

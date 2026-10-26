@@ -31,8 +31,8 @@ open import Once.IRTy using (IRTy; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute;
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌈⌉; base-⌊⌋)
 open import Once.CanonicalName using (_≟ᶜ_)
-open import Once.Internal.Trace using (T; ret; call; halt; FFIAnswers; RelT′; rel-ret; rel-call; rel-halt)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; embed; fmap∞)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; FFIAnswers; RelT′; rel-ret; rel-call; rel-halt)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; embed; fmap∞)
 open T∞ using (force)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (baseA; conB)
@@ -44,15 +44,15 @@ open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed; RelS-iter∞)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel
-open import Once.Internal.StreamInf using (νᴵ)
+open import Once.IR.Semantics.StreamInf using (νᴵ)
 open import Once.Spec.Type as Ty using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
+open import Once.IR.Semantics.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
 
 ------------------------------------------------------------------------
 -- IR base types: related is equal, and equal is related.

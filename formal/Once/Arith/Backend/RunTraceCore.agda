@@ -17,7 +17,7 @@
 --     its event `ev lbl s` and continue past the call (emit-and-continue);
 --   * any other instruction executes via `execInstr` and emits nothing.
 --
--- D320: what a fuelled run shows is its calls and how it ended (`Once.Internal.Out`);
+-- D320: what a fuelled run shows is its calls and how it ended (`Once.IR.Semantics.Out`);
 -- the binary's TRACE is read off the same steps by corecursion, with no fuel
 -- (`RunTraceMachine`).
 ------------------------------------------------------------------------
@@ -32,8 +32,8 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (Σ; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
 
-open import Once.Internal.Event using (SigOpEvent)
-open import Once.Internal.Out using (Out; cut; stop; ended; _▹_)
+open import Once.IR.Semantics.Event using (SigOpEvent)
+open import Once.IR.Semantics.Out using (Out; cut; stop; ended; _▹_)
 open import Once.Spec.Trace using (returned)
 open import Once.Target.SymbolFresh using (host-leave-symbol)
 open import Data.String using (_≟_)
@@ -82,7 +82,7 @@ module RunTrace
   ----------------------------------------------------------------------
   -- Plan 0.105: each takes the binary's LOG `h` (the calls made so far), which
   -- an external call's answer depends on; the log grows by exactly the events.
-  -- D320: what a run shows is its calls AND how it ended (`Once.Internal.Out`): a
+  -- D320: what a run shows is its calls AND how it ended (`Once.IR.Semantics.Out`): a
   -- halted machine, a pc off the code and a failing instruction all END the run
   -- (`halted` — the process is gone); only running out of fuel says nothing.
   run-events       : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Out

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.TraceMonadLaws — the lemmas about `Once.Internal.Trace`, moved out so that module
+-- Once.Denotation.TraceMonadLaws — the lemmas about `Once.IR.Semantics.Trace`, moved out so that module
 -- stays definitions only (plan 0.113 A1/B4; D140: the Spec closure is proof-free).
 ------------------------------------------------------------------------
 
@@ -32,11 +32,11 @@ open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
-open import Once.Internal.Event using (SigOpEvent; mk-event)
-open import Once.Internal.Trace using (FFIAnswers)
+import Once.IR.Semantics.Value Carrier Carrier as M
+open import Once.IR.Semantics.Event using (SigOpEvent; mk-event)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
-open import Once.Internal.Trace
+open import Once.IR.Semantics.Trace
 open CallOp
 open HaltOp
 open Interp

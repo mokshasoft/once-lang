@@ -59,7 +59,7 @@ open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Spec.Core.Syntax using (Defs; _▷_; _!!_; Schema; schema)
 import Once.Spec.Core.Syntax as SCS
 open import Once.Spec.Core.Program Σ using (Tele; def; Entry; entry)
-open import Once.Internal.Core.Telescope Σ using (Program; program)
+open import Once.Core.Telescope Σ using (Program; program)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Type.SubDecide using (_<:?_)
 import Once.Spec.Core.Typing as Ty

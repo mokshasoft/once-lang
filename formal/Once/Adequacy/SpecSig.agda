@@ -48,14 +48,14 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
+import Once.IR.Semantics.Value Carrier Carrier as M
 import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Spec.Grade as G
 import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
-import Once.Internal.Trace as LTr
-open import Once.Internal.Event using (SigOpEvent; toEvent; baseOf; valOf)
+import Once.IR.Semantics.Trace as LTr
+open import Once.IR.Semantics.Event using (SigOpEvent; toEvent; baseOf; valOf)
 open import Once.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf; valueOf-at; _∈K?_; Impl)
 open import Once.ContractLaws using (value-∈; base-contract)
 import Once.Spec.Grade as SG
@@ -83,7 +83,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ)
 open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-embed)
 open import Once.Denotation.TraceMonadLaws using (RelT′-refl)
-open import Once.Internal.Iterative using (embed; return∞)
+open import Once.IR.Semantics.Iterative using (embed; return∞)
 import Once.Denotation.SourceDenote as SDn
 open import Once.Denotation.DenotTrace using (sigOpT; module CallEnv)
 open import Once.Arith.SigOp.Builders using (value-info; arrow-info; arrow-sem-eff)
@@ -474,7 +474,7 @@ private
   ans-at {b = b} M ne ra h p d (no ¬u) (no ¬k) = ⊥-elim (¬k (ans-in M (λ e → ne-void ne (⌞⌟-void b e)) ¬u))
 
   ev-eq : ∀ {cn} a .(bA : (LW.Base LW.∅ₖ) ⌞ a ⌟) {x y} → SI.toB a x ≡ y
-        → toEvent (Once.Internal.Event.mk-event cn ⌞ a ⌟ bA x) ≡ S.event cn a y
+        → toEvent (Once.IR.Semantics.Event.mk-event cn ⌞ a ⌟ bA x) ≡ S.event cn a y
   ev-eq {cn} a bA {x} ra = cong (λ { (b , v) → S.event cn b v }) (trans (ev-val a bA x) (cong (a ,_) ra))
 
 -- The compiler's interpretation of `J` and `J`'s world agree on every

@@ -6,7 +6,7 @@
 --
 -- Plan 0.46. `⟦_⟧ᴰ` is the SOURCE OBSERVABLE: a compositional,
 -- effect-graded, monadic interpretation of the CCC IR into the trace
--- monad `T` (Once.Internal.Trace). It is fuel-free (totality is
+-- monad `T` (Once.IR.Semantics.Trace). It is fuel-free (totality is
 -- structural recursion on the IR), event-indexed (the `ℕ` of `T` is the
 -- observation depth, consumed only by `Ana`), and HIGHER-ORDER-CORRECT:
 --
@@ -57,7 +57,7 @@ import Once.Semantics.Machine as Val
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo)
-open import Once.Internal.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
 open SigOpInfo using (name; baseA; sem; conB)
 open import Once.Arith.Prim using (primSem)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -65,17 +65,17 @@ open import Once.Semantics.Machine
   using (sem-cata; sem-In; sem-Out; ⟦_⟧F; coerce-ν-out; coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Internal.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
 -- (consumers unchanged), so the reference meaning `⟦_⟧ᵈ` can land in `⟦_⟧ᴰ`
 -- without `Once.IR` (IR enters only at `evalᴰ` below).
-open import Once.Internal.Stream
+open import Once.IR.Semantics.Stream
 open import Once.Denotation.ValueDomain
 open νᵈ using (forceᵈ)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞; iter∞)
-open import Once.Internal.StreamInf using (νᴵ; module νᴵ; in-νᴵ; anaFᴵ)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞; iter∞)
+open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ; in-νᴵ; anaFᴵ)
 open νᴵ using (forceᴵ)
 
 ------------------------------------------------------------------------

@@ -124,22 +124,23 @@ library
       MAlonzo.Code.Once.Grammar.Roundtrip
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.IR.Ref
+      MAlonzo.Code.Once.IR.Semantics.Event
+      MAlonzo.Code.Once.IR.Semantics.FunctorMeaning
+      MAlonzo.Code.Once.IR.Semantics.Iterative
+      MAlonzo.Code.Once.IR.Semantics.Polynomial
+      MAlonzo.Code.Once.IR.Semantics.Stream
+      MAlonzo.Code.Once.IR.Semantics.StreamInf
+      MAlonzo.Code.Once.IR.Semantics.Trace
+      MAlonzo.Code.Once.IR.Semantics.Value
       MAlonzo.Code.Once.IRTy
       MAlonzo.Code.Once.IRTy.WF
       MAlonzo.Code.Once.Context
       MAlonzo.Code.Once.Contract
-      MAlonzo.Code.Once.Internal.Event
-      MAlonzo.Code.Once.Internal.FunctorMeaning
-      MAlonzo.Code.Once.Internal.Iterative
       MAlonzo.Code.Once.Laws.Grade
       MAlonzo.Code.Once.Laws.Order
       MAlonzo.Code.Once.Laws.Sub
       MAlonzo.Code.Once.Name
-      MAlonzo.Code.Once.Internal.Polynomial
       MAlonzo.Code.Once.Res
-      MAlonzo.Code.Once.Internal.Stream
-      MAlonzo.Code.Once.Internal.StreamInf
-      MAlonzo.Code.Once.Internal.Trace
       MAlonzo.Code.Once.Type.Core
       MAlonzo.Code.Once.Type.DecEq
       MAlonzo.Code.Once.Type.Grade
@@ -150,7 +151,6 @@ library
       MAlonzo.Code.Once.Type.Sub
       MAlonzo.Code.Once.Type.Concrete
       MAlonzo.Code.Once.TypeCheck.Scope
-      MAlonzo.Code.Once.Internal.Value
       MAlonzo.Code.Once.Memory.HeapAddress
       MAlonzo.Code.Once.Memory.Memory
       MAlonzo.Code.Once.Memory.MemoryLayoutSemantics

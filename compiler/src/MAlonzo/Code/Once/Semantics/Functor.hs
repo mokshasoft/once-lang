@@ -20,7 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Internal.Polynomial
+import qualified MAlonzo.Code.Once.IR.Semantics.Polynomial
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Spec.Polynomial
 
@@ -127,7 +127,7 @@ du_paraS_410 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
       (coe
-         MAlonzo.Code.Once.Internal.Polynomial.du_cataS_30 (coe v0)
+         MAlonzo.Code.Once.IR.Semantics.Polynomial.du_cataS_32 (coe v0)
          (coe du_alg''_424 (coe v0) (coe v1)) (coe v2))
 -- Once.Semantics.Functor._.alg'
 d_alg''_424 ::
@@ -168,7 +168,7 @@ du_fuseNatS_436 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_μS_82 -> AgdaAny
 du_fuseNatS_436 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Internal.Polynomial.du_cataS_30 (coe v0)
+      MAlonzo.Code.Once.IR.Semantics.Polynomial.du_cataS_32 (coe v0)
       (coe (\ v4 -> coe v3 (coe v2 v1 v4)))
 -- Once.Semantics.Functor.fuseNatW
 d_fuseNatW_458 ::
@@ -195,7 +195,7 @@ du_fuseNatW_458 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_fuseNatW_458 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Internal.Polynomial.du_cataS_30 (coe v1)
+      MAlonzo.Code.Once.IR.Semantics.Polynomial.du_cataS_32 (coe v1)
       (coe du_φ_508 (coe v0) (coe v2) (coe v3) (coe v4) (coe v5))
 -- Once.Semantics.Functor._.collectM
 d_collectM_482 ::

@@ -25,7 +25,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Internal.Polynomial
+open import Once.IR.Semantics.Polynomial
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; μS; ⟦_⟧SF)
 
 ------------------------------------------------------------------------

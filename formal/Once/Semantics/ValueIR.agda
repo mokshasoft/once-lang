@@ -36,10 +36,10 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P�
 open import Once.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
-open import Once.Internal.FunctorMeaning using (⟦_,_⟧-base; translateF)
-open import Once.Internal.Polynomial using (νS)
+open import Once.IR.Semantics.FunctorMeaning using (⟦_,_⟧-base; translateF)
+open import Once.IR.Semantics.Polynomial using (νS)
 open import Once.Spec.Polynomial using (SK; _S⊕_; _S⊗_; μS)
-open import Once.Internal.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F)
+open import Once.IR.Semantics.Value IntRep FloatRep using (⟦_⟧; ⟦_⟧F)
 
 ------------------------------------------------------------------------
 -- The IR-object value domain: the surface domain at the canonical rep.

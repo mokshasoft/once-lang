@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Out — what a fuelled run shows (D320, plan 0.119 §7 D4b).
+-- Once.IR.Semantics.Out — what a fuelled run shows (D320, plan 0.119 §7 D4b).
 --
 -- The calls it made, and how it ended: `just e` when the run reached its end
 -- `e` within the fuel (`returned` at the Host's `leave`; `halted` at a call
@@ -10,7 +10,7 @@
 -- out first. A run that has not ended says nothing about how it will.
 ------------------------------------------------------------------------
 
-module Once.Internal.Out where
+module Once.IR.Semantics.Out where
 
 open import Data.List using (List; []; _++_)
 open import Data.List.Properties using (++-assoc)
@@ -20,7 +20,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Spec.Trace using (End)
 import Once.Spec.Trace
 

@@ -43,7 +43,7 @@ open import Once.Spec.Name using (CanonicalName)
 
 import Data.List as DL
 open import Once.Denotation.Program using (IRFun; Linked)
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 import Once.CCC.FrameSemantics
 module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) (tbl : DL.List IRFun) where
 

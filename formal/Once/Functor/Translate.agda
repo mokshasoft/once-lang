@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------
 -- Once.Functor.Translate — the laws of reading a functor code as a set
--- functor (`Once.Internal.FunctorMeaning`), and the irrelevance of the
+-- functor (`Once.IR.Semantics.FunctorMeaning`), and the irrelevance of the
 -- well-formedness witnesses.
 --
 -- Translation from syntactic Functor (with Type) to semantic SFunctor (with Set).
@@ -32,13 +32,13 @@ open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; _*_; _+_; _⇒[_]_;
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Type.Poly
 open import Once.Type
-open import Once.Internal.Polynomial
+open import Once.IR.Semantics.Polynomial
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; μS; ⟦_⟧SF)
 open import Once.Semantics.Functor
 open import Once.Type.Concrete
 open import Once.Spec.Type using (Base; WFFun; b-Unit; wf-⊕; ∅ₖ)
 open import Once.Spec.Type using (KCtx; Base; WFFun; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; wf-K; wf-Id; wf-⊕; wf-⊗)
-open import Once.Internal.FunctorMeaning
+open import Once.IR.Semantics.FunctorMeaning
 -- | Translation preserves interpretation
 translate-coherence : ∀ {m} IntRep FloatRep (F : Fun m) X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X
 translate-coherence IntRep FloatRep (K A) X = refl

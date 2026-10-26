@@ -16,8 +16,8 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Internal.Trace using (FFIAnswers)
-open import Once.Internal.Trace using (Interp; pureHalf)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (Interp; pureHalf)
 
 -- Plan 0.105 (D257 amendment 2): in a world `ι` — its signatures and their
 -- implementation; the IR reads its pure half.
@@ -38,8 +38,8 @@ open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Internal.Trace using (ret)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
+open import Once.IR.Semantics.Trace using (ret)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
 open T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; relS-ret)
 open RelS using (forceS)

@@ -31,7 +31,7 @@ open import Data.List using (List)
 
 open import Data.Unit using (⊤)
 open import Once.Spec.Trace using (Tr)
-open import Once.Internal.Trace      using (Interp)
+open import Once.IR.Semantics.Trace      using (Interp)
 open import Once.Adequacy.CPU.Interface  -- re-export
 open import Once.Target.Arch
 import Once.Adequacy.CPU.RiscV64 as RiscV64-CPU

@@ -35,13 +35,13 @@ open import Once.Spec.Type
   using (Type; Fun; KCtx; WFFun; Base; _⟨_⟩; _⟨_⟩F; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
          wf-K; wf-Id; b-var)
 import Once.Spec.Type as SpT
-open import Once.Internal.FunctorMeaning using (translateF; ⟦_,_⟧-base)
-import Once.Internal.Polynomial as LPoly
+open import Once.IR.Semantics.FunctorMeaning using (translateF; ⟦_,_⟧-base)
+import Once.IR.Semantics.Polynomial as LPoly
 open import Once.Semantics.Machine using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
 import Once.Semantics.Machine as Val
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
-import Once.Internal.Iterative as LI
-open import Once.Internal.StreamInf using (νᴵ; anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
+import Once.IR.Semantics.Iterative as LI
+open import Once.IR.Semantics.StreamInf using (νᴵ; anaᴵ; anaRun; anaBlock; mapAnaᴵ; anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Denotation.MeaningD using (cata-sem; cata-ev-algᴰ-D)
 import Once.Spec.Effect Σ as SE

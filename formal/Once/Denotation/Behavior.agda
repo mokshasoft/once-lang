@@ -84,7 +84,7 @@ open import Data.Product using (∃-syntax; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 import Once.Grammar as G
 
 ------------------------------------------------------------------------

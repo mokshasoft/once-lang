@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Semantics.Value — the laws of the value domain (`Once.Internal.Value`):
+-- Once.Semantics.Value — the laws of the value domain (`Once.IR.Semantics.Value`):
 -- coercion round trips, Lambek, the fold's computation law; the IR-mirroring
 -- operations (`sem-fst`, …) and the optimizer's fusion (`sem-fuseNat`).
 --
@@ -97,16 +97,16 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 -- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
-open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
+open import Once.IR.Semantics.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Polynomial
+open import Once.IR.Semantics.Polynomial
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; μS; ⟦_⟧SF)
 open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)
-open Once.Internal.Polynomial.νS using (unfoldS)
+open Once.IR.Semantics.Polynomial.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /
 -- `Once.Semantics.Value.Laws`, so this module holds definitions only.
-open import Once.Internal.Value IntRep FloatRep
+open import Once.IR.Semantics.Value IntRep FloatRep
 ------------------------------------------------------------------------
 -- Type/Set Functor Coherence
 --

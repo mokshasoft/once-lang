@@ -62,11 +62,11 @@ open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax using (sigOp)
 import Once.Surface.Syntax as Surface
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
-import Once.Internal.Stream
-open import Once.Internal.Trace using (T; ret; returnT; _>>=T_; fmapT; rel-ret; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
+import Once.IR.Semantics.Stream
+open import Once.IR.Semantics.Trace using (T; ret; returnT; _>>=T_; fmapT; rel-ret; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
 open import Once.Denotation.TraceMonadLaws using (RelT′-fmap; RelT′-refl)
 open Interp using (impl; sig)
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 open import Once.Contract using (key; valueOf-at; _∈K?_)
 open import Once.ContractLaws using (value-∈)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -117,14 +117,14 @@ open import Once.Adequacy.SpecRun Σ using (≡ʳ-R; retargetʳ-R; retargetˡ-R;
 open RunR using (forceR)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Spec.Polynomial using (⟦_⟧SF)
 open import Once.SigOp.Info using (semP; int-prim; mk-info')
-open import Once.Internal.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed)
 open T∞ using (force)
 open import Once.Type.Core using (isVoid?; isUnit?; wk₀)
 import Once.Semantics.Machine as Val

@@ -19407,3 +19407,26 @@ the code so as little as possible makes it into the compiler?").
    plan 0.93 S3, recorded in D328).
 3. **The unused imports in `Spec/Float/{Arith,Decimal,Dyadic}` are removed** — a Spec patch, with item 1's.
 4. **Plan 0.122** (the internal language collapsed onto the Spec) **is done after the merge** (D333).
+
+## D336 — `Once.Internal` DELETED: THE IR'S SEMANTICS ARE THE IMPLEMENTATION'S, NOT A SPEC COPY (2026-10-26)
+
+**Follows** D333, plan 0.122 layer 5. **Decided** by the user 2026-10-26 (option B of the layer-5 (e)
+question; the plan had said to collapse every same-concept module onto the Spec).
+
+### Decision
+* What was left in `Once.Internal` after layer 5 (a)–(d) — `Trace`, `Iterative`, `Event`, `Value`,
+  `Stream`, `StreamInf`, `FunctorMeaning`, `Out`, `Polynomial` (`outS`, `cataS`, `νS`, `anaS`) and
+  `Core.Telescope` — is not a second statement of the Spec's meaning (that copy went in plan 0.122 §5.5).
+  It is the implementation's semantics: the machine's value domain (purity-blind, Σ-free; an arrow is a
+  closure into `Res` with no trace), the IR evaluator's computations over a universal signature, what a
+  machine run shows, and the compiler's meaning of `∀` at its instances. `MeaningBridge`, `SpecRecursion`,
+  `TeleWalk` and `CoreBridge` relate it to the Spec's meaning, and the theorem is the Spec's (D332).
+* So it is not collapsed: the IR's semantics move to `Once.IR.Semantics.*`, the telescope to
+  `Once.Core.Telescope`, and `Once.Internal` is gone. Collapsing would make the IR evaluator compute in
+  `Spec.Domain Σ`/`Spec.Effect Σ` — information the machine does not have — and restate every per-arch
+  representation proof (~90 importers of `Trace` alone) for no change in what the theorem proves.
+
+### Consequences
+* Plan 0.122's goal — no internal language beside the Spec — is reached: every module that restated the
+  Spec now uses the Spec's definition; what remains is compiler code in the compiler's namespaces.
+* Not a Spec change: nothing under `Once.Spec` moved or changed.

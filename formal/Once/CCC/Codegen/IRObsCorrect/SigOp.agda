@@ -38,7 +38,7 @@ import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
 open import Function using () renaming (id to idᶠ)
 open import Data.List.Properties using (++-identityʳ)
-open import Once.Internal.Event using (mk-event)
+open import Once.IR.Semantics.Event using (mk-event)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -46,7 +46,7 @@ import Once.IRTy
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
 open import Once.Res using (returns)
 open import Once.Res using (returns-inj)

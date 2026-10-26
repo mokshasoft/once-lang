@@ -63,7 +63,7 @@ import Once.IRTy
 import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (tagRun; run-approx-embed; done-tag; budgetLeft; done)
 open import Once.Res using (is-stopped)
 

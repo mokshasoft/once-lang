@@ -46,7 +46,7 @@ open import Once.Laws.Sub
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret)
 open import Once.Denotation.ValueRel using (RelD; RelS-fmapʳ; retargetˡ; retargetʳ; RelS-substˡ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)

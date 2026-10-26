@@ -41,8 +41,8 @@ open import Relation.Nullary using (Dec; yes; no)
 -- Import FrameSemantics for Frame type
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; module FrameSemantics)
 open FrameSemantics using (fs-interp)
-open import Once.Internal.Event using (SigOpEvent; mk-event)
-open import Once.Internal.Trace using (callOp; answer; callKey; calls)
+open import Once.IR.Semantics.Event using (SigOpEvent; mk-event)
+open import Once.IR.Semantics.Trace using (callOp; answer; callKey; calls)
 open import Once.Contract using (_∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every

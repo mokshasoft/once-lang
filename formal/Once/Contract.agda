@@ -29,8 +29,8 @@ import Once.Spec.Grade as Ty
 open import Once.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
-open import Once.Internal.Event using (SigOpEvent)
+import Once.IR.Semantics.Value Carrier Carrier as M
+open import Once.IR.Semantics.Event using (SigOpEvent)
 
 -- A CONTRACT KEY: a SigOp as an interpretation declares it — its RENDERED
 -- canonical path (the import table's key, the symbol the linker matches) with

@@ -21,8 +21,8 @@ open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Type
   using (Ty; Fun; Type; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Type.Core using (wk₀; wk₀F)
-open import Once.Internal.FunctorMeaning using (⟦_,_⟧-base; translateF; μ-sem; ν-sem)
-open import Once.Internal.Polynomial using (νS)
+open import Once.IR.Semantics.FunctorMeaning using (⟦_,_⟧-base; translateF; μ-sem; ν-sem)
+open import Once.IR.Semantics.Polynomial using (νS)
 open import Once.Spec.Polynomial using (SFunctor; SK; _S⊕_; _S⊗_; μS)
 
 ------------------------------------------------------------------------
@@ -59,7 +59,7 @@ translateF-wk₀ I F (G ⊗ H) = cong₂ _S⊗_ (translateF-wk₀ I F G) (transl
 open import Once.Res using (Res)
 
 module ValueWk₀ (I F : Set) where
-  open import Once.Internal.Value I F using (⟦_⟧)
+  open import Once.IR.Semantics.Value I F using (⟦_⟧)
 
   ⟦wk₀⟧ : ∀ {m} (A : Type) → ⟦ wk₀ {m} A ⟧ ≡ ⟦ A ⟧
   ⟦wk₀⟧ Unit                       = refl
@@ -82,8 +82,8 @@ open ValueWk₀ Carrier Carrier
 ------------------------------------------------------------------------
 
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Internal.Iterative using (T∞)
-open import Once.Internal.StreamInf using (νᴵ)
+open import Once.IR.Semantics.Iterative using (T∞)
+open import Once.IR.Semantics.StreamInf using (νᴵ)
 open import Data.Unit using (⊤; tt)
 
 ⟦wk₀⟧ᴰ : ∀ {m} (A : Type) → ⟦ wk₀ {m} A ⟧ᴰ ≡ ⟦ A ⟧ᴰ

@@ -5,7 +5,7 @@
 -- Once.Adequacy.ModuleProgram — a typed module's core program (plan 0.103
 -- phase 6c; plan 0.122 §5.6, stage e).
 --
--- Walking the module in declaration order (`Internal.Core.Translate` relates
+-- Walking the module in declaration order (`Once.Core.Translate` relates
 -- its scope to the table): an FFI declaration extends Σ; a monomorphic
 -- definition is an arity-0 entry whose body is the term the checker's witness
 -- names — the Spec's derivation of the body, read at the scope's Pack (the
@@ -52,7 +52,7 @@ open import Once.Spec.Surface.Program using (_∷ⁿ_)
 import Once.Spec.Surface.Typing as SUT
 open import Once.Spec.Sub using (_<:_)
 open import Once.Type.SubDecide using (_<:?_)
-open import Once.Internal.Core.Telescope Σ using (Program)
+open import Once.Core.Telescope Σ using (Program)
 open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
 import Once.Type.Poly as TP
 import Once.Compile as C

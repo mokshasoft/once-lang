@@ -158,7 +158,7 @@ open import Once.IR using (IR)
 open import Data.Integer using (ℤ)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Float.Dyadic using (Dyadic)
-open import Once.Internal.Value Carrier Carrier using (sem-cata; sem-para; sem-ana; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
+open import Once.IR.Semantics.Value Carrier Carrier using (sem-cata; sem-para; sem-ana; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 open import Once.Semantics.Value Carrier Carrier using (sem-fuseNat; sem-fuseNat-cong)
 
 -- Cata: if two algebras evaluate equally (pointwise), so do their Cata applications.

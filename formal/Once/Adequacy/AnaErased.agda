@@ -40,12 +40,12 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type as TT using (_*_; _+_)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
-open import Once.Internal.Polynomial
+open import Once.IR.Semantics.Polynomial
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Internal.Polynomial using (anaS; sfmapAna; anaLayerS)
+open import Once.IR.Semantics.Polynomial using (anaS; sfmapAna; anaLayerS)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel)
 open Once.Semantics.Functor.Laws._∼S_ using (unfoldS-∼)
@@ -53,8 +53,8 @@ open import Once.Semantics.Machine
   using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; tF-coh; coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
 open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
-open import Once.Internal.Iterative using (T∞; return∞)
-open import Once.Internal.Stream
+open import Once.IR.Semantics.Iterative using (T∞; return∞)
+open import Once.IR.Semantics.Stream
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; coerce-functor-D)
 open import Once.Spec.Type using (wf-K; wf-Id; b-*; b-+)

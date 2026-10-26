@@ -29,7 +29,7 @@
 
 open import Once.Spec.Name using (CanonicalName)
 
-open import Once.Internal.Trace using (Interp)
+open import Once.IR.Semantics.Trace using (Interp)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Plan 0.105: the machine runs against an interpretation, so these facts about

@@ -43,7 +43,7 @@ open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Target.SymbolFresh using (host-leave-symbol)
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface

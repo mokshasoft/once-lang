@@ -5,9 +5,9 @@
 -- Once.Denotation.Admissible — WHICH PROGRAMS A TARGET OWES AN ANSWER FOR
 -- (plan 0.74, D115/D116).
 --
--- SPEC. `Once.Internal.Meaning` re-exports it, for the reason D114 gives for the
--- observable: a statement that decides what counts as correct belongs in the
--- reviewed spec, not in a module the spec merely reaches through.
+-- SPEC, for the reason D114 gives for the observable: a statement that
+-- decides what counts as correct belongs in the reviewed spec, not in a
+-- module the spec merely reaches through.
 --
 -- `Typed` is TARGET-FREE — parsing and typing do not depend on the target.
 -- This is the other half: whether a typed program can be EXPRESSED at a given

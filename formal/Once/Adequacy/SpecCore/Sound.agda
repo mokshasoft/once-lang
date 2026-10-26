@@ -26,7 +26,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-import Once.Internal.Core.Telescope Σ as TL
+import Once.Core.Telescope Σ as TL
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Program Σ as SP

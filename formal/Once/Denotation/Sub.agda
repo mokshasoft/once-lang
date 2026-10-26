@@ -38,7 +38,7 @@ open import Once.Type.SubDecide
 open import Once.Laws.Sub
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 -- `fmap∞` is a functor and congruent: the tree's laws (plan 0.105).
-open import Once.Internal.Iterative using (T∞; fmap∞)
+open import Once.IR.Semantics.Iterative using (T∞; fmap∞)
 
 ------------------------------------------------------------------------
 -- The conversion a derivation denotes.

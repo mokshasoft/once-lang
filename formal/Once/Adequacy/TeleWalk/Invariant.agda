@@ -13,7 +13,7 @@ open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Internal.Trace using (Interp; pureHalf)
+open import Once.IR.Semantics.Trace using (Interp; pureHalf)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List using (map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
@@ -88,7 +88,7 @@ open import Once.Spec.Signature using (_∶_)
 open import Once.Core.Decl using (declS; ⌜declS⌝)
 open import Once.Spec.Core.Syntax using (Defs; _▷_; _!!_; Schema)
 open import Once.Spec.Core.Program Σ using (Tele; def; noVars)
-open import Once.Internal.Core.Telescope Σ using (teleSem; teleSem-model)
+open import Once.Core.Telescope Σ using (teleSem; teleSem-model)
 import Once.Spec.Core.Meaning as SM
 import Once.Spec.Domain Σ as SDm
 import Once.Metatheory.TermModel.TySubst as TS
@@ -116,7 +116,7 @@ open import Once.Type.Schema using (kinded-instance)
 open import Once.Postulates using (extensionality)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 open import Function using (id)
-open import Once.Internal.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
 
 -- The interpretation's pure half: what the program's pure FFI values are.
 φ : FFIAnswers
@@ -129,7 +129,7 @@ open import Once.Internal.Trace using (FFIAnswers)
 
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
 open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM; GM-D; RelGM-wk₀)
-open import Once.Internal.Iterative using (T∞)
+open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueRel using (RelD)
 open import Once.Denotation.ValueRelPER using (RelS-trans; RelD-trans)

@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
+import Once.IR.Semantics.Value Carrier Carrier as M
 import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Spec.Grade as G
@@ -45,8 +45,8 @@ open import Once.Contract
   using (Key; key; kdom; kcod; ISig; Contract; answers; effect; contract-eff; contractOf;
          value-step; answer-step; valueKeys; answerKeys; Impl)
 import Once.Contract as C
-open import Once.Internal.Event using (SigOpEvent; toEvent)
-open import Once.Internal.Trace using (Interp; interp)
+open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)
+open import Once.IR.Semantics.Trace using (Interp; interp)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open S using (BTy; DeclType; constant; operation; _∶_; Signature; WellFormed; argAt; NotEmpty; op)

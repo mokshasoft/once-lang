@@ -38,7 +38,7 @@ import Once.IR
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 
 module Mach {FS : FrameSemantics} where
 

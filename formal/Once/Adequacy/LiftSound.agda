@@ -32,7 +32,7 @@ open import Once.IR
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 import Once.IRTy as II
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
+import Once.IR.Semantics.Value Carrier Carrier as M
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ; ⟦_⟧ᴰᴵ)
 -- The surface base witnesses (the IR's own `base-*` are in scope from `Once.IR`).
 open import Once.Spec.Type using () renaming (b-* to b-Prod)
@@ -44,9 +44,9 @@ open import Once.Arith.SigOp.Block using (block-semM; readLeafM; block-info; sha
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (try-lift; shape-of; has-op; block-as-ir)
 open import Data.Maybe using () renaming (map to mapᴹ)
-open import Once.Internal.Trace using (T; ret)
+open import Once.IR.Semantics.Trace using (T; ret)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock)
 open T∞ using (force)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Fst; Snd; InputPath; Path; here-int; here-flt; go-fst; go-snd; typePath?)
@@ -65,7 +65,7 @@ open TargetNum using (int-bits; float-format)
 import Once.Spec.Word as OnceWord
 import Once.Spec.Float.Arith
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-open import Once.Internal.Trace using ()
+open import Once.IR.Semantics.Trace using ()
 
 ------------------------------------------------------------------------
 -- (a) Plumbing means a value and no event.
@@ -227,8 +227,8 @@ private
            → bindBlock l k ≡ ret (inj₁ v) → Σ X (λ x → (l ≡ ret (inj₁ x)) × (force (k x) ≡ ret (inj₁ v)))
   now-inv (ret (inj₁ x)) k e = x , refl , e
   now-inv (ret (inj₂ m)) k ()
-  now-inv (Once.Internal.Trace.call o a c) k ()
-  now-inv (Once.Internal.Trace.halt o a)   k ()
+  now-inv (Once.IR.Semantics.Trace.call o a c) k ()
+  now-inv (Once.IR.Semantics.Trace.halt o a)   k ()
 
   -- …so re-association, which is not `≡` on runs, is on runs that return at once.
   now-assoc : ∀ {X Y Z : Set} (m : T∞ X) (g : X → T∞ Y) (f : Y → T∞ Z) {v : Z}

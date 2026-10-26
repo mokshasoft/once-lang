@@ -49,7 +49,7 @@ import Once.Spec.Surface.Program as SPr
 import Once.Spec.Surface.Resolution as SR
 import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Core.Syntax as SC
-import Once.Internal.Core.Telescope as TL
+import Once.Core.Telescope as TL
 import Once.Parser as Parser
 open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 import Once.Parser.Module.Core as Core

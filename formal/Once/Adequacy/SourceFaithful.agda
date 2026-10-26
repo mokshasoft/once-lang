@@ -69,8 +69,8 @@ import Once.Context as SrfS
 open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull; projUsed; distribute; distribIR; compIR; copairIR; forkIR; curryIR; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Internal.Trace using (ret)
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; bindBlock)
+open import Once.IR.Semantics.Trace using (ret)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; bindBlock)
 open T∞ using (force)
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial)
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info;

@@ -45,7 +45,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; _<_; _⊓_; 
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.Internal.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
+open import Once.IR.Semantics.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)

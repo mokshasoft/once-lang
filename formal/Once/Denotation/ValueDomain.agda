@@ -36,18 +36,18 @@ open import Once.Type.Poly
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
-open import Once.Internal.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Semantics.Machine using (coerce-ν-in)
 
-open import Once.Internal.Stream using (νᵈ; module νᵈ; in-νᵈ; seqF; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ)
+open import Once.IR.Semantics.Stream using (νᵈ; module νᵈ; in-νᵈ; seqF; anaᵈ; anaTree; mapAnaᵈ; anaFᵈ)
 open νᵈ
-open import Once.Internal.Iterative using (T∞)
-open import Once.Internal.StreamInf using (νᴵ)
+open import Once.IR.Semantics.Iterative using (T∞)
+open import Once.IR.Semantics.StreamInf using (νᴵ)
 
 -- SFunctor and the `⟦_⟧F → ⟦_⟧SF` coercion sits outside it.
 anaᵈ-erase : ∀ {H₁ H₂ : SFunctor} (heq : H₁ ≡ H₂) {A : Set}

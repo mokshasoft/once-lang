@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Trace — SPEC. The computation monad `T`: INTERACTION TREES
+-- Once.IR.Semantics.Trace — IR (D336). The computation monad `T`: INTERACTION TREES
 -- (plan 0.105, D-entry "Eff means an interaction tree").
 --
 -- An effectful arrow `A ⇒[ eff ] B` denotes the Kleisli arrow `⟦A⟧ᴰ → T ⟦B⟧ᴰ`.
@@ -29,7 +29,7 @@
 -- what a computation emits but let nothing flow back in.
 ------------------------------------------------------------------------
 
-module Once.Internal.Trace where
+module Once.IR.Semantics.Trace where
 
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _<_; z≤n; s≤s)
 open import Once.Spec.Type using (Base; b-Unit; ∅ₖ)
@@ -54,8 +54,8 @@ open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
-open import Once.Internal.Event using (SigOpEvent; mk-event)
+import Once.IR.Semantics.Value Carrier Carrier as M
+open import Once.IR.Semantics.Event using (SigOpEvent; mk-event)
 open import Once.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
 
 ------------------------------------------------------------------------

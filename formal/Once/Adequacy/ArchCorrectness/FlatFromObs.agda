@@ -36,7 +36,7 @@ open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedProgram)
 open Once.Denotation.Program.IRFun using (fbody; fname)
 open import Once.Contract using (ISig)
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 import Once.CCC.FrameSemantics
 module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List IRFun)
   (arch          : Arch)
@@ -79,7 +79,7 @@ open import Once.IR using (IR; Stack)
 open import Once.IRTy using (Unit)
 open import Once.Denotation.Behavior using (Behavior)
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
 open import Data.List.Relation.Unary.All using ([]; _∷_)
@@ -98,7 +98,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; 
 open AllocState using (next-slot)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
-open import Once.Internal.Out using (_▹_)
+open import Once.IR.Semantics.Out using (_▹_)
 open import Once.Denotation.TraceTr using (endOf)
 open import Data.List using (length)
 open import Data.Unit using (⊤; tt)

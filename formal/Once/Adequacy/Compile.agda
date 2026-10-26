@@ -53,18 +53,18 @@ open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Metatheory.Trace using (WB-trans)
-import Once.Internal.Core.Telescope as TL
+import Once.Core.Telescope as TL
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 import Once.Spec.Observation as Obs
 open import Once.Adequacy.SpecInterp using (toInterp)
 open import Once.Core.Decl using (toISig)
 import Data.Unit
-open import Once.Internal.Trace using (PrefixFamily)
-open Once.Internal.Trace.PrefixFamily using (bnd; sat; coh)
+open import Once.IR.Semantics.Trace using (PrefixFamily)
+open Once.IR.Semantics.Trace.PrefixFamily using (bnd; sat; coh)
 
 open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Internal.Core.Telescope using (Program; program)
+open import Once.Core.Telescope using (Program; program)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 import Once.IR as IR
@@ -79,10 +79,10 @@ open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 -- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
 -- `check-complete` (the proven typechecker-completeness witness).
 import Once.Denotation.SourceDenote as SD
-open import Once.Internal.Trace using (Interp; interp; module Interp)
+open import Once.IR.Semantics.Trace using (Interp; interp; module Interp)
 open Interp using (sig)
 open import Once.Contract using (ISig; Impl)
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 -- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.

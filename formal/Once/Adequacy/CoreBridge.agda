@@ -47,9 +47,9 @@ import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
 open import Once.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef)
-open import Once.Internal.Trace using (Interp; pureHalf)
+open import Once.IR.Semantics.Trace using (Interp; pureHalf)
 open import Once.Program using (Typed)
-import Once.Internal.Core.Telescope as TL
+import Once.Core.Telescope as TL
 import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP
 import Once.Spec.Core.Program as SP

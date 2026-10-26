@@ -43,7 +43,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Spec.Type using (Type; Unit; Void)
 open import Once.Res using (Res; stopped; returns)
-open import Once.Internal.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`Base ∅ₖ` — no arrows, no `μ`/`ν`). This is
@@ -56,7 +56,7 @@ open import Data.Bool using (Bool; true; false)
 open import Once.Spec.Word using (Carrier)
 -- Plan 0.74 J5 (D059): a SigOp's machine semantics is TARGET-RELATIVE.
 open import Once.Spec.Numerics using (TargetNum)
-import Once.Internal.Value Carrier Carrier as M
+import Once.IR.Semantics.Value Carrier Carrier as M
 open import Once.Arith.Prim using (ArithPrim; primSem)
 
 ------------------------------------------------------------------------

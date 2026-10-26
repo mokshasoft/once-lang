@@ -35,7 +35,7 @@ open import Once.Denotation.Approx using (NotCut; budgetLeft)
 open import Data.Nat.Properties using (+-monoʳ-≤)
 open import Once.Denotation.Program using (tableCalls)
 import Once.Denotation.DenotTrace as DT
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 
 module CallC {FS : FrameSemantics} where
 

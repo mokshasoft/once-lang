@@ -64,10 +64,10 @@ import Once.Spec.Context as Srf
 import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Srf using (Expr)
 open import Once.Denotation.DenotTrace using (evalᴰ)
-open import Once.Internal.StreamInf using (anaFᴵ)
+open import Once.IR.Semantics.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders
-open import Once.Internal.Iterative using (T∞; _>>=∞_; return∞; fmap∞; iter∞)
+open import Once.IR.Semantics.Iterative using (T∞; _>>=∞_; return∞; fmap∞; iter∞)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; resolvePolyCase; applySplice)

@@ -27,7 +27,7 @@
 -- postulated false statement would make the apex inconsistent.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Trace using (Interp)
+open import Once.IR.Semantics.Trace using (Interp)
 open import Once.Target.Arch using (Arch)
 import Once.Adequacy.Compile as Compile
 
@@ -49,7 +49,7 @@ open import Relation.Nullary using (yes; no)
 open import Once.Adequacy.CPU.Interface using (Byte)
 open import Once.Target.Arch using (arch-numerics)
 import Once.Denotation.Behavior as B
-open import Once.Internal.Trace using (interp)
+open import Once.IR.Semantics.Trace using (interp)
 open import Once.Contract using (Impl)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace using (WB-trans; WB-sym)
@@ -68,7 +68,7 @@ open import Once.Adequacy.SpecSource using (parseModules; toSource)
 open import Data.Sum using (_⊎_)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Contract using (ISig)
-import Once.Internal.Core.Telescope as TL
+import Once.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM
 open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)

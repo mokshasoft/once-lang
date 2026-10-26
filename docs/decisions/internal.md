@@ -175,11 +175,12 @@ decision-log entry updates the rule it changes here, in the same commit.
   source, typing and behaviour; the compiler's own proof is carried there by
   two proved bridges (`SpecApex.bridges`: what the compiler types is a Spec
   program meaning the same; every Spec program the compiler types). (D332)
-- **The compiler has an internal language** (`Once.Internal`: types with
-  rigid parameters, the usage-tracking judgment, elaboration, core, meaning,
-  contracts), compiler code, not a language definition; where it restated
-  the Spec (grades, `⊑π`) the Spec's is used. Collapsing it onto the Spec is
-  plan 0.122. (D333)
+- **The compiler has no internal language beside the Spec**: every module
+  that restated the Spec uses the Spec's definition; the rest is compiler
+  code in the compiler's namespaces. The IR's semantics (`Once.IR.Semantics`:
+  machine values, the evaluator's computations, events) are the
+  implementation's, related to the Spec's meaning by proved bridges, not a
+  copy of it. (D336 ← D333)
 - **The two-cell heap build is one shared proof** (`curry`, `Ana`). (D190)
 
 ## 7. Proof engineering

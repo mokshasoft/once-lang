@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Iterative — SPEC. The computation domain of a program that
+-- Once.IR.Semantics.Iterative — IR (D336). The computation domain of a program that
 -- may RUN FOREVER: the coinductive RESUMPTION monad over the finite trees
 -- (D317, `Spec.Effect`'s `T∞`).
 --
@@ -18,7 +18,7 @@
 -- bisimulation-to-equality axiom).
 ------------------------------------------------------------------------
 
-module Once.Internal.Iterative where
+module Once.IR.Semantics.Iterative where
 
 open import Once.Spec.Type using (Fun)
 open import Data.List using (List; []; _∷_; _++_; [_])
@@ -29,9 +29,9 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as V
-open import Once.Internal.Event using (SigOpEvent)
-open import Once.Internal.Trace
+import Once.IR.Semantics.Value Carrier Carrier as V
+open import Once.IR.Semantics.Event using (SigOpEvent)
+open import Once.IR.Semantics.Trace
   using (T; ret; call; halt; CallOp; HaltOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp)
 open CallOp using (cdom; ccod)
 open HaltOp using (hdom)
@@ -150,7 +150,7 @@ open TreeEq∞
 
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 
-open import Once.Internal.Value Carrier Carrier using (⟦_⟧F)
+open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F)
 
 fmap∞ : ∀ {X Y} → (X → Y) → T∞ X → T∞ Y
 fmap∞ f m = m >>=∞ λ x → return∞ (f x)

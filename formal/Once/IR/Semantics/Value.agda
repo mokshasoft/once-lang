@@ -2,10 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Value — what a value of each type is, over the carriers chosen
+-- Once.IR.Semantics.Value — what a value of each type is, over the carriers chosen
 -- for `Int` and `Float`.
 --
--- INTERNAL (D333). `⟦ A ⟧` is the value space of `A`: products and sums are products and
+-- IR'S OWN (D336). `⟦ A ⟧` is the value space of `A`: products and sums are products and
 -- sums of sets; an arrow is a function that may stop (`Res`), and an erased
 -- (`Zero`) arrow takes no argument; `μ F` and `ν F` are the initial algebra and
 -- the final coalgebra of `F`'s polynomial (`Spec.FunctorMeaning`). `⟦ A ⟧ᵍ`
@@ -15,7 +15,7 @@
 -- structurally, so they compute.
 ------------------------------------------------------------------------
 
-module Once.Internal.Value (IntRep : Set) (FloatRep : Set) where
+module Once.IR.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 
 open import Once.Spec.Type using (Base)
 open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
@@ -31,11 +31,11 @@ open import Once.Spec.Type using (μ; ν)
 import Once.Spec.Type as ST
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Res using (Res; stopped; returns; mapRes)
-open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
+open import Once.IR.Semantics.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Polynomial
+open import Once.IR.Semantics.Polynomial
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; ⟦_⟧SF)
-open Once.Internal.Polynomial.νS using (unfoldS)
+open Once.IR.Semantics.Polynomial.νS using (unfoldS)
 
 -- | Semantic interpretation of μ-type (initial algebra)
 --

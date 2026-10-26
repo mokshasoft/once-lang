@@ -23,8 +23,8 @@ import Once.Type as Ty
 open import Once.Type.DecEq using (_≟T_)
 open import Data.Empty using (⊥-elim)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
-open import Once.Internal.Event using (SigOpEvent)
+import Once.IR.Semantics.Value Carrier Carrier as M
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.Contract

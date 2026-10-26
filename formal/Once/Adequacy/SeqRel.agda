@@ -25,10 +25,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 
 open import Once.Semantics.Machine using (⟦_⟧F)
-open import Once.Internal.Trace
+open import Once.IR.Semantics.Trace
   using (T; RelT′; rel-ret)
 open import Once.Denotation.TraceMonadLaws using (RelT′-bind; RelT′-fmap)
-open import Once.Internal.Stream using (seqF)
+open import Once.IR.Semantics.Stream using (seqF)
 
 ------------------------------------------------------------------------
 -- A relation lifted over a functor layer. `K` holds data neither side

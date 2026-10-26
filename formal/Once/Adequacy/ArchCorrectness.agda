@@ -32,7 +32,7 @@
 open import Once.Spec.Name using (CanonicalName)
 
 
-open import Once.Internal.Trace using (Interp)
+open import Once.IR.Semantics.Trace using (Interp)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32

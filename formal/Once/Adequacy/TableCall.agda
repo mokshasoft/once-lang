@@ -18,7 +18,7 @@
 
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Internal.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
 
 -- Plan 0.105: over the interpretation's FFI half `φ`, which the table's call
 -- environment carries.
@@ -41,7 +41,7 @@ open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR.Ref using (refIR)
 import Once.Compile as C
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
 open T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; relS-ret)
 open import Once.Denotation.ValueRel using (RelD; RelS-assocˡ; retargetˡ)

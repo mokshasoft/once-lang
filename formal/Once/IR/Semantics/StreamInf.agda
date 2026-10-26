@@ -2,32 +2,32 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.StreamInf — streams whose layers are computations that need not
+-- Once.IR.Semantics.StreamInf — streams whose layers are computations that need not
 -- stop: the final coalgebra of `T∞ ∘ F`.
 --
 -- The IR is ungraded (plan 0.52 M2), so its arrows mean `T∞` arrows (plan
 -- 0.119 D5, option (a)) and a coalgebra the IR unfolds is one: forcing a layer
--- of `νᴵ F` is a `T∞` computation. The core's streams (`Once.Internal.Stream`,
+-- of `νᴵ F` is a `T∞` computation. The core's streams (`Once.IR.Semantics.Stream`,
 -- layers in `T`) embed into these (a block is one round).
 --
--- D062's rule, as in `Once.Internal.Stream`: every corecursive call sits
+-- D062's rule, as in `Once.IR.Semantics.Stream`: every corecursive call sits
 -- structurally under a copattern or a constructor of the same mutual block —
 -- the run's blocks are mapped by hand (never `fmap∞`), the functor by hand
 -- (never `sfmap`).
 ------------------------------------------------------------------------
 
-module Once.Internal.StreamInf where
+module Once.IR.Semantics.StreamInf where
 
 open import Once.Spec.Type using (Fun)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Internal.Trace using (T; ret; call; halt)
-open import Once.Internal.Iterative using (T∞; fmap∞)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt)
+open import Once.IR.Semantics.Iterative using (T∞; fmap∞)
 open T∞ using (force)
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Value Carrier Carrier using (⟦_⟧F; coerce-ν-in)
+open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F; coerce-ν-in)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 
 record νᴵ (F : SFunctor) : Set where
   coinductive

@@ -51,7 +51,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (done; NotCut)
 open import Once.Res using (returns; is-stopped)
 

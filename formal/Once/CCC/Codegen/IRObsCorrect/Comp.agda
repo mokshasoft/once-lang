@@ -22,7 +22,7 @@ open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; Output; AbstractTrace; mov-to-input; writeReg-same; module LocState; module AllocState)
 open AllocState using (next-slot)
 open LocState using (regs; halted)
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
 open import Once.CCC.Label using (module LabelId)
@@ -37,7 +37,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.Internal.Trace as TM
+import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
 open import Data.Nat.Properties using (+-monoʳ-≤)
 open import Once.Res using (Res; stopped; returns; is-stopped)

@@ -13,7 +13,7 @@
 -- `Res` is the honest shape, and it is a LEAF module (no dependencies) so
 -- that both ends of the correspondence can name it: `Once.SigOp.Info`'s
 -- `semM` (a SigOp's semantics either returns or ends the program) and
--- `Once.Internal.Trace`'s `T` (a computation's observable is a
+-- `Once.IR.Semantics.Trace`'s `T` (a computation's observable is a
 -- trace plus a result, and a stopped computation has none).
 --
 -- The gain is not tidiness: with a value that only exists when the

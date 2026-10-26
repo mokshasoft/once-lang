@@ -30,11 +30,11 @@ open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Type; K; Id; _⊕_; _⊗_; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Value Carrier Carrier using (⟦_⟧F)
-open import Once.Internal.Iterative using (T∞)
-open import Once.Internal.StreamInf using (νᴵ; module νᴵ)
+open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F)
+open import Once.IR.Semantics.Iterative using (T∞)
+open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
@@ -140,9 +140,9 @@ base-refl (b-var _)      ()
 -- Runs: the monad's operations preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞; bindBlock)
 open T∞ using (force)
-open import Once.Internal.Trace using (ret; call; halt)
+open import Once.IR.Semantics.Trace using (ret; call; halt)
 open import Once.Denotation.TraceMonadInfLaws using (RelS-bind; relS-ret; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
 
@@ -292,7 +292,7 @@ cfD⁻¹-rel (wf-⊗ wf wg) C (fr-pair r s) = cfD⁻¹-rel wf C r , cfD⁻¹-rel
 -- The source-functor ↔ semantic-functor coercions preserve relatedness.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
+open import Once.IR.Semantics.Value Carrier Carrier using (coerce-μ-in; coerce-μ-out; coerce-full-to-base; coerce-base-to-full)
 
 cμin-rel : ∀ {m} (F : Fun m) {X : Set} {R : X → X → Set} {x y : ⟦ F ⟧F X}
          → FRel R F x y → SRel R (translateF Carrier Carrier F) (coerce-μ-in F X x) (coerce-μ-in F X y)
@@ -316,7 +316,7 @@ cμout-rel (wf-⊗ wf wg) {x = x₁ , x₂} {y₁ , y₂} (r , s) = fr-pair (cμ
 -- The fold: related algebras fold the same value to related results.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Polynomial using (cataS; sfmapCata)
+open import Once.IR.Semantics.Polynomial using (cataS; sfmapCata)
 open import Once.Spec.Polynomial using (μS; inS)
 
 module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF A → A} {alg₂ : ⟦ G ⟧SF B → B}
@@ -334,8 +334,8 @@ module _ {G : SFunctor} {A B : Set} {R : A → B → Set} {alg₁ : ⟦ G ⟧SF 
 -- The unfold: related coalgebras unfold related seeds to related streams.
 ------------------------------------------------------------------------
 
-open import Once.Internal.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
-open import Once.Internal.Trace using (T)
+open import Once.IR.Semantics.StreamInf using (anaᴵ; anaRun; anaBlock; mapAnaᴵ)
+open import Once.IR.Semantics.Trace using (T)
 open StreamRel
 
 module _ {H : SFunctor} {A B : Set} {RA : A → B → Set} {c₁ : A → T∞ (⟦ H ⟧SF A)} {c₂ : B → T∞ (⟦ H ⟧SF B)}
@@ -362,8 +362,8 @@ module _ {H : SFunctor} {A B : Set} {RA : A → B → Set} {c₁ : A → T∞ (�
 -- The fold of a source functor (`sem-cata`), and the stream constructor.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Value Carrier Carrier using (sem-cata)
-open import Once.Internal.StreamInf using (in-νᴵ)
+open import Once.IR.Semantics.Value Carrier Carrier using (sem-cata)
+open import Once.IR.Semantics.StreamInf using (in-νᴵ)
 
 sem-cata-rel : ∀ {m} {Δₖ : KCtx m} {F : Fun m} (wf : WFFun Δₖ F) {A : Set} {R : A → A → Set} {alg₁ alg₂ : ⟦ F ⟧F A → A}
              → (∀ {l₁ l₂} → FRel R F l₁ l₂ → R (alg₁ l₁) (alg₂ l₂))

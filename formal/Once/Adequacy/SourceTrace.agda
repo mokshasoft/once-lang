@@ -74,10 +74,10 @@ open import Data.Unit using (⊤)
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are
 -- recursive and a parameterised module stops reducing at a variable instance.
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Internal.Trace
+open import Once.IR.Semantics.Trace
   using (projTrace; PrefixFamily; Interp; pureHalf)
 open import Once.Denotation.TraceMonadLaws using (projTrace-pf)
-open Once.Internal.Trace.PrefixFamily using (bnd; coh; sat)
+open Once.IR.Semantics.Trace.PrefixFamily using (bnd; coh; sat)
 open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)

@@ -22,9 +22,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.IR.Semantics.Iterative
+import qualified MAlonzo.Code.Once.IR.Semantics.Trace
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Internal.Iterative
-import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
@@ -86,13 +86,13 @@ d_tableCalls_32 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
 d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
   = case coe v2 of
       []
         -> coe
-             MAlonzo.Code.Once.Internal.Iterative.du_embed_136
-             (coe MAlonzo.Code.Once.Internal.Trace.du_unlinkedT_228)
+             MAlonzo.Code.Once.IR.Semantics.Iterative.du_embed_138
+             (coe MAlonzo.Code.Once.IR.Semantics.Trace.du_unlinkedT_230)
       (:) v7 v8
         -> coe
              d_tableEnv'45'at_42 (coe v0) (coe v1) (coe v7) (coe v8) (coe v3)
@@ -123,7 +123,7 @@ d_tableEnv'45'at_42 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
+  AgdaAny -> MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
 d_tableEnv'45'at_42 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = case coe v7 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v11 v12
@@ -232,7 +232,7 @@ d_runIR_398 ::
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   T_IRProgram_386 ->
-  MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
+  MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
 d_runIR_398 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_120 (coe v0)

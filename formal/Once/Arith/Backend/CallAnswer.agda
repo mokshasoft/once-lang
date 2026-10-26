@@ -38,10 +38,10 @@ open import Data.String using (String)
 
 open import Once.Spec.Type using (Type; Int; Float)
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as M
-open import Once.Internal.Event using (SigOpEvent)
-open import Once.Internal.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
-open Once.Internal.Trace.CallOp using (ccod; cdom)
+import Once.IR.Semantics.Value Carrier Carrier as M
+open import Once.IR.Semantics.Event using (SigOpEvent)
+open import Once.IR.Semantics.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
+open Once.IR.Semantics.Trace.CallOp using (ccod; cdom)
 open import Once.Contract using (Key; key; kdom; kcod; _∈K?_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional using (_∈_)

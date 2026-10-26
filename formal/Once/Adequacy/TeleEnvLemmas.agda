@@ -24,7 +24,7 @@ open import Once.Spec.Type using (Ty; base)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
-open import Once.Internal.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
 
 -- Plan 0.105: over the interpretation's FFI half `φ`.
 open import Once.Spec.Signature using (Signature)
@@ -57,7 +57,7 @@ import Once.Spec.Context as Srf
 import Once.Spec.Context as SCx
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
-open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.EvalRel using (RelEnv; liftFn-rel; table-self)
 open import Once.Adequacy.SourceRefl using (RelDefs; SD-rel)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; module CallEnv)

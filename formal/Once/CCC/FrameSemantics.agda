@@ -49,8 +49,8 @@ open import Once.Memory.MemoryLayoutSemantics using (Addr)
 -- kind this record already collects (`frame-word` is the machine word), so it
 -- joins them rather than getting a second mechanism of its own.
 open import Once.Spec.Float.Dyadic using (FloatFormat)
-open import Once.Internal.Trace using (FFIAnswers)
-open import Once.Internal.Trace using (Interp; pureHalf)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Trace using (Interp; pureHalf)
 
 ------------------------------------------------------------------------
 -- FrameSemantics Interface (Adjacency-Based)

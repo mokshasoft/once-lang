@@ -23,8 +23,8 @@ import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Arith.Prim
 import qualified MAlonzo.Code.Once.CanonicalName
-import qualified MAlonzo.Code.Once.Internal.Polynomial
-import qualified MAlonzo.Code.Once.Internal.Value
+import qualified MAlonzo.Code.Once.IR.Semantics.Polynomial
+import qualified MAlonzo.Code.Once.IR.Semantics.Value
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Numerics
@@ -41,14 +41,14 @@ d_coerce'45'base'45'to'45'full_8 ::
   MAlonzo.Code.Once.Spec.Type.T_Base_84 -> AgdaAny -> AgdaAny
 d_coerce'45'base'45'to'45'full_8 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_coerce'45'base'45'to'45'full_420
+      MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'base'45'to'45'full_422
       v2 v3 v4
 -- Once.SigOp.Info.M.coerce-full-to-base
 d_coerce'45'full'45'to'45'base_10 ::
   Integer -> MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> AgdaAny -> AgdaAny
 d_coerce'45'full'45'to'45'base_10 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_coerce'45'full'45'to'45'base_384
+      MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'full'45'to'45'base_386
       v1 v2
 -- Once.SigOp.Info.M.coerce-functor
 d_coerce'45'functor_12 ::
@@ -57,7 +57,7 @@ d_coerce'45'functor_12 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> AgdaAny -> AgdaAny
 d_coerce'45'functor_12 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_coerce'45'functor_252 v1 v3
+      MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'functor_254 v1 v3
 -- Once.SigOp.Info.M.coerce-functor⁻¹
 d_coerce'45'functor'8315''185'_14 ::
   Integer ->
@@ -65,7 +65,7 @@ d_coerce'45'functor'8315''185'_14 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> AgdaAny -> AgdaAny
 d_coerce'45'functor'8315''185'_14 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_coerce'45'functor'8315''185'_296
+      MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'functor'8315''185'_298
       v1 v3
 -- Once.SigOp.Info.M.coerce-μ-in
 d_coerce'45'μ'45'in_16 ::
@@ -73,7 +73,7 @@ d_coerce'45'μ'45'in_16 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'μ'45'in_16 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_coerce'45'μ'45'in_454 v1 v3
+      MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'μ'45'in_456 v1 v3
 -- Once.SigOp.Info.M.coerce-μ-out
 d_coerce'45'μ'45'out_18 ::
   Integer ->
@@ -83,13 +83,14 @@ d_coerce'45'μ'45'out_18 ::
   MAlonzo.Code.Once.Spec.Type.T_WFFun_118 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'μ'45'out_18 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_coerce'45'μ'45'out_500 v2 v3 v5
+      MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'μ'45'out_502 v2
+      v3 v5
 -- Once.SigOp.Info.M.coerce-ν-in
 d_coerce'45'ν'45'in_20 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'in_20 v0
-  = coe MAlonzo.Code.Once.Internal.Value.du_coerce'45'ν'45'in_616
+  = coe MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'ν'45'in_618
 -- Once.SigOp.Info.M.coerce-ν-out
 d_coerce'45'ν'45'out_22 ::
   Integer ->
@@ -98,19 +99,20 @@ d_coerce'45'ν'45'out_22 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Type.T_WFFun_118 -> () -> AgdaAny -> AgdaAny
 d_coerce'45'ν'45'out_22 v0 v1 v2
-  = coe MAlonzo.Code.Once.Internal.Value.du_coerce'45'ν'45'out_626 v2
+  = coe
+      MAlonzo.Code.Once.IR.Semantics.Value.du_coerce'45'ν'45'out_628 v2
 -- Once.SigOp.Info.M.eraseᵍ
 d_erase'7501'_24 ::
   Integer -> MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> AgdaAny -> AgdaAny
 d_erase'7501'_24 v0 v1 v2
-  = coe MAlonzo.Code.Once.Internal.Value.du_erase'7501'_110 v1 v2
+  = coe MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112 v1 v2
 -- Once.SigOp.Info.M.sem-CoIn
 d_sem'45'CoIn_26 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Polynomial.T_νS_16
+  AgdaAny -> MAlonzo.Code.Once.IR.Semantics.Polynomial.T_νS_18
 d_sem'45'CoIn_26 v0 v1 v2
-  = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'CoIn_646 v1 v2
+  = coe MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'CoIn_648 v1 v2
 -- Once.SigOp.Info.M.sem-CoOut
 d_sem'45'CoOut_28 ::
   Integer ->
@@ -118,17 +120,18 @@ d_sem'45'CoOut_28 ::
    MAlonzo.Code.Once.Spec.Type.T_Kind_70) ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Type.T_WFFun_118 ->
-  MAlonzo.Code.Once.Internal.Polynomial.T_νS_16 ->
+  MAlonzo.Code.Once.IR.Semantics.Polynomial.T_νS_18 ->
   MAlonzo.Code.Once.Res.T_Res_6
 d_sem'45'CoOut_28 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'CoOut_634 v2 v3 v4
+  = coe
+      MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'CoOut_636 v2 v3 v4
 -- Once.SigOp.Info.M.sem-In
 d_sem'45'In_30 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   AgdaAny -> MAlonzo.Code.Once.Spec.Polynomial.T_μS_82
 d_sem'45'In_30 v0 v1 v2
-  = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'In_542 v1 v2
+  = coe MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'In_544 v1 v2
 -- Once.SigOp.Info.M.sem-Out
 d_sem'45'Out_32 ::
   Integer ->
@@ -138,17 +141,18 @@ d_sem'45'Out_32 ::
   MAlonzo.Code.Once.Spec.Type.T_WFFun_118 ->
   MAlonzo.Code.Once.Spec.Polynomial.T_μS_82 -> AgdaAny
 d_sem'45'Out_32 v0 v1 v2 v3 v4
-  = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'Out_554 v2 v3 v4
+  = coe
+      MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'Out_556 v2 v3 v4
 -- Once.SigOp.Info.M.sem-ana
 d_sem'45'ana_34 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Polynomial.T_νS_16
+  AgdaAny -> MAlonzo.Code.Once.IR.Semantics.Polynomial.T_νS_18
 d_sem'45'ana_34 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_sem'45'ana_658 v0 v1 v3 v4
+      MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'ana_660 v0 v1 v3 v4
 -- Once.SigOp.Info.M.sem-cata
 d_sem'45'cata_36 ::
   Integer ->
@@ -160,14 +164,16 @@ d_sem'45'cata_36 ::
   (AgdaAny -> AgdaAny) ->
   MAlonzo.Code.Once.Spec.Polynomial.T_μS_82 -> AgdaAny
 d_sem'45'cata_36 v0 v1 v2 v3 v4 v5
-  = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'cata_570 v2 v3 v5
+  = coe
+      MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'cata_572 v2 v3 v5
 -- Once.SigOp.Info.M.sem-fmap
 d_sem'45'fmap_38 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () -> () -> (AgdaAny -> AgdaAny) -> AgdaAny -> AgdaAny
 d_sem'45'fmap_38 v0 v1 v2 v3 v4 v5
-  = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'fmap_342 v1 v4 v5
+  = coe
+      MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'fmap_344 v1 v4 v5
 -- Once.SigOp.Info.M.sem-para
 d_sem'45'para_40 ::
   Integer ->
@@ -180,7 +186,7 @@ d_sem'45'para_40 ::
   MAlonzo.Code.Once.Spec.Polynomial.T_μS_82 -> AgdaAny
 d_sem'45'para_40 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_sem'45'para_590 v2 v3 v5 v6
+      MAlonzo.Code.Once.IR.Semantics.Value.du_sem'45'para_592 v2 v3 v5 v6
 -- Once.SigOp.Info.M.semAnaLayer
 d_semAnaLayer_42 ::
   Integer ->
@@ -190,7 +196,7 @@ d_semAnaLayer_42 ::
   MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
 d_semAnaLayer_42 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_semAnaLayer_666 v0 v1 v3 v4
+      MAlonzo.Code.Once.IR.Semantics.Value.du_semAnaLayer_668 v0 v1 v3 v4
 -- Once.SigOp.Info.M.sfmapSemAna
 d_sfmapSemAna_44 ::
   Integer ->
@@ -200,7 +206,8 @@ d_sfmapSemAna_44 ::
   (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
 d_sfmapSemAna_44 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Internal.Value.du_sfmapSemAna_676 v0 v1 v2 v4 v5
+      MAlonzo.Code.Once.IR.Semantics.Value.du_sfmapSemAna_678 v0 v1 v2 v4
+      v5
 -- Once.SigOp.Info.M.⟦_⟧
 d_'10214'_'10215'_46 ::
   Integer -> MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> ()
@@ -285,7 +292,7 @@ d_semM'45'of_124 v0 v1 v2 v3 v4
                 coe
                   MAlonzo.Code.Once.Res.C_returns_12
                   (coe
-                     MAlonzo.Code.Once.Internal.Value.du_erase'7501'_110 (coe v1)
+                     MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112 (coe v1)
                      (coe v5 v6 v7)))
       C_ffiV_82 -> coe (\ v5 -> coe v2 v3 v0 v1)
       C_callsV_84 -> coe (\ v5 -> coe v2 v3 v0 v1)
@@ -303,7 +310,7 @@ d_semM'45'of_124 v0 v1 v2 v3 v4
                 coe
                   MAlonzo.Code.Once.Res.C_returns_12
                   (coe
-                     MAlonzo.Code.Once.Internal.Value.du_erase'7501'_110 (coe v1)
+                     MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112 (coe v1)
                      (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v5 v6 v7)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info.effect-of

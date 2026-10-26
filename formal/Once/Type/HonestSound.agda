@@ -21,7 +21,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Type.Honest using (NotEmpty)
-open import Once.Internal.Value IntRep FloatRep using (⟦_⟧)
+open import Once.IR.Semantics.Value IntRep FloatRep using (⟦_⟧)
 
 inhabited : (T : Type) → NotEmpty T → ⟦ T ⟧
 inhabited Unit    _          = tt

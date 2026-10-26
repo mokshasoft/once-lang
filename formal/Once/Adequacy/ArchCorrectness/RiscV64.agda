@@ -31,7 +31,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.Internal.Trace using (Interp; module Interp)
+open import Once.IR.Semantics.Trace using (Interp; module Interp)
 open Interp using (sig)
 module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
@@ -55,14 +55,14 @@ open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
 open import Once.Adequacy.BudgetApex using (budget-apex)
 open import Once.Denotation.Program using (runIR)
-open import Once.Internal.Trace using (pureHalf)
-import Once.Internal.Trace as LT
+open import Once.IR.Semantics.Trace using (pureHalf)
+import Once.IR.Semantics.Trace as LT
 open import Once.Denotation.Approx using (approx)
 open import Once.Denotation.TraceTr using (obsAp)
 open import Once.Adequacy.FuelTrace using (module Fuel)
 open import Data.Product using (Σ-syntax)
 open import Data.Nat using (suc; _≤_)
-open import Once.Internal.Event using (toEvent)
+open import Once.IR.Semantics.Event using (toEvent)
 open import Once.Denotation.TraceTr using (endOf)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
@@ -71,7 +71,7 @@ open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-
 import Once.CCC.Target.RiscV64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)

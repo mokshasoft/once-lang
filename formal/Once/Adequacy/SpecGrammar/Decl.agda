@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.SpecGrammar.Decl — the compiler's declaration and module
--- grammar (`Once.Internal.Grammar.*`, `Once.Parser.Relation.Parsing`) against the Spec's.
+-- grammar (`Once.Parser.Relation.{Decl,…}`, `Once.Parser.Relation.Parsing`) against the Spec's.
 --
 --   * `parses→` : a text the compiler parses is one the Spec parses, into the
 --     same module;

@@ -26,7 +26,7 @@ open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Target.X86-64.PhysReg using (Reg; rax)
 open import Once.CCC.Target.X86-64.Syntax using (Program; Instr; call-sym)
 open import Once.CCC.Target.X86-64.Semantics using (State; fetch; execInstr; Word; writeReg)
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open State using (halted; pc; regs)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith)
 import Once.Arith.Backend.RunTraceCore as Core

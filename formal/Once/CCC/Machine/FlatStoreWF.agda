@@ -42,7 +42,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; _�
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
-open import Once.Internal.Event using (SigOpEvent)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
 open import Once.Semantics.Machine using (⟦_⟧)

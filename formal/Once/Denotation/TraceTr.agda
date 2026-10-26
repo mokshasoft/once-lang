@@ -11,7 +11,7 @@
 -- (an unlinked call), ends the run as the finite run does. Its trace is that
 -- machine's (`trT∞`), in the Spec's terms (`Tr ⊤`).
 --
--- A FINITE computation's run (`Once.Internal.Trace.run`) is a list of calls and a
+-- A FINITE computation's run (`Once.IR.Semantics.Trace.run`) is a list of calls and a
 -- result; its trace is the finite trace (`runTr`). `RelT∞′-tr`: a `T∞` tree
 -- related to a finite one has the finite one's trace — which is how the core
 -- meaning and the compiled program's are compared.
@@ -26,12 +26,12 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
 
 open import Once.Spec.Word using (Carrier)
-import Once.Internal.Value Carrier Carrier as V
-open import Once.Internal.Event using (SigOpEvent; toEvent)
+import Once.IR.Semantics.Value Carrier Carrier as V
+open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)
 open import Once.Res using (Res; stopped; returns)
-open import Once.Internal.Trace using (T; ret; call; halt; CallOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp; run; run-call)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp; run; run-call)
 open CallOp using (cdom; ccod)
-open import Once.Internal.Iterative using (T∞)
+open import Once.IR.Semantics.Iterative using (T∞)
 open T∞ using (force)
 open import Once.Denotation.TraceMonadInfLaws using (RelT∞′; RelB; b-ret; b-tau; b-call; b-halt)
 open RelT∞′ using (block)
@@ -102,7 +102,7 @@ module _ (ι : Interp) where
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
 open import Data.Nat.Properties using (m≤n⇒m≤1+n)
 open import Data.Product using (Σ-syntax)
-open import Once.Internal.Trace using (Run)
+open import Once.IR.Semantics.Trace using (Run)
 open import Once.Denotation.Approx using (Ap; done; cut; approx; approxBlock; endAp)
 open import Once.Adequacy.FuelTrace using (Obs; module Fuel)
 

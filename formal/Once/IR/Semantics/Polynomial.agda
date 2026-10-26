@@ -2,17 +2,17 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Polynomial — the polynomial functors on sets, their initial
+-- Once.IR.Semantics.Polynomial — the polynomial functors on sets, their initial
 -- algebras and their final coalgebras.
 --
--- INTERNAL (D333). The polynomials, their functors and initial algebras are the
+-- IR'S OWN (D336). The polynomials, their functors and initial algebras are the
 -- Spec's (`Once.Spec.Polynomial`); here: the initial algebra's destructor
 -- `outS` and its fold `cataS`; `νS F` is the final coalgebra of `Res ∘ ⟦ F ⟧SF` — a stream that
 -- may end — with its unfold `anaS`. Every corecursive call sits under the
 -- copattern, so productivity is checked, not assumed.
 ------------------------------------------------------------------------
 
-module Once.Internal.Polynomial where
+module Once.IR.Semantics.Polynomial where
 
 import Once.Spec.Type
 

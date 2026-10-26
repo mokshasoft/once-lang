@@ -7,7 +7,7 @@
 -- (plan 0.122 §5.5, M1).
 --
 -- The Spec's computations are trees of Σ's calls (`Spec.Effect`); the
--- implementation's (the IR's, `Internal.Trace`/`Iterative`) are trees of calls
+-- implementation's (the IR's, `IR.Semantics.Trace`/`Iterative`) are trees of calls
 -- named by their declarations, with a halt for a call that does not answer. A
 -- Spec block and an implementation block are related step for step: the same
 -- end, related values; a call of Σ's declaration against the implementation's
@@ -32,9 +32,9 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Signature using (⟦_⟧ᵇ; Op; op; _∶_; operation; NotEmpty; argAt; arg; void)
 import Once.Spec.Signature as SSig
-import Once.Internal.Value Carrier Carrier as V
-import Once.Internal.Trace as LTr
-import Once.Internal.Iterative as LI
+import Once.IR.Semantics.Value Carrier Carrier as V
+import Once.IR.Semantics.Trace as LTr
+import Once.IR.Semantics.Iterative as LI
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Polynomial as SPoly
 import Once.Adequacy.SpecInterp as SI

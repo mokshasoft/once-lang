@@ -2,14 +2,14 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Event — what is observed: one call of a generator.
+-- Once.IR.Semantics.Event — what is observed: one call of a generator.
 --
--- INTERNAL (D333). An event is the call of a generator of the signature — its resolved
+-- IR'S OWN (D336). An event is the call of a generator of the signature — its resolved
 -- name, its argument type (a base type: a value the ABI can pass) and the
 -- argument. A program's behaviour is the sequence of its events.
 ------------------------------------------------------------------------
 
-module Once.Internal.Event where
+module Once.IR.Semantics.Event where
 
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
@@ -17,7 +17,7 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-import Once.Internal.Value Carrier Carrier as M
+import Once.IR.Semantics.Value Carrier Carrier as M
 
 record SigOpEvent : Set where
   constructor mk-event

@@ -2,26 +2,26 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Stream — effectful streams: the final coalgebra of `T ∘ F`.
+-- Once.IR.Semantics.Stream — effectful streams: the final coalgebra of `T ∘ F`.
 --
--- INTERNAL (D333). A stream `νᵈ F` is forced to a computation of a layer; `anaᵈ` unfolds
+-- IR'S OWN (D336). A stream `νᵈ F` is forced to a computation of a layer; `anaᵈ` unfolds
 -- a Kleisli coalgebra `A → T (F A)`, running it once per forced layer;
 -- `in-νᵈ` wraps a layer already at hand; `seqF` sequences a layer of
 -- computations (what a fold runs). Every corecursive call sits under the
 -- copattern, so productivity is checked.
 ------------------------------------------------------------------------
 
-module Once.Internal.Stream where
+module Once.IR.Semantics.Stream where
 
 open import Once.Spec.Type using (Fun)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
-open import Once.Internal.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; returnT; fmapT; _>>=T_)
 open import Once.Spec.Word using (Carrier)
-open import Once.Internal.Value Carrier Carrier using (⟦_⟧F; coerce-ν-in)
+open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F; coerce-ν-in)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Internal.FunctorMeaning using (translateF)
+open import Once.IR.Semantics.FunctorMeaning using (translateF)
 
 ------------------------------------------------------------------------
 -- The effectful greatest fixed point.

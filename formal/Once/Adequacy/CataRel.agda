@@ -19,9 +19,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Internal.Polynomial
+open import Once.IR.Semantics.Polynomial
 open import Once.Spec.Polynomial using (SId; SK; _S⊕_; _S⊗_; inS; μS; ⟦_⟧SF)
-open import Once.Internal.Polynomial using (cataS; sfmapCata)
+open import Once.IR.Semantics.Polynomial using (cataS; sfmapCata)
 
 -- Functor-lifted relation: `SK`→equality (the constant is shared, since both
 -- folds run over the SAME structure), `SId`→the carrier relation, structural.
