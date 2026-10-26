@@ -179,85 +179,88 @@ column : St → ℕ
 column (st _ c nothing _)  = c
 column (st _ _ (just j) _) = j
 
-private
-  -- A lexeme of width `n`, after the pending indentation of a fresh line.
-  put : Lexeme → ℕ → St → St
-  put x n (st o c (just i) e) = st (x ∷ lind i ∷ o) (i + n) nothing e
-  put x n (st o c nothing e)  = st (x ∷ o) (c + n) nothing e
+-- The steps of the layout (public: `Format.Proof.Layout` reasons about them).
 
-  -- A blank; none at the start of a line.
-  space : St → St
-  space (st o c (just i) e) = st o c (just i) e
-  space (st o c nothing e)  = put lsp 1 (st o c nothing e)
+-- A lexeme of width `n`, after the pending indentation of a fresh line.
+put : Lexeme → ℕ → St → St
+put x n (st o c (just i) e) = st (x ∷ lind i ∷ o) (i + n) nothing e
+put x n (st o c nothing e)  = st (x ∷ o) (c + n) nothing e
 
-  -- A token, after a blank when the one before it would run into it.
-  token : Token → St → St
-  token t (st (lt u ∷ o) c nothing e) =
-    if apart u t then put (lt t) (Str.length (spell t)) (space (st (lt u ∷ o) c nothing e))
-    else put (lt t) (Str.length (spell t)) (st (lt u ∷ o) c nothing e)
-  {-# CATCHALL #-}
-  token t σ = put (lt t) (Str.length (spell t)) σ
+-- A blank; none at the start of a line.
+space : St → St
+space (st o c (just i) e) = st o c (just i) e
+space (st o c nothing e)  = put lsp 1 (st o c nothing e)
 
-  -- The end-of-line comments, after the line's text.
-  joined : List String → List Char
-  joined []       = []
-  joined (x ∷ []) = lineComment (toList x)
-  joined (x ∷ xs@(_ ∷ _)) = lineComment (toList x) ++ ' ' ∷ joined xs
+-- A token, after a blank when the one before it would run into it.
+token : Token → St → St
+token t (st (lt u ∷ o) c nothing e) =
+  if apart u t then put (lt t) (Str.length (spell t)) (space (st (lt u ∷ o) c nothing e))
+  else put (lt t) (Str.length (spell t)) (st (lt u ∷ o) c nothing e)
+{-# CATCHALL #-}
+token t σ = put (lt t) (Str.length (spell t)) σ
 
-  -- Blanks at the end of the line: no line ends in them.
-  trim : List Lexeme → List Lexeme
-  trim (lsp ∷ o) = trim o
-  {-# CATCHALL #-}
-  trim o         = o
+-- The end-of-line comments, after the line's text.
+joined : List String → List Char
+joined []       = []
+joined (x ∷ []) = lineComment (toList x)
+joined (x ∷ xs@(_ ∷ _)) = lineComment (toList x) ++ ' ' ∷ joined xs
 
-  -- End the line (if it is not already ended); the next one is indented by
-  -- `i`. A line holding only end-of-line comments is not empty: they go on
-  -- it, alone.
-  brk : ℕ → St → St
-  brk i (st o c (just _) [])         = st o 0 (just i) []
-  brk i (st o c (just j) e@(_ ∷ _))  = st (lnl ∷ lcm (joined e) ∷ lind j ∷ o) 0 (just i) []
-  brk i (st o c nothing [])          = st (lnl ∷ trim o) 0 (just i) []
-  brk i (st o c nothing e@(_ ∷ _))   = st (lnl ∷ lcm (joined e) ∷ lsp ∷ trim o) 0 (just i) []
+-- Blanks at the end of the line: no line ends in them.
+trim : List Lexeme → List Lexeme
+trim (lsp ∷ o) = trim o
+{-# CATCHALL #-}
+trim o         = o
 
-  -- A comment: it ends its line.
-  comment : ℕ → List Char → St → St
-  comment i c σ = brk i (put (lcm (lineComment c)) (length c) (space σ))
+-- End the line (if it is not already ended); the next one is indented by
+-- `i`. A line holding only end-of-line comments is not empty: they go on
+-- it, alone.
+brk : ℕ → St → St
+brk i (st o c (just _) [])         = st o 0 (just i) []
+brk i (st o c (just j) e@(_ ∷ _))  = st (lnl ∷ lcm (joined e) ∷ lind j ∷ o) 0 (just i) []
+brk i (st o c nothing [])          = st (lnl ∷ trim o) 0 (just i) []
+brk i (st o c nothing e@(_ ∷ _))   = st (lnl ∷ lcm (joined e) ∷ lsp ∷ trim o) 0 (just i) []
 
-  -- An empty line (never at the start of the text), between declarations.
-  blankLine : ℕ → St → St
-  blankLine i σ with brk i σ
-  ... | st [] c p e      = st [] 0 (just i) e
-  ... | st (x ∷ o) c p e = st (lnl ∷ x ∷ o) 0 (just i) e
+-- A comment: it ends its line (after the line's end-of-line comments).
+comment : ℕ → String → St → St
+comment i c (st o col p e) = brk i (st o col p (e ++ (c ∷ [])))
 
-  -- A paragraph's lines, from column `c`: a line takes the next word while it
-  -- fits (and always one word, however long). `cur`: the line's words, last
-  -- first.
-  fill : ℕ → ℕ → List String → List String → List (List String)
-  fill i c []          []       = [] ∷ []
-  fill i c cur@(_ ∷ _) []       = reverse cur ∷ []
-  fill i c []          (w ∷ ws) = fill i (c + 1 + Str.length w) (w ∷ []) ws
-  fill i c cur@(_ ∷ _) (w ∷ ws) =
-    if (c + 1 + Str.length w) ≤ᵇ width then fill i (c + 1 + Str.length w) (w ∷ cur) ws
-    else reverse cur ∷ fill i (i + 3 + Str.length w) (w ∷ []) ws
+-- An empty line (never at the start of the text), between declarations.
+blankLine : ℕ → St → St
+blankLine i σ = after (brk i σ)
+  where
+    after : St → St
+    after (st [] c p e)      = st [] 0 (just i) e
+    after (st (x ∷ o) c p e) = st (lnl ∷ x ∷ o) 0 (just i) e
 
-  -- A line of a paragraph: `--`, then its words.
-  dashed : List String → List Char
-  dashed ws = '-' ∷ '-' ∷ concatMap (λ w → ' ' ∷ toList w) ws
+-- A paragraph's lines, from column `c`: a line takes the next word while it
+-- fits (and always one word, however long). `cur`: the line's words, last
+-- first.
+fill : ℕ → ℕ → List String → List String → List (List String)
+fill i c []          []       = [] ∷ []
+fill i c cur@(_ ∷ _) []       = reverse cur ∷ []
+fill i c []          (w ∷ ws) = fill i (c + 1 + Str.length w) (w ∷ []) ws
+fill i c cur@(_ ∷ _) (w ∷ ws) =
+  if (c + 1 + Str.length w) ≤ᵇ width then fill i (c + 1 + Str.length w) (w ∷ cur) ws
+  else reverse cur ∷ fill i (i + 3 + Str.length w) (w ∷ []) ws
 
-  paragraph : ℕ → List (List String) → St → St
-  paragraph i []         σ = σ
-  paragraph i (l ∷ ls)   σ = paragraph i ls (comment i (dashed l) σ)
+-- A line of a paragraph: `--`, then its words.
+dashed : List String → List Char
+dashed ws = '-' ∷ '-' ∷ concatMap (λ w → ' ' ∷ toList w) ws
 
-  fits : ℕ → Maybe ℕ → Bool
-  fits c (just n) = (c + n) ≤ᵇ width
-  fits c nothing  = false
+paragraph : ℕ → List (List String) → St → St
+paragraph i []         σ = σ
+paragraph i (l ∷ ls)   σ = paragraph i ls (comment i (fromList (dashed l)) σ)
+
+fits : ℕ → Maybe ℕ → Bool
+fits c (just n) = (c + n) ≤ᵇ width
+fits c nothing  = false
 
 -- | Lay out a document at an indentation, flat or not.
 layout : ℕ → Bool → Doc → St → St
 layout i f empty      σ = σ
 layout i f (tk t)     σ = token t σ
 layout i f sp         σ = space σ
-layout i f (cmt c)    σ = comment i (toList c) σ
+layout i f (cmt c)    σ = comment i c σ
 layout i f (para ws)  σ = paragraph i (fill i (column σ + 2) [] ws) σ
 layout i true  line   σ = space σ
 layout i false line   σ = brk i σ
