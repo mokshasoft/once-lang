@@ -36,7 +36,7 @@ open import Data.Char using (Char)
 import Data.Char as Ch
 open import Relation.Nullary using (does)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TMinus; TArrow; TGt; TGe; TLt;
-  TEquals; TEqEq; TBang; TLBrace; TPlus; TStar; TDot)
+  TEquals; TEqEq; TBang; TNeq; TLBrace; TPlus; TStar; TDot)
 open import Once.Format.Spell using (spell)
 
 -- | The style (D341).
@@ -64,41 +64,38 @@ data Doc : Set where
 -- What the layout writes
 ------------------------------------------------------------------------
 
-private
-  continues dashes greater equals number : Token → Bool
-  continues (TWord _)      = true
-  continues (TInt _)       = true
-  continues (TFloat _ _ _) = true
-  continues TPlus          = true
-  continues TStar          = true
-  continues TBang          = true
-  {-# CATCHALL #-}
-  continues _              = false
-  number TDot = true
-  {-# CATCHALL #-}
-  number t    = continues t
-  dashes TMinus = true
-  dashes TArrow = true
-  {-# CATCHALL #-}
-  dashes _      = false
-  greater TGt = true
-  greater TGe = true
-  {-# CATCHALL #-}
-  greater _   = false
-  equals TEquals = true
-  equals TEqEq   = true
-  {-# CATCHALL #-}
-  equals _       = false
+-- The classes `apart` reads.
+continues dashes greater equals number : Token → Bool
+continues (TWord _)      = true
+continues (TInt _)       = true
+continues (TFloat _ _ _) = true
+continues TPlus          = true
+continues TStar          = true
+continues TBang          = true
+continues TNeq           = true
+{-# CATCHALL #-}
+continues _              = false
+number TDot = true
+{-# CATCHALL #-}
+number t    = continues t
+dashes TMinus = true
+dashes TArrow = true
+{-# CATCHALL #-}
+dashes _      = false
+greater TGt = true
+greater TGe = true
+{-# CATCHALL #-}
+greater _   = false
+equals TEquals = true
+equals TEqEq   = true
+{-# CATCHALL #-}
+equals _       = false
 
-  oneLine : List Char → List Char
-  oneLine []       = []
-  oneLine (c ∷ cs) = (if does (c Ch.≟ '\n') then ' ' else c) ∷ oneLine cs
-
-  -- After a comment's `--` (one is added when it has none).
-  body : List Char → List Char
-  body ('-' ∷ '-' ∷ cs) = cs
-  {-# CATCHALL #-}
-  body cs               = ' ' ∷ cs
+-- After a comment's `--` (one is added when it has none).
+body : List Char → List Char
+body ('-' ∷ '-' ∷ cs) = cs
+{-# CATCHALL #-}
+body cs               = ' ' ∷ cs
 
 -- The text is written as lexemes: a token, a blank, a line end, the
 -- indentation of a line, a comment.
@@ -117,8 +114,8 @@ chars (lind i) = replicate i ' '
 chars (lcm c)  = c
 
 -- | Two tokens that would lex as one, or as something else, written together:
--- a word or a number before a word, a number, `+`, `*`, `!` (they continue a
--- word) or, after a number, `.`; `-` before `-`, `->`, `>`, `>=`; `<`, `>`,
+-- a word or a number before a word, a number, `+`, `*`, `!`, `!=` (they
+-- continue a word) or, after a number, `.`; `-` before `-`, `->`, `>`, `>=`; `<`, `>`,
 -- `=`, `!` before `=`, `==`; `{` before `-`, `->`.
 apart : Token → Token → Bool
 apart (TWord _)      t    = continues t
@@ -132,6 +129,11 @@ apart TBang          t    = equals t
 apart TLBrace        t    = dashes t
 {-# CATCHALL #-}
 apart _              _    = false
+
+-- Line breaks as blanks.
+oneLine : List Char → List Char
+oneLine []       = []
+oneLine (c ∷ cs) = (if does (c Ch.≟ '\n') then ' ' else c) ∷ oneLine cs
 
 -- | A comment's text, as a line comment: `--` first, on one line.
 lineComment : List Char → List Char

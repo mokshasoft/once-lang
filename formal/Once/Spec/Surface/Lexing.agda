@@ -62,13 +62,14 @@ isIdentContinue c =
   isAlpha c ∨ isDigit c ∨ (code c ≡ᵇ code '_') ∨ (code c ≡ᵇ code '\'')
   ∨ (code c ≡ᵇ code '+') ∨ (code c ≡ᵇ code '*') ∨ (code c ≡ᵇ code '!') ∨ (code c ≡ᵇ code '?')
 
+-- The value of decimal digits after those of value `a`.
+digitsFrom : ℕ → List Char → ℕ
+digitsFrom a []       = a
+digitsFrom a (c ∷ cs) = digitsFrom (a * 10 + (code c ∸ code '0')) cs
+
 -- The value of a list of decimal digits.
 digitsToNat : List Char → ℕ
-digitsToNat = go 0
-  where
-    go : ℕ → List Char → ℕ
-    go a []       = a
-    go a (c ∷ cs) = go (a * 10 + (code c ∸ code '0')) cs
+digitsToNat = digitsFrom 0
 
 -- The characters that begin something other than a number or an identifier.
 data Special : Char → Set where

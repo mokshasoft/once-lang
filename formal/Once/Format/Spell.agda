@@ -42,12 +42,12 @@ digit 9 = '9'
 digit _ = '0'
 
 -- A number's decimal digits, the fewest (the fuel outlasts them: `n < fuel`).
+digits : ℕ → ℕ → List Char
+digits zero    n = []
+digits (suc f) n = if n <ᵇ 10 then digit n ∷ [] else digits f (n / 10) ++ digit (n % 10) ∷ []
+
 decimal : ℕ → List Char
-decimal n = go (suc n) n
-  where
-    go : ℕ → ℕ → List Char
-    go zero    n = []
-    go (suc f) n = if n <ᵇ 10 then digit n ∷ [] else go f (n / 10) ++ digit (n % 10) ∷ []
+decimal n = digits (suc n) n
 
 -- The last `l` decimal digits of a number, leading zeros included.
 fixed : ℕ → ℕ → List Char
