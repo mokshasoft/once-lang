@@ -19606,6 +19606,10 @@ user facing configs."
 * Spec (approved 2026-10-27): `digitsToNat`'s accumulator is the top-level `digitsFrom`, so its value can
   be stated; nothing else of the Spec changed.
 
+* The apex carries them: `CertifiedBuild.formatter : VerifiedFormatter` (the header's "room for per-layer
+  bundles"), so they are load-bearing on `make certified` while `fmt` stays out of the compile path; each
+  field takes `DigitBound` itself and the apex's hypotheses are unchanged.
+
 ### Consequences
 * Open: idempotence and comments-in-order for texts with comments (plan 0.124 §9).
 * The proofs' per-case parts are generated (`formal/scripts/gen-format-*.py`); edit the generators.

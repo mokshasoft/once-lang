@@ -225,8 +225,9 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **`once fmt` is proved, outside the compile path**: formatting keeps the
   module (`roundtrip`) and hence the apex's meaning (`format-denotes`); a
   text without comments is formatted by its module alone and formatting is
-  idempotent on it. The layout lexes as its tokens by construction
-  (`apart`, line comments, own digits). (D342)
+  idempotent on it; the apex carries these (`CertifiedBuild.formatter`).
+  The layout lexes as its tokens by construction (`apart`, line comments,
+  own digits). (D342)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`
