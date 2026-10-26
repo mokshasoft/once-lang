@@ -199,6 +199,7 @@ module OutC {FS : FrameSemantics} where
                          (λ nc hl bf → mem-pres-out nc (AtDynamic hl) bf)
                          (λ p → CalleeRun.frame-pres crun (trans res-eq p) alloc (cong falloc call-eq))
                          bf-mono-out
+                         (λ p → CalleeRun.frames-pres crun (trans res-eq p) alloc (cong falloc call-eq))
             ; traces-agree = trc
             }
             where

@@ -25,7 +25,7 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
   using (instr-ctrl; c-label; AllocState; AbstractTrace; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
          sv-as-loc; load-indirect; store-at-slot; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Data.Product using (Σ)
 open import Once.IRTy using (IRTy)
@@ -138,7 +138,7 @@ module IterProofC {FS : FrameSemantics} where
       { pc = refl ; ret = refl ; lnk = refl ; nh = nh2 ; mode = mIn
       ; inp = in-loc pl (validityWF-mem-preserved (e , a₀) pl s (floc σ₁) bfp (λ lc b → trans (memS lc b) (mem-eq1 lc)) pv)
                  bfp (trans input1 rd)
-      ; cf = refl ; ns = refl ; hr = ≤-refl
+      ; cf = refl ; sf = refl ; ns = refl ; hr = ≤-refl
       ; memF = λ lc bf → memS lc bf
       ; env = SMCore.MemOps.writeLoc-read-same-stack (floc fs1) (current-frame alloc) (suc n) (readReg (regs (floc fs1)) Output)
       ; mem0 = λ lc bf → trans (memS0 lc bf) (mem-eq1 lc)
@@ -177,6 +177,7 @@ module IterProofC {FS : FrameSemantics} where
             (λ nc hl bf → R.mem0 (subst NotCut (sym res) nc) (AtDynamic hl) bf)
             (λ p → R.frame (trans res p))
             (λ nc → R.bf0 (subst NotCut (sym res) nc))
+            (λ p → R.frames (trans res p))
       ; traces-agree = trans (chain-events-++ pre-chain R.run) (trans R.events evs)
       }
 

@@ -49,7 +49,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; restore-input; readReg; Output; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
@@ -248,7 +248,7 @@ module PairAsm {FS : FrameSemantics} where
                              (λ _ → PCG.NORET) (λ _ → PCG.NOLINK)
                              field-log field-place field-progress
                              (λ _ → field-stack) (λ _ → field-heap)
-                             (λ _ → PPresG.frame-pres-pair rgeq) (λ _ → PPresG.bf-mono-pair)
+                             (λ _ → PPresG.frame-pres-pair rgeq) (λ _ → PPresG.bf-mono-pair) (λ _ → PPresG.frames-pres-pair rgeq)
                 ; traces-agree = field-traces
                 }
 
@@ -282,6 +282,7 @@ module PairAsm {FS : FrameSemantics} where
                          (λ _ hl b → PPresG.mem-pres-to-gs (AtDynamic hl) b)
                          (λ p → case trans (sym res-g) p of λ ())
                          (λ _ → PPresG.bf-to-gs)
+                         (λ p → case trans (sym res-g) p of λ ())
             ; traces-agree =
                 trans (PT.pair-chain-events-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀ refl refl)
                       (trans (cong₂ _++_ tf tg) (sym ev-pair-g))
@@ -324,7 +325,7 @@ module PairAsm {FS : FrameSemantics} where
                                    (subst (λ ρ → rB ≤ budgetLeft rB ρ + chain-ctrls (VR.run vrg)) rgeq (VR.progress vrg))
                                    (subst₂ (λ a b → a + b ≤ chain-ctrls chain-to-g) (sym ctrlsF) (sym ctrlsG)
                                            (ctrls-4 PC.pre-chain chainF₀ PCF.mid-chain chainG₀))))
-                         (cut-absurd res-g) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g)
+                         (cut-absurd res-g) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ())
             ; traces-agree =
                 trans (PT.pair-chain-events-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀ refl refl)
                       (trans (cong₂ _++_ tf tg) (sym ev-pair-g))
@@ -362,7 +363,7 @@ module PairAsm {FS : FrameSemantics} where
                      (λ _ fr j b → mem-to-fsF (AtStack fr j) b)
                      (λ _ hl b → mem-to-fsF (AtDynamic hl) b)
                      (λ p → case trans (sym res-f) p of λ ())
-                     (λ _ m loc b → VR.bf-mono vrf ncF m loc b)
+                     (λ _ m loc b → VR.bf-mono vrf ncF m loc b) (λ p → case trans (sym res-f) p of λ ())
         ; traces-agree =
             trans (PT.pair-chain-events-f PC.pre-chain chainF₀ refl) (trans tf (sym ev-pair-f))
         }
@@ -405,7 +406,7 @@ module PairAsm {FS : FrameSemantics} where
                      (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (FlatSteps-++ PC.pre-chain chainF₀)) (sym res-f)
                             (progress-≤ {b = 0} (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (VR.run vrf)) rfeq (VR.progress vrf))
                                         (≤-trans (≤-reflexive ctrlsF) (ctrls-≤ʳ PC.pre-chain chainF₀))))
-                     (cut-absurd res-f) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ()) (cut-absurd res-f)
+                     (cut-absurd res-f) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ()) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ())
         ; traces-agree =
             trans (PT.pair-chain-events-f PC.pre-chain chainF₀ refl) (trans tf (sym ev-pair-f))
         }

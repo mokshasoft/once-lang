@@ -236,6 +236,7 @@ module ArmLC {FS : FrameSemantics} where
                          (λ nc hl bf → mem-pres (nc-f nc) (AtDynamic hl) bf)
                          (λ p → VR.frame-pres vf (trans res-eq p))
                          (λ nc → bf-mono-c (nc-f nc))
+                         (λ p → VR.frames-pres vf (trans res-eq p))
             ; traces-agree =
                 trans (ev-chain q) (trans (MachineRefinesObsF.traces-agree mrf) (cong proj₁ RE))
             }
@@ -260,6 +261,7 @@ module ArmLC {FS : FrameSemantics} where
                          (λ nc hl bf → mem-pres (nc-f nc) (AtDynamic hl) bf)
                          (λ p → VR.frame-pres vf (trans res-eq p))
                          (λ nc → bf-mono-c (nc-f nc))
+                         (λ p → VR.frames-pres vf (trans res-eq p))
             ; traces-agree =
                 trans ev-chain-stopped (trans (MachineRefinesObsF.traces-agree mrf) (cong proj₁ RE))
             }
@@ -274,7 +276,7 @@ module ArmLC {FS : FrameSemantics} where
                          log-c
                          (λ p → case trans (sym cM) p of λ ())
                          (prog-f (≤-trans (≤-reflexive ctrlsF) (ctrls-≤ʳ (P.run-i cond) chainF)))
-                         (cut-absurd cM) (cut-absurd cM) (λ p → case trans (sym cM) p of λ ()) (cut-absurd cM)
+                         (cut-absurd cM) (cut-absurd cM) (λ p → case trans (sym cM) p of λ ()) (cut-absurd cM) (λ p → case trans (sym cM) p of λ ())
             ; traces-agree =
                 trans ev-chain-stopped (trans (MachineRefinesObsF.traces-agree mrf) (cong proj₁ RE))
             }

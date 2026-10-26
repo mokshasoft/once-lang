@@ -67,7 +67,7 @@ module Simp {FS : FrameSemantics} where
       { traces-agree = sym (denot-[] k)
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
-                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       -- The post-`mov` register file and the intermediate flat state. `run-eq`
@@ -147,7 +147,7 @@ module Simp {FS : FrameSemantics} where
     record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
-          realized 0 (entry-flat base s alloc cl rs) mIn alloc [] (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s}) (λ { refl → unit-result }) (m≤m+n k _) (λ _ → (λ _ _ _ → refl)) (λ _ → (λ _ _ → refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+          realized 0 (entry-flat base s alloc cl rs) mIn alloc [] (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s}) (λ { refl → unit-result }) (m≤m+n k _) (λ _ → (λ _ _ _ → refl)) (λ _ → (λ _ _ → refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       ev-[] : ∀ pc i → fetch (emitted n l (terminal {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
@@ -237,7 +237,7 @@ module Simp {FS : FrameSemantics} where
                        ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-loc cloc cval cbef
                           (exec-abstract-load-indirect-output s alloc pair-loc (SV-Ptr cloc) eq cp)
-                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-prim fit) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
@@ -249,7 +249,7 @@ module Simp {FS : FrameSemantics} where
                        ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-reg fit
                           (exec-abstract-load-indirect-output s alloc pair-loc
-                             (prim-sv fit (proj₁ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                             (prim-sv fit (proj₁ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-unit refl sv) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
@@ -259,7 +259,7 @@ module Simp {FS : FrameSemantics} where
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
                        ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs)) (λ { refl → unit-result }) (m≤m+n k _)
-                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
       mr-of (in-reg () _)
       mr-of (in-unit ())
@@ -301,7 +301,7 @@ module Simp {FS : FrameSemantics} where
                        ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-loc cloc cval cbef
                           (exec-abstract-load-indirect-suc-output s alloc pair-loc (SV-Ptr cloc) eq cp)
-                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-prim fit) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
@@ -313,7 +313,7 @@ module Simp {FS : FrameSemantics} where
                        ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-reg fit
                           (exec-abstract-load-indirect-suc-output s alloc pair-loc
-                             (prim-sv fit (proj₂ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                             (prim-sv fit (proj₂ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-unit refl sv) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
@@ -323,7 +323,7 @@ module Simp {FS : FrameSemantics} where
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
                        ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl rs)) (λ { refl → unit-result }) (m≤m+n k _)
-                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
       mr-of (in-reg () _)
       mr-of (in-unit ())
@@ -342,7 +342,7 @@ module Simp {FS : FrameSemantics} where
       { traces-agree = sym (denot-[] k)
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
-                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
@@ -433,7 +433,7 @@ module Simp {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → at-reg fits-int out-lit }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl))
-                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       instr = instr-load-const fits-intˢ v
@@ -465,7 +465,7 @@ module Simp {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → at-reg fits-float out-lit }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl))
-                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       instr = instr-load-const fits-floatˢ v

@@ -48,7 +48,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore
-open AllocState using (current-frame; next-heap-ref)
+open AllocState using (current-frame; next-heap-ref; saved-frames)
 open LocState using (heapMem; regs; stackMem; halted; ev-log; left)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation)
@@ -847,6 +847,113 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-case-dispatch-preserves-frame (just (SV-Lit _ _))     f g s alloc = refl
   exec-case-dispatch-preserves-frame (just (SV-Code _))      f g s alloc = refl
   exec-case-dispatch-preserves-frame nothing                 f g s alloc = refl
+
+  -- D338: …and the FRAME STACK. No structured instruction touches
+  -- `saved-frames` (`instr-push-frame`/`instr-pop-frame` are the identity
+  -- here; the flat machine owns the real frame moves). Unlike the current
+  -- frame, the loop does not re-anchor it, so the loop clause needs the
+  -- body's trace lemma — hence one mutual block over all four.
+  exec-loop-preserves-saved : ∀ (n : ℕ) (body : AbstractTrace)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    saved-frames (proj₂ (exec-loop n body s alloc)) ≡ saved-frames alloc
+  exec-abstract-preserves-saved : ∀ (i : AbstractInstr) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    saved-frames (proj₂ (exec-abstract i s alloc)) ≡ saved-frames alloc
+  exec-trace-preserves-saved : ∀ (tr : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    saved-frames (proj₂ (exec-trace tr s alloc)) ≡ saved-frames alloc
+  exec-case-dispatch-preserves-saved : ∀ (mt : Maybe (StoredValue FS))
+    (f g : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+    saved-frames (proj₂ (exec-case-dispatch mt f g s alloc)) ≡ saved-frames alloc
+
+  exec-loop-preserves-saved zero    body s alloc = refl
+  exec-loop-preserves-saved (suc n) body s alloc with halted s
+  ... | true = refl
+  ... | false with readReg (regs s) Scratch
+  ...   | SV-Tag zero    = refl
+  ...   | SV-Tag (suc _) = trans (exec-loop-preserves-saved n body _ _) (exec-trace-preserves-saved body s alloc)
+  ...   | SV-Ptr _       = trans (exec-loop-preserves-saved n body _ _) (exec-trace-preserves-saved body s alloc)
+  ...   | SV-Lit _ _     = trans (exec-loop-preserves-saved n body _ _) (exec-trace-preserves-saved body s alloc)
+  ...   | SV-Code _      = trans (exec-loop-preserves-saved n body _ _) (exec-trace-preserves-saved body s alloc)
+
+  exec-abstract-preserves-saved (instr-loop body) s alloc =
+    exec-loop-preserves-saved 1000000 body s alloc
+  exec-abstract-preserves-saved mov-to-output s alloc = refl
+  exec-abstract-preserves-saved (instr-reg-op _) s alloc = refl
+  exec-abstract-preserves-saved (instr-ctrl _) s alloc = refl
+  exec-abstract-preserves-saved mov-to-input s alloc = refl
+  exec-abstract-preserves-saved load-indirect s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc with readLoc s loc
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-preserves-saved load-indirect s alloc | nothing = refl
+  exec-abstract-preserves-saved load-indirect-suc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc with readLoc s (sucLoc loc)
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-preserves-saved load-indirect-suc s alloc | nothing = refl
+  exec-abstract-preserves-saved (load-from-slot slot) s alloc
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-saved (store-at-slot slot) s alloc = refl
+  exec-abstract-preserves-saved store-indirect s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = refl
+  ... | nothing  = refl
+  exec-abstract-preserves-saved store-indirect-suc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = refl
+  ... | nothing  = refl
+  exec-abstract-preserves-saved (lea-slot slot) s alloc = refl
+  exec-abstract-preserves-saved (restore-input slot) s alloc
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-saved (lea-indexed slot) s alloc
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | nothing = refl
+  ... | just sv with sv-as-loc sv
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-preserves-saved (instr-alloc-stack n) s alloc = refl
+  exec-abstract-preserves-saved (instr-dealloc-stack n) s alloc = refl
+  exec-abstract-preserves-saved (instr-reclaim-to n) s alloc = refl
+  exec-abstract-preserves-saved (instr-push-frame cap) s alloc = refl
+  exec-abstract-preserves-saved instr-pop-frame s alloc = refl
+  exec-abstract-preserves-saved instr-call-closure s alloc = refl
+  exec-abstract-preserves-saved (worklist-init slot) s alloc = refl
+  exec-abstract-preserves-saved (worklist-push slot) s alloc = refl
+  exec-abstract-preserves-saved (worklist-pop slot) s alloc
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-saved (worklist-check slot) s alloc = refl
+  exec-abstract-preserves-saved (instr-sigop _)       s alloc = refl
+  exec-abstract-preserves-saved (instr-load-const _ _) s alloc = refl
+  exec-abstract-preserves-saved (instr-load-tag-lit _) s alloc = refl
+  exec-abstract-preserves-saved (instr-load-code-addr _) s alloc = refl
+  exec-abstract-preserves-saved instr-save-closure-reg   s alloc = refl
+  exec-abstract-preserves-saved (instr-case-on-tag f g)  s alloc =
+    exec-case-dispatch-preserves-saved (case-tag-at s) f g s alloc
+  exec-abstract-preserves-saved (instr-alloc-heap _)     s alloc = refl
+
+  exec-trace-preserves-saved [] s alloc = refl
+  exec-trace-preserves-saved (i ∷ is) s alloc with halted s
+  ... | true  = refl
+  ... | false =
+    trans (exec-trace-preserves-saved is (proj₁ (exec-abstract i s alloc))
+                                          (proj₂ (exec-abstract i s alloc)))
+          (exec-abstract-preserves-saved i s alloc)
+
+  exec-case-dispatch-preserves-saved (just (SV-Tag 0))       f g s alloc = exec-trace-preserves-saved f s alloc
+  exec-case-dispatch-preserves-saved (just (SV-Tag (suc _))) f g s alloc = exec-trace-preserves-saved g s alloc
+  exec-case-dispatch-preserves-saved (just (SV-Ptr _))       f g s alloc = refl
+  exec-case-dispatch-preserves-saved (just (SV-Lit _ _))     f g s alloc = refl
+  exec-case-dispatch-preserves-saved (just (SV-Code _))      f g s alloc = refl
+  exec-case-dispatch-preserves-saved nothing                 f g s alloc = refl
 
   -- (E) HEAP PRESERVATION
   -- Instructions that don't write to heap preserve heapMem

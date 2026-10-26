@@ -53,7 +53,7 @@ open import Once.CCC.Codegen.IRToTrace o using (sigop-code; cmp-trace)
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum using (int-bits)
 open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; module AbstractExec; instr-sigop; load-from-slot; instr-load-tag-lit; readReg; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sv-as-loc; Input1; store-indirect; store-indirect-suc; sucLoc; SV-Ptr; module LocState; module AllocState)
-open AllocState using (next-heap-ref; current-frame)
+open AllocState using (next-heap-ref; current-frame; saved-frames)
 open LocState using (regs; halted)
 
 import Once.CCC.FrameSemantics
@@ -110,7 +110,7 @@ module CompareC {FS : FrameSemantics} where
                    (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs11) { next-slot = m })
-                                     (sym cf-fs11) ≤-refl heapref-≤ loc' bf')
+                                     (sym cf-fs11) ≤-refl heapref-≤ loc' bf') (λ _ → sf-fs11)
       }
     where
       tag-stash sum-stash : ℕ
@@ -168,6 +168,11 @@ module CompareC {FS : FrameSemantics} where
         trans (exec-abstract-preserves-frame (instr-reg-op out-nz) (floc fs1) (falloc fs1))
               (exec-abstract-preserves-frame (instr-sigop si′) s alloc)
 
+      sf-fs2 : saved-frames (falloc fs2) ≡ saved-frames alloc
+      sf-fs2 =
+        trans (exec-abstract-preserves-saved (instr-reg-op out-nz) (floc fs1) (falloc fs1))
+              (exec-abstract-preserves-saved (instr-sigop si′) s alloc)
+
       mem-fs2 : ∀ (loc : ValueLocation FS) → SMCore.MemOps.readLoc (floc fs2) loc ≡ SMCore.MemOps.readLoc s loc
       mem-fs2 loc =
         trans (mem-untouched (instr-reg-op out-nz) (floc fs1) (falloc fs1) loc
@@ -223,6 +228,13 @@ module CompareC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs4) (falloc fs4))
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs3) (falloc fs3))
               (exec-abstract-preserves-frame (store-at-slot tag-stash) (floc fs2) (falloc fs2))))
+
+      sf-fs6 : saved-frames (falloc fs6) ≡ saved-frames (falloc fs2)
+      sf-fs6 =
+        trans (exec-abstract-preserves-saved mov-to-input (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs4) (falloc fs4))
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs3) (falloc fs3))
+              (exec-abstract-preserves-saved (store-at-slot tag-stash) (floc fs2) (falloc fs2))))
 
       wf-load-tag : InstrWF (floc fs6) (falloc fs6) (load-from-slot tag-stash)
       wf-load-tag =
@@ -288,6 +300,15 @@ module CompareC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (load-from-slot tag-stash) (floc fs6) (falloc fs6))
        (trans (exec-abstract-preserves-frame mov-to-input (floc fs5) (falloc fs5))
               (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs4) (falloc fs4))))))
+
+      sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames (falloc fs4)
+      sf-fs10 =
+        trans (exec-abstract-preserves-saved store-indirect-suc (floc fs9) (falloc fs9))
+       (trans (exec-abstract-preserves-saved (instr-load-tag-lit 0) (floc fs8) (falloc fs8))
+       (trans (exec-abstract-preserves-saved store-indirect (floc fs7) (falloc fs7))
+       (trans (exec-abstract-preserves-saved (load-from-slot tag-stash) (floc fs6) (falloc fs6))
+       (trans (exec-abstract-preserves-saved mov-to-input (floc fs5) (falloc fs5))
+              (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs4) (falloc fs4))))))
 
       wf-load-sum : InstrWF (floc fs10) (falloc fs10) (load-from-slot sum-stash)
       wf-load-sum =
@@ -400,6 +421,14 @@ module CompareC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs3) (falloc fs3))
        (trans (exec-abstract-preserves-frame (store-at-slot tag-stash) (floc fs2) (falloc fs2))
               cf-fs2)))
+
+      sf-fs11 : saved-frames (falloc fs11) ≡ saved-frames alloc
+      sf-fs11 =
+        trans (exec-abstract-preserves-saved (load-from-slot sum-stash) (floc fs10) (falloc fs10))
+       (trans sf-fs10
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs3) (falloc fs3))
+       (trans (exec-abstract-preserves-saved (store-at-slot tag-stash) (floc fs2) (falloc fs2))
+              sf-fs2)))
 
       heapref-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc fs11)
       heapref-≤ = subst (λ m → next-heap-ref alloc ≤ m) (sym heapref-fs11)

@@ -58,6 +58,7 @@ module CallC {FS : FrameSemantics} where
                  (λ nc fr i bf → mem-pres nc (AtStack fr i) bf) (λ nc hl bf → mem-pres nc (AtDynamic hl) bf)
                  (λ p → CalleeRun.frame-pres crun (trans res-eq p) alloc (cong falloc call-eq))
                  (λ nc m loc bf → CalleeRun.bf-mono crun (nc′ nc) alloc m (cong falloc call-eq) loc bf)
+                 (λ p → CalleeRun.frames-pres crun (trans res-eq p) alloc (cong falloc call-eq))
     ; traces-agree = trc
     }
     where

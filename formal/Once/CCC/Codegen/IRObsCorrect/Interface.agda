@@ -39,7 +39,7 @@ open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; readReg; Input1; SV-Ptr; sucLoc; SV-Code; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame)
+open AllocState using (next-slot; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
@@ -158,7 +158,7 @@ module Core {FS : FrameSemantics} where
   -- structured machine's halt lemmas apply to a flat chain unchanged — the
   -- conditional form is the one `inl`'s indirect stores and slot loads need.
   open TracePrimitives {FS} using (InstrWF; exec-abstract-preserves-halted-WF; load-indirect-twf; load-indirect-suc-twf) public
-  open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor) public
+  open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-saved; exec-trace-preserves-saved; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor) public
   open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
                                      exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem) public
   open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-instr-load-const; nhw-instr-sigop) public
@@ -585,6 +585,14 @@ module Core {FS : FrameSemantics} where
                  → BeforeFrontier (record alloc { next-slot = m }) loc
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
 
+      -- D338: …and the FRAME STACK beneath it. `frame-pres` is the top of the
+      -- stack; a `c-ret` after the fragment (a `Cata` algebra's thunk) pops
+      -- `saved-frames`, so the caller's frame comes back only if the run left
+      -- that stack as it found it. True for `frame-pres`'s reasons: no
+      -- structured instruction touches it (`exec-abstract-preserves-saved`),
+      -- and a call that returns pops what it pushed.
+      frames-pres : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r) → saved-frames (falloc settle) ≡ saved-frames alloc
+
   -- D208: the combined form, DERIVED once rather than assumed per clause.
   -- Consumers that do not care which half they are using (`valid-transport`,
   -- the call-site compositions) keep asking for this; the split is visible
@@ -782,6 +790,11 @@ module Core {FS : FrameSemantics} where
                  → ∀ (loc : ValueLocation FS)
                  → BeforeFrontier (record pre { next-slot = m }) loc
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
+
+      -- D338: the caller's frame STACK is restored too (see
+      -- `ValueRealized.frames-pres`) — `frame-pres` is its top.
+      frames-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                  → saved-frames (falloc settle) ≡ saved-frames pre
 
   ------------------------------------------------------------------------
   -- D188: THE BLOCK TABLE, as the machine needs it — the one fact `apply`

@@ -138,6 +138,9 @@ module ApplyC {FS : FrameSemantics} where
                                    (cong falloc call-eq))
                                 OB.cf-a16)
                          bf-mono-apply
+                         (λ p → trans (CalleeRun.frames-pres crun (trans res-eq p) (falloc ASP.a16)
+                                   (cong falloc call-eq))
+                                OB.sf-a16)
             ; traces-agree = trc
             }
             where

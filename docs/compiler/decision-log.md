@@ -19460,3 +19460,30 @@ the code so as little as possible makes it into the compiler?").
 * Every `IRObsCorrect.*` case threads `rs`; the local `handover-eq` copies (Comp, CaseRun, IterRun,
   Pair/Chain) take it. `Loop.Anchor` gains `rs₀`; `RoundInv.ret : fret σ ≡ rs₀`.
 * No postulate added or removed. It unblocks `cata-correct`'s self-call lemma (plan 0.88, M0).
+
+## D338 — A RETURNING FRAGMENT RESTORES THE FRAME STACK (`frames-pres`) (2026-10-26)
+
+**Follows** D210 (`frame-pres`), D337. **Asked** by the user 2026-10-26 (plan 0.88, `cata-correct` M0:
+"New field").
+
+### Decision
+* `ValueRealized` and `CalleeRun` gain a last field `frames-pres`, owed when the run RETURNED:
+  `saved-frames (falloc settle) ≡ saved-frames alloc` (for `CalleeRun`, `≡ saved-frames pre` where
+  `falloc fs ≡ enter-call pre`). `frame-pres` is the top of the frame stack; this is the rest.
+* `SMPrimitives` proves `exec-{abstract,trace,loop,case-dispatch}-preserves-saved`: no structured
+  instruction touches `saved-frames` (`instr-push-frame`/`-pop-frame` are the identity there). Unlike
+  `current-frame`, the loop does not re-anchor it, so the four are one mutual block.
+
+### Why
+* `Cata` calls its algebra's inline thunk, and the thunk ends in `c-ret`, i.e. `do-ret`, which runs
+  `leave-frame` — it POPS `saved-frames`. The caller's frame comes back (`CalleeRun.frame-pres`) only if
+  the algebra's run left the stack as `enter-call` pushed it. Nothing in the obligation said so, so M0
+  (the self-call lemma) was not derivable.
+
+### Consequences
+* Each clause proves it where it proves `frame-pres`: straight-line clauses by an `sf-*` chain beside
+  their `cf-*` one (`refl` where the frame fact is `refl`), call clauses from the callee's
+  `CalleeRun.frames-pres`, composites from their parts. `Iter`'s loop invariant gains
+  `RoundInv.sf`/`RoundsRun.frames` (`SF = saved-frames alloc₀`).
+* The assumed `BlockRuns` (plan 0.93's apex hypothesis) is stronger by this one true fact about every
+  returning callee. No postulate added or removed.

@@ -29,7 +29,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.SMCore
   using (AllocState; AbstractTrace; LocState; StoredValue; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Nat using (s≤s; z≤n)
@@ -125,7 +125,7 @@ module IterRoundsC {FS : FrameSemantics} where
           ; events = trans ev-chainB (sym evs)
           ; log = trans (VR.log vb) (cong (h DL.++_) (sym evs))
           ; progress = subst (λ ρ → r ≤ budgetLeft r ρ + chain-ctrls chainB) (sym res) (m≤m+n r _)
-          ; mem0 = λ _ → NC.mem00 nc ; frame = λ p → case trans (sym res) p of λ () ; bf0 = λ _ → NC.bf00 nc
+          ; mem0 = λ _ → NC.mem00 nc ; frame = λ p → case trans (sym res) p of λ () ; frames = λ p → case trans (sym res) p of λ () ; bf0 = λ _ → NC.bf00 nc
           }
           where
             RE′ : runAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ (es₁ , stopped)
@@ -174,6 +174,7 @@ module IterRoundsC {FS : FrameSemantics} where
                                   (RoundsRun.progress rr) C.ctrls-chain))
               ; mem0 = λ nc′ → RoundsRun.mem0 rr (subst NotCut res nc′)
               ; frame = λ p → RoundsRun.frame rr (trans (sym res) p)
+              ; frames = λ p → RoundsRun.frames rr (trans (sym res) p)
               ; bf0 = λ nc′ → RoundsRun.bf0 rr (subst NotCut res nc′)
               }
               where
@@ -182,7 +183,7 @@ module IterRoundsC {FS : FrameSemantics} where
                 ns : stopsAt (floc σ) (⟪ round e a ⟫ r) ≡ false
                 ns = cong is-stopped q
                 module C = Cont body n l prog base span la Z S0 a′ (Live.nh0 ns) (pc0-of q)
-                             (cf0-of q) ns0 (NC.hr0 nc) (NC.memF0 nc) (NC.env0 nc) (ret0-of q) (NC.lnk0 nc)
+                             (cf0-of q) (sf0-of q) ns0 (NC.hr0 nc) (NC.memF0 nc) (NC.env0 nc) (ret0-of q) (NC.lnk0 nc)
                              (NC.mem00 nc) (NC.bf00 nc) (Live.left0 ns) loc vS bef rax
                 lt : suc r″ ≤ r
                 lt = done-≤ ιᶠ h r (round e a) q
@@ -212,7 +213,7 @@ module IterRoundsC {FS : FrameSemantics} where
                          (subst (λ m → r ≤ 0 + m) (sym ctrls-chainB)
                            (subst (λ x → r ≤ x + chain-ctrls (VR.run vb)) bl0
                              (subst (λ ρ′ → r ≤ budgetLeft r ρ′ + chain-ctrls (VR.run vb)) q (VR.progress vb))))
-          ; mem0 = cut-absurd res ; frame = (λ p → case trans (sym res) p of λ ()) ; bf0 = cut-absurd res
+          ; mem0 = cut-absurd res ; frame = (λ p → case trans (sym res) p of λ ()) ; frames = (λ p → case trans (sym res) p of λ ()) ; bf0 = cut-absurd res
           }
           where
             res = cong proj₂ RE′
@@ -236,6 +237,7 @@ module IterRoundsC {FS : FrameSemantics} where
                                      (ctrls-≤ˡ chainB X.chain))
           ; mem0 = λ _ lc bf → trans (X.mem4 lc) (NC.mem00 nc lc bf)
           ; frame = λ _ → cf0-of q
+          ; frames = λ _ → sf0-of q
           ; bf0 = λ _ → NC.bf00 nc
           }
           where

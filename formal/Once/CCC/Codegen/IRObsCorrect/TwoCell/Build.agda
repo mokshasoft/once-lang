@@ -20,7 +20,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; load-from-slot; store-indirect-suc; instr-load-code-addr; store-indirect; mov-to-input; store-at-slot; sucLoc; readReg; Output; SV-Code; writeReg-same; SV-Ptr; instr-alloc-heap; mov-to-output; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (sucHL)
 
@@ -116,6 +116,14 @@ module TwoCellBuildC {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
      (trans (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))
             (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
+
+    sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
+    sf-fs10 =
+      trans (exec-abstract-preserves-saved (load-from-slot obj-stash) (floc fs9) (falloc fs9))
+     (trans sf-fs9
+     (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+     (trans (exec-abstract-preserves-saved (store-at-slot cell0-stash) (floc fs1) (falloc fs1))
+            (exec-abstract-preserves-saved mov-to-output (floc fs0) (falloc fs0)))))
 
     nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
     nextslot-fs10 =

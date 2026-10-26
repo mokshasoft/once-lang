@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore using (instr-load-tag-lit; load-from-slot; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; store-indirect-suc; sv-as-loc; readReg; Input1; StoredValue; Output; SV-Tag; writeReg-same; sucLoc; SV-Ptr; module LocState; module AllocState)
-open AllocState using (next-heap-ref; current-frame; next-slot)
+open AllocState using (next-heap-ref; current-frame; saved-frames; next-slot)
 open LocState using (regs; halted)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL)
 
@@ -59,7 +59,7 @@ module SumC {FS : FrameSemantics} where
                    (λ _ → (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
-                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf'))
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')) (λ _ → sf-fs10)
       }
     where
       payload-stash sum-stash : ℕ
@@ -117,6 +117,15 @@ module SumC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs3) (falloc fs3))
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
               (exec-abstract-preserves-frame (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
+
+      sf-fs7 : saved-frames (falloc fs7) ≡ saved-frames (falloc fs1)
+      sf-fs7 =
+        trans (exec-abstract-preserves-saved store-indirect (floc fs6) (falloc fs6))
+       (trans (exec-abstract-preserves-saved (instr-load-tag-lit 0) (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+       (trans (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs3) (falloc fs3))
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+              (exec-abstract-preserves-saved (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
 
       -- The payload value, as `mov-to-output` leaves it and
       -- `store-at-slot payload-stash` commits it, read back at fs7. The only
@@ -321,6 +330,14 @@ module SumC {FS : FrameSemantics} where
        (trans cf-fs7
               (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
 
+      sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
+      sf-fs10 =
+        trans (exec-abstract-preserves-saved (load-from-slot sum-stash) (floc fs9) (falloc fs9))
+       (trans (exec-abstract-preserves-saved store-indirect-suc (floc fs8) (falloc fs8))
+       (trans (exec-abstract-preserves-saved (load-from-slot payload-stash) (floc fs7) (falloc fs7))
+       (trans sf-fs7
+              (exec-abstract-preserves-saved mov-to-output (floc fs0) (falloc fs0)))))
+
       nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
       nextslot-fs10 =
         trans (exec-abstract-preserves-next-slot (load-from-slot sum-stash) (floc fs9) (falloc fs9) tt)
@@ -429,7 +446,7 @@ module SumC {FS : FrameSemantics} where
                    (λ _ → (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
-                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf'))
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')) (λ _ → sf-fs10)
       }
     where
       payload-stash sum-stash : ℕ
@@ -487,6 +504,15 @@ module SumC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs3) (falloc fs3))
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
               (exec-abstract-preserves-frame (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
+
+      sf-fs7 : saved-frames (falloc fs7) ≡ saved-frames (falloc fs1)
+      sf-fs7 =
+        trans (exec-abstract-preserves-saved store-indirect (floc fs6) (falloc fs6))
+       (trans (exec-abstract-preserves-saved (instr-load-tag-lit 1) (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+       (trans (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs3) (falloc fs3))
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+              (exec-abstract-preserves-saved (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
 
       -- The payload value, as `mov-to-output` leaves it and
       -- `store-at-slot payload-stash` commits it, read back at fs7. The only
@@ -690,6 +716,14 @@ module SumC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (load-from-slot payload-stash) (floc fs7) (falloc fs7))
        (trans cf-fs7
               (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
+
+      sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
+      sf-fs10 =
+        trans (exec-abstract-preserves-saved (load-from-slot sum-stash) (floc fs9) (falloc fs9))
+       (trans (exec-abstract-preserves-saved store-indirect-suc (floc fs8) (falloc fs8))
+       (trans (exec-abstract-preserves-saved (load-from-slot payload-stash) (floc fs7) (falloc fs7))
+       (trans sf-fs7
+              (exec-abstract-preserves-saved mov-to-output (floc fs0) (falloc fs0)))))
 
       nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
       nextslot-fs10 =

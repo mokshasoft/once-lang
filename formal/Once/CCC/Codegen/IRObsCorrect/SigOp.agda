@@ -219,7 +219,7 @@ module SigOpC {FS : FrameSemantics} where
                    -- whatever the SigOp means.
                    (λ _ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j) nhw-instr-sigop refl)
                    (λ _ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl) nhw-instr-sigop refl)
-                   (λ _ → refl) (λ _ _ _ bf → bf)
+                   (λ _ → refl) (λ _ _ _ bf → bf) (λ _ → refl)
       }
       where
         ev-eq′ : sigop-events si s ≡ eventsAt s (⟪ evalᴰ (SigOp si) x ⟫ k)

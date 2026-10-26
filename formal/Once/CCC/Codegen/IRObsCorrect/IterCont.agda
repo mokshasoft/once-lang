@@ -34,7 +34,7 @@ open import Once.CCC.Machine.SMCore
          load-indirect-suc; mov-to-input; store-at-slot; instr-alloc-heap; load-from-slot;
          store-indirect; store-indirect-suc; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
          sv-as-loc; writeReg-same; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Data.Product using (Σ)
 open import Data.Sum using (inj₁; inj₂)
@@ -85,6 +85,7 @@ module IterContC {FS : FrameSemantics} where
     (nh0 : halted (floc S0) ≡ false)
     (pc0 : fpc S0 ≡ (3 + length (IterShape.bt body n l) + 0) + base)
     (cf0 : current-frame (falloc S0) ≡ Loop.FR body n l base Z)
+    (sf0 : saved-frames (falloc S0) ≡ Loop.SF body n l base Z)
     (ns0 : next-slot (falloc S0) ≡ next-slot (Loop.Anchor.alloc₀ Z))
     (hr0 : next-heap-ref (falloc (Loop.Anchor.fsF Z)) ≤ next-heap-ref (falloc S0))
     (memF0 : ∀ (loc : ValueLocation FS) → BeforeFrontier (falloc (Loop.Anchor.fsF Z)) loc
@@ -320,6 +321,7 @@ module IterContC {FS : FrameSemantics} where
                  PP.before
                  (trans (writeReg-same (regs (floc PP.u10)) Input1 (readReg (regs (floc PP.u10)) Output)) PP.out-u10)
       ; cf   = PP.cf-u10
+      ; sf   = trans PP.sf-u10 (trans (exec-abstract-preserves-saved load-indirect-suc (floc c2) (falloc c2)) sf0)
       ; ns   = trans PP.nextslot-u10 ns0
       ; hr   = ≤-trans hr0 PP.gs≤u10
       ; memF = λ lc bf → trans (mem11 lc) (PP.mem-F→u10 lc bf)

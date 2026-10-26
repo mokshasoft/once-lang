@@ -33,7 +33,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
 open import Once.CCC.Machine.SMCore
   using (AllocState; AbstractTrace; LocState; StoredValue; readReg; Output; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
@@ -85,6 +85,10 @@ module IterInvC {FS : FrameSemantics} where
       FR : Once.CCC.FrameSemantics.FrameSemantics.Frame FS
       FR = current-frame alloc₀
 
+      -- D338: …and the frame STACK beneath it.
+      SF : List (Once.CCC.FrameSemantics.FrameSemantics.Frame FS × ℕ)
+      SF = saved-frames alloc₀
+
       -- `e`'s cell, as the prologue stashed it at `suc n`
       fv : StoredValue FS
       fv = readReg (regs (floc fsF)) Output
@@ -98,6 +102,7 @@ module IterInvC {FS : FrameSemantics} where
           mode : AllocMode
           inp  : InputAt {E IRT.* A} mode (falloc σ) (e , a) (floc σ)
           cf   : current-frame (falloc σ) ≡ FR
+          sf   : saved-frames (falloc σ) ≡ SF
           ns   : next-slot (falloc σ) ≡ next-slot alloc₀
           hr   : next-heap-ref (falloc fsF) ≤ next-heap-ref (falloc σ)
           memF : ∀ (loc : ValueLocation FS) → BeforeFrontier (falloc fsF) loc
@@ -134,6 +139,7 @@ module IterInvC {FS : FrameSemantics} where
                      → ∀ (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = n }) loc
                      → SMCore.MemOps.readLoc (floc settle) loc ≡ SMCore.MemOps.readLoc s₀ loc
           frame      : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → current-frame (falloc settle) ≡ FR
+          frames     : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → saved-frames (falloc settle) ≡ SF
           bf0        : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r))
                      → ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) loc
                      → BeforeFrontier (record (falloc settle) { next-slot = m }) loc

@@ -63,7 +63,7 @@ module TwoCellC {FS : FrameSemantics} where
                    (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
-                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
+                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
       }
     where
       -- D190: the ten-instruction build is shared with `Ana`; `emitted n l
@@ -152,7 +152,7 @@ module TwoCellC {FS : FrameSemantics} where
                    (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
-                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
+                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
       }
     where
       module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
@@ -209,7 +209,7 @@ module TwoCellC {FS : FrameSemantics} where
                    (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
-                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
+                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
       }
     where
       module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span

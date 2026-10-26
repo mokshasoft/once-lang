@@ -22,7 +22,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
 open import Once.CCC.Machine.SMCore
   using (AllocState; AbstractTrace; LocState; StoredValue; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Nat using (s≤s)
@@ -130,6 +130,10 @@ module IterBodyC {FS : FrameSemantics} where
 
     ret0-of : ∀ {v r′} → ρ₁ ≡ returns (done v r′) → fret S0 ≡ rs₀
     ret0-of q = VR.no-ret vb q
+
+    -- D338: …and so is the frame stack.
+    sf0-of : ∀ {v r′} → ρ₁ ≡ returns (done v r′) → saved-frames (falloc S0) ≡ SF Z
+    sf0-of q = trans (VR.frames-pres vb q) I.sf
 
     module NC (nc : NotCut ρ₁) where
 

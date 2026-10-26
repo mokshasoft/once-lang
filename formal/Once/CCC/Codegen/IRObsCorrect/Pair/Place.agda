@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; readReg; Output; load-from-slot; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; store-indirect-suc; LocState; sucLoc; StoredValue; SV-Ptr; writeReg-same; sv-as-loc; Input1; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (regs)
 open import Once.IRTy using (IRTy; _*_)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
@@ -143,6 +143,20 @@ module PairPlaceC {FS : FrameSemantics} where
     cf-u9  = trans (exec-abstract-preserves-frame store-indirect-suc (floc u8) (falloc u8)) cf-u8
     cf-u10 : current-frame (falloc u10) ≡ current-frame alloc
     cf-u10 = trans (exec-abstract-preserves-frame (load-from-slot pair-stash) (floc u9) (falloc u9)) cf-u9
+
+    -- D338: the tail touches no frame stack either — stated from `gs`, whose
+    -- own frame stack is the caller's business.
+    sf-u10 : saved-frames (falloc u10) ≡ saved-frames (falloc gs)
+    sf-u10 =
+      trans (exec-abstract-preserves-saved (load-from-slot pair-stash) (floc u9) (falloc u9))
+     (trans (exec-abstract-preserves-saved store-indirect-suc (floc u8) (falloc u8))
+     (trans (exec-abstract-preserves-saved (load-from-slot snd-stash) (floc u7) (falloc u7))
+     (trans (exec-abstract-preserves-saved store-indirect (floc u6) (falloc u6))
+     (trans (exec-abstract-preserves-saved (load-from-slot fst-stash) (floc u5) (falloc u5))
+     (trans (exec-abstract-preserves-saved mov-to-input (floc u4) (falloc u4))
+     (trans (exec-abstract-preserves-saved (store-at-slot pair-stash) (floc u3) (falloc u3))
+     (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc u2) (falloc u2))
+            (exec-abstract-preserves-saved (store-at-slot snd-stash) (floc gs) (falloc gs)))))))))
 
     -- A stash write above a slot, read at the CALLER's frame rather than the
     -- running allocator's.

@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; instr-load-code-addr; store-indirect-suc; LocState; StoredValue; readReg; Output; sv-as-loc; Input1; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 
@@ -97,6 +97,13 @@ module TwoCellRunC {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
             (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
 
+    sf-fs5 : saved-frames (falloc fs5) ≡ saved-frames (falloc fs1)
+    sf-fs5 =
+      trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+     (trans (exec-abstract-preserves-saved (store-at-slot obj-stash) (floc fs3) (falloc fs3))
+     (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+            (exec-abstract-preserves-saved (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
+
     read-cell0-fs2 : SMCore.MemOps.readLoc (floc fs2)
                      (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
     read-cell0-fs2 =
@@ -155,6 +162,15 @@ module TwoCellRunC {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (load-from-slot cell0-stash) (floc fs5) (falloc fs5))
      (trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
             (exec-abstract-preserves-frame (store-at-slot obj-stash) (floc fs3) (falloc fs3))))))
+
+    sf-fs9 : saved-frames (falloc fs9) ≡ saved-frames (falloc fs3)
+    sf-fs9 =
+      trans (exec-abstract-preserves-saved store-indirect-suc (floc fs8) (falloc fs8))
+     (trans (exec-abstract-preserves-saved (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7))
+     (trans (exec-abstract-preserves-saved store-indirect (floc fs6) (falloc fs6))
+     (trans (exec-abstract-preserves-saved (load-from-slot cell0-stash) (floc fs5) (falloc fs5))
+     (trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+            (exec-abstract-preserves-saved (store-at-slot obj-stash) (floc fs3) (falloc fs3))))))
 
     objv : StoredValue FS
     objv = readReg (regs (floc fs3)) Output

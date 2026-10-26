@@ -25,7 +25,7 @@ open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; ValueLocation; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; store-at-slot; readReg; Output; LocState; sv-as-loc; Input1; store-indirect; StoredValue; sucLoc; load-indirect-suc; load-indirect; load-from-slot; writeReg-preserves; SV-Ptr; SV-Tag; SV-Lit; SV-Code; store-indirect-suc; writeReg-same; AbstractInstr; instr-alloc-heap; mov-to-input; mov-to-output; module LocState; module AllocState)
-open AllocState using (current-frame; next-slot; next-heap-ref)
+open AllocState using (current-frame; saved-frames; next-slot; next-heap-ref)
 open LocState using (regs; halted)
 open import Once.Memory.HeapAddress using (_≟HL_; HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
@@ -539,6 +539,9 @@ module Mach {FS : FrameSemantics} where
     cf-a1 : current-frame (falloc a1) ≡ current-frame alloc
     cf-a1 = exec-abstract-preserves-frame load-indirect-suc (floc a0) (falloc a0)
 
+    sf-a1 : saved-frames (falloc a1) ≡ saved-frames alloc
+    sf-a1 = exec-abstract-preserves-saved load-indirect-suc (floc a0) (falloc a0)
+
     cf-a6 : current-frame (falloc a6) ≡ current-frame alloc
     cf-a6 =
       trans (exec-abstract-preserves-frame load-indirect (floc a5) (falloc a5))
@@ -547,11 +550,25 @@ module Mach {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (store-at-slot arg-stash) (floc a1) (falloc a1))
             cf-a1)))
 
+    sf-a6 : saved-frames (falloc a6) ≡ saved-frames alloc
+    sf-a6 =
+      trans (exec-abstract-preserves-saved load-indirect (floc a5) (falloc a5))
+     (trans (exec-abstract-preserves-saved mov-to-input (floc a3) (falloc a3))
+     (trans (exec-abstract-preserves-saved load-indirect (floc a2) (falloc a2))
+     (trans (exec-abstract-preserves-saved (store-at-slot arg-stash) (floc a1) (falloc a1))
+            sf-a1)))
+
     cf-a8 : current-frame (falloc a8) ≡ current-frame alloc
     cf-a8 =
       trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc a7) (falloc a7))
      (trans (exec-abstract-preserves-frame (store-at-slot env-stash) (floc a6) (falloc a6))
             cf-a6)
+
+    sf-a8 : saved-frames (falloc a8) ≡ saved-frames alloc
+    sf-a8 =
+      trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc a7) (falloc a7))
+     (trans (exec-abstract-preserves-saved (store-at-slot env-stash) (floc a6) (falloc a6))
+            sf-a6)
 
     cf-a10 : current-frame (falloc a10) ≡ current-frame alloc
     cf-a10 =
@@ -559,17 +576,35 @@ module Mach {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (store-at-slot pair-stash) (floc a8) (falloc a8))
             cf-a8)
 
+    sf-a10 : saved-frames (falloc a10) ≡ saved-frames alloc
+    sf-a10 =
+      trans (exec-abstract-preserves-saved mov-to-input (floc a9) (falloc a9))
+     (trans (exec-abstract-preserves-saved (store-at-slot pair-stash) (floc a8) (falloc a8))
+            sf-a8)
+
     cf-a12 : current-frame (falloc a12) ≡ current-frame alloc
     cf-a12 =
       trans (exec-abstract-preserves-frame store-indirect (floc a11) (falloc a11))
      (trans (exec-abstract-preserves-frame (load-from-slot env-stash) (floc a10) (falloc a10))
             cf-a10)
 
+    sf-a12 : saved-frames (falloc a12) ≡ saved-frames alloc
+    sf-a12 =
+      trans (exec-abstract-preserves-saved store-indirect (floc a11) (falloc a11))
+     (trans (exec-abstract-preserves-saved (load-from-slot env-stash) (floc a10) (falloc a10))
+            sf-a10)
+
     cf-a14 : current-frame (falloc a14) ≡ current-frame alloc
     cf-a14 =
       trans (exec-abstract-preserves-frame store-indirect-suc (floc a13) (falloc a13))
      (trans (exec-abstract-preserves-frame (load-from-slot arg-stash) (floc a12) (falloc a12))
             cf-a12)
+
+    sf-a14 : saved-frames (falloc a14) ≡ saved-frames alloc
+    sf-a14 =
+      trans (exec-abstract-preserves-saved store-indirect-suc (floc a13) (falloc a13))
+     (trans (exec-abstract-preserves-saved (load-from-slot arg-stash) (floc a12) (falloc a12))
+            sf-a12)
 
     -- THE SETUP PRESERVES EVERYTHING THE CALLER CAN NAME. The three stashes sit
     -- at `n`, `n+1`, `n+2`, all at or above the frontier; the two heap writes
@@ -950,6 +985,12 @@ module Mach {FS : FrameSemantics} where
         trans (exec-abstract-preserves-frame mov-to-input (floc a15) (falloc a15))
        (trans (exec-abstract-preserves-frame (load-from-slot pair-stash) (floc a14) (falloc a14))
               cf-a14)
+
+      sf-a16 : saved-frames (falloc a16) ≡ saved-frames alloc
+      sf-a16 =
+        trans (exec-abstract-preserves-saved mov-to-input (floc a15) (falloc a15))
+       (trans (exec-abstract-preserves-saved (load-from-slot pair-stash) (floc a14) (falloc a14))
+              sf-a14)
 
       nextslot-a16 : next-slot (falloc a16) ≡ next-slot alloc
       nextslot-a16 =
