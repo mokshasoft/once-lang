@@ -19,10 +19,9 @@ open import Once.Parser using (parseStrict)
 open import Once.Format.Lex using (lexItems)
 open import Once.Format.Print using (format)
 
-private
-  formatParsed : String → String ⊎ Module → String ⊎ String
-  formatParsed text (inj₁ err) = inj₁ err
-  formatParsed text (inj₂ m)   = inj₂ (format m (lexItems (toList text)))
+formatParsed : String → String ⊎ Module → String ⊎ String
+formatParsed text (inj₁ err) = inj₁ err
+formatParsed text (inj₂ m)   = inj₂ (format m (lexItems (toList text)))
 
 -- | A source text in the canonical layout, or the parser's error.
 formatSource : String → String ⊎ String

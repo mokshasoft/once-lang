@@ -90,13 +90,18 @@ private
       (sym (if-space (does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>'))) (toks (proj₁ (opToks (d ∷ ds) tv k)) (TRParen ∷ r))))
       (op-char o (opchars d ds (c ∷ acc) tv _ r os))
 
+-- | An operator name's characters, up to `)`.
+opName-parses : ∀ x tv k r → OpName x → ParsesOpChars (toks (proj₁ (opToks (toList x) tv k)) (TRParen ∷ r)) [] x r
+opName-parses x tv k r (c , cs , eq , os) =
+  subst (λ s → ParsesOpChars (toks (proj₁ (opToks (toList x) tv k)) (TRParen ∷ r)) [] s r)
+    (trans (cong fromList (reverse-involutive (c ∷ cs))) (trans (cong fromList (sym eq)) (fromList∘toList x)))
+    (subst (λ cs′ → ParsesOpChars (toks (proj₁ (opToks cs′ tv k)) (TRParen ∷ r)) [] (fromList (reverse (reverse (c ∷ cs)))) r)
+       (sym eq) (opchars c cs [] tv k r os))
+
+private
   -- A name.
   nameAtom : ∀ x tv k r → NameOK x → NoQual r → ParsesAtomExpr (toks (proj₁ (name x tv k)) r) (RVar x) r
-  nameAtom x tv k r (inj₁ op@(c , cs , eq , os)) nq rewrite op-isOperator x op =
-    atom-op (subst (λ s → ParsesOpChars (toks (proj₁ (opToks (toList x) tv k)) (TRParen ∷ r)) [] s r)
-               (trans (cong fromList (reverse-involutive (c ∷ cs))) (trans (cong fromList (sym eq)) (fromList∘toList x)))
-               (subst (λ cs′ → ParsesOpChars (toks (proj₁ (opToks cs′ tv k)) (TRParen ∷ r)) [] (fromList (reverse (reverse (c ∷ cs)))) r)
-                  (sym eq) (opchars c cs [] tv k r os)))
+  nameAtom x tv k r (inj₁ op) nq rewrite op-isOperator x op = atom-op (opName-parses x tv k r op)
   nameAtom x tv k r (inj₂ (¬res , c , cs , eq , st)) nq rewrite word-notOperator x c cs eq st =
     subst (λ ts → ParsesAtomExpr ts (RVar x) r) (sym (word-toks x tv k r)) (atom-var ¬res nq)
 
