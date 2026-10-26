@@ -261,17 +261,17 @@ topList k k′ tv = go k (k′ ∸ k)
 
 -- Comment runs, one blank line between two (a blank line inside a run of
 -- comments separates its paragraphs; any other blank line is the code's).
+-- `acc`: the current run; `sepd`: a blank line seen since it.
+runs : List Note → List String → Bool → Doc
+runs []                    []         _     = empty
+runs []                    acc@(_ ∷ _) _    = commentRun acc
+runs (note-blank ∷ ns)     acc        _     = runs ns acc true
+runs (note-comment c ∷ ns) []         _     = runs ns (c ∷ []) false
+runs (note-comment c ∷ ns) acc@(_ ∷ _) false = runs ns (acc ++ (c ∷ [])) false
+runs (note-comment c ∷ ns) acc@(_ ∷ _) true  = commentRun acc <> blank <> runs ns (c ∷ []) false
+
 topDoc : List Note → Doc
 topDoc ns = runs ns [] false
-  where
-    -- `acc`: the current run; `sepd`: a blank line seen since it.
-    runs : List Note → List String → Bool → Doc
-    runs []                    []         _     = empty
-    runs []                    acc@(_ ∷ _) _    = commentRun acc
-    runs (note-blank ∷ ns)     acc        _     = runs ns acc true
-    runs (note-comment c ∷ ns) []         _     = runs ns (c ∷ []) false
-    runs (note-comment c ∷ ns) acc@(_ ∷ _) false = runs ns (acc ++ (c ∷ [])) false
-    runs (note-comment c ∷ ns) acc@(_ ∷ _) true  = commentRun acc <> blank <> runs ns (c ∷ []) false
 
 hasComment : List Note → Bool
 hasComment []                    = false
@@ -626,36 +626,41 @@ hoist k ((j , n) ∷ ts) = if k ≡ᵇ j then (j , up n) ∷ ts else (j , n) ∷
     up : Notes → Notes
     up (notes t i a) = notes (t ++ map note-comment i) [] a
 
--- | A module: its declarations, one per line, each under the comments that
--- stand before it; the comments after the last anchor at the end.
-pmodule : Module → P Doc
-pmodule (mkModule ds) = go nothing ds
+gap : Maybe Decl → Decl → Doc
+gap nothing  d = empty
+gap (just p) d = if together p d then empty else blank
+
+gapEnd : Maybe Decl → Doc
+gapEnd nothing  = empty
+gapEnd (just _) = blank
+
+-- The comments before the first declaration are the file's: a blank line
+-- between them and it.
+lead : Maybe Decl → List Note → Doc
+lead nothing  ns = if hasComment ns then topDoc ns <> blank else empty
+lead (just _) ns = topDoc ns
+
+ending : Maybe Decl → List Note → Doc
+ending prev ns = if hasComment ns then gapEnd prev <> topDoc ns else empty
+
+-- | Declarations, one per line, each under the comments that stand before
+-- it; the comments after the last anchor at the end.
+pdecls : Maybe Decl → List Decl → P Doc
+pdecls prev [] tv k = ending prev (topList k (suc k) tv) , k
+pdecls prev (d ∷ ds) tv k = at (hoist k tv)
   where
-    gap : Maybe Decl → Decl → Doc
-    gap nothing  d = empty
-    gap (just p) d = if together p d then empty else blank
-    gapEnd : Maybe Decl → Doc
-    gapEnd nothing  = empty
-    gapEnd (just _) = blank
-    -- The comments before the first declaration are the file's: a blank line
-    -- between them and it.
-    lead : Maybe Decl → List Note → Doc
-    lead nothing  ns = if hasComment ns then topDoc ns <> blank else empty
-    lead (just _) ns = topDoc ns
-    ending : Maybe Decl → List Note → Doc
-    ending prev ns = if hasComment ns then gapEnd prev <> topDoc ns else empty
-    go : Maybe Decl → List Decl → P Doc
-    go prev [] tv k = ending prev (topList k (suc k) tv) , k
-    go prev (d ∷ ds) tv k = at (hoist k tv)
+    at : Trivia → Doc × ℕ
+    at tv′ = decl (pdecl d tv′ k)
       where
-        at : Trivia → Doc × ℕ
-        at tv′ = decl (pdecl d tv′ k)
+        decl : Doc × ℕ → Doc × ℕ
+        decl (dd , k′) = rest (pdecls (just d) ds tv′ k′)
           where
-            decl : Doc × ℕ → Doc × ℕ
-            decl (dd , k′) = rest (go (just d) ds tv′ k′)
-              where
-                rest : Doc × ℕ → Doc × ℕ
-                rest (r , k″) = (gap prev d <> lead prev (topList k k′ tv′) <> dd <> newline <> r) , k″
+            rest : Doc × ℕ → Doc × ℕ
+            rest (r , k″) = (gap prev d <> lead prev (topList k k′ tv′) <> dd <> newline <> r) , k″
+
+-- | A module.
+pmodule : Module → P Doc
+pmodule (mkModule ds) = pdecls nothing ds
 
 -- | A module in the canonical layout, with the comments of `items`.
 format : Module → List Item → String
