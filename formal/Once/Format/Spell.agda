@@ -8,29 +8,59 @@
 -- The formatter's document holds Spec tokens, not text, so that what it
 -- writes is, by construction, a sequence of tokens and the blanks and
 -- comments between them; `spell` is the text of one token. A float is written
--- with its fraction's leading zeros (`TFloat i f l`: `l` digits).
+-- with its fraction's leading zeros (`TFloat i f l`: `l` digits). The digits are
+-- computed here, not by `show`, so that reading them back is a theorem.
 ------------------------------------------------------------------------
 
 module Once.Format.Spell where
 
+open import Data.Bool using (if_then_else_)
+open import Data.Char using (Char)
 open import Data.Integer using (ℤ; +_; -[1+_])
-open import Data.List using (replicate)
-open import Data.Nat using (ℕ; suc; _∸_)
-import Data.Nat.Show as ℕS
-open import Data.String using (String; fromList; length) renaming (_++_ to _++ˢ_)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.Nat using (ℕ; zero; suc; _<ᵇ_; _/_; _%_)
+open import Data.String using (String; fromList) renaming (_++_ to _++ˢ_)
 
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace;
   TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe;
   TDot; TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang;
   TNewline; TEOF)
 
-showInt : ℤ → String
-showInt (+ n)    = ℕS.show n
-showInt -[1+ n ] = "-" ++ˢ ℕS.show (suc n)
+-- A decimal digit.
+digit : ℕ → Char
+digit 0 = '0'
+digit 1 = '1'
+digit 2 = '2'
+digit 3 = '3'
+digit 4 = '4'
+digit 5 = '5'
+digit 6 = '6'
+digit 7 = '7'
+digit 8 = '8'
+digit 9 = '9'
+{-# CATCHALL #-}
+digit _ = '0'
 
--- `l` fraction digits, the leading ones zeros.
+-- A number's decimal digits, the fewest (the fuel outlasts them: `n < fuel`).
+decimal : ℕ → List Char
+decimal n = go (suc n) n
+  where
+    go : ℕ → ℕ → List Char
+    go zero    n = []
+    go (suc f) n = if n <ᵇ 10 then digit n ∷ [] else go f (n / 10) ++ digit (n % 10) ∷ []
+
+-- The last `l` decimal digits of a number, leading zeros included.
+fixed : ℕ → ℕ → List Char
+fixed zero    f = []
+fixed (suc l) f = fixed l (f / 10) ++ digit (f % 10) ∷ []
+
+showInt : ℤ → String
+showInt (+ n)    = fromList (decimal n)
+showInt -[1+ n ] = "-" ++ˢ fromList (decimal (suc n))
+
+-- `l` fraction digits.
 showFloat : ℕ → ℕ → ℕ → String
-showFloat i f l = ℕS.show i ++ˢ "." ++ˢ fromList (replicate (l ∸ length (ℕS.show f)) '0') ++ˢ ℕS.show f
+showFloat i f l = fromList (decimal i ++ '.' ∷ fixed l f)
 
 spell : Token → String
 spell (TWord s)       = s

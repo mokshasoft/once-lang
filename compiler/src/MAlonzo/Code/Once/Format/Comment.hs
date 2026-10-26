@@ -162,24 +162,225 @@ du_go_54 v0 v1
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2) (coe v1)))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Format.Comment.CLine
-d_CLine_64 = ()
-data T_CLine_64
-  = C_prose_66 [MAlonzo.Code.Agda.Builtin.String.T_String_6] |
-    C_verbatim_68 MAlonzo.Code.Agda.Builtin.String.T_String_6
--- Once.Format.Comment.classify
-d_classify_70 ::
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> T_CLine_64
-d_classify_70 v0
+-- Once.Format.Comment.blankish
+d_blankish_64 :: MAlonzo.Code.Agda.Builtin.Char.T_Char_6 -> Bool
+d_blankish_64 v0
   = coe
-      d_go_78 (coe v0)
+      MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+      (coe d_is_6 (coe v0) (coe ' '))
+      (coe
+         MAlonzo.Code.Data.Bool.Base.d__'8744'__30
+         (coe d_is_6 (coe v0) (coe '\t')) (coe d_is_6 (coe v0) (coe '\r')))
+-- Once.Format.Comment.dropBlanks
+d_dropBlanks_68 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+d_dropBlanks_68 v0
+  = case coe v0 of
+      [] -> coe v0
+      (:) v1 v2
+        -> coe
+             MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+             (coe d_blankish_64 (coe v1)) (coe d_dropBlanks_68 (coe v2))
+             (coe v0)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Format.Comment.strip
+d_strip_74 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+d_strip_74 v0
+  = coe
+      MAlonzo.Code.Data.List.Base.du_reverse_444
+      (d_dropBlanks_68
+         (coe
+            MAlonzo.Code.Data.List.Base.du_reverse_444
+            (d_dropBlanks_68 (coe v0))))
+-- Once.Format.Comment.linesOf
+d_linesOf_78 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]]
+d_linesOf_78 v0
+  = coe
+      du_go_86 (coe v0)
+      (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+-- Once.Format.Comment._.go
+d_go_86 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]]
+d_go_86 ~v0 v1 v2 = du_go_86 v1 v2
+du_go_86 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]]
+du_go_86 v0 v1
+  = case coe v0 of
+      []
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v1) (coe v0)
+      (:) v2 v3
+        -> coe
+             MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+             (coe d_is_6 (coe v2) (coe '\n'))
+             (coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v1)
+                (coe
+                   du_go_86 (coe v3)
+                   (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
+             (coe
+                du_go_86 (coe v3)
+                (coe
+                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2) (coe v1)))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Format.Comment.inside
+d_inside_96 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+d_inside_96 v0
+  = case coe v0 of
+      (:) v1 v2
+        -> case coe v1 of
+             '{'
+               -> case coe v2 of
+                    (:) v3 v4
+                      -> case coe v3 of
+                           '-'
+                             -> coe
+                                  du_unclose_104 (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v4)
+                           _ -> coe v0
+                    _ -> coe v0
+             _ -> coe v0
+      _ -> coe v0
+-- Once.Format.Comment._.unclose
+d_unclose_104 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+d_unclose_104 ~v0 v1 = du_unclose_104 v1
+du_unclose_104 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+du_unclose_104 v0
+  = let v1 = coe MAlonzo.Code.Data.List.Base.du_reverse_444 v0 in
+    coe
+      (case coe v0 of
+         (:) v2 v3
+           -> case coe v2 of
+                '}'
+                  -> case coe v3 of
+                       (:) v4 v5
+                         -> case coe v4 of
+                              '-' -> coe MAlonzo.Code.Data.List.Base.du_reverse_444 v5
+                              _ -> coe v1
+                       _ -> coe v1
+                _ -> coe v1
+         _ -> coe v1)
+-- Once.Format.Comment.isBlock
+d_isBlock_112 :: [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> Bool
+d_isBlock_112 v0
+  = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
+    coe
+      (case coe v0 of
+         (:) v2 v3
+           -> case coe v2 of
+                '{'
+                  -> case coe v3 of
+                       (:) v4 v5
+                         -> case coe v4 of
+                              '-' -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+                              _ -> coe v1
+                       _ -> coe v1
+                _ -> coe v1
+         _ -> coe v1)
+-- Once.Format.Comment.asLine
+d_asLine_114 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_asLine_114 v0
+  = case coe v0 of
+      [] -> coe ("--" :: Data.Text.Text)
+      (:) v1 v2
+        -> coe
+             MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
+             (coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe '-')
+                (coe
+                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe '-')
+                   (coe
+                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe ' ') (coe v0))))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Format.Comment.trimLines
+d_trimLines_118 ::
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]]
+d_trimLines_118 v0
+  = coe
+      MAlonzo.Code.Data.List.Base.du_reverse_444
+      (coe
+         du_dropEmpty_126
+         (coe
+            MAlonzo.Code.Data.List.Base.du_reverse_444
+            (coe du_dropEmpty_126 (coe v0))))
+-- Once.Format.Comment._.dropEmpty
+d_dropEmpty_126 ::
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]]
+d_dropEmpty_126 ~v0 v1 = du_dropEmpty_126 v1
+du_dropEmpty_126 ::
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]] ->
+  [[MAlonzo.Code.Agda.Builtin.Char.T_Char_6]]
+du_dropEmpty_126 v0
+  = case coe v0 of
+      (:) v1 v2
+        -> case coe v1 of
+             [] -> coe du_dropEmpty_126 (coe v2)
+             _ -> coe v0
+      _ -> coe v0
+-- Once.Format.Comment.commentLines
+d_commentLines_132 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_commentLines_132 v0
+  = coe
+      MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+      (coe
+         d_isBlock_112
+         (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0))
+      (coe
+         MAlonzo.Code.Data.List.Base.du_map_22
+         (coe (\ v1 -> d_asLine_114 (coe d_strip_74 (coe v1))))
+         (coe
+            d_trimLines_118
+            (coe
+               d_linesOf_78
+               (coe
+                  d_inside_96
+                  (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)))))
+      (coe
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v0)
+         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+-- Once.Format.Comment.CLine
+d_CLine_138 = ()
+data T_CLine_138
+  = C_prose_140 [MAlonzo.Code.Agda.Builtin.String.T_String_6] |
+    C_verbatim_142 MAlonzo.Code.Agda.Builtin.String.T_String_6
+-- Once.Format.Comment.classify
+d_classify_144 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> T_CLine_138
+d_classify_144 v0
+  = coe
+      d_go_152 (coe v0)
       (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)
 -- Once.Format.Comment._.go
-d_go_78 ::
+d_go_152 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> T_CLine_64
-d_go_78 v0 v1
-  = let v2 = coe C_verbatim_68 (coe v0) in
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> T_CLine_138
+d_go_152 v0 v1
+  = let v2 = coe C_verbatim_142 (coe v0) in
     coe
       (case coe v1 of
          (:) v3 v4
@@ -191,23 +392,23 @@ d_go_78 v0 v1
                               '-'
                                 -> coe
                                      MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-                                     (coe d_allDash_12 (coe v6)) (coe C_verbatim_68 (coe v0))
-                                     (coe du_after_86 (coe v0) (coe v6))
+                                     (coe d_allDash_12 (coe v6)) (coe C_verbatim_142 (coe v0))
+                                     (coe du_after_160 (coe v0) (coe v6))
                               _ -> coe v2
                        _ -> coe v2
                 _ -> coe v2
          _ -> coe v2)
 -- Once.Format.Comment._._.after
-d_after_86 ::
+d_after_160 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> T_CLine_64
-d_after_86 v0 ~v1 v2 = du_after_86 v0 v2
-du_after_86 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> T_CLine_138
+d_after_160 v0 ~v1 v2 = du_after_160 v0 v2
+du_after_160 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> T_CLine_64
-du_after_86 v0 v1
-  = let v2 = coe C_prose_66 (coe d_words_38 (coe v1)) in
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> T_CLine_138
+du_after_160 v0 v1
+  = let v2 = coe C_prose_140 (coe d_words_38 (coe v1)) in
     coe
       (case coe v1 of
          (:) v3 v4
@@ -216,64 +417,104 @@ du_after_86 v0 v1
                   -> let v5
                            = coe
                                MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
-                               (coe d_listItem_18 (coe v4)) (coe C_verbatim_68 (coe v0))
-                               (coe C_prose_66 (coe d_words_38 (coe v4))) in
+                               (coe d_listItem_18 (coe v4)) (coe C_verbatim_142 (coe v0))
+                               (coe C_prose_140 (coe d_words_38 (coe v4))) in
                      coe
                        (case coe v4 of
-                          [] -> coe C_verbatim_68 (coe ("--" :: Data.Text.Text))
+                          [] -> coe C_verbatim_142 (coe ("--" :: Data.Text.Text))
                           (:) v6 v7
                             -> case coe v6 of
-                                 ' ' -> coe C_verbatim_68 (coe v0)
+                                 ' ' -> coe C_verbatim_142 (coe v0)
                                  _ -> coe v5
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v2
          _ -> coe v2)
 -- Once.Format.Comment.commentRun
-d_commentRun_94 ::
+d_commentRun_168 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Once.Format.Doc.T_Doc_10
-d_commentRun_94 v0
+d_commentRun_168 v0
+  = coe
+      du_go_176
+      (coe
+         MAlonzo.Code.Data.List.Base.du_concatMap_246
+         (coe d_commentLines_132) (coe v0))
+-- Once.Format.Comment._.go
+d_go_176 ::
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
+  MAlonzo.Code.Once.Format.Doc.T_Doc_10
+d_go_176 ~v0 v1 = du_go_176 v1
+du_go_176 ::
+  [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
+  MAlonzo.Code.Once.Format.Doc.T_Doc_10
+du_go_176 v0
   = case coe v0 of
       [] -> coe MAlonzo.Code.Once.Format.Doc.C_empty_12
       (:) v1 v2
         -> let v3
-                 = d_go_78
+                 = d_go_152
                      (coe v1)
                      (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v1) in
            coe
              (case coe v3 of
-                C_prose_66 v4
+                C_prose_140 v4
                   -> coe
                        MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
                        (coe MAlonzo.Code.Once.Format.Doc.C_para_20 (coe v4))
                        (coe
                           MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
                           (coe MAlonzo.Code.Once.Format.Doc.C_newline_24)
-                          (coe d_commentRun_94 (coe v2)))
-                C_verbatim_68 v4
+                          (coe du_go_176 (coe v2)))
+                C_verbatim_142 v4
                   -> coe
                        MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
                        (coe MAlonzo.Code.Once.Format.Doc.C_cmt_18 (coe v4))
                        (coe
                           MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
                           (coe MAlonzo.Code.Once.Format.Doc.C_newline_24)
-                          (coe d_commentRun_94 (coe v2)))
+                          (coe du_go_176 (coe v2)))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Format.Comment.eolText
-d_eolText_116 ::
+d_eolText_198 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_eolText_116 v0
+d_eolText_198 v0
   = coe
-      d_go_124 (coe v0)
-      (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)
+      MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+      (coe
+         d_isBlock_112
+         (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0))
+      (coe
+         d_asLine_114
+         (coe
+            d_strip_74
+            (coe
+               MAlonzo.Code.Data.List.Base.du_concatMap_246
+               (coe
+                  (\ v1 ->
+                     coe
+                       MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+                       (coe d_is_6 (coe v1) (coe '\n'))
+                       (coe
+                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe ' ')
+                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+                       (coe
+                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
+                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
+               (coe
+                  d_inside_96
+                  (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)))))
+      (coe
+         d_go_206 (coe v0)
+         (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0))
 -- Once.Format.Comment._.go
-d_go_124 ::
+d_go_206 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_go_124 v0 v1
+d_go_206 v0 v1
   = case coe v1 of
       (:) v2 v3
         -> case coe v2 of

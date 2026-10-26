@@ -129,9 +129,20 @@ private
       breaks   : ℕ              -- line ends since the last thing on a line
       acc      : Trivia
 
+  -- What is held before something held for the declaration stands before
+  -- the declaration too (so the comments keep their order).
+  promote : List Held → List Held
+  promote hs = reverse (go (reverse hs) false)
+    where
+      go : List Held → Bool → List Held
+      go []                       _     = []
+      go (held-comment h b ∷ hs)  false = held-comment h b ∷ go hs b
+      go (held-comment h _ ∷ hs)  true  = held-comment h true ∷ go hs true
+      go (held-blank ∷ hs)        _     = held-blank ∷ go hs true
+
   -- Settle what is held at the next anchor, in order.
   settle : W → W
-  settle (w k ln hs b t) = w k ln [] b (go hs t)
+  settle (w k ln hs b t) = w k ln [] b (go (promote hs) t)
     where
       go : List Held → Trivia → Trivia
       go []                         t = t
@@ -205,7 +216,10 @@ pure′ : ∀ {A} → A → P A
 pure′ a _ k = a , k
 
 _>>=′_ : ∀ {A B} → P A → (A → P B) → P B
-(m >>=′ f) tv k = f (proj₁ (m tv k)) tv (proj₂ (m tv k))
+(m >>=′ f) tv k = next (m tv k)
+  where
+    next : _ → _
+    next (a , k′) = f a tv k′
 
 infixl 1 _>>=′_
 
@@ -430,8 +444,7 @@ opLevel OpNe  = 1
 
 -- The parameters of leading lambdas, and the body.
 lams : Expr → List String × Expr
-lams (RLam x e) with lams e
-... | xs , b = x ∷ xs , b
+lams (RLam x e) = x ∷ proj₁ (lams e) , proj₂ (lams e)
 {-# CATCHALL #-}
 lams e = [] , e
 
@@ -451,6 +464,11 @@ private
   headOf (RApp c g) = c
   {-# CATCHALL #-}
   headOf e          = RUnit
+
+  leftLevel : ℕ → ℕ
+  leftLevel 1 = 2
+  {-# CATCHALL #-}
+  leftLevel l = l
 
   -- A resolved name's path, dotted.
   dotted : List String → P Doc
@@ -498,7 +516,7 @@ mutual
   pchainC : Expr → P Doc
   pchainC (RApp f h) = pchainC′ f h (isCompose (headOf f))
   {-# CATCHALL #-}
-  pchainC e          = pex 0 false e
+  pchainC e          = pex 1 false e
 
   pchainC′ : Expr → Expr → Bool → P Doc
   pchainC′ (RApp c g) h true = pchainC g ⊕ᵈ (pure′ line ⊕ᵈ t S.TDot ⊕ᵈ ␣) ⊕ᵈ pex 1 false h
@@ -510,11 +528,12 @@ mutual
   pbin : ℕ → BinOp → Expr → Expr → P Doc
   pbin lv op a b = pleft lv a ⊕ᵈ pure′ line ⊕ᵈ t (opTok op) ⊕ᵈ ␣ ⊕ᵈ pex (suc lv) false b
 
+  -- (a comparison's left operand is a sum: `(a < b) < c` keeps its parentheses)
   pleft : ℕ → Expr → P Doc
   pleft lv (RBinOp op a b) = if (lv ≡ᵇ opLevel op) ∧ (1 <ᵇ lv) then pbin lv op a b
-                             else pex lv false (RBinOp op a b)
+                             else pex (leftLevel lv) false (RBinOp op a b)
   {-# CATCHALL #-}
-  pleft lv e               = pex lv false e
+  pleft lv e               = pex (leftLevel lv) false e
 
   pspine : Expr → P Doc
   pspine (RApp f a) = pspine′ f a (isCompose (headOf f))
@@ -584,9 +603,9 @@ pdecl (DSignature x A) =
     >>=′ λ d → pure′ (group (nest indent d))
 pdecl (DTypeSig x A) =
   (name x ⊕ᵈ ␣ ⊕ᵈ t S.TColon ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A) >>=′ λ d → pure′ (group (nest indent d))
-pdecl (DFunDef x e) with lams e
-... | ps , b = (name x ⊕ᵈ spaced ps ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pex 0 true b)
-                 >>=′ λ d → pure′ (group (nest indent d))
+pdecl (DFunDef x e) =
+  (name x ⊕ᵈ spaced (proj₁ (lams e)) ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pex 0 true (proj₂ (lams e)))
+    >>=′ λ d → pure′ (group (nest indent d))
 
 -- No blank line between a type signature and its definition, or between two
 -- imports; one between any other two declarations (D341).
@@ -596,6 +615,15 @@ together (DImport _)    (DImport _)   = true
 {-# CATCHALL #-}
 together _              _             = false
 
+-- What stands before a declaration's first anchor stands before the
+-- declaration: its inner notes join its top notes.
+hoist : ℕ → Trivia → Trivia
+hoist k []              = []
+hoist k ((j , n) ∷ ts) = if k ≡ᵇ j then (j , up n) ∷ ts else (j , n) ∷ hoist k ts
+  where
+    up : Notes → Notes
+    up (notes t i a) = notes (t ++ map note-comment i) [] a
+
 -- | A module: its declarations, one per line, each under the comments that
 -- stand before it; the comments after the last anchor at the end.
 pmodule : Module → P Doc
@@ -604,22 +632,28 @@ pmodule (mkModule ds) = go nothing ds
     gap : Maybe Decl → Decl → Doc
     gap nothing  d = empty
     gap (just p) d = if together p d then empty else blank
+    gapEnd : Maybe Decl → Doc
+    gapEnd nothing  = empty
+    gapEnd (just _) = blank
+    -- The comments before the first declaration are the file's: a blank line
+    -- between them and it.
+    lead : Maybe Decl → List Note → Doc
+    lead nothing  ns = if hasComment ns then topDoc ns <> blank else empty
+    lead (just _) ns = topDoc ns
+    ending : Maybe Decl → List Note → Doc
+    ending prev ns = if hasComment ns then gapEnd prev <> topDoc ns else empty
     go : Maybe Decl → List Decl → P Doc
-    go prev [] tv k with topList k (suc k) tv
-    ... | ns = (if hasComment ns then (gapEnd prev <> topDoc ns) else empty) , k
+    go prev [] tv k = ending prev (topList k (suc k) tv) , k
+    go prev (d ∷ ds) tv k = at (hoist k tv)
       where
-        gapEnd : Maybe Decl → Doc
-        gapEnd nothing  = empty
-        gapEnd (just _) = blank
-    go prev (d ∷ ds) tv k with pdecl d tv k
-    ... | dd , k′ with go (just d) ds tv k′
-    ...   | rest , k″ = (gap prev d <> lead prev (topList k k′ tv) <> dd <> newline <> rest) , k″
-      where
-        -- The comments before the first declaration are the file's: a blank
-        -- line between them and it.
-        lead : Maybe Decl → List Note → Doc
-        lead nothing  ns = if hasComment ns then topDoc ns <> blank else empty
-        lead (just _) ns = topDoc ns
+        at : Trivia → Doc × ℕ
+        at tv′ = decl (pdecl d tv′ k)
+          where
+            decl : Doc × ℕ → Doc × ℕ
+            decl (dd , k′) = rest (go (just d) ds tv′ k′)
+              where
+                rest : Doc × ℕ → Doc × ℕ
+                rest (r , k″) = (gap prev d <> lead prev (topList k k′ tv′) <> dd <> newline <> r) , k″
 
 -- | A module in the canonical layout, with the comments of `items`.
 format : Module → List Item → String
