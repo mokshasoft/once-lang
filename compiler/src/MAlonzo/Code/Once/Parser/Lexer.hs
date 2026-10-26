@@ -324,7 +324,7 @@ d_collectDigits_152 v0
 d_digitsToNat_160 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> Integer
 d_digitsToNat_160
-  = coe MAlonzo.Code.Once.Spec.Surface.Lexing.d_digitsToNat_90
+  = coe MAlonzo.Code.Once.Spec.Surface.Lexing.d_digitsToNat_100
 -- Once.Parser.Lexer.collectStringB
 d_collectStringB_168 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->

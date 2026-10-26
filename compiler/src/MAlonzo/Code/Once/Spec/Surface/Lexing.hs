@@ -76,19 +76,15 @@ d_isIdentContinue_86 v0
                         MAlonzo.Code.Data.Bool.Base.d__'8744'__30
                         (coe eqInt (coe d_code_80 v0) (coe d_code_80 '!'))
                         (coe eqInt (coe d_code_80 v0) (coe d_code_80 '?'))))))))
--- Once.Spec.Surface.Lexing.digitsToNat
-d_digitsToNat_90 ::
-  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> Integer
-d_digitsToNat_90 = coe d_go_96 (coe (0 :: Integer))
--- Once.Spec.Surface.Lexing._.go
-d_go_96 ::
+-- Once.Spec.Surface.Lexing.digitsFrom
+d_digitsFrom_90 ::
   Integer -> [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> Integer
-d_go_96 v0 v1
+d_digitsFrom_90 v0 v1
   = case coe v1 of
       [] -> coe v0
       (:) v2 v3
         -> coe
-             d_go_96
+             d_digitsFrom_90
              (coe
                 addInt
                 (coe
@@ -97,118 +93,122 @@ d_go_96 v0 v1
                 (coe mulInt (coe v0) (coe (10 :: Integer))))
              (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Spec.Surface.Lexing.digitsToNat
+d_digitsToNat_100 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> Integer
+d_digitsToNat_100 = coe d_digitsFrom_90 (coe (0 :: Integer))
 -- Once.Spec.Surface.Lexing.Special
-d_Special_106 a0 = ()
-data T_Special_106
-  = C_sp'45'space_108 | C_sp'45'tab_110 | C_sp'45'cr_112 |
-    C_sp'45'nl_114 | C_sp'45'backslash_116 | C_sp'45'caret_118 |
-    C_sp'45'dash_120 | C_sp'45'lbrace_122 | C_sp'45'lt_124 |
-    C_sp'45'gt_126 | C_sp'45'eq_128 | C_sp'45'bang_130 |
-    C_sp'45'lparen_132 | C_sp'45'rparen_134 | C_sp'45'rbrace_136 |
-    C_sp'45'colon_138 | C_sp'45'comma_140 | C_sp'45'semi_142 |
-    C_sp'45'at_144 | C_sp'45'pipe_146 | C_sp'45'plus_148 |
-    C_sp'45'star_150 | C_sp'45'slash_152 | C_sp'45'pct_154 |
-    C_sp'45'amp_156 | C_sp'45'dot_158 | C_sp'45'quote_160
+d_Special_102 a0 = ()
+data T_Special_102
+  = C_sp'45'space_104 | C_sp'45'tab_106 | C_sp'45'cr_108 |
+    C_sp'45'nl_110 | C_sp'45'backslash_112 | C_sp'45'caret_114 |
+    C_sp'45'dash_116 | C_sp'45'lbrace_118 | C_sp'45'lt_120 |
+    C_sp'45'gt_122 | C_sp'45'eq_124 | C_sp'45'bang_126 |
+    C_sp'45'lparen_128 | C_sp'45'rparen_130 | C_sp'45'rbrace_132 |
+    C_sp'45'colon_134 | C_sp'45'comma_136 | C_sp'45'semi_138 |
+    C_sp'45'at_140 | C_sp'45'pipe_142 | C_sp'45'plus_144 |
+    C_sp'45'star_146 | C_sp'45'slash_148 | C_sp'45'pct_150 |
+    C_sp'45'amp_152 | C_sp'45'dot_154 | C_sp'45'quote_156
 -- Once.Spec.Surface.Lexing.Next
-d_Next_162 a0 a1 = ()
-data T_Next_162 = C_next_168
+d_Next_158 a0 a1 = ()
+data T_Next_158 = C_next_164
 -- Once.Spec.Surface.Lexing.Digits
-d_Digits_170 a0 a1 a2 = ()
-data T_Digits_170
-  = C_dg'45'end_172 | C_dg'45'stop_178 |
-    C_dg'45'more_188 T_Digits_170
+d_Digits_166 a0 a1 a2 = ()
+data T_Digits_166
+  = C_dg'45'end_168 | C_dg'45'stop_174 |
+    C_dg'45'more_184 T_Digits_166
 -- Once.Spec.Surface.Lexing.Fraction
-d_Fraction_190 a0 a1 a2 = ()
-newtype T_Fraction_190 = C_fraction_200 T_Digits_170
+d_Fraction_186 a0 a1 a2 = ()
+newtype T_Fraction_186 = C_fraction_196 T_Digits_166
 -- Once.Spec.Surface.Lexing.IdentRest
-d_IdentRest_202 a0 a1 a2 = ()
-data T_IdentRest_202
-  = C_id'45'end_204 | C_id'45'stop_210 |
-    C_id'45'more_220 T_IdentRest_202
+d_IdentRest_198 a0 a1 a2 = ()
+data T_IdentRest_198
+  = C_id'45'end_200 | C_id'45'stop_206 |
+    C_id'45'more_216 T_IdentRest_198
 -- Once.Spec.Surface.Lexing.Escape
-d_Escape_222 a0 a1 = ()
-data T_Escape_222
-  = C_esc'45'n_224 | C_esc'45't_226 | C_esc'45'r_228 |
-    C_esc'45'bs_230 | C_esc'45'q_232
+d_Escape_218 a0 a1 = ()
+data T_Escape_218
+  = C_esc'45'n_220 | C_esc'45't_222 | C_esc'45'r_224 |
+    C_esc'45'bs_226 | C_esc'45'q_228
 -- Once.Spec.Surface.Lexing.StringBody
-d_StringBody_234 a0 a1 a2 = ()
-data T_StringBody_234
-  = C_sb'45'close_238 |
-    C_sb'45'esc_250 T_Escape_222 T_StringBody_234 |
-    C_sb'45'char_264 T_StringBody_234
+d_StringBody_230 a0 a1 a2 = ()
+data T_StringBody_230
+  = C_sb'45'close_234 |
+    C_sb'45'esc_246 T_Escape_218 T_StringBody_230 |
+    C_sb'45'char_260 T_StringBody_230
 -- Once.Spec.Surface.Lexing.LineRest
-d_LineRest_266 a0 a1 = ()
-data T_LineRest_266
-  = C_lr'45'end_268 | C_lr'45'nl_272 |
-    C_lr'45'char_280 T_LineRest_266
+d_LineRest_262 a0 a1 = ()
+data T_LineRest_262
+  = C_lr'45'end_264 | C_lr'45'nl_268 |
+    C_lr'45'char_276 T_LineRest_262
 -- Once.Spec.Surface.Lexing.BlockRest
-d_BlockRest_282 a0 a1 a2 = ()
-data T_BlockRest_282
-  = C_br'45'done_286 | C_br'45'end_290 | C_br'45'last_296 |
-    C_br'45'open_304 T_BlockRest_282 |
-    C_br'45'close_312 T_BlockRest_282 |
-    C_br'45'char_324 T_BlockRest_282
+d_BlockRest_278 a0 a1 a2 = ()
+data T_BlockRest_278
+  = C_br'45'done_282 | C_br'45'end_286 | C_br'45'last_292 |
+    C_br'45'open_300 T_BlockRest_278 |
+    C_br'45'close_308 T_BlockRest_278 |
+    C_br'45'char_320 T_BlockRest_278
 -- Once.Spec.Surface.Lexing.LexesChars
-d_LexesChars_326 a0 a1 = ()
-data T_LexesChars_326
-  = C_lex'45'eof_328 | C_lex'45'space_334 T_LexesChars_326 |
-    C_lex'45'tab_340 T_LexesChars_326 |
-    C_lex'45'cr_346 T_LexesChars_326 |
-    C_lex'45'nl'45'cont_354 MAlonzo.Code.Agda.Builtin.Char.T_Char_6
-                            T_Next_162 MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-                            T_LexesChars_326 |
-    C_lex'45'nl_360 T_LexesChars_326 |
-    C_lex'45'caret1_366 T_LexesChars_326 |
-    C_lex'45'caret0_372 T_LexesChars_326 |
-    C_lex'45'caretw_378 T_LexesChars_326 |
-    C_lex'45'caret_384 T_LexesChars_326 |
-    C_lex'45'comment_392 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-                         T_LineRest_266 T_LexesChars_326 |
-    C_lex'45'arrow_398 T_LexesChars_326 |
-    C_lex'45'minus_404 T_LexesChars_326 |
-    C_lex'45'block_412 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-                       T_BlockRest_282 T_LexesChars_326 |
-    C_lex'45'lbrace_418 T_LexesChars_326 |
-    C_lex'45'le_424 T_LexesChars_326 |
-    C_lex'45'lt_430 T_LexesChars_326 |
-    C_lex'45'ge_436 T_LexesChars_326 |
-    C_lex'45'gt_442 T_LexesChars_326 |
-    C_lex'45'eqeq_448 T_LexesChars_326 |
-    C_lex'45'equal_454 T_LexesChars_326 |
-    C_lex'45'neq_460 T_LexesChars_326 |
-    C_lex'45'bang_466 T_LexesChars_326 |
-    C_lex'45'lparen_472 T_LexesChars_326 |
-    C_lex'45'rparen_478 T_LexesChars_326 |
-    C_lex'45'rbrace_484 T_LexesChars_326 |
-    C_lex'45'colon_490 T_LexesChars_326 |
-    C_lex'45'lambda_496 T_LexesChars_326 |
-    C_lex'45'comma_502 T_LexesChars_326 |
-    C_lex'45'semi_508 T_LexesChars_326 |
-    C_lex'45'at_514 T_LexesChars_326 |
-    C_lex'45'pipe_520 T_LexesChars_326 |
-    C_lex'45'plus_526 T_LexesChars_326 |
-    C_lex'45'star_532 T_LexesChars_326 |
-    C_lex'45'slash_538 T_LexesChars_326 |
-    C_lex'45'pct_544 T_LexesChars_326 |
-    C_lex'45'amp_550 T_LexesChars_326 |
-    C_lex'45'dot_556 T_LexesChars_326 |
-    C_lex'45'string_566 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_StringBody_234
-                        T_LexesChars_326 |
-    C_lex'45'string'45'end_574 |
-    C_lex'45'int_590 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-                     [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_170
-                     T_LexesChars_326 |
-    C_lex'45'float_606 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+d_LexesChars_322 a0 a1 = ()
+data T_LexesChars_322
+  = C_lex'45'eof_324 | C_lex'45'space_330 T_LexesChars_322 |
+    C_lex'45'tab_336 T_LexesChars_322 |
+    C_lex'45'cr_342 T_LexesChars_322 |
+    C_lex'45'nl'45'cont_350 MAlonzo.Code.Agda.Builtin.Char.T_Char_6
+                            T_Next_158 MAlonzo.Code.Data.Sum.Base.T__'8846'__30
+                            T_LexesChars_322 |
+    C_lex'45'nl_356 T_LexesChars_322 |
+    C_lex'45'caret1_362 T_LexesChars_322 |
+    C_lex'45'caret0_368 T_LexesChars_322 |
+    C_lex'45'caretw_374 T_LexesChars_322 |
+    C_lex'45'caret_380 T_LexesChars_322 |
+    C_lex'45'comment_388 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+                         T_LineRest_262 T_LexesChars_322 |
+    C_lex'45'arrow_394 T_LexesChars_322 |
+    C_lex'45'minus_400 T_LexesChars_322 |
+    C_lex'45'block_408 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+                       T_BlockRest_278 T_LexesChars_322 |
+    C_lex'45'lbrace_414 T_LexesChars_322 |
+    C_lex'45'le_420 T_LexesChars_322 |
+    C_lex'45'lt_426 T_LexesChars_322 |
+    C_lex'45'ge_432 T_LexesChars_322 |
+    C_lex'45'gt_438 T_LexesChars_322 |
+    C_lex'45'eqeq_444 T_LexesChars_322 |
+    C_lex'45'equal_450 T_LexesChars_322 |
+    C_lex'45'neq_456 T_LexesChars_322 |
+    C_lex'45'bang_462 T_LexesChars_322 |
+    C_lex'45'lparen_468 T_LexesChars_322 |
+    C_lex'45'rparen_474 T_LexesChars_322 |
+    C_lex'45'rbrace_480 T_LexesChars_322 |
+    C_lex'45'colon_486 T_LexesChars_322 |
+    C_lex'45'lambda_492 T_LexesChars_322 |
+    C_lex'45'comma_498 T_LexesChars_322 |
+    C_lex'45'semi_504 T_LexesChars_322 |
+    C_lex'45'at_510 T_LexesChars_322 |
+    C_lex'45'pipe_516 T_LexesChars_322 |
+    C_lex'45'plus_522 T_LexesChars_322 |
+    C_lex'45'star_528 T_LexesChars_322 |
+    C_lex'45'slash_534 T_LexesChars_322 |
+    C_lex'45'pct_540 T_LexesChars_322 |
+    C_lex'45'amp_546 T_LexesChars_322 |
+    C_lex'45'dot_552 T_LexesChars_322 |
+    C_lex'45'string_562 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_StringBody_230
+                        T_LexesChars_322 |
+    C_lex'45'string'45'end_570 |
+    C_lex'45'int_586 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+                     [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_166
+                     T_LexesChars_322 |
+    C_lex'45'float_602 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-                       [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_170
-                       T_Fraction_190 T_LexesChars_326 |
-    C_lex'45'ident_618 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-                       [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_IdentRest_202
-                       T_LexesChars_326 |
-    C_lex'45'skip_626 T_LexesChars_326
+                       [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_166
+                       T_Fraction_186 T_LexesChars_322 |
+    C_lex'45'ident_614 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+                       [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_IdentRest_198
+                       T_LexesChars_322 |
+    C_lex'45'skip_622 T_LexesChars_322
 -- Once.Spec.Surface.Lexing.Lexes
-d_Lexes_628 ::
+d_Lexes_624 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> [T_Token_8] -> ()
-d_Lexes_628 = erased
+d_Lexes_624 = erased

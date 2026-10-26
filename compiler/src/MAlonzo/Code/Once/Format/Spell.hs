@@ -43,18 +43,10 @@ d_digit_6 v0
          8 -> coe '8'
          9 -> coe '9'
          _ -> coe v1)
--- Once.Format.Spell.decimal
-d_decimal_8 :: Integer -> [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_decimal_8 v0
-  = coe du_go_16 (coe addInt (coe (1 :: Integer)) (coe v0)) (coe v0)
--- Once.Format.Spell._.go
-d_go_16 ::
-  Integer ->
+-- Once.Format.Spell.digits
+d_digits_8 ::
   Integer -> Integer -> [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_go_16 ~v0 v1 v2 = du_go_16 v1 v2
-du_go_16 ::
-  Integer -> Integer -> [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-du_go_16 v0 v1
+d_digits_8 v0 v1
   = case coe v0 of
       0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> let v2 = subInt (coe v0) (coe (1 :: Integer)) in
@@ -69,7 +61,7 @@ du_go_16 v0 v1
                 (coe
                    MAlonzo.Code.Data.List.Base.du__'43''43'__32
                    (coe
-                      du_go_16 (coe v2)
+                      d_digits_8 (coe v2)
                       (coe
                          MAlonzo.Code.Data.Nat.Base.du__'47'__318 (coe v1)
                          (coe (10 :: Integer))))
@@ -81,10 +73,16 @@ du_go_16 v0 v1
                             MAlonzo.Code.Data.Nat.Base.du__'37'__330 (coe v1)
                             (coe (10 :: Integer))))
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
+-- Once.Format.Spell.decimal
+d_decimal_16 ::
+  Integer -> [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+d_decimal_16 v0
+  = coe
+      d_digits_8 (coe addInt (coe (1 :: Integer)) (coe v0)) (coe v0)
 -- Once.Format.Spell.fixed
-d_fixed_24 ::
+d_fixed_20 ::
   Integer -> Integer -> [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
-d_fixed_24 v0 v1
+d_fixed_20 v0 v1
   = case coe v0 of
       0 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> let v2 = subInt (coe v0) (coe (1 :: Integer)) in
@@ -92,7 +90,7 @@ d_fixed_24 v0 v1
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe
-                   d_fixed_24 (coe v2)
+                   d_fixed_20 (coe v2)
                    (coe
                       MAlonzo.Code.Data.Nat.Base.du__'47'__318 (coe v1)
                       (coe (10 :: Integer))))
@@ -105,44 +103,44 @@ d_fixed_24 v0 v1
                          (coe (10 :: Integer))))
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
 -- Once.Format.Spell.showInt
-d_showInt_32 ::
+d_showInt_28 ::
   Integer -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showInt_32 v0
+d_showInt_28 v0
   = case coe v0 of
       _ | coe geqInt (coe v0) (coe (0 :: Integer)) ->
           coe
             MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
-            (d_decimal_8 (coe v0))
+            (d_decimal_16 (coe v0))
       _ -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("-" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
-                (d_decimal_8 (coe subInt (coe (0 :: Integer)) (coe v0))))
+                (d_decimal_16 (coe subInt (coe (0 :: Integer)) (coe v0))))
 -- Once.Format.Spell.showFloat
-d_showFloat_38 ::
+d_showFloat_34 ::
   Integer ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showFloat_38 v0 v1 v2
+d_showFloat_34 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
       (coe
          MAlonzo.Code.Data.List.Base.du__'43''43'__32
-         (coe d_decimal_8 (coe v0))
+         (coe d_decimal_16 (coe v0))
          (coe
             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe '.')
-            (coe d_fixed_24 (coe v2) (coe v1))))
+            (coe d_fixed_20 (coe v2) (coe v1))))
 -- Once.Format.Spell.spell
-d_spell_46 ::
+d_spell_42 ::
   MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_spell_46 v0
+d_spell_42 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Surface.Lexing.C_TWord_10 v1 -> coe v1
       MAlonzo.Code.Once.Spec.Surface.Lexing.C_TInt_12 v1
-        -> coe d_showInt_32 (coe v1)
+        -> coe d_showInt_28 (coe v1)
       MAlonzo.Code.Once.Spec.Surface.Lexing.C_TFloat_14 v1 v2 v3
-        -> coe d_showFloat_38 (coe v1) (coe v2) (coe v3)
+        -> coe d_showFloat_34 (coe v1) (coe v2) (coe v3)
       MAlonzo.Code.Once.Spec.Surface.Lexing.C_TString_16 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
