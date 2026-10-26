@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.SpecGrammar.Decl — the compiler's declaration and module
--- grammar (`Once.Internal.Grammar.*`, `Once.Internal.Parsing`) against the Spec's.
+-- grammar (`Once.Internal.Grammar.*`, `Once.Parser.Relation.Parsing`) against the Spec's.
 --
 --   * `parses→` : a text the compiler parses is one the Spec parses, into the
 --     same module;
@@ -49,14 +49,14 @@ open import Once.Parser.Module.DeclTail using (colonHead)
 open import Once.Parser.Module.OpName using (opTokClass)
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 import Once.Parser.Module.FunDef.Params as LPar
-import Once.Internal.Grammar.Decl as LD
-import Once.Internal.Grammar.Import as LI
-import Once.Internal.Grammar.TypeAlias as LT
-import Once.Internal.Grammar.Signature as LS
-import Once.Internal.Grammar.FunDef as LF
-import Once.Internal.Grammar.OpDecl as LO
-import Once.Internal.Parsing as LP
-import Once.Internal.Lexing as LL
+import Once.Parser.Relation.Decl as LD
+import Once.Parser.Relation.Import as LI
+import Once.Parser.Relation.TypeAlias as LT
+import Once.Parser.Relation.Signature as LS
+import Once.Parser.Relation.FunDef as LF
+import Once.Parser.Relation.OpDecl as LO
+import Once.Parser.Relation.Parsing as LP
+import Once.Parser.Relation.Lexing as LL
 import Once.Parser
 import Once.Parser.Module.Core
 import Once.Parser.Module.Import

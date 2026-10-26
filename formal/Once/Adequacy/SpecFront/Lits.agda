@@ -29,7 +29,7 @@ import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
 open import Once.Denotation.Admissible using (rawIntLits; negLits; declIntLits; moduleIntLits; AdmissibleM)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
-import Once.Internal.Resolution as LR
+import Once.Parser.Relation.Resolution as LR
 import Once.Spec.Surface.Program
 open import Once.Target.Arch using (Arch; arch-numerics)
 

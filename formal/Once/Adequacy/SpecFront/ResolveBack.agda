@@ -32,9 +32,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Spec.Name using (CanonicalName; canonical; gen)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
-import Once.Internal.Resolution as LR
+import Once.Parser.Relation.Resolution as LR
 import Once.Spec.Surface.Resolution as SR
-open import Once.Internal.Resolution
+open import Once.Parser.Relation.Resolution
   using (UnaliasedMap; AliasMap; ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let;
          re-pair; re-destruct; re-annot; re-binop; re-unop; re-unit; re-int; re-float; rv-binder; rv-gen; rv-import; rv-own)
 open import Once.Spec.Surface.Resolution

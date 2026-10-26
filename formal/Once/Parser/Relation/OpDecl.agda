@@ -2,15 +2,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Grammar.OpDecl — the RELATIONS for an operator declaration
+-- Once.Parser.Relation.OpDecl — the RELATIONS for an operator declaration
 -- `(op) : polytype` / `(op) param* = expr`, and nothing else (Plan 0.84).
 --
--- Reachable from `correct` via `ParsesDecl`, so a spec reviewer must read it.
+-- A waypoint of the parser's proof, reached through `ParsesDecl`.
 -- `sound-opDecl`/`complete-opDecl` and the scanner proofs stay in
 -- `Once.Grammar.OpDeclBridge`.
 ------------------------------------------------------------------------
 
-module Once.Internal.Grammar.OpDecl where
+module Once.Parser.Relation.OpDecl where
 
 open import Data.Bool using (true; false)
 open import Data.Char using (Char)
@@ -23,7 +23,7 @@ open import Once.Spec.Surface.Syntax using (Decl; DTypeSig)
 open import Once.Parser.Module.OpName using (otClose; otChar; opTokClass)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
-open import Once.Internal.Grammar.FunDef using (ParsesFunDef)
+open import Once.Parser.Relation.FunDef using (ParsesFunDef)
 
 ------------------------------------------------------------------------
 -- Operator-character scanner `( <opchars> )` (structural on the tail).

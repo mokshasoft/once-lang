@@ -2,10 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Grammar.FunDef — the RELATIONS for a function definition
+-- Once.Parser.Relation.FunDef — the RELATIONS for a function definition
 -- `[@alloc] name param* = expr`, and nothing else (Plan 0.84).
 --
--- Reachable from `correct` via `ParsesDecl`, so a spec reviewer must read it.
+-- A waypoint of the parser's proof, reached through `ParsesDecl`.
 -- `sound-fundef`/`complete-fundef` and the WF param-scanner proofs stay in
 -- `Once.Grammar.FunDefBridge`.
 --
@@ -13,7 +13,7 @@
 -- and lives in the parser hierarchy by design (plan 0.84 §3a).
 ------------------------------------------------------------------------
 
-module Once.Internal.Grammar.FunDef where
+module Once.Parser.Relation.FunDef where
 
 open import Data.Bool using (true; false)
 open import Data.List using (List; []; _∷_)

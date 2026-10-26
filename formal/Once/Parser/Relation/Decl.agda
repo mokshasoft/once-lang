@@ -2,16 +2,14 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Grammar.Decl — the RELATION for one declaration, and nothing
+-- Once.Parser.Relation.Decl — the RELATION for one declaration, and nothing
 -- else (Plan 0.84). This is the join point of the five decl forms.
 --
--- It is the module a spec reviewer reaches from `ParsesText`; the five
--- sub-relations it names are re-exported so that reading this one module
--- gives the whole declaration grammar. `sound-decl`/`complete-decl` stay in
--- `Once.Grammar.DeclBridge`.
+-- A waypoint of the parser's proof (`Once.Parser.Relation.Parsing`).
+-- `sound-decl`/`complete-decl` are in `Once.Grammar.DeclBridge`.
 ------------------------------------------------------------------------
 
-module Once.Internal.Grammar.Decl where
+module Once.Parser.Relation.Decl where
 
 open import Data.Bool using (true; false)
 open import Data.List using (List; _∷_)
@@ -25,11 +23,11 @@ open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.DeclTail using (colDrop1; colonHead)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 
-open import Once.Internal.Grammar.Import    public using (ParsesImport)
-open import Once.Internal.Grammar.TypeAlias public using (ParsesTypeAliasDecl)
-open import Once.Internal.Grammar.Signature public using (ParsesSignature)
-open import Once.Internal.Grammar.FunDef    public using (ParsesFunDef)
-open import Once.Internal.Grammar.OpDecl    public using (ParsesOpDecl)
+open import Once.Parser.Relation.Import using (ParsesImport)
+open import Once.Parser.Relation.TypeAlias using (ParsesTypeAliasDecl)
+open import Once.Parser.Relation.Signature using (ParsesSignature)
+open import Once.Parser.Relation.FunDef using (ParsesFunDef)
+open import Once.Parser.Relation.OpDecl using (ParsesOpDecl)
 
 data ParsesDecl : List Token → Decl → List Token → Set where
   pd-import    : ∀ {rest d rest'} → ParsesImport rest d rest' →

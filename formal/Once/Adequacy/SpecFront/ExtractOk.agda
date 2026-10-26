@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature; WellFormed; OneName; _∶_)
 import Once.Spec.Surface.Program as SPr
-import Once.Internal.Resolution as LR
+import Once.Parser.Relation.Resolution as LR
 import Once.Parser as Parser
 open import Once.Parser using (Entry; entryNameOf)
 open import Once.Parser.Module.Core using (resolved)

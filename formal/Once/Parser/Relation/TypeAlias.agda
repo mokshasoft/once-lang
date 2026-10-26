@@ -2,10 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Grammar.TypeAlias — the RELATION for `type Name param* = Type`,
+-- Once.Parser.Relation.TypeAlias — the RELATION for `type Name param* = Type`,
 -- and nothing else (Plan 0.84).
 --
--- Reachable from `correct` via `ParsesDecl`, so a spec reviewer must read it.
+-- A waypoint of the parser's proof, reached through `ParsesDecl`.
 -- `sound-typealias`/`complete-typealias` and the WF scanner proofs stay in
 -- `Once.Grammar.TypeAliasBridge`.
 --
@@ -14,7 +14,7 @@
 -- can mention it (plan 0.84 §3a).
 ------------------------------------------------------------------------
 
-module Once.Internal.Grammar.TypeAlias where
+module Once.Parser.Relation.TypeAlias where
 
 open import Data.Bool using (true; false)
 open import Data.List using (List; []; _∷_; reverse)

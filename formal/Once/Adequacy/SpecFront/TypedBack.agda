@@ -47,7 +47,7 @@ open import Once.Spec.Surface.Syntax using (Decl; mkModule; DTypeSig; DFunDef; D
 import Once.Parser.Module.Core as Core
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule; sigNames; importedOf)
-import Once.Internal.Resolution as LR
+import Once.Parser.Relation.Resolution as LR
 import Once.Module as LM
 open import Once.Module using (ModTele; emptyScope; scope; entrySig; MainsEffUU; MainIn)
 open import Once.Core.Translate using (SigSig; s-ffi)

@@ -6,7 +6,7 @@
 --
 -- `Once.Spec.Surface.Lexing` says which token stream a text is, on its own
 -- terms. The compiler's tokenizer (`Once.Parser.Lexer`) is already proved
--- against its own relation (`Once.Internal.Lexing`, `Once.Adequacy.LexerBridge`);
+-- against its own relation (`Once.Parser.Relation.Lexing`, `Once.Adequacy.LexerBridge`);
 -- here the two relations meet: every derivation of the one gives a derivation
 -- of the other, the tokens agreeing once the source offsets the compiler's
 -- literal tokens carry (for diagnostics) are forgotten.
@@ -38,7 +38,7 @@ open import Relation.Nullary.Decidable using (isYes)
 
 open import Once.Spec.Surface.Lexing
 import Once.Parser.Token as P
-import Once.Internal.Lexing as L
+import Once.Parser.Relation.Lexing as L
 open import Once.Parser.Lexer
   using (HeadK; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
          hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt;

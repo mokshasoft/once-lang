@@ -27,7 +27,7 @@ open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DF
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; sigsOf; importedAt; importedOf; expandPath)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
-import Once.Internal.Resolution as LR
+import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (entrySig)
 open import Once.Spec.Name using (canonical)
 open import Once.Name using (showCanonical)

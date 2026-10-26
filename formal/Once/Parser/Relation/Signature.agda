@@ -2,15 +2,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Grammar.Signature — the RELATION for the `signature` declaration
+-- Once.Parser.Relation.Signature — the RELATION for the `signature` declaration
 -- `name : polytype [! shape]`, and nothing else (Plan 0.84).
 --
--- Reachable from `correct` via `ParsesDecl`, so a spec reviewer must read it.
+-- A waypoint of the parser's proof, reached through `ParsesDecl`.
 -- `sound-signature`/`complete-signature` — the evidence that
 -- `parseSignatureB` meets this — stay in `Once.Grammar.SignatureBridge`.
 ------------------------------------------------------------------------
 
-module Once.Internal.Grammar.Signature where
+module Once.Parser.Relation.Signature where
 
 open import Data.Bool using (true)
 open import Data.List using (List; _∷_)

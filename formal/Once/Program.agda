@@ -38,11 +38,11 @@ import Once.Spec.Surface.Syntax as Syn
 
 -- The four predicates `Typed` / `_⊢R_` are built from. Named explicitly, so a
 -- reader of the criterion has the whole statement in one place.
-open import Once.Internal.Parsing public using (ParsesText)
-open import Once.Module public using (ModuleTyped; HasValidMain)
-open import Once.Denotation.Behavior     public using (Source)
-open import Once.Internal.Resolution         public using (ResolvesModule; rm)
-open Once.Denotation.Behavior.Source public using (srcText; srcImports)
+open import Once.Parser.Relation.Parsing using (ParsesText)
+open import Once.Module using (ModuleTyped; HasValidMain)
+open import Once.Denotation.Behavior     using (Source)
+open import Once.Parser.Relation.Resolution         using (ResolvesModule; rm)
+open Once.Denotation.Behavior.Source using (srcText; srcImports)
 
 ------------------------------------------------------------------------
 -- A typed program: a module that is DECLARATIVELY well-typed (`ModuleTyped`,

@@ -72,8 +72,8 @@ import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM
 open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)
-import Once.Internal.Parsing as LPa
-import Once.Internal.Resolution as LR
+import Once.Parser.Relation.Parsing as LPa
+import Once.Parser.Relation.Resolution as LR
 import Once.Module as LM
 open import Once.Denotation.Admissible using (AdmissibleM)
 import Once.Adequacy.CoreBridge as CB

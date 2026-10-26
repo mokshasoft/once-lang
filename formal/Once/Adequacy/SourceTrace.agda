@@ -232,7 +232,7 @@ rewrite-program-linked p (lm , les) =
 -- The verified front-end (Plan 0.51): parse the user's grammar module,
 -- THEN resolve its imports against the in-`Source` `ModuleMap`. This is the
 -- resolution step the binary runs — now INSIDE the verified pipeline, so a
--- resolver bug is the apex's concern (`Once.Internal.Resolution` + its bridge), not a
+-- resolver bug is the apex's concern (`Once.Parser.Relation.Resolution` + its bridge), not a
 -- trusted-I/O step. The INDEPENDENT meaning (`_⊢R_`/`⟦_⟧ˢ`) instead anchors on
 -- the UN-resolved `gmoduleToModule (Source.srcModule src)`, so completeness is
 -- not resolver-vacuous; `Once.Adequacy.ResolveBridge` proves the resolver right.

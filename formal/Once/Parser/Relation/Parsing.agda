@@ -2,25 +2,18 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Parsing — what it MEANS for source text to parse (Plan 0.84).
+-- Once.Parser.Relation.Parsing — what it MEANS for source text to parse (Plan 0.84).
 --
--- This is the spec reviewer's single entry point into the front-end grammar:
--- `ParsesText` is what the apex `_⊢R_` anchors on, and everything it names is
--- re-exported here, so the whole claim is reachable from one module.
---
--- No proof lives here or in anything it re-exports. The bridges that force
--- the executable front end to agree — `lexer-sound`/`-complete`,
--- `sound-decl`/`complete-decl`, `parseStrict-sound`/`-complete` — are in
--- `Once.Adequacy.*` / `Once.Grammar.*` and are NOT part of what is claimed.
---
--- KNOWN WEAKNESS (plan 0.59): the relations are phrased against the parser's
--- own helpers (`skipNewlines`, `parseDeclB`, `allTrailing`, the lexer's
--- classifiers). A spec that names the implementation's functions is weaker
--- than one that does not. It is recorded, not hidden — the imports below say
--- exactly which helpers the claim depends on.
+-- The waypoint of the front end's proof: `ParsesText` says what the lexer
+-- and the parser do, as a relation, phrased with the parser's own helpers
+-- (`skipNewlines`, `parseDeclB`, `allTrailing`, the lexer's classifiers).
+-- The executable front end meets it (`lexer-sound`/`-complete`,
+-- `sound-decl`/`complete-decl`, `parseStrict-sound`/`-complete`, in
+-- `Once.Adequacy.*` / `Once.Grammar.*`), and it meets the Spec's grammar
+-- (`Once.Spec.Surface.Grammar`) by `Once.Adequacy.SpecGrammar.Decl`.
 ------------------------------------------------------------------------
 
-module Once.Internal.Parsing where
+module Once.Parser.Relation.Parsing where
 
 open import Data.Bool using (true)
 open import Data.List using (List; []; _∷_)
@@ -36,10 +29,8 @@ open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module using (parseDeclB)
 open import Once.Parser using (allTrailing)
 
-open import Once.Internal.Lexing       public using (Lexes)
-open import Once.Internal.Grammar.Decl public
-  using (ParsesDecl; ParsesImport; ParsesTypeAliasDecl; ParsesSignature;
-         ParsesFunDef; ParsesOpDecl)
+open import Once.Parser.Relation.Lexing using (Lexes)
+open import Once.Parser.Relation.Decl using (ParsesDecl)
 
 ------------------------------------------------------------------------
 -- The declaration loop. (`skipNewlines` never returns `nothing`, so

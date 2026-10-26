@@ -2,9 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Resolution — NAME RESOLUTION, in the compiler's internal
--- language. Plan 0.81. Which `CanonicalName` each written reference denotes;
--- the Spec's is `Once.Spec.Surface.Resolution`, related by `SpecFront.Resolve`.
+-- Once.Parser.Relation.Resolution — NAME RESOLUTION as the resolver does it
+-- (plan 0.81): which `CanonicalName` each written reference denotes, over the
+-- resolver's own tables. The waypoint of the resolver's proof; the Spec's
+-- relation is `Once.Spec.Surface.Resolution`, related by `SpecFront.Resolve`.
 --
 -- Until this module existed, resolution was constrained only by three
 -- "something survives it" facts (`resolver-preserves-typing`,
@@ -26,7 +27,7 @@
 -- that is neither takes an import path or the own module.
 ------------------------------------------------------------------------
 
-module Once.Internal.Resolution where
+module Once.Parser.Relation.Resolution where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All)

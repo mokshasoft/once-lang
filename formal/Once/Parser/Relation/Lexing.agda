@@ -2,11 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Lexing — the lexer RELATION, and nothing else (Plan 0.84).
+-- Once.Parser.Relation.Lexing — the lexer RELATION, and nothing else (Plan 0.84).
 --
--- `LexesChars`/`Lexes` say WHAT IT MEANS for a text to lex to a token stream.
--- They are part of the statement of `correct` (via `ParsesText`), so they are
--- inside the `Once.Spec` re-export closure and a reviewer must read them.
+-- `LexesChars`/`Lexes` say what the lexer does, as a relation: the waypoint
+-- of the lexer's proof. The claim is the Spec's (`Once.Spec.Surface.Lexing`);
+-- `Once.Adequacy.SpecLexing` relates this relation to it.
 --
 -- The bridge to the executable lexer — `lexer-sound`/`lexer-complete` and the
 -- determinism chain — is EVIDENCE that `tokenizeString` meets this relation,
@@ -14,12 +14,11 @@
 -- imports this module.
 --
 -- The relation is stated against the lexer's own classifiers (`headK`,
--- `dashClass`, …) and collectors (`collectDigitsB`, …). That is a genuine
--- weakness — a spec phrased with the implementation's helpers — recorded
--- against plan 0.59, NOT laundered by leaving it on the proof side.
+-- `dashClass`, …) and collectors (`collectDigitsB`, …), which is what makes
+-- it a waypoint and not a specification.
 ------------------------------------------------------------------------
 
-module Once.Internal.Lexing where
+module Once.Parser.Relation.Lexing where
 
 open import Data.Bool using (true; false)
 open import Data.Nat using (ℕ; _<_)

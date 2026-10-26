@@ -5,7 +5,7 @@
 -- Once.Module — what it MEANS for a resolved module to be well-typed
 -- and to have a valid entry point (Plan 0.84). No proof lives here.
 --
--- READ THIS BEFORE TRUSTING `correct`. Unlike `Once.Internal.Parsing`, this
+-- READ THIS BEFORE TRUSTING `correct`. Unlike `Once.Parser.Relation.Parsing`, this
 -- module is NOT clean, and the split exists to make that visible rather than
 -- to hide it behind a proof module:
 --

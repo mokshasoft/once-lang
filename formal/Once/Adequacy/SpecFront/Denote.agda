@@ -54,7 +54,7 @@ import Once.Parser as Parser
 open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 import Once.Parser.Module.Core as Core
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; importedOf)
-import Once.Internal.Resolution as LR
+import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (ModTele; MainIn; emptyScope; entrySig)
 open import Once.Core.Translate using ([])
 open import Once.Adequacy.ModuleProgram using (toProgram; names₀; Names)

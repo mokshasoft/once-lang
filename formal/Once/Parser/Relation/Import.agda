@@ -2,15 +2,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Internal.Grammar.Import — the RELATIONS for `import a.b.c [as alias]`,
+-- Once.Parser.Relation.Import — the RELATIONS for `import a.b.c [as alias]`,
 -- and nothing else (Plan 0.84).
 --
--- Reachable from `correct` via `ParsesDecl`, so a spec reviewer must read it.
+-- A waypoint of the parser's proof, reached through `ParsesDecl`.
 -- `sound-import`/`complete-import`, the WF path-scanner proofs and the
 -- inversion lemmas stay in `Once.Grammar.ImportBridge`.
 ------------------------------------------------------------------------
 
-module Once.Internal.Grammar.Import where
+module Once.Parser.Relation.Import where
 
 open import Data.Bool using (true; false)
 open import Data.List using (List; []; _∷_)

@@ -5,7 +5,7 @@
 -- Once.Adequacy.ResolveBridge — the executable resolver IMPLEMENTS the
 -- resolution spec. Plan 0.81 step 2.
 --
--- PROOF (not trusted). `Once.Internal.Resolution` says which `CanonicalName` each
+-- PROOF (not trusted). `Once.Parser.Relation.Resolution` says which `CanonicalName` each
 -- written reference denotes, as rules over PROPERTIES. This module proves that
 -- `Once.Parser.Module.Resolve.canonExpr` computes exactly that:
 --
@@ -50,7 +50,7 @@ open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; canonDecl; isBuiltinName; expandPath;
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
-open import Once.Internal.Resolution
+open import Once.Parser.Relation.Resolution
 open import Once.Spec.Surface.Program using (NotImport; ni-sig; ni-tsig; ni-def; ni-alias)
 open import Once.Spec.Surface.Resolution using (FirstAt; fa-here; fa-there; Absent; Expands; ex-nil; ex-I; ex-other)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
