@@ -26,6 +26,7 @@
 -- Returns: Pointer to seL4_BootInfo
 --
 -- Note: This is a pure function - it returns a constant address.
+
 signature getBootInfo : Unit -> Int
 
 -- | Get IPC buffer pointer
@@ -99,7 +100,6 @@ signature bootinfo_getUntyped : Int * Int -> Int * Int * Int
 ------------------------------------------------------------------------
 
 -- These are the standard initial capability slot assignments
-
 seL4_CapNull : Int
 seL4_CapNull = 0
 

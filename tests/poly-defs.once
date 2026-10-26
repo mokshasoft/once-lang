@@ -22,7 +22,6 @@ diagonal : a -> a * a
 diagonal = pair id id
 
 -- Ground uses
-
 swapIntFloat : Int * Float -> Float * Int
 swapIntFloat = swap
 

@@ -19,8 +19,10 @@ import I.Linux.Syscalls as S
 -- algebra : (Unit + (Int + (Int * Int))) -> Int
 oneI : Unit -> Int
 oneI _ = 1
+
 incI : Int -> Int
 incI n = n + 1
+
 addPlus1 : Int * Int -> Int
 addPlus1 p = fst p + snd p + 1
 

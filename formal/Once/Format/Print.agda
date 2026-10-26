@@ -49,6 +49,8 @@ open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Parser.Token using (Token; TWord; TInt; TFloat; TNewline; TEOF)
 open import Once.Format.Lex using (Item; tok; comment; cont)
 open import Once.Format.Doc
+open import Once.Format.Comment using (commentRun; eolText)
+import Once.Spec.Surface.Lexing as S
 
 ------------------------------------------------------------------------
 -- The comments, anchored
@@ -213,73 +215,109 @@ _⊕ᵈ_ : P Doc → P Doc → P Doc
 a ⊕ᵈ b = a >>=′ λ x → b >>=′ λ y → pure′ (x <> y)
 infixr 6 _⊕ᵈ_
 
-txt : String → P Doc
-txt s = pure′ (text s)
+-- One token, a blank.
+t : S.Token → P Doc
+t x = pure′ (tk x)
+
+␣ : P Doc
+␣ = pure′ sp
 
 -- An anchor: its inner comments before it, its end-of-line comments after.
-anchor : String → P Doc
-anchor s tv k with lookupNotes k tv
+anchor : S.Token → P Doc
+anchor x tv k with lookupNotes k tv
 ... | notes _ inner after =
-      (foldr (λ c d → newline <> text c <> newline <> d) empty inner
-        <> text s <> foldr (λ c d → eol c <> d) empty after) , suc k
-
--- A word that is not an anchor (`compose`).
-word : String → P Doc
-word s = if s == "compose" then txt s else anchor s
-
--- The top notes of the anchors in [k, k′): before a declaration.
-topNotes : ℕ → ℕ → Trivia → Doc
-topNotes k k′ tv = go k (k′ ∸ k)
+      (inners inner <> tk x <> foldr (λ c d → eol (eolText c) <> d) empty after) , suc k
   where
-    one : Note → Doc
-    one (note-comment c) = text c <> newline
-    one note-blank       = blank
-    go : ℕ → ℕ → Doc
-    go j zero    = empty
-    go j (suc n) = foldr (λ x d → one x <> d) empty (Notes.top (lookupNotes j tv)) <> go (suc j) n
+    inners : List String → Doc
+    inners []         = empty
+    inners cs@(_ ∷ _) = newline <> commentRun cs
+
+-- A word; `compose` is not an anchor.
+word : String → P Doc
+word s = if s == "compose" then t (S.TWord s) else anchor (S.TWord s)
+
+-- The top notes of the anchors in [k, k′), in order: before a declaration.
+topList : ℕ → ℕ → Trivia → List Note
+topList k k′ tv = go k (k′ ∸ k)
+  where
+    go : ℕ → ℕ → List Note
+    go j zero    = []
+    go j (suc n) = Notes.top (lookupNotes j tv) ++ go (suc j) n
+
+-- Comment runs, one blank line between two (a blank line inside a run of
+-- comments separates its paragraphs; any other blank line is the code's).
+topDoc : List Note → Doc
+topDoc ns = runs ns [] false
+  where
+    -- `acc`: the current run; `sepd`: a blank line seen since it.
+    runs : List Note → List String → Bool → Doc
+    runs []                    []         _     = empty
+    runs []                    acc@(_ ∷ _) _    = commentRun acc
+    runs (note-blank ∷ ns)     acc        _     = runs ns acc true
+    runs (note-comment c ∷ ns) []         _     = runs ns (c ∷ []) false
+    runs (note-comment c ∷ ns) acc@(_ ∷ _) false = runs ns (acc ++ (c ∷ [])) false
+    runs (note-comment c ∷ ns) acc@(_ ∷ _) true  = commentRun acc <> blank <> runs ns (c ∷ []) false
+
+hasComment : List Note → Bool
+hasComment []                    = false
+hasComment (note-comment _ ∷ _)  = true
+hasComment (note-blank ∷ ns)     = hasComment ns
 
 ------------------------------------------------------------------------
 -- Names and literals
 ------------------------------------------------------------------------
 
-private
-  opChars : List Char
-  opChars = '.' ∷ '+' ∷ '-' ∷ '*' ∷ '/' ∷ '%' ∷ '<' ∷ '>' ∷ '|' ∷ '&' ∷ '@' ∷ []
+-- The token of an operator character.
+opToken : Char → Maybe S.Token
+opToken c =
+  if does (c Ch.≟ '.') then just S.TDot else
+  if does (c Ch.≟ '+') then just S.TPlus else
+  if does (c Ch.≟ '-') then just S.TMinus else
+  if does (c Ch.≟ '*') then just S.TStar else
+  if does (c Ch.≟ '/') then just S.TSlash else
+  if does (c Ch.≟ '%') then just S.TPercent else
+  if does (c Ch.≟ '<') then just S.TLt else
+  if does (c Ch.≟ '>') then just S.TGt else
+  if does (c Ch.≟ '|') then just S.TPipe else
+  if does (c Ch.≟ '&') then just S.TAmpersand else
+  if does (c Ch.≟ '@') then just S.TAt else nothing
 
+private
   isOpChar : Char → Bool
-  isOpChar c = go opChars
-    where
-      go : List Char → Bool
-      go []       = false
-      go (x ∷ xs) = does (c Ch.≟ x) ∨ go xs
+  isOpChar c with opToken c
+  ... | just _  = true
+  ... | nothing = false
 
   allOp : List Char → Bool
   allOp []       = false
   allOp (c ∷ []) = isOpChar c
   allOp (c ∷ cs@(_ ∷ _)) = isOpChar c ∧ allOp cs
 
-  -- An operator's characters, spaced where they would lex as something else
-  -- (`--` a comment, `->` an arrow).
-  spaceOp : List Char → List Char
-  spaceOp []                = []
-  spaceOp (c ∷ [])          = c ∷ []
-  spaceOp (c ∷ d ∷ cs)      =
-    if does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>'))
-    then c ∷ ' ' ∷ spaceOp (d ∷ cs) else c ∷ spaceOp (d ∷ cs)
+  -- An operator's characters as tokens, a blank where two would lex as
+  -- something else (`--` a comment, `->` an arrow).
+  opToks : List Char → P Doc
+  opToks []             = pure′ empty
+  opToks (c ∷ [])       = one c
+    where
+      one : Char → P Doc
+      one c with opToken c
+      ... | just x  = t x
+      ... | nothing = pure′ empty
+  opToks (c ∷ d ∷ cs)   =
+    one c ⊕ᵈ (if does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>')) then ␣ else pure′ empty)
+      ⊕ᵈ opToks (d ∷ cs)
+    where
+      one : Char → P Doc
+      one c with opToken c
+      ... | just x  = t x
+      ... | nothing = pure′ empty
 
 isOperator : String → Bool
 isOperator s = allOp (toList s)
 
 -- A name: a word, or an operator in parentheses (its characters are not anchors).
 name : String → P Doc
-name x = if isOperator x then txt ("(" ++ˢ fromList (spaceOp (toList x)) ++ˢ ")") else word x
-
-showInt : ℤ → String
-showInt (+ n)    = ℕS.show n
-showInt -[1+ n ] = "-" ++ˢ ℕS.show (suc n)
-
-showFloat : ℕ → ℕ → ℕ → String
-showFloat i f l = ℕS.show i ++ˢ "." ++ˢ fromList (replicate (l ∸ Str.length (ℕS.show f)) '0') ++ˢ ℕS.show f
+name x = if isOperator x then t S.TLParen ⊕ᵈ opToks (toList x) ⊕ᵈ t S.TRParen else word x
 
 ------------------------------------------------------------------------
 -- Types
@@ -288,69 +326,73 @@ showFloat i f l = ℕS.show i ++ˢ "." ++ˢ fromList (replicate (l ∸ Str.lengt
 -- Levels: 0 an arrow, 1 a sum, 2 a product, 3 an atom. `t`: no `*` or `+`
 -- follows (a `Mu`/`Nu` would read it into its functor).
 paren : Bool → P Doc → P Doc
-paren true  d = txt "(" ⊕ᵈ d ⊕ᵈ txt ")"
+paren true  d = t S.TLParen ⊕ᵈ d ⊕ᵈ t S.TRParen
 paren false d = d
 
 grade : Quantity → P Doc
-grade Zero = txt " ^0 ->"
-grade One  = txt " ^1 ->"
-grade Many = txt " ->"
+grade Zero = ␣ ⊕ᵈ t S.TCaret0 ⊕ᵈ ␣ ⊕ᵈ t S.TArrow
+grade One  = ␣ ⊕ᵈ t S.TCaret1 ⊕ᵈ ␣ ⊕ᵈ t S.TArrow
+grade Many = ␣ ⊕ᵈ t S.TArrow
+
+-- ` op `
+infixOp : S.Token → P Doc
+infixOp x = ␣ ⊕ᵈ t x ⊕ᵈ ␣
 
 mutual
   pty : ℕ → Bool → PolyType → P Doc
-  pty l t PUnit         = word "Unit"
-  pty l t PVoid         = word "Void"
-  pty l t PInt          = word "Int"
-  pty l t PFloat        = word "Float"
-  pty l t (PTVar x)     = word x
-  pty l t (A P⇒[ q ] B) = paren (0 <ᵇ l) (pty 1 true A ⊕ᵈ grade q ⊕ᵈ txt " " ⊕ᵈ pty 0 (t ∨ (0 <ᵇ l)) B)
-  pty l t (A P+ B)      = paren (1 <ᵇ l) (pty 1 false A ⊕ᵈ txt " + " ⊕ᵈ pty 2 (t ∨ (1 <ᵇ l)) B)
-  pty l t (A P* B)      = paren (2 <ᵇ l) (pty 2 false A ⊕ᵈ txt " * " ⊕ᵈ pty 3 (t ∨ (2 <ᵇ l)) B)
-  pty l t (PEff A B)    = paren (3 <ᵇ l) (word "Eff" ⊕ᵈ txt " " ⊕ᵈ pty 3 false A ⊕ᵈ txt " " ⊕ᵈ pty 3 false B)
-  pty l t (PAct A B)    = paren (3 <ᵇ l) (word "Act" ⊕ᵈ txt " " ⊕ᵈ pty 3 false A ⊕ᵈ txt " " ⊕ᵈ pty 3 false B)
-  pty l t (Pμ F)        = paren (not t) (word "Mu" ⊕ᵈ txt " " ⊕ᵈ pfunArg F)
-  pty l t (Pν F pureᶠ)  = paren (not t) (word "Nu" ⊕ᵈ txt " " ⊕ᵈ pfunArg F)
-  pty l t (Pν F actᶠ)   = paren (not t) (word "Nu" ⊕ᵈ txt " (" ⊕ᵈ word "Act" ⊕ᵈ txt " " ⊕ᵈ pfun 0 F ⊕ᵈ txt ")")
+  pty l b PUnit         = word "Unit"
+  pty l b PVoid         = word "Void"
+  pty l b PInt          = word "Int"
+  pty l b PFloat        = word "Float"
+  pty l b (PTVar x)     = word x
+  pty l b (A P⇒[ q ] B) = paren (0 <ᵇ l) (pty 1 true A ⊕ᵈ grade q ⊕ᵈ ␣ ⊕ᵈ pty 0 (b ∨ (0 <ᵇ l)) B)
+  pty l b (A P+ B)      = paren (1 <ᵇ l) (pty 1 false A ⊕ᵈ infixOp S.TPlus ⊕ᵈ pty 2 (b ∨ (1 <ᵇ l)) B)
+  pty l b (A P* B)      = paren (2 <ᵇ l) (pty 2 false A ⊕ᵈ infixOp S.TStar ⊕ᵈ pty 3 (b ∨ (2 <ᵇ l)) B)
+  pty l b (PEff A B)    = paren (3 <ᵇ l) (word "Eff" ⊕ᵈ ␣ ⊕ᵈ pty 3 false A ⊕ᵈ ␣ ⊕ᵈ pty 3 false B)
+  pty l b (PAct A B)    = paren (3 <ᵇ l) (word "Act" ⊕ᵈ ␣ ⊕ᵈ pty 3 false A ⊕ᵈ ␣ ⊕ᵈ pty 3 false B)
+  pty l b (Pμ F)        = paren (not b) (word "Mu" ⊕ᵈ ␣ ⊕ᵈ pfunArg F)
+  pty l b (Pν F pureᶠ)  = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ pfunArg F)
+  pty l b (Pν F actᶠ)   = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ t S.TLParen ⊕ᵈ word "Act" ⊕ᵈ ␣ ⊕ᵈ pfun 0 F ⊕ᵈ t S.TRParen)
 
   -- A `Mu`/`Nu` functor: parenthesized unless it is `Id` (D341).
   pfunArg : PolyFunctor → P Doc
   pfunArg PId = word "Id"
   {-# CATCHALL #-}
-  pfunArg F   = txt "(" ⊕ᵈ pfun 0 F ⊕ᵈ txt ")"
+  pfunArg F   = t S.TLParen ⊕ᵈ pfun 0 F ⊕ᵈ t S.TRParen
 
   -- Functors: 0 a sum, 1 a product, 2 an atom.
   pfun : ℕ → PolyFunctor → P Doc
   pfun l PId       = word "Id"
-  pfun l (PK A)    = paren (1 <ᵇ l) (word "K" ⊕ᵈ txt " " ⊕ᵈ pty 3 false A)
-  pfun l (F P⊕ G)  = paren (0 <ᵇ l) (pfun 0 F ⊕ᵈ txt " + " ⊕ᵈ pfun 1 G)
-  pfun l (F P⊗ G)  = paren (1 <ᵇ l) (pfun 1 F ⊕ᵈ txt " * " ⊕ᵈ pfun 2 G)
+  pfun l (PK A)    = paren (1 <ᵇ l) (word "K" ⊕ᵈ ␣ ⊕ᵈ pty 3 false A)
+  pfun l (F P⊕ G)  = paren (0 <ᵇ l) (pfun 0 F ⊕ᵈ infixOp S.TPlus ⊕ᵈ pfun 1 G)
+  pfun l (F P⊗ G)  = paren (1 <ᵇ l) (pfun 1 F ⊕ᵈ infixOp S.TStar ⊕ᵈ pfun 2 G)
 
 -- An annotation's (ground) type, by the same rules.
 mutual
   gty : ℕ → Bool → Ty 0 → P Doc
-  gty l t Unit       = word "Unit"
-  gty l t Void       = word "Void"
-  gty l t Int        = word "Int"
-  gty l t Float      = word "Float"
-  gty l t (A ⇒[ mk-kind q (fin pureᶠ) ] B) = paren (0 <ᵇ l) (gty 1 true A ⊕ᵈ grade q ⊕ᵈ txt " " ⊕ᵈ gty 0 (t ∨ (0 <ᵇ l)) B)
-  gty l t (A ⇒[ mk-kind q (fin actᶠ) ] B)  = paren (3 <ᵇ l) (word "Act" ⊕ᵈ txt " " ⊕ᵈ gty 3 false A ⊕ᵈ txt " " ⊕ᵈ gty 3 false B)
-  gty l t (A ⇒[ mk-kind q eff ] B)         = paren (3 <ᵇ l) (word "Eff" ⊕ᵈ txt " " ⊕ᵈ gty 3 false A ⊕ᵈ txt " " ⊕ᵈ gty 3 false B)
-  gty l t (A T.+ B)  = paren (1 <ᵇ l) (gty 1 false A ⊕ᵈ txt " + " ⊕ᵈ gty 2 (t ∨ (1 <ᵇ l)) B)
-  gty l t (A T.* B)  = paren (2 <ᵇ l) (gty 2 false A ⊕ᵈ txt " * " ⊕ᵈ gty 3 (t ∨ (2 <ᵇ l)) B)
-  gty l t (μ F)      = paren (not t) (word "Mu" ⊕ᵈ txt " " ⊕ᵈ gfunArg F)
-  gty l t (ν F pureᶠ) = paren (not t) (word "Nu" ⊕ᵈ txt " " ⊕ᵈ gfunArg F)
-  gty l t (ν F actᶠ)  = paren (not t) (word "Nu" ⊕ᵈ txt " (" ⊕ᵈ word "Act" ⊕ᵈ txt " " ⊕ᵈ gfun 0 F ⊕ᵈ txt ")")
+  gty l b Unit       = word "Unit"
+  gty l b Void       = word "Void"
+  gty l b Int        = word "Int"
+  gty l b Float      = word "Float"
+  gty l b (A ⇒[ mk-kind q (fin pureᶠ) ] B) = paren (0 <ᵇ l) (gty 1 true A ⊕ᵈ grade q ⊕ᵈ ␣ ⊕ᵈ gty 0 (b ∨ (0 <ᵇ l)) B)
+  gty l b (A ⇒[ mk-kind q (fin actᶠ) ] B)  = paren (3 <ᵇ l) (word "Act" ⊕ᵈ ␣ ⊕ᵈ gty 3 false A ⊕ᵈ ␣ ⊕ᵈ gty 3 false B)
+  gty l b (A ⇒[ mk-kind q eff ] B)         = paren (3 <ᵇ l) (word "Eff" ⊕ᵈ ␣ ⊕ᵈ gty 3 false A ⊕ᵈ ␣ ⊕ᵈ gty 3 false B)
+  gty l b (A T.+ B)  = paren (1 <ᵇ l) (gty 1 false A ⊕ᵈ infixOp S.TPlus ⊕ᵈ gty 2 (b ∨ (1 <ᵇ l)) B)
+  gty l b (A T.* B)  = paren (2 <ᵇ l) (gty 2 false A ⊕ᵈ infixOp S.TStar ⊕ᵈ gty 3 (b ∨ (2 <ᵇ l)) B)
+  gty l b (μ F)      = paren (not b) (word "Mu" ⊕ᵈ ␣ ⊕ᵈ gfunArg F)
+  gty l b (ν F pureᶠ) = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ gfunArg F)
+  gty l b (ν F actᶠ)  = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ t S.TLParen ⊕ᵈ word "Act" ⊕ᵈ ␣ ⊕ᵈ gfun 0 F ⊕ᵈ t S.TRParen)
 
   gfunArg : Fun 0 → P Doc
   gfunArg Id = word "Id"
   {-# CATCHALL #-}
-  gfunArg F  = txt "(" ⊕ᵈ gfun 0 F ⊕ᵈ txt ")"
+  gfunArg F  = t S.TLParen ⊕ᵈ gfun 0 F ⊕ᵈ t S.TRParen
 
   gfun : ℕ → Fun 0 → P Doc
   gfun l Id      = word "Id"
-  gfun l (K A)   = paren (1 <ᵇ l) (word "K" ⊕ᵈ txt " " ⊕ᵈ gty 3 false A)
-  gfun l (F ⊕ G) = paren (0 <ᵇ l) (gfun 0 F ⊕ᵈ txt " + " ⊕ᵈ gfun 1 G)
-  gfun l (F ⊗ G) = paren (1 <ᵇ l) (gfun 1 F ⊕ᵈ txt " * " ⊕ᵈ gfun 2 G)
+  gfun l (K A)   = paren (1 <ᵇ l) (word "K" ⊕ᵈ ␣ ⊕ᵈ gty 3 false A)
+  gfun l (F ⊕ G) = paren (0 <ᵇ l) (gfun 0 F ⊕ᵈ infixOp S.TPlus ⊕ᵈ gfun 1 G)
+  gfun l (F ⊗ G) = paren (1 <ᵇ l) (gfun 1 F ⊕ᵈ infixOp S.TStar ⊕ᵈ gfun 2 G)
 
 ------------------------------------------------------------------------
 -- Expressions
@@ -359,20 +401,20 @@ mutual
 -- Levels, loosest first: 0 a composition, 1 a comparison, 2 `+`/`-`, 3
 -- `*`/`/`/`%`, 4 a prefix `-`, 5 an application, 6 an atom. A lambda, `let` or
 -- `destruct` reads as far as it can, so it stands bare only where nothing of
--- the expression follows it (`t`, a whole expression).
+-- the expression follows it (`w`, a whole expression).
 
-opText : BinOp → String
-opText OpAdd = "+"
-opText OpSub = "-"
-opText OpMul = "*"
-opText OpDiv = "/"
-opText OpMod = "%"
-opText OpLt  = "<"
-opText OpLe  = "<="
-opText OpGt  = ">"
-opText OpGe  = ">="
-opText OpEq  = "=="
-opText OpNe  = "!="
+opTok : BinOp → S.Token
+opTok OpAdd = S.TPlus
+opTok OpSub = S.TMinus
+opTok OpMul = S.TStar
+opTok OpDiv = S.TSlash
+opTok OpMod = S.TPercent
+opTok OpLt  = S.TLt
+opTok OpLe  = S.TLe
+opTok OpGt  = S.TGt
+opTok OpGe  = S.TGe
+opTok OpEq  = S.TEqEq
+opTok OpNe  = S.TNeq
 
 opLevel : BinOp → ℕ
 opLevel OpAdd = 2
@@ -386,13 +428,6 @@ opLevel OpGt  = 1
 opLevel OpGe  = 1
 opLevel OpEq  = 1
 opLevel OpNe  = 1
-
--- The arguments of an application spine, and its head.
-spine : Expr → Expr × List Expr
-spine (RApp f a) with spine f
-... | h , as = h , as ++ (a ∷ [])
-{-# CATCHALL #-}
-spine e = e , []
 
 -- The parameters of leading lambdas, and the body.
 lams : Expr → List String × Expr
@@ -418,26 +453,32 @@ private
   {-# CATCHALL #-}
   headOf e          = RUnit
 
+  -- A resolved name's path, dotted.
+  dotted : List String → P Doc
+  dotted []               = pure′ empty
+  dotted (x ∷ [])         = word x
+  dotted (x ∷ xs@(_ ∷ _)) = word x ⊕ᵈ t S.TDot ⊕ᵈ dotted xs
+
 mutual
-  -- `l` the level the position asks for, `t` whether the expression is whole.
+  -- `l` the level the position asks for, `w` whether the expression is whole.
   pex : ℕ → Bool → Expr → P Doc
-  pex l t (RApp f a)         = pcomp l f a (isCompose (headOf f))
-  pex l t (RBinOp op a b)    =
+  pex l wh (RApp f a)         = pcomp l f a (isCompose (headOf f))
+  pex l wh (RBinOp op a b)    =
     paren (opLevel op <ᵇ l) (pbin (opLevel op) op a b) >>=′ λ d → pure′ (group (nest indent d))
-  pex l t (RNeg e)           = paren (4 <ᵇ l) (txt (if startsNeg e then "- " else "-") ⊕ᵈ pex 4 false e)
-  pex l t RUnit              = txt "()"
-  pex l t (RInt n)           = anchor (showInt n)
-  pex l t (RFloat i f n)     = anchor (showFloat i f n)
-  pex l t (RVar x)           = name x
-  pex l t (RQualified x a)   = word x ⊕ᵈ txt "@" ⊕ᵈ word a
-  pex l t (RResolved (canonical xs)) = word (Str.intersperse "." xs)
-  pex l t (RPair a b)        =
-    (txt "(" ⊕ᵈ pex 0 true a ⊕ᵈ txt "," ⊕ᵈ pure′ line ⊕ᵈ pex 0 true b ⊕ᵈ txt ")")
+  pex l wh (RNeg e)           = paren (4 <ᵇ l) (t S.TMinus ⊕ᵈ (if startsNeg e then ␣ else pure′ empty) ⊕ᵈ pex 4 false e)
+  pex l wh RUnit              = t S.TLParen ⊕ᵈ t S.TRParen
+  pex l wh (RInt n)           = anchor (S.TInt n)
+  pex l wh (RFloat i f n)     = anchor (S.TFloat i f n)
+  pex l wh (RVar x)           = name x
+  pex l wh (RQualified x a)   = word x ⊕ᵈ t S.TAt ⊕ᵈ word a
+  pex l wh (RResolved (canonical xs)) = dotted xs
+  pex l wh (RPair a b)        =
+    (t S.TLParen ⊕ᵈ pex 0 true a ⊕ᵈ t S.TComma ⊕ᵈ pure′ line ⊕ᵈ pex 0 true b ⊕ᵈ t S.TRParen)
       >>=′ λ d → pure′ (group (nest indent d))
-  pex l t (RAnnot e T)       = txt "(" ⊕ᵈ pex 0 true e ⊕ᵈ txt " : " ⊕ᵈ gty 0 true T ⊕ᵈ txt ")"
-  pex l t (RLam x e)         = paren (not t) (plam x e)
-  pex l t (RLet x v b)       = paren (not t) (plet x v b)
-  pex l t (RDestruct s x el y er) = paren (not t) (pdes s x el y er)
+  pex l wh (RAnnot e T)       = t S.TLParen ⊕ᵈ pex 0 true e ⊕ᵈ infixOp S.TColon ⊕ᵈ gty 0 true T ⊕ᵈ t S.TRParen
+  pex l wh (RLam x e)         = paren (not wh) (plam x e)
+  pex l wh (RLet x v b)       = paren (not wh) (plet x v b)
+  pex l wh (RDestruct s x el y er) = paren (not wh) (pdes s x el y er)
 
   -- `compose g h`, written `g . h`; any other application as one: the head,
   -- then the arguments, broken one per line when they do not fit.
@@ -450,7 +491,7 @@ mutual
   -- The head and the arguments before the last; a `compose g h` inside a
   -- spine is an argument-less head, so it is parenthesized.
   pcompose : ℕ → Expr → Expr → P Doc
-  pcompose l g h = paren (0 <ᵇ l) (pchainC g ⊕ᵈ (pure′ line ⊕ᵈ txt ". ") ⊕ᵈ pex 1 false h)
+  pcompose l g h = paren (0 <ᵇ l) (pchainC g ⊕ᵈ (pure′ line ⊕ᵈ t S.TDot ⊕ᵈ ␣) ⊕ᵈ pex 1 false h)
                      >>=′ λ d → pure′ (group (nest indent d))
 
   -- A left-nested chain is one group, broken before each operator: the left
@@ -461,14 +502,14 @@ mutual
   pchainC e          = pex 0 false e
 
   pchainC′ : Expr → Expr → Bool → P Doc
-  pchainC′ (RApp c g) h true = pchainC g ⊕ᵈ (pure′ line ⊕ᵈ txt ". ") ⊕ᵈ pex 1 false h
+  pchainC′ (RApp c g) h true = pchainC g ⊕ᵈ (pure′ line ⊕ᵈ t S.TDot ⊕ᵈ ␣) ⊕ᵈ pex 1 false h
   {-# CATCHALL #-}
   pchainC′ f a _             = pcomp 0 f a false
 
   -- …and of an operator, while its left operand is one of the same precedence
   -- (`+`/`-`, `*`/`/`/`%`; a comparison takes no chain).
   pbin : ℕ → BinOp → Expr → Expr → P Doc
-  pbin lv op a b = pleft lv a ⊕ᵈ pure′ line ⊕ᵈ txt (opText op ++ˢ " ") ⊕ᵈ pex (suc lv) false b
+  pbin lv op a b = pleft lv a ⊕ᵈ pure′ line ⊕ᵈ t (opTok op) ⊕ᵈ ␣ ⊕ᵈ pex (suc lv) false b
 
   pleft : ℕ → Expr → P Doc
   pleft lv (RBinOp op a b) = if (lv ≡ᵇ opLevel op) ∧ (1 <ᵇ lv) then pbin lv op a b
@@ -488,12 +529,12 @@ mutual
 
   -- `\x y -> b`: the parameters of the leading lambdas, then the body.
   plam : String → Expr → P Doc
-  plam x e = (txt "\\" ⊕ᵈ word x ⊕ᵈ plam′ e) >>=′ λ d → pure′ (group d)
+  plam x e = (t S.TLambda ⊕ᵈ word x ⊕ᵈ plam′ e) >>=′ λ d → pure′ (group d)
 
   plam′ : Expr → P Doc
-  plam′ (RLam y e) = txt " " ⊕ᵈ word y ⊕ᵈ plam′ e
+  plam′ (RLam y e) = ␣ ⊕ᵈ word y ⊕ᵈ plam′ e
   {-# CATCHALL #-}
-  plam′ b          = txt " ->" ⊕ᵈ (pure′ line ⊕ᵈ pex 0 true b >>=′ λ d → pure′ (nest indent d))
+  plam′ b          = ␣ ⊕ᵈ t S.TArrow ⊕ᵈ (pure′ line ⊕ᵈ pex 0 true b >>=′ λ d → pure′ (nest indent d))
 
   -- A chain of `let`s is one group: flat when it fits, else each `in` starts a
   -- line; each value is a group of its own, so it stays after its `=` when it fits.
@@ -501,20 +542,20 @@ mutual
   plet x v b = plet′ x v b >>=′ λ d → pure′ (group d)
 
   plet′ : String → Expr → Expr → P Doc
-  plet′ x v (RLet y v′ c) = lhead x v ⊕ᵈ pure′ line ⊕ᵈ word "in" ⊕ᵈ txt " " ⊕ᵈ plet′ y v′ c
+  plet′ x v (RLet y v′ c) = lhead x v ⊕ᵈ pure′ line ⊕ᵈ word "in" ⊕ᵈ ␣ ⊕ᵈ plet′ y v′ c
   {-# CATCHALL #-}
-  plet′ x v b            = lhead x v ⊕ᵈ pure′ line ⊕ᵈ word "in" ⊕ᵈ txt " " ⊕ᵈ pex 0 true b
+  plet′ x v b            = lhead x v ⊕ᵈ pure′ line ⊕ᵈ word "in" ⊕ᵈ ␣ ⊕ᵈ pex 0 true b
 
   lhead : String → Expr → P Doc
-  lhead x v = word "let" ⊕ᵈ txt " " ⊕ᵈ word x ⊕ᵈ txt " ="
+  lhead x v = word "let" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ ␣ ⊕ᵈ t S.TEquals
                 ⊕ᵈ (pure′ line ⊕ᵈ pex 0 true v >>=′ λ d → pure′ (group (nest indent d)))
 
   pdes : Expr → String → Expr → String → Expr → P Doc
   pdes s x el y er =
-    (word "destruct" ⊕ᵈ txt " " ⊕ᵈ pex 0 true s ⊕ᵈ txt " " ⊕ᵈ word "of"
-      ⊕ᵈ (pure′ line ⊕ᵈ txt "{ " ⊕ᵈ word "Left" ⊕ᵈ txt " " ⊕ᵈ word x ⊕ᵈ txt " -> " ⊕ᵈ pex 0 true el
-          ⊕ᵈ pure′ line ⊕ᵈ txt "; " ⊕ᵈ word "Right" ⊕ᵈ txt " " ⊕ᵈ word y ⊕ᵈ txt " -> " ⊕ᵈ pex 0 true er
-          ⊕ᵈ pure′ line ⊕ᵈ txt "}" >>=′ λ d → pure′ (nest indent d)))
+    (word "destruct" ⊕ᵈ ␣ ⊕ᵈ pex 0 true s ⊕ᵈ ␣ ⊕ᵈ word "of"
+      ⊕ᵈ (pure′ line ⊕ᵈ t S.TLBrace ⊕ᵈ ␣ ⊕ᵈ word "Left" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ infixOp S.TArrow ⊕ᵈ pex 0 true el
+          ⊕ᵈ pure′ line ⊕ᵈ t S.TSemicolon ⊕ᵈ ␣ ⊕ᵈ word "Right" ⊕ᵈ ␣ ⊕ᵈ word y ⊕ᵈ infixOp S.TArrow ⊕ᵈ pex 0 true er
+          ⊕ᵈ pure′ line ⊕ᵈ t S.TRBrace >>=′ λ d → pure′ (nest indent d)))
       >>=′ λ d → pure′ (group d)
 
 ------------------------------------------------------------------------
@@ -525,39 +566,61 @@ private
   path : List String → P Doc
   path []           = pure′ empty
   path (x ∷ [])     = word x
-  path (x ∷ xs@(_ ∷ _)) = word x ⊕ᵈ txt "." ⊕ᵈ path xs
+  path (x ∷ xs@(_ ∷ _)) = word x ⊕ᵈ t S.TDot ⊕ᵈ path xs
 
   spaced : List String → P Doc
   spaced []       = pure′ empty
-  spaced (x ∷ xs) = txt " " ⊕ᵈ word x ⊕ᵈ spaced xs
+  spaced (x ∷ xs) = ␣ ⊕ᵈ word x ⊕ᵈ spaced xs
 
 -- A declaration; every line it breaks is indented (an unindented line would
 -- start the next declaration).
 pdecl : Decl → P Doc
-pdecl (DImport (mkImport p nothing))  = word "import" ⊕ᵈ txt " " ⊕ᵈ path p
-pdecl (DImport (mkImport p (just a))) = word "import" ⊕ᵈ txt " " ⊕ᵈ path p ⊕ᵈ txt " " ⊕ᵈ word "as" ⊕ᵈ txt " " ⊕ᵈ word a
+pdecl (DImport (mkImport p nothing))  = word "import" ⊕ᵈ ␣ ⊕ᵈ path p
+pdecl (DImport (mkImport p (just a))) = word "import" ⊕ᵈ ␣ ⊕ᵈ path p ⊕ᵈ ␣ ⊕ᵈ word "as" ⊕ᵈ ␣ ⊕ᵈ word a
 pdecl (DTypeAlias x ps A) =
-  (word "type" ⊕ᵈ txt " " ⊕ᵈ word x ⊕ᵈ spaced ps ⊕ᵈ txt " =" ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A)
+  (word "type" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ spaced ps ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A)
     >>=′ λ d → pure′ (group (nest indent d))
 pdecl (DSignature x A) =
-  (word "signature" ⊕ᵈ txt " " ⊕ᵈ word x ⊕ᵈ txt " :" ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A)
+  (word "signature" ⊕ᵈ ␣ ⊕ᵈ word x ⊕ᵈ ␣ ⊕ᵈ t S.TColon ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A)
     >>=′ λ d → pure′ (group (nest indent d))
 pdecl (DTypeSig x A) =
-  (name x ⊕ᵈ txt " :" ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A) >>=′ λ d → pure′ (group (nest indent d))
+  (name x ⊕ᵈ ␣ ⊕ᵈ t S.TColon ⊕ᵈ pure′ line ⊕ᵈ pty 0 true A) >>=′ λ d → pure′ (group (nest indent d))
 pdecl (DFunDef x e) with lams e
-... | ps , b = (name x ⊕ᵈ spaced ps ⊕ᵈ txt " =" ⊕ᵈ pure′ line ⊕ᵈ pex 0 true b)
+... | ps , b = (name x ⊕ᵈ spaced ps ⊕ᵈ ␣ ⊕ᵈ t S.TEquals ⊕ᵈ pure′ line ⊕ᵈ pex 0 true b)
                  >>=′ λ d → pure′ (group (nest indent d))
 
--- | A module: its declarations, one per line, each after the notes that
--- stand before it; the notes after the last anchor at the end.
+-- No blank line between a type signature and its definition, or between two
+-- imports; one between any other two declarations (D341).
+together : Decl → Decl → Bool
+together (DTypeSig x _) (DFunDef y _) = x == y
+together (DImport _)    (DImport _)   = true
+{-# CATCHALL #-}
+together _              _             = false
+
+-- | A module: its declarations, one per line, each under the comments that
+-- stand before it; the comments after the last anchor at the end.
 pmodule : Module → P Doc
-pmodule (mkModule ds) = go ds
+pmodule (mkModule ds) = go nothing ds
   where
-    go : List Decl → P Doc
-    go [] tv k = topNotes k (suc k) tv , k
-    go (d ∷ ds) tv k with pdecl d tv k
-    ... | dd , k′ with go ds tv k′
-    ...   | rest , k″ = (topNotes k k′ tv <> dd <> newline <> rest) , k″
+    gap : Maybe Decl → Decl → Doc
+    gap nothing  d = empty
+    gap (just p) d = if together p d then empty else blank
+    go : Maybe Decl → List Decl → P Doc
+    go prev [] tv k with topList k (suc k) tv
+    ... | ns = (if hasComment ns then (gapEnd prev <> topDoc ns) else empty) , k
+      where
+        gapEnd : Maybe Decl → Doc
+        gapEnd nothing  = empty
+        gapEnd (just _) = blank
+    go prev (d ∷ ds) tv k with pdecl d tv k
+    ... | dd , k′ with go (just d) ds tv k′
+    ...   | rest , k″ = (gap prev d <> lead prev (topList k k′ tv) <> dd <> newline <> rest) , k″
+      where
+        -- The comments before the first declaration are the file's: a blank
+        -- line between them and it.
+        lead : Maybe Decl → List Note → Doc
+        lead nothing  ns = if hasComment ns then topDoc ns <> blank else empty
+        lead (just _) ns = topDoc ns
 
 -- | A module in the canonical layout, with the comments of `items`.
 format : Module → List Item → String

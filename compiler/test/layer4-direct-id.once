@@ -1,3 +1,4 @@
 import I.Linux.Syscalls as S
+
 main : Act Unit Void
 main = exit@S (id 42)

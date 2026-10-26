@@ -1,6 +1,9 @@
 -- Layer 4: higher-order — twice f x = f (f x). Expected: exit 42.
+
 import I.Linux.Syscalls as S
+
 twice : (Int -> Int) -> Int -> Int
 twice f x = f (f x)
+
 main : Act Unit Void
 main = exit@S (twice id 42)

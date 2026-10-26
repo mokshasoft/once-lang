@@ -15,6 +15,7 @@
 -- Use --target c for full language support (primitives, strings, etc.)
 
 -- Identity function
+
 identity : Unit -> Unit
 identity = id
 

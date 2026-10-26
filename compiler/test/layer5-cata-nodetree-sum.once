@@ -16,6 +16,7 @@ import I.Linux.Syscalls as S
 --   node : Int * (Int * Int) -> Int          = left + value + right
 zeroI : Unit -> Int
 zeroI _ = 0
+
 nodeOp : Int * (Int * Int) -> Int
 nodeOp t = fst t + (fst (snd t) + snd (snd t))
 

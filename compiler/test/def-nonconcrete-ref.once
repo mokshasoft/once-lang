@@ -12,6 +12,7 @@ import I.Linux.Syscalls as S
 
 zeroI : Unit -> Int
 zeroI _ = 0
+
 incI : Int -> Int
 incI n = n + 1
 
@@ -22,6 +23,7 @@ three : Mu (K Unit + Id)
 three = In (inr (In (inr (In (inr (In (inl unit)))))))
 
 count = toInt
+
 num = three
 
 main : Act Unit Void

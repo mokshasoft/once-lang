@@ -15,7 +15,7 @@ import I.Linux.Syscalls as S
 val : Mu (K Int)
 val = In 42
 
--- algebra : (K Int applied to Int) -> Int  =  Int -> Int  = id
+-- algebra : (K Int applied to Int) -> Int = Int -> Int = id
 getInt : Mu (K Int) -> Int
 getInt = cata id
 

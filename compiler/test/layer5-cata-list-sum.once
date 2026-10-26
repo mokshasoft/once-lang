@@ -11,9 +11,10 @@
 
 import I.Linux.Syscalls as S
 
--- algebra : (Unit + (Int * Int)) -> Int   (cons's Id position is the folded tail)
+-- algebra : (Unit + (Int * Int)) -> Int (cons's Id position is the folded tail)
 zeroI : Unit -> Int
 zeroI _ = 0
+
 addPair : Int * Int -> Int
 addPair p = fst p + snd p
 

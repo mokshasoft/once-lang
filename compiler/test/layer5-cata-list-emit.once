@@ -22,7 +22,7 @@ import I.Test.Emit as E
 xs : Mu (K Unit + K Int * Id)
 xs = In (inr (3, In (inr (5, In (inl unit)))))
 
--- algebra : (Unit + (Int * Unit)) ->[eff] Unit  (nil: unit; cons: emit head)
+-- algebra : (Unit + (Int * Unit)) ->[eff] Unit (nil: unit; cons: emit head)
 emitAll : Act (Mu (K Unit + K Int * Id)) Unit
 emitAll = cata (case terminal (emit@E . fst))
 

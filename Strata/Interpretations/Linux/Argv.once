@@ -11,6 +11,7 @@
 ------------------------------------------------------------------------
 
 -- | Get the number of command-line arguments (argc)
+
 signature argc : Act Unit Int
 
 -- | Get argument at index 1 (first user argument), parsed as integer.

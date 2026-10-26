@@ -12,6 +12,7 @@
 
 -- Identity function: uses parameter exactly once
 -- Type checker should infer this as linear (One) or unrestricted (Many)
+
 testId : Unit -> Unit
 testId x = x
 

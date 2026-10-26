@@ -17,6 +17,7 @@
 -- The byte-writing implementation already existed, in a duplicate strata root
 -- used by `TraceSpec` alone; this is that implementation, promoted to be the
 -- only one.
+
 signature emit : Act Int Unit
 
 -- | The same for a `Float`, and observable for the same reason.
