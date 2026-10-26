@@ -134,14 +134,16 @@ classify s = go (toList s)
     go _ = verbatim s
 
 -- | A run of comment lines on lines of their own, each line ended.
+commentLinesDoc : List String → Doc
+
 commentRun : List String → Doc
-commentRun cs = go (concatMap commentLines cs)
-  where
-    go : List String → Doc
-    go []       = empty
-    go (c ∷ cs) with classify c
-    ... | prose ws   = para ws <> newline <> go cs
-    ... | verbatim v = cmt v <> newline <> go cs
+commentRun cs = commentLinesDoc (concatMap commentLines cs)
+
+-- | Line comments, each on a line of its own.
+commentLinesDoc []       = empty
+commentLinesDoc (c ∷ cs) with classify c
+... | prose ws   = para ws <> newline <> commentLinesDoc cs
+... | verbatim v = cmt v <> newline <> commentLinesDoc cs
 
 -- | An end-of-line comment, `-- text` (not re-wrapped); a block comment's
 -- lines joined.
