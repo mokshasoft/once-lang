@@ -44,26 +44,26 @@ open import Once.Spec.Signature using (⌜_⌝ᵈ)
 open import Once.Spec.Core.Syntax using (Schema; schema; _!!_; ref)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Internal.Type.Instance using (KindedInstance)
-open import Once.Internal.Type.Schema using (schemaOf; kinded-instance)
+open import Once.Type.Instance using (KindedInstance)
+open import Once.Type.Schema using (schemaOf; kinded-instance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Type using (wk₀; none; noResp)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Type.Core using (wk₀; none; noResp)
 open import Once.Spec.Type using (⟦_⟧F)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Postulates using (extensionality)
 open import Once.Functor.Translate using (Base-irrelevant)
-open import Once.Internal.Type.Sub using (·p-diag)
+open import Once.Type.Sub using (·p-diag)
 open import Once.Denotation.PureBind using (_>>=ᵖ_; >>=ᵖ-β; >>=ᵖ-idʳ)
-open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; Imports; PolyCtx)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 import Once.Denotation.RefMeanings Σ σ₀ as RM
 open RM using (MeaningsOf; Meanings)
 open RM.Meanings using (sigs; defs; entries)
 open import Once.Denotation.SpecDomain Σ σ₀
   using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ; M; bindM; returnM; subM; fmapM; cata-semᵛ; ana-semᵛ; ⟦_⟧<:ᵛ; loop; restrictᵛ; bindᵛ)
-open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Core.Decl using (declS; ⌜declS⌝)
 import Once.Spec.Domain Σ as SD
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Core.Meaning Σ fmt S as SM
@@ -179,12 +179,12 @@ diag-bind act  m k = refl
 -- environments, given their arms' bridges.
 ------------------------------------------------------------------------
 
-open import Once.Internal.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; ⊑ᵘ-*One; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-refl)
+open import Once.Context using (⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*Many; ⊑ᵘ-*One; _⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-refl)
 open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; _⊑ᵘ_; zeroUsage)
 open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
-open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
-open import Once.Internal.Core.DerivedTyping Σ S
+open import Once.Core.DerivedTyping Σ S
 open import Once.Type.Grade using (≤qᵇ→≤q)
 open import Once.Surface.Properties using (+ᵘ-identityʳ)
 

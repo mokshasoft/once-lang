@@ -32,12 +32,12 @@
 module Once.Adequacy.Compile where
 
 
-open import Once.Internal.Module using (ModuleTyped; moduleSig)
+open import Once.Module using (ModuleTyped; moduleSig)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
 import Data.List
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Data.Maybe using (Maybe; just; nothing; map)
 open import Data.Maybe.Relation.Binary.Pointwise as PW using (Pointwise)
 open import Data.String using (String)
@@ -58,7 +58,7 @@ open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 import Once.Spec.Observation as Obs
 open import Once.Adequacy.SpecInterp using (toInterp)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Core.Decl using (toISig)
 import Data.Unit
 open import Once.Internal.Trace using (PrefixFamily)
 open Once.Internal.Trace.PrefixFamily using (bnd; sat; coh)
@@ -81,7 +81,7 @@ open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 import Once.Denotation.SourceDenote as SD
 open import Once.Internal.Trace using (Interp; interp; module Interp)
 open Interp using (sig)
-open import Once.Internal.Contract using (ISig; Impl)
+open import Once.Contract using (ISig; Impl)
 open import Once.Internal.Event using (SigOpEvent)
 -- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
@@ -269,7 +269,7 @@ open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed)
 -- Plan 0.52: the NAMED front-end (lexer+parser) obligations. `_⊢R_` anchors on
 -- the INDEPENDENT `ParsesText` (the grammar/relational spec), so completeness is
 -- not front-end-vacuous; `compile` runs the executable `parseStrict`.
-import Once.Internal.Program
+import Once.Program
 import Once.Adequacy.ResolveBridge as RBR
 import Once.Adequacy.FrontEndBridge as FB
 
@@ -376,7 +376,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   -- The typed program and its parse relation are the Spec's (plan 0.81), and
   -- world-free: typing does not run anything.
-  open Once.Internal.Program public using (Typed; _⊢R_)
+  open Once.Program public using (Typed; _⊢R_)
 
   -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
   -- below are exactly proofs at this relation.
@@ -733,7 +733,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- is DERIVED from these by `MC.moduleToIR-complete` (which routes through the
     -- proven `check-complete` — so completeness now forces row-1b), and the
     -- predicate is PRODUCED for soundness by `MC.moduleToIR-sound`.
-    -- Plan 0.81: `Typed` and `_⊢R_` MOVED to `Once.Internal.Program`. They fill
+    -- Plan 0.81: `Typed` and `_⊢R_` MOVED to `Once.Program`. They fill
     -- `CorrectCompiler`'s abstract `Typed`/`_⊢_`, so they ARE the statement of
     -- the theorem and belong inside the trust boundary, not in a proof module.
     -- Neither mentions the architecture, so neither belonged in `WithCPU`

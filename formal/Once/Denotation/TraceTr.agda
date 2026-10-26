@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as V
 open import Once.Internal.Event using (SigOpEvent; toEvent)
-open import Once.Internal.Res using (Res; stopped; returns)
+open import Once.Res using (Res; stopped; returns)
 open import Once.Internal.Trace using (T; ret; call; halt; CallOp; Interp; callAnswer; callEvent; haltEvent; unlinkedOp; run; run-call)
 open CallOp using (cdom; ccod)
 open import Once.Internal.Iterative using (T∞)

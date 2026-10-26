@@ -40,13 +40,13 @@ open import Once.Spec.Core.Derived
 open import Once.Spec.Core.Typing Σ S
 open import Once.Postulates using (extensionality)
 open import Once.Functor.Translate using (Base-irrelevant)
-open import Once.Internal.Laws.SubLaws using (<:-unique)
-open import Once.Internal.Type.Sub using (·p-diag)
+open import Once.Laws.Sub using (<:-unique)
+open import Once.Type.Sub using (·p-diag)
 import Once.Metatheory.TermModel.TySubst Σ S as TS
-open import Once.Internal.Core.TySubstRen Σ S using (module Deriv)
+open import Once.Core.TySubstRen Σ S using (module Deriv)
 open Deriv σ rσ
-import Once.Internal.Core.DerivedTyping Σ S as DT
-open import Once.Internal.Core.DerivedSubst Σ S σ rσ
+import Once.Core.DerivedTyping Σ S as DT
+open import Once.Core.DerivedSubst Σ S σ rσ
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;
                cmp-lt; cmp-le; cmp-gt; cmp-ge; cmp-eq; cmp-ne)
@@ -57,8 +57,8 @@ import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ′ as C′
 open import Once.TypeCheck.WitnessSubst Σ S nm Ok OkS Δ Δ′ σ rσ
   using (_⟨_⟩ˡ; subW⇒; subW⇐; subW↦; ≡W⇒; ≡W⇐; ≡W↦; ∘τ; ⌜⌝ᵈ-⟨⟩; ↑-⟨⟩; ⊔-⟨⟩; compose-⟪⟫; pair-⟪⟫; case-⟪⟫; ana-⟪⟫; effApp-⟪⟫)
 import Once.TypeCheck.Witness Σ S nm Ok OkS Δ′ as W′
-open import Once.Internal.Core.Decl using (declS)
-open import Once.Internal.Type.Sub using (pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Core.Decl using (declS)
+open import Once.Type.Sub using (pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
 open _⊔_≔_ using (left; right)
 open import Once.Spec.Grade using (fin)

@@ -13,7 +13,7 @@
 -- `Once.TypeCheck.Completeness` for the 30 s per-module check budget.
 open import Once.Spec.Type using (WFFun)
 open import Once.Spec.Type using (Ty; Fun)
-open import Once.Internal.Type using (wk₀)
+open import Once.Type.Core using (wk₀)
 import Once.Spec.Type as T
 open import Once.Functor.Decide using (wfFun?)
 open import Once.Spec.Type using (var; Ty)
@@ -22,7 +22,7 @@ import Once.Type.Grade
 module Once.TypeCheck.Completeness.Rules where
 
 
-import Once.Internal.Context as Srf
+import Once.Context as Srf
 open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; zeroUsage)
 open import Data.Nat using (ℕ)
 open import Data.String using (String; _++_)
@@ -35,20 +35,20 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Data.String.Properties as StrProp using ()
 open import Once.Spec.Grade as T using (Quantity; _≤q_; Zero; One; Many)
 open import Once.Spec.Type as T using (Type; Unit; Int; Void; Float; _*_; _+_; _⇒[_]_)
-import Once.Internal.Type as T
+import Once.Type.Core as T
 open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RInt; RUnit; RAnnot; RPair)
 import Once.Spec.Surface.Syntax as Syn
 import Once.TypeCheck.Raw as Raw
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator; GenWord)
-open import Once.Internal.Name using (showCanonical; WordName; wordNameB)
+open import Once.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (via; apply-pure; apply-eff; apply-act; withUnit-elim)
 open import Once.TypeCheck.Elaborate using (inferElab; success; inferElabV-RResolved-aux; inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux; inferElabV-RResolved-own-aux; inferElabV; negOperandView; nov-int; nov-float; nov-other; checkElab; checkElabV; inferElabV-RVar-lookup-aux; VerifiedInferResult; inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
-import Once.Internal.Typing.Scope as Classify
+import Once.TypeCheck.Scope as Classify
 import Once.TypeCheck.Elaborate as E
 import Data.Unit
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (Base; WFFun; ∅ₖ)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
@@ -56,7 +56,7 @@ open import Once.TypeCheck.DeciderComplete
   using (wfFun?-complete-at)
 open import Once.Functor.Decide using (isConcrete?; isBaseType?; isConcrete?-complete; isBaseType?-complete)
 import Once.Spec.Context as Surface
-import Once.Internal.Context as Surface
+import Once.Context as Surface
 import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
@@ -69,10 +69,10 @@ open import Once.Spec.Grade using (_⊑π_)
 import Data.String.Properties
 
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
-open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Type.DecEq using (_≟T_)
 open import Once.Spec.Sub using (_⊔_≔_)
-open import Once.Internal.Type.Join using (join?-complete)
-open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
+open import Once.Type.Join using (join?-complete)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; AppHeadView; classifyAppHeadView; classifyAppHead; ahv-other)
 open import Once.TypeCheck.Classify using (GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ElaborateProofs using (inferOutGo-J)

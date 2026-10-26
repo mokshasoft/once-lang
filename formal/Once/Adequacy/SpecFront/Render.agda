@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Internal.Name using (showCanonical; noDotB; wordCharsB; wordB; wordsB; WordName)
+open import Once.Name using (showCanonical; noDotB; wordCharsB; wordB; wordsB; WordName)
 open import Once.Postulates using (toList-++; toList∘fromList)
 
 private

@@ -16,11 +16,11 @@ open import Once.Spec.Type using (Ty; Fun)
 open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (Fun; μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
 open import Once.IR
 -- plan 0.98: RED, and the red is the work-list. This module is stated over

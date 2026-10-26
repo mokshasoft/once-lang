@@ -69,7 +69,7 @@ open import Once.Internal.Value Carrier Carrier using (coerce-base-to-full)
 open import Once.Semantics.ValueIR Carrier Carrier using (base-coh)
 open import Once.Postulates using (extensionality)
 open import Data.Sum using (_⊎_)
-import Once.Internal.Type as TT
+import Once.Type.Core as TT
 import Once.Spec.Type as TT
 import Once.Type as TT
 import Once.IRTy as II

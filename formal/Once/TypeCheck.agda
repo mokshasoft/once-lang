@@ -38,7 +38,7 @@ open import Once.TypeCheck.Classify using (emptyCtx)
 -- Thinning operations (weaken, exchange)
 
 -- Surface syntax (for empty context S∅)
-open import Once.Internal.Context using ()
+open import Once.Context using ()
 open import Once.Spec.Context using () renaming (∅ to S∅)
 
 -- Proof-bundled public API.

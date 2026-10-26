@@ -52,7 +52,7 @@ open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.IRTy using (IRTy)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.IR.Ref using (refIR)
-import Once.Internal.Context as Srf
+import Once.Context as Srf
 import Once.Spec.Context as Srf
 import Once.Spec.Context as SCx
 import Once.Surface.Syntax as Srf
@@ -67,7 +67,7 @@ open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Denotation.RefMeanings Σ σ₀ using (DefMeanings; ImpMeanings)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports)
+open import Once.TypeCheck.Scope using (PolyCtx; lookupPolyPrefix; Imports)
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
 open import Once.Adequacy.TelePosition using (lookup-skip; lookup-head)
 open import Once.TypeCheck.Elaborate using (success; failure; checkElabV; VerifiedCheckResult)

@@ -26,7 +26,7 @@ open import Once.Parser.Module.Core using (wordHead)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias)
 open import Once.Parser.Module.DeclTail using (taEqHead; taDrop1)
 open import Once.Parser.TypeRelation using (ParsesType)
-open import Once.Internal.Type.Poly using (polyOf)
+open import Once.Type.Poly using (polyOf)
 
 ------------------------------------------------------------------------
 -- Param scanner `param* = Type` (params accumulator). Bottoms at `ParsesType`.

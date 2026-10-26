@@ -38,10 +38,10 @@ import Once.Spec.Core.Derived
 open import Function using (_$_)
 open import Once.Spec.Core.Syntax using (Tm; _⟪_⟫ₜ; _!!_; coerce; module Schema)
 open Schema using (type)
-open import Once.Internal.Core.Decl using (declS)
+open import Once.Core.Decl using (declS)
 import Once.Spec.Core.Syntax
 open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩)
-open import Once.Internal.Type.Join using (Joins; j-refl; j-voidˡ; j-voidʳ; j-prod; j-sum; j-arr; j-ν; sound; complete)
+open import Once.Type.Join using (Joins; j-refl; j-voidˡ; j-voidʳ; j-prod; j-sum; j-arr; j-ν; sound; complete)
 open import Once.Spec.Sub using (_⊔_≔_)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ∅; _▹_∶_; _∋_⦂_at_; here; there; ↑)
@@ -119,7 +119,7 @@ module _ where
 -- The combinators that weaken commute with the substitution.
 private
   module DV = Once.Spec.Core.Derived
-open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk)
+open import Once.Core.TySubstRen Σ S using (⟪⟫-wk)
 open import Once.Spec.Core.Syntax using (wk; let′; lam; app; unfold; var; roll)
 open import Data.Fin using (zero)
 open import Once.Spec.Grade using (One)

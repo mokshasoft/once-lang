@@ -16,7 +16,7 @@
 module Once.TypeCheck.Elaborate where
 
 import Once.Spec.Context
-open import Once.Internal.Type using (wk₀)
+open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (var; Ty; KCtx; Base)
 open import Data.String using (String; _++_)
@@ -36,10 +36,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
 -- with Once.Type's (opened above). Hide the IRTy object/functor constructors
@@ -49,7 +49,7 @@ open import Once.IR as IR
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Spec.Name using (CanonicalName; canonical; own; bare; gen; NotGenerator; GenWord)
-open import Once.Internal.Name using (showCanonical; WordName; wordNameB)
+open import Once.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?)
 import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
@@ -65,33 +65,33 @@ open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; An
   BinOpLeftError; BinOpRightError;
   UnboundVariable; UnboundQualified; NonConcreteSigOpType)
 import Once.TypeCheck.Context
-open import Once.Internal.Context as Surface using ()
+open import Once.Context as Surface using ()
 import Once.Spec.Context as Surface
 open import Once.Spec.Context using () renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Spec.Context using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Elaborate as Elab using ()
 
-open import Once.Internal.Typing.Scope
+open import Once.TypeCheck.Scope
 open import Once.TypeCheck.SpecWitness
 open import Once.TypeCheck.Classify
-import Once.Internal.Type.WellFormed
+import Once.Type.Concrete
 open import Once.Spec.Type using (Base; ∅ₖ)
 import Once.Spec.Type
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-fun)
+open import Once.Type.Concrete using (IsConcrete; con-fun)
 open import Once.Functor.Decide using (wellFormedF?; wfFun?; isConcrete?; isBaseType?)
 open import Once.Spec.Float.Decimal using (decimalOf)
 import Once.Spec.Float.Decimal as Decimal
 open import Once.Spec.Sub using (_<:_; sub-arr)
 open import Once.Spec.Grade using (_⊑π_)
-open import Once.Type.Sub using (_<:?_; _⊑π?_)
-open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
-open import Once.Internal.Type.DecEq using (_≟T_)
-open import Once.Internal.Type.Join using (Join?; joined; apart; join?; sound)
+open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
+open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.Type.Join using (Join?; joined; apart; join?; sound)
 open Once.Spec.Sub._⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Match using (Subst; instantiate)
-open import Once.Type.Instance using (instantiate-sound)
-open import Once.Internal.Type.Instance using (KindedInstance)
+open import Once.Type.MatchCorrect using (instantiate-sound)
+open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (kindedInstance?)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
@@ -101,7 +101,7 @@ open import Once.TypeCheck.TargetView
 -- Type Equality (Decidable with proof)
 ------------------------------------------------------------------------
 
--- Plan 0.99: decidable Functor/Type equality lives in `Once.Internal.Type.DecEq`.
+-- Plan 0.99: decidable Functor/Type equality lives in `Once.Type.DecEq`.
 
 -- | Decide whether `T` is a pure-arrow-to-`Int` — the value-lift target for
 -- an integer literal (Plan 0.41 / D018). Returning the equality witness as a

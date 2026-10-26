@@ -16,7 +16,7 @@
 module Once.Adequacy.MainBuilds where
 
 import Once.TypeCheck.SpecWitness
-import Once.Internal.Context as Srf
+import Once.Context as Srf
 
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
@@ -28,9 +28,9 @@ open import Data.Product using (Σ-syntax; _,_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Internal.Type.Honest using (honest?)
-open import Once.Internal.Type.Instance using (rigidOf; arityOf; kindsOf)
-open import Once.Internal.Principal using (below)
+open import Once.Type.Honest using (honest?)
+open import Once.Type.Instance using (rigidOf; arityOf; kindsOf)
+open import Once.Principal using (below)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -42,14 +42,14 @@ open import Once.Spec.Type using (Unit)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-import Once.Internal.Type as Type
+import Once.Type.Core as Type
 import Once.Spec.Type as Type
 import Once.Spec.Name
 open import Once.Compile using (moduleToIR; moduleToIR-aux)
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
-import Once.Internal.Typing.Scope as Classify
-open import Once.Internal.Type.DecEq using (_≟T_)
+import Once.TypeCheck.Scope as Classify
+open import Once.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Classify as Classify
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Target.Arch using (Arch)

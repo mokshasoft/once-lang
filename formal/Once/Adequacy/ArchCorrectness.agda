@@ -86,7 +86,7 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
-open import Once.Internal.Module using (moduleSig)
+open import Once.Module using (moduleSig)
 import Once.Parser.Module.Core as P
 
 import Once.Adequacy.FileWF as FileWF

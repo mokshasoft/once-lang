@@ -33,9 +33,9 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CanonicalName
-import qualified MAlonzo.Code.Once.Internal.Name
-import qualified MAlonzo.Code.Once.Internal.ResolvedRefs
+import qualified MAlonzo.Code.Once.Name
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.ResolvedRefs
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
@@ -870,7 +870,7 @@ d_sigsOf_710 v0 v1
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
-                          MAlonzo.Code.Once.Internal.Name.d_showCanonical_6
+                          MAlonzo.Code.Once.Name.d_showCanonical_4
                           (coe
                              MAlonzo.Code.Once.Spec.Name.C_canonical_12
                              (coe
@@ -1021,9 +1021,7 @@ d_consDecl_790 v0 v1
          MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_114 v3 v4
            -> coe
                 d_consDecl'45'at_796 (coe v3) (coe v4)
-                (coe
-                   MAlonzo.Code.Once.Internal.ResolvedRefs.d_goodRefs'63'_106
-                   (coe v4))
+                (coe MAlonzo.Code.Once.ResolvedRefs.d_goodRefs'63'_104 (coe v4))
                 (coe v1)
          _ -> coe v2)
 -- Once.Parser.Module.Resolve.consDecl-at

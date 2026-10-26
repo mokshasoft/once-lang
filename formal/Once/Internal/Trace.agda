@@ -43,20 +43,20 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
-open import Once.Internal.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
+open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type using (isUnit?)
-import Once.Internal.Type as SpecTy
+open import Once.Type.Core using (isUnit?)
+import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
 open import Once.Spec.Name using (CanonicalName; gen)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent; mk-event)
-open import Once.Internal.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
+open import Once.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
 
 ------------------------------------------------------------------------
 -- The operations: one universal signature, keyed by the SigOp's identity

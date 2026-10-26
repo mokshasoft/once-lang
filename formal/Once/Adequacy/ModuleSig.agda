@@ -21,11 +21,11 @@ open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; trans; cong; subst)
 
 open import Once.Spec.Signature using (Signature; _∶_)
-open import Once.Internal.Contract using (ISig)
-open import Once.Internal.Core.Decl using (declS)
-open import Once.Internal.Module using (ModTele; teleSig)
+open import Once.Contract using (ISig)
+open import Once.Core.Decl using (declS)
+open import Once.Module using (ModTele; teleSig)
 open import Once.Adequacy.SpecFront.Render using (parseC; parse-render)
-import Once.Internal.Core.Translate as TR
+import Once.Core.Translate as TR
 
 -- The declarations, each under the name its rendering reads back to.
 sigOf : ISig → Signature

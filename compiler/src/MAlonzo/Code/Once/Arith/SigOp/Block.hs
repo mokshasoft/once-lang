@@ -29,8 +29,8 @@ import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.Type
 import qualified MAlonzo.Code.Once.Internal.Polynomial
-import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Value
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Float.Arith
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
@@ -298,7 +298,7 @@ d_sem'45'CoOut_82 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Type.T_WFFun_118 ->
   MAlonzo.Code.Once.Internal.Polynomial.T_νS_98 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  MAlonzo.Code.Once.Res.T_Res_6
 d_sem'45'CoOut_82 v0 v1 v2 v3 v4
   = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'CoOut_634 v2 v3 v4
 -- Once.Arith.SigOp.Block.M.sem-In
@@ -323,7 +323,7 @@ d_sem'45'ana_88 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   AgdaAny -> MAlonzo.Code.Once.Internal.Polynomial.T_νS_98
 d_sem'45'ana_88 v0 v1 v2 v3 v4
   = coe
@@ -365,9 +365,8 @@ d_semAnaLayer_96 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
+  MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
 d_semAnaLayer_96 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Internal.Value.du_semAnaLayer_666 v0 v1 v3 v4
@@ -377,8 +376,7 @@ d_sfmapSemAna_98 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  AgdaAny -> AgdaAny
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
 d_sfmapSemAna_98 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Internal.Value.du_sfmapSemAna_676 v0 v1 v2 v4 v5

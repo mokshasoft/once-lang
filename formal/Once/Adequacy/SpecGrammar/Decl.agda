@@ -72,7 +72,7 @@ open import Once.Adequacy.SpecGrammar.DeclHeads
 open import Once.Adequacy.SpecGrammar.ExprHeads using (StrHead; str-head)
 open import Once.Adequacy.SpecGrammar.Expr using (expr→; expr←)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
-open import Once.Internal.Type.Poly using (polyOf)
+open import Once.Type.Poly using (polyOf)
 open import Once.Adequacy.SpecGrammar.SigTypes using (sig→; sig←)
 open import Once.Adequacy.SpecGrammar.GroundTypes using (alias→; alias←)
 

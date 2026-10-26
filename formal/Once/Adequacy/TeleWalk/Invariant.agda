@@ -17,7 +17,7 @@ open import Once.Internal.Trace using (Interp; pureHalf)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List using (map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 import Once.Spec.Observation as Obs
 
 -- Plan 0.105: at an interpretation — the meaning and the compiled program run
@@ -55,8 +55,8 @@ open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type.Instance using (KindedInstance)
-open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Type.Instance using (KindedInstance)
+open import Once.Type.Honest using (HonestFFI)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -66,42 +66,42 @@ open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
-import Once.Internal.Context as Ctx
+import Once.Context as Ctx
 import Once.Spec.Context as Ctx
 import Once.Surface.Syntax as Srf
-open import Once.Internal.Typing.Scope using (Imports)
-open import Once.Internal.Type.Instance using (rigidOf)
+open import Once.TypeCheck.Scope using (Imports)
+open import Once.Type.Instance using (rigidOf)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoWit)
+open import Once.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoWit)
 open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; monoBody; packOf; packOfAt; polyDef; PolyWit)
 open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; ok-gen; ok-sig; ok-inj; oks-fun)
 import Once.Adequacy.ScopeRefs as SR
-import Once.Internal.Type
+import Once.Type.Core
 import Once.Adequacy.MeaningBridgeS
 import Once.Spec.Effect Σ as SE
 open import Once.Spec.Type using (KCtx; ∅ₖ; TySub; Respects)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Name using (WordName)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Name using (WordName)
 open import Once.Spec.Signature using (_∶_)
-open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Core.Decl using (declS; ⌜declS⌝)
 open import Once.Spec.Core.Syntax using (Defs; _▷_; _!!_; Schema)
 open import Once.Spec.Core.Program Σ using (Tele; def; noVars)
 open import Once.Internal.Core.Telescope Σ using (teleSem; teleSem-model)
 import Once.Spec.Core.Meaning as SM
 import Once.Spec.Domain Σ as SDm
 import Once.Metatheory.TermModel.TySubst as TS
-import Once.Internal.Core.TySubstZero as TZ
+import Once.Core.TySubstZero as TZ
 open import Once.Spec.Type.Substitution using (⟨⟩-∘)
 open import Once.Spec.Type using (_⟨_⟩)
 open import Once.Functor.Translate using (Base-irrelevant)
 import Once.Adequacy.SpecSig as SSg
 open import Once.Denotation.DenotTrace using (CallEnv)
-open import Once.Internal.Type.Schema using (schemaOf)
-open import Once.Internal.Type.Instance using (kindsOf)
-open import Once.Internal.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; viewOf; monoSchema)
-import Once.Internal.Core.Translate Σ as TR
+open import Once.Type.Schema using (schemaOf)
+open import Once.Type.Instance using (kindsOf)
+open import Once.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; i-def; impDefs; t-def; wkI; wkT; viewOf; monoSchema)
+import Once.Core.Translate Σ as TR
 open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
@@ -111,8 +111,8 @@ import Once.Adequacy.CoreEnv as CE
 import Once.Adequacy.CoreMeaningBridge as CMB
 import Once.Adequacy.MonoEntry as ME
 import Once.TypeCheck.View as TView
-open import Once.Internal.Type using (none; noResp)
-open import Once.Internal.Type.Schema using (kinded-instance)
+open import Once.Type.Core using (none; noResp)
+open import Once.Type.Schema using (kinded-instance)
 open import Once.Postulates using (extensionality)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 open import Function using (id)
@@ -255,7 +255,7 @@ inv-sig {tl = tl} {ss} {k = k} {h} {m} inv = record
 
 private
   -- The splice of a telescope body is the checker's term at the instance, resolved.
-  splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.Internal.Typing.Scope.PolyCtx) (y : String)
+  splice-form : ∀ (I : String → TopCtx) (uf : Imports) (pre : Once.TypeCheck.Scope.PolyCtx) (y : String)
                   {Xs : TopCtx} {b : _} {A : Type} {se : _} {d f : ℕ}
                   (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys Xs pre) b A)
                   (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
@@ -350,7 +350,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
                 (Pack.h-imp P) (Pack.h-imp-call P) (Pack.h-poly P) (Pack.h-poly-inline P) δ ρ (CE.agree fmt Σ S σ₀ δ ss is ts)
                 (Inv.rel inv [] [] (C.declImps (C.CScope.ctele csc)) (Inv.iself inv) uf)
     ; sigop = λ {c} {T} mem k h →
-        SR.RelGM-≅ fmt Σ σ₀ σx σx-self {A = Once.Internal.Type.wk₀ {0} T} {B = Once.Internal.Type.wk₀ {0} T} refl
+        SR.RelGM-≅ fmt Σ σ₀ σx σx-self {A = Once.Type.Core.wk₀ {0} T} {B = Once.Type.Core.wk₀ {0} T} refl
           (H.trans (H.≡-subst-removable (SE.M Once.Spec.Grade.pure) (sym (⟦wk₀⟧ᵛ T)) _) (H.≡-subst-removable id (⟦wk₀⟧ᵛ T) _))
           H.refl
           (RelGM-wk₀ {π = Once.Spec.Grade.pure} {A = T}
@@ -586,7 +586,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N W inv fr = rec
           { entry = SR.refs-entry fmt Σ σ₀ σo (σW-self tbl (C.cpolys csc) I uf) ctx (Names.nm N) (Names.inline N) V (OkSOf P)
                       (Pack.h-imp P) (Pack.h-imp-call P) (Pack.h-poly P) (Pack.h-poly-inline P) δ ρ (CE.agree fmt Σ S σ₀ δ ss is ts) old
           ; sigop = λ {c} {T} mem k h →
-              SR.RelGM-≅ fmt Σ σ₀ σo (σW-self tbl (C.cpolys csc) I uf) {A = Once.Internal.Type.wk₀ {0} T} {B = Once.Internal.Type.wk₀ {0} T} refl
+              SR.RelGM-≅ fmt Σ σ₀ σo (σW-self tbl (C.cpolys csc) I uf) {A = Once.Type.Core.wk₀ {0} T} {B = Once.Type.Core.wk₀ {0} T} refl
                 (H.trans (H.≡-subst-removable (SE.M Once.Spec.Grade.pure) (sym (⟦wk₀⟧ᵛ T)) _) (H.≡-subst-removable id (⟦wk₀⟧ᵛ T) _))
                 H.refl
                 (RelGM-wk₀ {π = Once.Spec.Grade.pure} {A = T}

@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Spec.Grade using (Quantity; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Typing.Scope using (Binding; mkBinding; Ctx)
+open import Once.TypeCheck.Scope using (Binding; mkBinding; Ctx)
 open Binding
 
 ------------------------------------------------------------------------

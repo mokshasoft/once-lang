@@ -38,7 +38,7 @@ open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
-open import Once.Internal.Res using (Res; stopped; returns; is-stopped)
+open import Once.Res using (Res; stopped; returns; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenIter; run-approx-iter; done-≤; done-value)
 import Once.Internal.Trace as TM
 import Data.List.Properties as DLP

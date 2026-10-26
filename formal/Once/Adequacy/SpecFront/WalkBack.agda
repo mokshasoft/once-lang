@@ -23,14 +23,14 @@ open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Spec.Type as LT
-import Once.Internal.Type.WellFormed as LW
-open import Once.Internal.Type using (wk₀)
+import Once.Type.Concrete as LW
+open import Once.Type.Core using (wk₀)
 import Once.Spec.Type as ST
-open import Once.Internal.Typing.Scope using (Imports; lookupImport)
+open import Once.TypeCheck.Scope using (Imports; lookupImport)
 
 module Once.Adequacy.SpecFront.WalkBack
   (Σ : Signature) (ps : List String) (sg : Imports)
@@ -46,7 +46,7 @@ open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 
 import Once.Spec.Core.Program Σ as SP
-import Once.Internal.Context as LCx
+import Once.Context as LCx
 import Once.Spec.Context as LCx
 import Once.Spec.Core.Syntax as SC
 open SC.Schema using (arity; kinds; type)
@@ -54,9 +54,9 @@ import Once.Spec.Surface.Program as SPr
 import Once.Spec.Grade as SG
 import Once.Spec.Context as SCx
 import Once.Spec.Sub as SS
-open import Once.Internal.Principal using (PrincipalAt)
-open import Once.Internal.Module using (Scope; scope; ctxOf; ctxOfAt)
-open import Once.Internal.Core.Translate Σ using (SigSig; ImpSig; TeleSig; viewOf)
+open import Once.Principal using (PrincipalAt)
+open import Once.Module using (Scope; scope; ctxOf; ctxOfAt)
+open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig; viewOf)
 import Once.Spec.Surface.Typing
 import Once.Spec.Core.Typing
 open import Once.Adequacy.SpecFront.Expr using (RX)
@@ -66,7 +66,7 @@ import Once.Adequacy.SpecFront.TyRen as TyRen
 import Once.Metatheory.TermModel.TySubst as TySubst
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (WInv)
 open import Once.Adequacy.SpecFront.Def Σ ps sg h-sig h-psig h-word using (body-check←; body-synth←; principal←)
-open import Once.Internal.Module using (CheckRun; MonoWit)
+open import Once.Module using (CheckRun; MonoWit)
 open import Once.Adequacy.ModuleProgram Σ using (Names)
 
 ------------------------------------------------------------------------
@@ -181,12 +181,12 @@ module Step {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps
 open import Data.List.Relation.Unary.All using (All; _∷_)
 open import Data.Sum using (inj₂)
 open import Data.Bool using (false)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
-open import Once.Internal.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoSchema)
+open import Once.Module using (ModTele; []; ffi; mono; poly; addImp; addPoly)
+open import Once.Core.Translate Σ using (t-def; wkI; wkT; impDefs; monoSchema)
 open import Once.Adequacy.ModuleProgram Σ using (names-mono; names-poly; monoDef; polyDef)
-open import Once.Internal.Type.Schema using (schemaOf)
-open import Once.Internal.Type.Instance using (kindsOf)
-import Once.Internal.Type.Instance
+open import Once.Type.Schema using (schemaOf)
+open import Once.Type.Instance using (kindsOf)
+import Once.Type.Instance
 import Once.Parser as Parser
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
@@ -197,7 +197,7 @@ open import Once.Adequacy.SpecFront.Walk Σ ps sg h-sig h-own-sig h-psig h-word 
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 open import Once.Adequacy.SpecFront.WalkMain Σ using (MainsW; MainW; entry-concrete)
 open import Once.Spec.Core.Program Σ using (Entry; entry; EffUU)
-open import Once.Internal.Module using (MainsEffUU; MainIn)
+open import Once.Module using (MainsEffUU; MainIn)
 import Once.Spec.Sub as LS
 import Once.Spec.Grade as LG
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly)

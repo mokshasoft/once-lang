@@ -26,11 +26,11 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν)
 import Once.Spec.Type as ST
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Internal.Res using (Res; stopped; returns; mapRes)
+open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Internal.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Internal.Polynomial

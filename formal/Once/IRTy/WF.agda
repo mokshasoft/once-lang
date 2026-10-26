@@ -15,7 +15,7 @@
 module Once.IRTy.WF where
 
 open import Once.IRTy
-import Once.Internal.Type.WellFormed as Tr
+import Once.Type.Concrete as Tr
 import Once.Spec.Type as Tr
 
 -- Base-type witness transports along `⌈_⌉`.

@@ -27,9 +27,7 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
-import qualified MAlonzo.Code.Once.Internal.Name
-import qualified MAlonzo.Code.Once.Internal.Type.Sub
-import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
+import qualified MAlonzo.Code.Once.Name
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
@@ -41,6 +39,8 @@ import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Surface.Typing
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.Type.Concrete
+import qualified MAlonzo.Code.Once.Type.Sub
 import qualified MAlonzo.Code.Once.TypeCheck.Use
 
 -- Once.Denotation.RealizeS.SU.Locals
@@ -151,10 +151,10 @@ du_ref_728 v0 v1 v2
   = if coe v2
       then coe
              MAlonzo.Code.Once.Surface.Syntax.C_poly_406
-             (MAlonzo.Code.Once.Internal.Name.d_showCanonical_6 (coe v0 v1))
+             (MAlonzo.Code.Once.Name.d_showCanonical_4 (coe v0 v1))
       else coe
              MAlonzo.Code.Once.Surface.Syntax.C_closure_396
-             (MAlonzo.Code.Once.Internal.Name.d_showCanonical_6 (coe v0 v1))
+             (MAlonzo.Code.Once.Name.d_showCanonical_4 (coe v0 v1))
 -- Once.Denotation.RealizeS.realize⇒
 d_realize'8658'_754 ::
   [MAlonzo.Code.Once.Spec.Signature.T_Decl_114] ->
@@ -364,7 +364,7 @@ du_realize'8658'_754 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                 (coe
                                                    MAlonzo.Code.Once.Surface.Syntax.C_coerce_380 v54
                                                    (coe
-                                                      MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''8658''60''58'_64
+                                                      MAlonzo.Code.Once.Type.Sub.du_'60''58''7580''8658''60''58'_62
                                                       (coe v54) (coe v11)
                                                       (coe
                                                          MAlonzo.Code.Once.Spec.Sub.d_left_166
@@ -391,7 +391,7 @@ du_realize'8658'_754 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                 (coe
                                                    MAlonzo.Code.Once.Surface.Syntax.C_coerce_380 v58
                                                    (coe
-                                                      MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''8658''60''58'_64
+                                                      MAlonzo.Code.Once.Type.Sub.du_'60''58''7580''8658''60''58'_62
                                                       (coe v58) (coe v11)
                                                       (coe
                                                          MAlonzo.Code.Once.Spec.Sub.d_right_168
@@ -2113,7 +2113,7 @@ du_realize'8614'_794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                          (coe
                                             MAlonzo.Code.Once.Spec.Sub.C_sub'45'arr_40 v48
                                             (coe
-                                               MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''45'refl_34
+                                               MAlonzo.Code.Once.Type.Sub.du_'60''58''45'refl_32
                                                (coe v13))
                                             v49)
                                          (coe
@@ -2157,10 +2157,10 @@ du_realize'8614'_794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                 (coe
                                                    MAlonzo.Code.Once.Spec.Sub.C_sub'45'arr_40
                                                    (coe
-                                                      MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''45'refl_34
+                                                      MAlonzo.Code.Once.Type.Sub.du_'60''58''45'refl_32
                                                       (coe v11))
                                                    (coe
-                                                      MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''45'refl_34
+                                                      MAlonzo.Code.Once.Type.Sub.du_'60''58''45'refl_32
                                                       (coe v13))
                                                    v65)
                                                 (coe du_ref_728 (coe v3) (coe v47) (coe v4 v47))
@@ -2278,11 +2278,11 @@ du_realize'8614'_794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                                                       (coe
                                                                                          MAlonzo.Code.Once.Spec.Sub.C_sub'45'arr_40
                                                                                          (coe
-                                                                                            MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''45'refl_34
+                                                                                            MAlonzo.Code.Once.Type.Sub.du_'60''58''45'refl_32
                                                                                             (coe
                                                                                                v40))
                                                                                          (coe
-                                                                                            MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''8658''60''58'_64
+                                                                                            MAlonzo.Code.Once.Type.Sub.du_'60''58''7580''8658''60''58'_62
                                                                                             (coe
                                                                                                v52)
                                                                                             (coe
@@ -2291,7 +2291,7 @@ du_realize'8614'_794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                                                                MAlonzo.Code.Once.Spec.Sub.d_left_166
                                                                                                (coe
                                                                                                   v76)))
-                                                                                         (MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_14
+                                                                                         (MAlonzo.Code.Once.Type.Sub.d_'8849'π'45'refl_12
                                                                                             (coe
                                                                                                v12)))
                                                                                       (coe
@@ -2330,11 +2330,11 @@ du_realize'8614'_794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                                                       (coe
                                                                                          MAlonzo.Code.Once.Spec.Sub.C_sub'45'arr_40
                                                                                          (coe
-                                                                                            MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''45'refl_34
+                                                                                            MAlonzo.Code.Once.Type.Sub.du_'60''58''45'refl_32
                                                                                             (coe
                                                                                                v41))
                                                                                          (coe
-                                                                                            MAlonzo.Code.Once.Internal.Type.Sub.du_'60''58''7580''8658''60''58'_64
+                                                                                            MAlonzo.Code.Once.Type.Sub.du_'60''58''7580''8658''60''58'_62
                                                                                             (coe
                                                                                                v63)
                                                                                             (coe
@@ -2343,7 +2343,7 @@ du_realize'8614'_794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                                                                MAlonzo.Code.Once.Spec.Sub.d_right_168
                                                                                                (coe
                                                                                                   v76)))
-                                                                                         (MAlonzo.Code.Once.Internal.Type.Sub.d_'8849'π'45'refl_14
+                                                                                         (MAlonzo.Code.Once.Type.Sub.d_'8849'π'45'refl_12
                                                                                             (coe
                                                                                                v12)))
                                                                                       (coe

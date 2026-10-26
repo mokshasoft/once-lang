@@ -32,10 +32,10 @@ import Once.Spec.Type as SpT
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 import Once.Spec.Context
-open import Once.Internal.Context using (⟦_⟧ᶜ; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Context using (⟦_⟧ᶜ; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.Spec.Context using (Ctx; Usage; []; _⊑ᵘ_; lookup; singleUse; ∅)
-open import Once.Internal.Type using (wk₀)
-open import Once.Internal.Weaken using (wk₀-id)
+open import Once.Type.Core using (wk₀)
+open import Once.Weaken using (wk₀-id)
 open import Once.Spec.Polynomial using (inS)
 import Once.Spec.Effect Σ as SE
 open SE.νM using (outν)

@@ -37,7 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Spec.Grade using (Purity; mk-kind; Many; Finite; fin; act; eff)
 open import Once.Spec.Type using (Type; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
-import Once.Internal.Type as TT
+import Once.Type.Core as TT
 import Once.Spec.Type as TT
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; Ana)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋)
@@ -50,7 +50,7 @@ open import Once.Semantics.Machine using (coerce-ν-in; tF-coh; ⟦_⟧F)
 open import Once.Internal.Polynomial using (⟦_⟧SF; SFunctor)
 open import Once.Internal.StreamInf using (νᴵ; anaᴵ; anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
-open import Once.Internal.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-*Many)
+open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-*Many)
 open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Denotation.Phase using (restrictᴰ)

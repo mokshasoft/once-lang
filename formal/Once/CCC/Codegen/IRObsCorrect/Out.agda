@@ -29,12 +29,12 @@ import Once.IRTy
 import Once.IRTy as IRTy′
 import Once.IR
 open import Data.List.Properties using (++-identityʳ)
-open import Once.Internal.Res using (is-stopped)
+open import Once.Res using (is-stopped)
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Internal.Trace as TM
-open import Once.Internal.Res using (returns)
+open import Once.Res using (returns)
 open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 
 module OutC {FS : FrameSemantics} where

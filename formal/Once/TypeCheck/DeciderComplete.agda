@@ -36,7 +36,7 @@ open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
 
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; PTVar; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
-open import Once.Internal.Type.Poly using (Ground; GroundF)
+open import Once.Type.Poly using (Ground; GroundF)
 open import Once.Type using (isGround; isGroundF)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.Functor.Translate using (WFFun-irrelevant)

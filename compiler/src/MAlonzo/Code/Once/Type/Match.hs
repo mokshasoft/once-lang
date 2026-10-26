@@ -23,10 +23,10 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Maybe.Base
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.Internal.Type.DecEq
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Type.DecEq
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Type.Match.Subst
@@ -103,8 +103,8 @@ d_extendSubst'45'aux_52 v0 v1 v2 v3 v4
         -> coe
              du_decide_46
              (coe
-                MAlonzo.Code.Once.Internal.Type.DecEq.d__'8799'T__230 (coe v0)
-                (coe v2) (coe v5))
+                MAlonzo.Code.Once.Type.DecEq.d__'8799'T__228 (coe v0) (coe v2)
+                (coe v5))
              (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
@@ -343,8 +343,8 @@ d_instantiateAcc_104 v0 v1 v2 v3
                                     -> coe
                                          du_decide_46
                                          (coe
-                                            MAlonzo.Code.Once.Internal.Type.DecEq.d__'8799'q__8
-                                            (coe v5) (coe v10))
+                                            MAlonzo.Code.Once.Type.DecEq.d__'8799'q__6 (coe v5)
+                                            (coe v10))
                                          (coe
                                             MAlonzo.Code.Data.Maybe.Base.du__'62''62''61'__72
                                             (coe

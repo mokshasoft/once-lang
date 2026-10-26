@@ -43,14 +43,14 @@ open import Function using (Injective)
 open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-import Once.Internal.Type as LT
+import Once.Type.Core as LT
 import Once.Spec.Type as LT
 open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
-import Once.Internal.Type.Poly as TP
+import Once.Type.Poly as TP
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
-open import Once.Internal.Type.Poly using (substPoly; substPolyF; ftv; ftvF; Ground; GroundF; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
-open import Once.Internal.Type.Instance using (params; nubFrom; arityOf; kindOf; kindsOf; positionOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
-open import Once.Internal.Type.Schema using (schemaOf; ∈-params; positionOf-∈; memberB-sound; memberB-complete; lookup-∈)
+open import Once.Type.Poly using (substPoly; substPolyF; ftv; ftvF; Ground; GroundF; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
+open import Once.Type.Instance using (params; nubFrom; arityOf; kindOf; kindsOf; positionOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
+open import Once.Type.Schema using (schemaOf; ∈-params; positionOf-∈; memberB-sound; memberB-complete; lookup-∈)
 import Once.Spec.Core.Syntax as SC
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 import Data.Maybe as Maybe
@@ -64,8 +64,8 @@ open import Once.Spec.Surface.Program
          uk-*ˡ; uk-*ʳ; uk-+ˡ; uk-+ʳ; uk-⇒ˡ; uk-⇒ʳ; uk-μ; uk-ν; uk-K; uk-⊕ˡ; uk-⊕ʳ; uk-⊗ˡ; uk-⊗ʳ)
 open import Once.Type.Rigid using (ftv-ground; ftvK⊆ftv)
 open import Once.Postulates using (extensionality)
-open import Once.Internal.Type.Instance using (KindedInstance; RespectsKinds)
-open import Once.Internal.Type.Schema using (τOf; part-inst; kinded-instance)
+open import Once.Type.Instance using (KindedInstance; RespectsKinds)
+open import Once.Type.Schema using (τOf; part-inst; kinded-instance)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 
 ------------------------------------------------------------------------

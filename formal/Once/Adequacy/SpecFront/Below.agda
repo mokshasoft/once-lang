@@ -26,10 +26,10 @@ import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-arr; subᶜ-ν)
-open import Once.Internal.Type.Sub using (<:ᶜ-refl)
+open import Once.Type.Sub using (<:ᶜ-refl)
 open import Once.Spec.Sub using (subᶜ-*; subᶜ-+)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Internal.Principal using (below; gradesBelow; finBelow)
+open import Once.Principal using (below; gradesBelow; finBelow)
 
 private
   ⊑π-refl : ∀ π → π ⊑π π

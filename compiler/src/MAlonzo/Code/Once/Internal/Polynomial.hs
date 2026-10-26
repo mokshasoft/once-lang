@@ -19,7 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Internal.Res
+import qualified MAlonzo.Code.Once.Res
 
 -- Once.Internal.Polynomial.SFunctor
 d_SFunctor_6 = ()
@@ -71,10 +71,9 @@ d_outS_90 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Polynomial.νS
 d_νS_98 a0 = ()
-data T_νS_98
-  = C_constructor_106 MAlonzo.Code.Once.Internal.Res.T_Res_8
+data T_νS_98 = C_constructor_106 MAlonzo.Code.Once.Res.T_Res_6
 -- Once.Internal.Polynomial.νS.unfoldS
-d_unfoldS_104 :: T_νS_98 -> MAlonzo.Code.Once.Internal.Res.T_Res_8
+d_unfoldS_104 :: T_νS_98 -> MAlonzo.Code.Once.Res.T_Res_6
 d_unfoldS_104 v0
   = case coe v0 of
       C_constructor_106 v1 -> coe v1
@@ -127,13 +126,11 @@ du_sfmapCata_120 v0 v1 v2 v3
 d_anaS_168 ::
   T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  AgdaAny -> T_νS_98
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> T_νS_98
 d_anaS_168 v0 ~v1 v2 v3 = du_anaS_168 v0 v2 v3
 du_anaS_168 ::
   T_SFunctor_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  AgdaAny -> T_νS_98
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> T_νS_98
 du_anaS_168 v0 v1 v2
   = coe
       C_constructor_106
@@ -143,22 +140,20 @@ d_anaLayerS_176 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
+  MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
 d_anaLayerS_176 v0 v1 ~v2 v3 v4 = du_anaLayerS_176 v0 v1 v3 v4
 du_anaLayerS_176 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
+  MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
 du_anaLayerS_176 v0 v1 v2 v3
   = case coe v3 of
-      MAlonzo.Code.Once.Internal.Res.C_stopped_12 -> coe v3
-      MAlonzo.Code.Once.Internal.Res.C_returns_14 v4
+      MAlonzo.Code.Once.Res.C_stopped_10 -> coe v3
+      MAlonzo.Code.Once.Res.C_returns_12 v4
         -> coe
-             MAlonzo.Code.Once.Internal.Res.C_returns_14
+             MAlonzo.Code.Once.Res.C_returns_12
              (coe du_sfmapAna_184 (coe v0) (coe v1) (coe v2) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Internal.Polynomial.sfmapAna
@@ -166,14 +161,12 @@ d_sfmapAna_184 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  AgdaAny -> AgdaAny
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
 d_sfmapAna_184 v0 v1 ~v2 v3 v4 = du_sfmapAna_184 v0 v1 v3 v4
 du_sfmapAna_184 ::
   T_SFunctor_6 ->
   T_SFunctor_6 ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  AgdaAny -> AgdaAny
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
 du_sfmapAna_184 v0 v1 v2 v3
   = case coe v1 of
       C_SK_8 -> coe v3

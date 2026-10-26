@@ -9,7 +9,7 @@
 -- backwards and its RESULT forwards under `fmap∞`, which leaves the trace alone;
 -- the grade is erased, as `⟦_⟧ᴰ` erases it.
 --
--- Coherence has two halves. `Once.Internal.Laws.SubLaws.<:-unique` says each `A <: B` has
+-- Coherence has two halves. `Once.Laws.Sub.<:-unique` says each `A <: B` has
 -- one derivation. This module says the admissible structure means what it
 -- should: `<:-refl` denotes the identity and `<:-trans` denotes composition. So
 -- any chain of conversions means the single direct one.
@@ -30,12 +30,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type; _⇒[_]_; Void)
 import Once.Spec.Type as ST
-open import Once.Internal.Type.Sub
+open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.Sub
-open import Once.Internal.Laws.SubLaws
+open import Once.Type.SubDecide
+open import Once.Laws.Sub
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 -- `fmap∞` is a functor and congruent: the tree's laws (plan 0.105).
 open import Once.Internal.Iterative using (T∞; fmap∞)

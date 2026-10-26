@@ -30,7 +30,7 @@ open LocState using (halted; regs)
 open import Data.Product using (Σ)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
-open import Once.Internal.Res using (is-stopped)
+open import Once.Res using (is-stopped)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
 
 open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl

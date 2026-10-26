@@ -32,8 +32,6 @@ import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Functor.Decide
-import qualified MAlonzo.Code.Once.Internal.Type.Honest
-import qualified MAlonzo.Code.Once.Internal.Type.Poly
 import qualified MAlonzo.Code.Once.Parser.Lexer
 import qualified MAlonzo.Code.Once.Parser.Module
 import qualified MAlonzo.Code.Once.Parser.Module.Core
@@ -42,6 +40,8 @@ import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Type.Honest
+import qualified MAlonzo.Code.Once.Type.Poly
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Parser.parse
@@ -418,13 +418,13 @@ d_projectSig_146 v0 v1
            -> coe
                 d_honestSig_136 (coe v0)
                 (coe
-                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
-                   (coe (0 :: Integer)) (coe v1) (coe v3))
+                   MAlonzo.Code.Once.Type.Poly.d_extractGround_54 (coe (0 :: Integer))
+                   (coe v1) (coe v3))
                 (coe
-                   MAlonzo.Code.Once.Internal.Type.Honest.d_honest'63'_202
+                   MAlonzo.Code.Once.Type.Honest.d_honest'63'_200
                    (coe
-                      MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
-                      (coe (0 :: Integer)) (coe v1) (coe v3)))
+                      MAlonzo.Code.Once.Type.Poly.d_extractGround_54 (coe (0 :: Integer))
+                      (coe v1) (coe v3)))
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
            -> coe
                 MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
@@ -555,7 +555,7 @@ d_extractFunctions'45'go_194 v0 v1
                                    -> let v9
                                             = MAlonzo.Code.Once.Functor.Decide.d_isConcrete'63'_52
                                                 (coe
-                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
+                                                   MAlonzo.Code.Once.Type.Poly.d_extractGround_54
                                                    (coe (0 :: Integer)) (coe v6) (coe v8)) in
                                       coe
                                         (case coe v9 of
@@ -570,7 +570,7 @@ d_extractFunctions'45'go_194 v0 v1
                                                         (coe
                                                            MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
                                                            (coe
-                                                              MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
+                                                              MAlonzo.Code.Once.Type.Poly.d_extractGround_54
                                                               (coe (0 :: Integer)) (coe v6)
                                                               (coe v8)))))
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -698,12 +698,12 @@ d_extractFunctions'45'go_194 v0 v1
                                             = d_honestSig_136
                                                 (coe v5)
                                                 (coe
-                                                   MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
+                                                   MAlonzo.Code.Once.Type.Poly.d_extractGround_54
                                                    (coe (0 :: Integer)) (coe v6) (coe v8))
                                                 (coe
-                                                   MAlonzo.Code.Once.Internal.Type.Honest.d_honest'63'_202
+                                                   MAlonzo.Code.Once.Type.Honest.d_honest'63'_200
                                                    (coe
-                                                      MAlonzo.Code.Once.Internal.Type.Poly.d_extractGround_56
+                                                      MAlonzo.Code.Once.Type.Poly.d_extractGround_54
                                                       (coe (0 :: Integer)) (coe v6) (coe v8))) in
                                       coe
                                         (case coe v9 of

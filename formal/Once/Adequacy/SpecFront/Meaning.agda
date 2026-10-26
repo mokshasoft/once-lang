@@ -25,8 +25,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 import Once.Spec.Core.Program as CoreProgram
 open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
 import Once.Internal.Core.Telescope as TL
-open import Once.Internal.Module using (ModTele; MainIn; emptyScope)
-import Once.Internal.Core.Translate as TR
+open import Once.Module using (ModTele; MainIn; emptyScope)
+import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP
 import Once.Adequacy.SpecCore.Program as PG
 import Once.Adequacy.SpecCore.Sound as Sound

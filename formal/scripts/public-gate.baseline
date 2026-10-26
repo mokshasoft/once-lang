@@ -47,9 +47,7 @@ Once/CCC/Target/RiscV64/Layout.agda 3
 Once/CCC/Target/X86-32/Layout.agda 3
 Once/CCC/Target/X86-64/Layout.agda 3
 Once/Compiler.agda 1
-Once/Internal/Contract.agda 2
-Once/Internal/Core/Meaning.agda 1
-Once/Internal/Meaning.agda 9
+Once/Contract.agda 2
 Once/Internal/Parsing.agda 1
 Once/Memory/Memory.agda 1
 Once/Memory/StackSlots.agda 3

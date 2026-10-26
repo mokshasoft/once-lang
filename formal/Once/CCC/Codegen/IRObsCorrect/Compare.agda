@@ -34,11 +34,11 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
-import Once.Internal.Type as SpecTy
+import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
 open import Function using () renaming (id to idᶠ)
 open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
-open import Once.Internal.Res using (returns)
+open import Once.Res using (returns)
 open import Once.Res using (returns-inj)
 open import Once.Denotation.Program using (Declared)
 open import Once.SigOp.Info using (SigOpSem;
@@ -65,7 +65,7 @@ import Once.Semantics.Machine as EvV
 import Once.Denotation.DenotTrace as DT
 import Once.Internal.Trace as TM
 open import Once.Denotation.Approx using (tagRun; run-approx-embed; done-tag; budgetLeft; done)
-open import Once.Internal.Res using (is-stopped)
+open import Once.Res using (is-stopped)
 
 module CompareC {FS : FrameSemantics} where
 

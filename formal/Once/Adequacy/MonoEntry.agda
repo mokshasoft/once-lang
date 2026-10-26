@@ -33,7 +33,7 @@ open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ)
 import Once.Spec.Core.Meaning Σ fmt S as SM
 open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (⟦_⟧ₛ)
 import Once.Metatheory.TermModel.TySubst Σ S as TS
-open import Once.Internal.Core.TySubstZero Σ S using (⟨⟩-0; ⟪⟫-0; ty0)
+open import Once.Core.TySubstZero Σ S using (⟨⟩-0; ⟪⟫-0; ty0)
 
 private
   ⟦⟧-≅ : ∀ {Δ Δ′ : KCtx 0} {t t′ A A′} {d : Δ ⊩ ∅ ⊢[ [] ] t ∷ A ! pure} {d′ : Δ′ ⊩ ∅ ⊢[ [] ] t′ ∷ A′ ! pure}

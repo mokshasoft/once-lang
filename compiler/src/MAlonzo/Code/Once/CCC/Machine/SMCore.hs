@@ -35,11 +35,11 @@ import qualified MAlonzo.Code.Once.Allocator.AbstractInstance
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
-import qualified MAlonzo.Code.Once.Internal.Contract
+import qualified MAlonzo.Code.Once.Contract
 import qualified MAlonzo.Code.Once.Internal.Event
-import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Name
@@ -2998,7 +2998,7 @@ d_call'45'sigop'45'dec_2944 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d_call'45'sigop'45'dec_2944 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Internal.Contract.d__'8712'K'63'__108
+      MAlonzo.Code.Once.Contract.d__'8712'K'63'__106
       (MAlonzo.Code.Once.Internal.Trace.d_callKey_178
          (coe
             MAlonzo.Code.Once.Internal.Trace.C_callOp_74
@@ -3080,17 +3080,17 @@ d_res'45'sv_2994 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8 -> T_StoredValue_66
+  MAlonzo.Code.Once.Res.T_Res_6 -> T_StoredValue_66
 d_res'45'sv_2994 ~v0 v1 v2 v3 = du_res'45'sv_2994 v1 v2 v3
 du_res'45'sv_2994 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_24 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8 -> T_StoredValue_66
+  MAlonzo.Code.Once.Res.T_Res_6 -> T_StoredValue_66
 du_res'45'sv_2994 v0 v1 v2
   = case coe v2 of
-      MAlonzo.Code.Once.Internal.Res.C_stopped_12
+      MAlonzo.Code.Once.Res.C_stopped_10
         -> coe du_unit'45'storedvalue_2670
-      MAlonzo.Code.Once.Internal.Res.C_returns_14 v3
+      MAlonzo.Code.Once.Res.C_returns_12 v3
         -> coe C_SV'45'Lit_76 (coe v0) (coe v1) (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.SMCore.AbstractExec.pure-sigop-out-aux

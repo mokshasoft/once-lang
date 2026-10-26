@@ -42,10 +42,10 @@ import Once.Spec.Surface.Syntax as Syn
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
-open import Once.Internal.Typing.Scope using (NamedCtx)
+open import Once.TypeCheck.Scope using (NamedCtx)
 open import Once.TypeCheck.Error using (TypeError)
 
-open import Once.Internal.Context as Surface using ()
+open import Once.Context as Surface using ()
 import Once.Spec.Context as Surface
 open import Once.Spec.Context using () renaming (Ctx to SCtx)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)

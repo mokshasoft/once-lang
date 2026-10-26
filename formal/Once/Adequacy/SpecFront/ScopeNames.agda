@@ -38,8 +38,8 @@ import Once.Compile as C
 import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (canonical)
-open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.Internal.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
+open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
+open import Once.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; impAt; telFind; monoSchema)
 import Once.TypeCheck.View as TView
 
 private

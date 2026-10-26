@@ -19,7 +19,7 @@ import Once.Spec.Type
 
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.Internal.Res using (Res; stopped; returns)
+open import Once.Res using (Res; stopped; returns)
 
 
 ------------------------------------------------------------------------

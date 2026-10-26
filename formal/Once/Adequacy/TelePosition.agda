@@ -31,11 +31,11 @@ import Once.IR as IR
 import Once.Parser as Parser
 open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName)
-open import Once.Internal.Typing.Scope using (Imports)
-open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.TypeCheck.Scope using (Imports)
+open import Once.Type.DecEq using (_≟T_)
 import Once.TypeCheck.Elaborate
 import Once.TypeCheck.SpecWitness
-import Once.Internal.Typing.Scope
+import Once.TypeCheck.Scope
 import Once.TypeCheck.Classify
 import Once.Parser
 import Once.Parser.Module as Module
@@ -51,11 +51,11 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-import Once.Internal.Type
+import Once.Type.Core
 import Once.Spec.Type
 import Once.Type
-import Once.Internal.Context as Ctx
-open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix)
+import Once.Context as Ctx
+open import Once.TypeCheck.Scope using (PolyCtx; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Compile using (irFunOf; tableOf-go)
 open import Once.Denotation.Program using (IRFun)
@@ -139,7 +139,7 @@ fresh-poly {csc} {es = es} ((hd ∷ tl) , (_ ∷ hs)) =
                   (map entryName es) hd hs
 
 -- The checker's witness, read off its verified result: the term it built is the realization of the Spec's derivation.
-wit-of : ∀ {ctx : Once.Internal.Typing.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
+wit-of : ∀ {ctx : Once.TypeCheck.Scope.NamedCtx 0} {e : _} {T : Type} {Ψ se d f}
            (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult ctx e T)
        → proj₁ cr ≡ Once.TypeCheck.Elaborate.success Ψ se d f → Once.TypeCheck.SpecWitness.WC ctx e T Ψ se
 wit-of (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = w
@@ -190,21 +190,21 @@ tableOf-go-++ (cf ∷ cfs) xs pre = tableOf-go-++ cfs (irFunOf cf ∷ xs) pre
 
 -- A definition compiles to its resolved body's elaboration (D253: `main`
 -- too — its type check passes, and it is not rewritten).
-irFun-main : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+irFun-main : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Scope.PolyCtx) (impsOf : String → TopCtx)
                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋} {r : _}
                (v : _) → C.compileFun-main-aux IR.Heap false ctx polys impsOf x ty body v ≡ inj₂ irFun
            → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ r → r ≡ inj₂ irFun
 irFun-main ctx polys impsOf x ty body (inj₁ _) () _
 irFun-main ctx polys impsOf x ty body (inj₂ _) cf eq = trans (sym eq) cf
 
-irFun-body : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+irFun-body : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Scope.PolyCtx) (impsOf : String → TopCtx)
                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋} (b : Bool)
            → C.compileFun-aux IR.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
            → C.compileFunBody IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
 irFun-body ctx polys impsOf x ty body true  cf = irFun-main ctx polys impsOf x ty body (C.validateMain ty) cf refl
 irFun-body ctx polys impsOf x ty body false cf = cf
 
-aux-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+aux-form : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Scope.PolyCtx) (impsOf : String → TopCtx)
              (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
              (cr : Once.TypeCheck.Elaborate.VerifiedCheckResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body ty)
              (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success SCx.[] se d f)
@@ -212,7 +212,7 @@ aux-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (imps
            ≡ inj₂ (elaborateFull IR.Heap (resolveExpr polys impsOf ((x , ty) ∷ TopCtx.tdefs ctx) 0 se))
 aux-form ctx polys impsOf x ty (Once.TypeCheck.Elaborate.success _ _ _ _ , w) refl = refl
 
-irFun-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+irFun-form : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Scope.PolyCtx) (impsOf : String → TopCtx)
                (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
                {se : _} {d f : ℕ}
            → C.compileFun IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
@@ -225,7 +225,7 @@ irFun-form ctx polys impsOf x ty body cf ce =
 
 -- R8: a definition without a signature compiles to its synthesized body's
 -- elaboration.
-irFunI-body : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+irFunI-body : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Scope.PolyCtx) (impsOf : String → TopCtx)
                 (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋} (b : Bool)
             → C.compileFunI-aux IR.Heap false ctx polys impsOf x ty body b ≡ inj₂ irFun
             → C.compileFunBodyI IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun
@@ -237,7 +237,7 @@ irFunI-body ctx polys impsOf x ty body {irFun} true  cf = main (C.validateMain t
     main (inj₂ _) e = e
 irFunI-body ctx polys impsOf x ty body false cf = cf
 
-auxI-form : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+auxI-form : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Scope.PolyCtx) (impsOf : String → TopCtx)
               (x : String) (ty : Type) {body : _} {se : _} {d f : ℕ}
               (cr : Once.TypeCheck.Elaborate.VerifiedInferResult (Once.TypeCheck.Classify.ctxWithImportsAndPolys ctx polys) body)
               (ce : proj₁ cr ≡ Once.TypeCheck.Elaborate.success ty SCx.[] se d f)
@@ -251,7 +251,7 @@ auxI-form ctx polys impsOf x ty {se = se} (Once.TypeCheck.Elaborate.success _ _ 
     at (yes refl) = refl
     at (no ¬p)    = ⊥-elim (¬p refl)
 
-irFun-formI : ∀ (ctx : TopCtx) (polys : Once.Internal.Typing.Scope.PolyCtx) (impsOf : String → TopCtx)
+irFun-formI : ∀ (ctx : TopCtx) (polys : Once.TypeCheck.Scope.PolyCtx) (impsOf : String → TopCtx)
                 (x : String) (ty : Type) (body : _) {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
                 {se : _} {d f : ℕ}
             → C.compileFunI IR.Heap false ctx polys impsOf x ty body ≡ inj₂ irFun

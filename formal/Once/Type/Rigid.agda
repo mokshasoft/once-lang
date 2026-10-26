@@ -5,7 +5,7 @@
 -- Once.Type.Rigid — facts and deciders about kinded instances.
 --
 -- Parameters, kinds and kinded instances are the Spec's
--- (`Once.Internal.Type.Instance`). This module proves that a ground schema is its
+-- (`Once.Type.Instance`). This module proves that a ground schema is its
 -- own kinded instance and decides `KindedInstance`.
 ------------------------------------------------------------------------
 
@@ -23,13 +23,13 @@ open import Data.List.Membership.Propositional using (_∈_)
 
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (Ty; KCtx; Base; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
-open import Once.Internal.Type.Instance
+open import Once.Type.Instance
 
 ------------------------------------------------------------------------
 -- A ground schema is its own (unique) kinded instance
@@ -126,7 +126,7 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; �
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₂)
 open import Once.Type.Match using (instantiate)
-open import Once.Type.Instance using (instantiate-sound; instantiate-complete)
+open import Once.Type.MatchCorrect using (instantiate-sound; instantiate-complete)
 open import Once.Type.Determined using (agree-from)
 open import Once.Functor.Decide using (base?; base?-complete; isBaseType?; isBaseType?-complete)
 

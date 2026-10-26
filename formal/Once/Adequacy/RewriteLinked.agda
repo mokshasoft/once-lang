@@ -13,7 +13,7 @@
 
 module Once.Adequacy.RewriteLinked where
 
-import Once.Internal.Type
+import Once.Type.Core
 
 import Once.Spec.Type
 import Once.SigOp.Info
@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 open import Once.IR
 import Once.IRTy as II
 open import Once.Denotation.Program using (IRFun; Linked; Declared)
-open import Once.Internal.Contract using (ISig)
+open import Once.Contract using (ISig)
 open import Once.Arith.Type using (NInt; NFloat)
 
 private variable σ : ISig

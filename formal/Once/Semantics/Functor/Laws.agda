@@ -17,7 +17,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Internal.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
+open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 
 open import Once.Internal.Polynomial
 open import Once.Semantics.Functor

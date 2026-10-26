@@ -22,7 +22,7 @@
 
 module Once.Denotation.SourceDenote where
 
-open import Once.Internal.Weaken using (⟦wk₀⟧ᴰ)
+open import Once.Weaken using (⟦wk₀⟧ᴰ)
 import Once.Spec.Type as SpT
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
@@ -37,7 +37,7 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Spec.Type using ()
-open import Once.Internal.Context using (⟦_⟧ᶜ; _↾_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Context using (⟦_⟧ᶜ; _↾_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; lookup; zeroUsage)
 open import Once.Spec.Context using (_▸_)
 open import Once.Surface.Syntax using (Expr)
@@ -54,7 +54,7 @@ open TargetNum using (int-bits; float-format)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.IR.Ref using (refIR)
-open import Once.Internal.Type.WellFormed using (con-base; con-fun)
+open import Once.Type.Concrete using (con-base; con-fun)
 open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
 open import Once.Semantics.Machine
   using (sem-cata; ⟦_⟧F)
@@ -167,7 +167,7 @@ sigOpˢ fmt σ si a = embed (fmapT (injectᵇ (conB si)) (sigOpT fmt (ffiE (call
 -- `elaborate` is. See the note above `lookupᴰUsed`.
 -- An external operation's meaning at its ground type (the term carries it read
 -- over the definition's type variables, `wk₀ A`, which means the same).
-sigOpSem : (A : Type) → Once.Spec.Name.CanonicalName → Once.Internal.Type.WellFormed.IsConcrete A → TargetNum → DefsSem → T∞ ⟦ A ⟧ᴰ
+sigOpSem : (A : Type) → Once.Spec.Name.CanonicalName → Once.Type.Concrete.IsConcrete A → TargetNum → DefsSem → T∞ ⟦ A ⟧ᴰ
 sigOpSem (Dom ⇒[ mk-kind Zero Once.Spec.Grade.pure ] Cod) name (con-fun bDom bCod) fmt σ =
   return∞ (λ _ → sigOpˢ fmt σ (value-info name b-Unit bCod) tt)
 -- plan 0.113 A3: an effectful erased arrow is a call with the erased slot `tt`.

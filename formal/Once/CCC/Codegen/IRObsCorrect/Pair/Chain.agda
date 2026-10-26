@@ -53,7 +53,7 @@ import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Internal.Trace as TM
 open import Once.Denotation.Approx using (done; NotCut)
-open import Once.Internal.Res using (returns; is-stopped)
+open import Once.Res using (returns; is-stopped)
 
 module PairC {FS : FrameSemantics} where
 

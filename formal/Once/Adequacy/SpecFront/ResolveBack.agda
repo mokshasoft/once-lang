@@ -40,7 +40,7 @@ open import Once.Internal.Resolution
 open import Once.Spec.Surface.Resolution
   using (Env; env; Resolves; rn-gen; rn-import; rn-own; r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam;
          r-let; r-pair; r-destruct; r-unit; r-int; r-float; r-annot; r-binop; r-neg)
-open import Once.Internal.ResolvedRefs using (GoodName; GoodRefs)
+open import Once.ResolvedRefs using (GoodName; GoodRefs)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule)

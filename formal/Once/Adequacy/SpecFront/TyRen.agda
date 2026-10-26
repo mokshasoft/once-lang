@@ -36,7 +36,7 @@ open Schema using (arity; kinds; type)
 import Once.Spec.Surface.Syntax as SX
 import Once.Spec.Surface.Typing Σ S nm as U
 open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; ⌜⌝ᵈ-⟨⟩)
-open import Once.Internal.Core.TySubstRen Σ S using (⟪⟫-wk)
+open import Once.Core.TySubstRen Σ S using (⟪⟫-wk)
 
 ------------------------------------------------------------------------
 -- Types

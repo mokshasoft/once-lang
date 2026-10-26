@@ -20,8 +20,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Internal.Typing.Scope using (NamedCtx)
-open import Once.Internal.Principal using (Fails; fails)
+open import Once.TypeCheck.Scope using (NamedCtx)
+open import Once.Principal using (Fails; fails)
 import Once.Compile as C
 import Once.TypeCheck.Elaborate as TE
 

@@ -48,10 +48,10 @@ import Once.Parser.Module.Core as Core
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule; sigNames; importedOf)
 import Once.Internal.Resolution as LR
-import Once.Internal.Module as LM
-open import Once.Internal.Module using (ModTele; emptyScope; scope; entrySig; MainsEffUU; MainIn)
-open import Once.Internal.Core.Translate using (SigSig; s-ffi)
-open import Once.Internal.Core.Decl using (toISig)
+import Once.Module as LM
+open import Once.Module using (ModTele; emptyScope; scope; entrySig; MainsEffUU; MainIn)
+open import Once.Core.Translate using (SigSig; s-ffi)
+open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts; nonSigs-none)
 open import Once.Adequacy.SpecFront.ExtractBack using (walk-adj; dr-adj)
@@ -64,7 +64,7 @@ open import Once.Adequacy.SpecFront.Start using (distinct-rest; nosig-rest; fres
 open import Once.Adequacy.SpecFront.Polys using (polyNames; poly-names; kinds-of; defs-of)
 open import Once.Adequacy.SpecFront.Prefix using (prefix←)
 open import Once.Adequacy.SpecFront.Words using (ModsW; DeclW; signature-words; key-word)
-open import Once.Internal.Name using (WordName)
+open import Once.Name using (WordName)
 import Once.Adequacy.SpecFront.Align as Al
 import Once.Adequacy.ModuleProgram
 import Once.Adequacy.SpecFront.WalkBack as WB
@@ -73,7 +73,7 @@ import Once.Adequacy.SpecFront.WalkState as WS
 import Once.Adequacy.SpecFront.Walk
 import Once.Compile
 import Once.Spec.Name
-import Once.Internal.Core.Translate
+import Once.Core.Translate
 
 ------------------------------------------------------------------------
 -- The import tables' paths
@@ -224,7 +224,7 @@ typed← {mm} {dsU} {Σ} {p} wm wd wr D = record { dsR = dsR ; rds = rds ; mt = 
     -- the end's `main` is the entry
     H : ∀ i → names i ≡ canonical ("main" ∷ []) → CoreProgram.Entry Σ (P.sig SC.!! i)
     H i e = subst (λ j → CoreProgram.Entry Σ (P.sig SC.!! j)) (sym (distinct (trans e (sym entry)))) P.isMain
-    w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Internal.Core.Translate.ImpSig.[] Once.Internal.Core.Translate.TeleSig.[] (Once.Adequacy.ModuleProgram.names₀ Σ) rel₀ walk align
+    w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Core.Translate.ImpSig.[] Once.Core.Translate.TeleSig.[] (Once.Adequacy.ModuleProgram.names₀ Σ) rel₀ walk align
                  (WS.winv-empty Σ ps) eok
     pf = prefix← {sc = emptyScope} fs (Extracted.facts X) (proj₁ w←)
     th = typed-at (Core.resolved (mkModule dsR) (importedOf mm dsU)) _ (Extracted.extracted X) (proj₁ pf)

@@ -15,7 +15,7 @@
 
 module Once.Adequacy.SpecFront.ExtractBack where
 
-import Once.Internal.Type.Poly
+import Once.Type.Poly
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ-syntax; _×_; _,_)
@@ -79,7 +79,7 @@ adj-ok (adj-other nt-import a) = adj-ok a
 open import Data.Empty using (⊥-elim)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Relation.Nullary using (¬_)
-import Once.Internal.Type as LT
+import Once.Type.Core as LT
 import Once.Spec.Type as LT
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
@@ -139,7 +139,7 @@ nonSigs-adj (adj-other nt-import a) = adj-other nt-import (nonSigs-adj a)
 sig-reading : ∀ (T : PolyType) → Σ[ m ∈ Maybe LT.Type ] SigReading T m
 sig-reading T with isGround T in ig
 ... | inj₂ _ = nothing , sr-open ig
-... | inj₁ g with isConcrete? (Once.Internal.Type.Poly.extractGround T g) in ic
+... | inj₁ g with isConcrete? (Once.Type.Poly.extractGround T g) in ic
 ...   | just c  = _ , sr-mono g c ig ic
 ...   | nothing = nothing , sr-nonc g ig ic
 

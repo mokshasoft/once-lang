@@ -45,7 +45,7 @@ import Data.String.Properties as StrProp
 open import Data.List.Membership.DecPropositional StrProp._≟_ using (_∈?_)
 
 import Once.Spec.Type as LT
-import Once.Internal.Type.WellFormed as LW
+import Once.Type.Concrete as LW
 import Once.Spec.Type as ST
 import Once.Spec.Core.Syntax as SC
 import Once.Compile as C
@@ -53,10 +53,10 @@ import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Surface.Program
-open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
-open import Once.Internal.Module using (Scope; scope; emptyScope; addImp; addPoly)
-open import Once.Internal.Type.Schema using (schemaOf)
-open import Once.Internal.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; wkI; wkT; impDefs; monoSchema)
+open import Once.TypeCheck.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.Module using (Scope; scope; emptyScope; addImp; addPoly)
+open import Once.Type.Schema using (schemaOf)
+open import Once.Core.Translate Σ using (ImpSig; TeleSig; []; i-def; t-def; wkI; wkT; impDefs; monoSchema)
 import Once.Adequacy.SpecFront.ScopeNames as SN
 import Once.Adequacy.SpecFront.Scope as Sc
 open import Once.Adequacy.TelePosition using (lookup-head; lookup-skip)

@@ -55,7 +55,7 @@ open import Once.Denotation.EvalRel using (base-eqI; base-reflI; fo-eq; RelS-now
 open import Once.Internal.StreamInf using (anaFᴵ; in-νᴵ; module νᴵ)
 open νᴵ using (forceᴵ)
 open import Once.Internal.FunctorMeaning using (translateF)
-import Once.Internal.Type.WellFormed as LW
+import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 open import Once.Spec.Word using (Carrier)
 open import Once.Internal.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)

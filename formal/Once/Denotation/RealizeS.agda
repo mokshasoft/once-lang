@@ -37,8 +37,8 @@ open import Once.Spec.Core.Syntax using (module Schema; _!!_)
 open Schema using (type)
 open import Once.Spec.Context using (Usage)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
-open import Once.Internal.Name using (showCanonical)
-open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Name using (showCanonical)
+open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Type.Grade using (≤q-Many)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
@@ -51,7 +51,7 @@ import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;
                cmp-lt; cmp-le; cmp-gt; cmp-ge; cmp-eq; cmp-ne)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
-open import Once.Internal.Core.Decl using (⌜declS⌝)
+open import Once.Core.Decl using (⌜declS⌝)
 
 -- A reference to entry `d` at type `T`.
 ref : ∀ {n} {Γ : Once.Spec.Context.Ctx m n} (d : Fin s) (T : Ty m) → Bool → Expr Γ Once.Spec.Context.zeroUsage T

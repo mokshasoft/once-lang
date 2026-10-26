@@ -35,14 +35,14 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Grade as Ty using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type as Ty using (Type; _⇒[_]_; _*_; _+_; Unit)
-import Once.Internal.Type as Ty
+import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
-open import Once.Internal.Type.Sub
+open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.Sub
-open import Once.Internal.Laws.SubLaws
+open import Once.Type.SubDecide
+open import Once.Laws.Sub
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩; fst; snd; curry; apply; inl; inr)
 open import Once.IRTy using (IRTy; ⌊_⌋)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ)

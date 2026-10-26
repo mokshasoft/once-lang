@@ -24,14 +24,14 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.Internal.Context
-import qualified MAlonzo.Code.Once.Internal.Typing.Scope
+import qualified MAlonzo.Code.Once.Context
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Signature
 import qualified MAlonzo.Code.Once.Spec.Surface.Typing
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.TypeCheck.Scope
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.TypeCheck.Scoped.Locals._._∋_⦂_at_
@@ -66,7 +66,7 @@ du_idx_72 v0
                -> case coe v3 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                       -> case coe v5 of
-                           MAlonzo.Code.Once.Internal.Context.C_svar_48 v8
+                           MAlonzo.Code.Once.Context.C_svar_46 v8
                              -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v8)
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -141,7 +141,7 @@ d_found_166 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   T_LocalsOf_46 ->
@@ -159,7 +159,7 @@ du_found_166 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   T_LocalsOf_46 ->
@@ -182,9 +182,7 @@ du_found_166 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                      (coe v11)
                                      (coe
                                         MAlonzo.Code.Data.String.Properties.d__'8799'__54 (coe v6)
-                                        (coe
-                                           MAlonzo.Code.Once.Internal.Typing.Scope.d_name_20
-                                           (coe v20)))
+                                        (coe MAlonzo.Code.Once.TypeCheck.Scope.d_name_18 (coe v20)))
                               _ -> MAlonzo.RTE.mazUnreachableError
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> MAlonzo.RTE.mazUnreachableError)
@@ -199,8 +197,8 @@ d_found'45'at_186 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8 ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -221,7 +219,7 @@ du_found'45'at_186 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   T_LocalsOf_46 ->
@@ -262,8 +260,8 @@ d_'8869''45'elim'8242'_226 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8 ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
@@ -289,8 +287,8 @@ d_'8869''45'elim'8242'_244 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8 ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Surface.Typing.T_Locals_18 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->

@@ -15,7 +15,7 @@ open import Once.Spec.Context using (_*ᵘ_; _+ᵘ_; zeroUsage)
 module Once.TypeCheck.Completeness.Routes where
 
 import Once.Surface.Syntax as Srf
-open import Once.Internal.Type using (wk₀)
+open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (⟦_⟧F)
 import Once.Spec.Type as T
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
@@ -28,32 +28,32 @@ open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Data.String.Properties as StrProp using ()
 open import Once.Spec.Type as T using (Type; Unit; _*_)
-import Once.Internal.Type as T
+import Once.Type.Core as T
 import Once.Type as T
 import Once.Spec.Surface.Syntax as T
-import Once.Internal.Type.Poly as T
+import Once.Type.Poly as T
 import Once.Spec.Grade as T
 open import Once.Spec.Surface.Syntax as Raw using (RVar; RResolved)
 import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Name using (CanonicalName; gen; own; NotGenerator)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.TypeCheck.Elaborate
   using (VerifiedInferResult; elabGivenLeaf; given-infer; elabGivenApp; success; inferElabV; failure; elabGivenV; given-cata; inferElab; checkElab; checkCompose-f; checkElabV; VerifiedGivenResult; checkCompose-g; checkCaseGo; checkLoop)
 open import Once.TypeCheck.SpecWitness using (wt-case-copair-check)
-import Once.Internal.Typing.Scope as Classify
+import Once.TypeCheck.Scope as Classify
 import Once.TypeCheck.Error as Error
 import Once.TypeCheck.Elaborate as E
-open import Once.Internal.Type.Join using (join?-complete)
+open import Once.Type.Join using (join?-complete)
 import Data.Unit
-open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Type.Concrete using (IsConcrete)
 open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Functor.Decide using (isConcrete?; isConcrete?-complete)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
 -- decider's answer from the property here rather than reading it off a premise.
 open import Once.TypeCheck.DeciderComplete
   using (isGround-complete-at; ¬Ground-isGround-inj₂; wfFun?-complete-at)
-import Once.Internal.Typing.Scope
+import Once.TypeCheck.Scope
 import Once.TypeCheck.Classify
 import Once.Spec.Context as Surface
 import Once.Spec.Context as SCx
@@ -65,11 +65,11 @@ import Data.String.Properties
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Once.Spec.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-arr)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa)
-open import Once.Type.Sub using (_<:?_; _⊑π?_)
-open import Once.Internal.Type.Sub using (<:-refl)
+open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
+open import Once.Type.Sub using (<:-refl)
 open import Once.Spec.Sub using (sub-*)
-open import Once.Internal.Type.DecEq using (_≟T_)
-open import Once.Internal.Typing.Scope using (NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.TypeCheck.Scope using (NamedCtx; AppHeadView; ahv-other; classifyAppHeadView; lookupLocal; lookupImport)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly; GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other; classifyAppHead-nothing⇒view-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
 open import Once.TypeCheck.ElaborateProofs using (checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; checkLoopV-J; withUnit-elim)
@@ -138,12 +138,12 @@ module DPoly where
   open import Once.TypeCheck.Elaborate
     using (given-poly; given-poly-g; given-poly-a; given-poly-m; given-poly-π; isGround-inj₂→¬Ground)
   open import Once.Type.Match using (instantiate)
-  open import Once.Type.Instance using (instantiate-complete; instantiate-sound)
+  open import Once.Type.MatchCorrect using (instantiate-complete; instantiate-sound)
   open import Once.Type.Determined using (codVarsInDom?; cod-determined; arrowSchema?)
-  open import Once.Type.Sub using (_⊑π?_)
-  open import Once.Internal.Type.Instance using (KindedInstance)
+  open import Once.Type.SubDecide using (_⊑π?_)
+  open import Once.Type.Instance using (KindedInstance)
   open import Once.Type.Rigid using (kindedInstance?)
-  open import Once.Internal.Typing.Scope using (lookupPolyPrefix)
+  open import Once.TypeCheck.Scope using (lookupPolyPrefix)
   open import Relation.Nullary using (yes; no)
   open import Data.String using (String)
   open import Data.Sum using (inj₂)
@@ -246,7 +246,7 @@ module DPoly where
 -- A non-ground telescope entry does not infer.
 poly-head-fails : ∀ {m} (ctx : NamedCtx m) (x : String) {schema body prefix}
   → lookupImport (Classify.NamedCtx.sig ctx) x ≡ nothing → lookupImport (Classify.NamedCtx.imports ctx) x ≡ nothing
-  → Once.Internal.Typing.Scope.lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+  → Once.TypeCheck.Scope.lookupPolyPrefix (Classify.NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ T.Ground schema
   → inferElabV ctx (RResolved (own x)) ≡ (failure (Error.UnboundVariable x) , Data.Unit.tt)
 poly-head-fails ctx x {schema} eS eI eP ¬g =

@@ -30,8 +30,8 @@ open import Once.Spec.Core.Syntax using (Defs)
 import Once.Spec.Grade as LG
 import Once.Spec.Context as SCx
 open import Once.Spec.Surface.Syntax
-open import Once.Internal.Context using (svar; SVar)
-open import Once.Internal.Typing.Scope using (Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
+open import Once.Context using (svar; SVar)
+open import Once.TypeCheck.Scope using (Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
 open Binding using (name)
 import Once.Spec.Surface.Typing as SUT
 

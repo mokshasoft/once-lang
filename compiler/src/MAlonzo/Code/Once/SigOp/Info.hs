@@ -24,8 +24,8 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Arith.Prim
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Internal.Polynomial
-import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Value
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Numerics
 import qualified MAlonzo.Code.Once.Spec.Type
@@ -118,7 +118,7 @@ d_sem'45'CoOut_28 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Type.T_WFFun_118 ->
   MAlonzo.Code.Once.Internal.Polynomial.T_νS_98 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  MAlonzo.Code.Once.Res.T_Res_6
 d_sem'45'CoOut_28 v0 v1 v2 v3 v4
   = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'CoOut_634 v2 v3 v4
 -- Once.SigOp.Info.M.sem-In
@@ -143,7 +143,7 @@ d_sem'45'ana_34 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   AgdaAny -> MAlonzo.Code.Once.Internal.Polynomial.T_νS_98
 d_sem'45'ana_34 v0 v1 v2 v3 v4
   = coe
@@ -185,9 +185,8 @@ d_semAnaLayer_42 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
+  MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
 d_semAnaLayer_42 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Internal.Value.du_semAnaLayer_666 v0 v1 v3 v4
@@ -197,8 +196,7 @@ d_sfmapSemAna_44 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  AgdaAny -> AgdaAny
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
 d_sfmapSemAna_44 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Internal.Value.du_sfmapSemAna_676 v0 v1 v2 v4 v5
@@ -273,18 +271,18 @@ d_semM'45'of_124 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   T_SigOpSem_74 ->
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8
+  AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 d_semM'45'of_124 v0 v1 v2 v3 v4
   = case coe v4 of
       C_pureV_80 v5
         -> coe
              (\ v6 v7 ->
                 coe
-                  MAlonzo.Code.Once.Internal.Res.C_returns_14
+                  MAlonzo.Code.Once.Res.C_returns_12
                   (coe
                      MAlonzo.Code.Once.Internal.Value.du_erase'7501'_110 (coe v1)
                      (coe v5 v6 v7)))
@@ -294,15 +292,15 @@ d_semM'45'of_124 v0 v1 v2 v3 v4
         -> coe
              (\ v6 v7 ->
                 coe
-                  MAlonzo.Code.Once.Internal.Res.C_returns_14
+                  MAlonzo.Code.Once.Res.C_returns_12
                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       C_haltsV_88
-        -> coe (\ v6 v7 -> coe MAlonzo.Code.Once.Internal.Res.C_stopped_12)
+        -> coe (\ v6 v7 -> coe MAlonzo.Code.Once.Res.C_stopped_10)
       C_primV_90 v5
         -> coe
              (\ v6 v7 ->
                 coe
-                  MAlonzo.Code.Once.Internal.Res.C_returns_14
+                  MAlonzo.Code.Once.Res.C_returns_12
                   (coe
                      MAlonzo.Code.Once.Internal.Value.du_erase'7501'_110 (coe v1)
                      (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v5 v6 v7)))
@@ -330,10 +328,10 @@ d_semM_200 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   T_SigOpInfo_96 ->
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8
+  AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 d_semM_200 v0 v1 v2 v3
   = coe
       d_semM'45'of_124 (coe v0) (coe v1) (coe v2)

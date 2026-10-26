@@ -20,11 +20,11 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Once.Internal.Typing.Scope
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.TypeCheck.Scope
 
 -- Once.Denotation.SurfaceRefs.Refs
 d_Refs_22 ::
@@ -66,7 +66,7 @@ d_PolyRef_462 = erased
 -- Once.Denotation.SurfaceRefs.InScope
 d_InScope_490 ::
   Integer ->
-  MAlonzo.Code.Once.Internal.Typing.Scope.T_NamedCtx_114 ->
+  MAlonzo.Code.Once.TypeCheck.Scope.T_NamedCtx_112 ->
   Integer ->
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->

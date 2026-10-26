@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Surface.Context — deciders on usages.
 --
--- Contexts and usages are the Spec's (`Once.Internal.Context`). The elaborator
+-- Contexts and usages are the Spec's (`Once.Context`). The elaborator
 -- decides two things about them here.
 ------------------------------------------------------------------------
 

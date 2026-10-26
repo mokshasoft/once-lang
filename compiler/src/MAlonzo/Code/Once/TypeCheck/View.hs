@@ -22,12 +22,12 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
-import qualified MAlonzo.Code.Once.Internal.Typing.Scope
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Signature
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.TypeCheck.Scope
 
 -- Once.TypeCheck.View.Declared
 d_Declared_16 a0 a1 a2 a3 a4 = ()
@@ -132,8 +132,7 @@ d_Views_142 ::
   [MAlonzo.Code.Once.Spec.Signature.T_Decl_114] ->
   Integer ->
   MAlonzo.Code.Once.Spec.Core.Syntax.T_Defs_24 ->
-  Integer ->
-  MAlonzo.Code.Once.Internal.Typing.Scope.T_NamedCtx_114 -> ()
+  Integer -> MAlonzo.Code.Once.TypeCheck.Scope.T_NamedCtx_112 -> ()
 d_Views_142 = erased
 -- Once.TypeCheck.View.InView
 d_InView_156 a0 a1 a2 a3 a4 a5 a6 a7 = ()

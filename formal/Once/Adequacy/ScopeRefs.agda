@@ -42,9 +42,9 @@ open import Once.Spec.Grade using (pure)
 open import Once.Spec.Core.Syntax using (Defs; _!!_; Schema; module Schema; schema)
 open Schema using (type; arity; kinds)
 open import Once.Internal.Iterative using (T∞)
-open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupPolyPrefix)
-open import Once.Internal.Type.Schema using (schemaOf; kinded-instance)
-open import Once.Internal.Type.Instance using (rigidOf; KindedInstance)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupPolyPrefix)
+open import Once.Type.Schema using (schemaOf; kinded-instance)
+open import Once.Type.Instance using (rigidOf; KindedInstance)
 open import Once.Adequacy.SpecFront.SchemaOf using (ki-of; ki-of-τ)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
 import Once.Denotation.SourceDenote as SD
@@ -83,7 +83,7 @@ module _ {s : ℕ} {S : Defs s} where
                  (r : Respects (kinds sc) Δ τ) (r′ : Respects (kinds sc) Δ′ τ′) → τ ≡ τ′ → refSemAt δ d e τ r ≅ refSemAt δ d e τ′ r′
     refSemAt-≅ δ d e r r′ refl = H.≡-to-≅ (refSemAt-Δ δ d e _ r r′)
 
-  open import Once.Internal.Core.TySubstZero Σ S using (⟨⟩-0)
+  open import Once.Core.TySubstZero Σ S using (⟨⟩-0)
 
   -- The references of a scope with no locals: the entries its View finds.
   module _ (ctx : NamedCtx 0) (nm : Fin s → CanonicalName) (inline : Fin s → Bool) (V : TV.Views ctx) (OkS : CanonicalName → Type → Set)

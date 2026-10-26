@@ -43,15 +43,15 @@ open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Derived
 open import Once.Spec.Context using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
-open import Once.Internal.Context using (_⊔ᵘ_)
-open import Once.Internal.Type using (wk₀)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Context using (_⊔ᵘ_)
+open import Once.Type.Core using (wk₀)
+open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; _▹_∶_; _∋_⦂_at_; SpecialHead; IntArith; FloatArith; Compare; _⇒⟨_⟩_; ↑)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
-open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Internal.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Type.Honest using (HonestFFI)
+open import Once.Core.Decl using (declS; ⌜declS⌝)
 
 ------------------------------------------------------------------------
 -- The witnesses

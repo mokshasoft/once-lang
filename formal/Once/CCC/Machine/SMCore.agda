@@ -43,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; 
 open FrameSemantics using (fs-interp)
 open import Once.Internal.Event using (SigOpEvent; mk-event)
 open import Once.Internal.Trace using (callOp; answer; callKey; calls)
-open import Once.Internal.Contract using (_∈K?_)
+open import Once.Contract using (_∈K?_)
 open import Data.List.Membership.Propositional using (_∈_)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
@@ -58,12 +58,12 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type; Unit; Int; Float; _*_)
 open import Once.Type using (FitsInReg; fits-int; fits-float; fits-in-reg?)
 import Once.Type as Ty
-import Once.Internal.Type as Ty
+import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
 open SigOpInfo using (name; baseA)
-open import Once.Internal.Res using (Res; stopped; returns)
+open import Once.Res using (Res; stopped; returns)
 
 private
   -- Helper: just is injective (private to avoid name clashes)

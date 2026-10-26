@@ -1,0 +1,90 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.Laws.Order — the language's orders are partial orders
+-- (plan 0.112 B6).
+--
+-- Reflexivity and transitivity were already proved (`Metatheory.SubLaws`,
+-- `Spec.Context`); antisymmetry was not, for any order in the tree. It holds
+-- for all three: subtyping `<:`, the effect order `⊑π`, and the pointwise
+-- usage order `⊑ᵘ`.
+------------------------------------------------------------------------
+
+module Once.Laws.Order where
+
+open import Once.Spec.Type using (Ty)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; isEquivalence)
+open import Relation.Binary.Structures using (IsPartialOrder)
+open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; pureᶠ; actᶠ)
+open import Once.Spec.Type using (Type; _*_; _+_)
+open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Context using (⊑ᵘ-refl; ⊑ᵘ-trans)
+open import Once.Spec.Context using (Usage; _⊑ᵘ_)
+open import Once.Spec.Context using ([]; _∷_; _⊑∷_)
+open import Once.Laws.Sub using (⊑π-trans; <:-trans)
+open import Once.Type.Sub using (⊑π-refl; <:-refl)
+open import Once.Spec.Sub using (sub-*; sub-+; sub-var)
+open import Once.Laws.Grade using (≤q'-antisym)
+
+------------------------------------------------------------------------
+-- The effect order
+------------------------------------------------------------------------
+
+⊑π-antisym : ∀ {π π′} → π ⊑π π′ → π′ ⊑π π → π ≡ π′
+⊑π-antisym ⊑-pure _ = refl
+⊑π-antisym ⊑-eff _ = refl
+⊑π-antisym ⊑-act _ = refl
+
+purity-⊑-isPartialOrder : IsPartialOrder _≡_ _⊑π_
+purity-⊑-isPartialOrder = record
+  { isPreorder = record
+    { isEquivalence = isEquivalence
+    ; reflexive = λ { {π} refl → ⊑π-refl π }
+    ; trans = ⊑π-trans }
+  ; antisym = ⊑π-antisym }
+
+------------------------------------------------------------------------
+-- Subtyping
+------------------------------------------------------------------------
+
+<:-antisym : ∀ {m} {A B : Ty m} → A <: B → B <: A → A ≡ B
+<:-antisym sub-void sub-void = refl
+<:-antisym sub-unit sub-unit = refl
+<:-antisym sub-int sub-int = refl
+<:-antisym sub-float sub-float = refl
+<:-antisym (sub-arr a b g) (sub-arr a′ b′ g′)
+  rewrite <:-antisym a′ a | <:-antisym b b′ | ⊑π-antisym g g′ = refl
+<:-antisym (sub-* a b) (sub-* a′ b′) = cong₂ _*_ (<:-antisym a a′) (<:-antisym b b′)
+<:-antisym (sub-+ a b) (sub-+ a′ b′) = cong₂ _+_ (<:-antisym a a′) (<:-antisym b b′)
+<:-antisym sub-μ sub-μ = refl
+<:-antisym (sub-ν {f = pureᶠ} {pureᶠ} _) (sub-ν _)  = refl
+<:-antisym (sub-ν {f = actᶠ}  {actᶠ}  _) (sub-ν _)  = refl
+<:-antisym (sub-ν {f = pureᶠ} {actᶠ}  _) (sub-ν ())
+<:-antisym (sub-ν {f = actᶠ}  {pureᶠ} ()) _
+<:-antisym sub-var sub-var = refl
+
+subtype-isPartialOrder : ∀ {m} → IsPartialOrder {A = Ty m} _≡_ _<:_
+subtype-isPartialOrder = record
+  { isPreorder = record
+    { isEquivalence = isEquivalence
+    ; reflexive = λ { {A} refl → <:-refl A }
+    ; trans = <:-trans }
+  ; antisym = <:-antisym }
+
+------------------------------------------------------------------------
+-- The pointwise usage order
+------------------------------------------------------------------------
+
+⊑ᵘ-antisym : ∀ {n} {Ψ Φ : Usage n} → Ψ ⊑ᵘ Φ → Φ ⊑ᵘ Ψ → Ψ ≡ Φ
+⊑ᵘ-antisym [] [] = refl
+⊑ᵘ-antisym (p ⊑∷ ps) (q ⊑∷ qs) = cong₂ _∷_ (≤q'-antisym p q) (⊑ᵘ-antisym ps qs)
+
+usage-⊑-isPartialOrder : ∀ {n} → IsPartialOrder _≡_ (_⊑ᵘ_ {n})
+usage-⊑-isPartialOrder = record
+  { isPreorder = record
+    { isEquivalence = isEquivalence
+    ; reflexive = λ { {Ψ} refl → ⊑ᵘ-refl Ψ }
+    ; trans = ⊑ᵘ-trans }
+  ; antisym = ⊑ᵘ-antisym }

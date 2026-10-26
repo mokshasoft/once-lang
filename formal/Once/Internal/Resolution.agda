@@ -37,7 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≢_)
 open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Name using (canonical; gen; GenWord)
-open import Once.Internal.ResolvedRefs using (GoodRefs)
+open import Once.ResolvedRefs using (GoodRefs)
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Module.Core using (Resolved; resolved)

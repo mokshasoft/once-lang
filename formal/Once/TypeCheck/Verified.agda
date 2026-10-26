@@ -34,14 +34,14 @@
 import Once.TypeCheck.Raw as Raw
 
 import Once.Spec.Context as SCx
-open import Once.Internal.Type using (wk₀)
+open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Grade
 module Once.TypeCheck.Verified where
 
 
-import Once.Internal.Context as Surface
+import Once.Context as Surface
 open import Once.Spec.Context using (Ctx)
 import Once.Spec.Context as Surface
 
@@ -51,20 +51,20 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-import Once.Internal.Type.Sub
+open import Once.Type.Concrete using (IsConcrete)
+import Once.Type.Sub
 import Once.Spec.Sub
-import Once.Internal.Type.Join
-import Once.Internal.Type
+import Once.Type.Join
+import Once.Type.Core
 import Once.Spec.Type
 import Once.Type
-import Once.Internal.Context
+import Once.Context
 import Once.Spec.Surface.Syntax as Syn
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
-open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
-import Once.Internal.Typing.Scope as Classify
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
+import Once.TypeCheck.Scope as Classify
 
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
@@ -78,9 +78,9 @@ import Once.TypeCheck.Completeness as CS
 import Once.TypeCheck.Completeness.Rules as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
-import Once.Internal.Laws.Grade as Grade
-import Once.Internal.Laws.Order as Ord
-import Once.Internal.Type.Sub
+import Once.Laws.Grade as Grade
+import Once.Laws.Order as Ord
+import Once.Type.Sub
 import Once.Spec.Sub
 import Once.Surface.GradeMatrix as GM
 import Algebra.Structures
@@ -288,7 +288,7 @@ record VerifiedTypeChecker {m} : Set₁ where
           ≡ success C₁ (qℓ SCx.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
           ≡ success C₂ (qr SCx.∷ Ψᵣ) eRE dR fR
-      → ¬ Once.Internal.Type.Join.UB C₁ C₂
+      → ¬ Once.Type.Join.UB C₁ C₂
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseBranchMismatch
 
@@ -617,7 +617,7 @@ record VerifiedTypeChecker {m} : Set₁ where
     usage-semimodule : ∀ {n} → Algebra.Module.Structures.IsLeftSemimodule GM.quantity-semiring _≡_
                          (Once.Spec.Context._+ᵘ_ {n}) Once.Spec.Context.zeroUsage Once.Spec.Context._*ᵘ_
     usage-join       : ∀ {n} → Algebra.Structures.IsCommutativeBand {A = Once.Spec.Context.Usage n} _≡_
-                         Once.Internal.Context._⊔ᵘ_
+                         Once.Context._⊔ᵘ_
     -- The orders are partial orders (plan 0.112 B6).
     subtype-order    : Relation.Binary.Structures.IsPartialOrder {A = Ty m} _≡_ Once.Spec.Sub._<:_
     effect-order     : Relation.Binary.Structures.IsPartialOrder {A = Once.Spec.Grade.Purity} _≡_

@@ -31,9 +31,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Type using (Type; KCtx)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Internal.Core.Decl using (declS)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Type.Honest using (HonestFFI)
+open import Once.Core.Decl using (declS)
 import Once.Spec.Core.Syntax as SC
 
 module Once.Adequacy.SpecFront.Annotate
@@ -57,7 +57,7 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act;
 open import Once.Spec.Type using (Ty; Int; Float; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Context using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 import Once.Spec.Context as SCx
-open import Once.Internal.Context using (_⊔ᵘ_)
+open import Once.Context using (_⊔ᵘ_)
 import Once.Type.Grade
 open import Once.Spec.Core.Syntax using (Tm; primCod)
 open import Once.Spec.Surface.Syntax using (Expr)

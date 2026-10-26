@@ -50,7 +50,7 @@ open import Once.Adequacy.CPU.Interface using (Byte)
 open import Once.Target.Arch using (arch-numerics)
 import Once.Denotation.Behavior as B
 open import Once.Internal.Trace using (interp)
-open import Once.Internal.Contract using (Impl)
+open import Once.Contract using (Impl)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace using (WB-trans; WB-sym)
 open import Once.Adequacy.MachineTrace using (silentTr)
@@ -62,19 +62,19 @@ import Once.Spec.Source as SP
 open SP using (Source; Typed; _⊢_; behaviour; Admissible)
 open SP.Typed using (signature; program)
 open import Once.Adequacy.SpecInterp using (toInterp; toImpl; wellFormed?)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.SpecSource using (parseModules; toSource)
 open import Data.Sum using (_⊎_)
 open import Once.Denotation.TraceTr using (trT∞)
-open import Once.Internal.Contract using (ISig)
+open import Once.Contract using (ISig)
 import Once.Internal.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM
 open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)
 import Once.Internal.Parsing as LPa
 import Once.Internal.Resolution as LR
-import Once.Internal.Module as LM
+import Once.Module as LM
 open import Once.Denotation.Admissible using (AdmissibleM)
 import Once.Adequacy.CoreBridge as CB
 import Once.Spec.Surface.Syntax as SS

@@ -25,9 +25,9 @@ import Once.Spec.Type as ST
 import Once.Spec.Grade as LG
 open import Once.Spec.Grade using (Many; pure; act; eff)
 open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
-open import Once.Internal.Type.Poly using (ftv; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
-open import Once.Internal.Type.Instance using (arityOf)
-open import Once.Internal.Type.Schema using (schemaOf)
+open import Once.Type.Poly using (ftv; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
+open import Once.Type.Instance using (arityOf)
+open import Once.Type.Schema using (schemaOf)
 import Once.Spec.Grade as SG
 import Once.Spec.Core.Syntax as SC
 open import Once.Adequacy.SpecFront.SchemaOf using (module Parts)

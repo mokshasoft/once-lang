@@ -34,7 +34,7 @@ open import Once.Adequacy.SpecGrammar.TypeHeads
   using (notStar→TStar; notStar←; notPlus→TPlus; notPlus←;
          notArrow→TArrow; notArrow→TCaret0; notArrow→TCaret1; notArrow→TCaretW; notArrow←)
 open import Once.Adequacy.SpecGrammar.Conv using (toTy; toFun)
-open import Once.Internal.Type.Poly using (polyOf; polyOfF)
+open import Once.Type.Poly using (polyOf; polyOfF)
 open import Once.Adequacy.SpecGrammar.SigTypes using (writtenS)
 
 private

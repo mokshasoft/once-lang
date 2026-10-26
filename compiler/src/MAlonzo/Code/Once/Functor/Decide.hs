@@ -21,8 +21,8 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Type.Concrete
 
 -- Once.Functor.Decide.isBaseType?
 d_isBaseType'63'_8 ::
@@ -84,7 +84,7 @@ d_isBaseType'63'_8 v0
 -- Once.Functor.Decide.isConcrete?
 d_isConcrete'63'_52 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  Maybe MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8
+  Maybe MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6
 d_isConcrete'63'_52 v0
   = let v1
           = let v1 = d_isBaseType'63'_8 (coe v0) in
@@ -93,8 +93,7 @@ d_isConcrete'63'_52 v0
                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                    -> coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                        (coe
-                           MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12 v2)
+                        (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v2)
                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
                  _ -> MAlonzo.RTE.mazUnreachableError) in
     coe
@@ -110,9 +109,7 @@ d_isConcrete'63'_52 v0
                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                                -> coe
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                    (coe
-                                       MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_20 v7
-                                       v8)
+                                    (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'fun_18 v7 v8)
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                       _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
          _ -> coe v1)
@@ -171,36 +168,28 @@ d_isBaseType'63''45'complete_90 v0 v1
 -- Once.Functor.Decide.isConcrete?-complete
 d_isConcrete'63''45'complete_152 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
+  MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_isConcrete'63''45'complete_152 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12 v3
+      MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v3
         -> case coe v3 of
              MAlonzo.Code.Once.Spec.Type.C_b'45'Unit_94
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe
-                       MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12 v3)
-                    erased
+                    (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v3) erased
              MAlonzo.Code.Once.Spec.Type.C_b'45'Void_96
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe
-                       MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12 v3)
-                    erased
+                    (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v3) erased
              MAlonzo.Code.Once.Spec.Type.C_b'45'Int_98
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe
-                       MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12 v3)
-                    erased
+                    (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v3) erased
              MAlonzo.Code.Once.Spec.Type.C_b'45'Float_100
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe
-                       MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12 v3)
-                    erased
+                    (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v3) erased
              MAlonzo.Code.Once.Spec.Type.C_b'45''42'_106 v6 v7
                -> case coe v0 of
                     MAlonzo.Code.Once.Spec.Type.C__'42'__22 v8 v9
@@ -217,9 +206,7 @@ d_isConcrete'63''45'complete_152 v0 v1
                                coe
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                    (coe
-                                       MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12
-                                       v12)
+                                    (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v12)
                                     erased)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Spec.Type.C_b'45''43'_112 v6 v7
@@ -238,13 +225,11 @@ d_isConcrete'63''45'complete_152 v0 v1
                                coe
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                    (coe
-                                       MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'base_12
-                                       v12)
+                                    (coe MAlonzo.Code.Once.Type.Concrete.C_con'45'base_10 v12)
                                     erased)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_20 v5 v6
+      MAlonzo.Code.Once.Type.Concrete.C_con'45'fun_18 v5 v6
         -> case coe v0 of
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v7 v8 v9
                -> let v10 = d_isBaseType'63''45'complete_90 (coe v7) (coe v5) in
@@ -258,8 +243,7 @@ d_isConcrete'63''45'complete_152 v0 v1
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                         (coe
-                                           MAlonzo.Code.Once.Internal.Type.WellFormed.C_con'45'fun_20
-                                           v12 v14)
+                                           MAlonzo.Code.Once.Type.Concrete.C_con'45'fun_18 v12 v14)
                                         erased
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           _ -> MAlonzo.RTE.mazUnreachableError))

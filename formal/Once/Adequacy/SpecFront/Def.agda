@@ -27,13 +27,13 @@ open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_)
 open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
-import Once.Internal.Type.WellFormed as LW
-open import Once.Internal.Type using (wk₀)
+import Once.Type.Concrete as LW
+open import Once.Type.Core using (wk₀)
 import Once.Spec.Type as ST
-open import Once.Internal.Typing.Scope using (Imports; lookupImport)
+open import Once.TypeCheck.Scope using (Imports; lookupImport)
 
 module Once.Adequacy.SpecFront.Def
   (Σ : Signature) (ps : List String) (sg : Imports)
@@ -60,13 +60,13 @@ import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Typing as SUT
 import Once.Spec.Surface.Program as SPr
 import Once.Spec.Core.Typing
-import Once.Internal.Type.Honest
+import Once.Type.Honest
 open import Once.Spec.Name using (canonical)
-open import Once.Internal.Type.DecEq using (_≟T_)
-open import Once.Internal.Core.Decl using (⌜declS⌝)
-open import Once.Internal.Module using (scope; ctxOfAt)
-open import Once.Internal.Principal using (PrincipalAt; Fails; below-complete)
-open import Once.Internal.Core.Translate Σ using (SigSig; ImpSig; TeleSig; u0)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.Core.Decl using (⌜declS⌝)
+open import Once.Module using (scope; ctxOfAt)
+open import Once.Principal using (PrincipalAt; Fails; below-complete)
+open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig; u0)
 import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.View as TV
 open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf)
@@ -106,8 +106,8 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
 
     -- a declaration of Σ is an honest, concrete FFI declaration of the scope's signature
     ok-sig : ∀ {c t} → NotGenerator c → (c ∶ t) ∈ Σ
-           → Σ[ T ∈ ST.Type ] ((c ∶ Once.Internal.Core.Decl.declS T) ∈ Σ) × (⌜ t ⌝ᵈ ≡ ⌜ Once.Internal.Core.Decl.declS T ⌝ᵈ)
-               × OkSOf P c T × LW.IsConcrete T × Once.Internal.Type.Honest.HonestFFI T
+           → Σ[ T ∈ ST.Type ] ((c ∶ Once.Core.Decl.declS T) ∈ Σ) × (⌜ t ⌝ᵈ ≡ ⌜ Once.Core.Decl.declS T ⌝ᵈ)
+               × OkSOf P c T × LW.IsConcrete T × Once.Type.Honest.HonestFFI T
     ok-sig ng mem =
       let (T , lk , k , r) = h-sig {m} ng mem
           dc = TV.View.declares (Pack.V P) lk
@@ -154,7 +154,7 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
   -- principality says is not below.
   principal← : ∀ {e e′ A} → RX [] e e′ → SPr.Principal Σ S nm (SC.schema m κ A) e′ → PrincipalAt ctx e A
   principal← {e} {e′} {A} rx pr {X} m with TE.checkElabV ctx e X
-  ... | TE.failure _ , _ = Once.Internal.Principal.fails
+  ... | TE.failure _ , _ = Once.Principal.fails
   ... | TE.success Ψ eE dd f , wt =
     let (sX , nX) = below-sound A m
         (t , (D , u) , _) = proj₂ wt P

@@ -39,12 +39,12 @@ import Once.Spec.Core.Syntax as SC
 import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as SX
 import Once.TypeCheck.View as TView
-import Once.Internal.Type.Poly as TP
-open import Once.Internal.Typing.Scope using (NamedCtx; Binding; Imports; PolyCtx; lookupImport; lookupPolyPrefix; extendNamedCtx)
+import Once.Type.Poly as TP
+open import Once.TypeCheck.Scope using (NamedCtx; Binding; Imports; PolyCtx; lookupImport; lookupPolyPrefix; extendNamedCtx)
 open NamedCtx
 import Once.Spec.Surface.Typing as SUT
 import Once.TypeCheck.Scoped as Sc
-import Once.Internal.Name
+import Once.Name
 import Once.TypeCheck.Witness as WM
 import Once.TypeCheck.Use as UM
 import Once.Denotation.RealizeS as RS
@@ -116,7 +116,7 @@ OkOf P = TView.InView (Sg P) (S P) (V P)
 -- …and the declarations: those the scope's signature declares, under a name
 -- the resolver writes.
 OkSOf : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) → CanonicalName → ST.Type → Set
-OkSOf {ctx = ctx} P c T = (lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T) × Once.Internal.Name.WordName c
+OkSOf {ctx = ctx} P c T = (lookupImport (sig ctx) (Once.Name.showCanonical c) ≡ just T) × Once.Name.WordName c
 
 -- What the lookups a reference records give: a definition in scope is no
 -- generator, no declaration in scope, and the one its name finds (D249,
@@ -157,7 +157,7 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
 
   ok-sig : ∀ {d T} → OkOf P d → OkSOf P (nm P d) T → Data.Empty.⊥
   ok-sig {T = T} ok l =
-    just≢nothing (PE.trans (sym (subst (λ c → lookupImport (sig ctx) (Once.Internal.Name.showCanonical c) ≡ just T) (proj₁ (proj₂ (own-name ok))) (proj₁ l)))
+    just≢nothing (PE.trans (sym (subst (λ c → lookupImport (sig ctx) (Once.Name.showCanonical c) ≡ just T) (proj₁ (proj₂ (own-name ok))) (proj₁ l)))
                         (proj₂ (proj₂ (own-name ok))))
 
   ok-inj : ∀ {d d′} → OkOf P d → OkOf P d′ → nm P d ≡ nm P d′ → d ≡ d′
@@ -213,21 +213,21 @@ open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂)
 open import Once.Spec.Name using (gen; own)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_; sub-arr)
 open _⊔_≔_ using (left; right)
-open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
 open import Once.IR as IR using (IR)
 open import Once.IRTy using (IRTy; ⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Type.Grade using (≤q-Many)
-open import Once.Internal.Name using (showCanonical; WordName)
-open import Once.Internal.Type using (wk₀; none)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Type.Instance using (KindedInstance)
-open import Once.Internal.Type.Schema using (kinded-instance)
-open import Once.Internal.Context using (svar; _⊔ᵘ_)
+open import Once.Name using (showCanonical; WordName)
+open import Once.Type.Core using (wk₀; none)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Type.Instance using (KindedInstance)
+open import Once.Type.Schema using (kinded-instance)
+open import Once.Context using (svar; _⊔ᵘ_)
 open import Once.TypeCheck.Raw using (isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
-open import Once.Internal.Typing.Scope using (lookupLocal; classifyAppHead)
-open import Once.Internal.Core.Decl using (⌜declS⌝)
+open import Once.TypeCheck.Scope using (lookupLocal; classifyAppHead)
+open import Once.Core.Decl using (⌜declS⌝)
 open import Once.Type.Grade using (_≤qᵇ_)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; BinOp)
@@ -584,7 +584,7 @@ module _ {m} {ctx : NamedCtx m} where
   wt-unit-var : WI ctx (SX.RResolved (gen "unit")) ST.Unit SCx.zeroUsage SS.unit
   wt-unit-var = tt , λ P → let open At P ; open WMP P in _ , w-unit-g , refl
 
-  wt-var-local : ∀ {x A Ψ} {eV : Once.Internal.Context.SVar (debruijn ctx) Ψ A}
+  wt-var-local : ∀ {x A Ψ} {eV : Once.Context.SVar (debruijn ctx) Ψ A}
                → lookupLocal ctx x ≡ just (A , Ψ , eV) → WI ctx (SX.RVar x) A Ψ (SS.svar→expr eV)
   wt-var-local {eV = svar i} lk = tt , λ P → let open At P ; open WMP P in _ , w-var (found (lr P) i lk) , subst-K _ _
 

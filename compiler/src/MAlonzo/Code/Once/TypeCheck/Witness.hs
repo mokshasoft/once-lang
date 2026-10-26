@@ -25,7 +25,6 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Data.Nat.Base
-import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Grade
@@ -35,6 +34,7 @@ import qualified MAlonzo.Code.Once.Spec.Sub
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Surface.Typing
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Type.Concrete
 import qualified MAlonzo.Code.Once.TypeCheck.Use
 
 -- Once.TypeCheck.Witness.SU._⇒⟨_⟩_
@@ -337,7 +337,7 @@ d_w'45'sigop_820 ::
   AgdaAny ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
+  MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_w'45'sigop_820 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
                  v12 v13 v14 v15 v16
@@ -347,7 +347,7 @@ du_w'45'sigop_820 ::
   AgdaAny ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.Any.T_Any_34 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
+  MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_w'45'sigop_820 v0 v1 v2 v3 v4 v5
   = coe

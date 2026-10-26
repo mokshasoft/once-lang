@@ -38,7 +38,7 @@ open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 import Once.Spec.Grade as T
-import Once.Internal.Type as T
+import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Spec.Type as T
 import Once.Type as T

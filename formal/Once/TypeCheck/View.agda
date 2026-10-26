@@ -26,11 +26,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Type using (Type; ∅ₖ)
 open import Once.Spec.Signature using (_∶_)
 open import Once.Spec.Core.Syntax using (schema; _!!_)
-open import Once.Internal.Name using (showCanonical; WordName)
-open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Internal.Type.Schema using (schemaOf)
-open import Once.Internal.Core.Decl using (declS)
-open import Once.Internal.Typing.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.Name using (showCanonical; WordName)
+open import Once.Type.Honest using (HonestFFI)
+open import Once.Type.Schema using (schemaOf)
+open import Once.Core.Decl using (declS)
+open import Once.TypeCheck.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 
 -- An FFI declaration: honest (D231), and a declaration of Σ under its name.
 record Declared (x : String) (T : Type) : Set where

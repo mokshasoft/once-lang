@@ -34,7 +34,7 @@ open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (IRTy)
-open import Once.Internal.Contract using (ISig)
+open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (IRFun; Linked; LinkedAt)
 
 -- The symbol a SigOp's lowering calls: itself, or (a comparison) its block.

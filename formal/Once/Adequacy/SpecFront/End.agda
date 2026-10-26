@@ -38,17 +38,17 @@ import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; MonoWit)
+open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; addImp; MonoWit)
 open import Once.TypeCheck.Classify using (topCtx)
 import Once.Compile as C
-open import Once.Internal.Principal using (PrincipalAt)
-open import Once.Internal.Core.Translate Σ
+open import Once.Principal using (PrincipalAt)
+open import Once.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; SigIn; t-def; wkI; wkT; impDefs; mainEntry)
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; toProgram; toProgramFrom)
 import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Spec.Sub using (_<:_)
-import Once.Type.Sub
-import Once.Internal.Core.Translate Σ as TR
+import Once.Type.SubDecide
+import Once.Core.Translate Σ as TR
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (_∷ⁿ_)
 import Once.Adequacy.SpecFront.Polys
 
@@ -133,7 +133,7 @@ prog-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr
   from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
            (names-mono (funName fi Data.String.== "main") (funName fi) ty N) zero (mainEntry e) (cong (λ x → canonical (x ∷ [])) em) rest u (all-tail ks)
 prog-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) (inj₂ mi′) u ks =
-  mono-end tl ss is ts N ep er pr W rest mi′ (funName fi Data.String.≟ "main") (Once.Type.Sub._<:?_ ty EffUU) u ks
+  mono-end tl ss is ts N ep er pr W rest mi′ (funName fi Data.String.≟ "main") (Once.Type.SubDecide._<:?_ ty EffUU) u ks
 
 mono-end {S = S} {sc} {fi = fi} {ty} {Ψ} tl ss is ts N ep er pr W rest mi′ (yes em) (yes e) u ks =
   from-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)

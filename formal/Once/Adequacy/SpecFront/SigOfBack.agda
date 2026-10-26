@@ -28,9 +28,9 @@ open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (ModuleMap; sigsOf; importedAt; importedOf; expandPath)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 import Once.Internal.Resolution as LR
-open import Once.Internal.Module using (entrySig)
+open import Once.Module using (entrySig)
 open import Once.Spec.Name using (canonical)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Once.Spec.Surface.Syntax using (RVar)
 open import Once.Spec.Signature using (Signature; WellFormed; []; _∷_)
 import Once.Spec.Surface.Syntax as S
@@ -38,7 +38,7 @@ import Once.Spec.Surface.Resolution as SR
 open import Once.Spec.Surface.Program
   using (SignaturesOf; so-nil; so-sig; so-other; ns-tsig; ns-def; ns-alias; ns-import;
          Imported; im-nil; im-import; im-other; ni-sig; ni-tsig; ni-def; ni-alias)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; IsSig; is-sig; imported-sigs; FFIFacts)
 open import Once.Adequacy.SpecFront.SigBack using (project-of; decl-honest; declTy-concrete)
 open import Once.Adequacy.SpecInterp using (declTy)

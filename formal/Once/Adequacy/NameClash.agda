@@ -24,7 +24,7 @@
 
 module Once.Adequacy.NameClash where
 
-open import Once.Internal.Type.Instance using (kindsOf)
+open import Once.Type.Instance using (kindsOf)
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.List using (List; []; _∷_; map; _++_)
 open import Data.Maybe using (nothing; just)
@@ -59,10 +59,10 @@ import Once.Compile as C
 import Once.IR as IR
 import Once.TypeCheck.Elaborate as TE
 import Once.TypeCheck.Classify as Classify
-open import Once.Internal.Type.Instance using (rigidOf)
-open import Once.Internal.Principal using (below)
+open import Once.Type.Instance using (rigidOf)
+open import Once.Principal using (below)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Internal.Type.Honest using (honest?)
+open import Once.Type.Honest using (honest?)
 
 ------------------------------------------------------------------------
 -- Boolean elimination helpers.

@@ -33,10 +33,10 @@ import Once.Spec.Type as ST
 import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as Raw
 import Once.Spec.Surface.Typing as SUT
-open import Once.Internal.Typing.Scope using (NamedCtx; Binding; lookupLocal; lookupLocal-go; lookupLocal-at; lookupLocal-next)
+open import Once.TypeCheck.Scope using (NamedCtx; Binding; lookupLocal; lookupLocal-go; lookupLocal-at; lookupLocal-next)
 open Binding using (name)
 open NamedCtx
-open import Once.Internal.Context using (svar)
+open import Once.Context using (svar)
 import Once.TypeCheck.Scoped as Sc
 open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; pack▸)
 open Pack
@@ -93,14 +93,14 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
 ------------------------------------------------------------------------
 
 open import Once.Type.Closed using (sub0; sub0≡)
-open import Once.Internal.Type using (wk₀; none)
-open import Once.Internal.Type.Instance using (KindedInstance; rigidOf)
-open import Once.Internal.Type.Schema using (schemaOf; kinded-instance)
-import Once.Internal.Type.Poly as TP
+open import Once.Type.Core using (wk₀; none)
+open import Once.Type.Instance using (KindedInstance; rigidOf)
+open import Once.Type.Schema using (schemaOf; kinded-instance)
+import Once.Type.Poly as TP
 import Once.Type
 open import Once.Spec.Core.Syntax using (Schema; schema; _!!_)
 open Schema using (arity; kinds; type)
-open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
+open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
 open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; ¬Ground-isGround-inj₂)
 open import Once.TypeCheck.Elaborate using (isGround-inj₂→¬Ground)
@@ -192,8 +192,8 @@ cmp-op SUT.cmp-eq = refl
 cmp-op SUT.cmp-ne = refl
 
 -- An ordinary application's head is not one the checker takes apart.
-open import Once.Internal.Typing.Scope using (AppHeadView; classifyAppHead; classifyAppHeadView; viewToPba)
-import Once.Internal.Typing.Scope as LTS
+open import Once.TypeCheck.Scope using (AppHeadView; classifyAppHead; classifyAppHeadView; viewToPba)
+import Once.TypeCheck.Scope as LTS
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-lookup)
 import Data.List
@@ -233,7 +233,7 @@ module _ {Σ} {s : ℕ} {S} {nm : Fin s → _} where
 
 open import Once.TypeCheck.SpecWitness using (shape-lo; ok-gen; ok-sig; ok-inj; oks-fun)
 import Once.TypeCheck.View as TView
-open import Once.Internal.Core.Decl using (⌜declS⌝)
+open import Once.Core.Decl using (⌜declS⌝)
 open import Once.TypeCheck.Completeness.Routes
   using (pair-lit-reduce; given-infer-complete; given-cata-complete; compose-f-complete; infer-complete-RApp-spine;
          poly-head-fails; checkElab-fallback-RVar; completeness-gap-inl-app-check-eq; completeness-gap-inr-app-check-eq;
@@ -254,13 +254,13 @@ open import Once.TypeCheck.ElaborateProofs
          checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic;
          checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; checkLoopV-J; withUnit-elim)
 open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at)
-open import Once.Internal.Type.Join using (join?-complete)
-open import Once.Internal.Type.Sub using (pure-⊑; <:-refl)
+open import Once.Type.Join using (join?-complete)
+open import Once.Type.Sub using (pure-⊑; <:-refl)
 open import Once.Spec.Sub using (sub-*)
 open import Once.Spec.Grade using (⊑-pure; ⊑-pe; ⊑-pa)
 open import Once.Spec.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-*)
 import Once.TypeCheck.Error as Error
-import Once.Internal.Typing.Scope as Classify
+import Once.TypeCheck.Scope as Classify
 open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.Spec.Name using (gen; NotGenerator)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)

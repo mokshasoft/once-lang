@@ -29,13 +29,13 @@ open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
-import Once.Internal.Type.WellFormed as LW
+import Once.Type.Concrete as LW
 import Once.Spec.Type as ST
-open import Once.Internal.Type using (wk₀)
-open import Once.Internal.Typing.Scope using (Imports; lookupImport)
+open import Once.Type.Core using (wk₀)
+open import Once.TypeCheck.Scope using (Imports; lookupImport)
 
 module Once.Adequacy.SpecFront.Walk
   (Σ : Signature) (ps : List String) (sg : Imports)
@@ -60,7 +60,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; subst)
 
-import Once.Internal.Type.Poly as TP
+import Once.Type.Poly as TP
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Syntax as SX
 import Once.Spec.Surface.Program as SPr
@@ -72,10 +72,10 @@ import Once.Compile as C
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
-open import Once.Internal.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly; ctxOf)
-open import Once.Internal.Type.Schema using (schemaOf)
-open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
-open import Once.Internal.Core.Translate Σ
+open import Once.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly; ctxOf)
+open import Once.Type.Schema using (schemaOf)
+open import Once.Type.Instance using (kindsOf; rigidOf)
+open import Once.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; viewOf; telFind; u0)
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
 open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)

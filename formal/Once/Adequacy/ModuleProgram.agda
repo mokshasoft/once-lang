@@ -36,7 +36,7 @@ open import Data.String using () renaming (_≟_ to _≟str_; _==_ to _==str_)
 import Data.String.Properties as StrProp
 open import Data.Unit using (⊤; tt)
 open import Data.List.Relation.Unary.Any using () renaming (here to here′; there to there′)
-import Once.Internal.Module
+import Once.Module
 import Once.Spec.Core.Program
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -51,18 +51,18 @@ open import Once.Spec.Core.Program Σ using (Tele; def; Entry)
 open import Once.Spec.Surface.Program using (_∷ⁿ_)
 import Once.Spec.Surface.Typing as SUT
 open import Once.Spec.Sub using (_<:_)
-open import Once.Type.Sub using (_<:?_)
+open import Once.Type.SubDecide using (_<:?_)
 open import Once.Internal.Core.Telescope Σ using (Program)
-open import Once.Internal.Typing.Scope using (lookupImport; lookupPolyPrefix)
-import Once.Internal.Type.Poly as TP
+open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
+import Once.Type.Poly as TP
 import Once.Compile as C
 import Once.Parser as Parser
-open import Once.Internal.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp; MonoWit; CheckRun)
-import Once.Internal.Typing.Scope
+open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp; MonoWit; CheckRun)
+import Once.TypeCheck.Scope
 import Once.Surface.Syntax as SS
 open import Once.TypeCheck.SpecWitness using (WC)
-open import Once.Internal.Type.Instance using (kindsOf; rigidOf)
-open import Once.Internal.Core.Translate Σ
+open import Once.Type.Instance using (kindsOf; rigidOf)
+open import Once.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; []; s-ffi; i-def; t-def; wkI; wkT; impDefs; viewOf; impAt; telFind; monoSchema; u0;
          programAt; mainEntry; SigIn)
 import Once.TypeCheck.View as TView
@@ -71,7 +71,7 @@ open import Once.TypeCheck.SpecWitness using (Pack)
 import Once.TypeCheck.UseCore as UC
 import Once.Adequacy.SpecFront.ScopeNames as SN
 open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; schema-arrow)
-open import Once.Internal.Type.Schema using (schemaOf)
+open import Once.Type.Schema using (schemaOf)
 
 open Parser.FunInfo using (funName; funBody; funType)
 open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
@@ -325,5 +325,5 @@ mutual
                   ss (impDefs (funName fi ==str "main") is) (wkT ts) (names-mono (funName fi ==str "main") (funName fi) ty N) (suc d) e rest u
 
 -- A typed module's core program, over the signatures it is compiled against.
-toProgram₀ : ∀ {es} (mt : ModTele Once.Internal.Module.emptyScope es) → MainIn mt → SigIn mt → Program
+toProgram₀ : ∀ {es} (mt : ModTele Once.Module.emptyScope es) → MainIn mt → SigIn mt → Program
 toProgram₀ mt mi u = toProgram {S = SC.[]} Once.Spec.Core.Program.Tele.[] [] [] [] names₀ mt mi u

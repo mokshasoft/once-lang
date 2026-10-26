@@ -58,8 +58,8 @@ import Once.Parser.Module.Core as Core
 open import Once.Compile using (externs-of; prog-externs)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
-open import Once.Internal.Module using (moduleSig)
-open import Once.Internal.Contract using (ISig)
+open import Once.Module using (moduleSig)
+open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (Linked)
 open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
 
@@ -226,12 +226,12 @@ import Data.String
 import Data.List.Membership.DecPropositional Data.String._≟_ as StrMem
 open import Once.Adequacy.ImageWF using (lib-defs)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms; leaf-syms-leaves)
-open import Once.Internal.Module using (moduleSig-ef; teleSig)
+open import Once.Module using (moduleSig-ef; teleSig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.ProgramLinked using (link-walk; linv₀)
 open import Once.Adequacy.ModuleSig using (sigOf; sig-in)
 import Once.Spec.Core.Syntax
-import Once.Internal.Core.Translate
+import Once.Core.Translate
 import Once.Adequacy.ModuleProgram
 open import Once.Adequacy.TelePosition using (entries-distinct; none-in-empty)
 import Once.Adequacy.AcceptSound as AS
@@ -261,7 +261,7 @@ module Lib (m : Core.Resolved) where
     ce-linked es ef (inj₂ cfs) ceq =
       subst (λ cs → All (λ e → Linked (moduleSig-ef (inj₂ es)) (C.tableOf cs) (fbody e)) (C.tableOf cs))
             (FB.bundle→compiled≡compiled C.emptyCScope es cfs ceq)
-            (link-walk mt b {S = Once.Spec.Core.Syntax.[]} Once.Internal.Core.Translate.[] Once.Internal.Core.Translate.[] Once.Internal.Core.Translate.[]
+            (link-walk mt b {S = Once.Spec.Core.Syntax.[]} Once.Core.Translate.[] Once.Core.Translate.[] Once.Core.Translate.[]
                        (Once.Adequacy.ModuleProgram.names₀ (sigOf (teleSig mt))) [] linv₀ (entries-distinct m ef , none-in-empty _) u (sig-in mt))
       where
         b  = FB.ce-bundle C.emptyCScope es ceq

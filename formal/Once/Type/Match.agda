@@ -5,7 +5,7 @@
 -- Once.Type.Match — the DECIDER for schema instances (implementation, not
 -- the type language): template matching of a `PolyType` against a `Type`.
 -- Moved out of `Once.Type` (plan 0.103 phase 2a) so that it can decide
--- equality with `_≟T_`; `Once.Type.Instance` proves it sound and complete
+-- equality with `_≟T_`; `Once.Type.MatchCorrect` proves it sound and complete
 -- for `IsInstance`.
 ------------------------------------------------------------------------
 
@@ -23,14 +23,14 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
-open import Once.Internal.Type.DecEq using (_≟q_; _≟p_; _≟k_)
-open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Type.DecEq using (_≟q_; _≟p_; _≟k_)
+open import Once.Type.DecEq using (_≟T_)
 
 -- Plan 0.6.2 Phase 1 (load-bearing POC for Option C of D044's
 -- follow-up). Given a PolyType schema with `PTVar` type variables

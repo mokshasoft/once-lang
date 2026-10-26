@@ -22,7 +22,7 @@
 
 module Once.Compile where
 
-import Once.Internal.Context as Srf
+import Once.Context as Srf
 import Once.Spec.Context as Srf
 
 open import Once.Spec.Type using (Ty)
@@ -41,10 +41,10 @@ open import Function using (case_of_)
 -- Re-export types
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
 
 -- Re-export Core IR
@@ -119,25 +119,25 @@ open import Once.TypeCheck.Elaborate as TE using ()
 import Once.Surface.Syntax as Srf
 open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
-open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx)
+open import Once.TypeCheck.Scope using (NamedCtx; PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; topCtx; emptyTopCtx; ctxWithImportsAndPolys; ctxAt; emptyPolyCtx)
 open import Once.TypeCheck.Error using (renderError)
 open import Relation.Nullary using (Dec)
 import Data.String.Properties as SProp
-open import Once.Internal.Type.Instance using (rigidOf; kindsOf; arityOf)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Type.Instance using (rigidOf; kindsOf; arityOf)
+open import Once.Type.Concrete using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Internal.Type.Honest using (HonestFFI; honest?)
-open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Type.Honest using (HonestFFI; honest?)
+open import Once.Type.DecEq using (_≟T_)
 import Data.Nat
 -- D072: the untrusted principal-type oracle (validated by checkElab).
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborateFull)
 open import Once.Surface.LoopWarn using (silentLoops)
-open import Once.Internal.Principal using (below)
+open import Once.Principal using (below)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
-open import Once.Type.Sub using (_<:?_)
+open import Once.Type.SubDecide using (_<:?_)
 open import Data.Nat using (ℕ; _<ᵇ_)
 
 ------------------------------------------------------------------------
@@ -162,7 +162,7 @@ validateMain : ∀ {m} → Ty m → String ⊎ ⊤
 validateMain ty = validateMain-at ty (ty <:? mainType)
 
 -- | D314/D321 (plan 0.119 D6): the first LOWERING of a definition's type at
--- which its body also checks (`Once.Internal.Principal`); none means the type is
+-- which its body also checks (`Once.Principal`); none means the type is
 -- the body's principal type.
 firstChecking : ∀ {m} → (ctx : NamedCtx m) (e : Expr) → List (Ty m) → Maybe (Ty m)
 fc-step : ∀ {m} → (ctx : NamedCtx m) (e : Expr) (X : Ty m) → List (Ty m) → TE.VerifiedCheckResult ctx e X → Maybe (Ty m)

@@ -18,7 +18,7 @@
 module Once.Adequacy.SpecFront.SigFacts where
 
 open import Data.Nat using (ℕ)
-import Once.Internal.Type
+import Once.Type.Core
 open import Data.List using (List; []; _∷_; map; _ʳ++_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -35,23 +35,23 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 import Data.String.Properties as StrProp
 
-open import Once.Internal.Contract using (ISig)
-import Once.Internal.Type as LT
+open import Once.Contract using (ISig)
+import Once.Type.Core as LT
 import Once.Spec.Type as LT
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Type.Honest using (HonestFFI)
+open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Signature using (Signature; Decl; _∶_; OneName; ⌜_⌝ᵈ)
 import Once.Spec.Type as ST
 import Once.Parser as Parser
-open import Once.Internal.Module using (entrySig)
-open import Once.Internal.Typing.Scope using (Imports; lookupImport)
+open import Once.Module using (entrySig)
+open import Once.TypeCheck.Scope using (Imports; lookupImport)
 open import Once.Adequacy.SpecInterp using (declTy)
-open import Once.Internal.Core.Decl using (toISig; declS; declS-⌜⌝ᵈ; ⌜declS⌝)
+open import Once.Core.Decl using (toISig; declS; declS-⌜⌝ᵈ; ⌜declS⌝)
 open import Once.Adequacy.SpecFront.Render using (render-inj)
 open import Once.Adequacy.SpecCore.DeclType using (declS-declTy)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts)
-import Once.Internal.Module
+import Once.Module
 
 keys : ISig → List String
 keys = map proj₁
@@ -65,14 +65,14 @@ rname d = showCanonical (Decl.name d)
 
 private
   fun-keys : ∀ {P : String → Set} n ft b p {rest : ISig} → P n → All P (keys rest)
-           → All P (keys (Once.Internal.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
+           → All P (keys (Once.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
   fun-keys n (just _) b true  h a = h ∷ a
   fun-keys n nothing  b true  h a = a
   fun-keys n (just _) b false h a = a
   fun-keys n nothing  b false h a = a
 
   fun-distinct : ∀ n ft b p {rest : ISig} → All (n ≢_) (keys rest) → AllPairs _≢_ (keys rest)
-               → AllPairs _≢_ (keys (Once.Internal.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
+               → AllPairs _≢_ (keys (Once.Module.entrySig-fun (Parser.mkFunInfo n ft b p) p ft rest))
   fun-distinct n (just _) b true  h a = h ∷ a
   fun-distinct n nothing  b true  h a = a
   fun-distinct n (just _) b false h a = a
@@ -175,11 +175,11 @@ sig-at Σ fs e u M =
 -- `Walk`'s `h-sig`, for the scope past the FFI declarations.
 h-sig-of : ∀ Σ fs → toISig Σ ≡ entrySig fs → AllPairs _≢_ (keys (entrySig fs)) → All FFIFacts fs
          → ∀ {m} {c t} → (c ∶ t) ∈ Σ
-         → Σ[ T ∈ LT.Type ] (lookupImport (entrySig fs ʳ++ []) (showCanonical c) ≡ just T) × IsConcrete T × (Once.Internal.Type.wk₀ {m} T ≡ ⌜ t ⌝ᵈ)
+         → Σ[ T ∈ LT.Type ] (lookupImport (entrySig fs ʳ++ []) (showCanonical c) ≡ just T) × IsConcrete T × (Once.Type.Core.wk₀ {m} T ≡ ⌜ t ⌝ᵈ)
 h-sig-of Σ fs e u fa {m} {c} {t} M =
   let (k , h) = facts-at fa (subst (_ ∈_) e (mem-toISig M))
   in declTy t , sig-at Σ fs e u M , k
-     , subst (λ t′ → Once.Internal.Type.wk₀ {m} (declTy t) ≡ ⌜ t′ ⌝ᵈ) (declS-declTy t) (sym (⌜declS⌝ k h))
+     , subst (λ t′ → Once.Type.Core.wk₀ {m} (declTy t) ≡ ⌜ t′ ⌝ᵈ) (declS-declTy t) (sym (⌜declS⌝ k h))
 
 -- A declaration `toISig` records, read at a word name rendering to its key,
 -- is the declaration of Σ (D329: word names render injectively).

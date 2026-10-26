@@ -24,9 +24,9 @@ module Once.Adequacy.FunBundle where
 
 import Once.TypeCheck.SpecWitness
 open import Once.Spec.Context using (Usage)
-open import Once.Internal.Typing.Scope using (PolyCtx)
+open import Once.TypeCheck.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoWit; pair-at)
+open import Once.Module using (ModTele; []; ffi; mono; poly; MainIn; MonoWit; pair-at)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -50,29 +50,29 @@ open import Once.Spec.Type using (Unit; Type; Ty; _⇒[_]_)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-open import Once.Internal.Type.Instance using (rigidOf; kindsOf; arityOf)
+open import Once.Type.Instance using (rigidOf; kindsOf; arityOf)
 open import Once.TypeCheck.Classify using (ctxAt)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Type.Concrete using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Internal.Type.Honest using (HonestFFI; honest?)
+open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Syntax as Srf
 open import Once.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate as TE
   using (checkElab)
-open import Once.Internal.Typing.Scope using (NamedCtx)
+open import Once.TypeCheck.Scope using (NamedCtx)
 import Once.Spec.Surface.Syntax as Syn
-open import Once.Internal.Principal using (below)
+open import Once.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Once.Parser using (FunInfo)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
 import Data.String as String
-import Once.Internal.Type.DecEq
+import Once.Type.DecEq
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 open import Once.Compile using (findMain; findMain-here; mainEntry; moduleToIR; moduleToIR-aux)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Type.Sub using (_<:?_)
+open import Once.Type.SubDecide using (_<:?_)
 open import Once.Adequacy.MainIRForm using (bare-injective)
 import Once.Adequacy.ModuleComplete as MC
 
@@ -203,7 +203,7 @@ compileFunI-ce polys impsOf ctx ty fi irFun eq =
         → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ ty) (λ se →
             Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → proj₁ cr ≡ TE.success ty Ψ se d f))))
     aux (TE.failure _ , _) ()
-    aux (TE.success T Ψ se d f , w) e = fix (at w (T Once.Internal.Type.DecEq.≟T ty) e) se
+    aux (TE.success T Ψ se d f , w) e = fix (at w (T Once.Type.DecEq.≟T ty) e) se
       where
         fix : (eq′ : T ≡ ty) (se′ : Expr (NamedCtx.debruijn nctx) Ψ T)
             → Σ-syntax (Usage (NamedCtx.size nctx)) (λ Ψ′ → Σ-syntax (Expr (NamedCtx.debruijn nctx) Ψ′ ty) (λ se″ →

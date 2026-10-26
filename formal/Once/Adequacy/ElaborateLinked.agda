@@ -25,23 +25,23 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Type.Sub
+open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+; sub-var)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.Sub
-open import Once.Internal.Laws.SubLaws
+open import Once.Type.SubDecide
+open import Once.Laws.Sub
 open import Once.Spec.Name using (CanonicalName; bare)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IR using (IR)
 import Once.IR as IR
 open import Once.IRTy using (IRTy; ⌊_⌋; _≟IRTy_; ⌊wk₀⌋)
 import Once.IRTy.WF
 open import Once.IR.Ref using (refIR)
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void)
-open import Once.Internal.Context hiding (_,_)
+open import Once.Context hiding (_,_)
 open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _⊑ᵘ_; lookup; zeroUsage; ∅)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
@@ -54,14 +54,14 @@ import Once.IRTy
 open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Denotation.Program using (IRFun; LinkedAt; LinkedAt-at; Linked; Declared-at)
 open Once.Denotation.Program.IRFun using (fcod; fdom; fname)
-open import Once.Internal.Contract using (ISig; contractOf; contract-eff)
-open import Once.Internal.ContractLaws using (value-∈; answer-∈)
+open import Once.Contract using (ISig; contractOf; contract-eff)
+open import Once.ContractLaws using (value-∈; answer-∈)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
 import Once.Spec.Grade as Ty
 open import Once.Spec.Type using (Void)
-open import Once.Internal.Type using (isVoid?; isUnit?)
-import Once.Internal.Type as SpecTy
+open import Once.Type.Core using (isVoid?; isUnit?)
+import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
 open import Data.List.Membership.Propositional using (_∈_)
 

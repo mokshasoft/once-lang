@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Type — the implementation's operations on types.
 --
--- The types themselves are the Spec's (`Once.Internal.Type`, `.Grade`, `.Poly`).
+-- The types themselves are the Spec's (`Once.Type.Core`, `.Grade`, `.Poly`).
 -- This module holds what the compiler needs beyond them: decidable equality,
 -- Boolean equality, the groundness decider, printing for error messages, the
 -- register-resident classification and a few example functors.
@@ -30,7 +30,7 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act;
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly using (Ground; GroundF)
+open import Once.Type.Poly using (Ground; GroundF)
 
 
 -- | Show function for Quantity (for error messages)
@@ -52,7 +52,7 @@ showArrowKind : ArrowKind → String
 showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
 
 
--- The deciders on quantities, purities and kinds are `Once.Internal.Type.DecEq`'s.
+-- The deciders on quantities, purities and kinds are `Once.Type.DecEq`'s.
 
 ------------------------------------------------------------------------
 -- Common Functor Patterns

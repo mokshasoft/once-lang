@@ -116,11 +116,11 @@ module _ where
 ------------------------------------------------------------------------
 
 open import Once.Spec.Surface.Syntax as LP using (PolyType; PolyFunctor)
-open import Once.Internal.Type.Poly as LP using (Ground; GroundF; extractGround)
-import Once.Internal.Type as LT
+open import Once.Type.Poly as LP using (Ground; GroundF; extractGround)
+import Once.Type.Core as LT
 import Once.Spec.Type as LT
 import Once.Spec.Grade as LG
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (Base; b-Unit; b-Void; ∅ₖ)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open SPr using (TypeOf; FunOf; SchemaOf; to-var; to-unit; to-void; to-int; to-float; to-*; to-+; to-⇒; to-act; to-eff; to-μ; to-ν;

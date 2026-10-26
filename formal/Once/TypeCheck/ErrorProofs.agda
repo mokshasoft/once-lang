@@ -25,7 +25,7 @@
 module Once.TypeCheck.ErrorProofs where
 
 import Once.Spec.Context as SCx
-import Once.Internal.Context as Surface
+import Once.Context as Surface
 
 open import Once.Spec.Type using (var; Ty; Fun)
 open import Data.String using (String; _++_)
@@ -39,27 +39,27 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Type using (Type; Unit; Void; Int)
 open import Once.Spec.Name using (gen)
 import Once.Spec.Grade as T
-import Once.Internal.Type as T
+import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Spec.Type as T
-import Once.Internal.Type.Poly as T
+import Once.Type.Poly as T
 import Once.Type as T
 open import Once.Spec.Surface.Syntax as Raw using (RLam; RQualified)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Internal.Type.DecEq using (_≟T_)
-open import Once.Internal.Type.Join using (UB; join?-apart)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.Type.Join using (UB; join?-apart)
 open import Once.Spec.Sub using (sub-int; sub-unit)
-open import Once.Type.Sub using (_<:?_)
+open import Once.Type.SubDecide using (_<:?_)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; VerifiedInferResult; success; failure; inferElabV; checkElabV; inferElabV-RNeg-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
-open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal)
 open import Once.TypeCheck.Classify using (lookupPoly)
-import Once.Internal.Typing.Scope as Classify
+import Once.TypeCheck.Scope as Classify
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error
   using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; InlNeedsSumType; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UnboundVariable; UnboundQualified)
-import Once.Internal.Context
+import Once.Context
 
 ------------------------------------------------------------------------
 -- Unconditional-failure paths (now trivial after refactor)

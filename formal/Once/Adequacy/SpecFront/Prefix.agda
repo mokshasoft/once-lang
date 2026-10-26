@@ -32,7 +32,7 @@ open import Once.Spec.Core.Syntax using (Defs)
 import Once.Spec.Core.Program
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funType; funIsPrimitive)
-open import Once.Internal.Module using (Scope; scope; ModTele; []; ffi; mono; poly; MainIn; MainsEffUU; entrySig)
+open import Once.Module using (Scope; scope; ModTele; []; ffi; mono; poly; MainIn; MainsEffUU; entrySig)
 open import Once.Adequacy.SpecFront.Extract using (FFIEntry; FFIFacts)
 
 private
@@ -43,7 +43,7 @@ module _ (Σ : Signature) where
 
   private
     module TL = Once.Spec.Core.Program Σ
-  open import Once.Internal.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; SigIn)
+  open import Once.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; SigIn)
   open import Once.Adequacy.ModuleProgram Σ using (Names; toProgram)
 
   record Past {s} (S : Defs s) (sc : Scope) (fs es : List Parser.Entry)

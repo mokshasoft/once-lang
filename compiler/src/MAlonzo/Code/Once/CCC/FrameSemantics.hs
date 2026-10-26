@@ -22,8 +22,8 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Trace
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Numerics
@@ -172,7 +172,7 @@ d_fs'45'ffi_154 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8
+  AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 d_fs'45'ffi_154 v0
   = coe
       MAlonzo.Code.Once.Internal.Trace.d_pureHalf_262

@@ -15,7 +15,7 @@ module Once.TypeCheck.ElaborateProofs where
 open import Once.Spec.Type using (base)
 open import Once.Spec.Context using (_+ᵘ_; zeroUsage)
 open import Once.Functor.Decide using (wfFun?)
-open import Once.Internal.Type using (wk₀)
+open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Elaborate
@@ -23,11 +23,11 @@ import Once.Spec.Context as SCx
 open import Data.Unit using (tt; ⊤)
 open import Once.TypeCheck.Classify using (emptyCtx)
 open import Once.TypeCheck.TargetView using (apply-at)
-open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Type.DecEq using (_≟T_)
 open import Once.Spec.Sub using (_<:_; sub-int; sub-float)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-pe; ⊑-pa; ⊑-act)
-open import Once.Type.Sub using (_<:?_)
-open import Once.Internal.Type.Sub using (<:-refl)
+open import Once.Type.SubDecide using (_<:?_)
+open import Once.Type.Sub using (<:-refl)
 open import Data.Integer using (+_)
 
 open import Data.String using (String)
@@ -43,21 +43,21 @@ open import Data.List using (length)
 open import Relation.Nullary using (yes; no)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj₂)
-open import Once.Internal.Type.Instance using (KindedInstance)
+open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (kindedInstance?)
 open import Once.Spec.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
 open import Once.IR as IR
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Name using (CanonicalName; gen; own)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
@@ -67,12 +67,12 @@ import Once.TypeCheck.Context
 import Once.Spec.Context as Surface
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Surface.Elaborate as Elab using ()
-open import Once.Internal.Typing.Scope
+open import Once.TypeCheck.Scope
 open import Once.TypeCheck.SpecWitness
 open import Once.TypeCheck.Classify
-import Once.Internal.Type.WellFormed
+import Once.Type.Concrete
 import Once.Spec.Type
-open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Type.Concrete using (IsConcrete)
 open import Once.Functor.Decide using (wellFormedF?)
 
 ------------------------------------------------------------------------

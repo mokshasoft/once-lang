@@ -46,7 +46,7 @@ open import Once.Spec.Core.Program Σ using (noVars)
 open import Once.Spec.Observation Σ using (Model; module Model)
 import Once.Spec.Core.Meaning Σ fmt S as SM
 import Once.Metatheory.TermModel.TySubst Σ S as TS
-import Once.Internal.Core.TySubstZero Σ S as TZ
+import Once.Core.TySubstZero Σ S as TZ
 open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Postulates using (extensionality)
 import Once.Spec.Effect Σ as SE

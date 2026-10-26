@@ -10,13 +10,13 @@
 
 module Once.Parser where
 
-open import Once.Internal.Type.Honest using (HonestFFI; honest?)
+open import Once.Type.Honest using (HonestFFI; honest?)
 
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.Bool.ListAction using (any)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
 open import Once.Spec.Name using (canonical)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (mk-kind; Many; eff)
 open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Internal.Type.Poly using (extractGround)
+open import Once.Type.Poly using (extractGround)
 open import Once.Type using (isGround; showPolyType)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Spec.Surface.Syntax using (RVar)
@@ -258,7 +258,7 @@ polysOf (e-poly pfi ∷ es) = pfi ∷ polysOf es
 -- polymorphic signatures are not admissible. User `DFunDef`s with
 -- polymorphic sigs route into `PolyFunInfo` instead of going through
 -- this projector.
--- D231: an FFI declaration must be HONEST (`Once.Type.Honest`): a SigOp
+-- D231: an FFI declaration must be HONEST (`Once.Type.HonestComplete`): a SigOp
 -- returning `Unit` emits and one returning `Void` halts, so such an arrow must
 -- be `Eff`, and a bare `Unit`/`Void` constant is not a declaration. Checked
 -- HERE — on the `signature` itself — so it constrains FFI declarations and

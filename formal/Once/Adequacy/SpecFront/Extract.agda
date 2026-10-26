@@ -36,19 +36,19 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Function using (_∋_)
 
-import Once.Internal.Type as LT
+import Once.Type.Core as LT
 
 import Once.Spec.Type as LT
 open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Internal.Type.Poly using (Ground; extractGround)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Type.Honest using (HonestFFI)
+open import Once.Type.Poly using (Ground; extractGround)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Type.Honest using (HonestFFI)
 open import Once.Type using (isGround)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Spec.Surface.Syntax using (RVar)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Name using (canonical)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 open import Once.Parser
   using (Entry; e-fun; e-poly; mkFunInfo; mkPolyFunInfo; extractFunctions-go; extractFunctions-consFun; extractFunctions-consPoly;

@@ -82,7 +82,7 @@ open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; Li
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Once.Internal.Contract using (ISig)
+open import Once.Contract using (ISig)
 import Once.IR as I
 open import Once.IRTy using (IRTy; _≟IRTy_)
 

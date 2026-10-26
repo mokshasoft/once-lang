@@ -35,14 +35,14 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 import Data.String.Properties as StrProp
 
-import Once.Internal.Type as LT
+import Once.Type.Core as LT
 
 import Once.Spec.Type as LT
-open import Once.Internal.Type.WellFormed using (IsConcrete)
-open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Internal.Contract using (ISig)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Type.Honest using (HonestFFI)
+open import Once.Contract using (ISig)
 open import Once.Spec.Name using (canonical)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Once.Spec.Signature using (Signature; _∶_)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Program using (SignatureOf; SignaturesOf; so-nil; so-sig; so-other; ns-tsig; ns-def; ns-alias; ns-import;
@@ -58,9 +58,9 @@ open import Once.Parser.Module.Resolve using (sigsOf; importedAt; importedOf; ex
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 open import Once.Spec.Surface.Syntax using (PolyType)
 import Once.Internal.Resolution as LR
-open import Once.Internal.Module using (entrySig)
+open import Once.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (declTy)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.SpecFront.Extract using (XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; project-ok; IsSig; is-sig; sigs-split′; own-sigs; imported-sigs; FFIFacts; nonSigs-none; FFIEntry; ffi-of)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-of; decl-eq)
 

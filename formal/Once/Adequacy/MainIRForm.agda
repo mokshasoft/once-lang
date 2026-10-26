@@ -14,7 +14,7 @@
 
 module Once.Adequacy.MainIRForm where
 
-open import Once.Internal.Typing.Scope using (PolyCtx)
+open import Once.TypeCheck.Scope using (PolyCtx)
 open import Once.TypeCheck.Classify using (TopCtx)
 import Once.Parser.Module as Module
 import Once.Parser.Module.Core as Core
@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Compile using (findMain; findMain-here)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Type.Sub using (_<:?_)
+open import Once.Type.SubDecide using (_<:?_)
 import Once.IR as IR
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many; pure; eff)

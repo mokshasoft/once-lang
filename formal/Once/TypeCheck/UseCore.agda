@@ -36,8 +36,8 @@ open _⊔_≔_ using (left; right)
 open import Once.Spec.Core.Syntax using (module Schema; _!!_)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
-open import Once.Internal.Core.DerivedTyping Σ S
-open import Once.Internal.Type.Sub using (·p-diag; pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Core.DerivedTyping Σ S
+open import Once.Type.Sub using (·p-diag; pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Type.Grade using (≤q-Many; ≤qᵇ→≤q)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;

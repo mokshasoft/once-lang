@@ -1,170 +1,106 @@
+{-# OPTIONS --safe #-}
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Type.Sub — deciding subtyping.
+-- Once.Type.Sub — subtyping `A <: B`.
 --
--- The judgment `A <: B` and the effect order `_⊑π_` are the Spec's
--- (`Once.Internal.Type.Sub`). This module decides them.
+-- A conversion is admitted only if it is canonical (forced, not chosen) and
+-- loses nothing a program can observe:
+--   * `Void <: B`: the unique map out of the initial object, which never runs;
+--   * `pure ⊑ eff` on an arrow's grade: a pure arrow is an effectful one with
+--     no effects.
+-- Not admitted: `A <: Unit` (the map is unique, but it discards a value and
+-- breaks linearity) and `Int <: Float` (a chosen map, not injective at fixed
+-- width).
+--
+-- The rules are closed under the type formers: arrows are contravariant in
+-- the domain and covariant in the codomain and the grade; products and sums
+-- are covariant; `μ` is invariant and `ν` covariant in its grade only; the
+-- usage is not varied (that is sub-usage, in the typing rules).
+--
+-- There is one rule per head of the left type and no transitivity rule, so
+-- each `A <: B` has at most one derivation: subtyping is a thin category, and
+-- every derivation denotes the same conversion. Reflexivity and transitivity
+-- are admissible (`Spec.Metatheory`).
+--
+-- `A <:ᶜ B`: `A <: B` with every domain kept (`Spec.Sub._<:ᶜ_`, D321).
+-- `A ⊔ B ≔ C`: `C` is the join of `A` and `B` in `<:ᶜ` (D322): two branches
+-- of one `case` meet there. `Once.Type.Join` decides it.
+--
+-- The relations are the Spec's (`Once.Spec.Sub`); this module proves
+-- reflexivity and that keeping the domains is a special case.
 ------------------------------------------------------------------------
 
 module Once.Type.Sub where
 
-open import Relation.Nullary using (Dec; yes; no)
-open import Once.Spec.Sub using (sub-*; sub-+)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
-open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
-open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
-open import Once.Spec.Sub using (sub-var)
-open import Data.Fin using (Fin)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Internal.Type.DecEq using (_≟q_)
-open import Once.Internal.Type.DecEq using (_≟F_; _≟T_)
+open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; _·p_; fin; _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
+open import Once.Spec.Sub
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-------------------------------------------------------------------------
--- The effect order.
-------------------------------------------------------------------------
 
-_⊑π?_ : (π π′ : Purity) → Dec (π ⊑π π′)
-pure ⊑π? pure = yes ⊑-pure
-pure ⊑π? act = yes ⊑-pa
-pure ⊑π? eff = yes ⊑-pe
-act ⊑π? pure = no λ ()
-act ⊑π? act = yes ⊑-act
-act ⊑π? eff = yes ⊑-ae
-eff ⊑π? pure = no λ ()
-eff ⊑π? act = no λ ()
-eff ⊑π? eff = yes ⊑-eff
+-- Running a grade twice stays within it (the product is idempotent). What a rule with one grade for two sequenced parts
+-- reads its product as.
+·p-diag : ∀ π → (π ·p π) ⊑π π
+·p-diag pure = ⊑-pure
+·p-diag act  = ⊑-act
+·p-diag eff  = ⊑-eff
 
-------------------------------------------------------------------------
--- Decidability. Mismatched heads are refuted clause by clause (no catch-all:
--- a catch-all carries no negative information, so `λ ()` could not fire).
-------------------------------------------------------------------------
+-- The identities of the order and of the thin category of types.
+⊑π-refl : ∀ π → π ⊑π π
+⊑π-refl pure = ⊑-pure
+⊑π-refl act = ⊑-act
+⊑π-refl eff = ⊑-eff
 
-private
-  arr-aux : ∀ {m} {A A′ B B′ : Ty m} {q q′ π π′}
-          → Dec (q ≡ q′) → Dec (A′ <: A) → Dec (B <: B′) → Dec (π ⊑π π′)
-          → Dec ((A ⇒[ mk-kind q π ] B) <: (A′ ⇒[ mk-kind q′ π′ ] B′))
-  arr-aux (yes refl) (yes a) (yes b) (yes g) = yes (sub-arr a b g)
-  arr-aux (no ¬q)    _       _       _       = no λ { (sub-arr _ _ _) → ¬q refl }
-  arr-aux (yes refl) (no ¬a) _       _       = no λ { (sub-arr a _ _) → ¬a a }
-  arr-aux (yes refl) (yes _) (no ¬b) _       = no λ { (sub-arr _ b _) → ¬b b }
-  arr-aux (yes refl) (yes _) (yes _) (no ¬g) = no λ { (sub-arr _ _ g) → ¬g g }
+-- `pure` is the least grade.
+pure-⊑ : ∀ π → pure ⊑π π
+pure-⊑ pure = ⊑-pure
+pure-⊑ act  = ⊑-pa
+pure-⊑ eff  = ⊑-pe
 
-  prod-aux : ∀ {m} {A A′ B B′ : Ty m} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A * B) <: (A′ * B′))
-  prod-aux (yes a) (yes b) = yes (sub-* a b)
-  prod-aux (no ¬a) _       = no λ { (sub-* a _) → ¬a a }
-  prod-aux (yes _) (no ¬b) = no λ { (sub-* _ b) → ¬b b }
+-- The grade order is proof-irrelevant.
+⊑π-irr : ∀ {π π′} (g g′ : π ⊑π π′) → g ≡ g′
+⊑π-irr ⊑-pure ⊑-pure = refl
+⊑π-irr ⊑-pa   ⊑-pa   = refl
+⊑π-irr ⊑-pe   ⊑-pe   = refl
+⊑π-irr ⊑-act  ⊑-act  = refl
+⊑π-irr ⊑-ae   ⊑-ae   = refl
+⊑π-irr ⊑-eff  ⊑-eff  = refl
 
-  sum-aux : ∀ {m} {A A′ B B′ : Ty m} → Dec (A <: A′) → Dec (B <: B′) → Dec ((A + B) <: (A′ + B′))
-  sum-aux (yes a) (yes b) = yes (sub-+ a b)
-  sum-aux (no ¬a) _       = no λ { (sub-+ a _) → ¬a a }
-  sum-aux (yes _) (no ¬b) = no λ { (sub-+ _ b) → ¬b b }
+<:-refl : ∀ {m} (A : Ty m) → A <: A
+<:-refl (var _) = sub-var
+<:-refl Unit   = sub-unit
+<:-refl Void   = sub-void
+<:-refl Int    = sub-int
+<:-refl Float  = sub-float
+<:-refl (A ⇒[ mk-kind q π ] B) = sub-arr (<:-refl A) (<:-refl B) (⊑π-refl π)
+<:-refl (A * B) = sub-* (<:-refl A) (<:-refl B)
+<:-refl (A + B) = sub-+ (<:-refl A) (<:-refl B)
+<:-refl (μ F) = sub-μ
+<:-refl (ν F φ) = sub-ν (⊑π-refl (fin φ))
 
-  μ-aux : ∀ {m} {F G : Fun m} → Dec (F ≡ G) → Dec (μ F <: μ G)
-  μ-aux (yes refl) = yes sub-μ
-  μ-aux (no ¬e)    = no λ { sub-μ → ¬e refl }
+-- Keeping the domains is a special case of converting.
+<:ᶜ⇒<: : ∀ {m} {A B : Ty m} → A <:ᶜ B → A <: B
+<:ᶜ⇒<: subᶜ-void        = sub-void
+<:ᶜ⇒<: subᶜ-var         = sub-var
+<:ᶜ⇒<: subᶜ-unit        = sub-unit
+<:ᶜ⇒<: subᶜ-int         = sub-int
+<:ᶜ⇒<: subᶜ-float       = sub-float
+<:ᶜ⇒<: (subᶜ-arr {A = A} b g) = sub-arr (<:-refl A) (<:ᶜ⇒<: b) g
+<:ᶜ⇒<: (subᶜ-* a b)     = sub-* (<:ᶜ⇒<: a) (<:ᶜ⇒<: b)
+<:ᶜ⇒<: (subᶜ-+ a b)     = sub-+ (<:ᶜ⇒<: a) (<:ᶜ⇒<: b)
+<:ᶜ⇒<: subᶜ-μ           = sub-μ
+<:ᶜ⇒<: (subᶜ-ν g)       = sub-ν g
 
-  ν-aux : ∀ {m} {F G : Fun m} {φ φ′} → Dec (F ≡ G) → Dec (fin φ ⊑π fin φ′) → Dec (ν F φ <: ν G φ′)
-  ν-aux (yes refl) (yes g) = yes (sub-ν g)
-  ν-aux (no ¬e)    _       = no λ { (sub-ν _) → ¬e refl }
-  ν-aux (yes refl) (no ¬g) = no λ { (sub-ν g) → ¬g g }
-  var-aux : ∀ {m} {i i′ : Fin m} → Dec (var i ≡ var i′) → Dec (var i <: var i′)
-  var-aux (yes refl) = yes sub-var
-  var-aux (no ¬e)    = no λ { sub-var → ¬e refl }
-
-_<:?_ : ∀ {m} (A B : Ty m) → Dec (A <: B)
-Void <:? _ = yes sub-void
-Unit <:? Unit = yes sub-unit
-Unit <:? Void = no λ ()
-Unit <:? Int = no λ ()
-Unit <:? Float = no λ ()
-Unit <:? (_ * _) = no λ ()
-Unit <:? (_ + _) = no λ ()
-Unit <:? (_ ⇒[ _ ] _) = no λ ()
-Unit <:? (μ _) = no λ ()
-Unit <:? (ν _ _) = no λ ()
-Int <:? Int = yes sub-int
-Int <:? Unit = no λ ()
-Int <:? Void = no λ ()
-Int <:? Float = no λ ()
-Int <:? (_ * _) = no λ ()
-Int <:? (_ + _) = no λ ()
-Int <:? (_ ⇒[ _ ] _) = no λ ()
-Int <:? (μ _) = no λ ()
-Int <:? (ν _ _) = no λ ()
-Float <:? Float = yes sub-float
-Float <:? Unit = no λ ()
-Float <:? Void = no λ ()
-Float <:? Int = no λ ()
-Float <:? (_ * _) = no λ ()
-Float <:? (_ + _) = no λ ()
-Float <:? (_ ⇒[ _ ] _) = no λ ()
-Float <:? (μ _) = no λ ()
-Float <:? (ν _ _) = no λ ()
-(A ⇒[ mk-kind q π ] B) <:? (A′ ⇒[ mk-kind q′ π′ ] B′) = arr-aux (q ≟q q′) (A′ <:? A) (B <:? B′) (π ⊑π? π′)
-(_ ⇒[ _ ] _) <:? Unit = no λ ()
-(_ ⇒[ _ ] _) <:? Void = no λ ()
-(_ ⇒[ _ ] _) <:? Int = no λ ()
-(_ ⇒[ _ ] _) <:? Float = no λ ()
-(_ ⇒[ _ ] _) <:? (_ * _) = no λ ()
-(_ ⇒[ _ ] _) <:? (_ + _) = no λ ()
-(_ ⇒[ _ ] _) <:? (μ _) = no λ ()
-(_ ⇒[ _ ] _) <:? (ν _ _) = no λ ()
-(A * B) <:? (A′ * B′) = prod-aux (A <:? A′) (B <:? B′)
-(_ * _) <:? Unit = no λ ()
-(_ * _) <:? Void = no λ ()
-(_ * _) <:? Int = no λ ()
-(_ * _) <:? Float = no λ ()
-(_ * _) <:? (_ + _) = no λ ()
-(_ * _) <:? (_ ⇒[ _ ] _) = no λ ()
-(_ * _) <:? (μ _) = no λ ()
-(_ * _) <:? (ν _ _) = no λ ()
-(A + B) <:? (A′ + B′) = sum-aux (A <:? A′) (B <:? B′)
-(_ + _) <:? Unit = no λ ()
-(_ + _) <:? Void = no λ ()
-(_ + _) <:? Int = no λ ()
-(_ + _) <:? Float = no λ ()
-(_ + _) <:? (_ * _) = no λ ()
-(_ + _) <:? (_ ⇒[ _ ] _) = no λ ()
-(_ + _) <:? (μ _) = no λ ()
-(_ + _) <:? (ν _ _) = no λ ()
-μ F <:? μ G = μ-aux (F ≟F G)
-μ _ <:? Unit = no λ ()
-μ _ <:? Void = no λ ()
-μ _ <:? Int = no λ ()
-μ _ <:? Float = no λ ()
-μ _ <:? (_ * _) = no λ ()
-μ _ <:? (_ + _) = no λ ()
-μ _ <:? (_ ⇒[ _ ] _) = no λ ()
-μ _ <:? (ν _ _) = no λ ()
-ν F φ <:? ν G φ′ = ν-aux (F ≟F G) (fin φ ⊑π? fin φ′)
-ν _ _ <:? Unit = no λ ()
-ν _ _ <:? Void = no λ ()
-ν _ _ <:? Int = no λ ()
-ν _ _ <:? Float = no λ ()
-ν _ _ <:? (_ * _) = no λ ()
-ν _ _ <:? (_ + _) = no λ ()
-ν _ _ <:? (_ ⇒[ _ ] _) = no λ ()
-ν _ _ <:? (μ _) = no λ ()
--- D243
-var i <:? var i′ = var-aux (var i ≟T var i′)
-var _ <:? Void = no λ ()
-var _ <:? Unit = no λ ()
-Unit <:? var _ = no λ ()
-var _ <:? (_ * _) = no λ ()
-(_ * _) <:? var _ = no λ ()
-var _ <:? (_ + _) = no λ ()
-(_ + _) <:? var _ = no λ ()
-var _ <:? (_ ⇒[ _ ] _) = no λ ()
-(_ ⇒[ _ ] _) <:? var _ = no λ ()
-var _ <:? μ _ = no λ ()
-μ _ <:? var _ = no λ ()
-var _ <:? ν _ _ = no λ ()
-ν _ _ <:? var _ = no λ ()
-var _ <:? Int = no λ ()
-Int <:? var _ = no λ ()
-var _ <:? Float = no λ ()
-Float <:? var _ = no λ ()
+<:ᶜ-refl : ∀ {m} (A : Ty m) → A <:ᶜ A
+<:ᶜ-refl (var _) = subᶜ-var
+<:ᶜ-refl Unit   = subᶜ-unit
+<:ᶜ-refl Void   = subᶜ-void
+<:ᶜ-refl Int    = subᶜ-int
+<:ᶜ-refl Float  = subᶜ-float
+<:ᶜ-refl (A ⇒[ mk-kind q π ] B) = subᶜ-arr (<:ᶜ-refl B) (⊑π-refl π)
+<:ᶜ-refl (A * B) = subᶜ-* (<:ᶜ-refl A) (<:ᶜ-refl B)
+<:ᶜ-refl (A + B) = subᶜ-+ (<:ᶜ-refl A) (<:ᶜ-refl B)
+<:ᶜ-refl (μ F) = subᶜ-μ
+<:ᶜ-refl (ν F φ) = subᶜ-ν (⊑π-refl (fin φ))

@@ -29,7 +29,7 @@ import Once.Spec.Core.Syntax as SC
 open SC.Schema using (type)
 import Once.Spec.Core.Program Σ as SP
 import Once.Spec.Domain Σ as SD
-import Once.Internal.Core.TySubstZero as TZ
+import Once.Core.TySubstZero as TZ
 open import Once.Spec.Observation Σ using (Model)
 import Once.Spec.Core.Meaning as SM
 open import Once.Adequacy.SpecCore.Index

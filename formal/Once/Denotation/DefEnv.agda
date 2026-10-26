@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Internal.Typing.Scope using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
+open import Once.TypeCheck.Scope using (PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Spec.Surface.Syntax using (Expr)
 
 DefEnvOf : (PolyType → Set) → PolyCtx → Set

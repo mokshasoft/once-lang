@@ -26,10 +26,10 @@ import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
 import qualified MAlonzo.Code.Once.Internal.Iterative
-import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.StreamInf
 import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Internal.Value
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Name
@@ -47,7 +47,7 @@ data T_CallEnv_6
                  (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
                   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
                   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-                  AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8)
+                  AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6)
 -- Once.Denotation.DenotTrace.CallEnv.callsE
 d_callsE_20 ::
   T_CallEnv_6 ->
@@ -65,7 +65,7 @@ d_ffiE_22 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8
+  AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6
 d_ffiE_22 v0
   = case coe v0 of
       C_callEnv_24 v1 v2 -> coe v2
@@ -76,7 +76,7 @@ d_sigOpSemT_32 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
@@ -138,7 +138,7 @@ d_sigOpT_106 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->

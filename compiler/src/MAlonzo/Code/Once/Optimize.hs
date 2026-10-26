@@ -23,8 +23,8 @@ import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Internal.Type.DecEq
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Type.DecEq
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
@@ -1147,7 +1147,7 @@ d_optimize'45'once'45'structural_1086 v0 v1 v2
         -> coe MAlonzo.Code.Once.IR.C_const_134 v4 v5
       MAlonzo.Code.Once.IR.C_SigOp_140 v3 v4 v5
         -> let v6
-                 = MAlonzo.Code.Once.Internal.Type.DecEq.d__'8799'T__230
+                 = MAlonzo.Code.Once.Type.DecEq.d__'8799'T__228
                      (coe (0 :: Integer)) (coe v3)
                      (coe MAlonzo.Code.Once.Spec.Type.C_Void_20) in
            coe

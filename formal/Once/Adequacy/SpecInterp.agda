@@ -10,7 +10,7 @@
 -- (the constants and pure functions) and a WORLD (an operation's answer, from
 -- the calls it has seen, whenever one exists). The compiler's `ISig` keys a
 -- declaration by its rendered name and its compiler type, and its `Impl`
--- answers by contract key (`Once.Internal.Contract`). This module translates the
+-- answers by contract key (`Once.Contract`). This module translates the
 -- first into the second, so a binary can be run against a Spec
 -- Interpretation: each value key is read from the model, each answer key from
 -- the world, with the history read as the Spec's events (`toEvent`).
@@ -35,16 +35,16 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
-import Once.Internal.Type as T
+import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Spec.Grade as G
-open import Once.Internal.Name using (showCanonical)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Name using (showCanonical)
+open import Once.Core.Decl using (toISig)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Internal.Contract
+open import Once.Contract
   using (Key; key; kdom; kcod; ISig; Contract; answers; effect; contract-eff; contractOf;
          value-step; answer-step; valueKeys; answerKeys; Impl)
-import Once.Internal.Contract as C
+import Once.Contract as C
 open import Once.Internal.Event using (SigOpEvent; toEvent)
 open import Once.Internal.Trace using (Interp; interp)
 import Once.Spec.Grade as SG

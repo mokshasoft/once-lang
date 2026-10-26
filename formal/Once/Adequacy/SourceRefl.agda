@@ -16,7 +16,7 @@
 
 import Once.Spec.Type as SpT
 
-open import Once.Internal.Weaken using (RelS-wk₀)
+open import Once.Weaken using (RelS-wk₀)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -32,26 +32,26 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; eff; act; fin)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Internal.Type.WellFormed using (con-base; con-fun)
+open import Once.Type.Concrete using (con-base; con-fun)
 open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
 open import Once.Semantics.Machine using (sem-cata)
 open import Once.Internal.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (coerce-functor-D)
-open import Once.Internal.Context using (⟦_⟧ᶜ; _↾_)
+open import Once.Context using (⟦_⟧ᶜ; _↾_)
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr)
-open import Once.Internal.Type.Sub
+open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.Sub
+open import Once.Type.SubDecide
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
 open import Once.Denotation.DenotTrace using (CallEnv; module CallEnv)
 open CallEnv using (ffiE)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
 open import Once.Denotation.ValueRelPER using (RelD-sym)
-open import Once.Internal.Laws.SubLaws using (<:-trans)
+open import Once.Laws.Sub using (<:-trans)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-bind; relS-ret; RelS-embed; RelS-iter∞)
 open import Once.Denotation.ValueRel using (RelD; RelS-mono; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; seqF∞-rel; cfD⁻¹-rel; cfD-rel; cμin-rel; sem-cata-rel; anaᴵ-rel; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (RelEnv; liftFn-rel; RelT′-refl)
@@ -146,7 +146,7 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   bool-rel {x = inj₂ _} {inj₂ _} r = r
 
   -- An external operation's meaning, related at its ground type.
-  sigOpSem-rel : (A : Type) (name : Once.Spec.Name.CanonicalName) (c : Once.Internal.Type.WellFormed.IsConcrete A)
+  sigOpSem-rel : (A : Type) (name : Once.Spec.Name.CanonicalName) (c : Once.Type.Concrete.IsConcrete A)
                → RelS (RelD A) (SD.sigOpSem A name c fmt σ) (SD.sigOpSem A name c fmt σ′)
   sigOpSem-rel (Dom ⇒[ mk-kind Zero pure ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (value-info name b-Unit bC) tt)
   sigOpSem-rel (Dom ⇒[ mk-kind Zero eff ] Cod) name (con-fun bD bC) = relS-ret (sigOp-rel (arrow-info (mk-kind Zero eff) name b-Unit bC) tt)

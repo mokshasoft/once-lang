@@ -24,60 +24,59 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.String.Properties
-import qualified MAlonzo.Code.Once.Internal.Typing.Scope
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.TypeCheck.Scope
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.TypeCheck.Context.∅
 d_'8709'_8 ::
-  Integer -> [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10]
+  Integer -> [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8]
 d_'8709'_8 ~v0 = du_'8709'_8
-du_'8709'_8 ::
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10]
+du_'8709'_8 :: [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8]
 du_'8709'_8 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
 -- Once.TypeCheck.Context._,_∷_
 d__'44'_'8759'__12 ::
   Integer ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10]
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8]
 d__'44'_'8759'__12 ~v0 v1 v2 v3 = du__'44'_'8759'__12 v1 v2 v3
 du__'44'_'8759'__12 ::
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10]
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8]
 du__'44'_'8759'__12 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
-         MAlonzo.Code.Once.Internal.Typing.Scope.C_mkBinding_26 (coe v1)
-         (coe v2) (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12))
+         MAlonzo.Code.Once.TypeCheck.Scope.C_mkBinding_24 (coe v1) (coe v2)
+         (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12))
       (coe v0)
 -- Once.TypeCheck.Context._,_∷_^_
 d__'44'_'8759'_'94'__22 ::
   Integer ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10]
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8]
 d__'44'_'8759'_'94'__22 ~v0 v1 v2 v3 v4
   = du__'44'_'8759'_'94'__22 v1 v2 v3 v4
 du__'44'_'8759'_'94'__22 ::
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10]
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8]
 du__'44'_'8759'_'94'__22 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
-         MAlonzo.Code.Once.Internal.Typing.Scope.C_mkBinding_26 (coe v1)
-         (coe v2) (coe v3))
+         MAlonzo.Code.Once.TypeCheck.Scope.C_mkBinding_24 (coe v1) (coe v2)
+         (coe v3))
       (coe v0)
 -- Once.TypeCheck.Context.LookupResult
 d_LookupResult_34 a0 = ()
@@ -89,12 +88,12 @@ data T_LookupResult_34
 d_lookup_50 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   T_LookupResult_34
 d_lookup_50 ~v0 v1 v2 = du_lookup_50 v1 v2
 du_lookup_50 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   T_LookupResult_34
 du_lookup_50 v0 v1
   = case coe v1 of
@@ -110,8 +109,7 @@ du_lookup_50 v0 v1
                           (coe v0))
                      (coe
                         MAlonzo.Code.Data.String.Properties.d__'8776''63'__28 (coe v0)
-                        (coe
-                           MAlonzo.Code.Once.Internal.Typing.Scope.d_name_20 (coe v2))) in
+                        (coe MAlonzo.Code.Once.TypeCheck.Scope.d_name_18 (coe v2))) in
            coe
              (case coe v4 of
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
@@ -120,9 +118,8 @@ du_lookup_50 v0 v1
                               seq (coe v6)
                               (coe
                                  C_found_44
-                                 (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_type_22 (coe v2))
-                                 (coe
-                                    MAlonzo.Code.Once.Internal.Typing.Scope.d_quantity_24 (coe v2))
+                                 (coe MAlonzo.Code.Once.TypeCheck.Scope.d_type_20 (coe v2))
+                                 (coe MAlonzo.Code.Once.TypeCheck.Scope.d_quantity_22 (coe v2))
                                  (coe (0 :: Integer)))
                        else coe
                               seq (coe v6)
@@ -141,11 +138,11 @@ du_lookup_50 v0 v1
 d_isBound_100 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] -> Bool
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] -> Bool
 d_isBound_100 ~v0 v1 v2 = du_isBound_100 v1 v2
 du_isBound_100 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] -> Bool
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] -> Bool
 du_isBound_100 v0 v1
   = let v2 = coe du_lookup_50 (coe v0) (coe v1) in
     coe
@@ -156,19 +153,19 @@ du_isBound_100 v0 v1
 -- Once.TypeCheck.Context.ctxLength
 d_ctxLength_120 ::
   Integer ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] -> Integer
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] -> Integer
 d_ctxLength_120 ~v0 = du_ctxLength_120
 du_ctxLength_120 ::
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] -> Integer
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] -> Integer
 du_ctxLength_120 = coe MAlonzo.Code.Data.List.Base.du_length_268
 -- Once.TypeCheck.Context.names
 d_names_124 ::
   Integer ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_names_124 ~v0 v1 = du_names_124 v1
 du_names_124 ::
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 du_names_124 v0
   = case coe v0 of
@@ -176,7 +173,7 @@ du_names_124 v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_name_20 (coe v1))
+             (coe MAlonzo.Code.Once.TypeCheck.Scope.d_name_18 (coe v1))
              (coe du_names_124 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context._∈_at_⦂_
@@ -187,20 +184,20 @@ data T__'8712'_at_'10626'__134
 d_lookupWithEvidence_172 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_lookupWithEvidence_172 ~v0 v1 v2
   = du_lookupWithEvidence_172 v1 v2
 du_lookupWithEvidence_172 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_lookupWithEvidence_172 v0 v1
   = case coe v1 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       (:) v2 v3
         -> case coe v2 of
-             MAlonzo.Code.Once.Internal.Typing.Scope.C_mkBinding_26 v4 v5 v6
+             MAlonzo.Code.Once.TypeCheck.Scope.C_mkBinding_24 v4 v5 v6
                -> let v7
                         = coe
                             MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -256,11 +253,11 @@ du_lookupWithEvidence_172 v0 v1
 -- Once.TypeCheck.Context.ctxTypes
 d_ctxTypes_242 ::
   Integer ->
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   [MAlonzo.Code.Once.Spec.Type.T_Ty_8]
 d_ctxTypes_242 ~v0 v1 = du_ctxTypes_242 v1
 du_ctxTypes_242 ::
-  [MAlonzo.Code.Once.Internal.Typing.Scope.T_Binding_10] ->
+  [MAlonzo.Code.Once.TypeCheck.Scope.T_Binding_8] ->
   [MAlonzo.Code.Once.Spec.Type.T_Ty_8]
 du_ctxTypes_242 v0
   = case coe v0 of
@@ -268,6 +265,6 @@ du_ctxTypes_242 v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Internal.Typing.Scope.d_type_22 (coe v1))
+             (coe MAlonzo.Code.Once.TypeCheck.Scope.d_type_20 (coe v1))
              (coe du_ctxTypes_242 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError

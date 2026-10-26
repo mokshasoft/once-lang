@@ -18,7 +18,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 import Once.Spec.Surface.Syntax as TP
 import Once.Spec.Core.Syntax as SC
-open import Once.Internal.Typing.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
+open import Once.TypeCheck.Scope using (Imports; PolyCtx; lookupImport; lookupPolyPrefix)
 
 module Once.Adequacy.SpecFront.Scope
   {s : ℕ} (S′ : SC.Defs s) (imps : Imports) (polys : PolyCtx) where

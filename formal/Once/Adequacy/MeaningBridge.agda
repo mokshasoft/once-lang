@@ -46,7 +46,7 @@ open import Data.Empty using (⊥-elim)
 open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst)
-open import Once.Internal.Weaken using (T∞-wk₀)
+open import Once.Weaken using (T∞-wk₀)
 
 open import Once.Spec.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; relS-ret; RelS-bind; RelS-embed; RelS-≈ˡ; embed-bind; RelS-loop; RelS-iter∞)
@@ -57,12 +57,12 @@ open import Once.Adequacy.SourceRefl fmt using (SD-rel; <:-rel; cata-clo-rel; an
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Int; Float; Unit)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 open import Once.Semantics.Machine using (sem-In; sem-cata)
 open import Once.IRTy using (IRTy)
 open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
-open import Once.Internal.Context using (svar; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Context using (svar; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Spec.Context using (Ctx; ∅; lookup; singleUse; zeroUsage; _⊑ᵘ_; []; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Context using (Usage)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
@@ -74,25 +74,25 @@ open import Once.Internal.Trace using (T; ret; returnT; _>>=T_; fmapT; rel-ret; 
 open import Once.Denotation.TraceMonadLaws using (RelT′-fmap; RelT′-refl)
 open Interp using (impl; sig)
 import Once.Internal.Trace as TM
-open import Once.Internal.Contract using (key; valueOf-at; _∈K?_)
-open import Once.Internal.ContractLaws using (value-∈)
+open import Once.Contract using (key; valueOf-at; _∈K?_)
+open import Once.ContractLaws using (value-∈)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; sigOpSemT; module CallEnv)
 open CallEnv using (ffiE)
-open import Once.Internal.Typing.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
+open import Once.TypeCheck.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
 open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
 open import Once.IR.Ref using (refIR)
-open import Once.Internal.Type.Instance using (KindedInstance)
+open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Internal.Type.Poly using (extractGround)
+open import Once.Type.Poly using (extractGround)
 import Data.String.Properties as StrProp
-open import Once.Internal.Type.Sub
+open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.Sub
-open import Once.Internal.Laws.SubLaws
+open import Once.Type.SubDecide
+open import Once.Laws.Sub
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
@@ -114,7 +114,7 @@ open import Once.Arith.SigOp.Builders using (value-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 import Data.List as L
 open import Once.Spec.Name using (CanonicalName; bare)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Name using (showCanonical; WordName)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation Σ σ₀
   using (RelGV; RelGT; RelGM; RelM; RelM-fmap; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret;
@@ -134,7 +134,7 @@ open import Once.Internal.Trace using (FFIAnswers)
 open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
 open import Once.Internal.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed)
 open T∞ using (force)
-open import Once.Internal.Type using (isVoid?; isUnit?; wk₀)
+open import Once.Type.Core using (isVoid?; isUnit?; wk₀)
 import Once.Semantics.Machine as Val
 open import Once.Arith.SigOp.Builders using (arrow-info)
 open import Once.Adequacy.SpecRecursion Σ σ₀ using (cata-bridgeᵍ; ana-bridgeᵍ; toL-rel; outL-rel; fromL-rel)

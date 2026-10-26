@@ -21,16 +21,16 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-import Once.Internal.Type as LT
+import Once.Type.Core as LT
 
 import Once.Spec.Type as LT
-import Once.Internal.Type.WellFormed as LW
+import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
-import Once.Internal.Type.Honest as LH
+import Once.Type.Honest as LH
 import Once.Spec.Grade as LG
 open import Data.List using ([])
 open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
-open import Once.Internal.Type.Poly using (Ground; extractGround)
+open import Once.Type.Poly using (Ground; extractGround)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open import Once.Spec.Signature using (DeclType; constant; value; operation; WellFormedDecl)
@@ -40,7 +40,7 @@ open import Once.Adequacy.SpecInterp using (⌞_⌟; declTy)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-eq)
 open import Once.Parser using (projectSig)
 open import Once.Type using (isGround)
-open import Once.Type.Honest using (honest?-complete)
+open import Once.Type.HonestComplete using (honest?-complete)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 
 ------------------------------------------------------------------------

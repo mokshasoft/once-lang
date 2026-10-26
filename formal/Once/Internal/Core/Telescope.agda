@@ -37,8 +37,8 @@ import Once.Spec.Core.Meaning as SM
 import Once.Spec.Domain Σ as SD
 import Once.Spec.Effect Σ as SE
 import Once.Metatheory.TermModel.TySubst as TS
-import Once.Internal.Core.TySubstZero as TZ
-open import Once.Internal.Type using (noResp)
+import Once.Core.TySubstZero as TZ
+open import Once.Type.Core using (noResp)
 
 teleSem : ∀ {s} {S : Defs s} (fmt : TargetNum) → Model → Tele S → SM.DefSem Σ fmt S
 teleSem fmt mo []                 = record { defs = λ () ; model = mo }

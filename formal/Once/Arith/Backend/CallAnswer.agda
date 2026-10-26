@@ -33,7 +33,7 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 open import Data.String using (String)
 
 open import Once.Spec.Type using (Type; Int; Float)
@@ -42,7 +42,7 @@ import Once.Internal.Value Carrier Carrier as M
 open import Once.Internal.Event using (SigOpEvent)
 open import Once.Internal.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
 open Once.Internal.Trace.CallOp using (ccod; cdom)
-open import Once.Internal.Contract using (Key; key; kdom; kcod; _∈K?_)
+open import Once.Contract using (Key; key; kdom; kcod; _∈K?_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 

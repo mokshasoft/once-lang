@@ -18,10 +18,10 @@ module Once.Adequacy.ModuleComplete where
 
 import Once.TypeCheck.SpecWitness
 open import Once.Spec.Context using (Usage)
-open import Once.Internal.Type.Instance using (kindsOf)
+open import Once.Type.Instance using (kindsOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.Spec.Type using (Ty)
-open import Once.Internal.Typing.Scope using (PolyCtx; NamedCtx)
+open import Once.TypeCheck.Scope using (PolyCtx; NamedCtx)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -39,7 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Function using (case_of_)
 open import Once.Compile using (findMain; moduleToIR; moduleToIR-aux; mainEntry)
 open import Once.Spec.Sub using (_<:_)
-open import Once.Type.Sub using (_<:?_)
+open import Once.Type.SubDecide using (_<:?_)
 open import Data.Empty using (⊥-elim)
 import Once.IR as IR
 import Once.Parser as Parser
@@ -52,20 +52,20 @@ open import Once.Spec.Context using ([])
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Internal.Module
+open import Once.Module
   using (EffUU; ModTele; []; ffi; mono; poly; ModuleTyped; MainsEffUU; MainIn; HasValidMain; MonoWit)
 import Once.TypeCheck.Elaborate as TE
 open import Once.Functor.Decide using (isConcrete?-complete)
-open import Once.Type.Honest using (honest?-complete)
-open import Once.Internal.Type.Instance using (rigidOf)
+open import Once.Type.HonestComplete using (honest?-complete)
+open import Once.Type.Instance using (rigidOf)
 
 cong₃ : ∀ {A B C D : Set} (f : A → B → C → D) {a a′ b b′ c c′} → a ≡ a′ → b ≡ b′ → c ≡ c′ → f a b c ≡ f a′ b′ c′
 cong₃ f refl refl refl = refl
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate
   using ()
-open import Once.Internal.Type.DecEq using (_≟T_)
-open import Once.Internal.Principal using (below)
+open import Once.Type.DecEq using (_≟T_)
+open import Once.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-complete)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
@@ -75,7 +75,7 @@ import Once.Parser.Module.Core as Core
 import Data.String as String
 open FunInfo
 
--- `EffUU` is in `Once.Internal.Module` (plan 0.84).
+-- `EffUU` is in `Once.Module` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- (1) the checker's accepting run ⇒ the body compiles.
@@ -177,7 +177,7 @@ compileFunM-complete nothing  ctx polys impsOf name ty body main-ok (eE , d , f 
 -- Derivation-indexed "valid main" predicates (over `AllFunsTyped`'s `ty`).
 ------------------------------------------------------------------------
 
--- `AllMainEffUU`/`MainExists` are in `Once.Internal.Module` (plan 0.84).
+-- `AllMainEffUU`/`MainExists` are in `Once.Module` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- (3) ⇒ the whole list compiles (forward mirror of `caf-go-sound`).

@@ -14,7 +14,7 @@
 open import Once.Spec.Name using (CanonicalName)
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun; Linked)
-open import Once.Internal.Contract using (ISig)
+open import Once.Contract using (ISig)
 
 module Once.CCC.Codegen.CallsLinked (o : CanonicalName) (tbl : List IRFun) where
 

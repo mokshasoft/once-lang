@@ -38,7 +38,7 @@ open import Once.Spec.Surface.Resolution as SR
          r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
          r-annot; r-binop; r-neg; Expands; fa-here; fa-there)
 import Once.Spec.Surface.Resolution
-open import Once.Internal.ResolvedRefs using (GoodName; GoodRefs)
+open import Once.ResolvedRefs using (GoodName; GoodRefs)
 open import Once.Adequacy.SpecFront.Expr
   using (RX; x-local; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
 

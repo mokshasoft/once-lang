@@ -31,25 +31,25 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Grade as T using (mk-kind; Many; Purity; Quantity; _≤q_)
 import Once.Spec.Surface.Syntax as T
-import Once.Internal.Type.Poly as T
+import Once.Type.Poly as T
 open import Once.Spec.Type as T using (Type; Int; Float; Void; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; sub-arr)
 open import Once.Spec.Grade using (_⊑π_; ⊑-pure)
 open import Once.Spec.Sub using (_⊔_≔_)
-open import Once.Internal.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
+open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Spec.Sub using (sub-*)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
-open import Once.Internal.Type.Join using (join-unique)
+open import Once.Type.Join using (join-unique)
 import Once.Spec.Surface.Syntax as Raw
 open import Once.Spec.Name using (NotGenerator)
-open import Once.Internal.Name using (showCanonical; WordName)
-open import Once.Internal.Typing.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
+open import Once.Name using (showCanonical; WordName)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
-open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Type.Concrete using (IsConcrete)
 open import Once.Spec.Type using (WFFun; ∅ₖ)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
-import Once.Internal.Context as Surface
+import Once.Context as Surface
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)

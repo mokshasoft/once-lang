@@ -11,7 +11,7 @@
 module Once.TypeCheck.Classify where
 
 open import Once.Spec.Type using (KCtx; ∅ₖ; Ty; base)
-open import Once.Internal.Typing.Scope
+open import Once.TypeCheck.Scope
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
@@ -31,10 +31,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
@@ -45,14 +45,14 @@ open import Once.Spec.Name using (CanonicalName; canonical; gen; NotGenerator)
 open import Once.Spec.Name using (generatorNS)
 open import Once.CanonicalName using (gen-inj)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Once.Internal.Typing.Scope using (Ctx)
+open import Once.TypeCheck.Scope using (Ctx)
 open import Once.TypeCheck.Context using (∅)
-open Once.Internal.Typing.Scope.Binding using (name)
+open Once.TypeCheck.Scope.Binding using (name)
 -- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
 -- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
-open import Once.Internal.Context as Surface using () renaming (_,_ to _S,_)
+open import Once.Context as Surface using () renaming (_,_ to _S,_)
 open import Once.Spec.Context using () renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Spec.Context using (_▸_)
 

@@ -24,8 +24,8 @@ import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Internal.Iterative
-import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Trace
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Numerics
@@ -69,7 +69,7 @@ d_tableEnv_26 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   [T_IRFun_6] -> MAlonzo.Code.Once.Denotation.DenotTrace.T_CallEnv_6
 d_tableEnv_26 v0 v1 v2
   = coe
@@ -81,7 +81,7 @@ d_tableCalls_32 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   [T_IRFun_6] ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -114,7 +114,7 @@ d_tableEnv'45'at_42 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   T_IRFun_6 ->
   [T_IRFun_6] ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -230,7 +230,7 @@ d_runIR_398 ::
   (MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
    MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-   AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+   AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   T_IRProgram_386 ->
   MAlonzo.Code.Once.Internal.Iterative.T_T'8734'_58
 d_runIR_398 v0 v1 v2

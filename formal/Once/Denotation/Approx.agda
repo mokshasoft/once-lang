@@ -44,7 +44,7 @@ approxBlock r       (halt o a)     = halt o a
 ------------------------------------------------------------------------
 
 open import Data.Empty using (⊥)
-open import Once.Internal.Res using (Res; stopped; returns)
+open import Once.Res using (Res; stopped; returns)
 
 -- The run was not cut: it stopped, or returned.
 NotCut : ∀ {X} → Res (Ap X) → Set
@@ -71,7 +71,7 @@ open import Data.Product using (proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Internal.Res using (mapRes; is-stopped)
+open import Once.Res using (mapRes; is-stopped)
 open import Once.Internal.Event using (SigOpEvent)
 open import Once.Internal.Iterative using (embed; embedBlock)
 open import Once.Internal.Trace using (Interp; Run; run; run-call; consE; callAnswer; callEvent; haltEvent; unlinkedOp; CallOp)

@@ -21,9 +21,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Internal.Polynomial
-import qualified MAlonzo.Code.Once.Internal.Res
 import qualified MAlonzo.Code.Once.Internal.Trace
 import qualified MAlonzo.Code.Once.Internal.Value
+import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.Spec.Type
 
 -- Once.Internal.Iterative.V.coerce-base-to-full
@@ -113,7 +113,7 @@ d_sem'45'CoOut_28 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Spec.Type.T_WFFun_118 ->
   MAlonzo.Code.Once.Internal.Polynomial.T_νS_98 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  MAlonzo.Code.Once.Res.T_Res_6
 d_sem'45'CoOut_28 v0 v1 v2 v3 v4
   = coe MAlonzo.Code.Once.Internal.Value.du_sem'45'CoOut_634 v2 v3 v4
 -- Once.Internal.Iterative.V.sem-In
@@ -138,7 +138,7 @@ d_sem'45'ana_34 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   AgdaAny -> MAlonzo.Code.Once.Internal.Polynomial.T_νS_98
 d_sem'45'ana_34 v0 v1 v2 v3 v4
   = coe
@@ -180,9 +180,8 @@ d_semAnaLayer_42 ::
   Integer ->
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8 ->
-  MAlonzo.Code.Once.Internal.Res.T_Res_8
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
+  MAlonzo.Code.Once.Res.T_Res_6 -> MAlonzo.Code.Once.Res.T_Res_6
 d_semAnaLayer_42 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Internal.Value.du_semAnaLayer_666 v0 v1 v3 v4
@@ -192,8 +191,7 @@ d_sfmapSemAna_44 ::
   MAlonzo.Code.Once.Spec.Type.T_Fun_12 ->
   MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
-  AgdaAny -> AgdaAny
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) -> AgdaAny -> AgdaAny
 d_sfmapSemAna_44 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Internal.Value.du_sfmapSemAna_676 v0 v1 v2 v4 v5

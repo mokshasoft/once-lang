@@ -18,7 +18,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Internal.Context using (_↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans; ⊑ᵘ-unique) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Context using (_↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans; ⊑ᵘ-unique) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Spec.Context using (Ctx; ∅; Usage; _⊑ᵘ_; [])
 open import Once.Spec.Grade using (_≤q_)
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)

@@ -24,7 +24,6 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Data.Nat.Base
-import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Core.Syntax
 import qualified MAlonzo.Code.Once.Spec.Grade
@@ -34,6 +33,7 @@ import qualified MAlonzo.Code.Once.Spec.Sub
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Surface.Typing
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Type.Concrete
 
 -- Once.TypeCheck.Use.SU._∋_⦂_at_
 d__'8715'_'10626'_at__26 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12
@@ -223,7 +223,7 @@ data T_Use'8658'_510
   = C_u'45'int_546 | C_u'45'float_554 | C_u'45'unit_556 |
     C_u'45'unit'45'g_558 | C_u'45'var_568 |
     C_u'45'sigop_580 MAlonzo.Code.Once.Spec.Type.T_Ty_8 AgdaAny
-                     MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 AgdaAny |
+                     MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6 AgdaAny |
     C_u'45'def_594 AgdaAny | C_u'45'annot_606 T_Use'8656'_522 |
     C_u'45'pair_628 MAlonzo.Code.Once.Spec.Context.T_Usage_34
                     MAlonzo.Code.Once.Spec.Context.T_Usage_34 T_Use'8658'_510

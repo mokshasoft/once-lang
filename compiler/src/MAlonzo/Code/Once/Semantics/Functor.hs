@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Internal.Polynomial
-import qualified MAlonzo.Code.Once.Internal.Res
+import qualified MAlonzo.Code.Once.Res
 
 -- Once.Semantics.Functor.sfmap-id
 d_sfmap'45'id_14 ::
@@ -101,14 +101,14 @@ d_sfmapAna'45'is'45'sfmap_324 ::
   MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sfmapAna'45'is'45'sfmap_324 = erased
 -- Once.Semantics.Functor.anaS-unfold
 d_anaS'45'unfold_380 ::
   MAlonzo.Code.Once.Internal.Polynomial.T_SFunctor_6 ->
   () ->
-  (AgdaAny -> MAlonzo.Code.Once.Internal.Res.T_Res_8) ->
+  (AgdaAny -> MAlonzo.Code.Once.Res.T_Res_6) ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_anaS'45'unfold_380 = erased
 -- Once.Semantics.Functor.paraS

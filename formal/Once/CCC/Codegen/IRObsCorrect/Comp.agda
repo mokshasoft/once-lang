@@ -40,7 +40,7 @@ import Once.Denotation.ValueDomain as ValueDomain
 import Once.Internal.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
 open import Data.Nat.Properties using (+-monoʳ-≤)
-open import Once.Internal.Res using (Res; stopped; returns; is-stopped)
+open import Once.Res using (Res; stopped; returns; is-stopped)
 
 module CompC {FS : FrameSemantics} where
 

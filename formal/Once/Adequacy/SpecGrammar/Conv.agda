@@ -11,11 +11,11 @@
 
 module Once.Adequacy.SpecGrammar.Conv where
 
-import Once.Internal.Type as LT
+import Once.Type.Core as LT
 import Once.Spec.Type as LT
 import Once.Spec.Type as LT
 import Once.Spec.Surface.Syntax as LP
-import Once.Internal.Type.Poly as LP
+import Once.Type.Poly as LP
 import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
 

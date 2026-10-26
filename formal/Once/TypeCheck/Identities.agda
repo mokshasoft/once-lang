@@ -23,7 +23,7 @@ open import Once.Spec.Type using (Ty)
 open import Once.Type.Grade using (_≤qᵇ_)
 module Once.TypeCheck.Identities where
 
-import Once.Internal.Laws.Grade as G
+import Once.Laws.Grade as G
 import Once.Surface.Properties as P
 import Relation.Binary.PropositionalEquality as Eq
 
@@ -44,8 +44,8 @@ open import Once.TypeCheck.Raw using (isArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
-open import Once.Internal.Typing.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
-import Once.Internal.Typing.Scope as Classify
+open import Once.TypeCheck.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
+import Once.TypeCheck.Scope as Classify
 
 ------------------------------------------------------------------------
 -- classifyAppHead determinism
@@ -357,7 +357,7 @@ open import Once.Type.Grade using (_⊔q_)
 ------------------------------------------------------------------------
 
 open import Data.Nat using (zero; suc)
-open import Once.Internal.Context using (_⊔ᵘ_)
+open import Once.Context using (_⊔ᵘ_)
 open import Once.Spec.Context using (Usage; _*ᵘ_; _+ᵘ_; zeroUsage)
 open import Once.Spec.Context using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
 

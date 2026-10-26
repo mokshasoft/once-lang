@@ -45,7 +45,7 @@ open import Once.Spec.Core.Syntax using (Prim; primDom; primCod; Schema; _!!_)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Program Σ using (noVars)
-open import Once.Internal.Type using (noResp)
+open import Once.Type.Core using (noResp)
 import Once.Spec.Core.Meaning Σ fmt S as SM
 import Once.Spec.Domain Σ as SD
 import Once.Spec.Effect Σ as SE

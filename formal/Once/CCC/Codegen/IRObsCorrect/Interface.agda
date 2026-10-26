@@ -60,7 +60,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Internal.Trace as TM
-open import Once.Internal.Res using (Res; returns; stopped; is-stopped)
+open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.Internal.Iterative using (T∞; Now; valueNow)
 open import Once.Denotation.Approx using (Ap; done; cut; approx; NotCut; budgetLeft)
 open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤)

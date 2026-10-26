@@ -36,7 +36,7 @@ open import Once.Spec.Grade using (pure; pureᶠ)
 open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; PInt; PFloat; PTVar; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
 open import Once.Grammar.Convert    using (gtypeToType)
-open import Once.Internal.Type.Poly using (polyOf)
+open import Once.Type.Poly using (polyOf)
 open import Once.Grammar.ExprConvert using (gexprToRaw)
 open import Once.Grammar.ConcreteDec using (concrete?)
 

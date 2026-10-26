@@ -23,15 +23,15 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
-import Once.Internal.Type.Honest as LH
+import Once.Type.Honest as LH
 open LH using (HonestFFI)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open S using (Signature; _∶_; DeclType; constant; value; operation; WellFormed; WellFormedDecl; []; _∷_)
 import Once.Parser as Parser
-open import Once.Internal.Module using (entrySig)
+open import Once.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (declTy; ⌞_⌟)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.SpecFront.Extract using (FFIFacts)
 open import Once.Adequacy.SpecFront.SigFacts using (mem-toISig; facts-at)
 

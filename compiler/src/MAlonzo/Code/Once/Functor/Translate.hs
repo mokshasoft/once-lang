@@ -19,8 +19,8 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Type.Concrete
 
 -- Once.Functor.Translate.translate-coherence
 d_translate'45'coherence_16 ::
@@ -58,8 +58,8 @@ d_uip_98 = erased
 -- Once.Functor.Translate.IsConcrete-irrelevant
 d_IsConcrete'45'irrelevant_122 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
-  MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 ->
+  MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6 ->
+  MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_IsConcrete'45'irrelevant_122 = erased
 -- Once.Functor.Translate.WFFun-irrelevant

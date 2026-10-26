@@ -25,7 +25,7 @@ open import Once.Spec.Type using (Ty; Fun; WFFun; wf-⊕; wf-⊗; KCtx; Kind; ba
 
 open import Once.Spec.Type using (Fun; μ; ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Internal.Type.WellFormed using (IsConcrete; con-base; con-fun)
+open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
 
 -- | Decide whether a type is a base type (no functions / μ / ν).

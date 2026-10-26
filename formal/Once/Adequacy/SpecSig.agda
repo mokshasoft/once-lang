@@ -23,7 +23,7 @@
 
 open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Once.Internal.Name using (showCanonical; WordName)
+open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Once.Spec.Type using (TySub)
@@ -49,15 +49,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Spec.Word using (Carrier)
 import Once.Internal.Value Carrier Carrier as M
-import Once.Internal.Type as T
+import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Spec.Grade as G
-import Once.Internal.Type.WellFormed as LW
+import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 import Once.Internal.Trace as LTr
 open import Once.Internal.Event using (SigOpEvent; toEvent; baseOf; valOf)
-open import Once.Internal.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf; valueOf-at; _∈K?_; Impl)
-open import Once.Internal.ContractLaws using (value-∈; base-contract)
+open import Once.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf; valueOf-at; _∈K?_; Impl)
+open import Once.ContractLaws using (value-∈; base-contract)
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST
 import Once.Spec.Signature as S
@@ -69,9 +69,9 @@ import Once.Spec.Core.Meaning as SM
 open Obs Σ using (Model; World; module Model; module World)
 import Once.Adequacy.SpecInterp as SI
 open SI using (declTy; ⌞_⌟; qL; toImpl; toInterp)
-open import Once.Internal.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete; ⌜⌝-base; declS; ⌜declS⌝)
-open import Once.Internal.Type.Honest using (HonestFFI)
-open import Once.Internal.Weaken using (wk₀-id)
+open import Once.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete; ⌜⌝-base; declS; ⌜declS⌝)
+open import Once.Type.Honest using (HonestFFI)
+open import Once.Weaken using (wk₀-id)
 open import Once.Functor.Translate using (IsConcrete-irrelevant)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦wk₀⟧ᵛ)
 open import Relation.Binary.PropositionalEquality using (subst-∘; subst-subst)
@@ -436,13 +436,13 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
 ------------------------------------------------------------------------
 
 private
-  answer-there : ∀ {k ks} (ct : Once.Internal.Contract.Contract) → k ∈ ks → k ∈ answer-step ct ks
-  answer-there (Once.Internal.Contract.value _)   m = m
-  answer-there (Once.Internal.Contract.answers _) m = there m
-  answer-there Once.Internal.Contract.effect      m = m
+  answer-there : ∀ {k ks} (ct : Once.Contract.Contract) → k ∈ ks → k ∈ answer-step ct ks
+  answer-there (Once.Contract.value _)   m = m
+  answer-there (Once.Contract.answers _) m = there m
+  answer-there Once.Contract.effect      m = m
 
   eff-in : ∀ s A B (dv : Dec (B ≡ T.Void)) (du : Dec (B ≡ T.Unit)) → B ≢ T.Void → B ≢ T.Unit → ∀ ks
-         → key s A B ∈ answer-step (Once.Internal.Contract.contract-eff s A B dv du) ks
+         → key s A B ∈ answer-step (Once.Contract.contract-eff s A B dv du) ks
   eff-in s A B (yes e) du      ¬v ¬u ks = ⊥-elim (¬v e)
   eff-in s A B (no _)  (yes e) ¬v ¬u ks = ⊥-elim (¬u e)
   eff-in s A B (no _)  (no _)  ¬v ¬u ks = here refl
@@ -450,7 +450,7 @@ private
   -- an answering operation's key is one of the signature's
   ans-in : ∀ {Σ′ : Signature} {c a q b} (m : (c ∶ operation a q b) ∈ Σ′) → ⌞ b ⌟ ≢ T.Void → ⌞ b ⌟ ≢ T.Unit
          → key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟ ∈ answerKeys (toISig Σ′)
-  ans-in {(c′ ∶ t) ∷ Σ′} (there m) ¬v ¬u = answer-there (Once.Internal.Contract.contractOf (showCanonical c′) (declTy t)) (ans-in m ¬v ¬u)
+  ans-in {(c′ ∶ t) ∷ Σ′} (there m) ¬v ¬u = answer-there (Once.Contract.contractOf (showCanonical c′) (declTy t)) (ans-in m ¬v ¬u)
   ans-in {(c ∶ operation a SG.Zero b) ∷ Σ′} (here refl) ¬v ¬u = eff-in _ _ _ (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟) ¬v ¬u _
   ans-in {(c ∶ operation a SG.One b)  ∷ Σ′} (here refl) ¬v ¬u = eff-in _ _ _ (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟) ¬v ¬u _
   ans-in {(c ∶ operation a SG.Many b) ∷ Σ′} (here refl) ¬v ¬u = eff-in _ _ _ (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟) ¬v ¬u _

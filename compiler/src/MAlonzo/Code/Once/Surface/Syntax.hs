@@ -20,15 +20,15 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
+import qualified MAlonzo.Code.Once.Context
 import qualified MAlonzo.Code.Once.IR
-import qualified MAlonzo.Code.Once.Internal.Context
-import qualified MAlonzo.Code.Once.Internal.Type.WellFormed
 import qualified MAlonzo.Code.Once.Spec.Context
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Sub
 import qualified MAlonzo.Code.Once.Spec.Type
+import qualified MAlonzo.Code.Once.Type.Concrete
 
 -- Once.Surface.Syntax.Expr
 d_Expr_10 a0 a1 a2 a3 a4 = ()
@@ -98,7 +98,7 @@ data T_Expr_10
                  MAlonzo.Code.Once.Spec.Sub.T__'60''58'__8 T_Expr_10 |
     C_sigOp_388 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
-                MAlonzo.Code.Once.Internal.Type.WellFormed.T_IsConcrete_8 |
+                MAlonzo.Code.Once.Type.Concrete.T_IsConcrete_6 |
     C_closure_396 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_poly_406 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_closed_414 T_Expr_10 |
@@ -130,12 +130,12 @@ d_svar'8594'expr_568 ::
   MAlonzo.Code.Once.Spec.Context.T_Ctx_8 ->
   MAlonzo.Code.Once.Spec.Context.T_Usage_34 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.Internal.Context.T_SVar_38 -> T_Expr_10
+  MAlonzo.Code.Once.Context.T_SVar_36 -> T_Expr_10
 d_svar'8594'expr_568 ~v0 ~v1 ~v2 ~v3 ~v4 v5
   = du_svar'8594'expr_568 v5
 du_svar'8594'expr_568 ::
-  MAlonzo.Code.Once.Internal.Context.T_SVar_38 -> T_Expr_10
+  MAlonzo.Code.Once.Context.T_SVar_36 -> T_Expr_10
 du_svar'8594'expr_568 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Internal.Context.C_svar_48 v3 -> coe C_var_20 v3
+      MAlonzo.Code.Once.Context.C_svar_46 v3 -> coe C_var_20 v3
       _ -> MAlonzo.RTE.mazUnreachableError

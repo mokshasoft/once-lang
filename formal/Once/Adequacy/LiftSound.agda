@@ -57,7 +57,7 @@ open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-throug
   lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-other; pair-of)
 open import Once.SigOp.Info using (SigOpSem; mk-info'; primV; SigOpInfo)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
-import Once.Internal.Type as Ty
+import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
 import Once.Type as Ty
 open import Once.Spec.Numerics using (module TargetNum)

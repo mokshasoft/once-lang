@@ -52,8 +52,8 @@ open StreamRel using () renaming (forceR to forceSR)
 import Once.Spec.Effect Σ as SE
 open SE.νM using (outν)
 import Once.Spec.Domain Σ as SD
-open import Once.Internal.Type using (wk₀)
-open import Once.Internal.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
+open import Once.Type.Core using (wk₀)
+open import Once.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.Denotation.SpecDomain Σ σ using (⟦wk₀⟧ᵛ)
 open import Once.Adequacy.SpecRun Σ
   using (RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-R; embed-bind-R; bindT-R; mapT-R; BlockR-mono; RunR-mono; CallR; cr)

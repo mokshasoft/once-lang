@@ -13,17 +13,17 @@ module Once.Surface.Elaborate where
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Internal.Type
+open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Internal.Type.Poly
+open import Once.Type.Poly
 open import Once.Type
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.IR
 open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; ⌊⟧T-commute; ⌊wk₀⌋)
 open import Once.IR.Ref using (refIR)
-open import Once.Internal.Context
+open import Once.Context
 open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; lookup; singleUse; zeroUsage; ∅)
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
@@ -53,7 +53,7 @@ open import Data.Integer using (ℤ)
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
 open import Once.Arith.SigOp.Builders
 open import Once.Spec.Name using (bare)
-open import Once.Internal.Type.WellFormed using (con-base; con-fun; IsConcrete)
+open import Once.Type.Concrete using (con-base; con-fun; IsConcrete)
 open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
 
 -- Literals: constant morphisms that ignore input environment.

@@ -36,25 +36,25 @@ open import Data.Fin using (Fin)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; sym; trans)
 
-import Once.Internal.Type as LT
+import Once.Type.Core as LT
 import Once.Spec.Type as LT
 
 import Once.Spec.Type as LT
-import Once.Internal.Type.WellFormed as LW
+import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; Ground-irrelevant)
 open import Once.Functor.Decide using (isConcrete?)
 import Data.Sum
 open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PolyFunctor; PK; PId; _P⊕_; _P⊗_)
-open import Once.Internal.Type.Poly using (Ground; GroundF; extractGround; extractGroundF)
+open import Once.Type.Poly using (Ground; GroundF; extractGround; extractGroundF)
 import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Program
   using (SchemaOf; TypeOf; FunOf; NotDefinition; nd-sig; nd-alias; nd-import;
          to-unit; to-void; to-int; to-float; to-*; to-+; to-⇒; to-act; to-eff; to-μ; to-ν; fo-K; fo-Id; fo-⊕; fo-⊗)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeAlias; DTypeSig; DFunDef; DSignature; DImport)
 import Once.Parser as Parser
-open import Once.Internal.Type.Schema using (schemaOf)
-open import Once.Internal.Core.Translate Σ using (monoSchema)
+open import Once.Type.Schema using (schemaOf)
+open import Once.Core.Translate Σ using (monoSchema)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly; toPolyF)
 open import Once.Adequacy.SpecFront.Expr using (RX)
 open import Once.Adequacy.SpecFront.SchemaOf using (schemaOf-S)

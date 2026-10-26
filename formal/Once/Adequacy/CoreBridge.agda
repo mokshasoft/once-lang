@@ -38,7 +38,7 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 import Once.Spec.Observation as Obs
 open import Once.Adequacy.SpecInterp using (toInterp)
 import Once.Adequacy.SpecObserve as SO
@@ -46,11 +46,11 @@ import Once.Adequacy.SpecSig as SSg
 import Once.Compile as C
 import Once.Parser as Parser
 import Once.Parser.Module.Core as P
-open import Once.Internal.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef)
+open import Once.Module using (ModuleTyped; ModuleTyped-ef; HasValidMain; HasValidMain-ef)
 open import Once.Internal.Trace using (Interp; pureHalf)
-open import Once.Internal.Program using (Typed)
+open import Once.Program using (Typed)
 import Once.Internal.Core.Telescope as TL
-import Once.Internal.Core.Translate as TR
+import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP
 import Once.Spec.Core.Program as SP
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)

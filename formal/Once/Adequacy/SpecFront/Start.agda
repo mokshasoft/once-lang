@@ -29,16 +29,16 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; subst)
 import Data.String.Properties as StrProp
 
-open import Once.Internal.Contract using (ISig)
+open import Once.Contract using (ISig)
 import Once.Parser as Parser
-open import Once.Internal.Module using (entrySig)
-open import Once.Internal.Typing.Scope using (lookupImport)
+open import Once.Module using (entrySig)
+open import Once.TypeCheck.Scope using (lookupImport)
 open import Once.Adequacy.SpecFront.SigFacts using (keys; keys-all; mem-toISig)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-map⁺)
 open import Once.Spec.Signature using (Signature; _∶_)
 open import Once.Spec.Name using (canonical)
-open import Once.Internal.Core.Decl using (toISig)
+open import Once.Core.Decl using (toISig)
 open import Relation.Nullary using (¬_)
 
 private

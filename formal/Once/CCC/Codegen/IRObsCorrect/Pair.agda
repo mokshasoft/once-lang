@@ -67,7 +67,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.Internal.Trace as TM
-open import Once.Internal.Res using (Res; stopped; returns; is-stopped)
+open import Once.Res using (Res; stopped; returns; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; done-value)
 
 module PairAsm {FS : FrameSemantics} where

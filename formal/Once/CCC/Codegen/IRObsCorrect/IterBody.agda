@@ -28,7 +28,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Nat using (s≤s)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
-open import Once.Internal.Res using (Res; stopped; returns; is-stopped)
+open import Once.Res using (Res; stopped; returns; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 
 open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl

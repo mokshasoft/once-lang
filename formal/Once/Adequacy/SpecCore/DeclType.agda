@@ -13,7 +13,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
 open S using (constant; value; operation)
-open import Once.Internal.Core.Decl using (declS; toB)
+open import Once.Core.Decl using (declS; toB)
 open import Once.Adequacy.SpecInterp using (declTy; ⌞_⌟)
 
 -- Reading a declaration's type as the compiler's, and back, is the identity.

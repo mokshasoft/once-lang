@@ -30,7 +30,7 @@ open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List using (map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Once.Internal.Name using (showCanonical)
+open import Once.Name using (showCanonical)
 import Once.Spec.Observation as Obs
 
 -- Plan 0.105: at an interpretation — the meaning and the compiled program run
@@ -57,7 +57,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
 open import Once.Spec.Type using (Type; _⟨_⟩)
-open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Type.DecEq using (_≟T_)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -66,22 +66,22 @@ open Parser.FunInfo using (funName)
 open import Once.IR using (IR)
 import Once.IR
 open import Once.IRTy using (⌊_⌋)
-import Once.Internal.Context as Ctx
+import Once.Context as Ctx
 import Once.Surface.Syntax as Srf
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoWit)
-open import Once.Internal.Principal using (PrincipalAt)
+open import Once.Module using (ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; MonoWit)
+open import Once.Principal using (PrincipalAt)
 open import Once.Spec.Core.Syntax using (Defs; _!!_)
 open import Once.Spec.Core.Program Σ using (Tele; Entry; noVars)
 open import Once.Internal.Core.Telescope Σ using (Program; runCore; program)
 open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-arr)
 open import Once.Spec.Grade using (_⊑π_; ⊑-eff; ⊑-pe; ⊑-ae)
-open import Once.Type.Sub using (_<:?_)
+open import Once.Type.SubDecide using (_<:?_)
 import Once.Spec.Domain Σ as SDm
 import Once.Spec.Effect Σ as SE
-import Once.Internal.Core.TySubstZero as TZ
+import Once.Core.TySubstZero as TZ
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -90,10 +90,10 @@ open import Once.Denotation.ValueDomain using (cohᴰ)
 open import Once.Internal.Iterative using (_>>=∞_)
 open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Internal.Core.Translate Σ using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigIn; monoSchema)
+open import Once.Core.Translate Σ using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigIn; monoSchema)
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; toProgram; toProgramFrom; monoHere)
 import Once.Adequacy.ModuleProgram Σ as MP
-import Once.Internal.Core.Translate Σ as TR
+import Once.Core.Translate Σ as TR
 open import Once.Compile using (irFunOf; tableOf-go)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
@@ -220,8 +220,8 @@ private
       un (_ ∷ es) ((h ∷ []) ∷ hs) = h ∷ un es hs
 
 -- The entries after `main` extend the telescope; the program still names `main`.
-from-sem : ∀ {s} {S : Defs s} {sc es} (tl : Tele S) (ss : SigSig (Once.Internal.Module.Scope.sig sc)) (is : ImpSig S (Once.Internal.Module.Scope.imps sc))
-             (ts : TeleSig S (Once.Internal.Module.Scope.tele sc)) (N : Names S is ts)
+from-sem : ∀ {s} {S : Defs s} {sc es} (tl : Tele S) (ss : SigSig (Once.Module.Scope.sig sc)) (is : ImpSig S (Once.Module.Scope.imps sc))
+             (ts : TeleSig S (Once.Module.Scope.tele sc)) (N : Names S is ts)
              (d : Data.Fin.Fin s) (e : Entry (S !! d)) (rest : ModTele sc es) (u : SigIn rest)
          → runCore fmt (toProgramFrom tl ss is ts N d e rest u) mo ≡ runCore fmt (program tl d e) mo
 from-sem tl ss is ts N d e [] u = refl

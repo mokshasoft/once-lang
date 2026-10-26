@@ -40,7 +40,7 @@ record SigOpEvent : Set where
 -- events are read at `void`.
 ------------------------------------------------------------------------
 
-import Once.Internal.Type as T
+import Once.Type.Core as T
 import Once.Spec.Type as T
 
 import Once.Spec.Type as T

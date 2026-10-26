@@ -28,7 +28,7 @@ import Data.Sign as Sign
 open import Once.Spec.Type using (Type; Unit; Int)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Spec.Float.Decimal using (Decimal)
-import Once.Internal.Type as T
+import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Arith.Machine.Shape

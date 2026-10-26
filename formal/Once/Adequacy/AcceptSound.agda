@@ -19,7 +19,7 @@
 module Once.Adequacy.AcceptSound where
 
 open import Once.TypeCheck.SpecWitness using (WI)
-open import Once.Internal.Type.Instance using (kindsOf; arityOf)
+open import Once.Type.Instance using (kindsOf; arityOf)
 open import Once.TypeCheck.Classify using (ctxAt)
 open import Once.TypeCheck.Classify using (TopCtx; ctxWithImportsAndPolys)
 open import Data.Bool using (Bool; false; true)
@@ -28,7 +28,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.Internal.Principal using (below)
+open import Once.Principal using (below)
 open import Once.Adequacy.PrincipalDecide using (firstChecking-sound)
 open import Data.String using (String; _==_)
 open import Data.Unit using (⊤; tt)
@@ -40,22 +40,22 @@ open import Once.Spec.Type using (Unit; Type)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
-import Once.Internal.Context as Srf
+import Once.Context as Srf
 open import Once.Spec.Context using (zeroUsage)
 import Once.Spec.Context as Srf
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Elaborate as TE using ()
-import Once.Internal.Typing.Scope as Classify
-open import Once.Internal.Typing.Scope using (NamedCtx)
+import Once.TypeCheck.Scope as Classify
+open import Once.TypeCheck.Scope using (NamedCtx)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Internal.Type.DecEq using (_≟T_)
+open import Once.Type.DecEq using (_≟T_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Internal.Module
+open import Once.Module
   using (Scope; scope; ModTele; []; ffi; mono; poly; ModuleTyped-ef; ModuleTyped; MonoWit)
-open import Once.Internal.Type.Instance using (rigidOf)
-open import Once.Internal.Type.WellFormed using (IsConcrete)
+open import Once.Type.Instance using (rigidOf)
+open import Once.Type.Concrete using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
-open import Once.Internal.Type.Honest using (HonestFFI; honest?)
+open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Context
 open import Data.Maybe using (Maybe; nothing)
 open import Once.Compile using (moduleToIR)
@@ -105,7 +105,7 @@ compileFunBody-sound doOpt ctx polys impsOf name ty expr eq =
 -- ONLY the judgment `_⊢ᶜ_∶_⨾_` — no elaborator function appears.
 ------------------------------------------------------------------------
 
--- The relation is in `Once.Internal.Module` (plan 0.84).
+-- The relation is in `Once.Module` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` accepts ⇒ its body has a derivation.
