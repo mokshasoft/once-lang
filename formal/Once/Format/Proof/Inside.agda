@@ -36,6 +36,7 @@ module Once.Format.Proof.Inside
   (I2kd : Notes.inner (lookupNotes kd tv₂) ≡ Data.List.[])
   (I1kd : Notes.inner (lookupNotes kd tv₁) ≡ Data.List.[])
   (S1 : ∀ j → NotesSrc (lookupNotes j tv₁))
+  (Tkd : List Once.Format.Print.Note)   -- what the walk found before the declaration
   where
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; not; if_then_else_; T)
@@ -134,6 +135,7 @@ record WI (σ : St) (kb n : ℕ) : Set where
     w-after : ∀ j → kb ≤ j → Notes.after (lookupNotes j t) ≡ []
     w-inner : ∀ j → kb + n ≤ j → Notes.inner (lookupNotes j t) ≡ []
     w-top   : ∀ j → kd < j → Notes.top (lookupNotes j t) ≡ []
+    w-topk  : Notes.top (lookupNotes kd t) ≡ Tkd
 
 private
   ≤-<-cases : ∀ {j k} → j < k → suc j < k ⊎ k ≡ suc j
@@ -206,7 +208,7 @@ brk-sim i (st o c (just i′) e₁) (st .o .c .(just i′) e₂) kb n 1≤i kd�
   wi (WI.h w) (WI.t w) (trans (WI.w-φ w) (idx kb 0))
      (λ ()) (λ i₂ e → wt , refl , subst (1 ≤_) (cong (λ { (just x) → x ; nothing → 0 }) e) 1≤i)
      (λ j le → WI.w-after w j (subst (_≤ j) (+-identityʳ kb) le))
-     (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + 0)) le)) (WI.w-top w)
+     (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + 0)) le)) (WI.w-top w) (WI.w-topk w)
 brk-sim i (st o c nothing []) (st .o .c .nothing e₂) kb n 1≤i kd≤ (rel refl refl refl re₁ re₂) w (li ok pl) fut
   with WI.w-text w refl
 ... | wf , _ = go e₂ (trans re₂ e₂nil)
@@ -218,7 +220,7 @@ brk-sim i (st o c nothing []) (st .o .c .nothing e₂) kb n 1≤i kd≤ (rel ref
       wi (WI.h w) (WI.t w) (trans (cong proj₁ (Φ-lnl o ok wf)) (trans (WI.w-φ w) (idx kb n)))
          (λ ()) (λ i₂ e → cong proj₂ (Φ-lnl o ok wf) , refl , subst (1 ≤_) (cong (λ { (just x) → x ; nothing → 0 }) e) 1≤i)
          (λ j le → WI.w-after w j (≤-trans (m≤m+n kb n) le))
-         (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + n)) le)) (WI.w-top w)
+         (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + n)) le)) (WI.w-top w) (WI.w-topk w)
     e₂nil : eolsFrom tv₂ kb n ≡ []
     e₂nil = eols-nil tv₂ kb n λ j kb≤j j<k →
       trans (A2 j (≤-trans kd≤ kb≤j))
@@ -282,6 +284,8 @@ brk-sim i (st o c nothing (x ∷ xs)) (st .o .c .nothing e₂) kb (suc m) 1≤i 
                          (WI.w-inner w j (subst (_≤ j) (+-identityʳ k) le)))
          (λ j kd<j → trans (lookup-addTo-keeps Notes.top j (k ∸ 1) (addAfter r) t (λ { (Once.Format.Print.notes _ _ _) → refl }))
                            (WI.w-top w j kd<j))
+         (trans (lookup-addTo-keeps Notes.top kd (k ∸ 1) (addAfter r) t (λ { (Once.Format.Print.notes _ _ _) → refl }))
+                (WI.w-topk w))
 
 ------------------------------------------------------------------------
 -- Tokens and blanks, in step
@@ -385,7 +389,7 @@ token-sim t (st o c p e₁) (st .o .c .p e₂) kb n pl (rel refl refl refl re₁
         (trans (cong proj₁ (trans (Φ-cons (lt t) (lind (suc i″) ∷ o)) (cong (λ ω → stepL ω (lt t)) (Φ-cons (lind (suc i″)) o))))
                (tok-line t (Φ o) i″ pl′ (WI.w-φ w) wt))
         (λ _ → cong proj₂ (Φ-cons (lt t) (lind (suc i″) ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
       where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
             nj ()
     wi-of (st .(lt t ∷ o) C P E) to-bare pn with WI.w-text w refl
@@ -393,7 +397,7 @@ token-sim t (st o c p e₁) (st .o .c .p e₂) kb n pl (rel refl refl refl re₁
       wi (WI.h w ∨ false) (WI.t w)
         (trans (cong proj₁ (Φ-cons (lt t) o)) (tok-code t (Φ o) pl′ (WI.w-φ w) wf))
         (λ _ → cong proj₂ (Φ-cons (lt t) o) , trans (∨-false (WI.h w)) h≡) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
       where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
             nj ()
     wi-of (st .(lt t ∷ lsp ∷ o) C P E) to-sp pn with WI.w-text w refl
@@ -402,7 +406,7 @@ token-sim t (st o c p e₁) (st .o .c .p e₂) kb n pl (rel refl refl refl re₁
         (trans (cong proj₁ (trans (Φ-cons (lt t) (lsp ∷ o)) (cong (λ ω → stepL ω (lt t)) (lsp-Φ o wf))))
                (tok-code t (Φ o) pl′ (WI.w-φ w) wf))
         (λ _ → cong proj₂ (Φ-cons (lt t) (lsp ∷ o)) , trans (∨-false (WI.h w)) h≡) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
       where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
             nj ()
 
@@ -413,7 +417,7 @@ space-sim (st o c nothing e₁) (st .o .c .nothing e₂) kb n (rel refl refl ref
 ... | wf , h≡ =
   rel refl refl refl re₁ re₂ ,
   wi (WI.h w) (WI.t w) (trans (cong proj₁ (lsp-Φ o wf)) (WI.w-φ w)) (λ _ → trans (cong proj₂ (lsp-Φ o wf)) wf , h≡)
-     (λ i ()) (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+     (λ i ()) (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
 
 -- | Where the two layouts are after a part of the declaration: in step, on a
 -- line whose anchors are `kb` to `kb + n`, the walk along.
@@ -626,20 +630,20 @@ anchor-sim x (st o c p e₁) (st .o .c .p e₂) kb n ax (rel refl refl refl re�
         (trans (cong proj₁ (trans (Φ-cons (lt x) (lind (suc i″) ∷ o)) (cong (λ ω → stepL ω (lt x)) (Φ-cons (lind (suc i″)) o))))
                (trans (tokA-line x (Φ o) i″ ax (WI.w-φ w) wt) idx′))
         (λ _ → cong proj₂ (Φ-cons (lt x) (lind (suc i″) ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) , WI.w-inner w (kb + n) ≤-refl
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) , WI.w-inner w (kb + n) ≤-refl
     wi-of (st .(lt x ∷ o) C P E) to-bare pn with WI.w-text w refl
     ... | wf , _ =
       wi true (WI.t w)
         (trans (cong proj₁ (Φ-cons (lt x) o)) (trans (tokA-code x (Φ o) ax (WI.w-φ w) wf) idx′))
         (λ _ → cong proj₂ (Φ-cons (lt x) o) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) , WI.w-inner w (kb + n) ≤-refl
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) , WI.w-inner w (kb + n) ≤-refl
     wi-of (st .(lt x ∷ lsp ∷ o) C P E) to-sp pn with WI.w-text w refl
     ... | wf , _ =
       wi true (WI.t w)
         (trans (cong proj₁ (trans (Φ-cons (lt x) (lsp ∷ o)) (cong (λ ω → stepL ω (lt x)) (lsp-Φ o wf))))
                (trans (tokA-code x (Φ o) ax (WI.w-φ w) wf) idx′))
         (λ _ → cong proj₂ (Φ-cons (lt x) (lsp ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) , WI.w-inner w (kb + n) ≤-refl
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) , WI.w-inner w (kb + n) ≤-refl
 
 private
   brk-st : ∀ i σ → brk i σ ≡ st (St.out (brk i σ)) 0 (just i) []
@@ -706,7 +710,7 @@ private
 
   -- the walk reads what is written, not what waits for the line's end
   wi-ends : ∀ {o c p e e′ kb n} → WI (st o c p e) kb n → WI (st o c p e′) kb n
-  wi-ends (wi h t a b c d e f) = wi h t a b c d e f
+  wi-ends (wi h t a b c d e f g) = wi h t a b c d e f g
 
   k+1 : ∀ k → k + 1 ≡ suc k
   k+1 k = trans (+-suc k 0) (cong suc (+-identityʳ k))
@@ -857,6 +861,7 @@ hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lo
                                    (λ q → <-irrefl (sym q) (subst (_≤ j) (k+1 k) le))))
                                (WI.w-inner wa j (≤-trans (subst (_≤ k + 1) (sym (+-identityʳ k)) (subst (k ≤_) (sym (k+1 k)) (n≤1+n k))) le)))
                (λ j kd<j → trans (settle-top j k rs Ta) (WI.w-top wa j kd<j))
+               (trans (settle-top kd k rs Ta) (WI.w-topk wa))
           where nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
                 nj ()
         res = ends-after σc σc k 0 kd≤k (rel refl refl refl (trans endsc refl) (trans endsc refl)) (+-identityʳ k) wc
@@ -882,3 +887,105 @@ sk-sim (s-group {a = a} {b = b} s₁) i false (st o c p e₁) (st .o .c .p e₂)
   subst (λ g → After (layout i (fits (column (st o c p e₁)) (flatWidth a)) a (st o c p e₁)) (layout i g b (st o c p e₂)) _)
     (cong₂ fits (col-eq o c p e₁ e₂) (sk-width s₁))
     (sk-sim s₁ i _ (st o c p e₁) (st o c p e₂) kb n s 1≤i kd≤ (rel refl refl refl re₁ re₂) w l fu)
+
+------------------------------------------------------------------------
+-- The declaration's first token
+------------------------------------------------------------------------
+
+-- | Before the declaration's first token: a line end waits, and the walk
+-- will settle what it holds before the declaration there (`T′`).
+record Start (σ : St) (T′ : Trivia) : Set where
+  constructor start
+  field
+    s-pend  : St.pend σ ≡ just 0
+    s-ends  : St.ends σ ≡ []
+    s-first : ∀ x → proj₁ (Φ (lt x ∷ lind 0 ∷ St.out σ)) ≡ walker (if anchorTok x then suc kd else kd) (anchorTok x) line-code [] 0 T′
+    s-after : ∀ j → kd ≤ j → Notes.after (lookupNotes j T′) ≡ []
+    s-inner : ∀ j → kd ≤ j → Notes.inner (lookupNotes j T′) ≡ []
+    s-top   : ∀ j → kd < j → Notes.top (lookupNotes j T′) ≡ []
+    s-topk  : Notes.top (lookupNotes kd T′) ≡ Tkd
+
+-- | Where the declaration's skeleton starts: with a token or an anchor.
+data Starts : ∀ {k k′ d₁ d₂} → Skel k k′ d₁ d₂ → Set where
+  st-tok   : ∀ {k t p} → Starts (s-leaf {k} {tk t} p)
+  st-hole  : ∀ {k x p} → Starts (s-hole {k} {x} p)
+  st-<>    : ∀ {k k′ k″ a₁ a₂ b₁ b₂} {s₁ : Skel k k′ a₁ a₂} {s₂ : Skel k′ k″ b₁ b₂} → Starts s₁ → Starts (s-<> s₁ s₂)
+  st-nest  : ∀ {k k′ n a b} {s : Skel k k′ a b} → Starts s → Starts (s-nest {n = n} s)
+  st-group : ∀ {k k′ a b} {s : Skel k k′ a b} → Starts s → Starts (s-group s)
+
+private
+  -- a token at the start of the declaration's line
+  first-tok : ∀ t σ₁ σ₂ T′ → Rel σ₁ σ₂ kd 0 → Start σ₁ T′
+            → St.out (token t σ₁) ≡ lt t ∷ lind 0 ∷ St.out σ₁ × St.pend (token t σ₁) ≡ nothing
+              × Rel (token t σ₁) (token t σ₂) kd 0
+  first-tok t (st o c p e₁) (st .o .c .p e₂) T′ (rel refl refl refl re₁ re₂) sw with Start.s-pend sw
+  ... | refl =
+    tokout-just (proj₁ (token-shape t o c (just 0) e₁)) , proj₂ (token-shape t o c (just 0) e₁) ,
+    subst₂R (token-e t o c (just 0) e₁) (token-e t o c (just 0) e₂) (rel refl refl refl re₁ re₂)
+    where
+      subst₂R : ∀ {σ σ′ τ τ′} → σ′ ≡ σ → τ′ ≡ τ → Rel σ τ kd 0 → Rel σ′ τ′ kd 0
+      subst₂R refl refl r = r
+
+  wi-first : ∀ t σ T′ → Start σ T′ → St.out (token t σ) ≡ lt t ∷ lind 0 ∷ St.out σ → St.pend (token t σ) ≡ nothing
+           → ∀ b → anchorTok t ≡ b → WI (token t σ) kd (if b then 1 else 0)
+  wi-first t σ T′ sw eo ep b eb =
+    wi b T′
+      (trans (cong (λ o → proj₁ (Φ o)) eo)
+        (trans (Start.s-first sw t) (cong₂ (λ m h → walker m h line-code [] 0 T′) (idx-of b eb) eb)))
+      (λ _ → trans (cong waits eo) (cong proj₂ (Φ-cons (lt t) (lind 0 ∷ St.out σ))) , h-of b)
+      (λ i₂ q → ⊥-elim (nj (trans (sym ep) q)))
+      (Start.s-after sw) (λ j le → Start.s-inner sw j (≤-trans (m≤m+n kd _) le)) (Start.s-top sw) (Start.s-topk sw)
+    where
+      nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
+      nj ()
+      idx-of : ∀ b → anchorTok t ≡ b → (if anchorTok t then suc kd else kd) ≡ kd + (if b then 1 else 0)
+      idx-of true  e rewrite e = sym (k+1 kd)
+      idx-of false e rewrite e = sym (+-identityʳ kd)
+      h-of : ∀ b → b ≡ (0 <ᵇ (if b then 1 else 0))
+      h-of true  = refl
+      h-of false = refl
+
+private
+  open Once.Format.Print using (inners; eols)
+
+  -- an anchor's end-of-line comments wait for the line's end
+  eols-after : ∀ i f k τ₁ τ₂ kb′ n′ → kd ≤ kb′ → Rel τ₁ τ₂ kb′ n′ → kb′ + n′ ≡ k → WI τ₁ kb′ (suc n′)
+             → After (layout i f (eols (Notes.after (lookupNotes k tv₁))) τ₁) (layout i f (eols (Notes.after (lookupNotes k tv₂))) τ₂) (suc k)
+  eols-after i f k (st o₁ c₁ p₁ e₁) (st o₂ c₂ p₂ e₂) kb′ n′ kd≤′ (rel refl refl refl re₁ re₂) s w′
+    rewrite eols-layout i f (Notes.after (lookupNotes k tv₁)) o₁ c₁ p₁ e₁ | eols-layout i f (Notes.after (lookupNotes k tv₂)) o₁ c₁ p₁ e₂ =
+    after kb′ (suc n′) (trans (+-suc kb′ n′) (cong suc s)) kd≤′
+      (rel refl refl refl
+        (trans (cong (_++ map eolText (Notes.after (lookupNotes k tv₁))) re₁)
+          (sym (trans (eols-snoc tv₁ kb′ n′) (cong (λ x → eolsFrom tv₁ kb′ n′ ++ map eolText (Notes.after (lookupNotes x tv₁))) s))))
+        (trans (cong (_++ map eolText (Notes.after (lookupNotes k tv₂))) re₂)
+          (sym (trans (eols-snoc tv₂ kb′ n′) (cong (λ x → eolsFrom tv₂ kb′ n′ ++ map eolText (Notes.after (lookupNotes x tv₂))) s)))))
+      (wi-ends w′)
+
+  plain-false : ∀ t → T (plain (tk t)) → anchorTok t ≡ false
+  plain-false t p with anchorTok t
+  ... | false = refl
+  ... | true  = ⊥-elim p
+
+-- | The declaration from its first token on, in step.
+start-sim : ∀ {k′ d₁ d₂} (s : Skel kd k′ d₁ d₂) → Starts s → ∀ i f σ₁ σ₂ T′ → 1 ≤ i → Rel σ₁ σ₂ kd 0 → Start σ₁ T′
+          → LI σ₁ → Future (layout i f d₁ σ₁) → After (layout i f d₁ σ₁) (layout i f d₂ σ₂) k′
+start-sim (s-leaf {d = tk t} p) st-tok i f σ₁ σ₂ T′ 1≤i r sw l fu with first-tok t σ₁ σ₂ T′ r sw
+... | eo , ep , r′ = after kd 0 (+-identityʳ kd) ≤-refl r′ (wi-first t σ₁ T′ sw eo ep false (plain-false t p))
+start-sim (s-hole {x = x} p) st-hole i f σ₁ σ₂ T′ 1≤i r sw l fu with first-tok x σ₁ σ₂ T′ r sw
+... | eo , ep , r′ =
+  subst₂ (λ a b → After a b (suc kd))
+    (sym (cong (λ A → layout i f (inners A <> tk x <> eols (Notes.after (lookupNotes kd tv₁))) σ₁) I1kd))
+    (sym (cong (λ A → layout i f (inners A <> tk x <> eols (Notes.after (lookupNotes kd tv₂))) σ₂) I2kd))
+    (eols-after i f kd (token x σ₁) (token x σ₂) kd 0 ≤-refl r′ (+-identityʳ kd)
+      (wi-first x σ₁ T′ sw eo ep true (proj₁ (anchor-cases x p))))
+  where open import Relation.Binary.PropositionalEquality using (subst₂)
+start-sim (s-<> {a₁ = a₁} {b₁ = b₁} s₁ s₂) (st-<> ss) i f σ₁ σ₂ T′ 1≤i r sw l fu
+  with start-sim s₁ ss i f σ₁ σ₂ T′ 1≤i r sw l (fut-left i f a₁ b₁ σ₁ l fu)
+... | after kb′ n′ s′ kd≤′ r′ w′ = sk-sim s₂ i f _ _ kb′ n′ s′ 1≤i kd≤′ r′ w′ (proj₁ (layout-reach i f a₁ σ₁ l)) fu
+start-sim (s-nest {n = m} s₁) (st-nest ss) i f σ₁ σ₂ T′ 1≤i r sw l fu =
+  start-sim s₁ ss (i + m) f σ₁ σ₂ T′ (≤-trans 1≤i (m≤m+n i m)) r sw l fu
+start-sim (s-group s₁) (st-group ss) i true σ₁ σ₂ T′ 1≤i r sw l fu = start-sim s₁ ss i true σ₁ σ₂ T′ 1≤i r sw l fu
+start-sim (s-group {a = a} {b = b} s₁) (st-group ss) i false (st o c p e₁) (st .o .c .p e₂) T′ 1≤i (rel refl refl refl re₁ re₂) sw l fu =
+  subst (λ g → After (layout i (fits (column (st o c p e₁)) (flatWidth a)) a (st o c p e₁)) (layout i g b (st o c p e₂)) _)
+    (cong₂ fits (col-eq o c p e₁ e₂) (sk-width s₁))
+    (start-sim s₁ ss i _ (st o c p e₁) (st o c p e₂) T′ 1≤i (rel refl refl refl re₁ re₂) sw l fu)
