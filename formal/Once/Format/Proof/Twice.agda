@@ -23,7 +23,7 @@ open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; _<_; _≡ᵇ_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; m≤m+n; ≡ᵇ⇒≡)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; m≤m+n; ≡ᵇ⇒≡; +-identityʳ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -404,3 +404,264 @@ ending-sim ωF prev k tvc₁ tvc₂ σ T b hy fe =
     eq : groups ns₂ [] false ≡ map rsOf (groups ns₁ [] false)
     eq = trans (cong (λ x → groups x [] false) (trans (ending-ns k tvc₂) (cong (_++ []) (Hyps.h-k hy))))
                (go (groups ns₁ [] false) refl (groups-ne-all ns₁ [] false))
+
+------------------------------------------------------------------------
+-- A declaration, formatted twice
+------------------------------------------------------------------------
+
+private
+  -- nothing, or a blank line, before a declaration
+  gap-entry : ∀ prev d σ k T → Bnd σ k T prev
+            → ∃[ og ] ∃[ c ] ∃[ H₀ ] layout 0 false (gap prev d) σ ≡ st og c (just 0) [] × EntryT og k H₀ T × All (_≡ held-blank) H₀
+  gap-entry nothing d σ k T b =
+    St.out σ , St.col σ , [] , fresh σ (Bnd.b-pend b) (Bnd.b-ends b) , pre-empty σ k T nothing b , []
+  gap-entry (just p) d σ k T b = pick (together p d) refl
+    where
+      pick : ∀ t → together p d ≡ t → ∃[ og ] ∃[ c ] ∃[ H₀ ] layout 0 false (if t then empty else blank) σ ≡ st og c (just 0) []
+                                              × EntryT og k H₀ T × All (_≡ held-blank) H₀
+      pick true  _ = St.out σ , St.col σ , [] , fresh σ (Bnd.b-pend b) (Bnd.b-ends b) , pre-empty σ k T (just p) b , []
+      pick false _ = lnl ∷ St.out σ , 0 , held-blank ∷ [] , proj₂ (pre-blank σ k T p b) , proj₁ (pre-blank σ k T p b) , refl ∷ []
+
+  brk01 : ∀ σ → St.out (brk 0 σ) ≡ St.out (brk 1 σ)
+  brk01 (st o c (just _) [])      = refl
+  brk01 (st o c (just _) (_ ∷ _)) = refl
+  brk01 (st o c nothing [])       = refl
+  brk01 (st o c nothing (_ ∷ _))  = refl
+
+  brk-st0 : ∀ σ → brk 0 σ ≡ st (St.out (brk 0 σ)) 0 (just 0) []
+  brk-st0 (st o c (just _) [])      = refl
+  brk-st0 (st o c (just _) (_ ∷ _)) = refl
+  brk-st0 (st o c nothing [])       = refl
+  brk-st0 (st o c nothing (_ ∷ _))  = refl
+
+  li-brk0 : ∀ σ → LI σ → LI (brk 0 σ)
+  li-brk0 σ l = proj₁ (brk-ok 0 σ l)
+
+  reach-to : ∀ σ → LI σ → ∀ d → Reach (Φ (St.out σ)) (Φ (St.out (brk 0 (layout 0 false d σ))))
+  reach-to σ l d = reach-trans (proj₂ (layout-reach 0 false d σ l)) (proj₂ (brk-ok 0 _ (proj₁ (layout-reach 0 false d σ l))))
+
+  brk-pend : ∀ i σ → St.pend (brk i σ) ≡ just i
+  brk-pend i (st o c (just _) [])      = refl
+  brk-pend i (st o c (just _) (_ ∷ _)) = refl
+  brk-pend i (st o c nothing [])       = refl
+  brk-pend i (st o c nothing (_ ∷ _))  = refl
+
+  ne-out : ∀ o → proj₂ (Φ o) ≡ true → ∃[ x ] ∃[ xs ] o ≡ x ∷ xs
+  ne-out []       ()
+  ne-out (x ∷ xs) _  = x , xs , refl
+
+  n∸n : ∀ n → n ∸ n ≡ 0
+  n∸n zero    = refl
+  n∸n (suc n) = n∸n n
+
+  ∸-suc : ∀ {k k′} → k < k′ → k′ ∸ k ≡ suc (k′ ∸ suc k)
+  ∸-suc {zero}  {suc k′} _         = refl
+  ∸-suc {suc k} {suc k′} (s≤s k<k′) = ∸-suc k<k′
+
+  +∸ : ∀ {k k′} → k < k′ → suc k + (k′ ∸ suc k) ≡ k′
+  +∸ {k} {k′} k<k′ = Data.Nat.Properties.m+[n∸m]≡n k<k′
+
+import Once.Format.Proof.Inside as Inside
+open import Once.Format.Proof.Skeleton using (module Same)
+
+-- | The rest of the declarations, formatted twice, from where a declaration ends.
+Rest : WL → Decl → List Decl → Set
+Rest ωF d ds = ∀ k′ tv₁′ tv₂′ σ′ T′ → Bnd σ′ k′ T′ (just d) → Hyps (fin ωF) tv₁′ tv₂′ k′
+             → ωF ≡ Φ (St.out (brk 0 (layout 0 false (proj₁ (pdecls (just d) ds tv₁′ k′)) σ′)))
+             → layout 0 false (proj₁ (pdecls (just d) ds tv₂′ k′)) σ′ ≡ layout 0 false (proj₁ (pdecls (just d) ds tv₁′ k′)) σ′
+
+-- | A declaration, formatted twice: what stands before it, it, its line end;
+-- then the rest.
+decl-step : ∀ ωF prev d ds k tvc₁ tvc₂ σ T → Bnd σ k T prev → Hyps (fin ωF) tvc₁ tvc₂ k
+          → ωF ≡ Φ (St.out (brk 0 (layout 0 false (proj₁ (pdecls prev (d ∷ ds) tvc₁ k)) σ))) → Rest ωF d ds
+          → layout 0 false (proj₁ (pdecls prev (d ∷ ds) tvc₂ k)) σ ≡ layout 0 false (proj₁ (pdecls prev (d ∷ ds) tvc₁ k)) σ
+decl-step ωF prev d ds k tvc₁ tvc₂ σ T b hy fe IH = main
+  where
+    open import Once.Format.Doc using (group; nest; fits; flatWidth; column)
+    F = fin ωF
+    tv₁′ = hoist k tvc₁
+    tv₂′ = hoist k tvc₂
+    B₁ = proj₁ (pbody d tv₁′ k)
+    B₂ = proj₁ (pbody d tv₂′ k)
+    k′ = proj₂ (pbody d tv₁′ k)
+    cnt : proj₂ (pbody d tv₂′ k) ≡ k′
+    cnt = Same.Ind.cnt (Same.ind-body tv₁′ tv₂′ d) k
+    ns₁ = topList k k′ tv₁′
+    R₁ = proj₁ (pdecls (just d) ds tv₁′ k′)
+
+    -- what stands before the declaration, in the first pass
+    GE = gap-entry prev d σ k T b
+    og = proj₁ GE
+    c  = proj₁ (proj₂ GE)
+    H₀ = proj₁ (proj₂ (proj₂ GE))
+    eg = proj₁ (proj₂ (proj₂ (proj₂ GE)))
+    en = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ GE))))
+    p₀ = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ GE))))
+    σg = st og c (just 0) []
+    lg : LI σg
+    lg = subst LI eg (proj₁ (layout-reach 0 false (gap prev d) σ (Bnd.b-li b)))
+    LF = lead-facts prev ns₁ og c k H₀ T en p₀
+    tb  = proj₁ LF
+    ptb = proj₁ (proj₂ LF)
+    lfs = proj₂ (proj₂ LF)
+    G = groups ns₁ [] false
+    H′ = H₀ ++ heldOf G ++ tb
+    T′ = settleAt k H′ T
+    Tkd = Notes.top (lookupNotes k T′)
+    topH′ : All TopH H′
+    topH′ = heldG-top H₀ G tb p₀ ptb
+    σl = layout 0 false (lead prev ns₁) σg
+    ll = proj₁ (layout-reach 0 false (lead prev ns₁) σg lg)
+    f′ = fits (column σl) (flatWidth B₁)
+    σd = layout 2 f′ B₁ σl
+    ld = proj₁ (layout-reach 2 f′ B₁ σl ll)
+    σn = brk 0 σd
+
+    whole₁ : layout 0 false (proj₁ (pdecls prev (d ∷ ds) tvc₁ k)) σ ≡ layout 0 false R₁ σn
+    whole₁ = cong (λ τ → layout 0 false R₁ (brk 0 (layout 0 false (group (nest 2 B₁)) (layout 0 false (lead prev ns₁) τ)))) eg
+
+    finR : ωF ≡ Φ (St.out (brk 0 (layout 0 false R₁ σn)))
+    finR = trans fe (cong (λ τ → Φ (St.out (brk 0 τ))) whole₁)
+
+    futn : Reach (Φ (St.out σn)) ωF
+    futn = subst (Reach (Φ (St.out σn))) (sym finR) (reach-to σn (li-brk0 σd ld) R₁)
+
+    futd : Reach (Φ (St.out σd)) ωF
+    futd = reach-trans (proj₂ (brk-ok 0 σd ld)) futn
+
+    fut1 : Reach (Φ (St.out (brk 1 σd))) ωF
+    fut1 = subst (λ o → Reach (Φ o) ωF) (brk01 σd) futn
+
+    -- the declaration, in step
+    module I = Inside tv₁′ tv₂′ ωF k
+      (λ j kd≤j → trans (hoist-after j k tvc₂) (Hyps.h-after hy j kd≤j))
+      (λ j kd<j → trans (cong Notes.inner (hoist-other j k tvc₂ (λ e → <-irrefl (sym e) kd<j))) (Hyps.h-inner hy j kd<j))
+      (cong Notes.inner (hoist-at k tvc₂)) (cong Notes.inner (hoist-at k tvc₁)) (hoist-src k tvc₁ (Hyps.h-src hy)) Tkd
+
+    start : I.Start σl T′
+    start = I.start (proj₁ lfs) (proj₁ (proj₂ lfs)) (proj₂ (proj₂ lfs))
+      (λ j le → trans (settleAt-after j k H′ T) (Bnd.b-after b j le))
+      (λ j le → trans (settle-tops-inner j k H′ T topH′) (Bnd.b-inner b j le))
+      (λ j lt′ → trans (cong Notes.top (lookup-settleAt j k H′ T (λ e → <-irrefl (sym e) lt′))) (Bnd.b-top b j lt′))
+      refl
+
+    sB = Same.Ind.sk (Same.ind-body tv₁′ tv₂′ d) k
+    A = I.start-sim sB (Same.starts-body tv₁′ tv₂′ d k) 2 f′ σl σl T′ (s≤s z≤n)
+          (I.rel refl refl refl (proj₁ (proj₂ lfs)) (proj₁ (proj₂ lfs))) start ll futd
+    σd₂ = layout 2 f′ B₂ σl
+
+    -- its line end, in step
+    kbA = I.After.kb A
+    nA  = I.After.n A
+    sumA : kbA + nA ≡ k′
+    sumA = I.After.sum A
+    NB = I.brk-sim 1 σd σd₂ kbA nA (s≤s z≤n) (I.After.kd≤ A) (I.After.rl A) (I.After.wk A) ld fut1
+    r′ = proj₁ NB
+    w′ = proj₂ NB
+    Tend = I.WI.t w′
+    h′   = I.WI.h w′
+    k≤k′ : k ≤ k′
+    k≤k′ = subst (k ≤_) sumA (≤-trans (I.After.kd≤ A) (m≤m+n kbA nA))
+
+    σn≡ : brk 0 σd₂ ≡ σn
+    σn≡ = trans (brk-st0 σd₂)
+            (trans (cong (λ o → st o 0 (just 0) []) (trans (brk01 σd₂) (trans (sym (I.Rel.r-out r′)) (sym (brk01 σd)))))
+                   (sym (brk-st0 σd)))
+
+    Φn : Φ (St.out σn) ≡ (walker k′ h′ line-code [] 0 Tend , true)
+    Φn = trans (cong Φ (brk01 σd))
+           (cong₂ _,_ (trans (I.WI.w-φ w′) (cong (λ m → walker m h′ line-code [] 0 Tend) (trans (+-identityʳ (kbA + nA)) sumA)))
+                      (proj₁ (I.WI.w-end w′ 1 (brk-pend 1 σd))))
+
+    -- the final walk, where it has passed: what it found is what it has
+    frz : ∀ j → j < k′ → ti (lookupNotes j F) ≡ ti (lookupNotes j Tend)
+    frz j j<k′ =
+      trans (cong (λ ω → ti (lookupNotes j (fin ω))) (sym (proj₂ futn)))
+        (trans (frozen-ti j (Φ (St.out σn)) (proj₁ futn) (subst (λ v → j < Once.Format.Print.W.k (proj₁ v)) (sym Φn) j<k′))
+               (cong (λ ω → ti (Look j (proj₁ ω))) Φn))
+
+    k<of : ∀ {j} → k′ < j → k < j
+    k<of k′<j = ≤-trans (s≤s k≤k′) k′<j
+
+    ≢of : ∀ {j} → k′ < j → j ≢ k
+    ≢of k′<j e = <-irrefl (sym e) (k<of k′<j)
+
+    -- with no anchor, the declaration's notes before it are blank lines
+    nsk : k′ ≡ k → ∀ tv → topList k k′ tv ≡ []
+    nsk e tv = cong (λ x → tops tv k (x ∸ k)) e |> λ q → trans q (cong (tops tv k) (n∸n k))
+      where
+        infixl 0 _|>_
+        _|>_ : ∀ {A B : Set} → A → (A → B) → B
+        x |> f = f x
+
+    topk′ : All (_≡ note-blank) (Notes.top (lookupNotes k′ Tend))
+    topk′ with Data.Nat.Properties.m≤n⇒m<n∨m≡n k≤k′
+    ... | inj₁ k<k′ = subst (All (_≡ note-blank)) (sym (I.WI.w-top w′ k′ k<k′)) []
+    ... | inj₂ k≡k′ =
+      subst (All (_≡ note-blank)) (sym (trans (cong (λ x → Notes.top (lookupNotes x Tend)) (sym k≡k′)) (I.WI.w-topk w′)))
+        (subst (λ hs → All (_≡ note-blank) hs) (sym (settle-tops k H′ T topH′))
+          (all-++ _ _ (Bnd.b-topk b)
+            (notes-blank H′ (subst (λ G′ → All (_≡ held-blank) (H₀ ++ heldOf G′ ++ tb))
+                              (sym (cong (λ ns → groups ns [] false) (nsk (sym k≡k′) tv₁′)))
+                              (all-++ H₀ _ p₀ ptb)))))
+
+    bnd′ : Bnd σn k′ Tend (just d)
+    bnd′ = bnd (cong St.pend (brk-st0 σd)) (cong St.ends (brk-st0 σd)) ((h′ , Φn) , ne-out (St.out σn) (cong proj₂ Φn))
+             (λ j le → I.WI.w-after w′ j (subst (_≤ j) (sym sumA) le))
+             (λ j le → I.WI.w-inner w′ j (subst (_≤ j) (sym (trans (+-identityʳ _) sumA)) le))
+             (λ j k′<j → I.WI.w-top w′ j (k<of k′<j)) topk′ (li-brk0 σd ld)
+
+    hyps′ : Hyps F tv₁′ tv₂′ k′
+    hyps′ = hyps (hoist-src k tvc₁ (Hyps.h-src hy))
+      (λ j le → trans (hoist-after j k tvc₂) (Hyps.h-after hy j (≤-trans k≤k′ le)))
+      (λ j k′<j → trans (cong Notes.inner (hoist-other j k tvc₂ (≢of k′<j))) (Hyps.h-inner hy j (k<of k′<j)))
+      (λ j k′<j → trans (cong Notes.top (hoist-other j k tvc₂ (≢of k′<j))) (Hyps.h-top hy j (k<of k′<j)))
+      hk′
+      where
+        hk′ : Notes.top (up (lookupNotes k′ tv₂′)) ≡ Notes.top (up (lookupNotes k′ F))
+        hk′ with Data.Nat.Properties.m≤n⇒m<n∨m≡n k≤k′
+        ... | inj₂ k≡k′ = subst (λ x → Notes.top (up (lookupNotes x tv₂′)) ≡ Notes.top (up (lookupNotes x F))) k≡k′
+                            (trans (cong (λ n → Notes.top (up n)) (hoist-at k tvc₂)) (trans (++-identityʳ _) (Hyps.h-k hy)))
+        ... | inj₁ k<k′ =
+          trans (cong (λ n → Notes.top (up n)) (hoist-other k′ k tvc₂ (λ e → <-irrefl (sym e) k<k′)))
+            (cong₂ (λ t i → t ++ map note-comment i) (Hyps.h-top hy k′ k<k′) (Hyps.h-inner hy k′ k<k′))
+
+    -- what stands before it, in the second pass
+    lead₂ : layout 0 false (lead prev (topList k k′ tv₂′)) σg ≡ σl
+    lead₂ with Data.Nat.Properties.m≤n⇒m<n∨m≡n k≤k′
+    ... | inj₂ k≡k′ = trans (cong (λ ns → layout 0 false (lead prev ns) σg) (nsk (sym k≡k′) tv₂′))
+                            (sym (cong (λ ns → layout 0 false (lead prev ns) σg) (nsk (sym k≡k′) tv₁′)))
+    ... | inj₁ k<k′ = lead-eq prev ns₁ (topList k k′ tv₂′) og c eqG (tops-src tv₁′ k (k′ ∸ k) (hoist-src k tvc₁ (Hyps.h-src hy)))
+      where
+        m = k′ ∸ suc k
+        top₂k : Notes.top (lookupNotes k tv₂′) ≡ Tkd
+        top₂k = trans (cong Notes.top (hoist-at k tvc₂))
+                  (trans (Hyps.h-k hy)
+                    (trans (cong₂ (λ t i → t ++ map note-comment i) (cong proj₁ (frz k k<k′)) (cong proj₂ (frz k k<k′)))
+                      (trans (cong₂ (λ t i → t ++ map note-comment i) (I.WI.w-topk w′) (I.WI.w-innerk w′)) (++-identityʳ Tkd))))
+        rest-nil : tops tv₂′ (suc k) m ≡ []
+        rest-nil = tops-nil tv₂′ (suc k) m λ i ski i<e →
+          trans (cong Notes.top (hoist-other i k tvc₂ (λ e → <-irrefl (sym e) ski)))
+            (trans (Hyps.h-top hy i ski)
+              (trans (cong proj₁ (frz i (subst (i <_) (+∸ k<k′) i<e))) (I.WI.w-top w′ i ski)))
+        ns₂≡ : topList k k′ tv₂′ ≡ Tkd
+        ns₂≡ = trans (cong (tops tv₂′ k) (∸-suc k<k′)) (trans (cong₂ _++_ top₂k rest-nil) (++-identityʳ Tkd))
+        eqG : groups (topList k k′ tv₂′) [] false ≡ map rsOf G
+        eqG = trans (cong (λ ns → groups ns [] false)
+                      (trans ns₂≡ (trans (settle-tops k H′ T topH′)
+                        (trans (cong (Notes.top (lookupNotes k T) ++_) (notesOf-++ H₀ (heldOf G ++ tb)))
+                               (sym (++-assoc (Notes.top (lookupNotes k T)) (notesOf H₀) _))))))
+                    (groups-pass2 G (Notes.top (lookupNotes k T) ++ notesOf H₀) tb (groups-ne-all ns₁ [] false)
+                       (all-++ _ _ (Bnd.b-topk b) (notes-blank H₀ p₀)) ptb)
+
+    main : layout 0 false (proj₁ (pdecls prev (d ∷ ds) tvc₂ k)) σ ≡ layout 0 false (proj₁ (pdecls prev (d ∷ ds) tvc₁ k)) σ
+    main =
+      trans (cong (λ τ → layout 0 false (proj₁ (pdecls (just d) ds tv₂′ (proj₂ (pbody d tv₂′ k))))
+                           (brk 0 (layout 0 false (group (nest 2 B₂)) (layout 0 false (lead prev (topList k (proj₂ (pbody d tv₂′ k)) tv₂′)) τ)))) eg)
+        (trans (cong (λ x → layout 0 false (proj₁ (pdecls (just d) ds tv₂′ x))
+                             (brk 0 (layout 0 false (group (nest 2 B₂)) (layout 0 false (lead prev (topList k x tv₂′)) σg)))) cnt)
+          (trans (cong (λ τ → layout 0 false (proj₁ (pdecls (just d) ds tv₂′ k′)) (brk 0 (layout 0 false (group (nest 2 B₂)) τ))) lead₂)
+            (trans (cong (λ g → layout 0 false (proj₁ (pdecls (just d) ds tv₂′ k′)) (brk 0 (layout 2 (fits (column σl) g) B₂ σl)))
+                         (sym (Once.Format.Proof.Skeleton.sk-width sB)))
+              (trans (cong (layout 0 false (proj₁ (pdecls (just d) ds tv₂′ k′))) σn≡)
+                (trans (IH k′ tv₁′ tv₂′ σn Tend bnd′ hyps′ finR) (sym whole₁))))))
