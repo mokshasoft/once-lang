@@ -19589,7 +19589,15 @@ user facing configs."
     (`Spec.Source._⊢_`), so behaviour and admissibility are kept — `fmt` stays out of the compile path and
     this is what it owes the apex;
   - `format-canonical`: two texts without comments that parse as the same module are formatted alike;
-  - `idempotent`: for a text without comments, formatting the output gives the output.
+  - `idempotent`: formatting the output gives the output, whatever the comments (`Proof.Twice`).
+    The second pass reads the first pass's text as the same module and its comments as the walker,
+    read along the first pass's layout, finds them (`Walk`, `Lockstep`); the two passes then lay out in
+    step, declaration by declaration (`Inside`: one skeleton for both trivia, `Skeleton`; at a line's end
+    both write the same comment, the first pass's end-of-line comments joined being what the walk found
+    at the line's last anchor), and what stands before and after a declaration prints as the runs the
+    first pass wrote (`Groups`), which written again are the same lines (`Rerender`: a filled line
+    fits, so it fills as one line; a kept line is kept). The comments the walker keeps are the lexer's
+    without trailing blanks (`Sources`).
 * The layout is correct by construction where it can be: it writes lexemes, not characters; a blank goes
   between two tokens that would lex as one or as something else (`apart`, which caught `x!=` lexing as the
   word `x!`); a comment is always a line comment ending its line; the digits are the formatter's own, so
@@ -19600,6 +19608,16 @@ user facing configs."
   declaration (it would otherwise continue the previous one); an import is indented like any declaration;
   a comparison's left operand is a sum — the proofs found the last three (`(a < b) < c` lost its
   parentheses).
+* Idempotence with comments found more (each confirmed on the binary, then fixed): a comment on its own
+  line after the module's last anchor was dropped; an empty block comment `{--}` printed as nothing yet
+  forced its line break; two end-of-line comments on one line, the first a dash banner, read back as one
+  printed differently (a comment whose `--` a dash follows is now kept as written); a wrapped comment line
+  could end in a carriage return (words now end at every blank); a comment after code before a
+  declaration's first anchor went to the previous declaration; comments sharing a line were joined (a
+  block comment's `-}` became words). Two rules make the proof local, and are the style now: comments
+  take no room in deciding whether a group is flat (the code's layout is its own; a comment still breaks
+  where it must), and an end-of-line comment anchors to a word or literal on its own line (on a line
+  without one it stands before the next anchor, as a comment on a line of its own does).
 * The one hypothesis, `DigitBound`: the primitive `isDigit` accepts the ten decimal digits only. Agda's
   conversion cannot see it; it is a theorem argument, not a postulate (a float's fraction is read back from
   it). Discharging it as a tool hypothesis beside T1/T2 (`Once.Postulates`) is the user's call.
@@ -19611,7 +19629,8 @@ user facing configs."
   field takes `DigitBound` itself and the apex's hypotheses are unchanged.
 
 ### Consequences
-* Open: idempotence and comments-in-order for texts with comments (plan 0.124 §9).
+* Open: that the output's comments are the input's, in order (plan 0.124 §9); fuzzed (≈3000 texts with
+  comments placed at random, all idempotent, every comment word kept in order), not yet proved.
 * The proofs' per-case parts are generated (`formal/scripts/gen-format-*.py`); edit the generators.
 * The tree's formatting is unchanged by all of it.
 
