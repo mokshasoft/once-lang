@@ -477,12 +477,12 @@ private
   settle-inv : ∀ σ → InvW σ → All HB (W.held σ) → QuietT (W.acc (settle σ))
   settle-inv (walker k h′ ln hs b fr t) (inv _ _ q) h = settle-quiet k fr _ t h q
 
+  hoist-inv : ∀ τ → InvW τ → InvW (Once.Format.Print.hoistW τ)
+  hoist-inv (walker k h′ ln hs b fr t) (inv nt h q) =
+    inv nt h (Once.Format.Proof.Walk.hoistAt-cases k t QuietT q (hoist-quietT k t q))
+
   stepTok-inv : ∀ σ a b → InvW σ → InvW (stepTok σ a b)
   stepTok-inv σ a true i = hoist-inv (lineEnd true σ) (lineEnd-inv true σ i)
-    where
-      hoist-inv : ∀ τ → InvW τ → InvW (Once.Format.Print.hoistW τ)
-      hoist-inv (walker k h′ ln hs b fr t) (inv nt h q) =
-        inv nt h (Once.Format.Proof.Walk.hoistAt-cases k t QuietT q (hoist-quietT k t q))
   stepTok-inv (walker k h′ ln hs b fr t) a false (inv nt h q) =
     inv nt-code [] (settle-quiet k fr _ t (pending-blank ln _ nt (blankBefore-blank b hs h)) q)
 
@@ -497,7 +497,8 @@ private
 -- | A text without comments leaves quiet trivia.
 trivia-quiet : ∀ is → All NoComment is → QuietT (trivia is)
 trivia-quiet is ns with walk-inv (walker 0 false line-empty [] 0 true []) is ns (inv nt-empty [] [])
-... | iv = settle-inv (lineEnd true (walkItems _ is)) (lineEnd-inv true _ iv) (InvW.held (lineEnd-inv true _ iv))
+... | iv = settle-inv (Once.Format.Print.hoistW (lineEnd true (walkItems _ is))) (hoist-inv _ (lineEnd-inv true _ iv))
+             (InvW.held (hoist-inv _ (lineEnd-inv true _ iv)))
 
 ------------------------------------------------------------------------
 -- Canonicity

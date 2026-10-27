@@ -613,8 +613,10 @@ d_finish_432 v0
       (coe
          d_settle_208
          (coe
-            d_lineEnd_230 (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
-            (coe v0)))
+            d_hoistW_288
+            (coe
+               d_lineEnd_230 (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
+               (coe v0))))
 -- Once.Format.Print.trivia
 d_trivia_436 ::
   [MAlonzo.Code.Once.Format.Lex.T_Item_6] ->

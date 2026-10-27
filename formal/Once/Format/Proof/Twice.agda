@@ -292,7 +292,8 @@ private
   runs-fin G og k H₀ T ni nes en eG p₀ with runs-walk G og k H₀ T ni nes (proj₁ en) eG
   ... | r , H , e , q =
     trans (cong fin e) (trans (cong (λ T′ → settleAt k true (H ++ hcT r ∷ []) T′)
-                                      (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T ni)) (hoistAt-id k T ni)))
+                                      (trans (cong (λ t → Once.Format.Print.hoistAt k (Once.Format.Print.hoistAt k t)) (hoistAt-id k T ni))
+                                        (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T ni)) (hoistAt-id k T ni))))
       (cong (λ hs → settleAt k true hs T) q))
 
 private
@@ -368,8 +369,9 @@ ending-sim ωF prev k tvc₁ tvc₂ σ T b hy fe =
           trans (cong (λ x → groups (Notes.top (up (lookupNotes 0 x)) ++ []) [] false) (trans Fσ (cong (λ o → fin (Φ o)) eo))) refl
         goN (just p) (bnd _ _ ((h , e) , _) _ inn _ pT _) _ =
           trans (cong (λ x → groups (Notes.top (up (lookupNotes k x)) ++ []) [] false)
-                   (trans Fσ (trans (cong fin e) (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T (inn k ≤-refl)))
-                                                        (hoistAt-id k T (inn k ≤-refl))))))
+                   (trans Fσ (trans (cong fin e) (trans (cong (λ t → Once.Format.Print.hoistAt k (Once.Format.Print.hoistAt k t)) (hoistAt-id k T (inn k ≤-refl)))
+                                                        (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T (inn k ≤-refl)))
+                                                          (hoistAt-id k T (inn k ≤-refl)))))))
             (blanks-groups _ (subst (All (_≡ note-blank)) (sym (trans (++-identityʳ _) (nc-nil (lookupNotes k T) (inn k ≤-refl)))) pT))
     go (R ∷ Rs) eG nes with end-F prev σ k T ns₁ R Rs b eG nes
     ... | H₀ , p₀ , eF =
