@@ -18,9 +18,9 @@ w(r'''-- SPDX-License-Identifier: AGPL-3.0-or-later
 --
 -- Every token of a lexed text is printable, a line end, the end, or a string:
 -- a word is an identifier, an integer non-negative, a float's fraction fits
--- its digits. The last needs a fact about the primitive `isDigit`
--- (`DigitBound`: it accepts the ten decimal digits only), which Agda's
--- conversion cannot see; it is an argument here, not a postulate.
+-- its digits. The last needs a fact about the primitive `isDigit` (it
+-- accepts the ten decimal digits only), which Agda's conversion cannot see:
+-- tool hypothesis T3, `Once.Postulates.isDigit-value`.
 --
 -- Generated (the cases per lexing rule) by `scripts/gen-format-lexok.py`:
 -- edit the generator, not this file.
@@ -41,16 +41,11 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 import Relation.Binary.PropositionalEquality as Eq
 
-open import Once.Postulates using (toList∘fromList)
+open import Once.Postulates using (toList∘fromList; isDigit-value)
 open import Once.Spec.Surface.Lexing
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; s-lparen; s-rparen; s-lbrace;
   s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at; s-pipe;
   s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang)
-
--- | `isDigit` accepts the decimal digits only: a digit's value is below ten.
-DigitBound : Set
-DigitBound = ∀ c → isDigit c ≡ true → Ch.toℕ c ∸ Ch.toℕ '0' < 10
-  where open import Data.Bool using (true)
 
 -- What else the lexer writes.
 data Other : Token → Set where
@@ -61,63 +56,62 @@ data Other : Token → Set where
 LexOK : Token → Set
 LexOK t = Printable t ⊎ Other t
 
-module _ (bound : DigitBound) where
-  open import Data.Bool using (true)
+open import Data.Bool using (true)
 
-  private
-    identAll : ∀ {cs i r} → IdentRest cs i r → All (λ x → isIdentContinue x ≡ true) i
-    identAll id-end         = []
-    identAll (id-stop _)    = []
-    identAll (id-more p ir) = p ∷ identAll ir
+private
+  identAll : ∀ {cs i r} → IdentRest cs i r → All (λ x → isIdentContinue x ≡ true) i
+  identAll id-end         = []
+  identAll (id-stop _)    = []
+  identAll (id-more p ir) = p ∷ identAll ir
 
-    digitsAll : ∀ {cs ds r} → Digits cs ds r → All (λ x → isDigit x ≡ true) ds
-    digitsAll dg-end         = []
-    digitsAll (dg-stop _)    = []
-    digitsAll (dg-more p dg) = p ∷ digitsAll dg
+  digitsAll : ∀ {cs ds r} → Digits cs ds r → All (λ x → isDigit x ≡ true) ds
+  digitsAll dg-end         = []
+  digitsAll (dg-stop _)    = []
+  digitsAll (dg-more p dg) = p ∷ digitsAll dg
 
-    -- The value of digits after `a` is below `(a + 1) * 10 ^ (their number)`.
-    below : ∀ a ds → All (λ x → isDigit x ≡ true) ds → digitsFrom a ds < suc a * 10 ^ length ds
-    below a []       []       = subst (a <_) (sym (*-identityʳ (suc a))) (n<1+n a)
-    below a (c ∷ cs) (p ∷ ps) =
-      <-≤-trans (below (a * 10 + (Ch.toℕ c ∸ Ch.toℕ '0')) cs ps)
-        (≤-trans (*-monoˡ-≤ (10 ^ length cs) step)
-          (≤-reflexive (*-assoc (suc a) 10 (10 ^ length cs))))
-      where
-        step : suc (a * 10 + (Ch.toℕ c ∸ Ch.toℕ '0')) ≤ suc a * 10
-        step = subst (_≤ 10 + a * 10) (cong suc (+-comm (Ch.toℕ c ∸ Ch.toℕ '0') (a * 10)))
-                 (+-mono-≤ (bound c p) (≤-refl {a * 10}))
+  -- The value of digits after `a` is below `(a + 1) * 10 ^ (their number)`.
+  below : ∀ a ds → All (λ x → isDigit x ≡ true) ds → digitsFrom a ds < suc a * 10 ^ length ds
+  below a []       []       = subst (a <_) (sym (*-identityʳ (suc a))) (n<1+n a)
+  below a (c ∷ cs) (p ∷ ps) =
+    <-≤-trans (below (a * 10 + (Ch.toℕ c ∸ Ch.toℕ '0')) cs ps)
+      (≤-trans (*-monoˡ-≤ (10 ^ length cs) step)
+        (≤-reflexive (*-assoc (suc a) 10 (10 ^ length cs))))
+    where
+      step : suc (a * 10 + (Ch.toℕ c ∸ Ch.toℕ '0')) ≤ suc a * 10
+      step = subst (_≤ 10 + a * 10) (cong suc (+-comm (Ch.toℕ c ∸ Ch.toℕ '0') (a * 10)))
+               (+-mono-≤ (isDigit-value c p) (≤-refl {a * 10}))
 
-    fraction-ok : ∀ {r f r′} → Fraction r f r′ → ∃[ l ] (length f ≡ suc l × digitsToNat f < 10 ^ suc l)
-    fraction-ok (fraction {d} {ds = ds} p dg) =
-      length ds , refl , subst (digitsToNat (d ∷ ds) <_) (+-comm (10 ^ suc (length ds)) 0)
-                           (below 0 (d ∷ ds) (p ∷ digitsAll dg))
+  fraction-ok : ∀ {r f r′} → Fraction r f r′ → ∃[ l ] (length f ≡ suc l × digitsToNat f < 10 ^ suc l)
+  fraction-ok (fraction {d} {ds = ds} p dg) =
+    length ds , refl , subst (digitsToNat (d ∷ ds) <_) (+-comm (10 ^ suc (length ds)) 0)
+                         (below 0 (d ∷ ds) (p ∷ digitsAll dg))
 
-    float-ok : ∀ i {r f r′} → Fraction r f r′ → Printable (TFloat i (digitsToNat f) (length f))
-    float-ok i fr with fraction-ok fr
-    ... | l , eq , f< rewrite eq = p-float f<
+  float-ok : ∀ i {r f r′} → Fraction r f r′ → Printable (TFloat i (digitsToNat f) (length f))
+  float-ok i fr with fraction-ok fr
+  ... | l , eq , f< rewrite eq = p-float f<
 
-  -- | Every token of a lexed text is printable, or a line end, the end, a string.
-  lexed-ok : ∀ {cs ts} → LexesChars cs ts → All LexOK ts''')
+-- | Every token of a lexed text is printable, or a line end, the end, a string.
+lexed-ok : ∀ {cs ts} → LexesChars cs ts → All LexOK ts''')
 cases=[]
-cases.append("  lexed-ok lex-eof = inj₂ o-eof ∷ []")
-for n in ['lex-space','lex-tab','lex-cr']: cases.append(f"  lexed-ok ({n} l) = lexed-ok l")
-cases.append("  lexed-ok (lex-nl-cont _ _ l) = lexed-ok l")
-cases.append("  lexed-ok (lex-nl _ _ l) = inj₂ o-nl ∷ lexed-ok l")
+cases.append("lexed-ok lex-eof = inj₂ o-eof ∷ []")
+for n in ['lex-space','lex-tab','lex-cr']: cases.append(f"lexed-ok ({n} l) = lexed-ok l")
+cases.append("lexed-ok (lex-nl-cont _ _ l) = lexed-ok l")
+cases.append("lexed-ok (lex-nl _ _ l) = inj₂ o-nl ∷ lexed-ok l")
 for n,s in SYM1.items():
-    cases.append(f"  lexed-ok ({n} l) = inj₁ (p-sym {s}) ∷ lexed-ok l")
-cases.append("  lexed-ok (lex-caret _ _ _ l) = lexed-ok l")
-cases.append("  lexed-ok (lex-comment _ l) = lexed-ok l")
-cases.append("  lexed-ok (lex-minus _ _ l) = inj₁ (p-sym s-minus) ∷ lexed-ok l")
-cases.append("  lexed-ok (lex-block _ l) = lexed-ok l")
+    cases.append(f"lexed-ok ({n} l) = inj₁ (p-sym {s}) ∷ lexed-ok l")
+cases.append("lexed-ok (lex-caret _ _ _ l) = lexed-ok l")
+cases.append("lexed-ok (lex-comment _ l) = lexed-ok l")
+cases.append("lexed-ok (lex-minus _ _ l) = inj₁ (p-sym s-minus) ∷ lexed-ok l")
+cases.append("lexed-ok (lex-block _ l) = lexed-ok l")
 for n,s in SYM2.items():
     if n=='lex-minus': continue
-    cases.append(f"  lexed-ok ({n} _ l) = inj₁ (p-sym {s}) ∷ lexed-ok l")
-cases.append("  lexed-ok (lex-string _ l) = inj₂ o-str ∷ lexed-ok l")
-cases.append("  lexed-ok (lex-string-end _) = []")
-cases.append("  lexed-ok (lex-int _ _ _ l) = inj₁ p-int ∷ lexed-ok l")
-cases.append("  lexed-ok (lex-float {c} {ds = ds} _ _ fr l) = inj₁ (float-ok (digitsToNat (c ∷ ds)) fr) ∷ lexed-ok l")
-cases.append("  lexed-ok (lex-ident {c} {i = i} ¬s d st ir l) = inj₁ (p-word (toList∘fromList (c ∷ i)) ¬s d st (identAll ir)) ∷ lexed-ok l")
-cases.append("  lexed-ok (lex-skip _ _ _ l) = lexed-ok l")
+    cases.append(f"lexed-ok ({n} _ l) = inj₁ (p-sym {s}) ∷ lexed-ok l")
+cases.append("lexed-ok (lex-string _ l) = inj₂ o-str ∷ lexed-ok l")
+cases.append("lexed-ok (lex-string-end _) = []")
+cases.append("lexed-ok (lex-int _ _ _ l) = inj₁ p-int ∷ lexed-ok l")
+cases.append("lexed-ok (lex-float {c} {ds = ds} _ _ fr l) = inj₁ (float-ok (digitsToNat (c ∷ ds)) fr) ∷ lexed-ok l")
+cases.append("lexed-ok (lex-ident {c} {i = i} ¬s d st ir l) = inj₁ (p-word (toList∘fromList (c ∷ i)) ¬s d st (identAll ir)) ∷ lexed-ok l")
+cases.append("lexed-ok (lex-skip _ _ _ l) = lexed-ok l")
 for c in cases: w(c)
 OUT=os.path.join(PROOF,'LexOK.agda')
 open(OUT,'w').write('\n'.join(o)+'\n')

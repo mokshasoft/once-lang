@@ -31,7 +31,10 @@ module Once.Postulates where
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.List using (List)
 import Data.List as List
-open import Data.Char using (Char)
+open import Data.Bool using (true)
+open import Data.Char using (Char; isDigit)
+import Data.Char as Char
+open import Data.Nat using (_∸_; _<_)
 open import Data.String using (String; toList; fromList; _++_)
 
 
@@ -95,6 +98,35 @@ postulate
 postulate
   toList-++      : ∀ (s t : String) → toList (s ++ t) ≡ toList s List.++ toList t
   toList∘fromList : ∀ (cs : List Char) → toList (fromList cs) ≡ cs
+
+------------------------------------------------------------------------
+-- Tool hypothesis T3: the primitive `isDigit` (D342)
+------------------------------------------------------------------------
+--
+-- `primIsDigit` is opaque to Agda's conversion checker as well: it computes
+-- on a literal character only, and nothing about it is exported. It accepts
+-- the ten decimal digits only, so a digit's value is below ten.
+--
+-- NEEDED BY: Once.Format.Proof.LexOK — a float's fraction, read by the
+--   Spec's lexer, fits its digits, so the formatter prints it back
+--   (`once fmt`'s theorems, plan 0.124).
+--
+-- JUSTIFICATION:
+--   A hypothesis about the tools, not an axiom of the logic: Agda specifies
+--   `primIsDigit` as Haskell's `Data.Char.isDigit` (the ASCII digits '0'..'9'
+--   only), and MAlonzo compiles it to that function. Testable on the
+--   extracted code (the 1 114 112 characters can be enumerated).
+--
+-- IMPACT:
+--   If it failed, a float literal could be printed back as another one, and
+--   `once fmt`'s round trip would not hold as stated.
+--
+-- RUNTIME EFFECT: None (erased; proofs only)
+--
+------------------------------------------------------------------------
+
+postulate
+  isDigit-value : ∀ c → isDigit c ≡ true → Char.toℕ c ∸ Char.toℕ '0' < 10
 
 ------------------------------------------------------------------------
 -- P2, P3, P5 (retired): the fold's universal property (`fold-unique`,

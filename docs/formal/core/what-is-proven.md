@@ -222,6 +222,17 @@ grep -r "import Once.Postulates" formal/
 
 **Justification**: facts about the tools, not the logic: `String` is an Agda primitive whose operations the type checker evaluates only on literals, and only the injectivity of `toList`/`fromList` is exported. Both facts are the standard library's own (`Data.String.Unsafe`, by `trustMe`), true of the model (a string is a list of characters) and of the compiled `Data.Text` implementation.
 
+### T3: the primitive `isDigit` (tool hypothesis, D342)
+
+| Property | Value |
+|----------|-------|
+| **Type** | `isDigit c ≡ true → toℕ c ∸ toℕ '0' < 10` |
+| **Location** | `Once/Postulates.agda` |
+| **Needed by** | `Once/Format/Proof/LexOK.agda` (`once fmt`'s theorems, plan 0.124) |
+| **Runtime effect** | None (erased during extraction) |
+
+**Justification**: a fact about the tools, not the logic: `primIsDigit` computes on literal characters only and nothing about it is exported. Agda specifies it as Haskell's `Data.Char.isDigit` (the ASCII digits only), and the compiled code calls that function.
+
 ### P2: x86-64 Encoding Axioms
 
 | Property | Value |

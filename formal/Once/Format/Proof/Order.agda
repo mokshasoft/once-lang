@@ -357,7 +357,7 @@ import Once.Adequacy.FrontEndBridge
 open import Once.Adequacy.SpecLexing using (forget; spec-lexes-complete)
 open import Once.Format.Lex using (lexItems; tokensOf; tokens-lexItems)
 open import Once.Format.Print using (format; trivia; pmodule)
-open import Once.Format.Proof.LexOK using (DigitBound; lexed-ok)
+open import Once.Format.Proof.LexOK using (lexed-ok)
 open import Once.Format.Proof.WF using (parsed-wf)
 open import Once.Format.Proof.Module using (module-ws; DeclOK)
 open import Once.Format.Proof.Decl using (decl-ok)
@@ -389,9 +389,9 @@ private
 -- comment words are the text's (a comment's words: its text split at
 -- blanks and line ends, each word without the dashes it starts with, a
 -- block comment's without `{-` and `-}`).
-comments-kept : DigitBound → ∀ text m → parseStrict text ≡ inj₂ m
+comments-kept : ∀ text m → parseStrict text ≡ inj₂ m
               → cwords (lexItems (toList (format m (lexItems (toList text))))) ≡ cwords (lexItems (toList text))
-comments-kept bound text (mkModule ds) eq =
+comments-kept text (mkModule ds) eq =
   trans (render-words D (module-ws ds tv (oks pds)))
     (trans (pmodule-DocC ds tv)
       (trans (pt-it ds tv 0 ht ha)
@@ -404,13 +404,13 @@ comments-kept bound text (mkModule ds) eq =
     lx = proj₁ (proj₂ (proj₂ P))
     pd = proj₁ (proj₂ (proj₂ (proj₂ P)))
     tr = proj₂ (proj₂ (proj₂ (proj₂ P)))
-    wfs = proj₁ (parsed-wf bound {text} {mkModule ds} P)
-    pds = proj₂ (parsed-wf bound {text} {mkModule ds} P)
+    wfs = proj₁ (parsed-wf {text} {mkModule ds} P)
+    pds = proj₂ (parsed-wf {text} {mkModule ds} P)
     is = lexItems (toList text)
     tv = trivia is
     D = proj₁ (pmodule (mkModule ds) tv 0)
     segs : DeclSegs ds ts r
-    segs = decls-segs (Data.List.Relation.Unary.All.map good-ok (lexed-ok bound lx)) pd
+    segs = decls-segs (Data.List.Relation.Unary.All.map good-ok (lexed-ok lx)) pd
     tf : map forget (tokensOf is) ≡ ts
     tf = trans (cong (map forget) (tokens-lexItems (toList text))) (spec-lexes-complete text ts lx)
     cc = counts wfs pds

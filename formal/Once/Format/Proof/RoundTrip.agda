@@ -27,7 +27,6 @@ open import Once.Adequacy.FrontEndBridge using (parseStrict-sound; parseStrict-c
 open import Once.Adequacy.SpecGrammar.Decl using (parses→; parses←)
 open import Once.Format using (formatSource; formatParsed)
 open import Once.Format.Lex using (lexItems)
-open import Once.Format.Proof.LexOK using (DigitBound)
 open import Once.Format.Proof.WF using (parsed-wf)
 
 open import Once.Spec.Surface.Lexing using (TEOF)
@@ -56,11 +55,10 @@ format-parses ds is wfs pds with module-lexes ds (trivia is) (oks pds)
 
 -- | Formatting keeps the module: when the compiler's parser reads a text as
 -- a module, `once fmt` writes a text, and the parser reads that text as the
--- same module. (`DigitBound`: the primitive `isDigit` accepts the decimal
--- digits only; a fact about the tool, not provable inside Agda.)
-roundtrip : DigitBound → ∀ text m → parseStrict text ≡ inj₂ m
+-- same module.
+roundtrip : ∀ text m → parseStrict text ≡ inj₂ m
           → ∃[ out ] (formatSource text ≡ inj₂ out × parseStrict out ≡ inj₂ m)
-roundtrip bound text (mkModule ds) eq with parsed-wf bound {text} {mkModule ds} (parses→ {text} (parseStrict-sound text (mkModule ds) eq))
+roundtrip text (mkModule ds) eq with parsed-wf {text} {mkModule ds} (parses→ {text} (parseStrict-sound text (mkModule ds) eq))
 ... | wfs , pds =
   format (mkModule ds) (lexItems (toList text)) ,
   cong (formatParsed text) eq ,

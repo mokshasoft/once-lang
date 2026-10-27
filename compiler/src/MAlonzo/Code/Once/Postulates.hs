@@ -30,3 +30,7 @@ d_toList'45''43''43'_22
 d_toList'8728'fromList_26
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.toList\8728fromList"
+-- Once.Postulates.isDigit-value
+d_isDigit'45'value_30
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.isDigit-value"
