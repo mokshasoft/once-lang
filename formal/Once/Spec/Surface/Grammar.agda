@@ -398,11 +398,10 @@ data ParsesDecls : List Token → List Decl → List Token → Set where
   decls-cons : ∀ {ts ts₁ d r ds r′} → SkipNewlines ts ts₁ → ParsesDecl ts₁ d r → ParsesDecls r ds r′
              → ParsesDecls ts (d ∷ ds) r′
 
--- Only newlines and the end.
+-- Only newlines, then the end of the text.
 data Trailing : List Token → Set where
-  trail-end : Trailing []
   trail-nl  : ∀ {ts} → Trailing ts → Trailing (TNewline ∷ ts)
-  trail-eof : ∀ {ts} → Trailing ts → Trailing (TEOF ∷ ts)
+  trail-eof : Trailing (TEOF ∷ [])
 
 Parses : String → Module → Set
 Parses text m = Σ[ ts ∈ List Token ] Σ[ r ∈ List Token ]

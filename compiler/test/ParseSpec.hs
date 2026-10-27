@@ -200,6 +200,23 @@ invalidSyntaxTests = testGroup "Invalid syntax"
       result <- parseSource source
       assertParseError result
 
+  , testCase "unterminated string, the rest not Once (D343)" $ do
+      -- The text after a stray `"` was never read and the module ended
+      -- there: the text is now rejected, as the lexer did not reach its end.
+      let source = T.unlines
+            [ "f : Int -> Int"
+            , "f x = x"
+            , "\""
+            , "this is not Once at all ((( = ="
+            ]
+      result <- parseSource source
+      assertParseError result
+
+  , testCase "unterminated string at the very end (D343)" $ do
+      let source = T.pack "f : Int -> Int\nf x = x\n\""
+      result <- parseSource source
+      assertParseError result
+
   -- NOTE: removed two cases that no longer represent invalid syntax:
   --   * "missing type signature" (`f x = x`) — now accepted; the type is
   --     inferred (see the "inferred signature" case under valid syntax).

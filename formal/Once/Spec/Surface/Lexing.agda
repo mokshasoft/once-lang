@@ -11,8 +11,9 @@
 -- `{-` a nested comment closed by `-}`. Two-character operators (`->`, `<=`,
 -- `>=`, `==`, `!=`, `^0`, `^1`, `^w`) are one token. A number is an integer or,
 -- with a `.` and a digit, a decimal; an identifier starts with a letter or
--- `_`. A character that starts nothing is skipped. An unterminated string
--- literal ends the token stream.
+-- `_`. A character that starts nothing is skipped. A text is lexed to its
+-- end, so its tokens end in `TEOF`: one with an unterminated string literal
+-- has no token stream.
 ------------------------------------------------------------------------
 
 module Once.Spec.Surface.Lexing where
@@ -206,9 +207,8 @@ data LexesChars : List Char → List Token → Set where
   lex-amp    : ∀ {cs ts} → LexesChars cs ts → LexesChars ('&' ∷ cs) (TAmpersand ∷ ts)
   lex-dot    : ∀ {cs ts} → LexesChars cs ts → LexesChars ('.' ∷ cs) (TDot ∷ ts)
   -- string literals
-  lex-string     : ∀ {cs s r ts} → StringBody cs s r → LexesChars r ts
-                 → LexesChars ('"' ∷ cs) (TString (fromList s) ∷ ts)
-  lex-string-end : ∀ {cs} → ¬ (∃[ s ] ∃[ r ] StringBody cs s r) → LexesChars ('"' ∷ cs) []
+  lex-string : ∀ {cs s r ts} → StringBody cs s r → LexesChars r ts
+             → LexesChars ('"' ∷ cs) (TString (fromList s) ∷ ts)
   -- numbers
   lex-int   : ∀ {c cs ds r ts} → isDigit c ≡ true → Digits cs ds r → ¬ (∃[ f ] ∃[ r′ ] Fraction r f r′)
             → LexesChars r ts → LexesChars (c ∷ cs) (TInt (+ digitsToNat (c ∷ ds)) ∷ ts)

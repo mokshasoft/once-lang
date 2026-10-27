@@ -24,7 +24,7 @@ open import Once.Spec.Surface.Lexing using (Token)
 open Token
 open import Once.Spec.Surface.Grammar
   using (Starts; starts; StartsWord; starts-word; OpChar; oc-dot; oc-plus; oc-minus; oc-star; oc-slash; oc-pct;
-         oc-lt; oc-gt; oc-pipe; oc-amp; oc-at; Trailing; trail-end; trail-nl; trail-eof; SkipNewlines; skip-nl; skip-done)
+         oc-lt; oc-gt; oc-pipe; oc-amp; oc-at; Trailing; trail-nl; trail-eof; SkipNewlines; skip-nl; skip-done)
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module.Core using (wordHead)
@@ -338,7 +338,7 @@ optok-view P.TNewline = otv-none (λ ()) (λ ())
 optok-view P.TEOF = otv-none (λ ()) (λ ())
 
 trail→ : ∀ toks → allTrailing toks ≡ true → Trailing (F toks)
-trail→ [] _ = trail-end
+trail→ [] ()
 trail→ ((P.TWord _) ∷ _) ()
 trail→ ((P.TInt _ _) ∷ _) ()
 trail→ ((P.TFloat _ _ _ _) ∷ _) ()
@@ -373,10 +373,11 @@ trail→ (P.TEqEq ∷ _) ()
 trail→ (P.TNeq ∷ _) ()
 trail→ (P.TBang ∷ _) ()
 trail→ (P.TNewline ∷ t) e = trail-nl (trail→ t e)
-trail→ (P.TEOF ∷ t) e = trail-eof (trail→ t e)
+trail→ (P.TEOF ∷ []) _ = trail-eof
+trail→ (P.TEOF ∷ _ ∷ _) ()
 
 trail← : ∀ toks → Trailing (F toks) → allTrailing toks ≡ true
-trail← [] _ = refl
+trail← [] ()
 trail← ((P.TWord _) ∷ _) ()
 trail← ((P.TInt _ _) ∷ _) ()
 trail← ((P.TFloat _ _ _ _) ∷ _) ()
@@ -411,7 +412,7 @@ trail← (P.TEqEq ∷ _) ()
 trail← (P.TNeq ∷ _) ()
 trail← (P.TBang ∷ _) ()
 trail← (P.TNewline ∷ t) (trail-nl d) = trail← t d
-trail← (P.TEOF ∷ t) (trail-eof d) = trail← t d
+trail← (P.TEOF ∷ []) trail-eof = refl
 
 decl-trail : ∀ toks → Trailing (F toks) → ¬ Starts (F toks) TNewline → parseDeclB toks ≡ nothing
 decl-trail [] _ _ = refl

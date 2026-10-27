@@ -225,3 +225,7 @@ decl (decl-op p q)        = s (opchars p ⨾ opAfter q)
 skip : ∀ {ts r} → SkipNewlines ts r → ts ⊒ r
 skip (skip-nl p)   = s (skip p)
 skip (skip-done _) = ⊒-refl
+
+decls : ∀ {ts ds r} → ParsesDecls ts ds r → ts ⊒ r
+decls (decls-stop k _)    = skip k
+decls (decls-cons k p ps) = skip k ⨾ (decl p ⨾ decls ps)

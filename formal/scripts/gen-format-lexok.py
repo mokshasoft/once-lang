@@ -107,7 +107,6 @@ for n,s in SYM2.items():
     if n=='lex-minus': continue
     cases.append(f"lexed-ok ({n} _ l) = inj₁ (p-sym {s}) ∷ lexed-ok l")
 cases.append("lexed-ok (lex-string _ l) = inj₂ o-str ∷ lexed-ok l")
-cases.append("lexed-ok (lex-string-end _) = []")
 cases.append("lexed-ok (lex-int _ _ _ l) = inj₁ p-int ∷ lexed-ok l")
 cases.append("lexed-ok (lex-float {c} {ds = ds} _ _ fr l) = inj₁ (float-ok (digitsToNat (c ∷ ds)) fr) ∷ lexed-ok l")
 cases.append("lexed-ok (lex-ident {c} {i = i} ¬s d st ir l) = inj₁ (p-word (toList∘fromList (c ∷ i)) ¬s d st (identAll ir)) ∷ lexed-ok l")

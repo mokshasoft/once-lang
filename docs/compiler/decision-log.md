@@ -19120,7 +19120,7 @@ entry's type, which the Spec does not (plan 0.121 §3.2, R2).
 **Relates**: D323's grammar (no string-literal expressions since plan 0.106), plan 0.121 §3.2 R5.
 
 ### Decision
-1. **An unterminated string ends the token stream** (`lex-string-end`): a `"` with no closing `"` after
+1. *(Superseded by D343: such a text is now rejected.)* **An unterminated string ends the token stream** (`lex-string-end`): a `"` with no closing `"` after
    it lexes to no further tokens. The lexer is total — every text has exactly one token list — and a string
    literal is not an expression of the language (R5), so a stray `"` can only make the parse fail or end
    the module early; it never produces a token the parser would misread.
@@ -19621,8 +19621,36 @@ user facing configs."
 * The comments' order is proved (`comments-kept`, plan 0.124 §9), and fuzzed besides (≈5500 texts with
   comments placed at random, before closing tokens, around whitespace-only lines and before an
   unterminated string at the end: all idempotent, every comment word kept in order).
-* Noted, not changed: the Spec's lexer reads an unterminated string at the end of a text as no token, so
-  the formatter drops it (the module is the same; whether such a text should be rejected is the Spec's).
+* An unterminated string, which the formatter used to drop with the rest of the text after it, is now
+  rejected by the Spec itself (D343).
 * The proofs' per-case parts are generated (`formal/scripts/gen-format-*.py`); edit the generators.
 * The tree's formatting is unchanged by all of it.
+
+## D343 — A TEXT IS LEXED TO ITS END: AN UNTERMINATED STRING IS AN ERROR (2026-10-27)
+
+**Spec change, approved by the user 2026-10-27** (`Spec/Surface/Lexing.agda`, `Spec/Surface/Grammar.agda`).
+**Supersedes** D325 item 1. **Relates**: D342 (found by `once fmt`'s fuzzing).
+
+### Context
+D325 recorded that a `"` with no closing `"` after it ends the token stream (`lex-string-end`), arguing that
+a stray quote "can only make the parse fail or end the module early". Ending the module early is a silent
+drop: everything after the quote was never read. `once build` compiled a program whose text after a stray
+`"` was arbitrary non-Once, and `once fmt` deleted that text.
+
+### Decision
+1. **`lex-string-end` is gone.** Every text the Spec lexes is read to its end, so its tokens end in
+   `TEOF` (only `lex-eof` makes one); a text with an unterminated string has no token stream and does not
+   parse.
+2. **`Trailing` is newlines, then `TEOF`** (`trail-eof : Trailing (TEOF ∷ [])`; `trail-end` is gone): what
+   a parse leaves is the end of the text.
+3. A character that starts no token is still skipped (`lex-skip`, D325 item 2): not part of this change.
+
+### Consequences
+* The compiler's tokenizer is unchanged (it still stops at an unterminated string, without `TEOF`);
+  `allTrailing` now asks for `TEOF` last, so `parseStrict` rejects such a text ("Lex error: unterminated
+  string literal").
+* The bridge from the compiler's lexing to the Spec's (`SpecLexing.toNew`) takes `ended`: the tokens reach
+  `TEOF`. `parses→` gets it from the parse: what the parse leaves is a suffix of the tokens
+  (`SpecGrammar.Suffix.decls`) and ends in `TEOF`.
+* The formatter proofs lose their `lex-string-end` and `trail-end` cases; no theorem changed.
 

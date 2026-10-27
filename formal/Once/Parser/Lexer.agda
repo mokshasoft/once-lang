@@ -420,7 +420,7 @@ tok-head c cs off rec hkGen    = tok-gen c cs off rec (isDigit c) (isIdentStart 
 
 tok-str cs off rec (just (s , rest , bnd)) =
   TString (fromList s) ∷ tokenize-WF rest (adv cs rest off) (rec (m≤n⇒m≤1+n bnd))
-tok-str cs off rec nothing = []  -- error: unterminated string
+tok-str cs off rec nothing = []  -- unterminated: no `TEOF`, so `parseStrict` rejects the text (D343)
 tok-gen c cs off rec true  _     =
   let (digits , rest , bnd) = collectDigitsB cs
   in  tok-num c cs off rec digits rest bnd (collectFracB rest)

@@ -182,7 +182,6 @@ lex-words (lex-pct l)                = tt ∷ lex-words l
 lex-words (lex-amp l)                = tt ∷ lex-words l
 lex-words (lex-dot l)                = tt ∷ lex-words l
 lex-words (lex-string _ l)           = tt ∷ lex-words l
-lex-words (lex-string-end _)         = []
 lex-words (lex-int _ _ _ l)          = tt ∷ lex-words l
 lex-words (lex-float _ _ _ l)        = tt ∷ lex-words l
 lex-words (lex-ident _ _ s p l)      = ident-tok s p ∷ lex-words l

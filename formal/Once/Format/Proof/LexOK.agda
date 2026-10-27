@@ -120,7 +120,6 @@ lexed-ok (lex-gt _ l) = inj₁ (p-sym s-gt) ∷ lexed-ok l
 lexed-ok (lex-equal _ l) = inj₁ (p-sym s-equals) ∷ lexed-ok l
 lexed-ok (lex-bang _ l) = inj₁ (p-sym s-bang) ∷ lexed-ok l
 lexed-ok (lex-string _ l) = inj₂ o-str ∷ lexed-ok l
-lexed-ok (lex-string-end _) = []
 lexed-ok (lex-int _ _ _ l) = inj₁ p-int ∷ lexed-ok l
 lexed-ok (lex-float {c} {ds = ds} _ _ fr l) = inj₁ (float-ok (digitsToNat (c ∷ ds)) fr) ∷ lexed-ok l
 lexed-ok (lex-ident {c} {i = i} ¬s d st ir l) = inj₁ (p-word (toList∘fromList (c ∷ i)) ¬s d st (identAll ir)) ∷ lexed-ok l

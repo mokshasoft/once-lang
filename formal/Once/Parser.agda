@@ -61,15 +61,16 @@ parse source with parseModule (tokenizeString source)
 ... | just (m , _) = just m
 ... | nothing = nothing
 
--- | A parse residual is "trivial" iff it contains only trailing
--- `TNewline`s and `TEOF`s. Anything else means the parser stopped
--- early because a declaration failed — which was silently recovered
--- by `parseDeclsWF` but should surface as an error at the top level.
--- Plan 0.6 Phase A: strict parser errors, no silent drops.
+-- | A parse residual is "trivial" iff it is `TNewline`s, then the `TEOF`
+-- that ends the text. Anything else means the parser stopped early because
+-- a declaration failed — which was silently recovered by `parseDeclsWF` but
+-- should surface as an error at the top level (plan 0.6 Phase A: strict
+-- parser errors, no silent drops). A residual without `TEOF` means the lexer
+-- stopped before the end of the text: an unterminated string (D343).
 allTrailing : List Token → Bool
-allTrailing []              = true
+allTrailing []              = false
 allTrailing (TNewline ∷ xs) = allTrailing xs
-allTrailing (TEOF     ∷ xs) = allTrailing xs
+allTrailing (TEOF ∷ [])     = true
 {-# CATCHALL #-}
 allTrailing _               = false
 
@@ -147,11 +148,15 @@ tvarHint toks with hasUpperTVar toks
 -- Clause-based dispatch (NO `with`) on the `allTrailing` decision and the
 -- `parseModule` result, so the success path `inj₂ m` reduces under hypotheses
 -- (the verified front-end's `parseStrict-sound`/`-complete` step through it).
+residualError : List Token → String
+residualError [] = "Lex error: unterminated string literal (no closing `\"`; the text after it is not read)"
+residualError r@(_ ∷ _) =
+  "Parse error: unexpected tokens remaining after last parsed decl (starting at: "
+  ++ showTokenPrefix r ++ ")" ++ tvarHint r
+
 parseStrict-at : List Token → Module → Bool → String ⊎ Module
 parseStrict-at r m true  = inj₂ m
-parseStrict-at r m false =
-  inj₁ ("Parse error: unexpected tokens remaining after last parsed decl (starting at: "
-        ++ showTokenPrefix r ++ ")" ++ tvarHint r)
+parseStrict-at r m false = inj₁ (residualError r)
 
 parseStrict-pm : Maybe (Module × List Token) → String ⊎ Module
 parseStrict-pm nothing        = inj₁ "Parse error: module failed to parse"

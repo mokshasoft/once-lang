@@ -11,7 +11,7 @@
 -- of the other, the tokens agreeing once the source offsets the compiler's
 -- literal tokens carry (for diagnostics) are forgotten.
 --
---   * `spec-lexes`          : `Lexes text (map forget (tokenizeString text))`;
+--   * `spec-lexes`          : `Lexes text (map forget (tokenizeString text))`, when the tokens reach `TEOF`;
 --   * `spec-lexes-complete` : `Lexes text ts → map forget (tokenizeString text) ≡ ts`;
 --   * `spec-lexes-unique`   : a text is one token stream.
 ------------------------------------------------------------------------
@@ -811,8 +811,6 @@ private
 
   n-string : ∀ {c cs s r ts} → HeadView c hkStr → StringBody cs s r → LexesChars r ts → LexesChars (c ∷ cs) (TString (fromList s) ∷ ts)
   n-string hv-quote body d = lex-string body d
-  n-string-end : ∀ {c cs} → HeadView c hkStr → ¬ (∃[ s ] ∃[ r ] StringBody cs s r) → LexesChars (c ∷ cs) []
-  n-string-end hv-quote n = lex-string-end n
 
   n-ident : ∀ {c cs i r ts} → HeadView c hkGen → isDigit c ≡ false → isIdentStart c ≡ true → IdentRest cs i r
           → LexesChars r ts → LexesChars (c ∷ cs) (TWord (fromList (c ∷ i)) ∷ ts)
@@ -820,50 +818,60 @@ private
   n-skip : ∀ {c cs ts} → HeadView c hkGen → isDigit c ≡ false → isIdentStart c ≡ false → LexesChars cs ts → LexesChars (c ∷ cs) ts
   n-skip (hv-gen ns) e i d = lex-skip ns e i d
 
-toNew : ∀ {off cs ts} → L.LexesChars off cs ts → LexesChars cs (map forget ts)
-toNew L.lex-eof = lex-eof
-toNew (L.lex-ws eqh d) = n-ws (hview eqh) (toNew d)
-toNew (L.lex-nl-ind {cs = cs} eqh eq d) = n-nl-ind (hview eqh) (subst (NLView cs) eq (nl-view cs)) (toNew d)
-toNew (L.lex-nl {cs = cs} eqh eq d) = n-nl (hview eqh) (subst (NLView cs) eq (nl-view cs)) (toNew d)
-toNew (L.lex-caret1 eqh eq d) = n-caret1 (hview eqh) (cview eq) (toNew d)
-toNew (L.lex-caret0 eqh eq d) = n-caret0 (hview eqh) (cview eq) (toNew d)
-toNew (L.lex-caretw eqh eq d) = n-caretw (hview eqh) (cview eq) (toNew d)
-toNew (L.lex-caret-gen eqh eq d) = n-caret (hview eqh) (cview eq) (toNew d)
-toNew (L.lex-lcomment-ind eqh eq d) = n-comment (hview eqh) (dview eq) (toNew d)
-toNew (L.lex-arrow-ind eqh eq d) = n-arrow (hview eqh) (dview eq) (toNew d)
-toNew (L.lex-minus eqh eq d) = n-minus (hview eqh) (dview eq) (toNew d)
-toNew (L.lex-bcomment-ind eqh eq d) = n-block (hview eqh) (dheadview eq) (toNew d)
-toNew (L.lex-lbrace eqh eq d) = n-lbrace (hview eqh) (dheadview eq) (toNew d)
-toNew (L.lex-le-ind eqh eq d) = n-le (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-lt eqh eq d) = n-lt (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-ge-ind eqh eq d) = n-ge (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-gt eqh eq d) = n-gt (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-eqeq-ind eqh eq d) = n-eqeq (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-equals eqh eq d) = n-equal (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-neq-ind eqh eq d) = n-neq (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-bang eqh eq d) = n-bang (hview eqh) (eqview eq) (toNew d)
-toNew (L.lex-lparen eqh d) = n-lparen (hview eqh) (toNew d)
-toNew (L.lex-rparen eqh d) = n-rparen (hview eqh) (toNew d)
-toNew (L.lex-rbrace eqh d) = n-rbrace (hview eqh) (toNew d)
-toNew (L.lex-colon eqh d) = n-colon (hview eqh) (toNew d)
-toNew (L.lex-lambda eqh d) = n-lambda (hview eqh) (toNew d)
-toNew (L.lex-comma eqh d) = n-comma (hview eqh) (toNew d)
-toNew (L.lex-semi eqh d) = n-semi (hview eqh) (toNew d)
-toNew (L.lex-at eqh d) = n-at (hview eqh) (toNew d)
-toNew (L.lex-pipe eqh d) = n-pipe (hview eqh) (toNew d)
-toNew (L.lex-plus eqh d) = n-plus (hview eqh) (toNew d)
-toNew (L.lex-star eqh d) = n-star (hview eqh) (toNew d)
-toNew (L.lex-slash eqh d) = n-slash (hview eqh) (toNew d)
-toNew (L.lex-pct eqh d) = n-pct (hview eqh) (toNew d)
-toNew (L.lex-amp eqh d) = n-amp (hview eqh) (toNew d)
-toNew (L.lex-dot eqh d) = n-dot (hview eqh) (toNew d)
-toNew (L.lex-string {cs = cs} eqh s rest bnd eq d) = n-string (hview eqh) (string-sound cs eq) (toNew d)
-toNew (L.lex-string-err eqh eq) = n-string-end (hview eqh) (λ (s , r , body) → string-none eq body)
-toNew (L.lex-digit {cs = cs} eqh eqd eqf d) =
-  lex-int eqd (digits-sound cs) (λ (f , r′ , fr) → frac-none eqf fr) (toNew d)
-toNew (L.lex-float {cs = cs} eqh eqd eqf d) = lex-float eqd (digits-sound cs) (frac-sound _ eqf) (toNew d)
-toNew (L.lex-ident {cs = cs} eqh eqd eqi d) = n-ident (hview eqh) eqd eqi (ident-sound cs) (toNew d)
-toNew (L.lex-skip eqh eqd eqi d) = n-skip (hview eqh) eqd eqi (toNew d)
+-- | The tokens reach `TEOF`: the lexer read the text to its end (D343).
+isEOF : Token → Bool
+isEOF TEOF = true
+{-# CATCHALL #-}
+isEOF _    = false
+
+ended : List Token → Bool
+ended []       = false
+ended (t ∷ ts) = isEOF t ∨ ended ts
+
+toNew : ∀ {off cs ts} → L.LexesChars off cs ts → ended (map forget ts) ≡ true → LexesChars cs (map forget ts)
+toNew L.lex-eof _ = lex-eof
+toNew (L.lex-ws eqh d) e = n-ws (hview eqh) (toNew d e)
+toNew (L.lex-nl-ind {cs = cs} eqh eq d) e = n-nl-ind (hview eqh) (subst (NLView cs) eq (nl-view cs)) (toNew d e)
+toNew (L.lex-nl {cs = cs} eqh eq d) e = n-nl (hview eqh) (subst (NLView cs) eq (nl-view cs)) (toNew d e)
+toNew (L.lex-caret1 eqh eq d) e = n-caret1 (hview eqh) (cview eq) (toNew d e)
+toNew (L.lex-caret0 eqh eq d) e = n-caret0 (hview eqh) (cview eq) (toNew d e)
+toNew (L.lex-caretw eqh eq d) e = n-caretw (hview eqh) (cview eq) (toNew d e)
+toNew (L.lex-caret-gen eqh eq d) e = n-caret (hview eqh) (cview eq) (toNew d e)
+toNew (L.lex-lcomment-ind eqh eq d) e = n-comment (hview eqh) (dview eq) (toNew d e)
+toNew (L.lex-arrow-ind eqh eq d) e = n-arrow (hview eqh) (dview eq) (toNew d e)
+toNew (L.lex-minus eqh eq d) e = n-minus (hview eqh) (dview eq) (toNew d e)
+toNew (L.lex-bcomment-ind eqh eq d) e = n-block (hview eqh) (dheadview eq) (toNew d e)
+toNew (L.lex-lbrace eqh eq d) e = n-lbrace (hview eqh) (dheadview eq) (toNew d e)
+toNew (L.lex-le-ind eqh eq d) e = n-le (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-lt eqh eq d) e = n-lt (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-ge-ind eqh eq d) e = n-ge (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-gt eqh eq d) e = n-gt (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-eqeq-ind eqh eq d) e = n-eqeq (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-equals eqh eq d) e = n-equal (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-neq-ind eqh eq d) e = n-neq (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-bang eqh eq d) e = n-bang (hview eqh) (eqview eq) (toNew d e)
+toNew (L.lex-lparen eqh d) e = n-lparen (hview eqh) (toNew d e)
+toNew (L.lex-rparen eqh d) e = n-rparen (hview eqh) (toNew d e)
+toNew (L.lex-rbrace eqh d) e = n-rbrace (hview eqh) (toNew d e)
+toNew (L.lex-colon eqh d) e = n-colon (hview eqh) (toNew d e)
+toNew (L.lex-lambda eqh d) e = n-lambda (hview eqh) (toNew d e)
+toNew (L.lex-comma eqh d) e = n-comma (hview eqh) (toNew d e)
+toNew (L.lex-semi eqh d) e = n-semi (hview eqh) (toNew d e)
+toNew (L.lex-at eqh d) e = n-at (hview eqh) (toNew d e)
+toNew (L.lex-pipe eqh d) e = n-pipe (hview eqh) (toNew d e)
+toNew (L.lex-plus eqh d) e = n-plus (hview eqh) (toNew d e)
+toNew (L.lex-star eqh d) e = n-star (hview eqh) (toNew d e)
+toNew (L.lex-slash eqh d) e = n-slash (hview eqh) (toNew d e)
+toNew (L.lex-pct eqh d) e = n-pct (hview eqh) (toNew d e)
+toNew (L.lex-amp eqh d) e = n-amp (hview eqh) (toNew d e)
+toNew (L.lex-dot eqh d) e = n-dot (hview eqh) (toNew d e)
+toNew (L.lex-string {cs = cs} eqh s rest bnd eq d) e = n-string (hview eqh) (string-sound cs eq) (toNew d e)
+toNew (L.lex-string-err eqh eq) ()
+toNew (L.lex-digit {cs = cs} eqh eqd eqf d) e =
+  lex-int eqd (digits-sound cs) (λ (f , r′ , fr) → frac-none eqf fr) (toNew d e)
+toNew (L.lex-float {cs = cs} eqh eqd eqf d) e = lex-float eqd (digits-sound cs) (frac-sound _ eqf) (toNew d e)
+toNew (L.lex-ident {cs = cs} eqh eqd eqi d) e = n-ident (hview eqh) eqd eqi (ident-sound cs) (toNew d e)
+toNew (L.lex-skip eqh eqd eqi d) e = n-skip (hview eqh) eqd eqi (toNew d e)
 
 ------------------------------------------------------------------------
 -- The Spec's relation gives the compiler's, at every offset
@@ -940,7 +948,6 @@ toOld (lex-amp d) off = o-cons P.TAmpersand (L.lex-amp refl) (toOld d _)
 toOld (lex-dot d) off = o-cons P.TDot (L.lex-dot refl) (toOld d _)
 toOld (lex-string {s = s} {r = r} body d) off =
   o-cons (P.TString (fromList s)) (L.lex-string refl s r (proj₁ (string-complete body)) (proj₂ (string-complete body))) (toOld d _)
-toOld (lex-string-end n) off = [] , L.lex-string-err refl (string-nothing n) , refl
 toOld (lex-int {c = c} e dg nf d) off = int-old off (gen-head {c} (λ sp → dns sp e)) e (proj₁ (digits-eq dg)) (proj₂ (digits-eq dg)) nf (toOld d)
 toOld (lex-float {c = c} e dg fr d) off = float-old off (gen-head {c} (λ sp → dns sp e)) e (proj₁ (digits-eq dg)) (proj₂ (digits-eq dg)) fr (toOld d)
 toOld (lex-ident ns e i ir d) off = ident-old off (gen-head ns) e i (proj₁ (ident-eq ir)) (proj₂ (ident-eq ir)) (toOld d)
@@ -950,7 +957,7 @@ toOld (lex-skip ns e i d) off = o-skip (L.lex-skip (gen-head ns) e i) (toOld d _
 -- The tokenizer lexes as the Spec says
 ------------------------------------------------------------------------
 
-spec-lexes : ∀ text → Lexes text (map forget (tokenizeString text))
+spec-lexes : ∀ text → ended (map forget (tokenizeString text)) ≡ true → Lexes text (map forget (tokenizeString text))
 spec-lexes text = toNew (lexer-sound text)
 
 spec-lexes-complete : ∀ text ts → Lexes text ts → map forget (tokenizeString text) ≡ ts
