@@ -100,3 +100,92 @@ tops-src tv j (suc n) src = all-++ _ _ (proj₁ (src j)) (tops-src tv (suc j) n 
     all-++ : ∀ {A : Set} {P : A → Set} xs ys → All P xs → All P ys → All P (xs ++ ys)
     all-++ []       ys []       q = q
     all-++ (x ∷ xs) ys (p ∷ ps) q = p ∷ all-++ xs ys ps q
+
+------------------------------------------------------------------------
+-- How a declaration starts
+------------------------------------------------------------------------
+
+open import Once.Format.Doc using (Doc; empty; blank; _<>_; Lexeme; lt; lsp; lnl; lind; lcm; St; st; brk; layout)
+open import Once.Format.Print using (W; walker; line-code; line-empty; line-text; Held; held-blank; held-comment;
+  stepTok; lineEnd; settleAt; promote; lead; runs; topDoc; hasComment)
+open import Once.Format.Proof.Walk using (WL; stepL; w₀)
+open import Once.Format.Proof.Lockstep using (Φ; Φ-cons; waits)
+open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok)
+open import Once.Format.Proof.Groups using (groups; gOut; mid; Entry; runs-walk; heldOf; heldOf-top; TopH; hcT;
+  promote-top; runs-layout; layoutG-out; groups-ne-all; layoutG; notNull; has-of; gOut-lnl; NE)
+open import Once.Spec.Surface.Lexing using (Token)
+
+-- | Where the walk stands before the comments above a declaration, and
+-- what the declaration's first token settles if there are none.
+EntryT : List Lexeme → ℕ → List Held → Trivia → Set
+EntryT o k H₀ T = Entry o k H₀ T
+  × (∀ x → lineEndTok x ≡ false
+       → proj₁ (Φ (lt x ∷ lind 0 ∷ o)) ≡ walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k H₀ T))
+
+private
+  Φ-tok0 : ∀ x o → Φ (lt x ∷ lind 0 ∷ o) ≡ stepL (Φ o) (lt x)
+  Φ-tok0 x o = trans (Φ-cons (lt x) (lind 0 ∷ o)) (cong (λ ω → stepL ω (lt x)) (Φ-cons (lind 0) o))
+
+  tok-end : ∀ x ω → lineEndTok x ≡ false
+          → proj₁ (stepL ω (lt x)) ≡ stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false
+  tok-end x (w , p) e = cong (stepTok (Once.Format.Proof.Walk.nlW p w) (anchorTok x)) e
+
+-- | At the start of the text.
+entry-start : EntryT [] 0 [] []
+entry-start = (λ L → refl) , λ x e → trans (cong proj₁ (Φ-tok0 x [])) (tok-end x (w₀ , false) e)
+
+-- | After a declaration's line end.
+entry-decl : ∀ o k h T → Φ o ≡ (walker k h line-code [] 0 T , true) → EntryT o k [] T
+entry-decl o k h T e =
+  (λ L → trans (Φ-cons lnl (lcm L ∷ lind 0 ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind 0 ∷ o))
+           (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind 0) o) (cong (λ ω → stepL ω (lind 0)) e)))))) ,
+  λ x ex → trans (cong proj₁ (Φ-tok0 x o)) (trans (tok-end x (Φ o) ex) (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false) e))
+
+-- | After a blank line that follows a declaration.
+entry-gap : ∀ o k h T → Φ o ≡ (walker k h line-code [] 0 T , true) → EntryT (lnl ∷ o) k (held-blank ∷ []) T
+entry-gap o k h T e =
+  (λ L → trans (Φ-cons lnl (lcm L ∷ lind 0 ∷ lnl ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind 0 ∷ lnl ∷ o))
+           (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind 0) (lnl ∷ o)) (cong (λ ω → stepL ω (lind 0))
+             (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))))))) ,
+  λ x ex → trans (cong proj₁ (Φ-tok0 x (lnl ∷ o)))
+             (trans (tok-end x (Φ (lnl ∷ o)) ex)
+               (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false)
+                 (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e))))
+
+-- | What the layout and the walk are after the comments before a
+-- declaration: at the start of a line, nothing waiting, and the
+-- declaration's first token settles `H` before it.
+LeadFacts : St → ℕ → List Held → Trivia → Set
+LeadFacts σ k H T = St.pend σ ≡ just 0 × St.ends σ ≡ []
+  × (∀ x → lineEndTok x ≡ false
+       → proj₁ (Φ (lt x ∷ lind 0 ∷ St.out σ)) ≡ walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k H T))
+
+private
+  all-++ : ∀ {A : Set} {P : A → Set} xs ys → All P xs → All P ys → All P (xs ++ ys)
+  all-++ []       ys []       q = q
+  all-++ (x ∷ xs) ys (p ∷ ps) q = p ∷ all-++ xs ys ps q
+
+  blanks-top : ∀ hs → All (_≡ held-blank) hs → All TopH hs
+  blanks-top []                 []          = []
+  blanks-top (.held-blank ∷ hs) (refl ∷ ps) = tt ∷ blanks-top hs ps
+
+
+  -- the walk after the runs, at the declaration's first token
+  runs-tok : ∀ x o k r H T → lineEndTok x ≡ false → Φ o ≡ mid k r H T → All TopH (H ++ hcT r ∷ [])
+           → proj₁ (Φ (lt x ∷ lind 0 ∷ o)) ≡ walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k (H ++ hcT r ∷ []) T)
+  runs-tok x o k r H T ex e tp =
+    trans (cong proj₁ (Φ-tok0 x o))
+      (trans (tok-end x (Φ o) ex)
+        (trans (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false) e)
+          (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T)) (promote-top _ tp))))
+
+  -- …and after a blank line after them
+  runs-blank-tok : ∀ x o k r H T → lineEndTok x ≡ false → Φ o ≡ mid k r H T → All TopH ((H ++ hcT r ∷ []) ++ held-blank ∷ [])
+                 → proj₁ (Φ (lt x ∷ lind 0 ∷ lnl ∷ o))
+                   ≡ walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k ((H ++ hcT r ∷ []) ++ held-blank ∷ []) T)
+  runs-blank-tok x o k r H T ex e tp =
+    trans (cong proj₁ (Φ-tok0 x (lnl ∷ o)))
+      (trans (tok-end x (Φ (lnl ∷ o)) ex)
+        (trans (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false)
+                 (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))
+          (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T)) (promote-top _ tp))))
