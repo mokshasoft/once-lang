@@ -202,3 +202,52 @@ module TypeAnchors {R RF : Set} (alg : TypeAlg R RF) (cR : R → ℕ) (cRF : RF 
 
     fsum′ : ∀ {ts F r} → ParsesFunSum ts F r → Seg (cRF F) ts r
     fsum′ (fsum p t) = head-tail (fprod′ p) (fsumT t)
+
+-- The three type grammars (their algebras, as `Spec.Surface.Grammar` writes them).
+open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
+import Once.Spec.Type as Ty
+open import Once.Spec.Grade using (Many; mk-kind; eff; act; pure)
+open import Once.Spec.Surface.Grammar using (module SigType; module AliasType; module Annot; TypeVar; tvar; NoExtra)
+open import Once.Format.Print using (toPoly; toPolyF)
+
+private
+  written : (Extra : List Token → PolyType → List Token → Set) → TypeAlg PolyType PolyFunctor
+  written X = record
+    { aUnit = PUnit ; aVoid = PVoid ; aInt = PInt ; aFloat = PFloat
+    ; aProd = _P*_ ; aSum = _P+_ ; aEff = PEff ; aAct = PAct
+    ; aArrow = λ q A B → A P⇒[ q ] B ; aMu = Pμ ; aNu = λ f F → Pν F f
+    ; fK = PK ; fId = PId ; fSum = _P⊕_ ; fProd = _P⊗_
+    ; Extra = X }
+
+  ground : TypeAlg Type (Fun 0)
+  ground = record
+    { aUnit = Unit ; aVoid = Void ; aInt = Int ; aFloat = Float
+    ; aProd = Ty._*_ ; aSum = Ty._+_
+    ; aEff = λ A B → A ⇒[ mk-kind Many eff ] B ; aAct = λ A B → A ⇒[ mk-kind Many act ] B
+    ; aArrow = λ q A B → A ⇒[ mk-kind q pure ] B ; aMu = μ ; aNu = λ f F → ν F f
+    ; fK = K ; fId = Id ; fSum = _⊕_ ; fProd = _⊗_
+    ; Extra = NoExtra }
+
+module SigA = TypeAnchors (written TypeVar) cT cF refl refl refl refl (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
+  (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
+  (λ { (tvar {x} _) → seg-cast (+-identityʳ (wc x)) (seg-cons (TWord x) (λ ()) seg-nil) })
+
+module AliasA = TypeAnchors (written NoExtra) cT cF refl refl refl refl (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
+  (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
+  (λ ())
+
+module AnnotA = TypeAnchors ground (λ A → cT (toPoly A)) (λ F → cF (toPolyF F)) refl refl refl refl
+  (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
+  (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
+  (λ ())
+
+private
+  -- the grammar's own type parsers are these
+  sig-ty : ∀ {ts A r} → SigType.ParsesType ts A r → Seg (cT A) ts r
+  sig-ty = SigA.ty
+
+  alias-ty : ∀ {ts A r} → AliasType.ParsesType ts A r → Seg (cT A) ts r
+  alias-ty = AliasA.ty
+
+  annot-ty : ∀ {ts A r} → Annot.ParsesType ts A r → Seg (cT (toPoly A)) ts r
+  annot-ty = AnnotA.ty
