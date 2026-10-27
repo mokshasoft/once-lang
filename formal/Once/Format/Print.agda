@@ -639,9 +639,10 @@ ending : Maybe Decl → List Note → Doc
 ending prev ns = if hasComment ns then gapEnd prev <> topDoc ns else empty
 
 -- | Declarations, one per line, each under the comments that stand before
--- it; the comments after the last anchor at the end.
+-- it; the comments after the last anchor at the end (with those before no
+-- anchor, as before a declaration).
 pdecls : Maybe Decl → List Decl → P Doc
-pdecls prev [] tv k = ending prev (topList k (suc k) tv) , k
+pdecls prev [] tv k = ending prev (topList k (suc k) (hoist k tv)) , k
 pdecls prev (d ∷ ds) tv k = at (hoist k tv)
   where
     at : Trivia → Doc × ℕ

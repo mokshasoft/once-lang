@@ -45,6 +45,10 @@ private
       digitsThen []            = false
   listItem []            = false
 
+  -- A blank: words end at one, and no line ends in one.
+  blankish : Char → Bool
+  blankish c = is c ' ' ∨ is c '\t' ∨ is c '\r'
+
   -- The words of a text.
   words : List Char → List String
   words cs = go cs []
@@ -54,12 +58,9 @@ private
       emitW w@(_ ∷ _) acc = fromList (reverse w) ∷ acc
       go : List Char → List Char → List String
       go []       w = emitW w []
-      go (c ∷ cs) w = if is c ' ' ∨ is c '\t' then emitW w (go cs []) else go cs (c ∷ w)
+      go (c ∷ cs) w = if blankish c then emitW w (go cs []) else go cs (c ∷ w)
 
   -- Blanks at both ends dropped.
-  blankish : Char → Bool
-  blankish c = is c ' ' ∨ is c '\t' ∨ is c '\r'
-
   dropBlanks : List Char → List Char
   dropBlanks []       = []
   dropBlanks (c ∷ cs) = if blankish c then dropBlanks cs else c ∷ cs
@@ -104,10 +105,16 @@ private
       {-# CATCHALL #-}
       dropEmpty ls        = ls
 
+-- At least one line: an empty block comment is an empty line comment (so a
+-- comment always prints as something).
+atLeastOne : List String → List String
+atLeastOne []         = "--" ∷ []
+atLeastOne ls@(_ ∷ _) = ls
+
 -- | A comment as line comments: a block comment, one per line of it.
 commentLines : String → List String
 commentLines s =
-  if isBlock (toList s) then map (λ l → asLine (strip l)) (trimLines (linesOf (inside (toList s))))
+  if isBlock (toList s) then atLeastOne (map (λ l → asLine (strip l)) (trimLines (linesOf (inside (toList s)))))
   else s ∷ []
 
 data CLine : Set where
@@ -146,16 +153,18 @@ commentLinesDoc (c ∷ cs) with classify c
 ... | verbatim v = cmt v <> newline <> commentLinesDoc cs
 
 -- | An end-of-line comment, `-- text` (not re-wrapped); a block comment's
--- lines joined.
+-- lines joined. One whose `--` a blank or a dash follows is kept as written,
+-- so the comments that end one line, joined, read back as themselves.
 eolText : String → String
 eolText s =
   if isBlock (toList s) then asLine (strip (concatMap (λ c → if is c '\n' then ' ' ∷ [] else c ∷ []) (inside (toList s))))
   else go (toList s)
   where
     go : List Char → String
-    go ('-' ∷ '-' ∷ body@(' ' ∷ _)) = s
+    go ('-' ∷ '-' ∷ ' ' ∷ _) = s
+    go ('-' ∷ '-' ∷ '-' ∷ _) = s
     go ('-' ∷ '-' ∷ []) = s
     {-# CATCHALL #-}
-    go ('-' ∷ '-' ∷ body) = if allDash body then s else "-- " ++ˢ fromList body
+    go ('-' ∷ '-' ∷ body) = "-- " ++ˢ fromList body
     {-# CATCHALL #-}
     go _ = s

@@ -119,7 +119,7 @@ private
 -- | The module walk: from the start of a line at the indentation zero.
 walk : ∀ prev ds tv k σ → All DeclOK ds → Good (St.out σ) → TopSh σ
      → ∃[ ys ] DS ds ys × Step TopSh σ (layout 0 false (proj₁ (pdecls prev ds tv k)) σ) ys
-walk prev [] tv k σ [] g sh with trivial _ σ (ending-trivial prev (topList k (suc k) tv)) g sh
+walk prev [] tv k σ [] g sh with trivial _ σ (ending-trivial prev (topList k (suc k) (hoist k tv))) g sh
 ... | n , s = nls n , ds-end , s
 walk prev (d ∷ ds) tv k σ (ok ∷ oks) g sh
   with trivial (gap prev d) σ (gap-trivial prev d) g sh
