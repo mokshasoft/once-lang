@@ -14,12 +14,37 @@
         haskellPackages = pkgs.haskellPackages;
 
         # Build without running tests (tests need the built executable in PATH)
-        once = pkgs.haskell.lib.dontCheck (haskellPackages.callCabal2nix "once" ./compiler { });
+        # The source is compiler/ plus the root LICENSE: compiler/LICENSE is a
+        # symlink to ../LICENSE, which dangles in a source of compiler/ alone.
+        onceSrc = pkgs.lib.fileset.toSource {
+          root = ./.;
+          fileset = pkgs.lib.fileset.unions [ ./compiler ./LICENSE ];
+        };
+        onceUnwrapped = pkgs.haskell.lib.compose.overrideCabal (_: {
+          src = onceSrc;
+          postUnpack = "sourceRoot=$sourceRoot/compiler";
+        }) (pkgs.haskell.lib.dontCheck (haskellPackages.callCabal2nix "once" ./compiler { }));
+
+        # Plan 0.125: the shape of the nixpkgs package. Strata is installed to
+        # share/once/Strata (the compiler's installed fallback); binutils is
+        # appended to PATH so a user's own as/ld (or AS/LD) still win.
+        once = pkgs.haskell.lib.compose.overrideCabal (old: {
+          pname = "once-lang";
+          buildTools = (old.buildTools or [ ]) ++ [ pkgs.makeWrapper ];
+          postInstall = (old.postInstall or "") + ''
+            mkdir -p $out/share/once
+            cp -r --no-preserve=mode ${./Strata} $out/share/once/Strata
+            find $out/share/once/Strata -name '*.o' -delete
+            wrapProgram $out/bin/once --suffix PATH : ${pkgs.lib.makeBinPath [ pkgs.binutils ]}
+          '';
+          mainProgram = "once";
+        }) (pkgs.haskell.lib.compose.justStaticExecutables onceUnwrapped);
       in
       {
         packages = {
           default = once;
           once = once;
+          once-lang = once;
         };
 
         apps.default = {
