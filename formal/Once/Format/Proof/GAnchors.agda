@@ -24,6 +24,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃-syntax)
 open import Data.String using (String)
+open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Grade using (Quantity; Finite; pureᶠ; actᶠ)
@@ -251,3 +252,223 @@ private
 
   annot-ty : ∀ {ts A r} → Annot.ParsesType ts A r → Seg (cT (toPoly A)) ts r
   annot-ty = AnnotA.ty
+
+------------------------------------------------------------------------
+-- Expressions
+------------------------------------------------------------------------
+
+open import Once.Spec.Surface.Lexing using (TAt; TDot; TComma; TColon; TLambda; TEquals; TLBrace; TRBrace;
+  TSemicolon; TMinus; TPlus; TStar; TSlash; TPercent; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang)
+open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
+  RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Name using (canonical)
+open import Once.Spec.Surface.Grammar using (ParsesExpr; ParsesCompTail; ParsesCmp; ParsesAdd; ParsesAddTail;
+  ParsesMul; ParsesMulTail; ParsesUnary; ParsesApp; ParsesAppTail; ParsesAtomExpr; ParsesLamParams; ParsesParenCont;
+  expr; comp-done; comp-dot; cmp-none; cmp; add; add-done; add-op; mul; mul-done; mul-op; neg; unary; app;
+  app-done; app-arg; atom-unit; atom-int; atom-float; atom-var; atom-qual; atom-paren; atom-op; atom-lambda;
+  atom-let; atom-destruct; lam-body; lam-arg; paren-close; paren-pair; paren-annot;
+  CompareToken; ct-lt; ct-le; ct-gt; ct-ge; ct-eq; ct-ne; AddToken; at-plus; at-minus; MulToken; mt-star;
+  mt-slash; mt-pct; ParsesOpChars; op-close; op-char; OpChar; oc-dot; oc-plus; oc-minus; oc-star; oc-slash;
+  oc-pct; oc-lt; oc-gt; oc-pipe; oc-amp; oc-at)
+open import Once.Format.Print using (isOperator)
+
+-- | The anchors of an expression, as written.
+cE : Expr → ℕ
+cE (RVar x)                 = if isOperator x then 0 else wc x
+cE (RQualified x a)         = wc x + wc a
+cE (RResolved (canonical xs)) = foldr (λ x n → wc x + n) 0 xs
+cE (RApp f a)               = cE f + cE a
+cE (RLam x e)               = wc x + cE e
+cE (RLet x v b)             = 2 + (wc x + (cE v + cE b))
+cE (RPair a b)              = cE a + cE b
+cE (RDestruct s x el y er)  = 4 + (wc x + (wc y + (cE s + (cE el + cE er))))
+cE RUnit                    = 0
+cE (RInt _)                 = 1
+cE (RFloat _ _ _)           = 1
+cE (RAnnot e T)             = cE e + cT (toPoly T)
+cE (RBinOp op a b)          = cE a + cE b
+cE (RNeg e)                 = cE e
+
+-- | Words that are no operator names (what the lexer reads as words).
+Good : Token → Set
+Good (TWord x) = isOperator x ≡ false
+{-# CATCHALL #-}
+Good _         = ⊤
+
+private
+  good-rest : ∀ {n ts r} → All Good ts → Seg n ts r → All Good r
+  good-rest g (seg , refl , _ , _) = AllP.++⁻ʳ seg g
+
+  gtail : ∀ {t ts} → All Good (t ∷ ts) → All Good ts
+  gtail (_ ∷ g) = g
+
+  -- an operand with no operator before it
+  tseg-arg : ∀ {base m n ts ts₂ r} → Seg m ts ts₂ → TSeg (base + m) n ts₂ r → TSeg base n ts r
+  tseg-arg {base} {m} (s₁ , refl , e₁ , n₁) (s₂ , refl , e₂ , n₂) =
+    s₁ ++ s₂ , sym (++-assoc s₁ s₂ _) ,
+    trans (cong (base +_) (anchors-++ s₁ s₂))
+      (trans (sym (+-assoc base (anchors s₁) (anchors s₂))) (trans (cong (λ x → base + x + anchors s₂) e₁) e₂)) ,
+    AllP.++⁺ n₁ n₂
+
+  ct-nl : ∀ {t op} → CompareToken t op → t ≢ TNewline
+  ct-nl ct-lt () ; ct-nl ct-le () ; ct-nl ct-gt () ; ct-nl ct-ge () ; ct-nl ct-eq () ; ct-nl ct-ne ()
+  ct-na : ∀ {t op} → CompareToken t op → (if anchorTok t then 1 else 0) ≡ 0
+  ct-na ct-lt = refl ; ct-na ct-le = refl ; ct-na ct-gt = refl ; ct-na ct-ge = refl ; ct-na ct-eq = refl ; ct-na ct-ne = refl
+  at-nl : ∀ {t op} → AddToken t op → t ≢ TNewline
+  at-nl at-plus () ; at-nl at-minus ()
+  at-na : ∀ {t op} → AddToken t op → (if anchorTok t then 1 else 0) ≡ 0
+  at-na at-plus = refl ; at-na at-minus = refl
+  mt-nl : ∀ {t op} → MulToken t op → t ≢ TNewline
+  mt-nl mt-star () ; mt-nl mt-slash () ; mt-nl mt-pct ()
+  mt-na : ∀ {t op} → MulToken t op → (if anchorTok t then 1 else 0) ≡ 0
+  mt-na mt-star = refl ; mt-na mt-slash = refl ; mt-na mt-pct = refl
+
+  -- an operator in parentheses: no anchor, and an operator name
+  oc-nl : ∀ {t ch} → OpChar t ch → t ≢ TNewline
+  oc-nl oc-dot () ; oc-nl oc-plus () ; oc-nl oc-minus () ; oc-nl oc-star () ; oc-nl oc-slash () ; oc-nl oc-pct ()
+  oc-nl oc-lt () ; oc-nl oc-gt () ; oc-nl oc-pipe () ; oc-nl oc-amp () ; oc-nl oc-at ()
+  oc-na : ∀ {t ch} → OpChar t ch → (if anchorTok t then 1 else 0) ≡ 0
+  oc-na oc-dot = refl ; oc-na oc-plus = refl ; oc-na oc-minus = refl ; oc-na oc-star = refl ; oc-na oc-slash = refl
+  oc-na oc-pct = refl ; oc-na oc-lt = refl ; oc-na oc-gt = refl ; oc-na oc-pipe = refl ; oc-na oc-amp = refl
+  oc-na oc-at = refl
+
+  opchars-seg : ∀ {ts cs s r} → ParsesOpChars ts cs s r → Seg 0 ts r
+  opchars-seg op-close        = seg-cons TRParen (λ ()) seg-nil
+  opchars-seg (op-char {t = t} oc p) = seg-cast (cong (_+ 0) (oc-na oc)) (seg-cons t (oc-nl oc) (opchars-seg p))
+
+open import Data.Char using (Char)
+open import Data.List using (_∷ʳ_)
+open import Data.List.Properties using (unfold-reverse)
+open import Data.Nat.Properties using (+-suc)
+open import Data.String using (fromList; toList)
+open import Once.Postulates using (toList∘fromList)
+open import Once.Format.Proof.ExprBase using (OpName; op-isOperator)
+
+private
+  all-rev : ∀ {P : Char → Set} xs → All P xs → All P (reverse xs)
+  all-rev []       []       = []
+  all-rev (x ∷ xs) (p ∷ ps) = subst (All _) (sym (unfold-reverse x xs)) (AllP.++⁺ (all-rev xs ps) (p ∷ []))
+
+  snoc-ne : ∀ {P : Char → Set} xs c → All P xs → P c → ∃[ d ] ∃[ ds ] (xs ∷ʳ c ≡ d ∷ ds × All P (d ∷ ds))
+  snoc-ne []       c []       p = c , [] , refl , p ∷ []
+  snoc-ne (x ∷ xs) c (q ∷ qs) p = x , xs ∷ʳ c , refl , q ∷ AllP.++⁺ qs (p ∷ [])
+
+  -- the characters of a parenthesized operator make an operator name
+  opchars-name : ∀ {ts cs s r} → ParsesOpChars ts cs s r → All (λ d → ∃[ t ] OpChar t d) cs → OpName s
+  opchars-name (op-close {c} {cs}) (o ∷ os) =
+    let (d , ds , eq , all) = snoc-ne (reverse cs) c (all-rev cs os) o
+    in d , ds , trans (toList∘fromList _) (trans (unfold-reverse c cs) eq) , all
+  opchars-name (op-char {t = t} oc p) os = opchars-name p ((t , oc) ∷ os)
+
+  seg-tseg : ∀ {m n ts ts₁ r} → Seg m ts ts₁ → TSeg m n ts₁ r → Seg n ts r
+  seg-tseg s t = tseg-arg {base = 0} s t
+
+  -- a token that is no anchor between two segments
+  seg-op : ∀ {m n t ts ts₁ r} → t ≢ TNewline → (if anchorTok t then 1 else 0) ≡ 0
+         → Seg m ts (t ∷ ts₁) → Seg n ts₁ r → Seg (m + n) ts r
+  seg-op {m} {n} nt na s₁ s₂ = seg-cast (cong (m +_) (cong (_+ n) na)) (seg-++ s₁ (seg-cons _ nt s₂))
+
+  tseg-close : ∀ {base r} → TSeg base base (TRParen ∷ r) r
+  tseg-close {base} = TRParen ∷ [] , refl , +-identityʳ base , (λ ()) ∷ []
+
+  if-false : ∀ {b} (x : ℕ) → b ≡ false → x ≡ (if b then 0 else x)
+  if-false x refl = refl
+
+  if-true : ∀ {b} (x : ℕ) → b ≡ true → 0 ≡ (if b then 0 else x)
+  if-true x refl = refl
+
+  destruct-count : ∀ S X L Y R → suc (S + suc (suc (X + (L + suc (Y + (R + 0))))))
+                                 ≡ 4 + (X + (Y + (S + (L + R))))
+  destruct-count S X L Y R =
+    cong suc (trans (+-suc S _) (cong suc (trans (+-suc S _) (cong suc
+      (trans (cong (S +_) (trans (cong (X +_) (+-suc L _)) (+-suc X _))) (trans (+-suc S _) (cong suc
+        (trans (cong (λ z → S + (X + (L + (Y + z)))) (+-identityʳ R))
+          (trans (lc S X (L + (Y + R))) (cong (X +_) (trans (cong (S +_) (lc L Y R)) (lc S Y (L + R)))))))))))))
+    where
+      lc : ∀ a b c → a + (b + c) ≡ b + (a + c)
+      lc a b c = trans (sym (+-assoc a b c)) (trans (cong (_+ c) (+-comm a b)) (+-assoc b a c))
+
+  let-count : ∀ a b c → suc (a + (b + suc c)) ≡ 2 + (a + (b + c))
+  let-count a b c = cong suc (trans (cong (a +_) (+-suc b c)) (+-suc a (b + c)))
+
+mutual
+  e-expr : ∀ {ts e r} → All Good ts → ParsesExpr ts e r → Seg (cE e) ts r
+  e-expr g (expr c t) = let s = e-cmp g c in seg-tseg s (e-comp (good-rest g s) t)
+
+  e-comp : ∀ {l ts e r} → All Good ts → ParsesCompTail l ts e r → TSeg (cE l) (cE e) ts r
+  e-comp g (comp-done _)     = tseg-nil
+  e-comp g₀ (comp-dot c t) =
+    let g = gtail g₀ ; s = e-cmp g c in tseg-step TDot (λ ()) refl refl s (e-comp (good-rest g s) t)
+
+  e-cmp : ∀ {ts e r} → All Good ts → ParsesCmp ts e r → Seg (cE e) ts r
+  e-cmp g (cmp-none a _) = e-add g a
+  e-cmp g (cmp ct a b)   = let s = e-add g a in seg-op (ct-nl ct) (ct-na ct) s (e-add (gtail (good-rest g s)) b)
+
+  e-add : ∀ {ts e r} → All Good ts → ParsesAdd ts e r → Seg (cE e) ts r
+  e-add g (add m t) = let s = e-mul g m in seg-tseg s (e-addT (good-rest g s) t)
+
+  e-addT : ∀ {l ts e r} → All Good ts → ParsesAddTail l ts e r → TSeg (cE l) (cE e) ts r
+  e-addT g (add-done _)        = tseg-nil
+  e-addT g₀ (add-op at m t) =
+    let g = gtail g₀ ; s = e-mul g m in tseg-step _ (at-nl at) (at-na at) refl s (e-addT (good-rest g s) t)
+
+  e-mul : ∀ {ts e r} → All Good ts → ParsesMul ts e r → Seg (cE e) ts r
+  e-mul g (mul u t) = let s = e-unary g u in seg-tseg s (e-mulT (good-rest g s) t)
+
+  e-mulT : ∀ {l ts e r} → All Good ts → ParsesMulTail l ts e r → TSeg (cE l) (cE e) ts r
+  e-mulT g (mul-done _)        = tseg-nil
+  e-mulT g₀ (mul-op mt u t) =
+    let g = gtail g₀ ; s = e-unary g u in tseg-step _ (mt-nl mt) (mt-na mt) refl s (e-mulT (good-rest g s) t)
+
+  e-unary : ∀ {ts e r} → All Good ts → ParsesUnary ts e r → Seg (cE e) ts r
+  e-unary g (neg u) = seg-cons TMinus (λ ()) (e-unary (gtail g) u)
+  e-unary g (unary a)     = e-app g a
+
+  e-app : ∀ {ts e r} → All Good ts → ParsesApp ts e r → Seg (cE e) ts r
+  e-app g (app a t) = let s = e-atom g a in seg-tseg s (e-appT (good-rest g s) t)
+
+  e-appT : ∀ {l ts e r} → All Good ts → ParsesAppTail l ts e r → TSeg (cE l) (cE e) ts r
+  e-appT g (app-done _)    = tseg-nil
+  e-appT g (app-arg _ a t) = let s = e-atom g a in tseg-arg s (e-appT (good-rest g s) t)
+
+  e-atom : ∀ {ts e r} → All Good ts → ParsesAtomExpr ts e r → Seg (cE e) ts r
+  e-atom g atom-unit = seg-cons TLParen (λ ()) (seg-cons TRParen (λ ()) seg-nil)
+  e-atom g (atom-int {n}) = seg-cons (TInt n) (λ ()) seg-nil
+  e-atom g (atom-float {i} {f} {l}) = seg-cons (TFloat i f l) (λ ()) seg-nil
+  e-atom (gx ∷ _) (atom-var {x} _ _) =
+    seg-cast (trans (+-identityʳ (wc x)) (if-false (wc x) gx)) (seg-cons (TWord x) (λ ()) seg-nil)
+  e-atom g (atom-qual {x} {a} _) =
+    seg-cast (cong (wc x +_) (+-identityʳ (wc a)))
+      (seg-cons (TWord x) (λ ()) (seg-cons TAt (λ ()) (seg-cons (TWord a) (λ ()) seg-nil)))
+  e-atom g₀ (atom-paren e p) =
+    let g = gtail g₀ ; s = e-expr g e in seg-cons TLParen (λ ()) (seg-tseg s (e-paren (good-rest g s) p))
+  e-atom g (atom-op {s = s} p) =
+    seg-cast (if-true (wc s) (op-isOperator s (opchars-name p []))) (seg-cons TLParen (λ ()) (opchars-seg p))
+  e-atom g (atom-lambda p) = seg-cons TLambda (λ ()) (e-lam (gtail g) p)
+  e-atom g₀ (atom-let {x} {v = v} {b} pv pb) =
+    let g = gtail (gtail (gtail g₀)) ; s = e-expr g pv
+    in seg-cast (let-count (wc x) (cE v) (cE b))
+         (seg-cons (TWord "let") (λ ()) (seg-cons (TWord x) (λ ()) (seg-cons TEquals (λ ())
+           (seg-++ s (seg-cons (TWord "in") (λ ()) (e-expr (gtail (good-rest g s)) pb))))))
+  e-atom g₀ (atom-destruct {s = sc} {x = x} {y = y} {el = el} {er = er} ps pl pr) =
+    let g  = gtail g₀
+        ss = e-expr g ps
+        g₁ = gtail (gtail (gtail (gtail (gtail (good-rest g ss)))))
+        sl = e-expr g₁ pl
+        g₂ = gtail (gtail (gtail (gtail (good-rest g₁ sl))))
+        sr = e-expr g₂ pr
+    in seg-cast (destruct-count (cE sc) (wc x) (cE el) (wc y) (cE er))
+         (seg-cons (TWord "destruct") (λ ()) (seg-++ ss
+           (seg-cons (TWord "of") (λ ()) (seg-cons TLBrace (λ ()) (seg-cons (TWord "Left") (λ ())
+             (seg-cons (TWord x) (λ ()) (seg-cons TArrow (λ ()) (seg-++ sl
+               (seg-cons TSemicolon (λ ()) (seg-cons (TWord "Right") (λ ()) (seg-cons (TWord y) (λ ())
+                 (seg-cons TArrow (λ ()) (seg-++ sr (seg-cons TRBrace (λ ()) seg-nil))))))))))))))
+
+  e-lam : ∀ {ts e r} → All Good ts → ParsesLamParams ts e r → Seg (cE e) ts r
+  e-lam (_ ∷ g) (lam-body e)    = seg-cons TArrow (λ ()) (e-expr g e)
+  e-lam (_ ∷ g) (lam-arg {x} p) = seg-cons (TWord x) (λ ()) (e-lam g p)
+
+  e-paren : ∀ {e ts e′ r} → All Good ts → ParsesParenCont e ts e′ r → TSeg (cE e) (cE e′) ts r
+  e-paren g paren-close        = tseg-close
+  e-paren g (paren-pair p)  = tseg-step TComma (λ ()) refl refl (e-expr (gtail g) p) tseg-close
+  e-paren g (paren-annot A) = tseg-step TColon (λ ()) refl refl (annot-ty A) tseg-close
