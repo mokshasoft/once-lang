@@ -53,7 +53,7 @@ parseStageOpts args = do
 data BuildConfig = BuildConfig
   { bcOutput    :: Maybe String
   , bcMode      :: OutputMode
-  , bcTarget    :: Target
+  , bcTarget    :: Maybe Target
   , bcSaveTemps :: Bool
   , bcOptimize  :: Bool
   , bcStrata    :: Maybe String
@@ -112,7 +112,7 @@ parseBuild args = go args defaultBuildConfig
     go ("--lib" : rest) cfg = go rest cfg { bcMode = Library }
     go ("--exe" : rest) cfg = go rest cfg { bcMode = Executable }
     go ("--target" : t : rest) cfg = case parseTarget t of
-      Just target -> go rest cfg { bcTarget = target }
+      Just target -> go rest cfg { bcTarget = Just target }
       Nothing -> Nothing  -- invalid target
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
     go ("--no-optimize" : rest) cfg = go rest cfg { bcOptimize = False }
@@ -154,16 +154,15 @@ usage = do
   TIO.putStrLn "  (default)           Infer: executable if the module defines `main`, else library"
   TIO.putStrLn "  --lib               Force library output (no entry point)"
   TIO.putStrLn "  --exe               Force standalone executable (requires a `main`)"
-  TIO.putStrLn "  --target ARCH       Target architecture (c|x86_64|x86_32|arm64|riscv64) [default: the host's]"
+  TIO.putStrLn "  --target ARCH       Target architecture (x86_64|x86_32|arm64|riscv64) [default: the host's]"
   TIO.putStrLn "  --save-temps        Keep intermediate files (.s, .o)"
   TIO.putStrLn "  --no-optimize       Skip optimizer"
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports"
   TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"
   TIO.putStrLn "  --interp PATH       Interpretation path (deprecated)"
-  TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:C I.Linux.Syscalls)"
+  TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:x86_64 I.Linux.Syscalls)"
   TIO.putStrLn ""
   TIO.putStrLn "Target architectures:"
-  TIO.putStrLn "  c       - C backend (not yet implemented)"
   TIO.putStrLn "  x86_64  - x86-64 native (verified via MAlonzo, full IR coverage)"
   TIO.putStrLn "  x86_32  - x86-32 native (verified via abstract-trace, simple-IR subset)"
   TIO.putStrLn "  arm64   - ARM64 native (not yet implemented)"

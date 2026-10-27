@@ -18,7 +18,6 @@ module Once.CLI
   , Target (..)
   , AllocStrategy (..)
   , InterpType (..)
-  , targetExtension
   , parseTarget
   , hostTarget
   , parseInterpType
@@ -79,24 +78,14 @@ data OutputMode
 
 -- | Target architecture
 data Target
-  = TargetC       -- ^ C backend (not yet implemented)
-  | TargetX86_64  -- ^ x86-64 assembly (active, full IR coverage)
+  = TargetX86_64  -- ^ x86-64 assembly (active, full IR coverage)
   | TargetX86_32  -- ^ x86-32 assembly (active via abstract-trace, simple-IR subset)
   | TargetArm64   -- ^ ARM64 assembly (not yet implemented)
   | TargetRiscV64 -- ^ RISC-V 64-bit (active via abstract-trace, simple-IR subset)
   deriving (Eq, Show)
 
--- | File extension for each target
-targetExtension :: Target -> String
-targetExtension TargetC = ".c"
-targetExtension TargetX86_64 = ".s"
-targetExtension TargetX86_32 = ".s"
-targetExtension TargetArm64 = ".s"
-targetExtension TargetRiscV64 = ".s"
-
 -- | Parse target from string
 parseTarget :: String -> Maybe Target
-parseTarget "c" = Just TargetC
 parseTarget "x86_64" = Just TargetX86_64
 parseTarget "x86_32" = Just TargetX86_32
 parseTarget "arm64" = Just TargetArm64
@@ -104,15 +93,15 @@ parseTarget "riscv64" = Just TargetRiscV64
 parseTarget _ = Nothing
 
 -- | Plan 0.125: the default target is the host's architecture (GHC's
--- `System.Info.arch` names). A host with no backend gets the C target,
--- whose "not yet implemented" error names the working `--target`s.
-hostTarget :: Target
+-- `System.Info.arch` names). A host no target names has no default; the
+-- build then asks for `--target`.
+hostTarget :: Maybe Target
 hostTarget = case SysInfo.arch of
-  "x86_64"  -> TargetX86_64
-  "i386"    -> TargetX86_32
-  "riscv64" -> TargetRiscV64
-  "aarch64" -> TargetArm64
-  _         -> TargetC
+  "x86_64"  -> Just TargetX86_64
+  "i386"    -> Just TargetX86_32
+  "riscv64" -> Just TargetRiscV64
+  "aarch64" -> Just TargetArm64
+  _         -> Nothing
 
 -- | Allocation strategy (for future use)
 data AllocStrategy
@@ -125,8 +114,7 @@ data AllocStrategy
 
 -- | Interpretation type for explicit imports (for future use)
 data InterpType
-  = InterpC       -- ^ C interpretation
-  | InterpX86_64  -- ^ x86-64 interpretation
+  = InterpX86_64  -- ^ x86-64 interpretation
   | InterpX86_32  -- ^ x86-32 interpretation
   | InterpArm64   -- ^ ARM64 interpretation
   | InterpRiscV64 -- ^ RISC-V interpretation
@@ -134,7 +122,6 @@ data InterpType
 
 -- | Parse interpretation type from string
 parseInterpType :: String -> Maybe InterpType
-parseInterpType "C" = Just InterpC
 parseInterpType "x86_64" = Just InterpX86_64
 parseInterpType "x86_32" = Just InterpX86_32
 parseInterpType "arm64" = Just InterpArm64
@@ -146,7 +133,7 @@ data BuildOptions = BuildOptions
   { buildInput     :: FilePath
   , buildOutput    :: Maybe FilePath              -- ^ Output base name (without extension)
   , buildMode      :: OutputMode                  -- ^ Library or executable
-  , buildTarget    :: Target                      -- ^ Target architecture (default: hostTarget)
+  , buildTarget    :: Maybe Target                -- ^ Target architecture (default: hostTarget; Nothing on an unknown host)
   , buildSaveTemps :: Bool                        -- ^ Keep intermediate files (.s, .o)
   , buildOptimize  :: Bool                        -- ^ Run optimizer (default: True)
   -- Future options (not yet wired to Agda)
@@ -329,17 +316,17 @@ runBuild opts = do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
     Right (mod_, strataDir, importPaths) -> case target of
-      TargetX86_64  -> runVerifiedBuild opts outputBase Bridge.X86_64  source mod_ strataDir importPaths
-      TargetX86_32  -> runVerifiedBuild opts outputBase Bridge.X86_32  source mod_ strataDir importPaths
-      TargetRiscV64 -> runVerifiedBuild opts outputBase Bridge.RiscV64 source mod_ strataDir importPaths
+      Just TargetX86_64  -> runVerifiedBuild opts outputBase Bridge.X86_64  source mod_ strataDir importPaths
+      Just TargetX86_32  -> runVerifiedBuild opts outputBase Bridge.X86_32  source mod_ strataDir importPaths
+      Just TargetRiscV64 -> runVerifiedBuild opts outputBase Bridge.RiscV64 source mod_ strataDir importPaths
 
-      -- Other targets not yet implemented
-      TargetC -> do
-        TIO.putStrLn "Error: C backend not yet implemented"
-        TIO.putStrLn "Use --target {x86_64|x86_32|riscv64} for the active backends"
+      Nothing -> do
+        TIO.putStrLn $ "Error: no backend for this host (" <> T.pack SysInfo.arch <> ")"
+        TIO.putStrLn "Use --target {x86_64|x86_32|riscv64}"
         exitFailure
 
-      TargetArm64 -> do
+      -- Other targets not yet implemented
+      Just TargetArm64 -> do
         TIO.putStrLn "Error: ARM64 backend not yet implemented"
         TIO.putStrLn "Use --target {x86_64|x86_32|riscv64} for the active backends"
         exitFailure
