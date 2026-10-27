@@ -75,7 +75,8 @@ Quantities are **inferred by default**, with optional annotations for guarantees
 ### Prerequisites
 
 - **Nix** (required) for building the compiler
-- **GCC** for compiling generated C code
+- **binutils** (`as`, `ld`, `objcopy`): the compiler assembles and links its output itself (the Nix
+  package brings them)
 
 ### Build the Compiler
 
@@ -90,41 +91,54 @@ nix build
 
 ### Hello World
 
-```bash
-# Create hello.once
-cat > hello.once << 'EOF'
-primitive puts : String Utf8 -> Unit
+Once has no strings yet; a program is observed by its exit code. This one computes 6 · 7 and exits
+with it (`examples/hello.once`):
 
-main : Unit -> Unit
-main = puts "Hello for Once"
+```bash
+cat > hello.once << 'EOF'
+import I.Linux.Syscalls as S
+
+answer : Int -> Int
+answer x = x * (x + 1)
+
+main : Act Unit Void
+main = exit@S (answer 6)
 EOF
 
-# Compile with the Once compiler
-./result/bin/once build --exe --interp Strata/Interpretations/Linux hello.once -o hello
-
-# Compile the generated C and run
-gcc -o hello hello.c
-./hello
-# Output: Hello for Once
+./result/bin/once build hello.once -o hello
+./hello; echo $?
+# Output: 42
 ```
+
+The target defaults to the host's architecture, and a module with a `main` builds to an executable.
+`--target x86_32` works the same way on an x86-64 host; `--target riscv64` needs a cross `as`/`ld`
+(set `AS`, `LD`, `OBJCOPY`) and qemu to run.
 
 ### Library Example
 
-Once compiles to C libraries that can be called from any language:
+A module without `main` is a library: the build emits assembly and stops.
 
 ```bash
-# swap.once - pure natural transformation, no primitives
 cat > swap.once << 'EOF'
-swap : A * B -> B * A
+swap : a * b -> b * a
 swap = pair snd fst
+
+swapInts : Int * Int -> Int * Int
+swapInts = swap
 EOF
 
-# Generate C library
 ./result/bin/once build swap.once -o swap
-
-# Creates: swap.h, swap.c
-# Use from C, Rust, Python, etc. via FFI
+# Creates: swap.s
 ```
+
+Type variables are lowercase (`a`, `b`); uppercase names are concrete types. A polymorphic definition
+has no code of its own; it is compiled where it is used at a concrete type, here `swapInts`.
+
+### More Examples
+
+[`examples/`](examples/) has small programs (arithmetic, `let`, a fold over the naturals, quantities).
+`make -C examples ONCE=$PWD/result/bin/once` builds each one and checks its exit code on x86-64 and
+x86-32; adding `riscv64` does the same under qemu.
 
 ## Documentation
 
@@ -171,20 +185,22 @@ once-lang/
 
 ## Status
 
-**Working compiler.** The Once compiler generates C code from `.once` source files.
+**Working compiler.** The Once compiler compiles `.once` source to native assembly and links it into
+a static executable itself (no C compiler involved).
 
 Currently supported:
-- Products (`A * B`), sums (`A + B`), functions (`A -> B`)
+- Native backends: x86-64, x86-32 and RISC-V 64 (Linux)
+- Products (`A * B`), sums (`A + B`), functions (`A -> B`), `Int` arithmetic and comparisons
 - The 12 categorical generators
-- String literals and `Buffer`/`String` types
-- Library mode (generates `.h` + `.c`)
-- Executable mode with interpretations (linux)
+- Folds over initial algebras (`Mu`, `cata`)
+- QTT quantities, inferred and enforced (`A^1` linear, `A^0` erased)
+- Library mode (assembly, no entry point) and executable mode with interpretations (Linux)
 - Composition operator (`.`) and ML-style application
 
-Coming soon:
-- QTT quantity enforcement
+Not yet:
+- Strings and buffers: a program is observed by its exit code
+- An ARM64 backend
 - More interpretations (WASM, bare metal)
-- Additional backends beyond C
 
 ## The Vision
 
