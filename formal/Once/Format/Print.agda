@@ -14,8 +14,9 @@
 -- module keeps (plan 0.124 §6). A comment on its own line before a line that
 -- starts a declaration goes before that declaration; one before an indented
 -- line goes before the next anchor, in place; one after code on a line goes at
--- the end of the line of the anchor before it. Blank lines are kept between
--- declarations, at most one.
+-- the end of the line of the anchor before it in its declaration (before
+-- the declaration's first anchor, it goes before the declaration). Blank
+-- lines are kept between declarations, at most one.
 --
 -- The canonical spellings (D341): parameters for leading lambdas (`f x = e`),
 -- `f . g` for `compose f g`, integers in decimal, floats as written.
@@ -111,7 +112,7 @@ addAfter x (notes t i a) = notes t i (a ++ (x ∷ []))
 data Line : Set where
   line-empty  : Line          -- nothing on the line yet
   line-code   : Line          -- a token on it
-  line-text   : String → Line -- only a comment on it
+  line-text   : List String → Line -- only comments on it (in order)
 
 -- What waits for its line end: a comment (and whether it is a top note), or
 -- a blank line.
@@ -123,6 +124,7 @@ record W : Set where
   constructor walker
   field
     k        : ℕ              -- the next anchor's index
+    here     : Bool           -- an anchor since the last line that starts a declaration
     ln       : Line           -- the current line
     held     : List Held      -- in order
     breaks   : ℕ              -- line ends since the last thing on a line
@@ -149,16 +151,16 @@ settleAt k (held-blank ∷ hs)           t = settleAt k hs (addTo k (addTop note
 
 -- Settle what is held at the next anchor, in order.
 settle : W → W
-settle (walker k ln hs b t) = walker k ln [] b (settleAt k (promote hs) t)
+settle (walker k h ln hs b t) = walker k h ln [] b (settleAt k (promote hs) t)
 
 -- A blank line before what comes next (two line ends since the last thing).
 blankBefore : ℕ → List Held → List Held
 blankBefore b hs = if 2 <ᵇ suc b then hs ++ (held-blank ∷ []) else hs
 
 lineEnd : Bool → W → W
-lineEnd top (walker k (line-text c) hs b t) = walker k line-empty (hs ++ (held-comment c top ∷ [])) 1 t
-lineEnd top (walker k line-empty hs b t)    = walker k line-empty hs (suc b) t
-lineEnd top (walker k line-code hs b t)     = walker k line-empty hs (suc b) t
+lineEnd top (walker k h (line-text cs) hs b t) = walker k h line-empty (hs ++ map (λ c → held-comment c top) cs) 1 t
+lineEnd top (walker k h line-empty hs b t)    = walker k h line-empty hs (suc b) t
+lineEnd top (walker k h line-code hs b t)     = walker k h line-empty hs (suc b) t
 
 -- A line end (`TNewline`, and the end of the text), or another token.
 isLineEnd : Token → Bool
@@ -167,24 +169,28 @@ isLineEnd TEOF     = true
 {-# CATCHALL #-}
 isLineEnd _        = false
 
--- A comment before code on its line (a block comment) stands before it, in place.
+-- Comments before code on their line (block comments) stand before it, in place.
 pending : Line → List Held → List Held
-pending (line-text c) hs = hs ++ (held-comment c false ∷ [])
+pending (line-text cs) hs = hs ++ map (λ c → held-comment c false) cs
 pending line-empty    hs = hs
 pending line-code     hs = hs
 
+-- (a line end `TNewline` starts a declaration)
 stepTok : W → Token → Bool → W
-stepTok σ x true = lineEnd true σ
-stepTok (walker k ln hs b t) x false = next (settle (walker k ln (pending ln (blankBefore b hs)) b t))
+stepTok (walker k _ ln hs b t) x true = lineEnd true (walker k false ln hs b t)
+stepTok (walker k h ln hs b t) x false = next (settle (walker k h ln (pending ln (blankBefore b hs)) b t))
   where
     next : W → W
-    next (walker k′ _ _ _ t′) = walker (if isAnchor x then suc k′ else k′) line-code [] 0 t′
+    next (walker k′ h′ _ _ _ t′) =
+      walker (if isAnchor x then suc k′ else k′) (h′ ∨ isAnchor x) line-code [] 0 t′
 
+-- A comment after code ends the line of the last anchor; before the
+-- declaration's first anchor, it stands before the declaration.
 stepComment : W → String → W
-stepComment (walker k line-code hs b t) c =
-  walker k line-code hs b (if k ≡ᵇ 0 then addTo 0 (addTop (note-comment c)) t else addTo (k ∸ 1) (addAfter c) t)
-stepComment (walker k line-empty hs b t) c = walker k (line-text c) (blankBefore b hs) 0 t
-stepComment (walker k (line-text c′) hs b t) c = walker k (line-text (c′ ++ˢ " " ++ˢ c)) hs b t
+stepComment (walker k h line-code hs b t) c =
+  walker k h line-code hs b (if h then addTo (k ∸ 1) (addAfter c) t else addTo k (addTop (note-comment c)) t)
+stepComment (walker k h line-empty hs b t) c = walker k h (line-text (c ∷ [])) (blankBefore b hs) 0 t
+stepComment (walker k h (line-text cs) hs b t) c = walker k h (line-text (cs ++ (c ∷ []))) hs b t
 
 step : W → Item → W
 step σ (tok x)     = stepTok σ x (isLineEnd x)
@@ -202,7 +208,7 @@ finish σ = W.acc (settle (lineEnd true σ))
 
 -- | The trivia of a text's items.
 trivia : List Item → Trivia
-trivia is = finish (walkItems (walker 0 line-empty [] 0 []) is)
+trivia is = finish (walkItems (walker 0 false line-empty [] 0 []) is)
 
 
 lookupNotes : ℕ → Trivia → Notes

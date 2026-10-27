@@ -35,7 +35,7 @@ d_formatParsed_4 v0 v1
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
              (coe
-                MAlonzo.Code.Once.Format.Print.d_format_1160 (coe v2)
+                MAlonzo.Code.Once.Format.Print.d_format_1194 (coe v2)
                 (coe
                    MAlonzo.Code.Once.Format.Lex.d_lexItems_518
                    (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)))
