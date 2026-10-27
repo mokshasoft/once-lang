@@ -480,15 +480,15 @@ private
   pending-blank line-code  hs nt-code  bs = bs
 
   lineEnd-inv : ∀ top σ → InvW σ → InvW (lineEnd top σ)
-  lineEnd-inv top (walker k line-empty hs b t) (inv nt-empty h q) = inv nt-empty h q
-  lineEnd-inv top (walker k line-code hs b t)  (inv nt-code h q)  = inv nt-empty h q
+  lineEnd-inv top (walker k h′ line-empty hs b t) (inv nt-empty h q) = inv nt-empty h q
+  lineEnd-inv top (walker k h′ line-code hs b t)  (inv nt-code h q)  = inv nt-empty h q
 
   settle-inv : ∀ σ → InvW σ → All HB (W.held σ) → QuietT (W.acc (settle σ))
-  settle-inv (walker k ln hs b t) (inv _ _ q) h = settle-quiet k _ t (promote-blank hs h) q
+  settle-inv (walker k h′ ln hs b t) (inv _ _ q) h = settle-quiet k _ t (promote-blank hs h) q
 
   stepTok-inv : ∀ σ x b → InvW σ → InvW (stepTok σ x b)
-  stepTok-inv σ x true i = lineEnd-inv true σ i
-  stepTok-inv (walker k ln hs b t) x false (inv nt h q) =
+  stepTok-inv (walker k h′ ln hs b t) x true (inv nt h q) = lineEnd-inv true (walker k false ln hs b t) (inv nt h q)
+  stepTok-inv (walker k h′ ln hs b t) x false (inv nt h q) =
     inv nt-code [] (settle-quiet k _ t (promote-blank _ (pending-blank ln _ nt (blankBefore-blank b hs h))) q)
 
   step-inv : ∀ σ i → NoComment i → InvW σ → InvW (step σ i)
@@ -501,7 +501,7 @@ private
 
 -- | A text without comments leaves quiet trivia.
 trivia-quiet : ∀ is → All NoComment is → QuietT (trivia is)
-trivia-quiet is ns with walk-inv (walker 0 line-empty [] 0 []) is ns (inv nt-empty [] [])
+trivia-quiet is ns with walk-inv (walker 0 false line-empty [] 0 []) is ns (inv nt-empty [] [])
 ... | iv = settle-inv (lineEnd true (walkItems _ is)) (lineEnd-inv true _ iv) (InvW.held (lineEnd-inv true _ iv))
 
 ------------------------------------------------------------------------
