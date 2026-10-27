@@ -189,3 +189,51 @@ private
         (trans (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false)
                  (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))
           (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T)) (promote-top _ tp))))
+
+private
+  heldG-top : ∀ H₀ G tb → All (_≡ held-blank) H₀ → All (_≡ held-blank) tb → All TopH (H₀ ++ heldOf G ++ tb)
+  heldG-top H₀ G tb p₀ pb = all-++ H₀ _ (blanks-top H₀ p₀) (all-++ (heldOf G) tb (heldOf-top G) (blanks-top tb pb))
+
+  lf-none : ∀ og c k H₀ T → EntryT og k H₀ T → LeadFacts (st og c (just 0) []) k (H₀ ++ heldOf [] ++ []) T
+  lf-none og c k H₀ T en =
+    refl , refl , λ x ex → trans (proj₂ en x ex)
+      (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T)) (sym (++-identityʳ H₀)))
+
+-- | The comments before a declaration, in the first pass: the declaration's
+-- first token settles each line written, the blank lines between runs, and
+-- the blank lines around them.
+lead-facts : ∀ prev ns₁ og c k H₀ T → EntryT og k H₀ T → All (_≡ held-blank) H₀
+           → ∃[ tb ] All (_≡ held-blank) tb
+             × LeadFacts (layout 0 false (lead prev ns₁) (st og c (just 0) [])) k (H₀ ++ heldOf (groups ns₁ [] false) ++ tb) T
+lead-facts (just p) ns₁ og c k H₀ T en p₀ =
+  [] , [] , subst (λ σ → LeadFacts σ k (H₀ ++ heldOf (groups ns₁ [] false) ++ []) T) (sym (runs-layout 0 false ns₁ [] false _))
+              (go (groups ns₁ [] false) (groups-ne-all ns₁ [] false))
+  where
+    go : ∀ G → All NE G → LeadFacts (layoutG 0 false G (st og c (just 0) [])) k (H₀ ++ heldOf G ++ []) T
+    go []       []  = lf-none og c k H₀ T en
+    go (R ∷ Rs) nes with runs-walk (R ∷ Rs) og k H₀ T nes (proj₁ en) refl
+    ... | r , H , e , q =
+      subst (λ σ → LeadFacts σ k (H₀ ++ heldOf (R ∷ Rs) ++ []) T) (sym (layoutG-out false (R ∷ Rs) og c nes))
+        (refl , refl , λ x ex →
+          trans (runs-tok x (gOut (R ∷ Rs) og) k r H T ex e (subst (All TopH) (sym q) (all-++ H₀ _ (blanks-top H₀ p₀) (heldOf-top (R ∷ Rs)))))
+            (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T))
+              (trans q (cong (H₀ ++_) (sym (++-identityʳ (heldOf (R ∷ Rs))))))))
+lead-facts nothing ns₁ og c k H₀ T en p₀ = go (groups ns₁ [] false) refl (groups-ne-all ns₁ [] false)
+  where
+    go : ∀ G → groups ns₁ [] false ≡ G → All NE G
+       → ∃[ tb ] All (_≡ held-blank) tb × LeadFacts (layout 0 false (lead nothing ns₁) (st og c (just 0) [])) k (H₀ ++ heldOf G ++ tb) T
+    go [] eG _ rewrite trans (has-of ns₁) (cong notNull eG) = [] , [] , lf-none og c k H₀ T en
+    go (R ∷ Rs) eG nes with runs-walk (R ∷ Rs) og k H₀ T nes (proj₁ en) refl | gOut-lnl R Rs og nes
+    ... | r , H , e , q | Y , eY rewrite trans (has-of ns₁) (cong notNull eG) =
+      held-blank ∷ [] , refl ∷ [] ,
+      subst (λ σ → LeadFacts (layout 0 false blank σ) k (H₀ ++ heldOf (R ∷ Rs) ++ held-blank ∷ []) T)
+        (sym (trans (runs-layout 0 false ns₁ [] false _) (trans (cong (λ G → layoutG 0 false G (st og c (just 0) [])) eG)
+                                                                  (layoutG-out false (R ∷ Rs) og c nes))))
+        (subst (λ O → LeadFacts (layout 0 false blank (st O (Once.Format.Proof.Lockstep.colOf (R ∷ Rs) c) (just 0) [])) k (H₀ ++ heldOf (R ∷ Rs) ++ held-blank ∷ []) T) (sym eY)
+          (refl , refl , λ x ex →
+            trans (cong (λ O → proj₁ (Φ (lt x ∷ lind 0 ∷ lnl ∷ O))) (sym eY))
+              (trans (runs-blank-tok x (gOut (R ∷ Rs) og) k r H T ex e
+                        (subst (λ hs → All TopH (hs ++ held-blank ∷ [])) (sym q)
+                          (all-++ (H₀ ++ heldOf (R ∷ Rs)) _ (all-++ H₀ _ (blanks-top H₀ p₀) (heldOf-top (R ∷ Rs))) (tt ∷ []))))
+                (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T))
+                  (trans (cong (_++ held-blank ∷ []) q) (++-assoc H₀ (heldOf (R ∷ Rs)) (held-blank ∷ [])))))))
