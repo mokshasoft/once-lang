@@ -225,7 +225,8 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **`once fmt` is proved, outside the compile path**: formatting keeps the
   module (`roundtrip`) and hence the apex's meaning (`format-denotes`); a
   text without comments is formatted by its module alone; formatting is
-  idempotent whatever the comments; the apex carries these
+  idempotent whatever the comments and keeps the comments' words in order;
+  the apex carries these
   (`CertifiedBuild.formatter`).
   The layout lexes as its tokens by construction (`apart`, line comments,
   own digits). (D342)
