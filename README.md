@@ -6,7 +6,7 @@
 
 Once is a programming language where programs are **natural transformations** from category theory. This mathematical foundation provides:
 
-- **Substrate independence** - Same code compiles to C, Rust, JavaScript, WASM, bare metal
+- **Substrate independence** - Same code compiles to every target; today native x86-64, x86-32 and RISC-V 64
 - **No garbage collector required** - Linear code (quantity 1) needs no GC
 - **Formal verification** - ~12 generators, graded categorical laws, [partially verified in Agda](docs/formal/what-is-proven.md)
 - **Memory safety** - Quantitative types (QTT) track resource usage at compile time
@@ -16,7 +16,7 @@ Once program:     parseJson : String^1 → (Json + Error)^1
                         ↓
 Categorical IR:   composition of ~12 primitive morphisms
                         ↓
-Any target:       C, Rust, JavaScript, WASM, Haskell, bare metal
+Any target:       native assembly (x86-64, x86-32, RISC-V 64), linked by the compiler
 ```
 
 ## The Core Idea
