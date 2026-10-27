@@ -19583,3 +19583,10 @@ plan 0.93's S1–S6, which needs the callee-frame fact that plan 0.124 supplies.
 Proof track: 0.124, then 0.125, which closes `cata-correct` and replaces the empty `BlockRunsHyp` ×3. Memory
 track, in parallel: 0.123 A+C, then 0.126. The tracks meet at 0.124's correspondence step, which uses whichever
 room fact exists then.
+
+### Correction to D341 (same day)
+"The relation spike was deleted at the island pass" is wrong: `745b77de4` restored it (2026-10-11), and it is
+tracked, red, on `backstop.islands`. Plan 0.125 S0 then measured it: it is built on the pre-0.105 trace model
+(a total `valueT`), so it is not revived. Plan 0.125 keeps today's computation half
+(`MachineRefinesObsF`/`ValueRealized`/`CalleeRun`) and makes only `ValidAtWF` a function on the type, with
+behaviour in the `⇛` and `ν` cases (0.125 §2a). Plan 0.124 S0 chose depth-tagged frames (0.124 §3a).
