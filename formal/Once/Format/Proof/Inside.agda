@@ -799,7 +799,7 @@ hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lo
 -- The declaration's skeleton, in step
 ------------------------------------------------------------------------
 
-open Sk.Same tv₁ tv₂ using (s-leaf; s-hole; s-<>; s-nest; s-group) renaming (Sk to Skel)
+open Sk.Same tv₁ tv₂ using (s-leaf; s-hole; s-<>; s-nest; s-group; Starts; st-tok; st-hole; st-<>; st-nest; st-group) renaming (Sk to Skel)
 
 -- | A part of the declaration, in step.
 sk-sim : ∀ {k k′ d₁ d₂} → Skel k k′ d₁ d₂ → ∀ i f σ₁ σ₂ kb n → kb + n ≡ k → 1 ≤ i → kd ≤ kb
@@ -833,14 +833,6 @@ record Start (σ : St) (T′ : Trivia) : Set where
     s-inner : ∀ j → kd ≤ j → Notes.inner (lookupNotes j T′) ≡ []
     s-top   : ∀ j → kd < j → Notes.top (lookupNotes j T′) ≡ []
     s-topk  : Notes.top (lookupNotes kd T′) ≡ Tkd
-
--- | Where the declaration's skeleton starts: with a token or an anchor.
-data Starts : ∀ {k k′ d₁ d₂} → Skel k k′ d₁ d₂ → Set where
-  st-tok   : ∀ {k t p} → Starts (s-leaf {k} {tk t} p)
-  st-hole  : ∀ {k x p} → Starts (s-hole {k} {x} p)
-  st-<>    : ∀ {k k′ k″ a₁ a₂ b₁ b₂} {s₁ : Skel k k′ a₁ a₂} {s₂ : Skel k′ k″ b₁ b₂} → Starts s₁ → Starts (s-<> s₁ s₂)
-  st-nest  : ∀ {k k′ n a b} {s : Skel k k′ a b} → Starts s → Starts (s-nest {n = n} s)
-  st-group : ∀ {k k′ a b} {s : Skel k k′ a b} → Starts s → Starts (s-group s)
 
 private
   -- a token at the start of the declaration's line

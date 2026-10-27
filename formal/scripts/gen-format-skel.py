@@ -208,6 +208,37 @@ TAIL=r'''
   ind-pdecl : ∀ d → Ind (pdecl d)
   ind-pdecl d = ind-gn (ind-body d)
 
+  -- | Where a skeleton starts: with a token or an anchor.
+  data Starts : ∀ {k k′ d₁ d₂} → Sk k k′ d₁ d₂ → Set where
+    st-tok   : ∀ {k t p} → Starts (s-leaf {k} {tk t} p)
+    st-hole  : ∀ {k x p} → Starts (s-hole {k} {x} p)
+    st-<>    : ∀ {k k′ k″ a₁ a₂ b₁ b₂} {s₁ : Sk k k′ a₁ a₂} {s₂ : Sk k′ k″ b₁ b₂} → Starts s₁ → Starts (s-<> s₁ s₂)
+    st-nest  : ∀ {k k′ n a b} {s : Sk k k′ a b} → Starts s → Starts (s-nest {n = n} s)
+    st-group : ∀ {k k′ a b} {s : Sk k k′ a b} → Starts s → Starts (s-group s)
+
+  starts-word : ∀ s k → Starts (Ind.sk (ind-word s) k)
+  starts-word s k = pick (s Data.String.== "compose") refl
+    where
+      pick : ∀ b e → Starts (Ind.sk (ind-word-pick s b e) k)
+      pick true  e = st-tok
+      pick false e = st-hole
+
+  starts-name : ∀ x k → Starts (Ind.sk (ind-name x) k)
+  starts-name x k = pick (isOperator x)
+    where
+      pick : ∀ b → Starts (Ind.sk (ind-if b (ind-pure ⊕ⁱ ind-opToks (toList x) ⊕ⁱ ind-pure) (ind-word x)) k)
+      pick true  = st-<> st-tok
+      pick false = starts-word x k
+
+  -- | Every declaration's skeleton starts with a token or an anchor.
+  starts-body : ∀ d k → Starts (Ind.sk (ind-body d) k)
+  starts-body (DImport (mkImport p nothing))  k = st-<> (starts-word "import" k)
+  starts-body (DImport (mkImport p (just a))) k = st-<> (starts-word "import" k)
+  starts-body (DTypeAlias x ps A)             k = st-<> (starts-word "type" k)
+  starts-body (DSignature x A)                k = st-<> (starts-word "signature" k)
+  starts-body (DTypeSig x A)                  k = st-<> (starts-name x k)
+  starts-body (DFunDef x e)                   k = st-<> (starts-name x k)
+
 ------------------------------------------------------------------------
 -- Comments take no room
 ------------------------------------------------------------------------
