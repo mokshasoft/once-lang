@@ -1,6 +1,15 @@
 # seL4 Echo Server Example
 
-This example demonstrates running Once code on the seL4 microkernel.
+> **Status (2026-10-27): parked; this example does not run Once code.** The flake's default package
+> builds the hand-written C in `once-echo/src/` (that C prints "All tests passed"). The `.once`
+> programs here predate the current language (`Eff`, loops by general recursion) and do not
+> type-check; the rootserver never gives its threads an entry point or a stack; and there is no seL4
+> Host yet to give a Once root task its stack. The C backend this README describes below was never
+> finished and is removed (D341). Making Once run on seL4 is
+> [plan 0.127](../../plans/0.127-sel4-runs-once.md). The rest of this README describes the intended
+> design, not what builds today.
+
+This example is meant to demonstrate running Once code on the seL4 microkernel.
 
 ## Overview
 
@@ -119,15 +128,15 @@ Supported targets:
 - `x86_64` - x86-64 assembly (AT&T syntax for GNU assembler)
 - `arm64` - ARM64/AArch64 assembly
 - `riscv64` - RISC-V 64-bit assembly
-- `c` - C code (default, most complete)
+
+(There is no C target: D341.)
 
 The native targets use interpretation files with matching extensions:
 - `-I:x86_64 I.SeL4.IPC` uses `Strata/Interpretations/SeL4/IPC.x86_64`
 - `-I:C I.SeL4.IPC` uses `Strata/Interpretations/SeL4/IPC.c`
 
-**Note:** The native assembly generators support let-bindings, integer
-constants, and function calls. For full language support (strings, complex
-closures), use the C backend.
+**Note:** `-I:C` and the `.c` interpretation files belong to the removed C
+backend.
 
 ## Running in QEMU
 
@@ -196,7 +205,7 @@ The Once seL4 interpretation provides these primitives:
 |-----------|----------|
 | seL4 kernel | Yes (by seL4 project) |
 | Once type system | Yes (in Agda) |
-| Rootserver logic | Yes (via Once types) |
+| Rootserver logic | Not yet (the Once rootserver does not compile; plan 0.127) |
 | IPC assembly glue | No (trusted, matches seL4 API) |
 
 The assembly glue code in the interpretation files is equivalent to the

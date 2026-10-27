@@ -10,7 +10,8 @@
 #   make x86_32         - build and run the programs on x86-32
 #   make riscv64        - cross-build and run under qemu-riscv64
 #                         (needs riscv64-unknown-linux-gnu-{as,ld,objcopy}, e.g. `nix develop`)
-#   make seL4           - Build and run seL4 examples (requires nix)
+#   make seL4           - Build and run the seL4 echo test (requires nix). Parked: it
+#                         runs hand-written C, not Once (plan 0.127); not part of `make`
 #   make clean          - Remove build artifacts
 #
 # The compiler is `once` on PATH; override with e.g. `make ONCE=../result/bin/once`.
