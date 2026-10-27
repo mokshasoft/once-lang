@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Name using (canonical)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
 open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group;
   indent; flatWidth)
 open import Once.Format.Comment using (commentRun; commentLinesDoc; commentLines; classify; prose; verbatim; lineDoc)
@@ -60,10 +60,18 @@ anchorTok (TFloat _ _ _)  = true
 {-# CATCHALL #-}
 anchorTok _               = false
 
--- | No anchor and no comment: what the printer writes between anchors.
+-- | The line ends among the tokens (the printer writes none).
+lineEndTok : Token → Bool
+lineEndTok TNewline = true
+lineEndTok TEOF     = true
+{-# CATCHALL #-}
+lineEndTok _        = false
+
+-- | No anchor, no line end and no comment: what the printer writes between
+-- anchors.
 plain : Doc → Bool
 plain empty      = true
-plain (tk x)     = not (anchorTok x)
+plain (tk x)     = not (anchorTok x) ∧ not (lineEndTok x)
 plain sp         = true
 plain line       = true
 plain (a <> b)   = plain a ∧ plain b
@@ -174,7 +182,7 @@ module Same (tv₁ tv₂ : Trivia) where
   ind-word s = pick (s Data.String.== "compose") refl
     where
       pick : ∀ b → (s Data.String.== "compose") ≡ b → Ind (if b then t (TWord s) else anchor (TWord s))
-      pick true  e = ind-plain (subst (λ b → T (not (not b))) (sym e) tt)
+      pick true  e = ind-plain (subst (λ b → T (not (not b) ∧ true)) (sym e) tt)
       pick false e = ind-anchor (TWord s) {subst (λ b → T (not b)) (sym e) tt}
 
 '''
