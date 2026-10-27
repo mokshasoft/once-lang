@@ -26,7 +26,7 @@
 
 module Once.Format.Doc where
 
-open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; replicate; reverse; concatMap; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤ᵇ_)
@@ -94,9 +94,9 @@ equals _       = false
 
 -- After a comment's `--` (one is added when it has none).
 body : List Char → List Char
-body ('-' ∷ '-' ∷ cs) = cs
+body (c ∷ d ∷ cs) = if does (c Ch.≟ '-') ∧ does (d Ch.≟ '-') then cs else ' ' ∷ c ∷ d ∷ cs
 {-# CATCHALL #-}
-body cs               = ' ' ∷ cs
+body cs           = ' ' ∷ cs
 
 -- The text is written as lexemes: a token, a blank, a line end, the
 -- indentation of a line, a comment.
