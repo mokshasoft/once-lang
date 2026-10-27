@@ -635,3 +635,17 @@ trivia-tops is =
     τ = endOf σ
     b : BInv is σ
     b = walkB [] w₀ is (binv refl (λ j → inj₁ refl) (λ _ → inj₁ refl))
+
+-- | The walk counts the anchors among a text's tokens.
+kEnd-anchors : ∀ is → kEnd is ≡ anchorsP (tokensOf is)
+kEnd-anchors is = BInv.bk (walkB [] w₀ is (binv refl (λ j → inj₁ refl) (λ _ → inj₁ refl)))
+
+-- | Hoisting keeps an anchor's words; a note's words, as comments.
+slotW-hoist : ∀ j k t → slotW (lookupNotes j (hoist k t)) ≡ slotW (lookupNotes j t)
+slotW-hoist = hoist-slot
+
+slotW-up : ∀ n → slotW (up n) ≡ slotW n
+slotW-up = slot-up
+
+MNotes-map-nc : ∀ cs → MNotes (map note-comment cs) ≡ concatMap Mn cs
+MNotes-map-nc = MNotes-nc
