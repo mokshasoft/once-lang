@@ -1,31 +1,25 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- let-test.once: Test let bindings
+-- let-test.once: let bindings
 --
--- Demonstrates let expression syntax.
---
--- Single binding:
 --   let x = e in body
 --
--- Multiple bindings (semicolon separated, desugars to nested lets):
---   let x = e1; y = e2 in body
+-- Several bindings nest: `let a = e1 in let b = e2 in body`.
 --
--- Build and run:
---   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/let-test.once -o ../.build/let-test
---   ../.build/let-test
+-- single 4 = 5 * 5 = 25; multiple 5 = 10 + 13 = 23; exits with 48.
+--
+-- Build and run (from the repository root):
+--   once build examples/let-test.once -o let-test
+--   ./let-test; echo $?        # 48
 
-import I.Linux.File as F
+import I.Linux.Syscalls as S
 
--- Test: single binding
-test_single : Eff Unit Unit
-test_single = let msg = "Single binding works!" in effCompose (println@F) (pure msg)
+single : Int -> Int
+single x = let y = x + 1 in y * y
 
--- Test: multiple bindings (semicolon separated)
--- Later bindings can reference earlier ones
-test_multi : Eff Unit Unit
-test_multi = let greeting = "Hello"; target = "Multiple bindings work!" in effCompose (println@F) (pure target)
+multiple : Int -> Int
+multiple x = let a = x * 2 in let b = a + 3 in a + b
 
--- Main runs the multi-binding test
-main : Eff Unit Unit
-main = test_multi
+main : Act Unit Void
+main = exit@S (single 4 + multiple 5)

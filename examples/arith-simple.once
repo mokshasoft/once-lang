@@ -1,18 +1,14 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- arith-simple.once: Simple arithmetic test for --arith flag
+-- arith-simple.once: integer arithmetic
 --
 -- Demonstrates infix operators with correct precedence.
 -- Computes: 3 + 5 * 2 = 3 + 10 = 13 and exits with that code.
 --
--- Build and run:
---   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/arith-simple.once -o ../.build/arith-simple
---   ../.build/arith-simple; echo "Exit code: $?"
---
--- With --arith flag (uses native arithmetic compiler):
---   cd compiler && stack exec -- once build --exe --arith --strata ../Strata ../examples/arith-simple.once -o ../.build/arith-simple
---   ../.build/arith-simple; echo "Exit code: $?"
+-- Build and run (from the repository root):
+--   once build examples/arith-simple.once -o arith-simple
+--   ./arith-simple; echo $?        # 13
 
 import I.Linux.Syscalls as S
 

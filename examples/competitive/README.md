@@ -1,59 +1,45 @@
 # Competitive Programming Examples in Once
 
-This directory contains implementations of classic competitive programming problems in Once, demonstrating the language's approach to algorithms.
+Classic problems, written the way Once writes algorithms: as folds over data, not loops. Once has no
+strings yet, so each program reports its answer as its exit code.
 
-## Prerequisites
+| File | Problem | Exit code |
+|---|---|---|
+| `fizzbuzz.once` | How many of 1..15 print Fizz, Buzz or FizzBuzz | 7 |
 
-These examples require the arithmetic and control primitives:
-- `Strata/Interpretations/Linux/arith.once` - Integer arithmetic
-- `Strata/Interpretations/Linux/control.once` - Branching primitives
-
-## Classic Problems
-
-### 1. GCD (Greatest Common Divisor)
-**Category**: Number Theory
-**Technique**: Euclidean Algorithm, Recursion
-
-### 2. Factorial
-**Category**: Basic Recursion
-**Technique**: Recursive computation via Fix
-
-### 3. Fibonacci
-**Category**: Dynamic Programming
-**Technique**: Recursive with memoization (or iterative)
-
-### 4. FizzBuzz
-**Category**: Basic Branching
-**Technique**: Integer modulo and conditional output
+```bash
+once build examples/competitive/fizzbuzz.once -o fizzbuzz
+./fizzbuzz; echo $?
+```
 
 ## Once's Approach to Algorithms
 
-Once is a categorical language - it expresses computation through composition of morphisms rather than imperative statements. This leads to some interesting patterns:
+Once is a categorical language: computation is composition of morphisms rather than statements.
 
 ### Branching
-Instead of `if-then-else`, Once uses sum types and `case`:
+There is no `if-then-else`. A comparison is a `Bool = Unit + Unit`, and `case` takes it apart:
 ```once
--- Branch on whether n is zero
--- ifZero : Int -> Unit + Unit
-result = case (ifZero n) handleZero handleNonZero
+bit : Unit + Unit -> Int
+bit = case no yes          -- no _ = 0, yes _ = 1
+
+hit i = bit (i % 3 == 0) + bit (i % 5 == 0) - bit (i % 15 == 0)
 ```
 
 ### Recursion
-Once uses Fix types and fold/unfold for recursion:
+There is no general recursion. Data is an initial algebra (`Mu`) and is consumed by its fold (`cata`),
+which always terminates:
 ```once
--- Natural numbers as Fix (Unit + X)
-type Nat = Fix (Unit + Nat)
+-- Natural numbers: Mu (K Unit + Id)
+zero : Mu (K Unit + Id)
+zero = In (inl unit)
 
-zero : Nat
-zero = fold (inl terminal)
+suc : Mu (K Unit + Id) -> Mu (K Unit + Id)
+suc n = In (inr n)
 
-succ : Nat -> Nat
-succ n = fold (inr n)
+-- A fold: one case for zero, one for a successor
+count : Mu (K Unit + Id) -> Int * Int
+count = cata (case start step)
 ```
 
 ### No Mutation
-All computation is pure - values flow through function composition, never modified in place. This aligns well with functional algorithm implementations.
-
-## Performance Notes
-
-Once compiles to C, so performance should be comparable to C for equivalent algorithms. The categorical abstraction is compile-time only; at runtime it's just function calls and data structures.
+All computation is pure: values flow through composition and are never modified in place.

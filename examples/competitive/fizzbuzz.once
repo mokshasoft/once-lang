@@ -1,31 +1,56 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- fizzbuzz.once: FizzBuzz in Once (point-free style)
+-- fizzbuzz.once: FizzBuzz, counted
 --
--- Once is a categorical language - no named parameters.
--- Functions are compositions of morphisms.
+-- Once has no strings yet, so instead of printing Fizz/Buzz this counts how
+-- many of 1..15 would print one (divisible by 3 or by 5: 3 5 6 9 10 12 15)
+-- and exits with the count, 7.
 --
--- This simplified version demonstrates:
---   - Module imports (Arith, Control, File)
---   - Integer comparisons via ifZero
---   - Conditional output via case
+-- Demonstrates:
+--   - a natural number as an initial algebra, `Mu (K Unit + Id)`
+--   - a fold over it (`cata`) whose carrier is a pair (index, count)
+--   - comparisons as `Bool = Unit + Unit`, read back with `case`
+--   - integer `%`
 --
--- Build:
---   cd compiler && stack exec -- once build --exe \
---     --strata ../Strata \
---     ../examples/competitive/fizzbuzz.once -o ../.build/fizzbuzz
---   gcc -o ../.build/fizzbuzz ../.build/fizzbuzz.c
---   ../.build/fizzbuzz
+-- Build and run (from the repository root):
+--   once build examples/competitive/fizzbuzz.once -o fizzbuzz
+--   ./fizzbuzz; echo $?        # 7
 
-import I.Linux.File as F
-import I.Math.Int as A
-import I.Linux.Control as C
 import I.Linux.Syscalls as S
 
--- For now, just verify imports compile and run
--- Full FizzBuzz would need integer literals in expressions
--- which requires extending the IR/codegen
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+-- 1 if the comparison holds, else 0
+bit : Unit + Unit -> Int
+bit = case no yes
+
+-- 1 if i is a Fizz, a Buzz or a FizzBuzz
+hit : Int -> Int
+hit i = bit (i % 3 == 0) + bit (i % 5 == 0) - bit (i % 15 == 0)
+
+-- The algebra: zero gives (0, 0); a successor moves to the next i and counts it
+start : Unit -> Int * Int
+start _ = (0, 0)
+
+step : Int * Int -> Int * Int
+step p = (fst p + 1, snd p + hit (fst p + 1))
+
+count : Mu (K Unit + Id) -> Int * Int
+count = cata (case start step)
+
+zero : Mu (K Unit + Id)
+zero = In (inl unit)
+
+suc : Mu (K Unit + Id) -> Mu (K Unit + Id)
+suc n = In (inr n)
+
+fifteen : Mu (K Unit + Id)
+fifteen = suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))
 
 main : Act Unit Void
-main = exit0@S
+main = exit@S (snd (count fifteen))

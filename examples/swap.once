@@ -1,8 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- swap.once
--- Once "hello world" - a pure library with C interface
+-- swap.once: a pure library (no `main`)
 --
 -- Demonstrates:
 --   - Products (a * b)
@@ -11,7 +10,14 @@
 --   - Polymorphism (a, b are type variables — LOWERCASE; uppercase names like
 --     Int/Unit are concrete types)
 --
--- No primitives - pure natural transformations only.
+-- A polymorphic definition has no code of its own; it is compiled where it is
+-- used at a concrete type, here `swapInts`.
+--
+-- Build (from the repository root):
+--   once build examples/swap.once -o swap      # swap.s
 
 swap : a * b -> b * a
 swap = pair snd fst
+
+swapInts : Int * Int -> Int * Int
+swapInts = swap

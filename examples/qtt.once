@@ -1,0 +1,36 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- qtt.once: quantities (QTT)
+--
+-- A parameter's type can carry how often it is used: `A^1` exactly once
+-- (linear), `A^0` never (erased), plain `A` any number of times. `once check`
+-- enforces them: `duplicate` below with `Unit^1 -> (Unit * Unit)` is rejected
+-- ("Parameter 'x' used with quantity ω but declared with quantity 1").
+--
+-- Check (from the repository root):
+--   once check examples/qtt.once
+
+-- Linear: x is used exactly once
+linearId : Unit^1 -> Unit
+linearId = \x -> x
+
+-- Erased: y is never used
+first : Unit -> Unit^0 -> Unit
+first = \x -> \y -> x
+
+-- Unrestricted (the default): x is used twice
+duplicate : Unit -> (Unit * Unit)
+duplicate = \x -> (x, x)
+
+-- Both linear parameters used once each
+both : Unit^1 -> Unit^1 -> (Unit * Unit)
+both = \x -> \y -> (x, y)
+
+-- Composition: f, g and x each used once
+compose3 : (Unit -> Unit) -> (Unit -> Unit) -> Unit -> Unit
+compose3 = \f -> \g -> \x -> f (g x)
+
+-- A let binding
+viaLet : Unit -> Unit
+viaLet = \x -> let y = x in y

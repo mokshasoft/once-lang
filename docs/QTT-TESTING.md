@@ -47,10 +47,8 @@ Phase 3.7 QTT integration is complete and working. The compiler now uses the MAl
 
 ### Test Files Created
 
-- `examples/qtt-simple.once` - Identity function ✅
-- `examples/qtt-const.once` - Constant function (Haskell: ❌, MAlonzo: ✅)
-- `examples/qtt-use-both.once` - Uses both params ✅
-- `examples/qtt-duplicate.once` - Duplicates param (Haskell: ❌, MAlonzo: ✅ with Many)
+- `examples/qtt.once` - one file for all four (identity, constant, uses both, duplicates), with
+  the quantities written out (`Unit^1`, `Unit^0`); checked by `QttSpec`
 
 ## Type Syntax and Defaults
 

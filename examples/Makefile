@@ -1,98 +1,71 @@
 # Makefile for Once example programs
 #
-# This Makefile builds and tests example programs using the Once compiler.
-# Run from the examples/ directory.
+# Builds every example and checks what it does. Once has no strings yet, so a
+# program is observed by its exit code; each one's expected code is below.
 #
-# Usage:
-#   make                - Build and run all Linux tests (C + native)
-#   make c              - Build and run C backend tests
-#   make native         - Build and run native x86_64 tests
-#   make native-qemu    - Build and run native arm64/riscv64 tests (requires qemu)
+# Usage (from examples/):
+#   make                - check, then build and run on x86_64 and x86_32
+#   make check          - type-check every example; build the libraries
+#   make x86_64         - build and run the programs on x86-64
+#   make x86_32         - build and run the programs on x86-32
+#   make riscv64        - cross-build and run under qemu-riscv64
+#                         (needs riscv64-unknown-linux-gnu-{as,ld,objcopy}, e.g. `nix develop`)
 #   make seL4           - Build and run seL4 examples (requires nix)
-#   make full           - Run all tests including seL4
 #   make clean          - Remove build artifacts
+#
+# The compiler is `once` on PATH; override with e.g. `make ONCE=../result/bin/once`.
 
-.PHONY: all c native native-qemu seL4 full clean
+.PHONY: all check x86_64 x86_32 riscv64 seL4 clean
 
-# Get absolute path to examples directory
+ONCE ?= once
+
 EXAMPLES_DIR := $(shell pwd)
 REPO_ROOT := $(EXAMPLES_DIR)/..
+BUILD := $(REPO_ROOT)/.build/examples
 
-# Build directory
-BUILD := $(REPO_ROOT)/.build
+# program:expected-exit-code
+PROGRAMS := hi:0 hello:42 arith-simple:13 let-test:48 competitive/fizzbuzz:7
 
-# Strata path
-STRATA := $(REPO_ROOT)/Strata
+# Type-checked only (no `main`); the libraries are also built to assembly
+CHECKED := qtt categorical swap
+LIBRARIES := categorical swap
 
-# Once compiler (run from compiler directory)
-ONCE := cd $(REPO_ROOT)/compiler && cabal run --verbose=0 once --
+RISCV_ENV := AS=riscv64-unknown-linux-gnu-as LD=riscv64-unknown-linux-gnu-ld \
+             OBJCOPY=riscv64-unknown-linux-gnu-objcopy
 
-# Default target
-all: c native
-	@echo "All tests passed!"
+# $(call run-all,TARGET,ENV,RUNNER): build each program for TARGET and check its exit code
+define run-all
+	@mkdir -p $(BUILD)/$(1)
+	@for p in $(PROGRAMS); do \
+	  name=$${p%%:*}; want=$${p##*:}; out=$(BUILD)/$(1)/$$(basename $$name); \
+	  $(2) $(ONCE) build --target $(1) $(EXAMPLES_DIR)/$$name.once -o $$out > /dev/null || exit 1; \
+	  $(3) $$out; got=$$?; \
+	  if [ $$got -eq $$want ]; then echo "$(1) $$name: PASS ($$got)"; \
+	  else echo "$(1) $$name: FAIL (exit $$got, expected $$want)"; exit 1; fi; \
+	done
+endef
 
-# C backend tests
-c: $(BUILD)/hi-c $(BUILD)/hello-c $(BUILD)/let-test-c $(BUILD)/arith-test-c $(BUILD)/fizzbuzz-c
-	@echo "Running C backend tests..."
-	$(BUILD)/hi-c && echo "hi-c: PASS"
-	$(BUILD)/hello-c && echo "hello-c: PASS"
-	$(BUILD)/let-test-c && echo "let-test-c: PASS"
-	$(BUILD)/arith-test-c && echo "arith-test-c: PASS"
-	$(BUILD)/fizzbuzz-c && echo "fizzbuzz-c: PASS"
-	@echo "C backend tests passed!"
+all: check x86_64 x86_32
+	@echo "All examples passed!"
 
-$(BUILD)/hi-c: hi.once
-	@mkdir -p $(BUILD)
-	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-c
+check:
+	@mkdir -p $(BUILD)/lib
+	@for f in $(CHECKED); do \
+	  $(ONCE) check $(EXAMPLES_DIR)/$$f.once > /dev/null || exit 1; echo "check $$f: PASS"; \
+	done
+	@for f in $(LIBRARIES); do \
+	  $(ONCE) build --lib $(EXAMPLES_DIR)/$$f.once -o $(BUILD)/lib/$$f > /dev/null || exit 1; \
+	  echo "library $$f: PASS"; \
+	done
 
-$(BUILD)/hello-c: hello.once
-	@mkdir -p $(BUILD)
-	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/hello.once -o $(BUILD)/hello-c
+x86_64:
+	$(call run-all,x86_64,,)
 
-$(BUILD)/let-test-c: let-test.once
-	@mkdir -p $(BUILD)
-	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/let-test.once -o $(BUILD)/let-test-c
+x86_32:
+	$(call run-all,x86_32,,)
 
-$(BUILD)/arith-test-c: arith-test.once
-	@mkdir -p $(BUILD)
-	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/arith-test.once -o $(BUILD)/arith-test-c
-
-$(BUILD)/fizzbuzz-c: competitive/fizzbuzz.once
-	@mkdir -p $(BUILD)
-	$(ONCE) build --exe --target c --strata $(STRATA) $(EXAMPLES_DIR)/competitive/fizzbuzz.once -o $(BUILD)/fizzbuzz-c
-
-# Native x86_64 tests (runs on host)
-native: $(BUILD)/hi-x86_64
-	@echo "Running native x86_64 tests..."
-	$(BUILD)/hi-x86_64 && echo "hi-x86_64: PASS"
-	@echo "Native x86_64 tests passed!"
-
-$(BUILD)/hi-x86_64: hi.once
-	@mkdir -p $(BUILD)
-	$(ONCE) build --exe --target x86_64 --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-x86_64
-
-# Native cross-compilation tests (requires qemu + cross-compilers)
-# Run with: nix develop ..#default --command make native-qemu
-native-qemu: native-arm64 native-riscv64
-	@echo "Native cross-compilation tests passed!"
-
-native-arm64: $(BUILD)/hi-arm64
-	@echo "Running native ARM64 tests (via qemu)..."
-	qemu-aarch64 -L /usr/aarch64-linux-gnu $(BUILD)/hi-arm64 && echo "hi-arm64: PASS"
-
-native-riscv64: $(BUILD)/hi-riscv64
-	@echo "Running native RISC-V64 tests (via qemu)..."
-	qemu-riscv64 -L /usr/riscv64-linux-gnu $(BUILD)/hi-riscv64 && echo "hi-riscv64: PASS"
-
-$(BUILD)/hi-arm64: hi.once
-	@mkdir -p $(BUILD)
-	CC=aarch64-linux-gnu-gcc LD=aarch64-linux-gnu-ld \
-	$(ONCE) build --exe --target arm64 --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-arm64
-
-$(BUILD)/hi-riscv64: hi.once
-	@mkdir -p $(BUILD)
-	CC=riscv64-linux-gnu-gcc LD=riscv64-linux-gnu-ld \
-	$(ONCE) build --exe --target riscv64 --strata $(STRATA) $(EXAMPLES_DIR)/hi.once -o $(BUILD)/hi-riscv64
+riscv64:
+	$(call run-all,riscv64,$(RISCV_ENV),qemu-riscv64)
 
 # seL4 examples (requires nix)
 seL4:
@@ -103,11 +76,5 @@ seL4:
 	@grep -q "All tests passed" /tmp/sel4-output.txt && echo "seL4: PASS" || (echo "seL4: FAIL" && exit 1)
 	@echo "seL4 tests passed!"
 
-# Full test suite including seL4
-full: all seL4
-	@echo "=== All tests passed (Linux + seL4) ==="
-
 clean:
-	rm -f $(BUILD)/hi-c $(BUILD)/hello-c $(BUILD)/let-test-c $(BUILD)/arith-test-c $(BUILD)/fizzbuzz-c
-	rm -f $(BUILD)/hi-x86_64 $(BUILD)/hi-arm64 $(BUILD)/hi-riscv64
-	rm -f $(BUILD)/*.s $(BUILD)/*.o
+	rm -rf $(BUILD)

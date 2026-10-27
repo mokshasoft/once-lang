@@ -132,10 +132,10 @@ qttTests = testGroup "QTT / linearity"
       result <- typeCheckSource source
       result @?= Right ()
 
-  , testCase "examples/qtt-test-basic.once type-checks" $ do
-      -- A small QTT sampler (id/const/dup/compose/let) that ships in examples/
-      -- but had no driving test.
-      result <- typeCheckFile "../examples/qtt-test-basic.once"
+  , testCase "examples/qtt.once type-checks" $ do
+      -- The QTT sampler that ships in examples/ (linear, erased and
+      -- unrestricted parameters; compose; let).
+      result <- typeCheckFile "../examples/qtt.once"
       result @?= Right ()
   ]
 

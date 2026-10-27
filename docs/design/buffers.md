@@ -424,7 +424,8 @@ A future enhancement could add a `sizeof` operator that computes sizes at compil
 let buf = alloc (sizeof Int * 100)
 ```
 
-For now, sizes are manually specified. See `examples/memory-stress.once` for usage examples.
+For now, sizes are manually specified. (The `examples/memory-stress.once` sketch of this was removed
+with plan 0.125: it needs strings, which the language does not have yet; it is in git history.)
 
 ## Open Questions
 

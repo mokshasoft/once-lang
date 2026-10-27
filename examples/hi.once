@@ -8,9 +8,9 @@
 --   - Module imports (I.Linux.Syscalls)
 --   - No string handling, no I/O beyond exit
 --
--- Build and run:
---   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/hi.once -o ../.build/hi
---   ../.build/hi && echo "Success!"
+-- Build and run (from the repository root):
+--   once build examples/hi.once -o hi
+--   ./hi && echo "Success!"
 
 import I.Linux.Syscalls as S
 

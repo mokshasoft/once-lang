@@ -3,24 +3,22 @@
 
 -- hello.once: Hello World for Once
 --
+-- Once has no strings yet, so the program says hello the only way it can be
+-- observed today: by its exit code. It computes 6 * 7 and exits with it.
+--
 -- Demonstrates:
---   - Effect composition using let bindings
---   - Module imports (I.Linux.File, I.Linux.Syscalls)
---   - Executable mode (main : Eff Unit Unit)
+--   - a pure function (`answer`)
+--   - importing an interpretation (I.Linux.Syscalls)
+--   - an executable's `main : Act Unit Void` ending in the `exit` effect
 --
--- Note: Once uses categorical composition. The >>> operator for
--- effect composition is planned but not yet implemented. For now,
--- we use let bindings to sequence effects.
---
--- Build and run:
---   cd compiler && stack exec -- once build --exe --strata ../Strata ../examples/hello.once -o ../.build/hello
---   ../.build/hello
+-- Build and run (from the repository root):
+--   once build --target x86_64 --exe examples/hello.once -o hello
+--   ./hello; echo $?        # 42
 
-import I.Linux.File as F
+import I.Linux.Syscalls as S
 
--- Use effCompose and pure to compose effects with values
--- pure "Hello" : Eff Unit (String Utf8) - constant effect producing the string
--- println@F : Eff (String Utf8) Unit - prints the string
--- effCompose println (pure "Hello") : Eff Unit Unit
-main : Eff Unit Unit
-main = effCompose (println@F) (pure "Hello for Once")
+answer : Int -> Int
+answer x = x * (x + 1)
+
+main : Act Unit Void
+main = exit@S (answer 6)
