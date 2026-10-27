@@ -442,7 +442,7 @@ private
 -- | Quiet trivia print the declarations as no trivia does.
 pdecls-same : ∀ prev ds tv k → QuietT tv → pdecls prev ds tv k ≡ pdecls prev ds [] k
 pdecls-same prev [] tv k qt =
-  cong (_, k) (trans (ending-blank prev _ (tops-blank tv (lookup-quiet tv qt) k (suc k ∸ k)))
+  cong (_, k) (trans (ending-blank prev _ (tops-blank (hoist k tv) (lookup-quiet _ (hoist-quietT k tv qt)) k (suc k ∸ k)))
                      (cong (ending prev) (sym (tops-[] k (suc k ∸ k)))))
 pdecls-same prev (d ∷ ds) tv k qt =
   trans (cong F (Same.Ind.same (Same.ind-gn tv′ q′ (Same.ind-body tv′ q′ d)) k)) (F-same (pdecl d [] k))
