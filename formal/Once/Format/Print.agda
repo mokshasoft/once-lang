@@ -221,9 +221,10 @@ walkItems : W → List Item → W
 walkItems a []       = a
 walkItems a (x ∷ xs) = walkItems (step a x) xs
 
--- What is left over goes before the end.
+-- What is left over goes before the end (the end of the text is a line
+-- end, as `TEOF` is).
 finish : W → Trivia
-finish σ = W.acc (settle (lineEnd true σ))
+finish σ = W.acc (settle (hoistW (lineEnd true σ)))
 
 -- | The trivia of a text's items.
 trivia : List Item → Trivia

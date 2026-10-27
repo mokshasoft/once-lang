@@ -354,8 +354,8 @@ private
 -- | The comments in a text's trivia are ones the formatter writes back.
 trivia-src : ∀ cs → TrivSrc (trivia (lexItems cs))
 trivia-src cs =
-  settle-W (lineEnd true (walkItems _ (lexItems cs)))
-    (lineEnd-src true _ (walk-src _ (lexItems cs) (items-raw cs) (wsrc tt [] [])))
+  settle-W (Once.Format.Print.hoistW (lineEnd true (walkItems _ (lexItems cs))))
+    (hoistW-src _ (lineEnd-src true _ (walk-src _ (lexItems cs) (items-raw cs) (wsrc tt [] []))))
 
 -- | So are an anchor's.
 lookup-src : ∀ j t → TrivSrc t → NotesSrc (lookupNotes j t)

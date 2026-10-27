@@ -541,15 +541,19 @@ private
 
   close-ti : ∀ j ω → j < W.k (proj₁ ω) → ti (lookupNotes j (fin ω)) ≡ ti (Look j (proj₁ ω))
   close-ti j (σ , p) j<k =
-    trans (settle-ti j (lineEnd true (closeL (σ , p))) (subst (j <_) (sym (close-k (σ , p))) j<k))
+    trans (settle-ti j (Once.Format.Print.hoistW (lineEnd true (closeL (σ , p)))) (subst (j <_) (sym (close-k (σ , p))) j<k))
+      (trans (cong ti (hoistAt-other j (W.k L) (W.acc L) (<-≢ (subst (j <_) (sym (close-k (σ , p))) j<k))))
       (trans (cong (λ t → ti (lookupNotes j t)) (lineEnd-acc true (closeL (σ , p))))
-        (trans (endT-ti j (nlW p σ) (subst (j <_) (sym (nlW-k p σ)) j<k)) (nlW-ti j p σ j<k)))
+        (trans (endT-ti j (nlW p σ) (subst (j <_) (sym (nlW-k p σ)) j<k)) (nlW-ti j p σ j<k))))
+    where L = lineEnd true (closeL (σ , p))
 
   close-after : ∀ j ω → Notes.after (lookupNotes j (fin ω)) ≡ Notes.after (Look j (proj₁ ω))
   close-after j (σ , p) =
-    trans (settle-after j (lineEnd true (closeL (σ , p))))
+    trans (settle-after j (Once.Format.Print.hoistW (lineEnd true (closeL (σ , p)))))
+      (trans (hoistAt-after j (W.k L) (W.acc L))
       (trans (cong (λ t → Notes.after (lookupNotes j t)) (lineEnd-acc true (closeL (σ , p))))
-        (trans (endT-after j (nlW p σ)) (nlW-after j p σ)))
+        (trans (endT-after j (nlW p σ)) (nlW-after j p σ))))
+    where L = lineEnd true (closeL (σ , p))
 
 -- | What stands before a passed anchor is what the walk ends with.
 frozen-ti : ∀ j ω xs → j < W.k (proj₁ ω) → ti (lookupNotes j (fin (walkL ω xs))) ≡ ti (Look j (proj₁ ω))
