@@ -424,3 +424,214 @@ trivia-end is =
     σ = walkItems w₀ is
     τ = endOf σ
     ivτ = end-inv σ (proj₂ (walk-ok w₀ is iv₀))
+
+------------------------------------------------------------------------
+-- Where comments stand before a declaration
+------------------------------------------------------------------------
+
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Nat using (_+_)
+open import Data.Nat.Properties using (+-comm; +-identityʳ; +-assoc)
+open import Once.Format.Lex using (tokensOf)
+import Once.Parser.Token as P
+open import Once.Format.Print using (isAnchor; isLineEnd)
+open import Once.Format.Proof.Walk using (lookup-addTo-keeps)
+
+-- | The anchors among tokens.
+anchorsP : List P.Token → ℕ
+anchorsP []       = 0
+anchorsP (t ∷ ts) = (if isAnchor t then 1 else 0) + anchorsP ts
+
+-- | Where a line end stands among a text's tokens (the anchors before it),
+-- or the start.
+Bd : List Item → ℕ → Set
+Bd is j = j ≡ 0 ⊎ ∃[ pre ] ∃[ x ] ∃[ rest ] (tokensOf is ≡ pre ++ x ∷ rest × isLineEnd x ≡ true × anchorsP pre ≡ j)
+
+-- | Comments stand before declarations only where `P` holds.
+TopsOK : (ℕ → Set) → Trivia → Set
+TopsOK P t = ∀ j → MNotes (Notes.top (lookupNotes j t)) ≡ [] ⊎ P j
+
+private
+  tokensOf-++ : ∀ xs ys → tokensOf (xs ++ ys) ≡ tokensOf xs ++ tokensOf ys
+  tokensOf-++ []              ys = refl
+  tokensOf-++ (tok t ∷ xs)     ys = cong (t ∷_) (tokensOf-++ xs ys)
+  tokensOf-++ (comment c ∷ xs) ys = tokensOf-++ xs ys
+  tokensOf-++ (cont ∷ xs)      ys = tokensOf-++ xs ys
+
+  anchorsP-++ : ∀ xs ys → anchorsP (xs ++ ys) ≡ anchorsP xs + anchorsP ys
+  anchorsP-++ []       ys = refl
+  anchorsP-++ (x ∷ xs) ys = trans (cong ((if isAnchor x then 1 else 0) +_) (anchorsP-++ xs ys))
+                                  (sym (+-assoc (if isAnchor x then 1 else 0) (anchorsP xs) (anchorsP ys)))
+
+  Bd-mono : ∀ seen i j → Bd seen j → Bd (seen ++ i ∷ []) j
+  Bd-mono seen i j (inj₁ e) = inj₁ e
+  Bd-mono seen i j (inj₂ (pre , x , rest , e , ln′ , a)) =
+    inj₂ (pre , x , rest ++ tokensOf (i ∷ []) ,
+          trans (tokensOf-++ seen (i ∷ [])) (trans (cong (_++ tokensOf (i ∷ [])) e) (++-assoc pre (x ∷ rest) _)) , ln′ , a)
+
+  ok-mono : ∀ {P Q : ℕ → Set} t → (∀ j → P j → Q j) → TopsOK P t → TopsOK Q t
+  ok-mono t f ok j with ok j
+  ... | inj₁ e = inj₁ e
+  ... | inj₂ p = inj₂ (f j p)
+
+  ok-same : ∀ {P} t t′ → (∀ j → Notes.top (lookupNotes j t′) ≡ Notes.top (lookupNotes j t)) → TopsOK P t → TopsOK P t′
+  ok-same t t′ e ok j with ok j
+  ... | inj₁ z = inj₁ (trans (cong MNotes (e j)) z)
+  ... | inj₂ p = inj₂ p
+
+  -- only anchor `k`'s top notes change, where `P` holds
+  ok-at : ∀ {P} k t t′ → (∀ j → j ≢ k → lookupNotes j t′ ≡ lookupNotes j t) → P k → TopsOK P t → TopsOK P t′
+  ok-at k t t′ e pk ok j with j Data.Nat.≟ k
+  ... | yes refl = inj₂ pk
+  ... | no ne with ok j
+  ...   | inj₁ z = inj₁ (trans (cong (λ n → MNotes (Notes.top n)) (e j ne)) z)
+  ...   | inj₂ p = inj₂ p
+
+  settle-ok : ∀ {P} k f hs t → (f ≡ true → P k) → TopsOK P t → TopsOK P (settleAt k f hs t)
+  settle-ok k f     []                    t pk ok = ok
+  settle-ok k true  (held-comment c ∷ hs) t pk ok =
+    settle-ok k true hs _ pk (ok-at k t (addTo k (addTop (note-comment c)) t) (λ j ne → lookup-addTo j k _ t ne) (pk refl) ok)
+  settle-ok k true  (held-blank ∷ hs)     t pk ok =
+    settle-ok k true hs _ pk (ok-at k t (addTo k (addTop note-blank) t) (λ j ne → lookup-addTo j k _ t ne) (pk refl) ok)
+  settle-ok k false (held-comment c ∷ hs) t pk ok =
+    settle-ok k false hs _ pk (ok-same t (addTo k (addInner c) t) (λ j → lookup-addTo-keeps Notes.top j k (addInner c) t (λ { (notes _ _ _) → refl })) ok)
+  settle-ok k false (held-blank ∷ hs)     t pk ok = settle-ok k false hs t pk ok
+
+  hoistAt-ok : ∀ {P} k t → P k → TopsOK P t → TopsOK P (hoistAt k t)
+  hoistAt-ok k t pk ok = ok-at k t (hoistAt k t) (λ j ne → hoistAt-other j k t ne) pk ok
+
+-- | What the walk keeps about where comments stand before declarations.
+record BInv (seen : List Item) (σ : W) : Set where
+  constructor binv
+  field
+    bk : W.k σ ≡ anchorsP (tokensOf seen)
+    bt : TopsOK (Bd seen) (W.acc σ)
+    bf : W.fresh σ ≡ true → Bd seen (W.k σ)
+
+private
+  snoc-k : ∀ seen x → anchorsP (tokensOf (seen ++ tok x ∷ [])) ≡ anchorsP (tokensOf seen) + (if isAnchor x then 1 else 0)
+  snoc-k seen x = trans (cong anchorsP (tokensOf-++ seen (tok x ∷ []))) (trans (anchorsP-++ (tokensOf seen) (x ∷ []))
+                    (cong (anchorsP (tokensOf seen) +_) (+-identityʳ _)))
+
+  snoc-0 : ∀ seen i → tokensOf (i ∷ []) ≡ [] → anchorsP (tokensOf (seen ++ i ∷ [])) ≡ anchorsP (tokensOf seen)
+  snoc-0 seen i e = trans (cong anchorsP (trans (tokensOf-++ seen (i ∷ [])) (cong (tokensOf seen ++_) e)))
+                      (cong anchorsP (++-identityʳ (tokensOf seen)))
+
+  -- at a line end the anchors so far are a boundary
+  here : ∀ seen x → isLineEnd x ≡ true → Bd (seen ++ tok x ∷ []) (anchorsP (tokensOf seen))
+  here seen x ln′ = inj₂ (tokensOf seen , x , [] , tokensOf-++ seen (tok x ∷ []) , ln′ , refl)
+
+  ifk : ∀ a k → (if a then suc k else k) ≡ k + (if a then 1 else 0)
+  ifk true  k = trans (cong suc (sym (+-identityʳ k))) (sym (Data.Nat.Properties.+-suc k 0))
+  ifk false k = sym (+-identityʳ k)
+
+  -- a line end is no anchor
+  le-na : ∀ x → isLineEnd x ≡ true → isAnchor x ≡ false
+  le-na (P.TWord _) ()
+  le-na (P.TInt _ _) ()
+  le-na (P.TFloat _ _ _ _) ()
+  le-na (P.TString _) ()
+  le-na P.TLParen ()
+  le-na P.TRParen ()
+  le-na P.TLBrace ()
+  le-na P.TRBrace ()
+  le-na P.TColon ()
+  le-na P.TEquals ()
+  le-na P.TArrow ()
+  le-na P.TCaret1 ()
+  le-na P.TCaret0 ()
+  le-na P.TCaretW ()
+  le-na P.TLambda ()
+  le-na P.TComma ()
+  le-na P.TSemicolon ()
+  le-na P.TAt ()
+  le-na P.TPipe ()
+  le-na P.TDot ()
+  le-na P.TPlus ()
+  le-na P.TMinus ()
+  le-na P.TStar ()
+  le-na P.TSlash ()
+  le-na P.TPercent ()
+  le-na P.TAmpersand ()
+  le-na P.TLt ()
+  le-na P.TLe ()
+  le-na P.TGt ()
+  le-na P.TGe ()
+  le-na P.TEqEq ()
+  le-na P.TNeq ()
+  le-na P.TBang ()
+  le-na P.TNewline _ = refl
+  le-na P.TEOF _ = refl
+
+  lineEnd-fresh : ∀ top σ → W.fresh (lineEnd top σ) ≡ W.fresh σ ∨ top
+  lineEnd-fresh top (walker k h (line-text _) hs b f t) = refl
+  lineEnd-fresh top (walker k h line-empty hs b f t)    = refl
+  lineEnd-fresh top (walker k h line-code hs b f t)     = refl
+
+  tokB : ∀ seen σ x → BInv seen σ → BInv (seen ++ tok x ∷ []) (step σ (tok x))
+  tokB seen σ x b = go (isLineEnd x) refl
+    where
+      kk : W.k (lineEnd true σ) ≡ anchorsP (tokensOf seen)
+      kk = trans (lineEnd-k true σ) (BInv.bk b)
+      go : ∀ e → isLineEnd x ≡ e → BInv (seen ++ tok x ∷ []) (stepTok σ (isAnchor x) e)
+      go true ee =
+        binv (trans kk (sym (trans (snoc-k seen x)
+                (trans (cong (λ a → anchorsP (tokensOf seen) + (if a then 1 else 0)) (le-na x ee)) (+-identityʳ _)))))
+             (hoistAt-ok (W.k (lineEnd true σ)) (W.acc (lineEnd true σ)) pk
+               (subst (TopsOK (Bd (seen ++ tok x ∷ []))) (sym (lineEnd-acc true σ))
+                 (ok-mono (W.acc σ) (Bd-mono seen (tok x)) (BInv.bt b))))
+             (λ _ → pk)
+        where
+          pk : Bd (seen ++ tok x ∷ []) (W.k (lineEnd true σ))
+          pk = subst (Bd (seen ++ tok x ∷ [])) (sym kk) (here seen x ee)
+      go false _ = tokNE σ b
+        where
+          tokNE : ∀ σ → BInv seen σ → BInv (seen ++ tok x ∷ []) (stepTok σ (isAnchor x) false)
+          tokNE (walker k h ln hs b′ f t) bv =
+            binv (trans (ifk (isAnchor x) k) (trans (cong (_+ (if isAnchor x then 1 else 0)) (BInv.bk bv)) (sym (snoc-k seen x))))
+                 (settle-ok k f (pending ln (blankBefore b′ hs)) t (λ e → Bd-mono seen (tok x) k (BInv.bf bv e))
+                   (ok-mono t (Bd-mono seen (tok x)) (BInv.bt bv)))
+                 (λ ())
+
+  contB : ∀ seen σ → BInv seen σ → BInv (seen ++ cont ∷ []) (lineEnd false σ)
+  contB seen σ b =
+    binv (trans (lineEnd-k false σ) (trans (BInv.bk b) (sym (snoc-0 seen cont refl))))
+         (subst (TopsOK (Bd (seen ++ cont ∷ []))) (sym (lineEnd-acc false σ)) (ok-mono (W.acc σ) (Bd-mono seen cont) (BInv.bt b)))
+         (λ e → subst (Bd (seen ++ cont ∷ [])) (sym (lineEnd-k false σ))
+                  (Bd-mono seen cont (W.k σ) (BInv.bf b (∨-f (W.fresh σ) (trans (sym (lineEnd-fresh false σ)) e)))))
+
+  comB : ∀ seen σ c → BInv seen σ → BInv (seen ++ comment c ∷ []) (stepComment σ (trimEnd c))
+  comB seen (walker k h line-empty hs b f t) c (binv bk bt bf) =
+    binv (trans bk (sym (snoc-0 seen (comment c) refl))) (ok-mono t (Bd-mono seen (comment c)) bt) (λ e → Bd-mono seen (comment c) k (bf e))
+  comB seen (walker k h (line-text cs) hs b f t) c (binv bk bt bf) =
+    binv (trans bk (sym (snoc-0 seen (comment c) refl))) (ok-mono t (Bd-mono seen (comment c)) bt) (λ e → Bd-mono seen (comment c) k (bf e))
+  comB seen (walker k true line-code hs b f t) c (binv bk bt bf) =
+    binv (trans bk (sym (snoc-0 seen (comment c) refl)))
+         (ok-same t (addTo (k Data.Nat.∸ 1) (addAfter (trimEnd c)) t) (λ j → lookup-addTo-keeps Notes.top j (k Data.Nat.∸ 1) (addAfter (trimEnd c)) t (λ { (notes _ _ _) → refl }))
+           (ok-mono t (Bd-mono seen (comment c)) bt))
+         (λ e → Bd-mono seen (comment c) k (bf e))
+  comB seen (walker k false line-code hs b f t) c (binv bk bt bf) =
+    binv (trans bk (sym (snoc-0 seen (comment c) refl))) (ok-mono t (Bd-mono seen (comment c)) bt) (λ e → Bd-mono seen (comment c) k (bf e))
+
+  stepB : ∀ seen σ i → BInv seen σ → BInv (seen ++ i ∷ []) (step σ i)
+  stepB seen σ (tok x)     b = tokB seen σ x b
+  stepB seen σ cont        b = contB seen σ b
+  stepB seen σ (comment c) b = comB seen σ c b
+
+  walkB : ∀ seen σ is → BInv seen σ → BInv (seen ++ is) (walkItems σ is)
+  walkB seen σ []       b = subst (λ s → BInv s σ) (sym (++-identityʳ seen)) b
+  walkB seen σ (i ∷ is) b =
+    subst (λ s → BInv s (walkItems (step σ i) is)) (++-assoc seen (i ∷ []) is) (walkB (seen ++ i ∷ []) (step σ i) is (stepB seen σ i b))
+
+-- | In a text's trivia, comments stand before declarations only at a line
+-- end, at the start, or at the end.
+trivia-tops : ∀ is → TopsOK (λ j → Bd is j ⊎ j ≡ kEnd is) (trivia is)
+trivia-tops is =
+  settle-ok (W.k τ) (W.fresh τ) (W.held τ) (W.acc τ) (λ _ → inj₂ (lineEnd-k true σ))
+    (hoistAt-ok (W.k (lineEnd true σ)) (W.acc (lineEnd true σ)) (inj₂ (lineEnd-k true σ))
+      (subst (TopsOK _) (sym (lineEnd-acc true σ)) (ok-mono (W.acc σ) (λ j → inj₁) (BInv.bt b))))
+  where
+    σ = walkItems w₀ is
+    τ = endOf σ
+    b : BInv is σ
+    b = walkB [] w₀ is (binv refl (λ j → inj₁ refl) (λ _ → inj₁ refl))
