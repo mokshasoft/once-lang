@@ -666,7 +666,7 @@ d_inners_400 v0
         -> coe
              MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
              (coe MAlonzo.Code.Once.Format.Doc.C_newline_24)
-             (coe MAlonzo.Code.Once.Format.Comment.d_commentRun_170 (coe v0))
+             (coe MAlonzo.Code.Once.Format.Comment.d_commentRun_174 (coe v0))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Format.Print.eols
 d_eols_404 ::
@@ -680,7 +680,7 @@ d_eols_404 v0
              MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
              (coe
                 MAlonzo.Code.Once.Format.Doc.C_eol_28
-                (coe MAlonzo.Code.Once.Format.Comment.d_eolText_194 (coe v1)))
+                (coe MAlonzo.Code.Once.Format.Comment.d_eolText_198 (coe v1)))
              (coe d_eols_404 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Format.Print.anchor
@@ -754,7 +754,7 @@ d_runs_442 v0 v1 v2
         -> case coe v1 of
              [] -> coe MAlonzo.Code.Once.Format.Doc.C_empty_12
              (:) v3 v4
-               -> coe MAlonzo.Code.Once.Format.Comment.d_commentRun_170 (coe v1)
+               -> coe MAlonzo.Code.Once.Format.Comment.d_commentRun_174 (coe v1)
              _ -> MAlonzo.RTE.mazUnreachableError
       (:) v3 v4
         -> case coe v3 of
@@ -770,7 +770,7 @@ d_runs_442 v0 v1 v2
                       -> if coe v2
                            then coe
                                   MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
-                                  (coe MAlonzo.Code.Once.Format.Comment.d_commentRun_170 (coe v1))
+                                  (coe MAlonzo.Code.Once.Format.Comment.d_commentRun_174 (coe v1))
                                   (coe
                                      MAlonzo.Code.Once.Format.Doc.C__'60''62'__30
                                      (coe MAlonzo.Code.Once.Format.Doc.C_blank_26)
@@ -2658,7 +2658,7 @@ d_pdecls_1110 v0 v1 v2 v3
                 d_ending_1104 (coe v0)
                 (coe
                    d_topList_434 (coe v3) (coe addInt (coe (1 :: Integer)) (coe v3))
-                   (coe v2)))
+                   (coe d_hoist_1064 (coe v3) (coe v2))))
              (coe v3)
       (:) v4 v5
         -> coe
