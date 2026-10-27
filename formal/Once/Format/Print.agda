@@ -106,6 +106,19 @@ addInner x (notes t i a) = notes t (i ++ (x ∷ [])) a
 addAfter : String → Notes → Notes
 addAfter x (notes t i a) = notes t i (a ++ (x ∷ []))
 
+lookupNotes : ℕ → Trivia → Notes
+lookupNotes k []              = noNotes
+lookupNotes k ((j , n) ∷ ts) = if k ≡ᵇ j then n else lookupNotes k ts
+
+-- What stands before a declaration's first anchor stands before the
+-- declaration: its inner notes join its top notes.
+hoist : ℕ → Trivia → Trivia
+hoist k []              = []
+hoist k ((j , n) ∷ ts) = if k ≡ᵇ j then (j , up n) ∷ ts else (j , n) ∷ hoist k ts
+  where
+    up : Notes → Notes
+    up (notes t i a) = notes (t ++ map note-comment i) [] a
+
 -- A comment on its own line waits for its line end: a token `TNewline` after
 -- it (the next line starts a declaration) makes it a top note, a swallowed
 -- one (`cont`, the next line is indented) an inner note.
@@ -176,8 +189,17 @@ pending line-empty    hs = hs
 pending line-code     hs = hs
 
 -- A token: whether it is an anchor, whether it ends a line.
+-- A line that starts a declaration: what was settled before the next
+-- anchor, in place, stands before that anchor's declaration (the anchor is
+-- in the next declaration), before what comes after the line end.
+hoistAt : ℕ → Trivia → Trivia
+hoistAt k t = if Data.List.null (Notes.inner (lookupNotes k t)) then t else hoist k t
+
+hoistW : W → W
+hoistW (walker k h ln hs b t) = walker k h ln hs b (hoistAt k t)
+
 stepTok : W → Bool → Bool → W
-stepTok σ a true = lineEnd true σ
+stepTok σ a true = hoistW (lineEnd true σ)
 stepTok (walker k h ln hs b t) a false = next (settle (walker k h ln (pending ln (blankBefore b hs)) b t))
   where
     next : W → W
@@ -214,9 +236,7 @@ trivia : List Item → Trivia
 trivia is = finish (walkItems (walker 0 false line-empty [] 0 []) is)
 
 
-lookupNotes : ℕ → Trivia → Notes
-lookupNotes k []              = noNotes
-lookupNotes k ((j , n) ∷ ts) = if k ≡ᵇ j then n else lookupNotes k ts
+
 
 ------------------------------------------------------------------------
 -- Printing with the anchors counted
@@ -620,15 +640,6 @@ together (DTypeSig x _) (DFunDef y _) = x == y
 together (DImport _)    (DImport _)   = true
 {-# CATCHALL #-}
 together _              _             = false
-
--- What stands before a declaration's first anchor stands before the
--- declaration: its inner notes join its top notes.
-hoist : ℕ → Trivia → Trivia
-hoist k []              = []
-hoist k ((j , n) ∷ ts) = if k ≡ᵇ j then (j , up n) ∷ ts else (j , n) ∷ hoist k ts
-  where
-    up : Notes → Notes
-    up (notes t i a) = notes (t ++ map note-comment i) [] a
 
 gap : Maybe Decl → Decl → Doc
 gap nothing  d = empty

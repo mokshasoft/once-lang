@@ -123,7 +123,8 @@ layoutG-out f (R ∷ R′ ∷ Rs) o c (ne ∷ nes) with rendered-ne 0 (proj₁ n
 
 open import Once.Format.Print using (W; walker; Line; line-text; line-empty; line-code; Held; held-comment; held-blank;
   Trivia; stepComment; lineEnd; stepTok; settleAt; promote; promoteR; blankBefore; pending)
-open import Once.Format.Proof.Walk using (WL; stepL; nlW)
+open import Once.Format.Proof.Walk using (WL; stepL; nlW; hoistAt-id)
+open import Once.Format.Print using (Notes; lookupNotes)
 open import Once.Format.Proof.Lockstep using (Φ; Φ-cons)
 
 hcT : String → Held
@@ -150,34 +151,40 @@ private
   step3 o L = trans (Φ-cons lnl (lcm L ∷ lind 0 ∷ o))
                 (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind 0 ∷ o)) (cong (λ ω → stepL ω (lcm L)) (Φ-cons (lind 0) o))))
 
-  top-next : ∀ o L r H k T → Φ o ≡ mid k r H T → Φ (lnl ∷ lcm L ∷ lind 0 ∷ o) ≡ mid k (readBack L) (H ++ hcT r ∷ []) T
-  top-next o L r H k T e = trans (step3 o L) (cong (λ ω → stepL (stepL (stepL ω (lind 0)) (lcm L)) lnl) e)
+  top-next : ∀ o L r H k T → Notes.inner (lookupNotes k T) ≡ [] → Φ o ≡ mid k r H T
+           → Φ (lnl ∷ lcm L ∷ lind 0 ∷ o) ≡ mid k (readBack L) (H ++ hcT r ∷ []) T
+  top-next o L r H k T ni e =
+    trans (step3 o L) (trans (cong (λ ω → stepL (stepL (stepL ω (lind 0)) (lcm L)) lnl) e)
+                             (cong (mid k (readBack L) (H ++ hcT r ∷ [])) (hoistAt-id k T ni)))
 
-  top-gap : ∀ o L r H k T → Φ o ≡ mid k r H T
+  top-gap : ∀ o L r H k T → Notes.inner (lookupNotes k T) ≡ [] → Φ o ≡ mid k r H T
           → Φ (lnl ∷ lcm L ∷ lind 0 ∷ lnl ∷ o) ≡ mid k (readBack L) ((H ++ hcT r ∷ []) ++ held-blank ∷ []) T
-  top-gap o L r H k T e =
-    trans (step3 (lnl ∷ o) L) (cong (λ ω → stepL (stepL (stepL ω (lind 0)) (lcm L)) lnl) (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))
+  top-gap o L r H k T ni e =
+    trans (step3 (lnl ∷ o) L)
+      (trans (cong (λ ω → stepL (stepL (stepL ω (lind 0)) (lcm L)) lnl) (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))
+             (cong (mid k (readBack L) ((H ++ hcT r ∷ []) ++ held-blank ∷ []))
+                   (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T ni)) (hoistAt-id k T ni))))
 
-  lines-walk : ∀ Ls o r H k T → Φ o ≡ mid k r H T
+  lines-walk : ∀ Ls o r H k T → Notes.inner (lookupNotes k T) ≡ [] → Φ o ≡ mid k r H T
              → ∃[ r′ ] ∃[ H′ ] Φ (linesOut 0 Ls o) ≡ mid k r′ H′ T × H′ ++ hcT r′ ∷ [] ≡ H ++ hcT r ∷ map hcT (map readBack Ls)
-  lines-walk []       o r H k T e = r , H , e , refl
-  lines-walk (L ∷ Ls) o r H k T e with lines-walk Ls (lnl ∷ lcm L ∷ lind 0 ∷ o) (readBack L) (H ++ hcT r ∷ []) k T (top-next o L r H k T e)
+  lines-walk []       o r H k T ni e = r , H , e , refl
+  lines-walk (L ∷ Ls) o r H k T ni e with lines-walk Ls (lnl ∷ lcm L ∷ lind 0 ∷ o) (readBack L) (H ++ hcT r ∷ []) k T ni (top-next o L r H k T ni e)
   ... | r′ , H′ , e′ , q = r′ , H′ , e′ , trans q (++-assoc H (hcT r ∷ []) _)
 
 -- | The walk over runs of comment lines holds each, a blank between two runs.
-runs-walk : ∀ G o k H₀ T → All NE G → Entry o k H₀ T → ∀ {R Rs} → G ≡ R ∷ Rs
+runs-walk : ∀ G o k H₀ T → Notes.inner (lookupNotes k T) ≡ [] → All NE G → Entry o k H₀ T → ∀ {R Rs} → G ≡ R ∷ Rs
           → ∃[ r ] ∃[ H ] Φ (gOut G o) ≡ mid k r H T × H ++ hcT r ∷ [] ≡ H₀ ++ heldOf G
-runs-walk (R ∷ []) o k H₀ T (ne ∷ []) en refl with rendered-ne 0 (proj₁ ne) (proj₁ (proj₂ ne))
+runs-walk (R ∷ []) o k H₀ T ni (ne ∷ []) en refl with rendered-ne 0 (proj₁ ne) (proj₁ (proj₂ ne))
 ... | L , Ls , eL = go (rendered 0 R) (subst (λ x → rendered 0 x ≡ L ∷ Ls) (sym (proj₂ (proj₂ ne))) eL)
   where
     go : ∀ M → M ≡ L ∷ Ls → ∃[ r ] ∃[ H ] Φ (linesOut 0 M o) ≡ mid k r H T × H ++ hcT r ∷ [] ≡ H₀ ++ map hcT (map readBack M)
-    go .(L ∷ Ls) refl with lines-walk Ls (lnl ∷ lcm L ∷ lind 0 ∷ o) (readBack L) H₀ k T (en L)
+    go .(L ∷ Ls) refl with lines-walk Ls (lnl ∷ lcm L ∷ lind 0 ∷ o) (readBack L) H₀ k T ni (en L)
     ... | r′ , H′ , e′ , q = r′ , H′ , e′ , q
-runs-walk (R ∷ R′ ∷ Rs) o k H₀ T (ne ∷ nes) en refl
-  with runs-walk (R ∷ []) o k H₀ T (ne ∷ []) en refl
+runs-walk (R ∷ R′ ∷ Rs) o k H₀ T ni (ne ∷ nes) en refl
+  with runs-walk (R ∷ []) o k H₀ T ni (ne ∷ []) en refl
 ... | r , H , e , q
-  with runs-walk (R′ ∷ Rs) (lnl ∷ linesOut 0 (rendered 0 R) o) k ((H ++ hcT r ∷ []) ++ held-blank ∷ []) T nes
-         (λ L → top-gap (linesOut 0 (rendered 0 R) o) L r H k T e) refl
+  with runs-walk (R′ ∷ Rs) (lnl ∷ linesOut 0 (rendered 0 R) o) k ((H ++ hcT r ∷ []) ++ held-blank ∷ []) T ni nes
+         (λ L → top-gap (linesOut 0 (rendered 0 R) o) L r H k T ni e) refl
 ...   | r′ , H′ , e′ , q′ =
   r′ , H′ , e′ ,
   trans q′ (trans (cong (λ X → (X ++ held-blank ∷ []) ++ heldOf (R′ ∷ Rs)) q)
@@ -190,7 +197,7 @@ runs-walk (R ∷ R′ ∷ Rs) o k H₀ T (ne ∷ nes) en refl
 
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
-open import Once.Format.Print using (Notes; notes; lookupNotes; addTo; addTop)
+open import Once.Format.Print using (notes; addTo; addTop)
 open import Once.Format.Proof.Walk using (lookup-addTo-same)
 
 -- What stands before a declaration: comments, and blank lines.

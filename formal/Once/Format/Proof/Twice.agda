@@ -35,43 +35,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Format.Print using (Trivia; Notes; notes; noNotes; lookupNotes; hoist; tops; topList; Note;
   note-comment; note-blank)
 open import Once.Format.Proof.Sources using (NotesSrc; NoteSrc)
+open import Once.Format.Proof.Walk using (up; hoist-at; hoist-other; hoist-after)
 open import Once.Format.Proof.Rerender using (Src)
 
 ------------------------------------------------------------------------
 -- What `hoist` does
 ------------------------------------------------------------------------
-
--- | An anchor's notes as a declaration's first: what stood before it, in place,
--- stands before the declaration.
-up : Notes → Notes
-up n = notes (Notes.top n ++ map note-comment (Notes.inner n)) [] (Notes.after n)
-
-private
-  ≡ᵇ-sym-false : ∀ {j k} → j ≢ k → (k ≡ᵇ j) ≡ false
-  ≡ᵇ-sym-false {j} {k} ne with k ≡ᵇ j in e
-  ... | true  = ⊥-elim (ne (sym (≡ᵇ⇒≡ k j (subst T (sym e) tt))))
-  ... | false = refl
-
-hoist-at : ∀ k tv → lookupNotes k (hoist k tv) ≡ up (lookupNotes k tv)
-hoist-at k []             = refl
-hoist-at k ((j , n) ∷ ts) with k ≡ᵇ j in e
-... | true  rewrite e = refl
-... | false rewrite e = hoist-at k ts
-
-hoist-other : ∀ j k tv → j ≢ k → lookupNotes j (hoist k tv) ≡ lookupNotes j tv
-hoist-other j k []             ne = refl
-hoist-other j k ((i , n) ∷ ts) ne with k ≡ᵇ i in e
-... | true with j ≡ᵇ i in e′
-...   | true  = ⊥-elim (ne (trans (≡ᵇ⇒≡ j i (subst T (sym e′) tt)) (sym (≡ᵇ⇒≡ k i (subst T (sym e) tt)))))
-...   | false = refl
-hoist-other j k ((i , n) ∷ ts) ne | false with j ≡ᵇ i
-...   | true  = refl
-...   | false = hoist-other j k ts ne
-
-hoist-after : ∀ j k tv → Notes.after (lookupNotes j (hoist k tv)) ≡ Notes.after (lookupNotes j tv)
-hoist-after j k tv with j Data.Nat.≟ k
-... | yes refl = cong Notes.after (hoist-at j tv)
-... | no ne    = cong Notes.after (hoist-other j k tv ne)
 
 hoist-src : ∀ k tv → (∀ j → NotesSrc (lookupNotes j tv)) → ∀ j → NotesSrc (lookupNotes j (hoist k tv))
 hoist-src k tv src j with j Data.Nat.≟ k
@@ -108,7 +77,8 @@ tops-src tv j (suc n) src = all-++ _ _ (proj₁ (src j)) (tops-src tv (suc j) n 
 open import Once.Format.Doc using (Doc; empty; blank; _<>_; Lexeme; lt; lsp; lnl; lind; lcm; St; st; brk; layout)
 open import Once.Format.Print using (W; walker; line-code; line-empty; line-text; Held; held-blank; held-comment;
   stepTok; lineEnd; settleAt; promote; lead; runs; topDoc; hasComment)
-open import Once.Format.Proof.Walk using (WL; stepL; w₀)
+open import Once.Format.Proof.Walk using (WL; stepL; w₀; hoistAt-id)
+open import Once.Format.Proof.Rerender using (readBack)
 open import Once.Format.Proof.Lockstep using (Φ; Φ-cons; waits)
 open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok)
 open import Once.Format.Proof.Groups using (groups; gOut; mid; Entry; runs-walk; heldOf; heldOf-top; TopH; hcT;
@@ -135,22 +105,31 @@ entry-start : EntryT [] 0 [] []
 entry-start = (λ L → refl) , λ x e → trans (cong proj₁ (Φ-tok0 x [])) (tok-end x (w₀ , false) e)
 
 -- | After a declaration's line end.
-entry-decl : ∀ o k h T → Φ o ≡ (walker k h line-code [] 0 T , true) → EntryT o k [] T
-entry-decl o k h T e =
-  (λ L → trans (Φ-cons lnl (lcm L ∷ lind 0 ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind 0 ∷ o))
-           (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind 0) o) (cong (λ ω → stepL ω (lind 0)) e)))))) ,
-  λ x ex → trans (cong proj₁ (Φ-tok0 x o)) (trans (tok-end x (Φ o) ex) (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false) e))
+entry-decl : ∀ o k h T → Notes.inner (lookupNotes k T) ≡ [] → Φ o ≡ (walker k h line-code [] 0 T , true) → EntryT o k [] T
+entry-decl o k h T ni e =
+  (λ L → trans (Φ-cons lnl (lcm L ∷ lind 0 ∷ o)) (trans (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind 0 ∷ o))
+           (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind 0) o) (cong (λ ω → stepL ω (lind 0)) e)))))
+           (cong (mid k (readBack L) []) (hoistAt-id k T ni)))) ,
+  λ x ex → trans (cong proj₁ (Φ-tok0 x o)) (trans (tok-end x (Φ o) ex)
+             (trans (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false) e)
+                    (cong (λ T′ → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k [] T′)) (hoistAt-id k T ni))))
 
 -- | After a blank line that follows a declaration.
-entry-gap : ∀ o k h T → Φ o ≡ (walker k h line-code [] 0 T , true) → EntryT (lnl ∷ o) k (held-blank ∷ []) T
-entry-gap o k h T e =
-  (λ L → trans (Φ-cons lnl (lcm L ∷ lind 0 ∷ lnl ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind 0 ∷ lnl ∷ o))
+entry-gap : ∀ o k h T → Notes.inner (lookupNotes k T) ≡ [] → Φ o ≡ (walker k h line-code [] 0 T , true)
+          → EntryT (lnl ∷ o) k (held-blank ∷ []) T
+entry-gap o k h T ni e =
+  (λ L → trans (Φ-cons lnl (lcm L ∷ lind 0 ∷ lnl ∷ o)) (trans (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind 0 ∷ lnl ∷ o))
            (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind 0) (lnl ∷ o)) (cong (λ ω → stepL ω (lind 0))
-             (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))))))) ,
+             (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))))))
+           (cong (mid k (readBack L) (held-blank ∷ [])) idd))) ,
   λ x ex → trans (cong proj₁ (Φ-tok0 x (lnl ∷ o)))
              (trans (tok-end x (Φ (lnl ∷ o)) ex)
-               (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false)
-                 (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e))))
+               (trans (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false)
+                        (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))
+                      (cong (λ T′ → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k (held-blank ∷ []) T′)) idd)))
+  where
+    idd : Once.Format.Print.hoistAt k (Once.Format.Print.hoistAt k T) ≡ T
+    idd = trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T ni)) (hoistAt-id k T ni)
 
 -- | What the layout and the walk are after the comments before a
 -- declaration: at the start of a line, nothing waiting, and the
@@ -171,24 +150,26 @@ private
 
 
   -- the walk after the runs, at the declaration's first token
-  runs-tok : ∀ x o k r H T → lineEndTok x ≡ false → Φ o ≡ mid k r H T → All TopH (H ++ hcT r ∷ [])
+  runs-tok : ∀ x o k r H T → Notes.inner (lookupNotes k T) ≡ [] → lineEndTok x ≡ false → Φ o ≡ mid k r H T → All TopH (H ++ hcT r ∷ [])
            → proj₁ (Φ (lt x ∷ lind 0 ∷ o)) ≡ walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k (H ++ hcT r ∷ []) T)
-  runs-tok x o k r H T ex e tp =
+  runs-tok x o k r H T ni ex e tp =
     trans (cong proj₁ (Φ-tok0 x o))
       (trans (tok-end x (Φ o) ex)
         (trans (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false) e)
-          (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T)) (promote-top _ tp))))
+          (cong₂ (λ hs T′ → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T′))
+                 (promote-top _ tp) (hoistAt-id k T ni))))
 
   -- …and after a blank line after them
-  runs-blank-tok : ∀ x o k r H T → lineEndTok x ≡ false → Φ o ≡ mid k r H T → All TopH ((H ++ hcT r ∷ []) ++ held-blank ∷ [])
+  runs-blank-tok : ∀ x o k r H T → Notes.inner (lookupNotes k T) ≡ [] → lineEndTok x ≡ false → Φ o ≡ mid k r H T → All TopH ((H ++ hcT r ∷ []) ++ held-blank ∷ [])
                  → proj₁ (Φ (lt x ∷ lind 0 ∷ lnl ∷ o))
                    ≡ walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k ((H ++ hcT r ∷ []) ++ held-blank ∷ []) T)
-  runs-blank-tok x o k r H T ex e tp =
+  runs-blank-tok x o k r H T ni ex e tp =
     trans (cong proj₁ (Φ-tok0 x (lnl ∷ o)))
       (trans (tok-end x (Φ (lnl ∷ o)) ex)
         (trans (cong (λ ω → stepTok (Once.Format.Proof.Walk.nlW (proj₂ ω) (proj₁ ω)) (anchorTok x) false)
                  (trans (Φ-cons lnl o) (cong (λ ω → stepL ω lnl) e)))
-          (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T)) (promote-top _ tp))))
+          (cong₂ (λ hs T′ → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T′))
+                 (promote-top _ tp) (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T ni)) (hoistAt-id k T ni)))))
 
 private
   heldG-top : ∀ H₀ G tb → All (_≡ held-blank) H₀ → All (_≡ held-blank) tb → All TopH (H₀ ++ heldOf G ++ tb)
@@ -202,28 +183,28 @@ private
 -- | The comments before a declaration, in the first pass: the declaration's
 -- first token settles each line written, the blank lines between runs, and
 -- the blank lines around them.
-lead-facts : ∀ prev ns₁ og c k H₀ T → EntryT og k H₀ T → All (_≡ held-blank) H₀
+lead-facts : ∀ prev ns₁ og c k H₀ T → Notes.inner (lookupNotes k T) ≡ [] → EntryT og k H₀ T → All (_≡ held-blank) H₀
            → ∃[ tb ] All (_≡ held-blank) tb
              × LeadFacts (layout 0 false (lead prev ns₁) (st og c (just 0) [])) k (H₀ ++ heldOf (groups ns₁ [] false) ++ tb) T
-lead-facts (just p) ns₁ og c k H₀ T en p₀ =
+lead-facts (just p) ns₁ og c k H₀ T ni en p₀ =
   [] , [] , subst (λ σ → LeadFacts σ k (H₀ ++ heldOf (groups ns₁ [] false) ++ []) T) (sym (runs-layout 0 false ns₁ [] false _))
               (go (groups ns₁ [] false) (groups-ne-all ns₁ [] false))
   where
     go : ∀ G → All NE G → LeadFacts (layoutG 0 false G (st og c (just 0) [])) k (H₀ ++ heldOf G ++ []) T
     go []       []  = lf-none og c k H₀ T en
-    go (R ∷ Rs) nes with runs-walk (R ∷ Rs) og k H₀ T nes (proj₁ en) refl
+    go (R ∷ Rs) nes with runs-walk (R ∷ Rs) og k H₀ T ni nes (proj₁ en) refl
     ... | r , H , e , q =
       subst (λ σ → LeadFacts σ k (H₀ ++ heldOf (R ∷ Rs) ++ []) T) (sym (layoutG-out false (R ∷ Rs) og c nes))
         (refl , refl , λ x ex →
-          trans (runs-tok x (gOut (R ∷ Rs) og) k r H T ex e (subst (All TopH) (sym q) (all-++ H₀ _ (blanks-top H₀ p₀) (heldOf-top (R ∷ Rs)))))
+          trans (runs-tok x (gOut (R ∷ Rs) og) k r H T ni ex e (subst (All TopH) (sym q) (all-++ H₀ _ (blanks-top H₀ p₀) (heldOf-top (R ∷ Rs)))))
             (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T))
               (trans q (cong (H₀ ++_) (sym (++-identityʳ (heldOf (R ∷ Rs))))))))
-lead-facts nothing ns₁ og c k H₀ T en p₀ = go (groups ns₁ [] false) refl (groups-ne-all ns₁ [] false)
+lead-facts nothing ns₁ og c k H₀ T ni en p₀ = go (groups ns₁ [] false) refl (groups-ne-all ns₁ [] false)
   where
     go : ∀ G → groups ns₁ [] false ≡ G → All NE G
        → ∃[ tb ] All (_≡ held-blank) tb × LeadFacts (layout 0 false (lead nothing ns₁) (st og c (just 0) [])) k (H₀ ++ heldOf G ++ tb) T
     go [] eG _ rewrite trans (has-of ns₁) (cong notNull eG) = [] , [] , lf-none og c k H₀ T en
-    go (R ∷ Rs) eG nes with runs-walk (R ∷ Rs) og k H₀ T nes (proj₁ en) refl | gOut-lnl R Rs og nes
+    go (R ∷ Rs) eG nes with runs-walk (R ∷ Rs) og k H₀ T ni nes (proj₁ en) refl | gOut-lnl R Rs og nes
     ... | r , H , e , q | Y , eY rewrite trans (has-of ns₁) (cong notNull eG) =
       held-blank ∷ [] , refl ∷ [] ,
       subst (λ σ → LeadFacts (layout 0 false blank σ) k (H₀ ++ heldOf (R ∷ Rs) ++ held-blank ∷ []) T)
@@ -232,7 +213,7 @@ lead-facts nothing ns₁ og c k H₀ T en p₀ = go (groups ns₁ [] false) refl
         (subst (λ O → LeadFacts (layout 0 false blank (st O (Once.Format.Proof.Lockstep.colOf (R ∷ Rs) c) (just 0) [])) k (H₀ ++ heldOf (R ∷ Rs) ++ held-blank ∷ []) T) (sym eY)
           (refl , refl , λ x ex →
             trans (cong (λ O → proj₁ (Φ (lt x ∷ lind 0 ∷ lnl ∷ O))) (sym eY))
-              (trans (runs-blank-tok x (gOut (R ∷ Rs) og) k r H T ex e
+              (trans (runs-blank-tok x (gOut (R ∷ Rs) og) k r H T ni ex e
                         (subst (λ hs → All TopH (hs ++ held-blank ∷ [])) (sym q)
                           (all-++ (H₀ ++ heldOf (R ∷ Rs)) _ (all-++ H₀ _ (blanks-top H₀ p₀) (heldOf-top (R ∷ Rs))) (tt ∷ []))))
                 (cong (λ hs → walker (if anchorTok x then suc k else k) (anchorTok x) line-code [] 0 (settleAt k hs T))
@@ -301,12 +282,12 @@ private
   -- nothing, or a blank line, before what follows a declaration
   pre-empty : ∀ σ k T prev → Bnd σ k T prev → EntryT (St.out σ) k [] T
   pre-empty σ .0 .[] nothing (bnd _ _ (eo , refl , refl) _ _ _ _ _) = subst (λ o → EntryT o 0 [] []) (sym eo) entry-start
-  pre-empty σ k T (just p) (bnd _ _ ((h , e) , _) _ _ _ _ _) = entry-decl (St.out σ) k h T e
+  pre-empty σ k T (just p) (bnd _ _ ((h , e) , _) _ inn _ _ _) = entry-decl (St.out σ) k h T (inn k ≤-refl) e
 
   pre-blank : ∀ σ k T p → Bnd σ k T (just p)
             → EntryT (lnl ∷ St.out σ) k (held-blank ∷ []) T × layout 0 false blank σ ≡ st (lnl ∷ St.out σ) 0 (just 0) []
-  pre-blank σ k T p b@(bnd ep ee ((h , e) , (x , xs , eo)) _ _ _ _ _) =
-    entry-gap (St.out σ) k h T e ,
+  pre-blank σ k T p b@(bnd ep ee ((h , e) , (x , xs , eo)) _ inn _ _ _) =
+    entry-gap (St.out σ) k h T (inn k ≤-refl) e ,
     trans (cong (layout 0 false blank) (fresh σ ep ee)) (cong (λ o → Once.Format.Doc.blankLine 0 (st o (St.col σ) (just 0) [])) eo
       |> λ q → trans q (cong (λ o → st (lnl ∷ o) 0 (just 0) []) (sym eo)))
     where
@@ -315,13 +296,14 @@ private
       a |> f = f a
 
   -- the final walk over the runs written from an entry
-  runs-fin : ∀ G og k H₀ T → All NE G → EntryT og k H₀ T → ∀ {R Rs} → G ≡ R ∷ Rs → All (_≡ held-blank) H₀
+  runs-fin : ∀ G og k H₀ T → Notes.inner (lookupNotes k T) ≡ [] → All NE G → EntryT og k H₀ T → ∀ {R Rs} → G ≡ R ∷ Rs → All (_≡ held-blank) H₀
            → fin (Φ (gOut G og)) ≡ settleAt k (H₀ ++ heldOf G) T
-  runs-fin G og k H₀ T nes en eG p₀ with runs-walk G og k H₀ T nes (proj₁ en) eG
+  runs-fin G og k H₀ T ni nes en eG p₀ with runs-walk G og k H₀ T ni nes (proj₁ en) eG
   ... | r , H , e , q =
-    trans (cong fin e)
+    trans (cong fin e) (trans (cong (λ T′ → settleAt k (Once.Format.Print.promote (H ++ hcT r ∷ [])) T′)
+                                      (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T ni)) (hoistAt-id k T ni)))
       (trans (cong (λ hs → settleAt k hs T) (promote-top _ (subst (All TopH) (sym q) (all-++ H₀ _ (blanks-top H₀ p₀) (heldOf-top G)))))
-             (cong (λ hs → settleAt k hs T) q))
+             (cong (λ hs → settleAt k hs T) q)))
 
 private
   notes-blank : ∀ hs → All (_≡ held-blank) hs → All (_≡ note-blank) (notesOf hs)
@@ -357,14 +339,14 @@ private
              (trans (cong (λ b → layout 0 false (if b then empty <> topDoc ns₁ else empty) σ) (trans (has-of ns₁) (cong notNull eG)))
                (trans (cong (layout 0 false (runs ns₁ [] false)) (trans (fresh σ ep ee) (cong (λ o → st o (St.col σ) (just 0) []) eo)))
                       (lay-runs ns₁ R Rs [] (St.col σ) eG nes))))
-          (runs-fin (R ∷ Rs) [] 0 [] [] nes entry-start refl [])
+          (runs-fin (R ∷ Rs) [] 0 [] [] refl nes entry-start refl [])
   end-F (just p) σ k T ns₁ R Rs b eG nes =
     held-blank ∷ [] , refl ∷ [] ,
     trans (cong (λ τ → fin (Φ (St.out (brk 0 τ))))
              (trans (cong (λ b′ → layout 0 false (if b′ then blank <> topDoc ns₁ else empty) σ) (trans (has-of ns₁) (cong notNull eG)))
                (trans (cong (layout 0 false (runs ns₁ [] false)) (proj₂ (pre-blank σ k T p b)))
                       (lay-runs ns₁ R Rs (lnl ∷ St.out σ) 0 eG nes))))
-          (runs-fin (R ∷ Rs) (lnl ∷ St.out σ) k (held-blank ∷ []) T nes (proj₁ (pre-blank σ k T p b)) refl (refl ∷ []))
+          (runs-fin (R ∷ Rs) (lnl ∷ St.out σ) k (held-blank ∷ []) T (Bnd.b-inner b k ≤-refl) nes (proj₁ (pre-blank σ k T p b)) refl (refl ∷ []))
 
 -- | What stands after the last declaration, formatted twice.
 ending-sim : ∀ ωF prev k tvc₁ tvc₂ σ T → Bnd σ k T prev → Hyps (fin ωF) tvc₁ tvc₂ k
@@ -395,7 +377,9 @@ ending-sim ωF prev k tvc₁ tvc₂ σ T b hy fe =
         goN nothing (bnd _ _ (eo , refl , refl) _ _ _ _ _) _ =
           trans (cong (λ x → groups (Notes.top (up (lookupNotes 0 x)) ++ []) [] false) (trans Fσ (cong (λ o → fin (Φ o)) eo))) refl
         goN (just p) (bnd _ _ ((h , e) , _) _ inn _ pT _) _ =
-          trans (cong (λ x → groups (Notes.top (up (lookupNotes k x)) ++ []) [] false) (trans Fσ (cong fin e)))
+          trans (cong (λ x → groups (Notes.top (up (lookupNotes k x)) ++ []) [] false)
+                   (trans Fσ (trans (cong fin e) (trans (cong (Once.Format.Print.hoistAt k) (hoistAt-id k T (inn k ≤-refl)))
+                                                        (hoistAt-id k T (inn k ≤-refl))))))
             (blanks-groups _ (subst (All (_≡ note-blank)) (sym (trans (++-identityʳ _) (nc-nil (lookupNotes k T) (inn k ≤-refl)))) pT))
     go (R ∷ Rs) eG nes with end-F prev σ k T ns₁ R Rs b eG nes
     ... | H₀ , p₀ , eF =
@@ -500,7 +484,7 @@ decl-step ωF prev d ds k tvc₁ tvc₂ σ T b hy fe IH = main
     σg = st og c (just 0) []
     lg : LI σg
     lg = subst LI eg (proj₁ (layout-reach 0 false (gap prev d) σ (Bnd.b-li b)))
-    LF = lead-facts prev ns₁ og c k H₀ T en p₀
+    LF = lead-facts prev ns₁ og c k H₀ T (Bnd.b-inner b k ≤-refl) en p₀
     tb  = proj₁ LF
     ptb = proj₁ (proj₂ LF)
     lfs = proj₂ (proj₂ LF)

@@ -38,6 +38,7 @@ open import Once.Format using (formatSource; formatParsed)
 open import Once.Format.Doc using (Doc; empty; indent; render)
 open import Once.Format.Lex using (Item; tok; comment; cont; lexItems)
 open import Once.Format.Print
+import Once.Format.Proof.Walk
 
 ------------------------------------------------------------------------
 -- Quiet trivia: no comments
@@ -487,7 +488,11 @@ private
   settle-inv (walker k h′ ln hs b t) (inv _ _ q) h = settle-quiet k _ t (promote-blank hs h) q
 
   stepTok-inv : ∀ σ a b → InvW σ → InvW (stepTok σ a b)
-  stepTok-inv σ a true i = lineEnd-inv true σ i
+  stepTok-inv σ a true i = hoist-inv (lineEnd true σ) (lineEnd-inv true σ i)
+    where
+      hoist-inv : ∀ τ → InvW τ → InvW (Once.Format.Print.hoistW τ)
+      hoist-inv (walker k h′ ln hs b t) (inv nt h q) =
+        inv nt h (Once.Format.Proof.Walk.hoistAt-cases k t QuietT q (hoist-quietT k t q))
   stepTok-inv (walker k h′ ln hs b t) a false (inv nt h q) =
     inv nt-code [] (settle-quiet k _ t (promote-blank _ (pending-blank ln _ nt (blankBefore-blank b hs h))) q)
 
