@@ -134,10 +134,15 @@ afterDashes : String → List Char → CLine
 afterDashes s []       = prose []
 afterDashes s (c ∷ cs) = if is c ' ' then afterBlank s cs else prose (words (c ∷ cs))
 
+-- (whether the line starts with `--`, and what follows)
+dashLine : Bool → String → List Char → CLine
+dashLine true  s body = if allDash body then verbatim s else afterDashes s body
+dashLine false s _    = verbatim s
+
 classifyChars : String → List Char → CLine
-classifyChars s ('-' ∷ '-' ∷ body) = if allDash body then verbatim s else afterDashes s body
+classifyChars s (c ∷ d ∷ body) = dashLine (is c '-' ∧ is d '-') s body
 {-# CATCHALL #-}
-classifyChars s _                  = verbatim s
+classifyChars s _              = verbatim s
 
 -- | What a comment line is.
 classify : String → CLine
@@ -162,11 +167,15 @@ commentLinesDoc (c ∷ cs) = lineDoc (classify c) <> newline <> commentLinesDoc 
 -- lines joined. One whose `--` a blank or a dash follows is kept as written,
 -- so the comments that end one line, joined, read back as themselves.
 -- (after `--`: a blank or a dash, kept; else a blank is put after it)
+-- (after `--`)
+eolAfter : String → List Char → String
+eolAfter s []       = s
+eolAfter s (c ∷ cs) = if is c ' ' ∨ is c '-' then s else fromList ('-' ∷ '-' ∷ ' ' ∷ c ∷ cs)
+
 eolChars : String → List Char → String
-eolChars s ('-' ∷ '-' ∷ [])     = s
-eolChars s ('-' ∷ '-' ∷ c ∷ cs) = if is c ' ' ∨ is c '-' then s else fromList ('-' ∷ '-' ∷ ' ' ∷ c ∷ cs)
+eolChars s (c ∷ d ∷ cs) = if is c '-' ∧ is d '-' then eolAfter s cs else s
 {-# CATCHALL #-}
-eolChars s _                    = s
+eolChars s _            = s
 
 eolText : String → String
 eolText s =
