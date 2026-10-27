@@ -16,8 +16,11 @@
 --   idempotent        formatting the output gives the output, whatever the
 --                     comments (Proof.Twice; through Skeleton, Walk, Lockstep,
 --                     Inside, Groups, Rerender, Sources, Items, ItemsLex).
+--   comments-kept     the output's comment words are the input's, in order
+--                     (Proof.Order; through WalkWords, Printed, Written, Words,
+--                     Counts, GAnchors).
 --
--- `roundtrip`, `format-denotes` and `idempotent` take `DigitBound`: the primitive `isDigit`
+-- All but `canonical` take `DigitBound`: the primitive `isDigit`
 -- accepts the decimal digits only (a fact about the tool that Agda's
 -- conversion cannot see; a float's fraction is read back from it).
 ------------------------------------------------------------------------
@@ -40,6 +43,8 @@ open import Once.Format.Proof.RoundTrip using (roundtrip)
 open import Once.Format.Proof.Meaning using (format-denotes)
 open import Once.Format.Proof.Canon using (NoComment; format-canonical)
 import Once.Format.Proof.Twice as Twice
+open import Once.Format.Proof.Written using (cwords)
+open import Once.Format.Proof.Order using (comments-kept)
 
 -- | What `once fmt` is proved to do (a field of the apex, `Once.Certified`).
 record VerifiedFormatter : Set₁ where
@@ -54,6 +59,8 @@ record VerifiedFormatter : Set₁ where
     idempotent     : DigitBound → ∀ text m → parseStrict text ≡ inj₂ m
                    → formatSource text ≡ inj₂ (format m (lexItems (toList text)))
                      × formatSource (format m (lexItems (toList text))) ≡ inj₂ (format m (lexItems (toList text)))
+    keeps-comments : DigitBound → ∀ text m → parseStrict text ≡ inj₂ m
+                   → cwords (lexItems (toList (format m (lexItems (toList text))))) ≡ cwords (lexItems (toList text))
 
 verifiedFormatter : VerifiedFormatter
 verifiedFormatter = record
@@ -61,4 +68,5 @@ verifiedFormatter = record
   ; keeps-meaning   = format-denotes
   ; canonical       = format-canonical
   ; idempotent      = Twice.idempotent
+  ; keeps-comments  = comments-kept
   }
