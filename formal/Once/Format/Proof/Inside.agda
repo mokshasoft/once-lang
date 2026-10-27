@@ -136,6 +136,7 @@ record WI (σ : St) (kb n : ℕ) : Set where
     w-inner : ∀ j → kb + n ≤ j → Notes.inner (lookupNotes j t) ≡ []
     w-top   : ∀ j → kd < j → Notes.top (lookupNotes j t) ≡ []
     w-topk  : Notes.top (lookupNotes kd t) ≡ Tkd
+    w-innerk : Notes.inner (lookupNotes kd t) ≡ []
 
 private
   ≤-<-cases : ∀ {j k} → j < k → suc j < k ⊎ k ≡ suc j
@@ -208,7 +209,7 @@ brk-sim i (st o c (just i′) e₁) (st .o .c .(just i′) e₂) kb n 1≤i kd�
   wi (WI.h w) (WI.t w) (trans (WI.w-φ w) (idx kb 0))
      (λ ()) (λ i₂ e → wt , refl , subst (1 ≤_) (cong (λ { (just x) → x ; nothing → 0 }) e) 1≤i)
      (λ j le → WI.w-after w j (subst (_≤ j) (+-identityʳ kb) le))
-     (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + 0)) le)) (WI.w-top w) (WI.w-topk w)
+     (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + 0)) le)) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w)
 brk-sim i (st o c nothing []) (st .o .c .nothing e₂) kb n 1≤i kd≤ (rel refl refl refl re₁ re₂) w (li ok pl) fut
   with WI.w-text w refl
 ... | wf , _ = go e₂ (trans re₂ e₂nil)
@@ -220,7 +221,7 @@ brk-sim i (st o c nothing []) (st .o .c .nothing e₂) kb n 1≤i kd≤ (rel ref
       wi (WI.h w) (WI.t w) (trans (cong proj₁ (Φ-lnl o ok wf)) (trans (WI.w-φ w) (idx kb n)))
          (λ ()) (λ i₂ e → cong proj₂ (Φ-lnl o ok wf) , refl , subst (1 ≤_) (cong (λ { (just x) → x ; nothing → 0 }) e) 1≤i)
          (λ j le → WI.w-after w j (≤-trans (m≤m+n kb n) le))
-         (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + n)) le)) (WI.w-top w) (WI.w-topk w)
+         (λ j le → WI.w-inner w j (subst (_≤ j) (+-identityʳ (kb + n)) le)) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w)
     e₂nil : eolsFrom tv₂ kb n ≡ []
     e₂nil = eols-nil tv₂ kb n λ j kb≤j j<k →
       trans (A2 j (≤-trans kd≤ kb≤j))
@@ -286,6 +287,8 @@ brk-sim i (st o c nothing (x ∷ xs)) (st .o .c .nothing e₂) kb (suc m) 1≤i 
                            (WI.w-top w j kd<j))
          (trans (lookup-addTo-keeps Notes.top kd (k ∸ 1) (addAfter r) t (λ { (Once.Format.Print.notes _ _ _) → refl }))
                 (WI.w-topk w))
+         (trans (lookup-addTo-keeps Notes.inner kd (k ∸ 1) (addAfter r) t (λ { (Once.Format.Print.notes _ _ _) → refl }))
+                (WI.w-innerk w))
 
 ------------------------------------------------------------------------
 -- Tokens and blanks, in step
@@ -389,7 +392,7 @@ token-sim t (st o c p e₁) (st .o .c .p e₂) kb n pl (rel refl refl refl re₁
         (trans (cong proj₁ (trans (Φ-cons (lt t) (lind (suc i″) ∷ o)) (cong (λ ω → stepL ω (lt t)) (Φ-cons (lind (suc i″)) o))))
                (tok-line t (Φ o) i″ pl′ (WI.w-φ w) wt))
         (λ _ → cong proj₂ (Φ-cons (lt t) (lind (suc i″) ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w)
       where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
             nj ()
     wi-of (st .(lt t ∷ o) C P E) to-bare pn with WI.w-text w refl
@@ -397,7 +400,7 @@ token-sim t (st o c p e₁) (st .o .c .p e₂) kb n pl (rel refl refl refl re₁
       wi (WI.h w ∨ false) (WI.t w)
         (trans (cong proj₁ (Φ-cons (lt t) o)) (tok-code t (Φ o) pl′ (WI.w-φ w) wf))
         (λ _ → cong proj₂ (Φ-cons (lt t) o) , trans (∨-false (WI.h w)) h≡) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w)
       where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
             nj ()
     wi-of (st .(lt t ∷ lsp ∷ o) C P E) to-sp pn with WI.w-text w refl
@@ -406,7 +409,7 @@ token-sim t (st o c p e₁) (st .o .c .p e₂) kb n pl (rel refl refl refl re₁
         (trans (cong proj₁ (trans (Φ-cons (lt t) (lsp ∷ o)) (cong (λ ω → stepL ω (lt t)) (lsp-Φ o wf))))
                (tok-code t (Φ o) pl′ (WI.w-φ w) wf))
         (λ _ → cong proj₂ (Φ-cons (lt t) (lsp ∷ o)) , trans (∨-false (WI.h w)) h≡) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w)
       where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
             nj ()
 
@@ -417,7 +420,7 @@ space-sim (st o c nothing e₁) (st .o .c .nothing e₂) kb n (rel refl refl ref
 ... | wf , h≡ =
   rel refl refl refl re₁ re₂ ,
   wi (WI.h w) (WI.t w) (trans (cong proj₁ (lsp-Φ o wf)) (WI.w-φ w)) (λ _ → trans (cong proj₂ (lsp-Φ o wf)) wf , h≡)
-     (λ i ()) (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w)
+     (λ i ()) (WI.w-after w) (WI.w-inner w) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w)
 
 -- | Where the two layouts are after a part of the declaration: in step, on a
 -- line whose anchors are `kb` to `kb + n`, the walk along.
@@ -589,20 +592,20 @@ anchor-sim x (st o c p e₁) (st .o .c .p e₂) kb n ax (rel refl refl refl re�
         (trans (cong proj₁ (trans (Φ-cons (lt x) (lind (suc i″) ∷ o)) (cong (λ ω → stepL ω (lt x)) (Φ-cons (lind (suc i″)) o))))
                (trans (tokA-line x (Φ o) i″ ax (WI.w-φ w) wt) idx′))
         (λ _ → cong proj₂ (Φ-cons (lt x) (lind (suc i″) ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) , WI.w-inner w (kb + n) ≤-refl
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w) , WI.w-inner w (kb + n) ≤-refl
     wi-of (st .(lt x ∷ o) C P E) to-bare pn with WI.w-text w refl
     ... | wf , _ =
       wi true (WI.t w)
         (trans (cong proj₁ (Φ-cons (lt x) o)) (trans (tokA-code x (Φ o) ax (WI.w-φ w) wf) idx′))
         (λ _ → cong proj₂ (Φ-cons (lt x) o) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) , WI.w-inner w (kb + n) ≤-refl
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w) , WI.w-inner w (kb + n) ≤-refl
     wi-of (st .(lt x ∷ lsp ∷ o) C P E) to-sp pn with WI.w-text w refl
     ... | wf , _ =
       wi true (WI.t w)
         (trans (cong proj₁ (trans (Φ-cons (lt x) (lsp ∷ o)) (cong (λ ω → stepL ω (lt x)) (lsp-Φ o wf))))
                (trans (tokA-code x (Φ o) ax (WI.w-φ w) wf) idx′))
         (λ _ → cong proj₂ (Φ-cons (lt x) (lsp ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
-        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) , WI.w-inner w (kb + n) ≤-refl
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) (WI.w-topk w) (WI.w-innerk w) , WI.w-inner w (kb + n) ≤-refl
 
 private
   brk-st : ∀ i σ → brk i σ ≡ st (St.out (brk i σ)) 0 (just i) []
@@ -634,7 +637,7 @@ private
 
   -- the walk reads what is written, not what waits for the line's end
   wi-ends : ∀ {o c p e e′ kb n} → WI (st o c p e) kb n → WI (st o c p e′) kb n
-  wi-ends (wi h t a b c d e f g) = wi h t a b c d e f g
+  wi-ends (wi h t a b c d e f g i) = wi h t a b c d e f g i
 
   k+1 : ∀ k → k + 1 ≡ suc k
   k+1 k = trans (+-suc k 0) (cong suc (+-identityʳ k))
@@ -786,6 +789,8 @@ hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lo
                                (WI.w-inner wa j (≤-trans (subst (_≤ k + 1) (sym (+-identityʳ k)) (subst (k ≤_) (sym (k+1 k)) (n≤1+n k))) le)))
                (λ j kd<j → trans (settle-top j k rs Ta) (WI.w-top wa j kd<j))
                (trans (settle-top kd k rs Ta) (WI.w-topk wa))
+               (trans (cong Notes.inner (Once.Format.Proof.Walk.lookup-settleAt kd k (map hcF rs) Ta (λ q → <-irrefl q kd<k)))
+                      (WI.w-innerk wa))
           where nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
                 nj ()
         res = ends-after σc σc k 0 kd≤k (rel refl refl refl (trans endsc refl) (trans endsc refl)) (+-identityʳ k) wc
@@ -859,6 +864,7 @@ private
       (λ _ → trans (cong waits eo) (cong proj₂ (Φ-cons (lt t) (lind 0 ∷ St.out σ))) , h-of b)
       (λ i₂ q → ⊥-elim (nj (trans (sym ep) q)))
       (Start.s-after sw) (λ j le → Start.s-inner sw j (≤-trans (m≤m+n kd _) le)) (Start.s-top sw) (Start.s-topk sw)
+      (Start.s-inner sw kd ≤-refl)
     where
       nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
       nj ()

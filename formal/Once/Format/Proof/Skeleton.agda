@@ -172,12 +172,13 @@ module Same (tv₁ tv₂ : Trivia) where
   ind-anchor : ∀ x {p : T (anchorTok x)} → Ind (anchor x)
   ind-anchor x {p} = ind (λ k → refl) (λ k → s-hole p)
 
+  -- (a word is `compose`, a token, or an anchor)
+  ind-word-pick : ∀ s b → (s Data.String.== "compose") ≡ b → Ind (if b then t (TWord s) else anchor (TWord s))
+  ind-word-pick s true  e = ind-plain (subst (λ b → T (not (not b) ∧ true)) (sym e) tt)
+  ind-word-pick s false e = ind-anchor (TWord s) {subst (λ b → T (not b)) (sym e) tt}
+
   ind-word : ∀ s → Ind (word s)
-  ind-word s = pick (s Data.String.== "compose") refl
-    where
-      pick : ∀ b → (s Data.String.== "compose") ≡ b → Ind (if b then t (TWord s) else anchor (TWord s))
-      pick true  e = ind-plain (subst (λ b → T (not (not b) ∧ true)) (sym e) tt)
-      pick false e = ind-anchor (TWord s) {subst (λ b → T (not b)) (sym e) tt}
+  ind-word s = ind-word-pick s (s Data.String.== "compose") refl
 
   ind-opToks : ∀ cs → Ind (opToks cs)
   ind-opToks []           = ind-pure
