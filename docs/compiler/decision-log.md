@@ -19559,6 +19559,15 @@ user facing configs."
     (`Spec.Source._⊢_`), so behaviour and admissibility are kept — `fmt` stays out of the compile path and
     this is what it owes the apex;
   - `format-canonical`: two texts without comments that parse as the same module are formatted alike;
+  - `comments-kept`: the output's comment words are the input's, in order (`Proof.Order`; a comment's
+    words: its text split at blanks and line ends, each word without the dashes it starts with, a block
+    comment's without `{-` and `-}` — exactly what the formatter may respell). The walker keeps them
+    anchor by anchor (`WalkWords`: it only ever adds after what it settled); the printer writes them
+    declaration by declaration (`Printed`, `Counts.cms`) and the layout writes what it reads (`Written`:
+    a comment ends its line after the end-of-line comments waiting on it; `Words`: every respelling keeps
+    the words). The orders agree because a comment stands before a declaration only at a line end, and a
+    parsed text's line ends stand between its declarations, where the printer's anchor count and the
+    grammar's meet (`GAnchors`, by induction on the Spec's grammar, applied to the printed tokens too);
   - `idempotent`: formatting the output gives the output, whatever the comments (`Proof.Twice`).
     The second pass reads the first pass's text as the same module and its comments as the walker,
     read along the first pass's layout, finds them (`Walk`, `Lockstep`); the two passes then lay out in
@@ -19586,7 +19595,14 @@ user facing configs."
   declaration's first anchor went to the previous declaration; comments sharing a line were joined (a
   block comment's `-}` became words); a comment on its own line before a closing token, its anchor in the
   next declaration, came out after the comments before that declaration (at a line end that starts a
-  declaration the walker now moves it before them, `Print.hoistW`). Two rules make the proof local, and are the style now: comments
+  declaration the walker now moves it before them, `Print.hoistW`). The order proof found two more: a
+  whitespace-only line inside a declaration counted as a blank line, which made the comments held before
+  it stand before the declaration, ahead of the comments before them (the walker now decides when what
+  waits settles: before the next declaration when a line end that starts one came since the last token,
+  `W.fresh`, else in place, a blank line inside a declaration being the code's); and at the end of a text
+  whose tokens end without a line end (an unterminated string at the end lexes to no token) what waited
+  overtook what stood in place at the last anchor (the end of the text is now a line end, as `TEOF` is).
+  Two rules make the proof local, and are the style now: comments
   take no room in deciding whether a group is flat (the code's layout is its own; a comment still breaks
   where it must), and an end-of-line comment anchors to a word or literal on its own line (on a line
   without one it stands before the next anchor, as a comment on a line of its own does).
@@ -19601,9 +19617,11 @@ user facing configs."
   field takes `DigitBound` itself and the apex's hypotheses are unchanged.
 
 ### Consequences
-* Open: that the output's comments are the input's, in order (plan 0.124 §9); fuzzed (≈4000 texts with
-  comments placed at random, also before closing tokens: all idempotent, every comment word kept in
-  order), not yet proved.
+* The comments' order is proved (`comments-kept`, plan 0.124 §9), and fuzzed besides (≈5500 texts with
+  comments placed at random, before closing tokens, around whitespace-only lines and before an
+  unterminated string at the end: all idempotent, every comment word kept in order).
+* Noted, not changed: the Spec's lexer reads an unterminated string at the end of a text as no token, so
+  the formatter drops it (the module is the same; whether such a text should be rejected is the Spec's).
 * The proofs' per-case parts are generated (`formal/scripts/gen-format-*.py`); edit the generators.
 * The tree's formatting is unchanged by all of it.
 
