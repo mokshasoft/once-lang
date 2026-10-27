@@ -55,7 +55,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; _≢_)
 
-open import Once.Format.Doc using (Doc; empty; tk; sp; line; _<>_; nest; group; Lexeme; lt; lsp; lnl; lind; lcm;
+open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; newline; blank; eol; line; _<>_; nest; group; Lexeme; lt; lsp; lnl; lind; lcm;
   St; st; put; space; token; joined; trim; brk; comment; layout; fits; flatWidth; column; apart)
 open import Once.Format.Comment using (eolText)
 open import Once.Format.Print using (W; walker; line-code; line-empty; line-text; noNotes; addTo; addAfter;
@@ -66,6 +66,9 @@ open import Once.Format.Proof.Lockstep using (Φ; Φ-cons; waits; Reach; reach-r
   trim-Φ; LI; li; layout-reach; brk-ok)
 open import Once.Format.Proof.Rerender using (readBack; eol-fix; EolC; eolText-eol)
 open import Once.Format.Proof.Sources using (NotesSrc)
+open import Once.Spec.Surface.Lexing using (Token)
+open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok; plain; anchorDoc; sk-width)
+import Once.Format.Proof.Skeleton as Sk
 
 ------------------------------------------------------------------------
 -- What waits for the end of a line
@@ -278,3 +281,191 @@ brk-sim i (st o c nothing (x ∷ xs)) (st .o .c .nothing e₂) kb (suc m) 1≤i 
                          (WI.w-inner w j (subst (_≤ j) (+-identityʳ k) le)))
          (λ j kd<j → trans (lookup-addTo-keeps Notes.top j (k ∸ 1) (addAfter r) t (λ { (Once.Format.Print.notes _ _ _) → refl }))
                            (WI.w-top w j kd<j))
+
+------------------------------------------------------------------------
+-- Tokens and blanks, in step
+------------------------------------------------------------------------
+
+private
+  -- a token or a blank keeps what waits for the line's end
+  token-e : ∀ t o c p e → token t (st o c p e) ≡ st (St.out (token t (st o c p []))) (St.col (token t (st o c p [])))
+                                                      (St.pend (token t (st o c p []))) e
+  token-e t []           c (just i) e = refl
+  token-e t []           c nothing  e = refl
+  token-e t (lt u ∷ o)   c (just i) e = refl
+  token-e t (lt u ∷ o)   c nothing  e with apart u t
+  ... | true  = refl
+  ... | false = refl
+  token-e t (lsp ∷ o)    c (just i) e = refl
+  token-e t (lsp ∷ o)    c nothing  e = refl
+  token-e t (lnl ∷ o)    c (just i) e = refl
+  token-e t (lnl ∷ o)    c nothing  e = refl
+  token-e t (lind _ ∷ o) c (just i) e = refl
+  token-e t (lind _ ∷ o) c nothing  e = refl
+  token-e t (lcm _ ∷ o)  c (just i) e = refl
+  token-e t (lcm _ ∷ o)  c nothing  e = refl
+
+  space-e : ∀ o c p e → space (st o c p e) ≡ st (St.out (space (st o c p []))) (St.col (space (st o c p [])))
+                                                 (St.pend (space (st o c p []))) e
+  space-e o c (just i) e = refl
+  space-e o c nothing  e = refl
+
+  ∨-false : ∀ b → b ∨ false ≡ b
+  ∨-false true  = refl
+  ∨-false false = refl
+
+  -- a token that is not an anchor, on a line of code: the walk only reads it
+  tok-code : ∀ t ω {k h T} → Data.Bool.not (anchorTok t) ∧ Data.Bool.not (lineEndTok t) ≡ true
+           → proj₁ ω ≡ walker k h line-code [] 0 T → proj₂ ω ≡ false
+           → proj₁ (stepL ω (lt t)) ≡ walker k (h ∨ false) line-code [] 0 T
+  tok-code t (v , false) {k} {h} {T} pl refl refl with anchorTok t | lineEndTok t
+  ... | false | false = refl
+  ... | true  | _     = ⊥-elim (f≢t pl)
+    where f≢t : false ≡ true → Data.Empty.⊥
+          f≢t ()
+  ... | false | true  = ⊥-elim (f≢t pl)
+    where f≢t : false ≡ true → Data.Empty.⊥
+          f≢t ()
+
+  -- …at the start of an indented line
+  tok-line : ∀ t ω i {k h T} → Data.Bool.not (anchorTok t) ∧ Data.Bool.not (lineEndTok t) ≡ true
+           → proj₁ ω ≡ walker k h line-code [] 0 T → proj₂ ω ≡ true
+           → proj₁ (stepL (stepL ω (lind (suc i))) (lt t)) ≡ walker k false line-code [] 0 T
+  tok-line t (v , true) i {k} {h} {T} pl refl refl with anchorTok t | lineEndTok t
+  ... | false | false = refl
+  ... | true  | _     = ⊥-elim (f≢t pl)
+    where f≢t : false ≡ true → Data.Empty.⊥
+          f≢t ()
+  ... | false | true  = ⊥-elim (f≢t pl)
+    where f≢t : false ≡ true → Data.Empty.⊥
+          f≢t ()
+
+  -- what a token writes: itself, after the line's indentation or a blank
+  data TokOut (t : Token) (o : List Lexeme) : Maybe ℕ → List Lexeme → Set where
+    to-ind  : ∀ i → TokOut t o (just i) (lt t ∷ lind i ∷ o)
+    to-bare : TokOut t o nothing (lt t ∷ o)
+    to-sp   : TokOut t o nothing (lt t ∷ lsp ∷ o)
+
+  token-shape : ∀ t o c p e → TokOut t o p (St.out (token t (st o c p e))) × St.pend (token t (st o c p e)) ≡ nothing
+  token-shape t []           c (just i) e = to-ind i , refl
+  token-shape t []           c nothing  e = to-bare , refl
+  token-shape t (lt u ∷ o)   c (just i) e = to-ind i , refl
+  token-shape t (lt u ∷ o)   c nothing  e with apart u t
+  ... | true  = to-sp , refl
+  ... | false = to-bare , refl
+  token-shape t (lsp ∷ o)    c (just i) e = to-ind i , refl
+  token-shape t (lsp ∷ o)    c nothing  e = to-bare , refl
+  token-shape t (lnl ∷ o)    c (just i) e = to-ind i , refl
+  token-shape t (lnl ∷ o)    c nothing  e = to-bare , refl
+  token-shape t (lind _ ∷ o) c (just i) e = to-ind i , refl
+  token-shape t (lind _ ∷ o) c nothing  e = to-bare , refl
+  token-shape t (lcm _ ∷ o)  c (just i) e = to-ind i , refl
+  token-shape t (lcm _ ∷ o)  c nothing  e = to-bare , refl
+
+  T-true : ∀ {b} → T b → b ≡ true
+  T-true {true} _ = refl
+
+-- | A token that is not an anchor, in step.
+token-sim : ∀ t σ₁ σ₂ kb n → T (plain (tk t)) → Rel σ₁ σ₂ kb n → WI σ₁ kb n → LI σ₁
+          → Rel (token t σ₁) (token t σ₂) kb n × WI (token t σ₁) kb n
+token-sim t (st o c p e₁) (st .o .c .p e₂) kb n pl (rel refl refl refl re₁ re₂) w (li ok pnl) =
+  subst₂R (token-e t o c p e₁) (token-e t o c p e₂) (rel refl refl refl re₁ re₂) ,
+  wi-of (token t (st o c p e₁)) (proj₁ (token-shape t o c p e₁)) (proj₂ (token-shape t o c p e₁))
+  where
+    subst₂R : ∀ {σ σ′ τ τ′} → σ′ ≡ σ → τ′ ≡ τ → Rel σ τ kb n → Rel σ′ τ′ kb n
+    subst₂R refl refl r = r
+    pl′ = T-true pl
+    wi-of : ∀ σ′ → TokOut t o p (St.out σ′) → St.pend σ′ ≡ nothing → WI σ′ kb n
+    wi-of (st .(lt t ∷ lind zero ∷ o) C P E) (to-ind zero) pn with WI.w-end w zero refl
+    ... | _ , _ , ()
+    wi-of (st .(lt t ∷ lind (suc i″) ∷ o) C P E) (to-ind (suc i″)) pn with WI.w-end w (suc i″) refl
+    ... | wt , refl , _ =
+      wi false (WI.t w)
+        (trans (cong proj₁ (trans (Φ-cons (lt t) (lind (suc i″) ∷ o)) (cong (λ ω → stepL ω (lt t)) (Φ-cons (lind (suc i″)) o))))
+               (tok-line t (Φ o) i″ pl′ (WI.w-φ w) wt))
+        (λ _ → cong proj₂ (Φ-cons (lt t) (lind (suc i″) ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+      where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
+            nj ()
+    wi-of (st .(lt t ∷ o) C P E) to-bare pn with WI.w-text w refl
+    ... | wf , h≡ =
+      wi (WI.h w ∨ false) (WI.t w)
+        (trans (cong proj₁ (Φ-cons (lt t) o)) (tok-code t (Φ o) pl′ (WI.w-φ w) wf))
+        (λ _ → cong proj₂ (Φ-cons (lt t) o) , trans (∨-false (WI.h w)) h≡) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+      where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
+            nj ()
+    wi-of (st .(lt t ∷ lsp ∷ o) C P E) to-sp pn with WI.w-text w refl
+    ... | wf , h≡ =
+      wi (WI.h w ∨ false) (WI.t w)
+        (trans (cong proj₁ (trans (Φ-cons (lt t) (lsp ∷ o)) (cong (λ ω → stepL ω (lt t)) (lsp-Φ o wf))))
+               (tok-code t (Φ o) pl′ (WI.w-φ w) wf))
+        (λ _ → cong proj₂ (Φ-cons (lt t) (lsp ∷ o)) , trans (∨-false (WI.h w)) h≡) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
+        (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+      where nj : ∀ {x} → nothing ≡ just x → Data.Empty.⊥
+            nj ()
+
+-- | A blank, in step.
+space-sim : ∀ σ₁ σ₂ kb n → Rel σ₁ σ₂ kb n → WI σ₁ kb n → Rel (space σ₁) (space σ₂) kb n × WI (space σ₁) kb n
+space-sim (st o c (just i) e₁) (st .o .c .(just i) e₂) kb n (rel refl refl refl re₁ re₂) w = rel refl refl refl re₁ re₂ , w
+space-sim (st o c nothing e₁) (st .o .c .nothing e₂) kb n (rel refl refl refl re₁ re₂) w with WI.w-text w refl
+... | wf , h≡ =
+  rel refl refl refl re₁ re₂ ,
+  wi (WI.h w) (WI.t w) (trans (cong proj₁ (lsp-Φ o wf)) (WI.w-φ w)) (λ _ → trans (cong proj₂ (lsp-Φ o wf)) wf , h≡)
+     (λ i ()) (WI.w-after w) (WI.w-inner w) (WI.w-top w)
+
+-- | Where the two layouts are after a part of the declaration: in step, on a
+-- line whose anchors are `kb` to `kb + n`, the walk along.
+record After (σ₁ σ₂ : St) (k : ℕ) : Set where
+  constructor after
+  field
+    kb  : ℕ
+    n   : ℕ
+    sum : kb + n ≡ k
+    kd≤ : kd ≤ kb
+    rl  : Rel σ₁ σ₂ kb n
+    wk  : WI σ₁ kb n
+
+private
+  T-∧ : ∀ a b → T (a ∧ b) → T a × T b
+  T-∧ true true _ = tt , tt
+
+  col-eq : ∀ o c p e₁ e₂ → column (st o c p e₁) ≡ column (st o c p e₂)
+  col-eq o c (just i) e₁ e₂ = refl
+  col-eq o c nothing  e₁ e₂ = refl
+
+  sum0 : ∀ kb n → (kb + n) + 0 ≡ kb + n
+  sum0 kb n = +-identityʳ (kb + n)
+
+  fut-left : ∀ i f a b σ → LI σ → Future (layout i f b (layout i f a σ)) → Future (layout i f a σ)
+  fut-left i f a b σ l fu = reach-trans (proj₂ (layout-reach i f b (layout i f a σ) (proj₁ (layout-reach i f a σ l)))) fu
+
+-- | A part of a declaration with no anchor in it, in step.
+leaf-sim : ∀ d → T (plain d) → ∀ i f σ₁ σ₂ kb n → 1 ≤ i → kd ≤ kb → Rel σ₁ σ₂ kb n → WI σ₁ kb n → LI σ₁
+         → Future (layout i f d σ₁) → After (layout i f d σ₁) (layout i f d σ₂) (kb + n)
+leaf-sim empty pl i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = after kb n refl kd≤ r w
+leaf-sim (tk t) pl i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu with token-sim t σ₁ σ₂ kb n pl r w l
+... | r′ , w′ = after kb n refl kd≤ r′ w′
+leaf-sim sp pl i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu with space-sim σ₁ σ₂ kb n r w
+... | r′ , w′ = after kb n refl kd≤ r′ w′
+leaf-sim line pl i true σ₁ σ₂ kb n 1≤i kd≤ r w l fu with space-sim σ₁ σ₂ kb n r w
+... | r′ , w′ = after kb n refl kd≤ r′ w′
+leaf-sim line pl i false σ₁ σ₂ kb n 1≤i kd≤ r w l fu with brk-sim i σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+... | r′ , w′ = after (kb + n) 0 (sum0 kb n) (≤-trans kd≤ (m≤m+n kb n)) r′ w′
+leaf-sim (a <> b) pl i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu with T-∧ (plain a) (plain b) pl
+... | pa , pb with leaf-sim a pa i f σ₁ σ₂ kb n 1≤i kd≤ r w l (fut-left i f a b σ₁ l fu)
+...   | after kb′ n′ s′ kd≤′ r′ w′ =
+  subst (After (layout i f (a <> b) σ₁) (layout i f (a <> b) σ₂)) s′
+    (leaf-sim b pb i f _ _ kb′ n′ 1≤i kd≤′ r′ w′ (proj₁ (layout-reach i f a σ₁ l)) fu)
+leaf-sim (nest m d) pl i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu =
+  leaf-sim d pl (i + m) f σ₁ σ₂ kb n (≤-trans 1≤i (m≤m+n i m)) kd≤ r w l fu
+leaf-sim (group d) pl i true σ₁ σ₂ kb n 1≤i kd≤ r w l fu = leaf-sim d pl i true σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+leaf-sim (group d) pl i false (st o c p e₁) (st .o .c .p e₂) kb n 1≤i kd≤ (rel refl refl refl re₁ re₂) w l fu =
+  subst (λ b → After (layout i (fits (column (st o c p e₁)) (flatWidth d)) d (st o c p e₁)) (layout i b d (st o c p e₂)) (kb + n))
+    (cong (λ x → fits x (flatWidth d)) (col-eq o c p e₁ e₂))
+    (leaf-sim d pl i _ (st o c p e₁) (st o c p e₂) kb n 1≤i kd≤ (rel refl refl refl re₁ re₂) w l fu)
+leaf-sim (cmt _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+leaf-sim (para _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+leaf-sim newline () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+leaf-sim blank () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+leaf-sim (eol _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
