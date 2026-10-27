@@ -273,11 +273,12 @@ open import Once.Format.Proof.Sources using (NoteSrc)
 rsOf : List String → List String
 rsOf R = map readBack (rendered 0 R)
 
+notesOf-++ : ∀ xs ys → notesOf (xs ++ ys) ≡ notesOf xs ++ notesOf ys
+notesOf-++ []                      ys = refl
+notesOf-++ (held-comment c _ ∷ xs) ys = cong (note-comment c ∷_) (notesOf-++ xs ys)
+notesOf-++ (held-blank ∷ xs)       ys = cong (note-blank ∷_) (notesOf-++ xs ys)
+
 private
-  notesOf-++ : ∀ xs ys → notesOf (xs ++ ys) ≡ notesOf xs ++ notesOf ys
-  notesOf-++ []                      ys = refl
-  notesOf-++ (held-comment c _ ∷ xs) ys = cong (note-comment c ∷_) (notesOf-++ xs ys)
-  notesOf-++ (held-blank ∷ xs)       ys = cong (note-blank ∷_) (notesOf-++ xs ys)
 
   notesOf-map : ∀ rs → notesOf (map hcT rs) ≡ map note-comment rs
   notesOf-map []       = refl
