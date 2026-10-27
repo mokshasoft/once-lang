@@ -482,50 +482,9 @@ leaf-sim (eol _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
 open import Once.Format.Comment using (commentLinesDoc; commentRun; commentLines; lineDoc; classify; CLine; prose;
   verbatim)
 open import Once.Format.Proof.Rerender using (renderK; renderLine; rendered; rendered-fix; rendered-RL; Src)
+open import Once.Format.Proof.Lockstep using (linesOut; colOf; zero-col; linesOut-++; lines-layout)
 open import Once.Format.Doc using (paragraph; dashed; fill; lineComment)
 open import Once.Format.Print using (Held; held-comment; settleAt; promote; promoteR; addInner; notes)
-
--- | Lines written at indentation `i`, each on a line of its own.
-linesOut : ℕ → List (List Char) → List Lexeme → List Lexeme
-linesOut i []       o = o
-linesOut i (L ∷ Ls) o = linesOut i Ls (lnl ∷ lcm L ∷ lind i ∷ o)
-
-private
-  colOf : ∀ {A : Set} → List A → ℕ → ℕ
-  colOf []      c = c
-  colOf (_ ∷ _) c = 0
-
-  zero-col : ∀ {A : Set} (ls : List A) → colOf ls 0 ≡ 0
-  zero-col []      = refl
-  zero-col (_ ∷ _) = refl
-
-  linesOut-++ : ∀ i A B o → linesOut i (A ++ B) o ≡ linesOut i B (linesOut i A o)
-  linesOut-++ i []       B o = refl
-  linesOut-++ i (L ∷ A)  B o = linesOut-++ i A B _
-
-  para-lines : ∀ i ls o c → paragraph i ls (st o c (just i) [])
-             ≡ st (linesOut i (map (λ l → lineComment (toList (fromList (dashed l)))) ls) o) (colOf ls c) (just i) []
-  para-lines i []       o c = refl
-  para-lines i (l ∷ ls) o c =
-    trans (para-lines i ls (lnl ∷ lcm (lineComment (toList (fromList (dashed l)))) ∷ lind i ∷ o) 0)
-      (cong (λ x → st (linesOut i (map (λ l → lineComment (toList (fromList (dashed l)))) ls)
-                        (lnl ∷ lcm (lineComment (toList (fromList (dashed l)))) ∷ lind i ∷ o)) x (just i) []) (zero-col ls))
-
-  line-layout : ∀ i f k o c → ∃[ c′ ] layout i f (lineDoc k) (st o c (just i) []) ≡ st (linesOut i (renderK i k) o) c′ (just i) []
-  line-layout i f (prose ws)   o c = _ , para-lines i (fill i (i + 2) [] ws) o c
-  line-layout i f (verbatim v) o c = 0 , refl
-
--- | A run of comment lines, laid out from the start of a line: the lines,
--- each on a line of its own.
-lines-layout : ∀ i f ls o c → layout i f (commentLinesDoc ls) (st o c (just i) [])
-             ≡ st (linesOut i (concatMap (renderLine i) ls) o) (colOf ls c) (just i) []
-lines-layout i f []       o c = refl
-lines-layout i f (l ∷ ls) o c with line-layout i f (classify l) o c
-... | c′ , e =
-  trans (cong (λ σ → layout i f (commentLinesDoc ls) (brk i σ)) e)
-    (trans (lines-layout i f ls (linesOut i (renderK i (classify l)) o) 0)
-      (cong₂ (λ O x → st O x (just i) []) (sym (linesOut-++ i (renderK i (classify l)) (concatMap (renderLine i) ls) o))
-             (zero-col ls)))
 
 private
   hcF : String → Held
