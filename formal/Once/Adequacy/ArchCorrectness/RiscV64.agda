@@ -137,9 +137,10 @@ open IRObsCorrectFlatness {rv64-frame-semantics}
 --
 -- It used to be an opaque postulate, with the comment "riscv64 has no
 -- correspondence yet, so nothing constrains this frame". That reason is gone,
--- and so is the postulate: a riscv64 `Frame` IS a `StackPointer` (an address
--- plus a proof it lies in the stack region, with `frame-base = addr`), so the
--- frame can simply BE the loader's `sp` — exactly as on x86-64, and
+-- and so is the postulate: a riscv64 `Frame` is a `StackPointer` (an address
+-- plus a proof it lies in the stack region) tagged with its depth, with
+-- `frame-base = addr` (plan 0.124), so the frame can simply BE the loader's
+-- `sp` at depth zero — exactly as on x86-64, and
 -- `entry-frame-base` collapses to `refl`.
 --
 -- OPAQUE means nothing about it is provable, which is why the x86-64 version of
@@ -151,7 +152,7 @@ postulate
   stack-top-in-stack : InStack RS.stack-top
 
 entry-frame-riscv64 : FrameSemantics.Frame rv64-frame-semantics
-entry-frame-riscv64 = stack-addr RS.stack-top stack-top-in-stack
+entry-frame-riscv64 = stack-addr RS.stack-top stack-top-in-stack , 0
 
 module FFOr = FFO o tbl riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
 asR = arch-semantics riscv64

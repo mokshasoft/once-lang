@@ -19590,3 +19590,28 @@ tracked, red, on `backstop.islands`. Plan 0.125 S0 then measured it: it is built
 (a total `valueT`), so it is not revived. Plan 0.125 keeps today's computation half
 (`MachineRefinesObsF`/`ValueRealized`/`CalleeRun`) and makes only `ValidAtWF` a function on the type, with
 behaviour in the `⇛` and `ν` cases (0.125 §2a). Plan 0.124 S0 chose depth-tagged frames (0.124 §3a).
+
+## D342 — FRAMES ARE ADDRESSES TAGGED WITH THEIR DEPTH; THE ABSTRACT STACK HAS NO FLOOR (2026-10-27)
+
+**Decision.** Plan 0.124 S1, on all three arches. A frame is `StackPointer × ℕ`: where it lives, and how
+many slots below the entry it is. `shift-frame (sp , d) n = (sp ∸ n·word , n + d)`. `≺` is lexicographic,
+depth first. `FrameSemantics` gains `shift-≺ : ∀ f n → 0 < n → shift-frame f n ≺ f`, proved per arch by the
+depth. The entry frame is the loader's stack pointer at depth 0.
+
+**Why.** Plan 0.124 §3a: with frames as bare addresses, `sp ∸ n·word` stops at zero, so a call from the
+lowest frame got its caller's frame back and the callee's `c-thunk` cleared the caller's live slots. No
+statement about calls could hold for every state. With the tag the callee's frame is new everywhere; the
+address laws read the address only and are unchanged. Running out of stack stays the concrete machine's
+business (`StackRoom`/`CallRoom`, later plan 0.123 A's `exhausted`).
+
+**What it cost.** Seven Agda files: the field in `FrameSemantics`, the three instances, and the three arch
+modules' entry frames (plus
+comments). The correspondences are generic over `FrameSemantics` and rechecked unchanged, so plan 0.124's
+S2/S3 were empty; the anticipated "no two live frames share an address" obligation was not needed by any
+proof. Scratch gate (MERGE.md §1): the S0 probe stops compiling, and its counterpart proves the caller's
+slot survives the callee's `do-thunk` at x86-64's floor, by `refl`. `make certified`, `public-gate`,
+`spec-gate`, `lint-pragmas` green.
+
+**Not done.** The machine-layer consequences (callee frame `≺` caller after `enter-call` + `grow-frame`,
+`BeforeFrontier` transport) wait for their consumer, plan 0.125 S2, so they are not islands.
+

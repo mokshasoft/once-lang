@@ -11,7 +11,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 |---|---|---|
 | 0.11 parameterized trusted base | A done (D302) | B `ArchModel`, C world/resources, D models, E `--safe` cone, F one concrete instance |
 | 0.125 calls proved, not assumed | open (2026-10-27) | S0 done; S1 `ValidAtWF` as a function on the type, S2 block-call lemma, S3 producers/consumers (incl. `cata-correct`), S4 layout, S5 delete `BlockRuns`/`BlockRunsHyp` ×3 (EMPTY, D340) |
-| 0.124 unbounded abstract stack | S0 done (depth-tagged frames) | S1 the `shift-≺` frame law, three arches and their correspondences; unblocks 0.125 S2 |
+| 0.124 unbounded abstract stack | DONE (D342): depth-tagged frames on all three arches, `shift-≺` a `FrameSemantics` field | none; consumed by 0.125 S2 |
 | 0.88 discharge obs-correct | open | `obs-correct-sigop-rest` (structured codomains; split it by reason), `obs-correct-In` until 0.125 S3; `cata-correct` moved to 0.125 |
 | 0.62 shape correctness | M1/M2 done | M2b, M3: `emitted-shape-check`, `run-meets` (two of `RunWF` ×7) |
 | 0.67 wire arith proofs | route obsolete | owns `arith-sigop-contract` ×3; `ev`/`step-budget` definitions |

@@ -150,9 +150,9 @@ open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; Machin
 -- loader hands `main`. Two postulates to express one fact, and the second one
 -- unprovable BY CONSTRUCTION.
 --
--- An x86-32 `Frame` is a `StackAddr`: an address plus a proof it lies in the
--- stack region, with `frame-base = addr`. So the frame can simply BE the
--- loader's `%esp`, and `entry-frame-base` collapses to `refl` (see
+-- An x86-32 `Frame` is a `StackAddr` (an address plus a proof it lies in the
+-- stack region) tagged with its depth, with `frame-base = addr` (plan 0.124).
+-- So the frame can simply BE the loader's `%esp` at depth zero, and `entry-frame-base` collapses to `refl` (see
 -- `entry-frame-base` below — a theorem now).
 --
 -- What survives is the one irreducible loader fact: that the `%esp` we are
@@ -164,12 +164,12 @@ postulate
   stack-top-in-stack : InStack X.stack-top
 
 entry-frame-x86-32 : X86-32Frame
-entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack
+entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack , 0
 
 module FFOx = FFO o tbl x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
 
 -- A THEOREM: the entry frame IS the loader's `%esp`
--- (`entry-frame-x86-32 = stack-addr stack-top _`) and `frame-base` on x86-32 is
+-- (`entry-frame-x86-32 = stack-addr stack-top _ , 0`) and `frame-base` on x86-32 is
 -- the `addr` projection, so this holds DEFINITIONALLY. Both `entry-corr`'s
 -- `sp-eq` and the `stack-eq` floor bound consume it.
 entry-frame-base : frame-base x86-32-frame-semantics
