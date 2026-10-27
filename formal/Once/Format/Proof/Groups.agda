@@ -122,13 +122,13 @@ layoutG-out f (R ∷ R′ ∷ Rs) o c (ne ∷ nes) with rendered-ne 0 (proj₁ n
 ------------------------------------------------------------------------
 
 open import Once.Format.Print using (W; walker; Line; line-text; line-empty; line-code; Held; held-comment; held-blank;
-  Trivia; stepComment; lineEnd; stepTok; settleAt; promote; promoteR; blankBefore; pending)
+  Trivia; stepComment; lineEnd; stepTok; settleAt; blankBefore; pending)
 open import Once.Format.Proof.Walk using (WL; stepL; nlW; hoistAt-id)
 open import Once.Format.Print using (Notes; lookupNotes)
 open import Once.Format.Proof.Lockstep using (Φ; Φ-cons)
 
 hcT : String → Held
-hcT c = held-comment c true
+hcT c = held-comment c
 
 -- | What the walk holds before a declaration for the runs: each written line
 -- before it, a blank between two runs.
@@ -139,7 +139,7 @@ heldOf (R ∷ R′ ∷ Rs) = map hcT (map readBack (rendered 0 R)) ++ held-blank
 
 -- The walk after a comment line at the start of a line.
 mid : ℕ → String → List Held → Trivia → WL
-mid k r H T = walker k false (line-text (r ∷ [])) H 0 T , true
+mid k r H T = walker k false (line-text (r ∷ [])) H 0 true T , true
 
 -- | A state the first comment line of the runs is read from, with what it
 -- holds then.
@@ -200,73 +200,43 @@ open import Data.Unit using (⊤; tt)
 open import Once.Format.Print using (notes; addTo; addTop)
 open import Once.Format.Proof.Walk using (lookup-addTo-same)
 
--- What stands before a declaration: comments, and blank lines.
-TopH : Held → Set
-TopH (held-comment _ true)  = ⊤
-TopH (held-comment _ false) = ⊥
-TopH held-blank             = ⊤
-
 -- | The notes held things settle as.
 notesOf : List Held → List Note
 notesOf []                      = []
-notesOf (held-comment c _ ∷ hs) = note-comment c ∷ notesOf hs
+notesOf (held-comment c ∷ hs) = note-comment c ∷ notesOf hs
 notesOf (held-blank ∷ hs)       = note-blank ∷ notesOf hs
 
 private
-  map-top : ∀ rs → All TopH (map hcT rs)
-  map-top []       = []
-  map-top (r ∷ rs) = tt ∷ map-top rs
-
   all-++ : ∀ {A : Set} {P : A → Set} xs ys → All P xs → All P ys → All P (xs ++ ys)
   all-++ []       ys []       q = q
   all-++ (x ∷ xs) ys (p ∷ ps) q = p ∷ all-++ xs ys ps q
 
-heldOf-top : ∀ G → All TopH (heldOf G)
-heldOf-top []            = []
-heldOf-top (R ∷ [])      = map-top _
-heldOf-top (R ∷ R′ ∷ Rs) = all-++ _ _ (map-top _) (tt ∷ heldOf-top (R′ ∷ Rs))
-
-private
-  promoteR-top : ∀ hs b → All TopH hs → promoteR hs b ≡ hs
-  promoteR-top []                         b     []       = refl
-  promoteR-top (held-comment h true ∷ hs) false (_ ∷ ps) = cong (held-comment h true ∷_) (promoteR-top hs true ps)
-  promoteR-top (held-comment h true ∷ hs) true  (_ ∷ ps) = cong (held-comment h true ∷_) (promoteR-top hs true ps)
-  promoteR-top (held-blank ∷ hs)          b     (_ ∷ ps) = cong (held-blank ∷_) (promoteR-top hs true ps)
-
-  all-revH : ∀ {P : Held → Set} {xs} → All P xs → All P (reverse xs)
-  all-revH {P} {[]} [] = []
-  all-revH {P} {x ∷ xs} (p ∷ ps) =
-    subst (All P) (sym (Data.List.Properties.unfold-reverse x xs)) (all-++ (reverse xs) (x ∷ []) (all-revH ps) (p ∷ []))
-
--- | What stands before a declaration is not promoted further.
-promote-top : ∀ hs → All TopH hs → promote hs ≡ hs
-promote-top hs ps = trans (cong reverse (promoteR-top (reverse hs) false (all-revH ps))) (Data.List.Properties.reverse-involutive hs)
-
--- | Settling it adds it before the declaration's first anchor.
-settle-tops : ∀ k hs T → All TopH hs → Notes.top (lookupNotes k (settleAt k hs T)) ≡ Notes.top (lookupNotes k T) ++ notesOf hs
-settle-tops k []                         T []       = sym (++-identityʳ _)
-settle-tops k (held-comment h true ∷ hs) T (_ ∷ ps) =
-  trans (settle-tops k hs (addTo k (addTop (note-comment h)) T) ps)
+-- | Settling what is held before a declaration adds it before the
+-- declaration's first anchor.
+settle-tops : ∀ k hs T → Notes.top (lookupNotes k (settleAt k true hs T)) ≡ Notes.top (lookupNotes k T) ++ notesOf hs
+settle-tops k []                    T = sym (++-identityʳ _)
+settle-tops k (held-comment h ∷ hs) T =
+  trans (settle-tops k hs (addTo k (addTop (note-comment h)) T))
     (trans (cong (λ n → Notes.top n ++ notesOf hs) (lookup-addTo-same k (addTop (note-comment h)) T))
       (trans (cong (_++ notesOf hs) (top-add (note-comment h) (lookupNotes k T))) (++-assoc _ (note-comment h ∷ []) _)))
   where
     top-add : ∀ x n → Notes.top (addTop x n) ≡ Notes.top n ++ x ∷ []
     top-add x (notes _ _ _) = refl
-settle-tops k (held-blank ∷ hs) T (_ ∷ ps) =
-  trans (settle-tops k hs (addTo k (addTop note-blank) T) ps)
+settle-tops k (held-blank ∷ hs) T =
+  trans (settle-tops k hs (addTo k (addTop note-blank) T))
     (trans (cong (λ n → Notes.top n ++ notesOf hs) (lookup-addTo-same k (addTop note-blank) T))
       (trans (cong (_++ notesOf hs) (top-add note-blank (lookupNotes k T))) (++-assoc _ (note-blank ∷ []) _)))
   where
     top-add : ∀ x n → Notes.top (addTop x n) ≡ Notes.top n ++ x ∷ []
     top-add x (notes _ _ _) = refl
 
-settle-tops-inner : ∀ j k hs T → All TopH hs → Notes.inner (lookupNotes j (settleAt k hs T)) ≡ Notes.inner (lookupNotes j T)
-settle-tops-inner j k []                         T []       = refl
-settle-tops-inner j k (held-comment h true ∷ hs) T (_ ∷ ps) =
-  trans (settle-tops-inner j k hs _ ps)
+settle-tops-inner : ∀ j k hs T → Notes.inner (lookupNotes j (settleAt k true hs T)) ≡ Notes.inner (lookupNotes j T)
+settle-tops-inner j k []                    T = refl
+settle-tops-inner j k (held-comment h ∷ hs) T =
+  trans (settle-tops-inner j k hs _)
     (Once.Format.Proof.Walk.lookup-addTo-keeps Notes.inner j k (addTop (note-comment h)) T (λ { (notes _ _ _) → refl }))
-settle-tops-inner j k (held-blank ∷ hs)          T (_ ∷ ps) =
-  trans (settle-tops-inner j k hs _ ps)
+settle-tops-inner j k (held-blank ∷ hs)     T =
+  trans (settle-tops-inner j k hs _)
     (Once.Format.Proof.Walk.lookup-addTo-keeps Notes.inner j k (addTop note-blank) T (λ { (notes _ _ _) → refl }))
 
 ------------------------------------------------------------------------
@@ -282,7 +252,7 @@ rsOf R = map readBack (rendered 0 R)
 
 notesOf-++ : ∀ xs ys → notesOf (xs ++ ys) ≡ notesOf xs ++ notesOf ys
 notesOf-++ []                      ys = refl
-notesOf-++ (held-comment c _ ∷ xs) ys = cong (note-comment c ∷_) (notesOf-++ xs ys)
+notesOf-++ (held-comment c ∷ xs) ys = cong (note-comment c ∷_) (notesOf-++ xs ys)
 notesOf-++ (held-blank ∷ xs)       ys = cong (note-blank ∷_) (notesOf-++ xs ys)
 
 private

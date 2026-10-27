@@ -129,7 +129,7 @@ record WI (σ : St) (kb n : ℕ) : Set where
   field
     h       : Bool
     t       : Trivia
-    w-φ     : proj₁ (Φ (St.out σ)) ≡ walker (kb + n) h line-code [] 0 t
+    w-φ     : proj₁ (Φ (St.out σ)) ≡ walker (kb + n) h line-code [] 0 false t
     w-text  : St.pend σ ≡ nothing → waits (St.out σ) ≡ false × h ≡ (0 <ᵇ n)
     w-end   : ∀ i → St.pend σ ≡ just i → waits (St.out σ) ≡ true × n ≡ 0 × 1 ≤ i
     w-after : ∀ j → kb ≤ j → Notes.after (lookupNotes j t) ≡ []
@@ -195,8 +195,8 @@ private
       help : ∀ ω → proj₂ ω ≡ false → ω ≡ (proj₁ ω , false)
       help (v , false) refl = refl
 
-  idx : ∀ {h t} kb n → walker (kb + n) h line-code [] 0 t ≡ walker ((kb + n) + 0) h line-code [] 0 t
-  idx {h} {t} kb n = cong (λ x → walker x h line-code [] 0 t) (sym (+-identityʳ (kb + n)))
+  idx : ∀ {h t} kb n → walker (kb + n) h line-code [] 0 false t ≡ walker ((kb + n) + 0) h line-code [] 0 false t
+  idx {h} {t} kb n = cong (λ x → walker x h line-code [] 0 false t) (sym (+-identityʳ (kb + n)))
 
 -- | A line end, in step: what both write at it is the same, and the walk has
 -- found the line's comments at its last anchor.
@@ -240,9 +240,9 @@ brk-sim i (st o c nothing (x ∷ xs)) (st .o .c .nothing e₂) kb (suc m) 1≤i 
     t′ = addTo (k ∸ 1) (addAfter r) t
     o₁ = lnl ∷ lcm J ∷ lsp ∷ trim o
 
-    eqω : proj₁ (Φ o₁) ≡ walker k true line-code [] 0 t′
+    eqω : proj₁ (Φ o₁) ≡ walker k true line-code [] 0 false t′
     eqω = trans (cong proj₁ (Φ-flush o J ok wf))
-                (cong (λ v → stepComment v r) (trans (WI.w-φ w) (cong (λ b → walker k b line-code [] 0 t) h≡)))
+                (cong (λ v → stepComment v r) (trans (WI.w-φ w) (cong (λ b → walker k b line-code [] 0 false t) h≡)))
 
     final : ∀ j → j < k → Notes.after (lookupNotes j (fin ωF)) ≡ Notes.after (lookupNotes j t′)
     final j j<k = after-final (brk i (st o c nothing (x ∷ xs))) fut _ eqω (cong proj₂ (Φ-flush o J ok wf)) j j<k
@@ -324,8 +324,8 @@ private
 
   -- a token that is not an anchor, on a line of code: the walk only reads it
   tok-code : ∀ t ω {k h T} → Data.Bool.not (anchorTok t) ∧ Data.Bool.not (lineEndTok t) ≡ true
-           → proj₁ ω ≡ walker k h line-code [] 0 T → proj₂ ω ≡ false
-           → proj₁ (stepL ω (lt t)) ≡ walker k (h ∨ false) line-code [] 0 T
+           → proj₁ ω ≡ walker k h line-code [] 0 false T → proj₂ ω ≡ false
+           → proj₁ (stepL ω (lt t)) ≡ walker k (h ∨ false) line-code [] 0 false T
   tok-code t (v , false) {k} {h} {T} pl refl refl with anchorTok t | lineEndTok t
   ... | false | false = refl
   ... | true  | _     = ⊥-elim (f≢t pl)
@@ -337,8 +337,8 @@ private
 
   -- …at the start of an indented line
   tok-line : ∀ t ω i {k h T} → Data.Bool.not (anchorTok t) ∧ Data.Bool.not (lineEndTok t) ≡ true
-           → proj₁ ω ≡ walker k h line-code [] 0 T → proj₂ ω ≡ true
-           → proj₁ (stepL (stepL ω (lind (suc i))) (lt t)) ≡ walker k false line-code [] 0 T
+           → proj₁ ω ≡ walker k h line-code [] 0 false T → proj₂ ω ≡ true
+           → proj₁ (stepL (stepL ω (lind (suc i))) (lt t)) ≡ walker k false line-code [] 0 false T
   tok-line t (v , true) i {k} {h} {T} pl refl refl with anchorTok t | lineEndTok t
   ... | false | false = refl
   ... | true  | _     = ⊥-elim (f≢t pl)
@@ -487,11 +487,11 @@ open import Once.Format.Comment using (commentLinesDoc; commentRun; commentLines
 open import Once.Format.Proof.Rerender using (renderK; renderLine; rendered; rendered-fix; rendered-RL; Src; rendered-ne)
 open import Once.Format.Proof.Lockstep using (linesOut; colOf; zero-col; linesOut-++; lines-layout)
 open import Once.Format.Doc using (paragraph; dashed; fill; lineComment)
-open import Once.Format.Print using (Held; held-comment; settleAt; promote; promoteR; addInner; notes)
+open import Once.Format.Print using (Held; held-comment; settleAt; addInner; notes)
 
 private
   hcF : String → Held
-  hcF c = held-comment c false
+  hcF c = held-comment c
 
   anchor-cases : ∀ x → T (anchorTok x) → anchorTok x ≡ true × lineEndTok x ≡ false
   anchor-cases (Once.Spec.Surface.Lexing.TWord w) p = T-true p , refl
@@ -503,43 +503,33 @@ private
   ∨-true false = refl
 
   -- the walk over the first comment line, and the next ones
-  line-first : ∀ o i′ L {k h Tr} → Φ o ≡ (walker k h line-code [] 0 Tr , true)
-             → Φ (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) ≡ (walker k false (line-text (readBack L ∷ [])) [] 0 Tr , true)
+  line-first : ∀ o i′ L {k h Tr} → Φ o ≡ (walker k h line-code [] 0 false Tr , true)
+             → Φ (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) ≡ (walker k false (line-text (readBack L ∷ [])) [] 0 false Tr , true)
   line-first o i′ L e =
     trans (Φ-cons lnl (lcm L ∷ lind (suc i′) ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind (suc i′) ∷ o))
       (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind (suc i′)) o) (cong (λ ω → stepL ω (lind (suc i′))) e)))))
 
-  line-next : ∀ o i′ L r H {k Tr} → Φ o ≡ (walker k false (line-text (r ∷ [])) H 0 Tr , true)
-            → Φ (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) ≡ (walker k false (line-text (readBack L ∷ [])) (H ++ hcF r ∷ []) 0 Tr , true)
+  line-next : ∀ o i′ L r H {k Tr} → Φ o ≡ (walker k false (line-text (r ∷ [])) H 0 false Tr , true)
+            → Φ (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) ≡ (walker k false (line-text (readBack L ∷ [])) (H ++ hcF r ∷ []) 0 false Tr , true)
   line-next o i′ L r H e =
     trans (Φ-cons lnl (lcm L ∷ lind (suc i′) ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind (suc i′) ∷ o))
       (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind (suc i′)) o) (cong (λ ω → stepL ω (lind (suc i′))) e)))))
 
   -- …then the anchor they stand before
-  run-tok : ∀ i′ Ls H r o x {k Tr} → T (anchorTok x) → Φ o ≡ (walker k false (line-text (r ∷ [])) H 0 Tr , true)
+  run-tok : ∀ i′ Ls H r o x {k Tr} → T (anchorTok x) → Φ o ≡ (walker k false (line-text (r ∷ [])) H 0 false Tr , true)
           → proj₁ (Φ (lt x ∷ lind (suc i′) ∷ linesOut (suc i′) Ls o))
-            ≡ walker (suc k) true line-code [] 0 (settleAt k (promote (H ++ map hcF (r ∷ map readBack Ls))) Tr)
+            ≡ walker (suc k) true line-code [] 0 false (settleAt k false (H ++ map hcF (r ∷ map readBack Ls)) Tr)
   run-tok i′ [] H r o x {k} {Tr} ax e with anchor-cases x ax
   ... | ea , ee =
     trans (cong proj₁ (Φ-cons (lt x) (lind (suc i′) ∷ o)))
       (trans (cong (λ ω → proj₁ (stepL ω (lt x))) (trans (Φ-cons (lind (suc i′)) o) (cong (λ ω → stepL ω (lind (suc i′))) e)))
-        (cong₂ (λ a b → stepTok (walker k false line-empty (H ++ hcF r ∷ []) 1 Tr) a b) ea ee))
+        (cong₂ (λ a b → stepTok (walker k false line-empty (H ++ hcF r ∷ []) 1 false Tr) a b) ea ee))
   run-tok i′ (L ∷ Ls) H r o x {k} {Tr} ax e =
     trans (run-tok i′ Ls (H ++ hcF r ∷ []) (readBack L) (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) x ax (line-next o i′ L r H e))
-      (cong (λ hs → walker (suc k) true line-code [] 0 (settleAt k (promote hs) Tr))
+      (cong (λ hs → walker (suc k) true line-code [] 0 false (settleAt k false hs Tr))
         (++-assoc H (hcF r ∷ []) (map hcF (readBack L ∷ map readBack Ls))))
 
-  promoteR-false : ∀ rs → promoteR (map hcF rs) false ≡ map hcF rs
-  promoteR-false []       = refl
-  promoteR-false (r ∷ rs) = cong (hcF r ∷_) (promoteR-false rs)
-
-  promote-false : ∀ rs → promote (map hcF rs) ≡ map hcF rs
-  promote-false rs =
-    trans (cong (λ hs → reverse (promoteR hs false)) (sym (Data.List.Properties.reverse-map hcF rs)))
-      (trans (cong reverse (promoteR-false (reverse rs)))
-        (trans (sym (Data.List.Properties.reverse-map hcF (reverse rs))) (cong (map hcF) (Data.List.Properties.reverse-involutive rs))))
-
-  settle-inner : ∀ k rs Tr → Notes.inner (lookupNotes k (settleAt k (map hcF rs) Tr)) ≡ Notes.inner (lookupNotes k Tr) ++ rs
+  settle-inner : ∀ k rs Tr → Notes.inner (lookupNotes k (settleAt k false (map hcF rs) Tr)) ≡ Notes.inner (lookupNotes k Tr) ++ rs
   settle-inner k []       Tr = sym (++-identityʳ _)
   settle-inner k (r ∷ rs) Tr =
     trans (settle-inner k rs (addTo k (addInner r) Tr))
@@ -549,22 +539,22 @@ private
       inner-add : ∀ r n → Notes.inner (addInner r n) ≡ Notes.inner n ++ r ∷ []
       inner-add r (notes _ _ _) = refl
 
-  settle-top : ∀ j k rs Tr → Notes.top (lookupNotes j (settleAt k (map hcF rs) Tr)) ≡ Notes.top (lookupNotes j Tr)
+  settle-top : ∀ j k rs Tr → Notes.top (lookupNotes j (settleAt k false (map hcF rs) Tr)) ≡ Notes.top (lookupNotes j Tr)
   settle-top j k []       Tr = refl
   settle-top j k (r ∷ rs) Tr =
     trans (settle-top j k rs _) (lookup-addTo-keeps Notes.top j k (addInner r) Tr (λ { (notes _ _ _) → refl }))
 
   -- an anchor's token, on a line of code and at the start of an indented line
-  tokA-code : ∀ x ω {k h Tr} → T (anchorTok x) → proj₁ ω ≡ walker k h line-code [] 0 Tr → proj₂ ω ≡ false
-            → proj₁ (stepL ω (lt x)) ≡ walker (suc k) true line-code [] 0 Tr
+  tokA-code : ∀ x ω {k h Tr} → T (anchorTok x) → proj₁ ω ≡ walker k h line-code [] 0 false Tr → proj₂ ω ≡ false
+            → proj₁ (stepL ω (lt x)) ≡ walker (suc k) true line-code [] 0 false Tr
   tokA-code x (v , false) {k} {h} {Tr} ax refl refl with anchor-cases x ax
-  ... | ea , ee = trans (cong₂ (λ a b → stepTok (walker k h line-code [] 0 Tr) a b) ea ee)
-                        (cong (λ b → walker (suc k) b line-code [] 0 Tr) (∨-true h))
+  ... | ea , ee = trans (cong₂ (λ a b → stepTok (walker k h line-code [] 0 false Tr) a b) ea ee)
+                        (cong (λ b → walker (suc k) b line-code [] 0 false Tr) (∨-true h))
 
-  tokA-line : ∀ x ω i {k h Tr} → T (anchorTok x) → proj₁ ω ≡ walker k h line-code [] 0 Tr → proj₂ ω ≡ true
-            → proj₁ (stepL (stepL ω (lind (suc i))) (lt x)) ≡ walker (suc k) true line-code [] 0 Tr
+  tokA-line : ∀ x ω i {k h Tr} → T (anchorTok x) → proj₁ ω ≡ walker k h line-code [] 0 false Tr → proj₂ ω ≡ true
+            → proj₁ (stepL (stepL ω (lind (suc i))) (lt x)) ≡ walker (suc k) true line-code [] 0 false Tr
   tokA-line x (v , true) i {k} {h} {Tr} ax refl refl with anchor-cases x ax
-  ... | ea , ee = cong₂ (λ a b → stepTok (walker k false line-empty [] 1 Tr) a b) ea ee
+  ... | ea , ee = cong₂ (λ a b → stepTok (walker k false line-empty [] 1 false Tr) a b) ea ee
 
 -- | An anchor's token, in step: the walk is past it.
 anchor-sim : ∀ x σ₁ σ₂ kb n → T (anchorTok x) → Rel σ₁ σ₂ kb n → WI σ₁ kb n → LI σ₁
@@ -576,8 +566,8 @@ anchor-sim x (st o c p e₁) (st .o .c .p e₂) kb n ax (rel refl refl refl re�
   where
     subst₂R : ∀ {σ σ′ τ τ′} → σ′ ≡ σ → τ′ ≡ τ → Rel σ τ kb n → Rel σ′ τ′ kb n
     subst₂R refl refl r = r
-    idx′ : ∀ {Tr} → walker (suc (kb + n)) true line-code [] 0 Tr ≡ walker (kb + suc n) true line-code [] 0 Tr
-    idx′ {Tr} = cong (λ m → walker m true line-code [] 0 Tr) (sym (+-suc kb n))
+    idx′ : ∀ {Tr} → walker (suc (kb + n)) true line-code [] 0 false Tr ≡ walker (kb + suc n) true line-code [] 0 false Tr
+    idx′ {Tr} = cong (λ m → walker m true line-code [] 0 false Tr) (sym (+-suc kb n))
     nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
     nj ()
     weak : ∀ j → kb + suc n ≤ j → kb + n ≤ j
@@ -643,7 +633,7 @@ private
   k+1 k = trans (+-suc k 0) (cong suc (+-identityʳ k))
 
   -- what the walk past the token found before an anchor is final
-  inner-final : ∀ σ → Future σ → ∀ k h Tr → proj₁ (Φ (St.out σ)) ≡ walker (suc k) h line-code [] 0 Tr
+  inner-final : ∀ σ → Future σ → ∀ k h Tr → proj₁ (Φ (St.out σ)) ≡ walker (suc k) h line-code [] 0 false Tr
               → Notes.inner (lookupNotes k (fin ωF)) ≡ Notes.inner (lookupNotes k Tr)
   inner-final σ (xs , fe) k h Tr e =
     trans (cong (λ ω → Notes.inner (lookupNotes k (fin ω))) (sym fe))
@@ -698,7 +688,7 @@ hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lo
         ... | no k≢kd =
           trans (I2 k (Data.Nat.Properties.≤∧≢⇒< kd≤k (λ q → k≢kd (sym q))))
             (trans (inner-final (token x σ₁) fc k (WI.h w′) (WI.t w′)
-                      (trans (WI.w-φ w′) (cong (λ m → walker m (WI.h w′) line-code [] 0 (WI.t w′)) (+-suc kb n))))
+                      (trans (WI.w-φ w′) (cong (λ m → walker m (WI.h w′) line-code [] 0 false (WI.t w′)) (+-suc kb n))))
                    (proj₂ (proj₂ R)))
         eq₂ : layout i f (anchorDoc tv₂ k x) σ₂ ≡ layout i f (Once.Format.Print.eols B₂) (token x σ₂)
         eq₂ = cong (λ A → layout i f (inners A <> tk x <> Once.Format.Print.eols B₂) σ₂) e₂
@@ -742,8 +732,8 @@ hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lo
         pendc = trans (cong (λ τ → St.pend (token x τ)) σb≡) (proj₂ (token-shape x (linesOut i Ls Oa) 0 (just i) []))
         endsc : St.ends σc ≡ []
         endsc = trans (cong (λ τ → St.ends (token x τ)) σb≡) (cong St.ends (token-e x (linesOut i Ls Oa) 0 (just i) []))
-        ΦOa : Φ Oa ≡ (walker k (WI.h wa) line-code [] 0 Ta , true)
-        ΦOa = cong₂ _,_ (trans (WI.w-φ wa) (cong (λ m → walker m (WI.h wa) line-code [] 0 Ta) (+-identityʳ k)))
+        ΦOa : Φ Oa ≡ (walker k (WI.h wa) line-code [] 0 false Ta , true)
+        ΦOa = cong₂ _,_ (trans (WI.w-φ wa) (cong (λ m → walker m (WI.h wa) line-code [] 0 false Ta) (+-identityʳ k)))
                         (proj₁ (WI.w-end wa i (cong St.pend (brk-st i σ₁))))
         i′ = proj₁ (pos 1≤i)
         eqi = proj₂ (pos 1≤i)
@@ -753,14 +743,14 @@ hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lo
         eLs : Ls ≡ L ∷ Ls′
         eLs = proj₂ (proj₂ ne)
         rs = map readBack Ls
-        Ta′ = settleAt k (map hcF rs) Ta
-        eφc : proj₁ (Φ (St.out σc)) ≡ walker (suc k) true line-code [] 0 Ta′
+        Ta′ = settleAt k false (map hcF rs) Ta
+        eφc : proj₁ (Φ (St.out σc)) ≡ walker (suc k) true line-code [] 0 false Ta′
         eφc = trans (cong (λ o → proj₁ (Φ o)) outc)
                 (trans (cong (λ m → proj₁ (Φ (lt x ∷ lind m ∷ linesOut m Ls Oa))) eqi)
                   (trans (cong (λ M → proj₁ (Φ (lt x ∷ lind (suc i′) ∷ linesOut (suc i′) M Oa))) eLs)
                     (trans (run-tok i′ Ls′ [] (readBack L) (lnl ∷ lcm L ∷ lind (suc i′) ∷ Oa) x ax (line-first Oa i′ L ΦOa))
-                      (cong (λ hs → walker (suc k) true line-code [] 0 (settleAt k hs Ta))
-                        (trans (promote-false (map readBack (L ∷ Ls′))) (cong (λ M → map hcF (map readBack M)) (sym eLs)))))))
+                      (cong (λ hs → walker (suc k) true line-code [] 0 false (settleAt k false hs Ta))
+                        (cong (λ M → map hcF (map readBack M)) (sym eLs))))))
         inner₂ : Notes.inner (lookupNotes k tv₂) ≡ rs
         inner₂ = trans (I2 k kd<k)
                    (trans (inner-final σc fc k true Ta′ eφc)
@@ -780,16 +770,16 @@ hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lo
         eq₂ = trans (cong (λ A′ → layout i f (inners A′ <> tk x <> eols B₂) σ₂) inner₂)
                 (trans (inners₂ rs rs-cons) (cong (λ τ → layout i f (eols B₂) (token x τ)) σ₂b≡))
         wc : WI σc k 1
-        wc = wi true Ta′ (trans eφc (cong (λ m → walker m true line-code [] 0 Ta′) (sym (k+1 k))))
+        wc = wi true Ta′ (trans eφc (cong (λ m → walker m true line-code [] 0 false Ta′) (sym (k+1 k))))
                (λ _ → trans (cong waits outc) (cong proj₂ (Φ-cons (lt x) (lind i ∷ linesOut i Ls Oa))) , refl)
                (λ i₂ q → ⊥-elim (nj (trans (sym pendc) q)))
-               (λ j le → trans (Once.Format.Proof.Walk.settleAt-after j k (map hcF rs) Ta) (WI.w-after wa j le))
-               (λ j le → trans (cong Notes.inner (Once.Format.Proof.Walk.lookup-settleAt j k (map hcF rs) Ta
+               (λ j le → trans (Once.Format.Proof.Walk.settleAt-after j k false (map hcF rs) Ta) (WI.w-after wa j le))
+               (λ j le → trans (cong Notes.inner (Once.Format.Proof.Walk.lookup-settleAt j k false (map hcF rs) Ta
                                    (λ q → <-irrefl (sym q) (subst (_≤ j) (k+1 k) le))))
                                (WI.w-inner wa j (≤-trans (subst (_≤ k + 1) (sym (+-identityʳ k)) (subst (k ≤_) (sym (k+1 k)) (n≤1+n k))) le)))
                (λ j kd<j → trans (settle-top j k rs Ta) (WI.w-top wa j kd<j))
                (trans (settle-top kd k rs Ta) (WI.w-topk wa))
-               (trans (cong Notes.inner (Once.Format.Proof.Walk.lookup-settleAt kd k (map hcF rs) Ta (λ q → <-irrefl q kd<k)))
+               (trans (cong Notes.inner (Once.Format.Proof.Walk.lookup-settleAt kd k false (map hcF rs) Ta (λ q → <-irrefl q kd<k)))
                       (WI.w-innerk wa))
           where nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
                 nj ()
@@ -829,7 +819,7 @@ record Start (σ : St) (T′ : Trivia) : Set where
     s-pend  : St.pend σ ≡ just 0
     s-ends  : St.ends σ ≡ []
     s-first : ∀ x → lineEndTok x ≡ false
-            → proj₁ (Φ (lt x ∷ lind 0 ∷ St.out σ)) ≡ walker (if anchorTok x then suc kd else kd) (anchorTok x) line-code [] 0 T′
+            → proj₁ (Φ (lt x ∷ lind 0 ∷ St.out σ)) ≡ walker (if anchorTok x then suc kd else kd) (anchorTok x) line-code [] 0 false T′
     s-after : ∀ j → kd ≤ j → Notes.after (lookupNotes j T′) ≡ []
     s-inner : ∀ j → kd ≤ j → Notes.inner (lookupNotes j T′) ≡ []
     s-top   : ∀ j → kd < j → Notes.top (lookupNotes j T′) ≡ []
@@ -853,7 +843,7 @@ private
   wi-first t σ T′ sw eo ep ne b eb =
     wi b T′
       (trans (cong (λ o → proj₁ (Φ o)) eo)
-        (trans (Start.s-first sw t ne) (cong₂ (λ m h → walker m h line-code [] 0 T′) (idx-of b eb) eb)))
+        (trans (Start.s-first sw t ne) (cong₂ (λ m h → walker m h line-code [] 0 false T′) (idx-of b eb) eb)))
       (λ _ → trans (cong waits eo) (cong proj₂ (Φ-cons (lt t) (lind 0 ∷ St.out σ))) , h-of b)
       (λ i₂ q → ⊥-elim (nj (trans (sym ep) q)))
       (Start.s-after sw) (λ j le → Start.s-inner sw j (≤-trans (m≤m+n kd _) le)) (Start.s-top sw) (Start.s-topk sw)
