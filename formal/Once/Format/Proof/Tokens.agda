@@ -22,20 +22,19 @@ open import Once.Format.Doc using (toks)
 open import Once.Format.Comment using (commentLines; commentRun; commentLinesDoc; classify; prose; verbatim)
 open import Once.Format.Print using (Trivia; Notes; lookupNotes; inners; eols; anchor; word)
 
-private
-  lines-toks : ∀ cs r → toks (commentLinesDoc cs) r ≡ r
-  lines-toks []       r = refl
-  lines-toks (c ∷ cs) r with classify c
-  ... | prose ws   = lines-toks cs r
-  ... | verbatim v = lines-toks cs r
+lines-toks : ∀ cs r → toks (commentLinesDoc cs) r ≡ r
+lines-toks []       r = refl
+lines-toks (c ∷ cs) r with classify c
+... | prose ws   = lines-toks cs r
+... | verbatim v = lines-toks cs r
 
-  inners-toks : ∀ cs r → toks (inners cs) r ≡ r
-  inners-toks []       r = refl
-  inners-toks (c ∷ cs) r = lines-toks (concatMap commentLines (c ∷ cs)) r
+inners-toks : ∀ cs r → toks (inners cs) r ≡ r
+inners-toks []       r = refl
+inners-toks (c ∷ cs) r = lines-toks (concatMap commentLines (c ∷ cs)) r
 
-  eols-toks : ∀ cs r → toks (eols cs) r ≡ r
-  eols-toks []       r = refl
-  eols-toks (c ∷ cs) r = eols-toks cs r
+eols-toks : ∀ cs r → toks (eols cs) r ≡ r
+eols-toks []       r = refl
+eols-toks (c ∷ cs) r = eols-toks cs r
 
 -- | An anchor is its token.
 anchor-toks : ∀ x tv k r → toks (proj₁ (anchor x tv k)) r ≡ x ∷ r
