@@ -85,14 +85,14 @@ isAnchor (TFloat _ _ _ _)   = true
 {-# CATCHALL #-}
 isAnchor _                  = false
 
+-- Blanks at the start dropped.
+dropLead : List Char → List Char
+dropLead []       = []
+dropLead (c ∷ cs) = if does (c Ch.≟ ' ') ∨ does (c Ch.≟ '\t') ∨ does (c Ch.≟ '\r') then dropLead cs else c ∷ cs
+
 -- A comment's text without trailing blanks.
 trimEnd : String → String
-trimEnd s = fromList (reverse (dropBlanks (reverse (toList s))))
-  where
-    dropBlanks : List Char → List Char
-    dropBlanks []       = []
-    dropBlanks (c ∷ cs) = if does (c Ch.≟ ' ') ∨ does (c Ch.≟ '\t') ∨ does (c Ch.≟ '\r')
-                          then dropBlanks cs else c ∷ cs
+trimEnd s = fromList (reverse (dropLead (reverse (toList s))))
 
 -- Add to the notes of anchor `k`.
 addTo : ℕ → (Notes → Notes) → Trivia → Trivia
