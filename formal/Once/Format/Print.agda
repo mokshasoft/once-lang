@@ -14,9 +14,9 @@
 -- module keeps (plan 0.124 §6). A comment on its own line before a line that
 -- starts a declaration goes before that declaration; one before an indented
 -- line goes before the next anchor, in place; one after code on a line goes at
--- the end of the line of the anchor before it in its declaration (before
--- the declaration's first anchor, it goes before the declaration). Blank
--- lines are kept between declarations, at most one.
+-- the end of the line of the anchor before it on that line (a line without
+-- one: before the next anchor). Blank lines are kept between declarations, at
+-- most one.
 --
 -- The canonical spellings (D341): parameters for leading lambdas (`f x = e`),
 -- `f . g` for `compose f g`, integers in decimal, floats as written.
@@ -124,7 +124,7 @@ record W : Set where
   constructor walker
   field
     k        : ℕ              -- the next anchor's index
-    here     : Bool           -- an anchor since the last line that starts a declaration
+    onLine   : Bool           -- an anchor on the current line
     ln       : Line           -- the current line
     held     : List Held      -- in order
     breaks   : ℕ              -- line ends since the last thing on a line
@@ -158,9 +158,9 @@ blankBefore : ℕ → List Held → List Held
 blankBefore b hs = if 2 <ᵇ suc b then hs ++ (held-blank ∷ []) else hs
 
 lineEnd : Bool → W → W
-lineEnd top (walker k h (line-text cs) hs b t) = walker k h line-empty (hs ++ map (λ c → held-comment c top) cs) 1 t
-lineEnd top (walker k h line-empty hs b t)    = walker k h line-empty hs (suc b) t
-lineEnd top (walker k h line-code hs b t)     = walker k h line-empty hs (suc b) t
+lineEnd top (walker k _ (line-text cs) hs b t) = walker k false line-empty (hs ++ map (λ c → held-comment c top) cs) 1 t
+lineEnd top (walker k _ line-empty hs b t)    = walker k false line-empty hs (suc b) t
+lineEnd top (walker k _ line-code hs b t)     = walker k false line-empty hs (suc b) t
 
 -- A line end (`TNewline`, and the end of the text), or another token.
 isLineEnd : Token → Bool
@@ -175,20 +175,23 @@ pending (line-text cs) hs = hs ++ map (λ c → held-comment c false) cs
 pending line-empty    hs = hs
 pending line-code     hs = hs
 
--- (a line end `TNewline` starts a declaration)
 stepTok : W → Token → Bool → W
-stepTok (walker k _ ln hs b t) x true = lineEnd true (walker k false ln hs b t)
+stepTok σ x true = lineEnd true σ
 stepTok (walker k h ln hs b t) x false = next (settle (walker k h ln (pending ln (blankBefore b hs)) b t))
   where
     next : W → W
     next (walker k′ h′ _ _ _ t′) =
       walker (if isAnchor x then suc k′ else k′) (h′ ∨ isAnchor x) line-code [] 0 t′
 
--- A comment after code ends the line of the last anchor; before the
--- declaration's first anchor, it stands before the declaration.
+-- A comment after code ends the line of the last anchor, when that anchor is
+-- on its line; else it stands before the next anchor, as one on a line of its
+-- own does.
+afterCode : Bool → ℕ → List Held → ℕ → Trivia → String → W
+afterCode true  k hs b t c = walker k true line-code hs b (addTo (k ∸ 1) (addAfter c) t)
+afterCode false k hs b t c = walker k false line-code (hs ++ (held-comment c false ∷ [])) b t
+
 stepComment : W → String → W
-stepComment (walker k h line-code hs b t) c =
-  walker k h line-code hs b (if h then addTo (k ∸ 1) (addAfter c) t else addTo k (addTop (note-comment c)) t)
+stepComment (walker k h line-code hs b t) c = afterCode h k hs b t c
 stepComment (walker k h line-empty hs b t) c = walker k h (line-text (c ∷ [])) (blankBefore b hs) 0 t
 stepComment (walker k h (line-text cs) hs b t) c = walker k h (line-text (cs ++ (c ∷ []))) hs b t
 

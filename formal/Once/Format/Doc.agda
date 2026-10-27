@@ -9,7 +9,8 @@
 -- blocks (`nest`) and groups that are laid out flat when they fit the width
 -- (`group`). Two breaks are forced: `newline` ends the line unless it is
 -- already ended (so breaks never pile up into blank lines), `blank` leaves one
--- empty line. A group that contains a forced break is never flat. `eol c`
+-- empty line; they break a flat group too. Comments take no room in deciding
+-- whether a group is flat, so the code's layout is its own. `eol c`
 -- puts `c` at the end of the current line, whenever that line ends (an
 -- end-of-line comment: it takes no room and breaks nothing).
 --
@@ -142,23 +143,21 @@ lineComment cs = '-' ∷ '-' ∷ oneLine (body cs)
 ------------------------------------------------------------------------
 -- Layout
 ------------------------------------------------------------------------
--- The width of a document laid out flat; `nothing` when it cannot be flat.
-flatWidth : Doc → Maybe ℕ
-flatWidth empty     = just 0
-flatWidth (tk t)    = just (Str.length (spell t))
-flatWidth sp        = just 1
-flatWidth (cmt _)   = nothing
-flatWidth (para _)  = nothing
-flatWidth line      = just 1
-flatWidth newline   = nothing
-flatWidth blank     = nothing
-flatWidth (eol _)   = just 0
-flatWidth (a <> b)  = plus (flatWidth a) (flatWidth b)
-  where
-    plus : Maybe ℕ → Maybe ℕ → Maybe ℕ
-    plus (just m) (just n) = just (m + n)
-    plus (just _) nothing  = nothing
-    plus nothing  _        = nothing
+-- The width of a document's code laid out flat. Comments take no room: a
+-- comment ends its line wherever it stands (an end-of-line comment at the end,
+-- one on lines of its own with a forced break), so whether a group is flat is
+-- the code's alone.
+flatWidth : Doc → ℕ
+flatWidth empty      = 0
+flatWidth (tk t)     = Str.length (spell t)
+flatWidth sp         = 1
+flatWidth (cmt _)    = 0
+flatWidth (para _)   = 0
+flatWidth line       = 1
+flatWidth newline    = 0
+flatWidth blank      = 0
+flatWidth (eol _)    = 0
+flatWidth (a <> b)   = flatWidth a + flatWidth b
 flatWidth (nest _ d) = flatWidth d
 flatWidth (group d)  = flatWidth d
 
@@ -251,9 +250,8 @@ paragraph : ℕ → List (List String) → St → St
 paragraph i []         σ = σ
 paragraph i (l ∷ ls)   σ = paragraph i ls (comment i (fromList (dashed l)) σ)
 
-fits : ℕ → Maybe ℕ → Bool
-fits c (just n) = (c + n) ≤ᵇ width
-fits c nothing  = false
+fits : ℕ → ℕ → Bool
+fits c n = (c + n) ≤ᵇ width
 
 -- | Lay out a document at an indentation, flat or not.
 layout : ℕ → Bool → Doc → St → St
