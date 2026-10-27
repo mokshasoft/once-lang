@@ -152,7 +152,6 @@ lex-words (lex-nl _ _ l)             = tt ∷ lex-words l
 lex-words (lex-caret1 l)             = tt ∷ lex-words l
 lex-words (lex-caret0 l)             = tt ∷ lex-words l
 lex-words (lex-caretw l)             = tt ∷ lex-words l
-lex-words (lex-caret _ _ _ l)        = lex-words l
 lex-words (lex-comment _ l)          = lex-words l
 lex-words (lex-arrow l)              = tt ∷ lex-words l
 lex-words (lex-minus _ _ l)          = tt ∷ lex-words l
@@ -185,7 +184,6 @@ lex-words (lex-string _ l)           = tt ∷ lex-words l
 lex-words (lex-int _ _ _ l)          = tt ∷ lex-words l
 lex-words (lex-float _ _ _ l)        = tt ∷ lex-words l
 lex-words (lex-ident _ _ s p l)      = ident-tok s p ∷ lex-words l
-lex-words (lex-skip _ _ _ l)         = lex-words l
 
 ------------------------------------------------------------------------
 -- The declarations' names

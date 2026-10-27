@@ -217,6 +217,22 @@ invalidSyntaxTests = testGroup "Invalid syntax"
       result <- parseSource source
       assertParseError result
 
+  , testCase "a character that starts no token (D344)" $ do
+      let source = T.unlines
+            [ "f : Int -> Int"
+            , "f x = x # y"
+            ]
+      result <- parseSource source
+      assertParseError result
+
+  , testCase "a caret that is not a grade (D344)" $ do
+      let source = T.unlines
+            [ "f : Int -> Int"
+            , "f x = x ^ y"
+            ]
+      result <- parseSource source
+      assertParseError result
+
   -- NOTE: removed two cases that no longer represent invalid syntax:
   --   * "missing type signature" (`f x = x`) — now accepted; the type is
   --     inferred (see the "inferred signature" case under valid syntax).

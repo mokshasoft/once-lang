@@ -394,11 +394,7 @@ du_it'45'gen_66 v0 v1 v2 v3 v4
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                  (coe MAlonzo.Code.Once.Parser.Lexer.d_collectIdentB_46 (coe v1))))
                            (coe v2)))
-              else coe
-                     du_items'45'WF_34 (coe v1)
-                     (coe
-                        MAlonzo.Code.Once.Parser.Lexer.d_adv_612 (coe v1) (coe v1)
-                        (coe v2)))
+              else coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.Format.Lex.it-num
 d_it'45'num_84 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
@@ -698,10 +694,7 @@ du_it'45'caret_124 v0 v1 v2
                    (coe MAlonzo.Code.Once.Parser.Lexer.d_drop1_448 (coe v0))
                    (coe v1)))
       MAlonzo.Code.Once.Parser.Lexer.C_c'45'gen_426
-        -> coe
-             du_it'45'gen_66 (coe '^') (coe v0) (coe v1)
-             (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsDigit_10 '^')
-             (coe MAlonzo.Code.Once.Parser.Lexer.d_isIdentStart_8 (coe '^'))
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Format.Lex.lexItems
 d_lexItems_518 ::

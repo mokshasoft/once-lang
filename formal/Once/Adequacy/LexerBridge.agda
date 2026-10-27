@@ -47,7 +47,7 @@ open import Once.Parser.Lexer
 
 open import Once.Parser.Relation.Lexing using (LexesChars; Lexes;
   lex-eof; lex-ws; lex-nl-ind; lex-nl;
-  lex-caret1; lex-caret0; lex-caretw; lex-caret-gen;
+  lex-caret1; lex-caret0; lex-caretw; lex-caret-err;
   lex-lcomment-ind; lex-arrow-ind; lex-minus;
   lex-bcomment-ind; lex-lbrace;
   lex-le-ind; lex-lt; lex-ge-ind; lex-gt; lex-eqeq-ind; lex-equals;
@@ -56,7 +56,7 @@ open import Once.Parser.Relation.Lexing using (LexesChars; Lexes;
   lex-semi; lex-at; lex-pipe; lex-plus; lex-star; lex-slash; lex-pct;
   lex-amp; lex-dot;
   lex-string; lex-string-err;
-  lex-digit; lex-float; lex-ident; lex-skip)
+  lex-digit; lex-float; lex-ident; lex-char-err)
 
 ------------------------------------------------------------------------
 -- SOUNDNESS — the executable's output is a valid derivation.
@@ -127,7 +127,7 @@ sound-nl cs off rec eqh false eq = lex-nl eqh eq (lexes-tok cs (adv cs cs off) (
 sound-caret cs off rec eqh c-1   eq = lex-caret1 eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
 sound-caret cs off rec eqh c-0   eq = lex-caret0 eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
 sound-caret cs off rec eqh c-w   eq = lex-caretw eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
-sound-caret cs off rec eqh c-gen eq = lex-caret-gen eqh eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
+sound-caret cs off rec eqh c-gen eq = lex-caret-err eqh eq
 
 sound-dash cs off rec eqh d-comment eq = lex-lcomment-ind eqh eq (lexes-tok (proj₁ (skipLineB (drop1 cs))) (adv cs (proj₁ (skipLineB (drop1 cs))) off) (rec (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs)))))
 sound-dash cs off rec eqh d-arrow   eq = lex-arrow-ind eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
@@ -157,7 +157,7 @@ sound-str cs off rec eqh nothing eq = lex-string-err eqh eq
 sound-gen cs off rec eqh true  i eqd eqi =
   sound-num cs off rec eqh eqd i (collectFracB (proj₁ (proj₂ (collectDigitsB cs)))) refl
 sound-gen cs off rec eqh false true  eqd eqi = lex-ident eqh eqd eqi (lexes-tok (proj₁ (proj₂ (collectIdentB cs))) (adv cs (proj₁ (proj₂ (collectIdentB cs))) off) (rec (s≤s (proj₂ (proj₂ (collectIdentB cs))))))
-sound-gen cs off rec eqh false false eqd eqi = lex-skip eqh eqd eqi (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
+sound-gen cs off rec eqh false false eqd eqi = lex-char-err eqh eqd eqi
 
 sound-num cs off rec eqh eqd i nothing eqf
   rewrite eqf = lex-digit eqh eqd eqf (lexes-tok (proj₁ (proj₂ (collectDigitsB cs))) (adv cs (proj₁ (proj₂ (collectDigitsB cs))) off) (rec (s≤s (proj₂ (proj₂ (collectDigitsB cs))))))
@@ -190,7 +190,7 @@ private
   tok-step rec (lex-caret1 {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TCaret1 ∷_) (IH (s≤s (drop1-≤ cs)) d)
   tok-step rec (lex-caret0 {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TCaret0 ∷_) (IH (s≤s (drop1-≤ cs)) d)
   tok-step rec (lex-caretw {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TCaretW ∷_) (IH (s≤s (drop1-≤ cs)) d)
-  tok-step rec (lex-caret-gen eqh eq d) IH rewrite eqh | eq = IH (s≤s ≤-refl) d
+  tok-step rec (lex-caret-err eqh eq) IH rewrite eqh | eq = refl
   tok-step rec (lex-lcomment-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = IH (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))) d
   tok-step rec (lex-arrow-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TArrow ∷_) (IH (s≤s (drop1-≤ cs)) d)
   tok-step rec (lex-minus eqh eq d) IH rewrite eqh | eq = cong (TMinus ∷_) (IH (n<1+n _) d)
@@ -225,7 +225,7 @@ private
   tok-step rec (lex-float {cs = cs} {bnd = fbnd} eqh eq eqf d) IH rewrite eqh | eq | eqf =
     cong (_ ∷_) (IH (s≤s (≤-trans (<⇒≤ fbnd) (proj₂ (proj₂ (collectDigitsB cs))))) d)
   tok-step rec (lex-ident {cs = cs} eqh eqd eqi d) IH rewrite eqh | eqd | eqi = cong (_ ∷_) (IH (s≤s (proj₂ (proj₂ (collectIdentB cs)))) d)
-  tok-step rec (lex-skip eqh eqd eqi d) IH rewrite eqh | eqd | eqi = IH (s≤s ≤-refl) d
+  tok-step rec (lex-char-err eqh eqd eqi) IH rewrite eqh | eqd | eqi = refl
 
 tok-complete : ∀ {cs ts off} (a : Acc _<_ (length cs)) → LexesChars off cs ts → tokenize-WF cs off a ≡ ts
 tok-complete (acc rec) d = tok-step rec d (λ lt d′ → tok-complete (rec lt) d′)

@@ -132,7 +132,7 @@ ok-gen c cs off rec true _ =
     (proj₂ (proj₂ (collectDigitsB cs))) (collectFracB (proj₁ (proj₂ (collectDigitsB cs))))
 ok-gen c cs off rec false true =
   tt ∷ (ok-WF (proj₁ (proj₂ (collectIdentB cs))) _ _)
-ok-gen c cs off rec false false = ok-WF cs _ _
+ok-gen c cs off rec false false = []
 
 ok-num c cs off rec ds rest bnd (just (frac , rest' , fbnd)) = tt ∷ (ok-WF rest' _ _)
 ok-num c cs off rec ds rest bnd nothing = tt ∷ (ok-WF rest _ _)
@@ -167,7 +167,7 @@ ok-dash (c ∷ cs) off rec = pick (does (c Ch.≟ '-')) refl
 ok-caret cs off rec c-1   = tt ∷ (ok-WF (drop1 cs) _ _)
 ok-caret cs off rec c-0   = tt ∷ (ok-WF (drop1 cs) _ _)
 ok-caret cs off rec c-w   = tt ∷ (ok-WF (drop1 cs) _ _)
-ok-caret cs off rec c-gen = ok-gen '^' cs off rec (isDigit '^') (isIdentStart '^')
+ok-caret cs off rec c-gen = []
 
 
 items-raw cs = ok-WF cs 0 _

@@ -1200,9 +1200,7 @@ du_tok'45'gen_536 v0 v1 v2 v3 v4
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                  (coe d_collectIdentB_46 (coe v1))))
                            (coe v2)))
-              else coe
-                     du_tokenize'45'WF_624 (coe v1)
-                     (coe d_adv_612 (coe v1) (coe v1) (coe v2)))
+              else coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.Parser.Lexer.tok-num
 d_tok'45'num_554 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
@@ -1426,11 +1424,7 @@ du_tok'45'caret_594 v0 v1 v2
              (coe
                 du_tokenize'45'WF_624 (coe d_drop1_448 (coe v0))
                 (coe d_adv_612 (coe v0) (coe d_drop1_448 (coe v0)) (coe v1)))
-      C_c'45'gen_426
-        -> coe
-             du_tok'45'gen_536 (coe '^') (coe v0) (coe v1)
-             (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsDigit_10 '^')
-             (coe d_isIdentStart_8 (coe '^'))
+      C_c'45'gen_426 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Lexer.tok-head
 d_tok'45'head_604 ::

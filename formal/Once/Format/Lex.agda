@@ -120,7 +120,7 @@ it-gen c cs off rec true  _     =
 it-gen c cs off rec false true  =
   let (ident , rest , bnd) = collectIdentB cs
   in  tok (TWord (fromList (c ∷ ident))) ∷ items-WF rest (adv cs rest off) (rec (s≤s bnd))
-it-gen c cs off rec false false = items-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+it-gen c cs off rec false false = []
 
 it-num c cs off rec digits rest bnd (just (frac , rest' , fbnd)) =
   tok (TFloat (digitsToNat (c ∷ digits)) (digitsToNat frac) (length frac) off)
@@ -150,7 +150,7 @@ it-minus cs off rec d-minus   = tok TMinus ∷ items-WF cs (adv cs cs off) (rec 
 it-caret cs off rec c-1   = tok TCaret1 ∷ items-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
 it-caret cs off rec c-0   = tok TCaret0 ∷ items-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
 it-caret cs off rec c-w   = tok TCaretW ∷ items-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
-it-caret cs off rec c-gen = it-gen '^' cs off rec (isDigit '^') (isIdentStart '^')
+it-caret cs off rec c-gen = []
 
 -- | A text's items.
 lexItems : List Char → List Item
@@ -208,7 +208,7 @@ tokens-gen c cs off rec true _ =
     (proj₂ (proj₂ (collectDigitsB cs))) (collectFracB (proj₁ (proj₂ (collectDigitsB cs))))
 tokens-gen c cs off rec false true =
   cong (TWord (fromList (c ∷ proj₁ (collectIdentB cs))) ∷_) (tokens-WF (proj₁ (proj₂ (collectIdentB cs))) _ _)
-tokens-gen c cs off rec false false = tokens-WF cs _ _
+tokens-gen c cs off rec false false = refl
 
 tokens-num c cs off rec ds rest bnd (just (frac , rest' , fbnd)) = cong (_ ∷_) (tokens-WF rest' _ _)
 tokens-num c cs off rec ds rest bnd nothing = cong (_ ∷_) (tokens-WF rest _ _)
@@ -229,7 +229,7 @@ tokens-minus cs off rec d-minus   = cong (TMinus ∷_) (tokens-WF cs _ _)
 tokens-caret cs off rec c-1   = cong (TCaret1 ∷_) (tokens-WF (drop1 cs) _ _)
 tokens-caret cs off rec c-0   = cong (TCaret0 ∷_) (tokens-WF (drop1 cs) _ _)
 tokens-caret cs off rec c-w   = cong (TCaretW ∷_) (tokens-WF (drop1 cs) _ _)
-tokens-caret cs off rec c-gen = tokens-gen '^' cs off rec (isDigit '^') (isIdentStart '^')
+tokens-caret cs off rec c-gen = refl
 
 -- | The formatter reads the parser's tokens.
 tokens-lexItems : ∀ cs → tokensOf (lexItems cs) ≡ tokenize cs

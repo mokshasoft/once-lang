@@ -399,12 +399,6 @@ caret-view (c ∷ t) = cv-step c t (c Ch.≟ '1') (c Ch.≟ '0') (c Ch.≟ 'w')
 cview : ∀ {cs k} → caretClass cs ≡ k → CaretView cs k
 cview {cs} e = subst (CaretView cs) e (caret-view cs)
 
-caret-gen : ∀ {cs k} → CaretView cs k → ¬ Next cs '1' → ¬ Next cs '0' → ¬ Next cs 'w' → k ≡ c-gen
-caret-gen cv-1 a _ _ = ⊥-elim (a next)
-caret-gen cv-0 _ b _ = ⊥-elim (b next)
-caret-gen cv-w _ _ w = ⊥-elim (w next)
-caret-gen (cv-gen _ _ _) _ _ _ = refl
-
 data DashView : List Char → Dash3 → Set where
   dv-comment : ∀ {t} → DashView ('-' ∷ t) d-comment
   dv-arrow   : ∀ {t} → DashView ('>' ∷ t) d-arrow
@@ -746,8 +740,6 @@ private
   n-caret0 hv-caret cv-0 d = lex-caret0 d
   n-caretw : ∀ {c cs ts} → HeadView c hkCaret → CaretView cs c-w → LexesChars (drop1 cs) ts → LexesChars (c ∷ cs) (TCaretW ∷ ts)
   n-caretw hv-caret cv-w d = lex-caretw d
-  n-caret : ∀ {c cs ts} → HeadView c hkCaret → CaretView cs c-gen → LexesChars cs ts → LexesChars (c ∷ cs) ts
-  n-caret hv-caret (cv-gen a b w) d = lex-caret a b w d
 
   n-comment : ∀ {c cs ts} → HeadView c hkDash → DashView cs d-comment → LexesChars (proj₁ (skipLineB (drop1 cs))) ts → LexesChars (c ∷ cs) ts
   n-comment hv-dash (dv-comment {t}) d = lex-comment (line-sound t) d
@@ -815,8 +807,6 @@ private
   n-ident : ∀ {c cs i r ts} → HeadView c hkGen → isDigit c ≡ false → isIdentStart c ≡ true → IdentRest cs i r
           → LexesChars r ts → LexesChars (c ∷ cs) (TWord (fromList (c ∷ i)) ∷ ts)
   n-ident (hv-gen ns) e i ir d = lex-ident ns e i ir d
-  n-skip : ∀ {c cs ts} → HeadView c hkGen → isDigit c ≡ false → isIdentStart c ≡ false → LexesChars cs ts → LexesChars (c ∷ cs) ts
-  n-skip (hv-gen ns) e i d = lex-skip ns e i d
 
 -- | The tokens reach `TEOF`: the lexer read the text to its end (D343).
 isEOF : Token → Bool
@@ -836,7 +826,7 @@ toNew (L.lex-nl {cs = cs} eqh eq d) e = n-nl (hview eqh) (subst (NLView cs) eq (
 toNew (L.lex-caret1 eqh eq d) e = n-caret1 (hview eqh) (cview eq) (toNew d e)
 toNew (L.lex-caret0 eqh eq d) e = n-caret0 (hview eqh) (cview eq) (toNew d e)
 toNew (L.lex-caretw eqh eq d) e = n-caretw (hview eqh) (cview eq) (toNew d e)
-toNew (L.lex-caret-gen eqh eq d) e = n-caret (hview eqh) (cview eq) (toNew d e)
+toNew (L.lex-caret-err eqh eq) ()
 toNew (L.lex-lcomment-ind eqh eq d) e = n-comment (hview eqh) (dview eq) (toNew d e)
 toNew (L.lex-arrow-ind eqh eq d) e = n-arrow (hview eqh) (dview eq) (toNew d e)
 toNew (L.lex-minus eqh eq d) e = n-minus (hview eqh) (dview eq) (toNew d e)
@@ -871,7 +861,7 @@ toNew (L.lex-digit {cs = cs} eqh eqd eqf d) e =
   lex-int eqd (digits-sound cs) (λ (f , r′ , fr) → frac-none eqf fr) (toNew d e)
 toNew (L.lex-float {cs = cs} eqh eqd eqf d) e = lex-float eqd (digits-sound cs) (frac-sound _ eqf) (toNew d e)
 toNew (L.lex-ident {cs = cs} eqh eqd eqi d) e = n-ident (hview eqh) eqd eqi (ident-sound cs) (toNew d e)
-toNew (L.lex-skip eqh eqd eqi d) e = n-skip (hview eqh) eqd eqi (toNew d e)
+toNew (L.lex-char-err eqh eqd eqi) ()
 
 ------------------------------------------------------------------------
 -- The Spec's relation gives the compiler's, at every offset
@@ -917,7 +907,6 @@ toOld (lex-nl {cs = cs} a b d) off = o-cons P.TNewline (L.lex-nl refl (nl-false 
 toOld (lex-caret1 d) off = o-cons P.TCaret1 (L.lex-caret1 refl refl) (toOld d _)
 toOld (lex-caret0 d) off = o-cons P.TCaret0 (L.lex-caret0 refl refl) (toOld d _)
 toOld (lex-caretw d) off = o-cons P.TCaretW (L.lex-caretw refl refl) (toOld d _)
-toOld (lex-caret {cs = cs} a b w d) off = o-skip (L.lex-caret-gen refl (caret-gen (caret-view cs) a b w)) (toOld d _)
 toOld (lex-comment lr d) off = o-skip (L.lex-lcomment-ind refl refl) (o-at (line-eq lr) (toOld d) _)
 toOld (lex-arrow d) off = o-cons P.TArrow (L.lex-arrow-ind refl refl) (toOld d _)
 toOld (lex-minus {cs = cs} a b d) off = o-cons P.TMinus (L.lex-minus refl (dash-minus (dash-view cs) a b)) (toOld d _)
@@ -951,7 +940,6 @@ toOld (lex-string {s = s} {r = r} body d) off =
 toOld (lex-int {c = c} e dg nf d) off = int-old off (gen-head {c} (λ sp → dns sp e)) e (proj₁ (digits-eq dg)) (proj₂ (digits-eq dg)) nf (toOld d)
 toOld (lex-float {c = c} e dg fr d) off = float-old off (gen-head {c} (λ sp → dns sp e)) e (proj₁ (digits-eq dg)) (proj₂ (digits-eq dg)) fr (toOld d)
 toOld (lex-ident ns e i ir d) off = ident-old off (gen-head ns) e i (proj₁ (ident-eq ir)) (proj₂ (ident-eq ir)) (toOld d)
-toOld (lex-skip ns e i d) off = o-skip (L.lex-skip (gen-head ns) e i) (toOld d _)
 
 ------------------------------------------------------------------------
 -- The tokenizer lexes as the Spec says

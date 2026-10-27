@@ -236,7 +236,7 @@ d_residualError_54 v0
   = case coe v0 of
       []
         -> coe
-             ("Lex error: unterminated string literal (no closing `\"`; the text after it is not read)"
+             ("Lex error: the text is not read to its end: an unterminated string literal, a `^` that is not a grade (`^0`, `^1`, `^w`), or a character that starts no token"
               ::
               Data.Text.Text)
       (:) v1 v2

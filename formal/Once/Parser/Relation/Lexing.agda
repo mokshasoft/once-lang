@@ -68,7 +68,7 @@ data LexesChars : ℕ → List Char → List Token → Set where
   lex-caret1    : ∀ {off c cs ts} → headK c ≡ hkCaret → caretClass cs ≡ c-1   → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TCaret1 ∷ ts)
   lex-caret0    : ∀ {off c cs ts} → headK c ≡ hkCaret → caretClass cs ≡ c-0   → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TCaret0 ∷ ts)
   lex-caretw    : ∀ {off c cs ts} → headK c ≡ hkCaret → caretClass cs ≡ c-w   → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TCaretW ∷ ts)
-  lex-caret-gen : ∀ {off c cs ts} → headK c ≡ hkCaret → caretClass cs ≡ c-gen → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) ts
+  lex-caret-err : ∀ {off c cs} → headK c ≡ hkCaret → caretClass cs ≡ c-gen → LexesChars off (c ∷ cs) []
   -- dash head: line comment / arrow / minus
   lex-lcomment-ind : ∀ {off c cs ts} → headK c ≡ hkDash → dashClass cs ≡ d-comment → LexesChars (adv cs (proj₁ (skipLineB (drop1 cs))) off) (proj₁ (skipLineB (drop1 cs))) ts → LexesChars off (c ∷ cs) ts
   lex-arrow-ind    : ∀ {off c cs ts} → headK c ≡ hkDash → dashClass cs ≡ d-arrow   → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TArrow ∷ ts)
@@ -125,8 +125,8 @@ data LexesChars : ℕ → List Char → List Token → Set where
   lex-ident : ∀ {off c cs ts} → headK c ≡ hkGen → isDigit c ≡ false → isIdentStart c ≡ true →
     LexesChars (adv cs (proj₁ (proj₂ (collectIdentB cs))) off) (proj₁ (proj₂ (collectIdentB cs))) ts →
     LexesChars off (c ∷ cs) (TWord (fromList (c ∷ proj₁ (collectIdentB cs))) ∷ ts)
-  lex-skip : ∀ {off c cs ts} → headK c ≡ hkGen → isDigit c ≡ false → isIdentStart c ≡ false →
-    LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) ts
+  lex-char-err : ∀ {off c cs} → headK c ≡ hkGen → isDigit c ≡ false → isIdentStart c ≡ false →
+    LexesChars off (c ∷ cs) []
 
 -- The whole text starts at offset 0, which is where the threading bottoms out
 -- and why nothing above this line has to know about absolute positions.

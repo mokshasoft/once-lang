@@ -161,53 +161,51 @@ data T_LexesChars_322
     C_lex'45'caret1_362 T_LexesChars_322 |
     C_lex'45'caret0_368 T_LexesChars_322 |
     C_lex'45'caretw_374 T_LexesChars_322 |
-    C_lex'45'caret_380 T_LexesChars_322 |
-    C_lex'45'comment_388 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'comment_382 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                          T_LineRest_262 T_LexesChars_322 |
-    C_lex'45'arrow_394 T_LexesChars_322 |
-    C_lex'45'minus_400 T_LexesChars_322 |
-    C_lex'45'block_408 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'arrow_388 T_LexesChars_322 |
+    C_lex'45'minus_394 T_LexesChars_322 |
+    C_lex'45'block_402 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        T_BlockRest_278 T_LexesChars_322 |
-    C_lex'45'lbrace_414 T_LexesChars_322 |
-    C_lex'45'le_420 T_LexesChars_322 |
-    C_lex'45'lt_426 T_LexesChars_322 |
-    C_lex'45'ge_432 T_LexesChars_322 |
-    C_lex'45'gt_438 T_LexesChars_322 |
-    C_lex'45'eqeq_444 T_LexesChars_322 |
-    C_lex'45'equal_450 T_LexesChars_322 |
-    C_lex'45'neq_456 T_LexesChars_322 |
-    C_lex'45'bang_462 T_LexesChars_322 |
-    C_lex'45'lparen_468 T_LexesChars_322 |
-    C_lex'45'rparen_474 T_LexesChars_322 |
-    C_lex'45'rbrace_480 T_LexesChars_322 |
-    C_lex'45'colon_486 T_LexesChars_322 |
-    C_lex'45'lambda_492 T_LexesChars_322 |
-    C_lex'45'comma_498 T_LexesChars_322 |
-    C_lex'45'semi_504 T_LexesChars_322 |
-    C_lex'45'at_510 T_LexesChars_322 |
-    C_lex'45'pipe_516 T_LexesChars_322 |
-    C_lex'45'plus_522 T_LexesChars_322 |
-    C_lex'45'star_528 T_LexesChars_322 |
-    C_lex'45'slash_534 T_LexesChars_322 |
-    C_lex'45'pct_540 T_LexesChars_322 |
-    C_lex'45'amp_546 T_LexesChars_322 |
-    C_lex'45'dot_552 T_LexesChars_322 |
-    C_lex'45'string_562 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'lbrace_408 T_LexesChars_322 |
+    C_lex'45'le_414 T_LexesChars_322 |
+    C_lex'45'lt_420 T_LexesChars_322 |
+    C_lex'45'ge_426 T_LexesChars_322 |
+    C_lex'45'gt_432 T_LexesChars_322 |
+    C_lex'45'eqeq_438 T_LexesChars_322 |
+    C_lex'45'equal_444 T_LexesChars_322 |
+    C_lex'45'neq_450 T_LexesChars_322 |
+    C_lex'45'bang_456 T_LexesChars_322 |
+    C_lex'45'lparen_462 T_LexesChars_322 |
+    C_lex'45'rparen_468 T_LexesChars_322 |
+    C_lex'45'rbrace_474 T_LexesChars_322 |
+    C_lex'45'colon_480 T_LexesChars_322 |
+    C_lex'45'lambda_486 T_LexesChars_322 |
+    C_lex'45'comma_492 T_LexesChars_322 |
+    C_lex'45'semi_498 T_LexesChars_322 |
+    C_lex'45'at_504 T_LexesChars_322 |
+    C_lex'45'pipe_510 T_LexesChars_322 |
+    C_lex'45'plus_516 T_LexesChars_322 |
+    C_lex'45'star_522 T_LexesChars_322 |
+    C_lex'45'slash_528 T_LexesChars_322 |
+    C_lex'45'pct_534 T_LexesChars_322 |
+    C_lex'45'amp_540 T_LexesChars_322 |
+    C_lex'45'dot_546 T_LexesChars_322 |
+    C_lex'45'string_556 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                         [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_StringBody_230
                         T_LexesChars_322 |
-    C_lex'45'int_578 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'int_572 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                      [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_166
                      T_LexesChars_322 |
-    C_lex'45'float_594 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'float_588 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_166
                        T_Fraction_186 T_LexesChars_322 |
-    C_lex'45'ident_606 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'ident_600 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_IdentRest_198
-                       T_LexesChars_322 |
-    C_lex'45'skip_614 T_LexesChars_322
+                       T_LexesChars_322
 -- Once.Spec.Surface.Lexing.Lexes
-d_Lexes_616 ::
+d_Lexes_602 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> [T_Token_8] -> ()
-d_Lexes_616 = erased
+d_Lexes_602 = erased

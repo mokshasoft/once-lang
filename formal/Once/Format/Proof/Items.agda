@@ -60,7 +60,6 @@ data ItemsChars : List Char → List EItem → Set where
   i-caret1 : ∀ {c cs is} → headK c ≡ hkCaret → caretClass cs ≡ c-1 → ItemsChars (drop1 cs) is → ItemsChars (c ∷ cs) (etok TCaret1 ∷ is)
   i-caret0 : ∀ {c cs is} → headK c ≡ hkCaret → caretClass cs ≡ c-0 → ItemsChars (drop1 cs) is → ItemsChars (c ∷ cs) (etok TCaret0 ∷ is)
   i-caretw : ∀ {c cs is} → headK c ≡ hkCaret → caretClass cs ≡ c-w → ItemsChars (drop1 cs) is → ItemsChars (c ∷ cs) (etok TCaretW ∷ is)
-  i-caret-gen : ∀ {c cs is} → headK c ≡ hkCaret → caretClass cs ≡ c-gen → ItemsChars (cs) is → ItemsChars (c ∷ cs) is
   i-lcomment : ∀ {c cs is} → headK c ≡ hkDash → dashClass cs ≡ d-comment → ItemsChars (proj₁ (skipLineB (drop1 cs))) is → ItemsChars (c ∷ cs) (ecomment (fromList ('-' ∷ consumed cs (proj₁ (skipLineB (drop1 cs))))) ∷ is)
   i-arrow : ∀ {c cs is} → headK c ≡ hkDash → dashClass cs ≡ d-arrow → ItemsChars (drop1 cs) is → ItemsChars (c ∷ cs) (etok TArrow ∷ is)
   i-minus : ∀ {c cs is} → headK c ≡ hkDash → dashClass cs ≡ d-minus → ItemsChars (cs) is → ItemsChars (c ∷ cs) (etok TMinus ∷ is)
@@ -102,8 +101,8 @@ data ItemsChars : List Char → List EItem → Set where
   i-ident : ∀ {c cs is} → headK c ≡ hkGen → isDigit c ≡ false → isIdentStart c ≡ true →
     ItemsChars (proj₁ (proj₂ (collectIdentB cs))) is →
     ItemsChars (c ∷ cs) (etok (TWord (fromList (c ∷ proj₁ (collectIdentB cs)))) ∷ is)
-  i-skip : ∀ {c cs is} → headK c ≡ hkGen → isDigit c ≡ false → isIdentStart c ≡ false →
-    ItemsChars cs is → ItemsChars (c ∷ cs) is
+  i-caret-err : ∀ {c cs} → headK c ≡ hkCaret → caretClass cs ≡ c-gen → ItemsChars (c ∷ cs) []
+  i-char-err : ∀ {c cs} → headK c ≡ hkGen → isDigit c ≡ false → isIdentStart c ≡ false → ItemsChars (c ∷ cs) []
 
 private
   step : ∀ {cs is off} (rec : ∀ {y} → y < length cs → Acc _<_ y) → ItemsChars cs is
@@ -117,7 +116,6 @@ private
   step rec (i-caret1 {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (_ ∷_) (IH (s≤s (drop1-≤ cs)) d)
   step rec (i-caret0 {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (_ ∷_) (IH (s≤s (drop1-≤ cs)) d)
   step rec (i-caretw {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (_ ∷_) (IH (s≤s (drop1-≤ cs)) d)
-  step rec (i-caret-gen {cs = cs} eqh eq d) IH rewrite eqh | eq = IH (s≤s ≤-refl) d
   step rec (i-lcomment {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (_ ∷_) (IH (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))) d)
   step rec (i-arrow {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (_ ∷_) (IH (s≤s (drop1-≤ cs)) d)
   step rec (i-minus {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (_ ∷_) (IH (n<1+n _) d)
@@ -152,7 +150,8 @@ private
   step rec (i-float {cs = cs} {bnd = fbnd} eqh eq eqf d) IH rewrite eqh | eq | eqf =
     cong (_ ∷_) (IH (s≤s (≤-trans (<⇒≤ fbnd) (proj₂ (proj₂ (collectDigitsB cs))))) d)
   step rec (i-ident {cs = cs} eqh eqd eqi d) IH rewrite eqh | eqd | eqi = cong (_ ∷_) (IH (s≤s (proj₂ (proj₂ (collectIdentB cs)))) d)
-  step rec (i-skip eqh eqd eqi d) IH rewrite eqh | eqd | eqi = IH (s≤s ≤-refl) d
+  step rec (i-caret-err eqh eq) IH rewrite eqh | eq = refl
+  step rec (i-char-err eqh eqd eqi) IH rewrite eqh | eqd | eqi = refl
 
 -- | Any derivation is what the lexer returns, positions erased.
 items-complete : ∀ {cs is off} (a : Acc _<_ (length cs)) → ItemsChars cs is → map erase (items-WF cs off a) ≡ is
