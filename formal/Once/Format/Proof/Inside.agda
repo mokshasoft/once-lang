@@ -49,11 +49,12 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (zero; suc; _+_; _∸_; _<ᵇ_; s≤s; z≤n)
 open import Data.Nat.Properties using (+-identityʳ; +-suc; ≤-refl; ≤-trans; m≤m+n; <-irrefl; m≤n⇒m<n∨m≡n;
   n≤1+n; m≤n⇒m≤1+n; +-comm)
-open import Data.Product using (_,_; proj₁; proj₂; ∃-syntax)
+open import Data.Product using (_,_; proj₁; proj₂; ∃-syntax; Σ)
 open import Data.String using (String; toList; fromList)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; _≢_)
+open import Relation.Nullary using (yes; no)
 
 open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; newline; blank; eol; line; _<>_; nest; group; Lexeme; lt; lsp; lnl; lind; lcm;
   St; st; put; space; token; joined; trim; brk; comment; layout; fits; flatWidth; column; apart)
@@ -469,3 +470,415 @@ leaf-sim (para _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
 leaf-sim newline () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
 leaf-sim blank () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
 leaf-sim (eol _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+
+------------------------------------------------------------------------
+-- Comment lines on lines of their own
+------------------------------------------------------------------------
+
+open import Once.Format.Comment using (commentLinesDoc; commentRun; commentLines; lineDoc; classify; CLine; prose;
+  verbatim)
+open import Once.Format.Proof.Rerender using (renderK; renderLine; rendered; rendered-fix; rendered-RL; Src)
+open import Once.Format.Doc using (paragraph; dashed; fill; lineComment)
+open import Once.Format.Print using (Held; held-comment; settleAt; promote; promoteR; addInner; notes)
+
+-- | Lines written at indentation `i`, each on a line of its own.
+linesOut : ℕ → List (List Char) → List Lexeme → List Lexeme
+linesOut i []       o = o
+linesOut i (L ∷ Ls) o = linesOut i Ls (lnl ∷ lcm L ∷ lind i ∷ o)
+
+private
+  colOf : ∀ {A : Set} → List A → ℕ → ℕ
+  colOf []      c = c
+  colOf (_ ∷ _) c = 0
+
+  zero-col : ∀ {A : Set} (ls : List A) → colOf ls 0 ≡ 0
+  zero-col []      = refl
+  zero-col (_ ∷ _) = refl
+
+  linesOut-++ : ∀ i A B o → linesOut i (A ++ B) o ≡ linesOut i B (linesOut i A o)
+  linesOut-++ i []       B o = refl
+  linesOut-++ i (L ∷ A)  B o = linesOut-++ i A B _
+
+  para-lines : ∀ i ls o c → paragraph i ls (st o c (just i) [])
+             ≡ st (linesOut i (map (λ l → lineComment (toList (fromList (dashed l)))) ls) o) (colOf ls c) (just i) []
+  para-lines i []       o c = refl
+  para-lines i (l ∷ ls) o c =
+    trans (para-lines i ls (lnl ∷ lcm (lineComment (toList (fromList (dashed l)))) ∷ lind i ∷ o) 0)
+      (cong (λ x → st (linesOut i (map (λ l → lineComment (toList (fromList (dashed l)))) ls)
+                        (lnl ∷ lcm (lineComment (toList (fromList (dashed l)))) ∷ lind i ∷ o)) x (just i) []) (zero-col ls))
+
+  line-layout : ∀ i f k o c → ∃[ c′ ] layout i f (lineDoc k) (st o c (just i) []) ≡ st (linesOut i (renderK i k) o) c′ (just i) []
+  line-layout i f (prose ws)   o c = _ , para-lines i (fill i (i + 2) [] ws) o c
+  line-layout i f (verbatim v) o c = 0 , refl
+
+-- | A run of comment lines, laid out from the start of a line: the lines,
+-- each on a line of its own.
+lines-layout : ∀ i f ls o c → layout i f (commentLinesDoc ls) (st o c (just i) [])
+             ≡ st (linesOut i (concatMap (renderLine i) ls) o) (colOf ls c) (just i) []
+lines-layout i f []       o c = refl
+lines-layout i f (l ∷ ls) o c with line-layout i f (classify l) o c
+... | c′ , e =
+  trans (cong (λ σ → layout i f (commentLinesDoc ls) (brk i σ)) e)
+    (trans (lines-layout i f ls (linesOut i (renderK i (classify l)) o) 0)
+      (cong₂ (λ O x → st O x (just i) []) (sym (linesOut-++ i (renderK i (classify l)) (concatMap (renderLine i) ls) o))
+             (zero-col ls)))
+
+private
+  hcF : String → Held
+  hcF c = held-comment c false
+
+  anchor-cases : ∀ x → T (anchorTok x) → anchorTok x ≡ true × lineEndTok x ≡ false
+  anchor-cases (Once.Spec.Surface.Lexing.TWord w) p = T-true p , refl
+  anchor-cases (Once.Spec.Surface.Lexing.TInt _) p = refl , refl
+  anchor-cases (Once.Spec.Surface.Lexing.TFloat _ _ _) p = refl , refl
+
+  ∨-true : ∀ b → b ∨ true ≡ true
+  ∨-true true  = refl
+  ∨-true false = refl
+
+  -- the walk over the first comment line, and the next ones
+  line-first : ∀ o i′ L {k h Tr} → Φ o ≡ (walker k h line-code [] 0 Tr , true)
+             → Φ (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) ≡ (walker k false (line-text (readBack L ∷ [])) [] 0 Tr , true)
+  line-first o i′ L e =
+    trans (Φ-cons lnl (lcm L ∷ lind (suc i′) ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind (suc i′) ∷ o))
+      (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind (suc i′)) o) (cong (λ ω → stepL ω (lind (suc i′))) e)))))
+
+  line-next : ∀ o i′ L r H {k Tr} → Φ o ≡ (walker k false (line-text (r ∷ [])) H 0 Tr , true)
+            → Φ (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) ≡ (walker k false (line-text (readBack L ∷ [])) (H ++ hcF r ∷ []) 0 Tr , true)
+  line-next o i′ L r H e =
+    trans (Φ-cons lnl (lcm L ∷ lind (suc i′) ∷ o)) (cong (λ ω → stepL ω lnl) (trans (Φ-cons (lcm L) (lind (suc i′) ∷ o))
+      (cong (λ ω → stepL ω (lcm L)) (trans (Φ-cons (lind (suc i′)) o) (cong (λ ω → stepL ω (lind (suc i′))) e)))))
+
+  -- …then the anchor they stand before
+  run-tok : ∀ i′ Ls H r o x {k Tr} → T (anchorTok x) → Φ o ≡ (walker k false (line-text (r ∷ [])) H 0 Tr , true)
+          → proj₁ (Φ (lt x ∷ lind (suc i′) ∷ linesOut (suc i′) Ls o))
+            ≡ walker (suc k) true line-code [] 0 (settleAt k (promote (H ++ map hcF (r ∷ map readBack Ls))) Tr)
+  run-tok i′ [] H r o x {k} {Tr} ax e with anchor-cases x ax
+  ... | ea , ee =
+    trans (cong proj₁ (Φ-cons (lt x) (lind (suc i′) ∷ o)))
+      (trans (cong (λ ω → proj₁ (stepL ω (lt x))) (trans (Φ-cons (lind (suc i′)) o) (cong (λ ω → stepL ω (lind (suc i′))) e)))
+        (cong₂ (λ a b → stepTok (walker k false line-empty (H ++ hcF r ∷ []) 1 Tr) a b) ea ee))
+  run-tok i′ (L ∷ Ls) H r o x {k} {Tr} ax e =
+    trans (run-tok i′ Ls (H ++ hcF r ∷ []) (readBack L) (lnl ∷ lcm L ∷ lind (suc i′) ∷ o) x ax (line-next o i′ L r H e))
+      (cong (λ hs → walker (suc k) true line-code [] 0 (settleAt k (promote hs) Tr))
+        (++-assoc H (hcF r ∷ []) (map hcF (readBack L ∷ map readBack Ls))))
+
+  promoteR-false : ∀ rs → promoteR (map hcF rs) false ≡ map hcF rs
+  promoteR-false []       = refl
+  promoteR-false (r ∷ rs) = cong (hcF r ∷_) (promoteR-false rs)
+
+  promote-false : ∀ rs → promote (map hcF rs) ≡ map hcF rs
+  promote-false rs =
+    trans (cong (λ hs → reverse (promoteR hs false)) (sym (Data.List.Properties.reverse-map hcF rs)))
+      (trans (cong reverse (promoteR-false (reverse rs)))
+        (trans (sym (Data.List.Properties.reverse-map hcF (reverse rs))) (cong (map hcF) (Data.List.Properties.reverse-involutive rs))))
+
+  settle-inner : ∀ k rs Tr → Notes.inner (lookupNotes k (settleAt k (map hcF rs) Tr)) ≡ Notes.inner (lookupNotes k Tr) ++ rs
+  settle-inner k []       Tr = sym (++-identityʳ _)
+  settle-inner k (r ∷ rs) Tr =
+    trans (settle-inner k rs (addTo k (addInner r) Tr))
+      (trans (cong (λ n → Notes.inner n ++ rs) (lookup-addTo-same k (addInner r) Tr))
+        (trans (cong (_++ rs) (inner-add r (lookupNotes k Tr))) (++-assoc (Notes.inner (lookupNotes k Tr)) (r ∷ []) rs)))
+    where
+      inner-add : ∀ r n → Notes.inner (addInner r n) ≡ Notes.inner n ++ r ∷ []
+      inner-add r (notes _ _ _) = refl
+
+  settle-top : ∀ j k rs Tr → Notes.top (lookupNotes j (settleAt k (map hcF rs) Tr)) ≡ Notes.top (lookupNotes j Tr)
+  settle-top j k []       Tr = refl
+  settle-top j k (r ∷ rs) Tr =
+    trans (settle-top j k rs _) (lookup-addTo-keeps Notes.top j k (addInner r) Tr (λ { (notes _ _ _) → refl }))
+
+  -- an anchor's token, on a line of code and at the start of an indented line
+  tokA-code : ∀ x ω {k h Tr} → T (anchorTok x) → proj₁ ω ≡ walker k h line-code [] 0 Tr → proj₂ ω ≡ false
+            → proj₁ (stepL ω (lt x)) ≡ walker (suc k) true line-code [] 0 Tr
+  tokA-code x (v , false) {k} {h} {Tr} ax refl refl with anchor-cases x ax
+  ... | ea , ee = trans (cong₂ (λ a b → stepTok (walker k h line-code [] 0 Tr) a b) ea ee)
+                        (cong (λ b → walker (suc k) b line-code [] 0 Tr) (∨-true h))
+
+  tokA-line : ∀ x ω i {k h Tr} → T (anchorTok x) → proj₁ ω ≡ walker k h line-code [] 0 Tr → proj₂ ω ≡ true
+            → proj₁ (stepL (stepL ω (lind (suc i))) (lt x)) ≡ walker (suc k) true line-code [] 0 Tr
+  tokA-line x (v , true) i {k} {h} {Tr} ax refl refl with anchor-cases x ax
+  ... | ea , ee = cong₂ (λ a b → stepTok (walker k false line-empty [] 1 Tr) a b) ea ee
+
+-- | An anchor's token, in step: the walk is past it.
+anchor-sim : ∀ x σ₁ σ₂ kb n → T (anchorTok x) → Rel σ₁ σ₂ kb n → WI σ₁ kb n → LI σ₁
+           → Rel (token x σ₁) (token x σ₂) kb n
+             × Σ (WI (token x σ₁) kb (suc n)) (λ w′ → Notes.inner (lookupNotes (kb + n) (WI.t w′)) ≡ [])
+anchor-sim x (st o c p e₁) (st .o .c .p e₂) kb n ax (rel refl refl refl re₁ re₂) w (li ok pnl) =
+  subst₂R (token-e x o c p e₁) (token-e x o c p e₂) (rel refl refl refl re₁ re₂) ,
+  wi-of (token x (st o c p e₁)) (proj₁ (token-shape x o c p e₁)) (proj₂ (token-shape x o c p e₁))
+  where
+    subst₂R : ∀ {σ σ′ τ τ′} → σ′ ≡ σ → τ′ ≡ τ → Rel σ τ kb n → Rel σ′ τ′ kb n
+    subst₂R refl refl r = r
+    idx′ : ∀ {Tr} → walker (suc (kb + n)) true line-code [] 0 Tr ≡ walker (kb + suc n) true line-code [] 0 Tr
+    idx′ {Tr} = cong (λ m → walker m true line-code [] 0 Tr) (sym (+-suc kb n))
+    nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
+    nj ()
+    weak : ∀ j → kb + suc n ≤ j → kb + n ≤ j
+    weak j le = ≤-trans (subst (_≤ kb + suc n) refl (subst (kb + n ≤_) (sym (+-suc kb n)) (n≤1+n _))) le
+    wi-of : ∀ σ′ → TokOut x o p (St.out σ′) → St.pend σ′ ≡ nothing
+          → Σ (WI σ′ kb (suc n)) (λ w′ → Notes.inner (lookupNotes (kb + n) (WI.t w′)) ≡ [])
+    wi-of (st .(lt x ∷ lind zero ∷ o) C P E) (to-ind zero) pn with WI.w-end w zero refl
+    ... | _ , _ , ()
+    wi-of (st .(lt x ∷ lind (suc i″) ∷ o) C P E) (to-ind (suc i″)) pn with WI.w-end w (suc i″) refl
+    ... | wt , refl , _ =
+      wi true (WI.t w)
+        (trans (cong proj₁ (trans (Φ-cons (lt x) (lind (suc i″) ∷ o)) (cong (λ ω → stepL ω (lt x)) (Φ-cons (lind (suc i″)) o))))
+               (trans (tokA-line x (Φ o) i″ ax (WI.w-φ w) wt) idx′))
+        (λ _ → cong proj₂ (Φ-cons (lt x) (lind (suc i″) ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) , WI.w-inner w (kb + n) ≤-refl
+    wi-of (st .(lt x ∷ o) C P E) to-bare pn with WI.w-text w refl
+    ... | wf , _ =
+      wi true (WI.t w)
+        (trans (cong proj₁ (Φ-cons (lt x) o)) (trans (tokA-code x (Φ o) ax (WI.w-φ w) wf) idx′))
+        (λ _ → cong proj₂ (Φ-cons (lt x) o) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) , WI.w-inner w (kb + n) ≤-refl
+    wi-of (st .(lt x ∷ lsp ∷ o) C P E) to-sp pn with WI.w-text w refl
+    ... | wf , _ =
+      wi true (WI.t w)
+        (trans (cong proj₁ (trans (Φ-cons (lt x) (lsp ∷ o)) (cong (λ ω → stepL ω (lt x)) (lsp-Φ o wf))))
+               (trans (tokA-code x (Φ o) ax (WI.w-φ w) wf) idx′))
+        (λ _ → cong proj₂ (Φ-cons (lt x) (lsp ∷ o)) , refl) (λ i₂ e → ⊥-elim (nj (trans (sym pn) e)))
+        (WI.w-after w) (λ j le → WI.w-inner w j (weak j le)) (WI.w-top w) , WI.w-inner w (kb + n) ≤-refl
+
+private
+  brk-st : ∀ i σ → brk i σ ≡ st (St.out (brk i σ)) 0 (just i) []
+  brk-st i (st o c (just _) [])      = refl
+  brk-st i (st o c (just _) (_ ∷ _)) = refl
+  brk-st i (st o c nothing [])       = refl
+  brk-st i (st o c nothing (_ ∷ _))  = refl
+
+  eols-layout : ∀ i f B o c p e → layout i f (Once.Format.Print.eols B) (st o c p e) ≡ st o c p (e ++ map eolText B)
+  eols-layout i f []       o c p e = cong (st o c p) (sym (++-identityʳ e))
+  eols-layout i f (b ∷ bs) o c p e =
+    trans (eols-layout i f bs o c p (e ++ eolText b ∷ [])) (cong (st o c p) (++-assoc e (eolText b ∷ []) (map eolText bs)))
+
+  eols-snoc : ∀ tv j n → eolsFrom tv j (suc n) ≡ eolsFrom tv j n ++ map eolText (Notes.after (lookupNotes (j + n) tv))
+  eols-snoc tv j zero    = trans (++-identityʳ _) (cong (λ x → map eolText (Notes.after (lookupNotes x tv))) (sym (+-identityʳ j)))
+  eols-snoc tv j (suc n) =
+    trans (cong (map eolText (Notes.after (lookupNotes j tv)) ++_) (eols-snoc tv (suc j) n))
+      (trans (sym (++-assoc (map eolText (Notes.after (lookupNotes j tv))) (eolsFrom tv (suc j) n) _))
+        (cong (λ x → eolsFrom tv j (suc n) ++ map eolText (Notes.after (lookupNotes x tv))) (sym (+-suc j n))))
+
+  fill-ne : ∀ i c cur ws → ∃[ l ] ∃[ ls ] fill i c cur ws ≡ l ∷ ls
+  fill-ne i c []        []       = [] , [] , refl
+  fill-ne i c (x ∷ cur) []       = _ , [] , refl
+  fill-ne i c []        (w ∷ ws) = fill-ne i _ (w ∷ []) ws
+  fill-ne i c (x ∷ cur) (w ∷ ws) = pick ((c + 1 + Data.String.length w) Data.Nat.≤ᵇ Once.Format.Doc.width)
+    where
+      pick : ∀ b → ∃[ l ] ∃[ ls ] (if b then fill i (c + 1 + Data.String.length w) (w ∷ x ∷ cur) ws
+                                  else reverse (x ∷ cur) ∷ fill i (i + 3 + Data.String.length w) (w ∷ []) ws) ≡ l ∷ ls
+      pick true  = fill-ne i _ (w ∷ x ∷ cur) ws
+      pick false = _ , _ , refl
+
+  renderK-ne : ∀ i k → ∃[ L ] ∃[ Ls ] renderK i k ≡ L ∷ Ls
+  renderK-ne i (verbatim v) = _ , [] , refl
+  renderK-ne i (prose ws) with fill-ne i (i + 2) [] ws
+  ... | l , ls , e = _ , _ , cong (map (λ l → lineComment (toList (fromList (dashed l))))) e
+
+  commentLines-ne : ∀ s → ∃[ l ] ∃[ ls ] commentLines s ≡ l ∷ ls
+  commentLines-ne s = pick (Once.Format.Comment.isBlock (toList s))
+    where
+      one : ∀ xs → ∃[ l ] ∃[ ls ] Once.Format.Comment.atLeastOne xs ≡ l ∷ ls
+      one []       = _ , [] , refl
+      one (x ∷ xs) = x , xs , refl
+      pick : ∀ b → ∃[ l ] ∃[ ls ] (if b then Once.Format.Comment.atLeastOne
+                                    (map (λ l → Once.Format.Comment.asLine (Once.Format.Comment.strip l))
+                                      (Once.Format.Comment.trimLines (Once.Format.Comment.linesOf
+                                        (Once.Format.Comment.inside (toList s))))) else s ∷ []) ≡ l ∷ ls
+      pick true  = one _
+      pick false = s , [] , refl
+
+-- | A run of comments is written as some lines.
+rendered-ne : ∀ i c cs → ∃[ L ] ∃[ Ls ] rendered i (c ∷ cs) ≡ L ∷ Ls
+rendered-ne i c cs with commentLines-ne c
+... | l , ls , e with renderK-ne i (classify l)
+...   | L , Ls , e′ =
+  L , _ , trans (cong (concatMap (renderLine i)) (cong (_++ concatMap commentLines cs) e))
+            (cong (_++ concatMap (renderLine i) (ls ++ concatMap commentLines cs)) e′)
+
+private
+  tokout-just : ∀ {t o i o′} → TokOut t o (just i) o′ → o′ ≡ lt t ∷ lind i ∷ o
+  tokout-just (to-ind i) = refl
+
+  pos : ∀ {i} → 1 ≤ i → ∃[ i′ ] i ≡ suc i′
+  pos {suc i′} _ = i′ , refl
+
+  -- the walk reads what is written, not what waits for the line's end
+  wi-ends : ∀ {o c p e e′ kb n} → WI (st o c p e) kb n → WI (st o c p e′) kb n
+  wi-ends (wi h t a b c d e f) = wi h t a b c d e f
+
+  k+1 : ∀ k → k + 1 ≡ suc k
+  k+1 k = trans (+-suc k 0) (cong suc (+-identityʳ k))
+
+  -- what the walk past the token found before an anchor is final
+  inner-final : ∀ σ → Future σ → ∀ k h Tr → proj₁ (Φ (St.out σ)) ≡ walker (suc k) h line-code [] 0 Tr
+              → Notes.inner (lookupNotes k (fin ωF)) ≡ Notes.inner (lookupNotes k Tr)
+  inner-final σ (xs , fe) k h Tr e =
+    trans (cong (λ ω → Notes.inner (lookupNotes k (fin ω))) (sym fe))
+      (trans (cong proj₂ (frozen-ti k (Φ (St.out σ)) xs (subst (λ v → k < W.k v) (sym e) ≤-refl)))
+             (cong (λ v → Notes.inner (Look k v)) e))
+
+  fut-back : ∀ i f d σ → LI σ → Future (layout i f d σ) → Future σ
+  fut-back i f d σ l fu = reach-trans (proj₂ (layout-reach i f d σ l)) fu
+
+-- | An anchor with its comments, in step: the second pass writes the comment
+-- lines the first wrote before it, and the walk is past it.
+hole-sim : ∀ x → T (anchorTok x) → ∀ i f σ₁ σ₂ kb n → 1 ≤ i → kd ≤ kb → Rel σ₁ σ₂ kb n → WI σ₁ kb n → LI σ₁
+         → Future (layout i f (anchorDoc tv₁ (kb + n) x) σ₁)
+         → After (layout i f (anchorDoc tv₁ (kb + n) x) σ₁) (layout i f (anchorDoc tv₂ (kb + n) x) σ₂) (suc (kb + n))
+hole-sim x ax i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu = go₁ (Notes.inner (lookupNotes k tv₁)) refl
+  where
+    k  = kb + n
+    B₁ = Notes.after (lookupNotes k tv₁)
+    B₂ = Notes.after (lookupNotes k tv₂)
+    open Once.Format.Print using (inners)
+    kd≤k : kd ≤ k
+    kd≤k = ≤-trans kd≤ (m≤m+n kb n)
+
+    -- the end: the anchor's end-of-line comments wait for the line's end
+    ends-after : ∀ τ₁ τ₂ kb′ n′ → kd ≤ kb′ → Rel τ₁ τ₂ kb′ n′ → kb′ + n′ ≡ k → WI τ₁ kb′ (suc n′)
+               → After (layout i f (Once.Format.Print.eols B₁) τ₁) (layout i f (Once.Format.Print.eols B₂) τ₂) (suc k)
+    ends-after (st o₁ c₁ p₁ e₁) (st o₂ c₂ p₂ e₂) kb′ n′ kd≤′ (rel refl refl refl re₁ re₂) s w′
+      rewrite eols-layout i f B₁ o₁ c₁ p₁ e₁ | eols-layout i f B₂ o₁ c₁ p₁ e₂ =
+      after kb′ (suc n′) (trans (+-suc kb′ n′) (cong suc s)) kd≤′
+        (rel refl refl refl
+          (trans (cong (_++ map eolText B₁) re₁) (sym (trans (eols-snoc tv₁ kb′ n′) (cong (λ x → eolsFrom tv₁ kb′ n′ ++ map eolText (Notes.after (lookupNotes x tv₁))) s))))
+          (trans (cong (_++ map eolText B₂) re₂) (sym (trans (eols-snoc tv₂ kb′ n′) (cong (λ x → eolsFrom tv₂ kb′ n′ ++ map eolText (Notes.after (lookupNotes x tv₂))) s)))))
+        (wi-ends w′)
+
+    go₁ : ∀ A → Notes.inner (lookupNotes k tv₁) ≡ A
+        → After (layout i f (anchorDoc tv₁ k x) σ₁) (layout i f (anchorDoc tv₂ k x) σ₂) (suc k)
+    lx : LI (token x σ₁)
+    lx = proj₁ (layout-reach i f (tk x) σ₁ l)
+
+    go₁ []       e = subst₂ (λ a b → After a b (suc k)) (sym eq₁) (sym eq₂) res
+      where
+        open import Relation.Binary.PropositionalEquality using (subst₂)
+        eq₁ : layout i f (anchorDoc tv₁ k x) σ₁ ≡ layout i f (Once.Format.Print.eols B₁) (token x σ₁)
+        eq₁ = cong (λ A → layout i f (inners A <> tk x <> Once.Format.Print.eols B₁) σ₁) e
+        R = anchor-sim x σ₁ σ₂ kb n ax r w l
+        w′ = proj₁ (proj₂ R)
+        fc : Future (token x σ₁)
+        fc = fut-back i f (Once.Format.Print.eols B₁) (token x σ₁) lx (subst Future eq₁ fu)
+        e₂ : Notes.inner (lookupNotes k tv₂) ≡ []
+        e₂ with k Data.Nat.≟ kd
+        ... | yes k≡kd = subst (λ j → Notes.inner (lookupNotes j tv₂) ≡ []) (sym k≡kd) I2kd
+        ... | no k≢kd =
+          trans (I2 k (Data.Nat.Properties.≤∧≢⇒< kd≤k (λ q → k≢kd (sym q))))
+            (trans (inner-final (token x σ₁) fc k (WI.h w′) (WI.t w′)
+                      (trans (WI.w-φ w′) (cong (λ m → walker m (WI.h w′) line-code [] 0 (WI.t w′)) (+-suc kb n))))
+                   (proj₂ (proj₂ R)))
+        eq₂ : layout i f (anchorDoc tv₂ k x) σ₂ ≡ layout i f (Once.Format.Print.eols B₂) (token x σ₂)
+        eq₂ = cong (λ A → layout i f (inners A <> tk x <> Once.Format.Print.eols B₂) σ₂) e₂
+        res = ends-after (token x σ₁) (token x σ₂) kb n kd≤ (proj₁ R) refl w′
+    go₁ (c ∷ cs) e = subst₂ (λ a b → After a b (suc k)) (sym eq₁) (sym eq₂) res
+      where
+        open import Relation.Binary.PropositionalEquality using (subst₂)
+        open Once.Format.Print using (eols)
+        A = c ∷ cs
+        kd<k : kd < k
+        kd<k = Data.Nat.Properties.≤∧≢⇒< kd≤k
+                 (λ (q : kd ≡ k) → nil-cons (trans (sym (subst (λ j → Notes.inner (lookupNotes j tv₁) ≡ []) q I1kd)) e))
+          where nil-cons : ∀ {y : String} {ys : List String} → [] ≡ y ∷ ys → Data.Empty.⊥
+                nil-cons ()
+        srcs : All Src A
+        srcs = subst (All Src) e (proj₁ (proj₂ (S1 k)))
+        σa = brk i σ₁
+        la = proj₁ (brk-ok i σ₁ l)
+        σb = layout i f (commentRun A) σa
+        lb = proj₁ (layout-reach i f (commentRun A) σa la)
+        σc = token x σb
+        lc = proj₁ (layout-reach i f (tk x) σb lb)
+        eq₁ : layout i f (anchorDoc tv₁ k x) σ₁ ≡ layout i f (eols B₁) σc
+        eq₁ = cong (λ A′ → layout i f (inners A′ <> tk x <> eols B₁) σ₁) e
+        fc = fut-back i f (eols B₁) σc lc (subst Future eq₁ fu)
+        fb = fut-back i f (tk x) σb lb fc
+        fa = fut-back i f (commentRun A) σa la fb
+        BS = brk-sim i σ₁ σ₂ kb n 1≤i kd≤ r w l fa
+        ra = proj₁ BS
+        wa = proj₂ BS
+        Oa = St.out σa
+        Ta = WI.t wa
+        Ls = rendered i A
+        σb≡ : σb ≡ st (linesOut i Ls Oa) 0 (just i) []
+        σb≡ = trans (cong (layout i f (commentRun A)) (brk-st i σ₁))
+                (trans (lines-layout i f (concatMap commentLines A) Oa 0)
+                       (cong (λ y → st (linesOut i Ls Oa) y (just i) []) (zero-col (concatMap commentLines A))))
+        outc : St.out σc ≡ lt x ∷ lind i ∷ linesOut i Ls Oa
+        outc = trans (cong (λ τ → St.out (token x τ)) σb≡) (tokout-just (proj₁ (token-shape x (linesOut i Ls Oa) 0 (just i) [])))
+        pendc : St.pend σc ≡ nothing
+        pendc = trans (cong (λ τ → St.pend (token x τ)) σb≡) (proj₂ (token-shape x (linesOut i Ls Oa) 0 (just i) []))
+        endsc : St.ends σc ≡ []
+        endsc = trans (cong (λ τ → St.ends (token x τ)) σb≡) (cong St.ends (token-e x (linesOut i Ls Oa) 0 (just i) []))
+        ΦOa : Φ Oa ≡ (walker k (WI.h wa) line-code [] 0 Ta , true)
+        ΦOa = cong₂ _,_ (trans (WI.w-φ wa) (cong (λ m → walker m (WI.h wa) line-code [] 0 Ta) (+-identityʳ k)))
+                        (proj₁ (WI.w-end wa i (cong St.pend (brk-st i σ₁))))
+        i′ = proj₁ (pos 1≤i)
+        eqi = proj₂ (pos 1≤i)
+        ne = rendered-ne i c cs
+        L = proj₁ ne
+        Ls′ = proj₁ (proj₂ ne)
+        eLs : Ls ≡ L ∷ Ls′
+        eLs = proj₂ (proj₂ ne)
+        rs = map readBack Ls
+        Ta′ = settleAt k (map hcF rs) Ta
+        eφc : proj₁ (Φ (St.out σc)) ≡ walker (suc k) true line-code [] 0 Ta′
+        eφc = trans (cong (λ o → proj₁ (Φ o)) outc)
+                (trans (cong (λ m → proj₁ (Φ (lt x ∷ lind m ∷ linesOut m Ls Oa))) eqi)
+                  (trans (cong (λ M → proj₁ (Φ (lt x ∷ lind (suc i′) ∷ linesOut (suc i′) M Oa))) eLs)
+                    (trans (run-tok i′ Ls′ [] (readBack L) (lnl ∷ lcm L ∷ lind (suc i′) ∷ Oa) x ax (line-first Oa i′ L ΦOa))
+                      (cong (λ hs → walker (suc k) true line-code [] 0 (settleAt k hs Ta))
+                        (trans (promote-false (map readBack (L ∷ Ls′))) (cong (λ M → map hcF (map readBack M)) (sym eLs)))))))
+        inner₂ : Notes.inner (lookupNotes k tv₂) ≡ rs
+        inner₂ = trans (I2 k kd<k)
+                   (trans (inner-final σc fc k true Ta′ eφc)
+                     (trans (settle-inner k rs Ta) (cong (_++ rs) (WI.w-inner wa k (Data.Nat.Properties.≤-reflexive (+-identityʳ k))))))
+        rs-cons : rs ≡ readBack L ∷ map readBack Ls′
+        rs-cons = cong (map readBack) eLs
+        σ₂b≡ : layout i f (commentRun rs) (brk i σ₂) ≡ σb
+        σ₂b≡ = trans (cong (layout i f (commentRun rs)) (trans (brk-st i σ₂) (cong (λ O → st O 0 (just i) []) (sym (Rel.r-out ra)))))
+                 (trans (lines-layout i f (concatMap commentLines rs) Oa 0)
+                   (trans (cong₂ (λ M y → st (linesOut i M Oa) y (just i) [])
+                             (rendered-fix i Ls (rendered-RL i A srcs)) (zero-col (concatMap commentLines rs)))
+                          (sym σb≡)))
+        inners₂ : ∀ rs′ → rs′ ≡ readBack L ∷ map readBack Ls′
+                → layout i f (inners rs′ <> tk x <> eols B₂) σ₂ ≡ layout i f (eols B₂) (token x (layout i f (commentRun rs′) (brk i σ₂)))
+        inners₂ .(readBack L ∷ map readBack Ls′) refl = refl
+        eq₂ : layout i f (anchorDoc tv₂ k x) σ₂ ≡ layout i f (eols B₂) σc
+        eq₂ = trans (cong (λ A′ → layout i f (inners A′ <> tk x <> eols B₂) σ₂) inner₂)
+                (trans (inners₂ rs rs-cons) (cong (λ τ → layout i f (eols B₂) (token x τ)) σ₂b≡))
+        wc : WI σc k 1
+        wc = wi true Ta′ (trans eφc (cong (λ m → walker m true line-code [] 0 Ta′) (sym (k+1 k))))
+               (λ _ → trans (cong waits outc) (cong proj₂ (Φ-cons (lt x) (lind i ∷ linesOut i Ls Oa))) , refl)
+               (λ i₂ q → ⊥-elim (nj (trans (sym pendc) q)))
+               (λ j le → trans (Once.Format.Proof.Walk.settleAt-after j k (map hcF rs) Ta) (WI.w-after wa j le))
+               (λ j le → trans (cong Notes.inner (Once.Format.Proof.Walk.lookup-settleAt j k (map hcF rs) Ta
+                                   (λ q → <-irrefl (sym q) (subst (_≤ j) (k+1 k) le))))
+                               (WI.w-inner wa j (≤-trans (subst (_≤ k + 1) (sym (+-identityʳ k)) (subst (k ≤_) (sym (k+1 k)) (n≤1+n k))) le)))
+               (λ j kd<j → trans (settle-top j k rs Ta) (WI.w-top wa j kd<j))
+          where nj : ∀ {m : ℕ} → nothing ≡ just m → Data.Empty.⊥
+                nj ()
+        res = ends-after σc σc k 0 kd≤k (rel refl refl refl (trans endsc refl) (trans endsc refl)) (+-identityʳ k) wc
+
+------------------------------------------------------------------------
+-- The declaration's skeleton, in step
+------------------------------------------------------------------------
+
+open Sk.Same tv₁ tv₂ using (s-leaf; s-hole; s-<>; s-nest; s-group) renaming (Sk to Skel)
+
+-- | A part of the declaration, in step.
+sk-sim : ∀ {k k′ d₁ d₂} → Skel k k′ d₁ d₂ → ∀ i f σ₁ σ₂ kb n → kb + n ≡ k → 1 ≤ i → kd ≤ kb
+       → Rel σ₁ σ₂ kb n → WI σ₁ kb n → LI σ₁ → Future (layout i f d₁ σ₁) → After (layout i f d₁ σ₁) (layout i f d₂ σ₂) k′
+sk-sim (s-leaf {d = d} p) i f σ₁ σ₂ kb n s 1≤i kd≤ r w l fu = subst (After _ _) s (leaf-sim d p i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu)
+sk-sim (s-hole {x = x} p) i f σ₁ σ₂ kb n refl 1≤i kd≤ r w l fu = hole-sim x p i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
+sk-sim (s-<> {a₁ = a₁} {b₁ = b₁} s₁ s₂) i f σ₁ σ₂ kb n s 1≤i kd≤ r w l fu
+  with sk-sim s₁ i f σ₁ σ₂ kb n s 1≤i kd≤ r w l (fut-left i f a₁ b₁ σ₁ l fu)
+... | after kb′ n′ s′ kd≤′ r′ w′ = sk-sim s₂ i f _ _ kb′ n′ s′ 1≤i kd≤′ r′ w′ (proj₁ (layout-reach i f a₁ σ₁ l)) fu
+sk-sim (s-nest {n = m} s₁) i f σ₁ σ₂ kb n s 1≤i kd≤ r w l fu =
+  sk-sim s₁ (i + m) f σ₁ σ₂ kb n s (≤-trans 1≤i (m≤m+n i m)) kd≤ r w l fu
+sk-sim (s-group s₁) i true σ₁ σ₂ kb n s 1≤i kd≤ r w l fu = sk-sim s₁ i true σ₁ σ₂ kb n s 1≤i kd≤ r w l fu
+sk-sim (s-group {a = a} {b = b} s₁) i false (st o c p e₁) (st .o .c .p e₂) kb n s 1≤i kd≤ (rel refl refl refl re₁ re₂) w l fu =
+  subst (λ g → After (layout i (fits (column (st o c p e₁)) (flatWidth a)) a (st o c p e₁)) (layout i g b (st o c p e₂)) _)
+    (cong₂ fits (col-eq o c p e₁ e₂) (sk-width s₁))
+    (sk-sim s₁ i _ (st o c p e₁) (st o c p e₂) kb n s 1≤i kd≤ (rel refl refl refl re₁ re₂) w l fu)
