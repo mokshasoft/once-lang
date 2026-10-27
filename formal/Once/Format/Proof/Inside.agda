@@ -828,7 +828,8 @@ record Start (σ : St) (T′ : Trivia) : Set where
   field
     s-pend  : St.pend σ ≡ just 0
     s-ends  : St.ends σ ≡ []
-    s-first : ∀ x → proj₁ (Φ (lt x ∷ lind 0 ∷ St.out σ)) ≡ walker (if anchorTok x then suc kd else kd) (anchorTok x) line-code [] 0 T′
+    s-first : ∀ x → lineEndTok x ≡ false
+            → proj₁ (Φ (lt x ∷ lind 0 ∷ St.out σ)) ≡ walker (if anchorTok x then suc kd else kd) (anchorTok x) line-code [] 0 T′
     s-after : ∀ j → kd ≤ j → Notes.after (lookupNotes j T′) ≡ []
     s-inner : ∀ j → kd ≤ j → Notes.inner (lookupNotes j T′) ≡ []
     s-top   : ∀ j → kd < j → Notes.top (lookupNotes j T′) ≡ []
@@ -848,11 +849,11 @@ private
       subst₂R refl refl r = r
 
   wi-first : ∀ t σ T′ → Start σ T′ → St.out (token t σ) ≡ lt t ∷ lind 0 ∷ St.out σ → St.pend (token t σ) ≡ nothing
-           → ∀ b → anchorTok t ≡ b → WI (token t σ) kd (if b then 1 else 0)
-  wi-first t σ T′ sw eo ep b eb =
+           → lineEndTok t ≡ false → ∀ b → anchorTok t ≡ b → WI (token t σ) kd (if b then 1 else 0)
+  wi-first t σ T′ sw eo ep ne b eb =
     wi b T′
       (trans (cong (λ o → proj₁ (Φ o)) eo)
-        (trans (Start.s-first sw t) (cong₂ (λ m h → walker m h line-code [] 0 T′) (idx-of b eb) eb)))
+        (trans (Start.s-first sw t ne) (cong₂ (λ m h → walker m h line-code [] 0 T′) (idx-of b eb) eb)))
       (λ _ → trans (cong waits eo) (cong proj₂ (Φ-cons (lt t) (lind 0 ∷ St.out σ))) , h-of b)
       (λ i₂ q → ⊥-elim (nj (trans (sym ep) q)))
       (Start.s-after sw) (λ j le → Start.s-inner sw j (≤-trans (m≤m+n kd _) le)) (Start.s-top sw) (Start.s-topk sw)
@@ -883,6 +884,12 @@ private
           (sym (trans (eols-snoc tv₂ kb′ n′) (cong (λ x → eolsFrom tv₂ kb′ n′ ++ map eolText (Notes.after (lookupNotes x tv₂))) s)))))
       (wi-ends w′)
 
+  plain-end : ∀ t → T (plain (tk t)) → lineEndTok t ≡ false
+  plain-end t p with anchorTok t | lineEndTok t
+  ... | false | false = refl
+  ... | true  | _     = ⊥-elim p
+  ... | false | true  = ⊥-elim p
+
   plain-false : ∀ t → T (plain (tk t)) → anchorTok t ≡ false
   plain-false t p with anchorTok t
   ... | false = refl
@@ -892,14 +899,14 @@ private
 start-sim : ∀ {k′ d₁ d₂} (s : Skel kd k′ d₁ d₂) → Starts s → ∀ i f σ₁ σ₂ T′ → 1 ≤ i → Rel σ₁ σ₂ kd 0 → Start σ₁ T′
           → LI σ₁ → Future (layout i f d₁ σ₁) → After (layout i f d₁ σ₁) (layout i f d₂ σ₂) k′
 start-sim (s-leaf {d = tk t} p) st-tok i f σ₁ σ₂ T′ 1≤i r sw l fu with first-tok t σ₁ σ₂ T′ r sw
-... | eo , ep , r′ = after kd 0 (+-identityʳ kd) ≤-refl r′ (wi-first t σ₁ T′ sw eo ep false (plain-false t p))
+... | eo , ep , r′ = after kd 0 (+-identityʳ kd) ≤-refl r′ (wi-first t σ₁ T′ sw eo ep (plain-end t p) false (plain-false t p))
 start-sim (s-hole {x = x} p) st-hole i f σ₁ σ₂ T′ 1≤i r sw l fu with first-tok x σ₁ σ₂ T′ r sw
 ... | eo , ep , r′ =
   subst₂ (λ a b → After a b (suc kd))
     (sym (cong (λ A → layout i f (inners A <> tk x <> eols (Notes.after (lookupNotes kd tv₁))) σ₁) I1kd))
     (sym (cong (λ A → layout i f (inners A <> tk x <> eols (Notes.after (lookupNotes kd tv₂))) σ₂) I2kd))
     (eols-after i f kd (token x σ₁) (token x σ₂) kd 0 ≤-refl r′ (+-identityʳ kd)
-      (wi-first x σ₁ T′ sw eo ep true (proj₁ (anchor-cases x p))))
+      (wi-first x σ₁ T′ sw eo ep (proj₂ (anchor-cases x p)) true (proj₁ (anchor-cases x p))))
   where open import Relation.Binary.PropositionalEquality using (subst₂)
 start-sim (s-<> {a₁ = a₁} {b₁ = b₁} s₁ s₂) (st-<> ss) i f σ₁ σ₂ T′ 1≤i r sw l fu
   with start-sim s₁ ss i f σ₁ σ₂ T′ 1≤i r sw l (fut-left i f a₁ b₁ σ₁ l fu)
