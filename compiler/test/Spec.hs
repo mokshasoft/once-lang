@@ -30,11 +30,11 @@ import TypeErrorSpec (typeErrorTests)
 
 main :: IO ()
 -- Run sequentially (NumThreads 1). The codegen/integration tests shell out to
--- `once`, which builds against the shared `Strata/` interpretation tree and
--- writes/removes a shared object file there (e.g.
--- `Strata/Interpretations/Linux/Syscalls.x86_64.o`). Running them in parallel
--- races on that artifact (`removeLink: does not exist`). Serialising keeps the
--- suite deterministic; total runtime is ~12s.
+-- `once`. Until plan 0.125 the compiler wrote a shared object file into the
+-- `Strata/` tree (e.g. `Strata/Interpretations/Linux/Syscalls.x86_64.o`) and
+-- parallel runs raced on it (`removeLink: does not exist`); objects now go
+-- beside each build's output. Serialising is kept for determinism; total
+-- runtime is ~12s.
 main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   [ parseTests
   , typeCheckTests

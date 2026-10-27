@@ -33,7 +33,7 @@ import System.Directory (removeFile, doesFileExist, doesDirectoryExist, getCurre
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
 import System.IO (hPutStrLn, stderr)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
-import System.Environment (lookupEnv)
+import System.Environment (getExecutablePath, lookupEnv)
 import System.Process (readProcessWithExitCode)
 
 -- Bridge to MAlonzo-generated code (stable API)
@@ -400,7 +400,7 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
               -- one becomes a .o that gets linked into the binary,
               -- providing the `once_<name>` symbols that
               -- `compile-sigOp` calls into.
-              implResult <- assembleImplFiles strataDir arch importPaths
+              implResult <- assembleImplFiles strataDir outputBase arch importPaths
               case implResult of
                 Left err -> do
                   TIO.putStrLn $ "Impl-file assembly failed: " <> T.pack err
@@ -408,7 +408,7 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
                 Right implObjs0 -> do
                  -- D320: the Host's `leave` (`once_leave`), linked beside the
                  -- program; which Host is the link's choice, not the compiler's.
-                 hostResult <- assembleHost strataDir arch (buildHost opts)
+                 hostResult <- assembleHost strataDir outputBase arch (buildHost opts)
                  case hostResult of
                   Left err -> do
                     TIO.putStrLn $ "Host assembly failed: " <> T.pack err
@@ -442,23 +442,27 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
       TIO.putStrLn "Internal error: unexpected result from build"
       exitFailure
 
--- | Plan 0.11: assemble per-arch impl files for the given list of
--- import paths. Returns the list of `.o` paths produced (same order
--- as input). Skips imports that have no `.<arch>` companion file.
 -- | D320: assemble the Host (`Strata/Hosts/<host>/Host.<arch>`).
-assembleHost :: FilePath -> Bridge.Arch -> String -> IO (Either String FilePath)
-assembleHost strataDir arch host = do
+-- Plan 0.125: its object goes beside the output (`<output>.Host.<host>.o`);
+-- the Strata tree is only read, so it may live in a read-only install.
+assembleHost :: FilePath -> FilePath -> Bridge.Arch -> String -> IO (Either String FilePath)
+assembleHost strataDir outputBase arch host = do
   let hostPath = strataDir </> "Hosts" </> host </> ("Host." ++ archImplExtension arch)
   exists <- doesFileExist hostPath
   if not exists
     then pure (Left ("no Host " ++ host ++ " for this target: " ++ hostPath ++ " is missing"))
     else do
-      let objPath = hostPath ++ ".o"
+      let objPath = outputBase ++ ".Host." ++ host ++ ".o"
       r <- assemble arch hostPath objPath
       pure (either (\e -> Left ("Failed to assemble " ++ hostPath ++ ": " ++ e)) (const (Right objPath)) r)
 
-assembleImplFiles :: FilePath -> Bridge.Arch -> [[T.Text]] -> IO (Either String [FilePath])
-assembleImplFiles strataDir arch paths = go paths []
+-- | Plan 0.11: assemble per-arch impl files for the given list of
+-- import paths. Returns the list of `.o` paths produced (same order
+-- as input). Skips imports that have no `.<arch>` companion file.
+-- Plan 0.125: each object goes beside the output
+-- (`<output>.<module path>.o`), never into the Strata tree.
+assembleImplFiles :: FilePath -> FilePath -> Bridge.Arch -> [[T.Text]] -> IO (Either String [FilePath])
+assembleImplFiles strataDir outputBase arch paths = go paths []
   where
     go []           acc = pure (Right (reverse acc))
     go (p : rest)   acc = do
@@ -467,7 +471,7 @@ assembleImplFiles strataDir arch paths = go paths []
       if not exists
         then go rest acc  -- Skip: no impl for this arch (may be intentional)
         else do
-          let objPath = implPath ++ ".o"
+          let objPath = outputBase ++ "." ++ intercalate "." (canonicalParts p) ++ ".o"
           asmResult <- assemble arch implPath objPath
           case asmResult of
             Left err  -> pure (Left ("Failed to assemble " ++ implPath ++ ": " ++ err))
@@ -602,7 +606,9 @@ importPathToImplPath strataDir arch pathParts =
   in strataDir </> intercalate "/" mapped ++ "." ++ archImplExtension arch
 
 -- | Find the Strata directory (containing Interpretations/) by walking
--- up from the input file, then up from the CWD. Falls back to ./Strata.
+-- up from the input file, then up from the CWD (a project's own Strata
+-- wins). Plan 0.125: then the installed copy, `<bindir>/../share/once/Strata`
+-- (where a package puts it). Falls back to ./Strata.
 findStrataDir :: FilePath -> Maybe FilePath -> IO FilePath
 findStrataDir inputPath mStrataOpt = case mStrataOpt of
   Just dir -> pure dir
@@ -617,7 +623,11 @@ findStrataDir inputPath mStrataOpt = case mStrataOpt of
         mFromCwd <- findStrataUp cwd
         case mFromCwd of
           Just dir -> pure dir
-          Nothing  -> pure "Strata"
+          Nothing  -> do
+            exeDir <- takeDirectory <$> getExecutablePath
+            let installed = takeDirectory exeDir </> "share" </> "once" </> "Strata"
+            isStrata <- doesDirectoryExist (installed </> "Interpretations")
+            pure (if isStrata then installed else "Strata")
   where
     findStrataUp :: FilePath -> IO (Maybe FilePath)
     findStrataUp dir = do
