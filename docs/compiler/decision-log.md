@@ -19614,7 +19614,9 @@ user facing configs."
   printed differently (a comment whose `--` a dash follows is now kept as written); a wrapped comment line
   could end in a carriage return (words now end at every blank); a comment after code before a
   declaration's first anchor went to the previous declaration; comments sharing a line were joined (a
-  block comment's `-}` became words). Two rules make the proof local, and are the style now: comments
+  block comment's `-}` became words); a comment on its own line before a closing token, its anchor in the
+  next declaration, came out after the comments before that declaration (at a line end that starts a
+  declaration the walker now moves it before them, `Print.hoistW`). Two rules make the proof local, and are the style now: comments
   take no room in deciding whether a group is flat (the code's layout is its own; a comment still breaks
   where it must), and an end-of-line comment anchors to a word or literal on its own line (on a line
   without one it stands before the next anchor, as a comment on a line of its own does).
@@ -19629,8 +19631,9 @@ user facing configs."
   field takes `DigitBound` itself and the apex's hypotheses are unchanged.
 
 ### Consequences
-* Open: that the output's comments are the input's, in order (plan 0.124 §9); fuzzed (≈3000 texts with
-  comments placed at random, all idempotent, every comment word kept in order), not yet proved.
+* Open: that the output's comments are the input's, in order (plan 0.124 §9); fuzzed (≈4000 texts with
+  comments placed at random, also before closing tokens: all idempotent, every comment word kept in
+  order), not yet proved.
 * The proofs' per-case parts are generated (`formal/scripts/gen-format-*.py`); edit the generators.
 * The tree's formatting is unchanged by all of it.
 
