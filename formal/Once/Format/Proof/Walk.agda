@@ -49,18 +49,11 @@ open import Once.Format.Print using (W; walker; Line; line-empty; line-code; lin
 open import Once.Format.Proof.Items using (EItem; etok; ecomment; econt; erase; items-complete)
 open import Once.Format.Proof.ItemsLex using (itemsL; items-ws)
 open import Once.Format.Proof.Lexing using (WS)
-open import Once.Format.Proof.Skeleton using (anchorTok)
+open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok)
 
 ------------------------------------------------------------------------
 -- The walker on erased items
 ------------------------------------------------------------------------
-
--- | The line ends among the tokens.
-lineEndTok : Token → Bool
-lineEndTok TNewline = true
-lineEndTok TEOF     = true
-{-# CATCHALL #-}
-lineEndTok _        = false
 
 stepE : W → EItem → W
 stepE σ (etok x)     = stepTok σ (anchorTok x) (lineEndTok x)
@@ -240,6 +233,17 @@ lookup-addTo-keeps V j i f ((i′ , n) ∷ ts) e with i ≡ᵇ i′
 lookup-addTo-keeps V j i f ((i′ , n) ∷ ts) e | false with j ≡ᵇ i′
 ...   | true  = refl
 ...   | false = lookup-addTo-keeps V j i f ts e
+
+≡ᵇ-refl : ∀ n → (n ≡ᵇ n) ≡ true
+≡ᵇ-refl zero    = refl
+≡ᵇ-refl (suc n) = ≡ᵇ-refl n
+
+-- | Adding to an anchor's notes adds to them.
+lookup-addTo-same : ∀ k f t → lookupNotes k (addTo k f t) ≡ f (lookupNotes k t)
+lookup-addTo-same k f [] rewrite ≡ᵇ-refl k = refl
+lookup-addTo-same k f ((i , n) ∷ ts) with k ≡ᵇ i in e
+... | true  rewrite e = refl
+... | false rewrite e = lookup-addTo-same k f ts
 
 private
   ≢-≡ᵇ : ∀ {m n} → m ≢ n → (m ≡ᵇ n) ≡ false
