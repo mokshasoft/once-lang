@@ -472,3 +472,146 @@ mutual
   e-paren g paren-close        = tseg-close
   e-paren g (paren-pair p)  = tseg-step TComma (λ ()) refl refl (e-expr (gtail g) p) tseg-close
   e-paren g (paren-annot A) = tseg-step TColon (λ ()) refl refl (annot-ty A) tseg-close
+
+------------------------------------------------------------------------
+-- Declarations
+------------------------------------------------------------------------
+
+open import Data.Maybe using (Maybe; just; nothing)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import; mkImport)
+open import Once.Spec.Surface.Grammar using (ParsesDecl; ParsesDecls; SkipNewlines; ParsesOpAfter; ParsesFunDef;
+  ParsesParams; ParsesTypeAlias; ParsesImport; ParsesModulePath; wrapLams;
+  decl-import; decl-alias; decl-signature; decl-typesig; decl-fundef; decl-op; skip-nl; skip-done;
+  decls-stop; decls-cons; op-sig; op-def; fundef; params-eq; params-cons; params-stop; params-none;
+  alias-eq; alias-param; import-as; import-plain; path-cons; path-dotstop; path-end)
+
+-- | The anchors of words.
+sw : List String → ℕ
+sw = foldr (λ x n → wc x + n) 0
+
+-- | A name's anchors: a word is one, an operator in parentheses none.
+nameC : String → ℕ
+nameC x = if isOperator x then 0 else wc x
+
+asC : Maybe String → ℕ
+asC (just a) = 1 + wc a
+asC nothing  = 0
+
+-- | The anchors of a declaration, as written.
+cD : Decl → ℕ
+cD (DTypeSig x A)          = nameC x + cT A
+cD (DFunDef x e)           = nameC x + cE e
+cD (DSignature x A)        = 1 + (nameC x + cT A)
+cD (DTypeAlias x ps A)     = 1 + (nameC x + (sw ps + cT A))
+cD (DImport (mkImport p a)) = 1 + (sw p + asC a)
+
+private
+  sw-++ : ∀ xs ys → sw (xs ++ ys) ≡ sw xs + sw ys
+  sw-++ []       ys = refl
+  sw-++ (x ∷ xs) ys = trans (cong (wc x +_) (sw-++ xs ys)) (sym (+-assoc (wc x) (sw xs) (sw ys)))
+
+  sw-rev : ∀ xs → sw (reverse xs) ≡ sw xs
+  sw-rev []       = refl
+  sw-rev (x ∷ xs) = trans (cong sw (unfold-reverse x xs))
+    (trans (sw-++ (reverse xs) (x ∷ []))
+      (trans (cong₂ _+_ (sw-rev xs) (+-identityʳ (wc x))) (+-comm (sw xs) (wc x))))
+
+  cE-wrap : ∀ ps e → cE (wrapLams ps e) ≡ sw ps + cE e
+  cE-wrap []       e = refl
+  cE-wrap (x ∷ xs) e = trans (cong (wc x +_) (cE-wrap xs e)) (sym (+-assoc (wc x) (sw xs) (cE e)))
+
+  tseg-cast : ∀ {base m n ts r} → m ≡ n → TSeg base m ts r → TSeg base n ts r
+  tseg-cast refl t = t
+
+  -- a token before a tail: its anchors join the base
+  tseg-pre : ∀ {base n ts r} t → t ≢ TNewline → TSeg ((if anchorTok t then 1 else 0) + base) n ts r
+           → TSeg base n (t ∷ ts) r
+  tseg-pre {base} t nt (s , refl , e , nn) =
+    t ∷ s , refl , trans (lc base (if anchorTok t then 1 else 0) (anchors s))
+                     (trans (sym (+-assoc (if anchorTok t then 1 else 0) base (anchors s))) e) , nt ∷ nn
+    where
+      lc : ∀ a b c → a + (b + c) ≡ b + (a + c)
+      lc a b c = trans (sym (+-assoc a b c)) (trans (cong (_+ c) (+-comm a b)) (+-assoc b a c))
+
+  -- a name's anchors, as the grammar reads it
+  Named : String → Decl → List Token → List Token → Set
+  Named x d ts r = Σ ℕ λ m → cD d ≡ nameC x + m × Seg m ts r
+
+  d-params : ∀ {ts ps r} → ParsesParams ts ps r → Seg (sw ps) ts r
+  d-params (params-eq {x} _)  = seg-cons (TWord x) (λ ()) seg-nil
+  d-params (params-cons {x} _ p) = seg-cons (TWord x) (λ ()) (d-params p)
+  d-params (params-stop _ _)  = seg-nil
+  d-params (params-none _)    = seg-nil
+
+  d-fun : ∀ {x ts d r} → All Good ts → ParsesFunDef x ts d r → Named x d ts r
+  d-fun g (fundef {ps = ps} {e = e} p pe) =
+    let s = d-params p
+    in cE (wrapLams ps e) , refl ,
+       seg-cast (sym (cE-wrap ps e)) (seg-op (λ ()) refl s (e-expr (gtail (good-rest g s)) pe))
+
+  d-after : ∀ {x ts d r} → All Good ts → ParsesOpAfter x ts d r → Named x d ts r
+  d-after g (op-sig {A = A} p) = cT A , refl , seg-cons TColon (λ ()) (sig-ty p)
+  d-after g (op-def _ p)       = d-fun g p
+
+  d-alias : ∀ {x ps ts d r} → ParsesTypeAlias x ps ts d r
+          → Σ (List String) λ qs → Σ PolyType λ A → d ≡ DTypeAlias x qs A × TSeg (sw ps) (sw qs + cT A) ts r
+  d-alias (alias-eq {ps} {A = A} p) =
+    reverse ps , A , refl , tseg-cast (cong (_+ cT A) (sym (sw-rev ps))) (tseg-step TEquals (λ ()) refl refl (alias-ty p) tseg-nil)
+  d-alias (alias-param {p = p} q) with d-alias q
+  ... | qs , A , eq , t = qs , A , eq , tseg-pre (TWord p) (λ ()) t
+
+  d-path : ∀ {ts p r} → ParsesModulePath ts p r → Seg (sw p) ts r
+  d-path (path-cons {x} q)    = seg-cons (TWord x) (λ ()) (seg-cons TDot (λ ()) (d-path q))
+  d-path (path-dotstop {x} _) = seg-cons (TWord x) (λ ()) seg-nil
+  d-path (path-end {x} _)     = seg-cons (TWord x) (λ ()) seg-nil
+
+  d-import : ∀ {ts d r} → ParsesImport ts d r → Σ ℕ λ m → cD d ≡ 1 + m × Seg m ts r
+  d-import (import-as {p = p} {a} q) =
+    sw p + (1 + wc a) , refl ,
+    seg-cast (cong (λ z → sw p + suc z) (+-identityʳ (wc a)))
+      (seg-++ (d-path q) (seg-cons (TWord "as") (λ ()) (seg-cons (TWord a) (λ ()) seg-nil)))
+  d-import (import-plain {p = p} q _) = sw p + 0 , refl , seg-cast (sym (+-identityʳ (sw p))) (d-path q)
+
+-- | A declaration's tokens hold its anchors, and no line end.
+decl-seg : ∀ {ts d r} → All Good ts → ParsesDecl ts d r → Seg (cD d) ts r
+decl-seg g (decl-import p) with d-import p
+... | m , eq , s = seg-cast (sym eq) (seg-cons (TWord "import") (λ ()) s)
+decl-seg (_ ∷ gx ∷ _) (decl-alias {x} p) with d-alias p
+... | qs , A , refl , t =
+  seg-cast (cong (λ z → 1 + (z + (sw qs + cT A))) (if-false (wc x) gx))
+    (seg-cons (TWord "type") (λ ()) (seg-cons (TWord x) (λ ()) t))
+decl-seg (_ ∷ gx ∷ _) (decl-signature {x} {A = A} p) =
+  seg-cast (cong (λ z → 1 + (z + cT A)) (if-false (wc x) gx))
+    (seg-cons (TWord "signature") (λ ()) (seg-cons (TWord x) (λ ()) (seg-cons TColon (λ ()) (sig-ty p))))
+decl-seg (gx ∷ _) (decl-typesig {x} {A = A} _ p _) =
+  seg-cast (cong (_+ cT A) (if-false (wc x) gx)) (seg-cons (TWord x) (λ ()) (seg-cons TColon (λ ()) (sig-ty p)))
+decl-seg (gx ∷ g) (decl-fundef {x} _ _ p) with d-fun g p
+... | m , eq , s = seg-cast (trans (cong (_+ m) (if-false (wc x) gx)) (sym eq)) (seg-cons (TWord x) (λ ()) s)
+decl-seg (_ ∷ g) (decl-op {x = x} p q) with d-after (good-rest g (opchars-seg p)) q
+... | m , eq , s =
+  seg-cast (trans (cong (_+ m) (if-true (wc x) (op-isOperator x (opchars-name p [])))) (sym eq))
+    (seg-cons TLParen (λ ()) (seg-++ (opchars-seg p) s))
+
+-- | Line ends only.
+Nls : List Token → Set
+Nls = All (_≡ TNewline)
+
+-- | Declarations, one after the other: line ends, then a declaration's
+-- tokens holding its anchors; at the end, line ends before the rest.
+DeclSegs : List Decl → List Token → List Token → Set
+DeclSegs []       ts r = Σ (List Token) λ nls → ts ≡ nls ++ r × Nls nls
+DeclSegs (d ∷ ds) ts r = Σ (List Token) λ nls → Σ (List Token) λ mid → ts ≡ nls ++ mid × Nls nls ×
+                           Σ (List Token) λ rest → Seg (cD d) mid rest × DeclSegs ds rest r
+
+private
+  skip-nls : ∀ {ts r} → SkipNewlines ts r → Σ (List Token) λ nls → ts ≡ nls ++ r × Nls nls
+  skip-nls (skip-nl s) with skip-nls s
+  ... | nls , refl , n = TNewline ∷ nls , refl , refl ∷ n
+  skip-nls (skip-done _) = [] , refl , []
+
+decls-segs : ∀ {ts ds r} → All Good ts → ParsesDecls ts ds r → DeclSegs ds ts r
+decls-segs g (decls-stop s _) = skip-nls s
+decls-segs g (decls-cons s p ps) with skip-nls s
+... | nls , refl , n =
+  let g₁ = AllP.++⁻ʳ nls g ; sd = decl-seg g₁ p
+  in nls , _ , refl , n , _ , sd , decls-segs (good-rest g₁ sd) ps
