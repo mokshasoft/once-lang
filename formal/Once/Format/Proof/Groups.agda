@@ -366,10 +366,11 @@ groups-src (note-comment c ∷ ns) (a ∷ as) true  (p ∷ ps) pa = pa ∷ group
 -- The second pass prints them as the first
 ------------------------------------------------------------------------
 
+notNull : ∀ {A : Set} → List A → Bool
+notNull []      = false
+notNull (_ ∷ _) = true
+
 private
-  notNull : ∀ {A : Set} → List A → Bool
-  notNull []      = false
-  notNull (_ ∷ _) = true
 
   ∨-true : ∀ b → b Data.Bool.∨ true ≡ true
   ∨-true true  = refl
@@ -387,8 +388,6 @@ private
   has-groups (note-comment c ∷ ns) (a ∷ as) false = trans (has-groups ns (a ∷ as ++ c ∷ []) false) (∨-true (hasComment ns))
   has-groups (note-comment c ∷ ns) (a ∷ as) true  = refl
 
-  has-of : ∀ ns → hasComment ns ≡ notNull (groups ns [] false)
-  has-of ns = sym (trans (has-groups ns [] false) (∨-false (hasComment ns)))
 
   notNull-map : ∀ {A B : Set} (f : A → B) xs → notNull (map f xs) ≡ notNull xs
   notNull-map f []      = refl
@@ -410,6 +409,21 @@ private
   gOut-rs (R ∷ [])      o (p ∷ [])   = cong (λ M → linesOut 0 M o) (rs-fix R p)
   gOut-rs (R ∷ R′ ∷ Rs) o (p ∷ ps)   =
     trans (cong (λ M → gOut (map rsOf (R′ ∷ Rs)) (lnl ∷ linesOut 0 M o)) (rs-fix R p)) (gOut-rs (R′ ∷ Rs) _ ps)
+
+-- | Notes have comments when they have runs.
+has-of : ∀ ns → hasComment ns ≡ notNull (groups ns [] false)
+has-of ns = sym (trans (has-groups ns [] false) (∨-false (hasComment ns)))
+
+-- | Runs write a line end last.
+gOut-lnl : ∀ R Rs o → All NE (R ∷ Rs) → ∃[ Y ] gOut (R ∷ Rs) o ≡ lnl ∷ Y
+gOut-lnl R []        o (ne ∷ []) with rendered-ne 0 (proj₁ ne) (proj₁ (proj₂ ne))
+... | L , Ls , eL = subst (λ M → ∃[ Y ] linesOut 0 M o ≡ lnl ∷ Y)
+                      (sym (subst (λ x → rendered 0 x ≡ L ∷ Ls) (sym (proj₂ (proj₂ ne))) eL)) (lo L Ls o)
+  where
+    lo : ∀ L Ls o → ∃[ Y ] linesOut 0 (L ∷ Ls) o ≡ lnl ∷ Y
+    lo L []        o = _ , refl
+    lo L (L′ ∷ Ls) o = lo L′ Ls _
+gOut-lnl R (R′ ∷ Rs) o (ne ∷ nes) = gOut-lnl R′ Rs _ nes
 
 -- | The second pass's notes, whose runs are the first pass's as written,
 -- print as the first pass's.
