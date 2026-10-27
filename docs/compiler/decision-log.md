@@ -19546,3 +19546,9 @@ Found while asking why `ana` was provable and `cata-correct` M0 was not.
 
 ### Consequences
 * No code change. Plan 0.93 §10 and plan 0.11's table carry status notes.
+
+### Addendum (same day): §10 cannot repair it
+Checked before starting it. An unresolved label halts the call (`do-call-at nothing = flat-halt`), so with
+`find-thunk … ≡ just j` moved into a premise, `IRObsCorrectF apply`/`Out` become false on a fabricated
+closure. And D217's one-cell-two-denotations refutes the weakened hypothesis anyway. The only repair is
+plan 0.93's S1–S6, which needs the callee-frame fact that plan 0.124 supplies.
