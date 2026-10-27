@@ -11,9 +11,10 @@
 -- `{-` a nested comment closed by `-}`. Two-character operators (`->`, `<=`,
 -- `>=`, `==`, `!=`, `^0`, `^1`, `^w`) are one token. A number is an integer or,
 -- with a `.` and a digit, a decimal; an identifier starts with a letter or
--- `_`. A character that starts nothing is skipped. A text is lexed to its
--- end, so its tokens end in `TEOF`: one with an unterminated string literal
--- has no token stream.
+-- `_`. Nothing is dropped silently: a text is lexed to its end, so its
+-- tokens end in `TEOF`, and one with an unterminated string literal, a `^`
+-- that is not a grade, or a character that starts nothing has no token
+-- stream.
 ------------------------------------------------------------------------
 
 module Once.Spec.Surface.Lexing where
@@ -173,7 +174,6 @@ data LexesChars : List Char → List Token → Set where
   lex-caret1  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('^' ∷ '1' ∷ cs) (TCaret1 ∷ ts)
   lex-caret0  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('^' ∷ '0' ∷ cs) (TCaret0 ∷ ts)
   lex-caretw  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('^' ∷ 'w' ∷ cs) (TCaretW ∷ ts)
-  lex-caret   : ∀ {cs ts} → ¬ Next cs '1' → ¬ Next cs '0' → ¬ Next cs 'w' → LexesChars cs ts → LexesChars ('^' ∷ cs) ts
   -- `--`, `->`, `-`
   lex-comment : ∀ {cs r ts} → LineRest cs r → LexesChars r ts → LexesChars ('-' ∷ '-' ∷ cs) ts
   lex-arrow   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('-' ∷ '>' ∷ cs) (TArrow ∷ ts)
@@ -214,11 +214,9 @@ data LexesChars : List Char → List Token → Set where
             → LexesChars r ts → LexesChars (c ∷ cs) (TInt (+ digitsToNat (c ∷ ds)) ∷ ts)
   lex-float : ∀ {c cs ds r f r′ ts} → isDigit c ≡ true → Digits cs ds r → Fraction r f r′
             → LexesChars r′ ts → LexesChars (c ∷ cs) (TFloat (digitsToNat (c ∷ ds)) (digitsToNat f) (length f) ∷ ts)
-  -- identifiers, and characters that start nothing
+  -- identifiers
   lex-ident : ∀ {c cs i r ts} → ¬ Special c → isDigit c ≡ false → isIdentStart c ≡ true
             → IdentRest cs i r → LexesChars r ts → LexesChars (c ∷ cs) (TWord (fromList (c ∷ i)) ∷ ts)
-  lex-skip  : ∀ {c cs ts} → ¬ Special c → isDigit c ≡ false → isIdentStart c ≡ false
-            → LexesChars cs ts → LexesChars (c ∷ cs) ts
 
 Lexes : String → List Token → Set
 Lexes text ts = LexesChars (toList text) ts

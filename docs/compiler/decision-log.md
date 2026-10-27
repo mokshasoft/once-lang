@@ -19125,7 +19125,7 @@ entry's type, which the Spec does not (plan 0.121 §3.2, R2).
    it lexes to no further tokens. The lexer is total — every text has exactly one token list — and a string
    literal is not an expression of the language (R5), so a stray `"` can only make the parse fail or end
    the module early; it never produces a token the parser would misread.
-2. **A character that starts no token is skipped** (`lex-skip`): a character that is not special, not a
+2. *(Superseded by D344: such a character is now an error.)* **A character that starts no token is skipped** (`lex-skip`): a character that is not special, not a
    digit and cannot start an identifier lexes to nothing. Again the lexer stays total; such a character can
    only separate tokens.
 
@@ -19673,7 +19673,7 @@ drop: everything after the quote was never read. `once build` compiled a program
    parse.
 2. **`Trailing` is newlines, then `TEOF`** (`trail-eof : Trailing (TEOF ∷ [])`; `trail-end` is gone): what
    a parse leaves is the end of the text.
-3. A character that starts no token is still skipped (`lex-skip`, D325 item 2): not part of this change.
+3. A character that starts no token was still skipped (`lex-skip`, D325 item 2): changed by D344.
 
 ### Consequences
 * The compiler's tokenizer is unchanged (it still stops at an unterminated string, without `TEOF`);
@@ -19683,4 +19683,25 @@ drop: everything after the quote was never read. `once build` compiled a program
   `TEOF`. `parses→` gets it from the parse: what the parse leaves is a suffix of the tokens
   (`SpecGrammar.Suffix.decls`) and ends in `TEOF`.
 * The formatter proofs lose their `lex-string-end` and `trail-end` cases; no theorem changed.
+
+## D344 — NOTHING IS DROPPED SILENTLY: A CHARACTER THAT STARTS NO TOKEN IS AN ERROR (2026-10-27)
+
+**Spec change, approved by the user 2026-10-27** (`Spec/Surface/Lexing.agda`). **Supersedes** D325 item 2.
+**Relates**: D343 (the same principle, for an unterminated string).
+
+### Context
+The user's rule: nothing is silent. After D343 two Spec rules still read characters and dropped them:
+`lex-skip` (a character that is not special, not a digit and cannot start an identifier, e.g. `#`, `$`,
+`?`, `[`) and `lex-caret` (a `^` not followed by `1`, `0` or `w`, so not a grade).
+
+### Decision
+Both rules are gone: a text with such a character has no token stream and does not parse. What the lexer
+still reads without a token is layout, not content: blanks, an indented line end, comments.
+
+### Consequences
+* The compiler's tokenizer stops there, without `TEOF` (as for an unterminated string), so `parseStrict`
+  rejects the text: "Lex error: the text is not read to its end: an unterminated string literal, a `^`
+  that is not a grade (`^0`, `^1`, `^w`), or a character that starts no token". Its relation's rules are
+  `lex-caret-err` and `lex-char-err`; the bridges lose their skip cases.
+* The formatter's lexer (`Format.Lex`) stops alike; its proofs lose two cases; no theorem changed.
 

@@ -66,7 +66,7 @@ parse source with parseModule (tokenizeString source)
 -- a declaration failed — which was silently recovered by `parseDeclsWF` but
 -- should surface as an error at the top level (plan 0.6 Phase A: strict
 -- parser errors, no silent drops). A residual without `TEOF` means the lexer
--- stopped before the end of the text: an unterminated string (D343).
+-- stopped before the end of the text (D343, D344).
 allTrailing : List Token → Bool
 allTrailing []              = false
 allTrailing (TNewline ∷ xs) = allTrailing xs
@@ -149,7 +149,7 @@ tvarHint toks with hasUpperTVar toks
 -- `parseModule` result, so the success path `inj₂ m` reduces under hypotheses
 -- (the verified front-end's `parseStrict-sound`/`-complete` step through it).
 residualError : List Token → String
-residualError [] = "Lex error: unterminated string literal (no closing `\"`; the text after it is not read)"
+residualError [] = "Lex error: the text is not read to its end: an unterminated string literal, a `^` that is not a grade (`^0`, `^1`, `^w`), or a character that starts no token"
 residualError r@(_ ∷ _) =
   "Parse error: unexpected tokens remaining after last parsed decl (starting at: "
   ++ showTokenPrefix r ++ ")" ++ tvarHint r

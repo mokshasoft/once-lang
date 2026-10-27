@@ -110,7 +110,6 @@ lexed-ok (lex-le l) = inj₁ (p-sym s-le) ∷ lexed-ok l
 lexed-ok (lex-ge l) = inj₁ (p-sym s-ge) ∷ lexed-ok l
 lexed-ok (lex-eqeq l) = inj₁ (p-sym s-eqeq) ∷ lexed-ok l
 lexed-ok (lex-neq l) = inj₁ (p-sym s-neq) ∷ lexed-ok l
-lexed-ok (lex-caret _ _ _ l) = lexed-ok l
 lexed-ok (lex-comment _ l) = lexed-ok l
 lexed-ok (lex-minus _ _ l) = inj₁ (p-sym s-minus) ∷ lexed-ok l
 lexed-ok (lex-block _ l) = lexed-ok l
@@ -123,4 +122,3 @@ lexed-ok (lex-string _ l) = inj₂ o-str ∷ lexed-ok l
 lexed-ok (lex-int _ _ _ l) = inj₁ p-int ∷ lexed-ok l
 lexed-ok (lex-float {c} {ds = ds} _ _ fr l) = inj₁ (float-ok (digitsToNat (c ∷ ds)) fr) ∷ lexed-ok l
 lexed-ok (lex-ident {c} {i = i} ¬s d st ir l) = inj₁ (p-word (toList∘fromList (c ∷ i)) ¬s d st (identAll ir)) ∷ lexed-ok l
-lexed-ok (lex-skip _ _ _ l) = lexed-ok l
