@@ -345,3 +345,87 @@ pt-it (d ∷ ds) tv k ht ha =
     ...   | inj₂ (there s) = inj₂ s
     ha′ : Notes.after (lookupNotes (k + c + Σc cP ds) tv′) ≡ []
     ha′ = trans (hoist-after _ k tv) (subst (λ m → Notes.after (lookupNotes m tv) ≡ []) (sym (+-assoc k c (Σc cP ds))) ha)
+
+------------------------------------------------------------------------
+-- The output's comments are the input's, in order
+------------------------------------------------------------------------
+
+open import Data.String using (String; toList)
+open import Once.Parser using (parseStrict)
+import Once.Adequacy.SpecGrammar.Decl
+import Once.Adequacy.FrontEndBridge
+open import Once.Adequacy.SpecLexing using (forget; spec-lexes-complete)
+open import Once.Format.Lex using (lexItems; tokensOf; tokens-lexItems)
+open import Once.Format.Print using (format; trivia; pmodule)
+open import Once.Format.Proof.LexOK using (DigitBound; lexed-ok)
+open import Once.Format.Proof.WF using (parsed-wf)
+open import Once.Format.Proof.Module using (module-ws; DeclOK)
+open import Once.Format.Proof.Decl using (decl-ok)
+open import Once.Format.Proof.Written using (cwords; render-words)
+open import Once.Format.Proof.Printed using (pmodule-DocC)
+open import Once.Format.Proof.WalkWords using (trivia-words; trivia-end; trivia-tops; kEnd; kEnd-anchors; anchorsP)
+open import Once.Format.Proof.Walk using (anchor-forget; end-forget)
+import Once.Parser.Token as PT
+open import Data.List.Properties using (map-++)
+
+private
+  anchorsP-forget : ∀ ts → anchorsP ts ≡ anchors (map forget ts)
+  anchorsP-forget []       = refl
+  anchorsP-forget (t ∷ ts) = cong₂ (λ b n → (if b then 1 else 0) + n) (anchor-forget t) (anchorsP-forget ts)
+
+  oks : ∀ {ds} → All PD ds → All DeclOK ds
+  oks []       = []
+  oks (p ∷ ps) = decl-ok _ p ∷ oks ps
+
+  counts : ∀ {ds} → All WFD ds → All PD ds → All (λ d → cD d ≡ cP d) ds
+  counts []       []       = []
+  counts (w ∷ ws) (p ∷ ps) = sym (cP-cD _ w p) ∷ counts ws ps
+
+  Σc-cong : ∀ {f g} ds → All (λ d → f d ≡ g d) ds → Σc f ds ≡ Σc g ds
+  Σc-cong []       []       = refl
+  Σc-cong (d ∷ ds) (e ∷ es) = cong₂ _+_ e (Σc-cong ds es)
+
+-- | Formatting keeps a text's comments, in order: the formatted text's
+-- comment words are the text's (a comment's words: its text split at
+-- blanks and line ends, each word without the dashes it starts with, a
+-- block comment's without `{-` and `-}`).
+comments-kept : DigitBound → ∀ text m → parseStrict text ≡ inj₂ m
+              → cwords (lexItems (toList (format m (lexItems (toList text))))) ≡ cwords (lexItems (toList text))
+comments-kept bound text (mkModule ds) eq =
+  trans (render-words D (module-ws ds tv (oks pds)))
+    (trans (pmodule-DocC ds tv)
+      (trans (pt-it ds tv 0 ht ha)
+        (trans (sym (ITs-from tv (suc (Σc cP ds))))
+          (trans (cong (λ n → ITs tv (suc n)) ΣK) (sym (trivia-words is))))))
+  where
+    P = Once.Adequacy.SpecGrammar.Decl.parses→ {text} (Once.Adequacy.FrontEndBridge.parseStrict-sound text _ eq)
+    ts = proj₁ P
+    r  = proj₁ (proj₂ P)
+    lx = proj₁ (proj₂ (proj₂ P))
+    pd = proj₁ (proj₂ (proj₂ (proj₂ P)))
+    tr = proj₂ (proj₂ (proj₂ (proj₂ P)))
+    wfs = proj₁ (parsed-wf bound {text} {mkModule ds} P)
+    pds = proj₂ (parsed-wf bound {text} {mkModule ds} P)
+    is = lexItems (toList text)
+    tv = trivia is
+    D = proj₁ (pmodule (mkModule ds) tv 0)
+    segs : DeclSegs ds ts r
+    segs = decls-segs (Data.List.Relation.Unary.All.map good-ok (lexed-ok bound lx)) pd
+    tf : map forget (tokensOf is) ≡ ts
+    tf = trans (cong (map forget) (tokens-lexItems (toList text))) (spec-lexes-complete text ts lx)
+    cc = counts wfs pds
+    ΣK : Σc cP ds ≡ kEnd is
+    ΣK = trans (sym (Σc-cong ds cc)) (trans (sym (anchors-segs ds ts r segs (trail-noA tr)))
+           (trans (cong anchors (sym tf)) (trans (sym (anchorsP-forget (tokensOf is))) (sym (kEnd-anchors is)))))
+    ht : ∀ j → 0 ≤ j → MNotes (Notes.top (lookupNotes j tv)) ≡ [] ⊎ Start cP ds 0 j
+    ht j _ with trivia-tops is j
+    ... | inj₁ e = inj₁ e
+    ... | inj₂ (inj₁ (inj₁ e)) = inj₂ (subst (Start cP ds 0) (sym e) here)
+    ... | inj₂ (inj₁ (inj₂ (pre , x , rest , e , le , a))) =
+      inj₂ (start-cong ds cc (subst (Start cD ds 0) (trans (sym (anchorsP-forget pre)) a)
+        (starts-segs 0 ds ts r segs (trail-noA tr) (map forget pre) (forget x) (map forget rest)
+          (trans (sym tf) (trans (cong (map forget) e) (map-++ forget pre (x ∷ rest))))
+          (trans (sym (end-forget x)) le))))
+    ... | inj₂ (inj₂ e) = inj₂ (subst (Start cP ds 0) (trans ΣK (sym e)) (start-end cP ds 0))
+    ha : Notes.after (lookupNotes (0 + Σc cP ds) tv) ≡ []
+    ha = subst (λ n → Notes.after (lookupNotes n tv) ≡ []) (sym ΣK) (proj₁ (trivia-end is))
