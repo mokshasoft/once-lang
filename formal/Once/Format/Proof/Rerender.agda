@@ -621,3 +621,44 @@ eol-fix e es aes with joined-eol e es aes
     (trans (cong (λ s → lineComment (toList (eolText s))) (trimEnd-id ('-' ∷ '-' ∷ b) nt))
       (trans (cong (λ s → lineComment (toList s)) (eolText-keep b th))
         (trans (cong lineComment (toList∘fromList ('-' ∷ '-' ∷ b))) (trans (lineComment-id b nn) (sym ej)))))
+
+------------------------------------------------------------------------
+-- A comment is written as some lines
+------------------------------------------------------------------------
+
+fill-ne : ∀ i c cur ws → ∃[ l ] ∃[ ls ] fill i c cur ws ≡ l ∷ ls
+fill-ne i c []        []       = [] , [] , refl
+fill-ne i c (x ∷ cur) []       = _ , [] , refl
+fill-ne i c []        (w ∷ ws) = fill-ne i _ (w ∷ []) ws
+fill-ne i c (x ∷ cur) (w ∷ ws) = pick ((c + 1 + Str.length w) Data.Nat.≤ᵇ width)
+  where
+    pick : ∀ b → ∃[ l ] ∃[ ls ] (if b then fill i (c + 1 + Str.length w) (w ∷ x ∷ cur) ws
+                                else reverse (x ∷ cur) ∷ fill i (i + 3 + Str.length w) (w ∷ []) ws) ≡ l ∷ ls
+    pick true  = fill-ne i _ (w ∷ x ∷ cur) ws
+    pick false = _ , _ , refl
+
+renderK-ne : ∀ i k → ∃[ L ] ∃[ Ls ] renderK i k ≡ L ∷ Ls
+renderK-ne i (verbatim v) = _ , [] , refl
+renderK-ne i (prose ws) with fill-ne i (i + 2) [] ws
+... | l , ls , e = _ , _ , cong (map (λ l → lineComment (toList (fromList (dashed l))))) e
+
+commentLines-ne : ∀ s → ∃[ l ] ∃[ ls ] commentLines s ≡ l ∷ ls
+commentLines-ne s = pick (Once.Format.Comment.isBlock (toList s))
+  where
+    one : ∀ xs → ∃[ l ] ∃[ ls ] Once.Format.Comment.atLeastOne xs ≡ l ∷ ls
+    one []       = _ , [] , refl
+    one (x ∷ xs) = x , xs , refl
+    pick : ∀ b → ∃[ l ] ∃[ ls ] (if b then Once.Format.Comment.atLeastOne
+                                  (map (λ l → Once.Format.Comment.asLine (Once.Format.Comment.strip l))
+                                    (Once.Format.Comment.trimLines (Once.Format.Comment.linesOf
+                                      (Once.Format.Comment.inside (toList s))))) else s ∷ []) ≡ l ∷ ls
+    pick true  = one _
+    pick false = s , [] , refl
+
+-- | A run of comments is written as some lines.
+rendered-ne : ∀ i c cs → ∃[ L ] ∃[ Ls ] rendered i (c ∷ cs) ≡ L ∷ Ls
+rendered-ne i c cs with commentLines-ne c
+... | l , ls , e with renderK-ne i (classify l)
+...   | L , Ls , e′ =
+  L , _ , trans (cong (concatMap (renderLine i)) (cong (_++ concatMap commentLines cs) e))
+            (cong (_++ concatMap (renderLine i) (ls ++ concatMap commentLines cs)) e′)

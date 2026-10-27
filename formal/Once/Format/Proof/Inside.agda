@@ -481,7 +481,7 @@ leaf-sim (eol _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
 
 open import Once.Format.Comment using (commentLinesDoc; commentRun; commentLines; lineDoc; classify; CLine; prose;
   verbatim)
-open import Once.Format.Proof.Rerender using (renderK; renderLine; rendered; rendered-fix; rendered-RL; Src)
+open import Once.Format.Proof.Rerender using (renderK; renderLine; rendered; rendered-fix; rendered-RL; Src; rendered-ne)
 open import Once.Format.Proof.Lockstep using (linesOut; colOf; zero-col; linesOut-++; lines-layout)
 open import Once.Format.Doc using (paragraph; dashed; fill; lineComment)
 open import Once.Format.Print using (Held; held-comment; settleAt; promote; promoteR; addInner; notes)
@@ -623,42 +623,7 @@ private
       (trans (sym (++-assoc (map eolText (Notes.after (lookupNotes j tv))) (eolsFrom tv (suc j) n) _))
         (cong (λ x → eolsFrom tv j (suc n) ++ map eolText (Notes.after (lookupNotes x tv))) (sym (+-suc j n))))
 
-  fill-ne : ∀ i c cur ws → ∃[ l ] ∃[ ls ] fill i c cur ws ≡ l ∷ ls
-  fill-ne i c []        []       = [] , [] , refl
-  fill-ne i c (x ∷ cur) []       = _ , [] , refl
-  fill-ne i c []        (w ∷ ws) = fill-ne i _ (w ∷ []) ws
-  fill-ne i c (x ∷ cur) (w ∷ ws) = pick ((c + 1 + Data.String.length w) Data.Nat.≤ᵇ Once.Format.Doc.width)
-    where
-      pick : ∀ b → ∃[ l ] ∃[ ls ] (if b then fill i (c + 1 + Data.String.length w) (w ∷ x ∷ cur) ws
-                                  else reverse (x ∷ cur) ∷ fill i (i + 3 + Data.String.length w) (w ∷ []) ws) ≡ l ∷ ls
-      pick true  = fill-ne i _ (w ∷ x ∷ cur) ws
-      pick false = _ , _ , refl
 
-  renderK-ne : ∀ i k → ∃[ L ] ∃[ Ls ] renderK i k ≡ L ∷ Ls
-  renderK-ne i (verbatim v) = _ , [] , refl
-  renderK-ne i (prose ws) with fill-ne i (i + 2) [] ws
-  ... | l , ls , e = _ , _ , cong (map (λ l → lineComment (toList (fromList (dashed l))))) e
-
-  commentLines-ne : ∀ s → ∃[ l ] ∃[ ls ] commentLines s ≡ l ∷ ls
-  commentLines-ne s = pick (Once.Format.Comment.isBlock (toList s))
-    where
-      one : ∀ xs → ∃[ l ] ∃[ ls ] Once.Format.Comment.atLeastOne xs ≡ l ∷ ls
-      one []       = _ , [] , refl
-      one (x ∷ xs) = x , xs , refl
-      pick : ∀ b → ∃[ l ] ∃[ ls ] (if b then Once.Format.Comment.atLeastOne
-                                    (map (λ l → Once.Format.Comment.asLine (Once.Format.Comment.strip l))
-                                      (Once.Format.Comment.trimLines (Once.Format.Comment.linesOf
-                                        (Once.Format.Comment.inside (toList s))))) else s ∷ []) ≡ l ∷ ls
-      pick true  = one _
-      pick false = s , [] , refl
-
--- | A run of comments is written as some lines.
-rendered-ne : ∀ i c cs → ∃[ L ] ∃[ Ls ] rendered i (c ∷ cs) ≡ L ∷ Ls
-rendered-ne i c cs with commentLines-ne c
-... | l , ls , e with renderK-ne i (classify l)
-...   | L , Ls , e′ =
-  L , _ , trans (cong (concatMap (renderLine i)) (cong (_++ concatMap commentLines cs) e))
-            (cong (_++ concatMap (renderLine i) (ls ++ concatMap commentLines cs)) e′)
 
 private
   tokout-just : ∀ {t o i o′} → TokOut t o (just i) o′ → o′ ≡ lt t ∷ lind i ∷ o
