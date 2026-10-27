@@ -19511,3 +19511,38 @@ Found setting up `cata-correct` M0; the user had asked to continue unless blocke
 * Sub-IH calls pass `trans (keeps-next-slot) ns0` instead of a `≤`-chain through `frontier-mono`.
 * The same premise is what plan 0.93 will need to discharge `BlockRuns` for `curry`'s bodies.
 * No postulate added or removed.
+
+## D340 — `BlockRunsT` IS EMPTY, SO THE APEX IS STILL VACUOUS (2026-10-27)
+
+**Corrects** D218 ("conditional, and TRUE"). **Relates** D213, D302, plan 0.93 §10, plan 0.11 F.
+Found while asking why `ana` was provable and `cata-correct` M0 was not.
+
+### The probe (scratch, per MERGE.md §1; green with `agda-safe.sh`)
+`no-block-runs : LocState FS → AllocState → ∀ prog → BlockRuns prog → ⊥`, for every
+`FrameSemantics`. It is D213's argument against today's statement:
+
+* `bound prog` — one more than every `e-thunk` label's `idx` in `prog`, summed; `fresh` shows
+  `ft-go prog (e-thunk ℓ) i ≡ nothing` whenever `bound prog ≤ idx ℓ`.
+* `BlockRuns.coalgs` at `F = K Unit`, origin `from-layer`, `ℓ = mkLabelId o [] (bound prog)`, an
+  arbitrary state with `heapMem = λ _ → just (SV-Code ℓ)` (cell 0 is the `Unit` seed via
+  `rep-unit`, cell 1 the code cell), and the allocator at `next-heap-ref = 1`.
+* Its conclusion `find-thunk prog ℓ ≡ just j` contradicts `fresh`.
+
+### What it means
+* D218 turned the false postulate into a hypothesis of `once-certified`. `BlockRunsHyp-<arch>` is
+  `BlockRunsT = ∀ ir → BlockRuns (image ir)`, and it has no inhabitants, so `once-certified` is still
+  vacuous. The ⊥ is no longer writable inside the tree, but that is all D218 changed. D302 had
+  already listed `BlockRunsHyp` as having no `NonVacuous` model.
+* The defect is the one D213 named: `CoalgRuns`/`CalleeRuns` take ANY state whose memory names a
+  label, and conclude a fact about the program. Plan 0.93 §10 (move `find-thunk … ≡ just j` into a
+  premise) is the agreed cheap fix and was not done.
+* `ana` is not a harder proof than `cata`: `Out` takes the coalgebra's whole run from
+  `BlockRuns.coalgs`. What `cata-correct` M0 is blocked on, the callee frame and stack room
+  (plan 0.88, 2026-10-26), is exactly what this hypothesis assumes.
+* After §10 a second refutation probably remains (not checked): `CalleeRun.mem-pres` at a
+  stack-bottom caller, where x86-64's `shift-frame` truncates and `do-thunk`'s `clear-frame` wipes
+  the caller's frame. Plan 0.93's arrow clause has the same need, so the stack fix (plan 0.88's
+  option 1, an unbounded abstract stack) is shared by M0, plan 0.93 and any honest `BlockRuns`.
+
+### Consequences
+* No code change. Plan 0.93 §10 and plan 0.11's table carry status notes.
