@@ -2,9 +2,10 @@ cabal-version: 2.2
 
 name:           once
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/compiler#readme>
-homepage:       https://github.com/githubuser/compiler#readme
-bug-reports:    https://github.com/githubuser/compiler/issues
+synopsis:       Compiler for Once, a verified pure functional language of categorical morphisms
+description:    Please see the README on GitHub at <https://github.com/mokshasoft/once-lang#readme>
+homepage:       https://github.com/mokshasoft/once-lang#readme
+bug-reports:    https://github.com/mokshasoft/once-lang/issues
 author:         Jonas Claesson
 maintainer:     jonas.cl@protonmail.com
 copyright:      2025 Jonas Claesson
@@ -17,7 +18,8 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/compiler
+  location: https://github.com/mokshasoft/once-lang
+  subdir: compiler
 
 common shared
   default-language: Haskell2010
