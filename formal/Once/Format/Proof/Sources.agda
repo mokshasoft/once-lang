@@ -182,6 +182,7 @@ open import Once.Format.Print using (W; walker; Line; line-empty; line-code; lin
   promoteR; promote; settleAt; settle; blankBefore; lineEnd; pending; stepTok; stepComment; afterCode; step;
   walkItems; finish; trivia; trimEnd; dropLead)
 open import Once.Format.Proof.Rerender using (dropLead-keep; all-rev; all-revA; notrail-++)
+import Once.Format.Proof.Walk
 
 private
   dl-++ : ∀ xs y ys → blankish y ≡ false → dropLead (xs ++ y ∷ ys) ≡ dropLead xs ++ y ∷ ys
@@ -318,8 +319,25 @@ private
   lineEnd-src top (walker k h line-empty hs b t)    (wsrc pl ph pa) = wsrc tt ph pa
   lineEnd-src top (walker k h line-code hs b t)     (wsrc pl ph pa) = wsrc tt ph pa
 
+  nc-src : ∀ cs → All Src cs → All NoteSrc (map note-comment cs)
+  nc-src []       []       = []
+  nc-src (c ∷ cs) (p ∷ ps) = p ∷ nc-src cs ps
+
+  hoist-trivsrc : ∀ k t → TrivSrc t → TrivSrc (Once.Format.Print.hoist k t)
+  hoist-trivsrc k []             []       = []
+  hoist-trivsrc k ((j , n) ∷ ts) (p ∷ ps) = pick (k Data.Nat.≡ᵇ j)
+    where
+      pick : ∀ b → TrivSrc (if b then (j , notes (Notes.top n ++ map note-comment (Notes.inner n)) [] (Notes.after n)) ∷ ts
+                            else (j , n) ∷ Once.Format.Print.hoist k ts)
+      pick true  = (AllP.++⁺ (proj₁ p) (nc-src _ (proj₁ (proj₂ p))) , [] , proj₂ (proj₂ p)) ∷ ps
+      pick false = p ∷ hoist-trivsrc k ts ps
+
+  hoistW-src : ∀ σ → WSrc σ → WSrc (Once.Format.Print.hoistW σ)
+  hoistW-src (walker k h ln hs b t) (wsrc pl ph pa) =
+    wsrc pl ph (Once.Format.Proof.Walk.hoistAt-cases k t TrivSrc pa (hoist-trivsrc k t pa))
+
   tok-src : ∀ σ a e → WSrc σ → WSrc (stepTok σ a e)
-  tok-src σ a true w = lineEnd-src true σ w
+  tok-src σ a true w = hoistW-src (lineEnd true σ) (lineEnd-src true σ w)
   tok-src (walker k h ln hs b t) a false (wsrc pl ph pa) =
     wsrc tt [] (settle-src k _ t (promote-src _ (pending-src ln _ pl (blankBefore-src b hs ph))) pa)
 

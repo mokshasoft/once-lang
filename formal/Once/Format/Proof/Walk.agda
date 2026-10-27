@@ -266,6 +266,53 @@ lookup-settleAt j k (held-comment h true ∷ hs)  t ne = trans (lookup-settleAt 
 lookup-settleAt j k (held-comment h false ∷ hs) t ne = trans (lookup-settleAt j k hs _ ne) (lookup-addTo j k _ t ne)
 lookup-settleAt j k (held-blank ∷ hs)           t ne = trans (lookup-settleAt j k hs _ ne) (lookup-addTo j k _ t ne)
 
+open import Once.Format.Print using (hoist; hoistAt; note-comment; notes)
+open import Relation.Nullary using (yes; no)
+open import Data.Unit using (tt)
+
+-- | An anchor's notes as a declaration's first: what stood before it, in place,
+-- stands before the declaration.
+up : Notes → Notes
+up n = notes (Notes.top n ++ map note-comment (Notes.inner n)) [] (Notes.after n)
+
+hoist-at : ∀ k tv → lookupNotes k (hoist k tv) ≡ up (lookupNotes k tv)
+hoist-at k []             = refl
+hoist-at k ((j , n) ∷ ts) with k ≡ᵇ j in e
+... | true  rewrite e = refl
+... | false rewrite e = hoist-at k ts
+
+hoist-other : ∀ j k tv → j ≢ k → lookupNotes j (hoist k tv) ≡ lookupNotes j tv
+hoist-other j k []             ne = refl
+hoist-other j k ((i , n) ∷ ts) ne with k ≡ᵇ i in e
+... | true with j ≡ᵇ i in e′
+...   | true  = ⊥-elim (ne (trans (≡ᵇ⇒≡ j i (subst T (sym e′) tt)) (sym (≡ᵇ⇒≡ k i (subst T (sym e) tt)))))
+...   | false = refl
+hoist-other j k ((i , n) ∷ ts) ne | false with j ≡ᵇ i
+...   | true  = refl
+...   | false = hoist-other j k ts ne
+
+hoist-after : ∀ j k tv → Notes.after (lookupNotes j (hoist k tv)) ≡ Notes.after (lookupNotes j tv)
+hoist-after j k tv with j Data.Nat.≟ k
+... | yes refl = cong Notes.after (hoist-at j tv)
+... | no ne    = cong Notes.after (hoist-other j k tv ne)
+
+
+-- | A line that starts a declaration hoists what stood before the next
+-- anchor, in place, when something did.
+hoistAt-cases : ∀ k t (P : Trivia → Set) → P t → P (hoist k t) → P (hoistAt k t)
+hoistAt-cases k t P pt ph with Data.List.null (Notes.inner (lookupNotes k t))
+... | true  = pt
+... | false = ph
+
+hoistAt-id : ∀ k t → Notes.inner (lookupNotes k t) ≡ [] → hoistAt k t ≡ t
+hoistAt-id k t e = cong (λ b → if b then t else hoist k t) (cong Data.List.null e)
+
+hoistAt-other : ∀ j k t → j ≢ k → lookupNotes j (hoistAt k t) ≡ lookupNotes j t
+hoistAt-other j k t ne = hoistAt-cases k t (λ t′ → lookupNotes j t′ ≡ lookupNotes j t) refl (hoist-other j k t ne)
+
+hoistAt-after : ∀ j k t → Notes.after (lookupNotes j (hoistAt k t)) ≡ Notes.after (lookupNotes j t)
+hoistAt-after j k t = hoistAt-cases k t (λ t′ → Notes.after (lookupNotes j t′) ≡ Notes.after (lookupNotes j t)) refl (hoist-after j k t)
+
 -- | Settling adds nothing at the end of a line.
 settleAt-after : ∀ j k hs t → Notes.after (lookupNotes j (settleAt k hs t)) ≡ Notes.after (lookupNotes j t)
 settleAt-after j k []                         t = refl
@@ -313,9 +360,24 @@ private
   nlW-k true  σ = lineEnd-k true σ
   nlW-k false σ = refl
 
-  nlW-acc : ∀ p σ → W.acc (nlW p σ) ≡ W.acc σ
-  nlW-acc true  σ = lineEnd-acc true σ
-  nlW-acc false σ = refl
+  -- a line that starts a declaration moves what stood before the next anchor, in place, before it
+  endT-ti : ∀ j σ → j < W.k σ → ti (Look j (stepTok σ false true)) ≡ ti (Look j σ)
+  endT-ti j (walker k h (line-text _) hs b t) j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
+  endT-ti j (walker k h line-empty hs b t)    j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
+  endT-ti j (walker k h line-code hs b t)     j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
+
+  endT-after : ∀ j σ → Notes.after (Look j (stepTok σ false true)) ≡ Notes.after (Look j σ)
+  endT-after j (walker k h (line-text _) hs b t) = hoistAt-after j k t
+  endT-after j (walker k h line-empty hs b t)    = hoistAt-after j k t
+  endT-after j (walker k h line-code hs b t)     = hoistAt-after j k t
+
+  nlW-ti : ∀ j p σ → j < W.k σ → ti (Look j (nlW p σ)) ≡ ti (Look j σ)
+  nlW-ti j true  σ j<k = endT-ti j σ j<k
+  nlW-ti j false σ j<k = refl
+
+  nlW-after : ∀ j p σ → Notes.after (Look j (nlW p σ)) ≡ Notes.after (Look j σ)
+  nlW-after j true  σ = endT-after j σ
+  nlW-after j false σ = refl
 
   contW-k : ∀ p σ → W.k (contW p σ) ≡ W.k σ
   contW-k true  σ = lineEnd-k false σ
@@ -343,12 +405,12 @@ private
   tok-k (walker k h ln hs b t) false false = ≤-refl
 
   tok-ti : ∀ j σ a b → j < W.k σ → ti (Look j (stepTok σ a b)) ≡ ti (Look j σ)
-  tok-ti j σ a true j<k = cong (λ t → ti (lookupNotes j t)) (lineEnd-acc true σ)
+  tok-ti j σ a true j<k = endT-ti j σ j<k
   tok-ti j (walker k h ln hs b t) true  false j<k = cong ti (lookup-settleAt j k (promote (pending ln (blankBefore b hs))) t (<-≢ j<k))
   tok-ti j (walker k h ln hs b t) false false j<k = cong ti (lookup-settleAt j k (promote (pending ln (blankBefore b hs))) t (<-≢ j<k))
 
   tok-after : ∀ j σ a b → Notes.after (Look j (stepTok σ a b)) ≡ Notes.after (Look j σ)
-  tok-after j σ a true = cong (λ t → Notes.after (lookupNotes j t)) (lineEnd-acc true σ)
+  tok-after j σ a true = endT-after j σ
   tok-after j (walker k h ln hs b t) true  false = settleAt-after j k (promote (pending ln (blankBefore b hs))) t
   tok-after j (walker k h ln hs b t) false false = settleAt-after j k (promote (pending ln (blankBefore b hs))) t
 
@@ -391,27 +453,27 @@ private
   stepL-ti : ∀ j ω x → j < W.k (proj₁ ω) → ti (Look j (proj₁ (stepL ω x))) ≡ ti (Look j (proj₁ ω)) × j < W.k (proj₁ (stepL ω x))
   stepL-ti j (σ , p) (lt x) lt′ =
     trans (tok-ti j (nlW p σ) (anchorTok x) (lineEndTok x) (subst (j <_) (sym (nlW-k p σ)) lt′))
-          (cong (λ t → ti (lookupNotes j t)) (nlW-acc p σ)) ,
+          (nlW-ti j p σ lt′) ,
     ≤-trans (subst (j <_) (sym (nlW-k p σ)) lt′) (tok-k (nlW p σ) (anchorTok x) (lineEndTok x))
   stepL-ti j (σ , p) lsp lt′ = cong (λ t → ti (lookupNotes j t)) (contW-acc p σ) , subst (j <_) (sym (contW-k p σ)) lt′
-  stepL-ti j (σ , p) lnl lt′ = cong (λ t → ti (lookupNotes j t)) (nlW-acc p σ) , subst (j <_) (sym (nlW-k p σ)) lt′
+  stepL-ti j (σ , p) lnl lt′ = nlW-ti j p σ lt′ , subst (j <_) (sym (nlW-k p σ)) lt′
   stepL-ti j (σ , p) (lind zero) lt′ = refl , lt′
   stepL-ti j (σ , p) (lind (suc _)) lt′ = cong (λ t → ti (lookupNotes j t)) (contW-acc p σ) , subst (j <_) (sym (contW-k p σ)) lt′
   stepL-ti j (σ , p) (lcm c) lt′ =
-    trans (com-ti j (nlW p σ) (trimEnd (fromList c))) (cong (λ t → ti (lookupNotes j t)) (nlW-acc p σ)) ,
+    trans (com-ti j (nlW p σ) (trimEnd (fromList c))) (nlW-ti j p σ lt′) ,
     subst (j <_) (sym (trans (com-k (nlW p σ) (trimEnd (fromList c))) (nlW-k p σ))) lt′
 
   stepL-after : ∀ j ω x → AFrozen j ω → Notes.after (Look j (proj₁ (stepL ω x))) ≡ Notes.after (Look j (proj₁ ω)) × AFrozen j (stepL ω x)
   stepL-after j (σ , p) (lt x) fz with anchorTok x | lineEndTok x
   ... | a | true =
-    trans (tok-after j (nlW p σ) a true) (cong (λ t → Notes.after (lookupNotes j t)) (nlW-acc p σ)) ,
+    trans (tok-after j (nlW p σ) a true) (nlW-after j p σ) ,
     frz fz
     where
       frz : AFrozen j (σ , p) → AFrozen j (stepTok (nlW p σ) a true , false)
       frz (inj₁ lt′) = inj₁ (subst (_ <_) (sym (trans (lineEnd-k true (nlW p σ)) (nlW-k p σ))) lt′)
       frz (inj₂ (e , _)) = inj₂ (trans (trans (lineEnd-k true (nlW p σ)) (nlW-k p σ)) e , inj₁ (lineEnd-on true (nlW p σ)))
   ... | true | false =
-    trans (tok-after j (nlW p σ) true false) (cong (λ t → Notes.after (lookupNotes j t)) (nlW-acc p σ)) ,
+    trans (tok-after j (nlW p σ) true false) (nlW-after j p σ) ,
     inj₁ (frz fz)
     where
       grow : ∀ τ → W.k (stepTok τ true false) ≡ suc (W.k τ)
@@ -421,7 +483,7 @@ private
                          (m≤n⇒m≤1+n (subst (suc j <_) (sym (nlW-k p σ)) lt′))
       frz (inj₂ (e , _)) = subst (suc j <_) (sym (grow (nlW p σ))) (s≤s (≡-k (sym (trans (nlW-k p σ) e))))
   ... | false | false =
-    trans (tok-after j (nlW p σ) false false) (cong (λ t → Notes.after (lookupNotes j t)) (nlW-acc p σ)) ,
+    trans (tok-after j (nlW p σ) false false) (nlW-after j p σ) ,
     frz fz
     where
       same : ∀ τ → W.k (stepTok τ false false) ≡ W.k τ
@@ -434,7 +496,7 @@ private
       frz : AFrozen j (σ , p) → AFrozen j (contW p σ , false)
       frz (inj₁ lt′) = inj₁ (subst (suc j <_) (sym (contW-k p σ)) lt′)
       frz (inj₂ (e , o)) = inj₂ (trans (contW-k p σ) e , inj₁ (contW-on p σ o))
-  stepL-after j (σ , p) lnl fz = cong (λ t → Notes.after (lookupNotes j t)) (nlW-acc p σ) , frz fz
+  stepL-after j (σ , p) lnl fz = nlW-after j p σ , frz fz
     where
       frz : AFrozen j (σ , p) → AFrozen j (nlW p σ , true)
       frz (inj₁ lt′) = inj₁ (subst (suc j <_) (sym (nlW-k p σ)) lt′)
@@ -446,7 +508,7 @@ private
       frz (inj₁ lt′) = inj₁ (subst (suc j <_) (sym (contW-k p σ)) lt′)
       frz (inj₂ (e , o)) = inj₂ (trans (contW-k p σ) e , inj₁ (contW-on p σ o))
   stepL-after j (σ , p) (lcm c) fz =
-    trans (com-after j (nlW p σ) _ (pre fz)) (cong (λ t → Notes.after (lookupNotes j t)) (nlW-acc p σ)) , frz fz
+    trans (com-after j (nlW p σ) _ (pre fz)) (nlW-after j p σ) , frz fz
     where
       pre : AFrozen j (σ , p) → W.onLine (nlW p σ) ≡ false ⊎ suc j < W.k (nlW p σ)
       pre (inj₁ lt′) = inj₂ (subst (suc j <_) (sym (nlW-k p σ)) lt′)
@@ -467,18 +529,25 @@ private
   settle-after : ∀ j τ → Notes.after (lookupNotes j (W.acc (settle τ))) ≡ Notes.after (Look j τ)
   settle-after j (walker k h ln hs b t) = settleAt-after j k (promote hs) t
 
-  close-k : ∀ ω → W.k (lineEnd true (closeL ω)) ≡ W.k (proj₁ ω)
-  close-k (σ , p) = trans (lineEnd-k true (lineEnd true (nlW p σ))) (trans (lineEnd-k true (nlW p σ)) (nlW-k p σ))
+  endT-k : ∀ σ → W.k (stepTok σ false true) ≡ W.k σ
+  endT-k (walker k h (line-text _) hs b t) = refl
+  endT-k (walker k h line-empty hs b t)    = refl
+  endT-k (walker k h line-code hs b t)     = refl
 
-  close-acc : ∀ ω → W.acc (lineEnd true (closeL ω)) ≡ W.acc (proj₁ ω)
-  close-acc (σ , p) = trans (lineEnd-acc true (lineEnd true (nlW p σ))) (trans (lineEnd-acc true (nlW p σ)) (nlW-acc p σ))
+  close-k : ∀ ω → W.k (lineEnd true (closeL ω)) ≡ W.k (proj₁ ω)
+  close-k (σ , p) = trans (lineEnd-k true (closeL (σ , p))) (trans (endT-k (nlW p σ)) (nlW-k p σ))
 
   close-ti : ∀ j ω → j < W.k (proj₁ ω) → ti (lookupNotes j (fin ω)) ≡ ti (Look j (proj₁ ω))
-  close-ti j ω j<k = trans (settle-ti j (lineEnd true (closeL ω)) (subst (j <_) (sym (close-k ω)) j<k))
-                           (cong (λ t → ti (lookupNotes j t)) (close-acc ω))
+  close-ti j (σ , p) j<k =
+    trans (settle-ti j (lineEnd true (closeL (σ , p))) (subst (j <_) (sym (close-k (σ , p))) j<k))
+      (trans (cong (λ t → ti (lookupNotes j t)) (lineEnd-acc true (closeL (σ , p))))
+        (trans (endT-ti j (nlW p σ) (subst (j <_) (sym (nlW-k p σ)) j<k)) (nlW-ti j p σ j<k)))
 
   close-after : ∀ j ω → Notes.after (lookupNotes j (fin ω)) ≡ Notes.after (Look j (proj₁ ω))
-  close-after j ω = trans (settle-after j (lineEnd true (closeL ω))) (cong (λ t → Notes.after (lookupNotes j t)) (close-acc ω))
+  close-after j (σ , p) =
+    trans (settle-after j (lineEnd true (closeL (σ , p))))
+      (trans (cong (λ t → Notes.after (lookupNotes j t)) (lineEnd-acc true (closeL (σ , p))))
+        (trans (endT-after j (nlW p σ)) (nlW-after j p σ)))
 
 -- | What stands before a passed anchor is what the walk ends with.
 frozen-ti : ∀ j ω xs → j < W.k (proj₁ ω) → ti (lookupNotes j (fin (walkL ω xs))) ≡ ti (Look j (proj₁ ω))
