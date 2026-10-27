@@ -223,6 +223,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`
   override. (D008)
+- **The installed compiler**: Strata is only read (objects go beside the
+  output) and is found by `--strata`, walking up from the input, then the
+  CWD, then `<bindir>/../share/once/Strata`; the default target is the
+  host's; there is no C backend. Package `once-lang`, binary `once`. (D341)
 - **Nix flakes** configure projects; **fourmolu defaults** format Haskell;
   the three layers are the **Strata** (`Generators`, `Derived`,
   `Interpretations`). (D028, D006, D016)

@@ -1784,7 +1784,8 @@ Module error: Cyclic import detected: A -> B -> C -> A
 ## D034: Target Architecture Flag
 
 **Date**: 2025-12-13
-**Status**: Accepted
+**Status**: Accepted; the C target and the `c` default are **SUPERSEDED by D341 (2026-10-27)** — no C
+backend is planned, and the default target is the host's.
 
 ### Context
 
@@ -19521,3 +19522,31 @@ generated code, the user chose (2) as the principled one.
   and the modules only they need; the generated `SpecWitness.hs` (242k lines) is gone.
 * The theorem and the trust base are unchanged; the compiled output is byte-identical.
 
+
+## D341 — AN INSTALLED COMPILER: STRATA IS READ-ONLY, FOUND BESIDE THE BINARY; THE HOST IS THE DEFAULT TARGET; NO C BACKEND (2026-10-27)
+
+**Follows** D034 (the `--target` flag), plan 0.11 (impl files beside the interpretations), D320 (the Host is
+linked beside the program). **Decided** by the user 2026-10-27 (plan 0.125, getting Once into nixpkgs): the
+package is `once-lang` with the binary `once`; "I don't think a C backend will be done. There's no point."
+
+### Decision
+* **Strata is only read.** Each impl file's object is `<output>.<module path>.o` and the Host's is
+  `<output>.Host.<host>.o`, beside the output, removed with the program's own `.o` unless `--save-temps`.
+  Before, they were written into the Strata tree, which fails in a read-only install and raced between
+  parallel builds.
+* **Where Strata is found:** `--strata DIR`; else a `Strata/` (with `Interpretations/`) found walking up from
+  the input, then from the CWD, so a project's own Strata wins; else the installed copy at
+  `<bindir>/../share/once/Strata`; else `./Strata`. No environment variable: `--strata` is the override.
+* **The default target is the host's architecture** (`hostTarget`, from GHC's `System.Info.arch`). A host no
+  target names has no default and the build asks for `--target`.
+* **No C backend.** `TargetC`, the `c` target and the `-I:C` interpretation type are removed; the compiler
+  emits native assembly and links it itself.
+* **Packaging:** the nixpkgs attribute and `pname` are `once-lang`, the executable is `once`
+  (`meta.mainProgram`); Hackage's `once` is another package. The package installs `Strata/` (without
+  objects) to `share/once/Strata` and appends binutils to the wrapper's `PATH`, so a user's own `as`/`ld`
+  (or `AS`/`LD`/`OBJCOPY`) still win.
+
+### Consequences
+* An installed `once` builds from any directory with nothing but its own package (checked: `examples/hello`
+  exits 42 on x86_64 and x86_32 under `env -i PATH=/nonexistent`).
+* The extracted cone, the Spec and the trust base are unchanged; only the hand-written CLI moved.
