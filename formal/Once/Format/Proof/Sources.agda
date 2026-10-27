@@ -179,7 +179,7 @@ items-raw cs = ok-WF cs 0 _
 open import Once.Format.Comment using (blankish)
 open import Once.Format.Print using (W; walker; Line; line-empty; line-code; line-text; Note; note-comment; note-blank;
   Notes; notes; noNotes; Trivia; lookupNotes; addTo; addTop; addInner; addAfter; Held; held-comment; held-blank;
-  promoteR; promote; settleAt; settle; blankBefore; lineEnd; pending; stepTok; stepComment; afterCode; step;
+  settleAt; settle; blankBefore; lineEnd; pending; stepTok; stepComment; afterCode; step;
   walkItems; finish; trivia; trimEnd; dropLead)
 open import Once.Format.Proof.Rerender using (dropLead-keep; all-rev; all-revA; notrail-++)
 import Once.Format.Proof.Walk
@@ -245,7 +245,7 @@ TrivSrc = All (λ e → NotesSrc (proj₂ e))
 
 private
   HeldSrc : Held → Set
-  HeldSrc (held-comment c _) = Src c
+  HeldSrc (held-comment c) = Src c
   HeldSrc held-blank         = ⊤
 
   LineSrc : Line → Set
@@ -280,23 +280,15 @@ private
   after-src : ∀ x → Src x → ∀ n → NotesSrc n → NotesSrc (addAfter x n)
   after-src x px (notes t i a) (pt , pi , pa) = pt , pi , AllP.++⁺ pa (px ∷ [])
 
-  settle-src : ∀ k hs t → All HeldSrc hs → TrivSrc t → TrivSrc (settleAt k hs t)
-  settle-src k []                         t []       pt = pt
-  settle-src k (held-comment h true ∷ hs)  t (p ∷ ps) pt =
-    settle-src k hs _ ps (addTo-src k _ t (top-src (note-comment h) p) pt)
-  settle-src k (held-comment h false ∷ hs) t (p ∷ ps) pt =
-    settle-src k hs _ ps (addTo-src k _ t (inner-src h p) pt)
-  settle-src k (held-blank ∷ hs)           t (p ∷ ps) pt =
-    settle-src k hs _ ps (addTo-src k _ t (top-src note-blank tt) pt)
-
-  promoteR-src : ∀ hs b → All HeldSrc hs → All HeldSrc (promoteR hs b)
-  promoteR-src []                        _     []       = []
-  promoteR-src (held-comment h b ∷ hs)   false (p ∷ ps) = p ∷ promoteR-src hs b ps
-  promoteR-src (held-comment h _ ∷ hs)   true  (p ∷ ps) = p ∷ promoteR-src hs true ps
-  promoteR-src (held-blank ∷ hs)         _     (p ∷ ps) = p ∷ promoteR-src hs true ps
-
-  promote-src : ∀ hs → All HeldSrc hs → All HeldSrc (promote hs)
-  promote-src hs ps = all-revA (promoteR-src _ false (all-revA ps))
+  settle-src : ∀ k f hs t → All HeldSrc hs → TrivSrc t → TrivSrc (settleAt k f hs t)
+  settle-src k _     []                    t []       pt = pt
+  settle-src k true  (held-comment h ∷ hs) t (p ∷ ps) pt =
+    settle-src k true hs _ ps (addTo-src k _ t (top-src (note-comment h) p) pt)
+  settle-src k false (held-comment h ∷ hs) t (p ∷ ps) pt =
+    settle-src k false hs _ ps (addTo-src k _ t (inner-src h p) pt)
+  settle-src k true  (held-blank ∷ hs)     t (p ∷ ps) pt =
+    settle-src k true hs _ ps (addTo-src k _ t (top-src note-blank tt) pt)
+  settle-src k false (held-blank ∷ hs)     t (p ∷ ps) pt = settle-src k false hs t ps pt
 
   blankBefore-src : ∀ b hs → All HeldSrc hs → All HeldSrc (blankBefore b hs)
   blankBefore-src b hs ps = pick (2 Data.Nat.<ᵇ suc b)
@@ -305,19 +297,19 @@ private
       pick true  = AllP.++⁺ ps (tt ∷ [])
       pick false = ps
 
-  map-held : ∀ top cs → All Src cs → All HeldSrc (map (λ c → held-comment c top) cs)
-  map-held top []       []       = []
-  map-held top (c ∷ cs) (p ∷ ps) = p ∷ map-held top cs ps
+  map-held : ∀ cs → All Src cs → All HeldSrc (map held-comment cs)
+  map-held []       []       = []
+  map-held (c ∷ cs) (p ∷ ps) = p ∷ map-held cs ps
 
   pending-src : ∀ ln hs → LineSrc ln → All HeldSrc hs → All HeldSrc (pending ln hs)
-  pending-src (line-text cs) hs pl ph = AllP.++⁺ ph (map-held false cs pl)
+  pending-src (line-text cs) hs pl ph = AllP.++⁺ ph (map-held cs pl)
   pending-src line-empty     hs _  ph = ph
   pending-src line-code      hs _  ph = ph
 
   lineEnd-src : ∀ top σ → WSrc σ → WSrc (lineEnd top σ)
-  lineEnd-src top (walker k h (line-text cs) hs b t) (wsrc pl ph pa) = wsrc tt (AllP.++⁺ ph (map-held top cs pl)) pa
-  lineEnd-src top (walker k h line-empty hs b t)    (wsrc pl ph pa) = wsrc tt ph pa
-  lineEnd-src top (walker k h line-code hs b t)     (wsrc pl ph pa) = wsrc tt ph pa
+  lineEnd-src top (walker k h (line-text cs) hs b fr t) (wsrc pl ph pa) = wsrc tt (AllP.++⁺ ph (map-held cs pl)) pa
+  lineEnd-src top (walker k h line-empty hs b fr t)    (wsrc pl ph pa) = wsrc tt ph pa
+  lineEnd-src top (walker k h line-code hs b fr t)     (wsrc pl ph pa) = wsrc tt ph pa
 
   nc-src : ∀ cs → All Src cs → All NoteSrc (map note-comment cs)
   nc-src []       []       = []
@@ -333,19 +325,19 @@ private
       pick false = p ∷ hoist-trivsrc k ts ps
 
   hoistW-src : ∀ σ → WSrc σ → WSrc (Once.Format.Print.hoistW σ)
-  hoistW-src (walker k h ln hs b t) (wsrc pl ph pa) =
+  hoistW-src (walker k h ln hs b fr t) (wsrc pl ph pa) =
     wsrc pl ph (Once.Format.Proof.Walk.hoistAt-cases k t TrivSrc pa (hoist-trivsrc k t pa))
 
   tok-src : ∀ σ a e → WSrc σ → WSrc (stepTok σ a e)
   tok-src σ a true w = hoistW-src (lineEnd true σ) (lineEnd-src true σ w)
-  tok-src (walker k h ln hs b t) a false (wsrc pl ph pa) =
-    wsrc tt [] (settle-src k _ t (promote-src _ (pending-src ln _ pl (blankBefore-src b hs ph))) pa)
+  tok-src (walker k h ln hs b fr t) a false (wsrc pl ph pa) =
+    wsrc tt [] (settle-src k fr _ t (pending-src ln _ pl (blankBefore-src b hs ph)) pa)
 
   com-src : ∀ σ c → Src c → WSrc σ → WSrc (stepComment σ c)
-  com-src (walker k h line-empty hs b t) c pc (wsrc pl ph pa) = wsrc (pc ∷ []) (blankBefore-src b hs ph) pa
-  com-src (walker k h (line-text cs) hs b t) c pc (wsrc pl ph pa) = wsrc (AllP.++⁺ pl (pc ∷ [])) ph pa
-  com-src (walker k true line-code hs b t) c pc (wsrc pl ph pa) = wsrc tt ph (addTo-src (k Data.Nat.∸ 1) _ t (after-src c pc) pa)
-  com-src (walker k false line-code hs b t) c pc (wsrc pl ph pa) = wsrc tt (AllP.++⁺ ph (pc ∷ [])) pa
+  com-src (walker k h line-empty hs b fr t) c pc (wsrc pl ph pa) = wsrc (pc ∷ []) (blankBefore-src b hs ph) pa
+  com-src (walker k h (line-text cs) hs b fr t) c pc (wsrc pl ph pa) = wsrc (AllP.++⁺ pl (pc ∷ [])) ph pa
+  com-src (walker k true line-code hs b fr t) c pc (wsrc pl ph pa) = wsrc tt ph (addTo-src (k Data.Nat.∸ 1) _ t (after-src c pc) pa)
+  com-src (walker k false line-code hs b fr t) c pc (wsrc pl ph pa) = wsrc tt (AllP.++⁺ ph (pc ∷ [])) pa
 
   step-src : ∀ σ i → ComOK i → WSrc σ → WSrc (step σ i)
   step-src σ (tok x)     _  w = tok-src σ (Once.Format.Print.isAnchor x) (Once.Format.Print.isLineEnd x) w
@@ -357,7 +349,7 @@ private
   walk-src σ (i ∷ is) (p ∷ ps) w = walk-src (step σ i) is ps (step-src σ i p w)
 
   settle-W : ∀ σ → WSrc σ → TrivSrc (W.acc (settle σ))
-  settle-W (walker k h ln hs b t) (wsrc _ ph pa) = settle-src k _ t (promote-src hs ph) pa
+  settle-W (walker k h ln hs b fr t) (wsrc _ ph pa) = settle-src k fr _ t ph pa
 
 -- | The comments in a text's trivia are ones the formatter writes back.
 trivia-src : ∀ cs → TrivSrc (trivia (lexItems cs))

@@ -45,7 +45,7 @@ open import Once.Format.Doc using (Doc; Lexeme; lt; lsp; lnl; lind; lcm; chars; 
 open import Once.Format.Lex using (Item; tok; comment; cont; lexItems)
 open import Once.Format.Print using (W; walker; Line; line-empty; line-code; line-text; Notes; noNotes; Trivia;
   lookupNotes; addTo; settleAt; settle; lineEnd; stepTok; stepComment; afterCode; step; walkItems; finish; trivia;
-  isAnchor; isLineEnd; trimEnd; promote; pending; blankBefore; addAfter)
+  isAnchor; isLineEnd; trimEnd; pending; blankBefore; addAfter)
 open import Once.Format.Proof.Items using (EItem; etok; ecomment; econt; erase; items-complete)
 open import Once.Format.Proof.ItemsLex using (itemsL; items-ws)
 open import Once.Format.Proof.Lexing using (WS)
@@ -149,7 +149,7 @@ walk-erase σ (i ∷ is) rewrite step-erase σ i = walk-erase (stepE σ (erase i
 
 -- | The first walker state.
 w₀ : W
-w₀ = walker 0 false line-empty [] 0 []
+w₀ = walker 0 false line-empty [] 0 true []
 
 ------------------------------------------------------------------------
 -- The walker on lexemes
@@ -260,11 +260,12 @@ lookup-addTo j k f ((i , n) ∷ ts)  ne with k ≡ᵇ i in e
 ...   | true  = refl
 ...   | false = lookup-addTo j k f ts ne
 
-lookup-settleAt : ∀ j k hs t → j ≢ k → lookupNotes j (settleAt k hs t) ≡ lookupNotes j t
-lookup-settleAt j k []                         t ne = refl
-lookup-settleAt j k (held-comment h true ∷ hs)  t ne = trans (lookup-settleAt j k hs _ ne) (lookup-addTo j k _ t ne)
-lookup-settleAt j k (held-comment h false ∷ hs) t ne = trans (lookup-settleAt j k hs _ ne) (lookup-addTo j k _ t ne)
-lookup-settleAt j k (held-blank ∷ hs)           t ne = trans (lookup-settleAt j k hs _ ne) (lookup-addTo j k _ t ne)
+lookup-settleAt : ∀ j k f hs t → j ≢ k → lookupNotes j (settleAt k f hs t) ≡ lookupNotes j t
+lookup-settleAt j k _     []                    t ne = refl
+lookup-settleAt j k true  (held-comment h ∷ hs) t ne = trans (lookup-settleAt j k true hs _ ne) (lookup-addTo j k _ t ne)
+lookup-settleAt j k false (held-comment h ∷ hs) t ne = trans (lookup-settleAt j k false hs _ ne) (lookup-addTo j k _ t ne)
+lookup-settleAt j k true  (held-blank ∷ hs)     t ne = trans (lookup-settleAt j k true hs _ ne) (lookup-addTo j k _ t ne)
+lookup-settleAt j k false (held-blank ∷ hs)     t ne = lookup-settleAt j k false hs t ne
 
 open import Once.Format.Print using (hoist; hoistAt; note-comment; notes)
 open import Relation.Nullary using (yes; no)
@@ -314,14 +315,15 @@ hoistAt-after : ∀ j k t → Notes.after (lookupNotes j (hoistAt k t)) ≡ Note
 hoistAt-after j k t = hoistAt-cases k t (λ t′ → Notes.after (lookupNotes j t′) ≡ Notes.after (lookupNotes j t)) refl (hoist-after j k t)
 
 -- | Settling adds nothing at the end of a line.
-settleAt-after : ∀ j k hs t → Notes.after (lookupNotes j (settleAt k hs t)) ≡ Notes.after (lookupNotes j t)
-settleAt-after j k []                         t = refl
-settleAt-after j k (held-comment h true ∷ hs)  t =
-  trans (settleAt-after j k hs _) (lookup-addTo-keeps Notes.after j k _ t (λ { (notes _ _ _) → refl }))
-settleAt-after j k (held-comment h false ∷ hs) t =
-  trans (settleAt-after j k hs _) (lookup-addTo-keeps Notes.after j k _ t (λ { (notes _ _ _) → refl }))
-settleAt-after j k (held-blank ∷ hs)           t =
-  trans (settleAt-after j k hs _) (lookup-addTo-keeps Notes.after j k _ t (λ { (notes _ _ _) → refl }))
+settleAt-after : ∀ j k f hs t → Notes.after (lookupNotes j (settleAt k f hs t)) ≡ Notes.after (lookupNotes j t)
+settleAt-after j k _     []                    t = refl
+settleAt-after j k true  (held-comment h ∷ hs) t =
+  trans (settleAt-after j k true hs _) (lookup-addTo-keeps Notes.after j k _ t (λ { (notes _ _ _) → refl }))
+settleAt-after j k false (held-comment h ∷ hs) t =
+  trans (settleAt-after j k false hs _) (lookup-addTo-keeps Notes.after j k _ t (λ { (notes _ _ _) → refl }))
+settleAt-after j k true  (held-blank ∷ hs)     t =
+  trans (settleAt-after j k true hs _) (lookup-addTo-keeps Notes.after j k _ t (λ { (notes _ _ _) → refl }))
+settleAt-after j k false (held-blank ∷ hs)     t = settleAt-after j k false hs t
 
 ------------------------------------------------------------------------
 -- Frozen notes
@@ -342,19 +344,19 @@ private
 
   -- The walker's moves, one function at a time.
   lineEnd-k : ∀ b σ → W.k (lineEnd b σ) ≡ W.k σ
-  lineEnd-k b (walker k h (line-text _) hs b′ t) = refl
-  lineEnd-k b (walker k h line-empty hs b′ t)   = refl
-  lineEnd-k b (walker k h line-code hs b′ t)    = refl
+  lineEnd-k b (walker k h (line-text _) hs b′ fr t) = refl
+  lineEnd-k b (walker k h line-empty hs b′ fr t)   = refl
+  lineEnd-k b (walker k h line-code hs b′ fr t)    = refl
 
   lineEnd-acc : ∀ b σ → W.acc (lineEnd b σ) ≡ W.acc σ
-  lineEnd-acc b (walker k h (line-text _) hs b′ t) = refl
-  lineEnd-acc b (walker k h line-empty hs b′ t)   = refl
-  lineEnd-acc b (walker k h line-code hs b′ t)    = refl
+  lineEnd-acc b (walker k h (line-text _) hs b′ fr t) = refl
+  lineEnd-acc b (walker k h line-empty hs b′ fr t)   = refl
+  lineEnd-acc b (walker k h line-code hs b′ fr t)    = refl
 
   lineEnd-on : ∀ b σ → W.onLine (lineEnd b σ) ≡ false
-  lineEnd-on b (walker k h (line-text _) hs b′ t) = refl
-  lineEnd-on b (walker k h line-empty hs b′ t)   = refl
-  lineEnd-on b (walker k h line-code hs b′ t)    = refl
+  lineEnd-on b (walker k h (line-text _) hs b′ fr t) = refl
+  lineEnd-on b (walker k h line-empty hs b′ fr t)   = refl
+  lineEnd-on b (walker k h line-code hs b′ fr t)    = refl
 
   nlW-k : ∀ p σ → W.k (nlW p σ) ≡ W.k σ
   nlW-k true  σ = lineEnd-k true σ
@@ -362,14 +364,14 @@ private
 
   -- a line that starts a declaration moves what stood before the next anchor, in place, before it
   endT-ti : ∀ j σ → j < W.k σ → ti (Look j (stepTok σ false true)) ≡ ti (Look j σ)
-  endT-ti j (walker k h (line-text _) hs b t) j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
-  endT-ti j (walker k h line-empty hs b t)    j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
-  endT-ti j (walker k h line-code hs b t)     j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
+  endT-ti j (walker k h (line-text _) hs b fr t) j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
+  endT-ti j (walker k h line-empty hs b fr t)    j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
+  endT-ti j (walker k h line-code hs b fr t)     j<k = cong ti (hoistAt-other j k t (<-≢ j<k))
 
   endT-after : ∀ j σ → Notes.after (Look j (stepTok σ false true)) ≡ Notes.after (Look j σ)
-  endT-after j (walker k h (line-text _) hs b t) = hoistAt-after j k t
-  endT-after j (walker k h line-empty hs b t)    = hoistAt-after j k t
-  endT-after j (walker k h line-code hs b t)     = hoistAt-after j k t
+  endT-after j (walker k h (line-text _) hs b fr t) = hoistAt-after j k t
+  endT-after j (walker k h line-empty hs b fr t)    = hoistAt-after j k t
+  endT-after j (walker k h line-code hs b fr t)     = hoistAt-after j k t
 
   nlW-ti : ∀ j p σ → j < W.k σ → ti (Look j (nlW p σ)) ≡ ti (Look j σ)
   nlW-ti j true  σ j<k = endT-ti j σ j<k
@@ -401,50 +403,50 @@ private
   -- a token: the index grows by one at an anchor; settling writes at the index
   tok-k : ∀ σ a b → W.k σ ≤ W.k (stepTok σ a b)
   tok-k σ a true = Data.Nat.Properties.≤-reflexive (sym (lineEnd-k true σ))
-  tok-k (walker k h ln hs b t) true  false = m≤n⇒m≤1+n ≤-refl
-  tok-k (walker k h ln hs b t) false false = ≤-refl
+  tok-k (walker k h ln hs b fr t) true  false = m≤n⇒m≤1+n ≤-refl
+  tok-k (walker k h ln hs b fr t) false false = ≤-refl
 
   tok-ti : ∀ j σ a b → j < W.k σ → ti (Look j (stepTok σ a b)) ≡ ti (Look j σ)
   tok-ti j σ a true j<k = endT-ti j σ j<k
-  tok-ti j (walker k h ln hs b t) true  false j<k = cong ti (lookup-settleAt j k (promote (pending ln (blankBefore b hs))) t (<-≢ j<k))
-  tok-ti j (walker k h ln hs b t) false false j<k = cong ti (lookup-settleAt j k (promote (pending ln (blankBefore b hs))) t (<-≢ j<k))
+  tok-ti j (walker k h ln hs b fr t) true  false j<k = cong ti (lookup-settleAt j k fr (pending ln (blankBefore b hs)) t (<-≢ j<k))
+  tok-ti j (walker k h ln hs b fr t) false false j<k = cong ti (lookup-settleAt j k fr (pending ln (blankBefore b hs)) t (<-≢ j<k))
 
   tok-after : ∀ j σ a b → Notes.after (Look j (stepTok σ a b)) ≡ Notes.after (Look j σ)
   tok-after j σ a true = endT-after j σ
-  tok-after j (walker k h ln hs b t) true  false = settleAt-after j k (promote (pending ln (blankBefore b hs))) t
-  tok-after j (walker k h ln hs b t) false false = settleAt-after j k (promote (pending ln (blankBefore b hs))) t
+  tok-after j (walker k h ln hs b fr t) true  false = settleAt-after j k fr (pending ln (blankBefore b hs)) t
+  tok-after j (walker k h ln hs b fr t) false false = settleAt-after j k fr (pending ln (blankBefore b hs)) t
 
   -- after a token not an anchor, the line has an anchor only if it had one (or the token ends it)
   tok-on : ∀ σ b → W.onLine σ ≡ false → W.onLine (stepTok σ false b) ≡ false
   tok-on σ true e = lineEnd-on true σ
-  tok-on (walker k false ln hs b t) false refl = refl
+  tok-on (walker k false ln hs b fr t) false refl = refl
 
   -- a comment writes only at the end of the last anchor's line, when that anchor is on it
   com-k : ∀ σ c → W.k (stepComment σ c) ≡ W.k σ
-  com-k (walker k h line-empty hs b t) c    = refl
-  com-k (walker k h (line-text _) hs b t) c = refl
-  com-k (walker k true line-code hs b t) c  = refl
-  com-k (walker k false line-code hs b t) c = refl
+  com-k (walker k h line-empty hs b fr t) c    = refl
+  com-k (walker k h (line-text _) hs b fr t) c = refl
+  com-k (walker k true line-code hs b fr t) c  = refl
+  com-k (walker k false line-code hs b fr t) c = refl
 
   com-on : ∀ σ c → W.onLine (stepComment σ c) ≡ W.onLine σ
-  com-on (walker k h line-empty hs b t) c    = refl
-  com-on (walker k h (line-text _) hs b t) c = refl
-  com-on (walker k true line-code hs b t) c  = refl
-  com-on (walker k false line-code hs b t) c = refl
+  com-on (walker k h line-empty hs b fr t) c    = refl
+  com-on (walker k h (line-text _) hs b fr t) c = refl
+  com-on (walker k true line-code hs b fr t) c  = refl
+  com-on (walker k false line-code hs b fr t) c = refl
 
   com-ti : ∀ j σ c → ti (Look j (stepComment σ c)) ≡ ti (Look j σ)
-  com-ti j (walker k h line-empty hs b t) c    = refl
-  com-ti j (walker k h (line-text _) hs b t) c = refl
-  com-ti j (walker k true line-code hs b t) c  = lookup-addTo-keeps ti j (k ∸ 1) (addAfter c) t (λ { (notes _ _ _) → refl })
-  com-ti j (walker k false line-code hs b t) c = refl
+  com-ti j (walker k h line-empty hs b fr t) c    = refl
+  com-ti j (walker k h (line-text _) hs b fr t) c = refl
+  com-ti j (walker k true line-code hs b fr t) c  = lookup-addTo-keeps ti j (k ∸ 1) (addAfter c) t (λ { (notes _ _ _) → refl })
+  com-ti j (walker k false line-code hs b fr t) c = refl
 
   com-after : ∀ j σ c → (W.onLine σ ≡ false ⊎ suc j < W.k σ) → Notes.after (Look j (stepComment σ c)) ≡ Notes.after (Look j σ)
-  com-after j (walker k h line-empty hs b t) c _    = refl
-  com-after j (walker k h (line-text _) hs b t) c _ = refl
-  com-after j (walker k true line-code hs b t) c (inj₁ ())
-  com-after j (walker (suc k) true line-code hs b t) c (inj₂ j<k) =
+  com-after j (walker k h line-empty hs b fr t) c _    = refl
+  com-after j (walker k h (line-text _) hs b fr t) c _ = refl
+  com-after j (walker k true line-code hs b fr t) c (inj₁ ())
+  com-after j (walker (suc k) true line-code hs b fr t) c (inj₂ j<k) =
     cong Notes.after (lookup-addTo j k _ t (<-≢ (Data.Nat.Properties.<-pred j<k)))
-  com-after j (walker k false line-code hs b t) c _ = refl
+  com-after j (walker k false line-code hs b fr t) c _ = refl
 
   ≡-k : ∀ {m n} → m ≡ n → m ≤ n
   ≡-k refl = ≤-refl
@@ -477,7 +479,7 @@ private
     inj₁ (frz fz)
     where
       grow : ∀ τ → W.k (stepTok τ true false) ≡ suc (W.k τ)
-      grow (walker k h ln hs b t) = refl
+      grow (walker k h ln hs b fr t) = refl
       frz : AFrozen j (σ , p) → suc j < W.k (stepTok (nlW p σ) true false)
       frz (inj₁ lt′) = subst (suc j <_) (sym (grow (nlW p σ)))
                          (m≤n⇒m≤1+n (subst (suc j <_) (sym (nlW-k p σ)) lt′))
@@ -487,7 +489,7 @@ private
     frz fz
     where
       same : ∀ τ → W.k (stepTok τ false false) ≡ W.k τ
-      same (walker k h ln hs b t) = refl
+      same (walker k h ln hs b fr t) = refl
       frz : AFrozen j (σ , p) → AFrozen j (stepTok (nlW p σ) false false , false)
       frz (inj₁ lt′) = inj₁ (subst (suc j <_) (sym (trans (same (nlW p σ)) (nlW-k p σ))) lt′)
       frz (inj₂ (e , o)) = inj₂ (trans (trans (same (nlW p σ)) (nlW-k p σ)) e , inj₁ (tok-on (nlW p σ) false (nlW-on p σ o)))
@@ -524,15 +526,15 @@ fin ω = finish (closeL ω)
 
 private
   settle-ti : ∀ j τ → j < W.k τ → ti (lookupNotes j (W.acc (settle τ))) ≡ ti (Look j τ)
-  settle-ti j (walker k h ln hs b t) j<k = cong ti (lookup-settleAt j k (promote hs) t (<-≢ j<k))
+  settle-ti j (walker k h ln hs b fr t) j<k = cong ti (lookup-settleAt j k fr hs t (<-≢ j<k))
 
   settle-after : ∀ j τ → Notes.after (lookupNotes j (W.acc (settle τ))) ≡ Notes.after (Look j τ)
-  settle-after j (walker k h ln hs b t) = settleAt-after j k (promote hs) t
+  settle-after j (walker k h ln hs b fr t) = settleAt-after j k fr hs t
 
   endT-k : ∀ σ → W.k (stepTok σ false true) ≡ W.k σ
-  endT-k (walker k h (line-text _) hs b t) = refl
-  endT-k (walker k h line-empty hs b t)    = refl
-  endT-k (walker k h line-code hs b t)     = refl
+  endT-k (walker k h (line-text _) hs b fr t) = refl
+  endT-k (walker k h line-empty hs b fr t)    = refl
+  endT-k (walker k h line-code hs b fr t)     = refl
 
   close-k : ∀ ω → W.k (lineEnd true (closeL ω)) ≡ W.k (proj₁ ω)
   close-k (σ , p) = trans (lineEnd-k true (closeL (σ , p))) (trans (endT-k (nlW p σ)) (nlW-k p σ))

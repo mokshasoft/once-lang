@@ -456,20 +456,10 @@ private
   blankTop : ∀ n → QN n → QN (addTop note-blank n)
   blankTop (notes t i a) (ei , ea , bs) = ei , ea , AllP.++⁺ bs (refl ∷ [])
 
-  settle-quiet : ∀ k hs t → All HB hs → QuietT t → QuietT (settleAt k hs t)
-  settle-quiet k []               t []          qt = qt
-  settle-quiet k (held-blank ∷ hs) t (refl ∷ bs) qt = settle-quiet k hs _ bs (addTo-quiet k _ t blankTop qt)
-
-  promoteR-blank : ∀ hs b → All HB hs → All HB (promoteR hs b)
-  promoteR-blank []               b []          = []
-  promoteR-blank (held-blank ∷ hs) b (refl ∷ bs) = refl ∷ promoteR-blank hs true bs
-
-  allRev : ∀ {A : Set} {P : A → Set} {acc xs} → All P acc → All P xs → All P (Data.List.reverseAcc acc xs)
-  allRev pa []       = pa
-  allRev pa (p ∷ ps) = allRev (p ∷ pa) ps
-
-  promote-blank : ∀ hs → All HB hs → All HB (promote hs)
-  promote-blank hs bs = allRev [] (promoteR-blank _ false (allRev [] bs))
+  settle-quiet : ∀ k f hs t → All HB hs → QuietT t → QuietT (settleAt k f hs t)
+  settle-quiet k _     []                t []          qt = qt
+  settle-quiet k true  (held-blank ∷ hs) t (refl ∷ bs) qt = settle-quiet k true hs _ bs (addTo-quiet k _ t blankTop qt)
+  settle-quiet k false (held-blank ∷ hs) t (refl ∷ bs) qt = settle-quiet k false hs t bs qt
 
   blankBefore-blank : ∀ b hs → All HB hs → All HB (blankBefore b hs)
   blankBefore-blank b hs bs with 2 <ᵇ suc b
@@ -481,20 +471,20 @@ private
   pending-blank line-code  hs nt-code  bs = bs
 
   lineEnd-inv : ∀ top σ → InvW σ → InvW (lineEnd top σ)
-  lineEnd-inv top (walker k h′ line-empty hs b t) (inv nt-empty h q) = inv nt-empty h q
-  lineEnd-inv top (walker k h′ line-code hs b t)  (inv nt-code h q)  = inv nt-empty h q
+  lineEnd-inv top (walker k h′ line-empty hs b fr t) (inv nt-empty h q) = inv nt-empty h q
+  lineEnd-inv top (walker k h′ line-code hs b fr t)  (inv nt-code h q)  = inv nt-empty h q
 
   settle-inv : ∀ σ → InvW σ → All HB (W.held σ) → QuietT (W.acc (settle σ))
-  settle-inv (walker k h′ ln hs b t) (inv _ _ q) h = settle-quiet k _ t (promote-blank hs h) q
+  settle-inv (walker k h′ ln hs b fr t) (inv _ _ q) h = settle-quiet k fr _ t h q
 
   stepTok-inv : ∀ σ a b → InvW σ → InvW (stepTok σ a b)
   stepTok-inv σ a true i = hoist-inv (lineEnd true σ) (lineEnd-inv true σ i)
     where
       hoist-inv : ∀ τ → InvW τ → InvW (Once.Format.Print.hoistW τ)
-      hoist-inv (walker k h′ ln hs b t) (inv nt h q) =
+      hoist-inv (walker k h′ ln hs b fr t) (inv nt h q) =
         inv nt h (Once.Format.Proof.Walk.hoistAt-cases k t QuietT q (hoist-quietT k t q))
-  stepTok-inv (walker k h′ ln hs b t) a false (inv nt h q) =
-    inv nt-code [] (settle-quiet k _ t (promote-blank _ (pending-blank ln _ nt (blankBefore-blank b hs h))) q)
+  stepTok-inv (walker k h′ ln hs b fr t) a false (inv nt h q) =
+    inv nt-code [] (settle-quiet k fr _ t (pending-blank ln _ nt (blankBefore-blank b hs h)) q)
 
   step-inv : ∀ σ i → NoComment i → InvW σ → InvW (step σ i)
   step-inv σ (tok x) nc-tok  iv = stepTok-inv σ (isAnchor x) (isLineEnd x) iv
@@ -506,7 +496,7 @@ private
 
 -- | A text without comments leaves quiet trivia.
 trivia-quiet : ∀ is → All NoComment is → QuietT (trivia is)
-trivia-quiet is ns with walk-inv (walker 0 false line-empty [] 0 []) is ns (inv nt-empty [] [])
+trivia-quiet is ns with walk-inv (walker 0 false line-empty [] 0 true []) is ns (inv nt-empty [] [])
 ... | iv = settle-inv (lineEnd true (walkItems _ is)) (lineEnd-inv true _ iv) (InvW.held (lineEnd-inv true _ iv))
 
 ------------------------------------------------------------------------

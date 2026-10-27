@@ -119,18 +119,20 @@ hoist k ((j , n) ∷ ts) = if k ≡ᵇ j then (j , up n) ∷ ts else (j , n) ∷
     up : Notes → Notes
     up (notes t i a) = notes (t ++ map note-comment i) [] a
 
--- A comment on its own line waits for its line end: a token `TNewline` after
--- it (the next line starts a declaration) makes it a top note, a swallowed
--- one (`cont`, the next line is indented) an inner note.
+-- A comment on its own line waits for the next token: when a line end that
+-- starts a declaration (a token `TNewline`) came since the last token, what
+-- waits stands before that declaration (top notes, with the blank lines
+-- between); else it stands in place, before the next anchor (inner notes; a
+-- blank line inside a declaration is the code's, and the code's layout is
+-- the formatter's).
 data Line : Set where
   line-empty  : Line          -- nothing on the line yet
   line-code   : Line          -- a token on it
   line-text   : List String → Line -- only comments on it (in order)
 
--- What waits for its line end: a comment (and whether it is a top note), or
--- a blank line.
+-- What waits for the next token: a comment, or a blank line.
 data Held : Set where
-  held-comment : String → Bool → Held
+  held-comment : String → Held
   held-blank   : Held
 
 record W : Set where
@@ -141,39 +143,31 @@ record W : Set where
     ln       : Line           -- the current line
     held     : List Held      -- in order
     breaks   : ℕ              -- line ends since the last thing on a line
+    fresh    : Bool           -- a line end that starts a declaration since the last token
     acc      : Trivia
 
--- What is held before something held for the declaration stands before
--- the declaration too (so the comments keep their order).
--- (read last first: `seen`, something held for the declaration came after)
-promoteR : List Held → Bool → List Held
-promoteR []                       _     = []
-promoteR (held-comment h b ∷ hs)  false = held-comment h b ∷ promoteR hs b
-promoteR (held-comment h _ ∷ hs)  true  = held-comment h true ∷ promoteR hs true
-promoteR (held-blank ∷ hs)        _     = held-blank ∷ promoteR hs true
-
-promote : List Held → List Held
-promote hs = reverse (promoteR (reverse hs) false)
-
--- The held things, at anchor `k`, in order.
-settleAt : ℕ → List Held → Trivia → Trivia
-settleAt k []                         t = t
-settleAt k (held-comment h true ∷ hs)  t = settleAt k hs (addTo k (addTop (note-comment h)) t)
-settleAt k (held-comment h false ∷ hs) t = settleAt k hs (addTo k (addInner h) t)
-settleAt k (held-blank ∷ hs)           t = settleAt k hs (addTo k (addTop note-blank) t)
+-- The held things, at anchor `k`, in order: before its declaration (`true`)
+-- or in place.
+settleAt : ℕ → Bool → List Held → Trivia → Trivia
+settleAt k _     []                    t = t
+settleAt k true  (held-comment h ∷ hs) t = settleAt k true hs (addTo k (addTop (note-comment h)) t)
+settleAt k false (held-comment h ∷ hs) t = settleAt k false hs (addTo k (addInner h) t)
+settleAt k true  (held-blank ∷ hs)     t = settleAt k true hs (addTo k (addTop note-blank) t)
+settleAt k false (held-blank ∷ hs)     t = settleAt k false hs t
 
 -- Settle what is held at the next anchor, in order.
 settle : W → W
-settle (walker k h ln hs b t) = walker k h ln [] b (settleAt k (promote hs) t)
+settle (walker k h ln hs b f t) = walker k h ln [] b f (settleAt k f hs t)
 
 -- A blank line before what comes next (two line ends since the last thing).
 blankBefore : ℕ → List Held → List Held
 blankBefore b hs = if 2 <ᵇ suc b then hs ++ (held-blank ∷ []) else hs
 
+-- A line end; `top`: it starts a declaration.
 lineEnd : Bool → W → W
-lineEnd top (walker k _ (line-text cs) hs b t) = walker k false line-empty (hs ++ map (λ c → held-comment c top) cs) 1 t
-lineEnd top (walker k _ line-empty hs b t)    = walker k false line-empty hs (suc b) t
-lineEnd top (walker k _ line-code hs b t)     = walker k false line-empty hs (suc b) t
+lineEnd top (walker k _ (line-text cs) hs b f t) = walker k false line-empty (hs ++ map held-comment cs) 1 (f ∨ top) t
+lineEnd top (walker k _ line-empty hs b f t)    = walker k false line-empty hs (suc b) (f ∨ top) t
+lineEnd top (walker k _ line-code hs b f t)     = walker k false line-empty hs (suc b) (f ∨ top) t
 
 -- A line end (`TNewline`, and the end of the text), or another token.
 isLineEnd : Token → Bool
@@ -184,7 +178,7 @@ isLineEnd _        = false
 
 -- Comments before code on their line (block comments) stand before it, in place.
 pending : Line → List Held → List Held
-pending (line-text cs) hs = hs ++ map (λ c → held-comment c false) cs
+pending (line-text cs) hs = hs ++ map held-comment cs
 pending line-empty    hs = hs
 pending line-code     hs = hs
 
@@ -196,26 +190,26 @@ hoistAt : ℕ → Trivia → Trivia
 hoistAt k t = if Data.List.null (Notes.inner (lookupNotes k t)) then t else hoist k t
 
 hoistW : W → W
-hoistW (walker k h ln hs b t) = walker k h ln hs b (hoistAt k t)
+hoistW (walker k h ln hs b f t) = walker k h ln hs b f (hoistAt k t)
 
 stepTok : W → Bool → Bool → W
 stepTok σ a true = hoistW (lineEnd true σ)
-stepTok (walker k h ln hs b t) a false = next (settle (walker k h ln (pending ln (blankBefore b hs)) b t))
+stepTok (walker k h ln hs b f t) a false = next (settle (walker k h ln (pending ln (blankBefore b hs)) b f t))
   where
     next : W → W
-    next (walker k′ h′ _ _ _ t′) = walker (if a then suc k′ else k′) (h′ ∨ a) line-code [] 0 t′
+    next (walker k′ h′ _ _ _ _ t′) = walker (if a then suc k′ else k′) (h′ ∨ a) line-code [] 0 false t′
 
 -- A comment after code ends the line of the last anchor, when that anchor is
 -- on its line; else it stands before the next anchor, as one on a line of its
 -- own does.
-afterCode : Bool → ℕ → List Held → ℕ → Trivia → String → W
-afterCode true  k hs b t c = walker k true line-code hs b (addTo (k ∸ 1) (addAfter c) t)
-afterCode false k hs b t c = walker k false line-code (hs ++ (held-comment c false ∷ [])) b t
+afterCode : Bool → ℕ → List Held → ℕ → Bool → Trivia → String → W
+afterCode true  k hs b f t c = walker k true line-code hs b f (addTo (k ∸ 1) (addAfter c) t)
+afterCode false k hs b f t c = walker k false line-code (hs ++ (held-comment c ∷ [])) b f t
 
 stepComment : W → String → W
-stepComment (walker k h line-code hs b t) c = afterCode h k hs b t c
-stepComment (walker k h line-empty hs b t) c = walker k h (line-text (c ∷ [])) (blankBefore b hs) 0 t
-stepComment (walker k h (line-text cs) hs b t) c = walker k h (line-text (cs ++ (c ∷ []))) hs b t
+stepComment (walker k h line-code hs b f t) c = afterCode h k hs b f t c
+stepComment (walker k h line-empty hs b f t) c = walker k h (line-text (c ∷ [])) (blankBefore b hs) 0 f t
+stepComment (walker k h (line-text cs) hs b f t) c = walker k h (line-text (cs ++ (c ∷ []))) hs b f t
 
 step : W → Item → W
 step σ (tok x)     = stepTok σ (isAnchor x) (isLineEnd x)
@@ -233,7 +227,7 @@ finish σ = W.acc (settle (lineEnd true σ))
 
 -- | The trivia of a text's items.
 trivia : List Item → Trivia
-trivia is = finish (walkItems (walker 0 false line-empty [] 0 []) is)
+trivia is = finish (walkItems (walker 0 false line-empty [] 0 true []) is)
 
 
 
