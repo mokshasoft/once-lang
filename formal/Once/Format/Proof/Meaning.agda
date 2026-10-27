@@ -24,14 +24,13 @@ open import Once.Parser using (parseStrict)
 open import Once.Adequacy.FrontEndBridge using (parseStrict-sound; parseStrict-complete)
 open import Once.Adequacy.SpecGrammar.Decl using (parses→; parses←)
 open import Once.Format using (formatSource)
-open import Once.Format.Proof.LexOK using (DigitBound)
 open import Once.Format.Proof.RoundTrip using (roundtrip)
 
 -- | A source's program text, formatted, denotes what the source denotes.
-format-denotes : DigitBound → ∀ src tp → src ⊢ tp
+format-denotes : ∀ src tp → src ⊢ tp
                → ∃[ out ] (formatSource (Source.text src) ≡ inj₂ out × record src { text = out } ⊢ tp)
-format-denotes bound src tp (mm , p , pms , d) =
-  rest (roundtrip bound (Source.text src) (Typed.module′ tp)
+format-denotes src tp (mm , p , pms , d) =
+  rest (roundtrip (Source.text src) (Typed.module′ tp)
           (parseStrict-complete (Source.text src) (Typed.module′ tp) (parses← {Source.text src} p)))
   where
     rest : ∃[ out ] (formatSource (Source.text src) ≡ inj₂ out × parseStrict out ≡ inj₂ (Typed.module′ tp))

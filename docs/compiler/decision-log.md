@@ -19606,15 +19606,16 @@ user facing configs."
   take no room in deciding whether a group is flat (the code's layout is its own; a comment still breaks
   where it must), and an end-of-line comment anchors to a word or literal on its own line (on a line
   without one it stands before the next anchor, as a comment on a line of its own does).
-* The one hypothesis, `DigitBound`: the primitive `isDigit` accepts the ten decimal digits only. Agda's
-  conversion cannot see it; it is a theorem argument, not a postulate (a float's fraction is read back from
-  it). Discharging it as a tool hypothesis beside T1/T2 (`Once.Postulates`) is the user's call.
+* The one new hypothesis is a tool hypothesis, T3 in `Once.Postulates` (`isDigit-value`, decided by the
+  user 2026-10-27): the primitive `isDigit` accepts the ten decimal digits only, so a digit's value is below
+  ten. Agda's conversion cannot see it (a float's fraction is read back from it); Agda specifies the
+  primitive as Haskell's `Data.Char.isDigit`, which MAlonzo calls. The theorems take no argument.
 * Spec (approved 2026-10-27): `digitsToNat`'s accumulator is the top-level `digitsFrom`, so its value can
   be stated; nothing else of the Spec changed.
 
 * The apex carries them: `CertifiedBuild.formatter : VerifiedFormatter` (the header's "room for per-layer
   bundles"), so they are load-bearing on `make certified` while `fmt` stays out of the compile path; each
-  field takes `DigitBound` itself and the apex's hypotheses are unchanged.
+  field is unconditional and the apex's hypotheses are unchanged (its trust base gains T3).
 
 ### Consequences
 * The comments' order is proved (`comments-kept`, plan 0.124 §9), and fuzzed besides (≈5500 texts with

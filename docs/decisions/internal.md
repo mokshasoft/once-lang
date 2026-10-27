@@ -152,6 +152,9 @@ decision-log entry updates the rule it changes here, in the same commit.
   uncounted). With them a word name renders apart from every other, and a
   generator — carrying `WordName` in its typing rule — is found by its
   rendered key. (D329)
+- **A third tool hypothesis, about `isDigit`** (`Once.Postulates` T3,
+  `isDigit-value`): the primitive accepts the decimal digits only. With it
+  `once fmt` prints a float literal back as itself. (D342)
 - **There is no global program bound**: a closure carries its own body bound.
   (D214)
 - **Dataflow disciplines are discharged by type-indexed shape correctness**,
@@ -246,6 +249,3 @@ decision-log entry updates the rule it changes here, in the same commit.
 1. **D076**: whether the shape layer is complete is not recorded.
 2. **D218**: the apex still takes the three `BlockRunsHyp-<arch>` hypotheses;
    their discharge is the D283 relation (§6), in progress.
-3. **D342**: `once fmt`'s theorems take `DigitBound` (the primitive
-   `isDigit` accepts the decimal digits only) as an argument; whether it
-   becomes a tool hypothesis beside T1/T2 is open.

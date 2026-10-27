@@ -37,7 +37,7 @@ open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Grammar
 open import Once.Format.Print using (isOperator)
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym)
-open import Once.Format.Proof.LexOK using (DigitBound; LexOK; Other; o-nl; o-eof; o-str; lexed-ok)
+open import Once.Format.Proof.LexOK using (LexOK; Other; o-nl; o-eof; o-str; lexed-ok)
 open import Once.Format.Proof.ExprBase using (WF; NameOK; OpName; op-isOperator)
 open import Once.Format.Proof.TypeAlgs using (GroundOK; GroundOKF; written; ground)
 import Once.Format.Proof.TypeAlgs as TA
@@ -418,5 +418,5 @@ decls′ (decls-cons s p q) a with decl′ p (skip′ s a)
 ...   | ws , pds = w ∷ ws , pd ∷ pds
 
 -- | A text's module is well formed and printable.
-parsed-wf : DigitBound → ∀ {text m} → Parses text m → All WFD (Module.decls m) × All PD (Module.decls m)
-parsed-wf bound (ts , r , lx , pd , _) = decls′ pd (lexed-ok bound lx)
+parsed-wf : ∀ {text m} → Parses text m → All WFD (Module.decls m) × All PD (Module.decls m)
+parsed-wf (ts , r , lx , pd , _) = decls′ pd (lexed-ok lx)

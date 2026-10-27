@@ -693,7 +693,6 @@ module-twice ds cs pds =
 open import Data.Sum using (inj₂)
 open import Once.Parser using (parseStrict)
 open import Once.Format using (formatSource; formatParsed)
-open import Once.Format.Proof.LexOK using (DigitBound)
 open import Once.Format.Proof.WF using (parsed-wf)
 open import Once.Format.Proof.RoundTrip using (roundtrip)
 import Once.Adequacy.SpecGrammar.Decl
@@ -701,10 +700,10 @@ import Once.Adequacy.FrontEndBridge
 
 -- | Formatting the formatter's output gives the output: whatever the
 -- comments, once a text is formatted, `once fmt` leaves it as it is.
-idempotent : DigitBound → ∀ text m → parseStrict text ≡ inj₂ m
+idempotent : ∀ text m → parseStrict text ≡ inj₂ m
            → formatSource text ≡ inj₂ (format m (lexItems (toList text)))
              × formatSource (format m (lexItems (toList text))) ≡ inj₂ (format m (lexItems (toList text)))
-idempotent bound text (mkModule ds) eq with parsed-wf bound {text} {mkModule ds}
+idempotent text (mkModule ds) eq with parsed-wf {text} {mkModule ds}
                                           (Once.Adequacy.SpecGrammar.Decl.parses→ {text} (Once.Adequacy.FrontEndBridge.parseStrict-sound text _ eq))
 ... | wfs , pds =
   cong (formatParsed text) eq ,
@@ -712,4 +711,4 @@ idempotent bound text (mkModule ds) eq with parsed-wf bound {text} {mkModule ds}
   where
     out = format (mkModule ds) (lexItems (toList text))
     ps : parseStrict out ≡ inj₂ (mkModule ds)
-    ps = proj₂ (proj₂ (roundtrip bound text (mkModule ds) eq))
+    ps = proj₂ (proj₂ (roundtrip text (mkModule ds) eq))
