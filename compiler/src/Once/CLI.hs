@@ -20,6 +20,7 @@ module Once.CLI
   , InterpType (..)
   , targetExtension
   , parseTarget
+  , hostTarget
   , parseInterpType
   ) where
 
@@ -35,6 +36,7 @@ import System.IO (hPutStrLn, stderr)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 import System.Environment (getExecutablePath, lookupEnv)
 import System.Process (readProcessWithExitCode)
+import qualified System.Info as SysInfo
 
 -- Bridge to MAlonzo-generated code (stable API)
 import Once.Compile.Bridge (CompileResult(..), FunSig(..), PolyFunSig(..))
@@ -101,6 +103,17 @@ parseTarget "arm64" = Just TargetArm64
 parseTarget "riscv64" = Just TargetRiscV64
 parseTarget _ = Nothing
 
+-- | Plan 0.125: the default target is the host's architecture (GHC's
+-- `System.Info.arch` names). A host with no backend gets the C target,
+-- whose "not yet implemented" error names the working `--target`s.
+hostTarget :: Target
+hostTarget = case SysInfo.arch of
+  "x86_64"  -> TargetX86_64
+  "i386"    -> TargetX86_32
+  "riscv64" -> TargetRiscV64
+  "aarch64" -> TargetArm64
+  _         -> TargetC
+
 -- | Allocation strategy (for future use)
 data AllocStrategy
   = AllocStack    -- ^ Stack allocation
@@ -133,7 +146,7 @@ data BuildOptions = BuildOptions
   { buildInput     :: FilePath
   , buildOutput    :: Maybe FilePath              -- ^ Output base name (without extension)
   , buildMode      :: OutputMode                  -- ^ Library or executable
-  , buildTarget    :: Target                      -- ^ Target architecture (default: TargetC)
+  , buildTarget    :: Target                      -- ^ Target architecture (default: hostTarget)
   , buildSaveTemps :: Bool                        -- ^ Keep intermediate files (.s, .o)
   , buildOptimize  :: Bool                        -- ^ Run optimizer (default: True)
   -- Future options (not yet wired to Agda)

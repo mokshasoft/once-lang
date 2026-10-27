@@ -5,7 +5,7 @@ import System.Exit (exitFailure)
 import qualified Data.Text.IO as TIO
 
 import Data.List (isPrefixOf, stripPrefix)
-import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), ParseOptions (..), StageOptions (..), OutputMode (..), Target (..), AllocStrategy (..), InterpType (..), parseTarget, parseInterpType)
+import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), ParseOptions (..), StageOptions (..), OutputMode (..), Target (..), AllocStrategy (..), InterpType (..), parseTarget, hostTarget, parseInterpType)
 
 main :: IO ()
 main = do
@@ -68,7 +68,7 @@ defaultBuildConfig :: BuildConfig
 defaultBuildConfig = BuildConfig
   { bcOutput    = Nothing
   , bcMode      = Infer  -- program iff the module defines `main`, else library
-  , bcTarget    = TargetC
+  , bcTarget    = hostTarget
   , bcSaveTemps = False
   , bcOptimize  = True
   , bcStrata    = Nothing
@@ -154,7 +154,7 @@ usage = do
   TIO.putStrLn "  (default)           Infer: executable if the module defines `main`, else library"
   TIO.putStrLn "  --lib               Force library output (no entry point)"
   TIO.putStrLn "  --exe               Force standalone executable (requires a `main`)"
-  TIO.putStrLn "  --target ARCH       Target architecture (c|x86_64|x86_32|arm64|riscv64) [default: c]"
+  TIO.putStrLn "  --target ARCH       Target architecture (c|x86_64|x86_32|arm64|riscv64) [default: the host's]"
   TIO.putStrLn "  --save-temps        Keep intermediate files (.s, .o)"
   TIO.putStrLn "  --no-optimize       Skip optimizer"
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports"
