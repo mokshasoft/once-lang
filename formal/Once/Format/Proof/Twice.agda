@@ -665,3 +665,77 @@ decl-step ωF prev d ds k tvc₁ tvc₂ σ T b hy fe IH = main
                          (sym (Once.Format.Proof.Skeleton.sk-width sB)))
               (trans (cong (layout 0 false (proj₁ (pdecls (just d) ds tv₂′ k′))) σn≡)
                 (trans (IH k′ tv₁′ tv₂′ σn Tend bnd′ hyps′ finR) (sym whole₁))))))
+
+------------------------------------------------------------------------
+-- The module, formatted twice
+------------------------------------------------------------------------
+
+-- | The declarations from `k`, formatted twice.
+decls-sim : ∀ ωF ds prev k tvc₁ tvc₂ σ T → Bnd σ k T prev → Hyps (fin ωF) tvc₁ tvc₂ k
+          → ωF ≡ Φ (St.out (brk 0 (layout 0 false (proj₁ (pdecls prev ds tvc₁ k)) σ)))
+          → layout 0 false (proj₁ (pdecls prev ds tvc₂ k)) σ ≡ layout 0 false (proj₁ (pdecls prev ds tvc₁ k)) σ
+decls-sim ωF []       prev k tvc₁ tvc₂ σ T b hy fe = ending-sim ωF prev k tvc₁ tvc₂ σ T b hy fe
+decls-sim ωF (d ∷ ds) prev k tvc₁ tvc₂ σ T b hy fe =
+  decl-step ωF prev d ds k tvc₁ tvc₂ σ T b hy fe (λ k′ tv₁′ tv₂′ σ′ T′ → decls-sim ωF ds (just d) k′ tv₁′ tv₂′ σ′ T′)
+
+open import Data.String using (toList)
+open import Data.List.Relation.Unary.All using () renaming (map to all-map)
+open import Once.Spec.Surface.Syntax using (Module; mkModule)
+open import Once.Format.Doc using (lexemes; render; chars)
+open import Once.Format.Lex using (lexItems)
+open import Once.Format.Print using (format; pmodule; trivia)
+open import Once.Format.Proof.Walk using (formatted-trivia)
+open import Once.Format.Proof.Lockstep using (sp-[])
+open import Once.Format.Proof.Sources using (trivia-src; lookup-src)
+open import Once.Format.Proof.Module using (module-ws; DeclOK)
+open import Once.Format.Proof.Printable using (PD)
+open import Once.Format.Proof.Decl using (decl-ok)
+
+private
+  oks : ∀ {ds} → All PD ds → All DeclOK ds
+  oks []       = []
+  oks (p ∷ ps) = decl-ok _ p ∷ oks ps
+
+  σ₀ : St
+  σ₀ = st [] 0 (just 0) []
+
+-- | A module with the comments of a text, formatted, and formatted again,
+-- is formatted once.
+module-twice : ∀ ds cs → All PD ds
+             → let out = format (mkModule ds) (lexItems cs) in format (mkModule ds) (lexItems (toList out)) ≡ out
+module-twice ds cs pds =
+  trans (cong (λ tv → render (proj₁ (pdecls nothing ds tv 0))) (formatted-trivia D₁ (module-ws ds tv₁ (oks pds))))
+    (cong (λ σ → Data.String.fromList (Data.List.concatMap chars (Data.List.reverse (St.out (brk 0 σ)))))
+      (decls-sim ωF ds nothing 0 tv₁ (fin ωF) σ₀ [] b₀ h₀ refl))
+  where
+    tv₁ = trivia (lexItems cs)
+    D₁ = proj₁ (pdecls nothing ds tv₁ 0)
+    ωF = Φ (St.out (brk 0 (layout 0 false D₁ σ₀)))
+    b₀ : Bnd σ₀ 0 [] nothing
+    b₀ = bnd refl refl (refl , refl , refl) (λ j _ → refl) (λ j _ → refl) (λ j _ → refl) [] (li sp-[] (λ ()))
+    h₀ : Hyps (fin ωF) tv₁ (fin ωF) 0
+    h₀ = hyps (λ j → lookup-src j tv₁ (trivia-src cs)) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) refl
+
+open import Data.Sum using (inj₂)
+open import Once.Parser using (parseStrict)
+open import Once.Format using (formatSource; formatParsed)
+open import Once.Format.Proof.LexOK using (DigitBound)
+open import Once.Format.Proof.WF using (parsed-wf)
+open import Once.Format.Proof.RoundTrip using (roundtrip)
+import Once.Adequacy.SpecGrammar.Decl
+import Once.Adequacy.FrontEndBridge
+
+-- | Formatting the formatter's output gives the output: whatever the
+-- comments, once a text is formatted, `once fmt` leaves it as it is.
+idempotent : DigitBound → ∀ text m → parseStrict text ≡ inj₂ m
+           → formatSource text ≡ inj₂ (format m (lexItems (toList text)))
+             × formatSource (format m (lexItems (toList text))) ≡ inj₂ (format m (lexItems (toList text)))
+idempotent bound text (mkModule ds) eq with parsed-wf bound {text} {mkModule ds}
+                                          (Once.Adequacy.SpecGrammar.Decl.parses→ {text} (Once.Adequacy.FrontEndBridge.parseStrict-sound text _ eq))
+... | wfs , pds =
+  cong (formatParsed text) eq ,
+  trans (cong (formatParsed out) ps) (cong inj₂ (module-twice ds (toList text) pds))
+  where
+    out = format (mkModule ds) (lexItems (toList text))
+    ps : parseStrict out ≡ inj₂ (mkModule ds)
+    ps = proj₂ (proj₂ (roundtrip bound text (mkModule ds) eq))
