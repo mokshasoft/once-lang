@@ -664,10 +664,9 @@ data T_ParsesDecls_1730
 -- Once.Spec.Surface.Grammar.Trailing
 d_Trailing_1756 a0 = ()
 data T_Trailing_1756
-  = C_trail'45'end_1758 | C_trail'45'nl_1762 T_Trailing_1756 |
-    C_trail'45'eof_1766 T_Trailing_1756
+  = C_trail'45'nl_1760 T_Trailing_1756 | C_trail'45'eof_1762
 -- Once.Spec.Surface.Grammar.Parses
-d_Parses_1768 ::
+d_Parses_1764 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 -> ()
-d_Parses_1768 = erased
+d_Parses_1764 = erased

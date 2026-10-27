@@ -47,4 +47,4 @@ d_formatSource_14 ::
 d_formatSource_14 v0
   = coe
       d_formatParsed_4 (coe v0)
-      (coe MAlonzo.Code.Once.Parser.d_parseStrict_72 (coe v0))
+      (coe MAlonzo.Code.Once.Parser.d_parseStrict_74 (coe v0))

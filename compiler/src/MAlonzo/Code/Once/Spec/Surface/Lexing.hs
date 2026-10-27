@@ -195,20 +195,19 @@ data T_LexesChars_322
     C_lex'45'string_562 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                         [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_StringBody_230
                         T_LexesChars_322 |
-    C_lex'45'string'45'end_570 |
-    C_lex'45'int_586 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'int_578 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                      [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_166
                      T_LexesChars_322 |
-    C_lex'45'float_602 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'float_594 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_Digits_166
                        T_Fraction_186 T_LexesChars_322 |
-    C_lex'45'ident_614 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
+    C_lex'45'ident_606 [MAlonzo.Code.Agda.Builtin.Char.T_Char_6]
                        [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] T_IdentRest_198
                        T_LexesChars_322 |
-    C_lex'45'skip_622 T_LexesChars_322
+    C_lex'45'skip_614 T_LexesChars_322
 -- Once.Spec.Surface.Lexing.Lexes
-d_Lexes_624 ::
+d_Lexes_616 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> [T_Token_8] -> ()
-d_Lexes_624 = erased
+d_Lexes_616 = erased

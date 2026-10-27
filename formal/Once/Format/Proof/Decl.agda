@@ -238,7 +238,7 @@ private
 
 -- | The stream reads as the declarations, then only line ends and the end.
 ds-parses : ∀ {ds ys} → All WFD ds → DS ds ys → ∃[ r ] (ParsesDecls (ys ++ TEOF ∷ []) ds r × Trailing r)
-ds-parses [] (ds-end {k}) = TEOF ∷ [] , decls-stop (skip k (TEOF ∷ []) (λ ())) (λ ()) , trail-eof trail-end
+ds-parses [] (ds-end {k}) = TEOF ∷ [] , decls-stop (skip k (TEOF ∷ []) (λ ())) (λ ()) , trail-eof
 ds-parses (w ∷ ws) (ds-cons {d} {ds} {ys} {k} {tv} {j} rest) with ds-parses ws rest
 ... | r , p , tr =
   r ,

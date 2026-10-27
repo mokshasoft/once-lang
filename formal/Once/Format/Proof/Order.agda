@@ -35,7 +35,7 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.Spec.Surface.Lexing using (Token; TWord; TNewline; TEOF)
 open import Once.Spec.Surface.Syntax using (Decl; Module; mkModule)
-open import Once.Spec.Surface.Grammar using (Trailing; trail-end; trail-nl; trail-eof)
+open import Once.Spec.Surface.Grammar using (Trailing; trail-nl; trail-eof)
 open import Once.Format.Doc using (toks)
 open import Once.Format.Print using (pdecl)
 open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok)
@@ -156,9 +156,8 @@ private
   nls-noA (refl ∷ ps) = refl ∷ nls-noA ps
 
   trail-noA : ∀ {ts} → Trailing ts → NoA ts
-  trail-noA trail-end    = []
-  trail-noA (trail-nl t)  = refl ∷ trail-noA t
-  trail-noA (trail-eof t) = refl ∷ trail-noA t
+  trail-noA (trail-nl t) = refl ∷ trail-noA t
+  trail-noA trail-eof    = refl ∷ []
 
   -- where an element stands in a concatenation
   split : ∀ {A : Set} (xs ys pre : List A) y rest → xs ++ ys ≡ pre ++ y ∷ rest

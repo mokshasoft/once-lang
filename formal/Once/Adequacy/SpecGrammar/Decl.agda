@@ -20,7 +20,8 @@
 
 module Once.Adequacy.SpecGrammar.Decl where
 
-open import Data.Bool using (true; false)
+open import Data.Bool using (true; false; _∨_)
+open import Data.Bool.Properties using (∨-zeroʳ)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; map; reverse)
 open import Data.Maybe using (just; nothing)
@@ -39,7 +40,7 @@ open import Once.Spec.Surface.Grammar as G
          op-close; op-char; op-sig; op-def; fundef; params-eq; params-cons; params-stop; params-none;
          path-cons; path-dotstop; path-end; import-as; import-plain; alias-eq; alias-param;
          decl-import; decl-alias; decl-signature; decl-typesig; decl-fundef; decl-op;
-         SkipNewlines; skip-nl; skip-done; decls-stop; decls-cons; Trailing; trail-end; trail-nl; trail-eof; wrapLams)
+         SkipNewlines; skip-nl; skip-done; decls-stop; decls-cons; Trailing; trail-nl; trail-eof; wrapLams)
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module.Core using (wordHead)
@@ -66,7 +67,8 @@ import Once.Parser.Module.OpName
 import Once.Parser.TypeRelation
 import Once.Parser.ExprRelation
 import Once.Parser.Generic.PolyInst
-open import Once.Adequacy.SpecLexing using (toNew; toOld; forget)
+open import Once.Adequacy.SpecLexing using (toNew; toOld; forget; isEOF; ended)
+import Once.Adequacy.SpecGrammar.Suffix as Suf
 open import Once.Adequacy.SpecGrammar.Tokens using (step; peel; peels; []; _∷_)
 open import Once.Adequacy.SpecGrammar.DeclHeads
 open import Once.Adequacy.SpecGrammar.ExprHeads using (StrHead; str-head)
@@ -327,9 +329,8 @@ skip-not-nl (skip-done n) = n
 
 private
   trail-nodecl : ∀ {ts d r} → Trailing ts → ¬ Starts ts TNewline → ¬ G.ParsesDecl ts d r
-  trail-nodecl trail-end _ ()
   trail-nodecl (trail-nl _) n _ = n starts
-  trail-nodecl (trail-eof _) _ ()
+  trail-nodecl trail-eof _ ()
 
   skip-never-nothing : ∀ toks → skipNewlines toks ≡ nothing → ⊥
   skip-never-nothing toks e = nothing≢ (trans (sym e) (proj₂ (proj₂ (skip-total toks))))
@@ -588,7 +589,19 @@ decls← (decls-cons sk d ds) tr toks e = dc₁ (skip← sk toks e)
 
 -- The compiler's parse of a text is the Spec's.
 parses→ : ∀ {text m} → LP.ParsesText text m → G.Parses text m
-parses→ (toks , rest , lx , dd , at) = F toks , F rest , toNew lx , decls→ dd at , trail→ rest at
+parses→ (toks , rest , lx , dd , at) = F toks , F rest , toNew lx (ended-⊒ (Suf.decls ds) (trail-ended tr)) , ds , tr
+  where
+    ds = decls→ dd at
+    tr = trail→ rest at
+
+    -- what the parse leaves ends the text, so the tokens it read do too
+    ended-⊒ : ∀ {a b} → a Suf.⊒ b → ended b ≡ true → ended a ≡ true
+    ended-⊒ Suf.⊒-refl         e = e
+    ended-⊒ (Suf.⊒-step {t} p) e = trans (cong (isEOF t ∨_) (ended-⊒ p e)) (∨-zeroʳ (isEOF t))
+
+    trail-ended : ∀ {r} → Trailing r → ended r ≡ true
+    trail-ended (trail-nl t) = trail-ended t
+    trail-ended trail-eof    = refl
 
 -- A text the Spec parses is one the compiler parses, into the same module.
 parses← : ∀ {text m} → G.Parses text m → LP.ParsesText text m
