@@ -19552,3 +19552,34 @@ Checked before starting it. An unresolved label halts the call (`do-call-at noth
 `find-thunk … ≡ just j` moved into a premise, `IRObsCorrectF apply`/`Out` become false on a fabricated
 closure. And D217's one-cell-two-denotations refutes the weakened hypothesis anyway. The only repair is
 plan 0.93's S1–S6, which needs the callee-frame fact that plan 0.124 supplies.
+
+## D341 — THE PLANS AROUND CALLS AND MEMORY ARE RESHUFFLED (2026-10-27)
+
+**Relates**: D340 (`BlockRunsT` is empty), D213/D217/D218, D159 (relocatable units), plans 0.88, 0.89, 0.93,
+0.123, 0.124. Done at the user's request, after the analysis that produced D340.
+
+### Decision
+* **Plan 0.93 is retired into plan 0.125, "calls are proved, not assumed".** Its design (the machine relation
+  as a function on types, `MeaningRelation` as template, plan 0.93 §2–§4), its S0 findings, its §11 `Str`/
+  `Buffer` invariant and its §12 clause order are carried over. The relation spike (`RelSpike.agda`, 8 of 13
+  clauses) was deleted at the island pass (`318e29b37`); 0.125 S0 restores it from `318e29b37^`. Dropped: §10
+  (a dead end, D340 addendum) and §13's `in-ν` surface exposure (its two patches were deleted in cb347013e; it
+  would restart from nothing and is off the critical path).
+* **`cata-correct` moves from plan 0.88 to plan 0.125.** It is a call: the algebra runs as a called block. The
+  2026-10-26 M0 write-up is 0.125 §5. 0.88 keeps `obs-correct-sigop-rest`, plus `obs-correct-In` until 0.125
+  S3, and takes 0.93 §11's owed item (split `obs-correct-sigop-rest` by reason).
+* **Plan 0.124 is frames only**: the `shift-≺` law, the three arches, their correspondences. The block-call
+  lemma it drafted is 0.125 S2.
+* **Plan 0.123 is split.** Part A stays (running out is the observable end `exhausted`), and gains Part C,
+  the room-check design settled with the user: coarse per-block checks as the baseline, static stack depth
+  where provable as a later optimisation, guard pages rejected. Part B (reclaiming allocators, which turns the
+  six "a server never ends" tests green) is plan 0.126.
+* **Plan 0.89 is kept.** Relocatable units are a valid property (D159, the user's call). The emitter and
+  `link` deliver it; the proofs hold for every placement through `SpanAt`. Its C1 (block-map inclusion) is
+  done inside plan 0.125, whose new relation should not be built on `SpanAt`; Phase B (the machine runs units)
+  waits for a do-or-drop decision.
+
+### Order
+Proof track: 0.124, then 0.125, which closes `cata-correct` and replaces the empty `BlockRunsHyp` ×3. Memory
+track, in parallel: 0.123 A+C, then 0.126. The tracks meet at 0.124's correspondence step, which uses whichever
+room fact exists then.

@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (28 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (29 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -10,14 +10,14 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | Plan | State | What remains |
 |---|---|---|
 | 0.11 parameterized trusted base | A done (D302) | B `ArchModel`, C world/resources, D models, E `--safe` cone, F one concrete instance |
-| 0.93 relation, not datatype | S3 parked; spike deleted at the island pass (`318e29b37`) | S3–S6: replace `BlockRunsHyp` ×3, which is EMPTY (D340); §10 is a dead end |
-| 0.124 unbounded abstract stack | draft (2026-10-27) | S0 spike, frame laws, three arches, the shared block-call lemma; unblocks 0.88 `cata-correct` and 0.93's `curry` |
-| 0.88 discharge obs-correct | open | `cata-correct`, `obs-correct-sigop-rest` (structured codomains), `obs-correct-In` |
+| 0.125 calls proved, not assumed | open (2026-10-27) | S0 restore the relation spike, S1 restate, S2 block-call lemma, S3 clauses (incl. `cata-correct`), S4 layout, S5 delete `BlockRuns`/`BlockRunsHyp` ×3 (EMPTY, D340) |
+| 0.124 unbounded abstract stack | draft (2026-10-27) | S0 spike, the `shift-≺` frame law, three arches and their correspondences; unblocks 0.125 S2 |
+| 0.88 discharge obs-correct | open | `obs-correct-sigop-rest` (structured codomains; split it by reason), `obs-correct-In` until 0.125 S3; `cata-correct` moved to 0.125 |
 | 0.62 shape correctness | M1/M2 done | M2b, M3: `emitted-shape-check`, `run-meets` (two of `RunWF` ×7) |
 | 0.67 wire arith proofs | route obsolete | owns `arith-sigop-contract` ×3; `ev`/`step-budget` definitions |
 | 0.110 start state assumes less | not started | boot registers/flags |
 | 0.111 interpretation ABI in the Spec | not started | the calling-convention obligation; 0.113's A3 runtime test |
-| 0.89 relocatable compilation units | mostly done | B step 4 (deferred), C (may fold into 0.93), F (optional), closing entry |
+| 0.89 relocatable compilation units | property delivered at the emitter and link; kept | C1 done inside 0.125; B (the machine runs units, ~1700 sites) do-or-drop decision; F optional |
 
 ## The Spec
 
@@ -35,9 +35,10 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 
 | Plan | State | What remains |
 |---|---|---|
-| 0.86 allocation is mechanical | open | the machine half of step D, B′, C, `Allocator` rename (F moved to 0.123) |
+| 0.86 allocation is mechanical | open | the machine half of step D, B′, C, `Allocator` rename (F moved to 0.126) |
 | 0.87 stack-resident I/O | not started | re-prove the correspondence with stack pointers |
-| 0.123 memory runs out observably | after the merge | A: out of memory is a Spec end + the Host's `exhaust` (removes `HeapRoom`/`StackRoom`/`CallRoom`); B: wire the proven allocators, `free`, reclaim per loop round, leak-freedom (was 0.35 and 0.86 F) |
+| 0.123 memory runs out observably | after the merge | A: out of memory is a Spec end + the Host's `exhaust` (removes `HeapRoom`/`StackRoom`/`CallRoom`); C: coarse per-block room checks, static depth later, guard pages rejected |
+| 0.126 allocators reclaim | after 0.123 | wire the proven allocators, `free`, reclaim per loop round, leak-freedom; turns the six "a server never ends" tests green (was 0.123 B) |
 | 0.39 trace-correct optimizer | open | restate over traces, discharge `opt-trace` |
 | 0.64 proof-island audit | open | group O (the optimizer chain; overlaps 0.39) and verdicts |
 | 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
