@@ -525,7 +525,7 @@ private
   settle-inv (walker k h′ ln hs b t) (inv _ _ q) h = settle-quiet k _ t (promote-blank hs h) q
 
   stepTok-inv : ∀ σ x b → InvW σ → InvW (stepTok σ x b)
-  stepTok-inv (walker k h′ ln hs b t) x true (inv nt h q) = lineEnd-inv true (walker k false ln hs b t) (inv nt h q)
+  stepTok-inv σ x true i = lineEnd-inv true σ i
   stepTok-inv (walker k h′ ln hs b t) x false (inv nt h q) =
     inv nt-code [] (settle-quiet k _ t (promote-blank _ (pending-blank ln _ nt (blankBefore-blank b hs h))) q)
 
