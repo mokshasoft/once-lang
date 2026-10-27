@@ -175,13 +175,13 @@ pending (line-text cs) hs = hs ++ map (λ c → held-comment c false) cs
 pending line-empty    hs = hs
 pending line-code     hs = hs
 
-stepTok : W → Token → Bool → W
-stepTok σ x true = lineEnd true σ
-stepTok (walker k h ln hs b t) x false = next (settle (walker k h ln (pending ln (blankBefore b hs)) b t))
+-- A token: whether it is an anchor, whether it ends a line.
+stepTok : W → Bool → Bool → W
+stepTok σ a true = lineEnd true σ
+stepTok (walker k h ln hs b t) a false = next (settle (walker k h ln (pending ln (blankBefore b hs)) b t))
   where
     next : W → W
-    next (walker k′ h′ _ _ _ t′) =
-      walker (if isAnchor x then suc k′ else k′) (h′ ∨ isAnchor x) line-code [] 0 t′
+    next (walker k′ h′ _ _ _ t′) = walker (if a then suc k′ else k′) (h′ ∨ a) line-code [] 0 t′
 
 -- A comment after code ends the line of the last anchor, when that anchor is
 -- on its line; else it stands before the next anchor, as one on a line of its
@@ -196,7 +196,7 @@ stepComment (walker k h line-empty hs b t) c = walker k h (line-text (c ∷ []))
 stepComment (walker k h (line-text cs) hs b t) c = walker k h (line-text (cs ++ (c ∷ []))) hs b t
 
 step : W → Item → W
-step σ (tok x)     = stepTok σ x (isLineEnd x)
+step σ (tok x)     = stepTok σ (isAnchor x) (isLineEnd x)
 step σ cont        = lineEnd false σ
 step σ (comment c) = stepComment σ (trimEnd c)
 

@@ -486,13 +486,13 @@ private
   settle-inv : ∀ σ → InvW σ → All HB (W.held σ) → QuietT (W.acc (settle σ))
   settle-inv (walker k h′ ln hs b t) (inv _ _ q) h = settle-quiet k _ t (promote-blank hs h) q
 
-  stepTok-inv : ∀ σ x b → InvW σ → InvW (stepTok σ x b)
-  stepTok-inv σ x true i = lineEnd-inv true σ i
-  stepTok-inv (walker k h′ ln hs b t) x false (inv nt h q) =
+  stepTok-inv : ∀ σ a b → InvW σ → InvW (stepTok σ a b)
+  stepTok-inv σ a true i = lineEnd-inv true σ i
+  stepTok-inv (walker k h′ ln hs b t) a false (inv nt h q) =
     inv nt-code [] (settle-quiet k _ t (promote-blank _ (pending-blank ln _ nt (blankBefore-blank b hs h))) q)
 
   step-inv : ∀ σ i → NoComment i → InvW σ → InvW (step σ i)
-  step-inv σ (tok x) nc-tok  iv = stepTok-inv σ x (isLineEnd x) iv
+  step-inv σ (tok x) nc-tok  iv = stepTok-inv σ (isAnchor x) (isLineEnd x) iv
   step-inv σ cont    nc-cont iv = lineEnd-inv false σ iv
 
   walk-inv : ∀ σ is → All NoComment is → InvW σ → InvW (walkItems σ is)

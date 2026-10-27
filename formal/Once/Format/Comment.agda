@@ -146,11 +146,14 @@ commentLinesDoc : List String → Doc
 commentRun : List String → Doc
 commentRun cs = commentLinesDoc (concatMap commentLines cs)
 
+-- | A comment line: prose filled to the width, the rest as written.
+lineDoc : CLine → Doc
+lineDoc (prose ws)   = para ws
+lineDoc (verbatim v) = cmt v
+
 -- | Line comments, each on a line of its own.
 commentLinesDoc []       = empty
-commentLinesDoc (c ∷ cs) with classify c
-... | prose ws   = para ws <> newline <> commentLinesDoc cs
-... | verbatim v = cmt v <> newline <> commentLinesDoc cs
+commentLinesDoc (c ∷ cs) = lineDoc (classify c) <> newline <> commentLinesDoc cs
 
 -- | An end-of-line comment, `-- text` (not re-wrapped); a block comment's
 -- lines joined. One whose `--` a blank or a dash follows is kept as written,
