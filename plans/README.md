@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (29 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (30 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -44,6 +44,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.64 proof-island audit | open | group O (the optimizer chain; overlaps 0.39) and verdicts |
 | 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
 | 0.56 register-budget arith | parked | steps A–E |
+| 0.127 Once runs on seL4 | not started | A: a seL4 Host (entry, stack, `once_leave`) and a Once root task under QEMU; B: rootserver + echo; C: other arches |
 | 0.100 AVR port | P0 done | phase A onward |
 
 ## Hygiene
