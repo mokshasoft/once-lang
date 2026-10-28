@@ -55,4 +55,5 @@ slot-of (instr-case-on-tag _ _) = nothing
 slot-of (instr-alloc-heap _)   = nothing
 slot-of (instr-loop _)         = nothing
 slot-of (instr-reg-op _)       = nothing
+slot-of (instr-free-heap _)    = nothing
 slot-of (instr-ctrl _)         = nothing

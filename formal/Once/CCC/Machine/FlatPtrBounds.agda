@@ -436,6 +436,7 @@ pb-abstract (lea-indexed slot) ls alloc () am wfS wf
 -- the frame ops and the loop are unemittable — `⊥` in `FrameFreeI`
 pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
 pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
+pb-abstract (instr-free-heap n)     ls alloc () am wfS wf
 pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
 pb-abstract instr-pop-frame         ls alloc () am wfS wf
 pb-abstract (instr-loop body)       ls alloc () am wfS wf
@@ -572,6 +573,7 @@ flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
   pb-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
+flat-ptr-bounds (instr-free-heap n)     prog fs () am wfS wf
 flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf
 flat-ptr-bounds instr-pop-frame         prog fs () am wfS wf
 flat-ptr-bounds (instr-loop body)       prog fs () am wfS wf

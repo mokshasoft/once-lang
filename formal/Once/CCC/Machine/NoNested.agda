@@ -89,6 +89,7 @@ no-nested-of-frame-free instr-save-closure-reg  _ = tt
 no-nested-of-frame-free (instr-load-tag-lit _)  _ = tt
 no-nested-of-frame-free (instr-alloc-heap _)    _ = tt
 no-nested-of-frame-free (instr-reg-op _)        _ = tt
+no-nested-of-frame-free (instr-free-heap _)     ()
 no-nested-of-frame-free (instr-ctrl _)          _ = tt
 
 no-nested-of-all : ∀ (t : AbstractTrace) → All ImageI t → NoNested t
@@ -128,6 +129,7 @@ NoNestedI? instr-save-closure-reg  = yes tt
 NoNestedI? (instr-load-tag-lit _)  = yes tt
 NoNestedI? (instr-alloc-heap _)    = yes tt
 NoNestedI? (instr-reg-op _)        = yes tt
+NoNestedI? (instr-free-heap _)     = yes tt
 NoNestedI? (instr-ctrl _)          = yes tt
 
 NoNested? : (t : AbstractTrace) → Dec (NoNested t)

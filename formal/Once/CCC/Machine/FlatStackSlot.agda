@@ -121,6 +121,7 @@ flat-same-frames (instr-ctrl (c-branch-tag-zero m))     prog fs ff =
   sf-branch (tag-zf (flat-read-tag (floc fs))) m prog fs
 flat-same-frames (instr-alloc-stack n)   prog fs ()
 flat-same-frames (instr-dealloc-stack n) prog fs ()
+flat-same-frames (instr-free-heap n) prog fs ()
 flat-same-frames (instr-push-frame cap)  prog fs ()
 flat-same-frames instr-pop-frame         prog fs ()
 flat-same-frames mov-to-output            prog fs ff = mkSameFrames refl refl refl

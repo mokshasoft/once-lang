@@ -228,7 +228,7 @@ d_exec'45'abstract_194 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'abstract_194 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3210
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3212
       (coe v0)
 -- Once.CCC.Machine.FrameFree._._.exec-load-from-slot-with-value
 d_exec'45'load'45'from'45'slot'45'with'45'value_204 ::
@@ -246,7 +246,7 @@ du_exec'45'load'45'from'45'slot'45'with'45'value_204 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'load'45'from'45'slot'45'with'45'value_204
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2618
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2620
 -- Once.CCC.Machine.FrameFree._._.exec-restore-input-with-value
 d_exec'45'restore'45'input'45'with'45'value_214 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -263,7 +263,7 @@ du_exec'45'restore'45'input'45'with'45'value_214 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'restore'45'input'45'with'45'value_214
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2630
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2632
 -- Once.CCC.Machine.FrameFree._._.exec-trace
 d_exec'45'trace_224 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -273,7 +273,7 @@ d_exec'45'trace_224 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'trace_224 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_3212 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_3214 (coe v0)
 -- Once.CCC.Machine.FrameFree._.load-from-slot-alloc
 d_load'45'from'45'slot'45'alloc_294 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -299,73 +299,73 @@ d_exec'45'abstract'45'preserves'45'next'45'slot_326 ::
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_exec'45'abstract'45'preserves'45'next'45'slot_326 = erased
 -- Once.CCC.Machine.FrameFree._.exec-trace-preserves-next-slot
-d_exec'45'trace'45'preserves'45'next'45'slot_464 ::
+d_exec'45'trace'45'preserves'45'next'45'slot_468 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'trace'45'preserves'45'next'45'slot_464 = erased
+d_exec'45'trace'45'preserves'45'next'45'slot_468 = erased
 -- Once.CCC.Machine.FrameFree._.load-from-slot-state
-d_load'45'from'45'slot'45'state_518 ::
+d_load'45'from'45'slot'45'state_522 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_load'45'from'45'slot'45'state_518 = erased
+d_load'45'from'45'slot'45'state_522 = erased
 -- Once.CCC.Machine.FrameFree._.restore-input-state
-d_restore'45'input'45'state_540 ::
+d_restore'45'input'45'state_544 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_restore'45'input'45'state_540 = erased
+d_restore'45'input'45'state_544 = erased
 -- Once.CCC.Machine.FrameFree._.load-from-slot-alloc-full
-d_load'45'from'45'slot'45'alloc'45'full_562 ::
+d_load'45'from'45'slot'45'alloc'45'full_566 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_load'45'from'45'slot'45'alloc'45'full_562 = erased
+d_load'45'from'45'slot'45'alloc'45'full_566 = erased
 -- Once.CCC.Machine.FrameFree._.restore-input-alloc-full
-d_restore'45'input'45'alloc'45'full_584 ::
+d_restore'45'input'45'alloc'45'full_588 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_restore'45'input'45'alloc'45'full_584 = erased
+d_restore'45'input'45'alloc'45'full_588 = erased
 -- Once.CCC.Machine.FrameFree._.exec-abstract-state-nsi
-d_exec'45'abstract'45'state'45'nsi_606 ::
+d_exec'45'abstract'45'state'45'nsi_610 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   Integer ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'abstract'45'state'45'nsi_606 = erased
+d_exec'45'abstract'45'state'45'nsi_610 = erased
 -- Once.CCC.Machine.FrameFree._.exec-abstract-alloc-nsi
-d_exec'45'abstract'45'alloc'45'nsi_808 ::
+d_exec'45'abstract'45'alloc'45'nsi_818 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   Integer ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'abstract'45'alloc'45'nsi_808 = erased
+d_exec'45'abstract'45'alloc'45'nsi_818 = erased
 -- Once.CCC.Machine.FrameFree._.exec-trace-nsi
-d_exec'45'trace'45'nsi_1010 ::
+d_exec'45'trace'45'nsi_1026 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252] ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_408 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_504 ->
   Integer -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_exec'45'trace'45'nsi_1010 v0 v1 v2 v3 v4 v5
+d_exec'45'trace'45'nsi_1026 v0 v1 v2 v3 v4 v5
   = case coe v1 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased
       (:) v6 v7
@@ -377,11 +377,11 @@ d_exec'45'trace'45'nsi_1010 v0 v1 v2 v3 v4 v5
                     (if coe v10
                        then coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased
                        else coe
-                              d_exec'45'trace'45'nsi_1010 (coe v0) (coe v7)
+                              d_exec'45'trace'45'nsi_1026 (coe v0) (coe v7)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3210
+                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3212
                                     (coe v0) (coe v6) (coe v2)
                                     (coe
                                        MAlonzo.Code.Once.CCC.Machine.SMCore.C_mkAllocState_608
@@ -404,7 +404,7 @@ d_exec'45'trace'45'nsi_1010 v0 v1 v2 v3 v4 v5
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3210
+                                    MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_3212
                                     (coe v0) (coe v6) (coe v2) (coe v3)))
                               (coe v4) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError

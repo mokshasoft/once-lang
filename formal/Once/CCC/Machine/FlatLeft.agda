@@ -151,6 +151,7 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (instr-load-tag-lit n) s alloc = refl
   abs-left (instr-alloc-heap n) s alloc = refl
   abs-left (instr-reg-op op) s alloc = refl
+  abs-left (instr-free-heap n) s alloc = refl
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -235,3 +236,4 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-alloc-heap n)     lf prog fs = exec-abstract-left (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-loop body)        lf prog fs = exec-abstract-left (instr-loop body) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-reg-op op)        lf prog fs = exec-abstract-left (instr-reg-op op) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (instr-free-heap n)      lf prog fs = exec-abstract-left (instr-free-heap n) lf (floc fs) (falloc fs)

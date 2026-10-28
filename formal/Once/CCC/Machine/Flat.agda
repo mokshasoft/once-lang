@@ -364,6 +364,7 @@ module FlatMachine {FS : FrameSemantics} where
   thunk-of?-sound (instr-load-tag-lit _)                 _ ()
   thunk-of?-sound (instr-alloc-heap _)                   _ ()
   thunk-of?-sound (instr-reg-op _)                       _ ()
+  thunk-of?-sound (instr-free-heap _)                    _ ()
   thunk-of?-sound (instr-ctrl (c-call-fn _))            _ ()
 
   entry-of?-sound : ∀ (x : AbstractInstr) (m : EntryId) → entry-of? x ≡ just m
@@ -404,6 +405,7 @@ module FlatMachine {FS : FrameSemantics} where
   entry-of?-sound (instr-load-tag-lit _)                 _ ()
   entry-of?-sound (instr-alloc-heap _)                   _ ()
   entry-of?-sound (instr-reg-op _)                       _ ()
+  entry-of?-sound (instr-free-heap _)                    _ ()
   entry-of?-sound (instr-ctrl (c-call-fn _))            _ ()
 
   ft-go-sound : ∀ (prog : AbstractTrace) (target : EntryId) (acc j : ℕ)
@@ -498,6 +500,7 @@ module FlatMachine {FS : FrameSemantics} where
   label-of?-sound (instr-load-tag-lit _)                 _ ()
   label-of?-sound (instr-alloc-heap _)                   _ ()
   label-of?-sound (instr-reg-op _)                       _ ()
+  label-of?-sound (instr-free-heap _)                    _ ()
 
   fl-go-sound : ∀ (prog : AbstractTrace) (target : LabelId) (acc j : ℕ)
               → fl-go prog target acc ≡ just j
@@ -1224,6 +1227,7 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-loop k)                         t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-loop k) fs fs' sh
   shifted-instr d (instr-alloc-heap k)                   t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-alloc-heap k) fs fs' sh
   shifted-instr d (instr-reg-op k)                       t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-reg-op k) fs fs' sh
+  shifted-instr d (instr-free-heap k)                    t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-free-heap k) fs fs' sh
   shifted-instr d (instr-ctrl (c-label _))               t₁ t₂ fs fs' _  _  sh = shifted-label d fs fs' sh
   shifted-instr d (instr-ctrl (c-entry _ b))             t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
   shifted-instr d (instr-ctrl (c-start b))               t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
@@ -1279,6 +1283,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (instr-loop _)                         t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-alloc-heap _)                   t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-reg-op _)                       t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-free-heap _)                    t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-label _))               t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-entry _ _))             t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-start _))               t t' fs _  = refl
@@ -1362,6 +1367,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (instr-loop _)             t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-alloc-heap _)       t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-reg-op _)           t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-free-heap _)        t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-label _))   t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-entry _ _)) t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-start _))   t₁ t₂ fs _  _  = refl
@@ -1477,6 +1483,7 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (instr-loop _)                         = fv-pres (λ _ _ → refl)
   flinkView (instr-sigop _)                        = fv-pres (λ _ _ → refl)
   flinkView (instr-reg-op _)                       = fv-pres (λ _ _ → refl)
+  flinkView (instr-free-heap _)                    = fv-pres (λ _ _ → refl)
   flinkView (instr-load-const _ _)                 = fv-pres (λ _ _ → refl)
   flinkView (instr-case-on-tag _ _)                = fv-pres (λ _ _ → refl)
 

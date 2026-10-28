@@ -127,6 +127,7 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-alloc-heap n)     _ s alloc = refl
   exec-abstract-log (instr-loop body)        () s alloc
   exec-abstract-log (instr-reg-op op)        _ s alloc = refl
+  exec-abstract-log (instr-free-heap n)      _ s alloc = refl
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 
   -- The control helpers of the flat machine, by their own cases.
@@ -208,3 +209,4 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (instr-alloc-heap n)     lf prog fs = exec-abstract-log (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-loop body)        () prog fs
   flat-exec-instr-log (instr-reg-op op)        lf prog fs = exec-abstract-log (instr-reg-op op) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (instr-free-heap n)      lf prog fs = exec-abstract-log (instr-free-heap n) lf (floc fs) (falloc fs)

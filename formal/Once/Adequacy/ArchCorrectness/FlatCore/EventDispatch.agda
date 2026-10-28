@@ -219,6 +219,7 @@ module Dispatch (sup : Supply) where
   ctrl-le (restore-input _) = z≤n
   ctrl-le (instr-alloc-stack _) = z≤n
   ctrl-le (instr-dealloc-stack _) = z≤n
+  ctrl-le (instr-free-heap _) = z≤n
   ctrl-le (instr-reclaim-to _) = z≤n
   ctrl-le (instr-push-frame _) = z≤n
   ctrl-le instr-pop-frame = z≤n
@@ -1176,6 +1177,8 @@ module Dispatch (sup : Supply) where
            (lo-fits prog fs s (inv-run wf) cc)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) ftq)
+    events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc wf h ftq =
+      ⊥-elim (frame-op-absurd prog fs (instr-free-heap k) (run-emitted (inv-run wf)) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (run-emitted (inv-run wf)) ftq)
     events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =

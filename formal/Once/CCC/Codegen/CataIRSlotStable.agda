@@ -46,7 +46,7 @@ open import Once.CCC.Label using (ℓ)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
-open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; instr-ctrl; lea-indexed)
+open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; instr-free-heap; instr-ctrl; lea-indexed)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem)
@@ -138,6 +138,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   stable?-sound (instr-load-tag-lit _)  _ = tt
   stable?-sound (instr-alloc-heap _)    _ = tt
   stable?-sound (instr-reg-op _)        _ = tt
+  stable?-sound (instr-free-heap _)     _ = tt
   stable?-sound (instr-ctrl _)          _ = tt
   stable?-sound (lea-indexed _)         _ = tt
   all-stable?-sound []       _  = []ᴬ
@@ -196,6 +197,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   stable?-complete (instr-load-tag-lit _)  _ = refl
   stable?-complete (instr-alloc-heap _)    _ = refl
   stable?-complete (instr-reg-op _)        _ = refl
+  stable?-complete (instr-free-heap _)     _ = refl
   stable?-complete (instr-ctrl _)          _ = refl
   stable?-complete (lea-indexed _)         _ = refl
   all-stable?-complete []       _          = refl

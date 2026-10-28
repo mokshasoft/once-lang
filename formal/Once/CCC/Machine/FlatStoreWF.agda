@@ -491,6 +491,7 @@ mutual
   -- `stackSlot` mirror is gone), so these are the identity on the store.
   wf-abstract (instr-alloc-stack n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-dealloc-stack n) ls alloc wf = wf , ≤-refl
+  wf-abstract (instr-free-heap n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
   wf-abstract instr-pop-frame ls alloc wf = wf , ≤-refl
@@ -726,6 +727,7 @@ cl-step (instr-case-on-tag f g)  prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step (instr-alloc-heap k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-loop body)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-loop body) (floc fs) (falloc fs) wf)) b
 cl-step (instr-reg-op op)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reg-op op) (floc fs) (falloc fs) wf)) b
+cl-step (instr-free-heap n)      prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)) b
 
 -- ONE flat step preserves store well-formedness. Control flow only moves the
 -- pc (or halts); everything else is `exec-abstract`, i.e. `wf-abstract`.
@@ -785,3 +787,4 @@ flat-wf-step (instr-case-on-tag f g)  prog fs wf = proj₁ (wf-abstract (instr-c
 flat-wf-step (instr-alloc-heap k)     prog fs wf = proj₁ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-loop body)        prog fs wf = proj₁ (wf-abstract (instr-loop body) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-reg-op op)        prog fs wf = proj₁ (wf-abstract (instr-reg-op op) (floc fs) (falloc fs) wf)
+flat-wf-step (instr-free-heap n)      prog fs wf = proj₁ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)
