@@ -62,7 +62,8 @@ open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using () renaming (⟦_⟧F to ⟦_⟧F′)
 open import Once.Semantics.Machine using (coerce-ν-out; coerce-ν-in)
 open import Once.Optimize
-open import Once.Adequacy.OptimizeQuiet using (Now; now; value; is; quiet-now)
+open import Once.Adequacy.OptimizeQuiet using (Now; now; quiet-now)
+open Once.Adequacy.OptimizeQuiet.Now using (value; is)
 
 open T∞ using (force)
 open TreeEq∞ using (force≈)

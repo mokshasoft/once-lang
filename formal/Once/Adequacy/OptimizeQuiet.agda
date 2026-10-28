@@ -42,7 +42,7 @@ record Now {X : Set} (m : T∞ X) : Set where
   field
     value : X
     is    : force m ≡ ret (inj₁ value)
-open Now public
+open Now
 
 now-ret : ∀ {X} (x : X) → Now (return∞ x)
 now-ret x = now x refl
