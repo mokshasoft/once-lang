@@ -20,3 +20,29 @@ once_leave:
     ecall
     # Does not return
 .size once_leave, .-once_leave
+
+# ----------------------------------------------------------------------
+# once_exhausted — the run ran out of memory (D347). The compiler calls it
+# when a room check fails; it never returns. Its contract: the run ends
+# `exhausted`. On Linux the process sends itself SIGABRT, as C's `abort()`
+# does: a parent sees death by a signal, distinct from every exit status
+# (which `exit@S` can all produce). If SIGABRT is blocked or ignored, the
+# run still ends: exit status 134 (128 + SIGABRT, a shell's reading).
+# ----------------------------------------------------------------------
+.equ SYS_getpid, 172
+.equ SYS_kill, 129
+.equ SIGABRT, 6
+
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    li      a7, SYS_getpid
+    ecall                           # a0 = pid
+    li      a1, SIGABRT
+    li      a7, SYS_kill
+    ecall
+    li      a7, SYS_exit_group
+    li      a0, 134
+    ecall
+    # Does not return
+.size once_exhausted, .-once_exhausted
