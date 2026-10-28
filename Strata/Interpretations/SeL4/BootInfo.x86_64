@@ -2,189 +2,174 @@
 # seL4 BootInfo Primitives - x86_64 Implementation
 # ======================================================================
 #
-# The rootserver receives BootInfo at a known location.
-# On x86_64, the BootInfo pointer is typically at a fixed virtual address.
+# The kernel passes the BootInfo pointer to the root task in `rdi`; the
+# seL4 Host saves it at entry (`once_sel4_bootinfo`, Host.x86_64).
+#
+# Offsets are seL4_BootInfo's (libsel4 `bootinfo_types.h`, non-MCS,
+# 64-bit words), checked against the pinned kernel (plan 0.127).
+#
+# SigOp ABI (as the compiler calls it): the argument in rdi, the answer
+# in rax; a pair is a pointer to a 16-byte cell [fst, snd], wider tuples
+# nest to the left; an answer tuple is allocated at the heap pointer r15,
+# which is advanced. Every other register is preserved.
 #
 # ======================================================================
 
 .text
 .align 16
 
-#ifndef ONCE_SEL4_BOOTINFO_X86_64_DEFINED
-#define ONCE_SEL4_BOOTINFO_X86_64_DEFINED
+# seL4_BootInfo field offsets
+.equ BI_EXTRA_LEN,          0x00
+.equ BI_NODE_ID,            0x08
+.equ BI_NUM_NODES,          0x10
+.equ BI_NUM_IOPT_LEVELS,    0x18
+.equ BI_IPC_BUFFER,         0x20
+.equ BI_EMPTY,              0x28
+.equ BI_SHARED_FRAMES,      0x38
+.equ BI_USER_IMAGE_FRAMES,  0x48
+.equ BI_USER_IMAGE_PAGING,  0x58
+.equ BI_IO_SPACE_CAPS,      0x68
+.equ BI_EXTRA_BI_PAGES,     0x78
+.equ BI_INIT_CNODE_SIZE,    0x88
+.equ BI_INIT_DOMAIN,        0x90
+.equ BI_UNTYPED,            0x98
+.equ BI_UNTYPED_LIST,       0xA8
 
-# Known BootInfo location (platform-specific)
-.equ BOOTINFO_ADDR, 0x10000000
-
-# BootInfo structure offsets
-.equ BI_NODE_ID,            0x00
-.equ BI_NUM_NODES,          0x08
-.equ BI_NUM_IOPT_LEVELS,    0x10
-.equ BI_IPC_BUFFER,         0x18
-.equ BI_EMPTY,              0x20
-.equ BI_SHARED_FRAMES,      0x30
-.equ BI_USER_IMAGE_FRAMES,  0x40
-.equ BI_USER_IMAGE_PAGING,  0x50
-.equ BI_IO_SPACE_CAPS,      0x60
-.equ BI_EXTRA_BI_PAGES,     0x70
-.equ BI_INIT_CNODE_SIZE,    0x80
-.equ BI_INIT_DOMAIN,        0x88
-.equ BI_UNTYPED,            0x90
-.equ BI_UNTYPED_LIST,       0xA0
-
-.equ UNTYPED_DESC_SIZE, 16
+# seL4_UntypedDesc: paddr (word), sizeBits (byte), isDevice (byte), padding
+.equ UNTYPED_DESC_SIZE,     16
+.equ UD_PADDR,              0
+.equ UD_SIZE_BITS,          8
+.equ UD_IS_DEVICE,          9
 
 # ----------------------------------------------------------------------
-# getBootInfo - Get pointer to seL4_BootInfo
+# getBootInfo : Unit -> Int
 # ----------------------------------------------------------------------
-# Input: Unit (ignored)
-# Output: Int (pointer to BootInfo)
-
 .global getBootInfo
 .type getBootInfo, @function
 getBootInfo:
-    mov     $BOOTINFO_ADDR, %rax
+    movq    once_sel4_bootinfo(%rip), %rax
     ret
 .size getBootInfo, .-getBootInfo
 
 # ----------------------------------------------------------------------
-# getIPCBuffer - Get IPC buffer pointer
+# getIPCBuffer : Unit -> Int  (the root task's IPC buffer)
 # ----------------------------------------------------------------------
-# Input: Unit (ignored)
-# Output: Int (pointer to IPC buffer)
-
 .global getIPCBuffer
 .type getIPCBuffer, @function
 getIPCBuffer:
-    mov     $BOOTINFO_ADDR, %rax
-    mov     BI_IPC_BUFFER(%rax), %rax
+    movq    once_sel4_bootinfo(%rip), %rax
+    movq    BI_IPC_BUFFER(%rax), %rax
     ret
 .size getIPCBuffer, .-getIPCBuffer
 
 # ----------------------------------------------------------------------
-# bootinfo_untypedCount - Get number of untyped caps
+# bootinfo_emptyStart / bootinfo_emptyEnd : Int -> Int
 # ----------------------------------------------------------------------
-# Input: bootinfo pointer in rdi
-# Output: count
+.global bootinfo_emptyStart
+.type bootinfo_emptyStart, @function
+bootinfo_emptyStart:
+    movq    BI_EMPTY(%rdi), %rax
+    ret
+.size bootinfo_emptyStart, .-bootinfo_emptyStart
 
+.global bootinfo_emptyEnd
+.type bootinfo_emptyEnd, @function
+bootinfo_emptyEnd:
+    movq    (BI_EMPTY + 8)(%rdi), %rax
+    ret
+.size bootinfo_emptyEnd, .-bootinfo_emptyEnd
+
+# ----------------------------------------------------------------------
+# bootinfo_untypedCount : Int -> Int  (untyped.end - untyped.start)
+# ----------------------------------------------------------------------
 .global bootinfo_untypedCount
 .type bootinfo_untypedCount, @function
 bootinfo_untypedCount:
-    mov     BI_UNTYPED(%rdi), %rax      # start
-    mov     (BI_UNTYPED + 8)(%rdi), %rcx  # end
-    sub     %rax, %rcx
-    mov     %rcx, %rax
+    movq    (BI_UNTYPED + 8)(%rdi), %rax
+    subq    BI_UNTYPED(%rdi), %rax
     ret
 .size bootinfo_untypedCount, .-bootinfo_untypedCount
 
 # ----------------------------------------------------------------------
-# bootinfo_untypedStart - Get start of untyped caps range
+# bootinfo_untypedStart : Int -> Int
 # ----------------------------------------------------------------------
-# Input: bootinfo pointer in rdi
-# Output: first untyped cap slot
-
 .global bootinfo_untypedStart
 .type bootinfo_untypedStart, @function
 bootinfo_untypedStart:
-    mov     BI_UNTYPED(%rdi), %rax
+    movq    BI_UNTYPED(%rdi), %rax
     ret
 .size bootinfo_untypedStart, .-bootinfo_untypedStart
 
 # ----------------------------------------------------------------------
-# bootinfo_initThreadTCB - Get initial thread's TCB cap slot
+# bootinfo_initThreadTCB / CNode / VSpace : Int -> Int  (fixed slots)
 # ----------------------------------------------------------------------
-
 .global bootinfo_initThreadTCB
 .type bootinfo_initThreadTCB, @function
 bootinfo_initThreadTCB:
-    mov     $1, %eax
+    movq    $1, %rax
     ret
 .size bootinfo_initThreadTCB, .-bootinfo_initThreadTCB
-
-# ----------------------------------------------------------------------
-# bootinfo_initThreadCNode - Get initial thread's CNode cap slot
-# ----------------------------------------------------------------------
 
 .global bootinfo_initThreadCNode
 .type bootinfo_initThreadCNode, @function
 bootinfo_initThreadCNode:
-    mov     $2, %eax
+    movq    $2, %rax
     ret
 .size bootinfo_initThreadCNode, .-bootinfo_initThreadCNode
-
-# ----------------------------------------------------------------------
-# bootinfo_initThreadVSpace - Get initial thread's VSpace cap slot
-# ----------------------------------------------------------------------
 
 .global bootinfo_initThreadVSpace
 .type bootinfo_initThreadVSpace, @function
 bootinfo_initThreadVSpace:
-    mov     $3, %eax
+    movq    $3, %rax
     ret
 .size bootinfo_initThreadVSpace, .-bootinfo_initThreadVSpace
 
 # ----------------------------------------------------------------------
-# bootinfo_userImageFrames - Get number of user image frames
+# bootinfo_userImageFrames : Int -> Int  (end - start)
 # ----------------------------------------------------------------------
-
 .global bootinfo_userImageFrames
 .type bootinfo_userImageFrames, @function
 bootinfo_userImageFrames:
-    mov     BI_USER_IMAGE_FRAMES(%rdi), %rax
-    mov     (BI_USER_IMAGE_FRAMES + 8)(%rdi), %rcx
-    sub     %rax, %rcx
-    mov     %rcx, %rax
+    movq    (BI_USER_IMAGE_FRAMES + 8)(%rdi), %rax
+    subq    BI_USER_IMAGE_FRAMES(%rdi), %rax
     ret
 .size bootinfo_userImageFrames, .-bootinfo_userImageFrames
 
 # ----------------------------------------------------------------------
-# bootinfo_domainInfo - Get domain info pointer
+# bootinfo_domainInfo : Int -> Int  (initThreadDomain)
 # ----------------------------------------------------------------------
-
 .global bootinfo_domainInfo
 .type bootinfo_domainInfo, @function
 bootinfo_domainInfo:
-    mov     BI_INIT_DOMAIN(%rdi), %rax
+    movq    BI_INIT_DOMAIN(%rdi), %rax
     ret
 .size bootinfo_domainInfo, .-bootinfo_domainInfo
 
 # ----------------------------------------------------------------------
-# bootinfo_getUntyped - Get untyped descriptor
+# bootinfo_getUntyped : (Int * Int) -> (Int * Int * Int)
+#   (bootinfo, index) -> ((paddr, sizeBits), isDevice)
 # ----------------------------------------------------------------------
-# Input: (bootinfo, index) tuple in rdi
-# Output: (paddr, sizeBits, isDevice) triple
-
 .global bootinfo_getUntyped
 .type bootinfo_getUntyped, @function
 bootinfo_getUntyped:
-    push    %rbp
-    mov     %rsp, %rbp
-    push    %r12
-    push    %r13
-
-    # Unpack tuple
-    mov     (%rdi), %r12        # bootinfo
-    mov     8(%rdi), %r13       # index
-
-    # Calculate address: bootinfo + BI_UNTYPED_LIST + index * UNTYPED_DESC_SIZE
-    imul    $UNTYPED_DESC_SIZE, %r13, %rax
-    add     %r12, %rax
-    add     $BI_UNTYPED_LIST, %rax
-
-    # Read untyped descriptor
-    mov     (%rax), %rcx        # paddr
-    movzbl  9(%rax), %edx       # isDevice
-    movzbl  10(%rax), %esi      # sizeBits
-
-    # Return values
-    mov     %rcx, %rax          # paddr
-    mov     %esi, %ecx          # sizeBits
-    # rdx already has isDevice
-
-    pop     %r13
-    pop     %r12
-    pop     %rbp
+    pushq   %rcx
+    pushq   %rdx
+    movq    8(%rdi), %rcx               # index
+    shlq    $4, %rcx                    # * UNTYPED_DESC_SIZE
+    addq    (%rdi), %rcx                # + bootinfo
+    addq    $BI_UNTYPED_LIST, %rcx      # rcx = &untypedList[index]
+    movq    UD_PADDR(%rcx), %rax
+    movq    %rax, 0(%r15)               # inner = [paddr, sizeBits]
+    movzbq  UD_SIZE_BITS(%rcx), %rax
+    movq    %rax, 8(%r15)
+    movq    %r15, %rdx
+    addq    $16, %r15
+    movq    %rdx, 0(%r15)               # outer = [inner, isDevice]
+    movzbq  UD_IS_DEVICE(%rcx), %rax
+    movq    %rax, 8(%r15)
+    movq    %r15, %rax
+    addq    $16, %r15
+    popq    %rdx
+    popq    %rcx
     ret
 .size bootinfo_getUntyped, .-bootinfo_getUntyped
-
-#endif // ONCE_SEL4_BOOTINFO_X86_64_DEFINED

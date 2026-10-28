@@ -1,0 +1,145 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Root.once: the echo example's root task (program 0 of the image)
+--
+-- The kernel starts it with every capability. It finds untyped RAM in the
+-- bootinfo, makes two threads and an endpoint in the first empty slots,
+-- gives both threads its own CSpace and VSpace (no IPC buffer: their
+-- messages are one register word), and starts program 1 (the server) and
+-- program 2 (the client) on them with the endpoint's slot as their Int.
+-- Each step prints '0' + its seL4_Error, so a line of zeros is success.
+
+import I.SeL4.BootInfo as B
+import I.SeL4.Untyped as U
+import I.SeL4.TCB as T
+import I.SeL4.Program as P
+import I.SeL4.Debug as D
+
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+bit : Unit + Unit -> Int
+bit = case no yes
+
+bootinfo : Unit -> Int
+bootinfo _ = getBootInfo@B unit
+
+-- Untyped number i: ((paddr, sizeBits), isDevice)
+untyped : Int -> (Int * Int) * Int
+untyped i = bootinfo_getUntyped@B (bootinfo unit, i)
+
+-- RAM (not device memory) of at least 64 KiB
+usable : Int -> Unit + Unit
+usable i = bit (snd (untyped i) == 0) * bit (snd (fst (untyped i)) >= 16) == 1
+
+found : Int -> Unit -> Int + Void
+found i _ = inl (bootinfo_untypedStart@B (bootinfo unit) + i)
+
+more : Int -> Unit -> Void + Int
+more i _ = inr (i + 1)
+
+search : Int -> Int + Int
+search i = case (more i) (found i) (usable i)
+
+-- The slot of the first usable untyped
+findRAM : Eff Int Int
+findRAM = ana search
+
+zero : Unit -> Int
+zero _ = 0
+
+firstFree : Int -> Int * Int
+firstFree ut = (ut, bootinfo_emptyStart@B (bootinfo unit))
+
+-- (untyped, first empty slot): the server's TCB is in slot free, the
+-- client's in free + 1, the endpoint in free + 2
+setup : Eff Unit (Int * Int)
+setup = compose firstFree (compose findRAM zero)
+
+-- Print '0' + an seL4_Error
+digit : Int -> Int
+digit e = 48 + e
+
+check : Act Int Unit
+check = compose putChar@D digit
+
+-- ((untyped, type), slot): one object of `type` into `slot` of the root CNode
+retypeArgs : (Int * Int) * Int -> ((((((Int * Int) * Int) * Int) * Int) * Int) * Int) * Int
+retypeArgs a = (((((((fst (fst a), snd (fst a)), 0), 2), 0), 0), snd a), 1)
+
+retype : Act ((Int * Int) * Int) Int
+retype = compose seL4_Untyped_Retype@U retypeArgs
+
+serverTCB : Int * Int -> (Int * Int) * Int
+serverTCB s = ((fst s, 1), snd s)
+
+clientTCB : Int * Int -> (Int * Int) * Int
+clientTCB s = ((fst s, 1), snd s + 1)
+
+endpoint : Int * Int -> (Int * Int) * Int
+endpoint s = ((fst s, 2), snd s + 2)
+
+-- tcb: the root CNode (2) and VSpace (3), no fault endpoint, no IPC buffer
+configureArgs : Int -> ((((((Int * Int) * Int) * Int) * Int) * Int) * Int) * Int
+configureArgs t = (((((((t, 0), 2), 0), 3), 0), 0), 0)
+
+configure : Act Int Int
+configure = compose seL4_TCB_Configure@T configureArgs
+
+serverSlot : Int * Int -> Int
+serverSlot s = snd s
+
+clientSlot : Int * Int -> Int
+clientSlot s = snd s + 1
+
+-- ((tcb, program), arg): program 1 on the server's TCB, program 2 on the
+-- client's, each with the endpoint's slot
+startServer : Int * Int -> (Int * Int) * Int
+startServer s = ((snd s, 1), snd s + 2)
+
+startClient : Int * Int -> (Int * Int) * Int
+startClient s = ((snd s + 1, 2), snd s + 2)
+
+-- Each step: do it, print its error, keep the state
+makeServerTCB : Act (Int * Int) (Int * Int)
+makeServerTCB = compose snd (pair (compose check (compose retype serverTCB)) id)
+
+makeClientTCB : Act (Int * Int) (Int * Int)
+makeClientTCB = compose snd (pair (compose check (compose retype clientTCB)) id)
+
+makeEndpoint : Act (Int * Int) (Int * Int)
+makeEndpoint = compose snd (pair (compose check (compose retype endpoint)) id)
+
+configureServer : Act (Int * Int) (Int * Int)
+configureServer = compose snd (pair (compose check (compose configure serverSlot)) id)
+
+configureClient : Act (Int * Int) (Int * Int)
+configureClient = compose snd (pair (compose check (compose configure clientSlot)) id)
+
+runServer : Act (Int * Int) (Int * Int)
+runServer = compose snd (pair (compose check (compose start@P startServer)) id)
+
+runClient : Act (Int * Int) (Int * Int)
+runClient = compose snd (pair (compose check (compose start@P startClient)) id)
+
+newline : Int * Int -> Int
+newline _ = 10
+
+endLine : Act (Int * Int) Unit
+endLine = compose putChar@D newline
+
+objects : Act (Int * Int) (Int * Int)
+objects = compose makeEndpoint (compose makeClientTCB makeServerTCB)
+
+threads : Act (Int * Int) (Int * Int)
+threads = compose configureClient configureServer
+
+programs : Act (Int * Int) (Int * Int)
+programs = compose runClient runServer
+
+main : Eff Unit Unit
+main = compose endLine (compose programs (compose threads (compose objects setup)))

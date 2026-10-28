@@ -82,29 +82,30 @@ seL4_NotEnoughMemory : Int
 seL4_NotEnoughMemory = 10
 
 ------------------------------------------------------------------------
--- System Call Numbers (AArch64)
+-- System Call Numbers
 ------------------------------------------------------------------------
 
--- | seL4 syscall numbers are negative on AArch64
--- These go in register x7 before the svc instruction
-
-seL4_SysSend : Int
-seL4_SysSend = -1
-
-seL4_SysNBSend : Int
-seL4_SysNBSend = -2
-
-seL4_SysRecv : Int
-seL4_SysRecv = -3
-
-seL4_SysReply : Int
-seL4_SysReply = -4
-
-seL4_SysReplyRecv : Int
-seL4_SysReplyRecv = -5
+-- | The non-MCS kernel's syscall numbers, the same on every architecture
+-- (generated from the kernel's `syscall.xml`; checked against
+-- `gen_headers/arch/api/syscall.h` of the pinned kernel, plan 0.127).
 
 seL4_SysCall : Int
-seL4_SysCall = -6
+seL4_SysCall = -1
+
+seL4_SysReplyRecv : Int
+seL4_SysReplyRecv = -2
+
+seL4_SysSend : Int
+seL4_SysSend = -3
+
+seL4_SysNBSend : Int
+seL4_SysNBSend = -4
+
+seL4_SysRecv : Int
+seL4_SysRecv = -5
+
+seL4_SysReply : Int
+seL4_SysReply = -6
 
 seL4_SysYield : Int
 seL4_SysYield = -7

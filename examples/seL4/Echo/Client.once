@@ -1,0 +1,56 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Client.once: the echo example's client (program 2 of the image)
+--
+-- Started by the root task with the endpoint's slot as its argument. It
+-- calls the server with each Int from 65 to 90 (one message word,
+-- seL4_Call) and prints each answer on the debug console, as a
+-- character: if the server echoes, the line reads A to Z.
+
+import I.SeL4.IPC as I
+import I.SeL4.Debug as D
+import I.SeL4.Program as P
+
+-- The first message word of seL4_Call's answer (msgInfo, mr0, mr1, mr2, mr3)
+answer : (((Int * Int) * Int) * Int) * Int -> Int
+answer r = snd (fst (fst (fst r)))
+
+-- (endpoint, x): send x in one message word (msgInfo: length 1), answer
+call : Act (Int * Int) Int
+call = compose answer (compose seL4_Call@I (\p -> (((((fst p, 1), snd p), 0), 0), 0)))
+
+stop : Int * Int -> Unit -> Unit + Void
+stop p _ = inl unit
+
+next : Int * Int -> Unit -> Void + (Int * Int)
+next p _ = inr (fst p, snd p + 1)
+
+step : Int * Int -> Unit + (Int * Int)
+step p = case (next p) (stop p) (snd p == 90)
+
+-- One round: echo the Int, print the answer, go on until 90 ('Z')
+round : Act (Int * Int) (Unit + (Int * Int))
+round = compose step (compose snd (pair (compose putChar@D call) id))
+
+echoAll : Eff (Int * Int) Unit
+echoAll = ana round
+
+newline : Unit -> Int
+newline _ = 10
+
+-- (endpoint, 'A')
+first : Int -> Int * Int
+first ep = (ep, 65)
+
+endpoint : Act Unit Int
+endpoint = arg@P
+
+begin : Act Unit (Int * Int)
+begin = compose first endpoint
+
+endLine : Act Unit Unit
+endLine = compose putChar@D newline
+
+main : Eff Unit Unit
+main = compose endLine (compose echoAll begin)

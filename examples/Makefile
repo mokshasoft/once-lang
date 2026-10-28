@@ -10,8 +10,8 @@
 #   make x86_32         - build and run the programs on x86-32
 #   make riscv64        - cross-build and run under qemu-riscv64
 #                         (needs riscv64-unknown-linux-gnu-{as,ld,objcopy}, e.g. `nix develop`)
-#   make seL4           - Build and run the seL4 echo test (requires nix). Parked: it
-#                         runs hand-written C, not Once (plan 0.127); not part of `make`
+#   make seL4           - Build and run the seL4 echo test under QEMU (requires nix):
+#                         Once programs as seL4's root task, server and client (plan 0.127)
 #   make clean          - Remove build artifacts
 #
 # The compiler is `once` on PATH; override with e.g. `make ONCE=../result/bin/once`.
@@ -69,13 +69,11 @@ riscv64:
 	$(call run-all,riscv64,$(RISCV_ENV),qemu-riscv64)
 
 # seL4 examples (requires nix)
+# (the check boots the image under QEMU and fails unless the Once programs
+# printed the expected lines; see seL4/README.md)
 seL4:
-	@echo "Building seL4 examples..."
-	cd $(EXAMPLES_DIR)/seL4 && nix build
-	@echo "Running seL4 echo test (30s timeout)..."
-	@timeout 30 $(EXAMPLES_DIR)/seL4/result/bin/simulate 2>&1 | tee /tmp/sel4-output.txt | tail -20 || true
-	@grep -q "All tests passed" /tmp/sel4-output.txt && echo "seL4: PASS" || (echo "seL4: FAIL" && exit 1)
-	@echo "seL4 tests passed!"
+	cd $(EXAMPLES_DIR)/seL4 && nix build .#echo-test --no-link -L
+	@echo "seL4 echo: PASS"
 
 clean:
 	rm -rf $(BUILD)

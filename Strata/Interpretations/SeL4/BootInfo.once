@@ -20,12 +20,12 @@
 
 -- | Get pointer to seL4_BootInfo structure
 --
--- The BootInfo pointer is placed at a known location by the kernel.
--- On most platforms, this is passed in a register or at a fixed address.
+-- The kernel passes the BootInfo pointer to the root task in a register;
+-- the seL4 Host saves it at entry (`once_sel4_bootinfo`).
 --
 -- Returns: Pointer to seL4_BootInfo
 --
--- Note: This is a pure function - it returns a constant address.
+-- Note: This is a pure function - the pointer is fixed for the run.
 signature getBootInfo : Unit -> Int
 
 -- | Get IPC buffer pointer
@@ -42,6 +42,16 @@ signature getIPCBuffer : Unit -> Int
 -- These read fields from the seL4_BootInfo structure.
 -- All are pure functions - they just read from a static structure
 -- that doesn't change after boot.
+
+-- | Get the first empty cap slot of the initial thread's CNode
+-- Input: bootinfo pointer
+-- Returns: first slot of the `empty` region (null caps, free to fill)
+signature bootinfo_emptyStart : Int -> Int
+
+-- | Get the end of the empty cap slots
+-- Input: bootinfo pointer
+-- Returns: first slot after the `empty` region
+signature bootinfo_emptyEnd : Int -> Int
 
 -- | Get number of untyped caps
 -- Input: bootinfo pointer
@@ -73,9 +83,9 @@ signature bootinfo_initThreadVSpace : Int -> Int
 -- Returns: count of user image frames
 signature bootinfo_userImageFrames : Int -> Int
 
--- | Get domain info pointer
+-- | Get the initial thread's domain
 -- Input: bootinfo pointer
--- Returns: pointer to seL4_BootInfoDomain
+-- Returns: the `initThreadDomain` field
 signature bootinfo_domainInfo : Int -> Int
 
 ------------------------------------------------------------------------

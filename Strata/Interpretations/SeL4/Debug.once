@@ -1,0 +1,12 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- seL4 Debug Output
+--
+-- The debug kernel's console (`seL4_DebugPutChar`, CONFIG_PRINTING):
+-- one character per call, no capability needed. Plan 0.127.
+------------------------------------------------------------------------
+
+-- | Print one character (the Int's low byte) on the kernel's console
+signature putChar : Act Int Unit

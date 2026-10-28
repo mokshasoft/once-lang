@@ -1,0 +1,43 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Server.once: the echo example's server (program 1 of the image)
+--
+-- Started by the root task with the endpoint's slot as its argument. It
+-- serves forever (D317: a loop is an `ana`): receive a message on the
+-- endpoint (seL4_Recv), reply with its first word unchanged
+-- (seL4_Reply, one message word). Only Ints cross the endpoint.
+
+import I.SeL4.IPC as I
+import I.SeL4.Program as P
+
+-- The first message word of seL4_Recv's answer (badge, msgInfo, mr0..mr3)
+word : ((((Int * Int) * Int) * Int) * Int) * Int -> Int
+word r = snd (fst (fst (fst r)))
+
+-- endpoint: wait for a message, its first word
+receive : Act Int Int
+receive = compose word (compose seL4_Recv@I (\ep -> (ep, 0)))
+
+-- x: reply to the caller with x in one message word (msgInfo: length 1)
+reply : Act Int Unit
+reply = compose seL4_Reply@I (\x -> ((((1, x), 0), 0), 0))
+
+serveOne : Act Int Unit
+serveOne = compose reply receive
+
+next : Int -> Void + Int
+next ep = inr ep
+
+-- One round: serve one call, go on with the same endpoint
+round : Act Int (Void + Int)
+round = compose next (compose snd (pair serveOne id))
+
+serve : Eff Int Void
+serve = ana round
+
+endpoint : Act Unit Int
+endpoint = arg@P
+
+main : Eff Unit Void
+main = compose serve endpoint
