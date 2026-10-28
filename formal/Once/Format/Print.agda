@@ -18,7 +18,7 @@
 -- one: before the next anchor). Blank lines are kept between declarations, at
 -- most one.
 --
--- The canonical spellings (D341): parameters for leading lambdas (`f x = e`),
+-- The canonical spellings (D342): parameters for leading lambdas (`f x = e`),
 -- `f . g` for `compose f g`, integers in decimal, floats as written.
 ------------------------------------------------------------------------
 
@@ -392,7 +392,7 @@ mutual
   pty l b (Pν F pureᶠ)  = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ pfunArg F)
   pty l b (Pν F actᶠ)   = paren (not b) (word "Nu" ⊕ᵈ ␣ ⊕ᵈ t S.TLParen ⊕ᵈ word "Act" ⊕ᵈ ␣ ⊕ᵈ pfun 0 F ⊕ᵈ t S.TRParen)
 
-  -- A `Mu`/`Nu` functor: parenthesized unless it is `Id` (D341).
+  -- A `Mu`/`Nu` functor: parenthesized unless it is `Id` (D342).
   pfunArg : PolyFunctor → P Doc
   pfunArg PId = word "Id"
   {-# CATCHALL #-}
@@ -629,7 +629,7 @@ pdecl : Decl → P Doc
 pdecl d = pbody d >>=′ λ x → pure′ (group (nest indent x))
 
 -- No blank line between a type signature and its definition, or between two
--- imports; one between any other two declarations (D341).
+-- imports; one between any other two declarations (D342).
 together : Decl → Decl → Bool
 together (DTypeSig x _) (DFunDef y _) = x == y
 together (DImport _)    (DImport _)   = true

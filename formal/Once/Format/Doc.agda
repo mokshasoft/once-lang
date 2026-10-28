@@ -21,7 +21,7 @@
 -- text (so no line ends in blanks and an empty line is empty), and an
 -- indented line is never empty (an empty line ends what the indentation
 -- continues). One style: the width and the indent are constants (`width`,
--- `indent`), not options (D341).
+-- `indent`), not options (D342).
 ------------------------------------------------------------------------
 
 module Once.Format.Doc where
@@ -40,7 +40,7 @@ open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TMinus; 
   TEquals; TEqEq; TBang; TNeq; TLBrace; TPlus; TStar; TDot)
 open import Once.Format.Spell using (spell)
 
--- | The style (D341).
+-- | The style (D342).
 width indent : ℕ
 width  = 100
 indent = 2

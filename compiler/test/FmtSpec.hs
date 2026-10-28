@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- | `once fmt` (plan 0.124, D341): one canonical layout. The tree is kept in
+-- | `once fmt` (plan 0.124, D342): one canonical layout. The tree is kept in
 -- it (a file that parses is exactly what `fmt` writes), formatting twice is
 -- formatting once, comments come out in order with their text, and `--check`
 -- rejects a file that is not in the layout.

@@ -24,7 +24,7 @@
 --     is a graded category and ⟦_⟧ a functor out of it — typed substitution,
 --     and `let x = u in t` ≡ `t[u/x]` for pure `u` (referential transparency).
 --   • `formatter` — `once fmt` keeps the module and what it means, and is
---     canonical (D342); a tool beside the compiler, not a stage of it.
+--     canonical (D343); a tool beside the compiler, not a stage of it.
 --
 -- Because both fields are stated over the actual entry points, a regression in
 -- either makes `once-certified` fail to type-check — the drift that let
@@ -117,7 +117,7 @@ record CertifiedBuild : Set₁ where
     language    : Metatheory
     -- the assumptions are satisfiable: the claim is not about an empty set (D302)
     nonvacuous  : NonVacuous
-    -- `once fmt` keeps the module and what it means (D342); out of the compile path
+    -- `once fmt` keeps the module and what it means (D343); out of the compile path
     formatter   : VerifiedFormatter
 
 -- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE

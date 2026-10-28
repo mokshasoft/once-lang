@@ -62,7 +62,7 @@ data Command
   deriving (Eq, Show)
 
 -- | `once fmt` (plan 0.124): rewrite files in place, check them, or print one.
--- One style, no options (D341).
+-- One style, no options (D342).
 data FmtMode
   = FmtInPlace  -- ^ rewrite each file in the canonical layout
   | FmtCheck    -- ^ fail if a file is not in the canonical layout

@@ -154,7 +154,7 @@ decision-log entry updates the rule it changes here, in the same commit.
   rendered key. (D329)
 - **A third tool hypothesis, about `isDigit`** (`Once.Postulates` T3,
   `isDigit-value`): the primitive accepts the decimal digits only. With it
-  `once fmt` prints a float literal back as itself. (D342)
+  `once fmt` prints a float literal back as itself. (D343)
 - **There is no global program bound**: a closure carries its own body bound.
   (D214)
 - **Dataflow disciplines are discharged by type-indexed shape correctness**,
@@ -224,7 +224,7 @@ decision-log entry updates the rule it changes here, in the same commit.
   correctness proofs are type-checked, not extracted. (D334)
 - **One layout, no options**: `once fmt` writes the canonical layout, its
   style constants in code (width 100, indent 2); `--check` enforces it.
-  (D341)
+  (D342)
 - **`once fmt` is proved, outside the compile path**: formatting keeps the
   module (`roundtrip`) and hence the apex's meaning (`format-denotes`); a
   text without comments is formatted by its module alone; formatting is
@@ -232,7 +232,7 @@ decision-log entry updates the rule it changes here, in the same commit.
   the apex carries these
   (`CertifiedBuild.formatter`).
   The layout lexes as its tokens by construction (`apart`, line comments,
-  own digits). (D342)
+  own digits). (D343)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`

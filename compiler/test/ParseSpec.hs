@@ -200,7 +200,7 @@ invalidSyntaxTests = testGroup "Invalid syntax"
       result <- parseSource source
       assertParseError result
 
-  , testCase "unterminated string, the rest not Once (D343)" $ do
+  , testCase "unterminated string, the rest not Once (D344)" $ do
       -- The text after a stray `"` was never read and the module ended
       -- there: the text is now rejected, as the lexer did not reach its end.
       let source = T.unlines
@@ -212,12 +212,12 @@ invalidSyntaxTests = testGroup "Invalid syntax"
       result <- parseSource source
       assertParseError result
 
-  , testCase "unterminated string at the very end (D343)" $ do
+  , testCase "unterminated string at the very end (D344)" $ do
       let source = T.pack "f : Int -> Int\nf x = x\n\""
       result <- parseSource source
       assertParseError result
 
-  , testCase "a character that starts no token (D344)" $ do
+  , testCase "a character that starts no token (D345)" $ do
       let source = T.unlines
             [ "f : Int -> Int"
             , "f x = x # y"
@@ -225,7 +225,7 @@ invalidSyntaxTests = testGroup "Invalid syntax"
       result <- parseSource source
       assertParseError result
 
-  , testCase "a caret that is not a grade (D344)" $ do
+  , testCase "a caret that is not a grade (D345)" $ do
       let source = T.unlines
             [ "f : Int -> Int"
             , "f x = x ^ y"

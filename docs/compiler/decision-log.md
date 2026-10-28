@@ -19121,11 +19121,11 @@ entry's type, which the Spec does not (plan 0.121 §3.2, R2).
 **Relates**: D323's grammar (no string-literal expressions since plan 0.106), plan 0.121 §3.2 R5.
 
 ### Decision
-1. *(Superseded by D343: such a text is now rejected.)* **An unterminated string ends the token stream** (`lex-string-end`): a `"` with no closing `"` after
+1. *(Superseded by D344: such a text is now rejected.)* **An unterminated string ends the token stream** (`lex-string-end`): a `"` with no closing `"` after
    it lexes to no further tokens. The lexer is total — every text has exactly one token list — and a string
    literal is not an expression of the language (R5), so a stray `"` can only make the parse fail or end
    the module early; it never produces a token the parser would misread.
-2. *(Superseded by D344: such a character is now an error.)* **A character that starts no token is skipped** (`lex-skip`): a character that is not special, not a
+2. *(Superseded by D345: such a character is now an error.)* **A character that starts no token is skipped** (`lex-skip`): a character that is not special, not a
    digit and cannot start an identifier lexes to nothing. Again the lexer stays total; such a character can
    only separate tokens.
 
@@ -19551,7 +19551,7 @@ package is `once-lang` with the binary `once`; "I don't think a C backend will b
   exits 42 on x86_64 and x86_32 under `env -i PATH=/nonexistent`).
 * The extracted cone, the Spec and the trust base are unchanged; only the hand-written CLI moved.
 
-## D341 — ONE LAYOUT, NO OPTIONS: THE STYLE OF `once fmt` (2026-10-26)
+## D342 — ONE LAYOUT, NO OPTIONS: THE STYLE OF `once fmt` (2026-10-26)
 
 **Follows** plan 0.124. **Delegated** by the user 2026-10-26: "All detailed decisions about line width etc you
 can do yourself and make sensible defaults. It should not be configurable, only constants in code. Not any
@@ -19571,12 +19571,12 @@ user facing configs."
 * Nothing of the input's layout survives (the user, 2026-10-26: "like elm that always formats everything for
   you"): blank lines come from the code — one between declarations, none between a signature and its
   definition or between imports; comments are formatted — `-- x`, a prose line over the width wrapped (lines never joined),
-  preformatted lines (banners, indented code, lists) kept; a block comment becomes line comments (D342). A comment stays in order:
+  preformatted lines (banners, indented code, lists) kept; a block comment becomes line comments (D343). A comment stays in order:
   above the declaration it precedes, in place inside one, at the end of its line after code; a blank line
   inside a run of comments separates its paragraphs. Comments are anchored to word and literal tokens, the
   sequence every canonical spelling keeps.
 
-## D342 — `once fmt` IS PROVED: THE ROUND TRIP, THE MEANING, CANONICITY (2026-10-27)
+## D343 — `once fmt` IS PROVED: THE ROUND TRIP, THE MEANING, CANONICITY (2026-10-27)
 
 **Follows** plan 0.124 step 4 (the user, 2026-10-26: "lets finalize the theorems too before merging").
 
@@ -19652,14 +19652,14 @@ user facing configs."
   comments placed at random, before closing tokens, around whitespace-only lines and before an
   unterminated string at the end: all idempotent, every comment word kept in order).
 * An unterminated string, which the formatter used to drop with the rest of the text after it, is now
-  rejected by the Spec itself (D343).
+  rejected by the Spec itself (D344).
 * The proofs' per-case parts are generated (`formal/scripts/gen-format-*.py`); edit the generators.
 * The tree's formatting is unchanged by all of it.
 
-## D343 — A TEXT IS LEXED TO ITS END: AN UNTERMINATED STRING IS AN ERROR (2026-10-27)
+## D344 — A TEXT IS LEXED TO ITS END: AN UNTERMINATED STRING IS AN ERROR (2026-10-27)
 
 **Spec change, approved by the user 2026-10-27** (`Spec/Surface/Lexing.agda`, `Spec/Surface/Grammar.agda`).
-**Supersedes** D325 item 1. **Relates**: D342 (found by `once fmt`'s fuzzing).
+**Supersedes** D325 item 1. **Relates**: D343 (found by `once fmt`'s fuzzing).
 
 ### Context
 D325 recorded that a `"` with no closing `"` after it ends the token stream (`lex-string-end`), arguing that
@@ -19673,7 +19673,7 @@ drop: everything after the quote was never read. `once build` compiled a program
    parse.
 2. **`Trailing` is newlines, then `TEOF`** (`trail-eof : Trailing (TEOF ∷ [])`; `trail-end` is gone): what
    a parse leaves is the end of the text.
-3. A character that starts no token was still skipped (`lex-skip`, D325 item 2): changed by D344.
+3. A character that starts no token was still skipped (`lex-skip`, D325 item 2): changed by D345.
 
 ### Consequences
 * The compiler's tokenizer is unchanged (it still stops at an unterminated string, without `TEOF`);
@@ -19684,13 +19684,13 @@ drop: everything after the quote was never read. `once build` compiled a program
   (`SpecGrammar.Suffix.decls`) and ends in `TEOF`.
 * The formatter proofs lose their `lex-string-end` and `trail-end` cases; no theorem changed.
 
-## D344 — NOTHING IS DROPPED SILENTLY: A CHARACTER THAT STARTS NO TOKEN IS AN ERROR (2026-10-27)
+## D345 — NOTHING IS DROPPED SILENTLY: A CHARACTER THAT STARTS NO TOKEN IS AN ERROR (2026-10-27)
 
 **Spec change, approved by the user 2026-10-27** (`Spec/Surface/Lexing.agda`). **Supersedes** D325 item 2.
-**Relates**: D343 (the same principle, for an unterminated string).
+**Relates**: D344 (the same principle, for an unterminated string).
 
 ### Context
-The user's rule: nothing is silent. After D343 two Spec rules still read characters and dropped them:
+The user's rule: nothing is silent. After D344 two Spec rules still read characters and dropped them:
 `lex-skip` (a character that is not special, not a digit and cannot start an identifier, e.g. `#`, `$`,
 `?`, `[`) and `lex-caret` (a `^` not followed by `1`, `0` or `w`, so not a grade).
 

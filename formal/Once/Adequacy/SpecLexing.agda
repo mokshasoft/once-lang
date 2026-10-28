@@ -808,7 +808,7 @@ private
           → LexesChars r ts → LexesChars (c ∷ cs) (TWord (fromList (c ∷ i)) ∷ ts)
   n-ident (hv-gen ns) e i ir d = lex-ident ns e i ir d
 
--- | The tokens reach `TEOF`: the lexer read the text to its end (D343).
+-- | The tokens reach `TEOF`: the lexer read the text to its end (D344).
 isEOF : Token → Bool
 isEOF TEOF = true
 {-# CATCHALL #-}

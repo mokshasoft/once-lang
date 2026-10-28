@@ -66,7 +66,7 @@ parse source with parseModule (tokenizeString source)
 -- a declaration failed — which was silently recovered by `parseDeclsWF` but
 -- should surface as an error at the top level (plan 0.6 Phase A: strict
 -- parser errors, no silent drops). A residual without `TEOF` means the lexer
--- stopped before the end of the text (D343, D344).
+-- stopped before the end of the text (D344, D345).
 allTrailing : List Token → Bool
 allTrailing []              = false
 allTrailing (TNewline ∷ xs) = allTrailing xs

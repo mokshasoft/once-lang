@@ -222,7 +222,7 @@ grep -r "import Once.Postulates" formal/
 
 **Justification**: facts about the tools, not the logic: `String` is an Agda primitive whose operations the type checker evaluates only on literals, and only the injectivity of `toList`/`fromList` is exported. Both facts are the standard library's own (`Data.String.Unsafe`, by `trustMe`), true of the model (a string is a list of characters) and of the compiled `Data.Text` implementation.
 
-### T3: the primitive `isDigit` (tool hypothesis, D342)
+### T3: the primitive `isDigit` (tool hypothesis, D343)
 
 | Property | Value |
 |----------|-------|

@@ -100,7 +100,7 @@ postulate
   toList∘fromList : ∀ (cs : List Char) → toList (fromList cs) ≡ cs
 
 ------------------------------------------------------------------------
--- Tool hypothesis T3: the primitive `isDigit` (D342)
+-- Tool hypothesis T3: the primitive `isDigit` (D343)
 ------------------------------------------------------------------------
 --
 -- `primIsDigit` is opaque to Agda's conversion checker as well: it computes

@@ -420,14 +420,14 @@ tok-head c cs off rec hkGen    = tok-gen c cs off rec (isDigit c) (isIdentStart 
 
 tok-str cs off rec (just (s , rest , bnd)) =
   TString (fromList s) ∷ tokenize-WF rest (adv cs rest off) (rec (m≤n⇒m≤1+n bnd))
-tok-str cs off rec nothing = []  -- unterminated: no `TEOF`, so `parseStrict` rejects the text (D343)
+tok-str cs off rec nothing = []  -- unterminated: no `TEOF`, so `parseStrict` rejects the text (D344)
 tok-gen c cs off rec true  _     =
   let (digits , rest , bnd) = collectDigitsB cs
   in  tok-num c cs off rec digits rest bnd (collectFracB rest)
 tok-gen c cs off rec false true  =
   let (ident , rest , bnd) = collectIdentB cs
   in  TWord (fromList (c ∷ ident)) ∷ tokenize-WF rest (adv cs rest off) (rec (s≤s bnd))
-tok-gen c cs off rec false false = []  -- starts no token: no `TEOF`, so `parseStrict` rejects the text (D344)
+tok-gen c cs off rec false false = []  -- starts no token: no `TEOF`, so `parseStrict` rejects the text (D345)
 
 -- A FLOAT when a fraction follows, an INT when it does not. The bound composes:
 -- the fraction's remainder is strictly shorter than the integer part's
@@ -461,7 +461,7 @@ tok-minus cs off rec d-minus   = TMinus ∷ tokenize-WF cs (adv cs cs off) (rec 
 tok-caret cs off rec c-1 = TCaret1 ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
 tok-caret cs off rec c-0 = TCaret0 ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
 tok-caret cs off rec c-w = TCaretW ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
-tok-caret cs off rec c-gen = []  -- a `^` that is not a grade: no `TEOF` (D344)
+tok-caret cs off rec c-gen = []  -- a `^` that is not a grade: no `TEOF` (D345)
 
 -- | Tokenize a list of characters into tokens.
 tokenize : List Char → List Token
