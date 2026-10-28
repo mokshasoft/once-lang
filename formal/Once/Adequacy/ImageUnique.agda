@@ -425,7 +425,7 @@ image-fdefs o q =
 -- The table's entries: distinct symbols, each an identifier's (D249 guard).
 ------------------------------------------------------------------------
 
-open import Data.Bool using (true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 import Data.Bool
 
 open import Data.Maybe using (nothing)
@@ -467,19 +467,23 @@ private
   no-names : TableNames []
   no-names = record { names = [] ; syms≡ = refl ; dist = [] ; valid = [] }
 
-table-names : ∀ (m : Resolved) → TableNames (C.moduleTable m)
-table-names (resolved (mkModule ds) is) with Parser.extractFunctions (resolved (mkModule ds) is) in efeq
+-- At either build: the optimizer keeps every function's name (plan 0.39).
+table-names-at : ∀ (doOpt : Bool) (m : Resolved) → TableNames (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m))
+table-names-at doOpt (resolved (mkModule ds) is) with Parser.extractFunctions (resolved (mkModule ds) is) in efeq
 ... | inj₁ _ = no-names
-... | inj₂ es with C.compileEntries IR.Heap false C.emptyCScope es in caeq
+... | inj₂ es with C.compileEntries IR.Heap doOpt C.emptyCScope es in caeq
 ...   | inj₁ _ = no-names
 ...   | inj₂ cfs = record
         { names = emittedNames (funsOf es)
-        ; syms≡ = trans (trans (tbl-go cfs []) (++-identityʳ _)) (cong reverse (ce-syms false C.emptyCScope es cfs caeq))
+        ; syms≡ = trans (trans (tbl-go cfs []) (++-identityʳ _)) (cong reverse (ce-syms doOpt C.emptyCScope es cfs caeq))
         ; dist  = map-allpairs-own _ (namesDistinct-sound _ (∧-elimˡ guard)) (allValidNameB-sound _ (∧-elimʳ guard))
         ; valid = allValidNameB-sound _ (∧-elimʳ guard)
         }
   where
     guard = guard-true (Parser.thenExtract (Parser.sigsAdjacent ds nothing) (extractFunctions-go (Parser.sigsFirst ds is) nothing)) efeq
+
+table-names : ∀ (m : Resolved) → TableNames (C.moduleTable m)
+table-names = table-names-at false
 
 -- distinctness survives reversal
 ap-reverse : ∀ {xs : List String} → AllPairs _≢_ xs → AllPairs _≢_ (reverse xs)
@@ -753,12 +757,12 @@ private
     start-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map start≢def cD) (Data.List.Relation.Unary.All.map start≢blk cB)
 
 -- THE PROGRAM (was `ImageWF.prog-unique`, a postulate).
-prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
-prog-unique m ir =
+-- Over any table whose names are distinct and valid (plan 0.39: the optimized
+-- build's too).
+prog-unique-at : ∀ (T : List IRFun) (tn : TableNames T) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram T ir))
+prog-unique-at T tn ir =
   ((λ ()) ∷ heap-fresh D B cD cB) ∷ start-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
   where
-    T  = C.moduleTable m
-    tn = table-names m
     p  = irProgram T ir
     q  = C.rewrite-program p
     img = C.image-of p
@@ -771,6 +775,9 @@ prog-unique m ir =
     cD = adefs-class img
     cB = blocks-sym (C.program-blocks p)
     uD = adefs-unique img (image-cl C.entry-owner q) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
+
+prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
+prog-unique m ir = prog-unique-at (C.moduleTable m) (table-names m) ir
 
 -- THE LIBRARY (was `ImageWF.lib-unique`, a postulate).
 lib-unique : ∀ (m : Resolved) → Unique (lib-defs m)
