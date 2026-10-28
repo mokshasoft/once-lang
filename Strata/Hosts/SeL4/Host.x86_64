@@ -1,0 +1,82 @@
+# ======================================================================
+# The seL4 Host — x86_64, the root task (D320, plan 0.127 A.2)
+#
+# A Host is how a platform runs a program: `enter ; main ; leave`.
+#
+# `enter` (`once_sel4_enter`, the ELF entry: `Host.x86_64.ld`). The kernel
+# starts the root task at the ELF entry with the bootinfo pointer in `rdi`
+# and no stack (seL4 `create_initial_thread`). `_start` needs a stack, so
+# `enter` sets `%rsp` to a static stack, saves the bootinfo pointer for the
+# Interpretations (`once_sel4_bootinfo`), and jumps to `_start`. This is
+# what seL4's own runtime does for C (`sel4runtime`, `_sel4_start`).
+#
+# `leave` (`once_leave`): calling it ends the run, observed as `returned`.
+# On seL4 the root task prints a fixed line on the debug console (debug
+# kernel) and suspends its own thread (`seL4_CapInitThreadTCB`).
+#
+# Numbers from the kernel's generated headers (non-MCS, debug, printing):
+# SysCall = -1, SysYield = -7, SysDebugPutChar = -9; TCBSuspend = 11.
+# A syscall saves `%rsp` in `%rbx` around `syscall`, as libsel4 does.
+# ======================================================================
+
+.equ SEL4_SYS_CALL,           -1
+.equ SEL4_SYS_YIELD,          -7
+.equ SEL4_SYS_DEBUG_PUTCHAR,  -9
+.equ SEL4_CAP_INIT_THREAD_TCB, 1
+.equ TCB_SUSPEND,             11
+.equ ROOT_STACK_SIZE,         65536
+
+.bss
+.align 16
+once_sel4_stack:
+    .space ROOT_STACK_SIZE
+once_sel4_stack_top:
+
+.global once_sel4_bootinfo
+.align 8
+once_sel4_bootinfo:
+    .space 8
+
+.section .rodata
+once_sel4_leave_line:
+    .ascii "Once: returned\n"
+once_sel4_leave_line_end:
+
+.text
+.global once_sel4_enter
+.type once_sel4_enter, @function
+once_sel4_enter:
+    leaq    once_sel4_stack_top(%rip), %rsp
+    movq    %rdi, once_sel4_bootinfo(%rip)
+    jmp     _start
+.size once_sel4_enter, .-once_sel4_enter
+
+.global once_leave
+.type once_leave, @function
+once_leave:
+    leaq    once_sel4_leave_line(%rip), %r12
+    leaq    once_sel4_leave_line_end(%rip), %r13
+1:  cmpq    %r13, %r12
+    je      2f
+    movzbq  (%r12), %rdi
+    movq    $SEL4_SYS_DEBUG_PUTCHAR, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    incq    %r12
+    jmp     1b
+    # seL4_TCB_Suspend(seL4_CapInitThreadTCB): seL4_Call with label
+    # TCBSuspend and no message words (msginfo = label << 12)
+2:  movq    $SEL4_CAP_INIT_THREAD_TCB, %rdi
+    movq    $(TCB_SUSPEND << 12), %rsi
+    movq    $SEL4_SYS_CALL, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    # Not reached: a suspended thread never runs again
+3:  movq    $SEL4_SYS_YIELD, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    jmp     3b
+.size once_leave, .-once_leave
