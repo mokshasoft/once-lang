@@ -50,7 +50,8 @@ suc : Mu (K Unit + Id) -> Mu (K Unit + Id)
 suc n = In (inr n)
 
 fifteen : Mu (K Unit + Id)
-fifteen = suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))
+fifteen =
+  suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc zero))))))))))))))
 
 main : Act Unit Void
 main = exit@S (snd (count fifteen))

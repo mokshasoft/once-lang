@@ -12,25 +12,26 @@
 --   once check examples/qtt.once
 
 -- Linear: x is used exactly once
-linearId : Unit^1 -> Unit
-linearId = \x -> x
+
+linearId : Unit ^1 -> Unit
+linearId x = x
 
 -- Erased: y is never used
-first : Unit -> Unit^0 -> Unit
-first = \x -> \y -> x
+first : Unit -> Unit ^0 -> Unit
+first x y = x
 
 -- Unrestricted (the default): x is used twice
-duplicate : Unit -> (Unit * Unit)
-duplicate = \x -> (x, x)
+duplicate : Unit -> Unit * Unit
+duplicate x = (x, x)
 
 -- Both linear parameters used once each
-both : Unit^1 -> Unit^1 -> (Unit * Unit)
-both = \x -> \y -> (x, y)
+both : Unit ^1 -> Unit ^1 -> Unit * Unit
+both x y = (x, y)
 
 -- Composition: f, g and x each used once
 compose3 : (Unit -> Unit) -> (Unit -> Unit) -> Unit -> Unit
-compose3 = \f -> \g -> \x -> f (g x)
+compose3 f g x = f (g x)
 
 -- A let binding
 viaLet : Unit -> Unit
-viaLet = \x -> let y = x in y
+viaLet x = let y = x in y
