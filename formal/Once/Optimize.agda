@@ -517,7 +517,9 @@ has-effect? (const _ _)   = false
 has-effect? (In _)        = false
 has-effect? (out-μ _)       = false
 has-effect? (Cata _ alg)    = has-effect? alg
-has-effect? (Out _)         = false
+-- Forcing a stream runs its coalgebra, and an `act` stream's may emit; the
+-- IR does not say which grade a stream has (plan 0.39).
+has-effect? (Out _)         = true
 has-effect? (in-ν _)      = false
 has-effect? (Ana _ coalg)   = has-effect? coalg
 -- a loop may run forever without an event: never dead code.
