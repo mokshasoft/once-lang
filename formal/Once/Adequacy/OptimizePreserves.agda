@@ -346,46 +346,49 @@ module _ (fmt : TargetNum) where
   optimize-rel = opt-n-rel 10
 
 ------------------------------------------------------------------------
--- The program, optimized entry by entry, has the same trace.
+-- Tables related entry by entry: the same names and types, and bodies that
+-- take related inputs to related runs at any related environments. Two
+-- programs with related tables and the same `main` have the same trace.
 ------------------------------------------------------------------------
 
-optimize-fun : IRFun → IRFun
-optimize-fun e = irFun (fname e) (fdom e) (fcod e) (optimize (fbody e))
+module _ (fmt : TargetNum) where
 
-optimize-table : List IRFun → List IRFun
-optimize-table []       = []
-optimize-table (e ∷ es) = optimize-fun e ∷ optimize-table es
+  data EntryRel : IRFun → IRFun → Set where
+    e-rel : ∀ n D C {b′ b : IR D C} → (∀ {ρ ρ′} (re : RelEnv fmt ρ ρ′) → Rel fmt re b′ b)
+          → EntryRel (irFun n D C b′) (irFun n D C b)
 
-optimize-program : IRProgram → IRProgram
-optimize-program p = irProgram (optimize-table (table p)) (optimize (main p))
+  data TblRel : List IRFun → List IRFun → Set where
+    t-nil  : TblRel [] []
+    t-cons : ∀ {e′ e t′ t} → EntryRel e′ e → TblRel t′ t → TblRel (e′ ∷ t′) (e ∷ t)
 
 module _ (fmt : TargetNum) (φ : FFIAnswers) where
 
-  table-rel : ∀ (tbl : List IRFun) → RelEnv fmt (tableEnv fmt φ (optimize-table tbl)) (tableEnv fmt φ tbl)
-  calls-rel : ∀ (tbl : List IRFun) f (A B : IRTy) {a a′} → RelD ⌈ A ⌉ a a′
-            → RelS (RelD ⌈ B ⌉) (tableCalls fmt φ (optimize-table tbl) f A B a) (tableCalls fmt φ tbl f A B a′)
-  table-rel tbl = calls-rel tbl , refl
+  table-rel : ∀ {t′ t} → TblRel fmt t′ t → RelEnv fmt (tableEnv fmt φ t′) (tableEnv fmt φ t)
+  calls-rel : ∀ {t′ t} → TblRel fmt t′ t → ∀ f (A B : IRTy) {a a′} → RelD ⌈ A ⌉ a a′
+            → RelS (RelD ⌈ B ⌉) (tableCalls fmt φ t′ f A B a) (tableCalls fmt φ t f A B a′)
+  table-rel tr = calls-rel tr , refl
 
-  calls-rel []       f A B r = RelS-embed rel-halt
-  calls-rel (e ∷ es) f A B r = at (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) r
+  calls-rel t-nil f A B r = RelS-embed rel-halt
+  calls-rel (t-cons {t′ = es′} {t = es} (e-rel n D C {b′} {b} rb) tr) f A B r = at (n ≟ᶜ f) (D ≟IRTy A) (C ≟IRTy B) r
     where
-      hit : ∀ {A B} (p : fdom e ≡ A) (q : fcod e ≡ B) {a a′} → RelD ⌈ A ⌉ a a′
+      hit : ∀ {A B} (p : D ≡ A) (q : C ≡ B) {a a′} → RelD ⌈ A ⌉ a a′
           → RelS (RelD ⌈ B ⌉)
-              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ (optimize-table es)) (optimize (fbody e)) (subst ⟦_⟧ᴰᴵ (sym p) a)))
-              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ es) (fbody e) (subst ⟦_⟧ᴰᴵ (sym p) a′)))
-      hit refl refl r = optimize-rel fmt (table-rel es) (fbody e) r
+              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ es′) b′ (subst ⟦_⟧ᴰᴵ (sym p) a)))
+              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ es) b (subst ⟦_⟧ᴰᴵ (sym p) a′)))
+      hit refl refl r = rb (table-rel tr) r
       at : ∀ d₁ d₂ d₃ {a a′} → RelD ⌈ A ⌉ a a′
-         → RelS (RelD ⌈ B ⌉) (tableEnv-at fmt φ (optimize-fun e) (optimize-table es) f A B d₁ d₂ d₃ a)
-                              (tableEnv-at fmt φ e es f A B d₁ d₂ d₃ a′)
+         → RelS (RelD ⌈ B ⌉) (tableEnv-at fmt φ (irFun n D C b′) es′ f A B d₁ d₂ d₃ a)
+                              (tableEnv-at fmt φ (irFun n D C b) es f A B d₁ d₂ d₃ a′)
       at (yes _) (yes p) (yes q) r = hit p q r
-      at (yes _) (yes _) (no _)  r = calls-rel es f A B r
-      at (yes _) (no _)  _       r = calls-rel es f A B r
-      at (no _)  _       _       r = calls-rel es f A B r
+      at (yes _) (yes _) (no _)  r = calls-rel tr f A B r
+      at (yes _) (no _)  _       r = calls-rel tr f A B r
+      at (no _)  _       _       r = calls-rel tr f A B r
 
-  program-rel : ∀ (p : IRProgram) → RelS (RelD ⌈ II.Unit ⌉) (runIR fmt φ (optimize-program p)) (runIR fmt φ p)
-  program-rel p = optimize-rel fmt (table-rel (table p)) (main p) tt
+  program-rel : ∀ {t′ t} → TblRel fmt t′ t → (main : IR II.Unit II.Unit)
+              → RelS (RelD ⌈ II.Unit ⌉) (runIR fmt φ (irProgram t′ main)) (runIR fmt φ (irProgram t main))
+  program-rel tr main = eval-rel fmt (table-rel tr) main tt
 
--- | The optimized program has the same TRACE.
-optimize-program-trace : ∀ (fmt : TargetNum) (ι : Interp) (p : IRProgram)
-                       → trT∞ ι [] (runIR fmt (pureHalf ι) (optimize-program p)) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) p)
-optimize-program-trace fmt ι p = RelS-tr ι [] (program-rel fmt (pureHalf ι) p)
+-- | Programs with related tables and the same `main` have the same TRACE.
+table-trace : ∀ (fmt : TargetNum) (ι : Interp) {t′ t} → TblRel fmt t′ t → (main : IR II.Unit II.Unit)
+            → trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram t′ main)) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram t main))
+table-trace fmt ι tr main = RelS-tr ι [] (program-rel fmt (pureHalf ι) tr main)
