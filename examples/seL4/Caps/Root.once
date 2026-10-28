@@ -1,0 +1,153 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Root.once: the capability test, a root task alone (plan 0.127 D.1)
+--
+-- It runs every CNode and Notification operation once, in the root CNode,
+-- and prints a digit for each step: '0' + the seL4_Error of an invocation,
+-- '0' + the badge a notification answered. The slots, from the first
+-- empty one (free):
+--
+--   step                                           prints
+--   retype a notification into free                0
+--   mint free into free+1 with badge 5             0
+--   signal free+1, poll free                       5   (the badge)
+--   copy free+1 into free+2                        0
+--   move free+2 into free+3                        0
+--   signal free+3, wait on free                    5   (the copy keeps the badge)
+--   copy free+1 into free+3                        8   (seL4_DeleteFirst: occupied)
+--   delete free+3                                  0
+--   revoke free                                    0   (deletes free+1)
+--   copy free+1 into free+2                        6   (seL4_FailedLookup: free+1 is empty)
+--   poll free                                      0   (nothing signalled)
+--
+-- so the line is 00500580060.
+
+import I.SeL4.BootInfo as B
+import I.SeL4.Untyped as U
+import I.SeL4.CNode as C
+import I.SeL4.Notification as N
+import I.SeL4.Debug as D
+
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+bit : Unit + Unit -> Int
+bit = case no yes
+
+bootinfo : Unit -> Int
+bootinfo _ = getBootInfo@B unit
+
+-- Untyped number i: ((paddr, sizeBits), isDevice)
+untyped : Int -> (Int * Int) * Int
+untyped i = bootinfo_getUntyped@B (bootinfo unit, i)
+
+-- RAM (not device memory) of at least 64 KiB
+usable : Int -> Unit + Unit
+usable i = bit (snd (untyped i) == 0) * bit (snd (fst (untyped i)) >= 16) == 1
+
+found : Int -> Unit -> Int + Void
+found i _ = inl (bootinfo_untypedStart@B (bootinfo unit) + i)
+
+more : Int -> Unit -> Void + Int
+more i _ = inr (i + 1)
+
+search : Int -> Int + Int
+search i = case (more i) (found i) (usable i)
+
+-- The slot of the first usable untyped
+findRAM : Eff Int Int
+findRAM = ana search
+
+zero : Unit -> Int
+zero _ = 0
+
+firstFree : Int -> Int * Int
+firstFree ut = (ut, bootinfo_emptyStart@B (bootinfo unit))
+
+-- (untyped, first empty slot)
+setup : Eff Unit (Int * Int)
+setup = compose firstFree (compose findRAM zero)
+
+-- Print '0' + an seL4_Error or a badge
+digit : Int -> Int
+digit e = 48 + e
+
+check : Act Int Unit
+check = compose putChar@D digit
+
+-- A slot of the root CNode (cap 2) is addressed with the word's 64 bits
+depth : Int
+depth = 64
+
+-- One notification into slot free
+retypeArgs : Int * Int -> ((((((Int * Int) * Int) * Int) * Int) * Int) * Int) * Int
+retypeArgs s = (((((((fst s, 3), 0), 2), 0), 0), snd s), 1)
+
+-- (free + dest, free + src) as a copy's arguments, all rights
+copyArgs : Int -> Int -> Int * Int -> (((((Int * Int) * Int) * Int) * Int) * Int) * Int
+copyArgs d c s = ((((((2, snd s + d), depth), 2), snd s + c), depth), 15)
+
+mintArgs : Int * Int -> ((((((Int * Int) * Int) * Int) * Int) * Int) * Int) * Int
+mintArgs s = (copyArgs 1 0 s, 5)
+
+slotArgs : Int -> Int * Int -> (Int * Int) * Int
+slotArgs c s = ((2, snd s + c), depth)
+
+slot : Int -> Int * Int -> Int
+slot c s = snd s + c
+
+waitArgs : Int * Int -> Int * Int
+waitArgs s = (snd s, 0)
+
+-- Each step: do it, print its answer, keep the state
+retype : Act (Int * Int) (Int * Int)
+retype = compose snd (pair (compose check (compose seL4_Untyped_Retype@U retypeArgs)) id)
+
+mint : Act (Int * Int) (Int * Int)
+mint = compose snd (pair (compose check (compose seL4_CNode_Mint@C mintArgs)) id)
+
+copy : Int -> Int -> Act (Int * Int) (Int * Int)
+copy d c = compose snd (pair (compose check (compose seL4_CNode_Copy@C (copyArgs d c))) id)
+
+move : Act (Int * Int) (Int * Int)
+move = compose snd (pair (compose check (compose seL4_CNode_Move@C (copyArgs 3 2))) id)
+
+delete : Act (Int * Int) (Int * Int)
+delete = compose snd (pair (compose check (compose seL4_CNode_Delete@C (slotArgs 3))) id)
+
+revoke : Act (Int * Int) (Int * Int)
+revoke = compose snd (pair (compose check (compose seL4_CNode_Revoke@C (slotArgs 0))) id)
+
+signal : Int -> Act (Int * Int) (Int * Int)
+signal c = compose snd (pair (compose seL4_Signal@N (slot c)) id)
+
+poll : Act (Int * Int) (Int * Int)
+poll = compose snd (pair (compose check (compose seL4_Poll@N (slot 0))) id)
+
+wait : Act (Int * Int) (Int * Int)
+wait = compose snd (pair (compose check (compose seL4_Wait@N waitArgs)) id)
+
+newline : Int * Int -> Int
+newline _ = 10
+
+endLine : Act (Int * Int) Unit
+endLine = compose putChar@D newline
+
+-- retype, mint, signal free+1 and poll, copy, move
+made : Act (Int * Int) (Int * Int)
+made = compose move (compose (copy 2 1) (compose poll (compose (signal 1) (compose mint retype))))
+
+-- signal free+3 and wait, copy into an occupied slot, delete, revoke
+used : Act (Int * Int) (Int * Int)
+used = compose revoke (compose delete (compose (copy 3 1) (compose wait (signal 3))))
+
+-- copy from the revoked slot, poll with nothing signalled
+gone : Act (Int * Int) (Int * Int)
+gone = compose poll (copy 2 1)
+
+main : Eff Unit Unit
+main = compose endLine (compose gone (compose used (compose made setup)))
