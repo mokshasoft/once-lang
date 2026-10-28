@@ -255,7 +255,7 @@ mapTree f . mapTree g = mapTree (f . g)
 
 ## 5. Current Optimizer Laws
 
-The Once optimizer is formally verified in Agda (`formal/Once/Optimize.agda` and `formal/Once/Optimize/Correct.agda`). All optimizations below have machine-checked correctness proofs.
+The Once optimizer is formally verified in Agda (`formal/Once/Optimize.agda`; its proof `formal/Once/Adequacy/OptimizePreserves.agda`: every pass keeps the program's trace, plan 0.39). All optimizations below have machine-checked correctness proofs.
 
 ### 5.1 Identity Laws
 

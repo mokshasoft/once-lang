@@ -145,7 +145,8 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **The trust base on `freyd-spec`**: the step-budget and fuel postulates
   are gone (the claim is weak bisimilarity of traces), `BlockRuns` says a
   stopped callee has not left the program, `opt-trace` is restated over
-  traces. (D326)
+  traces. (D326) `opt-trace` is now a theorem: the optimizer keeps a
+  program's trace, and the codegen chain is stated at either build. (D347)
 - **Two tool hypotheses about `String`** (`Once.Postulates` T1, T2:
   `toList-++`, `toList∘fromList`, the standard library's own): facts about the
   primitives Agda does not export (before, `Data.String.Unsafe`'s `trustMe`,

@@ -253,7 +253,7 @@ Ya demonstrates the categorical principles in Haskell. The Once compiler applies
 
 ## Verification Status
 
-The optimizer is **formally verified** in Agda (`formal/Once/Optimize.agda` and `formal/Once/Optimize/Correct.agda`). The correctness proof shows that optimization preserves program semantics—the only postulate required is function extensionality.
+The optimizer is **formally verified** in Agda (`formal/Once/Optimize.agda`; its proof `formal/Once/Adequacy/OptimizePreserves.agda`: every pass keeps the program's trace, plan 0.39). The correctness proof shows that optimization preserves program semantics—the only postulate required is function extensionality.
 
 See [MAlonzo Compilation](malonzo-compilation.md) for plans to generate the optimizer directly from the verified Agda code.
 

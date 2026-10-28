@@ -19740,3 +19740,42 @@ already stood on the declaration.
   comment, recovered by formatting each file's text from before the first reformat (master `39da13d89`) with
   the new formatter; every other line is unchanged.
 * The compile path is untouched: `once fmt`'s modules only.
+
+
+## D347 — THE OPTIMIZER KEEPS THE TRACE: `opt-trace` IS A THEOREM (2026-10-28)
+
+**Follows** plan 0.39 (trace-correct optimizer; restated 2026-10-28), D326 (`opt-trace` restated over traces),
+plan 0.64 Group O. **Decided** by the user 2026-10-28: plan 0.39 after D346.
+
+### Context
+`once build` optimizes unless `--no-optimize`. The apex's `correct` covered the optimized build only through
+the postulate `opt-trace`; the optimizer's own proof (`Optimize.Correct`) was a red island over the deleted pure
+`eval`, and could not have discharged a trace statement anyway.
+
+### Decision
+* **The optimizer keeps a program's trace** (`Adequacy.OptimizePreserves`): a logical relation like the arith
+  pass's (`RewritePreserves`) — the optimized term at a call environment and the original at a related one take
+  related inputs to related runs (`RelS` over `RelD`). The drop rules (`terminal ∘ f`, `fst`/`snd ∘ ⟨g,h⟩`, a
+  quiet map into `Unit`) drop only a term without an effect, and such a term returns at once
+  (`OptimizeQuiet.quiet-now`; the guard is read on the optimized term, `now-rel` carries it to the original's
+  run). Ten passes compose by the PER (`ValueRelPER`, plan 0.119 D5).
+* **`Out` is an effect** for the optimizer's guard (`has-effect? (Out _) = true`): forcing a stream runs its
+  coalgebra, which emits for an `act` stream, and the IR does not carry a stream's grade. No shipped program is
+  known to have lost an event (an `act` `Out` runs under the `apply` of `outActᶜ`'s lambda), but with `false` the
+  drop rules were not provable.
+* **The optimized build is the source build with each function optimized** (`OptimizedModule.crm-opt`; `doOpt`
+  only chooses `optimize ir` or `ir`); its `main` is the same (`moduleToIR-opt`). Tables related entry by entry
+  give the same trace (`OptimizePreserves.TblRel`, `OptimizedTable.optimized-trace`); the optimizer calls nothing
+  new (`OptimizeLinked`), so the optimized build's program is linked (`OptimizedLinked`).
+* **The codegen chain is stated at either build**: `ArchCorrect.file-wf`/`file-tr` and the three arch instances,
+  `FileWF`, `EmitFile`, `ImageUnique`, `ImageResolved` are over the build's own table. `opt-trace` is the chain at
+  `true`, then `rewrite-program-trace`, then `optimized-trace`.
+
+### Consequences
+* The trust base loses `opt-trace`. The default build is covered by the theorem as the `--no-optimize` one is.
+* Deleted as superseded islands: `Optimize.Correct`, `Optimize.Shape`, `Optimizer.{Cost,Depth,IRReducible,Normal,
+  PairCaseNormal}`, `Category.Laws` (eight `backstop.islands` lines). `Fusion.Correct` stays an island (plan 0.64
+  Group F).
+* The extracted optimizer changes (the `Out` guard); compiled programs differ only where `terminal`, `fst` or `snd`
+  composed over an `Out`.
+
