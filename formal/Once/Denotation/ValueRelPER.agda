@@ -2,151 +2,186 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Denotation.ValueRelPER — THE VALUE RELATION IS A PER (plan 0.39 A3).
+-- Once.Denotation.ValueRelPER — the value relation is a partial equivalence
+-- (plan 0.119 D5).
 --
--- `RelD` is symmetric and transitive at every type, and so are the step-for-
--- step relation on runs (`RelS`) and on streams (`StreamRel`) whenever the
--- results' relation is. Not reflexive: at an arrow, two functions are related
--- when they take related inputs to related runs, and a function need not be
--- related to itself. Transitivity at an arrow needs the middle input related
--- to itself, which symmetry and transitivity one type down give.
---
--- Used to compose the optimizer's passes: each pass relates its output to its
--- input, so ten passes relate the last output to the first input.
+-- `RelD` is symmetric and transitive (not reflexive: a closure that sends
+-- related arguments to unrelated runs is related to nothing, itself included).
+-- Transitivity at an arrow uses the middle argument's self-relatedness, which
+-- symmetry and transitivity at the smaller type give. Runs are compared step
+-- for step, so `RelS` inherits both; streams likewise, coinductively.
 ------------------------------------------------------------------------
 
 module Once.Denotation.ValueRelPER where
 
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Once.Spec.Type using (var; Ty)
+open import Data.Empty using (⊥)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Ty; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; μ; ν)
-open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_)
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Spec.Type using (μ; ν)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.IR.Semantics.Iterative using (T∞)
-open import Once.IR.Semantics.FunctorMeaning using (translateF)
-open import Once.Spec.Word using (Carrier)
+open T∞ using (force)
+open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ)
+open νᴵ using (forceᴵ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
-open import Once.Denotation.ValueRel using (RelD; StreamRel; module StreamRel; LayerRel)
-
 open RelS using (forceS)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
+open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel; RelS-mono)
 open StreamRel using (forceR)
 
 ------------------------------------------------------------------------
--- Runs
+-- Runs.
 ------------------------------------------------------------------------
 
-RelS-sym  : ∀ {X Y} {R : X → Y → Set} {R′ : Y → X → Set} → (∀ {x y} → R x y → R′ y x)
-          → ∀ {m m′} → RelS R m m′ → RelS R′ m′ m
-RelSB-sym : ∀ {X Y} {R : X → Y → Set} {R′ : Y → X → Set} → (∀ {x y} → R x y → R′ y x)
-          → ∀ {l l′} → RelSB R l l′ → RelSB R′ l′ l
-forceS (RelS-sym s h) = RelSB-sym s (forceS h)
-RelSB-sym s (s-ret r)  = s-ret (s r)
-RelSB-sym s (s-next h) = s-next (RelS-sym s h)
-RelSB-sym s (s-call f) = s-call (λ b → RelSB-sym s (f b))
-RelSB-sym s s-halt     = s-halt
+RelS-sym  : ∀ {X Y} {R : X → Y → Set} {S : Y → X → Set} → (∀ {a b} → R a b → S b a)
+          → ∀ {m n} → RelS R m n → RelS S n m
+RelSB-sym : ∀ {X Y} {R : X → Y → Set} {S : Y → X → Set} → (∀ {a b} → R a b → S b a)
+          → ∀ {l l′} → RelSB R l l′ → RelSB S l′ l
+forceS (RelS-sym h r) = RelSB-sym h (forceS r)
+RelSB-sym h (s-ret r)  = s-ret (h r)
+RelSB-sym h (s-next r) = s-next (RelS-sym h r)
+RelSB-sym h (s-call f) = s-call (λ b → RelSB-sym h (f b))
+RelSB-sym h s-halt     = s-halt
 
-RelS-trans  : ∀ {X Y Z} {R₁ : X → Y → Set} {R₂ : Y → Z → Set} {R₃ : X → Z → Set}
-            → (∀ {x y z} → R₁ x y → R₂ y z → R₃ x z)
-            → ∀ {m n p} → RelS R₁ m n → RelS R₂ n p → RelS R₃ m p
-RelSB-trans : ∀ {X Y Z} {R₁ : X → Y → Set} {R₂ : Y → Z → Set} {R₃ : X → Z → Set}
-            → (∀ {x y z} → R₁ x y → R₂ y z → R₃ x z)
-            → ∀ {l l′ l″} → RelSB R₁ l l′ → RelSB R₂ l′ l″ → RelSB R₃ l l″
-forceS (RelS-trans t h₁ h₂) = RelSB-trans t (forceS h₁) (forceS h₂)
-RelSB-trans t (s-ret r₁)  (s-ret r₂)  = s-ret (t r₁ r₂)
-RelSB-trans t (s-next h₁) (s-next h₂) = s-next (RelS-trans t h₁ h₂)
-RelSB-trans t (s-call f₁) (s-call f₂) = s-call (λ b → RelSB-trans t (f₁ b) (f₂ b))
-RelSB-trans t s-halt      s-halt      = s-halt
+RelS-trans  : ∀ {X Y Z} {R : X → Y → Set} {S : Y → Z → Set} {U : X → Z → Set}
+            → (∀ {a b c} → R a b → S b c → U a c)
+            → ∀ {m n p} → RelS R m n → RelS S n p → RelS U m p
+RelSB-trans : ∀ {X Y Z} {R : X → Y → Set} {S : Y → Z → Set} {U : X → Z → Set}
+            → (∀ {a b c} → R a b → S b c → U a c)
+            → ∀ {l l′ l″} → RelSB R l l′ → RelSB S l′ l″ → RelSB U l l″
+forceS (RelS-trans h r s) = RelSB-trans h (forceS r) (forceS s)
+RelSB-trans h (s-ret r)  (s-ret s)  = s-ret (h r s)
+RelSB-trans h (s-next r) (s-next s) = s-next (RelS-trans h r s)
+RelSB-trans h (s-call f) (s-call g) = s-call (λ b → RelSB-trans h (f b) (g b))
+RelSB-trans h s-halt     s-halt     = s-halt
 
-------------------------------------------------------------------------
--- Streams
-------------------------------------------------------------------------
+-- Two runs related to a third are related to each other through it.
+RelS-meet  : ∀ {X Y Z} {R : X → Z → Set} {S : Y → Z → Set} {m : T∞ X} {n : T∞ Y} {p : T∞ Z}
+           → RelS R m p → RelS S n p → RelS (λ a b → Σ[ c ∈ Z ] R a c × S b c) m n
+RelSB-meet : ∀ {X Y Z} {R : X → Z → Set} {S : Y → Z → Set} {l l′ l″}
+           → RelSB R l l″ → RelSB S l′ l″ → RelSB (λ a b → Σ[ c ∈ Z ] R a c × S b c) l l′
+forceS (RelS-meet r s) = RelSB-meet (forceS r) (forceS s)
+RelSB-meet (s-ret r)  (s-ret s)  = s-ret (_ , r , s)
+RelSB-meet (s-next r) (s-next s) = s-next (RelS-meet r s)
+RelSB-meet (s-call f) (s-call g) = s-call (λ b → RelSB-meet (f b) (g b))
+RelSB-meet s-halt     s-halt     = s-halt
 
--- The runs of a stream's layers are walked inside the stream's own block
--- (not by `RelS-sym`/`RelS-trans`, which would hide the corecursive call
--- behind a function argument).
-StreamRel-sym : ∀ {H x y} → StreamRel H x y → StreamRel H y x
-LayerS-sym    : ∀ H {m m′} → RelS (LayerRel H H) m m′ → RelS (LayerRel H H) m′ m
-LayerSB-sym   : ∀ H {l l′} → RelSB (LayerRel H H) l l′ → RelSB (LayerRel H H) l′ l
-LayerRel-sym  : ∀ H G {x y} → LayerRel H G x y → LayerRel H G y x
-forceR (StreamRel-sym {H} s) = LayerS-sym H (forceR s)
-forceS (LayerS-sym H h) = LayerSB-sym H (forceS h)
-LayerSB-sym H (s-ret r)  = s-ret (LayerRel-sym H H r)
-LayerSB-sym H (s-next h) = s-next (LayerS-sym H h)
-LayerSB-sym H (s-call f) = s-call (λ b → LayerSB-sym H (f b))
-LayerSB-sym H s-halt     = s-halt
-LayerRel-sym H (SK B)     e = sym e
-LayerRel-sym H SId        s = StreamRel-sym s
-LayerRel-sym H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = LayerRel-sym H G₁ r
-LayerRel-sym H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = LayerRel-sym H G₂ r
-LayerRel-sym H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-LayerRel-sym H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-LayerRel-sym H (G₁ S⊗ G₂) (r , s) = LayerRel-sym H G₁ r , LayerRel-sym H G₂ s
+-- The run on the right of a relation is related to itself, by whatever its
+-- values are related to themselves by.
+RelS-rightself  : ∀ {X Y} {R : X → Y → Set} {S : Y → Y → Set} → (∀ {a b} → R a b → S b b)
+                → ∀ {m n} → RelS R m n → RelS S n n
+RelSB-rightself : ∀ {X Y} {R : X → Y → Set} {S : Y → Y → Set} → (∀ {a b} → R a b → S b b)
+                → ∀ {l l′} → RelSB R l l′ → RelSB S l′ l′
+forceS (RelS-rightself h r) = RelSB-rightself h (forceS r)
+RelSB-rightself h (s-ret r)  = s-ret (h r)
+RelSB-rightself h (s-next r) = s-next (RelS-rightself h r)
+RelSB-rightself h (s-call f) = s-call (λ b → RelSB-rightself h (f b))
+RelSB-rightself h s-halt     = s-halt
 
-StreamRel-trans : ∀ {H x y z} → StreamRel H x y → StreamRel H y z → StreamRel H x z
-LayerS-trans    : ∀ H {m n p} → RelS (LayerRel H H) m n → RelS (LayerRel H H) n p → RelS (LayerRel H H) m p
-LayerSB-trans   : ∀ H {l l′ l″} → RelSB (LayerRel H H) l l′ → RelSB (LayerRel H H) l′ l″ → RelSB (LayerRel H H) l l″
-LayerRel-trans  : ∀ H G {x y z} → LayerRel H G x y → LayerRel H G y z → LayerRel H G x z
-forceR (StreamRel-trans {H} s₁ s₂) = LayerS-trans H (forceR s₁) (forceR s₂)
-forceS (LayerS-trans H h₁ h₂) = LayerSB-trans H (forceS h₁) (forceS h₂)
-LayerSB-trans H (s-ret r₁)  (s-ret r₂)  = s-ret (LayerRel-trans H H r₁ r₂)
-LayerSB-trans H (s-next h₁) (s-next h₂) = s-next (LayerS-trans H h₁ h₂)
-LayerSB-trans H (s-call f₁) (s-call f₂) = s-call (λ b → LayerSB-trans H (f₁ b) (f₂ b))
-LayerSB-trans H s-halt      s-halt      = s-halt
-LayerRel-trans H (SK B)     e₁ e₂ = trans e₁ e₂
-LayerRel-trans H SId        s₁ s₂ = StreamRel-trans s₁ s₂
-LayerRel-trans H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r₁ r₂ = LayerRel-trans H G₁ r₁ r₂
-LayerRel-trans H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r₁ r₂ = LayerRel-trans H G₂ r₁ r₂
-LayerRel-trans H (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
-LayerRel-trans H (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
-LayerRel-trans H (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₂ _} _ ()
-LayerRel-trans H (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₁ _} _ ()
-LayerRel-trans H (G₁ S⊗ G₂) (r₁ , s₁) (r₂ , s₂) = LayerRel-trans H G₁ r₁ r₂ , LayerRel-trans H G₂ s₁ s₂
+-- A relation to a run, paired with that run's relation to itself.
+RelS-pairʳ  : ∀ {X Y} {R : X → Y → Set} {S : Y → Y → Set} {m : T∞ X} {n : T∞ Y}
+            → RelS R m n → RelS S n n → RelS (λ a b → R a b × S b b) m n
+RelSB-pairʳ : ∀ {X Y} {R : X → Y → Set} {S : Y → Y → Set} {l l′}
+            → RelSB R l l′ → RelSB S l′ l′ → RelSB (λ a b → R a b × S b b) l l′
+forceS (RelS-pairʳ r s) = RelSB-pairʳ (forceS r) (forceS s)
+RelSB-pairʳ (s-ret r)  (s-ret s)  = s-ret (r , s)
+RelSB-pairʳ (s-next r) (s-next s) = s-next (RelS-pairʳ r s)
+RelSB-pairʳ (s-call f) (s-call g) = s-call (λ b → RelSB-pairʳ (f b) (g b))
+RelSB-pairʳ s-halt     s-halt     = s-halt
 
 ------------------------------------------------------------------------
--- Values, by type
+-- Streams.
 ------------------------------------------------------------------------
 
-RelD-sym   : ∀ {m} (A : Ty m) {x y} → RelD A x y → RelD A y x
-RelD-trans : ∀ {m} (A : Ty m) {x y z} → RelD A x y → RelD A y z → RelD A x z
+module _ {H : SFunctor} where
+  stream-sym : ∀ {x y : νᴵ H} → StreamRel H x y → StreamRel H y x
+  run-sym    : ∀ {m n} → RelS (LayerRel H H) m n → RelS (LayerRel H H) n m
+  block-sym  : ∀ {l l′} → RelSB (LayerRel H H) l l′ → RelSB (LayerRel H H) l′ l
+  layer-sym  : ∀ (G : SFunctor) {l l′} → LayerRel H G l l′ → LayerRel H G l′ l
+  forceR (stream-sym r) = run-sym (forceR r)
+  forceS (run-sym r) = block-sym (forceS r)
+  block-sym (s-ret r)  = s-ret (layer-sym H r)
+  block-sym (s-next r) = s-next (run-sym r)
+  block-sym (s-call f) = s-call (λ b → block-sym (f b))
+  block-sym s-halt     = s-halt
+  layer-sym (SK B)     e = sym e
+  layer-sym SId        r = stream-sym r
+  layer-sym (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} r = layer-sym G₁ r
+  layer-sym (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} r = layer-sym G₂ r
+  layer-sym (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} ()
+  layer-sym (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} ()
+  layer-sym (G₁ S⊗ G₂) {_ , _} {_ , _} (r , s) = layer-sym G₁ r , layer-sym G₂ s
 
--- the middle input of a composite at an arrow: related to itself
-private
-  RelD-self : ∀ {m} (A : Ty m) {x y} → RelD A x y → RelD A y y
-  RelD-self A r = RelD-trans A (RelD-sym A r) r
+  stream-trans : ∀ {x y z : νᴵ H} → StreamRel H x y → StreamRel H y z → StreamRel H x z
+  run-trans    : ∀ {m n p} → RelS (LayerRel H H) m n → RelS (LayerRel H H) n p → RelS (LayerRel H H) m p
+  block-trans  : ∀ {l l′ l″} → RelSB (LayerRel H H) l l′ → RelSB (LayerRel H H) l′ l″ → RelSB (LayerRel H H) l l″
+  layer-trans  : ∀ (G : SFunctor) {l l′ l″} → LayerRel H G l l′ → LayerRel H G l′ l″ → LayerRel H G l l″
+  forceR (stream-trans r s) = run-trans (forceR r) (forceR s)
+  forceS (run-trans r s) = block-trans (forceS r) (forceS s)
+  block-trans (s-ret r)  (s-ret s)  = s-ret (layer-trans H r s)
+  block-trans (s-next r) (s-next s) = s-next (run-trans r s)
+  block-trans (s-call f) (s-call g) = s-call (λ b → block-trans (f b) (g b))
+  block-trans s-halt     s-halt     = s-halt
+  layer-trans (SK B)     e e′ = trans e e′
+  layer-trans SId        r s  = stream-trans r s
+  layer-trans (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₁ _} r s = layer-trans G₁ r s
+  layer-trans (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₂ _} r s = layer-trans G₂ r s
+  layer-trans (G₁ S⊕ G₂) {inj₁ _} {inj₂ _} () _
+  layer-trans (G₁ S⊕ G₂) {inj₂ _} {inj₁ _} () _
+  layer-trans (G₁ S⊕ G₂) {inj₁ _} {inj₁ _} {inj₂ _} _ ()
+  layer-trans (G₁ S⊕ G₂) {inj₂ _} {inj₂ _} {inj₁ _} _ ()
+  layer-trans (G₁ S⊗ G₂) {_ , _} {_ , _} {_ , _} (r , s) (r′ , s′) = layer-trans G₁ r r′ , layer-trans G₂ s s′
 
-RelD-sym Unit _ = tt
-RelD-sym Void {()}
-RelD-sym (A * B) (r , s) = RelD-sym A r , RelD-sym B s
-RelD-sym (A + B) {inj₁ _} {inj₁ _} r = RelD-sym A r
-RelD-sym (A + B) {inj₂ _} {inj₂ _} r = RelD-sym B r
-RelD-sym (A + B) {inj₁ _} {inj₂ _} ()
-RelD-sym (A + B) {inj₂ _} {inj₁ _} ()
-RelD-sym (A ⇒[ mk-kind Zero π ] B) h = RelS-sym (RelD-sym B) h
-RelD-sym (A ⇒[ mk-kind One  π ] B) h r = RelS-sym (RelD-sym B) (h (RelD-sym A r))
-RelD-sym (A ⇒[ mk-kind Many π ] B) h r = RelS-sym (RelD-sym B) (h (RelD-sym A r))
-RelD-sym (μ F)   e = sym e
-RelD-sym (ν F _) s = StreamRel-sym s
-RelD-sym Int     e = sym e
-RelD-sym Float   e = sym e
-RelD-sym (var _) {()}
+------------------------------------------------------------------------
+-- Values.
+------------------------------------------------------------------------
 
-RelD-trans Unit _ _ = tt
-RelD-trans Void {()}
-RelD-trans (A * B) (r₁ , s₁) (r₂ , s₂) = RelD-trans A r₁ r₂ , RelD-trans B s₁ s₂
-RelD-trans (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r₁ r₂ = RelD-trans A r₁ r₂
-RelD-trans (A + B) {inj₂ _} {inj₂ _} {inj₂ _} r₁ r₂ = RelD-trans B r₁ r₂
-RelD-trans (A + B) {inj₁ _} {inj₂ _} ()
-RelD-trans (A + B) {inj₂ _} {inj₁ _} ()
-RelD-trans (A + B) {inj₁ _} {inj₁ _} {inj₂ _} _ ()
-RelD-trans (A + B) {inj₂ _} {inj₂ _} {inj₁ _} _ ()
-RelD-trans (A ⇒[ mk-kind Zero π ] B) h₁ h₂ = RelS-trans (RelD-trans B) h₁ h₂
-RelD-trans (A ⇒[ mk-kind One  π ] B) h₁ h₂ r = RelS-trans (RelD-trans B) (h₁ r) (h₂ (RelD-self A r))
-RelD-trans (A ⇒[ mk-kind Many π ] B) h₁ h₂ r = RelS-trans (RelD-trans B) (h₁ r) (h₂ (RelD-self A r))
-RelD-trans (μ F)   e₁ e₂ = trans e₁ e₂
-RelD-trans (ν F _) s₁ s₂ = StreamRel-trans s₁ s₂
-RelD-trans Int     e₁ e₂ = trans e₁ e₂
-RelD-trans Float   e₁ e₂ = trans e₁ e₂
-RelD-trans (var _) {()}
+mutual
+  RelD-sym : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y x
+  RelD-sym Unit r = tt
+  RelD-sym Void {()}
+  RelD-sym (A * B) {_ , _} {_ , _} (r , s) = RelD-sym A r , RelD-sym B s
+  RelD-sym (A + B) {inj₁ _} {inj₁ _} r = RelD-sym A r
+  RelD-sym (A + B) {inj₂ _} {inj₂ _} r = RelD-sym B r
+  RelD-sym (A + B) {inj₁ _} {inj₂ _} ()
+  RelD-sym (A + B) {inj₂ _} {inj₁ _} ()
+  RelD-sym (A ⇒[ mk-kind Zero π ] B) r = RelS-sym (RelD-sym B) r
+  RelD-sym (A ⇒[ mk-kind One π ] B) r ra = RelS-sym (RelD-sym B) (r (RelD-sym A ra))
+  RelD-sym (A ⇒[ mk-kind Many π ] B) r ra = RelS-sym (RelD-sym B) (r (RelD-sym A ra))
+  RelD-sym (μ F) r = sym r
+  RelD-sym (ν F π) r = stream-sym r
+  RelD-sym Int r = sym r
+  RelD-sym Float r = sym r
+  RelD-sym (var _) {()}
+
+  RelD-trans : ∀ {m} (A : Ty m) {x y z : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y z → RelD A x z
+  RelD-trans Unit r s = tt
+  RelD-trans Void {()}
+  RelD-trans (A * B) {_ , _} {_ , _} {_ , _} (r , s) (r′ , s′) = RelD-trans A r r′ , RelD-trans B s s′
+  RelD-trans (A + B) {inj₁ _} {inj₁ _} {inj₁ _} r s = RelD-trans A r s
+  RelD-trans (A + B) {inj₂ _} {inj₂ _} {inj₂ _} r s = RelD-trans B r s
+  RelD-trans (A + B) {inj₁ _} {inj₂ _} () _
+  RelD-trans (A + B) {inj₂ _} {inj₁ _} () _
+  RelD-trans (A + B) {inj₁ _} {inj₁ _} {inj₂ _} _ ()
+  RelD-trans (A + B) {inj₂ _} {inj₂ _} {inj₁ _} _ ()
+  RelD-trans (A ⇒[ mk-kind Zero π ] B) r s = RelS-trans (RelD-trans B) r s
+  RelD-trans (A ⇒[ mk-kind One π ] B) r s ra = RelS-trans (RelD-trans B) (r ra) (s (RelD-rightself A ra))
+  RelD-trans (A ⇒[ mk-kind Many π ] B) r s ra = RelS-trans (RelD-trans B) (r ra) (s (RelD-rightself A ra))
+  RelD-trans (μ F) r s = trans r s
+  RelD-trans (ν F π) r s = stream-trans r s
+  RelD-trans Int r s = trans r s
+  RelD-trans Float r s = trans r s
+  RelD-trans (var _) {()}
+
+  -- The right side of a related pair is related to itself.
+  RelD-rightself : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A y y
+  RelD-rightself A r = RelD-trans A (RelD-sym A r) r
+
+RelD-leftself : ∀ {m} (A : Ty m) {x y : ⟦ A ⟧ᴰ} → RelD A x y → RelD A x x
+RelD-leftself A r = RelD-trans A r (RelD-sym A r)
