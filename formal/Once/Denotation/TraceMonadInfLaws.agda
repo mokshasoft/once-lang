@@ -57,6 +57,16 @@ force≈ (≈∞-idʳ m) = ≈∞-idʳB (force m)
 ≈∞-idʳB (call o a k)   = call≈ (λ b → ≈∞-idʳB (k b))
 ≈∞-idʳB (halt o a)     = halt≈
 
+-- Bisimilarity is symmetric (when the results' relation is).
+≈∞-sym  : ∀ {X} {R : X → X → Set} → (∀ {x y} → R x y → R y x) → ∀ {m m′} → TreeEq∞ R m m′ → TreeEq∞ R m′ m
+≈∞-symB : ∀ {X} {R : X → X → Set} → (∀ {x y} → R x y → R y x) → ∀ {l l′}
+        → BlockEq (StepEq R (TreeEq∞ R)) l l′ → BlockEq (StepEq R (TreeEq∞ R)) l′ l
+force≈ (≈∞-sym s h) = ≈∞-symB s (force≈ h)
+≈∞-symB s (ret≈ (done≈ r)) = ret≈ (done≈ (s r))
+≈∞-symB s (ret≈ (next≈ h)) = ret≈ (next≈ (≈∞-sym s h))
+≈∞-symB s (call≈ f)        = call≈ (λ b → ≈∞-symB s (f b))
+≈∞-symB s halt≈            = halt≈
+
 ------------------------------------------------------------------------
 -- A run against a FINITE tree (the IR's, which is `T` until the compiler
 -- runs forever too): the same calls, read off the finite side, and the
