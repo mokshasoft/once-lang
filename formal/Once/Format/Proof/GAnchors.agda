@@ -229,9 +229,14 @@ private
     ; fK = K ; fId = Id ; fSum = _⊕_ ; fProd = _⊗_
     ; Extra = NoExtra }
 
+-- A type variable is one word. (A named definition, not a pattern lambda in the module
+-- application below: Agda leaves such a lambda's termination unconfirmed.)
+sig-var : ∀ {ts A r} → TypeVar ts A r → Seg (cT A) ts r
+sig-var (tvar {x} _) = seg-cast (+-identityʳ (wc x)) (seg-cons (TWord x) refl seg-nil)
+
 module SigA = TypeAnchors (written TypeVar) cT cF refl refl refl refl (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
   (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
-  (λ { (tvar {x} _) → seg-cast (+-identityʳ (wc x)) (seg-cons (TWord x) refl seg-nil) })
+  sig-var
 
 module AliasA = TypeAnchors (written NoExtra) cT cF refl refl refl refl (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl)
   (λ _ _ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) refl (λ _ _ → refl) (λ _ _ → refl)
