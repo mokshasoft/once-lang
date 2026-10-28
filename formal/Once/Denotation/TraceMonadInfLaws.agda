@@ -48,6 +48,15 @@ force≈ (≈∞-bind h c) = ≈∞-bindB (force≈ h) c
 ≈∞-idˡ : ∀ {X Y} (x : X) (k : X → T∞ Y) → TreeEq∞ _≡_ (return∞ x >>=∞ k) (k x)
 force≈ (≈∞-idˡ x k) = ≈∞-reflB (λ _ → refl) (force (k x))
 
+-- Continuing by returning is not continuing.
+≈∞-idʳ  : ∀ {X} (m : T∞ X) → TreeEq∞ _≡_ (m >>=∞ return∞) m
+≈∞-idʳB : ∀ {X} (l : T (X ⊎ T∞ X)) → BlockEq (StepEq _≡_ (TreeEq∞ _≡_)) (bindBlock l return∞) l
+force≈ (≈∞-idʳ m) = ≈∞-idʳB (force m)
+≈∞-idʳB (ret (inj₁ x)) = ret≈ (done≈ refl)
+≈∞-idʳB (ret (inj₂ m)) = ret≈ (next≈ (≈∞-idʳ m))
+≈∞-idʳB (call o a k)   = call≈ (λ b → ≈∞-idʳB (k b))
+≈∞-idʳB (halt o a)     = halt≈
+
 ------------------------------------------------------------------------
 -- A run against a FINITE tree (the IR's, which is `T` until the compiler
 -- runs forever too): the same calls, read off the finite side, and the
