@@ -601,8 +601,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     wrap (closure-wf {body = body} {env = env} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
   pattern valid-closure-reg-wf {body} {env} {closure-loc} lmm rep ep cp slb fd runs =
     wrap (closure-reg-wf {body = body} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
-  pattern valid-ν-susp-wf {T} {seed} org lmm sv c0 cp slb =
-    wrap (ν-susp-wf {T = T} {seed = seed} org lmm sv c0 cp slb)
+  pattern valid-ν-susp-wf {T} {seed} {coalg-label} org lmm sv c0 cp slb =
+    wrap (ν-susp-wf {T = T} {seed = seed} org {coalg-label = coalg-label} lmm sv c0 cp slb)
   pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
   pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
   pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)
@@ -839,6 +839,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   place-rax (at-reg _ rax) = rax
   place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
     where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
+
+  -- plan 0.125 S1: a closure's `runs` states its result at `ResultPlaceP`
+  -- (the arrow case is a parameterised data); a caller's obligations are at
+  -- `ResultPlace`. Same constructors, same fields.
+  rp→place : ∀ {B m a₁ a₂ v s} → ResultPlaceP {B} (VAt B) m a₁ a₂ v s → ResultPlace B m a₁ a₂ v s
+  rp→place (rp-unit refl)               = unit-result
+  rp→place (rp-loc loc v bf rax cv cbf) = at-loc loc v bf rax cv cbf
+  rp→place (rp-reg fit rax)             = at-reg fit rax
 
 
 ------------------------------------------------------------------------
@@ -1503,8 +1511,8 @@ module ClosureWellFormedPat {FS : FrameSemantics} where
     wrap (closure-wf {body = body} {env = env} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
   pattern valid-closure-reg-wf {body} {env} {closure-loc} lmm rep ep cp slb fd runs =
     wrap (closure-reg-wf {body = body} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
-  pattern valid-ν-susp-wf {T} {seed} org lmm sv c0 cp slb =
-    wrap (ν-susp-wf {T = T} {seed = seed} org lmm sv c0 cp slb)
+  pattern valid-ν-susp-wf {T} {seed} {coalg-label} org lmm sv c0 cp slb =
+    wrap (ν-susp-wf {T = T} {seed = seed} org {coalg-label = coalg-label} lmm sv c0 cp slb)
   pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
   pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
   pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)

@@ -80,7 +80,7 @@ module IterContC {FS : FrameSemantics} where
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
     (span : SpanAt prog base (emitted n l (Iter body)))
     (la : LabelsAt prog base (emitted n l (Iter body)))
-    (Z : Loop.Anchor body n l base)
+    (Z : Loop.Anchor body n l base prog)
     (S0 : FlatState) (a′ : ⟦ A ⟧)
     (nh0 : halted (floc S0) ≡ false)
     (pc0 : fpc S0 ≡ (3 + length (IterShape.bt body n l) + 0) + base)
@@ -98,7 +98,7 @@ module IterContC {FS : FrameSemantics} where
           → BeforeFrontier (record (falloc S0) { next-slot = m }) loc)
     (left0 : LocState.left (floc S0) ≡ LocState.left (Loop.Anchor.s₀ Z))
     {m : AllocMode} (loc : ValueLocation FS)
-    (vS : ValidAtWF m (falloc S0) {B IRT.+ A} (inj₂ a′) loc (floc S0))
+    (vS : ValidAtWF {prog = prog} m (falloc S0) {B IRT.+ A} (inj₂ a′) loc (floc S0))
     (bef : BeforeFrontier (falloc S0) loc)
     (rax : readReg (regs (floc S0)) Output ≡ SV-Ptr loc)
     where
@@ -122,7 +122,7 @@ module IterContC {FS : FrameSemantics} where
     memG : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc gs) lc ≡ SMCore.MemOps.readLoc (floc S0) lc
     memG lc = trans (mem-unpack (floc c1) (falloc c1) lc) (mem1 lc)
 
-    v1 : ValidAtWF m (falloc c1) {B IRT.+ A} (inj₂ a′) loc (floc c1)
+    v1 : ValidAtWF {prog = prog} m (falloc c1) {B IRT.+ A} (inj₂ a′) loc (floc c1)
     v1 = validityWF-mem-preserved (inj₂ a′) loc (floc S0) (floc c1) bef (λ lc _ → mem1 lc) vS
 
     nh1 : halted (floc c1) ≡ false
@@ -137,7 +137,7 @@ module IterContC {FS : FrameSemantics} where
     mg : AllocMode
     mg = proj₁ (payload-place-r v1 rd1)
 
-    placeG : ResultPlace A mg (falloc gs) (falloc gs) a′ (floc gs)
+    placeG : ResultPlace {prog = prog} A mg (falloc gs) (falloc gs) a′ (floc gs)
     placeG = proj₂ (payload-place-r v1 rd1)
 
     ------------------------------------------------------------------
@@ -151,7 +151,7 @@ module IterContC {FS : FrameSemantics} where
                 ≡ just (readReg (regs (floc fsF)) Output)
     fst-cell-gs = trans (memG (AtStack (current-frame alloc₀) (suc n))) env0
 
-    module PP = PairPlace {E} {A} n alloc₀ n≤₀ fsF gs cf-F cf0 ns-F ns0 hr0
+    module PP = PairPlace {prog} {E} {A} n alloc₀ n≤₀ fsF gs cf-F cf0 ns-F ns0 hr0
                   e a′ mf mg caf (falloc gs) placeF placeG mem-F→G fst-cell-gs
 
     ------------------------------------------------------------------

@@ -111,11 +111,11 @@ module CompC {FS : FrameSemantics} where
   -- The memory evidence carries across because the mov touches registers
   -- only, which is what `mem-eq` supplies at each call site.
   result→input :
-    ∀ {B} {v : ⟦ B ⟧} {mOut alloc ca} {s s' : LocState FS}
-    → ResultPlace B mOut alloc ca v s
+    ∀ {prog} {B} {v : ⟦ B ⟧} {mOut alloc ca} {s s' : LocState FS}
+    → ResultPlace {prog = prog} B mOut alloc ca v s
     → readReg (regs s') Input1 ≡ readReg (regs s) Output
     → (∀ loc → readLoc s' loc ≡ readLoc s loc)
-    → InputAt mOut alloc v s'
+    → InputAt {prog = prog} mOut alloc v s'
   result→input (at-loc loc valid before rax-eq _ _) mov-eq mem-eq =
     in-loc loc (validityWF-mem-preserved _ loc _ _ before (λ loc' _ → mem-eq loc') valid)
                before (trans mov-eq rax-eq)
@@ -361,7 +361,7 @@ module CompC {FS : FrameSemantics} where
           memEq : ∀ loc → readLoc (floc fsM) loc ≡ readLoc (floc fsF) loc
           memEq loc = reg-write-readLoc (floc fsF) _ (halted (floc fsF)) loc
 
-          inputM : InputAt mOutf (falloc fsM) vf (floc fsM)
+          inputM : InputAt {prog = prog} mOutf (falloc fsM) vf (floc fsM)
           inputM = result→input (placeF rfeq) movEq memEq
 
           -- `g` runs at the budget `f` left.

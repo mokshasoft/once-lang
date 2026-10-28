@@ -20,7 +20,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; readReg; Output; load-from-slot; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; store-indirect-suc; LocState; sucLoc; StoredValue; SV-Ptr; writeReg-same; sv-as-loc; Input1; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; readReg; Output; load-from-slot; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; store-indirect-suc; LocState; sucLoc; StoredValue; SV-Ptr; writeReg-same; sv-as-loc; Input1; module LocState; module AllocState)
 open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (regs)
 open import Once.IRTy using (IRTy; _*_)
@@ -65,6 +65,7 @@ module PairPlaceC {FS : FrameSemantics} where
   -- same nine either way, so nothing downstream has to choose.
   ----------------------------------------------------------------------
   module PairPlace
+    {prog : AbstractTrace}
     {B C : IRTy}
     (n : ℕ)
     (alloc : AllocState {FS})
@@ -82,8 +83,8 @@ module PairPlaceC {FS : FrameSemantics} where
     -- the two component values and the residences the IHs realized them at
     (vB : ⟦ B ⟧) (vC : ⟦ C ⟧)
     (mf mg : AllocMode) (caf cag : AllocState {FS})
-    (placeF : ResultPlace B mf (falloc fsF) caf vB (floc fsF))
-    (placeG : ResultPlace C mg (falloc gs)  cag vC (floc gs))
+    (placeF : ResultPlace {prog = prog} B mf (falloc fsF) caf vB (floc fsF))
+    (placeG : ResultPlace {prog = prog} C mg (falloc gs)  cag vC (floc gs))
     -- what the two mid rows and `g`'s run leave alone …
     (mem-F→G : ∀ (loc : ValueLocation FS)
              → BeforeFrontier (falloc fsF) loc
@@ -384,8 +385,8 @@ module PairPlaceC {FS : FrameSemantics} where
 
     transF : ∀ {m'} {E : IRTy} (w : ⟦ E ⟧) (lc : ValueLocation FS)
            → BeforeFrontier (falloc fsF) lc
-           → ValidAtWF m' (falloc fsF) {E} w lc (floc fsF)
-           → ValidAtWF m' (falloc u10) {E} w lc (floc u10)
+           → ValidAtWF {prog = prog} m' (falloc fsF) {E} w lc (floc fsF)
+           → ValidAtWF {prog = prog} m' (falloc u10) {E} w lc (floc u10)
     transF w lc bf vd =
       validityWF-frontier-advance w lc (floc u10)
         (trans cf-u10 (sym cf-fsF))
@@ -395,8 +396,8 @@ module PairPlaceC {FS : FrameSemantics} where
 
     transG : ∀ {m'} {E : IRTy} (w : ⟦ E ⟧) (lc : ValueLocation FS)
            → BeforeFrontier (falloc gs) lc
-           → ValidAtWF m' (falloc gs) {E} w lc (floc gs)
-           → ValidAtWF m' (falloc u10) {E} w lc (floc u10)
+           → ValidAtWF {prog = prog} m' (falloc gs) {E} w lc (floc gs)
+           → ValidAtWF {prog = prog} m' (falloc u10) {E} w lc (floc u10)
     transG w lc bf vd =
       validityWF-frontier-advance w lc (floc u10)
         (trans cf-u10 (sym cf-gs))
@@ -433,12 +434,12 @@ module PairPlaceC {FS : FrameSemantics} where
               → SMCore.MemOps.readLoc (floc u10) cl ≡ just (readReg (regs src) Output)
               → (∀ {m'} {E : IRTy} (w : ⟦ E ⟧) (lc : ValueLocation FS)
                  → BeforeFrontier aS lc
-                 → ValidAtWF m' aS {E} w lc src
-                 → ValidAtWF m' (falloc u10) {E} w lc (floc u10))
+                 → ValidAtWF {prog = prog} m' aS {E} w lc src
+                 → ValidAtWF {prog = prog} m' (falloc u10) {E} w lc (floc u10))
               → (∀ (lc : ValueLocation FS) → BeforeFrontier aS lc
                  → BeforeFrontier (falloc u10) lc)
-              → ResultPlace D m aS ca v src
-              → CellAt (falloc u10) D v cl (floc u10)
+              → ResultPlace {prog = prog} D m aS ca v src
+              → CellAt {prog = prog} (falloc u10) D v cl (floc u10)
     cell-of src cl rd tr bfw (at-loc loc valid bef rax _ _) =
       cell-ptr (trans rd (cong just rax)) (bfw loc bef) (tr _ loc bef valid)
     cell-of src cl rd tr bfw (at-reg fit rax) =
@@ -446,10 +447,10 @@ module PairPlaceC {FS : FrameSemantics} where
     cell-of src cl rd tr bfw unit-result =
       cell-inline (rep-unit refl (readReg (regs src) Output)) rd
 
-    cellF : CellAt (falloc u10) B vB pair-loc (floc u10)
+    cellF : CellAt {prog = prog} (falloc u10) B vB pair-loc (floc u10)
     cellF = cell-of (floc fsF) pair-loc cell0-u10 transF bfF-u10 placeF
 
-    cellG : CellAt (falloc u10) C vC (sucLoc pair-loc) (floc u10)
+    cellG : CellAt {prog = prog} (falloc u10) C vC (sucLoc pair-loc) (floc u10)
     cellG = cell-of (floc gs) (sucLoc pair-loc) cell1-u10 transG bfG-u10 placeG
 
     ------------------------------------------------------------------------
@@ -463,10 +464,10 @@ module PairPlaceC {FS : FrameSemantics} where
     cont-alloc : AllocState {FS}
     cont-alloc = falloc u10
 
-    validity : ValidAtWF Heap (falloc u10) {B * C} (vB , vC) pair-loc (floc u10)
+    validity : ValidAtWF {prog = prog} Heap (falloc u10) {B * C} (vB , vC) pair-loc (floc u10)
     validity = valid-pair-wf tt before-suc cellF cellG
 
-    place : ResultPlace (B * C) Heap (falloc u10) (falloc u10) (vB , vC) (floc u10)
+    place : ResultPlace {prog = prog} (B * C) Heap (falloc u10) (falloc u10) (vB , vC) (floc u10)
     place = at-loc pair-loc validity before out-u10 validity before
 
 

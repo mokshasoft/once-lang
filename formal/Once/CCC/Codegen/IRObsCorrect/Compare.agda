@@ -442,7 +442,7 @@ module CompareC {FS : FrameSemantics} where
 
       -- ── THE PLACE: the sum the denotation returns, by the tag.
       place-at : ∀ (b : Bool) → SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just (SV-Tag (if b then 1 else 0))
-               → ResultPlace (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
+               → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
                              (resOf si (EvV.eraseᵍ (bool b))) (floc fs11)
       place-at true  tg rewrite bt-UU (conB si) =
         at-loc sum-loc
@@ -458,8 +458,8 @@ module CompareC {FS : FrameSemantics} where
           before
 
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
-            → ResultPlace _ Heap (falloc fs11) (falloc fs11) v (floc fs11)
-      place p = subst (λ v → ResultPlace _ Heap (falloc fs11) (falloc fs11) v (floc fs11))
+            → ResultPlace {prog = prog} _ Heap (falloc fs11) (falloc fs11) v (floc fs11)
+      place p = subst (λ v → ResultPlace {prog = prog} _ Heap (falloc fs11) (falloc fs11) v (floc fs11))
                   (returns-inj (trans (sym (cong (resultAt s) E≡)) p))
                   (place-at c tag-fs11)
 

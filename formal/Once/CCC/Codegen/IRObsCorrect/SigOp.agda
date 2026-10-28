@@ -147,9 +147,9 @@ module SigOpC {FS : FrameSemantics} where
   arg-reg (base-Sum _ _)  () x s eq
   arg-reg base-rigid      () x s eq
 
-  arg-agree : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
+  arg-agree : ∀ {prog : AbstractTrace} {A : Type} (bt : IsBaseType A) {mIn alloc}
                 (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-            → InputAt {⌊ A ⌋} mIn alloc x s
+            → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
             → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
   arg-agree base-Unit  x  s inp = refl
   arg-agree base-Void  () s inp
@@ -165,10 +165,10 @@ module SigOpC {FS : FrameSemantics} where
   arg-agree (base-Sum _ _)  x s (in-unit ())
 
   -- The events a calling SigOp's step logs ARE the call the denotation makes.
-  event-agree : ∀ {A B} (si : SigOpInfo A B) {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-              → InputAt {⌊ A ⌋} mIn alloc x s
+  event-agree : ∀ {prog : AbstractTrace} {A B} (si : SigOpInfo A B) {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
+              → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
               → machine-events si s ≡ mk-event (name si) A (baseA si) (argOf si x) DL.∷ DL.[]
-  event-agree {A} si x s inp = cong (events-at-arg si) (arg-agree (baseA si) x s inp)
+  event-agree {A = A} si x s inp = cong (events-at-arg si) (arg-agree (baseA si) x s inp)
 
   ------------------------------------------------------------------------
   -- ONE SigOp STEP, as an obligation witness. Every contract runs the same
@@ -203,7 +203,7 @@ module SigOpC {FS : FrameSemantics} where
           → (stopsAt s E ≡ false → exec-sigop-halts si s ≡ false)
           → (stopsAt s E ≡ true  → exec-sigop-halts si s ≡ true)
           → (∀ {v} → resultAt s E ≡ returns v
-               → ResultPlace ⌊ B ⌋ Stack (falloc fs₁) (falloc fs₁) v (floc fs₁))
+               → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc fs₁) (falloc fs₁) v (floc fs₁))
           → MachineRefinesObsF prog base n l (SigOp si) x s alloc cl rs k
     build k ev-eq live stops place = record
       { traces-agree = trans (++-identityʳ _) ev-eq′
@@ -244,12 +244,12 @@ module SigOpC {FS : FrameSemantics} where
   -- THE INPUT A CALL-FREE CONTRACT READS is the denotation's argument, in
   -- every residence: through the pointer (`readTyped-adequate`, at the info's
   -- own witness), from the register, or — for a unit input — by η.
-  pure-input-aux : ∀ {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
+  pure-input-aux : ∀ {prog : AbstractTrace} {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
                      {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-                 → InputAt {⌊ A ⌋} mIn alloc x s
+                 → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
                  → pure-sigop-out-aux si s (just fit) (sv-as-loc (readReg (regs s) Input1))
                    ≡ pure-sigop-out-val si fit (just (argOf si x))
-  pure-input-aux {A} si fit rA x s (in-loc loc valid _ eq) rewrite eq =
+  pure-input-aux {A = A} si fit rA x s (in-loc loc valid _ eq) rewrite eq =
     cong (pure-sigop-out-val si fit) (readTyped-adequate {A = A} rA (baseA si) {v = x} valid)
   pure-input-aux si fit r-int x s (in-reg fits-int eq) =
     -- the register branch re-reads `Input1`, so the equation is spent twice
@@ -276,9 +276,9 @@ module SigOpC {FS : FrameSemantics} where
   pure-input-aux si fit r-int        x s (in-unit ())
   pure-input-aux si fit (r-pair _ _) x s (in-unit ())
 
-  pure-input : ∀ {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
+  pure-input : ∀ {prog : AbstractTrace} {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
                  {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-             → InputAt {⌊ A ⌋} mIn alloc x s
+             → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
              → pure-sigop-output si s ≡ pure-sigop-out-val si fit (just (argOf si x))
   pure-input si fits-intˢ   rA x s inp = pure-input-aux si fits-intˢ   rA x s inp
   pure-input si fits-floatˢ rA x s inp = pure-input-aux si fits-floatˢ rA x s inp
@@ -331,8 +331,8 @@ module SigOpC {FS : FrameSemantics} where
                                 (proj₁ (proj₂ (pure-agree si c eff d a)))))
                        (res-reg fit (conB si) w))))
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
-            → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
-      place p = subst (λ v → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
+            → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
+      place p = subst (λ v → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
                   (returns-inj (trans (sym (cong (resultAt s) E≡)) p))
                   (at-reg (fits-erase fit)
                     (trans (writeReg-same (regs s) Output (exec-sigop-output si s)) out≡))
@@ -410,8 +410,8 @@ module SigOpC {FS : FrameSemantics} where
       out-fit fits-intˢ   = out≡ fits-intˢ
       out-fit fits-floatˢ = out≡ fits-floatˢ
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
-            → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
-      place p = subst (λ v → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
+            → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
+      place p = subst (λ v → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
                   (returns-inj (trans (sym res-call) (trans (sym (cong (resultAt s) E≡)) p)))
                   (at-reg (fits-erase fit)
                     (trans (writeReg-same (regs s) Output (exec-sigop-output si s))

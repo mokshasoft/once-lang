@@ -84,7 +84,7 @@ module IterRoundsC {FS : FrameSemantics} where
     (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (bl : BlocksAt prog (blocks n l (Iter body)))
     (la : LabelsAt prog base (emitted n l (Iter body)))
-    (Z : Loop.Anchor body n l base)
+    (Z : Loop.Anchor body n l base prog)
     where
 
     open IterShape body n l
@@ -110,7 +110,7 @@ module IterRoundsC {FS : FrameSemantics} where
         cut-run : ∀ {ρ} → ρ₁ ≡ ρ → runAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ (es₁ , returns cut)
                 → budgetLeft r ρ ≡ 0 → is-stopped ρ ≡ false → RoundsRun Z prog σ a r
         exit-run : ∀ (b : ⟦ B ⟧) (r′ : ℕ) (q : ρ₁ ≡ returns (done (inj₁ b) r′))
-                 → ResultPlace (B IRT.+ A) (VR.out-mode vb) (falloc S0) (VR.cont-alloc vb) (inj₁ b) (floc S0)
+                 → ResultPlace {prog = prog} (B IRT.+ A) (VR.out-mode vb) (falloc S0) (VR.cont-alloc vb) (inj₁ b) (floc S0)
                  → RoundsRun Z prog σ a r
         go : (ρ : Res (Ap ⟦ B IRT.+ A ⟧)) → ρ₁ ≡ ρ → RoundsRun Z prog σ a r
         -- the round stopped: so did the loop
@@ -142,7 +142,7 @@ module IterRoundsC {FS : FrameSemantics} where
         go (returns (done (inj₂ a′) (suc r″))) q = cont-run a′ r″ q (VR.place vb q)
           where
             cont-run : ∀ (a′ : ⟦ A ⟧) (r″ : ℕ) (q : ρ₁ ≡ returns (done (inj₂ a′) (suc r″)))
-                     → ResultPlace (B IRT.+ A) (VR.out-mode vb) (falloc S0) (VR.cont-alloc vb) (inj₂ a′) (floc S0)
+                     → ResultPlace {prog = prog} (B IRT.+ A) (VR.out-mode vb) (falloc S0) (VR.cont-alloc vb) (inj₂ a′) (floc S0)
                      → RoundsRun Z prog σ a r
             cont-run a′ r″ q (at-loc loc vS bef rax _ _) = record
               { steps = VR.steps vb + (15 + RoundsRun.steps rr) ; settle = RoundsRun.settle rr
@@ -226,7 +226,7 @@ module IterRoundsC {FS : FrameSemantics} where
           ; at-end = λ _ → X.pc-end
           ; stops = λ p → case trans (sym (cong is-stopped res)) p of λ ()
           ; no-ret = λ _ → ret0-of q ; no-link = λ _ → NC.lnk0 nc
-          ; place = λ p → subst (λ w → ResultPlace B (proj₁ X.placeB) (falloc XE.s4) (falloc XE.s4) w (floc XE.s4))
+          ; place = λ p → subst (λ w → ResultPlace {prog = prog} B (proj₁ X.placeB) (falloc XE.s4) (falloc XE.s4) w (floc XE.s4))
                                 (done-value (trans (sym res) p)) (proj₂ X.placeB)
           ; events = trans (chain-events-++ chainB X.chain)
                        (trans (cong₂ DL._++_ ev-chainB X.ev-chain) (trans (DLP.++-identityʳ es₁) (sym evs)))

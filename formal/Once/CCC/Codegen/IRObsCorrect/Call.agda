@@ -86,7 +86,7 @@ module CallC {FS : FrameSemantics} where
                (trans (cong (λ st → halted (floc st)) call-eq) nh)
                (cong fret call-eq)
                (cong falloc call-eq)
-               (subst (λ st → InputAt {A} mIn alloc x (floc st)) (sym call-eq) inp)
+               (subst (λ st → InputAt {prog = prog} {A} mIn alloc x (floc st)) (sym call-eq) inp)
 
       run1 : FlatSteps prog 1 e0 post
       run1 = (nh , span 0 _ refl) ∷ []

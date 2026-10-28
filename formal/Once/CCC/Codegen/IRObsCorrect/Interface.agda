@@ -172,7 +172,7 @@ module Core {FS : FrameSemantics} where
           ; valid-closure-wf; valid-closure-reg-wf; valid-ν-susp-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
   open ClosureWellFormedDef {FS}
     using (ValidAtWF; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result
-          ; CalleeRunP; module CalleeRunP; callee-run; CallRuns; VAt; fo→valid; valid→fo; μ-layer; valid-μ
+          ; CalleeRunP; module CalleeRunP; callee-run; CallRuns; VAt; rp→place; fo→valid; valid→fo; μ-layer; valid-μ
           ; validityWF-transport; validityWF-mem-only
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
@@ -717,38 +717,12 @@ module Core {FS : FrameSemantics} where
   CalleeRun prog fs ret-pc rs B comp k = CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B) fs ret-pc rs comp k
   module CalleeRun = CalleeRunP
 
-  ------------------------------------------------------------------------
-  -- D188: THE BLOCK TABLE, as the machine needs it — the one fact `apply`
-  -- cannot get from the value.
-  --
-  -- The value↔label link is NOT missing: `callView` reads the label out of the
-  -- closure's code cell, and `valid-closure-wf` says both what that cell holds
-  -- and what the closure MEANS. What no value can say is that the program's
-  -- block table implements that label — D170 removed the value's ability to
-  -- carry it on purpose. So it arrives here, conditioned on the closure
-  -- witness so the body and the label are the SAME ONES the witness names.
-  ------------------------------------------------------------------------
-  CalleeRuns : AbstractTrace → Set
-  CalleeRuns prog =
-    ∀ {E A B : IRTy} (body : IR (E IRTy′.* A) B) (env : ⟦ E ⟧) (ℓ : LabelId)
-      {m : AllocMode} {alloc' : AllocState {FS}}
-      {cloc : ValueLocation FS} {st : LocState FS}
-    → ValidAtWF {prog = prog} m alloc' {A IRTy′.⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
-    → SMCore.MemOps.readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
-    → ∃[ j ]
-        ( (find-thunk prog ℓ ≡ just j)
-        -- The argument's residence is stated at the CALLER's frontier, and the
-        -- call's frame entry named separately: `enter-call` SHIFTS the frame,
-        -- so a caller-resident component is an ancestor afterwards, and that
-        -- transfer belongs with the callee's proof, not at every call site.
-        × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
-             (envArg : ⟦ E IRTy′.* A ⟧) (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
-           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
-           → falloc fs ≡ enter-call pre-alloc
-           → InputAt {prog} {E IRTy′.* A} mIn' pre-alloc envArg (floc fs)
-           → CalleeRun prog fs ret-pc rs B (evalᴰ body envArg) k))
+  -- plan 0.125 S1: `CalleeRuns` (D188, the closure half of the block table)
+  -- is GONE. A closure's witness now says what its block does (`CallRuns`,
+  -- the arrow case of `ValidAtWF`), so `apply` reads the run off the value.
+  -- `curry` owes it instead (S3).
 
-  -- D198: the ν analogue of `CalleeRuns`, and a SIBLING rather than an
+  -- D198: the ν analogue of the old `CalleeRuns`, and a SIBLING rather than an
   -- instance because the two block kinds are called differently BY
   -- CONSTRUCTION: `apply` packs an `(env , arg)` pair on the heap and points
   -- `Input1` at it, while `Out` puts the SEED in `Input1` directly. That is
@@ -813,7 +787,6 @@ module Core {FS : FrameSemantics} where
   -- fourteen discharge clauses that only pass it along.
   record BlockRuns (prog : AbstractTrace) : Set where
     field
-      closures  : CalleeRuns prog
       coalgs    : CoalgRuns prog
       functions : FnRuns prog
 

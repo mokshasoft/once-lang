@@ -26,9 +26,8 @@ open import Once.Spec.Name using (CanonicalName)
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
--- plan 0.125 S1: `ValidAtWF` is relative to the program (its arrow case).
 module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName) (tbl : List IRFun)
-  {FS : FrameSemantics} {prog : AbstractTrace} where
+  {FS : FrameSemantics} where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (tt)
@@ -47,7 +46,7 @@ open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
 open import Once.CCC.Machine.ClosureWellFormed o tbl
-open ClosureWellFormedDef {FS} {prog}
+open ClosureWellFormedDef {FS}
   using (ValidAtWF; CellAt)
 open ClosureWellFormedPat {FS}
   using (valid-unit-wf; valid-int-wf; valid-float-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf)
@@ -128,13 +127,16 @@ sumtag-eq {Once.IR.Stack} e = e
 -- carries; the lemma takes the witness, so the consumer passes its own). Stating adequacy in that
 -- same form is what lets the consumer's `rewrite` close by `refl`; a
 -- separately-invented coherence would have needed a bridge lemma to `coh`.
-readTyped-cell-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {cl s alloc} {c : ⟦ ⌊ A ⌋ ⟧ᴵ}
-                        → CellAt alloc ⌊ A ⌋ c cl s
+-- plan 0.125 S1: `ValidAtWF` is relative to the program (its arrow case);
+-- `prog` is bound HERE, not as a module parameter, so the prog-free names
+-- above (`Readable`, `readable-base`, …) do not carry it.
+readTyped-cell-adequate : ∀ {prog : AbstractTrace} {A} (r : Readable A) (ib : IsBaseType A) → ∀ {cl s alloc} {c : ⟦ ⌊ A ⌋ ⟧ᴵ}
+                        → CellAt {prog = prog} alloc ⌊ A ⌋ c cl s
                         → readTyped-cell (λ l → readTyped A l s) (readReg-typed A)
                             (readLoc s cl)
                           ≡ just (forgetᵇ ib (subst id (cohᴰ A) c))
-readTyped-adequate : ∀ {A} (r : Readable A) (ib : IsBaseType A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
-                   → ValidAtWF m alloc {⌊ A ⌋} v loc s
+readTyped-adequate : ∀ {prog : AbstractTrace} {A} (r : Readable A) (ib : IsBaseType A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
+                   → ValidAtWF {prog = prog} m alloc {⌊ A ⌋} v loc s
                    → readTyped A loc s ≡ just (forgetᵇ ib (subst id (cohᴰ A) v))
 readTyped-adequate r-unit base-Unit valid-unit-wf = refl
 readTyped-adequate r-int base-Int (valid-int-wf bf rl) rewrite rl = refl
@@ -150,13 +152,13 @@ readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} (valid-inr-w
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate rB iB (cell-ptr {cell-loc = sucLoc loc} {s = s} pl bfp vb)))
         (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
-readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inl-reg-wf {a = a} _ tg rep rl _)
+readTyped-adequate {prog = prog} (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inl-reg-wf {a = a} _ tg rep rl _)
   rewrite sumtag-eq tg =
-  trans (cong (Data.Maybe.map inj₁) (readTyped-cell-adequate rA iA {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
+  trans (cong (Data.Maybe.map inj₁) (readTyped-cell-adequate {prog = prog} rA iA {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
         (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
-readTyped-adequate (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inr-reg-wf {b = b} _ tg rep rl _)
+readTyped-adequate {prog = prog} (r-sum {A} {B} rA rB) (base-Sum iA iB) {loc} {s} {_} {alloc} (valid-inr-reg-wf {b = b} _ tg rep rl _)
   rewrite sumtag-eq tg =
-  trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate rB iB {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
+  trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate {prog = prog} rB iB {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
         (cong just (cong (forgetᵇ (base-Sum iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
 readTyped-adequate (r-pair {A} {B} rA rB) (base-Prod iA iB) {v = v} (valid-pair-wf lmm slb fc sc)
   rewrite readTyped-cell-adequate rA iA fc | readTyped-cell-adequate rB iB sc =

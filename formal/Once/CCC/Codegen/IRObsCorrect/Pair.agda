@@ -84,7 +84,7 @@ module PairAsm {FS : FrameSemantics} where
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
     (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
-    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {prog = prog} {A} mIn alloc x s) (k : ℕ)
     where
       open PairProof ihf ihg n l prog base ss cr span bl la mIn x s alloc cl rs ns0 nh inp k
 
@@ -180,7 +180,7 @@ module PairAsm {FS : FrameSemantics} where
                           Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
                        PCF.read-fst-m1')
 
-              module PPlace = PairPlace {B} {C} n alloc n≤ PCF.fsF (VR.settle vrg)
+              module PPlace = PairPlace {prog} {B} {C} n alloc n≤ PCF.fsF (VR.settle vrg)
                                 PCF.cf-fsF PCG.cf-fsG ns-fsF ns-gs hr-gs
                                 vB vC
                                 (VR.out-mode vrf) (VR.out-mode vrg)

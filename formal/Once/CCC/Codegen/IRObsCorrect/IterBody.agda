@@ -52,7 +52,7 @@ module IterBodyC {FS : FrameSemantics} where
     (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (bl : BlocksAt prog (blocks n l (Iter body)))
     (la : LabelsAt prog base (emitted n l (Iter body)))
-    (Z : Loop.Anchor body n l base)
+    (Z : Loop.Anchor body n l base prog)
     (σ : FlatState) (a : ⟦ A ⟧) (inv : Loop.RoundInv body n l base Z σ a) (r : ℕ)
     where
 

@@ -132,7 +132,7 @@ module PairProofC {FS : FrameSemantics} where
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
     (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
-    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {prog = prog} {A} mIn alloc x s) (k : ℕ)
     where
       -- D339: the inner modules keep the old premise; the IHs take the invariant.
       n≤ : next-slot alloc ≤ n
@@ -179,7 +179,7 @@ module PairProofC {FS : FrameSemantics} where
                  (exec-abstract-preserves-frame mov-to-output s alloc) n≤ b)
               (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl)
 
-      inpF-of : InputAt {A} mIn alloc x s → InputAt {A} mIn alloc x (floc PC.PR.p2)
+      inpF-of : InputAt {prog = prog} {A} mIn alloc x s → InputAt {prog = prog} {A} mIn alloc x (floc PC.PR.p2)
       inpF-of (in-loc loc vd bf rd) =
         in-loc loc (validityWF-mem-preserved x loc s (floc PC.PR.p2) bf
                       (λ loc' b' → memP loc' b') vd)
@@ -353,7 +353,7 @@ module PairProofC {FS : FrameSemantics} where
               (≤-reflexive (sym ns-m2)) (≤-reflexive (sym hr-mid))
               loc (VR.bf-mono vrf ncF (next-slot alloc) loc b)
 
-          inpG-of : InputAt {A} mIn alloc x s → InputAt {A} mIn (falloc PCF.m2) x (floc PCF.m2)
+          inpG-of : InputAt {prog = prog} {A} mIn alloc x s → InputAt {prog = prog} {A} mIn (falloc PCF.m2) x (floc PCF.m2)
           inpG-of (in-loc loc vd bf rd) =
             in-loc loc
               (validityWF-frontier-advance x loc (floc PCF.m2)

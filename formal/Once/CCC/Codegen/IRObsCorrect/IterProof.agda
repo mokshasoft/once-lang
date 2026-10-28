@@ -57,7 +57,7 @@ module IterProofC {FS : FrameSemantics} where
     (mIn : AllocMode) (e : ⟦ E ⟧) (a₀ : ⟦ A ⟧)
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false)
-    (pl : ValueLocation FS) (pv : ValidAtWF mIn alloc {E IRT.* A} (e , a₀) pl s)
+    (pl : ValueLocation FS) (pv : ValidAtWF {prog = prog} mIn alloc {E IRT.* A} (e , a₀) pl s)
     (bfp : BeforeFrontier alloc pl) (rd : readReg (regs s) Input1 ≡ SV-Ptr pl)
     (k : ℕ)
     where
@@ -81,8 +81,8 @@ module IterProofC {FS : FrameSemantics} where
 
     -- `e`'s place after `load-indirect`, `Input1` untouched, the run live —
     -- read off the pair's first cell (`fst`'s argument, D178/D187).
-    fst-out : CellAt alloc E e pl s
-            → Σ AllocMode (λ m → ResultPlace E m alloc alloc e (floc fs1))
+    fst-out : CellAt {prog = prog} alloc E e pl s
+            → Σ AllocMode (λ m → ResultPlace {prog = prog} E m alloc alloc e (floc fs1))
               × (halted (floc fs1) ≡ false)
               × (readReg (regs (floc fs1)) Input1 ≡ readReg (regs s) Input1)
     fst-out (cell-ptr {comp-loc = cloc} cp cbef cv) =
@@ -127,7 +127,7 @@ module IterProofC {FS : FrameSemantics} where
     pre-chain : FlatSteps prog 3 fs0 σ₁
     pre-chain = (nh , at-load) ∷ (nh1 , at-store) ∷ (nh2 , at-top) ∷ []
 
-    Z : Anchor
+    Z : Anchor prog
     Z = record
       { s₀ = s ; alloc₀ = alloc ; n≤₀ = n≤ ; ns₀ = ns0 ; rs₀ = rs ; e = e
       ; fsF = fs1 ; mf = proj₁ (proj₁ FO) ; caf = alloc ; placeF = proj₂ (proj₁ FO)
