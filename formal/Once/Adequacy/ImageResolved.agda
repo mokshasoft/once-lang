@@ -57,6 +57,7 @@ open import Once.Parser.Module using ()
 import Once.Parser.Module.Core as Core
 open import Once.Compile using (externs-of; prog-externs)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
+open import Once.Denotation.Program using (IRProgram; LinkedProgram)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
 open import Once.Module using (moduleSig)
 open import Once.Contract using (ISig)
@@ -130,20 +131,20 @@ module Fns (G : String → Set) (D : List String) (σ : ISig) (tbl : List IRFun)
 -- THE PROGRAM.
 ------------------------------------------------------------------------
 
-module Prog (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) where
+-- Over any linked program (plan 0.39: the optimized build's too).
+module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
 
-  p   = irProgram (moduleTable m) ir
   rp  = C.rewrite-program p
   eo  = C.entry-owner
   D   = prog-defs p
-  ext = prog-externs (irProgram (moduleTable m) ir)
+  ext = prog-externs p
   img = C.image-of p
 
   G : String → Set
-  G = ProgG m ir
+  G = ProgG p
 
   P : ∀ {A B} → Once.SigOp.Info.SigOpInfo A B → Set
-  P = ProgP m ir
+  P = ProgP p
 
   inD : ∀ {s} → s ∈ adefs img → s ∈ D
   inD x = there (there (∈-++⁺ˡ x))
@@ -173,7 +174,7 @@ module Prog (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi 
 
   module _ (sl-main : SigLeaves P main′) (sl-tbl : All (λ e → SigLeaves P (fbody e)) (table rp)) where
 
-    lk = rewrite-program-linked p (moduleToProgram-linked m ir mi)
+    lk = rewrite-program-linked p lk₀
 
     closes-LT : RC.Closes eo G D LT
     closes-LT =
@@ -187,10 +188,10 @@ module Prog (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi 
 
     closes-FI : ∀ (l : ℕ) (es : List IRFun)
               → (∀ {i} → i ∈ fns-image l es → i ∈ img)
-              → All (λ e → Once.Denotation.Program.Linked (moduleSig m) (table rp) (fbody e)) es
+              → All (λ e → Once.Denotation.Program.Linked σ (table rp) (fbody e)) es
               → All (λ e → SigLeaves P (fbody e)) es
               → RC.Closes eo G D (fns-image l es)
-    closes-FI l es sub = Fns.closes-FI G D (moduleSig m) (table rp) call-G l es (λ x → d-img (sub x))
+    closes-FI l es sub = Fns.closes-FI G D σ (table rp) call-G l es (λ x → d-img (sub x))
 
     closes-img : RC.Closes eo G D img
     closes-img =
@@ -205,11 +206,15 @@ module Prog (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi 
         flat (inj₂ (inj₁ x)) = inj₁ x
         flat (inj₂ (inj₂ y)) = inj₂ y
 
+prog-resolved-at : ∀ (σ : ISig) (p : IRProgram) → LinkedProgram σ p
+                 → Resolved (prog-defs p) (prog-externs p) (arefs (C.image-of p))
+prog-resolved-at σ p lk = Prog.resolved σ p lk (proj₁ (prog-sigops p)) (proj₂ (prog-sigops p))
+
 -- THE THEOREM (was `ImageWF.prog-resolved`, a postulate).
 prog-resolved : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
               → Resolved (prog-defs (irProgram (moduleTable m) ir)) (prog-externs (irProgram (moduleTable m) ir))
                          (arefs (C.image-of (irProgram (moduleTable m) ir)))
-prog-resolved m ir mi = Prog.resolved m ir mi (proj₁ (prog-sigops m ir mi)) (proj₂ (prog-sigops m ir mi))
+prog-resolved m ir mi = prog-resolved-at (moduleSig m) (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi)
 
 ------------------------------------------------------------------------
 -- THE LIBRARY (plan 0.107 §8 step 4; was `ImageWF.lib-resolved`, a

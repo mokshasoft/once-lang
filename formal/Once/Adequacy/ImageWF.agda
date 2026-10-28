@@ -75,11 +75,11 @@ Resolved defs ext refs = All (λ s → s ∈ defs ⊎ s ∈ ext) refs
 -- What a program's code may name: a symbol its file defines (its blocks), or a
 -- symbol it calls that is defined elsewhere — an interpretation's (D274) or the
 -- Host's `leave` (D320).
-ProgG : Core.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → String → Set
-ProgG m ir s = s ∈ prog-defs (irProgram (moduleTable m) ir) ⊎ s ∈ prog-externs (irProgram (moduleTable m) ir)
+ProgG : IRProgram → String → Set
+ProgG p s = s ∈ prog-defs p ⊎ s ∈ prog-externs p
 
-ProgP : Core.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → ∀ {A B} → SigOpInfo A B → Set
-ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
+ProgP : IRProgram → ∀ {A B} → SigOpInfo A B → Set
+ProgP p si = All (ProgG p) (sigop-syms si (cmp-of (sem si)))
 
 -- That each file defines every symbol once is `Once.Adequacy.ImageUnique`'s
 -- (plan 0.107 §8 step 4; were postulates here).
@@ -93,12 +93,10 @@ ProgP m ir si = All (ProgG m ir) (sigop-syms si (cmp-of (sem si)))
 ------------------------------------------------------------------------
 
 private
-  calls-ok : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
-           → All (ProgG m ir) (calls-of (rewrite-program (irProgram (moduleTable m) ir)))
-  calls-ok m ir = tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? block-syms (program-blocks p)))
+  calls-ok : ∀ (p : IRProgram) → All (ProgG p) (calls-of (rewrite-program p))
+  calls-ok p = tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? block-syms (program-blocks p)))
     where
-      p = irProgram (moduleTable m) ir
-      split : ∀ s → s ∈ calls-of (rewrite-program p) → _ → ProgG m ir s
+      split : ∀ s → s ∈ calls-of (rewrite-program p) → _ → ProgG p s
       split s s∈ (yes b) = inj₁ (there (there (∈-++⁺ʳ (adefs (image-of p)) b)))
       split s s∈ (no nb) = inj₂ (there (∈-filter⁺ (is-extern? p) s∈ nb))
 
@@ -109,11 +107,12 @@ private
   table-ok (e ∷ es) a = leaf-syms-leaves (fbody e) (proj₁ (++⁻ (leaf-syms (fbody e)) a))
                       ∷ table-ok es (proj₂ (++⁻ (leaf-syms (fbody e)) a))
 
-prog-sigops : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir
-            → SigLeaves (ProgP m ir) (main (rewrite-program (irProgram (moduleTable m) ir)))
-            × All (λ e → SigLeaves (ProgP m ir) (fbody e)) (table (rewrite-program (irProgram (moduleTable m) ir)))
-prog-sigops m ir _ =
-  leaf-syms-leaves (main rp) (proj₁ (++⁻ (leaf-syms (main rp)) (calls-ok m ir)))
-  , table-ok (table rp) (proj₂ (++⁻ (leaf-syms (main rp)) (calls-ok m ir)))
-  where rp = rewrite-program (irProgram (moduleTable m) ir)
+prog-sigops : ∀ (p : IRProgram)
+            → SigLeaves (ProgP p) (main (rewrite-program p))
+            × All (λ e → SigLeaves (ProgP p) (fbody e)) (table (rewrite-program p))
+prog-sigops p =
+  leaf-syms-leaves (main rp) (proj₁ (++⁻ (leaf-syms (main rp)) (calls-ok p)))
+  , table-ok (table rp) (proj₂ (++⁻ (leaf-syms (main rp)) (calls-ok p)))
+  where rp = rewrite-program p
+
 
