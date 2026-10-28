@@ -413,10 +413,10 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
                   Left err -> do
                     TIO.putStrLn $ "Host assembly failed: " <> T.pack err
                     exitFailure
-                  Right hostObj -> do
+                  Right (hostObj, hostScript) -> do
                     let implObjs = implObjs0 ++ [hostObj]
                     -- Link all .o files (user + impls + Host) to executable
-                    linkResult <- link arch (objPath : implObjs) outputBase
+                    linkResult <- link arch (objPath : implObjs ++ hostScript) outputBase
                     case linkResult of
                       Left err -> do
                         TIO.putStrLn $ "Link failed: " <> T.pack err
@@ -445,16 +445,22 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
 -- | D320: assemble the Host (`Strata/Hosts/<host>/Host.<arch>`).
 -- Plan 0.125: its object goes beside the output (`<output>.Host.<host>.o`);
 -- the Strata tree is only read, so it may live in a read-only install.
-assembleHost :: FilePath -> FilePath -> Bridge.Arch -> String -> IO (Either String FilePath)
+-- Plan 0.127: a Host whose platform does not start the program at `_start`
+-- (seL4's root task gets no stack) has `Host.<arch>.ld` beside it, an
+-- implicit linker script naming its entry; it is returned for the link.
+assembleHost :: FilePath -> FilePath -> Bridge.Arch -> String -> IO (Either String (FilePath, [FilePath]))
 assembleHost strataDir outputBase arch host = do
   let hostPath = strataDir </> "Hosts" </> host </> ("Host." ++ archImplExtension arch)
+      scriptPath = hostPath ++ ".ld"
   exists <- doesFileExist hostPath
   if not exists
     then pure (Left ("no Host " ++ host ++ " for this target: " ++ hostPath ++ " is missing"))
     else do
       let objPath = outputBase ++ ".Host." ++ host ++ ".o"
+      hasScript <- doesFileExist scriptPath
       r <- assemble arch hostPath objPath
-      pure (either (\e -> Left ("Failed to assemble " ++ hostPath ++ ": " ++ e)) (const (Right objPath)) r)
+      pure (either (\e -> Left ("Failed to assemble " ++ hostPath ++ ": " ++ e))
+                   (const (Right (objPath, [scriptPath | hasScript]))) r)
 
 -- | Plan 0.11: assemble per-arch impl files for the given list of
 -- import paths. Returns the list of `.o` paths produced (same order

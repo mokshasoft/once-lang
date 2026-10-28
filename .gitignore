@@ -1,6 +1,7 @@
 # Build artifacts
 .build/
 result
+result-*
 compiler/dist-newstyle/
 *.o
 compiler/test_*.s
