@@ -67,6 +67,8 @@ open Once.Denotation.Behavior.Behavior using (at)
 open import Once.Core.Telescope using (Program; program)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
+open import Once.Adequacy.OptimizedModule using (moduleToIR-opt)
+open import Once.Adequacy.OptimizedTable using (optimized-trace)
 import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Adequacy.RewritePreserves using (rewrite-program-trace)
@@ -207,20 +209,22 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
     -- entry point an instruction. A PROOF obligation: the compiler must SHOW
     -- what the toolchain will check (D100/D167 were its postulated halves).
     file-wf :
-      ∀ (m : P.Resolved) (F : C.FileOf arch) →
-      C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
+      ∀ (doOpt : Bool) (m : P.Resolved) (F : C.FileOf arch) →
+      C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
       AsmWF-of arch F
     -- RUNNING THE FILE HAS THE TRACE OF THE PROGRAM IT WAS EMITTED FROM (D320):
     -- the `_start` stub, then the lowered image, ending as the program's meaning
     -- ends. Stated over the FILE (a value of the arch's syntax), so a
     -- disagreement between what is emitted and what the proofs reason about is a
     -- failed proof, not a hidden one (D261).
+    -- (At either build: the optimized build's file is the emission of its own
+    -- program, plan 0.39.)
     file-tr :
-      ∀ (m : P.Resolved) (F : C.FileOf arch) →
-      C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
-      ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) →
+      ∀ (doOpt : Bool) (m : P.Resolved) (F : C.FileOf arch) →
+      C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
+      ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
-      run-file arch ι F ≈ᵗ⟨ _≡_ ⟩ ⟦ just (rewrite-program (irProgram (moduleTable m) ir)) ⟧IRᵗ (arch-numerics arch) ι
+      run-file arch ι F ≈ᵗ⟨ _≡_ ⟩ ⟦ just (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)) ⟧IRᵗ (arch-numerics arch) ι
 
 -- The CLI's text and the verified compiler's file are ONE pipeline (plan 0.107):
 -- the Build stage is the print of the file.
@@ -509,8 +513,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
       exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
     file-correct arch m F ir eq mi ls =
       subst (_≋ ⟦ just P ⟧IRᵗ (arch-numerics arch) ι)
-            (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) m F eq)))
-            (WB-trans trans (ArchCorrect.file-tr (arch-correct ι arch) m F eq ir mi ls)
+            (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) false m F eq)))
+            (WB-trans trans (ArchCorrect.file-tr (arch-correct ι arch) false m F eq ir mi ls)
                             (rewrite-program-trace (arch-numerics arch) ι P))
       where P = irProgram (moduleTable m) ir
 
@@ -595,26 +599,30 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
       Σ-syntax P.Resolved (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
     ⟦⟧⊥-sound src arch beh eq = ⟦⟧⊥-m-sound (srcToModule src) arch beh eq
 
-    -- Named Phase-0 gaps (NOT the theorem). `built⇒main` is GONE: gating
-    -- `compile` on `moduleToIR ≡ just` makes "Built ⇒ has-main" hold by
-    -- construction (a library never reaches the Built branch of `compile`).
-    -- `main⇒built` is GONE too: now PROVEN in `Once.Adequacy.MainBuilds` and
-    -- imported above. What remains: only the doOpt=true trace (`opt-trace`, the
-    -- optimize lift). The doOpt=false trace is PROVEN from the codegen chain
-    -- (`trace-false` below).
-    postulate
-      opt-trace : ∀ (arch : Arch) (m : P.Resolved) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
-        C.compileFileFromModule IR.Heap true arch m ≡ inj₂ F →
-        moduleToIR m ≡ just ir →
-        -- plan 0.105: in a world that declares the module's signatures
-        moduleSig m ≡ sig ι →
-        exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
+    -- PLAN 0.39 (D347): THE OPTIMIZED BUILD, a theorem (was a postulate). The
+    -- optimized build's file runs its own program (the chain above, at `true`);
+    -- that program, arith-rewritten or not, has the source program's trace: the
+    -- optimizer keeps every function's run and the program's `main` is the same
+    -- (`OptimizedTable.optimized-trace`, `OptimizedModule.moduleToIR-opt`).
+    opt-trace : ∀ (arch : Arch) (m : P.Resolved) (F : C.FileOf arch) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
+      C.compileFileFromModule IR.Heap true arch m ≡ inj₂ F →
+      moduleToIR m ≡ just ir →
+      -- plan 0.105: in a world that declares the module's signatures
+      moduleSig m ≡ sig ι →
+      exec arch (file-bytes arch F) ≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι
+    opt-trace arch m F ir eq mi ls =
+      subst (_≋ ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ (arch-numerics arch) ι)
+            (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) true m F eq)))
+            (WB-trans trans (ArchCorrect.file-tr (arch-correct ι arch) true m F eq ir (trans (moduleToIR-opt m) mi) ls)
+              (WB-trans trans (rewrite-program-trace (arch-numerics arch) ι P₁)
+                              (optimized-trace (arch-numerics arch) ι m ir)))
+      where P₁ = irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap true m)) ir
 
 
     -- The Built-case trace obligation, abstracted: GIVEN a `main` (`moduleToIR m
     -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
     -- source meaning `⟦ just ir ⟧IR`. Supplied per `doOpt` by `correct` below
-    -- (the proven codegen chain for `false`; `opt-trace` for `true`).
+    -- (the proven codegen chain for `false`; `opt-trace`, its optimized twin, for `true`).
     TraceAt : Arch → Bool → P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Set
     TraceAt arch doOpt m ir =
       ∀ (F : C.FileOf arch) → C.compileFileFromModule IR.Heap doOpt arch m ≡ inj₂ F →
@@ -676,7 +684,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     -- THE unconditional claim (Plan 0.48), COMPOSED from three layers. They
     -- walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
     -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
-    -- `false` is the PROVEN codegen chain, `true` is the `opt-trace` lift.
+    -- `false` is the PROVEN codegen chain, `true` is `opt-trace` (proven, plan 0.39).
     -- plan 0.105: in a world that declares the signatures of the module `src`
     -- resolves to.
     correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →

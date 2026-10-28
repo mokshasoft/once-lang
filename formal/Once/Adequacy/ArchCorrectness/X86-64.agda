@@ -64,7 +64,7 @@ open import Data.Product using (Σ-syntax)
 open import Data.Nat using (suc; _≤_)
 open import Once.IR.Semantics.Event using (toEvent)
 open import Once.Denotation.TraceTr using (endOf)
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; module HeapLocation)
@@ -84,7 +84,7 @@ import Once.CCC.Target.X86-64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
 open import Once.IR.Semantics.Event using (SigOpEvent)
-open import Once.Adequacy.EmitFile using (file-is-emit)
+open import Once.Adequacy.EmitFile using (file-is-emit-at)
 open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
@@ -421,23 +421,23 @@ BlockRunsHyp-x86-64 = FFOx.BlockRunsT
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
 file-tr-x86-64 :
-  ∀ (brs : BlockRunsHyp-x86-64) (m : P.Resolved) (F : RF.Image)
-  → C.compileFileFromModule IR.Heap false x86-64 m ≡ inj₂ F
-  → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+  ∀ (brs : BlockRunsHyp-x86-64) (doOpt : Bool) (m : P.Resolved) (F : RF.Image)
+  → C.compileFileFromModule IR.Heap doOpt x86-64 m ≡ inj₂ F
+  → ∀ (ir : IR Unit Unit) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir)
   → (oq : o ≡ C.entry-owner)
-  → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
-  → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
+  → (teq : tbl ≡ table (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))
+  → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))))
   → run-trace-x86-64 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
-    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))) ⟧IRᵗ (arch-numerics x86-64) ι
-file-tr-x86-64 brs m F eq ir mi oq teq lk =
+    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))) ⟧IRᵗ (arch-numerics x86-64) ι
+file-tr-x86-64 brs doOpt m F eq ir mi oq teq lk =
   subst (λ G → run-trace-x86-64 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
-        (sym (file-is-emit x86-64 m F ir eq mi))
+        (sym (file-is-emit-at doOpt x86-64 m F ir eq mi))
         (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p)) cd) ([] , X.initState)
                        ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
                (sym code-eq) (conc-tr brs p ir′ lk img))
   where
-    p   = irProgram (moduleTable m) ir
+    p   = irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir
     ir′ = main (rewrite-program p)
     img : FFOx.image ir′ ≡ C.image-of p
     img = img-at o oq tbl teq

@@ -64,7 +64,7 @@ open import Data.Product using (Σ-syntax)
 open import Data.Nat using (suc; _≤_)
 open import Once.IR.Semantics.Event using (toEvent)
 open import Once.Denotation.TraceTr using (endOf)
-open import Data.Bool using (false)
+open import Data.Bool using (Bool; false)
 open import Data.Product using (proj₁; proj₂; _,_; _×_)
 open import Data.List using (take)
 open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-env; run-trace-riscv64)
@@ -72,7 +72,7 @@ import Once.CCC.Target.RiscV64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
 open import Once.IR.Semantics.Event using (SigOpEvent)
-open import Once.Adequacy.EmitFile using (file-is-emit)
+open import Once.Adequacy.EmitFile using (file-is-emit-at)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 import Once.Arith.Backend.RiscV64.RunTrace as RTr
@@ -338,23 +338,23 @@ BlockRunsHyp-riscv64 = FFOr.BlockRunsT
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
 file-tr-riscv64 :
-  ∀ (brs : BlockRunsHyp-riscv64) (m : P.Resolved) (F : RF.Image)
-  → C.compileFileFromModule IR.Heap false riscv64 m ≡ inj₂ F
-  → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+  ∀ (brs : BlockRunsHyp-riscv64) (doOpt : Bool) (m : P.Resolved) (F : RF.Image)
+  → C.compileFileFromModule IR.Heap doOpt riscv64 m ≡ inj₂ F
+  → ∀ (ir : IR Unit Unit) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir)
   → (oq : o ≡ C.entry-owner)
-  → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
-  → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
+  → (teq : tbl ≡ table (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))
+  → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))))
   → run-trace-riscv64 ι F (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
-    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))) ⟧IRᵗ (arch-numerics riscv64) ι
-file-tr-riscv64 brs m F eq ir mi oq teq lk =
+    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))) ⟧IRᵗ (arch-numerics riscv64) ι
+file-tr-riscv64 brs doOpt m F eq ir mi oq teq lk =
   subst (λ G → run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
-        (sym (file-is-emit riscv64 m F ir eq mi))
+        (sym (file-is-emit-at doOpt riscv64 m F ir eq mi))
         (subst (λ cd → Machine.trace (RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) cd) ([] , RS.initState)
                        ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
                (sym code-eq) (conc-tr brs p ir′ lk img))
   where
-    p   = irProgram (moduleTable m) ir
+    p   = irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir
     ir′ = main (rewrite-program p)
     img : FFOr.image ir′ ≡ C.image-of p
     img = img-at o oq tbl teq

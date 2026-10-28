@@ -80,7 +80,8 @@ open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
-open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
+open import Once.Adequacy.OptimizedLinked using (build-linked)
+open import Data.Bool using (Bool)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
@@ -107,12 +108,17 @@ module RV (ι : Interp) (tbl : List IRFun) = ARV o tbl ι
        (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
 
 -- The emitted (arith-rewritten) program's table, and its linkedness.
-TP : P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → List IRFun
-TP m ir = table (rewrite-program (irProgram (moduleTable m) ir))
+-- (At either build, plan 0.39: the build's own table.)
+BT : Bool → P.Resolved → List IRFun
+BT doOpt m = Co.tableOfResult (Co.compileResolvedModule Once.IR.Heap doOpt m)
 
-LK : ∀ (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR m ≡ just ir
-   → LinkedProgram (moduleSig m) (rewrite-program (irProgram (moduleTable m) ir))
-LK m ir mi = rewrite-program-linked (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi)
+TP : Bool → P.Resolved → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → List IRFun
+TP doOpt m ir = table (rewrite-program (irProgram (BT doOpt m) ir))
+
+LK : ∀ (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
+   → Co.moduleToIR-aux (Co.compileResolvedModule Once.IR.Heap doOpt m) ≡ just ir
+   → LinkedProgram (moduleSig m) (rewrite-program (irProgram (BT doOpt m) ir))
+LK doOpt m ir mi = rewrite-program-linked (irProgram (BT doOpt m) ir) (build-linked doOpt m ir mi)
 
 -- The block-table coherence hypotheses (plan 0.91; D188), one per target and
 -- now one per TABLE: every program brings its own image.
@@ -128,31 +134,31 @@ BlockRunsHyp-riscv64 = (ι : Interp) (tbl : List IRFun) → RV.BlockRunsHyp-risc
 x86-64-correct : BlockRunsHyp-x86-64 → ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct brs ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  { file-wf            = λ m F eq → FileWF.file-wf x86-64 m F eq
+  { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-64 doOpt m F eq
   -- … and running it has the trace of the program it was emitted from (D320).
-  ; file-tr = λ m F eq ir mi ls →
-      X64.file-tr-x86-64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
+  ; file-tr = λ doOpt m F eq ir mi ls →
+      X64.file-tr-x86-64 ι (TP doOpt m ir) (brs ι (TP doOpt m ir)) doOpt m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
   }
 
 x86-32-correct : BlockRunsHyp-x86-32 → ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct brs ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  { file-wf            = λ m F eq → FileWF.file-wf x86-32 m F eq
+  { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-32 doOpt m F eq
   -- … and running it has the trace of the program it was emitted from (D320).
-  ; file-tr = λ m F eq ir mi ls →
-      X32.file-tr-x86-32 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
+  ; file-tr = λ doOpt m F eq ir mi ls →
+      X32.file-tr-x86-32 ι (TP doOpt m ir) (brs ι (TP doOpt m ir)) doOpt m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
   }
 
 riscv64-correct : BlockRunsHyp-riscv64 → ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct brs ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
-  { file-wf            = λ m F eq → FileWF.file-wf riscv64 m F eq
+  { file-wf            = λ doOpt m F eq → FileWF.file-wf riscv64 doOpt m F eq
   -- … and running it has the trace of the program it was emitted from (D320).
-  ; file-tr = λ m F eq ir mi ls →
-      RV.file-tr-riscv64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
+  ; file-tr = λ doOpt m F eq ir mi ls →
+      RV.file-tr-riscv64 ι (TP doOpt m ir) (brs ι (TP doOpt m ir)) doOpt m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
   }
 
 arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
