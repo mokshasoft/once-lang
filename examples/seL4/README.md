@@ -65,7 +65,10 @@ The programs share the root task's address space and CSpace for now; giving each
 
 ## Not yet
 
-- Other architectures: riscv64 next (plan 0.127 C); arm64 once there is an ARM64 backend.
-- `CNode` and `Notification` are number-checked but not yet run by a test.
+- Other architectures: riscv64 and x86_32 (plan 0.127 C); arm64 once there is an ARM64 backend.
+- `CNode` and `Notification` are number-checked but not yet run: `Caps/Root.once` tests them, but a
+  root task alone runs out of its 64 KiB heap into its stack before it starts (nothing reclaims the
+  heap yet, and running out is not yet detected: plan 0.123). In the echo image the root task's
+  heap overflows into the server's and client's unused heaps, which is why that test passes.
 - Isolation between the programs (own CNode, own VSpace).
 - Message lengths beyond the four register words (needs an IPC buffer per thread).
