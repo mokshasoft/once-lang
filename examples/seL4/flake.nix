@@ -69,6 +69,44 @@
           lxml
         ]);
 
+        # Plan 0.127 A.6: the seL4 kernel alone (x86_64, pc99, debug, printing,
+        # and seL4_tools' ApplyCommonSimulationSettings: QEMU's TCG has no PCID);
+        # the root task is a Once ELF, given to QEMU as the multiboot module.
+        # `kernel32.elf` is the kernel as an elf32 image, the form QEMU's
+        # multiboot loader takes. `gen_headers/` keeps the generated syscall
+        # and invocation numbers the Host and impl files must agree with.
+        seL4-kernel-x86_64 = pkgs.stdenv.mkDerivation {
+          pname = "seL4-kernel-x86_64-pc99";
+          version = "78c3b11a";
+          src = seL4-kernel;
+          nativeBuildInputs = with pkgs; [ cmake ninja pythonEnv libxml2 dtc ];
+          hardeningDisable = [ "all" ];
+          postPatch = "patchShebangs tools/";
+          configurePhase = ''
+            mkdir build && cd build
+            cmake -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=../gcc.cmake \
+              -DKernelPlatform=pc99 \
+              -DKernelSel4Arch=x86_64 \
+              -DKernelVerificationBuild=OFF \
+              -DKernelDebugBuild=ON \
+              -DKernelPrinting=ON \
+              -DKernelSupportPCID=OFF \
+              -DKernelFSGSBase=msr \
+              -DKernelIOMMU=OFF \
+              -DKernelFPU=FXSAVE \
+              ..
+          '';
+          buildPhase = "ninja kernel.elf";
+          installPhase = ''
+            mkdir -p $out
+            cp kernel.elf $out/
+            objcopy -O elf32-i386 kernel.elf $out/kernel32.elf
+            cp -r gen_headers $out/ || true
+            cp gen_config/kernel/gen_config.h $out/ || true
+          '';
+        };
+
         # Once compiler from parent flake
         onceCompiler = once-lang.packages.${system}.once;
 
@@ -965,6 +1003,7 @@ EOF
           seL4-once-lang-src = seL4-once-lang-src;
           seL4-once-asm-src = seL4-once-asm-src;
           seL4-x86_64 = seL4-x86_64;
+          seL4-kernel-x86_64 = seL4-kernel-x86_64;
           seL4-once-echo = seL4-once-echo;
           seL4-once-lang = seL4-once-lang;
           seL4-once-asm = seL4-once-asm;
