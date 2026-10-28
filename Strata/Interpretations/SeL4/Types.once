@@ -17,17 +17,20 @@
 -- All kernel resources are accessed through capabilities.
 type Capability = Int
 
+-- seL4 numbers
 -- | Null capability constant (invalid/empty slot)
 seL4_CapNull : Int
 seL4_CapNull = 0
+-- end seL4 numbers
 
 ------------------------------------------------------------------------
 -- Message Info
 ------------------------------------------------------------------------
 
 -- | seL4 MessageInfo (packed into single word)
--- Layout on AArch64: [label:52][capsUnwrapped:3][extraCaps:2][length:7]
--- The exact layout depends on seL4 configuration (word size, MCS mode).
+-- Layout on 64-bit: [label:52][capsUnwrapped:3][extraCaps:2][length:7]
+-- (libsel4 `shared_types.bf`; the impl files' message info words are
+-- checked against the kernel's constructor.)
 type MessageInfo = Int
 
 ------------------------------------------------------------------------
@@ -37,6 +40,10 @@ type MessageInfo = Int
 -- | seL4 error type
 type seL4_Error = Int
 
+-- The seL4 numbers in this file are checked against the pinned kernel's
+-- headers by examples/seL4 `check-numbers.sh`.
+
+-- seL4 numbers
 -- | No error - operation succeeded
 seL4_NoError : Int
 seL4_NoError = 0
@@ -85,33 +92,32 @@ seL4_NotEnoughMemory = 10
 -- System Call Numbers
 ------------------------------------------------------------------------
 
--- | The non-MCS kernel's syscall numbers, the same on every architecture
--- (generated from the kernel's `syscall.xml`; checked against
--- `gen_headers/arch/api/syscall.h` of the pinned kernel, plan 0.127).
+-- | The non-MCS kernel's syscall numbers (the kernel names them `Sys…`)
 
 seL4_SysCall : Int
-seL4_SysCall = -1
+seL4_SysCall = -1  -- = SysCall
 
 seL4_SysReplyRecv : Int
-seL4_SysReplyRecv = -2
+seL4_SysReplyRecv = -2  -- = SysReplyRecv
 
 seL4_SysSend : Int
-seL4_SysSend = -3
+seL4_SysSend = -3  -- = SysSend
 
 seL4_SysNBSend : Int
-seL4_SysNBSend = -4
+seL4_SysNBSend = -4  -- = SysNBSend
 
 seL4_SysRecv : Int
-seL4_SysRecv = -5
+seL4_SysRecv = -5  -- = SysRecv
 
 seL4_SysReply : Int
-seL4_SysReply = -6
+seL4_SysReply = -6  -- = SysReply
 
 seL4_SysYield : Int
-seL4_SysYield = -7
+seL4_SysYield = -7  -- = SysYield
 
 seL4_SysNBRecv : Int
-seL4_SysNBRecv = -8
+seL4_SysNBRecv = -8  -- = SysNBRecv
+-- end seL4 numbers
 
 ------------------------------------------------------------------------
 -- MessageInfo Helpers
