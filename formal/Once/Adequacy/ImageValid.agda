@@ -150,8 +150,8 @@ private
 prog-defs-valid : ∀ (p : IRProgram) → All AsmSym (prog-defs p)
 prog-defs-valid p = heap-asm ∷ start-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))
 
-lib-defs-valid : ∀ (m : Resolved) → All AsmSym (lib-defs m)
-lib-defs-valid m = heap-asm ∷ ++⁺ (adefs-asm (lib-image (moduleTable m))) (block-syms-asm (lib-blocks (moduleTable m)))
+lib-defs-valid : ∀ (T : List IRFun) → All AsmSym (lib-defs T)
+lib-defs-valid T = heap-asm ∷ ++⁺ (adefs-asm (lib-image T)) (block-syms-asm (lib-blocks T))
 
 -- Every symbol a SigOp calls — itself or (a comparison) its block.
 sigop-syms-asm : ∀ {A B} (si : SigOpInfo A B) (m : Maybe CmpOp) → All AsmSym (sigop-syms si m)

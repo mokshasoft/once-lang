@@ -65,19 +65,19 @@ private
   lib-funs arch (inj₂ funs) F eq mi =
     trans (sym (inj₂-inj eq)) (cong (λ x → Once.Compile.emit-at arch funs x) mi)
 
-  lib-gate : ∀ (arch : Arch) (m : Resolved) (es : List Entry) (d : Dec (AdmissibleM arch (Resolved.rmodule m))) (F : FileOf arch)
-           → cfm-file-gated Heap false arch m es d ≡ inj₂ F
-           → moduleToIR-aux (compileEntries Heap false emptyCScope es) ≡ nothing
-           → F ≡ emitLibrary arch (tableOfResult (compileEntries Heap false emptyCScope es))
-  lib-gate arch m es (no _)  F () _
-  lib-gate arch m es (yes _) F eq mi = lib-funs arch (compileEntries Heap false emptyCScope es) F eq mi
+  lib-gate : ∀ (doOpt : Bool) (arch : Arch) (m : Resolved) (es : List Entry) (d : Dec (AdmissibleM arch (Resolved.rmodule m))) (F : FileOf arch)
+           → cfm-file-gated Heap doOpt arch m es d ≡ inj₂ F
+           → moduleToIR-aux (compileEntries Heap doOpt emptyCScope es) ≡ nothing
+           → F ≡ emitLibrary arch (tableOfResult (compileEntries Heap doOpt emptyCScope es))
+  lib-gate doOpt arch m es (no _)  F () _
+  lib-gate doOpt arch m es (yes _) F eq mi = lib-funs arch (compileEntries Heap doOpt emptyCScope es) F eq mi
 
-  lib-ef : ∀ (arch : Arch) (m : Resolved) (ef : String ⊎ List Entry) (F : FileOf arch)
-         → cfm-file-ef Heap false arch m ef ≡ inj₂ F
-         → moduleToIR-aux (compileResolvedModule-aux Heap false m ef) ≡ nothing
-         → F ≡ emitLibrary arch (tableOfResult (compileResolvedModule-aux Heap false m ef))
-  lib-ef arch m (inj₁ _)  F () _
-  lib-ef arch m (inj₂ es) F eq mi = lib-gate arch m es (admissibleM? arch (Resolved.rmodule m)) F eq mi
+  lib-ef : ∀ (doOpt : Bool) (arch : Arch) (m : Resolved) (ef : String ⊎ List Entry) (F : FileOf arch)
+         → cfm-file-ef Heap doOpt arch m ef ≡ inj₂ F
+         → moduleToIR-aux (compileResolvedModule-aux Heap doOpt m ef) ≡ nothing
+         → F ≡ emitLibrary arch (tableOfResult (compileResolvedModule-aux Heap doOpt m ef))
+  lib-ef doOpt arch m (inj₁ _)  F () _
+  lib-ef doOpt arch m (inj₂ es) F eq mi = lib-gate doOpt arch m es (admissibleM? arch (Resolved.rmodule m)) F eq mi
 
 -- THE FILE OF A PROGRAM: what `compileFileFromModule` returns for a module
 -- whose `main` is `ir` is the emission of that module's program.
@@ -97,9 +97,9 @@ file-is-emit = file-is-emit-at false
 
 -- …and THE FILE OF A LIBRARY: a module without `main` compiles to its
 -- functions only.
-file-is-lib : ∀ (arch : Arch) (m : Resolved) (F : FileOf arch)
-            → compileFileFromModule Heap false arch m ≡ inj₂ F
-            → moduleToIR m ≡ nothing
-            → F ≡ emitLibrary arch (moduleTable m)
-file-is-lib arch m F eq mi =
-  lib-ef arch m (extractFunctions m) F eq mi
+file-is-lib-at : ∀ (doOpt : Bool) (arch : Arch) (m : Resolved) (F : FileOf arch)
+               → compileFileFromModule Heap doOpt arch m ≡ inj₂ F
+               → moduleToIR-aux (compileResolvedModule Heap doOpt m) ≡ nothing
+               → F ≡ emitLibrary arch (tableOfResult (compileResolvedModule Heap doOpt m))
+file-is-lib-at doOpt arch m F eq mi =
+  lib-ef doOpt arch m (extractFunctions m) F eq mi

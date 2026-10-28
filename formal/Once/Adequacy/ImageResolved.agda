@@ -242,22 +242,8 @@ open import Once.Adequacy.TelePosition using (entries-distinct; none-in-empty)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.FunBundle as FB
 
-module Lib (m : Core.Resolved) where
-
-  tbl = moduleTable m
-  lp  = C.lib-program tbl
-  rt  = C.rewrite-table tbl
-  D   = lib-defs m
-  ext = externs-of lp
-  σ   = moduleSig m
-
-  G : String → Set
-  G s = s ∈ D ⊎ s ∈ ext
-
-  inD : ∀ {s} → s ∈ adefs (C.lib-image tbl) → s ∈ D
-  inD x = there (∈-++⁺ˡ x)
-
-  -- the table is linked, by the telescope walk (any compile result)
+-- The source build's table is linked, by the telescope walk (any compile result).
+module LibLinked (m : Core.Resolved) where
   private
     ce-linked : ∀ (es : List Parser.Entry) → Parser.extractFunctions m ≡ inj₂ es
               → (r : _) → C.compileEntries IR.Heap false C.emptyCScope es ≡ r
@@ -280,8 +266,25 @@ module Lib (m : Core.Resolved) where
     ef-linked (inj₁ _)  _  = []
     ef-linked (inj₂ es) ef = ce-linked es ef _ refl
 
-  table-linked : All (λ e → Linked σ tbl (fbody e)) tbl
-  table-linked = ef-linked (Parser.extractFunctions m) refl
+
+  lib-table-linked : All (λ e → Linked (moduleSig m) (moduleTable m) (fbody e)) (moduleTable m)
+  lib-table-linked = ef-linked (Parser.extractFunctions m) refl
+
+
+-- Over any linked table (plan 0.39: the optimized build's too).
+module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked σ tbl (fbody e)) tbl) where
+
+  lp  = C.lib-program tbl
+  rt  = C.rewrite-table tbl
+  D   = lib-defs tbl
+  ext = externs-of lp
+
+  G : String → Set
+  G s = s ∈ D ⊎ s ∈ ext
+
+  inD : ∀ {s} → s ∈ adefs (C.lib-image tbl) → s ∈ D
+  inD x = there (∈-++⁺ˡ x)
+
 
   rt-linked : All (λ e → Linked σ rt (fbody e)) rt
   rt-linked = proj₂ (rewrite-program-linked lp (tt , table-linked))
@@ -319,6 +322,10 @@ module Lib (m : Core.Resolved) where
       flat (inj₂ (inj₂ y)) = inj₂ y
 
 -- THE THEOREM (was `ImageWF.lib-resolved`, a postulate): for every module.
+lib-resolved-at : ∀ (σ : ISig) (T : List IRFun) → All (λ e → Linked σ T (fbody e)) T
+                → Resolved (lib-defs T) (externs-of (C.lib-program T)) (arefs (C.lib-image T))
+lib-resolved-at = Lib.resolved
+
 lib-resolved : ∀ (m : Core.Resolved)
-             → Resolved (lib-defs m) (externs-of (C.lib-program (moduleTable m))) (arefs (C.lib-image (moduleTable m)))
-lib-resolved = Lib.resolved
+             → Resolved (lib-defs (moduleTable m)) (externs-of (C.lib-program (moduleTable m))) (arefs (C.lib-image (moduleTable m)))
+lib-resolved m = lib-resolved-at (moduleSig m) (moduleTable m) (LibLinked.lib-table-linked m)

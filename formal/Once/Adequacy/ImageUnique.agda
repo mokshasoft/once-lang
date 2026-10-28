@@ -780,12 +780,10 @@ prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) →
 prog-unique m ir = prog-unique-at (C.moduleTable m) (table-names m) ir
 
 -- THE LIBRARY (was `ImageWF.lib-unique`, a postulate).
-lib-unique : ∀ (m : Resolved) → Unique (lib-defs m)
-lib-unique m =
+lib-unique-at : ∀ (T : List IRFun) (tn : TableNames T) → Unique (lib-defs T)
+lib-unique-at T tn =
   heap-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.lib-blocks T))
   where
-    T  = C.moduleTable m
-    tn = table-names m
     img = C.lib-image T
     fs = fdefs img
     fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
@@ -796,3 +794,6 @@ lib-unique m =
     cD = adefs-class img
     cB = blocks-sym (C.lib-blocks T)
     uD = adefs-unique img (proj₁ (fns-cl 0 (C.rewrite-table T))) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
+
+lib-unique : ∀ (m : Resolved) → Unique (lib-defs (C.moduleTable m))
+lib-unique m = lib-unique-at (C.moduleTable m) (table-names m)

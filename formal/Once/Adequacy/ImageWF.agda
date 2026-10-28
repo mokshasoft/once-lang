@@ -66,8 +66,8 @@ prog-defs : IRProgram → List String
 prog-defs p = heap-symbol ∷ "_start" ∷ adefs (image-of p) ++ block-syms (program-blocks p)
 
 -- …and a library's (no `_start`).
-lib-defs : Core.Resolved → List String
-lib-defs m = heap-symbol ∷ adefs (lib-image (moduleTable m)) ++ block-syms (lib-blocks (moduleTable m))
+lib-defs : List IRFun → List String
+lib-defs T = heap-symbol ∷ adefs (lib-image T) ++ block-syms (lib-blocks T)
 
 Resolved : List String → List String → List String → Set
 Resolved defs ext refs = All (λ s → s ∈ defs ⊎ s ∈ ext) refs

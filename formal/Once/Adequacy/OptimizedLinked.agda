@@ -16,6 +16,8 @@
 module Once.Adequacy.OptimizedLinked where
 
 import Data.Bool
+open import Data.Bool using (Bool; true; false)
+open import Once.Adequacy.ImageResolved using (module LibLinked)
 import Once.CanonicalName
 import Once.IRTy
 import Once.Module
@@ -68,11 +70,10 @@ linkedAt-same (s-cons {t′ = t′} {t = t} (same n D C _) s) {f} {A} {B} l = at
     at (yes _) (no _)  _       l = linkedAt-same s l
     at (no _)  _       _       l = linkedAt-same s l
 
-private
-  all-same : ∀ {σ : ISig} {T′ T : List IRFun} (h : ∀ {f A B} → LinkedAt T f A B → LinkedAt T′ f A B) {t′ t} → Same t′ t
-           → All (λ e → Linked σ T (IRFun.fbody e)) t → All (λ e → Linked σ T′ (IRFun.fbody e)) t′
-  all-same h s-nil [] = []
-  all-same h (s-cons (same n D C bl) s) (l ∷ ls) = bl h l ∷ all-same h s ls
+all-same : ∀ {σ : ISig} {T′ T : List IRFun} (h : ∀ {f A B} → LinkedAt T f A B → LinkedAt T′ f A B) {t′ t} → Same t′ t
+         → All (λ e → Linked σ T (IRFun.fbody e)) t → All (λ e → Linked σ T′ (IRFun.fbody e)) t′
+all-same h s-nil [] = []
+all-same h (s-cons (same n D C bl) s) (l ∷ ls) = bl h l ∷ all-same h s ls
 
 -- | A program whose table is the same as a linked one's is linked.
 linked-same : ∀ {σ : ISig} {t′ t} → Same t′ t → ∀ ir → LinkedProgram σ (irProgram t ir) → LinkedProgram σ (irProgram t′ ir)
@@ -123,3 +124,26 @@ optimized-linked m ir mi =
   subst (λ r → LinkedProgram (Once.Module.moduleSig m) (irProgram (C.tableOfResult r) ir))
         (sym (crm-opt Heap m))
         (linked-same (table-same (C.compileResolvedModule Heap Data.Bool.false m)) ir (moduleToProgram-linked m ir mi))
+
+------------------------------------------------------------------------
+-- Either build: what the file's proofs need of the table
+------------------------------------------------------------------------
+
+private
+  T : Bool → P.Resolved → List IRFun
+  T doOpt m = C.tableOfResult (C.compileResolvedModule Heap doOpt m)
+
+build-linked : ∀ (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
+             → C.moduleToIR-aux (C.compileResolvedModule Heap doOpt m) ≡ just ir
+             → LinkedProgram (Once.Module.moduleSig m) (irProgram (T doOpt m) ir)
+build-linked false m ir mi = moduleToProgram-linked m ir mi
+build-linked true  m ir mi = optimized-linked m ir (trans (sym (moduleToIR-opt m)) mi)
+
+build-table-linked : ∀ (doOpt : Bool) (m : P.Resolved)
+                   → All (λ e → Linked (Once.Module.moduleSig m) (T doOpt m) (IRFun.fbody e)) (T doOpt m)
+build-table-linked false m = LibLinked.lib-table-linked m
+build-table-linked true  m =
+  subst (λ r → All (λ e → Linked (Once.Module.moduleSig m) (C.tableOfResult r) (IRFun.fbody e)) (C.tableOfResult r))
+        (sym (crm-opt Heap m))
+        (all-same (linkedAt-same s) s (LibLinked.lib-table-linked m))
+  where s = table-same (C.compileResolvedModule Heap false m)
