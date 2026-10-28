@@ -1,6 +1,5 @@
 -- Layer 4: g aliases f aliases id. Both substituted by resolveExpr.
 -- Expected: exit 42.
-
 import I.Linux.Syscalls as S
 
 f : Int -> Int

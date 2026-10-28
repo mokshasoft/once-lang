@@ -81,7 +81,7 @@ private
   gap-trivial (just p) d = if-trivial (together p d) tr-empty tr-blank
 
   lead-trivial : ∀ prev ns → Trivial (lead prev ns)
-  lead-trivial nothing  ns = if-trivial (hasComment ns) (tr-<> (top-trivial ns) tr-blank) tr-empty
+  lead-trivial nothing  ns = if-trivial (hasComment ns) (tr-<> (top-trivial ns) (if-trivial (blankLast ns) tr-blank tr-empty)) tr-empty
   lead-trivial (just _) ns = top-trivial ns
 
   ending-trivial : ∀ prev ns → Trivial (ending prev ns)

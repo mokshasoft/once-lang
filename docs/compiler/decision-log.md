@@ -19575,6 +19575,8 @@ user facing configs."
   above the declaration it precedes, in place inside one, at the end of its line after code; a blank line
   inside a run of comments separates its paragraphs. Comments are anchored to word and literal tokens, the
   sequence every canonical spelling keeps.
+  *(Refined by D346: a blank line between the comments before the first declaration and that declaration is
+  kept as written, so a declaration's own comment stays on it.)*
 
 ## D343 — `once fmt` IS PROVED: THE ROUND TRIP, THE MEANING, CANONICITY (2026-10-27)
 
@@ -19705,3 +19707,36 @@ still reads without a token is layout, not content: blanks, an indented line end
   `lex-caret-err` and `lex-char-err`; the bridges lose their skip cases.
 * The formatter's lexer (`Format.Lex`) stops alike; its proofs lose two cases; no theorem changed.
 
+
+## D346 — THE FIRST DECLARATION KEEPS ITS OWN COMMENT (2026-10-28)
+
+**Refines** D342 (the layout of comments). **Decided** by the user 2026-10-28, on seeing `examples/qtt.once`
+reformatted: "that feels like a bug. Lets branch out and fix it."
+
+### Context
+D342 printed every comment before the first declaration as the file's, always followed by a blank line. A
+file whose header is followed by the first declaration's own comment, as in
+
+    -- qtt.once: quantities (QTT)
+
+    -- Linear: x is used exactly once
+    linearId : Unit^1 -> Unit
+
+came out with `-- Linear: …` split from `linearId` by a blank line. Before any other declaration a comment
+already stood on the declaration.
+
+### Decision
+* Before the first declaration the blank line after the comments is printed only when the text has one there
+  (`Print.lead`, `blankLast`: a blank note after the last comment). Then all the comments are the file's;
+  else the last run stands on the declaration, as before any other. A blank line between comment paragraphs
+  is kept as before. This is the one place where a blank line of the input decides the layout outside a run
+  of comments: it is the only mark of where the file's comments end.
+* No new theorem: the five `VerifiedFormatter` theorems stand. Idempotence needed one more invariant: the
+  second pass's notes end in a blank exactly when the first pass printed one (`Groups.BlankEq`,
+  `blank-pass2`; `Twice.lead-facts` reports what the walk holds after the comments, `TbIs`).
+
+### Consequences
+* The tree is reformatted: 35 files lose the blank line the old rule put between a declaration and its own
+  comment, recovered by formatting each file's text from before the first reformat (master `39da13d89`) with
+  the new formatter; every other line is unchanged.
+* The compile path is untouched: `once fmt`'s modules only.

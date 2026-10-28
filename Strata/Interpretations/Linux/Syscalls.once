@@ -14,7 +14,6 @@
 ------------------------------------------------------------------------
 
 -- | Exit the process with code 0
-
 signature exit0 : Act Unit Void
 
 -- | Exit the process with given code

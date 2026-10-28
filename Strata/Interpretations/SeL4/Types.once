@@ -15,7 +15,6 @@
 -- | seL4 Capability (word-sized handle to kernel object)
 -- In seL4, capabilities are unforgeable tokens granting access to objects.
 -- All kernel resources are accessed through capabilities.
-
 type Capability = Int
 
 -- | Null capability constant (invalid/empty slot)

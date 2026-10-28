@@ -1,6 +1,5 @@
 -- Layer 4: capture-fidelity check. Same fn as keepFst, different
 -- args. Returns the captured x = 99. Expected: exit 99.
-
 import I.Linux.Syscalls as S
 
 keepFst : Int -> Int -> Int

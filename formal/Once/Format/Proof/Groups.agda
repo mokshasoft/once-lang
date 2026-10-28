@@ -197,6 +197,7 @@ runs-walk (R ∷ R′ ∷ Rs) o k H₀ T ni (ne ∷ nes) en refl
 
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
+open import Once.Spec.Surface.Syntax using (Decl)
 open import Once.Format.Print using (notes; addTo; addTop)
 open import Once.Format.Proof.Walk using (lookup-addTo-same)
 
@@ -243,7 +244,9 @@ settle-tops-inner j k (held-blank ∷ hs)     T =
 -- The second pass's runs
 ------------------------------------------------------------------------
 
-open import Once.Format.Print using (hasComment; topDoc; lead; ending; gapEnd)
+open import Once.Format.Print using (hasComment; topDoc; lead; ending; gapEnd; blankLast; blankIf)
+open import Data.Unit using (⊤; tt)
+open import Once.Spec.Surface.Syntax using (Decl)
 open import Once.Format.Proof.Sources using (NoteSrc)
 
 -- | A run as the second pass reads it: the lines the first pass wrote.
@@ -418,16 +421,106 @@ runs-eq f ns₁ ns₂ o c eq src =
 has-eq : ∀ ns₁ ns₂ → groups ns₂ [] false ≡ map rsOf (groups ns₁ [] false) → hasComment ns₂ ≡ hasComment ns₁
 has-eq ns₁ ns₂ eq = trans (has-of ns₂) (trans (cong notNull eq) (trans (notNull-map rsOf _) (sym (has-of ns₁))))
 
--- | What stands before a declaration, printed again.
-lead-eq : ∀ prev ns₁ ns₂ o c → groups ns₂ [] false ≡ map rsOf (groups ns₁ [] false) → All NoteSrc ns₁
-        → layout 0 false (lead prev ns₂) (st o c (just 0) []) ≡ layout 0 false (lead prev ns₁) (st o c (just 0) [])
-lead-eq (just _) ns₁ ns₂ o c eq src = runs-eq false ns₁ ns₂ o c eq src
-lead-eq nothing  ns₁ ns₂ o c eq src rewrite has-eq ns₁ ns₂ eq = pick (hasComment ns₁)
+-- | Before the first declaration, the second pass sees a blank line after
+-- the comments just when the first pass did.
+BlankEq : Maybe Decl → List Note → List Note → Set
+BlankEq nothing  ns₁ ns₂ = hasComment ns₁ ≡ true → blankLast ns₂ ≡ blankLast ns₁
+BlankEq (just _) ns₁ ns₂ = ⊤
+
+-- | What the first pass's walk holds after the comments before the first
+-- declaration: a blank just when it wrote one.
+tbOf : Bool → List Held
+tbOf true  = held-blank ∷ []
+tbOf false = []
+
+TbIs : Maybe Decl → List Note → List Held → Set
+TbIs nothing  ns₁ tb = hasComment ns₁ ≡ true → tb ≡ tbOf (blankLast ns₁)
+TbIs (just _) ns₁ tb = ⊤
+
+private
+  hasComment-++ : ∀ xs ys → hasComment ys ≡ true → hasComment (xs ++ ys) ≡ true
+  hasComment-++ []                    ys h = h
+  hasComment-++ (note-comment _ ∷ xs) ys h = refl
+  hasComment-++ (note-blank ∷ xs)     ys h = hasComment-++ xs ys h
+
+  -- what stands before the last comment does not count
+  blankLast-skip : ∀ xs ys → hasComment ys ≡ true → blankLast (xs ++ ys) ≡ blankLast ys
+  blankLast-skip []                    ys h = refl
+  blankLast-skip (note-comment _ ∷ xs) ys h = blankLast-skip xs ys h
+  blankLast-skip (note-blank ∷ xs)     ys h rewrite hasComment-++ xs ys h = blankLast-skip xs ys h
+
+  if-same : ∀ b → (if b then true else true) ≡ true
+  if-same true  = refl
+  if-same false = refl
+
+  blankLast-end : ∀ xs → blankLast (xs ++ note-blank ∷ []) ≡ true
+  blankLast-end []                    = refl
+  blankLast-end (note-comment _ ∷ xs) = blankLast-end xs
+  blankLast-end (note-blank ∷ xs)     rewrite blankLast-end xs = if-same (hasComment (xs ++ note-blank ∷ []))
+
+  blankLast-cmts : ∀ cs ys → blankLast (map note-comment cs ++ ys) ≡ blankLast ys
+  blankLast-cmts []       ys = refl
+  blankLast-cmts (c ∷ cs) ys = blankLast-cmts cs ys
+
+  blankLast-allc : ∀ cs → blankLast (map note-comment cs) ≡ false
+  blankLast-allc []       = refl
+  blankLast-allc (c ∷ cs) = blankLast-allc cs
+
+  -- a run as written is a line at least
+  rs-ne : ∀ R → NE R → ∃[ x ] ∃[ xs ] rsOf R ≡ x ∷ xs
+  rs-ne R (c , cs , e) = go (rendered-ne 0 c cs)
+    where
+      go : (∃[ L ] ∃[ Ls ] rendered 0 (c ∷ cs) ≡ L ∷ Ls) → ∃[ x ] ∃[ xs ] rsOf R ≡ x ∷ xs
+      go (L , Ls , eL) = readBack L , map readBack Ls , trans (cong rsOf e) (cong (map readBack) eL)
+
+  -- the held runs start with a comment…
+  held-has : ∀ R Rs ys → NE R → hasComment (notesOf (heldOf (R ∷ Rs)) ++ ys) ≡ true
+  held-has R []        ys ne with rs-ne R ne
+  ... | x , xs , e rewrite e = refl
+  held-has R (R′ ∷ Rs) ys ne with rs-ne R ne
+  ... | x , xs , e rewrite e = refl
+
+  -- …and end with one
+  held-last : ∀ R Rs → All NE (R ∷ Rs) → blankLast (notesOf (heldOf (R ∷ Rs))) ≡ false
+  held-last R []        _              = trans (cong blankLast (notesOf-map (rsOf R))) (blankLast-allc (rsOf R))
+  held-last R (R′ ∷ Rs) (_ ∷ ne′ ∷ nes) =
+    trans (cong blankLast (trans (notesOf-++ (map hcT (rsOf R)) (held-blank ∷ heldOf (R′ ∷ Rs)))
+                            (cong (_++ (note-blank ∷ notesOf (heldOf (R′ ∷ Rs)))) (notesOf-map (rsOf R)))))
+      (trans (blankLast-cmts (rsOf R) (note-blank ∷ notesOf (heldOf (R′ ∷ Rs))))
+        (trans (cong (λ h → if h then blankLast (notesOf (heldOf (R′ ∷ Rs))) else true)
+                     (trans (cong hasComment (sym (++-identityʳ (notesOf (heldOf (R′ ∷ Rs)))))) (held-has R′ Rs [] ne′)))
+               (held-last R′ Rs (ne′ ∷ nes))))
+
+  pass2-tail : ∀ R Rs b → All NE (R ∷ Rs) → blankLast (notesOf (heldOf (R ∷ Rs)) ++ notesOf (tbOf b)) ≡ b
+  pass2-tail R Rs true  _   = blankLast-end (notesOf (heldOf (R ∷ Rs)))
+  pass2-tail R Rs false nes = trans (cong blankLast (++-identityʳ (notesOf (heldOf (R ∷ Rs))))) (held-last R Rs nes)
+
+-- | The second pass's notes before a declaration: what stood before the
+-- runs, the runs as written, then what the first pass's walk held after them.
+blank-pass2 : ∀ prev ns₁ P tb → TbIs prev ns₁ tb → BlankEq prev ns₁ (P ++ notesOf (heldOf (groups ns₁ [] false) ++ tb))
+blank-pass2 (just _) ns₁ P tb _  = tt
+blank-pass2 nothing  ns₁ P tb ti h = go (groups ns₁ [] false) refl (groups-ne-all ns₁ [] false)
   where
-    pick : ∀ b → layout 0 false (if b then topDoc ns₂ <> blank else empty) (st o c (just 0) [])
-               ≡ layout 0 false (if b then topDoc ns₁ <> blank else empty) (st o c (just 0) [])
-    pick true  = cong (layout 0 false blank) (runs-eq false ns₁ ns₂ o c eq src)
-    pick false = refl
+    go : ∀ G → groups ns₁ [] false ≡ G → All NE G → blankLast (P ++ notesOf (heldOf G ++ tb)) ≡ blankLast ns₁
+    go [] eG _ with trans (sym h) (trans (has-of ns₁) (cong notNull eG))
+    ... | ()
+    go (R ∷ Rs) eG nes =
+      trans (cong (λ x → blankLast (P ++ x)) (notesOf-++ (heldOf (R ∷ Rs)) tb))
+        (trans (blankLast-skip P _ (held-has R Rs (notesOf tb) (Data.List.Relation.Unary.All.head nes)))
+          (trans (cong (λ t → blankLast (notesOf (heldOf (R ∷ Rs)) ++ notesOf t)) (ti h))
+            (pass2-tail R Rs (blankLast ns₁) nes)))
+
+-- | What stands before a declaration, printed again.
+lead-eq : ∀ prev ns₁ ns₂ o c → groups ns₂ [] false ≡ map rsOf (groups ns₁ [] false) → All NoteSrc ns₁ → BlankEq prev ns₁ ns₂
+        → layout 0 false (lead prev ns₂) (st o c (just 0) []) ≡ layout 0 false (lead prev ns₁) (st o c (just 0) [])
+lead-eq (just _) ns₁ ns₂ o c eq src _  = runs-eq false ns₁ ns₂ o c eq src
+lead-eq nothing  ns₁ ns₂ o c eq src bl rewrite has-eq ns₁ ns₂ eq = pick (hasComment ns₁) refl
+  where
+    pick : ∀ b → hasComment ns₁ ≡ b
+         → layout 0 false (if b then topDoc ns₂ <> blankIf (blankLast ns₂) else empty) (st o c (just 0) [])
+         ≡ layout 0 false (if b then topDoc ns₁ <> blankIf (blankLast ns₁) else empty) (st o c (just 0) [])
+    pick true  h = cong₂ (λ b τ → layout 0 false (blankIf b) τ) (bl h) (runs-eq false ns₁ ns₂ o c eq src)
+    pick false _ = refl
 
 private
   gap-fresh : ∀ prev o c → ∃[ o′ ] ∃[ c′ ] layout 0 false (gapEnd prev) (st o c (just 0) []) ≡ st o′ c′ (just 0) []

@@ -32,7 +32,6 @@
 -- - cap: Notification capability with badge to signal
 --
 -- Returns: Unit
-
 signature seL4_Signal : Act Int Unit
 
 -- | seL4_Wait - Wait for notification (blocking)

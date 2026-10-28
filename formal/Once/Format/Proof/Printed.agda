@@ -25,7 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Surface.Syntax using (Decl; Module; mkModule)
 open import Once.Format.Doc using (empty; blank; _<>_)
 open import Once.Format.Print using (Note; note-comment; note-blank; Trivia; hoist; topList; runs; topDoc; hasComment;
-  lead; ending; gap; gapEnd; together; pdecl; pdecls; pmodule)
+  blankIf; blankLast; lead; ending; gap; gapEnd; together; pdecl; pdecls; pmodule)
 open import Once.Format.Proof.Words using (DocC; Mn; commentRun-DW; cm-++; ifcase)
 open import Once.Format.Proof.Counts using (Ind; ind-pdecl; AnchC)
 
@@ -63,8 +63,12 @@ private
   lead-DocC : ∀ prev ns → DocC (lead prev ns) ≡ MNotes ns
   lead-DocC nothing ns =
     ifcase {P = λ z → DocC z ≡ MNotes ns} (hasComment ns)
-      (λ _ → trans (++-identityʳ _) (topDoc-DocC ns))
+      (λ _ → trans (cong (DocC (topDoc ns) ++_) (blankIf-DocC (blankLast ns))) (trans (++-identityʳ _) (topDoc-DocC ns)))
       (λ e → sym (none-words ns e))
+    where
+      blankIf-DocC : ∀ b → DocC (blankIf b) ≡ []
+      blankIf-DocC true  = refl
+      blankIf-DocC false = refl
   lead-DocC (just _) ns = topDoc-DocC ns
 
   gapEnd-DocC : ∀ prev → DocC (gapEnd prev) ≡ []

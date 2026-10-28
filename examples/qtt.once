@@ -12,7 +12,6 @@
 --   once check examples/qtt.once
 
 -- Linear: x is used exactly once
-
 linearId : Unit ^1 -> Unit
 linearId x = x
 

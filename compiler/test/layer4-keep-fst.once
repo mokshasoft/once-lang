@@ -3,7 +3,6 @@
 -- desugared to call once_keepFst() (returns curry'd closure) then
 -- apply that to 42, then apply that result to 99 → 42 (captured x).
 -- Expected: exit 42.
-
 import I.Linux.Syscalls as S
 
 keepFst : Int -> Int -> Int

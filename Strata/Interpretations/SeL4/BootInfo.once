@@ -26,7 +26,6 @@
 -- Returns: Pointer to seL4_BootInfo
 --
 -- Note: This is a pure function - it returns a constant address.
-
 signature getBootInfo : Unit -> Int
 
 -- | Get IPC buffer pointer

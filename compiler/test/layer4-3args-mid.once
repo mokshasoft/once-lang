@@ -1,6 +1,5 @@
 -- Layer 4: three-arg curried fn — deep closure nesting. Returns b.
 -- Expected: exit 42.
-
 import I.Linux.Syscalls as S
 
 mid3 : Int -> Int -> Int -> Int

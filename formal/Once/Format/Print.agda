@@ -644,10 +644,21 @@ gapEnd : Maybe Decl → Doc
 gapEnd nothing  = empty
 gapEnd (just _) = blank
 
--- The comments before the first declaration are the file's: a blank line
--- between them and it.
+-- A blank line after the last comment.
+blankLast : List Note → Bool
+blankLast []                    = false
+blankLast (note-comment _ ∷ ns) = blankLast ns
+blankLast (note-blank ∷ ns)     = if hasComment ns then blankLast ns else true
+
+blankIf : Bool → Doc
+blankIf b = if b then blank else empty
+
+-- Before the first declaration: the file's comments, then its own. A blank
+-- line between them and it only when the text has one there (the comments
+-- then are all the file's); else the last ones stand on it, as before any
+-- other declaration.
 lead : Maybe Decl → List Note → Doc
-lead nothing  ns = if hasComment ns then topDoc ns <> blank else empty
+lead nothing  ns = if hasComment ns then topDoc ns <> blankIf (blankLast ns) else empty
 lead (just _) ns = topDoc ns
 
 ending : Maybe Decl → List Note → Doc

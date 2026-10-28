@@ -30,7 +30,6 @@
 
 -- | Spawn without waiting (fire-and-forget)
 -- Like spawn but no join handle returned
-
 signature thread_detach : Act Eff Unit Unit Unit
 
 ------------------------------------------------------------------------

@@ -224,7 +224,8 @@ decision-log entry updates the rule it changes here, in the same commit.
   correctness proofs are type-checked, not extracted. (D334)
 - **One layout, no options**: `once fmt` writes the canonical layout, its
   style constants in code (width 100, indent 2); `--check` enforces it.
-  (D342)
+  A comment stands on the declaration after it; before the first one a
+  blank line of the text ends the file's comments. (D342, D346)
 - **`once fmt` is proved, outside the compile path**: formatting keeps the
   module (`roundtrip`) and hence the apex's meaning (`format-denotes`); a
   text without comments is formatted by its module alone; formatting is
