@@ -36,6 +36,12 @@ fmtTests = testGroup "Fmt (one canonical layout)"
       assertEqual "formatting twice is formatting once" out1 out2
       assertEqual "the comments, in order" (comments sample) (comments out1)
 
+  , testCase "the first declaration keeps its own comment; a blank line ends the file's (D346)" $ do
+      attached <- formatText "-- header\n\n-- about f\nf : Int\nf = 1\n"
+      assertEqual "attached" "-- header\n\n-- about f\nf : Int\nf = 1\n" attached
+      header <- formatText "-- header\n\nf : Int\nf = 1\n"
+      assertEqual "header only" "-- header\n\nf : Int\nf = 1\n" header
+
   , testCase "--check rejects a file not in the canonical layout" $
       withSystemTempFile "unformatted.once" $ \path h -> do
         hPutStr h "f   : Int\nf = 1 +2\n"
