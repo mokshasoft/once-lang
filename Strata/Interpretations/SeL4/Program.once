@@ -1,0 +1,27 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- seL4 Programs of an Image
+--
+-- A seL4 image may hold several Once programs (plan 0.127 B.1): program
+-- 0 is the root task, the one the kernel starts; programs 1, 2, 3 are
+-- linked beside it, each its own `main` and its own run. The seL4 Host
+-- gives each program a stack; each has its own heap.
+--
+-- A program is started on a thread the caller created and configured
+-- (seL4_Untyped_Retype, seL4_TCB_Configure): `start` sets the thread's
+-- instruction pointer to the program's start and its stack pointer to
+-- the program's stack, and resumes it. The started program reads the
+-- Int it was started with by `arg`. A program is started at most once.
+------------------------------------------------------------------------
+
+-- | Start program `program` of the image on the thread `tcb`, with `arg`
+--
+-- Arguments: ((tcb, program), arg)
+-- Returns: seL4_Error (0 = success; 1 = seL4_InvalidArgument when the
+--          image has no such program)
+signature start : Act ((Int * Int) * Int) Int
+
+-- | The Int this program was started with (0 for the root task)
+signature arg : Act Unit Int

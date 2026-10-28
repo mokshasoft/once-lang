@@ -138,8 +138,10 @@ has no code of its own; it is compiled where it is used at a concrete type, here
 
 [`examples/`](examples/) has small programs (arithmetic, `let`, a fold over the naturals, quantities).
 `make -C examples ONCE=$PWD/result/bin/once` builds each one and checks its exit code on x86-64 and
-x86-32; adding `riscv64` does the same under qemu. `examples/seL4` is parked: it does not run Once
-code yet ([plan 0.127](plans/0.127-sel4-runs-once.md)).
+x86-32; adding `riscv64` does the same under qemu. [`examples/seL4`](examples/seL4/) runs Once on
+the seL4 microkernel (x86-64, under QEMU): a root task, an echo server and a client, all Once
+programs; `make -C examples seL4` builds and checks it with Nix
+([plan 0.127](plans/0.127-sel4-runs-once.md)).
 
 ## Documentation
 

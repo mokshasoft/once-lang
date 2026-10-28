@@ -1,102 +1,168 @@
 # ======================================================================
-# seL4 Untyped Memory Primitives - x86_64 Implementation
+# seL4 Untyped Primitives - x86_64 Implementation
 # ======================================================================
 #
-# Object invocations in seL4 use the IPC mechanism:
-# 1. Pack method ID and arguments into MessageInfo and message registers
-# 2. Invoke seL4_Call on the capability
-# 3. Unpack result from reply
+# An object invocation is an seL4_Call on the object's capability with
+# the method's label (non-MCS `invocation_label`, from the pinned
+# kernel's generated `api/invocation.h`): message words 0-3 in r10, r8,
+# r9, r15; words 4.. and the extra caps in the IPC buffer. Only the root
+# task has an IPC buffer (`bootinfo->ipcBuffer`), so these run in the
+# root task. The answer is the reply's label: the seL4_Error.
 #
-# seL4 x86_64 syscall convention:
-#   rdx: Syscall number (-6 for seL4_Call)
-#   rdi: Capability to invoke
-#   rsi: MessageInfo
-#   r10, r8, r9, r15: Message registers 0-3
+# SigOp ABI: the argument in rdi (a left-nested tuple of cells
+# [fst, snd]), the answer in rax; every other register is preserved,
+# r15 (Once's heap pointer, and seL4's fourth message register) too.
 #
 # ======================================================================
+
+.equ SEL4_SYS_CALL,     -1
+.equ BI_IPC_BUFFER,     0x20
+.equ IPC_MSG,           8       # seL4_IPCBuffer.msg
+.equ IPC_CAPS,          976     # seL4_IPCBuffer.caps_or_badges
+
+.equ UNTYPED_RETYPE,    1
+
+# Frame: the flattened arguments, the message words, the extra caps
+.equ ARGS,   0
+.equ WORDS,  64
+.equ CAPS,   112
+.equ FRAME,  144
+
+.macro SAVE_ALL
+    pushq %r15
+    pushq %r14
+    pushq %r13
+    pushq %r12
+    pushq %r11
+    pushq %r10
+    pushq %r9
+    pushq %r8
+    pushq %rbp
+    pushq %rdi
+    pushq %rsi
+    pushq %rdx
+    pushq %rcx
+    pushq %rbx
+.endm
+
+.macro RESTORE_ALL
+    popq %rbx
+    popq %rcx
+    popq %rdx
+    popq %rsi
+    popq %rdi
+    popq %rbp
+    popq %r8
+    popq %r9
+    popq %r10
+    popq %r11
+    popq %r12
+    popq %r13
+    popq %r14
+    popq %r15
+.endm
+
+# Copy argument `idx` (or 0 when idx < 0) to the frame slot `off`
+.macro ARG_TO off, idx
+.if \idx < 0
+    movq    $0, \off(%rsp)
+.else
+    movq    (ARGS + 8 * \idx)(%rsp), %rax
+    movq    %rax, \off(%rsp)
+.endif
+.endm
+
+# An invocation on argument 0's capability: `n` arguments, message info
+# `info`, message words from arguments w0..w5, extra caps from c0..c2.
+.macro SEL4_INVOCATION name, n, info, w0=-1, w1=-1, w2=-1, w3=-1, w4=-1, w5=-1, c0=-1, c1=-1, c2=-1
+.global \name
+.type \name, @function
+\name:
+    SAVE_ALL
+    subq    $FRAME, %rsp
+.if \n == 1
+    movq    %rdi, ARGS(%rsp)
+.else
+    leaq    ARGS(%rsp), %rsi
+    movq    $\n, %rcx
+    call    untyped_flatten
+.endif
+    ARG_TO  (WORDS + 0), \w0
+    ARG_TO  (WORDS + 8), \w1
+    ARG_TO  (WORDS + 16), \w2
+    ARG_TO  (WORDS + 24), \w3
+    ARG_TO  (WORDS + 32), \w4
+    ARG_TO  (WORDS + 40), \w5
+    ARG_TO  (CAPS + 0), \c0
+    ARG_TO  (CAPS + 8), \c1
+    ARG_TO  (CAPS + 16), \c2
+    movq    ARGS(%rsp), %rdi
+    movq    $\info, %rsi
+    leaq    WORDS(%rsp), %r12
+    leaq    CAPS(%rsp), %r13
+    call    untyped_invoke
+    addq    $FRAME, %rsp
+    RESTORE_ALL
+    ret
+.size \name, .-\name
+.endm
 
 .text
 .align 16
 
-#ifndef ONCE_SEL4_UNTYPED_X86_64_DEFINED
-#define ONCE_SEL4_UNTYPED_X86_64_DEFINED
-
-# seL4_SysCall = -6
-.equ SEL4_SYS_CALL, -6
-
-# ----------------------------------------------------------------------
-# seL4_Untyped_Retype - Create kernel objects from untyped memory
-# ----------------------------------------------------------------------
-# Input: (untyped, objectType, sizeBits, root, nodeIndex, nodeDepth, nodeOffset, numObjects)
-# Output: Int (seL4_Error)
-#
-# This is a capability invocation using seL4_Call.
-
-.global seL4_Untyped_Retype
-.type seL4_Untyped_Retype, @function
-seL4_Untyped_Retype:
-    push    %rbp
-    mov     %rsp, %rbp
-    push    %rbx
-    push    %r12
-    push    %r13
-    push    %r14
-    push    %r15
-
-    # Unpack 8-element input tuple:
-    # (untyped, (objectType, (sizeBits, (root, (nodeIndex, (nodeDepth, (nodeOffset, numObjects)))))))
-
-    mov     (%rdi), %r12        # r12 = untyped cap
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r13        # r13 = objectType -> mr0
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r14        # r14 = sizeBits -> mr1
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %rax        # rax = root -> mr2
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %rcx        # rcx = nodeIndex -> mr3
-    mov     8(%rdi), %rdi
-
-    # Remaining args (would go to IPC buffer in full implementation)
-    # For simplified version, we use only first 4 MRs
-
-    # Build MessageInfo: (label=0, capsUnwrapped=0, extraCaps=1, length=4)
-    # = (0 << 12) | (0 << 9) | (1 << 7) | 4 = 132
-    mov     $132, %rsi          # MessageInfo
-
-    # Message registers
-    mov     %r13, %r10          # mr0 = objectType
-    mov     %r14, %r8           # mr1 = sizeBits
-    mov     %rax, %r9           # mr2 = root
-    mov     %rcx, %r15          # mr3 = nodeIndex
-
-    # Capability to invoke
-    mov     %r12, %rdi          # rdi = untyped capability
-
-    # Syscall number for seL4_Call
-    mov     $SEL4_SYS_CALL, %rdx
-
-    # Trap to kernel
-    mov     %rsp, %rbx
-    syscall
-    mov     %rbx, %rsp
-
-    # On return: rsi has reply MessageInfo
-    # Extract error from MessageInfo label (bits 12+)
-    mov     %rsi, %rax
-    shr     $12, %rax
-
-    pop     %r15
-    pop     %r14
-    pop     %r13
-    pop     %r12
-    pop     %rbx
-    pop     %rbp
+# untyped_flatten: the left-nested n-tuple at rdi (n >= 2, in rcx) into
+# the words at rsi, in order. Clobbers rax, rcx, rdi.
+untyped_flatten:
+1:  cmpq    $1, %rcx
+    je      2f
+    decq    %rcx
+    movq    8(%rdi), %rax
+    movq    %rax, (%rsi,%rcx,8)
+    movq    (%rdi), %rdi
+    jmp     1b
+2:  movq    %rdi, (%rsi)
     ret
-.size seL4_Untyped_Retype, .-seL4_Untyped_Retype
 
-#endif // ONCE_SEL4_UNTYPED_X86_64_DEFINED
+# untyped_invoke: seL4_Call on cap rdi with message info rsi, message
+# words at r12 (at least 4), extra caps at r13. Answers the reply's
+# label in rax. Clobbers everything but rsp, rbp, r12, r13.
+untyped_invoke:
+    movq    once_sel4_bootinfo(%rip), %r14
+    movq    BI_IPC_BUFFER(%r14), %r14
+    movq    %rsi, %rcx                  # extra caps: bits 7-8
+    shrq    $7, %rcx
+    andq    $3, %rcx
+    xorq    %rdx, %rdx
+1:  cmpq    %rcx, %rdx
+    je      2f
+    movq    (%r13,%rdx,8), %rax
+    movq    %rax, IPC_CAPS(%r14,%rdx,8)
+    incq    %rdx
+    jmp     1b
+2:  movq    %rsi, %rcx                  # length: bits 0-6
+    andq    $0x7f, %rcx
+    movq    $4, %rdx
+3:  cmpq    %rcx, %rdx
+    jae     4f
+    movq    (%r12,%rdx,8), %rax
+    movq    %rax, IPC_MSG(%r14,%rdx,8)
+    incq    %rdx
+    jmp     3b
+4:  movq    0(%r12), %r10
+    movq    8(%r12), %r8
+    movq    16(%r12), %r9
+    movq    24(%r12), %r15
+    movq    $SEL4_SYS_CALL, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    movq    %rsi, %rax                  # the reply's label: the error
+    shrq    $12, %rax
+    ret
+
+# seL4_Untyped_Retype : (untyped, type, sizeBits, root, nodeIndex,
+#                        nodeDepth, nodeOffset, numObjects) -> seL4_Error
+# Words: type, sizeBits, nodeIndex, nodeDepth, nodeOffset, numObjects;
+# cap: root. Label UntypedRetype, 1 extra cap, length 6.
+.equ RETYPE_INFO, (UNTYPED_RETYPE << 12) | (1 << 7) | 6
+SEL4_INVOCATION seL4_Untyped_Retype, 8, RETYPE_INFO, w0=1, w1=2, w2=4, w3=5, w4=6, w5=7, c0=3

@@ -1,0 +1,51 @@
+# ======================================================================
+# seL4 Debug Output - x86_64 Implementation
+# ======================================================================
+#
+# seL4_DebugPutChar is syscall -9 (debug kernel, the pinned kernel's
+# generated `syscall.h`) with the character in rdi. libsel4 issues it as a
+# send-receive: rdi, rsi, r10, r8, r9, r15 come back clobbered, and
+# `syscall` clobbers rcx, r11. All are saved: r15 is Once's heap pointer.
+#
+# SigOp ABI: the argument in rdi, Unit (0) in rax; every other register
+# is preserved.
+#
+# ======================================================================
+
+.equ SEL4_SYS_DEBUG_PUTCHAR, -9
+
+.text
+.align 16
+
+.global putChar
+.type putChar, @function
+putChar:
+    pushq   %r15
+    pushq   %r11
+    pushq   %r10
+    pushq   %r9
+    pushq   %r8
+    pushq   %rdi
+    pushq   %rsi
+    pushq   %rdx
+    pushq   %rcx
+    pushq   %rbx
+    andq    $0xff, %rdi
+    xorq    %rsi, %rsi
+    movq    $SEL4_SYS_DEBUG_PUTCHAR, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    popq    %rbx
+    popq    %rcx
+    popq    %rdx
+    popq    %rsi
+    popq    %rdi
+    popq    %r8
+    popq    %r9
+    popq    %r10
+    popq    %r11
+    popq    %r15
+    xorq    %rax, %rax
+    ret
+.size putChar, .-putChar
