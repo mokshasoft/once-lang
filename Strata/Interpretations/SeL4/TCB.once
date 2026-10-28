@@ -110,29 +110,9 @@ signature seL4_TCB_Resume : Act Int Int
 -- Returns: seL4_Error (0 = success)
 signature seL4_TCB_Suspend : Act Int Int
 
--- | seL4_TCB_WriteRegisters - Write thread registers
---
--- Arguments:
---   tcb    : TCB capability
---   resume : Resume thread after write (0 or 1)
---   arch   : Architecture flags
---   count  : Number of registers
---   regs   : Pointer to register array
---
--- Returns: seL4_Error (0 = success)
-signature seL4_TCB_WriteRegisters : Act (Int * Int * Int * Int * Int) Int
-
--- | seL4_TCB_ReadRegisters - Read thread registers
---
--- Arguments:
---   tcb     : TCB capability
---   suspend : Suspend thread first (0 or 1)
---   arch    : Architecture flags
---   count   : Number of registers
---   regs    : Pointer to buffer for registers
---
--- Returns: seL4_Error (0 = success)
-signature seL4_TCB_ReadRegisters : Act (Int * Int * Int * Int * Int) Int
+-- (No seL4_TCB_WriteRegisters / ReadRegisters: they take a pointer to a
+-- register array, which a Once program has no value for. A thread is
+-- started on a program of the image with `I.SeL4.Program.start`.)
 
 ------------------------------------------------------------------------
 -- Priority Constants

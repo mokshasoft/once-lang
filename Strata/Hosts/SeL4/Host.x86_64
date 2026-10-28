@@ -1,5 +1,5 @@
 # ======================================================================
-# The seL4 Host — x86_64, the root task (D320, plan 0.127 A.2)
+# The seL4 Host — x86_64 (D320, plan 0.127)
 #
 # A Host is how a platform runs a program: `enter ; main ; leave`.
 #
@@ -10,9 +10,17 @@
 # Interpretations (`once_sel4_bootinfo`), and jumps to `_start`. This is
 # what seL4's own runtime does for C (`sel4runtime`, `_sel4_start`).
 #
+# An image may hold further programs (plan 0.127 B.1): program 0 is the
+# root task; programs 1-3 are linked beside it with their `_start`
+# renamed `once_program_<n>` (weak here: an image without them links).
+# `I.SeL4.Program.start` starts one on a thread at its start, on its
+# stack below; its `_start` sets its own heap. `once_sel4_self` answers
+# which program the calling thread runs, from its stack pointer.
+#
 # `leave` (`once_leave`): calling it ends the run, observed as `returned`.
-# On seL4 the root task prints a fixed line on the debug console (debug
-# kernel) and suspends its own thread (`seL4_CapInitThreadTCB`).
+# The program prints a fixed line on the debug console (debug kernel)
+# and suspends its own thread (the root task's is `seL4_CapInitThreadTCB`,
+# a started program's is the TCB it was started on).
 #
 # Numbers from the kernel's generated headers (non-MCS, debug, printing):
 # SysCall = -1, SysYield = -7, SysDebugPutChar = -9; TCBSuspend = 11.
@@ -25,6 +33,9 @@
 .equ SEL4_CAP_INIT_THREAD_TCB, 1
 .equ TCB_SUSPEND,             11
 .equ ROOT_STACK_SIZE,         65536
+.equ PROGRAM_SLOTS,           4
+.equ PROGRAM_STACK_SIZE,      65536
+.equ PROGRAM_STACK_SHIFT,     16          # log2 PROGRAM_STACK_SIZE
 
 .bss
 .align 16
@@ -36,6 +47,43 @@ once_sel4_stack_top:
 .align 8
 once_sel4_bootinfo:
     .space 8
+
+# Programs 1..PROGRAM_SLOTS-1: one stack each
+.align 16
+once_sel4_program_stacks:
+    .space (PROGRAM_SLOTS - 1) * PROGRAM_STACK_SIZE
+once_sel4_program_stacks_end:
+
+# Per program: the TCB and the Int it was started with (0: root task)
+.global once_sel4_program_tcb
+.align 8
+once_sel4_program_tcb:
+    .space 8 * PROGRAM_SLOTS
+.global once_sel4_program_arg
+once_sel4_program_arg:
+    .space 8 * PROGRAM_SLOTS
+
+.data
+.weak once_program_1
+.weak once_program_2
+.weak once_program_3
+
+# Per program: its start (0: the image has no such program)
+.global once_sel4_program_entry
+.align 8
+once_sel4_program_entry:
+    .quad 0
+    .quad once_program_1
+    .quad once_program_2
+    .quad once_program_3
+
+# Per program: its initial stack pointer (the top of its stack, less 16)
+.global once_sel4_program_sp
+once_sel4_program_sp:
+    .quad 0
+    .quad once_sel4_program_stacks + 1 * PROGRAM_STACK_SIZE - 16
+    .quad once_sel4_program_stacks + 2 * PROGRAM_STACK_SIZE - 16
+    .quad once_sel4_program_stacks + 3 * PROGRAM_STACK_SIZE - 16
 
 .section .rodata
 once_sel4_leave_line:
@@ -51,6 +99,29 @@ once_sel4_enter:
     jmp     _start
 .size once_sel4_enter, .-once_sel4_enter
 
+# once_sel4_self: the program the calling thread runs, in rax (0 for the
+# root task: a stack pointer outside the programs' stacks). Preserves
+# every other register.
+.global once_sel4_self
+.type once_sel4_self, @function
+once_sel4_self:
+    pushq   %rcx
+    leaq    once_sel4_program_stacks(%rip), %rcx
+    movq    %rsp, %rax
+    subq    %rcx, %rax
+    jb      1f                          # below the programs' stacks
+    leaq    once_sel4_program_stacks_end(%rip), %rcx
+    cmpq    %rcx, %rsp
+    jae     1f                          # above them
+    shrq    $PROGRAM_STACK_SHIFT, %rax
+    incq    %rax
+    popq    %rcx
+    ret
+1:  xorq    %rax, %rax
+    popq    %rcx
+    ret
+.size once_sel4_self, .-once_sel4_self
+
 .global once_leave
 .type once_leave, @function
 once_leave:
@@ -65,18 +136,23 @@ once_leave:
     movq    %rbx, %rsp
     incq    %r12
     jmp     1b
-    # seL4_TCB_Suspend(seL4_CapInitThreadTCB): seL4_Call with label
-    # TCBSuspend and no message words (msginfo = label << 12)
+    # seL4_TCB_Suspend(own TCB): seL4_Call with label TCBSuspend and no
+    # message words (msginfo = label << 12)
 2:  movq    $SEL4_CAP_INIT_THREAD_TCB, %rdi
-    movq    $(TCB_SUSPEND << 12), %rsi
+    call    once_sel4_self
+    testq   %rax, %rax
+    jz      3f
+    leaq    once_sel4_program_tcb(%rip), %rcx
+    movq    (%rcx,%rax,8), %rdi
+3:  movq    $(TCB_SUSPEND << 12), %rsi
     movq    $SEL4_SYS_CALL, %rdx
     movq    %rsp, %rbx
     syscall
     movq    %rbx, %rsp
     # Not reached: a suspended thread never runs again
-3:  movq    $SEL4_SYS_YIELD, %rdx
+4:  movq    $SEL4_SYS_YIELD, %rdx
     movq    %rsp, %rbx
     syscall
     movq    %rbx, %rsp
-    jmp     3b
+    jmp     4b
 .size once_leave, .-once_leave
