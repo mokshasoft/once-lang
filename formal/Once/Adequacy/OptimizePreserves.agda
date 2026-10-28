@@ -26,6 +26,8 @@ open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
+open import Data.List using (List; []; _∷_)
+open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (yes; no)
 
@@ -36,15 +38,22 @@ import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Spec.Type using () renaming (Void to VoidT)
-open import Once.IR.Semantics.Trace using (T; ret; call; halt)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; Interp; pureHalf; FFIAnswers; rel-halt)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; module T∞;
   TreeEq∞; module TreeEq∞; BlockEq; ret≈; call≈; halt≈; StepEq; done≈; next≈)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; cata-ev-algᴰ; module CallEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt;
-  RelS-bind; relS-ret; RelS-iter∞; RelS-≈ˡ; RelS-≈ʳ; ≈∞-idˡ; ≈∞-idʳ; ≈∞-sym; ≈∞-reflB)
+  RelS-embed; RelS-bind; relS-ret; RelS-iter∞; RelS-≈ˡ; RelS-≈ʳ; ≈∞-idˡ; ≈∞-idʳ; ≈∞-sym; ≈∞-reflB)
 open import Once.Denotation.ValueRel
-open import Once.Denotation.EvalRel using (fo-eq; RelS-now; RelEnv; sigop-rel)
+open import Once.Denotation.EvalRel using (fo-eq; RelS-now; RelEnv; sigop-rel; eval-rel)
+open import Once.Denotation.ValueRelPER using (RelD-sym; RelD-trans; RelS-sym; RelS-trans)
+open import Once.Denotation.Program using (IRFun; irFun; tableEnv; tableCalls; tableEnv-at; runIR; IRProgram; irProgram)
+open Once.Denotation.Program.IRProgram using (main; table)
+open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
+open import Once.CanonicalName using (_≟ᶜ_)
+open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
+open import Once.Denotation.TraceTr using (trT∞; RelS-tr)
 open import Once.IR.Semantics.StreamInf using (anaFᴵ; in-νᴵ; module νᴵ)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
 import Once.Type.Concrete as LW
@@ -307,3 +316,76 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
     RelS-iter∞ {RB = RelD ⌈ B₀ ⌉} {S = RelD ⌈ B₀ II.+ A₀ ⌉}
                {f = λ a → E (optimize-once b) (e , a)} {f′ = λ a → E′ b (e′ , a)}
                (λ r → r) (λ r → opt-once-rel b (re′ , r)) (λ ()) (λ ()) rs
+
+------------------------------------------------------------------------
+-- Ten passes: each relates its output to its input, and the relation
+-- composes (`ValueRelPER`).
+------------------------------------------------------------------------
+
+module _ (fmt : TargetNum) where
+
+  -- the right-hand environment is related to itself
+  env-self : ∀ {ρ ρ′} → RelEnv fmt ρ ρ′ → RelEnv fmt ρ′ ρ′
+  env-self (calls , ffi) =
+    (λ f A B {a} {a′} r →
+       RelS-trans (RelD-trans ⌈ B ⌉)
+         (RelS-sym (RelD-sym ⌈ B ⌉) (calls f A B (RelD-sym ⌈ A ⌉ r)))
+         (calls f A B (RelD-trans ⌈ A ⌉ (RelD-sym ⌈ A ⌉ r) r)))
+    , refl
+
+  -- | `optimize-n n` keeps the run.
+  opt-n-rel : ∀ n {ρ ρ′} (re : RelEnv fmt ρ ρ′) {A B} (ir : IR A B) → Rel fmt re (optimize-n n ir) ir
+  opt-n-rel zero    re ir r = eval-rel fmt re ir r
+  opt-n-rel (suc n) re {A} {B} ir {a} {a′} r =
+    RelS-trans (RelD-trans ⌈ B ⌉)
+      (opt-n-rel n re (optimize-once ir) r)
+      (opt-once-rel fmt (env-self re) ir (RelD-trans ⌈ A ⌉ (RelD-sym ⌈ A ⌉ r) r))
+
+  -- | The optimizer keeps the run.
+  optimize-rel : ∀ {ρ ρ′} (re : RelEnv fmt ρ ρ′) {A B} (ir : IR A B) → Rel fmt re (optimize ir) ir
+  optimize-rel = opt-n-rel 10
+
+------------------------------------------------------------------------
+-- The program, optimized entry by entry, has the same trace.
+------------------------------------------------------------------------
+
+optimize-fun : IRFun → IRFun
+optimize-fun e = irFun (fname e) (fdom e) (fcod e) (optimize (fbody e))
+
+optimize-table : List IRFun → List IRFun
+optimize-table []       = []
+optimize-table (e ∷ es) = optimize-fun e ∷ optimize-table es
+
+optimize-program : IRProgram → IRProgram
+optimize-program p = irProgram (optimize-table (table p)) (optimize (main p))
+
+module _ (fmt : TargetNum) (φ : FFIAnswers) where
+
+  table-rel : ∀ (tbl : List IRFun) → RelEnv fmt (tableEnv fmt φ (optimize-table tbl)) (tableEnv fmt φ tbl)
+  calls-rel : ∀ (tbl : List IRFun) f (A B : IRTy) {a a′} → RelD ⌈ A ⌉ a a′
+            → RelS (RelD ⌈ B ⌉) (tableCalls fmt φ (optimize-table tbl) f A B a) (tableCalls fmt φ tbl f A B a′)
+  table-rel tbl = calls-rel tbl , refl
+
+  calls-rel []       f A B r = RelS-embed rel-halt
+  calls-rel (e ∷ es) f A B r = at (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) r
+    where
+      hit : ∀ {A B} (p : fdom e ≡ A) (q : fcod e ≡ B) {a a′} → RelD ⌈ A ⌉ a a′
+          → RelS (RelD ⌈ B ⌉)
+              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ (optimize-table es)) (optimize (fbody e)) (subst ⟦_⟧ᴰᴵ (sym p) a)))
+              (subst (λ Y → T∞ ⟦ Y ⟧ᴰᴵ) q (evalᴰ fmt (tableEnv fmt φ es) (fbody e) (subst ⟦_⟧ᴰᴵ (sym p) a′)))
+      hit refl refl r = optimize-rel fmt (table-rel es) (fbody e) r
+      at : ∀ d₁ d₂ d₃ {a a′} → RelD ⌈ A ⌉ a a′
+         → RelS (RelD ⌈ B ⌉) (tableEnv-at fmt φ (optimize-fun e) (optimize-table es) f A B d₁ d₂ d₃ a)
+                              (tableEnv-at fmt φ e es f A B d₁ d₂ d₃ a′)
+      at (yes _) (yes p) (yes q) r = hit p q r
+      at (yes _) (yes _) (no _)  r = calls-rel es f A B r
+      at (yes _) (no _)  _       r = calls-rel es f A B r
+      at (no _)  _       _       r = calls-rel es f A B r
+
+  program-rel : ∀ (p : IRProgram) → RelS (RelD ⌈ II.Unit ⌉) (runIR fmt φ (optimize-program p)) (runIR fmt φ p)
+  program-rel p = optimize-rel fmt (table-rel (table p)) (main p) tt
+
+-- | The optimized program has the same TRACE.
+optimize-program-trace : ∀ (fmt : TargetNum) (ι : Interp) (p : IRProgram)
+                       → trT∞ ι [] (runIR fmt (pureHalf ι) (optimize-program p)) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) p)
+optimize-program-trace fmt ι p = RelS-tr ι [] (program-rel fmt (pureHalf ι) p)
