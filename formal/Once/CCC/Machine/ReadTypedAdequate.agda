@@ -25,8 +25,10 @@ open import Once.Spec.Name using (CanonicalName)
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
+open import Once.CCC.Machine.SMCore using (AbstractTrace)
+-- plan 0.125 S1: `ValidAtWF` is relative to the program (its arrow case).
 module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName) (tbl : List IRFun)
-  {FS : FrameSemantics} where
+  {FS : FrameSemantics} {prog : AbstractTrace} where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (tt)
@@ -45,8 +47,12 @@ open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
 open import Once.CCC.Machine.ClosureWellFormed o tbl
-open ClosureWellFormedDef {FS}
-  using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-float-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf; SumTag; CellAt; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv)
+open ClosureWellFormedDef {FS} {prog}
+  using (ValidAtWF; CellAt)
+open ClosureWellFormedPat {FS}
+  using (valid-unit-wf; valid-int-wf; valid-float-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf)
+open ClosureWellFormedBase {FS}
+  using (SumTag; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv)
 
 -- Readable types: Unit, Int, and products thereof — the arith input shapes.
 data Readable : Type → Set where

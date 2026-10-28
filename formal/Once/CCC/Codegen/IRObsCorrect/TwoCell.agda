@@ -18,10 +18,11 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState)
+open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState)
 open LocState using (regs)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
+open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type)
 
 import Once.CCC.FrameSemantics
@@ -49,6 +50,17 @@ module TwoCellC {FS : FrameSemantics} where
 
   open TwoCellRunC {FS}
   open TwoCellBuildC {FS}
+
+  -- plan 0.125 S1 SCRATCH — NOT TO MERGE. What S3 proves for `curry`: its
+  -- block is at `ℓ o l` in the program (`BlocksAt`), and running it from a
+  -- call computes the closure (its IH on `body` + the S2 block-call lemma).
+  -- Postulated here only to measure the port of the value relation.
+  postulate
+    s1-curry-block : ∀ {A B C} (body : IR (A * B) C) (l : ℕ) (prog : AbstractTrace)
+      {alloc : AllocState {FS}} {st : LocState FS} {cloc : ValueLocation FS} (env : ⟦ A ⟧)
+      → ∃[ j ] ( (find-thunk prog (ℓ o l) ≡ just j)
+               × CallRuns {prog = prog} {B} {C} (VAt {prog = prog} B) (VAt {prog = prog} C)
+                   alloc st cloc j (λ arg → evalᴰ body (env , arg)) )
 
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
   obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
@@ -82,6 +94,8 @@ module TwoCellC {FS : FrameSemantics} where
       -- env gets `valid-closure-wf`, a register literal and a unit env get
       -- D181's `valid-closure-reg-wf`. Without that constructor the last two —
       -- and a unit env is `main`'s — would be unprovable.
+      blk = s1-curry-block body l prog {alloc = falloc TCR.fs10} {st = floc TCR.fs10} {cloc = TCR.obj-loc} x
+
       place-of : InputAt mIn alloc x s
                → ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                              (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)
@@ -92,19 +106,21 @@ module TwoCellC {FS : FrameSemantics} where
           ev≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ prim-sv fit x)
-                   → ValidAtWF Heap (falloc TCR.fs10)
+                   → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid e =
             valid-closure-reg-wf {body = body} {env = x} tt (rep-prim fit)
               (trans TCB.cell0-fs10 (cong just (trans ev≡in e))) TCB.code-fs10 TCB.before-suc
+              (proj₁ (proj₂ blk)) (proj₂ (proj₂ blk))
       place-of (in-unit refl) =
         at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
         where
-          mk-valid : ValidAtWF Heap (falloc TCR.fs10)
+          mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid =
             valid-closure-reg-wf {body = body} {env = x} tt (rep-unit refl TCR.cell0v)
               TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
+              (proj₁ (proj₂ blk)) (proj₂ (proj₂ blk))
       place-of (in-loc loc valid bf eq) =
         at-loc TCR.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
         where
@@ -112,12 +128,13 @@ module TwoCellC {FS : FrameSemantics} where
           ev≡ptr e = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) e
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                   → ValidAtWF Heap (falloc TCR.fs10)
+                   → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid e =
             valid-closure-wf {body = body} {env = x} tt
               (trans TCB.cell0-fs10 (cong just (ev≡ptr e))) TCB.code-fs10
-              (TCB.bf-advance bf) TCB.before-suc (TCB.valid-transport x loc bf valid)
+              (TCB.bf-advance bf) TCB.before-suc
+              (proj₁ (proj₂ blk)) (proj₂ (proj₂ blk))
 
       place : ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)
@@ -173,20 +190,10 @@ module TwoCellC {FS : FrameSemantics} where
       cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
       -- THE SEED CELL — one clause per residence, one constructor for all three.
-      cell-of : InputAt mIn alloc x s
-              → CellAt (falloc TCR.fs10) (E IRTy′.* A) x TCR.obj-loc (floc TCR.fs10)
-      cell-of (in-reg fit eq) =
-        cell-inline (rep-prim fit)
-          (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
-      cell-of (in-unit ())
-      cell-of (in-loc loc valid bf eq) =
-        cell-ptr (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
-                 (TCB.bf-advance bf) (TCB.valid-transport x loc bf valid)
-
-      mk-valid : ValidAtWF Heap (falloc TCR.fs10)
+      mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F}
                    (retVal (evalᴰ (Ana wf coalg) x)) TCR.obj-loc (floc TCR.fs10)
       mk-valid = valid-ν-susp-wf (from-ana wf {coalg = coalg} {seed = x}) tt
-                   (cell-of inp) TCB.code-fs10 TCB.before-suc
+                   TCR.cell0v TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
 
       place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (Ana wf coalg) x)) (floc TCR.fs10)
@@ -231,21 +238,10 @@ module TwoCellC {FS : FrameSemantics} where
       cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
       cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
-      cell-of : InputAt mIn alloc x s
-              → CellAt (falloc TCR.fs10) (⟦ F ⟧TI (ν-type F)) x TCR.obj-loc (floc TCR.fs10)
-      cell-of (in-reg fit eq) =
-        cell-inline (rep-prim fit)
-          (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
-      cell-of (in-unit ueq) =
-        cell-inline (rep-unit ueq TCR.cell0v) TCB.cell0-fs10
-      cell-of (in-loc loc valid bf eq) =
-        cell-ptr (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
-                 (TCB.bf-advance bf) (TCB.valid-transport x loc bf valid)
-
-      mk-valid : ValidAtWF Heap (falloc TCR.fs10)
+      mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F}
                    (retVal (evalᴰ (in-ν wf) x)) TCR.obj-loc (floc TCR.fs10)
       mk-valid = valid-ν-susp-wf (from-layer wf {layer = x}) tt
-                   (cell-of inp) TCB.code-fs10 TCB.before-suc
+                   TCR.cell0v TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
 
       place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (in-ν wf) x)) (floc TCR.fs10)

@@ -1031,9 +1031,9 @@ module Mach {FS : FrameSemantics} where
 
       -- A component that was valid for the caller is valid for the callee: the
       -- setup writes only fresh cells and the frontier only advances.
-      carry : ∀ {mC C} (c : ⟦ C ⟧) (lc : ValueLocation FS)
-            → BeforeFrontier alloc lc → ValidAtWF mC alloc {C} c lc s
-            → ValidAtWF mC (falloc a16) {C} c lc (floc a16)
+      carry : ∀ {pg mC C} (c : ⟦ C ⟧) (lc : ValueLocation FS)
+            → BeforeFrontier alloc lc → ValidAtWF {prog = pg} mC alloc {C} c lc s
+            → ValidAtWF {prog = pg} mC (falloc a16) {C} c lc (floc a16)
       carry c lc cb v =
         validityWF-frontier-advance c lc (floc a16) cf-a16 nextslot-a16-≤ heapref-a16-≤
           (validityWF-mem-preserved c lc s (floc a16) cb

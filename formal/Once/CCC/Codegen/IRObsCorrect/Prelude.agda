@@ -88,7 +88,7 @@ open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace') public
 open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of) public
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable) public
-open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef) public
+open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef; module ClosureWellFormedBase; module ClosureWellFormedPat) public
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 open import Once.Internal.Trace using ()

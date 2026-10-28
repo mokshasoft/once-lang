@@ -115,7 +115,7 @@ module ShapeC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
-  open ClosureWellFormedDef {FS} using (SumTag; rep-prim; rep-unit)
+  open ClosureWellFormedBase {FS} using (SumTag; rep-prim; rep-unit)
 
   ----------------------------------------------------------------------
   -- THE SHAPE, and the four premise splits that ride on it.

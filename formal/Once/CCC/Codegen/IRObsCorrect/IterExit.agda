@@ -47,7 +47,7 @@ module IterExitC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes)
   open ShapeC {FS} using (tag-inl; unpack-wf; load-suc-out; mem-unpack)
-  open ClosureWellFormedDef {FS} using (rep-prim; rep-unit)
+  open ClosureWellFormedBase {FS} using (rep-prim; rep-unit)
   open IterShapeC {FS}
   open IterRunC {FS}
 

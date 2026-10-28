@@ -42,7 +42,7 @@ module IterProofC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open ClosureWellFormedDef {FS} using (rep-prim; rep-unit)
+  open ClosureWellFormedBase {FS} using (rep-prim; rep-unit)
   open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}

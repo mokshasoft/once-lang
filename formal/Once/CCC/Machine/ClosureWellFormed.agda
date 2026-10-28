@@ -26,23 +26,23 @@
 -- reads as it always did.
 open import Once.Spec.Name using (CanonicalName)
 
-open import Data.List using (List; [])
+open import Data.List using (List; []; _∷_; _++_)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Machine.ClosureWellFormed (o : CanonicalName) (tbl : List IRFun) where
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc)
 import Data.Nat as ℕ
 open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ; m≤n+m; +-monoʳ-≤; +-comm)
-open import Data.Bool using (false)
-open import Data.Maybe using (just)
-open import Data.Product using (_,_; proj₁; proj₂; ∃-syntax)
+open import Data.Bool using (Bool; true; false)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_; _×_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open AllocState using (next-slot; next-heap-ref; current-frame)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (regs; ev-log; halted; stackMem; heapMem)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 import Once.CCC.Machine.SMPrimitives as SMP
@@ -86,7 +86,17 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace-at-frontier)
 -- This is essentially IRResultA specialized to the body.
 ------------------------------------------------------------------------
 
-module ClosureWellFormedDef {FS : FrameSemantics} where
+-- plan 0.125 S1: the arrow case states a callee's RUN, so the relation needs
+-- the flat machine and the observation vocabulary.
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open import Once.Denotation.Approx using (Ap; approx; NotCut; budgetLeft; done)
+open import Once.Internal.Res using (Res; returns; is-stopped)
+open import Once.Internal.Event using (SigOpEvent)
+open import Once.IRTy using (Void; IRFunctor; IsBaseTypeI; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod; WellFormedFI-irrelevant)
+
+module ClosureWellFormedBase {FS : FrameSemantics} where
   -- D179: the MONADIC evaluator, named the same way and for the same reason.
   -- `ValidAtWF` indexes on `⟦_⟧ᴰᴵ`, so a closure's meaning is a Kleisli arrow
   -- and must come from `evalᴰ`, not the pure `eval`.
@@ -212,536 +222,643 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     from-layer : (wf : WellFormedFI F) {layer : ⟦ ⟦ F ⟧TI (ν-type F) ⟧} →
                  νOrigin F (⟦ F ⟧TI (ν-type F)) layer (valueNow (evalᴰ (in-ν wf) layer))
 
-  mutual
 
-    ------------------------------------------------------------------------
-    -- D187: WHERE A COMPOUND'S COMPONENT LIVES — the cell, and what it holds.
-    --
-    -- `valid-pair-wf` demanded `SV-Ptr` in BOTH cells. The emitter does not
-    -- box: every compound build copies whatever the source cell held, so a
-    -- component that was a register literal or `Unit` lands in the cell as
-    -- ITSELF. `apply` is where that becomes refutable rather than merely
-    -- incomplete: it copies the closure's env cell into the callee's argument
-    -- pair, and D181 established that cell is a pointer only for a BOXED
-    -- environment — `main`'s is `Unit`.
-    --
-    -- So the same split `PayloadAt` (sums) and `EnvAt` (closures) already
-    -- carry, made a FIELD of the constructor rather than a decomposition view:
-    -- one residence, carrying its own evidence (D153). One constructor covers
-    -- both cells independently, where splitting the constructor would have
-    -- needed four.
-    ------------------------------------------------------------------------
-    data CellAt (alloc : AllocState {FS}) :
-         (C : IRTy) → ⟦ C ⟧ → ValueLocation FS → LocState FS → Set where
-      cell-ptr : ∀ {C} {c : ⟦ C ⟧} {cell-loc comp-loc : ValueLocation FS}
-                   {s : LocState FS} {mC : AllocMode} →
-                 readLoc s cell-loc ≡ just (SV-Ptr comp-loc) →
-                 BeforeFrontier alloc comp-loc →
-                 ValidAtWF mC alloc {C} c comp-loc s →
-                 CellAt alloc C c cell-loc s
-      -- An INLINE component has no cell of its own to be valid at — same
-      -- reason `valid-inl-reg-wf` and `valid-closure-reg-wf` carry neither a
-      -- location nor a validity.
-      cell-inline : ∀ {C} {c : ⟦ C ⟧} {cell-loc : ValueLocation FS}
-                      {s : LocState FS} (rep : InlineRep C) →
-                 readLoc s cell-loc ≡ just (inline-sv rep c) →
-                 CellAt alloc C c cell-loc s
-    --------------------------------------------------------------------
-    -- ValidAtWF: Mode-indexed validity
-    --
-    -- First parameter is AllocMode - determines memory representation.
-    -- Constructor choice is FORCED by the mode:
-    --   Stack → must use unboxed constructors
-    --   Heap  → must use boxed constructors
-    --------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- plan 0.125 S1: `ValidAtWF` IS A FUNCTION ON THE TYPE.
+  --
+  -- It was a `data` indexed by the type, so a constructor could assert only
+  -- facts about cells, never what a closure DOES (D217: one cell valid at two
+  -- denotations). An arrow case that says what the block computes takes a
+  -- valid INPUT as a premise, i.e. it is negative in the relation, which no
+  -- `data` accepts. So each case is a small NON-recursive `data` parameterised
+  -- by the validity of its components (`VTy`), and `ValidAtWF` (in
+  -- `ClosureWellFormedDef`) only dispatches on the type. A negative occurrence
+  -- of a PARAMETER is allowed; the recursion is structural on the type.
+  -- At a known type `ValidAtWF` reduces, so the constructor names below build
+  -- and match exactly as before.
+  ------------------------------------------------------------------------
+  VTy : IRTy → Set₁
+  VTy A = AllocMode → AllocState {FS} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set
 
-    data ValidAtWF : AllocMode → AllocState {FS} →
-         {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
+  -- D187: where a compound's component lives — a pointer to a cell valid at
+  -- the component's type, or the component inline.
+  data CellAtP {C : IRTy} (VC : VTy C) (alloc : AllocState {FS}) :
+       ⟦ C ⟧ → ValueLocation FS → LocState FS → Set where
+    cell-ptr : ∀ {c : ⟦ C ⟧} {cell-loc comp-loc : ValueLocation FS}
+                 {s : LocState FS} {mC : AllocMode} →
+               readLoc s cell-loc ≡ just (SV-Ptr comp-loc) →
+               BeforeFrontier alloc comp-loc →
+               VC mC alloc c comp-loc s →
+               CellAtP {C} VC alloc c cell-loc s
+    cell-inline : ∀ {c : ⟦ C ⟧} {cell-loc : ValueLocation FS}
+                    {s : LocState FS} (rep : InlineRep C) →
+               readLoc s cell-loc ≡ just (inline-sv rep c) →
+               CellAtP {C} VC alloc c cell-loc s
 
-      -- Unit: valid at any mode (no representation difference)
-      valid-unit-wf : ∀ {m alloc loc s} →
-        ValidAtWF m alloc {Unit} tt loc s
+  data UnitV : AllocMode → AllocState {FS} → ⟦ Unit ⟧ → ValueLocation FS → LocState FS → Set where
+    unit-wf : ∀ {m alloc loc s} → UnitV m alloc tt loc s
 
-      -- Pair (any mode): two pointers at pair-loc, sucLoc pair-loc
-      -- Reference-based model: Stack and Heap use identical representation
-      -- Plan 0.13.2: pointer reads in memory wrap as SV-Ptr.
-      -- Plan 0.14 (Camp 2): the mode-shape link `LocMatchesMode m pair-loc`
-      -- is now a constructor precondition. Stack-mode pairs live at
-      -- AtStack; Heap-mode pairs at AtDynamic. The Place stage's
-      -- discipline is surfaced into the proof here.
-      valid-pair-wf : ∀ {m A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
-        {alloc : AllocState {FS}}
-        {pair-loc : ValueLocation FS} {s : LocState FS} →
-        LocMatchesMode m pair-loc →
-        BeforeFrontier alloc (sucLoc pair-loc) →
-        CellAt alloc A a pair-loc s →
-        CellAt alloc B b (sucLoc pair-loc) s →
-        ValidAtWF m alloc {A * B} (a , b) pair-loc s
+  -- `⟦ Void ⟧` is empty, and so is its relation.
+  data VoidV : AllocMode → AllocState {FS} → ⟦ Void ⟧ → ValueLocation FS → LocState FS → Set where
 
-      -- Plan 0.14 (post-Phase-D, 2026-05-17): closure[1] holds an
-      -- SV-Code label, not an SV-Ptr to a ValueLocation. Code
-      -- addresses are categorically distinct from data pointers
-      -- (StoredValue already reflects this via SV-Code). This change
-      -- removes the lying `SV-Ptr code-loc` invariant — the self-
-      -- reference "fiction" the curry witnesses used to invent a `code-loc`
-      -- to satisfy the type. Runtime emits `instr-load-code-addr this-label`
-      -- which produces SV-Code.
-      -- D184: THE MODE IS `Heap`, NOT POLYMORPHIC. The note here used to say
-      -- "`m` stays polymorphic because `valid-closure-wf` is also consumed at
-      -- locations a caller supplies" — and that permission is refutable.
-      --
-      -- `do-call` reads the closure register and dispatches on its shape
-      -- (`callView`, Flat): `SV-Ptr (AtDynamic hl)` ENTERS, and
-      -- `SV-Ptr (AtStack _ _)` HALTS. So a `Stack`-resident closure makes the
-      -- machine stop while the denotation runs the body and may emit — i.e.
-      -- `obs-correct-apply` would be FALSE, not merely unproved, for a witness
-      -- this index permitted. No such closure is ever built (0.86 stage G left
-      -- ONE lowering, and it allocates on the heap), so the permission was
-      -- describing a state the machine cannot handle and the emitter cannot
-      -- produce. `LocMatchesMode Heap` forces `AtDynamic`, which is exactly
-      -- what the call needs.
-      valid-closure-wf : ∀ {EnvType A B}
-        {body : IR (EnvType * A) B}
-        {env : ⟦ EnvType ⟧}
-        {alloc : AllocState {FS}}
-        -- D170: `(body<bound : ir-size body < program-bound)` STOOD HERE, and
-        -- goes for the same reason as `BodyCorrect` did. A bound on the BODY'S
-        -- SIZE is not a property of the closure VALUE in the state — it is a
-        -- recursion measure, and it was here only to feed the descent that the
-        -- courier field required. With the behaviour looked up at `apply` from
-        -- the unit's finite block table, the measure belongs there too.
-        --
-        -- This is the field that kept `program-bound` alive in a VALUE, and
-        -- through it in the apex's own parameter list.
-        {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
-        {mEnv : AllocMode}
-        {body-label : LabelId} →
-        LocMatchesMode Heap closure-loc →
-        readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
-        readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
-        BeforeFrontier alloc env-loc →
-        BeforeFrontier alloc (sucLoc closure-loc) →
-        ValidAtWF mEnv alloc {EnvType} env env-loc s →
-        -- D170: the `BodyCorrect` field STOOD HERE. A closure value's
-        -- well-formedness may say only what is true of the VALUE in the state
-        -- — its env cell holds a valid env, its code cell holds the body's
-        -- NAME. What the body DOES when applied is not a property of the
-        -- value, and carrying it made representation depend on execution: the
-        -- one cycle in this block, the reason it needed a positivity escape
-        -- hatch, and the reason the whole `program-bound` / `ir-size` /
-        -- `RecDispatcherWF` apparatus exists — up to and including the apex
-        -- theorem taking a size bound as a parameter.
-        --
-        -- `apply` obtains the body from the unit's block table by
-        -- `body-label`, and `link-block-steps` (D168) relocates it to wherever
-        -- `link` placed it. Possible only since D159 gave bodies names.
-        -- D179: the closure's meaning is a KLEISLI arrow — what the body does
-        -- when applied may EMIT. The FIELDS are unchanged (env valid, code
-        -- cell holds the body's name), so D170's rule still holds: this says
-        -- only what is true of the VALUE in the state, and no cycle returns.
-        ValidAtWF Heap alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
+  data PairV {A B : IRTy} (VA : VTy A) (VB : VTy B) :
+       AllocMode → AllocState {FS} → ⟦ A * B ⟧ → ValueLocation FS → LocState FS → Set where
+    pair-wf : ∀ {m} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
+      {alloc : AllocState {FS}} {pair-loc : ValueLocation FS} {s : LocState FS} →
+      LocMatchesMode m pair-loc →
+      BeforeFrontier alloc (sucLoc pair-loc) →
+      CellAtP {A} VA alloc a pair-loc s →
+      CellAtP {B} VB alloc b (sucLoc pair-loc) s →
+      PairV {A} {B} VA VB m alloc (a , b) pair-loc s
 
-      ------------------------------------------------------------------------
-      -- D181: a closure whose ENVIRONMENT is stored INLINE — the env cell
-      -- holds the value itself, not a pointer to it.
-      --
-      -- This is the sum payload's split (`valid-inl-reg-wf` below) at the
-      -- closure's first cell, and it is forced by the same emitter. `curry`
-      -- builds its record with
-      --   mov-to-output ∷ store-at-slot env-stash ∷ instr-alloc-heap 2 ∷ …
-      --   load-from-slot env-stash ∷ store-indirect ∷ …
-      -- so the env cell receives WHATEVER `Input1` held: a pointer when the
-      -- environment was in memory, the value itself when it was a register
-      -- literal, and the unconstrained tag filler when the environment is
-      -- `Unit` (D074 — a unit input has no residence, so nothing says what
-      -- `Input1` contains).
-      --
-      -- Without this constructor `curry` is UNPROVABLE for a unit environment,
-      -- which is the top-level case: `main`'s env is `Unit`, so the very first
-      -- closure a program builds could not be witnessed. The pointer-only
-      -- constructor was not merely incomplete — it was stated for the part of
-      -- the domain that excludes the common case, which is exactly where a
-      -- restricted lemma hides a defect.
-      --
-      -- No `env-loc`, no env `ValidAtWF`: an inline environment has no cell of
-      -- its own to be valid at. Same reason `valid-inl-reg-wf` carries neither.
-      ------------------------------------------------------------------------
-      valid-closure-reg-wf : ∀ {EnvType A B}
-        {body : IR (EnvType * A) B}
-        {env : ⟦ EnvType ⟧}
-        {alloc : AllocState {FS}}
-        {closure-loc : ValueLocation FS} {s : LocState FS}
-        {body-label : LabelId} →
-        LocMatchesMode Heap closure-loc →
-        (rep : InlineRep EnvType) →
-        readLoc s closure-loc ≡ just (inline-sv rep env) →
-        readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
-        BeforeFrontier alloc (sucLoc closure-loc) →
-        ValidAtWF Heap alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
+  data SumV {A B : IRTy} (VA : VTy A) (VB : VTy B) :
+       AllocMode → AllocState {FS} → ⟦ A + B ⟧ → ValueLocation FS → LocState FS → Set where
+    inl-wf : ∀ {m} {a : ⟦ A ⟧} {alloc : AllocState {FS}}
+      {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} {mA : AllocMode} →
+      LocMatchesMode m sum-loc →
+      SumTag m 0 s sum-loc →
+      readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
+      BeforeFrontier alloc payload-loc →
+      BeforeFrontier alloc (sucLoc sum-loc) →
+      VA mA alloc a payload-loc s →
+      SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
+    inr-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
+      {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} {mB : AllocMode} →
+      LocMatchesMode m sum-loc →
+      SumTag m 1 s sum-loc →
+      readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
+      BeforeFrontier alloc payload-loc →
+      BeforeFrontier alloc (sucLoc sum-loc) →
+      VB mB alloc b payload-loc s →
+      SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
+    -- Stage F: an inline payload has no cell of its own to be valid at.
+    inl-reg-wf : ∀ {m} {a : ⟦ A ⟧} {alloc : AllocState {FS}}
+      {sum-loc : ValueLocation FS} {s : LocState FS} →
+      LocMatchesMode m sum-loc →
+      SumTag m 0 s sum-loc →
+      (rep : InlineRep A) →
+      readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a) →
+      BeforeFrontier alloc (sucLoc sum-loc) →
+      SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
+    inr-reg-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
+      {sum-loc : ValueLocation FS} {s : LocState FS} →
+      LocMatchesMode m sum-loc →
+      SumTag m 1 s sum-loc →
+      (rep : InlineRep B) →
+      readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep b) →
+      BeforeFrontier alloc (sucLoc sum-loc) →
+      SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
 
-      ------------------------------------------------------------------------
-      -- D189: A ν IS A SUSPENSION — the seed it was built from, and the
-      -- coalgebra that unfolds it. Exactly `curry`'s record, for exactly
-      -- `curry`'s reason: `Ana` builds a value whose MEANING is a computation,
-      -- so the machine stores what that computation NEEDS, not what it
-      -- produces. (`valid-closure-wf` stores env + code; this stores seed +
-      -- code.)
-      --
-      -- WHY THIS HAD TO COME BACK, AND WHY NOT AS `valid-ν-wf`. D180 deleted
-      -- the old ν constructor, which claimed a ν had an already-available
-      -- LAYER in memory — false for a Kleisli ν, where forcing is a
-      -- computation. But deleting it left `ValidAtWF … {ν-type F} …`
-      -- uninhabited, and `Ana`'s codomain IS `ν-type F`, so
-      -- `ResultPlace (ν-type F) …` became uninhabited too — making
-      -- `obs-correct-Ana` and `obs-correct-in-ν` INCONSISTENT rather than
-      -- merely unproved (a `⊥`-probe confirmed it). The repair is not to
-      -- restore the layer claim but to store what a suspension actually is.
-      --
-      -- The seed is a `CellAt` (D187): the emitter copies whatever the seed's
-      -- cell held, so a `Unit` or register-literal seed lands inline, exactly
-      -- as a closure's environment does.
-      ------------------------------------------------------------------------
-      -- D273: an `Ana` seed is the PAIR `(e , a)` the parameterized `Ana`
-      -- reads. plan 0.88: `in-ν` builds the same two cells with its layer in
-      -- cell 0, so the constructor is indexed by the ν's ORIGIN, and its value
-      -- index is an ordinary variable (`νOrigin` says which ν it is).
-      valid-ν-susp-wf : ∀ {F T}
-        {seed : ⟦ T ⟧} {v : ⟦ ν-type F ⟧}
-        (org : νOrigin F T seed v)
-        {alloc : AllocState {FS}}
-        {ν-loc : ValueLocation FS} {s : LocState FS}
-        {coalg-label : LabelId} →
-        LocMatchesMode Heap ν-loc →
-        CellAt alloc T seed ν-loc s →
-        readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
-        BeforeFrontier alloc (sucLoc ν-loc) →
-        ValidAtWF Heap alloc {ν-type F} v ν-loc s
-
-      valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
-        {alloc : AllocState {FS}}
-        {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
-        {mA : AllocMode} →
-        LocMatchesMode m sum-loc →
-        SumTag m 0 s sum-loc →                           -- inl tag (Heap: stored by run-inl)
-        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
-        BeforeFrontier alloc payload-loc →
-        BeforeFrontier alloc (sucLoc sum-loc) →
-        ValidAtWF mA alloc {A} a payload-loc s →
-        ValidAtWF m alloc {A + B} (inj₁ a) sum-loc s
-
-      valid-inr-wf : ∀ {m A B} {b : ⟦ B ⟧}
-        {alloc : AllocState {FS}}
-        {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
-        {mB : AllocMode} →
-        LocMatchesMode m sum-loc →
-        SumTag m 1 s sum-loc →                           -- inr tag (Heap: stored by run-inr)
-        readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
-        BeforeFrontier alloc payload-loc →
-        BeforeFrontier alloc (sucLoc sum-loc) →
-        ValidAtWF mB alloc {B} b payload-loc s →
-        ValidAtWF m alloc {A + B} (inj₂ b) sum-loc s
-
-      ------------------------------------------------------------------------
-      -- Stage F: a sum whose payload FITS A REGISTER is stored INLINE — the
-      -- payload cell holds the VALUE, not a pointer to it.
-      --
-      -- The emitted trace already does this and always did. UPDATED for 0.86
-      -- stage G (2026-09-09): this used to quote the 5-instruction STACK
-      -- lowering, which that stage DELETED along with `AllocMode` on `inl`/
-      -- `inr`. The surviving heap build is
-      --   mov-to-output ∷ store-at-slot payload-stash ∷ instr-alloc-heap 2 ∷
-      --   store-at-slot sum-stash ∷ mov-to-input ∷ instr-load-tag-lit t ∷
-      --   store-indirect ∷ load-from-slot payload-stash ∷
-      --   store-indirect-suc ∷ load-from-slot sum-stash
-      -- and the argument is unchanged in substance: `store-indirect-suc` writes
-      -- the payload cell from whatever `mov-to-output` put in `Output` — the
-      -- INPUT's stored value, a pointer if the input was in memory, the value
-      -- itself if it was in a register. (`store-at-slot (suc sum-slot)` played
-      -- that role in the deleted lowering.) Only the model assumed a pointer,
-      -- which is why `run-inl`/`run-inr` could not be handed an `in-at-reg`
-      -- input.
-      --
-      -- No `payload-loc`, no payload `ValidAtWF`: an inline payload has no
-      -- cell of its own to be valid at. Same reason `at-reg` carries neither.
-      ------------------------------------------------------------------------
-      valid-inl-reg-wf : ∀ {m A B} {a : ⟦ A ⟧}
-        {alloc : AllocState {FS}}
-        {sum-loc : ValueLocation FS} {s : LocState FS} →
-        LocMatchesMode m sum-loc →
-        SumTag m 0 s sum-loc →
-        (rep : InlineRep A) →
-        readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a) →
-        BeforeFrontier alloc (sucLoc sum-loc) →
-        ValidAtWF m alloc {A + B} (inj₁ a) sum-loc s
-
-      valid-inr-reg-wf : ∀ {m A B} {b : ⟦ B ⟧}
-        {alloc : AllocState {FS}}
-        {sum-loc : ValueLocation FS} {s : LocState FS} →
-        LocMatchesMode m sum-loc →
-        SumTag m 1 s sum-loc →
-        (rep : InlineRep B) →
-        readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep b) →
-        BeforeFrontier alloc (sucLoc sum-loc) →
-        ValidAtWF m alloc {A + B} (inj₂ b) sum-loc s
-
-      -- OCP-0003: μ-type and ν-type validity via MuValidity predicates
-      -- These wrap μValid/νValid from MuValidity, avoiding pattern matching issues
-      -- by keeping the layer type opaque to ValidAtWF pattern matching.
-      -- Plan 0.27 Option 3: carry the layer's OWN ValidAtWF directly
-      -- (the F-layer at the same loc), not the lossy μValid. In is then
-      -- "wrap" and out-μ is "unwrap" — both mode-polymorphic and
-      -- cross-mode-safe, since the layer validity carries its own mode /
-      -- LocMatchesMode / pointer structure. `eval (out-μ wf) x` is the
-      -- F-layer (= coerce-functor⁻¹ F _ (sem-Out wf x), definitionally).
-      valid-μ-wf : ∀ {m F}
-        {alloc : AllocState {FS}}
-        {loc : ValueLocation FS} {s : LocState FS}
-        (wf : WellFormedFI F)
-        (x : ⟦ μ-type F ⟧) →
-        -- D179: `out-μ` is PURE (μ is finite data), so the layer does not
-        -- depend on the budget and `0` is as good as any.
-        ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s →
-        ValidAtWF m alloc {μ-type F} x loc s
-
-      -- D179: `valid-ν-wf` DELETED. The machine never builds a ν — codegen
-      -- emits `[]` for `Ana` and `in-ν`, and `Out` is a single
-      -- `mov-to-output`. A residence constructor for suspensions would
-      -- describe a representation that does not exist and be uninhabited,
-      -- which is precisely the vacuity this audit set out to remove.
-      --
-      -- When ν codegen lands it should mirror the closure (D170): two cells,
-      -- captured seed plus a coalgebra LABEL, with forcing looked up at `Out`
-      -- exactly as `apply` looks up `body-label`. The validity constructor
-      -- follows the codegen; it must not precede it.
-
-      -- Primitive types: valid at any mode if location is before frontier
-      -- AND the stored value equals the semantic value `n` (Plan 0.54 Phase B
-      -- rung A, 2026-07-20: the value device must actually FORCE the primitive
-      -- value, else a Pure-SigOp sentinel `SV-Lit 0` satisfies it vacuously and
-      -- an arith result that feeds an Emits/Halts SigOp is never pinned — the
-      -- `obs-correct-rest` gap. Mirrors `valid-pair-wf`'s `readLoc` content
-      -- premise, bottoming the value recursion at the primitive leaf.)
-      valid-int-wf : ∀ {m} {n : ⟦ Int ⟧}
-        {alloc : AllocState {FS}}
-        {loc : ValueLocation FS} {s : LocState FS} →
-        BeforeFrontier alloc loc →
-        readLoc s loc ≡ just (prim-sv fits-int n) →
-        ValidAtWF m alloc {Int} n loc s
-
-      valid-float-wf : ∀ {m} {x : ⟦ Float ⟧}
-        {alloc : AllocState {FS}}
-        {loc : ValueLocation FS} {s : LocState FS} →
-        BeforeFrontier alloc loc →
-        readLoc s loc ≡ just (prim-sv fits-float x) →
-        ValidAtWF m alloc {Float} x loc s
-
-
-
-      -- Plan 0.52 M2: `valid-coerce-kind-wf` (the pure→eff kind coercion) is
-      -- retired.  IRTy erases the ArrowKind, so pure and effectful arrows are
-      -- the SAME object `A ⇛ B`; the coercion would be a redundant identity
-      -- constructor (and a non-decreasing recursion), so it is deleted.
-
-    --------------------------------------------------------------------
-    -- valid-primitive-wf: Dispatch on FitsInReg evidence
-    --
-    -- For register-fittable primitive types, ValidAtWF only needs
-    -- BeforeFrontier. Plan 0.2.4.5: legacy IsPrimitive retired —
-    -- Unit is erased (no slot), Str/Buffer are 2-slot compounds with
-    -- their own valid-str-wf / valid-buffer-wf witnesses. The only
-    -- inhabitants left are Int and Float.
-    --------------------------------------------------------------------
-
-    valid-primitive-wf : ∀ {m} {B : IRTy} {v : ⟦ B ⟧}
-      {alloc : AllocState {FS}}
+  -- Plan 0.54 Phase B rung A: the stored value IS the semantic value.
+  data IntV : AllocMode → AllocState {FS} → ⟦ Int ⟧ → ValueLocation FS → LocState FS → Set where
+    int-wf : ∀ {m} {n : ⟦ Int ⟧} {alloc : AllocState {FS}}
       {loc : ValueLocation FS} {s : LocState FS} →
-      (fit : FitsInRegI B) →
       BeforeFrontier alloc loc →
-      readLoc s loc ≡ just (prim-sv fit v) →
-      ValidAtWF m alloc {B} v loc s
-    valid-primitive-wf fits-int   bf rl = valid-int-wf bf rl
-    valid-primitive-wf fits-float bf rl = valid-float-wf bf rl
+      readLoc s loc ≡ just (prim-sv fits-int n) →
+      IntV m alloc n loc s
 
-    --------------------------------------------------------------------
-    -- IRResultAWF: Mode-indexed IR execution result
-    --
-    -- Indexed by output mode m. For allocating IRs:
-    --   run-pair for ⟨ f , g ⟩ Stack → IRResultAWF Stack ...
-    --   run-pair for ⟨ f , g ⟩ Heap  → IRResultAWF Heap ...
-    --
-    -- For non-allocating IRs (fst, snd, id, etc.), the mode comes
-    -- from pattern matching on input validity.
-    --------------------------------------------------------------------
+  data FloatV : AllocMode → AllocState {FS} → ⟦ Float ⟧ → ValueLocation FS → LocState FS → Set where
+    float-wf : ∀ {m} {x : ⟦ Float ⟧} {alloc : AllocState {FS}}
+      {loc : ValueLocation FS} {s : LocState FS} →
+      BeforeFrontier alloc loc →
+      readLoc s loc ≡ just (prim-sv fits-float x) →
+      FloatV m alloc x loc s
 
-    -- Plan 0.2.4.5 D1 (Unit erasure): result placement is type-aware.
-    --
-    -- For Unit-typed results, the value is genuinely "nowhere" — no
-    -- register, no slot, no observable content. So the data that
-    -- normally pins down "where the result is" (a ValueLocation +
-    -- validity at it + before-frontier proof + Output equation) has
-    -- nothing to talk about. Encoded structurally:
-    --
-    --   `unit-result` : Unit-typed result; carries no location.
-    --   `at-loc loc valid-wf before output-eq` : non-Unit result;
-    --     bundles all four facts about the location at once.
-    --
-    -- This subsumes the old separate fields (`result-loc`,
-    -- `result-valid-wf`, `result-before`, `rax-is-result`) into a
-    -- single `result-place` field, and removes the redundancy where
-    -- `rax-is-result` was bridging `result-loc` to `Output`.
-    -- Consumers (compose, pair, RecTrace) pattern-match on the
-    -- constructor; the type system forces them to handle Unit
-    -- separately — there's no loc to extract from `unit-result`.
-    -- The continuation-alloc shape: caller's frame, with `next-slot`
-    -- and `next-heap-ref` taken from the IR's `final-alloc` — i.e., the
-    -- alloc state the caller resumes with after the callee returns.
-    -- Carrying it in the type lets a single `at-loc` constructor share
-    -- its `loc` between post-IR and continuation invariants — consumers
-    -- don't need a separate "loc-eq" lemma to bridge two parallel
-    -- ResultPlaces.
-    --
-    -- Previously named `reclaim-alloc`; that baked in a stack-only
-    -- mental model. The field never represented heap reclamation
-    -- (heap blocks aren't freed by IRs), only the caller's
-    -- continuation view of consumed resources.
-    data ResultPlace : (B : IRTy) (m : AllocMode)
-                       (alloc continuation-alloc : AllocState {FS})
-                       (v : ⟦ B ⟧) (s : LocState FS) → Set where
-      unit-result : ∀ {m alloc continuation-alloc s} →
-                    ResultPlace Unit m alloc continuation-alloc tt s
-      at-loc      : ∀ {B m alloc continuation-alloc v s}
-                    (loc : ValueLocation FS)
-                  → ValidAtWF m alloc {B} v loc s
-                  → BeforeFrontier alloc loc
-                  -- Plan 0.13.2: Output register stores StoredValue;
-                  -- a result location is reified as SV-Ptr loc.
-                  → readReg (regs s) Output ≡ SV-Ptr loc
-                  → ValidAtWF m continuation-alloc {B} v loc s
-                  → BeforeFrontier continuation-alloc loc
-                  → ResultPlace B m alloc continuation-alloc v s
-      -- Force-it: register-resident primitive result. The value `v` lives in
-      -- Output as a register literal (abstract sentinel `unit-storedvalue`;
-      -- the real bits are the per-arch Simulation's job), NOT as a pointer.
-      -- Validity is location-only (`valid-primitive-wf`), so a witness `loc`
-      -- carries `ValidAtWF`/`BeforeFrontier`, while the rax field HONESTLY
-      -- records `Output ≡ unit-storedvalue` — provable, unlike the refutable
-      -- `SV-Ptr` claim `at-loc` would force on a sentinel.
-      -- Plan 0.54 rung A (A2.5): register-resident primitive result. The value `v`
-      -- lives in `Output` as its REAL literal `prim-sv fit v` (was the sentinel
-      -- `unit-storedvalue` — the register half of killing the sentinel). This is the
-      -- fast-path residence; spilled primitives use `at-loc` instead.
-      -- NOTE (rung A): `at-reg` carries NO `ValidAtWF`. Since `valid-int/float-wf`
-      -- now force a stored value (`readLoc … ≡ just (prim-sv fit v)`), a memory
-      -- witness would demand a cell that a register-resident result does not have
-      -- (`ir-to-trace (SigOp si) = instr-sigop si ∷ []` stores nothing). The value
-      -- witness for this residence IS the register equation below. Shape dictated
-      -- by the consumer `comp-step`, which reads only `place-rax`.
-      -- Stage F: the `loc` field and its two `BeforeFrontier` witnesses are
-      -- GONE. A register-resident result has no cell, so the location was
-      -- always a placeholder — every producer passed its own `input-loc`,
-      -- which does not hold the value — and the frontier bounds were bounds on
-      -- that placeholder. Carrying them invited consumers to project a
-      -- location out of a place that has none, which is what `place-loc` did
-      -- and why it was deleted.
-      --
-      -- What remains is the whole content of this residence: the value fits a
-      -- register, and `Output` holds it.
-      at-reg      : ∀ {B m alloc continuation-alloc v s}
-                    (fit : FitsInRegI B)
-                  → readReg (regs s) Output ≡ prim-sv fit v
-                  → ResultPlace B m alloc continuation-alloc v s
+  -- D189: a ν is a suspension (seed cell + code cell). plan 0.125 S1: the
+  -- seed is OPAQUE (`seed-sv`), as in the spike's `RelNu`. Its type `T` is
+  -- not a subterm of `ν-type F`, so the seed's validity cannot be stated by
+  -- recursion on the type. STUB: forcing is not in the value yet (S1 open
+  -- item); `Out` still takes it from `CoalgRuns`.
+  data NuV {F : IRFunctor} :
+       AllocMode → AllocState {FS} → ⟦ ν-type F ⟧ → ValueLocation FS → LocState FS → Set where
+    ν-susp-wf : ∀ {T} {seed : ⟦ T ⟧} {v : ⟦ ν-type F ⟧}
+      (org : νOrigin F T seed v)
+      {alloc : AllocState {FS}} {ν-loc : ValueLocation FS} {s : LocState FS}
+      {coalg-label : LabelId} →
+      LocMatchesMode Heap ν-loc →
+      (seed-sv : StoredValue FS) →
+      readLoc s ν-loc ≡ just seed-sv →
+      readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
+      BeforeFrontier alloc (sucLoc ν-loc) →
+      NuV Heap alloc v ν-loc s
 
-    -- Plan 0.2.4.5 D1 trust points: place-* extraction helpers.
-    --
-    -- These project facts out of a `ResultPlace` into the plain
-    -- shape that consumers (compose, pair, RecTrace cata) and
-    -- `rec-wf`'s preconditions still expect:
-    --
-    --   * `place-sv rp` — the `StoredValue` `Output` holds: a POINTER for a
-    --     located result, the VALUE itself for a register-resident one.
-    --   * `place-rax rp` — `readReg s Output ≡ place-sv rp`.
-    --
-    -- These two are the whole surviving interface. The location-projecting
-    -- accessors are gone (see below): a `Place` is not always a location, and
-    -- an accessor that pretends otherwise is a trap, not a convenience.
-    --
-    -- For `at-loc`, all six are constructor projections (no trust).
-    -- For `unit-result`, each is a PROOF GAP, encoding the
-    -- structural fact that "Unit values don't observably reside
-    -- anywhere" — there's nothing to extract.
-    --
-    -- Each gap is sound for Unit because:
-    --   * Unit values carry no observable content.
-    --   * `valid-unit-wf` is loc-agnostic (works at any loc).
-    --   * BeforeFrontier on a Unit's mythical loc is vacuous.
-    --   * Output's value at a Unit boundary is irrelevant.
-    --
-    -- The gaps are TRANSITIONAL. They go away when either:
-    --   (a) `rec-wf`'s preconditions become type-aware — for
-    --       Unit-typed IRs, drop `BeforeFrontier alloc input-loc`
-    --       and `readReg s Input1 ≡ input-loc` (both vacuous).
-    --   (b) Each consumer (compose, pair, RecTrace cata)
-    --       case-splits on the `result-place` constructor and takes
-    --       a Unit-aware code path that doesn't go through place-*.
-    --
-    -- Either route requires a deeper proof restructure than the
-    -- spec migration covered. Tracked as Plan 0.2.4.5 D1 task #28.
-    -- (`place-valid` / `place-cont-valid` DELETED — Plan 0.54 rung A. They were
-    -- dead (every remaining reference is a comment) and `at-reg` no longer
-    -- carries a memory `ValidAtWF`. Deleting them removes 2 proof-gap stubs.)
-    --
-    -- (`place-loc` / `place-before` / `place-cont-before` DELETED — stage F,
-    -- same test, same answer: every remaining reference was a COMMENT. Three
-    -- more proof-gap stubs go with them.
-    --
-    -- They were also actively DANGEROUS, which is why they went rather than
-    -- being kept for symmetry. `place-loc` was TOTAL but only MEANINGFUL for
-    -- `at-loc`: for `at-reg` it returned the producer's INPUT cell, reused as
-    -- a placeholder (`IRObsCorrectFlat`: `at-reg input-loc fit …`), which does
-    -- not hold the value. Projecting a place to a location therefore invited
-    -- exactly the false `rax-eq` / `result-valid-wf` that D148 records — and
-    -- nearly produced two fresh ones in `ApplyWF` before the residence was
-    -- propagated instead.
-    --
-    -- What survives is what is SAFE for both residences: `place-sv` and
-    -- `place-rax`, which say what `Output` holds without claiming a location.
-    -- That is the pair `at-reg`'s own comment already named as its consumer
-    -- interface, and it is what `ComposeWF` uses.)
-
-    -- The actual StoredValue Output holds for this result: a pointer for a
-    -- located result (`at-loc`), the register sentinel for a register-resident
-    -- primitive (`at-reg`). For `at-loc` this reduces DEFINITIONALLY to
-    -- `SV-Ptr (place-loc rp)`, so existing `at-loc`-only consumers are unchanged.
-    place-sv : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → StoredValue FS
-    place-sv (at-loc loc _ _ _ _ _) = SV-Ptr loc
-    place-sv {v = v} (at-reg fit _) = prim-sv fit v
-    place-sv {Unit} unit-result     = SV-Ptr unit-result-sv-loc
-      where postulate unit-result-sv-loc : ValueLocation FS
-
-    place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                readReg (regs s) Output ≡ place-sv rp
-    place-rax (at-loc _ _ _ rax _ _) = rax
-    place-rax (at-reg _ rax) = rax
-    place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
-      where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
-
+  -- Where a result is, for a validity `VB` (the arrow case's callee result).
+  -- `ResultPlace` (ClosureWellFormedDef) is the same at `ValidAtWF`, as an
+  -- indexed `data`; `rp→place` converts.
+  data ResultPlaceP {B : IRTy} (VB : VTy B) :
+       AllocMode → AllocState {FS} → AllocState {FS} → ⟦ B ⟧ → LocState FS → Set where
+    rp-unit : ∀ {m alloc ca v s} → B ≡ Unit → ResultPlaceP {B} VB m alloc ca v s
+    rp-loc  : ∀ {m alloc ca v s} (loc : ValueLocation FS)
+            → VB m alloc v loc s
+            → BeforeFrontier alloc loc
+            → readReg (regs s) Output ≡ SV-Ptr loc
+            → VB m ca v loc s
+            → BeforeFrontier ca loc
+            → ResultPlaceP {B} VB m alloc ca v s
+    rp-reg  : ∀ {m alloc ca v s} (fit : FitsInRegI B)
+            → readReg (regs s) Output ≡ prim-sv fit v
+            → ResultPlaceP {B} VB m alloc ca v s
 
   ------------------------------------------------------------------------
-  -- Decomposition for ValidAtWF closures
+  -- μ is FIRST-ORDER data: `WellFormedFI` allows only `IsBaseTypeI` under
+  -- `K`, so no `⇛`/`ν` is reachable. Its layer `⟦ F ⟧TI (μ-type F)` contains
+  -- `μ-type F` again, so it is not structural on the type; it is an ordinary
+  -- (nested) inductive relation instead, reusing the case datas above.
   ------------------------------------------------------------------------
+  data ValidFO : AllocMode → AllocState {FS} →
+       {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
+    fo-unit  : ∀ {m alloc v loc s} → UnitV m alloc v loc s → ValidFO m alloc {Unit} v loc s
+    fo-pair  : ∀ {A B m alloc v loc s} →
+               PairV {A} {B} (λ m′ a′ → ValidFO m′ a′ {A}) (λ m′ a′ → ValidFO m′ a′ {B}) m alloc v loc s →
+               ValidFO m alloc {A * B} v loc s
+    fo-sum   : ∀ {A B m alloc v loc s} →
+               SumV {A} {B} (λ m′ a′ → ValidFO m′ a′ {A}) (λ m′ a′ → ValidFO m′ a′ {B}) m alloc v loc s →
+               ValidFO m alloc {A + B} v loc s
+    fo-int   : ∀ {m alloc v loc s} → IntV m alloc v loc s → ValidFO m alloc {Int} v loc s
+    fo-float : ∀ {m alloc v loc s} → FloatV m alloc v loc s → ValidFO m alloc {Float} v loc s
+    -- Plan 0.27 Option 3: the layer's own validity at the same location.
+    fo-μwf : ∀ {m F}
+      {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+      (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧) →
+      ValidFO m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s →
+      ValidFO m alloc {μ-type F} x loc s
+
+  -- The types `ValidFO` speaks about.
+  data FOTy : IRTy → Set where
+    fo-Unit  : FOTy Unit
+    fo-Void  : FOTy Void
+    fo-Int   : FOTy Int
+    fo-Float : FOTy Float
+    fo-*     : ∀ {A B} → FOTy A → FOTy B → FOTy (A * B)
+    fo-+     : ∀ {A B} → FOTy A → FOTy B → FOTy (A + B)
+    fo-μ     : ∀ {F} → FOTy (μ-type F)
+
+  fo-base : ∀ {A} → IsBaseTypeI A → FOTy A
+  fo-base base-Unit        = fo-Unit
+  fo-base base-Void        = fo-Void
+  fo-base base-Int         = fo-Int
+  fo-base base-Float       = fo-Float
+  fo-base (base-Prod a b)  = fo-* (fo-base a) (fo-base b)
+  fo-base (base-Sum a b)   = fo-+ (fo-base a) (fo-base b)
+
+  fo-layer : ∀ {G X} → WellFormedFI G → FOTy X → FOTy (⟦ G ⟧TI X)
+  fo-layer (wf-K ib)      _  = fo-base ib
+  fo-layer wf-Id          fx = fx
+  fo-layer (wf-Sum f g)   fx = fo-+ (fo-layer f fx) (fo-layer g fx)
+  fo-layer (wf-Prod f g)  fx = fo-* (fo-layer f fx) (fo-layer g fx)
+
+  -- `ValidAtWF` is a FUNCTION, so it is not injective in its indices and
+  -- Agda could not infer the type of a witness from it. Wrapping every case
+  -- in this NON-recursive record restores that: the indices are record
+  -- parameters. Pattern synonyms (`valid-pair-wf = wrap (pair-wf …)`) keep
+  -- the constructor names every consumer uses.
+  record Wrap (p : AbstractTrace) (A : IRTy) (m : AllocMode) (alloc : AllocState {FS}) (v : ⟦ A ⟧)
+              (loc : ValueLocation FS) (s : LocState FS) (P : Set) : Set where
+    constructor wrap
+    field unwrap : P
 
   ------------------------------------------------------------------------
-  -- D181: WHERE a closure's ENVIRONMENT lives, read out of the closure's
-  -- first cell. The exact shape `PayloadAt` has for a sum's payload, asked one
-  -- cell earlier — and for the same reason: the emitter writes whatever
-  -- `Input1` held, so the cell may hold a pointer OR the value itself.
+  -- The observation vocabulary a callee's run is stated in (moved here from
+  -- `IRObsCorrect.Interface`, which now reuses it): plan 0.105's run of a
+  -- tree against `ιᶠ` from the state's log, and plan 0.119's approximation.
   ------------------------------------------------------------------------
+  runAt : ∀ {X} → LocState FS → TM.T X → TM.Run X
+  runAt s m = TM.run ιᶠ (LocState.ev-log s) m
+
+  eventsAt : ∀ {X} → LocState FS → TM.T X → List SigOpEvent
+  eventsAt s m = proj₁ (runAt s m)
+
+  resultAt : ∀ {X} → LocState FS → TM.T X → Res X
+  resultAt s m = proj₂ (runAt s m)
+
+  stopsAt : ∀ {X} → LocState FS → TM.T X → Bool
+  stopsAt s m = is-stopped (resultAt s m)
+
+  ⟪_⟫_ : ∀ {X} → T∞ X → ℕ → TM.T (Ap X)
+  ⟪ m ⟫ k = approx k m
+
+
+
+-- plan 0.125 S1: everything that mentions `ValidAtWF` is relative to the
+-- PROGRAM, because the arrow case says the closure's label resolves in it.
+module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
+  open ClosureWellFormedBase {FS}
+  open FlatMachine {FS} using (FlatState; fpc; floc; fret; falloc; flink; find-thunk; enter-call)
+  open FlatStepsAPI {FS} using (FlatSteps)
+  open FlatEventTrace {FS} using (chain-events; chain-ctrls)
+  open import Once.CCC.Machine.Validity
+  open ReadLocEq {FS}
+    using (readLoc-stack-heap-eq)
+  open FrontierInvariant {FS}
+  open MemOps {FS}
+  open WriteOps {FS}
+  open AbstractExec {FS}
+  open TracePrimitives {FS}
+  open FrameSemantics FS
+
+  -- Plan 0.52 M2: μValid/νValid (surface MuValidity) are unused here — the
+  -- the valid-μ-wf constructor carries the layer's own ValidAtWF
+  -- (Option 3), so the MuValidity dependency is severed.
+
+  -- Import write operations for validity preservation proofs
+  open import Once.CCC.Machine.WriteOps using (module WriteWithDisjoint)
+  open WriteWithDisjoint {FS}
+
+  ------------------------------------------------------------------------
+  -- A CALLED BLOCK'S RUN (moved from `IRObsCorrect.Interface`; field
+  -- commentary there, D198–D339). Parameterised by where the result is
+  -- (`R`), so the arrow case below can state it at its own codomain's
+  -- validity; `Interface.CalleeRun` is this at `ResultPlace`.
+  ------------------------------------------------------------------------
+  record CalleeRunP {B : IRTy}
+                    (R : AllocMode → AllocState {FS} → AllocState {FS} → ⟦ B ⟧ → LocState FS → Set)
+                    (fs : FlatState) (ret-pc : ℕ) (rs : List ℕ)
+                    (comp : T∞ ⟦ B ⟧) (k : ℕ) : Set where
+    constructor callee-run
+    field
+      steps      : ℕ
+      settle     : FlatState
+      out-mode   : AllocMode
+      cont-alloc : AllocState {FS}
+      run        : FlatSteps prog steps fs settle
+      live       : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ false → halted (floc settle) ≡ false
+      returned   : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fpc settle ≡ ret-pc
+      stops      : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left (floc fs)
+      no-ret     : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fret settle ≡ rs
+      no-link    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → flink settle ≡ nothing
+      place      : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r)
+                 → R out-mode (falloc settle) cont-alloc v (floc settle)
+      events     : chain-events run ≡ eventsAt (floc fs) (⟪ comp ⟫ k)
+      log        : LocState.ev-log (floc settle) ≡ LocState.ev-log (floc fs) ++ eventsAt (floc fs) (⟪ comp ⟫ k)
+      progress   : k ≤ budgetLeft k (resultAt (floc fs) (⟪ comp ⟫ k)) ℕ.+ chain-ctrls run
+      mem-pres   : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
+                 → ∀ (loc : ValueLocation FS)
+                 → BeforeFrontier (record pre { next-slot = m }) loc
+                 → readLoc (floc settle) loc ≡ readLoc (floc fs) loc
+      frame-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                 → current-frame (falloc settle) ≡ current-frame pre
+      bf-mono    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
+                 → ∀ (loc : ValueLocation FS)
+                 → BeforeFrontier (record pre { next-slot = m }) loc
+                 → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
+      frames-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                  → saved-frames (falloc settle) ≡ saved-frames pre
+
+  ------------------------------------------------------------------------
+  -- plan 0.125 S1: WHAT A CLOSURE DOES, as a fact about the value.
+  --
+  -- Entering the block `j` from a call (`enter-call pre`), with `Input1`
+  -- pointing at a heap pair whose cell 0 holds what THIS closure's env cell
+  -- holds and whose cell 1 holds a VALID argument, runs `f a` and returns
+  -- (`CalleeRunP`). The environment stays opaque: its type is hidden in the
+  -- closure, so its validity is not a subterm of `A ⇛ B`. What makes it still
+  -- valid at the call is the caller's guarantee that everything live when the
+  -- closure was built (`BeforeFrontier alloc`) still reads the same and is
+  -- still live (spike `RelSpike`, finding 2: `HeapAgree`/`HeapMono`). `curry`
+  -- proves this from its body's correctness (S3); `apply` spends it.
+  ------------------------------------------------------------------------
+  CallRuns : ∀ {A B : IRTy} → VTy A → VTy B → AllocState {FS} → LocState FS
+           → ValueLocation FS → ℕ → ⟦ A ⇛ B ⟧ → Set
+  CallRuns {A} {B} VA VB alloc s cloc j f =
+    ∀ (fs : FlatState) (pre : AllocState {FS}) (a : ⟦ A ⟧) (pair-loc : ValueLocation FS)
+      (ret-pc k : ℕ) (rs : List ℕ)
+    → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
+    → falloc fs ≡ enter-call pre
+    → (∀ l → BeforeFrontier alloc l → BeforeFrontier pre l)
+    → (∀ l → BeforeFrontier alloc l → readLoc (floc fs) l ≡ readLoc s l)
+    → readReg (regs (floc fs)) Input1 ≡ SV-Ptr pair-loc
+    → LocMatchesMode Heap pair-loc
+    → BeforeFrontier pre (sucLoc pair-loc)
+    → readLoc (floc fs) pair-loc ≡ readLoc s cloc
+    → CellAtP {A} VA pre a (sucLoc pair-loc) (floc fs)
+    → CalleeRunP {B} (ResultPlaceP {B} VB) fs ret-pc rs (f a) k
+
+  -- D170/D181/D184: the two closure records (boxed / inline env), heap only.
+  -- The env's own validity is GONE (see `CallRuns`); the code cell's label
+  -- now resolves (`find-thunk`) and the block's behaviour is `runs`.
+  data ArrowV {A B : IRTy} (VA : VTy A) (VB : VTy B) :
+       AllocMode → AllocState {FS} → ⟦ A ⇛ B ⟧ → ValueLocation FS → LocState FS → Set where
+    closure-wf : ∀ {EnvType}
+      {body : IR (EnvType * A) B} {env : ⟦ EnvType ⟧}
+      {alloc : AllocState {FS}}
+      {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
+      {body-label : LabelId} {j : ℕ} →
+      LocMatchesMode Heap closure-loc →
+      readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
+      readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
+      BeforeFrontier alloc env-loc →
+      BeforeFrontier alloc (sucLoc closure-loc) →
+      find-thunk prog body-label ≡ just j →
+      CallRuns {A} {B} VA VB alloc s closure-loc j (λ arg → evalᴰ body (env , arg)) →
+      ArrowV {A} {B} VA VB Heap alloc (λ arg → evalᴰ body (env , arg)) closure-loc s
+    closure-reg-wf : ∀ {EnvType}
+      {body : IR (EnvType * A) B} {env : ⟦ EnvType ⟧}
+      {alloc : AllocState {FS}}
+      {closure-loc : ValueLocation FS} {s : LocState FS}
+      {body-label : LabelId} {j : ℕ} →
+      LocMatchesMode Heap closure-loc →
+      (rep : InlineRep EnvType) →
+      readLoc s closure-loc ≡ just (inline-sv rep env) →
+      readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
+      BeforeFrontier alloc (sucLoc closure-loc) →
+      find-thunk prog body-label ≡ just j →
+      CallRuns {A} {B} VA VB alloc s closure-loc j (λ arg → evalᴰ body (env , arg)) →
+      ArrowV {A} {B} VA VB Heap alloc (λ arg → evalᴰ body (env , arg)) closure-loc s
+
+  ------------------------------------------------------------------------
+  -- THE RELATION. Structural on the type; no pragma.
+  ------------------------------------------------------------------------
+  mutual
+    VCase : (A : IRTy) → VTy A
+    VCase Unit       = UnitV
+    VCase Void       = VoidV
+    VCase (A * B)    = PairV {A} {B} (VAt A) (VAt B)
+    VCase (A + B)    = SumV {A} {B} (VAt A) (VAt B)
+    VCase (A ⇛ B)    = ArrowV {A} {B} (VAt A) (VAt B)
+    VCase (μ-type F) = λ m alloc → ValidFO m alloc {μ-type F}
+    VCase (ν-type F) = NuV
+    VCase Int        = IntV
+    VCase Float      = FloatV
+
+    ValidAtWF : AllocMode → AllocState {FS} →
+                {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set
+    ValidAtWF m alloc {A} v loc s = Wrap prog A m alloc v loc s (VCase A m alloc v loc s)
+
+    VAt : (A : IRTy) → VTy A
+    VAt A m alloc = ValidAtWF m alloc {A}
+
+  pattern valid-unit-wf = wrap unit-wf
+  pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
+  pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} lmm tg pp pb slb pv =
+    wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} lmm tg pp pb slb pv)
+  pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} lmm tg pp pb slb pv =
+    wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} lmm tg pp pb slb pv)
+  pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
+    wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
+  pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
+    wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
+  pattern valid-closure-wf {body} {env} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
+    wrap (closure-wf {body = body} {env = env} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
+  pattern valid-closure-reg-wf {body} {env} {closure-loc} lmm rep ep cp slb fd runs =
+    wrap (closure-reg-wf {body = body} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
+  pattern valid-ν-susp-wf {T} {seed} org lmm sv c0 cp slb =
+    wrap (ν-susp-wf {T = T} {seed = seed} org lmm sv c0 cp slb)
+  pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
+  pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
+  pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)
+
+  CellAt : AllocState {FS} → (C : IRTy) → ⟦ C ⟧ → ValueLocation FS → LocState FS → Set
+  CellAt alloc C = CellAtP {C} (VAt C) alloc
+
+  -- The first-order bridge (μ layers).
+  mutual
+    fo→valid : ∀ {m alloc A v loc s} → ValidFO m alloc {A} v loc s → ValidAtWF m alloc {A} v loc s
+    fo→valid (fo-unit u) = wrap u
+    fo→valid (fo-pair (pair-wf lmm slb c₁ c₂)) =
+      valid-pair-wf lmm slb (fo→cell c₁) (fo→cell c₂)
+    fo→valid (fo-sum (inl-wf lmm tg pp pb slb pv)) = valid-inl-wf lmm tg pp pb slb (fo→valid pv)
+    fo→valid (fo-sum (inr-wf lmm tg pp pb slb pv)) = valid-inr-wf lmm tg pp pb slb (fo→valid pv)
+    fo→valid (fo-sum (inl-reg-wf lmm tg rep pp slb)) = valid-inl-reg-wf lmm tg rep pp slb
+    fo→valid (fo-sum (inr-reg-wf lmm tg rep pp slb)) = valid-inr-reg-wf lmm tg rep pp slb
+    fo→valid (fo-int i) = wrap i
+    fo→valid (fo-float f) = wrap f
+    fo→valid w@(fo-μwf _ _ _) = wrap w
+
+    fo→cell : ∀ {alloc C c cl s} → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s → CellAt alloc C c cl s
+    fo→cell (cell-ptr r bf v) = cell-ptr r bf (fo→valid v)
+    fo→cell (cell-inline rep r) = cell-inline rep r
+
+  mutual
+    valid→fo : ∀ {m alloc A v loc s} → FOTy A → ValidAtWF m alloc {A} v loc s → ValidFO m alloc {A} v loc s
+    valid→fo fo-Unit (wrap u) = fo-unit u
+    valid→fo fo-Void (wrap ())
+    valid→fo fo-Int (wrap i) = fo-int i
+    valid→fo fo-Float (wrap f) = fo-float f
+    valid→fo (fo-* fa fb) (valid-pair-wf lmm slb c₁ c₂) =
+      fo-pair (pair-wf lmm slb (cell→fo fa c₁) (cell→fo fb c₂))
+    valid→fo (fo-+ fa fb) (valid-inl-wf lmm tg pp pb slb pv) = fo-sum (inl-wf lmm tg pp pb slb (valid→fo fa pv))
+    valid→fo (fo-+ fa fb) (valid-inr-wf lmm tg pp pb slb pv) = fo-sum (inr-wf lmm tg pp pb slb (valid→fo fb pv))
+    valid→fo (fo-+ fa fb) (valid-inl-reg-wf lmm tg rep pp slb) = fo-sum (inl-reg-wf lmm tg rep pp slb)
+    valid→fo (fo-+ fa fb) (valid-inr-reg-wf lmm tg rep pp slb) = fo-sum (inr-reg-wf lmm tg rep pp slb)
+    valid→fo fo-μ (wrap w) = w
+
+    cell→fo : ∀ {alloc C c cl s} → FOTy C → CellAt alloc C c cl s → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s
+    cell→fo fc (cell-ptr r bf v) = cell-ptr r bf (valid→fo fc v)
+    cell→fo fc (cell-inline rep r) = cell-inline rep r
+
+  -- The μ layer, read and written through the bridge.
+  μ-layer : ∀ {m alloc F wf x loc s} → ValidAtWF m alloc {μ-type F} x loc s
+          → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s
+  μ-layer {wf = wf} (valid-μ-wf wf′ x lv) rewrite WellFormedFI-irrelevant wf wf′ = fo→valid lv
+
+  valid-μ : ∀ {m alloc F loc s} (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
+          → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s
+          → ValidAtWF m alloc {μ-type F} x loc s
+  valid-μ wf x lv = valid-μ-wf wf x (valid→fo (fo-layer wf fo-μ) lv)
+
+
+  --------------------------------------------------------------------
+  -- valid-primitive-wf: Dispatch on FitsInReg evidence
+  --
+  -- For register-fittable primitive types, ValidAtWF only needs
+  -- BeforeFrontier. Plan 0.2.4.5: legacy IsPrimitive retired —
+  -- Unit is erased (no slot), Str/Buffer are 2-slot compounds with
+  -- their own valid-str-wf / valid-buffer-wf witnesses. The only
+  -- inhabitants left are Int and Float.
+  --------------------------------------------------------------------
+
+  valid-primitive-wf : ∀ {m} {B : IRTy} {v : ⟦ B ⟧}
+    {alloc : AllocState {FS}}
+    {loc : ValueLocation FS} {s : LocState FS} →
+    (fit : FitsInRegI B) →
+    BeforeFrontier alloc loc →
+    readLoc s loc ≡ just (prim-sv fit v) →
+    ValidAtWF m alloc {B} v loc s
+  valid-primitive-wf fits-int   bf rl = valid-int-wf bf rl
+  valid-primitive-wf fits-float bf rl = valid-float-wf bf rl
+
+  --------------------------------------------------------------------
+  -- IRResultAWF: Mode-indexed IR execution result
+  --
+  -- Indexed by output mode m. For allocating IRs:
+  --   run-pair for ⟨ f , g ⟩ Stack → IRResultAWF Stack ...
+  --   run-pair for ⟨ f , g ⟩ Heap  → IRResultAWF Heap ...
+  --
+  -- For non-allocating IRs (fst, snd, id, etc.), the mode comes
+  -- from pattern matching on input validity.
+  --------------------------------------------------------------------
+
+  -- Plan 0.2.4.5 D1 (Unit erasure): result placement is type-aware.
+  --
+  -- For Unit-typed results, the value is genuinely "nowhere" — no
+  -- register, no slot, no observable content. So the data that
+  -- normally pins down "where the result is" (a ValueLocation +
+  -- validity at it + before-frontier proof + Output equation) has
+  -- nothing to talk about. Encoded structurally:
+  --
+  --   `unit-result` : Unit-typed result; carries no location.
+  --   `at-loc loc valid-wf before output-eq` : non-Unit result;
+  --     bundles all four facts about the location at once.
+  --
+  -- This subsumes the old separate fields (`result-loc`,
+  -- `result-valid-wf`, `result-before`, `rax-is-result`) into a
+  -- single `result-place` field, and removes the redundancy where
+  -- `rax-is-result` was bridging `result-loc` to `Output`.
+  -- Consumers (compose, pair, RecTrace) pattern-match on the
+  -- constructor; the type system forces them to handle Unit
+  -- separately — there's no loc to extract from `unit-result`.
+  -- The continuation-alloc shape: caller's frame, with `next-slot`
+  -- and `next-heap-ref` taken from the IR's `final-alloc` — i.e., the
+  -- alloc state the caller resumes with after the callee returns.
+  -- Carrying it in the type lets a single `at-loc` constructor share
+  -- its `loc` between post-IR and continuation invariants — consumers
+  -- don't need a separate "loc-eq" lemma to bridge two parallel
+  -- ResultPlaces.
+  --
+  -- Previously named `reclaim-alloc`; that baked in a stack-only
+  -- mental model. The field never represented heap reclamation
+  -- (heap blocks aren't freed by IRs), only the caller's
+  -- continuation view of consumed resources.
+  data ResultPlace : (B : IRTy) (m : AllocMode)
+                     (alloc continuation-alloc : AllocState {FS})
+                     (v : ⟦ B ⟧) (s : LocState FS) → Set where
+    unit-result : ∀ {m alloc continuation-alloc s} →
+                  ResultPlace Unit m alloc continuation-alloc tt s
+    at-loc      : ∀ {B m alloc continuation-alloc v s}
+                  (loc : ValueLocation FS)
+                → ValidAtWF m alloc {B} v loc s
+                → BeforeFrontier alloc loc
+                -- Plan 0.13.2: Output register stores StoredValue;
+                -- a result location is reified as SV-Ptr loc.
+                → readReg (regs s) Output ≡ SV-Ptr loc
+                → ValidAtWF m continuation-alloc {B} v loc s
+                → BeforeFrontier continuation-alloc loc
+                → ResultPlace B m alloc continuation-alloc v s
+    -- Force-it: register-resident primitive result. The value `v` lives in
+    -- Output as a register literal (abstract sentinel `unit-storedvalue`;
+    -- the real bits are the per-arch Simulation's job), NOT as a pointer.
+    -- Validity is location-only (`valid-primitive-wf`), so a witness `loc`
+    -- carries `ValidAtWF`/`BeforeFrontier`, while the rax field HONESTLY
+    -- records `Output ≡ unit-storedvalue` — provable, unlike the refutable
+    -- `SV-Ptr` claim `at-loc` would force on a sentinel.
+    -- Plan 0.54 rung A (A2.5): register-resident primitive result. The value `v`
+    -- lives in `Output` as its REAL literal `prim-sv fit v` (was the sentinel
+    -- `unit-storedvalue` — the register half of killing the sentinel). This is the
+    -- fast-path residence; spilled primitives use `at-loc` instead.
+    -- NOTE (rung A): `at-reg` carries NO `ValidAtWF`. Since `valid-int/float-wf`
+    -- now force a stored value (`readLoc … ≡ just (prim-sv fit v)`), a memory
+    -- witness would demand a cell that a register-resident result does not have
+    -- (`ir-to-trace (SigOp si) = instr-sigop si ∷ []` stores nothing). The value
+    -- witness for this residence IS the register equation below. Shape dictated
+    -- by the consumer `comp-step`, which reads only `place-rax`.
+    -- Stage F: the `loc` field and its two `BeforeFrontier` witnesses are
+    -- GONE. A register-resident result has no cell, so the location was
+    -- always a placeholder — every producer passed its own `input-loc`,
+    -- which does not hold the value — and the frontier bounds were bounds on
+    -- that placeholder. Carrying them invited consumers to project a
+    -- location out of a place that has none, which is what `place-loc` did
+    -- and why it was deleted.
+    --
+    -- What remains is the whole content of this residence: the value fits a
+    -- register, and `Output` holds it.
+    at-reg      : ∀ {B m alloc continuation-alloc v s}
+                  (fit : FitsInRegI B)
+                → readReg (regs s) Output ≡ prim-sv fit v
+                → ResultPlace B m alloc continuation-alloc v s
+
+  -- Plan 0.2.4.5 D1 trust points: place-* extraction helpers.
+  --
+  -- These project facts out of a `ResultPlace` into the plain
+  -- shape that consumers (compose, pair, RecTrace cata) and
+  -- `rec-wf`'s preconditions still expect:
+  --
+  --   * `place-sv rp` — the `StoredValue` `Output` holds: a POINTER for a
+  --     located result, the VALUE itself for a register-resident one.
+  --   * `place-rax rp` — `readReg s Output ≡ place-sv rp`.
+  --
+  -- These two are the whole surviving interface. The location-projecting
+  -- accessors are gone (see below): a `Place` is not always a location, and
+  -- an accessor that pretends otherwise is a trap, not a convenience.
+  --
+  -- For `at-loc`, all six are constructor projections (no trust).
+  -- For `unit-result`, each is a PROOF GAP, encoding the
+  -- structural fact that "Unit values don't observably reside
+  -- anywhere" — there's nothing to extract.
+  --
+  -- Each gap is sound for Unit because:
+  --   * Unit values carry no observable content.
+  --   * `valid-unit-wf` is loc-agnostic (works at any loc).
+  --   * BeforeFrontier on a Unit's mythical loc is vacuous.
+  --   * Output's value at a Unit boundary is irrelevant.
+  --
+  -- The gaps are TRANSITIONAL. They go away when either:
+  --   (a) `rec-wf`'s preconditions become type-aware — for
+  --       Unit-typed IRs, drop `BeforeFrontier alloc input-loc`
+  --       and `readReg s Input1 ≡ input-loc` (both vacuous).
+  --   (b) Each consumer (compose, pair, RecTrace cata)
+  --       case-splits on the `result-place` constructor and takes
+  --       a Unit-aware code path that doesn't go through place-*.
+  --
+  -- Either route requires a deeper proof restructure than the
+  -- spec migration covered. Tracked as Plan 0.2.4.5 D1 task #28.
+  -- (`place-valid` / `place-cont-valid` DELETED — Plan 0.54 rung A. They were
+  -- dead (every remaining reference is a comment) and `at-reg` no longer
+  -- carries a memory `ValidAtWF`. Deleting them removes 2 proof-gap stubs.)
+  --
+  -- (`place-loc` / `place-before` / `place-cont-before` DELETED — stage F,
+  -- same test, same answer: every remaining reference was a COMMENT. Three
+  -- more proof-gap stubs go with them.
+  --
+  -- They were also actively DANGEROUS, which is why they went rather than
+  -- being kept for symmetry. `place-loc` was TOTAL but only MEANINGFUL for
+  -- `at-loc`: for `at-reg` it returned the producer's INPUT cell, reused as
+  -- a placeholder (`IRObsCorrectFlat`: `at-reg input-loc fit …`), which does
+  -- not hold the value. Projecting a place to a location therefore invited
+  -- exactly the false `rax-eq` / `result-valid-wf` that D148 records — and
+  -- nearly produced two fresh ones in `ApplyWF` before the residence was
+  -- propagated instead.
+  --
+  -- What survives is what is SAFE for both residences: `place-sv` and
+  -- `place-rax`, which say what `Output` holds without claiming a location.
+  -- That is the pair `at-reg`'s own comment already named as its consumer
+  -- interface, and it is what `ComposeWF` uses.)
+
+  -- The actual StoredValue Output holds for this result: a pointer for a
+  -- located result (`at-loc`), the register sentinel for a register-resident
+  -- primitive (`at-reg`). For `at-loc` this reduces DEFINITIONALLY to
+  -- `SV-Ptr (place-loc rp)`, so existing `at-loc`-only consumers are unchanged.
+  place-sv : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → StoredValue FS
+  place-sv (at-loc loc _ _ _ _ _) = SV-Ptr loc
+  place-sv {v = v} (at-reg fit _) = prim-sv fit v
+  place-sv {Unit} unit-result     = SV-Ptr unit-result-sv-loc
+    where postulate unit-result-sv-loc : ValueLocation FS
+
+  place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
+              readReg (regs s) Output ≡ place-sv rp
+  place-rax (at-loc _ _ _ rax _ _) = rax
+  place-rax (at-reg _ rax) = rax
+  place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
+    where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
+
+
+------------------------------------------------------------------------
+-- Decomposition for ValidAtWF closures
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- D181: WHERE a closure's ENVIRONMENT lives, read out of the closure's
+-- first cell. The exact shape `PayloadAt` has for a sum's payload, asked one
+-- cell earlier — and for the same reason: the emitter writes whatever
+-- `Input1` held, so the cell may hold a pointer OR the value itself.
+  ------------------------------------------------------------------------
+  -- plan 0.125 S1: the env's validity is gone from the closure (its type is
+  -- hidden, so it is not a subterm of `A ⇛ B`); only where the env cell
+  -- points is left. What the body does with it is `runs`.
   data EnvAt (alloc : AllocState {FS}) {E : IRTy} (env : ⟦ E ⟧)
              (closure-loc : ValueLocation FS) (s : LocState FS) : Set where
-    env-at-loc  : ∀ {mEnv : AllocMode} (env-loc : ValueLocation FS)
+    env-at-loc  : (env-loc : ValueLocation FS)
                 → readLoc s closure-loc ≡ just (SV-Ptr env-loc)
                 → BeforeFrontier alloc env-loc
-                → ValidAtWF mEnv alloc {E} env env-loc s
                 → EnvAt alloc env closure-loc s
     env-in-cell : (rep : InlineRep E)
                 → readLoc s closure-loc ≡ just (inline-sv rep env)
@@ -755,88 +872,28 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       EnvType : IRTy
       body : IR (EnvType * A) B
       env : ⟦ EnvType ⟧
-      -- D170: `body<bound` removed with the constructor's — a size bound is a
-      -- recursion measure, not something the value carries.
       body-label : LabelId
-      -- D188: the closure's residence, which `apply` needs: `LocMatchesMode
-      -- Heap` forces `AtDynamic`, and that is the shape `do-call` enters on.
       loc-mode : LocMatchesMode Heap closure-loc
-      -- D181: WHERE the environment lives, as ONE field carrying its own
-      -- evidence (D153's rule). It used to be four — `env-loc`, `mEnv`,
-      -- `env-ptr`, `env-before`, `env-valid` — which could only describe a
-      -- POINTER env, so the decomposition could not see an inline one.
       env-at : EnvAt alloc {EnvType} env closure-loc s
       code-ptr : readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label)
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
-      -- D170: `body-correct : BodyCorrect …` stood here, mirroring the
-      -- constructor field. Gone for the same reason — this record DECOMPOSES a
-      -- closure value, so it may expose only what the value carries: the
-      -- environment and the body's NAME (`body-label`, right above). The
-      -- behaviour is looked up from that name at `apply`.
       f-is-closure : f ≡ (λ arg → evalᴰ body (env , arg))
+      -- plan 0.125 S1: the label resolves, and the block computes `f`.
+      code-j : ℕ
+      code-found : find-thunk prog body-label ≡ just code-j
+      runs : CallRuns {A} {B} (VAt A) (VAt B) alloc s closure-loc code-j f
 
-  -- Closures are always Heap mode.  Plan 0.52 M2: the ungraded `A ⇛ B` has a
-  -- single closure witness (`valid-coerce-kind-wf` retired), so there is one clause.
   decomposeClosureWF : ∀ {m alloc A B} {f : ⟦ A ⇛ B ⟧} {loc s} →
     ValidAtWF m alloc {A ⇛ B} f loc s → ClosureValidWF alloc {A} {B} f loc s
-  decomposeClosureWF (valid-closure-wf {EnvType} {_} {_} {body} {env} {_}
-                       {_} {el} {_} {mE} {bl} lmm ep cp eb slb ev) = record
-    { EnvType = EnvType
-    ; body = body
-    ; env = env
-    ; body-label = bl
-    ; loc-mode = lmm
-    ; env-at = env-at-loc {mEnv = mE} el ep eb ev
-    ; code-ptr = cp
-    ; sucLoc-before = slb
-    ; f-is-closure = refl
-    }
-  decomposeClosureWF (valid-closure-reg-wf {EnvType} {_} {_} {body} {env} {_}
-                       {_} {_} {bl} lmm rep ep cp slb) = record
-    { EnvType = EnvType
-    ; body = body
-    ; env = env
-    ; body-label = bl
-    ; loc-mode = lmm
-    ; env-at = env-in-cell rep ep
-    ; code-ptr = cp
-    ; sucLoc-before = slb
-    ; f-is-closure = refl
-    }
+  decomposeClosureWF (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb fd rn) = record
+    { EnvType = _ ; body = body ; env = env ; body-label = _ ; loc-mode = lmm
+    ; env-at = env-at-loc el ep eb ; code-ptr = cp ; sucLoc-before = slb ; f-is-closure = refl
+    ; code-j = _ ; code-found = fd ; runs = rn }
+  decomposeClosureWF (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb fd rn) = record
+    { EnvType = _ ; body = body ; env = env ; body-label = _ ; loc-mode = lmm
+    ; env-at = env-in-cell rep ep ; code-ptr = cp ; sucLoc-before = slb ; f-is-closure = refl
+    ; code-j = _ ; code-found = fd ; runs = rn }
 
-  -- Plan 0.17.2 follow-up (2026-05-23): `closure-mode-is-heap-proof`
-  -- was dropped. With mode-polymorphic valid-closure-wf, closures
-  -- can validate as either Stack or Heap, so the lemma no longer
-  -- holds. decomposeClosureWF now accepts any mode directly, so
-  -- the coercion the lemma enabled is no longer needed.
-
-  ------------------------------------------------------------------------
-  -- RecDispatcherWF: Recursive dispatcher interface with ValidAtWF
-  --
-  -- Used by Curry to construct BodyCorrect.
-  -- Takes ValidAtWF input and returns IRResultAWF with ValidAtWF output.
-  --
-  -- SIMPLIFIED: Only needs linear capacity (pair-slots * ir-size).
-  -- No global invariants needed - capacity is threaded dynamically per closure.
-  ------------------------------------------------------------------------
-
-  ------------------------------------------------------------------------
-  -- Stage F: the DESTINATION a caller hands an IR.
-  --
-  -- The architecture, stated plainly: STACK-allocated input/output BETWEEN
-  -- IRs; HEAP allocation only for temporaries INSIDE an IR. So a boundary
-  -- destination is a caller-supplied storage location — which the caller owns,
-  -- and which therefore outlives the callee's frame — or a register when the
-  -- value fits one. Heap never appears here: it is IR-internal and reclaimed
-  -- before return.
-  --
-  -- Deliberately NOT a `ValueLocation` constructor. `SMCore` records why
-  -- (plan 0.2.4.5 stage E, backed out the same day it was tried): an
-  -- `InReg : AbstractReg → ValueLocation` broke the `preserves-mem` family
-  -- universally, because `readLoc s (InReg Output)` shifts under
-  -- `mov-to-output`. Memory-only operations stay storage-typed; `Place`
-  -- appears only at handover points.
-  ------------------------------------------------------------------------
   data Place : Set where
     AtStorage : ValueLocation FS → Place
     InReg     : AbstractReg → Place
@@ -986,19 +1043,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
 
   decomposeInlWF : ∀ {m alloc A B} {a : ⟦ A ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (inj₁ a) loc s → InlValidWF alloc {A} {B} (inj₁ a) loc s
-  decomposeInlWF (valid-inl-wf {_} {_} {_} {a} {_} {_} {pl} {_} {mA} lmm _ pp pb slb pv) = record
+  decomposeInlWF (valid-inl-wf {a = a} {payload-loc = pl} {mA = mA} lmm _ pp pb slb pv) = record
     { a = a ; sucLoc-before = slb
     ; payload = payload-at-loc {mA = mA} pl pp pb pv ; v-is-inl = refl }
-  decomposeInlWF (valid-inl-reg-wf {_} {_} {_} {a} lmm _ fit pp slb) = record
+  decomposeInlWF (valid-inl-reg-wf {a = a} lmm _ fit pp slb) = record
     { a = a ; sucLoc-before = slb
     ; payload = payload-in-reg fit pp ; v-is-inl = refl }
 
   decomposeInrWF : ∀ {m alloc A B} {b : ⟦ B ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (inj₂ b) loc s → InrValidWF alloc {A} {B} (inj₂ b) loc s
-  decomposeInrWF (valid-inr-wf {_} {_} {_} {b} {_} {_} {pl} {_} {mB} lmm _ pp pb slb pv) = record
+  decomposeInrWF (valid-inr-wf {b = b} {payload-loc = pl} {mB = mB} lmm _ pp pb slb pv) = record
     { b = b ; sucLoc-before = slb
     ; payload = payload-at-loc {mA = mB} pl pp pb pv ; v-is-inr = refl }
-  decomposeInrWF (valid-inr-reg-wf {_} {_} {_} {b} lmm _ fit pp slb) = record
+  decomposeInrWF (valid-inr-reg-wf {b = b} lmm _ fit pp slb) = record
     { b = b ; sucLoc-before = slb
     ; payload = payload-in-reg fit pp ; v-is-inr = refl }
 
@@ -1018,611 +1075,159 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   valid-to-validWF-unit = valid-unit-wf
 
   ------------------------------------------------------------------------
-  -- ValidAtWF memory-only dependence
+  -- plan 0.125 S1: ONE TRANSPORT. Every `validityWF-*` below is an instance.
   --
-  -- ValidAtWF only depends on memory, not registers. When memory is
-  -- preserved, validity transfers to a new state.
+  -- A witness reads only cells it can name: the top cell (`Q loc`) and cells
+  -- before the frontier. So it moves to any state that agrees on a set `Q`
+  -- covering both, and to any allocator whose frontier includes the old one.
+  -- Proved once by recursion on the type (`v-tr`) and once on the first-order
+  -- witness (`fo-tr`, μ). The arrow case retargets its callee premises:
+  -- what was live and unchanged for the old state is so for the new one.
   ------------------------------------------------------------------------
+  module Transport {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
+           (Q : ValueLocation FS → Set)
+           (q-bf : ∀ l → BeforeFrontier a₁ l → Q l)
+           (rd : ∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l)
+           (bft : ∀ l → BeforeFrontier a₁ l → BeforeFrontier a₂ l) where
 
-  -- ValidAtWF only depends on memory, not registers
-  -- When memory is preserved (stackMem and heapMem equal), validity transfers
-  -- By structural induction on ValidAtWF
+    mutual
+      fo-tr : ∀ {m A v loc} → Q loc → ValidFO m a₁ {A} v loc s₁ → ValidFO m a₂ {A} v loc s₂
+      fo-tr q (fo-unit unit-wf) = fo-unit unit-wf
+      fo-tr q (fo-pair (pair-wf lmm slb c₁ c₂)) =
+        fo-pair (pair-wf lmm (bft _ slb) (fo-cell q c₁) (fo-cell (q-bf _ slb) c₂))
+      fo-tr q (fo-sum (inl-wf lmm tg pp pb slb pv)) =
+        fo-sum (inl-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
+                             (bft _ pb) (bft _ slb) (fo-tr (q-bf _ pb) pv))
+      fo-tr q (fo-sum (inr-wf lmm tg pp pb slb pv)) =
+        fo-sum (inr-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
+                             (bft _ pb) (bft _ slb) (fo-tr (q-bf _ pb) pv))
+      fo-tr q (fo-sum (inl-reg-wf lmm tg rep pp slb)) =
+        fo-sum (inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
+      fo-tr q (fo-sum (inr-reg-wf lmm tg rep pp slb)) =
+        fo-sum (inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
+      fo-tr q (fo-int (int-wf bf rl)) = fo-int (int-wf (bft _ bf) (trans (rd _ q) rl))
+      fo-tr q (fo-float (float-wf bf rl)) = fo-float (float-wf (bft _ bf) (trans (rd _ q) rl))
+      fo-tr q (fo-μwf wf x lv) = fo-μwf wf x (fo-tr q lv)
+
+      fo-cell : ∀ {C c cl} → Q cl → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₁ c cl s₁
+              → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₂ c cl s₂
+      fo-cell q (cell-ptr r bf v) = cell-ptr (trans (rd _ q) r) (bft _ bf) (fo-tr (q-bf _ bf) v)
+      fo-cell q (cell-inline rep r) = cell-inline rep (trans (rd _ q) r)
+
+    runs-tr : ∀ {A B} {VA : VTy A} {VB : VTy B} {cloc j f} → Q cloc
+            → CallRuns {A} {B} VA VB a₁ s₁ cloc j f → CallRuns {A} {B} VA VB a₂ s₂ cloc j f
+    runs-tr q r fs pre a pl ret-pc k rs pc nh fr fa incl agree i1 lmm slb c0 c1 =
+      r fs pre a pl ret-pc k rs pc nh fr fa
+        (λ l b → incl l (bft l b))
+        (λ l b → trans (agree l (bft l b)) (rd l (q-bf l b)))
+        i1 lmm slb (trans c0 (rd _ q)) c1
+
+    mutual
+      v-tr : ∀ {m} A {v loc} → Q loc → ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
+      v-tr Unit q valid-unit-wf = valid-unit-wf
+      v-tr Void q (wrap ())
+      v-tr (A * B) q (valid-pair-wf lmm slb c₁ c₂) =
+        valid-pair-wf lmm (bft _ slb) (v-cell A q c₁) (v-cell B (q-bf _ slb) c₂)
+      v-tr (A + B) q (valid-inl-wf lmm tg pp pb slb pv) =
+        valid-inl-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
+                     (bft _ pb) (bft _ slb) (v-tr A (q-bf _ pb) pv)
+      v-tr (A + B) q (valid-inr-wf lmm tg pp pb slb pv) =
+        valid-inr-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
+                     (bft _ pb) (bft _ slb) (v-tr B (q-bf _ pb) pv)
+      v-tr (A + B) q (valid-inl-reg-wf lmm tg rep pp slb) =
+        valid-inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
+      v-tr (A + B) q (valid-inr-reg-wf lmm tg rep pp slb) =
+        valid-inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
+      v-tr (A ⇛ B) q (valid-closure-wf {body = body} {env = env} lmm ep cp eb slb fd runs) =
+        valid-closure-wf {body = body} {env = env} lmm (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ eb) (bft _ slb)
+                         fd (runs-tr q runs)
+      v-tr (A ⇛ B) q (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb fd runs) =
+        valid-closure-reg-wf {body = body} {env = env} lmm rep (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ slb)
+                             fd (runs-tr q runs)
+      v-tr (μ-type F) q (wrap w) = wrap (fo-tr q w)
+      v-tr (ν-type F) q (valid-ν-susp-wf org lmm sv c0 cp slb) =
+        valid-ν-susp-wf org lmm sv (trans (rd _ q) c0) (trans (rd _ (q-bf _ slb)) cp) (bft _ slb)
+      v-tr Int q (valid-int-wf bf rl) = valid-int-wf (bft _ bf) (trans (rd _ q) rl)
+      v-tr Float q (valid-float-wf bf rl) = valid-float-wf (bft _ bf) (trans (rd _ q) rl)
+
+      v-cell : ∀ C {c cl} → Q cl → CellAt a₁ C c cl s₁ → CellAt a₂ C c cl s₂
+      v-cell C q (cell-ptr r bf v) = cell-ptr (trans (rd _ q) r) (bft _ bf) (v-tr C (q-bf _ bf) v)
+      v-cell C q (cell-inline rep r) = cell-inline rep (trans (rd _ q) r)
+
+  -- The general transport, by its three facts.
+  validityWF-transport : ∀ {m A} {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
+    (Q : ValueLocation FS → Set) →
+    (∀ l → BeforeFrontier a₁ l → Q l) →
+    (∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l) →
+    (∀ l → BeforeFrontier a₁ l → BeforeFrontier a₂ l) →
+    ∀ (v : ⟦ A ⟧) loc → Q loc →
+    ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
+  validityWF-transport {A = A} Q q-bf rd bft _ _ q = Transport.v-tr Q q-bf rd bft A q
+
+  private
+    all : ValueLocation FS → Set
+    all _ = ⊤
+    same-alloc : ∀ {a : AllocState {FS}} l → BeforeFrontier a l → BeforeFrontier a l
+    same-alloc _ b = b
+
+  -- ValidAtWF only depends on memory, not registers.
   validityWF-mem-only : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     stackMem s₂ ≡ stackMem s₁ →
     heapMem s₂ ≡ heapMem s₁ →
     ValidAtWF m alloc {A} v loc s₁ → ValidAtWF m alloc {A} v loc s₂
+  validityWF-mem-only v loc s₁ s₂ se he =
+    validityWF-transport all (λ _ _ → tt) (λ l _ → readLoc-stack-heap-eq s₂ s₁ l se he) same-alloc v loc tt
 
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  -- D187: the two cells transport the same way, so the clause carries ONE
-  -- helper and applies it twice. `cell-inline` has no sub-derivation to
-  -- recurse into — an inline component has no cell of its own.
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm slb (go loc fc) (go (sucLoc loc) sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
-         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
-      go cl (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r) bf
-                 (validityWF-mem-only _ pl s₁ s₂ stack-eq heap-eq v)
-      go cl (cell-inline rep r) =
-        cell-inline rep (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r)
-
-  validityWF-mem-only {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep' cp' eb slb ev'
-    where
-      ep' : readLoc s₂ loc ≡ just (SV-Ptr el)
-      ep' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) ep
-
-      cp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp
-
-      ev' = validityWF-mem-only env el s₁ s₂ stack-eq heap-eq ev
-
-  -- D181: the INLINE-env mirror. Same transports, minus the two fields an
-  -- inline environment does not have (its own location and validity).
-  validityWF-mem-only {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep
-      (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) ep)
-      (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp) slb
-
-  -- D189: the ν suspension. Its SEED is a cell (D187), so it transports the
-  -- same way a pair's component does.
-  validityWF-mem-only {alloc = alloc} _
-    loc s₁ s₂ stack-eq heap-eq
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc sc)
-      (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp) slb
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
-         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
-      go cl (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r) bf
-                 (validityWF-mem-only _ pl s₁ s₂ stack-eq heap-eq v)
-      go cl (cell-inline rep r) =
-        cell-inline rep (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r)
-
-  -- Kind-coerced closure: recurse on underlying validity, re-coerce.
-
-  -- Eff (effectful morphism): recurse on underlying closure validity
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm (transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg) fit (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp) slb
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm (transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg) fit (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp) slb
-
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg
-      pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
-      pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
-
-      pv' = validityWF-mem-only a pl s₁ s₂ stack-eq heap-eq pv
-
-  -- inr (any mode)
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg
-      pp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr pl)
-      pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
-
-      pv' = validityWF-mem-only b pl s₁ s₂ stack-eq heap-eq pv
-
-  -- OCP-0003: μ-type and ν-type validity preservation
-  -- Uses proven lemmas from MuValidity
-  -- Option 3: μ/ν validity recurses on the stored layer ValidAtWF
-  -- (structurally smaller → terminating); the μValid-* lemmas are gone.
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-mem-only (valueNow (evalᴰ (out-μ wf) x)) loc s₁ s₂ stack-eq heap-eq lv)
-
-
-  -- Primitives: memory-independent (BeforeFrontier doesn't depend on state)
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-int-wf bf rl) =
-    valid-int-wf bf (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) rl)
-  validityWF-mem-only {m = m} {alloc = alloc} _ loc s₁ s₂ stack-eq heap-eq (valid-float-wf bf rl) =
-    valid-float-wf bf (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) rl)
-
-  ------------------------------------------------------------------------
-  -- ValidAtWF preservation under writes to frontier locations
-  --
-  -- These are ValidAtWF versions of validity-write-at-frontier and
-  -- validity-write-at-suc-frontier from ValidityWriteLemma.agda.
-  ------------------------------------------------------------------------
-
-  -- Import helpers for frontier inequality
-  -- ValidAtWF is preserved when writing to at-frontier location
   validityWF-write-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
     BeforeFrontier alloc loc →
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m alloc {A} v loc (write-loc s (AtStack (current-frame alloc) (next-slot alloc)) val)
+  validityWF-write-at-frontier {alloc = alloc} v loc s val lb =
+    validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
+      (λ l b → write-at-frontier-preserves-before s alloc l val b) same-alloc v loc lb
 
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-at-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-frontier _ pl s val bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-at-frontier-preserves-before s alloc cl val cb) r)
-
-  validityWF-write-at-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep' cp' eb slb ev'
-    where
-      ep' = trans (write-at-frontier-preserves-before s alloc loc val loc-before) ep
-      cp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
-      ev' = validityWF-write-at-frontier env el s val eb ev
-
-  validityWF-write-at-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep
-      (trans (write-at-frontier-preserves-before s alloc loc val loc-before) ep)
-      (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
-
-  validityWF-write-at-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc loc-before sc)
-      (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-at-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-frontier _ pl s val bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-at-frontier-preserves-before s alloc cl val cb) r)
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm (transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm (transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
-
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg
-      pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
-      pv' = validityWF-write-at-frontier a pl s val pb pv
-
-  -- inr (any mode)
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg
-      pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
-      pv' = validityWF-write-at-frontier b pl s val pb pv
-
-  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
-  -- Writing at frontier preserves memory at all BeforeFrontier locations
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-at-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
-
-
-  -- Primitives: BeforeFrontier unchanged
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-int-wf bf rl) =
-    valid-int-wf bf (trans (write-at-frontier-preserves-before s alloc loc val loc-before) rl)
-  validityWF-write-at-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-float-wf bf rl) =
-    valid-float-wf bf (trans (write-at-frontier-preserves-before s alloc loc val loc-before) rl)
-
-  -- ValidAtWF is preserved when writing to suc-frontier location
   validityWF-write-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
     BeforeFrontier alloc loc →
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m alloc {A} v loc (write-loc s (AtStack (current-frame alloc) (suc (next-slot alloc))) val)
+  validityWF-write-at-suc-frontier {alloc = alloc} v loc s val lb =
+    validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
+      (λ l b → write-at-suc-frontier-preserves-before s alloc l val b) same-alloc v loc lb
 
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-suc-frontier _ pl s val bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r)
-
-  validityWF-write-at-suc-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep' cp' eb slb ev'
-    where
-      ep' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) ep
-      cp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
-      ev' = validityWF-write-at-suc-frontier env el s val eb ev
-
-  validityWF-write-at-suc-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep
-      (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) ep)
-      (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
-
-  validityWF-write-at-suc-frontier {alloc = alloc} _ loc s val loc-before
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc loc-before sc)
-      (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-suc-frontier _ pl s val bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r)
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm (transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm (transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
-
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg
-      pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
-      pv' = validityWF-write-at-suc-frontier a pl s val pb pv
-
-  -- inr (any mode)
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg
-      pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
-      pv' = validityWF-write-at-suc-frontier b pl s val pb pv
-
-  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
-  -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-at-suc-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s val loc-before lv)
-
-
-  -- Primitives: BeforeFrontier unchanged
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-int-wf bf rl) =
-    valid-int-wf bf (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) rl)
-  validityWF-write-at-suc-frontier {m = m} {alloc = alloc} _ loc s val loc-before (valid-float-wf bf rl) =
-    valid-float-wf bf (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) rl)
-
-  ------------------------------------------------------------------------
-  -- D148: the FRONTIER-slot sibling of `validityWF-write-at-suc-frontier`,
-  -- for an arbitrary `StoredValue` rather than a location pointer.
-  --
-  -- `run-inl`/`run-inr` write the sum TAG at the frontier slot before the
-  -- payload pointer above it (their traces always did; their state models did
-  -- not, which is what `SumTag Stack = ⊤` hid). Carrying an input's validity
-  -- across that write needs exactly this. Clause for clause the same proof as
-  -- the `suc`-frontier version — a `BeforeFrontier` location is strictly below
-  -- the frontier, so the write is disjoint from it.
-  --
-  -- The written value is `stored`, not `sv`: `sv` is already bound as the
-  -- snd-validity in the pair clause below.
-  ------------------------------------------------------------------------
   validityWF-write-sv-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (stored : StoredValue FS) →
     BeforeFrontier alloc loc →
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m alloc {A} v loc (writeLoc s (AtStack (current-frame alloc) (next-slot alloc)) stored)
+  validityWF-write-sv-at-frontier {alloc = alloc} v loc s stored lb =
+    validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
+      (λ l b → write-sv-at-frontier-preserves-before s alloc l stored b) same-alloc v loc lb
 
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-frontier _ pl s stored bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r)
-
-  validityWF-write-sv-at-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep' cp' eb slb ev'
-    where
-      ep' = trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) ep
-      cp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
-      ev' = validityWF-write-sv-at-frontier env el s stored eb ev
-
-  validityWF-write-sv-at-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep
-      (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) ep)
-      (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
-
-  validityWF-write-sv-at-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc loc-before sc)
-      (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-frontier _ pl s stored bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r)
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm (transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm (transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
-
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg
-      pp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
-      pv' = validityWF-write-sv-at-frontier a pl s stored pb pv
-
-  -- inr (any mode)
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg
-      pp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
-      pv' = validityWF-write-sv-at-frontier b pl s stored pb pv
-
-  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
-  -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-sv-at-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
-
-
-  -- Primitives: BeforeFrontier unchanged
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-int-wf bf rl) =
-    valid-int-wf bf (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) rl)
-  validityWF-write-sv-at-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-float-wf bf rl) =
-    valid-float-wf bf (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) rl)
-
-  ------------------------------------------------------------------------
-  -- …and the SUC-frontier sibling, for an arbitrary `StoredValue`.
-  --
-  -- Stage F: the payload cell of a sum receives whatever `Input1` held, which
-  -- is a pointer only when the input was memory-resident. The pointer-only
-  -- `validityWF-write-at-suc-frontier` therefore no longer covers `run-inl`'s
-  -- second write. Clause for clause the frontier version, one slot up.
-  ------------------------------------------------------------------------
   validityWF-write-sv-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (stored : StoredValue FS) →
     BeforeFrontier alloc loc →
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m alloc {A} v loc (writeLoc s (AtStack (current-frame alloc) (suc (next-slot alloc))) stored)
+  validityWF-write-sv-at-suc-frontier {alloc = alloc} v loc s stored lb =
+    validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
+      (λ l b → write-sv-at-suc-frontier-preserves-before s alloc l stored b) same-alloc v loc lb
 
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-suc-frontier _ pl s stored bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r)
-
-  validityWF-write-sv-at-suc-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep' cp' eb slb ev'
-    where
-      ep' = trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) ep
-      cp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
-      ev' = validityWF-write-sv-at-suc-frontier env el s stored eb ev
-
-  validityWF-write-sv-at-suc-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep
-      (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) ep)
-      (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
-
-  validityWF-write-sv-at-suc-frontier {alloc = alloc} _ loc s stored loc-before
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc loc-before sc)
-      (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-suc-frontier _ pl s stored bf v)
-      go cl cb (cell-inline rep r) =
-        cell-inline rep (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r)
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm (transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm (transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
-
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg
-      pp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
-      pv' = validityWF-write-sv-at-suc-frontier a pl s stored pb pv
-
-  -- inr (any mode)
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg
-      pp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
-      pv' = validityWF-write-sv-at-suc-frontier b pl s stored pb pv
-
-  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
-  -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-write-sv-at-suc-frontier (valueNow (evalᴰ (out-μ wf) x)) loc s stored loc-before lv)
-
-
-  -- Primitives: BeforeFrontier unchanged
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-int-wf bf rl) =
-    valid-int-wf bf (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) rl)
-  validityWF-write-sv-at-suc-frontier {m = m} {alloc = alloc} _ loc s stored loc-before (valid-float-wf bf rl) =
-    valid-float-wf bf (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) rl)
-
-  ------------------------------------------------------------------------
-  -- Validity transport across allocation advancement
-  --
-  -- When the frontier advances (next-slot increases), ValidAtWF can be
-  -- transported to the new alloc. This is needed when writing to fresh
-  -- slots and then proving existing values are still valid.
-  --
-  -- Key insight: BeforeFrontier locations stay before the new frontier,
-  -- so all constraints in ValidAtWF constructors are preserved.
-  ------------------------------------------------------------------------
+  validityWF-with-bf-transfer : ∀ {m A} (v : ⟦ A ⟧) loc (s : LocState FS)
+    (a₁ a₂ : AllocState {FS})
+    (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
+    ValidAtWF m a₁ {A} v loc s →
+    ValidAtWF m a₂ {A} v loc s
+  validityWF-with-bf-transfer v loc s a₁ a₂ bft =
+    validityWF-transport all (λ _ _ → tt) (λ _ _ → refl) bft v loc tt
 
   validityWF-alloc-advance : ∀ {m alloc A} (v : ⟦ A ⟧) loc s (n : ℕ) →
     ValidAtWF m alloc {A} v loc s →
     let alloc' = record alloc { next-slot = next-slot alloc ℕ.+ n }
     in ValidAtWF m alloc' v loc s
-
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm (stack-alloc-advances alloc n (sucLoc loc) slb)
-                  (go loc fc) (go (sucLoc loc) sc)
-    where
-      -- Only the ALLOC moves, so a cell's read equation is untouched and an
-      -- inline component transports unchanged.
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → CellAt alloc C c cl s
-         → CellAt (record alloc { next-slot = next-slot alloc ℕ.+ n }) C c cl s
-      go cl (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr r (stack-alloc-advances alloc n pl bf) (validityWF-alloc-advance _ pl s n v)
-      go cl (cell-inline rep r) = cell-inline rep r
-
-  validityWF-alloc-advance {alloc = alloc} _ loc s n
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep cp eb' slb' ev'
-    where
-      eb' = stack-alloc-advances alloc n el eb
-      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
-      ev' = validityWF-alloc-advance env el s n ev
-
-  validityWF-alloc-advance {alloc = alloc} _ loc s n
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp
-      (stack-alloc-advances alloc n (sucLoc loc) slb)
-
-  validityWF-alloc-advance {alloc = alloc} _ loc s n
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc sc) cp
-      (stack-alloc-advances alloc n (sucLoc loc) slb)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → CellAt alloc C c cl s
-         → CellAt (record alloc { next-slot = next-slot alloc ℕ.+ n }) C c cl s
-      go cl (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr r (stack-alloc-advances alloc n pl bf) (validityWF-alloc-advance _ pl s n v)
-      go cl (cell-inline rep r) = cell-inline rep r
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm tg fit pp (stack-alloc-advances alloc n (sucLoc loc) slb)
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm tg fit pp (stack-alloc-advances alloc n (sucLoc loc) slb)
-
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg pp pb' slb' pv'
-    where
-      pb' = stack-alloc-advances alloc n pl pb
-      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
-      pv' = validityWF-alloc-advance a pl s n pv
-
-  -- inr (any mode)
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg pp pb' slb' pv'
-    where
-      pb' = stack-alloc-advances alloc n pl pb
-      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
-      pv' = validityWF-alloc-advance b pl s n pv
-
-  -- OCP-0003: μ-type and ν-type cases - using μValid-frontier-advance
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-alloc-advance (valueNow (evalᴰ (out-μ wf) x)) loc s n lv)
-
-
-  -- Primitives: advance BeforeFrontier
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-int-wf bf rl) =
-    valid-int-wf (stack-alloc-advances alloc n loc bf) rl
-  validityWF-alloc-advance {m = m} {alloc = alloc} _ loc s n (valid-float-wf bf rl) =
-    valid-float-wf (stack-alloc-advances alloc n loc bf) rl
-
-  ------------------------------------------------------------------------
-  -- Validity transport across arbitrary frontier advancement
-  --
-  -- More general than validityWF-alloc-advance: works for any alloc'
-  -- related by frontier-monotone properties (frame-preserved, slot/heap
-  -- monotone). Used when transporting validity through IR execution.
-  ------------------------------------------------------------------------
+  validityWF-alloc-advance {alloc = alloc} v loc s n =
+    validityWF-with-bf-transfer v loc s _ _ (stack-alloc-advances alloc n)
 
   validityWF-frontier-advance : ∀ {m alloc alloc' A} (v : ⟦ A ⟧) loc (s : LocState FS) →
     current-frame alloc' ≡ current-frame alloc →
@@ -1630,283 +1235,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     next-heap-ref alloc ≤ next-heap-ref alloc' →
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m alloc' v loc s
-
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
-                  (go loc fc) (go (sucLoc loc) sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
-         → CellAt alloc C c cl s → CellAt alloc' C c cl s
-      go cl (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr r (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl bf)
-                 (validityWF-frontier-advance _ pl s cf-eq slot-≤ heap-≤ v)
-      go cl (cell-inline rep r) = cell-inline rep r
-
-  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep cp eb' slb' ev'
-    where
-      eb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ el eb
-      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
-      ev' = validityWF-frontier-advance env el s cf-eq slot-≤ heap-≤ ev
-
-  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp
-      (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
-
-  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc sc) cp
-      (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
-         → CellAt alloc C c cl s → CellAt alloc' C c cl s
-      go cl (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr r (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl bf)
-                 (validityWF-frontier-advance _ pl s cf-eq slot-≤ heap-≤ v)
-      go cl (cell-inline rep r) = cell-inline rep r
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm tg fit pp (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm tg fit pp (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
-
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg pp pb' slb' pv'
-    where
-      pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl pb
-      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
-      pv' = validityWF-frontier-advance a pl s cf-eq slot-≤ heap-≤ pv
-
-  -- inr (any mode)
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg pp pb' slb' pv'
-    where
-      pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl pb
-      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
-      pv' = validityWF-frontier-advance b pl s cf-eq slot-≤ heap-≤ pv
-
-  -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-frontier-advance (valueNow (evalᴰ (out-μ wf) x)) loc s cf-eq slot-≤ heap-≤ lv)
-
-
-  -- Primitives: advance BeforeFrontier
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-int-wf bf rl) =
-    valid-int-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf) rl
-  validityWF-frontier-advance {m = m} {alloc = alloc} {alloc' = alloc'} _ loc s cf-eq slot-≤ heap-≤ (valid-float-wf bf rl) =
-    valid-float-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf) rl
-
-  ------------------------------------------------------------------------
-  -- ValidAtWF transfer between allocation states with BeforeFrontier transfer
-  --
-  -- Transfer ValidAtWF m a₁ → ValidAtWF m a₂ using a general bf-transfer
-  -- function. This is more general than validityWF-frontier-advance.
-  --
-  -- The proof applies bf-transfer to all sublocation BeforeFrontier proofs
-  -- and recursively transfers nested validity.
-  ------------------------------------------------------------------------
-
-  validityWF-with-bf-transfer : ∀ {m A} (v : ⟦ A ⟧) loc (s : LocState FS)
-    (a₁ a₂ : AllocState {FS})
-    (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
-    ValidAtWF m a₁ {A} v loc s →
-    ValidAtWF m a₂ {A} v loc s
-
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf valid-unit-wf = valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm (bf (sucLoc loc) slb) (go loc fc) (go (sucLoc loc) sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
-         → CellAt a₁ C c cl s → CellAt a₂ C c cl s
-      go cl (cell-ptr {comp-loc = pl} r cb v) =
-        cell-ptr r (bf pl cb) (validityWF-with-bf-transfer _ pl s a₁ a₂ bf v)
-      go cl (cell-inline rep r) = cell-inline rep r
-
-  -- Closure
-  validityWF-with-bf-transfer _ loc s a₁ a₂ bf
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep cp (bf el eb) (bf (sucLoc loc) slb)
-      (validityWF-with-bf-transfer env el s a₁ a₂ bf ev)
-
-  validityWF-with-bf-transfer _ loc s a₁ a₂ bf
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp (bf (sucLoc loc) slb)
-
-  validityWF-with-bf-transfer _ loc s a₁ a₂ bf
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc sc) cp (bf (sucLoc loc) slb)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
-         → CellAt a₁ C c cl s → CellAt a₂ C c cl s
-      go cl (cell-ptr {comp-loc = pl} r cb v) =
-        cell-ptr r (bf pl cb) (validityWF-with-bf-transfer _ pl s a₁ a₂ bf v)
-      go cl (cell-inline rep r) = cell-inline rep r
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm tg fit pp (bf (sucLoc loc) slb)
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm tg fit pp (bf (sucLoc loc) slb)
-
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg pp (bf pl pb) (bf (sucLoc loc) slb)
-      (validityWF-with-bf-transfer a pl s a₁ a₂ bf pv)
-
-  -- inr (any mode)
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg pp (bf pl pb) (bf (sucLoc loc) slb)
-      (validityWF-with-bf-transfer b pl s a₁ a₂ bf pv)
-
-  -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-with-bf-transfer (valueNow (evalᴰ (out-μ wf) x)) loc s a₁ a₂ bf lv)
-
-
-  -- Primitives: transfer BeforeFrontier
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-int-wf bfr rl) =
-    valid-int-wf (bf loc bfr) rl
-  validityWF-with-bf-transfer {m = m} _ loc s a₁ a₂ bf (valid-float-wf bfr rl) =
-    valid-float-wf (bf loc bfr) rl
-
-  ------------------------------------------------------------------------
-  -- Validity preservation when memory at BeforeFrontier is preserved
-  --
-  -- Key lemma for IR execution: if memory at all BeforeFrontier locations
-  -- is preserved (same readLoc values), then ValidAtWF is preserved.
-  -- This is more precise than validityWF-mem-only (full memory equality).
-  --
-  -- The proof works because ValidAtWF at a BeforeFrontier location means
-  -- all reachable sub-locations are also BeforeFrontier (structural).
-  ------------------------------------------------------------------------
+  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} v loc s cf-eq slot-≤ heap-≤ =
+    validityWF-with-bf-transfer v loc s _ _ (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤)
 
   validityWF-mem-preserved : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     BeforeFrontier alloc loc →
     (∀ loc' → BeforeFrontier alloc loc' → readLoc s₂ loc' ≡ readLoc s₁ loc') →
     ValidAtWF m alloc {A} v loc s₁ →
     ValidAtWF m alloc {A} v loc s₂
-
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq valid-unit-wf =
-    valid-unit-wf
-
-  -- Pair (any mode)
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-pair-wf lmm slb fc sc) =
-    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (mem-eq cl cb) r) bf (validityWF-mem-preserved _ pl s₁ s₂ bf mem-eq v)
-      go cl cb (cell-inline rep r) = cell-inline rep (trans (mem-eq cl cb) r)
-
-  validityWF-mem-preserved {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
-    valid-closure-wf {body = body} {env = env} lmm ep' cp' eb slb ev'
-    where
-      ep' = trans (mem-eq loc loc-before) ep
-      cp' = trans (mem-eq (sucLoc loc) slb) cp
-      ev' = validityWF-mem-preserved env el s₁ s₂ eb mem-eq ev
-
-  validityWF-mem-preserved {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
-    valid-closure-reg-wf {body = body} {env = env} lmm rep
-      (trans (mem-eq loc loc-before) ep) (trans (mem-eq (sucLoc loc) slb) cp) slb
-
-  validityWF-mem-preserved {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-ν-susp-wf org lmm sc cp slb) =
-    valid-ν-susp-wf org lmm (go loc loc-before sc)
-      (trans (mem-eq (sucLoc loc) slb) cp) slb
-    where
-      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
-         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
-      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
-        cell-ptr (trans (mem-eq cl cb) r) bf (validityWF-mem-preserved _ pl s₁ s₂ bf mem-eq v)
-      go cl cb (cell-inline rep r) = cell-inline rep (trans (mem-eq cl cb) r)
-
-  -- Kind-coerced closure
-
-  -- inl (any mode)
-  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
-  -- fields an inline payload does not have (its own location and validity).
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
-    valid-inl-reg-wf lmm (transport-SumTag (mem-eq loc loc-before) tg) fit (trans (mem-eq (sucLoc loc) slb) pp) slb
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
-    valid-inr-reg-wf lmm (transport-SumTag (mem-eq loc loc-before) tg) fit (trans (mem-eq (sucLoc loc) slb) pp) slb
-
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inl-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (mem-eq loc loc-before) tg
-      pp' = trans (mem-eq (sucLoc loc) slb) pp
-      pv' = validityWF-mem-preserved a pl s₁ s₂ pb mem-eq pv
-
-  -- inr (any mode)
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq
-    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
-    valid-inr-wf lmm tg' pp' pb slb pv'
-    where
-      tg' = transport-SumTag (mem-eq loc loc-before) tg
-      pp' = trans (mem-eq (sucLoc loc) slb) pp
-      pv' = validityWF-mem-preserved b pl s₁ s₂ pb mem-eq pv
-
-  -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-μ-wf wf x lv) =
-    valid-μ-wf wf x (validityWF-mem-preserved (valueNow (evalᴰ (out-μ wf) x)) loc s₁ s₂ loc-before mem-eq lv)
+  validityWF-mem-preserved {alloc = alloc} v loc s₁ s₂ lb mem-eq =
+    validityWF-transport (BeforeFrontier alloc) (λ _ b → b) mem-eq same-alloc v loc lb
 
 
-  -- Primitives: BeforeFrontier unchanged
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-int-wf bf rl) =
-    valid-int-wf bf (trans (mem-eq loc loc-before) rl)
-  validityWF-mem-preserved {m = m} {alloc = alloc} _ loc s₁ s₂ loc-before mem-eq (valid-float-wf bf rl) =
-    valid-float-wf bf (trans (mem-eq loc loc-before) rl)
-
-  ------------------------------------------------------------------------
-  -- Stage F: carry an input's PLACE across a state change that preserves
-  -- memory below the frontier and re-establishes `Input1`.
-  --
-  -- Every multi-step handler needs this. `run-pair` stashes its input,
-  -- runs `f`, then restores the input to dispatch `g`; `run-compose` hands
-  -- `f`'s output on to `g`. Each such site used to re-derive the four
-  -- positional facts by hand, per residence. Stated once here, the residence
-  -- is invisible to them: a located input transports its validity, a
-  -- register-resident one has none to transport, and a unit input has nothing
-  -- to say. That the three collapse to one call is the payoff of `InputPlace`
-  -- being a place rather than a bundle of facts about a location.
-  --
-  -- Note the conclusion names `ip` — the transported place holds the SAME
-  -- stored value, which is exactly what a caller that stashed and reloaded
-  -- `Input1` can prove.
-  ------------------------------------------------------------------------
   inputPlace-transport : ∀ {A m alloc alloc'} {x : ⟦ A ⟧} {s s'}
     (ip : InputPlace {A} m alloc x s)
     → current-frame alloc' ≡ current-frame alloc
@@ -2139,3 +1479,33 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
   mem-preserved-compose alloc₁ alloc₂ s₁ s₂ s₃ cf-eq slot-≤ heap-≤ f-pres g-pres loc bf₁ =
     trans (g-pres loc (before-frontier-monotone alloc₁ alloc₂ cf-eq slot-≤ heap-≤ bf₁))
           (f-pres loc bf₁)
+
+
+-- plan 0.125 S1: the constructor names, for USERS. A pattern synonym declared
+-- inside `ClosureWellFormedDef` is abstracted over its `{prog}` parameter,
+-- which its body does not mention, so an expression use leaves `prog`
+-- unsolved. Declared again here, where there is no `prog` to abstract over
+-- (the constructors' own `prog` is fixed by the expected type).
+module ClosureWellFormedPat {FS : FrameSemantics} where
+  open ClosureWellFormedBase {FS}
+  open ClosureWellFormedDef {FS}
+  pattern valid-unit-wf = wrap unit-wf
+  pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
+  pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} lmm tg pp pb slb pv =
+    wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} lmm tg pp pb slb pv)
+  pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} lmm tg pp pb slb pv =
+    wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} lmm tg pp pb slb pv)
+  pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
+    wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
+  pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
+    wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
+  pattern valid-closure-wf {body} {env} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
+    wrap (closure-wf {body = body} {env = env} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
+  pattern valid-closure-reg-wf {body} {env} {closure-loc} lmm rep ep cp slb fd runs =
+    wrap (closure-reg-wf {body = body} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
+  pattern valid-ν-susp-wf {T} {seed} org lmm sv c0 cp slb =
+    wrap (ν-susp-wf {T = T} {seed = seed} org lmm sv c0 cp slb)
+  pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
+  pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
+  pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)
+

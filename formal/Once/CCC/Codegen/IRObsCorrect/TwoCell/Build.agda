@@ -173,8 +173,8 @@ module TwoCellBuildC {FS : FrameSemantics} where
     -- (D180), so nothing here determines it from the value's type.
     valid-transport : ∀ {mIn A} (x : ValueDomain.⟦ A ⟧ᴰᴵ) (loc : ValueLocation FS)
                     → BeforeFrontier alloc loc
-                    → ValidAtWF mIn alloc {A} x loc s
-                    → ValidAtWF mIn (falloc fs10) {A} x loc (floc fs10)
+                    → ValidAtWF {prog = prog} mIn alloc {A} x loc s
+                    → ValidAtWF {prog = prog} mIn (falloc fs10) {A} x loc (floc fs10)
     valid-transport {A = A} x loc bf valid =
       validityWF-frontier-advance {A = A} x loc (floc fs10)
         cf-fs10 nextslot-≤ heapref-≤

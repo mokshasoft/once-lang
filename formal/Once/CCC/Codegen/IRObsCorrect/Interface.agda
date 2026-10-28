@@ -92,18 +92,9 @@ module Core {FS : FrameSemantics} where
   evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
                    (tableEnv (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl)
 
-  runAt : ∀ {X} → LocState FS → TM.T X → TM.Run X
-  runAt s m = TM.run ιᶠ (SMCore.LocState.ev-log s) m
-
-  -- …its calls, how it ends, and whether it stopped.
-  eventsAt : ∀ {X} → LocState FS → TM.T X → DL.List SigOpEvent
-  eventsAt s m = proj₁ (runAt s m)
-
-  resultAt : ∀ {X} → LocState FS → TM.T X → Res X
-  resultAt s m = proj₂ (runAt s m)
-
-  stopsAt : ∀ {X} → LocState FS → TM.T X → Bool
-  stopsAt s m = is-stopped (resultAt s m)
+  -- plan 0.125 S1: the observation vocabulary lives in `ClosureWellFormedBase`
+  -- now (the arrow case states a callee run in it).
+  open ClosureWellFormedBase {FS} using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_) public
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -127,8 +118,7 @@ module Core {FS : FrameSemantics} where
   -- plan 0.119 D5: a fragment's meaning need not stop, so the machine is
   -- related to it at a ROUND BUDGET `k` (`Once.Denotation.Approx`): what the run
   -- does before its `k+1`-th silent step, a finite tree.
-  ⟪_⟫_ : ∀ {X} → T∞ X → ℕ → TM.T (Ap X)
-  ⟪ m ⟫ k = approx k m
+
 
   bind-arith : ∀ {k r′ a c d : ℕ} (b : ℕ) → k ≤ r′ + a → r′ ≤ b + c → a + c ≤ d → k ≤ b + d
   bind-arith {k} {r′} {a} {c} {d} b pf pg le =
@@ -174,8 +164,16 @@ module Core {FS : FrameSemantics} where
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
+  open ClosureWellFormedBase {FS}
+    using (νOrigin; from-ana; from-layer; prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
+          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy) public
+  open ClosureWellFormedPat {FS}
+    using (valid-unit-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf
+          ; valid-closure-wf; valid-closure-reg-wf; valid-ν-susp-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
   open ClosureWellFormedDef {FS}
-    using (ValidAtWF; νOrigin; from-ana; from-layer; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
+    using (ValidAtWF; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result
+          ; CalleeRunP; module CalleeRunP; callee-run; CallRuns; VAt; fo→valid; valid→fo; μ-layer; valid-μ
+          ; validityWF-transport; validityWF-mem-only
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -186,19 +184,16 @@ module Core {FS : FrameSemantics} where
           -- inline-payload form (no payload location, no payload validity);
           -- `validityWF-frontier-advance` carries a witness across the
           -- allocation this clause performs.
-          ; valid-inl-wf; valid-inl-reg-wf; valid-inr-wf; valid-inr-reg-wf
           -- D181: the CLOSURE witnesses. `valid-closure-reg-wf` is the
           -- inline-env form the `curry` discharge needs for a register-literal
           -- or `Unit` environment.
-          ; valid-closure-wf; valid-closure-reg-wf; valid-pair-wf; valid-ν-susp-wf
           -- D187: the pair's cells, each carrying its own residence.
-          ; CellAt; cell-ptr; cell-inline
+          ; CellAt
           ; module PairValidWF; decomposePairWF
           -- D188: the closure decomposition, which `apply` reads the body, the
           -- environment, the label and the residence off.
           ; module ClosureValidWF; decomposeClosureWF
           ; EnvAt; env-at-loc; env-in-cell
-          ; InlineRep; rep-prim; rep-unit; inline-sv
           ; validityWF-frontier-advance) public
   open MemOps {FS} using (readLoc) public
   open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
@@ -256,11 +251,11 @@ module Core {FS : FrameSemantics} where
   -- `WellFormedFI-irrelevant` bridges the lemma's `wf` and the proof's.
   μ-layer-iso : ∀ {m F} (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
                 {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
-              → ValidAtWF m alloc {μ-type F} x loc s
-              → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)}
+              → ∀ {prog} → ValidAtWF {prog = prog} m alloc {μ-type F} x loc s
+              → ValidAtWF {prog = prog} m alloc {⟦ F ⟧TI (μ-type F)}
                   (retVal (evalᴰ (out-μ wf) x)) loc s
   μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
-    rewrite WellFormedFI-irrelevant wf wf′ = layer-v
+    rewrite WellFormedFI-irrelevant wf wf′ = fo→valid layer-v
 
   -- D189 RETRACTS `ν-not-resident`. It said a ν-typed value is never
   -- machine-resident, and it was provable only because the machine could not
@@ -499,7 +494,7 @@ module Core {FS : FrameSemantics} where
       -- condition and the witness, and `v` is bound by it rather than
       -- computed beside it. The obligation can no longer be mis-stated.
       place      : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r)
-                 → ResultPlace B out-mode (falloc settle) cont-alloc
+                 → ResultPlace {prog = prog} B out-mode (falloc settle) cont-alloc
                      v (floc settle)
       -- D204: WHAT THE RUN LEAVES ALONE.
       --
@@ -675,10 +670,10 @@ module Core {FS : FrameSemantics} where
   -- Half a fix is no fix: residence and evidence must travel in ONE premise, so
   -- that choosing `in-reg` DISCHARGES the memory obligation rather than leaving
   -- it to be supplied separately.
-  data InputAt {A : IRTy} (mIn : AllocMode) (alloc : AllocState {FS})
+  data InputAt {prog : AbstractTrace} {A : IRTy} (mIn : AllocMode) (alloc : AllocState {FS})
                (v : ⟦ A ⟧) (s : LocState FS) : Set where
     in-loc : (loc : ValueLocation FS)
-           → ValidAtWF mIn alloc {A} v loc s
+           → ValidAtWF {prog = prog} mIn alloc {A} v loc s
            → BeforeFrontier alloc loc
            → readReg (regs s) Input1 ≡ SV-Ptr loc → InputAt mIn alloc v s
     in-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v
@@ -715,87 +710,12 @@ module Core {FS : FrameSemantics} where
   -- `evalᴰ ir inp` and `B` — and the ν force needs the same record at a
   -- COALGEBRA `IR A (⟦F⟧TI A)` called on a bare seed. `apply` instantiates
   -- this at `E * A` and is otherwise unchanged.
-  record CalleeRun (prog : AbstractTrace) (fs : FlatState) (ret-pc : ℕ)
-                   -- D337: the caller's return stack, under the pushed `ret-pc`.
-                   (rs : List ℕ)
-                   -- D199: `B` is EXPLICIT. Indexing by the computation
-                   -- rather than by `(ir , inp)` costs its inferability —
-                   -- `TM.T ⟦ B ⟧` pins `⟦ B ⟧`, and `⟦_⟧` is not injective.
-                   (B : IRTy) (comp : T∞ ⟦ B ⟧)
-                   (k : ℕ) : Set where
-    constructor callee-run
-    field
-      steps      : ℕ
-      settle     : FlatState
-      out-mode   : AllocMode
-      cont-alloc : AllocState {FS}
-      run        : FlatSteps prog steps fs settle
-      -- plan 0.97: CONDITIONED, exactly as `ValueRealized`'s three are — and
-      -- for the callee this is not a technicality but the point. A called
-      -- closure may invoke a halting SigOp; then it never reaches its `c-ret`
-      -- and never returns. `live`/`returned`/`place` are what a RETURNING
-      -- callee leaves, and `stops` is the other half.
-      live       : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ false → halted (floc settle) ≡ false
-      -- …and it RETURNED: the block ends in `c-ret`, which pops the address
-      -- the call pushed and leaves the caller's own (empty) stack behind.
-      returned   : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fpc settle ≡ ret-pc
-      -- D320: …without having LEFT (see `ValueRealized.stops`).
-      stops      : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left (floc fs)
-      -- D337: conditioned on RETURNING (see `ValueRealized.no-ret`). Under
-      -- `NotCut` it claimed `[]` of a callee that halted mid-body, whose stack
-      -- still holds `ret-pc` — so no callee that exits could meet it.
-      no-ret     : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fret settle ≡ rs
-      no-link    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → flink settle ≡ nothing
-      -- plan 0.98: the premise supplies the value — see `ValueRealized.place`.
-      place      : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r)
-                 → ResultPlace B out-mode (falloc settle) cont-alloc
-                     v (floc settle)
-      -- Plan 0.105: exact, and the log grows by them — see
-      -- `ValueRealized.log`/`traces-agree`.
-      events     : chain-events run ≡ eventsAt (floc fs) (⟪ comp ⟫ k)
-      log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log (floc fs) DL.++ eventsAt (floc fs) (⟪ comp ⟫ k)
-      progress   : k ≤ budgetLeft k (resultAt (floc fs) (⟪ comp ⟫ k)) + chain-ctrls run
-      -- D204: WHAT THE CALL LEAVES ALONE — the call half of the same fact
-      -- `ValueRealized.mem-pres` states for a straight-line fragment.
-      --
-      -- This is the deeper of the two. `apply` and `Out` cannot prove it: the
-      -- callee's run arrives from `BlockRuns`, so whatever the callee does to
-      -- memory is only ever ASSUMED. Until the field existed, "a call
-      -- preserves the caller's live data" was hidden inside `block-runs`,
-      -- which is why the gap surfaced at `pair` — the one clause that has to
-      -- read a slot back after a sub-run — rather than at the call sites.
-      --
-      -- True for the same reason: the callee runs in its OWN frame
-      -- (`enter-call`) and allocates only fresh heap.
-      -- Conditioned on the CALLER's frontier, not `falloc fs`. `falloc fs` is
-      -- `enter-call pre`, i.e. the CALLEE's — the caller's live data is not
-      -- before that, so the obvious phrasing states something else entirely
-      -- (and something the caller cannot use). The caller supplies `pre` and
-      -- the `enter-call` equation it already has as a premise of `CalleeRuns`.
-      -- D206: quantified over the slot bound `m`, because a callee preserves
-      -- the caller's frame ENTIRELY — it runs in its own (`enter-call`) — not
-      -- merely below some frontier. The caller picks the bound it needs; a
-      -- straight-line fragment could not make this claim, which is why
-      -- `ValueRealized`'s version is fixed at its own `n`.
-      mem-pres   : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
-                 → ∀ (loc : ValueLocation FS)
-                 → BeforeFrontier (record pre { next-slot = m }) loc
-                 → SMCore.MemOps.readLoc (floc settle) loc ≡ SMCore.MemOps.readLoc (floc fs) loc
-      -- D210: …and the call's. `enter-call` SHIFTS the frame, so the claim is
-      -- against the caller's `pre`, which is what a returning callee restores.
-      -- D337: when it RETURNED — a callee halted mid-body is in its own frame.
-      frame-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
-                 → current-frame (falloc settle) ≡ current-frame pre
-
-      bf-mono    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
-                 → ∀ (loc : ValueLocation FS)
-                 → BeforeFrontier (record pre { next-slot = m }) loc
-                 → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
-
-      -- D338: the caller's frame STACK is restored too (see
-      -- `ValueRealized.frames-pres`) — `frame-pres` is its top.
-      frames-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
-                  → saved-frames (falloc settle) ≡ saved-frames pre
+  -- plan 0.125 S1: the record moved to `ClosureWellFormedDef.CalleeRunP`
+  -- (the arrow case of `ValidAtWF` states a callee's run), parameterised by
+  -- where the result is. This is it at `ResultPlace`; fields unchanged.
+  CalleeRun : AbstractTrace → FlatState → ℕ → DL.List ℕ → (B : IRTy) → T∞ ⟦ B ⟧ → ℕ → Set
+  CalleeRun prog fs ret-pc rs B comp k = CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B) fs ret-pc rs comp k
+  module CalleeRun = CalleeRunP
 
   ------------------------------------------------------------------------
   -- D188: THE BLOCK TABLE, as the machine needs it — the one fact `apply`
@@ -813,7 +733,7 @@ module Core {FS : FrameSemantics} where
     ∀ {E A B : IRTy} (body : IR (E IRTy′.* A) B) (env : ⟦ E ⟧) (ℓ : LabelId)
       {m : AllocMode} {alloc' : AllocState {FS}}
       {cloc : ValueLocation FS} {st : LocState FS}
-    → ValidAtWF m alloc' {A IRTy′.⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
+    → ValidAtWF {prog = prog} m alloc' {A IRTy′.⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
     → SMCore.MemOps.readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
     → ∃[ j ]
         ( (find-thunk prog ℓ ≡ just j)
@@ -825,7 +745,7 @@ module Core {FS : FrameSemantics} where
              (envArg : ⟦ E IRTy′.* A ⟧) (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {E IRTy′.* A} mIn' pre-alloc envArg (floc fs)
+           → InputAt {prog} {E IRTy′.* A} mIn' pre-alloc envArg (floc fs)
            → CalleeRun prog fs ret-pc rs B (evalᴰ body envArg) k))
 
   -- D198: the ν analogue of `CalleeRuns`, and a SIBLING rather than an
@@ -848,7 +768,8 @@ module Core {FS : FrameSemantics} where
       {alloc' : AllocState {FS}}
       {vloc : ValueLocation FS} {st : LocState FS}
     → LocMatchesMode Heap vloc
-    → CellAt alloc' T seed vloc st
+    -- plan 0.125 S1 (ν STUB): the seed is opaque in the value now.
+    → (seed-sv : StoredValue FS) → SMCore.MemOps.readLoc st vloc ≡ just seed-sv
     → SMCore.MemOps.readLoc st (sucLoc vloc) ≡ just (SV-Code ℓ)
     → BeforeFrontier alloc' (sucLoc vloc)
     → ∃[ j ]
@@ -857,7 +778,7 @@ module Core {FS : FrameSemantics} where
              (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {T} mIn' pre-alloc seed (floc fs)
+           → readReg (regs (floc fs)) Input1 ≡ seed-sv
            -- D199: an `Ana` block is the coalgebra FOLLOWED BY the
            -- re-suspension of every recursive position, so what it computes is
            -- not `coalg` but the FORCED LAYER — `evalᴰ (Out wf)` of the very ν
@@ -885,7 +806,7 @@ module Core {FS : FrameSemantics} where
              (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
-           → InputAt {A} mIn' pre-alloc x (floc fs)
+           → InputAt {prog} {A} mIn' pre-alloc x (floc fs)
            → CalleeRun prog fs ret-pc rs B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k))
 
   -- All block-table premises in ONE slot, so adding one does not re-thread the
@@ -959,7 +880,7 @@ module Core {FS : FrameSemantics} where
     -- D153: ONE residence premise, carrying its own evidence. The separate
     -- `input-loc` / `ValidAtWF` / `BeforeFrontier` triple is gone — it made
     -- the `in-reg` case unusable.
-    InputAt {A} mIn alloc x s →
+    InputAt {prog} {A} mIn alloc x s →
     -- The OBSERVATION DEPTH, quantified OUTSIDE the witness (D058's "∃ fuel
     -- per depth" shape, now carried by the statement instead of a field). The
     -- machine run does not depend on it; asking for one run that works at
