@@ -86,20 +86,25 @@ signature seL4_CNode_Revoke : Act (Int * Int * Int) Int
 -- Rights Constants
 ------------------------------------------------------------------------
 
--- Capability rights are a bitmask
+-- Capability rights are a bitmask (`seL4_CapRights`: write is bit 0,
+-- read bit 1, grant bit 2, grant-reply bit 3). Each is checked against
+-- the kernel's own rights bitfield by examples/seL4 `check-numbers.sh`.
+
+-- seL4 numbers
 seL4_AllRights : Int
-seL4_AllRights = 15  -- All bits set (Read, Write, Grant, GrantReply)
+seL4_AllRights = 15  -- = RIGHTS_BIT(capAllowRead) | RIGHTS_BIT(capAllowWrite) | RIGHTS_BIT(capAllowGrant) | RIGHTS_BIT(capAllowGrantReply)
 
 seL4_CanRead : Int
-seL4_CanRead = 1
+seL4_CanRead = 2  -- = RIGHTS_BIT(capAllowRead)
 
 seL4_CanWrite : Int
-seL4_CanWrite = 2
+seL4_CanWrite = 1  -- = RIGHTS_BIT(capAllowWrite)
 
 seL4_CanGrant : Int
-seL4_CanGrant = 4
+seL4_CanGrant = 4  -- = RIGHTS_BIT(capAllowGrant)
 
 seL4_CanGrantReply : Int
-seL4_CanGrantReply = 8
+seL4_CanGrantReply = 8  -- = RIGHTS_BIT(capAllowGrantReply)
+-- end seL4 numbers
 
 ------------------------------------------------------------------------

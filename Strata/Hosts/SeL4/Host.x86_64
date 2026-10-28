@@ -17,21 +17,37 @@
 # stack below; its `_start` sets its own heap. `once_sel4_self` answers
 # which program the calling thread runs, from its stack pointer.
 #
+# The Interpretations' shared routines are here too, since every seL4
+# program links this Host: `once_sel4_flatten` / `once_sel4_build` (a
+# SigOp's tuple argument and answer) and `once_sel4_invoke` (an object
+# invocation).
+#
 # `leave` (`once_leave`): calling it ends the run, observed as `returned`.
 # The program prints a fixed line on the debug console (debug kernel)
 # and suspends its own thread (the root task's is `seL4_CapInitThreadTCB`,
 # a started program's is the TCB it was started on).
 #
-# Numbers from the kernel's generated headers (non-MCS, debug, printing):
-# SysCall = -1, SysYield = -7, SysDebugPutChar = -9; TCBSuspend = 11.
-# A syscall saves `%rsp` in `%rbx` around `syscall`, as libsel4 does.
+# The seL4 numbers are the kernel's names (non-MCS, debug, printing),
+# checked against the pinned kernel's headers (examples/seL4
+# `check-numbers.sh`). A syscall saves `%rsp` in `%rbx` around `syscall`,
+# as libsel4 does.
 # ======================================================================
 
-.equ SEL4_SYS_CALL,           -1
-.equ SEL4_SYS_YIELD,          -7
-.equ SEL4_SYS_DEBUG_PUTCHAR,  -9
-.equ SEL4_CAP_INIT_THREAD_TCB, 1
-.equ TCB_SUSPEND,             11
+# seL4 numbers
+.equ SysCall, -1
+.equ SysYield, -7
+.equ SysDebugPutChar, -9
+.equ seL4_CapInitThreadTCB, 1
+.equ SUSPEND_INFO, 0xB000           # = MSG_INFO(TCBSuspend, 0, 0, 0)
+.equ MSG_LABEL_SHIFT, 12            # = __builtin_ctzl(MSG_INFO(1, 0, 0, 0))
+.equ MSG_EXTRA_CAPS_SHIFT, 7        # = __builtin_ctzl(MSG_INFO(0, 0, 1, 0))
+.equ MSG_EXTRA_CAPS_MASK, 3         # = MSG_INFO(0, 0, 3, 0) >> __builtin_ctzl(MSG_INFO(0, 0, 1, 0))
+.equ MSG_LENGTH_MASK, 0x7f          # = MSG_INFO(0, 0, 0, 0x7f)
+.equ BI_IPC_BUFFER, 0x20            # = offsetof(seL4_BootInfo, ipcBuffer)
+.equ IPC_MSG, 8                     # = offsetof(seL4_IPCBuffer, msg)
+.equ IPC_CAPS, 976                  # = offsetof(seL4_IPCBuffer, caps_or_badges)
+# end seL4 numbers
+
 .equ ROOT_STACK_SIZE,         65536
 .equ PROGRAM_SLOTS,           4
 .equ PROGRAM_STACK_SIZE,      65536
@@ -122,6 +138,86 @@ once_sel4_self:
     ret
 .size once_sel4_self, .-once_sel4_self
 
+# once_sel4_flatten: the left-nested n-tuple at rdi (n >= 2, in rcx) into
+# the words at rsi, in order: how the Interpretations read a SigOp's
+# argument (a pair is a cell [fst, snd]). Clobbers rax, rcx, rdi.
+.global once_sel4_flatten
+.type once_sel4_flatten, @function
+once_sel4_flatten:
+1:  cmpq    $1, %rcx
+    je      2f
+    decq    %rcx
+    movq    8(%rdi), %rax
+    movq    %rax, (%rsi,%rcx,8)
+    movq    (%rdi), %rdi
+    jmp     1b
+2:  movq    %rdi, (%rsi)
+    ret
+.size once_sel4_flatten, .-once_sel4_flatten
+
+# once_sel4_build: the n words at rsi (n >= 2, in rcx) as a left-nested
+# tuple allocated at the heap pointer r15 (advanced); the tuple in rax.
+# Clobbers rdx, r8.
+.global once_sel4_build
+.type once_sel4_build, @function
+once_sel4_build:
+    movq    (%rsi), %rax
+    movq    $1, %r8
+1:  cmpq    %rcx, %r8
+    je      2f
+    movq    %rax, 0(%r15)
+    movq    (%rsi,%r8,8), %rdx
+    movq    %rdx, 8(%r15)
+    movq    %r15, %rax
+    addq    $16, %r15
+    incq    %r8
+    jmp     1b
+2:  ret
+.size once_sel4_build, .-once_sel4_build
+
+# once_sel4_invoke: an object invocation, seL4_Call on cap rdi with
+# message info rsi; message words at r12 (at least 4: words 0-3 go in
+# r10, r8, r9, r15), extra caps at r13. Words 4.. and the extra caps go
+# in the root task's IPC buffer (`bootinfo->ipcBuffer`; only the root
+# task has one). Answers the reply's label, the seL4_Error, in rax.
+# Clobbers everything but rsp, rbp, r12, r13: the caller saves r15.
+.global once_sel4_invoke
+.type once_sel4_invoke, @function
+once_sel4_invoke:
+    movq    once_sel4_bootinfo(%rip), %r14
+    movq    BI_IPC_BUFFER(%r14), %r14
+    movq    %rsi, %rcx                  # the extra caps
+    shrq    $MSG_EXTRA_CAPS_SHIFT, %rcx
+    andq    $MSG_EXTRA_CAPS_MASK, %rcx
+    xorq    %rdx, %rdx
+1:  cmpq    %rcx, %rdx
+    je      2f
+    movq    (%r13,%rdx,8), %rax
+    movq    %rax, IPC_CAPS(%r14,%rdx,8)
+    incq    %rdx
+    jmp     1b
+2:  movq    %rsi, %rcx                  # the length
+    andq    $MSG_LENGTH_MASK, %rcx
+    movq    $4, %rdx
+3:  cmpq    %rcx, %rdx
+    jae     4f
+    movq    (%r12,%rdx,8), %rax
+    movq    %rax, IPC_MSG(%r14,%rdx,8)
+    incq    %rdx
+    jmp     3b
+4:  movq    0(%r12), %r10
+    movq    8(%r12), %r8
+    movq    16(%r12), %r9
+    movq    24(%r12), %r15
+    movq    $SysCall, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    movq    %rsi, %rax                  # the reply's label: the error
+    shrq    $MSG_LABEL_SHIFT, %rax
+    ret
+.size once_sel4_invoke, .-once_sel4_invoke
+
 .global once_leave
 .type once_leave, @function
 once_leave:
@@ -130,27 +226,27 @@ once_leave:
 1:  cmpq    %r13, %r12
     je      2f
     movzbq  (%r12), %rdi
-    movq    $SEL4_SYS_DEBUG_PUTCHAR, %rdx
+    movq    $SysDebugPutChar, %rdx
     movq    %rsp, %rbx
     syscall
     movq    %rbx, %rsp
     incq    %r12
     jmp     1b
     # seL4_TCB_Suspend(own TCB): seL4_Call with label TCBSuspend and no
-    # message words (msginfo = label << 12)
-2:  movq    $SEL4_CAP_INIT_THREAD_TCB, %rdi
+    # message words
+2:  movq    $seL4_CapInitThreadTCB, %rdi
     call    once_sel4_self
     testq   %rax, %rax
     jz      3f
     leaq    once_sel4_program_tcb(%rip), %rcx
     movq    (%rcx,%rax,8), %rdi
-3:  movq    $(TCB_SUSPEND << 12), %rsi
-    movq    $SEL4_SYS_CALL, %rdx
+3:  movq    $SUSPEND_INFO, %rsi
+    movq    $SysCall, %rdx
     movq    %rsp, %rbx
     syscall
     movq    %rbx, %rsp
     # Not reached: a suspended thread never runs again
-4:  movq    $SEL4_SYS_YIELD, %rdx
+4:  movq    $SysYield, %rdx
     movq    %rsp, %rbx
     syscall
     movq    %rbx, %rsp

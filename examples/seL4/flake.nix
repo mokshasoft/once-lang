@@ -67,11 +67,27 @@
             objcopy -O elf32-i386 kernel.elf $out/kernel32.elf
             cp -r gen_headers $out/
             cp gen_config/kernel/gen_config.h $out/
+            cp -r autoconf gen_config generated $out/
+            find . -name 'shared_types_gen.h' > $out/shared_types_gen.txt
           '';
         };
 
         onceCompiler = once-lang.packages.${system}.once;
         strata = "${once-lang}/Strata";
+
+        # Every seL4 number in the seL4 Host and Interpretations (each file's
+        # `seL4 numbers` block) against the pinned kernel's headers: every
+        # x86_64 file must have the block, and every .once file with one
+        numbers-check = pkgs.runCommandCC "seL4-once-numbers-check" {
+          nativeBuildInputs = [ pkgs.gawk pkgs.gnugrep ];
+        } ''
+          cd ${once-lang}
+          bash ${./check-numbers.sh} ${seL4-kernel} ${seL4-kernel-x86_64} x86_64 \
+            Strata/Hosts/SeL4/Host.x86_64 Strata/Interpretations/SeL4/*.x86_64 \
+            $(grep -l '^-- seL4 numbers$' Strata/Interpretations/SeL4/*.once) > $TMPDIR/report
+          cat $TMPDIR/report
+          cp $TMPDIR/report $out
+        '';
 
         # The echo image: the root task (Root.once) with the server
         # (program 1) and the client (program 2) linked beside it
@@ -120,11 +136,14 @@
 
       in {
         packages = {
-          inherit seL4-kernel-x86_64 echo-image echo-test simulate;
+          inherit seL4-kernel-x86_64 echo-image echo-test numbers-check simulate;
           default = echo-test;
         };
 
-        checks.echo = echo-test;
+        checks = {
+          echo = echo-test;
+          numbers = numbers-check;
+        };
 
         apps.simulate = {
           type = "app";

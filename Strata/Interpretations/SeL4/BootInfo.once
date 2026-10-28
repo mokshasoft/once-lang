@@ -108,8 +108,10 @@ signature bootinfo_getUntyped : (Int * Int) -> (Int * Int * Int)
 -- Initial Cap Slots (standard seL4 layout)
 ------------------------------------------------------------------------
 
--- These are the standard initial capability slot assignments
+-- These are the standard initial capability slot assignments, checked
+-- against the pinned kernel's headers by examples/seL4 `check-numbers.sh`.
 
+-- seL4 numbers
 seL4_CapNull : Int
 seL4_CapNull = 0
 
@@ -145,5 +147,6 @@ seL4_CapInitThreadIPCBuffer = 10
 
 seL4_CapDomain : Int
 seL4_CapDomain = 11
+-- end seL4 numbers
 
 ------------------------------------------------------------------------

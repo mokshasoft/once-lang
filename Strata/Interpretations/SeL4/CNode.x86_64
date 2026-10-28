@@ -2,282 +2,136 @@
 # seL4 CNode Primitives - x86_64 Implementation
 # ======================================================================
 #
-# CNode operations are capability invocations on CNode objects.
-# They use seL4_Call to invoke the CNode capability with method-specific
-# message formats.
+# An object invocation is an seL4_Call on the object's capability with
+# the method's message info (label, extra caps, length), made by the seL4
+# Host's `once_sel4_invoke`; only the root task has the IPC buffer it
+# needs, so these run in the root task. The answer is the reply's label:
+# the seL4_Error. Parameter order: libsel4's `object-api.xml` (word
+# parameters are message words, capability parameters are extra caps),
+# as the kernel decodes them (`decodeCNodeInvocation`: index, depth,
+# srcIndex, srcDepth, rights, badge). Every seL4 number is in the block
+# below, checked against the pinned kernel by examples/seL4
+# `check-numbers.sh`.
 #
-# seL4 x86_64 syscall convention:
-#   rdx: Syscall number (-6 for seL4_Call)
-#   rdi: Capability to invoke
-#   rsi: MessageInfo
-#   r10, r8, r9, r15: Message registers 0-3
+# SigOp ABI: the argument in rdi (a left-nested tuple of cells
+# [fst, snd]), the answer in rax; every other register is preserved,
+# r15 (Once's heap pointer, and seL4's fourth message register) too.
 #
 # ======================================================================
+
+# seL4 numbers
+.equ REVOKE_INFO, 0x11002           # = MSG_INFO(CNodeRevoke, 0, 0, 2)
+.equ DELETE_INFO, 0x12002           # = MSG_INFO(CNodeDelete, 0, 0, 2)
+.equ COPY_INFO, 0x14085             # = MSG_INFO(CNodeCopy, 0, 1, 5)
+.equ MINT_INFO, 0x15086             # = MSG_INFO(CNodeMint, 0, 1, 6)
+.equ MOVE_INFO, 0x16084             # = MSG_INFO(CNodeMove, 0, 1, 4)
+# end seL4 numbers
+
+# Frame: the flattened arguments, the message words, the extra caps
+.equ ARGS,   0
+.equ WORDS,  64
+.equ CAPS,   112
+.equ FRAME,  144
+
+.macro SAVE_ALL
+    pushq %r15
+    pushq %r14
+    pushq %r13
+    pushq %r12
+    pushq %r11
+    pushq %r10
+    pushq %r9
+    pushq %r8
+    pushq %rbp
+    pushq %rdi
+    pushq %rsi
+    pushq %rdx
+    pushq %rcx
+    pushq %rbx
+.endm
+
+.macro RESTORE_ALL
+    popq %rbx
+    popq %rcx
+    popq %rdx
+    popq %rsi
+    popq %rdi
+    popq %rbp
+    popq %r8
+    popq %r9
+    popq %r10
+    popq %r11
+    popq %r12
+    popq %r13
+    popq %r14
+    popq %r15
+.endm
+
+# Copy argument `idx` (or 0 when idx < 0) to the frame slot `off`
+.macro ARG_TO off, idx
+.if \idx < 0
+    movq    $0, \off(%rsp)
+.else
+    movq    (ARGS + 8 * \idx)(%rsp), %rax
+    movq    %rax, \off(%rsp)
+.endif
+.endm
+
+# An invocation on argument 0's capability: `n` arguments, message info
+# `info`, message words from arguments w0..w5, extra caps from c0..c2.
+.macro SEL4_INVOCATION name, n, info, w0=-1, w1=-1, w2=-1, w3=-1, w4=-1, w5=-1, c0=-1, c1=-1, c2=-1
+.global \name
+.type \name, @function
+\name:
+    SAVE_ALL
+    subq    $FRAME, %rsp
+.if \n == 1
+    movq    %rdi, ARGS(%rsp)
+.else
+    leaq    ARGS(%rsp), %rsi
+    movq    $\n, %rcx
+    call    once_sel4_flatten
+.endif
+    ARG_TO  (WORDS + 0), \w0
+    ARG_TO  (WORDS + 8), \w1
+    ARG_TO  (WORDS + 16), \w2
+    ARG_TO  (WORDS + 24), \w3
+    ARG_TO  (WORDS + 32), \w4
+    ARG_TO  (WORDS + 40), \w5
+    ARG_TO  (CAPS + 0), \c0
+    ARG_TO  (CAPS + 8), \c1
+    ARG_TO  (CAPS + 16), \c2
+    movq    ARGS(%rsp), %rdi
+    movq    $\info, %rsi
+    leaq    WORDS(%rsp), %r12
+    leaq    CAPS(%rsp), %r13
+    call    once_sel4_invoke
+    addq    $FRAME, %rsp
+    RESTORE_ALL
+    ret
+.size \name, .-\name
+.endm
 
 .text
 .align 16
 
-#ifndef ONCE_SEL4_CNODE_X86_64_DEFINED
-#define ONCE_SEL4_CNODE_X86_64_DEFINED
+# seL4_CNode_Copy : (destRoot, destIndex, destDepth, srcRoot, srcIndex,
+#                    srcDepth, rights) -> seL4_Error
+# Words: destIndex, destDepth, srcIndex, srcDepth, rights; cap: srcRoot.
+SEL4_INVOCATION seL4_CNode_Copy, 7, COPY_INFO, w0=1, w1=2, w2=4, w3=5, w4=6, c0=3
 
-.equ SEL4_SYS_CALL, -6
+# seL4_CNode_Mint : (destRoot, destIndex, destDepth, srcRoot, srcIndex,
+#                    srcDepth, rights, badge) -> seL4_Error
+# Words: destIndex, destDepth, srcIndex, srcDepth, rights, badge;
+# cap: srcRoot.
+SEL4_INVOCATION seL4_CNode_Mint, 8, MINT_INFO, w0=1, w1=2, w2=4, w3=5, w4=6, w5=7, c0=3
 
-# CNode method labels (in MessageInfo)
-.equ CNODE_COPY_LABEL,   0x1000
-.equ CNODE_MINT_LABEL,   0x2000
-.equ CNODE_MOVE_LABEL,   0x3000
-.equ CNODE_DELETE_LABEL, 0x4000
-.equ CNODE_REVOKE_LABEL, 0x5000
+# seL4_CNode_Move : (destRoot, destIndex, destDepth, srcRoot, srcIndex,
+#                    srcDepth, rights) -> seL4_Error
+# Words: destIndex, destDepth, srcIndex, srcDepth; cap: srcRoot. (A move
+# keeps the capability's rights: the `rights` argument is not sent.)
+SEL4_INVOCATION seL4_CNode_Move, 7, MOVE_INFO, w0=1, w1=2, w2=4, w3=5, c0=3
 
-# ----------------------------------------------------------------------
-# seL4_CNode_Copy - Copy a capability
-# ----------------------------------------------------------------------
-# Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights)
-# Output: Int (seL4_Error)
-
-.global seL4_CNode_Copy
-.type seL4_CNode_Copy, @function
-seL4_CNode_Copy:
-    push    %rbp
-    mov     %rsp, %rbp
-    push    %rbx
-    push    %r12
-    push    %r13
-    push    %r14
-    push    %r15
-
-    # Unpack 7-element tuple
-    mov     (%rdi), %r12        # destRoot (invoked cap)
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r10        # destIndex -> mr0
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r8         # destDepth -> mr1
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r13        # srcRoot -> mr2 (extra cap)
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r9         # srcIndex -> mr2
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %rax        # srcDepth (IPC buffer)
-    mov     8(%rdi), %rcx       # rights (IPC buffer)
-
-    # MessageInfo: label | extraCaps | length
-    # For copy: 1 extra cap (srcRoot), 4 MRs
-    mov     $(CNODE_COPY_LABEL | 0x84), %rsi
-
-    mov     %r9, %r15           # mr3 = srcDepth (reusing srcIndex reg)
-
-    mov     %r12, %rdi          # Invoke destRoot
-    mov     $SEL4_SYS_CALL, %rdx
-
-    mov     %rsp, %rbx
-    syscall
-    mov     %rbx, %rsp
-
-    # Extract error from reply label
-    mov     %rsi, %rax
-    shr     $12, %rax
-
-    pop     %r15
-    pop     %r14
-    pop     %r13
-    pop     %r12
-    pop     %rbx
-    pop     %rbp
-    ret
-.size seL4_CNode_Copy, .-seL4_CNode_Copy
-
-# ----------------------------------------------------------------------
-# seL4_CNode_Mint - Copy capability with badge
-# ----------------------------------------------------------------------
-# Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights, badge)
-# Output: Int (seL4_Error)
-
-.global seL4_CNode_Mint
-.type seL4_CNode_Mint, @function
-seL4_CNode_Mint:
-    push    %rbp
-    mov     %rsp, %rbp
-    push    %rbx
-    push    %r12
-    push    %r13
-    push    %r14
-    push    %r15
-
-    # Unpack 8-element tuple
-    mov     (%rdi), %r12        # destRoot
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r10        # destIndex -> mr0
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r8         # destDepth -> mr1
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r13        # srcRoot
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r9         # srcIndex -> mr2
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r14        # srcDepth
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %rax        # rights
-    mov     8(%rdi), %rcx       # badge
-
-    mov     $(CNODE_MINT_LABEL | 0x84), %rsi
-    mov     %r14, %r15          # mr3 = srcDepth
-
-    mov     %r12, %rdi
-    mov     $SEL4_SYS_CALL, %rdx
-
-    mov     %rsp, %rbx
-    syscall
-    mov     %rbx, %rsp
-
-    mov     %rsi, %rax
-    shr     $12, %rax
-
-    pop     %r15
-    pop     %r14
-    pop     %r13
-    pop     %r12
-    pop     %rbx
-    pop     %rbp
-    ret
-.size seL4_CNode_Mint, .-seL4_CNode_Mint
-
-# ----------------------------------------------------------------------
-# seL4_CNode_Move - Move a capability
-# ----------------------------------------------------------------------
-# Input: (destRoot, destIndex, destDepth, srcRoot, srcIndex, srcDepth, rights)
-# Output: Int (seL4_Error)
-
-.global seL4_CNode_Move
-.type seL4_CNode_Move, @function
-seL4_CNode_Move:
-    push    %rbp
-    mov     %rsp, %rbp
-    push    %rbx
-    push    %r12
-    push    %r13
-    push    %r14
-    push    %r15
-
-    mov     (%rdi), %r12
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r10
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r8
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r13
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r9
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r14
-    mov     8(%rdi), %rax
-
-    mov     $(CNODE_MOVE_LABEL | 0x84), %rsi
-    mov     %r14, %r15
-
-    mov     %r12, %rdi
-    mov     $SEL4_SYS_CALL, %rdx
-
-    mov     %rsp, %rbx
-    syscall
-    mov     %rbx, %rsp
-
-    mov     %rsi, %rax
-    shr     $12, %rax
-
-    pop     %r15
-    pop     %r14
-    pop     %r13
-    pop     %r12
-    pop     %rbx
-    pop     %rbp
-    ret
-.size seL4_CNode_Move, .-seL4_CNode_Move
-
-# ----------------------------------------------------------------------
-# seL4_CNode_Delete - Delete a capability
-# ----------------------------------------------------------------------
-# Input: (root, index, depth)
-# Output: Int (seL4_Error)
-
-.global seL4_CNode_Delete
-.type seL4_CNode_Delete, @function
-seL4_CNode_Delete:
-    push    %rbp
-    mov     %rsp, %rbp
-    push    %rbx
-
-    # Unpack 3-element tuple
-    mov     (%rdi), %rax        # root
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r10        # index -> mr0
-    mov     8(%rdi), %r8        # depth -> mr1
-
-    mov     $(CNODE_DELETE_LABEL | 2), %rsi  # 2 MRs
-    mov     %rax, %rdi
-    mov     $SEL4_SYS_CALL, %rdx
-
-    mov     %rsp, %rbx
-    syscall
-    mov     %rbx, %rsp
-
-    mov     %rsi, %rax
-    shr     $12, %rax
-
-    pop     %rbx
-    pop     %rbp
-    ret
-.size seL4_CNode_Delete, .-seL4_CNode_Delete
-
-# ----------------------------------------------------------------------
-# seL4_CNode_Revoke - Revoke derived capabilities
-# ----------------------------------------------------------------------
-# Input: (root, index, depth)
-# Output: Int (seL4_Error)
-
-.global seL4_CNode_Revoke
-.type seL4_CNode_Revoke, @function
-seL4_CNode_Revoke:
-    push    %rbp
-    mov     %rsp, %rbp
-    push    %rbx
-
-    mov     (%rdi), %rax
-    mov     8(%rdi), %rdi
-
-    mov     (%rdi), %r10
-    mov     8(%rdi), %r8
-
-    mov     $(CNODE_REVOKE_LABEL | 2), %rsi
-    mov     %rax, %rdi
-    mov     $SEL4_SYS_CALL, %rdx
-
-    mov     %rsp, %rbx
-    syscall
-    mov     %rbx, %rsp
-
-    mov     %rsi, %rax
-    shr     $12, %rax
-
-    pop     %rbx
-    pop     %rbp
-    ret
-.size seL4_CNode_Revoke, .-seL4_CNode_Revoke
-
-#endif // ONCE_SEL4_CNODE_X86_64_DEFINED
+# seL4_CNode_Delete / seL4_CNode_Revoke : (root, index, depth) -> seL4_Error
+SEL4_INVOCATION seL4_CNode_Delete, 3, DELETE_INFO, w0=1, w1=2
+SEL4_INVOCATION seL4_CNode_Revoke, 3, REVOKE_INFO, w0=1, w1=2

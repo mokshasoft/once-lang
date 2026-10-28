@@ -11,19 +11,24 @@
 # `start` is seL4_TCB_WriteRegisters on the thread with resume_target = 1
 # and two registers, rip and rsp (seL4_UserContext's first two): message
 # words resume/arch flags, count, rip, rsp — four words, so no IPC buffer.
-# Label TCBWriteRegisters = 3 (non-MCS, the pinned kernel's generated
-# `api/invocation.h`).
+# The seL4 numbers are the kernel's names, checked against the pinned
+# kernel by examples/seL4 `check-numbers.sh`.
 #
 # SigOp ABI: the argument in rdi, the answer in rax; every other register
 # is preserved (r15, Once's heap pointer, is seL4's fourth message word).
 #
 # ======================================================================
 
-.equ SEL4_SYS_CALL,         -1
-.equ TCB_WRITE_REGISTERS,   3
-.equ WRITE_REGISTERS_INFO,  (TCB_WRITE_REGISTERS << 12) | 4
+# seL4 numbers
+.equ SysCall, -1
+.equ TCBWriteRegisters, 3
+.equ seL4_InvalidArgument, 1
+.equ UC_RIP, 0                  # = offsetof(seL4_UserContext, rip) / sizeof(seL4_Word)
+.equ UC_RSP, 1                  # = offsetof(seL4_UserContext, rsp) / sizeof(seL4_Word)
+# end seL4 numbers
+
+.equ WRITE_REGISTERS_INFO,  (TCBWriteRegisters << 12) | 4
 .equ PROGRAM_SLOTS,         4
-.equ SEL4_INVALID_ARGUMENT, 1
 
 .text
 .align 16
@@ -49,7 +54,7 @@ start:
     movq    8(%rcx), %r12               # program
     movq    (%rcx), %rbx                # tcb
     movq    8(%rdi), %rdx               # arg
-    movq    $SEL4_INVALID_ARGUMENT, %rax
+    movq    $seL4_InvalidArgument, %rax
     cmpq    $1, %r12
     jb      1f
     cmpq    $PROGRAM_SLOTS, %r12
@@ -67,8 +72,8 @@ start:
     movq    %rbx, %rdi                  # the thread
     movq    $WRITE_REGISTERS_INFO, %rsi
     movq    $1, %r10                    # resume_target = 1, arch_flags = 0
-    movq    $2, %r8                     # count: rip, rsp
-    movq    $SEL4_SYS_CALL, %rdx
+    movq    $2, %r8                     # count: rip, rsp (UC_RIP, UC_RSP)
+    movq    $SysCall, %rdx
     movq    %rsp, %rbx
     syscall
     movq    %rbx, %rsp

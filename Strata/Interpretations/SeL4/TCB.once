@@ -118,10 +118,15 @@ signature seL4_TCB_Suspend : Act Int Int
 -- Priority Constants
 ------------------------------------------------------------------------
 
+-- Checked against the pinned kernel's headers by examples/seL4
+-- `check-numbers.sh`.
+
+-- seL4 numbers
 seL4_MaxPrio : Int
 seL4_MaxPrio = 255
 
 seL4_MinPrio : Int
 seL4_MinPrio = 0
+-- end seL4 numbers
 
 ------------------------------------------------------------------------

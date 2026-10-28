@@ -6,7 +6,8 @@
 #   rdx: syscall number; rdi: destination/source cap (out: badge);
 #   rsi: message info (in and out); r10, r8, r9, r15: message words 0-3;
 #   `syscall` clobbers rcx, r11; rsp is kept in rbx across it.
-# Syscall numbers from the pinned kernel's generated `syscall.h`.
+# The syscall numbers are the kernel's names, checked against the pinned
+# kernel by examples/seL4 `check-numbers.sh`.
 # Messages are the four register words only: no IPC buffer is needed.
 #
 # SigOp ABI: the argument in rdi (a left-nested tuple of cells
@@ -17,14 +18,16 @@
 #
 # ======================================================================
 
-.equ SEL4_SYS_CALL,         -1
-.equ SEL4_SYS_REPLY_RECV,   -2
-.equ SEL4_SYS_SEND,         -3
-.equ SEL4_SYS_NB_SEND,      -4
-.equ SEL4_SYS_RECV,         -5
-.equ SEL4_SYS_REPLY,        -6
-.equ SEL4_SYS_YIELD,        -7
-.equ SEL4_SYS_NB_RECV,      -8
+# seL4 numbers
+.equ SysCall, -1
+.equ SysReplyRecv, -2
+.equ SysSend, -3
+.equ SysNBSend, -4
+.equ SysRecv, -5
+.equ SysReply, -6
+.equ SysYield, -7
+.equ SysNBRecv, -8
+# end seL4 numbers
 
 # Frame: the flattened arguments, the results
 .equ ARGS,   0
@@ -78,7 +81,7 @@
 .macro FLATTEN n
     leaq    ARGS(%rsp), %rsi
     movq    $\n, %rcx
-    call    ipc_flatten
+    call    once_sel4_flatten
 .endm
 
 # Message words 0-3 from ARGS slots a..a+3
@@ -102,40 +105,14 @@
     movq    SAVED_R15(%rsp), %r15
     leaq    RES(%rsp), %rsi
     movq    $\n, %rcx
-    call    ipc_build
+    call    once_sel4_build
 .endm
 
 .text
 .align 16
 
-# ipc_flatten: the left-nested n-tuple at rdi (n >= 2, in rcx) into the
-# words at rsi, in order. Clobbers rax, rcx, rdi.
-ipc_flatten:
-1:  cmpq    $1, %rcx
-    je      2f
-    decq    %rcx
-    movq    8(%rdi), %rax
-    movq    %rax, (%rsi,%rcx,8)
-    movq    (%rdi), %rdi
-    jmp     1b
-2:  movq    %rdi, (%rsi)
-    ret
-
-# ipc_build: the n words at rsi (n >= 2, in rcx) as a left-nested tuple
-# allocated at r15 (advanced); the tuple in rax. Clobbers rdx, r8.
-ipc_build:
-    movq    (%rsi), %rax
-    movq    $1, %r8
-1:  cmpq    %rcx, %r8
-    je      2f
-    movq    %rax, 0(%r15)
-    movq    (%rsi,%r8,8), %rdx
-    movq    %rdx, 8(%r15)
-    movq    %r15, %rax
-    addq    $16, %r15
-    incq    %r8
-    jmp     1b
-2:  ret
+# (The tuple argument is read by the seL4 Host's `once_sel4_flatten`, a
+# tuple answer built by its `once_sel4_build`.)
 
 # ----------------------------------------------------------------------
 # seL4_Yield : Unit -> Unit
@@ -144,7 +121,7 @@ ipc_build:
 .type seL4_Yield, @function
 seL4_Yield:
     SAVE_ALL
-    SYSCALL_SEL4 SEL4_SYS_YIELD
+    SYSCALL_SEL4 SysYield
     movq    (13 * 8)(%rsp), %r15
     RESTORE_ALL_BUT_R15
     xorq    %rax, %rax
@@ -173,8 +150,8 @@ seL4_Yield:
 .size \name, .-\name
 .endm
 
-SEND_OP seL4_Send, SEL4_SYS_SEND
-SEND_OP seL4_NBSend, SEL4_SYS_NB_SEND
+SEND_OP seL4_Send, SysSend
+SEND_OP seL4_NBSend, SysNBSend
 
 # ----------------------------------------------------------------------
 # seL4_Recv / seL4_NBRecv : (src, reply) -> (badge, msgInfo, mr0..mr3)
@@ -199,8 +176,8 @@ SEND_OP seL4_NBSend, SEL4_SYS_NB_SEND
 .size \name, .-\name
 .endm
 
-RECV_OP seL4_Recv, SEL4_SYS_RECV
-RECV_OP seL4_NBRecv, SEL4_SYS_NB_RECV
+RECV_OP seL4_Recv, SysRecv
+RECV_OP seL4_NBRecv, SysNBRecv
 
 # ----------------------------------------------------------------------
 # seL4_Call : (cap, msgInfo, mr0, mr1, mr2, mr3) -> (msgInfo, mr0..mr3)
@@ -214,7 +191,7 @@ seL4_Call:
     movq    (ARGS + 0)(%rsp), %rdi
     movq    (ARGS + 8)(%rsp), %rsi
     LOAD_MRS 2
-    SYSCALL_SEL4 SEL4_SYS_CALL
+    SYSCALL_SEL4 SysCall
     movq    %rsi, (RES + 0)(%rsp)
     STORE_MRS 1
     ANSWER_TUPLE 5
@@ -234,7 +211,7 @@ seL4_Reply:
     FLATTEN 5
     movq    (ARGS + 0)(%rsp), %rsi
     LOAD_MRS 1
-    SYSCALL_SEL4 SEL4_SYS_REPLY
+    SYSCALL_SEL4 SysReply
     movq    SAVED_R15(%rsp), %r15
     addq    $FRAME, %rsp
     RESTORE_ALL_BUT_R15
@@ -255,7 +232,7 @@ seL4_ReplyRecv:
     movq    (ARGS + 0)(%rsp), %rdi
     movq    (ARGS + 8)(%rsp), %rsi
     LOAD_MRS 2
-    SYSCALL_SEL4 SEL4_SYS_REPLY_RECV
+    SYSCALL_SEL4 SysReplyRecv
     movq    %rdi, (RES + 0)(%rsp)
     movq    %rsi, (RES + 8)(%rsp)
     STORE_MRS 2

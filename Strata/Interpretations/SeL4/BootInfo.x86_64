@@ -5,8 +5,8 @@
 # The kernel passes the BootInfo pointer to the root task in `rdi`; the
 # seL4 Host saves it at entry (`once_sel4_bootinfo`, Host.x86_64).
 #
-# Offsets are seL4_BootInfo's (libsel4 `bootinfo_types.h`, non-MCS,
-# 64-bit words), checked against the pinned kernel (plan 0.127).
+# Offsets are seL4_BootInfo's (libsel4 `bootinfo_types.h`), each checked
+# against the pinned kernel's headers by examples/seL4 `check-numbers.sh`.
 #
 # SigOp ABI (as the compiler calls it): the argument in rdi, the answer
 # in rax; a pair is a pointer to a 16-byte cell [fst, snd], wider tuples
@@ -18,28 +18,22 @@
 .text
 .align 16
 
-# seL4_BootInfo field offsets
-.equ BI_EXTRA_LEN,          0x00
-.equ BI_NODE_ID,            0x08
-.equ BI_NUM_NODES,          0x10
-.equ BI_NUM_IOPT_LEVELS,    0x18
-.equ BI_IPC_BUFFER,         0x20
-.equ BI_EMPTY,              0x28
-.equ BI_SHARED_FRAMES,      0x38
-.equ BI_USER_IMAGE_FRAMES,  0x48
-.equ BI_USER_IMAGE_PAGING,  0x58
-.equ BI_IO_SPACE_CAPS,      0x68
-.equ BI_EXTRA_BI_PAGES,     0x78
-.equ BI_INIT_CNODE_SIZE,    0x88
-.equ BI_INIT_DOMAIN,        0x90
-.equ BI_UNTYPED,            0x98
-.equ BI_UNTYPED_LIST,       0xA8
-
-# seL4_UntypedDesc: paddr (word), sizeBits (byte), isDevice (byte), padding
-.equ UNTYPED_DESC_SIZE,     16
-.equ UD_PADDR,              0
-.equ UD_SIZE_BITS,          8
-.equ UD_IS_DEVICE,          9
+# seL4 numbers
+.equ BI_IPC_BUFFER, 0x20            # = offsetof(seL4_BootInfo, ipcBuffer)
+.equ BI_EMPTY, 0x28                 # = offsetof(seL4_BootInfo, empty)
+.equ BI_USER_IMAGE_FRAMES, 0x48     # = offsetof(seL4_BootInfo, userImageFrames)
+.equ BI_INIT_DOMAIN, 0x90           # = offsetof(seL4_BootInfo, initThreadDomain)
+.equ BI_UNTYPED, 0x98               # = offsetof(seL4_BootInfo, untyped)
+.equ BI_UNTYPED_LIST, 0xA8          # = offsetof(seL4_BootInfo, untypedList)
+.equ SLOT_REGION_END, 8             # = offsetof(seL4_SlotRegion, end)
+.equ UNTYPED_DESC_SIZE_BITS, 4      # = (sizeof(seL4_UntypedDesc) == 16) ? 4 : -1
+.equ UD_PADDR, 0                    # = offsetof(seL4_UntypedDesc, paddr)
+.equ UD_SIZE_BITS, 8                # = offsetof(seL4_UntypedDesc, sizeBits)
+.equ UD_IS_DEVICE, 9                # = offsetof(seL4_UntypedDesc, isDevice)
+.equ seL4_CapInitThreadTCB, 1
+.equ seL4_CapInitThreadCNode, 2
+.equ seL4_CapInitThreadVSpace, 3
+# end seL4 numbers
 
 # ----------------------------------------------------------------------
 # getBootInfo : Unit -> Int
@@ -75,7 +69,7 @@ bootinfo_emptyStart:
 .global bootinfo_emptyEnd
 .type bootinfo_emptyEnd, @function
 bootinfo_emptyEnd:
-    movq    (BI_EMPTY + 8)(%rdi), %rax
+    movq    (BI_EMPTY + SLOT_REGION_END)(%rdi), %rax
     ret
 .size bootinfo_emptyEnd, .-bootinfo_emptyEnd
 
@@ -85,7 +79,7 @@ bootinfo_emptyEnd:
 .global bootinfo_untypedCount
 .type bootinfo_untypedCount, @function
 bootinfo_untypedCount:
-    movq    (BI_UNTYPED + 8)(%rdi), %rax
+    movq    (BI_UNTYPED + SLOT_REGION_END)(%rdi), %rax
     subq    BI_UNTYPED(%rdi), %rax
     ret
 .size bootinfo_untypedCount, .-bootinfo_untypedCount
@@ -106,21 +100,21 @@ bootinfo_untypedStart:
 .global bootinfo_initThreadTCB
 .type bootinfo_initThreadTCB, @function
 bootinfo_initThreadTCB:
-    movq    $1, %rax
+    movq    $seL4_CapInitThreadTCB, %rax
     ret
 .size bootinfo_initThreadTCB, .-bootinfo_initThreadTCB
 
 .global bootinfo_initThreadCNode
 .type bootinfo_initThreadCNode, @function
 bootinfo_initThreadCNode:
-    movq    $2, %rax
+    movq    $seL4_CapInitThreadCNode, %rax
     ret
 .size bootinfo_initThreadCNode, .-bootinfo_initThreadCNode
 
 .global bootinfo_initThreadVSpace
 .type bootinfo_initThreadVSpace, @function
 bootinfo_initThreadVSpace:
-    movq    $3, %rax
+    movq    $seL4_CapInitThreadVSpace, %rax
     ret
 .size bootinfo_initThreadVSpace, .-bootinfo_initThreadVSpace
 
@@ -130,7 +124,7 @@ bootinfo_initThreadVSpace:
 .global bootinfo_userImageFrames
 .type bootinfo_userImageFrames, @function
 bootinfo_userImageFrames:
-    movq    (BI_USER_IMAGE_FRAMES + 8)(%rdi), %rax
+    movq    (BI_USER_IMAGE_FRAMES + SLOT_REGION_END)(%rdi), %rax
     subq    BI_USER_IMAGE_FRAMES(%rdi), %rax
     ret
 .size bootinfo_userImageFrames, .-bootinfo_userImageFrames
@@ -155,7 +149,7 @@ bootinfo_getUntyped:
     pushq   %rcx
     pushq   %rdx
     movq    8(%rdi), %rcx               # index
-    shlq    $4, %rcx                    # * UNTYPED_DESC_SIZE
+    shlq    $UNTYPED_DESC_SIZE_BITS, %rcx   # * sizeof(seL4_UntypedDesc)
     addq    (%rdi), %rcx                # + bootinfo
     addq    $BI_UNTYPED_LIST, %rcx      # rcx = &untypedList[index]
     movq    UD_PADDR(%rcx), %rax
