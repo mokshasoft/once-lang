@@ -51,8 +51,8 @@ open import Once.Target.Arch using (arch-numerics)
 import Once.Denotation.Behavior as B
 open import Once.IR.Semantics.Trace using (interp)
 open import Once.Contract using (Impl)
-open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
-open import Once.Metatheory.Trace using (WB-trans; WB-sym)
+open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
+open import Once.Metatheory.Trace using (WB-trans; WB-sym; ≈⇒⊑)
 open import Once.Adequacy.MachineTrace using (silentTr)
 open import Once.Spec.Correct using (CorrectCompiler)
 open import Once.Spec.Signature using (Signature; WellFormed)
@@ -107,6 +107,11 @@ exec arch Σ J bytes with wellFormed? Σ
 _≈_ : Tr ⊤ → Tr ⊤ → Set
 b₁ ≈ b₂ = b₁ ≈ᵗ⟨ _≡_ ⟩ b₂
 
+-- The claim's relation (`Spec.Correct`'s `_⊑_`, D347): the run follows the
+-- meaning up to running out. The bridges below prove the stronger `_≈_`.
+_⊑_ : Tr ⊤ → Tr ⊤ → Set
+b₁ ⊑ b₂ = b₁ ⊑ᵗ⟨ _≡_ ⟩ b₂
+
 ------------------------------------------------------------------------
 -- The bridges still owed
 ------------------------------------------------------------------------
@@ -156,18 +161,18 @@ module _ (br : Bridges) where
   correct : ∀ arch doOpt src →
       ( ∀ bytes → compile arch doOpt src ≡ just bytes →
           Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible (arch-numerics arch) tp
-                           × (∀ J → exec arch (signature tp) J bytes ≈ behaviour (arch-numerics arch) tp J)) )
+                           × (∀ J → exec arch (signature tp) J bytes ⊑ behaviour (arch-numerics arch) tp J)) )
     × ( ∀ tp → src ⊢ tp → Admissible (arch-numerics arch) tp →
           Σ[ bytes ∈ List Byte ] (compile arch doOpt src ≡ just bytes) )
   correct arch doOpt src = soundness , completeness
     where
       soundness : ∀ bytes → compile arch doOpt src ≡ just bytes →
           Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible (arch-numerics arch) tp
-                           × (∀ J → exec arch (signature tp) J bytes ≈ behaviour (arch-numerics arch) tp J))
+                           × (∀ J → exec arch (signature tp) J bytes ⊑ behaviour (arch-numerics arch) tp J))
       soundness bytes eq with bind-just (toSource src) (VC.compile arch doOpt) eq
       ... | srcC , eqS , eqC with proj₁ (VC.correctᵈ arch doOpt srcC) bytes eqC
       ...   | tp , ⊢tp , adm , runs with sound arch src srcC tp eqS ⊢tp adm
-      ...     | tp′ , ⊢tp′ , adm′ , u , means = tp′ , ⊢tp′ , adm′ , λ J → behaves J
+      ...     | tp′ , ⊢tp′ , adm′ , u , means = tp′ , ⊢tp′ , adm′ , λ J → ≈⇒⊑ (behaves J)
         where
           behaves : ∀ J → exec arch (signature tp′) J bytes ≈ behaviour (arch-numerics arch) tp′ J
           behaves J with exec-wf arch tp′ J bytes
@@ -197,7 +202,7 @@ module _ (br : Bridges) where
     ; sigOf          = signature
     ; ⟦_⟧ˢ           = λ arch tp J → behaviour (arch-numerics arch) tp J
     ; exec           = exec
-    ; _≈_            = _≈_
+    ; _⊑_            = _⊑_
     ; Admissible     = λ arch → Admissible (arch-numerics arch)
     ; compile        = compile
     ; correct        = correct

@@ -53,7 +53,7 @@ open import Once.Spec.Metatheory using (Freyd; Central; Commute; pairK; lift; li
 
 open Effect Σ
 open Observation Σ using (World)
-open import Once.Spec.Trace using (End; returned; halted; returned≈; halted≈)
+open import Once.Spec.Trace using (End; returned; halted; exhausted; returned≈; halted≈; exhausted≈)
 open Equivalence Σ using (_≃_)
 open Bisim Σ
 open RunM Σ
@@ -80,6 +80,7 @@ private
   reflEnd {e = nothing}             = cut≈
   reflEnd {e = just (returned x)}   = end≈ (returned≈ refl)
   reflEnd {e = just halted}         = end≈ halted≈
+  reflEnd {e = just exhausted}      = end≈ exhausted≈
 
 Related-refl : ∀ {X : Set} (m : T∞ X) → Related _≡_ m m
 Related-refl m = Related-self (λ _ → reflEnd)

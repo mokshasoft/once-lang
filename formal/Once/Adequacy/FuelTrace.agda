@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Signature using (Event)
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
-open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; returned≈; halted≈; _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (End; returned; halted; exhausted; Tr; module Tr; returned≈; halted≈; exhausted≈; _≈ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace
   using (bindD; bind⇓; bind⇓⁻; nowInv; ⇓-det; pre; preStep; Depth; ObsR; MaybeEnd; cut≈; end≈; fromDepth)
 open import Once.Adequacy.MachineTrace using (Step; silent; emit; stop; stuck; listTr; never; module Machine)
@@ -233,6 +233,7 @@ module Agree {S₁ S₂ : Set} (δ₁ : S₁ → Step S₁) (δ₂ : S₂ → St
     endRefl nothing             = cut≈
     endRefl (just (returned x)) = end≈ (returned≈ refl)
     endRefl (just halted)       = end≈ halted≈
+    endRefl (just exhausted)    = end≈ exhausted≈
 
     obsRefl : ∀ (o : Obs) → ObsR _≡_ o o
     obsRefl o = refl , endRefl (proj₂ o)

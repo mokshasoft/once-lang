@@ -19,16 +19,20 @@ module Once.Spec.Trace where
 
 open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Signature using (Event)
 open import Once.Spec.Delay using (Delay; _⇓_; _≈⟨_⟩_)
 
--- How a run ends: with a value, or halted by a call with no answer.
+-- How a run ends: with a value, halted by a call with no answer, or
+-- exhausted: out of memory. A source program never runs out (the Spec's
+-- model has unlimited memory); only a compiled program's run ends
+-- `exhausted` (D347).
 data End (X : Set) : Set where
-  returned : X → End X
-  halted   : End X
+  returned  : X → End X
+  halted    : End X
+  exhausted : End X
 
 record Tr (X : Set) : Set where
   coinductive
@@ -41,8 +45,9 @@ open Tr
 
 -- Two ends: the same way, the values related.
 data EndRel {X : Set} (R : X → X → Set) : End X → End X → Set where
-  returned≈ : ∀ {x y} → R x y → EndRel R (returned x) (returned y)
-  halted≈   : EndRel R halted halted
+  returned≈  : ∀ {x y} → R x y → EndRel R (returned x) (returned y)
+  halted≈    : EndRel R halted halted
+  exhausted≈ : EndRel R exhausted exhausted
 
 -- Two visible steps: related ends, or the same call and related rests.
 StepRel : ∀ {X : Set} → (X → X → Set) → (Tr X → Tr X → Set) → End X ⊎ (Event × Tr X) → End X ⊎ (Event × Tr X) → Set
@@ -57,6 +62,31 @@ record _≈ᵗ⟨_⟩_ {X : Set} (t : Tr X) (R : X → X → Set) (t′ : Tr X) 
 open _≈ᵗ⟨_⟩_
 
 infix 4 _≈ᵗ⟨_⟩_
+
+------------------------------------------------------------------------
+-- Up to running out
+------------------------------------------------------------------------
+
+-- `t ⊑ᵗ⟨ R ⟩ s`: the run t does what s does, except that it may end
+-- `exhausted` at any point, and then it matches whatever s does from there
+-- on (CakeML's `extend_with_resource_limit`). Every call t makes before it
+-- runs out is the call s makes; t never stops silently where s goes on, and
+-- never goes on where s ends. It is not symmetric: s is the source's trace,
+-- which never runs out. A run that ran out at once matches every s; that a
+-- program does NOT run out is a separate, space claim (D347).
+
+record _⊑ᵗ⟨_⟩_ {X : Set} (t : Tr X) (R : X → X → Set) (s : Tr X) : Set where
+  coinductive
+  field
+    -- t's next visible step: it ran out, or s takes a step related to it
+    sound    : ∀ a → next t ⇓ a →
+               a ≡ inj₁ exhausted ⊎ ∃[ b ] (next s ⇓ b × StepRel R (λ u u′ → u ⊑ᵗ⟨ R ⟩ u′) a b)
+    -- s's next visible step: t runs out, or takes a step related to it
+    complete : ∀ b → next s ⇓ b →
+               next t ⇓ inj₁ exhausted ⊎ ∃[ a ] (next t ⇓ a × StepRel R (λ u u′ → u ⊑ᵗ⟨ R ⟩ u′) a b)
+open _⊑ᵗ⟨_⟩_
+
+infix 4 _⊑ᵗ⟨_⟩_
 
 -- The calls a trace makes first.
 data Calls {X : Set} : Tr X → List Event → Set where

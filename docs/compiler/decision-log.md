@@ -19740,3 +19740,43 @@ already stood on the declaration.
   comment, recovered by formatting each file's text from before the first reformat (master `39da13d89`) with
   the new formatter; every other line is unchanged.
 * The compile path is untouched: `once fmt`'s modules only.
+
+## D347 — RUNNING OUT IS AN END: A COMPILED RUN FOLLOWS ITS MEANING UP TO RUNNING OUT (2026-10-28)
+
+**Refines** D318 (behaviour is a trace, compared by weak bisimilarity) and D320 (the Host). **Decided** by the
+user 2026-10-28 (plan 0.123 A, its A.6 draft): "Lets make the Spec change". Found by plan 0.127: an seL4 root
+task ran out of its 64 KiB heap and wrote over its own stack.
+
+### Context
+Running out of memory was undefined behaviour: the 64 KiB bump heap is never reclaimed and never checked, so
+a run that fills it writes past its end (a segfault on Linux, silent stack corruption under the seL4 Host).
+The apex hid it behind `HeapRoom`, `StackRoom` and `CallRoom`, hypotheses that there is always room, false
+for every server (D326's argument, applied to memory). GOAL.md: "Running out is a defined, observable
+outcome, never undefined behaviour."
+
+### Decision
+* **The source meaning is unchanged.** A source program never runs out: the Spec's model has unlimited
+  memory. Only a compiled program's run does.
+* **`Spec.Trace`: `End` gains `exhausted`,** beside `returned` and `halted`; `EndRel` gains `exhausted≈`, so
+  weak bisimilarity stays an equivalence on every trace.
+* **`Spec.Trace`: `t ⊑ᵗ⟨ R ⟩ s`,** the run t follows s up to running out (CakeML's
+  `extend_with_resource_limit`). Each visible step of t is `exhausted` or matched by a related step of s;
+  for each visible step of s, t ends `exhausted` or takes a related step. So t may stop by running out
+  anywhere, even where s goes on silently forever; it never stops silently where s goes on, never goes on
+  where s ends, and every call before it runs out is s's. It is not symmetric.
+* **`Spec.Correct`: the claim's relation is `_⊑_`** (was `_≈_`, "behavioural equivalence"): the bytes' run
+  follows the meaning, up to running out. The apex picks `b ⊑ m = b ⊑ᵗ⟨ _≡_ ⟩ m`.
+* **What it costs:** a compiler whose every run ran out at once would satisfy `correct`. That is the price of
+  a finite machine. That a program does NOT run out is a separate claim: plan 0.123 Part B's invariant (every
+  block freed, a loop round ends with only its next state live) and its space bound.
+* **The Host's third entry** (D320's `enter ; main ; leave`): `once_exhausted`, called by the compiled code
+  when a room check fails; it never returns, and its contract (a named hypothesis, as `leave`'s) is that the
+  run ends `exhausted`. Each Host decides how that looks: Linux sends itself SIGABRT (distinct from every exit
+  status, which `exit@S` can all produce); seL4 reports to its parent and suspends.
+
+### Consequences
+* Today's compiler never ends `exhausted` and proves weak bisimilarity, the stronger relation:
+  `Metatheory.Trace.≈⇒⊑` turns it into the claim. Every case split on `End` gains its `exhausted` case.
+* Still to come (plan 0.123 A): the room checks (one per loop round, closure entry and program start, Part
+  C), the Host-supplied region, the Hosts' `once_exhausted`, the per-arch proof's split at a check, and the
+  nine room hypotheses leaving the apex. "A source trace never ends `exhausted`" goes in `Spec.Metatheory`.
