@@ -2,8 +2,9 @@
 # seL4 Debug Output - x86_64 Implementation
 # ======================================================================
 #
-# seL4_DebugPutChar is syscall -9 (debug kernel, the pinned kernel's
-# generated `syscall.h`) with the character in rdi. libsel4 issues it as a
+# seL4_DebugPutChar is syscall SysDebugPutChar (debug kernel; checked
+# against the pinned kernel by examples/seL4 `check-numbers.sh`) with the
+# character in rdi. libsel4 issues it as a
 # send-receive: rdi, rsi, r10, r8, r9, r15 come back clobbered, and
 # `syscall` clobbers rcx, r11. All are saved: r15 is Once's heap pointer.
 #
@@ -12,7 +13,9 @@
 #
 # ======================================================================
 
-.equ SEL4_SYS_DEBUG_PUTCHAR, -9
+# seL4 numbers
+.equ SysDebugPutChar, -9
+# end seL4 numbers
 
 .text
 .align 16
@@ -32,7 +35,7 @@ putChar:
     pushq   %rbx
     andq    $0xff, %rdi
     xorq    %rsi, %rsi
-    movq    $SEL4_SYS_DEBUG_PUTCHAR, %rdx
+    movq    $SysDebugPutChar, %rdx
     movq    %rsp, %rbx
     syscall
     movq    %rbx, %rsp

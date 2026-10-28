@@ -10,6 +10,8 @@ assembly of the seL4 Interpretations and Host ([plan 0.127](../../plans/0.127-se
 
 ```sh
 nix build .#echo-test -L     # build compiler, kernel and image; boot under QEMU; check the output
+nix build .#numbers-check -L # check every seL4 number in the Strata against the kernel
+nix flake check              # both
 nix run .#simulate           # boot it interactively (Ctrl-A X quits QEMU)
 ```
 
@@ -50,13 +52,20 @@ The programs share the root task's address space and CSpace for now; giving each
 - `Strata/Hosts/SeL4/Host.x86_64` — the seL4 Host: the root task's entry (a stack, the bootinfo
   pointer saved, then the compiler's `_start`), the program table and stacks, and `leave` (print a
   line, suspend the thread). `Host.x86_64.ld` names the entry for the link.
-- `Strata/Interpretations/SeL4/` — `BootInfo`, `Untyped`, `TCB`, `IPC`, `Debug`, `Program`. The
-  x86_64 code uses the syscall and invocation numbers of the pinned kernel's generated headers.
+- `Strata/Interpretations/SeL4/` — `BootInfo`, `Untyped`, `TCB`, `CNode`, `IPC`, `Notification`,
+  `Debug`, `Program`, x86_64 only. The Host holds their shared routines (reading a tuple argument,
+  building a tuple answer, an object invocation).
+- `check-numbers.sh` — every seL4 number (syscall numbers, invocation message infos, object types,
+  struct offsets, capability slots, rights bits) sits in a `seL4 numbers` block of its file, named
+  by the kernel's name or with the C expression it must equal; the check compiles them against the
+  pinned kernel's own headers and fails on any difference. (It found `seL4_SlotBits` and the read
+  and write rights wrong, besides the syscall numbers.)
 - `flake.nix` — the kernel (`seL4-kernel-x86_64`: pc99, debug, printing, seL4's own simulation
-  settings), the image (`echo-image`), the check (`echo-test`) and `simulate`.
+  settings), the image (`echo-image`), the checks (`echo-test`, `numbers-check`) and `simulate`.
 
 ## Not yet
 
-- Other architectures: the riscv64 and arm64 impl files predate this and are unchecked (plan 0.127 C).
+- Other architectures: riscv64 next (plan 0.127 C); arm64 once there is an ARM64 backend.
+- `CNode` and `Notification` are number-checked but not yet run by a test.
 - Isolation between the programs (own CNode, own VSpace).
 - Message lengths beyond the four register words (needs an IPC buffer per thread).
