@@ -7,7 +7,7 @@
 -- each, and that the program emits the same trace with and without the
 -- optimizer. `Once.Optimize.Examples` shows every rule on hand-built IR.
 --
--- Expected observable: emits 5, 6; exit 7.
+-- Expected observable: exit 7, after emitting 5 and 6.
 
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
