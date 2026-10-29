@@ -42,8 +42,6 @@ import Once.IRTy as II
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; not)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; _,_)
 import Data.Nat.Properties
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (isYes)
@@ -553,104 +551,6 @@ optimize-compose g f = compose-aux g f (composeFirstView g)
 -- Eta Laws (for pairs and cases)
 ------------------------------------------------------------------------
 
--- | A projection path: `id`, `fst`, `snd` and their composites. Two paths are
--- compared by their structure; a general IR equality is not decidable (D271).
-data Proj : IRTy → IRTy → Set where
-  p-id  : ∀ {A} → Proj A A
-  p-fst : ∀ {A B} → Proj (A * B) A
-  p-snd : ∀ {A B} → Proj (A * B) B
-  p-∘   : ∀ {A X B} → Proj X B → Proj A X → Proj A B
-
-proj-ir : ∀ {A B} → Proj A B → IR A B
-proj-ir p-id      = id
-proj-ir p-fst     = fst
-proj-ir p-snd     = snd
-proj-ir (p-∘ p q) = proj-ir p ∘ proj-ir q
-
--- | The path a term is, if it is one.
-proj-of   : ∀ {A B} (h : IR A B) → Maybe (Σ (Proj A B) (λ p → proj-ir p ≡ h))
-proj-comp : ∀ {A X B} (f : IR X B) (g : IR A X)
-          → Maybe (Σ (Proj X B) (λ p → proj-ir p ≡ f)) → Maybe (Σ (Proj A X) (λ q → proj-ir q ≡ g))
-          → Maybe (Σ (Proj A B) (λ p → proj-ir p ≡ f ∘ g))
-proj-of id      = just (p-id , refl)
-proj-of fst     = just (p-fst , refl)
-proj-of snd     = just (p-snd , refl)
-proj-of (f ∘ g) = proj-comp f g (proj-of f) (proj-of g)
-proj-of (⟨ f , g ⟩) = nothing
-proj-of inl = nothing
-proj-of inr = nothing
-proj-of (case f g) = nothing
-proj-of terminal = nothing
-proj-of initial = nothing
-proj-of (curry f) = nothing
-proj-of apply = nothing
-proj-of (In wf) = nothing
-proj-of (out-μ wf) = nothing
-proj-of (Cata wf alg) = nothing
-proj-of (Out wf) = nothing
-proj-of (in-ν wf) = nothing
-proj-of (Ana wf coalg) = nothing
-proj-of (Iter b) = nothing
-proj-of (SigOp si) = nothing
-proj-of (Call f) = nothing
-proj-of (const p v) = nothing
-proj-comp _ _ nothing           _                = nothing
-proj-comp _ _ (just _)          nothing          = nothing
-proj-comp _ _ (just (p , refl)) (just (q , refl)) = just (p-∘ p q , refl)
-
--- | Two paths out of one object are the same path.
-proj-eq?  : ∀ {X P Q} (p : Proj X P) (q : Proj X Q) → Maybe (Σ (P ≡ Q) (λ e → subst (Proj X) e p ≡ q))
-proj-eq?₁ : ∀ {A X X′ B B′} (p : Proj X B) (q : Proj A X) (p′ : Proj X′ B′) (q′ : Proj A X′)
-          → Maybe (Σ (X ≡ X′) (λ e → subst (Proj A) e q ≡ q′))
-          → Maybe (Σ (B ≡ B′) (λ e → subst (Proj A) e (p-∘ p q) ≡ p-∘ p′ q′))
-proj-eq?₂ : ∀ {A X B B′} (p : Proj X B) (q : Proj A X) (p′ : Proj X B′)
-          → Maybe (Σ (B ≡ B′) (λ e → subst (Proj X) e p ≡ p′))
-          → Maybe (Σ (B ≡ B′) (λ e → subst (Proj A) e (p-∘ p q) ≡ p-∘ p′ q))
-proj-eq? p-id      p-id        = just (refl , refl)
-proj-eq? p-fst     p-fst       = just (refl , refl)
-proj-eq? p-snd     p-snd       = just (refl , refl)
-proj-eq? (p-∘ p q) (p-∘ p′ q′) = proj-eq?₁ p q p′ q′ (proj-eq? q q′)
-{-# CATCHALL #-}
-proj-eq? _         _           = nothing
-proj-eq?₁ p q p′ q′ nothing             = nothing
-proj-eq?₁ p q p′ _ (just (refl , refl)) = proj-eq?₂ p q p′ (proj-eq? p p′)
-proj-eq?₂ p q p′ nothing             = nothing
-proj-eq?₂ p q _ (just (refl , refl)) = just (refl , refl)
-
--- | `⟨ fst ∘ h , snd ∘ h ⟩`, for one projection path `h` (pair uniqueness), or not.
-data PairUniq : ∀ {C A B : IRTy} → IR C A → IR C B → Set where
-  uniq     : ∀ {C A B} (p : Proj C (A * B)) → PairUniq (fst ∘ proj-ir p) (snd ∘ proj-ir p)
-  not-uniq : ∀ {C A B} (f : IR C A) (g : IR C B) → PairUniq f g
-
-uniq-eq : ∀ {C A A′ B B′} (p : Proj C (A * B′)) (q : Proj C (A′ * B))
-        → Maybe (Σ (A * B′ ≡ A′ * B) (λ e → subst (Proj C) e p ≡ q))
-        → PairUniq (fst ∘ proj-ir p) (snd ∘ proj-ir q)
-uniq-eq p q nothing              = not-uniq _ _
-uniq-eq p _ (just (refl , refl)) = uniq p
-
-uniq-paths : ∀ {C A A′ B B′} (h₁ : IR C (A * B′)) (h₂ : IR C (A′ * B))
-           → Maybe (Σ (Proj C (A * B′)) (λ p → proj-ir p ≡ h₁)) → Maybe (Σ (Proj C (A′ * B)) (λ q → proj-ir q ≡ h₂))
-           → PairUniq (fst ∘ h₁) (snd ∘ h₂)
-uniq-paths _ _ nothing           _                = not-uniq _ _
-uniq-paths _ _ (just _)          nothing          = not-uniq _ _
-uniq-paths _ _ (just (p , refl)) (just (q , refl)) = uniq-eq p q (proj-eq? p q)
-
-uniq-heads : ∀ {C X Y A B} (p : IR X A) (h₁ : IR C X) (q : IR Y B) (h₂ : IR C Y)
-           → FstSndView p → FstSndView q → PairUniq (p ∘ h₁) (q ∘ h₂)
-uniq-heads _ h₁ _ h₂ fsv-fst       fsv-snd       = uniq-paths h₁ h₂ (proj-of h₁) (proj-of h₂)
-uniq-heads _ h₁ _ h₂ fsv-fst       fsv-fst       = not-uniq _ _
-uniq-heads _ h₁ _ h₂ fsv-fst       (fsv-other _) = not-uniq _ _
-uniq-heads _ h₁ _ h₂ fsv-snd       _             = not-uniq _ _
-uniq-heads _ h₁ _ h₂ (fsv-other _) _             = not-uniq _ _
-
-pairUniq-at : ∀ {C A B} (f : IR C A) (g : IR C B) → ChainView f → ChainView g → PairUniq f g
-pairUniq-at _ _ (is-comp p h₁) (is-comp q h₂) = uniq-heads p h₁ q h₂ (fstSndView p) (fstSndView q)
-pairUniq-at _ _ (is-comp _ _)  (not-comp _)   = not-uniq _ _
-pairUniq-at _ _ (not-comp _)   _              = not-uniq _ _
-
-pairUniq : ∀ {C A B} (f : IR C A) (g : IR C B) → PairUniq f g
-pairUniq f g = pairUniq-at f g (chainView f) (chainView g)
-
 -- | A quiet term into `Unit` stands for any other: `Unit` has one value.
 unit-like-aux : ∀ {A B} → IR A B → Dec (B ≡ Unit) → Bool
 unit-like-aux f (yes _) = not (has-effect? f)
@@ -699,14 +599,8 @@ pair-aux : ∀ {A B C} → IR C A → IR C B → Dec (C ≡ A * B) → IR C (A *
 pair-aux f g (yes refl) = eta-pair f g (fst-like-aux f (fstSndView f)) (snd-like-aux g (fstSndView g))
 pair-aux f g (no _)     = ⟨ f , g ⟩
 
--- | `⟨ fst ∘ h , snd ∘ h ⟩ = h` for a projection path `h` (it has no effect,
--- so running it once is running it twice); otherwise eta.
-pair-u : ∀ {A B C} (f : IR C A) (g : IR C B) → PairUniq f g → IR C (A * B)
-pair-u _ _ (uniq p)       = proj-ir p
-pair-u {A} {B} {C} f g (not-uniq _ _) = pair-aux f g (C ≟IRTy (A * B))
-
 optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
-optimize-pair f g = pair-u f g (pairUniq f g)
+optimize-pair {A} {B} {C} f g = pair-aux f g (C ≟IRTy (A * B))
 
 -- | Eta for cases, up to `Void`: `[ inl , inr ] = id`, and so is `[ initial ,
 -- inr ]` into `Void + B`.
