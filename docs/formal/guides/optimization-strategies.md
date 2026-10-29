@@ -561,7 +561,7 @@ Use Agda's reflection capabilities to automate proof generation:
 ### Files
 
 - `formal/Once/Optimize.agda` - Main optimizer
-- `formal/Once/Optimize/Correct.agda` - Correctness proofs
+- `formal/Once/Adequacy/OptimizePreserves.agda` - the optimizer keeps the trace (D347)
 - `formal/Once/IR.agda` - IR definition with AllocMode
 - `formal/Once/Semantics.agda` - Denotational semantics
 

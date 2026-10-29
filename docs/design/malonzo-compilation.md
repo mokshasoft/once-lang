@@ -62,7 +62,7 @@ Rather than adding all Haskell constructs to Agda (which complicates proofs), we
 
 1. **Core IR stays minimal**: 13 generators + fold/unfold + arr. No Let cases in optimizer proofs.
 2. **Desugar is trivial**: One interesting equation (Let expansion), rest is structural.
-3. **Existing proofs unchanged**: `Once.Optimize.Correct` works without modification.
+3. **Existing proofs unchanged**: the optimizer's proof (today `Once.Adequacy.OptimizePreserves`) needs no Let cases.
 4. **Clear separation**: Naming/binding is a Surface concern, not Core.
 
 ## Surface IR
@@ -344,7 +344,7 @@ hello.once
 | Type Checker | Haskell | Not verified |
 | Elaboration | Haskell | Not verified |
 | Desugar | Agda | Can be verified |
-| Optimizer | Agda | **Verified** (Once.Optimize.Correct) |
+| Optimizer | Agda | **Verified** (Once.Adequacy.OptimizePreserves: keeps the trace) |
 | CodeGen | Agda | Partially verified (Once.Backend.X86.Correct) |
 
 The optimizer is the critical verified component—it's where categorical laws are applied.
@@ -397,7 +397,7 @@ The optimizer is the critical verified component—it's where categorical laws a
 ### Option 1: Extend Agda IR
 Add Let, Var, etc. directly to `Once.IR`.
 
-**Rejected because**: Every proof in `Once.Optimize.Correct` would need additional cases. The categorical laws don't involve Let, so these cases would be boilerplate that complicates maintenance.
+**Rejected because**: Every optimizer proof (then `Once.Optimize.Correct`) would need additional cases. The categorical laws don't involve Let, so these cases would be boilerplate that complicates maintenance.
 
 ### Option 2: Haskell Wrapper
 Keep Agda IR pure, write Haskell code to convert.

@@ -13,7 +13,6 @@ The proof structure has three layers:
 │  - Once.IR             : IR morphisms (12 generators)       │
 │  - Once.Semantics      : Denotational semantics (⟦_⟧, eval) │
 │  - Once.Postulates     : Core axioms (funext, encoding)     │
-│  - Once.Category.Laws  : Categorical laws                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼

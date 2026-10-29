@@ -86,7 +86,7 @@ Each generator compiles to a handful of instructions. For linear code: no heap, 
 
 ### Phase V2: Categorical Laws ✓ (DONE)
 
-**Status**: Completed in `formal/Once/Category/Laws.agda`
+**Status**: Completed in `formal/Once/Category/Laws.agda` over the old `eval`; that module is deleted (D347), the laws over `evalᴰ` are plan 0.79's
 
 **What**: Prove IR satisfies cartesian closed category laws.
 
@@ -169,7 +169,7 @@ Each generator compiles to a handful of instructions. For linear code: no heap, 
 
 **Deliverables**:
 - `formal/Once/Optimize.agda` - Optimization passes
-- `formal/Once/Optimize/Correct.agda` - Correctness proofs
+- `formal/Once/Adequacy/OptimizePreserves.agda` - the optimizer keeps the trace (D347)
 
 **Current optimizations** (from `Once/Optimize.hs`):
 1. Identity elimination: `id ∘ f → f`, `f ∘ id → f`

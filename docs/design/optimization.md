@@ -695,7 +695,10 @@ These are exactly the laws of a bicartesian closed category.
 
 ### Verified Correctness
 
-In `formal/Once/Category/Laws.agda`, we prove these laws hold:
+These laws were proved over the retired value evaluator `eval` in `formal/Once/Category/Laws.agda`, deleted
+with it (D347). Today the optimizer's rules are proved to keep a program's trace
+(`formal/Once/Adequacy/OptimizePreserves.agda`); the laws themselves over `evalᴰ` are plan 0.79's. The old
+statements, for reference:
 
 ```agda
 eval-fst-pair : eval (fst . pair f g) x ≡ eval f x
@@ -1032,9 +1035,10 @@ Current `fold . unfold = id` is a special case. Full deforestation requires:
 Each new optimization needs:
 
 1. **Agda implementation** in `formal/Once/Optimize.agda`
-2. **Correctness proof** in `formal/Once/Optimize/Correct.agda`
-3. **Haskell implementation** in `compiler/src/Once/Optimize.hs`
-4. **QuickCheck property** in `compiler/test/Once/OptimizeSpec.hs`
+2. **Trace-preservation proof**: its case in `opt-once-rel` (`formal/Once/Adequacy/OptimizePreserves.agda`)
+3. **An example** in `formal/Once/Optimize/Examples.agda` (one pass fires the rule, by `refl`)
+4. **A source test** in `compiler/test/OptimizeSpec.hs` + `compiler/test/opt-rules.once`, if elaborated code
+   reaches the rule; then re-extract (the CLI runs the extracted Agda optimizer)
 
 The Agda proofs are the source of truth. The Haskell implementation should match.
 

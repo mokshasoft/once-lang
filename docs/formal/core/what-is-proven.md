@@ -375,7 +375,7 @@ The goal is **zero hidden assumptions**. Anyone auditing the formalization shoul
 
 ### Normal Form Uniqueness — Semantic Gap S2
 
-**Status**: The `normal-unique` postulate in `Once/Optimizer/Normal.agda` is FALSE for degenerate types involving Unit/Void.
+**Status**: The `normal-unique` postulate in `Once/Optimizer/Normal.agda` (deleted with the module, D347) was FALSE for degenerate types involving Unit/Void.
 
 **The Issue**: Multiple syntactically distinct normal forms can be semantically equivalent when Unit or Void appear in key type positions.
 

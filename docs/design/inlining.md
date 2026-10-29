@@ -412,7 +412,7 @@ The inlined block implements the same CCC morphism as the original tree. The cat
 
 Inlining is semantics-preserving when it follows proven categorical laws.
 
-### Relevant Laws (Proven in formal/Once/Category/Laws.agda)
+### Relevant Laws (once proven in `formal/Once/Category/Laws.agda` over the retired `eval`; deleted, D347)
 
 **Identity Laws:**
 ```

@@ -293,7 +293,7 @@ See `formal/problems-and-solutions.md` Problem 1 for full technical analysis.
 ### End-to-End
 - `formal/Once/EndToEnd.agda` - Full pipeline theorem
 - `formal/Once/Surface/Correct.agda` - Elaboration correctness
-- `formal/Once/Optimize/Correct.agda` - Optimization correctness
+- `formal/Once/Adequacy/OptimizePreserves.agda` - Optimization correctness (keeps the trace, D347)
 
 ### Documentation
 - `formal/proof-instructions.md` - **MANDATORY RULES**
