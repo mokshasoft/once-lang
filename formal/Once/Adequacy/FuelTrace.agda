@@ -280,12 +280,6 @@ module Agree {S₁ S₂ : Set} (δ₁ : S₁ → Step S₁) (δ₂ : S₂ → St
                                 × (proj₂ (F₁.runN n₁ s₁) ≡ nothing → k ≤ n₁)
                                 × (proj₂ (F₂.runN n₂ s₂) ≡ nothing → k ≤ n₂)
 
-  -- Agreeing at every budget is the case that never runs out.
-  agree-sub : ∀ {s₁ s₂} → BudgetAgree s₁ s₂ → BudgetSub s₁ s₂
-  agree-sub ag k with ag k
-  ... | n₁ , n₂ , eq , long =
-    n₁ , n₂ , inj₁ eq , (λ c → proj₁ (long c)) , (λ c → proj₂ (long (trans (cong proj₂ eq) c)))
-
   private
     -- A run that ran out, cut against one that goes on: the same cut, or the
     -- whole of the first (its calls a prefix of the second's cut).

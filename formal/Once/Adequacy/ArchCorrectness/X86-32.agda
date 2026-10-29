@@ -59,7 +59,7 @@ open import Data.String using (String)
 open import Data.List using ([]; take; map)
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
-open import Once.Adequacy.BudgetApex using (budget-apex-⊑; budget-fact-⊑)
+open import Once.Adequacy.BudgetApex using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
 import Once.IR.Semantics.Trace as LT
@@ -385,19 +385,17 @@ conc-tr :
                      (compile-trace (FFOx.image ir))) ([] , X.initState)
     ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-32) ι
 conc-tr brs p ir lk img =
-  budget-apex-⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))
-    (budget-fact-⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) fact)
+  budget-apex-⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) fact
   where
     δc = RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir))
     run₀ : RunAt (FFOx.image ir) FFOx.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
-    fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , X.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)))))
-                         × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
-    fact k = proj₁ agree
-           , trans (RTx.Run.runN-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir)) (proj₁ agree) [] X.initState)
-                   (cong (RTx.Run.outObs val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir)))
-                         (trans (proj₁ (proj₂ agree)) (FFOx.flat-ends ir-obs-correct brs ir lk k)))
-           , λ c → ≤-trans (FFOx.flat-cut ir-obs-correct brs ir lk k c) (proj₂ (proj₂ agree))
+    fact : BudgetFact⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))
+    fact k = budget-fact-of δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _ _ _
+               (RTx.Run.runN-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir)) (proj₁ agree) [] X.initState)
+               (cong (RTx.Run.outObs val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir))) (FFOx.flat-ends ir-obs-correct brs ir lk k))
+               (FFOx.flat-cut ir-obs-correct brs ir lk k)
+               (proj₂ agree)
       where
         agree = events-agree-start (FFOx.flat-fuel ir-obs-correct brs ir lk k)
                   ev-x86-32 (block-env (C.blocks-x86-32 p))

@@ -45,7 +45,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; _<_; _⊓_; 
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.IR.Semantics.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
+open import Once.IR.Semantics.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc; RanOutOf; ▹-ran)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
@@ -240,10 +240,27 @@ module Dispatch (sup : Supply) where
   ctrl-le (instr-ctrl c) = ctrl-len c
   ctrl-le (lea-indexed _) = z≤n
 
+  -- D347: the concrete run shows what the flat run shows, and has taken a step
+  -- per control step; or it RAN OUT (a failed room check, the Host's
+  -- `exhausted`) after a prefix of the flat run's calls.
+  AgreeAt : Out → Out → ℕ → ℕ → Set
+  AgreeAt o₁ o₂ c M = (o₁ ≡ o₂ × c ≤ suc M) ⊎ RanOutOf o₁ o₂
+
+  -- Through a step that makes the calls `vs` first: equal runs stay equal (the
+  -- bound carried by `f`), a run that ran out stays so.
+  agree-pre : ∀ vs {a o₁ o₂ c c′ M M′} → a ≡ vs ▹ o₁ → (c ≤ suc M → c′ ≤ suc M′)
+            → AgreeAt o₁ o₂ c M → AgreeAt a (vs ▹ o₂) c′ M′
+  agree-pre vs e f (inj₁ (eq , b)) = inj₁ (trans e (cong (vs ▹_) eq) , f b)
+  agree-pre vs {o₁ = o₁} {o₂ = o₂} e f (inj₂ r) = inj₂ (subst (λ x → RanOutOf x (vs ▹ o₂)) (sym e) (▹-ran vs {o₁} {o₂} r))
+
+  -- A run that agrees outright (every lemma below that never runs out).
+  agree-eq : ∀ {a : ℕ → Out} {o c} → Σ ℕ (λ M → (a M ≡ o) × c ≤ suc M) → Σ ℕ (λ M → AgreeAt (a M) o c M)
+  agree-eq (M , e , l) = M , inj₁ (e , l)
+
   EventsIH : ℕ → Set₁
   EventsIH n = ∀ {hv : HeapView} (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s
              → CompiledCorr hv prog fs s → FlatInv ev env prog fs
-             → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s ≡ flat-events n prog fs) × flat-ctrls n prog fs ≤ suc M)
+             → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s) (flat-events n prog fs) (flat-ctrls n prog fs) M)
 
   -- The reusable CCC engine, GENERALISED to take an explicit BlockStep: one abstract
   -- step `i` (event-of i fs = [], flat step leaves the machine running: hpost) ↦ its
@@ -268,25 +285,29 @@ module Dispatch (sup : Supply) where
               -- D320: …and is not the program's leave (which the dispatch takes itself).
               → LeftFree i
               → halted (floc (flat-exec-instr i prog fs)) ≡ false
-              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                    ≡ event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs)) × ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc M)
-  ccc-step-bs n IH ev env prog fs s i bs wf ftq h ev[] lf lfl hpost = (blk-len i + proj₁ rec) , result , bound
+              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                    (event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs)) (ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs)) M)
+  ccc-step-bs n IH ev env prog fs s i bs wf ftq h ev[] lf lfl hpost = (blk-len i + proj₁ rec) , result
     where -- the post-state invariant comes from the FLAT-MACHINE theorem, once,
           -- for every instruction (`FlatStoreWF.flat-wf-step`).
           rec = IH ev env prog (flat-exec-instr i prog fs) (proj₁ bs)
                              (proj₂ (proj₂ bs)) (flat-inv-step i prog fs ftq h lfl wf)
-          result : RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s
-                 ≡ event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs)
           log≡ : LocState.ev-log (floc (flat-exec-instr i prog fs)) ≡ LocState.ev-log (floc fs)
           log≡ = LP.flat-exec-instr-log i lf prog fs
-          result rewrite ev[] =
+          -- the block, then the run from its post-state
+          pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s
+                 ≡ RT.run-events ev env (LocState.ev-log (floc (flat-exec-instr i prog fs))) (proj₁ rec) (compile-trace prog) (proj₁ bs)
+          pre-eq =
             trans (block-run-exec ev env (LocState.ev-log (floc fs)) (blk-len i) (proj₁ rec) (compile-trace prog) s
                      (proj₁ (proj₂ bs)) (trans (CFC.halt-eq (dataCorr (proj₂ (proj₂ bs)))) hpost))
-                  (trans (cong (λ lg → RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (proj₁ bs))
-                               (sym log≡))
-                         (proj₁ (proj₂ rec)))
-          bound : ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc (blk-len i + proj₁ rec)
-          bound = ≤-trans (+-mono-≤ (ctrl-le i) (proj₂ (proj₂ rec))) (≤-reflexive (+-suc (blk-len i) (proj₁ rec)))
+                  (cong (λ lg → RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (proj₁ bs)) (sym log≡))
+          bound : flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc (proj₁ rec)
+                → ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc (blk-len i + proj₁ rec)
+          bound b = ≤-trans (+-mono-≤ (ctrl-le i) b) (≤-reflexive (+-suc (blk-len i) (proj₁ rec)))
+          result : AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s)
+                           (event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs))
+                           (ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs)) (blk-len i + proj₁ rec)
+          result rewrite ev[] = agree-pre [] pre-eq bound (proj₂ rec)
 
   -- THE CLOSURE BODY ENTRY — `c-thunk m b` ↔ `label (thunk m) ; sub rsp, 8b`.
   --
@@ -312,9 +333,9 @@ module Dispatch (sup : Supply) where
                  prog fs s (m : EntryId) (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
              → halted (floc fs) ≡ false
              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b))
-             → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                   ≡ event-of (instr-ctrl (c-entry m b)) fs
-                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-entry m b)) prog fs)) × ctrl-of (instr-ctrl (c-entry m b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-entry m b)) prog fs) ≤ suc M)
+             → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                   (event-of (instr-ctrl (c-entry m b)) fs
+                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-entry m b)) prog fs)) (ctrl-of (instr-ctrl (c-entry m b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-entry m b)) prog fs)) M)
   thunk-step {hv} n IH ev env prog fs s m b cc wf h ftq =
     -- (the post view is the DESCENDED one, so `ccc-step-bs`'s `hv'` is left to
     -- inference — pinning it to `hv` here would demand `lo' ≡ lo hv`)
@@ -360,9 +381,9 @@ module Dispatch (sup : Supply) where
                prog fs s (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
            → halted (floc fs) ≡ false
            → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-           → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                 ≡ event-of (instr-ctrl (c-ret b)) fs
-                   ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) × ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≤ suc M)
+           → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                 (event-of (instr-ctrl (c-ret b)) fs
+                   ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) (ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) M)
   ret-step {hv} n IH ev env prog fs s b cc wf h ftq = go (ret-site-owes prog fs b (inv-run wf) ftq)
     where
       -- `RetMatch` pairs the two stacks, so a cons `fret` forces a cons frame
@@ -373,16 +394,16 @@ module Dispatch (sup : Supply) where
       saved-cons rm-[] rpc rest ()
       saved-cons (rm-∷ {f} {b'} {rpc'} {frs} {rs} _ _ _) rpc rest e = f , b' , frs , refl
       go : Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-         → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-               ≡ event-of (instr-ctrl (c-ret b)) fs
-                 ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) × ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≤ suc M)
+         → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+               (event-of (instr-ctrl (c-ret b)) fs
+                 ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) (ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) M)
       go (rpc , rest , req) = go-sv (saved-cons (seg-stack (run-seg-wf prog fs (inv-run wf))) rpc rest req)
         where
           go-sv : Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ))
                     (λ frs → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs)))
-                → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                      ≡ event-of (instr-ctrl (c-ret b)) fs
-                        ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) × ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≤ suc M)
+                → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                      (event-of (instr-ctrl (c-ret b)) fs
+                        ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) (ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) M)
           go-sv (f₀ , b₀ , frs , feq) =
             ccc-step-bs n IH ev env prog fs s (instr-ctrl (c-ret b))
               (bs-c-ret bss prog fs s b rpc rest f₀ b₀ frs cc h ftq req
@@ -409,9 +430,9 @@ module Dispatch (sup : Supply) where
                 prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs
             → halted (floc fs) ≡ false
             → fetch prog (fpc fs) ≡ just instr-call-closure
-            → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                  ≡ event-of instr-call-closure fs
-                    ▹ flat-events n prog (flat-exec-instr instr-call-closure prog fs)) × ctrl-of instr-call-closure + flat-ctrls n prog (flat-exec-instr instr-call-closure prog fs) ≤ suc M)
+            → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                  (event-of instr-call-closure fs
+                    ▹ flat-events n prog (flat-exec-instr instr-call-closure prog fs)) (ctrl-of instr-call-closure + flat-ctrls n prog (flat-exec-instr instr-call-closure prog fs)) M)
   call-step {hv} n IH ev env prog fs s cc wf h ftq =
     go (call-site-shape prog fs (inv-run wf) ftq)
     where
@@ -419,9 +440,9 @@ module Dispatch (sup : Supply) where
              (fclosure fs ≡ SV-Ptr (AtDynamic hl))
              × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
              × (find-thunk prog ℓ ≡ just j))))
-         → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-               ≡ event-of instr-call-closure fs
-                 ▹ flat-events n prog (flat-exec-instr instr-call-closure prog fs)) × ctrl-of instr-call-closure + flat-ctrls n prog (flat-exec-instr instr-call-closure prog fs) ≤ suc M)
+         → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+               (event-of instr-call-closure fs
+                 ▹ flat-events n prog (flat-exec-instr instr-call-closure prog fs)) (ctrl-of instr-call-closure + flat-ctrls n prog (flat-exec-instr instr-call-closure prog fs)) M)
       go (hl , ℓ , j , ceq , heq , fteq) =
         ccc-step-bs n IH ev env prog fs s instr-call-closure
           (bs-call bss prog fs s hl ℓ j cc h ftq ceq heq
@@ -467,16 +488,16 @@ module Dispatch (sup : Supply) where
                   prog fs s (f : CanonicalName) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
               → halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
-              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                    ≡ event-of (instr-ctrl (c-call-fn f)) fs
-                      ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) × ctrl-of (instr-ctrl (c-call-fn f)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs) ≤ suc M)
+              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                    (event-of (instr-ctrl (c-call-fn f)) fs
+                      ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) (ctrl-of (instr-ctrl (c-call-fn f)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) M)
   callfn-step {hv} n IH ev env prog fs s f cc wf h ftq =
     go (emitted-call-fn-resolves prog fs f (inv-run wf) ftq)
     where
       go : Σ ℕ (λ j → find-fn prog f ≡ just j)
-         → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-               ≡ event-of (instr-ctrl (c-call-fn f)) fs
-                 ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) × ctrl-of (instr-ctrl (c-call-fn f)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs) ≤ suc M)
+         → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+               (event-of (instr-ctrl (c-call-fn f)) fs
+                 ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) (ctrl-of (instr-ctrl (c-call-fn f)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-call-fn f)) prog fs)) M)
       go (j , fe) =
         ccc-step-bs n IH ev env prog fs s (instr-ctrl (c-call-fn f))
           (bs-call-fn bss prog fs s f j cc h ftq fe lo' lo'≤lo front-lo' lo'≤rsp fits
@@ -509,22 +530,22 @@ module Dispatch (sup : Supply) where
   cjmp-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                 prog fs s m → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m))
-              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                    ≡ event-of (instr-ctrl (c-jmp m)) fs
-                      ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) × ctrl-of (instr-ctrl (c-jmp m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs) ≤ suc M)
+              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                    (event-of (instr-ctrl (c-jmp m)) fs
+                      ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) (ctrl-of (instr-ctrl (c-jmp m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) M)
   cjmp-step {hv} n IH ev env prog fs s m cc wf h ftq = go-fl (flat-find-label prog m) refl
     where go-fl : ∀ (mj : Maybe ℕ) → flat-find-label prog m ≡ mj
-                → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                      ≡ event-of (instr-ctrl (c-jmp m)) fs
-                        ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) × ctrl-of (instr-ctrl (c-jmp m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs) ≤ suc M)
+                → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                      (event-of (instr-ctrl (c-jmp m)) fs
+                        ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) (ctrl-of (instr-ctrl (c-jmp m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) M)
           go-fl (just j) fl-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-jmp m))
               (bs-c-jmp bss prog fs s m j cc h ftq fl-eq) wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ false
                   hpost rewrite fl-eq = h
-          go-fl nothing fl-eq =
+          go-fl nothing fl-eq = agree-eq (
             stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-jmp m)) hpost (left-post (instr-ctrl (c-jmp m)) prog fs tt wf) refl
-              (st-c-jmp sts ev env prog fs s m cc h ftq fl-eq)
+              (st-c-jmp sts ev env prog fs s m cc h ftq fl-eq))
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ true
                   hpost rewrite fl-eq = refl
 
@@ -536,9 +557,9 @@ module Dispatch (sup : Supply) where
   branch-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                   prog fs s m → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
-              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                    ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
-                      ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-scratch-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs) ≤ suc M)
+              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                    (event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                      ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-scratch-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) M)
   branch-step {hv} n IH ev env prog fs s m cc wf h ftq = go-sv (readReg (regs (floc fs)) Scratch) refl
     where
       -- Pattern-match k (not `with`, which errors on the bound variable) so
@@ -546,9 +567,9 @@ module Dispatch (sup : Supply) where
       -- not-taken (advance) — both leave the machine running.
       go-fl : ∀ k → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
             → ∀ (mj : Maybe ℕ) → flat-find-label prog m ≡ mj
-            → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                  ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
-                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-scratch-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs) ≤ suc M)
+            → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                  (event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-scratch-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) M)
       go-fl zero sc-eq (just j) fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-scratch-zero m))
           (bs-c-branch-scratch-zero bss prog fs s m zero j cc h ftq sc-eq fl-eq) wf ftq h refl tt tt hpost
@@ -569,14 +590,14 @@ module Dispatch (sup : Supply) where
       -- TAKEN + MISSING: `cmp` then a `je` whose label is absent — the concrete
       -- machine HALTS (as `jmp` does), and so does `do-jump nothing`. Both [].
       go-fl zero sc-eq nothing fl-eq =
-        stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-branch-scratch-zero m)) hpost (left-post (instr-ctrl (c-branch-scratch-zero m)) prog fs tt wf) refl
-          (st-c-branch-scratch-zero sts ev env prog fs s m cc h ftq sc-eq fl-eq)
+        agree-eq (stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-branch-scratch-zero m)) hpost (left-post (instr-ctrl (c-branch-scratch-zero m)) prog fs tt wf) refl
+          (st-c-branch-scratch-zero sts ev env prog fs s m cc h ftq sc-eq fl-eq))
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ true
               hpost rewrite sc-eq | fl-eq = refl
       go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Scratch ≡ sv
-            → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                  ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
-                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-scratch-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs) ≤ suc M)
+            → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                  (event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-scratch-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) M)
       go-sv (SV-Tag k)    sc-eq = go-fl k sc-eq (flat-find-label prog m) refl
       -- NON-TAG: IMPOSSIBLE, not residual. `Scratch` holds a tag in every
       -- reachable state (`FlatRegTagWF`), which is what makes the concrete
@@ -593,9 +614,9 @@ module Dispatch (sup : Supply) where
   tag-branch-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                       prog fs s m → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
-                  → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                        ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                          ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
+                  → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                        (event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                          ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
   tag-branch-step {hv} n IH ev env prog fs s m cc wf h ftq =
     go-loc (proj₁ wits) (proj₁ (proj₂ wits))
            (proj₁ (proj₂ (proj₂ wits))) (proj₂ (proj₂ (proj₂ wits)))
@@ -608,9 +629,9 @@ module Dispatch (sup : Supply) where
             → readLoc (floc fs) loc ≡ just (SV-Tag k)
             → memory s (rreg s in1-reg + 0) ≡ just k
             → ∀ (mj : Maybe ℕ) → flat-find-label prog m ≡ mj
-            → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
+            → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                  (event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
       go-fl loc zero i-eq r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
           (bs-c-branch-tag-zero bss prog fs s m loc zero j cc h ftq i-eq r-eq rd fl-eq)
@@ -635,17 +656,17 @@ module Dispatch (sup : Supply) where
       -- absent label sets `halted` (`find-label-none-corr`), and
       -- `do-jump nothing` halts the flat machine. Both traces [].
       go-fl loc zero i-eq r-eq rd nothing fl-eq =
-        stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-branch-tag-zero m)) hpost (left-post (instr-ctrl (c-branch-tag-zero m)) prog fs tt wf) refl
-          (st-c-branch-tag-zero sts ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq)
+        agree-eq (stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-branch-tag-zero m)) hpost (left-post (instr-ctrl (c-branch-tag-zero m)) prog fs tt wf) refl
+          (st-c-branch-tag-zero sts ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq))
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
               hpost rewrite i-eq | r-eq | fl-eq = refl
       -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
       go-loc : ∀ (loc : ValueLocation FS) (k : ℕ)
              → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
              → readLoc (floc fs) loc ≡ just (SV-Tag k)
-             → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
+             → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
       -- HEAP: the tag cell is written ⇒ mapped (`dom-written`), `heap-eq`
       -- relates it, and the address is the pointer's encoding.
       go-loc (AtDynamic hl) k i-eq r-eq =
@@ -687,14 +708,14 @@ module Dispatch (sup : Supply) where
   scratch-dec-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                        prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
-                   → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                         ≡ event-of (instr-reg-op scratch-dec) fs
-                           ▹ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs)) × ctrl-of (instr-reg-op scratch-dec) + flat-ctrls n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs) ≤ suc M)
+                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                         (event-of (instr-reg-op scratch-dec) fs
+                           ▹ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs)) (ctrl-of (instr-reg-op scratch-dec) + flat-ctrls n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs)) M)
   scratch-dec-step {hv} n IH ev env prog fs s cc wf h ftq = go-sv (readReg (regs (floc fs)) Scratch) refl
     where go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Scratch ≡ sv
-                → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                      ≡ event-of (instr-reg-op scratch-dec) fs
-                        ▹ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs)) × ctrl-of (instr-reg-op scratch-dec) + flat-ctrls n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs) ≤ suc M)
+                → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                      (event-of (instr-reg-op scratch-dec) fs
+                        ▹ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs)) (ctrl-of (instr-reg-op scratch-dec) + flat-ctrls n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs)) M)
           go-sv (SV-Tag k)   sc-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (instr-reg-op scratch-dec)
               (bs-scratch-dec bss prog fs s k cc h ftq sc-eq
@@ -711,14 +732,14 @@ module Dispatch (sup : Supply) where
   count-inc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                       prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                   → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
-                  → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                        ≡ event-of (instr-reg-op count-inc) fs
-                          ▹ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs)) × ctrl-of (instr-reg-op count-inc) + flat-ctrls n prog (flat-exec-instr (instr-reg-op count-inc) prog fs) ≤ suc M)
+                  → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                        (event-of (instr-reg-op count-inc) fs
+                          ▹ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs)) (ctrl-of (instr-reg-op count-inc) + flat-ctrls n prog (flat-exec-instr (instr-reg-op count-inc) prog fs)) M)
   count-inc-step {hv} n IH ev env prog fs s cc wf h ftq = go-sv (readReg (regs (floc fs)) Count) refl
     where go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Count ≡ sv
-                → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                      ≡ event-of (instr-reg-op count-inc) fs
-                        ▹ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs)) × ctrl-of (instr-reg-op count-inc) + flat-ctrls n prog (flat-exec-instr (instr-reg-op count-inc) prog fs) ≤ suc M)
+                → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                      (event-of (instr-reg-op count-inc) fs
+                        ▹ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs)) (ctrl-of (instr-reg-op count-inc) + flat-ctrls n prog (flat-exec-instr (instr-reg-op count-inc) prog fs)) M)
           go-sv (SV-Tag k)   i2-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (instr-reg-op count-inc)
               (bs-count-inc bss prog fs s k cc h ftq i2-eq
@@ -734,9 +755,9 @@ module Dispatch (sup : Supply) where
   out-nz-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                   prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
-              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                    ≡ event-of (instr-reg-op out-nz) fs
-                      ▹ flat-events n prog (flat-exec-instr (instr-reg-op out-nz) prog fs)) × ctrl-of (instr-reg-op out-nz) + flat-ctrls n prog (flat-exec-instr (instr-reg-op out-nz) prog fs) ≤ suc M)
+              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                    (event-of (instr-reg-op out-nz) fs
+                      ▹ flat-events n prog (flat-exec-instr (instr-reg-op out-nz) prog fs)) (ctrl-of (instr-reg-op out-nz) + flat-ctrls n prog (flat-exec-instr (instr-reg-op out-nz) prog fs)) M)
   out-nz-step {hv} n IH ev env prog fs s cc wf h ftq =
     ccc-step-bs {hv} n IH ev env prog fs s (instr-reg-op out-nz)
       (bs-out-nz bss prog fs s (proj₁ wd) cc h ftq (proj₂ wd)
@@ -751,16 +772,16 @@ module Dispatch (sup : Supply) where
   load-indirect-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                          prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just load-indirect
-                     → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                           ≡ event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) × ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs) ≤ suc M)
+                     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                           (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
   load-indirect-step {hv} n IH ev env prog fs s cc wf h ftq =
     go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
     where wits = load-indirect-target-wf prog fs (inv-run wf) ftq
           go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mw
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) × ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
           go-mem hl i-eq ib (just w) h-eq =
             ccc-step-bs {hv} n IH ev env prog fs s load-indirect
               (bs-load-indirect bss prog fs s hl w cc h ftq i-eq
@@ -769,17 +790,17 @@ module Dispatch (sup : Supply) where
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
           go-mem hl i-eq ib nothing h-eq =
-            stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s load-indirect hpost (left-post load-indirect prog fs tt wf) refl
+            agree-eq (stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s load-indirect hpost (left-post load-indirect prog fs tt wf) refl
               (st-load-indirect sts ev env prog fs s hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) hl ib) h-eq)
+                 (CFC.dom-sized (dataCorr cc) hl ib) h-eq))
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ true
                   hpost rewrite i-eq | h-eq = refl
           go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
                    → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
                    → ∀ (mw : Maybe (StoredValue FS))
                    → stackMem (floc fs) (current-frame (falloc fs)) k ≡ mw
-                   → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                         ≡ event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) × ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs) ≤ suc M)
+                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                         (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
           go-stack f k i-eq (f-eq , k<ss) (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s load-indirect
               (bs-load-indirect-stack bss prog fs s f k w cc h ftq i-eq f-eq k<ss st-eq)
@@ -797,8 +818,8 @@ module Dispatch (sup : Supply) where
           go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                  → (∀ hl → loc ≡ AtDynamic hl
                     → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl)))
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) × ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
           go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) hl) refl
           -- Plan 0.61: a load THROUGH A STACK POINTER is an ordinary step —
           -- the pointer denotes `slot-addr f k`, and for the CURRENT frame's live
@@ -812,16 +833,16 @@ module Dispatch (sup : Supply) where
   load-indirect-suc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                              prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                          → fetch prog (fpc fs) ≡ just load-indirect-suc
-                         → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                               ≡ event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) × ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs) ≤ suc M)
+                         → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                               (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
   load-indirect-suc-step {hv} n IH ev env prog fs s cc wf h ftq =
     go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
     where wits = load-indirect-suc-target-wf prog fs (inv-run wf) ftq
           go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) (sucHL hl) ≡ mw
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) × ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
           go-mem hl i-eq ib (just w) h-eq =
             ccc-step-bs {hv} n IH ev env prog fs s load-indirect-suc
               (bs-load-indirect-suc bss prog fs s hl w cc h ftq i-eq
@@ -830,9 +851,9 @@ module Dispatch (sup : Supply) where
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
           go-mem hl i-eq ib nothing h-eq =
-            stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s load-indirect-suc hpost (left-post load-indirect-suc prog fs tt wf) refl
+            agree-eq (stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s load-indirect-suc hpost (left-post load-indirect-suc prog fs tt wf) refl
               (st-load-indirect-suc sts ev env prog fs s hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) (sucHL hl) ib) h-eq)
+                 (CFC.dom-sized (dataCorr cc) (sucHL hl) ib) h-eq))
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ true
                   hpost rewrite i-eq | h-eq = refl
           -- SECOND cell of a stack pair: `[rdi+8]` is slot `suc k` of the same frame.
@@ -840,8 +861,8 @@ module Dispatch (sup : Supply) where
                    → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
                    → ∀ (mw : Maybe (StoredValue FS))
                    → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ mw
-                   → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                         ≡ event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) × ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs) ≤ suc M)
+                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                         (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
           go-stack f k i-eq (f-eq , sk<ss) (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s load-indirect-suc
               (bs-load-indirect-suc-stack bss prog fs s f k w cc h ftq i-eq f-eq sk<ss st-eq)
@@ -855,8 +876,8 @@ module Dispatch (sup : Supply) where
           go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                  → (∀ hl → loc ≡ AtDynamic hl
                     → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl))))
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) × ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
           go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) (sucHL hl)) refl
           go-loc (AtStack f k)  i-eq ib =
             go-stack f k i-eq (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq)
@@ -868,13 +889,13 @@ module Dispatch (sup : Supply) where
   load-from-slot-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                           prog fs s slot → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                       → fetch prog (fpc fs) ≡ just (load-from-slot slot)
-                      → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                            ≡ event-of (load-from-slot slot) fs ▹ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs)) × ctrl-of (load-from-slot slot) + flat-ctrls n prog (flat-exec-instr (load-from-slot slot) prog fs) ≤ suc M)
+                      → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                            (event-of (load-from-slot slot) fs ▹ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs)) (ctrl-of (load-from-slot slot) + flat-ctrls n prog (flat-exec-instr (load-from-slot slot) prog fs)) M)
   load-from-slot-step {hv} n IH ev env prog fs s slot cc wf h ftq =
     go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
     where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of (load-from-slot slot) fs ▹ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs)) × ctrl-of (load-from-slot slot) + flat-ctrls n prog (flat-exec-instr (load-from-slot slot) prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (load-from-slot slot) fs ▹ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs)) (ctrl-of (load-from-slot slot) + flat-ctrls n prog (flat-exec-instr (load-from-slot slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (load-from-slot slot)
               (bs-load-from-slot bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
@@ -893,13 +914,13 @@ module Dispatch (sup : Supply) where
   restore-input-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                          prog fs s slot → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just (restore-input slot)
-                     → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                           ≡ event-of (restore-input slot) fs ▹ flat-events n prog (flat-exec-instr (restore-input slot) prog fs)) × ctrl-of (restore-input slot) + flat-ctrls n prog (flat-exec-instr (restore-input slot) prog fs) ≤ suc M)
+                     → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                           (event-of (restore-input slot) fs ▹ flat-events n prog (flat-exec-instr (restore-input slot) prog fs)) (ctrl-of (restore-input slot) + flat-ctrls n prog (flat-exec-instr (restore-input slot) prog fs)) M)
   restore-input-step {hv} n IH ev env prog fs s slot cc wf h ftq =
     go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
     where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of (restore-input slot) fs ▹ flat-events n prog (flat-exec-instr (restore-input slot) prog fs)) × ctrl-of (restore-input slot) + flat-ctrls n prog (flat-exec-instr (restore-input slot) prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (restore-input slot) fs ▹ flat-events n prog (flat-exec-instr (restore-input slot) prog fs)) (ctrl-of (restore-input slot) + flat-ctrls n prog (flat-exec-instr (restore-input slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (restore-input slot)
               (bs-restore-input bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
@@ -918,13 +939,13 @@ module Dispatch (sup : Supply) where
   worklist-pop-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                         prog fs s slot → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just (worklist-pop slot)
-                    → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                          ≡ event-of (worklist-pop slot) fs ▹ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs)) × ctrl-of (worklist-pop slot) + flat-ctrls n prog (flat-exec-instr (worklist-pop slot) prog fs) ≤ suc M)
+                    → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                          (event-of (worklist-pop slot) fs ▹ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs)) (ctrl-of (worklist-pop slot) + flat-ctrls n prog (flat-exec-instr (worklist-pop slot) prog fs)) M)
   worklist-pop-step {hv} n IH ev env prog fs s slot cc wf h ftq =
     go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
     where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of (worklist-pop slot) fs ▹ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs)) × ctrl-of (worklist-pop slot) + flat-ctrls n prog (flat-exec-instr (worklist-pop slot) prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (worklist-pop slot) fs ▹ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs)) (ctrl-of (worklist-pop slot) + flat-ctrls n prog (flat-exec-instr (worklist-pop slot) prog fs)) M)
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (worklist-pop slot)
               (bs-worklist-pop bss prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
@@ -945,12 +966,12 @@ module Dispatch (sup : Supply) where
   store-indirect-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                           prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                       → fetch prog (fpc fs) ≡ just store-indirect
-                      → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                            ≡ event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) × ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs) ≤ suc M)
+                      → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                            (event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) (ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs)) M)
   store-indirect-step {hv} n IH ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
     where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) × ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) (ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs)) M)
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n IH ev env prog fs s store-indirect
               (bs-store-indirect bss prog fs s hl cc h ftq i-eq
@@ -981,12 +1002,12 @@ module Dispatch (sup : Supply) where
   store-indirect-suc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                               prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                           → fetch prog (fpc fs) ≡ just store-indirect-suc
-                          → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                                ≡ event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) × ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs) ≤ suc M)
+                          → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                                (event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) (ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs)) M)
   store-indirect-suc-step {hv} n IH ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
     where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) × ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) (ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs)) M)
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n IH ev env prog fs s store-indirect-suc
               (bs-store-indirect-suc bss prog fs s hl cc h ftq i-eq
@@ -1020,9 +1041,9 @@ module Dispatch (sup : Supply) where
   sigop-external : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                      prog fs s {A B} (si : SigOpInfo A B) → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                  → fetch prog (fpc fs) ≡ just (instr-sigop si) → External (sem si)
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)) × ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs) ≤ suc M)
-  sigop-external n IH ev env prog fs s si cc wf h ftq ext = suc (proj₁ rec) , goal , ≤-trans (proj₂ (proj₂ rec)) (n≤1+n _)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)) (ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs)) M)
+  sigop-external n IH ev env prog fs s si cc wf h ftq ext = suc (proj₁ rec) , goal
     where contract = external-sigop-contract ev env prog fs s si (inv-run wf) (inv-ev wf) (inv-env wf) ext cc ftq
           lbl = once-symbol-path (SigOpInfo.name si)
           rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
@@ -1032,12 +1053,17 @@ module Dispatch (sup : Supply) where
           -- definition, the concrete one by the event the contract pins.
           log≡ : (LocState.ev-log (floc fs)) ++ ev lbl s ≡ LocState.ev-log (floc (flat-exec-instr (instr-sigop si) prog fs))
           log≡ = cong ((LocState.ev-log (floc fs)) ++_) (proj₁ (proj₂ contract))
-          goal : RT.run-events ev env (LocState.ev-log (floc fs)) (suc (proj₁ rec)) (compile-trace prog) s
-               ≡ event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)
-          goal = trans (sigop-run-external ev env (LocState.ev-log (floc fs)) (proj₁ rec) prog fs s si cc h ftq (proj₁ contract))
-                 (trans (cong₂ (λ e lg → e ▹ RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (ret-call (LocState.ev-log (floc fs)) lbl s))
-                               (proj₁ (proj₂ contract)) log≡)
-                        (cong (event-of (instr-sigop si) fs ▹_) (proj₁ (proj₂ rec))))
+          pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (suc (proj₁ rec)) (compile-trace prog) s
+                 ≡ event-of (instr-sigop si) fs
+                   ▹ RT.run-events ev env (LocState.ev-log (floc (flat-exec-instr (instr-sigop si) prog fs))) (proj₁ rec)
+                       (compile-trace prog) (ret-call (LocState.ev-log (floc fs)) lbl s)
+          pre-eq = trans (sigop-run-external ev env (LocState.ev-log (floc fs)) (proj₁ rec) prog fs s si cc h ftq (proj₁ contract))
+                         (cong₂ (λ e lg → e ▹ RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (ret-call (LocState.ev-log (floc fs)) lbl s))
+                                (proj₁ (proj₂ contract)) log≡)
+          goal : AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc (proj₁ rec)) (compile-trace prog) s)
+                         (event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
+                         (ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs)) (suc (proj₁ rec))
+          goal = agree-pre (event-of (instr-sigop si) fs) pre-eq (λ b → ≤-trans b (n≤1+n _)) (proj₂ rec)
 
   -- SIGOP engine. Split on WHOSE the SigOp is (`sigop-owner`, plan 0.105): internal ⇒ arith — the run-events
   -- mechanics are PROVEN (sigop-run-arith: pc-align + run-events-arith), event-of is []
@@ -1047,33 +1073,35 @@ module Dispatch (sup : Supply) where
   sigop-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                  prog fs s {A B} (si : SigOpInfo A B) → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                → fetch prog (fpc fs) ≡ just (instr-sigop si)
-               → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                     ≡ event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)) × ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs) ≤ suc M)
+               → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                     (event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)) (ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs)) M)
   sigop-step {hv} n IH ev env prog fs s {A} {B} si cc wf h ftq = route (sigop-owner (sem si))
     where route : Internal (sem si) ⊎ External (sem si)
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                       ≡ event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)) × ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs) ≤ suc M)
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)) (ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs)) M)
           -- plan 0.105: an EXTERNAL SigOp — an interpretation's contract, pure
           -- FFI included (whose event is empty) — is a call of a symbol the
           -- binary does not define.
           route (inj₂ ext) = sigop-external n IH ev env prog fs s si cc wf h ftq ext
-          route (inj₁ int) = suc (proj₁ rec) , goal , ≤-trans (proj₂ (proj₂ rec)) (n≤1+n _)
+          route (inj₁ int) = suc (proj₁ rec) , goal
             where eqe = internal-pure int
                   contract = arith-sigop-contract env prog fs s si (inv-run wf) (inv-env wf) int cc ftq
                   pl  = proj₁ contract
                   rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                           (dispatchArith pl s) (proj₂ (proj₂ contract))
                           (flat-inv-step (instr-sigop si) prog fs ftq h tt wf)
-                  goal : RT.run-events ev env (LocState.ev-log (floc fs)) (suc (proj₁ rec)) (compile-trace prog) s
-                       ≡ event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)
+                  goal : AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc (proj₁ rec)) (compile-trace prog) s)
+                                 (event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
+                                 (ctrl-of (instr-sigop si) + flat-ctrls n prog (flat-exec-instr (instr-sigop si) prog fs)) (suc (proj₁ rec))
                   -- plan 0.105: a Pure SigOp logs nothing, on either machine.
                   log≡ : (LocState.ev-log (floc fs)) ≡ LocState.ev-log (floc (flat-exec-instr (instr-sigop si) prog fs))
                   log≡ = sym (trans (cong ((LocState.ev-log (floc fs)) ++_) (event-of-pure si fs eqe))
                                     (++-identityʳ (LocState.ev-log (floc fs))))
                   goal rewrite event-of-pure si fs eqe =
-                    trans (sigop-run-arith ev env (LocState.ev-log (floc fs)) (proj₁ rec) prog fs s si pl cc h ftq (proj₁ (proj₂ contract)))
-                          (trans (cong (λ lg → RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (dispatchArith pl s)) log≡)
-                                 (proj₁ (proj₂ rec)))
+                    agree-pre []
+                      (trans (sigop-run-arith ev env (LocState.ev-log (floc fs)) (proj₁ rec) prog fs s si pl cc h ftq (proj₁ (proj₂ contract)))
+                             (cong (λ lg → RT.run-events ev env lg (proj₁ rec) (compile-trace prog) (dispatchArith pl s)) log≡))
+                      (λ b → ≤-trans b (n≤1+n _)) (proj₂ rec)
 
 
   -- D320: THE LEAVE. The flat machine halts having left (`c-leave`); the
@@ -1081,46 +1109,46 @@ module Dispatch (sup : Supply) where
   leave-step : ∀ {hv : HeapView} n (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s
              → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
              → fetch prog (fpc fs) ≡ just (instr-ctrl c-leave)
-             → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                   ≡ event-of (instr-ctrl c-leave) fs ▹ flat-events n prog (flat-exec-instr (instr-ctrl c-leave) prog fs)) × ctrl-of (instr-ctrl c-leave) + flat-ctrls n prog (flat-exec-instr (instr-ctrl c-leave) prog fs) ≤ suc M)
-  leave-step zero    ev env prog fs s cc h ftq = 0 , refl , s≤s z≤n
+             → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                   (event-of (instr-ctrl c-leave) fs ▹ flat-events n prog (flat-exec-instr (instr-ctrl c-leave) prog fs)) (ctrl-of (instr-ctrl c-leave) + flat-ctrls n prog (flat-exec-instr (instr-ctrl c-leave) prog fs)) M)
+  leave-step zero    ev env prog fs s cc h ftq = 0 , inj₁ (refl , s≤s z≤n)
   leave-step (suc n) ev env prog fs s cc h ftq =
-    1 , RT.run-events-leave ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s
+    1 , inj₁ (RT.run-events-leave ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s
           (sigop-call host-leave-symbol) (trans (CFC.halt-eq (dataCorr cc)) h)
           (leave-concrete-fetch prog fs s cc ftq) (sigop-matchCall host-leave-symbol)
-    , s≤s z≤n
+    , s≤s z≤n)
 
   mutual
     events-agree : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv)
                      prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs
-                 → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s ≡ flat-events N prog fs) × flat-ctrls N prog fs ≤ suc M)
-    events-agree {hv} zero    ev env prog fs s cc wf = 0 , refl , z≤n
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s) (flat-events N prog fs) (flat-ctrls N prog fs) M)
+    events-agree {hv} zero    ev env prog fs s cc wf = 0 , inj₁ (refl , z≤n)
     events-agree {hv} (suc n) ev env prog fs s cc wf = go-h (halted (floc fs)) refl
       where go-h : ∀ (b : Bool) → halted (floc fs) ≡ b
-                → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                             ≡ flat-events-step b n prog fs) × flat-ctrls-step b n prog fs ≤ suc M)
+                → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                             (flat-events-step b n prog fs) (flat-ctrls-step b n prog fs) M)
             -- both machines have stopped; the flat one has not LEFT (`inv-left`),
             -- so both show `halted`.
-            go-h true  eqh = 1 , trans (RT.run-events-halted ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s
+            go-h true  eqh = 1 , inj₁ (trans (RT.run-events-halted ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s
                                           (trans (CFC.halt-eq (dataCorr cc)) eqh))
                                        (cong (λ b → ended (end-of-left b)) (sym (inv-left wf)))
-                           , z≤n
+                           , z≤n)
             go-h false eqh = events-running n ev env prog fs s cc wf eqh
 
     -- Running step: `flat-events (suc n)` (halted false) reduces to the abstract
     -- fetch-dispatch; case the fetch via a J-style `go` bridge and route.
     events-running : ∀ {hv : HeapView} n (ev : RT.EvExtractor) (env : RT.ArithEnv)
                        prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                   → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                                ≡ flat-events-fetch (fetch prog (fpc fs)) n prog fs) × flat-ctrls-fetch (fetch prog (fpc fs)) n prog fs ≤ suc M)
+                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                                (flat-events-fetch (fetch prog (fpc fs)) n prog fs) (flat-ctrls-fetch (fetch prog (fpc fs)) n prog fs) M)
     events-running {hv} n ev env prog fs s cc wf h = go (fetch prog (fpc fs)) refl
       where go : ∀ (mi : Maybe AbstractInstr) → fetch prog (fpc fs) ≡ mi
-               → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                            ≡ flat-events-fetch mi n prog fs) × flat-ctrls-fetch mi n prog fs ≤ suc M)
+               → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                            (flat-events-fetch mi n prog fs) (flat-ctrls-fetch mi n prog fs) M)
             go nothing  eqf = withBound (events-running-end   n ev env (LocState.ev-log (floc fs)) prog fs s cc wf h eqf)
               where withBound : Σ ℕ (λ M → RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s ≡ stop)
-                              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s ≡ stop) × 0 ≤ suc M)
-                    withBound (M , e) = M , e , z≤n
+                              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s) (stop) (0) M)
+                    withBound (M , e) = M , inj₁ (e , z≤n)
             go (just i) eqf = events-running-fetch n ev env prog fs s i cc wf h eqf
 
     -- Per-instruction dispatch (with-free constructor matching on `i`). c-label is a
@@ -1129,8 +1157,8 @@ module Dispatch (sup : Supply) where
     events-running-fetch : ∀ {hv : HeapView} n (ev : RT.EvExtractor) (env : RT.ArithEnv)
                              prog fs s i → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                          → fetch prog (fpc fs) ≡ just i
-                         → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                               ≡ event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs)) × ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs) ≤ suc M)
+                         → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                               (event-of i fs ▹ flat-events n prog (flat-exec-instr i prog fs)) (ctrl-of i + flat-ctrls n prog (flat-exec-instr i prog fs)) M)
     -- The straight-line CCC cases: register moves / reg-ops / load-tag-lit / c-label all
     -- leave `halted` untouched (exec-abstract is a `record {regs=…}` or flat-exec-instr
     -- just bumps fpc), so halted-post = h and event-of = [] (refl). Each feeds its PROVEN
@@ -1208,9 +1236,9 @@ module Dispatch (sup : Supply) where
       go (find-thunk prog k) refl
       where
         go : ∀ (mj : Maybe ℕ) → find-thunk prog k ≡ mj
-           → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                 ≡ event-of (instr-load-code-addr k) fs
-                   ▹ flat-events n prog (flat-exec-instr (instr-load-code-addr k) prog fs)) × ctrl-of (instr-load-code-addr k) + flat-ctrls n prog (flat-exec-instr (instr-load-code-addr k) prog fs) ≤ suc M)
+           → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                 (event-of (instr-load-code-addr k) fs
+                   ▹ flat-events n prog (flat-exec-instr (instr-load-code-addr k) prog fs)) (ctrl-of (instr-load-code-addr k) + flat-ctrls n prog (flat-exec-instr (instr-load-code-addr k) prog fs)) M)
         go (just j) fteq =
           ccc-step-bs {hv} n (events-agree n) ev env prog fs s (instr-load-code-addr k)
             (bs-load-code-addr bss prog fs s k (blk-off prog j) cc h ftq
@@ -1305,11 +1333,13 @@ module Dispatch (sup : Supply) where
     → CFC.hfront hv ≡ 0
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
-    → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                 ≡ flat-events (suc N) prog fs) × flat-ctrls (suc N) prog fs ≤ suc M)
+    → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                 (flat-events (suc N) prog fs) (flat-ctrls (suc N) prog fs) M)
   events-agree-start {hv} N ev env prog fs s b cc wf cl rt evq envq run h ftq h0 nf lf0 =
-    (blk-len i + proj₁ rec) , trans result (sym step-eq)
-    , ≤-trans (≤-reflexive step-ctrls) (≤-trans (+-mono-≤ (ctrl-le i) (proj₂ (proj₂ rec))) (≤-reflexive (+-suc (blk-len i) (proj₁ rec))))
+    (blk-len i + proj₁ rec)
+    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s)
+                           o (flat-ctrls (suc N) prog fs) (blk-len i + proj₁ rec))
+            (sym step-eq) (agree-pre [] pre-eq bound (proj₂ rec))
     where
       i = instr-ctrl (c-start b)
       room : CFC.hfront hv + slots b ≤ rreg s sp-reg
@@ -1343,13 +1373,15 @@ module Dispatch (sup : Supply) where
         ; inv-left    = trans (LL.flat-exec-instr-left i tt prog fs) lf0
         }
       rec = events-agree N ev env prog (flat-exec-instr i prog fs) (proj₁ bs) (proj₂ (proj₂ bs)) inv₁
-      result : RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s
-             ≡ flat-events N prog (flat-exec-instr i prog fs)
-      result =
-        trans (block-run-exec ev env (LocState.ev-log (floc fs)) (blk-len i) (proj₁ rec) (compile-trace prog) s
-                 (proj₁ (proj₂ bs)) (trans (CFC.halt-eq (dataCorr (proj₂ (proj₂ bs)))) h))
-              (proj₁ (proj₂ rec))
+      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (blk-len i + proj₁ rec) (compile-trace prog) s
+             ≡ RT.run-events ev env (LocState.ev-log (floc (flat-exec-instr i prog fs))) (proj₁ rec) (compile-trace prog) (proj₁ bs)
+      pre-eq =
+        block-run-exec ev env (LocState.ev-log (floc fs)) (blk-len i) (proj₁ rec) (compile-trace prog) s
+          (proj₁ (proj₂ bs)) (trans (CFC.halt-eq (dataCorr (proj₂ (proj₂ bs)))) h)
       step-eq : flat-events (suc N) prog fs ≡ flat-events N prog (flat-exec-instr i prog fs)
       step-eq rewrite h | ftq = refl
       step-ctrls : flat-ctrls (suc N) prog fs ≡ ctrl-of i + flat-ctrls N prog (flat-exec-instr i prog fs)
       step-ctrls rewrite h | ftq = refl
+      bound : flat-ctrls N prog (flat-exec-instr i prog fs) ≤ suc (proj₁ rec)
+            → flat-ctrls (suc N) prog fs ≤ suc (blk-len i + proj₁ rec)
+      bound b = ≤-trans (≤-reflexive step-ctrls) (≤-trans (+-mono-≤ (ctrl-le i) b) (≤-reflexive (+-suc (blk-len i) (proj₁ rec))))
