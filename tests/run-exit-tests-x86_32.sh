@@ -10,7 +10,10 @@
 #
 # Usage: tests/run-exit-tests-x86_32.sh ["<default build flags>"]
 set -u
-DEFAULT_PARAMS="${1:---alloc heap --no-optimize}"
+# Each test runs twice, without and with the optimizer; both runs must exit
+# with the expected code and emit the same output (the optimizer keeps the
+# trace, D347). Given build flags, each test runs once with exactly those.
+if [ $# -ge 1 ]; then DEFAULT_PARAMS="$1"; OPTS=(""); else DEFAULT_PARAMS="--alloc heap"; OPTS=("--no-optimize" ""); fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTDIR="$ROOT/compiler/test"
 STRATA="$ROOT/Strata"
@@ -34,22 +37,29 @@ for f in "$TESTDIR"/*.once; do
     rel="${mod#I.}"; rel="${rel//.//}"
     [ -f "$STRATA/Interpretations/$rel.x86_32" ] && Iargs+=(-I:x86_32 "$mod")
   done < <(grep -oE '^import +[A-Za-z0-9_.]+' "$f" | awk '{print $2}')
-  $ONCE build --exe --target x86_32 $params "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name" >"$BUILD/$name.log" 2>&1
-  if [ ! -f "$BUILD/$name" ]; then
-    echo "FAIL(build) $name (expected exit $exp) — see $BUILD/$name.log"
-    fail=$((fail+1)); failed+=("$name"); continue
-  fi
-  # D220: `emit` is a REAL SigOp now, so an emitting test writes machine words
-  # to stdout. Capture them next to the build log rather than into the terminal;
-  # this harness asserts the exit code only.
-  timeout 10 "$QEMU" "$BUILD/$name" > "$BUILD/$name.trace" 2>/dev/null; got=$?
-  if [ "$got" -eq 124 ]; then
-    echo "FAIL $name: TIMEOUT (hang) under qemu-i386, expected exit $exp"
-    fail=$((fail+1)); failed+=("$name")
-  elif [ "$got" -eq "$exp" ]; then
-    pass=$((pass+1))
-  else
-    echo "FAIL $name: expected exit $exp, got $got (qemu-i386)"
+  for opt in "${OPTS[@]}"; do
+    tag="${opt:+-noopt}"
+    $ONCE build --exe --target x86_32 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
+    if [ ! -f "$BUILD/$name$tag" ]; then
+      echo "FAIL(build) $name$tag (expected exit $exp) — see $BUILD/$name$tag.log"
+      fail=$((fail+1)); failed+=("$name$tag"); continue
+    fi
+    # D220: `emit` is a REAL SigOp now, so an emitting test writes machine words
+    # to stdout. Capture them next to the build log rather than into the terminal;
+    # the two builds' outputs are compared below.
+    timeout 10 "$QEMU" "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
+    if [ "$got" -eq 124 ]; then
+      echo "FAIL $name$tag: TIMEOUT (hang) under qemu-i386, expected exit $exp"
+      fail=$((fail+1)); failed+=("$name$tag")
+    elif [ "$got" -eq "$exp" ]; then
+      pass=$((pass+1))
+    else
+      echo "FAIL $name$tag: expected exit $exp, got $got (qemu-i386)"
+      fail=$((fail+1)); failed+=("$name$tag")
+    fi
+  done
+  if [ "${#OPTS[@]}" -eq 2 ] && ! cmp -s "$BUILD/$name-noopt.trace" "$BUILD/$name.trace"; then
+    echo "FAIL $name: the optimized build emits other output than --no-optimize"
     fail=$((fail+1)); failed+=("$name")
   fi
 done

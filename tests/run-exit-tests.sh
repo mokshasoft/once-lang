@@ -8,15 +8,19 @@
 # SigOp trace (e.g. the optimizer's `→Unit ⇒ terminal` rule dropping
 # effectful SigOps so a program silently exits 0).
 #
-# Canonical build params for the heap-mode suite are `--alloc heap
-# --no-optimize`. A test may override them with a line:
+# Canonical build params for the heap-mode suite are `--alloc heap`, each
+# test built once with `--no-optimize` and once without. A test may override
+# the params with a line:
 #     -- params: <flags>
 # A test may be skipped (not yet implemented) with a line containing:
 #     -- PENDING
 #
 # Usage: tests/run-exit-tests.sh ["<default build flags>"]
 set -u
-DEFAULT_PARAMS="${1:---alloc heap --no-optimize}"
+# Each test runs twice, without and with the optimizer; both runs must exit
+# with the expected code and emit the same output (the optimizer keeps the
+# trace, D347). Given build flags, each test runs once with exactly those.
+if [ $# -ge 1 ]; then DEFAULT_PARAMS="$1"; OPTS=(""); else DEFAULT_PARAMS="--alloc heap"; OPTS=("--no-optimize" ""); fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTDIR="$ROOT/compiler/test"
 STRATA="$ROOT/Strata"
@@ -38,20 +42,27 @@ for f in "$TESTDIR"/*.once; do
     rel="${mod#I.}"; rel="${rel//.//}"
     [ -f "$STRATA/Interpretations/$rel.x86_64" ] && Iargs+=(-I:x86_64 "$mod")
   done < <(grep -oE '^import +[A-Za-z0-9_.]+' "$f" | awk '{print $2}')
-  $ONCE build --exe --target x86_64 $params "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name" >"$BUILD/$name.log" 2>&1
-  if [ ! -x "$BUILD/$name" ]; then
-    echo "FAIL(build) $name (expected exit $exp) — see $BUILD/$name.log"
-    fail=$((fail+1)); failed+=("$name"); continue
-  fi
-  # D220: `emit` is a REAL SigOp now, so a test that emits writes machine words
-  # to stdout. This harness asserts the exit code only, so capture that output
-  # (it is kept next to the build log for inspection) rather than letting raw
-  # bytes into the terminal. The ORDERED trace is asserted by `traceCases`.
-  "$BUILD/$name" > "$BUILD/$name.trace" 2>/dev/null; got=$?
-  if [ "$got" -eq "$exp" ]; then
-    pass=$((pass+1))
-  else
-    echo "FAIL $name: expected exit $exp, got $got"
+  for opt in "${OPTS[@]}"; do
+    tag="${opt:+-noopt}"
+    $ONCE build --exe --target x86_64 $params $opt "${Iargs[@]}" --strata "$STRATA" "$f" -o "$BUILD/$name$tag" >"$BUILD/$name$tag.log" 2>&1
+    if [ ! -x "$BUILD/$name$tag" ]; then
+      echo "FAIL(build) $name$tag (expected exit $exp) — see $BUILD/$name$tag.log"
+      fail=$((fail+1)); failed+=("$name$tag"); continue
+    fi
+    # D220: `emit` is a REAL SigOp now, so a test that emits writes machine words
+    # to stdout. Capture that output (it is kept next to the build log for
+    # inspection, and the two builds' outputs are compared below) rather than
+    # letting raw bytes into the terminal. The ORDERED trace is asserted by `traceCases`.
+    "$BUILD/$name$tag" > "$BUILD/$name$tag.trace" 2>/dev/null; got=$?
+    if [ "$got" -eq "$exp" ]; then
+      pass=$((pass+1))
+    else
+      echo "FAIL $name$tag: expected exit $exp, got $got"
+      fail=$((fail+1)); failed+=("$name$tag")
+    fi
+  done
+  if [ "${#OPTS[@]}" -eq 2 ] && ! cmp -s "$BUILD/$name-noopt.trace" "$BUILD/$name.trace"; then
+    echo "FAIL $name: the optimized build emits other output than --no-optimize"
     fail=$((fail+1)); failed+=("$name")
   fi
 done
