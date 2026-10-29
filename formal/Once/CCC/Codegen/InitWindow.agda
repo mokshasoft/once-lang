@@ -24,7 +24,10 @@
 module Once.CCC.Codegen.InitWindow where
 
 open import Data.Nat using (ℕ)
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_; T)
+open import Data.Bool.Properties using (T-∧)
+open import Data.Product using (proj₁; proj₂)
+open import Function.Bundles using (Equivalence)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
@@ -81,10 +84,13 @@ data Win : (out in1 : Bool) (stash : Maybe ℕ) (w0 w1 : Bool) → AbstractTrace
 WinFrom : AbstractTrace → Set
 WinFrom = Win true false nothing false false
 
-NotAlloc : AbstractInstr → Set
-NotAlloc (instr-alloc-heap _) = ⊥
+not-alloc? : AbstractInstr → Bool
+not-alloc? (instr-alloc-heap _) = false
 {-# CATCHALL #-}
-NotAlloc _                    = ⊤
+not-alloc? _                    = true
+
+NotAlloc : AbstractInstr → Set
+NotAlloc i = T (not-alloc? i)
 
 data InitDisc : AbstractTrace → Set where
   []    : InitDisc []
@@ -112,3 +118,43 @@ init-++ : ∀ {a b} → InitDisc a → InitDisc b → InitDisc (a ++ b)
 init-++ []            db = db
 init-++ (na ∷ da)     db = na ∷ init-++ da db
 init-++ {instr-alloc-heap _ ∷ a} {b} (alloc w da) db = alloc (win-++ b w) (init-++ da db)
+
+-- Code with no allocation decides by computation: `ok _ refl`.
+noalloc? : AbstractTrace → Bool
+noalloc? []      = true
+noalloc? (i ∷ t) = not-alloc? i ∧ noalloc? t
+
+ok : ∀ t → T (noalloc? t) → InitDisc t
+ok []      _ = []
+ok (i ∷ t) p = proj₁ (Equivalence.to T-∧ p) ∷ ok t (proj₂ (Equivalence.to T-∧ p))
+
+------------------------------------------------------------------------
+-- THE THREE WINDOW SHAPES the code generator emits. After the allocation:
+-- stash the pointer, put it in `Input1`, then write the two cells, each from
+-- a value `Src` loads that is not the fresh pointer (a slot other than the
+-- stash, a tag, a code address).
+------------------------------------------------------------------------
+data Src (p : ℕ) : AbstractInstr → Set where
+  s-slot : ∀ {s} → ¬ (s ≡ p) → Src p (load-from-slot s)
+  s-tag  : ∀ {n} → Src p (instr-load-tag-lit n)
+  s-code : ∀ {l} → Src p (instr-load-code-addr l)
+
+src : ∀ {p x o i w0 w1 t} → Src p x → Win false i (just p) w0 w1 t → Win o i (just p) w0 w1 (x ∷ t)
+src (s-slot ne) w = w-load-slot ne w
+src s-tag       w = w-tag w
+src s-code      w = w-code w
+
+-- `x ; store ; y ; store-suc`
+std : ∀ {p x y t} → Src p x → Src p y
+    → WinFrom (store-at-slot p ∷ mov-to-input ∷ x ∷ store-indirect ∷ y ∷ store-indirect-suc ∷ t)
+std sx sy = w-stash (w-mov-in (src sx (w-store (src sy (w-store-suc w-done)))))
+
+-- `x ; store ; store-suc` (one value fills both cells)
+std1 : ∀ {p x t} → Src p x
+     → WinFrom (store-at-slot p ∷ mov-to-input ∷ x ∷ store-indirect ∷ store-indirect-suc ∷ t)
+std1 sx = w-stash (w-mov-in (src sx (w-store (w-store-suc w-done))))
+
+-- `x ; store-suc ; y ; store` (payload first)
+stdr : ∀ {p x y t} → Src p x → Src p y
+     → WinFrom (store-at-slot p ∷ mov-to-input ∷ x ∷ store-indirect-suc ∷ y ∷ store-indirect ∷ t)
+stdr sx sy = w-stash (w-mov-in (src sx (w-store-suc (src sy (w-store w-done)))))
