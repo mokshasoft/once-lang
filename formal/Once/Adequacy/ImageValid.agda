@@ -26,7 +26,7 @@ open import Data.String using (_==_)
 
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; ctrl-defs; adefs; heap-symbol)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; ctrl-defs; adefs; entry-symbol)
 open import Once.CCC.Codegen.NodesOK using (sigop-syms; leaf-syms; leaf-syms-all)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; sem)
@@ -142,17 +142,14 @@ block-syms-asm bs = fst-all {AsmSym} (dedup-blocks (map tag bs)) (dedup-all {Asm
 ------------------------------------------------------------------------
 
 private
-  heap-asm : AsmSym heap-symbol
-  heap-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-
-  start-asm : AsmSym "_start"
-  start-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+  entry-asm : AsmSym entry-symbol
+  entry-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 prog-defs-valid : ∀ (p : IRProgram) → All AsmSym (prog-defs p)
-prog-defs-valid p = heap-asm ∷ start-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))
+prog-defs-valid p = entry-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))
 
 lib-defs-valid : ∀ (m : Resolved) → All AsmSym (lib-defs m)
-lib-defs-valid m = heap-asm ∷ ++⁺ (adefs-asm (lib-image (moduleTable m))) (block-syms-asm (lib-blocks (moduleTable m)))
+lib-defs-valid m = ++⁺ (adefs-asm (lib-image (moduleTable m))) (block-syms-asm (lib-blocks (moduleTable m)))
 
 -- Every symbol a SigOp calls — itself or (a comparison) its block.
 sigop-syms-asm : ∀ {A B} (si : SigOpInfo A B) (m : Maybe CmpOp) → All AsmSym (sigop-syms si m)

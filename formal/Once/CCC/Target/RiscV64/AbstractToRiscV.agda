@@ -168,7 +168,7 @@ compile-abstract (instr-alloc-stack n) =
 
 -- instr-alloc-heap: allocate a heap cell.
 -- Plan 0.53: mirror x86-64's r15 bump allocator. s2 holds the heap top
--- pointer (initialized by _start to once_heap_base). To allocate n slots:
+-- pointer (set by the Host's `enter` to the region's bottom, C.5). To allocate n slots:
 --   mv   a0, s2       ; Output := current heap top
 --   addi s2, s2, n*8  ; bump heap top by n words
 -- The freshly-allocated block lives at the OLD s2 value (now in a0).
@@ -344,9 +344,10 @@ compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
 -- the same cell as before the split, since the total descent is unchanged.
 -- `c-ret` releases `slots (suc b)` for the same reason and is untouched.
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ sd ra sp (slots b) ∷ []
--- plan 0.107: `_start` — the heap register (`s2`), then the outermost frame;
+-- plan 0.107: the start (`once_main`) — the outermost frame (the Host set the
+-- heap register `s2`, plan 0.123 C.5);
 -- nothing called the program, so no `ra` to spill.
-compile-abstract (instr-ctrl (c-start b))               = lla-sym s2 "once_heap_base" ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
+compile-abstract (instr-ctrl (c-start b))               = addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
   where import Data.Integer
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []

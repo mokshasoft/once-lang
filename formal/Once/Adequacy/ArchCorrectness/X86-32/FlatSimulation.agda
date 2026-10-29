@@ -868,9 +868,11 @@ block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' 
                             (λ v p → p) (ret-eq cc))
 
 ------------------------------------------------------------------------
--- Plan 0.107: THE START ↔ `lea once_heap_base, %esi ; sub $4b, %esp` — the
--- heap register at the heap's base (`sim-heap-base`), then the outermost frame
--- exactly as a body marker reserves its own (`sim-thunk`). Nothing is owed.
+-- Plan 0.107: THE START ↔ `sub $4b, %esp` — the outermost frame, exactly as a
+-- body marker reserves its own (`sim-thunk`). The heap register is the Host's
+-- (plan 0.123 C.5), and the correspondence at the start already says it is the
+-- frontier (`frontier-eq`); `hfront hv ≡ 0` is kept for the callers' shape,
+-- unused. Nothing is owed.
 ------------------------------------------------------------------------
 block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
@@ -881,54 +883,43 @@ block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs
   → C.hfront hv ≡ 0
   → fret fs ≡ []
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
-block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤esp fits esp<mod h0 nf =
+block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤esp fits esp<mod _ nf =
   post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
-    fetch-lea : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (lea esi (abs-sym "once_heap_base"))
-    fetch-lea = trans (cong (X.fetch (compile-trace prog)) po)
+    fetch-sub : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg esp) (imm (slots b)))
+    fetch-sub = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
-    post-lea : X.State
-    post-lea = record s { regs = xwriteReg (xregs s) esi 0 ; pc = pc s + 1 }
-    step-heap : X.step-not-halted (compile-trace prog) s ≡ just post-lea
-    step-heap = step-lea {compile-trace prog} {s} fetch-lea
-    fetch-sub : X.fetch (compile-trace prog) (X.State.pc post-lea) ≡ just (sub (reg esp) (imm (slots b)))
-    fetch-sub = trans (cong (λ q → X.fetch (compile-trace prog) (q + 1)) po)
-                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-start b)) ft)
     newFlags : X.Flags
     newFlags = updateFlags (xreadReg (xregs s) esp ∸ slots b)
     post-sub : X.State
-    post-sub = record post-lea { regs = xwriteReg (xregs post-lea) esp (xreadReg (xregs s) esp ∸ slots b)
-                               ; flags = newFlags ; pc = pc s + 1 + 1 }
+    post-sub = record s { regs = xwriteReg (xregs s) esp (xreadReg (xregs s) esp ∸ slots b)
+                        ; flags = newFlags ; pc = pc s + 1 }
     in-range : slots b < X.W.modulus
     in-range = ≤-<-trans fits esp<mod
     borrow-free : xreadReg (xregs s) esp X.W.⊖ X.W.norm (slots b) ≡ xreadReg (xregs s) esp ∸ slots b
     borrow-free = trans (X.WL.⊖-normʳ (xreadReg (xregs s) esp) (slots b) in-range)
                         (X.WL.⊖≡∸ (xreadReg (xregs s) esp) (slots b) fits esp<mod)
-    step-sub : X.step-not-halted (compile-trace prog) post-lea ≡ just post-sub
-    step-sub = subst (λ w → X.step-not-halted (compile-trace prog) post-lea
-                            ≡ just (record post-lea { regs = xwriteReg (xregs post-lea) esp w
-                                                    ; flags = updateFlags w
-                                                    ; pc = pc s + 1 + 1 }))
+    step-sub : X.step-not-halted (compile-trace prog) s ≡ just post-sub
+    step-sub = subst (λ w → X.step-not-halted (compile-trace prog) s
+                            ≡ just (record s { regs = xwriteReg (xregs s) esp w
+                                             ; flags = updateFlags w
+                                             ; pc = pc s + 1 }))
                      borrow-free
-                     (step-sub-ri {compile-trace prog} {post-lea} {esp} {slots b} fetch-sub)
-    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-sub
-    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lea} halt-s step-heap halt-s)
-                    (exec-1 {compile-trace prog} {0} {post-lea} {post-sub} halt-s step-sub halt-s)
-    lea-corr : C.FlatCorr hv fs post-lea
-    lea-corr = C.sim-heap-base fs s post-lea dc (C.sets-role-x86 s role-heap 0 _ _) h0
+                     (step-sub-ri {compile-trace prog} {s} {esp} {slots b} fetch-sub)
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post-sub
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post-sub} halt-s step-sub halt-s
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-ctrl (c-start b)) prog fs) post-sub
-    dataPost = C.sim-thunk b fs post-lea _ lea-corr
+    dataPost = C.sim-thunk b fs s _ dc
                            lo' lo'≤lo front-lo' lo'≤esp fits
-                           (C.sets-role-x86 post-lea role-sp _ _ _)
+                           (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-sub
          ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-    pco' = trans (+-assoc (pc s) 1 1)
-                 (trans (cong (_+ 2) po)
-                        (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft)))
+    pco' = trans (cong (_+ 1) po)
+                 (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft))
     retPost : C.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-32-link-claim post-sub)
                          (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
                          (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs)))

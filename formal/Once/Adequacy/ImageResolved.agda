@@ -5,7 +5,7 @@
 -- Once.Adequacy.ImageResolved — plan 0.107 phase d, layer 2 assembled: EVERY
 -- SYMBOL THE PROGRAM IMAGE REFERENCES IS DEFINED, OR AN INTERPRETATION'S.
 --
--- The image is `_start`, `main`'s unit (ending in the silent stop), and each
+-- The image is the start (`c-start`), `main`'s unit (ending in the silent stop), and each
 -- table entry's marker and unit. `RefsClosed` closes each unit's local
 -- references against the image's definitions; the global ones are the leaves'
 -- (`NodesOK`): a call names a table entry, whose marker the image carries
@@ -146,7 +146,7 @@ module Prog (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi 
   P = ProgP m ir
 
   inD : ∀ {s} → s ∈ adefs img → s ∈ D
-  inD x = there (there (∈-++⁺ˡ x))
+  inD x = there (∈-++⁺ˡ x)
 
   -- the image's definitions are `D`'s
   d-img : ∀ {i} → i ∈ img → ∀ {s} → s ∈ instr-defs i → s ∈ D
@@ -194,7 +194,6 @@ module Prog (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi 
 
     closes-img : RC.Closes eo G D img
     closes-img =
-      inj₁ (here refl) ∷
       RC.closes-++ eo G LT FI closes-LT (closes-FI (suc (IT.ir-next-label eo 0 main′)) (table rp) FI⊆ (proj₂ lk) sl-tbl)
 
     resolved : Resolved D ext (arefs img)
@@ -250,7 +249,7 @@ module Lib (m : Core.Resolved) where
   G s = s ∈ D ⊎ s ∈ ext
 
   inD : ∀ {s} → s ∈ adefs (C.lib-image tbl) → s ∈ D
-  inD x = there (∈-++⁺ˡ x)
+  inD x = ∈-++⁺ˡ x
 
   -- the table is linked, by the telescope walk (any compile result)
   private
@@ -293,7 +292,7 @@ module Lib (m : Core.Resolved) where
     calls-ok = Data.List.Relation.Unary.All.tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? C.block-syms (C.program-blocks lp)))
       where
         split : ∀ s → s ∈ C.calls-of (C.rewrite-program lp) → _ → G s
-        split s s∈ (yes b) = inj₁ (there (∈-++⁺ʳ (adefs (C.lib-image tbl)) b))
+        split s s∈ (yes b) = inj₁ (∈-++⁺ʳ (adefs (C.lib-image tbl)) b)
         split s s∈ (no nb) = inj₂ (∈-filter⁺ (C.is-extern? lp) s∈ nb)
 
     tbl-leaves : ∀ (es : List IRFun) → All G (Data.List.concatMap (λ e → leaf-syms (fbody e)) es)

@@ -592,24 +592,16 @@ d_compile'45'abstract_14 v0
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
-                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_lea_34
-                       (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_r15_40)
+                       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_38
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'sym_20
-                          (coe ("once_heap_base" :: Data.Text.Text))))
-                    (coe
-                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_24
+                          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24))
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_sub_38
+                          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28
                           (coe
-                             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_24
-                             (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24))
-                          (coe
-                             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28
-                             (coe
-                                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_88
-                                (coe v2))))
-                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
+                             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.d_slots_88
+                             (coe v2))))
+                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'leave_2244
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

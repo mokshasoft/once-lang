@@ -144,7 +144,7 @@ compile-abstract (instr-alloc-stack n) =
 
 -- instr-alloc-heap: allocate a heap cell.
 -- Plan 0.53: mirror x86-64's r15 bump allocator with esi (i386 has no r15).
--- esi = heap top (init by _start to once_heap_base):
+-- esi = heap top (set by the Host's `enter` to the region's bottom, C.5):
 --   mov eax, esi       ; Output := current heap top
 --   add esi, n*4       ; bump by n words (4-byte i386 words)
 compile-abstract (instr-alloc-heap n) =
@@ -269,8 +269,9 @@ compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l (once n) ∷ []
 -- inline that text is gone, so the reference had no definition — an undefined
 -- symbol at link, caught by the exit tests, invisible to the proofs.
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ sub (reg esp) (imm (slots b)) ∷ []
--- plan 0.107: `_start` — the heap register, then the outermost frame.
-compile-abstract (instr-ctrl (c-start b))               = lea esi (abs-sym "once_heap_base") ∷ sub (reg esp) (imm (slots b)) ∷ []
+-- plan 0.107: the start (`once_main`) — the outermost frame. The Host set the
+-- heap register (plan 0.123 C.5).
+compile-abstract (instr-ctrl (c-start b))               = sub (reg esp) (imm (slots b)) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

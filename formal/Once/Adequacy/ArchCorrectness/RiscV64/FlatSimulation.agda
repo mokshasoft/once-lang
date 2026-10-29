@@ -1784,10 +1784,12 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfs wfc wfcl wf-heap wf-stack
                  (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
 
 ------------------------------------------------------------------------
--- Plan 0.107: THE START ↔ `lla s2, once_heap_base ; addi sp, sp, -8b` — the
--- heap register at the heap's base (`sim-heap-base`), then the outermost frame
--- exactly as a body marker reserves its own (`sim-thunk`), WITHOUT the spill:
--- nothing called the program, so there is no return address to save.
+-- Plan 0.107: THE START ↔ `addi sp, sp, -8b` — the outermost frame exactly as
+-- a body marker reserves its own (`sim-thunk`), WITHOUT the spill: nothing
+-- called the program, so there is no return address to save. The heap
+-- register is the Host's (plan 0.123 C.5), and the correspondence at the start
+-- already says it is the frontier (`frontier-eq`); `hfront hv ≡ 0` is kept for
+-- the callers' shape, unused.
 ------------------------------------------------------------------------
 block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
@@ -1799,49 +1801,38 @@ block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs
   → C.hfront hv ≡ 0
   → fret fs ≡ []
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
-block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits sp<mod h0 nf =
+block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits sp<mod _ nf =
   post-addi , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
                                ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : R.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
-    fetch-lla : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (lla-sym s2 "once_heap_base")
-    fetch-lla = trans (cong (R.fetch (compile-trace prog)) po)
-                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
-    post-lla : R.State
-    post-lla = record s { regs = R.writeReg (R.State.regs s) s2 0 ; pc = R.State.pc s + 1 }
-    step-heap : R.step-not-halted (compile-trace prog) s ≡ just post-lla
-    step-heap = step-lla-sym {compile-trace prog} {s} {s2} fetch-lla
-    fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-lla)
+    fetch-addi : R.fetch (compile-trace prog) (R.State.pc s)
                ≡ just (addi sp sp (ℤ.-_ (ℤ.+ (slots b))))
-    fetch-addi = trans (cong (λ q → R.fetch (compile-trace prog) (q + 1)) po)
-                       (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-start b)) ft)
+    fetch-addi = trans (cong (R.fetch (compile-trace prog)) po)
+                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
     post-addi : R.State
-    post-addi = record post-lla { regs = R.writeReg (R.State.regs post-lla) sp
-                                           (R.readReg (R.State.regs s) sp ∸ slots b)
-                                ; pc = R.State.pc s + 1 + 1 }
-    step-addi' : R.step-not-halted (compile-trace prog) post-lla ≡ just post-addi
-    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) post-lla
-                              ≡ just (record post-lla { regs = R.writeReg (R.State.regs post-lla) sp w
-                                                      ; pc = R.State.pc s + 1 + 1 }))
+    post-addi = record s { regs = R.writeReg (R.State.regs s) sp
+                                   (R.readReg (R.State.regs s) sp ∸ slots b)
+                         ; pc = R.State.pc s + 1 }
+    step-addi' : R.step-not-halted (compile-trace prog) s ≡ just post-addi
+    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) s
+                              ≡ just (record s { regs = R.writeReg (R.State.regs s) sp w
+                                               ; pc = R.State.pc s + 1 }))
                        (R.WL.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
-                       (step-addi {compile-trace prog} {post-lla} {sp} {sp}
+                       (step-addi {compile-trace prog} {s} {sp} {sp}
                                   {ℤ.-_ (ℤ.+ (slots b))} fetch-addi)
-    exec-eq : R.exec 2 (compile-trace prog) s ≡ just post-addi
-    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lla} halt-s step-heap halt-s)
-                    (exec-1 {compile-trace prog} {0} {post-lla} {post-addi} halt-s step-addi' halt-s)
-    lla-corr : C.FlatCorr hv fs post-lla
-    lla-corr = C.sim-heap-base fs s post-lla dc (C.sets-role-riscv64 s role-heap 0 _) h0
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post-addi
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post-addi} halt-s step-addi' halt-s
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-ctrl (c-start b)) prog fs) post-addi
-    dataPost = C.sim-thunk b fs post-lla _ lla-corr lo' lo'≤lo front-lo' lo'≤sp fits
-                           (C.sets-role-riscv64 post-lla role-sp _ _)
+    dataPost = C.sim-thunk b fs s _ dc lo' lo'≤lo front-lo' lo'≤sp fits
+                           (C.sets-role-riscv64 s role-sp _ _)
     pco' : R.State.pc post-addi
          ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
-    pco' = trans (+-assoc (R.State.pc s) 1 1)
-                 (trans (cong (_+ 2) po)
-                        (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft)))
+    pco' = trans (cong (_+ 1) po)
+                 (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-start b)) ft))
     retPost : C.RetAddrs (blk-off prog) (R.State.memory post-addi) (riscv64-link-claim post-addi)
                          (flink (flat-exec-instr (instr-ctrl (c-start b)) prog fs))
                          (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-start b)) prog fs)))

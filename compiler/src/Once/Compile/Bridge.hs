@@ -198,7 +198,7 @@ moduleImports (Module m) =
   ]
 
 -- | Does the module define a top-level `main`? This — not a CLI flag — is what
--- distinguishes a PROGRAM (has `main`, whose entry `once_main` `_start` calls)
+-- distinguishes a PROGRAM (has `main`, whose entry `once_main` the Host's `enter` calls)
 -- from a LIBRARY (no `main`). Mirrors `moduleImports`' decl inspection.
 -- D162: the predicate itself lives in Agda now (`Once.Extract.Names`). The
 -- Haskell version pattern-matched the `DFunDef` constructor with three fields, a stale

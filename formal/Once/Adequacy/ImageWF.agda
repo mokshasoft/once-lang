@@ -58,16 +58,16 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 import Data.List.Membership.DecPropositional Data.String._≟_ as StrMem
 import Data.String
-open import Once.CCC.Codegen.ImageSymbols using (heap-symbol; adefs)
+open import Once.CCC.Codegen.ImageSymbols using (entry-symbol; adefs)
 
--- What a program's file defines: the heap, `_start`, the image's labels and
--- entries, the arith blocks.
+-- What a program's file defines: its entry (`once_main`, plan 0.123 C.5), the
+-- image's labels and entries, the arith blocks.
 prog-defs : IRProgram → List String
-prog-defs p = heap-symbol ∷ "_start" ∷ adefs (image-of p) ++ block-syms (program-blocks p)
+prog-defs p = entry-symbol ∷ adefs (image-of p) ++ block-syms (program-blocks p)
 
--- …and a library's (no `_start`).
+-- …and a library's (no entry).
 lib-defs : Core.Resolved → List String
-lib-defs m = heap-symbol ∷ adefs (lib-image (moduleTable m)) ++ block-syms (lib-blocks (moduleTable m))
+lib-defs m = adefs (lib-image (moduleTable m)) ++ block-syms (lib-blocks (moduleTable m))
 
 Resolved : List String → List String → List String → Set
 Resolved defs ext refs = All (λ s → s ∈ defs ⊎ s ∈ ext) refs
@@ -99,7 +99,7 @@ private
     where
       p = irProgram (moduleTable m) ir
       split : ∀ s → s ∈ calls-of (rewrite-program p) → _ → ProgG m ir s
-      split s s∈ (yes b) = inj₁ (there (there (∈-++⁺ʳ (adefs (image-of p)) b)))
+      split s s∈ (yes b) = inj₁ (there (∈-++⁺ʳ (adefs (image-of p)) b))
       split s s∈ (no nb) = inj₂ (there (∈-filter⁺ (is-extern? p) s∈ nb))
 
   table-ok : ∀ {G : String → Set} (es : List IRFun)

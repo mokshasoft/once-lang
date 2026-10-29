@@ -2194,11 +2194,11 @@ d_printFile_1402 ::
 d_printFile_1402 v0
   = case coe v0 of
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
-        -> coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_print_84
+        -> coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_print_82
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
-        -> coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_print_84
+        -> coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.File.d_print_82
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
-        -> coe MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_print_84
+        -> coe MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_print_82
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.image-of
 d_image'45'of_1404 ::

@@ -397,8 +397,9 @@ entry updates the rule it changes here, in the same commit.
   the apex carries models showing the hypotheses satisfiable. Facts about our
   own code are proved. (D302 ← D087)
 - **Trust only `as`**: the one trusted translation is the assembler's; the
-  emitted code is the verified image, and `_start` is proved code; how the
-  run ends is the Host's `leave` (D320). A
+  emitted code is the verified image, and its entry `once_main` is proved
+  code; the run's memory and process entry are the Host's `enter` (Linux:
+  `_start`, D349), how the run ends its `leave` (D320). A
   toolchain axiom may never certify compiler logic. (D262 ← D165, D161, D261)
 - **Agda, extracted with MAlonzo**, is the current proof vehicle — scaffolding
   toward Once in Once and the TCB0 bootstrap. (D022, D036, GOAL.md)

@@ -19805,3 +19805,31 @@ run ends there. That was prose: nothing in the Spec said that the meaning's trac
   `complete` never meets an `exhausted` of the meaning.
 * A separate source trace type with no `exhausted` was considered (nothing to prove) and set aside: it
   doubles `Tr`, `EndRel` and the trace metatheory for no observable difference.
+
+## D349 — THE HOST OWNS THE PROCESS ENTRY AND THE REGION; THE COMPILER KNOWS NO PLATFORM (2026-10-29)
+
+**Refines** D320 (the Host: `enter ; main ; leave`). **Decided** by the user 2026-10-29 (plan 0.123 C.5): "the
+compiler has to be portable, so it should not know anything Linux specific. If this is Linux (or specific to
+bare metal or what ever) then it has to be defined in the Host interpretation."
+
+### Context
+The emitted file carried `_start` (the Linux/ELF process entry) and a 64 KiB `.bss` heap, and `c-start` loaded
+the frontier register from it. The stack was the OS's, far above the heap, so the region `[frontier, stack
+pointer)` that a room check compares (plan 0.123 Part C) was not one real region: a check would always pass
+while the heap ran off its end.
+
+### Decision
+* **The compiled file has no data and one portable entry, `once_main`.** `c-start` lowers to the outermost
+  frame's reservation alone. The ABI rule: on entry the frontier register is the region's bottom and the
+  stack pointer its top.
+* **The Host's `enter` is the process entry.** It obtains the region however its platform does, points the
+  frontier register at the bottom and the stack pointer at the top, and jumps to `once_main`. Linux: `_start`
+  with an 8 MiB `.bss` region (`Strata/Hosts/Linux/Host.<arch>`). seL4 and bare metal define their own.
+* **The proof needed the old load nowhere.** The correspondence already holds at the entry state, and its
+  `frontier-eq` says the frontier register is the frontier (0 w.l.o.g.); the start's simulation step loses
+  its first half. The file's symbols: `once_main` replaces `_start` and the heap symbol (fresh by
+  `SymbolFresh`: the prefix, then a letter).
+
+### Consequences
+* One region, two frontiers growing toward each other: the room check (plan 0.123 C.1) is one comparison.
+* The model's `stack-top` (the stack pointer at entry) is now the Host's region top.

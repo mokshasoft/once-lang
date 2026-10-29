@@ -270,9 +270,9 @@ compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
 -- reservation, and a return RELEASES that frame before returning. Both
 -- blocks are byte-for-byte what `emit-thunk-body` emits as text today.
 compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (reg rsp) (imm (slots b)) ∷ []
--- plan 0.107: `_start` — the heap register at the runtime's `.bss` heap, then
--- the outermost frame (nothing called the program, so no return to spill).
-compile-abstract (instr-ctrl (c-start b))          = lea r15 (rip+sym "once_heap_base") ∷ sub (reg rsp) (imm (slots b)) ∷ []
+-- plan 0.107: the start (`once_main`) — the outermost frame (nothing called the
+-- program, so no return to spill). The Host set the heap register (C.5).
+compile-abstract (instr-ctrl (c-start b))          = sub (reg rsp) (imm (slots b)) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

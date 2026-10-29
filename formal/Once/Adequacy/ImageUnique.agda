@@ -15,7 +15,7 @@
 --   * the function entries are the table's, whose symbols the extractor's guard
 --     keeps distinct (`NameClash.program-no-clash`), and no unit defines one
 --     (`CLabelsUnique.frag-nf`);
---   * the heap, `_start` and the arith blocks are separated from all of these
+--   * the entry (`once_main`) and the arith blocks are separated from all of these
 --     by their characters.
 ------------------------------------------------------------------------
 
@@ -387,7 +387,7 @@ fns-fdefs l (e ∷ es) =
     fdefs-++ []       y = refl
     fdefs-++ (i ∷ is) y = trans (cong (fdef-of i ++_) (fdefs-++ is y)) (sym (++-assoc (fdef-of i) (fdefs is) (fdefs y)))
 
--- the program image: `_start`, `main`'s unit ending in the leave (D320), the table
+-- the program image: the start, `main`'s unit ending in the leave (D320), the table
 image-cl : ∀ (o : CanonicalName) (q : IRProgram) → Dst (clabs (program-image o q))
 image-cl o q =
   subst Dst (sym eq)
@@ -500,7 +500,7 @@ ap-reverse {x ∷ xs} (px ∷ pxs) =
         rev-∈ = Data.List.Relation.Unary.Any.Properties.reverse⁻
 
 ------------------------------------------------------------------------
--- Characters: what separates the heap, `_start`, the counters, the entries
+-- Characters: what separates the program's entry, the counters, the entries
 -- and the arith blocks.
 ------------------------------------------------------------------------
 
@@ -517,7 +517,7 @@ open import Once.CCC.Label using (showLabelId)
 open import Once.Target.Symbol using (once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective
   using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; toList-mangle; NameChars)
-open import Once.CCC.Codegen.ImageSymbols using (heap-symbol)
+open import Once.CCC.Codegen.ImageSymbols using (entry-symbol)
 open import Once.Target.SymbolFresh using (letter≢osp)
 
 private
@@ -541,9 +541,9 @@ private
   hd≢ hs ht a≢b refl = a≢b (trans (sym hs) ht)
 
 
--- the heap is no canonical name's symbol (`SymbolFresh`: the prefix, then a letter)
-heap≢osp : ∀ (cn : CanonicalName) → heap-symbol ≢ once-symbol-path cn
-heap≢osp = letter≢osp heap-symbol 'h' (toList "eap_base") refl refl
+-- the entry is no canonical name's symbol (`SymbolFresh`: the prefix, then a letter)
+entry≢osp : ∀ (cn : CanonicalName) → entry-symbol ≢ once-symbol-path cn
+entry≢osp = letter≢osp entry-symbol 'm' (toList "ain") refl refl
 
 -- a definition's symbol is no arith block's (a block name has a `.` and a letter)
 own≢block : ∀ (x d : String) → ValidName x → once-symbol-own x ≢ once-symbol-own ("arith.block." ++ˢ d)
@@ -717,7 +717,7 @@ private
     EF-own {s} s∈ with ∈-map⁻ once-symbol-own (AnyP.reverse⁻ {xs = Data.List.map once-symbol-own names} (subst (s ∈_) EF≡ s∈))
     ... | x , x∈ , refl = x , lookup valid x∈ , refl
 
-  -- …and so the definitions, the blocks, the heap and `_start` are apart.
+  -- …and so the definitions, the blocks and the entry are apart.
   module Apart (fs : List CanonicalName) (T : List IRFun) (tn : TableNames T)
                (fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn) where
     open Entries T tn
@@ -729,37 +729,26 @@ private
     def≢blk (inj₂ s∈) (d , refl) with EF-own (toEF s∈)
     ... | x , vx , refl = own≢block x d vx
 
-    heap≢def : ∀ {s} → DefClass fs s → heap-symbol ≢ s
-    heap≢def (inj₁ h) = hd≢ refl h (λ ())
-    heap≢def (inj₂ s∈) with EF-own (toEF s∈)
-    ... | x , _ , refl = heap≢osp (canonical (x ∷ []))
+    entry≢def : ∀ {s} → DefClass fs s → entry-symbol ≢ s
+    entry≢def (inj₁ h) = hd≢ refl h (λ ())
+    entry≢def (inj₂ s∈) with EF-own (toEF s∈)
+    ... | x , _ , refl = entry≢osp (canonical (x ∷ []))
 
-    heap≢blk : ∀ {t} → BlockSym t → heap-symbol ≢ t
-    heap≢blk (d , refl) = heap≢osp (canonical (("arith.block." ++ˢ d) ∷ []))
-
-    start≢def : ∀ {s} → DefClass fs s → "_start" ≢ s
-    start≢def (inj₁ h) = hd≢ refl h (λ ())
-    start≢def (inj₂ s∈) with EF-own (toEF s∈)
-    ... | x , _ , refl = hd≢ refl (osp-hd (canonical (x ∷ []))) (λ ())
-
-    start≢blk : ∀ {t} → BlockSym t → "_start" ≢ t
-    start≢blk (d , refl) = hd≢ refl (osp-hd (canonical (("arith.block." ++ˢ d) ∷ []))) (λ ())
+    entry≢blk : ∀ {t} → BlockSym t → entry-symbol ≢ t
+    entry≢blk (d , refl) = entry≢osp (canonical (("arith.block." ++ˢ d) ∷ []))
 
     defs++blocks : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B
                  → AllPairs _≢_ D → AllPairs _≢_ B → AllPairs _≢_ (D ++ B)
     defs++blocks D B cD cB uD uB =
       AP-++⁺ uD uB (Data.List.Relation.Unary.All.map (λ {s} cs → Data.List.Relation.Unary.All.map (def≢blk cs) cB) cD)
 
-    heap-fresh : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B → All (heap-symbol ≢_) (D ++ B)
-    heap-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map heap≢def cD) (Data.List.Relation.Unary.All.map heap≢blk cB)
-
-    start-fresh : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B → All ("_start" ≢_) (D ++ B)
-    start-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map start≢def cD) (Data.List.Relation.Unary.All.map start≢blk cB)
+    entry-fresh : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B → All (entry-symbol ≢_) (D ++ B)
+    entry-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map entry≢def cD) (Data.List.Relation.Unary.All.map entry≢blk cB)
 
 -- THE PROGRAM (was `ImageWF.prog-unique`, a postulate).
 prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
 prog-unique m ir =
-  ((λ ()) ∷ heap-fresh D B cD cB) ∷ start-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
+  entry-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
   where
     T  = C.moduleTable m
     tn = table-names m
@@ -779,7 +768,7 @@ prog-unique m ir =
 -- THE LIBRARY (was `ImageWF.lib-unique`, a postulate).
 lib-unique : ∀ (m : Resolved) → Unique (lib-defs m)
 lib-unique m =
-  heap-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.lib-blocks T))
+  defs++blocks D B cD cB uD (blocks-unique (C.lib-blocks T))
   where
     T  = C.moduleTable m
     tn = table-names m

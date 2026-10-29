@@ -6,7 +6,7 @@
 # Host it is linked with (no name of a program has this symbol: a name's
 # symbol has a digit after `once_`). Its contract: calling it ends the run, and that
 # end is observed as `returned`. On Linux the run ends with exit status 0.
-# (`enter` is the kernel's process start: the state `_start` needs.)
+# `enter` is `_start` below: the region, then `once_main`.
 # ======================================================================
 
 .equ SYS_exit_group, 231
@@ -47,3 +47,29 @@ once_exhausted:
     syscall
     # Does not return
 .size once_exhausted, .-once_exhausted
+
+# ----------------------------------------------------------------------
+# _start — the Host's `enter` (D320; plan 0.123 C.5). The kernel starts the
+# process here. The Host owns the run's memory: one region, the cells at
+# its bottom growing up, the stack at its top growing down; running out is
+# the two meeting. It points the frontier register at the bottom and the
+# stack pointer at the top, and enters the program at `once_main` (the
+# compiler's portable entry, which knows no platform). On Linux the region
+# is in `.bss`: the kernel maps it zeroed and pages it in as it is touched.
+# ----------------------------------------------------------------------
+.equ ONCE_REGION_SIZE, 8388608          # 8 MiB
+
+.section .bss
+.balign 16
+once_region:
+    .skip ONCE_REGION_SIZE
+once_region_end:
+
+.text
+.global _start
+.type _start, @function
+_start:
+    leaq    once_region(%rip), %r15     # the frontier: the region's bottom
+    leaq    once_region_end(%rip), %rsp # the stack pointer: its top
+    jmp     once_main
+.size _start, .-_start
