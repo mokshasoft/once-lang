@@ -2099,9 +2099,11 @@ d_block'45'symbol_1362 v0
   = coe
       MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_62
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_188
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'name_190
          (coe
             MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_174 (coe v0))
+         (coe
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'kind_176 (coe v0))
          (coe
             MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_178 (coe v0)))
 -- Once.Compile.block-syms

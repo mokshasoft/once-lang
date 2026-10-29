@@ -38,7 +38,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block)
 
-open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-pair)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
@@ -65,6 +65,7 @@ open import Once.Arith.SigOp.Block using (block-info)
 shape-of : (A : II.IRTy) → Maybe (Σ[ sh ∈ InputShape ] (A ≡ ⌊ shape-as-type sh ⌋))
 shape-of II.Unit                           = just (shape-unit , refl)
 shape-of II.Int                            = just (shape-int  , refl)
+shape-of II.Float                          = just (shape-float , refl)
 shape-of (l II.* r)                        with shape-of l | shape-of r
 ... | just (sl , refl) | just (sr , refl)  = just (shape-pair sl sr , refl)
 {-# CATCHALL #-}

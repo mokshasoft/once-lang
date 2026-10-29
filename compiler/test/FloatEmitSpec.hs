@@ -144,6 +144,10 @@ floatEmitTests = testGroup "Float format in the effect trace"
    [ testGroup ("widen: " ++ e) [ testCase (archName a) (checkArith a e vs) | a <- backendArches ]
    | (e, vs) <- wideningCases ]
    ++
+   [ testGroup ("argument: " ++ e)
+       [ testCase (archName a) (checkProgram a ("arg-" ++ slug e) (argProgram e) vs) | a <- backendArches ]
+   | (e, vs) <- argumentCases ]
+   ++
    -- D055: the DECIDED NaN, not the hardware's. x86 answers
    -- `0xfff8000000000000` for `0.0 / 0.0` in silicon.
    [ testGroup ("canonical NaN: " ++ e)
@@ -155,15 +159,19 @@ floatEmitTests = testGroup "Float format in the effect trace"
 -- which is what makes this a check on the arithmetic and not just on the
 -- literal encoding.
 checkArith :: BackendArch -> String -> (Double, Float) -> IO ()
-checkArith arch expr vs = do
-  r <- buildAndRunTraceOn arch (slug expr) (arithProgram expr)
+checkArith arch expr = checkProgram arch (slug expr) (arithProgram expr)
+
+-- | …for any program that emits one float and exits with 7.
+checkProgram :: BackendArch -> String -> T.Text -> (Double, Float) -> IO ()
+checkProgram arch name prog vs = do
+  r <- buildAndRunTraceOn arch name prog
   case r of
     Left err -> assertFailure err
     Right (out, code) -> case decodeTrace arch out of
       Left err  -> assertFailure ("[" ++ tag ++ "] " ++ err)
       Right ws  -> do
         assertEqual ("[" ++ tag ++ "] one emitF invocation") 1 (length ws)
-        assertEqual ("[" ++ tag ++ "] emitted machine word for " ++ expr)
+        assertEqual ("[" ++ tag ++ "] emitted machine word for " ++ name)
                     (encodeArith (archFloatFormat arch) vs) (head ws)
         assertEqual ("[" ++ tag ++ "] exit code") 7 code
   where tag = archName arch
@@ -290,6 +298,41 @@ wideningCases =
   , ("1 / 4.0",   (1 / 4.0,   1 / 4.0))
   , ("2.5 * 3",   (2.5 * 3,   2.5 * 3))
   , ("7 - 0.25",  (7 - 0.25,  7 - 0.25))
+  ]
+
+-- | Float arithmetic over a function's ARGUMENTS (plan 0.129 B5). Until B5 a
+-- block could not read a `Float` input, so `x + y` over two `Float`s stayed a
+-- call to `arith.add.float`, which nothing defines, and the program failed to
+-- link. `addI` is the same tree at `Int`: their blocks differ only in the kind
+-- of their input leaves, which the block's symbol must therefore name, or one
+-- body is linked for both. The exit code checks `addI`, the emitted word
+-- `addF`, so a shared body fails one of the two whichever one is kept.
+argProgram :: String -> T.Text
+argProgram expr = T.unlines
+  [ "import I.Linux.Syscalls as S"
+  , "import I.Test.Emit as E"
+  , ""
+  , "addF : Float * Float -> Float"
+  , "addF p = fst p + snd p"
+  , ""
+  , "addI : Int * Int -> Int"
+  , "addI p = fst p + snd p"
+  , ""
+  , "twice : Float -> Float"
+  , "twice x = x * 2.0 + x / 4.0"
+  , ""
+  , "emitExpr : Act Unit Unit"
+  , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
+  , ""
+  , "main : Act Unit Void"
+  , "main = compose exit@S (compose (\\_ -> addI (3, 4)) emitExpr)"
+  ]
+
+argumentCases :: [(String, (Double, Float))]
+argumentCases =
+  [ ("addF (1.5, 2.25)",       (1.5 + 2.25,                 1.5 + 2.25))
+  , ("twice 0.1",              (0.1 * 2.0 + 0.1 / 4.0,      0.1 * 2.0 + 0.1 / 4.0))
+  , ("addF (twice 0.3, 0.2)",  (0.3 * 2.0 + 0.3 / 4.0 + 0.2, 0.3 * 2.0 + 0.3 / 4.0 + 0.2))
   ]
 
 paren :: String -> String

@@ -83,7 +83,7 @@ d_cmp'45'block'45'info_24 ::
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96
 d_cmp'45'block'45'info_24 v0
   = coe
-      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_376
+      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_378
       (coe
          MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16
          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12)

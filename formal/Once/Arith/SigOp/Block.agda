@@ -91,19 +91,24 @@ show-dlit d = show-zlit (sig d) ++ showℕ (exp10 d) ++ "_"
 -- parens / arithmetic punctuation that GNU `as` doesn't accept in
 -- symbol names. Operators map to capital-letter mnemonics:
 --   A = add, B = sub, M = mul, G = neg.
--- Leaves: `L` for literal, `I` for input projection. Terminators
+-- Leaves: `L` for literal, `I` for an input projection (`J` a float one). Terminators
 -- (`_`, `Z`) keep the encoding prefix-free.
 --
 -- PLAN 0.75 F4: `F` for a float literal and `C` for the D125 widening. The
 -- digest must SEPARATE the kinds — `1 + 2` at `Int` and at `Float` are
 -- different blocks needing different instructions, and a digest that collided
 -- them would link one body for both. The `NumType` index does not appear in
--- the string because it is DETERMINED by the leaves: a tree containing `F` or
--- `C` is a float tree and no other tree is.
+-- the string because it is DETERMINED by the leaves: a tree containing `F`,
+-- `J` or `C` is a float tree and no other tree is.
 show-arith-ir : ∀ {sh n} → MArithIR sh n → String
 show-arith-ir (alit z)     = "L" ++ show-zlit z
 show-arith-ir (aflit d)    = "F" ++ show-dlit d
-show-arith-ir (ainput p)   = "I" ++ show-path ⌊ p ⌋ᴾ
+show-arith-ir {n = NInt}   (ainput p) = "I" ++ show-path ⌊ p ⌋ᴾ
+-- plan 0.129 B5: a FLOAT input is `J`. Once a block can read a `Float`
+-- (`Rewrite.shape-of`), `x + y` at `Int` and at `Float` have the same tree, and
+-- the leaf letter is all that separates them (`dedup-blocks` keeps one body per
+-- symbol).
+show-arith-ir {n = NFloat} (ainput p) = "J" ++ show-path ⌊ p ⌋ᴾ
 show-arith-ir (aadd a b)   = "A" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (asub a b)   = "B" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (amul a b)   = "M" ++ show-arith-ir a ++ show-arith-ir b

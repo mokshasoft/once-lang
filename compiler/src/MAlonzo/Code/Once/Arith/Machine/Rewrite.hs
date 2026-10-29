@@ -82,6 +82,13 @@ d_shape'45'of_12 v0
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                    (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12)
                    erased)
+         MAlonzo.Code.Once.IRTy.C_Float_32
+           -> coe
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                (coe
+                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                   (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'float_14)
+                   erased)
          _ -> coe v1)
 -- Once.Arith.Machine.Rewrite.has-op
 d_has'45'op_38 ::
@@ -141,7 +148,7 @@ du_block'45'as'45'ir_46 v0 v1 v2
          MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_164
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_376 (coe v0)
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_378 (coe v0)
          (coe v1) (coe v2))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_64 ::
