@@ -315,6 +315,7 @@ mutual
   regtag-abstract (instr-alloc-stack n) ls alloc wf = wf
   regtag-abstract (instr-dealloc-stack n) ls alloc wf = wf
   regtag-abstract (instr-free-heap n) ls alloc wf = wf
+  regtag-abstract (instr-room n) ls alloc wf = wf
   regtag-abstract (instr-reclaim-to n) ls alloc wf = wf
   regtag-abstract (instr-push-frame cap) ls alloc wf = wf
   regtag-abstract instr-pop-frame ls alloc wf = wf
@@ -474,6 +475,7 @@ flat-regtag-step (lea-indexed k)          prog fs wf = regtag-abstract (lea-inde
 flat-regtag-step (instr-alloc-stack k)    prog fs wf = regtag-abstract (instr-alloc-stack k) (floc fs) (falloc fs) wf
 flat-regtag-step (instr-dealloc-stack k)  prog fs wf = regtag-abstract (instr-dealloc-stack k) (floc fs) (falloc fs) wf
 flat-regtag-step (instr-free-heap k)      prog fs wf = regtag-abstract (instr-free-heap k) (floc fs) (falloc fs) wf
+flat-regtag-step (instr-room k)      prog fs wf = regtag-abstract (instr-room k) (floc fs) (falloc fs) wf
 flat-regtag-step (instr-reclaim-to k)     prog fs wf = regtag-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf
 flat-regtag-step (instr-push-frame k)     prog fs wf = regtag-abstract (instr-push-frame k) (floc fs) (falloc fs) wf
 flat-regtag-step instr-pop-frame          prog fs wf = regtag-abstract instr-pop-frame (floc fs) (falloc fs) wf

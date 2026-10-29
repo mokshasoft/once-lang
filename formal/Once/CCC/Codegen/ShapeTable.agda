@@ -49,7 +49,7 @@ open import Once.IR using (IR; AllocMode; Heap; Stack;
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-free-heap; instr-push-frame; instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag; instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret; c-leave)
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-free-heap; instr-room; instr-push-frame; instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag; instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret; c-leave)
 open import Once.CCC.Label using (LabelId)
 open import Once.SigOp.Info using (SigOpInfo; EffectShape; Pure; effect)
 open import Once.Type using (FitsInReg; fits-in-reg?)
@@ -297,6 +297,7 @@ step-expect env st (lea-indexed k)     = st    -- unemittable
 step-expect env st (instr-alloc-stack n)   = st    -- unemittable
 step-expect env st (instr-dealloc-stack n) = st    -- unemittable
 step-expect env st (instr-free-heap n) = st        -- unemittable (plan 0.123 M2)
+step-expect env st (instr-room n) = st        -- unemittable (plan 0.123 M2)
 step-expect env st (instr-push-frame n)    = st    -- unemittable
 step-expect env st instr-pop-frame         = st    -- unemittable
 step-expect env st (instr-reclaim-to n)    = st

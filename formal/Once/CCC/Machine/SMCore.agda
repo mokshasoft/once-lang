@@ -1325,6 +1325,14 @@ data AbstractInstr : Set where
   -- Added LAST for MAlonzo ctor-index stability.
   instr-free-heap : ℕ → AbstractInstr
 
+  -- Plan 0.123 A.4 (D347): `instr-room k` checks that the next `k` words fit
+  -- between the cell frontier and the stack, and ends the run `exhausted` (a
+  -- call of the Host's `once_exhausted`) when they do not. The abstract
+  -- machine has unbounded memory, so here it is a no-op; the run that ends
+  -- is the concrete one. Not emittable yet (`EmittableI`). Added LAST for
+  -- MAlonzo ctor-index stability.
+  instr-room : ℕ → AbstractInstr
+
 -- | A trace is a sequence of abstract instructions
 -- D245: the two CALLS, a closure call and a direct call of a program function.
 -- A return address is one past either.
@@ -2100,6 +2108,9 @@ module AbstractExec {FS : FrameSemantics} where
   -- allocator never reuses a block, so a free changes no state; what it
   -- frees is read off the run by the no-leak claim (`Once.Adequacy.NoLeak`).
   exec-abstract (instr-free-heap n) s alloc = s , alloc
+
+  -- instr-room: a no-op on the unbounded abstract memory (plan 0.123 A.4).
+  exec-abstract (instr-room k) s alloc = s , alloc
 
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
   -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE

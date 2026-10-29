@@ -286,6 +286,13 @@ d_NoNestedI'63'_34 v0
              (coe
                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2326 v1
+        -> coe
+             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+             (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
+             (coe
+                MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.NoNested.NoNested?
 d_NoNested'63'_42 ::

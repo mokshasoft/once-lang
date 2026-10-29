@@ -806,14 +806,16 @@ d_compile'45'abstract_64 v0
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'free'45'heap_2324 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2326 v1
+        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.AbstractToX86-32.compile-trace-cnt
-d_compile'45'trace'45'cnt_124 ::
+d_compile'45'trace'45'cnt_126 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_compile'45'trace'45'cnt_124 v0 v1 v2
+d_compile'45'trace'45'cnt_126 v0 v1 v2
   = case coe v2 of
       []
         -> coe
@@ -824,13 +826,13 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                      (coe
                         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                        (coe d_compile'45'trace'45'cnt_124 (coe v0) (coe v1) (coe v4)))
+                        (coe d_compile'45'trace'45'cnt_126 (coe v0) (coe v1) (coe v4)))
                      (coe
                         MAlonzo.Code.Data.List.Base.du__'43''43'__32
                         (coe d_compile'45'abstract_64 (coe v3))
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                           (coe d_compile'45'trace'45'cnt_124 (coe v0) (coe v1) (coe v4)))) in
+                           (coe d_compile'45'trace'45'cnt_126 (coe v0) (coe v1) (coe v4)))) in
            coe
              (case coe v3 of
                 MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'case'45'on'45'tag_2312 v6 v7
@@ -839,15 +841,15 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_compile'45'trace'45'cnt_124 (coe v0)
+                             d_compile'45'trace'45'cnt_126 (coe v0)
                              (coe
                                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                 (coe
-                                   d_compile'45'trace'45'cnt_124 (coe v0)
+                                   d_compile'45'trace'45'cnt_126 (coe v0)
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                       (coe
-                                         d_compile'45'trace'45'cnt_124 (coe v0)
+                                         d_compile'45'trace'45'cnt_126 (coe v0)
                                          (coe addInt (coe (2 :: Integer)) (coe v1)) (coe v6)))
                                    (coe v7)))
                              (coe v4)))
@@ -877,11 +879,11 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                                    (coe
                                       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                       (coe
-                                         d_compile'45'trace'45'cnt_124 (coe v0)
+                                         d_compile'45'trace'45'cnt_126 (coe v0)
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                             (coe
-                                               d_compile'45'trace'45'cnt_124 (coe v0)
+                                               d_compile'45'trace'45'cnt_126 (coe v0)
                                                (coe addInt (coe (2 :: Integer)) (coe v1)) (coe v6)))
                                          (coe v7)))
                                    (coe
@@ -910,7 +912,7 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                             (coe
-                                               d_compile'45'trace'45'cnt_124 (coe v0)
+                                               d_compile'45'trace'45'cnt_126 (coe v0)
                                                (coe addInt (coe (2 :: Integer)) (coe v1)) (coe v6)))
                                          (coe
                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -925,15 +927,15 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                d_compile'45'trace'45'cnt_124 (coe v0)
+                                d_compile'45'trace'45'cnt_126 (coe v0)
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                    (coe
-                                      d_compile'45'trace'45'cnt_124 (coe v0)
+                                      d_compile'45'trace'45'cnt_126 (coe v0)
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                          (coe
-                                            d_compile'45'trace'45'cnt_124 (coe v0)
+                                            d_compile'45'trace'45'cnt_126 (coe v0)
                                             (coe addInt (coe (2 :: Integer)) (coe v1)) (coe v6)))
                                       (coe v7)))
                                 (coe v4))))
@@ -943,11 +945,11 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_compile'45'trace'45'cnt_124 (coe v0)
+                             d_compile'45'trace'45'cnt_126 (coe v0)
                              (coe
                                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                 (coe
-                                   d_compile'45'trace'45'cnt_124 (coe v0)
+                                   d_compile'45'trace'45'cnt_126 (coe v0)
                                    (coe addInt (coe (2 :: Integer)) (coe v1)) (coe v6)))
                              (coe v4)))
                        (coe
@@ -983,7 +985,7 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                          (coe
-                                            d_compile'45'trace'45'cnt_124 (coe v0)
+                                            d_compile'45'trace'45'cnt_126 (coe v0)
                                             (coe addInt (coe (2 :: Integer)) (coe v1)) (coe v6)))
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -1007,32 +1009,32 @@ d_compile'45'trace'45'cnt_124 v0 v1 v2
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                              (coe
-                                d_compile'45'trace'45'cnt_124 (coe v0)
+                                d_compile'45'trace'45'cnt_126 (coe v0)
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                    (coe
-                                      d_compile'45'trace'45'cnt_124 (coe v0)
+                                      d_compile'45'trace'45'cnt_126 (coe v0)
                                       (coe addInt (coe (2 :: Integer)) (coe v1)) (coe v6)))
                                 (coe v4))))
                 _ -> coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.AbstractToX86-32.compile-trace
-d_compile'45'trace_192 ::
+d_compile'45'trace_194 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252] ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_28]
-d_compile'45'trace_192 v0
+d_compile'45'trace_194 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_compile'45'abstract_64 (coe v1))
-             (coe d_compile'45'trace_192 (coe v2))
+             (coe d_compile'45'trace_194 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.AbstractToX86-32.compile-trace-cnt-agrees
-d_compile'45'trace'45'cnt'45'agrees_204 ::
+d_compile'45'trace'45'cnt'45'agrees_206 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_compile'45'trace'45'cnt'45'agrees_204 = erased
+d_compile'45'trace'45'cnt'45'agrees_206 = erased

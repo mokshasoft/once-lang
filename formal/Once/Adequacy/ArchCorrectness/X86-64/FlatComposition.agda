@@ -151,6 +151,7 @@ headView (instr-alloc-stack _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ →
 headView (instr-dealloc-stack _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-reclaim-to _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-free-heap _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-room _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

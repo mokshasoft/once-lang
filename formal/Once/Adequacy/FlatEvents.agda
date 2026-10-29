@@ -51,7 +51,7 @@ open import Once.CCC.Machine.SMCore
         ; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to
         ; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop
         ; worklist-check; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit
-        ; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; lea-indexed; instr-free-heap )
+        ; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; lea-indexed; instr-free-heap; instr-room )
 open LocState using (halted)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
@@ -253,6 +253,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   ctrl-of (instr-loop _) = 0
   ctrl-of (instr-reg-op _) = 0
   ctrl-of (instr-free-heap _) = 0
+  ctrl-of (instr-room _) = 0
   ctrl-of (instr-ctrl _) = 1
   ctrl-of (lea-indexed _) = 0
 
@@ -287,6 +288,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   ctrl-≤1 (instr-loop _) = z≤n
   ctrl-≤1 (instr-reg-op _) = z≤n
   ctrl-≤1 (instr-free-heap _) = z≤n
+  ctrl-≤1 (instr-room _) = z≤n
   ctrl-≤1 (instr-ctrl _) = s≤s z≤n
   ctrl-≤1 (lea-indexed _) = z≤n
 
@@ -391,6 +393,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   step-log (SMC.instr-loop body) () prog fs
   step-log (SMC.instr-reg-op op) nn prog fs = silent (SMC.instr-reg-op op) tt prog fs refl
   step-log (SMC.instr-free-heap n) nn prog fs = silent (SMC.instr-free-heap n) tt prog fs refl
+  step-log (SMC.instr-room n) nn prog fs = silent (SMC.instr-room n) tt prog fs refl
   step-log (SMC.instr-ctrl c) nn prog fs = silent (SMC.instr-ctrl c) tt prog fs refl
 
   -- Every instruction a chain fetches is not nested.
@@ -452,6 +455,7 @@ module FlatEventTrace {FS : FrameSemantics} where
     leave-or-free (SMC.instr-loop _) = inj₂ tt
     leave-or-free (SMC.instr-reg-op _) = inj₂ tt
     leave-or-free (SMC.instr-free-heap _) = inj₂ tt
+    leave-or-free (SMC.instr-room _) = inj₂ tt
 
     leave-halts : ∀ {prog k fs fs'} → halted (floc fs) ≡ true → FlatSteps prog k fs fs' → halted (floc fs') ≡ false → ⊥
     leave-halts h []            hp = true≢false (trans (sym h) hp)

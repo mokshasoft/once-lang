@@ -200,6 +200,9 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
+-- instr-room: no code yet (plan 0.123 A.4 step 2: the check and its call of
+-- the Host's `once_exhausted` come with its simulation step)
+compile-abstract (instr-room k) = []
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 -- Delegates to the existing per-name handler in CodeGen/Compile.
@@ -409,6 +412,9 @@ compile-trace-cnt-agrees o n ((instr-reclaim-to k) ∷ rest) (_ , nn) =
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n ((instr-free-heap k) ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract (instr-free-heap k) ++ proj₂ p)
+       (compile-trace-cnt-agrees o n rest nn)
+compile-trace-cnt-agrees o n ((instr-room k) ∷ rest) (_ , nn) =
+  cong (λ p → proj₁ p , compile-abstract (instr-room k) ++ proj₂ p)
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n ((instr-push-frame k) ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract (instr-push-frame k) ++ proj₂ p)

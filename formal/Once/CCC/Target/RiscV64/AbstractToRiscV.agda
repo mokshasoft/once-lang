@@ -56,7 +56,7 @@ open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-free-heap; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl; scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-free-heap; instr-room; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl; scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 open import Once.CCC.Machine.NoNested
 
@@ -266,6 +266,9 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
+-- instr-room: no code yet (plan 0.123 A.4 step 2: the check and its call of
+-- the Host's `once_exhausted` come with its simulation step)
+compile-abstract (instr-room k) = []
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
@@ -475,6 +478,9 @@ compile-trace-cnt-agrees o n ((instr-reclaim-to k) ∷ rest) (_ , nn) =
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n ((instr-free-heap k) ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract (instr-free-heap k) ++ proj₂ p)
+       (compile-trace-cnt-agrees o n rest nn)
+compile-trace-cnt-agrees o n ((instr-room k) ∷ rest) (_ , nn) =
+  cong (λ p → proj₁ p , compile-abstract (instr-room k) ++ proj₂ p)
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n ((instr-push-frame k) ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract (instr-push-frame k) ++ proj₂ p)
