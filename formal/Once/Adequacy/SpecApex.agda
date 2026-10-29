@@ -52,7 +52,7 @@ import Once.Denotation.Behavior as B
 open import Once.IR.Semantics.Trace using (interp)
 open import Once.Contract using (Impl)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
-open import Once.Metatheory.Trace using (WB-trans; WB-sym; ≈⇒⊑)
+open import Once.Metatheory.Trace using (⊑≈-trans)
 open import Once.Adequacy.MachineTrace using (silentTr)
 open import Once.Spec.Correct using (CorrectCompiler)
 open import Once.Spec.Signature using (Signature; WellFormed)
@@ -172,12 +172,12 @@ module _ (br : Bridges) where
       soundness bytes eq with bind-just (toSource src) (VC.compile arch doOpt) eq
       ... | srcC , eqS , eqC with proj₁ (VC.correctᵈ arch doOpt srcC) bytes eqC
       ...   | tp , ⊢tp , adm , runs with sound arch src srcC tp eqS ⊢tp adm
-      ...     | tp′ , ⊢tp′ , adm′ , u , means = tp′ , ⊢tp′ , adm′ , λ J → ≈⇒⊑ (behaves J)
+      ...     | tp′ , ⊢tp′ , adm′ , u , means = tp′ , ⊢tp′ , adm′ , behaves
         where
-          behaves : ∀ J → exec arch (signature tp′) J bytes ≈ behaviour (arch-numerics arch) tp′ J
+          behaves : ∀ J → exec arch (signature tp′) J bytes ⊑ behaviour (arch-numerics arch) tp′ J
           behaves J with exec-wf arch tp′ J bytes
           ... | wf , eqE rewrite eqE =
-            WB-trans trans (runs (signature tp′) u wf J) (means J)
+            ⊑≈-trans trans (runs (signature tp′) u wf J) (means J)
 
       completeness : ∀ tp → src ⊢ tp → Admissible (arch-numerics arch) tp →
           Σ[ bytes ∈ List Byte ] (compile arch doOpt src ≡ just bytes)

@@ -145,6 +145,44 @@ module _ {X : Set} {R : X → X → Set} where
   ≈⇒⊑Step {inj₁ _} {inj₂ _} ()
   ≈⇒⊑Step {inj₂ _} {inj₁ _} ()
 
+-- Up to running out, then the same (D347): a compiled run that follows one
+-- trace up to running out follows every trace weakly bisimilar to it. What
+-- the chain needs, where the run's relation to the program is `⊑ᵗ` and the
+-- program's to the meaning is `≈ᵗ`.
+module _ {X : Set} {R : X → X → Set} (R-trans : ∀ {x y z} → R x y → R y z → R x z) where
+  private
+    endT : ∀ {e₁ e₂ e₃} → EndRel R e₁ e₂ → EndRel R e₂ e₃ → EndRel R e₁ e₃
+    endT (returned≈ r) (returned≈ r′) = returned≈ (R-trans r r′)
+    endT halted≈ halted≈ = halted≈
+    endT exhausted≈ exhausted≈ = exhausted≈
+
+  ⊑≈-trans  : ∀ {t s u : Tr X} → t ⊑ᵗ⟨ R ⟩ s → s ≈ᵗ⟨ R ⟩ u → t ⊑ᵗ⟨ R ⟩ u
+  ⊑≈-step   : ∀ {o₁ o₂ o₃ : S X} → StepRel R (λ u u′ → u ⊑ᵗ⟨ R ⟩ u′) o₁ o₂
+            → StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o₂ o₃ → StepRel R (λ u u′ → u ⊑ᵗ⟨ R ⟩ u′) o₁ o₃
+  sound (⊑≈-trans {t} {s} {u} p q) a a⇓ = fw (sound p a a⇓)
+    where
+      fw : a ≡ inj₁ exhausted ⊎ ∃[ b ] (next s ⇓ b × StepRel R _ a b)
+         → a ≡ inj₁ exhausted ⊎ ∃[ c ] (next u ⇓ c × StepRel R _ a c)
+      fw (inj₁ ex)            = inj₁ ex
+      fw (inj₂ (b , b⇓ , r₁)) = inj₂ (on (proj₁ (same q) b b⇓))
+        where on : ∃[ c ] (next u ⇓ c × StepRel R _ b c) → ∃[ c ] (next u ⇓ c × StepRel R _ a c)
+              on (c , c⇓ , r₂) = c , c⇓ , ⊑≈-step r₁ r₂
+  complete (⊑≈-trans {t} {s} {u} p q) c c⇓ = bw (proj₂ (same q) c c⇓)
+    where
+      bw : ∃[ b ] (next s ⇓ b × StepRel R _ b c)
+         → next t ⇓ inj₁ exhausted ⊎ ∃[ a ] (next t ⇓ a × StepRel R _ a c)
+      bw (b , b⇓ , r₂) = on (complete p b b⇓)
+        where on : next t ⇓ inj₁ exhausted ⊎ ∃[ a ] (next t ⇓ a × StepRel R _ a b)
+                 → next t ⇓ inj₁ exhausted ⊎ ∃[ a ] (next t ⇓ a × StepRel R _ a c)
+              on (inj₁ ex)            = inj₁ ex
+              on (inj₂ (a , a⇓ , r₁)) = inj₂ (a , a⇓ , ⊑≈-step r₁ r₂)
+  ⊑≈-step {inj₁ _} {inj₁ _} {inj₁ _} r r′               = endT r r′
+  ⊑≈-step {inj₂ _} {inj₂ _} {inj₂ _} (refl , p) (refl , q) = refl , ⊑≈-trans p q
+  ⊑≈-step {inj₁ _} {inj₁ _} {inj₂ _} r ()
+  ⊑≈-step {inj₁ _} {inj₂ _} () r′
+  ⊑≈-step {inj₂ _} {inj₂ _} {inj₁ _} r ()
+  ⊑≈-step {inj₂ _} {inj₁ _} () r′
+
 ------------------------------------------------------------------------
 -- Delay: bind, and arrival through it
 ------------------------------------------------------------------------

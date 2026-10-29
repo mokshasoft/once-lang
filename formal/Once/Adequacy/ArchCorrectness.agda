@@ -74,6 +74,9 @@ o = Co.entry-owner
 
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)
 open import Once.Adequacy.Compile using (ArchCorrect)
+-- D347: the per-arch simulations prove the stronger weak bisimilarity (no room
+-- check yet ends a run `exhausted`); the record states `⊑ᵗ`.
+open import Once.Metatheory.Trace using (≈⇒⊑)
 open import Data.List using (List)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
@@ -129,30 +132,33 @@ x86-64-correct : BlockRunsHyp-x86-64 → ∀ (ι : Interp) → ArchCorrect x86-6
 x86-64-correct brs ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ m F eq → FileWF.file-wf x86-64 m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D347).
   ; file-tr = λ m F eq ir mi ls →
-      X64.file-tr-x86-64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
+      ≈⇒⊑ (X64.file-tr-x86-64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)))
   }
 
 x86-32-correct : BlockRunsHyp-x86-32 → ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct brs ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ m F eq → FileWF.file-wf x86-32 m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D347).
   ; file-tr = λ m F eq ir mi ls →
-      X32.file-tr-x86-32 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
+      ≈⇒⊑ (X32.file-tr-x86-32 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)))
   }
 
 riscv64-correct : BlockRunsHyp-riscv64 → ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct brs ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ m F eq → FileWF.file-wf riscv64 m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D347).
   ; file-tr = λ m F eq ir mi ls →
-      RV.file-tr-riscv64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
-        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
+      ≈⇒⊑ (RV.file-tr-riscv64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+        (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi)))
   }
 
 arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64

@@ -50,9 +50,9 @@ open import Once.Spec.Type using (Unit)
 open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
 -- D320: what a program does is its TRACE (`Spec.Trace.Tr ⊤`): its calls and how
 -- the run ended; two are the same when weakly bisimilar.
-open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
 open import Once.Denotation.TraceTr using (trT∞)
-open import Once.Metatheory.Trace using (WB-trans)
+open import Once.Metatheory.Trace using (⊑≈-trans)
 import Once.Core.Telescope as TL
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
@@ -210,9 +210,9 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
       ∀ (m : P.Resolved) (F : C.FileOf arch) →
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       AsmWF-of arch F
-    -- RUNNING THE FILE HAS THE TRACE OF THE PROGRAM IT WAS EMITTED FROM (D320):
-    -- the `_start` stub, then the lowered image, ending as the program's meaning
-    -- ends. Stated over the FILE (a value of the arch's syntax), so a
+    -- RUNNING THE FILE FOLLOWS THE TRACE OF THE PROGRAM IT WAS EMITTED FROM, UP
+    -- TO RUNNING OUT (D320, D347): the lowered image, ending as the program's
+    -- meaning ends, or `exhausted`. Stated over the FILE (a value of the arch's syntax), so a
     -- disagreement between what is emitted and what the proofs reason about is a
     -- failed proof, not a hidden one (D261).
     file-tr :
@@ -220,7 +220,7 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
       C.compileFileFromModule IR.Heap false arch m ≡ inj₂ F →
       ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
-      run-file arch ι F ≈ᵗ⟨ _≡_ ⟩ ⟦ just (rewrite-program (irProgram (moduleTable m) ir)) ⟧IRᵗ (arch-numerics arch) ι
+      run-file arch ι F ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (rewrite-program (irProgram (moduleTable m) ir)) ⟧IRᵗ (arch-numerics arch) ι
 
 -- The CLI's text and the verified compiler's file are ONE pipeline (plan 0.107):
 -- the Build stage is the print of the file.
@@ -376,10 +376,11 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- world-free: typing does not run anything.
   open Once.Program public using (Typed; _⊢R_)
 
-  -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
-  -- below are exactly proofs at this relation.
+  -- The bytes' run follows the meaning up to running out (D347; matches the
+  -- record's `_⊑_`); the trace witnesses below are exactly proofs at this
+  -- relation. Between two meanings the relation stays weak bisimilarity.
   _≋_ : Tr Data.Unit.⊤ → Tr Data.Unit.⊤ → Set
-  b₁ ≋ b₂ = b₁ ≈ᵗ⟨ _≡_ ⟩ b₂
+  b₁ ≋ b₂ = b₁ ⊑ᵗ⟨ _≡_ ⟩ b₂
 
   -- accept ⇒ the RESOLVED module has a compilable `main`. (Inverts `compile`'s
   -- executable gate; reuses nothing new — pure case analysis on `moduleToIR`.)
@@ -480,9 +481,9 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   ir-core-tr : ∀ (arch : Arch) (tp : Typed) (Σs : Signature) (u : SigOf tp Σs) (wf : WellFormed Σs) (J : Obs.Interp Σs)
                (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR (proj₁ tp) ≡ just ir
-             → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (toInterp Σs wf J) ≋ ⟦ arch ⟧ᵈᴵ tp Σs u J
+             → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (toInterp Σs wf J) ≈ᵗ⟨ _≡_ ⟩ ⟦ arch ⟧ᵈᴵ tp Σs u J
   ir-core-tr arch (m , mt , hvm) Σs u wf J ir mi =
-    subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (toInterp Σs wf J) ≋ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) Σs u J)
+    subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (toInterp Σs wf J) ≈ᵗ⟨ _≡_ ⟩ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) Σs u J)
           (sym mi) (CB.program-core-tr (arch-numerics arch) m mt hvm Σs (SigOf.view u) wf J (SigOf.uniq u) ir mi)
 
   ----------------------------------------------------------------------
@@ -510,7 +511,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     file-correct arch m F ir eq mi ls =
       subst (_≋ ⟦ just P ⟧IRᵗ (arch-numerics arch) ι)
             (sym (exec-file arch ι F (ArchCorrect.file-wf (arch-correct ι arch) m F eq)))
-            (WB-trans trans (ArchCorrect.file-tr (arch-correct ι arch) m F eq ir mi ls)
+            (⊑≈-trans trans (ArchCorrect.file-tr (arch-correct ι arch) m F eq ir mi ls)
                             (rewrite-program-trace (arch-numerics arch) ι P))
       where P = irProgram (moduleTable m) ir
 
@@ -843,5 +844,5 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                   , FB.parseStrict-sound (Source.srcText src) mU p-eq
                   , RBR.resolvesModule-complete (Source.srcImports src) (Syn.Module.decls mU) mR res-eq )
                 , accept-gm arch doOpt mR (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
-                , (λ Σs u wf J → WB-trans trans (sound-trace (toInterp Σs wf J) arch doOpt src bytes pf mR stm-eq ir mi (sym (SigOf.same u)))
+                , (λ Σs u wf J → ⊑≈-trans trans (sound-trace (toInterp Σs wf J) arch doOpt src bytes pf mR stm-eq ir mi (sym (SigOf.same u)))
                                  (ir-core-tr arch (mR , MT , MC.moduleToIR-sound mR MT mi) Σs u wf J ir mi))
