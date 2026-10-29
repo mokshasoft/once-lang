@@ -6,8 +6,8 @@
 --
 -- A name's symbol is the prefix `once_` followed by its mangled parts, and a
 -- mangled part starts with its decimal length — a DIGIT. So a symbol that is
--- the prefix followed by anything but a digit is no name's: the runtime's heap
--- (`once_heap_base`) and the Host's `leave` (`once_leave`, D320) are fresh for
+-- the prefix followed by anything but a digit is no name's: the program's entry
+-- (`once_main`) and the Host's `leave` and `exhausted` (D320, D347) are fresh for
 -- every program by construction, with no fact about the program needed.
 ------------------------------------------------------------------------
 
@@ -105,3 +105,15 @@ host-leave-symbol = "once_leave"
 
 leave≢osp : ∀ (cn : CanonicalName) → host-leave-symbol ≢ once-symbol-path cn
 leave≢osp = letter≢osp host-leave-symbol 'l' (toList "eave") refl refl
+
+-- D347: THE HOST'S `exhausted` — called by a failed room check; the run ends
+-- `exhausted`. Like `leave`, no name of the program, and defined by the Host.
+host-exhausted-symbol : String
+host-exhausted-symbol = "once_exhausted"
+
+exhausted≢osp : ∀ (cn : CanonicalName) → host-exhausted-symbol ≢ once-symbol-path cn
+exhausted≢osp = letter≢osp host-exhausted-symbol 'e' (toList "xhausted") refl refl
+
+-- The two Host entries are apart.
+leave≢exhausted : host-leave-symbol ≢ host-exhausted-symbol
+leave≢exhausted ()

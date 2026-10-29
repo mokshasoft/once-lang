@@ -45,7 +45,7 @@ open import Data.Sum using (_⊎_)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Internal; External; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.Target.SymbolFresh using (host-leave-symbol; leave≢osp)
+open import Once.Target.SymbolFresh using (host-leave-symbol; leave≢osp; exhausted≢osp)
 open import Once.CCC.Machine.FlatLeft using (LeftFree; module LeftPres)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR.Semantics.Event using (SigOpEvent)
@@ -339,6 +339,7 @@ sigop-run-arith ev env lg n prog fs s si pl cc h ftq env-eq =
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
+    (λ q → exhausted≢osp (SigOpInfo.name si) (sym q))
     env-eq
 
 -- EXTERNAL SigOp: the same fetch and match, but the env has no block for the
@@ -360,6 +361,7 @@ sigop-run-external ev env lg n prog fs s si cc h ftq env-eq =
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
+    (λ q → exhausted≢osp (SigOpInfo.name si) (sym q))
     env-eq
 
 -- A Pure SigOp emits no event (the extractor's Pure branch is []).

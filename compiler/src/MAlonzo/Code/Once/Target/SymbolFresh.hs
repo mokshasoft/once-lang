@@ -274,3 +274,19 @@ d_leave'8802'osp_168 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_leave'8802'osp_168 = erased
+-- Once.Target.SymbolFresh.host-exhausted-symbol
+d_host'45'exhausted'45'symbol_170 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_host'45'exhausted'45'symbol_170
+  = coe ("once_exhausted" :: Data.Text.Text)
+-- Once.Target.SymbolFresh.exhausted≢osp
+d_exhausted'8802'osp_174 ::
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
+d_exhausted'8802'osp_174 = erased
+-- Once.Target.SymbolFresh.leave≢exhausted
+d_leave'8802'exhausted_176 ::
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
+d_leave'8802'exhausted_176 = erased

@@ -30,7 +30,7 @@ open import Data.String using (String)
 open import Data.Unit using (⊤; tt)
 open import Data.String using (_≟_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)
@@ -67,6 +67,7 @@ module RunMachine
     δ-f : Maybe Instr → List SigOpEvent → State → Step Conf
     δ-i : Instr → Maybe String → List SigOpEvent → State → Step Conf
     δ-s : (lbl : String) → Dec (lbl ≡ host-leave-symbol) → List SigOpEvent → State → Step Conf
+    δ-x : (lbl : String) → Dec (lbl ≡ host-exhausted-symbol) → List SigOpEvent → State → Step Conf
     δ-c : String → Maybe Payload → List SigOpEvent → State → Step Conf
     δ-e : Maybe State → List SigOpEvent → Step Conf
 
@@ -80,7 +81,9 @@ module RunMachine
     δ-i i (just lbl) h s = δ-s lbl (lbl ≟ host-leave-symbol) h s
     δ-i i nothing    h s = δ-e (execInstr prog s i) h
     δ-s lbl (yes _) h s = stop [] (ST.returned tt)
-    δ-s lbl (no _)  h s = δ-c lbl (env lbl) h s
+    δ-s lbl (no _)  h s = δ-x lbl (lbl ≟ host-exhausted-symbol) h s
+    δ-x lbl (yes _) h s = stop [] ST.exhausted
+    δ-x lbl (no _)  h s = δ-c lbl (env lbl) h s
     δ-c lbl (just pl) h s = silent (h , dispatchArith pl s)
     δ-c lbl nothing   h s = emit (map toEvent (ev lbl s)) (h ++ ev lbl s , ret-call h lbl s)
     δ-e nothing   h = stop [] ST.halted
@@ -109,7 +112,13 @@ module RunMachine
               → matchCall i ≡ just lbl → fetch prog (pc s) ≡ just i → halted s ≡ false → ∀ {e}
               → proj₂ (run-events-site ev env h M prog s lbl d) ≡ just e
               → Reaches (h , s) (calls (run-events-site ev env h M prog s lbl d)) e
+      reach-x : ∀ M h s i lbl (d : Dec (lbl ≡ host-exhausted-symbol)) → (lbl ≟ host-exhausted-symbol) ≡ d
+              → ∀ {¬p} → (lbl ≟ host-leave-symbol) ≡ no ¬p
+              → matchCall i ≡ just lbl → fetch prog (pc s) ≡ just i → halted s ≡ false → ∀ {e}
+              → proj₂ (run-events-host ev env h M prog s lbl d) ≡ just e
+              → Reaches (h , s) (calls (run-events-host ev env h M prog s lbl d)) e
       reach-c : ∀ M h s i lbl (mp : Maybe Payload) → env lbl ≡ mp → ∀ {¬p} → (lbl ≟ host-leave-symbol) ≡ no ¬p
+              → ∀ {¬q} → (lbl ≟ host-exhausted-symbol) ≡ no ¬q
               → matchCall i ≡ just lbl → fetch prog (pc s) ≡ just i
               → halted s ≡ false → ∀ {e}
               → proj₂ (run-events-call ev env h M prog s lbl mp) ≡ just e
@@ -141,17 +150,25 @@ module RunMachine
     reach-s M h s i lbl (yes p) dq mq fq hs q =
       stopAt (trans (cong (λ b → δ-h b h s) hs) (trans (cong (λ m → δ-f m h s) fq)
              (trans (cong (λ m → δ-i i m h s) mq) (cong (λ d → δ-s lbl d h s) dq)))) q
-    reach-s M h s i lbl (no ¬p) dq mq fq hs q = reach-c M h s i lbl (env lbl) refl dq mq fq hs q
+    reach-s M h s i lbl (no ¬p) dq mq fq hs q = reach-x M h s i lbl (lbl ≟ host-exhausted-symbol) refl dq mq fq hs q
 
-    reach-c M h s i lbl (just pl) eq dq mq fq hs q =
+    reach-x M h s i lbl (yes p) xq dq mq fq hs q =
+      stopAt (trans (cong (λ b → δ-h b h s) hs) (trans (cong (λ m → δ-f m h s) fq)
+             (trans (cong (λ m → δ-i i m h s) mq) (trans (cong (λ d → δ-s lbl d h s) dq)
+             (cong (λ d → δ-x lbl d h s) xq))))) q
+    reach-x M h s i lbl (no ¬q) xq dq mq fq hs q = reach-c M h s i lbl (env lbl) refl dq xq mq fq hs q
+
+    reach-c M h s i lbl (just pl) eq dq xq mq fq hs q =
       r-silent (trans (cong (λ b → δ-h b h s) hs) (trans (cong (λ m → δ-f m h s) fq)
-               (trans (cong (λ m → δ-i i m h s) mq) (trans (cong (λ d → δ-s lbl d h s) dq) (cong (λ m → δ-c lbl m h s) eq)))))
+               (trans (cong (λ m → δ-i i m h s) mq) (trans (cong (λ d → δ-s lbl d h s) dq)
+               (trans (cong (λ d → δ-x lbl d h s) xq) (cong (λ m → δ-c lbl m h s) eq))))))
                (reach M h (dispatchArith pl s) q)
-    reach-c M h s i lbl nothing   eq dq mq fq hs {e} q =
+    reach-c M h s i lbl nothing   eq dq xq mq fq hs {e} q =
       subst (λ es → Reaches (h , s) es e)
             (sym (map-++ toEvent (ev lbl s) (proj₁ (run-events ev env (h ++ ev lbl s) M prog (ret-call h lbl s)))))
             (r-emit (trans (cong (λ b → δ-h b h s) hs) (trans (cong (λ m → δ-f m h s) fq)
-                    (trans (cong (λ m → δ-i i m h s) mq) (trans (cong (λ d → δ-s lbl d h s) dq) (cong (λ m → δ-c lbl m h s) eq)))))
+                    (trans (cong (λ m → δ-i i m h s) mq) (trans (cong (λ d → δ-s lbl d h s) dq)
+                    (trans (cong (λ d → δ-x lbl d h s) xq) (cong (λ m → δ-c lbl m h s) eq))))))
                     (reach M (h ++ ev lbl s) (ret-call h lbl s) q))
 
     reach-e M h s i nothing   xq mq fq hs q =
@@ -182,6 +199,7 @@ module RunMachine
       rn-f : ∀ n h s (mi : Maybe Instr) → runS n (δ-f mi h s) ≡ outObs (run-events-fetch ev env h n prog s mi)
       rn-i : ∀ n h s i (ml : Maybe String) → runS n (δ-i i ml h s) ≡ outObs (run-events-instr ev env h n prog s i ml)
       rn-s : ∀ n h s lbl (d : Dec (lbl ≡ host-leave-symbol)) → runS n (δ-s lbl d h s) ≡ outObs (run-events-site ev env h n prog s lbl d)
+      rn-x : ∀ n h s lbl (d : Dec (lbl ≡ host-exhausted-symbol)) → runS n (δ-x lbl d h s) ≡ outObs (run-events-host ev env h n prog s lbl d)
       rn-c : ∀ n h s lbl (mp : Maybe Payload) → runS n (δ-c lbl mp h s) ≡ outObs (run-events-call ev env h n prog s lbl mp)
       rn-e : ∀ n h s (ms : Maybe State) → runS n (δ-e ms h) ≡ outObs (run-events-exec ev env h n prog s ms)
     runN-events zero    h s = refl
@@ -193,7 +211,9 @@ module RunMachine
     rn-i n h s i (just lbl) = rn-s n h s lbl (lbl ≟ host-leave-symbol)
     rn-i n h s i nothing    = rn-e n h s (execInstr prog s i)
     rn-s n h s lbl (yes _) = refl
-    rn-s n h s lbl (no _)  = rn-c n h s lbl (env lbl)
+    rn-s n h s lbl (no _)  = rn-x n h s lbl (lbl ≟ host-exhausted-symbol)
+    rn-x n h s lbl (yes _) = refl
+    rn-x n h s lbl (no _)  = rn-c n h s lbl (env lbl)
     rn-c n h s lbl (just pl) = runN-events n h (dispatchArith pl s)
     rn-c n h s lbl nothing   =
       trans (cong (λ ob → map toEvent (ev lbl s) ++ proj₁ ob , proj₂ ob) (runN-events n (h ++ ev lbl s) (ret-call h lbl s)))
