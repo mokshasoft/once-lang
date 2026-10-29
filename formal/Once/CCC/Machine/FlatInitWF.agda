@@ -25,7 +25,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Nat.Properties using (m<1+n⇒m<n∨m≡n)
+open import Data.Nat.Properties using (m<1+n⇒m<n∨m≡n; <⇒≢)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
@@ -48,6 +48,10 @@ open AbstractExec {FS}
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
+open import Once.CCC.Codegen.InitWindow using (Apart)
+open import Once.CCC.Machine.FlatStoreWF FS using (StoreWF; sv-below; svm-below; module StoreWF)
+open StoreWF using (wf-regs; wf-heap; wf-stack)
+open import Once.CCC.Machine.FlatPtrBounds FS using (size-with-new; size-with-old)
 open import Once.CCC.Machine.SMPrimitives using (module InstrPrimitives; nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-sigop; nhw-instr-reg-op)
 open InstrPrimitives {FS} using (exec-abstract-preserves-heapMem)
 open import Relation.Nullary using (¬_)
@@ -310,9 +314,9 @@ IsStash : Maybe ℕ → Frame → Frame → Slot → Set
 IsStash nothing  cf f k = ⊥
 IsStash (just q) cf f k = (f ≡ cf) × (k ≡ q)
 
-StashHolds : Maybe ℕ → ℕ → LocState FS → Frame → Set
-StashHolds nothing  b ls cf = ⊤
-StashHolds (just q) b ls cf = stackMem ls cf q ≡ just (fresh b)
+StashHolds : Maybe ℕ → ℕ → StackMem FS → Frame → Set
+StashHolds nothing  b sm cf = ⊤
+StashHolds (just q) b sm cf = sm cf q ≡ just (fresh b)
 
 record Open (o i : Bool) (p : Maybe ℕ) (w0 w1 : Bool) (fs : FlatState) : Set where
   field
@@ -329,7 +333,7 @@ record Open (o i : Bool) (p : Maybe ℕ) (w0 w1 : Bool) (fs : FlatState) : Set w
     cnt    : Avoids blk (readReg (regs (floc fs)) Count)
     clos   : Avoids blk (fclosure fs)
     heap   : ∀ (hl : HeapLocation) → Avoids? blk (heapMem (floc fs) hl)
-    stash  : StashHolds p blk (floc fs) (current-frame (falloc fs))
+    stash  : StashHolds p blk (stackMem (floc fs)) (current-frame (falloc fs))
     stack  : ∀ (f : Frame) (k : Slot) → ¬ IsStash p (current-frame (falloc fs)) f k
            → Avoids? blk (stackMem (floc fs) f k)
 open Open
@@ -351,3 +355,152 @@ close-done {fs = fs} op hl lt ib
 ... | inj₂ r≡b = cell-of hl {ls = floc fs} r≡b
                    (subst (heap-offset hl <_) (trans (cong (block-size (falloc fs)) r≡b) (sz op)) ib)
                    (cell0 op refl) (cell1 op refl)
+
+------------------------------------------------------------------------
+-- An allocation from a full state OPENS the window: the fresh block is the
+-- newest, its pointer is in `Output` only (`StoreWF`: every value points
+-- below the counter, so none points at the new block), nothing is written.
+------------------------------------------------------------------------
+below-avoids : ∀ {n : ℕ} (v : StoredValue FS) → sv-below n v → Avoids n v
+below-avoids (SV-Ptr (AtDynamic hl)) lt = <⇒≢ lt
+below-avoids (SV-Ptr (AtStack _ _))  _  = tt
+below-avoids (SV-Tag _)              _  = tt
+below-avoids (SV-Lit _ _)            _  = tt
+below-avoids (SV-Code _)             _  = tt
+
+belowm-avoids : ∀ {n : ℕ} (mv : Maybe (StoredValue FS)) → svm-below n mv → Avoids? n mv
+belowm-avoids (just v) b = below-avoids v b
+belowm-avoids nothing  _ = tt
+
+open-alloc : ∀ (prog : AbstractTrace) (fs : FlatState)
+           → Full (falloc fs) (floc fs)
+           → StoreWF (next-heap-ref (falloc fs)) (floc fs)
+           → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+           → Open true false nothing false false (flat-exec-instr (instr-alloc-heap 2) prog fs)
+open-alloc prog fs full wf cl = record
+  { blk   = st
+  ; nx    = refl
+  ; sz    = size-with-new 2 st bs
+  ; older = λ hl lt ib → full hl lt
+              (subst (heap-offset hl <_) (size-with-old 2 st bs (ref-id (heap-ref hl)) (<⇒≢ lt)) ib)
+  ; cell0 = λ ()
+  ; cell1 = λ ()
+  ; out   = refl
+  ; in1   = below-avoids _ (wf-regs wf Input1)
+  ; scr   = below-avoids _ (wf-regs wf Scratch)
+  ; cnt   = below-avoids _ (wf-regs wf Count)
+  ; clos  = below-avoids _ cl
+  ; heap  = λ hl → belowm-avoids (heapMem (floc fs) hl) (wf-heap wf hl)
+  ; stash = tt
+  ; stack = λ f k _ → belowm-avoids (stackMem (floc fs) f k) (wf-stack wf f k)
+  }
+  where st = next-heap-ref (falloc fs)
+        bs = block-size (falloc fs)
+
+------------------------------------------------------------------------
+-- The window's steps. Each changes one register, one stack slot or one heap
+-- cell (or halts); one helper per kind of change carries every other field.
+------------------------------------------------------------------------
+Halted : FlatState → Set
+Halted fs = LocState.halted (floc fs) ≡ true
+
+set-out : ∀ {o i p w0 w1} (fs : FlatState) (op : Open o i p w0 w1 fs) (v : StoredValue FS) (o' : Bool)
+        → Holds o' (blk op) v
+        → Open o' i p w0 w1 (record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output v }
+                                     ; fpc = suc (fpc fs) })
+set-out fs op v o' h = record
+  { blk = blk op ; nx = nx op ; sz = sz op ; older = older op ; cell0 = cell0 op ; cell1 = cell1 op
+  ; out = h ; in1 = in1 op ; scr = scr op ; cnt = cnt op ; clos = clos op ; heap = heap op
+  ; stash = stash op ; stack = stack op }
+
+set-in1 : ∀ {o i p w0 w1} (fs : FlatState) (op : Open o i p w0 w1 fs) (v : StoredValue FS) (i' : Bool)
+        → Holds i' (blk op) v
+        → Open o i' p w0 w1 (record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 v }
+                                     ; fpc = suc (fpc fs) })
+set-in1 fs op v i' h = record
+  { blk = blk op ; nx = nx op ; sz = sz op ; older = older op ; cell0 = cell0 op ; cell1 = cell1 op
+  ; out = out op ; in1 = h ; scr = scr op ; cnt = cnt op ; clos = clos op ; heap = heap op
+  ; stash = stash op ; stack = stack op }
+
+-- a value a tracked register held is avoided, if the register is not tracked
+holds-false : ∀ {b} {v : StoredValue FS} → Holds false b v → Avoids b v
+holds-false h = h
+
+private
+  apart→nis : ∀ {p : Maybe ℕ} {cf : Frame} {s : Slot} → Apart s p → ¬ IsStash p cf cf s
+  apart→nis {nothing} _  ()
+  apart→nis {just q}  ne (_ , eq) = ne eq
+
+-- Output := a literal / a code address: no pointer
+step-tag : ∀ {o i p w0 w1} prog fs n → (op : Open o i p w0 w1 fs)
+         → Open false i p w0 w1 (flat-exec-instr (instr-load-tag-lit n) prog fs)
+step-tag prog fs n op = set-out fs op (SV-Tag n) false tt
+
+step-code : ∀ {o i p w0 w1} prog fs l → (op : Open o i p w0 w1 fs)
+          → Open false i p w0 w1 (flat-exec-instr (instr-load-code-addr l) prog fs)
+step-code prog fs l op = set-out fs op (SV-Code l) false tt
+
+-- Input1 := Output: it holds what Output held
+step-mov-in : ∀ {o i p w0 w1} prog fs → (op : Open o i p w0 w1 fs)
+            → Open o o p w0 w1 (flat-exec-instr mov-to-input prog fs)
+step-mov-in prog fs op = set-in1 fs op (readReg (regs (floc fs)) Output) _ (out op)
+
+-- Output := the stash: the fresh pointer
+-- the two slot reads, as functions of the value read
+LFS : FlatState → Maybe (StoredValue FS) → FlatState
+LFS fs mv = record fs { floc   = proj₁ (exec-load-from-slot-with-value mv (floc fs) (falloc fs))
+                      ; falloc = proj₂ (exec-load-from-slot-with-value mv (floc fs) (falloc fs))
+                      ; fpc    = suc (fpc fs) }
+
+RIS : FlatState → Maybe (StoredValue FS) → FlatState
+RIS fs mv = record fs { floc   = proj₁ (exec-restore-input-with-value mv (floc fs) (falloc fs))
+                      ; falloc = proj₂ (exec-restore-input-with-value mv (floc fs) (falloc fs))
+                      ; fpc    = suc (fpc fs) }
+
+lfs-eq : ∀ prog fs s → flat-exec-instr (load-from-slot s) prog fs
+                     ≡ LFS fs (stackMem (floc fs) (current-frame (falloc fs)) s)
+lfs-eq prog fs s = refl
+
+ris-eq : ∀ prog fs s → flat-exec-instr (restore-input s) prog fs
+                     ≡ RIS fs (stackMem (floc fs) (current-frame (falloc fs)) s)
+ris-eq prog fs s = refl
+
+-- Output := the stash: the fresh pointer
+step-load-stash : ∀ {o i s w0 w1} prog fs → (op : Open o i (just s) w0 w1 fs)
+                → Open true i (just s) w0 w1 (flat-exec-instr (load-from-slot s) prog fs)
+step-load-stash {o} {i} {s} {w0} {w1} prog fs op =
+  subst (Open true i (just s) w0 w1) (sym (trans (lfs-eq prog fs s) (cong (LFS fs) (stash op))))
+        (set-out fs op (fresh (blk op)) true refl)
+
+-- Output := another slot: no pointer into the block (or the run halts)
+step-load-slot : ∀ {o i p w0 w1} prog fs s → (op : Open o i p w0 w1 fs) → Apart s p
+               → Halted (flat-exec-instr (load-from-slot s) prog fs)
+                 ⊎ Open false i p w0 w1 (flat-exec-instr (load-from-slot s) prog fs)
+step-load-slot {o} {i} {p} {w0} {w1} prog fs s op ap = go (stackMem (floc fs) cf s) refl
+  where
+    cf = current-frame (falloc fs)
+    go : ∀ mv → stackMem (floc fs) cf s ≡ mv
+       → Halted (flat-exec-instr (load-from-slot s) prog fs)
+         ⊎ Open false i p w0 w1 (flat-exec-instr (load-from-slot s) prog fs)
+    go (just v) e = inj₂ (subst (Open false i p w0 w1) (sym (trans (lfs-eq prog fs s) (cong (LFS fs) e)))
+                              (set-out fs op v false (subst (Avoids? (blk op)) e (stack op cf s (apart→nis ap)))))
+    go nothing  e = inj₁ (subst Halted (sym (trans (lfs-eq prog fs s) (cong (LFS fs) e))) refl)
+
+step-restore-stash : ∀ {o i s w0 w1} prog fs → (op : Open o i (just s) w0 w1 fs)
+                   → Open o true (just s) w0 w1 (flat-exec-instr (restore-input s) prog fs)
+step-restore-stash {o} {i} {s} {w0} {w1} prog fs op =
+  subst (Open o true (just s) w0 w1) (sym (trans (ris-eq prog fs s) (cong (RIS fs) (stash op))))
+        (set-in1 fs op (fresh (blk op)) true refl)
+
+step-restore-slot : ∀ {o i p w0 w1} prog fs s → (op : Open o i p w0 w1 fs) → Apart s p
+                  → Halted (flat-exec-instr (restore-input s) prog fs)
+                    ⊎ Open o false p w0 w1 (flat-exec-instr (restore-input s) prog fs)
+step-restore-slot {o} {i} {p} {w0} {w1} prog fs s op ap = go (stackMem (floc fs) cf s) refl
+  where
+    cf = current-frame (falloc fs)
+    go : ∀ mv → stackMem (floc fs) cf s ≡ mv
+       → Halted (flat-exec-instr (restore-input s) prog fs)
+         ⊎ Open o false p w0 w1 (flat-exec-instr (restore-input s) prog fs)
+    go (just v) e = inj₂ (subst (Open o false p w0 w1) (sym (trans (ris-eq prog fs s) (cong (RIS fs) e)))
+                              (set-in1 fs op v false (subst (Avoids? (blk op)) e (stack op cf s (apart→nis ap)))))
+    go nothing  e = inj₁ (subst Halted (sym (trans (ris-eq prog fs s) (cong (RIS fs) e))) refl)
