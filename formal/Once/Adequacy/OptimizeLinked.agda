@@ -178,8 +178,12 @@ module _ (Σ : ISig) (tbl : List IRFun) where
     case-aux-linked f g lf lg (yes refl) = eta-case-linked f g lf lg (inl-like-aux f (inlInrView f)) (inr-like-aux g (inlInrView g))
     case-aux-linked f g lf lg (no _)     = lf , lg
 
+    pair-u-linked : ∀ {A B C} (f : IR C A) (g : IR C B) → L f → L g → (v : PairUniq f g) → L (pair-u f g v)
+    pair-u-linked _ _ lf lg (uniq p) = proj₂ lf
+    pair-u-linked {A} {B} {C} f g lf lg (not-uniq _ _) = pair-aux-linked f g lf lg (C ≟IRTy (A II.* B))
+
   pair-linked : ∀ {A B C} (f : IR C A) (g : IR C B) → L f → L g → L (optimize-pair f g)
-  pair-linked {A} {B} {C} f g lf lg = pair-aux-linked f g lf lg (C ≟IRTy (A II.* B))
+  pair-linked f g lf lg = pair-u-linked f g lf lg (pairUniq f g)
 
   case-linked : ∀ {A B C} (f : IR A C) (g : IR B C) → L f → L g → L (optimize-case f g)
   case-linked {A} {B} {C} f g lf lg = case-aux-linked f g lf lg (C ≟IRTy (A II.+ B))

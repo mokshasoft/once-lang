@@ -355,7 +355,7 @@ du_compileFunBody'45'aux_134 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_1846
+                   MAlonzo.Code.Once.Optimize.d_optimize_2216
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
                       (coe (0 :: Integer))
                       (coe
@@ -577,7 +577,7 @@ du_compileFunBodyI'45'at_316 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                        (coe
                           MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Optimize.d_optimize_1846
+                             MAlonzo.Code.Once.Optimize.d_optimize_2216
                              (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
                                 (coe (0 :: Integer))
                                 (coe

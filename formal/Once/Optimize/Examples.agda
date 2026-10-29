@@ -141,3 +141,7 @@ closure-beta = refl
 closure-beta-bare : optimize-once (apply ∘ ⟨ curry (eff {Int} {Int} ∘ snd {Int} {Int}) , id ⟩)
                   ≡ (eff ∘ snd) ∘ ⟨ id , id ⟩
 closure-beta-bare = refl
+
+-- ⟨fst ∘ h, snd ∘ h⟩ = h, for a projection path h
+pair-uniq : optimize-once (⟨ fst ∘ snd {Int} {Int * Int} , snd ∘ snd ⟩) ≡ snd
+pair-uniq = refl

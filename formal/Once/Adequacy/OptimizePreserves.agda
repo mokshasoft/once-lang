@@ -441,9 +441,44 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
     pair-go f′ f g′ g rf rg (yes refl) = eta-pair-rel f′ f g′ g rf rg _ _ refl refl
     pair-go f′ f g′ g rf rg (no _)     = both f′ f g′ g rf rg
 
-  -- | `⟨ fst , snd ⟩ → id`, up to `Unit`
+    -- a projection path has no effect
+    proj-quiet : ∀ {A B} (p : Proj A B) → has-effect? (proj-ir p) ≡ false
+    proj-quiet p-id      = refl
+    proj-quiet p-fst     = refl
+    proj-quiet p-snd     = refl
+    proj-quiet (p-∘ p q) rewrite proj-quiet p | proj-quiet q = refl
+
+    -- a run that returns at once is the return of its value
+    now-ret : ∀ {Y} {n : T∞ Y} (nn : Now n) → TreeEq∞ _≡_ n (return∞ (value nn))
+    now-ret {n = n} nn = ≈∞-trans trans (≈∞-sym sym (≈∞-idʳ n)) (now-seq nn return∞)
+
+    -- `⟨ fst ∘ h , snd ∘ h ⟩` runs `h` twice; `h` has no effect, so that is its value
+    uniq-eq≈ : ∀ {C A B} (p : Proj C (A II.* B)) (a : ⟦ C ⟧ᴰᴵ)
+             → TreeEq∞ _≡_ (E (proj-ir p) a) (E ⟨ fst ∘ proj-ir p , snd ∘ proj-ir p ⟩ a)
+    uniq-eq≈ {A = A} {B} p a = ≈∞-trans trans (now-ret n) (≈∞-sym sym pair≈)
+      where
+        h = proj-ir p
+        n = quiet-now fmt ρ h (proj-quiet p) a
+        v = value n
+        K₁ : ⟦ A ⟧ᴰᴵ → T∞ ⟦ A II.* B ⟧ᴰᴵ
+        K₁ b = E (snd ∘ h) a >>=∞ λ c → return∞ (b , c)
+        K₂ : ⟦ B ⟧ᴰᴵ → T∞ ⟦ A II.* B ⟧ᴰᴵ
+        K₂ c = return∞ (proj₁ v , c)
+        pair≈ : TreeEq∞ _≡_ (E ⟨ fst ∘ h , snd ∘ h ⟩ a) (return∞ v)
+        pair≈ = ≈∞-trans trans (≈∞-bind (now-seq n (E (fst {A} {B}))) (cong-k K₁))
+                  (≈∞-trans trans (≈∞-idˡ (proj₁ v) K₁)
+                    (≈∞-trans trans (≈∞-bind (now-seq n (E (snd {A} {B}))) (cong-k K₂))
+                      (≈∞-idˡ (proj₂ v) K₂)))
+
+    pair-u-rel : ∀ {A B C} (f′ f : IR C A) (g′ g : IR C B) → Rel f′ f → Rel g′ g
+               → (v : PairUniq f′ g′) → Rel (pair-u f′ g′ v) ⟨ f , g ⟩
+    pair-u-rel _ f _ g rf rg (uniq p) {a} r =
+      RelS-≈ˡ (uniq-eq≈ p a) (both (fst ∘ proj-ir p) f (snd ∘ proj-ir p) g rf rg r)
+    pair-u-rel {A} {B} {C} f′ f g′ g rf rg (not-uniq _ _) = pair-go f′ f g′ g rf rg (C ≟IRTy (A II.* B))
+
+  -- | `⟨ fst ∘ h , snd ∘ h ⟩ → h` (a projection path), and `⟨ fst , snd ⟩ → id` up to `Unit`
   pair-rel : ∀ {A B C} (f′ f : IR C A) (g′ g : IR C B) → Rel f′ f → Rel g′ g → Rel (optimize-pair f′ g′) ⟨ f , g ⟩
-  pair-rel {A} {B} {C} f′ f g′ g rf rg = pair-go f′ f g′ g rf rg (C ≟IRTy (A II.* B))
+  pair-rel f′ f g′ g rf rg = pair-u-rel f′ f g′ g rf rg (pairUniq f′ g′)
 
   private
     cases : ∀ {A B C} (f′ f : IR A C) (g′ g : IR B C) → Rel f′ f → Rel g′ g → Rel (case f′ g′) (case f g)
