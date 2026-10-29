@@ -437,7 +437,7 @@ pb-abstract (lea-indexed slot) ls alloc () am wfS wf
 pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
 pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
 pb-abstract (instr-free-heap n)     ls alloc () am wfS wf
-pb-abstract (instr-room n)     ls alloc () am wfS wf
+pb-abstract (instr-room n)     ls alloc ff am wfS wf = wf
 pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
 pb-abstract instr-pop-frame         ls alloc () am wfS wf
 pb-abstract (instr-loop body)       ls alloc () am wfS wf
@@ -575,7 +575,7 @@ flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
 flat-ptr-bounds (instr-free-heap n)     prog fs () am wfS wf
-flat-ptr-bounds (instr-room n)     prog fs () am wfS wf
+flat-ptr-bounds (instr-room n)     prog fs ff am wfS wf = pb-abstract (instr-room n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf
 flat-ptr-bounds instr-pop-frame         prog fs () am wfS wf
 flat-ptr-bounds (instr-loop body)       prog fs () am wfS wf

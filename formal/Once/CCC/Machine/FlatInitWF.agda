@@ -198,7 +198,7 @@ keeps-abstract (lea-indexed k)        ls al () na
 keeps-abstract (instr-alloc-stack n)  ls al () na
 keeps-abstract (instr-dealloc-stack n) ls al () na
 keeps-abstract (instr-free-heap n)    ls al () na
-keeps-abstract (instr-room n)         ls al () na
+keeps-abstract (instr-room n)         ls al e na = same {al = al} refl
 keeps-abstract (instr-push-frame c)   ls al () na
 keeps-abstract instr-pop-frame        ls al () na
 keeps-abstract (instr-loop b)         ls al () na

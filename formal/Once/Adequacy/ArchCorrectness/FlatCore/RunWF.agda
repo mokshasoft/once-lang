@@ -715,7 +715,7 @@ pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
 pcView (instr-free-heap _)                    ()
-pcView (instr-room _)                    ()
+pcView (instr-room _)                    _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
 pcView (instr-case-on-tag _ _)                ()
@@ -1190,7 +1190,7 @@ stack-ptr-step (instr-case-on-tag f g) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
 stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
 stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
-stack-ptr-step (instr-room n)     prog fs r ftq () wf
+stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
 stack-ptr-step (instr-loop body)       prog fs r ftq () wf
@@ -1449,7 +1449,7 @@ ptr-bounds-step (instr-case-on-tag f g) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
-ptr-bounds-step (instr-room n)     prog fs r ftq () wfS wf
+ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
 ptr-bounds-step (instr-loop body)       prog fs r ftq () wfS wf

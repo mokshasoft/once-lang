@@ -90,7 +90,7 @@ no-nested-of-frame-free (instr-load-tag-lit _)  _ = tt
 no-nested-of-frame-free (instr-alloc-heap _)    _ = tt
 no-nested-of-frame-free (instr-reg-op _)        _ = tt
 no-nested-of-frame-free (instr-free-heap _)     ()
-no-nested-of-frame-free (instr-room _)     ()
+no-nested-of-frame-free (instr-room _)     _ = tt
 no-nested-of-frame-free (instr-ctrl _)          _ = tt
 
 no-nested-of-all : ∀ (t : AbstractTrace) → All ImageI t → NoNested t
