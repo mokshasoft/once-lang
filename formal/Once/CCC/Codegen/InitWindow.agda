@@ -34,6 +34,9 @@ open import Data.Empty using (⊥)
 open import Data.List using ([]; _∷_; _++_)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Data.Product using (_×_)
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; case; curry; Iter; Cata; Ana)
+open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 
 open import Once.CCC.Machine.SMCore using
   ( AbstractInstr; AbstractTrace; LabelId
@@ -158,3 +161,28 @@ std1 sx = w-stash (w-mov-in (src sx (w-store (w-store-suc w-done))))
 stdr : ∀ {p x y t} → Src p x → Src p y
      → WinFrom (store-at-slot p ∷ mov-to-input ∷ x ∷ store-indirect-suc ∷ y ∷ store-indirect ∷ t)
 stdr sx sy = w-stash (w-mov-in (src sx (w-store-suc (src sy (w-store w-done)))))
+
+------------------------------------------------------------------------
+-- THE ONE SITE NOT YET COVERED (plan 0.123 A.4): the re-suspension of a
+-- PRODUCT layer writes its pair's second cell after re-suspending the second
+-- child. Until that clause is reordered (after plan 0.125 lands), the claim
+-- is stated for coalgebras without one.
+------------------------------------------------------------------------
+NoProd : ∀ {F} → WellFormedFI F → Set
+NoProd (wf-K _)       = ⊤
+NoProd wf-Id          = ⊤
+NoProd (wf-Prod _ _)  = ⊥
+NoProd (wf-Sum wF wG) = NoProd wF × NoProd wG
+
+-- …and over a whole term: every `Ana` in it has a product-free layer.
+AnaNoProd : ∀ {A B} → IR A B → Set
+AnaNoProd (g ∘ f)       = AnaNoProd g × AnaNoProd f
+AnaNoProd ⟨ f , g ⟩     = AnaNoProd f × AnaNoProd g
+AnaNoProd (case f g)    = AnaNoProd f × AnaNoProd g
+AnaNoProd (curry b)     = AnaNoProd b
+AnaNoProd (Iter b)      = AnaNoProd b
+AnaNoProd (Cata _ alg)  = AnaNoProd alg
+AnaNoProd (Ana wf c)    = NoProd wf × AnaNoProd c
+{-# CATCHALL #-}
+AnaNoProd _             = ⊤
+

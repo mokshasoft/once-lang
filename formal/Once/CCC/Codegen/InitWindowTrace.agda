@@ -317,12 +317,6 @@ lab (_ , k , _ , _) = k
 -- (plan 0.123: reordered once plan 0.125's proof of it lands). Until then
 -- the claim excludes coalgebras with a product layer (`NoProd`). The
 -- environment slot is 0, as at every call (`Ana`).
-NoProd : ∀ {F} → WellFormedFI F → Set
-NoProd (wf-K _)       = ⊤
-NoProd wf-Id          = ⊤
-NoProd (wf-Prod _ _)  = ⊥
-NoProd (wf-Sum wF wG) = NoProd wF × NoProd wG
-
 resuspend-id : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F) → NoProd wf
              → InitDisc (proj₂ (proj₂ (resuspend-layer n l lbl 0 wf)))
 resuspend-id n l lbl (wf-K _) _ = []
@@ -347,18 +341,6 @@ resuspend-id n l lbl (wf-Sum wfF wfG) (pF , pG) =
                                instr-load-tag-lit tag ∷ store-indirect ∷
                                load-from-slot (suc n) ∷ []))
     arm tag am = tt ∷ tt ∷ init-++ am (tt ∷ (stdr (s-slot (apL' n (lit 1 2))) s-tag) ▸ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-
--- …and over a whole term: every `Ana` in it has a product-free layer.
-AnaNoProd : ∀ {A B} → IR A B → Set
-AnaNoProd (g ∘ f)       = AnaNoProd g × AnaNoProd f
-AnaNoProd ⟨ f , g ⟩     = AnaNoProd f × AnaNoProd g
-AnaNoProd (case f g)    = AnaNoProd f × AnaNoProd g
-AnaNoProd (curry b)     = AnaNoProd b
-AnaNoProd (Iter b)      = AnaNoProd b
-AnaNoProd (Cata _ alg)  = AnaNoProd alg
-AnaNoProd (Ana wf c)    = NoProd wf × AnaNoProd c
-{-# CATCHALL #-}
-AnaNoProd _             = ⊤
 
 init-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ) → AnaNoProd ir
                  → InitDisc (blocks-layout (bodies-of (ir-to-trace' n l ir)))
