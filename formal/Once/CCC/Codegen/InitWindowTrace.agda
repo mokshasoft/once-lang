@@ -52,7 +52,7 @@ open import Once.CCC.Codegen.InitWindow
 
 -- an allocation and its window, in the list syntax the proofs are written in
 infixr 5 _▸_
-_▸_ : ∀ {n t} → WinFrom t → InitDisc t → InitDisc (instr-alloc-heap n ∷ t)
+_▸_ : ∀ {t} → WinFrom t → InitDisc t → InitDisc (instr-alloc-heap 2 ∷ t)
 w ▸ d = alloc w d
 
 -- SLOT ARITHMETIC: two stack slots a constant apart are different. `a + n`

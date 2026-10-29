@@ -98,7 +98,8 @@ NotAlloc i = T (not-alloc? i)
 data InitDisc : AbstractTrace → Set where
   []    : InitDisc []
   _∷_   : ∀ {i t} → NotAlloc i → InitDisc t → InitDisc (i ∷ t)
-  alloc : ∀ {n t} → WinFrom t → InitDisc t → InitDisc (instr-alloc-heap n ∷ t)
+  -- every emitted allocation is a pair (`AllocMin`), so both cells are all of it
+  alloc : ∀ {t} → WinFrom t → InitDisc t → InitDisc (instr-alloc-heap 2 ∷ t)
 
 -- A window closes inside its own code, so code after it changes nothing.
 win-++ : ∀ {o i p w0 w1 t} u → Win o i p w0 w1 t → Win o i p w0 w1 (t ++ u)
@@ -120,7 +121,7 @@ win-++ u (w-code w)            = w-code (win-++ u w)
 init-++ : ∀ {a b} → InitDisc a → InitDisc b → InitDisc (a ++ b)
 init-++ []            db = db
 init-++ (na ∷ da)     db = na ∷ init-++ da db
-init-++ {instr-alloc-heap _ ∷ a} {b} (alloc w da) db = alloc (win-++ b w) (init-++ da db)
+init-++ {instr-alloc-heap 2 ∷ a} {b} (alloc w da) db = alloc (win-++ b w) (init-++ da db)
 
 -- Code with no allocation decides by computation: `ok _ refl`.
 noalloc? : AbstractTrace → Bool
