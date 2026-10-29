@@ -28,5 +28,9 @@ left x = destruct (inl x : Int + Int) of { Left a -> a ; Right b -> 0 }
 outer : Int -> Int
 outer x = destruct (inl 0 : Int + Int) of { Left a -> x ; Right b -> b }
 
+-- apply . <curry(f) . k, x> = f . <k, x>: a lambda applied where it is written
+applied : Int -> Int
+applied x = (\y -> y) x
+
 main : Act Unit Void
 main = exit@S . ((\_ -> 7) . emit@E . (\_ -> outer 6) . emit@E . (\_ -> left 5))

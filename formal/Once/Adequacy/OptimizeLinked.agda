@@ -105,6 +105,47 @@ module _ (Σ : ISig) (tbl : List IRFun) where
     terminal-linked f lf true  = tt , lf
     terminal-linked f lf false = tt
 
+    head-linked : ∀ {X Y A B} (c : IR Y (A II.⇛ B)) (k : IR X Y) (x : IR X A) → (L c × L k) × L x
+                → (v : CurryView c) → L (beta-head c k x v)
+    head-linked _ k x ((lf , lk) , lx) (is-curry f)       = lf , (lk , lx)
+    head-linked c k x l                (is-other-curry _) = tt , l
+
+    bare-linked : ∀ {X A B} (c : IR X (A II.⇛ B)) (x : IR X A) → L c × L x → (v : CurryView c) → L (beta-bare c x v)
+    bare-linked _ x (lf , lx) (is-curry f)       = lf , (tt , lx)
+    bare-linked c x l         (is-other-curry _) = tt , l
+
+    closure-linked : ∀ {X A B} (c : IR X (A II.⇛ B)) (x : IR X A) → L c × L x → (w : ChainView c) → L (closure-beta c x w)
+    closure-linked _ x ((lh , lk) , lx) (is-comp h k) = head-linked h k x ((lh , lk) , lx) (curryView h)
+    closure-linked _ x l                (not-comp c)  = bare-linked c x l (curryView c)
+
+    head-chain-linked : ∀ {X Z Y A B} (c : IR Y (A II.⇛ B)) (k : IR Z Y) (x : IR Z A) (m : IR X Z)
+                      → (L c × L k) × L x → L m → (v : CurryView c) → L (beta-head-chain c k x m v)
+    head-chain-linked _ k x m ((lf , lk) , lx) lm (is-curry f)       = lf , ((lk , lx) , lm)
+    head-chain-linked c k x m l                lm (is-other-curry _) = tt , (l , lm)
+
+    bare-chain-linked : ∀ {X Z A B} (c : IR Z (A II.⇛ B)) (x : IR Z A) (m : IR X Z) → L c × L x → L m
+                      → (v : CurryView c) → L (beta-bare-chain c x m v)
+    bare-chain-linked _ x m (lf , lx) lm (is-curry f)       = lf , ((tt , lx) , lm)
+    bare-chain-linked c x m l         lm (is-other-curry _) = tt , (l , lm)
+
+    closure-chain-linked : ∀ {X Z A B} (c : IR Z (A II.⇛ B)) (x : IR Z A) (m : IR X Z) → L c × L x → L m
+                         → (w : ChainView c) → L (closure-beta-chain c x m w)
+    closure-chain-linked _ x m ((lh , lk) , lx) lm (is-comp h k) = head-chain-linked h k x m ((lh , lk) , lx) lm (curryView h)
+    closure-chain-linked _ x m l                lm (not-comp c)  = bare-chain-linked c x m l lm (curryView c)
+
+    apply-chain-aux-linked : ∀ {X Z A B} (p : IR Z ((A II.⇛ B) II.* A)) (m : IR X Z) → L p × L m
+                           → (v : PairView p) → L (apply-chain-aux p m v)
+    apply-chain-aux-linked _ m (lp , lm) (is-pair c x)     = closure-chain-linked c x m lp lm (chainView c)
+    apply-chain-aux-linked _ m l         (is-other-pair p) = tt , l
+
+    apply-chain-linked : ∀ {X A B} (F : IR X ((A II.⇛ B) II.* A)) → L F → (w : ChainView F) → L (apply-chain F w)
+    apply-chain-linked _ l (is-comp p m) = apply-chain-aux-linked p m l (pairView p)
+    apply-chain-linked _ l (not-comp F)  = compose-second-linked apply F tt l (composeSecondView F)
+
+    apply-linked : ∀ {X A B} (F : IR X ((A II.⇛ B) II.* A)) → L F → (v : PairView F) → L (apply-aux F v)
+    apply-linked _ l (is-pair c x)     = closure-linked c x l (chainView c)
+    apply-linked _ l (is-other-pair F) = apply-chain-linked F l (chainView F)
+
     compose-aux-linked : ∀ {A B C} (g : IR B C) (f : IR A B) → L g → L f → (v : ComposeFirstView g) → L (compose-aux g f v)
     compose-aux-linked _ f lg lf cf-id         = lf
     compose-aux-linked _ f lg lf cf-terminal   = terminal-linked f lf (has-effect? f)
@@ -112,6 +153,7 @@ module _ (Σ : ISig) (tbl : List IRFun) where
     compose-aux-linked _ f lg lf cf-snd        = snd-linked f lf (pairView f)
     compose-aux-linked _ f lg lf (cf-case h k) = post-case-linked h k f lg lf (coprodView f)
     compose-aux-linked _ f lg lf (cf-comp h k) = proj₁ lg , (proj₂ lg , lf)
+    compose-aux-linked _ f lg lf cf-apply      = apply-linked f lf (pairView f)
     compose-aux-linked _ f lg lf (cf-other g)  = compose-second-linked g f lg lf (composeSecondView f)
 
   compose-linked : ∀ {A B C} (g : IR B C) (f : IR A B) → L g → L f → L (optimize-compose g f)

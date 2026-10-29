@@ -78,6 +78,18 @@ force≈ (≈∞-sym s h) = ≈∞-symB s (force≈ h)
 ≈∞-symB s (call≈ f)        = call≈ (λ b → ≈∞-symB s (f b))
 ≈∞-symB s halt≈            = halt≈
 
+-- Bisimilarity is transitive (when the results' relation is).
+≈∞-trans  : ∀ {X} {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z)
+          → ∀ {m m′ m″} → TreeEq∞ R m m′ → TreeEq∞ R m′ m″ → TreeEq∞ R m m″
+≈∞-transB : ∀ {X} {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z)
+          → ∀ {l l′ l″} → BlockEq (StepEq R (TreeEq∞ R)) l l′ → BlockEq (StepEq R (TreeEq∞ R)) l′ l″
+          → BlockEq (StepEq R (TreeEq∞ R)) l l″
+force≈ (≈∞-trans t h h′) = ≈∞-transB t (force≈ h) (force≈ h′)
+≈∞-transB t (ret≈ (done≈ r)) (ret≈ (done≈ r′)) = ret≈ (done≈ (t r r′))
+≈∞-transB t (ret≈ (next≈ h)) (ret≈ (next≈ h′)) = ret≈ (next≈ (≈∞-trans t h h′))
+≈∞-transB t (call≈ f)        (call≈ f′)        = call≈ (λ b → ≈∞-transB t (f b) (f′ b))
+≈∞-transB t halt≈            halt≈             = halt≈
+
 ------------------------------------------------------------------------
 -- A run against a FINITE tree (the IR's, which is `T` until the compiler
 -- runs forever too): the same calls, read off the finite side, and the

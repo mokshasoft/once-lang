@@ -150,6 +150,8 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **The optimizer associates composition to the right** and a rule checks only
   the term it drops for an effect; eta holds up to `Unit`/`Void`. The arith
   recogniser reads compositions however they nest. (D349)
+- **A closure applied where it is built is inlined** (closure beta); a rule
+  through a chain leaves the chain right-nested. (D350)
 - **Two tool hypotheses about `String`** (`Once.Postulates` T1, T2:
   `toList-++`, `toList∘fromList`, the standard library's own): facts about the
   primitives Agda does not export (before, `Data.String.Unsafe`'s `trustMe`,

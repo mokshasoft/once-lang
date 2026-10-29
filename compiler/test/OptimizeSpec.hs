@@ -52,6 +52,9 @@ ruleFixtures =
   , ( "left", "id . f = f, snd . <g, h> = h"
     , "[snd . (id . <id . fst, snd>), "
     , "curry([snd, 0 . terminal] . (apply . (<[curry(inl . <terminal, fst>), curry(inr . <terminal, fst>)] . fst, terminal> . (<snd, terminal> . <terminal, inl . snd>)))) . terminal" )
+  , ( "applied", "apply . <curry f . k, x> = f . <k, x>"
+    , "apply . <curry(snd) . (id . fst), "
+    , "curry(snd) . terminal" )
   , ( "outer", "fst . <g, h> = g"
     , "[snd . (fst . <<id . fst, snd> . fst, snd>), "
     , "curry([snd . fst, snd] . (apply . (<[curry(inl . <snd, fst>), curry(inr . <snd, fst>)] . fst, snd> . (<snd, fst> . <id, inl . (0 . terminal)>)))) . terminal" )

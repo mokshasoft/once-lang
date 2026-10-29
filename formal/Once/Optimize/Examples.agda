@@ -131,3 +131,13 @@ snd-chain = refl
 -- case h k ∘ (inl ∘ m) = h ∘ m
 case-chain : optimize-once (case (eff {Int} {Int}) (one ∘ terminal) ∘ (inl {Int} {Int} ∘ eff {Int})) ≡ eff ∘ eff
 case-chain = refl
+
+-- apply ∘ ⟨curry f ∘ k, x⟩ = f ∘ ⟨k, x⟩: a closure built in place is applied
+closure-beta : optimize-once (apply ∘ ⟨ curry (eff {Int} {Int} ∘ snd {Unit} {Int}) ∘ terminal , id ⟩)
+             ≡ (eff ∘ snd) ∘ ⟨ terminal , id ⟩
+closure-beta = refl
+
+-- …with no `k`: apply ∘ ⟨curry f, x⟩ = f ∘ ⟨id, x⟩
+closure-beta-bare : optimize-once (apply ∘ ⟨ curry (eff {Int} {Int} ∘ snd {Int} {Int}) , id ⟩)
+                  ≡ (eff ∘ snd) ∘ ⟨ id , id ⟩
+closure-beta-bare = refl

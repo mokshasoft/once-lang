@@ -19849,3 +19849,30 @@ left-nested `∘` (`fst . (<a, b> . k)`) stays; the structural `inl`/`inr` out o
 * Measured over the 94 corpus programs that build: IR tokens 6006 → 5101 (−15%), `.text` 334388 → 328104 bytes
   (−1.9%); 62 programs smaller, 32 unchanged, none larger.
 
+
+## D350 — A CLOSURE APPLIED WHERE IT IS BUILT IS INLINED (2026-10-29)
+
+**Follows** D349, plan 0.129 C1 (a rule lost in 841d7e1bd).
+
+### Context
+Elaborated code applies lambdas where they are written: `let`, an application of a `\x -> …`, and every effect
+call goes through `apply ∘ ⟨curry f ∘ k, x⟩`. `apply` counts as an effect for the drop guards (its closure is
+unknown in general), so none of that was optimized.
+
+### Decision
+* **Closure beta**: `apply ∘ ⟨curry f ∘ k, x⟩ = f ∘ ⟨k, x⟩`, also with no `k` (`f ∘ ⟨id, x⟩`) and through a chain
+  (`apply ∘ (⟨curry f ∘ k, x⟩ ∘ m) = f ∘ (⟨k, x⟩ ∘ m)`). The closure is known, so applying it runs its body; `k` and
+  `x` run in the same order; nothing is dropped, so no guard. Proof: the monad laws on the optimized side
+  (`OptimizePreserves.clo-beta≈`; `≈∞-trans` added to `TraceMonadInfLaws`).
+* **A chain rule keeps the chain right-nested and changes nothing when it does not fire**: the first version
+  rebuilt `(apply ∘ ⟨c, x⟩) ∘ m` when no closure was found, which the next pass re-associated — the two
+  alternated for all ten passes.
+
+### Consequences
+* Measured over the corpus: IR tokens 5101 → 4222, `.text` 328104 → 294696 bytes (−10%; −11.9% from D348's
+  334388); 80 programs smaller, 12 unchanged, one larger: `layer5-cata-leaftree-emit` +48 bytes, where the inlined
+  body is a `cata` whose environment is a closure (a codegen cost; the IR is smaller).
+* Seen while measuring, for part D: `main`'s body applies a closure it reads from its environment
+  (`curry(apply ∘ ⟨fst ∘ fst, …⟩) ∘ P`); reaching it needs curry naturality, `curry f ∘ g = curry (f ∘ ⟨g ∘ fst, snd⟩)`.
+* `opt-rules.once` gains `applied` (`(\y -> y) x` optimizes to `curry(snd) . terminal`).
+

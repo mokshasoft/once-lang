@@ -46,7 +46,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; cata-ev-algᴰ; 
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt;
   RelS-embed; RelS-bind; relS-ret; RelS-iter∞; RelS-≈ˡ; RelS-≈ʳ; ≈∞-idˡ; ≈∞-idʳ; ≈∞-sym; ≈∞-reflB; ≈∞-refl;
-  ≈∞-bind; ≈∞-assoc)
+  ≈∞-bind; ≈∞-assoc; ≈∞-trans)
 open import Once.Denotation.ValueRel
 open import Once.Denotation.EvalRel using (fo-eq; RelS-now; RelEnv; sigop-rel; eval-rel)
 open import Once.Denotation.ValueRelPER using (RelD-sym; RelD-trans; RelS-sym; RelS-trans)
@@ -275,6 +275,105 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
     terminal-rel f′ f g rf rg false q {a} r =
       let nr = now-rel (rf r) (quiet-now fmt ρ f′ q a) in RelS-≈ʳ (now-seq (proj₁ nr) (E′ g)) (rg (proj₂ nr))
 
+    cong-k : ∀ {X Y : Set} (k : X → T∞ Y) {x y} → x ≡ y → TreeEq∞ _≡_ (k x) (k y)
+    cong-k k {x} refl = ≈∞-refl ≡refl (k x)
+
+    -- applying a closure built in place runs its body: the monad laws only
+    clo-beta≈ : ∀ {Y A B : Set} (K : T∞ Y) (G : T∞ A) (F : Y × A → T∞ B)
+      → TreeEq∞ _≡_ ((K >>=∞ λ e → G >>=∞ λ x → return∞ (e , x)) >>=∞ F)
+                    (((K >>=∞ λ e → return∞ (λ b → F (e , b))) >>=∞ (λ c → G >>=∞ λ x → return∞ (c , x)))
+                       >>=∞ λ p → proj₁ p (proj₂ p))
+    clo-beta≈ {Y} {A} {B} K G F = ≈∞-trans trans lhs (≈∞-sym sym rhs)
+      where
+        clo : Y → A → T∞ B
+        clo e b = F (e , b)
+        P : (A → T∞ B) → T∞ ((A → T∞ B) × A)
+        P c = G >>=∞ λ x → return∞ (c , x)
+        AP : (A → T∞ B) × A → T∞ B
+        AP p = proj₁ p (proj₂ p)
+        M : T∞ B
+        M = K >>=∞ λ e → G >>=∞ λ x → F (e , x)
+
+        idlF : ∀ e {x x′} → x ≡ x′ → TreeEq∞ _≡_ (return∞ (e , x) >>=∞ F) (F (e , x′))
+        idlF e {x} refl = ≈∞-idˡ (e , x) F
+        innerL : ∀ {e e′} → e ≡ e′ → TreeEq∞ _≡_ ((G >>=∞ λ x → return∞ (e , x)) >>=∞ F) (G >>=∞ λ x → F (e′ , x))
+        innerL {e} refl = ≈∞-trans trans (≈∞-assoc G (λ x → return∞ (e , x)) F) (≈∞-bind (≈∞-refl ≡refl G) (idlF e))
+        lhs : TreeEq∞ _≡_ ((K >>=∞ λ e → G >>=∞ λ x → return∞ (e , x)) >>=∞ F) M
+        lhs = ≈∞-trans trans (≈∞-assoc K (λ e → G >>=∞ λ x → return∞ (e , x)) F) (≈∞-bind (≈∞-refl ≡refl K) innerL)
+
+        idlA : ∀ e {x x′} → x ≡ x′ → TreeEq∞ _≡_ (return∞ (clo e , x) >>=∞ AP) (clo e x′)
+        idlA e {x} refl = ≈∞-idˡ (clo e , x) AP
+        innerR : ∀ {e e′} → e ≡ e′ → TreeEq∞ _≡_ ((return∞ (clo e) >>=∞ P) >>=∞ AP) (G >>=∞ λ x → F (e′ , x))
+        innerR {e} refl = ≈∞-trans trans (≈∞-bind (≈∞-idˡ (clo e) P) (cong-k AP))
+                            (≈∞-trans trans (≈∞-assoc G (λ x → return∞ (clo e , x)) AP)
+                              (≈∞-bind (≈∞-refl ≡refl G) (idlA e)))
+        rhs : TreeEq∞ _≡_ (((K >>=∞ λ e → return∞ (clo e)) >>=∞ P) >>=∞ AP) M
+        rhs = ≈∞-trans trans (≈∞-bind (≈∞-assoc K (λ e → return∞ (clo e)) P) (cong-k AP))
+                (≈∞-trans trans (≈∞-assoc K (λ e → return∞ (clo e) >>=∞ P) AP) (≈∞-bind (≈∞-refl ≡refl K) innerR))
+
+    head-eq : ∀ {X Y A B} (c : IR Y (A II.⇛ B)) (k : IR X Y) (x : IR X A) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+            → TreeEq∞ _≡_ (E (beta-head c k x v) a) (E (apply ∘ ⟨ c ∘ k , x ⟩) a)
+    head-eq _ k x (is-curry f)       a = clo-beta≈ (E k a) (E x a) (E f)
+    head-eq c k x (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ ⟨ c ∘ k , x ⟩) a)
+
+    bare-eq : ∀ {X A B} (c : IR X (A II.⇛ B)) (x : IR X A) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+            → TreeEq∞ _≡_ (E (beta-bare c x v) a) (E (apply ∘ ⟨ c , x ⟩) a)
+    bare-eq _ x (is-curry f) a =
+      ≈∞-trans trans (clo-beta≈ (return∞ a) (E x a) (E f))
+        (≈∞-bind (≈∞-bind (≈∞-idˡ a (λ e → return∞ (λ b → E f (e , b)))) (cong-k (λ c → E x a >>=∞ λ y → return∞ (c , y))))
+                 (cong-k (λ p → proj₁ p (proj₂ p))))
+    bare-eq c x (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ ⟨ c , x ⟩) a)
+
+    closure-eq : ∀ {X A B} (c : IR X (A II.⇛ B)) (x : IR X A) (w : ChainView c) (a : ⟦ X ⟧ᴰᴵ)
+               → TreeEq∞ _≡_ (E (closure-beta c x w) a) (E (apply ∘ ⟨ c , x ⟩) a)
+    closure-eq _ x (is-comp h k) a = head-eq h k x (curryView h) a
+    closure-eq _ x (not-comp c)  a = bare-eq c x (curryView c) a
+
+    -- an equation at every input holds after a common first step
+    via-chain : ∀ {X Z W V B} (m : IR X Z) (P : IR Z W) (f : IR W B) (Q : IR Z V) (g : IR V B) (a : ⟦ X ⟧ᴰᴵ)
+              → (∀ y → TreeEq∞ _≡_ (E (f ∘ P) y) (E (g ∘ Q) y)) → TreeEq∞ _≡_ (E (f ∘ (P ∘ m)) a) (E (g ∘ (Q ∘ m)) a)
+    via-chain m P f Q g a h =
+      ≈∞-trans trans (≈∞-assoc (E m a) (E P) (E f))
+        (≈∞-trans trans (≈∞-bind (≈∞-refl ≡refl (E m a)) pt) (≈∞-sym sym (≈∞-assoc (E m a) (E Q) (E g))))
+      where
+        pt : ∀ {y y′} → y ≡ y′ → TreeEq∞ _≡_ (E P y >>=∞ E f) (E Q y′ >>=∞ E g)
+        pt {y} refl = h y
+
+    head-chain-eq : ∀ {X Z Y A B} (c : IR Y (A II.⇛ B)) (k : IR Z Y) (x : IR Z A) (m : IR X Z) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+                  → TreeEq∞ _≡_ (E (beta-head-chain c k x m v) a) (E (apply ∘ (⟨ c ∘ k , x ⟩ ∘ m)) a)
+    head-chain-eq _ k x m (is-curry f) a =
+      via-chain m ⟨ k , x ⟩ f ⟨ curry f ∘ k , x ⟩ apply a (head-eq (curry f) k x (is-curry f))
+    head-chain-eq c k x m (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ (⟨ c ∘ k , x ⟩ ∘ m)) a)
+
+    bare-chain-eq : ∀ {X Z A B} (c : IR Z (A II.⇛ B)) (x : IR Z A) (m : IR X Z) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+                  → TreeEq∞ _≡_ (E (beta-bare-chain c x m v) a) (E (apply ∘ (⟨ c , x ⟩ ∘ m)) a)
+    bare-chain-eq _ x m (is-curry f) a =
+      via-chain m ⟨ id , x ⟩ f ⟨ curry f , x ⟩ apply a (bare-eq (curry f) x (is-curry f))
+    bare-chain-eq c x m (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ (⟨ c , x ⟩ ∘ m)) a)
+
+    closure-chain-eq : ∀ {X Z A B} (c : IR Z (A II.⇛ B)) (x : IR Z A) (m : IR X Z) (w : ChainView c) (a : ⟦ X ⟧ᴰᴵ)
+                     → TreeEq∞ _≡_ (E (closure-beta-chain c x m w) a) (E (apply ∘ (⟨ c , x ⟩ ∘ m)) a)
+    closure-chain-eq _ x m (is-comp h k) a = head-chain-eq h k x m (curryView h) a
+    closure-chain-eq _ x m (not-comp c)  a = bare-chain-eq c x m (curryView c) a
+
+    -- `apply ∘ ⟨ curry f ∘ k , x ⟩ → f ∘ ⟨ k , x ⟩` (and through a chain)
+    apply-chain-aux-rel : ∀ {X Z A B} (p : IR Z ((A II.⇛ B) II.* A)) (m : IR X Z) (F : IR X ((A II.⇛ B) II.* A))
+                          (g : IR ((A II.⇛ B) II.* A) B) → Rel (p ∘ m) F → Rel apply g
+                        → (v : PairView p) → Rel (apply-chain-aux p m v) (g ∘ F)
+    apply-chain-aux-rel _ m F g rF rg (is-pair c x) {a} r =
+      RelS-≈ˡ (closure-chain-eq c x m (chainView c) a) (RelS-bind (rF r) rg)
+    apply-chain-aux-rel _ m F g rF rg (is-other-pair p) r = RelS-bind (rF r) rg
+
+    apply-chain-rel : ∀ {X A B} (F′ F : IR X ((A II.⇛ B) II.* A)) (g : IR ((A II.⇛ B) II.* A) B)
+                    → Rel F′ F → Rel apply g → (w : ChainView F′) → Rel (apply-chain F′ w) (g ∘ F)
+    apply-chain-rel _ F g rF rg (is-comp p m) = apply-chain-aux-rel p m F g rF rg (pairView p)
+    apply-chain-rel _ F g rF rg (not-comp F′) = compose-second-rel apply g F′ F rg rF (composeSecondView F′)
+
+    apply-rel : ∀ {X A B} (F′ F : IR X ((A II.⇛ B) II.* A)) (g : IR ((A II.⇛ B) II.* A) B)
+              → Rel F′ F → Rel apply g → (v : PairView F′) → Rel (apply-aux F′ v) (g ∘ F)
+    apply-rel _ F g rF rg (is-pair c x) {a} r = RelS-≈ˡ (closure-eq c x (chainView c) a) (RelS-bind (rF r) rg)
+    apply-rel _ F g rF rg (is-other-pair F′) = apply-chain-rel F′ F g rF rg (chainView F′)
+
     compose-go : ∀ {A B C} (g′ g : IR B C) (f′ f : IR A B) → Rel g′ g → Rel f′ f
                → (v : ComposeFirstView g′) → Rel (compose-aux g′ f′ v) (g ∘ f)
     compose-go _ g f′ f rg rf cf-id {a} r = RelS-≈ˡ (≈∞-sym sym (≈∞-idʳ (E f′ a))) (RelS-bind (rf r) rg)
@@ -285,6 +384,7 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
       post-case-rel h k f′ f g rf (λ {x} {y} q → rg {x} {y} q) (coprodView f′)
     -- `(h ∘ k) ∘ f → h ∘ (k ∘ f)`: bind is associative
     compose-go _ g f′ f rg rf (cf-comp h k) {a} r = RelS-≈ˡ (≈∞-assoc (E f′ a) (E k) (E h)) (RelS-bind (rf r) rg)
+    compose-go _ g f′ f rg rf cf-apply = apply-rel f′ f g rf rg (pairView f′)
     compose-go _ g f′ f rg rf (cf-other g′) = compose-second-rel g′ g f′ f rg rf (composeSecondView f′)
 
   -- | `optimize-compose`: each rule that drops a term reads `has-effect?` of the
