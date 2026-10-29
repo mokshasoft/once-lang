@@ -99,7 +99,7 @@ module IterContC {FS : FrameSemantics} where
     (left0 : LocState.left (floc S0) ≡ LocState.left (Loop.Anchor.s₀ Z))
     {m : AllocMode} (loc : ValueLocation FS)
     (vS : ValidAtWF {prog = prog} m (falloc S0) {B IRT.+ A} (inj₂ a′) loc (floc S0))
-    (bef : BeforeFrontier (falloc S0) loc)
+    (bef : Live (falloc S0) loc)
     (rax : readReg (regs (floc S0)) Output ≡ SV-Ptr loc)
     where
 
@@ -123,7 +123,7 @@ module IterContC {FS : FrameSemantics} where
     memG lc = trans (mem-unpack (floc c1) (falloc c1) lc) (mem1 lc)
 
     v1 : ValidAtWF {prog = prog} m (falloc c1) {B IRT.+ A} (inj₂ a′) loc (floc c1)
-    v1 = validityWF-mem-preserved (inj₂ a′) loc (floc S0) (floc c1) bef (λ lc _ → mem1 lc) vS
+    v1 = validityWF-mem-preserved (inj₂ a′) loc (floc S0) (floc c1) (live→bf bef) (λ lc _ → mem1 lc) vS
 
     nh1 : halted (floc c1) ≡ false
     nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt

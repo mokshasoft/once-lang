@@ -109,7 +109,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct terminal            _ = obs-correct-terminal
   ir-obs-correct initial             _ = obs-correct-initial
   -- exponentials — THE LABEL-BEARING PAIR
-  ir-obs-correct (curry body)        _ = obs-correct-curry body
+  ir-obs-correct (curry body)        lb = obs-correct-curry body (ir-obs-correct body lb)
   ir-obs-correct apply               _ = obs-correct-apply
   -- μ / ν structure
   ir-obs-correct (In wf)             _ = obs-correct-In wf

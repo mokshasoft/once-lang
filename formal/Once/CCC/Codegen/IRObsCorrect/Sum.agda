@@ -413,7 +413,7 @@ module SumC {FS : FrameSemantics} where
           valid' =
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
-              (validityWF-mem-preserved x loc s (floc fs10) bf
+              (validityWF-mem-preserved x loc s (floc fs10) (live→bf bf)
                  (λ loc' bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8 loc'
                                  (frontier-monotone alloc (record alloc { next-slot = n })
@@ -424,7 +424,7 @@ module SumC {FS : FrameSemantics} where
                    → ValidAtWF Heap (falloc fs10) (retVal (evalᴰ (inl {A} {B}) x)) sum-loc (floc fs10)
           mk-valid e =
             valid-inl-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
-              (bf-advance bf) before-suc valid'
+              (live-lift bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                           (retVal (evalᴰ (inl {A} {B}) x)) (floc fs10)
@@ -803,7 +803,7 @@ module SumC {FS : FrameSemantics} where
           valid' =
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
-              (validityWF-mem-preserved x loc s (floc fs10) bf
+              (validityWF-mem-preserved x loc s (floc fs10) (live→bf bf)
                  (λ loc' bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8 loc'
                                  (frontier-monotone alloc (record alloc { next-slot = n })
@@ -814,7 +814,7 @@ module SumC {FS : FrameSemantics} where
                    → ValidAtWF Heap (falloc fs10) (retVal (evalᴰ (inr {A} {B}) x)) sum-loc (floc fs10)
           mk-valid e =
             valid-inr-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
-              (bf-advance bf) before-suc valid'
+              (live-lift bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                           (retVal (evalᴰ (inr {A} {B}) x)) (floc fs10)

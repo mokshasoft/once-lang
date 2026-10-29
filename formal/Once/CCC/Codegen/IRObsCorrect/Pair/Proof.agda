@@ -181,7 +181,7 @@ module PairProofC {FS : FrameSemantics} where
 
       inpF-of : InputAt {prog = prog} {A} mIn alloc x s → InputAt {prog = prog} {A} mIn alloc x (floc PC.PR.p2)
       inpF-of (in-loc loc vd bf rd) =
-        in-loc loc (validityWF-mem-preserved x loc s (floc PC.PR.p2) bf
+        in-loc loc (validityWF-mem-preserved x loc s (floc PC.PR.p2) (live→bf bf)
                       (λ loc' b' → memP loc' b') vd)
                bf (trans PC.PR.input1-p2 rd)
       inpF-of (in-reg fit rd) = in-reg fit (trans PC.PR.input1-p2 rd)
@@ -359,9 +359,9 @@ module PairProofC {FS : FrameSemantics} where
               (validityWF-frontier-advance x loc (floc PCF.m2)
                  PCF.cf-m2 (≤-reflexive (sym ns-m2))
                  (≤-trans (vr-heap-mono vrf ncF) (≤-reflexive (sym hr-mid)))
-                 (validityWF-mem-preserved x loc s (floc PCF.m2) bf
+                 (validityWF-mem-preserved x loc s (floc PCF.m2) (live→bf bf)
                     (λ loc' b' → mem-to-m2 loc' (bf-n loc' b')) vd))
-              (bfG loc bf) (trans input1-m2 rd)
+              (live-lift (bfG loc) bf) (trans input1-m2 rd)
           inpG-of (in-reg fit rd) = in-reg fit (trans input1-m2 rd)
           inpG-of (in-unit e)     = in-unit e
 

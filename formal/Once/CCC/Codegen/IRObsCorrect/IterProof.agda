@@ -58,7 +58,7 @@ module IterProofC {FS : FrameSemantics} where
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false)
     (pl : ValueLocation FS) (pv : ValidAtWF {prog = prog} mIn alloc {E IRT.* A} (e , a₀) pl s)
-    (bfp : BeforeFrontier alloc pl) (rd : readReg (regs s) Input1 ≡ SV-Ptr pl)
+    (bfp : Live alloc pl) (rd : readReg (regs s) Input1 ≡ SV-Ptr pl)
     (k : ℕ)
     where
 
@@ -89,7 +89,7 @@ module IterProofC {FS : FrameSemantics} where
       (_ , at-loc cloc cval cbef (exec-abstract-load-indirect-output s alloc pl (SV-Ptr cloc) rd cp) cval cbef)
       , exec-abstract-preserves-halted-WF load-indirect s alloc nh (load-indirect-twf {alloc = alloc} pl (SV-Ptr cloc) rd cp)
       , load-ind-preserves-input s alloc pl (SV-Ptr cloc) (cong sv-as-loc rd) cp
-      where cval = validityWF-mem-preserved e cloc s (floc fs1) cbef (λ lc _ → mem-eq1 lc) cv
+      where cval = validityWF-mem-preserved e cloc s (floc fs1) (live→bf cbef) (λ lc _ → mem-eq1 lc) cv
     fst-out (cell-inline (rep-prim fit) cp) =
       (Heap , at-reg fit (exec-abstract-load-indirect-output s alloc pl _ rd cp))
       , exec-abstract-preserves-halted-WF load-indirect s alloc nh (load-indirect-twf {alloc = alloc} pl _ rd cp)
@@ -140,7 +140,7 @@ module IterProofC {FS : FrameSemantics} where
     inv₁ : RoundInv Z σ₁ a₀
     inv₁ = record
       { pc = refl ; ret = refl ; lnk = refl ; nh = nh2 ; mode = mIn
-      ; inp = in-loc pl (validityWF-mem-preserved (e , a₀) pl s (floc σ₁) bfp (λ lc b → trans (memS lc b) (mem-eq1 lc)) pv)
+      ; inp = in-loc pl (validityWF-mem-preserved (e , a₀) pl s (floc σ₁) (live→bf bfp) (λ lc b → trans (memS lc b) (mem-eq1 lc)) pv)
                  bfp (trans input1 rd)
       ; cf = refl ; sf = refl ; ns = refl ; hr = ≤-refl
       ; memF = λ lc bf → memS lc bf

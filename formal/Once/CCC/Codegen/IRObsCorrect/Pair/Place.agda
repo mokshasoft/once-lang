@@ -441,7 +441,7 @@ module PairPlaceC {FS : FrameSemantics} where
               → ResultPlace {prog = prog} D m aS ca v src
               → CellAt {prog = prog} (falloc u10) D v cl (floc u10)
     cell-of src cl rd tr bfw (at-loc loc valid bef rax _ _) =
-      cell-ptr (trans rd (cong just rax)) (bfw loc bef) (tr _ loc bef valid)
+      cell-ptr (trans rd (cong just rax)) (live-lift (bfw loc) bef) (tr _ loc (live→bf bef) valid)
     cell-of src cl rd tr bfw (at-reg fit rax) =
       cell-inline (rep-prim fit) (trans rd (cong just rax))
     cell-of src cl rd tr bfw unit-result =

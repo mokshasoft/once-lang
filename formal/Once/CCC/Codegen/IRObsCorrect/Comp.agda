@@ -117,7 +117,7 @@ module CompC {FS : FrameSemantics} where
     → (∀ loc → readLoc s' loc ≡ readLoc s loc)
     → InputAt {prog = prog} mOut alloc v s'
   result→input (at-loc loc valid before rax-eq _ _) mov-eq mem-eq =
-    in-loc loc (validityWF-mem-preserved _ loc _ _ before (λ loc' _ → mem-eq loc') valid)
+    in-loc loc (validityWF-mem-preserved _ loc _ _ (live→bf before) (λ loc' _ → mem-eq loc') valid)
                before (trans mov-eq rax-eq)
   result→input (at-reg fit rax-eq) mov-eq _ = in-reg fit (trans mov-eq rax-eq)
   result→input unit-result         _      _ = in-unit refl

@@ -212,6 +212,12 @@ record FrameSemantics : Set₁ where
     -- stack is the concrete machine's outcome, not the abstract one's.
     shift-≺ : ∀ f n → 0 < n → shift-frame f n ≺ f
 
+    -- | …and a frame already below another stays below it however much
+    -- further it is shifted (plan 0.125 S2). A body whose marker reserves 0
+    -- slots still runs in a frame below its caller's, so the caller's slots
+    -- are ancestors of the callee and survive its `c-thunk`.
+    shift-below : ∀ {f′ f} n → f′ ≺ f → shift-frame f′ n ≺ f
+
     --------------------------------------------------------------------
     -- Bounded Frame Disjointness (Key Property)
     --

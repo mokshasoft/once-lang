@@ -115,8 +115,8 @@ module Simp {FS : FrameSemantics} where
       out-lit fit eq =
         trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
 
-      before' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
-              → BeforeFrontier (falloc fs₁) il
+      before' : ∀ (il : ValueLocation FS) → Live alloc il
+              → Live (falloc fs₁) il
       before' il bf = bf
 
       place : InputAt mIn alloc x s
@@ -124,8 +124,8 @@ module Simp {FS : FrameSemantics} where
                 (falloc fs₁) (retVal (evalᴰ (id {A}) x))
                 (floc fs₁)
       place (in-loc il v bf eq) =
-        at-loc il (valid'' il bf v) (before' il bf) (out-ptr il eq)
-                  (valid'' il bf v) (before' il bf)
+        at-loc il (valid'' il (live→bf bf) v) (before' il bf) (out-ptr il eq)
+                  (valid'' il (live→bf bf) v) (before' il bf)
         where valid'' : ∀ il' → BeforeFrontier alloc il' → ValidAtWF mIn alloc x il' s
                       → ValidAtWF mIn (falloc fs₁) x il'
                           (floc fs₁)
@@ -226,7 +226,7 @@ module Simp {FS : FrameSemantics} where
           go : CellAt alloc A (proj₁ x) pair-loc s
              → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl rs k
           go (cell-ptr {comp-loc = cloc} cp cbef cv) =
-            let cval  = validityWF-mem-preserved (proj₁ x) cloc s (floc fs₁) cbef
+            let cval  = validityWF-mem-preserved (proj₁ x) cloc s (floc fs₁) (live→bf cbef)
                           (λ loc' _ → mem-eq loc') cv
                 live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
                           (load-indirect-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq cp)
@@ -290,7 +290,7 @@ module Simp {FS : FrameSemantics} where
           go : CellAt alloc B (proj₂ x) (sucLoc pair-loc) s
              → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl rs k
           go (cell-ptr {comp-loc = cloc} cp cbef cv) =
-            let cval  = validityWF-mem-preserved (proj₂ x) cloc s (floc fs₁) cbef
+            let cval  = validityWF-mem-preserved (proj₂ x) cloc s (floc fs₁) (live→bf cbef)
                           (λ loc' _ → mem-eq loc') cv
                 live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
                           (load-indirect-suc-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq cp)
@@ -385,8 +385,8 @@ module Simp {FS : FrameSemantics} where
       out-ptr il eq =
         trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
 
-      before' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
-              → BeforeFrontier (falloc fs₁) il
+      before' : ∀ (il : ValueLocation FS) → Live alloc il
+              → Live (falloc fs₁) il
       before' il bf = bf
 
       place : InputAt mIn alloc x s
@@ -394,8 +394,8 @@ module Simp {FS : FrameSemantics} where
                 (falloc fs₁) (retVal (evalᴰ (out-μ wf) x))
                 (floc fs₁)
       place (in-loc il v bf eq) =
-        at-loc il (valid'' il bf v) (before' il bf) (out-ptr il eq)
-                  (valid'' il bf v) (before' il bf)
+        at-loc il (valid'' il (live→bf bf) v) (before' il bf) (out-ptr il eq)
+                  (valid'' il (live→bf bf) v) (before' il bf)
       place (in-reg () _)
       place (in-unit ())
 

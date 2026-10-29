@@ -240,6 +240,11 @@ x86-32-shift-frame (sp , d) n =
 x86-32-shift-≺ : ∀ f n → 0 < n → x86-32-shift-frame f n x86-32-≺ f
 x86-32-shift-≺ (sp , d) (suc n) _ = inj₁ (s≤s (m≤n+m d n))
 
+x86-32-shift-below : ∀ {f′ f} n → f′ x86-32-≺ f → x86-32-shift-frame f′ n x86-32-≺ f
+x86-32-shift-below {_ , d′} zero    h                  = h
+x86-32-shift-below {_ , d′} (suc n) (inj₁ d<d′)        = inj₁ (<-≤-trans d<d′ (m≤n+m d′ (suc n)))
+x86-32-shift-below {_ , d′} (suc n) (inj₂ (refl , _))  = inj₁ (s≤s (m≤n+m d′ n))
+
 ------------------------------------------------------------------------
 -- x86-32 FrameSemantics Instance
 ------------------------------------------------------------------------
@@ -270,5 +275,6 @@ x86-32-frame-semantics ι = record
   ; ≺-irrefl = λ {f} → x86-32-≺-irrefl {f}
   ; ≺-compare = x86-32-≺-compare
   ; shift-≺ = x86-32-shift-≺
+  ; shift-below = λ {f′} {f} → x86-32-shift-below {f′} {f}
   ; frame-disjoint-bounded = x86-32-frame-disjoint-bounded
   }

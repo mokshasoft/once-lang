@@ -145,7 +145,7 @@ module ApplyC {FS : FrameSemantics} where
             }
             where
               module OB = ASP.Obligations pair-loc fst-loc (arg-sv-of sc') (env-sv-of ea)
-                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) bf fst-bf (ns≤ {alloc} n n≤) nh
+                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) (live→bf bf) fst-bf (ns≤ {alloc} n n≤) nh
 
               callee-arg : (c : CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s)
                          → SMCore.MemOps.readLoc (floc ASP.a16) (sucLoc (AtDynamic ASP.ahl))
@@ -153,7 +153,7 @@ module ApplyC {FS : FrameSemantics} where
                          → CellAt {prog = prog} (falloc ASP.a16) A (proj₂ x)
                              (sucLoc (AtDynamic ASP.ahl)) (floc ASP.a16)
               callee-arg (cell-ptr ap abf av) q =
-                cell-ptr q (OB.bf-advance abf) (OB.carry (proj₂ x) _ abf av)
+                cell-ptr q (live-lift OB.bf-advance abf) (OB.carry (proj₂ x) _ (live→bf abf) av)
               callee-arg (cell-inline rep ap) q = cell-inline rep q
 
               j   = ClosureValidWF.code-j cvw
@@ -169,7 +169,7 @@ module ApplyC {FS : FrameSemantics} where
                           ; fpc    = j }
               call-eq =
                 call-at prog ASP.a16 chl blbl j
-                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') (ns≤ {alloc} n n≤) bf rdi
+                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') (ns≤ {alloc} n n≤) (live→bf bf) rdi
                      (arg-cell-of sc') fst-cell)
                   (ASP.code-cell fst-loc blbl (ns≤ {alloc} n n≤) OB.rdi12' OB.rdi14'
                      (ClosureValidWF.sucLoc-before cvw) (ClosureValidWF.code-ptr cvw))
@@ -192,12 +192,13 @@ module ApplyC {FS : FrameSemantics} where
                        (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)
                        (trans (cong fret call-eq) refl)
                        (trans (cong falloc call-eq) refl)
-                       (λ l b → OB.bf-advance b)
+                       (trans OB.nextslot-a16 n≤)
+                       (λ l b → live-lift OB.bf-advance b)
                        (λ l b → at-call (λ st → SMCore.MemOps.readLoc st l ≡ SMCore.MemOps.readLoc s l)
                                   (OB.mem-pres l (frontier-monotone alloc (record alloc { next-slot = n })
-                                                    refl (ns≤ {alloc} n n≤) ≤-refl l b)))
+                                                    refl (ns≤ {alloc} n n≤) ≤-refl l (live→bf b))))
                        (at-call (λ st → readReg (regs st) Input1 ≡ SV-Ptr (AtDynamic ASP.ahl)) OB.input1-a16)
-                       tt
+                       OB.before-ahl
                        OB.before-ahl-suc
                        (at-call (λ st → SMCore.MemOps.readLoc st (AtDynamic ASP.ahl) ≡ SMCore.MemOps.readLoc s fst-loc)
                           (trans OB.pair-fst-a16 (sym (env-cell-of ea))))

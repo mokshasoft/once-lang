@@ -18,7 +18,7 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState)
+open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState; sucLoc)
 open LocState using (regs)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
@@ -37,6 +37,8 @@ import Once.Internal.Trace as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl
+open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
+open import Data.List.Relation.Unary.All using (_∷_)
 
 module TwoCellC {FS : FrameSemantics} where
 
@@ -50,20 +52,13 @@ module TwoCellC {FS : FrameSemantics} where
 
   open TwoCellRunC {FS}
   open TwoCellBuildC {FS}
+  module BC = BlockCallC {FS}
 
-  -- plan 0.125 S1 SCRATCH — NOT TO MERGE. What S3 proves for `curry`: its
-  -- block is at `ℓ o l` in the program (`BlocksAt`), and running it from a
-  -- call computes the closure (its IH on `body` + the S2 block-call lemma).
-  -- Postulated here only to measure the port of the value relation.
-  postulate
-    s1-curry-block : ∀ {A B C} (body : IR (A * B) C) (l : ℕ) (prog : AbstractTrace)
-      {alloc : AllocState {FS}} {st : LocState FS} {cloc : ValueLocation FS} (env : ⟦ A ⟧)
-      → ∃[ j ] ( (find-thunk prog (ℓ o l) ≡ just j)
-               × CallRuns {prog = prog} {B} {C} (VAt {prog = prog} B) (VAt {prog = prog} C)
-                   alloc st cloc j (λ arg → evalᴰ body (env , arg)) )
-
-  obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
-  obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
+  -- plan 0.125 S3: the closure's `runs` is PROVED, from the body's own
+  -- correctness (`ihb`) through the block-call lemma (S2). The block is the
+  -- head of this fragment's `BlocksAt`; the body's blocks are its tail.
+  obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF body → IRObsCorrectF (curry body)
+  obs-correct-curry {A} {B} {C} body ihb n l prog base ss cr span ((j , feq , sp , lab) ∷ bl′) _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -94,7 +89,29 @@ module TwoCellC {FS : FrameSemantics} where
       -- env gets `valid-closure-wf`, a register literal and a unit env get
       -- D181's `valid-closure-reg-wf`. Without that constructor the last two —
       -- and a unit env is `main`'s — would be unprovable.
-      blk = s1-curry-block body l prog {alloc = falloc TCR.fs10} {st = floc TCR.fs10} {cloc = TCR.obj-loc} x
+      -- THE CLOSURE'S RUN. Every call of the block (`CallRuns`' premises) is
+      -- a block call of `body` on the pair `(x , a)`: cell 1 is the argument
+      -- the caller supplies, cell 0 holds what this closure's env cell holds,
+      -- and `mk` says why that is a valid `x` there (one per residence).
+      EnvCell : Set
+      EnvCell = ∀ (fs : FlatState) (pre : AllocState {FS}) (pl : ValueLocation FS)
+              → falloc fs ≡ enter-call pre
+              → (∀ l′ → Live (falloc TCR.fs10) l′ → Live pre l′)
+              → (∀ l′ → Live (falloc TCR.fs10) l′ → readLoc (floc fs) l′ ≡ readLoc (floc TCR.fs10) l′)
+              → Live pre pl
+              → readLoc (floc fs) pl ≡ readLoc (floc TCR.fs10) TCR.obj-loc
+              → CellAt {prog = prog} (BC.callee-alloc _ fs) A x pl (BC.callee-loc _ fs)
+
+      runs-from : EnvCell
+                → CallRuns {prog = prog} {B} {C} (VAt {prog = prog} B) (VAt {prog = prog} C)
+                    (falloc TCR.fs10) (floc TCR.fs10) TCR.obj-loc j (λ arg → evalᴰ body (x , arg))
+      runs-from mk fs pre a pl ret-pc k′ rs′ pc nh′ fr fa ns incl agree i1 lpl slb c0 c1 =
+        BC.block-call body ihb (suc (suc l)) prog (ℓ o l) _ j ss cr sp bl′ lab fs pre Heap (x , a) ret-pc k′ rs′ pc nh′ fr fa ns
+          (in-loc pl (valid-pair-wf (live-heap lpl) (BC.live-callee _ fs pre fa _ slb) (mk fs pre pl fa incl agree lpl c0) c1′)
+                  (BC.live-callee _ fs pre fa pl lpl) i1)
+        where
+          c1′ = cellWF-heap-transport (Live pre) (λ _ b → b) (λ l′ b → BC.callee-heap _ fs l′ b)
+                  (BC.live-callee _ fs pre fa) a (sucLoc pl) slb c1
 
       place-of : InputAt mIn alloc x s
                → ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
@@ -111,7 +128,12 @@ module TwoCellC {FS : FrameSemantics} where
           mk-valid e =
             valid-closure-reg-wf {body = body} {env = x} tt (rep-prim fit)
               (trans TCB.cell0-fs10 (cong just (trans ev≡in e))) TCB.code-fs10 TCB.before-suc
-              (proj₁ (proj₂ blk)) (proj₂ (proj₂ blk))
+              feq (runs-from mk)
+            where
+              mk : EnvCell
+              mk fs pre pl fa incl agree lpl c0 =
+                cell-inline (rep-prim fit)
+                  (trans (BC.callee-heap _ fs pl lpl) (trans c0 (trans TCB.cell0-fs10 (cong just (trans ev≡in e)))))
       place-of (in-unit refl) =
         at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
         where
@@ -120,7 +142,11 @@ module TwoCellC {FS : FrameSemantics} where
           mk-valid =
             valid-closure-reg-wf {body = body} {env = x} tt (rep-unit refl TCR.cell0v)
               TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
-              (proj₁ (proj₂ blk)) (proj₂ (proj₂ blk))
+              feq (runs-from mk)
+            where
+              mk : EnvCell
+              mk fs pre pl fa incl agree lpl c0 =
+                cell-inline (rep-unit refl TCR.cell0v) (trans (BC.callee-heap _ fs pl lpl) (trans c0 TCB.cell0-fs10))
       place-of (in-loc loc valid bf eq) =
         at-loc TCR.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
         where
@@ -133,8 +159,20 @@ module TwoCellC {FS : FrameSemantics} where
           mk-valid e =
             valid-closure-wf {body = body} {env = x} tt
               (trans TCB.cell0-fs10 (cong just (ev≡ptr e))) TCB.code-fs10
-              (TCB.bf-advance bf) TCB.before-suc
-              (proj₁ (proj₂ blk)) (proj₂ (proj₂ blk))
+              (live-lift TCB.bf-advance bf) TCB.before-suc
+              feq (runs-from mk)
+            where
+              lb : Live (falloc TCR.fs10) loc
+              lb = live-lift TCB.bf-advance bf
+
+              mk : EnvCell
+              mk fs pre pl fa incl agree lpl c0 =
+                cell-ptr (trans (BC.callee-heap _ fs pl lpl) (trans c0 (trans TCB.cell0-fs10 (cong just (ev≡ptr e)))))
+                         (BC.live-callee _ fs pre fa loc (incl loc lb))
+                         (validityWF-heap-transport (Live (falloc TCR.fs10)) (λ _ b → b)
+                            (λ l′ b → trans (BC.callee-heap _ fs l′ (incl l′ b)) (agree l′ b))
+                            (λ l′ b → BC.live-callee _ fs pre fa l′ (incl l′ b))
+                            x loc lb (TCB.valid-transport x loc (live→bf bf) valid))
 
       place : ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)

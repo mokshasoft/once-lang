@@ -240,6 +240,11 @@ rv64-shift-frame (sp , d) n =
 rv64-shift-≺ : ∀ f n → 0 < n → rv64-shift-frame f n rv64-≺ f
 rv64-shift-≺ (sp , d) (suc n) _ = inj₁ (s≤s (m≤n+m d n))
 
+rv64-shift-below : ∀ {f′ f} n → f′ rv64-≺ f → rv64-shift-frame f′ n rv64-≺ f
+rv64-shift-below {_ , d′} zero    h                  = h
+rv64-shift-below {_ , d′} (suc n) (inj₁ d<d′)        = inj₁ (<-≤-trans d<d′ (m≤n+m d′ (suc n)))
+rv64-shift-below {_ , d′} (suc n) (inj₂ (refl , _))  = inj₁ (s≤s (m≤n+m d′ n))
+
 ------------------------------------------------------------------------
 -- RISC-V 64 FrameSemantics Instance
 ------------------------------------------------------------------------
@@ -269,5 +274,6 @@ rv64-frame-semantics ι = record
   ; ≺-irrefl = λ {f} → rv64-≺-irrefl {f}
   ; ≺-compare = rv64-≺-compare
   ; shift-≺ = rv64-shift-≺
+  ; shift-below = λ {f′} {f} → rv64-shift-below {f′} {f}
   ; frame-disjoint-bounded = rv64-frame-disjoint-bounded
   }

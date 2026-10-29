@@ -166,14 +166,15 @@ module Core {FS : FrameSemantics} where
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedBase {FS}
     using (νOrigin; from-ana; from-layer; prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
-          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy) public
+          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy
+          ; Live; live→bf; bf→live; live-heap; live-lift; live-map) public
   open ClosureWellFormedPat {FS}
     using (valid-unit-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf
           ; valid-closure-wf; valid-closure-reg-wf; valid-ν-susp-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
   open ClosureWellFormedDef {FS}
     using (ValidAtWF; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result
           ; CalleeRunP; module CalleeRunP; callee-run; CallRuns; VAt; rp→place; fo→valid; valid→fo; μ-layer; valid-μ
-          ; validityWF-transport; validityWF-mem-only
+          ; validityWF-transport; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -352,8 +353,11 @@ module Core {FS : FrameSemantics} where
   -- saying it in ONE `SpanAt` keeps the off-by-one where the layout function
   -- can settle it instead of at every consumer.
   BlockAt : AbstractTrace → LabelId × ℕ × AbstractTrace → Set
-  BlockAt prog blk@(lbl , _ , _) =
-    ∃[ j ] ((find-thunk prog lbl ≡ just j) × SpanAt prog j (block-layout blk))
+  -- plan 0.125 S2: …and the block's BODY resolves its own labels where the
+  -- body sits (one past the marker). A called body is an arbitrary fragment,
+  -- and every label-bearing clause (`case`, `Iter`) needs its `LabelsAt`.
+  BlockAt prog blk@(lbl , _ , t) =
+    ∃[ j ] ((find-thunk prog lbl ≡ just j) × SpanAt prog j (block-layout blk) × LabelsAt prog (suc j) t)
 
   -- `All`, matching `SlotBudget.blocks-below : All BlockOK (bodies-of …)` —
   -- S5's whole-program proof is that induction with this predicate.
@@ -674,7 +678,7 @@ module Core {FS : FrameSemantics} where
                (v : ⟦ A ⟧) (s : LocState FS) : Set where
     in-loc : (loc : ValueLocation FS)
            → ValidAtWF {prog = prog} mIn alloc {A} v loc s
-           → BeforeFrontier alloc loc
+           → Live alloc loc
            → readReg (regs s) Input1 ≡ SV-Ptr loc → InputAt mIn alloc v s
     in-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v
            → InputAt mIn alloc v s

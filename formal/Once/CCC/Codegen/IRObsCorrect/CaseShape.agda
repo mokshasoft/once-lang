@@ -403,7 +403,7 @@ module ShapeC {FS : FrameSemantics} where
               → Σ AllocMode (λ mA → InputAt {prog = prog} mA alloc a s'')
   arm-input-l {alloc = alloc} {loc = loc} {s' = s'} s''
               (valid-inl-wf {payload-loc = pl} {mA = mA} _ _ r bfp _ va) rd mv me =
-    mA , in-loc pl (validityWF-mem-preserved _ pl s' s'' bfp (λ lc _ → me lc) va) bfp
+    mA , in-loc pl (validityWF-mem-preserved _ pl s' s'' (live→bf bfp) (λ lc _ → me lc) va) bfp
            (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
   -- An INLINE payload is either a register-fitting primitive or a unit, and
   -- `InputAt` has a constructor for each — `in-reg` and `in-unit`.
@@ -422,7 +422,7 @@ module ShapeC {FS : FrameSemantics} where
               → Σ AllocMode (λ mB → InputAt {prog = prog} mB alloc b s'')
   arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
               (valid-inr-wf {payload-loc = pl} {mB = mB} _ _ r bfp _ vb) rd mv me =
-    mB , in-loc pl (validityWF-mem-preserved _ pl s' s'' bfp (λ lc _ → me lc) vb) bfp
+    mB , in-loc pl (validityWF-mem-preserved _ pl s' s'' (live→bf bfp) (λ lc _ → me lc) vb) bfp
            (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
   arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
               (valid-inr-reg-wf _ _ (rep-prim fit) r _) rd mv me =

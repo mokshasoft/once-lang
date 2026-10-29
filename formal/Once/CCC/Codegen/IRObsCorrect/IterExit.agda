@@ -64,7 +64,7 @@ module IterExitC {FS : FrameSemantics} where
   payload-place-l {alloc = alloc} {loc = loc} {s′ = s′}
                   (valid-inl-wf {payload-loc = pl} {mA = mA} _ _ r bfp _ va) rd =
     mA , at-loc pl va′ bfp (load-suc-out s′ alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r) va′ bfp
-    where va′ = validityWF-mem-preserved _ pl s′ _ bfp (λ lc _ → mem-unpack s′ alloc lc) va
+    where va′ = validityWF-mem-preserved _ pl s′ _ (live→bf bfp) (λ lc _ → mem-unpack s′ alloc lc) va
   payload-place-l {alloc = alloc} {loc = loc} {s′ = s′} (valid-inl-reg-wf _ _ (rep-prim fit) r _) rd =
     Heap , at-reg fit (load-suc-out s′ alloc loc _ (cong sv-as-loc rd) r)
   payload-place-l (valid-inl-reg-wf _ _ (rep-unit refl _) _ _) rd = Heap , unit-result
@@ -77,7 +77,7 @@ module IterExitC {FS : FrameSemantics} where
   payload-place-r {alloc = alloc} {loc = loc} {s′ = s′}
                   (valid-inr-wf {payload-loc = pl} {mB = mB} _ _ r bfp _ vb) rd =
     mB , at-loc pl vb′ bfp (load-suc-out s′ alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r) vb′ bfp
-    where vb′ = validityWF-mem-preserved _ pl s′ _ bfp (λ lc _ → mem-unpack s′ alloc lc) vb
+    where vb′ = validityWF-mem-preserved _ pl s′ _ (live→bf bfp) (λ lc _ → mem-unpack s′ alloc lc) vb
   payload-place-r {alloc = alloc} {loc = loc} {s′ = s′} (valid-inr-reg-wf _ _ (rep-prim fit) r _) rd =
     Heap , at-reg fit (load-suc-out s′ alloc loc _ (cong sv-as-loc rd) r)
   payload-place-r (valid-inr-reg-wf _ _ (rep-unit refl _) _ _) rd = Heap , unit-result
@@ -113,7 +113,7 @@ module IterExitC {FS : FrameSemantics} where
 
     -- The round's result: a sum in memory (a sum fits no register and is no unit).
     module P (loc : ValueLocation FS) (vS : ValidAtWF {prog = prog} m (falloc S0) {B IRT.+ A} (inj₁ b) loc (floc S0))
-             (bef : BeforeFrontier (falloc S0) loc)
+             (bef : Live (falloc S0) loc)
              (rax : readReg (regs (floc S0)) Output ≡ SV-Ptr loc) where
 
       rd1 : readReg (regs (floc s1)) Input1 ≡ SV-Ptr loc
@@ -123,7 +123,7 @@ module IterExitC {FS : FrameSemantics} where
       mem1 lc = mem-untouched mov-to-input (floc S0) (falloc S0) lc nhw-mov-to-input refl
 
       v1 : ValidAtWF {prog = prog} m (falloc s1) {B IRT.+ A} (inj₁ b) loc (floc s1)
-      v1 = validityWF-mem-preserved (inj₁ b) loc (floc S0) (floc s1) bef (λ lc _ → mem1 lc) vS
+      v1 = validityWF-mem-preserved (inj₁ b) loc (floc S0) (floc s1) (live→bf bef) (λ lc _ → mem1 lc) vS
 
       nh1 : halted (floc s1) ≡ false
       nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt
