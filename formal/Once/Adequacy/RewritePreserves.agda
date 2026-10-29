@@ -36,7 +36,7 @@ import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌈⌉; base-⌊⌋)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.Arith.Machine.IR using (ArithBlock)
-open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; try-lift; bare-at)
+open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; walk-both; prefix-at; try-lift; bare-at)
 open import Once.IR.Semantics.Trace using (T; ret; call; halt; Interp; pureHalf; FFIAnswers; fmapT; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; embed; fmap∞)
 open T∞ using (force)
@@ -48,7 +48,8 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; tableEnv-at; runIR; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed; RelS-iter∞)
+open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt; RelS-bind; relS-ret; RelS-embed; RelS-iter∞;
+  RelS-≈ʳ; ≈∞-assoc)
 open RelS using (forceS)
 open import Once.Denotation.ValueRel
 open import Once.Denotation.EvalRel using (base-eqI; base-reflI; fo-eq; RelS-now; RelEnv; sigop-rel)
@@ -91,13 +92,48 @@ module _ (fmt : TargetNum) where
     ...   | refl with now ρ a
     ...     | v , e₁ , e₂ = RelS-now e₁ e₂ (base-reflI bB v)
 
+    -- the parts of a composition, each rewritten
+    both-rel : ∀ {A B C} (g : IR B C) (f : IR A B) {a a′} → RelD ⌈ A ⌉ a a′
+             → RelS (RelD ⌈ C ⌉) (E (proj₁ (walk-both g f)) a) (E′ (g ∘ f) a′)
+    -- a chain's head lifted as a block (plan 0.129 B4): bind is associative
+    prefix-rel : ∀ {A X B C} (g : IR B C) (f₁ : IR X B) (f₂ : IR A X) (f : IR A B) → f ≡ f₁ ∘ f₂
+               → (d : Maybe (IR X C × ArithBlock)) → try-lift (g ∘ f₁) ≡ d
+               → ∀ {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ C ⌉) (E (proj₁ (prefix-at g f₁ f₂ f d)) a) (E′ (g ∘ f) a′)
+
     rewrite-rel ir = rw-at-rel ir (try-lift ir) refl
+
+    both-rel g f r = RelS-bind (rewrite-rel f r) (λ r′ → rewrite-rel g r′)
+
+    prefix-rel g f₁ f₂ f e nothing eq r = both-rel g f r
+    prefix-rel g f₁ f₂ .(f₁ ∘ f₂) refl (just (ir′ , blk)) eq {a} {a′} r =
+      RelS-≈ʳ (≈∞-assoc (E′ f₂ a′) (E′ f₁) (E′ g)) (RelS-bind (rewrite-rel f₂ r) (λ r′ → lifted (g ∘ f₁) ir′ blk eq r′))
 
     rw-at-rel ir (just (ir′ , blk)) eq r = lifted ir ir′ blk eq r
     rw-at-rel ir nothing            eq r = walk-rel ir r
 
     walk-rel id         r = relS-ret r
-    walk-rel (g ∘ f)    r = RelS-bind (rewrite-rel f r) (λ r′ → rewrite-rel g r′)
+    walk-rel (g ∘ f@(f₁ ∘ f₂)) r = prefix-rel g f₁ f₂ f refl (try-lift (g ∘ f₁)) refl r
+    walk-rel (g ∘ f@id) r = both-rel g f r
+    walk-rel (g ∘ f@(⟨ _ , _ ⟩)) r = both-rel g f r
+    walk-rel (g ∘ f@fst) r = both-rel g f r
+    walk-rel (g ∘ f@snd) r = both-rel g f r
+    walk-rel (g ∘ f@inl) r = both-rel g f r
+    walk-rel (g ∘ f@inr) r = both-rel g f r
+    walk-rel (g ∘ f@(case _ _)) r = both-rel g f r
+    walk-rel (g ∘ f@terminal) r = both-rel g f r
+    walk-rel (g ∘ f@initial) r = both-rel g f r
+    walk-rel (g ∘ f@(curry _)) r = both-rel g f r
+    walk-rel (g ∘ f@apply) r = both-rel g f r
+    walk-rel (g ∘ f@(In _)) r = both-rel g f r
+    walk-rel (g ∘ f@(out-μ _)) r = both-rel g f r
+    walk-rel (g ∘ f@(Cata _ _)) r = both-rel g f r
+    walk-rel (g ∘ f@(Out _)) r = both-rel g f r
+    walk-rel (g ∘ f@(in-ν _)) r = both-rel g f r
+    walk-rel (g ∘ f@(Ana _ _)) r = both-rel g f r
+    walk-rel (g ∘ f@(Iter _)) r = both-rel g f r
+    walk-rel (g ∘ f@(SigOp _)) r = both-rel g f r
+    walk-rel (g ∘ f@(Call _)) r = both-rel g f r
+    walk-rel (g ∘ f@(const _ _)) r = both-rel g f r
     walk-rel fst        r = relS-ret (proj₁ r)
     walk-rel snd        r = relS-ret (proj₂ r)
     walk-rel ⟨ f , g ⟩  r = RelS-bind (rewrite-rel f r) (λ rb → RelS-bind (rewrite-rel g r) (λ rc → relS-ret (rb , rc)))

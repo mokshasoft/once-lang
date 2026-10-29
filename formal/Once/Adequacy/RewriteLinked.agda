@@ -32,7 +32,7 @@ open import Once.Contract using (ISig)
 open import Once.Arith.Type using (NInt; NFloat)
 
 private variable σ : ISig
-open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op; bare-at)
+open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op; bare-at; prefix-at)
 open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
 open import Once.Arith.Machine.IR using (ArithBlock; MArithIR; shape-as-type)
 open import Once.Arith.SigOp.Block using (block-info)
@@ -93,11 +93,39 @@ bare-linked tbl si l (just _) lk = lk
 bare-linked tbl si l nothing  _  = l
 
 -- THE PASS KEEPS A PROGRAM LINKED.
+-- (a chain's head lifted as a block, plan 0.129 B4)
+prefix-linked : ∀ (tbl : List IRFun) {A X B C} (g : IR B C) (f₁ : IR X B) (f₂ : IR A X) (f : IR A B) → f ≡ f₁ ∘ f₂
+              → Linked σ tbl g → Linked σ tbl f
+              → ∀ (d : Maybe (IR X C × ArithBlock)) → JustLinked σ tbl d
+              → Linked σ tbl (proj₁ (prefix-at g f₁ f₂ f d))
+-- THE PASS KEEPS A PROGRAM LINKED.
 rewrite-ir-linked : ∀ (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir → Linked σ tbl (proj₁ (rewrite-ir ir))
 rewrite-ir-linked tbl ir l with try-lift ir | try-lift-linked tbl ir
 ... | just (ir′ , blk) | lk = lk
 rewrite-ir-linked tbl id           l        | nothing | _ = tt
-rewrite-ir-linked tbl (g ∘ f)      (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(f₁ ∘ f₂)) (lg , lf) | nothing | _ =
+  prefix-linked tbl g f₁ f₂ f refl lg lf (try-lift (g ∘ f₁)) (try-lift-linked tbl (g ∘ f₁))
+rewrite-ir-linked tbl (g ∘ f@id) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(⟨ _ , _ ⟩)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@fst) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@snd) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(inl {P} {Q})) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , tt
+rewrite-ir-linked tbl (g ∘ f@(inr {P} {Q})) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , tt
+rewrite-ir-linked tbl (g ∘ f@(case _ _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(terminal {P})) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , tt
+rewrite-ir-linked tbl (g ∘ f@initial) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(curry _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(apply {P} {Q})) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(In _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , tt
+rewrite-ir-linked tbl (g ∘ f@(out-μ _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(Cata _ _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(Out _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(in-ν _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , tt
+rewrite-ir-linked tbl (g ∘ f@(Ana _ _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(Iter _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(SigOp _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(Call _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+rewrite-ir-linked tbl (g ∘ f@(const _ _)) (lg , lf) | nothing | _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
 rewrite-ir-linked tbl fst          l        | nothing | _ = tt
 rewrite-ir-linked tbl snd          l        | nothing | _ = tt
 rewrite-ir-linked tbl ⟨ f , g ⟩    (lf , lg) | nothing | _ = rewrite-ir-linked tbl f lf , rewrite-ir-linked tbl g lg
@@ -118,3 +146,6 @@ rewrite-ir-linked tbl (Iter f)     l        | nothing | _ = rewrite-ir-linked tb
 rewrite-ir-linked tbl (const p v)  l        | nothing | _ = tt
 rewrite-ir-linked tbl (SigOp si)   l        | nothing | _ = bare-linked tbl si l (try-lift (SigOp si ∘ id)) (try-lift-linked tbl (SigOp si ∘ id))
 rewrite-ir-linked tbl (Call f)     l        | nothing | _ = l
+
+prefix-linked tbl g f₁ f₂ f e lg lf nothing _ = rewrite-ir-linked tbl g lg , rewrite-ir-linked tbl f lf
+prefix-linked tbl g f₁ f₂ .(f₁ ∘ f₂) refl lg (l₁ , l₂) (just _) lk = lk , rewrite-ir-linked tbl f₂ l₂

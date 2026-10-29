@@ -176,6 +176,12 @@ bare-at si nothing            = SigOp si , sigop-blocks (cmp-of (sem si))
 rewrite-ir : ∀ {A B} → IR A B → IR A B × List ArithBlock
 rw-at      : ∀ {A B} → IR A B → Maybe (IR A B × ArithBlock) → IR A B × List ArithBlock
 walk       : ∀ {A B} → IR A B → IR A B × List ArithBlock
+-- A composition: when the whole is no block, a chain `g ∘ (f₁ ∘ f₂)` may still
+-- have one at its head, `g ∘ f₁` (plan 0.129 B4: the optimizer nests chains to
+-- the right, so `(g ∘ f₁) ∘ f₂`'s subterm is no longer one).
+prefix-at  : ∀ {A X B C} (g : IR B C) (f₁ : IR X B) (f₂ : IR A X) (f : IR A B) → Maybe (IR X C × ArithBlock)
+           → IR A C × List ArithBlock
+walk-both  : ∀ {A B C} (g : IR B C) (f : IR A B) → IR A C × List ArithBlock
 
 rewrite-ir ir = rw-at ir (try-lift ir)
 
@@ -183,10 +189,30 @@ rw-at ir (just (ir' , blk)) = ir' , (blk ∷ [])
 rw-at ir nothing           = walk ir
 
 walk id                = id , []
-walk (g ∘ f)           =
-  let (g' , bg) = rewrite-ir g
-      (f' , bf) = rewrite-ir f
-  in (g' ∘ f') , (bg ++ bf)
+-- (every shape under `∘` is listed: a proof that follows the walk then never
+-- meets a stuck catch-all)
+walk (g ∘ f@(f₁ ∘ f₂)) = prefix-at g f₁ f₂ f (try-lift (g ∘ f₁))
+walk (g ∘ f@id)             = walk-both g f
+walk (g ∘ f@(⟨ _ , _ ⟩))    = walk-both g f
+walk (g ∘ f@fst)            = walk-both g f
+walk (g ∘ f@snd)            = walk-both g f
+walk (g ∘ f@inl)            = walk-both g f
+walk (g ∘ f@inr)            = walk-both g f
+walk (g ∘ f@(case _ _))     = walk-both g f
+walk (g ∘ f@terminal)       = walk-both g f
+walk (g ∘ f@initial)        = walk-both g f
+walk (g ∘ f@(curry _))      = walk-both g f
+walk (g ∘ f@apply)          = walk-both g f
+walk (g ∘ f@(In _))         = walk-both g f
+walk (g ∘ f@(out-μ _))      = walk-both g f
+walk (g ∘ f@(Cata _ _))     = walk-both g f
+walk (g ∘ f@(Out _))        = walk-both g f
+walk (g ∘ f@(in-ν _))       = walk-both g f
+walk (g ∘ f@(Ana _ _))      = walk-both g f
+walk (g ∘ f@(Iter _))       = walk-both g f
+walk (g ∘ f@(SigOp _))      = walk-both g f
+walk (g ∘ f@(Call _))       = walk-both g f
+walk (g ∘ f@(const _ _))    = walk-both g f
 walk fst               = fst , []
 walk snd               = snd , []
 walk (⟨ f , g ⟩)     =
@@ -223,3 +249,13 @@ walk (const p v)   = const p v , []
 -- block, so the block is registered here — the file defines it, the call links.
 walk (SigOp si)        = bare-at si (try-lift (SigOp si ∘ id))
 walk (Call f)          = Call f , []
+
+prefix-at g f₁ f₂ f (just (ir′ , blk)) =
+  let (f₂′ , b₂) = rewrite-ir f₂
+  in (ir′ ∘ f₂′) , (blk ∷ b₂)
+prefix-at g f₁ f₂ f nothing = walk-both g f
+
+walk-both g f =
+  let (g' , bg) = rewrite-ir g
+      (f' , bf) = rewrite-ir f
+  in (g' ∘ f') , (bg ++ bf)

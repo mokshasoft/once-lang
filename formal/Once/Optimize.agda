@@ -95,11 +95,6 @@ data ComposeFirstView : ∀ {B C : IRTy} → IR B C → Set where
   cf-comp : ∀ {A X C} (h : IR X C) (k : IR A X) → ComposeFirstView (h ∘ k)
   cf-other : ∀ {B C} (g : IR B C) → ComposeFirstView g
 
--- View: a composition, or not (the beta rules read through a chain `p ∘ k`)
-data ChainView : ∀ {A B : IRTy} → IR A B → Set where
-  is-comp : ∀ {A X B} (p : IR X B) (k : IR A X) → ChainView (p ∘ k)
-  not-comp : ∀ {A B} (f : IR A B) → ChainView f
-
 -- View: classify IR by optimization-relevant structure (second argument of compose)
 data ComposeSecondView : ∀ {A B : IRTy} → IR A B → Set where
   cs-id : ∀ {A} → ComposeSecondView {A} {A} id
@@ -247,6 +242,12 @@ composeSecondView (Iter b)       = cs-other (Iter b)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
 composeSecondView (Call f)       = cs-other (Call f)
 composeSecondView (const p v) = cs-other (const p v)
+
+-- (the beta rules read a chain's head through it: the optimizer nests to the right)
+-- | A composition `p ∘ k`, or a term that is not one.
+data ChainView : ∀ {A B : IRTy} → IR A B → Set where
+  is-comp  : ∀ {A X B} (p : IR X B) (k : IR A X) → ChainView (p ∘ k)
+  not-comp : ∀ {A B} (f : IR A B) → ChainView f
 
 chainView : ∀ {A B} → (f : IR A B) → ChainView f
 chainView (p ∘ k)        = is-comp p k

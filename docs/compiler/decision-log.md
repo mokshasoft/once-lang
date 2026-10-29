@@ -19839,11 +19839,13 @@ left-nested `∘` (`fst . (<a, b> . k)`) stays; the structural `inl`/`inr` out o
 * **The arith recogniser re-associates an operand** (`Recognise.bv-reassoc`), as it already did at the top
   (D163): a block's recognition must not depend on how its compositions nest. Without it float arithmetic was
   left as bare float SigOps and failed to link.
+* **The arith pass lifts a chain's head** (`Rewrite.walk`): when `g ∘ (f₁ ∘ f₂)` is no block, `g ∘ f₁` may be,
+  with `∘ f₂` left outside (`RewritePreserves.prefix-rel`: bind is associative). Right-nesting had removed the
+  subterm `mul ∘ ⟨snd, snd⟩` that the pass lifted from `(mul ∘ ⟨snd, snd⟩) ∘ k`.
 
 ### Consequences
 * Proved as before: `OptimizePreserves` (trace), `OptimizeLinked`, `LiftSound` (the new operand case); eight new
   `Optimize.Examples`. The dead `IRHead`/`ir-head`/`is-*?`/`safe-pair-distrib`/`wants-coprod` helpers are deleted.
-* Measured over the 94 corpus programs that build: IR tokens 6006 → 5101 (−15%), `.text` 334388 → 328216 bytes
-  (−1.8%); 61 smaller, 34 unchanged, `let-test` +16 bytes — right-nesting removed the subterm `mul ∘ ⟨snd, snd⟩`
-  the arith pass lifted as one block (plan 0.129 B4: lift a chain's prefix).
+* Measured over the 94 corpus programs that build: IR tokens 6006 → 5101 (−15%), `.text` 334388 → 328104 bytes
+  (−1.9%); 62 programs smaller, 32 unchanged, none larger.
 
