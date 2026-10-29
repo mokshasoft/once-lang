@@ -42,6 +42,10 @@ open import Data.List.Properties using (++-identityʳ)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 import Once.Denotation.ValueDomain as ValueDomain
 open import Data.Unit using (⊤)
+open import Once.IRTy using (IRTy)
+open import Once.Internal.Iterative using (T∞)
+open import Once.CCC.Machine.SMCore using (StoredValue)
+open import Once.Denotation.Approx using (budgetLeft)
 import Once.CCC.Machine.Allocation as Alloc
 open import Relation.Nullary using (yes; no)
 open import Once.Internal.Res using (Res; returns; stopped; is-stopped)
@@ -164,35 +168,73 @@ module BlockCallC {FS : FrameSemantics} where
     where va′ = validityWF-heap-transport {prog = prog} (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft _ loc tt va
   place-across bft (at-reg fit rax) = rp-reg fit rax
 
-  block-call : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
-    → ∀ (l : ℕ) (prog : AbstractTrace) (lbl : LabelId) (bb j : ℕ)
-    → AllSlotStable prog → BlockRuns prog
-    → SpanAt prog j (block-layout (lbl , bb , emitted 0 l ir))
-    → BlocksAt prog (blocks 0 l ir)
-    → LabelsAt prog (suc j) (emitted 0 l ir)
-    → ∀ (fs : FlatState) (pre : AllocState {FS}) (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
-        (ret-pc k : ℕ) (rs : List ℕ)
-    → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
-    → falloc fs ≡ enter-call pre → next-slot pre ≡ 0
-    → InputAt {prog = prog} mIn (callee-alloc bb fs) x (callee-loc bb fs)
-    → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B)) fs ret-pc rs (evalᴰ ir x) k
-  block-call {A} {B} ir ioc l prog lbl bb j ss cr sp bl la fs pre mIn x ret-pc k rs pc nh fr fa ns inp =
-    go (resultAt s′ (⟪ evalᴰ ir x ⟫ k)) refl
+  ----------------------------------------------------------------------
+  -- WHAT A BLOCK BODY OWES, for any body text `t`, computation `comp` and
+  -- result relation `R`: a `ValueRealized` (at frontier 0, `length t`) with
+  -- its `traces-agree`. A compiled IR's body supplies it from its own
+  -- `MachineRefinesObsF` (`block-call`); a body that is not one IR (the `Ana`
+  -- block: coalgebra, then re-suspension) composes it.
+  ----------------------------------------------------------------------
+  record BodyRuns (prog : AbstractTrace) (base len : ℕ) {B : IRTy}
+                  (R : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set)
+                  (comp : T∞ ValueDomain.⟦ B ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS})
+                  (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) : Set where
+    constructor body-runs
+    field
+      steps      : ℕ
+      settle     : FlatState
+      out-mode   : AllocMode
+      cont-alloc : AllocState {FS}
+      run        : FlatSteps prog steps (entry-flat base s alloc cl rs) settle
+      live       : stopsAt s (⟪ comp ⟫ k) ≡ false → halted (floc settle) ≡ false
+      at-end     : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → fpc settle ≡ len + base
+      stops      : stopsAt s (⟪ comp ⟫ k) ≡ true → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s
+      no-ret     : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → fret settle ≡ rs
+      no-link    : NotCut (resultAt s (⟪ comp ⟫ k)) → flink settle ≡ nothing
+      log        : LocState.ev-log (floc settle) ≡ LocState.ev-log s ++ eventsAt s (⟪ comp ⟫ k)
+      place      : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → R out-mode (falloc settle) cont-alloc v (floc settle)
+      progress   : k ≤ budgetLeft k (resultAt s (⟪ comp ⟫ k)) + chain-ctrls run
+      events     : chain-events run ≡ eventsAt s (⟪ comp ⟫ k)
+      mem-pres   : NotCut (resultAt s (⟪ comp ⟫ k)) → ∀ (loc : ValueLocation FS)
+                 → BeforeFrontier (record alloc { next-slot = 0 }) loc → readLoc (floc settle) loc ≡ readLoc s loc
+      frame-pres : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → current-frame (falloc settle) ≡ current-frame alloc
+      bf-mono    : NotCut (resultAt s (⟪ comp ⟫ k)) → ∀ (m : ℕ) (loc : ValueLocation FS)
+                 → BeforeFrontier (record alloc { next-slot = m }) loc → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
+      frames-pres : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → saved-frames (falloc settle) ≡ saved-frames alloc
+
+  mro→body : ∀ {prog base A B l} {ir : IR A B} {x s alloc cl rs k}
+           → MachineRefinesObsF prog base 0 l ir x s alloc cl rs k
+           → BodyRuns prog base (length (emitted 0 l ir)) {B} (ResultPlace {prog = prog} B) (evalᴰ ir x) s alloc cl rs k
+  mro→body {B = B} mro =
+    body-runs VR.steps VR.settle VR.out-mode VR.cont-alloc VR.run VR.live VR.at-end VR.stops VR.no-ret VR.no-link
+              VR.log VR.place VR.progress (MachineRefinesObsF.traces-agree mro) (vr-mem-pres vr)
+              VR.frame-pres VR.bf-mono VR.frames-pres
     where
-      open Layout prog lbl bb j (emitted 0 l ir) sp
+      vr = MachineRefinesObsF.value-realized mro
+      module VR = ValueRealized {B = B} vr
+
+  block-call-gen : ∀ {B : IRTy}
+      {R  : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set}
+      {R′ : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set}
+    → (∀ {m a ca v s} {a′ : AllocState {FS}} → (∀ l → Live a l → Live a′ l) → R m a ca v s → R′ m a′ a′ v s)
+    → ∀ (t : AbstractTrace) (comp : T∞ ValueDomain.⟦ B ⟧ᴰᴵ)
+        (prog : AbstractTrace) (lbl : LabelId) (bb j : ℕ)
+    → SpanAt prog j (block-layout (lbl , bb , t))
+    → ∀ (fs : FlatState) (pre : AllocState {FS}) (ret-pc k : ℕ) (rs : List ℕ)
+    → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
+    → falloc fs ≡ enter-call pre
+    → BodyRuns prog (suc j) (length t) {B} R comp (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (ret-pc ∷ rs) k
+    → CalleeRunP {prog = prog} {B} R′ fs ret-pc rs comp k
+  block-call-gen {B} {R} {R′} across t comp prog lbl bb j sp fs pre ret-pc k rs pc nh fr fa br =
+    go (resultAt s′ (⟪ comp ⟫ k)) refl
+    where
+      open Layout prog lbl bb j t sp
 
       s′ = callee-loc bb fs
       a′ = callee-alloc bb fs
       cl = fclosure fs
 
-      ns′ : next-slot a′ ≡ 0
-      ns′ = trans (cong next-slot fa) ns
-
-      mro : MachineRefinesObsF prog (suc j) 0 l ir x s′ a′ cl (ret-pc ∷ rs) k
-      mro = ioc 0 l prog (suc j) ss cr body-span bl la mIn x s′ a′ cl ns′ nh inp k (ret-pc ∷ rs)
-
-      module VR = ValueRealized (MachineRefinesObsF.value-realized mro)
-      vr = MachineRefinesObsF.value-realized mro
+      module VR = BodyRuns {B = B} {R = R} br
 
       -- the marker step, landing on the body's entry
       te = thunk-entry bb j (ret-pc ∷ rs) fs pc fr
@@ -205,15 +247,15 @@ module BlockCallC {FS : FrameSemantics} where
                 te rest
 
       -- caller memory is the body's
-      mem-body : NotCut (resultAt s′ (⟪ evalᴰ ir x ⟫ k)) → ∀ (pre′ : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre′
+      mem-body : NotCut (resultAt s′ (⟪ comp ⟫ k)) → ∀ (pre′ : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre′
                → ∀ (loc : ValueLocation FS) → BeforeFrontier (record pre′ { next-slot = m }) loc
                → readLoc (floc VR.settle) loc ≡ readLoc (floc fs) loc
       mem-body nc pre′ m fa′ loc bf =
-        trans (vr-mem-pres vr nc loc (callee-bf bb fs pre′ fa′ m 0 loc bf)) (thunk-keeps bb fs pre′ fa′ m loc bf)
+        trans (VR.mem-pres nc loc (callee-bf bb fs pre′ fa′ m 0 loc bf)) (thunk-keeps bb fs pre′ fa′ m loc bf)
 
-      stuck : ∀ {ρ} → resultAt s′ (⟪ evalᴰ ir x ⟫ k) ≡ ρ
+      stuck : ∀ {ρ} → resultAt s′ (⟪ comp ⟫ k) ≡ ρ
             → (∀ {v r} → ρ ≡ returns (done v r) → ⊥)
-            → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B)) fs ret-pc rs (evalᴰ ir x) k
+            → CalleeRunP {prog = prog} {B} R′ fs ret-pc rs comp k
       stuck eq nr = record
         { steps      = suc VR.steps
         ; settle     = VR.settle
@@ -226,7 +268,7 @@ module BlockCallC {FS : FrameSemantics} where
         ; no-ret     = λ p → ⊥-elim (nr (trans (sym eq) p))
         ; no-link    = λ nc → VR.no-link nc
         ; place      = λ p → ⊥-elim (nr (trans (sym eq) p))
-        ; events     = trans (chain-events-subst-start (sym te) VR.run) (MachineRefinesObsF.traces-agree mro)
+        ; events     = trans (chain-events-subst-start (sym te) VR.run) VR.events
         ; log        = VR.log
         ; progress   = progress-≤ VR.progress (≤-trans (≤-reflexive (sym (chain-ctrls-subst-start (sym te) VR.run))) (n≤1+n _))
         ; mem-pres   = mem-body
@@ -235,8 +277,8 @@ module BlockCallC {FS : FrameSemantics} where
         ; frames-pres = λ p → ⊥-elim (nr (trans (sym eq) p))
         }
 
-      go : (ρ : Res (Ap ⟦ B ⟧)) → resultAt s′ (⟪ evalᴰ ir x ⟫ k) ≡ ρ
-         → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B)) fs ret-pc rs (evalᴰ ir x) k
+      go : (ρ : Res (Ap ValueDomain.⟦ B ⟧ᴰᴵ)) → resultAt s′ (⟪ comp ⟫ k) ≡ ρ
+         → CalleeRunP {prog = prog} {B} R′ fs ret-pc rs comp k
       -- RETURNED: one more step, the `c-ret`.
       go (returns (done v r)) eq = record
         { steps      = suc (VR.steps + 1)
@@ -249,7 +291,7 @@ module BlockCallC {FS : FrameSemantics} where
         ; stops      = λ p → ⊥-elim (true≢false (trans (sym p) (cong is-stopped eq)))
         ; no-ret     = λ _ → refl
         ; no-link    = λ nc → VR.no-link nc
-        ; place      = λ p → place-across (live-leave (falloc VR.settle)) (VR.place p)
+        ; place      = λ p → across (live-leave (falloc VR.settle)) (VR.place p)
         ; events     = trans (chain-events-subst-start (sym te) (FlatSteps-++ VR.run ret-run)) ev-r
         ; log        = VR.log
         ; progress   = progress-≤ VR.progress (ctrls-r)
@@ -259,7 +301,7 @@ module BlockCallC {FS : FrameSemantics} where
         ; frames-pres = λ _ pre′ fa′ → leave-frame-saved-∷ (falloc VR.settle) _ _ _ (frames-back pre′ fa′)
         }
         where
-          retd : resultAt s′ (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r)
+          retd : resultAt s′ (⟪ comp ⟫ k) ≡ returns (done v r)
           retd = eq
 
           settle-r : FlatState
@@ -280,10 +322,10 @@ module BlockCallC {FS : FrameSemantics} where
           run-r : FlatSteps prog (suc (VR.steps + 1)) fs settle-r
           run-r = thunk-step (FlatSteps-++ VR.run ret-run)
 
-          ev-r : chain-events (FlatSteps-++ VR.run ret-run) ≡ eventsAt (floc fs) (⟪ evalᴰ ir x ⟫ k)
+          ev-r : chain-events (FlatSteps-++ VR.run ret-run) ≡ eventsAt (floc fs) (⟪ comp ⟫ k)
           ev-r = trans (chain-events-++ VR.run ret-run)
-                       (trans (cong (_++ chain-events ret-run) (MachineRefinesObsF.traces-agree mro))
-                              (trans (cong (eventsAt s′ (⟪ evalᴰ ir x ⟫ k) ++_) ret-silent) (++-identityʳ _)))
+                       (trans (cong (_++ chain-events ret-run) VR.events)
+                              (trans (cong (eventsAt s′ (⟪ comp ⟫ k) ++_) ret-silent) (++-identityʳ _)))
 
           ctrls-r : chain-ctrls VR.run ≤ chain-ctrls run-r
           ctrls-r = ≤-trans (subst (chain-ctrls VR.run ≤_) (sym (chain-ctrls-subst-start (sym te) (FlatSteps-++ VR.run ret-run)))
@@ -294,7 +336,7 @@ module BlockCallC {FS : FrameSemantics} where
                       → saved-frames (falloc VR.settle) ≡ (current-frame pre′ , frame-slots pre′) ∷ saved-frames pre′
           frames-back pre′ fa′ = trans (VR.frames-pres retd) (cong saved-frames fa′)
 
-          bf-back : NotCut (resultAt s′ (⟪ evalᴰ ir x ⟫ k)) → ∀ (pre′ : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre′
+          bf-back : NotCut (resultAt s′ (⟪ comp ⟫ k)) → ∀ (pre′ : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre′
                   → ∀ (loc : ValueLocation FS) → BeforeFrontier (record pre′ { next-slot = m }) loc
                   → BeforeFrontier (record (falloc settle-r) { next-slot = m }) loc
           bf-back nc pre′ m fa′ (AtStack f k′) (BeforeFrontier.stack-before refl k<m) =
@@ -308,3 +350,20 @@ module BlockCallC {FS : FrameSemantics} where
       -- STOPPED or CUT: the body's run is the whole run.
       go stopped eq = stuck eq (λ ())
       go (returns cut) eq = stuck eq (λ ())
+
+  block-call : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
+    → ∀ (l : ℕ) (prog : AbstractTrace) (lbl : LabelId) (bb j : ℕ)
+    → AllSlotStable prog → BlockRuns prog
+    → SpanAt prog j (block-layout (lbl , bb , emitted 0 l ir))
+    → BlocksAt prog (blocks 0 l ir)
+    → LabelsAt prog (suc j) (emitted 0 l ir)
+    → ∀ (fs : FlatState) (pre : AllocState {FS}) (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
+        (ret-pc k : ℕ) (rs : List ℕ)
+    → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
+    → falloc fs ≡ enter-call pre → next-slot pre ≡ 0
+    → InputAt {prog = prog} mIn (callee-alloc bb fs) x (callee-loc bb fs)
+    → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B)) fs ret-pc rs (evalᴰ ir x) k
+  block-call {A} {B} ir ioc l prog lbl bb j ss cr sp bl la fs pre mIn x ret-pc k rs pc nh fr fa ns inp =
+    block-call-gen {B} {ResultPlace {prog = prog} B} {ResultPlaceP {B} (VAt {prog = prog} B)} place-across (emitted 0 l ir) (evalᴰ ir x) prog lbl bb j sp fs pre ret-pc k rs pc nh fr fa
+      (mro→body {prog} {suc j} {A} {B} {l} {ir} (ioc 0 l prog (suc j) ss cr (Layout.body-span prog lbl bb j (emitted 0 l ir) sp) bl la mIn x
+                   (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (trans (cong next-slot fa) ns) nh inp k (ret-pc ∷ rs)))

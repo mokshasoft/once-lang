@@ -6,7 +6,7 @@
 --
 -- D200: `Out` — forcing a ν (D199). `apply`'s argument with the pair-packing
 -- removed: a suspension IS the callee record, so the setup is three rows, and
--- the hand-off is to `BlockRuns.coalgs`.
+-- the hand-off is to the ν's own force (`NuV.nu-force`, plan 0.125 S1).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -95,7 +95,7 @@ module OutC {FS : FrameSemantics} where
     where
       stack-refuted : ValidAtWF {prog = prog} mIn alloc {ν-type F} x (AtStack _ _) s
                     → MachineRefinesObsF prog base n l (Out wf) x s alloc cl rs k
-      stack-refuted (valid-ν-susp-wf _ lmm _ _ _ _) = ⊥-elim lmm
+      stack-refuted (valid-ν-wf nv) = ⊥-elim (nu-heap nv)
   obs-correct-Out {F} wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
     (in-loc (AtDynamic ν-hl) valid bf rdi) k rs = go x valid
     where
@@ -113,23 +113,20 @@ module OutC {FS : FrameSemantics} where
       go : ∀ (v : ⟦ ν-type F ⟧)
          → ValidAtWF {prog = prog} mIn alloc {ν-type F} v ν-loc s
          → MachineRefinesObsF prog base n l (Out wf) v s alloc cl rs k
-      -- plan 0.88: the witness's value index is a VARIABLE now (its origin
-      -- says which ν it is), so the match no longer forces it, and the
-      -- functor witness the suspension was built with never meets the one on
-      -- the `Out` node — `CoalgRuns` is stated at the latter.
-      -- plan 0.125 S1 (ν STUB): the seed cell is opaque — the witness names
-      -- only what cell 0 HOLDS — so there is no residence to split and no
-      -- mode to read off; `CoalgRuns` is stated over the stored value.
-      go v (valid-ν-susp-wf {T = T} {seed = seed} {coalg-label = lbl} org lmm seed-sv c0 cp slb) = assemble
+      -- plan 0.125 S1: the witness is the ν's FORCE (`NuV`), so the run is
+      -- read off the value: the seed cell, the code cell and its label, and
+      -- what calling that block on the seed does.
+      go v (valid-ν-wf nv) = assemble
         where
           ν-val : ⟦ ν-type F ⟧
           ν-val = v
 
-          cinfo = BlockRuns.coalgs cr wf org lbl {st = s} lmm seed-sv c0 cp slb
-
-          j      = proj₁ cinfo
-          feq    = proj₁ (proj₂ cinfo)
-          runner = proj₂ (proj₂ cinfo)
+          lbl     = nu-lbl nv
+          j       = nu-j nv
+          seed-sv = nu-seed nv
+          c0      = nu-cell0 nv
+          cp      = nu-cell1 nv
+          feq     = nu-code nv
 
           -- Opaque for `OutSetupPres`'s reason: the call's three-level view is
           -- consumed only through `cong`, never reduced.
@@ -185,14 +182,18 @@ module OutC {FS : FrameSemantics} where
               crun : CalleeRun prog (flat-exec-instr instr-call-closure prog OSP.b3)
                        (suc (fpc OSP.b3)) rs (⟦ F ⟧TI (ν-type F))
                        (evalᴰ (Out wf) ν-val) k
-              crun = runner (flat-exec-instr instr-call-closure prog OSP.b3)
-                       (falloc OSP.b3) (suc (fpc OSP.b3)) k rs Heap
+              crun = crun-map ν-layer-place
+                       (nu-force nv wf (flat-exec-instr instr-call-closure prog OSP.b3)
+                       (falloc OSP.b3) (suc (fpc OSP.b3)) k rs
                        (trans (cong fpc call-eq) refl)
                        (trans (cong (λ st → halted (floc st)) call-eq) nh3)
                        (trans (cong fret call-eq) refl)
                        (trans (cong falloc call-eq) refl)
+                       n≤
+                       (λ _ b → b)
+                       (λ l _ → trans (cong (λ st → SMCore.MemOps.readLoc (floc st) l) call-eq) (OSP.mem-pres l))
                        (subst (λ st → readReg (regs st) Input1 ≡ seed-sv)
-                              (sym (cong floc call-eq)) (OSP.input1-b3 ν-loc seed-sv rdi c0))
+                              (sym (cong floc call-eq)) (OSP.input1-b3 ν-loc seed-sv rdi c0)))
 
               run4 : FlatSteps prog 4 (entry-flat base s alloc cl rs)
                        (flat-exec-instr instr-call-closure prog OSP.b3)

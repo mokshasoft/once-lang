@@ -95,7 +95,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.Denotation.Approx using (Ap; approx; NotCut; budgetLeft; done)
 open import Once.Internal.Res using (Res; returns; is-stopped)
 open import Once.Internal.Event using (SigOpEvent)
-open import Once.IRTy using (Void; IRFunctor; IsBaseTypeI; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod; WellFormedFI-irrelevant)
+open import Once.IRTy using (Void; IRFunctor; K; Id; _⊕_; _⊗_; IsBaseTypeI; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod; WellFormedFI-irrelevant)
 
 module ClosureWellFormedBase {FS : FrameSemantics} where
   -- D179: the MONADIC evaluator, named the same way and for the same reason.
@@ -205,23 +205,6 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   inline-sv (rep-prim fit)  a = prim-sv fit a
   inline-sv (rep-unit _ sv) _ = sv
 
-  ------------------------------------------------------------------------
-  -- plan 0.88: WHERE A ν CAME FROM. Both ν introductions build the same two
-  -- cells (D189) — cell 0 the thing to force from, cell 1 the code that
-  -- forces it — and differ only in what cell 0 holds and what it means:
-  --   * `Ana` stores the SEED `(e , a)`, and the code is the coalgebra;
-  --   * `in-ν` stores an already-available LAYER, and the code is the
-  --     identity block.
-  -- One ν constructor indexed by its origin, rather than a second
-  -- constructor, so every transport below stays one clause and `Out` forces
-  -- either kind the same way.
-  ------------------------------------------------------------------------
-  data νOrigin (F : IRFunctor) : (T : IRTy) → ⟦ T ⟧ → ⟦ ν-type F ⟧ → Set where
-    from-ana   : ∀ {E A} (wf : WellFormedFI F)
-                   {coalg : IR (E * A) (⟦ F ⟧TI A)} {seed : ⟦ E * A ⟧} →
-                 νOrigin F (E * A) seed (valueNow (evalᴰ (Ana wf coalg) seed))
-    from-layer : (wf : WellFormedFI F) {layer : ⟦ ⟦ F ⟧TI (ν-type F) ⟧} →
-                 νOrigin F (⟦ F ⟧TI (ν-type F)) layer (valueNow (evalᴰ (in-ν wf) layer))
 
 
   ------------------------------------------------------------------------
@@ -272,6 +255,10 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
            → (∀ hl → BeforeFrontier a₁ (AtDynamic hl) → BeforeFrontier a₂ (AtDynamic hl))
            → ∀ l → Live a₁ l → Live a₂ l
   live-map f (AtDynamic hl) b = f hl b
+
+  -- …and a live cell is live whatever the stack frontier is.
+  live-ns : ∀ {alloc : AllocState {FS}} (m : ℕ) {l} → Live alloc l → BeforeFrontier (record alloc { next-slot = m }) l
+  live-ns m {AtDynamic _} (BeforeFrontier.heap-before r<h) = BeforeFrontier.heap-before r<h
 
   -- D187: where a compound's component lives — a pointer to a cell valid at
   -- the component's type, or the component inline.
@@ -357,24 +344,6 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       readLoc s loc ≡ just (prim-sv fits-float x) →
       FloatV m alloc x loc s
 
-  -- D189: a ν is a suspension (seed cell + code cell). plan 0.125 S1: the
-  -- seed is OPAQUE (`seed-sv`), as in the spike's `RelNu`. Its type `T` is
-  -- not a subterm of `ν-type F`, so the seed's validity cannot be stated by
-  -- recursion on the type. STUB: forcing is not in the value yet (S1 open
-  -- item); `Out` still takes it from `CoalgRuns`.
-  data NuV {F : IRFunctor} :
-       AllocMode → AllocState {FS} → ⟦ ν-type F ⟧ → ValueLocation FS → LocState FS → Set where
-    ν-susp-wf : ∀ {T} {seed : ⟦ T ⟧} {v : ⟦ ν-type F ⟧}
-      (org : νOrigin F T seed v)
-      {alloc : AllocState {FS}} {ν-loc : ValueLocation FS} {s : LocState FS}
-      {coalg-label : LabelId} →
-      LocMatchesMode Heap ν-loc →
-      (seed-sv : StoredValue FS) →
-      readLoc s ν-loc ≡ just seed-sv →
-      readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
-      Live alloc (sucLoc ν-loc) →
-      NuV Heap alloc v ν-loc s
-
   -- Where a result is, for a validity `VB` (the arrow case's callee result).
   -- `ResultPlace` (ClosureWellFormedDef) is the same at `ValidAtWF`, as an
   -- indexed `data`; `rp→place` converts.
@@ -415,6 +384,18 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧) →
       ValidFO m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s →
       ValidFO m alloc {μ-type F} x loc s
+
+  -- plan 0.125 S1: a FORCED ν LAYER, `⟦ G ⟧TI X`, at the validity `R` of its
+  -- recursive positions (the spike's `NuLayer`). Recursion on the functor
+  -- code, so `NuV` can pass ITSELF as `R`; the case datas are the ones
+  -- `ValidAtWF` uses. A constant position is first-order (`WellFormedFI`
+  -- limits `K` to `IsBaseTypeI`), so it is `ValidFO`, never `ValidAtWF`:
+  -- that keeps `NuV` out of the arrow case's negative occurrence.
+  LayerV : (G : IRFunctor) {X : IRTy} → VTy X → VTy (⟦ G ⟧TI X)
+  LayerV (K A)   R m alloc = ValidFO m alloc {A}
+  LayerV Id      R         = R
+  LayerV (G ⊕ H) {X} R     = SumV {⟦ G ⟧TI X} {⟦ H ⟧TI X} (LayerV G R) (LayerV H R)
+  LayerV (G ⊗ H) {X} R     = PairV {⟦ G ⟧TI X} {⟦ H ⟧TI X} (LayerV G R) (LayerV H R)
 
   -- The types `ValidFO` speaks about.
   data FOTy : IRTy → Set where
@@ -537,6 +518,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       frames-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
                   → saved-frames (falloc settle) ≡ saved-frames pre
 
+  -- A run is a run whatever is said about where its result is.
+  crun-map : ∀ {B} {R R′ : AllocMode → AllocState {FS} → AllocState {FS} → ⟦ B ⟧ → LocState FS → Set}
+           → (∀ {m a₁ a₂ v s} → R m a₁ a₂ v s → R′ m a₁ a₂ v s)
+           → ∀ {fs ret-pc rs comp k} → CalleeRunP {B} R fs ret-pc rs comp k → CalleeRunP {B} R′ fs ret-pc rs comp k
+  crun-map f (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
+    callee-run st se om ca ru li re sp nr nl (λ e → f (pl e)) ev lg pr mp fp bm fsp
+
   ------------------------------------------------------------------------
   -- plan 0.125 S1: WHAT A CLOSURE DOES, as a fact about the value.
   --
@@ -600,6 +588,130 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       ArrowV {A} {B} VA VB Heap alloc (λ arg → evalᴰ body (env , arg)) closure-loc s
 
   ------------------------------------------------------------------------
+  -- plan 0.125 S1: A ν IS WHAT FORCING IT DOES (the spike's `RelNu`, path (a)).
+  --
+  -- Two heap cells (D189): cell 0 the seed's stored value, cell 1 the code
+  -- of the block that forces it. The seed stays OPAQUE: its type is not a
+  -- subterm of `ν-type F` (an `Ana` seed is any `E * A`, an `in-ν` seed is a
+  -- layer containing `ν-type F`), so its validity cannot be stated here; as
+  -- with a closure's environment, what keeps it valid at the force is the
+  -- caller's guarantee that everything live at construction still reads the
+  -- same and is still live.
+  --
+  -- `nu-force` is the arrow case's `CallRuns` minus the pair-packing (`Out`
+  -- hands the block the seed cell's CONTENT in `Input1`), and its result is
+  -- a LAYER whose recursive positions are again `NuV`. That occurrence is
+  -- under a field of a COINDUCTIVE record — the guard — and it is the only
+  -- one: no index, no step count (the spike, STEP 3). The value `v` occurs
+  -- only in the conclusion (`evalᴰ (Out wf) v`), so one cell cannot be valid
+  -- at two νs that force differently (D217). Every functor witness gives the
+  -- same `Out` (`WellFormedFI-irrelevant`); quantifying over it keeps the
+  -- witness the suspension was built with away from the one at the `Out`.
+  ------------------------------------------------------------------------
+  -- What forcing a ν does, at the validity `R` of the layer's recursive
+  -- positions (`NuV` passes itself).
+  ForceRuns : ∀ {F : IRFunctor} → VTy (ν-type F) → AllocState {FS} → LocState FS
+            → StoredValue FS → ℕ → ⟦ ν-type F ⟧ → Set
+  ForceRuns {F} R alloc s seed j v =
+    ∀ (wf : WellFormedFI F) (fs : FlatState) (pre : AllocState {FS})
+      (ret-pc k : ℕ) (rs : List ℕ)
+    → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
+    → falloc fs ≡ enter-call pre
+    → next-slot pre ≡ 0
+    → (∀ l → Live alloc l → Live pre l)
+    → (∀ l → Live alloc l → readLoc (floc fs) l ≡ readLoc s l)
+    → readReg (regs (floc fs)) Input1 ≡ seed
+    → CalleeRunP {⟦ F ⟧TI (ν-type F)}
+        (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} R))
+        fs ret-pc rs (evalᴰ (Out wf) v) k
+
+  record NuV {F : IRFunctor} (m : AllocMode) (alloc : AllocState {FS}) (v : ⟦ ν-type F ⟧)
+             (ν-loc : ValueLocation FS) (s : LocState FS) : Set where
+    coinductive
+    field
+      nu-mode  : m ≡ Heap
+      nu-heap  : LocMatchesMode Heap ν-loc
+      nu-seed  : StoredValue FS
+      nu-lbl   : LabelId
+      nu-j     : ℕ
+      nu-cell0 : readLoc s ν-loc ≡ just nu-seed
+      nu-cell1 : readLoc s (sucLoc ν-loc) ≡ just (SV-Code nu-lbl)
+      nu-live1 : Live alloc (sucLoc ν-loc)
+      nu-code  : find-thunk prog nu-lbl ≡ just nu-j
+      nu-force : ForceRuns {F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) alloc s nu-seed nu-j v
+  open NuV public
+
+  ------------------------------------------------------------------------
+  -- THE COINDUCTION PRINCIPLE for `NuV`. A predicate `P` on ν cells whose
+  -- every force yields a layer of `P`s (`NuStep P`) implies `NuV`. This is
+  -- the only corecursion: the producers (`Ana`) prove a one-layer step about
+  -- an INDUCTIVE `P`, so their proofs never have to be guarded. The layer
+  -- conversion is written out inside the mutual block (first-order), which is
+  -- what lets the termination checker see the guard (a map passed to a
+  -- higher-order helper hides it).
+  ------------------------------------------------------------------------
+  record NuStep {F : IRFunctor} (P : VTy (ν-type F)) (m : AllocMode) (alloc : AllocState {FS})
+                (v : ⟦ ν-type F ⟧) (ν-loc : ValueLocation FS) (s : LocState FS) : Set where
+    field
+      st-mode  : m ≡ Heap
+      st-heap  : LocMatchesMode Heap ν-loc
+      st-seed  : StoredValue FS
+      st-lbl   : LabelId
+      st-j     : ℕ
+      st-cell0 : readLoc s ν-loc ≡ just st-seed
+      st-cell1 : readLoc s (sucLoc ν-loc) ≡ just (SV-Code st-lbl)
+      st-live1 : Live alloc (sucLoc ν-loc)
+      st-code  : find-thunk prog st-lbl ≡ just st-j
+      st-force : ForceRuns {F} P alloc s st-seed st-j v
+
+  module NuCoind {F : IRFunctor} (P : VTy (ν-type F))
+                 (step : ∀ {m a v l s} → P m a v l s → NuStep {F} P m a v l s) where
+    mutual
+      coind : ∀ {m a v l s} → P m a v l s → NuV {F} m a v l s
+      nu-mode  (coind p) = NuStep.st-mode  (step p)
+      nu-heap  (coind p) = NuStep.st-heap  (step p)
+      nu-seed  (coind p) = NuStep.st-seed  (step p)
+      nu-lbl   (coind p) = NuStep.st-lbl   (step p)
+      nu-j     (coind p) = NuStep.st-j     (step p)
+      nu-cell0 (coind p) = NuStep.st-cell0 (step p)
+      nu-cell1 (coind p) = NuStep.st-cell1 (step p)
+      nu-live1 (coind p) = NuStep.st-live1 (step p)
+      nu-code  (coind p) = NuStep.st-code  (step p)
+      nu-force (coind p) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
+        crun-conv (NuStep.st-force (step p) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1)
+
+      crun-conv : ∀ {fs ret-pc rs comp k}
+                → CalleeRunP {⟦ F ⟧TI (ν-type F)} (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} P)) fs ret-pc rs comp k
+                → CalleeRunP {⟦ F ⟧TI (ν-type F)}
+                    (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)))
+                    fs ret-pc rs comp k
+      crun-conv (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
+        callee-run st se om ca ru li re sp nr nl (λ e → rp-conv (pl e)) ev lg pr mp fp bm fsp
+
+      rp-conv : ∀ {m a₁ a₂ v s}
+              → ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} P) m a₁ a₂ v s
+              → ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)) m a₁ a₂ v s
+      rp-conv (rp-unit e) = rp-unit e
+      rp-conv (rp-loc loc v bf rax cv cbf) = rp-loc loc (lay F v) bf rax (lay F cv) cbf
+      rp-conv (rp-reg fit rax) = rp-reg fit rax
+
+      lay : ∀ (G : IRFunctor) {m a v l s}
+          → LayerV G {ν-type F} P m a v l s → LayerV G {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) m a v l s
+      lay (K A) lv = lv
+      lay Id    lv = coind lv
+      lay (G ⊕ H) (inl-wf lmm tg pp pb slb pv) = inl-wf lmm tg pp pb slb (lay G pv)
+      lay (G ⊕ H) (inr-wf lmm tg pp pb slb pv) = inr-wf lmm tg pp pb slb (lay H pv)
+      lay (G ⊕ H) (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
+      lay (G ⊕ H) (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
+      lay (G ⊗ H) (pair-wf lmm slb c₁ c₂) = pair-wf lmm slb (cell G c₁) (cell H c₂)
+
+      cell : ∀ (G : IRFunctor) {a c cl s}
+           → CellAtP {⟦ G ⟧TI (ν-type F)} (LayerV G {ν-type F} P) a c cl s
+           → CellAtP {⟦ G ⟧TI (ν-type F)} (LayerV G {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)) a c cl s
+      cell G (cell-ptr r bf v) = cell-ptr r bf (lay G v)
+      cell G (cell-inline rep r) = cell-inline rep r
+
+  ------------------------------------------------------------------------
   -- THE RELATION. Structural on the type; no pragma.
   ------------------------------------------------------------------------
   mutual
@@ -610,7 +722,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     VCase (A + B)    = SumV {A} {B} (VAt A) (VAt B)
     VCase (A ⇛ B)    = ArrowV {A} {B} (VAt A) (VAt B)
     VCase (μ-type F) = λ m alloc → ValidFO m alloc {μ-type F}
-    VCase (ν-type F) = NuV
+    VCase (ν-type F) = NuV {F}
     VCase Int        = IntV
     VCase Float      = FloatV
 
@@ -635,8 +747,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     wrap (closure-wf {body = body} {env = env} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
   pattern valid-closure-reg-wf {body} {env} {closure-loc} lmm rep ep cp slb fd runs =
     wrap (closure-reg-wf {body = body} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
-  pattern valid-ν-susp-wf {T} {seed} {coalg-label} org lmm sv c0 cp slb =
-    wrap (ν-susp-wf {T = T} {seed = seed} org {coalg-label = coalg-label} lmm sv c0 cp slb)
+  pattern valid-ν-wf nv = wrap nv
   pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
   pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
   pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)
@@ -689,6 +800,53 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
           → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s
           → ValidAtWF m alloc {μ-type F} x loc s
   valid-μ wf x lv = valid-μ-wf wf x (valid→fo (fo-layer wf fo-μ) lv)
+
+
+  -- The case datas are functorial in their components' validities.
+  cell-map : ∀ {C} {V W : VTy C} → (∀ {m a c l s} → V m a c l s → W m a c l s)
+           → ∀ {alloc c cl s} → CellAtP {C} V alloc c cl s → CellAtP {C} W alloc c cl s
+  cell-map f (cell-ptr r bf v) = cell-ptr r bf (f v)
+  cell-map f (cell-inline rep r) = cell-inline rep r
+
+  pair-map : ∀ {A B} {VA WA : VTy A} {VB WB : VTy B}
+           → (∀ {m a c l s} → VA m a c l s → WA m a c l s)
+           → (∀ {m a c l s} → VB m a c l s → WB m a c l s)
+           → ∀ {m alloc v loc s} → PairV {A} {B} VA VB m alloc v loc s → PairV {A} {B} WA WB m alloc v loc s
+  pair-map f g (pair-wf lmm slb c₁ c₂) = pair-wf lmm slb (cell-map f c₁) (cell-map g c₂)
+
+  sum-map : ∀ {A B} {VA WA : VTy A} {VB WB : VTy B}
+          → (∀ {m a c l s} → VA m a c l s → WA m a c l s)
+          → (∀ {m a c l s} → VB m a c l s → WB m a c l s)
+          → ∀ {m alloc v loc s} → SumV {A} {B} VA VB m alloc v loc s → SumV {A} {B} WA WB m alloc v loc s
+  sum-map f g (inl-wf lmm tg pp pb slb pv) = inl-wf lmm tg pp pb slb (f pv)
+  sum-map f g (inr-wf lmm tg pp pb slb pv) = inr-wf lmm tg pp pb slb (g pv)
+  sum-map f g (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
+  sum-map f g (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
+
+  -- A forced layer IS a valid value of the layer type, and back where the
+  -- functor is well formed (the constant positions are first-order).
+  layer→valid : ∀ (G : IRFunctor) {X} {R : VTy X}
+              → (∀ {m a v l s} → R m a v l s → ValidAtWF m a {X} v l s)
+              → ∀ {m a v l s} → LayerV G R m a v l s → ValidAtWF m a {⟦ G ⟧TI X} v l s
+  layer→valid (K A)   f lv = fo→valid lv
+  layer→valid Id      f lv = f lv
+  layer→valid (G ⊕ H) f lv = wrap (sum-map (layer→valid G f) (layer→valid H f) lv)
+  layer→valid (G ⊗ H) f lv = wrap (pair-map (layer→valid G f) (layer→valid H f) lv)
+
+  valid→layer : ∀ {G : IRFunctor} → WellFormedFI G → ∀ {X} {R : VTy X}
+              → (∀ {m a v l s} → ValidAtWF m a {X} v l s → R m a v l s)
+              → ∀ {m a v l s} → ValidAtWF m a {⟦ G ⟧TI X} v l s → LayerV G R m a v l s
+  valid→layer (wf-K ib)     f lv = valid→fo (fo-base ib) lv
+  valid→layer wf-Id         f lv = f lv
+  valid→layer (wf-Sum g h)  f (wrap lv) = sum-map (valid→layer g f) (valid→layer h f) lv
+  valid→layer (wf-Prod g h) f (wrap lv) = pair-map (valid→layer g f) (valid→layer h f) lv
+
+  -- …so a forced ν layer is a valid result.
+  rp-map : ∀ {B} {V W : VTy B} → (∀ {m a v l s} → V m a v l s → W m a v l s)
+         → ∀ {m a₁ a₂ v s} → ResultPlaceP {B} V m a₁ a₂ v s → ResultPlaceP {B} W m a₁ a₂ v s
+  rp-map f (rp-unit e) = rp-unit e
+  rp-map f (rp-loc loc v bf rax cv cbf) = rp-loc loc (f v) bf rax (f cv) cbf
+  rp-map f (rp-reg fit rax) = rp-reg fit rax
 
 
   --------------------------------------------------------------------
@@ -881,6 +1039,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   rp→place (rp-unit refl)               = unit-result
   rp→place (rp-loc loc v bf rax cv cbf) = at-loc loc v bf rax cv cbf
   rp→place (rp-reg fit rax)             = at-reg fit rax
+
+  ν-layer-place : ∀ {F m a₁ a₂ v s}
+                → ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)) m a₁ a₂ v s
+                → ResultPlace (⟦ F ⟧TI (ν-type F)) m a₁ a₂ v s
+  ν-layer-place {F} rp = rp→place (rp-map (layer→valid F valid-ν-wf) rp)
 
 
 ------------------------------------------------------------------------
@@ -1164,6 +1327,24 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
         (λ l b → trans (agree l (bft l b)) (rd l (q-bf l b)))
         i1 lmm slb (trans c0 (rd _ q)) c1
 
+    -- A ν, like a closure, only retargets its force's premises; the forced
+    -- layer is the same run, so nothing is corecursive here.
+    nu-tr : ∀ {F m v loc} → Q loc → NuV {F} m a₁ v loc s₁ → NuV {F} m a₂ v loc s₂
+    nu-mode  (nu-tr q n) = nu-mode n
+    nu-heap  (nu-tr q n) = nu-heap n
+    nu-seed  (nu-tr q n) = nu-seed n
+    nu-lbl   (nu-tr q n) = nu-lbl n
+    nu-j     (nu-tr q n) = nu-j n
+    nu-cell0 (nu-tr q n) = trans (rd _ q) (nu-cell0 n)
+    nu-cell1 (nu-tr q n) = trans (rd _ (q-bf _ (nu-live1 n))) (nu-cell1 n)
+    nu-live1 (nu-tr q n) = bft _ (nu-live1 n)
+    nu-code  (nu-tr q n) = nu-code n
+    nu-force (nu-tr q n) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
+      nu-force n wf fs pre ret-pc k rs pc nh fr fa ns
+        (λ l b → incl l (bft l b))
+        (λ l b → trans (agree l (bft l b)) (rd l (q-bf l b)))
+        i1
+
     mutual
       v-tr : ∀ {m} A {v loc} → Q loc → ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
       v-tr Unit q valid-unit-wf = valid-unit-wf
@@ -1187,8 +1368,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
         valid-closure-reg-wf {body = body} {env = env} lmm rep (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ slb)
                              fd (runs-tr q runs)
       v-tr (μ-type F) q (wrap w) = wrap (fo-tr q w)
-      v-tr (ν-type F) q (valid-ν-susp-wf org lmm sv c0 cp slb) =
-        valid-ν-susp-wf org lmm sv (trans (rd _ q) c0) (trans (rd _ (q-bf _ slb)) cp) (bft _ slb)
+      v-tr (ν-type F) q (valid-ν-wf n) = valid-ν-wf (nu-tr q n)
       v-tr Int q (valid-int-wf bf rl) = valid-int-wf (bft _ bf) (trans (rd _ q) rl)
       v-tr Float q (valid-float-wf bf rl) = valid-float-wf (bft _ bf) (trans (rd _ q) rl)
 
@@ -1566,8 +1746,7 @@ module ClosureWellFormedPat {FS : FrameSemantics} where
     wrap (closure-wf {body = body} {env = env} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
   pattern valid-closure-reg-wf {body} {env} {closure-loc} lmm rep ep cp slb fd runs =
     wrap (closure-reg-wf {body = body} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
-  pattern valid-ν-susp-wf {T} {seed} {coalg-label} org lmm sv c0 cp slb =
-    wrap (ν-susp-wf {T = T} {seed = seed} org {coalg-label = coalg-label} lmm sv c0 cp slb)
+  pattern valid-ν-wf nv = wrap nv
   pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
   pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
   pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)

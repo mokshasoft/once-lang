@@ -117,7 +117,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct (Cata wf alg)       la = cata-correct wf alg (ir-obs-correct alg la)
   ir-obs-correct (Out wf)            _ = obs-correct-Out wf
   ir-obs-correct (in-ν wf)           _ = obs-correct-in-ν wf
-  ir-obs-correct (Ana wf f)          _ = obs-correct-Ana wf f
+  ir-obs-correct (Ana wf f)          lf = obs-correct-Ana wf f (ir-obs-correct f lf)
   ir-obs-correct (Iter body)         lb = IterProofC.obs-correct-Iter {FS} body (ir-obs-correct body lb)
   -- misc
   ir-obs-correct (const fit v)       _ = obs-correct-const fit v

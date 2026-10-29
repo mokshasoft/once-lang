@@ -18,8 +18,8 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState; sucLoc)
-open LocState using (regs)
+open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState; sucLoc; StoredValue)
+open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Label using (ℓ)
@@ -38,7 +38,9 @@ import Once.Internal.Trace as TM
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
-open import Data.List.Relation.Unary.All using (_∷_)
+open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
+open import Once.CCC.Codegen.IRObsCorrect.AnaForce o tbl
+open import Data.List.Relation.Unary.All using (_∷_; [])
 
 module TwoCellC {FS : FrameSemantics} where
 
@@ -53,6 +55,9 @@ module TwoCellC {FS : FrameSemantics} where
   open TwoCellRunC {FS}
   open TwoCellBuildC {FS}
   module BC = BlockCallC {FS}
+  module NF = NuForceC {FS}
+  open NF using (SeedKept)
+  module AF = AnaForceC {FS}
 
   -- plan 0.125 S3: the closure's `runs` is PROVED, from the body's own
   -- correctness (`ihb`) through the block-call lemma (S2). The block is the
@@ -178,7 +183,38 @@ module TwoCellC {FS : FrameSemantics} where
                           (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)
       place = place-of inp
 
-  ------------------------------------------------------------------------
+  -- The suspension both introductions build: cell 0 the seed, cell 1 the
+  -- block, and the block's force.
+  module Susp (n l : ℕ) (prog : AbstractTrace) (base : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+              (cl : StoredValue FS) (rs : List ℕ) (n≤ : AllocState.next-slot alloc ≤ n) (nh : halted s ≡ false)
+              (span : SpanAt prog base (two-cell-trace n l)) where
+    module TCR = TwoCellRun n l prog base s alloc cl rs n≤ nh span
+    module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
+
+    kept : SeedKept alloc s (falloc TCR.fs10) (floc TCR.fs10)
+    kept = (λ _ b → live-lift TCB.bf-advance b) , (λ l′ b → TCB.mem-pres l′ (live-ns n b))
+
+    cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
+    cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
+
+    susp : ∀ {F} {v : ⟦ ν-type F ⟧} (j : ℕ) → find-thunk prog (ℓ o l) ≡ just j
+         → ForceRuns {prog = prog} {F} (λ m′ a′ v′ l′ s″ → NuV {prog = prog} {F} m′ a′ v′ l′ s″)
+             (falloc TCR.fs10) (floc TCR.fs10) TCR.cell0v j v
+         → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F} v TCR.obj-loc (floc TCR.fs10)
+    susp j feq fr = valid-ν-wf nv
+      where
+        nv : NuV _ _ _ _ _
+        nu-mode  nv = refl
+        nu-heap  nv = tt
+        nu-seed  nv = TCR.cell0v
+        nu-lbl   nv = ℓ o l
+        nu-j     nv = j
+        nu-cell0 nv = TCB.cell0-fs10
+        nu-cell1 nv = TCB.code-fs10
+        nu-live1 nv = TCB.before-suc
+        nu-code  nv = feq
+        nu-force nv = fr
+
   -- D189: `Ana` — DISCHARGED, and it is `obs-correct-curry` with the other
   -- witness.
   --
@@ -197,8 +233,8 @@ module TwoCellC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   -- D273: the seed is the pair `(e , a)`; nothing here depends on its shape.
   obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {E A} (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A))
-                  → IRObsCorrectF (Ana wf coalg)
-  obs-correct-Ana {F} wf {E} {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
+                  → IRObsCorrectF coalg → IRObsCorrectF (Ana wf coalg)
+  obs-correct-Ana {F} wf {E} {A} coalg ihc n l prog base ss cr span ((j , feq , sp , lab) ∷ bl′) _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -227,11 +263,22 @@ module TwoCellC {FS : FrameSemantics} where
       cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
       cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
-      -- THE SEED CELL — one clause per residence, one constructor for all three.
+      -- plan 0.125 S3: the ν's force is PROVED (`AnaForce`): this cell is an
+      -- `Ana` suspension of the seed (`ana-p`), and every such is a `NuV`.
+      module AB  = AF.AnaBlock wf coalg ihc l prog ss cr
+      module ABB = AB.Block j feq sp lab bl′
+
+      -- the seed cell, one clause per input residence
+      seed-cell : InputAt mIn alloc x s → CellAt {prog = prog} (falloc TCR.fs10) (E IRTy′.* A) x TCR.obj-loc (floc TCR.fs10)
+      seed-cell (in-reg fit e) = cell-inline (rep-prim fit) (trans TCB.cell0-fs10 (cong just (trans cell0v≡in e)))
+      seed-cell (in-unit e)    = cell-inline (rep-unit e TCR.cell0v) TCB.cell0-fs10
+      seed-cell (in-loc loc valid bf e) =
+        cell-ptr (trans TCB.cell0-fs10 (cong just (trans cell0v≡in e))) (live-lift TCB.bf-advance bf)
+                 (TCB.valid-transport x loc (live→bf bf) valid)
+
       mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F}
                    (retVal (evalᴰ (Ana wf coalg) x)) TCR.obj-loc (floc TCR.fs10)
-      mk-valid = valid-ν-susp-wf (from-ana wf {coalg = coalg} {seed = x}) tt
-                   TCR.cell0v TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
+      mk-valid = valid-ν-wf (ABB.ana-nu (AB.ana-p x tt TCB.code-fs10 TCB.before-suc (seed-cell inp)))
 
       place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (Ana wf coalg) x)) (floc TCR.fs10)
@@ -248,7 +295,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- cell has all three residences, as a closure's environment does.
   ------------------------------------------------------------------------
   obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (in-ν wf)
-  obs-correct-in-ν {F} wf n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
+  obs-correct-in-ν {F} wf n l prog base ss cr span ((j , feq , sp , lab) ∷ []) _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
@@ -276,10 +323,13 @@ module TwoCellC {FS : FrameSemantics} where
       cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
       cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
+      module SU = Susp n l prog base s alloc cl rs n≤ nh span
+
       mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F}
                    (retVal (evalᴰ (in-ν wf) x)) TCR.obj-loc (floc TCR.fs10)
-      mk-valid = valid-ν-susp-wf (from-layer wf {layer = x}) tt
-                   TCR.cell0v TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
+      mk-valid = SU.susp j feq
+        (NF.force-layer wf l prog j mIn x s alloc ss cr sp lab inp
+           (falloc TCR.fs10) (floc TCR.fs10) TCR.cell0v SU.kept SU.cell0v≡in)
 
       place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (in-ν wf) x)) (floc TCR.fs10)

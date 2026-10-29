@@ -165,15 +165,17 @@ module Core {FS : FrameSemantics} where
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedBase {FS}
-    using (νOrigin; from-ana; from-layer; prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
-          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy
-          ; Live; live→bf; bf→live; live-heap; live-lift; live-map) public
+    using (prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
+          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
+          ; Live; live→bf; bf→live; live-heap; live-lift; live-map; live-ns) public
   open ClosureWellFormedPat {FS}
     using (valid-unit-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf
-          ; valid-closure-wf; valid-closure-reg-wf; valid-ν-susp-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
+          ; valid-closure-wf; valid-closure-reg-wf; valid-ν-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
   open ClosureWellFormedDef {FS}
     using (ValidAtWF; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result
-          ; CalleeRunP; module CalleeRunP; callee-run; CallRuns; VAt; rp→place; fo→valid; valid→fo; μ-layer; valid-μ
+          ; CalleeRunP; module CalleeRunP; callee-run; crun-map; CallRuns; VAt; rp→place
+          ; NuV; ForceRuns; NuStep; module NuStep; module NuCoind; nu-mode; nu-heap; nu-seed; nu-lbl; nu-j; nu-cell0; nu-cell1; nu-live1; nu-code; nu-force
+          ; rp-map; layer→valid; valid→layer; ν-layer-place; fo→valid; valid→fo; μ-layer; valid-μ
           ; validityWF-transport; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
@@ -263,7 +265,7 @@ module Core {FS : FrameSemantics} where
   -- build one: `Ana` emitted no instructions. That made `obs-correct-Out` a
   -- theorem about an empty case — the audit's finding, and the reason this
   -- lemma is gone rather than weakened. A ν IS resident now, as a SUSPENSION
-  -- (seed cell + coalgebra code cell — `valid-ν-susp-wf`), so `Out` owes a
+  -- (seed cell + coalgebra code cell — `NuV`), so `Out` owes a
   -- real proof against a machine that forces, not one that moves a pointer.
 
   -- D152: the trace the compiler ACTUALLY emits for `ir` at emission site
@@ -726,45 +728,9 @@ module Core {FS : FrameSemantics} where
   -- the arrow case of `ValidAtWF`), so `apply` reads the run off the value.
   -- `curry` owes it instead (S3).
 
-  -- D198: the ν analogue of the old `CalleeRuns`, and a SIBLING rather than an
-  -- instance because the two block kinds are called differently BY
-  -- CONSTRUCTION: `apply` packs an `(env , arg)` pair on the heap and points
-  -- `Input1` at it, while `Out` puts the SEED in `Input1` directly. That is
-  -- what makes a ν's code cell a coalgebra rather than a closure body, so one
-  -- premise cannot serve both.
-  --
-  -- plan 0.88: over EVERY ν origin (`νOrigin`), not only `Ana`'s. The premise
-  -- is the suspension's own fields — its origin, its seed cell and its code
-  -- cell — so the block named by `ℓ` is run on exactly the thing the origin
-  -- put in cell 0: an `Ana`'s seed `(e , a)` (D273), or an `in-ν`'s layer, for
-  -- which the block is the identity.
-  CoalgRuns : AbstractTrace → Set
-  CoalgRuns prog =
-    ∀ {F : Once.IRTy.IRFunctor} (wf : WellFormedFI F)
-      {T : IRTy} {seed : ⟦ T ⟧} {v : ⟦ ν-type F ⟧}
-      (org : νOrigin F T seed v) (ℓ : LabelId)
-      {alloc' : AllocState {FS}}
-      {vloc : ValueLocation FS} {st : LocState FS}
-    → LocMatchesMode Heap vloc
-    -- plan 0.125 S1 (ν STUB): the seed is opaque in the value now.
-    → (seed-sv : StoredValue FS) → SMCore.MemOps.readLoc st vloc ≡ just seed-sv
-    → SMCore.MemOps.readLoc st (sucLoc vloc) ≡ just (SV-Code ℓ)
-    → BeforeFrontier alloc' (sucLoc vloc)
-    → ∃[ j ]
-        ( (find-thunk prog ℓ ≡ just j)
-        × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
-             (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
-           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
-           → falloc fs ≡ enter-call pre-alloc
-           → readReg (regs (floc fs)) Input1 ≡ seed-sv
-           -- D199: an `Ana` block is the coalgebra FOLLOWED BY the
-           -- re-suspension of every recursive position, so what it computes is
-           -- not `coalg` but the FORCED LAYER — `evalᴰ (Out wf)` of the very ν
-           -- whose code cell named this label. That is `mapAnaᵈ H H coalg
-           -- (valueT (coalg a))`, which is precisely the half of `forceᵈ` the
-           -- emitter used to skip. For `in-ν` it is the stored layer.
-           → CalleeRun prog fs ret-pc rs (⟦ F ⟧TI (ν-type F))
-               (evalᴰ (Out wf) v) k))
+  -- plan 0.125 S1: `CoalgRuns` (D198, the ν half of the block table) is GONE.
+  -- A ν's witness now says what forcing it does (`NuV.nu-force`), so `Out`
+  -- reads the run off the value; `Ana` and `in-ν` owe it instead.
 
   -- D245: the third block kind, the program's own FUNCTIONS. A direct call
   -- (`Call f`, lowered to `c-call-fn f`) names its callee statically, so the
@@ -791,7 +757,6 @@ module Core {FS : FrameSemantics} where
   -- fourteen discharge clauses that only pass it along.
   record BlockRuns (prog : AbstractTrace) : Set where
     field
-      coalgs    : CoalgRuns prog
       functions : FnRuns prog
 
   -- D339: the old `next-slot alloc ≤ n`, from the invariant.
