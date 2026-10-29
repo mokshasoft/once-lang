@@ -1,0 +1,32 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- The optimizer's rules on elaborated code (plan 0.39). Each definition holds
+-- a redex of one or two rules of `Once.Optimize`; `OptimizeSpec` checks the
+-- elaborated IR (`once elaborate`) and the optimized IR (`once optimize`) of
+-- each, and that the program emits the same trace with and without the
+-- optimizer. `Once.Optimize.Examples` shows every rule on hand-built IR.
+--
+-- Expected observable: emits 5, 6; exit 7.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+-- a morphism into Unit with no effect is `terminal`
+unitOf : Unit * Int -> Unit
+unitOf p = fst p
+
+-- a morphism out of Void is `initial`
+vinl : Void -> Void + Int
+vinl v = (inl v : Void + Int)
+
+-- `id . f` is `f`, and `snd . <g, h>` is `h`
+left : Int -> Int
+left x = destruct (inl x : Int + Int) of { Left a -> a ; Right b -> 0 }
+
+-- `fst . <g, h>` is `g`
+outer : Int -> Int
+outer x = destruct (inl 0 : Int + Int) of { Left a -> x ; Right b -> b }
+
+main : Act Unit Void
+main = exit@S . ((\_ -> 7) . emit@E . (\_ -> outer 6) . emit@E . (\_ -> left 5))

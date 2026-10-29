@@ -30,6 +30,7 @@ module Backend.Common
   , testStrataDir
   , buildAndRunTrace
   , buildAndRunTraceOn
+  , buildAndRunTraceWith
   , buildAndRunTraceFile
   , traceCases
   , foreverCases
@@ -171,7 +172,7 @@ exitCases label name expected =
     [ testCase (archName a) (buildAndRunOn a name expected >>= either assertFailure pure)
     | a <- backendArches ]
 
--- | 'buildAndRunTraceOn' for a `.once` FILE in `test/`, rather than inline
+-- | 'buildAndRunTraceWith' for a `.once` FILE in `test/`, rather than inline
 -- source.
 --
 -- D220/D221: this is the piece that did not exist, and its absence is why a
@@ -184,15 +185,15 @@ exitCases label name expected =
 -- compiled byte-identical to `main = exit@S 7` while claiming one emit per
 -- layer.
 --
--- Everything else is shared with `buildAndRunTraceOn`, so a file-based trace
+-- Everything else is shared with `buildAndRunTraceWith`, so a file-based trace
 -- test and an inline one cannot disagree about how a program is compiled.
-buildAndRunTraceFile :: BackendArch -> String -> IO (Either String (String, Int))
-buildAndRunTraceFile arch name = do
+buildAndRunTraceFile :: [String] -> BackendArch -> String -> IO (Either String (String, Int))
+buildAndRunTraceFile flags arch name = do
   source <- TIO.readFile ("test/" ++ name ++ ".once")
-  buildAndRunTraceOn arch name source
+  buildAndRunTraceWith flags arch name source
 
 -- | Assert a `.once` FILE's whole observable: the ordered SigOp trace AND the
--- exit code, on every backend arch.
+-- exit code, on every backend arch, built with the optimizer and without it.
 --
 -- The trace is the observable (D058); the exit code alone is not. A test that
 -- asserts only `exit@S N` guards the exit path and nothing else — which is what
@@ -200,8 +201,8 @@ buildAndRunTraceFile arch name = do
 traceCases :: String -> String -> [Integer] -> Int -> TestTree
 traceCases label name emitted expected =
   testGroup label
-    [ testCase (archName a) $ do
-        r <- buildAndRunTraceFile a name
+    [ testCase (archName a ++ concatMap (' ' :) flags) $ do
+        r <- buildAndRunTraceFile flags a name
         case r of
           Left err -> assertFailure err
           Right (out, code) -> case decodeTrace a out of
@@ -210,7 +211,7 @@ traceCases label name emitted expected =
               assertEqual ("[" ++ archName a ++ "] emitted arguments (effect order + values)")
                           emitted (map (signedAt a) ws)
               assertEqual ("[" ++ archName a ++ "] exit code") expected code
-    | a <- backendArches ]
+    | a <- backendArches, flags <- [[], ["--no-optimize"]] ]
 
 -- | A `.once` FILE that must never end (D317: a server is the anamorphism into
 -- `Eff`, which need not stop). On every backend arch it is run for `foreverSecs`
@@ -360,16 +361,20 @@ decodeTrace arch out
 -- literal emits eight bytes of `binary64` here and four of `binary32` on
 -- x86-32, because a `Float` denotes its target's representation (D113).
 buildAndRunTraceOn :: BackendArch -> String -> T.Text -> IO (Either String (String, Int))
-buildAndRunTraceOn arch name source = do
+buildAndRunTraceOn = buildAndRunTraceWith []
+
+-- | 'buildAndRunTraceOn' with extra build flags (e.g. `--no-optimize`).
+buildAndRunTraceWith :: [String] -> BackendArch -> String -> T.Text -> IO (Either String (String, Int))
+buildAndRunTraceWith flags arch name source = do
   let tag     = archName arch
-      testDir = "/tmp/once_trace_" ++ tag ++ "_" ++ name
+      testDir = "/tmp/once_trace_" ++ tag ++ concat flags ++ "_" ++ name
       srcFile = testDir </> name ++ ".once"
       exeFile = testDir </> name
   createDirectoryIfMissing True testDir
   TIO.writeFile srcFile source
   (buildExit, _out, buildErr) <- runOnceArch arch
-    [ "build", "--target", tag, "--exe"
-    , "--strata", testStrataDir, srcFile, "-o", exeFile ]
+    ([ "build", "--target", tag, "--exe"
+     , "--strata", testStrataDir, srcFile, "-o", exeFile ] ++ flags)
   case buildExit of
     ExitFailure _ -> do
       cleanupDir testDir

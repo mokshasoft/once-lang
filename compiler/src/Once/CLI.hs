@@ -185,8 +185,8 @@ run cmd = case cmd of
   Check opts      -> runCheck opts
   Parse opts      -> runParse opts
   Preprocess opts -> runPreprocess opts
-  Elaborate opts  -> runNotWired "elaborate" opts
-  Optimize opts   -> runNotWired "optimize" opts
+  Elaborate opts  -> runDumpIR False opts
+  Optimize opts   -> runDumpIR True opts
   Escape opts     -> runNotWired "escape" opts
   CodeGen opts    -> runNotWired "codegen" opts
   Fmt opts        -> runFmt opts
@@ -251,6 +251,25 @@ runPreprocess opts = do
           exitFailure
         _ -> do
           TIO.putStrLn "Internal error: unexpected result from preprocess"
+          exitFailure
+
+-- | Run the elaborate (`False`) or optimize (`True`) stage: parse + resolve
+-- imports + compile, and show each function's IR as the build compiles it
+-- without or with the optimizer (plan 0.39).
+runDumpIR :: Bool -> StageOptions -> IO ()
+runDumpIR doOpt opts = do
+  let inputPath = stageInput opts
+  source <- TIO.readFile inputPath
+  loadResult <- loadAndResolve inputPath Nothing source
+  case loadResult of
+    Left err -> do
+      TIO.putStrLn $ "Error: " <> T.pack err
+      exitFailure
+    Right (mod_, _, _) ->
+      case Bridge.dumpIRFromModule doOpt mod_ of
+        Right out -> emitStage (stageOutput opts) out >> exitSuccess
+        Left err -> do
+          TIO.putStrLn $ "Error: " <> err
           exitFailure
 
 -- | Run the parse command: parse + resolve imports, show signatures.

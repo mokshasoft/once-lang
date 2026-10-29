@@ -1,43 +1,87 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- | Optimizer trace-preservation tests (Plan 0.44 / 0.46).
+-- | Optimizer tests (Plan 0.44 / 0.46 / 0.39).
 --
--- The observable of a Once program is its ordered SigOp trace; the grand
--- theorem (Once.Adequacy.Compile.correct) says the compiled bytes emit the
--- same trace as the source. For the OPTIMIZED pipeline that correctness is
--- currently POSTULATED (the `opt-trace` postulate), and tests/run-exit-tests.sh
--- warns the optimizer's `terminal ∘ f = terminal` rule could silently drop
--- effectful SigOps. Yet every other codegen test in this suite builds with
--- `--no-optimize`, so the optimized path's observable behaviour was untested.
+-- The observable of a Once program is its ordered SigOp trace, and the
+-- optimizer keeps it (D347: `opt-trace` is a theorem, from
+-- `Once.Adequacy.OptimizePreserves`). These tests check the compiled side:
 --
--- These tests build representative Layer 0-5 + arith programs BOTH with the
--- optimizer (the default) and with `--no-optimize`, and assert the two runs
--- produce the SAME exit code — i.e. the optimizer preserves the (Layer-0)
--- observable. For Layer 0 the trace is exactly `[(exit, N)]`, so the exit code
--- IS the observable; a richer multi-SigOp/stdout trace test is not yet possible
--- because the only working observable effect on the x86_64 backend is the exit
--- syscall (the File/println interpretation does not parse and `emit` is pending).
+--   * the optimizer's rules FIRE on elaborated code: `opt-rules.once` holds a
+--     redex per rule that elaborated code reaches, and its IR is checked
+--     before (`once elaborate`) and after (`once optimize`). The rules only
+--     hand-built IR reaches are shown in `Once.Optimize.Examples`;
+--   * that program's trace, with and without the optimizer (`traceCases`);
+--   * representative Layer 0-5 + arith programs exit alike built both ways
+--     (the exit suites in `tests/` do the same for every program).
 module OptimizeSpec (optimizeTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import Data.List (isInfixOf, stripPrefix)
 import qualified Data.Text.IO as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>))
 import System.Process (readProcessWithExitCode)
 
-import Backend.Common (runOnce, cleanupDir)
+import Backend.Common (runOnce, cleanupDir, traceCases)
 
 optimizeTests :: TestTree
-optimizeTests = testGroup "Optimizer trace preservation"
-  [ testGroup "optimized exit code matches --no-optimize"
+optimizeTests = testGroup "Optimizer"
+  [ testGroup "rules fire on elaborated code (opt-rules.once)"
+      [ ruleTest fn rule before after | (fn, rule, before, after) <- ruleFixtures ]
+  , traceCases "opt-rules.once keeps its trace" "opt-rules" [5, 6] 7
+  , testGroup "optimized exit code matches --no-optimize"
       [ differentialTest name alloc | (name, alloc) <- fixtures ]
   , testGroup "optimized build still produces the correct exit code"
       [ optimizedExitTest name code alloc | (name, code, alloc) <- correctnessFixtures ]
   ]
+
+-- | (definition in `opt-rules.once`, rule, a redex in its elaborated IR, its
+-- whole optimized IR).
+ruleFixtures :: [(String, String, String, String)]
+ruleFixtures =
+  [ ( "unitOf", "a quiet morphism into Unit is terminal"
+    , "fst . (snd . <id . fst, snd>)"
+    , "curry(terminal) . terminal" )
+  , ( "vinl", "a morphism out of Void is initial"
+    , "inl . (snd . <id . fst, snd>)"
+    , "curry(initial . snd) . terminal" )
+  , ( "left", "id . f = f, snd . <g, h> = h"
+    , "[snd . (id . <id . fst, snd>), "
+    , "curry([snd, (0 . terminal) . terminal] . (((apply . <[curry(inl . <terminal, fst>), curry(inr . <terminal, fst>)] . fst, terminal>) . <snd, terminal>) . <terminal, (inl . snd) . <terminal, snd>>)) . terminal" )
+  , ( "outer", "fst . <g, h> = g"
+    , "[snd . (fst . <<id . fst, snd> . fst, snd>), "
+    , "curry([snd . (<terminal, snd> . fst), snd] . (((apply . <[curry(inl . <snd, fst>), curry(inr . <snd, fst>)] . fst, snd>) . <snd, fst>) . <<terminal, snd>, (inl . ((0 . terminal) . terminal)) . terminal>)) . terminal" )
+  ]
+
+-- | The rule's redex is in the elaborated IR of `fn`, and the optimized IR is
+-- the expected one.
+ruleTest :: String -> String -> String -> String -> TestTree
+ruleTest fn rule before after =
+  testCase (fn ++ ": " ++ rule) $ do
+    elab <- dumpIR "elaborate"
+    opt  <- dumpIR "optimize"
+    case (lookup fn elab, lookup fn opt) of
+      (Just e, Just o) -> do
+        assertBool ("elaborated " ++ fn ++ " lacks the redex " ++ show before ++ ":\n" ++ e)
+                   (before `isInfixOf` e)
+        assertEqual ("optimized " ++ fn) after o
+      _ -> assertFailure (fn ++ " is not among the compiled functions")
+
+-- | `once <stage> test/opt-rules.once`, as (name, IR) pairs.
+dumpIR :: String -> IO [(String, String)]
+dumpIR stage = do
+  (code, out, err) <- runOnce [stage, "test/opt-rules.once"]
+  case code of
+    ExitFailure _ -> assertFailure ("once " ++ stage ++ " failed: " ++ out ++ err) >> pure []
+    ExitSuccess   -> pure (defs (lines out))
+  where
+    defs (sig : body : rest)
+      | Just ir <- stripPrefix "  = " body = (takeWhile (/= ' ') sig, ir) : defs rest
+    defs _ = []
 
 -- | (fixture, allocation strategy). Spread across the categorical layers and
 -- the arith lowering so the differential covers projections, sums, closures,

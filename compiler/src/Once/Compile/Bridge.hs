@@ -38,6 +38,7 @@ module Once.Compile.Bridge
   , moduleWarnings
   , resolveImports
   , compileFromModule
+  , dumpIRFromModule
     -- * Formatting (plan 0.124)
   , formatSource
   ) where
@@ -49,6 +50,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
+import qualified MAlonzo.Code.Once.Compile.Dump as MCD
 import qualified MAlonzo.Code.Once.IR as MCIR
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Warnings as MW
@@ -268,6 +270,14 @@ compileFromModule m stage doOpt arch (Resolved mod_) =
   fromMResult
     (MC.d_compileFromModule_1774
        (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))
+
+-- | Each compiled function's IR as text, unoptimized (`False`) or optimized
+-- (`True`), or the compiler's error (`Once.Compile.Dump.dumpIR`, plan 0.39).
+dumpIRFromModule :: Bool -> Resolved -> Either Text Text
+dumpIRFromModule doOpt (Resolved mod_) =
+  case MCD.d_dumpIR_16 doOpt (unsafeCoerce mod_) of
+    MSum.C_inj'8321'_38 err -> Left (agdaToText err)
+    MSum.C_inj'8322'_42 out -> Right (agdaToText out)
 
 -- | A source text in the canonical layout (`once fmt`, plan 0.124), or the
 -- parser's error. The formatting is Agda's (`Once.Format.formatSource`).
