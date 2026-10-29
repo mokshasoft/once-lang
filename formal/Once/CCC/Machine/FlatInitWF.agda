@@ -21,7 +21,7 @@ module Once.CCC.Machine.FlatInitWF (FS : FrameSemantics) where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
 open import Data.Bool using (Bool; true; false; _∨_)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; drop)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -48,7 +48,10 @@ open AbstractExec {FS}
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI)
-open import Once.CCC.Codegen.InitWindow using (Apart)
+open import Once.CCC.Codegen.InitWindow using (Apart; Win; WinFrom; InitDisc; not-alloc?; []; _∷_; alloc
+  ; w-done; w-stash; w-store-slot; w-mov-in; w-load-stash; w-load-slot; w-restore-stash; w-restore-slot
+  ; w-load; w-load-suc; w-store; w-store-suc; w-tag; w-code)
+open import Data.Bool using (T)
 open import Once.CCC.Machine.FlatStoreWF FS using (StoreWF; sv-below; svm-below; module StoreWF)
 open StoreWF using (wf-regs; wf-heap; wf-stack)
 open import Once.CCC.Machine.FlatPtrBounds FS using (size-with-new; size-with-old)
@@ -773,3 +776,144 @@ step-store-suc {i} {p} {w0} {w1} prog fs op sp = go (readReg (regs (floc fs)) In
     go (SV-Tag t)   e _ = inj₁ (subst Halted (sym (post _ e)) refl)
     go (SV-Lit q x) e _ = inj₁ (subst Halted (sym (post _ e)) refl)
     go (SV-Code c)  e _ = inj₁ (subst Halted (sym (post _ e)) refl)
+
+------------------------------------------------------------------------
+-- Part C: THE INVARIANT OF A RUN, over a program the code generator
+-- emitted (`InitDisc`, part 1): halted, or full, or a window open with the
+-- code from the pc on the rest of its `Win`.
+------------------------------------------------------------------------
+data OpenAt (prog : AbstractTrace) (fs : FlatState) : Set where
+  mkOA : ∀ {o i p w0 w1} → Open o i p w0 w1 fs → Win o i p w0 w1 (drop (fpc fs) prog) → OpenAt prog fs
+
+Inv : AbstractTrace → FlatState → Set
+Inv prog fs = Halted fs ⊎ (Full (falloc fs) (floc fs) ⊎ OpenAt prog fs)
+
+drop-fetch : ∀ (prog : AbstractTrace) (k : ℕ) (x : AbstractInstr)
+           → fetch prog k ≡ just x → drop k prog ≡ x ∷ drop (suc k) prog
+drop-fetch []       k       x ()
+drop-fetch (y ∷ ys) zero    x refl = refl
+drop-fetch (y ∷ ys) (suc k) x e    = drop-fetch ys k x e
+
+-- what the emitted code says at a fetched position: no allocation, or a
+-- pair allocation with its window after it
+init-view : ∀ {prog : AbstractTrace} (k : ℕ) {x : AbstractInstr}
+          → InitDisc prog → fetch prog k ≡ just x
+          → T (not-alloc? x) ⊎ ((x ≡ instr-alloc-heap 2) × WinFrom (drop (suc k) prog))
+init-view k       []          ()
+init-view zero    (na ∷ d)    refl = inj₁ na
+init-view (suc k) (na ∷ d)    e    = init-view k d e
+init-view zero    (alloc w d) refl = inj₂ (refl , w)
+init-view (suc k) (alloc w d) e    = init-view k d e
+
+na-sound : ∀ (x : AbstractInstr) → T (not-alloc? x) → ∀ n → ¬ (x ≡ instr-alloc-heap n)
+na-sound x t n refl = t
+
+-- From a full state: an allocation opens a window, anything else keeps it full.
+full-step : ∀ (prog : AbstractTrace) (fs : FlatState) (x : AbstractInstr)
+          → InitDisc prog → Full (falloc fs) (floc fs) → fetch prog (fpc fs) ≡ just x → ImageI x
+          → StoreWF (next-heap-ref (falloc fs)) (floc fs) → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+          → Inv prog (flat-exec-instr x prog fs)
+full-step prog fs x d full ft ff wf cl with init-view (fpc fs) d ft
+... | inj₁ t        = inj₂ (inj₁ (full-keep {fs} {flat-exec-instr x prog fs} (keeps-flat x prog fs ff (na-sound x t)) full))
+... | inj₂ (refl , w) = inj₂ (inj₂ (mkOA (open-alloc prog fs full wf cl) w))
+
+private
+  lift : ∀ {prog : AbstractTrace} {fs' : FlatState} {o i p w0 w1}
+       → Halted fs' ⊎ Open o i p w0 w1 fs' → Win o i p w0 w1 (drop (fpc fs') prog) → Inv prog fs'
+  lift (inj₁ h)  w = inj₁ h
+  lift (inj₂ op) w = inj₂ (inj₂ (mkOA op w))
+
+-- An open window steps by its `Win` constructor; `w-done` closes it first.
+open-step : ∀ (prog : AbstractTrace) (fs : FlatState) (x : AbstractInstr) {o i p w0 w1}
+          → InitDisc prog → fetch prog (fpc fs) ≡ just x → ImageI x
+          → StoreWF (next-heap-ref (falloc fs)) (floc fs) → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+          → SPInv (floc fs)
+          → Open o i p w0 w1 fs → Win o i p w0 w1 (x ∷ drop (suc (fpc fs)) prog)
+          → Inv prog (flat-exec-instr x prog fs)
+open-step prog fs x d ft ff wf cl sp op w-done = full-step prog fs x d (close-done op) ft ff wf cl
+open-step prog fs _ d ft ff wf cl sp op (w-stash {s = s} w)           = lift (inj₂ (step-stash prog fs s op)) w
+open-step prog fs _ d ft ff wf cl sp op (w-store-slot {s = s} a w)    = lift (inj₂ (step-store-slot prog fs s op a)) w
+open-step prog fs _ d ft ff wf cl sp op (w-mov-in w)                  = lift (inj₂ (step-mov-in prog fs op)) w
+open-step prog fs _ d ft ff wf cl sp op (w-load-stash w)              = lift (inj₂ (step-load-stash prog fs op)) w
+open-step prog fs _ d ft ff wf cl sp op (w-load-slot {s = s} a w)     = lift (step-load-slot prog fs s op a) w
+open-step prog fs _ d ft ff wf cl sp op (w-restore-stash w)           = lift (inj₂ (step-restore-stash prog fs op)) w
+open-step prog fs _ d ft ff wf cl sp op (w-restore-slot {s = s} a w)  = lift (step-restore-slot prog fs s op a) w
+open-step prog fs _ d ft ff wf cl sp op (w-load w)                    = lift (step-load prog fs op sp) w
+open-step prog fs _ d ft ff wf cl sp op (w-load-suc w)                = lift (step-load-suc prog fs op sp) w
+open-step prog fs _ d ft ff wf cl sp op (w-store w)                   = lift (step-store prog fs op sp) w
+open-step prog fs _ d ft ff wf cl sp op (w-store-suc w)               = lift (step-store-suc prog fs op sp) w
+open-step prog fs _ d ft ff wf cl sp op (w-tag {n = n} w)             = lift (inj₂ (step-tag prog fs n op)) w
+open-step prog fs _ d ft ff wf cl sp op (w-code {l = l} w)            = lift (inj₂ (step-code prog fs l op)) w
+
+-- THE STEP: the invariant survives every step of a running machine.
+inv-step : ∀ (prog : AbstractTrace) (fs : FlatState) (x : AbstractInstr)
+         → InitDisc prog → Inv prog fs
+         → fetch prog (fpc fs) ≡ just x → LocState.halted (floc fs) ≡ false → ImageI x
+         → StoreWF (next-heap-ref (falloc fs)) (floc fs) → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+         → SPInv (floc fs)
+         → Inv prog (flat-exec-instr x prog fs)
+inv-step prog fs x d (inj₁ hd) ft h ff wf cl sp with trans (sym hd) h
+... | ()
+inv-step prog fs x d (inj₂ (inj₁ full)) ft h ff wf cl sp = full-step prog fs x d full ft ff wf cl
+inv-step prog fs x d (inj₂ (inj₂ (mkOA op w))) ft h ff wf cl sp =
+  open-step prog fs x d ft ff wf cl sp op (subst (Win _ _ _ _ _) (drop-fetch prog (fpc fs) x ft) w)
+
+------------------------------------------------------------------------
+-- THE CONSUMER: a load through `Input1` reads a written cell. Full, the
+-- cell is in an allocated block; open, `Win` allows the load only when
+-- `Input1` is not the fresh pointer, so the cell is in an older block.
+------------------------------------------------------------------------
+private
+  older-of : ∀ {o i p w0 w1} {fs : FlatState} (op : Open o i p w0 w1 fs) (hl : HeapLocation)
+           → ref-id (heap-ref hl) < next-heap-ref (falloc fs) → ¬ (ref-id (heap-ref hl) ≡ blk op)
+           → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl)) → Written (floc fs) hl
+  older-of op hl lt ne ib with m<1+n⇒m<n∨m≡n (subst (ref-id (heap-ref hl) <_) (nx op) lt)
+  ... | inj₁ r<b = older op hl r<b ib
+  ... | inj₂ r≡b = ⊥-elim (ne r≡b)
+
+  -- the cell `g hl` a load reads, where `g` keeps the block (`id` or `sucHL`)
+  reads : ∀ (prog : AbstractTrace) (fs : FlatState) (x : AbstractInstr) (g : HeapLocation → HeapLocation)
+        → (∀ hl → ref-id (heap-ref (g hl)) ≡ ref-id (heap-ref hl))
+        → (∀ {o p w0 w1 t} → Win o true p w0 w1 (x ∷ t) → w0 ≡ true × w1 ≡ true)
+        → Inv prog fs → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just x
+        → (hl : HeapLocation) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+        → ref-id (heap-ref hl) < next-heap-ref (falloc fs)
+        → heap-offset (g hl) < block-size (falloc fs) (ref-id (heap-ref (g hl)))
+        → Written (floc fs) (g hl)
+  reads prog fs x g gr only (inj₁ hd) h ft hl eq lt ib with trans (sym hd) h
+  ... | ()
+  reads prog fs x g gr only (inj₂ (inj₁ full)) h ft hl eq lt ib =
+    full (g hl) (subst (_< next-heap-ref (falloc fs)) (sym (gr hl)) lt) ib
+  reads prog fs x g gr only (inj₂ (inj₂ (mkOA {o} {i} {p} {w0} {w1} op w))) h ft hl eq lt ib =
+    go i op (subst (Win o i p w0 w1) (drop-fetch prog (fpc fs) x ft) w)
+    where
+      lt' = subst (_< next-heap-ref (falloc fs)) (sym (gr hl)) lt
+      go : ∀ (i' : Bool) (op' : Open o i' p w0 w1 fs)
+         → Win o i' p w0 w1 (x ∷ drop (suc (fpc fs)) prog) → Written (floc fs) (g hl)
+      go false op' _ = older-of op' (g hl) lt'
+                         (λ e → subst (Avoids (blk op')) eq (in1 op') (trans (sym (gr hl)) e)) ib
+      go true  op' wn with only wn
+      ... | refl , refl = close-done op' (g hl) lt' ib
+
+private
+  only-ld : ∀ {o p w0 w1 t} → Win o true p w0 w1 (load-indirect ∷ t) → (w0 ≡ true) × (w1 ≡ true)
+  only-ld w-done = refl , refl
+
+  only-lds : ∀ {o p w0 w1 t} → Win o true p w0 w1 (load-indirect-suc ∷ t) → (w0 ≡ true) × (w1 ≡ true)
+  only-lds w-done = refl , refl
+
+load-written : ∀ (prog : AbstractTrace) (fs : FlatState) → Inv prog fs → LocState.halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just load-indirect
+             → (hl : HeapLocation) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+             → ref-id (heap-ref hl) < next-heap-ref (falloc fs)
+             → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
+             → Written (floc fs) hl
+load-written prog fs iv h ft = reads prog fs load-indirect (λ hl → hl) (λ _ → refl) only-ld iv h ft
+
+load-suc-written : ∀ (prog : AbstractTrace) (fs : FlatState) → Inv prog fs → LocState.halted (floc fs) ≡ false
+                 → fetch prog (fpc fs) ≡ just load-indirect-suc
+                 → (hl : HeapLocation) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → ref-id (heap-ref hl) < next-heap-ref (falloc fs)
+                 → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
+                 → Written (floc fs) (sucHL hl)
+load-suc-written prog fs iv h ft = reads prog fs load-indirect-suc sucHL (λ _ → refl) only-lds iv h ft
