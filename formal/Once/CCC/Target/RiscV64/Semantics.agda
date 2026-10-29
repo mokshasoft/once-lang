@@ -23,7 +23,7 @@ open import Once.CCC.Target.RiscV64.Syntax
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _<ᵇ_; _≟_)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using ([]; _∷_)
+open import Data.List using ([]; _∷_; drop)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Function using (case_of_)
 open import Relation.Nullary using (yes; no)
@@ -273,6 +273,16 @@ find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
 find-label : Program → Label → Maybe ℕ
 find-label prog target = find-label-go target prog 0
 
+-- Plan 0.123 A.4: the next `1:` at or after index `from` (GNU `as`'s `1f`).
+find-local-1-go : Program → ℕ → Maybe ℕ
+find-local-1-go []             i = nothing
+find-local-1-go (local-1 ∷ is) i = just i
+{-# CATCHALL #-}
+find-local-1-go (_ ∷ is)       i = find-local-1-go is (suc i)
+
+find-local-1 : Program → ℕ → Maybe ℕ
+find-local-1 prog from = find-local-1-go (drop from prog) from
+
 -- The shared "transfer control to a label" move: land at the resolved index,
 -- or halt when the label is absent (x86-64's `jmp`/`je` do exactly this
 -- inline; RV64 has four such instructions, so it is named).
@@ -427,6 +437,18 @@ execInstr prog s (bne rs1 rs2 target) =
   in if v1 ≡ᵇ v2
      then just (record s { pc = pc s + 1 })
      else jump-to prog s target
+
+-- Plan 0.123 A.4: unsigned greater-or-equal jumps forward to the next `1:`.
+execInstr prog s (bgeu-fwd rs1 rs2) =
+  let v1 = readReg (regs s) rs1
+      v2 = readReg (regs s) rs2
+  in if v1 <ᵇ v2
+     then just (record s { pc = pc s + 1 })
+     else case find-local-1 prog (pc s + 1) of λ where
+            (just pc') → just (record s { pc = pc' })
+            nothing    → just (record s { halted = true })
+
+execInstr prog s local-1 = just (record s { pc = pc s + 1 })
 
 ------------------------------------------------------------------------
 -- Jump Instructions

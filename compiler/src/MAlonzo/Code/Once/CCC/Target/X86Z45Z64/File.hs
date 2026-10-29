@@ -171,7 +171,7 @@ d_label'45'defs_86 v0
         -> let v3 = d_label'45'defs_86 (coe v2) in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_70 v4
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_74 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v4))

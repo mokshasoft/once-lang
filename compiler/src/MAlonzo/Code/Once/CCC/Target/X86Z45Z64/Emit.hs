@@ -231,7 +231,11 @@ d_showInstr_32 v0
         -> coe ("    ud2" :: Data.Text.Text)
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_syscall_68
         -> coe ("    syscall" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_70 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jbe'45'fwd_70
+        -> coe ("    jbe 1f" :: Data.Text.Text)
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_local'45'1_72
+        -> coe ("1:" :: Data.Text.Text)
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_74 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              (MAlonzo.Code.Once.CCC.Label.d_labelSym_290 (coe v1))

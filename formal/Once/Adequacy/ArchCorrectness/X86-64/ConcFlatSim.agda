@@ -26,7 +26,7 @@ open FrameSemantics using (frame-word)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
 open import Once.CCC.Label using (once; EntryId)
 open import Once.CCC.Target.X86-64.Syntax using
-  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; rsp; rax; rdi; rbx; r14; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; syscall; label; call-l)
+  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; rsp; rax; rdi; rbx; r14; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; syscall; label; call-l; jbe-fwd; local-1)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
@@ -265,6 +265,8 @@ nonhalt-noncall prog s (push _)   eq hnh = refl
 nonhalt-noncall prog s (pop _)    eq hnh = refl
 nonhalt-noncall prog s nop        eq hnh = refl
 nonhalt-noncall prog s ud2        eq hnh = refl
+nonhalt-noncall prog s jbe-fwd    eq hnh = refl
+nonhalt-noncall prog s local-1    eq hnh = refl
 nonhalt-noncall prog s syscall    eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl
 nonhalt-noncall prog s (call-l _) eq hnh = refl

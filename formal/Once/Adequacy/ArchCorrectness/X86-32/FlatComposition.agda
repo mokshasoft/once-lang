@@ -40,7 +40,7 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Once.CCC.Target.X86-32.Syntax
-  using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; label; mov-code; jmp-l; reg; imm; esp; slots)
+  using (Program; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; call-l; ret; push; pop; nop; ud2; jbe-fwd; local-1; label; mov-code; jmp-l; reg; imm; esp; slots)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------
@@ -72,6 +72,8 @@ is-label? nop = false
 is-label? ud2 = false
 is-label? (mov-code _ _) = false
 is-label? (jmp-l _) = false
+is-label? jbe-fwd = false
+is-label? local-1 = false
 
 -- The scan steps past a non-label. One `refl` per constructor: the case split
 -- is what makes `X.find-label-go`'s catch-all reduce.
@@ -99,6 +101,8 @@ skip-law t nop rest xi _ = refl
 skip-law t ud2 rest xi _ = refl
 skip-law t (mov-code _ _) rest xi _ = refl
 skip-law t (jmp-l _) rest xi _ = refl
+skip-law t jbe-fwd rest xi _ = refl
+skip-law t local-1 rest xi _ = refl
 
 -- The scan DECIDES on a label instruction, by `_≡ᵇᴸ_`. (`label-miss`
 -- subsumes what Plan 0.63 called `find-label-go-skip-other`: a `thunk` label

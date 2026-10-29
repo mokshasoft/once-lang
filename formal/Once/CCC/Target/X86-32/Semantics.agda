@@ -18,8 +18,8 @@ module Once.CCC.Target.X86-32.Semantics where
 open import Once.CCC.Target.X86-32.Syntax
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using ([]; _∷_)
+open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
+open import Data.List using ([]; _∷_; drop)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Function using (case_of_)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` comes in
@@ -204,6 +204,16 @@ find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
 find-label : Program → Label → Maybe ℕ
 find-label prog target = find-label-go target prog 0
 
+-- Plan 0.123 A.4: the next `1:` at or after index `from` (GNU `as`'s `1f`).
+find-local-1-go : Program → ℕ → Maybe ℕ
+find-local-1-go []             i = nothing
+find-local-1-go (local-1 ∷ is) i = just i
+{-# CATCHALL #-}
+find-local-1-go (_ ∷ is)       i = find-local-1-go is (suc i)
+
+find-local-1 : Program → ℕ → Maybe ℕ
+find-local-1 prog from = find-local-1-go (drop from prog) from
+
 ------------------------------------------------------------------------
 -- Instruction semantics
 ------------------------------------------------------------------------
@@ -306,6 +316,15 @@ execInstr prog s (jne target) with zf (flags s)
 ... | false = case find-label prog target of λ where
                 (just pc') → just (record s { pc = pc' })
                 nothing    → just (record s { halted = true })
+
+-- Plan 0.123 A.4: below-or-equal (CF or ZF) jumps forward to the next `1:`.
+execInstr prog s jbe-fwd with cf (flags s) ∨ zf (flags s)
+... | true  = case find-local-1 prog (pc s + 1) of λ where
+                (just pc') → just (record s { pc = pc' })
+                nothing    → just (record s { halted = true })
+... | false = just (record s { pc = pc s + 1 })
+
+execInstr prog s local-1 = just (record s { pc = pc s + 1 })
 
 execInstr prog s (call target) =
   case readOperand s target of λ where

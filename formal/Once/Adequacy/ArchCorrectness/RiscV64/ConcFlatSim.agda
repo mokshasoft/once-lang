@@ -174,7 +174,7 @@ open import Data.Maybe.Properties using (just-injective)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Target.RiscV64.Syntax using
-  (Reg; Instr; label; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp)
+  (Reg; Instr; label; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1)
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
@@ -266,6 +266,8 @@ r-nonhalt-noncall prog s ret          eq hnh = refl
 r-nonhalt-noncall prog s (call _)     eq hnh = refl
 r-nonhalt-noncall prog s nop          eq hnh = refl
 r-nonhalt-noncall prog s unimp        eq hnh = refl
+r-nonhalt-noncall prog s (bgeu-fwd _ _) eq hnh = refl
+r-nonhalt-noncall prog s local-1      eq hnh = refl
 r-nonhalt-noncall prog s (label _)    eq hnh = refl
 
 ------------------------------------------------------------------------

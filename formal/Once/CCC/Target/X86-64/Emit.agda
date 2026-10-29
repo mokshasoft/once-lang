@@ -99,6 +99,10 @@ showInstr ud2 =
   "    ud2"
 showInstr syscall =
   "    syscall"
+showInstr jbe-fwd =
+  "    jbe 1f"
+showInstr local-1 =
+  "1:"
 showInstr (label n) =
   labelSym n ++ ":"
 

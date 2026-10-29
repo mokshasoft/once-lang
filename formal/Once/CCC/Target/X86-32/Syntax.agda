@@ -125,6 +125,13 @@ data Instr : Set where
   nop   : Instr                       -- nop
   ud2   : Instr                       -- ud2 (undefined instruction, trap)
 
+  -- Plan 0.123 A.4 (D347): the room check's skip over its call of the Host's
+  -- `exhausted`, by GNU `as`'s local numeric label: `jbe 1f` jumps to the next
+  -- `1:` when CF or ZF is set (unsigned below-or-equal), and `1:` marks it.
+  -- No symbol is defined or referenced.
+  jbe-fwd : Instr                     -- jbe 1f
+  local-1 : Instr                     -- 1:
+
   -- Assembly pseudo-instructions
   label : Label → Instr               -- .L<provenance>:
   -- Plan 0.53: load a code-label (thunk body) address into a register —

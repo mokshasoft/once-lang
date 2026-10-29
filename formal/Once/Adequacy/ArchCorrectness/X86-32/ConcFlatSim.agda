@@ -26,7 +26,7 @@ open FrameSemantics using (frame-word)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
 open import Once.CCC.Label using (once; EntryId)
 open import Once.CCC.Target.X86-32.Syntax using
-  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; esp; eax; ecx; edx; edi; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l)
+  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; esp; eax; ecx; edx; edi; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l; jbe-fwd; local-1)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -269,6 +269,8 @@ nonhalt-noncall prog s (push _)   eq hnh = refl
 nonhalt-noncall prog s (pop _)    eq hnh = refl
 nonhalt-noncall prog s nop        eq hnh = refl
 nonhalt-noncall prog s ud2        eq hnh = refl
+nonhalt-noncall prog s jbe-fwd    eq hnh = refl
+nonhalt-noncall prog s local-1    eq hnh = refl
 nonhalt-noncall prog s (mov-code _ _) eq hnh = refl
 nonhalt-noncall prog s (jmp-l _)  eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl
