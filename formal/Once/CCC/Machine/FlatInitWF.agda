@@ -20,7 +20,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 module Once.CCC.Machine.FlatInitWF (FS : FrameSemantics) where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -37,7 +37,7 @@ open AllocState using (block-size; next-heap-ref)
 open LocState using (heapMem; stackMem; regs)
 open AllocState using (current-frame)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
-open FrameSemantics FS using (Frame)
+open FrameSemantics FS using (Frame; _≟F_)
 open import Once.CCC.Machine.Locations using (Slot)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
@@ -52,6 +52,8 @@ open import Once.CCC.Codegen.InitWindow using (Apart)
 open import Once.CCC.Machine.FlatStoreWF FS using (StoreWF; sv-below; svm-below; module StoreWF)
 open StoreWF using (wf-regs; wf-heap; wf-stack)
 open import Once.CCC.Machine.FlatPtrBounds FS using (size-with-new; size-with-old)
+open import Once.CCC.Machine.FlatStackPtr FS using (SPInv; StackPtrOK; module SPInv)
+open SPInv using (sp-regs)
 open import Once.CCC.Machine.SMPrimitives using (module InstrPrimitives; nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-sigop; nhw-instr-reg-op)
 open InstrPrimitives {FS} using (exec-abstract-preserves-heapMem)
 open import Relation.Nullary using (¬_)
@@ -504,3 +506,270 @@ step-restore-slot {o} {i} {p} {w0} {w1} prog fs s op ap = go (stackMem (floc fs)
     go (just v) e = inj₂ (subst (Open o false p w0 w1) (sym (trans (ris-eq prog fs s) (cong (RIS fs) e)))
                               (set-in1 fs op v false (subst (Avoids? (blk op)) e (stack op cf s (apart→nis ap)))))
     go nothing  e = inj₁ (subst Halted (sym (trans (ris-eq prog fs s) (cong (RIS fs) e))) refl)
+
+------------------------------------------------------------------------
+-- The slot stores: into the stash (the fresh pointer is parked) or into
+-- another slot (no pointer into the block is stored).
+------------------------------------------------------------------------
+wsm-read : ∀ (m : StackMem FS) (f : Frame) (k : Slot) (v : StoredValue FS) (f' : Frame) (k' : Slot)
+         → ((f ≡ f') × (k ≡ k') × (writeStackMem m f k v f' k' ≡ just v))
+           ⊎ (¬ ((f ≡ f') × (k ≡ k')) × (writeStackMem m f k v f' k' ≡ m f' k'))
+wsm-read m f k v f' k' with f ≟F f' | k ≟ k'
+... | yes ef | yes ek = inj₁ (ef , ek , refl)
+... | yes ef | no nk  = inj₂ ((λ { (_ , ek) → nk ek }) , refl)
+... | no nf  | _      = inj₂ ((λ { (ef , _) → nf ef }) , refl)
+
+set-stack : ∀ {o i p w0 w1} (p' : Maybe ℕ) (fs : FlatState) (op : Open o i p w0 w1 fs) (sm : StackMem FS)
+          → StashHolds p' (blk op) sm (current-frame (falloc fs))
+          → (∀ f k → ¬ IsStash p' (current-frame (falloc fs)) f k → Avoids? (blk op) (sm f k))
+          → Open o i p' w0 w1 (record fs { floc = record (floc fs) { stackMem = sm } ; fpc = suc (fpc fs) })
+set-stack p' fs op sm sh st = record
+  { blk = blk op ; nx = nx op ; sz = sz op ; older = older op ; cell0 = cell0 op ; cell1 = cell1 op
+  ; out = out op ; in1 = in1 op ; scr = scr op ; cnt = cnt op ; clos = clos op ; heap = heap op
+  ; stash = sh ; stack = st }
+
+sas-eq : ∀ prog fs s → flat-exec-instr (store-at-slot s) prog fs
+                     ≡ record fs { floc = record (floc fs)
+                                     { stackMem = writeStackMem (stackMem (floc fs)) (current-frame (falloc fs)) s
+                                                    (readReg (regs (floc fs)) Output) }
+                                 ; fpc = suc (fpc fs) }
+sas-eq prog fs s = refl
+
+-- stash the fresh pointer (it is in Output, and no slot held it yet)
+step-stash : ∀ {i w0 w1} prog fs s → (op : Open true i nothing w0 w1 fs)
+           → Open true i (just s) w0 w1 (flat-exec-instr (store-at-slot s) prog fs)
+step-stash {i} {w0} {w1} prog fs s op =
+  subst (Open true i (just s) w0 w1) (sym (sas-eq prog fs s))
+        (set-stack (just s) fs op sm sh st)
+  where
+    cf = current-frame (falloc fs)
+    v  = readReg (regs (floc fs)) Output
+    sm = writeStackMem (stackMem (floc fs)) cf s v
+    sh : sm cf s ≡ just (fresh (blk op))
+    sh with wsm-read (stackMem (floc fs)) cf s v cf s
+    ... | inj₁ (_ , _ , e) = trans e (cong just (out op))
+    ... | inj₂ (ne , _)    = ⊥-elim (ne (refl , refl))
+    st : ∀ f k → ¬ IsStash (just s) cf f k → Avoids? (blk op) (sm f k)
+    st f k nis with wsm-read (stackMem (floc fs)) cf s v f k
+    ... | inj₁ (ef , ek , _) = ⊥-elim (nis (sym ef , sym ek))
+    ... | inj₂ (_ , e)       = subst (Avoids? (blk op)) (sym e) (stack op f k (λ ()))
+
+-- any other slot store stores no pointer into the block, and spares the stash
+step-store-slot : ∀ {i p w0 w1} prog fs s → (op : Open false i p w0 w1 fs) → Apart s p
+                → Open false i p w0 w1 (flat-exec-instr (store-at-slot s) prog fs)
+step-store-slot {i} {p} {w0} {w1} prog fs s op ap =
+  subst (Open false i p w0 w1) (sym (sas-eq prog fs s))
+        (set-stack p fs op sm (sh p ap (stash op)) st)
+  where
+    cf = current-frame (falloc fs)
+    v  = readReg (regs (floc fs)) Output
+    sm = writeStackMem (stackMem (floc fs)) cf s v
+    sh : ∀ (p₀ : Maybe ℕ) → Apart s p₀ → StashHolds p₀ (blk op) (stackMem (floc fs)) cf
+       → StashHolds p₀ (blk op) sm cf
+    sh nothing  _  _ = tt
+    sh (just q) ne h with wsm-read (stackMem (floc fs)) cf s v cf q
+    ... | inj₁ (_ , ek , _) = ⊥-elim (ne ek)
+    ... | inj₂ (_ , e)      = trans e h
+    st : ∀ f k → ¬ IsStash p cf f k → Avoids? (blk op) (sm f k)
+    st f k nis with wsm-read (stackMem (floc fs)) cf s v f k
+    ... | inj₁ (_ , _ , e) = subst (Avoids? (blk op)) (sym e) (out op)
+    ... | inj₂ (_ , e)     = subst (Avoids? (blk op)) (sym e) (stack op f k nis)
+
+------------------------------------------------------------------------
+-- The heap loads through Input1 (no stack pointer exists: `StackPtrWF`).
+-- The value loaded is a heap cell's, so it points nowhere into the block.
+------------------------------------------------------------------------
+LV : FlatState → Maybe (StoredValue FS) → FlatState
+LV fs mv = record fs { floc = exec-load-with-value Output mv (floc fs) ; fpc = suc (fpc fs) }
+
+LI : FlatState → StoredValue FS → FlatState
+LI fs v = record fs { floc = exec-load-via-resolved Output (sv-as-loc v) (floc fs) ; fpc = suc (fpc fs) }
+
+LIS : FlatState → StoredValue FS → FlatState
+LIS fs v = record fs { floc = exec-load-suc-via-resolved Output (sv-as-loc v) (floc fs) ; fpc = suc (fpc fs) }
+
+li-eq : ∀ prog fs → flat-exec-instr load-indirect prog fs ≡ LI fs (readReg (regs (floc fs)) Input1)
+li-eq prog fs = refl
+
+lis-eq : ∀ prog fs → flat-exec-instr load-indirect-suc prog fs ≡ LIS fs (readReg (regs (floc fs)) Input1)
+lis-eq prog fs = refl
+
+-- the cell a load reads: the value, or a halt
+private
+  load-cell : ∀ {o i p w0 w1} (fs : FlatState) (op : Open o i p w0 w1 fs) (hl : HeapLocation)
+            → ∀ mv → heapMem (floc fs) hl ≡ mv
+            → Halted (LV fs mv) ⊎ Open false i p w0 w1 (LV fs mv)
+  load-cell fs op hl (just v) e = inj₂ (set-out fs op v false (subst (Avoids? (blk op)) e (heap op hl)))
+  load-cell fs op hl nothing  e = inj₁ refl
+
+step-load : ∀ {o p w0 w1} prog fs → (op : Open o false p w0 w1 fs) → SPInv (floc fs)
+          → Halted (flat-exec-instr load-indirect prog fs)
+            ⊎ Open false false p w0 w1 (flat-exec-instr load-indirect prog fs)
+step-load {o} {p} {w0} {w1} prog fs op sp =
+  go (readReg (regs (floc fs)) Input1) refl (sp-regs sp Input1)
+  where
+    R = λ (x : FlatState) → Halted x ⊎ Open false false p w0 w1 x
+    go : ∀ v → readReg (regs (floc fs)) Input1 ≡ v → StackPtrOK v → R (flat-exec-instr load-indirect prog fs)
+    go (SV-Ptr (AtDynamic hl)) e _ =
+      subst R (sym (trans (li-eq prog fs) (cong (LI fs) e)))
+        (load-cell fs op hl (heapMem (floc fs) hl) refl)
+    go (SV-Ptr (AtStack f k)) e ()
+    go (SV-Tag t)   e _ = inj₁ (subst Halted (sym (trans (li-eq prog fs) (cong (LI fs) e))) refl)
+    go (SV-Lit q x) e _ = inj₁ (subst Halted (sym (trans (li-eq prog fs) (cong (LI fs) e))) refl)
+    go (SV-Code c)  e _ = inj₁ (subst Halted (sym (trans (li-eq prog fs) (cong (LI fs) e))) refl)
+
+step-load-suc : ∀ {o p w0 w1} prog fs → (op : Open o false p w0 w1 fs) → SPInv (floc fs)
+              → Halted (flat-exec-instr load-indirect-suc prog fs)
+                ⊎ Open false false p w0 w1 (flat-exec-instr load-indirect-suc prog fs)
+step-load-suc {o} {p} {w0} {w1} prog fs op sp =
+  go (readReg (regs (floc fs)) Input1) refl (sp-regs sp Input1)
+  where
+    R = λ (x : FlatState) → Halted x ⊎ Open false false p w0 w1 x
+    go : ∀ v → readReg (regs (floc fs)) Input1 ≡ v → StackPtrOK v → R (flat-exec-instr load-indirect-suc prog fs)
+    go (SV-Ptr (AtDynamic hl)) e _ =
+      subst R (sym (trans (lis-eq prog fs) (cong (LIS fs) e)))
+        (load-cell fs op (sucHL hl) (heapMem (floc fs) (sucHL hl)) refl)
+    go (SV-Ptr (AtStack f k)) e ()
+    go (SV-Tag t)   e _ = inj₁ (subst Halted (sym (trans (lis-eq prog fs) (cong (LIS fs) e))) refl)
+    go (SV-Lit q x) e _ = inj₁ (subst Halted (sym (trans (lis-eq prog fs) (cong (LIS fs) e))) refl)
+    go (SV-Code c)  e _ = inj₁ (subst Halted (sym (trans (lis-eq prog fs) (cong (LIS fs) e))) refl)
+
+------------------------------------------------------------------------
+-- The heap stores through Input1: through the fresh pointer they write the
+-- block's cell (0, or 1 for the `-suc` form); otherwise an older block's.
+-- Either way the value stored is no pointer into the block (`o` is false).
+------------------------------------------------------------------------
+wl-dyn : ∀ (ls : LocState FS) (hl : HeapLocation) (w : StoredValue FS)
+       → writeLoc ls (AtDynamic hl) w ≡ record ls { heapMem = writeHeapMem (heapMem ls) hl w }
+wl-dyn ls hl (SV-Ptr (AtStack f k))  = refl
+wl-dyn ls hl (SV-Ptr (AtDynamic x))  = refl
+wl-dyn ls hl (SV-Tag t)              = refl
+wl-dyn ls hl (SV-Lit p x)            = refl
+wl-dyn ls hl (SV-Code c)             = refl
+
+private
+  HW : FlatState → HeapLocation → StoredValue FS → FlatState
+  HW fs hl w = record fs { floc = record (floc fs) { heapMem = writeHeapMem (heapMem (floc fs)) hl w }
+                         ; fpc = suc (fpc fs) }
+
+  written-grows : ∀ (ls : LocState FS) (hl : HeapLocation) (w : StoredValue FS) (hl' : HeapLocation)
+                → Written ls hl' → Σ (StoredValue FS) (λ w' → writeHeapMem (heapMem ls) hl w hl' ≡ just w')
+  written-grows ls hl w hl' (w₀ , e) = writeHeapMem-grows (heapMem ls) hl w hl' w₀ e
+
+  written-here : ∀ (m : HeapMem FS) (hl : HeapLocation) (w : StoredValue FS)
+               → Σ (StoredValue FS) (λ w' → writeHeapMem m hl w hl ≡ just w')
+  written-here m hl w with hl ≟HL hl
+  ... | yes _ = w , refl
+  ... | no ne = ⊥-elim (ne refl)
+
+  avoid-write : ∀ {b} (m : HeapMem FS) (hl : HeapLocation) (w : StoredValue FS)
+              → Avoids b w → (∀ hl' → Avoids? b (m hl')) → ∀ hl' → Avoids? b (writeHeapMem m hl w hl')
+  avoid-write m hl w aw am hl' with hl ≟HL hl'
+  ... | yes _ = aw
+  ... | no  _ = am hl'
+
+  -- the open window after writing `w` at `hl`, given which cells it has written
+  heap-write : ∀ {o i p w0 w1} (w0' w1' : Bool) (fs : FlatState) (op : Open o i p w0 w1 fs)
+             → (hl : HeapLocation) (w : StoredValue FS) → Avoids (blk op) w
+             → (w0' ≡ true → Written (record (floc fs) { heapMem = writeHeapMem (heapMem (floc fs)) hl w })
+                                     (heap-loc (mkHeapRef (blk op)) 0))
+             → (w1' ≡ true → Written (record (floc fs) { heapMem = writeHeapMem (heapMem (floc fs)) hl w })
+                                     (heap-loc (mkHeapRef (blk op)) 1))
+             → Open o i p w0' w1' (HW fs hl w)
+  heap-write w0' w1' fs op hl w aw c0 c1 = record
+    { blk = blk op ; nx = nx op ; sz = sz op
+    ; older = λ hl' lt ib → written-grows (floc fs) hl w hl' (older op hl' lt ib)
+    ; cell0 = c0 ; cell1 = c1
+    ; out = out op ; in1 = in1 op ; scr = scr op ; cnt = cnt op ; clos = clos op
+    ; heap = avoid-write (heapMem (floc fs)) hl w aw (heap op)
+    ; stash = stash op ; stack = stack op }
+
+ST : FlatState → StoredValue FS → FlatState
+ST fs v = record fs { floc = exec-store-via-resolved (sv-as-loc v) (readReg (regs (floc fs)) Output) (floc fs)
+                    ; fpc = suc (fpc fs) }
+
+STS : FlatState → StoredValue FS → FlatState
+STS fs v = record fs { floc = exec-store-suc-via-resolved (sv-as-loc v) (readReg (regs (floc fs)) Output) (floc fs)
+                     ; fpc = suc (fpc fs) }
+
+st-eq : ∀ prog fs → flat-exec-instr store-indirect prog fs ≡ ST fs (readReg (regs (floc fs)) Input1)
+st-eq prog fs = refl
+
+sts-eq : ∀ prog fs → flat-exec-instr store-indirect-suc prog fs ≡ STS fs (readReg (regs (floc fs)) Input1)
+sts-eq prog fs = refl
+
+private
+  ptr-inj : ∀ {a b : HeapLocation} → SV-Ptr {FS} (AtDynamic a) ≡ SV-Ptr (AtDynamic b) → a ≡ b
+  ptr-inj refl = refl
+
+  -- the post-state of a heap write, in the form `heap-write` produces
+  to-HW : ∀ (fs : FlatState) (hl : HeapLocation) (w : StoredValue FS)
+        → record fs { floc = writeLoc (floc fs) (AtDynamic hl) w ; fpc = suc (fpc fs) } ≡ HW fs hl w
+  to-HW fs hl w = cong (λ l → record fs { floc = l ; fpc = suc (fpc fs) }) (wl-dyn (floc fs) hl w)
+
+-- through the fresh pointer the write is the block's cell `c`; otherwise an older block's
+private
+  store-here0 : ∀ {p w0 w1} (i : Bool) (fs : FlatState) (op : Open false i p w0 w1 fs) (hl : HeapLocation)
+              → Holds i (blk op) (SV-Ptr (AtDynamic hl))
+              → Open false i p (i ∨ w0) w1 (HW fs hl (readReg (regs (floc fs)) Output))
+  store-here0 {p} {w0} {w1} true fs op hl h = heap-write true w1 fs op hl Ov (out op)
+    (λ _ → subst (Written (record (floc fs) { heapMem = writeHeapMem (heapMem (floc fs)) hl Ov })) (ptr-inj h)
+                 (written-here (heapMem (floc fs)) hl Ov))
+    (λ t → written-grows (floc fs) hl Ov _ (cell1 op t))
+    where Ov = readReg (regs (floc fs)) Output
+  store-here0 {p} {w0} {w1} false fs op hl h = heap-write w0 w1 fs op hl Ov (out op)
+    (λ t → written-grows (floc fs) hl Ov _ (cell0 op t))
+    (λ t → written-grows (floc fs) hl Ov _ (cell1 op t))
+    where Ov = readReg (regs (floc fs)) Output
+
+-- `w0` records a write through the fresh pointer: `i ∨ w0`
+step-store : ∀ {i p w0 w1} prog fs → (op : Open false i p w0 w1 fs) → SPInv (floc fs)
+           → Halted (flat-exec-instr store-indirect prog fs)
+             ⊎ Open false i p (i ∨ w0) w1 (flat-exec-instr store-indirect prog fs)
+step-store {i} {p} {w0} {w1} prog fs op sp = go (readReg (regs (floc fs)) Input1) refl (sp-regs sp Input1)
+  where
+    Ov = readReg (regs (floc fs)) Output
+    R = λ (x : FlatState) → Halted x ⊎ Open false i p (i ∨ w0) w1 x
+    post : ∀ v → readReg (regs (floc fs)) Input1 ≡ v → flat-exec-instr store-indirect prog fs ≡ ST fs v
+    post v e = trans (st-eq prog fs) (cong (ST fs) e)
+    go : ∀ v → readReg (regs (floc fs)) Input1 ≡ v → StackPtrOK v → R (flat-exec-instr store-indirect prog fs)
+    go (SV-Ptr (AtDynamic hl)) e _ =
+      inj₂ (subst (Open false i p (i ∨ w0) w1) (sym (trans (post _ e) (to-HW fs hl Ov)))
+                  (store-here0 i fs op hl (subst (Holds i (blk op)) e (in1 op))))
+    go (SV-Ptr (AtStack f k)) e ()
+    go (SV-Tag t)   e _ = inj₁ (subst Halted (sym (post _ e)) refl)
+    go (SV-Lit q x) e _ = inj₁ (subst Halted (sym (post _ e)) refl)
+    go (SV-Code c)  e _ = inj₁ (subst Halted (sym (post _ e)) refl)
+
+private
+  store-here1 : ∀ {p w0 w1} (i : Bool) (fs : FlatState) (op : Open false i p w0 w1 fs) (hl : HeapLocation)
+              → Holds i (blk op) (SV-Ptr (AtDynamic hl))
+              → Open false i p w0 (i ∨ w1) (HW fs (sucHL hl) (readReg (regs (floc fs)) Output))
+  store-here1 {p} {w0} {w1} true fs op hl h = heap-write w0 true fs op (sucHL hl) Ov (out op)
+    (λ t → written-grows (floc fs) (sucHL hl) Ov _ (cell0 op t))
+    (λ _ → subst (Written (record (floc fs) { heapMem = writeHeapMem (heapMem (floc fs)) (sucHL hl) Ov }))
+                 (cong sucHL (ptr-inj h)) (written-here (heapMem (floc fs)) (sucHL hl) Ov))
+    where Ov = readReg (regs (floc fs)) Output
+  store-here1 {p} {w0} {w1} false fs op hl h = heap-write w0 w1 fs op (sucHL hl) Ov (out op)
+    (λ t → written-grows (floc fs) (sucHL hl) Ov _ (cell0 op t))
+    (λ t → written-grows (floc fs) (sucHL hl) Ov _ (cell1 op t))
+    where Ov = readReg (regs (floc fs)) Output
+
+-- `w1` records a write through the fresh pointer: `i ∨ w1`
+step-store-suc : ∀ {i p w0 w1} prog fs → (op : Open false i p w0 w1 fs) → SPInv (floc fs)
+               → Halted (flat-exec-instr store-indirect-suc prog fs)
+                 ⊎ Open false i p w0 (i ∨ w1) (flat-exec-instr store-indirect-suc prog fs)
+step-store-suc {i} {p} {w0} {w1} prog fs op sp = go (readReg (regs (floc fs)) Input1) refl (sp-regs sp Input1)
+  where
+    Ov = readReg (regs (floc fs)) Output
+    R = λ (x : FlatState) → Halted x ⊎ Open false i p w0 (i ∨ w1) x
+    post : ∀ v → readReg (regs (floc fs)) Input1 ≡ v → flat-exec-instr store-indirect-suc prog fs ≡ STS fs v
+    post v e = trans (sts-eq prog fs) (cong (STS fs) e)
+    go : ∀ v → readReg (regs (floc fs)) Input1 ≡ v → StackPtrOK v → R (flat-exec-instr store-indirect-suc prog fs)
+    go (SV-Ptr (AtDynamic hl)) e _ =
+      inj₂ (subst (Open false i p w0 (i ∨ w1)) (sym (trans (post _ e) (to-HW fs (sucHL hl) Ov)))
+                  (store-here1 i fs op hl (subst (Holds i (blk op)) e (in1 op))))
+    go (SV-Ptr (AtStack f k)) e ()
+    go (SV-Tag t)   e _ = inj₁ (subst Halted (sym (post _ e)) refl)
+    go (SV-Lit q x) e _ = inj₁ (subst Halted (sym (post _ e)) refl)
+    go (SV-Code c)  e _ = inj₁ (subst Halted (sym (post _ e)) refl)
