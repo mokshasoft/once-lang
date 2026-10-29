@@ -212,10 +212,10 @@ cata-const-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
                          (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
 cata-const-below bb n1 l1 at bok =
   segok-++ (segok-idle _ refl
-      (-- setup (18) then call (12), one flat list as before
+      (-- setup (19) then call (12), one flat list as before
        sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
        sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷
-       sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+       sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
        sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
        sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
        sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
@@ -269,7 +269,7 @@ cata-nat-below bb n1 l1 at bok =
     setup : All (SlotBelow b) _
     setup = sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
             sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷
-            sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
             sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
             sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
             sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ []
@@ -332,7 +332,7 @@ cata-linear-below bb n1 l1 at bok =
     setup : All (SlotBelow b) _
     setup = sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
             sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷
-            sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
             sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
             sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
             sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ []
@@ -572,7 +572,7 @@ cata-branching-below F bb n1 l1 at bok =
     setup : All (SlotBelow (b + 4)) _
     setup = sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
             sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b2 (λ _ ()) ∷
-            sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
             sb-none refl ∷ sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷
             sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
             sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ []
@@ -613,7 +613,7 @@ cata-branching-below F bb n1 l1 at bok =
     I₁-all =
       ++⁺ (sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
            sb-none refl ∷ sb-slot refl q6 (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ sb-none refl ∷
+           sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
            sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q1 (λ _ ()) ∷
            sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q2 (λ _ ()) ∷
            sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q0 (λ _ ()) ∷

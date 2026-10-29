@@ -352,22 +352,22 @@ module _ (G : String → Set) where
       VW = visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)
       RW = rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F)
       VW⊆ : VW ⊆ I₁
-      VW⊆ m = there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ˡ m))))))))))))))))))))))))))))))))))))))))))))))
+      VW⊆ m = there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ˡ m)))))))))))))))))))))))))))))))))))))))))))))))
       RW⊆ : RW ⊆ I₁
-      RW⊆ m = there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ʳ VW (there (there (there (there (there (there (there (there (there (there (∈-++⁺ˡ m)))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+      RW⊆ m = there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ʳ VW (there (there (there (there (there (there (there (there (there (there (∈-++⁺ˡ m))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
       closes : ∀ {D} → Defd D (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at)) → Closes D at
              → Closes D (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
       closes d cat =
         closes-++ S R₀ (inj₁ (thk∈ (ℓ o Lb) d (B⊆ (there (here refl)))) ∷ [])
           (closes-++ I₁ R₁
-            (inj₁ (lab∈ (ℓ o (suc l1)) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ʳ VW (there (here refl))))))))))))))))))))))))))))))))))))))))))))))))))) ∷
+            (inj₁ (lab∈ (ℓ o (suc l1)) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ʳ VW (there (here refl)))))))))))))))))))))))))))))))))))))))))))))))))))) ∷
              closes-++ VW _ (visit-closes n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4) (defd-⊆ (⊆-trans VW⊆ I₁⊆) d))
-               (inj₁ (lab∈ (ℓ o l1) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl))))))))))))))))))))))))))) ∷
+               (inj₁ (lab∈ (ℓ o l1) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))))))))))))))))) ∷
                 inj₁ (lab∈ (ℓ o (l1 + 3)) d (I₂⊆ (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))) ∷
                 closes-++ RW _ (rebuild-closes (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F)
                                   (defd-⊆ (⊆-trans RW⊆ I₁⊆) d)) []))
             (closes-++ C R₂ []
-              (closes-++ I₂ B (inj₁ (lab∈ (ℓ o (l1 + 2)) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ʳ VW (there (there (here refl)))))))))))))))))))))))))))))))))))))))))))))))))))) ∷ [])
+              (closes-++ I₂ B (inj₁ (lab∈ (ℓ o (l1 + 2)) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (∈-++⁺ʳ VW (there (there (here refl))))))))))))))))))))))))))))))))))))))))))))))))))))) ∷ [])
                 (body-closes Lb (Lb + 1) bb at (defd-⊆ B⊆ d) cat))))
 
   at⊆ : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)

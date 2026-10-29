@@ -214,7 +214,7 @@ cata-body-ls lo hi bl el bb at atls Lel Hel =
 
 cata-setup-ls : ∀ (lo hi cl k ev pr bl : ℕ) → LabelsIn lo hi (cata-call-setup cl k ev pr bl)
 cata-setup-ls lo hi cl k ev pr bl =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -425,7 +425,7 @@ cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
     at' = ls-weaken ≤-refl (≤-trans (m≤m+n l1 4) top) atls
     I₁-ls : LabelsIn lo hi (cata-br-I₁ F n1 l1)
     I₁-ls =
-      ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
       (++⁺ (push2-ls lo hi n1 (n1 + 4) (n1 + 5))
@@ -1177,7 +1177,7 @@ cata-br-split F bb n1 l1 at =
                (idle-++ (cata-br-I₁ F n1 l1) inner I₁-idle refl)
     I₁-ls : LabelsIn l1 hi (cata-br-I₁ F n1 l1)
     I₁-ls =
-      ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
       (++⁺ (push2-ls l1 hi n1 (n1 + 4) (n1 + 5))

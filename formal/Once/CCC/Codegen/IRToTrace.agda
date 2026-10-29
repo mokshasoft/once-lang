@@ -288,6 +288,9 @@ cata-call-setup cl k ev pr body-label =
   mov-to-input ∷
   load-from-slot ev ∷
   store-indirect ∷
+  -- plan 0.123 A.4: cell 1 too, so every block is written before it is read
+  -- (the first `cata-call` overwrites it with the layer). Once per fold.
+  store-indirect-suc ∷
   instr-alloc-heap 2 ∷
   store-at-slot cl ∷
   mov-to-input ∷
@@ -545,7 +548,9 @@ cata-br-I₁ F n1 l1 =
   -- init
   (mov-to-output ∷ store-at-slot (n1 ℕ.+ 3) ∷
    instr-alloc-heap 2 ∷ store-at-slot (n1 ℕ.+ 6) ∷ mov-to-input ∷
-   instr-load-tag-lit 0 ∷ store-indirect ∷
+   -- plan 0.123 A.4: the sentinel's payload is written too (0), so every
+   -- block is written before it is read. Once per fold.
+   instr-load-tag-lit 0 ∷ store-indirect ∷ store-indirect-suc ∷
    load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot (suc n1) ∷
    load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot (n1 ℕ.+ 2) ∷
    load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot n1 ∷

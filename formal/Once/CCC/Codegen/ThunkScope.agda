@@ -235,7 +235,7 @@ module Scope {FS : FrameSemantics} where
   -- `cata-br-I₁` splices both walks between literal, marker-free chunks.
   br-I₁-nt : ∀ (F : Fun 0) (n1 l1 : ℕ) → NoThunkT (cata-br-I₁ F n1 l1)
   br-I₁-nt F n1 l1 =
-    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
     ++⁺ (nt-dec (push2 n1 (n1 + 4) (n1 + 5)) refl)
         (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
          ++⁺ (nt-dec (push2 (suc n1) (n1 + 4) (n1 + 5)) refl)

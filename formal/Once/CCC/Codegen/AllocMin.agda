@@ -131,7 +131,7 @@ cata-body-am b e bb at am = tt ∷ tt ∷ ++⁺ am (tt ∷ tt ∷ [])
 
 cata-setup-am : ∀ cl k ev pr bl → AllocMinTrace (cata-call-setup cl k ev pr bl)
 cata-setup-am cl k ev pr bl =
-  tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷
+  tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 cata-call-am : ∀ cl k pr → AllocMinTrace (cata-call cl k pr)
@@ -206,7 +206,7 @@ cata-branching-am F bb n1 l1 at am =
     bodyL = l1 + 4 + lsize F + lsize F
     cl    = n1 + 7 + (4 * fsize F) + 4
     I₁ : AllocMinTrace _
-    I₁ = ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+    I₁ = ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-am n1 (n1 + 4) (n1 + 5))
              (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-am (suc n1) (n1 + 4) (n1 + 5))

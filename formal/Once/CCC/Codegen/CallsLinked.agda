@@ -110,7 +110,7 @@ cata-body-cl b e bb  at ih = tt ∷ tt ∷ ++⁺ ih (tt ∷ tt ∷ [])
 
 cata-setup-cl : ∀ cl k ev pr bl → CLTrace (cata-call-setup cl k ev pr bl)
 cata-setup-cl cl k ev pr bl =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 cata-call-cl : ∀ cl k pr → CLTrace (cata-call cl k pr)
@@ -185,7 +185,7 @@ cata-branching-cl F bb n1 l1  at ih =
     bodyL = l1 + 4 + lsize F + lsize F
     cl    = n1 + 7 + (4 * fsize F) + 4
     I₁ : CLTrace _
-    I₁ = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+    I₁ = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-cl n1 (n1 + 4) (n1 + 5))
              (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-cl (suc n1) (n1 + 4) (n1 + 5))

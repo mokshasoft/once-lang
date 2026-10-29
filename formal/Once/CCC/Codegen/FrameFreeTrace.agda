@@ -156,7 +156,7 @@ cata-body-ff : ∀ b e bb at → FrameFreeTrace at → FrameFreeTrace (cata-body
 cata-body-ff b e bb at ff = tt ∷ tt ∷ ++⁺ ff (tt ∷ tt ∷ [])
 
 cata-setup-ff : ∀ cl k ev pr bl → FrameFreeTrace (cata-call-setup cl k ev pr bl)
-cata-setup-ff cl k ev pr bl = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+cata-setup-ff cl k ev pr bl = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 cata-call-ff : ∀ cl k pr → FrameFreeTrace (cata-call cl k pr)
 cata-call-ff cl k pr = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
@@ -235,7 +235,7 @@ cata-branching-ff F bb n1 l1 at ff =
     bodyL = l1 + 4 + lsize F + lsize F
     cl    = n1 + 7 + (4 * fsize F) + 4
     I₁ : FrameFreeTrace _
-    I₁ = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+    I₁ = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-ff n1 (n1 + 4) (n1 + 5))
              (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-ff (suc n1) (n1 + 4) (n1 + 5))
