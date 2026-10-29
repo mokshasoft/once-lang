@@ -38,6 +38,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.86 allocation is mechanical | open | the machine half of step D, B′, C, `Allocator` rename (F moved to 0.123) |
 | 0.87 stack-resident I/O | not started | re-prove the correspondence with stack pointers |
 | 0.123 memory runs out observably | after the merge | A: out of memory is a Spec end + the Host's `exhaust` (removes `HeapRoom`/`StackRoom`/`CallRoom`); B: wire the proven allocators, `free`, reclaim per loop round, leak-freedom (was 0.35 and 0.86 F) |
+| 0.128 results share their input | not started (future) | an optimization of 0.123's D6: a static alias analysis instead of copying out of borrowed values |
 | 0.124 `once fmt` | after 0.122 | one canonical layout from the Spec's `Module` plus lexer trivia (no second syntax tree); round-trip, idempotence and comment preservation as theorems; deletes the `Grammar` printer |
 | 0.125 Once in nixpkgs | A, B, C.1, C′ 1–4 done | C.2 draft `package.nix` against nixpkgs; C′ 5 server-test segfaults; D release + nixpkgs PR |
 | 0.39 trace-correct optimizer | open | restate over traces, discharge `opt-trace` |
