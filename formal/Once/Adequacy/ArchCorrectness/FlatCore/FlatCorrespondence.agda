@@ -716,6 +716,39 @@ module _ {hv : HeapView} {fs : FlatState} {s s' : State} {ρ : Role} {v : Word}
                      (sym (keeps-mem st)) (stack-eq corr)
 
 ------------------------------------------------------------------------
+-- Plan 0.123 A.4: a run that writes NO role's register, nor memory, nor the
+-- halt flag (the room check that fits: a scratch register and the flags). The
+-- whole correspondence carries over.
+------------------------------------------------------------------------
+record KeepsRoles (s s' : State) : Set where
+  field
+    kr-role : ∀ ρ → rreg s' (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr-mem  : memory s' ≡ memory s
+    kr-halt : xhalted s' ≡ xhalted s
+open KeepsRoles
+
+keep-all : ∀ {hv : HeapView} {fs : FlatState} {s s' : State}
+         → FlatCorr hv fs s → KeepsRoles s s' → FlatCorr hv fs s'
+keep-all {hv} {fs} corr kr = record
+  { in1-eq      = trans (kr-role kr role-in1) (in1-eq corr)
+  ; out-eq      = trans (kr-role kr role-out) (out-eq corr)
+  ; scratch-eq  = trans (kr-role kr role-scratch) (scratch-eq corr)
+  ; count-eq    = trans (kr-role kr role-count) (count-eq corr)
+  ; clos-eq     = trans (kr-role kr role-clos) (clos-eq corr)
+  ; halt-eq     = trans (kr-halt kr) (halt-eq corr)
+  ; sp-eq       = trans (kr-role kr role-sp) (sp-eq corr)
+  ; frontier-eq = trans (kr-role kr role-heap) (frontier-eq corr)
+  ; dom-fresh   = dom-fresh corr
+  ; dom-written = dom-written corr
+  ; dom-sized   = dom-sized corr
+  ; heap-eq     = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) (kr-mem kr)) (heap-eq corr hl d)
+  ; lo-le       = subst (lo hv ≤_) (sym (kr-role kr role-sp)) (lo-le corr)
+  ; untouched   = λ a f<a a<lo → trans (cong (λ m → readMem m a) (kr-mem kr)) (untouched corr a f<a a<lo)
+  ; stack-eq    = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs)) (lo hv) (frames-of (falloc fs)))
+                        (sym (kr-mem kr)) (stack-eq corr)
+  }
+
+------------------------------------------------------------------------
 -- …and the same for a MEMORY write. `SetsRole`'s mirror: one cell changes,
 -- every register and the halt flag do not. `off-addr` is what the concrete
 -- `writeMem`'s address `≡ᵇ` test used to give by reduction, and stating it

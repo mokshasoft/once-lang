@@ -53,7 +53,10 @@ module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
   (fmt-eq : FrameSemantics.float-format FS ≡ binary64)
   where
 
-open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_; _≡ᵇ_; _*_)
+open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_; _≡ᵇ_; _<ᵇ_; _*_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (Σ)
+open import Once.Target.SymbolFresh using (host-exhausted-symbol)
 open import Data.Nat.Properties using (+-identityʳ; +-assoc; +-comm)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -79,10 +82,10 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
 module C = FC FS word-eq
 open C using (HeapView; haddr; HDom)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
-  using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
+  using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; fetch-block-nth; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; a0; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found; step-add; step-bgeu-taken; step-bgeu-not; step-local-1; find-local-1-past-call)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; a0; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots; add; call-sym; bgeu-fwd; local-1)
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
@@ -492,6 +495,108 @@ block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
                      (C.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-riscv64 s _ _ _))
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at-slot slot) ft))
+
+-- Plan 0.123 A.4: THE ROOM CHECK, `li t1, 8k ; add t1, s2, t1 ; bgeu sp, t1, 1f ;
+-- call once_exhausted ; 1:`. The flat step is a no-op. If the stack pointer is
+-- at or above the sum the skip is taken: four steps, and only `t1` changed
+-- (`keeps-t1-riscv64`), so the correspondence carries over. If not, three
+-- steps reach the call, running.
+private
+  room-a2 : ∀ p → (p + 1) + 1 ≡ p + 2
+  room-a2 zero    = refl
+  room-a2 (suc p) = cong suc (room-a2 p)
+  room-a3 : ∀ p → ((p + 1) + 1) + 1 ≡ p + 3
+  room-a3 zero    = refl
+  room-a3 (suc p) = cong suc (room-a3 p)
+  room-a4 : ∀ p → suc (((p + 1) + 1) + 1) ≡ p + 4
+  room-a4 zero    = refl
+  room-a4 (suc p) = cong suc (room-a4 p)
+  room-a5 : ∀ p → suc (((p + 1) + 1) + 1) + 1 ≡ p + 5
+  room-a5 zero    = refl
+  room-a5 (suc p) = cong suc (room-a5 p)
+
+room-step-riscv64 : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-room k)
+  → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'))
+    ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c (compile-trace prog) s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch (compile-trace prog) (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+room-step-riscv64 {hv} prog fs s k cc h ft =
+  go (R.readReg (R.State.regs q2) sp <ᵇ R.readReg (R.State.regs q2) t1) refl
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    cp = compile-trace prog
+    i = instr-room k
+    p = R.State.pc s
+    halt-s : rhalted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    at : ∀ n q → q ≡ p + n
+       → R.fetch cp q ≡ R.fetch (drop n (compile-abstract i ++ compile-trace (drop (suc (fpc fs)) prog))) zero
+    at n q eq = trans (cong (R.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft)
+    f0 : R.fetch cp p ≡ just (li t1 (ℤ.+ slots k))
+    f0 = trans (cong (R.fetch cp) po) (fetch-block-head prog (fpc fs) i ft)
+    q1 : R.State
+    q1 = record s { regs = R.writeReg (R.State.regs s) t1 (R.W.fromℤ (ℤ.+ slots k)) ; pc = p + 1 }
+    f1 : R.fetch cp (R.State.pc q1) ≡ just (add t1 s2 t1)
+    f1 = at 1 (p + 1) refl
+    q2 : R.State
+    q2 = record q1 { regs = R.writeReg (R.State.regs q1) t1
+                              (R.readReg (R.State.regs q1) s2 R.W.⊕ R.readReg (R.State.regs q1) t1)
+                   ; pc = R.State.pc q1 + 1 }
+    f2 : R.fetch cp (R.State.pc q2) ≡ just (bgeu-fwd sp t1)
+    f2 = at 2 (R.State.pc q2) (room-a2 p)
+    f3 : R.fetch cp (R.State.pc q2 + 1) ≡ just (call-sym host-exhausted-symbol)
+    f3 = at 3 (R.State.pc q2 + 1) (room-a3 p)
+    f4 : R.fetch cp (suc (R.State.pc q2 + 1)) ≡ just local-1
+    f4 = at 4 (suc (R.State.pc q2 + 1)) (room-a4 p)
+    st0 : R.step-not-halted cp s ≡ just q1
+    st0 = step-li {cp} {s} {t1} {ℤ.+ slots k} f0
+    st1 : R.step-not-halted cp q1 ≡ just q2
+    st1 = step-add {cp} {q1} {t1} {s2} {t1} f1
+    go : ∀ b → (R.readReg (R.State.regs q2) sp <ᵇ R.readReg (R.State.regs q2) t1) ≡ b
+       → Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c cp s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr i prog fs) s'))
+         ⊎ Σ ℕ (λ c → Σ R.State (λ s' → (R.exec c cp s ≡ just s')
+                × rhalted s' ≡ false
+                × R.fetch cp (R.State.pc s') ≡ just (call-sym host-exhausted-symbol)))
+    go false lt = inj₁ (4 , q4 , exec4 , record
+      { dataCorr = record { in1-eq = C.in1-eq d ; out-eq = C.out-eq d ; scratch-eq = C.scratch-eq d ; count-eq = C.count-eq d
+                          ; clos-eq = C.clos-eq d ; halt-eq = C.halt-eq d ; heap-eq = C.heap-eq d
+                          ; sp-eq = C.sp-eq d ; frontier-eq = C.frontier-eq d ; dom-fresh = C.dom-fresh d ; dom-written = C.dom-written d ; dom-sized = C.dom-sized d
+                          ; lo-le = C.lo-le d ; untouched = C.untouched d ; stack-eq = C.stack-eq d }
+      ; pc-off = pco ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
+      where
+        q3 : R.State
+        q3 = record q2 { pc = suc (R.State.pc q2 + 1) }
+        q4 : R.State
+        q4 = record q3 { pc = R.State.pc q3 + 1 }
+        st2 : R.step-not-halted cp q2 ≡ just q3
+        st2 = step-bgeu-taken {cp} {q2} {sp} {t1} f2 lt (find-local-1-past-call {cp} {R.State.pc q2 + 1} f3 f4)
+        st3 : R.step-not-halted cp q3 ≡ just q4
+        st3 = step-local-1 {cp} {q3} f4
+        exec4 : R.exec 4 cp s ≡ just q4
+        exec4 = trans (exec-1 {cp} {3} {s} {q1} halt-s st0 halt-s)
+               (trans (exec-1 {cp} {2} {q1} {q2} halt-s st1 halt-s)
+               (trans (exec-1 {cp} {1} {q2} {q3} halt-s st2 halt-s)
+                      (exec-1 {cp} {0} {q3} {q4} halt-s st3 halt-s)))
+        kr : C.KeepsRoles s q4
+        kr = C.keeps-t1-riscv64 s (R.W.fromℤ (ℤ.+ slots k))
+               (R.readReg (R.State.regs q1) s2 R.W.⊕ R.readReg (R.State.regs q1) t1) _
+        d = C.keep-all dc kr
+        pco : R.State.pc q4 ≡ blk-off prog (fpc (flat-exec-instr i prog fs))
+        pco = trans (room-a5 p) (trans (cong (_+ 5) po) (sym (blk-off-suc prog (fpc fs) i ft)))
+    go true lt = inj₂ (3 , q3 , exec3 , halt-s , f3)
+      where
+        q3 : R.State
+        q3 = record q2 { pc = R.State.pc q2 + 1 }
+        st2 : R.step-not-halted cp q2 ≡ just q3
+        st2 = step-bgeu-not {cp} {q2} {sp} {t1} f2 lt
+        exec3 : R.exec 3 cp s ≡ just q3
+        exec3 = trans (exec-1 {cp} {2} {s} {q1} halt-s st0 halt-s)
+               (trans (exec-1 {cp} {1} {q1} {q2} halt-s st1 halt-s)
+                      (exec-1 {cp} {0} {q2} {q3} halt-s st2 halt-s))
 
 -- lea-slot: Output := &stack[slot] ↔ `addi a0, sp, slot*8`.
 --

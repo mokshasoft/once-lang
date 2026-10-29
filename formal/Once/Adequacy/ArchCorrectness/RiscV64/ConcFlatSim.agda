@@ -400,7 +400,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 -- Stated at exactly the field's type, so `Supply`'s `bs-lea-slot` is this.
 ------------------------------------------------------------------------
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
-  (block-step-lea-slot; BlockStep; BlockSteps
+  (block-step-lea-slot; BlockStep; BlockSteps; room-step-riscv64
   ; block-step-mov-to-output; block-step-mov-to-input
   ; block-step-scratch-one; block-step-scratch-zero; block-step-count-zero
   ; block-step-scratch-load-count; block-step-c-label; block-step-reclaim-to
@@ -676,6 +676,7 @@ postulate
 riscv64-supply : EE.Supply
 riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
+  ; room-step = λ prog fs s k _ → room-step-riscv64 prog fs s k
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; scratch-dec-guarded = scratch-dec-guarded
   ; ret-no-wrap = ret-no-wrap ; count-no-wrap = count-no-wrap

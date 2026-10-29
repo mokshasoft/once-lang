@@ -77,9 +77,12 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-32.Syntax
-  using (eax; edx; ecx; esp; edi; esi; Reg; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp-l; je; lea; abs-sym; sbb; ebx; base; base+disp; slots; slot-size; ret; call; mov-code; call-l)
+  using (eax; edx; ecx; esp; edi; esi; Reg; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp-l; je; lea; abs-sym; sbb; ebx; base; base+disp; slots; slot-size; ret; call; mov-code; call-l; call-sym; jbe-fwd; local-1)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (Σ)
+open import Once.Target.SymbolFresh using (host-exhausted-symbol)
 import Data.Nat
 open import Data.List using (_∷_; []; _++_; drop; length)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -93,8 +96,8 @@ open import Once.CCC.Label using (once; thunk; callee)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
-  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd)
-open import Once.Adequacy.ArchCorrectness.X86-32.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp-l; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-sbb-rr; nz-val; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-lea; step-mov-code; step-ret; step-call; step-call-l)
+  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-nth)
+open import Once.Adequacy.ArchCorrectness.X86-32.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp-l; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-sbb-rr; nz-val; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-lea; step-mov-code; step-ret; step-call; step-call-l; step-cmp-rr; step-jbe-taken; step-jbe-not; step-local-1; find-local-1-past-call)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
@@ -2317,6 +2320,121 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfs wfc wfcl wf-heap wf-stack
     pco' : X.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
                  (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
+
+-- Plan 0.123 A.4: THE ROOM CHECK, `addl $4k, %esi ; cmpl %esp, %esi ; jbe 1f ;
+-- call once_exhausted ; 1: subl $4k, %esi`. The flat step is a no-op. If the
+-- sum is at or below the stack pointer the skip is taken: five steps, and the
+-- frontier register is written back to what it was (`WL.⊕⊖-norm`, given that it
+-- is in range), so the correspondence carries over (`keeps-esi-x86`). If not,
+-- three steps reach the call, running.
+private
+  room-a2 : ∀ p → (p + 1) + 1 ≡ p + 2
+  room-a2 zero    = refl
+  room-a2 (suc p) = cong suc (room-a2 p)
+  room-a3 : ∀ p → ((p + 1) + 1) + 1 ≡ p + 3
+  room-a3 zero    = refl
+  room-a3 (suc p) = cong suc (room-a3 p)
+  room-a4 : ∀ p → suc (((p + 1) + 1) + 1) ≡ p + 4
+  room-a4 zero    = refl
+  room-a4 (suc p) = cong suc (room-a4 p)
+  room-a5 : ∀ p → suc (((p + 1) + 1) + 1) + 1 ≡ p + 5
+  room-a5 zero    = refl
+  room-a5 (suc p) = cong suc (room-a5 p)
+  room-a6 : ∀ p → (suc (((p + 1) + 1) + 1) + 1) + 1 ≡ p + 6
+  room-a6 zero    = refl
+  room-a6 (suc p) = cong suc (room-a6 p)
+
+room-step-x86-32 : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-room k)
+  → xreadReg (xregs s) esi < X.W.modulus
+  → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'))
+    ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
+                × xhalted s' ≡ false
+                × X.fetch (compile-trace prog) (pc s') ≡ just (call-sym host-exhausted-symbol)))
+room-step-x86-32 {hv} prog fs s k cc h ft esi<m = go (X.Flags.cf (flags s2) ∨ X.Flags.zf (flags s2)) refl
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    cp = compile-trace prog
+    i = instr-room k
+    halt-s : xhalted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    at : ∀ n q → q ≡ pc s + n
+       → X.fetch cp q ≡ X.fetch (drop n (compile-abstract i ++ compile-trace (drop (suc (fpc fs)) prog))) zero
+    at n q eq = trans (cong (X.fetch cp) (trans eq (cong (_+ n) po))) (fetch-block-nth prog (fpc fs) n i ft)
+    f0 : X.fetch cp (pc s) ≡ just (add (reg esi) (imm (slots k)))
+    f0 = trans (cong (X.fetch cp) po) (fetch-block-head prog (fpc fs) i ft)
+    v : ℕ
+    v = xreadReg (xregs s) esi X.W.⊕ X.W.norm (slots k)
+    s1 : X.State
+    s1 = record s { regs = xwriteReg (xregs s) esi v ; flags = updateFlags v ; pc = pc s + 1 }
+    f1 : X.fetch cp (pc s1) ≡ just (cmp (reg esi) (reg esp))
+    f1 = at 1 (pc s + 1) refl
+    s2 : X.State
+    s2 = record s1 { pc = pc s1 + 1
+                   ; flags = mkflags (xreadReg (xregs s1) esi ≡ᵇ xreadReg (xregs s1) esp)
+                                     (xreadReg (xregs s1) esi <ᵇ xreadReg (xregs s1) esp) false }
+    f2 : X.fetch cp (pc s2) ≡ just jbe-fwd
+    f2 = at 2 (pc s2) (room-a2 (pc s))
+    f3 : X.fetch cp (pc s2 + 1) ≡ just (call-sym host-exhausted-symbol)
+    f3 = at 3 (pc s2 + 1) (room-a3 (pc s))
+    f4 : X.fetch cp (suc (pc s2 + 1)) ≡ just local-1
+    f4 = at 4 (suc (pc s2 + 1)) (room-a4 (pc s))
+    st0 : X.step-not-halted cp s ≡ just s1
+    st0 = step-add-ri {cp} {s} {esi} {slots k} f0
+    st1 : X.step-not-halted cp s1 ≡ just s2
+    st1 = step-cmp-rr {cp} {s1} {esi} {esp} f1
+    go : ∀ b → (X.Flags.cf (flags s2) ∨ X.Flags.zf (flags s2)) ≡ b
+       → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr i prog fs) s'))
+         ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
+                × xhalted s' ≡ false
+                × X.fetch cp (pc s') ≡ just (call-sym host-exhausted-symbol)))
+    go true be = inj₁ (5 , s5 , exec5 , record
+      { dataCorr = record { in1-eq = C.in1-eq d ; out-eq = C.out-eq d ; scratch-eq = C.scratch-eq d ; count-eq = C.count-eq d
+                          ; clos-eq = C.clos-eq d ; halt-eq = C.halt-eq d ; heap-eq = C.heap-eq d
+                          ; sp-eq = C.sp-eq d ; frontier-eq = C.frontier-eq d ; dom-fresh = C.dom-fresh d ; dom-written = C.dom-written d ; dom-sized = C.dom-sized d
+                          ; lo-le = C.lo-le d ; untouched = C.untouched d ; stack-eq = C.stack-eq d }
+      ; pc-off = pco ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
+      where
+        s3 : X.State
+        s3 = record s2 { pc = suc (pc s2 + 1) }
+        s4 : X.State
+        s4 = record s3 { pc = pc s3 + 1 }
+        f5 : X.fetch cp (pc s4) ≡ just (sub (reg esi) (imm (slots k)))
+        f5 = at 5 (pc s4) (room-a5 (pc s))
+        s5 : X.State
+        s5 = record s4 { regs = xwriteReg (xregs s4) esi (xreadReg (xregs s4) esi X.W.⊖ X.W.norm (slots k))
+                       ; flags = updateFlags (xreadReg (xregs s4) esi X.W.⊖ X.W.norm (slots k))
+                       ; pc = pc s4 + 1 }
+        st2 : X.step-not-halted cp s2 ≡ just s3
+        st2 = step-jbe-taken {cp} {s2} f2 be (find-local-1-past-call {cp} {pc s2 + 1} f3 f4)
+        st3 : X.step-not-halted cp s3 ≡ just s4
+        st3 = step-local-1 {cp} {s3} f4
+        st4 : X.step-not-halted cp s4 ≡ just s5
+        st4 = step-sub-ri {cp} {s4} {esi} {slots k} f5
+        exec5 : X.exec 5 cp s ≡ just s5
+        exec5 = trans (exec-1 {cp} {4} {s} {s1} halt-s st0 halt-s)
+               (trans (exec-1 {cp} {3} {s1} {s2} halt-s st1 halt-s)
+               (trans (exec-1 {cp} {2} {s2} {s3} halt-s st2 halt-s)
+               (trans (exec-1 {cp} {1} {s3} {s4} halt-s st3 halt-s)
+                      (exec-1 {cp} {0} {s4} {s5} halt-s st4 halt-s))))
+        kr : C.KeepsRoles s s5
+        kr = C.keeps-esi-x86 s v _ _ _ (X.WL.⊕⊖-norm (xreadReg (xregs s) esi) (slots k) esi<m)
+        d = C.keep-all dc kr
+        pco : pc s5 ≡ blk-off prog (fpc (flat-exec-instr i prog fs))
+        pco = trans (room-a6 (pc s)) (trans (cong (_+ 6) po) (sym (blk-off-suc prog (fpc fs) i ft)))
+    go false be = inj₂ (3 , s3 , exec3 , halt-s , f3)
+      where
+        s3 : X.State
+        s3 = record s2 { pc = pc s2 + 1 }
+        st2 : X.step-not-halted cp s2 ≡ just s3
+        st2 = step-jbe-not {cp} {s2} f2 be
+        exec3 : X.exec 3 cp s ≡ just s3
+        exec3 = trans (exec-1 {cp} {2} {s} {s1} halt-s st0 halt-s)
+               (trans (exec-1 {cp} {1} {s1} {s2} halt-s st1 halt-s)
+                      (exec-1 {cp} {0} {s2} {s3} halt-s st2 halt-s))
 
 -- lea-slot: Output := &stack[frame, slot] ↔ `lea eax, [esp + slot-to-disp slot]`.
 -- Plan 0.61's payoff: `X.effectiveAddr s (base+disp esp d) = readReg esp + d`, and

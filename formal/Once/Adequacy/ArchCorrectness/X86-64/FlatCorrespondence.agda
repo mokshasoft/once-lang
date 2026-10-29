@@ -43,7 +43,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- it), and importing both would make the name ambiguous.
 open X using (mkstate) renaming (writeReg to xwriteReg)
 open X.State using (memory) renaming (regs to xregs; halted to xhalted)
-open import Once.CCC.Target.X86-64.Syntax using (Reg)
+open import Once.CCC.Target.X86-64.Syntax using (Reg; r11)
 open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
@@ -58,6 +58,21 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
   public
 open SetsRole using (at-role; off-role)
 
+
+-- Plan 0.123 A.4: the room check writes `r11`, which no role holds, and the
+-- flags; every role's register, memory and the halt flag are as they were.
+keeps-r11-x86 : ∀ (s : X.State) (v : Word) (fl : X.Flags) (p : ℕ)
+  → KeepsRoles s (mkstate (xwriteReg (xregs s) r11 v) (memory s) fl p (xhalted s))
+keeps-r11-x86 s v fl p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → X.readReg (xwriteReg (xregs s) r11 v) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
+    kr role-out     = refl
+    kr role-in1     = refl
+    kr role-scratch = refl
+    kr role-count   = refl
 
 ------------------------------------------------------------------------
 -- x86-64 REALISES `SetsRole`: the state that writes one role's register and

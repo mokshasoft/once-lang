@@ -202,7 +202,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- `using`: an unrestricted application copies all of the simulation (and
 -- the correspondence it re-exports) into this interface.
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq
-  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr
+  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr; room-step-x86
         ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
         ; pc-off; ret-eq; x86-64-block-steps; x86-64-link-claim; xrreg
         ; module C; module CompiledCorr ) public
@@ -775,6 +775,7 @@ postulate
 x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
+  ; room-step = λ prog fs s k _ → room-step-x86 prog fs s k
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; scratch-dec-guarded = scratch-dec-guarded
   ; ret-no-wrap = ret-no-wrap ; count-no-wrap = count-no-wrap

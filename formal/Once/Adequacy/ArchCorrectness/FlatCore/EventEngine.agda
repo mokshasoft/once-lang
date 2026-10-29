@@ -45,7 +45,7 @@ open import Data.Sum using (_⊎_)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Internal; External; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.Target.SymbolFresh using (host-leave-symbol; leave≢osp; exhausted≢osp)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; leave≢osp; exhausted≢osp)
 open import Once.CCC.Machine.FlatLeft using (LeftFree; module LeftPres)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR.Semantics.Event using (SigOpEvent)
@@ -481,9 +481,29 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- trusted base (D061); they are postulates at x86-64 today and passing them as
 -- fields makes them what they always were.
 ------------------------------------------------------------------------
+
+-- Plan 0.123 A.4: THE ROOM CHECK's two outcomes. Its lowering branches, so
+-- unlike a `BlockStep` its step count is the arch's to say: either the room
+-- is there, and some run of the check lands in the correspondence past it (the
+-- flat step is a no-op), or it is not, and the check reaches, still running,
+-- the call of the Host's `once_exhausted`, which ends the run.
+RoomStep : HeapView → AbstractTrace → FlatState → State → ℕ → Set
+RoomStep hv prog fs s k =
+    Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'))
+  ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × xhalted s' ≡ false
+                × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
+
 record Supply : Set₁ where
   field
     bss : BlockSteps
+    -- the room check (plan 0.123 A.4): proved per arch, not assumed.
+    room-step : ∀ {hv : HeapView} prog fs s k → RunAt prog fs
+             → CompiledCorr hv prog fs s
+             → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (instr-room k)
+             → RoomStep hv prog fs s k
     sts : StuckSteps
     -- MEMORY / STACK / CALL-DEPTH EXHAUSTION, conditioned on `RunAt` and the
     -- correspondence — without them they are REFUTABLE (the 2026-07-30 vacuity

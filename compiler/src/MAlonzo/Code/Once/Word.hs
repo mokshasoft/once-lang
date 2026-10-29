@@ -917,24 +917,47 @@ d_'8853''45'neg_746 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8853''45'neg_746 = erased
+-- Once.Word.WidthLaws.norm-+ˡ
+d_norm'45''43''737'_764 ::
+  Integer ->
+  Integer ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_norm'45''43''737'_764 = erased
+-- Once.Word.WidthLaws.⊕⊖-cancel
+d_'8853''8854''45'cancel_776 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8853''8854''45'cancel_776 = erased
+-- Once.Word.WidthLaws.⊕⊖-norm
+d_'8853''8854''45'norm_792 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8853''8854''45'norm_792 = erased
 -- Once.Word.WidthLaws.⊖-self
-d_'8854''45'self_762 ::
+d_'8854''45'self_802 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''45'self_762 = erased
+d_'8854''45'self_802 = erased
 -- Once.Word.WidthLaws.sbb-zero
-d_sbb'45'zero_768 ::
+d_sbb'45'zero_808 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sbb'45'zero_768 = erased
+d_sbb'45'zero_808 = erased
 -- Once.Word.WidthLaws.sbb-pos
-d_sbb'45'pos_780 ::
+d_sbb'45'pos_820 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sbb'45'pos_780 = erased
+d_sbb'45'pos_820 = erased

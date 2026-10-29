@@ -104,6 +104,22 @@ role-off-t1 s role-in1     w = refl
 role-off-t1 s role-scratch w = refl
 role-off-t1 s role-count   w = refl
 
+-- Plan 0.123 A.4: the room check writes `t1`, which no role holds (twice:
+-- the immediate, then the sum); every role's register, memory and the halt
+-- flag are as they were.
+keeps-t1-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
+  → KeepsRoles s (mkstate (rwriteReg (rwriteReg (rregs s) t1 v) t1 w) (memory s) p (rhalted s))
+keeps-t1-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t1 v) t1 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
+    kr role-out     = refl
+    kr role-in1     = refl
+    kr role-scratch = refl
+    kr role-count   = refl
+
 sets-role-riscv64 : ∀ (s : R.State) (ρ : Role) (v : Word) (p : ℕ)
   → SetsRole s (mkstate (rwriteReg (rregs s) (reg-of ρ) v) (memory s) p (rhalted s)) ρ v
 sets-role-riscv64 s ρ v p = record

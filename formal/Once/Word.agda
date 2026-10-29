@@ -486,6 +486,25 @@ module WidthLaws (bits : ℕ) where
     trans (⊕-neg-suc x j (≤-<-trans k≤x x<m)) (⊖≡∸ x (suc j) k≤x x<m)
 
 
+  -- Plan 0.123 A.4: ADD THEN SUBTRACT is the identity, wrap or not. x86-32's
+  -- room check borrows the frontier register for the sum and takes it back.
+  norm-+ˡ : ∀ (a b : ℕ) → norm (norm a ℕ.+ b) ≡ norm (a ℕ.+ b)
+  norm-+ˡ a b =
+    trans (%-distribˡ-+ (a % modulus) b modulus)
+          (trans (cong (λ z → (z ℕ.+ b % modulus) % modulus) (m%n%n≡m%n a modulus))
+                 (sym (%-distribˡ-+ a b modulus)))
+
+  ⊕⊖-cancel : ∀ (x y : Word) → x < modulus → y ℕ.≤ modulus → (x ⊕ y) ⊖ y ≡ x
+  ⊕⊖-cancel x y x<m y≤m =
+    trans (norm-+ˡ (x ℕ.+ y) (modulus ∸ y))
+   (trans (cong norm (Data.Nat.Properties.+-assoc x y (modulus ∸ y)))
+   (trans (cong (λ z → norm (x ℕ.+ z)) (Data.Nat.Properties.m+[n∸m]≡n y≤m))
+   (trans ([m+n]%n≡m%n x modulus) (m<n⇒m%n≡m x<m))))
+
+  -- …at an immediate, which the machine norms first.
+  ⊕⊖-norm : ∀ (x n : ℕ) → x < modulus → (x ⊕ norm n) ⊖ norm n ≡ x
+  ⊕⊖-norm x n x<m = ⊕⊖-cancel x (norm n) x<m (<⇒≤ (m%n<n n modulus))
+
   -- plan 0.108: x86's BRANCH-FREE `x ≠ 0` — `cmp x, 1` (CF := x <u 1), then
   -- `sbb r, r` (r := 0 − CF), then `add r, 1` (r := 1 − CF). One lemma per
   -- value of CF; each needs one bit of width (`1 < modulus`).
