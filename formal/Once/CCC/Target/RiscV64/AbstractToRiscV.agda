@@ -39,7 +39,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Integer using (+_)
 open import Data.List using ([]; _∷_; _++_)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import RISC-V syntax
@@ -48,7 +48,7 @@ open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
-  using (zero; ra; sp; fp; a0; s1; s2; s3; s4; t0; t1; ld; sd; add; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; unimp; label; once; callee; e-fn; Program; slot-size; slots)
+  using (zero; ra; sp; fp; a0; s1; s2; s3; s4; t0; t1; ld; sd; add; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; unimp; bgeu-fwd; local-1; label; once; callee; e-fn; Program; slot-size; slots)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
@@ -266,9 +266,17 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- instr-room: no code yet (plan 0.123 A.4 step 2: the check and its call of
--- the Host's `once_exhausted` come with its simulation step)
-compile-abstract (instr-room k) = []
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
+-- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
+-- which ends the run. t1 is no role's; `li` because `addi`'s 12-bit
+-- immediate cannot hold every k.
+-- riscv64: li t1, 8k ; add t1, s2, t1 ; bgeu sp, t1, 1f ; call once_exhausted ; 1:
+compile-abstract (instr-room k) =
+  li t1 (+ slots k) ∷
+  add t1 s2 t1 ∷
+  bgeu-fwd sp t1 ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time

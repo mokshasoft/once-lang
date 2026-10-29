@@ -807,7 +807,53 @@ d_compile'45'abstract_64 v0
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'free'45'heap_2324 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2326 v1
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_add_38
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_esi_18))
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_imm_26
+                   (coe
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slots_80
+                      (coe v1))))
+             (coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_cmp_44
+                   (coe
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_reg_22
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_esi_18))
+                   (coe
+                      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_reg_22
+                      (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_esp_24)))
+                (coe
+                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                   (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_jbe'45'fwd_66)
+                   (coe
+                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                      (coe
+                         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_call'45'sym_56
+                         (coe
+                            MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'exhausted'45'symbol_170))
+                      (coe
+                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                         (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_local'45'1_68)
+                         (coe
+                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                            (coe
+                               MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_sub_40
+                               (coe
+                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_reg_22
+                                  (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_esi_18))
+                               (coe
+                                  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.C_imm_26
+                                  (coe
+                                     MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.d_slots_80
+                                     (coe v1))))
+                            (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.AbstractToX86-32.compile-trace-cnt
 d_compile'45'trace'45'cnt_126 ::

@@ -30,12 +30,12 @@ import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
-  using (eax; ebx; ecx; edx; esi; edi; ebp; esp; base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; ud2; label; call-l; mov-code; jmp-l; once; callee; e-fn; Program; slot-size; slots)
+  using (eax; ebx; ecx; edx; esi; edi; ebp; esp; base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; ud2; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; once; callee; e-fn; Program; slot-size; slots)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
@@ -206,9 +206,20 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- instr-room: no code yet (plan 0.123 A.4 step 2: the check and its call of
--- the Host's `once_exhausted` come with its simulation step)
-compile-abstract (instr-room k) = []
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
+-- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
+-- which ends the run. Every register has a role or is the frame pointer, so
+-- the frontier itself carries the sum and is restored past the skip (the
+-- call never returns, so only the fitting path needs it back).
+-- x86-32: addl $4k, %esi ; cmpl %esp, %esi ; jbe 1f ; call once_exhausted ;
+--         1: subl $4k, %esi
+compile-abstract (instr-room k) =
+  add (reg esi) (imm (slots k)) ∷
+  cmp (reg esi) (reg esp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  sub (reg esi) (imm (slots k)) ∷ []
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time

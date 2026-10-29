@@ -29,7 +29,8 @@ module Once.Adequacy.ArchCorrectness.X86-64.StepLemmas where
 
 open import Once.Memory.Memory using (≡ᵇ-refl)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<_; s≤s; z≤n)
-open import Data.Bool using (true; false; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_; _∨_)
+open import Data.List using ([]; _∷_; drop)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
@@ -39,7 +40,7 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.CCC.Target.X86-64.Semantics
 
 open State using (regs; memory; flags; pc; halted)
-open Flags using (zf)
+open Flags using (zf; cf)
 
 ------------------------------------------------------------------------
 -- Memory algebra
@@ -368,6 +369,46 @@ step-jne-not : ∀ {prog s n}
              → zf (flags s) ≡ true
              → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
 step-jne-not ft zf-eq rewrite ft | zf-eq = refl
+
+-- Plan 0.123 A.4: the room check's instructions. `cmp` of two registers, the
+-- forward skip taken or not (driven by CF or ZF), and its `1:` target.
+step-cmp-rr : ∀ {prog s r r'}
+            → fetch prog (pc s) ≡ just (cmp (reg r) (reg r'))
+            → step-not-halted prog s
+              ≡ just (record s { flags = mkflags (readReg (regs s) r ≡ᵇ readReg (regs s) r')
+                                                 (readReg (regs s) r <ᵇ readReg (regs s) r') false
+                               ; pc = pc s + 1 })
+step-cmp-rr ft rewrite ft = refl
+
+step-jbe-taken : ∀ {prog s tgt}
+               → fetch prog (pc s) ≡ just jbe-fwd
+               → (cf (flags s) ∨ zf (flags s)) ≡ true
+               → find-local-1 prog (pc s + 1) ≡ just tgt
+               → step-not-halted prog s ≡ just (record s { pc = tgt })
+step-jbe-taken ft be fl rewrite ft | be | fl = refl
+
+step-jbe-not : ∀ {prog s}
+             → fetch prog (pc s) ≡ just jbe-fwd
+             → (cf (flags s) ∨ zf (flags s)) ≡ false
+             → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-jbe-not ft be rewrite ft | be = refl
+
+step-local-1 : ∀ {prog s}
+             → fetch prog (pc s) ≡ just local-1
+             → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-local-1 ft rewrite ft = refl
+
+-- The skip's scan: past the call, the next `1:`.
+drop-fetch : ∀ {prog : Program} {i x} → fetch prog i ≡ just x → drop i prog ≡ x ∷ drop (suc i) prog
+drop-fetch {[]}     ()
+drop-fetch {y ∷ ys} {zero}  refl = refl
+drop-fetch {y ∷ ys} {suc i} ft   = drop-fetch {ys} {i} ft
+
+find-local-1-past-call : ∀ {prog i nm}
+  → fetch prog i ≡ just (call-sym nm) → fetch prog (suc i) ≡ just local-1
+  → find-local-1 prog i ≡ just (suc i)
+find-local-1-past-call {prog} {i} f1 f2
+  rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 = refl
 
 ------------------------------------------------------------------------
 -- Chaining: a `Steps prog k s s'` is k consecutive non-halting steps.

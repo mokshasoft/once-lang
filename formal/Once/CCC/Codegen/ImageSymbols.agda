@@ -28,10 +28,10 @@ open SigOpInfo using (name)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; FlatCtrl;
-         instr-ctrl; instr-sigop; instr-load-code-addr;
+         instr-ctrl; instr-sigop; instr-load-code-addr; instr-room;
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-ret;
          c-call-fn; c-start; c-leave)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 
 -- The program's portable entry (plan 0.123 C.5): the Host's `enter` (Linux:
 -- `_start`) sets up the region and jumps here. The compiler emits no data and
@@ -71,6 +71,8 @@ instr-refs : AbstractInstr → List String
 instr-refs (instr-ctrl c)           = ctrl-refs c
 instr-refs (instr-sigop si)         = once-symbol-path (name si) ∷ []
 instr-refs (instr-load-code-addr n) = thunkSym n ∷ []
+-- plan 0.123 A.4: the room check calls the Host's `once_exhausted` when it fails.
+instr-refs (instr-room _)           = host-exhausted-symbol ∷ []
 {-# CATCHALL #-}
 instr-refs _                        = []
 

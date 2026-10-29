@@ -692,7 +692,36 @@ d_compile'45'abstract_64 v0
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'free'45'heap_2324 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'room_2326 v1
-        -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe
+                MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_li_24
+                (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44)
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.d_slots_76 (coe v1)))
+             (coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_add_16
+                   (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44)
+                   (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_s2_36)
+                   (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44))
+                (coe
+                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                   (coe
+                      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_bgeu'45'fwd_38
+                      (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_sp_14)
+                      (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44))
+                   (coe
+                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                      (coe
+                         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_52
+                         (coe
+                            MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'exhausted'45'symbol_170))
+                      (coe
+                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                         (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_local'45'1_40)
+                         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.AbstractToRiscV.compile-trace
 d_compile'45'trace_150 ::

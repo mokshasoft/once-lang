@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rcx; rdi; rbp; rsp; r12; r14; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; ud2; Program; slot-size; slots)
+  using (rax; rbx; rcx; rdi; rbp; rsp; r11; r12; r14; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; ud2; jbe-fwd; local-1; Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -36,7 +36,7 @@ open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.CCC.Label using (once; callee)
 
 ------------------------------------------------------------------------
@@ -200,9 +200,16 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- instr-room: no code yet (plan 0.123 A.4 step 2: the check and its call of
--- the Host's `once_exhausted` come with its simulation step)
-compile-abstract (instr-room k) = []
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
+-- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
+-- which ends the run. r11 is no role's, and `jbe 1f` skips the call.
+-- x86: leaq 8k(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call once_exhausted ; 1:
+compile-abstract (instr-room k) =
+  lea r11 (base+disp r15 (slots k)) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 -- Delegates to the existing per-name handler in CodeGen/Compile.
