@@ -51,9 +51,9 @@ open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.List using ([]; take; map)
-open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
-open import Once.Adequacy.BudgetApex using (budget-apex)
+open import Once.Adequacy.BudgetApex using (budget-apex-⊑; budget-fact-⊑)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
 import Once.IR.Semantics.Trace as LT
@@ -381,9 +381,10 @@ conc-tr :
   → FFOx.image ir ≡ C.image-of p
   → Machine.trace (RTx.Run.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
                      (compile-trace (FFOx.image ir))) ([] , X.initState)
-    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-64) ι
+    ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-64) ι
 conc-tr brs p ir lk img =
-  budget-apex δc ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir)) fact
+  budget-apex-⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir))
+    (budget-fact-⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir)) fact)
   where
     δc = RTx.Run.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p))
                (compile-trace (FFOx.image ir))
@@ -428,13 +429,13 @@ file-tr-x86-64 :
   → (teq : tbl ≡ table (rewrite-program (irProgram (moduleTable m) ir)))
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
   → run-trace-x86-64 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
-    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))) ⟧IRᵗ (arch-numerics x86-64) ι
+    ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))) ⟧IRᵗ (arch-numerics x86-64) ι
 file-tr-x86-64 brs m F eq ir mi oq teq lk =
   subst (λ G → run-trace-x86-64 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
-               ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
+               ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
         (sym (file-is-emit x86-64 m F ir eq mi))
         (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (C.blocks-x86-64 p)) cd) ([] , X.initState)
-                       ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
+                       ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-64) ι)
                (sym code-eq) (conc-tr brs p ir′ lk img))
   where
     p   = irProgram (moduleTable m) ir

@@ -31,7 +31,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Spec.Signature using (Event)
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
-open import Once.Spec.Trace using (End; returned; halted; exhausted; Tr; module Tr; returned≈; halted≈; exhausted≈; _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (End; returned; halted; exhausted; Tr; module Tr; returned≈; halted≈; exhausted≈; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
+open import Once.Metatheory.TraceSub using (DepthSub; RanOut; ObsEx; fromSub)
 open import Once.Metatheory.Trace
   using (bindD; bind⇓; bind⇓⁻; nowInv; ⇓-det; pre; preStep; Depth; ObsR; MaybeEnd; cut≈; end≈; fromDepth)
 open import Once.Adequacy.MachineTrace using (Step; silent; emit; stop; stuck; listTr; never; module Machine)
@@ -262,3 +263,117 @@ module Agree {S₁ S₂ : Set} (δ₁ : S₁ → Step S₁) (δ₂ : S₂ → St
 
   agree-≈ : ∀ {s₁ s₂} → BudgetAgree s₁ s₂ → trace₁ s₁ ≈ᵗ⟨ _≡_ ⟩ trace₂ s₂
   agree-≈ ag = fromDepth (agree-depth ag)
+
+------------------------------------------------------------------------
+-- Up to running out (D347; plan 0.123 A.4): the first machine may END
+-- `exhausted` where the second goes on. At each budget, the runs show the
+-- same, or the first ended `exhausted` after calls the second makes first.
+------------------------------------------------------------------------
+
+  -- The first run ran out after a prefix of the second's calls.
+  RanOutAt : Obs → Obs → Set
+  RanOutAt o₁ o₂ = proj₂ o₁ ≡ just exhausted × ∃[ rest ] (proj₁ o₁ ++ rest ≡ proj₁ o₂)
+
+  BudgetSub : S₁ → S₂ → Set
+  BudgetSub s₁ s₂ =
+    ∀ k → Σ[ n₁ ∈ ℕ ] Σ[ n₂ ∈ ℕ ] ((F₁.runN n₁ s₁ ≡ F₂.runN n₂ s₂) ⊎ RanOutAt (F₁.runN n₁ s₁) (F₂.runN n₂ s₂))
+                                × (proj₂ (F₁.runN n₁ s₁) ≡ nothing → k ≤ n₁)
+                                × (proj₂ (F₂.runN n₂ s₂) ≡ nothing → k ≤ n₂)
+
+  -- Agreeing at every budget is the case that never runs out.
+  agree-sub : ∀ {s₁ s₂} → BudgetAgree s₁ s₂ → BudgetSub s₁ s₂
+  agree-sub ag k with ag k
+  ... | n₁ , n₂ , eq , long =
+    n₁ , n₂ , inj₁ eq , (λ c → proj₁ (long c)) , (λ c → proj₂ (long (trans (cong proj₂ eq) c)))
+
+  private
+    -- A run that ran out, cut against one that goes on: the same cut, or the
+    -- whole of the first (its calls a prefix of the second's cut).
+    cut-ran : ∀ n (es rest : List Event) (e₂ : Maybe (End ⊤))
+            → (cutAt n (es , just exhausted) ≡ cutAt n (es ++ rest , e₂) × Det n (es ++ rest , e₂))
+              ⊎ (cutAt n (es , just exhausted) ≡ (es , just exhausted)
+                 × ∃[ r ] (proj₁ (cutAt n (es ++ rest , e₂)) ≡ es ++ r))
+    cut-ran zero    es       rest e₂ = inj₁ (refl , tt)
+    cut-ran (suc n) []       rest e₂ = inj₂ (refl , proj₁ (cutAt (suc n) (rest , e₂)) , refl)
+    cut-ran (suc n) (v ∷ es) rest e₂ with cut-ran n es rest e₂
+    ... | inj₁ (eq , d)          = inj₁ (cong (λ c → v ∷ proj₁ c , proj₂ c) eq , d)
+    ... | inj₂ (eq , r , req)    = inj₂ (cong (λ c → v ∷ proj₁ c , proj₂ c) eq , r , cong (v ∷_) req)
+
+    -- The first `length es` calls of a run that starts with `es`.
+    det-prefix : ∀ (es rest : List Event) (e : Maybe (End ⊤)) → Det (Data.List.length es) (es ++ rest , e)
+    det-prefix []       rest e = tt
+    det-prefix (v ∷ es) rest e = det-prefix es rest e
+
+    cut-prefix : ∀ (es rest : List Event) (e : Maybe (End ⊤)) → cutAt (Data.List.length es) (es ++ rest , e) ≡ (es , nothing)
+    cut-prefix []       rest e = refl
+    cut-prefix (v ∷ es) rest e = cong (λ c → v ∷ proj₁ c , proj₂ c) (cut-prefix es rest e)
+
+  sub-depth : ∀ {s₁ s₂} → BudgetSub s₁ s₂ → DepthSub {⊤} {_≡_} (trace₁ s₁) (trace₂ s₂)
+  sub-depth {s₁} {s₂} ag n = fw , bw
+    where
+      fw : ∀ o → pre n (trace₁ s₁) ⇓ o
+         → RanOut {⊤} {_≡_} o (trace₂ s₂) ⊎ ∃[ o′ ] (pre n (trace₂ s₂) ⇓ o′ × ObsR _≡_ o o′)
+      fw o a with F₁.run-pre n [] s₁ a
+      ... | N , d , q with ag N
+      ...   | n₁ , n₂ , rel , long₁ , long₂ with F₁.align n s₁ {N} {n₁} d q long₁
+      ...     | d₁ , q₁ = by rel
+        where
+          by : (F₁.runN n₁ s₁ ≡ F₂.runN n₂ s₂) ⊎ RanOutAt (F₁.runN n₁ s₁) (F₂.runN n₂ s₂)
+             → RanOut {⊤} {_≡_} o (trace₂ s₂) ⊎ ∃[ o′ ] (pre n (trace₂ s₂) ⇓ o′ × ObsR _≡_ o o′)
+          by (inj₁ eq) =
+            inj₂ (o , subst (λ c → pre n (trace₂ s₂) ⇓ c) (trans (cong (cutAt n) (sym eq)) q₁)
+                        (F₂.pre-run n [] n₂ s₂ (subst (Det n) eq d₁)) , obsRefl o)
+          by (inj₂ (ex , rest , req)) = ran (F₁.runN n₁ s₁) refl (F₂.runN n₂ s₂) refl ex req
+            where
+              ran : ∀ o₁ → F₁.runN n₁ s₁ ≡ o₁ → ∀ o₂ → F₂.runN n₂ s₂ ≡ o₂ → proj₂ o₁ ≡ just exhausted
+                  → proj₁ o₁ ++ rest ≡ proj₁ o₂
+                  → RanOut {⊤} {_≡_} o (trace₂ s₂) ⊎ ∃[ o′ ] (pre n (trace₂ s₂) ⇓ o′ × ObsR _≡_ o o′)
+              ran (es , .(just exhausted)) e₁ (.(es ++ rest) , e₂) e₂q refl refl with cut-ran n es rest e₂
+              ... | inj₁ (eqc , d₂) =
+                inj₂ (o , subst (λ c → pre n (trace₂ s₂) ⇓ c)
+                              (trans (cong (cutAt n) e₂q) (trans (sym eqc) (trans (cong (cutAt n) (sym e₁)) q₁)))
+                              (F₂.pre-run n [] n₂ s₂ (subst (Det n) (sym e₂q) d₂)) , obsRefl o)
+              ... | inj₂ (eqc , _) =
+                inj₁ (subst (λ c → RanOut {⊤} {_≡_} c (trace₂ s₂)) o≡
+                        (refl , subst (λ c → pre (Data.List.length es) (trace₂ s₂) ⇓ c)
+                                      (trans (cong (cutAt (Data.List.length es)) e₂q) (cut-prefix es rest e₂))
+                                      (F₂.pre-run (Data.List.length es) [] n₂ s₂
+                                         (subst (Det (Data.List.length es)) (sym e₂q) (det-prefix es rest e₂)))))
+                where o≡ : (es , just exhausted) ≡ o
+                      o≡ = trans (sym eqc) (trans (cong (cutAt n) (sym e₁)) q₁)
+      bw : ∀ o′ → pre n (trace₂ s₂) ⇓ o′ → ∃[ o ] (pre n (trace₁ s₁) ⇓ o × ObsEx {⊤} {_≡_} o o′)
+      bw o′ a with F₂.run-pre n [] s₂ a
+      ... | N , d , q with ag N
+      ...   | n₁ , n₂ , rel , long₁ , long₂ with F₂.align n s₂ {N} {n₂} d q long₂
+      ...     | d₂ , q₂ = by rel
+        where
+          by : (F₁.runN n₁ s₁ ≡ F₂.runN n₂ s₂) ⊎ RanOutAt (F₁.runN n₁ s₁) (F₂.runN n₂ s₂)
+             → ∃[ o ] (pre n (trace₁ s₁) ⇓ o × ObsEx {⊤} {_≡_} o o′)
+          by (inj₁ eq) =
+            o′ , subst (λ c → pre n (trace₁ s₁) ⇓ c) (trans (cong (cutAt n) eq) q₂)
+                   (F₁.pre-run n [] n₁ s₁ (subst (Det n) (sym eq) d₂)) , inj₁ (obsRefl o′)
+          by (inj₂ (ex , rest , req)) = ran (F₁.runN n₁ s₁) refl (F₂.runN n₂ s₂) refl ex req
+            where
+              ran : ∀ o₁ → F₁.runN n₁ s₁ ≡ o₁ → ∀ o₂ → F₂.runN n₂ s₂ ≡ o₂ → proj₂ o₁ ≡ just exhausted
+                  → proj₁ o₁ ++ rest ≡ proj₁ o₂
+                  → ∃[ o ] (pre n (trace₁ s₁) ⇓ o × ObsEx {⊤} {_≡_} o o′)
+              ran (es , .(just exhausted)) e₁ (.(es ++ rest) , e₂) e₂q refl refl = pick (cut-ran n es rest e₂)
+                where
+                  at₁ : pre n (trace₁ s₁) ⇓ cutAt n (es , just exhausted)
+                  at₁ = subst (λ c → pre n (trace₁ s₁) ⇓ cutAt n c) e₁
+                          (F₁.pre-run n [] n₁ s₁ (subst (Det n) (sym e₁) (Det-ended n es exhausted)))
+                  o′≡ : cutAt n (es ++ rest , e₂) ≡ o′
+                  o′≡ = trans (cong (cutAt n) (sym e₂q)) q₂
+                  pick : (cutAt n (es , just exhausted) ≡ cutAt n (es ++ rest , e₂) × Det n (es ++ rest , e₂))
+                         ⊎ (cutAt n (es , just exhausted) ≡ (es , just exhausted)
+                            × ∃[ r ] (proj₁ (cutAt n (es ++ rest , e₂)) ≡ es ++ r))
+                       → ∃[ o ] (pre n (trace₁ s₁) ⇓ o × ObsEx {⊤} {_≡_} o o′)
+                  pick (inj₁ (eqc , _)) =
+                    o′ , subst (λ c → pre n (trace₁ s₁) ⇓ c) (trans eqc o′≡) at₁ , inj₁ (obsRefl o′)
+                  pick (inj₂ (eqc , r , req′)) =
+                    (es , just exhausted) , subst (λ c → pre n (trace₁ s₁) ⇓ c) eqc at₁
+                    , inj₂ (refl , r , sym (trans (sym (cong proj₁ o′≡)) req′))
+
+  -- THE BRIDGE: two machines that agree at every budget up to running out.
+  agree-⊑ : ∀ {s₁ s₂} → BudgetSub s₁ s₂ → trace₁ s₁ ⊑ᵗ⟨ _≡_ ⟩ trace₂ s₂
+  agree-⊑ ag = fromSub (sub-depth ag)
