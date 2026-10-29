@@ -27,8 +27,8 @@ open import Once.Spec.Delay using (Delay; _⇓_; _≈⟨_⟩_)
 
 -- How a run ends: with a value, halted by a call with no answer, or
 -- exhausted: out of memory. A source program never runs out (the Spec's
--- model has unlimited memory); only a compiled program's run ends
--- `exhausted` (D347).
+-- model has unlimited memory: `Spec.Metatheory`'s `never-exhausted`, D348);
+-- only a compiled program's run ends `exhausted` (D347).
 data End (X : Set) : Set where
   returned  : X → End X
   halted    : End X
@@ -92,3 +92,8 @@ infix 4 _⊑ᵗ⟨_⟩_
 data Calls {X : Set} : Tr X → List Event → Set where
   none : ∀ {t} → Calls t []
   call : ∀ {t v t′ vs} → next t ⇓ inj₂ (v , t′) → Calls t′ vs → Calls t (v ∷ vs)
+
+-- The trace ends `e`: after finitely many calls, its run ends there.
+data Ends {X : Set} : Tr X → End X → Set where
+  ends-now   : ∀ {t e} → next t ⇓ inj₁ e → Ends t e
+  ends-after : ∀ {t v t′ e} → next t ⇓ inj₂ (v , t′) → Ends t′ e → Ends t e

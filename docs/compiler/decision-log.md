@@ -19779,4 +19779,29 @@ outcome, never undefined behaviour."
   `Metatheory.Trace.≈⇒⊑` turns it into the claim. Every case split on `End` gains its `exhausted` case.
 * Still to come (plan 0.123 A): the room checks (one per loop round, closure entry and program start, Part
   C), the Host-supplied region, the Hosts' `once_exhausted`, the per-arch proof's split at a check, and the
-  nine room hypotheses leaving the apex. "A source trace never ends `exhausted`" goes in `Spec.Metatheory`.
+  nine room hypotheses leaving the apex. "A source trace never ends `exhausted`" goes in `Spec.Metatheory`
+  (D348).
+
+## D348 — A RUN OF THE MEANING NEVER RUNS OUT (2026-10-29)
+
+**Completes** D347. **Decided** by the user 2026-10-29: handled as the silent loop is (`Totality.silent-never`):
+the Spec states it, `Once.Metatheory` proves it.
+
+### Context
+D347 put `exhausted` in `Spec.Trace`'s `End`, which both sides of the claim share, and said only a compiled
+run ends there. That was prose: nothing in the Spec said that the meaning's traces never do.
+
+### Decision
+* **`Spec.Trace`: `Ends t e`,** the trace ends `e` after finitely many calls (inductive, beside `Calls`).
+* **`Spec.Metatheory`: `Totality.never-exhausted`.** For every signature, world, history and computation,
+  the observed trace of it never `Ends … exhausted`. Stated over every `T∞` computation, so it covers every
+  program's meaning at once.
+* **The proof** (`Once.Metatheory.Totality.NeverExhausted`): the observation's ends are `returned` (a block
+  ends with a value) and `halted` (a call with no answer); by induction on `Ends` over what the observation
+  builds (a trace, or what follows a call).
+
+### Consequences
+* `exhausted` in a claim relating a compiled run to its meaning can only be the compiled run's: `⊑`'s
+  `complete` never meets an `exhausted` of the meaning.
+* A separate source trace type with no `exhausted` was considered (nothing to prove) and set aside: it
+  doubles `Tr`, `EndRel` and the trace metatheory for no observable difference.

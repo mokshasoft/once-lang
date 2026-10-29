@@ -13,7 +13,9 @@
 --     calls `tick`, and each round of the server makes two calls, so in
 --     every world it makes as many calls as asked;
 --   * the silent loop is typed, and nothing of its trace ever arrives: each
---     round ends where it began.
+--     round ends where it began;
+--   * no run of the meaning runs out: the observation's ends are `returned`
+--     and `halted`, never `exhausted`.
 ------------------------------------------------------------------------
 
 module Once.Metatheory.Totality where
@@ -30,10 +32,10 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using (≤-refl; +-identityʳ; +-assoc)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Maybe using (nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (¬_)
+open import Relation.Nullary using (¬_; yes; no)
 open import Once.Spec.Grade using (0≤q; ⊑-pa; ⊑-act)
 open import Once.Spec.Name using (CanonicalName; canonical; GenWord; genWords)
 open import Once.Spec.Numerics using (TargetNum)
@@ -50,7 +52,7 @@ import Once.Spec.Grade
 open import Once.Spec.Examples
 import Once.Spec.Effect as Effect
 import Once.Spec.Observation as Observation
-open import Once.Spec.Trace using (Calls)
+open import Once.Spec.Trace using (Calls; Tr; Ends; ends-now; ends-after; exhausted)
 import Once.Spec.Core.Typing as CoreTyping
 import Once.Spec.Core.Meaning as Meaning
 import Once.Spec.Surface.Typing as SurfaceTyping
@@ -199,6 +201,49 @@ module Silent (fmt : TargetNum) (δ : Meaning.DefSem [] fmt []) (w : Observation
   never h (now⇓ ())
   never h (later⇓ refl d⇓) = never h d⇓
 
+------------------------------------------------------------------------
+-- No run of the meaning runs out
+------------------------------------------------------------------------
+
+-- The observation's ends are `returned` (a block ends with a value) and
+-- `halted` (a call with no answer); nothing it builds ends `exhausted`.
+module NeverExhausted (Σ : Signature) (w : Observation.World Σ) where
+  open Observation Σ using (History; trace; blockD; after)
+  open Effect Σ using (T; T∞; roll; done; node; force)
+
+  -- What the observation builds: a trace, or what follows a call.
+  data Built {X : Set} : Tr X → Set where
+    built-trace : ∀ h (m : T∞ X) → Built (trace w h m)
+    built-after : ∀ h o a k d → Built (after w h o a k d)
+
+  -- A block never arrives at `exhausted` …
+  block-ends : ∀ {X} h (c : T (X ⊎ T∞ X)) → ¬ (blockD w h c ⇓ inj₁ exhausted)
+  block-ends h (roll (done (inj₁ x)))     (now⇓ ())
+  block-ends h (roll (done (inj₁ x)))     (later⇓ () _)
+  block-ends h (roll (done (inj₂ m)))     (now⇓ ())
+  block-ends h (roll (done (inj₂ m)))     (later⇓ refl d) = block-ends h (force m) d
+  block-ends h (roll (node (call o a k))) (now⇓ ())
+  block-ends h (roll (node (call o a k))) (later⇓ () _)
+
+  -- … and what follows its call is built by the observation.
+  block-call : ∀ {X} h (c : T (X ⊎ T∞ X)) {v t′} → blockD w h c ⇓ inj₂ (v , t′) → Built t′
+  block-call h (roll (done (inj₁ x)))     (now⇓ ())
+  block-call h (roll (done (inj₁ x)))     (later⇓ () _)
+  block-call h (roll (done (inj₂ m)))     (now⇓ ())
+  block-call h (roll (done (inj₂ m)))     (later⇓ refl d) = block-call h (force m) d
+  block-call h (roll (node (call o a k))) (now⇓ refl)     = built-after h o a k _
+  block-call h (roll (node (call o a k))) (later⇓ () _)
+
+  never : ∀ {X} {t : Tr X} → Built t → ¬ Ends t exhausted
+  never (built-trace h m)             (ends-now d)     = block-ends h (force m) d
+  never (built-trace h m)             (ends-after d e) = never (block-call h (force m) d) e
+  never (built-after h o a k (yes p)) (ends-now d)     = block-ends _ _ d
+  never (built-after h o a k (yes p)) (ends-after d e) = never (block-call _ _ d) e
+  never (built-after h o a k (no _))  (ends-now (now⇓ ()))
+  never (built-after h o a k (no _))  (ends-now (later⇓ () _))
+  never (built-after h o a k (no _))  (ends-after (now⇓ ()) _)
+  never (built-after h o a k (no _))  (ends-after (later⇓ () _) _)
+
 totality : Totality
 totality = record
   { no-self-reference    = no-self-reference
@@ -209,6 +254,7 @@ totality = record
   ; server-runs          = λ fmt δ w n → calls {fmt} {δ} {w} {n} (Runs.runs fmt δ w n [])
   ; silent-typed         = silent-typed
   ; silent-never         = λ fmt δ w o → Silent.never fmt δ w [] {o}
+  ; never-exhausted      = λ Σ w h m → NeverExhausted.never Σ w (NeverExhausted.built-trace h m)
   }
   where
     calls : ∀ {fmt δ w n} → ∃[ d ] (RunM.Run echoΣ w [] (Runs.server fmt δ w) n d nothing × length d ≡ n)
