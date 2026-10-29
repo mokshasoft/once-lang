@@ -219,6 +219,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   (D220, D221, D199)
 - **Measuring Agda**: `touch` does not force a recheck; confirm a `Checking`
   line. (D200)
+- **Both builds are tested**: the exit suites and `traceCases` build each
+  program with and without the optimizer and require the same output; each
+  optimizer rule has a test (`Optimize.Examples`, `opt-rules.once`), read
+  through `once elaborate` / `once optimize`. (D348)
 - **The Spec imports no implementation module**: it imports only itself
   (`make spec-gate`). (D306, D316 ← D300)
 - **The extraction is what the CLI runs** (`Once.Extract.Root`); the

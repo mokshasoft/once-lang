@@ -19779,3 +19779,37 @@ the postulate `opt-trace`; the optimizer's own proof (`Optimize.Correct`) was a 
 * The extracted optimizer changes (the `Out` guard); compiled programs differ only where `terminal`, `fst` or `snd`
   composed over an `Out`.
 
+
+## D348 — BOTH BUILDS ARE TESTED; THE OPTIMIZER STAYS GRADE-BLIND (2026-10-29)
+
+**Follows** D347, plan 0.39 (closed by this entry). **Decided** by the user 2026-10-29: test both builds and
+every rule; do not pursue plan 0.39 F.
+
+### Context
+The apex covers the optimized build since D347, but the tests did not: the exit suites built only
+`--no-optimize`, `traceCases` likewise, and nothing showed that a given optimizer rule ever fires. Plan 0.39 F
+proposed a grade-aware guard to drop a pure stream's `Out` again, which D347 made an effect.
+
+### Decision
+* **Each exit test is built both ways** (`tests/run-exit-tests{,-x86_32,-riscv64}.sh`): both binaries must exit
+  with the expected code and print the same output (`cmp` of the traces). Given explicit flags, a test is built
+  once with exactly those. `traceCases` runs each case at every arch both ways.
+* **The CLI's `elaborate` and `optimize` stages print each compiled function's IR** (`Once.IR.Show`,
+  `Once.Compile.Dump`, extracted; `once optimize` prints the bodies `once build` compiles).
+* **Each rule has a test.** `Optimize.Examples` checks one pass of `optimize-once` per rule by `refl` (merge
+  gate); `compiler/test/opt-rules.once` holds one definition per rule elaborated code reaches, and `OptimizeSpec`
+  checks its redex before and its exact IR after, and its trace both ways.
+* **F is not done.** Master's optimizer (`Out` quiet) and D347's give byte-identical binaries for all 93
+  buildable corpus programs, so the guard costs nothing today; a grade-aware guard needs a stream's grade in the
+  IR, which D046/D233 erase, or an optimizer over typed terms. Revisit if a program shows the cost.
+
+### Consequences
+* Measured with the tests: elaborated code reaches the `Unit` → `terminal`, `Void` → `initial`, `id ∘ f` and
+  `fst`/`snd ∘ ⟨g,h⟩` rules only. `g ∘ id`, `case ∘ inl/inr`, `[inl, inr]`, `terminal ∘ f`, `g ∘ initial` and a
+  `SigOp` out of `Void` fire only on hand-built IR; the structural `inl`/`inr` out of `Void` rule never fires (the
+  type-directed `Void` rule runs first). The `Unit` rule runs before eta (`<id . fst, snd>` becomes
+  `<terminal, snd>`), and nothing reassociates composition. A stronger optimizer is a plan of its own.
+* D347's last consequence is settled by the measurement: no corpus program's binary changed.
+* Plan 0.39's note (a), `nestedprod-sum` miscompiled under optimization (2026-06), does not reproduce: the
+  program passes both ways on all three arches.
+* Plan 0.39 is closed and deleted; its route and findings are D347 and this entry.
