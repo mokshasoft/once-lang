@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Optimize.Examples — ONE PASS OF THE OPTIMIZER ON EACH RULE
--- (plan 0.39).
+-- (plans 0.39, 0.129).
 --
 -- Each example is a term whose one pass (`optimize-once`) fires the named
 -- rule of `Once.Optimize`, checked by `refl`; the `Call`s are effects, so
@@ -16,10 +16,6 @@
 -- and `[inl, inr]` (the elaborator puts a distribution between a sum and its
 -- `case`), `terminal ∘ f`, `g ∘ initial` and a `SigOp` out of `Void` (each
 -- needs an effect under a dropped or `Void`-sourced term).
---
--- The structural `inl`/`inr` out of `Void` → `initial` never fires: the
--- structural rules run only on a term whose source is not `Void`, and a sum
--- injection's target is never `Unit`.
 ------------------------------------------------------------------------
 
 module Once.Optimize.Examples where
@@ -62,10 +58,13 @@ guard = refl
 id-left : optimize-once (id ∘ fst {Int} {Int}) ≡ fst
 id-left = refl
 
--- f ∘ id = f (for an `f` the left rules leave: `fst ∘ id` stays, as
--- `optimize-fst` reduces only a pair)
+-- f ∘ id = f
 id-right : optimize-once (inl {Int} {Int} ∘ id) ≡ inl
 id-right = refl
+
+-- …also after a projection that finds no pair (eta leaves `snd ∘ id` behind)
+id-right-proj : optimize-once (snd {Int} {Int} ∘ id) ≡ snd
+id-right-proj = refl
 
 -- terminal ∘ f = terminal, f quiet once optimized (an effectful `case` arm it
 -- never takes)
@@ -104,3 +103,31 @@ pair-eta = refl
 -- [inl, inr] = id
 case-eta : optimize-once (case (inl {Int} {Int}) inr) ≡ id
 case-eta = refl
+
+-- ⟨fst, snd⟩ = id up to `Unit`: a `fst` into `Unit` is `terminal` first
+pair-eta-unit : optimize-once (⟨ id ∘ fst {Unit} {Int} , snd ⟩) ≡ id
+pair-eta-unit = refl
+
+-- [inl, inr] = id up to `Void`: an `inl` out of `Void` is `initial` first
+case-eta-void : optimize-once (case (inl {Void} {Int}) inr) ≡ id
+case-eta-void = refl
+
+-- the guard reads only the dropped term: `fst ∘ ⟨g,h⟩ = g` when `g` calls
+fst-pair-effect : optimize-once (fst ∘ ⟨ eff {Int} {Int} , id ⟩) ≡ eff
+fst-pair-effect = refl
+
+-- (h ∘ k) ∘ f = h ∘ (k ∘ f): the chain goes to the right
+reassoc : optimize-once ((eff {Int} {Int} ∘ eff {Int}) ∘ eff {Int}) ≡ eff ∘ (eff ∘ eff)
+reassoc = refl
+
+-- fst ∘ (⟨g,h⟩ ∘ k) = g ∘ k (`h` quiet)
+fst-chain : optimize-once (fst ∘ (⟨ eff {Int} {Int} , id ⟩ ∘ eff {Int})) ≡ eff ∘ eff
+fst-chain = refl
+
+-- snd ∘ (⟨g,h⟩ ∘ k) = h ∘ k (`g` quiet)
+snd-chain : optimize-once (snd ∘ (⟨ id , eff {Int} {Int} ⟩ ∘ eff {Int})) ≡ eff ∘ eff
+snd-chain = refl
+
+-- case h k ∘ (inl ∘ m) = h ∘ m
+case-chain : optimize-once (case (eff {Int} {Int}) (one ∘ terminal) ∘ (inl {Int} {Int} ∘ eff {Int})) ≡ eff ∘ eff
+case-chain = refl

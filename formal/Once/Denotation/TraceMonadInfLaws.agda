@@ -57,6 +57,17 @@ force≈ (≈∞-idʳ m) = ≈∞-idʳB (force m)
 ≈∞-idʳB (call o a k)   = call≈ (λ b → ≈∞-idʳB (k b))
 ≈∞-idʳB (halt o a)     = halt≈
 
+-- Bind is associative.
+≈∞-assoc  : ∀ {X Y Z} (m : T∞ X) (k : X → T∞ Y) (h : Y → T∞ Z)
+          → TreeEq∞ _≡_ ((m >>=∞ k) >>=∞ h) (m >>=∞ λ x → k x >>=∞ h)
+≈∞-assocB : ∀ {X Y Z} (l : T (X ⊎ T∞ X)) (k : X → T∞ Y) (h : Y → T∞ Z)
+          → BlockEq (StepEq _≡_ (TreeEq∞ _≡_)) (bindBlock (bindBlock l k) h) (bindBlock l λ x → k x >>=∞ h)
+force≈ (≈∞-assoc m k h) = ≈∞-assocB (force m) k h
+≈∞-assocB (ret (inj₁ x)) k h = ≈∞-reflB (λ _ → refl) (bindBlock (force (k x)) h)
+≈∞-assocB (ret (inj₂ m)) k h = ret≈ (next≈ (≈∞-assoc m k h))
+≈∞-assocB (call o a c)   k h = call≈ (λ b → ≈∞-assocB (c b) k h)
+≈∞-assocB (halt o a)     k h = halt≈
+
 -- Bisimilarity is symmetric (when the results' relation is).
 ≈∞-sym  : ∀ {X} {R : X → X → Set} → (∀ {x y} → R x y → R y x) → ∀ {m m′} → TreeEq∞ R m m′ → TreeEq∞ R m′ m
 ≈∞-symB : ∀ {X} {R : X → X → Set} → (∀ {x y} → R x y → R y x) → ∀ {l l′}

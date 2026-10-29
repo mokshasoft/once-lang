@@ -147,6 +147,9 @@ decision-log entry updates the rule it changes here, in the same commit.
   stopped callee has not left the program, `opt-trace` is restated over
   traces. (D326) `opt-trace` is now a theorem: the optimizer keeps a
   program's trace, and the codegen chain is stated at either build. (D347)
+- **The optimizer associates composition to the right** and a rule checks only
+  the term it drops for an effect; eta holds up to `Unit`/`Void`. The arith
+  recogniser reads compositions however they nest. (D349)
 - **Two tool hypotheses about `String`** (`Once.Postulates` T1, T2:
   `toList-++`, `toList∘fromList`, the standard library's own): facts about the
   primitives Agda does not export (before, `Data.String.Unsafe`'s `trustMe`,

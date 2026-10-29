@@ -54,7 +54,7 @@ open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-throug
   PView; pv-id; pv-fst; pv-snd; pv-pair; pv-comp; pv-other; p-view; is-terminal?; TView; tv-term; tv-comp; tv-other; t-view; it-at;
   recognise-body; recognise-binop; recognise-prim; binop-at; rb-at; rb-view; RBView; v-reassoc; v-sigop; v-cint; v-cflt; v-other;
   recognise-body-float; recognise-binop-float; recognise-prim-float; binop-at-float; rbf-at;
-  lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-other; pair-of)
+  lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-reassoc; bv-other; pair-of)
 open import Once.SigOp.Info using (SigOpSem; mk-info'; primV; SigOpInfo)
 open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 import Once.Type.Core as Ty
@@ -404,6 +404,10 @@ bin-at k sh .id bv-id lt eq a = ids (typePath? sh NInt (Fst ∷ [])) refl (typeP
       a , refl , leaf-sound sh NInt (Fst ∷ []) t₁ e₁ a , leaf-sound sh NInt (Snd ∷ []) t₂ e₂ a
     ids (just _) _ nothing _ ()
     ids nothing  _ _       _ ()
+bin-at zero sh .((f ∘ g) ∘ h) (bv-reassoc f g h) () eq a
+bin-at (suc k) sh .((f ∘ g) ∘ h) (bv-reassoc f g h) lt eq a
+  with bin-sound k sh (f ∘ (g ∘ h)) (<-≤ (reassoc-< f g h) (Data.Nat.Properties.≤-pred lt)) eq a
+... | b , eb , r₁ , r₂ = b , now-assoc (evalᴰ fmt ρ h a) (evalᴰ fmt ρ g) (evalᴰ fmt ρ f) eb , r₁ , r₂
 bin-at k sh e (bv-other e) lt () a
 
 ------------------------------------------------------------------------
@@ -503,6 +507,10 @@ fbin-at k sh .id bv-id lt eq a = ids (typePath? sh NFloat (Fst ∷ [])) refl (ty
       a , refl , leaf-sound sh NFloat (Fst ∷ []) t₁ e₁ a , leaf-sound sh NFloat (Snd ∷ []) t₂ e₂ a
     ids (just _) _ nothing _ ()
     ids nothing  _ _       _ ()
+fbin-at zero sh .((f ∘ g) ∘ h) (bv-reassoc f g h) () eq a
+fbin-at (suc k) sh .((f ∘ g) ∘ h) (bv-reassoc f g h) lt eq a
+  with fbin-sound k sh (f ∘ (g ∘ h)) (<-≤ (reassoc-< f g h) (Data.Nat.Properties.≤-pred lt)) eq a
+... | b , eb , r₁ , r₂ = b , now-assoc (evalᴰ fmt ρ h a) (evalᴰ fmt ρ g) (evalᴰ fmt ρ f) eb , r₁ , r₂
 fbin-at k sh e (bv-other e) lt () a
 
 ------------------------------------------------------------------------

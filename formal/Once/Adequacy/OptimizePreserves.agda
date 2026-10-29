@@ -22,14 +22,15 @@
 
 module Once.Adequacy.OptimizePreserves where
 
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; not)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary.Decidable using (isYes)
 
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR
@@ -44,7 +45,8 @@ open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBl
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; cata-ev-algᴰ; module CallEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; coerce-functor-D; coerce-functor⁻¹-D)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt;
-  RelS-embed; RelS-bind; relS-ret; RelS-iter∞; RelS-≈ˡ; RelS-≈ʳ; ≈∞-idˡ; ≈∞-idʳ; ≈∞-sym; ≈∞-reflB)
+  RelS-embed; RelS-bind; relS-ret; RelS-iter∞; RelS-≈ˡ; RelS-≈ʳ; ≈∞-idˡ; ≈∞-idʳ; ≈∞-sym; ≈∞-reflB; ≈∞-refl;
+  ≈∞-bind; ≈∞-assoc)
 open import Once.Denotation.ValueRel
 open import Once.Denotation.EvalRel using (fo-eq; RelS-now; RelEnv; sigop-rel; eval-rel)
 open import Once.Denotation.ValueRelPER using (RelD-sym; RelD-trans; RelS-sym; RelS-trans)
@@ -156,67 +158,192 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
     void-rel : ∀ {B} {x y : IR II.Void B} → Rel x y
     void-rel {a = ()}
 
-    -- `fst ∘ ⟨ p , h ⟩ → p`: `h` has no effect, so it returns at once
-    fst-rel : ∀ {A B C} (f′ f : IR A (B II.* C)) (g : IR (B II.* C) B) → has-effect? f′ ≡ false
-            → Rel f′ f → Rel fst g → Rel (optimize-fst f′) (g ∘ f)
-    fst-rel f′ f g q rf rg r with pairView f′
-    ... | is-pair p h =
-      RelS-≈ˡ (≈∞-sym sym (pair-fst≈ (E p _) (quiet-now fmt ρ h (proj₂ (∨-split (has-effect? p) q)) _))) (RelS-bind (rf r) rg)
-    ... | is-other-pair .f′ = RelS-bind (rf r) rg
-
-    snd-rel : ∀ {A B C} (f′ f : IR A (B II.* C)) (g : IR (B II.* C) C) → has-effect? f′ ≡ false
-            → Rel f′ f → Rel snd g → Rel (optimize-snd f′) (g ∘ f)
-    snd-rel f′ f g q rf rg r with pairView f′
-    ... | is-pair p h =
-      RelS-≈ˡ (≈∞-sym sym (pair-snd≈ (quiet-now fmt ρ p (proj₁ (∨-split (has-effect? p) q)) _) (E h _))) (RelS-bind (rf r) rg)
-    ... | is-other-pair .f′ = RelS-bind (rf r) rg
-
-    -- `case h k ∘ inl → h` (and `inr`): returning, then continuing
-    post-case-rel : ∀ {A B C D} (h : IR A C) (k : IR B C) (f′ f : IR D (A II.+ B)) (g : IR (A II.+ B) C)
-                  → Rel f′ f → Rel (case h k) g → Rel (optimize-post-case h k f′) (g ∘ f)
-    post-case-rel h k f′ f g rf rg r with coprodView f′
-    ... | is-inl = RelS-≈ˡ (≈∞-sym sym (≈∞-idˡ _ (E (case h k)))) (RelS-bind (rf r) (λ {x} {y} q → rg {x} {y} q))
-    ... | is-inr = RelS-≈ˡ (≈∞-sym sym (≈∞-idˡ _ (E (case h k)))) (RelS-bind (rf r) (λ {x} {y} q → rg {x} {y} q))
-    ... | is-other-coprod .f′ = RelS-bind (rf r) (λ {x} {y} q → rg {x} {y} q)
+    ≡refl : ∀ {X : Set} (x : X) → x ≡ x
+    ≡refl _ = refl
 
     -- `g ∘ id → g`; `g ∘ initial` has no input
     compose-second-rel : ∀ {A B C} (g′ g : IR B C) (f′ f : IR A B) → Rel g′ g → Rel f′ f
-                       → Rel (optimize-compose-second g′ f′) (g ∘ f)
-    compose-second-rel g′ g f′ f rg rf r with composeSecondView f′
-    ... | cs-id = RelS-≈ˡ (≈∞-sym sym (≈∞-idˡ _ (E g′))) (RelS-bind (rf r) rg)
-    compose-second-rel g′ g .initial f rg rf {()} r | cs-initial
-    ... | cs-other .f′ = RelS-bind (rf r) rg
+                       → (v : ComposeSecondView f′) → Rel (compose-second-aux g′ f′ v) (g ∘ f)
+    compose-second-rel g′ g _ f rg rf cs-id r = RelS-≈ˡ (≈∞-sym sym (≈∞-idˡ _ (E g′))) (RelS-bind (rf r) rg)
+    compose-second-rel g′ g _ f rg rf cs-initial {()} r
+    compose-second-rel g′ g _ f rg rf (cs-other f′) r = RelS-bind (rf r) rg
 
-  -- | `optimize-compose`: the drop rules read `has-effect?` of the OPTIMIZED
-  -- `f′`; the original `f`'s run is related to `f′`'s, so it returns at once too.
+    -- `fst ∘ ⟨ a , b ⟩ → a`, `b` quiet: `b` returns at once
+    fst-pair-rel : ∀ {A B C} (a : IR A B) (b : IR A C) (f : IR A (B II.* C)) (g : IR (B II.* C) B) → Rel ⟨ a , b ⟩ f → Rel fst g
+                 → ∀ q → has-effect? b ≡ q → Rel (fst-pair a b q) (g ∘ f)
+    fst-pair-rel a b f g rf rg true  _ r = RelS-bind (rf r) rg
+    fst-pair-rel a b f g rf rg false q r =
+      RelS-≈ˡ (≈∞-sym sym (pair-fst≈ (E a _) (quiet-now fmt ρ b q _))) (RelS-bind (rf r) rg)
+
+    -- …through a chain: `fst ∘ (⟨ a , b ⟩ ∘ k) → a ∘ k`
+    fst-chain-pair-rel : ∀ {A X B C} (a : IR X B) (b : IR X C) (k : IR A X) (f : IR A (B II.* C)) (g : IR (B II.* C) B)
+                       → Rel (⟨ a , b ⟩ ∘ k) f → Rel fst g
+                       → ∀ q → has-effect? b ≡ q → Rel (fst-chain-pair a b k q) (g ∘ f)
+    fst-chain-pair-rel a b k f g rf rg true  _ r = RelS-bind (rf r) rg
+    fst-chain-pair-rel {B = B} {C} a b k f g rf rg false q {x} r =
+      RelS-≈ˡ (≈∞-bind (≈∞-refl ≡refl (E k x)) pointwise)
+        (RelS-≈ˡ (≈∞-sym sym (≈∞-assoc (E k x) (E ⟨ a , b ⟩) (E (fst {B} {C})))) (RelS-bind (rf r) rg))
+      where
+        pointwise : ∀ {y y′} → y ≡ y′ → TreeEq∞ _≡_ (E a y) (E ⟨ a , b ⟩ y′ >>=∞ E (fst {B} {C}))
+        pointwise {y} refl = ≈∞-sym sym (pair-fst≈ (E a y) (quiet-now fmt ρ b q y))
+
+    fst-chain-aux-rel : ∀ {A X B C} (p : IR X (B II.* C)) (k : IR A X) (f : IR A (B II.* C)) (g : IR (B II.* C) B)
+                      → Rel (p ∘ k) f → Rel fst g → (v : PairView p) → Rel (fst-chain-aux p k v) (g ∘ f)
+    fst-chain-aux-rel _ k f g rf rg (is-pair a b)      = fst-chain-pair-rel a b k f g rf rg _ refl
+    fst-chain-aux-rel _ k f g rf rg (is-other-pair p) r = RelS-bind (rf r) rg
+
+    fst-chain-rel : ∀ {A B C} (f′ f : IR A (B II.* C)) (g : IR (B II.* C) B) → Rel f′ f → Rel fst g
+                  → (w : ChainView f′) → Rel (fst-chain f′ w) (g ∘ f)
+    fst-chain-rel _ f g rf rg (is-comp p k)  = fst-chain-aux-rel p k f g rf rg (pairView p)
+    fst-chain-rel _ f g rf rg (not-comp f′) = compose-second-rel fst g f′ f rg rf (composeSecondView f′)
+
+    fst-rel : ∀ {A B C} (f′ f : IR A (B II.* C)) (g : IR (B II.* C) B) → Rel f′ f → Rel fst g
+            → (v : PairView f′) → Rel (fst-aux f′ v) (g ∘ f)
+    fst-rel _ f g rf rg (is-pair a b)      = fst-pair-rel a b f g rf rg _ refl
+    fst-rel _ f g rf rg (is-other-pair f′) = fst-chain-rel f′ f g rf rg (chainView f′)
+
+    -- `snd ∘ ⟨ a , b ⟩ → b`, `a` quiet (and through a chain)
+    snd-pair-rel : ∀ {A B C} (a : IR A B) (b : IR A C) (f : IR A (B II.* C)) (g : IR (B II.* C) C) → Rel ⟨ a , b ⟩ f → Rel snd g
+                 → ∀ q → has-effect? a ≡ q → Rel (snd-pair a b q) (g ∘ f)
+    snd-pair-rel a b f g rf rg true  _ r = RelS-bind (rf r) rg
+    snd-pair-rel a b f g rf rg false q r =
+      RelS-≈ˡ (≈∞-sym sym (pair-snd≈ (quiet-now fmt ρ a q _) (E b _))) (RelS-bind (rf r) rg)
+
+    snd-chain-pair-rel : ∀ {A X B C} (a : IR X B) (b : IR X C) (k : IR A X) (f : IR A (B II.* C)) (g : IR (B II.* C) C)
+                       → Rel (⟨ a , b ⟩ ∘ k) f → Rel snd g
+                       → ∀ q → has-effect? a ≡ q → Rel (snd-chain-pair a b k q) (g ∘ f)
+    snd-chain-pair-rel a b k f g rf rg true  _ r = RelS-bind (rf r) rg
+    snd-chain-pair-rel {B = B} {C} a b k f g rf rg false q {x} r =
+      RelS-≈ˡ (≈∞-bind (≈∞-refl ≡refl (E k x)) pointwise)
+        (RelS-≈ˡ (≈∞-sym sym (≈∞-assoc (E k x) (E ⟨ a , b ⟩) (E (snd {B} {C})))) (RelS-bind (rf r) rg))
+      where
+        pointwise : ∀ {y y′} → y ≡ y′ → TreeEq∞ _≡_ (E b y) (E ⟨ a , b ⟩ y′ >>=∞ E (snd {B} {C}))
+        pointwise {y} refl = ≈∞-sym sym (pair-snd≈ (quiet-now fmt ρ a q y) (E b y))
+
+    snd-chain-aux-rel : ∀ {A X B C} (p : IR X (B II.* C)) (k : IR A X) (f : IR A (B II.* C)) (g : IR (B II.* C) C)
+                      → Rel (p ∘ k) f → Rel snd g → (v : PairView p) → Rel (snd-chain-aux p k v) (g ∘ f)
+    snd-chain-aux-rel _ k f g rf rg (is-pair a b)      = snd-chain-pair-rel a b k f g rf rg _ refl
+    snd-chain-aux-rel _ k f g rf rg (is-other-pair p) r = RelS-bind (rf r) rg
+
+    snd-chain-rel : ∀ {A B C} (f′ f : IR A (B II.* C)) (g : IR (B II.* C) C) → Rel f′ f → Rel snd g
+                  → (w : ChainView f′) → Rel (snd-chain f′ w) (g ∘ f)
+    snd-chain-rel _ f g rf rg (is-comp p k)  = snd-chain-aux-rel p k f g rf rg (pairView p)
+    snd-chain-rel _ f g rf rg (not-comp f′) = compose-second-rel snd g f′ f rg rf (composeSecondView f′)
+
+    snd-rel : ∀ {A B C} (f′ f : IR A (B II.* C)) (g : IR (B II.* C) C) → Rel f′ f → Rel snd g
+            → (v : PairView f′) → Rel (snd-aux f′ v) (g ∘ f)
+    snd-rel _ f g rf rg (is-pair a b)      = snd-pair-rel a b f g rf rg _ refl
+    snd-rel _ f g rf rg (is-other-pair f′) = snd-chain-rel f′ f g rf rg (chainView f′)
+
+    -- `case h k ∘ inl → h` (and `inr`), also through a chain: returning, then continuing
+    post-case-chain-aux-rel : ∀ {A B C D X} (h : IR A C) (k : IR B C) (p : IR X (A II.+ B)) (m : IR D X)
+                            (f : IR D (A II.+ B)) (g : IR (A II.+ B) C) → Rel (p ∘ m) f → Rel (case h k) g
+                            → (v : CoprodView p) → Rel (post-case-chain-aux h k p m v) (g ∘ f)
+    post-case-chain-aux-rel {A} {B} h k _ m f g rf rg is-inl {x} r =
+      RelS-≈ˡ (≈∞-bind (≈∞-refl ≡refl (E m x)) pointwise)
+        (RelS-≈ˡ (≈∞-sym sym (≈∞-assoc (E m x) (E (inl {A} {B})) (E (case h k)))) (RelS-bind (rf r) (λ {u} {v} q → rg {u} {v} q)))
+      where
+        pointwise : ∀ {y y′} → y ≡ y′ → TreeEq∞ _≡_ (E h y) (E (inl {A} {B}) y′ >>=∞ E (case h k))
+        pointwise {y} refl = ≈∞-sym sym (≈∞-idˡ _ (E (case h k)))
+    post-case-chain-aux-rel {A} {B} h k _ m f g rf rg is-inr {x} r =
+      RelS-≈ˡ (≈∞-bind (≈∞-refl ≡refl (E m x)) pointwise)
+        (RelS-≈ˡ (≈∞-sym sym (≈∞-assoc (E m x) (E (inr {A} {B})) (E (case h k)))) (RelS-bind (rf r) (λ {u} {v} q → rg {u} {v} q)))
+      where
+        pointwise : ∀ {y y′} → y ≡ y′ → TreeEq∞ _≡_ (E k y) (E (inr {A} {B}) y′ >>=∞ E (case h k))
+        pointwise {y} refl = ≈∞-sym sym (≈∞-idˡ _ (E (case h k)))
+    post-case-chain-aux-rel h k _ m f g rf rg (is-other-coprod p) r = RelS-bind (rf r) (λ {u} {v} q → rg {u} {v} q)
+
+    post-case-chain-rel : ∀ {A B C D} (h : IR A C) (k : IR B C) (f′ f : IR D (A II.+ B)) (g : IR (A II.+ B) C)
+                        → Rel f′ f → Rel (case h k) g → (w : ChainView f′) → Rel (post-case-chain h k f′ w) (g ∘ f)
+    post-case-chain-rel h k _ f g rf rg (is-comp p m)  = post-case-chain-aux-rel h k p m f g rf (λ {x} {y} q → rg {x} {y} q) (coprodView p)
+    post-case-chain-rel h k _ f g rf rg (not-comp f′) =
+      compose-second-rel (case h k) g f′ f (λ {u} {v} q → rg {u} {v} q) rf (composeSecondView f′)
+
+    post-case-rel : ∀ {A B C D} (h : IR A C) (k : IR B C) (f′ f : IR D (A II.+ B)) (g : IR (A II.+ B) C)
+                  → Rel f′ f → Rel (case h k) g → (v : CoprodView f′) → Rel (post-case-aux h k f′ v) (g ∘ f)
+    post-case-rel h k _ f g rf rg is-inl r =
+      RelS-≈ˡ (≈∞-sym sym (≈∞-idˡ _ (E (case h k)))) (RelS-bind (rf r) (λ {x} {y} q → rg {x} {y} q))
+    post-case-rel h k _ f g rf rg is-inr r =
+      RelS-≈ˡ (≈∞-sym sym (≈∞-idˡ _ (E (case h k)))) (RelS-bind (rf r) (λ {x} {y} q → rg {x} {y} q))
+    post-case-rel h k _ f g rf rg (is-other-coprod f′) = post-case-chain-rel h k f′ f g rf (λ {x} {y} q → rg {x} {y} q) (chainView f′)
+
+    -- `terminal ∘ f → terminal`, `f` quiet: the original `f`'s run is related to
+    -- the optimized one's, so it returns at once too
+    terminal-rel : ∀ {A B} (f′ f : IR A B) (g : IR B II.Unit) → Rel f′ f → Rel terminal g
+                 → ∀ q → has-effect? f′ ≡ q → Rel (terminal-drop f′ q) (g ∘ f)
+    terminal-rel f′ f g rf rg true  _ r = RelS-bind (rf r) rg
+    terminal-rel f′ f g rf rg false q {a} r =
+      let nr = now-rel (rf r) (quiet-now fmt ρ f′ q a) in RelS-≈ʳ (now-seq (proj₁ nr) (E′ g)) (rg (proj₂ nr))
+
+    compose-go : ∀ {A B C} (g′ g : IR B C) (f′ f : IR A B) → Rel g′ g → Rel f′ f
+               → (v : ComposeFirstView g′) → Rel (compose-aux g′ f′ v) (g ∘ f)
+    compose-go _ g f′ f rg rf cf-id {a} r = RelS-≈ˡ (≈∞-sym sym (≈∞-idʳ (E f′ a))) (RelS-bind (rf r) rg)
+    compose-go _ g f′ f rg rf cf-terminal = terminal-rel f′ f g rf rg _ refl
+    compose-go _ g f′ f rg rf cf-fst = fst-rel f′ f g rf rg (pairView f′)
+    compose-go _ g f′ f rg rf cf-snd = snd-rel f′ f g rf rg (pairView f′)
+    compose-go _ g f′ f rg rf (cf-case h k) =
+      post-case-rel h k f′ f g rf (λ {x} {y} q → rg {x} {y} q) (coprodView f′)
+    -- `(h ∘ k) ∘ f → h ∘ (k ∘ f)`: bind is associative
+    compose-go _ g f′ f rg rf (cf-comp h k) {a} r = RelS-≈ˡ (≈∞-assoc (E f′ a) (E k) (E h)) (RelS-bind (rf r) rg)
+    compose-go _ g f′ f rg rf (cf-other g′) = compose-second-rel g′ g f′ f rg rf (composeSecondView f′)
+
+  -- | `optimize-compose`: each rule that drops a term reads `has-effect?` of the
+  -- OPTIMIZED term it drops; the original's run is related to it, so it returns
+  -- at once too.
   compose-rel : ∀ {A B C} (g′ g : IR B C) (f′ f : IR A B) → Rel g′ g → Rel f′ f → Rel (optimize-compose g′ f′) (g ∘ f)
-  compose-rel g′ g f′ f rg rf {a} r with has-effect? f′ in q
-  ... | true = RelS-bind (rf r) rg
-  ... | false with composeFirstView g′
-  ...   | cf-id = RelS-≈ˡ (≈∞-sym sym (≈∞-idʳ (E f′ a))) (RelS-bind (rf r) rg)
-  ...   | cf-terminal =
-    let nr = now-rel (rf r) (quiet-now fmt ρ f′ q a) in RelS-≈ʳ (now-seq (proj₁ nr) (E′ g)) (rg (proj₂ nr))
-  ...   | cf-fst = fst-rel f′ f g q rf rg r
-  ...   | cf-snd = snd-rel f′ f g q rf rg r
-  ...   | cf-case h k = post-case-rel h k f′ f g rf (λ {x} {y} q → rg {x} {y} q) r
-  ...   | cf-other .g′ = compose-second-rel g′ g f′ f rg rf r
+  compose-rel g′ g f′ f rg rf = compose-go g′ g f′ f rg rf (composeFirstView g′)
 
   private
     both : ∀ {A B C} (f′ f : IR C A) (g′ g : IR C B) → Rel f′ f → Rel g′ g → Rel ⟨ f′ , g′ ⟩ ⟨ f , g ⟩
     both f′ f g′ g rf rg r = RelS-bind (rf r) (λ r₁ → RelS-bind (rg r) (λ r₂ → relS-ret (r₁ , r₂)))
 
-  -- | `⟨ fst , snd ⟩ → id`
+  private
+    not-true : ∀ {b} → not b ≡ true → b ≡ false
+    not-true {false} _ = refl
+    not-true {true}  ()
+
+    -- a term standing for any map into `Unit` (quiet) returns at once, and
+    -- its value is related to any other
+    unit-now : ∀ {A B} (f′ f : IR A B) (d : Dec (B ≡ II.Unit)) → unit-like-aux f′ d ≡ true → Rel f′ f
+             → ∀ {a a′} → RelD ⌈ A ⌉ a a′ → Σ (Now (E′ f a′)) (λ n → ∀ y → RelD ⌈ B ⌉ y (value n))
+    unit-now f′ f (yes refl) e rf {a} r = proj₁ (now-rel (rf r) (quiet-now fmt ρ f′ (not-true e) a)) , λ _ → tt
+    unit-now f′ f (no _)     () rf r
+
+    -- the first projection up to `Unit` returns the first component at once
+    fst-now : ∀ {A B} (f′ f : IR (A II.* B) A) (v : FstSndView f′) → fst-like-aux f′ v ≡ true → Rel f′ f
+            → ∀ {p p′} → RelD ⌈ A II.* B ⌉ p p′ → Σ (Now (E′ f p′)) (λ n → RelD ⌈ A ⌉ (proj₁ p) (value n))
+    fst-now {A} .fst f fsv-fst _ rf {p} r = now-rel (rf r) (now (proj₁ p) refl)
+    fst-now {A} f′ f fsv-snd e rf {p} r =
+      let u = unit-now f′ f (A ≟IRTy II.Unit) e rf r in proj₁ u , proj₂ u (proj₁ p)
+    fst-now {A} f′ f (fsv-other _) e rf {p} r =
+      let u = unit-now f′ f (A ≟IRTy II.Unit) e rf r in proj₁ u , proj₂ u (proj₁ p)
+
+    snd-now : ∀ {A B} (g′ g : IR (A II.* B) B) (v : FstSndView g′) → snd-like-aux g′ v ≡ true → Rel g′ g
+            → ∀ {p p′} → RelD ⌈ A II.* B ⌉ p p′ → Σ (Now (E′ g p′)) (λ n → RelD ⌈ B ⌉ (proj₂ p) (value n))
+    snd-now {B = B} g′ g fsv-fst e rf {p} r =
+      let u = unit-now g′ g (B ≟IRTy II.Unit) e rf r in proj₁ u , proj₂ u (proj₂ p)
+    snd-now {B = B} .snd g fsv-snd _ rf {p} r = now-rel (rf r) (now (proj₂ p) refl)
+    snd-now {B = B} g′ g (fsv-other _) e rf {p} r =
+      let u = unit-now g′ g (B ≟IRTy II.Unit) e rf r in proj₁ u , proj₂ u (proj₂ p)
+
+    eta-pair-rel : ∀ {A B} (f′ f : IR (A II.* B) A) (g′ g : IR (A II.* B) B) → Rel f′ f → Rel g′ g
+                 → ∀ x y → fst-like-aux f′ (fstSndView f′) ≡ x → snd-like-aux g′ (fstSndView g′) ≡ y
+                 → Rel (eta-pair f′ g′ x y) ⟨ f , g ⟩
+    eta-pair-rel f′ f g′ g rf rg true true ex ey {p} {p′} r =
+      let (nf , rx) = fst-now f′ f (fstSndView f′) ex rf r
+          (ng , ry) = snd-now g′ g (fstSndView g′) ey rg r
+      in RelS-≈ʳ (now-seq nf _) (RelS-≈ʳ (now-seq ng _) (relS-ret (rx , ry)))
+    eta-pair-rel f′ f g′ g rf rg true  false _ _ = both f′ f g′ g rf rg
+    eta-pair-rel f′ f g′ g rf rg false _     _ _ = both f′ f g′ g rf rg
+
+    pair-go : ∀ {A B C} (f′ f : IR C A) (g′ g : IR C B) → Rel f′ f → Rel g′ g
+            → (d : Dec (C ≡ A II.* B)) → Rel (pair-aux f′ g′ d) ⟨ f , g ⟩
+    pair-go f′ f g′ g rf rg (yes refl) = eta-pair-rel f′ f g′ g rf rg _ _ refl refl
+    pair-go f′ f g′ g rf rg (no _)     = both f′ f g′ g rf rg
+
+  -- | `⟨ fst , snd ⟩ → id`, up to `Unit`
   pair-rel : ∀ {A B C} (f′ f : IR C A) (g′ g : IR C B) → Rel f′ f → Rel g′ g → Rel (optimize-pair f′ g′) ⟨ f , g ⟩
-  pair-rel f′ f g′ g rf rg r with fstSndView f′ | fstSndView g′
-  ... | fsv-fst       | fsv-snd       = retargetˡ refl (both fst f snd g rf rg r)
-  ... | fsv-fst       | fsv-fst       = both fst f fst g rf rg r
-  ... | fsv-fst       | fsv-other .g′ = both fst f g′ g rf rg r
-  ... | fsv-snd       | fsv-fst       = both snd f fst g rf rg r
-  ... | fsv-snd       | fsv-snd       = both snd f snd g rf rg r
-  ... | fsv-snd       | fsv-other .g′ = both snd f g′ g rf rg r
-  ... | fsv-other .f′ | fsv-fst       = both f′ f fst g rf rg r
-  ... | fsv-other .f′ | fsv-snd       = both f′ f snd g rf rg r
-  ... | fsv-other .f′ | fsv-other .g′ = both f′ f g′ g rf rg r
+  pair-rel {A} {B} {C} f′ f g′ g rf rg = pair-go f′ f g′ g rf rg (C ≟IRTy (A II.* B))
 
   private
     cases : ∀ {A B C} (f′ f : IR A C) (g′ g : IR B C) → Rel f′ f → Rel g′ g → Rel (case f′ g′) (case f g)
@@ -225,24 +352,47 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
     cases f′ f g′ g rf rg {inj₁ _} {inj₂ _} ()
     cases f′ f g′ g rf rg {inj₂ _} {inj₁ _} ()
 
+    -- out of `Void` there is no input
+    void-dec-rel : ∀ {A B} (f x : IR A B) (d : Dec (A ≡ II.Void)) → isYes d ≡ true → Rel x f
+    void-dec-rel f x (yes refl) _ {()} r
+    void-dec-rel f x (no _)     ()
+
+    void-like-rel : ∀ {A B} (f′ f : IR A B) (x : IR A B) → void-like f′ ≡ true → Rel x f
+    void-like-rel {A} f′ f x e = void-dec-rel f x (A ≟IRTy II.Void) e
+
+    -- the injection up to `Void` is the injection
+    inl-rel : ∀ {A B} (f′ f : IR A (A II.+ B)) (v : InlInrView f′) → inl-like-aux f′ v ≡ true → Rel f′ f → Rel inl f
+    inl-rel .inl f iiv-inl       _ rf = rf
+    inl-rel f′   f iiv-inr       e rf = void-like-rel f′ f inl e
+    inl-rel f′   f (iiv-other _) e rf = void-like-rel f′ f inl e
+
+    inr-rel : ∀ {A B} (g′ g : IR B (A II.+ B)) (v : InlInrView g′) → inr-like-aux g′ v ≡ true → Rel g′ g → Rel inr g
+    inr-rel g′   g iiv-inl       e rg = void-like-rel g′ g inr e
+    inr-rel .inr g iiv-inr       _ rg = rg
+    inr-rel g′   g (iiv-other _) e rg = void-like-rel g′ g inr e
+
     ids : ∀ {A B} (f : IR A (A II.+ B)) (g : IR B (A II.+ B)) → Rel inl f → Rel inr g → Rel id (case f g)
     ids f g rf rg {inj₁ _} {inj₁ _} r = rf r
     ids f g rf rg {inj₂ _} {inj₂ _} r = rg r
     ids f g rf rg {inj₁ _} {inj₂ _} ()
     ids f g rf rg {inj₂ _} {inj₁ _} ()
 
-  -- | `[ inl , inr ] → id`
+    eta-case-rel : ∀ {A B} (f′ f : IR A (A II.+ B)) (g′ g : IR B (A II.+ B)) → Rel f′ f → Rel g′ g
+                 → ∀ x y → inl-like-aux f′ (inlInrView f′) ≡ x → inr-like-aux g′ (inlInrView g′) ≡ y
+                 → Rel (eta-case f′ g′ x y) (case f g)
+    eta-case-rel f′ f g′ g rf rg true true ex ey {a} {a′} r =
+      ids f g (inl-rel f′ f (inlInrView f′) ex rf) (inr-rel g′ g (inlInrView g′) ey rg) {a} {a′} r
+    eta-case-rel f′ f g′ g rf rg true  false _ _ {a} {a′} r = cases f′ f g′ g rf rg {a} {a′} r
+    eta-case-rel f′ f g′ g rf rg false _     _ _ {a} {a′} r = cases f′ f g′ g rf rg {a} {a′} r
+
+    case-go : ∀ {A B C} (f′ f : IR A C) (g′ g : IR B C) → Rel f′ f → Rel g′ g
+            → (d : Dec (C ≡ A II.+ B)) → Rel (case-aux f′ g′ d) (case f g)
+    case-go f′ f g′ g rf rg (yes refl) {a} {a′} r = eta-case-rel f′ f g′ g rf rg _ _ refl refl {a} {a′} r
+    case-go f′ f g′ g rf rg (no _)     {a} {a′} r = cases f′ f g′ g rf rg {a} {a′} r
+
+  -- | `[ inl , inr ] → id`, up to `Void`
   case-rel : ∀ {A B C} (f′ f : IR A C) (g′ g : IR B C) → Rel f′ f → Rel g′ g → Rel (optimize-case f′ g′) (case f g)
-  case-rel f′ f g′ g rf rg {a} {a′} r with inlInrView f′ | inlInrView g′
-  ... | iiv-inl       | iiv-inr       = ids f g rf rg {a} {a′} r
-  ... | iiv-inl       | iiv-inl       = cases inl f inl g rf rg {a} {a′} r
-  ... | iiv-inl       | iiv-other .g′ = cases inl f g′ g rf rg {a} {a′} r
-  ... | iiv-inr       | iiv-inl       = cases inr f inl g rf rg {a} {a′} r
-  ... | iiv-inr       | iiv-inr       = cases inr f inr g rf rg {a} {a′} r
-  ... | iiv-inr       | iiv-other .g′ = cases inr f g′ g rf rg {a} {a′} r
-  ... | iiv-other .f′ | iiv-inl       = cases f′ f inl g rf rg {a} {a′} r
-  ... | iiv-other .f′ | iiv-inr       = cases f′ f inr g rf rg {a} {a′} r
-  ... | iiv-other .f′ | iiv-other .g′ = cases f′ f g′ g rf rg {a} {a′} r
+  case-rel {A} {B} {C} f′ f g′ g rf rg {a} {a′} r = case-go f′ f g′ g rf rg (C ≟IRTy (A II.+ B)) {a} {a′} r
 
   -- | A map into `Unit` without an effect returns at once; `terminal` too.
   unit-rel : ∀ {A} (ir : IR A II.Unit) → has-effect? ir ≡ false → Rel terminal ir
@@ -265,12 +415,8 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
   struct-rel fst        r = relS-ret (proj₁ r)
   struct-rel snd        r = relS-ret (proj₂ r)
   struct-rel ⟨ f , g ⟩  r = pair-rel (optimize-once f) f (optimize-once g) g (opt-once-rel f) (opt-once-rel g) r
-  struct-rel (inl {A} {B}) r with A ≟IRTy II.Void
-  ... | yes refl = void-rel {x = initial} {y = inl} r
-  ... | no _     = relS-ret r
-  struct-rel (inr {A} {B}) r with B ≟IRTy II.Void
-  ... | yes refl = void-rel {x = initial} {y = inr} r
-  ... | no _     = relS-ret r
+  struct-rel inl        r = relS-ret r
+  struct-rel inr        r = relS-ret r
   struct-rel (case f g) {a} {a′} r = case-rel (optimize-once f) f (optimize-once g) g (opt-once-rel f) (opt-once-rel g) {a} {a′} r
   struct-rel terminal   r = relS-ret tt
   struct-rel initial {()} r

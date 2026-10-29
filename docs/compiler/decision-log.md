@@ -19813,3 +19813,37 @@ proposed a grade-aware guard to drop a pure stream's `Out` again, which D347 mad
 * Plan 0.39's note (a), `nestedprod-sum` miscompiled under optimization (2026-06), does not reproduce: the
   program passes both ways on all three arches.
 * Plan 0.39 is closed and deleted; its route and findings are D347 and this entry.
+
+
+## D349 — THE OPTIMIZER ASSOCIATES TO THE RIGHT AND GUARDS ONLY WHAT IT DROPS (2026-10-29)
+
+**Follows** D347, D348 (the rule findings), plan 0.129 B. **Decided** by the user 2026-10-29: fix the three defects
+D348 measured, then optimality.
+
+### Context
+D348's tests showed three defects: the `Unit` rule turns a `fst` into `Unit` into `terminal` before pair eta looks,
+so `<id . fst, snd>` (out of `Unit * B`) never became `id`; nothing re-associates composition, so a redex behind a
+left-nested `∘` (`fst . (<a, b> . k)`) stays; the structural `inl`/`inr` out of `Void` clauses never fire.
+
+### Decision
+* **Eta up to `Unit`/`Void`.** A pair component counts as a projection when it is one or is a quiet term into
+  `Unit` (its source then has `Unit` there; `Unit` has one value); a case branch counts as an injection when it is
+  one or is out of `Void`. `⟨fst, snd⟩ = id` and `[inl, inr] = id` read these.
+* **Composition associates to the right**: `(h ∘ k) ∘ f = h ∘ (k ∘ f)` (bind is associative, `≈∞-assoc`), and
+  the beta rules read through a chain: `fst ∘ (⟨a,b⟩ ∘ k) = a ∘ k`, `case h k ∘ (inl ∘ m) = h ∘ m`.
+* **A rule checks only the term it drops for an effect**: `terminal ∘ f` checks `f`, `fst ∘ ⟨a,b⟩` checks `b`,
+  `snd ∘ ⟨a,b⟩` checks `a`; the rules that drop nothing check nothing. (Before, an effect anywhere in `f` blocked
+  every rule on `g ∘ f`.)
+* **A projection or case that finds nothing to reduce still meets `g ∘ id = g`** (eta leaves `snd ∘ id`).
+* **The dead clauses go**: out of `Void`, `inl`/`inr` are `initial` by the type-directed rule.
+* **The arith recogniser re-associates an operand** (`Recognise.bv-reassoc`), as it already did at the top
+  (D163): a block's recognition must not depend on how its compositions nest. Without it float arithmetic was
+  left as bare float SigOps and failed to link.
+
+### Consequences
+* Proved as before: `OptimizePreserves` (trace), `OptimizeLinked`, `LiftSound` (the new operand case); eight new
+  `Optimize.Examples`. The dead `IRHead`/`ir-head`/`is-*?`/`safe-pair-distrib`/`wants-coprod` helpers are deleted.
+* Measured over the 94 corpus programs that build: IR tokens 6006 → 5101 (−15%), `.text` 334388 → 328216 bytes
+  (−1.8%); 61 smaller, 34 unchanged, `let-test` +16 bytes — right-nesting removed the subterm `mul ∘ ⟨snd, snd⟩`
+  the arith pass lifted as one block (plan 0.129 B4: lift a chain's prefix).
+

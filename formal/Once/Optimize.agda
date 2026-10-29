@@ -4,21 +4,22 @@
 ------------------------------------------------------------------------
 -- Once.Optimize
 --
--- Optimizer for Once IR using categorical laws as rewrite rules.
--- Each rewrite preserves semantics (see Once.Optimize.Correct).
+-- Optimizer for Once IR using categorical laws as rewrite rules. Each pass
+-- keeps the program's trace (`Once.Adequacy.OptimizePreserves`, D347); each
+-- rule has an example in `Once.Optimize.Examples`.
 --
--- Architecture: Clean rule-based structure where each optimization
--- is a single pattern match clause. Easy to add new rules.
---
--- Includes:
---   - Identity laws (id ∘ f = f, f ∘ id = f)
---   - Beta laws (fst ∘ ⟨f,g⟩ = f, [f,g] ∘ inl = f, etc.)
---   - Eta laws (⟨fst,snd⟩ = id, [inl,inr] = id)
---   - Recursion scheme laws (Cata (In m) = id, Ana Out = id)
---   - Coproduct fusion (map f ∘ map g = map (f ∘ g))
---   - Product fusion (bimap f g ∘ bimap h k = bimap (f∘h) (g∘k))
---   - Distribution (⟨f,g⟩ ∘ h = ⟨f∘h,g∘h⟩, h ∘ [f,g] = [h∘f,h∘g])
---   - Dead code elimination (terminal ∘ f = terminal)
+-- Rules:
+--   - Type-directed: a quiet map into `Unit` is `terminal`; a map out of
+--     `Void` is `initial`
+--   - Identity: id ∘ f = f, g ∘ id = g
+--   - Associativity: (h ∘ k) ∘ f = h ∘ (k ∘ f), so the beta rules see a
+--     chain's head
+--   - Beta: fst ∘ ⟨f,g⟩ = f, snd ∘ ⟨f,g⟩ = g, case f g ∘ inl = f,
+--     case f g ∘ inr = g, also through a chain (fst ∘ (⟨f,g⟩ ∘ k) = f ∘ k)
+--   - Eta, up to Unit/Void: ⟨fst,snd⟩ = id, [inl,inr] = id
+--   - Dead code: terminal ∘ f = terminal, g ∘ initial = initial
+-- A rule that drops a term does so only when that term has no effect
+-- (`has-effect?`).
 ------------------------------------------------------------------------
 
 module Once.Optimize where
@@ -38,7 +39,7 @@ open import Once.IR
 open import Once.IRTy using (Unit; Void; _*_; _+_; Int; Float; IRTy; _≟IRTy_)
 import Once.IRTy as II
 
-open import Data.Bool using (Bool; true; false; _∨_; _∧_)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_; not)
 open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat.Properties
 open import Relation.Nullary using (Dec; yes; no)
@@ -56,197 +57,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 
 -- Plan 0.99: Functor/Type equality is `Once.Type.DecEq`'s — the one copy.
 open import Once.Type.DecEq using (_≟T_)
-
-------------------------------------------------------------------------
--- IR heads (the eta rules below dispatch on them)
---
--- D271: a decider `_≟IR_ : Dec (f ≡ g)` stood here. No live module used it
--- (only red optimizer islands), and it could not be honest: a SigOp's
--- `pureV` semantics is a function, so `SigOpInfo` equality is undecidable —
--- it rested on `sigOpInfo-name-coherence` (equal names ⇒ equal records,
--- `⊥`) and on the postulate `≟const-irrelevant`. Deleted with both.
-------------------------------------------------------------------------
-
--- IR head discriminator.
-data IRHead : Set where
-  h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
-    h-terminal h-initial h-curry h-apply h-arr
-    h-In h-out-μ h-Cata h-Out h-in-ν h-Ana h-Iter
-    h-SigOp h-const h-Call : IRHead
-
--- Decidable equality for IRHead via tag-to-ℕ conversion. Plan 0.5 Phase B
--- / F1. Uses stdlib's `Data.Nat._≟_` for the actual comparison;
--- `headTag-inj` recovers the IRHead equation from tag equality. Adding
--- a new IRHead constructor costs 2 lines (headTag clause + headTag-inj
--- diagonal).
-headTag : IRHead → ℕ
-headTag h-id        = 0
-headTag h-∘         = 1
-headTag h-⟨,⟩       = 2
-headTag h-fst       = 3
-headTag h-snd       = 4
-headTag h-inl       = 5
-headTag h-inr       = 6
-headTag h-case      = 7
-headTag h-terminal  = 8
-headTag h-initial   = 9
-headTag h-curry     = 10
-headTag h-apply     = 11
-headTag h-arr       = 12
-headTag h-In        = 14
-headTag h-out-μ     = 15
-headTag h-Cata      = 16
-headTag h-Out       = 18
-headTag h-in-ν      = 19
-headTag h-Ana       = 20
-headTag h-Iter      = 21
-headTag h-SigOp      = 24
-headTag h-const      = 25
-headTag h-Call       = 26
-
--- Injectivity: if tags agree, the constructors agree. 24 diagonals;
--- off-diagonal cases are automatically covered by Agda because their
--- premise (a specific ℕ equation like `0 ≡ 1`) is absurd.
-headTag-inj : ∀ (h₁ h₂ : IRHead) → headTag h₁ ≡ headTag h₂ → h₁ ≡ h₂
-headTag-inj h-id        h-id        _ = refl
-headTag-inj h-∘         h-∘         _ = refl
-headTag-inj h-⟨,⟩       h-⟨,⟩       _ = refl
-headTag-inj h-fst       h-fst       _ = refl
-headTag-inj h-snd       h-snd       _ = refl
-headTag-inj h-inl       h-inl       _ = refl
-headTag-inj h-inr       h-inr       _ = refl
-headTag-inj h-case      h-case      _ = refl
-headTag-inj h-terminal  h-terminal  _ = refl
-headTag-inj h-initial   h-initial   _ = refl
-headTag-inj h-curry     h-curry     _ = refl
-headTag-inj h-apply     h-apply     _ = refl
-headTag-inj h-arr       h-arr       _ = refl
-headTag-inj h-In        h-In        _ = refl
-headTag-inj h-out-μ     h-out-μ     _ = refl
-headTag-inj h-Cata      h-Cata      _ = refl
-headTag-inj h-Out       h-Out       _ = refl
-headTag-inj h-in-ν      h-in-ν      _ = refl
-headTag-inj h-Ana       h-Ana       _ = refl
-headTag-inj h-Iter      h-Iter      _ = refl
-headTag-inj h-SigOp      h-SigOp      _ = refl
-headTag-inj h-const      h-const      _ = refl
-headTag-inj h-Call       h-Call       _ = refl
-
-_≟IRHead_ : DecidableEquality IRHead
-h₁ ≟IRHead h₂ with headTag h₁ Data.Nat.Properties.≟ headTag h₂
-... | yes eq = yes (headTag-inj h₁ h₂ eq)
-... | no  ne = no (λ heq → ne (cong headTag heq))
-
-ir-head : ∀ {A B} → IR A B → IRHead
-ir-head id = h-id
-ir-head (_ ∘ _) = h-∘
-ir-head (⟨ _ , _ ⟩) = h-⟨,⟩
-ir-head fst = h-fst
-ir-head snd = h-snd
-ir-head inl = h-inl
-ir-head inr = h-inr
-ir-head (case _ _) = h-case
-ir-head terminal = h-terminal
-ir-head initial = h-initial
-ir-head (curry _) = h-curry
-ir-head apply = h-apply
-ir-head (In _) = h-In
-ir-head (out-μ _) = h-out-μ
-ir-head (Cata _ _) = h-Cata
-ir-head (Out _) = h-Out
-ir-head (in-ν _) = h-in-ν
-ir-head (Ana _ _) = h-Ana
-ir-head (Iter _) = h-Iter
-ir-head (SigOp _) = h-SigOp
-ir-head (const _ _) = h-const
-ir-head (Call _) = h-Call
-
-------------------------------------------------------------------------
--- Helper: Check for Void types (enables dead code elimination)
-------------------------------------------------------------------------
-
--- | Check if a type is Void
-is-Void : ∀ {m} → Ty m → Bool
-is-Void Unit         = false
-is-Void Void         = true
-is-Void (_ * _)      = false
-is-Void (_ + _)      = false
-is-Void (_ ⇒[ _ ] _) = false
-is-Void (μ _)   = false
-is-Void (ν _ _)   = false
-is-Void Int          = false
-is-Void Float        = false
-is-Void (var _)  = false
-
-------------------------------------------------------------------------
--- Optimizer: Composition Rules
-------------------------------------------------------------------------
-
-------------------------------------------------------------------------
--- Helper: Check if composition would enable a beta reduction
-------------------------------------------------------------------------
-
--- | Check if pair distribution is safe (won't increase cost)
---   Safe cases:
---   1. Eta: ⟨ fst , snd ⟩ or ⟨ snd , fst ⟩ → reduces to h or swapped h
---   2. Terminal: at least one of f, g is terminal → that component becomes 0
---
---   Unsafe: ⟨ fst , fst ⟩ or ⟨ snd , snd ⟩ → duplicates a component's cost
-
--- Type predicates for type-directed optimization
-isUnitType : ∀ {m} → Ty m → Bool
-isUnitType Unit         = true
-isUnitType Void         = false
-isUnitType (_ * _)      = false
-isUnitType (_ + _)      = false
-isUnitType (_ ⇒[ _ ] _) = false
-isUnitType (μ _)   = false
-isUnitType (ν _ _)   = false
-isUnitType Int          = false
-isUnitType Float        = false
-isUnitType (var _)  = false
-
-isVoidType : ∀ {m} → Ty m → Bool
-isVoidType Unit         = false
-isVoidType Void         = true
-isVoidType (_ * _)      = false
-isVoidType (_ + _)      = false
-isVoidType (_ ⇒[ _ ] _) = false
-isVoidType (μ _)   = false
-isVoidType (ν _ _)   = false
-isVoidType Int          = false
-isVoidType Float        = false
-isVoidType (var _)  = false
-
--- IR predicates: use ir-head head-discriminator + decidable IRHead equality
--- to avoid enumerating all 24 IR constructors per predicate.
-is-fst?      : ∀ {A B} → IR A B → Bool
-is-fst?      f = isYes (ir-head f ≟IRHead h-fst)
-
-is-snd?      : ∀ {A B} → IR A B → Bool
-is-snd?      f = isYes (ir-head f ≟IRHead h-snd)
-
-is-terminal? : ∀ {A B} → IR A B → Bool
-is-terminal? f = isYes (ir-head f ≟IRHead h-terminal)
-
--- | Safe to distribute pairs: eta case OR terminal case
---   f : IR C A, g : IR C B (components of a pair)
---   Eta: (fst,snd) or (snd,fst) - only when types align
---   Terminal: at least one is terminal (safe because terminal eliminates cost)
-safe-pair-distrib : ∀ {A B C D} → IR A B → IR C D → Bool
-safe-pair-distrib f g =
-  -- Eta case: fst paired with snd (or vice versa)
-  (is-fst? f ∧ is-snd? g) ∨ (is-snd? f ∧ is-fst? g) ∨
-  -- Terminal case: at least one is terminal
-  is-terminal? f ∨ is-terminal? g
-
--- | Does f "want" a coproduct on its right? (i.e., can f ∘ inl/inr reduce?)
-wants-coprod : ∀ {A B} → IR A B → Bool
-wants-coprod f =
-  isYes (ir-head f ≟IRHead h-case) ∨
-  isYes (ir-head f ≟IRHead h-terminal)
-
--- OCP-0003: wants-unfold/wants-fold removed. Use Cata/Ana instead.
 
 ------------------------------------------------------------------------
 -- | Composition optimization
@@ -282,7 +92,13 @@ data ComposeFirstView : ∀ {B C : IRTy} → IR B C → Set where
   cf-fst : ∀ {A B} → ComposeFirstView {A * B} {A} fst
   cf-snd : ∀ {A B} → ComposeFirstView {A * B} {B} snd
   cf-case : ∀ {A B C} (h : IR A C) (k : IR B C) → ComposeFirstView {A + B} {C} (case h k)
+  cf-comp : ∀ {A X C} (h : IR X C) (k : IR A X) → ComposeFirstView (h ∘ k)
   cf-other : ∀ {B C} (g : IR B C) → ComposeFirstView g
+
+-- View: a composition, or not (the beta rules read through a chain `p ∘ k`)
+data ChainView : ∀ {A B : IRTy} → IR A B → Set where
+  is-comp : ∀ {A X B} (p : IR X B) (k : IR A X) → ChainView (p ∘ k)
+  not-comp : ∀ {A B} (f : IR A B) → ChainView f
 
 -- View: classify IR by optimization-relevant structure (second argument of compose)
 data ComposeSecondView : ∀ {A B : IRTy} → IR A B → Set where
@@ -390,7 +206,7 @@ composeFirstView terminal        = cf-terminal
 composeFirstView fst             = cf-fst
 composeFirstView snd             = cf-snd
 composeFirstView (case h k)      = cf-case h k
-composeFirstView (g ∘ h)         = cf-other (g ∘ h)
+composeFirstView (g ∘ h)         = cf-comp g h
 composeFirstView (⟨ f , g ⟩)   = cf-other (⟨ f , g ⟩)
 composeFirstView inl             = cf-other inl
 composeFirstView inr             = cf-other inr
@@ -431,6 +247,30 @@ composeSecondView (Iter b)       = cs-other (Iter b)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
 composeSecondView (Call f)       = cs-other (Call f)
 composeSecondView (const p v) = cs-other (const p v)
+
+chainView : ∀ {A B} → (f : IR A B) → ChainView f
+chainView (p ∘ k)        = is-comp p k
+chainView id             = not-comp id
+chainView (⟨ f , g ⟩)    = not-comp (⟨ f , g ⟩)
+chainView fst            = not-comp fst
+chainView snd            = not-comp snd
+chainView inl            = not-comp inl
+chainView inr            = not-comp inr
+chainView (case f g)     = not-comp (case f g)
+chainView terminal       = not-comp terminal
+chainView initial        = not-comp initial
+chainView (curry f)      = not-comp (curry f)
+chainView apply          = not-comp apply
+chainView (In wf)        = not-comp (In wf)
+chainView (out-μ wf)     = not-comp (out-μ wf)
+chainView (Cata wf alg)  = not-comp (Cata wf alg)
+chainView (Out wf)       = not-comp (Out wf)
+chainView (in-ν wf)      = not-comp (in-ν wf)
+chainView (Ana wf coalg) = not-comp (Ana wf coalg)
+chainView (Iter b)       = not-comp (Iter b)
+chainView (SigOp si)     = not-comp (SigOp si)
+chainView (Call f)       = not-comp (Call f)
+chainView (const p v)    = not-comp (const p v)
 
 fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
 fstSndView fst             = fsv-fst
@@ -526,91 +366,174 @@ has-effect? (Ana _ coalg)   = has-effect? coalg
 has-effect? (Iter _)        = true
 
 
-optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
-optimize-fst f with pairView f
-... | is-pair g _ = g
-... | is-other-pair f = fst ∘ f
+-- | `g ∘ id = g`; `g ∘ initial = initial`
+compose-second-aux : ∀ {A B C} (g : IR B C) (f : IR A B) → ComposeSecondView f → IR A C
+compose-second-aux g _ cs-id        = g
+compose-second-aux g _ cs-initial   = initial
+compose-second-aux g _ (cs-other f) = g ∘ f
 
--- Helper: beta reduction for snd ∘ f (verified given view)
-optimize-snd : ∀ {A B C} → IR A (B * C) → IR A C
-optimize-snd f with pairView f
-... | is-pair _ g = g
-... | is-other-pair f = snd ∘ f
-
--- Helper: optimize (case h k) ∘ f (verified given view)
--- When f = inl, D = A; when f = inr, D = B
-optimize-post-case : ∀ {A B C D} → IR A C → IR B C → IR D (A + B) → IR D C
-optimize-post-case {A} {B} {C} {D} h k f with coprodView f
-... | is-inl   = h    -- D = A, so IR D C = IR A C
-... | is-inr   = k    -- D = B, so IR D C = IR B C
-... | is-other-coprod f = case h k ∘ f
-
--- Helper: handle second argument after first is classified as "other"
 optimize-compose-second : ∀ {A B C} → IR B C → IR A B → IR A C
-optimize-compose-second g f with composeSecondView f
-... | cs-id = g
-... | cs-initial = initial
-... | cs-other f = g ∘ f
+optimize-compose-second g f = compose-second-aux g f (composeSecondView f)
+
+-- | `fst ∘ ⟨ a , b ⟩ = a`, read through a chain: `fst ∘ (⟨ a , b ⟩ ∘ k) = a ∘ k`.
+-- It drops `b`, so only when `b` has no effect.
+fst-pair : ∀ {A B C} (a : IR A B) (b : IR A C) → Bool → IR A B
+fst-pair a b true  = fst ∘ ⟨ a , b ⟩
+fst-pair a b false = a
+
+fst-chain-pair : ∀ {A X B C} (a : IR X B) (b : IR X C) (k : IR A X) → Bool → IR A B
+fst-chain-pair a b k true  = fst ∘ (⟨ a , b ⟩ ∘ k)
+fst-chain-pair a b k false = a ∘ k
+
+fst-chain-aux : ∀ {A X B C} (p : IR X (B * C)) (k : IR A X) → PairView p → IR A B
+fst-chain-aux _ k (is-pair a b)     = fst-chain-pair a b k (has-effect? b)
+fst-chain-aux _ k (is-other-pair p) = fst ∘ (p ∘ k)
+
+fst-chain : ∀ {A B C} (f : IR A (B * C)) → ChainView f → IR A B
+fst-chain _ (is-comp p k) = fst-chain-aux p k (pairView p)
+fst-chain _ (not-comp f)  = optimize-compose-second fst f
+
+fst-aux : ∀ {A B C} (f : IR A (B * C)) → PairView f → IR A B
+fst-aux _ (is-pair a b)     = fst-pair a b (has-effect? b)
+fst-aux _ (is-other-pair f) = fst-chain f (chainView f)
+
+optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
+optimize-fst f = fst-aux f (pairView f)
+
+-- | `snd ∘ ⟨ a , b ⟩ = b` (and through a chain), when `a` has no effect.
+snd-pair : ∀ {A B C} (a : IR A B) (b : IR A C) → Bool → IR A C
+snd-pair a b true  = snd ∘ ⟨ a , b ⟩
+snd-pair a b false = b
+
+snd-chain-pair : ∀ {A X B C} (a : IR X B) (b : IR X C) (k : IR A X) → Bool → IR A C
+snd-chain-pair a b k true  = snd ∘ (⟨ a , b ⟩ ∘ k)
+snd-chain-pair a b k false = b ∘ k
+
+snd-chain-aux : ∀ {A X B C} (p : IR X (B * C)) (k : IR A X) → PairView p → IR A C
+snd-chain-aux _ k (is-pair a b)     = snd-chain-pair a b k (has-effect? a)
+snd-chain-aux _ k (is-other-pair p) = snd ∘ (p ∘ k)
+
+snd-chain : ∀ {A B C} (f : IR A (B * C)) → ChainView f → IR A C
+snd-chain _ (is-comp p k) = snd-chain-aux p k (pairView p)
+snd-chain _ (not-comp f)  = optimize-compose-second snd f
+
+snd-aux : ∀ {A B C} (f : IR A (B * C)) → PairView f → IR A C
+snd-aux _ (is-pair a b)     = snd-pair a b (has-effect? a)
+snd-aux _ (is-other-pair f) = snd-chain f (chainView f)
+
+optimize-snd : ∀ {A B C} → IR A (B * C) → IR A C
+optimize-snd f = snd-aux f (pairView f)
+
+-- | `case h k ∘ inl = h`, `case h k ∘ inr = k`, and through a chain:
+-- `case h k ∘ (inl ∘ m) = h ∘ m`. Nothing is dropped.
+post-case-chain-aux : ∀ {A B C D X} (h : IR A C) (k : IR B C) (p : IR X (A + B)) (m : IR D X)
+                    → CoprodView p → IR D C
+post-case-chain-aux h k _ m is-inl              = h ∘ m
+post-case-chain-aux h k _ m is-inr              = k ∘ m
+post-case-chain-aux h k _ m (is-other-coprod p) = case h k ∘ (p ∘ m)
+
+post-case-chain : ∀ {A B C D} (h : IR A C) (k : IR B C) (f : IR D (A + B)) → ChainView f → IR D C
+post-case-chain h k _ (is-comp p m) = post-case-chain-aux h k p m (coprodView p)
+post-case-chain h k _ (not-comp f)  = optimize-compose-second (case h k) f
+
+post-case-aux : ∀ {A B C D} (h : IR A C) (k : IR B C) (f : IR D (A + B)) → CoprodView f → IR D C
+post-case-aux h k _ is-inl              = h
+post-case-aux h k _ is-inr              = k
+post-case-aux h k _ (is-other-coprod f) = post-case-chain h k f (chainView f)
+
+optimize-post-case : ∀ {A B C D} → IR A C → IR B C → IR D (A + B) → IR D C
+optimize-post-case h k f = post-case-aux h k f (coprodView f)
+
+-- | `terminal ∘ f = terminal`, when `f` has no effect (it would be dropped).
+terminal-drop : ∀ {A B} (f : IR A B) → Bool → IR A Unit
+terminal-drop f true  = terminal ∘ f
+terminal-drop f false = terminal
+
+-- | Composition. Each rule that drops a term checks THAT term for an effect
+-- (`has-effect?`): `terminal ∘ f` checks `f`, `fst ∘ ⟨ a , b ⟩` checks `b`.
+-- The others drop nothing: `id ∘ f = f`, the case and identity rules, and
+-- `(h ∘ k) ∘ f = h ∘ (k ∘ f)`, which puts a chain on the right so that the
+-- beta rules see its head.
+compose-aux : ∀ {A B C} (g : IR B C) (f : IR A B) → ComposeFirstView g → IR A C
+compose-aux _ f cf-id         = f
+compose-aux _ f cf-terminal   = terminal-drop f (has-effect? f)
+compose-aux _ f cf-fst        = optimize-fst f
+compose-aux _ f cf-snd        = optimize-snd f
+compose-aux _ f (cf-case h k) = optimize-post-case h k f
+compose-aux _ f (cf-comp h k) = h ∘ (k ∘ f)
+compose-aux _ f (cf-other g)  = optimize-compose-second g f
 
 optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
--- If `f` carries an observable effect, never drop it or its components:
--- the dead-code/beta rules below (`terminal ∘ f → terminal`, `fst/snd ∘
--- ⟨g,h⟩ → g/h`) are value-correct but would erase `f`'s SigOp trace. Keep
--- `g ∘ f` verbatim (still value-correct, and the effect is preserved).
-optimize-compose g f with has-effect? f
-... | true = g ∘ f
-optimize-compose g f | false with composeFirstView g
-... | cf-id = f                                    -- id ∘ f = f
-... | cf-terminal = terminal                       -- terminal ∘ f = terminal
-... | cf-fst = optimize-fst f                      -- fst ∘ f (beta reduction)
-... | cf-snd = optimize-snd f                      -- snd ∘ f (beta reduction)
-... | cf-case h k = optimize-post-case h k f       -- case h k ∘ f (beta reduction)
-... | cf-other g = optimize-compose-second g f     -- check second arg
+optimize-compose g f = compose-aux g f (composeFirstView g)
 
 ------------------------------------------------------------------------
 -- Eta Laws (for pairs and cases)
 ------------------------------------------------------------------------
 
--- | Optimize pair construction
---   ⟨ fst , snd ⟩ = id (eta)
--- Plan 0.53 preserved the pair's `AllocMode` here rather than forcing `Stack`,
--- because "an optimized pair that escapes (e.g. captured by a closure) must
--- stay on the heap in heap-mode".
---
--- Stage G removes the mode, so that distinction can no longer be expressed at
--- this node. See the ESCAPE note on `⟨_,_⟩` in `Once.IR`: this is the one
--- claim in the pair migration that is NOT discharged by the typechecker.
-optimize-pair-aux : ∀ {A B C} (f : IR C A) (g : IR C B)
-                  → FstSndView f → FstSndView g → IR C (A * B)
-optimize-pair-aux f g fsv-fst       fsv-snd       = id
-optimize-pair-aux f g fsv-fst       fsv-fst       = ⟨ f , g ⟩
-optimize-pair-aux f g fsv-fst       (fsv-other _) = ⟨ f , g ⟩
-optimize-pair-aux f g fsv-snd       fsv-fst       = ⟨ f , g ⟩
-optimize-pair-aux f g fsv-snd       fsv-snd       = ⟨ f , g ⟩
-optimize-pair-aux f g fsv-snd       (fsv-other _) = ⟨ f , g ⟩
-optimize-pair-aux f g (fsv-other _) fsv-fst       = ⟨ f , g ⟩
-optimize-pair-aux f g (fsv-other _) fsv-snd       = ⟨ f , g ⟩
-optimize-pair-aux f g (fsv-other _) (fsv-other _) = ⟨ f , g ⟩
+-- | A quiet term into `Unit` stands for any other: `Unit` has one value.
+unit-like-aux : ∀ {A B} → IR A B → Dec (B ≡ Unit) → Bool
+unit-like-aux f (yes _) = not (has-effect? f)
+unit-like-aux f (no _)  = false
+
+unit-like : ∀ {A B} → IR A B → Bool
+unit-like {B = B} f = unit-like-aux f (B ≟IRTy Unit)
+
+-- | A term out of `Void` stands for any other: it is never run.
+void-like : ∀ {A B} → IR A B → Bool
+void-like {A} _ = isYes (A ≟IRTy Void)
+
+-- | The first projection up to `Unit`: `fst`, or a quiet term into `Unit`
+-- (whose source is then `Unit * B`). Likewise `snd`.
+fst-like-aux : ∀ {A B} (f : IR (A * B) A) → FstSndView f → Bool
+fst-like-aux f fsv-fst       = true
+fst-like-aux f fsv-snd       = unit-like f
+fst-like-aux f (fsv-other _) = unit-like f
+
+snd-like-aux : ∀ {A B} (g : IR (A * B) B) → FstSndView g → Bool
+snd-like-aux g fsv-fst       = unit-like g
+snd-like-aux g fsv-snd       = true
+snd-like-aux g (fsv-other _) = unit-like g
+
+-- | The injections up to `Void`: `inl`, or any term out of `Void` (whose
+-- target is then `Void + B`). Likewise `inr`.
+inl-like-aux : ∀ {A B} (f : IR A (A + B)) → InlInrView f → Bool
+inl-like-aux f iiv-inl       = true
+inl-like-aux f iiv-inr       = void-like f
+inl-like-aux f (iiv-other _) = void-like f
+
+inr-like-aux : ∀ {A B} (g : IR B (A + B)) → InlInrView g → Bool
+inr-like-aux g iiv-inl       = void-like g
+inr-like-aux g iiv-inr       = true
+inr-like-aux g (iiv-other _) = void-like g
+
+-- | Eta for pairs, up to `Unit`: `⟨ fst , snd ⟩ = id`, and so is `⟨ terminal ,
+-- snd ⟩` out of `Unit * B` (the `Unit` rule turns a `fst` into `Unit` into
+-- `terminal` before this rule sees it).
+eta-pair : ∀ {A B} (f : IR (A * B) A) (g : IR (A * B) B) → Bool → Bool → IR (A * B) (A * B)
+eta-pair f g true  true  = id
+eta-pair f g true  false = ⟨ f , g ⟩
+eta-pair f g false _     = ⟨ f , g ⟩
+
+pair-aux : ∀ {A B C} → IR C A → IR C B → Dec (C ≡ A * B) → IR C (A * B)
+pair-aux f g (yes refl) = eta-pair f g (fst-like-aux f (fstSndView f)) (snd-like-aux g (fstSndView g))
+pair-aux f g (no _)     = ⟨ f , g ⟩
 
 optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
-optimize-pair f g = optimize-pair-aux f g (fstSndView f) (fstSndView g)
+optimize-pair {A} {B} {C} f g = pair-aux f g (C ≟IRTy (A * B))
 
--- | Optimize case construction
---   [ inl , inr ] = id (eta)
-optimize-case-aux : ∀ {A B C} (f : IR A C) (g : IR B C)
-                  → InlInrView f → InlInrView g → IR (A + B) C
-optimize-case-aux f g iiv-inl         iiv-inr         = id
-optimize-case-aux f g iiv-inl         iiv-inl         = case f g
-optimize-case-aux f g iiv-inl         (iiv-other _) = case f g
-optimize-case-aux f g iiv-inr         iiv-inl         = case f g
-optimize-case-aux f g iiv-inr         iiv-inr         = case f g
-optimize-case-aux f g iiv-inr         (iiv-other _) = case f g
-optimize-case-aux f g (iiv-other _) iiv-inl         = case f g
-optimize-case-aux f g (iiv-other _) iiv-inr         = case f g
-optimize-case-aux f g (iiv-other _) (iiv-other _) = case f g
+-- | Eta for cases, up to `Void`: `[ inl , inr ] = id`, and so is `[ initial ,
+-- inr ]` into `Void + B`.
+eta-case : ∀ {A B} (f : IR A (A + B)) (g : IR B (A + B)) → Bool → Bool → IR (A + B) (A + B)
+eta-case f g true  true  = id
+eta-case f g true  false = case f g
+eta-case f g false _     = case f g
+
+case-aux : ∀ {A B C} → IR A C → IR B C → Dec (C ≡ A + B) → IR (A + B) C
+case-aux f g (yes refl) = eta-case f g (inl-like-aux f (inlInrView f)) (inr-like-aux g (inlInrView g))
+case-aux f g (no _)     = case f g
 
 optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
-optimize-case f g = optimize-case-aux f g (inlInrView f) (inlInrView g)
+optimize-case {A} {B} {C} f g = case-aux f g (C ≟IRTy (A + B))
 
 ------------------------------------------------------------------------
 -- Full Recursive Optimization
@@ -623,7 +546,7 @@ optimize-case f g = optimize-case-aux f g (inlInrView f) (inlInrView g)
 --   2. Any f : Void → B  becomes initial  (Void source rule)
 --
 -- This ensures unique normal forms for degenerate types:
---   - All morphisms to Unit are terminal
+--   - All quiet morphisms to Unit are terminal (an effect is kept)
 --   - All morphisms from Void are initial
 --
 -- For non-degenerate types, structural rules apply.
@@ -636,14 +559,9 @@ mutual
   optimize-once-structural fst = fst
   optimize-once-structural snd = snd
   optimize-once-structural ⟨ f , g ⟩ = optimize-pair (optimize-once f) (optimize-once g)
-  -- | inl with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (inl {A} {B}) with A ≟IRTy II.Void
-  ... | yes refl = initial
-  ... | no _     = inl
-  -- | inr with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (inr {A} {B}) with B ≟IRTy II.Void
-  ... | yes refl = initial
-  ... | no _     = inr
+  -- (out of `Void`, `inl`/`inr` are `initial`: the type-directed rule, before)
+  optimize-once-structural inl = inl
+  optimize-once-structural inr = inr
   optimize-once-structural (case f g) = optimize-case (optimize-once f) (optimize-once g)
   optimize-once-structural terminal = terminal
   optimize-once-structural initial = initial

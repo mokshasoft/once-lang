@@ -94,11 +94,16 @@ data BView : ∀ {X Y} → IR X Y → Set where
   -- The rewrite asks this of a bare primitive, `SigOp si` read as
   -- `SigOp si ∘ id` (`Rewrite.walk`).
   bv-id    : ∀ {X} → BView (id {X})
+  -- D163's re-association, for an operand: `(f ∘ g) ∘ h` is read as
+  -- `f ∘ (g ∘ h)`, so the operand's shape does not depend on how its
+  -- compositions are nested (plan 0.129: the optimizer nests them right).
+  bv-reassoc : ∀ {A B C D} (f : IR C D) (g : IR B C) (h : IR A B) → BView ((f ∘ g) ∘ h)
   bv-other : ∀ {X Y} (e : IR X Y) → BView e
 
 b-view : ∀ {X Y} (e : IR X Y) → BView e
 b-view ⟨ a , b ⟩       = bv-pair a b
 b-view (⟨ a , b ⟩ ∘ h) = bv-dist a b h
+b-view ((f ∘ g) ∘ h)   = bv-reassoc f g h
 b-view id              = bv-id
 {-# CATCHALL #-}
 b-view e               = bv-other e
@@ -246,6 +251,7 @@ recognise-binop sh e = rbin-at sh e (b-view e)
 rbin-at sh .(⟨ a , b ⟩)     (bv-pair a b)   = pair-of (recognise-body sh a) (recognise-body sh b)
 rbin-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) = binop-at sh (plumbing? h) a b h
 rbin-at sh .id              bv-id           = pair-of (path-at sh NInt (just (Fst ∷ []))) (path-at sh NInt (just (Snd ∷ [])))
+rbin-at sh .((f ∘ g) ∘ h)   (bv-reassoc f g h) = recognise-binop sh (f ∘ (g ∘ h))
 rbin-at sh e                (bv-other e)    = nothing
 -- D163: `⟨a,b⟩ ∘ h ≡ ⟨ a ∘ h , b ∘ h ⟩` — composition distributes over pairing.
 -- QTT hands the operand pair an environment restriction `h`, and pushing it
@@ -313,6 +319,7 @@ recognise-binop-float sh e = rbinf-at sh e (b-view e)
 rbinf-at sh .(⟨ a , b ⟩)     (bv-pair a b)   = pair-of (recognise-body-float sh a) (recognise-body-float sh b)
 rbinf-at sh .(⟨ a , b ⟩ ∘ h) (bv-dist a b h) = binop-at-float sh (plumbing? h) a b h
 rbinf-at sh .id              bv-id           = pair-of (path-at sh NFloat (just (Fst ∷ []))) (path-at sh NFloat (just (Snd ∷ [])))
+rbinf-at sh .((f ∘ g) ∘ h)   (bv-reassoc f g h) = recognise-binop-float sh (f ∘ (g ∘ h))
 rbinf-at sh e                (bv-other e)    = nothing
 
 binop-at-float sh true a b h = pair-of (recognise-body-float sh (a ∘ h)) (recognise-body-float sh (b ∘ h))

@@ -51,10 +51,10 @@ ruleFixtures =
     , "curry(initial . snd) . terminal" )
   , ( "left", "id . f = f, snd . <g, h> = h"
     , "[snd . (id . <id . fst, snd>), "
-    , "curry([snd, (0 . terminal) . terminal] . (((apply . <[curry(inl . <terminal, fst>), curry(inr . <terminal, fst>)] . fst, terminal>) . <snd, terminal>) . <terminal, (inl . snd) . <terminal, snd>>)) . terminal" )
+    , "curry([snd, 0 . terminal] . (apply . (<[curry(inl . <terminal, fst>), curry(inr . <terminal, fst>)] . fst, terminal> . (<snd, terminal> . <terminal, inl . snd>)))) . terminal" )
   , ( "outer", "fst . <g, h> = g"
     , "[snd . (fst . <<id . fst, snd> . fst, snd>), "
-    , "curry([snd . (<terminal, snd> . fst), snd] . (((apply . <[curry(inl . <snd, fst>), curry(inr . <snd, fst>)] . fst, snd>) . <snd, fst>) . <<terminal, snd>, (inl . ((0 . terminal) . terminal)) . terminal>)) . terminal" )
+    , "curry([snd . fst, snd] . (apply . (<[curry(inl . <snd, fst>), curry(inr . <snd, fst>)] . fst, snd> . (<snd, fst> . <id, inl . (0 . terminal)>)))) . terminal" )
   ]
 
 -- | The rule's redex is in the elaborated IR of `fn`, and the optimized IR is
