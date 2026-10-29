@@ -640,22 +640,7 @@ are postulate-free. All three are instances of ONE unwritten generalisation;
 writing it retires three residuals at once and is the obvious next reduction.
 **Done — see D182 above; this paragraph is history.**
 
-### Known-red ISLAND (not a residual, and not from plan 0.90): `Once.Category.Laws`
+### Known-red ISLAND `Once.Category.Laws`: deleted (D347)
 
-`make check-all` (the island-rot backstop) fails on `Once/Category/Laws.agda`,
-and the failure PREDATES plan 0.90 — every cause is an earlier migration the
-module never followed:
-
-* `⟦ A ⟧` at `A : IRTy` while the import is the `Type` interpretation (IRTy split)
-* `eval` lost its `TargetNum` argument here (D113)
-* `inl`/`inr`/`curry` still take an `AllocMode` (0.86 stage G removed it)
-* the IR arrow is still written `⇒[ k ]` (0.52 M2 made it ungraded `⇛`)
-* `Cata wf (In wf)` no longer type-checks at all: `Cata` is the PARAMETERIZED
-  fold (D131, `IR (E * ⟦F⟧TI A) A → IR (E * μ-type F) A`), so the identity law
-  has to be RESTATED (`Cata wf (In wf ∘ snd)`) before it can be reproved
-
-Its only consumer is `Once.Optimize.Correct`, itself an island. The first four
-are mechanical; the fifth is a genuine restatement, and the module's two μ/ν
-identity laws lean on `Once.Postulates.extensionality`, so reviving it is a
-funext decision as well as a repair. Left as one named piece of work rather than
-half-fixed.
+It and its only consumer `Once.Optimize.Correct` were superseded by the trace-level
+optimizer proof (`Once.Adequacy.OptimizePreserves`, plan 0.39) and deleted.

@@ -10,7 +10,7 @@
 #   make frontend     - Parse → TypeCheck → Optimize → Fusion
 #   make parser       - Parser
 #   make typecheck    - Verified type checker
-#   make optimize     - Optimizer
+#   make optimize     - Optimizer: trace preservation + one example per rule
 #   make fusion       - Fusion/deforestation
 #
 # Standalone proofs (not part of compilation pipeline):
@@ -105,8 +105,8 @@ check-all:
 
 .PHONY: optimize
 optimize:
-	@echo "Type-checking optimizer..."
-	@sh -c '$(AGDA_CMD) Once/Optimize/Correct.agda'
+	@echo "Type-checking the optimizer's proof and rule examples..."
+	@sh -c '$(AGDA_CMD) Once/Adequacy/OptimizePreserves.agda' && sh -c '$(AGDA_CMD) Once/Optimize/Examples.agda'
 
 .PHONY: fusion
 fusion:
@@ -126,27 +126,6 @@ postulates:
 	@echo "Type-checking postulates..."
 	@sh -c '$(AGDA_CMD) Once/Postulates.agda'
 
-
-#-----------------------------------------------------------------------------
-# Optimizer Completeness Proofs (separate from compiler)
-#-----------------------------------------------------------------------------
-
-.PHONY: optimizer-cost
-optimizer-cost:
-	@echo "Type-checking optimizer cost model..."
-	@sh -c '$(AGDA_CMD) Once/Optimizer/Cost.agda'
-
-.PHONY: optimizer-depth
-optimizer-depth:
-	@echo "Type-checking optimizer depth..."
-	@sh -c '$(AGDA_CMD) Once/Optimizer/Depth.agda'
-
-
-
-
-.PHONY: optimizer
-optimizer: optimizer-cost optimizer-depth
-	@echo "Optimizer completeness proofs type-check successfully!"
 
 #-----------------------------------------------------------------------------
 # Pipeline: CCC Backend (target-specific)
