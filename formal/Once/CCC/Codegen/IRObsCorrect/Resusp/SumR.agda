@@ -221,10 +221,22 @@ module ResuspSumRC {FS : FrameSemantics} where
       pcL : fpc fin ≡ DL.length (rtrace (wf-Sum wF wG) n l) + fpc σ
       pcL = AT.end-r
 
+      -- Staged, each with its type: inferring the nested `ev-++`s at once
+      -- cost ~25 min (the two-step `endS`).
+      evE : chain-events endRun ≡ []
+      evE = proj₁ (proj₂ endS)
+
+      evT : chain-events (FlatSteps-++ T.run endRun) ≡ []
+      evT = ev-++ {prog} {9} {2} {sG} {T.w9} {fin} T.run endRun T.ev evE
+
+      evG : chain-events (FlatSteps-++ RG.run (FlatSteps-++ T.run endRun)) ≡ []
+      evG = ev-++ {prog} {RG.steps} {9 + 2} {U.x3} {sG} {fin} RG.run (FlatSteps-++ T.run endRun) RG.ev evT
+
+      evB : chain-events (FlatSteps-++ branch (FlatSteps-++ RG.run (FlatSteps-++ T.run endRun))) ≡ []
+      evB = ev-++ branch (FlatSteps-++ RG.run (FlatSteps-++ T.run endRun)) (proj₁ (proj₂ branchS)) evG
+
       evL : chain-events run ≡ []
-      evL = ev-++ pre2 (FlatSteps-++ branch (FlatSteps-++ RG.run (FlatSteps-++ T.run endRun))) (proj₁ (proj₂ pre2S))
-              (ev-++ branch (FlatSteps-++ RG.run (FlatSteps-++ T.run endRun)) (proj₁ (proj₂ branchS))
-              (ev-++ RG.run (FlatSteps-++ T.run endRun) RG.ev (ev-++ T.run endRun T.ev (proj₁ (proj₂ endS)))))
+      evL = ev-++ pre2 (FlatSteps-++ branch (FlatSteps-++ RG.run (FlatSteps-++ T.run endRun))) (proj₁ (proj₂ pre2S)) evB
 
       logL : LocState.ev-log (floc fin) ≡ LocState.ev-log (floc σ)
       logL = trans (proj₂ (proj₂ endS)) (trans T.log (trans RG.log (trans (proj₂ (proj₂ branchS)) (proj₂ (proj₂ pre2S)))))

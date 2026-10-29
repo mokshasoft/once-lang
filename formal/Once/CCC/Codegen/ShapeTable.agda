@@ -1117,9 +1117,8 @@ module Sem (FS : FrameSemantics) where
   shape-uw hl' v' uw shape-unit = shape-unit
   shape-uw {ls = ls} hl' v' uw (shape-pair {pair-loc = pl} lm b3 sa sb) =
     shape-pair lm b3 (cell-uw pl hl' v' uw sa) (cell-uw (sucLoc pl) hl' v' uw sb)
-  shape-uw {ls = ls} hl' v' uw (shape-closure {closure-loc = cl} lm r1 r2 b1 b2 senv) =
-    shape-closure lm (read-uw ls hl' v' cl uw r1) (read-uw ls hl' v' (sucLoc cl) uw r2)
-                  b1 b2 (shape-uw hl' v' uw senv)
+  shape-uw {ls = ls} hl' v' uw (shape-closure {closure-loc = cl} lm r1 r2 b1 b2) =
+    shape-closure lm (read-uw ls hl' v' cl uw r1) (read-uw ls hl' v' (sucLoc cl) uw r2) b1 b2
   shape-uw {m = m} {ls = ls} hl' v' uw (shape-inl {sum-loc = sl} lm tg r b1 b2 sp) =
     shape-inl lm (tag-uw m 0 hl' v' uw tg) (read-uw ls hl' v' (sucLoc sl) uw r)
               b1 b2 (shape-uw hl' v' uw sp)
@@ -1139,7 +1138,7 @@ module Sem (FS : FrameSemantics) where
     shape-inr-reg lm (tag-uw m 1 hl' v' uw tg) fit (read-uw ls hl' v' (sucLoc sl) uw r) b
   shape-uw hl' v' uw (shape-μ wf sh) = shape-μ wf (shape-uw hl' v' uw sh)
   shape-uw {ls = ls} hl' v' uw (shape-ν-susp {ν-loc = nl} lm sc cp b) =
-    shape-ν-susp lm (cell-uw nl hl' v' uw sc)
+    shape-ν-susp lm (read-uw ls hl' v' nl uw sc)
                     (read-uw ls hl' v' (sucLoc nl) uw cp) b
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-int b r)   = shape-int b (read-uw ls hl' v' l uw r)
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-float b r) = shape-float b (read-uw ls hl' v' l uw r)

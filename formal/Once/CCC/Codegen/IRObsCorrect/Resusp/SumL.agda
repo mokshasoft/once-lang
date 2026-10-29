@@ -30,7 +30,7 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.SlotBudget o using (resuspend-mono)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue
-        ; readReg; Output; Input1; SV-Code; SV-Ptr; sucLoc; instr-ctrl; c-branch-tag-zero; c-jmp
+        ; readReg; Output; Input1; SV-Code; SV-Ptr; sucLoc; instr-ctrl; c-branch-tag-zero; c-jmp; c-label
         ; store-at-slot; restore-input; load-indirect-suc; sv-as-loc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -186,7 +186,8 @@ module ResuspSumLC {FS : FrameSemantics} where
       fin = record T.w9 { fpc = suc (fpc T.w9) }
 
       endS : SRun prog 1 T.w9 fin
-      endS = s-at fin (T.nhw9 , spT 9 _ refl) refl refl tt s-nil
+      endS = s-at {prog} {T.w9} {0} {fin} {instr-ctrl (c-label (ℓ o (suc l)))} fin
+               (T.nhw9 , spT 9 (instr-ctrl (c-label (ℓ o (suc l)))) refl) refl refl tt s-nil
 
       endRun : FlatSteps prog 1 T.w9 fin
       endRun = proj₁ endS
