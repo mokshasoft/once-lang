@@ -19,20 +19,28 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Machine.FlatInitWF (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; _<_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Nat.Properties using (m<1+n⇒m<n∨m≡n)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
-open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; _≟HL_; module HeapRef; module HeapLocation)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Machine.SMCore
 open AllocState using (block-size; next-heap-ref)
-open LocState using (heapMem)
+open LocState using (heapMem; stackMem; regs)
+open AllocState using (current-frame)
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
+open FrameSemantics FS using (Frame)
+open import Once.CCC.Machine.Locations using (Slot)
+open import Data.Empty using (⊥)
+open import Data.Unit using (⊤; tt)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
 open MemOps {FS}
 open ExecFinal {FS}
@@ -266,3 +274,80 @@ keeps-flat (instr-load-code-addr k) prog fs ff na = keeps-abstract (instr-load-c
 keeps-flat (instr-load-tag-lit k)   prog fs ff na = keeps-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) ff na
 keeps-flat (instr-alloc-heap k)     prog fs ff na = ⊥-elim (na k refl)
 keeps-flat (instr-reg-op op)        prog fs ff na = keeps-abstract (instr-reg-op op) (floc fs) (falloc fs) ff na
+
+------------------------------------------------------------------------
+-- Part B: THE OPEN WINDOW. Between an allocation and the second write of its
+-- block `blk` (the newest), every older block is full; the window's static
+-- record (`Codegen.InitWindow.Win`) says where `blk`'s pointer may be —
+-- `Output` (`o`), `Input1` (`i`), the stash slot (`p`) — and which cells are
+-- written (`w0`, `w1`); no other place holds a pointer into `blk`.
+------------------------------------------------------------------------
+Written : LocState FS → HeapLocation → Set
+Written ls hl = Σ (StoredValue FS) (λ w → heapMem ls hl ≡ just w)
+
+fresh : ℕ → StoredValue FS
+fresh b = SV-Ptr (AtDynamic (heap-loc (mkHeapRef b) 0))
+
+-- a value that is no pointer into block `b`
+Avoids : ℕ → StoredValue FS → Set
+Avoids b (SV-Ptr (AtDynamic hl)) = ¬ (ref-id (heap-ref hl) ≡ b)
+Avoids b (SV-Ptr (AtStack _ _))  = ⊤
+Avoids b (SV-Tag _)              = ⊤
+Avoids b (SV-Lit _ _)            = ⊤
+Avoids b (SV-Code _)             = ⊤
+
+Avoids? : ℕ → Maybe (StoredValue FS) → Set
+Avoids? b (just v) = Avoids b v
+Avoids? b nothing  = ⊤
+
+-- a register the window tracks: exactly the fresh pointer, or none into `b`
+Holds : Bool → ℕ → StoredValue FS → Set
+Holds true  b v = v ≡ fresh b
+Holds false b v = Avoids b v
+
+-- the stash slot, in the current frame
+IsStash : Maybe ℕ → Frame → Frame → Slot → Set
+IsStash nothing  cf f k = ⊥
+IsStash (just q) cf f k = (f ≡ cf) × (k ≡ q)
+
+StashHolds : Maybe ℕ → ℕ → LocState FS → Frame → Set
+StashHolds nothing  b ls cf = ⊤
+StashHolds (just q) b ls cf = stackMem ls cf q ≡ just (fresh b)
+
+record Open (o i : Bool) (p : Maybe ℕ) (w0 w1 : Bool) (fs : FlatState) : Set where
+  field
+    blk    : ℕ
+    nx     : next-heap-ref (falloc fs) ≡ suc blk
+    sz     : block-size (falloc fs) blk ≡ 2
+    older  : ∀ (hl : HeapLocation) → ref-id (heap-ref hl) < blk
+           → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl)) → Written (floc fs) hl
+    cell0  : w0 ≡ true → Written (floc fs) (heap-loc (mkHeapRef blk) 0)
+    cell1  : w1 ≡ true → Written (floc fs) (heap-loc (mkHeapRef blk) 1)
+    out    : Holds o blk (readReg (regs (floc fs)) Output)
+    in1    : Holds i blk (readReg (regs (floc fs)) Input1)
+    scr    : Avoids blk (readReg (regs (floc fs)) Scratch)
+    cnt    : Avoids blk (readReg (regs (floc fs)) Count)
+    clos   : Avoids blk (fclosure fs)
+    heap   : ∀ (hl : HeapLocation) → Avoids? blk (heapMem (floc fs) hl)
+    stash  : StashHolds p blk (floc fs) (current-frame (falloc fs))
+    stack  : ∀ (f : Frame) (k : Slot) → ¬ IsStash p (current-frame (falloc fs)) f k
+           → Avoids? blk (stackMem (floc fs) f k)
+open Open
+
+-- both cells written: the window closes, and the state is full
+private
+  cell-of : ∀ (hl : HeapLocation) {b : ℕ} {ls : LocState FS}
+          → ref-id (heap-ref hl) ≡ b → heap-offset hl < 2
+          → Written ls (heap-loc (mkHeapRef b) 0) → Written ls (heap-loc (mkHeapRef b) 1)
+          → Written ls hl
+  cell-of (heap-loc (mkHeapRef r) zero)          refl _ c0 c1 = c0
+  cell-of (heap-loc (mkHeapRef r) (suc zero))    refl _ c0 c1 = c1
+  cell-of (heap-loc (mkHeapRef r) (suc (suc k))) refl (s≤s (s≤s ())) c0 c1
+
+close-done : ∀ {o i p} {fs : FlatState} → Open o i p true true fs → Full (falloc fs) (floc fs)
+close-done {fs = fs} op hl lt ib
+  with m<1+n⇒m<n∨m≡n (subst (ref-id (heap-ref hl) <_) (nx op) lt)
+... | inj₁ r<b = older op hl r<b ib
+... | inj₂ r≡b = cell-of hl {ls = floc fs} r≡b
+                   (subst (heap-offset hl <_) (trans (cong (block-size (falloc fs)) r≡b) (sz op)) ib)
+                   (cell0 op refl) (cell1 op refl)
