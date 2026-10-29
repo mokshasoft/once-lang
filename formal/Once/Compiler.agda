@@ -61,7 +61,7 @@ open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-heap-room x86-32-stack-room x86-32-call-room
        x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
-       using (arch-correctness; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
+       using (arch-correctness)
 -- plan 0.92, and an honest note on its cost: `public` here is NOT convenience.
 -- `Once.Certified` cannot STATE `once-certified`'s signature without naming
 -- these three types, and to name a type N levels up it must be re-exported at

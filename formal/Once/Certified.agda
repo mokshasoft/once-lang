@@ -86,7 +86,7 @@ open import Once.Compiler x86-64-heap-room x86-64-stack-room x86-64-call-room
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-heap-room x86-32-stack-room x86-32-call-room
        x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
-       using (arch-correctness; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
+       using (arch-correctness)
 import Once.Adequacy.SpecApex as SpecApex
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 -- Plan 0.102 phase B (D276, D304): the language's own metatheory, stated in the
@@ -97,11 +97,10 @@ open import Once.Certified.Models using (NonVacuous; models)
 -- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
 -- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
 -- typing and behaviour by the two bridges, both proved (`SpecApex.bridges`).
-once-compiler : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
-              → CorrectCompiler
-once-compiler b64 b32 brv = SA.spec-compiler SA.bridges
+once-compiler : CorrectCompiler
+once-compiler = SA.spec-compiler SA.bridges
   where
-    module SA = SpecApex (arch-correctness b64 b32 brv)
+    module SA = SpecApex arch-correctness
 
 record CertifiedBuild : Set₁ where
   field
@@ -115,31 +114,19 @@ record CertifiedBuild : Set₁ where
     -- the assumptions are satisfiable: the claim is not about an empty set (D302)
     nonvacuous  : NonVacuous
 
--- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE
--- STATEMENT.
+-- plan 0.125 S5 — UNCONDITIONAL AGAIN, AND NOT VACUOUS ON THIS ACCOUNT.
 --
--- `once-certified` used to be unconditional. It was also VACUOUS: it rested on
--- `block-runs`, which D213 refuted with a machine-checked `⊥`
--- (`Once/Probe/ApexInconsistent.boom`). An inconsistent assumption proves
--- everything, so the unconditional reading was worth nothing.
---
--- It now takes the three block-table coherence hypotheses — one per target,
--- because `BlockRuns` is `FrameSemantics`-relative and the single postulate was
--- quietly standing for all three at once. The theorem reads:
---
---     IF the emitter's block table is coherent on each target,
---     THEN the compiler is correct and the typechecker is verified.
---
--- That is WEAKER than what stood here and TRUE, where what stood here was
--- stronger and vacuous. Discharging the hypotheses is plan 0.93's purpose: the
--- fact they assert is BEHAVIOURAL, and D217 showed (machine-checked, one cell
--- two denotations) that no property of a machine STATE can supply it — which
--- is why `ValidAtWF` has to become a relation recursive on the TYPE rather
--- than a `data` indexed by it.
-once-certified : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
-               → CertifiedBuild
-once-certified b64 b32 brv = record
-  { correctness = once-compiler b64 b32 brv
+-- From plan 0.91 to here it took the three block-table coherence hypotheses
+-- (one per target), and D340 showed their type EMPTY: the apex was vacuous a
+-- second way. Plan 0.125 made the value relation say what a closure or a ν
+-- DOES (`ValidAtWF` as a function on the type), so `apply`/`Out` read a
+-- callee's run off the value and `curry`/`Ana`/`in-ν` prove it; and the
+-- program's functions are discharged along the table (`FlatFromObs.block-runs`).
+-- What the machine-correctness layer still assumes is listed in
+-- `Once.Postulates` (`cata-correct` among them).
+once-certified : CertifiedBuild
+once-certified = record
+  { correctness = once-compiler
   ; typechecker = verifiedTypeChecker
   ; language    = metatheory
   ; nonvacuous  = models

@@ -297,13 +297,13 @@ entry-like B = refl , refl , refl , refl , refl
 
 -- D320 / plan 0.119 D5: THE BINARY'S TRACE, budget by budget (see the x86-64 instance).
 conc-tr :
-  ∀ (brs : FFOr.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+  ∀ (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
   → FFOr.image ir ≡ C.image-of p
   → Machine.trace (RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
                      (compile-trace (FFOr.image ir))) ([] , RS.initState)
     ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics riscv64) ι
-conc-tr brs p ir lk img =
+conc-tr p ir lk img =
   budget-apex δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) fact
   where
     δc = RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir))
@@ -314,10 +314,10 @@ conc-tr brs p ir lk img =
     fact k = proj₁ agree
            , trans (RTr.Run.runN-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir)) (proj₁ agree) [] RS.initState)
                    (cong (RTr.Run.outObs val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir)))
-                         (trans (proj₁ (proj₂ agree)) (FFOr.flat-ends ir-obs-correct brs ir lk k)))
-           , λ c → ≤-trans (FFOr.flat-cut ir-obs-correct brs ir lk k c) (proj₂ (proj₂ agree))
+                         (trans (proj₁ (proj₂ agree)) (FFOr.flat-ends ir-obs-correct ir lk k)))
+           , λ c → ≤-trans (FFOr.flat-cut ir-obs-correct ir lk k c) (proj₂ (proj₂ agree))
       where
-        agree = events-agree-start (FFOr.flat-fuel ir-obs-correct brs ir lk k)
+        agree = events-agree-start (FFOr.flat-fuel ir-obs-correct ir lk k)
                   ev-riscv64 (block-env (C.blocks-riscv64 p))
                   (FFOr.image ir) FFOr.start-flat RS.initState (ir-stack-budget ir) (entry-corr ir)
                   (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
@@ -325,12 +325,7 @@ conc-tr brs p ir lk img =
 
 -- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
 -- the per-program `ArchCorrect` (each program brings its own table).
--- plan 0.91 parallel track: the block-table coherence HYPOTHESIS, named so it
--- can be threaded to `Once.Certified` (each target has its own
--- `FrameSemantics`, so `BlockRuns` differs per arch and one hypothesis cannot
--- serve all three). D244: over the PROGRAM IMAGE.
-BlockRunsHyp-riscv64 : Set
-BlockRunsHyp-riscv64 = FFOr.BlockRunsT
+-- plan 0.125 S5: no block-table hypothesis — `FlatFromObs.block-runs` proves it.
 
 -- Plan 0.107 / D320: RUNNING THE FILE HAS THE TRACE OF THE PROGRAM IT WAS EMITTED
 -- FROM — a theorem, over the file. The file is `emit` of the module's program
@@ -339,7 +334,7 @@ BlockRunsHyp-riscv64 = FFOr.BlockRunsT
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
 file-tr-riscv64 :
-  ∀ (brs : BlockRunsHyp-riscv64) (m : P.Module) (F : RF.Image)
+  ∀ (m : P.Module) (F : RF.Image)
   → C.compileFileFromModule IR.Heap false riscv64 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
   → (oq : o ≡ C.entry-owner)
@@ -347,13 +342,13 @@ file-tr-riscv64 :
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
   → run-trace-riscv64 ι F (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
     ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))) ⟧IRᵗ (arch-numerics riscv64) ι
-file-tr-riscv64 brs m F eq ir mi oq teq lk =
+file-tr-riscv64 m F eq ir mi oq teq lk =
   subst (λ G → run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
         (sym (file-is-emit riscv64 m F ir eq mi))
         (subst (λ cd → Machine.trace (RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) cd) ([] , RS.initState)
                        ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
-               (sym code-eq) (conc-tr brs p ir′ lk img))
+               (sym code-eq) (conc-tr p ir′ lk img))
   where
     p   = irProgram (moduleTable m) ir
     ir′ = main (rewrite-program p)

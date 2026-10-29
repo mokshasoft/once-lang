@@ -545,6 +545,27 @@ module ResuspIdC {FS : FrameSemantics} where
       nhu10 : halted (floc u10) ≡ false
       nhu10 = exec-abstract-preserves-halted-WF (load-from-slot (suc N)) (floc u9) (falloc u9) nhu9 (_ , at-cf (floc u9) (falloc u9) cfu9 sS9)
 
+      -- In three typed pieces: unifying the whole 19-step chain at once cost
+      -- ~5 GB (each step's implicit state and instruction).
+      srC : SRun prog 5 u5 u10
+      srC =
+        s-at u6 (nhu5 , span 14 _ refl) refl refl tt (
+        s-at u7 (nhu6 , span 15 _ refl) refl refl tt (
+        s-at u8 (nhu7 , span 16 _ refl) refl refl tt (
+        s-at u9 (nhu8 , span 17 _ refl) refl refl tt (
+        s-at u10 (nhu9 , span 18 _ refl) refl refl tt (
+        s-nil)))))
+
+      srB : SRun prog 12 t7 u10
+      srB =
+        s-at t8 (nh7 , span 7 _ refl) refl refl tt (
+        s-at t9 (nh8 , span 8 _ refl) refl refl tt (
+        s-at t10 (nh9 , span 9 _ refl) refl refl tt (
+        s-at u2 (nh10 , span 10 _ refl) refl refl tt (
+        s-at u3 (nhu2 , span 11 _ refl) refl refl tt (
+        s-at u4 (nhu3 , span 12 _ refl) refl refl tt (
+        s-at u5 (nhu4 , span 13 _ refl) refl refl tt srC))))))
+
       sr : SRun prog 19 σ u10
       sr =
         s-at t1 (nh0 , span 0 _ refl) refl refl tt (
@@ -553,20 +574,7 @@ module ResuspIdC {FS : FrameSemantics} where
         s-at t4 (nh3 , span 3 _ refl) refl refl tt (
         s-at t5 (nh4 , span 4 _ refl) refl refl tt (
         s-at t6 (nh5 , span 5 _ refl) refl refl tt (
-        s-at t7 (nh6 , span 6 _ refl) refl refl tt (
-        s-at t8 (nh7 , span 7 _ refl) refl refl tt (
-        s-at t9 (nh8 , span 8 _ refl) refl refl tt (
-        s-at t10 (nh9 , span 9 _ refl) refl refl tt (
-        s-at u2 (nh10 , span 10 _ refl) refl refl tt (
-        s-at u3 (nhu2 , span 11 _ refl) refl refl tt (
-        s-at u4 (nhu3 , span 12 _ refl) refl refl tt (
-        s-at u5 (nhu4 , span 13 _ refl) refl refl tt (
-        s-at u6 (nhu5 , span 14 _ refl) refl refl tt (
-        s-at u7 (nhu6 , span 15 _ refl) refl refl tt (
-        s-at u8 (nhu7 , span 16 _ refl) refl refl tt (
-        s-at u9 (nhu8 , span 17 _ refl) refl refl tt (
-        s-at u10 (nhu9 , span 18 _ refl) refl refl tt (
-        s-nil)))))))))))))))))))
+        s-at t7 (nh6 , span 6 _ refl) refl refl tt srB))))))
 
       run : FlatSteps prog 19 σ u10
       run = proj₁ sr

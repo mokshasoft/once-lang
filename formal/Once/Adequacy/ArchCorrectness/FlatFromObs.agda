@@ -90,6 +90,8 @@ open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
+import Once.Adequacy.ArchCorrectness.FnRuns as FnR
+import Once.Adequacy.ArchCorrectness.FnLayout o as FnL
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
@@ -341,10 +343,9 @@ main-blocks ir =
 image : IR Unit Unit → AbstractTrace
 image ir = program-image o (irProgram tbl ir)
 
--- The image's block table: the premise the apex carries (D188), now naming the
--- table's functions as well as the closure bodies and coalgebras.
-BlockRunsT : Set
-BlockRunsT = (ir : IR Unit Unit) → BlockRuns (image ir)
+-- plan 0.125 S3/S5: the image's block table is no longer a premise the apex
+-- carries (D188, emptied by D340); it is PROVED from the program being linked
+-- (`block-runs`, below).
 
 span-prefix : ∀ (t₁ t₂ : AbstractTrace) (j : ℕ) (t : AbstractTrace)
             → SpanAt t₁ j t → SpanAt (t₁ ++ t₂) j t
@@ -420,12 +421,12 @@ main-flat : IR Unit Unit → FlatState
 main-flat ir = flat-exec-instr (instr-ctrl (c-start (ir-stack-budget ir))) (image ir) start-flat
 
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
-              → (brs : BlockRunsT) → (k : ℕ)
+              → BlockRuns (image ir) → (k : ℕ)
               → MachineRefinesObsF (image ir) 1 0 0 ir tt (floc (main-flat ir))
                   (falloc (main-flat ir)) (SV-Tag 0) [] k
 entry-witness ir ioc brs k =
   ioc 0 0 (image ir) 1 (image-slot-stable ir)
-      (brs ir) (entry-span ir) (entry-blocks ir) (entry-labels ir)
+      brs (entry-span ir) (entry-blocks ir) (entry-labels ir)
       Stack tt (floc (main-flat ir)) (falloc (main-flat ir)) (SV-Tag 0)
       refl refl
       -- D153: `main : IR Unit Unit`, so its input has no residence at all.
@@ -441,12 +442,20 @@ IOC : Set
 σFS : ISig
 σFS = TM.Interp.sig (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS)
 
+-- plan 0.125 S3: THE BLOCK TABLE, DISCHARGED. A linked program's functions run
+-- as its table says (`FnRuns.fn-runs`, by induction from the table's end), at
+-- the places the image puts them (`FnLayout.image-entries`).
+block-runs : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → BlockRuns (image ir)
+block-runs ir (_ , _ , tl , nd) = record
+  { functions = FnR.FnRunsC.fn-runs {FS} (image ir) (image-slot-stable ir) tbl tl
+                  (FnL.FnLayoutC.image-entries {FS} tbl ir nd) o }
+
 IOC = ∀ {A B} (ir : IR A B) → Linked σFS tbl ir → IRObsCorrectF ir
 
-entry-vr : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → IOC → (brs : BlockRunsT) → (k : ℕ)
+entry-vr : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → IOC → (k : ℕ)
          → ValueRealized (image ir) 1 0 0 ir tt (floc (main-flat ir))
              (falloc (main-flat ir)) (SV-Tag 0) [] k
-entry-vr ir lk ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir (proj₁ lk)) brs k)
+entry-vr ir lk ioc k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir (proj₁ lk)) (block-runs ir lk) k)
 
 ------------------------------------------------------------------------
 -- D320: HOW THE PROGRAM'S FLAT RUN ENDS. The start, `main`'s run (the entry
@@ -476,18 +485,18 @@ tail-fuel (returns (done _ _)) = 2
 tail-fuel stopped              = 2
 tail-fuel (returns cut)        = 0
 
-flat-ends : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
-          → flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc brs k)
+flat-ends : (ioc : IOC) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
+          → flat-events (suc (ValueRealized.steps (entry-vr ir lk ioc k)
                               + tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))))
                         (image ir) start-flat
             ≡ (eventsAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k) , endAp (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k)))
-flat-ends ioc brs ir lk k =
+flat-ends ioc ir lk k =
   trans (flat-events-steps (ValueRealized.run vr) (tail-fuel (resultAt s0 T)))
-        (trans (cong₂ _▹_ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) brs k))
+        (trans (cong₂ _▹_ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir (proj₁ lk)) (block-runs ir lk) k))
                           (tail (resultAt s0 T) refl))
                (cong (_, endAp (resultAt s0 T)) (++-identityʳ (eventsAt s0 T))))
   where
-    vr = entry-vr ir lk ioc brs k
+    vr = entry-vr ir lk ioc k
     s0 = floc (main-flat ir)
     T  = ⟪ evalᴰ ir tt ⟫ k
     st = ValueRealized.settle vr
@@ -503,31 +512,31 @@ flat-ends ioc brs ir lk k =
     tail (returns cut) eq = refl
 
 -- A cut run has taken a control step for every silent step it passed.
-flat-progress : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
+flat-progress : (ioc : IOC) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
               → resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k) ≡ returns cut
-              → k ≤ chain-ctrls (ValueRealized.run (entry-vr ir lk ioc brs k))
-flat-progress ioc brs ir lk k eq =
-  subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (ValueRealized.run (entry-vr ir lk ioc brs k))) eq
-        (ValueRealized.progress (entry-vr ir lk ioc brs k))
+              → k ≤ chain-ctrls (ValueRealized.run (entry-vr ir lk ioc k))
+flat-progress ioc ir lk k eq =
+  subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (ValueRealized.run (entry-vr ir lk ioc k))) eq
+        (ValueRealized.progress (entry-vr ir lk ioc k))
 
 -- The flat fuel the budget-`k` observation is read at, and — when the budget
 -- cut the run — the control steps that fuel covers (at least the budget).
-flat-fuel : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ) → ℕ
-flat-fuel ioc brs ir lk k =
-  ValueRealized.steps (entry-vr ir lk ioc brs k) + tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))
+flat-fuel : (ioc : IOC) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ) → ℕ
+flat-fuel ioc ir lk k =
+  ValueRealized.steps (entry-vr ir lk ioc k) + tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))
 
-flat-cut : (ioc : IOC) (brs : BlockRunsT) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
+flat-cut : (ioc : IOC) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir)) (k : ℕ)
          → endAp (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k)) ≡ nothing
-         → k ≤ flat-ctrls (suc (flat-fuel ioc brs ir lk k)) (image ir) start-flat
-flat-cut ioc brs ir lk k e = go (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k)) refl e
+         → k ≤ flat-ctrls (suc (flat-fuel ioc ir lk k)) (image ir) start-flat
+flat-cut ioc ir lk k e = go (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k)) refl e
   where
-    vr = entry-vr ir lk ioc brs k
+    vr = entry-vr ir lk ioc k
     go : ∀ (ρ : Res _) → resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k) ≡ ρ → endAp ρ ≡ nothing
-       → k ≤ flat-ctrls (suc (flat-fuel ioc brs ir lk k)) (image ir) start-flat
+       → k ≤ flat-ctrls (suc (flat-fuel ioc ir lk k)) (image ir) start-flat
     go (returns (done _ _)) _ ()
     go stopped              _ ()
     go (returns cut) eq _ =
-      ≤-trans (flat-progress ioc brs ir lk k eq)
+      ≤-trans (flat-progress ioc ir lk k eq)
         (≤-trans (m≤m+n _ (flat-ctrls (tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))) (image ir) (ValueRealized.settle vr)))
           (≤-trans (≤-reflexive (sym (flat-ctrls-steps (ValueRealized.run vr)
                                         (tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))))))

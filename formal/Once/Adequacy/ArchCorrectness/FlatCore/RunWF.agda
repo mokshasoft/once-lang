@@ -159,7 +159,7 @@ private
 
   image-calls : ∀ {σ : ISig} (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram σ (irProgram tbl ir)
               → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
-  image-calls tbl ir (lm , les) =
+  image-calls tbl ir (lm , les , _) =
     tt allL∷ ++⁺ (CLk.ir-to-trace-top-calls o tbl ir lm) (fns-calls tbl _ tbl les)
 
   -- a linked call names an entry

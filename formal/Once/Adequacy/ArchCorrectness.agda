@@ -81,6 +81,7 @@ open Once.Denotation.Program.IRProgram using (main; table)
 open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
 open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
+open import Once.Adequacy.ImageUnique using (table-names-distinct)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Internal.Type using (Unit)
@@ -112,51 +113,42 @@ TP m ir = table (rewrite-program (irProgram (moduleTable m) ir))
 
 LK : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir
    → LinkedProgram (moduleSig m) (rewrite-program (irProgram (moduleTable m) ir))
-LK m ir mi = rewrite-program-linked (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi)
+LK m ir mi = rewrite-program-linked (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi (table-names-distinct m))
 
--- The block-table coherence hypotheses (plan 0.91; D188), one per target and
--- now one per TABLE: every program brings its own image.
-BlockRunsHyp-x86-64 : Set
-BlockRunsHyp-x86-64 = (ι : Interp) (tbl : List IRFun) → X64.BlockRunsHyp-x86-64 ι tbl
+-- plan 0.125 S5: there are no block-table hypotheses any more (D188's, emptied
+-- by D340): `FlatFromObs.block-runs` proves the table from the program being linked.
 
-BlockRunsHyp-x86-32 : Set
-BlockRunsHyp-x86-32 = (ι : Interp) (tbl : List IRFun) → X32.BlockRunsHyp-x86-32 ι tbl
-
-BlockRunsHyp-riscv64 : Set
-BlockRunsHyp-riscv64 = (ι : Interp) (tbl : List IRFun) → RV.BlockRunsHyp-riscv64 ι tbl
-
-x86-64-correct : BlockRunsHyp-x86-64 → ∀ (ι : Interp) → ArchCorrect x86-64 ι
-x86-64-correct brs ι = record
+x86-64-correct : ∀ (ι : Interp) → ArchCorrect x86-64 ι
+x86-64-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ m F eq → FileWF.file-wf x86-64 m F eq
   -- … and running it has the trace of the program it was emitted from (D320).
   ; file-tr = λ m F eq ir mi ls →
-      X64.file-tr-x86-64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+      X64.file-tr-x86-64 ι (TP m ir) m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
   }
 
-x86-32-correct : BlockRunsHyp-x86-32 → ∀ (ι : Interp) → ArchCorrect x86-32 ι
-x86-32-correct brs ι = record
+x86-32-correct : ∀ (ι : Interp) → ArchCorrect x86-32 ι
+x86-32-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ m F eq → FileWF.file-wf x86-32 m F eq
   -- … and running it has the trace of the program it was emitted from (D320).
   ; file-tr = λ m F eq ir mi ls →
-      X32.file-tr-x86-32 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+      X32.file-tr-x86-32 ι (TP m ir) m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
   }
 
-riscv64-correct : BlockRunsHyp-riscv64 → ∀ (ι : Interp) → ArchCorrect riscv64 ι
-riscv64-correct brs ι = record
+riscv64-correct : ∀ (ι : Interp) → ArchCorrect riscv64 ι
+riscv64-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ m F eq → FileWF.file-wf riscv64 m F eq
   -- … and running it has the trace of the program it was emitted from (D320).
   ; file-tr = λ m F eq ir mi ls →
-      RV.file-tr-riscv64 ι (TP m ir) (brs ι (TP m ir)) m F eq ir mi refl refl
+      RV.file-tr-riscv64 ι (TP m ir) m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (moduleTable m) ir))) ls (LK m ir mi))
   }
 
-arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
-                 → ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι
-arch-correctness b64 b32 brv ι x86-64  = x86-64-correct b64 ι
-arch-correctness b64 b32 brv ι x86-32  = x86-32-correct b32 ι
-arch-correctness b64 b32 brv ι riscv64 = riscv64-correct brv ι
+arch-correctness : ∀ (ι : Interp) (arch : Arch) → ArchCorrect arch ι
+arch-correctness ι x86-64  = x86-64-correct ι
+arch-correctness ι x86-32  = x86-32-correct ι
+arch-correctness ι riscv64 = riscv64-correct ι

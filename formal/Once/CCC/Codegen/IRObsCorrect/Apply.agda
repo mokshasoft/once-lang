@@ -91,7 +91,6 @@ module ApplyC {FS : FrameSemantics} where
           cvw     = decomposeClosureWF fst-valid
 
           E    = ClosureValidWF.EnvType cvw
-          body = ClosureValidWF.body cvw
           env  = ClosureValidWF.env cvw
           blbl    = ClosureValidWF.body-label cvw
 

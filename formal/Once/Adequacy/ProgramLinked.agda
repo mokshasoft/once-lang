@@ -81,7 +81,7 @@ open import Once.Type.Rigid using (ground-kinded)
 open import Once.IRTy using (⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Internal.Type using (μ-type; ν-type)
-open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; LinkedProgram)
+open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; Linked; LinkedProgram; TeleLinked; NamesDistinct)
 open Once.Denotation.Program.IRFun using (fbody)
 open import Once.Internal.Module using (ModTele; []; ffi; mono; poly; ModuleTyped-ef; EffUU; teleSig; moduleSig; moduleSig-ef)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
@@ -420,6 +420,8 @@ record LInv (σ : ISig) (csc : C.CScope) (pre : List IRFun) : Set where
     tel-ok : ∀ (I : String → TopCtx) → IAgree I (C.CScope.ctele csc)
            → ∀ {x A} → PolyRef (C.cpolys csc) x A → SpliceOK σ pre (C.cpolys csc) I x A
     ent-ok : All (λ e → Linked σ pre (fbody e)) pre
+    -- plan 0.125 S3: …and each entry in the entries BEFORE it (its suffix).
+    ent-tele : TeleLinked σ pre
     -- plan 0.105 / D274: Σ in scope is among the signatures the program is
     -- compiled against.
     sig-ok : ∀ {x A} → lookupImport (C.CScope.csig csc) x ≡ just A → (x , A) ∈ σ
@@ -470,6 +472,7 @@ linv-sig {σ = σ} {csc} {pre} x ty g d inv = record
   ; imp-ok = LInv.imp-ok inv
   ; tel-ok = LInv.tel-ok inv
   ; ent-ok = LInv.ent-ok inv
+  ; ent-tele = LInv.ent-tele inv
   ; sig-ok = sig-cons x ty d (LInv.sig-ok inv)
   }
 
@@ -484,6 +487,7 @@ linv-entry {σ = σ} {csc} {pre} x ty ir g lb inv = record
   ; imp-ok = imp-defs (x Str.== "main") x ty e (ref-entry pre x ty ir) (LInv.imp-ok inv)
   ; tel-ok = λ I ia pr → SpliceOK-mono (linkedAt-cons e pre) {polys = C.cpolys csc} {I = I} (LInv.tel-ok inv I ia pr)
   ; ent-ok = ents-cons e pre lb (LInv.ent-ok inv)
+  ; ent-tele = lb , LInv.ent-tele inv
   ; sig-ok = LInv.sig-ok inv
   }
   where e = irFunOf (C.mkCompiledFun (bare x) ty ir)
@@ -562,6 +566,7 @@ linv-poly {σ = σ} {csc} {pre} {pfi} {Usage.[]} D fr inv = record
   ; imp-ok = LInv.imp-ok inv
   ; tel-ok = tel′
   ; ent-ok = LInv.ent-ok inv
+  ; ent-tele = LInv.ent-tele inv
   ; sig-ok = LInv.sig-ok inv
   }
   where
@@ -605,7 +610,8 @@ link-walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle cs
           → LInv σ csc pre → Fresh csc es
           → (∀ {d} → d ∈ teleSig mt → d ∈ σ)
           → All (λ e → Linked σ (tableOf-go (FB.bundle→compiled b) pre) (fbody e)) (tableOf-go (FB.bundle→compiled b) pre)
-link-walk [] FB.bnil pre inv fr u = LInv.ent-ok inv
+            × TeleLinked σ (tableOf-go (FB.bundle→compiled b) pre)
+link-walk [] FB.bnil pre inv fr u = LInv.ent-ok inv , LInv.ent-tele inv
 link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h g rest) (FB.bffi {ty = ty′} ep′ et′ ec eh eg rest-b) pre inv fr u
   with just-injective (trans (sym et) et′)
 ... | refl = link-walk rest rest-b pre (linv-sig (funName fi) ty g (u (here refl)) inv)
@@ -665,7 +671,7 @@ main-linked {σ} (FB.bcons {fi = fi} {ty = ty} {irFun = irFun} _ _ _ _ _ _ rest)
 
 -- The walk's start: the empty scope.
 linv₀ : LInv σ C.emptyCScope []
-linv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; imp-ok = λ () ; tel-ok = λ _ _ {x} {A} pr _ → ⊥-elim (no-poly {x} {A} pr) ; ent-ok = [] ; sig-ok = λ () }
+linv₀ = record { irf = λ () ; irs = λ () ; iself = [] ; imp-ok = λ () ; tel-ok = λ _ _ {x} {A} pr _ → ⊥-elim (no-poly {x} {A} pr) ; ent-ok = [] ; ent-tele = tt ; sig-ok = λ () }
   where no-poly : ∀ {x A} → PolyRef [] x A → ⊥
         no-poly (_ , () , _)
 
@@ -675,13 +681,16 @@ private
 
 -- plan 0.105: linked against the interpretation signatures the module is
 -- compiled against (`moduleSig`, its FFI declarations).
+-- plan 0.125 S3: the names' distinctness is the extractor guard's, read back
+-- by `ImageUnique.table-names`; it is passed in rather than imported here.
 moduleToProgram-linked : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-                       → moduleToIR m ≡ just ir → LinkedProgram (moduleSig m) (irProgram (moduleTable m) ir)
-moduleToProgram-linked m ir mi with FB.program-node m ir mi
+                       → moduleToIR m ≡ just ir → NamesDistinct (moduleTable m)
+                       → LinkedProgram (moduleSig m) (irProgram (moduleTable m) ir)
+moduleToProgram-linked m ir mi nd with FB.program-node m ir mi
 ... | es , ef , b , ceq =
   subst (λ t → LinkedProgram (moduleSig m) (irProgram t ir)) (sym (cong tableOfResult ceq))
     ( main-linked b [] bf
-    , link-walk mt₀ b [] linv₀ (entries-distinct m ef , none-in-empty _) u)
+    , proj₁ walk , proj₂ walk , subst NamesDistinct (cong tableOfResult ceq) nd)
   where
     T  = tableOf-go (FB.bundle→compiled b) []
     bf = trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi)
@@ -689,3 +698,4 @@ moduleToProgram-linked m ir mi with FB.program-node m ir mi
     -- the signatures the walk's typing reads are the module's
     u : ∀ {d} → d ∈ teleSig mt₀ → d ∈ moduleSig m
     u {d} k = subst (d ∈_) (trans (teleSig≡entrySig mt₀) (sym (cong moduleSig-ef ef))) k
+    walk = link-walk mt₀ b [] linv₀ (entries-distinct m ef , none-in-empty _) u

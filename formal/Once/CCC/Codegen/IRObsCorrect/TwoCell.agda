@@ -131,7 +131,7 @@ module TwoCellC {FS : FrameSemantics} where
                    → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid e =
-            valid-closure-reg-wf {body = body} {env = x} tt (rep-prim fit)
+            valid-closure-reg-wf {env = x} tt (rep-prim fit)
               (trans TCB.cell0-fs10 (cong just (trans ev≡in e))) TCB.code-fs10 TCB.before-suc
               feq (runs-from mk)
             where
@@ -145,7 +145,7 @@ module TwoCellC {FS : FrameSemantics} where
           mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid =
-            valid-closure-reg-wf {body = body} {env = x} tt (rep-unit refl TCR.cell0v)
+            valid-closure-reg-wf {env = x} tt (rep-unit refl TCR.cell0v)
               TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
               feq (runs-from mk)
             where
@@ -162,7 +162,7 @@ module TwoCellC {FS : FrameSemantics} where
                    → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid e =
-            valid-closure-wf {body = body} {env = x} tt
+            valid-closure-wf tt
               (trans TCB.cell0-fs10 (cong just (ev≡ptr e))) TCB.code-fs10
               (live-lift TCB.bf-advance bf) TCB.before-suc
               feq (runs-from mk)

@@ -788,3 +788,34 @@ lib-unique m =
     cD = adefs-class img
     cB = blocks-sym (C.lib-blocks T)
     uD = adefs-unique img (proj₁ (fns-cl 0 (C.rewrite-table T))) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
+
+------------------------------------------------------------------------
+-- plan 0.125 S3: THE TABLE'S NAMES ARE DISTINCT (`LinkedProgram`'s last
+-- component, what `find-fn` resolving a linked call to ITS entry needs). The
+-- symbols are distinct (the extractor guard), and equal names give equal
+-- symbols.
+------------------------------------------------------------------------
+
+open import Once.Denotation.Program using (NamesDistinct)
+
+private
+  ap-unmap : ∀ {xs : List IRFun}
+           → AllPairs _≢_ (Data.List.map (λ e → once-symbol-path (fname e)) xs)
+           → NamesDistinct xs
+  ap-unmap {[]}     []         = []
+  ap-unmap {x ∷ xs} (px ∷ pxs) = all-un xs px ∷ ap-unmap pxs
+    where
+      all-un : ∀ (ys : List IRFun) → All (once-symbol-path (fname x) ≢_) (Data.List.map (λ e → once-symbol-path (fname e)) ys)
+             → All (λ y → fname x ≢ fname y) ys
+      all-un []       []       = []
+      all-un (y ∷ ys) (n ∷ ns) = (λ eq → n (cong once-symbol-path eq)) ∷ all-un ys ns
+
+table-names-distinct : ∀ (m : Module) → NamesDistinct (C.moduleTable m)
+table-names-distinct m =
+  ap-unmap (subst (AllPairs _≢_) (sym (TableNames.syms≡ tn)) (ap-reverse (TableNames.dist tn)))
+  where tn = table-names m
+
+-- plan 0.125 S3: a function entry defines exactly its own name (for the call
+-- scan's resolution, `FnLayout`).
+fn-unit-nf : ∀ (e : IRFun) (l : ℕ) → fdefs (fn-image l e) ≡ fname e ∷ []
+fn-unit-nf = unit-nf

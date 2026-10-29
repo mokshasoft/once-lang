@@ -58,10 +58,11 @@ open import Once.Parser.Module.Core using (Module)
 open import Once.Compile using (externs-of; prog-externs)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
+open import Once.Adequacy.ImageUnique using (table-names-distinct)
 open import Once.Internal.Module using (moduleSig)
 open import Once.Internal.Contract using (ISig)
 open import Once.Denotation.Program using (Linked)
-open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
+open import Once.Adequacy.SourceTrace using (rewrite-program-linked; all-rewrite-linked)
 
 ------------------------------------------------------------------------
 -- Generic facts.
@@ -173,7 +174,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
 
   module _ (sl-main : SigLeaves P main′) (sl-tbl : All (λ e → SigLeaves P (fbody e)) (table rp)) where
 
-    lk = rewrite-program-linked p (moduleToProgram-linked m ir mi)
+    lk = rewrite-program-linked p (moduleToProgram-linked m ir mi (table-names-distinct m))
 
     closes-LT : RC.Closes eo G D LT
     closes-LT =
@@ -195,7 +196,7 @@ module Prog (m : Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m 
     closes-img : RC.Closes eo G D img
     closes-img =
       inj₁ (here refl) ∷
-      RC.closes-++ eo G LT FI closes-LT (closes-FI (suc (IT.ir-next-label eo 0 main′)) (table rp) FI⊆ (proj₂ lk) sl-tbl)
+      RC.closes-++ eo G LT FI closes-LT (closes-FI (suc (IT.ir-next-label eo 0 main′)) (table rp) FI⊆ (proj₁ (proj₂ lk)) sl-tbl)
 
     resolved : Resolved D ext (arefs img)
     resolved = All-map flat closes-img
@@ -257,7 +258,7 @@ module Lib (m : Module) where
     ce-linked es ef (inj₂ cfs) ceq =
       subst (λ cs → All (λ e → Linked (moduleSig-ef (inj₂ es)) (C.tableOf cs) (fbody e)) (C.tableOf cs))
             (FB.bundle→compiled≡compiled C.emptyCScope es cfs ceq)
-            (link-walk mt b [] linv₀ (entries-distinct m ef , none-in-empty _) u)
+            (proj₁ (link-walk mt b [] linv₀ (entries-distinct m ef , none-in-empty _) u))
       where
         b  = FB.ce-bundle C.emptyCScope es ceq
         mt = AS.ce-sound false C.emptyCScope es ceq
@@ -274,7 +275,7 @@ module Lib (m : Module) where
   table-linked = ef-linked (Parser.extractFunctions (Parser.extractAliases m) m) refl
 
   rt-linked : All (λ e → Linked σ rt (fbody e)) rt
-  rt-linked = proj₂ (rewrite-program-linked lp (tt , table-linked))
+  rt-linked = all-rewrite-linked tbl tbl table-linked
 
   -- a call names a table entry, whose marker the image carries
   call-G : ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt rt f A B → G (labelSym (callee (e-fn f)))

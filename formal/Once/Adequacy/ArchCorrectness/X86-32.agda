@@ -378,13 +378,13 @@ entry-like B = refl , refl , refl , refl , refl
 
 -- D320 / plan 0.119 D5: THE BINARY'S TRACE, budget by budget (see the x86-64 instance).
 conc-tr :
-  ∀ (brs : FFOx.BlockRunsT) (p : IRProgram) (ir : IR Unit Unit)
+  ∀ (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
   → FFOx.image ir ≡ C.image-of p
   → Machine.trace (RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p))
                      (compile-trace (FFOx.image ir))) ([] , X.initState)
     ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-32) ι
-conc-tr brs p ir lk img =
+conc-tr p ir lk img =
   budget-apex δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) fact
   where
     δc = RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir))
@@ -395,10 +395,10 @@ conc-tr brs p ir lk img =
     fact k = proj₁ agree
            , trans (RTx.Run.runN-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir)) (proj₁ agree) [] X.initState)
                    (cong (RTx.Run.outObs val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir)))
-                         (trans (proj₁ (proj₂ agree)) (FFOx.flat-ends ir-obs-correct brs ir lk k)))
-           , λ c → ≤-trans (FFOx.flat-cut ir-obs-correct brs ir lk k c) (proj₂ (proj₂ agree))
+                         (trans (proj₁ (proj₂ agree)) (FFOx.flat-ends ir-obs-correct ir lk k)))
+           , λ c → ≤-trans (FFOx.flat-cut ir-obs-correct ir lk k c) (proj₂ (proj₂ agree))
       where
-        agree = events-agree-start (FFOx.flat-fuel ir-obs-correct brs ir lk k)
+        agree = events-agree-start (FFOx.flat-fuel ir-obs-correct ir lk k)
                   ev-x86-32 (block-env (C.blocks-x86-32 p))
                   (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
                   (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
@@ -406,12 +406,7 @@ conc-tr brs p ir lk img =
 
 -- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
 -- the per-program `ArchCorrect` (each program brings its own table).
--- plan 0.91 parallel track: the block-table coherence HYPOTHESIS, named so it
--- can be threaded to `Once.Certified` (each target has its own
--- `FrameSemantics`, so `BlockRuns` differs per arch and one hypothesis cannot
--- serve all three). D244: over the PROGRAM IMAGE.
-BlockRunsHyp-x86-32 : Set
-BlockRunsHyp-x86-32 = FFOx.BlockRunsT
+-- plan 0.125 S5: no block-table hypothesis — `FlatFromObs.block-runs` proves it.
 
 -- Plan 0.107 / D320: RUNNING THE FILE HAS THE TRACE OF THE PROGRAM IT WAS EMITTED
 -- FROM — a theorem, over the file. The file is `emit` of the module's program
@@ -420,7 +415,7 @@ BlockRunsHyp-x86-32 = FFOx.BlockRunsT
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
 file-tr-x86-32 :
-  ∀ (brs : BlockRunsHyp-x86-32) (m : P.Module) (F : RF.Image)
+  ∀ (m : P.Module) (F : RF.Image)
   → C.compileFileFromModule IR.Heap false x86-32 m ≡ inj₂ F
   → ∀ (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
   → (oq : o ≡ C.entry-owner)
@@ -428,13 +423,13 @@ file-tr-x86-32 :
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))))
   → run-trace-x86-32 ι F (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
     ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (moduleTable m) ir)))) ⟧IRᵗ (arch-numerics x86-32) ι
-file-tr-x86-32 brs m F eq ir mi oq teq lk =
+file-tr-x86-32 m F eq ir mi oq teq lk =
   subst (λ G → run-trace-x86-32 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-32) ι)
         (sym (file-is-emit x86-32 m F ir eq mi))
         (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) cd) ([] , X.initState)
                        ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-32) ι)
-               (sym code-eq) (conc-tr brs p ir′ lk img))
+               (sym code-eq) (conc-tr p ir′ lk img))
   where
     p   = irProgram (moduleTable m) ir
     ir′ = main (rewrite-program p)

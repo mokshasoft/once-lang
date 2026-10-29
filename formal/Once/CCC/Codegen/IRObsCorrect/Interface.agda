@@ -30,6 +30,7 @@ module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.Lis
 
 open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
+open import Once.CCC.Machine.ValueRel using (module InputAtM)
 open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -676,21 +677,9 @@ module Core {FS : FrameSemantics} where
   -- Half a fix is no fix: residence and evidence must travel in ONE premise, so
   -- that choosing `in-reg` DISCHARGES the memory obligation rather than leaving
   -- it to be supplied separately.
-  data InputAt {prog : AbstractTrace} {A : IRTy} (mIn : AllocMode) (alloc : AllocState {FS})
-               (v : ⟦ A ⟧) (s : LocState FS) : Set where
-    in-loc : (loc : ValueLocation FS)
-           → ValidAtWF {prog = prog} mIn alloc {A} v loc s
-           → Live alloc loc
-           → readReg (regs s) Input1 ≡ SV-Ptr loc → InputAt mIn alloc v s
-    in-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v
-           → InputAt mIn alloc v s
-    -- D074: a UNIT input has no residence at all — `Input1` may hold anything
-    -- (the entry state's tag filler; after `f : IR A Unit` in a composition,
-    -- `f`'s unit output is likewise unconstrained, so a residence premise
-    -- would make `comp-step`'s IH inapplicable). The machine never reads a
-    -- unit input: `readTyped Unit` and `readReg-typed Unit` both materialise
-    -- `tt` regardless of what is there.
-    in-unit : A ≡ Unit → InputAt mIn alloc v s
+  -- plan 0.125 S3: MOVED to `ValueRel.InputAtM` (table-free, so a caller and
+  -- a callee proved at different tables state the same input).
+  open InputAtM {FS} using (InputAt; in-loc; in-reg; in-unit) public
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
   -- frontier 0), minus `StraightIR` (loops are allowed); conclusion is
@@ -741,17 +730,24 @@ module Core {FS : FrameSemantics} where
   -- code does. Restricted to linked calls it is satisfiable by the linked
   -- program image, and it is discharged along the table, each entry from its
   -- body's correctness in the entries before it.
-  FnRuns : AbstractTrace → Set
-  FnRuns prog =
-    ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt tbl f A B
-    → ∃[ j ]
+  -- plan 0.125 S3: one callee's half, at the computation it must run (the
+  -- discharge, `ArchCorrectness.FnRuns`, splits on which entry a call names).
+  FnRunsAt : AbstractTrace → CanonicalName → (A B : IRTy) → (⟦ A ⟧ → T∞ ⟦ B ⟧) → Set
+  FnRunsAt prog f A B comp =
+    ∃[ j ]
         ( (find-fn prog f ≡ just j)
         × (∀ (fs : FlatState) (pre-alloc : AllocState {FS}) (x : ⟦ A ⟧)
              (ret-pc k : ℕ) (rs : List ℕ) (mIn' : AllocMode)
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
+           → next-slot pre-alloc ≡ 0
            → InputAt {prog} {A} mIn' pre-alloc x (floc fs)
-           → CalleeRun prog fs ret-pc rs B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k))
+           → CalleeRun prog fs ret-pc rs B (comp x) k))
+
+  FnRuns : AbstractTrace → Set
+  FnRuns prog =
+    ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt tbl f A B
+    → FnRunsAt prog f A B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B)
 
   -- All block-table premises in ONE slot, so adding one does not re-thread the
   -- fourteen discharge clauses that only pass it along.

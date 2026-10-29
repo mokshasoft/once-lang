@@ -28,7 +28,7 @@ open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; StoredValue; readReg; Input1; Output; writeReg-same; writeReg-preserves; SV-Code; SV-Ptr; sucLoc
-        ; mov-to-output; store-at-slot; block-layout)
+        ; mov-to-output; store-at-slot; block-layout; e-thunk)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -201,7 +201,7 @@ module AnaForceC {FS : FrameSemantics} where
                           (cong (λ z → suc (suc z) + base) (sym (length-++ ctrace)))
 
         span-b : SpanAt prog base body
-        span-b = BC.Layout.body-span prog (ℓ o l) bb j body sp
+        span-b = BC.Layout.body-span prog (e-thunk (ℓ o l)) bb j body sp
 
         ns0 : next-slot alloc ≡ 0
         ns0 = trans (cong next-slot fa) ns
