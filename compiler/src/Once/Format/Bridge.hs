@@ -11,4 +11,4 @@ import Once.Bridge.Agda (eitherText, runs, textToAgda)
 
 -- | A source text in the canonical layout, or the parser's error.
 formatSource :: Text -> Either Text Text
-formatSource source = eitherText (MR.d_format_62 runs (textToAgda source))
+formatSource source = eitherText (MR.d_format_58 runs (textToAgda source))

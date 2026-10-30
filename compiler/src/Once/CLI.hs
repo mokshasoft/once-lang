@@ -356,7 +356,7 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
       -- Write assembly file
       TIO.writeFile asmPath asmText
 
-      let hasMain = Bridge.moduleHasMain (Bridge.resolvedModule mod_)
+      let hasMain = Bridge.isProgram mod_
       effMode <- case buildMode opts of
         Infer   -> pure (if hasMain then Executable else Library)
         Library -> pure Library

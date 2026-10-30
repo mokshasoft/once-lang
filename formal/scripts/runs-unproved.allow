@@ -5,9 +5,8 @@
 #
 # A declaration of RUNS ∖ PROVED whose qualified name starts with PREFIX is
 # *declared*; any other is a *gap*. This list only shrinks unless a decision
-# entry raises it. Census 2026-10-30: 97 run declarations unproved; after
-# D353, the gaps left are `Inspect.check` (plan 0.133) and `Extract.Names`
-# (plan 0.133 §6).
+# entry raises it. Census 2026-10-30: 97 run declarations unproved; D353
+# closed two by definition, D354 the last 8 (`check`, `Extract.Names`): no gaps.
 
 # The root itself: the record of what runs, and its fields.
 Once.Extract.Root.                    D353  the root of RUNS, structural

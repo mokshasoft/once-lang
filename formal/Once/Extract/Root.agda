@@ -23,12 +23,14 @@ open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 
 open import Once.Target.Arch using (Arch)
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
+open import Once.Spec.Type using (Unit)
 open import Once.Spec.Surface.Syntax using (Module)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.Parser.Module.Resolve using (ModuleMap)
 import Once.Compile as Compile
 import Once.Parser as Parser
-import Once.Parser.Module.Core as Core
 import Once.Parser.Module.Resolve as Resolve
 import Once.Warnings as Warnings
 import Once.Extract.Names as Names
@@ -58,9 +60,11 @@ record Runs : Set₁ where
     module-imports  : Module → List (List String × Maybe String)
     import-path     : (List String × Maybe String) → List String
     import-alias    : (List String × Maybe String) → Maybe String
-    module-has-main : Module → Bool
+    -- a program's `main`, or `nothing` for a library: the case the apex's
+    -- `compile` splits on (`Adequacy.Compile.compile-mir`), so `build` links an
+    -- executable exactly when the theorem says there are bytes to run
+    main-ir         : Resolved → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
     resolve-imports : ModuleMap → Module → String ⊎ Resolved
-    resolved-module : Resolved → Module
     warnings        : Arch → String → Resolved → List String
     -- the compiler (`once build`)
     assembly        : Bool → Arch → Resolved → String ⊎ String
@@ -77,9 +81,8 @@ runs = record
   ; module-imports  = Names.module-imports
   ; import-path     = Names.import-path
   ; import-alias    = Names.import-alias
-  ; module-has-main = Names.module-has-main
+  ; main-ir         = Compile.moduleToIR
   ; resolve-imports = Resolve.resolveImports
-  ; resolved-module = Core.Resolved.rmodule
   ; warnings        = Warnings.warningsFor
   ; assembly        = Compile.assemblyFromModule
   ; signatures      = Inspect.signatures

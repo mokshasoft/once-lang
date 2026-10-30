@@ -27,6 +27,8 @@
 --     canonical (D343); a tool beside the compiler, not a stage of it.
 --   • `inspector` — `once elaborate`/`optimize` print the functions every
 --     built file is emitted from (D352); also beside the compiler.
+--   • `loader` — the imports the CLI loads are the module's `import`
+--     declarations (D354).
 --
 -- Because both fields are stated over the actual entry points, a regression in
 -- either makes `once-certified` fail to type-check — the drift that let
@@ -99,6 +101,7 @@ open import Once.Metatheory using (metatheory)
 open import Once.Certified.Models using (NonVacuous; models)
 open import Once.Format.Proof using (VerifiedFormatter; verifiedFormatter)
 open import Once.Inspect.Proof using (VerifiedInspector; verifiedInspector)
+open import Once.Extract.Names.Proof using (VerifiedLoader; verifiedLoader)
 
 -- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
 -- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
@@ -124,6 +127,8 @@ record CertifiedBuild : Set₁ where
     formatter   : VerifiedFormatter
     -- the IR `once elaborate`/`optimize` print is the IR a built file comes from (D352)
     inspector   : VerifiedInspector
+    -- the imports the CLI loads are the module's `import` declarations (D354)
+    loader      : VerifiedLoader
 
 -- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE
 -- STATEMENT.
@@ -155,4 +160,5 @@ once-certified b64 b32 brv = record
   ; nonvacuous  = models
   ; formatter   = verifiedFormatter
   ; inspector   = verifiedInspector
+  ; loader      = verifiedLoader
   }

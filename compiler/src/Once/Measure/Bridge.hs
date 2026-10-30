@@ -14,4 +14,4 @@ import Once.Compile.Bridge (Resolved, resolvedAgda)
 -- | The static costs of the module's program image, optimized (`True`) or
 -- not, or the compiler's error.
 statsFromModule :: Bool -> Resolved -> Either Text Text
-statsFromModule doOpt r = eitherText (MR.d_stats_60 runs doOpt (unsafeCoerce (resolvedAgda r)))
+statsFromModule doOpt r = eitherText (MR.d_stats_56 runs doOpt (unsafeCoerce (resolvedAgda r)))

@@ -19982,3 +19982,33 @@ the code the theorem is about, and run code without a theorem was invisible.
   pragmas (`Recognise.binop-at`, `binop-at-float`, the generic parser's `arrowTailP` and `sound-arrowTail`),
   all already in `pragma-gate.baseline`.
 * The Haskell side (`Once.CLI`, the import I/O, `as`/`ld`, the Host objects) is in neither dump; it is trusted.
+
+---
+
+## D354 — THE CENSUS GAPS CLOSE: `check` DECIDES THE COMPILER'S TYPING, `build` ASKS THE APEX'S CASE SPLIT, THE LOADER READS THE DECLARED IMPORTS (2026-10-30)
+
+**Follows** D353; plan 0.133 (§6, and the Spec-free half of §3).
+
+### Context
+D353's census left 8 run declarations no theorem reached: `Inspect.check`/`accepted`, and `Extract.Names`
+(`module-has-main`, which decided executable vs library, and `module-imports` with its two projections, which
+decide the files the Haskell side loads).
+
+### Decision
+* **`build` asks the compiler whether a module is a program.** `runs.main-ir` is `Compile.moduleToIR`, the case
+  the apex's `compile` splits on (`compile-mir`: `nothing` is no bytes); the CLI links an executable exactly when
+  it is `just` (`Bridge.isProgram`). `module-has-main`, a syntactic look for a `DFunDef "main"`, is deleted: it
+  said "program" for a module whose `main` the compiler does not compile (polymorphic, or a primitive), and the
+  link then failed. `runs.resolved-module`, used only for it, goes too.
+* **The loader reads the declared imports** (`Extract.Names.Proof.imports-declared`): a (path, alias) pair is
+  in `module-imports m` exactly when `m` declares that import. `imports-of` enumerates `Decl` (its catch-all is
+  gone). On the apex as `CertifiedBuild.loader`.
+* **`check` decides the compiler's typing** (`Inspect.Proof.check-decides`): `check m ≡ inj₂ tt` iff the module
+  extracts, types as a telescope (`ModTele`, the checker's runs with their Spec witnesses) and its `main`, if
+  it has one, is usable as `Eff Unit Unit` — libraries included. From `ce-sound`, `ce-mains` (sound) and
+  `ce-complete` (complete), all existing. On the apex as `inspector.decides-check`.
+
+### Consequences
+* The census's gaps are 0: everything the CLI runs is reached by the apex, or declared in `runs-unproved.allow`.
+* `check`'s theorem is against the compiler's typing; carrying it to the Spec's (`⊢ᴹ`, a module typing without
+  `main`) is plan 0.133 §2, a Spec decision.

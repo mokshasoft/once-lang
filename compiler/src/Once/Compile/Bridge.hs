@@ -15,18 +15,18 @@ module Once.Compile.Bridge
     -- * Module AST (opaque handle + import inspection)
   , Module
   , Resolved
-  , resolvedModule
   , resolvedAgda
   , ImportRef (..)
     -- * AST-level pipeline
   , parseSource
   , moduleImports
-  , moduleHasMain
+  , isProgram
   , moduleWarnings
   , resolveImports
   , assemblyFromModule
   ) where
 
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -55,10 +55,6 @@ newtype Module = Module MSS.T_Module_122
 -- | Opaque resolved-module handle: the resolved module, and the signatures
 -- of the modules it imports (the Agda `Resolved`).
 newtype Resolved = Resolved MMC.T_Resolved_8
-
--- | The resolved module itself.
-resolvedModule :: Resolved -> Module
-resolvedModule (Resolved r) = Module (MR.d_resolved'45'module_48 runs r)
 
 -- | The Agda value, for the tools' bridges.
 resolvedAgda :: Resolved -> MMC.T_Resolved_8
@@ -95,7 +91,7 @@ toMArch RiscV64 = MTA.C_riscv64_12
 -- rather than silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MR.d_parse'45'source_36 runs (textToAgda source) of
+  case MR.d_parse'45'source_34 runs (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -107,20 +103,17 @@ parseSource source =
 -- checked by nobody.
 moduleImports :: Module -> [ImportRef]
 moduleImports (Module m) =
-  [ ImportRef (map agdaToText (MR.d_import'45'path_40 runs pr))
-              (fmap agdaToText (MR.d_import'45'alias_42 runs pr))
-  | pr <- MR.d_module'45'imports_38 runs m
+  [ ImportRef (map agdaToText (MR.d_import'45'path_38 runs pr))
+              (fmap agdaToText (MR.d_import'45'alias_40 runs pr))
+  | pr <- MR.d_module'45'imports_36 runs m
   ]
 
--- | Does the module define a top-level `main`? This — not a CLI flag — is what
--- distinguishes a PROGRAM (has `main`, whose entry `once_main` `_start` calls)
--- from a LIBRARY (no `main`). Mirrors `moduleImports`' decl inspection.
--- D162: the predicate itself lives in Agda now (`Once.Extract.Names`). The
--- Haskell version pattern-matched the `DFunDef` constructor with three fields, a stale
--- mirror of the constructor's ARITY — it broke loudly on 2026-09-08 only
--- because the field COUNT changed.
-moduleHasMain :: Module -> Bool
-moduleHasMain (Module m) = MR.d_module'45'has'45'main_44 runs m
+-- | Is the module a program (it has a `main` the compiler compiles), or a
+-- library? The compiler's `moduleToIR`, the case the apex's `compile` splits
+-- on (`Adequacy.Compile.compile-mir`): `build` links an executable exactly when
+-- the theorem says there are bytes to run (D354).
+isProgram :: Resolved -> Bool
+isProgram (Resolved r) = isJust (MR.d_main'45'ir_42 runs r)
 
 -- | D123/D116: the rounding warnings this module has AT THIS TARGET, rendered.
 --
@@ -133,7 +126,7 @@ moduleHasMain (Module m) = MR.d_module'45'has'45'main_44 runs m
 -- was only half true — the refusal was gone and the replacement unreachable.
 moduleWarnings :: Arch -> Text -> Resolved -> [Text]
 moduleWarnings arch src (Resolved m) =
-  map agdaToText (MR.d_warnings_50 runs (toMArch arch) (textToAgda src) (unsafeCoerce m))
+  map agdaToText (MR.d_warnings_46 runs (toMArch arch) (textToAgda src) (unsafeCoerce m))
 
 -- | Resolve the user's module against the module map: its references are
 -- resolved, and the signatures of the modules it imports are read from the
@@ -148,7 +141,7 @@ resolveImports
   -> Either Text Resolved
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MR.d_resolve'45'imports_46 runs (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MR.d_resolve'45'imports_44 runs (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 r   -> Right (Resolved (unsafeCoerce r))
@@ -163,4 +156,4 @@ resolveImports modMap (Module userMod) =
 -- the mode the apex covers (D352).
 assemblyFromModule :: Bool -> Arch -> Resolved -> Either Text Text
 assemblyFromModule doOpt arch (Resolved mod_) =
-  eitherText (MR.d_assembly_52 runs doOpt (toMArch arch) (unsafeCoerce mod_))
+  eitherText (MR.d_assembly_48 runs doOpt (toMArch arch) (unsafeCoerce mod_))

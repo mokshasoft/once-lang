@@ -60,10 +60,9 @@ signatures mod = showEntries (extractFunctions mod)
 ------------------------------------------------------------------------
 -- `check`: the module typechecks (and elaborates) or the error
 
-private
-  accepted : String ⊎ List CompiledFun → String ⊎ ⊤
-  accepted (inj₁ err) = inj₁ err
-  accepted (inj₂ _)   = inj₂ tt
+accepted : String ⊎ List CompiledFun → String ⊎ ⊤
+accepted (inj₁ err) = inj₁ err
+accepted (inj₂ _)   = inj₂ tt
 
 -- | Typing does not depend on the target; whether a literal fits does, and that
 -- is `build`'s to refuse (`Compile.litRangeError`).

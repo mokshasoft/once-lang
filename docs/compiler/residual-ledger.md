@@ -334,7 +334,7 @@ toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
   here, but counted. `run-ast-dumps.sh` dumps what runs (`Once.Extract.Root.runs`)
   beside what is proved, and `formal/scripts/ast-compare.py` lists RUNS ∖ PROVED:
   each declaration declared by `formal/scripts/runs-unproved.allow` or a gap.
-  Gaps today: `Inspect.check`, `Extract.Names` (plan 0.133 §6). The Haskell side
+  Gaps today: none (D354). The Haskell side
   (`Once.CLI`, import I/O, `as`/`ld`, the Host objects) is in neither dump.
 - `x86-32` / `riscv64` each still postulate their whole `conc-flat-sim` plus a
   loader axiom and an opaque `entry-frame`. x86-64 is the only arch with a real

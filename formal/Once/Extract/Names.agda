@@ -46,49 +46,35 @@
 ------------------------------------------------------------------------
 module Once.Extract.Names where
 
-open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe)
 open import Data.Product using (_×_; _,_)
-open import Data.String using (String; _≟_)
-open import Relation.Nullary using (yes; no)
+open import Data.String using (String)
 
-open import Once.Spec.Surface.Syntax using (Module; Decl; DFunDef; DImport)
+open import Once.Spec.Surface.Syntax using (Module; Decl; DImport; DTypeSig; DFunDef; DSignature; DTypeAlias)
 open import Once.Spec.Surface.Syntax using (Import)
 open Once.Spec.Surface.Syntax.Module using (decls)
 open Once.Spec.Surface.Syntax.Import using (path; alias)
 
 ------------------------------------------------------------------------
--- The two predicates the bridge used to compute by pattern-matching MAlonzo
--- constructors. `moduleHasMain` is the one whose Haskell mirror carried the
--- stale arity.
+-- What the bridge used to compute by pattern-matching MAlonzo constructors.
+-- (`module-has-main`, whose Haskell mirror carried the stale arity, is gone:
+-- `build` asks the compiler's `moduleToIR`, the apex's own case split, D354.)
 ------------------------------------------------------------------------
-
--- | Does the module define a top-level `main`? THIS — not a CLI flag — is what
--- distinguishes a program (entry point) from a library.
-module-has-main : Module → Bool
-module-has-main m = go (decls m)
-  where
-    is-main : String → Bool
-    is-main n with n ≟ "main"
-    ... | yes _ = true
-    ... | no  _ = false
-    go : List Decl → Bool
-    go []                  = false
-    go (DFunDef n _ ∷ ds)  = is-main n ∨ go ds
-    {-# CATCHALL #-}
-    go (_ ∷ ds)            = go ds
 
 -- | The module's imports, as (path, alias) pairs. The bridge rebuilds its own
 -- `ImportRef` from these, so it never names `DImport` or its fields.
+-- (`Extract.Names.Proof.imports-declared`: exactly the `import` declarations.)
+imports-of : List Decl → List (List String × Maybe String)
+imports-of []                    = []
+imports-of (DImport i ∷ ds)      = (path i , alias i) ∷ imports-of ds
+imports-of (DTypeSig _ _ ∷ ds)   = imports-of ds
+imports-of (DFunDef _ _ ∷ ds)    = imports-of ds
+imports-of (DSignature _ _ ∷ ds) = imports-of ds
+imports-of (DTypeAlias _ _ _ ∷ ds) = imports-of ds
+
 module-imports : Module → List (List String × Maybe String)
-module-imports m = go (decls m)
-  where
-    go : List Decl → List (List String × Maybe String)
-    go []                = []
-    go (DImport i ∷ ds)  = (path i , alias i) ∷ go ds
-    {-# CATCHALL #-}
-    go (_ ∷ ds)          = go ds
+module-imports m = imports-of (decls m)
 
 -- …and its two projections, so the bridge never names `Σ`'s extracted fields
 -- either (those carry serials like everything else).
