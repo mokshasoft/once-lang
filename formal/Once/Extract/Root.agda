@@ -44,7 +44,7 @@ import Once.Arith.IR
 import Once.Arith.Type
 
 ------------------------------------------------------------------------
--- WHAT RUNS (plan 0.132): every function the Haskell side calls, and nothing
+-- WHAT RUNS (D353): every function the Haskell side calls, and nothing
 -- else. The bridges (`Once.Compile.Bridge`, `Once.Inspect.Bridge`,
 -- `Once.Measure.Bridge`, `Once.Format.Bridge`) call through these fields, so a
 -- function the CLI runs is a field here; `run-ast-dumps.sh` dumps from `runs`

@@ -278,7 +278,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- has no runnable behaviour, so `compile ≡ nothing`. PLAN 0.107: the bytes are
   -- `as` on the PRINT of the emitted FILE — the same file the obligations below
   -- are about. Explicit-argument helpers, no `with`.
-  -- Plan 0.132: the text assembled is `C.assemblyFromModule`'s, the very function
+  -- D353: the text assembled is `C.assemblyFromModule`'s, the very function
   -- the CLI's `build` calls (`Extract.Root.runs.assembly`), so the CLI's compiler
   -- is the one this theorem is about, not a wrapper around it.
   compile-text : Arch → String ⊎ String → Maybe (List Byte)

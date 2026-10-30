@@ -1,5 +1,5 @@
 # runs-unproved.allow — code the CLI runs that carries no theorem, by decision
-# (plan 0.132, MERGE.md §6). `formal/scripts/ast-compare.py` reads it.
+# (D353, MERGE.md §6). `formal/scripts/ast-compare.py` reads it.
 #
 #   PREFIX  DECISION  reason
 #

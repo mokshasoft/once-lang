@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""ast-compare.py — compare two refs' reachability dumps (MERGE.md §6, plan 0.132).
+"""ast-compare.py — compare two refs' reachability dumps (MERGE.md §6, D353).
 
 Each ref has a PROVED dump (`ast-once-certified-<ref>-<sha>.json`, what the apex
-proof depends on) and, from plan 0.132 on, a RUNS dump (`ast-runs-<ref>-<sha>.json`,
+proof depends on) and, from D353 on, a RUNS dump (`ast-runs-<ref>-<sha>.json`,
 what the CLI runs: `Once.Extract.Root.runs`). Both come from `run-ast-dumps.sh`.
 
     ast-compare.py BASE_PROVED [BASE_RUNS] -- HEAD_PROVED [HEAD_RUNS]
@@ -131,7 +131,7 @@ def main(argv):
         return status
     head_gaps = census(hp, hr, rules, "HEAD")
     if br is None:
-        print("== RUNS: no dump for BASE (older than plan 0.132); HEAD's gaps are listed above")
+        print("== RUNS: no dump for BASE (older than D353); HEAD's gaps are listed above")
         return status
     base_gaps = census(bp, br, rules, "BASE")
     new = sorted(set(head_gaps) - set(base_gaps))

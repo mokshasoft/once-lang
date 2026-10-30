@@ -21,7 +21,7 @@ agdaToText = unsafeCoerce
 textToAgda :: Text -> a
 textToAgda = unsafeCoerce
 
--- | What runs (`Once.Extract.Root.runs`, plan 0.132): every bridge calls the
+-- | What runs (`Once.Extract.Root.runs`, D353): every bridge calls the
 -- Agda side through this record's fields, so a function the CLI runs is one of
 -- them, and `run-ast-dumps.sh` sees it.
 runs :: MR.T_Runs_6

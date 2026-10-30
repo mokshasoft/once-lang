@@ -2,7 +2,7 @@
 #
 # run-ast-dumps.sh — dump, for each ref, what the apex proof depends on (PROVED,
 # from `Once.Certified.once-certified`) and what the CLI runs (RUNS, from
-# `Once.Extract.Root.runs`, plan 0.132), into clearly-marked JSON files.
+# `Once.Extract.Root.runs`, D353), into clearly-marked JSON files.
 # `formal/scripts/ast-compare.py` compares two refs: trust base, PROVED, and RUNS ∖ PROVED.
 #
 # Uses Agda's --write-ast=QNAME / --ast-file=PATH flags.
@@ -56,7 +56,7 @@ LOCALE="${LOCALE:-en_US.utf8}"
 ENTRY="${ENTRY:-Once.Certified.once-certified}"
 ENTRY_MODULE="${ENTRY_MODULE:-Once/Certified.agda}"
 ENTRY_SLUG="${ENTRY_SLUG:-once-certified}"
-# The second root: what the CLI runs (plan 0.132). A ref older than the `runs`
+# The second root: what the CLI runs (D353). A ref older than the `runs`
 # record has none; its RUNS dump is skipped. RUNS_ENTRY= turns the pass off.
 RUNS_ENTRY="${RUNS_ENTRY-Once.Extract.Root.runs}"
 RUNS_MODULE="${RUNS_MODULE:-Once/Extract/Root.agda}"
