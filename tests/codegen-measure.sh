@@ -7,7 +7,8 @@
 #   tests/codegen-measure.sh compare A.tsv B.tsv       # totals, and every program that got worse
 #   tests/codegen-measure.sh same ONCE_A ONCE_B OUTDIR # are the binaries byte-identical, per arch?
 #
-# Columns of costs.tsv, one row per corpus program (compiler/test, examples, tests):
+# Columns of costs.tsv, one row per corpus program (compiler/test, examples, tests),
+# named by its path (`compiler_test_float-arg`):
 #   ir          IR tokens after `once optimize`
 #   instrs heap-sites heap-cells frames frame-max frame-sum
 #               static costs of the program image (`once stats`, `Once.Measure`): the
@@ -33,6 +34,10 @@ corpus() {
     [ -f "$f" ] && echo "$f"
   done
 }
+
+# key FILE — the program's row name: its path under the repo, `/` → `_`
+# (two corpus directories hold programs of the same name)
+key() { local r=${1#"$ROOT"/}; r=${r%.once}; printf '%s' "${r//\//_}"; }
 
 # build ONCE ARCH FILE OUT — a binary at OUT, or nothing
 build() {
@@ -84,7 +89,7 @@ measure() {
   for a in "${ARCHES[@]}"; do printf '\ttext-%s' "$a" >> "$tsv"; done
   printf '\n' >> "$tsv"
   while read -r f; do
-    local n; n=$(basename "$f" .once)
+    local n; n=$(key "$f")
     local ir; ir=$( (cd "$ROOT" && "$once" optimize "$f") 2>/dev/null | grep '^  = ' \
                     | grep -oE "[A-Za-z_][A-Za-z0-9_.'-]*|<|\[|-?[0-9]+" | wc -l)
     local st; st=$( (cd "$ROOT" && "$once" stats "$f") 2>/dev/null )
@@ -135,7 +140,7 @@ same() {
   for arch in "${ARCHES[@]}"; do
     local s=0 d=0 nb=0 diffs=()
     while read -r f; do
-      local n; n=$(basename "$f" .once)
+      local n; n=$(key "$f")
       rm -f "$out/a/$n" "$out/b/$n"
       (cd "$out/a" && build "$A" "$arch" "$f" "$out/a/$n")
       (cd "$out/b" && build "$B" "$arch" "$f" "$out/b/$n")
