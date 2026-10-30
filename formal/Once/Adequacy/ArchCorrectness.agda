@@ -45,27 +45,25 @@ module Once.Adequacy.ArchCorrectness
   (x86-64-heap-room : ∀ ι → RB.HeapRoom Co.entry-owner ι) (x86-64-stack-room : ∀ ι → RB.StackRoom Co.entry-owner ι)
   (x86-64-call-room : ∀ ι → RB.CallRoom Co.entry-owner ι)
   (x86-64-reg-range : ∀ ι → RB.RegRange Co.entry-owner ι)
-  (x86-64-scratch-dec-guarded : ∀ ι → RB.ScratchDecGuarded Co.entry-owner ι)
   (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap Co.entry-owner ι)
   (x86-64-lit-fits : ∀ ι → RB.LitFits Co.entry-owner ι)
-  -- riscv64's family, now the SAME EIGHT as x86-64's (plan 0.65 G3): three of
-  -- them were all that existed while its simulation was whole-cloth.
+  -- riscv64's family, now the SAME as x86-64's plus `SlotAddrNoWrap` (plan 0.65
+  -- G3): three of them were all that existed while its simulation was
+  -- whole-cloth.
   (riscv64-heap-room : ∀ ι → RBr.HeapRoom Co.entry-owner ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom Co.entry-owner ι)
   (riscv64-call-room : ∀ ι → RBr.CallRoom Co.entry-owner ι)
   (riscv64-reg-range : ∀ ι → RBr.RegRange Co.entry-owner ι)
-  (riscv64-scratch-dec-guarded : ∀ ι → RBr.ScratchDecGuarded Co.entry-owner ι)
   (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap Co.entry-owner ι)
   (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap Co.entry-owner ι)
   (riscv64-lit-fits : ∀ ι → RBr.LitFits Co.entry-owner ι)
   -- …and x86-32's, the SAME family again (plan 0.66 X3). It had NONE until now,
   -- for the reason D107 names: its simulation was whole-cloth, so nothing above
-  -- ever asked what resources the running program needs. Seven, not eight —
+  -- ever asked what resources the running program needs. Six, not seven —
   -- `SlotAddrNoWrap` is riscv64's alone (D104: x86-32 computes a slot address
   -- with `lea`, which carries no range obligation, exactly as x86-64 does).
   (x86-32-heap-room : ∀ ι → RB32.HeapRoom Co.entry-owner ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom Co.entry-owner ι)
   (x86-32-call-room : ∀ ι → RB32.CallRoom Co.entry-owner ι)
   (x86-32-reg-range : ∀ ι → RB32.RegRange Co.entry-owner ι)
-  (x86-32-scratch-dec-guarded : ∀ ι → RB32.ScratchDecGuarded Co.entry-owner ι)
   (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap Co.entry-owner ι)
   (x86-32-lit-fits : ∀ ι → RB32.LitFits Co.entry-owner ι) where
 
@@ -99,12 +97,12 @@ import Once.Adequacy.ArchCorrectness.RiscV64 as ARV
 -- `main` together with that table's functions. The record below is per
 -- PROGRAM, so it instantiates the arch module at the program's own table.
 module X64 (ι : Interp) (tbl : List IRFun) = A64 o tbl ι (x86-64-heap-room ι) (x86-64-stack-room ι) (x86-64-call-room ι)
-       (x86-64-reg-range ι) (x86-64-scratch-dec-guarded ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
+       (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
 module X32 (ι : Interp) (tbl : List IRFun) = A32 o tbl ι (x86-32-heap-room ι) (x86-32-stack-room ι) (x86-32-call-room ι)
-       (x86-32-reg-range ι) (x86-32-scratch-dec-guarded ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
+       (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
 module RV (ι : Interp) (tbl : List IRFun) = ARV o tbl ι
        (riscv64-heap-room ι) (riscv64-stack-room ι) (riscv64-call-room ι)
-       (riscv64-reg-range ι) (riscv64-scratch-dec-guarded ι) (riscv64-slot-addr-no-wrap ι)
+       (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι)
        (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
 
 -- The emitted (arith-rewritten) program's table, and its linkedness.

@@ -29,16 +29,9 @@
 -- would be destroyed by every call.
 --
 -- THE PRESERVATION PROOF (`sp-abstract` / `flat-stack-ptr`) covers every
--- frame-free instruction EXCEPT `instr-case-on-tag`: one flat step there runs
--- whole NESTED branch traces, whose `lea-slot`s need pair bounds the emitter
--- states only for the MAIN trace (`SlotBudget` — `slot-of` is `nothing` on the
--- carrying instruction). That fragment is behind the `events-running-case`
--- model defect anyway; since item 6 (2026-08-01) `case` DOES compile to flat
--- control and `instr-case-on-tag` is in the unemittable set — its clauses
--- below are absurd on `FrameFreeI`. (`lea-indexed` needed a cursor
--- discipline here until 2026-08-01, when it turned out to be UNEMITTABLE —
--- the cata codegen walks heap-linked stacks — and joined `FrameFreeI`'s ⊥
--- set, taking the `lea-indexed-wf` residual with it.)
+-- frame-free instruction. (The nested `instr-case-on-tag` and the indexed
+-- cursor `lea-indexed` were unemittable since 2026-08-01 and retired by plan
+-- 0.125.)
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
@@ -89,8 +82,7 @@ open FlatMachine {FS}
 -- frame") could not survive a frame move, and the closure markers move the
 -- frame; but a frame move cannot invalidate pointers that do not exist.
 -- This is TRUE of emitted code because `exec-abstract (lea-slot slot)` is
--- the only producer of `SV-Ptr (AtStack …)` in the machine (`lea-indexed`
--- only moves an existing one, and it is retired), and all four `lea-slot`
+-- the only producer of `SV-Ptr (AtStack …)` in the machine, and all four `lea-slot`
 -- sites in `ir-to-trace'` are Stack-mode clauses — so a HEAP-MODED trace
 -- emits none (`Once.CCC.Codegen.NoLeaSlot`). The `lea-slot` clause below is
 -- correspondingly unprovable, and its route is made absurd one level up in
@@ -178,20 +170,8 @@ readReg-write : ∀ (rf : Registers FS) (x r : AbstractReg) (v : StoredValue FS)
               → (readReg (writeReg rf x v) r ≡ v) ⊎ (readReg (writeReg rf x v) r ≡ readReg rf r)
 readReg-write rf Input1  Input1  v = inj₁ refl
 readReg-write rf Input1  Output  v = inj₂ refl
-readReg-write rf Input1  Scratch v = inj₂ refl
-readReg-write rf Input1  Count   v = inj₂ refl
 readReg-write rf Output  Input1  v = inj₂ refl
 readReg-write rf Output  Output  v = inj₁ refl
-readReg-write rf Output  Scratch v = inj₂ refl
-readReg-write rf Output  Count   v = inj₂ refl
-readReg-write rf Scratch Input1  v = inj₂ refl
-readReg-write rf Scratch Output  v = inj₂ refl
-readReg-write rf Scratch Scratch v = inj₁ refl
-readReg-write rf Scratch Count   v = inj₂ refl
-readReg-write rf Count   Input1  v = inj₂ refl
-readReg-write rf Count   Output  v = inj₂ refl
-readReg-write rf Count   Scratch v = inj₂ refl
-readReg-write rf Count   Count   v = inj₁ refl
 
 -- Flipping the halt flag touches no field the invariant reads.
 sp-halt : ∀ (cf : Frame) (ls : LocState FS) (b : Bool)
@@ -363,21 +343,7 @@ sp-restore : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (Store
 sp-restore ls alloc (just v) ok wf = sp-write-reg (current-frame alloc) ls Input1 v ok wf
 sp-restore ls alloc nothing  ok wf = sp-halt (current-frame alloc) ls true wf
 
--- `sv-pred` / `sv-succ` produce a TAG on every input shape.
-sp-pred : ∀ (v : StoredValue FS) → StackPtrOK (sv-pred v)
-sp-pred (SV-Tag zero)    = tt
-sp-pred (SV-Tag (suc m)) = tt
-sp-pred (SV-Ptr l)       = tt
-sp-pred (SV-Lit p x)     = tt
-sp-pred (SV-Code c)      = tt
-
-sp-succ : ∀ (v : StoredValue FS) → StackPtrOK (sv-succ v)
-sp-succ (SV-Tag m)   = tt
-sp-succ (SV-Ptr l)   = tt
-sp-succ (SV-Lit p x) = tt
-sp-succ (SV-Code c)  = tt
-
--- …and so does `sv-nz` (plan 0.108).
+-- `sv-nz` produces a TAG on every input shape (plan 0.108).
 sp-nz : ∀ (v : StoredValue FS) → StackPtrOK (sv-nz v)
 sp-nz (SV-Tag m)            = tt
 sp-nz (SV-Ptr l)            = tt
@@ -387,25 +353,10 @@ sp-nz (SV-Code c)           = tt
 
 sp-reg-op : ∀ (cf : Frame) (ls : LocState FS) (op : RegOp)
           → SPInv ls → SPInv (exec-reg-op op ls)
-sp-reg-op cf ls scratch-one        wf = sp-write-reg cf ls Scratch (SV-Tag 1) tt wf
-sp-reg-op cf ls scratch-zero       wf = sp-write-reg cf ls Scratch (SV-Tag 0) tt wf
-sp-reg-op cf ls scratch-dec        wf =
-  sp-write-reg cf ls Scratch (sv-pred (readReg (regs ls) Scratch))
-               (sp-pred (readReg (regs ls) Scratch)) wf
-sp-reg-op cf ls scratch-load-count wf =
-  sp-write-reg cf ls Scratch (readReg (regs ls) Count) (sp-regs wf Count) wf
-sp-reg-op cf ls count-zero         wf = sp-write-reg cf ls Count (SV-Tag 0) tt wf
-sp-reg-op cf ls count-inc          wf =
-  sp-write-reg cf ls Count (sv-succ (readReg (regs ls) Count))
-               (sp-succ (readReg (regs ls) Count)) wf
 -- plan 0.108: `out-nz` writes a tag to Output.
 sp-reg-op cf ls out-nz             wf =
   sp-write-reg cf ls Output (sv-nz (readReg (regs ls) Output))
                (sp-nz (readReg (regs ls) Output)) wf
-
--- (`lea-indexed` needs no cursor case at all: it joined the unemittable set
--- 2026-08-01 — the cata codegen walks heap-LINKED stacks, never an indexed
--- cursor — so its route below is `⊥`-elim on `FrameFreeI`.)
 
 ------------------------------------------------------------------------
 -- THE SIGOP OUTPUT. `Emits`/`Halts` produce `unit-storedvalue`; a `Pure`
@@ -459,8 +410,7 @@ sigop-output-ok {A} {B} si ls = go (effect si)
 
 ------------------------------------------------------------------------
 -- THE PER-INSTRUCTION PRESERVATION over the structured semantics. No mutual
--- block: with `instr-case-on-tag` excluded and `instr-loop` unemittable, every
--- covered instruction is straight-line.
+-- block: every instruction is straight-line.
 --
 -- The conclusion's anchor is the POST alloc's frame — definitionally the same
 -- frame in every covered clause (a frame-free instruction never writes
@@ -497,16 +447,12 @@ sp-abstract (lea-slot slot) ls alloc () wf
 sp-abstract (restore-input slot) ls alloc ff wf =
   sp-restore ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
              (sp-read-loc (current-frame alloc) ls wf (AtStack (current-frame alloc) slot)) wf
--- `lea-indexed` is unemittable (2026-08-01) — `⊥` in `FrameFreeI`
-sp-abstract (lea-indexed slot) ls alloc () wf
--- the frame ops and the loop are unemittable — `⊥` in `FrameFreeI`
+-- the frame ops are unemittable — `⊥` in `FrameFreeI`
 sp-abstract (instr-alloc-stack n)   ls alloc () wf
 sp-abstract (instr-dealloc-stack n) ls alloc () wf
 sp-abstract (instr-push-frame cap)  ls alloc () wf
 sp-abstract instr-pop-frame         ls alloc () wf
-sp-abstract (instr-loop body)       ls alloc () wf
 -- the case is unemittable since item 6 (`case` compiles to flat control)
-sp-abstract (instr-case-on-tag f g) ls alloc () wf
 sp-abstract (instr-reclaim-to n)  ls alloc ff wf = wf
 sp-abstract instr-call-closure    ls alloc ff wf = wf
 sp-abstract (worklist-init slot)  ls alloc ff wf = wf
@@ -617,16 +563,12 @@ flat-stack-ptr (instr-ctrl (c-ret b))                 prog fs ff wf =
   sp-ret (fret fs) fs wf
 flat-stack-ptr (instr-ctrl (c-jmp m))                 prog fs ff wf =
   sp-jump (find-label prog m) fs wf
-flat-stack-ptr (instr-ctrl (c-branch-scratch-zero m)) prog fs ff wf =
-  sp-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs wf
 flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff wf =
   sp-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
 flat-stack-ptr (instr-alloc-stack n)   prog fs () wf
 flat-stack-ptr (instr-dealloc-stack n) prog fs () wf
 flat-stack-ptr (instr-push-frame cap)  prog fs () wf
 flat-stack-ptr instr-pop-frame         prog fs () wf
-flat-stack-ptr (instr-loop body)       prog fs () wf
-flat-stack-ptr (instr-case-on-tag f g) prog fs () wf
 flat-stack-ptr mov-to-output            prog fs ff wf =
   sp-abstract mov-to-output (floc fs) (falloc fs) ff wf
 flat-stack-ptr mov-to-input             prog fs ff wf =
@@ -646,7 +588,6 @@ flat-stack-ptr store-indirect-suc       prog fs ff wf =
 flat-stack-ptr (lea-slot k) prog fs () wf
 flat-stack-ptr (restore-input k)        prog fs ff wf =
   sp-abstract (restore-input k) (floc fs) (falloc fs) ff wf
-flat-stack-ptr (lea-indexed k)          prog fs () wf
 flat-stack-ptr (instr-reclaim-to k)     prog fs ff wf =
   sp-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff wf
 flat-stack-ptr instr-call-closure       prog fs ff wf = sp-call prog fs wf

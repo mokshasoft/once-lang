@@ -67,7 +67,7 @@ module TwoCellC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (sym (denot-[] k))) (λ { refl → place })
                    (m≤m+n k _)
                    (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
@@ -238,7 +238,7 @@ module TwoCellC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (sym (denot-[] k))) (λ { refl → place })
                    (m≤m+n k _)
                    (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
@@ -299,7 +299,7 @@ module TwoCellC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run _ (sym (denot-[] k))) (λ { refl → place })
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (sym (denot-[] k))) (λ { refl → place })
                    (m≤m+n k _)
                    (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')

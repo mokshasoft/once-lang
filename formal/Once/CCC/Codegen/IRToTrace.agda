@@ -76,7 +76,6 @@ module Once.CCC.Codegen.IRToTrace (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _⊔_; _*_)
 import Data.Nat as ℕ
-open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_; _++_)
 
@@ -94,7 +93,7 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K;
 import Once.Type as Ty
 
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-scratch-zero; c-branch-tag-zero; scratch-one; scratch-zero; scratch-dec; scratch-load-count; out-nz; count-zero; count-inc)
+  using (AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -124,9 +123,8 @@ open import Once.CCC.Machine.SMCore
 -- Other clauses thread the counter and accumulate body lists.
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b: cata codegen STRATEGY, dispatched at compile time
--- on the (statically-known) functor `F`. Keeps the fast Nat path; linear
--- functors get an upfront-allocated payload stack (count pre-pass);
--- branching functors need a dynamic worklist. `rec-count` = the max
+-- on the (statically-known) functor `F`: a functor with no recursive
+-- position needs no loop; every other one takes the generic walk. `rec-count` = the max
 -- number of recursive (`Id`) positions reachable in a single constructor
 -- (sum = distinct constructors → max; product = same constructor → sum).
 -- ────────────────────────────────────────────────────────────────────
@@ -138,86 +136,24 @@ rec-count (F ⊗ G) = rec-count F ℕ.+ rec-count G
 
 data CataStrategy : Set where
   strat-const     : CataStrategy   -- 0 rec positions: cata = alg on the In-layer
-  strat-nat       : CataStrategy   -- 1 bare-Id rec position, no payload (Nat)
-  strat-linear    : CataStrategy   -- 1 rec position + payload (Tier 1)
-  strat-branching : Functor → CataStrategy  -- ≥2 rec positions (Tier 2); carries F
+  strat-branching : Functor → CataStrategy  -- ≥1 rec position: the generic walk; carries F
 
--- `has-id F` — does `Id` occur anywhere in `F`? `id-under-product F` — does
--- some `Id` sit INSIDE a `⊗`? A single-recursive functor with `Id` under a
--- product (List `K Unit + (K Int * Id)`, nelist, nested-product payload) is
--- "linear with payload": the rec arm is `_ ⊗ Id`, so each layer carries a
--- payload word the fold must stash (Tier 1). A single-recursive functor with a
--- bare `Id` arm (Nat `K Unit + Id`) carries no payload (Tier nat).
-has-id : Functor → Bool
-has-id (K _)   = false
-has-id Id      = true
-has-id (F ⊕ G) = has-id F ∨ has-id G
-has-id (F ⊗ G) = has-id F ∨ has-id G
-
-id-under-product : Functor → Bool
-id-under-product (K _)   = false
-id-under-product Id      = false
-id-under-product (F ⊕ G) = id-under-product F ∨ id-under-product G
-id-under-product (F ⊗ G) = has-id F ∨ has-id G ∨ id-under-product F ∨ id-under-product G
-
--- The classifier: no recursion → Nat (no loop); one recursive position →
--- linear (with payload) vs Nat (bare Id) per `id-under-product`; two or more →
--- branching (Tier 2, still TODO).
+-- The classifier: no recursion → no loop (one algebra call); any recursion →
+-- the generic post-order walk.
+--
+-- 2026-10-30: there USED to be two more strategies here, `strat-nat` (one bare
+-- `Id`, layers rebuilt as a counter) and `strat-linear` (one `Id` under `⊗`, a
+-- payload stack). Both were specialisations of the walk to a SHAPE, and the
+-- classifier sent them functors outside it: `Mu (K Int + Id)` lost its base
+-- payload, `Mu (Id + K Unit)` read tag 0 as the base, `Mu (K Unit + (K Unit +
+-- Id))` segfaulted, and linear mis-read `Mu ((K Int * Id) + K Unit)`. They are
+-- deleted: one generic strategy, proved once by induction on `F`. Speed comes
+-- back as optimisations proved against it (in-place reuse of a linear input's
+-- layers), not as separate codegens behind the classifier.
 cata-strategy : Functor → CataStrategy
 cata-strategy F with rec-count F
-... | 0           = strat-const
-... | 1           = if id-under-product F then strat-linear else strat-nat
-... | suc (suc _) = strat-branching F
-
--- The current (Nat-shaped) codegen body, extracted so the dispatch can
--- pick it. Takes the post-`alg` frontier/label counters + alg's main
--- trace `at`; returns (frontier-after , label-after , main-trace).
--- Plan 0.63 (iii): THE SKELETON PIECES ARE TOP-LEVEL, and the trace is their
--- ALTERNATION with the algebra:
---
---     cata-nat-I₁ ++ at ++ (cata-nat-I₂ ++ at ++ cata-nat-I₃)
---
--- Same list as before — only the bracketing of the `++`s changed (the ascend
--- arm used to nest as `(at ++ X) ++ Y`). The point is that the decomposition
--- is now DEFINITIONAL, so a proof about "idle skeleton with embedded copies of
--- the algebra" (`LabelScope.Pieces`) can be given without transcribing 28
--- instructions into the proof and letting them rot.
-cata-nat-layer : ℕ → ℕ → AbstractTrace
-cata-nat-layer n1 tag =
-  mov-to-output ∷ store-at-slot n1 ∷ instr-alloc-heap 2 ∷
-  store-at-slot (suc n1) ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
-  store-indirect ∷ load-from-slot n1 ∷ store-indirect-suc ∷
-  load-from-slot (suc n1) ∷ []
-
-cata-nat-descend : ℕ → AbstractTrace
-cata-nat-descend l1 =
-  instr-ctrl (c-label (ℓ o l1)) ∷
-  instr-ctrl (c-branch-scratch-zero (ℓ o (suc l1))) ∷
-  instr-ctrl (c-branch-tag-zero (ℓ o (suc (suc l1)))) ∷
-  instr-reg-op count-inc ∷ load-indirect-suc ∷ mov-to-input ∷
-  instr-ctrl (c-jmp (ℓ o (suc (suc (suc l1))))) ∷
-  instr-ctrl (c-label (ℓ o (suc (suc l1)))) ∷ instr-reg-op scratch-zero ∷
-  instr-ctrl (c-label (ℓ o (suc (suc (suc l1))))) ∷ instr-ctrl (c-jmp (ℓ o l1)) ∷
-  instr-ctrl (c-label (ℓ o (suc l1))) ∷ []
-
-cata-nat-I₁ : ℕ → ℕ → AbstractTrace
-cata-nat-I₁ n1 l1 =
-  instr-reg-op scratch-one ∷ instr-reg-op count-zero ∷
-  (cata-nat-descend l1 ++
-   (instr-reg-op scratch-load-count ∷ instr-load-tag-lit 0 ∷ mov-to-input ∷
-    (cata-nat-layer n1 0 ++ (mov-to-input ∷ []))))
-
-cata-nat-I₂ : ℕ → ℕ → AbstractTrace
-cata-nat-I₂ n1 l1 =
-  instr-ctrl (c-label (ℓ o (suc (suc (suc (suc l1)))))) ∷
-  instr-ctrl (c-branch-scratch-zero (ℓ o (suc (suc (suc (suc (suc l1))))))) ∷
-  mov-to-input ∷ (cata-nat-layer n1 1 ++ (mov-to-input ∷ []))
-
-cata-nat-I₃ : ℕ → AbstractTrace
-cata-nat-I₃ l1 =
-  instr-reg-op scratch-dec ∷
-  instr-ctrl (c-jmp (ℓ o (suc (suc (suc (suc l1)))))) ∷
-  instr-ctrl (c-label (ℓ o (suc (suc (suc (suc (suc l1))))))) ∷ []
+... | 0     = strat-const
+... | suc _ = strat-branching F
 
 ------------------------------------------------------------------------
 -- D099 / C1: THE ALGEBRA IS EMITTED ONCE, AND CALLED.
@@ -315,110 +251,11 @@ cata-call cl k pr =
   load-from-slot pr ∷ mov-to-input ∷
   instr-call-closure ∷ []
 
--- `bb` is the algebra body's own stack budget (it runs in its own frame).
--- Slots: `n1`/`suc n1` are the layer builder's, `cl`/`k` the call's.
--- Labels: `l1 … l1+5` the loop's, `l1+6` the body, `l1+7` the jump-over join.
-cata-trace-nat : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-nat bb n1 l1 at =
-  (suc (suc (suc (suc (suc (suc n1)))))) , suc (suc (suc (suc (suc (suc (suc (suc l1))))))) ,
-  -- D099 / C1 (2026-08-10): the body bracket goes LAST, not first. That is not
-  -- cosmetic — `segagree-curry` proves `SegAgree (H ++ c-thunk … ∷ (body ++
-  -- c-ret … ∷ c-label e ∷ []))` for an arbitrary IDLE labelled prefix `H`, and
-  -- the loop skeleton is exactly that. With the bracket last, `H` = the loop
-  -- plus its jump-over and the existing combinator applies directly; with it
-  -- first, the loop would be a SUFFIX, which nothing in `LabelScope` supports.
-  (cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc n1)))) (suc (suc (suc (suc (suc n1))))) (suc (suc (suc (suc (suc (suc l1)))))) ++
-   (cata-nat-I₁ n1 l1 ++
-    (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
-     (cata-nat-I₂ n1 l1 ++
-      (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
-       (cata-nat-I₃ l1 ++
-        cata-body (suc (suc (suc (suc (suc (suc l1))))))
-                  (suc (suc (suc (suc (suc (suc (suc l1)))))) ) bb at))))))
-
--- Plan 0.36 Phase 2b Tier 1: functor-general LINEAR (single recursive
--- position, with payload) cata codegen via a SIMPLE 2-cell linked payload
--- stack on the heap (Plan 0.37 chunks it later — needs an ISA extension).
---
--- Layouts the frontend emits (`In`/`inr`/pair codegen):
---   cons node `In (inr (x, child))` = `[1, pair-ptr]`, pair = `[x, child-ptr]`
---     ⇒ payload x = node[1][0], recursive child = node[1][1].
---   base node `In (inl b)`          = `[0, b]` (b = unit for K Unit, the
---     terminal Int for K Int) — fed to `alg` directly (uniform base handling).
---
--- Three phases (Scratch survives `alg` — CCC code never touches rbx):
---   DESCEND+PUSH: Count counts depth n; for each cons, push x onto the
---     payload stack (`[x, prev-top]`, top in `stack-top`); advance to child.
---     Ends with Input1 at the base node.
---   BASE: Scratch := n; run `alg` on the base node → Output = base acc.
---   ASCEND+POP: while Scratch ≠ 0, pop x (top := top[1]), build pair `[x,acc]`,
---     build layer `[1, pair]`, run `alg` → acc'; Scratch--. LIFO pop gives
---     reverse (innermost-first = foldr) order. Output = final fold result.
--- Plan 0.63 (iii): same top-level decomposition as the Nat skeleton —
--- `I₁ ++ at ++ (I₂ ++ at ++ I₃)`, same list, only the `++` bracketing moved.
-cata-lin-I₁ : ℕ → ℕ → AbstractTrace
-cata-lin-I₁ n1 l1 =
-  instr-reg-op count-zero ∷
-  instr-load-tag-lit 0 ∷ store-at-slot (suc (suc (suc n1))) ∷
-  instr-ctrl (c-label (ℓ o l1)) ∷
-  instr-ctrl (c-branch-tag-zero (ℓ o (suc l1))) ∷
-  instr-reg-op count-inc ∷
-  load-indirect-suc ∷ mov-to-input ∷
-  load-indirect ∷ store-at-slot (suc (suc (suc (suc (suc n1))))) ∷
-  load-indirect-suc ∷ store-at-slot (suc (suc n1)) ∷
-  instr-alloc-heap 2 ∷ store-at-slot (suc n1) ∷ mov-to-input ∷
-  load-from-slot (suc (suc (suc (suc (suc n1))))) ∷ store-indirect ∷
-  load-from-slot (suc (suc (suc n1))) ∷ store-indirect-suc ∷
-  load-from-slot (suc n1) ∷ store-at-slot (suc (suc (suc n1))) ∷
-  load-from-slot (suc (suc n1)) ∷ mov-to-input ∷
-  instr-ctrl (c-jmp (ℓ o l1)) ∷
-  instr-ctrl (c-label (ℓ o (suc l1))) ∷
-  instr-reg-op scratch-load-count ∷ []
-
-cata-lin-I₂ : ℕ → ℕ → AbstractTrace
-cata-lin-I₂ n1 l1 =
-  instr-ctrl (c-label (ℓ o (suc (suc l1)))) ∷
-  instr-ctrl (c-branch-scratch-zero (ℓ o (suc (suc (suc l1))))) ∷
-  store-at-slot (suc (suc (suc (suc n1)))) ∷
-  load-from-slot (suc (suc (suc n1))) ∷ mov-to-input ∷
-  load-indirect ∷ store-at-slot (suc (suc (suc (suc (suc n1))))) ∷
-  load-indirect-suc ∷ store-at-slot (suc (suc (suc n1))) ∷
-  instr-alloc-heap 2 ∷ store-at-slot (suc n1) ∷ mov-to-input ∷
-  load-from-slot (suc (suc (suc (suc (suc n1))))) ∷ store-indirect ∷
-  load-from-slot (suc (suc (suc (suc n1)))) ∷ store-indirect-suc ∷
-  instr-alloc-heap 2 ∷ store-at-slot n1 ∷ mov-to-input ∷
-  instr-load-tag-lit 1 ∷ store-indirect ∷
-  load-from-slot (suc n1) ∷ store-indirect-suc ∷
-  load-from-slot n1 ∷ mov-to-input ∷ []
-
-cata-lin-I₃ : ℕ → AbstractTrace
-cata-lin-I₃ l1 =
-  instr-reg-op scratch-dec ∷
-  instr-ctrl (c-jmp (ℓ o (suc (suc l1)))) ∷
-  instr-ctrl (c-label (ℓ o (suc (suc (suc l1))))) ∷ []
-
--- Same C1 shape as `cata-trace-nat`: one body, two calls.
--- Slots `n1 … n1+5` are the layer builder's, `n1+6`/`n1+7` the call's.
--- Labels `l1 … l1+3` the loop's, `l1+4` the body, `l1+5` the join.
-cata-trace-linear : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
--- Slot numbers as suc-towers (not `+`), matching `cata-lin-I₁`'s own
--- `n1 … suc⁵ n1`: SegOK's bounds are `≤-step` chains, and mixing towers with
--- `+` would need a transport at every one.
-cata-trace-linear bb n1 l1 at =
-  (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))) , suc (suc (suc (suc (suc (suc l1))))) ,
-  (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))
-                   (suc (suc (suc (suc l1)))) ++
-   (cata-lin-I₁ n1 l1 ++
-    (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) ++
-     (cata-lin-I₂ n1 l1 ++
-      (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) ++
-       (cata-lin-I₃ l1 ++ cata-body (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at))))))
-
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
--- (≥2 recursive positions: leaf/node/ternary trees, multi-constructor).
--- Iterative POST-ORDER over two heap-linked stacks (same no-ISA principle
--- as Tier 1; NOT lea-indexed):
+-- (every recursive functor: Nat, lists, leaf/node/ternary trees,
+-- multi-constructor). Iterative POST-ORDER over heap-linked stacks (no ISA
+-- extension, no indexed cursor):
 --   * todo stack — nodes to flatten;
 --   * eval stack — post-order node sequence (children before parents);
 --   * value stack — folded `A` results awaiting their parent's combine.
@@ -428,10 +265,9 @@ cata-trace-linear bb n1 l1 at =
 --   per Id position (`rebuild-walk`, LEFT-to-RIGHT — the LIFO value stack
 --   inverts visit's order, so positions line up), run `alg`, push result.
 -- visit-walk / rebuild-walk are COMPILE-TIME recursions over F that emit
--- runtime tag-dispatched node walks (nested `instr-case-on-tag` for sums;
--- `instr-case-on-tag` carries no labels — its x86 labels are assigned
--- downstream by compile-trace-cnt, so this codegen's own label count is
--- just the 4 loop labels). The per-node walk is bounded by F's size and so
+-- runtime tag-dispatched node walks (flat `c-branch-tag-zero` control for
+-- sums, labels from the same counter — `lsize`). The per-node walk is
+-- bounded by F's size and so
 -- is unrolled into straight-line code; only the tree-sized stacks are
 -- heap-linked. Stacks share a sentinel block `[SV-Tag 0, _]` so emptiness
 -- is detected by `c-branch-tag-zero` on the popped block's cell-0.
@@ -484,8 +320,7 @@ lsize Id      = 0
 lsize (F ⊕ G) = suc (suc (lsize F ℕ.+ lsize G))
 lsize (F ⊗ G) = lsize F ℕ.+ lsize G
 
--- Plan 0.54 item 6 (2026-08-01): the ⊕ dispatch is FLAT CONTROL, not a nested
--- `instr-case-on-tag` — same shape as `case f g` below and as the branching
+-- Plan 0.54 item 6 (2026-08-01): the ⊕ dispatch is FLAT CONTROL — same shape as `case f g` below and as the branching
 -- cata's own loop: `c-branch-tag-zero` to the inl branch, inr falls through,
 -- `c-jmp` joins. Branch prologue (payload into Input1) unchanged.
 visit-walk : (todoSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTrace
@@ -595,8 +430,6 @@ cata-trace-branching F bb n1 l1 at =
       cata-body (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F)
                 ((l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ℕ.+ 1) bb at))))
 
--- Dispatch the strategy. Nat / branching still route to the Nat codegen
--- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
 -- 0 rec positions (`Mu (K _)`): `In` is heap-identity, so the μ-value IS the
 -- `⟦F⟧A` layer and `cata alg = alg` on it — no descend, no ascend, no loop.
 -- It goes through the SAME call as the others rather than splicing inline:
@@ -609,10 +442,9 @@ cata-trace-const bb n1 l1 at =
   (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) l1 ++
    (cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
 
+-- Dispatch the strategy.
 cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-dispatch strat-const         bb n1 l1 at = cata-trace-const bb n1 l1 at
-cata-dispatch strat-nat           bb n1 l1 at = cata-trace-nat bb n1 l1 at
-cata-dispatch strat-linear        bb n1 l1 at = cata-trace-linear bb n1 l1 at
 cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 at
 
 -- ────────────────────────────────────────────────────────────────────
@@ -707,9 +539,8 @@ resuspend-layer n l lbl env (wf-Prod wfF wfG) =
 -- A sum layer is a tag cell and a payload POINTER (`valid-inl-wf`). Only one
 -- arm is live, so this branches — in FLAT control, the same
 -- `c-branch-tag-zero` / `c-jmp` / `c-label` skeleton `case` emits, and for the
--- same reason: `instr-case-on-tag` is a retired fossil that `EmittableI`
--- forbids, because one flat step must never run a nested trace. Hence the
--- label counter in this function's signature.
+-- same reason: one flat step must never run a nested trace (the nested
+-- `instr-case-on-tag` was retired by plan 0.125). Hence the label counter in this function's signature.
 --
 -- Each arm builds a FRESH node and writes its own tag literally: inside an arm
 -- the tag is known, so there is nothing to copy.
@@ -1064,9 +895,9 @@ ir-to-trace' n l inr =
 --
 -- Per-branch prologue (payload pointer from sucLoc Input1 into Input1)
 -- unchanged. Labels come from the SAME counter as the cata's, so they are
--- collision-free by construction; `instr-case-on-tag` now has NO PRODUCER
--- (it joins the frame ops / `instr-loop` / `lea-indexed` in `FrameFreeI`'s
--- ⊥ set) and the flat machine needs no nested-trace correspondence at all.
+-- collision-free by construction, and the flat machine needs no nested-trace
+-- correspondence at all (`instr-case-on-tag` lost its producer here and was
+-- deleted by plan 0.125, with `instr-loop` and `lea-indexed`).
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n l (case f g) =
@@ -1094,13 +925,8 @@ ir-to-trace' n l (In _)       = n , l , (mov-to-output ∷ []) , []
 -- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
 -- out via the same `transport-trivial` pattern as id/arr/free-heap.
 ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
--- Plan 0.29 (M5): NatF catamorphism via the generic fuel loop.
--- descend (count `inr` depth into Count, Scratch = continue flag) →
--- Scratch := depth → base inl layer + alg → ascend (rebuild inr layer
--- with prev result, alg, Scratch--). Scratch (rbx) survives `alg` (CCC
--- code never touches rbx). Layer builds mirror the inl/inr Heap codegen.
+-- Cata: the algebra once, then the strategy's skeleton (`cata-dispatch`).
 -- Plan 0.36 Phase 2b: dispatch on the functor's strategy (compile-time).
--- Today every strategy routes to `cata-trace-nat`; Tier 1/2 refine it.
 -- D099 / C1: the algebra is generated ONCE, at frontier 0 — it runs in its OWN
 -- frame as a called body (exactly as `curry`'s body is generated), so its slots
 -- no longer extend the cata's frame and its budget `bb` becomes the body's.

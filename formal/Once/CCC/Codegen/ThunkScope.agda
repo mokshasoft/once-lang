@@ -57,11 +57,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
-open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
-         strat-const; strat-nat; strat-linear; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call;
-         cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃;
-         cata-br-I₁; cata-br-I₂;
-         visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer)
+open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of; cata-label-mono; resuspend-label-mono)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
@@ -460,37 +456,6 @@ module Scope {FS : FrameSemantics} where
         (++⁺ (all-no-thunk-in (cata-call n1 (n1 + 1) (n1 + 3)) refl)
              (cata-body-in l1 (l1 + 1) bb at lo≤ (m<m+2 l1)
                 (ts-weaken ≤-refl (m≤m+n l1 2) ats)))
-  cata-thunks-in strat-nat bb n1 l1 at lo≤ ats =
-    ++⁺ (all-no-thunk-in (cata-call-setup (s² n1) (s³ n1) (s⁴ n1) (s⁵ n1) (s⁶ l1)) refl)
-        (++⁺ (all-no-thunk-in (cata-nat-I₁ n1 l1) refl)
-             (++⁺ (all-no-thunk-in (cata-call (s² n1) (s³ n1) (s⁵ n1)) refl)
-                  (++⁺ (all-no-thunk-in (cata-nat-I₂ n1 l1) refl)
-                       (++⁺ (all-no-thunk-in (cata-call (s² n1) (s³ n1) (s⁵ n1)) refl)
-                            (++⁺ (all-no-thunk-in (cata-nat-I₃ l1) refl)
-                                 (cata-body-in (s⁶ l1) (s⁷ l1) bb at
-                                    (≤-trans lo≤ six)
-                                    (s≤s (n≤1+n (s⁶ l1)))
-                                    (ts-weaken ≤-refl (cata-label-mono strat-nat bb n1 l1 at) ats)))))))
-    where
-      six : l1 ≤ s⁶ l1
-      six = ≤-trans (n≤1+n l1) (≤-trans (n≤1+n (suc l1))
-              (≤-trans (n≤1+n (s² l1)) (≤-trans (n≤1+n (s³ l1))
-                (≤-trans (n≤1+n (s⁴ l1)) (n≤1+n (s⁵ l1))))))
-  cata-thunks-in strat-linear bb n1 l1 at lo≤ ats =
-    ++⁺ (all-no-thunk-in (cata-call-setup (s⁶ n1) (s⁷ n1) (s⁸ n1) (s⁹ n1) (s⁴ l1)) refl)
-        (++⁺ (all-no-thunk-in (cata-lin-I₁ n1 l1) refl)
-             (++⁺ (all-no-thunk-in (cata-call (s⁶ n1) (s⁷ n1) (s⁹ n1)) refl)
-                  (++⁺ (all-no-thunk-in (cata-lin-I₂ n1 l1) refl)
-                       (++⁺ (all-no-thunk-in (cata-call (s⁶ n1) (s⁷ n1) (s⁹ n1)) refl)
-                            (++⁺ (all-no-thunk-in (cata-lin-I₃ l1) refl)
-                                 (cata-body-in (s⁴ l1) (s⁵ l1) bb at
-                                    (≤-trans lo≤ four)
-                                    (s≤s (n≤1+n (s⁴ l1)))
-                                    (ts-weaken ≤-refl (cata-label-mono strat-linear bb n1 l1 at) ats)))))))
-    where
-      four : l1 ≤ s⁴ l1
-      four = ≤-trans (n≤1+n l1) (≤-trans (n≤1+n (suc l1))
-               (≤-trans (n≤1+n (s² l1)) (n≤1+n (s³ l1))))
   cata-thunks-in (strat-branching F) bb n1 l1 at lo≤ ats =
     ++⁺ (all-no-thunk-in (cata-call-setup B (B + 1) (B + 2) (B + 3) L) refl)
         (++⁺ (ts-from-nt (br-I₁-nt F n1 l1))

@@ -101,7 +101,7 @@ module CompareC {FS : FrameSemantics} where
                    (λ _ → cong (λ t → DL.length t + base) (sym em≡))
                    (λ st → case trans (sym (cong (λ ρ → is-stopped (proj₂ ρ)) ER)) st of λ ())
                    (λ _ → refl) (λ _ → refl)
-                   (log-of run _ (sym (cong proj₁ ER)))
+                   (log-of run (sym (cong proj₁ ER)))
                    (λ p → place (done-tag (resultAt s (E₀ si x)) (trans (sym (cong proj₂ (RE k))) p)))
                    (subst (λ ρ → k ≤ budgetLeft k (proj₂ ρ) + chain-ctrls run) (sym ER) (m≤m+n k _))
                    (λ _ fr j bf' → mem-pres (AtStack fr j) bf')

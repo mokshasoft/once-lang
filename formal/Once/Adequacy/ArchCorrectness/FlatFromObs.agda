@@ -91,6 +91,7 @@ open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFlatness)
 import Once.Adequacy.ArchCorrectness.FnRuns as FnR
+open import Once.Adequacy.ImageUnique using (image-cl)
 import Once.Adequacy.ArchCorrectness.FnLayout o as FnL
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
@@ -185,10 +186,9 @@ entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
 -- in-bounds invariant FALSE at entry. `SV-Tag 0` encodes to 0 just as the
 -- pointer filler did (`enc-sv (SV-Tag 0) = 0`), so `entry-corr` is unchanged;
 -- with no pointer anywhere in the entry state the in-bounds invariant holds
--- vacuously at the start of the run. (Plan 0.54 D item 4 made `Scratch` and
--- `Count` tags for `FlatRegTagWF`'s entry case; this finishes the move.)
+-- vacuously at the start of the run.
 entry-regs : Registers FS
-entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
+entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0)
 
 -- THE ENTRY STATE IS INDEXED BY THE FRAME THE PROLOGUE RESERVED (2026-07-30).
 --
@@ -447,8 +447,10 @@ IOC : Set
 -- the places the image puts them (`FnLayout.image-entries`).
 block-runs : (ir : IR Unit Unit) → LinkedProgram σFS (irProgram tbl ir) → BlockRuns (image ir)
 block-runs ir (_ , _ , tl , nd) = record
-  { functions = FnR.FnRunsC.fn-runs {FS} (image ir) (image-slot-stable ir) tbl tl
-                  (FnL.FnLayoutC.image-entries {FS} tbl ir nd) o }
+  { functions     = FnR.FnRunsC.fn-runs {FS} o (image ir) (image-slot-stable ir) tu tbl tl
+                      (FnL.FnLayoutC.image-entries {FS} tbl ir nd)
+  ; thunks-unique = tu }
+  where tu = FnL.FnLayoutC.thunks-unique-of {FS} (image ir) (image-cl o (irProgram tbl ir))
 
 IOC = ∀ {A B} (ir : IR A B) → Linked σFS tbl ir → IRObsCorrectF ir
 

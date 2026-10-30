@@ -5,15 +5,9 @@
 -- Once.CCC.Machine.FrameFree   (Plan 0.54 rung D, item 2)
 --
 -- "This instruction is one the live emitter can produce, and so is everything
--- it runs." Concretely: not a frame op, and not `instr-loop`.
---
--- NAMING DEBT (2026-07-31): the module is still called FrameFree, but the
--- predicate now also excludes `instr-loop`. Both are instructions with NO
--- PRODUCER — `ir-to-trace` emits neither (grep: both appear only in IRToTrace's
--- import list) — so both are ⊥ here and both dispatch clauses in the flat↔x86-64
--- correspondence are unreachable. Adding the loop cost no proof at all: the
--- emitter induction in `Once.CCC.Codegen.FrameFreeTrace` never produces one, so
--- every clause of it stands unchanged.
+-- it runs." Concretely: not a frame op. (It also excluded the retired
+-- `instr-loop`, `instr-case-on-tag` and `lea-indexed`, which had no producer;
+-- plan 0.125 deleted them from the machine.)
 --
 -- The four abstract frame instructions — `instr-alloc-stack`,
 -- `instr-dealloc-stack`, `instr-push-frame`, `instr-pop-frame` — are the ONLY
@@ -21,12 +15,6 @@
 -- `decrStackSlot`, `writeStackSlot`, at exactly those three sites). So this
 -- predicate is what makes the live stack window CONSTANT along a run, which is
 -- what the flat↔x86-64 slot residuals rest on.
---
--- DEEP, unlike `SMPrimitives.NoFrameOp`: one flat step at an
--- `instr-case-on-tag` / `instr-loop` runs a whole NESTED trace, so a shallow
--- predicate would let a frame op back in through a branch body. The trace-level
--- predicate is spelled out (`FrameFreeT`) rather than `All FrameFreeI` so the
--- mutual recursion is structural.
 --
 -- (`SMPrimitives.NoFrameOp` is the older shallow push/pop-frame fence of the
 -- legacy IR-WF layer; it is not this and does not cover alloc/dealloc-stack.)
@@ -49,27 +37,12 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
 open import Data.Nat using (ℕ)
 
--- No mutual needed since Plan 0.54 item 6: with `instr-case-on-tag` in the ⊥
--- set there is NO nested trace anywhere — the predicate is shallow.
+-- Shallow: no instruction carries a nested trace (plan 0.125).
 FrameFreeI : AbstractInstr → Set
 FrameFreeI (instr-alloc-stack _)     = ⊥
 FrameFreeI (instr-dealloc-stack _)   = ⊥
 FrameFreeI (instr-push-frame _)      = ⊥
 FrameFreeI instr-pop-frame           = ⊥
--- `instr-case-on-tag` is a RETIRED FOSSIL (Plan 0.54 item 6, 2026-08-01):
--- `case` compiles to flat control (`c-branch-tag-zero`/`c-jmp`/`c-label`,
--- branches inlined into the main trace) the way `Cata` always did — one flat
--- step never runs a nested trace again.
-FrameFreeI (instr-case-on-tag t₁ t₂) = ⊥
--- `instr-loop` is a RETIRED FOSSIL: the cata codegen compiles to flat control
--- (`c-label`/`c-jmp`/`c-branch-*`), never to a structured loop instruction.
-FrameFreeI (instr-loop t)            = ⊥
--- `lea-indexed` is a RETIRED FOSSIL too (2026-08-01): the Tier-1/Tier-2 cata
--- codegen walks HEAP-LINKED stacks (`push2`/`pop2`, "NOT lea-indexed" —
--- IRToTrace), so no emitted trace contains an indexed cursor. Retiring it
--- deletes the `lea-indexed-wf` cursor-discipline residual with its site, and
--- the pointer-bounds invariant needs no cursor case at all.
-FrameFreeI (lea-indexed _)           = ⊥
 -- `lea-slot` is the ONE INSTRUCTION THAT CREATES A STACK POINTER
 -- (`exec-abstract (lea-slot slot)` writes `SV-Ptr (AtStack …)`; nothing else
 -- in the machine does). Plan 0.63 step 2b: it is emitted only by the four
@@ -130,9 +103,6 @@ EmittableI (instr-alloc-stack _)     = ⊥
 EmittableI (instr-dealloc-stack _)   = ⊥
 EmittableI (instr-push-frame _)      = ⊥
 EmittableI instr-pop-frame           = ⊥
-EmittableI (instr-case-on-tag t₁ t₂) = ⊥
-EmittableI (instr-loop t)            = ⊥
-EmittableI (lea-indexed _)           = ⊥
 EmittableI (lea-slot _)              = ⊥
 -- plan 0.107: the program's START is not in any unit — it is the image's
 -- header (`ProgramImage.program-image`), at pc 0 only.
@@ -175,14 +145,10 @@ emittable-image (instr-sigop _) e = e
 emittable-image (instr-load-code-addr _) e = e
 emittable-image (instr-load-tag-lit _) e = e
 emittable-image (instr-alloc-heap _) e = e
-emittable-image (instr-loop _) e = e
 emittable-image (instr-reg-op _) e = e
-emittable-image (lea-indexed _) e = e
 emittable-image (instr-load-const _ _) e = e
-emittable-image (instr-case-on-tag _ _) e = e
 emittable-image (instr-ctrl (c-label _)) e = e
 emittable-image (instr-ctrl (c-jmp _)) e = e
-emittable-image (instr-ctrl (c-branch-scratch-zero _)) e = e
 emittable-image (instr-ctrl (c-branch-tag-zero _)) e = e
 emittable-image (instr-ctrl (c-call-fn _)) e = e
 emittable-image (instr-ctrl (c-ret _)) e = e
@@ -198,9 +164,6 @@ frame-free-emittable (instr-alloc-stack _)     ()
 frame-free-emittable (instr-dealloc-stack _)   ()
 frame-free-emittable (instr-push-frame _)      ()
 frame-free-emittable instr-pop-frame           ()
-frame-free-emittable (instr-case-on-tag _ _)   ()
-frame-free-emittable (instr-loop _)            ()
-frame-free-emittable (lea-indexed _)           ()
 frame-free-emittable (lea-slot _)              ()
 frame-free-emittable (instr-ctrl (c-entry _ _)) ()
 frame-free-emittable (instr-ctrl (c-start _)) ()
@@ -209,7 +172,6 @@ frame-free-emittable (instr-ctrl (c-ret _))     ()
 frame-free-emittable (instr-ctrl c-leave)                _ = tt
 frame-free-emittable (instr-ctrl (c-label _))            _ = tt
 frame-free-emittable (instr-ctrl (c-jmp _))              _ = tt
-frame-free-emittable (instr-ctrl (c-branch-scratch-zero _)) _ = tt
 frame-free-emittable (instr-ctrl (c-branch-tag-zero _))  _ = tt
 frame-free-emittable mov-to-output             _ = tt
 frame-free-emittable mov-to-input              _ = tt
@@ -246,9 +208,8 @@ frame-free-++ (i ∷ is) t₂ (fi , ffs) ff₂ = fi , frame-free-++ is t₂ ffs 
 
 -- `FrameFreeT` and `All FrameFreeI` are interchangeable. Both forms are wanted:
 -- `All` is a DATATYPE, so its append (`++⁺`) unifies at a splice `t₁ ++ t₂` —
--- which is what an induction over the emitter is made of; `FrameFreeT` is what
--- the nested `instr-case-on-tag` / `instr-loop` obligations are stated in, and
--- is structural, which is what the mutual definition above needs.
+-- which is what an induction over the emitter is made of; `FrameFreeT` is
+-- structural.
 frame-free-all : ∀ t → FrameFreeT t → All FrameFreeI t
 frame-free-all []       ff         = []
 frame-free-all (i ∷ is) (fi , ffs) = fi ∷ frame-free-all is ffs
@@ -266,11 +227,9 @@ frame-free-nest (fi ∷ ffs) = fi , frame-free-nest ffs
 -- putting `instr-alloc-stack` into traces the compiler never emits, which is
 -- what made `trace-is-ir-to-trace` unprovable eleven times over.
 --
--- Now no instruction moves `next-slot`, so the only cases needing an argument
--- are the two that run a NESTED trace, `instr-case-on-tag` and `instr-loop` —
--- and both are `⊥` here, because neither is ever emitted. So the frame-free
--- premise is not a restriction on real programs; it is how we say "this trace
--- is one the compiler could actually produce".
+-- Now no instruction moves `next-slot`. The frame-free premise is not a
+-- restriction on real programs; it is how we say "this trace is one the
+-- compiler could actually produce".
 --
 -- What it buys: a WF handler may pass a sub-IR a CONSTRUCTION frontier
 -- (`record alloc { next-slot = n + scratch }`) while the runtime threads the
@@ -310,7 +269,6 @@ module _ {FS : FrameSemantics} where
   exec-abstract-preserves-next-slot (lea-slot _)             s alloc _ = refl
   exec-abstract-preserves-next-slot (restore-input k)        s alloc _ =
     restore-input-alloc (stackMem s (current-frame alloc) k) s alloc
-  exec-abstract-preserves-next-slot (lea-indexed _)          s alloc ()
   exec-abstract-preserves-next-slot (instr-alloc-stack _)    s alloc ()
   exec-abstract-preserves-next-slot (instr-dealloc-stack _)  s alloc ()
   exec-abstract-preserves-next-slot (instr-reclaim-to _)     s alloc _ = refl
@@ -327,9 +285,6 @@ module _ {FS : FrameSemantics} where
   exec-abstract-preserves-next-slot (instr-load-code-addr _) s alloc _ = refl
   exec-abstract-preserves-next-slot instr-save-closure-reg   s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-load-tag-lit _)   s alloc _ = refl
-  -- the two nested-trace instructions: never emitted, so `⊥` here
-  exec-abstract-preserves-next-slot (instr-case-on-tag _ _)  s alloc ()
-  exec-abstract-preserves-next-slot (instr-loop _)           s alloc ()
   exec-abstract-preserves-next-slot (instr-alloc-heap _)     s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-reg-op _)         s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-ctrl _)           s alloc _ = refl
@@ -349,13 +304,7 @@ module _ {FS : FrameSemantics} where
              (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) ffs)
           (exec-abstract-preserves-next-slot i s alloc fi)
 
-  -- The STATE companion. `SMPrimitives` has an unconditioned version of the
-  -- per-instruction half whose `instr-case-on-tag` and `instr-loop` clauses are
-  -- proof gaps ("discharge at M4"), because those two run a nested trace. Under
-  -- `FrameFreeI` both are `⊥`, so the gaps become absurd patterns — the same
-  -- move that made `exec-abstract-preserves-next-slot` provable.
-  --
-  -- Every other clause is `refl`: an instruction's STATE effect reads
+  -- The STATE companion. Every clause is `refl`: an instruction's STATE effect reads
   -- `current-frame` or `next-heap-ref`, never `next-slot`, and the record
   -- update preserves both.
   -- state-level twins of the two alloc helpers above
@@ -404,7 +353,6 @@ module _ {FS : FrameSemantics} where
   exec-abstract-state-nsi (lea-slot _)             s alloc k _ = refl
   exec-abstract-state-nsi (restore-input j)        s alloc k _ =
     restore-input-state (stackMem s (current-frame alloc) j) s alloc _
-  exec-abstract-state-nsi (lea-indexed _)          s alloc k ()
   exec-abstract-state-nsi (instr-alloc-stack _)    s alloc k ()
   exec-abstract-state-nsi (instr-dealloc-stack _)  s alloc k ()
   exec-abstract-state-nsi (instr-reclaim-to _)     s alloc k _ = refl
@@ -421,8 +369,6 @@ module _ {FS : FrameSemantics} where
   exec-abstract-state-nsi (instr-load-code-addr _) s alloc k _ = refl
   exec-abstract-state-nsi instr-save-closure-reg   s alloc k _ = refl
   exec-abstract-state-nsi (instr-load-tag-lit _)   s alloc k _ = refl
-  exec-abstract-state-nsi (instr-case-on-tag _ _)  s alloc k ()
-  exec-abstract-state-nsi (instr-loop _)           s alloc k ()
   exec-abstract-state-nsi (instr-alloc-heap _)     s alloc k _ = refl
   exec-abstract-state-nsi (instr-reg-op _)         s alloc k _ = refl
   exec-abstract-state-nsi (instr-ctrl _)           s alloc k _ = refl
@@ -447,7 +393,6 @@ module _ {FS : FrameSemantics} where
   exec-abstract-alloc-nsi (lea-slot _)             s alloc k _ = refl
   exec-abstract-alloc-nsi (restore-input j)        s alloc k _ =
     restore-input-alloc-full (stackMem s (current-frame alloc) j) s alloc k
-  exec-abstract-alloc-nsi (lea-indexed _)          s alloc k ()
   exec-abstract-alloc-nsi (instr-alloc-stack _)    s alloc k ()
   exec-abstract-alloc-nsi (instr-dealloc-stack _)  s alloc k ()
   exec-abstract-alloc-nsi (instr-reclaim-to _)     s alloc k _ = refl
@@ -464,8 +409,6 @@ module _ {FS : FrameSemantics} where
   exec-abstract-alloc-nsi (instr-load-code-addr _) s alloc k _ = refl
   exec-abstract-alloc-nsi instr-save-closure-reg   s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-load-tag-lit _)   s alloc k _ = refl
-  exec-abstract-alloc-nsi (instr-case-on-tag _ _)  s alloc k ()
-  exec-abstract-alloc-nsi (instr-loop _)           s alloc k ()
   exec-abstract-alloc-nsi (instr-alloc-heap _)     s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-reg-op _)         s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-ctrl _)           s alloc k _ = refl

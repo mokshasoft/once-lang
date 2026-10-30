@@ -34,12 +34,11 @@ module Once.Adequacy.ArchCorrectness.X86-64
   -- the three rooms (D087) — a fact about the running program that a loader or
   -- the emitter establishes, and a parameter is the hole its proof slots into.
   (x86-64-reg-range : RB.RegRange o ι)
-  (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o ι)
-  -- …and the four `add` sites' range obligations, bundled: `add` computes
+  -- …and the emitted `add` sites' range obligations, bundled: `add` computes
   -- `W.⊕` unconditionally (D054 — wraparound is correct, defined semantics, so
   -- no no-overflow precondition may sit on the instruction), which moves the
-  -- range obligation to the consumer. All four are LAYOUT/counter facts, never
-  -- claims about user arithmetic.
+  -- range obligation to the consumer. All are LAYOUT facts, never claims about
+  -- user arithmetic.
   (x86-64-addr-no-wrap : RB.AddrNoWrap o ι)
   -- …and the LITERAL seam (phase D): an emitted immediate fits in a machine
   -- word. Not a linker fact like the rooms — D054 makes an elaborated literal
@@ -85,7 +84,6 @@ import Data.Maybe
 open import Data.Sum using (inj₂)
 open import Once.Internal.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit)
-open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 import Once.CCC.Target.X86-64.Semantics as X
@@ -103,7 +101,6 @@ open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
-open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
 open import Once.Target.Arch using (arch-numerics)
 open import Once.CCC.Target.X86-64.Layout using (InStack; stack-addr)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (X86Frame)
@@ -201,14 +198,13 @@ import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl refl x86-64-heap-room x86-64-stack-room x86-64-call-room
-  x86-64-reg-range x86-64-scratch-dec-guarded
-  (RB.AddrNoWrap.ret-no-wrap x86-64-addr-no-wrap) (RB.AddrNoWrap.count-no-wrap x86-64-addr-no-wrap)
+  x86-64-reg-range
+  (RB.AddrNoWrap.ret-no-wrap x86-64-addr-no-wrap)
   (RB.LitFits.tag-fits x86-64-lit-fits) (RB.LitFits.lit-fits x86-64-lit-fits) (RB.float-fits o ι)
   (RB.AddrNoWrap.lo-fits x86-64-addr-no-wrap)
   using (events-agree-start; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
-open import Once.CCC.Machine.FlatRegTagWF x86-64-frame-semantics using (FlatRegTag)
-open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Output; Scratch; Count; readReg; SV-Ptr; module LocState)
+open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Output; readReg; SV-Ptr; module LocState)
 open LocState using (regs)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
@@ -269,9 +265,6 @@ entry-corr ir = record
       -- filler, which encodes to 0 — the same match the other registers make.
       ; clos-eq  = refl
       ; out-eq  = refl
-      ; scratch-eq  = refl
-      -- emptyRegFile's %r14 ≡ 0 ≡ enc-sv (SV-Tag 0), the entry `Count` filler
-      ; count-eq  = refl
       ; halt-eq = refl
       ; sp-eq  = sym entry-frame-base   -- initState's %rsp IS the entry frame's base
       ; frontier-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
@@ -328,17 +321,7 @@ entry-wf B = record
     reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs FFOx.entry-s) r)
     reg-below Input1  = tt
     reg-below Output  = tt
-    reg-below Scratch = tt
-    reg-below Count   = tt
 
--- The ENTRY register-tag WF: `entry-regs` starts both counters at `SV-Tag 0`
--- (`FlatFromObs.entry-regs`), so the invariant that makes the counter
--- instructions correspond to their x86 lowerings holds at entry by
--- construction. Downstream it is the flat-machine theorem
--- (`FlatRegTagWF.flat-regtag-step`), applied once per step inside
--- `ccc-step-bs` alongside the store-WF one.
-entry-regtag : ∀ (B : ℕ) → FlatRegTag (mkFlat FFOx.entry-s (FFOx.entry-alloc B) 0)
-entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 
 ------------------------------------------------------------------------
 -- THE RUN CONTEXT AT ENTRY (2026-07-30, the vacuity fix).
@@ -367,8 +350,6 @@ entry-like B = refl , refl , refl , refl , refl
                → readReg (regs FFOx.entry-s) r ≡ SV-Ptr loc → ⊥
         no-ptr Input1  loc ()
         no-ptr Output  loc ()
-        no-ptr Scratch loc ()
-        no-ptr Count   loc ()
 
 -- D320 / plan 0.119 D5: THE BINARY'S TRACE. At every round budget the
 -- concrete run, followed as far as the flat run is (`FFOx.flat-ends`), shows
@@ -403,7 +384,7 @@ conc-tr p ir lk img =
         agree = events-agree-start (FFOx.flat-fuel ir-obs-correct ir lk k)
                   ev-x86-64 (block-env (C.blocks-x86-64 p))
                   (FFOx.image ir) FFOx.start-flat X.initState (ir-stack-budget ir) (entry-corr ir)
-                  (entry-wf 0) tt (entry-regtag 0) refl (p , img , refl) run₀
+                  (entry-wf 0) tt refl (p , img , refl) run₀
                   refl refl refl refl refl
 
 -- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
@@ -413,7 +394,7 @@ conc-tr p ir lk img =
 -- Plan 0.107 / D320: RUNNING THE FILE HAS THE TRACE OF THE PROGRAM IT WAS EMITTED
 -- FROM — a theorem, over the file. The file is `emit` of the module's program
 -- (`file-is-emit`); its code is the lowering of the image (one walk, and the
--- counter-threaded lowering agrees with the plain one on a nested-free image);
+-- counter-threaded lowering agrees with the plain one);
 -- its block table is the one `ArithTable` names; and the run starts at its
 -- entry, pc 0, which is the start.
 file-tr-x86-64 :
@@ -441,6 +422,5 @@ file-tr-x86-64 m F eq ir mi oq teq lk =
                    → program-image o′ (irProgram t ir′) ≡ C.image-of p
             img-at .C.entry-owner refl .(table (rewrite-program p)) refl = refl
     code-eq : proj₂ (compile-trace-cnt C.entry-owner 0 (C.image-of p)) ≡ compile-trace (FFOx.image ir′)
-    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p)
-                       (subst (λ t → NoNested t) img (no-nested-of-all (FFOx.image ir′) (image-frame-free tbl ir′)))))
+    code-eq = trans (cong proj₂ (compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p)))
                     (cong compile-trace (sym img))

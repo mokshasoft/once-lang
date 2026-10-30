@@ -60,7 +60,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃; cata-br-I₁; cata-br-I₂; fsize)
+  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-br-I₁; cata-br-I₂; fsize)
 open import Once.CCC.Codegen.LabelRange o using (label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
@@ -316,19 +316,10 @@ module Unique {FS : FrameSemantics} where
 
   cata-BL : CataStrategy → ℕ → ℕ
   cata-BL strat-const         l1 = l1
-  cata-BL strat-nat           l1 = suc (suc (suc (suc (suc (suc l1)))))
-  cata-BL strat-linear        l1 = suc (suc (suc (suc l1)))
   cata-BL (strat-branching F) l1 = l1 + 4 + lsize F + lsize F
 
   cata-BL-mono : ∀ (st : CataStrategy) (l1 : ℕ) → l1 ≤ cata-BL st l1
   cata-BL-mono strat-const         l1 = ≤-refl
-  cata-BL-mono strat-nat           l1 =
-    ≤-trans (n≤1+n l1) (≤-trans (n≤1+n (suc l1))
-      (≤-trans (n≤1+n (suc (suc l1))) (≤-trans (n≤1+n (suc (suc (suc l1))))
-        (≤-trans (n≤1+n (suc (suc (suc (suc l1))))) (n≤1+n (suc (suc (suc (suc (suc l1))))))))))
-  cata-BL-mono strat-linear        l1 =
-    ≤-trans (n≤1+n l1) (≤-trans (n≤1+n (suc l1))
-      (≤-trans (n≤1+n (suc (suc l1))) (n≤1+n (suc (suc (suc l1))))))
   cata-BL-mono (strat-branching F) l1 =
     ≤-trans (m≤m+n l1 4)
       (≤-trans (m≤m+n (l1 + 4) (lsize F)) (m≤m+n (l1 + 4 + lsize F) (lsize F)))
@@ -356,48 +347,6 @@ module Unique {FS : FrameSemantics} where
       P₁ = cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1
       P₂ = cata-call n1 (n1 + 1) (n1 + 3)
       R₂ = cata-body l1 (l1 + 1) bb at
-      R₁ = P₂ ++ R₂
-  cata-tl strat-nat bb n1 l1 at =
-    trans (tl-pre P₁ R₁ (nt-dec P₁ refl))
-      (trans (tl-pre P₂ R₂ (nt-dec P₂ refl))
-        (trans (tl-pre P₃ R₃ (nt-dec P₃ refl))
-          (trans (tl-pre P₄ R₄ (nt-dec P₄ refl))
-            (trans (tl-pre P₅ R₅ (nt-dec P₅ refl))
-              (trans (tl-pre P₆ R₆ (nt-dec P₆ refl))
-                     (cata-body-tl (s⁶ l1) (s⁷ l1) bb at))))))
-    where
-      P₁ = cata-call-setup (s² n1) (s³ n1) (s⁴ n1) (s⁵ n1) (s⁶ l1)
-      P₂ = cata-nat-I₁ n1 l1
-      P₃ = cata-call (s² n1) (s³ n1) (s⁵ n1)
-      P₄ = cata-nat-I₂ n1 l1
-      P₅ = cata-call (s² n1) (s³ n1) (s⁵ n1)
-      P₆ = cata-nat-I₃ l1
-      R₆ = cata-body (s⁶ l1) (s⁷ l1) bb at
-      R₅ = P₆ ++ R₆
-      R₄ = P₅ ++ R₅
-      R₃ = P₄ ++ R₄
-      R₂ = P₃ ++ R₃
-      R₁ = P₂ ++ R₂
-  cata-tl strat-linear bb n1 l1 at =
-    trans (tl-pre P₁ R₁ (nt-dec P₁ refl))
-      (trans (tl-pre P₂ R₂ (nt-dec P₂ refl))
-        (trans (tl-pre P₃ R₃ (nt-dec P₃ refl))
-          (trans (tl-pre P₄ R₄ (nt-dec P₄ refl))
-            (trans (tl-pre P₅ R₅ (nt-dec P₅ refl))
-              (trans (tl-pre P₆ R₆ (nt-dec P₆ refl))
-                     (cata-body-tl (s⁴ l1) (s⁵ l1) bb at))))))
-    where
-      P₁ = cata-call-setup (s⁶ n1) (s⁷ n1) (s⁸ n1) (s⁹ n1) (s⁴ l1)
-      P₂ = cata-lin-I₁ n1 l1
-      P₃ = cata-call (s⁶ n1) (s⁷ n1) (s⁹ n1)
-      P₄ = cata-lin-I₂ n1 l1
-      P₅ = cata-call (s⁶ n1) (s⁷ n1) (s⁹ n1)
-      P₆ = cata-lin-I₃ l1
-      R₆ = cata-body (s⁴ l1) (s⁵ l1) bb at
-      R₅ = P₆ ++ R₆
-      R₄ = P₅ ++ R₅
-      R₃ = P₄ ++ R₄
-      R₂ = P₃ ++ R₃
       R₁ = P₂ ++ R₂
   -- The branching prelude contains the compile-time functor walks, so its
   -- thunk-freeness is `br-I₁-nt`'s induction, not a decider.

@@ -69,6 +69,7 @@ open import Once.Denotation.Approx using (Ap; done; cut; approx; NotCut; budgetL
 open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤)
 open import Data.Nat using (z≤n)
 open import Data.Bool using (Bool)
+import Data.Maybe
 import Data.List.Properties
 open import Once.CCC.Machine.FlatLog using (LogFree)
 import Once.CCC.Machine.FlatLog
@@ -202,7 +203,7 @@ module Core {FS : FrameSemantics} where
   open MemOps {FS} using (readLoc) public
   open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start; chain-left; chain-ctrls; chain-ctrls-++; chain-ctrls-subst-start; ctrls-≤ʳ; ctrls-≤ˡ) public
-  open FlatEventTrace {FS} using (ChainNotNested; chain-log)
+  open FlatEventTrace {FS} using (chain-log)
 
   -- The control steps of two parts, inside a chain that runs them with
   -- other segments around (the pair's shapes).
@@ -230,18 +231,17 @@ module Core {FS : FrameSemantics} where
             (ctrls-4 preS cF midS (FlatSteps-++ cG tailS))
 
 
-  -- …and in general: a chain of emitted (non-nested) instructions grows the
-  -- log by its events, so a clause's `log` follows from its `traces-agree`.
-  log-of : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
+  -- …and in general: a chain grows the log by its events, so a clause's `log` follows from its `traces-agree`.
+  log-of : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′)
          → ∀ {es} → chain-events r ≡ es
          → SMCore.LocState.ev-log (floc fs′) ≡ SMCore.LocState.ev-log (floc fs) DL.++ es
-  log-of {fs = fs} r nn eq = trans (chain-log r nn) (cong (SMCore.LocState.ev-log (floc fs) DL.++_) eq)
+  log-of {fs = fs} r eq = trans (chain-log r) (cong (SMCore.LocState.ev-log (floc fs) DL.++_) eq)
 
   -- …in particular a SILENT chain (the emitter's own rows) leaves it alone.
-  log-silent : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′) → ChainNotNested r
+  log-silent : ∀ {prog k fs fs′} (r : FlatSteps prog k fs fs′)
              → chain-events r ≡ DL.[]
              → SMCore.LocState.ev-log (floc fs′) ≡ SMCore.LocState.ev-log (floc fs)
-  log-silent {fs = fs} r nn eq = trans (log-of r nn eq) (Data.List.Properties.++-identityʳ (SMCore.LocState.ev-log (floc fs)))
+  log-silent {fs = fs} r eq = trans (log-of r eq) (Data.List.Properties.++-identityʳ (SMCore.LocState.ev-log (floc fs)))
   open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; r-rigid; readable?; readable-base; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
@@ -465,9 +465,9 @@ module Core {FS : FrameSemantics} where
       -- log there — so `g ∘ f` can only hand `g` the run the denotation means
       -- (`run ι (h ++ es) (g v)`, `run-bind`) if `f`'s settle log IS the entry
       -- log followed by `f`'s calls. A field rather than a lemma over
-      -- `FlatSteps`: the retired nested instructions (`instr-case-on-tag`,
-      -- `instr-loop`) grow the log without an `event-of`, and a chain does not
-      -- know it was emitted.
+      -- `FlatSteps` (the retired nested instructions, which grew the log
+      -- without an `event-of`, were why; plan 0.125 deleted them, and
+      -- `log-of` above now holds of every chain).
       log        : SMCore.LocState.ev-log (floc settle) ≡ SMCore.LocState.ev-log s DL.++ eventsAt s (⟪ evalᴰ ir x ⟫ k)
       -- D179: the value comes from `evalᴰ`, not the pure `eval`. While it was
       -- `eval ir x` the value half refined a DIFFERENT semantics from the
@@ -751,9 +751,48 @@ module Core {FS : FrameSemantics} where
 
   -- All block-table premises in ONE slot, so adding one does not re-thread the
   -- fourteen discharge clauses that only pass it along.
+  -- plan 0.125 S3: THE PROGRAM'S CLOSURE-BODY MARKERS ARE UNIQUE. A fragment
+  -- that calls a body it emits INLINE (a `Cata` algebra, `cata-body`) knows where
+  -- its marker is (`SpanAt`), and this says the call scan finds that one and no
+  -- other (`thunk-found`). A fact about the whole image, like `FnRuns`, so it
+  -- travels here and no clause re-threads it; the image's counter labels are
+  -- distinct (`ImageUnique.image-cl`, `FnLayout.thunks-unique-of`).
+  ThunksUnique : AbstractTrace → Set
+  ThunksUnique prog =
+    ∀ (p q : ℕ) (lbl : LabelId) (b b′ : ℕ)
+    → fetch prog p ≡ just (SMCore.instr-ctrl (SMCore.c-thunk lbl b))
+    → fetch prog q ≡ just (SMCore.instr-ctrl (SMCore.c-thunk lbl b′))
+    → p ≡ q
+
+  -- the entry scan finds SOME entry wherever there is one…
+  ft-complete : ∀ (t : AbstractTrace) (e : SMCore.EntryId) (i p b : ℕ)
+              → fetch t p ≡ just (SMCore.instr-ctrl (SMCore.c-entry e b))
+              → ∃[ j ] (ft-go t e i ≡ just j)
+  ft-complete []       e i p       b ()
+  ft-complete (x ∷ xs) e i zero    b refl rewrite Once.CCC.Label.≡ᵇᴱ-refl e = i , refl
+  ft-complete (x ∷ xs) e i (suc p) b eq = go (entry-of? x)
+    where
+      go : ∀ (mo : Data.Maybe.Maybe SMCore.EntryId) → ∃[ j ] (ft-at mo xs e i ≡ just j)
+      go nothing  = ft-complete xs e (suc i) p b eq
+      go (just m) = gm (m Once.CCC.Label.≡ᵇᴱ e)
+        where
+          gm : ∀ (bb : Bool) → ∃[ j ] (ft-match bb xs e i ≡ just j)
+          gm true  = i , refl
+          gm false = ft-complete xs e (suc i) p b eq
+
+  -- …so, the markers being unique, it finds THE one.
+  thunk-found : ∀ {prog : AbstractTrace} → ThunksUnique prog
+              → ∀ (p : ℕ) (lbl : LabelId) (b : ℕ)
+              → fetch prog p ≡ just (SMCore.instr-ctrl (SMCore.c-thunk lbl b))
+              → find-thunk prog lbl ≡ just p
+  thunk-found {prog} tu p lbl b eq with ft-complete prog (SMCore.e-thunk lbl) 0 p b eq
+  ... | j , fj with ft-go-sound prog (SMCore.e-thunk lbl) 0 j fj
+  ...   | d , j≡d , b″ , fd = trans fj (cong just (trans j≡d (tu d p lbl b″ b fd eq)))
+
   record BlockRuns (prog : AbstractTrace) : Set where
     field
-      functions : FnRuns prog
+      functions     : FnRuns prog
+      thunks-unique : ThunksUnique prog
 
   -- D339: the old `next-slot alloc ≤ n`, from the invariant.
   ns≤ : ∀ {alloc : AllocState {FS}} (n : ℕ) → next-slot alloc ≡ 0 → next-slot alloc ≤ n
@@ -844,10 +883,11 @@ module Core {FS : FrameSemantics} where
   -- is what discharges the per-layer machine↔otrace correspondence's link (2)
   -- (`flat-events(alg) ≡ otrace(alg)`), the algebra's OWN trace correctness.
   -- `ir-obs-correct` supplies it by recursing on `alg ⊂ Cata wf alg`.
-  postulate
-    cata-correct : ∀ {F} (wf : WellFormedFI F) {E A} (alg : IR (E * ⟦ F ⟧TI A) A)
-                 → IRObsCorrectF alg
-                 → IRObsCorrectF (Cata wf alg)
+  -- plan 0.125 S3 (cata M1): NO LONGER A POSTULATE HERE. `cata-correct` is a
+  -- definition in `IRObsCorrect.Cata`, dispatching on `cata-strategy ⌈ F ⌉F`:
+  -- `strat-const` is proved (`IRObsCorrect.CataConst`), and the three loop
+  -- strategies are one named postulate each there. It cannot live in this
+  -- module: its proof uses clause modules that import this one.
 
 
   -- ════════════════════════════════════════════════════════════════════

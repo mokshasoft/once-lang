@@ -1,0 +1,27 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- 2026-10-30 regression (plan 0.125 cata): functor shape Mu (K Unit + (K Unit + Id)).
+-- A nested sum around the recursive arm: 10 + 1 = 11 (was a segfault).
+-- The deleted shape-specialised cata codegens (strat-nat / strat-linear)
+-- miscompiled it; every recursive functor now takes the generic walk.
+--
+-- Expected: exit 11
+
+import I.Linux.Syscalls as S
+
+zeroI : Unit -> Int
+zeroI _ = 0
+oneI : Unit -> Int
+oneI _ = 10
+incI : Int -> Int
+incI n = n + 1
+
+f : Mu (K Unit + (K Unit + Id)) -> Int
+f = cata (case zeroI (case oneI incI))
+
+v : Mu (K Unit + (K Unit + Id))
+v = In (inr (inr (In (inr (inl unit)))))
+
+main : Act Unit Void
+main = exit@S (f v)

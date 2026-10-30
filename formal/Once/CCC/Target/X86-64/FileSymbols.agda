@@ -48,26 +48,16 @@ defs-step (instr-load-const fits-float v) r = refl
 defs-step (instr-load-code-addr n) r = refl
 defs-step instr-save-closure-reg r = refl
 defs-step (instr-load-tag-lit k) r = refl
-defs-step (instr-case-on-tag f g) r = refl
 defs-step (instr-alloc-heap k) r = refl
-defs-step (instr-loop b) r = refl
-defs-step (instr-reg-op scratch-one) r = refl
-defs-step (instr-reg-op scratch-zero) r = refl
-defs-step (instr-reg-op scratch-dec) r = refl
-defs-step (instr-reg-op scratch-load-count) r = refl
-defs-step (instr-reg-op count-zero) r = refl
-defs-step (instr-reg-op count-inc) r = refl
 defs-step (instr-reg-op out-nz) r = refl
 defs-step (instr-ctrl (c-label n)) r = refl
 defs-step (instr-ctrl (c-jmp n)) r = refl
-defs-step (instr-ctrl (c-branch-scratch-zero n)) r = refl
 defs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 defs-step (instr-ctrl (c-entry e b)) r = refl
 defs-step (instr-ctrl (c-ret b)) r = refl
 defs-step (instr-ctrl (c-call-fn f)) r = refl
 defs-step (instr-ctrl (c-start b)) r = refl
 defs-step (instr-ctrl c-leave) r = refl
-defs-step (lea-indexed k) r = refl
 
 refs-step : ∀ (i : AbstractInstr) (r : Program)
           → refs (compile-abstract i ++ r) ≡ instr-refs i ++ refs r
@@ -97,26 +87,16 @@ refs-step (instr-load-const fits-float v) r = refl
 refs-step (instr-load-code-addr n) r = refl
 refs-step instr-save-closure-reg r = refl
 refs-step (instr-load-tag-lit k) r = refl
-refs-step (instr-case-on-tag f g) r = refl
 refs-step (instr-alloc-heap k) r = refl
-refs-step (instr-loop b) r = refl
-refs-step (instr-reg-op scratch-one) r = refl
-refs-step (instr-reg-op scratch-zero) r = refl
-refs-step (instr-reg-op scratch-dec) r = refl
-refs-step (instr-reg-op scratch-load-count) r = refl
-refs-step (instr-reg-op count-zero) r = refl
-refs-step (instr-reg-op count-inc) r = refl
 refs-step (instr-reg-op out-nz) r = refl
 refs-step (instr-ctrl (c-label n)) r = refl
 refs-step (instr-ctrl (c-jmp n)) r = refl
-refs-step (instr-ctrl (c-branch-scratch-zero n)) r = refl
 refs-step (instr-ctrl (c-branch-tag-zero n)) r = refl
 refs-step (instr-ctrl (c-entry e b)) r = refl
 refs-step (instr-ctrl (c-ret b)) r = refl
 refs-step (instr-ctrl (c-call-fn f)) r = refl
 refs-step (instr-ctrl (c-start b)) r = refl
 refs-step (instr-ctrl c-leave) r = refl
-refs-step (lea-indexed k) r = refl
 
 defs-lower : ∀ (t : AbstractTrace) → label-defs (compile-trace t) ≡ adefs t
 defs-lower []       = refl

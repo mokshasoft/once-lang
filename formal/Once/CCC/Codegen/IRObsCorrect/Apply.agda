@@ -248,7 +248,7 @@ module ApplyC {FS : FrameSemantics} where
               -- seventeen setup rows make no call — so the two RUNS agree.
               callFs = flat-exec-instr instr-call-closure prog ASP.a16
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
-              h-eq = trans (log-of run17 _ refl) (++-identityʳ _)
+              h-eq = trans (log-of run17 refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ runAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq (cong (⟪_⟫ k) denot-eq)

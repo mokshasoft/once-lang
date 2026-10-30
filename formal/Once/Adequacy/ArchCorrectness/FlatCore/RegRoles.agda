@@ -6,8 +6,8 @@
 --
 -- THE ROLE MAP (Plan 0.65 G1c, 2026-08-11).
 --
--- The abstract machine has a fixed set of registers — Output, Input1,
--- Scratch, Count — plus three the flat machine owns: the stack pointer, the
+-- The abstract machine has a fixed set of registers — Output, Input1 (plan
+-- 0.125 retired Scratch and Count) — plus three the flat machine owns: the stack pointer, the
 -- closure pointer and the heap frontier. `FlatCorrespondence` named x86-64's
 -- physical registers for these **799 times**, and every one of those mentions
 -- is a ROLE, not an x86 fact. This record is that observation, made a type.
@@ -34,7 +34,8 @@
 -- the live frame anchor, so reassigning it is a SIGSEGV, not a fix. The fix was
 -- to delete the role: `Input2` had no producer on any arch, so it is RETIRED
 -- (see `SMCore.AbstractReg`), and x86-32's seven realised roles fit its seven
--- available registers exactly.
+-- available registers exactly. (Plan 0.125 retired `Scratch` and `Count` too,
+-- leaving five roles.)
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RegRoles where
@@ -48,8 +49,6 @@ data Role : Set where
   -- the abstract machine's registers
   role-out     : Role
   role-in1     : Role
-  role-scratch : Role
-  role-count   : Role   -- the cata tally (plan 0.54 D item 4)
 
 record RegRoles (Reg : Set) : Set where
   field
@@ -60,5 +59,3 @@ record RegRoles (Reg : Set) : Set where
   heap-reg    = reg-of role-heap
   out-reg     = reg-of role-out
   in1-reg     = reg-of role-in1
-  scratch-reg = reg-of role-scratch
-  count-reg   = reg-of role-count

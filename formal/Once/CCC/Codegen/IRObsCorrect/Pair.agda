@@ -199,7 +199,7 @@ module PairAsm {FS : FrameSemantics} where
 
               field-log : SMCore.LocState.ev-log (floc PCG.SETTLE) ≡ SMCore.LocState.ev-log s ++ eventsAt s E
               field-log =
-                trans (log-silent PCG.tail-chain _ refl)
+                trans (log-silent PCG.tail-chain refl)
                 (trans log-fg
                 (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair))))
 

@@ -42,7 +42,7 @@ open R.State using (memory) renaming (regs to rregs; halted to rhalted)
 open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
-  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
+  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
 open RegRoles riscv64-roles using (reg-of)
 
 rreg : R.State → Reg → ℕ
@@ -63,12 +63,12 @@ open SetsRole using (at-role; off-role)
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
 -- THE LINK REGISTER IS NOT A ROLE (plan 0.65 G2, 2026-08-16), and this is the
--- honest price of that. `SetsRole.off-role` speaks only about the eight ROLE
+-- honest price of that. `SetsRole.off-role` speaks only about the five ROLE
 -- registers, so a step that writes one of them says nothing about `ra` — and
 -- `ra` is where riscv64's `link-claim` reads. Mapping `role-link` onto an
 -- existing role to get this free is NOT available: x86-64 has no link register,
 -- and pointing `role-link` at `rsp` there makes `off-role`'s own disjointness
--- clauses false. So: eight clauses, each `refl`, once.
+-- clauses false. So: five clauses, each `refl`, once.
 ra-off-role : ∀ (s : R.State) (ρ : Role) (v : Word)
             → R.readReg (rwriteReg (rregs s) (reg-of ρ) v) ra ≡ R.readReg (rregs s) ra
 ra-off-role s role-sp      v = refl
@@ -76,8 +76,6 @@ ra-off-role s role-clos    v = refl
 ra-off-role s role-heap    v = refl
 ra-off-role s role-out     v = refl
 ra-off-role s role-in1     v = refl
-ra-off-role s role-scratch v = refl
-ra-off-role s role-count   v = refl
 
 -- …and the MIRROR, which riscv64's `ret` needs: writing the LINK register
 -- leaves every role register alone. Eight clauses again, and again each `refl`.
@@ -88,8 +86,6 @@ role-off-ra s role-clos    w = refl
 role-off-ra s role-heap    w = refl
 role-off-ra s role-out     w = refl
 role-off-ra s role-in1     w = refl
-role-off-ra s role-scratch w = refl
-role-off-ra s role-count   w = refl
 
 -- …and the same for `t1`, the call's CODE-POINTER scratch. `AbstractToRiscV`
 -- picks `t1` and not `t0` precisely because `t0` IS a role (Input1) that the
@@ -101,8 +97,6 @@ role-off-t1 s role-clos    w = refl
 role-off-t1 s role-heap    w = refl
 role-off-t1 s role-out     w = refl
 role-off-t1 s role-in1     w = refl
-role-off-t1 s role-scratch w = refl
-role-off-t1 s role-count   w = refl
 
 sets-role-riscv64 : ∀ (s : R.State) (ρ : Role) (v : Word) (p : ℕ)
   → SetsRole s (mkstate (rwriteReg (rregs s) (reg-of ρ) v) (memory s) p (rhalted s)) ρ v
@@ -115,8 +109,6 @@ sets-role-riscv64 s ρ v p = record
     at role-heap = refl
     at role-out = refl
     at role-in1 = refl
-    at role-scratch = refl
-    at role-count = refl
 
     off : ∀ ρ₀ ρ' → ¬ (ρ' ≡ ρ₀)
         → R.readReg (rwriteReg (rregs s) (reg-of ρ₀) v) (reg-of ρ')
@@ -126,50 +118,26 @@ sets-role-riscv64 s ρ v p = record
     off role-sp      role-heap    _  = refl
     off role-sp      role-out     _  = refl
     off role-sp      role-in1     _  = refl
-    off role-sp      role-scratch _  = refl
-    off role-sp      role-count   _  = refl
     off role-clos    role-sp      _  = refl
     off role-clos    role-clos    ne = ⊥-elim (ne refl)
     off role-clos    role-heap    _  = refl
     off role-clos    role-out     _  = refl
     off role-clos    role-in1     _  = refl
-    off role-clos    role-scratch _  = refl
-    off role-clos    role-count   _  = refl
     off role-heap    role-sp      _  = refl
     off role-heap    role-clos    _  = refl
     off role-heap    role-heap    ne = ⊥-elim (ne refl)
     off role-heap    role-out     _  = refl
     off role-heap    role-in1     _  = refl
-    off role-heap    role-scratch _  = refl
-    off role-heap    role-count   _  = refl
     off role-out     role-sp      _  = refl
     off role-out     role-clos    _  = refl
     off role-out     role-heap    _  = refl
     off role-out     role-out     ne = ⊥-elim (ne refl)
     off role-out     role-in1     _  = refl
-    off role-out     role-scratch _  = refl
-    off role-out     role-count   _  = refl
     off role-in1     role-sp      _  = refl
     off role-in1     role-clos    _  = refl
     off role-in1     role-heap    _  = refl
     off role-in1     role-out     _  = refl
     off role-in1     role-in1     ne = ⊥-elim (ne refl)
-    off role-in1     role-scratch _  = refl
-    off role-in1     role-count   _  = refl
-    off role-scratch role-sp      _  = refl
-    off role-scratch role-clos    _  = refl
-    off role-scratch role-heap    _  = refl
-    off role-scratch role-out     _  = refl
-    off role-scratch role-in1     _  = refl
-    off role-scratch role-scratch ne = ⊥-elim (ne refl)
-    off role-scratch role-count   _  = refl
-    off role-count   role-sp      _  = refl
-    off role-count   role-clos    _  = refl
-    off role-count   role-heap    _  = refl
-    off role-count   role-out     _  = refl
-    off role-count   role-in1     _  = refl
-    off role-count   role-scratch _  = refl
-    off role-count   role-count   ne = ⊥-elim (ne refl)
 
 sets-mem-riscv64 : ∀ (s : R.State) (a : ℕ) (v : Word) (p : ℕ)
   → SetsMem s (mkstate (rregs s) (writeMem (memory s) a v) p (rhalted s)) a v

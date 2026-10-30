@@ -121,7 +121,7 @@ open CFC using (HeapView; HDom; slots)
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
 -- the same application of `RunTraceCore.RunTrace`.
 ------------------------------------------------------------------------
-open RegRoles roles using (in1-reg; sp-reg; scratch-reg; count-reg)
+open RegRoles roles using (in1-reg; sp-reg)
 import Once.Arith.Backend.RunTraceCore as Core
 module RT = Core.RunTrace State (List Instr) Instr Payload
                           xhalted xpc mfetch mexecInstr matchCall ret-call dispatchArith
@@ -138,14 +138,14 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; cl-step; sv-below)
-open import Once.CCC.Machine.FlatRegTagWF FS using (FlatRegTag; flat-regtag-step)
 
 ------------------------------------------------------------------------
 -- THE FLAT-MACHINE INVARIANT carried through the event-trace induction.
 --
--- Two arch-neutral state invariants of the abstract machine, bundled so the
--- ~19 mutually recursive members carry ONE hypothesis rather than two, plus
--- the run context that makes the residuals TRUE rather than merely unproved.
+-- The arch-neutral store invariant of the abstract machine (plan 0.125
+-- retired the second, the counter registers' tag invariant, with the
+-- registers), bundled so the ~19 mutually recursive members carry ONE
+-- hypothesis, plus the run context that makes the residuals TRUE rather than merely unproved.
 --
 -- `ev`/`env` are pinned because the SigOp contracts speak about them:
 -- quantified over an arbitrary `env`, `arith-sigop-contract` asserts
@@ -161,7 +161,6 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     -- saying separately — load-bearing because the closure register's encoding
     -- must survive an allocation extending the heap view.
     inv-closure : sv-below (next-heap-ref (falloc fs)) (fclosure fs)
-    inv-regtag  : FlatRegTag fs
     inv-ev      : ev ≡ ev-arch
     inv-env     : ArithTable prog env
     inv-run     : RunAt prog fs
@@ -182,7 +181,6 @@ flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : Fl
 flat-inv-step i prog fs ftq h lf inv = record
   { inv-wf      = flat-wf-step i prog fs (inv-wf inv)
   ; inv-closure = cl-step i prog fs (inv-wf inv) (inv-closure inv)
-  ; inv-regtag  = flat-regtag-step i prog fs (inv-regtag inv)
   ; inv-ev      = inv-ev inv
   ; inv-env     = inv-env inv
   ; inv-run     = mkRunAt (run-tbl (inv-run inv)) (run-ir (inv-run inv)) (run-emit (inv-run inv))
@@ -414,20 +412,13 @@ record StuckSteps : Set₁ where
       → HDom hv (sucHL hl)
       → heapMem (floc fs) (sucHL hl) ≡ nothing
       → StuckAt ev env (compile-trace prog) s
-    -- …and the three control routes whose label is MISSING. Only the TAKEN
+    -- …and the two control routes whose label is MISSING. Only the TAKEN
     -- ones are here: a not-taken branch never consults the label and is an
-    -- ordinary block step (`bs-c-branch-nz`, `bs-c-branch-tag-nz`).
+    -- ordinary block step (`bs-c-branch-tag-nz`).
     st-c-jmp :
       ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m))
-      → FlatMachine.find-label {FS} prog m ≡ nothing
-      → StuckAt ev env (compile-trace prog) s
-    st-c-branch-scratch-zero :
-      ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
-      → readReg (regs (floc fs)) Scratch ≡ SV-Tag 0
       → FlatMachine.find-label {FS} prog m ≡ nothing
       → StuckAt ev env (compile-trace prog) s
     st-c-branch-tag-zero :
@@ -473,7 +464,7 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- dispatch's mutual members each carry the telescope, and the telescope is
 -- what the typechecker's memory is spent on.
 --
--- The eleven bounds are D087-class PARAMETERS, not postulates — honest runtime
+-- The nine bounds are D087-class PARAMETERS, not postulates — honest runtime
 -- facts (this program does not exhaust memory; the machine is finite) that the
 -- apex constrains. The two SigOp contracts are the per-(SigOp × target)
 -- trusted base (D061); they are postulates at x86-64 today and passing them as
@@ -500,13 +491,9 @@ record Supply : Set₁ where
              → CompiledCorr hv prog fs s
              → fetch prog (fpc fs) ≡ just c → CallI c
              → CFC.hfront hv + slot-size ≤ rreg s sp-reg
-    -- THE MACHINE IS FINITE, and the four `add` sites do not wrap (plan 0.70).
+    -- THE MACHINE IS FINITE, and the emitted `add` sites do not wrap (plan 0.70).
     reg-range : ∀ {hv : HeapView} prog fs s r → RunAt prog fs
              → CompiledCorr hv prog fs s → rreg s r < modulus
-    scratch-dec-guarded : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-                       → CompiledCorr hv prog fs s
-                       → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
-                       → 1 ≤ rreg s scratch-reg
     ret-no-wrap : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
                → CompiledCorr hv prog fs s
                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
@@ -518,10 +505,6 @@ record Supply : Set₁ where
                -- x86-64-shaped premise was short by a slot. Same D104 shape: a
                -- field's premise copied from the arch that needs the least.
                → rreg s sp-reg + slots (suc b) < modulus
-    count-no-wrap : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-                 → CompiledCorr hv prog fs s
-                 → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
-                 → rreg s count-reg + 1 < modulus
     -- THE LITERAL SEAM: an emitted immediate fits in a machine word.
     tag-fits : ∀ {hv : HeapView} prog fs s n → RunAt prog fs
             → CompiledCorr hv prog fs s

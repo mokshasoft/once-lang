@@ -576,7 +576,7 @@ module Simp {FS : FrameSemantics} where
     --      `BlockLayout`. Zero postulates.
     --
     --      NOTE what it is NOT: `EmittedWF.labels-unique`. That is about
-    --      `labels-def`, which RECURSES into `instr-case-on-tag`/`instr-loop`;
+    --      `labels-def`, which RECURSED into the (since retired) nested instructions;
     --      `fl-go` scans with `label-of?`, which does not. Proving
     --      `labels-unique` would have been a large induction aimed slightly
     --      off target. What the scan needs is CONTAINMENT, and

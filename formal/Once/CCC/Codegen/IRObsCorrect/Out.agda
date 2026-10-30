@@ -211,7 +211,7 @@ module OutC {FS : FrameSemantics} where
               -- rows and the call make no call of their own.
               callFs = flat-exec-instr instr-call-closure prog OSP.b3
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
-              h-eq = trans (log-of run4 _ refl) (++-identityʳ _)
+              h-eq = trans (log-of run4 refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (⟪ evalᴰ (Out wf) ν-val ⟫ k) ≡ runAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k)
               RE = runAt-≡ {st = floc callFs} {st′ = s} {m = ⟪ evalᴰ (Out wf) ν-val ⟫ k} {m′ = ⟪ evalᴰ (Out wf) ν-val ⟫ k} h-eq refl

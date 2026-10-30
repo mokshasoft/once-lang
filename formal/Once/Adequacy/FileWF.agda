@@ -10,8 +10,8 @@
 -- is an interpretation's, and the entry point is an instruction of it.
 --
 -- A THEOREM per arch, over the image (plan 0.107 §6): the file's code is the
--- lowering of the program image (one walk; nested-free, so the counter-threaded
--- lowering is the plain one), the lowering is symbol-faithful
+-- lowering of the program image (one walk; the counter-threaded lowering is
+-- the plain one), the lowering is symbol-faithful
 -- (`Target.<arch>.FileSymbols`, layer 1), so the file's definitions and
 -- references ARE the image's — and those are `Adequacy.ImageWF`'s (layers 2–3).
 -- `_start` is instruction 0, and the image's first instruction (`c-start`)
@@ -22,7 +22,7 @@ module Once.Adequacy.FileWF where
 
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.All using (All) renaming (map to All-map)
+open import Data.List.Relation.Unary.All using (All)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Once.Target.AsmSymbol using (AsmSym)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -46,11 +46,7 @@ open import Once.Adequacy.ImageUnique using (prog-unique; lib-unique)
 open import Once.Adequacy.ImageValid using (prog-defs-valid; lib-defs-valid; externs-valid; prog-externs-valid)
 open import Once.Adequacy.ImageResolved using (prog-resolved; lib-resolved)
 open import Once.CCC.Codegen.ImageSymbols using (arefs)
-open import Once.CCC.Machine.NoNested using (NoNested; no-nested-of-all)
-open import Once.CCC.Machine.FrameFree using (emittable-image)
-open import Once.CCC.Codegen.ProgramImageFacts C.entry-owner using (image-frame-free; fns-frame-free)
 open import Once.Denotation.Program using (irProgram)
-open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 
 private
   -- the file's block table keeps the symbols it was built from
@@ -58,13 +54,6 @@ private
           → map proj₁ (map (λ sb → proj₁ sb , f sb) xs) ≡ map proj₁ xs
   map-fst f []       = refl
   map-fst f (x ∷ xs) = cong (proj₁ x ∷_) (map-fst f xs)
-
-  -- the program image and the library image are nested-free
-  prog-nn : ∀ (m : Module) ir → NoNested (C.image-of (irProgram (C.moduleTable m) ir))
-  prog-nn m ir = no-nested-of-all _ (image-frame-free (C.rewrite-table (C.moduleTable m)) (proj₁ (rewrite-ir ir)))
-
-  lib-nn : ∀ (m : Module) → NoNested (C.lib-image (C.moduleTable m))
-  lib-nn m = no-nested-of-all _ (All-map (λ {i} → emittable-image i) (fns-frame-free 0 (C.rewrite-table (C.moduleTable m))))
 
   -- an `AsmWF`-shaped conclusion, transported along the two equations
   resolved-at : ∀ {ds ds′ ext rs rs′ : List String} → ds ≡ ds′ → rs ≡ rs′
@@ -92,7 +81,7 @@ module X8664W where
       p = irProgram (C.moduleTable m) ir
       G = C.emitProgram x86-64 p
       code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p) (prog-nn m ir))
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
@@ -111,7 +100,7 @@ module X8664W where
     where
       G = C.emitLibrary x86-64 (C.moduleTable m)
       code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)) (lib-nn m))
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)))
       defs≡ : F.defs G ≡ lib-defs m
       defs≡ = cong (F.heap-sym ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image (C.moduleTable m))))
@@ -148,7 +137,7 @@ module X8632W where
       p = irProgram (C.moduleTable m) ir
       G = C.emitProgram x86-32 p
       code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p) (prog-nn m ir))
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
@@ -167,7 +156,7 @@ module X8632W where
     where
       G = C.emitLibrary x86-32 (C.moduleTable m)
       code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)) (lib-nn m))
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)))
       defs≡ : F.defs G ≡ lib-defs m
       defs≡ = cong (F.heap-sym ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image (C.moduleTable m))))
@@ -204,7 +193,7 @@ module RiscV64W where
       p = irProgram (C.moduleTable m) ir
       G = C.emitProgram riscv64 p
       code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p) (prog-nn m ir))
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
       defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
@@ -223,7 +212,7 @@ module RiscV64W where
     where
       G = C.emitLibrary riscv64 (C.moduleTable m)
       code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image (C.moduleTable m))
-      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)) (lib-nn m))
+      code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image (C.moduleTable m)))
       defs≡ : F.defs G ≡ lib-defs m
       defs≡ = cong (F.heap-sym ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image (C.moduleTable m))))

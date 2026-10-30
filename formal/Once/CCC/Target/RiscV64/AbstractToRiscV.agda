@@ -48,7 +48,7 @@ open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
-  using (zero; ra; sp; fp; a0; s1; s2; s3; s4; t0; t1; ld; sd; add; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; unimp; label; once; callee; e-fn; Program; slot-size; slots)
+  using (zero; ra; sp; fp; a0; s1; s2; t0; t1; ld; sd; add; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; label; once; callee; e-fn; Program; slot-size; slots)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
@@ -56,9 +56,8 @@ open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl; scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc; out-nz; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
-open import Once.CCC.Machine.NoNested
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -141,24 +140,6 @@ compile-abstract (lea-slot n) =
 -- RV64: ld t0, slot*8(sp)  (Plan 0.53 frameless)
 compile-abstract (restore-input n) =
   ld t0 sp (slot-to-disp n) ∷ []
-
--- lea-indexed: Input1 := &(base + 8*idx). base = SV-Ptr at slot n, idx =
--- Scratch (s3). Plan 0.53: mirror x86-64 — no shift instr in this model, so
--- synthesize 8*idx by three doublings in t1, then add to the base pointer.
--- Result lands in t0 (Input1). RV64:
---   ld  t0, n*8(sp)   ; t0 := base ptr
---   mv  t1, s3        ; t1 := idx (Scratch)
---   add t1, t1, t1    ; ×2
---   add t1, t1, t1    ; ×4
---   add t1, t1, t1    ; ×8  → t1 = 8*idx
---   add t0, t0, t1    ; t0 := base + 8*idx
-compile-abstract (lea-indexed n) =
-  ld t0 sp (slot-to-disp n) ∷
-  mv t1 s3 ∷
-  add t1 t1 t1 ∷
-  add t1 t1 t1 ∷
-  add t1 t1 t1 ∷
-  add t0 t0 t1 ∷ []
 
 -- instr-alloc-stack: allocate N slots on stack
 -- RV64: addi sp, sp, -N*8
@@ -293,27 +274,14 @@ compile-abstract instr-save-closure-reg =
 -- Plan 0.53: tag literal — write the tag n to Output (a0). Mirror x86-64's
 -- `mov rax, imm n`.
 compile-abstract (instr-load-tag-lit n) = li a0 (+ n) ∷ []
--- case-on-tag / loop are STRUCTURED nodes carrying sub-traces; they are
--- expanded (with fresh labels + branches) by `compile-trace-cnt` below, not
--- here. This single-instruction view is a sentinel (never reached: the file
--- is the lowering of the image through compile-trace-cnt).
-compile-abstract (instr-case-on-tag _ _) = unimp ∷ []
-compile-abstract (instr-loop _) = unimp ∷ []
--- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = s3, Count = s4
--- (callee-saved, otherwise unused by this codegen).
-compile-abstract (instr-reg-op scratch-one)        = li s3 (+ 1) ∷ []
+-- Plan 0.53 (mirror x86-64 M5): register ops (plan 0.125: `out-nz` is the
+-- one op left).
 -- plan 0.108: `out-nz` (Output := Output ≠ 0) is `snez a0, a0`.
 compile-abstract (instr-reg-op out-nz)             = sltu a0 zero a0 ∷ []
-compile-abstract (instr-reg-op scratch-zero)       = li s3 (+ 0) ∷ []
-compile-abstract (instr-reg-op scratch-dec)        = addi s3 s3 (Data.Integer.-_ (+ 1)) ∷ []
-  where import Data.Integer
-compile-abstract (instr-reg-op scratch-load-count) = mv s3 s4 ∷ []
-compile-abstract (instr-reg-op count-zero)        = li s4 (+ 0) ∷ []
-compile-abstract (instr-reg-op count-inc)         = addi s4 s4 (+ 1) ∷ []
 -- Plan 0.53 (mirror x86-64 M3/0.34): flat control lowers 1-to-1. Labels/jumps
 -- use the SHARED provenance-typed label space (Plan 0.63, D082 — `once` for a
 -- compiler jump); the conditional branches are single compare-and-branch (no
--- flags on RISC-V). Input1 pointer = t0; Scratch = s3.
+-- flags on RISC-V). Input1 pointer = t0.
 compile-abstract (instr-ctrl (c-label n))               = label (once n) ∷ []
 compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
 -- Plan 0.63: closure-body entry / return, and the provenance that makes the
@@ -353,20 +321,12 @@ compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷
 compile-abstract (instr-ctrl (c-call-fn f))             =
   addi sp sp (Data.Integer.-_ (+ slot-size)) ∷ jal ra (callee (e-fn f)) ∷ []
   where import Data.Integer
-compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero (once n) ∷ []
 compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero (once n) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V
 ------------------------------------------------------------------------
 
--- Plan 0.53: label-threading trace compiler (mirror x86-64's
--- compile-trace-cnt). Structured `case-on-tag` / `instr-loop` nodes carry
--- sub-traces that must be recursively compiled and bracketed by fresh labels
--- + branches; the plain `compile-trace` foldr would DROP the sub-traces (it
--- maps compile-abstract, which sees only the sentinel). Each case/loop
--- consumes 2 fresh labels; the counter threads through so nested structures
--- get unique labels. Input1 pointer = t0 (tag at 0(t0)); loop counter = s3.
 -- Plan 0.65 (G1 validation): the plain block-wise lowering, which riscv64 did
 -- not have. `FlatCore.FlatComposition` is stated over it — every abstract
 -- instruction lowers to a contiguous block and the machine pc is the sum of the
@@ -376,36 +336,11 @@ compile-trace : AbstractTrace → Program
 compile-trace [] = []
 compile-trace (i ∷ is) = compile-abstract i ++ compile-trace is
 
+-- Plan 0.53: the trace compiler the emitter calls (mirror x86-64's
+-- compile-trace-cnt). Its label counter served the nested case-on-tag/loop
+-- expansions, retired by plan 0.125; it now passes through untouched.
 compile-trace-cnt : CanonicalName → ℕ → AbstractTrace → ℕ × Program
 compile-trace-cnt o n [] = n , []
-compile-trace-cnt o n (instr-loop body ∷ rest) =
-  let l-top = n
-      l-end = suc n
-      (n1 , pbody) = compile-trace-cnt o (suc (suc n)) body
-      (n2 , pr)    = compile-trace-cnt o n1 rest
-      -- Scratch (s3) is the loop counter; break when it hits 0.
-      loop = label (once (ℓ o l-top)) ∷
-             beq s3 zero (once (ℓ o l-end)) ∷
-             pbody ++
-             (j (once (ℓ o l-top)) ∷
-              label (once (ℓ o l-end)) ∷ [])
-  in n2 , loop ++ pr
-compile-trace-cnt o n (instr-case-on-tag f g ∷ rest) =
-  let lbl-inl = n
-      lbl-end = suc n
-      (n1 , pf) = compile-trace-cnt o (suc (suc n)) f
-      (n2 , pg) = compile-trace-cnt o n1 g
-      (n3 , pr) = compile-trace-cnt o n2 rest
-      -- tag at 0(t0); tag ≡ 0 ⇒ inl (f), else inr (g). Fall-through is g.
-      dispatch  = ld t1 t0 0 ∷
-                  beq t1 zero (once (ℓ o lbl-inl)) ∷
-                  pg ++
-                  (j (once (ℓ o lbl-end)) ∷
-                   label (once (ℓ o lbl-inl)) ∷ []) ++
-                  pf ++
-                  (label (once (ℓ o lbl-end)) ∷ [])
-  in n3 , dispatch ++ pr
-{-# CATCHALL #-}
 compile-trace-cnt o n (i ∷ rest) =
   let (n1 , pr) = compile-trace-cnt o n rest
   in n1 , compile-abstract i ++ pr
@@ -420,100 +355,12 @@ compile-trace-cnt o n (i ∷ rest) =
 -- riscv64 correspondence would be about a program the compiler does not emit,
 -- which is the same class of gap as the ones this plan keeps finding.
 --
--- The `NoNested` predicate itself is SHARED (`Once.CCC.Machine.NoNested`) — it
--- mentions no target at all. What is per-arch is only this agreement, which
--- names this module's own two lowerings, and it is clause-for-clause x86-64's.
+-- (Stated on `NoNested` traces until plan 0.125 retired the two nested
+-- instructions the lowerings disagreed on; it now holds outright.)
 ------------------------------------------------------------------------
-compile-trace-cnt-agrees : ∀ (o : CanonicalName) (n : ℕ) (t : AbstractTrace) → NoNested t
+compile-trace-cnt-agrees : ∀ (o : CanonicalName) (n : ℕ) (t : AbstractTrace)
                          → compile-trace-cnt o n t ≡ (n , compile-trace t)
-compile-trace-cnt-agrees o n [] _ = refl
-compile-trace-cnt-agrees o n (mov-to-output ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-to-output ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (mov-to-input ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-to-input ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (load-indirect ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract load-indirect ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (load-indirect-suc ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract load-indirect-suc ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((load-from-slot k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (load-from-slot k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((store-at-slot k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (store-at-slot k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (store-indirect ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract store-indirect ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (store-indirect-suc ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract store-indirect-suc ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((lea-slot k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (lea-slot k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((restore-input k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (restore-input k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((lea-indexed k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (lea-indexed k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-alloc-stack k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-alloc-stack k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-dealloc-stack k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-dealloc-stack k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-reclaim-to k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-reclaim-to k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-push-frame k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-push-frame k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (instr-pop-frame ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract instr-pop-frame ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (instr-call-closure ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract instr-call-closure ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((worklist-init k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (worklist-init k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((worklist-push k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (worklist-push k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((worklist-pop k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (worklist-pop k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((worklist-check k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (worklist-check k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-sigop si) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-sigop si) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-load-const fit v) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-load-const fit v) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-load-code-addr k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-load-code-addr k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (instr-save-closure-reg ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract instr-save-closure-reg ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-load-tag-lit k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-load-tag-lit k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-alloc-heap k) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-alloc-heap k) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-reg-op op) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-reg-op op) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n ((instr-ctrl c) ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract (instr-ctrl c) ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
--- the two the emitters disagree on are excluded by `NoNested`
-compile-trace-cnt-agrees o n (instr-case-on-tag f g ∷ rest) (() , _)
-compile-trace-cnt-agrees o n (instr-loop body ∷ rest)       (() , _)
+compile-trace-cnt-agrees o n [] = refl
+compile-trace-cnt-agrees o n (i ∷ rest) =
+  cong (λ p → proj₁ p , compile-abstract i ++ proj₂ p)
+       (compile-trace-cnt-agrees o n rest)

@@ -37,7 +37,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.Syntax using (sp; s3; s4; slots) renaming (Reg to Reg')
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
@@ -115,13 +115,6 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
              → RCr.RunAt o FS slot-size word-eq prog fs
              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → RS.readReg (RS.State.regs s) r < RS.W.modulus)
-  (scratch-dec-guarded : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                           (fs : FlatMachine.FlatState {FS}) (s : RS.State)
-                       → RCr.RunAt o FS slot-size word-eq prog fs
-                       → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-                       → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                           ≡ just (instr-reg-op scratch-dec)
-                       → 1 ≤ RS.readReg (RS.State.regs s) s3)
   -- `suc b`: THE CALLER'S FRAME BASE, not just the frame. See D106.
   (ret-no-wrap : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                    (fs : FlatMachine.FlatState {FS}) (s : RS.State) (b : ℕ)
@@ -130,13 +123,6 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
                → RS.readReg (RS.State.regs s) sp + slots (suc b) < RS.W.modulus)
-  (count-no-wrap : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                     (fs : FlatMachine.FlatState {FS}) (s : RS.State)
-                 → RCr.RunAt o FS slot-size word-eq prog fs
-                 → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-                 → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                     ≡ just (instr-reg-op count-inc)
-                 → RS.readReg (RS.State.regs s) s4 + 1 < RS.W.modulus)
   (lo-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                (fs : FlatMachine.FlatState {FS}) (s : RS.State)
            → RCr.RunAt o FS slot-size word-eq prog fs
@@ -275,11 +261,10 @@ r-nonhalt-noncall prog s (label _)    eq hnh = refl
 -- plan 0.119 D5: every control lowering is non-empty.
 open import Data.List using (length)
 open import Data.Nat using (s≤s; z≤n)
-open import Once.CCC.Machine.SMCore using (FlatCtrl; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+open import Once.CCC.Machine.SMCore using (FlatCtrl; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
 ctrl-len-arch : ∀ (c : FlatCtrl) → 1 ≤ length (compile-abstract (instr-ctrl c))
 ctrl-len-arch (c-label _) = s≤s z≤n
 ctrl-len-arch (c-jmp _) = s≤s z≤n
-ctrl-len-arch (c-branch-scratch-zero _) = s≤s z≤n
 ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
 ctrl-len-arch (c-entry _ _) = s≤s z≤n
 ctrl-len-arch (c-ret _) = s≤s z≤n
@@ -350,7 +335,7 @@ module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
 open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
               ; events-running-end; sigop-concrete-fetch; sigop-run-arith
               ; sigop-run-external; event-of-pure
-              -- …and what the five stuck routes name. `CompiledCorr`/`HeapView`
+              -- …and what the four stuck routes name. `CompiledCorr`/`HeapView`
               -- are NOT re-listed: `FlatSimulation` already binds them (the same
               -- instance, by module application), and naming them twice makes
               -- every use ambiguous.
@@ -400,8 +385,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
   (block-step-lea-slot; BlockStep; BlockSteps
   ; block-step-mov-to-output; block-step-mov-to-input
-  ; block-step-scratch-one; block-step-scratch-zero; block-step-count-zero
-  ; block-step-scratch-load-count; block-step-c-label; block-step-reclaim-to
+  ; block-step-c-label; block-step-reclaim-to
   ; block-step-worklist-init; block-step-worklist-check
   ; block-step-save-closure-reg; block-step-load-tag-lit
   ; block-step-load-indirect; block-step-load-indirect-stack
@@ -410,9 +394,8 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-store-at-slot; block-step-worklist-push
   ; block-step-store-indirect; block-step-store-indirect-stack
   ; block-step-store-indirect-suc; block-step-store-indirect-suc-stack
-  ; block-step-c-jmp; block-step-c-branch-scratch-zero; block-step-c-branch-nz
+  ; block-step-c-jmp
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
-  ; block-step-scratch-dec; block-step-count-inc
   ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
@@ -439,17 +422,14 @@ riscv64-lea-slot prog fs s slot cc h ft run =
     (slot-addr-no-wrap prog fs s slot run cc ft)
 
 ------------------------------------------------------------------------
--- THE FIVE STUCK ROUTES (plan 0.65 G2).
+-- THE FOUR STUCK ROUTES (plan 0.65 G2).
 --
 -- `EE.stuck-result` has already discharged the ABSTRACT half of each; what an
 -- arch owes is only "nothing more comes out of the concrete machine". Two of
--- the five genuinely STICK (a load through a pointer to an unwritten cell —
--- `execInstr ≡ nothing`); the other three HALT, because `jump-to` with a
+-- the four genuinely STICK (a load through a pointer to an unwritten cell —
+-- `execInstr ≡ nothing`); the other two HALT, because `jump-to` with a
 -- missing label sets `halted`, so those take one more step and then emit
 -- nothing.
---
--- riscv64's branches are ONE instruction where x86-64's are two (no flags),
--- which is why `c-branch-scratch-zero` is shorter here than there.
 ------------------------------------------------------------------------
 stuck-load-indirect : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
@@ -499,33 +479,6 @@ stuck-c-jmp ev env prog fs s m cc h ftq fl-eq = λ lg →
     step-eq : R.execInstr (compile-trace prog) s (j (once m)) ≡ just s'
     step-eq rewrite find-label-none-corr prog m fl-eq = refl
 
--- …and the two TAKEN branches whose label is absent. ONE instruction each on
--- this arch — `beq` reads the register directly, where x86-64 needs `cmp` then
--- `je` because the comparison goes through flags.
-stuck-c-branch-scratch-zero : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
-  → readReg (regs (floc fs)) Scratch ≡ SV-Tag 0
-  → find-label prog m ≡ nothing
-  → StuckAt ev env (compile-trace prog) s
-stuck-c-branch-scratch-zero {hv} ev env prog fs s m cc h ftq sc-eq fl-eq = λ lg →
-  2 , trans (EE.RT.run-events-noncall ev env lg 1 (compile-trace prog) s
-               (beq s3 rzero (once m)) halt-s fetch-rv refl step-eq)
-            (EE.RT.run-events-halted ev env lg 0 (compile-trace prog) s' refl)
-  where
-    dc = dataCorr cc
-    halt-s : R.State.halted s ≡ false
-    halt-s = trans (EE.CFC.halt-eq dc) h
-    s3-0 : R.readReg (R.State.regs s) s3 ≡ 0
-    s3-0 = trans (EE.CFC.scratch-eq dc) (cong (EE.CFC.enc-sv hv) sc-eq)
-    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (beq s3 rzero (once m))
-    fetch-rv = trans (cong (R.fetch (compile-trace prog)) (pc-off cc))
-                     (EE.fetch-block-head prog (fpc fs)
-                        (instr-ctrl (c-branch-scratch-zero m)) ftq)
-    s' : R.State
-    s' = record s { halted = true }
-    step-eq : R.execInstr (compile-trace prog) s (beq s3 rzero (once m)) ≡ just s'
-    step-eq rewrite s3-0 | find-label-none-corr prog m fl-eq = refl
 
 stuck-c-branch-tag-zero : ∀ {hv : HeapView} ev env prog fs s m loc → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
@@ -570,12 +523,11 @@ riscv64-stuck-steps = record
   { st-load-indirect         = stuck-load-indirect
   ; st-load-indirect-suc     = stuck-load-indirect-suc
   ; st-c-jmp                 = stuck-c-jmp
-  ; st-c-branch-scratch-zero = stuck-c-branch-scratch-zero
   ; st-c-branch-tag-zero     = stuck-c-branch-tag-zero
   }
 
 ------------------------------------------------------------------------
--- THE BLOCK-STEP SUPPLY — all 42, and the gate that catches slack.
+-- THE BLOCK-STEP SUPPLY — all 35, and the gate that catches slack.
 --
 -- A field typechecks in isolation however weakly it is stated; only building
 -- the record VALUE forces every one of them to line up with what the engine
@@ -585,10 +537,6 @@ riscv64-block-steps : BlockSteps
 riscv64-block-steps = record
   { bs-mov-to-output        = block-step-mov-to-output
   ; bs-mov-to-input         = block-step-mov-to-input
-  ; bs-scratch-one          = block-step-scratch-one
-  ; bs-scratch-zero         = block-step-scratch-zero
-  ; bs-count-zero           = block-step-count-zero
-  ; bs-scratch-load-count   = block-step-scratch-load-count
   ; bs-c-label              = block-step-c-label
   ; bs-reclaim-to           = block-step-reclaim-to
   ; bs-worklist-init        = block-step-worklist-init
@@ -612,13 +560,9 @@ riscv64-block-steps = record
   ; bs-store-indirect-suc       = block-step-store-indirect-suc
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp
-  ; bs-c-branch-scratch-zero    = block-step-c-branch-scratch-zero
-  ; bs-c-branch-nz              = block-step-c-branch-nz
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
   ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
-  ; bs-scratch-dec              = block-step-scratch-dec
   ; bs-out-nz                   = block-step-out-nz
-  ; bs-count-inc                = block-step-count-inc
   ; bs-c-thunk                  = block-step-c-thunk
   ; bs-c-start                  = block-step-c-start
   ; bs-c-ret                    = block-step-c-ret
@@ -675,8 +619,7 @@ riscv64-supply : EE.Supply
 riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
-  ; reg-range = reg-range ; scratch-dec-guarded = scratch-dec-guarded
-  ; ret-no-wrap = ret-no-wrap ; count-no-wrap = count-no-wrap
+  ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; lo-fits = lo-fits
   ; arith-sigop-contract = arith-sigop-contract

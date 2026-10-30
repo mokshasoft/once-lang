@@ -362,10 +362,10 @@ postulate
   -- `[hfront, lo)`, which `heap-room` puts the fresh cells inside.
   -- (Its abstract counterpart — nothing references or has written the not-yet-
   -- allocated block — was already PROVEN, `FlatStoreWF`.)
-  -- `lea-indexed-wf` RETIRED 2026-08-01: `lea-indexed` has NO PRODUCER — the
-  -- cata codegen walks heap-LINKED stacks (`push2`/`pop2`; IRToTrace says
-  -- "NOT lea-indexed") — so it joined `FrameFreeI`'s ⊥ set and its dispatch
-  -- route is `⊥`-elim. The cursor-discipline residual died with its site.
+  -- `lea-indexed-wf` RETIRED 2026-08-01: `lea-indexed` had NO PRODUCER — the
+  -- cata codegen walks heap-LINKED stacks (`push2`/`pop2`) — and the
+  -- cursor-discipline residual died with its site (the instruction itself was
+  -- deleted by plan 0.125).
 
   -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): the MATCHED PROLOGUE/EPILOGUE
   -- family — `dealloc-stack-restores`, `pop-frame-restores`, `dealloc-stack-full`,
@@ -427,8 +427,8 @@ fetch-zero .(program-image o (irProgram tbl ir)) (tbl , ir , refl) = refl
 -- SLOT LIVENESS IS NOW A THEOREM (plan 0.54 rung D, item 2).
 --
 -- `slot-read-in-frame` used to be the residual that carried the whole slot
--- cluster (`load-from-slot`, `store-at-slot`, `restore-input`, `worklist-*`,
--- `lea-indexed`). It splits cleanly into a MACHINE fact and an EMITTER fact:
+-- cluster (`load-from-slot`, `store-at-slot`, `restore-input`, `worklist-*`).
+-- It splits cleanly into a MACHINE fact and an EMITTER fact:
 -- the live window never moves during a run, and it started out big enough.
 ------------------------------------------------------------------------
 
@@ -469,7 +469,6 @@ ff→seg-id (instr-ctrl (c-ret _))              ()
 ff→seg-id (instr-ctrl (c-label _))            _ = refl
 ff→seg-id (instr-ctrl c-leave)            _ = refl
 ff→seg-id (instr-ctrl (c-jmp _))              _ = refl
-ff→seg-id (instr-ctrl (c-branch-scratch-zero _)) _ = refl
 ff→seg-id (instr-ctrl (c-branch-tag-zero _))  _ = refl
 ff→seg-id mov-to-output                       _ = refl
 ff→seg-id mov-to-input                        _ = refl
@@ -480,7 +479,6 @@ ff→seg-id (store-at-slot _)                   _ = refl
 ff→seg-id store-indirect                      _ = refl
 ff→seg-id store-indirect-suc                  _ = refl
 ff→seg-id (lea-slot _)                        _ = refl
-ff→seg-id (lea-indexed _)                     _ = refl
 ff→seg-id (restore-input _)                   _ = refl
 ff→seg-id (instr-alloc-stack _)               _ = refl
 ff→seg-id (instr-dealloc-stack _)             _ = refl
@@ -497,9 +495,7 @@ ff→seg-id (instr-load-const _ _)              _ = refl
 ff→seg-id (instr-load-code-addr _)            _ = refl
 ff→seg-id instr-save-closure-reg              _ = refl
 ff→seg-id (instr-load-tag-lit _)              _ = refl
-ff→seg-id (instr-case-on-tag _ _)             _ = refl
 ff→seg-id (instr-alloc-heap _)                _ = refl
-ff→seg-id (instr-loop _)                      _ = refl
 ff→seg-id (instr-reg-op _)                    _ = refl
 
 -- …and the CALL's segment fact, standalone now that it has left `FrameFreeI`
@@ -626,7 +622,7 @@ dj-aux nothing  fs = inj₁ refl
 -- …and the branch, over a VARIABLE condition. Taking `b` as an argument is
 -- what makes `do-branch b` reduce on the split — abstracting the scrutinee at
 -- the use site does not work, because its normal form is spelled differently
--- from the source term (`readReg … Scratch` vs the field accessor).
+-- from the source term (a register read vs the field accessor).
 db-aux : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
        → (fpc (do-branch b m prog fs) ≡ suc (fpc fs))
          ⊎ ((fpc (do-branch b m prog fs) ≡ fpc fs)
@@ -691,14 +687,6 @@ pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
                 mk (inj₂ (q , fq , e)) = jp-to q fq e
 -- the branches abstract their scrutinee WITH an equation (J-style), so the
 -- goal's `do-branch <cond>` reduces on the taken/not-taken split
-pcView (instr-ctrl (c-branch-scratch-zero m))     _ = pv-jump tt m refl go
-  where
-    go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-scratch-zero m)) m prog fs
-    go prog fs = mk (db-aux (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs)
-      where mk : _ → JumpPost (instr-ctrl (c-branch-scratch-zero m)) m prog fs
-            mk (inj₁ e)                     = jp-suc e tt
-            mk (inj₂ (inj₁ e))              = jp-halt e
-            mk (inj₂ (inj₂ (q , fq , e)))   = jp-to q fq e
 pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump tt m refl go
   where
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
@@ -714,10 +702,7 @@ pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
-pcView (instr-case-on-tag _ _)                ()
-pcView (instr-loop _)                         ()
 pcView (lea-slot _)                           ()
-pcView (lea-indexed _)                        ()
 pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
 pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
 pcView load-indirect                          _ = pv-suc tt tt (λ _ _ → refl)
@@ -1181,13 +1166,10 @@ stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
                → fetch prog (fpc fs) ≡ just i → ImageI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
 stack-ptr-step (lea-slot slot) prog fs r ftq () wf
-stack-ptr-step (lea-indexed slot) prog fs r ftq () wf
-stack-ptr-step (instr-case-on-tag f g) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
 stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
-stack-ptr-step (instr-loop body)       prog fs r ftq () wf
 stack-ptr-step mov-to-output prog fs r ftq ff wf =
   flat-stack-ptr mov-to-output prog fs ff wf
 stack-ptr-step mov-to-input prog fs r ftq ff wf =
@@ -1439,13 +1421,10 @@ ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog f
                 → fetch prog (fpc fs) ≡ just i → ImageI i
                 → FlatWF fs
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
-ptr-bounds-step (instr-case-on-tag f g) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
-ptr-bounds-step (instr-loop body)       prog fs r ftq () wfS wf
-ptr-bounds-step (lea-indexed slot)      prog fs r ftq () wfS wf
 -- THE PRODUCER: the emitter's alloc discipline comes in through the premise.
 ptr-bounds-step (instr-alloc-heap k) prog fs r ftq ff wfS wf =
   flat-ptr-bounds (instr-alloc-heap k) prog fs ff

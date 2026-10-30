@@ -45,7 +45,7 @@ module SumC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run _ (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
@@ -435,7 +435,7 @@ module SumC {FS : FrameSemantics} where
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run _ (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.

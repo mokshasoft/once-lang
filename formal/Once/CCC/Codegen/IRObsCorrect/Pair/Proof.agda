@@ -219,7 +219,7 @@ module PairProofC {FS : FrameSemantics} where
       h = SMCore.LocState.ev-log s
 
       logP2 : SMCore.LocState.ev-log (floc PC.PR.p2) ≡ h
-      logP2 = log-silent PC.pre-chain _ refl
+      logP2 = log-silent PC.pre-chain refl
 
       esF : List SigOpEvent
       esF = eventsAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k)
@@ -378,7 +378,7 @@ module PairProofC {FS : FrameSemantics} where
 
           -- `g` runs from the log `f` left: the two mid rows make no call.
           logM2 : SMCore.LocState.ev-log (floc PCF.m2) ≡ h ++ esF
-          logM2 = trans (log-silent PCF.mid-chain _ refl)
+          logM2 = trans (log-silent PCF.mid-chain refl)
                         (trans (VR.log vrf) (cong (_++ esF) logP2))
 
           esG : List SigOpEvent

@@ -52,14 +52,14 @@ import Once.Word as W32L
 module W = W32.Width 32
 module WL = W32L.WidthLaws 32
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Label using (EntryId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal; round)
 open import Once.Float.DecimalLaws using (round-fits)
 open import Data.Integer using (ℤ)
-open import Once.CCC.Target.X86-32.Syntax using (slots; slot-size; esp; edx; edi; Reg)
+open import Once.CCC.Target.X86-32.Syntax using (slots; slot-size; esp; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-32.FrameInstantiation using () renaming (x86-32-frame-semantics to x86-32-frame-semantics-at)
 
@@ -167,26 +167,8 @@ RegRange =
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → X.readReg (X.State.regs s) r < W.modulus
 
--- (2) A REACHABLE `scratch-dec` FINDS A NON-ZERO SCRATCH — the no-borrow
--- condition for the one subtraction that never had one. NOT a new assumption
--- about the world: the emitter already guarantees it, since `cata-nat-I₂`/`I₃`
--- emit `L4: branch-if-scratch-zero → L5 ; body ; scratch-dec ; jmp L4 ; L5:`
--- and the decrement is reached only when the branch was not taken. Same class
--- and same route as `emitted-thunk-guarded`: a fact about `ir-to-trace`'s
--- output, discharged by the structural induction over it.
-ScratchDecGuarded : Set₁
-ScratchDecGuarded =
-  ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-    (s : X.State)
-  → RCx.RunAt o x86-32-frame-semantics refl prog fs
-  → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {x86-32-frame-semantics} prog
-      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-reg-op scratch-dec)
-  → 1 ≤ X.readReg (X.State.regs s) edx
-
 ------------------------------------------------------------------------
--- (3) THE ADDRESS SPACE DOES NOT WRAP at the emitted `add` sites.
+-- (2) THE ADDRESS SPACE DOES NOT WRAP at the emitted `add` sites.
 --
 -- Plan 0.70 phase C. `execInstr`'s `add` computes `W.⊕` — modular, always,
 -- with NO no-overflow premise, because D054 makes wraparound *correct,
@@ -196,8 +178,7 @@ ScratchDecGuarded =
 --
 -- So the obligation moves to the CONSUMER, and this is it. It is NOT a claim
 -- about user arithmetic: every `add` the compiler emits computes an ADDRESS
--- (`esp` frame release, `esi` heap bump, the `eax`/`ecx` index scaling) or
--- the observable COUNTER (`edi`). A user `Int` addition never reaches this
+-- (`esp` frame release, `esi` heap bump, the `eax`/`ecx` index scaling). A user `Int` addition never reaches this
 -- instruction — it goes through the Arith backend over `Once.Word` and wraps
 -- there by design, which is why a program whose `Int` arithmetic overflows is
 -- still fully covered by the correctness theorem.
@@ -228,24 +209,12 @@ record AddrNoWrap : Set₁ where
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → X.readReg (X.State.regs s) esp + slots (suc b) < W.modulus
 
-    -- `count-inc` → `add edi, 1`: THE ONE NON-ADDRESS SITE. `%edi` is the
-    -- observable counter, so this says the run does not emit 2³² observations.
-    count-no-wrap :
-      ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-        (s : X.State)
-      → RCx.RunAt o x86-32-frame-semantics refl prog fs
-      → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
-      → FlatMachine.fetch {x86-32-frame-semantics} prog
-          (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-reg-op count-inc)
-      → X.readReg (X.State.regs s) edi + 1 < W.modulus
-
     -- THE STACK'S HIGH-WATER MARK IS REPRESENTABLE. Not site-conditioned,
     -- because it need not be: it mentions no addend. This is the layout bound
     -- in its most basic form — and it is what discharges the heap bump's
     -- no-wrap outright, since `HeapRoom` already bounds the bumped frontier
-    -- by `lo`. The other three fields are the sites where no such bound was
-    -- already in hand.
+    -- by `lo`. The other field is the site where no such bound was already
+    -- in hand.
     lo-fits :
       ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
@@ -255,7 +224,7 @@ record AddrNoWrap : Set₁ where
       → FCx.lo hv < W.modulus
 
 ------------------------------------------------------------------------
--- (4) THE EMITTED LITERALS FIT IN A MACHINE WORD — plan 0.70 phase D.
+-- (3) THE EMITTED LITERALS FIT IN A MACHINE WORD — plan 0.70 phase D.
 --
 -- THE `lit-word` SEAM, and the last thing phase D had to make visible. The
 -- machine NORMS an immediate, because an instruction's immediate field holds a

@@ -25,7 +25,7 @@
 --
 -- A model shows a type is INHABITED, not that the postulate at it is TRUE.
 -- Not yet covered (plan 0.11) (the block-table hypotheses are gone, plan 0.125 S5):
--- the 22 resource-bound parameters of `Once.Certified`, the propositional CPU
+-- the 19 resource-bound parameters of `Once.Certified`, the propositional CPU
 -- postulates (`as-faithful-*`, …), and — the real
 -- target — ONE concrete program for which every hypothesis holds together.
 ------------------------------------------------------------------------

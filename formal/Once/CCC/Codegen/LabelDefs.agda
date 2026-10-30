@@ -85,7 +85,6 @@ fresh-above hi≤k = All-map (λ p eq → <⇒≢ (<-≤-trans (proj₂ p) hi≤
 ctrl-clab : FlatCtrl → Maybe ℕ
 ctrl-clab (c-label m)               = just (idx m)
 ctrl-clab (c-jmp _)                 = nothing
-ctrl-clab (c-branch-scratch-zero _) = nothing
 ctrl-clab (c-branch-tag-zero _)     = nothing
 ctrl-clab (c-entry (e-thunk m) _)   = just (idx m)
 ctrl-clab (c-entry (e-fn _) _)      = nothing

@@ -224,8 +224,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy;
-         strat-const; strat-nat; strat-linear; strat-branching)
+  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-branching)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
@@ -367,20 +366,6 @@ cata-frag strat-const bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   where
     l1<l1+1 : l1 < l1 + 1
     l1<l1+1 = subst (_< l1 + 1) (+-identityʳ l1) (+-monoʳ-< l1 (s≤s z≤n))
-cata-frag strat-nat bb n1 l1 at ab {lo} lo≤l1 f wA wC =
-  subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (sucs 8 l1) T)
-    (sym (cong (S1 ++_) (clabs-++ at _)))
-    (sucs-cata l1 8 ks S1 (sucs 7 l1 ∷ []) refl (offsets-dst ks) (offsets-below 8 ks) lo≤l1 f wA wC)
-  where
-    ks = 0 ∷ 2 ∷ 3 ∷ 1 ∷ 4 ∷ 5 ∷ 6 ∷ 7 ∷ []
-    S1 = l1 ∷ sucs 2 l1 ∷ sucs 3 l1 ∷ sucs 1 l1 ∷ sucs 4 l1 ∷ sucs 5 l1 ∷ sucs 6 l1 ∷ []
-cata-frag strat-linear bb n1 l1 at ab {lo} lo≤l1 f wA wC =
-  subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (sucs 6 l1) T)
-    (sym (cong (S1 ++_) (clabs-++ at _)))
-    (sucs-cata l1 6 ks S1 (sucs 5 l1 ∷ []) refl (offsets-dst ks) (offsets-below 6 ks) lo≤l1 f wA wC)
-  where
-    ks = 0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ 5 ∷ []
-    S1 = l1 ∷ sucs 1 l1 ∷ sucs 2 l1 ∷ sucs 3 l1 ∷ sucs 4 l1 ∷ []
 cata-frag (strat-branching F) bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (BLb + 2) T)
     (sym (cong (l1 ∷_) eq))
@@ -708,8 +693,6 @@ private
   cata-nf : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) → NoFn at
           → NoFn (proj₂ (proj₂ (cata-dispatch st bb n1 l1 at)))
   cata-nf strat-const  bb n1 l1 at h = nf at _ h refl
-  cata-nf strat-nat    bb n1 l1 at h = nf at _ h refl
-  cata-nf strat-linear bb n1 l1 at h = nf at _ h refl
   cata-nf (strat-branching F) bb n1 l1 at h =
     nf (vw ++ _) _ (nf vw _ (visit-nf F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
                            (nf rw _ (rebuild-nf F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F)) refl))

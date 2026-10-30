@@ -72,15 +72,15 @@ module FnRunsC {FS : FrameSemantics} where
 
   -- The induction. `FnRuns` does not depend on the definition name it is read
   -- at (`o′`): everything it mentions is table-free or names the table.
-  fn-runs : ∀ (prog : AbstractTrace) → AllSlotStable prog
+  fn-runs : ∀ (o′ : CanonicalName) (prog : AbstractTrace) → AllSlotStable prog → Iface.Core.ThunksUnique o′ [] {FS} prog
           → (es : List IRFun) → TeleLinked σ es → All (EntryAt prog) es
-          → ∀ (o′ : CanonicalName) → Iface.Core.FnRuns o′ es {FS} prog
-  fn-runs prog ss []       _          _          o′ f A B ()
-  fn-runs prog ss (e ∷ es) (le , tl) (ea ∷ eas) o′ f A B lk =
+          → Iface.Core.FnRuns o′ es {FS} prog
+  fn-runs o′ prog ss tu []       _          _          f A B ()
+  fn-runs o′ prog ss tu (e ∷ es) (le , tl) (ea ∷ eas) f A B lk =
     go (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
     where
       ih : Iface.Core.FnRuns (fname e) es {FS} prog
-      ih = fn-runs prog ss es tl eas (fname e)
+      ih = fn-runs (fname e) prog ss tu es tl eas
 
       open EntryAt ea
 
@@ -93,7 +93,7 @@ module FnRunsC {FS : FrameSemantics} where
         BCall.BlockCallC.fn-call (fname e) es {FS} (fbody e)
           (IOF.IRObsCorrectFlatness.ir-obs-correct (fname e) es {FS} (fbody e) le)
           lab prog (e-fn (fname e)) (IT.ir-stack-budget-from (fname e) lab (fbody e)) ent ss
-          (record { functions = ih }) span blks labels
+          (record { functions = ih ; thunks-unique = tu }) span blks labels
       go (yes refl) (yes refl) (no _) l = ih f A B l
       go (yes refl) (no _)     _      l = ih f A B l
       go (no _)     _          _      l = ih f A B l

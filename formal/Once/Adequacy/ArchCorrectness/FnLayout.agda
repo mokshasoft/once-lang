@@ -22,7 +22,7 @@
 open import Once.Spec.Name using (CanonicalName)
 module Once.Adequacy.ArchCorrectness.FnLayout (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_; head) renaming (map to All-map)
@@ -66,7 +66,7 @@ module FnLayoutC {FS : FrameSemantics} where
            thunk-of?; label-of?; fl-go-++-miss; ft-go-++-miss; ft-go-prefix)
   open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
   open Layout {FS} using (Span; fetch-skip; span-head; span-shift; MissBefore; blocks-at; NoThunk; NoThunks; missBefore-from)
-  open BLs.Labels o {FS} using (BodyLabels; labels-all; found-clab; clabs-miss; cl-head; cl-tail; just-inj)
+  open BLs.Labels o {FS} using (BodyLabels; labels-all; found-clab; clabs-miss; cl-head; cl-tail; just-inj; clab-fetch)
   open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
   open Resolve {FS} using (NoLabel; no-label-miss)
   open FnRunsC {FS} using (EntryAt)
@@ -306,3 +306,23 @@ module FnLayoutC {FS : FrameSemantics} where
       none : ∀ (xs : List IRFun) → All (λ e → All (_≢ fname e) (fdefs P₀)) xs
       none []       = []
       none (x ∷ xs) = subst (All (_≢ fname x)) (sym nf₀) [] ∷ none xs
+
+  ------------------------------------------------------------------------
+  -- plan 0.125 S3: THE CLOSURE-BODY MARKERS ARE UNIQUE (`ThunksUnique`, for a
+  -- `Cata`'s call of its inline algebra). A marker's label index is in `clabs`,
+  -- so two at different places would repeat it.
+  ------------------------------------------------------------------------
+
+  thunks-unique-of : ∀ (t : AbstractTrace) → Dst (clabs t) → Iface.Core.ThunksUnique o [] {FS} t
+  thunks-unique-of []       d p       q       lbl b b′ () _
+  thunks-unique-of (x ∷ xs) d zero    zero    lbl b b′ e₁ e₂ = refl
+  thunks-unique-of (x ∷ xs) (h ∷ d) zero (suc q) lbl b b′ refl e₂ =
+    ⊥-elim (clab-fetch {P = idx lbl ≢_} xs q _ (idx lbl) e₂ refl h refl)
+  thunks-unique-of (x ∷ xs) (h ∷ d) (suc p) zero lbl b b′ e₁ refl =
+    ⊥-elim (clab-fetch {P = idx lbl ≢_} xs p _ (idx lbl) e₁ refl h refl)
+  thunks-unique-of (x ∷ xs) d (suc p) (suc q) lbl b b′ e₁ e₂ =
+    cong suc (thunks-unique-of xs (dtail (clab-of x) (clabs xs) d) p q lbl b b′ e₁ e₂)
+    where
+      dtail : ∀ (mo : Maybe ℕ) (r : List ℕ) → Dst (cl-at mo r) → Dst r
+      dtail (just k) r (_ ∷ d′) = d′
+      dtail nothing  r d′       = d′

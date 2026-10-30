@@ -22,20 +22,20 @@
 --     mov eax, ecx               Output := Input1     → eax, ecx
 --     mov eax, esi ; add esi, n  alloc-heap           → esi is the frontier
 --     mov ebx, ecx               save-closure-reg     → ebx
---     mov edi, 0 / add edi, 1    count-zero/-inc      → edi
---     mov edx, 1 / cmp edx, 0    scratch-one/branch   → edx
 --     sub esp, n                 alloc-stack          → esp
 --
--- Seven roles, seven distinct registers — INJECTIVE, with `ebp` reserved (it
+-- Five roles, five distinct registers — INJECTIVE (seven until plan 0.125
+-- retired `Scratch`/`edx` and `Count`/`edi` with the only instructions that
+-- read them), with `ebp` reserved (it
 -- is not a role: it is the frame ceremony `Once/Target/X86-32.agda` emits in
 -- the TEXT, outside the abstract trace entirely).
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness.X86-32.RegRoles where
 
-open import Once.CCC.Target.X86-32.Syntax using (Reg; eax; ebx; ecx; edx; esi; edi; esp)
+open import Once.CCC.Target.X86-32.Syntax using (Reg; eax; ebx; ecx; esi; esp)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
-  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
+  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
 
 x86-32-reg-of : Role → Reg
 x86-32-reg-of role-sp      = esp
@@ -43,8 +43,6 @@ x86-32-reg-of role-clos    = ebx
 x86-32-reg-of role-heap    = esi
 x86-32-reg-of role-out     = eax
 x86-32-reg-of role-in1     = ecx
-x86-32-reg-of role-scratch = edx
-x86-32-reg-of role-count   = edi
 
 x86-32-roles : RegRoles Reg
 x86-32-roles = record { reg-of = x86-32-reg-of }

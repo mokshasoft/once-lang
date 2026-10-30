@@ -46,7 +46,7 @@ open X.State using (memory) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax using (Reg)
 open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
-  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
+  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
 open RegRoles x86-64-roles using (reg-of)
 
 -- ONE accessor per observation, which is the whole interface the core needs.
@@ -61,9 +61,9 @@ open SetsRole using (at-role; off-role)
 
 ------------------------------------------------------------------------
 -- x86-64 REALISES `SetsRole`: the state that writes one role's register and
--- leaves memory, the halt flag and the other seven roles alone.
+-- leaves memory, the halt flag and the other four roles alone.
 --
--- THE 64 CLAUSES ARE THE POINT, not an accident. While the post-state was a
+-- THE 25 CLAUSES ARE THE POINT, not an accident. While the post-state was a
 -- concrete `mkstate` literal, "writing rax leaves rdi alone" was free —
 -- `readReg (writeReg rf rax v) rdi` reduces because `rax` and `rdi` are
 -- distinct constructors of a record's fields. Making the post-state abstract
@@ -88,8 +88,6 @@ sets-role-x86 s ρ v fl p = record
     at role-heap = refl
     at role-out = refl
     at role-in1 = refl
-    at role-scratch = refl
-    at role-count = refl
 
     off : ∀ ρ₀ ρ' → ¬ (ρ' ≡ ρ₀)
         → X.readReg (xwriteReg (xregs s) (reg-of ρ₀) v) (reg-of ρ')
@@ -99,56 +97,32 @@ sets-role-x86 s ρ v fl p = record
     off role-sp      role-heap    _  = refl
     off role-sp      role-out     _  = refl
     off role-sp      role-in1     _  = refl
-    off role-sp      role-scratch _  = refl
-    off role-sp      role-count   _  = refl
     off role-clos    role-sp      _  = refl
     off role-clos    role-clos    ne = ⊥-elim (ne refl)
     off role-clos    role-heap    _  = refl
     off role-clos    role-out     _  = refl
     off role-clos    role-in1     _  = refl
-    off role-clos    role-scratch _  = refl
-    off role-clos    role-count   _  = refl
     off role-heap    role-sp      _  = refl
     off role-heap    role-clos    _  = refl
     off role-heap    role-heap    ne = ⊥-elim (ne refl)
     off role-heap    role-out     _  = refl
     off role-heap    role-in1     _  = refl
-    off role-heap    role-scratch _  = refl
-    off role-heap    role-count   _  = refl
     off role-out     role-sp      _  = refl
     off role-out     role-clos    _  = refl
     off role-out     role-heap    _  = refl
     off role-out     role-out     ne = ⊥-elim (ne refl)
     off role-out     role-in1     _  = refl
-    off role-out     role-scratch _  = refl
-    off role-out     role-count   _  = refl
     off role-in1     role-sp      _  = refl
     off role-in1     role-clos    _  = refl
     off role-in1     role-heap    _  = refl
     off role-in1     role-out     _  = refl
     off role-in1     role-in1     ne = ⊥-elim (ne refl)
-    off role-in1     role-scratch _  = refl
-    off role-in1     role-count   _  = refl
-    off role-scratch role-sp      _  = refl
-    off role-scratch role-clos    _  = refl
-    off role-scratch role-heap    _  = refl
-    off role-scratch role-out     _  = refl
-    off role-scratch role-in1     _  = refl
-    off role-scratch role-scratch ne = ⊥-elim (ne refl)
-    off role-scratch role-count   _  = refl
-    off role-count   role-sp      _  = refl
-    off role-count   role-clos    _  = refl
-    off role-count   role-heap    _  = refl
-    off role-count   role-out     _  = refl
-    off role-count   role-in1     _  = refl
-    off role-count   role-scratch _  = refl
-    off role-count   role-count   ne = ⊥-elim (ne refl)
 
 
 -- …and x86-64 realises `SetsMem` the same way, out of `writeMem`'s two
--- equations. Only two clauses here rather than 64: a memory write is indexed
+-- equations. Only two clauses here rather than 25: a memory write is indexed
 -- by an ADDRESS, and addresses already have a decidable equality — it is
--- registers, an eight-way enum with no `≟`, that needed the enumeration.
+-- registers, a five-way enum with no `≟`, that needed the enumeration.
 sets-mem-x86 : ∀ (s : X.State) (a : ℕ) (v : Word) (fl : X.Flags) (p : ℕ)
   → SetsMem s (mkstate (xregs s) (writeMem (memory s) a v) fl p (xhalted s)) a v
 sets-mem-x86 s a v fl p = record
@@ -160,7 +134,7 @@ sets-mem-x86 s a v fl p = record
 
 
 -- The two combined shapes, realised the same way. `off-roles` reuses
--- `sets-role-x86`'s enumeration twice rather than repeating 64 clauses: a
+-- `sets-role-x86`'s enumeration twice rather than repeating 25 clauses: a
 -- double register write is two single writes, and the state it lands in is the
 -- one the inner write's realiser already describes.
 sets-role-mem-x86 : ∀ (s : X.State) (ρ : Role) (v : Word) (a : ℕ) (mv : Word) (fl : X.Flags) (p : ℕ)

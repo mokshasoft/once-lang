@@ -16,10 +16,8 @@
 -- (`Adequacy.ArchCorrectness.X86-64.FlatCorrespondence.enc-ext`), and its cells
 -- are unwritten on the abstract side.
 --
--- Proved by induction over `exec-abstract`, mirroring its mutual block (so the
--- nested `instr-case-on-tag` / `instr-loop` traces are covered), and bundled
--- with the frontier-MONOTONICITY the loop case needs (`next-heap-ref` never
--- decreases). Lifted to the flat machine's `flat-exec-instr` at the end.
+-- Proved by induction over `exec-abstract` and `exec-trace`, bundled with
+-- frontier-MONOTONICITY (`next-heap-ref` never decreases). Lifted to the flat machine's `flat-exec-instr` at the end.
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
@@ -103,10 +101,6 @@ sv-as-loc-below n (SV-Tag _)              _ = tt
 sv-as-loc-below n (SV-Lit _ _)            _ = tt
 sv-as-loc-below n (SV-Code _)             _ = tt
 
-slot-base-below : ∀ (n : ℕ) (mv : Maybe (StoredValue FS)) → svm-below n mv
-                → mloc-below n (slot-base mv)
-slot-base-below n (just v) b = sv-as-loc-below n v b
-slot-base-below n nothing  _ = tt
 
 -- Same block ⇒ same ref-id, so offsets stay below.
 sucLoc-below : ∀ (n : ℕ) (loc : ValueLocation FS) → loc-below n loc → loc-below n (sucLoc loc)
@@ -117,20 +111,6 @@ offsetLoc-below : ∀ (n : ℕ) (loc : ValueLocation FS) (i : ℕ)
                 → loc-below n loc → loc-below n (offsetLoc loc i)
 offsetLoc-below n (AtDynamic (heap-loc r o)) i b = b
 offsetLoc-below n (AtStack f k)              i _ = tt
-
--- tags stay tags
-sv-succ-below : ∀ (n : ℕ) (v : StoredValue FS) → sv-below n (sv-succ v)
-sv-succ-below n (SV-Tag _)   = tt
-sv-succ-below n (SV-Ptr _)   = tt
-sv-succ-below n (SV-Lit _ _) = tt
-sv-succ-below n (SV-Code _)  = tt
-
-sv-pred-below : ∀ (n : ℕ) (v : StoredValue FS) → sv-below n (sv-pred v)
-sv-pred-below n (SV-Tag zero)    = tt
-sv-pred-below n (SV-Tag (suc _)) = tt
-sv-pred-below n (SV-Ptr _)       = tt
-sv-pred-below n (SV-Lit _ _)     = tt
-sv-pred-below n (SV-Code _)      = tt
 
 -- plan 0.108: `out-nz` writes a tag, whatever it read.
 sv-nz-below : ∀ (n : ℕ) (v : StoredValue FS) → sv-below n (sv-nz v)
@@ -160,26 +140,14 @@ open StoreWF
 -- Structural helpers: one machine effect at a time.
 ------------------------------------------------------------------------
 
--- read-after-write on the four registers (both indices concrete ⇒ definitional).
+-- read-after-write on the two registers (both indices concrete ⇒ definitional).
 rw-below : ∀ (n : ℕ) (rf : Registers FS) (x y : AbstractReg) (v : StoredValue FS)
          → sv-below n v → sv-below n (readReg rf y)
          → sv-below n (readReg (writeReg rf x v) y)
 rw-below n rf Input1  Input1  v bv _  = bv
 rw-below n rf Input1  Output  v _  bo = bo
-rw-below n rf Input1  Scratch v _  bo = bo
 rw-below n rf Output  Input1  v _  bo = bo
 rw-below n rf Output  Output  v bv _  = bv
-rw-below n rf Output  Scratch v _  bo = bo
-rw-below n rf Scratch Input1  v _  bo = bo
-rw-below n rf Scratch Output  v _  bo = bo
-rw-below n rf Scratch Scratch v bv _  = bv
-rw-below n rf Input1  Count   v _  bo = bo
-rw-below n rf Output  Count   v _  bo = bo
-rw-below n rf Scratch Count   v _  bo = bo
-rw-below n rf Count   Input1  v _  bo = bo
-rw-below n rf Count   Output  v _  bo = bo
-rw-below n rf Count   Scratch v _  bo = bo
-rw-below n rf Count   Count   v bv _  = bv
 
 wf-write-reg : ∀ {n ls} (x : AbstractReg) (v : StoredValue FS)
              → StoreWF n ls → sv-below (n) v
@@ -308,13 +276,6 @@ wf-store-suc-resolved {n} {ls} (just loc) v wf b bv =
   wf-write-loc (sucLoc loc) v wf (sucLoc-below (n) loc b) bv
 wf-store-suc-resolved nothing v wf _ _ = wf-halt wf
 
-wf-lea-indexed : ∀ {n ls} (mloc : Maybe (ValueLocation FS)) (i : ℕ)
-               → StoreWF n ls → mloc-below (n) mloc
-               → StoreWF n (exec-lea-indexed-via mloc i ls)
-wf-lea-indexed {n} {ls} (just loc) i wf b =
-  wf-write-reg Input1 (SV-Ptr (offsetLoc loc i)) wf
-    (offsetLoc-below (n) loc i b)
-wf-lea-indexed nothing i wf _ = wf-halt wf
 
 -- load-from-slot / restore-input share this shape (they also thread `alloc`).
 wf-slot-load : ∀ {n ls} (dst : AbstractReg) (mv : Maybe (StoredValue FS))
@@ -395,62 +356,12 @@ wf-slot-load-in1 (just v) ls alloc wf b = wf-write-reg Input1 v wf b , ≤-refl
 wf-slot-load-in1 nothing  ls alloc wf _ = wf-halt wf , ≤-refl
 
 ------------------------------------------------------------------------
--- THE INVARIANT IS PRESERVED, bundled with frontier monotonicity (which the
--- loop case needs: it re-anchors the pre-state's stack into the post-state).
+-- THE INVARIANT IS PRESERVED, bundled with frontier monotonicity.
 ------------------------------------------------------------------------
 Preserves : (ls : LocState FS) (alloc : AllocState {FS})
           → LocState FS × AllocState {FS} → Set
 Preserves ls alloc (ls' , alloc') =
   StoreWF (next-heap-ref alloc') ls' × (next-heap-ref alloc ≤ next-heap-ref alloc')
-
-------------------------------------------------------------------------
--- THE LOOP, as a plain FUEL induction over the reified `exec-loop-run`
--- (2026-07-31). It takes "the body runner preserves the invariant" as a
--- hypothesis and never calls into the mutual block, so it is structural — this
--- is what retired the `TERMINATING` this proof used to carry.
-------------------------------------------------------------------------
-BodyPreserves : BodyRunner → Set
-BodyPreserves run = ∀ (ls : LocState FS) (alloc : AllocState {FS})
-                  → StoreWF (next-heap-ref alloc) ls → Preserves ls alloc (run ls alloc)
-
-mutual
-  wf-loop-run : ∀ (run : BodyRunner) (fuel : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
-              → BodyPreserves run
-              → StoreWF (next-heap-ref alloc) ls
-              → Preserves ls alloc (exec-loop-run run fuel ls alloc)
-  wf-loop-run run zero    ls alloc h wf = wf-halt wf , ≤-refl
-  wf-loop-run run (suc n) ls alloc h wf with halted ls
-  ... | true  = wf , ≤-refl
-  ... | false with readReg (regs ls) Scratch
-  ...   | SV-Tag zero    = wf , ≤-refl
-  ...   | SV-Tag (suc m) = wf-loop-run-go run n ls alloc h wf
-  ...   | SV-Ptr _       = wf-loop-run-go run n ls alloc h wf
-  ...   | SV-Lit _ _     = wf-loop-run-go run n ls alloc h wf
-  ...   | SV-Code _      = wf-loop-run-go run n ls alloc h wf
-
-  -- one iteration: run the body, RE-ANCHOR the stack/frame (the loop restores
-  -- them), recurse on fuel. The re-anchored stack is the PRE-state's, so its
-  -- values need the frontier monotonicity the body's step provides.
-  wf-loop-run-go : ∀ (run : BodyRunner) (n : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
-                 → BodyPreserves run
-                 → StoreWF (next-heap-ref alloc) ls
-                 → Preserves ls alloc
-                     (exec-loop-run run n
-                       (loop-reanchor-loc ls (proj₁ (run ls alloc)))
-                       (loop-reanchor-alloc alloc (proj₂ (run ls alloc))))
-  wf-loop-run-go run n ls alloc h wf =
-    proj₁ rec , ≤-trans (proj₂ step) (proj₂ rec)
-    where
-      step = h ls alloc wf
-      ls'' = loop-reanchor-loc ls (proj₁ (run ls alloc))
-      al'' = loop-reanchor-alloc alloc (proj₂ (run ls alloc))
-      wf'' : StoreWF (next-heap-ref al'') ls''
-      wf'' = record
-        { wf-regs  = wf-regs (proj₁ step)
-        ; wf-heap  = wf-heap (proj₁ step)
-        ; wf-stack = λ f k → svm-mono (stackMem ls f k) (proj₂ step) (wf-stack wf f k)
-        ; wf-fresh = wf-fresh (proj₁ step) }
-      rec = wf-loop-run run n ls'' al'' h wf''
 
 mutual
   wf-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
@@ -482,11 +393,6 @@ mutual
   wf-abstract (restore-input slot) ls alloc wf =
     wf-slot-load-in1 (readLoc ls (AtStack (current-frame alloc) slot)) ls alloc wf
       (readLoc-below (AtStack (current-frame alloc) slot) wf)
-  wf-abstract (lea-indexed slot) ls alloc wf =
-    wf-lea-indexed (slot-base (readLoc ls (AtStack (current-frame alloc) slot)))
-      (sv-tag-val (readReg (regs ls) Scratch)) wf
-      (slot-base-below (next-heap-ref alloc) (readLoc ls (AtStack (current-frame alloc) slot))
-        (readLoc-below (AtStack (current-frame alloc) slot) wf)) , ≤-refl
   -- Plan 0.63: the frame ops no longer touch the LocState at all (the
   -- `stackSlot` mirror is gone), so these are the identity on the store.
   wf-abstract (instr-alloc-stack n) ls alloc wf = wf , ≤-refl
@@ -513,7 +419,6 @@ mutual
   wf-abstract (instr-load-code-addr n) ls alloc wf = wf-write-reg Output (SV-Code n) wf tt , ≤-refl
   wf-abstract instr-save-closure-reg ls alloc wf = wf , ≤-refl
   wf-abstract (instr-load-tag-lit n) ls alloc wf = wf-write-reg Output (SV-Tag n) wf tt , ≤-refl
-  wf-abstract (instr-case-on-tag f g) ls alloc wf = wf-case (case-tag-at ls) f g ls alloc wf
   -- THE ALLOCATION: the fresh block is handed out (its ref is the OLD frontier,
   -- so it is below the NEW one), and every pre-existing value stays below by
   -- monotonicity. `wf-fresh` shrinks to the cells beyond the new frontier.
@@ -527,19 +432,6 @@ mutual
       ; wf-stack = λ f k → svm-mono (stackMem ls f k) (n≤1+n (next-heap-ref alloc)) (wf-stack wf f k)
       ; wf-fresh = λ hl le → wf-fresh wf hl (≤-trans (n≤1+n (next-heap-ref alloc)) le)
       } , n≤1+n (next-heap-ref alloc)
-  wf-abstract (instr-loop body) ls alloc wf =
-    wf-loop-run (exec-trace body) 1000000 ls alloc (λ ls' alloc' → wf-trace body ls' alloc') wf
-  wf-abstract (instr-reg-op scratch-one) ls alloc wf = wf-write-reg Scratch (SV-Tag 1) wf tt , ≤-refl
-  wf-abstract (instr-reg-op scratch-zero) ls alloc wf = wf-write-reg Scratch (SV-Tag 0) wf tt , ≤-refl
-  wf-abstract (instr-reg-op scratch-dec) ls alloc wf =
-    wf-write-reg Scratch (sv-pred (readReg (regs ls) Scratch)) wf
-      (sv-pred-below (next-heap-ref alloc) (readReg (regs ls) Scratch)) , ≤-refl
-  wf-abstract (instr-reg-op scratch-load-count) ls alloc wf =
-    wf-write-reg Scratch (readReg (regs ls) Count) wf (wf-regs wf Count) , ≤-refl
-  wf-abstract (instr-reg-op count-zero) ls alloc wf = wf-write-reg Count (SV-Tag 0) wf tt , ≤-refl
-  wf-abstract (instr-reg-op count-inc) ls alloc wf =
-    wf-write-reg Count (sv-succ (readReg (regs ls) Count)) wf
-      (sv-succ-below (next-heap-ref alloc) (readReg (regs ls) Count)) , ≤-refl
   wf-abstract (instr-reg-op out-nz) ls alloc wf =
     wf-write-reg Output (sv-nz (readReg (regs ls) Output)) wf
       (sv-nz-below (next-heap-ref alloc) (readReg (regs ls) Output)) , ≤-refl
@@ -556,15 +448,6 @@ mutual
                         (proj₁ step)
     in proj₁ rest , ≤-trans (proj₂ step) (proj₂ rest)
 
-  wf-case : ∀ (mv : Maybe (StoredValue FS)) (f g : AbstractTrace)
-              (ls : LocState FS) (alloc : AllocState {FS})
-          → StoreWF (next-heap-ref alloc) ls → Preserves ls alloc (exec-case-dispatch mv f g ls alloc)
-  wf-case (just (SV-Tag zero))    f g ls alloc wf = wf-trace f ls alloc wf
-  wf-case (just (SV-Tag (suc _))) f g ls alloc wf = wf-trace g ls alloc wf
-  wf-case (just (SV-Ptr _))       f g ls alloc wf = wf-halt wf , ≤-refl
-  wf-case (just (SV-Lit _ _))     f g ls alloc wf = wf-halt wf , ≤-refl
-  wf-case (just (SV-Code _))      f g ls alloc wf = wf-halt wf , ≤-refl
-  wf-case nothing                 f g ls alloc wf = wf-halt wf , ≤-refl
 
 ------------------------------------------------------------------------
 -- Lifted to the FLAT machine: the same invariant, indexed by a FlatState.
@@ -683,8 +566,6 @@ cl-step (instr-ctrl c-leave)                  prog fs wf b = b
 cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-fn prog f) fs b
 cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
 cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
-cl-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf b =
-  cl-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs b
 cl-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf b =
   cl-branch (tag-zf (flat-read-tag (floc fs))) m prog fs b
 cl-step instr-call-closure                     prog fs wf b = cl-call prog fs b
@@ -712,7 +593,6 @@ cl-step store-indirect           prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step store-indirect-suc       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)) b
 cl-step (lea-slot k)             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (lea-slot k) (floc fs) (falloc fs) wf)) b
 cl-step (restore-input k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)) b
-cl-step (lea-indexed k)          prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (lea-indexed k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-reclaim-to k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf)) b
 cl-step (worklist-init k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)) b
 cl-step (worklist-push k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)) b
@@ -722,9 +602,7 @@ cl-step (instr-sigop si)         prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step (instr-load-const p v)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-const p v) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-code-addr k) prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-tag-lit k)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)) b
-cl-step (instr-case-on-tag f g)  prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-case-on-tag f g) (floc fs) (falloc fs) wf)) b
 cl-step (instr-alloc-heap k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)) b
-cl-step (instr-loop body)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-loop body) (floc fs) (falloc fs) wf)) b
 cl-step (instr-reg-op op)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reg-op op) (floc fs) (falloc fs) wf)) b
 
 -- ONE flat step preserves store well-formedness. Control flow only moves the
@@ -738,8 +616,6 @@ flat-wf-step (instr-ctrl c-leave)                   prog fs wf = wf-leave wf
 flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (find-fn prog f) fs wf
 flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf
-flat-wf-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf =
-  wf-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs wf
 flat-wf-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf =
   wf-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
 -- The straight-line cases are ENUMERATED (a catch-all would not reduce
@@ -754,7 +630,6 @@ flat-wf-step store-indirect           prog fs wf = proj₁ (wf-abstract store-in
 flat-wf-step store-indirect-suc       prog fs wf = proj₁ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)
 flat-wf-step (lea-slot k)             prog fs wf = proj₁ (wf-abstract (lea-slot k) (floc fs) (falloc fs) wf)
 flat-wf-step (restore-input k)        prog fs wf = proj₁ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)
-flat-wf-step (lea-indexed k)          prog fs wf = proj₁ (wf-abstract (lea-indexed k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-alloc-stack k)    prog fs wf = proj₁ (wf-abstract (instr-alloc-stack k) (floc fs) (falloc fs) wf)
 -- Plan 0.61: the flat machine MOVES THE FRAME on dealloc-stack / pop-frame.
 -- `StoreWF` is indexed by the allocation FRONTIER and quantifies over ALL
@@ -781,7 +656,5 @@ flat-wf-step (instr-load-const p v)   prog fs wf = proj₁ (wf-abstract (instr-l
 flat-wf-step (instr-load-code-addr k) prog fs wf = proj₁ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)
 flat-wf-step instr-save-closure-reg   prog fs wf = proj₁ (wf-abstract instr-save-closure-reg (floc fs) (falloc fs) wf)
 flat-wf-step (instr-load-tag-lit k)   prog fs wf = proj₁ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)
-flat-wf-step (instr-case-on-tag f g)  prog fs wf = proj₁ (wf-abstract (instr-case-on-tag f g) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-alloc-heap k)     prog fs wf = proj₁ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)
-flat-wf-step (instr-loop body)        prog fs wf = proj₁ (wf-abstract (instr-loop body) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-reg-op op)        prog fs wf = proj₁ (wf-abstract (instr-reg-op op) (floc fs) (falloc fs) wf)

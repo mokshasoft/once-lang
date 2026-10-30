@@ -36,6 +36,7 @@
 --   Comp       g ∘ f
 --   Pair       ⟨ f , g ⟩'s four clusters (run, place, preservation, trace)
 --   PairAssemble  …and the clause that wires them (D211)
+--   Cata       `Cata`, by strategy (`CataConst` proves `strat-const`)
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -68,6 +69,8 @@ open import Once.CCC.Codegen.IRObsCorrect.Call    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair o tbl
 -- plan 0.119 D5: the loop.
 open import Once.CCC.Codegen.IRObsCorrect.IterProof o tbl using (module IterProofC)
+-- plan 0.125 S3: the cata, dispatched on its strategy (`strat-const` proved).
+open import Once.CCC.Codegen.IRObsCorrect.Cata o tbl using (module CataC)
 
 -- The name every importer uses. Each part re-exports `Core`/`Mach`, so the
 -- surface here is what the single file's `IRObsCorrectFlatness` had.
@@ -86,6 +89,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open CaseC    {FS} public
   open PairAsm  {FS} public
   open CallC    {FS} public
+  open CataC    {FS} public
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

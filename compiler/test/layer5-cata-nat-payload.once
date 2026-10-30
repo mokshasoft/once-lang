@@ -1,0 +1,26 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- 2026-10-30 regression (plan 0.125 cata): functor shape Mu (K Int + Id).
+-- The base layer's payload (5) reaches the algebra: idI 5 + 1 = 6 (was 1).
+-- The deleted shape-specialised cata codegens (strat-nat / strat-linear)
+-- miscompiled it; every recursive functor now takes the generic walk.
+--
+-- Expected: exit 6
+
+import I.Linux.Syscalls as S
+
+incI : Int -> Int
+incI n = n + 1
+
+idI : Int -> Int
+idI n = n
+
+f : Mu (K Int + Id) -> Int
+f = cata (case idI incI)
+
+v : Mu (K Int + Id)
+v = In (inr (In (inl 5)))
+
+main : Act Unit Void
+main = exit@S (f v)

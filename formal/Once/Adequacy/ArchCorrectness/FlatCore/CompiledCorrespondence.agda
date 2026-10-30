@@ -134,7 +134,7 @@ private
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
                ; lo; hfront; descend-view; extend-view; slots; dom-fresh)
-open RegRoles roles using (sp-reg; in1-reg; scratch-reg; count-reg; out-reg)
+open RegRoles roles using (sp-reg; in1-reg; out-reg)
 
 ------------------------------------------------------------------------
 -- THE COMPILED CORRESPONDENCE.
@@ -235,8 +235,8 @@ BlockStep hv = BlockStepAt hv hv
 -- record is what makes the event/trace layer — the largest single file — written
 -- once rather than per target.
 --
--- BUILT GROUP BY GROUP, BY PREMISE COUNT, because the 42 fields are not
--- uniform: 11 take only (cc, h, ft), and the tail runs to `alloc-heap`'s 14,
+-- BUILT GROUP BY GROUP, BY PREMISE COUNT, because the 35 fields are not
+-- uniform: 7 take only (cc, h, ft), and the tail runs to `alloc-heap`'s 14,
 -- carrying view-descent and resource premises where a transcription slip would
 -- typecheck but mean the wrong thing. This is also each arch's checklist.
 --
@@ -278,26 +278,6 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just mov-to-input
       → BlockStep hv prog fs s mov-to-input
-    bs-scratch-one :
-      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one)
-      → BlockStep hv prog fs s (instr-reg-op scratch-one)
-    bs-scratch-zero :
-      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero)
-      → BlockStep hv prog fs s (instr-reg-op scratch-zero)
-    bs-count-zero :
-      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero)
-      → BlockStep hv prog fs s (instr-reg-op count-zero)
-    bs-scratch-load-count :
-      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count)
-      → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
     bs-c-label :
       ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
@@ -504,8 +484,8 @@ record BlockSteps : Set₁ where
       → (∀ hl' → HDom hv hl' → (rreg s sp-reg + suc k * slot-size ≡ haddr hv hl') → ⊥)
       → BlockStep hv prog fs s store-indirect-suc
     ------------------------------------------------------------------
-    -- GROUP 3b, the band's other half — CONTROL, the two counters, and the
-    -- two frame markers.
+    -- GROUP 3b, the band's other half — CONTROL, `out-nz`, and the two frame
+    -- markers.
     --
     -- THE LABEL PREMISE IS THE ABSTRACT SCAN ONLY. `FlatMachine.find-label`,
     -- qualified because this module's own `find-label` parameter is the
@@ -517,7 +497,7 @@ record BlockSteps : Set₁ where
     -- applies inside its own block-step — x86-64 does; riscv64 currently takes
     -- it as a premise instead, which is riscv64's to fix, not the field's.
     --
-    -- FIVE CONTROL FIELDS FOR THREE INSTRUCTIONS, again because the engine
+    -- THREE CONTROL FIELDS FOR TWO INSTRUCTIONS, again because the engine
     -- splits: a branch whose label is MISSING but which is NOT TAKEN never
     -- consults the label, so it is an ordinary fall-through step with no label
     -- premise at all (`…-nz`). Only taken-and-missing halts, and that is a
@@ -529,19 +509,6 @@ record BlockSteps : Set₁ where
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp n))
       → FlatMachine.find-label {FS} prog n ≡ just j
       → BlockStep hv prog fs s (instr-ctrl (c-jmp n))
-    bs-c-branch-scratch-zero :
-      ∀ {hv : HeapView} prog fs s n k j → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero n))
-      → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
-      → FlatMachine.find-label {FS} prog n ≡ just j
-      → BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
-    bs-c-branch-nz :
-      ∀ {hv : HeapView} prog fs s n m → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero n))
-      → readReg (regs (floc fs)) Scratch ≡ SV-Tag (suc m)
-      → BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
     -- The tag branch reads its condition THROUGH a pointer, so it carries the
     -- concrete read as well — at the address the Input1 register holds, which
     -- is the generic reading of both arches' `effectiveAddr … 0`.
@@ -562,25 +529,6 @@ record BlockSteps : Set₁ where
       → readLoc (floc fs) loc ≡ just (SV-Tag (suc m))
       → memory s (rreg s in1-reg + 0) ≡ just (suc m)
       → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
-    -- THE TWO COUNTERS. Both are `add`/`sub` sites, so both pay plan 0.70's
-    -- range obligation — the engine derives it from its own resource
-    -- parameters and passes the result, exactly as at `load-tag-lit`. The
-    -- registers are named by ROLE, which is what makes `rbx`/`s3` one field.
-    bs-scratch-dec :
-      ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
-      → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
-      → 1 ≤ rreg s scratch-reg
-      → rreg s scratch-reg < modulus
-      → BlockStep hv prog fs s (instr-reg-op scratch-dec)
-    bs-count-inc :
-      ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
-      → readReg (regs (floc fs)) Count ≡ SV-Tag k
-      → rreg s count-reg + 1 < modulus
-      → BlockStep hv prog fs s (instr-reg-op count-inc)
     -- plan 0.108: a word's truth as a tag, given (from the shape discipline)
     -- that Output holds an `Int` word.
     bs-out-nz :
@@ -661,12 +609,12 @@ record BlockSteps : Set₁ where
       → flink fs ≡ nothing
       → BlockStep hv prog fs s (instr-ctrl (c-ret b))
     ------------------------------------------------------------------
-    -- GROUP 4 — THE LAST FIVE, and the record closes at 42.
+    -- GROUP 4 — THE LAST FIVE, and the record closes at 35.
     --
-    -- WHAT IS NOT HERE, which is how the count came out exact. Five abstract
+    -- WHAT IS NOT HERE, which is how the count came out exact. Four abstract
     -- instructions have block-steps in `FlatSimulation` and NO field:
-    -- `alloc-stack`, `dealloc-stack`, `push-frame`, `pop-frame`,
-    -- `lea-indexed`. The engine refutes every one of them (`frame-op-absurd`
+    -- `alloc-stack`, `dealloc-stack`, `push-frame`, `pop-frame`. (`lea-indexed`
+    -- was a fifth until plan 0.125 deleted it.) The engine refutes every one of them (`frame-op-absurd`
     -- — the `Emitted`/`FrameFreeI` fence: `ir-to-trace` emits none). A
     -- block-step is a field only if the ENGINE CALLS IT. `instr-sigop` is
     -- absent for a different reason: it routes to the event layer, not to a
@@ -760,8 +708,6 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
       → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
-      → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
-      → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Count)
       → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
       → (∀ hl → HDom hv hl → svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl))
       → (∀ (f : FrameSemantics.Frame FS) (k : Slot)
