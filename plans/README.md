@@ -42,7 +42,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.125 Once in nixpkgs | A, B, C.1, C′ 1–4 done | C.2 draft `package.nix` against nixpkgs; C′ 5 server-test segfaults; D release + nixpkgs PR |
 | 0.129 optimizer strength | A, B, B4, B5, C1 done; C2 dropped | C3 pair fusion, C4 Lambek; D: discovery tool on traces; E: optimality over the trace |
 | 0.130 run-time cost instrumentation | not started | decide where counts come from (flat machine vs emulator); one report shape shared with the Agda fork's; dependent-type-ready keys |
-| 0.133 `check` decides typing | not started, needs a Spec decision | module typing `⊢ᴹ` (Denotes without `entry`); `check` sound and complete against it, on the apex; the run gaps of D353's census (§6) |
+| 0.133 `check` decides typing | open (branch `check-is-typing`), needs a Spec decision | module typing `⊢ᴹ` (Denotes without `entry`); `check` sound and complete against it, on the apex; the run gaps of D353's census (§6) |
 | 0.64 proof-island audit | open | groups F, S, C and `TypeCheck` (group O done, D347) |
 | 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
 | 0.56 register-budget arith | parked | steps A–E |
