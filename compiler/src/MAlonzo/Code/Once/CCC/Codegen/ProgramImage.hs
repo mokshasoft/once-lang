@@ -85,7 +85,7 @@ d_fns'45'image_20 v0 v1
 -- Once.CCC.Codegen.ProgramImage.image-body
 d_image'45'body_30 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_652 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252]
 d_image'45'body_30 v0 v1
   = coe
@@ -96,7 +96,7 @@ d_image'45'body_30 v0 v1
             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_872 v0
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
-            (MAlonzo.Code.Once.Denotation.Program.d_main_394 (coe v1))))
+            (MAlonzo.Code.Once.Denotation.Program.d_main_660 (coe v1))))
       (coe
          d_fns'45'image_20
          (coe
@@ -105,12 +105,12 @@ d_image'45'body_30 v0 v1
                MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'next'45'label_946
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe (0 :: Integer))
-               (coe MAlonzo.Code.Once.Denotation.Program.d_main_394 (coe v1))))
-         (coe MAlonzo.Code.Once.Denotation.Program.d_table_392 (coe v1)))
+               (coe MAlonzo.Code.Once.Denotation.Program.d_main_660 (coe v1))))
+         (coe MAlonzo.Code.Once.Denotation.Program.d_table_658 (coe v1)))
 -- Once.CCC.Codegen.ProgramImage.program-image
 d_program'45'image_36 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
-  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_386 ->
+  MAlonzo.Code.Once.Denotation.Program.T_IRProgram_652 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252]
 d_program'45'image_36 v0 v1
   = coe
@@ -123,5 +123,5 @@ d_program'45'image_36 v0 v1
                MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_896
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
-               (coe MAlonzo.Code.Once.Denotation.Program.d_main_394 (coe v1)))))
+               (coe MAlonzo.Code.Once.Denotation.Program.d_main_660 (coe v1)))))
       (coe d_image'45'body_30 (coe v0) (coe v1))

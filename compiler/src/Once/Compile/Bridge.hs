@@ -39,6 +39,8 @@ module Once.Compile.Bridge
   , resolveImports
   , compileFromModule
   , dumpIRFromModule
+    -- * Measuring (MERGE.md §1)
+  , statsFromModule
     -- * Formatting (plan 0.124)
   , formatSource
   ) where
@@ -51,6 +53,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 import qualified MAlonzo.Code.Once.Compile as MC
 import qualified MAlonzo.Code.Once.Compile.Dump as MCD
+import qualified MAlonzo.Code.Once.Measure as MMe
 import qualified MAlonzo.Code.Once.IR as MCIR
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Warnings as MW
@@ -119,10 +122,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_1508
-toMStage Parse = MC.C_Parse_1510
-toMStage Check = MC.C_Check_1512
-toMStage Build = MC.C_Build_1514
+toMStage :: Stage -> MC.T_Stage_1504
+toMStage Parse = MC.C_Parse_1506
+toMStage Check = MC.C_Check_1508
+toMStage Build = MC.C_Build_1510
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -155,12 +158,12 @@ fromMPolyFunInfo pfi = PolyFunSig
   , polyFunSigType = agdaToText (MT.d_showPolyType_134 (MP.d_pfunType_108 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_1516 -> CompileResult
-fromMResult (MC.C_Parsed_1518 fis pfis) =
+fromMResult :: MC.T_CompileResult_1512 -> CompileResult
+fromMResult (MC.C_Parsed_1514 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_1520 _)  = Checked
-fromMResult (MC.C_Built_1522 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_1524 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_1516 _)  = Checked
+fromMResult (MC.C_Built_1518 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_1520 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -168,7 +171,7 @@ fromMResult (MC.C_Error_1524 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_1572 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_1568 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -268,7 +271,7 @@ toMAllocMode AllocHeap  = MCIR.C_Heap_8
 compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Resolved -> CompileResult
 compileFromModule m stage doOpt arch (Resolved mod_) =
   fromMResult
-    (MC.d_compileFromModule_1774
+    (MC.d_compileFromModule_1770
        (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))
 
 -- | Each compiled function's IR as text, unoptimized (`False`) or optimized
@@ -276,6 +279,14 @@ compileFromModule m stage doOpt arch (Resolved mod_) =
 dumpIRFromModule :: Bool -> Resolved -> Either Text Text
 dumpIRFromModule doOpt (Resolved mod_) =
   case MCD.d_dumpIR_16 doOpt (unsafeCoerce mod_) of
+    MSum.C_inj'8321'_38 err -> Left (agdaToText err)
+    MSum.C_inj'8322'_42 out -> Right (agdaToText out)
+
+-- | The static costs of the module's program image, optimized (`True`) or
+-- not, or the compiler's error (`Once.Measure.statsOf`).
+statsFromModule :: Bool -> Resolved -> Either Text Text
+statsFromModule doOpt (Resolved mod_) =
+  case MMe.d_statsOf_4 doOpt (unsafeCoerce mod_) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 out -> Right (agdaToText out)
 

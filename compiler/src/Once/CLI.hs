@@ -59,6 +59,7 @@ data Command
   | Escape StageOptions
   | CodeGen StageOptions
   | Fmt FmtOptions
+  | Stats StageOptions
   deriving (Eq, Show)
 
 -- | `once fmt` (plan 0.124): rewrite files in place, check them, or print one.
@@ -190,6 +191,7 @@ run cmd = case cmd of
   Escape opts     -> runNotWired "escape" opts
   CodeGen opts    -> runNotWired "codegen" opts
   Fmt opts        -> runFmt opts
+  Stats opts      -> runStats opts
 
 -- | Emit the output text to the stage's configured destination.
 -- Nothing means stdout; Just path writes to that file. "-" also means stdout.
@@ -352,6 +354,28 @@ runFmt opts = do
           FmtInPlace -> do
             if out == source then pure () else TIO.writeFile path out
             pure True
+
+------------------------------------------------------------------------
+-- Stats Command
+------------------------------------------------------------------------
+
+-- | The static costs of the program image the build emits (optimized), one
+-- `key value` line each (`Once.Measure`; MERGE.md §1, `tests/codegen-measure.sh`).
+runStats :: StageOptions -> IO ()
+runStats opts = do
+  let inputPath = stageInput opts
+  source <- TIO.readFile inputPath
+  loadResult <- loadAndResolve inputPath Nothing source
+  case loadResult of
+    Left err -> do
+      TIO.putStrLn $ "Error: " <> T.pack err
+      exitFailure
+    Right (mod_, _, _) ->
+      case Bridge.statsFromModule True mod_ of
+        Right out -> emitStage (stageOutput opts) out >> exitSuccess
+        Left err -> do
+          TIO.putStrLn $ "Error: " <> err
+          exitFailure
 
 ------------------------------------------------------------------------
 -- Build Command

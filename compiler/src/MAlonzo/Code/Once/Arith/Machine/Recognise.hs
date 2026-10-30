@@ -464,7 +464,7 @@ du_recognise'45'prim_502 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v2 of
-         MAlonzo.Code.Once.SigOp.Info.C_primV_90 v5
+         MAlonzo.Code.Once.SigOp.Info.C_primV_96 v5
            -> case coe v5 of
                 MAlonzo.Code.Once.Arith.Prim.C_p'45'add_210
                   -> coe
@@ -566,7 +566,7 @@ d_rb'45'at_512 v0 v1 v2 v3 v4
                     MAlonzo.Code.Once.IR.C_SigOp_140 v15 v16 v17
                       -> coe
                            du_recognise'45'prim_502 (coe v0) (coe v1)
-                           (coe MAlonzo.Code.Once.SigOp.Info.d_sem_112 (coe v17)) (coe v14)
+                           (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v17)) (coe v14)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       C_v'45'cint_400
@@ -722,7 +722,7 @@ du_recognise'45'prim'45'float_670 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v2 of
-         MAlonzo.Code.Once.SigOp.Info.C_primV_90 v5
+         MAlonzo.Code.Once.SigOp.Info.C_primV_96 v5
            -> case coe v5 of
                 MAlonzo.Code.Once.Arith.Prim.C_p'45'fadd_222
                   -> coe
@@ -812,7 +812,7 @@ d_rbf'45'at_680 v0 v1 v2 v3 v4
                     MAlonzo.Code.Once.IR.C_SigOp_140 v15 v16 v17
                       -> coe
                            du_recognise'45'prim'45'float_670 (coe v0) (coe v1)
-                           (coe MAlonzo.Code.Once.SigOp.Info.d_sem_112 (coe v17)) (coe v14)
+                           (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v17)) (coe v14)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       C_v'45'cint_400 -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18

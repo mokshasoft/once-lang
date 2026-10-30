@@ -103,6 +103,24 @@ typechecker, IR lowering, emitters, `Once.Compile`, and the machine semantics th
 state what the compiled output now does differently. This decides whether §4 runs. Check a
 "proof-only" claim by reading the diff, not the commit messages.
 
+**Emitted code and its cost.** For each extracted-cone change that alters what the compiler emits
+(the optimizer, the arith pass, lowering, the emitters, the linked runtime), the decision entry
+measures master against the branch over the whole corpus (`compiler/test`, `examples`, `tests`),
+built the same way on both sides, per program and in total, with `tests/codegen-measure.sh`
+(`measure` on each side, then `compare`):
+- *Code size*: `.text` on each arch. IR size after `once optimize` is a hint; the binary decides.
+  A rule that shrinks the IR and grows `.text` does not stay.
+- *Memory, static*: heap allocation sites and the cells they allocate; frames reserved, the largest
+  and their sum, in slots (`once stats`, over the program image every arch lowers). A change that
+  moves work between stack and heap says so, and under which `--alloc` mode it was measured.
+  Run-time counts (cells allocated per run, peak heap and stack, instructions executed) are plan
+  0.130; until it lands, the entry says which way it expects them to move and why.
+- *Reach*: programs that newly build, newly fail, or link differently.
+
+Every program that gets worse on any measure is named in the entry, with its cause and the reason
+it is accepted. A change claimed to leave the emitted code alone is checked: the corpus binaries
+are byte-identical to master's on all three arches (`tests/codegen-measure.sh same`).
+
 **Plans.** For every plan the branch touched:
 - Delete a finished plan, after moving anything durable into the decision log or into module
   headers. Say in the commit message where it went.
@@ -144,6 +162,9 @@ Register new modules and drop deleted ones in `compiler/once.cabal`. Then run `c
 and `cabal test` (memory-capped, like agda), and the exit tests on all three arches:
 `tests/run-exit-tests.sh`, `tests/run-exit-tests-x86_32.sh`, `tests/run-exit-tests-riscv64.sh`.
 A green apex says nothing about the extracted pipeline.
+
+If §1 measured the emitted code, run `tests/codegen-measure.sh measure` on the rebased build. Its
+totals must match the decision entries; a difference means an entry is stale.
 
 ## 5. Mechanical gates
 

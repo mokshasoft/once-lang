@@ -183,7 +183,7 @@ d_showIR_14 v0 v1 v2
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("sigop " :: Data.Text.Text)
              (MAlonzo.Code.Once.Name.d_showCanonical_4
-                (coe MAlonzo.Code.Once.SigOp.Info.d_name_110 (coe v5)))
+                (coe MAlonzo.Code.Once.SigOp.Info.d_name_116 (coe v5)))
       MAlonzo.Code.Once.IR.C_Call_146 v5
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20

@@ -47,5 +47,5 @@ data T_IR_16
     C_const_134 MAlonzo.Code.Once.IRTy.T_FitsInRegI_514 AgdaAny |
     C_SigOp_140 MAlonzo.Code.Once.Spec.Type.T_Ty_8
                 MAlonzo.Code.Once.Spec.Type.T_Ty_8
-                MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 |
+                MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 |
     C_Call_146 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6

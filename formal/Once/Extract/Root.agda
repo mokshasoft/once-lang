@@ -27,3 +27,4 @@ import Once.Arith.IR
 import Once.Arith.Type
 import Once.Format
 import Once.Compile.Dump
+import Once.Measure

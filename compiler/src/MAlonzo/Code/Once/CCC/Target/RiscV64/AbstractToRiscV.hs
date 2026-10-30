@@ -381,7 +381,7 @@ d_compile'45'abstract_64 v0
                 MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_48
                 (coe
                    MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'path_58
-                   (coe MAlonzo.Code.Once.SigOp.Info.d_name_110 (coe v3))))
+                   (coe MAlonzo.Code.Once.SigOp.Info.d_name_116 (coe v3))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2304 v1 v2 v3
         -> case coe v2 of

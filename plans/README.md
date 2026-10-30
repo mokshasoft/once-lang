@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (30 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (31 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -41,6 +41,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.124 `once fmt` | after 0.122 | one canonical layout from the Spec's `Module` plus lexer trivia (no second syntax tree); round-trip, idempotence and comment preservation as theorems; deletes the `Grammar` printer |
 | 0.125 Once in nixpkgs | A, B, C.1, C′ 1–4 done | C.2 draft `package.nix` against nixpkgs; C′ 5 server-test segfaults; D release + nixpkgs PR |
 | 0.129 optimizer strength | A done | B: Unit/Void-aware eta, reassociation, dead clauses; C: lost rules (closure beta, uniqueness, fusion); D: discovery tool on traces; E: optimality over the trace |
+| 0.130 run-time cost instrumentation | not started | decide where counts come from (flat machine vs emulator); one report shape shared with the Agda fork's; dependent-type-ready keys |
 | 0.64 proof-island audit | open | groups F, S, C and `TypeCheck` (group O done, D347) |
 | 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
 | 0.56 register-budget arith | parked | steps A–E |

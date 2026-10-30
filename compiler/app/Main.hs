@@ -27,6 +27,7 @@ parseArgs ("optimize"   : rest) = Optimize   <$> parseStageOpts rest
 parseArgs ("escape"     : rest) = Escape     <$> parseStageOpts rest
 parseArgs ("codegen"    : rest) = CodeGen    <$> parseStageOpts rest
 parseArgs ("fmt"        : rest) = parseFmt rest
+parseArgs ("stats"      : rest) = Stats      <$> parseStageOpts rest
 parseArgs _                     = Nothing
 
 -- | `fmt [--check | --stdout] FILE...` (`--stdout` takes one file).
@@ -159,6 +160,9 @@ usage = do
   TIO.putStrLn "  fmt <file.once>...            Rewrite files in the canonical layout"
   TIO.putStrLn "  fmt --check <file.once>...    Fail if a file is not in the canonical layout"
   TIO.putStrLn "  fmt --stdout <file.once>      Print the formatted file"
+  TIO.putStrLn ""
+  TIO.putStrLn "Measuring ([-o FILE] <file.once>):"
+  TIO.putStrLn "  stats <file.once>             Static costs of the program image (heap sites/cells, frames)"
   TIO.putStrLn ""
   TIO.putStrLn "Full compile:"
   TIO.putStrLn "  build [options] <file.once>   Full compile → assembly, optionally to executable"

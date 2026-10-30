@@ -41,7 +41,7 @@ du_cmp'45'of_12 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.SigOp.Info.C_primV_90 v2
+         MAlonzo.Code.Once.SigOp.Info.C_primV_96 v2
            -> case coe v2 of
                 MAlonzo.Code.Once.Arith.Prim.C_p'45'cmp_232 v3
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v3)
@@ -80,10 +80,10 @@ d_cmp'45'block_20 v0
 -- Once.Arith.SigOp.Compare.cmp-block-info
 d_cmp'45'block'45'info_24 ::
   MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102
 d_cmp'45'block'45'info_24 v0
   = coe
-      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_378
+      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_108
       (coe
          MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16
          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12)

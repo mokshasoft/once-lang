@@ -2667,7 +2667,7 @@ d_sigop'45'code_512 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   Integer ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252]
@@ -2676,7 +2676,7 @@ d_sigop'45'code_512 ~v0 v1 v2 v3 v4 v5
 du_sigop'45'code_512 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   Integer ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252]
@@ -2699,7 +2699,7 @@ d_sigop'45'trace_528 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_sigop'45'trace_528 ~v0 v1 v2 v3 v4 v5 v6
@@ -2709,7 +2709,7 @@ du_sigop'45'trace_528 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   Integer ->
   Integer ->
-  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_96 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_sigop'45'trace_528 v0 v1 v2 v3 v4 v5
@@ -4310,7 +4310,7 @@ d_ir'45'to'45'trace''_542 v0 v1 v2 v3 v4 v5
              du_sigop'45'trace_528 (coe v6) (coe v7) (coe v3) (coe v4) (coe v8)
              (coe
                 MAlonzo.Code.Once.Arith.SigOp.Compare.du_cmp'45'of_12
-                (coe MAlonzo.Code.Once.SigOp.Info.d_sem_112 (coe v8)))
+                (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v8)))
       MAlonzo.Code.Once.IR.C_Call_146 v8
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v3)

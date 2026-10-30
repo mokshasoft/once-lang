@@ -69,6 +69,7 @@ library
       MAlonzo.Code.Once.Arith.Machine.Shape
       MAlonzo.Code.Once.Arith.Prim
       MAlonzo.Code.Once.Arith.SigOp.Block
+      MAlonzo.Code.Once.Arith.SigOp.BlockSem
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.Compare
       MAlonzo.Code.Once.Arith.Type
@@ -224,6 +225,8 @@ library
       MAlonzo.Code.Once.Format.Lex
       MAlonzo.Code.Once.Format.Print
       MAlonzo.Code.Once.Format.Spell
+      MAlonzo.Code.Once.Measure
+      MAlonzo.Code.Once.Measure.Image
       Paths_once
       MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
       MAlonzo.Code.Agda.Builtin.Bool
