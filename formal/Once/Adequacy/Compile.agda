@@ -278,13 +278,19 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- has no runnable behaviour, so `compile ≡ nothing`. PLAN 0.107: the bytes are
   -- `as` on the PRINT of the emitted FILE — the same file the obligations below
   -- are about. Explicit-argument helpers, no `with`.
+  -- Plan 0.132: the text assembled is `C.assemblyFromModule`'s, the very function
+  -- the CLI's `build` calls (`Extract.Root.runs.assembly`), so the CLI's compiler
+  -- is the one this theorem is about, not a wrapper around it.
+  compile-text : Arch → String ⊎ String → Maybe (List Byte)
+  compile-text arch (inj₁ _)   = nothing
+  compile-text arch (inj₂ asm) = just (ArchSemantics.assemble (CPU.arch-semantics arch) asm)
+
   compile-fe : (arch : Arch) → String ⊎ C.FileOf arch → Maybe (List Byte)
-  compile-fe arch (inj₁ _) = nothing
-  compile-fe arch (inj₂ F) = just (file-bytes arch F)
+  compile-fe arch fe = compile-text arch (C.printResult arch fe)
 
   compile-mir : Arch → Bool → P.Resolved → Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
-  compile-mir arch doOpt m (just _)  = compile-fe arch (C.compileFileFromModule IR.Heap doOpt arch m)
+  compile-mir arch doOpt m (just _)  = compile-text arch (C.assemblyFromModule doOpt arch m)
 
   compile-gm : Arch → Bool → Maybe P.Resolved → Maybe (List Byte)
   compile-gm arch doOpt nothing   = nothing

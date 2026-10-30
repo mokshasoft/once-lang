@@ -35,7 +35,7 @@ d_statsOf_4 ::
 d_statsOf_4 v0 v1
   = let v2
           = coe
-              MAlonzo.Code.Once.Compile.du_compileResolvedModule'45'aux_1016
+              MAlonzo.Code.Once.Compile.du_compileResolvedModule'45'aux_1014
               (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v0)
               (coe
                  MAlonzo.Code.Once.Parser.d_guardDistinct_488
@@ -60,7 +60,7 @@ d_statsOf_4 v0 v1
       (case coe v2 of
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3 -> coe v2
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
-           -> let v4 = MAlonzo.Code.Once.Compile.d_findMain_1228 (coe v3) in
+           -> let v4 = MAlonzo.Code.Once.Compile.d_findMain_1226 (coe v3) in
               coe
                 (case coe v4 of
                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
@@ -70,10 +70,10 @@ d_statsOf_4 v0 v1
                              MAlonzo.Code.Once.Measure.Image.d_show'45'stats_106
                              (coe
                                 MAlonzo.Code.Once.Measure.Image.d_image'45'stats_104
-                                (MAlonzo.Code.Once.Compile.d_image'45'of_1368
+                                (MAlonzo.Code.Once.Compile.d_image'45'of_1366
                                    (coe
                                       MAlonzo.Code.Once.Denotation.Program.C_irProgram_662
-                                      (coe MAlonzo.Code.Once.Compile.d_tableOf_1262 (coe v3))
+                                      (coe MAlonzo.Code.Once.Compile.d_tableOf_1260 (coe v3))
                                       (coe v5)))))
                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                      -> coe
@@ -82,7 +82,7 @@ d_statsOf_4 v0 v1
                              MAlonzo.Code.Once.Measure.Image.d_show'45'stats_106
                              (coe
                                 MAlonzo.Code.Once.Measure.Image.d_image'45'stats_104
-                                (MAlonzo.Code.Once.Compile.d_lib'45'image_1412
-                                   (coe MAlonzo.Code.Once.Compile.d_tableOf_1262 (coe v3)))))
+                                (MAlonzo.Code.Once.Compile.d_lib'45'image_1410
+                                   (coe MAlonzo.Code.Once.Compile.d_tableOf_1260 (coe v3)))))
                    _ -> MAlonzo.RTE.mazUnreachableError)
          _ -> MAlonzo.RTE.mazUnreachableError)

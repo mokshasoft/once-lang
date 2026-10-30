@@ -257,6 +257,12 @@ decision-log entry updates the rule it changes here, in the same commit.
   emitted from, proved (`CertifiedBuild.inspector`); `stats` is a measurement
   and carries no theorem. One allocation mode on the command line, `Heap`, the
   one the apex covers: there is no `--alloc`. (D352, D142)
+- **What runs is one record, and its unproved part is counted**: the CLI calls
+  only fields of `Once.Extract.Root.runs`; `run-ast-dumps.sh` dumps PROVED (from
+  `once-certified`) and RUNS (from `runs`), and `ast-compare.py` reports RUNS ∖
+  PROVED, each declaration declared by `runs-unproved.allow` or a gap. The apex's
+  `compile` assembles `assemblyFromModule`'s text, the function `build` calls.
+  (D353)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`

@@ -19943,3 +19943,42 @@ does not cover, and `pool`, `arena`, `const` silently meant `Heap`.
 * The apex statement (`Spec.Correct.CorrectCompiler`) and the Spec are unchanged; `Certified` gains `inspector`.
 * `OptimizeSpec`'s stack fixtures build in `Heap`; no CLI test exercises `AllocMode Stack` until an apex covers it.
 * The emitted assembly is byte-identical to before (`tests/codegen-measure.sh same`).
+
+---
+
+## D353 — WHAT RUNS IS ONE RECORD, AND WHAT OF IT IS UNPROVED IS COUNTED (2026-10-30)
+
+**Follows** D352; plan 0.132.
+
+### Context
+`run-ast-dumps.sh` dumped what the apex proof depends on (from `Once.Certified.once-certified`), and MERGE.md §6
+compared that between master and a branch. What the CLI RUNS had no root: `Once.Extract.Root` was a list of
+imports, and the Haskell bridges called MAlonzo names directly, so nothing checked that the code the CLI runs is
+the code the theorem is about, and run code without a theorem was invisible.
+
+### Decision
+* **What runs is one record.** `Once.Extract.Root.runs : Runs` has one field per function the Haskell side calls
+  (14); every bridge calls through it (`MR.d_<field> runs`), so a function the CLI runs is a field, and the
+  MAlonzo numbers the bridges depend on live in one module.
+* **Two roots per ref.** `run-ast-dumps.sh` dumps PROVED and RUNS (`ast-runs-…json`); RUNS is a second
+  `--write-ast` pass over the same staging tree with `Once/Extract/Root.agda` as the main module (no fork change;
+  seconds, every interface reused).
+* **`formal/scripts/ast-compare.py`** reports trust base, PROVED left/joined, RUNS ∖ PROVED classified by
+  `formal/scripts/runs-unproved.allow` (*declared* by a decision, or a *gap*), and the assumptions reachable from
+  RUNS; exit 1 on a new gap or assumption. MERGE.md §6 reads it; the allowlist only shrinks unless a decision
+  raises it.
+* **The first census closed two gaps by definition, not by a theorem.** The CLI parsed with
+  `parseSourceToModule`, an alias of `parseStrict`; `runs.parse-source` is now `parseStrict` (the parser the
+  apex's `compile` reads a source with) and the alias is deleted. The CLI built with `assemblyFromModule`, the
+  apex compiled with `file-bytes`; the apex's `compile` now assembles `C.assemblyFromModule`'s text
+  (`compile-text`, `compile-fe = compile-text ∘ printResult`), so the theorem is about the very function `build`
+  calls. Both reduce to the same terms: no proof changed.
+
+### Consequences
+* Census (2026-10-30): RUNS 3049 declarations, 97 of them unproved; after the two closures the gaps are
+  `Inspect.check` and `Extract.Names` (`module-has-main`, `module-imports`), owned by plan 0.133 §6. Declared:
+  the `runs` record, `Once.Measure` (D352), the warnings (D123), the `parse` printers.
+* Assumptions reachable from RUNS: the `Char`/`String` builtins, `primEraseEquality`, and four `TERMINATING`
+  pragmas (`Recognise.binop-at`, `binop-at-float`, the generic parser's `arrowTailP` and `sound-arrowTail`),
+  all already in `pragma-gate.baseline`.
+* The Haskell side (`Once.CLI`, the import I/O, `as`/`ld`, the Host objects) is in neither dump; it is trusted.

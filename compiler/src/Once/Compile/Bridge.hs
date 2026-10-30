@@ -90,9 +90,9 @@ toMArch RiscV64 = MTA.C_riscv64_12
 -- | Parse a single .once source into a Module AST.
 -- Returns `Left err` if the source fails to parse cleanly (including
 -- silent-drop cases like dotted primitive names or TVars in type
--- position — see plan 0.6 Phase A). Agda-side `parseSourceToModule`
--- now uses the strict parser, so these failures surface rather than
--- silently producing a module with missing decls.
+-- position — see plan 0.6 Phase A). It is `Once.Parser.parseStrict`, the
+-- parser the apex's `compile` reads a source with, so these failures surface
+-- rather than silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
   case MR.d_parse'45'source_36 runs (textToAgda source) of

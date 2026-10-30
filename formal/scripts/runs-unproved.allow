@@ -1,0 +1,32 @@
+# runs-unproved.allow — code the CLI runs that carries no theorem, by decision
+# (plan 0.132, MERGE.md §6). `formal/scripts/ast-compare.py` reads it.
+#
+#   PREFIX  DECISION  reason
+#
+# A declaration of RUNS ∖ PROVED whose qualified name starts with PREFIX is
+# *declared*; any other is a *gap*. This list only shrinks unless a decision
+# entry raises it. Census 2026-10-30: 97 run declarations unproved; after
+# D353, the gaps left are `Inspect.check` (plan 0.133) and `Extract.Names`
+# (plan 0.133 §6).
+
+# The root itself: the record of what runs, and its fields.
+Once.Extract.Root.                    D353  the root of RUNS, structural
+
+# A measurement: counts a definition (`image-of`), claims nothing.
+Once.Measure.                         D352  `once stats` is a measurement
+
+# Reports: a pure query of the source and the module, cannot change what is
+# compiled. A theorem that a reported literal does round is possible later.
+Once.Warnings.                        D123  warnings are a report (D116)
+Once.Surface.LoopWarn.                D123  the silent-round loop warning
+Once.Compile.silentRoundDefs          D123  the loop warning's walk
+Once.Compile.lw-                      D123  the loop warning's walk
+Once.Target.Arch.arch-float-format    D123  read by the rounding warning
+
+# Printers of `once parse`: show the parser's output; no tool's theorem reads them.
+Once.Inspect.signatures               D353  the `parse` printer
+Once.Inspect.showEntries              D353  the `parse` printer
+Once.Inspect.showFuns                 D353  the `parse` printer
+Once.Inspect.showFunInfo              D353  the `parse` printer
+Once.Inspect.showPolys                D353  the `parse` printer
+Once.Inspect.showPolyFunInfo          D353  the `parse` printer

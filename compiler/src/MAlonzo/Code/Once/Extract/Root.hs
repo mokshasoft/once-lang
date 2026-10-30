@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Once.Extract.Names
 import qualified MAlonzo.Code.Once.Format
 import qualified MAlonzo.Code.Once.Inspect
 import qualified MAlonzo.Code.Once.Measure
+import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
@@ -218,8 +219,7 @@ d_format_62 v0
 d_runs_66 :: T_Runs_6
 d_runs_66
   = coe
-      C_constructor_64
-      (coe MAlonzo.Code.Once.Compile.d_parseSourceToModule_624)
+      C_constructor_64 (coe MAlonzo.Code.Once.Parser.d_parseStrict_74)
       (coe MAlonzo.Code.Once.Extract.Names.d_module'45'imports_34)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'path_50)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'alias_54)
@@ -229,7 +229,7 @@ d_runs_66
          (\ v0 ->
             MAlonzo.Code.Once.Parser.Module.Core.d_rmodule_14 (coe v0)))
       (coe MAlonzo.Code.Once.Warnings.d_warningsFor_378)
-      (coe MAlonzo.Code.Once.Compile.d_assemblyFromModule_1562)
+      (coe MAlonzo.Code.Once.Compile.d_assemblyFromModule_1560)
       (coe MAlonzo.Code.Once.Inspect.d_signatures_40)
       (coe MAlonzo.Code.Once.Inspect.d_check_48)
       (coe MAlonzo.Code.Once.Inspect.d_dumpIR_68)

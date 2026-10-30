@@ -27,6 +27,7 @@ open import Once.Spec.Surface.Syntax using (Module)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.Parser.Module.Resolve using (ModuleMap)
 import Once.Compile as Compile
+import Once.Parser as Parser
 import Once.Parser.Module.Core as Core
 import Once.Parser.Module.Resolve as Resolve
 import Once.Warnings as Warnings
@@ -38,7 +39,6 @@ import Once.Measure as Measure
 -- The datatypes the Haskell side builds or reads directly (the arith IR the
 -- test evaluator walks, the IR and type modules' constructors).
 import Once.IR
-import Once.Parser
 import Once.Type
 import Once.Arith.IR
 import Once.Arith.Type
@@ -73,7 +73,7 @@ record Runs : Set₁ where
 
 runs : Runs
 runs = record
-  { parse-source    = Compile.parseSourceToModule
+  { parse-source    = Parser.parseStrict
   ; module-imports  = Names.module-imports
   ; import-path     = Names.import-path
   ; import-alias    = Names.import-alias

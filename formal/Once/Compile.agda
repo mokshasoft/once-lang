@@ -360,19 +360,6 @@ resolveFunType : TopCtx → PolyCtx → Maybe Type → Expr → String ⊎ Type
 resolveFunType ctx polys (just ty) body = inj₂ ty
 resolveFunType ctx polys nothing   body = inferType ctx polys body
 
--- | Parse source text to a Module AST. Haskell uses this to read
--- both the user's file and each transitive import before calling
--- `resolveImports` with the populated ModuleMap.
---
--- Strict: returns `inj₁ err` if any tokens are left unconsumed after
--- the parsed decls, or if the module failed to parse at all. This
--- surfaces silent-drop failures (dotted primitive names, TVar-in-
--- type-position, etc.) as real errors at the Haskell boundary
--- instead of zero-decl "Parse OK" that cost a session's worth of
--- debugging earlier. Plan 0.6 Phase A.
-parseSourceToModule : String → String ⊎ Module
-parseSourceToModule = parseStrict
-
 -- | Compile a pre-parsed, pre-resolved Module. Used by the import-aware
 -- pipeline: Haskell parses each file separately, calls `resolveImports`
 -- (references resolved, the imported signatures read), then hands the result

@@ -144,7 +144,7 @@ d_check_48 v0
   = coe
       d_accepted_44
       (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1034
+         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1032
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v0))
 -- Once.Inspect.showCompiledFun
@@ -211,5 +211,5 @@ d_dumpIR_68 v0 v1
   = coe
       d_showCompiled_62
       (coe
-         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1034
+         MAlonzo.Code.Once.Compile.d_compileResolvedModule_1032
          (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v0) (coe v1))

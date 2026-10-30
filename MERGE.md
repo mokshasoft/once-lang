@@ -195,7 +195,7 @@ Rules that go with the gates:
   re-exports and prune dead imports with `scripts/reexport-remove.py`, which checks name
   resolution before and after. Never edit them by eye.
 
-## 6. Reachability (the trust base must not grow silently)
+## 6. Reachability (the trust base and the unproved run code must not grow silently)
 
 ```
 ./run-ast-dumps.sh                              # master and the branch
@@ -203,11 +203,26 @@ HEAP=6G COMPACT=-c20 ./run-ast-dumps.sh <ref>   # if a module runs out of memory
 ```
 
 This needs the Agda fork with `--write-ast` (see the script header). It takes tens of minutes
-per ref, so start it during §1. Compare the two dumps:
+per ref, so start it during §1. Each ref gets two dumps: PROVED (`ast-once-certified-…`, what the
+apex proof depends on) and RUNS (`ast-runs-…`, what the CLI runs: `Once.Extract.Root.runs`).
+Compare them:
+
+```
+formal/scripts/ast-compare.py MASTER_PROVED MASTER_RUNS -- BRANCH_PROVED BRANCH_RUNS
+```
+
+It exits 1 on a new assumption or a new gap. Read:
 - `counts.trustBase` and the per-marker split. A postulate appearing needs a decision entry. A
   postulate splitting into another postulate plus a proof shows up as +1/−1 and is fine.
 - Modules leaving `reachable`. Removing the last consumer of a proof must be intentional,
   because nothing else in the build notices it.
+- RUNS ∖ PROVED, "runs but unproved". Each such declaration is either *declared* by a line in
+  `formal/scripts/runs-unproved.allow` (a decision says it carries no theorem: a measurement, a
+  report, a printer) or a *gap*. A new gap needs a decision entry and either a proof or an allow
+  line; the allowlist only shrinks unless a decision raises it.
+- Assumptions reachable from RUNS: run code that rests on a postulate or pragma.
+- The Haskell side (`Once.CLI`, import I/O, `as`/`ld`, the Host objects) is in neither dump; it
+  is trusted, and the residual ledger's tool rows list it.
 - The counts are of declarations, not source sites: one pragma covers a whole mutual block and
   its generated helpers. Use the counts to detect change. Quote source-level numbers in
   decision entries.
