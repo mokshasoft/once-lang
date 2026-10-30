@@ -21,7 +21,7 @@ module Once.Denotation.Program where
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.Unit using (tt)
-open import Data.Product using (_×_)
+open import Data.Product using (_×_; _,_)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
@@ -36,7 +36,7 @@ open import Once.IRTy using (_≟IRTy_; IRTy; Unit)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (T; unlinkedT)
 open import Once.IR.Semantics.Iterative using (T∞; embed)
-open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open SigOpInfo using (name; sem)
 open import Once.Contract using (ISig; key; valueKeys; answerKeys)
@@ -120,7 +120,7 @@ LinkedAt (e ∷ es) f A B = LinkedAt-at e es f A B (fname e ≟ᶜ f) (fdom e �
 Declared-at : ISig → ∀ {A B} → SigOpInfo A B → SigOpSem A B → Set
 Declared-at Σ {A} {B} si ffiV   = key (showCanonical (name si)) A B ∈ valueKeys Σ
 Declared-at Σ {A} {B} si callsV = key (showCanonical (name si)) A B ∈ answerKeys Σ
-Declared-at Σ si (pureV _)  = ⊤
+Declared-at Σ si (blockV _ _ _) = ⊤
 Declared-at Σ si (primV _)  = ⊤
 Declared-at Σ si (emitsV _) = ⊤
 Declared-at Σ si (haltsV _) = ⊤
@@ -128,29 +128,65 @@ Declared-at Σ si (haltsV _) = ⊤
 Declared : ISig → ∀ {A B} → SigOpInfo A B → Set
 Declared Σ si = Declared-at Σ si (sem si)
 
+-- A predicate on an IR's LEAVES: `C i` at each call (its name and objects),
+-- `S` at each SigOp; every other former is `⊤` (plan 0.129 B5: linkedness and
+-- "every compiler-owned SigOp names a block" are two instances). The call
+-- predicate's index `i` (linkedness: the table) is its own argument, so a
+-- stuck `Leaves C i S ir` still determines `i`.
+Leaves : ∀ {I : Set} → (I → CanonicalName → IRTy → IRTy → Set) → I → (∀ {A B} → SigOpInfo A B → Set) → ∀ {A B} → IR A B → Set
+Leaves C i S (g ∘ f)          = Leaves C i S g × Leaves C i S f
+Leaves C i S ⟨ f , g ⟩        = Leaves C i S f × Leaves C i S g
+Leaves C i S (case f g)       = Leaves C i S f × Leaves C i S g
+Leaves C i S (curry f)        = Leaves C i S f
+Leaves C i S (Cata _ alg)     = Leaves C i S alg
+Leaves C i S (Ana _ coalg)    = Leaves C i S coalg
+Leaves C i S (Iter body)      = Leaves C i S body
+Leaves C i S (Call {A} {B} f) = C i f A B
+Leaves C i S id               = ⊤
+Leaves C i S fst              = ⊤
+Leaves C i S snd              = ⊤
+Leaves C i S inl              = ⊤
+Leaves C i S inr              = ⊤
+Leaves C i S terminal         = ⊤
+Leaves C i S initial          = ⊤
+Leaves C i S apply            = ⊤
+Leaves C i S (In _)           = ⊤
+Leaves C i S (out-μ _)        = ⊤
+Leaves C i S (Out _)          = ⊤
+Leaves C i S (in-ν _)         = ⊤
+Leaves C i S (SigOp si)       = S si
+Leaves C i S (const _ _)      = ⊤
+
+-- …and a map of the two predicates lifts to the leaves.
+leaves-map : ∀ {I I′ : Set} {C : I → CanonicalName → IRTy → IRTy → Set} {C′ : I′ → CanonicalName → IRTy → IRTy → Set}
+               {i i′} {S S′ : ∀ {A B} → SigOpInfo A B → Set}
+           → (∀ f A B → C i f A B → C′ i′ f A B) → (∀ {A B} (si : SigOpInfo A B) → S si → S′ si)
+           → ∀ {A B} (ir : IR A B) → Leaves C i S ir → Leaves C′ i′ S′ ir
+leaves-map hc hs (g ∘ f)          (a , b) = leaves-map hc hs g a , leaves-map hc hs f b
+leaves-map hc hs ⟨ f , g ⟩        (a , b) = leaves-map hc hs f a , leaves-map hc hs g b
+leaves-map hc hs (case f g)       (a , b) = leaves-map hc hs f a , leaves-map hc hs g b
+leaves-map hc hs (curry f)        a       = leaves-map hc hs f a
+leaves-map hc hs (Cata _ alg)     a       = leaves-map hc hs alg a
+leaves-map hc hs (Ana _ cg)       a       = leaves-map hc hs cg a
+leaves-map hc hs (Iter cg)        a       = leaves-map hc hs cg a
+leaves-map hc hs (Call {A} {B} f) a       = hc f A B a
+leaves-map hc hs id               a       = tt
+leaves-map hc hs fst              a       = tt
+leaves-map hc hs snd              a       = tt
+leaves-map hc hs inl              a       = tt
+leaves-map hc hs inr              a       = tt
+leaves-map hc hs terminal         a       = tt
+leaves-map hc hs initial          a       = tt
+leaves-map hc hs apply            a       = tt
+leaves-map hc hs (In _)           a       = tt
+leaves-map hc hs (out-μ _)        a       = tt
+leaves-map hc hs (Out _)          a       = tt
+leaves-map hc hs (in-ν _)         a       = tt
+leaves-map hc hs (SigOp si)       a       = hs si a
+leaves-map hc hs (const _ _)      a       = tt
+
 Linked : ISig → List IRFun → ∀ {A B} → IR A B → Set
-Linked Σ tbl (g ∘ f)          = Linked Σ tbl g × Linked Σ tbl f
-Linked Σ tbl ⟨ f , g ⟩        = Linked Σ tbl f × Linked Σ tbl g
-Linked Σ tbl (case f g)       = Linked Σ tbl f × Linked Σ tbl g
-Linked Σ tbl (curry f)        = Linked Σ tbl f
-Linked Σ tbl (Cata _ alg)     = Linked Σ tbl alg
-Linked Σ tbl (Ana _ coalg)    = Linked Σ tbl coalg
-Linked Σ tbl (Iter body)      = Linked Σ tbl body
-Linked Σ tbl (Call {A} {B} f) = LinkedAt tbl f A B
-Linked Σ tbl id               = ⊤
-Linked Σ tbl fst              = ⊤
-Linked Σ tbl snd              = ⊤
-Linked Σ tbl inl              = ⊤
-Linked Σ tbl inr              = ⊤
-Linked Σ tbl terminal         = ⊤
-Linked Σ tbl initial          = ⊤
-Linked Σ tbl apply            = ⊤
-Linked Σ tbl (In _)           = ⊤
-Linked Σ tbl (out-μ _)        = ⊤
-Linked Σ tbl (Out _)          = ⊤
-Linked Σ tbl (in-ν _)         = ⊤
-Linked Σ tbl (SigOp si)       = Declared Σ si
-Linked Σ tbl (const _ _)      = ⊤
+Linked Σ tbl = Leaves LinkedAt tbl (Declared Σ)
 
 ------------------------------------------------------------------------
 -- THE IR PROGRAM (D244): the function table and `main`, the shape codegen

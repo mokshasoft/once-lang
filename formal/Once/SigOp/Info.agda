@@ -58,6 +58,8 @@ open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Numerics using (TargetNum)
 import Once.IR.Semantics.Value Carrier Carrier as M
 open import Once.Arith.Prim using (ArithPrim; primSem)
+open import Once.Arith.Machine.IR using (MArithIR; shape-as-type; numtype-as-type)
+open import Once.Arith.SigOp.BlockSem using (block-semP)
 
 ------------------------------------------------------------------------
 -- EffectShape — the SigOp's effect *shape*, indexed by codomain
@@ -119,28 +121,25 @@ data EffectShape (B : Type) : Set where
 -- This makes it STRUCTURALLY IMPOSSIBLE to bake an opaque external
 -- value into an effectful SigOp: an effectful op carries a contract,
 -- never a value. The earlier `generic-semM` syscall laundering cannot
--- be expressed — the only place an opaque value can still live is a
--- `pureV` (the named-pure-value `closure`/`poly` positions, a separate
--- function-linking concern, NOT a syscall contract).
+-- be expressed. An internal SigOp carries no opaque value either: it is a
+-- primitive (`primV`) or an arith block's body (`blockV`), and its meaning is
+-- computed from that.
 ------------------------------------------------------------------------
 
 data SigOpSem (A B : Type) : Set where
-  -- | Internal producer: a proven machine value function.
+  -- | An arith BLOCK (plan 0.129 B5): the contract IS the body, and its meaning
+  -- is the body's (`block-semP`). It used to be `pureV f`, an opaque function,
+  -- so a block met in an IR could not be told from any other value: the arith
+  -- pass could not register it, and the file's block table was ASSUMED to hold
+  -- its symbol (`arith-sigop-contract`). The objects are equations, not
+  -- indices (`shape-as-type` does not invert), so `SigOpSem` stays a family
+  -- with parameters.
   --
-  -- PLAN 0.74 J5 (D059) — it takes the TARGET'S NUMERICS. It used to be a
-  -- closed `M.⟦ A ⟧ → M.⟦ B ⟧`, and `Arith/SigOp/Builders` accordingly
-  -- computed `arith.neg.int` with `Word64.⊝` on every target. That is not an
-  -- untidy import: the meaning of `neg` reaches this
-  -- function, so on x86-32 the SPEC said `⟦ neg (int 5) ⟧ = 2^64 - 5`, which
-  -- is not even a 32-bit word, while literals in the same expression were
-  -- already width-correct. Nothing was red because `block-semM` and
-  -- `ArithSimX86-32` baked 64 as well — two sides wrong together, the same
-  -- shape as D114's `isInt?` and the `absℤ` bug.
-  --
-  -- D250: the result is GRADED (`M.⟦_⟧ᵍ`): a contract is a value of its declared
-  -- type, so a pure one's function pointer is total. The machine reads its
-  -- erasure (`semM`).
-  pureV : (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ) → SigOpSem A B
+  -- PLAN 0.74 J5 (D059), on the `pureV` it replaces: the meaning takes the
+  -- TARGET'S NUMERICS. A closed `M.⟦ A ⟧ → M.⟦ B ⟧` made `arith.neg.int`
+  -- `Word64.⊝` on every target, so on x86-32 the SPEC said
+  -- `⟦ neg (int 5) ⟧ = 2^64 - 5`. D250: the result is GRADED (`M.⟦_⟧ᵍ`).
+  blockV : ∀ {sh n} (e : MArithIR sh n) → A ≡ shape-as-type sh → B ≡ numtype-as-type n → SigOpSem A B
   -- | plan 0.105: a PURE FFI contract. Its value is the interpretation's
   -- (D061): the compiler knows only its name and declared types.
   ffiV : SigOpSem A B
@@ -216,7 +215,7 @@ open SigOpInfo
 -- `FFIAnswers` is the interpretation's answer to a contract (`Spec.Trace`).
 
 semM-of : ∀ {A B} → FFIAnswers → CanonicalName → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
-semM-of ans n (pureV f)     = λ tn x → returns (M.eraseᵍ (f tn x))
+semM-of ans n (blockV e refl refl) = λ tn x → returns (M.eraseᵍ (block-semP e tn x))
 semM-of ans n (emitsV refl) = λ _ _ → returns tt
 semM-of ans n (haltsV refl) = λ _ _ → stopped
 semM-of ans n (primV p)     = λ tn x → returns (M.eraseᵍ (primSem p tn x))
@@ -224,7 +223,7 @@ semM-of {A} {B} ans n ffiV   = λ _ x → ans n A B x
 semM-of {A} {B} ans n callsV = λ _ x → ans n A B x
 
 effect-of : ∀ {A B} → SigOpSem A B → EffectShape B
-effect-of (pureV _)  = Pure
+effect-of (blockV _ _ _) = Pure
 effect-of (emitsV e) = Emits e
 effect-of (haltsV e) = Halts e
 effect-of (primV _)  = Pure
@@ -244,7 +243,7 @@ effect si = effect-of (sem si)
 -- does not define. The machine dispatches on THIS, never on the effect shape —
 -- a pure FFI contract is `Pure` and still external.
 data Internal {A B : Type} : SigOpSem A B → Set where
-  int-pure : ∀ {f} → Internal (pureV f)
+  int-block : ∀ {sh n} {e : MArithIR sh n} {eA eB} → Internal (blockV e eA eB)
   int-prim : ∀ {p} → Internal (primV p)
 
 data External {A B : Type} : SigOpSem A B → Set where
@@ -254,7 +253,7 @@ data External {A B : Type} : SigOpSem A B → Set where
   ext-halts : ∀ {e} → External (haltsV e)
 
 sigop-owner : ∀ {A B} (s : SigOpSem A B) → Internal s ⊎ External s
-sigop-owner (pureV _)  = inj₁ int-pure
+sigop-owner (blockV _ _ _) = inj₁ int-block
 sigop-owner (primV _)  = inj₁ int-prim
 sigop-owner ffiV       = inj₂ ext-ffi
 sigop-owner callsV     = inj₂ ext-calls
@@ -263,7 +262,7 @@ sigop-owner (haltsV _) = inj₂ ext-halts
 
 -- An internal SigOp is pure: it neither logs nor halts.
 internal-pure : ∀ {A B} {s : SigOpSem A B} → Internal s → effect-of s ≡ Pure
-internal-pure int-pure = refl
+internal-pure int-block = refl
 internal-pure int-prim = refl
 
 -- D250: an INTERNAL contract's graded value — what the Spec means by the
@@ -274,23 +273,8 @@ semP : ∀ {A B} (si : SigOpInfo A B) → Internal (sem si) → TargetNum → M.
 semP {A} {B} si = semP-of (sem si)
   where
     semP-of : (s : SigOpSem A B) → Internal s → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ
-    semP-of (pureV f) int-pure = f
+    semP-of (blockV e refl refl) int-block = block-semP e
     semP-of (primV p) int-prim = primSem p
-
-------------------------------------------------------------------------
--- Compatibility constructor — maps the old `(value, effect)` pair into
--- `SigOpSem`, DROPPING the value for effect contracts (`Emits`/`Halts`):
--- an effectful op's value is `tt` by coherence, so the supplied
--- function is discarded — this is exactly what makes the syscall
--- laundering unrepresentable. `Pure` keeps its value as `pureV`.
-------------------------------------------------------------------------
-
-mk-info : ∀ {A B} → CanonicalName → (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧ᵍ) → EffectShape B
-        → Base ∅ₖ A → Base ∅ₖ B → SigOpInfo A B
-mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA cB
-mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA cB
-mk-info nm f (Halts e) bA cB = mk-info' nm (haltsV e)    bA cB
-mk-info nm f Answers   bA cB = mk-info' nm callsV        bA cB
 
 ------------------------------------------------------------------------
 -- Name-only equality

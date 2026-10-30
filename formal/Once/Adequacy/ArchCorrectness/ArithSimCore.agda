@@ -61,7 +61,7 @@ open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit; emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; compile-go; mul-op; div-op; rem-op; mul-choose; div-choose; div-instr; rem-instr; pow2?; safe-divisor?)
-open import Once.Arith.SigOp.Block using (block-semM)
+open import Once.Arith.SigOp.BlockSem using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord)
 open import Once.Arith.Backend.BlockValueSemM using (block-value-semM)
 

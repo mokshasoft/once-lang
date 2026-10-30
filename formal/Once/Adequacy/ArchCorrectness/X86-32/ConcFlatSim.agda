@@ -228,6 +228,10 @@ open import Once.CCC.Codegen.ShapeTable as ST using
 -- events-agree induction below).
 open import Once.Adequacy.CPU.X86-32 using (ev-x86-32; block-env; call-at-x86-32)
 import Once.Compile as Cmp
+import Once.Adequacy.BlockTable as BT
+import Once.Arith.Backend.X86-32.Emit as AE
+open import Once.Adequacy.CPU.X86-32 using (block-env-hit)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Data.String using (String)
 open import Once.Denotation.Program using (IRProgram)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
@@ -724,18 +728,14 @@ postulate
   -- about the ABSTRACT machine, and its discharge is the typed shape checker
   -- (the same route the other dataflow disciplines take) plus the
   -- `emitted-thunk-guarded` induction for the body's existence.
-  arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
-                       → RunAt prog fs
-                       -- THE REAL ENV (2026-07-30): over an arbitrary `env` the
-                       -- conclusion `env sym ≡ just pl` is refuted by `λ _ → nothing`.
-                       → x86-32-arith-table prog env
-                       → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                       -- the payload is the BLOCK alone here — this arch's
-                       -- `dispatch-arith` takes no fuel word (see
-                       -- `x86-32-traceloop.Payload`).
-                       → Σ (List XInstr) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                           × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
-                               (dispatch-arith val-x86-32 pl s))
+  -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
+  -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
+  arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
+                  → RunAt prog fs
+                  → x86-32-arith-table prog env
+                  → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                  → ∀ (pl : List XInstr) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (dispatch-arith val-x86-32 pl s)
 
   -- EXTERNAL SIGOP (Emits/Halts) interpretation contract — the value-carrying observable,
   -- the honest per-(SigOp×target) TrustedBase (D061). Bundles: env maps the symbol to
@@ -759,6 +759,30 @@ postulate
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
+-- Plan 0.129 B5: THE LOOKUP HALF IS A THEOREM. A compiler-owned SigOp of the
+-- image names a block of the program (`BlockTable.image-owned`), the file's
+-- table keeps that block's symbol (`table-has`), and `block-env` finds it.
+------------------------------------------------------------------------
+arith-sigop-lookup : ∀ (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs {A B} (si : SigOpInfo A B)
+                   → x86-32-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → Σ (List XInstr) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
+arith-sigop-lookup .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
+  with fetch-All {k = fpc fs} (BT.image-owned p) ftq int
+... | b , m , e =
+  subst (λ n → Σ (List XInstr) (λ pl → block-env (Cmp.blocks-x86-32 p) (once-symbol-path n) ≡ just pl)) (sym e)
+        (block-env-hit (Cmp.blocks-x86-32 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
+
+arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
+                     → RunAt prog fs
+                     → x86-32-arith-table prog env
+                     → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → Σ (List XInstr) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                         × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (dispatch-arith val-x86-32 pl s))
+arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
+  let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
+  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq pl hit
+
+------------------------------------------------------------------------
 -- THE FLAT MACHINE'S WELL-FORMEDNESS LAYER IS ARCH-GENERIC (Plan 0.65 G1d).
 --
 -- 1,099 lines lived here and mentioned the machine ZERO times — no `X.State`,
@@ -775,7 +799,7 @@ postulate
 -- …and the seven ARCH-GENERIC RESIDUALS moved with them (G1d step 2). They are
 -- assumed once in the core now, so riscv64 and x86-32 consume the same seven
 -- instead of each declaring their own copy. What stayed here is the two that
--- really are x86-32s — arith-sigop-contract and external-sigop-contract, both
+-- really are x86-32s — arith-sigop-run and external-sigop-contract, both
 -- quantified over HeapView and the x86-32 arith runtime.
 
 -- The event-trace induction, fully with-FREE (J-style aux bridges for every case

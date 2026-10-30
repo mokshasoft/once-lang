@@ -9,7 +9,7 @@
 -- contract, and the denotation (`sigOpSemT`) and the machine (`effect-of`)
 -- both read the contract, so one `cong` on `sem si` aligns them.
 --
---   * an internal or pure FFI contract (`pureV`/`primV`/`ffiV`) computes a
+--   * an internal or pure FFI contract (`blockV`/`primV`/`ffiV`) computes a
 --     value in a register and makes no call;
 --   * an emitting one (`emitsV`) is a call answered by `⊤`;
 --   * a halting one (`haltsV`) is a call that ends the program;
@@ -58,7 +58,7 @@ open import Once.Type.Core using (isUnit?)
 open import Once.Denotation.Program using (Declared; Declared-at)
 open import Once.Name using (showCanonical)
 open import Once.Res using (is-stopped)
-open import Once.SigOp.Info using (SigOpSem; effect-of; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo; Pure)
+open import Once.SigOp.Info using (SigOpSem; effect-of; blockV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo; Pure)
 open SigOpInfo using (baseA; conB; sem; name)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code)
@@ -286,7 +286,7 @@ module SigOpC {FS : FrameSemantics} where
   pure-agree : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → effect-of c ≡ Pure → Declared-at σᶠ si c → ∀ a
              → Σ (EvV.⟦ B ⟧) λ w → (Once.SigOp.Info.semM-of φ (name si) c fmt a ≡ returns w)
                                   × (DT.sigOpSemT fmt φ si c a ≡ TM.ret w)
-  pure-agree si (pureV f)  _ _ a = _ , refl , refl
+  pure-agree si (blockV e refl refl) _ _ a = _ , refl , refl
   pure-agree si (primV p)  _ _ a = _ , refl , refl
   pure-agree {A} {B} si ffiV _ d a =
     TM.pure ιᶠ k (proj₁ y) a
@@ -431,7 +431,7 @@ module SigOpC {FS : FrameSemantics} where
 
   by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared-at σᶠ si c
          → cmp-of (sem si) ≡ nothing → IRObsCorrectF (SigOp si)
-  by-sem {A} {B} si (pureV f)     e d nc = pure-route si (pureV f) e refl d nc (fits-in-reg? B) (readable-base (baseA si))
+  by-sem {A} {B} si (blockV b eA eB) e d nc = pure-route si (blockV b eA eB) e refl d nc (fits-in-reg? B) (readable-base (baseA si))
   by-sem {A} {B} si (primV p)     e d nc = pure-route si (primV p) e refl d nc (fits-in-reg? B) (readable-base (baseA si))
   by-sem {A} {B} si ffiV          e d nc = pure-route si ffiV e refl d nc (fits-in-reg? B) (readable-base (baseA si))
   by-sem         si (emitsV refl) e d _  = emits-obs si e

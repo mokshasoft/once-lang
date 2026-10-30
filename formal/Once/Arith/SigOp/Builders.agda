@@ -4,19 +4,10 @@
 ------------------------------------------------------------------------
 -- Once.Arith.SigOp.Builders
 --
--- SigOpInfo values for the arithmetic operations emitted by the
--- frontend elaborator (Surface.Elaborate).
---
--- For plan 0.2.4.1 Phase A, the semantic fields are **postulated**
--- — the goal of this phase is only to eliminate the omnibus
--- `defaultEvalSigOp` postulate in favor of per-SigOp semantics.
--- Plan 0.2.4.2 will make each `semI` / `semM` below definitional
--- (e.g. `add-semI (a,b) = a +ℤ b`) and replace these postulates
--- with proved correctness lemmas against x86-64 codegen.
---
--- String-literal handling is parallel to IntLit (see IntLit.agda):
--- `str-lit-info s` encodes the literal as a `SigOpInfo Unit Str`.
--- Semantics are postulated for now.
+-- SigOpInfo values for what the frontend elaborator (Surface.Elaborate)
+-- emits as SigOps: the arithmetic primitives (D255: each carries its
+-- primitive, `primV p`, so its meaning is `primSem p`) and the FFI
+-- declarations (`value-info`, `arrow-info`: a contract, D061).
 ------------------------------------------------------------------------
 
 module Once.Arith.SigOp.Builders where

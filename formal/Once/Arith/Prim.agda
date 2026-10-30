@@ -8,7 +8,7 @@
 -- is `primSem p`, fixed by the primitive, not supplied. So a consumer that
 -- needs "this SigOp IS addition" (the arith recogniser, D165) matches the
 -- constructor, and the meaning follows definitionally. It used to match the
--- NAME (`arith.add.int`), which a pure FFI contract (`pureV`, any function)
+-- NAME (`arith.add.int`), which a pure FFI contract (`ffiV`)
 -- could in principle carry as well.
 ------------------------------------------------------------------------
 

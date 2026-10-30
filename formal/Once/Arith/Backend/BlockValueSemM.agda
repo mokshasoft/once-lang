@@ -33,7 +33,7 @@ open import Once.Arith.Machine.AbsState using (init; output-of)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs)
 import Once.Arith.Backend.Correct as Correct
-open import Once.Arith.SigOp.Block using (block-semM)
+open import Once.Arith.SigOp.BlockSem using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord; eval≡semM)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)

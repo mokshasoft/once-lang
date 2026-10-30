@@ -36,12 +36,14 @@ import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌈⌉; base-⌊⌋)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.Arith.Machine.IR using (ArithBlock)
-open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; walk-both; prefix-at; try-lift; bare-at)
+open import Once.Arith.Machine.Rewrite using (rewrite-ir; rw-at; walk; walk-both; prefix-at; try-lift; bare-at; bare-sigop)
 open import Once.IR.Semantics.Trace using (T; ret; call; halt; Interp; pureHalf; FFIAnswers; fmapT; RelT′; rel-ret; rel-call; rel-halt)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; embed; fmap∞)
 open T∞ using (force)
-open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
-open SigOpInfo using (baseA; conB)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
+open SigOpInfo using (name; sem; baseA; conB)
+open import Once.Functor.Translate using (Base-irrelevant)
+open import Once.Arith.SigOp.Block using (block-info; shape-as-type-base; numtype-as-type-base)
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv; cata-ev-algᴰ; sigOpT; module CallEnv)
 open CallEnv using (callsE; ffiE)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; cohᴰ; forgetᵇ; injectᵇ; coerce-functor-D; coerce-functor⁻¹-D)
@@ -99,6 +101,20 @@ module _ (fmt : TargetNum) where
     prefix-rel : ∀ {A X B C} (g : IR B C) (f₁ : IR X B) (f₂ : IR A X) (f : IR A B) → f ≡ f₁ ∘ f₂
                → (d : Maybe (IR X C × ArithBlock)) → try-lift (g ∘ f₁) ≡ d
                → ∀ {a a′} → RelD ⌈ A ⌉ a a′ → RelS (RelD ⌈ C ⌉) (E (proj₁ (prefix-at g f₁ f₂ f d)) a) (E′ (g ∘ f) a′)
+
+    -- A bare SigOp the pass keeps, or (a block) rebuilt as its `block-info`:
+    -- the same contract, so the same run. (A block's name is never read, and
+    -- `Base` derivations are unique.)
+    bare-sigop-rel : ∀ {X Y} nm (s : SigOpSem X Y) bA cB {a a′} → RelD ⌈ ⌊ X ⌋ ⌉ a a′
+                   → RelS (RelD ⌈ ⌊ Y ⌋ ⌉) (E (proj₁ (bare-sigop nm s bA cB)) a) (E′ (SigOp (mk-info' nm s bA cB)) a′)
+    bare-sigop-rel nm (blockV {sh} {n} e refl refl) bA cB r
+      rewrite Base-irrelevant bA (shape-as-type-base sh) | Base-irrelevant cB (numtype-as-type-base n) =
+      sigop-rel fmt re (block-info e) r
+    bare-sigop-rel nm s@(primV _)  bA cB r = sigop-rel fmt re (mk-info' nm s bA cB) r
+    bare-sigop-rel nm s@ffiV       bA cB r = sigop-rel fmt re (mk-info' nm s bA cB) r
+    bare-sigop-rel nm s@callsV     bA cB r = sigop-rel fmt re (mk-info' nm s bA cB) r
+    bare-sigop-rel nm s@(emitsV _) bA cB r = sigop-rel fmt re (mk-info' nm s bA cB) r
+    bare-sigop-rel nm s@(haltsV _) bA cB r = sigop-rel fmt re (mk-info' nm s bA cB) r
 
     rewrite-rel ir = rw-at-rel ir (try-lift ir) refl
 
@@ -193,7 +209,7 @@ module _ (fmt : TargetNum) where
         ... | bA , bB , now with base-eqI bA r
         ...   | refl with now ρ _
         ...     | v , e₁ , e₂ = RelS-now e₁ e₂ (base-reflI bB v)
-        bare-rel nothing            eq = sigop-rel fmt re si r
+        bare-rel nothing            eq = bare-sigop-rel (name si) (sem si) (baseA si) (conB si) r
     walk-rel (Call {A} {B} f) r = proj₁ re f A B r
 
 ------------------------------------------------------------------------

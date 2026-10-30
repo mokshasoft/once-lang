@@ -19876,3 +19876,34 @@ unknown in general), so none of that was optimized.
   (`curry(apply ∘ ⟨fst ∘ fst, …⟩) ∘ P`); reaching it needs curry naturality, `curry f ∘ g = curry (f ∘ ⟨g ∘ fst, snd⟩)`.
 * `opt-rules.once` gains `applied` (`(\y -> y) x` optimizes to `curry(snd) . terminal`).
 
+
+## D351 — A COMPILER-OWNED SIGOP NAMES A BLOCK: THE LOOKUP HALF OF `arith-sigop-contract` IS A THEOREM (2026-10-30)
+
+**Follows** D349, plan 0.129 B5.
+
+### Context
+After D349, float arithmetic over a `Float` argument failed to link, and nothing in the proofs objected. Every SigOp
+lowers to `call-sym`; a primitive the arith pass leaves bare is listed as an extern, `Declared (primV _) = ⊤`, and
+`arith-sigop-contract` (`ConcFlatSim`, each arch) ASSUMED the block table holds the symbol of every `Internal`
+SigOp. On master it did not whenever a primitive stayed bare (`shape-of` had no `Float` case). Fixing that showed a
+second defect: an int and a float `x+y` had the same digest, and one body was linked for both.
+
+### Decision
+* `shape-of Float`; a float input has its own digest letter (`J`).
+* **Proof, not a premise.** `RewriteOwned.rewrite-ir-owned`: every `Internal` SigOp leaf of the arith pass's output
+  names a block the pass returns (a comparison: its block). No premise: every non-comparison primitive lifts, and a
+  block met bare is registered again. For that, a block's contract carries its body: `pureV f` (an opaque
+  function only `block-info` made) is replaced by `blockV e refl refl` (meaning `block-semP e`). The rejected
+  alternative, a premise "the input has no block SigOp", would have needed an induction over elaboration and the
+  optimizer for a fact the representation can state.
+* **One leaf predicate, one walk.** `Program.Leaves C i S` (`Linked Σ tbl = Leaves LinkedAt tbl (Declared Σ)`;
+  the call predicate's index is its own argument so `tbl` stays inferable) and `CallOK.InstrOK C Q`; `CallsLinked`
+  and `ImageInstrs.image-ok` prove both "a direct call names a table entry" and "an `instr-sigop` names a block".
+* `BlockTable`: `dedup-blocks` keeps every symbol; each arch's `block-env-hit` finds a symbol that is there.
+* Each arch's `arith-sigop-contract` is a theorem from `arith-sigop-lookup` (proved) and the postulate
+  `arith-sigop-run` (running the payload simulates the instruction).
+
+### Consequences
+* Residual ledger row 3 is `arith-sigop-run`; the lookup claim, false before this fix, is no longer trusted.
+* A bare primitive in the arith pass's output is now a type error in `RewriteOwned`, not a link error.
+* Tests: `float-arg.once` (exit), FloatEmitSpec "argument:" on all three arches.

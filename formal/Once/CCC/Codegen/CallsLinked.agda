@@ -2,25 +2,23 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.CallsLinked   (plan 0.103 6a‴, D245)
+-- Once.CCC.Codegen.CallsLinked   (plan 0.103 6a‴, D245; plan 0.129 B5)
 --
--- EVERY EMITTED DIRECT CALL NAMES A TABLE ENTRY: each `c-call-fn f` in the
--- trace of a LINKED IR (`Once.Denotation.Program.Linked tbl`) names an entry
--- of `tbl` at some objects. The emitter writes `c-call-fn f` for `Call f` and
--- nowhere else, so the induction is `AllocMin`'s (`All P` over the entry
--- block and the block channel), with linkedness threaded to the `Call` leaf.
+-- EVERY EMITTED CALL IS ONE ITS LEAF VOUCHES FOR: each `c-call-fn f` in the
+-- trace of an IR whose calls satisfy `C i` satisfies `C i` at some objects, and
+-- each `instr-sigop si` satisfies `Q` when every SigOp leaf's lowering does
+-- (`Calls`). The emitter writes `c-call-fn f` for `Call f` and `instr-sigop`
+-- for a SigOp (a comparison: its block, `cmp-trace`) and nowhere else, so the
+-- induction is `AllocMin`'s (`All P` over the entry block and the block
+-- channel), with the leaf facts threaded to the leaves.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
-open import Data.List using (List)
-open import Once.Denotation.Program using (IRFun; Linked)
-open import Once.Contract using (ISig)
+open import Once.IRTy using (IRTy)
+open import Once.SigOp.Info using (SigOpInfo)
 
-module Once.CCC.Codegen.CallsLinked (o : CanonicalName) (tbl : List IRFun) where
-
--- plan 0.105: only the CALLS matter here; the signatures linkedness also
--- carries are any.
-private variable σ : ISig
+module Once.CCC.Codegen.CallsLinked (o : CanonicalName) {I : Set}
+  (C : I → CanonicalName → IRTy → IRTy → Set) (i : I) (Q : ∀ {A B} → SigOpInfo A B → Set) where
 
 open import Data.Nat using (ℕ; suc; _+_; _*_)
 open import Data.Unit using (tt)
@@ -36,18 +34,23 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K;
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap; blocks-layout; blocks-layout-++; LabelId; link-top; restore-input; load-indirect-suc; store-at-slot; mov-to-input; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
-open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (sem)
+open import Once.Denotation.Program using (Leaves)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-nat; strat-linear; strat-branching; cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
-open import Once.CCC.Codegen.CallOK using (CallOKI)
+open import Once.CCC.Codegen.CallOK using (InstrOK; Calls)
 
 CLTrace : AbstractTrace → Set
-CLTrace = All (CallOKI tbl)
+CLTrace = All (InstrOK (C i) Q)
+
+-- the leaf facts: each call satisfies `C`, each SigOp's lowering `Q`
+LK : ∀ {A B} → IR A B → Set
+LK = Leaves C i (λ si → Calls Q si (cmp-of (sem si)))
 
 ------------------------------------------------------------------------
 -- The heap-linked-stack bricks the cata codegen is built from.
@@ -211,11 +214,11 @@ cata-dispatch-cl (strat-branching F) bb n1 l1  at ih = cata-branching-cl F bb n1
 ------------------------------------------------------------------------
 
 -- Plan 0.108: a comparison calls its own arith block, which the file defines.
-sigop-calls : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → CLTrace (sigop-code si n m)
-sigop-calls si n nothing  = tt ∷ []
-sigop-calls si n (just _) = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+sigop-calls : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → Calls Q si m → CLTrace (sigop-code si n m)
+sigop-calls si n nothing  q = q ∷ []
+sigop-calls si n (just _) q = q ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
-calls-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ) → Linked σ tbl ir
+calls-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ) → LK ir
              → CLTrace (trace-of (ir-to-trace' n l ir))
 calls-trace' id       n l _ = tt ∷ []
 calls-trace' fst      n l _ = tt ∷ []
@@ -255,7 +258,7 @@ calls-trace' (Ana _ c)      n l _ =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 calls-trace' (Iter b)       n l lb =
   tt ∷ tt ∷ tt ∷ ++⁺ (calls-trace' b _ _ lb) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-calls-trace' (SigOp si)     n l _ = sigop-calls si n (cmp-of (sem si))
+calls-trace' (SigOp si)     n l q = sigop-calls si n (cmp-of (sem si)) q
 calls-trace' (Call {A} {B} f) n l lk = (A , B , lk) ∷ []
 calls-trace' (const fits-int _)   n l _ = tt ∷ []
 calls-trace' (const fits-float _) n l _ = tt ∷ []
@@ -310,7 +313,7 @@ resuspend-cl n l lbl env (wf-Sum wfF wfG) =
                                load-from-slot (suc n) ∷ []))
     arm tag ih = tt ∷ tt ∷ ++⁺ ih (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
 
-calls-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ) → Linked σ tbl ir
+calls-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ) → LK ir
              → CLTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))
 calls-blocks id       n l _ = []
 calls-blocks fst      n l _ = []
@@ -361,9 +364,9 @@ calls-blocks (Cata {F} _ alg) n l la = calls-blocks alg 0 l la
 -- Over the public entry points.
 ------------------------------------------------------------------------
 
-ir-to-trace-lab-calls : ∀ {A B} (ir : IR A B) (l : ℕ) → Linked σ tbl ir → CLTrace (ir-to-trace-lab l ir)
+ir-to-trace-lab-calls : ∀ {A B} (ir : IR A B) (l : ℕ) → LK ir → CLTrace (ir-to-trace-lab l ir)
 ir-to-trace-lab-calls ir l lk = ++⁺ (calls-trace' ir 0 l lk) (tt ∷ calls-blocks ir 0 l lk)
 
 -- …and the OUTERMOST unit, linked with the program's leave (D320).
-ir-to-trace-top-calls : ∀ {A B} (ir : IR A B) → Linked σ tbl ir → CLTrace (link-top (ir-to-unit ir))
+ir-to-trace-top-calls : ∀ {A B} (ir : IR A B) → LK ir → CLTrace (link-top (ir-to-unit ir))
 ir-to-trace-top-calls ir lk = ++⁺ (calls-trace' ir 0 0 lk) (tt ∷ calls-blocks ir 0 0 lk)

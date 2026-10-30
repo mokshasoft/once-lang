@@ -30,6 +30,12 @@ import Once.CCC.Target.X86-32.Semantics as X32
 import Once.CCC.Target.X86-32.Syntax    as X32S
 import Once.CCC.Target.X86-32.File as RF
 open import Data.Bool using (if_then_else_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+open import Data.Product using (Σ; proj₁)
+open import Data.Empty using (⊥-elim)
+open import Data.String using (_≟_)
+open import Relation.Nullary using (Dec; yes; no; isYes)
+open import Relation.Binary.PropositionalEquality using (refl)
 open import Data.String using (_==_)
 open import Data.Product using (_,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -65,6 +71,18 @@ postulate
 block-env : List (String × RF.Payload) → String → Maybe (List XInstr)
 block-env []              _ = nothing
 block-env ((s′ , p) ∷ bs) s = if s′ == s then just (proj₁ p) else block-env bs s
+
+-- Plan 0.129 B5: a symbol that is in the table is found.
+block-env-hit : ∀ (bs : List (String × RF.Payload)) (s : String) → Any (λ x → proj₁ x ≡ s) bs
+              → Σ _ (λ pl → block-env bs s ≡ just pl)
+block-env-hit []              s ()
+block-env-hit ((s′ , p) ∷ bs) s a = go (s′ ≟ s) a
+  where
+    go : (d : Dec (s′ ≡ s)) → Any (λ x → proj₁ x ≡ s) ((s′ , p) ∷ bs)
+       → Σ _ (λ pl → (if isYes d then just (proj₁ p) else block-env bs s) ≡ just pl)
+    go (yes _)  _            = (proj₁ p) , refl
+    go (no ¬e)  (here e)  = ⊥-elim (¬e e)
+    go (no _)   (there a) = block-env-hit bs s a
 
 -- D320: the binary's TRACE — the machine read off step by step (`RT.Run.δ`,
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.

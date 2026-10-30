@@ -699,12 +699,12 @@ rewrite-program : IRProgram → IRProgram
 rewrite-program p = irProgram (rewrite-table (table p)) (proj₁ (rewrite-ir (main p)))
 
 -- …and the arith blocks that lifting minted, from the SAME `rewrite-ir` calls.
+table-blocks : List IRFun → List ArithBlock
+table-blocks []       = []
+table-blocks (e ∷ es) = proj₂ (rewrite-ir (fbody e)) DL.++ table-blocks es
+
 program-blocks : IRProgram → List ArithBlock
 program-blocks p = proj₂ (rewrite-ir (main p)) DL.++ table-blocks (table p)
-  where
-    table-blocks : List IRFun → List ArithBlock
-    table-blocks []       = []
-    table-blocks (e ∷ es) = proj₂ (rewrite-ir (fbody e)) DL.++ table-blocks es
 
 -- One block per symbol (the first): two definitions lifting the same
 -- arithmetic mint the same digest, and a symbol is defined once.

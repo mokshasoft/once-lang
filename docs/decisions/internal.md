@@ -152,6 +152,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   recogniser reads compositions however they nest. (D349)
 - **A closure applied where it is built is inlined** (closure beta); a rule
   through a chain leaves the chain right-nested. (D350)
+- **A compiler-owned SigOp names a block of the file, proved**: the arith pass
+  leaves no bare primitive, a block's contract carries its body (`blockV`), and
+  the lookup half of `arith-sigop-contract` is a theorem on all three arches;
+  `arith-sigop-run` (the block's code simulates the SigOp) stays assumed. (D351)
 - **Two tool hypotheses about `String`** (`Once.Postulates` T1, T2:
   `toList-++`, `toList∘fromList`, the standard library's own): facts about the
   primitives Agda does not export (before, `Data.String.Unsafe`'s `trustMe`,

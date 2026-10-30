@@ -46,11 +46,8 @@ open import Data.Integer using (ℤ)
 --
 -- Semantics are defined by evalSigOp in Once.Semantics (trust boundary).
 
--- SigOpInfo builders (plan 0.2.4.1 Phase A):
--- each arithmetic / literal IR morphism now carries its SigOpInfo
--- (name + per-layer semantic function). See
---   `Once.Arith.SigOp.IntLit` — integer-literal family
---   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
+-- SigOpInfo builders (plan 0.2.4.1 Phase A): each arithmetic IR morphism
+-- carries its SigOpInfo (`Once.Arith.SigOp.Builders`); literals are `const`.
 open import Once.Arith.SigOp.Builders
 open import Once.Spec.Name using (bare)
 open import Once.Type.Concrete using (con-base; con-fun; IsConcrete)

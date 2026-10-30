@@ -52,11 +52,11 @@ open import Once.Surface.Elaborate
 import Once.Surface.Properties
 import Once.IRTy
 open import Once.Spec.Type using (⟦_⟧F)
-open import Once.Denotation.Program using (IRFun; LinkedAt; LinkedAt-at; Linked; Declared-at)
+open import Once.Denotation.Program using (IRFun; LinkedAt; LinkedAt-at; Linked; Declared-at; leaves-map)
 open Once.Denotation.Program.IRFun using (fcod; fdom; fname)
 open import Once.Contract using (ISig; contractOf; contract-eff)
 open import Once.ContractLaws using (value-∈; answer-∈)
-open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; blockV; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
 import Once.Spec.Grade as Ty
 open import Once.Spec.Type using (Void)
@@ -92,34 +92,13 @@ linkedAt-here e es = go (fname e ≟ᶜ fname e) (fdom e ≟IRTy fdom e) (fcod e
 
 linked-mono : ∀ {tbl tbl′ : List IRFun} → (∀ {f A B} → LinkedAt tbl f A B → LinkedAt tbl′ f A B)
             → ∀ {A B} (ir : IR A B) → Linked σ tbl ir → Linked σ tbl′ ir
-linked-mono h (g IR.∘ f)       (lg , lf) = linked-mono h g lg , linked-mono h f lf
-linked-mono h IR.⟨ f , g ⟩     (lf , lg) = linked-mono h f lf , linked-mono h g lg
-linked-mono h (IR.case f g)    (lf , lg) = linked-mono h f lf , linked-mono h g lg
-linked-mono h (IR.curry f)     lf = linked-mono h f lf
-linked-mono h (IR.Cata _ alg)  la = linked-mono h alg la
-linked-mono h (IR.Ana _ coalg) lc = linked-mono h coalg lc
-linked-mono h (IR.Iter body) lc = linked-mono h body lc
-linked-mono h (IR.Call f)      lk = h lk
-linked-mono h IR.id            _ = tt
-linked-mono h IR.fst           _ = tt
-linked-mono h IR.snd           _ = tt
-linked-mono h IR.inl           _ = tt
-linked-mono h IR.inr           _ = tt
-linked-mono h IR.terminal      _ = tt
-linked-mono h IR.initial       _ = tt
-linked-mono h IR.apply         _ = tt
-linked-mono h (IR.In _)        _ = tt
-linked-mono h (IR.out-μ _)     _ = tt
-linked-mono h (IR.Out _)       _ = tt
-linked-mono h (IR.in-ν _)      _ = tt
-linked-mono h (IR.SigOp _)     d = d
-linked-mono h (IR.const _ _)   _ = tt
+linked-mono h = leaves-map (λ _ _ _ → h) (λ _ d → d)
 
 -- Nothing is declared in the empty signatures, so an IR linked against them
 -- has no FFI SigOp, and is linked against any.
 private
   decl-[] : ∀ {A B} (si : SigOpInfo A B) (s : SigOpSem A B) → Declared-at [] si s → Declared-at σ si s
-  decl-[] si (pureV _)  _ = tt
+  decl-[] si (blockV _ _ _) _ = tt
   decl-[] si (primV _)  _ = tt
   decl-[] si (emitsV _) _ = tt
   decl-[] si (haltsV _) _ = tt
@@ -127,28 +106,7 @@ private
   decl-[] si callsV     ()
 
 linked-σ : ∀ {tbl : List IRFun} {A B} (ir : IR A B) → Linked [] tbl ir → Linked σ tbl ir
-linked-σ (g IR.∘ f)       (lg , lf) = linked-σ g lg , linked-σ f lf
-linked-σ IR.⟨ f , g ⟩     (lf , lg) = linked-σ f lf , linked-σ g lg
-linked-σ (IR.case f g)    (lf , lg) = linked-σ f lf , linked-σ g lg
-linked-σ (IR.curry f)     lf = linked-σ f lf
-linked-σ (IR.Cata _ alg)  la = linked-σ alg la
-linked-σ (IR.Ana _ coalg) lc = linked-σ coalg lc
-linked-σ (IR.Iter body) lc = linked-σ body lc
-linked-σ (IR.Call f)      lk = lk
-linked-σ IR.id            _ = tt
-linked-σ IR.fst           _ = tt
-linked-σ IR.snd           _ = tt
-linked-σ IR.inl           _ = tt
-linked-σ IR.inr           _ = tt
-linked-σ IR.terminal      _ = tt
-linked-σ IR.initial       _ = tt
-linked-σ IR.apply         _ = tt
-linked-σ (IR.In _)        _ = tt
-linked-σ (IR.out-μ _)     _ = tt
-linked-σ (IR.Out _)       _ = tt
-linked-σ (IR.in-ν _)      _ = tt
-linked-σ (IR.SigOp si)    d = decl-[] si (SigOpInfo.sem si) d
-linked-σ (IR.const _ _)   _ = tt
+linked-σ = leaves-map (λ _ _ _ c → c) (λ si → decl-[] si (SigOpInfo.sem si))
 
 linkedAt-++ : ∀ (later tbl : List IRFun) {f A B} → LinkedAt tbl f A B → LinkedAt (later ++ tbl) f A B
 linkedAt-++ []          tbl lk = lk

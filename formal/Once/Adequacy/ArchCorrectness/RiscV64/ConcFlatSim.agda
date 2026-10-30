@@ -183,6 +183,10 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas using (execInstr-ld)
 open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; block-env; call-at-riscv64)
 import Once.Compile as Cmp
+import Once.Adequacy.BlockTable as BT
+import Once.Arith.Backend.RiscV64.Emit as AE
+open import Once.Adequacy.CPU.RiscV64 using (block-env-hit)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Data.String using (String)
 open import Data.Product using (Σ)
 open import Once.Denotation.Program using (IRProgram)
@@ -640,17 +644,14 @@ riscv64-block-steps = record
 -- an arbitrary `ev` the emission claim is refuted by `λ _ _ → []`.
 ------------------------------------------------------------------------
 postulate
-  arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv)
-                           prog fs s {A B} (si : SigOpInfo A B)
-                       → EE.RunAt prog fs
-                       → riscv64-arith-table prog env
-                       → Internal (sem si) → CompiledCorr hv prog fs s
-                       → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                       → Σ (List XInstr × ℕ)
-                           (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                             × CompiledCorr hv prog
-                                 (flat-exec-instr (instr-sigop si) prog fs)
-                                 (uncurry (dispatch-arith val-riscv64) pl s))
+  -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
+  -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
+  arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
+                  → EE.RunAt prog fs
+                  → riscv64-arith-table prog env
+                  → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                  → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s)
 
   external-sigop-contract : ∀ {hv : HeapView} (ev : EE.RT.EvExtractor) (env : EE.RT.ArithEnv)
                               prog fs s {A B} (si : SigOpInfo A B)
@@ -667,6 +668,30 @@ postulate
                                 (flat-exec-instr (instr-sigop si) prog fs)
                                 (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
+
+------------------------------------------------------------------------
+-- Plan 0.129 B5: THE LOOKUP HALF IS A THEOREM. A compiler-owned SigOp of the
+-- image names a block of the program (`BlockTable.image-owned`), the file's
+-- table keeps that block's symbol (`table-has`), and `block-env` finds it.
+------------------------------------------------------------------------
+arith-sigop-lookup : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B)
+                   → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
+arith-sigop-lookup .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
+  with FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int
+... | b , m , e =
+  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-riscv64 p) (once-symbol-path n) ≡ just pl)) (sym e)
+        (block-env-hit (Cmp.blocks-riscv64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
+
+arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
+                     → EE.RunAt prog fs
+                     → riscv64-arith-table prog env
+                     → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                         × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s))
+arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
+  let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
+  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq pl hit
 
 ------------------------------------------------------------------------
 -- …AND THE WHOLE SUPPLY, which is what opens the dispatch.

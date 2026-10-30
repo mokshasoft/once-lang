@@ -42,7 +42,7 @@ open import Once.Res using (returns)
 open import Once.Res using (returns-inj)
 open import Once.Denotation.Program using (Declared)
 open import Once.SigOp.Info using (SigOpSem;
-                                   pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo)
+                                   blockV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem; baseA; conB)
 open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg;
                                    p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; bool)
@@ -451,7 +451,7 @@ module CompareC {FS : FrameSemantics} where
   by-contract si (primV p-fmul) e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si (primV p-fdiv) e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si (primV p-i2f)  e d = obs-correct-sigop-nc si d (cong cmp-of e)
-  by-contract si (pureV f)      e d = obs-correct-sigop-nc si d (cong cmp-of e)
+  by-contract si (blockV _ _ _) e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si ffiV           e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si callsV         e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si (emitsV u)     e d = obs-correct-sigop-nc si d (cong cmp-of e)

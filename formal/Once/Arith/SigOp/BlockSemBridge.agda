@@ -39,7 +39,7 @@ open import Once.Arith.CmpOp using (cmp-bit)
 import Once.Spec.Word as OnceWord
 import Once.Word as OnceWordL
 import Once.IR.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
-open import Once.Arith.SigOp.Block using (block-semM; projectM; readLeafM)
+open import Once.Arith.SigOp.BlockSem using (block-semM; projectM; readLeafM)
 
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)

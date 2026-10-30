@@ -32,7 +32,9 @@ open import Once.Contract using (ISig)
 open import Once.Arith.Type using (NInt; NFloat)
 
 private variable σ : ISig
-open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op; bare-at; prefix-at)
+open import Once.Arith.Machine.Rewrite using (rewrite-ir; try-lift; shape-of; block-as-ir; has-op; bare-at; bare-sigop; prefix-at)
+open import Once.SigOp.Info using (mk-info'; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
+open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
 open import Once.Arith.Machine.IR using (ArithBlock; MArithIR; shape-as-type)
 open import Once.Arith.SigOp.Block using (block-info)
@@ -90,7 +92,17 @@ bare-linked : ∀ (tbl : List IRFun) {X Y} (si : Once.SigOp.Info.SigOpInfo X Y) 
             → ∀ (d : Maybe (IR II.⌊ X ⌋ II.⌊ Y ⌋ × ArithBlock)) → JustLinked σ tbl d
             → Linked σ tbl (proj₁ (bare-at si d))
 bare-linked tbl si l (just _) lk = lk
-bare-linked tbl si l nothing  _  = l
+bare-linked tbl si l nothing  _  = sigop-linked (name si) (sem si) (baseA si) (conB si) l
+  where
+    -- a block is rebuilt as its `block-info`, which owes no declaration
+    sigop-linked : ∀ {X Y} nm (s : Once.SigOp.Info.SigOpSem X Y) bA cB → Linked σ tbl (SigOp (mk-info' nm s bA cB))
+                 → Linked σ tbl (proj₁ (bare-sigop nm s bA cB))
+    sigop-linked nm (blockV e refl refl) bA cB l = tt
+    sigop-linked nm (primV _)  bA cB l = l
+    sigop-linked nm ffiV       bA cB l = l
+    sigop-linked nm callsV     bA cB l = l
+    sigop-linked nm (emitsV _) bA cB l = l
+    sigop-linked nm (haltsV _) bA cB l = l
 
 -- THE PASS KEEPS A PROGRAM LINKED.
 -- (a chain's head lifted as a block, plan 0.129 B4)

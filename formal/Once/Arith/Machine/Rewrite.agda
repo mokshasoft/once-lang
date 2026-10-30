@@ -33,8 +33,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.IR
 open import Once.IRTy using (⌊_⌋)
 import Once.IRTy as II
-open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo)
-open SigOpInfo using (sem)
+open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; SigOpSem; mk-info'; blockV; primV; ffiV; callsV; emitsV; haltsV)
+open SigOpInfo using (name; sem; baseA; conB)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.Spec.Type using (Base; ∅ₖ)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block)
 
@@ -165,6 +167,19 @@ sigop-blocks : Maybe CmpOp → List ArithBlock
 sigop-blocks (just o) = cmp-block o ∷ []
 sigop-blocks nothing  = []
 
+-- Plan 0.129 B5: a BLOCK the walk meets is rebuilt as its canonical
+-- `block-info` and registered, so its call names the symbol the file defines
+-- whatever the SigOp it came as was called; anything else stays as it was.
+-- (The SigOp is passed as its fields, so a proof can case on the contract.)
+bare-sigop : ∀ {X Y} → CanonicalName → (s : SigOpSem X Y) → Base ∅ₖ X → Base ∅ₖ Y
+           → IR ⌊ X ⌋ ⌊ Y ⌋ × List ArithBlock
+bare-sigop nm (blockV {sh} {n} e refl refl) bA cB = SigOp (block-info e) , (mk-block sh n e ∷ [])
+bare-sigop nm s@(primV _)  bA cB = SigOp (mk-info' nm s bA cB) , sigop-blocks (cmp-of s)
+bare-sigop nm s@ffiV       bA cB = SigOp (mk-info' nm s bA cB) , []
+bare-sigop nm s@callsV     bA cB = SigOp (mk-info' nm s bA cB) , []
+bare-sigop nm s@(emitsV _) bA cB = SigOp (mk-info' nm s bA cB) , []
+bare-sigop nm s@(haltsV _) bA cB = SigOp (mk-info' nm s bA cB) , []
+
 -- Plan 0.108: a BARE primitive — what the walk leaves when an op's operands are
 -- not arithmetic (`4 * bit c`, `f x + 1` with `f` a call). It is `SigOp si ∘ id`,
 -- a block over its own input, so it is lifted as that: every arithmetic call
@@ -172,7 +187,7 @@ sigop-blocks nothing  = []
 bare-at : ∀ {X Y} (si : SigOpInfo X Y) → Maybe (IR ⌊ X ⌋ ⌊ Y ⌋ × ArithBlock)
         → IR ⌊ X ⌋ ⌊ Y ⌋ × List ArithBlock
 bare-at si (just (ir′ , blk)) = ir′ , (blk ∷ [])
-bare-at si nothing            = SigOp si , sigop-blocks (cmp-of (sem si))
+bare-at si nothing            = bare-sigop (name si) (sem si) (baseA si) (conB si)
 
 rewrite-ir : ∀ {A B} → IR A B → IR A B × List ArithBlock
 rw-at      : ∀ {A B} → IR A B → Maybe (IR A B × ArithBlock) → IR A B × List ArithBlock

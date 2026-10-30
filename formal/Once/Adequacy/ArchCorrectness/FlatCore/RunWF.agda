@@ -97,14 +97,17 @@ import Once.CCC.Codegen.SlotBudget as SB
 import Once.CCC.Codegen.FrameFreeTrace as FFT
 import Once.CCC.Codegen.AllocMin as AM
 open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
-import Once.CCC.Codegen.CallsLinked as CLk
-open import Once.CCC.Codegen.CallOK using (CallOKI)
+import Once.CCC.Codegen.ImageInstrs as IIn
+open import Data.List.Relation.Unary.All using () renaming (map to All-mapL)
+open import Once.CCC.Codegen.CallOK using (InstrOK; Calls; calls-⊤)
+open import Once.SigOp.Info using (module SigOpInfo)
+open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
 open import Once.CCC.Label using (_≡ᵇᴱ_; _≟ᴱ_; ≡ᵇᴱ-refl)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_; Unit)
-open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram)
+open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram; Leaves; leaves-map)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Contract using (ISig)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -139,7 +142,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
 -- discharged once for all three arches — the second payoff this plan predicted
 -- for extracting a core at all.
 --
--- The two that stayed behind are `arith-sigop-contract` and
+-- The two that stayed behind are `arith-sigop-run` (D351) and
 -- `external-sigop-contract`: both quantify over `HeapView` and the x86-64
 -- arith runtime, so they are genuinely x86-64's.
 ------------------------------------------------------------------------
@@ -151,16 +154,18 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
 ------------------------------------------------------------------------
 
 private
-  fns-calls : ∀ {σ : ISig} (tbl : List IRFun) (l : ℕ) (es : List IRFun) → AllL (λ e → Linked σ tbl (fbody e)) es
-            → AllL (CallOKI tbl) (fns-image l es)
-  fns-calls tbl l []       allL-[]          = allL-[]
-  fns-calls tbl l (e ∷ es) (le allL∷ les) =
-    ++⁺ (tt allL∷ CLk.ir-to-trace-lab-calls (fname e) tbl (fbody e) l le) (fns-calls tbl (fn-next l e) es les)
+  -- a direct call names a table entry; a SigOp call is unconstrained here
+  CallOKI : List IRFun → AbstractInstr → Set
+  CallOKI tbl = InstrOK (LinkedAt tbl) (λ _ → ⊤)
+
+  linked-calls : ∀ {σ : ISig} (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir
+               → Leaves LinkedAt tbl (λ si → Calls (λ _ → ⊤) si (cmp-of (SigOpInfo.sem si))) ir
+  linked-calls tbl = leaves-map (λ _ _ _ c → c) (λ si _ → calls-⊤ si (cmp-of (SigOpInfo.sem si)))
 
   image-calls : ∀ {σ : ISig} (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram σ (irProgram tbl ir)
               → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
   image-calls tbl ir (lm , les) =
-    tt allL∷ ++⁺ (CLk.ir-to-trace-top-calls o tbl ir lm) (fns-calls tbl _ tbl les)
+    IIn.image-ok LinkedAt tbl (λ _ → ⊤) o (irProgram tbl ir) (linked-calls tbl ir lm) (All-mapL (λ {e} → linked-calls tbl (fbody e)) les)
 
   -- a linked call names an entry
   linked-any : ∀ (tbl : List IRFun) {f A B} → LinkedAt tbl f A B → Any (λ e → fname e ≡ f) tbl

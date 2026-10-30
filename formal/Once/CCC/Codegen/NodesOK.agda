@@ -35,7 +35,7 @@ import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (IRTy)
 open import Once.Contract using (ISig)
-open import Once.Denotation.Program using (IRFun; Linked; LinkedAt)
+open import Once.Denotation.Program using (IRFun; Linked; LinkedAt; Leaves)
 
 -- The symbol a SigOp's lowering calls: itself, or (a comparison) its block.
 sigop-syms : ∀ {A B} → SigOpInfo A B → Maybe CmpOp → List String
@@ -44,28 +44,7 @@ sigop-syms si (just c) = once-symbol-path (name (cmp-block-info c)) ∷ []
 
 -- A predicate on an IR's SigOp leaves.
 SigLeaves : (∀ {A B} → SigOpInfo A B → Set) → ∀ {A B} → IR A B → Set
-SigLeaves P (g ∘ f)          = SigLeaves P g × SigLeaves P f
-SigLeaves P ⟨ f , g ⟩        = SigLeaves P f × SigLeaves P g
-SigLeaves P (case f g)       = SigLeaves P f × SigLeaves P g
-SigLeaves P (curry f)        = SigLeaves P f
-SigLeaves P (Cata _ alg)     = SigLeaves P alg
-SigLeaves P (Ana _ coalg)    = SigLeaves P coalg
-SigLeaves P (Iter coalg)    = SigLeaves P coalg
-SigLeaves P (SigOp si)       = P si
-SigLeaves P (Call _)         = ⊤
-SigLeaves P id               = ⊤
-SigLeaves P fst              = ⊤
-SigLeaves P snd              = ⊤
-SigLeaves P inl              = ⊤
-SigLeaves P inr              = ⊤
-SigLeaves P terminal         = ⊤
-SigLeaves P initial          = ⊤
-SigLeaves P apply            = ⊤
-SigLeaves P (In _)           = ⊤
-SigLeaves P (out-μ _)        = ⊤
-SigLeaves P (Out _)          = ⊤
-SigLeaves P (in-ν _)         = ⊤
-SigLeaves P (const _ _)      = ⊤
+SigLeaves = Leaves (λ _ _ _ _ → ⊤) tt
 
 -- plan 0.107 §9 2D: the symbols an IR's SigOp leaves call, leaf by leaf — what
 -- the file declares external (minus its own blocks).

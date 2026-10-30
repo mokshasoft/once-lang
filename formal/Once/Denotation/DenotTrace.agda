@@ -56,7 +56,8 @@ import Once.Semantics.Machine as Val
 -- a parameterised module stops reducing downstream at a variable instance.
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
-open import Once.SigOp.Info using (SigOpInfo; SigOpSem; pureV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo)
+open import Once.Arith.SigOp.BlockSem using (block-semP)
+open import Once.SigOp.Info using (SigOpInfo; SigOpSem; blockV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open SigOpInfo using (name; baseA; sem; conB)
 open import Once.Arith.Prim using (primSem)
@@ -150,7 +151,7 @@ open CallEnv
 -- returns a value; an emitting one is a call answered by `⊤`; an answering one
 -- is a call the interpretation answers; a halting one ends the program.
 sigOpSemT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → SigOpSem A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧
-sigOpSemT fmt ans si (pureV f)     x = ret (Val.eraseᵍ (f fmt x))
+sigOpSemT fmt ans si (blockV e refl refl) x = ret (Val.eraseᵍ (block-semP e fmt x))
 sigOpSemT fmt ans si (primV p)     x = ret (Val.eraseᵍ (primSem p fmt x))
 sigOpSemT fmt ans {A} si (emitsV refl) x = call (callOp (name si) A (baseA si) Unit) x (λ _ → ret tt)
 sigOpSemT fmt ans {A} si (haltsV refl) x = halt (haltOp (name si) A (baseA si)) x
