@@ -32,14 +32,11 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSigma
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
-import qualified MAlonzo.Code.Once.Compile as MC
+import qualified MAlonzo.Code.Once.Extract.Root as MR
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
-import qualified MAlonzo.Code.Once.Warnings as MW
-import qualified MAlonzo.Code.Once.Extract.Names as MEN
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax as MSS
-import qualified MAlonzo.Code.Once.Parser.Module.Resolve as MMR
-import Once.Bridge.Agda (agdaToText, textToAgda, eitherText)
+import Once.Bridge.Agda (agdaToText, textToAgda, eitherText, runs)
 
 ------------------------------------------------------------------------
 -- Haskell types (stable API)
@@ -61,7 +58,7 @@ newtype Resolved = Resolved MMC.T_Resolved_8
 
 -- | The resolved module itself.
 resolvedModule :: Resolved -> Module
-resolvedModule (Resolved r) = Module (MMC.d_rmodule_14 r)
+resolvedModule (Resolved r) = Module (MR.d_resolved'45'module_48 runs r)
 
 -- | The Agda value, for the tools' bridges.
 resolvedAgda :: Resolved -> MMC.T_Resolved_8
@@ -98,7 +95,7 @@ toMArch RiscV64 = MTA.C_riscv64_12
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_624 (textToAgda source) of
+  case MR.d_parse'45'source_36 runs (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -110,9 +107,9 @@ parseSource source =
 -- checked by nobody.
 moduleImports :: Module -> [ImportRef]
 moduleImports (Module m) =
-  [ ImportRef (map agdaToText (MEN.d_import'45'path_50 pr))
-              (fmap agdaToText (MEN.d_import'45'alias_54 pr))
-  | pr <- MEN.d_module'45'imports_34 m
+  [ ImportRef (map agdaToText (MR.d_import'45'path_40 runs pr))
+              (fmap agdaToText (MR.d_import'45'alias_42 runs pr))
+  | pr <- MR.d_module'45'imports_38 runs m
   ]
 
 -- | Does the module define a top-level `main`? This — not a CLI flag — is what
@@ -123,7 +120,7 @@ moduleImports (Module m) =
 -- mirror of the constructor's ARITY — it broke loudly on 2026-09-08 only
 -- because the field COUNT changed.
 moduleHasMain :: Module -> Bool
-moduleHasMain (Module m) = MEN.d_module'45'has'45'main_6 m
+moduleHasMain (Module m) = MR.d_module'45'has'45'main_44 runs m
 
 -- | D123/D116: the rounding warnings this module has AT THIS TARGET, rendered.
 --
@@ -136,7 +133,7 @@ moduleHasMain (Module m) = MEN.d_module'45'has'45'main_6 m
 -- was only half true — the refusal was gone and the replacement unreachable.
 moduleWarnings :: Arch -> Text -> Resolved -> [Text]
 moduleWarnings arch src (Resolved m) =
-  map agdaToText (MW.d_warningsFor_378 (toMArch arch) (textToAgda src) (unsafeCoerce m))
+  map agdaToText (MR.d_warnings_50 runs (toMArch arch) (textToAgda src) (unsafeCoerce m))
 
 -- | Resolve the user's module against the module map: its references are
 -- resolved, and the signatures of the modules it imports are read from the
@@ -151,7 +148,7 @@ resolveImports
   -> Either Text Resolved
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MMR.d_resolveImports_904 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MR.d_resolve'45'imports_46 runs (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 r   -> Right (Resolved (unsafeCoerce r))
@@ -166,4 +163,4 @@ resolveImports modMap (Module userMod) =
 -- the mode the apex covers (D352).
 assemblyFromModule :: Bool -> Arch -> Resolved -> Either Text Text
 assemblyFromModule doOpt arch (Resolved mod_) =
-  eitherText (MC.d_assemblyFromModule_1562 doOpt (toMArch arch) (unsafeCoerce mod_))
+  eitherText (MR.d_assembly_52 runs doOpt (toMArch arch) (unsafeCoerce mod_))

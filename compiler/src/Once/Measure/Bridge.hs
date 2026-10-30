@@ -7,11 +7,11 @@ module Once.Measure.Bridge
 import Data.Text (Text)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified MAlonzo.Code.Once.Measure as MMe
-import Once.Bridge.Agda (eitherText)
+import qualified MAlonzo.Code.Once.Extract.Root as MR
+import Once.Bridge.Agda (eitherText, runs)
 import Once.Compile.Bridge (Resolved, resolvedAgda)
 
 -- | The static costs of the module's program image, optimized (`True`) or
 -- not, or the compiler's error.
 statsFromModule :: Bool -> Resolved -> Either Text Text
-statsFromModule doOpt r = eitherText (MMe.d_statsOf_4 doOpt (unsafeCoerce (resolvedAgda r)))
+statsFromModule doOpt r = eitherText (MR.d_stats_60 runs doOpt (unsafeCoerce (resolvedAgda r)))

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
-# run-ast-dumps.sh — dump the AST and trust base reachable from the apex proof
-# for two refs, into two clearly-marked JSON files.
+# run-ast-dumps.sh — dump, for each ref, what the apex proof depends on (PROVED,
+# from `Once.Certified.once-certified`) and what the CLI runs (RUNS, from
+# `Once.Extract.Root.runs`, plan 0.132), into clearly-marked JSON files.
+# `formal/scripts/ast-compare.py` compares two refs: trust base, PROVED, and RUNS ∖ PROVED.
 #
 # Uses Agda's --write-ast=QNAME / --ast-file=PATH flags.
 #
@@ -54,6 +56,11 @@ LOCALE="${LOCALE:-en_US.utf8}"
 ENTRY="${ENTRY:-Once.Certified.once-certified}"
 ENTRY_MODULE="${ENTRY_MODULE:-Once/Certified.agda}"
 ENTRY_SLUG="${ENTRY_SLUG:-once-certified}"
+# The second root: what the CLI runs (plan 0.132). A ref older than the `runs`
+# record has none; its RUNS dump is skipped. RUNS_ENTRY= turns the pass off.
+RUNS_ENTRY="${RUNS_ENTRY-Once.Extract.Root.runs}"
+RUNS_MODULE="${RUNS_MODULE:-Once/Extract/Root.agda}"
+RUNS_SLUG="${RUNS_SLUG:-runs}"
 
 # Cap Agda's heap so a runaway module raises a clean heap-overflow instead of
 # inviting the kernel OOM killer to take the whole session down -- that is what
@@ -165,6 +172,7 @@ stage_ref() {
 run_ref() {
   local dir="$1" raw="$2" log="$3" libs="$4"
   local REF_LABEL="${5:-<ref>}"
+  local entry="${6:-$ENTRY}" entry_module="${7:-$ENTRY_MODULE}"
   local attempt=0 stalled=0 rc before after
 
   while :; do
@@ -175,8 +183,8 @@ run_ref() {
     ( cd "$dir" && unset AGDA_DIR && LC_ALL="$LOCALE" \
       "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS \
         --library-file="$libs" --transliterate -vwarning:1 \
-        --write-ast="$ENTRY" --ast-file="$raw" \
-        "$ENTRY_MODULE" ) >> "$log" 2>&1
+        --write-ast="$entry" --ast-file="$raw" \
+        "$entry_module" ) >> "$log" 2>&1
     rc=$?
 
     after=$(find "$dir" -name '*.agdai' | wc -l)
@@ -293,12 +301,33 @@ for ref in "${REFS[@]}"; do
   printf '%s\n%s\n' "$STDLIB" "$dir/Once.agda-lib" > "$libs"
   : > "$log"
 
+  rm -f "$raw"
   if run_ref "$dir" "$raw" "$log" "$libs" "$ref" && [ -f "$raw" ]; then
     finish_ref "$raw" "$dir" "$out" "$ref" "$sha" "$ENTRY"
     SUMMARY+=("ok    $ref ($sha) -> $(basename "$out")")
   else
     SUMMARY+=("FAIL  $ref ($sha) -- see $log")
     status=1
+    continue
+  fi
+
+  # RUNS: the same staging tree, so every interface is reused and only the
+  # root module is checked again.
+  if [ -n "$RUNS_ENTRY" ]; then
+    if grep -q "^${RUNS_ENTRY##*.} *:" "$dir/$RUNS_MODULE" 2>/dev/null; then
+      out_runs="$OUT_DIR/ast-$RUNS_SLUG-$slug-$sha.json"
+      say "  RUNS: $RUNS_ENTRY"
+      rm -f "$raw"
+      if run_ref "$dir" "$raw" "$log" "$libs" "$ref" "$RUNS_ENTRY" "$RUNS_MODULE" && [ -f "$raw" ]; then
+        finish_ref "$raw" "$dir" "$out_runs" "$ref" "$sha" "$RUNS_ENTRY"
+        SUMMARY+=("ok    $ref ($sha) -> $(basename "$out_runs")")
+      else
+        SUMMARY+=("FAIL  $ref ($sha) RUNS -- see $log")
+        status=1
+      fi
+    else
+      SUMMARY+=("skip  $ref ($sha) RUNS: no $RUNS_ENTRY in this ref")
+    fi
   fi
 done
 
