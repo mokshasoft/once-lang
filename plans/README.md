@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (31 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (32 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -13,7 +13,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.93 relation, not datatype | S3 in progress (`Once/Spike/RelSpike.agda`) | S3–S6: discharge `BlockRunsHyp` ×3 on `once-certified` |
 | 0.88 discharge obs-correct | open | `cata-correct`, `obs-correct-sigop-rest`, `obs-correct-In`, `obs-correct-in-ν` |
 | 0.62 shape correctness | M1/M2 done | M2b, M3: `emitted-shape-check`, `run-meets` (two of `RunWF` ×7) |
-| 0.67 wire arith proofs | route obsolete | owns `arith-sigop-contract` ×3; `ev`/`step-budget` definitions |
+| 0.67 wire arith proofs | route obsolete | owns `arith-sigop-run` ×3 (the lookup half is a theorem, D351); `ev`/`step-budget` definitions |
 | 0.110 start state assumes less | not started | boot registers/flags |
 | 0.111 interpretation ABI in the Spec | not started | the calling-convention obligation; 0.113's A3 runtime test |
 | 0.89 relocatable compilation units | mostly done | B step 4 (deferred), C (may fold into 0.93), F (optional), closing entry |
@@ -40,8 +40,9 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.123 memory runs out observably | after the merge | A: out of memory is a Spec end + the Host's `exhaust` (removes `HeapRoom`/`StackRoom`/`CallRoom`); B: wire the proven allocators, `free`, reclaim per loop round, leak-freedom (was 0.35 and 0.86 F) |
 | 0.124 `once fmt` | after 0.122 | one canonical layout from the Spec's `Module` plus lexer trivia (no second syntax tree); round-trip, idempotence and comment preservation as theorems; deletes the `Grammar` printer |
 | 0.125 Once in nixpkgs | A, B, C.1, C′ 1–4 done | C.2 draft `package.nix` against nixpkgs; C′ 5 server-test segfaults; D release + nixpkgs PR |
-| 0.129 optimizer strength | A done | B: Unit/Void-aware eta, reassociation, dead clauses; C: lost rules (closure beta, uniqueness, fusion); D: discovery tool on traces; E: optimality over the trace |
+| 0.129 optimizer strength | A, B, B4, B5, C1 done; C2 dropped | C3 pair fusion, C4 Lambek; D: discovery tool on traces; E: optimality over the trace |
 | 0.130 run-time cost instrumentation | not started | decide where counts come from (flat machine vs emulator); one report shape shared with the Agda fork's; dependent-type-ready keys |
+| 0.131 tools beside the compiler | not started | A: retire `Stage`/`CompileResult`; B: `Once.Inspect`; C: one bridge per tool, `parse`/`preprocess` merged, `escape`/`codegen` deleted; D: decision entry |
 | 0.64 proof-island audit | open | groups F, S, C and `TypeCheck` (group O done, D347) |
 | 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
 | 0.56 register-budget arith | parked | steps A–E |
