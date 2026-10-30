@@ -214,6 +214,6 @@ per ref, so start it during §1. Compare the two dumps:
 
 ## 7. Merge
 
-- Fast-forward, or `--no-ff` per convention. Never squash: commit hashes are referenced from
-  the decision log.
+- Fast-forward only (`git merge --ff-only`): master's repository rules reject merge commits, which
+  is why §3 rebases. Never squash: commit hashes are referenced from the decision log.
 - `HANDOFF.md` is untracked working notes. It never enters a branch.
