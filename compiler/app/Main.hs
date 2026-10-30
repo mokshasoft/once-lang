@@ -5,7 +5,7 @@ import System.Exit (exitFailure)
 import qualified Data.Text.IO as TIO
 
 import Data.List (isPrefixOf, stripPrefix)
-import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), ParseOptions (..), StageOptions (..), OutputMode (..), Target (..), AllocStrategy (..), InterpType (..), FmtOptions (..), FmtMode (..), parseTarget, hostTarget, parseInterpType)
+import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), ParseOptions (..), StageOptions (..), OutputMode (..), Target (..), InterpType (..), FmtOptions (..), FmtMode (..), parseTarget, hostTarget, parseInterpType)
 
 main :: IO ()
 main = do
@@ -67,7 +67,6 @@ data BuildConfig = BuildConfig
   , bcSaveTemps :: Bool
   , bcOptimize  :: Bool
   , bcStrata    :: Maybe String
-  , bcAlloc     :: Maybe AllocStrategy
   , bcInterp    :: Maybe String
   , bcExplicit  :: [(InterpType, String)]
   , bcHost      :: String
@@ -82,21 +81,11 @@ defaultBuildConfig = BuildConfig
   , bcSaveTemps = False
   , bcOptimize  = True
   , bcStrata    = Nothing
-  , bcAlloc     = Nothing
   , bcInterp    = Nothing
   , bcExplicit  = []
   , bcHost      = "Linux"
   , bcInput     = Nothing
   }
-
--- | Parse allocation strategy from string
-parseAllocStrategy :: String -> Maybe AllocStrategy
-parseAllocStrategy "stack" = Just AllocStack
-parseAllocStrategy "heap"  = Just AllocHeap
-parseAllocStrategy "pool"  = Just AllocPool
-parseAllocStrategy "arena" = Just AllocArena
-parseAllocStrategy "const" = Just AllocConst
-parseAllocStrategy _       = Nothing
 
 -- | Parse build command arguments
 parseBuild :: [String] -> Maybe Command
@@ -113,7 +102,6 @@ parseBuild args = go args defaultBuildConfig
         , buildSaveTemps = bcSaveTemps cfg
         , buildOptimize  = bcOptimize cfg
         , buildStrata    = bcStrata cfg
-        , buildAlloc     = bcAlloc cfg
         , buildInterp    = bcInterp cfg
         , buildExplicitInterps = bcExplicit cfg
         , buildHost      = bcHost cfg
@@ -127,9 +115,6 @@ parseBuild args = go args defaultBuildConfig
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
     go ("--no-optimize" : rest) cfg = go rest cfg { bcOptimize = False }
     go ("--strata" : s : rest) cfg = go rest cfg { bcStrata = Just s }
-    go ("--alloc" : a : rest) cfg = case parseAllocStrategy a of
-      Just alloc -> go rest cfg { bcAlloc = Just alloc }
-      Nothing -> Nothing  -- invalid allocation strategy
     go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
     go ("--host" : h : rest) cfg = go rest cfg { bcHost = h }
     -- Parse -I:TYPE MODULE (explicit interpretation with type)
@@ -176,7 +161,6 @@ usage = do
   TIO.putStrLn "  --save-temps        Keep intermediate files (.s, .o)"
   TIO.putStrLn "  --no-optimize       Skip optimizer"
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports"
-  TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"
   TIO.putStrLn "  --interp PATH       Interpretation path (deprecated)"
   TIO.putStrLn "  -I:TYPE MODULE      Link interpretation (e.g., -I:x86_64 I.Linux.Syscalls)"
   TIO.putStrLn ""

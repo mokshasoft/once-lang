@@ -34,9 +34,9 @@ optimizeTests = testGroup "Optimizer"
       [ ruleTest fn rule before after | (fn, rule, before, after) <- ruleFixtures ]
   , traceCases "opt-rules.once keeps its trace" "opt-rules" [5, 6] 7
   , testGroup "optimized exit code matches --no-optimize"
-      [ differentialTest name alloc | (name, alloc) <- fixtures ]
+      [ differentialTest name | name <- fixtures ]
   , testGroup "optimized build still produces the correct exit code"
-      [ optimizedExitTest name code alloc | (name, code, alloc) <- correctnessFixtures ]
+      [ optimizedExitTest name code | (name, code) <- correctnessFixtures ]
   ]
 
 -- | (definition in `opt-rules.once`, rule, a redex in its elaborated IR, its
@@ -86,41 +86,41 @@ dumpIR stage = do
       | Just ir <- stripPrefix "  = " body = (takeWhile (/= ' ') sig, ir) : defs rest
     defs _ = []
 
--- | (fixture, allocation strategy). Spread across the categorical layers and
+-- | Fixtures spread across the categorical layers and
 -- the arith lowering so the differential covers projections, sums, closures,
 -- catamorphisms and arith blocks.
-fixtures :: [(String, String)]
+fixtures :: [String]
 fixtures =
-  [ ("layer0-id",              "stack")
-  , ("layer0-terminal",        "stack")
-  , ("layer1-fst",             "stack")
-  , ("layer1-snd-deep",        "stack")
-  , ("layer2-case-inl-direct", "stack")
-  , ("layer3-pair-in-sum",     "stack")
-  , ("layer3-sum-in-pair",     "stack")
-  , ("layer4-keep-fst",        "heap")
-  , ("layer4-twice",           "heap")
-  , ("layer4-closure-in-pair", "heap")
-  , ("layer5-iseven",          "stack")
-  , ("arith-simple",           "heap")
-  , ("arith-lambda-1",         "heap")
+  [ "layer0-id"
+  , "layer0-terminal"
+  , "layer1-fst"
+  , "layer1-snd-deep"
+  , "layer2-case-inl-direct"
+  , "layer3-pair-in-sum"
+  , "layer3-sum-in-pair"
+  , "layer4-keep-fst"
+  , "layer4-twice"
+  , "layer4-closure-in-pair"
+  , "layer5-iseven"
+  , "arith-simple"
+  , "arith-lambda-1"
   ]
 
 -- | A few fixtures whose exact exit code we also pin on the OPTIMIZED path
 -- (the un-optimized values are already pinned by the Layer*/Arith specs).
-correctnessFixtures :: [(String, Int, String)]
+correctnessFixtures :: [(String, Int)]
 correctnessFixtures =
-  [ ("layer2-case-inl-direct", 42, "stack")
-  , ("arith-simple",           13, "heap")
-  , ("layer4-keep-fst",        42, "heap")
+  [ ("layer2-case-inl-direct", 42)
+  , ("arith-simple", 13)
+  , ("layer4-keep-fst", 42)
   ]
 
 -- | Build `name` both optimized and unoptimized and assert the exit codes agree.
-differentialTest :: String -> String -> TestTree
-differentialTest name alloc =
+differentialTest :: String -> TestTree
+differentialTest name =
   testCase (name ++ " (opt == no-opt)") $ do
-    optE   <- buildAndExit name alloc Optimized
-    noOptE <- buildAndExit name alloc NoOptimize
+    optE   <- buildAndExit name Optimized
+    noOptE <- buildAndExit name NoOptimize
     case (optE, noOptE) of
       (Right o, Right n)
         | o == n    -> return ()
@@ -131,10 +131,10 @@ differentialTest name alloc =
       (_, Left e) -> assertFailure $ "--no-optimize build/run failed: " ++ e
 
 -- | Build `name` optimized and assert it exits with the expected code.
-optimizedExitTest :: String -> Int -> String -> TestTree
-optimizedExitTest name code alloc =
+optimizedExitTest :: String -> Int -> TestTree
+optimizedExitTest name code =
   testCase (name ++ " optimized (exit " ++ show code ++ ")") $ do
-    e <- buildAndExit name alloc Optimized
+    e <- buildAndExit name Optimized
     case e of
       Right got
         | got == code -> return ()
@@ -150,8 +150,8 @@ optimizedExitTest name code alloc =
 data OptMode = Optimized | NoOptimize
 
 -- | Build a fixture and return its process exit code (Right) or an error.
-buildAndExit :: String -> String -> OptMode -> IO (Either String Int)
-buildAndExit name alloc mode = do
+buildAndExit :: String -> OptMode -> IO (Either String Int)
+buildAndExit name mode = do
   let tag = case mode of Optimized -> "opt"; NoOptimize -> "noopt"
       testDir = "/tmp/once_opt_" ++ name ++ "_" ++ tag
       exeFile = testDir </> name
@@ -161,7 +161,7 @@ buildAndExit name alloc mode = do
 
   let optArgs = case mode of Optimized -> []; NoOptimize -> ["--no-optimize"]
   (buildExit, _out, buildErr) <- runOnce $
-    ["build", "--target", "x86_64", "--exe", "--alloc", alloc] ++ optArgs ++
+    ["build", "--target", "x86_64", "--exe"] ++ optArgs ++
     [testDir </> name ++ ".once", "-o", exeFile]
 
   case buildExit of

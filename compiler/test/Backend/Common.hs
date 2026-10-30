@@ -123,7 +123,7 @@ buildAndRunOn arch name expected = do
   source <- TIO.readFile ("test/" ++ name ++ ".once")
   TIO.writeFile srcFile source
   (buildExit, _out, buildErr) <- runOnceArch arch
-    ["build", "--target", tag, "--alloc", "heap", "--no-optimize", "--exe", srcFile, "-o", exeFile]
+    ["build", "--target", tag, "--no-optimize", "--exe", srcFile, "-o", exeFile]
   case buildExit of
     ExitFailure _ -> cleanupDir testDir >> pure (Left ("[" ++ tag ++ "] build failed: " ++ buildErr))
     ExitSuccess -> do
@@ -151,7 +151,7 @@ buildAsmOn arch name = do
   source <- TIO.readFile ("test/" ++ name ++ ".once")
   TIO.writeFile srcFile source
   (buildExit, _out, buildErr) <- runOnceArch arch
-    ["build", "--target", tag, "--alloc", "heap", "--no-optimize", "--save-temps"
+    ["build", "--target", tag, "--no-optimize", "--save-temps"
     , "--exe", srcFile, "-o", exeFile]
   case buildExit of
     ExitFailure _ -> cleanupDir testDir >> pure (Left ("[" ++ tag ++ "] build failed: " ++ buildErr))

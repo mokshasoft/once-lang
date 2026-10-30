@@ -18,7 +18,6 @@ module Once.CLI
   , ParseOptions (..)
   , OutputMode (..)
   , Target (..)
-  , AllocStrategy (..)
   , InterpType (..)
   , parseTarget
   , hostTarget
@@ -120,15 +119,6 @@ hostTarget = case SysInfo.arch of
   "aarch64" -> Just TargetArm64
   _         -> Nothing
 
--- | Allocation strategy (for future use)
-data AllocStrategy
-  = AllocStack    -- ^ Stack allocation
-  | AllocHeap     -- ^ Heap allocation
-  | AllocPool     -- ^ Pool allocation
-  | AllocArena    -- ^ Arena allocation
-  | AllocConst    -- ^ Constant/static allocation
-  deriving (Eq, Show)
-
 -- | Interpretation type for explicit imports (for future use)
 data InterpType
   = InterpX86_64  -- ^ x86-64 interpretation
@@ -155,7 +145,6 @@ data BuildOptions = BuildOptions
   , buildOptimize  :: Bool                        -- ^ Run optimizer (default: True)
   -- Future options (not yet wired to Agda)
   , buildStrata    :: Maybe FilePath              -- ^ Strata directory path
-  , buildAlloc     :: Maybe AllocStrategy         -- ^ Default allocation strategy
   , buildInterp    :: Maybe FilePath              -- ^ Legacy interpretation path
   , buildExplicitInterps :: [(InterpType, FilePath)]  -- ^ Explicit interpretations
   -- | D320: the Host the executable runs under (`Strata/Hosts/<host>/Host.<arch>`,
@@ -244,7 +233,7 @@ runPreprocess opts = do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
     Right (mod_, _, _) ->
-      case Bridge.compileFromModule Bridge.AllocHeap Bridge.Parse False Bridge.X86_64 mod_ of
+      case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
         Parsed sigs polySigs -> do
           emitStage (stageOutput opts) (showFunSigs sigs <> showPolyFunSigs polySigs)
           exitSuccess
@@ -285,7 +274,7 @@ runParse opts = do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
     Right (mod_, _, _) ->
-      case Bridge.compileFromModule Bridge.AllocHeap Bridge.Parse False Bridge.X86_64 mod_ of
+      case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
         Parsed sigs polySigs -> do
           emitStage (parseOutput opts)
                     (showFunSigs sigs <> showPolyFunSigs polySigs <> "Parse OK\n")
@@ -316,7 +305,7 @@ runCheck opts = do
       -- reports the ones for the target actually being built.
       emitWarnings Bridge.X86_64 source mod_
       -- doOpt is irrelevant for Check stage (optimizer runs after type checking)
-      case Bridge.compileFromModule Bridge.AllocHeap Bridge.Check False Bridge.X86_64 mod_ of
+      case Bridge.compileFromModule Bridge.Check False Bridge.X86_64 mod_ of
         Checked -> do
           emitStage (checkOutput opts) "Typecheck OK\n"
           exitSuccess
@@ -443,16 +432,9 @@ emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarn
 
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()
-runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths =
-  let allocMode = case buildAlloc opts of
-        Just AllocStack -> Bridge.AllocStack
-        Just AllocHeap  -> Bridge.AllocHeap
-        -- Other strategies (Pool/Arena/Const) not yet supported by the
-        -- elaborator's AllocMode; treat as Heap.
-        _               -> Bridge.AllocHeap
-  in do
+runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
   emitWarnings arch source mod_
-  case Bridge.compileFromModule allocMode Bridge.Build (buildOptimize opts) arch mod_ of
+  case Bridge.compileFromModule Bridge.Build (buildOptimize opts) arch mod_ of
     Built asmText -> do
       let asmPath = outputBase ++ ".s"
           objPath = outputBase ++ ".o"

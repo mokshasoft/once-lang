@@ -66,7 +66,7 @@ test-poly: $(BUILD)
 # Test: Heap-mode exit-code suite (layer0-4 + pure catas)
 #
 # Builds every compiler/test/*.once with a declared expected exit code using
-# the canonical heap-mode params (--alloc heap), once with --no-optimize and
+# the default params, once with --no-optimize and
 # once without, runs both binaries, checks the exit codes and compares the
 # outputs. This is the RUNTIME net: the Agda proofs
 # are value-level, so a pass that drops an observable SigOp (e.g. the
@@ -75,7 +75,7 @@ test-poly: $(BUILD)
 
 .PHONY: test-heap-exit
 test-heap-exit:
-	@echo "Testing: heap-mode exit-code suite (--alloc heap, with and without the optimizer)"
+	@echo "Testing: heap-mode exit-code suite (with and without the optimizer)"
 	$(TESTS_DIR)/run-exit-tests.sh
 
 #-----------------------------------------------------------------------------

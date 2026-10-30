@@ -15,14 +15,14 @@
 #               same on every arch; a site counts once however often it runs
 #   text-<arch> .text bytes of the linked binary, x86_64 / x86_32 / riscv64
 # A program that does not build on an arch has `NA` there. Run-time counts are
-# plan 0.130. Flags: MEASURE_FLAGS (default `--alloc heap`); ONCE defaults to
+# plan 0.130. Flags: MEASURE_FLAGS (default none); ONCE defaults to
 # the cabal-built compiler. riscv64 needs the cross binutils
 # (riscv64-unknown-linux-gnu-{as,ld,objcopy}); without them its column is NA.
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STRATA="$ROOT/Strata"
-FLAGS="${MEASURE_FLAGS:---alloc heap}"
+FLAGS="${MEASURE_FLAGS:-}"
 ARCHES=(x86_64 x86_32 riscv64)
 RV="riscv64-unknown-linux-gnu"
 

@@ -8,8 +8,8 @@
 # SigOp trace (e.g. the optimizer's `→Unit ⇒ terminal` rule dropping
 # effectful SigOps so a program silently exits 0).
 #
-# Canonical build params for the heap-mode suite are `--alloc heap`, each
-# test built once with `--no-optimize` and once without. A test may override
+# Each test is built once with `--no-optimize` and once without (in `Heap`,
+# the compiler's only mode on the command line, plan 0.131). A test may override
 # the params with a line:
 #     -- params: <flags>
 # A test may be skipped (not yet implemented) with a line containing:
@@ -20,7 +20,7 @@ set -u
 # Each test runs twice, without and with the optimizer; both runs must exit
 # with the expected code and emit the same output (the optimizer keeps the
 # trace, D347). Given build flags, each test runs once with exactly those.
-if [ $# -ge 1 ]; then DEFAULT_PARAMS="$1"; OPTS=(""); else DEFAULT_PARAMS="--alloc heap"; OPTS=("--no-optimize" ""); fi
+if [ $# -ge 1 ]; then DEFAULT_PARAMS="$1"; OPTS=(""); else DEFAULT_PARAMS=""; OPTS=("--no-optimize" ""); fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTDIR="$ROOT/compiler/test"
 STRATA="$ROOT/Strata"

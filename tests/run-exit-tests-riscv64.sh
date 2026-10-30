@@ -14,7 +14,7 @@ set -u
 # Each test runs twice, without and with the optimizer; both runs must exit
 # with the expected code and emit the same output (the optimizer keeps the
 # trace, D347). Given build flags, each test runs once with exactly those.
-if [ $# -ge 1 ]; then DEFAULT_PARAMS="$1"; OPTS=(""); else DEFAULT_PARAMS="--alloc heap"; OPTS=("--no-optimize" ""); fi
+if [ $# -ge 1 ]; then DEFAULT_PARAMS="$1"; OPTS=(""); else DEFAULT_PARAMS=""; OPTS=("--no-optimize" ""); fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTDIR="$ROOT/compiler/test"
 STRATA="$ROOT/Strata"

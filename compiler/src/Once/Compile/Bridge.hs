@@ -29,8 +29,6 @@ module Once.Compile.Bridge
   , ImportRef (..)
     -- * One-shot compilation (legacy)
   , compile
-    -- * Allocation mode (Plan 0.14 follow-up — wired from CLI --alloc)
-  , AllocMode (..)
     -- * AST-level pipeline
   , parseSource
   , moduleImports
@@ -171,7 +169,7 @@ fromMResult (MC.C_Error_1520 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_1568 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_1568 MCIR.C_Heap_8 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -257,22 +255,13 @@ resolveImports modMap (Module userMod) =
 -- trusted-base postulate (`string-to-bytes` — GNU `as` conformance,
 -- the B2 stance). When B1 (in-Agda assembler) lands, the postulate
 -- goes away and this binding stays the same.
--- | Default allocation mode for surface-level pair/inl/inr/curry/let.
--- Threaded from CLI's --alloc flag through to the elaborator. Plan 0.14
--- follow-up (2026-05-18): previously hardcoded to Heap in the
--- elaborator, silently dropping the user's CLI choice.
-data AllocMode = AllocStack | AllocHeap
-  deriving (Eq, Show)
-
-toMAllocMode :: AllocMode -> MCIR.T_AllocMode_4
-toMAllocMode AllocStack = MCIR.C_Stack_6
-toMAllocMode AllocHeap  = MCIR.C_Heap_8
-
-compileFromModule :: AllocMode -> Stage -> Bool -> Arch -> Resolved -> CompileResult
-compileFromModule m stage doOpt arch (Resolved mod_) =
+-- | The compiler in allocation mode `Heap`, the mode the apex covers (plan 0.131 A:
+-- the CLI has no `--alloc`).
+compileFromModule :: Stage -> Bool -> Arch -> Resolved -> CompileResult
+compileFromModule stage doOpt arch (Resolved mod_) =
   fromMResult
     (MC.d_compileFromModule_1770
-       (toMAllocMode m) (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))
+       MCIR.C_Heap_8 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce mod_))
 
 -- | Each compiled function's IR as text, unoptimized (`False`) or optimized
 -- (`True`), or the compiler's error (`Once.Compile.Dump.dumpIR`, plan 0.39).
