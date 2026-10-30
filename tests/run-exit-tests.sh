@@ -9,7 +9,7 @@
 # effectful SigOps so a program silently exits 0).
 #
 # Each test is built once with `--no-optimize` and once without (in `Heap`,
-# the compiler's only mode on the command line, plan 0.131). A test may override
+# the compiler's only mode on the command line, D352). A test may override
 # the params with a line:
 #     -- params: <flags>
 # A test may be skipped (not yet implemented) with a line containing:

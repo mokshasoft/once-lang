@@ -248,6 +248,15 @@ decision-log entry updates the rule it changes here, in the same commit.
   (`CertifiedBuild.formatter`).
   The layout lexes as its tokens by construction (`apart`, line comments,
   own digits). (D343)
+- **A CLI command is a function beside the compiler, never a mode of it**:
+  `Once.Compile` exposes functions (`compileFileFromModule`,
+  `assemblyFromModule`), not stages; each tool is one pure function in its own
+  tree (`Once.Inspect`: parse, check, elaborate, optimize; `Once.Measure`:
+  stats; `Once.Format`: fmt) with its own bridge module, and no compiler module
+  imports one. What `elaborate`/`optimize` print is what a built file is
+  emitted from, proved (`CertifiedBuild.inspector`); `stats` is a measurement
+  and carries no theorem. One allocation mode on the command line, `Heap`, the
+  one the apex covers: there is no `--alloc`. (D352, D142)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`

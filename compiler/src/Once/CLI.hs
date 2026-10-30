@@ -15,7 +15,6 @@ module Once.CLI
   , CheckOptions (..)
   , FmtOptions (..)
   , FmtMode (..)
-  , ParseOptions (..)
   , OutputMode (..)
   , Target (..)
   , InterpType (..)
@@ -39,8 +38,10 @@ import System.Process (readProcessWithExitCode)
 import qualified System.Info as SysInfo
 
 -- Bridge to MAlonzo-generated code (stable API)
-import Once.Compile.Bridge (CompileResult(..), FunSig(..), PolyFunSig(..))
 import qualified Once.Compile.Bridge as Bridge
+import qualified Once.Inspect.Bridge as Inspect
+import qualified Once.Measure.Bridge as Measure
+import qualified Once.Format.Bridge as Format
 import qualified Once.Target.SymbolName as SymName
 
 ------------------------------------------------------------------------
@@ -51,12 +52,9 @@ import qualified Once.Target.SymbolName as SymName
 data Command
   = Build BuildOptions
   | Check CheckOptions
-  | Parse ParseOptions
-  | Preprocess StageOptions
+  | Parse StageOptions
   | Elaborate StageOptions
   | Optimize StageOptions
-  | Escape StageOptions
-  | CodeGen StageOptions
   | Fmt FmtOptions
   | Stats StageOptions
   deriving (Eq, Show)
@@ -74,8 +72,8 @@ data FmtOptions = FmtOptions
   , fmtFiles :: [FilePath]
   } deriving (Eq, Show)
 
--- | Common options for pipeline-inspection stages
--- (preprocess, elaborate, optimize, escape, codegen).
+-- | Common options for the inspection and measuring commands
+-- (parse, elaborate, optimize, stats).
 -- Output goes to stdout unless stageOutput is Just FILE.
 data StageOptions = StageOptions
   { stageInput  :: FilePath
@@ -156,12 +154,7 @@ data BuildOptions = BuildOptions
 data CheckOptions = CheckOptions
   { checkInput  :: FilePath
   , checkOutput :: Maybe FilePath
-  } deriving (Eq, Show)
-
--- | Options for the parse command
-data ParseOptions = ParseOptions
-  { parseInput  :: FilePath
-  , parseOutput :: Maybe FilePath
+  , checkTarget :: Maybe Target   -- ^ whose warnings to report (default: the host, as `build`)
   } deriving (Eq, Show)
 
 ------------------------------------------------------------------------
@@ -174,11 +167,8 @@ run cmd = case cmd of
   Build opts      -> runBuild opts
   Check opts      -> runCheck opts
   Parse opts      -> runParse opts
-  Preprocess opts -> runPreprocess opts
   Elaborate opts  -> runDumpIR False opts
   Optimize opts   -> runDumpIR True opts
-  Escape opts     -> runNotWired "escape" opts
-  CodeGen opts    -> runNotWired "codegen" opts
   Fmt opts        -> runFmt opts
   Stats opts      -> runStats opts
 
@@ -189,43 +179,14 @@ emitStage Nothing     text = TIO.putStr text
 emitStage (Just "-")  text = TIO.putStr text
 emitStage (Just path) text = TIO.writeFile path text
 
--- | Stage not yet wired to the verified pipeline. Prints a clear
--- message so the CLI shape is discoverable without needing Agda-side
--- pretty-printers first.
-runNotWired :: String -> StageOptions -> IO ()
-runNotWired name _ = do
-  TIO.putStrLn $ "Error: stage `" <> T.pack name <> "` is not yet wired to the Agda pipeline."
-  TIO.putStrLn "This requires show functions in Agda for the intermediate IR, and corresponding"
-  TIO.putStrLn "Stage/CompileResult constructors. See plan: \"Agda show functions for IRs\"."
-  exitFailure
-
-------------------------------------------------------------------------
--- Result Handling
-------------------------------------------------------------------------
-
--- | Format function signatures for display
-showFunSigs :: [FunSig] -> T.Text
-showFunSigs [] = ""
-showFunSigs sigs = T.unlines [funSigName sig <> " : " <> funSigType sig | sig <- sigs]
-
--- | Format polymorphic function signatures for display
-showPolyFunSigs :: [PolyFunSig] -> T.Text
-showPolyFunSigs [] = ""
-showPolyFunSigs sigs =
-  T.unlines [polyFunSigName sig <> " : " <> polyFunSigType sig | sig <- sigs]
-
 ------------------------------------------------------------------------
 -- Parse Command
 ------------------------------------------------------------------------
 
--- | Run the preprocess command: parse + resolve imports, dump the
--- flat signature listing from the resolved Module. Exposes exactly
--- the decls the typechecker will see after the verified Agda
--- resolver has run. Imported primitives appear as
--- `<alias>.<name> : <type>`.
-runPreprocess :: StageOptions -> IO ()
-runPreprocess opts = do
-  let inputPath = stageInput opts
+-- | Run an inspection on the resolved module and print its output.
+-- Each tool is one bridge call (D352); this is the I/O around it.
+runInspection :: FilePath -> Maybe FilePath -> (Bridge.Resolved -> Either T.Text T.Text) -> IO ()
+runInspection inputPath output tool = do
   source <- TIO.readFile inputPath
   loadResult <- loadAndResolve inputPath Nothing source
   case loadResult of
@@ -233,64 +194,30 @@ runPreprocess opts = do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
     Right (mod_, _, _) ->
-      case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
-        Parsed sigs polySigs -> do
-          emitStage (stageOutput opts) (showFunSigs sigs <> showPolyFunSigs polySigs)
-          exitSuccess
-        Error err -> do
-          TIO.putStrLn $ "Error: " <> err
-          exitFailure
-        _ -> do
-          TIO.putStrLn "Internal error: unexpected result from preprocess"
-          exitFailure
-
--- | Run the elaborate (`False`) or optimize (`True`) stage: parse + resolve
--- imports + compile, and show each function's IR as the build compiles it
--- without or with the optimizer (plan 0.39).
-runDumpIR :: Bool -> StageOptions -> IO ()
-runDumpIR doOpt opts = do
-  let inputPath = stageInput opts
-  source <- TIO.readFile inputPath
-  loadResult <- loadAndResolve inputPath Nothing source
-  case loadResult of
-    Left err -> do
-      TIO.putStrLn $ "Error: " <> T.pack err
-      exitFailure
-    Right (mod_, _, _) ->
-      case Bridge.dumpIRFromModule doOpt mod_ of
-        Right out -> emitStage (stageOutput opts) out >> exitSuccess
+      case tool mod_ of
+        Right out -> emitStage output out >> exitSuccess
         Left err -> do
           TIO.putStrLn $ "Error: " <> err
           exitFailure
 
--- | Run the parse command: parse + resolve imports, show signatures.
-runParse :: ParseOptions -> IO ()
-runParse opts = do
-  let inputPath = parseInput opts
-  source <- TIO.readFile inputPath
-  loadResult <- loadAndResolve inputPath Nothing source
-  case loadResult of
-    Left err -> do
-      TIO.putStrLn $ "Error: " <> T.pack err
-      exitFailure
-    Right (mod_, _, _) ->
-      case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
-        Parsed sigs polySigs -> do
-          emitStage (parseOutput opts)
-                    (showFunSigs sigs <> showPolyFunSigs polySigs <> "Parse OK\n")
-          exitSuccess
-        Error err -> do
-          TIO.putStrLn $ "Error: " <> err
-          exitFailure
-        _ -> do
-          TIO.putStrLn "Internal error: unexpected result from parse"
-          exitFailure
+-- | Run the parse command: parse + resolve imports, and show the signatures of
+-- the declarations the typechecker sees (an imported primitive appears as
+-- `<alias>.<name> : <type>`).
+runParse :: StageOptions -> IO ()
+runParse opts = runInspection (stageInput opts) (stageOutput opts) Inspect.signatures
+
+-- | Run the elaborate (`False`) or optimize (`True`) command: each function's
+-- IR, the functions a built file is emitted from (`Once.Inspect.Proof`).
+runDumpIR :: Bool -> StageOptions -> IO ()
+runDumpIR doOpt opts = runInspection (stageInput opts) (stageOutput opts) (Inspect.dumpIR doOpt)
 
 ------------------------------------------------------------------------
 -- Check Command
 ------------------------------------------------------------------------
 
--- | Run the check command: parse + resolve imports + type check.
+-- | Run the check command: parse + resolve imports + type check. The warnings
+-- are the target's, as `build` reports them; whether a literal fits the target
+-- is `build`'s to refuse.
 runCheck :: CheckOptions -> IO ()
 runCheck opts = do
   let inputPath = checkInput opts
@@ -301,20 +228,21 @@ runCheck opts = do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
     Right (mod_, _, _) -> do
-      -- The arch is fixed here, so these are x86-64's warnings; `build --target`
-      -- reports the ones for the target actually being built.
-      emitWarnings Bridge.X86_64 source mod_
-      -- doOpt is irrelevant for Check stage (optimizer runs after type checking)
-      case Bridge.compileFromModule Bridge.Check False Bridge.X86_64 mod_ of
-        Checked -> do
+      mapM_ (\arch -> emitWarnings arch source mod_) (checkTarget opts >>= bridgeArch)
+      case Inspect.check mod_ of
+        Right () -> do
           emitStage (checkOutput opts) "Typecheck OK\n"
           exitSuccess
-        Error err -> do
+        Left err -> do
           TIO.putStrLn $ "Error: " <> err
           exitFailure
-        _ -> do
-          TIO.putStrLn "Internal error: unexpected result from check"
-          exitFailure
+
+-- | The wired backends.
+bridgeArch :: Target -> Maybe Bridge.Arch
+bridgeArch TargetX86_64  = Just Bridge.X86_64
+bridgeArch TargetX86_32  = Just Bridge.X86_32
+bridgeArch TargetRiscV64 = Just Bridge.RiscV64
+bridgeArch TargetArm64   = Nothing
 
 ------------------------------------------------------------------------
 -- Fmt Command
@@ -329,7 +257,7 @@ runFmt opts = do
   where
     one path = do
       source <- TIO.readFile path
-      case Bridge.formatSource source of
+      case Format.formatSource source of
         Left err -> do
           hPutStrLn stderr (path ++ ": " ++ T.unpack err)
           pure False
@@ -351,20 +279,7 @@ runFmt opts = do
 -- | The static costs of the program image the build emits (optimized), one
 -- `key value` line each (`Once.Measure`; MERGE.md §1, `tests/codegen-measure.sh`).
 runStats :: StageOptions -> IO ()
-runStats opts = do
-  let inputPath = stageInput opts
-  source <- TIO.readFile inputPath
-  loadResult <- loadAndResolve inputPath Nothing source
-  case loadResult of
-    Left err -> do
-      TIO.putStrLn $ "Error: " <> T.pack err
-      exitFailure
-    Right (mod_, _, _) ->
-      case Bridge.statsFromModule True mod_ of
-        Right out -> emitStage (stageOutput opts) out >> exitSuccess
-        Left err -> do
-          TIO.putStrLn $ "Error: " <> err
-          exitFailure
+runStats opts = runInspection (stageInput opts) (stageOutput opts) (Measure.statsFromModule True)
 
 ------------------------------------------------------------------------
 -- Build Command
@@ -380,7 +295,6 @@ runBuild opts = do
         Just base -> base
         Nothing -> takeBaseName inputPath
       target = buildTarget opts
-      doOpt = buildOptimize opts
       strataOpt = buildStrata opts
 
   -- Read source file
@@ -434,8 +348,8 @@ runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
   emitWarnings arch source mod_
-  case Bridge.compileFromModule Bridge.Build (buildOptimize opts) arch mod_ of
-    Built asmText -> do
+  case Bridge.assemblyFromModule (buildOptimize opts) arch mod_ of
+    Right asmText -> do
       let asmPath = outputBase ++ ".s"
           objPath = outputBase ++ ".o"
 
@@ -504,12 +418,8 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
         -- unreachable: `Infer` is resolved to Library/Executable above
         Infer -> exitFailure
 
-    Error err -> do
+    Left err -> do
       TIO.putStrLn $ "Compilation error: " <> err
-      exitFailure
-
-    _ -> do
-      TIO.putStrLn "Internal error: unexpected result from build"
       exitFailure
 
 -- | D320: assemble the Host (`Strata/Hosts/<host>/Host.<arch>`).

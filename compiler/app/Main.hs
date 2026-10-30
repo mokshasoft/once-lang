@@ -5,7 +5,7 @@ import System.Exit (exitFailure)
 import qualified Data.Text.IO as TIO
 
 import Data.List (isPrefixOf, stripPrefix)
-import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), ParseOptions (..), StageOptions (..), OutputMode (..), Target (..), InterpType (..), FmtOptions (..), FmtMode (..), parseTarget, hostTarget, parseInterpType)
+import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), StageOptions (..), OutputMode (..), Target (..), InterpType (..), FmtOptions (..), FmtMode (..), parseTarget, hostTarget, parseInterpType)
 
 main :: IO ()
 main = do
@@ -17,18 +17,23 @@ main = do
 -- | Parse command-line arguments
 parseArgs :: [String] -> Maybe Command
 parseArgs ("build"      : rest) = parseBuild rest
-parseArgs ("check"      : rest) = parseStageArgs rest >>= \(i, o) ->
-                                   Just $ Check CheckOptions { checkInput = i, checkOutput = o }
-parseArgs ("parse"      : rest) = parseStageArgs rest >>= \(i, o) ->
-                                   Just $ Parse ParseOptions { parseInput = i, parseOutput = o }
-parseArgs ("preprocess" : rest) = Preprocess <$> parseStageOpts rest
+parseArgs ("check"      : rest) = parseCheck rest
+parseArgs ("parse"      : rest) = Parse      <$> parseStageOpts rest
 parseArgs ("elaborate"  : rest) = Elaborate  <$> parseStageOpts rest
 parseArgs ("optimize"   : rest) = Optimize   <$> parseStageOpts rest
-parseArgs ("escape"     : rest) = Escape     <$> parseStageOpts rest
-parseArgs ("codegen"    : rest) = CodeGen    <$> parseStageOpts rest
 parseArgs ("fmt"        : rest) = parseFmt rest
 parseArgs ("stats"      : rest) = Stats      <$> parseStageOpts rest
 parseArgs _                     = Nothing
+
+-- | `check [--target ARCH] [-o FILE] FILE`: the warnings are the target's
+-- (default: the host's, as `build`).
+parseCheck :: [String] -> Maybe Command
+parseCheck = go hostTarget []
+  where
+    go _ acc ("--target" : a : rest) = parseTarget a >>= \t' -> go (Just t') acc rest
+    go t acc (x : rest)              = go t (acc ++ [x]) rest
+    go t acc []                      = parseStageArgs acc >>= \(i, o) ->
+      Just $ Check CheckOptions { checkInput = i, checkOutput = o, checkTarget = t }
 
 -- | `fmt [--check | --stdout] FILE...` (`--stdout` takes one file).
 parseFmt :: [String] -> Maybe Command
@@ -132,14 +137,11 @@ usage :: IO ()
 usage = do
   TIO.putStrLn "Usage: once <command> [options]"
   TIO.putStrLn ""
-  TIO.putStrLn "Pipeline inspection (each stage takes [-o FILE] <file.once>):"
-  TIO.putStrLn "  preprocess <file.once>        Dump source after `import` resolution (TODO: Agda-level resolver)"
-  TIO.putStrLn "  parse <file.once>             Parse only (show function signatures)"
-  TIO.putStrLn "  check <file.once>             Parse and type check"
+  TIO.putStrLn "Inspection (each takes [-o FILE] <file.once>):"
+  TIO.putStrLn "  parse <file.once>             Signatures after `import` resolution"
+  TIO.putStrLn "  check <file.once>             Parse and type check ([--target ARCH] for its warnings)"
   TIO.putStrLn "  elaborate <file.once>         Each function's IR, as elaborated"
   TIO.putStrLn "  optimize <file.once>          Each function's IR, after the optimizer"
-  TIO.putStrLn "  escape <file.once>            IR after escape analysis (TODO: Agda show)"
-  TIO.putStrLn "  codegen <file.once>           CCC machine program, pre-asm (TODO: Agda show)"
   TIO.putStrLn ""
   TIO.putStrLn "Formatting (one canonical layout, no options):"
   TIO.putStrLn "  fmt <file.once>...            Rewrite files in the canonical layout"

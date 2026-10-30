@@ -7,8 +7,8 @@
 -- The compile pipeline is a composition of named stages:
 --
 --   GModule  ──gmoduleToModule──▶  Module
---   Module   ──compileFromModule──▶  CompileResult (Built asm | …)
---   asm      ──string-to-bytes────▶  bytes               (B2 trust)
+--   Module   ──compileFileFromModule──▶  FileOf arch (or the error)
+--   file     ──file-bytes─────────▶  bytes
 --   bytes    ──exec arch──────────▶  Tr ⊤                (CPU semantics, D320)
 --
 -- Per-stage correctness is stated as a NAMED POSTULATE. The top-level
@@ -123,7 +123,7 @@ import Once.Adequacy.CPU as CPU
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
--- — so `compileFromModule` takes `arch` directly; no coercion needed.
+-- — so `compileFileFromModule` takes `arch` directly; no coercion needed.
 
 ------------------------------------------------------------------------
 -- Per-stage adapters and trust postulates.
@@ -225,22 +225,6 @@ record ArchCorrect (arch : Arch) (ι : Interp) : Set where
       ∀ (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : C.moduleToIR-aux (C.compileResolvedModule IR.Heap doOpt m) ≡ just ir) →
       (ls : moduleSig m ≡ sig ι) →
       run-file arch ι F ≈ᵗ⟨ _≡_ ⟩ ⟦ just (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)) ⟧IRᵗ (arch-numerics arch) ι
-
--- The CLI's text and the verified compiler's file are ONE pipeline (plan 0.107):
--- the Build stage is the print of the file.
-build≡file-ef : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved) (ef : String ⊎ List Parser.Entry)
-              → C.cfm-ef-aux IR.Heap C.Build doOpt arch m ef ≡ C.built-of arch (C.cfm-file-ef IR.Heap doOpt arch m ef)
-build≡file-ef doOpt arch m (inj₁ err) = refl
-build≡file-ef doOpt arch m (inj₂ es)  = refl
-
-build≡file : ∀ (doOpt : Bool) (arch : Arch) (m : P.Resolved)
-           → C.compileFromModule IR.Heap C.Build doOpt arch m ≡ C.built-of arch (C.compileFileFromModule IR.Heap doOpt arch m)
-build≡file doOpt arch m = build≡file-ef doOpt arch m (Parser.extractFunctions m)
-
-built-of-inv : ∀ (arch : Arch) (r : String ⊎ C.FileOf arch) (asm : String)
-             → C.built-of arch r ≡ C.Built asm → Σ-syntax (C.FileOf arch) (λ F → r ≡ inj₂ F)
-built-of-inv arch (inj₁ err) asm ()
-built-of-inv arch (inj₂ F)   asm _ = F , refl
 
 -- (The former `no-main-empty` library-case postulate is gone: with
 -- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
@@ -419,9 +403,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
     with MC.moduleToIR-complete mR mt hvm
   ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
-  ...   | (asm , built-eq) with built-of-inv arch (C.compileFileFromModule IR.Heap doOpt arch mR) asm
-                                  (trans (sym (build≡file doOpt arch mR)) built-eq)
-  ...     | (F , file-eq) = file-bytes arch F , c≡j
+  ...   | (F , file-eq) = file-bytes arch F , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
           p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
           res-eq : Resolve.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
@@ -639,10 +621,8 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                    Pointwise _≋_ (map (exec arch) (compile-fe arch fe)) (⟦ programAt (moduleTable m) (just ir) ⟧⊥-ir arch)
     correct-fe arch doOpt m ir (inj₂ F)   adm fe-eq mi-eq tw = PW.just (tw F fe-eq)
     correct-fe arch doOpt m ir (inj₁ err) adm fe-eq mi-eq tw =
-      -- a program with `main` always Builds (`main⇒built`), and Build IS the
-      -- print of the file, so the file cannot be an error.
-      case trans (sym (cong (C.built-of arch) fe-eq))
-                 (trans (sym (build≡file doOpt arch m)) (proj₂ (main⇒built arch doOpt m ir adm mi-eq))) of λ ()
+      -- a program with `main` always Builds (`main⇒built`): the file cannot be an error.
+      case trans (sym fe-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
 
     -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
     -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
@@ -682,7 +662,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
       correct-gm-adm arch doOpt m (admissibleM? arch (P.Resolved.rmodule m)) (λ ir mi → tw m refl ir mi)
 
     -- THE unconditional claim (Plan 0.48), COMPOSED from three layers. They
-    -- walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
+    -- walk `gmoduleToModule → moduleToIR → compileFileFromModule` on explicit
     -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
     -- `false` is the PROVEN codegen chain, `true` is `opt-trace` (proven, plan 0.39).
     -- plan 0.105: in a world that declares the signatures of the module `src`

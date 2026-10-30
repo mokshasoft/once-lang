@@ -43,6 +43,10 @@ library
       Lib
       Once.CLI
       Once.Compile.Bridge
+      Once.Bridge.Agda
+      Once.Inspect.Bridge
+      Once.Measure.Bridge
+      Once.Format.Bridge
       Once.Eval
       Once.IR
       Once.Target.SymbolName
@@ -97,7 +101,7 @@ library
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
       MAlonzo.Code.Once.CanonicalName
       MAlonzo.Code.Once.Compile
-      MAlonzo.Code.Once.Compile.Dump
+      MAlonzo.Code.Once.Inspect
       MAlonzo.Code.Once.Principal
       MAlonzo.Code.Once.Spec.Context
       MAlonzo.Code.Once.Spec.Grade

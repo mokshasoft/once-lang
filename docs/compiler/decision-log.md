@@ -19907,3 +19907,39 @@ second defect: an int and a float `x+y` had the same digest, and one body was li
 * Residual ledger row 3 is `arith-sigop-run`; the lookup claim, false before this fix, is no longer trusted.
 * A bare primitive in the arith pass's output is now a type error in `RewriteOwned`, not a link error.
 * Tests: `float-arg.once` (exit), FloatEmitSpec "argument:" on all three arches.
+
+---
+
+## D352 — A CLI COMMAND IS A FUNCTION BESIDE THE COMPILER, NEVER A MODE OF IT (2026-10-30)
+
+**Follows** D343 (`once fmt`), D142 (no `--alloc`); plan 0.131.
+
+### Context
+`once fmt` was built beside the compiler: its own tree, one pure function, its theorem a field of `Certified`, one
+bridge function. The other commands were not. `Once.Compile` carried a dispatcher written for the CLI (`Stage`,
+`CompileResult`, a legacy one-shot `compile`, `compileModule` with no caller); `parse` and `preprocess` were the
+same call; `check` fixed its warnings to x86-64; `escape` and `codegen` were advertised and did nothing; and
+`build --alloc` still existed although D142 had decided "no flag": `stack` built code the apex (stated for `Heap`)
+does not cover, and `pool`, `arena`, `const` silently meant `Heap`.
+
+### Decision
+* **The compiler exposes functions.** `Stage`, `CompileResult`, `built-of`, `compile`, `compileModule` are deleted;
+  `build` calls `assemblyFromModule` (the print of `compileFileFromModule`'s file). `main⇒built` now concludes
+  `compileFileFromModule … ≡ inj₂ F`, which removed `build≡file` and `built-of-inv` from `Adequacy.Compile`.
+* **One tree, one pure function per tool**, imported by no compiler module: `Once.Inspect` (`signatures`, `check`,
+  `dumpIR`; `Compile.Dump` folded in), `Once.Measure`, `Once.Format`. One Haskell bridge per tool
+  (`Once.Inspect.Bridge`, `Once.Measure.Bridge`, `Once.Format.Bridge`, shared conversions in `Once.Bridge.Agda`);
+  each `Once.CLI` handler is I/O around one bridge call.
+* **Each tool states what it promises, or is declared a measurement.** "The dump shows the IR the build compiles"
+  as an equation is `refl` (both call `compileResolvedModule`) and catches nothing. It is stated as a factorization
+  instead: every file the build emits is `emit-at` of exactly the functions `dumpIR` prints
+  (`Inspect.Proof.build-factors`), carried as `CertifiedBuild.inspector`. `stats` counts `image-of`, a definition,
+  not a claim; what its numbers mean at run time is plan 0.130's.
+* **The surface.** `preprocess` merged into `parse` (signatures only; the "Parse OK" line is gone); `escape` and
+  `codegen` deleted; `check --target ARCH` reports that target's warnings (default: the host, as `build`).
+  `--alloc` removed (D142's "no flag"); the Agda `AllocMode Stack` stays the compiler's (plans 0.86, 0.123).
+
+### Consequences
+* The apex statement (`Spec.Correct.CorrectCompiler`) and the Spec are unchanged; `Certified` gains `inspector`.
+* `OptimizeSpec`'s stack fixtures build in `Heap`; no CLI test exercises `AllocMode Stack` until an apex covers it.
+* The emitted assembly is byte-identical to before (`tests/codegen-measure.sh same`).

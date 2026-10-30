@@ -146,7 +146,7 @@ map-allpairs-own (x ∷ xs) (px ∷ ap) (vx ∷ vxs) =
 
 ------------------------------------------------------------------------
 -- Distinctness OF THE REAL CODEGEN OUTPUT (`C.moduleSyms`, defined in
--- `Once.Compile` on the SAME cfs `compileFromModule` renders). This is the
+-- `Once.Compile` on the SAME cfs `compileFileFromModule` emits). This is the
 -- precondition `assemble-correct` demands; proving it over `C.moduleSyms`
 -- (not an `extractFunctions` re-derivation) is what makes a wrong set a type
 -- error rather than a runtime regression.

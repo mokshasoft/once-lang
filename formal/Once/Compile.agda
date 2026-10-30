@@ -373,14 +373,13 @@ resolveFunType ctx polys nothing   body = inferType ctx polys body
 parseSourceToModule : String → String ⊎ Module
 parseSourceToModule = parseStrict
 
--- | Compile a pre-parsed, pre-resolved Module. Same as `compileModule`
--- but starting from an AST rather than source text. Used by the
--- import-aware pipeline: Haskell parses each file separately, calls
--- `resolveImports` (references resolved, the imported signatures read),
--- then hands the result to this entry point.
+-- | Compile a pre-parsed, pre-resolved Module. Used by the import-aware
+-- pipeline: Haskell parses each file separately, calls `resolveImports`
+-- (references resolved, the imported signatures read), then hands the result
+-- to this entry point.
 -- Explicit-argument aux form (Plan 0.48): dispatch on the `extractFunctions`
--- result so the proof relating this to `compileFromModule` (which shares the
--- same call) can match a bound `⊎` variable.
+-- result so the proof relating this to `compileFileFromModule` (which shares
+-- the same call) can match a bound `⊎` variable.
 ------------------------------------------------------------------------
 -- Plan 0.103 phase 1: type every GROUND telescope entry once, at its
 -- declaration (`Spec.Module.PolysTyped`). A walk over the monomorphic defs
@@ -566,24 +565,8 @@ silentRoundDefs-aux (inj₂ es) = lw-entries emptyCScope es
 silentRoundDefs : Resolved → List String
 silentRoundDefs mod = silentRoundDefs-aux (extractFunctions mod)
 
--- | Compile source text to list of compiled functions
--- Returns: Left error | Right list of (name, type, IR)
---
--- Plan 0.6 Phase C.1: ground function bodies are pre-inlined with
--- both ground and polymorphic user-defined sources. Polymorphic names
--- at call sites expand to their NT-combinator body before typechecking,
--- at which point the existing bidirectional machinery specializes each
--- constituent builtin against the call-site expected type.
-compileModule : AllocMode → Bool → String → String ⊎ List CompiledFun
-compileModule m doOpt source with parse source
-... | nothing = inj₁ "Parse error: failed to parse module"
-... | just mod =
-      case extractFunctions (resolved mod []) of λ where
-           (inj₁ err) → inj₁ err
-           (inj₂ es)  → compileEntries m doOpt emptyCScope es
-
 -- Plan 0.50 — the symbols THIS codegen actually emits as `.globl` labels, defined
--- on the SAME `CompiledFun` list `compileFromModule` renders (`compileResolvedModule`):
+-- on the SAME `CompiledFun` list `compileFileFromModule` emits (`compileResolvedModule`):
 -- one per compiled function (D274: every one is a definition).
 emittedSyms : List CompiledFun → List String
 emittedSyms []         = []
@@ -841,86 +824,6 @@ emitFromCompiled : (arch : Arch) → String ⊎ List CompiledFun → String ⊎ 
 emitFromCompiled arch (inj₁ err)  = inj₁ err
 emitFromCompiled arch (inj₂ funs) = inj₂ (emit-at arch funs (findMain funs))
 
-------------------------------------------------------------------------
--- Unified compilation entry point
-------------------------------------------------------------------------
-
--- | Compilation stage
-data Stage : Set where
-  Parse : Stage   -- Just parse, return function signatures
-  Check : Stage   -- Parse + typecheck, no codegen
-  Build : Stage   -- Full pipeline including codegen
-
--- | Compilation result (varies by stage)
-data CompileResult : Set where
-  Parsed  : List FunInfo → List PolyFunInfo → CompileResult  -- Parse succeeded (ground + poly)
-  Checked : List CompiledFun → CompileResult                 -- Typecheck succeeded
-  Built   : String → CompileResult                           -- Codegen succeeded (assembly)
-  Error   : String → CompileResult                           -- Any stage failed
-
--- plan 0.107: THE TEXT IS THE PRINT OF THE FILE (one walk).
-built-of : (arch : Arch) → String ⊎ FileOf arch → CompileResult
-built-of arch (inj₁ err) = Error err
-built-of arch (inj₂ F)   = Built (printFile arch F)
-
--- | Show a FunInfo as "name : type"
-showFunInfo : FunInfo → String
-showFunInfo fi with funType fi
-... | just ty = funName fi ++ " : " ++ showType ty
-... | nothing = funName fi ++ " : <inferred>"
-
--- | Show a PolyFunInfo as "name : polytype"
-showPolyFunInfo : PolyFunInfo → String
-showPolyFunInfo pfi = pfunName pfi ++ " : " ++ showPolyType (pfunType pfi)
-
--- | Show all function signatures
-showFunInfos : List FunInfo → String
-showFunInfos [] = ""
-showFunInfos (fi ∷ []) = showFunInfo fi
-{-# CATCHALL #-}
-showFunInfos (fi ∷ rest) = showFunInfo fi ++ "\n" ++ showFunInfos rest
-
-showPolyFunInfos : List PolyFunInfo → String
-showPolyFunInfos [] = ""
-showPolyFunInfos (pfi ∷ []) = showPolyFunInfo pfi
-{-# CATCHALL #-}
-showPolyFunInfos (pfi ∷ rest) = showPolyFunInfo pfi ++ "\n" ++ showPolyFunInfos rest
-
--- | Unified compile function - single entry point for all stages
--- stage: how far to compile (ParseOnly, CheckOnly, FullBuild)
--- doOpt: whether to run optimizer (only relevant for CheckOnly/FullBuild)
--- arch: target architecture (only relevant for FullBuild)
--- source: source code text
-compile : AllocMode → Stage → Bool → Arch → String → CompileResult
-compile m stage doOpt arch source with parseStrict source
-... | inj₁ err = Error err
-... | inj₂ mod =
-  case extractFunctions (resolved mod []) of λ where
-       (inj₁ err) → Error err
-       (inj₂ es)  →
-         case stage of λ where
-           Parse → Parsed (funsOf es) (polysOf es)
-           Check → case compileEntries m doOpt emptyCScope es of λ where
-             (inj₁ err) → Error err
-             (inj₂ compiled) → Checked compiled
-           Build → case compileEntries m doOpt emptyCScope es of λ where
-             (inj₁ err) → Error err
-             (inj₂ compiled) → built-of arch (emitFromCompiled arch (inj₂ compiled))
-
--- | Same as `compile` but starting from a resolved module (`Resolved`).
--- Haskell uses this after driving transitive-import I/O and calling
--- `resolveImports`, which resolves the references and reads the imported
--- modules' signatures. Skips the `parse source` step of `compile`.
--- Plan 0.14 follow-up: takes AllocMode from CLI --alloc flag.
--- Explicit-argument aux form (Plan 0.48): `cfm-ef-aux` dispatches on
--- `extractFunctions`, `cfm-stage-aux` on the stage, and the Check/Build emit
--- helpers on the `compileEntries` result — the SAME `compileEntries` call as
--- `compileResolvedModule-aux`, which is what lets `main⇒built` relate them.
-
-cfm-check-emit : String ⊎ List CompiledFun → CompileResult
-cfm-check-emit (inj₁ err)       = Error err
-cfm-check-emit (inj₂ compiled)  = Checked compiled
-
 -- | THE LITERAL-RANGE GATE (plan 0.74 J3, D115).
 --
 -- An `Int` literal that does not fit this target's signed range is a compile
@@ -996,17 +899,11 @@ compileFileFromModule : AllocMode → Bool → (arch : Arch) → Resolved → St
 compileFileFromModule m doOpt arch mod =
   cfm-file-ef m doOpt arch mod (extractFunctions mod)
 
-cfm-stage-aux : AllocMode → Stage → Bool → Arch → Resolved → List Entry → CompileResult
-cfm-stage-aux m Parse doOpt arch mod es = Parsed (funsOf es) (polysOf es)
-cfm-stage-aux m Check doOpt arch mod es =
-  cfm-check-emit (compileEntries m doOpt emptyCScope es)
-cfm-stage-aux m Build doOpt arch mod es =
-  built-of arch (cfm-file-gated m doOpt arch mod es (admissibleM? arch (Resolved.rmodule mod)))
+-- | The assembly text the CLI writes: the print of the file (plan 0.107), in
+-- `Heap`. The compiler exposes functions, not CLI stages (D352).
+printResult : (arch : Arch) → String ⊎ FileOf arch → String ⊎ String
+printResult arch (inj₁ err) = inj₁ err
+printResult arch (inj₂ F)   = inj₂ (printFile arch F)
 
-cfm-ef-aux : AllocMode → Stage → Bool → Arch → Resolved → String ⊎ List Entry → CompileResult
-cfm-ef-aux m stage doOpt arch mod (inj₁ err) = Error err
-cfm-ef-aux m stage doOpt arch mod (inj₂ es)  = cfm-stage-aux m stage doOpt arch mod es
-
-compileFromModule : AllocMode → Stage → Bool → Arch → Resolved → CompileResult
-compileFromModule m stage doOpt arch mod =
-  cfm-ef-aux m stage doOpt arch mod (extractFunctions mod)
+assemblyFromModule : Bool → Arch → Resolved → String ⊎ String
+assemblyFromModule doOpt arch mod = printResult arch (compileFileFromModule Heap doOpt arch mod)

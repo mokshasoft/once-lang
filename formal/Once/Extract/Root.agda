@@ -8,7 +8,9 @@
 -- The CLI (`compiler/src/Once/Compile/Bridge.hs`) calls the compiler
 -- (`Once.Compile`), the parser and the import resolver, the warnings, the type
 -- printer, and the arithmetic IR its evaluator reads, through the stable names
--- of `Once.Extract.Names`. The correctness theorem about these functions
+-- of `Once.Extract.Names`. The tools beside the compiler each have their own
+-- bridge: `Once.Inspect` (parse, check, elaborate, optimize), `Once.Measure`
+-- (stats), `Once.Format` (fmt). The correctness theorem about these functions
 -- (`Once.Certified`) and its proofs are not extracted: they are not run.
 ------------------------------------------------------------------------
 
@@ -26,5 +28,5 @@ import Once.Extract.Names
 import Once.Arith.IR
 import Once.Arith.Type
 import Once.Format
-import Once.Compile.Dump
+import Once.Inspect
 import Once.Measure

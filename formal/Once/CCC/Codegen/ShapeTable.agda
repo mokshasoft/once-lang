@@ -507,7 +507,7 @@ post-++ env st (i ∷ is) t₂ = post-++ env (step-expect env st i) is t₂
 -- checker's claims are heap-shaped (a stack-mode shape mentions stack
 -- cells, which `store-at-slot` clobbers while the transfer keeps the
 -- claim), so the emitter shape check is CONDITIONAL on this predicate —
--- supplied at the apex from the pipeline (`compileFromModule C.Heap`).
+-- supplied at the apex from the pipeline (`compileFileFromModule C.Heap`).
 ------------------------------------------------------------------------
 IsHeap : AllocMode → Set
 IsHeap Heap  = ⊤
