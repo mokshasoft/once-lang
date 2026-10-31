@@ -9,7 +9,9 @@
 -- A SOURCE is a complete compilation unit: the program's text and the texts
 -- of the modules it imports, by path. It denotes a TYPED program when its
 -- texts parse (`Spec.Surface.Grammar`) and the program's module denotes a
--- program over its signature (`Spec.Surface.Program`). What the program does
+-- program over its signature (`Spec.Surface.Program`). A text without an
+-- entry may still be a TYPED MODULE: it denotes a library (`_⊢ᴹ_`, what
+-- `once check` decides). What the program does
 -- is its behaviour against an Interpretation of that signature
 -- (`Spec.Core.Program.behaviour`): its trace — the calls it makes, in a run
 -- that may go on forever. Two behaviours are the same when their traces are
@@ -38,7 +40,7 @@ open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Grammar using (Parses)
 open import Once.Spec.Surface.Resolution using (ModuleMap)
-open import Once.Spec.Surface.Program using (Denotes)
+open import Once.Spec.Surface.Program using (ModuleDenotes; Denotes)
 import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Observation as Observation
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_)
@@ -64,6 +66,18 @@ _⊢_ : Source → Typed → Set
 src ⊢ tp = Σ[ mm ∈ ModuleMap ]
              Parses (text src) (module′ tp) × ParsesModules (modules src) mm
            × Denotes mm (module′ tp) (signature tp) (program tp)
+
+-- A typed module: a module, its signature, and the library it denotes.
+record TypedModule : Set where
+  field
+    module′   : Module
+    signature : Signature
+    library   : CoreProgram.Library signature
+
+_⊢ᴹ_ : Source → TypedModule → Set
+src ⊢ᴹ tm = Σ[ mm ∈ ModuleMap ]
+              Parses (text src) (TypedModule.module′ tm) × ParsesModules (modules src) mm
+            × ModuleDenotes mm (TypedModule.module′ tm) (TypedModule.signature tm) (TypedModule.library tm)
 
 ------------------------------------------------------------------------
 -- What a target can express

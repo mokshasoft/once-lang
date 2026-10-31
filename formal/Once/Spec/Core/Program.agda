@@ -5,11 +5,12 @@
 ------------------------------------------------------------------------
 -- Once.Spec.Core.Program — a program, and what it does.
 --
--- A program is a TELESCOPE of definitions over a signature Σ: each body is
+-- A LIBRARY is a TELESCOPE of definitions over a signature Σ: each body is
 -- typed once, over its type variables, and may refer only to the definitions
--- before it (there is no general recursion). One of them is the entry,
--- `main`, declared at its own type and USED at `Eff Unit Unit` (D315): its
--- type is a subtype of that, and the entry runs its conversion.
+-- before it (there is no general recursion). A PROGRAM is a library with an
+-- entry, `main`, one of its definitions, declared at its own type and USED at
+-- `Eff Unit Unit` (D315): its type is a subtype of that, and the entry runs
+-- its conversion.
 --
 -- What it does, against an Interpretation of Σ, is the trace of its entry:
 -- the calls it makes, in a run that may go on forever, with or without
@@ -71,14 +72,21 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 data Entry : Schema → Set where
   entry : ∀ {Δ : KCtx 0} {A} → A <: EffUU → Entry (schema 0 Δ A)
 
-record Program : Set where
+-- A library: its definitions, typed, over a well-formed signature.
+record Library : Set where
   field
     wf     : WellFormed Σ
     {size} : ℕ
     {sig}  : Defs size
     defs   : Tele sig
-    main   : Fin size
-    isMain : Entry (sig !! main)
+open Library
+
+-- A program: a library, and its entry.
+record Program : Set where
+  field
+    library : Library
+    main    : Fin (size library)
+    isMain  : Entry (sig library !! main)
 open Program
 
 noVars : TySub 0 0
@@ -91,4 +99,4 @@ runEntry (entry p) v = conv noVars p (v noVars (λ ())) tt
 
 behaviour : TargetNum → (p : Program) → Interp → Tr ⊤
 behaviour fmt p ι =
-  trace (Interp.world ι) [] (runEntry (isMain p) (Meaning.DefSem.defs (teleSem fmt (Interp.model ι) (defs p)) (main p)))
+  trace (Interp.world ι) [] (runEntry (isMain p) (Meaning.DefSem.defs (teleSem fmt (Interp.model ι) (defs (library p))) (main p)))

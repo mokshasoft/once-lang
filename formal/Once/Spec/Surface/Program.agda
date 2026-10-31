@@ -43,7 +43,7 @@ open import Once.Spec.Signature
   using (BTy; unit; void; int; float; DeclType; constant; value; operation; _∶_; Signature; WellFormed; OneName)
 import Once.Spec.Signature as BT
 open import Once.Spec.Context using (∅; [])
-open import Once.Spec.Core.Syntax using (Defs; []; _▷_; Schema; module Schema; schema; Tm)
+open import Once.Spec.Core.Syntax using (Defs; []; _▷_; _!!_; Schema; module Schema; schema; Tm)
 open Schema using (arity; kinds; type)
 import Once.Spec.Core.Typing as CoreTyping
 import Once.Spec.Core.Program as CoreProgram
@@ -235,20 +235,30 @@ data ResolvesDecls (E : Env) : List Decl → List Decl → Set where
   rd-other : ∀ {d ds ds′} → NotFunDef d → ResolvesDecls E ds ds′ → ResolvesDecls E (d ∷ ds) (d ∷ ds′)
 
 -- A module, with the other modules of its compilation unit, denotes a
--- program over its signature.
-record Denotes (mm : ModuleMap) (m : Module) (Σ : Signature) (p : CoreProgram.Program Σ) : Set where
-  open CoreProgram Σ using (Tele; [])
+-- library over its signature: its definitions, each with its own name. The
+-- name `main` is the entry's: a definition so named is usable as one (it
+-- need not be one: a library has no entry).
+record ModuleDenotes (mm : ModuleMap) (m : Module) (Σ : Signature) (l : CoreProgram.Library Σ) : Set where
+  open CoreProgram Σ using (Tele; []; Entry)
+  open CoreProgram.Library l using (size; sig; defs)
   field
     signature : SignatureOf mm (Module.decls m) Σ
     unaliased : List (String × List String)
     unaliases : Unaliased mm (Module.decls m) unaliased
     resolved  : List Decl
     resolves  : ResolvesDecls (env unaliased (aliases (Module.decls m))) (Module.decls m) resolved
-    names     : Fin (CoreProgram.Program.size p) → CanonicalName
-    walk      : Walk Σ [] (λ ()) [] resolved (CoreProgram.Program.sig p) names (CoreProgram.Program.defs p)
+    names     : Fin size → CanonicalName
+    walk      : Walk Σ [] (λ ()) [] resolved sig names defs
     distinct  : Injective _≡_ _≡_ names
     -- Every entry has its own name, operations included (D249): an operation
     -- of Σ is declared once, and no definition is named as one.
     sig-distinct : OneName Σ
     def-not-sig  : ∀ d {t} → ¬ ((names d ∶ t) ∈ Σ)
-    entry     : names (CoreProgram.Program.main p) ≡ canonical ("main" ∷ [])
+    mains        : ∀ d → names d ≡ canonical ("main" ∷ []) → Entry (sig !! d)
+
+-- A module denotes a program: it denotes the program's library, and the
+-- entry is its definition named `main`.
+record Denotes (mm : ModuleMap) (m : Module) (Σ : Signature) (p : CoreProgram.Program Σ) : Set where
+  field
+    library : ModuleDenotes mm m Σ (CoreProgram.Program.library p)
+    entry   : ModuleDenotes.names library (CoreProgram.Program.main p) ≡ canonical ("main" ∷ [])
