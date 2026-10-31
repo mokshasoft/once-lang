@@ -20,9 +20,11 @@
 --   ⊕      branch on the tag as `visit-walk` does; the payload rebuilt at
 --          `s+4`, then a fresh sum block `[tag , payload]` (`wrap-sum`).
 --
--- Everything the walk writes is a slot at or above `s` (or `val`) and a
--- block it allocated, so whatever was live at its start reads the same at
--- its end (`Walk.seg`), and every word built is valid at the end.
+-- Everything the walk writes is a slot in `[s , s + 4·fsize G)` (or `val`)
+-- and a block it allocated, so whatever was live at its start reads the
+-- same at its end (`Walk.seg`), every word built is valid at the end, and
+-- every slot below `s` or from `u ≥ s + 4·fsize G` on other than `val` is
+-- kept (`KR s`; the upper window is the cata's call slots, as in `Visit`).
 --
 -- The fold loop hands the top layer (`G = F`) to the algebra exactly as M1
 -- did (`CataConst/Run`'s `cL`): a cell holding this word is a
@@ -41,10 +43,10 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module Resusp
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
-open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC; sum-end)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC; sum-end; su-l; su-r)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o
   using (fillI; fill-K; fill-Id; fill-inl; fill-inr; fill-pair; module FillPair)
-open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; pop2; wrap-sum)
+open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; pop2; wrap-sum; fsize)
 open import Once.CCC.Codegen.LabelScope o using (rebuild-ls; wrap-sum-ls)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-lab; li-none; ls-weaken)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
@@ -68,11 +70,11 @@ open import Data.Product using (Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Data.Nat using (s≤s; z≤n)
+open import Data.Nat using (s≤s; z≤n; _*_)
 open import Data.Nat.Properties using (+-cancelˡ-≡; +-monoʳ-<)
 open import Relation.Nullary using (¬_)
 open import Data.Nat.Solver using (module +-*-Solver)
-open +-*-Solver using (solve; _:+_; con; _:=_)
+open +-*-Solver using (solve; _:+_; _:*_; con; _:=_)
 
 -- the ends of a `⊗` and a `⊕` rebuild, as the run reaches them
 prod-end-r : ∀ (a c b : ℕ) → 9 + (a + (4 + (c + (4 + b)))) ≡ (4 + (c + (4 + (a + 9)))) + b
@@ -100,7 +102,7 @@ module CataRebuildC {FS : FrameSemantics} where
   open CataWalkC {FS}
   open CataVisitC {FS} using (SumCell; module SumCell; sum-inl; sum-inr; PairCells; module PairCells; pair-cells
                              ; PtrTo; module PtrTo; sum-ptr; prod-ptr)
-  open Resolve {FS} using (fl-hit; noLabel-outside; found-in-window)
+  open Resolve {FS} using (NoLabel; fl-hit; noLabel-outside; found-in-window)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)
@@ -405,7 +407,13 @@ module CataRebuildC {FS : FrameSemantics} where
   below0 : ∀ {j s : ℕ} → j < s → j ≢ s
   below0 j<s e = <-irrefl e j<s
 
-  module Rebuild (prog : AbstractTrace) (F : IRFunctor) (C : IRTy) (n val tv tb : ℕ) (sn : HeapLocation)
+  -- a level's four own slots `s … s+3` sit below `u`
+  su4 : ∀ (s k u : ℕ) → s + 4 * suc k ≤ u → s + 4 ≤ u
+  su4 s k u p = ≤-trans (m≤m+n (s + 4) (4 * k)) (subst (_≤ u) (eq s k) p)
+    where eq : ∀ (s k : ℕ) → s + 4 * suc k ≡ (s + 4) + 4 * k
+          eq = solve 2 (λ s k → s :+ (con 4 :* (con 1 :+ k)) := (s :+ con 4) :+ (con 4 :* k)) refl
+
+  module Rebuild (prog : AbstractTrace) (F : IRFunctor) (C : IRTy) (n val tv tb : ℕ) (sn : HeapLocation) (u : ℕ)
                  (n≤val : n ≤ val) where
 
     VE : ElemP ⟦ C ⟧
@@ -415,10 +423,25 @@ module CataRebuildC {FS : FrameSemantics} where
     RW {G} wG s lb = rebuild-walk val tv tb ⌈ G ⌉F s lb
 
     KR : ℕ → ℕ → Set
-    KR s j = (j < s) × (j ≢ val)
+    KR s j = ((j < s) ⊎ (u ≤ j)) × (j ≢ val)
 
     kr-up : ∀ s j → KR s j → KR (s + 4) j
-    kr-up s j (j<s , a) = <-≤-trans j<s (m≤m+n s 4) , a
+    kr-up s j (inj₁ j<s , a) = inj₁ (<-≤-trans j<s (m≤m+n s 4)) , a
+    kr-up s j (inj₂ u≤j , a) = inj₂ u≤j , a
+
+    -- a kept slot is none of a level's own four
+    nk : ∀ {s j : ℕ} (k : ℕ) → k < 4 → s + 4 ≤ u → (j < s) ⊎ (u ≤ j) → j ≢ s + k
+    nk {s} k k<4 s4 (inj₁ j<s) = below k j<s
+    nk {s} k k<4 s4 (inj₂ u≤j) refl = <-irrefl refl (<-≤-trans (+-monoʳ-< s k<4) (≤-trans s4 u≤j))
+
+    nk0 : ∀ {s j : ℕ} → s + 4 ≤ u → (j < s) ⊎ (u ≤ j) → j ≢ s
+    nk0 {s} s4 w e = nk 0 (s≤s z≤n) s4 w (trans e (sym (+-identityʳ s)))
+    nk1 : ∀ {s j : ℕ} → s + 4 ≤ u → (j < s) ⊎ (u ≤ j) → j ≢ suc s
+    nk1 {s} s4 w e = nk 1 (s≤s (s≤s z≤n)) s4 w (trans e (sx s))
+    nk2 : ∀ {s j : ℕ} → s + 4 ≤ u → (j < s) ⊎ (u ≤ j) → j ≢ s + 2
+    nk2 s4 w = nk 2 (s≤s (s≤s (s≤s z≤n))) s4 w
+    nk3 : ∀ {s j : ℕ} → s + 4 ≤ u → (j < s) ⊎ (u ≤ j) → j ≢ s + 3
+    nk3 s4 w = nk 3 (s≤s (s≤s (s≤s (s≤s z≤n)))) s4 w
 
     up : ∀ {s k} → k < s → k < s + 4
     up {s} p = <-≤-trans p (m≤m+n s 4)
@@ -440,7 +463,7 @@ module CataRebuildC {FS : FrameSemantics} where
     RebuildT {G} wG =
       ∀ (s lb : ℕ) (σ : FlatState) (v : ⟦ ⟦ G ⟧TI (μ-type F) ⟧) (vs : List ⟦ C ⟧) (l : ⟦ ⟦ G ⟧TI C ⟧) (rest : List ⟦ C ⟧)
       → fillI wG (μ-type F) C v vs ≡ just (l , rest)
-      → n ≤ s → val < s
+      → n ≤ s → val < s → s + 4 * fsize ⌈ G ⌉F ≤ u
       → SpanAt prog (fpc σ) (RW wG s lb)
       → LabelsAt prog (fpc σ) (RW wG s lb)
       → halted (floc σ) ≡ false
@@ -466,7 +489,7 @@ module CataRebuildC {FS : FrameSemantics} where
     -- K: the node's own cell word.  Id: pop a result.
     ----------------------------------------------------------------------
     rebuild-K : ∀ {A} {b : I.IsBaseTypeI A} → RebuildT (wf-K b)
-    rebuild-K {A} {b} s lb σ x vs l rest eq n≤s val<s span la nh wd st =
+    rebuild-K {A} {b} s lb σ x vs l rest eq n≤s val<s su span la nh wd st =
       subst₂ (λ l′ r′ → Walk prog n (KR s) σ (suc (fpc σ)) (RQ A l′ r′)) (sym (proj₁ fk)) (sym (proj₂ fk))
         (walk-q σ mov-to-output refl nh (span 0 _ refl) tt nhw-mov-to-output refl tt tt refl tt
           (record { out = subst (λ z → WordAt prog (falloc u1) _ x z (floc u1)) (sym (out-movout (floc σ) (falloc σ))) (word-tr kp1 wd)
@@ -479,7 +502,7 @@ module CataRebuildC {FS : FrameSemantics} where
         kp1 = kp-q mov-to-output σ nhw-mov-to-output refl tt tt
 
     rebuild-Id : RebuildT wf-Id
-    rebuild-Id s lb σ t vs l rest eq n≤s val<s span la nh wd st =
+    rebuild-Id s lb σ t vs l rest eq n≤s val<s su span la nh wd st =
       walk-post w (record { out = subst (λ z → WordAt prog (falloc τ) C l z (floc τ)) (sym (Popped.out p)) (Popped.elem p)
                           ; stack = Popped.stack p })
       where
@@ -498,6 +521,7 @@ module CataRebuildC {FS : FrameSemantics} where
                  (vs : List ⟦ C ⟧) (l : ⟦ ⟦ G ⟧TI C ⟧ × ⟦ ⟦ H ⟧TI C ⟧) (rest : List ⟦ C ⟧)
                  (eq : fillI (wf-Prod a b) (μ-type F) C (x , y) vs ≡ just (l , rest))
                  (n≤s : n ≤ s) (val<s : val < s)
+                 (su : s + 4 * suc (fsize ⌈ G ⌉F + fsize ⌈ H ⌉F) ≤ u)
                  (span : SpanAt prog (fpc σ) (RW (wf-Prod a b) s lb))
                  (la : LabelsAt prog (fpc σ) (RW (wf-Prod a b) s lb))
                  (nh : halted (floc σ) ≡ false)
@@ -527,6 +551,8 @@ module CataRebuildC {FS : FrameSemantics} where
 
       val≢s : val ≢ s
       val≢s = below0 val<s
+      s4u : s + 4 ≤ u
+      s4u = su4 s (fsize ⌈ G ⌉F + fsize ⌈ H ⌉F) u su
       n≤s4 : n ≤ s + 4
       n≤s4 = ≤-trans n≤s (m≤m+n s 4)
       s<s4 : s < s + 4
@@ -625,11 +651,11 @@ module CataRebuildC {FS : FrameSemantics} where
         ; run = s-at p1 (nh , span 0 _ refl) refl refl tt (s-at p2 (nh1 , span 1 _ refl) refl refl tt
                 (s-at p3 (nh2 , span 2 _ refl) refl refl tt (s-at p4 (nh3 , span 3 _ refl) refl refl tt s-nil)))
         ; seg = seg4 ; nh = nh4 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl ; cf = cf4
-        ; slots = λ j kj → keep4 j (below0 (proj₁ kj)) ; post = tt }
+        ; slots = λ j kj → keep4 j (nk0 s4u (proj₁ kj)) ; post = tt }
 
       -- the right part
       wb : Walk prog n (KR (s + 4)) p4 (length VB + fpc p4) (RQ (⟦ H ⟧TI C) (proj₂ l) midl)
-      wb = ihb (s + 4) (lb + lF) p4 y vs (proj₂ l) midl (FillPair.right fp) n≤s4 (up val<s) SPB LAB nh4
+      wb = ihb (s + 4) (lb + lF) p4 y vs (proj₂ l) midl (FillPair.right fp) n≤s4 (up val<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPB LAB nh4
              (subst (λ z → WordAt prog (falloc p4) _ y z (floc p4)) (sym in4) (word-tr kp4 (PairCells.c₂ pc)))
              (stack-keep val-tr kp4 cf4 (keep4 val val≢s) st)
 
@@ -644,7 +670,7 @@ module CataRebuildC {FS : FrameSemantics} where
 
       slot-b : readLoc (floc τb) (AtStack fb s) ≡ just (SV-Ptr (AtDynamic hl))
       slot-b = trans (cong (λ f → readLoc (floc τb) (AtStack f s)) (Walk.cf wb))
-               (trans (Walk.slots wb s (s<s4 , λ e → val≢s (sym e))) (trans (cong (λ f → readLoc (floc p4) (AtStack f s)) cf4) slot4))
+               (trans (Walk.slots wb s (inj₁ s<s4 , λ e → val≢s (sym e))) (trans (cong (λ f → readLoc (floc p4) (AtStack f s)) cf4) slot4))
 
       -- rows: the right word to `s+2`, the pair back, cell 0 into Input1
       m1 = St (store-at-slot (s + 2)) τb
@@ -700,7 +726,7 @@ module CataRebuildC {FS : FrameSemantics} where
       mid-walk =
         walk-∘ (walk-st {Q = λ _ → ⊤} τb (store-at-slot (s + 2)) refl (Walk.nh wb) (fm 0 refl) nh-m1 refl tt
                   (seg-store (s + 2) τb refl (≤-trans n≤s (m≤m+n s 2)))
-                  (λ j kj → sl-other (s + 2) j (floc τb) (falloc τb) _ (below 2 (proj₁ kj))) tt)
+                  (λ j kj → sl-other (s + 2) j (floc τb) (falloc τb) _ (nk2 s4u (proj₁ kj))) tt)
         (walk-∘ (walk-q {Q = λ _ → ⊤} m1 (restore-input s) refl nh-m1 (fm 1 refl) (_ , slot-m1) nhw-restore-input refl tt tt refl tt tt)
         (walk-∘ (walk-q {Q = λ _ → ⊤} m2 load-indirect refl nh-m2 (fm 2 refl) wf-m3 nhw-load-indirect refl tt tt refl tt tt)
                 (walk-q m3 mov-to-input refl nh-m3 (fm 3 refl) tt nhw-mov-to-input refl tt tt refl tt tt)))
@@ -712,7 +738,7 @@ module CataRebuildC {FS : FrameSemantics} where
 
       -- the left part
       wa : Walk prog n (KR (s + 4)) m4 (length VA + fpc m4) (RQ (⟦ G ⟧TI C) (proj₁ l) rest)
-      wa = iha (s + 4) lb m4 x midl (proj₁ l) rest (FillPair.left fp) n≤s4 (up val<s) SPA′ LAA′ nh-m4
+      wa = iha (s + 4) lb m4 x midl (proj₁ l) rest (FillPair.left fp) n≤s4 (up val<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPA′ LAA′ nh-m4
              (subst (λ z → WordAt prog (falloc m4) _ x z (floc m4)) (sym in-m4) (word-tr (kp-∘ kpb kpm) (PairCells.c₁ pc)))
              (stack-keep val-tr kpm cfm (slm val (below 2 val<s)) (RQs.stack (Walk.post wb)))
 
@@ -724,7 +750,7 @@ module CataRebuildC {FS : FrameSemantics} where
 
       s2-a : readLoc (floc τa) (AtStack (current-frame (falloc τa)) (s + 2)) ≡ just wR
       s2-a = trans (cong (λ f → readLoc (floc τa) (AtStack f (s + 2))) (Walk.cf wa))
-             (trans (Walk.slots wa (s + 2) (s2<s4 , λ e → below 2 val<s (sym e)))
+             (trans (Walk.slots wa (s + 2) (inj₁ s2<s4 , λ e → below 2 val<s (sym e)))
                     (trans (cong (λ f → readLoc (floc m4) (AtStack f (s + 2))) cfm) s2-m4))
 
       SPE : SpanAt prog (fpc τa) epi
@@ -745,7 +771,7 @@ module CataRebuildC {FS : FrameSemantics} where
       we′ : Walk prog n (λ j → (j ≢ suc s) × (j ≢ s + 3)) τa (9 + fpc τa) (Block wL wR)
       we′ = E.walk (λ j kj → kj)
       we : Walk prog n (KR s) τa (9 + fpc τa) (Block wL wR)
-      we = walk-K (λ j kj → below-suc (proj₁ kj) , below 3 (proj₁ kj)) we′
+      we = walk-K (λ j kj → nk1 s4u (proj₁ kj) , nk3 s4u (proj₁ kj)) we′
 
       all : Walk prog n (KR s) σ (9 + fpc τa) (Block wL wR)
       all = walk-∘ {prog} {n} {KR s} {σ} wpb (walk-∘ {prog} {n} {KR s} {τb} wma we)
@@ -782,6 +808,7 @@ module CataRebuildC {FS : FrameSemantics} where
     module SumC {G H : IRFunctor} (a : WellFormedFI G) (b : WellFormedFI H) (iha : RebuildT a) (ihb : RebuildT b)
                 (s lb : ℕ) (σ : FlatState) (vs : List ⟦ C ⟧) (rest : List ⟦ C ⟧)
                 (n≤s : n ≤ s) (val<s : val < s)
+                (su : s + 4 * suc (fsize ⌈ G ⌉F + fsize ⌈ H ⌉F) ≤ u)
                 (span : SpanAt prog (fpc σ) (RW (wf-Sum a b) s lb))
                 (la : LabelsAt prog (fpc σ) (RW (wf-Sum a b) s lb))
                 (nh : halted (floc σ) ≡ false)
@@ -886,8 +913,11 @@ module CataRebuildC {FS : FrameSemantics} where
       end-eq : suc (9 + Y₀) ≡ length (RW (wf-Sum a b) s lb) + base
       end-eq = trans (sum-end-r (length VL) (length VR) base) (cong (_+ base) (sym len-eq))
 
+      s4u : s + 4 ≤ u
+      s4u = su4 s (fsize ⌈ G ⌉F + fsize ⌈ H ⌉F) u su
+
       ks : ∀ j → KR s j → (j ≢ s) × (j ≢ suc s)
-      ks j kj = below0 (proj₁ kj) , below-suc (proj₁ kj)
+      ks j kj = nk0 s4u (proj₁ kj) , nk1 s4u (proj₁ kj)
 
       -- the payload's two unpacking rows
       module Unpack {A : IRTy} (v : ⟦ A ⟧) (t : ℕ) (q0 : FlatState) (hl : HeapLocation)
@@ -965,7 +995,7 @@ module CataRebuildC {FS : FrameSemantics} where
         module U = Unpack y 1 q0 (PtrTo.hl pt) nh (PtrTo.eq pt) sc st (span 1 _ refl) (span 2 _ refl)
 
         wR : Walk prog n (KR (s + 4)) U.q2 (length VR + fpc U.q2) (RQ (⟦ H ⟧TI C) l₂ rest)
-        wR = ihb (s + 4) (ssl + lF) U.q2 y vs l₂ rest fy n≤s4 (up val<s) SPR LAR U.nh2 U.wd2 U.st2
+        wR = ihb (s + 4) (ssl + lF) U.q2 y vs l₂ rest fy n≤s4 (up val<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPR LAR U.nh2 U.wd2 U.st2
 
         τR = Walk.τ wR
 
@@ -1012,7 +1042,7 @@ module CataRebuildC {FS : FrameSemantics} where
         module U = Unpack x 0 i2 (PtrTo.hl pt) nh (PtrTo.eq pt) sc st (SP3 2 _ refl) (SP3 3 _ refl)
 
         wL : Walk prog n (KR (s + 4)) U.q2 (length VL + fpc U.q2) (RQ (⟦ G ⟧TI C) l₁ rest)
-        wL = iha (s + 4) ssl U.q2 x vs l₁ rest fx n≤s4 (up val<s) SPL LAL U.nh2 U.wd2 U.st2
+        wL = iha (s + 4) ssl U.q2 x vs l₁ rest fx n≤s4 (up val<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPL LAL U.nh2 U.wd2 U.st2
 
         τL = Walk.τ wL
 
@@ -1040,13 +1070,13 @@ module CataRebuildC {FS : FrameSemantics} where
     rebuild : ∀ {G} (wG : WellFormedFI G) → RebuildT wG
     rebuild (wf-K b) = rebuild-K {b = b}
     rebuild wf-Id = rebuild-Id
-    rebuild (wf-Prod a b) s lb σ (x , y) vs l rest eq n≤s val<s span la nh wd st =
-      ProdC.result a b (rebuild a) (rebuild b) s lb σ x y vs l rest eq n≤s val<s span la nh wd st
-    rebuild (wf-Sum a b) s lb σ (inj₁ x) vs l rest eq n≤s val<s span la nh wd st =
+    rebuild (wf-Prod a b) s lb σ (x , y) vs l rest eq n≤s val<s su span la nh wd st =
+      ProdC.result a b (rebuild a) (rebuild b) s lb σ x y vs l rest eq n≤s val<s su span la nh wd st
+    rebuild (wf-Sum a b) s lb σ (inj₁ x) vs l rest eq n≤s val<s su span la nh wd st =
       subst (λ z → Walk prog n (KR s) σ (length (RW (wf-Sum a b) s lb) + fpc σ) (RQ _ z rest)) (sym (proj₁ (proj₂ fi)))
-        (SumC.Inl.result a b (rebuild a) (rebuild b) s lb σ vs rest n≤s val<s span la nh st x (proj₁ fi) (proj₂ (proj₂ fi)) wd)
+        (SumC.Inl.result a b (rebuild a) (rebuild b) s lb σ vs rest n≤s val<s su span la nh st x (proj₁ fi) (proj₂ (proj₂ fi)) wd)
       where fi = fill-inl {a = a} {b} {μ-type F} {C} {x} {vs} {l} {rest} eq
-    rebuild (wf-Sum a b) s lb σ (inj₂ y) vs l rest eq n≤s val<s span la nh wd st =
+    rebuild (wf-Sum a b) s lb σ (inj₂ y) vs l rest eq n≤s val<s su span la nh wd st =
       subst (λ z → Walk prog n (KR s) σ (length (RW (wf-Sum a b) s lb) + fpc σ) (RQ _ z rest)) (sym (proj₁ (proj₂ fi)))
-        (SumC.Inr.result a b (rebuild a) (rebuild b) s lb σ vs rest n≤s val<s span la nh st y (proj₁ fi) (proj₂ (proj₂ fi)) wd)
+        (SumC.Inr.result a b (rebuild a) (rebuild b) s lb σ vs rest n≤s val<s su span la nh st y (proj₁ fi) (proj₂ (proj₂ fi)) wd)
       where fi = fill-inr {a = a} {b} {μ-type F} {C} {y} {vs} {l} {rest} eq

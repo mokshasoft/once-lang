@@ -8,17 +8,18 @@
 -- abstract bundle (`ToFoldOut`), for the input pair at `phl` whose μ cell
 -- points at `μhl` (exactly what M1's `CataConst.Glue` receives):
 --
---   1. the eighteen setup rows — M1's own `CataConst.Setup` at the
---      branching slots (`cl = c`, `k`, `ev`, `pr = c+3`, `c = n+7+4·fsize F+4`,
---      body label `l1+4+2·lsize F`): the argument pair `[env , _]` and the
---      closure record `[0 , body]` (`Setup.out`);
+--   1. the thirteen setup rows — M1's own `CataConst.Setup` at the
+--      branching slots (`cl = c`, `k`, `ev = c+2`, `c = n+7+4·fsize F+4`,
+--      body label `l1+4+2·lsize F`): the environment in `ev` and the
+--      closure record `[0 , body]` (`Setup.out`; the argument pair is no
+--      longer the setup's — every call allocates its own, plan 0.125 D1a);
 --   2. the fourteen init rows and the root's push (`CataBr.Init`);
 --   3. the flatten loop to its exit (`CataBr.Flatten`), from todo `[ root ]`.
 --
 -- It ends at the fold head `ℓ (l1+2)` with todo `[]`, eval
 -- `PO.FI … [ root ] []` (= `po root ++ []`, `flatten-start`), val `[]`, the
--- closure record / argument pair facts M1's `Call` consumed (both call
--- slots, the pair's environment cell, the record's code cell), the run
+-- facts M1's `Call` consumes (the record in slot `cl`, the environment in
+-- slot `ev`, the record's code cell), the run
 -- silent and everything below the frontier `n` untouched (`seg`, against
 -- the entry allocator). The init and the loop keep the call slots
 -- (`Init.KI`, `Round.KL`), which is what carries the setup's facts across.
@@ -84,10 +85,6 @@ module CataToFoldC {FS : FrameSemantics} where
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)
 
-  -- the argument pair's block: the first the setup allocates
-  hpOf : AllocState {FS} → HeapLocation
-  hpOf a = heap-loc (mkHeapRef (next-heap-ref a)) 0
-
   ------------------------------------------------------------------------
   -- WHAT THE FOLD LOOP STARTS FROM, as an opaque bundle.
   ------------------------------------------------------------------------
@@ -110,14 +107,13 @@ module CataToFoldC {FS : FrameSemantics} where
       todo   : StackAt (NodeE prog F) (falloc τ) (floc τ) n sn []
       eval   : StackAt (NodeE prog F) (falloc τ) (floc τ) (suc n) sn (PO.FI (wf-⌈⌉ wf) alg₀ (root ∷ []) [])
       val    : StackAt (ValE prog C) (falloc τ) (floc τ) (n + 2) sn []
-      -- the closure record and the argument pair (what M1's `Call` consumed)
+      -- the closure record and the environment (what M1's `Call` consumes)
       hc     : HeapLocation
-      ref-hc : ref-id (heap-ref hc) ≡ suc (next-heap-ref (falloc σ))
+      ref-hc : ref-id (heap-ref hc) ≡ next-heap-ref (falloc σ)
       cl     : readLoc (floc τ) (AtStack (current-frame (falloc τ)) c) ≡ just (SV-Ptr (AtDynamic hc))
-      pr     : readLoc (floc τ) (AtStack (current-frame (falloc τ)) (c + 3)) ≡ just (SV-Ptr (AtDynamic (hpOf (falloc σ))))
-      hp0    : readLoc (floc τ) (AtDynamic (hpOf (falloc σ))) ≡ just env-sv
+      ev     : readLoc (floc τ) (AtStack (current-frame (falloc τ)) (c + 2)) ≡ just env-sv
       code   : readLoc (floc τ) (AtDynamic (sucHL hc)) ≡ just (SV-Code (ℓ o bodyL))
-      hr     : suc (suc (next-heap-ref (falloc σ))) ≤ next-heap-ref (falloc τ)
+      hr     : suc (next-heap-ref (falloc σ)) ≤ next-heap-ref (falloc τ)
 
   ------------------------------------------------------------------------
   -- THE BUNDLE, for one input.
@@ -148,7 +144,7 @@ module CataToFoldC {FS : FrameSemantics} where
     module TA = T.At prog base span′ la′
 
     c : ℕ
-    c = T.cslot
+    c = T.Pc.cslot
 
     cb : n + 7 + 4 * fsize ⌈ F ⌉F ≤ c
     cb = m≤m+n (n + 7 + 4 * fsize ⌈ F ⌉F) 4
@@ -171,29 +167,29 @@ module CataToFoldC {FS : FrameSemantics} where
 
     -- the fold head: one past the flatten loop
     X : ℕ
-    X = length T.flatTxt + TA.H
+    X = length T.Pc.flatTxt + TA.H
 
     ------------------------------------------------------------------
     -- 1. the setup (M1's), as a walk keeping no slot
     ------------------------------------------------------------------
-    so : SetupOut c T.bodyL prog σ env-sv μ-sv
-    so = Setup.out c T.bodyL prog σ TA.span-setup nh phl env-sv μ-sv rdi (cell-read c₁) rdμ
+    so : SetupOut c T.Pc.bodyL prog σ env-sv μ-sv
+    so = Setup.out c T.Pc.bodyL prog σ TA.span-setup nh phl env-sv μ-sv rdi (cell-read c₁) rdμ
     module SO = SetupOut so
 
     u : FlatState
     u = SO.u
 
-    wS : Walk prog n (λ _ → ⊥) σ (18 + base) (λ _ → ⊤)
+    wS : Walk prog n (λ _ → ⊥) σ (13 + base) (λ _ → ⊤)
     wS = record
-      { τ = u ; steps = 18 ; run = SO.runS
+      { τ = u ; steps = 13 ; run = SO.runS
       ; seg = seg-rebase {falloc σ} {falloc σ} {n} {c} {σ} {u} SO.seg refl n≤c ≤-refl
       ; nh = SO.nh ; pc = SO.pc ; ret = SO.ret ; clo = SO.clo ; lnk = SO.lnk ; cf = SO.cf ; slots = λ _ () ; post = tt }
 
     ------------------------------------------------------------------
     -- 2. the init and the root's push
     ------------------------------------------------------------------
-    span-i : SpanAt prog (fpc u) (T.initTxt ++ T.rootTxt)
-    span-i = subst (λ b → SpanAt prog b (T.initTxt ++ T.rootTxt)) (sym SO.pc) TA.span-init
+    span-i : SpanAt prog (fpc u) (T.Pc.initTxt ++ T.Pc.rootTxt)
+    span-i = subst (λ b → SpanAt prog b (T.Pc.initTxt ++ T.Pc.rootTxt)) (sym SO.pc) TA.span-init
 
     kpS : Kp alloc s (falloc u) (floc u)
     kpS = seg-kp SO.seg
@@ -218,23 +214,17 @@ module CataToFoldC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     module FL = Flatten prog wf alg₀ n c T.l1 I.sn cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels
 
-    wF : Walk prog n (KL n c) τI (suc FL.XL) (FL.FQ (root ∷ []) [])
+    wF : Walk prog n (KL n c) τI (suc FL.L.XL) (FL.FQ (root ∷ []) [])
     wF = FL.flatten-root τI root pcI (Walk.nh wI) (InitQ.todo (Walk.post wI)) (InitQ.eval (Walk.post wI))
 
     τ : FlatState
     τ = Walk.τ wF
 
     ------------------------------------------------------------------
-    -- …and what crosses them: the call slots and the two setup cells
+    -- …and what crosses them: the call slots and the record's code cell
     ------------------------------------------------------------------
     module KI′ = Keep wI
     module KF = Keep wF
-
-    hp : HeapLocation
-    hp = hpOf alloc
-
-    live-hp : Live (falloc u) (AtDynamic hp)
-    live-hp = BeforeFrontier.heap-before (≤-trans (n≤1+n _) (≤-reflexive (sym SO.hr)))
 
     live-shc : Live (falloc u) (AtDynamic (sucHL SO.hc))
     live-shc = live-suc (BeforeFrontier.heap-before (subst (λ z → suc z ≤ next-heap-ref (falloc u)) (sym SO.ref-hc)
@@ -251,16 +241,16 @@ module CataToFoldC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- THE BUNDLE.
     ------------------------------------------------------------------
-    wAll : Walk prog n (λ _ → ⊥) σ (suc FL.XL) (FL.FQ (root ∷ []) [])
+    wAll : Walk prog n (λ _ → ⊥) σ (suc FL.L.XL) (FL.FQ (root ∷ []) [])
     wAll = walk-∘ {prog} {n} {λ _ → ⊥} {σ} wS
              (walk-∘ {prog} {n} {λ _ → ⊥} {u} (walk-K (λ _ ()) wI) (walk-K (λ _ ()) wF))
 
-    pc-X : suc FL.XL ≡ X
-    pc-X = trans (fold-pc FL.VL TA.H)
-                 (cong (λ z → (22 + z) + TA.H) (sym (length-++ T.visitTxt {T.exitTxt})))
+    pc-X : suc FL.L.XL ≡ X
+    pc-X = trans (fold-pc FL.L.VL TA.H)
+                 (cong (λ z → (22 + z) + TA.H) (sym (length-++ T.Pc.visitTxt {T.Pc.exitTxt})))
 
     abstract
-      out : ToFoldOut prog n c T.bodyL X σ wf alg₀ C root env-sv
+      out : ToFoldOut prog n c T.Pc.bodyL X σ wf alg₀ C root env-sv
       out = record
         { τ = τ ; steps = Walk.steps wAll ; run = Walk.run wAll ; seg = Walk.seg wAll ; nh = Walk.nh wF
         ; pc = trans (Walk.pc wF) pc-X
@@ -271,7 +261,6 @@ module CataToFoldC {FS : FrameSemantics} where
         ; val = KF.keep-stack val-tr (inj₁ refl) (InitQ.val (Walk.post wI))
         ; hc = SO.hc ; ref-hc = SO.ref-hc
         ; cl = cross-slot ≤-refl SO.cl
-        ; pr = cross-slot (m≤m+n c 3) SO.pr
-        ; hp0 = cross-heap live-hp SO.hp0
+        ; ev = cross-slot (m≤m+n c 2) SO.ev
         ; code = cross-heap live-shc SO.code
         ; hr = ≤-trans (≤-reflexive (sym SO.hr)) (≤-trans (SegA.href (Walk.seg wI)) (SegA.href (Walk.seg wF))) }

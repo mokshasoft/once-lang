@@ -344,8 +344,8 @@ module Unique {FS : FrameSemantics} where
     trans (tl-pre P₁ R₁ (nt-dec P₁ refl))
           (trans (tl-pre P₂ R₂ (nt-dec P₂ refl)) (cata-body-tl l1 (l1 + 1) bb at))
     where
-      P₁ = cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1
-      P₂ = cata-call n1 (n1 + 1) (n1 + 3)
+      P₁ = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
+      P₂ = cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)
       R₂ = cata-body l1 (l1 + 1) bb at
       R₁ = P₂ ++ R₂
   -- The branching prelude contains the compile-time functor walks, so its
@@ -361,9 +361,9 @@ module Unique {FS : FrameSemantics} where
       B = n1 + 7 + (4 ℕ.* fsize F) + 4
       L : ℕ
       L = l1 + 4 + lsize F + lsize F
-      P₁ = cata-call-setup B (B + 1) (B + 2) (B + 3) L
+      P₁ = cata-call-setup B (B + 1) (B + 2) L
       P₂ = cata-br-I₁ F n1 l1
-      P₃ = cata-call B (B + 1) (B + 3)
+      P₃ = cata-call B (B + 1) (B + 2) (B + 3)
       P₄ = cata-br-I₂ n1 l1
       R₄ = cata-body L (L + 1) bb at
       R₃ = P₄ ++ R₄

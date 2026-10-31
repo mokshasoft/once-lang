@@ -40,6 +40,7 @@ open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 module OutC {FS : FrameSemantics} where
 
   open Core {FS}
+  open NuV
   open Mach {FS}
 
   module OutSetupPres

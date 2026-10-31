@@ -45,6 +45,7 @@ open import Data.List.Relation.Unary.All using (_∷_; [])
 module TwoCellC {FS : FrameSemantics} where
 
   open Core {FS}
+  open NuV
 
   curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
                    {x : ⟦ A ⟧} (s : LocState FS)

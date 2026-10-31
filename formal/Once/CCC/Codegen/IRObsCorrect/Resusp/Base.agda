@@ -41,13 +41,13 @@ open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.CCC.Machine.ClosureWellFormed o tbl as CWF
+import Once.CCC.Machine.ValueRel as CWF
 open import Once.CCC.Machine.SMPrimitives using (module RecSchemeSemantics; nhw-store-at-slot; nhw-restore-input)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ)
 open import Data.List.Properties using (++-identityʳ)
-open import Once.CCC.Machine.FlatLog using (LogFree) public
+open import Once.CCC.Machine.FlatLog using (LogFree)
 open import Data.Nat using (z≤n)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
@@ -55,7 +55,7 @@ open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 module ResuspBaseC {FS : FrameSemantics} where
 
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
-  open Resolve {FS} using (NoLabel) public
+  open Resolve {FS} using (NoLabel)
 
   open Core {FS}
   open Mach {FS}

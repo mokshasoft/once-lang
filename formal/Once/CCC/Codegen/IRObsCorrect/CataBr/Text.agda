@@ -7,8 +7,8 @@
 -- WHERE THE PARTS OF A `strat-branching` CATA SIT. Its text
 -- (`cata-trace-branching`) is
 --
---     setup (18) ++ init (14) ++ push2 root (10)            the first 42 rows
---       ++ FLATTEN                                          rows 42 …
+--     setup (13) ++ init (14) ++ push2 root (10)            the first 37 rows
+--       ++ FLATTEN                                          rows 37 …
 --       ++ fold prefix ++ call ++ I₂ ++ body                the rest (`R`)
 --
 -- with the FLATTEN loop (`flatTxt`)
@@ -151,7 +151,7 @@ module Pieces (G : Functor) (n l1 : ℕ) where
   bodyL = l1 ℕ.+ 4 ℕ.+ lsize G ℕ.+ lsize G
 
   setupTxt initTxt rootTxt headTxt pushTxt reloadTxt visitTxt exitTxt foldTxt flatTxt : AbstractTrace
-  setupTxt = cata-call-setup cslot (cslot ℕ.+ 1) (cslot ℕ.+ 2) (cslot ℕ.+ 3) bodyL
+  setupTxt = cata-call-setup cslot (cslot ℕ.+ 1) (cslot ℕ.+ 2) bodyL
   initTxt = init-rows n
   rootTxt = push2 n (n ℕ.+ 4) (n ℕ.+ 5)
   headTxt =
@@ -177,9 +177,9 @@ module Pieces (G : Functor) (n l1 : ℕ) where
   -- the flatten loop, head label to exit label
   flatTxt = headTxt ++ (pushTxt ++ (reloadTxt ++ (visitTxt ++ exitTxt)))
 
-  -- the first 42 rows (all literal)
-  pre42 : AbstractTrace
-  pre42 = setupTxt ++ (initTxt ++ rootTxt)
+  -- the first 37 rows (all literal)
+  pre37 : AbstractTrace
+  pre37 = setupTxt ++ (initTxt ++ rootTxt)
 
   -- what follows the flatten loop, given what follows `cata-br-I₁`
   restTxt : AbstractTrace → AbstractTrace
@@ -207,11 +207,12 @@ module CataBrTextC {FS : FrameSemantics} where
     G : Functor
     G = ⌈ F ⌉F
 
-    open Pieces G n l1 public
+    module Pc = Pieces G n l1
+    open Pc
 
     -- what follows `cata-br-I₁`: the call, `I₂`, the body
     tailTxt : AbstractTrace
-    tailTxt = cata-call cslot (cslot ℕ.+ 1) (cslot ℕ.+ 3) ++ (cata-br-I₂ n l1 ++ cata-body bodyL (bodyL ℕ.+ 1) bb at)
+    tailTxt = cata-call cslot (cslot ℕ.+ 1) (cslot ℕ.+ 2) (cslot ℕ.+ 3) ++ (cata-br-I₂ n l1 ++ cata-body bodyL (bodyL ℕ.+ 1) bb at)
 
     R : AbstractTrace
     R = restTxt tailTxt
@@ -221,7 +222,7 @@ module CataBrTextC {FS : FrameSemantics} where
 
     -- the same text, cut at the flatten loop
     text′ : AbstractTrace
-    text′ = pre42 ++ (flatTxt ++ R)
+    text′ = pre37 ++ (flatTxt ++ R)
 
     text-eq : text ≡ text′
     text-eq = cong (λ z → setupTxt ++ (initTxt ++ (rootTxt ++ (headTxt ++ (pushTxt ++ (reloadTxt ++ z))))))
@@ -265,23 +266,23 @@ module CataBrTextC {FS : FrameSemantics} where
       nl-visit-exit : NoLabel (ℓ o (suc l1)) visitTxt
       nl-visit-exit = noLabel-outside (ℓ o (suc l1)) visitTxt vls (λ w → <-irrefl refl (<-≤-trans (lt4 l1) (proj₁ w)))
 
-    head-scan : find-label text′ (ℓ o l1) ≡ just 42
-    head-scan = fl-hit (ℓ o l1) _ 42
+    head-scan : find-label text′ (ℓ o l1) ≡ just 37
+    head-scan = fl-hit (ℓ o l1) _ 37
 
-    exit-scan : find-label text′ (ℓ o (suc l1)) ≡ just (suc (64 ℕ.+ length visitTxt))
+    exit-scan : find-label text′ (ℓ o (suc l1)) ≡ just (suc (59 ℕ.+ length visitTxt))
     exit-scan =
-      trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) (ℓ o (suc l1)) 42 (nl-pre (ℓ o (suc l1)) sl1≢l1))
-      (trans (cong (λ t → fl-go t (ℓ o (suc l1)) 64) (++-assoc visitTxt exitTxt R))
-      (trans (fl-go-skip visitTxt (exitTxt ++ R) (ℓ o (suc l1)) 64 nl-visit-exit)
-             (fl-hit (ℓ o (suc l1)) R (suc (64 ℕ.+ length visitTxt)))))
+      trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) (ℓ o (suc l1)) 37 (nl-pre (ℓ o (suc l1)) sl1≢l1))
+      (trans (cong (λ t → fl-go t (ℓ o (suc l1)) 59) (++-assoc visitTxt exitTxt R))
+      (trans (fl-go-skip visitTxt (exitTxt ++ R) (ℓ o (suc l1)) 59 nl-visit-exit)
+             (fl-hit (ℓ o (suc l1)) R (suc (59 ℕ.+ length visitTxt)))))
 
-    -- a label the visit walk resolves, the cata resolves 64 rows on
-    visit-scan : ∀ (m : LabelId) (j : ℕ) → find-label visitTxt m ≡ just j → find-label text′ m ≡ just (j ℕ.+ 64)
+    -- a label the visit walk resolves, the cata resolves 59 rows on
+    visit-scan : ∀ (m : LabelId) (j : ℕ) → find-label visitTxt m ≡ just j → find-label text′ m ≡ just (j ℕ.+ 59)
     visit-scan m j eq =
-      trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) m 42 (nl-pre m ne))
-      (trans (cong (λ t → fl-go t m 64) (++-assoc visitTxt exitTxt R))
-      (trans (fl-go-shift (visitTxt ++ (exitTxt ++ R)) m 64 0)
-             (cong (mmapT (ℕ._+ 64)) (fl-go-prefix visitTxt (exitTxt ++ R) m 0 j eq))))
+      trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) m 37 (nl-pre m ne))
+      (trans (cong (λ t → fl-go t m 59) (++-assoc visitTxt exitTxt R))
+      (trans (fl-go-shift (visitTxt ++ (exitTxt ++ R)) m 59 0)
+             (cong (mmapT (ℕ._+ 59)) (fl-go-prefix visitTxt (exitTxt ++ R) m 0 j eq))))
       where
         win = found-in-window visitTxt m j eq vls
         ne : idx m ≢ l1
@@ -293,17 +294,17 @@ module CataBrTextC {FS : FrameSemantics} where
     module At (prog : AbstractTrace) (base : ℕ) (span : SpanAt prog base text′) (la : LabelsAt prog base text′) where
 
       H : ℕ
-      H = 42 ℕ.+ base
+      H = 37 ℕ.+ base
 
       span-setup : SpanAt prog base setupTxt
       span-setup = span-take prog setupTxt {initTxt ++ (rootTxt ++ (flatTxt ++ R))} base span
 
-      span-init : SpanAt prog (18 ℕ.+ base) (initTxt ++ rootTxt)
-      span-init = span-take prog (initTxt ++ rootTxt) {flatTxt ++ R} (18 ℕ.+ base)
+      span-init : SpanAt prog (13 ℕ.+ base) (initTxt ++ rootTxt)
+      span-init = span-take prog (initTxt ++ rootTxt) {flatTxt ++ R} (13 ℕ.+ base)
                     (span-drop prog setupTxt {initTxt ++ (rootTxt ++ (flatTxt ++ R))} base span)
 
       span-flat′ : SpanAt prog H (flatTxt ++ R)
-      span-flat′ = span-drop prog pre42 {flatTxt ++ R} base span
+      span-flat′ = span-drop prog pre37 {flatTxt ++ R} base span
 
       span-flat : SpanAt prog H flatTxt
       span-flat = span-take prog flatTxt {R} H span-flat′
@@ -313,13 +314,13 @@ module CataBrTextC {FS : FrameSemantics} where
       span-rest = span-drop prog flatTxt {R} H span-flat′
 
       head-label : find-label prog (ℓ o l1) ≡ just H
-      head-label = la (ℓ o l1) 42 head-scan
+      head-label = la (ℓ o l1) 37 head-scan
 
       exit-label : find-label prog (ℓ o (suc l1)) ≡ just ((23 ℕ.+ length visitTxt) ℕ.+ H)
       exit-label = trans (la (ℓ o (suc l1)) _ exit-scan) (cong just (pos (length visitTxt) base))
         where
-          pos : ∀ (v b : ℕ) → suc (64 ℕ.+ v) ℕ.+ b ≡ (23 ℕ.+ v) ℕ.+ (42 ℕ.+ b)
-          pos = solve 2 (λ v b → (con 65 :+ v) :+ b := (con 23 :+ v) :+ (con 42 :+ b)) refl
+          pos : ∀ (v b : ℕ) → suc (59 ℕ.+ v) ℕ.+ b ≡ (23 ℕ.+ v) ℕ.+ (37 ℕ.+ b)
+          pos = solve 2 (λ v b → (con 60 :+ v) :+ b := (con 23 :+ v) :+ (con 37 :+ b)) refl
 
       visit-labels : LabelsAt prog (22 ℕ.+ H) visitTxt
-      visit-labels m j eq = trans (la m (j ℕ.+ 64) (visit-scan m j eq)) (cong just (+-assoc j 64 base))
+      visit-labels m j eq = trans (la m (j ℕ.+ 59) (visit-scan m j eq)) (cong just (+-assoc j 59 base))

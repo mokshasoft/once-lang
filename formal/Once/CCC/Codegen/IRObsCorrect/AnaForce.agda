@@ -53,7 +53,7 @@ open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.CCC.Machine.ClosureWellFormed o tbl as CWF
+import Once.CCC.Machine.ValueRel as CWF
 
 module AnaForceC {FS : FrameSemantics} where
 

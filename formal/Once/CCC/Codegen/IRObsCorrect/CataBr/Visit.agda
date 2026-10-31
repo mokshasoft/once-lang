@@ -107,7 +107,7 @@ module CataVisitC {FS : FrameSemantics} where
   open CataStepsC {FS}
   open CataStackC {FS}
   open CataWalkC {FS}
-  open Resolve {FS} using (fl-hit; noLabel-outside; found-in-window)
+  open Resolve {FS} using (NoLabel; fl-hit; noLabel-outside; found-in-window)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)

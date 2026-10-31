@@ -36,7 +36,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (LocState; sucLoc; module MemOps)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
-open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedDef)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
 
 module _ {FS : FrameSemantics} where

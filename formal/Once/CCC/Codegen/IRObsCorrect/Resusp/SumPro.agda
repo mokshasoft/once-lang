@@ -23,6 +23,7 @@ module Once.CCC.Codegen.IRObsCorrect.Resusp.SumPro (o : CanonicalName) (tbl : DL
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl
+open import Once.CCC.Machine.FlatLog using (LogFree)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumTail o tbl
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
@@ -44,7 +45,7 @@ open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.Memory.HeapAddress using (sucHL)
 open import Data.Nat using (z≤n; s≤s)
 open import Data.Sum using (inj₁; inj₂)
-import Once.CCC.Machine.ClosureWellFormed o tbl as CWF
+import Once.CCC.Machine.ValueRel as CWF
 
 module ResuspSumProC {FS : FrameSemantics} where
 

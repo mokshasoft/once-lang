@@ -120,9 +120,9 @@ record CertifiedBuild : Set₁ where
 -- callee's run off the value and `curry`/`Ana`/`in-ν` prove it; and the
 -- program's functions are discharged along the table (`FlatFromObs.block-runs`).
 -- What the machine-correctness layer still assumes is listed in
--- `Once.Postulates`; `cata-correct` is proved at `strat-const` (`CataConst`)
--- and still assumed at its one loop strategy, `strat-branching`
--- (`IRObsCorrect.Cata`).
+-- `Once.Postulates`; `cata-correct` is proved for every cata (plan 0.125
+-- cata M1/M4: `strat-const` by `CataConst`, the loop strategy `strat-branching`
+-- by `CataBr.Branching`; `IRObsCorrect.Cata`).
 once-certified : CertifiedBuild
 once-certified = record
   { correctness = once-compiler

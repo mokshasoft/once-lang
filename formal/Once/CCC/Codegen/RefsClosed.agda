@@ -143,8 +143,8 @@ module _ (G : String → Set) where
     inj₁ (lab∈ (ℓ o el) d (there (there (∈-++⁺ʳ at (there (here refl)))))) ∷
     closes-++ at (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o el)) ∷ []) cat []
 
-  setup-closes : ∀ {D} (cl k ev pr bl : ℕ) → thunkSym (ℓ o bl) ∈ D → Closes D (cata-call-setup cl k ev pr bl)
-  setup-closes cl k ev pr bl h = inj₁ h ∷ []
+  setup-closes : ∀ {D} (cl k ev bl : ℕ) → thunkSym (ℓ o bl) ∈ D → Closes D (cata-call-setup cl k ev bl)
+  setup-closes cl k ev bl h = inj₁ h ∷ []
 
   ------------------------------------------------------------------------
   -- THE COMPILE-TIME FUNCTOR WALKS. A `⊕` level owns `lb` and `suc lb`: it
@@ -263,8 +263,8 @@ module _ (G : String → Set) where
     module _ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace) where
       Lb = l1 + 4 + lsize F + lsize F
       B0 = n1 + 7 + (4 * fsize F) + 4
-      S = cata-call-setup B0 (B0 + 1) (B0 + 2) (B0 + 3) Lb
-      C = cata-call B0 (B0 + 1) (B0 + 3)
+      S = cata-call-setup B0 (B0 + 1) (B0 + 2) Lb
+      C = cata-call B0 (B0 + 1) (B0 + 2) (B0 + 3)
       B = cata-body Lb (Lb + 1) bb at
       I₁ = cata-br-I₁ F n1 l1
       I₂ = cata-br-I₂ n1 l1
@@ -309,16 +309,16 @@ module _ (G : String → Set) where
 
   at⊆ strat-const bb n1 l1 at =
     ⊆-trans (at⊆body l1 (l1 + 1) bb at)
-      (⊆-trans (⊆-++ʳ (cata-call n1 (n1 + 1) (n1 + 3)) (cata-body l1 (l1 + 1) bb at))
-               (⊆-++ʳ (cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1) _))
+      (⊆-trans (⊆-++ʳ (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body l1 (l1 + 1) bb at))
+               (⊆-++ʳ (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) _))
   at⊆ (strat-branching F) bb n1 l1 at = ⊆-trans (at⊆body _ _ bb at) (BrS.B⊆ F bb n1 l1 at)
 
   cata-closes strat-const bb n1 l1 at {D} d cat =
-    closes-++ S (C ++ B) (setup-closes n1 (n1 + 1) (n1 + 2) (n1 + 3) l1 (thk∈ (ℓ o l1) d (B⊆T (there (here refl)))))
+    closes-++ S (C ++ B) (setup-closes n1 (n1 + 1) (n1 + 2) l1 (thk∈ (ℓ o l1) d (B⊆T (there (here refl)))))
       (closes-++ C B [] (body-closes l1 (l1 + 1) bb at (defd-⊆ B⊆T d) cat))
     where
-      S = cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1
-      C = cata-call n1 (n1 + 1) (n1 + 3)
+      S = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
+      C = cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)
       B = cata-body l1 (l1 + 1) bb at
       B⊆T : B ⊆ S ++ (C ++ B)
       B⊆T = ⊆-trans (⊆-++ʳ C B) (⊆-++ʳ S (C ++ B))

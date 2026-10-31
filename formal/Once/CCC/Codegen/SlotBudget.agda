@@ -179,21 +179,21 @@ cata-const-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
                          (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
 cata-const-below bb n1 l1 at bok =
   segok-++ (segok-idle _ refl
-      (-- setup (18) then call (12), one flat list as before
+      (-- setup (13) then call (15), one flat list as before
        sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷
-       sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
-       sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
-       sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl pr<b (λ _ ()) ∷
-       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷
+       sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷
+       sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷
+       sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
        sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
        sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []))
     (cata-body-below _ _ bb at bok)
   where
     -- D131: four slots now — `cl`/`k` as before, plus `ev` (the fold's
-    -- environment) and `pr` (the reused argument pair). `suc (n1 + j) ≡
+    -- environment) and `pr` (each call's fresh argument pair). `suc (n1 + j) ≡
     -- n1 + suc j` is `+-suc`, and the rest is monotonicity.
     bnd : ∀ (j : ℕ) → suc j ≤ 4 → n1 + j < n1 + 4
     bnd j p = ≤-trans (≤-reflexive (sym (+-suc n1 j))) (+-monoʳ-≤ n1 p)
@@ -408,14 +408,14 @@ cata-branching-below F bb n1 l1 at bok =
     pr<b2 = bnd 3 (s≤s (s≤s (s≤s (s≤s z≤n))))
     setup : All (SlotBelow (b + 4)) _
     setup = sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
-            sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b2 (λ _ ()) ∷
-            sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
-            sb-none refl ∷ sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷
-            sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-            sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ []
+            sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ sb-slot refl cl<b2 (λ _ ()) ∷
+            sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+            sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ []
     call : All (SlotBelow (b + 4)) _
-    call = sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-slot refl pr<b2 (λ _ ()) ∷
-           sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷
+    call = sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷
+           sb-none refl ∷ sb-slot refl pr<b2 (λ _ ()) ∷ sb-none refl ∷
+           sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
+           sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷
            sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
            sb-slot refl pr<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
     fixed7 : n1 + 7 ≤ b

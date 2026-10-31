@@ -78,7 +78,7 @@ infix 0 _≋_
 record _≋_ {X : Set} (m m′ : T∞ X) : Set where
   constructor ≋c
   field ≋r : ∀ (ι : Interp) (h : List SigOpEvent) (r : ℕ) → run ι h (approx r m) ≡ run ι h (approx r m′)
-open _≋_ public
+open _≋_
 
 ≋-refl : ∀ {X} (m : T∞ X) → m ≋ m
 ≋-refl m = ≋c λ ι h r → refl

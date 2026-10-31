@@ -86,7 +86,8 @@ module CataFlattenC {FS : FrameSemantics} where
                  (ex : find-label prog (ℓ o (suc l1)) ≡ just ((23 + length (Pieces.visitTxt ⌈ F ⌉F n l1)) + H))
                  (lv : LabelsAt prog (22 + H) (Pieces.visitTxt ⌈ F ⌉F n l1)) where
 
-    open Loop prog wf n c l1 sn cb H span hd ex lv public
+    module L = Loop prog wf n c l1 sn cb H span hd ex lv
+    open L
     module P = PO (wf-⌈⌉ wf) alg₀
 
     -- the loop's exit: todo empty, eval the invariant

@@ -5,7 +5,7 @@
 -- Once.CCC.Codegen.IRObsCorrect.CataConst.Run   (plan 0.125 S3, cata M1)
 --
 -- THE CATA FROM ITS CALL ON, over an ABSTRACT call state: whatever the
--- thirty rows before the call established is a parameter here (the closure
+-- twenty-seven rows before the call established is a parameter here (the closure
 -- register and its code cell, the argument pair and its two cells, what was
 -- left alone), so no conversion in this module can unfold the machine run
 -- that produced it. `CataConst` instantiates it at the setup's and the call
@@ -85,12 +85,12 @@ module CataRunC {FS : FrameSemantics} where
              (la : LabelsAt prog base (emitted n l (Cata wf alg)))
              (x : ⟦ E IRTy′.* μ-type F ⟧) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
              (ns0 : next-slot alloc ≡ 0) (k : ℕ) (rs : List ℕ)
-             -- the state at the call, and what the thirty rows before it established
+             -- the state at the call, and what the twenty-seven rows before it established
              (cs : FlatState)
              (u : FlatState)
-             (runS : SRun prog 18 (entry-flat base s alloc cl rs) u) (segS : SegA alloc n (entry-flat base s alloc cl rs) u)
-             (runK : SRun prog 11 u cs) (segK : SegA alloc n u cs)
-             (nh-cs : halted (floc cs) ≡ false) (pc-cs : fpc cs ≡ 29 + base) (ret-cs : fret cs ≡ rs)
+             (runS : SRun prog 13 (entry-flat base s alloc cl rs) u) (segS : SegA alloc n (entry-flat base s alloc cl rs) u)
+             (runK : SRun prog 14 u cs) (segK : SegA alloc n u cs)
+             (nh-cs : halted (floc cs) ≡ false) (pc-cs : fpc cs ≡ 27 + base) (ret-cs : fret cs ≡ rs)
              (hc hp μhl : HeapLocation) (mC : AllocMode) (pl : ValueLocation FS)
              (clo : fclosure cs ≡ SV-Ptr (AtDynamic hc))
              (code : readLoc (floc cs) (AtDynamic (sucHL hc)) ≡ just (SV-Code (ℓ o (proj₁ (proj₂ (ir-to-trace' 0 l alg))))))
@@ -98,8 +98,8 @@ module CataRunC {FS : FrameSemantics} where
              (c₁ : CellAt {prog = prog} alloc E (proj₁ x) pl s)
              (hp-cs : readLoc (floc cs) (AtDynamic hp) ≡ readLoc s pl)
              (shp-cs : readLoc (floc cs) (AtDynamic (sucHL hp)) ≡ just (SV-Ptr (AtDynamic μhl)))
-             (hp-ref : loc-ref (AtDynamic hp) ≡ next-heap-ref alloc)
-             (hr-u : suc (suc (next-heap-ref alloc)) ≤ next-heap-ref (falloc u))
+             -- the argument pair is below the frontier at the call (the call rows allocated it)
+             (hp-lt : suc (loc-ref (AtDynamic hp)) ≤ next-heap-ref (falloc cs))
              (lμ : Live alloc (AtDynamic μhl))
              (vμ : ValidAtWF {prog = prog} mC alloc {μ-type F} (proj₂ x) (AtDynamic μhl) s)
              where
@@ -121,16 +121,12 @@ module CataRunC {FS : FrameSemantics} where
     E′ : T∞ ⟦ C ⟧
     E′ = evalᴰ (Cata wf alg) x
 
-    -- the thirty rows, composed over the abstract states
-    run29 : SRun prog 29 σ cs
-    run29 = s-++ {prog} {18} {11} {σ} {u} {cs} runS runK
+    -- the twenty-seven rows, composed over the abstract states
+    run27 : SRun prog 27 σ cs
+    run27 = s-++ {prog} {13} {14} {σ} {u} {cs} runS runK
 
     seg : SegA alloc n σ cs
     seg = segA-∘ {alloc} {n} {σ} {u} {cs} segS segK
-
-    -- the argument pair is below the frontier at the call
-    hp-lt : suc (loc-ref (AtDynamic hp)) ≤ next-heap-ref (falloc cs)
-    hp-lt = ≤-trans (≤-reflexive (cong suc hp-ref)) (≤-trans (n≤1+n _) (≤-trans hr-u (SegA.href segK)))
 
     hp-live : Live (falloc cs) (AtDynamic hp)
     hp-live = BeforeFrontier.heap-before hp-lt
@@ -142,7 +138,7 @@ module CataRunC {FS : FrameSemantics} where
     -- the call, landing on the body's marker
     ------------------------------------------------------------------
     j : ℕ
-    j = 31 + base
+    j = 29 + base
 
     feq : find-thunk prog (ℓ o T.l1) ≡ just j
     feq = thunk-found {prog} (BlockRuns.thunks-unique cr) j (ℓ o T.l1) T.bb TA.fetch-thunk
@@ -155,19 +151,19 @@ module CataRunC {FS : FrameSemantics} where
     call-eq = call-at prog cs hc (ℓ o T.l1) j clo code feq
 
     callS : FlatSteps prog 1 cs fs₁
-    callS = step-at fs₁ (nh-cs , subst (λ z → fetch prog z ≡ just instr-call-closure) (sym pc-cs) (TA.span-call 11 _ refl)) call-eq []
+    callS = step-at fs₁ (nh-cs , subst (λ z → fetch prog z ≡ just instr-call-closure) (sym pc-cs) (TA.span-call 14 _ refl)) call-eq []
 
     call-ev : chain-events callS ≡ []
     call-ev = chain-events-subst-start (sym call-eq) []
 
-    run30 : FlatSteps prog 30 σ fs₁
-    run30 = FlatSteps-++ (proj₁ run29) callS
+    run28 : FlatSteps prog 28 σ fs₁
+    run28 = FlatSteps-++ (proj₁ run27) callS
 
-    ev30 : chain-events run30 ≡ []
-    ev30 = trans (chain-events-++ (proj₁ run29) callS) (cong₂ _++_ (proj₁ (proj₂ run29)) call-ev)
+    ev28 : chain-events run28 ≡ []
+    ev28 = trans (chain-events-++ (proj₁ run27) callS) (cong₂ _++_ (proj₁ (proj₂ run27)) call-ev)
 
     h-eq : LocState.ev-log (floc fs₁) ≡ LocState.ev-log s
-    h-eq = proj₂ (proj₂ run29)
+    h-eq = proj₂ (proj₂ run27)
 
     ------------------------------------------------------------------
     -- what the callee sees: everything live at entry, unchanged
@@ -261,7 +257,7 @@ module CataRunC {FS : FrameSemantics} where
     stops-f : stopsAt s (⟪ E′ ⟫ k) ≡ true
             → halted (floc CR.settle) ≡ true × LocState.left (floc CR.settle) ≡ LocState.left s
     stops-f p = proj₁ (CR.stops (trans st-eq p))
-              , trans (proj₂ (CR.stops (trans st-eq p))) (chain-left (proj₁ run29) nh-cs)
+              , trans (proj₂ (CR.stops (trans st-eq p))) (chain-left (proj₁ run27) nh-cs)
 
     log-f : LocState.ev-log (floc CR.settle) ≡ LocState.ev-log s ++ eventsAt s (⟪ E′ ⟫ k)
     log-f = trans CR.log (cong₂ _++_ h-eq (cong proj₁ RE))
@@ -289,18 +285,18 @@ module CataRunC {FS : FrameSemantics} where
           → MachineRefinesObsF prog base n l (Cata wf alg) x s alloc cl rs k
     stuck eq nr = record
       { value-realized =
-          realized (30 + CR.steps) CR.settle CR.out-mode CR.cont-alloc (FlatSteps-++ run30 CR.run)
+          realized (28 + CR.steps) CR.settle CR.out-mode CR.cont-alloc (FlatSteps-++ run28 CR.run)
                    live-f (λ p → ⊥-elim (nr (trans (sym eq) p))) stops-f (λ p → ⊥-elim (nr (trans (sym eq) p)))
                    (λ nc → CR.no-link (nc′ nc)) log-f (λ p → ⊥-elim (nr (trans (sym eq) p)))
-                   (progress-≤ prog-c (ctrls-≤ʳ run30 CR.run))
+                   (progress-≤ prog-c (ctrls-≤ʳ run28 CR.run))
                    (λ nc fr j′ bf → mem-f nc (AtStack fr j′) bf) (λ nc hl bf → mem-f nc (AtDynamic hl) bf)
                    (λ p → ⊥-elim (nr (trans (sym eq) p))) bfm-f (λ p → ⊥-elim (nr (trans (sym eq) p)))
       ; traces-agree = trc
       }
       where
-        trc : chain-events (FlatSteps-++ run30 CR.run) ≡ eventsAt s (⟪ E′ ⟫ k)
-        trc = trans (chain-events-++ run30 CR.run)
-                    (trans (cong (_++ chain-events CR.run) ev30) (trans CR.events (cong proj₁ RE)))
+        trc : chain-events (FlatSteps-++ run28 CR.run) ≡ eventsAt s (⟪ E′ ⟫ k)
+        trc = trans (chain-events-++ run28 CR.run)
+                    (trans (cong (_++ chain-events CR.run) ev28) (trans CR.events (cong proj₁ RE)))
 
     ------------------------------------------------------------------
     -- RETURNED: the jump over the body, and its end label.
@@ -313,12 +309,12 @@ module CataRunC {FS : FrameSemantics} where
       nhS : halted (floc CR.settle) ≡ false
       nhS = CR.live (cong is-stopped retd)
 
-      pcS : fpc CR.settle ≡ 30 + base
+      pcS : fpc CR.settle ≡ 28 + base
       pcS = trans (CR.returned retd) (cong suc pc-cs)
 
       t1 t2 : FlatState
-      t1 = record CR.settle { fpc = (33 + length T.at) + base }
-      t2 = record CR.settle { fpc = suc ((33 + length T.at) + base) }
+      t1 = record CR.settle { fpc = (31 + length T.at) + base }
+      t2 = record CR.settle { fpc = suc ((31 + length T.at) + base) }
 
       jmp-eq : flat-exec-instr (instr-ctrl (c-jmp T.endL)) prog CR.settle ≡ t1
       jmp-eq = cong (λ z → do-jump z CR.settle) TA.end-label
@@ -333,18 +329,18 @@ module CataRunC {FS : FrameSemantics} where
       tail-ev : chain-events tail ≡ []
       tail-ev = chain-events-subst-start (sym jmp-eq) rest2
 
-      run-r : FlatSteps prog (30 + (CR.steps + 2)) σ t2
-      run-r = FlatSteps-++ run30 (FlatSteps-++ CR.run tail)
+      run-r : FlatSteps prog (28 + (CR.steps + 2)) σ t2
+      run-r = FlatSteps-++ run28 (FlatSteps-++ CR.run tail)
 
       trc-r : chain-events run-r ≡ eventsAt s (⟪ E′ ⟫ k)
-      trc-r = trans (chain-events-++ run30 (FlatSteps-++ CR.run tail))
-                (trans (cong (_++ chain-events (FlatSteps-++ CR.run tail)) ev30)
+      trc-r = trans (chain-events-++ run28 (FlatSteps-++ CR.run tail))
+                (trans (cong (_++ chain-events (FlatSteps-++ CR.run tail)) ev28)
                 (trans (chain-events-++ CR.run tail)
                 (trans (cong₂ _++_ CR.events tail-ev)
                 (trans (++-identityʳ _) (cong proj₁ RE)))))
 
       ctrls-r : chain-ctrls CR.run ≤ chain-ctrls run-r
-      ctrls-r = ≤-trans (ctrls-≤ˡ CR.run tail) (ctrls-≤ʳ run30 (FlatSteps-++ CR.run tail))
+      ctrls-r = ≤-trans (ctrls-≤ˡ CR.run tail) (ctrls-≤ʳ run28 (FlatSteps-++ CR.run tail))
 
       at-end-r : fpc t2 ≡ length (emitted n l (Cata wf alg)) + base
       at-end-r = trans (end-pc (length T.at) base)
@@ -353,7 +349,7 @@ module CataRunC {FS : FrameSemantics} where
       mro : MachineRefinesObsF prog base n l (Cata wf alg) x s alloc cl rs k
       mro = record
         { value-realized =
-            realized (30 + (CR.steps + 2)) t2 CR.out-mode CR.cont-alloc run-r
+            realized (28 + (CR.steps + 2)) t2 CR.out-mode CR.cont-alloc run-r
                      live-f (λ _ → at-end-r) stops-f (λ _ → CR.no-ret retd)
                      (λ nc → CR.no-link (nc′ nc)) log-f (λ p → rp→place (CR.place (trans res-eq p)))
                      (progress-≤ prog-c ctrls-r)

@@ -452,14 +452,14 @@ module Scope {FS : FrameSemantics} where
   -- `cata-body`, whose marker is the body label. So the four clauses differ
   -- only in how the prelude is bracketed and in the label arithmetic.
   cata-thunks-in strat-const bb n1 l1 at lo≤ ats =
-    ++⁺ (all-no-thunk-in (cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1) refl)
-        (++⁺ (all-no-thunk-in (cata-call n1 (n1 + 1) (n1 + 3)) refl)
+    ++⁺ (all-no-thunk-in (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) refl)
+        (++⁺ (all-no-thunk-in (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)) refl)
              (cata-body-in l1 (l1 + 1) bb at lo≤ (m<m+2 l1)
                 (ts-weaken ≤-refl (m≤m+n l1 2) ats)))
   cata-thunks-in (strat-branching F) bb n1 l1 at lo≤ ats =
-    ++⁺ (all-no-thunk-in (cata-call-setup B (B + 1) (B + 2) (B + 3) L) refl)
+    ++⁺ (all-no-thunk-in (cata-call-setup B (B + 1) (B + 2) L) refl)
         (++⁺ (ts-from-nt (br-I₁-nt F n1 l1))
-             (++⁺ (all-no-thunk-in (cata-call B (B + 1) (B + 3)) refl)
+             (++⁺ (all-no-thunk-in (cata-call B (B + 1) (B + 2) (B + 3)) refl)
                   (++⁺ (all-no-thunk-in (cata-br-I₂ n1 l1) refl)
                        (cata-body-in L (L + 1) bb at
                           (≤-trans lo≤ low) (m<m+2 L)

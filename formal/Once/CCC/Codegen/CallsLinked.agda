@@ -99,34 +99,32 @@ rebuild-walk-cl valSlot tv tb (F ⊗ G) s lb =
 ------------------------------------------------------------------------
 -- The three cata strategies (the algebra trace `at` is the caller's IH).
 ------------------------------------------------------------------------
--- D099 / C1: the three shared blocks. D131: `cata-call-setup` now allocates
--- TWO 2-cell heap blocks — the algebra's closure record, and the reusable
--- `(env , layer)` argument pair — so `tt` appears twice. `cata-call` still
--- allocates NOTHING: the pair is written in place, which is the point of
--- hoisting it out of the loop.
+-- D099 / C1: the three shared blocks. `cata-call-setup` allocates ONE 2-cell
+-- heap block (the algebra's closure record); `cata-call` allocates the fresh
+-- `(env , layer)` argument pair of EVERY call (plan 0.125 D1a — a reused pair
+-- is visible to closures earlier rounds returned; see `cata-call`).
 cata-body-cl : ∀ b e bb at → CLTrace at → CLTrace (cata-body b e bb at)
 cata-body-cl b e bb  at ih = tt ∷ tt ∷ ++⁺ ih (tt ∷ tt ∷ [])
 
-cata-setup-cl : ∀ cl k ev pr bl → CLTrace (cata-call-setup cl k ev pr bl)
-cata-setup-cl cl k ev pr bl =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+cata-setup-cl : ∀ cl k ev bl → CLTrace (cata-call-setup cl k ev bl)
+cata-setup-cl cl k ev bl =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
-cata-call-cl : ∀ cl k pr → CLTrace (cata-call cl k pr)
-cata-call-cl cl k pr =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+cata-call-cl : ∀ cl k ev pr → CLTrace (cata-call cl k ev pr)
+cata-call-cl cl k ev pr =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 cata-const-cl : ∀ bb n1 l1 at → CLTrace at
               → CLTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
 cata-const-cl bb n1 l1  at ih =
-  ++⁺ (cata-setup-cl n1 (n1 + 1) (n1 + 2) (n1 + 3) l1)
-      (++⁺ (cata-call-cl n1 (n1 + 1) (n1 + 3)) (cata-body-cl l1 (l1 + 1) bb at ih))
+  ++⁺ (cata-setup-cl n1 (n1 + 1) (n1 + 2) l1)
+      (++⁺ (cata-call-cl n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-cl l1 (l1 + 1) bb at ih))
 
 cata-branching-cl : ∀ F bb n1 l1 at → CLTrace at
                   → CLTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
 cata-branching-cl F bb n1 l1  at ih =
-  ++⁺ (cata-setup-cl cl (cl + 1) (cl + 2) (cl + 3) bodyL)
-      (++⁺ I₁ (++⁺ (cata-call-cl cl (cl + 1) (cl + 3))
+  ++⁺ (cata-setup-cl cl (cl + 1) (cl + 2) bodyL)
+      (++⁺ I₁ (++⁺ (cata-call-cl cl (cl + 1) (cl + 2) (cl + 3))
                    (++⁺ I₂ (cata-body-cl bodyL (bodyL + 1) bb at ih))))
   where
     bodyL = l1 + 4 + lsize F + lsize F

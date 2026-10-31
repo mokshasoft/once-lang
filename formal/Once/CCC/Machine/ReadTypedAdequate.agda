@@ -45,11 +45,9 @@ open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ) renaming (⟦_
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
-open import Once.CCC.Machine.ClosureWellFormed o tbl
+open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedDef {FS}
   using (ValidAtWF; CellAt)
-open ClosureWellFormedPat {FS}
-  using (valid-unit-wf; valid-int-wf; valid-float-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf)
 open ClosureWellFormedBase {FS}
   using (SumTag; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv)
 

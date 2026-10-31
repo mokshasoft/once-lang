@@ -352,7 +352,16 @@ toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
   emitter sit under a green tree for six weeks; x86-32's was even inconsistent
   with its own `FrameInstantiation`. Plans 0.65/0.66 replace these two rows with
   proofs, and that is the point of doing them.
-- `cata-correct` (`IRObsCorrectFlat`) — **NO LONGER FALSE as of 2026-08-11
+- `cata-correct` (`IRObsCorrect.Cata`) — **PROVED 2026-10-31 (plan 0.125 S3,
+  cata M1 + M4); no postulate left.** `cata-correct` is a definition dispatching
+  on the emitter's strategy: `strat-const` by `CataConst`, `strat-branching` (the
+  one generic post-order walk; the nat/linear specialisations were deleted
+  2026-10-30 as miscompiling) by `CataBr.Branching` over stage A's run-level
+  model (`CataBr.Meaning.po-run`), the flatten loop (`CataBr.Flatten`), one fold
+  round per node (`CataBr.FoldRound`, fresh argument pair per call, D1a), the
+  loop by induction on the eval list (`CataBr.FoldLoop`, fills on the loop's own
+  run succeed: `CataBr.FillOk`) and the exit (`CataBr.FoldExit`). History below.
+- (history) `cata-correct` (`IRObsCorrectFlat`) — **NO LONGER FALSE as of 2026-08-11
   (D101, C1)**; an ordinary deferred proof again. It WAS false: `cata-dispatch`
   spliced the algebra trace TWICE at ONE label range (`I₁ ++ at ++ (I₂ ++ at ++
   I₃)`), and the flat machine resolves labels by a first-match scan over the

@@ -10,10 +10,12 @@
 --
 --   * `strat-const` (no recursive position) is PROVED: `CataConst`.
 --   * `strat-branching` (every recursive functor, the generic post-order
---     walk) remains a postulate, restricted by the strategy equation. It is
---     plan 0.125's cata M4. (The old `strat-nat` / `strat-linear` shape
---     specialisations were deleted 2026-10-30: they miscompiled functors
---     outside their shape; see IRToTrace's classifier.)
+--     walk) is PROVED: `CataBr.Branching` (plan 0.125's cata M4). (The old
+--     `strat-nat` / `strat-linear` shape specialisations were deleted
+--     2026-10-30: they miscompiled functors outside their shape; see
+--     IRToTrace's classifier.)
+--
+-- So `cata-correct` holds for every cata, with no assumption.
 --
 -- It lives here rather than in `Interface` (where the single postulate used
 -- to be) because the proof needs the clause modules (`BlockCall`, `Apply`,
@@ -50,6 +52,23 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Rebuild o tbl using (module Cat
 -- A's measure; one round is `CataBr.Round`), ending with eval = `PO.FI … [ root ] []`.
 -- The M4 fold stage consumes it; imported here so it sits under the apex.
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.ToFold o tbl using (module CataToFoldC)
+-- M4 stage D1b: ONE ROUND of the FOLD loop and its EXIT, over the fold-head
+-- invariant `CataBr.FoldInv.Inv.HeadAt` (eval/val stacks, call slots, the
+-- closure record, the environment word): `CataBr.FoldRound.Round.round`
+-- (pop, rebuild, the call rows with a fresh pair, the algebra's block call,
+-- push, back edge — a `FoldInv.RoundRun` whose events/log/budget/stop are the
+-- algebra's on the round's layer; `round-po` at stage A's model) and
+-- `CataBr.FoldExit.Exit.exit` (eval empty: the top of val into `Output`, over
+-- the body to the cata's end; `word→place`). D2's induction over the eval
+-- list consumes them; imported here so they sit under the apex.
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldRound o tbl using (module CataFoldRoundC)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldExit o tbl using (module CataFoldExitC)
+-- M4 stage D2: THE WHOLE FOLD LOOP and THE CLAUSE. `CataBr.FillOk` (every fill on
+-- the loop's own run succeeds), `CataBr.FoldBind` (round runs compose along a
+-- bind), `CataBr.FoldLoop` (the loop runs as stage A's `runPO`, by induction on
+-- the eval list), `CataBr.Branching` (entry → fold head → loop → exit, against
+-- `cata-br-meaning`): `cata-correct-branching`, PROVED.
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Branching o tbl using (module CataBranchC)
 open import Once.CCC.Codegen.IRToTrace o
   using (CataStrategy; cata-strategy; strat-const; strat-branching)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -65,13 +84,12 @@ module CataC {FS : FrameSemantics} where
   open CataVisitC {FS} using (module Visit)
   open CataRebuildC {FS} using (module Rebuild)
   open CataToFoldC {FS} using (ToFoldOut; module Build)
+  open CataFoldRoundC {FS} using (module Round)
+  open CataFoldExitC {FS} using (module Exit; word→place)
 
-  -- The loop strategy, still assumed: every functor with a recursive position
-  -- (the classifier's `strat-branching`). Plan 0.125's cata M4.
-  postulate
-    cata-correct-branching : ∀ {F} (wf : WellFormedFI F) {E A} (alg : IR (E IRTy′.* ⟦ F ⟧TI A) A)
-                           → IRObsCorrectF alg → ∀ {G : Functor} → cata-strategy ⌈ F ⌉F ≡ strat-branching G
-                           → IRObsCorrectF (Cata wf alg)
+  -- The loop strategy, every functor with a recursive position (the
+  -- classifier's `strat-branching`): PROVED, plan 0.125's cata M4.
+  open CataBranchC {FS} using (cata-correct-branching)
 
   -- `cata-correct` RECEIVES the algebra's `IRObsCorrectF` (the IH);
   -- `ir-obs-correct` supplies it by recursing on `alg ⊂ Cata wf alg`.

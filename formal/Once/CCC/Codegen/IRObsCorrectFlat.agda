@@ -89,7 +89,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open CaseC    {FS} public
   open PairAsm  {FS} public
   open CallC    {FS} public
-  open CataC    {FS} public
+  open CataC    {FS} using (cata-correct)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

@@ -9,11 +9,12 @@
 --
 -- The run (`cata-trace-const`):
 --
---   1. the setup's eighteen rows (`CataConst.Setup`) split the input pair
---      `(env , μ)`, build the argument pair `pr = [env , _]` and the closure
---      record `cl = [0 , body]`;
---   2. the call's eleven rows (`CataConst.Call`) put the μ cell in `pr[1]`,
---      `cl` in the closure register and `pr` in `Input1`;
+--   1. the setup's thirteen rows (`CataConst.Setup`) split the input pair
+--      `(env , μ)` (env into slot `ev`) and build the closure record
+--      `cl = [0 , body]`;
+--   2. the call's fourteen rows (`CataConst.Call`) allocate a FRESH argument
+--      pair `pr = [env , μ cell]` (plan 0.125 D1a: every call has its own),
+--      put `cl` in the closure register and `pr` in `Input1`;
 --   3. `instr-call-closure` reads the code cell and lands on the body's
 --      marker — the one marker of that label (`thunk-found`, from
 --      `ThunksUnique`);
@@ -53,7 +54,9 @@ open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-ref)
+open HeapRef using (ref-id)
 open import Once.Internal.Res using (Res; returns; stopped; is-stopped)
 open import Once.Internal.Iterative using (T∞)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
@@ -74,7 +77,7 @@ module CataConstC {FS : FrameSemantics} where
   open AllocState using (next-slot; next-heap-ref; current-frame)
 
   ------------------------------------------------------------------------
-  -- THE THIRTY ROWS BEFORE THE CALL, for one input (the pair at `phl`, its
+  -- THE TWENTY-SEVEN ROWS BEFORE THE CALL, for one input (the pair at `phl`, its
   -- μ cell pointing at `μhl`), handed to `Run` as facts about their last
   -- state.
   ------------------------------------------------------------------------
@@ -112,25 +115,27 @@ module CataConstC {FS : FrameSemantics} where
     so = Setup.out n T.l1 prog σ TA.span-setup nh phl env-sv μ-sv rdi (cell-read c₁) rdμ
     module SO = SetupOut so
 
-    hp : HeapLocation
-    hp = heap-loc (mkHeapRef r₀) 0
-
-    shp≢shc : AtDynamic {FS} (sucHL hp) ≢ AtDynamic (sucHL SO.hc)
-    shp≢shc e = <-irrefl (trans (cong loc-ref e) SO.ref-hc) (n<1+n r₀)
-
     span-call′ : SpanAt prog (fpc SO.u) T.call
     span-call′ = subst (λ b → SpanAt prog b T.call) (sym SO.pc) TA.span-call
 
-    co : CallOut n prog SO.u alloc hp SO.hc (ℓ o T.l1) env-sv μ-sv
-    co = Call.out n prog SO.u alloc span-call′ SO.nh hp SO.hc (ℓ o T.l1) env-sv μ-sv SO.inμ SO.cl SO.pr SO.hp0 SO.code
-                  shp≢shc SO.cf ≤-refl
+    -- the record is below the frontier the call rows start from
+    hc-lt : suc (ref-id (heap-ref SO.hc)) ≤ next-heap-ref (falloc SO.u)
+    hc-lt = ≤-reflexive (trans (cong suc SO.ref-hc) (sym SO.hr))
+
+    co : CallOut n prog SO.u alloc SO.hc (ℓ o T.l1) env-sv μ-sv
+    co = Call.out n prog SO.u alloc span-call′ SO.nh SO.hc (ℓ o T.l1) env-sv μ-sv SO.inμ SO.cl SO.ev SO.code
+                  hc-lt SO.cf (≤-trans (n≤1+n r₀) (≤-reflexive (sym SO.hr)))
     module CO = CallOut co
+
+    -- the fresh pair is below the frontier at the call
+    hp-lt : suc (loc-ref (AtDynamic CO.hp)) ≤ next-heap-ref (falloc CO.w)
+    hp-lt = ≤-reflexive (trans (cong suc CO.ref-hp) (sym CO.hr))
 
     result : MachineRefinesObsF prog base n l (Cata wf alg) x s alloc cl rs k
     result = Run.result wf alg ih st n l prog base ss cr span bl la x s alloc cl ns0 k rs
-               CO.w SO.u SO.runS SO.seg CO.runK CO.seg CO.nh (trans CO.pc (cong (11 +_) SO.pc)) (trans CO.ret SO.ret)
-               SO.hc hp μhl mC (AtDynamic phl) CO.clo CO.code CO.inp
-               c₁ (trans CO.hp0 (sym (cell-read c₁))) CO.shp refl (≤-reflexive (sym SO.hr)) lμ vμ
+               CO.w SO.u SO.runS SO.seg CO.runK CO.seg CO.nh (trans CO.pc (cong (14 +_) SO.pc)) (trans CO.ret SO.ret)
+               SO.hc CO.hp μhl mC (AtDynamic phl) CO.clo CO.code CO.inp
+               c₁ (trans CO.hp0 (sym (cell-read c₁))) CO.shp hp-lt lμ vμ
 
   ------------------------------------------------------------------------
   -- THE CLAUSE.

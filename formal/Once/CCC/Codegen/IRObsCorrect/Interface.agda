@@ -30,7 +30,6 @@ module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.Lis
 
 open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-open import Once.CCC.Machine.ValueRel using (module InputAtM)
 open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -96,7 +95,11 @@ module Core {FS : FrameSemantics} where
 
   -- plan 0.125 S1: the observation vocabulary lives in `ClosureWellFormedBase`
   -- now (the arrow case states a callee run in it).
-  open ClosureWellFormedBase {FS} using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_) public
+  open ClosureWellFormedBase {FS}
+    using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_
+          ; prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
+          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
+          ; Live; live→bf; bf→live; live-heap; live-lift; live-map; live-ns) public
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -166,17 +169,12 @@ module Core {FS : FrameSemantics} where
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
-  open ClosureWellFormedBase {FS}
-    using (prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
-          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
-          ; Live; live→bf; bf→live; live-heap; live-lift; live-map; live-ns) public
-  open ClosureWellFormedPat {FS}
-    using (valid-unit-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf
-          ; valid-closure-wf; valid-closure-reg-wf; valid-ν-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
   open ClosureWellFormedDef {FS}
     using (ValidAtWF; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result
           ; CalleeRunP; module CalleeRunP; callee-run; crun-map; CallRuns; VAt; rp→place
-          ; NuV; ForceRuns; NuStep; module NuStep; module NuCoind; nu-mode; nu-heap; nu-seed; nu-lbl; nu-j; nu-cell0; nu-cell1; nu-live1; nu-code; nu-force
+          ; NuV; module NuV; ForceRuns; NuStep; module NuStep; module NuCoind
+          -- plan 0.125 S3: where a fragment's input is (beside `ResultPlace`)
+          ; InputAt; in-loc; in-reg; in-unit
           ; rp-map; layer→valid; valid→layer; ν-layer-place; fo→valid; valid→fo; μ-layer; valid-μ
           ; validityWF-transport; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
           -- Plan 0.68 step 1: the class-A discharges move the value witness
@@ -244,7 +242,6 @@ module Core {FS : FrameSemantics} where
   log-silent {fs = fs} r eq = trans (log-of r eq) (Data.List.Properties.++-identityʳ (SMCore.LocState.ev-log (floc fs)))
   open RTA o tbl {FS} using (Readable; r-unit; r-int; r-pair; r-float; r-sum; r-void; r-rigid; readable?; readable-base; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
-  open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
 
   -- μ↔layer iso (the strat-const crux), general in F. A μ-value's
   -- validity at `loc` IS its destructured layer's validity at the SAME
@@ -677,9 +674,9 @@ module Core {FS : FrameSemantics} where
   -- Half a fix is no fix: residence and evidence must travel in ONE premise, so
   -- that choosing `in-reg` DISCHARGES the memory obligation rather than leaving
   -- it to be supplied separately.
-  -- plan 0.125 S3: MOVED to `ValueRel.InputAtM` (table-free, so a caller and
-  -- a callee proved at different tables state the same input).
-  open InputAtM {FS} using (InputAt; in-loc; in-reg; in-unit) public
+  -- plan 0.125 S3: MOVED to `ValueRel` (table-free, so a caller and a callee
+  -- proved at different tables state the same input); opened with
+  -- `ClosureWellFormedDef` above.
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
   -- frontier 0), minus `StraightIR` (loops are allowed); conclusion is

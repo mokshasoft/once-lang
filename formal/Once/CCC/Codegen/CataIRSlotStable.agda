@@ -232,7 +232,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   cata-trace-const-stable : ∀ bb n1 l1 at → AllSlotStable at
                           → AllSlotStable (proj₂ (proj₂ (cata-trace-const bb n1 l1 at)))
   cata-trace-const-stable bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) l1 ++ cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 3)) refl)
+    ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++ cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3)) refl)
         (cata-body-stable l1 (l1 ℕ.+ 1) bb at sat)
 
   -- Tier 2 is the one exception: its skeleton splices the two COMPILE-TIME
@@ -246,9 +246,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- association is not definitional (nat/linear get away with the flat split
   -- precisely because every block there IS concrete).
   cata-trace-branching-stable F bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound (cata-call-setup cl (cl ℕ.+ 1) (cl ℕ.+ 2) (cl ℕ.+ 3) bodyL) refl)
+    ++⁺ (all-stable?-sound (cata-call-setup cl (cl ℕ.+ 1) (cl ℕ.+ 2) bodyL) refl)
         (++⁺ (all-stable?-sound (cata-br-I₁ F n1 l1) I₁-true)
-             (++⁺ (all-stable?-sound (cata-call cl (cl ℕ.+ 1) (cl ℕ.+ 3)) refl)
+             (++⁺ (all-stable?-sound (cata-call cl (cl ℕ.+ 1) (cl ℕ.+ 2) (cl ℕ.+ 3)) refl)
                   (++⁺ (all-stable?-sound (cata-br-I₂ n1 l1) refl)
                        (cata-body-stable bodyL (bodyL ℕ.+ 1) bb at sat))))
     where

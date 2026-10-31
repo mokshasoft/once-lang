@@ -44,7 +44,7 @@ open LabelId using (idx)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-Prod; _⊗_)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.CCC.Machine.ClosureWellFormed o tbl as CWF
+import Once.CCC.Machine.ValueRel as CWF
 open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-restore-input)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL)
@@ -65,7 +65,7 @@ module ResuspProdC {FS : FrameSemantics} where
   open Core {FS}
   open Mach {FS}
   open ResuspBaseC {FS}
-  open Resolve {FS} using (found-in-window; noLabel-outside)
+  open Resolve {FS} using (NoLabel; found-in-window; noLabel-outside)
   open CWF.ClosureWellFormedBase {FS} using (pair-wf; CellAtP)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)

@@ -7,7 +7,7 @@
 -- ONE STRAIGHT STEP AS A SEGMENT (`Resusp.Base.SegA`): what it leaves alone
 -- below a base allocator `a₀` at frontier `n`, and what it does to the
 -- frame, the stack frontier and the heap frontier. Four shapes cover the
--- cata's thirty straight rows: a step that writes no memory, a slot store at
+-- cata's straight rows: a step that writes no memory, a slot store at
 -- or above the frontier, an allocation, and an indirect store into a block
 -- fresh at the base. Segments compose by `segA-∘`, so a run's preservation
 -- is the composite of its rows' and never re-reads the run.

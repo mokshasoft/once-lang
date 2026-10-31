@@ -1,0 +1,38 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.125 D1a: a cata whose CARRIER IS A FUNCTION TYPE. Every node's
+-- algebra result is a closure that captures that node's layer (its children's
+-- closures and its payload), and the fold's result is applied only AFTER the
+-- whole fold has run. The tree has several nodes, so the algebra is called
+-- several times and the closures of earlier calls must still see their own
+-- layers when the root's closure finally runs them. (This is the shape whose
+-- machine-level failure mode — every call's argument in ONE reused pair —
+-- the per-call pair fix closes; the surface `cataM` wrapper copies the pair,
+-- so this test guards the end-to-end behaviour rather than the IR algebra.)
+--
+--   t = node (node (leaf, 3, leaf), 5, node (leaf, 7, leaf))
+--   go t x = go r (v + go l x),  go leaf x = x
+--   go t 1 = 7 + (5 + (3 + 1)) = 16
+--
+-- Expected: exit code 16.
+
+import I.Linux.Syscalls as S
+
+leafF : Unit -> Int -> Int
+leafF _ = \x -> x
+
+nodeF : (Int -> Int) * (Int * (Int -> Int)) -> Int -> Int
+nodeF t = \x -> snd (snd t) (fst (snd t) + fst t x)
+
+go : Mu (K Unit + (Id * (K Int * Id))) -> Int -> Int
+go = cata (case leafF nodeF)
+
+leaf : Mu (K Unit + (Id * (K Int * Id)))
+leaf = In (inl unit)
+
+t : Mu (K Unit + (Id * (K Int * Id)))
+t = In (inr (In (inr (leaf, (3, leaf))), (5, In (inr (leaf, (7, leaf))))))
+
+main : Act Unit Void
+main = exit@S (go t 1)

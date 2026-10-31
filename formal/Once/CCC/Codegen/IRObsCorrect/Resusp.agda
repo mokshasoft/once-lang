@@ -38,7 +38,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module Resusp
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Id o tbl using (module ResuspIdC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Prod o tbl using (module ResuspProdC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Sum o tbl using (module ResuspSumC)
-import Once.CCC.Machine.ClosureWellFormed o tbl as CWF
+import Once.CCC.Machine.ValueRel as CWF
 open import Data.Sum using (inj₁)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain

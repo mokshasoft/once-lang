@@ -71,7 +71,7 @@ module ResuspSumShapeC {FS : FrameSemantics} where
   open Core {FS}
   open ResuspBaseC {FS}
   open FlatStepsAPI {FS} using (fl-go-skip)
-  open Resolve {FS} using (found-in-window; noLabel-outside; fl-hit)
+  open Resolve {FS} using (NoLabel; found-in-window; noLabel-outside; fl-hit)
 
   just-injL : ∀ {a b : LabelId} → just a ≡ just b → a ≡ b
   just-injL refl = refl

@@ -249,14 +249,15 @@ module Project (o : CanonicalName) (tbl : List IRFun) {prog : AbstractTrace} whe
   open import Data.Empty using (⊥-elim)
   open import Relation.Binary.PropositionalEquality using (subst; sym)
   open import Once.IRTy using (Void)
-  open import Once.CCC.Machine.ClosureWellFormed o tbl
+  open import Once.CCC.Machine.ValueRel
     using (module ClosureWellFormedBase; module ClosureWellFormedDef)
   open ClosureWellFormedBase {FS}
     using (Live; live→bf; CellAtP; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit;
            unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; int-wf; float-wf;
            ValidFO; fo-unit; fo-pair; fo-sum; fo-int; fo-float; fo-μwf; SumTag; wrap)
   open ClosureWellFormedDef {FS} {prog}
-    using (ValidAtWF; CellAt; closure-wf; closure-reg-wf; NuV; nu-mode; nu-heap; nu-cell0; nu-cell1; nu-live1)
+    using (ValidAtWF; CellAt; closure-wf; closure-reg-wf; NuV; module NuV)
+  open NuV using (nu-mode; nu-heap; nu-cell0; nu-cell1; nu-live1)
 
   tag-of : ∀ (m : AllocMode) (t : ℕ) (s : LocState FS) (loc : ValueLocation FS)
          → SumTag m t s loc → TagAt m t s loc

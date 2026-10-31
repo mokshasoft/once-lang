@@ -634,7 +634,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       nu-live1 : Live alloc (sucLoc ν-loc)
       nu-code  : find-thunk prog nu-lbl ≡ just nu-j
       nu-force : ForceRuns {F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) alloc s nu-seed nu-j v
-  open NuV public
+  open NuV
 
   ------------------------------------------------------------------------
   -- THE COINDUCTION PRINCIPLE for `NuV`. A predicate `P` on ν cells whose
@@ -1716,48 +1716,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     trans (g-pres loc (before-frontier-monotone alloc₁ alloc₂ cf-eq slot-≤ heap-≤ bf₁))
           (f-pres loc bf₁)
 
-
--- plan 0.125 S1: the constructor names, for USERS. A pattern synonym declared
--- inside `ClosureWellFormedDef` is abstracted over its `{prog}` parameter,
--- which its body does not mention, so an expression use leaves `prog`
--- unsolved. Declared again here, where there is no `prog` to abstract over
--- (the constructors' own `prog` is fixed by the expected type).
-module ClosureWellFormedPat {FS : FrameSemantics} where
-  open ClosureWellFormedBase {FS}
-  open ClosureWellFormedDef {FS}
-  pattern valid-unit-wf = wrap unit-wf
-  pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
-  pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} lmm tg pp pb slb pv =
-    wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} lmm tg pp pb slb pv)
-  pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} lmm tg pp pb slb pv =
-    wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} lmm tg pp pb slb pv)
-  pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
-    wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
-  pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
-    wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
-  pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
-    wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
-  pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
-    wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
-  pattern valid-ν-wf nv = wrap nv
-  pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
-  pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
-  pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)
-
-
-
--- plan 0.125 S3: WHERE A FRAGMENT'S INPUT IS (was `Interface.InputAt`). Here
--- rather than in the table-parameterised interface, so that `FnRuns` — what a
--- caller at one table asks of a callee proved at its suffix — is one type.
-module InputAtM {FS : FrameSemantics} where
-  open ClosureWellFormedBase {FS}
-  open ClosureWellFormedDef {FS} using (ValidAtWF)
-  open MemOps {FS} using (readLoc)
-
-  data InputAt {prog : AbstractTrace} {A : IRTy} (mIn : AllocMode) (alloc : AllocState {FS})
+  -- plan 0.125 S3: WHERE A FRAGMENT'S INPUT IS (was `Interface.InputAt`). Here,
+  -- beside `ResultPlace`, rather than in the table-parameterised interface, so
+  -- that `FnRuns` — what a caller at one table asks of a callee proved at its
+  -- suffix — is one type.
+  data InputAt {A : IRTy} (mIn : AllocMode) (alloc : AllocState {FS})
                (v : ⟦ A ⟧) (s : LocState FS) : Set where
     in-loc : (loc : ValueLocation FS)
-           → ValidAtWF {prog = prog} mIn alloc {A} v loc s
+           → ValidAtWF mIn alloc {A} v loc s
            → Live alloc loc
            → readReg (regs s) Input1 ≡ SV-Ptr loc → InputAt mIn alloc v s
     in-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v
@@ -1769,3 +1735,31 @@ module InputAtM {FS : FrameSemantics} where
     -- unit input: `readTyped Unit` and `readReg-typed Unit` both materialise
     -- `tt` regardless of what is there.
     in-unit : A ≡ Unit → InputAt mIn alloc v s
+
+
+-- plan 0.125 S1: the constructor names, for USERS. A pattern synonym declared
+-- inside `ClosureWellFormedDef` is abstracted over its `{prog}` parameter,
+-- which its body does not mention, so an expression use leaves `prog`
+-- unsolved. Declared here, at the top level, where there is no parameter to
+-- abstract over (the constructors' own `FS` and `prog` are fixed by the
+-- expected type).
+open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; int-wf; float-wf; fo-μwf)
+open ClosureWellFormedDef using (closure-wf; closure-reg-wf)
+pattern valid-unit-wf = wrap unit-wf
+pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
+pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} lmm tg pp pb slb pv =
+  wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} lmm tg pp pb slb pv)
+pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} lmm tg pp pb slb pv =
+  wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} lmm tg pp pb slb pv)
+pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
+  wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
+pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
+  wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
+pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
+  wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
+pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
+  wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
+pattern valid-ν-wf nv = wrap nv
+pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
+pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
+pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)

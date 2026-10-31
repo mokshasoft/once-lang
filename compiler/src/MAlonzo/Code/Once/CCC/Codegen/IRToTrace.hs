@@ -120,9 +120,8 @@ d_cata'45'call'45'setup_48 ::
   Integer ->
   Integer ->
   Integer ->
-  Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076]
-d_cata'45'call'45'setup_48 v0 v1 v2 v3 v4 v5
+d_cata'45'call'45'setup_48 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'indirect_2082)
@@ -149,7 +148,7 @@ d_cata'45'call'45'setup_48 v0 v1 v2 v3 v4 v5
                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                      (coe
                         MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'at'45'slot_2088
-                        (coe v4))
+                        (coe v1))
                      (coe
                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                         (coe
@@ -157,70 +156,47 @@ d_cata'45'call'45'setup_48 v0 v1 v2 v3 v4 v5
                         (coe
                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                            (coe
-                              MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
-                              (coe v3))
+                              MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'tag'45'lit_2134
+                              (coe (0 :: Integer)))
                            (coe
                               MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                               (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect_2090)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2136
-                                    (coe (2 :: Integer)))
+                                    MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'code'45'addr_2130
+                                    (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_300 (coe v0) (coe v4)))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                     (coe
-                                       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'at'45'slot_2088
-                                       (coe v1))
+                                       MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect'45'suc_2092)
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                        (coe
-                                          MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2080)
+                                          MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
+                                          (coe v2))
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                           (coe
-                                             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'tag'45'lit_2134
-                                             (coe (0 :: Integer)))
+                                             MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2080)
                                           (coe
-                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                             (coe
-                                                MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect_2090)
-                                             (coe
-                                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                                (coe
-                                                   MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'code'45'addr_2130
-                                                   (coe
-                                                      MAlonzo.Code.Once.CCC.Label.d_ℓ_300 (coe v0)
-                                                      (coe v5)))
-                                                (coe
-                                                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                                   (coe
-                                                      MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect'45'suc_2092)
-                                                   (coe
-                                                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                                      (coe
-                                                         MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
-                                                         (coe v2))
-                                                      (coe
-                                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                                         (coe
-                                                            MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2080)
-                                                         (coe
-                                                            MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))))))))))))))
+                                             MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))))))))
 -- Once.CCC.Codegen.IRToTrace.cata-call
-d_cata'45'call_60 ::
+d_cata'45'call_58 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   Integer ->
   Integer ->
   Integer ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076]
-d_cata'45'call_60 ~v0 v1 v2 v3 = du_cata'45'call_60 v1 v2 v3
-du_cata'45'call_60 ::
-  Integer ->
-  Integer ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076]
-du_cata'45'call_60 v0 v1 v2
+d_cata'45'call_58 ~v0 v1 v2 v3 v4 = du_cata'45'call_58 v1 v2 v3 v4
+du_cata'45'call_58 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  Integer ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076]
+du_cata'45'call_58 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
@@ -233,39 +209,39 @@ du_cata'45'call_60 v0 v1 v2
          (coe
             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
             (coe
-               MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
-               (coe v2))
+               MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2136
+               (coe (2 :: Integer)))
             (coe
                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                (coe
-                  MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2080)
+                  MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'at'45'slot_2088
+                  (coe v3))
                (coe
                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                   (coe
-                     MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
-                     (coe v1))
+                     MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2080)
                   (coe
                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                      (coe
-                        MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect'45'suc_2092)
+                        MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
+                        (coe v2))
                      (coe
                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                        (coe
-                           MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
-                           (coe v0))
+                        (coe MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect_2090)
                         (coe
                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                            (coe
-                              MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2080)
+                              MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
+                              (coe v1))
                            (coe
                               MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                               (coe
-                                 MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'save'45'closure'45'reg_2132)
+                                 MAlonzo.Code.Once.CCC.Machine.SMCore.C_store'45'indirect'45'suc_2092)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                  (coe
                                     MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
-                                    (coe v2))
+                                    (coe v0))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                     (coe
@@ -273,8 +249,22 @@ du_cata'45'call_60 v0 v1 v2
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                        (coe
-                                          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2108)
-                                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))))))))
+                                          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'save'45'closure'45'reg_2132)
+                                       (coe
+                                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                          (coe
+                                             MAlonzo.Code.Once.CCC.Machine.SMCore.C_load'45'from'45'slot_2086
+                                             (coe v3))
+                                          (coe
+                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                             (coe
+                                                MAlonzo.Code.Once.CCC.Machine.SMCore.C_mov'45'to'45'input_2080)
+                                             (coe
+                                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                (coe
+                                                   MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'call'45'closure_2108)
+                                                (coe
+                                                   MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))))))))))
 -- Once.CCC.Codegen.IRToTrace.fsize
 d_fsize_68 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
@@ -1146,12 +1136,6 @@ d_cata'45'trace'45'branching_252 v0 v1 v2 v3 v4 v5
                (coe
                   addInt
                   (coe
-                     addInt (coe (14 :: Integer))
-                     (coe mulInt (coe (4 :: Integer)) (coe du_fsize_68 (coe v1))))
-                  (coe v3))
-               (coe
-                  addInt
-                  (coe
                      addInt
                      (coe addInt (coe (4 :: Integer)) (coe du_lsize_108 (coe v1)))
                      (coe du_lsize_108 (coe v1)))
@@ -1163,7 +1147,7 @@ d_cata'45'trace'45'branching_252 v0 v1 v2 v3 v4 v5
                (coe
                   MAlonzo.Code.Data.List.Base.du__'43''43'__32
                   (coe
-                     du_cata'45'call_60
+                     du_cata'45'call_58
                      (coe
                         addInt
                         (coe
@@ -1174,6 +1158,12 @@ d_cata'45'trace'45'branching_252 v0 v1 v2 v3 v4 v5
                         addInt
                         (coe
                            addInt (coe (12 :: Integer))
+                           (coe mulInt (coe (4 :: Integer)) (coe du_fsize_68 (coe v1))))
+                        (coe v3))
+                     (coe
+                        addInt
+                        (coe
+                           addInt (coe (13 :: Integer))
                            (coe mulInt (coe (4 :: Integer)) (coe du_fsize_68 (coe v1))))
                         (coe v3))
                      (coe
@@ -1222,13 +1212,13 @@ d_cata'45'trace'45'const_264 v0 v1 v2 v3 v4
             (coe
                d_cata'45'call'45'setup_48 (coe v0) (coe v2)
                (coe addInt (coe (1 :: Integer)) (coe v2))
-               (coe addInt (coe (2 :: Integer)) (coe v2))
-               (coe addInt (coe (3 :: Integer)) (coe v2)) (coe v3))
+               (coe addInt (coe (2 :: Integer)) (coe v2)) (coe v3))
             (coe
                MAlonzo.Code.Data.List.Base.du__'43''43'__32
                (coe
-                  du_cata'45'call_60 (coe v2)
+                  du_cata'45'call_58 (coe v2)
                   (coe addInt (coe (1 :: Integer)) (coe v2))
+                  (coe addInt (coe (2 :: Integer)) (coe v2))
                   (coe addInt (coe (3 :: Integer)) (coe v2)))
                (coe
                   d_cata'45'body_38 (coe v0) (coe v3)

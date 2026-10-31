@@ -205,24 +205,16 @@ cata-body body-label end-label bb at =
 --
 -- `load-indirect` leaves `Input1` alone (only `Output` moves), so both
 -- projections read the same pair without restoring it.
--- `pr` is the algebra's ARGUMENT PAIR, allocated ONCE here and reused by every
--- `cata-call`: cell 0 is the environment (constant for the whole fold) and only
--- cell 1 — the layer — changes per iteration. Reuse is sound because the pair's
--- consumer is the FIXED wrapper `apply ∘ ⟨ fst , snd ⟩` that `cataM` generates,
--- which projects both cells and applies immediately; the user's algebra is the
--- closure in cell 0 and never sees the pair. Allocating per layer would work
--- too, and would reintroduce exactly the per-layer allocation D131 removed.
-cata-call-setup : ℕ → ℕ → ℕ → ℕ → ℕ → AbstractTrace
-cata-call-setup cl k ev pr body-label =
+-- `pr` is NOT touched here any more: the algebra's argument pair is allocated
+-- FRESH by every `cata-call` (see there). This prologue only splits the input
+-- (`ev`, `k`) and builds the closure record `cl`; the slot layout
+-- `cl/k/ev/pr` is unchanged, `pr` is the slot the CALL writes.
+cata-call-setup : ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call-setup cl k ev body-label =
   load-indirect ∷
   store-at-slot ev ∷
   load-indirect-suc ∷
   store-at-slot k ∷
-  instr-alloc-heap 2 ∷
-  store-at-slot pr ∷
-  mov-to-input ∷
-  load-from-slot ev ∷
-  store-indirect ∷
   instr-alloc-heap 2 ∷
   store-at-slot cl ∷
   mov-to-input ∷
@@ -241,10 +233,26 @@ cata-call-setup cl k ev pr body-label =
 -- D131 the layer was passed bare, so `fst` read whatever the layer's first
 -- cell happened to be; for a `Nat` base layer that is the tag `0`, and the
 -- apply dereferenced a null closure.
-cata-call : ℕ → ℕ → ℕ → AbstractTrace
-cata-call cl k pr =
+--
+-- The pair is allocated FRESH in EVERY call (plan 0.125 D1a; it used to be
+-- allocated once in `cata-call-setup` and only cell 1 rewritten per call).
+-- Reuse was justified by the one producer we had in mind — `cataM`'s wrapper
+-- `apply ∘ ⟨ fst , snd ⟩`, which copies both cells into a fresh pair before
+-- applying — but the correctness theorem quantifies over EVERY IR algebra, and
+-- an algebra may keep its argument: `curry` stores `Input1` (= the pair) as the
+-- closure's environment. Counterexample to reuse: F = K Unit ⊕ Id, E = Unit,
+-- C = Unit ⇛ Unit, alg = curry (case terminal (apply ∘ ⟨ id , terminal ⟩) ∘
+-- snd ∘ fst) on (tt , succ zero): the meaning applied to tt returns tt, but
+-- both rounds' closures capture the one pair, whose cell 1 ends as `inr c0`,
+-- so applying either loops forever. A fresh pair per call means every round
+-- writes only fresh cells, so earlier results are never disturbed. Reusing one
+-- pair per fold is deferred to the linearity / in-place-update work, where it
+-- can be justified for every carrier.
+cata-call : ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call cl k ev pr =
   mov-to-output ∷ store-at-slot k ∷
-  load-from-slot pr ∷ mov-to-input ∷
+  instr-alloc-heap 2 ∷ store-at-slot pr ∷ mov-to-input ∷
+  load-from-slot ev ∷ store-indirect ∷
   load-from-slot k ∷ store-indirect-suc ∷
   load-from-slot cl ∷ mov-to-input ∷
   instr-save-closure-reg ∷
@@ -415,16 +423,16 @@ cata-br-I₂ n1 l1 =
 cata-trace-branching : Functor → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-branching F bb n1 l1 at =
   -- D131: two more slots above the existing range — `ev` for the fold's
-  -- environment and `pr` for the `(env , layer)` argument pair.
+  -- environment and `pr` for the `(env , layer)` argument pair (fresh per call).
   (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 4 , (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ℕ.+ 2 ,
   (cata-call-setup (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
                    ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 1)
                    ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 2)
-                   ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 3)
                    (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ++
    (cata-br-I₁ F n1 l1 ++
     (cata-call (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
                ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 1)
+               ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 2)
                ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 3) ++
      (cata-br-I₂ n1 l1 ++
       cata-body (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F)
@@ -439,8 +447,8 @@ cata-trace-branching F bb n1 l1 at =
 cata-trace-const : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-const bb n1 l1 at =
   n1 ℕ.+ 4 , l1 ℕ.+ 2 ,
-  (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) l1 ++
-   (cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
+  (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++
+   (cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
 
 -- Dispatch the strategy.
 cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
