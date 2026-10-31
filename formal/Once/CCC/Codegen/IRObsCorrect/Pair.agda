@@ -49,7 +49,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; restore-input; readReg; Output; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
@@ -83,10 +83,10 @@ module PairAsm {FS : FrameSemantics} where
     (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
-    (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
+    (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {prog = prog} {A} mIn alloc x s) (k : ℕ)
     where
-      open PairProof ihf ihg n l prog base ss cr span bl la mIn x s alloc cl n≤ nh inp k
+      open PairProof ihf ihg n l prog base ss cr span bl la mIn x s alloc cl rs ns0 nh inp k
 
       -- `f`'s control steps, as its chain inside the pair's runs.
       ctrlsF : chain-ctrls (VR.run vrf) ≡ chain-ctrls chainF₀
@@ -123,18 +123,18 @@ module PairAsm {FS : FrameSemantics} where
               not-stopped : ∀ {X : Set} → stopsAt s (⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k) ≡ true → X
               not-stopped p = case trans (sym p) (cong is-stopped res-pair) of λ ()
 
-              module PCG = PairChainG f g n l prog base s alloc cl n≤ nh span vrf rfeq vrg rgeq
+              module PCG = PairChainG f g n l prog base s alloc cl rs n≤ nh span vrf rfeq vrg rgeq
 
               ----------------------------------------------------------------
               -- `PairPlace`'s five non-trivial parameters.
               ----------------------------------------------------------------
               runG≡ : exec-flat (VR.steps vrg) prog
                         (entry-flat PCF.bg (floc PCF.m2) (falloc PCF.m2)
-                                    (fclosure PCF.m2))
+                                    (fclosure PCF.m2) rs)
                       ≡ PCG.fsG
               runG≡ = trans (cong (λ m → exec-flat m prog
                                            (entry-flat PCF.bg (floc PCF.m2)
-                                              (falloc PCF.m2) (fclosure PCF.m2)))
+                                              (falloc PCF.m2) (fclosure PCF.m2) rs))
                                   (sym (+-identityʳ (VR.steps vrg))))
                             (exec-flat-steps (VR.run vrg) 0)
 
@@ -142,7 +142,7 @@ module PairAsm {FS : FrameSemantics} where
               ns-gs = trans (trans (cong (λ st → next-slot (falloc st)) (sym runG≡))
                                    (flat-run-keeps-next-slot (VR.steps vrg) prog ss
                                       PCF.bg (floc PCF.m2) (falloc PCF.m2)
-                                      (fclosure PCF.m2)))
+                                      (fclosure PCF.m2) rs))
                             ns-m2
 
               hr-gs : next-heap-ref (falloc PCF.fsF) ≤ next-heap-ref (falloc PCG.fsG)
@@ -180,7 +180,7 @@ module PairAsm {FS : FrameSemantics} where
                           Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
                        PCF.read-fst-m1')
 
-              module PPlace = PairPlace {B} {C} n alloc n≤ PCF.fsF (VR.settle vrg)
+              module PPlace = PairPlace {prog} {B} {C} n alloc n≤ PCF.fsF (VR.settle vrg)
                                 PCF.cf-fsF PCG.cf-fsG ns-fsF ns-gs hr-gs
                                 vB vC
                                 (VR.out-mode vrf) (VR.out-mode vrg)
@@ -199,7 +199,7 @@ module PairAsm {FS : FrameSemantics} where
 
               field-log : SMCore.LocState.ev-log (floc PCG.SETTLE) ≡ SMCore.LocState.ev-log s ++ eventsAt s E
               field-log =
-                trans (log-silent PCG.tail-chain _ refl)
+                trans (log-silent PCG.tail-chain refl)
                 (trans log-fg
                 (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair))))
 
@@ -239,7 +239,7 @@ module PairAsm {FS : FrameSemantics} where
                          (subst (λ ρ → rB ≤ budgetLeft rB ρ + chain-ctrls (VR.run vrg)) rgeq (VR.progress vrg))
                          PCG.RUN-ctrls)
 
-              result : MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+              result : MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl rs k
               result = record
                 { value-realized =
                     realized PCG.STEPS PCG.SETTLE PPlace.out-mode PPlace.cont-alloc
@@ -248,17 +248,17 @@ module PairAsm {FS : FrameSemantics} where
                              (λ _ → PCG.NORET) (λ _ → PCG.NOLINK)
                              field-log field-place field-progress
                              (λ _ → field-stack) (λ _ → field-heap)
-                             (λ _ → PPresG.frame-pres-pair) (λ _ → PPresG.bf-mono-pair)
+                             (λ _ → PPresG.frame-pres-pair rgeq) (λ _ → PPresG.bf-mono-pair) (λ _ → PPresG.frames-pres-pair rgeq)
                 ; traces-agree = field-traces
                 }
 
           -- `g`'s chain and the run up to its settle state, shared by the
           -- branches where `g` does not reach the tail.
-          chain-to-g : FlatSteps prog (2 + (VR.steps vrf + (2 + VR.steps vrg))) (entry-flat base s alloc cl) (VR.settle vrg)
+          chain-to-g : FlatSteps prog (2 + (VR.steps vrf + (2 + VR.steps vrg))) (entry-flat base s alloc cl rs) (VR.settle vrg)
           chain-to-g = FlatSteps-++ PC.pre-chain (FlatSteps-++ chainF₀ (FlatSteps-++ PCF.mid-chain chainG₀))
 
           dispatch-g : (ρ : Res (Ap ⟦ C ⟧)) → resultAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB) ≡ ρ
-                     → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+                     → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl rs k
 
           -- ── `g` ENDED THE PROGRAM ───────────────────────────────────
           -- Four segments run, not five: the nine-row tail that builds the
@@ -274,14 +274,15 @@ module PairAsm {FS : FrameSemantics} where
                          (λ _ → proj₁ (VR.stops vrg sgeq)
                               , trans (proj₂ (VR.stops vrg sgeq))
                                       (chain-left (FlatSteps-++ PC.pre-chain (FlatSteps-++ chainF₀ PCF.mid-chain)) PCF.nhM2))
-                         (λ _ → VR.no-ret vrg ncG) (λ _ → VR.no-link vrg ncG)
+                         (λ p → case trans (sym res-g) p of λ ()) (λ _ → VR.no-link vrg ncG)
                          (trans log-fg (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair-g))))
                          (λ p → case trans (sym res-g) p of λ ())
                          (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chain-to-g) (sym res-g) (m≤m+n k _))
                          (λ _ fr j b → PPresG.mem-pres-to-gs (AtStack fr j) b)
                          (λ _ hl b → PPresG.mem-pres-to-gs (AtDynamic hl) b)
-                         (λ _ → PPresG.frame-pres-to-gs)
+                         (λ p → case trans (sym res-g) p of λ ())
                          (λ _ → PPresG.bf-to-gs)
+                         (λ p → case trans (sym res-g) p of λ ())
             ; traces-agree =
                 trans (PT.pair-chain-events-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀ refl refl)
                       (trans (cong₂ _++_ tf tg) (sym ev-pair-g))
@@ -316,7 +317,7 @@ module PairAsm {FS : FrameSemantics} where
                          (λ _ → VR.live vrg (cong is-stopped rgeq))
                          (λ p → case trans (sym res-g) p of λ ())
                          (λ p → case trans (sym (cong is-stopped res-g)) p of λ ())
-                         (cut-absurd res-g) (cut-absurd res-g)
+                         (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g)
                          (trans log-fg (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair-g))))
                          (λ p → case trans (sym res-g) p of λ ())
                          (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chain-to-g) (sym res-g)
@@ -324,7 +325,7 @@ module PairAsm {FS : FrameSemantics} where
                                    (subst (λ ρ → rB ≤ budgetLeft rB ρ + chain-ctrls (VR.run vrg)) rgeq (VR.progress vrg))
                                    (subst₂ (λ a b → a + b ≤ chain-ctrls chain-to-g) (sym ctrlsF) (sym ctrlsG)
                                            (ctrls-4 PC.pre-chain chainF₀ PCF.mid-chain chainG₀))))
-                         (cut-absurd res-g) (cut-absurd res-g) (cut-absurd res-g) (cut-absurd res-g)
+                         (cut-absurd res-g) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ())
             ; traces-agree =
                 trans (PT.pair-chain-events-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀ refl refl)
                       (trans (cong₂ _++_ tf tg) (sym ev-pair-g))
@@ -343,7 +344,7 @@ module PairAsm {FS : FrameSemantics} where
           dispatch-g (returns (done vC rC)) rgeq = ReturnsG.result vC rC rgeq
 
       dispatch : (ρ : Res (Ap ⟦ B ⟧)) → resultAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k) ≡ ρ
-               → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+               → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl rs k
 
       -- ── `f` ENDED THE PROGRAM ───────────────────────────────────────
       -- The pair's run is the prologue and `f`; the two mid rows, `g` and the
@@ -355,14 +356,14 @@ module PairAsm {FS : FrameSemantics} where
                      (FlatSteps-++ PC.pre-chain chainF₀)
                      absurd-f (λ p → case trans (sym res-f) p of λ ())
                      (λ _ → proj₁ (VR.stops vrf sfeq) , trans (proj₂ (VR.stops vrf sfeq)) (chain-left PC.pre-chain PC.nh2))
-                     (λ _ → VR.no-ret vrf ncF) (λ _ → VR.no-link vrf ncF)
+                     (λ p → case trans (sym res-f) p of λ ()) (λ _ → VR.no-link vrf ncF)
                      (trans (VR.log vrf) (trans (cong (_++ esF) logP2) (cong (h ++_) (sym ev-pair-f))))
                      (λ p → case trans (sym res-f) p of λ ())
                      (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (FlatSteps-++ PC.pre-chain chainF₀)) (sym res-f) (m≤m+n k _))
                      (λ _ fr j b → mem-to-fsF (AtStack fr j) b)
                      (λ _ hl b → mem-to-fsF (AtDynamic hl) b)
-                     (λ _ → VR.frame-pres vrf ncF)
-                     (λ _ m loc b → VR.bf-mono vrf ncF m loc b)
+                     (λ p → case trans (sym res-f) p of λ ())
+                     (λ _ m loc b → VR.bf-mono vrf ncF m loc b) (λ p → case trans (sym res-f) p of λ ())
         ; traces-agree =
             trans (PT.pair-chain-events-f PC.pre-chain chainF₀ refl) (trans tf (sym ev-pair-f))
         }
@@ -399,13 +400,13 @@ module PairAsm {FS : FrameSemantics} where
                      (λ _ → VR.live vrf (cong is-stopped rfeq))
                      (λ p → case trans (sym res-f) p of λ ())
                      (λ p → case trans (sym (cong is-stopped res-f)) p of λ ())
-                     (cut-absurd res-f) (cut-absurd res-f)
+                     (λ p → case trans (sym res-f) p of λ ()) (cut-absurd res-f)
                      (trans (VR.log vrf) (trans (cong (_++ esF) logP2) (cong (h ++_) (sym ev-pair-f))))
                      (λ p → case trans (sym res-f) p of λ ())
                      (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (FlatSteps-++ PC.pre-chain chainF₀)) (sym res-f)
                             (progress-≤ {b = 0} (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (VR.run vrf)) rfeq (VR.progress vrf))
                                         (≤-trans (≤-reflexive ctrlsF) (ctrls-≤ʳ PC.pre-chain chainF₀))))
-                     (cut-absurd res-f) (cut-absurd res-f) (cut-absurd res-f) (cut-absurd res-f)
+                     (cut-absurd res-f) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ()) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ())
         ; traces-agree =
             trans (PT.pair-chain-events-f PC.pre-chain chainF₀ refl) (trans tf (sym ev-pair-f))
         }
@@ -421,12 +422,12 @@ module PairAsm {FS : FrameSemantics} where
 
       -- ── `f` REACHED ITS END ─────────────────────────────────────────
       dispatch (returns (done vB rB)) rfeq = ReturnsB.dispatch-g vB rB rfeq (resultAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB)) refl
-        where module PCF = PairChainF f g n l prog base s alloc cl n≤ nh span vrf rfeq
+        where module PCF = PairChainF f g n l prog base s alloc cl rs n≤ nh span vrf rfeq
 
   obs-correct-pair-proof :
     ∀ {A B C} {f : IR A B} {g : IR A C}
     → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF ⟨ f , g ⟩
   obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg n l prog base
-                         ss cr span bl la mIn x s alloc cl n≤ nh inp k =
-    PairProofB.dispatch ihf ihg n l prog base ss cr span bl la mIn x s alloc cl n≤ nh inp k
-      (resultAt (floc (PairChain.PR.p2 f g n l prog base s alloc cl n≤ nh span)) (⟪ evalᴰ f x ⟫ k)) refl
+                         ss cr span bl la mIn x s alloc cl n≤ nh inp k rs =
+    PairProofB.dispatch ihf ihg n l prog base ss cr span bl la mIn x s alloc cl rs n≤ nh inp k
+      (resultAt (floc (PairChain.PR.p2 f g n l prog base s alloc cl rs (ns≤ {alloc} n n≤) nh span)) (⟪ evalᴰ f x ⟫ k)) refl

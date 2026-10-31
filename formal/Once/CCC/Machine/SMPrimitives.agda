@@ -48,7 +48,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore
-open AllocState using (current-frame; next-heap-ref)
+open AllocState using (current-frame; next-heap-ref; saved-frames)
 open LocState using (heapMem; regs; stackMem; halted; ev-log; left)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation)
@@ -269,7 +269,6 @@ instr-writes-slot store-indirect         = nothing
 instr-writes-slot store-indirect-suc     = nothing
 instr-writes-slot (lea-slot _)           = nothing
 instr-writes-slot (restore-input _)      = nothing
-instr-writes-slot (lea-indexed _)      = nothing
 instr-writes-slot (instr-alloc-stack _)  = nothing
 instr-writes-slot (instr-dealloc-stack _) = nothing
 instr-writes-slot (instr-reclaim-to _)   = nothing
@@ -284,18 +283,12 @@ instr-writes-slot (instr-load-const _ _) = nothing
 instr-writes-slot (instr-load-tag-lit _) = nothing
 instr-writes-slot (instr-load-code-addr _) = nothing
 instr-writes-slot instr-save-closure-reg   = nothing
--- Plan 0.13.1 Phase 1: case-on-tag halts at the abstract level —
--- no slot writes from this instruction (sub-traces' writes are
--- accounted for separately at the per-arch lowering).
-instr-writes-slot (instr-case-on-tag _ _) = nothing
 instr-writes-slot (instr-alloc-heap _)    = nothing
-instr-writes-slot (instr-loop _)          = nothing  -- Plan 0.29: loop restores slots
 
 -- What slot does this instruction read from? (load-from-slot, restore-input, worklist-pop)
 instr-reads-slot : AbstractInstr → Maybe ℕ
 instr-reads-slot (load-from-slot k)      = just k
 instr-reads-slot (restore-input k)       = just k
-instr-reads-slot (lea-indexed k)       = just k
 instr-reads-slot (worklist-pop k)        = just k  -- OCP-0003
 instr-reads-slot mov-to-output           = nothing
 instr-reads-slot (instr-reg-op _)        = nothing
@@ -321,9 +314,7 @@ instr-reads-slot (instr-load-const _ _)  = nothing
 instr-reads-slot (instr-load-tag-lit _)  = nothing
 instr-reads-slot (instr-load-code-addr _) = nothing
 instr-reads-slot instr-save-closure-reg   = nothing
-instr-reads-slot (instr-case-on-tag _ _)  = nothing
 instr-reads-slot (instr-alloc-heap _)     = nothing
-instr-reads-slot (instr-loop _)           = nothing
 
 ------------------------------------------------------------------------
 -- Positive Heap Write Characterization
@@ -364,7 +355,6 @@ instr-writes-heap (load-from-slot _)      _ = nothing
 instr-writes-heap (store-at-slot _)       _ = nothing
 instr-writes-heap (lea-slot _)            _ = nothing
 instr-writes-heap (restore-input _)       _ = nothing
-instr-writes-heap (lea-indexed _)       _ = nothing
 instr-writes-heap (instr-alloc-stack _)   _ = nothing
 instr-writes-heap (instr-dealloc-stack _) _ = nothing
 instr-writes-heap (instr-reclaim-to _)    _ = nothing
@@ -380,11 +370,9 @@ instr-writes-heap (instr-load-const _ _)  _ = nothing
 instr-writes-heap (instr-load-tag-lit _)  _ = nothing
 instr-writes-heap (instr-load-code-addr _) _ = nothing
 instr-writes-heap instr-save-closure-reg   _ = nothing
-instr-writes-heap (instr-case-on-tag _ _)  _ = nothing
 -- instr-alloc-heap allocates a fresh ref; it doesn't write to an
 -- existing heap cell. The newly-bumped ref's cell starts uninitialised.
 instr-writes-heap (instr-alloc-heap _)     _ = nothing
-instr-writes-heap (instr-loop _)           _ = nothing  -- writes only fresh cells (above frontier)
 
 -- Positive predicate: HeapLocation is in some region of the ownership set
 data InSomeRegion : HeapLocation → HeapOwnership → Set where
@@ -418,7 +406,6 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-store-at-slot      : ∀ {slot} → InstrNoHeapWrite (store-at-slot slot)
   nhw-lea-slot           : ∀ {slot} → InstrNoHeapWrite (lea-slot slot)
   nhw-restore-input      : ∀ {slot} → InstrNoHeapWrite (restore-input slot)
-  nhw-lea-indexed      : ∀ {slot} → InstrNoHeapWrite (lea-indexed slot)
   nhw-instr-alloc-stack  : ∀ {n} → InstrNoHeapWrite (instr-alloc-stack n)
   nhw-instr-dealloc-stack : ∀ {n} → InstrNoHeapWrite (instr-dealloc-stack n)
   nhw-instr-reclaim-to   : ∀ {n} → InstrNoHeapWrite (instr-reclaim-to n)
@@ -440,10 +427,6 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   -- Plan 0.2.4.2 Phase A: code-addr load only writes Output register
   nhw-instr-load-code-addr : ∀ {n} → InstrNoHeapWrite (instr-load-code-addr n)
   nhw-instr-save-closure-reg : InstrNoHeapWrite instr-save-closure-reg
-  -- Plan 0.30: case-on-tag BRANCHES (runs a sub-trace that may write
-  -- heap), so it has NO InstrNoHeapWrite witness — like instr-loop, it
-  -- is excluded from the flat no-heap-write characterisation. Per-instr
-  -- preservation lemmas discharge its clause by absurdity on this hole.
   -- Plan 0.14 Phase A: alloc-heap bumps next-heap-ref but doesn't
   -- write to an existing heap cell (the new cell starts uninitialised).
   nhw-instr-alloc-heap     : ∀ {n} → InstrNoHeapWrite (instr-alloc-heap n)
@@ -466,7 +449,6 @@ InstrPreservesFrame store-indirect         = ⊤
 InstrPreservesFrame store-indirect-suc     = ⊤
 InstrPreservesFrame (lea-slot _)           = ⊤
 InstrPreservesFrame (restore-input _)      = ⊤
-InstrPreservesFrame (lea-indexed _)      = ⊤
 InstrPreservesFrame (instr-alloc-stack _)  = ⊤
 InstrPreservesFrame (instr-dealloc-stack _) = ⊤
 InstrPreservesFrame (instr-reclaim-to _)   = ⊤
@@ -480,9 +462,7 @@ InstrPreservesFrame (instr-load-const _ _) = ⊤
 InstrPreservesFrame (instr-load-tag-lit _) = ⊤
 InstrPreservesFrame (instr-load-code-addr _) = ⊤
 InstrPreservesFrame instr-save-closure-reg   = ⊤
-InstrPreservesFrame (instr-case-on-tag _ _)  = ⊤
 InstrPreservesFrame (instr-alloc-heap _)     = ⊤
-InstrPreservesFrame (instr-loop _)           = ⊤  -- frame-balanced by construction
 
 ------------------------------------------------------------------------
 -- Plan 0.14 Phase A.2: positive effect-class classification.
@@ -522,9 +502,8 @@ data InstrEffect : Set where
                                     --   store-indirect, store-indirect-suc.
   eff-frame-op       : InstrEffect  -- push/pop frame.
                                     --   instr-push-frame, instr-pop-frame.
-  eff-control        : InstrEffect  -- jump / sigop / case-dispatch.
-                                    --   instr-call-closure, instr-sigop,
-                                    --   instr-case-on-tag.
+  eff-control        : InstrEffect  -- jump / sigop.
+                                    --   instr-call-closure, instr-sigop.
 
 instr-effect : AbstractInstr → InstrEffect
 instr-effect mov-to-output           = eff-reg-only
@@ -533,7 +512,6 @@ instr-effect (instr-ctrl _)        = eff-reg-only
 instr-effect mov-to-input            = eff-reg-only
 instr-effect (load-from-slot _)      = eff-stack-read
 instr-effect (restore-input _)       = eff-stack-read
-instr-effect (lea-indexed _)       = eff-stack-read
 instr-effect (worklist-pop _)        = eff-stack-read
 instr-effect (store-at-slot _)       = eff-stack-write
 instr-effect (worklist-push _)       = eff-stack-write
@@ -555,13 +533,7 @@ instr-effect (instr-load-const _ _)  = eff-reg-only
 instr-effect (instr-load-tag-lit _)  = eff-reg-only
 instr-effect (instr-load-code-addr _) = eff-reg-only
 instr-effect instr-save-closure-reg  = eff-reg-only
--- Plan 0.30: case-on-tag now runs a sub-trace that may allocate/mutate
--- heap and whose state effect is not frame-only — classify like
--- instr-alloc-heap (eff-heap-alloc) so the effect-keyed preservation
--- lemmas (heap-ref, same-frame, state-frame-eq) discharge it by absurdity.
-instr-effect (instr-case-on-tag _ _) = eff-heap-alloc
 instr-effect (instr-alloc-heap _)    = eff-heap-alloc
-instr-effect (instr-loop _)          = eff-heap-alloc  -- changes next-heap-ref like alloc
 
 -- Effect-class preservation predicates. Each axis is one row per effect.
 -- Adding a new alloc kind (e.g. eff-reg-alloc) requires extending each
@@ -617,7 +589,6 @@ instr-reads-mem store-indirect s alloc = nothing     -- reads Output register, n
 instr-reads-mem store-indirect-suc s alloc = nothing -- reads Output register, not memory
 instr-reads-mem (lea-slot k) s alloc = nothing       -- computes address, no read
 instr-reads-mem (restore-input k) s alloc = just (AtStack (current-frame alloc) k)
-instr-reads-mem (lea-indexed k) s alloc = just (AtStack (current-frame alloc) k)
 instr-reads-mem (instr-alloc-stack n) s alloc = nothing
 instr-reads-mem (instr-dealloc-stack n) s alloc = nothing
 instr-reads-mem (instr-reclaim-to n) s alloc = nothing
@@ -634,9 +605,7 @@ instr-reads-mem (instr-load-const _ _) s alloc = nothing -- no-op (only writes O
 instr-reads-mem (instr-load-tag-lit _) s alloc = nothing -- no-op (only writes Output)
 instr-reads-mem (instr-load-code-addr _) s alloc = nothing -- no-op (only writes Output)
 instr-reads-mem instr-save-closure-reg   s alloc = nothing -- no-op
-instr-reads-mem (instr-case-on-tag _ _)  s alloc = nothing -- halts at abstract level
 instr-reads-mem (instr-alloc-heap _)     s alloc = nothing -- only writes Output, doesn't read mem
-instr-reads-mem (instr-loop _)           s alloc = nothing
 
 -- What memory location does this instruction write?
 -- Returns nothing if instruction doesn't write memory.
@@ -656,7 +625,6 @@ instr-writes-mem store-indirect-suc s alloc with sv-as-loc (readReg (regs s) Inp
 ... | nothing  = nothing
 instr-writes-mem (lea-slot k) s alloc = nothing
 instr-writes-mem (restore-input k) s alloc = nothing  -- writes Input1 register, not memory
-instr-writes-mem (lea-indexed k) s alloc = nothing  -- writes Input1 register, not memory
 instr-writes-mem (instr-alloc-stack n) s alloc = nothing
 instr-writes-mem (instr-dealloc-stack n) s alloc = nothing
 instr-writes-mem (instr-reclaim-to n) s alloc = nothing
@@ -673,9 +641,7 @@ instr-writes-mem (instr-load-const _ _) s alloc = nothing -- no-op
 instr-writes-mem (instr-load-tag-lit _) s alloc = nothing -- no-op
 instr-writes-mem (instr-load-code-addr _) s alloc = nothing -- no-op
 instr-writes-mem instr-save-closure-reg   s alloc = nothing -- no-op
-instr-writes-mem (instr-case-on-tag _ _)  s alloc = nothing -- halts at abstract level
 instr-writes-mem (instr-alloc-heap _)     s alloc = nothing -- bumps next-heap-ref; doesn't write a cell
-instr-writes-mem (instr-loop _)           s alloc = nothing -- writes only fresh heap cells
 
 ------------------------------------------------------------------------
 -- Level 4: Instruction Primitives
@@ -732,36 +698,13 @@ module InstrPrimitives {FS : FrameSemantics} where
 
   -- (D) FRAME PRESERVATION
   -- Instructions preserve current-frame (all instructions, no predicate needed!)
-  -- Plan 0.29: exec-loop frame-balances by construction (restores
-  -- current-frame each iteration), so it preserves the frame regardless
-  -- of body — a clean fuel-induction (the recursive `alloc''` has
-  -- `current-frame = current-frame alloc` definitionally).
-  exec-loop-preserves-frame : ∀ (n : ℕ) (body : AbstractTrace)
-    (s : LocState FS) (alloc : AllocState {FS}) →
-    current-frame (proj₂ (exec-loop n body s alloc)) ≡ current-frame alloc
-  exec-loop-preserves-frame zero    body s alloc = refl
-  exec-loop-preserves-frame (suc n) body s alloc with halted s
-  ... | true = refl
-  ... | false with readReg (regs s) Scratch
-  ...   | SV-Tag zero    = refl
-  ...   | SV-Tag (suc _) = exec-loop-preserves-frame n body _ _
-  ...   | SV-Ptr _       = exec-loop-preserves-frame n body _ _
-  ...   | SV-Lit _ _     = exec-loop-preserves-frame n body _ _
-  ...   | SV-Code _      = exec-loop-preserves-frame n body _ _
 
   exec-abstract-preserves-frame : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) →
     current-frame (proj₂ (exec-abstract i s alloc)) ≡ current-frame alloc
-  -- Plan 0.30: case-on-tag now runs a sub-trace, so frame preservation
-  -- lifts to trace shape (every instruction preserves the frame).
   exec-trace-preserves-frame : ∀ (tr : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) →
     current-frame (proj₂ (exec-trace tr s alloc)) ≡ current-frame alloc
-  exec-case-dispatch-preserves-frame : ∀ (mt : Maybe (StoredValue FS))
-    (f g : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-    current-frame (proj₂ (exec-case-dispatch mt f g s alloc)) ≡ current-frame alloc
-  exec-abstract-preserves-frame (instr-loop body) s alloc =
-    exec-loop-preserves-frame 1000000 body s alloc
   exec-abstract-preserves-frame mov-to-output s alloc = refl
   exec-abstract-preserves-frame (instr-reg-op _) s alloc = refl
   exec-abstract-preserves-frame (instr-ctrl _) s alloc = refl
@@ -797,14 +740,6 @@ module InstrPrimitives {FS : FrameSemantics} where
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  -- Plan 0.36 Phase 2b: lea-indexed writes only Input1 (or halts) → frame
-  -- (alloc) preserved. Nested split: readLoc then sv-as-loc.
-  exec-abstract-preserves-frame (lea-indexed slot) s alloc
-    with readLoc s (AtStack (current-frame alloc) slot)
-  ... | nothing = refl
-  ... | just sv with sv-as-loc sv
-  ...   | just _  = refl
-  ...   | nothing = refl
   exec-abstract-preserves-frame (instr-alloc-stack n) s alloc = refl
   exec-abstract-preserves-frame (instr-dealloc-stack n) s alloc = refl
   exec-abstract-preserves-frame (instr-reclaim-to n) s alloc = refl
@@ -824,8 +759,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-load-tag-lit _) s alloc = refl
   exec-abstract-preserves-frame (instr-load-code-addr _) s alloc = refl
   exec-abstract-preserves-frame instr-save-closure-reg   s alloc = refl
-  exec-abstract-preserves-frame (instr-case-on-tag f g)  s alloc =
-    exec-case-dispatch-preserves-frame (case-tag-at s) f g s alloc
   exec-abstract-preserves-frame (instr-alloc-heap _)     s alloc = refl
 
   -- Plan 0.30: trace-level frame preservation (mutual with the per-instr
@@ -841,12 +774,82 @@ module InstrPrimitives {FS : FrameSemantics} where
 
   -- Plan 0.30: dispatch-level frame preservation. tag 0 → f, tag≥1 → g
   -- (both via the trace lemma); malformed scrutinee halts with `alloc`.
-  exec-case-dispatch-preserves-frame (just (SV-Tag 0))       f g s alloc = exec-trace-preserves-frame f s alloc
-  exec-case-dispatch-preserves-frame (just (SV-Tag (suc _))) f g s alloc = exec-trace-preserves-frame g s alloc
-  exec-case-dispatch-preserves-frame (just (SV-Ptr _))       f g s alloc = refl
-  exec-case-dispatch-preserves-frame (just (SV-Lit _ _))     f g s alloc = refl
-  exec-case-dispatch-preserves-frame (just (SV-Code _))      f g s alloc = refl
-  exec-case-dispatch-preserves-frame nothing                 f g s alloc = refl
+
+  -- D356: …and the FRAME STACK. No structured instruction touches
+  -- `saved-frames` (`instr-push-frame`/`instr-pop-frame` are the identity
+  -- here; the flat machine owns the real frame moves). Unlike the current
+  -- frame, the loop does not re-anchor it, so the loop clause needs the
+  -- body's trace lemma — hence one mutual block over all four.
+  exec-abstract-preserves-saved : ∀ (i : AbstractInstr) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    saved-frames (proj₂ (exec-abstract i s alloc)) ≡ saved-frames alloc
+  exec-trace-preserves-saved : ∀ (tr : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    saved-frames (proj₂ (exec-trace tr s alloc)) ≡ saved-frames alloc
+
+
+  exec-abstract-preserves-saved mov-to-output s alloc = refl
+  exec-abstract-preserves-saved (instr-reg-op _) s alloc = refl
+  exec-abstract-preserves-saved (instr-ctrl _) s alloc = refl
+  exec-abstract-preserves-saved mov-to-input s alloc = refl
+  exec-abstract-preserves-saved load-indirect s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc with readLoc s loc
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-preserves-saved load-indirect s alloc | nothing = refl
+  exec-abstract-preserves-saved load-indirect-suc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc with readLoc s (sucLoc loc)
+  ...   | just _  = refl
+  ...   | nothing = refl
+  exec-abstract-preserves-saved load-indirect-suc s alloc | nothing = refl
+  exec-abstract-preserves-saved (load-from-slot slot) s alloc
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-saved (store-at-slot slot) s alloc = refl
+  exec-abstract-preserves-saved store-indirect s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = refl
+  ... | nothing  = refl
+  exec-abstract-preserves-saved store-indirect-suc s alloc
+    with sv-as-loc (readReg (regs s) Input1)
+  ... | just loc = refl
+  ... | nothing  = refl
+  exec-abstract-preserves-saved (lea-slot slot) s alloc = refl
+  exec-abstract-preserves-saved (restore-input slot) s alloc
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-saved (instr-alloc-stack n) s alloc = refl
+  exec-abstract-preserves-saved (instr-dealloc-stack n) s alloc = refl
+  exec-abstract-preserves-saved (instr-reclaim-to n) s alloc = refl
+  exec-abstract-preserves-saved (instr-push-frame cap) s alloc = refl
+  exec-abstract-preserves-saved instr-pop-frame s alloc = refl
+  exec-abstract-preserves-saved instr-call-closure s alloc = refl
+  exec-abstract-preserves-saved (worklist-init slot) s alloc = refl
+  exec-abstract-preserves-saved (worklist-push slot) s alloc = refl
+  exec-abstract-preserves-saved (worklist-pop slot) s alloc
+    with readLoc s (AtStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-saved (worklist-check slot) s alloc = refl
+  exec-abstract-preserves-saved (instr-sigop _)       s alloc = refl
+  exec-abstract-preserves-saved (instr-load-const _ _) s alloc = refl
+  exec-abstract-preserves-saved (instr-load-tag-lit _) s alloc = refl
+  exec-abstract-preserves-saved (instr-load-code-addr _) s alloc = refl
+  exec-abstract-preserves-saved instr-save-closure-reg   s alloc = refl
+  exec-abstract-preserves-saved (instr-alloc-heap _)     s alloc = refl
+
+  exec-trace-preserves-saved [] s alloc = refl
+  exec-trace-preserves-saved (i ∷ is) s alloc with halted s
+  ... | true  = refl
+  ... | false =
+    trans (exec-trace-preserves-saved is (proj₁ (exec-abstract i s alloc))
+                                          (proj₂ (exec-abstract i s alloc)))
+          (exec-abstract-preserves-saved i s alloc)
+
 
   -- (E) HEAP PRESERVATION
   -- Instructions that don't write to heap preserve heapMem
@@ -877,12 +880,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (store-at-slot slot) s alloc nhw-store-at-slot =
     writeLoc-heapMem-stack s (current-frame alloc) slot (readReg (regs s) Output)
   exec-abstract-preserves-heapMem (lea-slot slot) s alloc nhw-lea-slot = refl
-  exec-abstract-preserves-heapMem (lea-indexed slot) s alloc nhw-lea-indexed
-    with readLoc s (AtStack (current-frame alloc) slot)
-  ... | nothing = refl
-  ... | just sv with sv-as-loc sv
-  ...   | just _  = refl
-  ...   | nothing = refl
   exec-abstract-preserves-heapMem (restore-input slot) s alloc nhw-restore-input
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
@@ -907,7 +904,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-load-tag-lit _) s alloc nhw-instr-load-tag-lit = refl
   exec-abstract-preserves-heapMem (instr-load-code-addr _) s alloc nhw-instr-load-code-addr = refl
   exec-abstract-preserves-heapMem instr-save-closure-reg   s alloc nhw-instr-save-closure-reg = refl
-  exec-abstract-preserves-heapMem (instr-case-on-tag _ _)  s alloc ()  -- Plan 0.30: no nhw witness
   -- Plan 0.14 Phase A: instr-alloc-heap bumps next-heap-ref but
   -- doesn't write to a heap cell — heapMem unchanged.
   exec-abstract-preserves-heapMem (instr-alloc-heap _)     s alloc nhw-instr-alloc-heap     = refl
@@ -951,12 +947,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-stack-slot (lea-slot k) s alloc f slot _ _ = refl
-  exec-abstract-preserves-stack-slot (lea-indexed k) s alloc f slot _ _
-    with readLoc s (AtStack (current-frame alloc) k)
-  ... | nothing = refl
-  ... | just sv with sv-as-loc sv
-  ...   | just _  = refl
-  ...   | nothing = refl
   exec-abstract-preserves-stack-slot (restore-input k) s alloc f slot _ _
     with readLoc s (AtStack (current-frame alloc) k)
   ... | just _  = refl
@@ -983,7 +973,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (instr-load-tag-lit _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-code-addr _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-save-closure-reg   s alloc f slot _ _ = refl
-  exec-abstract-preserves-stack-slot (instr-case-on-tag _ _)  s alloc f slot () _  -- Plan 0.30: no nhw witness
   exec-abstract-preserves-stack-slot (instr-alloc-heap _)     s alloc f slot _ _ = refl
 
   -- store-at-slot k preserves slot j when j < k (positive ordering)
@@ -1069,14 +1058,6 @@ module InstrPrimitives {FS : FrameSemantics} where
     rewrite frame-eq = refl
   exec-abstract-same-frame (lea-slot slot) s alloc₁ alloc₂ _ frame-eq
     rewrite frame-eq = refl
-  exec-abstract-same-frame (lea-indexed slot) s alloc₁ alloc₂ _ frame-eq
-    with readLoc s (AtStack (current-frame alloc₁) slot)
-       | readLoc s (AtStack (current-frame alloc₂) slot)
-       | cong (λ f → readLoc s (AtStack f slot)) frame-eq
-  ... | just v₁ | just v₂ | eq rewrite just-injective eq = refl
-  ... | nothing | nothing | _ = refl
-  ... | just _ | nothing | ()
-  ... | nothing | just _ | ()
   exec-abstract-same-frame (restore-input slot) s alloc₁ alloc₂ _ frame-eq
     with readLoc s (AtStack (current-frame alloc₁) slot)
        | readLoc s (AtStack (current-frame alloc₂) slot)
@@ -1103,10 +1084,8 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (instr-load-tag-lit _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-load-code-addr _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame instr-save-closure-reg   s alloc₁ alloc₂ _ _ = refl
-  exec-abstract-same-frame (instr-case-on-tag _ _)  s alloc₁ alloc₂ () _  -- Plan 0.30: eff-heap-alloc ⇒ ⊥
   -- instr-alloc-heap: EffectStateOnlyDependsOnFrame eff-heap-alloc = ⊥,
   -- absurd precondition.
-  exec-abstract-same-frame (instr-loop _)           s alloc₁ alloc₂ () _
   exec-abstract-same-frame (instr-alloc-heap _)     s alloc₁ alloc₂ () _
 
   ----------------------------------------------------------------------
@@ -1239,7 +1218,6 @@ InstrWritesToHeap (load-from-slot _)       = ⊥
 InstrWritesToHeap (store-at-slot _)        = ⊥
 InstrWritesToHeap (lea-slot _)             = ⊥
 InstrWritesToHeap (restore-input _)        = ⊥
-InstrWritesToHeap (lea-indexed _)        = ⊥
 InstrWritesToHeap (instr-alloc-stack _)    = ⊥
 InstrWritesToHeap (instr-dealloc-stack _)  = ⊥
 InstrWritesToHeap (instr-reclaim-to _)     = ⊥
@@ -1255,9 +1233,7 @@ InstrWritesToHeap (instr-load-const _ _)   = ⊥
 InstrWritesToHeap (instr-load-tag-lit _)   = ⊥
 InstrWritesToHeap (instr-load-code-addr _) = ⊥
 InstrWritesToHeap instr-save-closure-reg   = ⊥
-InstrWritesToHeap (instr-case-on-tag _ _)  = ⊥
 InstrWritesToHeap (instr-alloc-heap _)     = ⊥
-InstrWritesToHeap (instr-loop _)           = ⊤  -- Plan 0.29: loop body writes heap
 
 -- Helper: trace contains no heap-writing instructions (syntactic)
 -- This is useful for constructing TraceWritesWithinOwned [] proofs
@@ -1275,7 +1251,6 @@ TraceNoHeapWrites (load-from-slot _ ∷ t)          = TraceNoHeapWrites t
 TraceNoHeapWrites (store-at-slot _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (lea-slot _ ∷ t)                = TraceNoHeapWrites t
 TraceNoHeapWrites (restore-input _ ∷ t)           = TraceNoHeapWrites t
-TraceNoHeapWrites (lea-indexed _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-alloc-stack _ ∷ t)       = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-dealloc-stack _ ∷ t)     = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-reclaim-to _ ∷ t)        = TraceNoHeapWrites t
@@ -1291,12 +1266,7 @@ TraceNoHeapWrites (instr-load-const _ _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-tag-lit _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-code-addr _ ∷ t)    = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-save-closure-reg ∷ t)    = TraceNoHeapWrites t
--- Plan 0.30: case-on-tag now BRANCHES (runs a sub-trace that may
--- store-indirect / alloc), so — like instr-loop — it is non-local and
--- excluded from the flat no-heap-write characterisation.
-TraceNoHeapWrites (instr-case-on-tag _ _ ∷ t)     = ⊥
 TraceNoHeapWrites (instr-alloc-heap _ ∷ t)        = TraceNoHeapWrites t
-TraceNoHeapWrites (instr-loop _ ∷ t)              = ⊥  -- loop writes heap
 
 -- All instructions in trace preserve frame
 TracePreservesFrame : AbstractTrace → Set
@@ -1332,7 +1302,6 @@ trace-no-heap-writes-append (store-at-slot _ ∷ t1) t2 tn1 tn2 = trace-no-heap-
 trace-no-heap-writes-append (store-indirect ∷ _) _ () _
 trace-no-heap-writes-append (store-indirect-suc ∷ _) _ () _
 trace-no-heap-writes-append (lea-slot _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (lea-indexed _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (restore-input _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-alloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-dealloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
@@ -1350,8 +1319,6 @@ trace-no-heap-writes-append (instr-load-const _ _ ∷ t1) t2 tn1 tn2 = trace-no-
 trace-no-heap-writes-append (instr-load-tag-lit _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-code-addr _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-save-closure-reg ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (instr-case-on-tag _ _ ∷ t1)  t2 () tn2  -- Plan 0.30: ⊥
-trace-no-heap-writes-append (instr-loop _ ∷ t1)          t2 () tn2
 trace-no-heap-writes-append (instr-alloc-heap _ ∷ t1)     t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
 ------------------------------------------------------------------------
@@ -1544,7 +1511,6 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (load-from-slot _) _ _ = nhw-load-from-slot
     tnhw-head (store-at-slot _) _ _ = nhw-store-at-slot
     tnhw-head (lea-slot _) _ _ = nhw-lea-slot
-    tnhw-head (lea-indexed _) _ _ = nhw-lea-indexed
     tnhw-head (restore-input _) _ _ = nhw-restore-input
     tnhw-head (instr-alloc-stack _) _ _ = nhw-instr-alloc-stack
     tnhw-head (instr-dealloc-stack _) _ _ = nhw-instr-dealloc-stack
@@ -1562,8 +1528,6 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (instr-load-tag-lit _) _ _ = nhw-instr-load-tag-lit
     tnhw-head (instr-load-code-addr _) _ _ = nhw-instr-load-code-addr
     tnhw-head instr-save-closure-reg   _ _ = nhw-instr-save-closure-reg
-    tnhw-head (instr-case-on-tag _ _)  _ ()  -- Plan 0.30: case-on-tag excluded (⊥)
-    tnhw-head (instr-loop _)           _ ()
     tnhw-head (instr-alloc-heap _)     _ _ = nhw-instr-alloc-heap
 
     -- Helper: extract TraceNoHeapWrites for tail
@@ -1578,7 +1542,6 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (load-from-slot _) rest tnhw = tnhw
     tnhw-tail (store-at-slot _) rest tnhw = tnhw
     tnhw-tail (lea-slot _) rest tnhw = tnhw
-    tnhw-tail (lea-indexed _) rest tnhw = tnhw
     tnhw-tail (restore-input _) rest tnhw = tnhw
     tnhw-tail (instr-alloc-stack _) rest tnhw = tnhw
     tnhw-tail (instr-dealloc-stack _) rest tnhw = tnhw
@@ -1596,8 +1559,6 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (instr-load-tag-lit _) rest tnhw = tnhw
     tnhw-tail (instr-load-code-addr _) rest tnhw = tnhw
     tnhw-tail instr-save-closure-reg   rest tnhw = tnhw
-    tnhw-tail (instr-case-on-tag _ _)  rest ()  -- Plan 0.30: case-on-tag excluded (⊥)
-    tnhw-tail (instr-loop _)           rest ()
     tnhw-tail (instr-alloc-heap _)     rest tnhw = tnhw
 
   -- (A1) Current frame slot below write bound is preserved
@@ -1651,8 +1612,6 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-slot-below (store-indirect-suc ∷ rest) s alloc n slot twa () slot<n
     exec-trace-preserves-slot-below (lea-slot k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (lea-slot k) rest s alloc n slot twa tnhw slot<n nhw-lea-slot refl
-    exec-trace-preserves-slot-below (lea-indexed k ∷ rest) s alloc n slot twa tnhw slot<n =
-      exec-trace-preserves-slot-below-nonwrite (lea-indexed k) rest s alloc n slot twa tnhw slot<n nhw-lea-indexed refl
     exec-trace-preserves-slot-below (restore-input k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (restore-input k) rest s alloc n slot twa tnhw slot<n nhw-restore-input refl
     exec-trace-preserves-slot-below (instr-alloc-stack m ∷ rest) s alloc n slot twa tnhw slot<n =
@@ -1701,9 +1660,6 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-below-nonwrite (instr-load-code-addr k) rest s alloc n slot twa tnhw slot<n nhw-instr-load-code-addr refl
     exec-trace-preserves-slot-below (instr-save-closure-reg ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite instr-save-closure-reg rest s alloc n slot twa tnhw slot<n nhw-instr-save-closure-reg refl
-    -- Plan 0.30: case-on-tag branches (non-local) → TraceNoHeapWrites = ⊥.
-    exec-trace-preserves-slot-below (instr-case-on-tag f g ∷ rest) s alloc n slot twa () slot<n
-    exec-trace-preserves-slot-below (instr-loop _ ∷ rest) s alloc n slot twa () slot<n
     exec-trace-preserves-slot-below (instr-alloc-heap k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-alloc-heap k) rest s alloc n slot twa tnhw slot<n nhw-instr-alloc-heap refl
 
@@ -1784,8 +1740,6 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-slot-above (store-indirect-suc ∷ rest) s alloc m slot twb () m≤slot
     exec-trace-preserves-slot-above (lea-slot k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (lea-slot k) rest s alloc m slot twb tnhw m≤slot nhw-lea-slot refl
-    exec-trace-preserves-slot-above (lea-indexed k ∷ rest) s alloc m slot twb tnhw m≤slot =
-      exec-trace-preserves-slot-above-nonwrite (lea-indexed k) rest s alloc m slot twb tnhw m≤slot nhw-lea-indexed refl
     exec-trace-preserves-slot-above (restore-input k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (restore-input k) rest s alloc m slot twb tnhw m≤slot nhw-restore-input refl
     exec-trace-preserves-slot-above (instr-alloc-stack n ∷ rest) s alloc m slot twb tnhw m≤slot =
@@ -1835,8 +1789,6 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-above-nonwrite (instr-load-code-addr k) rest s alloc m slot twb tnhw m≤slot nhw-instr-load-code-addr refl
     exec-trace-preserves-slot-above (instr-save-closure-reg ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite instr-save-closure-reg rest s alloc m slot twb tnhw m≤slot nhw-instr-save-closure-reg refl
-    exec-trace-preserves-slot-above (instr-case-on-tag f g ∷ rest) s alloc m slot twb () m≤slot
-    exec-trace-preserves-slot-above (instr-loop _ ∷ rest) s alloc m slot twb () m≤slot
     exec-trace-preserves-slot-above (instr-alloc-heap k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-alloc-heap k) rest s alloc m slot twb tnhw m≤slot nhw-instr-alloc-heap refl
 
@@ -1912,8 +1864,6 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-ancestor (store-indirect-suc ∷ rest) s alloc f slot cf≺f () -- impossible
     exec-trace-preserves-ancestor (lea-slot k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (lea-slot k) rest s alloc f slot cf≺f tnhw nhw-lea-slot refl
-    exec-trace-preserves-ancestor (lea-indexed k ∷ rest) s alloc f slot cf≺f tnhw =
-      exec-trace-preserves-ancestor-nonwrite (lea-indexed k) rest s alloc f slot cf≺f tnhw nhw-lea-indexed refl
     exec-trace-preserves-ancestor (restore-input k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (restore-input k) rest s alloc f slot cf≺f tnhw nhw-restore-input refl
     exec-trace-preserves-ancestor (instr-alloc-stack m ∷ rest) s alloc f slot cf≺f tnhw =
@@ -1957,8 +1907,6 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-ancestor-nonwrite (instr-load-code-addr k) rest s alloc f slot cf≺f tnhw nhw-instr-load-code-addr refl
     exec-trace-preserves-ancestor (instr-save-closure-reg ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite instr-save-closure-reg rest s alloc f slot cf≺f tnhw nhw-instr-save-closure-reg refl
-    exec-trace-preserves-ancestor (instr-case-on-tag f' g' ∷ rest) s alloc f slot cf≺f ()
-    exec-trace-preserves-ancestor (instr-loop _ ∷ rest) s alloc f slot cf≺f ()
     exec-trace-preserves-ancestor (instr-alloc-heap k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-alloc-heap k) rest s alloc f slot cf≺f tnhw nhw-instr-alloc-heap refl
 
@@ -2016,9 +1964,7 @@ module TracePrimitives {FS : FrameSemantics} where
 
 
   -- (D) FRAME PRESERVATION - trace version
-  -- Plan 0.30: moved up into the mutual block with
-  -- exec-abstract-preserves-frame / exec-case-dispatch-preserves-frame
-  -- (case-on-tag's frame preservation recurses through the sub-trace).
+  -- (proved alongside exec-abstract-preserves-frame above)
 
   -- (E) HEAP PRESERVATION - trace version
   exec-trace-preserves-heapMem : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -2172,11 +2118,6 @@ module TracePrimitives {FS : FrameSemantics} where
   InstrWF s alloc (restore-input slot)     =
     ∃-syntax (λ (v : StoredValue FS) →
       readLoc s (AtStack (current-frame alloc) slot) ≡ just v)
-  -- Plan 0.36 Phase 2b: lea-indexed needs the base slot to hold a POINTER
-  -- (so `slot-base` resolves and exec-lea-indexed-via doesn't halt).
-  InstrWF s alloc (lea-indexed slot)       =
-    ∃-syntax (λ (loc : ValueLocation FS) →
-      readLoc s (AtStack (current-frame alloc) slot) ≡ just (SV-Ptr loc))
   InstrWF s _     store-indirect           =
     ∃-syntax (λ (loc : ValueLocation FS) →
       sv-as-loc (readReg (regs s) Input1) ≡ just loc)
@@ -2192,8 +2133,6 @@ module TracePrimitives {FS : FrameSemantics} where
   -- `⊤` with three postulates supplying the fact; the SigOp one was `⊥` at a
   -- `Halts` SigOp.)
   InstrWF s alloc (instr-sigop si)         = halted (proj₁ (exec-abstract (instr-sigop si) s alloc)) ≡ false
-  InstrWF s alloc (instr-case-on-tag f g)  = halted (proj₁ (exec-abstract (instr-case-on-tag f g) s alloc)) ≡ false
-  InstrWF s alloc (instr-loop body)        = halted (proj₁ (exec-abstract (instr-loop body) s alloc)) ≡ false
   {-# CATCHALL #-}
   InstrWF _ _     _                        = ⊤
 
@@ -2282,9 +2221,6 @@ module TracePrimitives {FS : FrameSemantics} where
     with readLoc s (AtStack (current-frame alloc) slot) | read-eq
   ... | .(just v) | refl = h-eq
   -- restore-input: same shape as load-from-slot.
-  exec-abstract-preserves-halted-WF (lea-indexed slot)    s alloc h-eq (loc , read-eq)
-    with readLoc s (AtStack (current-frame alloc) slot) | read-eq
-  ... | .(just (SV-Ptr loc)) | refl = h-eq
   exec-abstract-preserves-halted-WF (restore-input slot)    s alloc h-eq (v , read-eq)
     with readLoc s (AtStack (current-frame alloc) slot) | read-eq
   ... | .(just v) | refl = h-eq
@@ -2297,13 +2233,11 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | .(just v) | refl = h-eq
   exec-abstract-preserves-halted-WF (worklist-check _)      s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF instr-save-closure-reg  s alloc h-eq _ = h-eq
-  -- sigop / case-on-tag / loop: the witness is the fact (D270).
+  -- sigop: the witness is the fact (D270).
   exec-abstract-preserves-halted-WF (instr-sigop si)        s alloc h-eq iwf = iwf
   exec-abstract-preserves-halted-WF (instr-load-const _ _)  s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-load-tag-lit _)  s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-load-code-addr _) s alloc h-eq _ = h-eq
-  exec-abstract-preserves-halted-WF (instr-case-on-tag f g) s alloc h-eq iwf = iwf
-  exec-abstract-preserves-halted-WF (instr-loop body)       s alloc h-eq iwf = iwf
   exec-abstract-preserves-halted-WF (instr-alloc-heap _)    s alloc h-eq _ = h-eq
 
   -- Universal trace-level halt preservation under TraceWF.
@@ -2411,13 +2345,6 @@ module TracePrimitives {FS : FrameSemantics} where
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-state-frame-eq (lea-indexed slot)    s alloc alloc' _ fe
-    rewrite (sym fe)
-    with readLoc s (AtStack (current-frame alloc) slot)
-  ... | nothing = refl
-  ... | just sv with sv-as-loc sv
-  ...   | just _  = refl
-  ...   | nothing = refl
   exec-abstract-state-frame-eq (restore-input slot)    s alloc alloc' _ fe
     rewrite (sym fe)
     with readLoc s (AtStack (current-frame alloc) slot)
@@ -2437,9 +2364,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-state-frame-eq (instr-load-const _ _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-tag-lit _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ _ = refl
-  exec-abstract-state-frame-eq (instr-case-on-tag _ _) s _ _ () _  -- Plan 0.30: eff-heap-alloc ⇒ ⊥
   -- instr-alloc-heap: absurd precondition (EffectStateOnlyDependsOnFrame eff-heap-alloc = ⊥).
-  exec-abstract-state-frame-eq (instr-loop _)          s _ _ () _
   exec-abstract-state-frame-eq (instr-alloc-heap _)    s _ _ () _
 
 
@@ -2479,7 +2404,7 @@ module TracePrimitives {FS : FrameSemantics} where
   --   • mov-to-output / mov-to-input / lea-slot k' / alloc-stack /
   --     dealloc-stack / reclaim-to / push-frame / pop-frame /
   --     call-closure / save-closure-reg / load-const / load-code-addr /
-  --     load-tag-lit / sigop / case-on-tag / worklist-init/push/check:
+  --     load-tag-lit / sigop / worklist-init/push/check:
   --
   --     InstrWF witness is `tt` (⊤). Trivially transfers.
   --     The instruction's exec-abstract effect commutes with writeLoc:
@@ -3856,12 +3781,6 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heap-ref (lea-slot _) s alloc _ = refl
-  exec-abstract-preserves-heap-ref (lea-indexed slot) s alloc _
-    with readLoc s (AtStack (current-frame alloc) slot)
-  ... | nothing = refl
-  ... | just sv with sv-as-loc sv
-  ...   | just _  = refl
-  ...   | nothing = refl
   exec-abstract-preserves-heap-ref (restore-input slot) s alloc _
     with readLoc s (AtStack (current-frame alloc) slot)
   ... | just v = refl
@@ -3884,10 +3803,8 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-preserves-heap-ref (instr-load-tag-lit _) s alloc _ = refl
   exec-abstract-preserves-heap-ref (instr-load-code-addr _) s alloc _ = refl
   exec-abstract-preserves-heap-ref instr-save-closure-reg   s alloc _ = refl
-  exec-abstract-preserves-heap-ref (instr-case-on-tag _ _)  s alloc ()  -- Plan 0.30: eff-heap-alloc ⇒ ⊥
   -- instr-alloc-heap: EffectPreservesNextHeapRef eff-heap-alloc = ⊥,
   -- so the precondition is uninhabited and this clause is absurd.
-  exec-abstract-preserves-heap-ref (instr-loop _)           s alloc ()
   exec-abstract-preserves-heap-ref (instr-alloc-heap _)     s alloc ()
 
 

@@ -32,7 +32,6 @@ open import Once.CCC.Codegen.SlotSeg
 once-label-of : AbstractInstr → Maybe LabelId
 once-label-of (instr-ctrl (c-label m))               = just m
 once-label-of (instr-ctrl (c-jmp m))                 = just m
-once-label-of (instr-ctrl (c-branch-scratch-zero m)) = just m
 once-label-of (instr-ctrl (c-branch-tag-zero m))     = just m
 {-# CATCHALL #-}
 once-label-of _                                      = nothing
@@ -191,10 +190,10 @@ segagree-++ t1 t2 lo mid hi ls1 ls2 sa1 sa2 p q m st mq lq =
                      (inʀ pk (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))))
 
 -- THE COMPOSITION, GENERALIZED (needed by the cata skeletons). Along a trace
--- the label windows are NOT in increasing order: `cata-trace-nat` emits its
--- own `descend` labels `[l1, l1+6)` BEFORE splicing the algebra, whose labels
--- are `[l, l1)` — below, not above. So the two parts only have to be
--- DISJOINT, in either order.
+-- the label windows need NOT be in increasing order: a skeleton may emit its
+-- own labels `[l1, …)` BEFORE splicing the algebra, whose labels are
+-- `[l, l1)` — below, not above. So the two parts only have to be DISJOINT,
+-- in either order.
 segagree-++' : ∀ (t1 t2 : AbstractTrace) (a b c d : ℕ)
              → LabelsIn a b t1 → LabelsIn c d t2
              → (b ≤ c) ⊎ (d ≤ a)

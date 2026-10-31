@@ -78,7 +78,9 @@ open import Once.IR.Semantics.Trace
   using (projTrace; PrefixFamily; Interp; pureHalf)
 open import Once.Denotation.TraceMonadLaws using (projTrace-pf)
 open Once.IR.Semantics.Trace.PrefixFamily using (bnd; coh; sat)
-open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram)
+open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram; TeleLinked; NamesDistinct)
+open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
+open import Relation.Binary.PropositionalEquality using (_≢_)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -210,10 +212,28 @@ all-rewrite-linked tbl (e ∷ es) (le ∷ les) =
   rewrite-ir-linked (rewrite-table tbl) (fbody e) (linked-retable tbl (fbody e) le)
   ∷ all-rewrite-linked tbl es les
 
+-- plan 0.135 S3: …each entry against its rewritten suffix, and the names
+-- (`rewrite-fun` keeps them).
+tele-rewrite-linked : ∀ {σ : ISig} (es : List IRFun) → TeleLinked σ es → TeleLinked σ (rewrite-table es)
+tele-rewrite-linked []       _          = tt
+tele-rewrite-linked (e ∷ es) (le , les) =
+  rewrite-ir-linked (rewrite-table es) (fbody e) (linked-retable es (fbody e) le) , tele-rewrite-linked es les
+
+names-rewrite : ∀ (es : List IRFun) → NamesDistinct es → NamesDistinct (rewrite-table es)
+names-rewrite []       []         = []
+names-rewrite (e ∷ es) (ne ∷ nes) = all-rw es ne ∷ names-rewrite es nes
+  where
+    all-rw : ∀ (xs : List IRFun) → All (λ e′ → fname e ≢ fname e′) xs
+           → All (λ e′ → fname (rewrite-fun e) ≢ fname e′) (rewrite-table xs)
+    all-rw []       []       = []
+    all-rw (x ∷ xs) (n ∷ ns) = n ∷ all-rw xs ns
+
 rewrite-program-linked : ∀ {σ : ISig} (p : IRProgram) → LinkedProgram σ p → LinkedProgram σ (rewrite-program p)
-rewrite-program-linked p (lm , les) =
+rewrite-program-linked p (lm , les , tl , nd) =
   rewrite-ir-linked (rewrite-table (table p)) (main p) (linked-retable (table p) (main p) lm)
   , all-rewrite-linked (table p) (table p) les
+  , tele-rewrite-linked (table p) tl
+  , names-rewrite (table p) nd
 
 ------------------------------------------------------------------------
 -- IR-level meaning (the source observable).

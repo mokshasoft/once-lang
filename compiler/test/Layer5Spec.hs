@@ -89,6 +89,13 @@ cataGeneralCases =
   , ("layer5-cata-ternarytree-sum", 42)  -- #7 Mu (K Int + (Id * Id * Id))
   , ("layer5-cata-multictor-size",   4)  -- #8 Mu (K Unit + (Id + (Id * Id)))
   , ("layer5-cata-nestedprod-sum",  42)  -- #9 Mu (K Unit + ((K Int * K Int) * Id))
+    -- 2026-10-30: shapes the deleted nat/linear codegens miscompiled.
+  , ("layer5-cata-nat-payload",      6)  -- Mu (K Int + Id), base payload kept
+  , ("layer5-cata-nat-swapped",      3)  -- Mu (Id + K Unit), recursive arm first
+  , ("layer5-cata-nat-nested",      11)  -- Mu (K Unit + (K Unit + Id))
+  , ("layer5-cata-list-swapped",     5)  -- Mu ((K Int * Id) + K Unit)
+  , ("layer5-cata-tree-swapped",    12)  -- Mu ((Id * Id) + K Int)
+  , ("layer5-cata-mixed-nested",   112)  -- Mu (K Int + (Id + (Id * Id)))
   ]
 
 -- | The two effect-emitting cata north-star fixtures (Plan 0.36), with the

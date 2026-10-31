@@ -1168,6 +1168,9 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- `valid-ν-susp-wf`'s value index is the literal term
   -- `TM.valueT (evalᴰ (Ana wf coalg) seed) 0`, so such a clause is
   -- inhabited only when `x` is definitionally an `Ana` layer-zero value.
+  -- (plan 0.88: the index is now a variable, with `νOrigin` saying which ν it
+  -- is — an `Ana` value or an `in-ν` one — so that reason has narrowed to: it
+  -- is inhabited only at a ν with a two-cell origin.)
   --
   -- WHAT IT MUST BE.  A COINDUCTIVE RECORD (`RelNu`) over a layer relation
   -- that recurses on the FUNCTOR CODE with the recursive-position relation

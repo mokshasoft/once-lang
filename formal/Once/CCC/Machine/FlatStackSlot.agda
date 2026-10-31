@@ -115,8 +115,6 @@ flat-same-frames (instr-ctrl c-leave)                   prog fs ff = mkSameFrame
 flat-same-frames (instr-ctrl (c-thunk m b))             prog fs ()
 flat-same-frames (instr-ctrl (c-ret b))                 prog fs ()
 flat-same-frames (instr-ctrl (c-jmp m))                 prog fs ff = sf-jump (find-label prog m) fs
-flat-same-frames (instr-ctrl (c-branch-scratch-zero m)) prog fs ff =
-  sf-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs
 flat-same-frames (instr-ctrl (c-branch-tag-zero m))     prog fs ff =
   sf-branch (tag-zf (flat-read-tag (floc fs))) m prog fs
 flat-same-frames (instr-alloc-stack n)   prog fs ()
@@ -139,7 +137,6 @@ flat-same-frames (restore-input k)        prog fs ff =
   mkSameFrames (ss-mv-ri       (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
                (ss-mv-ri-saved (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs) (falloc fs))
                refl
-flat-same-frames (lea-indexed k)          prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-reclaim-to k)     prog fs ff = mkSameFrames refl refl refl
 -- D092: the call MOVES the frame stack (it pushes the caller's frame and the
 -- return pc), so it left `FrameFreeI` — the route is absurd like the markers'.
@@ -156,9 +153,7 @@ flat-same-frames (instr-load-const p v)   prog fs ff = mkSameFrames refl refl re
 flat-same-frames (instr-load-code-addr k) prog fs ff = mkSameFrames refl refl refl
 flat-same-frames instr-save-closure-reg   prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-load-tag-lit k)   prog fs ff = mkSameFrames refl refl refl
-flat-same-frames (instr-case-on-tag f g)  prog fs ()
 flat-same-frames (instr-alloc-heap k)     prog fs ff = mkSameFrames refl refl refl
-flat-same-frames (instr-loop body)        prog fs ()
 flat-same-frames (instr-reg-op op)        prog fs ff = mkSameFrames refl refl refl
 
 -- (`flat-stack-slot`, the single-field projection, is GONE: `SegWF` carries the

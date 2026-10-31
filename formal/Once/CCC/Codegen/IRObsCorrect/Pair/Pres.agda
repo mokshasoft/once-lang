@@ -21,7 +21,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; store-at-slot; restore-input; load-from-slot; store-indirect-suc; store-indirect; mov-to-input; instr-alloc-heap; sv-as-loc; readReg; Input1; module LocState; module AllocState)
-open AllocState using (current-frame; next-heap-ref)
+open AllocState using (current-frame; saved-frames; next-heap-ref)
 open LocState using (regs)
 open import Once.IRTy using (IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
@@ -35,7 +35,8 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.IR.Semantics.Trace as TM
 
-open import Once.Denotation.Approx using (NotCut)
+open import Once.Denotation.Approx using (NotCut; done)
+open import Once.Res using (returns)
 
 module PairPresC {FS : FrameSemantics} where
 
@@ -46,11 +47,11 @@ module PairPresC {FS : FrameSemantics} where
   -- own TELESCOPE can name the states its two induction hypotheses run from
   -- (a module parameter cannot mention a definition from the module's body).
   pair-p1 pair-p2 : AbstractTrace → ℕ → ℕ → LocState FS → AllocState {FS}
-                  → StoredValue FS → FlatState
-  pair-p1 prog base n s alloc cl =
-    flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
-  pair-p2 prog base n s alloc cl =
-    flat-exec-instr (store-at-slot n) prog (pair-p1 prog base n s alloc cl)
+                  → StoredValue FS → List ℕ → FlatState
+  pair-p1 prog base n s alloc cl rs =
+    flat-exec-instr mov-to-output prog (entry-flat base s alloc cl rs)
+  pair-p2 prog base n s alloc cl rs =
+    flat-exec-instr (store-at-slot n) prog (pair-p1 prog base n s alloc cl rs)
 
   pair-m1 pair-m2 : AbstractTrace → ℕ → FlatState → FlatState
   pair-m1 prog n fsF = flat-exec-instr (store-at-slot (suc n)) prog fsF
@@ -59,17 +60,18 @@ module PairPresC {FS : FrameSemantics} where
   module PairPres
     {A B C : IRTy} (f : IR A B) (g : IR A C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     -- `f`'s induction hypothesis, at the state the two prologue rows leave.
     -- Its placement `bf₀` is free: preservation does not care where the
     -- fragment sits, only what frontier it was emitted at (`f-start`).
     {xf : ⟦ A ⟧} {kf bf₀ : ℕ}
     (vrF : ValueRealized prog bf₀ (suc (suc (suc (suc n)))) l f xf
-             (floc (pair-p2 prog base n s alloc cl)) alloc
-             (fclosure (pair-p2 prog base n s alloc cl)) kf)
-    -- …and `f` was not cut (plan 0.119 D5: the preservation fields hold of a
-    -- run that ended or returned).
-    (ncF : NotCut (resultAt (floc (pair-p2 prog base n s alloc cl)) (⟪ evalᴰ f xf ⟫ kf)))
+             (floc (pair-p2 prog base n s alloc cl rs)) alloc
+             (fclosure (pair-p2 prog base n s alloc cl rs)) rs kf)
+    -- …and `f` RETURNED (plan 0.119 D5; D355: `frame-pres` holds of a run
+    -- that returned, so the equation is asked for, not only `NotCut`).
+    {vF : ⟦ B ⟧} {rF : ℕ}
+    (rfF : resultAt (floc (pair-p2 prog base n s alloc cl rs)) (⟪ evalᴰ f xf ⟫ kf) ≡ returns (done vF rF))
     -- `g`'s, at the state the two mid rows leave. `n1`/`l1` are `f`'s output
     -- frontier and label base; all this module needs of them is `n ≤ n1`,
     -- which the caller supplies as `frontier-mono f f-start l` composed with
@@ -79,11 +81,14 @@ module PairPresC {FS : FrameSemantics} where
     (vrG : ValueRealized prog bg n1 l1 g xg
              (floc (pair-m2 prog n (ValueRealized.settle vrF)))
              (falloc (pair-m2 prog n (ValueRealized.settle vrF)))
-             (fclosure (pair-m2 prog n (ValueRealized.settle vrF))) kg)
+             (fclosure (pair-m2 prog n (ValueRealized.settle vrF))) rs kg)
     (ncG : NotCut (resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg)))
     where
 
     module VR = ValueRealized
+
+    ncF : NotCut (resultAt (floc (pair-p2 prog base n s alloc cl rs)) (⟪ evalᴰ f xf ⟫ kf))
+    ncF = subst NotCut (sym rfF) tt
 
     backup fst-stash snd-stash pair-stash f-start : ℕ
     backup     = n
@@ -94,8 +99,8 @@ module PairPresC {FS : FrameSemantics} where
 
     -- The five segments' boundary states.
     p1 p2 : FlatState
-    p1 = pair-p1 prog base n s alloc cl
-    p2 = pair-p2 prog base n s alloc cl
+    p1 = pair-p1 prog base n s alloc cl rs
+    p2 = pair-p2 prog base n s alloc cl rs
 
     fsF : FlatState
     fsF = VR.settle vrF
@@ -145,6 +150,18 @@ module PairPresC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc NSP.u2) (falloc NSP.u2))
               (exec-abstract-preserves-frame (store-at-slot snd-stash) (floc gs) (falloc gs)))))))))
 
+      sf-tail : saved-frames (falloc NSP.u10) ≡ saved-frames (falloc gs)
+      sf-tail =
+        trans (exec-abstract-preserves-saved (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9))
+       (trans (exec-abstract-preserves-saved store-indirect-suc (floc NSP.u8) (falloc NSP.u8))
+       (trans (exec-abstract-preserves-saved (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7))
+       (trans (exec-abstract-preserves-saved store-indirect (floc NSP.u6) (falloc NSP.u6))
+       (trans (exec-abstract-preserves-saved (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5))
+       (trans (exec-abstract-preserves-saved mov-to-input (floc NSP.u4) (falloc NSP.u4))
+       (trans (exec-abstract-preserves-saved (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3))
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc NSP.u2) (falloc NSP.u2))
+              (exec-abstract-preserves-saved (store-at-slot snd-stash) (floc gs) (falloc gs)))))))))
+
     -- Rows 4-10 do not allocate, so the heap frontier they leave is the one
     -- `instr-alloc-heap 2` set at row 3 — one above `u2`'s.
     -- `abstract` (profile 2026-09-29): consumers need only the TYPE; unfolding
@@ -173,6 +190,11 @@ module PairPresC {FS : FrameSemantics} where
     cf-mid =
       trans (exec-abstract-preserves-frame (restore-input backup) (floc m1) (falloc m1))
             (exec-abstract-preserves-frame (store-at-slot fst-stash) (floc fsF) (falloc fsF))
+
+    sf-mid : saved-frames (falloc m2) ≡ saved-frames (falloc fsF)
+    sf-mid =
+      trans (exec-abstract-preserves-saved (restore-input backup) (floc m1) (falloc m1))
+            (exec-abstract-preserves-saved (store-at-slot fst-stash) (floc fsF) (falloc fsF))
 
     heapref-mid : next-heap-ref (falloc m2) ≡ next-heap-ref (falloc fsF)
     heapref-mid =
@@ -241,9 +263,16 @@ module PairPresC {FS : FrameSemantics} where
     -- (The prologue's two rows are already inside `f`'s hypothesis, whose
     -- `alloc` index IS the caller's — `falloc p2` reduces to `alloc`.)
     ------------------------------------------------------------------
-    frame-pres-pair : current-frame (falloc NSP.u10) ≡ current-frame alloc
-    frame-pres-pair =
-      trans cf-tail (trans (VR.frame-pres vrG ncG) (trans cf-mid (VR.frame-pres vrF ncF)))
+    frame-pres-pair : ∀ {vG rG} → resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vG rG)
+                    → current-frame (falloc NSP.u10) ≡ current-frame alloc
+    frame-pres-pair rgG =
+      trans cf-tail (trans (VR.frame-pres vrG rgG) (trans cf-mid (VR.frame-pres vrF rfF)))
+
+    -- D356: the frame STACK, by the same four pieces.
+    frames-pres-pair : ∀ {vG rG} → resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vG rG)
+                     → saved-frames (falloc NSP.u10) ≡ saved-frames alloc
+    frames-pres-pair rgG =
+      trans sf-tail (trans (VR.frames-pres vrG rgG) (trans sf-mid (VR.frames-pres vrF rfF)))
 
     ------------------------------------------------------------------
     -- D206: BFMONO, at an ARBITRARY slot bound `m` — which is exactly why
@@ -301,12 +330,13 @@ module PairPresC {FS : FrameSemantics} where
                 Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
       (trans (store-slot-preserves-before fst-stash (floc fsF)
                 (record alloc { next-slot = n }) (falloc fsF) loc
-                (VR.frame-pres vrF ncF) (n≤1+n n) b)
+                (VR.frame-pres vrF rfF) (n≤1+n n) b)
              (mem-pres-to-fsF loc b)))
 
-    frame-pres-to-gs : current-frame (falloc gs) ≡ current-frame alloc
-    frame-pres-to-gs =
-      trans (VR.frame-pres vrG ncG) (trans cf-mid (VR.frame-pres vrF ncF))
+    frame-pres-to-gs : ∀ {vG rG} → resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vG rG)
+                     → current-frame (falloc gs) ≡ current-frame alloc
+    frame-pres-to-gs rgG =
+      trans (VR.frame-pres vrG rgG) (trans cf-mid (VR.frame-pres vrF rfF))
 
     module Fill
       (rdi6 : sv-as-loc (readReg (regs (floc NSP.u6)) Input1) ≡ just (AtDynamic NSP.hl))
@@ -349,7 +379,7 @@ module PairPresC {FS : FrameSemantics} where
         -- (3a) `store-at-slot fst-stash` — slot `suc n`, ABOVE the window
        (trans (store-slot-preserves-before fst-stash (floc fsF)
                  (record alloc { next-slot = n }) (falloc fsF) loc
-                 (VR.frame-pres vrF ncF) (n≤1+n n) b)
+                 (VR.frame-pres vrF rfF) (n≤1+n n) b)
         -- (2) `f`'s run, at `f`'s own emission frontier `f-start = n + 4`
        (trans (vr-mem-pres vrF ncF loc (bf-f loc b))
         -- (1b) `store-at-slot backup` — slot `n`, the window's own bound

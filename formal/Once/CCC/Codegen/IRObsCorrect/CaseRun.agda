@@ -162,14 +162,14 @@ module RunC {FS : FrameSemantics} where
     -- branch falls through or jumps, and that is decided by the input's own
     -- tag — `tag-inr` / `tag-inl`.
     ------------------------------------------------------------------
-    module Prologue (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    module Prologue (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
                     (nh : halted s ≡ false)
                     (iwf : InstrWF s alloc load-indirect-suc)
                     (la : LabelsAt prog base (emitted n l (case f g)))
                     where
 
       fs0 : FlatState
-      fs0 = entry-flat base s alloc cl
+      fs0 = entry-flat base s alloc cl rs
 
       -- ── the `inr` arm: the branch falls through.
       r1 r2 r3 : FlatState
@@ -267,10 +267,10 @@ module RunC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- D158's hand-over, restated locally (it lives inside `CompC`).
     ------------------------------------------------------------------
-    handover-eq : ∀ (b : ℕ) (fs : FlatState)
-                → fpc fs ≡ b → fret fs ≡ [] → flink fs ≡ nothing
-                → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs)
-    handover-eq b (mkFlatFull lo al pc rt cls lk) refl refl refl = refl
+    handover-eq : ∀ (b : ℕ) (fs : FlatState) (rs : List ℕ)
+                → fpc fs ≡ b → fret fs ≡ rs → flink fs ≡ nothing
+                → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs) rs
+    handover-eq b (mkFlatFull lo al pc rt cls lk) _ refl refl refl = refl
 
     ------------------------------------------------------------------
     -- THE `inr` ARM, END TO END. Fall through the branch, unpack, run `g`,

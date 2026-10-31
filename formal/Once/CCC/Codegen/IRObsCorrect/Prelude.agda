@@ -87,8 +87,11 @@ open import Once.CCC.Machine.ValidAtWFHalted o tbl using (validAtWF-set-halted) 
 open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace') public
 open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of) public
-open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable) public
-open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef) public
+open import Once.CCC.Machine.ValueRel
+  using (module ClosureWellFormedDef; module ClosureWellFormedBase
+        -- the value relation's constructor names (top-level pattern synonyms)
+        ; valid-unit-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf
+        ; valid-closure-wf; valid-closure-reg-wf; valid-ν-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 open import Once.IR.Semantics.Trace using ()

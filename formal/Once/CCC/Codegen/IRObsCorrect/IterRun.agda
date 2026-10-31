@@ -104,7 +104,7 @@ module IterRunC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- D158's hand-over, restated locally (as `CaseRun` does).
     ------------------------------------------------------------------
-    handover-eq : ∀ (b : ℕ) (fs : FlatState)
-                → fpc fs ≡ b → fret fs ≡ [] → flink fs ≡ nothing
-                → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs)
-    handover-eq b (mkFlatFull lo al pc rt cls lk) refl refl refl = refl
+    handover-eq : ∀ (b : ℕ) (fs : FlatState) (rs : List ℕ)
+                → fpc fs ≡ b → fret fs ≡ rs → flink fs ≡ nothing
+                → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs) rs
+    handover-eq b (mkFlatFull lo al pc rt cls lk) _ refl refl refl = refl

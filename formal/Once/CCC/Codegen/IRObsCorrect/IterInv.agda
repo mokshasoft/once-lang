@@ -33,7 +33,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
 open import Once.CCC.Machine.SMCore
   using (AllocState; AbstractTrace; LocState; StoredValue; readReg; Output; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
@@ -56,17 +56,22 @@ module IterInvC {FS : FrameSemantics} where
     loopFrom : ⟦ E ⟧ → ⟦ A ⟧ → T∞ ⟦ B ⟧
     loopFrom e a = iterRun (round e) (round e a)
 
-    record Anchor : Set where
+    -- plan 0.135 S1: indexed by the program, since its places are.
+    record Anchor (prog : AbstractTrace) : Set where
       field
         s₀     : LocState FS
         alloc₀ : AllocState {FS}
         n≤₀    : next-slot alloc₀ ≤ n
+        -- D357: the invariant the body's IH takes
+        ns₀    : next-slot alloc₀ ≡ 0
+        -- D355: the return stack the loop was entered on
+        rs₀    : List ℕ
         e      : ⟦ E ⟧
         -- the state after the prologue's `load-indirect`: `Output` is `e`'s cell
         fsF    : FlatState
         mf     : AllocMode
         caf    : AllocState {FS}
-        placeF : ResultPlace E mf (falloc fsF) caf e (floc fsF)
+        placeF : ResultPlace {prog = prog} E mf (falloc fsF) caf e (floc fsF)
         cf-F   : current-frame (falloc fsF) ≡ current-frame alloc₀
         ns-F   : next-slot (falloc fsF) ≡ next-slot alloc₀
         hr-F   : next-heap-ref alloc₀ ≤ next-heap-ref (falloc fsF)
@@ -77,11 +82,15 @@ module IterInvC {FS : FrameSemantics} where
                → BeforeFrontier (record (falloc fsF) { next-slot = m }) loc
         left-F : LocState.left (floc fsF) ≡ LocState.left s₀
 
-    module _ (Z : Anchor) where
+    module _ {prog : AbstractTrace} (Z : Anchor prog) where
       open Anchor Z
 
       FR : Once.CCC.FrameSemantics.FrameSemantics.Frame FS
       FR = current-frame alloc₀
+
+      -- D356: …and the frame STACK beneath it.
+      SF : List (Once.CCC.FrameSemantics.FrameSemantics.Frame FS × ℕ)
+      SF = saved-frames alloc₀
 
       -- `e`'s cell, as the prologue stashed it at `suc n`
       fv : StoredValue FS
@@ -90,12 +99,13 @@ module IterInvC {FS : FrameSemantics} where
       record RoundInv (σ : FlatState) (a : ⟦ A ⟧) : Set where
         field
           pc   : fpc σ ≡ 3 + base
-          ret  : fret σ ≡ []
+          ret  : fret σ ≡ rs₀
           lnk  : flink σ ≡ nothing
           nh   : halted (floc σ) ≡ false
           mode : AllocMode
-          inp  : InputAt {E IRT.* A} mode (falloc σ) (e , a) (floc σ)
+          inp  : InputAt {prog = prog} {E IRT.* A} mode (falloc σ) (e , a) (floc σ)
           cf   : current-frame (falloc σ) ≡ FR
+          sf   : saved-frames (falloc σ) ≡ SF
           ns   : next-slot (falloc σ) ≡ next-slot alloc₀
           hr   : next-heap-ref (falloc fsF) ≤ next-heap-ref (falloc σ)
           memF : ∀ (loc : ValueLocation FS) → BeforeFrontier (falloc fsF) loc
@@ -120,10 +130,10 @@ module IterInvC {FS : FrameSemantics} where
                      → fpc settle ≡ length (emitted n l (Iter body)) + base
           stops      : stopsAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ true
                      → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s₀
-          no-ret     : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → fret settle ≡ []
+          no-ret     : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → fret settle ≡ rs₀
           no-link    : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → flink settle ≡ nothing
           place      : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′)
-                     → ResultPlace B out-mode (falloc settle) cont-alloc v (floc settle)
+                     → ResultPlace {prog = prog} B out-mode (falloc settle) cont-alloc v (floc settle)
           events     : chain-events run ≡ eventsAt (floc σ) (⟪ loopFrom e a ⟫ r)
           log        : SMCore.LocState.ev-log (floc settle)
                      ≡ SMCore.LocState.ev-log (floc σ) DL.++ eventsAt (floc σ) (⟪ loopFrom e a ⟫ r)
@@ -131,7 +141,8 @@ module IterInvC {FS : FrameSemantics} where
           mem0       : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r))
                      → ∀ (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = n }) loc
                      → SMCore.MemOps.readLoc (floc settle) loc ≡ SMCore.MemOps.readLoc s₀ loc
-          frame      : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → current-frame (falloc settle) ≡ FR
+          frame      : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → current-frame (falloc settle) ≡ FR
+          frames     : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → saved-frames (falloc settle) ≡ SF
           bf0        : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r))
                      → ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) loc
                      → BeforeFrontier (record (falloc settle) { next-slot = m }) loc

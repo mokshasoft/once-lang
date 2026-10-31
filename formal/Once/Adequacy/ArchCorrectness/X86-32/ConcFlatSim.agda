@@ -12,7 +12,7 @@
 --     `X.exec` of its compiled x86 block, preserving `CompiledCorr`), mirror it
 --     into run-events (block-run-exec) and recurse (events-agree). Each fetched
 --     AbstractInstr feeds its PROVEN `block-step-*` lemma directly (moves/reg-ops/
---     label straight through; c-jmp/scratch-dec/load-store-indirect case their
+--     label straight through; c-jmp/load-store-indirect case their
 --     witness then feed the proven lemma, WF/liveness bad-cases as named residuals).
 --     No `block-step-any` dispatcher / `block-step-rest` catch-all — deleted.
 --
@@ -42,7 +42,7 @@ open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FC
@@ -117,22 +117,14 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
              → RC.RunAt o FS word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → X.readReg (X.State.regs s) r < X.W.modulus)
-  (scratch-dec-guarded : ∀ {hv : FC.HeapView FS word-eq}
-                           (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                           (s : X.State)
-                       → RC.RunAt o FS word-eq prog fs
-                       → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-                       → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                           ≡ just (instr-reg-op scratch-dec)
-                       → 1 ≤ X.readReg (X.State.regs s) edx)
-  -- THE ADDRESS SPACE DOES NOT WRAP at the four emitted `add` sites (plan 0.70
+  -- THE ADDRESS SPACE DOES NOT WRAP at the emitted `add` sites (plan 0.70
   -- phase C). `execInstr`'s `add` computes `W.⊕` unconditionally, because D054
   -- makes wraparound *correct, defined* Once semantics — so no no-overflow
   -- precondition may sit on the instruction, and the range obligation lands
   -- here instead. NOT a claim about user arithmetic: every `add` the compiler
   -- emits computes an address or the observable counter; a user `Int` addition
   -- goes through the Arith backend over `Once.Word` and wraps there by design.
-  -- These are `…ResourceBounds.AddrNoWrap`'s four fields.
+  -- These are `…ResourceBounds.AddrNoWrap`'s fields.
   (ret-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
                    (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                    (s : X.State) (b : ℕ)
@@ -145,14 +137,6 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
                -- weaker half here; riscv64, which adds both in one `addi`,
                -- needs this one. See `Resources.ret-no-wrap`.
                → X.readReg (X.State.regs s) esp + slots (suc b) < X.W.modulus)
-  (count-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
-                     (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                     (s : X.State)
-                 → RC.RunAt o FS word-eq prog fs
-                 → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-                 → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                     ≡ just (instr-reg-op count-inc)
-                 → X.readReg (X.State.regs s) edi + 1 < X.W.modulus)
   -- THE LITERAL SEAM (phase D): an emitted immediate fits in a machine word.
   -- `…ResourceBounds.LitFits`'s three fields.
   (tag-fits : ∀ {hv : FC.HeapView FS word-eq}
@@ -208,8 +192,6 @@ open import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation o FS word-eq fmt
         ; pc-off; ret-eq; x86-32-block-steps; x86-32-link-claim; xrreg
         ; module C; module CompiledCorr ) public
 open import Once.CCC.Machine.FlatStoreWF FS using
-  ()
-open import Once.CCC.Machine.FlatRegTagWF FS using
   ()
 open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
@@ -327,16 +309,15 @@ private
 ------------------------------------------------------------------------
 -- THE FLAT-MACHINE INVARIANT carried through the event-trace induction.
 --
--- Two arch-neutral state invariants of the abstract machine, bundled so the
--- ~19 mutually recursive members below carry ONE hypothesis rather than two:
+-- The arch-neutral state invariant of the abstract machine carried by the
+-- ~19 mutually recursive members below:
 --
---   * `FlatWF`     — no forward pointers (`Once.CCC.Machine.FlatStoreWF`);
---   * `FlatRegTag` — the counter registers hold tags
---                    (`Once.CCC.Machine.FlatRegTagWF`).
+--   * `FlatWF`     — no forward pointers (`Once.CCC.Machine.FlatStoreWF`).
 --
--- Both are re-established ONCE per step, inside `ccc-step-bs`, by their own
--- flat-machine theorem — no per-block-step obligation. The apex exhibits the
--- entry witness of each.
+-- (Plan 0.135 retired the second, `FlatRegTag` — the counter registers held
+-- tags — with the registers.) It is re-established ONCE per step, inside
+-- `ccc-step-bs`, by its flat-machine theorem — no per-block-step obligation.
+-- The apex exhibits the entry witness.
 ------------------------------------------------------------------------
 open import Data.List using ()   -- for `EntryLike`'s empty frame stack
 
@@ -390,11 +371,10 @@ open import Once.Adequacy.ArchCorrectness.X86-32.RegRoles using (x86-32-roles)
 -- plan 0.119 D5: every control lowering is non-empty.
 open import Data.List using (length)
 open import Data.Nat using (s≤s; z≤n)
-open import Once.CCC.Machine.SMCore using (FlatCtrl; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+open import Once.CCC.Machine.SMCore using (FlatCtrl; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
 ctrl-len-arch : ∀ (c : FlatCtrl) → 1 ≤ length (compile-abstract (instr-ctrl c))
 ctrl-len-arch (c-label _) = s≤s z≤n
 ctrl-len-arch (c-jmp _) = s≤s z≤n
-ctrl-len-arch (c-branch-scratch-zero _) = s≤s z≤n
 ctrl-len-arch (c-branch-tag-zero _) = s≤s z≤n
 ctrl-len-arch (c-entry _ _) = s≤s z≤n
 ctrl-len-arch (c-ret _) = s≤s z≤n
@@ -563,7 +543,7 @@ execInstr-cmp-mi prog s a v rd rewrite rd = refl
 -- The engine asks only for the CONCRETE claim — that nothing more comes out
 -- of this machine — and discharges the abstract half itself
 -- (`EE.stuck-result`: the flat machine has halted, so `flat-events` is []).
--- These five are that concrete claim, and they are where the instruction
+-- These four are that concrete claim, and they are where the instruction
 -- names live: a `mov eax,[ecx]` faulting on an unmapped address, a `jmp`/`je`
 -- to a label the compiled program does not contain.
 ------------------------------------------------------------------------
@@ -615,42 +595,8 @@ stuck-c-jmp ev env prog fs s m cc h ftq fl-eq = λ lg →
     step-eq : X.execInstr (compile-trace prog) s (jmp-l (once m)) ≡ just s'
     step-eq rewrite find-label-none-corr prog m fl-eq = refl
 
--- the two TAKEN branches whose label is absent: `cmp` then a `je` that halts.
-stuck-c-branch-scratch-zero : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
-  → readReg (regs (floc fs)) Scratch ≡ SV-Tag 0
-  → find-label prog m ≡ nothing
-  → EE.StuckAt ev env (compile-trace prog) s
-stuck-c-branch-scratch-zero {hv} ev env prog fs s m cc h ftq sc-eq fl-eq = λ lg →
-  3 , trans (RTx.run-events-noncall val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 2 (compile-trace prog) s
-               (cmp (reg edx) (imm 0)) halt-s fetch-cmp refl step-cmp)
-      (trans (RTx.run-events-noncall val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 1 (compile-trace prog) post-cmp
-               (je (once m)) halt-s fetch-je refl step-je)
-             (RTx.run-events-halted val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) post-je refl))
-  where
-    dc = dataCorr cc
-    halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
-    rbx0 : X.readReg (X.State.regs s) edx ≡ 0
-    rbx0 = trans (C.scratch-eq dc) (cong (C.enc-sv hv) sc-eq)
-    fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg edx) (imm 0))
-    fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
-    post-cmp : X.State
-    post-cmp = record s { flags = X.mkflags (X.readReg (X.State.regs s) edx ≡ᵇ 0)
-                                            (X.readReg (X.State.regs s) edx X.<ᵇ 0) false
-                        ; pc = X.State.pc s + 1 }
-    step-cmp : X.execInstr (compile-trace prog) s (cmp (reg edx) (imm 0)) ≡ just post-cmp
-    step-cmp = b-cmp-reg-imm (compile-trace prog) s edx 0
-    fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
-    fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
-                     (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
-    post-je : X.State
-    post-je = record post-cmp { halted = true }
-    step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
-    step-je rewrite rbx0 | find-label-none-corr prog m fl-eq = refl
 
+-- the TAKEN tag branch whose label is absent: `cmp` then a `je` that halts.
 stuck-c-branch-tag-zero : ∀ {hv : HeapView} ev env prog fs s m loc → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
@@ -701,7 +647,6 @@ x86-32-stuck-steps = record
   { st-load-indirect         = stuck-load-indirect
   ; st-load-indirect-suc     = stuck-load-indirect-suc
   ; st-c-jmp                 = stuck-c-jmp
-  ; st-c-branch-scratch-zero = stuck-c-branch-scratch-zero
   ; st-c-branch-tag-zero     = stuck-c-branch-tag-zero
   }
 
@@ -710,7 +655,8 @@ postulate
   -- (instr-sigop arith/external, control jmp/branch, memory/frame/slot). Shrinks as
   -- each is wired (arith→run-events-arith, external→run-events-external+contract, …).
   -- `events-running-case` RETIRED (Plan 0.54 item 6, 2026-08-01): `case`
-  -- compiles to FLAT control, `instr-case-on-tag` has no producer, and the
+  -- compiles to FLAT control, `instr-case-on-tag` had no producer (deleted,
+  -- plan 0.135), and the
   -- nested-trace correspondence it demanded is not needed at all — the
   -- dispatch clause is `⊥`-elim like the frame ops.
   -- THE CALL SITE'S SHAPE (D098). `events-running-call` is GONE — the
@@ -818,8 +764,7 @@ x86-32-supply : EE.Supply
 x86-32-supply = record
   { bss = x86-32-block-steps ; sts = x86-32-stuck-steps
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
-  ; reg-range = reg-range ; scratch-dec-guarded = scratch-dec-guarded
-  ; ret-no-wrap = ret-no-wrap ; count-no-wrap = count-no-wrap
+  ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; lo-fits = lo-fits
   ; arith-sigop-contract = arith-sigop-contract

@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore using (instr-load-tag-lit; load-from-slot; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; store-indirect-suc; sv-as-loc; readReg; Input1; StoredValue; Output; SV-Tag; writeReg-same; sucLoc; SV-Ptr; module LocState; module AllocState)
-open AllocState using (next-heap-ref; current-frame; next-slot)
+open AllocState using (next-heap-ref; current-frame; saved-frames; next-slot)
 open LocState using (regs; halted)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL)
 
@@ -41,11 +41,11 @@ module SumC {FS : FrameSemantics} where
   open Mach {FS}
 
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
-  obs-correct-inl {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inl {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run _ (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
@@ -59,20 +59,23 @@ module SumC {FS : FrameSemantics} where
                    (λ _ → (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
-                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf'))
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')) (λ _ → sf-fs10)
       }
     where
+      -- D357: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       payload-stash sum-stash : ℕ
       payload-stash = n
       sum-stash     = suc n
 
       -- D182: this clause's instance of the shared ten-step invariant.
       module TSP = TenStepPres n (instr-load-tag-lit 0) (load-from-slot n)
-                               prog base s alloc cl
+                               prog base s alloc cl rs
 
       -- The ten instructions, in emission order (`IRToTrace`'s heap build).
       fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-      fs0  = entry-flat base s alloc cl
+      fs0  = entry-flat base s alloc cl rs
       fs1  = flat-exec-instr mov-to-output              prog fs0
       fs2  = flat-exec-instr (store-at-slot payload-stash) prog fs1
       fs3  = flat-exec-instr (instr-alloc-heap 2)       prog fs2
@@ -117,6 +120,15 @@ module SumC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs3) (falloc fs3))
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
               (exec-abstract-preserves-frame (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
+
+      sf-fs7 : saved-frames (falloc fs7) ≡ saved-frames (falloc fs1)
+      sf-fs7 =
+        trans (exec-abstract-preserves-saved store-indirect (floc fs6) (falloc fs6))
+       (trans (exec-abstract-preserves-saved (instr-load-tag-lit 0) (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+       (trans (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs3) (falloc fs3))
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+              (exec-abstract-preserves-saved (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
 
       -- The payload value, as `mov-to-output` leaves it and
       -- `store-at-slot payload-stash` commits it, read back at fs7. The only
@@ -321,6 +333,14 @@ module SumC {FS : FrameSemantics} where
        (trans cf-fs7
               (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
 
+      sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
+      sf-fs10 =
+        trans (exec-abstract-preserves-saved (load-from-slot sum-stash) (floc fs9) (falloc fs9))
+       (trans (exec-abstract-preserves-saved store-indirect-suc (floc fs8) (falloc fs8))
+       (trans (exec-abstract-preserves-saved (load-from-slot payload-stash) (floc fs7) (falloc fs7))
+       (trans sf-fs7
+              (exec-abstract-preserves-saved mov-to-output (floc fs0) (falloc fs0)))))
+
       nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
       nextslot-fs10 =
         trans (exec-abstract-preserves-next-slot (load-from-slot sum-stash) (floc fs9) (falloc fs9) tt)
@@ -393,7 +413,7 @@ module SumC {FS : FrameSemantics} where
           valid' =
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
-              (validityWF-mem-preserved x loc s (floc fs10) bf
+              (validityWF-mem-preserved x loc s (floc fs10) (live→bf bf)
                  (λ loc' bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8 loc'
                                  (frontier-monotone alloc (record alloc { next-slot = n })
@@ -404,18 +424,18 @@ module SumC {FS : FrameSemantics} where
                    → ValidAtWF Heap (falloc fs10) (retVal (evalᴰ (inl {A} {B}) x)) sum-loc (floc fs10)
           mk-valid e =
             valid-inl-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
-              (bf-advance bf) before-suc valid'
+              (live-lift bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                           (retVal (evalᴰ (inl {A} {B}) x)) (floc fs10)
       place = place-of inp
 
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
-  obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (denot-[] k)
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run _ (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
+          realized 10 fs10 Heap (falloc fs10) run (λ _ → nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of run (sym (denot-[] k))) (λ { refl → place }) (m≤m+n k _)
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
@@ -429,20 +449,23 @@ module SumC {FS : FrameSemantics} where
                    (λ _ → (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
-                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf'))
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')) (λ _ → sf-fs10)
       }
     where
+      -- D357: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       payload-stash sum-stash : ℕ
       payload-stash = n
       sum-stash     = suc n
 
       -- D182: this clause's instance of the shared ten-step invariant.
       module TSP = TenStepPres n (instr-load-tag-lit 1) (load-from-slot n)
-                               prog base s alloc cl
+                               prog base s alloc cl rs
 
       -- The ten instructions, in emission order (`IRToTrace`'s heap build).
       fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-      fs0  = entry-flat base s alloc cl
+      fs0  = entry-flat base s alloc cl rs
       fs1  = flat-exec-instr mov-to-output              prog fs0
       fs2  = flat-exec-instr (store-at-slot payload-stash) prog fs1
       fs3  = flat-exec-instr (instr-alloc-heap 2)       prog fs2
@@ -487,6 +510,15 @@ module SumC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs3) (falloc fs3))
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
               (exec-abstract-preserves-frame (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
+
+      sf-fs7 : saved-frames (falloc fs7) ≡ saved-frames (falloc fs1)
+      sf-fs7 =
+        trans (exec-abstract-preserves-saved store-indirect (floc fs6) (falloc fs6))
+       (trans (exec-abstract-preserves-saved (instr-load-tag-lit 1) (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+       (trans (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs3) (falloc fs3))
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+              (exec-abstract-preserves-saved (store-at-slot payload-stash) (floc fs1) (falloc fs1))))))
 
       -- The payload value, as `mov-to-output` leaves it and
       -- `store-at-slot payload-stash` commits it, read back at fs7. The only
@@ -691,6 +723,14 @@ module SumC {FS : FrameSemantics} where
        (trans cf-fs7
               (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
 
+      sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
+      sf-fs10 =
+        trans (exec-abstract-preserves-saved (load-from-slot sum-stash) (floc fs9) (falloc fs9))
+       (trans (exec-abstract-preserves-saved store-indirect-suc (floc fs8) (falloc fs8))
+       (trans (exec-abstract-preserves-saved (load-from-slot payload-stash) (floc fs7) (falloc fs7))
+       (trans sf-fs7
+              (exec-abstract-preserves-saved mov-to-output (floc fs0) (falloc fs0)))))
+
       nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
       nextslot-fs10 =
         trans (exec-abstract-preserves-next-slot (load-from-slot sum-stash) (floc fs9) (falloc fs9) tt)
@@ -763,7 +803,7 @@ module SumC {FS : FrameSemantics} where
           valid' =
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
-              (validityWF-mem-preserved x loc s (floc fs10) bf
+              (validityWF-mem-preserved x loc s (floc fs10) (live→bf bf)
                  (λ loc' bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8 loc'
                                  (frontier-monotone alloc (record alloc { next-slot = n })
@@ -774,7 +814,7 @@ module SumC {FS : FrameSemantics} where
                    → ValidAtWF Heap (falloc fs10) (retVal (evalᴰ (inr {A} {B}) x)) sum-loc (floc fs10)
           mk-valid e =
             valid-inr-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
-              (bf-advance bf) before-suc valid'
+              (live-lift bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy′.+ B) Heap (falloc fs10) (falloc fs10)
                           (retVal (evalᴰ (inr {A} {B}) x)) (floc fs10)

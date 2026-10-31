@@ -111,13 +111,13 @@ module CompC {FS : FrameSemantics} where
   -- The memory evidence carries across because the mov touches registers
   -- only, which is what `mem-eq` supplies at each call site.
   result→input :
-    ∀ {B} {v : ⟦ B ⟧} {mOut alloc ca} {s s' : LocState FS}
-    → ResultPlace B mOut alloc ca v s
+    ∀ {prog} {B} {v : ⟦ B ⟧} {mOut alloc ca} {s s' : LocState FS}
+    → ResultPlace {prog = prog} B mOut alloc ca v s
     → readReg (regs s') Input1 ≡ readReg (regs s) Output
     → (∀ loc → readLoc s' loc ≡ readLoc s loc)
-    → InputAt mOut alloc v s'
+    → InputAt {prog = prog} mOut alloc v s'
   result→input (at-loc loc valid before rax-eq _ _) mov-eq mem-eq =
-    in-loc loc (validityWF-mem-preserved _ loc _ _ before (λ loc' _ → mem-eq loc') valid)
+    in-loc loc (validityWF-mem-preserved _ loc _ _ (live→bf before) (λ loc' _ → mem-eq loc') valid)
                before (trans mov-eq rax-eq)
   result→input (at-reg fit rax-eq) mov-eq _ = in-reg fit (trans mov-eq rax-eq)
   result→input unit-result         _      _ = in-unit refl
@@ -138,10 +138,10 @@ module CompC {FS : FrameSemantics} where
   -- left off plus the bridge, and the sequel's entry state IS the state the
   -- bridge produced. This is what quantifying over placement buys: the
   -- relocation that D156's version needed here has nothing left to do.
-  handover-eq : ∀ (b : ℕ) (fs : FlatState)
-              → fpc fs ≡ b → fret fs ≡ [] → flink fs ≡ nothing
-              → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs)
-  handover-eq b (mkFlatFull lo al pc rt cls lk) refl refl refl = refl
+  handover-eq : ∀ (b : ℕ) (fs : FlatState) (rs : List ℕ)
+              → fpc fs ≡ b → fret fs ≡ rs → flink fs ≡ nothing
+              → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs) rs
+  handover-eq b (mkFlatFull lo al pc rt cls lk) _ refl refl refl = refl
 
   -- `(a + suc b) + c ≡ b + suc (a + c)` — the one arithmetic shuffle the
   -- splice needs, in both directions (the sequel's span index, and its end).
@@ -242,9 +242,9 @@ module CompC {FS : FrameSemantics} where
   -- scan on both sides, which is exactly what `apply ∘ curry body` needs.
   -- ══════════════════════════════════════════════════════════════════════
   comp-value-realized-of :
-    ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
+    ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl rs}
       (prog : AbstractTrace) (base n l k : ℕ)
-    → next-slot alloc ≤ n
+    → next-slot alloc ≡ 0
     → AllSlotStable prog
     → BlockRuns prog
     → SpanAt prog base (emitted n l (g ∘ f))
@@ -253,9 +253,9 @@ module CompC {FS : FrameSemantics} where
     → BlocksAt prog (blocks n l (g ∘ f))
     -- plan 0.88: …and the program's resolution of the composite's labels.
     → LabelsAt prog base (emitted n l (g ∘ f))
-    → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
-    → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-value-realized-of {B = B} {C} {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span bl la ihg mf =
+    → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl rs k
+    → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl rs k
+  comp-value-realized-of {B = B} {C} {g = g} {f} {x} {s} {alloc} {cl} {rs} prog base n l k ns ss cr span bl la ihg mf =
     go (resultAt s (⟪ evalᴰ f x ⟫ k)) refl
        (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
@@ -302,12 +302,12 @@ module CompC {FS : FrameSemantics} where
       -- composite's machine run IS `f`'s. Taken as an ARGUMENT with its own
       -- equation rather than `with`-abstracted.
       go : (ρ : Res (Ap ValueDomain.⟦ B ⟧ᴰᴵ)) → resultAt s (⟪ evalᴰ f x ⟫ k) ≡ ρ
-         → (vr : ValueRealized prog base n l f x s alloc cl k)
+         → (vr : ValueRealized prog base n l f x s alloc cl rs k)
          → chain-events (VR.run vr) ≡ eventsAt s (⟪ evalᴰ f x ⟫ k)
-         → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
+         → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl rs k
       -- ── `f` RAN TO ITS END ────────────────────────────────────────────
       go (returns (done vf r′)) rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
@@ -315,7 +315,7 @@ module CompC {FS : FrameSemantics} where
                        chain (λ p → VR.live vg (to-g p)) (λ p → atEnd (to-g-res p))
                        (λ p → proj₁ (VR.stops vg (to-g p))
                             , trans (proj₂ (VR.stops vg (to-g p))) (chain-left (FlatSteps-++ chainF movStep) liveM))
-                       (λ nc → VR.no-ret vg (to-g-nc nc)) (λ nc → VR.no-link vg (to-g-nc nc))
+                       (λ p → VR.no-ret vg (to-g-res p)) (λ nc → VR.no-link vg (to-g-nc nc))
                        log-comp
                        (λ p → VR.place vg (to-g-res p))
                        (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chain) (sym res-comp)
@@ -323,8 +323,9 @@ module CompC {FS : FrameSemantics} where
                                              (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) rfeq progF)
                                              (VR.progress vg) ctrls-comp))
                        (λ nc fr j bf → mem-pres-comp nc (AtStack fr j) bf) (λ nc hl bf → mem-pres-comp nc (AtDynamic hl) bf)
-                       (λ nc → trans (VR.frame-pres vg (to-g-nc nc)) (cfF ncF))
+                       (λ p → trans (VR.frame-pres vg (to-g-res p)) (cfF rfeq))
                        bf-mono-comp
+                       (λ p → trans (VR.frames-pres vg (to-g-res p)) (sfF rfeq))
           ; traces-agree = traces
           }
         where
@@ -335,17 +336,17 @@ module CompC {FS : FrameSemantics} where
           fsM : FlatState
           fsM = flat-exec-instr mov-to-input prog fsF
 
-          runF≡ : exec-flat kf prog (entry-flat base s alloc cl) ≡ fsF
-          runF≡ = trans (cong (λ m → exec-flat m prog (entry-flat base s alloc cl))
+          runF≡ : exec-flat kf prog (entry-flat base s alloc cl rs) ≡ fsF
+          runF≡ = trans (cong (λ m → exec-flat m prog (entry-flat base s alloc cl rs))
                               (sym (+-identityʳ kf)))
                         (exec-flat-steps chainF 0)
 
           nsF : next-slot (falloc fsF) ≡ next-slot alloc
           nsF = trans (cong (λ st → next-slot (falloc st)) (sym runF≡))
-                      (flat-run-keeps-next-slot kf prog ss base s alloc cl)
+                      (flat-run-keeps-next-slot kf prog ss base s alloc cl rs)
 
-          nsG : next-slot (falloc fsM) ≤ n1
-          nsG = ≤-trans (≤-reflexive nsF) (≤-trans ns (frontier-mono f n l))
+          nsG : next-slot (falloc fsM) ≡ 0
+          nsG = trans nsF ns
 
           -- `f` returned, so `f` did not stop.
           sfeq : stopsAt s (⟪ evalᴰ f x ⟫ k) ≡ false
@@ -360,33 +361,33 @@ module CompC {FS : FrameSemantics} where
           memEq : ∀ loc → readLoc (floc fsM) loc ≡ readLoc (floc fsF) loc
           memEq loc = reg-write-readLoc (floc fsF) _ (halted (floc fsF)) loc
 
-          inputM : InputAt mOutf (falloc fsM) vf (floc fsM)
+          inputM : InputAt {prog = prog} mOutf (falloc fsM) vf (floc fsM)
           inputM = result→input (placeF rfeq) movEq memEq
 
           -- `g` runs at the budget `f` left.
           mg : MachineRefinesObsF prog base' n1 l1 g vf
-                                  (floc fsM) (falloc fsM) (fclosure fsM) r′
+                                  (floc fsM) (falloc fsM) (fclosure fsM) rs r′
           mg = ihg n1 l1 prog base' ss cr span-g
                    (comp-blocks-g g f prog n l bl)
                    (comp-labels-g g f prog base n l la) mOutf vf
-                   (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM r′
+                   (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM r′ rs
 
           vg : ValueRealized prog base' n1 l1 g vf
-                             (floc fsM) (falloc fsM) (fclosure fsM) r′
+                             (floc fsM) (falloc fsM) (fclosure fsM) rs r′
           vg = MachineRefinesObsF.value-realized mg
 
           movStep : FlatSteps prog 1 fsF fsM
           movStep = (liveF sfeq , trans (cong (fetch prog) (endF rfeq)) mov-in-prog) ∷ []
 
-          handover : fsM ≡ entry-flat base' (floc fsM) (falloc fsM) (fclosure fsM)
-          handover = handover-eq base' fsM (cong suc (endF rfeq)) (retF ncF) (linkF ncF)
+          handover : fsM ≡ entry-flat base' (floc fsM) (falloc fsM) (fclosure fsM) rs
+          handover = handover-eq base' fsM rs (cong suc (endF rfeq)) (retF rfeq) (linkF ncF)
 
           chainG : FlatSteps prog (VR.steps vg) fsM (VR.settle vg)
           chainG = subst (λ st → FlatSteps prog (VR.steps vg) st (VR.settle vg))
                          (sym handover) (VR.run vg)
 
           chain : FlatSteps prog (kf + suc (VR.steps vg))
-                            (entry-flat base s alloc cl) (VR.settle vg)
+                            (entry-flat base s alloc cl rs) (VR.settle vg)
           chain = FlatSteps-++ chainF (FlatSteps-++ movStep chainG)
 
           -- The composite's control steps cover both parts'.
@@ -488,16 +489,17 @@ module CompC {FS : FrameSemantics} where
       -- composite's machine run IS `f`'s run, and the three fields describing
       -- a fragment which REACHED ITS END are vacuous.
       go stopped rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF) tf =
         record
           { value-realized =
               realized kf fsF mOutf caf chainF
                        absurd (λ p → case trans (sym res-comp) p of λ ()) (λ _ → stopsF sfeq)
-                       (λ _ → retF ncF) (λ _ → linkF ncF)
+                       (λ p → case trans (sym res-comp) p of λ ()) (λ _ → linkF ncF)
                        (trans logF (cong (h DL.++_) (sym ev-comp)))
                        (λ p → case trans (sym res-comp) p of λ ())
                        (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) (sym res-comp) (m≤m+n k _))
-                       (λ _ → spF ncF) (λ _ → hpF ncF) (λ _ → cfF ncF) (λ _ → bfF ncF)
+                       (λ _ → spF ncF) (λ _ → hpF ncF) (λ p → case trans (sym res-comp) p of λ ()) (λ _ → bfF ncF)
+                       (λ p → case trans (sym res-comp) p of λ ())
           ; traces-agree = trans tf (sym ev-comp)
           }
         where
@@ -523,18 +525,19 @@ module CompC {FS : FrameSemantics} where
       -- The budget ran out inside `f`: `g` never runs, the composite is cut
       -- where `f` is, and the machine is still running there.
       go (returns cut) rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF) tf =
         record
           { value-realized =
               realized kf fsF mOutf caf chainF
                        (λ _ → liveF (cong is-stopped rfeq))
                        (λ p → case trans (sym res-comp) p of λ ())
                        (λ p → case trans (sym (cong is-stopped res-comp)) p of λ ())
-                       (cut-absurd res-comp) (cut-absurd res-comp)
+                       (λ p → case trans (sym res-comp) p of λ ()) (cut-absurd res-comp)
                        (trans logF (cong (h DL.++_) (sym ev-comp)))
                        (λ p → case trans (sym res-comp) p of λ ())
                        (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) (sym res-comp) (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) rfeq progF))
-                       (cut-absurd res-comp) (cut-absurd res-comp) (cut-absurd res-comp) (cut-absurd res-comp)
+                       (cut-absurd res-comp) (cut-absurd res-comp) (λ p → case trans (sym res-comp) p of λ ()) (cut-absurd res-comp)
+                       (λ p → case trans (sym res-comp) p of λ ())
           ; traces-agree = trans tf (sym ev-comp)
           }
         where
@@ -558,27 +561,27 @@ module CompC {FS : FrameSemantics} where
   -- here was structural: the chain it talks about exists only inside `go`'s
   -- pattern match.
 
-  comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
+  comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl rs}
                 (prog : AbstractTrace) (base n l k : ℕ)
-            → next-slot alloc ≤ n
+            → next-slot alloc ≡ 0
             → AllSlotStable prog
             → BlockRuns prog
             → SpanAt prog base (emitted n l (g ∘ f))
             → BlocksAt prog (blocks n l (g ∘ f))
             → LabelsAt prog base (emitted n l (g ∘ f))
-            → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
-            → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
+            → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl rs k
+            → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl rs k
   comp-step prog base n l k ns ss cr span bl la ihg mf =
     comp-value-realized-of prog base n l k ns ss cr span bl la ihg mf
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
-  comp-obs-correct {g = g} {f} ihg ihf n l prog base ss cr span bl la mIn x s alloc cl ns nh inp k =
+  comp-obs-correct {g = g} {f} ihg ihf n l prog base ss cr span bl la mIn x s alloc cl ns nh inp k rs =
     comp-step prog base n l k ns ss cr span bl la ihg
       (ihf n l prog base ss cr
            (comp-span-f g f prog base n l span)
            (comp-blocks-f g f prog n l bl)
-           (comp-labels-f g f prog base n l la) mIn x s alloc cl ns nh inp k)
+           (comp-labels-f g f prog base n l la) mIn x s alloc cl ns nh inp k rs)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

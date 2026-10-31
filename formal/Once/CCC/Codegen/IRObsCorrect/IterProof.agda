@@ -25,7 +25,7 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
   using (instr-ctrl; c-label; AllocState; AbstractTrace; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
          sv-as-loc; load-indirect; store-at-slot; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Data.Product using (Σ)
 open import Once.IRTy using (IRTy)
@@ -42,7 +42,7 @@ module IterProofC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open ClosureWellFormedDef {FS} using (rep-prim; rep-unit)
+  open ClosureWellFormedBase {FS} using (rep-prim; rep-unit)
   open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}
@@ -55,10 +55,10 @@ module IterProofC {FS : FrameSemantics} where
     (bl : BlocksAt prog (blocks n l (Iter body)))
     (la : LabelsAt prog base (emitted n l (Iter body)))
     (mIn : AllocMode) (e : ⟦ E ⟧) (a₀ : ⟦ A ⟧)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
-    (pl : ValueLocation FS) (pv : ValidAtWF mIn alloc {E IRT.* A} (e , a₀) pl s)
-    (bfp : BeforeFrontier alloc pl) (rd : readReg (regs s) Input1 ≡ SV-Ptr pl)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false)
+    (pl : ValueLocation FS) (pv : ValidAtWF {prog = prog} mIn alloc {E IRT.* A} (e , a₀) pl s)
+    (bfp : Live alloc pl) (rd : readReg (regs s) Input1 ≡ SV-Ptr pl)
     (k : ℕ)
     where
 
@@ -66,8 +66,12 @@ module IterProofC {FS : FrameSemantics} where
     open IterRun body n l prog base span
     open Loop body n l base
 
+    -- D357: the old premise, from the invariant.
+    n≤ : next-slot alloc ≤ n
+    n≤ = ns≤ {alloc} n ns0
+
     fs0 fs1 fs2 σ₁ : FlatState
-    fs0 = entry-flat base s alloc cl
+    fs0 = entry-flat base s alloc cl rs
     fs1 = flat-exec-instr load-indirect prog fs0
     fs2 = flat-exec-instr (store-at-slot (suc n)) prog fs1
     σ₁  = flat-exec-instr (instr-ctrl (c-label (ℓ o l))) prog fs2
@@ -77,15 +81,15 @@ module IterProofC {FS : FrameSemantics} where
 
     -- `e`'s place after `load-indirect`, `Input1` untouched, the run live —
     -- read off the pair's first cell (`fst`'s argument, D178/D187).
-    fst-out : CellAt alloc E e pl s
-            → Σ AllocMode (λ m → ResultPlace E m alloc alloc e (floc fs1))
+    fst-out : CellAt {prog = prog} alloc E e pl s
+            → Σ AllocMode (λ m → ResultPlace {prog = prog} E m alloc alloc e (floc fs1))
               × (halted (floc fs1) ≡ false)
               × (readReg (regs (floc fs1)) Input1 ≡ readReg (regs s) Input1)
     fst-out (cell-ptr {comp-loc = cloc} cp cbef cv) =
       (_ , at-loc cloc cval cbef (exec-abstract-load-indirect-output s alloc pl (SV-Ptr cloc) rd cp) cval cbef)
       , exec-abstract-preserves-halted-WF load-indirect s alloc nh (load-indirect-twf {alloc = alloc} pl (SV-Ptr cloc) rd cp)
       , load-ind-preserves-input s alloc pl (SV-Ptr cloc) (cong sv-as-loc rd) cp
-      where cval = validityWF-mem-preserved e cloc s (floc fs1) cbef (λ lc _ → mem-eq1 lc) cv
+      where cval = validityWF-mem-preserved e cloc s (floc fs1) (live→bf cbef) (λ lc _ → mem-eq1 lc) cv
     fst-out (cell-inline (rep-prim fit) cp) =
       (Heap , at-reg fit (exec-abstract-load-indirect-output s alloc pl _ rd cp))
       , exec-abstract-preserves-halted-WF load-indirect s alloc nh (load-indirect-twf {alloc = alloc} pl _ rd cp)
@@ -123,9 +127,9 @@ module IterProofC {FS : FrameSemantics} where
     pre-chain : FlatSteps prog 3 fs0 σ₁
     pre-chain = (nh , at-load) ∷ (nh1 , at-store) ∷ (nh2 , at-top) ∷ []
 
-    Z : Anchor
+    Z : Anchor prog
     Z = record
-      { s₀ = s ; alloc₀ = alloc ; n≤₀ = n≤ ; e = e
+      { s₀ = s ; alloc₀ = alloc ; n≤₀ = n≤ ; ns₀ = ns0 ; rs₀ = rs ; e = e
       ; fsF = fs1 ; mf = proj₁ (proj₁ FO) ; caf = alloc ; placeF = proj₂ (proj₁ FO)
       ; cf-F = refl ; ns-F = refl ; hr-F = ≤-refl
       ; mem0-F = λ lc _ → mem-eq1 lc
@@ -136,9 +140,9 @@ module IterProofC {FS : FrameSemantics} where
     inv₁ : RoundInv Z σ₁ a₀
     inv₁ = record
       { pc = refl ; ret = refl ; lnk = refl ; nh = nh2 ; mode = mIn
-      ; inp = in-loc pl (validityWF-mem-preserved (e , a₀) pl s (floc σ₁) bfp (λ lc b → trans (memS lc b) (mem-eq1 lc)) pv)
+      ; inp = in-loc pl (validityWF-mem-preserved (e , a₀) pl s (floc σ₁) (live→bf bfp) (λ lc b → trans (memS lc b) (mem-eq1 lc)) pv)
                  bfp (trans input1 rd)
-      ; cf = refl ; ns = refl ; hr = ≤-refl
+      ; cf = refl ; sf = refl ; ns = refl ; hr = ≤-refl
       ; memF = λ lc bf → memS lc bf
       ; env = SMCore.MemOps.writeLoc-read-same-stack (floc fs1) (current-frame alloc) (suc n) (readReg (regs (floc fs1)) Output)
       ; mem0 = λ lc bf → trans (memS0 lc bf) (mem-eq1 lc)
@@ -160,7 +164,7 @@ module IterProofC {FS : FrameSemantics} where
 
     module R = RoundsRun rr
 
-    witness : MachineRefinesObsF prog base n l (Iter body) (e , a₀) s alloc cl k
+    witness : MachineRefinesObsF prog base n l (Iter body) (e , a₀) s alloc cl rs k
     witness = record
       { value-realized =
           realized (3 + R.steps) R.settle R.out-mode R.cont-alloc
@@ -168,20 +172,21 @@ module IterProofC {FS : FrameSemantics} where
             (λ p → R.live (trans (cong is-stopped res) p))
             (λ p → R.at-end (trans res p))
             (λ p → R.stops (trans (cong is-stopped res) p))
-            (λ nc → R.no-ret (subst NotCut (sym res) nc))
+            (λ p → R.no-ret (trans res p))
             (λ nc → R.no-link (subst NotCut (sym res) nc))
             (trans R.log (cong₂ DL._++_ log1 evs))
             (λ p → R.place (trans res p))
             (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls R.run) res R.progress) (ctrls-≤ʳ pre-chain R.run))
             (λ nc fr j bf → R.mem0 (subst NotCut (sym res) nc) (AtStack fr j) bf)
             (λ nc hl bf → R.mem0 (subst NotCut (sym res) nc) (AtDynamic hl) bf)
-            (λ nc → R.frame (subst NotCut (sym res) nc))
+            (λ p → R.frame (trans res p))
             (λ nc → R.bf0 (subst NotCut (sym res) nc))
+            (λ p → R.frames (trans res p))
       ; traces-agree = trans (chain-events-++ pre-chain R.run) (trans R.events evs)
       }
 
   obs-correct-Iter : ∀ {E A B} (body : IR (E IRT.* A) (B IRT.+ A)) → IRObsCorrectF body → IRObsCorrectF (Iter body)
-  obs-correct-Iter body ihb n l prog base ss cr span bl la mIn (e , a₀) s alloc cl n≤ nh (in-loc pl pv bfp rd) k =
-    Main.witness body ihb n l prog base ss cr span bl la mIn e a₀ s alloc cl n≤ nh pl pv bfp rd k
-  obs-correct-Iter body ihb n l prog base ss cr span bl la mIn x s alloc cl n≤ nh (in-reg () _) k
-  obs-correct-Iter body ihb n l prog base ss cr span bl la mIn x s alloc cl n≤ nh (in-unit ()) k
+  obs-correct-Iter body ihb n l prog base ss cr span bl la mIn (e , a₀) s alloc cl n≤ nh (in-loc pl pv bfp rd) k rs =
+    Main.witness body ihb n l prog base ss cr span bl la mIn e a₀ s alloc cl rs n≤ nh pl pv bfp rd k
+  obs-correct-Iter body ihb n l prog base ss cr span bl la mIn x s alloc cl n≤ nh (in-reg () _) k rs
+  obs-correct-Iter body ihb n l prog base ss cr span bl la mIn x s alloc cl n≤ nh (in-unit ()) k rs

@@ -172,29 +172,10 @@ data OutsideOwned : HeapLocation → HeapOwnership → Set where
 data AbstractReg : Set where
   Input1 : AbstractReg    -- first argument location
   Output : AbstractReg    -- result location
-  -- Plan 0.29: loop-private scratch register (maps to callee-saved rbx).
-  -- Used only by the recursion-scheme loop construct (`instr-loop`) to
-  -- hold the iteration counter/flag across algebra invocations. No CCC
-  -- primitive or SigOp ever writes it (see `exec-abstract`), so it is
-  -- preserved by every loop-body instruction for free.
-  Scratch : AbstractReg
-  -- Plan 0.54 rung D (item 4): the descend TALLY, split off the (now retired)
-  -- second argument location.
-  --
-  -- The tally used to live in `Input2`, which was ALSO the second argument
-  -- location of the split-input calling convention. Those two roles
-  -- contradict: the tally is always an `SV-Tag`, an argument is anything. That
-  -- conflation made `count-inc`/`scratch-dec`/`c-branch-scratch-zero`
-  -- UNPROVABLE against the concrete machine (abstract `sv-succ`/`sv-pred`
-  -- coerce a non-tag to a tag; x86 `add`/`sub` work on the encoding), and it
-  -- was false by DESIGN INTENT, not by accident.
-  --
-  -- With the roles split, `Count` and `Scratch` are written ONLY with tags
-  -- (`count-zero`/`count-inc`/`scratch-one`/`scratch-zero`/`scratch-dec`, and
-  -- `scratch-load-count : Scratch := Count`), so "both hold tags" is a STATE
-  -- invariant provable by induction over every instruction — see
-  -- `Once.CCC.Machine.FlatRegTagWF`.
-  Count : AbstractReg
+  -- plan 0.135: the loop-private `Scratch` (rbx) and the descend tally
+  -- `Count` (r14) were RETIRED with `instr-loop`/`lea-indexed`, the only
+  -- instructions that read them; nothing had written them since the loop
+  -- pokes were deleted. Two roles remain.
 
 -- `ValueLocation` (AtStack / AtDynamic) is defined in
 -- Once.CCC.Machine.Locations (D062) and re-exported above.
@@ -324,18 +305,6 @@ Input1 ≟R Input1 = yes refl
 Input1 ≟R Output = no (λ ())
 Output ≟R Input1 = no (λ ())
 Output ≟R Output = yes refl
-Input1 ≟R Scratch = no (λ ())
-Output ≟R Scratch = no (λ ())
-Scratch ≟R Input1 = no (λ ())
-Scratch ≟R Output = no (λ ())
-Scratch ≟R Scratch = yes refl
-Input1 ≟R Count = no (λ ())
-Output ≟R Count = no (λ ())
-Scratch ≟R Count = no (λ ())
-Count ≟R Input1 = no (λ ())
-Count ≟R Output = no (λ ())
-Count ≟R Scratch = no (λ ())
-Count ≟R Count = yes refl
 
 -- Plan 0.13.2: registers hold `StoredValue`, not `ValueLocation`.
 -- Real machines load tags / ints / pointers into the same registers
@@ -345,22 +314,16 @@ record Registers (FS : FrameSemantics) : Set where
   constructor mkRegs
   field
     input1 output : StoredValue FS
-    scratch : StoredValue FS  -- Plan 0.29: loop-private (rbx); see AbstractReg.Scratch
-    count : StoredValue FS    -- Plan 0.54 D item 4: descend tally; see AbstractReg.Count
 
 open Registers
 
 readReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS
 readReg r Input1 = input1 r
 readReg r Output = output r
-readReg r Scratch = scratch r
-readReg r Count = count r
 
 writeReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS → Registers FS
 writeReg r Input1 v = record r { input1 = v }
 writeReg r Output v = record r { output = v }
-writeReg r Scratch v = record r { scratch = v }
-writeReg r Count v = record r { count = v }
 
   where open import Data.Nat using ()
 
@@ -374,28 +337,12 @@ writeReg-preserves regs Input1 Output v r≢dst = refl
 writeReg-preserves regs Output Input1 v r≢dst = refl
 writeReg-preserves regs Output Output v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
-writeReg-preserves regs Input1 Scratch v r≢dst = refl
-writeReg-preserves regs Output Scratch v r≢dst = refl
-writeReg-preserves regs Scratch Input1 v r≢dst = refl
-writeReg-preserves regs Scratch Output v r≢dst = refl
-writeReg-preserves regs Scratch Scratch v r≢dst = ⊥-elim (r≢dst refl)
-  where open import Data.Empty using (⊥-elim)
-writeReg-preserves regs Input1 Count v r≢dst = refl
-writeReg-preserves regs Output Count v r≢dst = refl
-writeReg-preserves regs Scratch Count v r≢dst = refl
-writeReg-preserves regs Count Input1 v r≢dst = refl
-writeReg-preserves regs Count Output v r≢dst = refl
-writeReg-preserves regs Count Scratch v r≢dst = refl
-writeReg-preserves regs Count Count v r≢dst = ⊥-elim (r≢dst refl)
-  where open import Data.Empty using (⊥-elim)
 
 -- Key lemma: writing to a register and reading it back gives the written value
 writeReg-same : ∀ {FS} (regs : Registers FS) dst v →
   readReg (writeReg regs dst v) dst ≡ v
 writeReg-same regs Input1 v = refl
 writeReg-same regs Output v = refl
-writeReg-same regs Scratch v = refl
-writeReg-same regs Count v = refl
 
 
 -- Key lemma: writing twice to same register is same as writing once
@@ -403,21 +350,12 @@ writeReg-overwrite : ∀ {FS} (regs : Registers FS) dst x y →
   writeReg (writeReg regs dst x) dst y ≡ writeReg regs dst y
 writeReg-overwrite regs Input1 x y = refl
 writeReg-overwrite regs Output x y = refl
-writeReg-overwrite regs Scratch x y = refl
-writeReg-overwrite regs Count x y = refl
 
 -- Plan 0.29 (M5): register pokes for recursion-scheme loop bodies.
 data RegOp : Set where
-  scratch-one        : RegOp  -- Scratch := SV-Tag 1   (descend continue flag)
-  scratch-zero       : RegOp  -- Scratch := SV-Tag 0   (stop / break)
-  scratch-dec        : RegOp  -- Scratch := pred Scratch (ascend countdown)
-  scratch-load-count : RegOp  -- Scratch := Count       (count → counter)
-  -- Plan 0.54 D item 4: the tally lives in `Count`, NOT in the ABI's second
-  -- argument register. Both writers produce an `SV-Tag` unconditionally, which
-  -- is what makes `FlatRegTagWF` a state invariant. (Was `count-zero`/
-  -- `count-inc`; see AbstractReg.Count for why the split was necessary.)
-  count-zero         : RegOp  -- Count   := SV-Tag 0    (descend tally init)
-  count-inc          : RegOp  -- Count   := succ Count  (descend count++)
+  -- plan 0.135: the loop pokes (`scratch-one`/`-zero`/`-dec`/`-load-count`,
+  -- `count-zero`/`-inc`) were deleted with the shape-specialised cata
+  -- codegens that emitted them; `out-nz` is the one register op left.
   -- plan 0.108: A WORD, AS A TAG. `Output := SV-Tag (Output ≠ 0)` — a
   -- comparison's 0/1 (its arith block's result) becomes the tag of its
   -- `Bool = Unit + Unit` (D263: true = inr = tag 1). On OUTPUT, the register
@@ -434,29 +372,6 @@ sv-nz (SV-Tag n)          = SV-Tag (if n ℕ.≡ᵇ 0 then 0 else 1)
 sv-nz (SV-Lit fits-float _) = SV-Tag 1
 sv-nz (SV-Ptr _)          = SV-Tag 1
 sv-nz (SV-Code _)         = SV-Tag 1
-
--- Plan 0.29 (M5): SV-Tag counter arithmetic for instr-reg-op.
-sv-succ : ∀ {FS} → StoredValue FS → StoredValue FS
-sv-succ (SV-Tag n)   = SV-Tag (suc n)
-sv-succ (SV-Ptr _)   = SV-Tag 1
-sv-succ (SV-Lit _ _) = SV-Tag 1
-sv-succ (SV-Code _)  = SV-Tag 1
-
-sv-pred : ∀ {FS} → StoredValue FS → StoredValue FS
-sv-pred (SV-Tag (suc n)) = SV-Tag n
-sv-pred (SV-Tag 0)       = SV-Tag 0
-sv-pred (SV-Ptr _)       = SV-Tag 0
-sv-pred (SV-Lit _ _)     = SV-Tag 0
-sv-pred (SV-Code _)      = SV-Tag 0
-
--- Plan 0.36 Phase 2b: read a count register (SV-Tag n) as the ℕ index
--- for `lea-indexed`'s `offsetLoc`. Non-tags index 0 (never reached when
--- the index register holds the descend/ascend counter).
-sv-tag-val : ∀ {FS} → StoredValue FS → ℕ
-sv-tag-val (SV-Tag n)   = n
-sv-tag-val (SV-Ptr _)   = 0
-sv-tag-val (SV-Lit _ _) = 0
-sv-tag-val (SV-Code _)  = 0
 
 ------------------------------------------------------------------------
 -- LocState: Abstract Machine State
@@ -484,12 +399,6 @@ open LocState
 -- kept separate so `proj₂ (exec-abstract (instr-reg-op op)) ≡ alloc`
 -- holds uniformly, without case-splitting on `op`).
 setReg : ∀ {FS} → RegOp → Registers FS → Registers FS
-setReg scratch-one        r = writeReg r Scratch (SV-Tag 1)
-setReg scratch-zero       r = writeReg r Scratch (SV-Tag 0)
-setReg scratch-dec        r = writeReg r Scratch (sv-pred (readReg r Scratch))
-setReg scratch-load-count r = writeReg r Scratch (readReg r Count)
-setReg count-zero         r = writeReg r Count (SV-Tag 0)
-setReg count-inc          r = writeReg r Count (sv-succ (readReg r Count))
 setReg out-nz             r = writeReg r Output (sv-nz (readReg r Output))
 
 -- Uniform record-update on `regs`: heapMem/stackMem/halted preserved
@@ -886,18 +795,6 @@ module ExecFinal {FS : FrameSemantics} where
   exec-store-via-resolved (just loc) v s = writeLoc s loc v
   exec-store-via-resolved nothing    _ s = record s { halted = true }
 
-  -- Plan 0.36 Phase 2b: `lea-indexed` helpers (with-free). `slot-base`
-  -- resolves the base pointer read from a slot; `exec-lea-indexed-via`
-  -- writes `&(base + idx)` into Input1 (halts if the base isn't a ptr).
-  slot-base : Maybe (StoredValue FS) → Maybe (ValueLocation FS)
-  slot-base (just sv) = sv-as-loc sv
-  slot-base nothing   = nothing
-
-  exec-lea-indexed-via : Maybe (ValueLocation FS) → ℕ → LocState FS → LocState FS
-  exec-lea-indexed-via (just loc) idx s =
-    record s { regs = writeReg (regs s) Input1 (SV-Ptr (offsetLoc loc idx)) }
-  exec-lea-indexed-via nothing    idx s = record s { halted = true }
-
   -- Plan 0.27: `-suc` variants of the resolved load/store helpers, dispatching
   -- on the resolved Maybe address EXPLICITLY (no `with`). exec-abstract's
   -- load-indirect-suc / store-indirect-suc route through these so that a
@@ -1105,7 +1002,6 @@ data FlatCtrl : Set where
   -- target), lowered per target (x86: cmp+je = 2 instrs; RISC-V: beqz = 1).
   -- No flags register in the abstract machine — the condition is computed
   -- and consumed inside this single step.
-  c-branch-scratch-zero : LabelId → FlatCtrl -- if Scratch ≟ SV-Tag 0, jump to label
   c-branch-tag-zero     : LabelId → FlatCtrl -- if *Input1 tag ≟ SV-Tag 0, jump
   -- Plan 0.63: the call/return half of flat control. A RETURN is pure
   -- control flow, so it belongs here rather than as a top-level
@@ -1252,25 +1148,11 @@ data AbstractInstr : Set where
   -- `run-inl` / `run-inr` to deposit the sum-discriminator (0 for
   -- inl, 1 for inr) before storing it to the container's tag slot.
   --
-  -- `instr-case-on-tag f g`: read `SV-Tag k` from `*Input1` (the
-  -- sum value's tag slot, at offset 0) and dispatch:
-  --   k = 0 → exec-trace f
-  --   k = 1 → exec-trace g
-  --   otherwise (no tag / malformed sum) → halt
-  --
-  -- This is the tag-aware abstract semantics promised by Plan 0.13.1
-  -- Phase 1. The proof of run-case correctness composes from
-  -- `valid-inl-wf` / `valid-inr-wf`'s tag-eq fields (Plan 0.13.1
-  -- Phase 2) — no `case-codegen-faithful` postulate needed.
-  --
-  -- Argument type for instr-case-on-tag is `List AbstractInstr`
-  -- (= `AbstractTrace`) spelled out — the `AbstractTrace` alias is
-  -- defined just below.
-  -- NOTE: keep instr-case-on-tag in this position so existing
-  -- compile-correct proofs and Haskell-side simulations don't shift.
-  -- New constructors get added strictly AFTER instr-case-on-tag.
+  -- plan 0.135: the nested `instr-case-on-tag f g` (dispatch on the tag at
+  -- `*Input1` into one of two sub-traces) was RETIRED: the codegen branches
+  -- with flat `c-branch-tag-zero` control instead. With `instr-loop` also
+  -- gone, no instruction carries a sub-trace.
   instr-load-tag-lit : ℕ → AbstractInstr
-  instr-case-on-tag : List AbstractInstr → List AbstractInstr → AbstractInstr
 
   -- Plan 0.14 Phase A — heap allocation primitive.
   --
@@ -1284,38 +1166,17 @@ data AbstractInstr : Set where
   -- the abstract semantics treats every `instr-alloc-heap _` as a single
   -- fresh `AtDynamic` whose `sucLoc` chains give access to all n cells
   -- (HeapLocation already supports this).
-  --
-  -- Added AFTER `instr-case-on-tag` so existing MAlonzo constructor
-  -- indices remain stable.
   instr-alloc-heap : ℕ → AbstractInstr
 
-  -- Plan 0.29: generic fuel-bounded loop. `instr-loop body` re-runs
-  -- `body` while the loop-private `Scratch` register is nonzero (the
-  -- body updates `Scratch` each iteration); execution is fuel-bounded
-  -- (see `exec-loop`). This is the reusable control-flow primitive for
-  -- structural-recursion schemes (Cata first; Para/Ana/Hylo later) — the
-  -- per-scheme descend/ascend logic lives in `body`, the loop/back-edge
-  -- and fuel are shared. Added AFTER all prior constructors for MAlonzo
-  -- ctor-index stability.
-  instr-loop : List AbstractInstr → AbstractInstr
-
-  -- Plan 0.29 (M5): register-only counter pokes for the recursion-scheme
-  -- loop bodies (Scratch = loop counter/flag, Count = descend tally).
+  -- Plan 0.29 (M5): register-only ops (plan 0.135: just `out-nz` now).
   -- No heap, no slot, frame-preserving — its whole cascade mirrors
-  -- `mov-to-output`. x86: mov/add/sub on rbx (Scratch) / r14 (Count).
+  -- `mov-to-output`.
   instr-reg-op : RegOp → AbstractInstr
 
   -- Plan 0.32 (M3): flat control flow (label/jump/test). Added LAST for
   -- MAlonzo ctor-index stability. Structured exec halts on these; the
   -- flat pc/fuel exec interprets them. See FlatCtrl above.
   instr-ctrl : FlatCtrl → AbstractInstr
-
-  -- Plan 0.36 Phase 2b: indexed-pointer compute for the cata payload/work
-  -- stack. `lea-indexed slot`: Input1 := &(base + idx), where base is the
-  -- array pointer held at stack `slot` and idx = the count in `Scratch`
-  -- (reuses `offsetLoc`). The subsequent `load-indirect`/`store-indirect`
-  -- then access `array[idx]`. Added LAST for MAlonzo ctor-index stability.
-  lea-indexed : ℕ → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 -- D245: the two CALLS, a closure call and a direct call of a program function.
@@ -1914,64 +1775,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- `instr-load-code-addr n` writes `SV-Code n`. Two trusted-base
   -- axioms removed.
 
-  -- The fuel `instr-loop` runs its body with. A NAME, not the literal at the
-  -- call site: the termination checker reads a literal argument as a
-  -- million `suc`s when it compares the call against the clause's patterns.
-  loop-fuel : ℕ
-  loop-fuel = 1000000
-
   ------------------------------------------------------------------------
   -- Main exec-abstract definition
   ------------------------------------------------------------------------
 
-  -- | Execute one abstract instruction
-  -- Plan 0.30: read the scrutinee tag at `*Input1` (a heap/stack cell).
-  -- Non-recursive (no exec call), so defined ahead of the mutual block.
-  case-tag-at : LocState FS → Maybe (StoredValue FS)
-  case-tag-at s with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = readLoc s loc
-  ... | nothing  = nothing
-
-  ------------------------------------------------------------------------
-  -- THE LOOP, REIFIED (2026-07-31). `exec-loop` used to sit INSIDE the mutual
-  -- block and call `exec-trace body` directly, which cost a `TERMINATING`
-  -- — foetus lost the fuel decrease across that boundary (`exec-trace` carries no
-  -- fuel, and a nested `instr-loop` resets fuel to `loopFuel`). A pragma is a
-  -- postulate in disguise (D062), and this one was replicated in every proof that
-  -- mirrors the loop.
-  --
-  -- Abstracting the body runner away fixes it: `exec-loop-run` recurses on FUEL
-  -- ALONE, structurally, with no call into the mutual block at all. The mutual
-  -- block supplies `exec-trace body` as that runner — a call whose argument
-  -- `body` is a strict subterm of `instr-loop body`, which foetus does see.
-  --
-  -- The same reification carries the PROOFS: their loop lemmas become plain fuel
-  -- inductions taking "the runner preserves P" as a hypothesis, and lose their
-  -- pragmas too.
-  ------------------------------------------------------------------------
-  BodyRunner : Set
-  BodyRunner = LocState FS → AllocState {FS} → LocState FS × AllocState {FS}
-
-  -- one iteration's re-anchoring: the loop RESTORES the stack state
-  -- (`stackMem`, `current-frame`, `next-slot`) after the body, keeping only
-  -- register and heap progress. See the frame-balance note below.
-  loop-reanchor-loc : LocState FS → LocState FS → LocState FS
-  loop-reanchor-loc s s' = record s' { stackMem = stackMem s }
-
-  loop-reanchor-alloc : AllocState {FS} → AllocState {FS} → AllocState {FS}
-  loop-reanchor-alloc alloc alloc' =
-    record alloc' { current-frame = current-frame alloc ; next-slot = next-slot alloc }
-
-  exec-loop-run : BodyRunner → ℕ → LocState FS → AllocState {FS} →
-                  LocState FS × AllocState {FS}
-  exec-loop-run run zero    s alloc = record s { halted = true } , alloc
-  exec-loop-run run (suc n) s alloc with halted s
-  ... | true  = s , alloc
-  ... | false with readReg (regs s) Scratch
-  ...   | SV-Tag 0 = s , alloc
-  {-# CATCHALL #-}
-  ...   | _        = exec-loop-run run n (loop-reanchor-loc s (proj₁ (run s alloc)))
-                                         (loop-reanchor-alloc alloc (proj₂ (run s alloc)))
 
   -- | MATERIALISE a literal: turn its source payload into the target's
   -- representation (plan 0.73, D113).
@@ -1992,25 +1799,13 @@ module AbstractExec {FS : FrameSemantics} where
   -- `refl`-shaped and needs no rounding theorem.
   lit-value fits-float d = round (FrameSemantics.float-format FS) d
 
-  -- Plan 0.13.1: mutually recursive with exec-trace (case-on-tag
-  -- dispatches into one of two sub-traces).
+  -- | Execute one abstract instruction, and a trace. (Plan 0.13.1 made
+  -- them mutually recursive for the nested case-on-tag/loop; plan 0.135
+  -- retired both, so `exec-abstract` no longer calls `exec-trace`.)
   exec-abstract : AbstractInstr → LocState FS → AllocState {FS} →
                   LocState FS × AllocState {FS}
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →
                LocState FS × AllocState {FS}
-  -- Plan 0.29: fuel-bounded execution of a loop body. Re-runs `body`
-  -- while the `Scratch` register is a nonzero counter; the body updates
-  -- `Scratch` each iteration. Since 2026-07-31 this is a WRAPPER around the
-  -- reified `exec-loop-run` above — same reduction behaviour, structural
-  -- recursion, and the `TERMINATING` pragma is gone.
-  exec-loop : ℕ → AbstractTrace → LocState FS → AllocState {FS} →
-              LocState FS × AllocState {FS}
-  -- Plan 0.30: branch dispatcher for case-on-tag. Mutually recursive with
-  -- exec-trace (it runs one of the two sub-traces). Split off as a named
-  -- helper (rather than an inline `with`) so external proofs can case on
-  -- the tag read explicitly — see SMPrimitives' instruction-or-trace lift.
-  exec-case-dispatch : Maybe (StoredValue FS) → AbstractTrace → AbstractTrace →
-                       LocState FS → AllocState {FS} → LocState FS × AllocState {FS}
 
   -- mov-to-output: Output := Input1
   exec-abstract mov-to-output s alloc =
@@ -2060,12 +1855,6 @@ module AbstractExec {FS : FrameSemantics} where
   -- restore-input: Input1 := stack[frame, slot]
   exec-abstract (restore-input slot) s alloc =
     exec-restore-input-with-value (readLoc s (AtStack (current-frame alloc) slot)) s alloc
-
-  -- lea-indexed slot: Input1 := &(base + idx), base = SV-Ptr at `slot`,
-  -- idx = Scratch's count (via offsetLoc). Plan 0.36 Phase 2b.
-  exec-abstract (lea-indexed slot) s alloc =
-    exec-lea-indexed-via (slot-base (readLoc s (AtStack (current-frame alloc) slot)))
-                         (sv-tag-val (readReg (regs s) Scratch)) s , alloc
 
   -- instr-alloc-stack: a NO-OP, on both components (D150).
   --
@@ -2192,16 +1981,6 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (instr-load-tag-lit n) s alloc =
     record s { regs = writeReg (regs s) Output (SV-Tag n) } , alloc
 
-  -- Plan 0.30: case-on-tag now BRANCHES on the scrutinee tag at `*Input1`,
-  -- matching the x86 `compile-trace-cnt` dispatch
-  --   `cmp [rdi],0 ; je inl ; <g> ; jmp end ; inl: <f>`:
-  -- tag 0 → f (inl), tag ≥ 1 → g (inr), malformed scrutinee → halt.
-  -- `f`/`g` are strict subterms, so the exec-trace recursion is
-  -- structural. This makes `exec-loop` fold a
-  -- heap-μ-value for real (see Examples.AbstractCataFold).
-  exec-abstract (instr-case-on-tag f g) s alloc =
-    exec-case-dispatch (case-tag-at s) f g s alloc
-
   -- Plan 0.14: heap allocation routed through the abstract-allocator
   -- interface (Once.Allocator.AbstractInstance). The `next-heap-ref`
   -- field of AllocState is the State of the abstract bump allocator;
@@ -2216,11 +1995,6 @@ module AbstractExec {FS : FrameSemantics} where
        record alloc { next-heap-ref = new-state
                     -- the fresh block gets `n` slots; older refs keep theirs
                     ; block-size = size-with n (next-heap-ref alloc) (block-size alloc) }
-
-  -- Plan 0.29: generic loop — run `body` while `Scratch` is a nonzero
-  -- counter, fuel-bounded (1e6 ≥ any real iteration count; out-of-fuel
-  -- halts, matching the x86 `Semantics.exec` out-of-fuel `just s`).
-  exec-abstract (instr-loop body) s alloc = exec-loop loop-fuel body s alloc
 
   -- Plan 0.29 (M5): register pokes (no heap, no slot, frame-preserving).
   -- alloc is returned unchanged (uniform proj₂).
@@ -2241,29 +2015,6 @@ module AbstractExec {FS : FrameSemantics} where
   ... | false = let (s' , alloc') = exec-abstract i s alloc
                 in exec-trace is s' alloc'
 
-  -- Plan 0.29: fuel-bounded loop body execution. Break when `Scratch`
-  -- reaches `SV-Tag 0`; otherwise run `body` (which must decrement /
-  -- update `Scratch`) and recurse on fuel.
-  --
-  -- FRAME-BALANCE BY CONSTRUCTION: after each iteration the loop RESTORES
-  -- the stack state (`stackMem`, `current-frame`, `next-slot`), keeping
-  -- only register progress (`regs` — `Scratch` counter, `Output` result,
-  -- `Input1` cursor) and heap progress (`heapMem`, `next-heap-ref` grow
-  -- monotonically). So `instr-loop` preserves the frame/slots regardless
-  -- of `body` — the ~50 per-instruction invariant lemmas hold without a
-  -- body hypothesis. Sound in heap mode (the body never uses the stack;
-  -- its data lives on the heap). See Plan 0.29 D1b.
-  exec-loop n body s alloc = exec-loop-run (exec-trace body) n s alloc
-
-  -- Plan 0.30: dispatch on the tag read. tag 0 → f, tag ≥ 1 → g,
-  -- anything else (no pointer / non-tag cell) → halt (malformed input).
-  exec-case-dispatch (just (SV-Tag 0))       f g s alloc = exec-trace f s alloc
-  exec-case-dispatch (just (SV-Tag (suc _))) f g s alloc = exec-trace g s alloc
-  exec-case-dispatch (just (SV-Ptr _))       f g s alloc = record s { halted = true } , alloc
-  exec-case-dispatch (just (SV-Lit _ _))     f g s alloc = record s { halted = true } , alloc
-  exec-case-dispatch (just (SV-Code _))      f g s alloc = record s { halted = true } , alloc
-  exec-case-dispatch nothing                 f g s alloc = record s { halted = true } , alloc
-
 
   -- | Reduction lemma: when not halted, exec-trace reduces
   exec-trace-cons : ∀ (i : AbstractInstr) (is : AbstractTrace)
@@ -2283,46 +2034,6 @@ module AbstractExec {FS : FrameSemantics} where
   exec-trace-single i s alloc not-halted with halted s
   ... | false = refl
   ... | true with () ← not-halted
-
-  -- A projection `f` of the allocator that every `P`-instruction's step
-  -- preserves is preserved by `exec-trace` over an all-`P` trace. Proven
-  -- HERE (where `exec-trace` reduces; it goes opaque under a downstream
-  -- `open AbstractExec {FS}`). Used by the frame-discipline invariant to
-  -- handle `instr-case-on-tag`, whose `exec-abstract` runs `exec-trace` on
-  -- its (slot-stable) sub-traces. `AllI` is a local all-predicate (⊤/×) to
-  -- avoid importing `Data.List`'s `All` constructors into this module.
-  AllI : (AbstractInstr → Set) → AbstractTrace → Set
-  AllI P []       = ⊤
-  AllI P (i ∷ is) = P i × AllI P is
-
-  exec-trace-alloc-invariant : ∀ {A : Set} (f : AllocState {FS} → A) (P : AbstractInstr → Set)
-    → (∀ i s alloc → P i → f (proj₂ (exec-abstract i s alloc)) ≡ f alloc)
-    → ∀ (t : AbstractTrace) → AllI P t → ∀ (s : LocState FS) (alloc : AllocState {FS})
-    → f (proj₂ (exec-trace t s alloc)) ≡ f alloc
-  exec-trace-alloc-invariant f P pi []       _          s alloc = refl
-  exec-trace-alloc-invariant f P pi (i ∷ is) (px , pxs) s alloc with halted s
-  ... | true  = refl
-  ... | false = trans (exec-trace-alloc-invariant f P pi is pxs
-                         (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)))
-                      (pi i s alloc px)
-
-  -- `instr-case-on-tag` preserves the allocator projection `f`: its
-  -- `exec-abstract` dispatches on the scrutinee tag to `exec-trace` on one
-  -- of its (all-`P`) sub-traces (or halts, leaving the allocator). Reduces
-  -- HERE (downstream the recursive `exec-abstract`/`exec-case-dispatch` go
-  -- opaque). This is the only `ir-to-trace`-emitted instruction whose
-  -- slot-stability is recursive in its sub-traces.
-  exec-abstract-case-invariant : ∀ {A : Set} (f : AllocState {FS} → A) (P : AbstractInstr → Set)
-    → (∀ i s alloc → P i → f (proj₂ (exec-abstract i s alloc)) ≡ f alloc)
-    → ∀ (ft gt : AbstractTrace) → AllI P ft → AllI P gt → ∀ (s : LocState FS) (alloc : AllocState {FS})
-    → f (proj₂ (exec-abstract (instr-case-on-tag ft gt) s alloc)) ≡ f alloc
-  exec-abstract-case-invariant f P pi ft gt aft agt s alloc with case-tag-at s
-  ... | just (SV-Tag 0)       = exec-trace-alloc-invariant f P pi ft aft s alloc
-  ... | just (SV-Tag (suc _)) = exec-trace-alloc-invariant f P pi gt agt s alloc
-  ... | just (SV-Ptr _)       = refl
-  ... | just (SV-Lit _ _)     = refl
-  ... | just (SV-Code _)      = refl
-  ... | nothing               = refl
 
   ------------------------------------------------------------------------
   -- Tree-Structured Trace Execution (OCP-0003)

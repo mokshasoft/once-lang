@@ -12,7 +12,7 @@
 --
 -- D200: this file is now the ASSEMBLY only. It was 4358 lines, and a genuine
 -- recheck cost 728 s / 2.2 GB — a price paid on every iteration of the ten
--- postulates still open in it. The per-constructor clauses live in
+-- postulates then open in it (three now; see `Interface`). The per-constructor clauses live in
 -- `Once.CCC.Codegen.IRObsCorrect.*` and are re-exported here, so every
 -- importer of this module sees exactly what it saw before.
 --
@@ -27,16 +27,16 @@
 --   Interface  `IRObsCorrectF` and everything its statement mentions
 --   Machine    the step/memory lemmas + the straight-line setup skeletons
 --   Simple     id, terminal, initial, free-heap, fst, snd, out-μ, const
---              (+ the postulates still open: In, case, Para, in-ν,
---               Hylo, Fuse)
+--              (+ the postulate still open: In)
 --   SigOp      the SigOp clause
 --   Sum        inl, inr
---   TwoCell    curry, Ana (the shared ten-instruction build)
+--   TwoCell    curry, Ana, in-ν (the shared ten-instruction build)
 --   Apply      apply
 --   Out        Out  (D199)
 --   Comp       g ∘ f
 --   Pair       ⟨ f , g ⟩'s four clusters (run, place, preservation, trace)
 --   PairAssemble  …and the clause that wires them (D211)
+--   Cata       `Cata`, by strategy (`CataConst` proves `strat-const`)
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -69,6 +69,8 @@ open import Once.CCC.Codegen.IRObsCorrect.Call    o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair o tbl
 -- plan 0.119 D5: the loop.
 open import Once.CCC.Codegen.IRObsCorrect.IterProof o tbl using (module IterProofC)
+-- plan 0.135 S3: the cata, dispatched on its strategy (`strat-const` proved).
+open import Once.CCC.Codegen.IRObsCorrect.Cata o tbl using (module CataC)
 
 -- The name every importer uses. Each part re-exports `Core`/`Mach`, so the
 -- surface here is what the single file's `IRObsCorrectFlatness` had.
@@ -87,6 +89,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open CaseC    {FS} public
   open PairAsm  {FS} public
   open CallC    {FS} public
+  open CataC    {FS} using (cata-correct)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a
@@ -110,7 +113,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct terminal            _ = obs-correct-terminal
   ir-obs-correct initial             _ = obs-correct-initial
   -- exponentials — THE LABEL-BEARING PAIR
-  ir-obs-correct (curry body)        _ = obs-correct-curry body
+  ir-obs-correct (curry body)        lb = obs-correct-curry body (ir-obs-correct body lb)
   ir-obs-correct apply               _ = obs-correct-apply
   -- μ / ν structure
   ir-obs-correct (In wf)             _ = obs-correct-In wf
@@ -118,7 +121,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct (Cata wf alg)       la = cata-correct wf alg (ir-obs-correct alg la)
   ir-obs-correct (Out wf)            _ = obs-correct-Out wf
   ir-obs-correct (in-ν wf)           _ = obs-correct-in-ν wf
-  ir-obs-correct (Ana wf f)          _ = obs-correct-Ana wf f
+  ir-obs-correct (Ana wf f)          lf = obs-correct-Ana wf f (ir-obs-correct f lf)
   ir-obs-correct (Iter body)         lb = IterProofC.obs-correct-Iter {FS} body (ir-obs-correct body lb)
   -- misc
   ir-obs-correct (const fit v)       _ = obs-correct-const fit v

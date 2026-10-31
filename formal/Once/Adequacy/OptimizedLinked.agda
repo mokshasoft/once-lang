@@ -23,6 +23,7 @@ import Once.IRTy
 import Once.Module
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Maybe using (just)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
@@ -35,7 +36,9 @@ open import Once.Spec.Type using (var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Floa
 open import Once.IR
 open import Once.IRTy using (⌊_⌋; _⇛_)
 open import Once.Contract using (ISig)
-open import Once.Denotation.Program using (IRFun; irFun; irProgram; Linked; LinkedAt; LinkedProgram)
+open import Once.Denotation.Program using (IRFun; irFun; irProgram; Linked; LinkedAt; LinkedProgram; TeleLinked; NamesDistinct)
+open import Once.Adequacy.ImageUnique using (table-names-distinct)
+open import Relation.Binary.PropositionalEquality using (_≢_)
 open import Once.Adequacy.ElaborateLinked using (linked-mono)
 open import Once.Optimize using (optimize)
 import Once.Compile as C
@@ -76,8 +79,23 @@ all-same h s-nil [] = []
 all-same h (s-cons (same n D C bl) s) (l ∷ ls) = bl h l ∷ all-same h s ls
 
 -- | A program whose table is the same as a linked one's is linked.
+-- plan 0.135 S3: each entry linked in its suffix, and the names, carry over
+-- (an entry keeps its name and is linked wherever its source entry was).
+tele-same : ∀ {σ : ISig} {t′ t} → Same t′ t → TeleLinked σ t → TeleLinked σ t′
+tele-same s-nil                       _        = tt
+tele-same (s-cons (same n D C bl) s) (l , ls) = bl (linkedAt-same s) l , tele-same s ls
+
+names-same : ∀ {t′ t} → Same t′ t → NamesDistinct t → NamesDistinct t′
+names-same s-nil                      []       = []
+names-same (s-cons (same n D C _) s) (p ∷ ps) = all-nm s p ∷ names-same s ps
+  where
+    all-nm : ∀ {u′ u} → Same u′ u → All (λ y → n ≢ IRFun.fname y) u → All (λ y → n ≢ IRFun.fname y) u′
+    all-nm s-nil                        []       = []
+    all-nm (s-cons (same _ _ _ _) s′) (q ∷ qs) = q ∷ all-nm s′ qs
+
 linked-same : ∀ {σ : ISig} {t′ t} → Same t′ t → ∀ ir → LinkedProgram σ (irProgram t ir) → LinkedProgram σ (irProgram t′ ir)
-linked-same s ir (lm , lt) = linked-mono (linkedAt-same s) ir lm , all-same (linkedAt-same s) s lt
+linked-same s ir (lm , lt , tl , nd) =
+  linked-mono (linkedAt-same s) ir lm , all-same (linkedAt-same s) s lt , tele-same s tl , names-same s nd
 
 ------------------------------------------------------------------------
 -- The optimized build's table
@@ -123,7 +141,7 @@ optimized-linked : ∀ (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} �
 optimized-linked m ir mi =
   subst (λ r → LinkedProgram (Once.Module.moduleSig m) (irProgram (C.tableOfResult r) ir))
         (sym (crm-opt Heap m))
-        (linked-same (table-same (C.compileResolvedModule Heap Data.Bool.false m)) ir (moduleToProgram-linked m ir mi))
+        (linked-same (table-same (C.compileResolvedModule Heap Data.Bool.false m)) ir (moduleToProgram-linked m ir mi (table-names-distinct m)))
 
 ------------------------------------------------------------------------
 -- Either build: what the file's proofs need of the table
@@ -136,7 +154,7 @@ private
 build-linked : ∀ (doOpt : Bool) (m : P.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)
              → C.moduleToIR-aux (C.compileResolvedModule Heap doOpt m) ≡ just ir
              → LinkedProgram (Once.Module.moduleSig m) (irProgram (T doOpt m) ir)
-build-linked false m ir mi = moduleToProgram-linked m ir mi
+build-linked false m ir mi = moduleToProgram-linked m ir mi (table-names-distinct m)
 build-linked true  m ir mi = optimized-linked m ir (trans (sym (moduleToIR-opt m)) mi)
 
 build-table-linked : ∀ (doOpt : Bool) (m : P.Resolved)

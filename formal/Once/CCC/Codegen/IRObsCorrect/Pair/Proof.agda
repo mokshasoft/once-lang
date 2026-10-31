@@ -104,8 +104,8 @@ module PairProofC {FS : FrameSemantics} where
   -- Not a `ValueRealized` field and nowhere in the tree, but derivable from
   -- `bf-mono` alone: a reference one below the caller's frontier is live
   -- before the run, hence live after it — which IS the inequality.
-  vr-heap-mono : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl k}
-               → (vr : ValueRealized prog base n l ir x s alloc cl k)
+  vr-heap-mono : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl rs k}
+               → (vr : ValueRealized prog base n l ir x s alloc cl rs k)
                → NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k))
                → next-heap-ref alloc
                  ≤ next-heap-ref (falloc (ValueRealized.settle vr))
@@ -131,11 +131,15 @@ module PairProofC {FS : FrameSemantics} where
     (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩)) (bl : BlocksAt prog (blocks n l ⟨ f , g ⟩))
     (la : LabelsAt prog base (emitted n l ⟨ f , g ⟩))
-    (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false) (inp : InputAt {A} mIn alloc x s) (k : ℕ)
+    (mIn : AllocMode) (x : ValueDomain.⟦ A ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
+    (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (inp : InputAt {prog = prog} {A} mIn alloc x s) (k : ℕ)
     where
+      -- D357: the inner modules keep the old premise; the IHs take the invariant.
+      n≤ : next-slot alloc ≤ n
+      n≤ = ns≤ {alloc} n ns0
+
       module PS = PairShape f g n l
-      module PC = PairChain f g n l prog base s alloc cl n≤ nh span
+      module PC = PairChain f g n l prog base s alloc cl rs n≤ nh span
       module PT = PairTrace
       module VR = ValueRealized
 
@@ -175,24 +179,24 @@ module PairProofC {FS : FrameSemantics} where
                  (exec-abstract-preserves-frame mov-to-output s alloc) n≤ b)
               (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl)
 
-      inpF-of : InputAt {A} mIn alloc x s → InputAt {A} mIn alloc x (floc PC.PR.p2)
+      inpF-of : InputAt {prog = prog} {A} mIn alloc x s → InputAt {prog = prog} {A} mIn alloc x (floc PC.PR.p2)
       inpF-of (in-loc loc vd bf rd) =
-        in-loc loc (validityWF-mem-preserved x loc s (floc PC.PR.p2) bf
+        in-loc loc (validityWF-mem-preserved x loc s (floc PC.PR.p2) (live→bf bf)
                       (λ loc' b' → memP loc' b') vd)
                bf (trans PC.PR.input1-p2 rd)
       inpF-of (in-reg fit rd) = in-reg fit (trans PC.PR.input1-p2 rd)
       inpF-of (in-unit e)     = in-unit e
 
       mrf : MachineRefinesObsF prog (suc (suc base)) PS.f-start l f x
-              (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2) k
+              (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2) rs k
       mrf = ihf PS.f-start l prog (suc (suc base)) ss cr
                 (PS.span-f prog base span) blocks-f
                 (PS.labels-f prog base la) mIn x
                 (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2)
-                PC.ns-p2 PC.nh2 (inpF-of inp) k
+                ns0 PC.nh2 (inpF-of inp) k rs
 
       vrf : ValueRealized prog (suc (suc base)) PS.f-start l f x
-              (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2) k
+              (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2) rs k
       vrf = MachineRefinesObsF.value-realized mrf
 
       ----------------------------------------------------------------
@@ -215,7 +219,7 @@ module PairProofC {FS : FrameSemantics} where
       h = SMCore.LocState.ev-log s
 
       logP2 : SMCore.LocState.ev-log (floc PC.PR.p2) ≡ h
-      logP2 = log-silent PC.pre-chain _ refl
+      logP2 = log-silent PC.pre-chain refl
 
       esF : List SigOpEvent
       esF = eventsAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k)
@@ -270,7 +274,7 @@ module PairProofC {FS : FrameSemantics} where
           ncF : NotCut (resultAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k))
           ncF = subst NotCut (sym rfeq) tt
 
-          module PCF = PairChainF f g n l prog base s alloc cl n≤ nh span vrf rfeq
+          module PCF = PairChainF f g n l prog base s alloc cl rs n≤ nh span vrf rfeq
 
           ----------------------------------------------------------------
           -- The allocator across `f` and the two mid rows. `next-slot` never
@@ -279,11 +283,11 @@ module PairProofC {FS : FrameSemantics} where
           ----------------------------------------------------------------
           runF≡ : exec-flat (VR.steps vrf) prog
                     (entry-flat (suc (suc base)) (floc PC.PR.p2) (falloc PC.PR.p2)
-                                (fclosure PC.PR.p2))
+                                (fclosure PC.PR.p2) rs)
                   ≡ PCF.fsF
           runF≡ = trans (cong (λ m → exec-flat m prog
                                        (entry-flat (suc (suc base)) (floc PC.PR.p2)
-                                          (falloc PC.PR.p2) (fclosure PC.PR.p2)))
+                                          (falloc PC.PR.p2) (fclosure PC.PR.p2) rs))
                               (sym (+-identityʳ (VR.steps vrf))))
                         (exec-flat-steps (VR.run vrf) 0)
 
@@ -291,7 +295,7 @@ module PairProofC {FS : FrameSemantics} where
           ns-fsF = trans (cong (λ st → next-slot (falloc st)) (sym runF≡))
                          (flat-run-keeps-next-slot (VR.steps vrf) prog ss
                             (suc (suc base)) (floc PC.PR.p2) (falloc PC.PR.p2)
-                            (fclosure PC.PR.p2))
+                            (fclosure PC.PR.p2) rs)
 
           ns-m2 : next-slot (falloc PCF.m2) ≡ next-slot alloc
           ns-m2 =
@@ -310,8 +314,8 @@ module PairProofC {FS : FrameSemantics} where
           n≤n1 : n ≤ PS.n1
           n≤n1 = ≤-trans PC.n≤f-start (frontier-mono f PS.f-start l)
 
-          nsG : next-slot (falloc PCF.m2) ≤ PS.n1
-          nsG = ≤-trans (≤-reflexive ns-m2) (≤-trans n≤ n≤n1)
+          nsG : next-slot (falloc PCF.m2) ≡ 0
+          nsG = trans ns-m2 ns0
 
           ----------------------------------------------------------------
           -- THE KEYSTONE'S PAYOFF: after `restore-input backup`, `Input1`
@@ -332,7 +336,7 @@ module PairProofC {FS : FrameSemantics} where
                      Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
             (trans (store-slot-preserves-before (suc n) (floc PCF.fsF)
                      (record alloc { next-slot = n }) (falloc PCF.fsF) loc
-                     (VR.frame-pres vrf ncF) (n≤1+n n) b)
+                     (VR.frame-pres vrf rfeq) (n≤1+n n) b)
             (trans (vr-mem-pres vrf ncF loc (bf-f loc b))
             (trans (store-slot-preserves-before n (floc PC.PR.p1)
                      (record alloc { next-slot = n }) (falloc PC.PR.p1) loc
@@ -349,32 +353,32 @@ module PairProofC {FS : FrameSemantics} where
               (≤-reflexive (sym ns-m2)) (≤-reflexive (sym hr-mid))
               loc (VR.bf-mono vrf ncF (next-slot alloc) loc b)
 
-          inpG-of : InputAt {A} mIn alloc x s → InputAt {A} mIn (falloc PCF.m2) x (floc PCF.m2)
+          inpG-of : InputAt {prog = prog} {A} mIn alloc x s → InputAt {prog = prog} {A} mIn (falloc PCF.m2) x (floc PCF.m2)
           inpG-of (in-loc loc vd bf rd) =
             in-loc loc
               (validityWF-frontier-advance x loc (floc PCF.m2)
                  PCF.cf-m2 (≤-reflexive (sym ns-m2))
                  (≤-trans (vr-heap-mono vrf ncF) (≤-reflexive (sym hr-mid)))
-                 (validityWF-mem-preserved x loc s (floc PCF.m2) bf
+                 (validityWF-mem-preserved x loc s (floc PCF.m2) (live→bf bf)
                     (λ loc' b' → mem-to-m2 loc' (bf-n loc' b')) vd))
-              (bfG loc bf) (trans input1-m2 rd)
+              (live-lift (bfG loc) bf) (trans input1-m2 rd)
           inpG-of (in-reg fit rd) = in-reg fit (trans input1-m2 rd)
           inpG-of (in-unit e)     = in-unit e
 
           -- `g` runs at the budget `f` left.
           mrg : MachineRefinesObsF prog PCF.bg PS.n1 PS.l1 g x
-                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) rB
+                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) rs rB
           mrg = ihg PS.n1 PS.l1 prog PCF.bg ss cr (PS.span-g prog base span)
                     blocks-g (PS.labels-g prog base la) mIn x (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2)
-                    nsG PCF.nhM2 (inpG-of inp) rB
+                    nsG PCF.nhM2 (inpG-of inp) rB rs
 
           vrg : ValueRealized prog PCF.bg PS.n1 PS.l1 g x
-                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) rB
+                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) rs rB
           vrg = MachineRefinesObsF.value-realized mrg
 
           -- `g` runs from the log `f` left: the two mid rows make no call.
           logM2 : SMCore.LocState.ev-log (floc PCF.m2) ≡ h ++ esF
-          logM2 = trans (log-silent PCF.mid-chain _ refl)
+          logM2 = trans (log-silent PCF.mid-chain refl)
                         (trans (VR.log vrf) (cong (_++ esF) logP2))
 
           esG : List SigOpEvent
@@ -407,4 +411,4 @@ module PairProofC {FS : FrameSemantics} where
 
           -- Preservation across both parts, for a `g` that was not cut.
           module PPres (ncG : NotCut (resultAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB))) =
-            PairPres f g n l prog base s alloc cl vrf ncF PS.n1 PS.l1 n≤n1 vrg ncG
+            PairPres f g n l prog base s alloc cl rs vrf rfeq PS.n1 PS.l1 n≤n1 vrg ncG

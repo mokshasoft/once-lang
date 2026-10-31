@@ -25,8 +25,7 @@
 --
 -- Slots: an association list (finite, decidable) — the scan adds an entry
 -- at `store-at-slot`/`worklist-push` and reads it back at
--- `load-from-slot`/`restore-input`/`worklist-pop`. Scratch/Count carry no
--- expectations here (`FlatRegTagWF` owns them).
+-- `load-from-slot`/`restore-input`/`worklist-pop`.
 ------------------------------------------------------------------------
 
 module Once.CCC.Codegen.ShapeTable where
@@ -49,7 +48,7 @@ open import Once.IR using (IR; AllocMode; Heap; Stack;
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag; instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret; c-leave)
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; out-nz; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-start; c-call-fn; c-ret; c-leave)
 open import Once.CCC.Label using (LabelId)
 open import Once.SigOp.Info using (SigOpInfo; EffectShape; Pure; effect)
 open import Once.Type using (FitsInReg; fits-in-reg?)
@@ -293,7 +292,6 @@ step-expect env st (lea-slot k) =
   record st { e-out = e-any }
 step-expect env st (restore-input k) =
   record st { e-in1 = slot-get (e-slot st) k }
-step-expect env st (lea-indexed k)     = st    -- unemittable
 step-expect env st (instr-alloc-stack n)   = st    -- unemittable
 step-expect env st (instr-dealloc-stack n) = st    -- unemittable
 step-expect env st (instr-push-frame n)    = st    -- unemittable
@@ -333,12 +331,8 @@ step-expect env st (instr-alloc-heap n) =
     scrub-expect : Expect → Expect
     scrub-expect e = mkExpect (scrub (e-in1 e))
                               (scrub (e-out e)) (scrub-slots (e-slot e))
-step-expect env st (instr-loop b)          = st    -- unemittable
-step-expect env st (instr-case-on-tag f g) = st    -- unemittable
 -- plan 0.108: `out-nz` writes a tag the checker does not track by value
 step-expect env st (instr-reg-op out-nz) = record st { e-out = e-any }
-{-# CATCHALL #-}
-step-expect env st (instr-reg-op op) = st
 -- CONTROL. A label ADOPTS its environment entry (the join point's claim —
 -- the fall-in path's obligation to entail it is the checker's job). A jump
 -- transfers nowhere (the next pc is unreachable from here; its entry comes
@@ -362,7 +356,6 @@ step-expect env st (instr-ctrl (c-jmp m)) =
   -- fall-through after an unconditional jump is dead until the next label;
   -- no claim
   mkExpect e-any e-any []
-step-expect env st (instr-ctrl (c-branch-scratch-zero m)) = st
 step-expect env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 ... | e-fresh c₀ c₁ = st                     -- statically-decided tag: no refinement needed
 {-# CATCHALL #-}
@@ -438,7 +431,6 @@ site-ok st _ = true
 -- must entail the target's entry
 ctrl-ok : LabelEnv → Expect → AbstractInstr → Bool
 ctrl-ok env st (instr-ctrl (c-jmp m)) = sub-expect st (env m)
-ctrl-ok env st (instr-ctrl (c-branch-scratch-zero m)) = sub-expect st (env m)
 ctrl-ok env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 -- tag 0 known: the branch is ALWAYS taken — only the target obligation
 ... | e-fresh (just (e-tag zero)) c₁ = sub-expect st (env m)
@@ -1117,9 +1109,8 @@ module Sem (FS : FrameSemantics) where
   shape-uw hl' v' uw shape-unit = shape-unit
   shape-uw {ls = ls} hl' v' uw (shape-pair {pair-loc = pl} lm b3 sa sb) =
     shape-pair lm b3 (cell-uw pl hl' v' uw sa) (cell-uw (sucLoc pl) hl' v' uw sb)
-  shape-uw {ls = ls} hl' v' uw (shape-closure {closure-loc = cl} lm r1 r2 b1 b2 senv) =
-    shape-closure lm (read-uw ls hl' v' cl uw r1) (read-uw ls hl' v' (sucLoc cl) uw r2)
-                  b1 b2 (shape-uw hl' v' uw senv)
+  shape-uw {ls = ls} hl' v' uw (shape-closure {closure-loc = cl} lm r1 r2 b1 b2) =
+    shape-closure lm (read-uw ls hl' v' cl uw r1) (read-uw ls hl' v' (sucLoc cl) uw r2) b1 b2
   shape-uw {m = m} {ls = ls} hl' v' uw (shape-inl {sum-loc = sl} lm tg r b1 b2 sp) =
     shape-inl lm (tag-uw m 0 hl' v' uw tg) (read-uw ls hl' v' (sucLoc sl) uw r)
               b1 b2 (shape-uw hl' v' uw sp)
@@ -1139,7 +1130,7 @@ module Sem (FS : FrameSemantics) where
     shape-inr-reg lm (tag-uw m 1 hl' v' uw tg) fit (read-uw ls hl' v' (sucLoc sl) uw r) b
   shape-uw hl' v' uw (shape-μ wf sh) = shape-μ wf (shape-uw hl' v' uw sh)
   shape-uw {ls = ls} hl' v' uw (shape-ν-susp {ν-loc = nl} lm sc cp b) =
-    shape-ν-susp lm (cell-uw nl hl' v' uw sc)
+    shape-ν-susp lm (read-uw ls hl' v' nl uw sc)
                     (read-uw ls hl' v' (sucLoc nl) uw cp) b
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-int b r)   = shape-int b (read-uw ls hl' v' l uw r)
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-float b r) = shape-float b (read-uw ls hl' v' l uw r)

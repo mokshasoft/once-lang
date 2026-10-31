@@ -30,7 +30,7 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Machine.ShapeAt (FS : FrameSemantics) where
 
 open import Data.Nat using (ℕ)
-open import Data.Maybe using (just)
+open import Data.Maybe using (Maybe; just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using ()
@@ -115,20 +115,19 @@ data ShapeAt where
     CellShapeAt alloc B (sucLoc pair-loc) s →
     ShapeAt m alloc (A * B) pair-loc s
 
-  -- a closure's shape: env-pointer cell + code cell + the env's shape (at
-  -- its own, EXISTENTIAL type — same non-structural recursion `ValidAtWF`
-  -- has, which is why this is a datatype)
-  shape-closure : ∀ {m EnvType A B}
+  -- a closure's shape: env-pointer cell + code cell. plan 0.135 S1: no env
+  -- SHAPE — the value layer no longer carries the environment's validity
+  -- (its type is hidden, so it is not a subterm of `A ⇛ B`; `CallRuns` is
+  -- what speaks for it), and this layer must not say more than that one.
+  shape-closure : ∀ {m A B}
     {alloc : AllocState {FS}}
     {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
-    {mEnv : AllocMode}
     {body-label : LabelId} →
     LocMatchesMode m closure-loc →
     readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
     readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
     BeforeFrontier alloc env-loc →
     BeforeFrontier alloc (sucLoc closure-loc) →
-    ShapeAt mEnv alloc EnvType env-loc s →
     ShapeAt m alloc (A ⇛ B) closure-loc s
 
   shape-inl : ∀ {m A B}
@@ -207,16 +206,15 @@ data ShapeAt where
     ShapeAt m alloc (μ-type F) loc s
 
   -- D189: a ν is a SUSPENSION, not an available layer — seed cell plus
-  -- coalgebra code cell, mirroring `shape-closure`. The seed's cell is a
-  -- `CellShapeAt`, so a seed small enough to live inline (an `Int`, say)
-  -- needs no separate heap object. This REPLACES the old `shape-ν`, which
-  -- mirrored the deleted `valid-ν-wf` and claimed a layer was resident.
-  shape-ν-susp : ∀ {m F A}
+  -- coalgebra code cell, mirroring `shape-closure`. plan 0.135 S1: the seed
+  -- is OPAQUE in the value layer (`NuV.nu-seed`: its type is not a subterm of
+  -- `ν-type F`), so its cell holds SOME stored value and has no shape.
+  shape-ν-susp : ∀ {m F}
     {alloc : AllocState {FS}}
     {ν-loc : ValueLocation FS} {s : LocState FS}
-    {coalg-label : LabelId} →
+    {seed : StoredValue FS} {coalg-label : LabelId} →
     LocMatchesMode m ν-loc →
-    CellShapeAt alloc A ν-loc s →
+    readLoc s ν-loc ≡ just seed →
     readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
     BeforeFrontier alloc (sucLoc ν-loc) →
     ShapeAt m alloc (ν-type F) ν-loc s
@@ -240,85 +238,100 @@ data ShapeAt where
 
 
 ------------------------------------------------------------------------
--- GATE G1 (D076): the erasure is a PROJECTION of `ValidAtWF` — every
--- constructor maps 1:1, dropping only the value, `BodyCorrect` and the
--- body-size bound. If this ever stops being a plain structural map, the
--- shape domain has drifted from the value layer and must be re-aligned.
+-- GATE G1 (D076): the erasure is a PROJECTION of `ValidAtWF` — every case
+-- maps 1:1, dropping only the value, what a closure or a ν DOES (`CallRuns`,
+-- `nu-force`) and `Live`'s heap-only half. If this ever stops being a plain
+-- structural map, the shape domain has drifted from the value layer and must
+-- be re-aligned. `ValidAtWF` is a function on the type, so the projection
+-- splits on the type; μ layers are `ValidFO`, projected by their own pair.
 ------------------------------------------------------------------------
-module Project (o : CanonicalName) (tbl : List IRFun) where
+module Project (o : CanonicalName) (tbl : List IRFun) {prog : AbstractTrace} where
   open import Data.Nat using (ℕ)
-  open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
-  open ClosureWellFormedDef o tbl {FS}
-    using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
-           valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
-           rep-prim; rep-unit;
-           valid-μ-wf; valid-ν-susp-wf;
-           valid-closure-reg-wf; CellAt; cell-ptr; cell-inline;
-           valid-int-wf; valid-float-wf;
-           SumTag)
+  open import Data.Empty using (⊥-elim)
+  open import Relation.Binary.PropositionalEquality using (subst; sym)
+  open import Once.IRTy using (Void)
+  open import Once.CCC.Machine.ValueRel
+    using (module ClosureWellFormedBase; module ClosureWellFormedDef)
+  open ClosureWellFormedBase {FS}
+    using (Live; live→bf; CellAtP; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit;
+           unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; int-wf; float-wf;
+           ValidFO; fo-unit; fo-pair; fo-sum; fo-int; fo-float; fo-μwf; SumTag; wrap)
+  open ClosureWellFormedDef {FS} {prog}
+    using (ValidAtWF; CellAt; closure-wf; closure-reg-wf; NuV; module NuV)
+  open NuV using (nu-mode; nu-heap; nu-cell0; nu-cell1; nu-live1)
 
   tag-of : ∀ (m : AllocMode) (t : ℕ) (s : LocState FS) (loc : ValueLocation FS)
          → SumTag m t s loc → TagAt m t s loc
   tag-of Heap  t s loc st = st
   tag-of Stack t s loc st = st
 
-  -- D187: mutual with the cell-level map, exactly as the two datatypes are.
+  -- `inline-sv` (ClosureWellFormed's) and `inline-sv-at` (the local
+  -- restatement) reduce to the same stored value only once the rep is split.
+  rep-of : ∀ {A} → InlineRep A → InlineRepAt A
+  rep-of (rep-prim fit)  = rep-prim-at fit
+  rep-of (rep-unit u sv) = rep-unit-at u sv
+
+  rep-read : ∀ {A} {r : Maybe (StoredValue FS)} {a} (rep : InlineRep A)
+           → r ≡ just (ClosureWellFormedBase.inline-sv {FS} rep a)
+           → r ≡ just (inline-sv-at (rep-of rep) a)
+  rep-read (rep-prim fits-int)   r = r
+  rep-read (rep-prim fits-float) r = r
+  rep-read (rep-unit u sv)       r = r
+
+  -- The first-order layer (μ), mutual with its cells.
+  fo→shape : ∀ {m} {alloc : AllocState {FS}} {A : IRTy} {x}
+               {loc : ValueLocation FS} {s : LocState FS}
+           → ValidFO m alloc {A} x loc s → ShapeAt m alloc A loc s
+  focell→shape : ∀ {alloc : AllocState {FS}} {C : IRTy} {c}
+                   {cl : ValueLocation FS} {s : LocState FS}
+               → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s → CellShapeAt alloc C cl s
+  fo→shape (fo-unit unit-wf) = shape-unit
+  fo→shape (fo-pair (pair-wf lm slb c₁ c₂)) =
+    shape-pair lm (live→bf slb) (focell→shape c₁) (focell→shape c₂)
+  fo→shape (fo-sum (inl-wf {m = m} lm tg pp pb slb pv)) =
+    shape-inl lm (tag-of m 0 _ _ tg) pp (live→bf pb) (live→bf slb) (fo→shape pv)
+  fo→shape (fo-sum (inr-wf {m = m} lm tg pp pb slb pv)) =
+    shape-inr lm (tag-of m 1 _ _ tg) pp (live→bf pb) (live→bf slb) (fo→shape pv)
+  fo→shape (fo-sum (inl-reg-wf {m = m} {a = a} lm tg rep pp slb)) =
+    shape-inl-reg {a = a} lm (tag-of m 0 _ _ tg) (rep-of rep) (rep-read rep pp) (live→bf slb)
+  fo→shape (fo-sum (inr-reg-wf {m = m} {b = b} lm tg rep pp slb)) =
+    shape-inr-reg {b = b} lm (tag-of m 1 _ _ tg) (rep-of rep) (rep-read rep pp) (live→bf slb)
+  fo→shape (fo-int (int-wf b r))     = shape-int (live→bf b) r
+  fo→shape (fo-float (float-wf b r)) = shape-float (live→bf b) r
+  fo→shape (fo-μwf wf x lv) = shape-μ wf (fo→shape lv)
+
+  focell→shape (cell-ptr r bf v) = cell-shape-ptr r (live→bf bf) (fo→shape v)
+  focell→shape {c = c} (cell-inline rep r) = cell-shape-inline {c = c} (rep-of rep) (rep-read rep r)
+
   cell→shape : ∀ {alloc : AllocState {FS}} {C : IRTy} {c}
                  {cl : ValueLocation FS} {s : LocState FS}
              → CellAt alloc C c cl s → CellShapeAt alloc C cl s
   valid→shape : ∀ {m} {alloc : AllocState {FS}} {A : IRTy} {x}
                   {loc : ValueLocation FS} {s : LocState FS}
               → ValidAtWF m alloc {A} x loc s → ShapeAt m alloc A loc s
-  valid→shape valid-unit-wf = shape-unit
-  valid→shape (valid-pair-wf lm slb fc sc) =
-    shape-pair lm slb (cell→shape fc) (cell→shape sc)
-  valid→shape (valid-closure-wf lm r1 r2 b1 b2 venv) =
-    shape-closure lm r1 r2 b1 b2 (valid→shape venv)
-  -- Split on the rep for the same reason the sum's inline clauses do: with the
-  -- rep abstract neither `inline-sv` reduces and the read equation would not
-  -- typecheck across the two restatements.
-  valid→shape (valid-closure-reg-wf lm (rep-prim fits-int)   r1 r2 b) =
-    shape-closure-reg lm (rep-prim-at fits-int)   r1 r2 b
-  valid→shape (valid-closure-reg-wf lm (rep-prim fits-float) r1 r2 b) =
-    shape-closure-reg lm (rep-prim-at fits-float) r1 r2 b
-  valid→shape (valid-closure-reg-wf {env = e} lm (rep-unit u sv) r1 r2 b) =
-    shape-closure-reg {env = e} lm (rep-unit-at u sv) r1 r2 b
-  valid→shape (valid-inl-wf {m = m} lm tg r b1 b2 vp) =
-    shape-inl lm (tag-of m 0 _ _ tg) r b1 b2 (valid→shape vp)
-  valid→shape (valid-inr-wf {m = m} lm tg r b1 b2 vp) =
-    shape-inr lm (tag-of m 1 _ _ tg) r b1 b2 (valid→shape vp)
-  -- Split on the rep so `inline-sv` (ClosureWellFormed's) and `inline-sv-at`
-  -- (the local restatement) both reduce to the same stored value; with the rep
-  -- abstract neither reduces and the read equation would not typecheck across
-  -- them. `rep-unit` reduces without splitting further — its cell contents are
-  -- carried, not computed.
-  valid→shape (valid-inl-reg-wf {m = m} lm tg (rep-prim fits-int)   r b) =
-    shape-inl-reg lm (tag-of m 0 _ _ tg) (rep-prim-at fits-int)   r b
-  valid→shape (valid-inl-reg-wf {m = m} lm tg (rep-prim fits-float) r b) =
-    shape-inl-reg lm (tag-of m 0 _ _ tg) (rep-prim-at fits-float) r b
-  -- `a` must be pinned here: `ShapeAt` has no value index, and unlike the
-  -- prim reps `inline-sv (rep-unit …)` does not mention `a`, so nothing else
-  -- determines it.
-  valid→shape (valid-inl-reg-wf {m = m} {a = a} lm tg (rep-unit u sv) r b) =
-    shape-inl-reg {a = a} lm (tag-of m 0 _ _ tg) (rep-unit-at u sv) r b
-  valid→shape (valid-inr-reg-wf {m = m} lm tg (rep-prim fits-int)   r b) =
-    shape-inr-reg lm (tag-of m 1 _ _ tg) (rep-prim-at fits-int)   r b
-  valid→shape (valid-inr-reg-wf {m = m} lm tg (rep-prim fits-float) r b) =
-    shape-inr-reg lm (tag-of m 1 _ _ tg) (rep-prim-at fits-float) r b
-  valid→shape (valid-inr-reg-wf {m = m} {b = bv} lm tg (rep-unit u sv) r b) =
-    shape-inr-reg {b = bv} lm (tag-of m 1 _ _ tg) (rep-unit-at u sv) r b
-  valid→shape (valid-μ-wf wf x lv) = shape-μ wf (valid→shape lv)
+  valid→shape {A = Unit} (wrap unit-wf) = shape-unit
+  valid→shape {A = Void} (wrap ())
+  valid→shape {A = A * B} (wrap (pair-wf lm slb c₁ c₂)) =
+    shape-pair lm (live→bf slb) (cell→shape c₁) (cell→shape c₂)
+  valid→shape {A = A + B} (wrap (inl-wf {m = m} lm tg pp pb slb pv)) =
+    shape-inl lm (tag-of m 0 _ _ tg) pp (live→bf pb) (live→bf slb) (valid→shape pv)
+  valid→shape {A = A + B} (wrap (inr-wf {m = m} lm tg pp pb slb pv)) =
+    shape-inr lm (tag-of m 1 _ _ tg) pp (live→bf pb) (live→bf slb) (valid→shape pv)
+  valid→shape {A = A + B} (wrap (inl-reg-wf {m = m} {a = a} lm tg rep pp slb)) =
+    shape-inl-reg {a = a} lm (tag-of m 0 _ _ tg) (rep-of rep) (rep-read rep pp) (live→bf slb)
+  valid→shape {A = A + B} (wrap (inr-reg-wf {m = m} {b = b} lm tg rep pp slb)) =
+    shape-inr-reg {b = b} lm (tag-of m 1 _ _ tg) (rep-of rep) (rep-read rep pp) (live→bf slb)
+  valid→shape {A = A ⇛ B} (wrap (closure-wf lm ep cp eb slb fd runs)) =
+    shape-closure lm ep cp (live→bf eb) (live→bf slb)
+  valid→shape {A = A ⇛ B} (wrap (closure-reg-wf {env = e} lm rep ep cp slb fd runs)) =
+    shape-closure-reg {env = e} lm (rep-of rep) (rep-read rep ep) cp (live→bf slb)
+  valid→shape {A = μ-type F} (wrap lv) = fo→shape lv
   -- D189: the suspension projects cell-wise, exactly as the closure does.
-  valid→shape (valid-ν-susp-wf wf lm sc cp slb) =
-    shape-ν-susp lm (cell→shape sc) cp slb
-  valid→shape (valid-int-wf b r)   = shape-int b r
-  valid→shape (valid-float-wf b r) = shape-float b r
+  valid→shape {A = ν-type F} (wrap nv) =
+    shape-ν-susp (subst (λ m′ → LocMatchesMode m′ _) (sym (nu-mode nv)) (nu-heap nv))
+                 (nu-cell0 nv) (nu-cell1 nv) (live→bf (nu-live1 nv))
+  valid→shape {A = Int} (wrap (int-wf b r))     = shape-int (live→bf b) r
+  valid→shape {A = Float} (wrap (float-wf b r)) = shape-float (live→bf b) r
 
-  -- Split on the rep for the same reason the sum's inline clauses do: with the
-  -- rep abstract neither `inline-sv` reduces and the read equation would not
-  -- typecheck across the two restatements.
-  cell→shape (cell-ptr r bf v)                  = cell-shape-ptr r bf (valid→shape v)
-  cell→shape (cell-inline (rep-prim fits-int)   r) = cell-shape-inline (rep-prim-at fits-int)   r
-  cell→shape (cell-inline (rep-prim fits-float) r) = cell-shape-inline (rep-prim-at fits-float) r
-  cell→shape {c = c} (cell-inline (rep-unit u sv) r) =
-    cell-shape-inline {c = c} (rep-unit-at u sv) r
+  cell→shape (cell-ptr r bf v) = cell-shape-ptr r (live→bf bf) (valid→shape v)
+  cell→shape {c = c} (cell-inline rep r) = cell-shape-inline {c = c} (rep-of rep) (rep-read rep r)

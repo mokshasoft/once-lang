@@ -13,9 +13,8 @@
 --
 -- Structural induction on the IR. Almost every constructor emits a list
 -- of slot-stable instructions (control / reg-ops / loads / stores / mov /
--- alloc-heap) plus recursively-compiled sub-traces; `case` wraps its
--- branches in `instr-case-on-tag` (slot-stable iff the branches are —
--- `AllI`, via `All→AllI`); `Cata` routes through `cata-dispatch`
+-- alloc-heap) plus recursively-compiled sub-traces; `Cata` routes through
+-- `cata-dispatch`
 -- (`cata-dispatch-slot-stable`).
 ------------------------------------------------------------------------
 
@@ -46,37 +45,25 @@ open import Once.CCC.Label using (ℓ)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
-open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; instr-ctrl; lea-indexed)
+open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; instr-ctrl)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
-         CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
-         cata-trace-nat; cata-trace-linear; cata-trace-branching;
-         visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;
-         -- D099 / C1: the called-algebra blocks.
-         cata-body; cata-call-setup; cata-call; cata-trace-const; fsize;
-         cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃)
+  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-branching; cata-trace-branching; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
+         cata-body; cata-call-setup; cata-call; cata-trace-const; fsize)
 
 module CataIRSlotStable {FS : FrameSemantics} where
   open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
-  open CataNextSlot {FS} using (SlotStable; SlotStableT; AllSlotStable)
+  open CataNextSlot {FS} using (SlotStable; AllSlotStable)
 
   -- the trace component of `ir-to-trace'`'s 4-tuple (proj-trace is private
   -- in IRToTrace; this is the same extraction, definitionally).
   trc : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → AbstractTrace
   trc (_ , _ , t , _) = t
 
-  -- stdlib `All SlotStable` → the spelled-out `SlotStableT` that
-  -- `SlotStable (instr-case-on-tag …)` now asks for. (It used to target
-  -- SMCore's `AllI SlotStable`; the predicate moved to a mutual definition so
-  -- that its recursion is structural — see CataNextSlot, 2026-07-31.)
-  All→AllI : ∀ {t} → All SlotStable t → SlotStableT t
-  All→AllI []ᴬ        = tt
-  All→AllI (px ∷ᴬ ps) = px , All→AllI ps
 
   ----------------------------------------------------------------------
   -- A boolean decider mirroring `SlotStable` (mutually with `all-stable?`
@@ -89,8 +76,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
   all-stable? : AbstractTrace → Bool
   stable? (instr-alloc-stack _)   = false
   stable? (instr-reclaim-to _)    = false
-  stable? (instr-loop _)          = false
-  stable? (instr-case-on-tag f g) = all-stable? f ∧ all-stable? g
   {-# CATCHALL #-}
   stable? _                       = true
   all-stable? []       = true
@@ -104,15 +89,11 @@ module CataIRSlotStable {FS : FrameSemantics} where
 
   stable?-sound     : ∀ i → stable? i ≡ true → SlotStable i
   all-stable?-sound : ∀ t → all-stable? t ≡ true → AllSlotStable t
-  -- the only non-`true` instructions (alloc-stack/reclaim-to/loop) get an
-  -- absurd `()`; case-on-tag recurses through the sub-traces; the catch-all
+  -- the only non-`true` instructions (alloc-stack/reclaim-to) get an
+  -- absurd `()`; the catch-all
   -- maps `true → tt` for the slot-stable instructions.
   stable?-sound (instr-alloc-stack _)   ()
   stable?-sound (instr-reclaim-to _)    ()
-  stable?-sound (instr-loop _)          ()
-  stable?-sound (instr-case-on-tag f g) eq =
-    let (ef , eg) = ∧-split eq
-    in All→AllI (all-stable?-sound f ef) , All→AllI (all-stable?-sound g eg)
   stable?-sound mov-to-output           _ = tt
   stable?-sound mov-to-input            _ = tt
   stable?-sound load-indirect           _ = tt
@@ -139,7 +120,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
   stable?-sound (instr-alloc-heap _)    _ = tt
   stable?-sound (instr-reg-op _)        _ = tt
   stable?-sound (instr-ctrl _)          _ = tt
-  stable?-sound (lea-indexed _)         _ = tt
   all-stable?-sound []       _  = []ᴬ
   all-stable?-sound (i ∷ is) eq =
     let (ei , eis) = ∧-split eq
@@ -151,9 +131,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- Rest) ++ final-read` shape is a NEUTRAL `++` that `++⁺` cannot split;
   -- the boolean equation navigates associativity cleanly instead.
   ----------------------------------------------------------------------
-  AllI→All : ∀ {t} → SlotStableT t → All SlotStable t
-  AllI→All {[]}     _        = []ᴬ
-  AllI→All {_ ∷ _} (px , ps) = px ∷ᴬ AllI→All ps
 
   ∧-intro : ∀ {a b} → a ≡ true → b ≡ true → a ∧ b ≡ true
   ∧-intro {a} {b} pa pb = trans (cong (_∧ b) pa) pb
@@ -168,9 +145,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
   all-stable?-complete : ∀ t → AllSlotStable t → all-stable? t ≡ true
   stable?-complete (instr-alloc-stack _)   ()
   stable?-complete (instr-reclaim-to _)    ()
-  stable?-complete (instr-loop _)          ()
-  stable?-complete (instr-case-on-tag f g) (af , ag) =
-    ∧-intro (all-stable?-complete f (AllI→All af)) (all-stable?-complete g (AllI→All ag))
   stable?-complete mov-to-output           _ = refl
   stable?-complete mov-to-input            _ = refl
   stable?-complete load-indirect           _ = refl
@@ -197,7 +171,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
   stable?-complete (instr-alloc-heap _)    _ = refl
   stable?-complete (instr-reg-op _)        _ = refl
   stable?-complete (instr-ctrl _)          _ = refl
-  stable?-complete (lea-indexed _)         _ = refl
   all-stable?-complete []       _          = refl
   all-stable?-complete (i ∷ is) (px ∷ᴬ ps) =
     ∧-intro (stable?-complete i px) (all-stable?-complete is ps)
@@ -244,17 +217,13 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- discharge via `all-stable?-sound refl`; the spliced algebra trace
   -- `at` uses the hypothesis `sat`; `++⁺` mirrors each concatenation.
   ----------------------------------------------------------------------
-  -- NatF (Tier-0): scratch-one ∷ count-zero ∷ descend-flat(12) ∷
-  -- scratch-load-count ∷ load-tag ∷ mov ∷ build-layer-0(10) ∷ mov ∷
-  -- (at ++ ascend-flat); ascend-flat = la-top ∷ la-end ∷ mov ∷
-  -- build-layer-1(10) ∷ mov ∷ ((at ++ [scratch-dec]) ++ [jmp,label]).
   -- D099 / C1: the algebra is a CALLED BODY now, so every strategy's trace is
   -- `cata-body ++ <all concrete>` — and that makes these four witnesses
   -- collapse. The body is the only place `at` appears, so it is the only place
   -- the hypothesis is needed; everything after it settles by the decider.
   --
   -- `instr-call-closure` is slot-stable (the predicate is ⊥ only for
-  -- `instr-alloc-stack`/`instr-reclaim-to`/`instr-loop`), which is the same
+  -- `instr-alloc-stack`/`instr-reclaim-to`), which is the same
   -- reason `ir-stable apply` is `all-stable?-sound refl`.
   cata-body-stable : ∀ b e bb at → AllSlotStable at
                    → AllSlotStable (cata-body b e bb at)
@@ -263,35 +232,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   cata-trace-const-stable : ∀ bb n1 l1 at → AllSlotStable at
                           → AllSlotStable (proj₂ (proj₂ (cata-trace-const bb n1 l1 at)))
   cata-trace-const-stable bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) l1 ++ cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 3)) refl)
+    ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++ cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3)) refl)
         (cata-body-stable l1 (l1 ℕ.+ 1) bb at sat)
-
-  cata-trace-nat-stable : ∀ bb n1 l1 at → AllSlotStable at
-                        → AllSlotStable (proj₂ (proj₂ (cata-trace-nat bb n1 l1 at)))
-  cata-trace-nat-stable bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound
-           (cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc n1)))) (suc (suc (suc (suc (suc n1)))))
-                            (suc (suc (suc (suc (suc (suc l1)))))) ++
-            (cata-nat-I₁ n1 l1 ++
-             (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
-              (cata-nat-I₂ n1 l1 ++
-               (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++ cata-nat-I₃ l1))))) refl)
-        (cata-body-stable (suc (suc (suc (suc (suc (suc l1)))))) (suc (suc (suc (suc (suc (suc (suc l1))))))) bb at sat)
-
-  cata-trace-linear-stable : ∀ bb n1 l1 at → AllSlotStable at
-                           → AllSlotStable (proj₂ (proj₂ (cata-trace-linear bb n1 l1 at)))
-  cata-trace-linear-stable bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound
-           (cata-call-setup (suc (suc (suc (suc (suc (suc n1))))))
-                            (suc (suc (suc (suc (suc (suc (suc n1)))))))
-                            (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))
-                            (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))
-                            (suc (suc (suc (suc l1)))) ++
-            (cata-lin-I₁ n1 l1 ++
-             (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) ++
-              (cata-lin-I₂ n1 l1 ++
-               (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) ++ cata-lin-I₃ l1))))) refl)
-        (cata-body-stable (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at sat)
 
   -- Tier 2 is the one exception: its skeleton splices the two COMPILE-TIME
   -- functor walks, which are stuck on `F`, so the tail still needs the boolean
@@ -304,9 +246,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- association is not definitional (nat/linear get away with the flat split
   -- precisely because every block there IS concrete).
   cata-trace-branching-stable F bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound (cata-call-setup cl (cl ℕ.+ 1) (cl ℕ.+ 2) (cl ℕ.+ 3) bodyL) refl)
+    ++⁺ (all-stable?-sound (cata-call-setup cl (cl ℕ.+ 1) (cl ℕ.+ 2) bodyL) refl)
         (++⁺ (all-stable?-sound (cata-br-I₁ F n1 l1) I₁-true)
-             (++⁺ (all-stable?-sound (cata-call cl (cl ℕ.+ 1) (cl ℕ.+ 3)) refl)
+             (++⁺ (all-stable?-sound (cata-call cl (cl ℕ.+ 1) (cl ℕ.+ 2) (cl ℕ.+ 3)) refl)
                   (++⁺ (all-stable?-sound (cata-br-I₂ n1 l1) refl)
                        (cata-body-stable bodyL (bodyL ℕ.+ 1) bb at sat))))
     where
@@ -324,8 +266,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
                             → AllSlotStable at
                             → AllSlotStable (proj₂ (proj₂ (cata-dispatch strat bb n l at)))
   cata-dispatch-slot-stable strat-const         bb n l at sat = cata-trace-const-stable bb n l at sat
-  cata-dispatch-slot-stable strat-nat           bb n l at sat = cata-trace-nat-stable bb n l at sat
-  cata-dispatch-slot-stable strat-linear        bb n l at sat = cata-trace-linear-stable bb n l at sat
   cata-dispatch-slot-stable (strat-branching F) bb n l at sat = cata-trace-branching-stable F bb n l at sat
 
   ----------------------------------------------------------------------

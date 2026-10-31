@@ -23,8 +23,8 @@
 module Once.CCC.Target.X86-64.FrameInstantiation where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n; _∸_)
-open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp)
-open import Data.Product using (_,_)
+open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp; m≤n+m)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
@@ -44,30 +44,50 @@ open import Once.CCC.Target.X86-64.StackGrowth using (word-size)
 open import Once.CCC.Target.X86-64.Layout using (stack-addr; stack-sub-preserves') renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
--- X86-64 Frame Type
+-- X86-64 Frame Type (plan 0.134 S1)
 --
--- A Frame is a StackPointer (bundled address with InStack proof).
+-- A Frame is a StackPointer TAGGED WITH ITS DEPTH: the number of slots it
+-- sits below the entry frame. The address is where the frame lives; the
+-- depth is which frame it is.
+--
+-- They come apart only at the stack floor. `sp ∸ n·word` stops at zero, so a
+-- call made from the lowest frame used to get its caller's own frame back,
+-- and the callee's `c-thunk` cleared the caller's live slots (plan 0.134 §3a).
+-- The depth never stops, so the callee's frame is always new and always
+-- `≺` its caller's (`x86-shift-≺`). The abstract stack has no floor; running
+-- out of stack is the concrete machine's outcome, as running out of heap is.
+--
+-- Every address law reads the address only, so it is unchanged.
 ------------------------------------------------------------------------
 
 X86Frame : Set
-X86Frame = StackPointer
+X86Frame = StackPointer × ℕ
+
+frame-sp : X86Frame → StackPointer
+frame-sp = proj₁
+
+frame-depth : X86Frame → ℕ
+frame-depth = proj₂
 
 ------------------------------------------------------------------------
 -- Decidable Equality for Frames
 --
--- Two StackPointers are equal iff their addresses are equal.
--- The InStack proofs are equal by ≤-irrelevant.
+-- Two frames are equal iff their addresses and their depths are equal.
 ------------------------------------------------------------------------
 
 _x86-≟F_ : DecidableEquality X86Frame
-_x86-≟F_ = _≟SP_
+(sp₁ , d₁) x86-≟F (sp₂ , d₂) with sp₁ ≟SP sp₂
+... | no sp≢   = no λ { refl → sp≢ refl }
+... | yes refl with d₁ ≟ d₂
+...   | yes refl = yes refl
+...   | no d≢    = no λ { refl → d≢ refl }
 
 ------------------------------------------------------------------------
 -- Frame Base Address
 ------------------------------------------------------------------------
 
 x86-frame-base : X86Frame → Addr
-x86-frame-base = sp-addr
+x86-frame-base f = sp-addr (frame-sp f)
 
 ------------------------------------------------------------------------
 -- Slot Addressing
@@ -78,14 +98,14 @@ x86-frame-base = sp-addr
 -- | Direct definition of x86 slot address: base + k * word-size
 -- This gives definitional reduction, unlike using the abstract slot-addr.
 x86-slot-addr : X86Frame → ℕ → Addr
-x86-slot-addr f k = sp-addr f + k * word-size
+x86-slot-addr f k = x86-frame-base f + k * word-size
 
 -- | Proof that x86-slot-addr equals the abstract slot-addr
-x86-slot-addr-eq : ∀ f k → x86-slot-addr f k ≡ slot-addr f k
-x86-slot-addr-eq f k = refl  -- Both compute to sp-addr f + k * word-size
+x86-slot-addr-eq : ∀ f k → x86-slot-addr f k ≡ slot-addr (frame-sp f) k
+x86-slot-addr-eq f k = refl  -- Both compute to sp-addr + k * word-size
 
 x86-slot-zero-at-base : ∀ f → x86-slot-addr f zero ≡ x86-frame-base f
-x86-slot-zero-at-base f = Data.Nat.Properties.+-identityʳ (sp-addr f)
+x86-slot-zero-at-base f = Data.Nat.Properties.+-identityʳ (x86-frame-base f)
   where import Data.Nat.Properties
 
 -- | Slot (suc k) is word-size bytes above slot k
@@ -98,47 +118,57 @@ x86-slot-zero-at-base f = Data.Nat.Properties.+-identityʳ (sp-addr f)
 --                             = slot-addr sp k + word-size
 x86-slot-addr-suc : ∀ f k → x86-slot-addr f (suc k) ≡ x86-slot-addr f k + word-size
 x86-slot-addr-suc f k =
-  trans (cong (sp-addr f +_) (+-comm word-size (k * word-size)))
-        (sym (+-assoc (sp-addr f) (k * word-size) word-size))
+  trans (cong (x86-frame-base f +_) (+-comm word-size (k * word-size)))
+        (sym (+-assoc (x86-frame-base f) (k * word-size) word-size))
   where open import Data.Nat.Properties using (+-assoc; +-comm)
 
 x86-slot-injective : ∀ f k₁ k₂ → k₁ ≢ k₂ → x86-slot-addr f k₁ ≢ x86-slot-addr f k₂
-x86-slot-injective = offset-distinct
+x86-slot-injective f = offset-distinct (frame-sp f)
 
 ------------------------------------------------------------------------
 -- Frame Ordering
 --
--- f₁ ≺ f₂ means f₁ is "further" in stack growth direction.
--- On x86-64, stack grows downward, so "further" = lower address.
+-- f₁ ≺ f₂ means f₁ is "further" in stack growth direction: DEEPER, or at
+-- the same depth and lower. Depth decides, so a callee is `≺` its caller
+-- even where the address cannot say so (the floor). The address breaks
+-- ties, which keeps the order total.
 ------------------------------------------------------------------------
 
 _x86-≺_ : X86Frame → X86Frame → Set
-f₁ x86-≺ f₂ = sp-addr f₁ < sp-addr f₂
+f₁ x86-≺ f₂ = frame-depth f₂ < frame-depth f₁
+            ⊎ (frame-depth f₁ ≡ frame-depth f₂ × x86-frame-base f₁ < x86-frame-base f₂)
 
--- | Frame ordering is transitive (follows from < on addresses)
+-- | Frame ordering is transitive (lexicographic on depth, then address)
 x86-≺-trans : ∀ {f₁ f₂ f₃} → f₁ x86-≺ f₂ → f₂ x86-≺ f₃ → f₁ x86-≺ f₃
-x86-≺-trans {f₁} {f₂} {f₃} f₁≺f₂ f₂≺f₃ = <-trans f₁≺f₂ f₂≺f₃
+x86-≺-trans (inj₁ d₂<d₁)        (inj₁ d₃<d₂)        = inj₁ (<-trans d₃<d₂ d₂<d₁)
+x86-≺-trans (inj₁ d₂<d₁)        (inj₂ (refl , _))   = inj₁ d₂<d₁
+x86-≺-trans (inj₂ (refl , _))   (inj₁ d₃<d₂)        = inj₁ d₃<d₂
+x86-≺-trans (inj₂ (refl , a₁<a₂)) (inj₂ (refl , a₂<a₃)) = inj₂ (refl , <-trans a₁<a₂ a₂<a₃)
 
--- | Frame ordering is irreflexive (follows from < on addresses)
+-- | Frame ordering is irreflexive
 x86-≺-irrefl : ∀ {f} → f x86-≺ f → ⊥
-x86-≺-irrefl {f} f≺f = <-irrefl refl f≺f
+x86-≺-irrefl (inj₁ d<d)       = <-irrefl refl d<d
+x86-≺-irrefl (inj₂ (_ , a<a)) = <-irrefl refl a<a
 
--- | Frame ordering is trichotomous (total order on addresses)
+-- | Frame ordering is trichotomous (lexicographic on two total orders)
 x86-≺-compare : ∀ f₁ f₂ → (f₁ x86-≺ f₂) ⊎ (f₁ ≡ f₂) ⊎ (f₂ x86-≺ f₁)
-x86-≺-compare f₁ f₂ with <-cmp (sp-addr f₁) (sp-addr f₂)
-... | tri< a<b _ _ = inj₁ a<b
-... | tri≈ _ a≡b _ = inj₂ (inj₁ (stack-addr-inj a≡b))
-... | tri> _ _ b<a = inj₂ (inj₂ b<a)
+x86-≺-compare (sp₁ , d₁) (sp₂ , d₂) with <-cmp d₂ d₁
+... | tri< d₂<d₁ _ _ = inj₁ (inj₁ d₂<d₁)
+... | tri> _ _ d₁<d₂ = inj₂ (inj₂ (inj₁ d₁<d₂))
+... | tri≈ _ refl _ with <-cmp (sp-addr sp₁) (sp-addr sp₂)
+...   | tri< a<b _ _ = inj₁ (inj₂ (refl , a<b))
+...   | tri≈ _ a≡b _ = inj₂ (inj₁ (cong (_, d₁) (stack-addr-inj a≡b)))
+...   | tri> _ _ b<a = inj₂ (inj₂ (inj₂ (refl , b<a)))
 
 ------------------------------------------------------------------------
 -- Frame Disjointness
 --
--- When f₁ ≺ f₂ (f₁ at lower address), bounded slots of f₁ are disjoint
--- from all slots of f₂.
+-- A slot of f₁ that lies below f₂'s base is disjoint from all slots of f₂.
+-- The ordering premise is not needed: the bound alone decides it.
 --
 -- Proof strategy:
---   - slot-addr f₂ k₂ ≥ sp-addr f₂ (slots grow upward)
---   - slot-addr f₁ k₁ < sp-addr f₂ (given by bound)
+--   - slot-addr f₂ k₂ ≥ frame-base f₂ (slots grow upward)
+--   - slot-addr f₁ k₁ < frame-base f₂ (given by bound)
 --   - Therefore slot-addr f₁ k₁ < slot-addr f₂ k₂ (disjoint)
 ------------------------------------------------------------------------
 
@@ -148,23 +178,20 @@ x86-slot-addr-mono-< : ∀ frame k₁ k₂ →
   k₁ < k₂ →
   x86-slot-addr frame k₁ < x86-slot-addr frame k₂
 x86-slot-addr-mono-< frame k₁ k₂ k₁<k₂ =
-  +-monoʳ-< (sp-addr frame) (*-monoˡ-< word-size k₁<k₂)
+  +-monoʳ-< (x86-frame-base frame) (*-monoˡ-< word-size k₁<k₂)
 
 -- | Bounded frame disjointness: slot of f₁ ≠ slot of f₂
 -- when the slot stays within the frame's bounds.
---
--- If slot-addr f₁ k₁ < addr f₂, and f₂'s slots are ≥ addr f₂,
--- then the addresses can't be equal.
 x86-frame-disjoint-bounded : ∀ f₁ f₂ k₁ k₂ →
   f₁ x86-≺ f₂ →
-  x86-slot-addr f₁ k₁ < sp-addr f₂ →  -- Slot is within frame bounds
+  x86-slot-addr f₁ k₁ < x86-frame-base f₂ →  -- Slot is within frame bounds
   x86-slot-addr f₁ k₁ ≢ x86-slot-addr f₂ k₂
-x86-frame-disjoint-bounded f₁ f₂ k₁ k₂ f₁<f₂ slot<f₂ eq =
+x86-frame-disjoint-bounded f₁ f₂ k₁ k₂ _ slot<f₂ eq =
   <⇒≢ slot₁<slot₂ eq
   where
-    -- slot-addr f₂ k₂ ≥ addr f₂ (slots grow upward)
-    slot₂≥f₂ : x86-slot-addr f₂ k₂ ≥ sp-addr f₂
-    slot₂≥f₂ = slot-addr-≥-base f₂ k₂
+    -- slot-addr f₂ k₂ ≥ frame-base f₂ (slots grow upward)
+    slot₂≥f₂ : x86-slot-addr f₂ k₂ ≥ x86-frame-base f₂
+    slot₂≥f₂ = slot-addr-≥-base (frame-sp f₂) k₂
 
     -- Therefore slot-addr f₁ k₁ < slot-addr f₂ k₂
     slot₁<slot₂ : x86-slot-addr f₁ k₁ < x86-slot-addr f₂ k₂
@@ -173,8 +200,8 @@ x86-frame-disjoint-bounded f₁ f₂ k₁ k₂ f₁<f₂ slot<f₂ eq =
 -- | Slot within capacity is below caller frame when gap is sufficient
 x86-slot-within-capacity-bound : ∀ frame caller-frame slot capacity →
   slot < capacity →
-  x86-slot-addr frame capacity ≤ sp-addr caller-frame →
-  x86-slot-addr frame slot < sp-addr caller-frame
+  x86-slot-addr frame capacity ≤ x86-frame-base caller-frame →
+  x86-slot-addr frame slot < x86-frame-base caller-frame
 x86-slot-within-capacity-bound frame caller-frame slot capacity slot<cap gap-sufficient =
   <-≤-trans slot<cap-addr gap-sufficient
   where
@@ -186,23 +213,37 @@ x86-slot-within-capacity-bound frame caller-frame slot capacity slot<cap gap-suf
 x86-frame-disjoint-with-capacity : ∀ f₁ f₂ k₁ k₂ capacity →
   f₁ x86-≺ f₂ →
   k₁ < capacity →
-  x86-slot-addr f₁ capacity ≤ sp-addr f₂ →
+  x86-slot-addr f₁ capacity ≤ x86-frame-base f₂ →
   x86-slot-addr f₁ k₁ ≢ x86-slot-addr f₂ k₂
 x86-frame-disjoint-with-capacity f₁ f₂ k₁ k₂ capacity f₁<f₂ k₁<cap gap-sufficient =
   x86-frame-disjoint-bounded f₁ f₂ k₁ k₂ f₁<f₂ slot-bound
   where
-    slot-bound : x86-slot-addr f₁ k₁ < sp-addr f₂
+    slot-bound : x86-slot-addr f₁ k₁ < x86-frame-base f₂
     slot-bound = x86-slot-within-capacity-bound f₁ f₂ k₁ capacity k₁<cap gap-sufficient
 
 ------------------------------------------------------------------------
 -- Frame movement: the callee frame sits `n` slots DOWN (the prologue's
--- `sub sp, n·word`). The stack region is downward-closed, so this is total.
+-- `sub sp, n·word`) and `n` slots DEEPER. The stack region is
+-- downward-closed, so the address is total; at the floor it stops at zero,
+-- but the depth does not. `n + d` rather than `d + n`, so a shift by zero is
+-- the frame itself by definition.
 ------------------------------------------------------------------------
 
 x86-shift-frame : X86Frame → ℕ → X86Frame
-x86-shift-frame f n =
-  stack-addr (sp-addr f ∸ n * word-size)
-             (stack-sub-preserves' (sp-addr f) (n * word-size) (in-stack f))
+x86-shift-frame (sp , d) n =
+  ( stack-addr (sp-addr sp ∸ n * word-size)
+               (stack-sub-preserves' (sp-addr sp) (n * word-size) (in-stack sp))
+  , n + d )
+
+-- | THE LAW plan 0.134 is for: a shift of at least one slot is strictly
+-- further, for every frame, the floor included. By the depth alone.
+x86-shift-≺ : ∀ f n → 0 < n → x86-shift-frame f n x86-≺ f
+x86-shift-≺ (sp , d) (suc n) _ = inj₁ (s≤s (m≤n+m d n))
+
+x86-shift-below : ∀ {f′ f} n → f′ x86-≺ f → x86-shift-frame f′ n x86-≺ f
+x86-shift-below {_ , d′} zero    h                  = h
+x86-shift-below {_ , d′} (suc n) (inj₁ d<d′)        = inj₁ (<-≤-trans d<d′ (m≤n+m d′ (suc n)))
+x86-shift-below {_ , d′} (suc n) (inj₂ (refl , _))  = inj₁ (s≤s (m≤n+m d′ n))
 
 ------------------------------------------------------------------------
 -- X86-64 FrameSemantics Instance
@@ -229,8 +270,10 @@ x86-64-frame-semantics ι = record
   ; slot-zero-at-base = x86-slot-zero-at-base
   ; slot-injective = x86-slot-injective
   ; _≺_ = _x86-≺_
-  ; ≺-trans = λ f₁≺f₂ f₂≺f₃ → <-trans f₁≺f₂ f₂≺f₃
-  ; ≺-irrefl = λ f≺f → <-irrefl refl f≺f
+  ; ≺-trans = λ {f₁} {f₂} {f₃} → x86-≺-trans {f₁} {f₂} {f₃}
+  ; ≺-irrefl = λ {f} → x86-≺-irrefl {f}
   ; ≺-compare = x86-≺-compare
+  ; shift-≺ = x86-shift-≺
+  ; shift-below = λ {f′} {f} → x86-shift-below {f′} {f}
   ; frame-disjoint-bounded = x86-frame-disjoint-bounded
   }

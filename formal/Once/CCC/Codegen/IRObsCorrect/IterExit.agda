@@ -47,7 +47,7 @@ module IterExitC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes)
   open ShapeC {FS} using (tag-inl; unpack-wf; load-suc-out; mem-unpack)
-  open ClosureWellFormedDef {FS} using (rep-prim; rep-unit)
+  open ClosureWellFormedBase {FS} using (rep-prim; rep-unit)
   open IterShapeC {FS}
   open IterRunC {FS}
 
@@ -56,28 +56,28 @@ module IterExitC {FS : FrameSemantics} where
   -- payload cell holds — a pointer (`at-loc`, the payload's own validity
   -- carried over the register write), a register literal (`at-reg`) or a unit.
   ----------------------------------------------------------------------
-  payload-place-l : ∀ {A′ B′ : IRTy} {a : ⟦ A′ ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+  payload-place-l : ∀ {prog : AbstractTrace} {A′ B′ : IRTy} {a : ⟦ A′ ⟧} {m : AllocMode} {alloc : AllocState {FS}}
                       {loc : ValueLocation FS} {s′ : LocState FS}
-                  → ValidAtWF m alloc {A′ IRT.+ B′} (inj₁ a) loc s′
+                  → ValidAtWF {prog = prog} m alloc {A′ IRT.+ B′} (inj₁ a) loc s′
                   → readReg (regs s′) Input1 ≡ SV-Ptr loc
-                  → Σ AllocMode (λ mA → ResultPlace A′ mA alloc alloc a (proj₁ (exec-abstract load-indirect-suc s′ alloc)))
+                  → Σ AllocMode (λ mA → ResultPlace {prog = prog} A′ mA alloc alloc a (proj₁ (exec-abstract load-indirect-suc s′ alloc)))
   payload-place-l {alloc = alloc} {loc = loc} {s′ = s′}
                   (valid-inl-wf {payload-loc = pl} {mA = mA} _ _ r bfp _ va) rd =
     mA , at-loc pl va′ bfp (load-suc-out s′ alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r) va′ bfp
-    where va′ = validityWF-mem-preserved _ pl s′ _ bfp (λ lc _ → mem-unpack s′ alloc lc) va
+    where va′ = validityWF-mem-preserved _ pl s′ _ (live→bf bfp) (λ lc _ → mem-unpack s′ alloc lc) va
   payload-place-l {alloc = alloc} {loc = loc} {s′ = s′} (valid-inl-reg-wf _ _ (rep-prim fit) r _) rd =
     Heap , at-reg fit (load-suc-out s′ alloc loc _ (cong sv-as-loc rd) r)
   payload-place-l (valid-inl-reg-wf _ _ (rep-unit refl _) _ _) rd = Heap , unit-result
 
-  payload-place-r : ∀ {A′ B′ : IRTy} {b : ⟦ B′ ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+  payload-place-r : ∀ {prog : AbstractTrace} {A′ B′ : IRTy} {b : ⟦ B′ ⟧} {m : AllocMode} {alloc : AllocState {FS}}
                       {loc : ValueLocation FS} {s′ : LocState FS}
-                  → ValidAtWF m alloc {A′ IRT.+ B′} (inj₂ b) loc s′
+                  → ValidAtWF {prog = prog} m alloc {A′ IRT.+ B′} (inj₂ b) loc s′
                   → readReg (regs s′) Input1 ≡ SV-Ptr loc
-                  → Σ AllocMode (λ mB → ResultPlace B′ mB alloc alloc b (proj₁ (exec-abstract load-indirect-suc s′ alloc)))
+                  → Σ AllocMode (λ mB → ResultPlace {prog = prog} B′ mB alloc alloc b (proj₁ (exec-abstract load-indirect-suc s′ alloc)))
   payload-place-r {alloc = alloc} {loc = loc} {s′ = s′}
                   (valid-inr-wf {payload-loc = pl} {mB = mB} _ _ r bfp _ vb) rd =
     mB , at-loc pl vb′ bfp (load-suc-out s′ alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r) vb′ bfp
-    where vb′ = validityWF-mem-preserved _ pl s′ _ bfp (λ lc _ → mem-unpack s′ alloc lc) vb
+    where vb′ = validityWF-mem-preserved _ pl s′ _ (live→bf bfp) (λ lc _ → mem-unpack s′ alloc lc) vb
   payload-place-r {alloc = alloc} {loc = loc} {s′ = s′} (valid-inr-reg-wf _ _ (rep-prim fit) r _) rd =
     Heap , at-reg fit (load-suc-out s′ alloc loc _ (cong sv-as-loc rd) r)
   payload-place-r (valid-inr-reg-wf _ _ (rep-unit refl _) _ _) rd = Heap , unit-result
@@ -112,8 +112,8 @@ module IterExitC {FS : FrameSemantics} where
     s4 = flat-exec-instr load-indirect-suc prog s3
 
     -- The round's result: a sum in memory (a sum fits no register and is no unit).
-    module P (loc : ValueLocation FS) (vS : ValidAtWF m (falloc S0) {B IRT.+ A} (inj₁ b) loc (floc S0))
-             (bef : BeforeFrontier (falloc S0) loc)
+    module P (loc : ValueLocation FS) (vS : ValidAtWF {prog = prog} m (falloc S0) {B IRT.+ A} (inj₁ b) loc (floc S0))
+             (bef : Live (falloc S0) loc)
              (rax : readReg (regs (floc S0)) Output ≡ SV-Ptr loc) where
 
       rd1 : readReg (regs (floc s1)) Input1 ≡ SV-Ptr loc
@@ -122,8 +122,8 @@ module IterExitC {FS : FrameSemantics} where
       mem1 : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc s1) lc ≡ SMCore.MemOps.readLoc (floc S0) lc
       mem1 lc = mem-untouched mov-to-input (floc S0) (falloc S0) lc nhw-mov-to-input refl
 
-      v1 : ValidAtWF m (falloc s1) {B IRT.+ A} (inj₁ b) loc (floc s1)
-      v1 = validityWF-mem-preserved (inj₁ b) loc (floc S0) (floc s1) bef (λ lc _ → mem1 lc) vS
+      v1 : ValidAtWF {prog = prog} m (falloc s1) {B IRT.+ A} (inj₁ b) loc (floc s1)
+      v1 = validityWF-mem-preserved (inj₁ b) loc (floc S0) (floc s1) (live→bf bef) (λ lc _ → mem1 lc) vS
 
       nh1 : halted (floc s1) ≡ false
       nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt
@@ -148,7 +148,7 @@ module IterExitC {FS : FrameSemantics} where
                                       (cong (λ mj → do-jump mj s1) (done-target prog base la))))
                 (FlatSteps-++ (flat-step1 nh1 at-done refl) ((nh1 , at-out′) ∷ []))
 
-      placeB : Σ AllocMode (λ mB → ResultPlace B mB (falloc s4) (falloc s4) b (floc s4))
+      placeB : Σ AllocMode (λ mB → ResultPlace {prog = prog} B mB (falloc s4) (falloc s4) b (floc s4))
       placeB = payload-place-l v1 rd1
 
       -- the loop's end

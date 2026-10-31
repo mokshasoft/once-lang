@@ -82,9 +82,7 @@ library
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.Label
-      MAlonzo.Code.Once.CCC.Machine.FrameFree
       MAlonzo.Code.Once.CCC.Machine.Locations
-      MAlonzo.Code.Once.CCC.Machine.NoNested
       MAlonzo.Code.Once.CCC.Machine.SMCore
       MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
       MAlonzo.Code.Once.CCC.Target.RiscV64.Emit

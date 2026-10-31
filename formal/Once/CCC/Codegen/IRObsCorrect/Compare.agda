@@ -54,7 +54,7 @@ open import Once.CCC.Codegen.IRToTrace o using (sigop-code; cmp-trace)
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum using (int-bits)
 open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; module AbstractExec; instr-sigop; load-from-slot; instr-load-tag-lit; readReg; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sv-as-loc; Input1; store-indirect; store-indirect-suc; sucLoc; SV-Ptr; module LocState; module AllocState)
-open AllocState using (next-heap-ref; current-frame)
+open AllocState using (next-heap-ref; current-frame; saved-frames)
 open LocState using (regs; halted)
 
 import Once.CCC.FrameSemantics
@@ -94,7 +94,7 @@ module CompareC {FS : FrameSemantics} where
 
   cmp-obs : ∀ (si : SigOpInfo (SpecTy.Int SpecTy.* SpecTy.Int) (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (op : CmpOp)
           → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
-  cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
+  cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = sym (cong proj₁ ER)
       ; value-realized =
@@ -102,7 +102,7 @@ module CompareC {FS : FrameSemantics} where
                    (λ _ → cong (λ t → DL.length t + base) (sym em≡))
                    (λ st → case trans (sym (cong (λ ρ → is-stopped (proj₂ ρ)) ER)) st of λ ())
                    (λ _ → refl) (λ _ → refl)
-                   (log-of run _ (sym (cong proj₁ ER)))
+                   (log-of run (sym (cong proj₁ ER)))
                    (λ p → place (done-tag (resultAt s (E₀ si x)) (trans (sym (cong proj₂ (RE k))) p)))
                    (subst (λ ρ → k ≤ budgetLeft k (proj₂ ρ) + chain-ctrls run) (sym ER) (m≤m+n k _))
                    (λ _ fr j bf' → mem-pres (AtStack fr j) bf')
@@ -111,9 +111,12 @@ module CompareC {FS : FrameSemantics} where
                    (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs11) { next-slot = m })
-                                     (sym cf-fs11) ≤-refl heapref-≤ loc' bf')
+                                     (sym cf-fs11) ≤-refl heapref-≤ loc' bf') (λ _ → sf-fs11)
       }
     where
+      -- D357: the old premise, from the invariant.
+      n≤ = ns≤ {alloc} n ns0
+
       tag-stash sum-stash : ℕ
       tag-stash = n
       sum-stash = suc n
@@ -155,7 +158,7 @@ module CompareC {FS : FrameSemantics} where
 
       -- ── THE STATES. Two register-only steps, then the nine of the build.
       fs0 fs1 fs2 : FlatState
-      fs0 = entry-flat base s alloc cl
+      fs0 = entry-flat base s alloc cl rs
       fs1 = flat-exec-instr (instr-sigop si′)      prog fs0
       fs2 = flat-exec-instr (instr-reg-op out-nz) prog fs1
 
@@ -168,6 +171,11 @@ module CompareC {FS : FrameSemantics} where
       cf-fs2 =
         trans (exec-abstract-preserves-frame (instr-reg-op out-nz) (floc fs1) (falloc fs1))
               (exec-abstract-preserves-frame (instr-sigop si′) s alloc)
+
+      sf-fs2 : saved-frames (falloc fs2) ≡ saved-frames alloc
+      sf-fs2 =
+        trans (exec-abstract-preserves-saved (instr-reg-op out-nz) (floc fs1) (falloc fs1))
+              (exec-abstract-preserves-saved (instr-sigop si′) s alloc)
 
       mem-fs2 : ∀ (loc : ValueLocation FS) → SMCore.MemOps.readLoc (floc fs2) loc ≡ SMCore.MemOps.readLoc s loc
       mem-fs2 loc =
@@ -224,6 +232,13 @@ module CompareC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs4) (falloc fs4))
        (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs3) (falloc fs3))
               (exec-abstract-preserves-frame (store-at-slot tag-stash) (floc fs2) (falloc fs2))))
+
+      sf-fs6 : saved-frames (falloc fs6) ≡ saved-frames (falloc fs2)
+      sf-fs6 =
+        trans (exec-abstract-preserves-saved mov-to-input (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs4) (falloc fs4))
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs3) (falloc fs3))
+              (exec-abstract-preserves-saved (store-at-slot tag-stash) (floc fs2) (falloc fs2))))
 
       wf-load-tag : InstrWF (floc fs6) (falloc fs6) (load-from-slot tag-stash)
       wf-load-tag =
@@ -289,6 +304,15 @@ module CompareC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (load-from-slot tag-stash) (floc fs6) (falloc fs6))
        (trans (exec-abstract-preserves-frame mov-to-input (floc fs5) (falloc fs5))
               (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs4) (falloc fs4))))))
+
+      sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames (falloc fs4)
+      sf-fs10 =
+        trans (exec-abstract-preserves-saved store-indirect-suc (floc fs9) (falloc fs9))
+       (trans (exec-abstract-preserves-saved (instr-load-tag-lit 0) (floc fs8) (falloc fs8))
+       (trans (exec-abstract-preserves-saved store-indirect (floc fs7) (falloc fs7))
+       (trans (exec-abstract-preserves-saved (load-from-slot tag-stash) (floc fs6) (falloc fs6))
+       (trans (exec-abstract-preserves-saved mov-to-input (floc fs5) (falloc fs5))
+              (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs4) (falloc fs4))))))
 
       wf-load-sum : InstrWF (floc fs10) (falloc fs10) (load-from-slot sum-stash)
       wf-load-sum =
@@ -402,6 +426,14 @@ module CompareC {FS : FrameSemantics} where
        (trans (exec-abstract-preserves-frame (store-at-slot tag-stash) (floc fs2) (falloc fs2))
               cf-fs2)))
 
+      sf-fs11 : saved-frames (falloc fs11) ≡ saved-frames alloc
+      sf-fs11 =
+        trans (exec-abstract-preserves-saved (load-from-slot sum-stash) (floc fs10) (falloc fs10))
+       (trans sf-fs10
+       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs3) (falloc fs3))
+       (trans (exec-abstract-preserves-saved (store-at-slot tag-stash) (floc fs2) (falloc fs2))
+              sf-fs2)))
+
       heapref-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc fs11)
       heapref-≤ = subst (λ m → next-heap-ref alloc ≤ m) (sym heapref-fs11)
                         (subst (λ m → m ≤ suc (next-heap-ref (falloc fs3)))
@@ -411,7 +443,7 @@ module CompareC {FS : FrameSemantics} where
 
       -- ── THE PLACE: the sum the denotation returns, by the tag.
       place-at : ∀ (b : Bool) → SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just (SV-Tag (if b then 1 else 0))
-               → ResultPlace (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
+               → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
                              (resOf si (EvV.eraseᵍ (bool b))) (floc fs11)
       place-at true  tg rewrite bt-UU (conB si) =
         at-loc sum-loc
@@ -427,8 +459,8 @@ module CompareC {FS : FrameSemantics} where
           before
 
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
-            → ResultPlace _ Heap (falloc fs11) (falloc fs11) v (floc fs11)
-      place p = subst (λ v → ResultPlace _ Heap (falloc fs11) (falloc fs11) v (floc fs11))
+            → ResultPlace {prog = prog} _ Heap (falloc fs11) (falloc fs11) v (floc fs11)
+      place p = subst (λ v → ResultPlace {prog = prog} _ Heap (falloc fs11) (falloc fs11) v (floc fs11))
                   (returns-inj (trans (sym (cong (resultAt s) E≡)) p))
                   (place-at c tag-fs11)
 

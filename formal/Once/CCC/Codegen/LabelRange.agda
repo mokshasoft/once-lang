@@ -46,7 +46,7 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K;
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
+  (ir-to-trace'; CataStrategy; strat-const; strat-branching;
    cata-strategy; cata-dispatch; lsize; resuspend-layer)
 
 ------------------------------------------------------------------------
@@ -71,22 +71,6 @@ cata-label-of (_ , l , _) = l
 cata-label-mono : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
                 → l1 ≤ cata-label-of (cata-dispatch st bb n1 l1 at)
 cata-label-mono strat-const         bb n1 l1 at = m≤m+n l1 2
-cata-label-mono strat-nat           bb n1 l1 at =
-  ≤-trans (n≤1+n l1)
-    (≤-trans (n≤1+n (suc l1))
-      (≤-trans (n≤1+n (suc (suc l1)))
-        (≤-trans (n≤1+n (suc (suc (suc l1))))
-          (≤-trans (n≤1+n (suc (suc (suc (suc l1)))))
-            (≤-trans (n≤1+n (suc (suc (suc (suc (suc l1))))))
-              (≤-trans (n≤1+n (suc (suc (suc (suc (suc (suc l1)))))))
-                       (n≤1+n (suc (suc (suc (suc (suc (suc (suc l1))))))))))))))
-cata-label-mono strat-linear        bb n1 l1 at =
-  ≤-trans (n≤1+n l1)
-    (≤-trans (n≤1+n (suc l1))
-      (≤-trans (n≤1+n (suc (suc l1)))
-        (≤-trans (n≤1+n (suc (suc (suc l1))))
-          (≤-trans (n≤1+n (suc (suc (suc (suc l1)))))
-                   (n≤1+n (suc (suc (suc (suc (suc l1))))))))))
 cata-label-mono (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n l1 4)
     (≤-trans (m≤m+n (l1 + 4) (lsize F))

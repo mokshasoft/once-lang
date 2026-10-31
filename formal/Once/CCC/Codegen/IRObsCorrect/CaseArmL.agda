@@ -81,17 +81,17 @@ module ArmLC {FS : FrameSemantics} where
                 (bl : BlocksAt prog (blocks n l (case f g)))
                 (la : LabelsAt prog base (emitted n l (case f g)))
                 (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-                (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
+                (n≤ : next-slot alloc ≡ 0) (nh : halted s ≡ false)
                 {Av : ⟦ A ⟧} {mIn : AllocMode} {loc : ValueLocation FS}
                 (vd : ValidAtWF mIn alloc {A IRT.+ B} (inj₁ Av) loc s)
                 (rd : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                (k : ℕ)
+                (k : ℕ) (rs : List ℕ)
                 where
 
       open CaseShape f g n l
       open CaseRun f g n l prog base span
 
-      module P = Prologue s alloc cl nh (unpack-wf vd rd) la
+      module P = Prologue s alloc cl rs nh (unpack-wf vd rd) la
       module VR = ValueRealized
 
       mA : AllocMode
@@ -107,20 +107,20 @@ module ArmLC {FS : FrameSemantics} where
       pc-i4 : fpc P.i4 ≡ fbase base
       pc-i4 = shuffle-i4 (length gt) base
 
-      handF : P.i4 ≡ entry-flat (fbase base) (floc P.i4) (falloc P.i4) (fclosure P.i4)
-      handF = handover-eq (fbase base) P.i4 pc-i4 refl refl
+      handF : P.i4 ≡ entry-flat (fbase base) (floc P.i4) (falloc P.i4) (fclosure P.i4) rs
+      handF = handover-eq (fbase base) P.i4 rs pc-i4 refl refl
 
       nh-i4 : halted (floc P.i4) ≡ false
       nh-i4 = exec-abstract-preserves-halted-WF mov-to-input (floc P.i3) (falloc P.i3) P.nh-i3 tt
 
       mrf : MachineRefinesObsF prog (fbase base) n (suc (suc l)) f Av
-              (floc P.i4) (falloc P.i4) (fclosure P.i4) k
+              (floc P.i4) (falloc P.i4) (fclosure P.i4) rs k
       mrf = ihf n (suc (suc l)) prog (fbase base) ss cr (span-f prog base span)
                 (blocks-f prog bl) (labels-f prog base la) mA Av
-                (floc P.i4) (falloc P.i4) (fclosure P.i4) n≤ nh-i4 inpA k
+                (floc P.i4) (falloc P.i4) (fclosure P.i4) n≤ nh-i4 inpA k rs
 
       vf : ValueRealized prog (fbase base) n (suc (suc l)) f Av
-             (floc P.i4) (falloc P.i4) (fclosure P.i4) k
+             (floc P.i4) (falloc P.i4) (fclosure P.i4) rs k
       vf = MachineRefinesObsF.value-realized mrf
 
       chainF : FlatSteps prog (VR.steps vf) P.i4 (VR.settle vf)
@@ -218,24 +218,25 @@ module ArmLC {FS : FrameSemantics} where
 
       -- plan 0.119 D5: the arm's budgeted run returned (the clause runs on to
       -- the join label), stopped, or was cut (the machine is inside the arm).
-      witness : MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl k
+      witness : MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl rs k
       witness = wit (resultAt (floc P.i4) (⟪ evalᴰ f Av ⟫ k)) refl
         where
           wit : (ρ : Res (Ap ⟦ C ⟧)) → resultAt (floc P.i4) (⟪ evalᴰ f Av ⟫ k) ≡ ρ
-              → MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl k
+              → MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl rs k
           wit (returns (done v r)) q = record
             { value-realized =
                 realized (4 + (VR.steps vf + 1)) u1 (VR.out-mode vf) (VR.cont-alloc vf)
                          (chain q) (λ _ → VR.live vf (cong is-stopped q)) (λ _ → at-end-u1)
                          (λ p → case trans (sym (cong is-stopped (trans (sym res-eq) q))) p of λ ())
-                         (λ nc → VR.no-ret vf (nc-f nc)) (λ nc → VR.no-link vf (nc-f nc))
+                         (λ p → VR.no-ret vf (trans res-eq p)) (λ nc → VR.no-link vf (nc-f nc))
                          log-c
                          (λ p → VR.place vf (trans res-eq p))
                          (prog-f (≤-trans (≤-reflexive ctrlsF) (≤-trans (ctrls-≤ˡ chainF (joinStep q)) (ctrls-≤ʳ (P.run-i cond) _))))
                          (λ nc fr j bf → mem-pres (nc-f nc) (AtStack fr j) bf)
                          (λ nc hl bf → mem-pres (nc-f nc) (AtDynamic hl) bf)
-                         (λ nc → VR.frame-pres vf (nc-f nc))
+                         (λ p → VR.frame-pres vf (trans res-eq p))
                          (λ nc → bf-mono-c (nc-f nc))
+                         (λ p → VR.frames-pres vf (trans res-eq p))
             ; traces-agree =
                 trans (ev-chain q) (trans (MachineRefinesObsF.traces-agree mrf) (cong proj₁ RE))
             }
@@ -250,7 +251,7 @@ module ArmLC {FS : FrameSemantics} where
                          (λ p → case trans (sym (cong is-stopped (trans (sym res-eq) q))) p of λ ())
                          (λ p → case trans (sym (trans (sym res-eq) q)) p of λ ())
                          (λ _ → proj₁ (VR.stops vf (cong is-stopped q)) , trans (proj₂ (VR.stops vf (cong is-stopped q))) (chain-left (P.run-i cond) nh-i4))
-                         (λ nc → VR.no-ret vf (nc-f nc)) (λ nc → VR.no-link vf (nc-f nc))
+                         (λ p → VR.no-ret vf (trans res-eq p)) (λ nc → VR.no-link vf (nc-f nc))
                          log-c
                          -- plan 0.98: the arm stopped, so it has NO result —
                          -- `place`'s premise says otherwise and refutes itself.
@@ -258,8 +259,9 @@ module ArmLC {FS : FrameSemantics} where
                          (prog-f (≤-trans (≤-reflexive ctrlsF) (ctrls-≤ʳ (P.run-i cond) chainF)))
                          (λ nc fr j bf → mem-pres (nc-f nc) (AtStack fr j) bf)
                          (λ nc hl bf → mem-pres (nc-f nc) (AtDynamic hl) bf)
-                         (λ nc → VR.frame-pres vf (nc-f nc))
+                         (λ p → VR.frame-pres vf (trans res-eq p))
                          (λ nc → bf-mono-c (nc-f nc))
+                         (λ p → VR.frames-pres vf (trans res-eq p))
             ; traces-agree =
                 trans ev-chain-stopped (trans (MachineRefinesObsF.traces-agree mrf) (cong proj₁ RE))
             }
@@ -270,11 +272,11 @@ module ArmLC {FS : FrameSemantics} where
                          chain-stopped (λ _ → VR.live vf (cong is-stopped q))
                          (λ p → case trans (sym cM) p of λ ())
                          (λ p → case trans (sym (cong is-stopped cM)) p of λ ())
-                         (cut-absurd cM) (cut-absurd cM)
+                         (λ p → case trans (sym cM) p of λ ()) (cut-absurd cM)
                          log-c
                          (λ p → case trans (sym cM) p of λ ())
                          (prog-f (≤-trans (≤-reflexive ctrlsF) (ctrls-≤ʳ (P.run-i cond) chainF)))
-                         (cut-absurd cM) (cut-absurd cM) (cut-absurd cM) (cut-absurd cM)
+                         (cut-absurd cM) (cut-absurd cM) (λ p → case trans (sym cM) p of λ ()) (cut-absurd cM) (λ p → case trans (sym cM) p of λ ())
             ; traces-agree =
                 trans ev-chain-stopped (trans (MachineRefinesObsF.traces-agree mrf) (cong proj₁ RE))
             }

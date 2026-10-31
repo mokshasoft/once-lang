@@ -1,0 +1,26 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- 2026-10-30 regression (plan 0.135 cata): functor shape Mu (Id + K Unit).
+-- The recursive arm comes FIRST (tag 0): three layers = 3 (was 1).
+-- The deleted shape-specialised cata codegens (strat-nat / strat-linear)
+-- miscompiled it; every recursive functor now takes the generic walk.
+--
+-- Expected: exit 3
+
+import I.Linux.Syscalls as S
+
+zeroI : Unit -> Int
+zeroI _ = 0
+
+incI : Int -> Int
+incI n = n + 1
+
+f : Mu (Id + K Unit) -> Int
+f = cata (case incI zeroI)
+
+v : Mu (Id + K Unit)
+v = In (inl (In (inl (In (inl (In (inr unit)))))))
+
+main : Act Unit Void
+main = exit@S (f v)

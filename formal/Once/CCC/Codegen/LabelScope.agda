@@ -64,7 +64,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃; cata-body; cata-call-setup; cata-call; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; fsize; resuspend-layer)
 open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono;
   resuspend-label-mono)
 open import Once.CCC.Codegen.SlotBudget o using (visit-idle; rebuild-idle; slots-below; budget-of; bodies-of)
@@ -212,163 +212,22 @@ cata-body-ls lo hi bl el bb at atls Lel Hel =
   li-lab refl Lel Hel ∷ li-none refl ∷
   ++⁺ atls (li-none refl ∷ li-lab refl Lel Hel ∷ [])
 
-cata-setup-ls : ∀ (lo hi cl k ev pr bl : ℕ) → LabelsIn lo hi (cata-call-setup cl k ev pr bl)
-cata-setup-ls lo hi cl k ev pr bl =
+cata-setup-ls : ∀ (lo hi cl k ev bl : ℕ) → LabelsIn lo hi (cata-call-setup cl k ev bl)
+cata-setup-ls lo hi cl k ev bl =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ []
+  li-none refl ∷ []
 
-cata-call-ls : ∀ (lo hi cl k pr : ℕ) → LabelsIn lo hi (cata-call cl k pr)
-cata-call-ls lo hi cl k pr =
+cata-call-ls : ∀ (lo hi cl k ev pr : ℕ) → LabelsIn lo hi (cata-call cl k ev pr)
+cata-call-ls lo hi cl k ev pr =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-
-cata-nat-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-            → LabelsIn lo (cata-label-of (cata-dispatch strat-nat bb n1 l1 at))
-                       (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
--- C1: `cata-body ++ setup ++ I₁ ++ call ++ I₂ ++ call ++ I₃`.
-cata-nat-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ _ _ bodyL)
-   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _ _)
-    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _ _)
-     (++⁺ I₃ (cata-body-ls lo hi bodyL endL _ at at' L7 H7))))))
-  where
-    hi = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
-    bodyL = suc (suc (suc (suc (suc (suc l1)))))
-    endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
-    L0 : lo ≤ l1
-    L0 = lo≤l1
-    L1 : lo ≤ suc l1
-    L1 = m≤n⇒m≤1+n L0
-    L2 : lo ≤ suc (suc l1)
-    L2 = m≤n⇒m≤1+n L1
-    L3 : lo ≤ suc (suc (suc l1))
-    L3 = m≤n⇒m≤1+n L2
-    L4 : lo ≤ suc (suc (suc (suc l1)))
-    L4 = m≤n⇒m≤1+n L3
-    L5 : lo ≤ suc (suc (suc (suc (suc l1))))
-    L5 = m≤n⇒m≤1+n L4
-    L6 : lo ≤ bodyL
-    L6 = m≤n⇒m≤1+n L5
-    L7 : lo ≤ endL
-    L7 = m≤n⇒m≤1+n L6
-    -- two more than before: the body label and the jump-over join.
-    H0 : l1 < hi
-    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))))
-    H1 : suc l1 < hi
-    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))
-    H2 : suc (suc l1) < hi
-    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
-    H3 : suc (suc (suc l1)) < hi
-    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-    H4 : suc (suc (suc (suc l1))) < hi
-    H4 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
-    H5 : suc (suc (suc (suc (suc l1)))) < hi
-    H5 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
-    H6 : bodyL < hi
-    H6 = m≤n⇒m≤1+n ≤-refl
-    H7 : endL < hi
-    H7 = ≤-refl
-    at' : LabelsIn lo hi at
-    at' = ls-weaken ≤-refl
-            (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))))) atls
-    -- `build-layer tag` is ten slot/heap instructions: no label anywhere.
-    -- Indexed by the tag because the skeleton uses it at BOTH 0 and 1, and a
-    -- `_`-inferred trace would unify with whichever came first.
-    layer : ∀ (tag : ℕ) → LabelsIn lo hi
-              (mov-to-output ∷ store-at-slot n1 ∷ instr-alloc-heap 2 ∷
-               store-at-slot (suc n1) ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
-               store-indirect ∷ load-from-slot n1 ∷ store-indirect-suc ∷
-               load-from-slot (suc n1) ∷ [])
-    layer tag = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-                li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-    descend : LabelsIn lo hi _
-    descend =
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ li-lab refl L2 H2 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L3 H3 ∷
-      li-lab refl L2 H2 ∷ li-none refl ∷
-      li-lab refl L3 H3 ∷ li-lab refl L0 H0 ∷
-      li-lab refl L1 H1 ∷ []
-    I₁ : LabelsIn lo hi (cata-nat-I₁ n1 l1)
-    I₁ = li-none refl ∷ li-none refl ∷
-         ++⁺ descend (li-none refl ∷ li-none refl ∷ li-none refl ∷
-                      ++⁺ (layer 0) (li-none refl ∷ []))
-    I₂ : LabelsIn lo hi (cata-nat-I₂ n1 l1)
-    I₂ = li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
-         ++⁺ (layer 1) (li-none refl ∷ [])
-    I₃ : LabelsIn lo hi (cata-nat-I₃ l1)
-    I₃ = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
-
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 
 -- The Tier-1 LINEAR skeleton: four labels above `l1` (`ld-top`, `ld-end`,
 -- `la-top`, `la-end`), the algebra spliced twice.
-cata-linear-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-               → LabelsIn lo (cata-label-of (cata-dispatch strat-linear bb n1 l1 at))
-                          (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
--- C1: same block order as nat. Linear's window grows from four labels to six
--- (the body and its jump-over join).
-cata-linear-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ _ _ (suc (suc (suc (suc l1)))))
-   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _ _)
-    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _ _)
-     (++⁺ I₃ (cata-body-ls lo hi (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) _ at at' L5 H5))))))
-  where
-    hi = suc (suc (suc (suc (suc (suc l1)))))
-    L0 : lo ≤ l1
-    L0 = lo≤l1
-    L1 : lo ≤ suc l1
-    L1 = m≤n⇒m≤1+n L0
-    L2 : lo ≤ suc (suc l1)
-    L2 = m≤n⇒m≤1+n L1
-    L3 : lo ≤ suc (suc (suc l1))
-    L3 = m≤n⇒m≤1+n L2
-    L4 : lo ≤ suc (suc (suc (suc l1)))
-    L4 = m≤n⇒m≤1+n L3
-    L5 : lo ≤ suc (suc (suc (suc (suc l1))))
-    L5 = m≤n⇒m≤1+n L4
-    -- two more than before: the body label and the jump-over join.
-    H0 : l1 < hi
-    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
-    H1 : suc l1 < hi
-    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-    H2 : suc (suc l1) < hi
-    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
-    H3 : suc (suc (suc l1)) < hi
-    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
-    H4 : suc (suc (suc (suc l1))) < hi
-    H4 = m≤n⇒m≤1+n ≤-refl
-    H5 : suc (suc (suc (suc (suc l1)))) < hi
-    H5 = ≤-refl
-    at' : LabelsIn lo hi at
-    at' = ls-weaken ≤-refl
-            (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))) atls
-    descend : LabelsIn lo hi _
-    descend =
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ []
-    ascend : LabelsIn lo hi _
-    ascend =
-      li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-    I₁ : LabelsIn lo hi (cata-lin-I₁ n1 l1)
-    I₁ = ++⁺ descend (li-none refl ∷ [])
-    I₂ : LabelsIn lo hi (cata-lin-I₂ n1 l1)
-    I₂ = ascend
-    I₃ : LabelsIn lo hi (cata-lin-I₃ l1)
-    I₃ = li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ []
 
 -- The Tier-2 BRANCHING skeleton. Four loop labels at `l1..l1+3`, then the two
 -- functor walks in DISJOINT windows: visit at `lv = l1+4`, rebuild at
@@ -381,9 +240,9 @@ cata-branching-ls : ∀ (F : Fun 0) (lo bb n1 l1 : ℕ) (at : AbstractTrace) →
 -- gets ONE call site. The two functor-walk windows are UNCHANGED; `ls-weaken`
 -- lifts them over the two labels the body bracket adds above them.
 cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi2 _ _ _ _ hi)
+  ++⁺ (cata-setup-ls lo hi2 _ _ _ hi)
    (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
-    (++⁺ (cata-call-ls lo hi2 _ _ _)
+    (++⁺ (cata-call-ls lo hi2 _ _ _ _)
      (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
           (cata-body-ls lo hi2 hi (hi + 1) _ at at2 Lend Hend))))
   where
@@ -455,8 +314,8 @@ cata-const-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → L
               → LabelsIn lo (cata-label-of (cata-dispatch strat-const bb n1 l1 at))
                          (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
 cata-const-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ _ _ l1)
-   (++⁺ (cata-call-ls lo hi _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
+  ++⁺ (cata-setup-ls lo hi _ _ _ l1)
+   (++⁺ (cata-call-ls lo hi _ _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
   where
     hi = l1 + 2
     Hend : l1 + 1 < hi
@@ -470,8 +329,6 @@ cata-ls : ∀ (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → l
         → LabelsIn lo (cata-label-of (cata-dispatch st bb n1 l1 at))
                    (cata-trace-of (cata-dispatch st bb n1 l1 at))
 cata-ls strat-const         lo bb n1 l1 at le atls = cata-const-ls lo bb n1 l1 at le atls
-cata-ls strat-nat           lo bb n1 l1 at le atls = cata-nat-ls lo bb n1 l1 at le atls
-cata-ls strat-linear        lo bb n1 l1 at le atls = cata-linear-ls lo bb n1 l1 at le atls
 cata-ls (strat-branching F) lo bb n1 l1 at le atls = cata-branching-ls F lo bb n1 l1 at le atls
 
 ------------------------------------------------------------------------
@@ -975,145 +832,6 @@ record CataSplit (bb l1 : ℕ) (at t : AbstractTrace) : Set where
 -- (NOT opened at top level: `hi` / `H-ls` / `H-idle` are also the
 -- `where`-block names inside each strategy's split, below.)
 
-cata-nat-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
-               → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
-cata-nat-split bb n1 l1 at =
-  mkSplit H (ℓ o bodyL) (ℓ o endL) hi refl refl H-ls (L7 , H7)
-  where
-    hi    = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
-    bodyL = suc (suc (suc (suc (suc (suc l1)))))
-    endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
-    H = cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc n1)))) (suc (suc (suc (suc (suc n1))))) bodyL ++
-        (cata-nat-I₁ n1 l1 ++
-         (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
-          (cata-nat-I₂ n1 l1 ++
-           (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
-            (cata-nat-I₃ l1 ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))))))
-    L0 : l1 ≤ l1
-    L0 = ≤-refl
-    L1 : l1 ≤ suc l1
-    L1 = m≤n⇒m≤1+n L0
-    L2 : l1 ≤ suc (suc l1)
-    L2 = m≤n⇒m≤1+n L1
-    L3 : l1 ≤ suc (suc (suc l1))
-    L3 = m≤n⇒m≤1+n L2
-    L4 : l1 ≤ suc (suc (suc (suc l1)))
-    L4 = m≤n⇒m≤1+n L3
-    L5 : l1 ≤ suc (suc (suc (suc (suc l1))))
-    L5 = m≤n⇒m≤1+n L4
-    L7 : l1 ≤ endL
-    L7 = m≤n⇒m≤1+n (m≤n⇒m≤1+n L5)
-    H0 : l1 < hi
-    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))))
-    H1 : suc l1 < hi
-    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))))
-    H2 : suc (suc l1) < hi
-    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
-    H3 : suc (suc (suc l1)) < hi
-    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-    H4 : suc (suc (suc (suc l1))) < hi
-    H4 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
-    H5 : suc (suc (suc (suc (suc l1)))) < hi
-    H5 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
-    H7 : endL < hi
-    H7 = ≤-refl
-    layer : ∀ (tag : ℕ) → LabelsIn l1 hi
-              (mov-to-output ∷ store-at-slot n1 ∷ instr-alloc-heap 2 ∷
-               store-at-slot (suc n1) ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
-               store-indirect ∷ load-from-slot n1 ∷ store-indirect-suc ∷
-               load-from-slot (suc n1) ∷ [])
-    layer tag = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-                li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-    descend : LabelsIn l1 hi _
-    descend =
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ li-lab refl L2 H2 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L3 H3 ∷
-      li-lab refl L2 H2 ∷ li-none refl ∷
-      li-lab refl L3 H3 ∷ li-lab refl L0 H0 ∷
-      li-lab refl L1 H1 ∷ []
-    I₁ : LabelsIn l1 hi (cata-nat-I₁ n1 l1)
-    I₁ = li-none refl ∷ li-none refl ∷
-         ++⁺ descend (li-none refl ∷ li-none refl ∷ li-none refl ∷
-                      ++⁺ (layer 0) (li-none refl ∷ []))
-    I₂ : LabelsIn l1 hi (cata-nat-I₂ n1 l1)
-    I₂ = li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
-         ++⁺ (layer 1) (li-none refl ∷ [])
-    I₃ : LabelsIn l1 hi (cata-nat-I₃ l1)
-    I₃ = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
-    H-ls : LabelsIn l1 hi H
-    H-ls =
-      ++⁺ (cata-setup-ls l1 hi _ _ _ _ bodyL)
-       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _ _)
-        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _ _)
-         (++⁺ I₃ (li-lab refl L7 H7 ∷ []))))))
-
-cata-lin-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
-               → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
-cata-lin-split bb n1 l1 at =
-  mkSplit H (ℓ o bodyL) (ℓ o endL) hi refl refl H-ls (L5 , H5)
-  where
-    hi    = suc (suc (suc (suc (suc (suc l1)))))
-    bodyL = suc (suc (suc (suc l1)))
-    endL  = suc (suc (suc (suc (suc l1))))
-    cl    = suc (suc (suc (suc (suc (suc n1)))))
-    kk    = suc (suc (suc (suc (suc (suc (suc n1))))))
-    ev    = suc (suc (suc (suc (suc (suc (suc (suc n1)))))))
-    pr    = suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))
-    H = cata-call-setup cl kk ev pr bodyL ++
-        (cata-lin-I₁ n1 l1 ++
-         (cata-call cl kk pr ++
-          (cata-lin-I₂ n1 l1 ++
-           (cata-call cl kk pr ++
-            (cata-lin-I₃ l1 ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))))))
-    L0 : l1 ≤ l1
-    L0 = ≤-refl
-    L1 : l1 ≤ suc l1
-    L1 = m≤n⇒m≤1+n L0
-    L2 : l1 ≤ suc (suc l1)
-    L2 = m≤n⇒m≤1+n L1
-    L3 : l1 ≤ suc (suc (suc l1))
-    L3 = m≤n⇒m≤1+n L2
-    L5 : l1 ≤ endL
-    L5 = m≤n⇒m≤1+n (m≤n⇒m≤1+n L3)
-    H0 : l1 < hi
-    H0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
-    H1 : suc l1 < hi
-    H1 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-    H2 : suc (suc l1) < hi
-    H2 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
-    H3 : suc (suc (suc l1)) < hi
-    H3 = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
-    H5 : endL < hi
-    H5 = ≤-refl
-    descend : LabelsIn l1 hi _
-    descend =
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ []
-    I₁ : LabelsIn l1 hi (cata-lin-I₁ n1 l1)
-    I₁ = ++⁺ descend (li-none refl ∷ [])
-    I₂ : LabelsIn l1 hi (cata-lin-I₂ n1 l1)
-    I₂ =
-      li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-    I₃ : LabelsIn l1 hi (cata-lin-I₃ l1)
-    I₃ = li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ []
-    H-ls : LabelsIn l1 hi H
-    H-ls =
-      ++⁺ (cata-setup-ls l1 hi _ _ _ _ bodyL)
-       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _ _)
-        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _ _)
-         (++⁺ I₃ (li-lab refl L5 H5 ∷ []))))))
-
 -- Tier 2 calls the algebra ONCE, so its `H` has one call site. The functor
 -- walks are stuck on `F`, so `H ++ body` is NOT definitionally the emitted
 -- trace here — one `++-assoc` at `cata-br-I₁` is the whole difference.
@@ -1129,8 +847,8 @@ cata-br-split F bb n1 l1 at =
     bodyL = hi
     endL  = hi + 1
     cl = n1 + 7 + (4 * fsize F) + 4
-    setup = cata-call-setup cl (cl + 1) (cl + 2) (cl + 3) bodyL
-    call  = cata-call cl (cl + 1) (cl + 3)
+    setup = cata-call-setup cl (cl + 1) (cl + 2) bodyL
+    call  = cata-call cl (cl + 1) (cl + 2) (cl + 3)
     jmp   = instr-ctrl (c-jmp (ℓ o endL)) ∷ []
     tailB = instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷
             (at ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o endL)) ∷ [])
@@ -1202,9 +920,9 @@ cata-br-split F bb n1 l1 at =
            li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
     H-ls : LabelsIn l1 hi2 H
     H-ls =
-      ++⁺ (cata-setup-ls l1 hi2 cl (cl + 1) (cl + 2) (cl + 3) bodyL)
+      ++⁺ (cata-setup-ls l1 hi2 cl (cl + 1) (cl + 2) bodyL)
        (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
-        (++⁺ (cata-call-ls l1 hi2 cl (cl + 1) (cl + 3))
+        (++⁺ (cata-call-ls l1 hi2 cl (cl + 1) (cl + 2) (cl + 3))
          (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
               (li-lab refl Lend Hend ∷ []))))
 
@@ -1217,22 +935,20 @@ cata-const-split bb n1 l1 at =
   where
     hi   = l1 + 2
     endL = l1 + 1
-    H = cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1 ++
-        (cata-call n1 (n1 + 1) (n1 + 3) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
+    H = cata-call-setup n1 (n1 + 1) (n1 + 2) l1 ++
+        (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
     Lend : l1 ≤ endL
     Lend = m≤m+n l1 1
     Hend : endL < hi
     Hend = ≤-reflexive (sym (+-suc l1 1))
     H-ls : LabelsIn l1 hi H
-    H-ls = ++⁺ (cata-setup-ls l1 hi n1 (n1 + 1) (n1 + 2) (n1 + 3) l1)
-               (++⁺ (cata-call-ls l1 hi n1 (n1 + 1) (n1 + 3))
+    H-ls = ++⁺ (cata-setup-ls l1 hi n1 (n1 + 1) (n1 + 2) l1)
+               (++⁺ (cata-call-ls l1 hi n1 (n1 + 1) (n1 + 2) (n1 + 3))
                     (li-lab refl Lend Hend ∷ []))
 
 cata-split : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
            → CataSplit bb l1 at (cata-trace-of (cata-dispatch st bb n1 l1 at))
 cata-split strat-const         bb n1 l1 at = cata-const-split bb n1 l1 at
-cata-split strat-nat           bb n1 l1 at = cata-nat-split   bb n1 l1 at
-cata-split strat-linear        bb n1 l1 at = cata-lin-split   bb n1 l1 at
 cata-split (strat-branching F) bb n1 l1 at = cata-br-split  F bb n1 l1 at
 
 -- Every consumer of a skeleton is now ONE application of its split.

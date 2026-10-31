@@ -40,7 +40,7 @@ open import Once.Denotation.Program using (Leaves)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-nat; strat-linear; strat-branching; cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 open import Once.CCC.Codegen.CallOK using (InstrOK; Calls)
@@ -65,8 +65,7 @@ wrap-sum-cl : ∀ tag s → CLTrace (wrap-sum tag s)
 wrap-sum-cl tag s = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 ------------------------------------------------------------------------
--- The compile-time functor walks. A sum node's dispatch is ONE
--- `instr-case-on-tag`, on which the predicate is `⊤` (shallow — see header).
+-- The compile-time functor walks. A sum node's dispatch is flat control.
 ------------------------------------------------------------------------
 visit-walk-cl : ∀ todoSlot tv tb F s lb → CLTrace (visit-walk todoSlot tv tb F s lb)
 visit-walk-cl todoSlot tv tb (K _)   s lb = []
@@ -103,86 +102,32 @@ rebuild-walk-cl valSlot tv tb (F ⊗ G) s lb =
 ------------------------------------------------------------------------
 -- The three cata strategies (the algebra trace `at` is the caller's IH).
 ------------------------------------------------------------------------
--- D099 / C1: the three shared blocks. D131: `cata-call-setup` now allocates
--- TWO 2-cell heap blocks — the algebra's closure record, and the reusable
--- `(env , layer)` argument pair — so `tt` appears twice. `cata-call` still
--- allocates NOTHING: the pair is written in place, which is the point of
--- hoisting it out of the loop.
+-- D099 / C1: the three shared blocks. `cata-call-setup` allocates ONE 2-cell
+-- heap block (the algebra's closure record); `cata-call` allocates the fresh
+-- `(env , layer)` argument pair of EVERY call (plan 0.135 D1a — a reused pair
+-- is visible to closures earlier rounds returned; see `cata-call`).
 cata-body-cl : ∀ b e bb at → CLTrace at → CLTrace (cata-body b e bb at)
 cata-body-cl b e bb  at ih = tt ∷ tt ∷ ++⁺ ih (tt ∷ tt ∷ [])
 
-cata-setup-cl : ∀ cl k ev pr bl → CLTrace (cata-call-setup cl k ev pr bl)
-cata-setup-cl cl k ev pr bl =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+cata-setup-cl : ∀ cl k ev bl → CLTrace (cata-call-setup cl k ev bl)
+cata-setup-cl cl k ev bl =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
-cata-call-cl : ∀ cl k pr → CLTrace (cata-call cl k pr)
-cata-call-cl cl k pr =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-
-nat-I₁-cl : ∀ n1 l1 → CLTrace (cata-nat-I₁ n1 l1)
-nat-I₁-cl n1 l1 =
-  tt ∷ tt ∷
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (tt ∷ tt ∷ tt ∷
-       ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (tt ∷ []))
-
-nat-I₂-cl : ∀ n1 l1 → CLTrace (cata-nat-I₂ n1 l1)
-nat-I₂-cl n1 l1 =
-  tt ∷ tt ∷ tt ∷ ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (tt ∷ [])
-
-nat-I₃-cl : ∀ l1 → CLTrace (cata-nat-I₃ l1)
-nat-I₃-cl l1 = tt ∷ tt ∷ tt ∷ []
-
-cata-nat-cl : ∀ bb n1 l1 at → CLTrace at
-            → CLTrace (cata-trace-of (cata-trace-nat bb n1 l1 at))
-cata-nat-cl bb n1 l1  at ih =
-  ++⁺ (cata-setup-cl cl k ev pr bodyL)
-      (++⁺ (nat-I₁-cl n1 l1)
-           (++⁺ (cata-call-cl cl k pr)
-                (++⁺ (nat-I₂-cl n1 l1)
-                     (++⁺ (cata-call-cl cl k pr)
-                          (++⁺ (nat-I₃-cl l1)
-                               (cata-body-cl bodyL endL bb at ih))))))
-  where
-    bodyL = suc (suc (suc (suc (suc (suc l1)))))
-    endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
-    cl    = suc (suc n1)
-    k     = suc (suc (suc n1))
-    ev    = suc (suc (suc (suc n1)))
-    pr    = suc (suc (suc (suc (suc n1))))
+cata-call-cl : ∀ cl k ev pr → CLTrace (cata-call cl k ev pr)
+cata-call-cl cl k ev pr =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 cata-const-cl : ∀ bb n1 l1 at → CLTrace at
               → CLTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
 cata-const-cl bb n1 l1  at ih =
-  ++⁺ (cata-setup-cl n1 (n1 + 1) (n1 + 2) (n1 + 3) l1)
-      (++⁺ (cata-call-cl n1 (n1 + 1) (n1 + 3)) (cata-body-cl l1 (l1 + 1) bb at ih))
-
-cata-linear-cl : ∀ bb n1 l1 at → CLTrace at
-               → CLTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
-cata-linear-cl bb n1 l1  at ih =
-  ++⁺ (cata-setup-cl (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))
-                     (suc (suc (suc (suc l1)))))
-      (++⁺ lin-I₁
-           (++⁺ (cata-call-cl (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))))
-                (++⁺ lin-I₂
-                     (++⁺ (cata-call-cl (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))))
-                          (++⁺ lin-I₃ (cata-body-cl (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at ih))))))
-  where
-    lin-I₁ : CLTrace _
-    lin-I₁ = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-             tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-    lin-I₂ : CLTrace _
-    lin-I₂ = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-             tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-    lin-I₃ : CLTrace _
-    lin-I₃ = tt ∷ tt ∷ tt ∷ []
+  ++⁺ (cata-setup-cl n1 (n1 + 1) (n1 + 2) l1)
+      (++⁺ (cata-call-cl n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-cl l1 (l1 + 1) bb at ih))
 
 cata-branching-cl : ∀ F bb n1 l1 at → CLTrace at
                   → CLTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
 cata-branching-cl F bb n1 l1  at ih =
-  ++⁺ (cata-setup-cl cl (cl + 1) (cl + 2) (cl + 3) bodyL)
-      (++⁺ I₁ (++⁺ (cata-call-cl cl (cl + 1) (cl + 3))
+  ++⁺ (cata-setup-cl cl (cl + 1) (cl + 2) bodyL)
+      (++⁺ I₁ (++⁺ (cata-call-cl cl (cl + 1) (cl + 2) (cl + 3))
                    (++⁺ I₂ (cata-body-cl bodyL (bodyL + 1) bb at ih))))
   where
     bodyL = l1 + 4 + lsize F + lsize F
@@ -205,8 +150,6 @@ cata-branching-cl F bb n1 l1  at ih =
 cata-dispatch-cl : ∀ st bb n1 l1 at → CLTrace at
                  → CLTrace (cata-trace-of (cata-dispatch st bb n1 l1 at))
 cata-dispatch-cl strat-const         bb n1 l1  at ih = cata-const-cl bb n1 l1 at ih
-cata-dispatch-cl strat-nat           bb n1 l1  at ih = cata-nat-cl bb n1 l1 at ih
-cata-dispatch-cl strat-linear        bb n1 l1  at ih = cata-linear-cl bb n1 l1 at ih
 cata-dispatch-cl (strat-branching F) bb n1 l1  at ih = cata-branching-cl F bb n1 l1 at ih
 
 ------------------------------------------------------------------------

@@ -5,7 +5,7 @@
 -- Once.CCC.Codegen.IRObsCorrect.Apply
 --
 -- D200: `apply` — the sixteen-instruction setup, the call, and the hand-off
--- to `BlockRuns.closures` (D188).
+-- to the closure's own `runs` (plan 0.135 S1; was `BlockRuns.closures`, D188).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -16,8 +16,8 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Apply (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (AbstractTrace; SV-Ptr; sucLoc; SV-Code; instr-call-closure; StoredValue; module LocState)
-open LocState using (halted)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; SV-Ptr; sucLoc; SV-Code; instr-call-closure; StoredValue; LocState; module LocState; readReg; Input1)
+open LocState using (halted; regs)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
@@ -64,22 +64,22 @@ module ApplyC {FS : FrameSemantics} where
   obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
   -- A PAIR fits no register and is not `Unit`, so the two off-pointer input
   -- residences are refuted outright.
-  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k
-  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k
+  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k rs
+  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k rs
   obs-correct-apply {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
-    (in-loc pair-loc valid bf rdi) k =
+    (in-loc pair-loc valid bf rdi) k rs =
     go (PairValidWF.fst-cell d) (PairValidWF.snd-cell d)
     where
       d = decomposePairWF valid
-      module ASP = ApplySetupPres n prog base s alloc cl
+      module ASP = ApplySetupPres n prog base s alloc cl rs
 
       -- A CLOSURE is never inline (`InlineRep (A ⇛ B)` needs `FitsInRegI` or
       -- `≡ Unit`, both absurd), and D184 pins it to the HEAP — which is also
       -- the only shape `do-call` enters on, so the `AtStack` case is refuted
       -- by the witness's own `LocMatchesMode`.
-      go : CellAt alloc (A IRTy′.⇛ B) (proj₁ x) pair-loc s
-         → CellAt alloc A (proj₂ x) (sucLoc pair-loc) s
-         → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl k
+      go : CellAt {prog = prog} alloc (A IRTy′.⇛ B) (proj₁ x) pair-loc s
+         → CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s
+         → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
       go (cell-inline (rep-prim ()) _) _
       go (cell-inline (rep-unit () _) _) _
       go (cell-ptr {comp-loc = AtStack _ _} _ _ fv) _ =
@@ -91,33 +91,32 @@ module ApplyC {FS : FrameSemantics} where
           cvw     = decomposeClosureWF fst-valid
 
           E    = ClosureValidWF.EnvType cvw
-          body = ClosureValidWF.body cvw
           env  = ClosureValidWF.env cvw
           blbl    = ClosureValidWF.body-label cvw
 
           -- Each residence contributes a STORED VALUE and the cell equation;
           -- the callee's cell is rebuilt from the same split (D187).
-          env-sv-of : EnvAt alloc {E} env fst-loc s → StoredValue FS
-          env-sv-of (env-at-loc el _ _ _) = SV-Ptr el
+          env-sv-of : EnvAt {prog = prog} alloc {E} env fst-loc s → StoredValue FS
+          env-sv-of (env-at-loc el _ _)   = SV-Ptr el
           env-sv-of (env-in-cell rep _)   = inline-sv rep env
 
-          env-cell-of : (ea : EnvAt alloc {E} env fst-loc s)
+          env-cell-of : (ea : EnvAt {prog = prog} alloc {E} env fst-loc s)
                       → SMCore.MemOps.readLoc s fst-loc ≡ just (env-sv-of ea)
-          env-cell-of (env-at-loc _ ep _ _) = ep
+          env-cell-of (env-at-loc _ ep _)   = ep
           env-cell-of (env-in-cell _ ep)    = ep
 
-          arg-sv-of : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s → StoredValue FS
+          arg-sv-of : CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s → StoredValue FS
           arg-sv-of (cell-ptr {comp-loc = al} _ _ _) = SV-Ptr al
           arg-sv-of (cell-inline rep _)              = inline-sv rep (proj₂ x)
 
-          arg-cell-of : (c : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s)
+          arg-cell-of : (c : CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s)
                       → SMCore.MemOps.readLoc s (sucLoc pair-loc) ≡ just (arg-sv-of c)
           arg-cell-of (cell-ptr ap _ _)  = ap
           arg-cell-of (cell-inline _ ap) = ap
 
-          assemble : EnvAt alloc {E} env fst-loc s
-                   → CellAt alloc A (proj₂ x) (sucLoc pair-loc) s
-                   → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl k
+          assemble : EnvAt {prog = prog} alloc {E} env fst-loc s
+                   → CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s
+                   → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
           assemble ea sc' = record
             { value-realized =
                 realized (17 + CalleeRun.steps crun) (CalleeRun.settle crun)
@@ -127,56 +126,37 @@ module ApplyC {FS : FrameSemantics} where
                          (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
                               , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
                                       (chain-left run17 (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)))
-                         (λ nc → CalleeRun.no-ret crun (nc′ nc))
+                         (λ p → CalleeRun.no-ret crun (trans res-eq p))
                          (λ nc → CalleeRun.no-link crun (nc′ nc))
                          (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
                          place
                          (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
                                      (ctrls-≤ʳ run17 (CalleeRun.run crun)))
                          (λ nc fr j bf → mem-pres-apply nc (AtStack fr j) bf) (λ nc hl bf → mem-pres-apply nc (AtDynamic hl) bf)
-                         (λ nc → trans (CalleeRun.frame-pres crun (nc′ nc) (falloc ASP.a16)
+                         (λ p → trans (CalleeRun.frame-pres crun (trans res-eq p) (falloc ASP.a16)
                                    (cong falloc call-eq))
                                 OB.cf-a16)
                          bf-mono-apply
+                         (λ p → trans (CalleeRun.frames-pres crun (trans res-eq p) (falloc ASP.a16)
+                                   (cong falloc call-eq))
+                                OB.sf-a16)
             ; traces-agree = trc
             }
             where
               module OB = ASP.Obligations pair-loc fst-loc (arg-sv-of sc') (env-sv-of ea)
-                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) bf fst-bf n≤ nh
+                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) (live→bf bf) fst-bf (ns≤ {alloc} n n≤) nh
 
-              callee-env : (ea' : EnvAt alloc {E} env fst-loc s)
-                         → SMCore.MemOps.readLoc (floc ASP.a16) (AtDynamic ASP.ahl)
-                           ≡ just (env-sv-of ea')
-                         → CellAt (falloc ASP.a16) E env (AtDynamic ASP.ahl) (floc ASP.a16)
-              callee-env (env-at-loc el ep eb ev) q =
-                cell-ptr q (OB.bf-advance eb) (OB.carry env el eb ev)
-              callee-env (env-in-cell rep ep) q = cell-inline rep q
-
-              callee-arg : (c : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s)
+              callee-arg : (c : CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s)
                          → SMCore.MemOps.readLoc (floc ASP.a16) (sucLoc (AtDynamic ASP.ahl))
                            ≡ just (arg-sv-of c)
-                         → CellAt (falloc ASP.a16) A (proj₂ x)
+                         → CellAt {prog = prog} (falloc ASP.a16) A (proj₂ x)
                              (sucLoc (AtDynamic ASP.ahl)) (floc ASP.a16)
               callee-arg (cell-ptr ap abf av) q =
-                cell-ptr q (OB.bf-advance abf) (OB.carry (proj₂ x) _ abf av)
+                cell-ptr q (live-lift OB.bf-advance abf) (OB.carry (proj₂ x) _ (live→bf abf) av)
               callee-arg (cell-inline rep ap) q = cell-inline rep q
 
-              callee-in : InputAt {E IRTy′.* A} Heap (falloc ASP.a16)
-                            (env , proj₂ x) (floc ASP.a16)
-              callee-in = in-loc (AtDynamic ASP.ahl)
-                            (valid-pair-wf tt OB.before-ahl-suc
-                              (callee-env ea OB.pair-fst-a16)
-                              (callee-arg sc' OB.pair-snd-a16))
-                            OB.before-ahl OB.input1-a16
-
-              cinfo = BlockRuns.closures cr body env blbl
-                        (subst (λ f → ValidAtWF _ alloc {A IRTy′.⇛ B} f fst-loc s)
-                               (ClosureValidWF.f-is-closure cvw) fst-valid)
-                        (ClosureValidWF.code-ptr cvw)
-
-              j      = proj₁ cinfo
-              feq    = proj₁ (proj₂ cinfo)
-              runner = proj₂ (proj₂ cinfo)
+              j   = ClosureValidWF.code-j cvw
+              feq = ClosureValidWF.code-found cvw
 
               -- THE CALL. `callView`'s three levels, spelled out from the
               -- three facts the setup and the witness already give.
@@ -188,27 +168,43 @@ module ApplyC {FS : FrameSemantics} where
                           ; fpc    = j }
               call-eq =
                 call-at prog ASP.a16 chl blbl j
-                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') n≤ bf rdi
+                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') (ns≤ {alloc} n n≤) (live→bf bf) rdi
                      (arg-cell-of sc') fst-cell)
-                  (ASP.code-cell fst-loc blbl n≤ OB.rdi12' OB.rdi14'
+                  (ASP.code-cell fst-loc blbl (ns≤ {alloc} n n≤) OB.rdi12' OB.rdi14'
                      (ClosureValidWF.sucLoc-before cvw) (ClosureValidWF.code-ptr cvw))
                   feq
 
-              crun : CalleeRun prog (flat-exec-instr instr-call-closure prog ASP.a16)
-                       (suc (fpc ASP.a16)) B (evalᴰ body (env , proj₂ x)) k
-              crun = runner (flat-exec-instr instr-call-closure prog ASP.a16)
-                       (falloc ASP.a16) (env , proj₂ x) (suc (fpc ASP.a16)) k Heap
+              -- plan 0.135 S1: the CLOSURE says what its block does (`runs`);
+              -- no table of block runs is consulted. Each premise is a fact
+              -- the setup established at `a16`, moved across the call (which
+              -- leaves `floc` alone).
+              at-call : (P : LocState FS → Set) → P (floc ASP.a16)
+                      → P (floc (flat-exec-instr instr-call-closure prog ASP.a16))
+              at-call P = subst P (sym (cong floc call-eq))
+
+              crun : CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B))
+                       (flat-exec-instr instr-call-closure prog ASP.a16)
+                       (suc (fpc ASP.a16)) rs (proj₁ x (proj₂ x)) k
+              crun = ClosureValidWF.runs cvw (flat-exec-instr instr-call-closure prog ASP.a16)
+                       (falloc ASP.a16) (proj₂ x) (AtDynamic ASP.ahl) (suc (fpc ASP.a16)) k rs
                        (trans (cong fpc call-eq) refl)
                        (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)
                        (trans (cong fret call-eq) refl)
                        (trans (cong falloc call-eq) refl)
-                       -- the call does not touch `floc`, but `do-call` is
-                       -- stuck until `call-eq` says which branch it took.
-                       (subst (λ st → InputAt {E IRTy′.* A} Heap (falloc ASP.a16)
-                                        (env , proj₂ x) st)
-                              (sym (cong floc call-eq)) callee-in)
+                       (trans OB.nextslot-a16 n≤)
+                       (λ l b → live-lift OB.bf-advance b)
+                       (λ l b → at-call (λ st → SMCore.MemOps.readLoc st l ≡ SMCore.MemOps.readLoc s l)
+                                  (OB.mem-pres l (frontier-monotone alloc (record alloc { next-slot = n })
+                                                    refl (ns≤ {alloc} n n≤) ≤-refl l (live→bf b))))
+                       (at-call (λ st → readReg (regs st) Input1 ≡ SV-Ptr (AtDynamic ASP.ahl)) OB.input1-a16)
+                       OB.before-ahl
+                       OB.before-ahl-suc
+                       (at-call (λ st → SMCore.MemOps.readLoc st (AtDynamic ASP.ahl) ≡ SMCore.MemOps.readLoc s fst-loc)
+                          (trans OB.pair-fst-a16 (sym (env-cell-of ea))))
+                       (at-call (CellAt {prog = prog} (falloc ASP.a16) A (proj₂ x) (sucLoc (AtDynamic ASP.ahl)))
+                          (callee-arg sc' OB.pair-snd-a16))
 
-              run17 : FlatSteps prog 17 (entry-flat base s alloc cl)
+              run17 : FlatSteps prog 17 (entry-flat base s alloc cl rs)
                         (flat-exec-instr instr-call-closure prog ASP.a16)
               -- Every link lands on the setup's NAMED state (`step-at`): the
               -- step is one equation between names, not a k-step chain
@@ -233,22 +229,15 @@ module ApplyC {FS : FrameSemantics} where
                   (((OB.nh16 , span 16 _ refl) ∷ [])))))))))))))))))
 
               run : FlatSteps prog (17 + CalleeRun.steps crun)
-                      (entry-flat base s alloc cl) (CalleeRun.settle crun)
+                      (entry-flat base s alloc cl rs) (CalleeRun.settle crun)
               run = FlatSteps-++ run17 (CalleeRun.run crun)
 
-              -- D189 (repair): the callee's obligations are stated at
-              -- `evalᴰ body (env , arg)`, the caller's at `evalᴰ apply x`
-              -- (i.e. `proj₁ x (proj₂ x)`). Those agree by the closure
-              -- record's OWN equation — `f-is-closure` — and that equation is
-              -- propositional, so it is spent here rather than assumed to
-              -- hold definitionally. It used to typecheck without this while
-              -- `ValidAtWF` had exactly two constructors at `A ⇛ B`; adding
-              -- `valid-ν-susp-wf` made `decomposeClosureWF` stop reducing far
-              -- enough for the coincidence to survive. The decomposition
-              -- hands over the equation for exactly this purpose.
-              denot-eq : evalᴰ body (env , proj₂ x) ≡ evalᴰ (apply {A} {B}) x
-              denot-eq = cong (λ g → g (proj₂ x))
-                              (sym (ClosureValidWF.f-is-closure cvw))
+              -- plan 0.135 S1: the closure's run is stated at `f a` itself, so the
+              -- callee's and the caller's computations are the same term; the
+              -- D189 `f-is-closure` step (which existed because the run was
+              -- stated at `evalᴰ body (env , arg)`) is gone.
+              denot-eq : proj₁ x (proj₂ x) ≡ evalᴰ (apply {A} {B}) x
+              denot-eq = refl
 
               -- plan 0.97: …and the same equation carries the STOPPEDNESS, which
               -- is what the conditioned fields are stated against. A closure
@@ -259,12 +248,12 @@ module ApplyC {FS : FrameSemantics} where
               -- seventeen setup rows make no call — so the two RUNS agree.
               callFs = flat-exec-instr instr-call-closure prog ASP.a16
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
-              h-eq = trans (log-of run17 _ refl) (++-identityʳ _)
+              h-eq = trans (log-of run17 refl) (++-identityʳ _)
 
-              RE : runAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k) ≡ runAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
+              RE : runAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ runAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq (cong (⟪_⟫ k) denot-eq)
 
-              st-eq : stopsAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k)
+              st-eq : stopsAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k)
                     ≡ stopsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
@@ -272,17 +261,17 @@ module ApplyC {FS : FrameSemantics} where
               -- `TM.valueT d k` along `denot-eq`; now the premise BINDS the
               -- value, so the two sides name the same `v` and only the
               -- equation being transported has to move.
-              res-eq : resultAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k) ≡ resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
+              res-eq : resultAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               res-eq = cong proj₂ RE
 
-              nc′ : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)) → NotCut (resultAt (floc callFs) (⟪ evalᴰ body (env , proj₂ x) ⟫ k))
+              nc′ : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)) → NotCut (resultAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k))
               nc′ = subst NotCut (sym res-eq)
 
               place : ∀ {v r} → resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k) ≡ returns (done v r)
                     → ResultPlace B (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         v (floc (CalleeRun.settle crun))
-              place p = CalleeRun.place crun (trans res-eq p)
+              place p = rp→place (CalleeRun.place crun (trans res-eq p))
 
               -- D204: what the whole `apply` leaves alone — the sixteen setup rows
               -- (`setup-mem-pres`, already proved) composed with the callee's
@@ -319,7 +308,7 @@ module ApplyC {FS : FrameSemantics} where
                             (record (falloc ASP.a16) { next-slot = n })
                             (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf))
                       (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
-                             (ASP.setup-mem-pres n≤ OB.rdi12' OB.rdi14' loc bf))
+                             (ASP.setup-mem-pres (ns≤ {alloc} n n≤) OB.rdi12' OB.rdi14' loc bf))
 
               trc : chain-events run ≡ eventsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               trc = trans (chain-events-++ run17 (CalleeRun.run crun))
@@ -339,11 +328,10 @@ module ApplyC {FS : FrameSemantics} where
   -- that is pointwise equal.
   --
   -- What the ν's witness supplies that a closure's does not is the SEED.
-  -- `valid-ν-susp-wf` names the coalgebra and the seed the suspension was built
-  -- from, so matching on it pins the input `x` to
-  -- `valueT (evalᴰ (Ana wf coalg) seed) 0` — exactly the ν that `CoalgRuns` is
-  -- conditioned on. That is why this clause needs no `denot-eq` step where
-  -- `apply` spends `f-is-closure`: the block's claim and the goal are the same
-  -- term, once the two functor witnesses are identified.
+  -- `valid-ν-susp-wf` names the ν's ORIGIN (`νOrigin`, plan 0.88: an `Ana`
+  -- seed or an `in-ν` layer) and the cell holding it, and `CoalgRuns` is
+  -- stated over exactly those fields at the ν's own value index. That is why
+  -- this clause needs no `denot-eq` step where `apply` spends
+  -- `f-is-closure`: the block's claim and the goal are the same term.
   ------------------------------------------------------------------------
 

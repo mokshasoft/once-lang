@@ -115,7 +115,7 @@ module ShapeC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
-  open ClosureWellFormedDef {FS} using (SumTag; rep-prim; rep-unit)
+  open ClosureWellFormedBase {FS} using (SumTag; rep-prim; rep-unit)
 
   ----------------------------------------------------------------------
   -- THE SHAPE, and the four premise splits that ride on it.
@@ -332,9 +332,9 @@ module ShapeC {FS : FrameSemantics} where
   sumTag-read Heap  t s loc e = e
   sumTag-read Stack t s loc e = e
 
-  tag-inl : ∀ {A B} {a : ⟦ A ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+  tag-inl : ∀ {prog : AbstractTrace} {A B} {a : ⟦ A ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
-          → ValidAtWF m alloc {A IRT.+ B} (inj₁ a) loc s
+          → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₁ a) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-zf (flat-read-tag s) ≡ true
   tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ tg _ _ _ _) rd
@@ -342,9 +342,9 @@ module ShapeC {FS : FrameSemantics} where
   tag-inl {m = m} {loc = loc} {s = s} (valid-inl-reg-wf _ tg _ _ _) rd
     rewrite rd = cong tag-zf (sumTag-read m 0 s loc tg)
 
-  tag-inr : ∀ {A B} {b : ⟦ B ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+  tag-inr : ∀ {prog : AbstractTrace} {A B} {b : ⟦ B ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
-          → ValidAtWF m alloc {A IRT.+ B} (inj₂ b) loc s
+          → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₂ b) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-zf (flat-read-tag s) ≡ false
   tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ tg _ _ _ _) rd
@@ -357,9 +357,9 @@ module ShapeC {FS : FrameSemantics} where
   -- can be read. For a sum that IS the residence — the payload cell — so the
   -- witness is the validity's own `readLoc s (sucLoc sum-loc)` field, in all
   -- four shapes (pointer or inline payload, either tag).
-  unpack-wf : ∀ {A' B' : IRTy} {v : ⟦ A' IRT.+ B' ⟧} {m : AllocMode}
+  unpack-wf : ∀ {prog : AbstractTrace} {A' B' : IRTy} {v : ⟦ A' IRT.+ B' ⟧} {m : AllocMode}
                 {alloc : AllocState {FS}} {loc : ValueLocation FS} {s' : LocState FS}
-            → ValidAtWF m alloc {A' IRT.+ B'} v loc s'
+            → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} v loc s'
             → readReg (regs s') Input1 ≡ SV-Ptr loc
             → InstrWF s' alloc load-indirect-suc
   unpack-wf {loc = loc} (valid-inl-wf _ _ r _ _ _)   rd = loc , cong sv-as-loc rd , (_ , r)
@@ -393,17 +393,17 @@ module ShapeC {FS : FrameSemantics} where
              → readLoc (proj₁ (exec-abstract load-indirect-suc s' alloc')) lc ≡ readLoc s' lc
   mem-unpack s' alloc' lc = mem-untouched load-indirect-suc s' alloc' lc nhw-load-indirect-suc refl
 
-  arm-input-l : ∀ {A' B' : IRTy} {a : ⟦ A' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+  arm-input-l : ∀ {prog : AbstractTrace} {A' B' : IRTy} {a : ⟦ A' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
                   {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
-              → ValidAtWF m alloc {A' IRT.+ B'} (inj₁ a) loc s'
+              → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} (inj₁ a) loc s'
               → readReg (regs s') Input1 ≡ SV-Ptr loc
               → readReg (regs s'') Input1
                 ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output
               → (∀ lc → readLoc s'' lc ≡ readLoc s' lc)
-              → Σ AllocMode (λ mA → InputAt mA alloc a s'')
+              → Σ AllocMode (λ mA → InputAt {prog = prog} mA alloc a s'')
   arm-input-l {alloc = alloc} {loc = loc} {s' = s'} s''
               (valid-inl-wf {payload-loc = pl} {mA = mA} _ _ r bfp _ va) rd mv me =
-    mA , in-loc pl (validityWF-mem-preserved _ pl s' s'' bfp (λ lc _ → me lc) va) bfp
+    mA , in-loc pl (validityWF-mem-preserved _ pl s' s'' (live→bf bfp) (λ lc _ → me lc) va) bfp
            (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
   -- An INLINE payload is either a register-fitting primitive or a unit, and
   -- `InputAt` has a constructor for each — `in-reg` and `in-unit`.
@@ -412,17 +412,17 @@ module ShapeC {FS : FrameSemantics} where
     Heap , in-reg fit (trans mv (load-suc-out s' alloc loc _ (cong sv-as-loc rd) r))
   arm-input-l s'' (valid-inl-reg-wf _ _ (rep-unit e _) _ _) _ _ _ = Heap , in-unit e
 
-  arm-input-r : ∀ {A' B' : IRTy} {b : ⟦ B' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+  arm-input-r : ∀ {prog : AbstractTrace} {A' B' : IRTy} {b : ⟦ B' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
                   {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
-              → ValidAtWF m alloc {A' IRT.+ B'} (inj₂ b) loc s'
+              → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} (inj₂ b) loc s'
               → readReg (regs s') Input1 ≡ SV-Ptr loc
               → readReg (regs s'') Input1
                 ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output
               → (∀ lc → readLoc s'' lc ≡ readLoc s' lc)
-              → Σ AllocMode (λ mB → InputAt mB alloc b s'')
+              → Σ AllocMode (λ mB → InputAt {prog = prog} mB alloc b s'')
   arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
               (valid-inr-wf {payload-loc = pl} {mB = mB} _ _ r bfp _ vb) rd mv me =
-    mB , in-loc pl (validityWF-mem-preserved _ pl s' s'' bfp (λ lc _ → me lc) vb) bfp
+    mB , in-loc pl (validityWF-mem-preserved _ pl s' s'' (live→bf bfp) (λ lc _ → me lc) vb) bfp
            (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
   arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
               (valid-inr-reg-wf _ _ (rep-prim fit) r _) rd mv me =

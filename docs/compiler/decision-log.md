@@ -19982,3 +19982,212 @@ the code the theorem is about, and run code without a theorem was invisible.
   pragmas (`Recognise.binop-at`, `binop-at-float`, the generic parser's `arrowTailP` and `sound-arrowTail`),
   all already in `pragma-gate.baseline`.
 * The Haskell side (`Once.CLI`, the import I/O, `as`/`ld`, the Host objects) is in neither dump; it is trusted.
+
+## D354 — A ν IS INDEXED BY ITS ORIGIN; `obs-correct-in-ν` PROVED, `obs-correct-sigop-rest` NARROWED (2026-10-24)
+
+**Follows** D189 (the two-cell ν), D199 (`Out` forces through `CoalgRuns`), D273. **Asked** by the user
+2026-10-24 (plan 0.88, "the cleaner option": generalise `CoalgRuns` rather than add a sibling field).
+
+### Decision
+* `valid-ν-susp-wf` is indexed by the ν's ORIGIN, `νOrigin F T seed v` (`ClosureWellFormed`): `from-ana`
+  (cell 0 holds the seed `(e , a)`, `v` is the unfold) or `from-layer` (cell 0 holds an `in-ν`'s layer,
+  `v` is `in-νᴵ` of it). Its value index is an ordinary variable. One constructor, not two, so every
+  transport stays one clause.
+* `CoalgRuns` (a field of `BlockRuns`, the apex's assumed `BlockRunsT`, owned by plan 0.93) is restated
+  over every origin. Its premise is the suspension's own fields — origin, seed cell, code cell — so the
+  block named by the code cell runs on exactly what the origin put in cell 0; for an `in-ν` that block is
+  the identity stub. At `from-ana` it assumes no more than before: the seed the block receives is the
+  one in the witness's own cell, where before it was a separately quantified seed.
+* `obs-correct-sigop-rest` takes `StructuredBase ib` (a product, a sum, a rigid parameter). The `Unit`
+  codomain (Pure, or an answering call — `callAnswer-at`'s `yes u` clause) and the `Void` codomain (no
+  value exists) are proofs in `IRObsCorrect.SigOp`.
+
+### Consequences
+* `obs-correct-in-ν` is a proof (`IRObsCorrect.TwoCell`), the same ten-instruction run as `Ana`. Plan
+  0.88's rows: 4 → 3.
+* `Out` no longer forces the ν's value index, so its `WellFormedFI-irrelevant` rewrite is gone.
+* What `obs-correct-sigop-rest` still assumes cannot be proved as the machine stands: there the output is
+  the postulated `structured-pure-sigop-output`. Closing it is an emitter or an IR restriction, not a proof.
+
+## D355 — THE OBLIGATION IS STATED OVER EVERY RETURN STACK; `no-ret`/`frame-pres` OWED ONLY ON RETURN (2026-10-26)
+
+**Follows** D158 (the hand-over), D188/D198 (`CalleeRuns`), D354. **Asked** by the user 2026-10-25
+(plan 0.88, `cata-correct`: "option 1" — a frame rule for `fret`).
+
+### Decision
+* `IRObsCorrectF` ends `∀ k → ∀ rs → MachineRefinesObsF … cl rs k`: the run starts from
+  `entry-flat base s alloc cl rs` with an arbitrary return stack `rs` and owes `fret settle ≡ rs`, where
+  before `rs` was `[]`. `CalleeRun`/`CalleeRuns`/`CoalgRuns`/`FnRuns` take `rs` and the premise
+  `fret fs ≡ ret-pc ∷ rs`. The program entry (`FlatFromObs`) instantiates `rs = []`, so the apex assumes
+  nothing new.
+* `no-ret` and `frame-pres` (in `ValueRealized` and `CalleeRun`) are owed when the run RETURNED
+  (`resultAt … ≡ returns (done v r)`), no longer under `NotCut`.
+
+### Why
+* `Cata` CALLS its algebra (`instr-call-closure` onto the inline `cata-body` thunk, `c-ret` back), so its
+  proof must run the algebra's own IH under a pushed return address, `rs = ret-pc ∷ rs'`. With `rs`
+  fixed at `[]` no IH applies there.
+* The `NotCut` form was FALSE, not just weak: a run that stops inside a call halts in the callee's frame
+  with `ret-pc` still on `fret`, so `BlockRuns` was unsatisfiable for any closure or function whose body
+  can exit. Conditioning on a return is what the clients use anyway.
+
+### Consequences
+* Every `IRObsCorrect.*` case threads `rs`; the local `handover-eq` copies (Comp, CaseRun, IterRun,
+  Pair/Chain) take it. `Loop.Anchor` gains `rs₀`; `RoundInv.ret : fret σ ≡ rs₀`.
+* No postulate added or removed. It unblocks `cata-correct`'s self-call lemma (plan 0.88, M0).
+
+## D356 — A RETURNING FRAGMENT RESTORES THE FRAME STACK (`frames-pres`) (2026-10-26)
+
+**Follows** D210 (`frame-pres`), D355. **Asked** by the user 2026-10-26 (plan 0.88, `cata-correct` M0:
+"New field").
+
+### Decision
+* `ValueRealized` and `CalleeRun` gain a last field `frames-pres`, owed when the run RETURNED:
+  `saved-frames (falloc settle) ≡ saved-frames alloc` (for `CalleeRun`, `≡ saved-frames pre` where
+  `falloc fs ≡ enter-call pre`). `frame-pres` is the top of the frame stack; this is the rest.
+* `SMPrimitives` proves `exec-{abstract,trace,loop,case-dispatch}-preserves-saved`: no structured
+  instruction touches `saved-frames` (`instr-push-frame`/`-pop-frame` are the identity there). Unlike
+  `current-frame`, the loop does not re-anchor it, so the four are one mutual block.
+
+### Why
+* `Cata` calls its algebra's inline thunk, and the thunk ends in `c-ret`, i.e. `do-ret`, which runs
+  `leave-frame` — it POPS `saved-frames`. The caller's frame comes back (`CalleeRun.frame-pres`) only if
+  the algebra's run left the stack as `enter-call` pushed it. Nothing in the obligation said so, so M0
+  (the self-call lemma) was not derivable.
+
+### Consequences
+* Each clause proves it where it proves `frame-pres`: straight-line clauses by an `sf-*` chain beside
+  their `cf-*` one (`refl` where the frame fact is `refl`), call clauses from the callee's
+  `CalleeRun.frames-pres`, composites from their parts. `Iter`'s loop invariant gains
+  `RoundInv.sf`/`RoundsRun.frames` (`SF = saved-frames alloc₀`).
+* The assumed `BlockRuns` (plan 0.93's apex hypothesis) is stronger by this one true fact about every
+  returning callee. No postulate added or removed.
+
+## D357 — THE FRONTIER PREMISE IS THE RUN-TIME INVARIANT `next-slot alloc ≡ 0` (2026-10-26)
+
+**Refines** D155 (`≤`, not `≡ n`). **Follows** D150 (`next-slot` never moves at run time), D355, D356.
+Found setting up `cata-correct` M0; the user had asked to continue unless blocked on principle.
+
+### Decision
+* `IRObsCorrectF`'s premise `next-slot alloc ≤ n` becomes `next-slot alloc ≡ 0`. `ns≤` (Interface)
+  gives back `next-slot alloc ≤ n` wherever the old form is spent; inner modules (Pair's chain, Iter's
+  `Anchor.n≤₀`) keep it and derive it once.
+
+### Why
+* A `Cata` algebra is emitted at frontier 0 and CALLED, so its IH needs `next-slot ≤ 0` in the callee's
+  frame. `enter-call` keeps the caller's `next-slot`, and `≤ n` at the cata's own site gives nothing
+  about 0. The IH is not merely unusable there: with `next-slot = 5` it would admit an input in callee
+  slot 2, which the algebra may overwrite.
+* `≡ 0` is what is actually true: the entry state has it (`FlatFromObs`, `n = 0`), D150 says nothing at
+  run time moves it, and every sub-IR's state inherits it (`flat-run-keeps-next-slot`). D155's objection
+  was to `≡ n`, which holds at one emission site only; `≡ 0` holds at all of them.
+
+### Consequences
+* Sub-IH calls pass `trans (keeps-next-slot) ns0` instead of a `≤`-chain through `frontier-mono`.
+* The same premise is what plan 0.93 will need to discharge `BlockRuns` for `curry`'s bodies.
+* No postulate added or removed.
+
+## D358 — `BlockRunsT` IS EMPTY, SO THE APEX IS STILL VACUOUS (2026-10-27)
+
+**Corrects** D218 ("conditional, and TRUE"). **Relates** D213, D302, plan 0.93 §10, plan 0.11 F.
+Found while asking why `ana` was provable and `cata-correct` M0 was not.
+
+### The probe (scratch, per MERGE.md §1; green with `agda-safe.sh`)
+`no-block-runs : LocState FS → AllocState → ∀ prog → BlockRuns prog → ⊥`, for every
+`FrameSemantics`. It is D213's argument against today's statement:
+
+* `bound prog` — one more than every `e-thunk` label's `idx` in `prog`, summed; `fresh` shows
+  `ft-go prog (e-thunk ℓ) i ≡ nothing` whenever `bound prog ≤ idx ℓ`.
+* `BlockRuns.coalgs` at `F = K Unit`, origin `from-layer`, `ℓ = mkLabelId o [] (bound prog)`, an
+  arbitrary state with `heapMem = λ _ → just (SV-Code ℓ)` (cell 0 is the `Unit` seed via
+  `rep-unit`, cell 1 the code cell), and the allocator at `next-heap-ref = 1`.
+* Its conclusion `find-thunk prog ℓ ≡ just j` contradicts `fresh`.
+
+### What it means
+* D218 turned the false postulate into a hypothesis of `once-certified`. `BlockRunsHyp-<arch>` is
+  `BlockRunsT = ∀ ir → BlockRuns (image ir)`, and it has no inhabitants, so `once-certified` is still
+  vacuous. The ⊥ is no longer writable inside the tree, but that is all D218 changed. D302 had
+  already listed `BlockRunsHyp` as having no `NonVacuous` model.
+* The defect is the one D213 named: `CoalgRuns`/`CalleeRuns` take ANY state whose memory names a
+  label, and conclude a fact about the program. Plan 0.93 §10 (move `find-thunk … ≡ just j` into a
+  premise) is the agreed cheap fix and was not done.
+* `ana` is not a harder proof than `cata`: `Out` takes the coalgebra's whole run from
+  `BlockRuns.coalgs`. What `cata-correct` M0 is blocked on, the callee frame and stack room
+  (plan 0.88, 2026-10-26), is exactly what this hypothesis assumes.
+* After §10 a second refutation probably remains (not checked): `CalleeRun.mem-pres` at a
+  stack-bottom caller, where x86-64's `shift-frame` truncates and `do-thunk`'s `clear-frame` wipes
+  the caller's frame. Plan 0.93's arrow clause has the same need, so the stack fix (plan 0.88's
+  option 1, an unbounded abstract stack) is shared by M0, plan 0.93 and any honest `BlockRuns`.
+
+### Consequences
+* No code change. Plan 0.93 §10 and plan 0.11's table carry status notes.
+
+### Addendum (same day): §10 cannot repair it
+Checked before starting it. An unresolved label halts the call (`do-call-at nothing = flat-halt`), so with
+`find-thunk … ≡ just j` moved into a premise, `IRObsCorrectF apply`/`Out` become false on a fabricated
+closure. And D217's one-cell-two-denotations refutes the weakened hypothesis anyway. The only repair is
+plan 0.93's S1–S6, which needs the callee-frame fact that plan 0.134 supplies.
+
+## D359 — THE PLANS AROUND CALLS AND MEMORY ARE RESHUFFLED (2026-10-27)
+
+**Relates**: D358 (`BlockRunsT` is empty), D213/D217/D218, D159 (relocatable units), plans 0.88, 0.89, 0.93,
+0.123, 0.134. Done at the user's request, after the analysis that produced D358.
+
+### Decision
+* **Plan 0.93 is retired into plan 0.135, "calls are proved, not assumed".** Its design (the machine relation
+  as a function on types, `MeaningRelation` as template, plan 0.93 §2–§4), its S0 findings, its §11 `Str`/
+  `Buffer` invariant and its §12 clause order are carried over. The relation spike (`RelSpike.agda`, 8 of 13
+  clauses) was deleted at the island pass (`318e29b37`); 0.135 S0 restores it from `318e29b37^`. Dropped: §10
+  (a dead end, D358 addendum) and §13's `in-ν` surface exposure (its two patches were deleted in cb347013e; it
+  would restart from nothing and is off the critical path).
+* **`cata-correct` moves from plan 0.88 to plan 0.135.** It is a call: the algebra runs as a called block. The
+  2026-10-26 M0 write-up is 0.135 §5. 0.88 keeps `obs-correct-sigop-rest`, plus `obs-correct-In` until 0.135
+  S3, and takes 0.93 §11's owed item (split `obs-correct-sigop-rest` by reason).
+* **Plan 0.134 is frames only**: the `shift-≺` law, the three arches, their correspondences. The block-call
+  lemma it drafted is 0.135 S2.
+* **Plan 0.123 gains Part C**, the room-check design settled with the user: coarse per-block checks as the
+  baseline, static stack depth where provable as a later optimisation, guard pages rejected. Part A (running
+  out is the observable end `exhausted`) and Part B (reclaiming allocators, which turns the six "a server
+  never ends" tests green) stay. (Part B was first split into a plan of its own; it went back into 0.123 B
+  when this branch was rebased onto master, whose plan numbers 0.124–0.126 were already taken.)
+* **Plan 0.89 is kept.** Relocatable units are a valid property (D159, the user's call). The emitter and
+  `link` deliver it; the proofs hold for every placement through `SpanAt`. Its C1 (block-map inclusion) is
+  done inside plan 0.135, whose new relation should not be built on `SpanAt`; Phase B (the machine runs units)
+  waits for a do-or-drop decision.
+
+### Order
+Proof track: 0.134, then 0.135, which closes `cata-correct` and replaces the empty `BlockRunsHyp` ×3. Memory
+track, in parallel: 0.123 A+C, then 0.123 B. The tracks meet at 0.134's correspondence step, which uses whichever
+room fact exists then.
+
+### Correction to D359 (same day)
+"The relation spike was deleted at the island pass" is wrong: `745b77de4` restored it (2026-10-11), and it is
+tracked, red, on `backstop.islands`. Plan 0.135 S0 then measured it: it is built on the pre-0.105 trace model
+(a total `valueT`), so it is not revived. Plan 0.135 keeps today's computation half
+(`MachineRefinesObsF`/`ValueRealized`/`CalleeRun`) and makes only `ValidAtWF` a function on the type, with
+behaviour in the `⇛` and `ν` cases (0.135 §2a). Plan 0.134 S0 chose depth-tagged frames (0.134 §3a).
+
+## D360 — FRAMES ARE ADDRESSES TAGGED WITH THEIR DEPTH; THE ABSTRACT STACK HAS NO FLOOR (2026-10-27)
+
+**Decision.** Plan 0.134 S1, on all three arches. A frame is `StackPointer × ℕ`: where it lives, and how
+many slots below the entry it is. `shift-frame (sp , d) n = (sp ∸ n·word , n + d)`. `≺` is lexicographic,
+depth first. `FrameSemantics` gains `shift-≺ : ∀ f n → 0 < n → shift-frame f n ≺ f`, proved per arch by the
+depth. The entry frame is the loader's stack pointer at depth 0.
+
+**Why.** Plan 0.134 §3a: with frames as bare addresses, `sp ∸ n·word` stops at zero, so a call from the
+lowest frame got its caller's frame back and the callee's `c-thunk` cleared the caller's live slots. No
+statement about calls could hold for every state. With the tag the callee's frame is new everywhere; the
+address laws read the address only and are unchanged. Running out of stack stays the concrete machine's
+business (`StackRoom`/`CallRoom`, later plan 0.123 A's `exhausted`).
+
+**What it cost.** Seven Agda files: the field in `FrameSemantics`, the three instances, and the three arch
+modules' entry frames (plus
+comments). The correspondences are generic over `FrameSemantics` and rechecked unchanged, so plan 0.134's
+S2/S3 were empty; the anticipated "no two live frames share an address" obligation was not needed by any
+proof. Scratch gate (MERGE.md §1): the S0 probe stops compiling, and its counterpart proves the caller's
+slot survives the callee's `do-thunk` at x86-64's floor, by `refl`. `make certified`, `public-gate`,
+`spec-gate`, `lint-pragmas` green.
+
+**Not done.** The machine-layer consequences (callee frame `≺` caller after `enter-call` + `grow-frame`,
+`BeforeFrontier` transport) wait for their consumer, plan 0.135 S2, so they are not islands.
+

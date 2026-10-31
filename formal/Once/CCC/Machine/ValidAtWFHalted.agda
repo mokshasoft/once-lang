@@ -30,13 +30,13 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Machine.ValidAtWFHalted (o : CanonicalName) (tbl : List IRFun) where
 
 open import Data.Bool using (Bool)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (LocState; sucLoc; module MemOps)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
-open import Once.CCC.Machine.ClosureWellFormed o tbl using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ValueRel using (module ClosureWellFormedDef)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
 
 module _ {FS : FrameSemantics} where
@@ -46,55 +46,9 @@ module _ {FS : FrameSemantics} where
 
   -- `readLoc` ignores `halted`: a halted-update preserves stackMem/heapMem
   -- definitionally, so `readLoc-stack-heap-eq` collapses the two.
-  rl : ∀ (s : LocState FS) (b : Bool) (loc : ValueLocation FS)
-    → readLoc (record s { halted = b }) loc ≡ readLoc s loc
-  rl s b loc = readLoc-stack-heap-eq (record s { halted = b }) s loc refl refl
-
-
-  -- Setting `halted` to any `b` preserves `ValidAtWF`. (`forced` in the
-  -- flat machine is the `b = true` instance.)
-  validAtWF-set-halted : ∀ {m alloc A} {v : ⟦ A ⟧} {loc s} (b : Bool)
-    → ValidAtWF m alloc {A} v loc s
-    → ValidAtWF m alloc {A} v loc (record s { halted = b })
-  -- D187: the two pair cells transport the same way, and since D189 the ν's
-  -- seed cell does too, so one mutual helper serves all three.
-  cellAt-set-halted : ∀ {alloc C} {c : ⟦ C ⟧} {s} (b : Bool)
-    (cl : ValueLocation FS)
-    → CellAt alloc C c cl s → CellAt alloc C c cl (record s { halted = b })
-  cellAt-set-halted {s = s} b cl (cell-ptr r cb v) =
-    cell-ptr (trans (rl s b cl) r) cb (validAtWF-set-halted b v)
-  cellAt-set-halted {s = s} b cl (cell-inline rep r) =
-    cell-inline rep (trans (rl s b cl) r)
-
-  validAtWF-set-halted b valid-unit-wf = valid-unit-wf
-  validAtWF-set-halted b (valid-pair-wf {pair-loc = pl} lm slb fc sc) =
-    valid-pair-wf lm slb (cellAt-set-halted b pl fc)
-                         (cellAt-set-halted b (sucLoc pl) sc)
-  validAtWF-set-halted {s = s} b (valid-closure-wf {body = body} {closure-loc = cl} lm r1 r2 bf1 bf2 venv) =
-    valid-closure-wf {body = body} lm (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf1 bf2
-      (validAtWF-set-halted b venv)
-  validAtWF-set-halted {s = s} b (valid-inl-wf {sum-loc = sl} lm tg r bf1 bf2 va) =
-    valid-inl-wf lm (transport-SumTag (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b va)
-  validAtWF-set-halted {s = s} b (valid-inr-wf {sum-loc = sl} lm tg r bf1 bf2 vb) =
-    valid-inr-wf lm (transport-SumTag (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b vb)
-  -- Stage F: an inline payload has no sub-validity to transport, so these
-  -- two clauses are the pointer ones minus the recursive call.
-  validAtWF-set-halted {s = s} b (valid-inl-reg-wf {sum-loc = sl} lm tg fit r bf) =
-    valid-inl-reg-wf lm (transport-SumTag (rl s b sl) tg) fit (trans (rl s b (sucLoc sl)) r) bf
-  validAtWF-set-halted {s = s} b (valid-inr-reg-wf {sum-loc = sl} lm tg fit r bf) =
-    valid-inr-reg-wf lm (transport-SumTag (rl s b sl) tg) fit (trans (rl s b (sucLoc sl)) r) bf
-  validAtWF-set-halted {s = s} b
-    (valid-closure-reg-wf {body = body} {env = env} {closure-loc = cl} lm rep r1 r2 bf) =
-    valid-closure-reg-wf {body = body} {env = env} lm rep
-      (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf
-  validAtWF-set-halted b (valid-μ-wf wf x v) =
-    valid-μ-wf wf x (validAtWF-set-halted b v)
-  -- D189: seed cell + code cell, transported exactly as the closure's are.
-  -- `coalg`/`seed` are pinned for the usual D180 reason: the conclusion's
-  -- value index is an `evalᴰ` application, which determines neither.
-  validAtWF-set-halted {s = s} b
-    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} {ν-loc = nl} lm sc cp slb) =
-    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lm (cellAt-set-halted b nl sc)
-      (trans (rl s b (sucLoc nl)) cp) slb
-  validAtWF-set-halted {s = s} b (valid-int-wf {loc = loc} bf r) = valid-int-wf bf (trans (rl s b loc) r)
-  validAtWF-set-halted {s = s} b (valid-float-wf {loc = loc} bf r) = valid-float-wf bf (trans (rl s b loc) r)
+  -- plan 0.135 S1: an instance of the one transport — `halted` is not memory.
+  validAtWF-set-halted : ∀ {prog m alloc A} {v : ⟦ A ⟧} {loc s} (b : Bool)
+    → ValidAtWF {prog = prog} m alloc {A} v loc s
+    → ValidAtWF {prog = prog} m alloc {A} v loc (record s { halted = b })
+  validAtWF-set-halted {v = v} {loc = loc} {s = s} b =
+    validityWF-mem-only v loc s (record s { halted = b }) refl refl

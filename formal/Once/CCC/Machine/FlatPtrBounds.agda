@@ -33,10 +33,8 @@
 --
 -- The per-instruction premise `2 ≤ n` at an alloc site is the EMITTER's
 -- discipline (`Once.CCC.Codegen.AllocMin` — every emitted `instr-alloc-heap`
--- is literally `instr-alloc-heap 2`). `instr-case-on-tag` is unemittable
--- since item 6 (`case` compiles to flat control). `lea-indexed` — the one
--- instruction that could fabricate an interior pointer — is UNEMITTABLE
--- (2026-08-01, `FrameFreeI`), so its route is `⊥`-elim.
+-- is literally `instr-alloc-heap 2`). (`lea-indexed`, the one instruction
+-- that could fabricate an interior pointer, was retired by plan 0.135.)
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
@@ -302,21 +300,7 @@ pb-restore : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (Store
 pb-restore ls alloc (just v) ok wf = pb-write-reg (block-size alloc) ls Input1 v ok wf
 pb-restore ls alloc nothing  ok wf = pb-halt (block-size alloc) ls true wf
 
--- `sv-pred` / `sv-succ` produce a TAG on every input shape.
-pb-pred : ∀ (bs : ℕ → ℕ) (v : StoredValue FS) → PtrB bs (sv-pred v)
-pb-pred bs (SV-Tag zero)    = tt
-pb-pred bs (SV-Tag (suc m)) = tt
-pb-pred bs (SV-Ptr l)       = tt
-pb-pred bs (SV-Lit p x)     = tt
-pb-pred bs (SV-Code c)      = tt
-
-pb-succ : ∀ (bs : ℕ → ℕ) (v : StoredValue FS) → PtrB bs (sv-succ v)
-pb-succ bs (SV-Tag m)   = tt
-pb-succ bs (SV-Ptr l)   = tt
-pb-succ bs (SV-Lit p x) = tt
-pb-succ bs (SV-Code c)  = tt
-
--- …and so does `sv-nz` (plan 0.108).
+-- `sv-nz` produces a TAG on every input shape (plan 0.108).
 pb-nz : ∀ (bs : ℕ → ℕ) (v : StoredValue FS) → PtrB bs (sv-nz v)
 pb-nz bs (SV-Tag m)            = tt
 pb-nz bs (SV-Ptr l)            = tt
@@ -326,17 +310,6 @@ pb-nz bs (SV-Code c)           = tt
 
 pb-reg-op : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (op : RegOp)
           → PBInv bs ls → PBInv bs (exec-reg-op op ls)
-pb-reg-op bs ls scratch-one        wf = pb-write-reg bs ls Scratch (SV-Tag 1) tt wf
-pb-reg-op bs ls scratch-zero       wf = pb-write-reg bs ls Scratch (SV-Tag 0) tt wf
-pb-reg-op bs ls scratch-dec        wf =
-  pb-write-reg bs ls Scratch (sv-pred (readReg (regs ls) Scratch))
-               (pb-pred bs (readReg (regs ls) Scratch)) wf
-pb-reg-op bs ls scratch-load-count wf =
-  pb-write-reg bs ls Scratch (readReg (regs ls) Count) (pb-regs wf Count) wf
-pb-reg-op bs ls count-zero         wf = pb-write-reg bs ls Count (SV-Tag 0) tt wf
-pb-reg-op bs ls count-inc          wf =
-  pb-write-reg bs ls Count (sv-succ (readReg (regs ls) Count))
-               (pb-succ bs (readReg (regs ls) Count)) wf
 -- plan 0.108: `out-nz` writes a tag to Output.
 pb-reg-op bs ls out-nz             wf =
   pb-write-reg bs ls Output (sv-nz (readReg (regs ls) Output))
@@ -431,16 +404,12 @@ pb-abstract (lea-slot slot) ls alloc ff am wfS wf =
 pb-abstract (restore-input slot) ls alloc ff am wfS wf =
   pb-restore ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
              (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
--- `lea-indexed` is unemittable (2026-08-01) — `⊥` in `FrameFreeI`
-pb-abstract (lea-indexed slot) ls alloc () am wfS wf
--- the frame ops and the loop are unemittable — `⊥` in `FrameFreeI`
+-- the frame ops are unemittable — `⊥` in `FrameFreeI`
 pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
 pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
 pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
 pb-abstract instr-pop-frame         ls alloc () am wfS wf
-pb-abstract (instr-loop body)       ls alloc () am wfS wf
 -- the case is unemittable since item 6 (`case` compiles to flat control)
-pb-abstract (instr-case-on-tag f g) ls alloc () am wfS wf
 pb-abstract (instr-reclaim-to n)  ls alloc ff am wfS wf = wf
 pb-abstract instr-call-closure    ls alloc ff am wfS wf = wf
 pb-abstract (worklist-init slot)  ls alloc ff am wfS wf = wf
@@ -566,17 +535,12 @@ flat-ptr-bounds (instr-ctrl (c-ret b))                 prog fs ff am wfS wf =
   pb-ret (fret fs) fs wf
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =
   pb-jump (find-label prog m) fs wf
-flat-ptr-bounds (instr-ctrl (c-branch-scratch-zero m)) prog fs ff am wfS wf =
-  pb-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs wf
 flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
   pb-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
 flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf
 flat-ptr-bounds instr-pop-frame         prog fs () am wfS wf
-flat-ptr-bounds (instr-loop body)       prog fs () am wfS wf
-flat-ptr-bounds (lea-indexed k)         prog fs () am wfS wf
-flat-ptr-bounds (instr-case-on-tag f g) prog fs () am wfS wf
 flat-ptr-bounds mov-to-output            prog fs ff am wfS wf =
   pb-abstract mov-to-output (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds mov-to-input             prog fs ff am wfS wf =

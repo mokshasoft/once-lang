@@ -414,7 +414,14 @@ d_runIR_664 v0 v1 v2
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe d_main_660 (coe v2))
       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+-- Once.Denotation.Program.TeleLinked
+d_TeleLinked_672 ::
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> [T_IRFun_6] -> ()
+d_TeleLinked_672 = erased
+-- Once.Denotation.Program.NamesDistinct
+d_NamesDistinct_682 :: [T_IRFun_6] -> ()
+d_NamesDistinct_682 = erased
 -- Once.Denotation.Program.LinkedProgram
-d_LinkedProgram_672 ::
+d_LinkedProgram_688 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] -> T_IRProgram_652 -> ()
-d_LinkedProgram_672 = erased
+d_LinkedProgram_688 = erased

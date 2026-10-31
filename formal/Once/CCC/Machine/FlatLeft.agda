@@ -79,9 +79,6 @@ module LeftPres {FS : FrameSemantics} where
   store-suc-via-left (just loc) v s = writeLoc-left s (sucLoc loc) v
   store-suc-via-left nothing    v s = refl
 
-  lea-indexed-left : ∀ (ml : Maybe (ValueLocation FS)) idx s → lft (exec-lea-indexed-via ml idx s) ≡ lft s
-  lea-indexed-left (just loc) idx s = refl
-  lea-indexed-left nothing    idx s = refl
 
   load-slot-left : ∀ (mv : Maybe (StoredValue FS)) s alloc → lft (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ lft s
   load-slot-left (just v) s alloc = refl
@@ -92,36 +89,14 @@ module LeftPres {FS : FrameSemantics} where
   restore-left nothing  s alloc = refl
 
   -- THE LOOP leaves it alone if its body does (a fuel induction).
-  loop-run-left : ∀ (run : BodyRunner) (fuel : Data.Nat.ℕ) (s : LocState FS) alloc
-                → (∀ s′ alloc′ → lft (proj₁ (run s′ alloc′)) ≡ lft s′)
-                → lft (proj₁ (exec-loop-run run fuel s alloc)) ≡ lft s
-  loop-run-left run zero    s alloc h = refl
-  loop-run-left run (suc n) s alloc h with halted s
-  ... | true  = refl
-  ... | false with readReg (regs s) Scratch
-  ...   | SV-Tag zero    = refl
-  ...   | SV-Tag (suc m) = trans (loop-run-left run n _ _ h) (h s alloc)
-  ...   | SV-Ptr _       = trans (loop-run-left run n _ _ h) (h s alloc)
-  ...   | SV-Lit _ _     = trans (loop-run-left run n _ _ h) (h s alloc)
-  ...   | SV-Code _      = trans (loop-run-left run n _ _ h) (h s alloc)
 
   -- ONE STEP OF THE STRUCTURED MACHINE leaves the flag alone — every step.
   abs-left   : ∀ (i : AbstractInstr) (s : LocState FS) alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
   trace-left : ∀ (t : AbstractTrace) (s : LocState FS) alloc → lft (proj₁ (exec-trace t s alloc)) ≡ lft s
-  case-left  : ∀ (mv : Maybe (StoredValue FS)) (f g : AbstractTrace) (s : LocState FS) alloc
-             → lft (proj₁ (exec-case-dispatch mv f g s alloc)) ≡ lft s
   trace-left []       s alloc = refl
   trace-left (i ∷ is) s alloc with halted s
   ... | true  = refl
   ... | false = trans (trace-left is (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc))) (abs-left i s alloc)
-  case-left (just (SV-Tag zero))    f g s alloc = trace-left f s alloc
-  case-left (just (SV-Tag (suc _))) f g s alloc = trace-left g s alloc
-  case-left (just (SV-Ptr _))       f g s alloc = refl
-  case-left (just (SV-Lit _ _))     f g s alloc = refl
-  case-left (just (SV-Code _))      f g s alloc = refl
-  case-left nothing                 f g s alloc = refl
-  abs-left (instr-case-on-tag f g)  s alloc = case-left (case-tag-at s) f g s alloc
-  abs-left (instr-loop body)        s alloc = loop-run-left (exec-trace body) loop-fuel s alloc (λ s′ a′ → trace-left body s′ a′)
   abs-left mov-to-output s alloc = refl
   abs-left mov-to-input s alloc = refl
   abs-left load-indirect s alloc = load-via-left Output (sv-as-loc (readReg (regs s) Input1)) s
@@ -132,8 +107,6 @@ module LeftPres {FS : FrameSemantics} where
   abs-left store-indirect-suc s alloc = store-suc-via-left (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
   abs-left (lea-slot slot) s alloc = refl
   abs-left (restore-input slot) s alloc = restore-left (readLoc s (AtStack (current-frame alloc) slot)) s alloc
-  abs-left (lea-indexed slot) s alloc =
-    lea-indexed-left (slot-base (readLoc s (AtStack (current-frame alloc) slot))) (sv-tag-val (readReg (regs s) Scratch)) s
   abs-left (instr-alloc-stack n) s alloc = refl
   abs-left (instr-dealloc-stack n) s alloc = refl
   abs-left (instr-reclaim-to n) s alloc = refl
@@ -201,8 +174,6 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-ctrl (c-call-fn f))             _ prog fs = do-call-at-left (find-fn prog f) fs
   flat-exec-instr-left (instr-ctrl (c-ret b))                 _ prog fs = do-ret-left (fret fs) fs
   flat-exec-instr-left (instr-ctrl (c-jmp n))                 _ prog fs = do-jump-left (find-label prog n) fs
-  flat-exec-instr-left (instr-ctrl (c-branch-scratch-zero n)) _ prog fs =
-    do-branch-at-left (sv-is-zero (readReg (regs (floc fs)) Scratch)) (find-label prog n) fs
   flat-exec-instr-left (instr-ctrl (c-branch-tag-zero n))     _ prog fs =
     do-branch-at-left (tag-zf (flat-read-tag (floc fs))) (find-label prog n) fs
   flat-exec-instr-left instr-call-closure                     _ prog fs = do-call-sv-left prog (fclosure fs) fs
@@ -221,7 +192,6 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left store-indirect-suc       lf prog fs = exec-abstract-left store-indirect-suc lf (floc fs) (falloc fs)
   flat-exec-instr-left (lea-slot slot)          lf prog fs = exec-abstract-left (lea-slot slot) lf (floc fs) (falloc fs)
   flat-exec-instr-left (restore-input slot)     lf prog fs = exec-abstract-left (restore-input slot) lf (floc fs) (falloc fs)
-  flat-exec-instr-left (lea-indexed slot)       lf prog fs = exec-abstract-left (lea-indexed slot) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-reclaim-to n)     lf prog fs = exec-abstract-left (instr-reclaim-to n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (worklist-init slot)     lf prog fs = exec-abstract-left (worklist-init slot) lf (floc fs) (falloc fs)
   flat-exec-instr-left (worklist-push slot)     lf prog fs = exec-abstract-left (worklist-push slot) lf (floc fs) (falloc fs)
@@ -231,7 +201,5 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-load-const p v)   lf prog fs = exec-abstract-left (instr-load-const p v) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-load-code-addr n) lf prog fs = exec-abstract-left (instr-load-code-addr n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-load-tag-lit n)   lf prog fs = exec-abstract-left (instr-load-tag-lit n) lf (floc fs) (falloc fs)
-  flat-exec-instr-left (instr-case-on-tag f g)  lf prog fs = exec-abstract-left (instr-case-on-tag f g) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-alloc-heap n)     lf prog fs = exec-abstract-left (instr-alloc-heap n) lf (floc fs) (falloc fs)
-  flat-exec-instr-left (instr-loop body)        lf prog fs = exec-abstract-left (instr-loop body) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-reg-op op)        lf prog fs = exec-abstract-left (instr-reg-op op) lf (floc fs) (falloc fs)

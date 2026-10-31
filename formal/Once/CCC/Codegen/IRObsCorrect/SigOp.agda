@@ -17,8 +17,9 @@
 --     reads the interpretation at its log (`call-sigop-val`), the denotation
 --     runs the call node from the same log.
 --
--- What does not fit a register (a non-register codomain; D258: every input is
--- readable) routes to `obs-correct-sigop-rest`.
+-- What does not fit a register (D258: every input is readable) splits on the
+-- codomain: `Unit` and `Void` are proved, and a STRUCTURED codomain (a product
+-- or a sum) routes to `obs-correct-sigop-rest`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -145,9 +146,9 @@ module SigOpC {FS : FrameSemantics} where
   arg-reg (b-* _ _) () x s eq
   arg-reg (b-+ _ _)  () x s eq
 
-  arg-agree : ∀ {A : Type} (bt : Base ∅ₖ A) {mIn alloc}
+  arg-agree : ∀ {prog : AbstractTrace} {A : Type} (bt : Base ∅ₖ A) {mIn alloc}
                 (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-            → InputAt {⌊ A ⌋} mIn alloc x s
+            → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
             → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
   arg-agree b-Unit  x  s inp = refl
   arg-agree b-Void  () s inp
@@ -162,10 +163,10 @@ module SigOpC {FS : FrameSemantics} where
   arg-agree (b-+ _ _)  x s (in-unit ())
 
   -- The events a calling SigOp's step logs ARE the call the denotation makes.
-  event-agree : ∀ {A B} (si : SigOpInfo A B) {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-              → InputAt {⌊ A ⌋} mIn alloc x s
+  event-agree : ∀ {prog : AbstractTrace} {A B} (si : SigOpInfo A B) {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
+              → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
               → machine-events si s ≡ mk-event (name si) A (baseA si) (argOf si x) DL.∷ DL.[]
-  event-agree {A} si x s inp = cong (events-at-arg si) (arg-agree (baseA si) x s inp)
+  event-agree {A = A} si x s inp = cong (events-at-arg si) (arg-agree (baseA si) x s inp)
 
   ------------------------------------------------------------------------
   -- ONE SigOp STEP, as an obligation witness. Every contract runs the same
@@ -176,7 +177,7 @@ module SigOpC {FS : FrameSemantics} where
               (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
               (span : SpanAt prog base (emitted n l (SigOp si)))
               (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
-              (nh : halted s ≡ false)
+              (rs : DL.List ℕ) (nh : halted s ≡ false)
               -- plan 0.108: not a comparison, so the emission is the one call.
               (nc : cmp-of (sem si) ≡ nothing) where
 
@@ -194,15 +195,15 @@ module SigOpC {FS : FrameSemantics} where
     R k = run-approx-embed ιᶠ (SMCore.LocState.ev-log s) k E
 
     fs₁ : FlatState
-    fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)
+    fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl rs)
 
-    build : (ev-eq : sigop-events si s ≡ eventsAt s E)
+    build : ∀ k → (ev-eq : sigop-events si s ≡ eventsAt s E)
           → (stopsAt s E ≡ false → exec-sigop-halts si s ≡ false)
           → (stopsAt s E ≡ true  → exec-sigop-halts si s ≡ true)
           → (∀ {v} → resultAt s E ≡ returns v
-               → ResultPlace ⌊ B ⌋ Stack (falloc fs₁) (falloc fs₁) v (floc fs₁))
-          → ∀ k → MachineRefinesObsF prog base n l (SigOp si) x s alloc cl k
-    build ev-eq live stops place k = record
+               → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc fs₁) (falloc fs₁) v (floc fs₁))
+          → MachineRefinesObsF prog base n l (SigOp si) x s alloc cl rs k
+    build k ev-eq live stops place = record
       { traces-agree = trans (++-identityʳ _) ev-eq′
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((nh , span′ 0 _ refl) ∷ [])
@@ -216,7 +217,7 @@ module SigOpC {FS : FrameSemantics} where
                    -- whatever the SigOp means.
                    (λ _ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j) nhw-instr-sigop refl)
                    (λ _ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl) nhw-instr-sigop refl)
-                   (λ _ → refl) (λ _ _ _ bf → bf)
+                   (λ _ → refl) (λ _ _ _ bf → bf) (λ _ → refl)
       }
       where
         ev-eq′ : sigop-events si s ≡ eventsAt s (⟪ evalᴰ (SigOp si) x ⟫ k)
@@ -241,12 +242,12 @@ module SigOpC {FS : FrameSemantics} where
   -- THE INPUT A CALL-FREE CONTRACT READS is the denotation's argument, in
   -- every residence: through the pointer (`readTyped-adequate`, at the info's
   -- own witness), from the register, or — for a unit input — by η.
-  pure-input-aux : ∀ {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
+  pure-input-aux : ∀ {prog : AbstractTrace} {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
                      {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-                 → InputAt {⌊ A ⌋} mIn alloc x s
+                 → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
                  → pure-sigop-out-aux si s (just fit) (sv-as-loc (readReg (regs s) Input1))
                    ≡ pure-sigop-out-val si fit (just (argOf si x))
-  pure-input-aux {A} si fit rA x s (in-loc loc valid _ eq) rewrite eq =
+  pure-input-aux {A = A} si fit rA x s (in-loc loc valid _ eq) rewrite eq =
     cong (pure-sigop-out-val si fit) (readTyped-adequate {A = A} rA (baseA si) {v = x} valid)
   pure-input-aux si fit r-int x s (in-reg fits-int eq) =
     -- the register branch re-reads `Input1`, so the equation is spent twice
@@ -272,9 +273,9 @@ module SigOpC {FS : FrameSemantics} where
   pure-input-aux si fit r-int        x s (in-unit ())
   pure-input-aux si fit (r-pair _ _) x s (in-unit ())
 
-  pure-input : ∀ {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
+  pure-input : ∀ {prog : AbstractTrace} {A B} (si : SigOpInfo A B) (fit : FitsInReg B) (rA : Readable A)
                  {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
-             → InputAt {⌊ A ⌋} mIn alloc x s
+             → InputAt {prog = prog} {⌊ A ⌋} mIn alloc x s
              → pure-sigop-output si s ≡ pure-sigop-out-val si fit (just (argOf si x))
   pure-input si fits-intˢ   rA x s inp = pure-input-aux si fits-intˢ   rA x s inp
   pure-input si fits-floatˢ rA x s inp = pure-input-aux si fits-floatˢ rA x s inp
@@ -303,12 +304,12 @@ module SigOpC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   pure-obs : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure
            → Declared-at σᶠ si c → cmp-of (sem si) ≡ nothing → FitsInReg B → Readable A → IRObsCorrectF (SigOp si)
-  pure-obs {A} {B} si c e eff d nc fit rA n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
-    S.build ev-eq (λ _ → trans (halts-at si c e s) (cong (λ z → exec-sigop-halts-of z si s) eff))
+  pure-obs {A} {B} si c e eff d nc fit rA n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
+    S.build k ev-eq (λ _ → trans (halts-at si c e s) (cong (λ z → exec-sigop-halts-of z si s) eff))
                   (λ st → case trans (sym stops-f) st of λ ())
                   place
     where
-      module S = Step si n l prog base span x s alloc cl nh nc
+      module S = Step si n l prog base span x s alloc cl rs nh nc
       a = argOf si x
       w = proj₁ (pure-agree si c eff d a)
       E≡ : E₀ si x ≡ TM.ret (resOf si w)
@@ -327,31 +328,31 @@ module SigOpC {FS : FrameSemantics} where
                                 (proj₁ (proj₂ (pure-agree si c eff d a)))))
                        (res-reg fit (conB si) w))))
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
-            → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
-      place p = subst (λ v → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
+            → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
+      place p = subst (λ v → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
                   (returns-inj (trans (sym (cong (resultAt s) E≡)) p))
                   (at-reg (fits-erase fit)
                     (trans (writeReg-same (regs s) Output (exec-sigop-output si s)) out≡))
 
   emits-obs : ∀ {A} (si : SigOpInfo A SpecTy.Unit) → sem si ≡ emitsV refl → IRObsCorrectF (SigOp si)
-  emits-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
-    S.build ev-eq (λ _ → halts-at si (emitsV refl) e s)
+  emits-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
+    S.build k ev-eq (λ _ → halts-at si (emitsV refl) e s)
                   (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
                   (λ _ → unit-result)
     where
-      module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
+      module S = Step si n l prog base span x s alloc cl rs nh (cong cmp-of e)
       E≡ = evalᴰ-at si (emitsV refl) e x
       ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
       ev-eq = trans (events-at si (emitsV refl) e s)
                 (trans (event-agree si x s inp) (sym (cong (eventsAt s) E≡)))
 
   halts-obs : ∀ {A} (si : SigOpInfo A SpecTy.Void) → sem si ≡ haltsV refl → IRObsCorrectF (SigOp si)
-  halts-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
-    S.build ev-eq (λ lv → case trans (sym (cong (stopsAt s) E≡)) lv of λ ())
+  halts-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
+    S.build k ev-eq (λ lv → case trans (sym (cong (stopsAt s) E≡)) lv of λ ())
                   (λ _ → halts-at si (haltsV refl) e s)
                   (λ p → case trans (sym (cong (resultAt s) E≡)) p of λ ())
     where
-      module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
+      module S = Step si n l prog base span x s alloc cl rs nh (cong cmp-of e)
       E≡ = evalᴰ-at si (haltsV refl) e x
       ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
       ev-eq = trans (events-at si (haltsV refl) e s)
@@ -367,12 +368,12 @@ module SigOpC {FS : FrameSemantics} where
 
   -- plan 0.105: at its DECLARATION — the shared membership decision is `yes`.
   calls-obs : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → FitsInReg B → IRObsCorrectF (SigOp si)
-  calls-obs {A} {B} si e d fit n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
-    S.build ev-eq (λ _ → halts-at si callsV e s)
+  calls-obs {A} {B} si e d fit n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
+    S.build k ev-eq (λ _ → halts-at si callsV e s)
                   (λ st → case trans (sym (cong is-stopped res-call)) (trans (sym (cong (stopsAt s) E≡)) st) of λ ())
                   place
     where
-      module S = Step si n l prog base span x s alloc cl nh (cong cmp-of e)
+      module S = Step si n l prog base span x s alloc cl rs nh (cong cmp-of e)
       E≡ = evalᴰ-at si callsV e x
       op = TM.callOp (name si) A (baseA si) B
       y  = yes-of d
@@ -406,28 +407,111 @@ module SigOpC {FS : FrameSemantics} where
       out-fit fits-intˢ   = out≡ fits-intˢ
       out-fit fits-floatˢ = out≡ fits-floatˢ
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
-            → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
-      place p = subst (λ v → ResultPlace ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
+            → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁)
+      place p = subst (λ v → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc S.fs₁) (falloc S.fs₁) v (floc S.fs₁))
                   (returns-inj (trans (sym res-call) (trans (sym (cong (resultAt s) E≡)) p)))
                   (at-reg (fits-erase fit)
                     (trans (writeReg-same (regs s) Output (exec-sigop-output si s))
                            (trans (output-at si callsV e s) (out-fit fit))))
 
-  -- What has no register discharge: a non-register codomain, or an input the
-  -- machine cannot read back. Its own row (Plan 0.68 step 0), not the
-  -- whole-IR `obs-correct-rest`.
+  ------------------------------------------------------------------------
+  -- plan 0.88: THE NON-REGISTER CODOMAINS, split on the info's own `conB`.
+  -- `Unit` has no residence, so its result is `unit-result` and only the
+  -- events have content; `Void` has no value, so a contract that returns one
+  -- is never reached. What is left is a STRUCTURED codomain.
+  ------------------------------------------------------------------------
+  void-empty : EvV.⟦ SpecTy.Void {0} ⟧ → ⊥
+  void-empty ()
+
+  -- A call-free contract into `Unit`: `pure-obs` without the register.
+  pure-unit-obs : ∀ {A} (si : SigOpInfo A SpecTy.Unit) (c : SigOpSem A SpecTy.Unit) → sem si ≡ c
+                → effect-of c ≡ Pure → Declared-at σᶠ si c → cmp-of (sem si) ≡ nothing
+                → IRObsCorrectF (SigOp si)
+  pure-unit-obs {A} si c e eff d nc n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
+    S.build k ev-eq (λ _ → trans (halts-at si c e s) (cong (λ z → exec-sigop-halts-of z si s) eff))
+                  (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
+                  (λ _ → unit-result)
+    where
+      module S = Step si n l prog base span x s alloc cl rs nh nc
+      a = argOf si x
+      w = proj₁ (pure-agree si c eff d a)
+      E≡ : E₀ si x ≡ TM.ret (resOf si w)
+      E≡ = trans (evalᴰ-at si c e x) (cong (TM.fmapT (resOf si)) (proj₂ (proj₂ (pure-agree si c eff d a))))
+      ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
+      ev-eq = trans (events-at si c e s)
+                (trans (cong (λ z → sigop-events-of z si s) eff) (sym (cong (eventsAt s) E≡)))
+
+  -- A call-free contract into `Void` would have to compute an element of `⊥`.
+  pure-void-obs : ∀ {A} (si : SigOpInfo A SpecTy.Void) (c : SigOpSem A SpecTy.Void)
+                → effect-of c ≡ Pure → Declared-at σᶠ si c → IRObsCorrectF (SigOp si)
+  pure-void-obs si c eff d n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
+    ⊥-elim (void-empty (proj₁ (pure-agree si c eff d (argOf si x))))
+
+  -- The world answers a `Unit` call without being asked (`callAnswer-at`'s
+  -- `yes u` clause), so the denotation logs the call and returns `tt`.
+  calls-unit-obs : ∀ {A} (si : SigOpInfo A SpecTy.Unit) → sem si ≡ callsV → IRObsCorrectF (SigOp si)
+  calls-unit-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
+    S.build k ev-eq (λ _ → halts-at si callsV e s)
+                  (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
+                  (λ _ → unit-result)
+    where
+      module S = Step si n l prog base span x s alloc cl rs nh (cong cmp-of e)
+      E≡ = evalᴰ-at si callsV e x
+      ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
+      ev-eq = trans (events-at si callsV e s)
+                (trans (event-agree si x s inp) (sym (cong (eventsAt s) E≡)))
+
+  -- A declared call into `Void`: its answer would be an element of `⊥`.
+  calls-void-obs : ∀ {A} (si : SigOpInfo A SpecTy.Void) → Declared-at σᶠ si callsV → IRObsCorrectF (SigOp si)
+  calls-void-obs {A} si d n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp =
+    ⊥-elim (void-empty (TM.answer ιᶠ (SMCore.LocState.ev-log s)
+                          (TM.callOp (name si) A (baseA si) SpecTy.Void)
+                          (proj₁ (yes-of d)) (argOf si x)))
+
+  -- The base types whose values are neither in a register nor absent.
+  data StructuredBase : ∀ {B} → Base ∅ₖ B → Set where
+    st-prod  : ∀ {B C} {p : Base ∅ₖ B} {q : Base ∅ₖ C} → StructuredBase (b-* p q)
+    st-sum   : ∀ {B C} {p : Base ∅ₖ B} {q : Base ∅ₖ C} → StructuredBase (b-+ p q)
+
+  -- What has no discharge: a STRUCTURED codomain. The machine's output there
+  -- is `structured-pure-sigop-output`, itself a postulate (`SMCore`), so
+  -- nothing is known of `Output` and no `ResultPlace` can be built. Its own
+  -- row (Plan 0.68 step 0), not the whole-IR `obs-correct-rest`.
   postulate
-    obs-correct-sigop-rest : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
+    obs-correct-sigop-rest : ∀ {A B} (si : SigOpInfo A B) {ib : Base ∅ₖ B} → StructuredBase ib
+                           → IRObsCorrectF (SigOp si)
+
+  -- A codomain that does not fit a register, by its base type. (`Int`/`Float`
+  -- go back to the register rows: the `Maybe` that sent them here is only an
+  -- argument.)
+  pure-nofit : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure
+             → Declared-at σᶠ si c → cmp-of (sem si) ≡ nothing → Readable A → Base ∅ₖ B
+             → IRObsCorrectF (SigOp si)
+  pure-nofit si c e eff d nc rA b-Unit       = pure-unit-obs si c e eff d nc
+  pure-nofit si c e eff d nc rA b-Void       = pure-void-obs si c eff d
+  pure-nofit si c e eff d nc rA b-Int        = pure-obs si c e eff d nc fits-intˢ rA
+  pure-nofit si c e eff d nc rA b-Float      = pure-obs si c e eff d nc fits-floatˢ rA
+  pure-nofit si c e eff d nc rA (b-* p q) = obs-correct-sigop-rest si {ib = b-* p q} st-prod
+  pure-nofit si c e eff d nc rA (b-+ p q)  = obs-correct-sigop-rest si {ib = b-+ p q} st-sum
+
+  calls-nofit : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → Base ∅ₖ B
+              → IRObsCorrectF (SigOp si)
+  calls-nofit si e d b-Unit       = calls-unit-obs si e
+  calls-nofit si e d b-Void       = calls-void-obs si d
+  calls-nofit si e d b-Int        = calls-obs si e d fits-intˢ
+  calls-nofit si e d b-Float      = calls-obs si e d fits-floatˢ
+  calls-nofit si e d (b-* p q) = obs-correct-sigop-rest si {ib = b-* p q} st-prod
+  calls-nofit si e d (b-+ p q)  = obs-correct-sigop-rest si {ib = b-+ p q} st-sum
 
   -- The routing, by explicit-argument helpers (no `with`).
   pure-route : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure → Declared-at σᶠ si c
              → cmp-of (sem si) ≡ nothing → Maybe (FitsInReg B) → Readable A → IRObsCorrectF (SigOp si)
   pure-route si c e eff d nc (just fit) rA = pure-obs si c e eff d nc fit rA
-  pure-route si c e eff d nc nothing    _  = obs-correct-sigop-rest si
+  pure-route si c e eff d nc nothing    rA = pure-nofit si c e eff d nc rA (conB si)
 
   calls-route : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → Maybe (FitsInReg B) → IRObsCorrectF (SigOp si)
   calls-route si e d (just fit) = calls-obs si e d fit
-  calls-route si e d nothing    = obs-correct-sigop-rest si
+  calls-route si e d nothing    = calls-nofit si e d (conB si)
 
   by-sem : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared-at σᶠ si c
          → cmp-of (sem si) ≡ nothing → IRObsCorrectF (SigOp si)

@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (32 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (33 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -10,13 +10,14 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | Plan | State | What remains |
 |---|---|---|
 | 0.11 parameterized trusted base | A done (D302) | B `ArchModel`, C world/resources, D models, E `--safe` cone, F one concrete instance |
-| 0.93 relation, not datatype | S3 in progress (`Once/Spike/RelSpike.agda`) | S3–S6: discharge `BlockRunsHyp` ×3 on `once-certified` |
-| 0.88 discharge obs-correct | open | `cata-correct`, `obs-correct-sigop-rest`, `obs-correct-In`, `obs-correct-in-ν` |
+| 0.135 calls proved, not assumed | open (2026-10-27) | S0 done; S1 `ValidAtWF` as a function on the type, S2 block-call lemma, S3 producers/consumers (incl. `cata-correct`), S4 layout, S5 delete `BlockRuns`/`BlockRunsHyp` ×3 (EMPTY, D358) |
+| 0.134 unbounded abstract stack | DONE (D360): depth-tagged frames on all three arches, `shift-≺` a `FrameSemantics` field | none; consumed by 0.135 S2 |
+| 0.88 discharge obs-correct | open | `obs-correct-sigop-rest` (structured codomains; split it by reason), `obs-correct-In` until 0.135 S3; `cata-correct` moved to 0.135 |
 | 0.62 shape correctness | M1/M2 done | M2b, M3: `emitted-shape-check`, `run-meets` (two of `RunWF` ×7) |
 | 0.67 wire arith proofs | route obsolete | owns `arith-sigop-run` ×3 (the lookup half is a theorem, D351); `ev`/`step-budget` definitions |
 | 0.110 start state assumes less | not started | boot registers/flags |
 | 0.111 interpretation ABI in the Spec | not started | the calling-convention obligation; 0.113's A3 runtime test |
-| 0.89 relocatable compilation units | mostly done | B step 4 (deferred), C (may fold into 0.93), F (optional), closing entry |
+| 0.89 relocatable compilation units | property delivered at the emitter and link; kept | C1 done inside 0.135; B (the machine runs units, ~1700 sites) do-or-drop decision; F optional |
 
 ## The Spec
 

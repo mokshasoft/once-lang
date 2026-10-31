@@ -204,6 +204,20 @@ record FrameSemantics : Set₁ where
     -- Needed for BeforeFrontier transfer between frames.
     ≺-compare : ∀ f₁ f₂ → (f₁ ≺ f₂) ⊎ (f₁ ≡ f₂) ⊎ (f₂ ≺ f₁)
 
+    -- | A callee's frame is strictly further than its caller's (plan 0.134).
+    -- A shift of at least one slot gives a NEW frame, for every frame, the
+    -- stack floor included: the abstract stack never runs out. Without it a
+    -- call made from the lowest frame got its caller's own frame back, and
+    -- the callee's `c-thunk` cleared the caller's live slots. Running out of
+    -- stack is the concrete machine's outcome, not the abstract one's.
+    shift-≺ : ∀ f n → 0 < n → shift-frame f n ≺ f
+
+    -- | …and a frame already below another stays below it however much
+    -- further it is shifted (plan 0.135 S2). A body whose marker reserves 0
+    -- slots still runs in a frame below its caller's, so the caller's slots
+    -- are ancestors of the callee and survive its `c-thunk`.
+    shift-below : ∀ {f′ f} n → f′ ≺ f → shift-frame f′ n ≺ f
+
     --------------------------------------------------------------------
     -- Bounded Frame Disjointness (Key Property)
     --

@@ -1,0 +1,26 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- 2026-10-30 regression (plan 0.135 cata): functor shape Mu ((Id * Id) + K Int).
+-- Two recursive positions, node arm first: 5 + 7 = 12.
+-- The deleted shape-specialised cata codegens (strat-nat / strat-linear)
+-- miscompiled it; every recursive functor now takes the generic walk.
+--
+-- Expected: exit 12
+
+import I.Linux.Syscalls as S
+
+leaf : Int -> Int
+leaf n = n
+
+node : Int * Int -> Int
+node p = fst p + snd p
+
+f : Mu (Id * Id + K Int) -> Int
+f = cata (case node leaf)
+
+v : Mu (Id * Id + K Int)
+v = In (inl (In (inr 5), In (inr 7)))
+
+main : Act Unit Void
+main = exit@S (f v)
