@@ -8,7 +8,8 @@
 -- Each step of the compiler's telescope names its definition by its
 -- canonical name (`canonical [x]`, `End.endOf`). At the end every name is an
 -- entry's (`named-end`), and no two coincide when the entries' names are
--- distinct and new (`distinct-end`) — the Spec's `Denotes.distinct`.
+-- distinct and new (`distinct-end`) — the Spec's `ModuleDenotes.distinct`;
+-- and one named `main` is an entry (`mains-end`) — its `mains`.
 ------------------------------------------------------------------------
 
 open import Data.List using (List)
@@ -38,8 +39,10 @@ open Parser.FunInfo using (funName)
 open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Name
-open import Once.Module using (Scope; ModTele; []; ffi; mono; poly)
-open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig; t-def; wkI; wkT; impDefs)
+open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainsEffUU)
+open import Once.Type.Schema using (schemaOf)
+open Parser.PolyFunInfo using (pfunType)
+open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig; t-def; wkI; wkT; impDefs; mainEntry; monoSchema)
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef)
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (_∷ⁿ_)
 open import Once.Adequacy.SpecFront.End Σ ps using (EntryKind; End; endOf; no-ffi; all-tail)
@@ -113,3 +116,30 @@ distinct-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr W rest) k
 distinct-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks i (h ∷ u) (f ∷ fs) =
   distinct-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
                (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)
+
+-- Every definition named `main` is an entry (the Spec's `ModuleDenotes.mains`).
+MainsAt : ∀ {s} → SC.Defs s → (Fin s → CanonicalName) → Set
+MainsAt S nm = ∀ d → nm d ≡ canonical ("main" ∷ []) → SP.Entry (S SC.!! d)
+
+-- …at the end, when it holds at the start and every walked definition named
+-- `main` is usable as one (`MainsEffUU`: a schema never is `main`).
+mains-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+            (N : Names S is ts) (mt : ModTele sc es) (ks : All EntryKind es)
+          → MainsAt S (Names.nm N) → MainsEffUU mt
+          → MainsAt (End.S (endOf tl ss is ts N mt ks)) (End.nm (endOf tl ss is ts N mt ks))
+mains-end tl ss is ts N [] ks h _ = h
+mains-end tl ss is ts N (ffi ep _ _ _ _) ks h _ = ⊥-elim (no-ffi ep ks)
+mains-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr W rest) ks h (n , ms) =
+  mains-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
+            (names-poly pfi N) rest (all-tail ks) step ms
+  where
+    step : MainsAt (S SC.▷ schemaOf (pfunType pfi)) (Names.nm (names-poly pfi N))
+    step zero    e = ⊥-elim (n (one-inj e))
+    step (suc d) e = h d e
+mains-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks h (m , ms) =
+  mains-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
+            (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest (all-tail ks) step ms
+  where
+    step : MainsAt (S SC.▷ monoSchema ty) (Names.nm (names-mono (funName fi Data.String.== "main") (funName fi) ty N))
+    step zero    e = mainEntry (m (one-inj e))
+    step (suc d) e = h d e

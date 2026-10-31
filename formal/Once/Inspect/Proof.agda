@@ -125,8 +125,6 @@ record VerifiedInspector : Set where
           ( compileResolvedModule Heap doOpt mod ≡ inj₂ cfs
           × dumpIR doOpt mod ≡ inj₂ (showCompiledFuns cfs)
           × EmittedFrom arch cfs F )
-    -- `once check` accepts exactly the modules the compiler types
-    decides-check : ∀ (mod : Resolved) → check mod ≡ inj₂ tt ⇔ Checked mod
 
 verifiedInspector : VerifiedInspector
-verifiedInspector = record { shows-what-builds = build-factors ; decides-check = check-decides }
+verifiedInspector = record { shows-what-builds = build-factors }

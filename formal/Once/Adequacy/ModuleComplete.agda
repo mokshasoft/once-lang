@@ -34,7 +34,7 @@ open import Data.String using (String)
 import Data.String as Str
 open import Once.Spec.Name using (bare)
 open import Relation.Nullary using (yes; no; Dec; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≢_; _≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Function using (case_of_)
 open import Once.Compile using (findMain; moduleToIR; moduleToIR-aux; mainEntry)
@@ -193,6 +193,28 @@ checkOK-complete : ∀ {m n} {Γ : Once.Spec.Context.Ctx m n} {T : Ty m} (r : TE
 checkOK-complete (TE.failure _ ) ()
 checkOK-complete (TE.success _ _ _ _ ) _ = refl
 
+-- A schema is compiled on exactly when it is not named `main` (the entry is
+-- monomorphic, `C.ce-poly-main`).
+poly-guard : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry)
+  → Parser.PolyFunInfo.pfunName pfi ≢ "main"
+  → C.compileEntries IR.Heap false sc (Parser.e-poly pfi ∷ es) ≡ C.ce-poly-p IR.Heap false sc pfi es (C.firstChecking (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))))
+poly-guard sc pfi es n = go (Parser.PolyFunInfo.pfunName pfi Str.≟ "main")
+  where
+    go : (d : Dec (Parser.PolyFunInfo.pfunName pfi ≡ "main"))
+       → C.ce-poly-main IR.Heap false sc pfi es d ≡ C.ce-poly-p IR.Heap false sc pfi es (C.firstChecking (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))))
+    go (yes e) = ⊥-elim (n e)
+    go (no _)  = refl
+
+poly-passed : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) {cfs}
+  → C.compileEntries IR.Heap false sc (Parser.e-poly pfi ∷ es) ≡ inj₂ cfs
+  → (Parser.PolyFunInfo.pfunName pfi ≢ "main") × (C.ce-poly-p IR.Heap false sc pfi es (C.firstChecking (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) ≡ inj₂ cfs)
+poly-passed sc pfi es {cfs} eq = go (Parser.PolyFunInfo.pfunName pfi Str.≟ "main") eq
+  where
+    go : (d : Dec (Parser.PolyFunInfo.pfunName pfi ≡ "main")) → C.ce-poly-main IR.Heap false sc pfi es d ≡ inj₂ cfs
+       → (Parser.PolyFunInfo.pfunName pfi ≢ "main") × (C.ce-poly-p IR.Heap false sc pfi es (C.firstChecking (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) ≡ inj₂ cfs)
+    go (yes _) ()
+    go (no n) e = n , e
+
 -- The telescope walk, one entry at a time: each step is a chain of
 -- `cong`s through the explicit-aux stages.
 ce-complete : ∀ (sc : C.CScope) {es : List Parser.Entry} (mt : ModTele (scopeOf sc) es) → MainsEffUU mt →
@@ -215,10 +237,10 @@ ce-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr W rest) (main-ok , m
              (trans refl
              (trans (cong (C.ce-mono-ir IR.Heap false sc fi es ty) cf-eq)
                     (cong (C.consCF (C.mkCompiledFun (bare (funName fi)) ty irFun)) rec))))
-ce-complete sc (poly {pfi = pfi} {es = es} pr W rest) mrest =
+ce-complete sc (poly {pfi = pfi} {es = es} pr W rest) (n , mrest) =
   let (_ , _ , _ , _ , req) = W ; ce = cong proj₁ req
       (cfs , rec) = ce-complete (C.addEntry sc pfi) rest mrest
-  in cfs , trans (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) rec
+  in cfs , trans (poly-guard sc pfi es n) (trans (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) rec)
 
 FindResult : C.CScope → List Parser.Entry → Set
 FindResult sc es =
@@ -239,10 +261,10 @@ ce-find-complete sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h rest) mrest mi 
            (trans (cong₂ (C.ce-prim-conc IR.Heap false sc fi es ty) ec eh)
                   rec))
      , fm
-ce-find-complete sc (poly {pfi = pfi} {es = es} pr W rest) mrest mi =
+ce-find-complete sc (poly {pfi = pfi} {es = es} pr W rest) (n , mrest) mi =
   let (_ , _ , _ , _ , req) = W ; ce = cong proj₁ req
       (cfs , ir , rec , fm) = ce-find-complete (C.addEntry sc pfi) rest mrest mi
-  in cfs , ir , trans (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) rec , fm
+  in cfs , ir , trans (poly-guard sc pfi es n) (trans (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) rec) , fm
 ce-find-complete sc (mono {fi = fi} {ty = ty} {es = es} ep er pr W rest) (main-ok , mrest) mi =
   step mi (funName fi Str.≟ "main")
   where
@@ -306,9 +328,9 @@ ce-mains sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h rest) eq =
                (cong₂ (C.ce-prim-conc IR.Heap false sc fi es ty) (proj₂ (isConcrete?-complete c)) (proj₂ (honest?-complete {ty} h)))))
       eq)
 ce-mains sc (poly {pfi = pfi} {es = es} pr W rest) eq =
-  let (_ , _ , _ , _ , req) = W ; ce = cong proj₁ req
-  in ce-mains (C.addEntry sc pfi) rest
-       (subst (λ r → r ≡ inj₂ _) (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) eq)
+  let (_ , _ , _ , _ , req) = W ; ce = cong proj₁ req ; (n , eq′) = poly-passed sc pfi es eq
+  in n , ce-mains (C.addEntry sc pfi) rest
+       (subst (λ r → r ≡ inj₂ _) (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) eq′)
 ce-mains sc (mono {fi = fi} {ty = ty} {es = es} ep er pr W rest) {cfs} eq = go _ refl
   where
     eq′ = subst (λ r → r ≡ inj₂ cfs)
@@ -335,9 +357,9 @@ ce-mainexists sc (ffi {fi = fi} {ty = ty} {es = es} ep et c h rest) {cfs} {ir} e
               eq
   in ce-mainexists (C.extendSig sc (funName fi) ty) rest eq′ fm
 ce-mainexists sc (poly {pfi = pfi} {es = es} pr W rest) eq fm =
-  let (_ , _ , _ , _ , req) = W ; ce = cong proj₁ req
+  let (_ , _ , _ , _ , req) = W ; ce = cong proj₁ req ; (_ , eq′) = poly-passed sc pfi es eq
   in ce-mainexists (C.addEntry sc pfi) rest
-       (subst (λ r → r ≡ inj₂ _) (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) eq) fm
+       (subst (λ r → r ≡ inj₂ _) (trans (cong (C.ce-poly-p IR.Heap false sc pfi es) (firstChecking-complete (ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) pr)) (cong (C.ce-poly IR.Heap false sc pfi es) (checkOK-complete _ ce))) eq′) fm
 ce-mainexists sc (mono {fi = fi} {ty = ty} {es = es} ep er pr W rest) {cfs} {ir} eq fm = go _ refl
   where
     eq′ = subst (λ r → r ≡ inj₂ cfs)

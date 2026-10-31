@@ -3,7 +3,9 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.SpecFront.TypedBack — a module the Spec types, the compiler
--- resolves and types (plan 0.121 `complete`; the converse of `Denote`).
+-- resolves and types (plan 0.121 `complete`; the converse of `Denote`): a
+-- library, `check` accepts it (`checked←`, plan 0.133); a program, with its
+-- `main` (`typed←`).
 --
 -- From the Spec's denotation of a module — its signature, resolution, walk,
 -- names — the compiler's: the resolution (`ResolveBack`), the extractor's
@@ -13,9 +15,7 @@
 -- the signature's table past the FFI entries, its keys word names (R13).
 ------------------------------------------------------------------------
 
-open import Once.Spec.Numerics using (TargetNum)
-
-module Once.Adequacy.SpecFront.TypedBack (fmt : TargetNum) where
+module Once.Adequacy.SpecFront.TypedBack where
 
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; _ʳ++_; map; tabulate)
@@ -37,6 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature; WellFormed; _∶_)
+open import Once.Inspect.Proof using (CheckedEF; Checked)
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Surface.Program as SPr
@@ -175,14 +176,18 @@ private
            → Σ[ mt′ ∈ LM.ModuleTyped-ef m ef ] LM.HasValidMain-ef m ef mt′
   typed-at m .(inj₂ _) refl mt ms mi = mt , ms , mi
 
-typed← : ∀ {mm dsU Σ p}
-       → ModsW mm → All DeclW dsU → All DeclWritten dsU
-       → SPr.Denotes mm (S.mkModule dsU) Σ p
-       → TypedC mm dsU
-typed← {mm} {dsU} {Σ} {p} wm wd wr D = record { dsR = dsR ; rds = rds ; mt = proj₁ th ; hvm = proj₂ th }
-  where
-    open SPr.Denotes D
-    module P = CoreProgram.Program p
+  checked-at : ∀ (ef : String ⊎ List Parser.Entry) {es} → ef ≡ inj₂ es → (mt : ModTele emptyScope es) → MainsEffUU mt
+             → CheckedEF ef
+  checked-at .(inj₂ _) refl mt ms = mt , ms
+
+-- The Spec's walk of a module, as the compiler's: the resolution, the
+-- extractor's entries, and the typed telescope, every definition named
+-- `main` an entry (`ModuleDenotes.mains`). A library's and a program's.
+module Back {mm : ModuleMap} {dsU : List Decl} {Σ : Signature} {l : CoreProgram.Library Σ}
+  (wm : ModsW mm) (wd : All DeclW dsU) (wr : All DeclWritten dsU)
+  (D : SPr.ModuleDenotes mm (S.mkModule dsU) Σ l) where
+    open SPr.ModuleDenotes D
+    module L = CoreProgram.Library l
     sig = signature
     Σ₀ = proj₁ sig
     Σᵢ = proj₁ (proj₂ sig)
@@ -195,7 +200,7 @@ typed← {mm} {dsU} {Σ} {p} wm wd wr D = record { dsR = dsR ; rds = rds ; mt = 
     rds = proj₁ (proj₂ r←)
     dr = proj₂ (proj₂ r←)
     -- the extractor's entries
-    X = extract-ok wm wd rds rd′ dr sig P.wf sig-distinct walk distinct def-not-sig
+    X = extract-ok wm wd rds rd′ dr sig L.wf sig-distinct walk distinct def-not-sig
     fs = Extracted.fs X
     es′ = Extracted.esN X
     tf = Extracted.table X
@@ -221,12 +226,36 @@ typed← {mm} {dsU} {Σ} {p} wm wd wr D = record { dsR = dsR ; rds = rds ; mt = 
     rel₀ : W.Rel SC.[] SC.[]
     rel₀ = record { ρ⇒ = λ () ; ren⇒ = λ () ; ρ⇐ = λ () ; ren⇐ = λ () }
     align = Al.align-of Σ dr (dr-adj Σ dr (walk-adj walk)) (Extracted.defs X)
-    -- the end's `main` is the entry
-    H : ∀ i → names i ≡ canonical ("main" ∷ []) → CoreProgram.Entry Σ (P.sig SC.!! i)
-    H i e = subst (λ j → CoreProgram.Entry Σ (P.sig SC.!! j)) (sym (distinct (trans e (sym entry)))) P.isMain
     w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Core.Translate.ImpSig.[] Once.Core.Translate.TeleSig.[] (Once.Adequacy.ModuleProgram.names₀ Σ) rel₀ walk align
                  (WS.winv-empty Σ ps) eok
     pf = prefix← {sc = emptyScope} fs (Extracted.facts X) (proj₁ w←)
-    th = typed-at (Core.resolved (mkModule dsR) (importedOf mm dsU)) _ (Extracted.extracted X) (proj₁ pf)
-                  (proj₁ (proj₂ pf) (proj₁ (proj₂ w←) (WM.walk-mains Σ walk H)))
-                  (proj₂ (proj₂ pf) (proj₂ (proj₂ w←) (WM.walk-main Σ walk (main-defined walk P.main entry) H)))
+    ms = proj₁ (proj₂ pf) (proj₁ (proj₂ w←) (WM.walk-mains Σ walk mains))
+
+-- What the compiler makes of a module the Spec types as a library.
+record CheckedC (mm : ModuleMap) (dsU : List Decl) : Set where
+  field
+    dsR     : List Decl
+    rds     : LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
+    checked : Checked (Core.resolved (mkModule dsR) (importedOf mm dsU))
+
+checked← : ∀ {mm dsU Σ l}
+         → ModsW mm → All DeclW dsU → All DeclWritten dsU
+         → SPr.ModuleDenotes mm (S.mkModule dsU) Σ l
+         → CheckedC mm dsU
+checked← wm wd wr D = record
+  { dsR = B.dsR ; rds = B.rds ; checked = checked-at _ (Extracted.extracted B.X) (proj₁ B.pf) B.ms }
+  where module B = Back wm wd wr D
+
+typed← : ∀ {mm dsU Σ p}
+       → ModsW mm → All DeclW dsU → All DeclWritten dsU
+       → SPr.Denotes mm (S.mkModule dsU) Σ p
+       → TypedC mm dsU
+typed← {mm} {dsU} {Σ} {p} wm wd wr D = record { dsR = B.dsR ; rds = B.rds ; mt = proj₁ th ; hvm = proj₂ th }
+  where
+    module B = Back wm wd wr (SPr.Denotes.library D)
+    module P = CoreProgram.Program p
+    open SPr.ModuleDenotes (SPr.Denotes.library D) using (walk; mains)
+    -- the end's `main` is the entry
+    th = typed-at (Core.resolved (mkModule B.dsR) (importedOf mm dsU)) _ (Extracted.extracted B.X) (proj₁ B.pf) B.ms
+                  (proj₂ (proj₂ B.pf) (proj₂ (proj₂ B.w←)
+                    (WM.walk-main Σ walk (main-defined walk P.main (SPr.Denotes.entry D)) mains)))

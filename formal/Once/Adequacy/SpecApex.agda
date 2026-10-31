@@ -148,7 +148,7 @@ module _ (br : Bridges) where
                 exec arch (signature tp′) J bytes ≡ VC.exec (toInterp (signature tp′) wf J) arch bytes
     exec-wf arch tp′ J bytes with wellFormed? (signature tp′)
     ... | yes wf = wf , refl
-    ... | no ¬wf = ⊥-elim′ (¬wf (CoreProgram.Program.wf (program tp′)))
+    ... | no ¬wf = ⊥-elim′ (¬wf (CoreProgram.Library.wf (CoreProgram.Program.library (program tp′))))
       where
         open import Data.Empty using (⊥-elim)
         ⊥-elim′ = ⊥-elim
@@ -238,7 +238,7 @@ private
            → (mt : LM.ModuleTyped-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef)
              (hvm : LM.HasValidMain-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef mt)
            → Goal-ef arch src (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef mt hvm
-  sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (_ , mi) =
+  sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (ms , mi) =
     tp′ , (mm , pt′ , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds adm ,
     Mn.view D , trans (sym (Dn.Denoted.sig-eq D)) (teleSig≡entrySig mt) , Dn.Denoted.uniq D , Mn.same-trace D
     where
@@ -246,7 +246,7 @@ private
       module Mn = Once.Adequacy.SpecFront.Meaning (arch-numerics arch)
       pms = Modules.modules-of (SP.Source.modules src) pm
       pt′ = GD.parses→ {SP.Source.text src} pt
-      D = Dn.denote (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′) rds eq mt mi
+      D = Dn.denote (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′) rds eq mt ms mi
       tp′ : Typed
       tp′ = record { module′ = SS.mkModule dsU ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
 
@@ -286,7 +286,7 @@ complete-of arch src tp′ (mm , pt′ , pms , den) adm =
   , (PM.resolved (SS.mkModule (TC.dsR T)) _ , TC.mt T , TC.hvm T)
   , (Typed.module′ tp′ , GD.parses← {SP.Source.text src} pt′ , LR.rm (TC.rds T)) , Lits.admissible← arch (TC.rds T) adm
   where
-    module TB = Once.Adequacy.SpecFront.TypedBack (arch-numerics arch)
+    module TB = Once.Adequacy.SpecFront.TypedBack
     module TC = TB.TypedC
     T = TB.typed← (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′)
                   (Written.decls-written {SP.Source.text src} pt′) den

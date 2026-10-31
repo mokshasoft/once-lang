@@ -43,10 +43,9 @@ import Once.Adequacy.SpecCore.Cases as Cases
 -- A compiler core program, as the Spec's.
 programS : WellFormed Σ → TL.Program → SP.Program
 programS wf (TL.program defs d e) = record
-  { wf     = wf
-  ; defs   = defs
-  ; main   = d
-  ; isMain = e
+  { library = record { wf = wf ; defs = defs }
+  ; main    = d
+  ; isMain  = e
   }
 
 ------------------------------------------------------------------------

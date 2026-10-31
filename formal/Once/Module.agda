@@ -39,7 +39,7 @@ open import Data.String using (String)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; subst)
 open import Once.Contract using (ISig)
 
 open import Once.Spec.Grade using (mk-kind; Many; eff)
@@ -199,13 +199,13 @@ ModuleTyped m = ModuleTyped-ef m (Parser.extractFunctions m)
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
--- Every monomorphic definition named `main` is usable as `Eff Unit Unit` (the
--- entry converts it, D315).
+-- Every definition named `main` is usable as `Eff Unit Unit` (the entry
+-- converts it, D315): monomorphic, at a type below it (a schema is refused).
 MainsEffUU : ∀ {sc es} → ModTele sc es → Set
 MainsEffUU []                                  = ⊤
 MainsEffUU (ffi _ _ _ _ rest)                = MainsEffUU rest
 MainsEffUU (mono {fi = fi} {ty = ty} _ _ _ _ rest) = (funName fi ≡ "main" → ty <: EffUU) × MainsEffUU rest
-MainsEffUU (poly _ _ rest)                     = MainsEffUU rest
+MainsEffUU (poly {pfi = pfi} _ _ rest)         = (Parser.PolyFunInfo.pfunName pfi ≢ "main") × MainsEffUU rest
 
 -- Some monomorphic definition is `main`, usable as `Eff Unit Unit`.
 MainIn : ∀ {sc es} → ModTele sc es → Set

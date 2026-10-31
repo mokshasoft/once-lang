@@ -29,6 +29,8 @@
 --     built file is emitted from (D352); also beside the compiler.
 --   • `loader` — the imports the CLI loads are the module's `import`
 --     declarations (D354).
+--   • `checker` — `once check` accepts exactly the sources the Spec types as
+--     a module (`_⊢ᴹ_`), libraries included (D355).
 --
 -- Because both fields are stated over the actual entry points, a regression in
 -- either makes `once-certified` fail to type-check — the drift that let
@@ -102,6 +104,7 @@ open import Once.Certified.Models using (NonVacuous; models)
 open import Once.Format.Proof using (VerifiedFormatter; verifiedFormatter)
 open import Once.Inspect.Proof using (VerifiedInspector; verifiedInspector)
 open import Once.Extract.Names.Proof using (VerifiedLoader; verifiedLoader)
+open import Once.Adequacy.SpecCheck using (VerifiedChecker; verifiedChecker)
 
 -- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
 -- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
@@ -129,6 +132,9 @@ record CertifiedBuild : Set₁ where
     inspector   : VerifiedInspector
     -- the imports the CLI loads are the module's `import` declarations (D354)
     loader      : VerifiedLoader
+    -- `once check` accepts exactly the sources the Spec types as a module,
+    -- libraries included (`Spec.Source._⊢ᴹ_`, D355)
+    checker     : VerifiedChecker
 
 -- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE
 -- STATEMENT.
@@ -161,4 +167,5 @@ once-certified b64 b32 brv = record
   ; formatter   = verifiedFormatter
   ; inspector   = verifiedInspector
   ; loader      = verifiedLoader
+  ; checker     = verifiedChecker
   }

@@ -264,9 +264,14 @@ decision-log entry updates the rule it changes here, in the same commit.
   `compile` assembles `assemblyFromModule`'s text, the function `build` calls.
   (D353)
 - **Nothing the CLI runs is an unproved gap**: `check` decides the compiler's
-  typing (`inspector.decides-check`), `build` links an executable exactly when
+  typing (`check-decides`), `build` links an executable exactly when
   the compiler's `moduleToIR` finds a `main` (the apex's case split), and the
   imports the CLI loads are the declared ones (`loader`). (D354)
+- **`check` decides the Spec's typing of a module** (`checker`): it accepts a
+  source exactly when `src ⊢ᴹ tm` (`Spec.Source`), a library over its signature
+  with every `main` an entry; `check-decides` (the compiler's typing) is a lemma
+  under it. A program's denotation is a library's (`DenoteModule`) and its entry.
+  (D355)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`

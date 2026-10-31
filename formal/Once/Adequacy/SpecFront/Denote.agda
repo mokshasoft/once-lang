@@ -10,7 +10,8 @@
 -- into entries and typed as a telescope (`ModTele`) with a `main` — the
 -- Spec's `Denotes`: the signature (`SigOf`), the resolution (`Resolve`), the
 -- walk (`Walk`, from the FFI declarations' scope, `Prefix`/`Start`), its
--- names (`EndNames`, `SigFacts`), its entry (`End`); the program is the
+-- names (`EndNames`, `SigFacts`) — the library, `DenoteModule` — and its
+-- entry (`End`); the program is the
 -- compiler's core program translated (`programS`), the one `toProgram`
 -- builds (`built`). A generator the compiler finds by its rendered name is
 -- the Spec declaration of that name, for Σ's names are word names (`Words`,
@@ -55,7 +56,7 @@ open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 import Once.Parser.Module.Core as Core
 open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; importedOf)
 import Once.Parser.Relation.Resolution as LR
-open import Once.Module using (ModTele; MainIn; emptyScope; entrySig)
+open import Once.Module using (ModTele; MainIn; MainsEffUU; emptyScope; entrySig)
 open import Once.Core.Translate using ([])
 open import Once.Adequacy.ModuleProgram using (toProgram; names₀; Names)
 import Data.Empty
@@ -85,26 +86,7 @@ import Once.Adequacy.SpecFront.End as En
 import Once.Adequacy.SpecFront.EndNames as EN
 open import Once.Adequacy.SpecFront.Words using (DeclW; ModsW; KeysW; signature-words; key-word)
 
-------------------------------------------------------------------------
--- The extractor's result, taken apart
-------------------------------------------------------------------------
-
-private
-  then-ok : ∀ (s : String Data.Sum.⊎ ⊤) r {es} → Parser.thenExtract s r ≡ inj₂ es → (s ≡ inj₂ tt) × (r ≡ inj₂ es)
-  then-ok (inj₂ tt) r e = refl , e
-  then-ok (inj₁ _) r ()
-
-  guard-ok : ∀ r {es} → Parser.guardDistinct r ≡ inj₂ es → r ≡ inj₂ es
-  guard-ok (inj₁ _) ()
-  guard-ok (inj₂ es) e = dist-ok _ e
-    where
-      dist-ok : ∀ b {m es′} → Parser.distinctOrErr b m (inj₂ es) ≡ inj₂ es′ → inj₂ es ≡ inj₂ es′
-      dist-ok true  e′ = e′
-      dist-ok false ()
-
-------------------------------------------------------------------------
--- The denotation
-------------------------------------------------------------------------
+open import Once.Adequacy.SpecFront.DenoteModule using (module Parts; module Split)
 
 -- What the Spec's module denotes, and that it is the compiler's program.
 record Denoted (mm : SR.ModuleMap) (ds : List S.Decl) {es} (mt : ModTele emptyScope es) (mi : MainIn mt) : Set where
@@ -130,94 +112,23 @@ denote : ∀ {mm dsU dsR es}
        → ModsW mm → All DeclW dsU
        → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
        → Parser.extractFunctions (Core.resolved (mkModule dsR) (importedOf mm dsU)) ≡ inj₂ es
-       → (mt : ModTele emptyScope es) (mi : MainIn mt) → Denoted mm dsU mt mi
-denote {mm} {dsU} {dsR} {es} wm wd rds ef mt mi =
-  go fs es′ ees mt mi guard xn ffiE sigk
+       → (mt : ModTele emptyScope es) → MainsEffUU mt → (mi : MainIn mt) → Denoted mm dsU mt mi
+denote {mm} {dsU} {dsR} {es} wm wd rds ef mt ms mi =
+  go SP.fs SP.es′ SP.ees mt ms mi SP.guard SP.xn SP.ffiE SP.sigk
   where
-    r₀ = Parser.thenExtract (Parser.sigsAdjacent dsR nothing) (Parser.extractFunctions-go (Parser.sigsFirst dsR (importedOf mm dsU)) nothing)
-    adjE = proj₁ (then-ok _ _ (guard-ok r₀ ef))
-    goE  = proj₂ (then-ok _ _ (guard-ok r₀ ef))
-    guard = NC.guard-entries r₀ ef
-    sp = SigOf.signature-of rds (extract-align (Parser.sigsFirst dsR (importedOf mm dsU)) goE)
-    fs = proj₁ sp
-    es′ = proj₁ (proj₂ sp)
-    ees = proj₁ (proj₂ (proj₂ sp))
-    xn = proj₁ (proj₂ (proj₂ (proj₂ sp)))
-    ffiE = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ sp))))
-    sigk = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ sp))))
-    adj = adj-of dsR adjE
-
-    go : ∀ fs es′ {es} → es ≡ fs ++ es′ → (mt : ModTele emptyScope es) (mi : MainIn mt)
+    module SP = Split wm wd rds ef
+    go : ∀ fs es′ {es} → es ≡ fs ++ es′ → (mt : ModTele emptyScope es) → MainsEffUU mt → (mi : MainIn mt)
        → AllPairs _≢_ (names es) → XAlign (Parser.nonSigs dsR) es′ → All Once.Adequacy.SpecFront.Extract.FFIEntry fs
        → (All Once.Adequacy.SpecFront.Extract.FFIFacts fs → Σ[ Σₛ ∈ Signature ] SPr.SignatureOf mm dsU Σₛ
             × (toISig Σₛ ≡ entrySig fs) × (entrySig es ≡ entrySig fs))
        → Denoted mm dsU mt mi
-    go fs es′ refl mt mi guard xn ffiE sigk = record
-      { Σₛ = Σₛ ; wf = wf ; uniq = uniq-of Σₛ (fs ++ es′) (trans tf (sym te)) guard ; keysW = kw ; sig-eq = eqT
-      ; tele = En.End.tl e ; entry = d ; isMain = me ; built = trans (Past.same P) eqP ; denotes = den }
+    go fs es′ refl mt ms mi guard xn ffiE sigk = record
+      { Σₛ = Σₛ ; wf = wf ; uniq = uniq ; keysW = kw ; sig-eq = eqT
+      ; tele = En.End.tl e ; entry = d ; isMain = me ; built = trans (proj₂ (Past.same P mi)) eqP
+      ; denotes = record { library = denotesᴹ ms ; entry = proj₂ (proj₂ (proj₂ pe)) } }
       where
-        facts = ffi-facts fs ffiE mt
-        Σₛ = proj₁ (sigk facts)
-        sig = proj₁ (proj₂ (sigk facts))
-        tf = proj₁ (proj₂ (proj₂ (sigk facts)))
-        te = proj₂ (proj₂ (proj₂ (sigk facts)))
-        wf = wf-of Σₛ fs tf facts
-        kw = signature-words wm wd sig
-        eqT : Once.Module.teleSig mt ≡ toISig Σₛ
-        eqT = trans (teleSig≡entrySig mt) (trans te (sym tf))
-        P = prefix Σₛ {S = SC.[]} fs ffiE CoreProgram.[] [] [] [] (names₀ Σₛ) mt mi (λ m → sig-in Σₛ (key-word kw) (subst (_ ∈_) eqT m))
-        sg = entrySig fs ʳ++ []
-        ukeys : AllPairs _≢_ (keys (entrySig fs))
-        ukeys = subst (λ l → AllPairs _≢_ (keys l)) te (keys-distinct (fs ++ es′) guard)
-        guard′ = distinct-rest fs es′ guard
-        ps = polyNames es′
-        h-sig = λ {m} {c} {t} (_ : Once.Spec.Name.NotGenerator c) M → h-sig-of Σₛ fs tf ukeys facts {m} {c} {t} M
-        -- a telescope entry is no FFI declaration (the extractor's guard)
-        h-psig : ∀ {x} → x ∈ ps → Once.TypeCheck.Scope.lookupImport sg x ≡ nothing
-        h-psig x∈ = Data.List.Relation.Unary.All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
-        h-own : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σₛ)
-        h-own {x} x∈ps M = not-sig Σₛ fs es′ tf guard (poly-names es′ x∈ps) M
-        rd = Res.Decls.res-decls Σₛ rds
-        dsR′ = proj₁ rd
-        align = Al.align-of Σₛ (proj₂ (proj₂ rd)) adj xn
-        module W = Wk Σₛ ps sg h-sig h-own h-psig (key-word kw)
-        eok : W.EntriesOK (Once.Module.scope sg [] []) es′
-        eok = record
-          { distinct = guard′ ; fresh = fresh-start es′ ; nosig = nosig-rest fs es′ guard
-          ; kinds = kinds-of es′ guard′ (defs-of (nonSigs-none dsR) xn) }
-        ks = W.EntriesOK.kinds eok
-        e = En.endOf Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks
-        pe = En.prog-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) (Past.mi′ P) (Past.u′ P) ks
+        open Parts wm wd rds SP.adj fs es′ mt guard xn ffiE sigk
+        pe = En.prog-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) (proj₁ (Past.same P mi)) (Past.u′ P) ks
         d = proj₁ pe
         me = proj₁ (proj₂ pe)
         eqP = proj₁ (proj₂ (proj₂ pe))
-        p = PG.programS Σₛ fmt wf (TL.program (En.End.tl e) d me)
-        w = W.walk CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) align (WS.winv-empty Σₛ ps) eok
-        den : SPr.Denotes mm (S.mkModule dsU) Σₛ p
-        den = record
-          { signature = sig
-          ; unaliased = collectUnaliased mm dsU
-          ; unaliases = Res.unaliased-of rds
-          ; resolved  = dsR′
-          ; resolves  = subst (λ a → SPr.ResolvesDecls (SR.env (collectUnaliased mm dsU) a) dsU dsR′) (Res.aliases-eq dsU)
-                              (proj₁ (proj₂ rd))
-          ; names     = En.End.nm e
-          ; walk      = subst (λ n → SPr.Walk Σₛ SC.[] n CoreProgram.[] dsR′ (En.End.S e) (En.End.nm e) (En.End.tl e)) fin0-ext w
-          ; distinct  = EN.distinct-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks
-                          (λ {x} → Data.Empty.⊥-elim (fin0 x)) guard′ (Data.List.Relation.Unary.All.tabulate (λ _ ()))
-          ; sig-distinct = one-name Σₛ (uniq-of Σₛ (fs ++ es′) (trans tf (sym te)) guard)
-          ; def-not-sig  = λ dd M → not-def dd M
-          ; entry     = proj₂ (proj₂ (proj₂ pe))
-          }
-          where
-            fin0 : Fin 0 → Data.Empty.⊥
-            fin0 ()
-            -- (two namings of no definitions, by P1)
-            fin0-ext : ∀ {g : Fin 0 → CanonicalName} → Names.nm (names₀ Σₛ) ≡ g
-            fin0-ext = extensionality (λ ())
-            not-def : ∀ dd {t} → ¬ ((En.End.nm e dd ∶ t) ∈ Σₛ)
-            not-def dd M = pick (EN.named-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks {L = []} (λ ()) dd) M
-              where
-                pick : ∀ {c t} → Σ[ x ∈ String ] (c ≡ canonical (x ∷ [])) × (x ∈ [] ⊎ x ∈ names es′) → ¬ ((c ∶ t) ∈ Σₛ)
-                pick (x , ex , inj₁ ()) M′
-                pick (x , ex , inj₂ mx) M′ = not-sig Σₛ fs es′ tf guard mx (subst (λ c → (c ∶ _) ∈ Σₛ) ex M′)

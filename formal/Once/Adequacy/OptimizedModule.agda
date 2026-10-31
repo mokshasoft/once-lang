@@ -25,6 +25,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.String using (String; _==_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
+import Data.String.Properties
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.IR using (IR; AllocMode)
@@ -146,12 +147,16 @@ module _ (m : AllocMode) where
   ce-mono-opt : ∀ sc fi es rt → C.ce-mono m true sc fi es rt ≡ optRes (C.ce-mono m false sc fi es rt)
   ce-mono-p-opt : ∀ sc fi es ty mx → C.ce-mono-p m true sc fi es ty mx ≡ optRes (C.ce-mono-p m false sc fi es ty mx)
   ce-mono-ir-opt : ∀ sc fi es ty r → C.ce-mono-ir m true sc fi es ty (optIR r) ≡ optRes (C.ce-mono-ir m false sc fi es ty r)
+  ce-poly-main-opt : ∀ sc pfi es d → C.ce-poly-main m true sc pfi es d ≡ optRes (C.ce-poly-main m false sc pfi es d)
   ce-poly-p-opt : ∀ sc pfi es mx → C.ce-poly-p m true sc pfi es mx ≡ optRes (C.ce-poly-p m false sc pfi es mx)
   ce-poly-opt : ∀ sc pfi es ok → C.ce-poly m true sc pfi es ok ≡ optRes (C.ce-poly m false sc pfi es ok)
 
   ce-opt sc []                     = refl
   ce-opt sc (Parser.e-fun fi ∷ es)   = ce-fun-opt sc fi es (Parser.FunInfo.funIsPrimitive fi)
-  ce-opt sc (Parser.e-poly pfi ∷ es) = ce-poly-p-opt sc pfi es
+  ce-opt sc (Parser.e-poly pfi ∷ es) = ce-poly-main-opt sc pfi es (Parser.PolyFunInfo.pfunName pfi Data.String.Properties.≟ "main")
+
+  ce-poly-main-opt sc pfi es (yes _) = refl
+  ce-poly-main-opt sc pfi es (no _)  = ce-poly-p-opt sc pfi es
     (C.firstChecking (Classify.ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))))
 
   ce-fun-opt sc fi es true  = ce-prim-opt sc fi es (Parser.FunInfo.funType fi)

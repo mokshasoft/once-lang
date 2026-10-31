@@ -455,10 +455,18 @@ ce-mono-ir     : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry
                → String ⊎ IR ⌊ Unit {0} ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
 ce-poly-p      : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → Maybe (Ty (arityOf (pfunType pfi))) → String ⊎ List CompiledFun
 ce-poly        : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → String ⊎ ⊤ → String ⊎ List CompiledFun
+ce-poly-main   : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → Dec (pfunName pfi ≡ "main") → String ⊎ List CompiledFun
 
 compileEntries m doOpt sc []                 = inj₂ []
 compileEntries m doOpt sc (e-fun fi ∷ es)    = ce-fun m doOpt sc fi es (funIsPrimitive fi)
-compileEntries m doOpt sc (e-poly pfi ∷ es)  =
+compileEntries m doOpt sc (e-poly pfi ∷ es)  = ce-poly-main m doOpt sc pfi es (pfunName pfi SProp.≟ "main")
+
+-- `main` is the entry, used at `Eff Unit Unit` (D315): a definition with no
+-- type variables. A schema has many instances and no one calls `main` but the
+-- entry, so a polymorphic `main` is refused (plan 0.133, `ModuleDenotes.mains`).
+ce-poly-main m doOpt sc pfi es (yes _) =
+  inj₁ "main must be usable as Eff Unit Unit (its type below it), but its type is polymorphic or not concrete"
+ce-poly-main m doOpt sc pfi es (no _) =
   ce-poly-p m doOpt sc pfi es
     (firstChecking (ctxAt (kindsOf (pfunType pfi)) (ctop sc) (cpolys sc)) (pfunBody pfi) (below (rigidOf (pfunType pfi))))
 

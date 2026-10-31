@@ -271,7 +271,7 @@ ce-mono-sound doOpt sc fi es ep (inj₂ ty) er eq = pstep _ refl eq
           in mono ep er (firstChecking-sound ctx (Parser.FunInfo.funBody fi) (below ty) fc) jud
                (ce-sound doOpt (C.extendScope sc (Parser.FunInfo.funName fi) ty) es (proj₂ (consCF-inj _ eq′)))
 
-ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
+ce-poly-sound doOpt sc pfi es eq = named (Parser.PolyFunInfo.pfunName pfi String.≟ "main") eq
   where
     ctx = ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)
     low = below (rigidOf (Parser.PolyFunInfo.pfunType pfi))
@@ -288,6 +288,11 @@ ce-poly-sound doOpt sc pfi es eq = pstep _ refl eq
           → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)
     pstep (just _) _ ()
     pstep nothing fc eqp = step fc _ refl eqp
+    -- `main` is never a schema (`C.ce-poly-main`)
+    named : (d : Dec (Parser.PolyFunInfo.pfunName pfi ≡ "main")) → ∀ {cfs} → C.ce-poly-main IR.Heap doOpt sc pfi es d ≡ inj₂ cfs
+          → ModTele (scopeOf sc) (Parser.e-poly pfi ∷ es)
+    named (yes _) ()
+    named (no _) e = pstep _ refl e
 
 crm-aux-sound : ∀ (doOpt : Bool) (m : P.Resolved)
   (ef : String ⊎ List Parser.Entry) {compiled : List C.CompiledFun} →

@@ -39,6 +39,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String; _==_) renaming ()
 open import Once.Spec.Name using (bare)
 open import Once.CanonicalName using (_≟ᶜ_)
+import Data.String.Properties
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Function using (case_of_)
@@ -258,6 +259,9 @@ cgb-mono : ∀ (sc : C.CScope) (fi : FunInfo) (es : List Parser.Entry) (compiled
   → funIsPrimitive fi ≡ false → (rt : String ⊎ Type)
   → C.resolveFunType (C.ctop sc) (C.cpolys sc) (funType fi) (funBody fi) ≡ rt
   → C.ce-mono IR.Heap false sc fi es rt ≡ inj₂ compiled → CGB sc (Parser.e-fun fi ∷ es) compiled
+cgb-poly-main : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
+  → (d : Dec (Parser.PolyFunInfo.pfunName pfi ≡ "main"))
+  → C.ce-poly-main IR.Heap false sc pfi es d ≡ inj₂ compiled → CGB sc (Parser.e-poly pfi ∷ es) compiled
 cgb-poly-p : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (compiled : List C.CompiledFun)
   → (mp : Maybe (Ty (arityOf (Parser.PolyFunInfo.pfunType pfi))))
   → C.firstChecking (ctxP sc pfi) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi))) ≡ mp
@@ -270,7 +274,10 @@ cgb-poly : ∀ (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entr
 
 ce-bundleP sc [] compiled eq = bnil , inj₂-injective eq
 ce-bundleP sc (Parser.e-fun fi ∷ es) compiled eq = cgb-fun sc fi es compiled (funIsPrimitive fi) refl eq
-ce-bundleP sc (Parser.e-poly pfi ∷ es) compiled eq = cgb-poly-p sc pfi es compiled _ refl eq
+ce-bundleP sc (Parser.e-poly pfi ∷ es) compiled eq = cgb-poly-main sc pfi es compiled (Parser.PolyFunInfo.pfunName pfi Data.String.Properties.≟ "main") eq
+
+cgb-poly-main sc pfi es compiled (yes _) ()
+cgb-poly-main sc pfi es compiled (no _) eq = cgb-poly-p sc pfi es compiled _ refl eq
 
 cgb-fun sc fi es compiled true  ep eq = cgb-prim sc fi es compiled ep (funType fi) refl eq
 cgb-fun sc fi es compiled false ep eq =

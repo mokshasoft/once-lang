@@ -129,6 +129,26 @@ mainTypeTests = testGroup "Main function validation"
       result <- typeCheckSource source
       assertBool "Should reject main without Eff type" (isLeft result)
 
+  , testCase "polymorphic main is invalid (D355)" $ do
+      -- `main` is monomorphic: a schema has many instances (`a := Unit`
+      -- here) and the entry would have to pick one; nothing else calls
+      -- `main`. Before D355 `check` accepted this and `build` made a library.
+      let source = T.unlines
+            [ "main : a -> a"
+            , "main = \\x -> x"
+            ]
+      result <- typeCheckSource source
+      assertBool "Should reject a polymorphic main" (isLeft result)
+
+  , testCase "a library without main is valid" $ do
+      -- A module without `main` is a library (`_⊢ᴹ_`, D355).
+      let source = T.unlines
+            [ "f : Int -> Int"
+            , "f = \\_ -> 42"
+            ]
+      result <- typeCheckSource source
+      result @?= Right ()
+
   , testCase "main with wrong input type" $ do
       -- main must be Eff Unit A, not Eff Int A
       let source = T.unlines

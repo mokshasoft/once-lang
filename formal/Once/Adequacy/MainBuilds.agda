@@ -21,6 +21,7 @@ import Once.Context as Srf
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Data.Bool using (Bool; false; true)
 open import Data.Empty using (⊥-elim)
+import Data.String.Properties
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -170,6 +171,9 @@ ce-mono-p-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es :
 ce-mono-g-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (fi : Parser.FunInfo) (es : List Parser.Entry) (ty : Type.Type) {c}
               → C.ce-mono-p IR.Heap false sc fi es ty nothing ≡ inj₂ c
               → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-mono-p IR.Heap doOpt sc fi es ty nothing ≡ inj₂ c')
+ce-poly-main-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (d : Dec (Parser.PolyFunInfo.pfunName pfi ≡ "main")) {c}
+              → C.ce-poly-main IR.Heap false sc pfi es d ≡ inj₂ c
+              → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-poly-main IR.Heap doOpt sc pfi es d ≡ inj₂ c')
 ce-poly-p-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : Parser.PolyFunInfo) (es : List Parser.Entry) (mx : Maybe (Type.Ty (arityOf (Parser.PolyFunInfo.pfunType pfi)))) {c}
               → C.ce-poly-p IR.Heap false sc pfi es mx ≡ inj₂ c
               → Σ-syntax (List C.CompiledFun) (λ c' → C.ce-poly-p IR.Heap doOpt sc pfi es mx ≡ inj₂ c')
@@ -180,6 +184,10 @@ ce-poly-doOpt : ∀ (doOpt : Bool) (sc : C.CScope) (pfi : Parser.PolyFunInfo) (e
 ce-doOpt doOpt sc [] eq = _ , refl
 ce-doOpt doOpt sc (Parser.e-fun fi ∷ es) eq = ce-fun-doOpt doOpt sc fi es (Parser.FunInfo.funIsPrimitive fi) eq
 ce-doOpt doOpt sc (Parser.e-poly pfi ∷ es) eq =
+  ce-poly-main-doOpt doOpt sc pfi es (Parser.PolyFunInfo.pfunName pfi Data.String.Properties.≟ "main") eq
+
+ce-poly-main-doOpt doOpt sc pfi es (yes _) ()
+ce-poly-main-doOpt doOpt sc pfi es (no _) eq =
   ce-poly-p-doOpt doOpt sc pfi es
     (C.firstChecking (Classify.ctxAt (kindsOf (Parser.PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (Parser.PolyFunInfo.pfunBody pfi) (below (rigidOf (Parser.PolyFunInfo.pfunType pfi)))) eq
 

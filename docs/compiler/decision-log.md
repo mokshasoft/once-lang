@@ -20012,3 +20012,48 @@ decide the files the Haskell side loads).
 * The census's gaps are 0: everything the CLI runs is reached by the apex, or declared in `runs-unproved.allow`.
 * `check`'s theorem is against the compiler's typing; carrying it to the Spec's (`⊢ᴹ`, a module typing without
   `main`) is plan 0.133 §2, a Spec decision.
+
+---
+
+## D355 — A PROGRAM IS A LIBRARY AND ITS ENTRY; `check` DECIDES THE SPEC'S MODULE TYPING; `main` IS MONOMORPHIC (2026-10-31)
+
+**Follows** D354, D315, D324, D060; plan 0.133 (§2–§3). **Spec change approved by the user** (2026-10-31).
+
+### Context
+D354 proved that `check` decides the compiler's typing of a module, libraries included. The Spec had no typing
+for a module without `main`: `Spec.Source._⊢_` is defined through `Denotes`, which requires the entry. So
+`check`'s theorem could not be stated against the Spec.
+
+### Decision
+* **The Spec factors a program into a library and its entry** (shape (a) of plan 0.133 §2).
+  `Spec.Core.Program.Library` is the telescope over a well-formed signature; `Program` is a `library` with `main`
+  and `isMain`. `Spec.Surface.Program.ModuleDenotes mm m Σ l` is the old `Denotes` without `entry`; `Denotes` is
+  `ModuleDenotes` of the program's library plus `entry`. `Spec.Source._⊢ᴹ_ : Source → TypedModule → Set` types a
+  module; `_⊢_` is unchanged, and so is the apex statement.
+* **The name `main` is the entry's.** `ModuleDenotes.mains`: every definition named `main` is an `Entry`, usable
+  at `Eff Unit Unit` up to subtyping and with no type variables. So `main : Unit -> Unit` is a fine library
+  definition, and `main : Int` is not. Name uniqueness (`distinct`, `sig-distinct`, `def-not-sig`) sits in
+  `ModuleDenotes`, so a library has no two `main`s either.
+* **A polymorphic `main` is refused.** Subsumption has one coercion (`<:-unique`); instantiation needs a choice:
+  `∀a. Unit -> a` fits `Eff Unit Unit` at `a := Unit` and at `a := Void`. A polymorphic entry would give a source
+  several typed programs that differ only in the instance, against "One meaning" (D060), unless the Spec fixed a
+  canonical instance or proved that the instance does not matter. And nothing calls `main` but the entry (D324),
+  so a schema of uses has no use. Rejecting is also the reversible direction. The compiler refused nothing
+  before: `check` accepted `main : a -> a`, and `build` linked it until D354 made it a library. Now
+  `compileEntries` refuses a schema named `main` (`ce-poly-main`), and `MainsEffUU` carries it.
+* **`check` decides the Spec's typing** (`Adequacy.SpecCheck.check-is-typing`). Over the Spec's source, the
+  texts parse, the module resolves and `check` accepts it, exactly when `src ⊢ᴹ tm` for some typed module.
+  * Soundness is `SpecFront.DenoteModule.denoteᴹ`: the library the compiler's telescope denotes. `Denote` builds
+    a program's denotation from the same `Parts`, plus its entry.
+  * Completeness is `SpecFront.TypedBack.checked←`. `typed←` is it plus `main`.
+  * Neither involves a target (TypedBack loses its unused `fmt`).
+  * On the apex as `CertifiedBuild.checker`. `inspector.decides-check`, the statement against the compiler's
+    own typing, is now a lemma under it (`Inspect.Proof.check-decides`).
+
+### Consequences
+* `Prefix.Past` no longer needs `MainIn`: the FFI prefix is walked for a library, and a program's `main` is
+  carried by the `same` field.
+* `Metatheory.Totality` proves self- and forward-reference refusal for libraries (`module-no-…`); the Spec's
+  claims about programs follow.
+* Library builds (`build` of a module without `main`) are still outside `CorrectCompiler`'s domain. Their
+  correctness is the next plan.

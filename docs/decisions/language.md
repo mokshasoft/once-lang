@@ -27,7 +27,13 @@ entry updates the rule it changes here, in the same commit.
   definition no other definition may refer to (D324): a program cannot run
   itself again from its start, so its only repetition is structured
   recursion. There is no `IO`: the sugar is gone from the language (a library
-  alias is plan 0.96). (D324, D315 ← D253, D227, D239)
+  alias is plan 0.96). `main` is monomorphic: a schema has many instances and
+  one meaning needs one, and nothing calls `main` but the entry, so a
+  polymorphic `main` is refused. (D355, D324, D315 ← D253, D227, D239)
+- **A module without `main` is a library**: its definitions typed over its
+  signature (`_⊢ᴹ_`), each with its own name; it is not run. A program is a
+  library and its entry, and the name `main` is the entry's in either: a
+  definition named `main` is usable at `Eff Unit Unit`. (D355)
 - **Its meaning is its sequence of observable effects**, against every
   Interpretation, and nothing else: internal states, the work between two
   effects and where a run pauses are not observed. An effectful computation

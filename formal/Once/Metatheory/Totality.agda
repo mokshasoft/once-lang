@@ -129,21 +129,28 @@ private
   envOf : ∀ {um ds} → um ≡ [] → aliases ds ≡ [] → env um (aliases ds) ≡ env [] []
   envOf refl e = cong (env []) e
 
-no-self-reference : ∀ {Σ p} → ¬ Denotes [] selfReference Σ p
-no-self-reference D =
-  selfWalk (sigSelf (Denotes.signature D))
-           (subst′ (envOf {ds = selfDecls} (unSelf (Denotes.unaliases D)) refl) (Denotes.resolves D))
-           (Denotes.walk D)
+-- (a module's own reference is refused already as a library: no entry needed)
+module-no-self-reference : ∀ {Σ l} → ¬ ModuleDenotes [] selfReference Σ l
+module-no-self-reference D =
+  selfWalk (sigSelf (ModuleDenotes.signature D))
+           (subst′ (envOf {ds = selfDecls} (unSelf (ModuleDenotes.unaliases D)) refl) (ModuleDenotes.resolves D))
+           (ModuleDenotes.walk D)
   where subst′ : ∀ {E E′ ds rs} → E ≡ E′ → ResolvesDecls E ds rs → ResolvesDecls E′ ds rs
         subst′ refl r = r
 
-no-forward-reference : ∀ {Σ p} → ¬ Denotes [] forwardReference Σ p
-no-forward-reference D =
-  forwardWalk (sigForward (Denotes.signature D))
-              (subst′ (envOf {ds = forwardDecls} (unForward (Denotes.unaliases D)) refl) (Denotes.resolves D))
-              (Denotes.walk D)
+module-no-forward-reference : ∀ {Σ l} → ¬ ModuleDenotes [] forwardReference Σ l
+module-no-forward-reference D =
+  forwardWalk (sigForward (ModuleDenotes.signature D))
+              (subst′ (envOf {ds = forwardDecls} (unForward (ModuleDenotes.unaliases D)) refl) (ModuleDenotes.resolves D))
+              (ModuleDenotes.walk D)
   where subst′ : ∀ {E E′ ds rs} → E ≡ E′ → ResolvesDecls E ds rs → ResolvesDecls E′ ds rs
         subst′ refl r = r
+
+no-self-reference : ∀ {Σ p} → ¬ Denotes [] selfReference Σ p
+no-self-reference D = module-no-self-reference (Denotes.library D)
+
+no-forward-reference : ∀ {Σ p} → ¬ Denotes [] forwardReference Σ p
+no-forward-reference D = module-no-forward-reference (Denotes.library D)
 
 ------------------------------------------------------------------------
 -- The stream and the server

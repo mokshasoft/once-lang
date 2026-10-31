@@ -33,6 +33,7 @@ open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; subst)
 open import Relation.Nullary using (yes; no; proof)
+import Data.String.Properties
 open import Relation.Nullary.Reflects using (Reflects; invert)
 open import Relation.Nullary.Decidable using (¬?)
 open import Data.List.Relation.Unary.AllPairs using (allPairs?)
@@ -204,6 +205,9 @@ ce-syms-fun : ∀ (doOpt : Bool) (sc : C.CScope) (fi : FunInfo) (es : List Entry
 ce-syms doOpt sc [] cfs eq = cong C.emittedSyms (sym (inj₂-injective eq))
 ce-syms doOpt sc (e-fun fi ∷ es) cfs eq = ce-syms-fun doOpt sc fi es (FunInfo.funIsPrimitive fi) refl cfs eq
 ce-syms doOpt sc (e-poly pfi ∷ es) cfs eq
+  with PolyFunInfo.pfunName pfi Data.String.Properties.≟ "main"
+... | yes _ = case eq of λ ()
+... | no _
   with C.firstChecking (Classify.ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (C.ctop sc) (C.cpolys sc)) (PolyFunInfo.pfunBody pfi) (below (rigidOf (PolyFunInfo.pfunType pfi)))
 ... | just _ = case eq of λ ()
 ... | nothing
