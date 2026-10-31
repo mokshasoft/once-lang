@@ -23,41 +23,41 @@ import Backend.Common (runOnce, testStrataDir)
 purityTests :: TestTree
 purityTests = testGroup "Purity (pure emits nothing)"
   [ testCase "pure FFI arrow into Unit is rejected (a Unit-returning SigOp emits)" $ do
-      r <- checkLib [ "signature beep : Int -> Unit" ]
+      r <- checkModule [ "signature beep : Int -> Unit" ]
       assertBool "Should reject a pure signature that emits" (isLeft r)
 
   , testCase "effectful FFI arrow into Unit is accepted" $ do
-      r <- checkLib [ "signature beep : Act Int Unit" ]
+      r <- checkModule [ "signature beep : Act Int Unit" ]
       r @?= Right ()
 
   , testCase "pure FFI arrow into Void is rejected (a Void-returning SigOp halts)" $ do
-      r <- checkLib [ "signature stop : Int -> Void" ]
+      r <- checkModule [ "signature stop : Int -> Void" ]
       assertBool "Should reject a pure signature that halts" (isLeft r)
 
   -- Plan 0.113 B2: halting/emitting are UP TO ISOMORPHISM. An empty codomain must
   -- be WRITTEN `Void`, a singleton one `Unit` (a skeleton): `Void * Int` would be
   -- an answering contract with no possible answer.
   , testCase "effectful FFI arrow into an empty codomain other than Void is rejected" $ do
-      r <- checkLib [ "signature stop2 : Act Int (Void * Int)" ]
+      r <- checkModule [ "signature stop2 : Act Int (Void * Int)" ]
       assertBool "Should reject an empty codomain not written Void" (isLeft r)
 
   , testCase "effectful FFI arrow into a singleton codomain other than Unit is rejected" $ do
-      r <- checkLib [ "signature beep2 : Act Int (Unit * Unit)" ]
+      r <- checkModule [ "signature beep2 : Act Int (Unit * Unit)" ]
       assertBool "Should reject a singleton codomain not written Unit" (isLeft r)
 
   , testCase "pure FFI arrow into an empty codomain is rejected" $ do
-      r <- checkLib [ "signature f : Int -> (Void + Void)" ]
+      r <- checkModule [ "signature f : Int -> (Void + Void)" ]
       assertBool "Should reject a pure arrow into an empty type" (isLeft r)
 
   , testCase "effectful FFI arrow into a sum with an empty summand is accepted" $ do
       -- `Int + Void` is neither empty nor a singleton: an answering contract.
-      r <- checkLib [ "signature pick : Act Int (Int + Void)" ]
+      r <- checkModule [ "signature pick : Act Int (Int + Void)" ]
       r @?= Right ()
 
   , testCase "base-typed FFI constant of type Unit is rejected (its reference is a call)" $ do
       -- `tick` is a nullary SigOp: referencing it emits. Effects live on
       -- arrows (D032), so the honest declaration is `Eff Unit Unit`.
-      r <- checkLib
+      r <- checkModule
         [ "signature tick : Unit"
         , ""
         , "f : Int -> Unit"
@@ -70,7 +70,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
       -- finite call trees. `peek` takes a PURE stream, so passing it the acting
       -- one is a type error: otherwise forcing the layer would emit inside a pure
       -- function.
-      r <- checkLib
+      r <- checkModule
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (Act (K Int))"
@@ -85,7 +85,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
       assertBool "Should reject forcing an acting stream inside a pure function" (isLeft r)
 
   , testCase "an effectful coalgebra cannot build a pure stream" $ do
-      r <- checkLib
+      r <- checkModule
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (K Int)"
@@ -100,7 +100,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
   , testCase "an Eff signature is rejected" $ do
       -- D318 item 5: an operation is declared at `Act` and used at `Eff` by
       -- subtyping; `Eff` in a declaration is not a declaration type.
-      r <- checkLib
+      r <- checkModule
         [ "signature tock : Eff Int Unit"
         , ""
         , "run : Act Int Unit"
@@ -112,7 +112,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
       -- D317/D318: a stream's layer is a finite computation, `Nu (Act F)`;
       -- `Eff` (a computation that may never arrive) is not a layer, so
       -- `Nu (Eff F)` is not a type. The `Act` twin above is accepted.
-      r <- checkLib
+      r <- checkModule
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (Eff (K Int))"
@@ -125,7 +125,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
       -- surface cannot put an effect there: applying an operation is a value
       -- (a suspended computation), so an unused `let` is pure and the
       -- function's own type is `Int -> Int`.
-      r <- checkLib
+      r <- checkModule
         [ "import I.Test.Emit as E"
         , ""
         , "f : Int -> Int"
@@ -134,7 +134,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
       r @?= Right ()
 
   , testCase "...so Act is wider than its type and rejected" $ do
-      r <- checkLib
+      r <- checkModule
         [ "import I.Test.Emit as E"
         , ""
         , "f : Act Int Int"
@@ -144,7 +144,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
 
   , testCase "forcing an acting stream is an acting suspension" $ do
       -- The honest twin: `Out` on `Nu (Act F)` is `Act Unit (F …)`.
-      r <- checkLib
+      r <- checkModule
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (Act (K Int))"
@@ -157,21 +157,20 @@ purityTests = testGroup "Purity (pure emits nothing)"
   ]
 
 ------------------------------------------------------------------------
--- Helpers. `once check` does not resolve imports, so type-check through a
--- library build against the test strata.
+-- Helpers.
 ------------------------------------------------------------------------
 
-checkLib :: [T.Text] -> IO (Either String ())
-checkLib sourceLines = withSystemTempFile "purity.once" $ \path handle -> do
+-- | A module type-checks: `once check` against the test strata, which decides
+-- the Spec's module typing (D355; libraries included, so no `main` is needed).
+checkModule :: [T.Text] -> IO (Either String ())
+checkModule sourceLines = withSystemTempFile "purity.once" $ \path handle -> do
   TIO.hPutStr handle (T.unlines sourceLines)
   hClose handle
-  withSystemTempFile "purity-out" $ \out outH -> do
-    hClose outH
-    (exitCode, stdout, stderr) <-
-      runOnce ["build", "--lib", "--target", "x86_64", "--strata", testStrataDir, "-o", out, path]
-    case exitCode of
-      ExitSuccess   -> return (Right ())
-      ExitFailure _ -> return (Left (stdout ++ stderr))
+  (exitCode, stdout, stderr) <-
+    runOnce ["check", "--target", "x86_64", "--strata", testStrataDir, path]
+  case exitCode of
+    ExitSuccess   -> return (Right ())
+    ExitFailure _ -> return (Left (stdout ++ stderr))
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

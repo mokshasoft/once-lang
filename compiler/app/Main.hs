@@ -25,15 +25,17 @@ parseArgs ("fmt"        : rest) = parseFmt rest
 parseArgs ("stats"      : rest) = Stats      <$> parseStageOpts rest
 parseArgs _                     = Nothing
 
--- | `check [--target ARCH] [-o FILE] FILE`: the warnings are the target's
--- (default: the host's, as `build`).
+-- | `check [--target ARCH] [--strata DIR] [-o FILE] FILE`: the warnings are
+-- the target's (default: the host's, as `build`); imports resolve against
+-- the Strata tree, found as `build` finds it.
 parseCheck :: [String] -> Maybe Command
-parseCheck = go hostTarget []
+parseCheck = go hostTarget Nothing []
   where
-    go _ acc ("--target" : a : rest) = parseTarget a >>= \t' -> go (Just t') acc rest
-    go t acc (x : rest)              = go t (acc ++ [x]) rest
-    go t acc []                      = parseStageArgs acc >>= \(i, o) ->
-      Just $ Check CheckOptions { checkInput = i, checkOutput = o, checkTarget = t }
+    go _ s acc ("--target" : a : rest) = parseTarget a >>= \t' -> go (Just t') s acc rest
+    go t _ acc ("--strata" : d : rest) = go t (Just d) acc rest
+    go t s acc (x : rest)              = go t s (acc ++ [x]) rest
+    go t s acc []                      = parseStageArgs acc >>= \(i, o) ->
+      Just $ Check CheckOptions { checkInput = i, checkOutput = o, checkTarget = t, checkStrata = s }
 
 -- | `fmt [--check | --stdout] FILE...` (`--stdout` takes one file).
 parseFmt :: [String] -> Maybe Command
@@ -139,7 +141,7 @@ usage = do
   TIO.putStrLn ""
   TIO.putStrLn "Inspection (each takes [-o FILE] <file.once>):"
   TIO.putStrLn "  parse <file.once>             Signatures after `import` resolution"
-  TIO.putStrLn "  check <file.once>             Parse and type check ([--target ARCH] for its warnings)"
+  TIO.putStrLn "  check <file.once>             Parse and type check ([--target ARCH] for its warnings, [--strata DIR])"
   TIO.putStrLn "  elaborate <file.once>         Each function's IR, as elaborated"
   TIO.putStrLn "  optimize <file.once>          Each function's IR, after the optimizer"
   TIO.putStrLn ""

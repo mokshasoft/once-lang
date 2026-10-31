@@ -155,6 +155,7 @@ data CheckOptions = CheckOptions
   { checkInput  :: FilePath
   , checkOutput :: Maybe FilePath
   , checkTarget :: Maybe Target   -- ^ whose warnings to report (default: the host, as `build`)
+  , checkStrata :: Maybe FilePath -- ^ the Strata tree imports resolve against (default: found as `build` finds it)
   } deriving (Eq, Show)
 
 ------------------------------------------------------------------------
@@ -222,7 +223,7 @@ runCheck :: CheckOptions -> IO ()
 runCheck opts = do
   let inputPath = checkInput opts
   source <- TIO.readFile inputPath
-  loadResult <- loadAndResolve inputPath Nothing source
+  loadResult <- loadAndResolve inputPath (checkStrata opts) source
   case loadResult of
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
