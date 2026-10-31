@@ -55,9 +55,10 @@ import Once.CCC.Codegen.NodesOK
 open Once.CCC.Codegen.NodesOK using (sigop-syms)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
-   strat-const; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call;
+   strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace;
    cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; wrap-sum; resuspend-layer)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
@@ -312,6 +313,10 @@ module _ (G : String → Set) where
     ⊆-trans (at⊆body l1 (l1 + 1) bb at)
       (⊆-trans (⊆-++ʳ (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body l1 (l1 + 1) bb at))
                (⊆-++ʳ (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) _))
+  at⊆ strat-box bb n1 l1 at =
+    ⊆-trans (at⊆body l1 (l1 + 1) bb at)
+      (⊆-trans (⊆-++ʳ (cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body l1 (l1 + 1) bb at))
+               (⊆-++ʳ (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) _))
   at⊆ (strat-branching F) bb n1 l1 at = ⊆-trans (at⊆body _ _ bb at) (BrS.B⊆ F bb n1 l1 at)
 
   cata-closes strat-const bb n1 l1 at {D} d cat =
@@ -320,6 +325,15 @@ module _ (G : String → Set) where
     where
       S = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
       C = cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)
+      B = cata-body l1 (l1 + 1) bb at
+      B⊆T : B ⊆ S ++ (C ++ B)
+      B⊆T = ⊆-trans (⊆-++ʳ C B) (⊆-++ʳ S (C ++ B))
+  cata-closes strat-box bb n1 l1 at {D} d cat =
+    closes-++ S (C ++ B) (setup-closes n1 (n1 + 1) (n1 + 2) l1 (thk∈ (ℓ o l1) d (B⊆T (there (here refl)))))
+      (closes-++ C B [] (body-closes l1 (l1 + 1) bb at (defd-⊆ B⊆T d) cat))
+    where
+      S = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
+      C = cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)
       B = cata-body l1 (l1 + 1) bb at
       B⊆T : B ⊆ S ++ (C ++ B)
       B⊆T = ⊆-trans (⊆-++ʳ C B) (⊆-++ʳ S (C ++ B))
@@ -337,6 +351,17 @@ module _ (G : String → Set) where
   sigop-closes si n nothing  (g ∷ []) = inj₂ g ∷ []
   sigop-closes si n (just c) (g ∷ []) = inj₂ g ∷ []
 
+  -- D364: `In`'s three shapes and `out-μ`'s reference nothing.
+  in-closes : ∀ {D} (r : MuRep) (n : ℕ) → Closes D (in-trace r n)
+  in-closes mu-box  n = []
+  in-closes mu-unit n = []
+  in-closes mu-ptr  n = []
+
+  out-closes : ∀ {D} (r : MuRep) → Closes D (out-trace r)
+  out-closes mu-box  = []
+  out-closes mu-unit = []
+  out-closes mu-ptr  = []
+
   close : ∀ {A B} (ir : IR A B) (n l : ℕ) {D}
         → Defd D (Unit (ir-to-trace' n l ir)) → NOK ir
         → Closes D (trace-of (ir-to-trace' n l ir)) × Closes D (blocks-layout (bodies-of (ir-to-trace' n l ir)))
@@ -348,8 +373,8 @@ module _ (G : String → Set) where
   close inl      n l d ok = [] , []
   close inr      n l d ok = [] , []
   close apply    n l d ok = [] , []
-  close (In _)    n l d ok = [] , []
-  close (out-μ _) n l d ok = [] , []
+  close (In {F} _)    n l d ok = in-closes (mu-rep F) n , []
+  close (out-μ {F} _) n l d ok = out-closes (mu-rep F) , []
   close (Out _)   n l d ok = [] , []
   close (const fits-int   v) n l d ok = [] , []
   close (const fits-float v) n l d ok = [] , []

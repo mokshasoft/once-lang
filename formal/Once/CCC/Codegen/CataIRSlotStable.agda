@@ -51,8 +51,9 @@ open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-branching; cata-trace-branching; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
+  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-box; strat-branching; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
          cata-body; cata-call-setup; cata-call; cata-trace-const; fsize)
 
 module CataIRSlotStable {FS : FrameSemantics} where
@@ -235,6 +236,12 @@ module CataIRSlotStable {FS : FrameSemantics} where
     ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++ cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3)) refl)
         (cata-body-stable l1 (l1 ℕ.+ 1) bb at sat)
 
+  cata-trace-box-stable : ∀ bb n1 l1 at → AllSlotStable at
+                          → AllSlotStable (proj₂ (proj₂ (cata-trace-box bb n1 l1 at)))
+  cata-trace-box-stable bb n1 l1 at sat =
+    ++⁺ (all-stable?-sound (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++ cata-call-box n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3)) refl)
+        (cata-body-stable l1 (l1 ℕ.+ 1) bb at sat)
+
   -- Tier 2 is the one exception: its skeleton splices the two COMPILE-TIME
   -- functor walks, which are stuck on `F`, so the tail still needs the boolean
   -- route with those two peels (the algebra's peel is gone — it is in the body).
@@ -262,10 +269,22 @@ module CataIRSlotStable {FS : FrameSemantics} where
               (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize F)))
                        refl)))
 
+  -- D364: `In`'s three shapes and `out-μ`'s.
+  in-stable : ∀ (r : MuRep) (n : ℕ) → AllSlotStable (in-trace r n)
+  in-stable mu-box  n = all-stable?-sound _ refl
+  in-stable mu-unit n = all-stable?-sound _ refl
+  in-stable mu-ptr  n = all-stable?-sound _ refl
+
+  out-stable : ∀ (r : MuRep) → AllSlotStable (out-trace r)
+  out-stable mu-box  = all-stable?-sound _ refl
+  out-stable mu-unit = all-stable?-sound _ refl
+  out-stable mu-ptr  = all-stable?-sound _ refl
+
   cata-dispatch-slot-stable : ∀ (strat : CataStrategy) (bb n l : ℕ) (at : AbstractTrace)
                             → AllSlotStable at
                             → AllSlotStable (proj₂ (proj₂ (cata-dispatch strat bb n l at)))
   cata-dispatch-slot-stable strat-const         bb n l at sat = cata-trace-const-stable bb n l at sat
+  cata-dispatch-slot-stable strat-box           bb n l at sat = cata-trace-box-stable bb n l at sat
   cata-dispatch-slot-stable (strat-branching F) bb n l at sat = cata-trace-branching-stable F bb n l at sat
 
   ----------------------------------------------------------------------
@@ -298,8 +317,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl
   ir-stable inl             n l = all-stable?-sound _ refl
   ir-stable inr             n l = all-stable?-sound _ refl
-  ir-stable (In _)        n l = all-stable?-sound _ refl
-  ir-stable (out-μ _)       n l = all-stable?-sound _ refl
+  ir-stable (In {F} _)      n l = in-stable (mu-rep F) n
+  ir-stable (out-μ {F} _)   n l = out-stable (mu-rep F)
   ir-stable (Out _)         n l = all-stable?-sound _ refl
   ir-stable (in-ν _)      n l = all-stable?-sound _ refl
   ir-stable (Ana _ c)       n l = all-stable?-sound _ refl

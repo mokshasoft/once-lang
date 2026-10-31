@@ -92,9 +92,12 @@ open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.Type as Ty
+open import Once.Spec.Type using (Int; Float)
+open import Data.Bool using (Bool; true; false)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz)
+  using (AbstractInstr; AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -137,7 +140,21 @@ rec-count (F ⊗ G) = rec-count F ℕ.+ rec-count G
 
 data CataStrategy : Set where
   strat-const     : CataStrategy   -- 0 rec positions: cata = alg on the In-layer
+  strat-box       : CataStrategy   -- D364: `K Int`/`K Float`: alg on the BOX's cell
   strat-branching : Fun 0 → CataStrategy  -- ≥1 rec position: the generic walk; carries F
+
+-- D364: the functors whose μ is a one-cell BOX (`MuRep.mu-box`), read on the
+-- Spec side of `⌈_⌉F`, where the classifier runs.
+box-fun : Fun 0 → Bool
+box-fun (K Int)   = true
+box-fun (K Float) = true
+{-# CATCHALL #-}
+box-fun _         = false
+
+-- no recursive position: a call on the layer, read out of the box if there is one
+const-strategy : Bool → CataStrategy
+const-strategy true  = strat-box
+const-strategy false = strat-const
 
 -- The classifier: no recursion → no loop (one algebra call); any recursion →
 -- the generic post-order walk.
@@ -153,7 +170,7 @@ data CataStrategy : Set where
 -- layers), not as separate codegens behind the classifier.
 cata-strategy : Fun 0 → CataStrategy
 cata-strategy F with rec-count F
-... | 0     = strat-const
+... | 0     = const-strategy (box-fun F)
 ... | suc _ = strat-branching F
 
 ------------------------------------------------------------------------
@@ -249,9 +266,9 @@ cata-call-setup cl k ev body-label =
 -- writes only fresh cells, so earlier results are never disturbed. Reusing one
 -- pair per fold is deferred to the linearity / in-place-update work, where it
 -- can be justified for every carrier.
-cata-call : ℕ → ℕ → ℕ → ℕ → AbstractTrace
-cata-call cl k ev pr =
-  mov-to-output ∷ store-at-slot k ∷
+cata-call-from : AbstractInstr → ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call-from i0 cl k ev pr =
+  i0 ∷ store-at-slot k ∷
   instr-alloc-heap 2 ∷ store-at-slot pr ∷ mov-to-input ∷
   load-from-slot ev ∷ store-indirect ∷
   load-from-slot k ∷ store-indirect-suc ∷
@@ -259,6 +276,15 @@ cata-call cl k ev pr =
   instr-save-closure-reg ∷
   load-from-slot pr ∷ mov-to-input ∷
   instr-call-closure ∷ []
+
+cata-call : ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call = cata-call-from mov-to-output
+
+-- D364: at a BOXED μ (`strat-box`) the layer is the box's cell, so the first
+-- row reads it (`load-indirect`) where the others copy the pointer
+-- (`mov-to-output`); the rows after it are the same.
+cata-call-box : ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call-box = cata-call-from load-indirect
 
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
@@ -451,9 +477,18 @@ cata-trace-const bb n1 l1 at =
   (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++
    (cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
 
+-- D364: `strat-const` at a BOXED μ (`Mu (K Int)`, `Mu (K Float)`): the
+-- same, except that the call's first row reads the layer out of the box.
+cata-trace-box : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-box bb n1 l1 at =
+  n1 ℕ.+ 4 , l1 ℕ.+ 2 ,
+  (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++
+   (cata-call-box n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
+
 -- Dispatch the strategy.
 cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-dispatch strat-const         bb n1 l1 at = cata-trace-const bb n1 l1 at
+cata-dispatch strat-box           bb n1 l1 at = cata-trace-box bb n1 l1 at
 cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 at
 
 -- ────────────────────────────────────────────────────────────────────
@@ -614,6 +649,31 @@ sigop-code si n (just o) = cmp-trace o n
 sigop-trace : ∀ {A B} → ℕ → ℕ → SigOpInfo A B → Maybe CmpOp
             → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
 sigop-trace n l si m = sigop-budget n m , l , sigop-code si n m , []
+
+-- D364: the box. Stash the layer's word, allocate a block, write the word
+-- into its first cell, and hand back the block's pointer (`Input1` still
+-- holds it after `store-indirect`). One slot (`n`). The block is a PAIR block
+-- with its second cell unused: every emitted allocation is (`AllocMin`), so
+-- that any pointer has a successor cell in bounds (`FlatPtrBounds`).
+in-box-trace : ℕ → AbstractTrace
+in-box-trace n =
+  mov-to-output ∷ store-at-slot n ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
+  load-from-slot n ∷ store-indirect ∷ mov-to-output ∷ []
+
+in-trace : MuRep → ℕ → AbstractTrace
+in-trace mu-box  n = in-box-trace n
+in-trace mu-unit n = instr-alloc-heap 2 ∷ []
+in-trace mu-ptr  n = mov-to-output ∷ []
+
+in-next : MuRep → ℕ → ℕ
+in-next mu-box  n = suc n
+in-next mu-unit n = n
+in-next mu-ptr  n = n
+
+out-trace : MuRep → AbstractTrace
+out-trace mu-box  = load-indirect ∷ []
+out-trace mu-unit = mov-to-output ∷ []
+out-trace mu-ptr  = mov-to-output ∷ []
 
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
@@ -924,16 +984,17 @@ ir-to-trace' n l (case f g) =
      (instr-ctrl (c-label (ℓ o l-end)) ∷ []) ,
      (fb ++ gb)
 
--- In: μ Lambek constructor. Heap-identity — the F-layer node IS the
--- μ-value (same pointer). `mov-to-output` (Output := Input1) passes the
--- pointer through, matching `out-μ` (its inverse) and the heap-identity
--- `run-In` (SumRecWF). Plan 0.27 Phase B: was `[]` (a stub correct only
--- when Output happened to be pre-loaded by a preceding sub-IR).
-ir-to-trace' n l (In _)       = n , l , (mov-to-output ∷ []) , []
--- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input1.
--- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
--- out via the same `transport-trivial` pattern as id/arr/free-heap.
-ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
+-- In: μ Lambek constructor. A μ value is a HEAP POINTER (D364), so what `In`
+-- emits depends on how its layer arrives (`MuRep`): a layer that is already a
+-- pointer (sum, product, μ) IS the node — `mov-to-output` passes it through;
+-- an `Int`/`Float` layer is BOXED into a fresh block (`in-box-trace`); a
+-- `Unit` layer has no residence, so `In` allocates a block and writes
+-- nothing. (Before D364 every `In` was `mov-to-output`, which left a literal,
+-- or nothing, where the value relation demands a pointer.)
+ir-to-trace' n l (In {F} _)    = in-next (mu-rep F) n , l , in-trace (mu-rep F) n , []
+-- out-μ: the inverse. A pointer layer IS the node (`mov-to-output`); a boxed
+-- one is the box's cell (`load-indirect`); a `Unit` layer is anything.
+ir-to-trace' n l (out-μ {F} _) = n , l , out-trace (mu-rep F) , []
 -- Cata: the algebra once, then the strategy's skeleton (`cata-dispatch`).
 -- Plan 0.36 Phase 2b: dispatch on the functor's strategy (compile-time).
 -- D099 / C1: the algebra is generated ONCE, at frontier 0 — it runs in its OWN

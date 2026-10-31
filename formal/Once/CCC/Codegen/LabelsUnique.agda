@@ -60,7 +60,8 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-br-I₁; cata-br-I₂; fsize)
+  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; out-trace)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
@@ -316,10 +317,12 @@ module Unique {FS : FrameSemantics} where
 
   cata-BL : CataStrategy → ℕ → ℕ
   cata-BL strat-const         l1 = l1
+  cata-BL strat-box           l1 = l1
   cata-BL (strat-branching F) l1 = l1 + 4 + lsize F + lsize F
 
   cata-BL-mono : ∀ (st : CataStrategy) (l1 : ℕ) → l1 ≤ cata-BL st l1
   cata-BL-mono strat-const         l1 = ≤-refl
+  cata-BL-mono strat-box           l1 = ≤-refl
   cata-BL-mono (strat-branching F) l1 =
     ≤-trans (m≤m+n l1 4)
       (≤-trans (m≤m+n (l1 + 4) (lsize F)) (m≤m+n (l1 + 4 + lsize F) (lsize F)))
@@ -346,6 +349,14 @@ module Unique {FS : FrameSemantics} where
     where
       P₁ = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
       P₂ = cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)
+      R₂ = cata-body l1 (l1 + 1) bb at
+      R₁ = P₂ ++ R₂
+  cata-tl strat-box bb n1 l1 at =
+    trans (tl-pre P₁ R₁ (nt-dec P₁ refl))
+          (trans (tl-pre P₂ R₂ (nt-dec P₂ refl)) (cata-body-tl l1 (l1 + 1) bb at))
+    where
+      P₁ = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
+      P₂ = cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)
       R₂ = cata-body l1 (l1 + 1) bb at
       R₁ = P₂ ++ R₂
   -- The branching prelude contains the compile-time functor walks, so its
@@ -415,6 +426,17 @@ module Unique {FS : FrameSemantics} where
   sigop-defs si n nothing  = []
   sigop-defs si n (just _) = []
 
+  -- D364: `In`'s three shapes and `out-μ`'s define no marker.
+  in-du : ∀ (r : MuRep) (n : ℕ) → AllPairs _≢_ (thunk-labels (in-trace r n) ++ [])
+  in-du mu-box  n = []
+  in-du mu-unit n = []
+  in-du mu-ptr  n = []
+
+  out-du : ∀ (r : MuRep) → AllPairs _≢_ (thunk-labels (out-trace r) ++ [])
+  out-du mu-box  = []
+  out-du mu-unit = []
+  out-du mu-ptr  = []
+
   defs-uniq : ∀ {A B} (ir : IR A B) (n l : ℕ) → AllPairs _≢_ (defs (ir-to-trace' n l ir))
   defs-uniq id                    n l = []
   defs-uniq fst                   n l = []
@@ -424,8 +446,8 @@ module Unique {FS : FrameSemantics} where
   defs-uniq terminal              n l = []
   defs-uniq initial               n l = []
   defs-uniq apply                 n l = []
-  defs-uniq (In _)                n l = []
-  defs-uniq (out-μ _)             n l = []
+  defs-uniq (In {F} _)            n l = in-du (mu-rep F) n
+  defs-uniq (out-μ {F} _)         n l = out-du (mu-rep F)
   defs-uniq (Out _)               n l = []
   defs-uniq (const fits-int   v)  n l = []
   defs-uniq (const fits-float v)  n l = []

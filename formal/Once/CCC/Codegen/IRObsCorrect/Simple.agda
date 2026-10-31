@@ -24,7 +24,9 @@ open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Spec.Float.Decimal using (Decimal; round)
-open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI)
+open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI; wf-K; wf-Id; wf-Sum; wf-Prod;
+                             base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit)
+open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-fit; fit-not-unit)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -337,24 +339,22 @@ module Simp {FS : FrameSemantics} where
   -- So only the pointer residence survives, and the value witness is exactly
   -- the layer iso: `valid-μ-wf` CARRIES the layer's own `ValidAtWF`
   -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
-  obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
-  obs-correct-out-μ {F} wf n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k rs =    record
+  -- D364: at an UNBOXED functor (`MuRep`) `out-μ` is `mov-to-output`; the
+  -- clause is stated over that trace equation (`teq`), so one proof serves
+  -- every such functor.
+  obs-correct-out-μ-mov : ∀ {F} (wf : WellFormedFI F) → Unboxed F
+                        → (∀ n l → emitted n l (out-μ wf) ≡ mov-to-output ∷ [])
+                        → IRObsCorrectF (out-μ wf)
+  obs-correct-out-μ-mov {F} wf ub teq n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k rs =    record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ (cong (λ t → fetch t 0) (teq n l))) ∷ []) (λ _ → nh)
+                   (λ _ → cong (λ t → length t + base) (sym (teq n l))) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
       fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl rs)
-
-
-      ev-[] : ∀ pc i → fetch (emitted n l (out-μ wf)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
-      ev-[] zero    .mov-to-output refl fs = refl
-      ev-[] (suc n) i              ()   fs
-
-      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (out-μ wf)) (entry-flat 0 s alloc cl rs)) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (out-μ wf)) ev-[] f (entry-flat 0 s alloc cl rs)
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (out-μ wf) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -377,7 +377,7 @@ module Simp {FS : FrameSemantics} where
                   (floc fs₁)
       valid'' il bf v = subst (λ a → ValidAtWF mIn a (retVal (evalᴰ (out-μ wf) x)) il
                                (floc fs₁))
-                      (sym keeps-alloc) (μ-layer-iso wf x (valid' il bf v))
+                      (sym keeps-alloc) (μ-layer-iso wf x ub (valid' il bf v))
 
       out-ptr : ∀ (il : ValueLocation FS) → readReg (regs s) Input1 ≡ SV-Ptr il
               → readReg (regs (floc fs₁)) Output
@@ -398,6 +398,83 @@ module Simp {FS : FrameSemantics} where
                   (valid'' il (live→bf bf) v) (before' il bf)
       place (in-reg () _)
       place (in-unit ())
+
+  -- D364: at a BOXED functor (`K Int`/`K Float`) the μ is a block whose first
+  -- cell holds the layer, so `out-μ` is `load-indirect`: `fst`'s clause, at
+  -- the box. A pointer cell places the layer in memory; a literal one in
+  -- `Output`.
+  obs-correct-out-μ-box : ∀ {F} (wf : WellFormedFI F) → mu-rep F ≡ mu-box
+                        → (∀ n l → emitted n l (out-μ wf) ≡ load-indirect ∷ [])
+                        → IRObsCorrectF (out-μ wf)
+  obs-correct-out-μ-box {F} wf bx teq n l prog base _ cr span _ _ mIn x s alloc cl _ nh inp k rs = mr-of inp
+    where
+      fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl rs)
+
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (out-μ wf) x ⟫ k) ≡ []
+      denot-[] k = refl
+
+      mem-eq : ∀ loc' → readLoc (floc fs₁) loc' ≡ readLoc s loc'
+      mem-eq loc' = exec-abstract-load-indirect-preserves-mem s alloc loc'
+
+      sp0 : fetch prog (0 + base) ≡ just load-indirect
+      sp0 = span 0 _ (cong (λ t → fetch t 0) (teq n l))
+
+      at-end′ : fpc fs₁ ≡ length (emitted n l (out-μ wf)) + base
+      at-end′ = cong (λ t → length t + base) (sym (teq n l))
+
+      fit : FitsInRegI (⟦ F ⟧TI (μ-type F))
+      fit = box-fit bx
+
+      no-unit : ⟦ F ⟧TI (μ-type F) ≡ Unit → ⊥
+      no-unit = fit-not-unit fit
+
+      mr-of : InputAt mIn alloc x s
+            → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k
+      mr-of (in-loc box-loc pv bf eq) = go (μ-box-cell {wf = wf} bx pv)
+        where
+          go : CellAt alloc (⟦ F ⟧TI (μ-type F)) (retVal (evalᴰ (out-μ wf) x)) box-loc s
+             → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k
+          go (cell-ptr {comp-loc = cloc} cp cbef cv) =
+            let cval  = validityWF-mem-preserved (retVal (evalᴰ (out-μ wf) x)) cloc s (floc fs₁) (live→bf cbef)
+                          (λ loc' _ → mem-eq loc') cv
+                live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                          (load-indirect-twf {alloc = alloc} box-loc (SV-Ptr cloc) eq cp)
+            in record
+                 { traces-agree = sym (denot-[] k)
+                 ; value-realized =
+                     realized 1 fs₁ _ (falloc fs₁)
+                       ((nh , sp0) ∷ []) (λ _ → live') (λ _ → at-end′) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
+                       (λ { refl → at-loc cloc cval cbef
+                          (exec-abstract-load-indirect-output s alloc box-loc (SV-Ptr cloc) eq cp)
+                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
+                 }
+          go (cell-inline (rep-prim fit′) cp) =
+            let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                          (load-indirect-twf {alloc = alloc} box-loc (prim-sv fit′ (retVal (evalᴰ (out-μ wf) x))) eq cp)
+            in record
+                 { traces-agree = sym (denot-[] k)
+                 ; value-realized =
+                     realized 1 fs₁ mIn (falloc fs₁)
+                       ((nh , sp0) ∷ []) (λ _ → live') (λ _ → at-end′) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
+                       (λ { refl → at-reg fit′
+                          (exec-abstract-load-indirect-output s alloc box-loc
+                             (prim-sv fit′ (retVal (evalᴰ (out-μ wf) x))) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
+                 }
+          go (cell-inline (rep-unit u sv) cp) = ⊥-elim (no-unit u)
+      mr-of (in-reg () _)
+      mr-of (in-unit ())
+
+  -- …dispatched on the functor's shape, where the trace reduces.
+  obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
+  obs-correct-out-μ wf@(wf-K base-Int)        = obs-correct-out-μ-box wf refl (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K base-Float)      = obs-correct-out-μ-box wf refl (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K base-Unit)       = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K base-Void)       = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K (base-Prod a b)) = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K (base-Sum a b))  = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@wf-Id                  = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-Sum f g)           = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-Prod f g)          = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
 
   -- ── `Out` — NO LONGER DISCHARGED (D189), and the retraction is the point.
   -- What stood here was a proof by absurdity whose absurdity was the emitter's

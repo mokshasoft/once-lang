@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- Plan 0.135 D1a: a cata whose CARRIER IS A FUNCTION TYPE. Every node's
+-- D361: a cata whose CARRIER IS A FUNCTION TYPE. Every node's
 -- algebra result is a closure that captures that node's layer (its children's
 -- closures and its payload), and the fold's result is applied only AFTER the
 -- whole fold has run. The tree has several nodes, so the algebra is called

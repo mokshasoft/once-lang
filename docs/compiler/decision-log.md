@@ -19998,7 +19998,7 @@ the code the theorem is about, and run code without a theorem was invisible.
   block named by the code cell runs on exactly what the origin put in cell 0; for an `in-ν` that block is
   the identity stub. At `from-ana` it assumes no more than before: the seed the block receives is the
   one in the witness's own cell, where before it was a separately quantified seed.
-* `obs-correct-sigop-rest` takes `StructuredBase ib` (a product, a sum, a rigid parameter). The `Unit`
+* `obs-correct-sigop-rest` takes `StructuredBase ib` (a product or a sum). The `Unit`
   codomain (Pure, or an answering call — `callAnswer-at`'s `yes u` clause) and the `Void` codomain (no
   value exists) are proofs in `IRObsCorrect.SigOp`.
 
@@ -20191,3 +20191,223 @@ slot survives the callee's `do-thunk` at x86-64's floor, by `refl`. `make certif
 **Not done.** The machine-layer consequences (callee frame `≺` caller after `enter-call` + `grow-frame`,
 `BeforeFrontier` transport) wait for their consumer, plan 0.135 S2, so they are not islands.
 
+**Addendum (plan 0.135 S2, D362).** A second law, `shift-below : ∀ {f′ f} n → f′ ≺ f → shift-frame f′ n ≺ f`:
+a frame already below another stays below it however far it is shifted (`n = 0` included). Proved on all
+three arches by the depth (`x86-shift-below`, `x86-32-shift-below`, `rv64-shift-below`). Needed because a
+block's `c-thunk` marker may reserve 0 slots: `BlockCall.callee-≺` gets the callee frame below the caller's
+as `shift-below bb (shift-≺ … 1 …)` (the call's own slot, then the body's `bb`), and from that the caller's
+live slots are ancestors of the callee frame, so the marker's clear misses them.
+
+
+## D361 — ONE CATA CODEGEN (THE GENERIC WALK), A FRESH ALGEBRA PAIR PER CALL, AND WHAT IT COSTS (2026-10-30)
+
+**Asked** by the user 2026-10-30 (plan 0.135, cata M2/M4): "I agree lets keep going!" (one strategy) and
+"lets go for the revised recommendation" (the fresh pair). **Follows** D131 (the algebra's argument is the
+pair `(env , layer)`). **Relates** plan 0.123 B (reclaiming allocators), plan 0.130 (run-time counts).
+
+### Decision
+* **The classifier has two answers.** `IRToTrace.cata-strategy`: no recursive position → `strat-const` (one
+  algebra call), any recursion → `strat-branching F`, the generic post-order walk (flatten the tree onto an
+  eval stack, then fold it with a value stack, one algebra call per node). `strat-nat` (layers rebuilt as a
+  counter) and `strat-linear` (a payload stack) and their codegens (`cata-nat-*`, `cata-lin-*`,
+  `cata-trace-nat`/`-linear`, `has-id`, `id-under-product`) are DELETED.
+* **The algebra's argument pair is allocated by every call**, in the shared `cata-call` (15 rows, was 12),
+  not once in `cata-call-setup` (13 rows, was 18) with only cell 1 rewritten per call. One calling convention
+  for both strategies; for `strat-const` (one call) the run is the same.
+* **The loop ISA nothing emits any more is deleted** with them: the seven scratch/count instructions
+  (`scratch-one`, `scratch-zero`, `scratch-dec`, `scratch-load-count`, `count-zero`, `count-inc`,
+  `c-branch-scratch-zero`), the retired `instr-loop`, `lea-indexed` and `instr-case-on-tag`, and the
+  `Scratch`/`Count` registers (`rbx`/`r14`, `edx`/`edi`, `s3`/`s4` lose their roles). With them go the
+  resource hypothesis `ScratchDecGuarded` (×3) and the field `AddrNoWrap.count-no-wrap` (×3):
+  `Once.Certified` has 19 resource parameters (was 22).
+
+### Why
+* **The specialised codegens miscompiled valid functors** that the classifier sent them, so
+  `cata-correct-nat`/`-linear` were FALSE as stated. Probes (x86_64, `--alloc heap --no-optimize`):
+  `Mu (K Int + Id)` (base payload 5) exited 1 instead of 6 (the rebuilt layer had payload 0);
+  `Mu (Id + K Unit)` 1 instead of 3 (tag 0 read as the base); `Mu (K Unit + (K Unit + Id))` segfaulted
+  instead of 11; linear `Mu ((K Int * Id) + K Unit)` 178 instead of 5 (arm order assumed). Each was a
+  specialisation of the walk to one shape; one generic strategy is proved once, by induction on `F`
+  (`IRObsCorrect.CataBr`). Speed comes back as optimisations proved against the walk (in-place reuse of a
+  linear input's layers), not as codegens behind the classifier.
+* **The shared pair was a miscompile for closure carriers.** A closure the algebra returns captures `Input1`
+  (= the pair) as its environment (`curry`), so a later call's write of cell 1 changes what an earlier
+  result sees. Counterexample: `F = K Unit ⊕ Id`, `E = Unit`, `A = Unit ⇛ Unit`,
+  `alg = curry (case terminal (apply ∘ ⟨ id , terminal ⟩) ∘ snd ∘ fst)`, input `(tt , succ zero)`: the meaning
+  applied to `tt` returns `tt`; on the machine both closures read `pr[1] = inr c0` and loop forever. The
+  surface `cataM` wrapper is safe (its algebra `apply ∘ ⟨ fst , snd ⟩` copies the pair first), but the
+  theorem quantifies over every IR algebra, and the proof needs every round to write only fresh cells (a
+  value-stack entry is carried across the next round by `Kp`, which needs every live cell unchanged). The
+  one-pair-per-fold reuse is deferred to the linearity / in-place-update work, where it can be proved for
+  every carrier.
+* The deleted instructions were reachable only from the deleted codegens (verified: `IRToTrace`, `Compile`,
+  the codegen and the arith pass mention them only in comments). `ScratchDecGuarded` held vacuously once
+  nothing emitted `scratch-dec`.
+
+### Cost (MERGE.md §1, `tests/codegen-measure.sh`, master `2e6369a85` against the branch, same corpus, 111
+programs, default flags)
+| total | master | branch |
+|---|---|---|
+| IR tokens after `once optimize` | 5164 | 5164 (the IR is unchanged) |
+| instrs | 38940 | 39926 (+986) |
+| heap sites / cells | 2367 / 4734 | 2435 / 4870 |
+| frames / frame-max / frame-sum | 947 / 2742 / 7151 | 947 / 3039 / 7468 |
+| `.text` x86_64 / x86_32 / riscv64 (102 that build) | 335803 / 130669 / 406928 | 341435 / 134934 / 411012 |
+
+* **Worse (12 programs), every one a cata master sent to `strat-nat`/`strat-linear`**, now the generic walk:
+  `compiler/test/` `cata-capture` (+160 instrs, +10 heap sites, frame-max +50, `.text` +896/+740/+656 bytes),
+  `def-nonconcrete-ref` (+64, +5, +2, +320/+217/+272), `layer5-cata-list-emit` (+80, +5, +25, +448/+368/+320),
+  `layer5-cata-list-sum` (+80, +5, +25, +448/+370/+328), `layer5-cata-list-swapped` (+80, +5, +25,
+  +448/+339/+328), `layer5-cata-nat` (+64, +5, +21, +384/+259/+272), `layer5-cata-nat-nested` (+99, +7, +29,
+  +560/+456/+412), `layer5-cata-nat-payload` (+64, +5, +20, +400/+259/+272), `layer5-cata-nat-swapped` (+64,
+  +5, +21, +384/+259/+272), `layer5-cata-nelist-sum` (+80, +5, +25, +448/+329/+328),
+  `layer5-cata-nestedprod-sum` (+105, +6, +33, +592/+416/+432), `layer5-iseven` (+64, +5, +21,
+  +400/+338/+272). Heap cells are twice the sites in each. Frame-sum rises by the frame-max delta in each,
+  except `def-nonconcrete-ref` (frame-sum +21, frame-max +2: the walk's slots grow a frame that was not
+  the largest) and `layer5-cata-nat-payload` (frame-sum +21, frame-max +20). Cause: the walk's code
+  (flatten and fold loops, the functor's visit and rebuild walks, three heap stacks on a sentinel) replaces
+  a counter or a payload loop, and its walk slots (four per functor depth) raise the frame. Accepted because the specialised
+  codegens were wrong on valid functors (above): what they bought was speed on the shapes they got right.
+* **Better (9 programs), every one already on `strat-branching`**: `cata-fn-carrier`,
+  `layer5-cata-{degenerate,leaftree-emit,leaftree-sum,mixed-nested,multictor-size,nodetree-sum,
+  ternarytree-sum,tree-swapped}`: −2 instrs each (setup −5 rows, call +3), `.text` 0 or −16 bytes on x86_64
+  (0 on `leaftree-emit`, `multictor-size`, `tree-swapped`), −6 to −16 on x86_32, −8 or −16 on riscv64. Heap
+  sites and frames unchanged (the pair's allocation site moved from the setup to the call).
+* **Unchanged (90 programs)** on every measure: the deleted ISA was not emitted.
+* **Master's numbers on four of the new tests come from miscompiled code**: `layer5-cata-nat-payload`,
+  `-nat-swapped`, `-nat-nested` and `-list-swapped` are the probes above, which master builds and runs to the
+  wrong exit code (or a segfault). `layer5-cata-tree-swapped`, `-mixed-nested` and `cata-fn-carrier` were
+  already correct on master (branching; the last is safe there through `cataM`'s copy).
+* **Reach**: unchanged. The same 102 programs build on all three arches on both sides; the same 9 do not.
+* **Run time (plan 0.130 pending), expected:** more allocation per cata node: one 2-cell pair per algebra
+  call (was one per fold on branching programs), and on the former nat/linear programs the walk's stack
+  cells (two per push, on both stacks) and a rebuilt layer per node, where the counter loop allocated
+  nothing per layer. More instructions executed per node (the walk dispatches on the functor's tags), and the
+  walk is two passes (flatten, then fold) over the tree. Nothing is reclaimed until plan 0.123 B, so a
+  fold's heap use grows linearly in the tree's size, a larger constant than before.
+
+### Consequences
+* `cata-correct` is proved for every cata (D362). Exit tests 87 × (with/without optimizer) on three arches,
+  six new regression programs (`layer5-cata-{nat-payload,nat-swapped,nat-nested,list-swapped,tree-swapped,
+  mixed-nested}`, also in `Layer5Spec.cataGeneralCases`) and `cata-fn-carrier` (a closure carrier).
+* The emitter's cata section is one strategy; `docs/compiler/residual-ledger.md` records the instructions
+  resolved by deletion.
+
+## D362 — CALLS ARE PROVED: A VALUE SAYS WHAT IT DOES, VALUES ARE HEAP-ONLY, AND THE APEX IS UNCONDITIONAL (2026-10-31)
+
+**Closes** plan 0.135 (calls proved, not assumed), opened by D358/D359. **Replaces** D218 (the apex took
+`BlockRunsHyp-<arch>`), D170 (a closure value carries its code's name, not its behaviour), D354's `νOrigin`
+witness and D283's `RelV`/`RelT` design (which is what this realises, in today's observation model).
+**Uses** D355–D357 (obligations of every returning run), D360 (`shift-≺`).
+
+### Decision
+* **`ValidAtWF` is a function on the type** (`Once.CCC.Machine.ValueRel`). A `data` indexed by the type can
+  only state facts about cells, so it cannot say what a closure computes (D217: one cell valid at two
+  denotations). Each case is a small NON-recursive `data`/record parameterised by its components'
+  validities (`VTy A`), and `VCase` only dispatches: `Unit`/`Void`/`Int`/`Float` as before, `A * B` =
+  `PairV (VAt A) (VAt B)`, `A + B` = `SumV …`, `A ⇛ B` = `ArrowV …`, `ν-type F` = `NuV`, `μ-type F` = the
+  first-order relation `ValidFO`. A negative occurrence of a parameter is allowed and the recursion is
+  structural on the type, so there is no pragma. A naive mutual record fails positivity (checked).
+  `Wrap` (a non-recursive record whose parameters are the indices) restores injectivity, so `{A}`/`{m}`/
+  `{prog}` still infer, and the old constructor names are pattern synonyms.
+* **The arrow case says what the block does.** `ArrowV` (heap closure, boxed or inline environment): the code
+  cell's label resolves (`find-thunk prog ℓ ≡ just j`), and `CallRuns`: for every caller state entering `j`
+  from a call (`enter-call pre`, `next-slot pre ≡ 0`), with `Input1` pointing at a heap pair whose cell 0
+  holds what this closure's environment cell holds and whose cell 1 holds a VALID argument, and with every
+  cell live at construction still live and unchanged, the run of `f a` is a `CalleeRunP` at the codomain's
+  validity. The environment's own validity is not stated (its type is not a subterm of `A ⇛ B`); the
+  caller's agreement on what was live at construction is what keeps it valid. `curry` proves `CallRuns` from
+  its body's IH through the block-call lemma; `apply` reads the run off the value.
+* **A ν is what forcing it does.** `NuV` is a COINDUCTIVE record: two heap cells (seed, code), the label
+  resolves, and `nu-force` (`ForceRuns`: `CallRuns` minus the pair packing) gives a `CalleeRunP` whose result
+  is a layer (`LayerV F`) of `NuV`s again. The seed stays opaque (an `Ana` seed or an `in-ν` layer). The
+  producers prove a one-layer step about an inductive predicate and close it with `NuCoind.coind`, the only
+  corecursion. `νOrigin` and `CoalgRuns` are deleted; `Out` forces through `nu-force`.
+* **Values are heap-only.** Every location inside a value is a heap location (`Live alloc (AtStack _ _) =
+  ⊥`): no `lea-slot` is emitted and a call through a stack pointer halts. So a value's liveness is the heap
+  frontier's alone, and neither `enter-call` nor `leave-frame` can kill it; with stack cells allowed, a
+  callee's result could not survive its `c-ret`.
+* **The block-call lemma** (`IRObsCorrect.BlockCall`, `block-call-gen`): a body that satisfies its
+  obligation, entered from `enter-call pre` (call, `c-thunk`: `clear-frame` + `grow-frame`, the body at
+  frontier 0, `c-ret`: `leave-frame`), gives a `CalleeRun`. The caller's input moves to the callee by
+  `validityWF-with-bf-transfer` + `validityWF-mem-preserved`; caller slots are `stack-ancestor`s by
+  `shift-≺` (D360). It serves `curry`, `Ana`/`in-ν`, `Cata`'s algebra and the table's functions.
+* **The block table is proved, not assumed.** `BlockRuns prog` stays a premise of `IRObsCorrectF` (it is what
+  excludes a fabricated callee), but it now holds only facts about the IMAGE: `functions` (`FnRuns`: every
+  linked call runs its table entry, discharged by induction from the table's end, `ArchCorrectness.FnRuns`)
+  and `thunks-unique` (closure-body markers are unique, from label uniqueness, `FnLayout.thunks-unique-of`).
+  `FlatFromObs.block-runs` proves it for every linked program. `CalleeRuns`, `CoalgRuns`, `BlockRunsT` and
+  `BlockRunsHyp-<arch>` ×3 are deleted, and `once-certified : CertifiedBuild` has no hypothesis beyond the
+  19 resource parameters.
+* **`cata-correct` is a theorem** (`IRObsCorrect.Cata`): `strat-const` by `CataConst`, `strat-branching` by
+  `CataBr` (meaning `CataBr.Meaning`: the walk's post-order run equals the fold; the machine's stacks, walks,
+  flatten loop, fold rounds and exit, each round calling the algebra through the block-call lemma).
+
+### Why
+* D358: `BlockRunsT` was EMPTY (a fresh-label state refutes `CoalgRuns`), so the apex was vacuous a second
+  way, and no state premise could repair it: an unresolved call halts, and one cell can be valid at two
+  denotations. Only a value that states its own behaviour, proved where it is built, removes the
+  assumption.
+* Plan 0.135 S0 measured the old relation spike (`Once/Spike/RelSpike.agda`, deleted at the merge review): it
+  was built on the pre-plan-0.105 trace model (a total `valueT`). Today's computation half
+  (`MachineRefinesObsF`/`ValueRealized`/`CalleeRun`) already is a "related computation" in the current
+  observation shape, with D320/D355–D357 folded in, so only the value half changed: `⇛` and `ν`.
+
+### Findings worth keeping
+* **The encoding** (plan 0.135 S1a, a standalone probe): `ResultPlace`, `CellAt` and `CalleeRun` must follow
+  the same parameterised pattern (`ResultPlaceP`, `CellAtP`, `CalleeRunP`), because the arrow case contains
+  `CalleeRun`, which contains `ResultPlace B`, which contains `ValidAtWF B`; as data indexed by the type
+  they would be negative in themselves through `(X ⇛ Y) ⇛ Z`. μ is not structural (`⟦ F ⟧TI (μ-type F)`
+  contains `μ-type F`), but `WellFormedFI` limits `K` to base types, so a μ never contains `⇛` or `ν` and
+  is the separate first-order relation, bridged by `fo→valid`/`valid→fo`.
+* **`prog` is an argument of `ValidAtWF`** (the arrow case names `find-thunk prog`), so every signature that
+  mentions `ValidAtWF`/`InputAt`/`ResultPlace`/`CellAt` gives `{prog = prog}`; `where` signatures must also
+  give the type `{A}` (Agda freezes signature metas before a later use would solve them). Pattern synonyms
+  are declared at `ValueRel`'s top level: inside the `{prog}` module they are abstracted over it and leave it
+  unsolved.
+* **One transport** (`validityWF-transport`: agreement on a set covering the frontier and the top cell, plus
+  a frontier inclusion) replaces eleven `validityWF-*` proofs; they are one-liners over it.
+* **The guard is invisible through a higher-order helper**: `NuCoind`'s layer conversion is written out
+  inside the mutual block.
+* **Memory** (7.5 GB machine): implicits under projections (`current-frame ?a`, a record-update index,
+  `s-at`'s `{i}`) make Agda evaluate machine states (5 GB+), so give them; stage long `ev-++`/`trans` chains
+  as typed lemmas (`Resusp/SumR` 1593 → 70 s); export abstract bundles from run modules and take the call
+  state as a module parameter, never pattern-match on an abstract walk's `post` in the module that continues
+  the run; apply big proof modules' exports as functions, not `module M = Big …` (5.0 → 1.2 GB).
+
+### The merge-review checks (MERGE.md §1, plan 0.135 §4)
+* **Emptiness probes** (scratch, `probe : P → ⊥; probe ()`, none compiles): every one of the 19 resource
+  parameters of `Once.Certified` at an arbitrary `ι` (their types changed only by losing
+  `AddrNoWrap.count-no-wrap`). None has a `NonVacuous` model; that is plan 0.11's open row, unchanged here.
+* **Per-case emptiness** (plan 0.135 §4: the arrow and ν cases occur negatively in their own inputs): the probe
+  `probe (wrap ()) : ValidAtWF … {T} … → ⊥` does NOT compile for `T` = `Unit`, `Int`, `Float`, `A * B`,
+  `A + B`, `A ⇛ B`, `μ-type F`, `ν-type F`, and DOES for `Void`, which is correct because `⟦ Void ⟧` is
+  empty. Inhabitation at the values programs produce is what each producer's proof constructs; the
+  program's entry input is `Unit`, valid at any state (`FlatFromObs.entry-vr`).
+* Deleted with the review: `ValueRel`'s `place-sv`/`place-rax`, dead since the clause proofs match on a
+  place, and their two `where postulate`s (`place-rax` at `unit-result` postulated
+  `readReg (regs s) Output ≡ SV-Ptr unit-result-sv-loc` for every state `s`).
+* Still to run at the merge: plan 0.135 S5's gate, the AST dumps (MERGE.md §6), showing nothing newly dead
+  that should be live.
+
+### Consequences
+* Proof gaps in the machine-correctness layer: `obs-correct-In` (plan 0.88) and `obs-correct-sigop-rest`
+  (plan 0.88), plus the `RunWF`/`structured-pure-sigop-*` rows of the residual ledger. `obs-correct-In` is
+  not closed by heap-only values: see plan 0.88.
+* Plans: 0.135 and 0.134 are deleted (their durable content is here, in D359/D360 and in the module headers
+  of `ValueRel`, `BlockCall`, `FnRuns`, `IRObsCorrect.Cata`); 0.93 was retired into 0.135 (D359).
+
+## D363 — A LONG BRANCH MAY BE SQUASHED, AND IT RENUMBERS WHAT MASTER HAS TAKEN (2026-10-31)
+
+**Decision** (MERGE.md §3). Before the rebase, a long branch with many conflicting commits may be squashed
+into one (the unsquashed history kept on a backup branch). Decision and plan numbers belong to master: a
+branch's `D###` entries are renumbered to follow master's highest, in their order; a branch plan whose
+number master now uses takes the next free one (file renamed), and one master has since covered is dropped.
+References are changed only in lines the branch added or changed since the old merge base; master's own
+uses of the same numbers stay. The rebased branch is pushed under a new name instead of force-pushing the
+old one.
+
+**Why.** Branch 0.135 (this merge) met all three: commit-by-commit rebasing of a long history re-resolved
+the same conflicts many times; master had taken decision and plan numbers the branch also used while it was out; and a blanket
+search-and-replace of numbers would also have rewritten master's own references to its entries. A new
+name keeps the pre-rebase branch fetchable and nothing published is overwritten.

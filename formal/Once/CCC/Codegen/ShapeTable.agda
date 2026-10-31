@@ -641,9 +641,11 @@ module Sem (FS : FrameSemantics) where
      shape-unit; shape-pair; shape-closure; shape-inl; shape-inr;
      CellShapeAt; cell-shape-ptr; cell-shape-inline;
      shape-inl-reg; shape-inr-reg;
-     shape-μ; shape-ν-susp; shape-int; shape-float;
+     shape-μ; shape-μbox; shape-ν-susp; shape-int; shape-float;
      shape-closure-reg)
   open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
+  open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; box-view; bv)
+  open import Once.IRTy using (fits-int; fits-float)
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
   open import Once.IR using (AllocMode; Heap; Stack)
@@ -1041,6 +1043,13 @@ module Sem (FS : FrameSemantics) where
          → Σ ℕ λ t → readLoc ls loc' ≡ just (SV-Tag t)
       go T (just (a , b)) as-eq ok' sh = tag-of-μ T as-eq sh
       go T nothing        as-eq () sh
+  -- D364: a boxed μ's layer is an `Int`/`Float`, never a sum.
+  site-branch-tag (e-repr (μ-type f)) ok (rs-ptr (shape-μbox wf bx c)) = ⊥-elim (box-no-tag f bx ok)
+    where
+      box-no-tag : ∀ g → mu-rep g ≡ mu-box → tag-site-ok (e-repr (μ-type g)) ≡ true → ⊥
+      box-no-tag g bx′ ok′ with box-view g bx′
+      box-no-tag .(K IRT.Int)   bx′ () | bv fits-int
+      box-no-tag .(K IRT.Float) bx′ () | bv fits-float
   -- D189: refuted by `as-sum`, which no longer unfolds a ν's functor.
   site-branch-tag (e-repr (ν-type f)) () _
   site-branch-tag e-any           () _
@@ -1129,6 +1138,7 @@ module Sem (FS : FrameSemantics) where
   shape-uw {m = m} {ls = ls} hl' v' uw (shape-inr-reg {sum-loc = sl} lm tg fit r b) =
     shape-inr-reg lm (tag-uw m 1 hl' v' uw tg) fit (read-uw ls hl' v' (sucLoc sl) uw r) b
   shape-uw hl' v' uw (shape-μ wf sh) = shape-μ wf (shape-uw hl' v' uw sh)
+  shape-uw {loc = l} hl' v' uw (shape-μbox wf bx c) = shape-μbox wf bx (cell-uw l hl' v' uw c)
   shape-uw {ls = ls} hl' v' uw (shape-ν-susp {ν-loc = nl} lm sc cp b) =
     shape-ν-susp lm (read-uw ls hl' v' nl uw sc)
                     (read-uw ls hl' v' (sucLoc nl) uw cp) b

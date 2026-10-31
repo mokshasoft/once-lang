@@ -60,13 +60,11 @@ open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
        using (arch-correctness)
 -- plan 0.92, and an honest note on its cost: `public` here is NOT convenience.
--- `Once.Certified` cannot STATE `once-certified`'s signature without naming
--- these three types, and to name a type N levels up it must be re-exported at
--- every level in between. That propagation is exactly the property that makes
--- `public` expensive — but the alternative (Certified re-importing
--- `ArchCorrectness` with its full twenty-parameter telescope) is worse.
--- `arch-correctness` rides along on the same `using` list; splitting the import
--- to avoid that would duplicate the telescope for one name.
+-- `Once.Certified` builds its apex from `arch-correctness`, and to name it one
+-- level up it must be re-exported here. That propagation is exactly the
+-- property that makes `public` expensive — but the alternative (Certified
+-- re-importing `ArchCorrectness` with its full nineteen-parameter telescope) is
+-- worse.
        public
 -- The CLI is extracted from `Once.Extract.Root`; the correctness theorem over
 -- what it runs is `Once.Certified` (plan 0.121, D332).

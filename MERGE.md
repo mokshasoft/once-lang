@@ -150,6 +150,24 @@ git checkout <branch> && git rebase master
 Resolve conflicts on the branch. If the rebase pulled in master-side changes, re-run
 `formal/scripts/agda-safe.sh certified` before going on.
 
+A long branch with many conflicting commits may be squashed first (keep the unsquashed history on
+a backup branch) and rebased as one commit.
+
+**Renumber what master has taken.** Decision and plan numbers are allocated on master. If master
+gained a `D###` or a plan number while the branch was out, the branch's own entries move:
+- Decisions: the branch's entries are renumbered to follow master's highest `D###`, in their
+  original order, and placed after it in `decision-log.md`.
+- Plans: a branch plan whose number master now uses takes the next free number above master's
+  highest plan, and its file is renamed. A branch plan that master has since covered is dropped
+  and its references point at master's plan.
+- References: change only the lines the branch added or changed since the old merge base (Agda
+  comments, `docs/`, `plans/`, test headers, the decision index `docs/decisions/*.md`, the plans
+  index, the commit message). Master's own uses of the same numbers stay as they are. Script it
+  over the branch's added lines, then read the result.
+
+Push the rebased branch under a new name (the new plan number) rather than force-pushing the old
+one.
+
 ## 4. Extraction (if §1 found extracted-cone changes)
 
 Run this after the rebase, as one extraction after all Agda edits:

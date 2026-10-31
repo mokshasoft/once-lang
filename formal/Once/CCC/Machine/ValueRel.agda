@@ -26,7 +26,7 @@
 -- indexed by the function its block computes (`CallRuns` pins it), and the
 -- μ/ν layers go through `out-μ`/`Out`, whose meaning ignores the environment.
 -- The datatypes live in this UNPARAMETERISED module (a parameterised one makes
--- a distinct type per instantiation); `ClosureWellFormed o tbl` re-exports it.
+-- a distinct type per instantiation); `IRObsCorrect.Prelude` re-exports it.
 open import Data.List using (List; []; _∷_; _++_)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Machine.ValueRel where
@@ -40,7 +40,8 @@ open import Data.Maybe using (just; nothing)
 open import Data.Product using (_,_; _×_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-not-unboxed)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -375,11 +376,21 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
                ValidFO m alloc {A + B} v loc s
     fo-int   : ∀ {m alloc v loc s} → IntV m alloc v loc s → ValidFO m alloc {Int} v loc s
     fo-float : ∀ {m alloc v loc s} → FloatV m alloc v loc s → ValidFO m alloc {Float} v loc s
-    -- Plan 0.27 Option 3: the layer's own validity at the same location.
+    -- Plan 0.27 Option 3: the layer's own validity at the same location —
+    -- for a functor whose layer is already a pointer (D364: `Unboxed`).
     fo-μwf : ∀ {m F}
       {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
-      (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧) →
+      (ub : Unboxed F) (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧) →
       ValidFO m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s →
+      ValidFO m alloc {μ-type F} x loc s
+    -- D364: a BOXED μ (`K Int`/`K Float`, `MuRep.mu-box`) is a block whose
+    -- first cell holds the layer — the layer itself, or a pointer to it, as
+    -- any cell may (D187). `In` builds it; `out-μ` and the cata read it back.
+    fo-μbox : ∀ {m F}
+      {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+      (bx : mu-rep F ≡ mu-box) (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧) →
+      CellAtP {⟦ F ⟧TI (μ-type F)} (λ m′ a′ → ValidFO m′ a′ {⟦ F ⟧TI (μ-type F)}) alloc
+              (valueNow (evalᴰ (out-μ wf) x)) loc s →
       ValidFO m alloc {μ-type F} x loc s
 
   -- plan 0.135 S1: a FORCED ν LAYER, `⟦ G ⟧TI X`, at the validity `R` of its
@@ -532,7 +543,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   -- closure, so its validity is not a subterm of `A ⇛ B`. What makes it still
   -- valid at the call is the caller's guarantee that everything live when the
   -- closure was built (`BeforeFrontier alloc`) still reads the same and is
-  -- still live (spike `RelSpike`, finding 2: `HeapAgree`/`HeapMono`). `curry`
+  -- still live (plan 0.93 spike finding 2: `HeapAgree`/`HeapMono`). `curry`
   -- proves this from its body's correctness (S3); `apply` spends it.
   ------------------------------------------------------------------------
   CallRuns : ∀ {A B : IRTy} → VTy A → VTy B → AllocState {FS} → LocState FS
@@ -745,7 +756,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   pattern valid-ν-wf nv = wrap nv
   pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
   pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
-  pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)
+  pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
+  pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)
 
   CellAt : AllocState {FS} → (C : IRTy) → ⟦ C ⟧ → ValueLocation FS → LocState FS → Set
   CellAt alloc C = CellAtP {C} (VAt C) alloc
@@ -762,7 +774,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     fo→valid (fo-sum (inr-reg-wf lmm tg rep pp slb)) = valid-inr-reg-wf lmm tg rep pp slb
     fo→valid (fo-int i) = wrap i
     fo→valid (fo-float f) = wrap f
-    fo→valid w@(fo-μwf _ _ _) = wrap w
+    fo→valid w@(fo-μwf _ _ _ _) = wrap w
+    fo→valid w@(fo-μbox _ _ _ _) = wrap w
 
     fo→cell : ∀ {alloc C c cl s} → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s → CellAt alloc C c cl s
     fo→cell (cell-ptr r bf v) = cell-ptr r bf (fo→valid v)
@@ -786,15 +799,28 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     cell→fo fc (cell-ptr r bf v) = cell-ptr r bf (valid→fo fc v)
     cell→fo fc (cell-inline rep r) = cell-inline rep r
 
-  -- The μ layer, read and written through the bridge.
-  μ-layer : ∀ {m alloc F wf x loc s} → ValidAtWF m alloc {μ-type F} x loc s
+  -- The μ layer, read and written through the bridge: at an UNBOXED functor
+  -- the layer is valid where the μ is.
+  μ-layer : ∀ {m alloc F wf x loc s} → Unboxed F → ValidAtWF m alloc {μ-type F} x loc s
           → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s
-  μ-layer {wf = wf} (valid-μ-wf wf′ x lv) rewrite WellFormedFI-irrelevant wf wf′ = fo→valid lv
+  μ-layer {wf = wf} u (valid-μ-wf ub wf′ x lv) rewrite WellFormedFI-irrelevant wf wf′ = fo→valid lv
+  μ-layer u (valid-μbox-wf bx wf′ x c) = ⊥-elim (box-not-unboxed bx u)
 
-  valid-μ : ∀ {m alloc F loc s} (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
+  valid-μ : ∀ {m alloc F loc s} (ub : Unboxed F) (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
           → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (valueNow (evalᴰ (out-μ wf) x)) loc s
           → ValidAtWF m alloc {μ-type F} x loc s
-  valid-μ wf x lv = valid-μ-wf wf x (valid→fo (fo-layer wf fo-μ) lv)
+  valid-μ ub wf x lv = valid-μ-wf ub wf x (valid→fo (fo-layer wf fo-μ) lv)
+
+  -- D364: …and at a BOXED one, the layer is the box's first cell.
+  μ-box-cell : ∀ {m alloc F wf x loc s} → mu-rep F ≡ mu-box → ValidAtWF m alloc {μ-type F} x loc s
+             → CellAt alloc (⟦ F ⟧TI (μ-type F)) (valueNow (evalᴰ (out-μ wf) x)) loc s
+  μ-box-cell bx (valid-μ-wf ub wf′ x lv) = ⊥-elim (box-not-unboxed bx ub)
+  μ-box-cell {wf = wf} bx (valid-μbox-wf bx′ wf′ x c) rewrite WellFormedFI-irrelevant wf wf′ = fo→cell c
+
+  valid-μbox : ∀ {m alloc F loc s} (bx : mu-rep F ≡ mu-box) (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
+             → CellAt alloc (⟦ F ⟧TI (μ-type F)) (valueNow (evalᴰ (out-μ wf) x)) loc s
+             → ValidAtWF m alloc {μ-type F} x loc s
+  valid-μbox bx wf x c = valid-μbox-wf bx wf x (cell→fo (fo-layer wf fo-μ) c)
 
 
   -- The case datas are functorial in their components' validities.
@@ -937,7 +963,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     -- witness would demand a cell that a register-resident result does not have
     -- (`ir-to-trace (SigOp si) = instr-sigop si ∷ []` stores nothing). The value
     -- witness for this residence IS the register equation below. Shape dictated
-    -- by the consumer `comp-step`, which reads only `place-rax`.
+    -- by the consumer `comp-step`, which reads only the register equation.
     -- Stage F: the `loc` field and its two `BeforeFrontier` witnesses are
     -- GONE. A register-resident result has no cell, so the location was
     -- always a placeholder — every producer passed its own `input-loc`,
@@ -953,79 +979,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                 → readReg (regs s) Output ≡ prim-sv fit v
                 → ResultPlace B m alloc continuation-alloc v s
 
-  -- Plan 0.2.4.5 D1 trust points: place-* extraction helpers.
-  --
-  -- These project facts out of a `ResultPlace` into the plain
-  -- shape that consumers (compose, pair, RecTrace cata) and
-  -- `rec-wf`'s preconditions still expect:
-  --
-  --   * `place-sv rp` — the `StoredValue` `Output` holds: a POINTER for a
-  --     located result, the VALUE itself for a register-resident one.
-  --   * `place-rax rp` — `readReg s Output ≡ place-sv rp`.
-  --
-  -- These two are the whole surviving interface. The location-projecting
-  -- accessors are gone (see below): a `Place` is not always a location, and
-  -- an accessor that pretends otherwise is a trap, not a convenience.
-  --
-  -- For `at-loc`, all six are constructor projections (no trust).
-  -- For `unit-result`, each is a PROOF GAP, encoding the
-  -- structural fact that "Unit values don't observably reside
-  -- anywhere" — there's nothing to extract.
-  --
-  -- Each gap is sound for Unit because:
-  --   * Unit values carry no observable content.
-  --   * `valid-unit-wf` is loc-agnostic (works at any loc).
-  --   * BeforeFrontier on a Unit's mythical loc is vacuous.
-  --   * Output's value at a Unit boundary is irrelevant.
-  --
-  -- The gaps are TRANSITIONAL. They go away when either:
-  --   (a) `rec-wf`'s preconditions become type-aware — for
-  --       Unit-typed IRs, drop `BeforeFrontier alloc input-loc`
-  --       and `readReg s Input1 ≡ input-loc` (both vacuous).
-  --   (b) Each consumer (compose, pair, RecTrace cata)
-  --       case-splits on the `result-place` constructor and takes
-  --       a Unit-aware code path that doesn't go through place-*.
-  --
-  -- Either route requires a deeper proof restructure than the
-  -- spec migration covered. Tracked as Plan 0.2.4.5 D1 task #28.
-  -- (`place-valid` / `place-cont-valid` DELETED — Plan 0.54 rung A. They were
-  -- dead (every remaining reference is a comment) and `at-reg` no longer
-  -- carries a memory `ValidAtWF`. Deleting them removes 2 proof-gap stubs.)
-  --
-  -- (`place-loc` / `place-before` / `place-cont-before` DELETED — stage F,
-  -- same test, same answer: every remaining reference was a COMMENT. Three
-  -- more proof-gap stubs go with them.
-  --
-  -- They were also actively DANGEROUS, which is why they went rather than
-  -- being kept for symmetry. `place-loc` was TOTAL but only MEANINGFUL for
-  -- `at-loc`: for `at-reg` it returned the producer's INPUT cell, reused as
-  -- a placeholder (`IRObsCorrectFlat`: `at-reg input-loc fit …`), which does
-  -- not hold the value. Projecting a place to a location therefore invited
-  -- exactly the false `rax-eq` / `result-valid-wf` that D148 records — and
-  -- nearly produced two fresh ones in `ApplyWF` before the residence was
-  -- propagated instead.
-  --
-  -- What survives is what is SAFE for both residences: `place-sv` and
-  -- `place-rax`, which say what `Output` holds without claiming a location.
-  -- That is the pair `at-reg`'s own comment already named as its consumer
-  -- interface, and it is what `ComposeWF` uses.)
-
-  -- The actual StoredValue Output holds for this result: a pointer for a
-  -- located result (`at-loc`), the register sentinel for a register-resident
-  -- primitive (`at-reg`). For `at-loc` this reduces DEFINITIONALLY to
-  -- `SV-Ptr (place-loc rp)`, so existing `at-loc`-only consumers are unchanged.
-  place-sv : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → StoredValue FS
-  place-sv (at-loc loc _ _ _ _ _) = SV-Ptr loc
-  place-sv {v = v} (at-reg fit _) = prim-sv fit v
-  place-sv {Unit} unit-result     = SV-Ptr unit-result-sv-loc
-    where postulate unit-result-sv-loc : ValueLocation FS
-
-  place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-              readReg (regs s) Output ≡ place-sv rp
-  place-rax (at-loc _ _ _ rax _ _) = rax
-  place-rax (at-reg _ rax) = rax
-  place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
-    where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
+  -- (The place-* extraction helpers are gone. `place-sv`/`place-rax` were the
+  -- last two: dead since the clause proofs read a place by matching on it,
+  -- and `place-rax` at `unit-result` rested on a postulate quantified over
+  -- every state (`readReg (regs s) Output ≡ SV-Ptr unit-result-sv-loc`),
+  -- which no machine invariant makes true. Deleted with their two postulates
+  -- (plan 0.135 merge review). Every earlier accessor (`place-valid`,
+  -- `place-loc`, …) went the same way: a `Place` is not always a location.)
 
   -- plan 0.135 S1: a closure's `runs` states its result at `ResultPlaceP`
   -- (the arrow case is a parameterised data); a caller's obligations are at
@@ -1203,8 +1163,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                    → readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a)
                    → PayloadAt alloc a sum-loc s
 
-  -- The uniform accessors, mirroring `place-sv` / `place-rax` on the output
-  -- side: what the payload CELL holds, and the proof that it holds it. A
+  -- The uniform accessors: what the payload CELL holds, and the proof that it holds it. A
   -- pointer for a located payload, the value itself for an inline one. Every
   -- consumer that only needs to move the cell's contents (which is all
   -- `run-case` does — `load-indirect-suc` then `mov-to-input`) can use these
@@ -1305,7 +1264,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
         fo-sum (inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
       fo-tr q (fo-int (int-wf bf rl)) = fo-int (int-wf (bft _ bf) (trans (rd _ q) rl))
       fo-tr q (fo-float (float-wf bf rl)) = fo-float (float-wf (bft _ bf) (trans (rd _ q) rl))
-      fo-tr q (fo-μwf wf x lv) = fo-μwf wf x (fo-tr q lv)
+      fo-tr q (fo-μwf ub wf x lv) = fo-μwf ub wf x (fo-tr q lv)
+      fo-tr q (fo-μbox bx wf x c) = fo-μbox bx wf x (fo-cell q c)
 
       fo-cell : ∀ {C c cl} → Q cl → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₁ c cl s₁
               → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₂ c cl s₂
@@ -1743,7 +1703,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 -- unsolved. Declared here, at the top level, where there is no parameter to
 -- abstract over (the constructors' own `FS` and `prog` are fixed by the
 -- expected type).
-open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; int-wf; float-wf; fo-μwf)
+open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; int-wf; float-wf; fo-μwf; fo-μbox)
 open ClosureWellFormedDef using (closure-wf; closure-reg-wf)
 pattern valid-unit-wf = wrap unit-wf
 pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
@@ -1762,4 +1722,5 @@ pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
 pattern valid-ν-wf nv = wrap nv
 pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
 pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
-pattern valid-μ-wf wf x lv = wrap (fo-μwf wf x lv)
+pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
+pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)

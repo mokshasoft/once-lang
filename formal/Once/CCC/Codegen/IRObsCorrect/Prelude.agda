@@ -91,7 +91,7 @@ open import Once.CCC.Machine.ValueRel
   using (module ClosureWellFormedDef; module ClosureWellFormedBase
         -- the value relation's constructor names (top-level pattern synonyms)
         ; valid-unit-wf; valid-pair-wf; valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf
-        ; valid-closure-wf; valid-closure-reg-wf; valid-ν-wf; valid-int-wf; valid-float-wf; valid-μ-wf) public
+        ; valid-closure-wf; valid-closure-reg-wf; valid-ν-wf; valid-int-wf; valid-float-wf; valid-μ-wf; valid-μbox-wf) public
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 open import Once.IR.Semantics.Trace using ()

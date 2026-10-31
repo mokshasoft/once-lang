@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- 2026-10-30 regression (plan 0.135 cata): functor shape Mu (K Unit + (K Unit + Id)).
+-- 2026-10-30 regression (D361): functor shape Mu (K Unit + (K Unit + Id)).
 -- A nested sum around the recursive arm: 10 + 1 = 11 (was a segfault).
 -- The deleted shape-specialised cata codegens (strat-nat / strat-linear)
 -- miscompiled it; every recursive functor now takes the generic walk.

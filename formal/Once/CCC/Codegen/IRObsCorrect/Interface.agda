@@ -9,9 +9,9 @@
 --
 -- Why the split. `IRObsCorrectFlat` was one 4358-line module, and a genuine
 -- recheck of it costs 728 s / 2.2 GB (measured, with every dependency cached).
--- Ten postulates were still open in it then (three now: `cata-correct`,
--- `obs-correct-sigop-rest`, `obs-correct-In`), so that price was going to be
--- paid a few dozen more times. `ir-obs-correct` is the ONLY recursive definition —
+-- Ten postulates were still open in it then (two now, both postulated (plan
+-- 0.88): `obs-correct-sigop-rest`, `obs-correct-In`), so that price was going
+-- to be paid a few dozen more times. `ir-obs-correct` is the ONLY recursive definition —
 -- its two recursive cases (`comp-obs-correct`, `cata-correct`) take the
 -- induction hypothesis as an ARGUMENT rather than calling back — so the
 -- per-constructor clauses do not depend on each other at all, and each can
@@ -46,6 +46,7 @@ open import Once.CCC.Machine.Validity using (module ReadLocEq)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; μ-type; ⟦_⟧TI; IRTy; Unit; ν-type; _*_)
 open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.CCC.Machine.MuRep using (Unboxed)
 import Once.CCC.FrameSemantics as FrameSemantics′
 
 -- Qualified aliases cannot be re-exported, so each part repeats these. The
@@ -98,8 +99,8 @@ module Core {FS : FrameSemantics} where
   open ClosureWellFormedBase {FS}
     using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_
           ; prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
-          ; ValidFO; FOTy; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
-          ; Live; live→bf; bf→live; live-heap; live-lift; live-map; live-ns) public
+          ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
+          ; Live; live→bf; live-heap; live-lift; live-ns) public
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -154,7 +155,7 @@ module Core {FS : FrameSemantics} where
   -- structured machine's halt lemmas apply to a flat chain unchanged — the
   -- conditional form is the one `inl`'s indirect stores and slot loads need.
   open TracePrimitives {FS} using (InstrWF; exec-abstract-preserves-halted-WF; load-indirect-twf; load-indirect-suc-twf) public
-  open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-saved; exec-trace-preserves-saved; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor) public
+  open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-saved; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor) public
   open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
                                      exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem) public
   open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-instr-load-const; nhw-instr-sigop) public
@@ -175,8 +176,8 @@ module Core {FS : FrameSemantics} where
           ; NuV; module NuV; ForceRuns; NuStep; module NuStep; module NuCoind
           -- plan 0.135 S3: where a fragment's input is (beside `ResultPlace`)
           ; InputAt; in-loc; in-reg; in-unit
-          ; rp-map; layer→valid; valid→layer; ν-layer-place; fo→valid; valid→fo; μ-layer; valid-μ
-          ; validityWF-transport; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
+          ; rp-map; valid→layer; ν-layer-place; fo→valid; valid→fo; μ-layer; valid-μ; μ-box-cell; valid-μbox
+          ; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -252,11 +253,10 @@ module Core {FS : FrameSemantics} where
   -- `WellFormedFI-irrelevant` bridges the lemma's `wf` and the proof's.
   μ-layer-iso : ∀ {m F} (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
                 {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
-              → ∀ {prog} → ValidAtWF {prog = prog} m alloc {μ-type F} x loc s
+              → ∀ {prog} → Unboxed F → ValidAtWF {prog = prog} m alloc {μ-type F} x loc s
               → ValidAtWF {prog = prog} m alloc {⟦ F ⟧TI (μ-type F)}
                   (retVal (evalᴰ (out-μ wf) x)) loc s
-  μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
-    rewrite WellFormedFI-irrelevant wf wf′ = fo→valid layer-v
+  μ-layer-iso wf x u v = μ-layer {wf = wf} u v
 
   -- D189 RETRACTS `ν-not-resident`. It said a ν-typed value is never
   -- machine-resident, and it was provable only because the machine could not
@@ -865,26 +865,19 @@ module Core {FS : FrameSemantics} where
     ∀ (rs : List ℕ) →
     MachineRefinesObsF prog base n l ir x s alloc cl rs k
 
-  -- `cata-correct`: the single named obligation; the record FIELDS name the
-  -- parts the discharge must provide (all sharing one `enough-fuel`):
-  --   * `enough-fuel`/`run-halts` — the cata terminates (totality witness).
-  --   * `traces-agree`  — loop↔fold: discharge by `μS-ind` over the events
-  --                       fold + per-`instr-sigop` `respects-semM`. (Pure-cata
-  --                       sub-case already dischargeable: `flat-events-[]` +
-  --                       `pure-cata-emits-[]`, both `[]`.)
-  --   * `value-realized`— looping flat-semantic value correctness (= the
-  --                       existing `rec-scheme-semantic` trust boundary).
-  -- These are the boundaries the cata collapses into; Phase 4 then deletes the
-  -- old `ir-to-trace-correct-non-layer0` catchall + `rec-scheme-semantic`.
+  -- `cata-correct`: the cata's obligation is this same `IRObsCorrectF`; the
+  -- record FIELDS (`value-realized`, `traces-agree`) are what the proof in
+  -- `IRObsCorrect.Cata` provides.
   -- `cata-correct` now RECEIVES the algebra's `IRObsCorrectF` (the IH) — this
   -- is what discharges the per-layer machine↔otrace correspondence's link (2)
   -- (`flat-events(alg) ≡ otrace(alg)`), the algebra's OWN trace correctness.
   -- `ir-obs-correct` supplies it by recursing on `alg ⊂ Cata wf alg`.
   -- plan 0.135 S3 (cata M1): NO LONGER A POSTULATE HERE. `cata-correct` is a
   -- definition in `IRObsCorrect.Cata`, dispatching on `cata-strategy ⌈ F ⌉F`:
-  -- `strat-const` is proved (`IRObsCorrect.CataConst`), and the three loop
-  -- strategies are one named postulate each there. It cannot live in this
-  -- module: its proof uses clause modules that import this one.
+  -- `strat-const` is proved (`IRObsCorrect.CataConst`), and the one loop
+  -- strategy, `strat-branching`, is proved (`IRObsCorrect.CataBr.Branching`,
+  -- D361/D362). It cannot live in this module: its proof uses clause modules
+  -- that import this one.
 
 
   -- ════════════════════════════════════════════════════════════════════
@@ -896,18 +889,9 @@ module Core {FS : FrameSemantics} where
   -- IR constructor to be accounted for — a new constructor cannot slip
   -- through unproven.
   --
-  --   * `Cata` routes to `cata-correct` (the loop obligation, whose intended
-  --     discharge is the descend/base/ascend μ-induction. The `CataNat*`
-  --     attempt at it was NatF-only and is deleted (D132).
-  --     NOT WIREABLE AS IT STANDS, and the reason is worth recording: this
-  --     pointer was written 2026-06-13, and four days later `5088e571`
-  --     deleted `CataNatAscend`/`CataNatValue`/`CataNatTrace` as "dead …
-  --     no live importers". So of the three phases the induction composes,
-  --     only DESCEND survived, and it too is now deleted (D132) — it was
-  --     (`CataNatDescend*`/`Chain`/`Heap*`/`Producer`/
-  --     `Seam` — kept, since they prove content this module only postulates).
-  --     Closing `cata-correct` means REBUILDING base and ascend, not wiring
-  --     up what is here.
+  --   * `Cata` routes to `cata-correct`, PROVED in `IRObsCorrect.Cata` (the
+  --     generic post-order walk, D361/D362). (The earlier NatF-only
+  --     `CataNat*` attempt was deleted, D132.)
   --   * everything else USED to be `obs-correct-rest`, one catch-all clause
   --     routing every remaining constructor to a single postulate. Plan 0.68
   --     STEP 0 ENUMERATED it — see below for why that was not cosmetic.

@@ -226,7 +226,8 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-branching)
+  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; out-trace)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
@@ -368,6 +369,17 @@ cata-frag strat-const bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   where
     l1<l1+1 : l1 < l1 + 1
     l1<l1+1 = subst (_< l1 + 1) (+-identityʳ l1) (+-monoʳ-< l1 (s≤s z≤n))
+cata-frag strat-box bb n1 l1 at ab {lo} lo≤l1 f wA wC =
+  subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (l1 + 2) T)
+    (sym (cong (l1 ∷_) (clabs-++ at _)))
+    ( cata-gen {S1 = l1 ∷ []} {E = l1 + 1 ∷ []} (((λ eq → <⇒≢ l1<l1+1 eq) ∷ []) ∷ [] ∷ [])
+               (≤-refl ∷ m≤m+n l1 1 ∷ []) f wA wC
+    , cata-win {S1 = l1 ∷ []} {E = l1 + 1 ∷ []} lo≤l1 (m≤m+n l1 2)
+               ((≤-refl , ≤-trans l1<l1+1 (+-monoʳ-≤ l1 (s≤s z≤n)))
+                ∷ (m≤m+n l1 1 , +-monoʳ-< l1 (s≤s (s≤s z≤n))) ∷ []) wA )
+  where
+    l1<l1+1 : l1 < l1 + 1
+    l1<l1+1 = subst (_< l1 + 1) (+-identityʳ l1) (+-monoʳ-< l1 (s≤s z≤n))
 cata-frag (strat-branching F) bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (BLb + 2) T)
     (sym (cong (l1 ∷_) eq))
@@ -491,6 +503,17 @@ private
   none : ∀ {lo hi} → FragP lo hi [] []
   none = ([] , [] , []) , [] , []
 
+-- D364: `In`'s three shapes and `out-μ`'s carry no control label.
+in-frag : ∀ {lo hi} (r : MuRep) (n : ℕ) → FragP lo hi (clabs (in-trace r n)) []
+in-frag mu-box  n = none
+in-frag mu-unit n = none
+in-frag mu-ptr  n = none
+
+out-frag : ∀ {lo hi} (r : MuRep) → FragP lo hi (clabs (out-trace r)) []
+out-frag mu-box  = none
+out-frag mu-unit = none
+out-frag mu-ptr  = none
+
 frag : ∀ {A B} (ir : IR A B) (n l : ℕ) → Frag ir n l
 frag id       n l = none
 frag fst      n l = none
@@ -602,8 +625,8 @@ frag (Iter b) n l =
     Fb = frag b (suc (suc (suc (suc n)))) ssl
     dTb = proj₁ (proj₁ Fb) ; dBb = proj₁ (proj₂ (proj₁ Fb)) ; jb = proj₂ (proj₂ (proj₁ Fb))
     wTb = proj₁ (proj₂ Fb) ; wBb = proj₂ (proj₂ Fb)
-frag (In _)     n l = none
-frag (out-μ _)  n l = none
+frag (In {F} _)    n l = in-frag (mu-rep F) n
+frag (out-μ {F} _) n l = out-frag (mu-rep F)
 frag (Cata {F} _ alg) n l =
   proj₁ cf , proj₂ cf , win-weaken ≤-refl (cata-label-mono st (proj₁ XA) n (label-of XA) (trace-of XA)) (proj₂ (proj₂ FA))
   where
@@ -695,6 +718,7 @@ private
   cata-nf : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) → NoFn at
           → NoFn (proj₂ (proj₂ (cata-dispatch st bb n1 l1 at)))
   cata-nf strat-const  bb n1 l1 at h = nf at _ h refl
+  cata-nf strat-box    bb n1 l1 at h = nf at _ h refl
   cata-nf (strat-branching F) bb n1 l1 at h =
     nf (vw ++ _) _ (nf vw _ (visit-nf F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
                            (nf rw _ (rebuild-nf F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F)) refl))
@@ -706,6 +730,16 @@ private
   sig-nf : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → NoFn (sigop-code si n m)
   sig-nf si n nothing  = refl
   sig-nf si n (just _) = refl
+
+in-nf : ∀ (r : MuRep) (n : ℕ) → NoFn (in-trace r n)
+in-nf mu-box  n = refl
+in-nf mu-unit n = refl
+in-nf mu-ptr  n = refl
+
+out-nf : ∀ (r : MuRep) → NoFn (out-trace r)
+out-nf mu-box  = refl
+out-nf mu-unit = refl
+out-nf mu-ptr  = refl
 
 frag-nf : ∀ {A B} (ir : IR A B) (n l : ℕ)
         → NoFn (trace-of (ir-to-trace' n l ir)) × NoFn (blocks-layout (bodies-of (ir-to-trace' n l ir)))
@@ -740,8 +774,8 @@ frag-nf (case f g) n l =
 frag-nf (Iter b) n l =
   nf (trace-of Xb) _ (proj₁ (frag-nf b _ _)) refl , proj₂ (frag-nf b _ _)
   where Xb = ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b
-frag-nf (In _)     n l = refl , refl
-frag-nf (out-μ _)  n l = refl , refl
+frag-nf (In {F} _)    n l = in-nf (mu-rep F) n , refl
+frag-nf (out-μ {F} _) n l = out-nf (mu-rep F) , refl
 frag-nf (Cata {F} _ alg) n l =
   cata-nf (cata-strategy ⌈ F ⌉F) (proj₁ XA) n (label-of XA) (trace-of XA) (proj₁ (frag-nf alg 0 l))
   , proj₂ (frag-nf alg 0 l)

@@ -58,7 +58,8 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
-open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
+open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of; cata-label-mono; resuspend-label-mono)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
@@ -299,6 +300,17 @@ module Scope {FS : FrameSemantics} where
   sigop-thunks si n l nothing  = all-no-thunk-in _ refl
   sigop-thunks si n l (just _) = all-no-thunk-in _ refl
 
+  -- D364: `In`'s three shapes and `out-μ`'s carry no marker.
+  in-nt : ∀ {lo hi} (r : MuRep) (n : ℕ) → ThunksIn lo hi (in-trace r n)
+  in-nt mu-box  n = all-no-thunk-in _ refl
+  in-nt mu-unit n = all-no-thunk-in _ refl
+  in-nt mu-ptr  n = all-no-thunk-in _ refl
+
+  out-nt : ∀ {lo hi} (r : MuRep) → ThunksIn lo hi (out-trace r)
+  out-nt mu-box  = all-no-thunk-in _ refl
+  out-nt mu-unit = all-no-thunk-in _ refl
+  out-nt mu-ptr  = all-no-thunk-in _ refl
+
   thunks-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → ThunksIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
   thunks-in id n l = all-no-thunk-in _ refl
@@ -310,8 +322,8 @@ module Scope {FS : FrameSemantics} where
   thunks-in initial    n l = all-no-thunk-in _ refl
   thunks-in apply      n l = all-no-thunk-in _ refl
   thunks-in (curry b)  n l = all-no-thunk-in _ refl
-  thunks-in (In x)     n l = all-no-thunk-in _ refl
-  thunks-in (out-μ x)  n l = all-no-thunk-in _ refl
+  thunks-in (In {F} x)    n l = in-nt (mu-rep F) n
+  thunks-in (out-μ {F} x) n l = out-nt (mu-rep F)
   thunks-in (Out x)    n l = all-no-thunk-in _ refl
   thunks-in (in-ν x)   n l = all-no-thunk-in _ refl
   -- `const` splits on its `FitsInRegI` witness (IRToTrace.agda:958-959), so
@@ -455,6 +467,11 @@ module Scope {FS : FrameSemantics} where
   cata-thunks-in strat-const bb n1 l1 at lo≤ ats =
     ++⁺ (all-no-thunk-in (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) refl)
         (++⁺ (all-no-thunk-in (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)) refl)
+             (cata-body-in l1 (l1 + 1) bb at lo≤ (m<m+2 l1)
+                (ts-weaken ≤-refl (m≤m+n l1 2) ats)))
+  cata-thunks-in strat-box bb n1 l1 at lo≤ ats =
+    ++⁺ (all-no-thunk-in (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) refl)
+        (++⁺ (all-no-thunk-in (cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)) refl)
              (cata-body-in l1 (l1 + 1) bb at lo≤ (m<m+2 l1)
                 (ts-weaken ≤-refl (m≤m+n l1 2) ats)))
   cata-thunks-in (strat-branching F) bb n1 l1 at lo≤ ats =

@@ -48,6 +48,7 @@ open import Once.CCC.Machine.Allocation
 open import Once.IR using (AllocMode; Stack; Heap)
 open MemOps {FS} using (readLoc)
 open FrontierInvariant {FS} using (BeforeFrontier)
+open import Once.CCC.Machine.MuRep using (mu-rep; mu-box)
 
 -- The sum-tag cell fact, shape form (definitionally equal to
 -- `ClosureWellFormedDef.SumTag`, restated here so this module does not
@@ -205,6 +206,14 @@ data ShapeAt where
     ShapeAt m alloc (⟦ F ⟧TI (μ-type F)) loc s →
     ShapeAt m alloc (μ-type F) loc s
 
+  -- D364: a BOXED μ is a block whose first cell holds the layer.
+  shape-μbox : ∀ {m F}
+    {alloc : AllocState {FS}}
+    {loc : ValueLocation FS} {s : LocState FS}
+    (wf : WellFormedFI F) → mu-rep F ≡ mu-box →
+    CellShapeAt alloc (⟦ F ⟧TI (μ-type F)) loc s →
+    ShapeAt m alloc (μ-type F) loc s
+
   -- D189: a ν is a SUSPENSION, not an available layer — seed cell plus
   -- coalgebra code cell, mirroring `shape-closure`. plan 0.135 S1: the seed
   -- is OPAQUE in the value layer (`NuV.nu-seed`: its type is not a subterm of
@@ -255,7 +264,7 @@ module Project (o : CanonicalName) (tbl : List IRFun) {prog : AbstractTrace} whe
   open ClosureWellFormedBase {FS}
     using (Live; live→bf; CellAtP; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit;
            unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; int-wf; float-wf;
-           ValidFO; fo-unit; fo-pair; fo-sum; fo-int; fo-float; fo-μwf; SumTag; wrap)
+           ValidFO; fo-unit; fo-pair; fo-sum; fo-int; fo-float; fo-μwf; fo-μbox; SumTag; wrap)
   open ClosureWellFormedDef {FS} {prog}
     using (ValidAtWF; CellAt; closure-wf; closure-reg-wf; NuV; module NuV)
   open NuV using (nu-mode; nu-heap; nu-cell0; nu-cell1; nu-live1)
@@ -298,7 +307,8 @@ module Project (o : CanonicalName) (tbl : List IRFun) {prog : AbstractTrace} whe
     shape-inr-reg {b = b} lm (tag-of m 1 _ _ tg) (rep-of rep) (rep-read rep pp) (live→bf slb)
   fo→shape (fo-int (int-wf b r))     = shape-int (live→bf b) r
   fo→shape (fo-float (float-wf b r)) = shape-float (live→bf b) r
-  fo→shape (fo-μwf wf x lv) = shape-μ wf (fo→shape lv)
+  fo→shape (fo-μwf ub wf x lv) = shape-μ wf (fo→shape lv)
+  fo→shape (fo-μbox bx wf x c) = shape-μbox wf bx (focell→shape c)
 
   focell→shape (cell-ptr r bf v) = cell-shape-ptr r (live→bf bf) (fo→shape v)
   focell→shape {c = c} (cell-inline rep r) = cell-shape-inline {c = c} (rep-of rep) (rep-read rep r)

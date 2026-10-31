@@ -12,7 +12,7 @@
 --
 -- D200: this file is now the ASSEMBLY only. It was 4358 lines, and a genuine
 -- recheck cost 728 s / 2.2 GB — a price paid on every iteration of the ten
--- postulates then open in it (three now; see `Interface`). The per-constructor clauses live in
+-- postulates then open in it (two now; see `Interface`). The per-constructor clauses live in
 -- `Once.CCC.Codegen.IRObsCorrect.*` and are re-exported here, so every
 -- importer of this module sees exactly what it saw before.
 --

@@ -30,7 +30,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Apply o tbl using (module ApplyC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o
   using (IdFree; idfree-of; tyeq; μ-layer-val; cata-const-meaning′)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; head-strat)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; const-rc; end-pc)
 open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-const)
 open import Once.CCC.Machine.SMCore
@@ -77,8 +77,13 @@ module CataRunC {FS : FrameSemantics} where
               → ValidAtWF {prog = prog} m a {A} v loc st → ValidAtWF {prog = prog} m a {B} (subst ⟦_⟧ eq v) loc st
   valid-subst refl w = w
 
+  -- …and a cell
+  cell-subst : ∀ {prog a} {A B : IRTy} (eq : A ≡ B) {v : ⟦ A ⟧} {loc st}
+             → CellAt {prog = prog} a A v loc st → CellAt {prog = prog} a B (subst ⟦_⟧ eq v) loc st
+  cell-subst refl c = c
+
   module Run {F : IRFunctor} (wf : WellFormedFI F) {E C : IRTy} (alg : IR (E IRTy′.* ⟦ F ⟧TI C) C)
-             (ih : IRObsCorrectF alg) (st : cata-strategy ⌈ F ⌉F ≡ strat-const)
+             (ih : IRObsCorrectF alg) (h : Head) (st : cata-strategy ⌈ F ⌉F ≡ head-strat h)
              (n l : ℕ) (prog : AbstractTrace) (base : ℕ) (ss : AllSlotStable prog) (cr : BlockRuns prog)
              (span : SpanAt prog base (emitted n l (Cata wf alg)))
              (bl : BlocksAt prog (blocks n l (Cata wf alg)))
@@ -91,23 +96,27 @@ module CataRunC {FS : FrameSemantics} where
              (runS : SRun prog 13 (entry-flat base s alloc cl rs) u) (segS : SegA alloc n (entry-flat base s alloc cl rs) u)
              (runK : SRun prog 14 u cs) (segK : SegA alloc n u cs)
              (nh-cs : halted (floc cs) ≡ false) (pc-cs : fpc cs ≡ 27 + base) (ret-cs : fret cs ≡ rs)
-             (hc hp μhl : HeapLocation) (mC : AllocMode) (pl : ValueLocation FS)
+             (hc hp : HeapLocation) (pl : ValueLocation FS)
              (clo : fclosure cs ≡ SV-Ptr (AtDynamic hc))
              (code : readLoc (floc cs) (AtDynamic (sucHL hc)) ≡ just (SV-Code (ℓ o (proj₁ (proj₂ (ir-to-trace' 0 l alg))))))
              (in-cs : readReg (regs (floc cs)) Input1 ≡ SV-Ptr (AtDynamic hp))
              (c₁ : CellAt {prog = prog} alloc E (proj₁ x) pl s)
              (hp-cs : readLoc (floc cs) (AtDynamic hp) ≡ readLoc s pl)
-             (shp-cs : readLoc (floc cs) (AtDynamic (sucHL hp)) ≡ just (SV-Ptr (AtDynamic μhl)))
+             -- D364: the argument pair's second cell holds what the cell `ql` held at
+             -- entry, and that cell is the μ's LAYER: the input pair's μ cell
+             -- (a pointer to the layer) at an unboxed functor, the box's own cell at
+             -- a boxed one.
+             (ql : ValueLocation FS)
+             (cμ : CellAt {prog = prog} alloc (⟦ F ⟧TI (μ-type F)) (μ-layer-val wf (proj₂ x)) ql s)
+             (shp-cs : readLoc (floc cs) (AtDynamic (sucHL hp)) ≡ readLoc s ql)
              -- the argument pair is below the frontier at the call (the call rows allocated it)
              (hp-lt : suc (loc-ref (AtDynamic hp)) ≤ next-heap-ref (falloc cs))
-             (lμ : Live alloc (AtDynamic μhl))
-             (vμ : ValidAtWF {prog = prog} mC alloc {μ-type F} (proj₂ x) (AtDynamic μhl) s)
              where
 
     i : IdFree wf
-    i = idfree-of wf (const-rc ⌈ F ⌉F st)
+    i = idfree-of wf (const-rc ⌈ F ⌉F h st)
 
-    module T = Text wf alg n l
+    module T = Text wf alg n l h
 
     span′ : SpanAt prog base T.text
     span′ = subst (SpanAt prog base) (T.emitted-eq st) span
@@ -204,15 +213,13 @@ module CataRunC {FS : FrameSemantics} where
     x′ : ⟦ E IRTy′.* ⟦ F ⟧TI C ⟧
     x′ = proj₁ x , L″
 
-    vL : ValidAtWF {prog = prog} mC a′ {⟦ F ⟧TI C} L″ (AtDynamic μhl) s′
-    vL = valid-subst {prog = prog} (tyeq i (μ-type F) C) (v-tr lμ (μ-layer {prog = prog} {wf = wf} vμ))
 
     cE : CellAt {prog = prog} a′ E (proj₁ x) (AtDynamic hp) s′
     cE = cell-copy (trans (BC.callee-heap T.bb fs₁ {falloc cs} (AtDynamic hp) hp-live) hp-cs) c₁
 
     cL : CellAt {prog = prog} a′ (⟦ F ⟧TI C) L″ (AtDynamic (sucHL hp)) s′
-    cL = cell-ptr (trans (BC.callee-heap T.bb fs₁ {falloc cs} (AtDynamic (sucHL hp)) shp-live) shp-cs)
-                  (bft _ lμ) vL
+    cL = cell-subst {prog = prog} (tyeq i (μ-type F) C)
+           (cell-copy (trans (BC.callee-heap T.bb fs₁ {falloc cs} (AtDynamic (sucHL hp)) shp-live) shp-cs) cμ)
 
     pv : ValidAtWF {prog = prog} Heap a′ {E IRTy′.* ⟦ F ⟧TI C} x′ (AtDynamic hp) s′
     pv = valid-pair-wf tt (to-callee (AtDynamic (sucHL hp)) shp-live) cE cL

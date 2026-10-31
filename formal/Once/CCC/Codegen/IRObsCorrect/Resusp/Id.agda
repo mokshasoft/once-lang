@@ -545,8 +545,12 @@ module ResuspIdC {FS : FrameSemantics} where
       nhu10 : halted (floc u10) ≡ false
       nhu10 = exec-abstract-preserves-halted-WF (load-from-slot (suc N)) (floc u9) (falloc u9) nhu9 (_ , at-cf (floc u9) (falloc u9) cfu9 sS9)
 
-      -- In three typed pieces: unifying the whole 19-step chain at once cost
-      -- ~5 GB (each step's implicit state and instruction).
+      -- The 19-row run in three nested pieces, each with its type (rows
+      -- 1-based as above; `span i` is row i+1): `srC` is rows 15–19 (u5 → u10,
+      -- 5 steps), `srB` is rows 8–14 followed by `srC` (t7 → u10, 12 steps),
+      -- and `sr` is rows 1–7 followed by `srB` (σ → u10, all 19). Unifying the
+      -- whole chain as one term cost ~5 GB (each step's implicit state and
+      -- instruction).
       srC : SRun prog 5 u5 u10
       srC =
         s-at u6 (nhu5 , span 14 _ refl) refl refl tt (

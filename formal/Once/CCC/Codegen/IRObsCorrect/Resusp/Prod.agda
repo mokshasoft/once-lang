@@ -737,6 +737,28 @@ module ResuspProdC {FS : FrameSemantics} where
       len : DL.length (rtrace (wf-Prod wF wG) n l) ≡ 3 + (DL.length tF + (8 + (DL.length tG + 5)))
       len = cong (3 +_) (trans (length-++ tF {R1}) (cong (λ z → DL.length tF + (8 + z)) (length-++ tG {end})))
 
+      -- The events of the four pieces, staged as in `SumR`: each with its
+      -- type and the `ev-++` implicits given, so no nested chain is inferred
+      -- at once (alone: 86 s → 46 s, peak 3.07 → 3.10 GB). Staging `pc` and
+      -- `log` the same way gained no time and cost more memory, so they stay
+      -- inline.
+      evE : chain-events endRun ≡ []
+      evE = proj₁ (proj₂ endS)
+
+      evG : chain-events (FlatSteps-++ RG.run endRun) ≡ []
+      evG = ev-++ {prog} {RG.steps} {5} {q8} {sG} {e5} RG.run endRun RG.ev evE
+
+      evM : chain-events (FlatSteps-++ midRun (FlatSteps-++ RG.run endRun)) ≡ []
+      evM = ev-++ {prog} {8} {RG.steps + 5} {sF} {q8} {e5} midRun (FlatSteps-++ RG.run endRun) (proj₁ (proj₂ midS)) evG
+
+      evF : chain-events (FlatSteps-++ RF.run (FlatSteps-++ midRun (FlatSteps-++ RG.run endRun))) ≡ []
+      evF = ev-++ {prog} {RF.steps} {8 + (RG.steps + 5)} {p3} {sF} {e5}
+                  RF.run (FlatSteps-++ midRun (FlatSteps-++ RG.run endRun)) RF.ev evM
+
+      evL : chain-events run ≡ []
+      evL = ev-++ {prog} {3} {RF.steps + (8 + (RG.steps + 5))} {σ} {p3} {e5}
+                  preRun (FlatSteps-++ RF.run (FlatSteps-++ midRun (FlatSteps-++ RG.run endRun))) (proj₁ (proj₂ preS)) evF
+
       result : RRuns′ (wf-Prod wF wG) n l σ (y₁ , y₂) b
       result = record
         { steps    = 3 + (RF.steps + (8 + (RG.steps + 5)))
@@ -747,9 +769,7 @@ module ResuspProdC {FS : FrameSemantics} where
                        (trans (prod-pc (DL.length tF) (DL.length tG) (fpc σ)) (sym (cong (_+ fpc σ) len)))
         ; ret      = trans RG.ret RF.ret
         ; lnk      = RG.lnk
-        ; ev       = ev-++ preRun (FlatSteps-++ RF.run (FlatSteps-++ midRun (FlatSteps-++ RG.run endRun))) (proj₁ (proj₂ preS))
-                       (ev-++ RF.run (FlatSteps-++ midRun (FlatSteps-++ RG.run endRun)) RF.ev
-                       (ev-++ midRun (FlatSteps-++ RG.run endRun) (proj₁ (proj₂ midS)) (ev-++ RG.run endRun RG.ev (proj₁ (proj₂ endS)))))
+        ; ev       = evL
         ; log      = trans (proj₂ (proj₂ endS)) (trans RG.log (trans (proj₂ (proj₂ midS))
                      (trans RF.log (proj₂ (proj₂ preS)))))
         ; left     = chain-left run nhe5

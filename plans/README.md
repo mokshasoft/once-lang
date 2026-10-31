@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (33 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (30 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -10,14 +10,12 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | Plan | State | What remains |
 |---|---|---|
 | 0.11 parameterized trusted base | A done (D302) | B `ArchModel`, C world/resources, D models, E `--safe` cone, F one concrete instance |
-| 0.135 calls proved, not assumed | open (2026-10-27) | S0 done; S1 `ValidAtWF` as a function on the type, S2 block-call lemma, S3 producers/consumers (incl. `cata-correct`), S4 layout, S5 delete `BlockRuns`/`BlockRunsHyp` ×3 (EMPTY, D358) |
-| 0.134 unbounded abstract stack | DONE (D360): depth-tagged frames on all three arches, `shift-≺` a `FrameSemantics` field | none; consumed by 0.135 S2 |
-| 0.88 discharge obs-correct | open | `obs-correct-sigop-rest` (structured codomains; split it by reason), `obs-correct-In` until 0.135 S3; `cata-correct` moved to 0.135 |
+| 0.88 discharge obs-correct | open | `obs-correct-sigop-rest` (structured codomains; split it by reason), `obs-correct-In` (needs a `ResultPlace` or emitter change, §next step); `cata-correct` proved (D361, D362) |
 | 0.62 shape correctness | M1/M2 done | M2b, M3: `emitted-shape-check`, `run-meets` (two of `RunWF` ×7) |
 | 0.67 wire arith proofs | route obsolete | owns `arith-sigop-run` ×3 (the lookup half is a theorem, D351); `ev`/`step-budget` definitions |
 | 0.110 start state assumes less | not started | boot registers/flags |
 | 0.111 interpretation ABI in the Spec | not started | the calling-convention obligation; 0.113's A3 runtime test |
-| 0.89 relocatable compilation units | property delivered at the emitter and link; kept | C1 done inside 0.135; B (the machine runs units, ~1700 sites) do-or-drop decision; F optional |
+| 0.89 relocatable compilation units | property delivered at the emitter and link; kept | C (`SpanAt` → block-map inclusion; plan 0.135 kept the relation, so C stays here); B (the machine runs units, ~1700 sites) do-or-drop decision; F optional; E done by D362 |
 
 ## The Spec
 
@@ -37,7 +35,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | Plan | State | What remains |
 |---|---|---|
 | 0.86 allocation is mechanical | open | the machine half of step D, B′, C, `Allocator` rename (F moved to 0.123) |
-| 0.87 stack-resident I/O | not started | re-prove the correspondence with stack pointers |
+| 0.87 stack-resident I/O | not started; conflicts with D362 (heap-only values) | re-prove the correspondence with stack pointers |
 | 0.123 memory runs out observably | after the merge | A: out of memory is a Spec end + the Host's `exhaust` (removes `HeapRoom`/`StackRoom`/`CallRoom`); B: wire the proven allocators, `free`, reclaim per loop round, leak-freedom (was 0.35 and 0.86 F) |
 | 0.124 `once fmt` | after 0.122 | one canonical layout from the Spec's `Module` plus lexer trivia (no second syntax tree); round-trip, idempotence and comment preservation as theorems; deletes the `Grammar` printer |
 | 0.125 Once in nixpkgs | A, B, C.1, C′ 1–4 done | C.2 draft `package.nix` against nixpkgs; C′ 5 server-test segfaults; D release + nixpkgs PR |
@@ -45,7 +43,7 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.130 run-time cost instrumentation | not started | decide where counts come from (flat machine vs emulator); one report shape shared with the Agda fork's; dependent-type-ready keys |
 | 0.133 `check` decides typing | not started, needs a Spec decision | module typing `⊢ᴹ` (Denotes without `entry`); `check` sound and complete against it, on the apex; the run gaps of D353's census (§6) |
 | 0.64 proof-island audit | open | groups F, S, C and `TypeCheck` (group O done, D347) |
-| 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
+| 0.37 chunked cata payload stack | deferred; needs re-planning on the generic walk (D361) | ISA extension + chunked codegen |
 | 0.56 register-budget arith | parked | steps A–E |
 | 0.127 Once runs on seL4 | not started | A: a seL4 Host (entry, stack, `once_leave`) and a Once root task under QEMU; B: rootserver + echo; C: other arches |
 | 0.100 AVR port | P0 done | phase A onward |

@@ -267,9 +267,8 @@ step-ret ft rd rewrite ft | rd = refl
 --
 -- A consumer that needs plain `+` converts with `Once.Word.Width.⊕≡+`, paying
 -- the `< modulus` obligation there. Every `add` the compiler emits computes an
--- ADDRESS or the observable COUNTER (`rsp`, `r15`, `r14`, the `rcx`/`rdi`
--- index scaling) — never a user `Int`, which goes through the Arith backend
--- over `Once.Word` and wraps there by design. So that obligation is a LAYOUT
+-- ADDRESS (`rsp`, `r15`) or `out-nz`'s 0/1 flag — never a user `Int`, which
+-- goes through the Arith backend over `Once.Word` and wraps there by design. So that obligation is a LAYOUT
 -- bound of the `HeapRoom`/`StackRoom`/`CallRoom` family (D087: a parameter,
 -- not a postulate), never an assumption about what user values do.
 step-add-ri : ∀ {prog s r n}

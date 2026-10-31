@@ -64,7 +64,8 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; fsize; resuspend-layer)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono;
   resuspend-label-mono)
 open import Once.CCC.Codegen.SlotBudget o using (visit-idle; rebuild-idle; slots-below; budget-of; bodies-of)
@@ -226,6 +227,13 @@ cata-call-ls lo hi cl k ev pr =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 
+cata-call-box-ls : ∀ (lo hi cl k ev pr : ℕ) → LabelsIn lo hi (cata-call-box cl k ev pr)
+cata-call-box-ls lo hi cl k ev pr =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+
 -- The Tier-1 LINEAR skeleton: four labels above `l1` (`ld-top`, `ld-end`,
 -- `la-top`, `la-end`), the algebra spliced twice.
 
@@ -325,10 +333,26 @@ cata-const-ls lo bb n1 l1 at lo≤l1 atls =
     at' : LabelsIn lo hi at
     at' = ls-weaken ≤-refl (m≤m+n l1 2) atls
 
+cata-box-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
+              → LabelsIn lo (cata-label-of (cata-dispatch strat-box bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch strat-box bb n1 l1 at))
+cata-box-ls lo bb n1 l1 at lo≤l1 atls =
+  ++⁺ (cata-setup-ls lo hi _ _ _ l1)
+   (++⁺ (cata-call-box-ls lo hi _ _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
+  where
+    hi = l1 + 2
+    Hend : l1 + 1 < hi
+    Hend = ≤-reflexive (sym (+-suc l1 1))
+    Lend : lo ≤ l1 + 1
+    Lend = ≤-trans lo≤l1 (m≤m+n l1 1)
+    at' : LabelsIn lo hi at
+    at' = ls-weaken ≤-refl (m≤m+n l1 2) atls
+
 cata-ls : ∀ (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
         → LabelsIn lo (cata-label-of (cata-dispatch st bb n1 l1 at))
                    (cata-trace-of (cata-dispatch st bb n1 l1 at))
 cata-ls strat-const         lo bb n1 l1 at le atls = cata-const-ls lo bb n1 l1 at le atls
+cata-ls strat-box           lo bb n1 l1 at le atls = cata-box-ls lo bb n1 l1 at le atls
 cata-ls (strat-branching F) lo bb n1 l1 at le atls = cata-branching-ls F lo bb n1 l1 at le atls
 
 ------------------------------------------------------------------------
@@ -341,6 +365,18 @@ sigop-labels : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe CmpOp)
              → LabelsIn l l (sigop-code si n m)
 sigop-labels si n l nothing  = li-none refl ∷ []
 sigop-labels si n l (just _) = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+
+-- D364: `In`'s three shapes and `out-μ`'s mention no label.
+in-ls : ∀ {lo hi} (r : MuRep) (n : ℕ) → LabelsIn lo hi (in-trace r n)
+in-ls mu-box  n = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+                  li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+in-ls mu-unit n = li-none refl ∷ []
+in-ls mu-ptr  n = li-none refl ∷ []
+
+out-ls : ∀ {lo hi} (r : MuRep) → LabelsIn lo hi (out-trace r)
+out-ls mu-box  = li-none refl ∷ []
+out-ls mu-unit = li-none refl ∷ []
+out-ls mu-ptr  = li-none refl ∷ []
 
 labels-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
           → LabelsIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
@@ -398,8 +434,8 @@ labels-in (case f g) n l =
     case-l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
     case-sl<hi : suc l < label-of (ir-to-trace' n l (case f g))
     case-sl<hi = up
-labels-in (In _)   n l = li-none refl ∷ []
-labels-in (out-μ _)  n l = li-none refl ∷ []
+labels-in (In {F} _)    n l = in-ls (mu-rep F) n
+labels-in (out-μ {F} _) n l = out-ls (mu-rep F)
 -- C1: the algebra is generated at frontier 0 (its own frame).
 labels-in (Cata {F} _ alg) n l =
   cata-ls (cata-strategy ⌈ F ⌉F) l _ _ _ _ (label-mono alg 0 l) (labels-in alg 0 l)
@@ -946,9 +982,28 @@ cata-const-split bb n1 l1 at =
                (++⁺ (cata-call-ls l1 hi n1 (n1 + 1) (n1 + 2) (n1 + 3))
                     (li-lab refl Lend Hend ∷ []))
 
+cata-box-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
+                 → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-box bb n1 l1 at))
+cata-box-split bb n1 l1 at =
+  mkSplit H (ℓ o l1) (ℓ o endL) hi refl refl H-ls (Lend , Hend)
+  where
+    hi   = l1 + 2
+    endL = l1 + 1
+    H = cata-call-setup n1 (n1 + 1) (n1 + 2) l1 ++
+        (cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
+    Lend : l1 ≤ endL
+    Lend = m≤m+n l1 1
+    Hend : endL < hi
+    Hend = ≤-reflexive (sym (+-suc l1 1))
+    H-ls : LabelsIn l1 hi H
+    H-ls = ++⁺ (cata-setup-ls l1 hi n1 (n1 + 1) (n1 + 2) l1)
+               (++⁺ (cata-call-box-ls l1 hi n1 (n1 + 1) (n1 + 2) (n1 + 3))
+                    (li-lab refl Lend Hend ∷ []))
+
 cata-split : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
            → CataSplit bb l1 at (cata-trace-of (cata-dispatch st bb n1 l1 at))
 cata-split strat-const         bb n1 l1 at = cata-const-split bb n1 l1 at
+cata-split strat-box           bb n1 l1 at = cata-box-split bb n1 l1 at
 cata-split (strat-branching F) bb n1 l1 at = cata-br-split  F bb n1 l1 at
 
 -- Every consumer of a skeleton is now ONE application of its split.
@@ -1013,6 +1068,17 @@ cata-agree st lo bb n1 l1 at natl saB lsB =
 sigop-seg : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → SegAgree (sigop-code si n m)
 sigop-seg si n nothing  = segagree-nolab _ (refl ∷ [])
 sigop-seg si n (just _) = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+-- D364: `In`'s three shapes and `out-μ`'s define no label.
+in-sa : ∀ (r : MuRep) (n : ℕ) → SegAgree (in-trace r n)
+in-sa mu-box  n = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+in-sa mu-unit n = segagree-nolab _ (refl ∷ [])
+in-sa mu-ptr  n = segagree-nolab _ (refl ∷ [])
+
+out-sa : ∀ (r : MuRep) → SegAgree (out-trace r)
+out-sa mu-box  = segagree-nolab _ (refl ∷ [])
+out-sa mu-unit = segagree-nolab _ (refl ∷ [])
+out-sa mu-ptr  = segagree-nolab _ (refl ∷ [])
+
 seg-agree   : ∀ {A B} (ir : IR A B) (n l : ℕ) → SegAgree (trace-of (ir-to-trace' n l ir))
 pair-agree-heap : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
             → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩)))
@@ -1031,8 +1097,8 @@ seg-agree fst n l = segagree-nolab _ (refl ∷ [])
 seg-agree snd n l = segagree-nolab _ (refl ∷ [])
 seg-agree terminal n l = segagree-nolab _ []
 seg-agree initial n l = segagree-nolab _ (refl ∷ [])
-seg-agree (In w) n l = segagree-nolab _ (refl ∷ [])
-seg-agree (out-μ w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (In {F} w) n l = in-sa (mu-rep F) n
+seg-agree (out-μ {F} w) n l = out-sa (mu-rep F)
 seg-agree (Out w) n l = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (in-ν w) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷

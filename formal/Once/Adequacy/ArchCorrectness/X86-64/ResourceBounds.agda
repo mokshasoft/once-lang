@@ -174,7 +174,8 @@ RegRange =
 --
 -- So the obligation moves to the CONSUMER, and this is it. It is NOT a claim
 -- about user arithmetic: every `add` the compiler emits computes an ADDRESS
--- (`rsp` frame release, `r15` heap bump, the `rcx`/`rdi` index scaling). A user `Int` addition never reaches this
+-- (`rsp` frame release, `r15` heap bump; the only other `add` is `out-nz`'s
+-- `+1` after `sbb`, a 0/1 flag whose wraparound is the intended result). A user `Int` addition never reaches this
 -- instruction — it goes through the Arith backend over `Once.Word` and wraps
 -- there by design, which is why a program whose `Int` arithmetic overflows is
 -- still fully covered by the correctness theorem.

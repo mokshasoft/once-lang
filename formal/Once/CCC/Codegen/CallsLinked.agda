@@ -33,6 +33,7 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap; blocks-layout; blocks-layout-++; LabelId; link-top; restore-input; load-indirect-suc; store-at-slot; mov-to-input; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (sem)
@@ -40,7 +41,7 @@ open import Once.Denotation.Program using (Leaves)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 open import Once.CCC.Codegen.CallOK using (InstrOK; Calls)
@@ -117,11 +118,21 @@ cata-call-cl : ∀ cl k ev pr → CLTrace (cata-call cl k ev pr)
 cata-call-cl cl k ev pr =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
+cata-call-box-cl : ∀ cl k ev pr → CLTrace (cata-call-box cl k ev pr)
+cata-call-box-cl cl k ev pr =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
 cata-const-cl : ∀ bb n1 l1 at → CLTrace at
               → CLTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
 cata-const-cl bb n1 l1  at ih =
   ++⁺ (cata-setup-cl n1 (n1 + 1) (n1 + 2) l1)
       (++⁺ (cata-call-cl n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-cl l1 (l1 + 1) bb at ih))
+
+cata-box-cl : ∀ bb n1 l1 at → CLTrace at
+              → CLTrace (cata-trace-of (cata-trace-box bb n1 l1 at))
+cata-box-cl bb n1 l1  at ih =
+  ++⁺ (cata-setup-cl n1 (n1 + 1) (n1 + 2) l1)
+      (++⁺ (cata-call-box-cl n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-cl l1 (l1 + 1) bb at ih))
 
 cata-branching-cl : ∀ F bb n1 l1 at → CLTrace at
                   → CLTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
@@ -150,6 +161,7 @@ cata-branching-cl F bb n1 l1  at ih =
 cata-dispatch-cl : ∀ st bb n1 l1 at → CLTrace at
                  → CLTrace (cata-trace-of (cata-dispatch st bb n1 l1 at))
 cata-dispatch-cl strat-const         bb n1 l1  at ih = cata-const-cl bb n1 l1 at ih
+cata-dispatch-cl strat-box           bb n1 l1  at ih = cata-box-cl bb n1 l1 at ih
 cata-dispatch-cl (strat-branching F) bb n1 l1  at ih = cata-branching-cl F bb n1 l1 at ih
 
 ------------------------------------------------------------------------
@@ -160,6 +172,17 @@ cata-dispatch-cl (strat-branching F) bb n1 l1  at ih = cata-branching-cl F bb n1
 sigop-calls : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → Calls Q si m → CLTrace (sigop-code si n m)
 sigop-calls si n nothing  q = q ∷ []
 sigop-calls si n (just _) q = q ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
+-- D364: `In`'s three shapes and `out-μ`'s.
+in-cl : ∀ (r : MuRep) (n : ℕ) → CLTrace (in-trace r n)
+in-cl mu-box  n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+in-cl mu-unit n = tt ∷ []
+in-cl mu-ptr  n = tt ∷ []
+
+out-cl : ∀ (r : MuRep) → CLTrace (out-trace r)
+out-cl mu-box  = tt ∷ []
+out-cl mu-unit = tt ∷ []
+out-cl mu-ptr  = tt ∷ []
 
 calls-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ) → LK ir
              → CLTrace (trace-of (ir-to-trace' n l ir))
@@ -190,8 +213,8 @@ calls-trace' (case f g) n l (lf , lg) =
       (++⁺ (calls-trace' g _ _ lg)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (calls-trace' f _ _ lf) (tt ∷ []))))
-calls-trace' (In _)  n l _ = tt ∷ []
-calls-trace' (out-μ _) n l _ = tt ∷ []
+calls-trace' (In {F} _) n l _ = in-cl (mu-rep F) n
+calls-trace' (out-μ {F} _) n l _ = out-cl (mu-rep F)
 calls-trace' (Cata {F} _ alg) n l la =
   cata-dispatch-cl (cata-strategy ⌈ F ⌉F) _ _ _ _ (calls-trace' alg 0 l la)
 calls-trace' (Out _)        n l _ = tt ∷ tt ∷ tt ∷ tt ∷ []

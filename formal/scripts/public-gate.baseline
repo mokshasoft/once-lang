@@ -54,4 +54,3 @@ Once/Optimizer/Normal.agda 2
 Once/Parser/Generic/PolyInst.agda 1
 Once/Semantics/Machine.agda 2
 Once/Semantics/Machine/Laws.agda 1
-Once/Spike/RelSpike.agda 1

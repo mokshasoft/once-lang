@@ -120,7 +120,7 @@ abstract one — read it off the signature: does it mention `X.State` /
     one place where "fix the abstract side first" genuinely applies, since these
     are values rather than addresses.
 
-    (2026-10-30, plan 0.135: RESOLVED BY DELETION. The seven loop instructions —
+    (2026-10-30, plan 0.135, D361: RESOLVED BY DELETION. The seven loop instructions —
     `scratch-one`/`-zero`/`-dec`/`-load-count`, `count-zero`/`-inc`,
     `c-branch-scratch-zero` — lost their only emitters when the shape-specialised
     cata codegens were deleted, so they were removed from the abstract machine
@@ -358,7 +358,7 @@ toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
   emitter sit under a green tree for six weeks; x86-32's was even inconsistent
   with its own `FrameInstantiation`. Plans 0.65/0.66 replace these two rows with
   proofs, and that is the point of doing them.
-- `cata-correct` (`IRObsCorrect.Cata`) — **PROVED 2026-10-31 (plan 0.135 S3,
+- `cata-correct` (`IRObsCorrect.Cata`) — **PROVED 2026-10-31 (plan 0.135 S3, D362;
   cata M1 + M4); no postulate left.** `cata-correct` is a definition dispatching
   on the emitter's strategy: `strat-const` by `CataConst`, `strat-branching` (the
   one generic post-order walk; the nat/linear specialisations were deleted
@@ -503,8 +503,8 @@ discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
 | # | residual | class | what discharges it |
 |---|---|---|---|
-| N1 | `obs-correct-Out` — forcing a layer | **DISCHARGED (D199)** | Was `deferred proof`; it was in fact FALSE until the emitter re-suspended (D199), and is now a proof. `apply`'s argument with the pair-packing removed: three straight-line rows, then the call, handed off to `BlockRuns.coalgs`. The premise is `CoalgRuns`, not `CalleeRuns` — a suspension is called with the raw seed in `Input1`, where a closure is called with an `(env , arg)` pair pointer |
-| N2 | `obs-correct-in-ν` — a ν built from an available layer | **deferred proof** | same two-cell build with an identity block: the seed IS the layer and the code returns it |
+| N1 | `obs-correct-Out` — forcing a layer | **DISCHARGED (D199)** | Was `deferred proof`; it was in fact FALSE until the emitter re-suspended (D199), and is now a proof. `apply`'s argument with the pair-packing removed: three straight-line rows, then the call, handed off to the ν's own force (`NuV.nu-force`, `IRObsCorrect.NuForce`; was `BlockRuns.coalgs`/`CoalgRuns`, deleted with the apex's `BlockRunsT`, D362). A suspension is called with the raw seed in `Input1`, where a closure is called with an `(env , arg)` pair pointer |
+| N2 | `obs-correct-in-ν` — a ν built from an available layer | **DISCHARGED (D354)** | same two-cell build with an identity block: the seed IS the layer and the code returns it; a proof in `TwoCell` |
 
 **What went the other way.** `obs-correct-Ana` left the postulate block — it is
 a proof (D190's shared build plus one `CellAt`). `ν-not-resident` is gone: it

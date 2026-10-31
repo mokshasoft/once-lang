@@ -43,6 +43,7 @@ open import Data.Nat using (ℕ; suc; _+_; _*_)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -66,7 +67,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own
@@ -156,11 +157,20 @@ cata-setup-ff cl k ev bl = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt �
 cata-call-ff : ∀ cl k ev pr → FrameFreeTrace (cata-call cl k ev pr)
 cata-call-ff cl k ev pr = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
+cata-call-box-ff : ∀ cl k ev pr → FrameFreeTrace (cata-call-box cl k ev pr)
+cata-call-box-ff cl k ev pr = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
 cata-const-ff : ∀ bb n1 l1 at → FrameFreeTrace at
               → FrameFreeTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
 cata-const-ff bb n1 l1 at ff =
   ++⁺ (cata-setup-ff n1 (n1 + 1) (n1 + 2) l1)
       (++⁺ (cata-call-ff n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-ff l1 (l1 + 1) bb at ff))
+
+cata-box-ff : ∀ bb n1 l1 at → FrameFreeTrace at
+              → FrameFreeTrace (cata-trace-of (cata-trace-box bb n1 l1 at))
+cata-box-ff bb n1 l1 at ff =
+  ++⁺ (cata-setup-ff n1 (n1 + 1) (n1 + 2) l1)
+      (++⁺ (cata-call-box-ff n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-ff l1 (l1 + 1) bb at ff))
 
 cata-branching-ff : ∀ F bb n1 l1 at → FrameFreeTrace at
                   → FrameFreeTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
@@ -189,6 +199,7 @@ cata-branching-ff F bb n1 l1 at ff =
 
 cata-dispatch-ff : ∀ st bb n1 l1 at → FrameFreeTrace at
                  → FrameFreeTrace (cata-trace-of (cata-dispatch st bb n1 l1 at))
+cata-dispatch-ff strat-box           bb n1 l1 at ff = cata-box-ff bb n1 l1 at ff
 cata-dispatch-ff strat-const         bb n1 l1 at ff = cata-const-ff bb n1 l1 at ff
 cata-dispatch-ff (strat-branching F) bb n1 l1 at ff = cata-branching-ff F bb n1 l1 at ff
 
@@ -204,6 +215,17 @@ cata-dispatch-ff (strat-branching F) bb n1 l1 at ff = cata-branching-ff F bb n1 
 sigop-frame-free : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → FrameFreeTrace (sigop-code si n m)
 sigop-frame-free si n nothing  = tt ∷ []
 sigop-frame-free si n (just _) = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
+-- D364: `In`'s three shapes and `out-μ`'s.
+in-ff : ∀ (r : MuRep) (n : ℕ) → FrameFreeTrace (in-trace r n)
+in-ff mu-box  n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+in-ff mu-unit n = tt ∷ []
+in-ff mu-ptr  n = tt ∷ []
+
+out-ff : ∀ (r : MuRep) → FrameFreeTrace (out-trace r)
+out-ff mu-box  = tt ∷ []
+out-ff mu-unit = tt ∷ []
+out-ff mu-ptr  = tt ∷ []
 
 frame-free-trace' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
                   → FrameFreeTrace (trace-of (ir-to-trace' n l ir))
@@ -241,8 +263,8 @@ frame-free-trace' (case f g) (hf , hg) n l =
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (frame-free-trace' f hf _ _) (tt ∷ []))))
 frame-free-trace' (Iter b) hb n l = tt ∷ tt ∷ tt ∷ ++⁺ (frame-free-trace' b hb _ _) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-frame-free-trace' (In _)  hm n l = tt ∷ []
-frame-free-trace' (out-μ _) hm n l = tt ∷ []
+frame-free-trace' (In {F} _) hm n l = in-ff (mu-rep F) n
+frame-free-trace' (out-μ {F} _) hm n l = out-ff (mu-rep F)
 -- C1: the algebra is generated at frontier 0 (its own frame), so its IH is
 -- taken there rather than at the caller's `n`.
 frame-free-trace' (Cata {F} _ alg) hm n l =

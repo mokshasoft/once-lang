@@ -42,6 +42,7 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap
   ; blocks-layout; blocks-layout-++; LabelId; link-top
@@ -53,7 +54,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 -- The per-instruction fact, reducing on every constructor (CATCHALL): only an
@@ -135,11 +136,21 @@ cata-call-am : ∀ cl k ev pr → AllocMinTrace (cata-call cl k ev pr)
 cata-call-am cl k ev pr =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
+cata-call-box-am : ∀ cl k ev pr → AllocMinTrace (cata-call-box cl k ev pr)
+cata-call-box-am cl k ev pr =
+  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
 cata-const-am : ∀ bb n1 l1 at → AllocMinTrace at
               → AllocMinTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
 cata-const-am bb n1 l1 at am =
   ++⁺ (cata-setup-am n1 (n1 + 1) (n1 + 2) l1)
       (++⁺ (cata-call-am n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-am l1 (l1 + 1) bb at am))
+
+cata-box-am : ∀ bb n1 l1 at → AllocMinTrace at
+              → AllocMinTrace (cata-trace-of (cata-trace-box bb n1 l1 at))
+cata-box-am bb n1 l1 at am =
+  ++⁺ (cata-setup-am n1 (n1 + 1) (n1 + 2) l1)
+      (++⁺ (cata-call-box-am n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body-am l1 (l1 + 1) bb at am))
 
 cata-branching-am : ∀ F bb n1 l1 at → AllocMinTrace at
                   → AllocMinTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
@@ -167,6 +178,7 @@ cata-branching-am F bb n1 l1 at am =
 
 cata-dispatch-am : ∀ st bb n1 l1 at → AllocMinTrace at
                  → AllocMinTrace (cata-trace-of (cata-dispatch st bb n1 l1 at))
+cata-dispatch-am strat-box           bb n1 l1 at am = cata-box-am bb n1 l1 at am
 cata-dispatch-am strat-const         bb n1 l1 at am = cata-const-am bb n1 l1 at am
 cata-dispatch-am (strat-branching F) bb n1 l1 at am = cata-branching-am F bb n1 l1 at am
 
@@ -177,6 +189,17 @@ cata-dispatch-am (strat-branching F) bb n1 l1 at am = cata-branching-am F bb n1 
 sigop-alloc-min : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → AllocMinTrace (sigop-code si n m)
 sigop-alloc-min si n nothing  = tt ∷ []
 sigop-alloc-min si n (just _) = tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
+-- D364: `In`'s three shapes and `out-μ`'s.
+in-am : ∀ (r : MuRep) (n : ℕ) → AllocMinTrace (in-trace r n)
+in-am mu-box  n = tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+in-am mu-unit n = am2 ∷ []
+in-am mu-ptr  n = tt ∷ []
+
+out-am : ∀ (r : MuRep) → AllocMinTrace (out-trace r)
+out-am mu-box  = tt ∷ []
+out-am mu-unit = tt ∷ []
+out-am mu-ptr  = tt ∷ []
 
 alloc-min-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ)
                  → AllocMinTrace (trace-of (ir-to-trace' n l ir))
@@ -215,8 +238,8 @@ alloc-min-trace' (case f g) n l =
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (alloc-min-trace' f _ _) (tt ∷ []))))
 alloc-min-trace' (Iter b) n l = tt ∷ tt ∷ tt ∷ ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-alloc-min-trace' (In _)  n l = tt ∷ []
-alloc-min-trace' (out-μ _) n l = tt ∷ []
+alloc-min-trace' (In {F} _) n l = in-am (mu-rep F) n
+alloc-min-trace' (out-μ {F} _) n l = out-am (mu-rep F)
 -- C1: the algebra is generated at frontier 0 (its own frame).
 alloc-min-trace' (Cata {F} _ alg) n l =
   cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)

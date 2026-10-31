@@ -10,6 +10,7 @@
 -- record, slot `ev` the environment.
 --
 --     mov-to-output · store k                             k := layer
+--       (D364: the first row is `Head`'s — `load-indirect` at a boxed μ)
 --     alloc · store pr · mov-to-input · load ev ·
 --       store-indirect · load k · store-indirect-suc      pr := FRESH [env , layer]
 --     load cl · mov-to-input · save-closure-reg           fclosure := cl
@@ -34,7 +35,8 @@ module Once.CCC.Codegen.IRObsCorrect.CataConst.Call (o : CanonicalName) (tbl : D
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
-open import Once.CCC.Codegen.IRToTrace o using (cata-call)
+open import Once.CCC.Codegen.IRToTrace o using (cata-call; cata-call-from)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (Head; head-instr)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1; SV-Code; SV-Ptr; sv-as-loc; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; mov-to-input; mov-to-output; instr-alloc-heap; instr-save-closure-reg; AbstractInstr)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -89,11 +91,13 @@ module CataCallC {FS : FrameSemantics} where
       ev     : readLoc (floc w) (AtStack (current-frame (falloc σ)) (n ℕ.+ 2)) ≡ just env-sv
       pr     : readLoc (floc w) (AtStack (current-frame (falloc σ)) (n ℕ.+ 3)) ≡ just (SV-Ptr (AtDynamic hp))
 
-  module Call (n : ℕ) (prog : AbstractTrace) (σ : FlatState) (a₀ : AllocState {FS})
-              (span : SpanAt prog (fpc σ) (cata-call n (n ℕ.+ 1) (n ℕ.+ 2) (n ℕ.+ 3)))
+  -- D364: the first row is a parameter (`Head`): `mov-to-output` at every
+  -- strategy but `strat-box`, whose layer is read out of the box.
+  module Call (n : ℕ) (prog : AbstractTrace) (σ : FlatState) (a₀ : AllocState {FS}) (h : Head)
+              (span : SpanAt prog (fpc σ) (cata-call-from (head-instr h) n (n ℕ.+ 1) (n ℕ.+ 2) (n ℕ.+ 3)))
               (nh0 : halted (floc σ) ≡ false)
               (hc : HeapLocation) (lbl : LabelId) (env-sv μ-sv : StoredValue FS)
-              (in0 : readReg (regs (floc σ)) Input1 ≡ μ-sv)
+              (hd : HeadOK prog σ h μ-sv)
               (cl0 : readLoc (floc σ) (AtStack (current-frame (falloc σ)) n) ≡ just (SV-Ptr (AtDynamic hc)))
               (ev0 : readLoc (floc σ) (AtStack (current-frame (falloc σ)) (n ℕ.+ 2)) ≡ just env-sv)
               (code0 : readLoc (floc σ) (AtDynamic (sucHL hc)) ≡ just (SV-Code lbl))
@@ -127,7 +131,7 @@ module CataCallC {FS : FrameSemantics} where
     ev≢pr = off-≢ (λ ())
 
     w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 : FlatState
-    w1  = St mov-to-output σ
+    w1  = St (head-instr h) σ
     w2  = St (store-at-slot ks) w1
     w3  = St (instr-alloc-heap 2) w2
     w4  = St (store-at-slot pr) w3
@@ -156,17 +160,17 @@ module CataCallC {FS : FrameSemantics} where
     -- rows 1-2: stash the layer
     ------------------------------------------------------------------
     nh1 : halted (floc w1) ≡ false
-    nh1 = exec-abstract-preserves-halted-WF mov-to-output (floc σ) (falloc σ) nh0 tt
+    nh1 = HeadOK.nh1 hd nh0
     out1 : Oup w1 ≡ μ-sv
-    out1 = trans (out-movout (floc σ) (falloc σ)) in0
+    out1 = HeadOK.out1 hd
     cl1 : sl w1 n ≡ just (SV-Ptr (AtDynamic hc))
-    cl1 = trans (sl-keep mov-to-output (floc σ) (falloc σ) f₀ n nhw-mov-to-output refl) cl0
+    cl1 = trans (sl-keep (head-instr h) (floc σ) (falloc σ) f₀ n (HeadOK.nhw hd) (HeadOK.nws hd)) cl0
     ev1 : sl w1 ev ≡ just env-sv
-    ev1 = trans (sl-keep mov-to-output (floc σ) (falloc σ) f₀ ev nhw-mov-to-output refl) ev0
+    ev1 = trans (sl-keep (head-instr h) (floc σ) (falloc σ) f₀ ev (HeadOK.nhw hd) (HeadOK.nws hd)) ev0
     code1 : hpr w1 (sucHL hc) ≡ just (SV-Code lbl)
-    code1 = trans (hp-keep mov-to-output (floc σ) (falloc σ) (sucHL hc) nhw-mov-to-output) code0
+    code1 = trans (hp-keep (head-instr h) (floc σ) (falloc σ) (sucHL hc) (HeadOK.nhw hd)) code0
     cf1 : current-frame (falloc w1) ≡ f₀
-    cf1 = cfS mov-to-output σ
+    cf1 = cfS (head-instr h) σ
 
     nh2 : halted (floc w2) ≡ false
     nh2 = exec-abstract-preserves-halted-WF (store-at-slot ks) (floc w1) (falloc w1) nh1 tt
@@ -182,7 +186,7 @@ module CataCallC {FS : FrameSemantics} where
     cf2 = trans (cfS (store-at-slot ks) w1) cf1
     hr2 : next-heap-ref (falloc w2) ≡ r₀
     hr2 = trans (exec-abstract-preserves-heap-ref (store-at-slot ks) (floc w1) (falloc w1) tt)
-                (exec-abstract-preserves-heap-ref mov-to-output (floc σ) (falloc σ) tt)
+                (exec-abstract-preserves-heap-ref (head-instr h) (floc σ) (falloc σ) (HeadOK.eh hd))
 
     ------------------------------------------------------------------
     -- rows 3-9: the FRESH pair := [env , layer]
@@ -442,7 +446,7 @@ module CataCallC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     runA : SRun prog 6 σ w6
     runA =
-      s-at w1 (nh0 , span 0 _ refl) refl refl tt (
+      s-at w1 (nh0 , span 0 _ refl) (HeadOK.step hd) (HeadOK.ev hd) (HeadOK.lf hd) (
       s-at w2 (nh1 , span 1 _ refl) refl refl tt (
       s-at w3 (nh2 , span 2 _ refl) refl refl tt (
       s-at w4 (nh3 , span 3 _ refl) refl refl tt (
@@ -466,7 +470,7 @@ module CataCallC {FS : FrameSemantics} where
     abstract
       seg : SegA a₀ n σ w14
       seg =
-        segA-∘ (seg-q mov-to-output σ nhw-mov-to-output refl tt tt)
+        segA-∘ (seg-q (head-instr h) σ (HeadOK.nhw hd) (HeadOK.nws hd) (HeadOK.ff hd) (HeadOK.eh hd))
         (segA-∘ (seg-store ks w1 (trans cf1 cf0) (m≤m+n n 1))
         (segA-∘ (seg-alloc w2)
         (segA-∘ (seg-store pr w3 (trans cf3 cf0) (m≤m+n n 3))

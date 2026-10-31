@@ -122,7 +122,8 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   -- makes wraparound *correct, defined* Once semantics — so no no-overflow
   -- precondition may sit on the instruction, and the range obligation lands
   -- here instead. NOT a claim about user arithmetic: every `add` the compiler
-  -- emits computes an address or the observable counter; a user `Int` addition
+  -- emits computes an address (frame release, heap bump) or `out-nz`'s 0/1
+  -- flag; a user `Int` addition
   -- goes through the Arith backend over `Once.Word` and wraps there by design.
   -- These are `…ResourceBounds.AddrNoWrap`'s fields.
   (ret-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
