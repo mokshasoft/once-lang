@@ -447,7 +447,7 @@ module WidthLaws (bits : ℕ) where
   norm-id : ∀ {n : ℕ} → n < modulus → norm n ≡ n
   norm-id = m<n⇒m%n≡m
 
-  -- `imm 0` — the immediate at every zero test and at `count-zero`. True at
+  -- `imm 0` — the immediate at every zero test. True at
   -- EVERY width, so it is proved here rather than at the instances; `refl` does
   -- NOT work, because `bits` is symbolic in this module and `mod-helper` cannot
   -- step against a stuck `2 ^ bits`. (`imm 1`, the other small immediate, needs

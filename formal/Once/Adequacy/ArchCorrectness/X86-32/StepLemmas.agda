@@ -236,15 +236,6 @@ nz-val x rng =
     go (suc zero)       rng = WL.sbb-pos 1 rng (WL.1<modulus (s≤s z≤n))
     go (suc (suc k))    rng = WL.sbb-pos (suc (suc k)) rng (WL.1<modulus (s≤s z≤n))
 
--- add reg, reg (the `lea-indexed` doublings: `add eax, eax`)
-step-add-rr : ∀ {prog s r r'}
-            → fetch prog (pc s) ≡ just (add (reg r) (reg r'))
-            → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊕ readReg (regs s) r')
-                               ; flags = updateFlags (readReg (regs s) r W.⊕ readReg (regs s) r')
-                               ; pc = pc s + 1 })
-step-add-rr ft rewrite ft = refl
-
 -- sub reg, imm. Modular likewise (`⊖`); a consumer that knows the subtraction
 -- does not borrow converts with `WL.⊖≡∸`, which is exactly what the `fits`/`room`
 -- premises beside every stack reservation supply.

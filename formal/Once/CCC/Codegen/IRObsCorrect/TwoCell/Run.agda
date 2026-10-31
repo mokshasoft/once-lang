@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; instr-load-code-addr; store-indirect-suc; LocState; StoredValue; readReg; Output; sv-as-loc; Input1; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 
@@ -48,7 +48,7 @@ module TwoCellRunC {FS : FrameSemantics} where
 
   module TwoCellRun
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (two-cell-trace n l))
     where
@@ -60,13 +60,13 @@ module TwoCellRunC {FS : FrameSemantics} where
     -- D182: this clause's instance of the shared ten-step invariant — the
     -- same shape as `inl`'s, with the two middle rows swapped.
     module TSP = TenStepPres n (load-from-slot n) (instr-load-code-addr (ℓ o l))
-                             prog base s alloc cl
+                             prog base s alloc cl rs
 
     code-lbl : LabelId
     code-lbl = ℓ o l
 
     fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-    fs0  = entry-flat base s alloc cl
+    fs0  = entry-flat base s alloc cl rs
     fs1  = flat-exec-instr mov-to-output                  prog fs0
     fs2  = flat-exec-instr (store-at-slot cell0-stash)      prog fs1
     fs3  = flat-exec-instr (instr-alloc-heap 2)           prog fs2
@@ -96,6 +96,13 @@ module TwoCellRunC {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (store-at-slot obj-stash) (floc fs3) (falloc fs3))
      (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
             (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
+
+    sf-fs5 : saved-frames (falloc fs5) ≡ saved-frames (falloc fs1)
+    sf-fs5 =
+      trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+     (trans (exec-abstract-preserves-saved (store-at-slot obj-stash) (floc fs3) (falloc fs3))
+     (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+            (exec-abstract-preserves-saved (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
 
     read-cell0-fs2 : SMCore.MemOps.readLoc (floc fs2)
                      (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
@@ -155,6 +162,15 @@ module TwoCellRunC {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (load-from-slot cell0-stash) (floc fs5) (falloc fs5))
      (trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
             (exec-abstract-preserves-frame (store-at-slot obj-stash) (floc fs3) (falloc fs3))))))
+
+    sf-fs9 : saved-frames (falloc fs9) ≡ saved-frames (falloc fs3)
+    sf-fs9 =
+      trans (exec-abstract-preserves-saved store-indirect-suc (floc fs8) (falloc fs8))
+     (trans (exec-abstract-preserves-saved (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7))
+     (trans (exec-abstract-preserves-saved store-indirect (floc fs6) (falloc fs6))
+     (trans (exec-abstract-preserves-saved (load-from-slot cell0-stash) (floc fs5) (falloc fs5))
+     (trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
+            (exec-abstract-preserves-saved (store-at-slot obj-stash) (floc fs3) (falloc fs3))))))
 
     objv : StoredValue FS
     objv = readReg (regs (floc fs3)) Output

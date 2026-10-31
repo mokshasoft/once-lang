@@ -216,7 +216,7 @@ fetch-block-nth prog k n i ft =
                                    (cong (drop n) (ct-cons i (drop (suc k) prog)))))))
 
 -- The named offsets the block-steps use. `head` is `nth … 0` modulo `+ 0`;
--- the rest are `nth` outright (2-instruction blocks up to `lea-indexed`'s 6).
+-- the rest are `nth` outright (blocks of 2 instructions and up).
 fetch-block-head : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
   → fetch prog k ≡ just i
   → mfetch (compile-trace prog) (blk-off prog k)

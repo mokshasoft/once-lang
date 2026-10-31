@@ -89,7 +89,6 @@ idefs (instr-ctrl (c-label m)) = refl
 idefs (instr-ctrl (c-entry (e-thunk m) _)) = refl
 idefs (instr-ctrl (c-entry (e-fn f) _)) = refl
 idefs (instr-ctrl (c-jmp _)) = refl
-idefs (instr-ctrl (c-branch-scratch-zero _)) = refl
 idefs (instr-ctrl (c-branch-tag-zero _)) = refl
 idefs (instr-ctrl (c-ret _)) = refl
 idefs (instr-ctrl (c-call-fn _)) = refl
@@ -120,11 +119,8 @@ idefs (instr-load-const _ _) = refl
 idefs (instr-load-code-addr _) = refl
 idefs instr-save-closure-reg = refl
 idefs (instr-load-tag-lit _) = refl
-idefs (instr-case-on-tag _ _) = refl
 idefs (instr-alloc-heap _) = refl
-idefs (instr-loop _) = refl
 idefs (instr-reg-op _) = refl
-idefs (lea-indexed _) = refl
 
 -- …its labels are definitions…
 idefl : ∀ (i : AbstractInstr) → All DefL (ilab i)
@@ -132,7 +128,6 @@ idefl (instr-ctrl (c-label m)) = d-once ∷ []
 idefl (instr-ctrl (c-entry (e-thunk m) _)) = d-callee ∷ []
 idefl (instr-ctrl (c-entry (e-fn f) _)) = d-callee ∷ []
 idefl (instr-ctrl (c-jmp _)) = []
-idefl (instr-ctrl (c-branch-scratch-zero _)) = []
 idefl (instr-ctrl (c-branch-tag-zero _)) = []
 idefl (instr-ctrl (c-ret _)) = []
 idefl (instr-ctrl (c-call-fn _)) = []
@@ -163,11 +158,8 @@ idefl (instr-load-const _ _) = []
 idefl (instr-load-code-addr _) = []
 idefl instr-save-closure-reg = []
 idefl (instr-load-tag-lit _) = []
-idefl (instr-case-on-tag _ _) = []
 idefl (instr-alloc-heap _) = []
-idefl (instr-loop _) = []
 idefl (instr-reg-op _) = []
-idefl (lea-indexed _) = []
 
 -- …its counter labels are `clab-of`'s, its function entries `fdef-of`'s.
 ileft : ∀ (i : AbstractInstr) → lefts (map key (ilab i)) ≡ cl-at (clab-of i) []
@@ -175,7 +167,6 @@ ileft (instr-ctrl (c-label m)) = refl
 ileft (instr-ctrl (c-entry (e-thunk m) _)) = refl
 ileft (instr-ctrl (c-entry (e-fn f) _)) = refl
 ileft (instr-ctrl (c-jmp _)) = refl
-ileft (instr-ctrl (c-branch-scratch-zero _)) = refl
 ileft (instr-ctrl (c-branch-tag-zero _)) = refl
 ileft (instr-ctrl (c-ret _)) = refl
 ileft (instr-ctrl (c-call-fn _)) = refl
@@ -206,18 +197,14 @@ ileft (instr-load-const _ _) = refl
 ileft (instr-load-code-addr _) = refl
 ileft instr-save-closure-reg = refl
 ileft (instr-load-tag-lit _) = refl
-ileft (instr-case-on-tag _ _) = refl
 ileft (instr-alloc-heap _) = refl
-ileft (instr-loop _) = refl
 ileft (instr-reg-op _) = refl
-ileft (lea-indexed _) = refl
 
 iright : ∀ (i : AbstractInstr) → rights (map key (ilab i)) ≡ map once-symbol-path (fdef-of i)
 iright (instr-ctrl (c-label m)) = refl
 iright (instr-ctrl (c-entry (e-thunk m) _)) = refl
 iright (instr-ctrl (c-entry (e-fn f) _)) = refl
 iright (instr-ctrl (c-jmp _)) = refl
-iright (instr-ctrl (c-branch-scratch-zero _)) = refl
 iright (instr-ctrl (c-branch-tag-zero _)) = refl
 iright (instr-ctrl (c-ret _)) = refl
 iright (instr-ctrl (c-call-fn _)) = refl
@@ -248,11 +235,8 @@ iright (instr-load-const _ _) = refl
 iright (instr-load-code-addr _) = refl
 iright instr-save-closure-reg = refl
 iright (instr-load-tag-lit _) = refl
-iright (instr-case-on-tag _ _) = refl
 iright (instr-alloc-heap _) = refl
-iright (instr-loop _) = refl
 iright (instr-reg-op _) = refl
-iright (lea-indexed _) = refl
 
 adefs-labs : ∀ (t : AbstractTrace) → adefs t ≡ map labelSym (dlabs t)
 adefs-labs []       = refl
@@ -797,3 +781,36 @@ lib-unique-at T tn =
 
 lib-unique : ∀ (m : Resolved) → Unique (lib-defs (C.moduleTable m))
 lib-unique m = lib-unique-at (C.moduleTable m) (table-names m)
+
+------------------------------------------------------------------------
+-- plan 0.135 S3: THE TABLE'S NAMES ARE DISTINCT (`LinkedProgram`'s last
+-- component, what `find-fn` resolving a linked call to ITS entry needs). The
+-- symbols are distinct (the extractor guard), and equal names give equal
+-- symbols. At either build: the optimizer keeps every function's name.
+------------------------------------------------------------------------
+
+open import Once.Denotation.Program using (NamesDistinct)
+
+private
+  ap-unmap : ∀ {xs : List IRFun}
+           → AllPairs _≢_ (Data.List.map (λ e → once-symbol-path (fname e)) xs)
+           → NamesDistinct xs
+  ap-unmap {[]}     []         = []
+  ap-unmap {x ∷ xs} (px ∷ pxs) = all-un xs px ∷ ap-unmap pxs
+    where
+      all-un : ∀ (ys : List IRFun) → All (once-symbol-path (fname x) ≢_) (Data.List.map (λ e → once-symbol-path (fname e)) ys)
+             → All (λ y → fname x ≢ fname y) ys
+      all-un []       []       = []
+      all-un (y ∷ ys) (n ∷ ns) = (λ eq → n (cong once-symbol-path eq)) ∷ all-un ys ns
+
+names-distinct-at : ∀ (T : List IRFun) → TableNames T → NamesDistinct T
+names-distinct-at T tn =
+  ap-unmap (subst (AllPairs _≢_) (sym (TableNames.syms≡ tn)) (ap-reverse (TableNames.dist tn)))
+
+table-names-distinct : ∀ (m : Resolved) → NamesDistinct (C.moduleTable m)
+table-names-distinct m = names-distinct-at (C.moduleTable m) (table-names m)
+
+-- plan 0.135 S3: a function entry defines exactly its own name (for the call
+-- scan's resolution, `FnLayout`).
+fn-unit-nf : ∀ (e : IRFun) (l : ℕ) → fdefs (fn-image l e) ≡ fname e ∷ []
+fn-unit-nf = unit-nf

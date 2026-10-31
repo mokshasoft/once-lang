@@ -6,7 +6,7 @@
 --
 -- D200: `Out` — forcing a ν (D199). `apply`'s argument with the pair-packing
 -- removed: a suspension IS the callee record, so the setup is three rows, and
--- the hand-off is to `BlockRuns.coalgs`.
+-- the hand-off is to the ν's own force (`NuV.nu-force`, plan 0.135 S1).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; sv-as-loc; module LocState)
 open LocState using (regs; halted)
-open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; ν-type; ⟦_⟧TI)
+open import Once.IRTy using (WellFormedFI; ν-type; ⟦_⟧TI)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -40,15 +40,16 @@ open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 module OutC {FS : FrameSemantics} where
 
   open Core {FS}
+  open NuV
   open Mach {FS}
 
   module OutSetupPres
     (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     where
 
     b0 b1 b2 b3 : FlatState
-    b0 = entry-flat base s alloc cl
+    b0 = entry-flat base s alloc cl rs
     b1 = flat-exec-instr instr-save-closure-reg prog b0
     b2 = flat-exec-instr load-indirect          prog b1
     b3 = flat-exec-instr mov-to-input           prog b2
@@ -64,12 +65,6 @@ module OutC {FS : FrameSemantics} where
      mem-pres loc =
       trans (mem-untouched mov-to-input (floc b2) (falloc b2) loc nhw-mov-to-input refl)
             (mem-untouched load-indirect (floc b1) (falloc b1) loc nhw-load-indirect refl)
-
-     carry : ∀ {mC C} (c : ⟦ C ⟧) (lc : ValueLocation FS)
-          → BeforeFrontier alloc lc → ValidAtWF mC alloc {C} c lc s
-          → ValidAtWF mC alloc {C} c lc (floc b3)
-     carry c lc cb v =
-      validityWF-mem-preserved c lc s (floc b3) cb (λ loc' _ → mem-pres loc') v
 
      -- The closure register holds the ν pointer: row 1 copies `Input1` into it
      -- before row 3 overwrites `Input1` with the seed. That is what the register
@@ -92,23 +87,23 @@ module OutC {FS : FrameSemantics} where
 
   obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
   -- A ν is a two-cell heap object: it fits no register, and it is not `Unit`.
-  obs-correct-Out wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k
-  obs-correct-Out wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k
+  obs-correct-Out wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k rs
+  obs-correct-Out wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k rs
   -- D184 pins a suspension to the HEAP, and `do-call` enters on no other
   -- shape, so the stack case is refuted by the witness's own `LocMatchesMode`.
   obs-correct-Out {F} wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
-    (in-loc (AtStack _ _) valid bf rdi) k = stack-refuted valid
+    (in-loc (AtStack _ _) valid bf rdi) k rs = stack-refuted valid
     where
-      stack-refuted : ValidAtWF mIn alloc {ν-type F} x (AtStack _ _) s
-                    → MachineRefinesObsF prog base n l (Out wf) x s alloc cl k
-      stack-refuted (valid-ν-susp-wf _ lmm _ _ _) = ⊥-elim lmm
+      stack-refuted : ValidAtWF {prog = prog} mIn alloc {ν-type F} x (AtStack _ _) s
+                    → MachineRefinesObsF prog base n l (Out wf) x s alloc cl rs k
+      stack-refuted (valid-ν-wf nv) = ⊥-elim (nu-heap nv)
   obs-correct-Out {F} wf n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
-    (in-loc (AtDynamic ν-hl) valid bf rdi) k = go x valid
+    (in-loc (AtDynamic ν-hl) valid bf rdi) k rs = go x valid
     where
       ν-loc : ValueLocation FS
       ν-loc = AtDynamic ν-hl
 
-      module OSP = OutSetupPres prog base s alloc cl
+      module OSP = OutSetupPres prog base s alloc cl rs
 
       -- The VALUE is an argument, not the clause's `x`. Matching
       -- `valid-ν-susp-wf` has to FORCE the ν it is a witness for — it is the
@@ -117,53 +112,22 @@ module OutC {FS : FrameSemantics} where
       -- constructor's `coalg`/`seed` out of an opaque `x` and got stuck. That
       -- is the same stuckness that surfaced earlier as unsolved `_coalg` metas.
       go : ∀ (v : ⟦ ν-type F ⟧)
-         → ValidAtWF mIn alloc {ν-type F} v ν-loc s
-         → MachineRefinesObsF prog base n l (Out wf) v s alloc cl k
-      -- The two functor witnesses — the one on the `Out` node and the one the
-      -- suspension was built with — are identified ONCE, by `rewrite`, rather
-      -- than transported at each use. Carrying the equation instead costs two
-      -- `subst`s whose motives mention `evalᴰ (Out w) x`, and normalising that
-      -- motive is what made this clause alone double the module's peak memory.
-      go _ (valid-ν-susp-wf {E = E} {A = A} wf' {coalg = coalg} {seed = seed}
-                            {coalg-label = lbl} lmm sc cp slb)
-        rewrite WellFormedFI-irrelevant wf' wf = assemble sc
+         → ValidAtWF {prog = prog} mIn alloc {ν-type F} v ν-loc s
+         → MachineRefinesObsF prog base n l (Out wf) v s alloc cl rs k
+      -- plan 0.135 S1: the witness is the ν's FORCE (`NuV`), so the run is
+      -- read off the value: the seed cell, the code cell and its label, and
+      -- what calling that block on the seed does.
+      go v (valid-ν-wf nv) = assemble
         where
-          -- The seed's residence, split exactly as `apply` splits its
-          -- argument's — and the MODE comes out of the split too, because a
-          -- boxed seed is `in-loc` at the cell's own mode and an inline one is
-          -- `in-reg`, which has no mode at all.
-          seed-sv-of : CellAt alloc (E IRTy′.* A) seed ν-loc s → StoredValue FS
-          seed-sv-of (cell-ptr {comp-loc = cl'} _ _ _) = SV-Ptr cl'
-          seed-sv-of (cell-inline rep _)               = inline-sv rep seed
-
-          seed-cell-of : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
-                       → SMCore.MemOps.readLoc s ν-loc ≡ just (seed-sv-of c)
-          seed-cell-of (cell-ptr q _ _)  = q
-          seed-cell-of (cell-inline _ q) = q
-
-          mode-of : CellAt alloc (E IRTy′.* A) seed ν-loc s → AllocMode
-          mode-of (cell-ptr {mC = m} _ _ _) = m
-          mode-of (cell-inline _ _)         = Heap
-
-          input-of : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
-                   → InputAt {E IRTy′.* A} (mode-of c) alloc seed (floc OSP.b3)
-          input-of (cell-ptr {comp-loc = cl'} q cbf cv) =
-            in-loc cl' (OSP.carry seed cl' cbf cv) cbf
-                   (OSP.input1-b3 ν-loc (SV-Ptr cl') rdi q)
-          input-of (cell-inline (rep-prim fit) q) =
-            in-reg fit (OSP.input1-b3 ν-loc (prim-sv fit seed) rdi q)
-          input-of (cell-inline (rep-unit ueq sv) q) = in-unit ueq
-
           ν-val : ⟦ ν-type F ⟧
-          ν-val = retVal (evalᴰ (Ana wf coalg) seed)
+          ν-val = v
 
-          cinfo = BlockRuns.coalgs cr wf coalg seed lbl
-                    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed}
-                                     {coalg-label = lbl} lmm sc cp slb) cp
-
-          j      = proj₁ cinfo
-          feq    = proj₁ (proj₂ cinfo)
-          runner = proj₂ (proj₂ cinfo)
+          lbl     = nu-lbl nv
+          j       = nu-j nv
+          seed-sv = nu-seed nv
+          c0      = nu-cell0 nv
+          cp      = nu-cell1 nv
+          feq     = nu-code nv
 
           -- Opaque for `OutSetupPres`'s reason: the call's three-level view is
           -- consumed only through `cong`, never reduced.
@@ -183,9 +147,8 @@ module OutC {FS : FrameSemantics} where
              (trans (cong (λ z → do-call-code prog z OSP.b3) code-cell-b3)
                     (cong (λ z → do-call-at z OSP.b3) feq))
 
-          assemble : (c : CellAt alloc (E IRTy′.* A) seed ν-loc s)
-                   → MachineRefinesObsF prog base n l (Out wf) ν-val s alloc cl k
-          assemble c = record
+          assemble : MachineRefinesObsF prog base n l (Out wf) ν-val s alloc cl rs k
+          assemble = record
             { value-realized =
                 realized (4 + CalleeRun.steps crun) (CalleeRun.settle crun)
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
@@ -194,15 +157,16 @@ module OutC {FS : FrameSemantics} where
                          (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
                               , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
                                       (chain-left run4 (trans (cong (λ st → halted (floc st)) call-eq) nh3)))
-                         (λ nc → CalleeRun.no-ret crun (nc′ nc)) (λ nc → CalleeRun.no-link crun (nc′ nc))
+                         (λ p → CalleeRun.no-ret crun (trans res-eq p)) (λ nc → CalleeRun.no-link crun (nc′ nc))
                          (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
                          place
                          (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
                                      (ctrls-≤ʳ run4 (CalleeRun.run crun)))
                          (λ nc fr j bf → mem-pres-out nc (AtStack fr j) bf)
                          (λ nc hl bf → mem-pres-out nc (AtDynamic hl) bf)
-                         (λ nc → CalleeRun.frame-pres crun (nc′ nc) alloc (cong falloc call-eq))
+                         (λ p → CalleeRun.frame-pres crun (trans res-eq p) alloc (cong falloc call-eq))
                          bf-mono-out
+                         (λ p → CalleeRun.frames-pres crun (trans res-eq p) alloc (cong falloc call-eq))
             ; traces-agree = trc
             }
             where
@@ -211,30 +175,34 @@ module OutC {FS : FrameSemantics} where
               nh2 : halted (floc OSP.b2) ≡ false
               nh2 = exec-abstract-preserves-halted-WF load-indirect
                       (floc OSP.b1) (falloc OSP.b1) nh1
-                      (ν-loc , cong sv-as-loc rdi , seed-sv-of c , seed-cell-of c)
+                      (ν-loc , cong sv-as-loc rdi , seed-sv , c0)
               nh3 : halted (floc OSP.b3) ≡ false
               nh3 = exec-abstract-preserves-halted-WF mov-to-input
                       (floc OSP.b2) (falloc OSP.b2) nh2 tt
 
               crun : CalleeRun prog (flat-exec-instr instr-call-closure prog OSP.b3)
-                       (suc (fpc OSP.b3)) (⟦ F ⟧TI (ν-type F))
+                       (suc (fpc OSP.b3)) rs (⟦ F ⟧TI (ν-type F))
                        (evalᴰ (Out wf) ν-val) k
-              crun = runner (flat-exec-instr instr-call-closure prog OSP.b3)
-                       (falloc OSP.b3) (suc (fpc OSP.b3)) k (mode-of c)
+              crun = crun-map ν-layer-place
+                       (nu-force nv wf (flat-exec-instr instr-call-closure prog OSP.b3)
+                       (falloc OSP.b3) (suc (fpc OSP.b3)) k rs
                        (trans (cong fpc call-eq) refl)
                        (trans (cong (λ st → halted (floc st)) call-eq) nh3)
                        (trans (cong fret call-eq) refl)
                        (trans (cong falloc call-eq) refl)
-                       (subst (λ st → InputAt {E IRTy′.* A} (mode-of c) (falloc OSP.b3) seed st)
-                              (sym (cong floc call-eq)) (input-of c))
+                       n≤
+                       (λ _ b → b)
+                       (λ l _ → trans (cong (λ st → SMCore.MemOps.readLoc (floc st) l) call-eq) (OSP.mem-pres l))
+                       (subst (λ st → readReg (regs st) Input1 ≡ seed-sv)
+                              (sym (cong floc call-eq)) (OSP.input1-b3 ν-loc seed-sv rdi c0)))
 
-              run4 : FlatSteps prog 4 (entry-flat base s alloc cl)
+              run4 : FlatSteps prog 4 (entry-flat base s alloc cl rs)
                        (flat-exec-instr instr-call-closure prog OSP.b3)
               run4 = (nh , span 0 _ refl) ∷ (nh1 , span 1 _ refl)
                    ∷ (nh2 , span 2 _ refl) ∷ (nh3 , span 3 _ refl) ∷ []
 
               run : FlatSteps prog (4 + CalleeRun.steps crun)
-                      (entry-flat base s alloc cl) (CalleeRun.settle crun)
+                      (entry-flat base s alloc cl rs) (CalleeRun.settle crun)
               run = FlatSteps-++ run4 (CalleeRun.run crun)
 
               -- plan 0.97: the callee's computation IS `evalᴰ (Out wf) ν-val`
@@ -244,7 +212,7 @@ module OutC {FS : FrameSemantics} where
               -- rows and the call make no call of their own.
               callFs = flat-exec-instr instr-call-closure prog OSP.b3
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
-              h-eq = trans (log-of run4 _ refl) (++-identityʳ _)
+              h-eq = trans (log-of run4 refl) (++-identityʳ _)
 
               RE : runAt (floc callFs) (⟪ evalᴰ (Out wf) ν-val ⟫ k) ≡ runAt s (⟪ evalᴰ (Out wf) ν-val ⟫ k)
               RE = runAt-≡ {st = floc callFs} {st′ = s} {m = ⟪ evalᴰ (Out wf) ν-val ⟫ k} {m′ = ⟪ evalᴰ (Out wf) ν-val ⟫ k} h-eq refl

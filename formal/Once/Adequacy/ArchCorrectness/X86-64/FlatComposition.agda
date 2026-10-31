@@ -116,12 +116,6 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.HeadView
   public
 
 reg-op-no-label : ∀ (op : RegOp) → has-label (compile-abstract (instr-reg-op op)) ≡ false
-reg-op-no-label scratch-one = refl
-reg-op-no-label scratch-zero = refl
-reg-op-no-label scratch-dec = refl
-reg-op-no-label scratch-load-count = refl
-reg-op-no-label count-zero = refl
-reg-op-no-label count-inc = refl
 reg-op-no-label out-nz = refl
 
 const-no-label : ∀ {A} (p : FitsInReg A) (v : _) → has-label (compile-abstract (instr-load-const p v)) ≡ false
@@ -141,7 +135,6 @@ headView instr-save-closure-reg = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ �
 headView (load-from-slot _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (store-at-slot _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (lea-slot _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (lea-indexed _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (restore-input _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-alloc-stack _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-dealloc-stack _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -154,10 +147,8 @@ headView (worklist-check _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → re
 headView (instr-load-code-addr _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-load-tag-lit _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-alloc-heap _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-loop _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-sigop si) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-call-fn f)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
@@ -168,7 +159,6 @@ headView (instr-ctrl (c-entry m b)) =
                 (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-ret b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView (instr-ctrl (c-branch-scratch-zero m)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 
 ------------------------------------------------------------------------

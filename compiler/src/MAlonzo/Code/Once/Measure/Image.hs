@@ -83,11 +83,11 @@ d_frame_36 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Measure.Image.step
 d_step_52 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076 ->
   T_ImageStats_6 -> T_ImageStats_6
 d_step_52 v0 v1
   = case coe v0 of
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2314 v2
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2136 v2
         -> case coe v1 of
              C_mk'45'stats_32 v3 v4 v5 v6 v7 v8
                -> coe
@@ -95,18 +95,18 @@ d_step_52 v0 v1
                     (coe addInt (coe (1 :: Integer)) (coe v4))
                     (coe addInt (coe v2) (coe v5)) (coe v6) (coe v7) (coe v8)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2320 v2
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2140 v2
         -> case coe v2 of
-             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2236 v3 v4
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'entry_2060 v3 v4
                -> coe d_frame_36 (coe v4) (coe v1)
-             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2242 v3
+             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'start_2066 v3
                -> coe d_frame_36 (coe v3) (coe v1)
              _ -> coe v1
       _ -> coe v1
 -- Once.Measure.Image.count
 d_count_78 ::
   T_ImageStats_6 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076 ->
   T_ImageStats_6
 d_count_78 v0 v1
   = case coe v0 of
@@ -120,7 +120,7 @@ d_count_78 v0 v1
 -- Once.Measure.Image.go
 d_go_94 ::
   T_ImageStats_6 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076] ->
   T_ImageStats_6
 d_go_94 v0 v1
   = case coe v1 of
@@ -130,7 +130,7 @@ d_go_94 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Measure.Image.image-stats
 d_image'45'stats_104 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2252] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076] ->
   T_ImageStats_6
 d_image'45'stats_104 = coe d_go_94 (coe d_empty_34)
 -- Once.Measure.Image.show-stats

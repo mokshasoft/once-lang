@@ -38,8 +38,8 @@ open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (readReg; Scratch; AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; CompUnit; link; link-pre; link-post; link-block-split; module CompUnit; module LocState)
-open LocState using (halted; regs)
+  using (AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; CompUnit; link; link-pre; link-post; link-block-split; module CompUnit; module LocState)
+open LocState using (halted)
 open CompUnit using (blocks)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
@@ -116,20 +116,6 @@ module FlatStepsAPI {FS : FrameSemantics} where
            → flat-exec-instr (instr-ctrl (c-jmp n)) prog fs
                ≡ do-jump (find-label prog n) fs
   flat-jmp prog fs n = refl
-
-  -- scratch-branch NOT taken (Scratch ≠ 0, the descend-continue path): fall through.
-  flat-scratch-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
-    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
-    → flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs
-        ≡ record fs { fpc = suc (fpc fs) }
-  flat-scratch-branch-not prog fs n cond rewrite cond = refl
-
-  -- scratch-branch taken (Scratch = 0, exit): pc ← find-label target.
-  flat-scratch-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
-    → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ true
-    → flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs
-        ≡ do-jump (find-label prog n) fs
-  flat-scratch-branch-yes prog fs n cond rewrite cond = refl
 
   -- tag-branch NOT taken (tag ≠ 0, the inr/cons path): fall through.
   flat-tag-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)

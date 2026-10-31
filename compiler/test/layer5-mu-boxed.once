@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D366: a μ whose layer is a register value or `Unit` (`Mu (K Int)`,
+-- `Mu (K Unit)`) is a heap pointer like every other μ. `In` boxes the
+-- layer into a fresh block, and the cata reads it back out of the box.
+-- Built several ways (a literal, a function argument, inside a pair) and
+-- consumed by `cata`.
+--
+-- Expected: exit 47
+
+import I.Linux.Syscalls as S
+
+getInt : Mu (K Int) -> Int
+getInt = cata id
+
+wrap : Int -> Mu (K Int)
+wrap n = In n
+
+boxed : (Mu (K Int)) * Mu (K Int)
+boxed = (In 40, wrap 5)
+
+unitTwo : Mu (K Unit) -> Int
+unitTwo = cata (\_ -> 2)
+
+u : Mu (K Unit)
+u = In unit
+
+main : Act Unit Void
+main = exit@S (getInt (fst boxed) + getInt (snd boxed) + unitTwo u + getInt (wrap 0))

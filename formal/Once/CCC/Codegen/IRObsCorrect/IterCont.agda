@@ -34,7 +34,7 @@ open import Once.CCC.Machine.SMCore
          load-indirect-suc; mov-to-input; store-at-slot; instr-alloc-heap; load-from-slot;
          store-indirect; store-indirect-suc; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
          sv-as-loc; writeReg-same; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; next-heap-ref)
+open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
 open import Data.Product using (Σ)
 open import Data.Sum using (inj₁; inj₂)
@@ -80,25 +80,26 @@ module IterContC {FS : FrameSemantics} where
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
     (span : SpanAt prog base (emitted n l (Iter body)))
     (la : LabelsAt prog base (emitted n l (Iter body)))
-    (Z : Loop.Anchor body n l base)
+    (Z : Loop.Anchor body n l base prog)
     (S0 : FlatState) (a′ : ⟦ A ⟧)
     (nh0 : halted (floc S0) ≡ false)
     (pc0 : fpc S0 ≡ (3 + length (IterShape.bt body n l) + 0) + base)
     (cf0 : current-frame (falloc S0) ≡ Loop.FR body n l base Z)
+    (sf0 : saved-frames (falloc S0) ≡ Loop.SF body n l base Z)
     (ns0 : next-slot (falloc S0) ≡ next-slot (Loop.Anchor.alloc₀ Z))
     (hr0 : next-heap-ref (falloc (Loop.Anchor.fsF Z)) ≤ next-heap-ref (falloc S0))
     (memF0 : ∀ (loc : ValueLocation FS) → BeforeFrontier (falloc (Loop.Anchor.fsF Z)) loc
            → SMCore.MemOps.readLoc (floc S0) loc ≡ SMCore.MemOps.readLoc (floc (Loop.Anchor.fsF Z)) loc)
     (env0 : SMCore.MemOps.readLoc (floc S0) (AtStack (Loop.FR body n l base Z) (suc n)) ≡ just (Loop.fv body n l base Z))
-    (ret0 : fret S0 ≡ []) (lnk0 : flink S0 ≡ nothing)
+    (ret0 : fret S0 ≡ Loop.Anchor.rs₀ Z) (lnk0 : flink S0 ≡ nothing)
     (mem00 : ∀ (loc : ValueLocation FS) → BeforeFrontier (record (Loop.Anchor.alloc₀ Z) { next-slot = n }) loc
            → SMCore.MemOps.readLoc (floc S0) loc ≡ SMCore.MemOps.readLoc (Loop.Anchor.s₀ Z) loc)
     (bf00 : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record (Loop.Anchor.alloc₀ Z) { next-slot = m }) loc
           → BeforeFrontier (record (falloc S0) { next-slot = m }) loc)
     (left0 : LocState.left (floc S0) ≡ LocState.left (Loop.Anchor.s₀ Z))
     {m : AllocMode} (loc : ValueLocation FS)
-    (vS : ValidAtWF m (falloc S0) {B IRT.+ A} (inj₂ a′) loc (floc S0))
-    (bef : BeforeFrontier (falloc S0) loc)
+    (vS : ValidAtWF {prog = prog} m (falloc S0) {B IRT.+ A} (inj₂ a′) loc (floc S0))
+    (bef : Live (falloc S0) loc)
     (rax : readReg (regs (floc S0)) Output ≡ SV-Ptr loc)
     where
 
@@ -121,8 +122,8 @@ module IterContC {FS : FrameSemantics} where
     memG : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc gs) lc ≡ SMCore.MemOps.readLoc (floc S0) lc
     memG lc = trans (mem-unpack (floc c1) (falloc c1) lc) (mem1 lc)
 
-    v1 : ValidAtWF m (falloc c1) {B IRT.+ A} (inj₂ a′) loc (floc c1)
-    v1 = validityWF-mem-preserved (inj₂ a′) loc (floc S0) (floc c1) bef (λ lc _ → mem1 lc) vS
+    v1 : ValidAtWF {prog = prog} m (falloc c1) {B IRT.+ A} (inj₂ a′) loc (floc c1)
+    v1 = validityWF-mem-preserved (inj₂ a′) loc (floc S0) (floc c1) (live→bf bef) (λ lc _ → mem1 lc) vS
 
     nh1 : halted (floc c1) ≡ false
     nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt
@@ -136,7 +137,7 @@ module IterContC {FS : FrameSemantics} where
     mg : AllocMode
     mg = proj₁ (payload-place-r v1 rd1)
 
-    placeG : ResultPlace A mg (falloc gs) (falloc gs) a′ (floc gs)
+    placeG : ResultPlace {prog = prog} A mg (falloc gs) (falloc gs) a′ (floc gs)
     placeG = proj₂ (payload-place-r v1 rd1)
 
     ------------------------------------------------------------------
@@ -150,7 +151,7 @@ module IterContC {FS : FrameSemantics} where
                 ≡ just (readReg (regs (floc fsF)) Output)
     fst-cell-gs = trans (memG (AtStack (current-frame alloc₀) (suc n))) env0
 
-    module PP = PairPlace {E} {A} n alloc₀ n≤₀ fsF gs cf-F cf0 ns-F ns0 hr0
+    module PP = PairPlace {prog} {E} {A} n alloc₀ n≤₀ fsF gs cf-F cf0 ns-F ns0 hr0
                   e a′ mf mg caf (falloc gs) placeF placeG mem-F→G fst-cell-gs
 
     ------------------------------------------------------------------
@@ -320,6 +321,7 @@ module IterContC {FS : FrameSemantics} where
                  PP.before
                  (trans (writeReg-same (regs (floc PP.u10)) Input1 (readReg (regs (floc PP.u10)) Output)) PP.out-u10)
       ; cf   = PP.cf-u10
+      ; sf   = trans PP.sf-u10 (trans (exec-abstract-preserves-saved load-indirect-suc (floc c2) (falloc c2)) sf0)
       ; ns   = trans PP.nextslot-u10 ns0
       ; hr   = ≤-trans hr0 PP.gs≤u10
       ; memF = λ lc bf → trans (mem11 lc) (PP.mem-F→u10 lc bf)

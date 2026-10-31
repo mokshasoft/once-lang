@@ -72,7 +72,17 @@ decision-log entry updates the rule it changes here, in the same commit.
   reference resolves (`EmittedWF`, proved). (D089, D082, D100)
 - **A ν is a two-cell heap suspension** (seed, coalgebra code), the same
   machine object as a closure; `Out` forces it; `Ana` re-suspends by
-  allocating fresh nodes, `in-ν` does not. (D189, D199)
+  allocating fresh nodes, `in-ν` does not. Its witness says what forcing it
+  does (`NuV`, coinductive: the force's run yields a layer of `NuV`s); the
+  seed stays opaque. (D364 ← D356, D189, D199)
+- **One cata codegen**: no recursive position → one algebra call (at a
+  boxed μ, `Mu (K Int)`/`Mu (K Float)`, the call's first row reads the layer
+  out of the box, `strat-box`, D366); any
+  recursion → the generic post-order walk (flatten, then fold with a value
+  stack). No shape-specialised fold codegens; speed returns as optimisations
+  proved against the walk. Every algebra call gets a FRESH `(env , layer)`
+  pair; reusing one pair per fold waits for the linearity / in-place work.
+  (D363 ← D131)
 - **Float constants are emitted as IEEE bit patterns** (x86-32 still `ud2`).
   (D079)
 - **Every prologue is `c-entry`'s own lowering**, never a hand-written frame.
@@ -93,6 +103,15 @@ decision-log entry updates the rule it changes here, in the same commit.
   payloads and compound components are stored inline; both stack and heap
   sums write their tag; a `Unit` input has no residence. (D073, D077, D149,
   D187, D078, D074)
+- **Values are heap-only**: every location inside a value is a heap
+  location, so no frame move (`enter-call`, `leave-frame`) can kill it; no
+  `lea-slot` is emitted. (D364)
+- **A μ value is a heap pointer at every functor** (`MuRep`): a layer that is
+  already a pointer (sum, product, μ) is the node itself; `In` boxes an
+  `Int`/`Float` layer into a fresh pair block whose first cell holds the
+  layer's word (inline, or a pointer to it), which `out-μ` (`load-indirect`)
+  and the cata's call (`strat-box`) read back; a `Unit` layer gets a fresh
+  block. (D366)
 - **Closures are heap-moded**: a stack-resident closure would halt `do-call`.
   (D184)
 - **The layout model**: heap up from 0, stack down from an opaque top, a ghost
@@ -108,9 +127,16 @@ decision-log entry updates the rule it changes here, in the same commit.
   (`do-call`), the return address lives in memory (the ghost stack is real),
   and a code address is an address (resolved through `find-label`). (D092,
   D093, D096 ← D081)
-- **The stack correspondence covers every live frame with a floor**; the
-  window is one-directional and entering a frame clears it; the call owns the
+- **The stack correspondence covers every live frame down to the concrete
+  stack's floor** (the abstract stack has none, below); the window is
+  one-directional and entering a frame clears it; the call owns the
   return-address slot. (D085, D090, D086)
+- **A frame is an address tagged with its depth, and the abstract stack has
+  no floor**: a callee's frame is new for every caller, the lowest included
+  (`shift-≺`: a shift of at least one slot is strictly below; `shift-below`:
+  shifting a frame already below another keeps it below). Running out of stack
+  is the concrete machine's outcome (`StackRoom`/`CallRoom`, plan 0.123).
+  (D362)
 - **The stack pointer is represented once, on the frame.** (D084)
 - **The call window's head row is per-arch**; RISC-V spills its link onto the
   reserved cell. (D105, D106)
@@ -118,8 +144,9 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **The closure register is tracked** (`r12-eq`). (D097)
 - **A role nothing produces is state the machine does not have** (`Input2`
   retired; injective role → register maps). (D108)
-- **A closure value carries its code's name, not its behaviour**; behaviour is
-  looked up where the value is used. (D170)
+- **A closure value carries its behaviour**: its witness names the code's
+  label, which resolves in the program, and the block's run on every valid
+  argument (`ArrowV`/`CallRuns`). (D364 ← D170)
 - **`next-slot` is a construction-time frontier only.** (D150)
 - **Which leaf a load reads is a program fact** (`LoadsWF`). (D129)
 
@@ -130,20 +157,25 @@ decision-log entry updates the rule it changes here, in the same commit.
   sub-IRs' correctness as arguments (star-shaped); it owes memory
   preservation below its own frontier (split into stack and heap), frontier
   monotonicity and frame preservation; it takes the block channel
-  (`BlocksAt`). (D152, D155, D180, D202, D204, D206, D208, D210, D215)
-- **`apply` is proved against `CalleeRuns`**; the ν code cell has `CoalgRuns`.
-  The global discharge is carried as the apex hypotheses
-  `BlockRunsHyp-<arch>`, not as a postulate. (D188, D198, D218)
-- **The machine relation is a function on types, not a datatype**: `RelV`/`RelT`
-  by recursion on the IR type, the arrow clause a Π over related inputs, the
-  computation relation indexed by the event budget, stopping at μ/ν (no
-  pragma) — the shape of `Adequacy/MeaningRelation`, one layer down. `curry`
-  establishes the arrow clause and `apply` consumes it. This is the route that
-  discharges `BlockRunsHyp`; a `data` index cannot pin the function a closure
-  denotes (D217). In progress: `Once/Spike/RelSpike.agda`, plan 0.93 S3,
-  8 of 13 clauses, no postulates. (D283 ← D213, D216, D217)
+  (`BlocksAt`). Its frontier premise is the run-time invariant
+  `next-slot alloc ≡ 0` (D359). It is stated over every entry return stack `rs`, owing
+  `fret ≡ rs`, the frame and the frame stack beneath it only when the run
+  returned. (D357, D358, D152, D155, D180, D202, D204, D206, D208, D210, D215)
+- **Calls are proved, not assumed**: `apply` reads the callee's run off the
+  closure and `Out` off the ν; `curry`, `Ana` and `in-ν` prove it through the
+  block-call lemma; the program's functions run as the table says (`FnRuns`,
+  by induction along the table). `BlockRuns` is a premise of the obligation
+  holding only facts about the image, proved for every linked program
+  (`FlatFromObs.block-runs`); `once-certified` has no block-table hypothesis.
+  `cata-correct` is a theorem. (D364 ← D360, D356, D188, D198, D218)
+- **The value relation is a function on types, not a datatype**: `ValidAtWF`
+  dispatches on the IR type to non-recursive cases parameterised by their
+  components' validities (no pragma); the arrow and ν cases state what the
+  block does, the computation half stays `MachineRefinesObsF`/`CalleeRun`;
+  μ is a separate first-order relation. A `data` index cannot pin the
+  function a closure denotes (D217). (D364 ← D283, D213, D216, D217)
 - **The trust base on `freyd-spec`**: the step-budget and fuel postulates
-  are gone (the claim is weak bisimilarity of traces), `BlockRuns` says a
+  are gone (the claim is weak bisimilarity of traces), a callee's run (`CalleeRun`) says a
   stopped callee has not left the program, `opt-trace` is restated over
   traces. (D326) `opt-trace` is now a theorem: the optimizer keeps a
   program's trace, and the codegen chain is stated at either build. (D347)
@@ -272,6 +304,10 @@ decision-log entry updates the rule it changes here, in the same commit.
   with every `main` an entry; `check-decides` (the compiler's typing) is a lemma
   under it. A program's denotation is a library's (`DenoteModule`) and its entry.
   (D355)
+- **Merging renumbers the branch, not master**: a long branch may be squashed
+  before the rebase; its decisions and plans whose numbers master took are
+  renumbered past master's, changing only the branch's own lines; the rebased
+  branch is pushed under a new name, not force-pushed. (D365)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`
@@ -290,5 +326,5 @@ decision-log entry updates the rule it changes here, in the same commit.
 ## Open — for the user
 
 1. **D076**: whether the shape layer is complete is not recorded.
-2. **D218**: the apex still takes the three `BlockRunsHyp-<arch>` hypotheses;
-   their discharge is the D283 relation (§6), in progress.
+2. (Closed by D364: `BlockRunsHyp-<arch>` are deleted and the block table is
+   proved; the apex's remaining parameters are the 19 resource bounds.)

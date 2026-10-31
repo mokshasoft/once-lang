@@ -47,9 +47,9 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
 open import Once.CCC.Label using (EntryId)
-open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; s3; s4; Reg)
+open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (_<_)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -169,23 +169,8 @@ RegRange =
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → R.readReg (R.State.regs s) r < R.W.modulus
 
--- (2) A REACHABLE `scratch-dec` FINDS A NON-ZERO SCRATCH — the no-borrow
--- condition, and NOT a new assumption: the emitter reaches the decrement only
--- through a branch that was not taken. Same class and route as
--- `emitted-thunk-guarded`.
-ScratchDecGuarded : Set₁
-ScratchDecGuarded =
-  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-    (s : R.State)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-reg-op scratch-dec)
-  → 1 ≤ R.readReg (R.State.regs s) s3
-
 ------------------------------------------------------------------------
--- (3) THE ADDRESS SPACE DOES NOT WRAP at the emitted `addi` sites.
+-- (2) THE ADDRESS SPACE DOES NOT WRAP at the emitted `addi` sites.
 --
 -- SITE-CONDITIONED, and that is forced: quantified over an arbitrary addend
 -- this family is REFUTABLE (take the addend `≡ modulus`).
@@ -207,18 +192,6 @@ record AddrNoWrap : Set₁ where
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → R.readReg (R.State.regs s) sp + slots (suc b) < R.W.modulus
 
-    -- `count-inc` → `addi s4, s4, 1`: THE ONE NON-ADDRESS SITE. `s4` is the
-    -- observable counter, so this says the run does not emit 2⁶⁴ observations.
-    count-no-wrap :
-      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-        (s : R.State)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-      → FlatMachine.fetch {rv64-frame-semantics} prog
-          (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-reg-op count-inc)
-      → R.readReg (R.State.regs s) s4 + 1 < R.W.modulus
-
     -- THE STACK'S HIGH-WATER MARK IS REPRESENTABLE. Not site-conditioned — it
     -- mentions no addend — and it is what discharges the heap bump's no-wrap
     -- outright, since `HeapRoom` already bounds the bumped frontier by `lo`.
@@ -231,7 +204,7 @@ record AddrNoWrap : Set₁ where
       → FCr.lo hv < R.W.modulus
 
 ------------------------------------------------------------------------
--- (4) THE EMITTED LITERALS FIT IN A MACHINE WORD (plan 0.70 phase D).
+-- (3) THE EMITTED LITERALS FIT IN A MACHINE WORD (plan 0.70 phase D).
 --
 -- NOT the same class as the rooms: D054 makes an ELABORATED literal in range BY
 -- CONSTRUCTION, so this is a fact about the frontend that is simply not

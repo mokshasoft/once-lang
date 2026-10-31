@@ -331,17 +331,13 @@ module FlatMachine {FS : FrameSemantics} where
   thunk-of?-sound (instr-ctrl (c-thunk m' b)) m refl = b , refl
   thunk-of?-sound (instr-ctrl (c-label _))               _ ()
   thunk-of?-sound (instr-ctrl (c-jmp _))                 _ ()
-  thunk-of?-sound (instr-ctrl (c-branch-scratch-zero _)) _ ()
   thunk-of?-sound (instr-ctrl (c-branch-tag-zero _))     _ ()
   thunk-of?-sound (instr-ctrl (c-ret _))                 _ ()
   thunk-of?-sound (instr-alloc-stack _)                  _ ()
   thunk-of?-sound (instr-dealloc-stack _)                _ ()
   thunk-of?-sound (instr-push-frame _)                   _ ()
   thunk-of?-sound instr-pop-frame                        _ ()
-  thunk-of?-sound (instr-case-on-tag _ _)                _ ()
-  thunk-of?-sound (instr-loop _)                         _ ()
   thunk-of?-sound (lea-slot _)                           _ ()
-  thunk-of?-sound (lea-indexed _)                        _ ()
   thunk-of?-sound mov-to-output                          _ ()
   thunk-of?-sound mov-to-input                           _ ()
   thunk-of?-sound load-indirect                          _ ()
@@ -371,17 +367,13 @@ module FlatMachine {FS : FrameSemantics} where
   entry-of?-sound (instr-ctrl (c-entry m' b)) m refl = b , refl
   entry-of?-sound (instr-ctrl (c-label _))               _ ()
   entry-of?-sound (instr-ctrl (c-jmp _))                 _ ()
-  entry-of?-sound (instr-ctrl (c-branch-scratch-zero _)) _ ()
   entry-of?-sound (instr-ctrl (c-branch-tag-zero _))     _ ()
   entry-of?-sound (instr-ctrl (c-ret _))                 _ ()
   entry-of?-sound (instr-alloc-stack _)                  _ ()
   entry-of?-sound (instr-dealloc-stack _)                _ ()
   entry-of?-sound (instr-push-frame _)                   _ ()
   entry-of?-sound instr-pop-frame                        _ ()
-  entry-of?-sound (instr-case-on-tag _ _)                _ ()
-  entry-of?-sound (instr-loop _)                         _ ()
   entry-of?-sound (lea-slot _)                           _ ()
-  entry-of?-sound (lea-indexed _)                        _ ()
   entry-of?-sound mov-to-output                          _ ()
   entry-of?-sound mov-to-input                           _ ()
   entry-of?-sound load-indirect                          _ ()
@@ -465,17 +457,13 @@ module FlatMachine {FS : FrameSemantics} where
   label-of?-sound (instr-ctrl (c-label m')) m refl = refl
   label-of?-sound (instr-ctrl (c-thunk _ _))             _ ()
   label-of?-sound (instr-ctrl (c-jmp _))                 _ ()
-  label-of?-sound (instr-ctrl (c-branch-scratch-zero _)) _ ()
   label-of?-sound (instr-ctrl (c-branch-tag-zero _))     _ ()
   label-of?-sound (instr-ctrl (c-ret _))                 _ ()
   label-of?-sound (instr-alloc-stack _)                  _ ()
   label-of?-sound (instr-dealloc-stack _)                _ ()
   label-of?-sound (instr-push-frame _)                   _ ()
   label-of?-sound instr-pop-frame                        _ ()
-  label-of?-sound (instr-case-on-tag _ _)                _ ()
-  label-of?-sound (instr-loop _)                         _ ()
   label-of?-sound (lea-slot _)                           _ ()
-  label-of?-sound (lea-indexed _)                        _ ()
   label-of?-sound mov-to-output                          _ ()
   label-of?-sound mov-to-input                           _ ()
   label-of?-sound load-indirect                          _ ()
@@ -962,8 +950,6 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr (instr-ctrl (c-call-fn f))             prog fs = do-call-at (find-fn prog f) fs
   flat-exec-instr (instr-ctrl (c-ret b))                 _    fs = do-ret (fret fs) fs
   flat-exec-instr (instr-ctrl (c-jmp n))                 prog fs = do-jump (find-label prog n) fs
-  flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs =
-    do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs
   flat-exec-instr (instr-ctrl (c-branch-tag-zero n))     prog fs =
     do-branch (tag-zf (flat-read-tag (floc fs))) n prog fs
   -- the CALL transfers control (D092) and the closure register is flat state
@@ -1023,7 +1009,6 @@ module FlatMachine {FS : FrameSemantics} where
 
   ProgFree : AbstractInstr → Set
   ProgFree (instr-ctrl (c-jmp _))                 = ⊥
-  ProgFree (instr-ctrl (c-branch-scratch-zero _)) = ⊥
   ProgFree (instr-ctrl (c-branch-tag-zero _))     = ⊥
   ProgFree instr-call-closure                     = ⊥
   ProgFree (instr-ctrl (c-call-fn _))             = ⊥
@@ -1209,7 +1194,6 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d store-indirect-suc                     t₁ t₂ fs fs' _  _  sh = shifted-straight d store-indirect-suc fs fs' sh
   shifted-instr d (lea-slot k)                           t₁ t₂ fs fs' _  _  sh = shifted-straight d (lea-slot k) fs fs' sh
   shifted-instr d (restore-input k)                      t₁ t₂ fs fs' _  _  sh = shifted-straight d (restore-input k) fs fs' sh
-  shifted-instr d (lea-indexed k)                        t₁ t₂ fs fs' _  _  sh = shifted-straight d (lea-indexed k) fs fs' sh
   shifted-instr d (instr-reclaim-to k)                   t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-reclaim-to k) fs fs' sh
   shifted-instr d (worklist-init k)                      t₁ t₂ fs fs' _  _  sh = shifted-straight d (worklist-init k) fs fs' sh
   shifted-instr d (worklist-push k)                      t₁ t₂ fs fs' _  _  sh = shifted-straight d (worklist-push k) fs fs' sh
@@ -1220,8 +1204,6 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-load-code-addr k)               t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-load-code-addr k) fs fs' sh
   shifted-instr d instr-save-closure-reg                 t₁ t₂ fs fs' _  _  sh = shifted-save-closure d fs fs' sh
   shifted-instr d (instr-load-tag-lit k)                 t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-load-tag-lit k) fs fs' sh
-  shifted-instr d (instr-case-on-tag k j)                t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-case-on-tag k j) fs fs' sh
-  shifted-instr d (instr-loop k)                         t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-loop k) fs fs' sh
   shifted-instr d (instr-alloc-heap k)                   t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-alloc-heap k) fs fs' sh
   shifted-instr d (instr-reg-op k)                       t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-reg-op k) fs fs' sh
   shifted-instr d (instr-ctrl (c-label _))               t₁ t₂ fs fs' _  _  sh = shifted-label d fs fs' sh
@@ -1233,9 +1215,6 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-ctrl (c-ret _))                 t₁ t₂ fs fs' _  _  sh = shifted-ret d fs fs' sh
   shifted-instr d (instr-ctrl (c-jmp t))                 t₁ t₂ fs fs' fl _  sh =
     shifted-jump d (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh (fl t)
-  shifted-instr d (instr-ctrl (c-branch-scratch-zero t)) t₁ t₂ fs fs' fl _ sh@(lo , _) =
-    shifted-branch d _ _ (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh
-      (cong (λ L → sv-is-zero (readReg (regs L) Scratch)) lo) (fl t)
   shifted-instr d (instr-ctrl (c-branch-tag-zero t))     t₁ t₂ fs fs' fl _ sh@(lo , _) =
     shifted-branch d _ _ (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh
       (cong (λ L → tag-zf (flat-read-tag L)) lo) (fl t)
@@ -1260,7 +1239,6 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant store-indirect-suc                     t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (lea-slot _)                           t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (restore-input _)                      t t' fs _  = refl
-  flat-exec-instr-prog-irrelevant (lea-indexed _)                        t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-alloc-stack _)                  t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-dealloc-stack _)                t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-reclaim-to _)                   t t' fs _  = refl
@@ -1275,8 +1253,6 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (instr-load-code-addr _)               t t' fs _  = refl
   flat-exec-instr-prog-irrelevant instr-save-closure-reg                 t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-load-tag-lit _)                 t t' fs _  = refl
-  flat-exec-instr-prog-irrelevant (instr-case-on-tag _ _)                t t' fs _  = refl
-  flat-exec-instr-prog-irrelevant (instr-loop _)                         t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-alloc-heap _)                   t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-reg-op _)                       t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-label _))               t t' fs _  = refl
@@ -1286,7 +1262,6 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-call-fn _))             t t' fs ()
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-ret _))                 t t' fs _  = refl
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-jmp _))                 t t' fs ()
-  flat-exec-instr-prog-irrelevant (instr-ctrl (c-branch-scratch-zero _)) t t' fs ()
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-branch-tag-zero _))     t t' fs ()
   flat-exec-instr-prog-irrelevant instr-call-closure                     t t' fs ()
 
@@ -1343,7 +1318,6 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix store-indirect-suc         t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (lea-slot _)               t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (restore-input _)          t₁ t₂ fs _  _  = refl
-  flat-exec-instr-prefix (lea-indexed _)            t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-alloc-stack _)      t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-dealloc-stack _)    t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-reclaim-to _)       t₁ t₂ fs _  _  = refl
@@ -1358,8 +1332,6 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (instr-load-code-addr _)   t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix instr-save-closure-reg     t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-load-tag-lit _)     t₁ t₂ fs _  _  = refl
-  flat-exec-instr-prefix (instr-case-on-tag _ _)    t₁ t₂ fs _  _  = refl
-  flat-exec-instr-prefix (instr-loop _)             t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-alloc-heap _)       t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-reg-op _)           t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-label _))   t₁ t₂ fs _  _  = refl
@@ -1371,8 +1343,6 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (instr-ctrl (c-ret _))     t₁ t₂ fs _  _  = refl
   flat-exec-instr-prefix (instr-ctrl (c-jmp m))                 t₁ t₂ fs fl _  =
     cong (λ mj → do-jump mj fs) (fl m)
-  flat-exec-instr-prefix (instr-ctrl (c-branch-scratch-zero m)) t₁ t₂ fs fl _  =
-    cong (λ mj → do-branch-at (sv-is-zero (readReg (regs (floc fs)) Scratch)) mj fs) (fl m)
   flat-exec-instr-prefix (instr-ctrl (c-branch-tag-zero m))     t₁ t₂ fs fl _  =
     cong (λ mj → do-branch-at (tag-zf (flat-read-tag (floc fs))) mj fs) (fl m)
   flat-exec-instr-prefix instr-call-closure                     t₁ t₂ fs _  fe =
@@ -1445,8 +1415,6 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (instr-ctrl (c-call-fn f))             = fv-call-fn f refl
   flinkView (instr-ctrl (c-ret b))                 = fv-pres (λ _ fs → flink-do-ret (fret fs) fs)
   flinkView (instr-ctrl (c-jmp n))                 = fv-pres (λ prog fs → flink-do-jump (find-label prog n) fs)
-  flinkView (instr-ctrl (c-branch-scratch-zero n)) =
-    fv-pres (λ prog fs → flink-do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs)
   flinkView (instr-ctrl (c-branch-tag-zero n))     =
     fv-pres (λ prog fs → flink-do-branch (tag-zf (flat-read-tag (floc fs))) n prog fs)
   flinkView instr-call-closure                     = fv-call refl
@@ -1461,7 +1429,6 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (load-from-slot _)                     = fv-pres (λ _ _ → refl)
   flinkView (store-at-slot _)                      = fv-pres (λ _ _ → refl)
   flinkView (lea-slot _)                           = fv-pres (λ _ _ → refl)
-  flinkView (lea-indexed _)                        = fv-pres (λ _ _ → refl)
   flinkView (restore-input _)                      = fv-pres (λ _ _ → refl)
   flinkView (instr-alloc-stack _)                  = fv-pres (λ _ _ → refl)
   flinkView (instr-dealloc-stack _)                = fv-pres (λ _ _ → refl)
@@ -1474,11 +1441,9 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (instr-load-code-addr _)               = fv-pres (λ _ _ → refl)
   flinkView (instr-load-tag-lit _)                 = fv-pres (λ _ _ → refl)
   flinkView (instr-alloc-heap _)                   = fv-pres (λ _ _ → refl)
-  flinkView (instr-loop _)                         = fv-pres (λ _ _ → refl)
   flinkView (instr-sigop _)                        = fv-pres (λ _ _ → refl)
   flinkView (instr-reg-op _)                       = fv-pres (λ _ _ → refl)
   flinkView (instr-load-const _ _)                 = fv-pres (λ _ _ → refl)
-  flinkView (instr-case-on-tag _ _)                = fv-pres (λ _ _ → refl)
 
 
   ----------------------------------------------------------------------

@@ -6,8 +6,9 @@
 --
 -- D200: the clauses whose whole content is "one register move, then run off
 -- the end of the fragment" — `id`, `terminal`, `initial`, `free-heap`, `fst`,
--- `snd`, `out-μ`, `const` — together with the postulate block for the shapes
--- that are still open (`In`, `pair`, `case`, `Para`, `in-ν`, `Hylo`, `Fuse`).
+-- `snd`, `out-μ`, `const`. The postulate block that stood at the end (`In`)
+-- is gone: `obs-correct-In` was FALSE (D366) and is proved in `InMu`; the
+-- block's history is kept below as comments.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -24,7 +25,9 @@ open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Spec.Float.Decimal using (Decimal; round)
-open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI)
+open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI; wf-K; wf-Id; wf-Sum; wf-Prod;
+                             base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit)
+open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-fit; fit-not-unit)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -62,19 +65,19 @@ module Simp {FS : FrameSemantics} where
   -- what identifies the bound `v` with the value the clause placed; ignoring
   -- the premise (`λ _ → …`) would leave the two free to differ.
   obs-correct-id : ∀ {A} → IRObsCorrectF (id {A})
-  obs-correct-id {A} n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =
+  obs-correct-id {A} n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k rs =
     record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
-                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       -- The post-`mov` register file and the intermediate flat state. `run-eq`
       -- is derived from the two step lemmas rather than by `rewrite nh`: the
       -- second step's `halted` test is not a syntactic occurrence in the goal.
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
-      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
+      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl rs)
 
 
       -- Machine side: the only fetchable instruction is `mov-to-output`, which
@@ -83,8 +86,8 @@ module Simp {FS : FrameSemantics} where
       ev-[] zero    .mov-to-output refl fs = refl
       ev-[] (suc n) i              ()   fs
 
-      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (id {A})) (entry-flat 0 s alloc cl)) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (id {A})) ev-[] f (entry-flat 0 s alloc cl)
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (id {A})) (entry-flat 0 s alloc cl rs)) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (id {A})) ev-[] f (entry-flat 0 s alloc cl rs)
 
       -- Denotation side: `evalᴰ id a = returnT a` emits nothing.
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (id {A}) x ⟫ k) ≡ []
@@ -115,8 +118,8 @@ module Simp {FS : FrameSemantics} where
       out-lit fit eq =
         trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
 
-      before' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
-              → BeforeFrontier (falloc fs₁) il
+      before' : ∀ (il : ValueLocation FS) → Live alloc il
+              → Live (falloc fs₁) il
       before' il bf = bf
 
       place : InputAt mIn alloc x s
@@ -124,8 +127,8 @@ module Simp {FS : FrameSemantics} where
                 (falloc fs₁) (retVal (evalᴰ (id {A}) x))
                 (floc fs₁)
       place (in-loc il v bf eq) =
-        at-loc il (valid'' il bf v) (before' il bf) (out-ptr il eq)
-                  (valid'' il bf v) (before' il bf)
+        at-loc il (valid'' il (live→bf bf) v) (before' il bf) (out-ptr il eq)
+                  (valid'' il (live→bf bf) v) (before' il bf)
         where valid'' : ∀ il' → BeforeFrontier alloc il' → ValidAtWF mIn alloc x il' s
                       → ValidAtWF mIn (falloc fs₁) x il'
                           (floc fs₁)
@@ -143,19 +146,19 @@ module Simp {FS : FrameSemantics} where
   -- result place is `unit-result` — which asserts nothing about the state,
   -- exactly because a unit result has no residence (D074).
   obs-correct-terminal : ∀ {A} → IRObsCorrectF (terminal {A})
-  obs-correct-terminal {A} n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =
+  obs-correct-terminal {A} n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k rs =
     record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
-          realized 0 (entry-flat base s alloc cl) mIn alloc [] (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s}) (λ { refl → unit-result }) (m≤m+n k _) (λ _ → (λ _ _ _ → refl)) (λ _ → (λ _ _ → refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+          realized 0 (entry-flat base s alloc cl rs) mIn alloc [] (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s}) (λ { refl → unit-result }) (m≤m+n k _) (λ _ → (λ _ _ _ → refl)) (λ _ → (λ _ _ → refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       ev-[] : ∀ pc i → fetch (emitted n l (terminal {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    i () fs
       ev-[] (suc n) i () fs
 
-      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (terminal {A})) (entry-flat 0 s alloc cl)) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (terminal {A})) ev-[] f (entry-flat 0 s alloc cl)
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (terminal {A})) (entry-flat 0 s alloc cl rs)) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (terminal {A})) ev-[] f (entry-flat 0 s alloc cl rs)
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (terminal {A}) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -197,9 +200,9 @@ module Simp {FS : FrameSemantics} where
   -- `instr-writes-mem load-indirect … = nothing`), so the component's validity
   -- transports by `validityWF-mem-preserved` over a register write.
   obs-correct-fst : ∀ {A B} → IRObsCorrectF (fst {A} {B})
-  obs-correct-fst {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl _ nh inp k = mr-of inp
+  obs-correct-fst {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl _ nh inp k rs = mr-of inp
     where
-      fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl)
+      fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl rs)
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (fst {A} {B}) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -215,7 +218,7 @@ module Simp {FS : FrameSemantics} where
       -- witness), never the input's — `at-loc`'s mode is fixed by the
       -- `ValidAtWF` handed to it.
       mr-of : InputAt mIn alloc x s
-            → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl k
+            → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl rs k
       -- D187: the pair's first CELL, and `load-indirect` reads it whatever it
       -- holds. A POINTER cell still places the result in memory; an INLINE one
       -- lands the component in `Output` as a literal, so its place is `at-reg`
@@ -224,9 +227,9 @@ module Simp {FS : FrameSemantics} where
       mr-of (in-loc pair-loc pv bf eq) = go (PairValidWF.fst-cell (decomposePairWF pv))
         where
           go : CellAt alloc A (proj₁ x) pair-loc s
-             → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl k
+             → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl rs k
           go (cell-ptr {comp-loc = cloc} cp cbef cv) =
-            let cval  = validityWF-mem-preserved (proj₁ x) cloc s (floc fs₁) cbef
+            let cval  = validityWF-mem-preserved (proj₁ x) cloc s (floc fs₁) (live→bf cbef)
                           (λ loc' _ → mem-eq loc') cv
                 live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
                           (load-indirect-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq cp)
@@ -234,10 +237,10 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = sym (denot-[] k)
                  ; value-realized =
                      realized 1 fs₁ _ (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl))
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-loc cloc cval cbef
                           (exec-abstract-load-indirect-output s alloc pair-loc (SV-Ptr cloc) eq cp)
-                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-prim fit) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
@@ -246,10 +249,10 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = sym (denot-[] k)
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl))
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-reg fit
                           (exec-abstract-load-indirect-output s alloc pair-loc
-                             (prim-sv fit (proj₁ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                             (prim-sv fit (proj₁ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-unit refl sv) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
@@ -258,16 +261,16 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = sym (denot-[] k)
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl)) (λ { refl → unit-result }) (m≤m+n k _)
-                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs)) (λ { refl → unit-result }) (m≤m+n k _)
+                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
       mr-of (in-reg () _)
       mr-of (in-unit ())
 
   obs-correct-snd : ∀ {A B} → IRObsCorrectF (snd {A} {B})
-  obs-correct-snd {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl _ nh inp k = mr-of inp
+  obs-correct-snd {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl _ nh inp k rs = mr-of inp
     where
-      fs₁ = flat-exec-instr load-indirect-suc prog (entry-flat base s alloc cl)
+      fs₁ = flat-exec-instr load-indirect-suc prog (entry-flat base s alloc cl rs)
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (snd {A} {B}) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -283,14 +286,14 @@ module Simp {FS : FrameSemantics} where
       -- witness), never the input's — `at-loc`'s mode is fixed by the
       -- `ValidAtWF` handed to it.
       mr-of : InputAt mIn alloc x s
-            → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl k
+            → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl rs k
       -- D187: the `fst` mirror at the pair's SECOND cell.
       mr-of (in-loc pair-loc pv bf eq) = go (PairValidWF.snd-cell (decomposePairWF pv))
         where
           go : CellAt alloc B (proj₂ x) (sucLoc pair-loc) s
-             → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl k
+             → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl rs k
           go (cell-ptr {comp-loc = cloc} cp cbef cv) =
-            let cval  = validityWF-mem-preserved (proj₂ x) cloc s (floc fs₁) cbef
+            let cval  = validityWF-mem-preserved (proj₂ x) cloc s (floc fs₁) (live→bf cbef)
                           (λ loc' _ → mem-eq loc') cv
                 live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
                           (load-indirect-suc-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq cp)
@@ -298,10 +301,10 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = sym (denot-[] k)
                  ; value-realized =
                      realized 1 fs₁ _ (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl))
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-loc cloc cval cbef
                           (exec-abstract-load-indirect-suc-output s alloc pair-loc (SV-Ptr cloc) eq cp)
-                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-prim fit) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
@@ -310,10 +313,10 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = sym (denot-[] k)
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl))
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl rs))
                        (λ { refl → at-reg fit
                           (exec-abstract-load-indirect-suc-output s alloc pair-loc
-                             (prim-sv fit (proj₂ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                             (prim-sv fit (proj₂ x)) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
           go (cell-inline (rep-unit refl sv) cp) =
             let live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
@@ -322,14 +325,14 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = sym (denot-[] k)
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl)) (λ { refl → unit-result }) (m≤m+n k _)
-                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect-suc tt prog (entry-flat base s alloc cl rs)) (λ { refl → unit-result }) (m≤m+n k _)
+                       (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
                  }
       mr-of (in-reg () _)
       mr-of (in-unit ())
 
-  -- ── `out-μ` / `Out` — DISCHARGED. Both are Lambek inverses compiling to the
-  -- same `mov-to-output ∷ []` as `id`, and both are DOMAIN-RESTRICTED in a way
+  -- ── `out-μ` — DISCHARGED. A Lambek inverse compiling (at an unboxed
+  -- functor, D366) to the same `mov-to-output ∷ []` as `id`, and DOMAIN-RESTRICTED in a way
   -- that kills two of the three input residences outright:
   --   * `in-reg` carries `FitsInRegI (μ-type F)`, and `FitsInRegI` has only
   --     `fits-int`/`fits-float` — absurd;
@@ -337,24 +340,22 @@ module Simp {FS : FrameSemantics} where
   -- So only the pointer residence survives, and the value witness is exactly
   -- the layer iso: `valid-μ-wf` CARRIES the layer's own `ValidAtWF`
   -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
-  obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
-  obs-correct-out-μ {F} wf n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =    record
+  -- D366: at an UNBOXED functor (`MuRep`) `out-μ` is `mov-to-output`; the
+  -- clause is stated over that trace equation (`teq`), so one proof serves
+  -- every such functor.
+  obs-correct-out-μ-mov : ∀ {F} (wf : WellFormedFI F) → Unboxed F
+                        → (∀ n l → emitted n l (out-μ wf) ≡ mov-to-output ∷ [])
+                        → IRObsCorrectF (out-μ wf)
+  obs-correct-out-μ-mov {F} wf ub teq n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k rs =    record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
-                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ (cong (λ t → fetch t 0) (teq n l))) ∷ []) (λ _ → nh)
+                   (λ _ → cong (λ t → length t + base) (sym (teq n l))) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
+                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
-      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
-
-
-      ev-[] : ∀ pc i → fetch (emitted n l (out-μ wf)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
-      ev-[] zero    .mov-to-output refl fs = refl
-      ev-[] (suc n) i              ()   fs
-
-      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (out-μ wf)) (entry-flat 0 s alloc cl)) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (out-μ wf)) ev-[] f (entry-flat 0 s alloc cl)
+      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl rs)
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (out-μ wf) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -377,7 +378,7 @@ module Simp {FS : FrameSemantics} where
                   (floc fs₁)
       valid'' il bf v = subst (λ a → ValidAtWF mIn a (retVal (evalᴰ (out-μ wf) x)) il
                                (floc fs₁))
-                      (sym keeps-alloc) (μ-layer-iso wf x (valid' il bf v))
+                      (sym keeps-alloc) (μ-layer-iso wf x ub (valid' il bf v))
 
       out-ptr : ∀ (il : ValueLocation FS) → readReg (regs s) Input1 ≡ SV-Ptr il
               → readReg (regs (floc fs₁)) Output
@@ -385,8 +386,8 @@ module Simp {FS : FrameSemantics} where
       out-ptr il eq =
         trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
 
-      before' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
-              → BeforeFrontier (falloc fs₁) il
+      before' : ∀ (il : ValueLocation FS) → Live alloc il
+              → Live (falloc fs₁) il
       before' il bf = bf
 
       place : InputAt mIn alloc x s
@@ -394,10 +395,87 @@ module Simp {FS : FrameSemantics} where
                 (falloc fs₁) (retVal (evalᴰ (out-μ wf) x))
                 (floc fs₁)
       place (in-loc il v bf eq) =
-        at-loc il (valid'' il bf v) (before' il bf) (out-ptr il eq)
-                  (valid'' il bf v) (before' il bf)
+        at-loc il (valid'' il (live→bf bf) v) (before' il bf) (out-ptr il eq)
+                  (valid'' il (live→bf bf) v) (before' il bf)
       place (in-reg () _)
       place (in-unit ())
+
+  -- D366: at a BOXED functor (`K Int`/`K Float`) the μ is a block whose first
+  -- cell holds the layer, so `out-μ` is `load-indirect`: `fst`'s clause, at
+  -- the box. A pointer cell places the layer in memory; a literal one in
+  -- `Output`.
+  obs-correct-out-μ-box : ∀ {F} (wf : WellFormedFI F) → mu-rep F ≡ mu-box
+                        → (∀ n l → emitted n l (out-μ wf) ≡ load-indirect ∷ [])
+                        → IRObsCorrectF (out-μ wf)
+  obs-correct-out-μ-box {F} wf bx teq n l prog base _ cr span _ _ mIn x s alloc cl _ nh inp k rs = mr-of inp
+    where
+      fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl rs)
+
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (out-μ wf) x ⟫ k) ≡ []
+      denot-[] k = refl
+
+      mem-eq : ∀ loc' → readLoc (floc fs₁) loc' ≡ readLoc s loc'
+      mem-eq loc' = exec-abstract-load-indirect-preserves-mem s alloc loc'
+
+      sp0 : fetch prog (0 + base) ≡ just load-indirect
+      sp0 = span 0 _ (cong (λ t → fetch t 0) (teq n l))
+
+      at-end′ : fpc fs₁ ≡ length (emitted n l (out-μ wf)) + base
+      at-end′ = cong (λ t → length t + base) (sym (teq n l))
+
+      fit : FitsInRegI (⟦ F ⟧TI (μ-type F))
+      fit = box-fit bx
+
+      no-unit : ⟦ F ⟧TI (μ-type F) ≡ Unit → ⊥
+      no-unit = fit-not-unit fit
+
+      mr-of : InputAt mIn alloc x s
+            → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k
+      mr-of (in-loc box-loc pv bf eq) = go (μ-box-cell {wf = wf} bx pv)
+        where
+          go : CellAt alloc (⟦ F ⟧TI (μ-type F)) (retVal (evalᴰ (out-μ wf) x)) box-loc s
+             → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k
+          go (cell-ptr {comp-loc = cloc} cp cbef cv) =
+            let cval  = validityWF-mem-preserved (retVal (evalᴰ (out-μ wf) x)) cloc s (floc fs₁) (live→bf cbef)
+                          (λ loc' _ → mem-eq loc') cv
+                live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                          (load-indirect-twf {alloc = alloc} box-loc (SV-Ptr cloc) eq cp)
+            in record
+                 { traces-agree = sym (denot-[] k)
+                 ; value-realized =
+                     realized 1 fs₁ _ (falloc fs₁)
+                       ((nh , sp0) ∷ []) (λ _ → live') (λ _ → at-end′) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
+                       (λ { refl → at-loc cloc cval cbef
+                          (exec-abstract-load-indirect-output s alloc box-loc (SV-Ptr cloc) eq cp)
+                          cval cbef }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
+                 }
+          go (cell-inline (rep-prim fit′) cp) =
+            let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                          (load-indirect-twf {alloc = alloc} box-loc (prim-sv fit′ (retVal (evalᴰ (out-μ wf) x))) eq cp)
+            in record
+                 { traces-agree = sym (denot-[] k)
+                 ; value-realized =
+                     realized 1 fs₁ mIn (falloc fs₁)
+                       ((nh , sp0) ∷ []) (λ _ → live') (λ _ → at-end′) (λ ()) (λ _ → refl) (λ _ → refl) (log-step load-indirect tt prog (entry-flat base s alloc cl rs))
+                       (λ { refl → at-reg fit′
+                          (exec-abstract-load-indirect-output s alloc box-loc
+                             (prim-sv fit′ (retVal (evalᴰ (out-μ wf) x))) eq cp) }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
+                 }
+          go (cell-inline (rep-unit u sv) cp) = ⊥-elim (no-unit u)
+      mr-of (in-reg () _)
+      mr-of (in-unit ())
+
+  -- …dispatched on the functor's shape, where the trace reduces.
+  obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
+  obs-correct-out-μ wf@(wf-K base-Int)        = obs-correct-out-μ-box wf refl (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K base-Float)      = obs-correct-out-μ-box wf refl (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K base-Unit)       = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K base-Void)       = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K (base-Prod a b)) = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-K (base-Sum a b))  = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@wf-Id                  = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-Sum f g)           = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
+  obs-correct-out-μ wf@(wf-Prod f g)          = obs-correct-out-μ-mov wf tt (λ _ _ → refl)
 
   -- ── `Out` — NO LONGER DISCHARGED (D189), and the retraction is the point.
   -- What stood here was a proof by absurdity whose absurdity was the emitter's
@@ -415,6 +493,8 @@ module Simp {FS : FrameSemantics} where
   -- `Out` and was a theorem about `inject x`, a ν that could not emit. When
   -- `Ana` gets an emitter, THIS case is the one that must be reproved for real
   -- — against a machine that forces layers, not one that moves a pointer.
+  -- (Both happened: D189 gave `Ana` and `in-ν` their two-cell emitter, and
+  -- D199 reproved `Out` against it, in `IRObsCorrect.Out`.)
 
   -- ── `const` — DISCHARGED, and it is the first REGISTER-resident result of
   -- class A. `emitted n l (const fit v) = instr-load-const fitˢ v ∷ []`, whose
@@ -426,24 +506,24 @@ module Simp {FS : FrameSemantics} where
   -- bodies are identical.
   obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Decimal ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
-  obs-correct-const fits-int v n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-const fits-int v n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k rs =    record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → at-reg fits-int out-lit }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl))
-                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       instr = instr-load-const fits-intˢ v
-      fs₁   = flat-exec-instr instr prog (entry-flat base s alloc cl)
+      fs₁   = flat-exec-instr instr prog (entry-flat base s alloc cl rs)
 
 
       ev-[] : ∀ pc i → fetch (emitted n l (const fits-int v)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    .instr refl fs = refl
       ev-[] (suc n) i      ()   fs
 
-      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (const fits-int v)) (entry-flat 0 s alloc cl)) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (const fits-int v)) ev-[] f (entry-flat 0 s alloc cl)
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (const fits-int v)) (entry-flat 0 s alloc cl rs)) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (const fits-int v)) ev-[] f (entry-flat 0 s alloc cl rs)
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (const fits-int v) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -458,24 +538,24 @@ module Simp {FS : FrameSemantics} where
       out-lit =
         writeReg-same (regs s) Output (SV-Lit fits-intˢ (SMCore.AbstractExec.lit-value {FS} fits-intˢ v))
 
-  obs-correct-const fits-float v n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-const fits-float v n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k rs =    record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → at-reg fits-float out-lit }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl))
-                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf))
+                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
       }
     where
       instr = instr-load-const fits-floatˢ v
-      fs₁   = flat-exec-instr instr prog (entry-flat base s alloc cl)
+      fs₁   = flat-exec-instr instr prog (entry-flat base s alloc cl rs)
 
 
       ev-[] : ∀ pc i → fetch (emitted n l (const fits-float v)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    .instr refl fs = refl
       ev-[] (suc n) i      ()   fs
 
-      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (const fits-float v)) (entry-flat 0 s alloc cl)) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (const fits-float v)) ev-[] f (entry-flat 0 s alloc cl)
+      mach-[] : ∀ f → proj₁ (flat-events f (emitted n l (const fits-float v)) (entry-flat 0 s alloc cl rs)) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (const fits-float v)) ev-[] f (entry-flat 0 s alloc cl rs)
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (const fits-float v) x ⟫ k) ≡ []
       denot-[] k = refl
@@ -492,7 +572,7 @@ module Simp {FS : FrameSemantics} where
       out-lit =
         writeReg-same (regs s) Output (SV-Lit fits-floatˢ (round (FrameSemantics.float-format FS) v))
 
-  postulate
+  -- THE POSTULATE BLOCK THAT STOOD HERE IS GONE (D366). Its history:
     -- (`obs-correct-fst`/`-snd` MOVED OUT — discharged above, D178.)
     -- `In` — the ONE class-A constructor that did NOT fall to the `id`
     -- template, and the reason is a SPEC gap, not a missing lemma. Its domain
@@ -512,8 +592,13 @@ module Simp {FS : FrameSemantics} where
     -- result, no residence claimed". Adding it is a spec change, and per this
     -- plan's own gate the discharge dictates it rather than a guess ahead of
     -- time — deferred with the case named.
-    obs-correct-In        : ∀ {F} (wf : WellFormedFI F)
-                          → IRObsCorrectF (In wf)
+    --
+    -- D366 (2026-10-31): THAT CASE MADE THE POSTULATE FALSE, and so did a second
+    -- one. At `K Int`/`K Float` with the layer in a register, `Output` held a
+    -- LITERAL, and no `ResultPlace (μ-type F)` fits a literal (refuted with no
+    -- postulate). The fix is not a residence in `ResultPlace` but the EMITTER:
+    -- `In` boxes an inline layer (`MuRep`), so a μ is a heap pointer at every
+    -- functor, and `obs-correct-In` is a proof (`IRObsCorrect.InMu`).
 
     -- (`obs-correct-pair` MOVED OUT — DISCHARGED, D211. It is
     -- `PairAssemble.obs-correct-pair-proof`, assembled from `Pair.agda`'s four
@@ -574,7 +659,7 @@ module Simp {FS : FrameSemantics} where
     --      `BlockLayout`. Zero postulates.
     --
     --      NOTE what it is NOT: `EmittedWF.labels-unique`. That is about
-    --      `labels-def`, which RECURSES into `instr-case-on-tag`/`instr-loop`;
+    --      `labels-def`, which RECURSED into the (since retired) nested instructions;
     --      `fl-go` scans with `label-of?`, which does not. Proving
     --      `labels-unique` would have been a large induction aimed slightly
     --      off target. What the scan needs is CONTAINMENT, and
@@ -652,9 +737,11 @@ module Simp {FS : FrameSemantics} where
     -- constructors are DELETED, so `obs-correct-Para`/`-Hylo`/`-Fuse` are gone
     -- rather than assumed. They were derived schemes (D062), unreachable from
     -- source, and their meaning was the last consumer of the pure `eval`.
-    -- `in-ν` is the one left, and it is a real codegen gap.
-    obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F)
-                     → IRObsCorrectF (in-ν wf)
+    --
+    -- (`obs-correct-in-ν` MOVED OUT — discharged in `TwoCell`, plan 0.88. It
+    -- was not a codegen gap: D189 gave it the two-cell emitter. What it lacked
+    -- was a WITNESS — the ν constructor spoke only of `Ana` — and `νOrigin`
+    -- now indexes it by where the ν came from.)
     -- D189: `obs-correct-Ana` LEFT this class — the emitter exists and the case
     -- is discharged below. D199: `obs-correct-Out` left it too, from the other
     -- direction — it was FALSE while the machine did not re-suspend, and is

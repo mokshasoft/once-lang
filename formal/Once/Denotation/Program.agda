@@ -20,11 +20,12 @@ module Once.Denotation.Program where
 
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All)
+open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; subst; sym)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Name using (CanonicalName)
@@ -209,5 +210,20 @@ runIR fmt φ p = evalᴰ fmt (tableEnv fmt φ (table p)) (main p) tt
 -- A LINKED PROGRAM: every call, in `main` and in every entry of the table, names
 -- an entry of the table at its objects. The compiler's output is linked (the
 -- telescope, D241); the backend's correctness is stated for linked programs.
+--
+-- plan 0.135 S3: …and AS A TELESCOPE, which is what the meaning reads. An entry
+-- is evaluated in the environment of the entries AFTER it (`tableEnv-at`), so a
+-- body linked only in the whole table may call an entry its meaning cannot see
+-- (`unlinkedT`) while the machine finds and runs it. Each entry is linked in
+-- its suffix (`TeleLinked`), and the names are distinct (a call is resolved by
+-- name, `find-fn`; the extractor's guard, D249).
+TeleLinked : ISig → List IRFun → Set
+TeleLinked Σ []       = ⊤
+TeleLinked Σ (e ∷ es) = Linked Σ es (fbody e) × TeleLinked Σ es
+
+NamesDistinct : List IRFun → Set
+NamesDistinct = AllPairs (λ e e′ → fname e ≢ fname e′)
+
 LinkedProgram : ISig → IRProgram → Set
 LinkedProgram Σ p = Linked Σ (table p) (main p) × All (λ e → Linked Σ (table p) (fbody e)) (table p)
+                  × TeleLinked Σ (table p) × NamesDistinct (table p)

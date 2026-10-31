@@ -267,9 +267,8 @@ step-ret ft rd rewrite ft | rd = refl
 --
 -- A consumer that needs plain `+` converts with `Once.Word.Width.⊕≡+`, paying
 -- the `< modulus` obligation there. Every `add` the compiler emits computes an
--- ADDRESS or the observable COUNTER (`rsp`, `r15`, `r14`, the `rcx`/`rdi`
--- index scaling) — never a user `Int`, which goes through the Arith backend
--- over `Once.Word` and wraps there by design. So that obligation is a LAYOUT
+-- ADDRESS (`rsp`, `r15`) or `out-nz`'s 0/1 flag — never a user `Int`, which
+-- goes through the Arith backend over `Once.Word` and wraps there by design. So that obligation is a LAYOUT
 -- bound of the `HeapRoom`/`StackRoom`/`CallRoom` family (D087: a parameter,
 -- not a postulate), never an assumption about what user values do.
 step-add-ri : ∀ {prog s r n}
@@ -310,16 +309,6 @@ nz-val x rng =
     go zero    _   = WL.sbb-zero (WL.1<modulus (s≤s z≤n))
     go (suc zero)    rng = WL.sbb-pos 1 rng (WL.1<modulus (s≤s z≤n))
     go (suc (suc k)) rng = WL.sbb-pos (suc (suc k)) rng (WL.1<modulus (s≤s z≤n))
-
--- add reg, reg (the lea-indexed doublings: `add rcx, rcx`)
-step-add-rr : ∀ {prog s r r'}
-            → fetch prog (pc s) ≡ just (add (reg r) (reg r'))
-            → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊕ readReg (regs s) r')
-                               ; flags = updateFlags (readReg (regs s) r W.⊕ readReg (regs s) r')
-                                                     (readReg (regs s) r)
-                               ; pc = pc s + 1 })
-step-add-rr ft rewrite ft = refl
 
 -- sub reg, imm
 -- Plan 0.70 phase C: the machine subtracts MODULARLY, so this says `⊖`. A

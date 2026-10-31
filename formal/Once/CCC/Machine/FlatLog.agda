@@ -12,9 +12,7 @@
 -- obligation clauses cite it instead of normalising through each
 -- instruction's helpers.
 --
--- `LogFree` excludes the SigOp step (it has its own equation) and the two
--- retired nested instructions (`instr-case-on-tag`, `instr-loop`): they run a
--- nested trace that may itself call, and nothing emits them.
+-- `LogFree` excludes the SigOp step (it has its own equation).
 ------------------------------------------------------------------------
 
 module Once.CCC.Machine.FlatLog where
@@ -36,8 +34,6 @@ open import Once.CCC.Machine.Flat
 
 LogFree : AbstractInstr → Set
 LogFree (instr-sigop _)         = ⊥
-LogFree (instr-case-on-tag _ _) = ⊥
-LogFree (instr-loop _)          = ⊥
 {-# CATCHALL #-}
 LogFree _                       = ⊤
 
@@ -81,9 +77,6 @@ module LogPres {FS : FrameSemantics} where
   store-suc-via-log (just loc) v s = writeLoc-log s (sucLoc loc) v
   store-suc-via-log nothing    v s = refl
 
-  lea-indexed-log : ∀ (ml : Maybe (ValueLocation FS)) idx s → log (exec-lea-indexed-via ml idx s) ≡ log s
-  lea-indexed-log (just loc) idx s = refl
-  lea-indexed-log nothing    idx s = refl
 
   load-slot-log : ∀ (mv : Maybe (StoredValue FS)) s alloc → log (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ log s
   load-slot-log (just v) s alloc = refl
@@ -106,8 +99,6 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log store-indirect-suc       _ s alloc = store-suc-via-log (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
   exec-abstract-log (lea-slot slot)          _ s alloc = refl
   exec-abstract-log (restore-input slot)     _ s alloc = restore-log (readLoc s (AtStack (current-frame alloc) slot)) s alloc
-  exec-abstract-log (lea-indexed slot)       _ s alloc =
-    lea-indexed-log (slot-base (readLoc s (AtStack (current-frame alloc) slot))) (sv-tag-val (readReg (regs s) Scratch)) s
   exec-abstract-log (instr-alloc-stack n)    _ s alloc = refl
   exec-abstract-log (instr-dealloc-stack n)  _ s alloc = refl
   exec-abstract-log (instr-reclaim-to n)     _ s alloc = refl
@@ -123,9 +114,7 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-load-code-addr n) _ s alloc = refl
   exec-abstract-log instr-save-closure-reg   _ s alloc = refl
   exec-abstract-log (instr-load-tag-lit n)   _ s alloc = refl
-  exec-abstract-log (instr-case-on-tag f g)  () s alloc
   exec-abstract-log (instr-alloc-heap n)     _ s alloc = refl
-  exec-abstract-log (instr-loop body)        () s alloc
   exec-abstract-log (instr-reg-op op)        _ s alloc = refl
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 
@@ -174,8 +163,6 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (instr-ctrl (c-call-fn f))             _ prog fs = do-call-at-log (find-fn prog f) fs
   flat-exec-instr-log (instr-ctrl (c-ret b))                 _ prog fs = do-ret-log (fret fs) fs
   flat-exec-instr-log (instr-ctrl (c-jmp n))                 _ prog fs = do-jump-log (find-label prog n) fs
-  flat-exec-instr-log (instr-ctrl (c-branch-scratch-zero n)) _ prog fs =
-    do-branch-at-log (sv-is-zero (readReg (regs (floc fs)) Scratch)) (find-label prog n) fs
   flat-exec-instr-log (instr-ctrl (c-branch-tag-zero n))     _ prog fs =
     do-branch-at-log (tag-zf (flat-read-tag (floc fs))) (find-label prog n) fs
   flat-exec-instr-log instr-call-closure                     _ prog fs = do-call-sv-log prog (fclosure fs) fs
@@ -194,7 +181,6 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log store-indirect-suc       lf prog fs = exec-abstract-log store-indirect-suc lf (floc fs) (falloc fs)
   flat-exec-instr-log (lea-slot slot)          lf prog fs = exec-abstract-log (lea-slot slot) lf (floc fs) (falloc fs)
   flat-exec-instr-log (restore-input slot)     lf prog fs = exec-abstract-log (restore-input slot) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (lea-indexed slot)       lf prog fs = exec-abstract-log (lea-indexed slot) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-reclaim-to n)     lf prog fs = exec-abstract-log (instr-reclaim-to n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (worklist-init slot)     lf prog fs = exec-abstract-log (worklist-init slot) lf (floc fs) (falloc fs)
   flat-exec-instr-log (worklist-push slot)     lf prog fs = exec-abstract-log (worklist-push slot) lf (floc fs) (falloc fs)
@@ -204,7 +190,5 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (instr-load-const p v)   lf prog fs = exec-abstract-log (instr-load-const p v) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-load-code-addr n) lf prog fs = exec-abstract-log (instr-load-code-addr n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-load-tag-lit n)   lf prog fs = exec-abstract-log (instr-load-tag-lit n) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (instr-case-on-tag f g)  () prog fs
   flat-exec-instr-log (instr-alloc-heap n)     lf prog fs = exec-abstract-log (instr-alloc-heap n) lf (floc fs) (falloc fs)
-  flat-exec-instr-log (instr-loop body)        () prog fs
   flat-exec-instr-log (instr-reg-op op)        lf prog fs = exec-abstract-log (instr-reg-op op) lf (floc fs) (falloc fs)

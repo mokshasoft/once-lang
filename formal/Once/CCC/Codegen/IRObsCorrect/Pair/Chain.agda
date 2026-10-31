@@ -30,7 +30,7 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractTrace; StoredValue; mov-to-output; store-at-slot; readReg; Input1; writeReg-preserves; Output; restore-input; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; store-indirect-suc; sv-as-loc; AbstractInstr; module LocState; module AllocState)
-open AllocState using (current-frame; next-slot; next-heap-ref)
+open AllocState using (current-frame; saved-frames; next-slot; next-heap-ref)
 open LocState using (halted; regs)
 open import Once.IRTy using (IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
@@ -94,7 +94,7 @@ module PairC {FS : FrameSemantics} where
   module PairRun
     {A B C : IRTy} (f : IR A B) (g : IR A C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     where
 
@@ -107,7 +107,7 @@ module PairC {FS : FrameSemantics} where
 
     -- the two prologue rows: `Output := Input1`, then stash it
     p1 p2 : FlatState
-    p1 = flat-exec-instr mov-to-output          prog (entry-flat base s alloc cl)
+    p1 = flat-exec-instr mov-to-output          prog (entry-flat base s alloc cl rs)
     p2 = flat-exec-instr (store-at-slot backup) prog p1
 
     -- Neither row touches the allocator, so the frontier `f` starts from is
@@ -318,13 +318,13 @@ module PairC {FS : FrameSemantics} where
   module PairChain
     {A B C : IRTy} (f : IR A B) (g : IR A C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩))
     where
 
     module PS = PairShape f g n l
-    module PR = PairRun f g n l prog base s alloc cl n≤ nh
+    module PR = PairRun f g n l prog base s alloc cl rs n≤ nh
     module VR = ValueRealized
 
     ------------------------------------------------------------------
@@ -332,10 +332,10 @@ module PairC {FS : FrameSemantics} where
     -- this module does not import). A state with `fpc ≡ b`, `fret ≡ []`
     -- and `flink ≡ nothing` IS an entry state at `b`, by eta on the record.
     ------------------------------------------------------------------
-    handover-eq : ∀ (b : ℕ) (fs : FlatState)
-                → fpc fs ≡ b → fret fs ≡ [] → flink fs ≡ nothing
-                → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs)
-    handover-eq b (mkFlatFull lo al pc rt cls lk) refl refl refl = refl
+    handover-eq : ∀ (b : ℕ) (fs : FlatState) (rs : List ℕ)
+                → fpc fs ≡ b → fret fs ≡ rs → flink fs ≡ nothing
+                → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs) rs
+    handover-eq b (mkFlatFull lo al pc rt cls lk) _ refl refl refl = refl
 
     -- the two `+`-shuffles the fetches need (`span` hands out `k + base`,
     -- the machine is at `… + suc (suc base)`).
@@ -372,7 +372,7 @@ module PairC {FS : FrameSemantics} where
     -- THE PROLOGUE: `Output := Input1`, then stash it at `backup`.
     ------------------------------------------------------------------
     fs0 : FlatState
-    fs0 = entry-flat base s alloc cl
+    fs0 = entry-flat base s alloc cl rs
 
     nh0 : halted (floc fs0) ≡ false
     nh0 = nh
@@ -403,8 +403,8 @@ module PairC {FS : FrameSemantics} where
 
     -- …and the prologue's end state is an entry state for `f`, at `2 + base`.
     handF : PR.p2 ≡ entry-flat (suc (suc base))
-                      (floc PR.p2) (falloc PR.p2) (fclosure PR.p2)
-    handF = handover-eq (suc (suc base)) PR.p2 refl refl refl
+                      (floc PR.p2) (falloc PR.p2) (fclosure PR.p2) rs
+    handF = handover-eq (suc (suc base)) PR.p2 rs refl refl refl
 
 
   -- Plan 0.105: `WithF`/`WithG` are SIBLINGS of `PairChain`, not nested in it:
@@ -421,16 +421,16 @@ module PairC {FS : FrameSemantics} where
   module PairChainF
     {A B C : IRTy} (f : IR A B) (g : IR A C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩))
     {xf : ValueDomain.⟦ A ⟧ᴰᴵ} {kf : ℕ}
     (vrf : ValueRealized prog (suc (suc base)) (PairShape.f-start f g n l) l f xf
-             (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) kf)
+             (floc (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) rs kf)
     {vf : ValueDomain.⟦ B ⟧ᴰᴵ} {rf : ℕ}
-    (sfeq : resultAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (⟪ evalᴰ f xf ⟫ kf) ≡ returns (done vf rf))
+    (sfeq : resultAt (floc (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) (⟪ evalᴰ f xf ⟫ kf) ≡ returns (done vf rf))
     where
-    open PairChain f g n l prog base s alloc cl n≤ nh span
+    open PairChain f g n l prog base s alloc cl rs n≤ nh span
 
 
     fsF : FlatState
@@ -447,13 +447,13 @@ module PairC {FS : FrameSemantics} where
     liveF = VR.live vrf (cong is-stopped sfeq)
 
     -- `f` returned, so it was not cut (plan 0.119 D5).
-    ncF : NotCut (resultAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (⟪ evalᴰ f xf ⟫ kf))
+    ncF : NotCut (resultAt (floc (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) (⟪ evalᴰ f xf ⟫ kf))
     ncF = subst NotCut (sym sfeq) tt
 
     -- `falloc PR.p2` IS `alloc` (`PairRun.alloc-p2`), so `f`'s frame
     -- equation is already the caller's.
     cf-fsF : current-frame (falloc fsF) ≡ current-frame alloc
-    cf-fsF = VR.frame-pres vrf ncF
+    cf-fsF = VR.frame-pres vrf sfeq
 
     ------------------------------------------------------------------
     -- THE MID ROWS: stash `f`'s result at `fst-stash`, then put the
@@ -552,9 +552,9 @@ module PairC {FS : FrameSemantics} where
     bg : ℕ
     bg = suc (suc (length PS.ft + suc (suc base)))
 
-    handG : m2 ≡ entry-flat bg (floc m2) (falloc m2) (fclosure m2)
-    handG = handover-eq bg m2
-              (cong (λ z → suc (suc z)) endF) (VR.no-ret vrf ncF) (VR.no-link vrf ncF)
+    handG : m2 ≡ entry-flat bg (floc m2) (falloc m2) (fclosure m2) rs
+    handG = handover-eq bg m2 rs
+              (cong (λ z → suc (suc z)) endF) (VR.no-ret vrf sfeq) (VR.no-link vrf ncF)
 
     ------------------------------------------------------------------
     -- THE SLOT `fst-stash`, WRITTEN HERE AND READ IN THE TAIL.
@@ -590,22 +590,22 @@ module PairC {FS : FrameSemantics} where
   module PairChainG
     {A B C : IRTy} (f : IR A B) (g : IR A C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (emitted n l ⟨ f , g ⟩))
     {xf : ValueDomain.⟦ A ⟧ᴰᴵ} {kf : ℕ}
     (vrf : ValueRealized prog (suc (suc base)) (PairShape.f-start f g n l) l f xf
-             (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) kf)
+             (floc (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) (falloc (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) (fclosure (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) rs kf)
     {vf : ValueDomain.⟦ B ⟧ᴰᴵ} {rf : ℕ}
-    (sfeq : resultAt (floc (PairRun.p2 f g n l prog base s alloc cl n≤ nh)) (⟪ evalᴰ f xf ⟫ kf) ≡ returns (done vf rf))
+    (sfeq : resultAt (floc (PairRun.p2 f g n l prog base s alloc cl rs n≤ nh)) (⟪ evalᴰ f xf ⟫ kf) ≡ returns (done vf rf))
     {xg : ValueDomain.⟦ A ⟧ᴰᴵ} {kg : ℕ}
-    (vrg : ValueRealized prog (PairChainF.bg f g n l prog base s alloc cl n≤ nh span vrf sfeq) (PairShape.n1 f g n l) (PairShape.l1 f g n l) g xg
-             (floc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (falloc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (fclosure (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) kg)
+    (vrg : ValueRealized prog (PairChainF.bg f g n l prog base s alloc cl rs n≤ nh span vrf sfeq) (PairShape.n1 f g n l) (PairShape.l1 f g n l) g xg
+             (floc (PairChainF.m2 f g n l prog base s alloc cl rs n≤ nh span vrf sfeq)) (falloc (PairChainF.m2 f g n l prog base s alloc cl rs n≤ nh span vrf sfeq)) (fclosure (PairChainF.m2 f g n l prog base s alloc cl rs n≤ nh span vrf sfeq)) rs kg)
     {vg : ValueDomain.⟦ C ⟧ᴰᴵ} {rg : ℕ}
-    (sgeq : resultAt (floc (PairChainF.m2 f g n l prog base s alloc cl n≤ nh span vrf sfeq)) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vg rg))
+    (sgeq : resultAt (floc (PairChainF.m2 f g n l prog base s alloc cl rs n≤ nh span vrf sfeq)) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vg rg))
     where
-    open PairChain f g n l prog base s alloc cl n≤ nh span
-    open PairChainF f g n l prog base s alloc cl n≤ nh span vrf sfeq
+    open PairChain f g n l prog base s alloc cl rs n≤ nh span
+    open PairChainF f g n l prog base s alloc cl rs n≤ nh span vrf sfeq
 
 
     fsG : FlatState
@@ -626,7 +626,7 @@ module PairC {FS : FrameSemantics} where
     ncG = subst NotCut (sym sgeq) tt
 
     cf-fsG : current-frame (falloc fsG) ≡ current-frame alloc
-    cf-fsG = trans (VR.frame-pres vrg ncG) cf-m2
+    cf-fsG = trans (VR.frame-pres vrg sgeq) cf-m2
 
     -- `fst-stash` is `suc n`, strictly below `f`'s emission frontier
     -- `n + 4 ≤ n1`, so it is inside the window `g`'s run preserves.
@@ -971,7 +971,7 @@ module PairC {FS : FrameSemantics} where
     SETTLE : FlatState
     SETTLE = u10
 
-    RUN : FlatSteps prog STEPS (entry-flat base s alloc cl) SETTLE
+    RUN : FlatSteps prog STEPS (entry-flat base s alloc cl rs) SETTLE
     RUN = FlatSteps-++ pre-chain
             (FlatSteps-++ chainF
               (FlatSteps-++ mid-chain
@@ -1002,8 +1002,8 @@ module PairC {FS : FrameSemantics} where
       (trans (at-end-arith (length PS.ft) (length PS.gt) base)
              (cong (_+ base) (sym len-emitted)))
 
-    NORET : fret SETTLE ≡ []
-    NORET = VR.no-ret vrg ncG
+    NORET : fret SETTLE ≡ rs
+    NORET = VR.no-ret vrg sgeq
 
     NOLINK : flink SETTLE ≡ nothing
     NOLINK = VR.no-link vrg ncG

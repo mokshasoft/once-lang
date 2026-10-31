@@ -12,5 +12,4 @@ Once.CCC.Machine.IR.MuValidity      # Allocation no longer exports what it uses
 Once.Fusion.Correct                 # `eval` not in scope
 Once.Semantics.Value.Laws           # Functor no longer exports `unfoldS`
 Once.Semantics.Machine.Laws         # imports Semantics.Value.Laws
-Once.Spike.RelSpike                 # plan 0.93 S3 in progress; ValueDomain names moved (D179)
 # Refutation probes: each refuted a postulate that is gone; kept as records

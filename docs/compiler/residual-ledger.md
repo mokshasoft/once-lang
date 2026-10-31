@@ -95,16 +95,14 @@ abstract one — read it off the signature: does it mention `X.State` /
         (a real `li a0, -1` loads all-ones). Both are fixed; `step-li` now covers
         both signs instead of dodging half its domain.
 
-    WHAT REMAINS, and it is now TRACKED rather than untracked — five parameters,
+    WHAT REMAINS, and it is now TRACKED rather than untracked — four parameters,
     threaded `Certified → Compiler → ArchCorrectness → X86-64 → ConcFlatSim`:
 
       RegRange           a register holds a value below the modulus. Becomes a
                          theorem when the register file carries its range.
-      ScratchDecGuarded  a reachable `scratch-dec` finds a non-zero Scratch.
-                         Route: the `emitted-thunk-guarded` induction.
-      AddrNoWrap         `ret-no-wrap`, `count-no-wrap`, `lo-fits` — the layout
-                         and the observable counter stay inside the address
-                         space. D087 class; a linker sizing pass discharges them.
+      AddrNoWrap         `ret-no-wrap`, `lo-fits` — the layout stays inside the
+                         address space. D087 class; a linker sizing pass
+                         discharges them.
       LitFits            `tag-fits`, `lit-fits`, `float-fits` — an emitted
                          immediate fits in a machine word. NOT a linker fact:
                          D054 makes an elaborated literal in range BY
@@ -121,6 +119,19 @@ abstract one — read it off the signature: does it mention `X.State` /
     would let `ScratchDecGuarded` be DELETED rather than discharged, and is the
     one place where "fix the abstract side first" genuinely applies, since these
     are values rather than addresses.
+
+    (2026-10-30, plan 0.135, D363: RESOLVED BY DELETION. The seven loop instructions —
+    `scratch-one`/`-zero`/`-dec`/`-load-count`, `count-zero`/`-inc`,
+    `c-branch-scratch-zero` — lost their only emitters when the shape-specialised
+    cata codegens were deleted, so they were removed from the abstract machine
+    with every clause, lemma and hypothesis that existed only for them:
+    `ScratchDecGuarded` (×3 arches), `AddrNoWrap.count-no-wrap`, `sv-succ`/
+    `sv-pred`. Later the same day the three remaining retired instructions —
+    `instr-loop`, `lea-indexed`, `instr-case-on-tag`, none emitted — went too,
+    and with them the `Scratch`/`Count` registers (their only readers), their
+    physical roles (`rbx`/`r14`, `edx`/`edi`, `s3`/`s4`), the register-tag
+    invariant `FlatRegTagWF`, the `NoNested`/`NotNested` fences and the
+    `FlatCorr` fields `scratch-eq`/`count-eq`. No resource hypothesis changed.)
 
     PHASE C STARTED 2026-08-13 — x86-64's SUBTRACTION IS NOW MODULAR. The
     semantics computes `⊖`, `step-sub-ri` says so, and all four `sub` block-steps
@@ -173,8 +184,9 @@ abstract one — read it off the signature: does it mention `X.State` /
     A fourth field (`dealloc-no-wrap`) was written and DELETED —
     `instr-dealloc-stack` is unemittable, ConcFlatSim kills that route with
     `frame-op-absurd`, and a bound that is never consumed should not be assumed.
-    `lea-indexed`'s `add`s are unemittable for the same reason, so only THREE
-    `add` sites are live — exactly the three fields.
+    `lea-indexed`'s `add`s were unemittable for the same reason (the
+    instruction is now deleted, plan 0.135), so only THREE `add` sites are
+    live — exactly the three fields.
 
     DIVISION NEEDED NOTHING: D055 already made `/`/`%` total on RISC-V's
     semantics, in `Once.Word` as `_/ˢ_`/`_%ˢ_` — one definition all three arches
@@ -346,7 +358,28 @@ toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
   emitter sit under a green tree for six weeks; x86-32's was even inconsistent
   with its own `FrameInstantiation`. Plans 0.65/0.66 replace these two rows with
   proofs, and that is the point of doing them.
-- `cata-correct` (`IRObsCorrectFlat`) — **NO LONGER FALSE as of 2026-08-11
+- `cata-correct` (`IRObsCorrect.Cata`) — **PROVED 2026-10-31 (plan 0.135 S3, D364;
+  cata M1 + M4); no postulate left.** `cata-correct` is a definition dispatching
+  on the emitter's strategy: `strat-const` by `CataConst`, `strat-branching` (the
+  one generic post-order walk; the nat/linear specialisations were deleted
+  2026-10-30 as miscompiling) by `CataBr.Branching` over stage A's run-level
+  model (`CataBr.Meaning.po-run`), the flatten loop (`CataBr.Flatten`), one fold
+  round per node (`CataBr.FoldRound`, fresh argument pair per call, D1a), the
+  loop by induction on the eval list (`CataBr.FoldLoop`, fills on the loop's own
+  run succeed: `CataBr.FillOk`) and the exit (`CataBr.FoldExit`). History below.
+- `obs-correct-In` (`IRObsCorrect.InMu`) — **was FALSE; PROVED 2026-10-31 (D366).**
+  The postulate (`IRObsCorrect.Simple`) assumed `In`'s obligation at every functor
+  while `In` was emitted as `mov-to-output` everywhere: at `F = K Int`/`K Float`
+  with the layer in a register the result was a literal in `Output`, and at
+  `K Unit` nothing at all, where `ResultPlace (μ-type F)` admits only a heap
+  pointer (a refutation that uses no postulate: `IRObsCorrectF (In wf) → ⊥` at
+  `K Int`, `in-reg`). Every theorem resting on it held vacuously through those
+  functors. Fixed by the emitter (`MuRep`): `In` boxes an `Int`/`Float` layer
+  into a fresh block and allocates one for a `Unit` layer, `out-μ` and the
+  cata's call (`strat-box`) read the box; a μ value is a heap pointer at every
+  functor. One machine postulate is left in the `IRObsCorrect` tree:
+  `obs-correct-sigop-rest` (plan 0.88).
+- (history) `cata-correct` (`IRObsCorrectFlat`) — **NO LONGER FALSE as of 2026-08-11
   (D101, C1)**; an ordinary deferred proof again. It WAS false: `cata-dispatch`
   spliced the algebra trace TWICE at ONE label range (`I₁ ++ at ++ (I₂ ++ at ++
   I₃)`), and the flat machine resolves labels by a first-match scan over the
@@ -482,8 +515,8 @@ discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
 | # | residual | class | what discharges it |
 |---|---|---|---|
-| N1 | `obs-correct-Out` — forcing a layer | **DISCHARGED (D199)** | Was `deferred proof`; it was in fact FALSE until the emitter re-suspended (D199), and is now a proof. `apply`'s argument with the pair-packing removed: three straight-line rows, then the call, handed off to `BlockRuns.coalgs`. The premise is `CoalgRuns`, not `CalleeRuns` — a suspension is called with the raw seed in `Input1`, where a closure is called with an `(env , arg)` pair pointer |
-| N2 | `obs-correct-in-ν` — a ν built from an available layer | **deferred proof** | same two-cell build with an identity block: the seed IS the layer and the code returns it |
+| N1 | `obs-correct-Out` — forcing a layer | **DISCHARGED (D199)** | Was `deferred proof`; it was in fact FALSE until the emitter re-suspended (D199), and is now a proof. `apply`'s argument with the pair-packing removed: three straight-line rows, then the call, handed off to the ν's own force (`NuV.nu-force`, `IRObsCorrect.NuForce`; was `BlockRuns.coalgs`/`CoalgRuns`, deleted with the apex's `BlockRunsT`, D364). A suspension is called with the raw seed in `Input1`, where a closure is called with an `(env , arg)` pair pointer |
+| N2 | `obs-correct-in-ν` — a ν built from an available layer | **DISCHARGED (D356)** | same two-cell build with an identity block: the seed IS the layer and the code returns it; a proof in `TwoCell` |
 
 **What went the other way.** `obs-correct-Ana` left the postulate block — it is
 a proof (D190's shared build plus one `CellAt`). `ν-not-resident` is gone: it

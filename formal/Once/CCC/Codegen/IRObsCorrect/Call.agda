@@ -42,7 +42,7 @@ module CallC {FS : FrameSemantics} where
   open Core {FS}
 
   obs-correct-call : ∀ {A B} (f : CanonicalName) → LinkedAt tbl f A B → IRObsCorrectF (Once.IR.Call {A} {B} f)
-  obs-correct-call {A} {B} f lk n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k = record
+  obs-correct-call {A} {B} f lk n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k rs = record
     { value-realized =
         realized (1 + CalleeRun.steps crun) (CalleeRun.settle crun)
                  (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
@@ -50,18 +50,19 @@ module CallC {FS : FrameSemantics} where
                  (λ p → CalleeRun.returned crun (trans res-eq p))
                  (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
                       , trans (proj₂ (CalleeRun.stops crun (trans st-eq p))) (cong (λ st → LocState.left (floc st)) call-eq))
-                 (λ nc → CalleeRun.no-ret crun (nc′ nc)) (λ nc → CalleeRun.no-link crun (nc′ nc))
+                 (λ p → CalleeRun.no-ret crun (trans res-eq p)) (λ nc → CalleeRun.no-link crun (nc′ nc))
                  (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
                  (λ p → CalleeRun.place crun (trans res-eq p))
                  (progress-≤ (subst (λ r → k ≤ budgetLeft k r + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
                              (ctrls-≤ʳ run1 (CalleeRun.run crun)))
                  (λ nc fr i bf → mem-pres nc (AtStack fr i) bf) (λ nc hl bf → mem-pres nc (AtDynamic hl) bf)
-                 (λ nc → CalleeRun.frame-pres crun (nc′ nc) alloc (cong falloc call-eq))
+                 (λ p → CalleeRun.frame-pres crun (trans res-eq p) alloc (cong falloc call-eq))
                  (λ nc m loc bf → CalleeRun.bf-mono crun (nc′ nc) alloc m (cong falloc call-eq) loc bf)
+                 (λ p → CalleeRun.frames-pres crun (trans res-eq p) alloc (cong falloc call-eq))
     ; traces-agree = trc
     }
     where
-      e0 = entry-flat base s alloc cl
+      e0 = entry-flat base s alloc cl rs
 
       finfo  = BlockRuns.functions cr f A B lk
       j      = proj₁ finfo
@@ -71,21 +72,21 @@ module CallC {FS : FrameSemantics} where
       -- THE CALL: the statically named entry, resolved by the table scan.
       call-eq : flat-exec-instr (instr-ctrl (c-call-fn f)) prog e0
               ≡ record e0 { falloc = enter-call alloc
-                          ; fret   = suc base ∷ []
+                          ; fret   = suc base ∷ rs
                           ; flink  = just (suc base)
                           ; fpc    = j }
       call-eq = cong (λ z → do-call-at z e0) feq
 
       post = flat-exec-instr (instr-ctrl (c-call-fn f)) prog e0
 
-      crun : CalleeRun prog post (suc base) B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k
+      crun : CalleeRun prog post (suc base) rs B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k
       -- the argument stays where the caller left it: the call writes no memory.
-      crun = runner post alloc x (suc base) k mIn
+      crun = runner post alloc x (suc base) k rs mIn
                (cong fpc call-eq)
                (trans (cong (λ st → halted (floc st)) call-eq) nh)
                (cong fret call-eq)
-               (cong falloc call-eq)
-               (subst (λ st → InputAt {A} mIn alloc x (floc st)) (sym call-eq) inp)
+               (cong falloc call-eq) n≤
+               (subst (λ st → InputAt {prog = prog} {A} mIn alloc x (floc st)) (sym call-eq) inp)
 
       run1 : FlatSteps prog 1 e0 post
       run1 = (nh , span 0 _ refl) ∷ []

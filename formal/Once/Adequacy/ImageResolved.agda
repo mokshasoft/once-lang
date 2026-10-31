@@ -59,10 +59,11 @@ open import Once.Compile using (externs-of; prog-externs)
 open import Once.Adequacy.ImageWF using (prog-defs; Resolved; ProgG; ProgP; prog-sigops)
 open import Once.Denotation.Program using (IRProgram; LinkedProgram)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
+open import Once.Adequacy.ImageUnique using (table-names-distinct)
 open import Once.Module using (moduleSig)
 open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (Linked)
-open import Once.Adequacy.SourceTrace using (rewrite-program-linked)
+open import Once.Adequacy.SourceTrace using (rewrite-program-linked; all-rewrite-linked)
 
 ------------------------------------------------------------------------
 -- Generic facts.
@@ -196,7 +197,7 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
     closes-img : RC.Closes eo G D img
     closes-img =
       inj₁ (here refl) ∷
-      RC.closes-++ eo G LT FI closes-LT (closes-FI (suc (IT.ir-next-label eo 0 main′)) (table rp) FI⊆ (proj₂ lk) sl-tbl)
+      RC.closes-++ eo G LT FI closes-LT (closes-FI (suc (IT.ir-next-label eo 0 main′)) (table rp) FI⊆ (proj₁ (proj₂ lk)) sl-tbl)
 
     resolved : Resolved D ext (arefs img)
     resolved = All-map flat closes-img
@@ -214,7 +215,7 @@ prog-resolved-at σ p lk = Prog.resolved σ p lk (proj₁ (prog-sigops p)) (proj
 prog-resolved : ∀ (m : Core.Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
               → Resolved (prog-defs (irProgram (moduleTable m) ir)) (prog-externs (irProgram (moduleTable m) ir))
                          (arefs (C.image-of (irProgram (moduleTable m) ir)))
-prog-resolved m ir mi = prog-resolved-at (moduleSig m) (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi)
+prog-resolved m ir mi = prog-resolved-at (moduleSig m) (irProgram (moduleTable m) ir) (moduleToProgram-linked m ir mi (table-names-distinct m))
 
 ------------------------------------------------------------------------
 -- THE LIBRARY (plan 0.107 §8 step 4; was `ImageWF.lib-resolved`, a
@@ -252,8 +253,8 @@ module LibLinked (m : Core.Resolved) where
     ce-linked es ef (inj₂ cfs) ceq =
       subst (λ cs → All (λ e → Linked (moduleSig-ef (inj₂ es)) (C.tableOf cs) (fbody e)) (C.tableOf cs))
             (FB.bundle→compiled≡compiled C.emptyCScope es cfs ceq)
-            (link-walk mt b {S = Once.Spec.Core.Syntax.[]} Once.Core.Translate.[] Once.Core.Translate.[] Once.Core.Translate.[]
-                       (Once.Adequacy.ModuleProgram.names₀ (sigOf (teleSig mt))) [] linv₀ (entries-distinct m ef , none-in-empty _) u (sig-in mt))
+            (proj₁ (link-walk mt b {S = Once.Spec.Core.Syntax.[]} Once.Core.Translate.[] Once.Core.Translate.[] Once.Core.Translate.[]
+                       (Once.Adequacy.ModuleProgram.names₀ (sigOf (teleSig mt))) [] linv₀ (entries-distinct m ef , none-in-empty _) u (sig-in mt)))
       where
         b  = FB.ce-bundle C.emptyCScope es ceq
         mt = AS.ce-sound false C.emptyCScope es ceq
@@ -287,7 +288,7 @@ module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked �
 
 
   rt-linked : All (λ e → Linked σ rt (fbody e)) rt
-  rt-linked = proj₂ (rewrite-program-linked lp (tt , table-linked))
+  rt-linked = all-rewrite-linked tbl tbl table-linked
 
   -- a call names a table entry, whose marker the image carries
   call-G : ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt rt f A B → G (labelSym (callee (e-fn f)))

@@ -20,7 +20,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; load-from-slot; store-indirect-suc; instr-load-code-addr; store-indirect; mov-to-input; store-at-slot; sucLoc; readReg; Output; SV-Code; writeReg-same; SV-Ptr; instr-alloc-heap; mov-to-output; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (sucHL)
 
@@ -44,11 +44,11 @@ module TwoCellBuildC {FS : FrameSemantics} where
 
   module TwoCellBuild
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
     (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
     (span : SpanAt prog base (two-cell-trace n l))
     where
-    open TwoCellRun n l prog base s alloc cl n≤ nh span
+    open TwoCellRun n l prog base s alloc cl rs n≤ nh span
 
     -- ── The frontier: the allocation hands out `next-heap-ref (falloc fs2)`
     -- and moves past it, so the record is BEFORE the frontier it leaves.
@@ -117,6 +117,14 @@ module TwoCellBuildC {FS : FrameSemantics} where
      (trans (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))
             (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
 
+    sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
+    sf-fs10 =
+      trans (exec-abstract-preserves-saved (load-from-slot obj-stash) (floc fs9) (falloc fs9))
+     (trans sf-fs9
+     (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+     (trans (exec-abstract-preserves-saved (store-at-slot cell0-stash) (floc fs1) (falloc fs1))
+            (exec-abstract-preserves-saved mov-to-output (floc fs0) (falloc fs0)))))
+
     nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
     nextslot-fs10 =
       trans (exec-abstract-preserves-next-slot (load-from-slot obj-stash) (floc fs9) (falloc fs9) tt)
@@ -165,8 +173,8 @@ module TwoCellBuildC {FS : FrameSemantics} where
     -- (D180), so nothing here determines it from the value's type.
     valid-transport : ∀ {mIn A} (x : ValueDomain.⟦ A ⟧ᴰᴵ) (loc : ValueLocation FS)
                     → BeforeFrontier alloc loc
-                    → ValidAtWF mIn alloc {A} x loc s
-                    → ValidAtWF mIn (falloc fs10) {A} x loc (floc fs10)
+                    → ValidAtWF {prog = prog} mIn alloc {A} x loc s
+                    → ValidAtWF {prog = prog} mIn (falloc fs10) {A} x loc (floc fs10)
     valid-transport {A = A} x loc bf valid =
       validityWF-frontier-advance {A = A} x loc (floc fs10)
         cf-fs10 nextslot-≤ heapref-≤

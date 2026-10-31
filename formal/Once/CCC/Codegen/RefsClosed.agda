@@ -55,10 +55,10 @@ import Once.CCC.Codegen.NodesOK
 open Once.CCC.Codegen.NodesOK using (sigop-syms)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
-   strat-const; strat-nat; strat-linear; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call;
-   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃;
+   strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace;
    cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; wrap-sum; resuspend-layer)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
@@ -145,75 +145,8 @@ module _ (G : String → Set) where
     inj₁ (lab∈ (ℓ o el) d (there (there (∈-++⁺ʳ at (there (here refl)))))) ∷
     closes-++ at (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o el)) ∷ []) cat []
 
-  setup-closes : ∀ {D} (cl k ev pr bl : ℕ) → thunkSym (ℓ o bl) ∈ D → Closes D (cata-call-setup cl k ev pr bl)
-  setup-closes cl k ev pr bl h = inj₁ h ∷ []
-
-  -- `S ++ (I₁ ++ (C ++ (I₂ ++ (C ++ (I₃ ++ B)))))`, the shape both counted
-  -- strategies share.
-  module Six (S I₁ C I₂ I₃ B : AbstractTrace) where
-    R₄ = I₃ ++ B
-    R₃ = C ++ R₄
-    R₂ = I₂ ++ R₃
-    R₁ = C ++ R₂
-    R₀ = I₁ ++ R₁
-    T  = S ++ R₀
-    R₀⊆ : R₀ ⊆ T
-    R₀⊆ = ⊆-++ʳ S R₀
-    I₁⊆ : I₁ ⊆ T
-    I₁⊆ = ⊆-trans (⊆-++ˡ I₁ R₁) R₀⊆
-    R₁⊆ : R₁ ⊆ T
-    R₁⊆ = ⊆-trans (⊆-++ʳ I₁ R₁) R₀⊆
-    R₂⊆ : R₂ ⊆ T
-    R₂⊆ = ⊆-trans (⊆-++ʳ C R₂) R₁⊆
-    I₂⊆ : I₂ ⊆ T
-    I₂⊆ = ⊆-trans (⊆-++ˡ I₂ R₃) R₂⊆
-    R₃⊆ : R₃ ⊆ T
-    R₃⊆ = ⊆-trans (⊆-++ʳ I₂ R₃) R₂⊆
-    R₄⊆ : R₄ ⊆ T
-    R₄⊆ = ⊆-trans (⊆-++ʳ C R₄) R₃⊆
-    I₃⊆ : I₃ ⊆ T
-    I₃⊆ = ⊆-trans (⊆-++ˡ I₃ B) R₄⊆
-    B⊆ : B ⊆ T
-    B⊆ = ⊆-trans (⊆-++ʳ I₃ B) R₄⊆
-    closes-six : ∀ {D} → Closes D S → Closes D I₁ → Closes D C → Closes D I₂ → Closes D I₃ → Closes D B → Closes D T
-    closes-six cs c1 cc c2 c3 cb =
-      closes-++ S R₀ cs (closes-++ I₁ R₁ c1 (closes-++ C R₂ cc (closes-++ I₂ R₃ c2
-        (closes-++ C R₄ cc (closes-++ I₃ B c3 cb)))))
-
-  module NatS where
-    module _ (bb n1 l1 : ℕ) (at : AbstractTrace) where
-      S = cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc n1)))) (suc (suc (suc (suc (suc n1))))) (suc (suc (suc (suc (suc (suc l1))))))
-      C = cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1)))))
-      B = cata-body (suc (suc (suc (suc (suc (suc l1)))))) (suc (suc (suc (suc (suc (suc (suc l1))))))) bb at
-      open Six S (cata-nat-I₁ n1 l1) C (cata-nat-I₂ n1 l1) (cata-nat-I₃ l1) B public using (B⊆; I₁⊆; I₂⊆; I₃⊆; closes-six)
-      closes : ∀ {D} → Defd D (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at)) → Closes D at
-             → Closes D (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
-      closes d cat = closes-six
-        (inj₁ (thk∈ (ℓ o (suc (suc (suc (suc (suc (suc l1))))))) d (B⊆ (there (here refl)))) ∷ [])
-        (inj₁ (lab∈ (ℓ o (suc l1)) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))))) ∷
-         inj₁ (lab∈ (ℓ o (suc (suc l1))) d (I₁⊆ (there (there (there (there (there (there (there (there (there (here refl)))))))))))) ∷
-         inj₁ (lab∈ (ℓ o (suc (suc (suc l1)))) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (here refl)))))))))))))) ∷
-         inj₁ (lab∈ (ℓ o l1) d (I₁⊆ (there (there (here refl))))) ∷ [])
-        []
-        (inj₁ (lab∈ (ℓ o (suc (suc (suc (suc (suc l1)))))) d (I₃⊆ (there (there (here refl))))) ∷ [])
-        (inj₁ (lab∈ (ℓ o (suc (suc (suc (suc l1))))) d (I₂⊆ (here refl))) ∷ [])
-        (body-closes _ _ bb at (defd-⊆ B⊆ d) cat)
-  module LinS where
-    module _ (bb n1 l1 : ℕ) (at : AbstractTrace) where
-      S = cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) (suc (suc (suc (suc l1))))
-      C = cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))
-      B = cata-body (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at
-      open Six S (cata-lin-I₁ n1 l1) C (cata-lin-I₂ n1 l1) (cata-lin-I₃ l1) B public using (B⊆; I₁⊆; I₂⊆; I₃⊆; closes-six)
-      closes : ∀ {D} → Defd D (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at)) → Closes D at
-             → Closes D (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
-      closes d cat = closes-six
-        (inj₁ (thk∈ (ℓ o (suc (suc (suc (suc l1))))) d (B⊆ (there (here refl)))) ∷ [])
-        (inj₁ (lab∈ (ℓ o (suc l1)) d (I₁⊆ (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (there (here refl))))))))))))))))))))))))))) ∷
-         inj₁ (lab∈ (ℓ o l1) d (I₁⊆ (there (there (there (here refl)))))) ∷ [])
-        []
-        (inj₁ (lab∈ (ℓ o (suc (suc (suc l1)))) d (I₃⊆ (there (there (here refl))))) ∷ [])
-        (inj₁ (lab∈ (ℓ o (suc (suc l1))) d (I₂⊆ (here refl))) ∷ [])
-        (body-closes _ _ bb at (defd-⊆ B⊆ d) cat)
+  setup-closes : ∀ {D} (cl k ev bl : ℕ) → thunkSym (ℓ o bl) ∈ D → Closes D (cata-call-setup cl k ev bl)
+  setup-closes cl k ev bl h = inj₁ h ∷ []
 
   ------------------------------------------------------------------------
   -- THE COMPILE-TIME FUNCTOR WALKS. A `⊕` level owns `lb` and `suc lb`: it
@@ -332,8 +265,8 @@ module _ (G : String → Set) where
     module _ (F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace) where
       Lb = l1 + 4 + lsize F + lsize F
       B0 = n1 + 7 + (4 * fsize F) + 4
-      S = cata-call-setup B0 (B0 + 1) (B0 + 2) (B0 + 3) Lb
-      C = cata-call B0 (B0 + 1) (B0 + 3)
+      S = cata-call-setup B0 (B0 + 1) (B0 + 2) Lb
+      C = cata-call B0 (B0 + 1) (B0 + 2) (B0 + 3)
       B = cata-body Lb (Lb + 1) bb at
       I₁ = cata-br-I₁ F n1 l1
       I₂ = cata-br-I₂ n1 l1
@@ -378,23 +311,32 @@ module _ (G : String → Set) where
 
   at⊆ strat-const bb n1 l1 at =
     ⊆-trans (at⊆body l1 (l1 + 1) bb at)
-      (⊆-trans (⊆-++ʳ (cata-call n1 (n1 + 1) (n1 + 3)) (cata-body l1 (l1 + 1) bb at))
-               (⊆-++ʳ (cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1) _))
-  at⊆ strat-nat bb n1 l1 at = ⊆-trans (at⊆body _ _ bb at) (NatS.B⊆ bb n1 l1 at)
-  at⊆ strat-linear bb n1 l1 at = ⊆-trans (at⊆body _ _ bb at) (LinS.B⊆ bb n1 l1 at)
+      (⊆-trans (⊆-++ʳ (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body l1 (l1 + 1) bb at))
+               (⊆-++ʳ (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) _))
+  at⊆ strat-box bb n1 l1 at =
+    ⊆-trans (at⊆body l1 (l1 + 1) bb at)
+      (⊆-trans (⊆-++ʳ (cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)) (cata-body l1 (l1 + 1) bb at))
+               (⊆-++ʳ (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) _))
   at⊆ (strat-branching F) bb n1 l1 at = ⊆-trans (at⊆body _ _ bb at) (BrS.B⊆ F bb n1 l1 at)
 
   cata-closes strat-const bb n1 l1 at {D} d cat =
-    closes-++ S (C ++ B) (setup-closes n1 (n1 + 1) (n1 + 2) (n1 + 3) l1 (thk∈ (ℓ o l1) d (B⊆T (there (here refl)))))
+    closes-++ S (C ++ B) (setup-closes n1 (n1 + 1) (n1 + 2) l1 (thk∈ (ℓ o l1) d (B⊆T (there (here refl)))))
       (closes-++ C B [] (body-closes l1 (l1 + 1) bb at (defd-⊆ B⊆T d) cat))
     where
-      S = cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1
-      C = cata-call n1 (n1 + 1) (n1 + 3)
+      S = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
+      C = cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)
       B = cata-body l1 (l1 + 1) bb at
       B⊆T : B ⊆ S ++ (C ++ B)
       B⊆T = ⊆-trans (⊆-++ʳ C B) (⊆-++ʳ S (C ++ B))
-  cata-closes strat-nat bb n1 l1 at {D} d cat = NatS.closes bb n1 l1 at d cat
-  cata-closes strat-linear bb n1 l1 at {D} d cat = LinS.closes bb n1 l1 at d cat
+  cata-closes strat-box bb n1 l1 at {D} d cat =
+    closes-++ S (C ++ B) (setup-closes n1 (n1 + 1) (n1 + 2) l1 (thk∈ (ℓ o l1) d (B⊆T (there (here refl)))))
+      (closes-++ C B [] (body-closes l1 (l1 + 1) bb at (defd-⊆ B⊆T d) cat))
+    where
+      S = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
+      C = cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)
+      B = cata-body l1 (l1 + 1) bb at
+      B⊆T : B ⊆ S ++ (C ++ B)
+      B⊆T = ⊆-trans (⊆-++ʳ C B) (⊆-++ʳ S (C ++ B))
   cata-closes (strat-branching F) bb n1 l1 at {D} d cat = BrS.closes F bb n1 l1 at d cat
 
   ------------------------------------------------------------------------
@@ -409,6 +351,17 @@ module _ (G : String → Set) where
   sigop-closes si n nothing  (g ∷ []) = inj₂ g ∷ []
   sigop-closes si n (just c) (g ∷ []) = inj₂ g ∷ []
 
+  -- D366: `In`'s three shapes and `out-μ`'s reference nothing.
+  in-closes : ∀ {D} (r : MuRep) (n : ℕ) → Closes D (in-trace r n)
+  in-closes mu-box  n = []
+  in-closes mu-unit n = []
+  in-closes mu-ptr  n = []
+
+  out-closes : ∀ {D} (r : MuRep) → Closes D (out-trace r)
+  out-closes mu-box  = []
+  out-closes mu-unit = []
+  out-closes mu-ptr  = []
+
   close : ∀ {A B} (ir : IR A B) (n l : ℕ) {D}
         → Defd D (Unit (ir-to-trace' n l ir)) → NOK ir
         → Closes D (trace-of (ir-to-trace' n l ir)) × Closes D (blocks-layout (bodies-of (ir-to-trace' n l ir)))
@@ -420,8 +373,8 @@ module _ (G : String → Set) where
   close inl      n l d ok = [] , []
   close inr      n l d ok = [] , []
   close apply    n l d ok = [] , []
-  close (In _)    n l d ok = [] , []
-  close (out-μ _) n l d ok = [] , []
+  close (In {F} _)    n l d ok = in-closes (mu-rep F) n , []
+  close (out-μ {F} _) n l d ok = out-closes (mu-rep F) , []
   close (Out _)   n l d ok = [] , []
   close (const fits-int   v) n l d ok = [] , []
   close (const fits-float v) n l d ok = [] , []
