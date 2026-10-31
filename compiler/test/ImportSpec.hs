@@ -32,8 +32,8 @@ importTests = testGroup "Imports (no transitive FFI re-export)"
 
 ------------------------------------------------------------------------
 -- Helpers: a strata of two modules — `I.T.C` declares the FFI `ping`,
--- `Mid.B` imports it and defines `relay` with it — and a library build of
--- the program against it.
+-- `Mid.B` imports it and defines `relay` with it — and `once check` of the
+-- program against it (D355: a library type-checks; it has no `main`).
 ------------------------------------------------------------------------
 
 checkWith :: [String] -> IO (Either String ())
@@ -48,7 +48,7 @@ checkWith program = withSystemTempDirectory "imports" $ \dir -> do
   let src = dir </> "a.once"
   writeFile src (unlines program)
   (exitCode, stdout, stderr) <-
-    runOnce ["build", "--lib", "--target", "x86_64", "--strata", strata, "-o", dir </> "out", src]
+    runOnce ["check", "--target", "x86_64", "--strata", strata, src]
   case exitCode of
     ExitSuccess   -> return (Right ())
     ExitFailure _ -> return (Left (stdout ++ stderr))

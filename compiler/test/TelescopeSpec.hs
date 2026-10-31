@@ -22,21 +22,21 @@ import Backend.Common (runOnce, testStrataDir)
 telescopeTests :: TestTree
 telescopeTests = testGroup "Telescope (every definition typed once)"
   [ testCase "an unused ill-typed telescope definition is rejected" $ do
-      r <- checkLib
+      r <- checkModule
         [ "f : Nu (K Int)"
         , "f = 5"
         ]
       assertBool "Should reject an ill-typed Nu definition even when unused" (isLeft r)
 
   , testCase "an unused well-typed telescope definition is accepted" $ do
-      r <- checkLib
+      r <- checkModule
         [ "f : Int -> Nu (K Int)"
         , "f = ana (\\x -> x)"
         ]
       r @?= Right ()
 
   , testCase "two telescope definitions of one name are rejected" $ do
-      r <- checkLib
+      r <- checkModule
         [ "f : Int -> Nu (K Int)"
         , "f = ana (\\x -> x)"
         , ""
@@ -46,17 +46,17 @@ telescopeTests = testGroup "Telescope (every definition typed once)"
       assertBool "Should reject duplicate telescope definitions" (isLeft r)
   ]
 
-checkLib :: [T.Text] -> IO (Either String ())
-checkLib sourceLines = withSystemTempFile "telescope.once" $ \path handle -> do
+-- | A module type-checks: `once check` against the test strata, which decides
+-- the Spec's module typing (D355; libraries included, so no `main` is needed).
+checkModule :: [T.Text] -> IO (Either String ())
+checkModule sourceLines = withSystemTempFile "telescope.once" $ \path handle -> do
   TIO.hPutStr handle (T.unlines sourceLines)
   hClose handle
-  withSystemTempFile "telescope-out" $ \out outH -> do
-    hClose outH
-    (exitCode, stdout, stderr) <-
-      runOnce ["build", "--lib", "--target", "x86_64", "--strata", testStrataDir, "-o", out, path]
-    case exitCode of
-      ExitSuccess   -> return (Right ())
-      ExitFailure _ -> return (Left (stdout ++ stderr))
+  (exitCode, stdout, stderr) <-
+    runOnce ["check", "--target", "x86_64", "--strata", testStrataDir, path]
+  case exitCode of
+    ExitSuccess   -> return (Right ())
+    ExitFailure _ -> return (Left (stdout ++ stderr))
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True
