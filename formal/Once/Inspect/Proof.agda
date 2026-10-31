@@ -84,7 +84,7 @@ build-factors doOpt arch mod F eq = with-dump (via-ef doOpt arch mod (extractFun
 -- `once check` accepts exactly the modules the compiler types: a typed
 -- telescope (`ModTele`, the checker's runs with their Spec witnesses) whose
 -- `main`, if it defines one, is usable as `Eff Unit Unit` (`MainsEffUU`).
--- Stated over the compiler's typing; plan 0.133 §2 carries it to the Spec's.
+-- Stated over the compiler's typing; `SpecCheck.check-is-typing` carries it to the Spec's (D355).
 ------------------------------------------------------------------------
 
 -- | The module extracts, types as a telescope, and its `main` (if any) is an entry.
