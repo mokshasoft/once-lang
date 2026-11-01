@@ -671,8 +671,10 @@ module Dispatch (sup : Supply) where
   out-nz-step {hv} n IH ev env prog fs s cc wf h ftq =
     ccc-step-bs {hv} n IH ev env prog fs s (instr-reg-op out-nz)
       (bs-out-nz bss prog fs s (proj₁ wd) cc h ftq (proj₂ wd)
-                 (reg-range prog fs s out-reg (inv-run wf) cc)) wf ftq h refl tt tt h
+                 (reg-range prog fs s out-reg (inv-run wf) cc)) wf ftq h refl tt tt hpost
     where wd = out-nz-output-word prog fs (inv-run wf) h ftq
+          hpost : halted (floc (flat-exec-instr (instr-reg-op out-nz) prog fs)) ≡ false
+          hpost rewrite proj₂ wd = h
 
   -- MEMORY load-indirect (D073: every route is a theorem now). The load-site
   -- discipline (`load-indirect-target-wf`) hands the pointer + dynamic
@@ -1235,7 +1237,6 @@ module Dispatch (sup : Supply) where
         ; inv-env     = envq
         ; inv-run     = mkRunAt (run-tbl run) (run-ir run) (run-emit run) (run-linked run)
                                 (reach-step i fs (run-reach run) ftq h)
-                                (sound-step (run-sound run) h ftq)
         ; inv-started = λ ()
         ; inv-left    = trans (LL.flat-exec-instr-left i tt prog fs) lf0
         }

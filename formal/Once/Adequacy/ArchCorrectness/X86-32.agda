@@ -373,8 +373,8 @@ conc-tr p ir lk img =
   where
     δc = RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir))
     run₀ : RunAt (FFOx.image ir) FFOx.start-flat
-    run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
-                   (FFOx.start-sound ir-obs-correct ir lk)
+    run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl
+                                                   (FFOx.start-sound ir-obs-correct ir lk))
     fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , X.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)))))
                          × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
     fact k = proj₁ agree

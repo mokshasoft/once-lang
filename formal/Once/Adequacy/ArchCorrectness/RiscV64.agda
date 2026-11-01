@@ -301,8 +301,8 @@ conc-tr p ir lk img =
   where
     δc = RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir))
     run₀ : RunAt (FFOr.image ir) FFOr.start-flat
-    run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl)
-                   (FFOr.start-sound ir-obs-correct ir lk)
+    run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl
+                                                   (FFOr.start-sound ir-obs-correct ir lk))
     fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , RS.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)))))
                          × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
     fact k = proj₁ agree

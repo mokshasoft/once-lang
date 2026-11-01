@@ -759,7 +759,7 @@ run-seg-wf prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
     go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
        → SegWF prog 0 fs'
     -- AT ENTRY the pc is 0 and `seg-at _ zero` is the starting state outright.
-    go fs' (reach-start .fs' el eqB) =
+    go fs' (reach-start .fs' el eqB _) =
       mkSegWF (inj₁ (subst (λ z → frame-slots (falloc fs') ≡ cur (seg-at prog z B₀))
                            (sym (proj₁ el)) eqB))
               (subst₂ (RetMatch prog 0)
@@ -1332,7 +1332,7 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
 run-stack-ptr : ∀ prog (fs : FlatState) (r : RunAt prog fs) → StackPtrWF fs
 run-stack-ptr prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog 0 fs' → StackPtrWF fs'
-        go fs' (reach-start .fs' el _) = entry-stack-ptr fs' el
+        go fs' (reach-start .fs' el _ _) = entry-stack-ptr fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           stack-ptr-step i prog fs'' (mkRunAt tbl ir eq lkd r') ftq
             (frame-op-absurd prog fs'' i (tbl , ir , eq) ftq)
@@ -1481,7 +1481,7 @@ run-wf-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs)
 run-wf-ptr-bounds prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
            → FlatWF fs' × PtrBoundsWF fs'
-        go fs' (reach-start .fs' el _) = entry-flat-wf fs' el , entry-ptr-bounds fs' el
+        go fs' (reach-start .fs' el _ _) = entry-flat-wf fs' el , entry-ptr-bounds fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           let ih = go fs'' r' in
           flat-wf-step i prog fs'' (proj₁ ih) ,
@@ -1686,177 +1686,6 @@ branch-tag-scrutinee-wf prog fs m r h ftq = go-in1 (readReg (regs (floc fs)) Inp
 
 ------------------------------------------------------------------------
 
--- the run's program passes the shape check (via `Emitted` + `HeapModed`)
-run-shape-check : ∀ prog (fs : FlatState) (r : RunAt prog fs)
-                → Σ LabelEnv (λ env →
-                    check-shapes env (entry-expect Unit) prog ≡ true)
-run-shape-check prog fs r =
-  proj₁ chk ,
-  subst (λ p → check-shapes (proj₁ chk) (entry-expect Unit) p ≡ true)
-        (sym (run-emit r)) (proj₂ chk)
-  where chk = emitted-shape-check (run-tbl r) (run-ir r)
-
--- A SLOT READ NEVER FINDS AN UNWRITTEN SLOT (Plan 0.54 rung D).
---
--- This is what makes the `*-empty-*` routes UNREACHABLE. It replaces what the
--- OLD bidirectional `Window` supplied for free: that assertion made the
--- concrete cell unmapped wherever the abstract one was, so an empty-slot read
--- "corresponded" by getting both machines stuck. That was false on frame
--- re-entry, and with `Window` one-directional the read would be a genuine
--- DIVERGENCE — abstract halts, concrete reads the previous frame's data.
---
--- So the emitter's discipline has to rule it out, and it does: `site-ok` now
--- requires a non-`e-any` claim at every slot read, and `MeetsSlot` sends every
--- such claim at `nothing` to `⊥`. Same shape as `slot-read-in-frame` — the
--- checker's site fact, localized by `check-at`, met by `run-meets`.
---
--- `sok` is how the caller says which site this is; every call passes `λ _ → refl`.
-slot-read-written : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
-                  → fetch prog (fpc fs) ≡ just i
-                  → (∀ st → ST.site-ok st i ≡ ST.not-any (ST.slot-get (ST.Expect.e-slot st) slot))
-                  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing → ⊥
-slot-read-written prog fs slot i r ftq sok empty =
-  site-slot-written (ST.slot-get (ST.Expect.e-slot st) slot) claim met
-  where
-    sc  = run-shape-check prog fs r
-    env = proj₁ sc
-    chk = proj₂ sc
-    st  = state-at env (entry-expect Unit) prog (fpc fs)
-    claim : ST.not-any (ST.slot-get (ST.Expect.e-slot st) slot) ≡ true
-    claim = trans (sym (sok st))
-                  (proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
-                            (trans (sym (fetch-at-pc prog (fpc fs))) ftq)))
-    met = subst (λ m → ST.Sem.MeetsSlot FS (ST.slot-get (ST.Expect.e-slot st) slot) (falloc fs) m (floc fs))
-                empty
-                (proj₂ (proj₂ (run-meets prog fs r env chk)) slot)
-
-load-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
-                         → fetch prog (fpc fs) ≡ just load-indirect
-                         → Σ (ValueLocation FS) (λ loc →
-                             readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-load-indirect-target-ptr prog fs r ftq =
-  site-load-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
-  where
-    sc  = run-shape-check prog fs r
-    env = proj₁ sc
-    chk = proj₂ sc
-    st  = state-at env (entry-expect Unit) prog (fpc fs)
-    ok : ST.is-ptr (e-in1 st) ≡ true
-    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
-                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
-
--- plan 0.108: AT AN EMITTED `out-nz`, OUTPUT HOLDS AN `Int` WORD — the
--- comparison's arith block just wrote it (`ShapeTable.sigop-claim`), and the
--- checker requires the claim there (`site-ok … out-nz = is-word`).
-out-nz-output-word : ∀ prog (fs : FlatState) → RunAt prog fs
-                   → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
-                   → ∃ λ w → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
-out-nz-output-word prog fs r ftq =
-  site-out-word (e-out st) ok (proj₁ (proj₂ (run-meets prog fs r env chk)))
-  where
-    sc  = run-shape-check prog fs r
-    env = proj₁ sc
-    chk = proj₂ sc
-    st  = state-at env (entry-expect Unit) prog (fpc fs)
-    ok : ST.is-word (e-out st) ≡ true
-    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
-                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
-
-load-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
-                             → fetch prog (fpc fs) ≡ just load-indirect-suc
-                             → Σ (ValueLocation FS) (λ loc →
-                                 readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-load-indirect-suc-target-ptr prog fs r ftq =
-  site-load-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
-  where
-    sc  = run-shape-check prog fs r
-    env = proj₁ sc
-    chk = proj₂ sc
-    st  = state-at env (entry-expect Unit) prog (fpc fs)
-    ok : ST.is-ptr (e-in1 st) ≡ true
-    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
-                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
-
--- THE STORE TARGET DISCIPLINE (2026-08-03): at an emitted store site the
--- target register holds a POINTER — the shape checker requires the block
--- under construction there (`site-ok … store-indirect = is-fresh`), which
--- is the emitter's initialization discipline (allocate, fill, then share).
--- This is what retires `store-indirect{,-suc}-bad`: the divergent route
--- (a store THROUGH a non-pointer, where the concrete `mov [rdi],rax`
--- writes at the value's encoding and continues while the abstract machine
--- halts) is UNREACHABLE in emitted code, so it needs no correspondence.
-store-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
-                          → fetch prog (fpc fs) ≡ just store-indirect
-                          → Σ (ValueLocation FS) (λ loc →
-                              readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-store-indirect-target-ptr prog fs r ftq =
-  site-store-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
-  where
-    sc  = run-shape-check prog fs r
-    env = proj₁ sc
-    chk = proj₂ sc
-    st  = state-at env (entry-expect Unit) prog (fpc fs)
-    ok : ST.is-fresh (e-in1 st) ≡ true
-    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
-                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
-
-store-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
-                              → fetch prog (fpc fs) ≡ just store-indirect-suc
-                              → Σ (ValueLocation FS) (λ loc →
-                                  readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-store-indirect-suc-target-ptr prog fs r ftq =
-  site-store-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
-  where
-    sc  = run-shape-check prog fs r
-    env = proj₁ sc
-    chk = proj₂ sc
-    st  = state-at env (entry-expect Unit) prog (fpc fs)
-    ok : ST.is-fresh (e-in1 st) ≡ true
-    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
-                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
-
--- the non-pointer routes of a store site are absurd
-store-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunAt prog fs
-                    → fetch prog (fpc fs) ≡ just store-indirect
-                    → readReg (regs (floc fs)) Input1 ≡ v
-                    → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
-                    → ⊥
-store-nonptr-absurd prog fs r ftq i-eq nptr =
-  nptr (proj₁ wits) (trans (sym i-eq) (proj₂ wits))
-  where wits = store-indirect-target-ptr prog fs r ftq
-
-store-suc-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunAt prog fs
-                        → fetch prog (fpc fs) ≡ just store-indirect-suc
-                        → readReg (regs (floc fs)) Input1 ≡ v
-                        → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
-                        → ⊥
-store-suc-nonptr-absurd prog fs r ftq i-eq nptr =
-  nptr (proj₁ wits) (trans (sym i-eq) (proj₂ wits))
-  where wits = store-indirect-suc-target-ptr prog fs r ftq
-
-branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunAt prog fs
-                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
-                        → Σ (ValueLocation FS) (λ loc → Σ ℕ (λ k →
-                            (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                            × (readLoc (floc fs) loc ≡ just (SV-Tag k))))
-branch-tag-scrutinee-wf prog fs m r ftq =
-  repack (site-branch-tag (e-in1 st) ok (proj₁ (run-meets prog fs r env chk)))
-  where
-    sc  = run-shape-check prog fs r
-    env = proj₁ sc
-    chk = proj₂ sc
-    st  = state-at env (entry-expect Unit) prog (fpc fs)
-    ok : ST.tag-site-ok (e-in1 st) ≡ true
-    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
-                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
-    repack : Σ (ValueLocation FS) (λ loc →
-               (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-               × Σ ℕ (λ t → readLoc (floc fs) loc ≡ just (SV-Tag t)))
-           → Σ (ValueLocation FS) (λ loc → Σ ℕ (λ k →
-               (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-               × (readLoc (floc fs) loc ≡ just (SV-Tag k))))
-    repack (loc , i-eq , t , r-eq) = loc , t , i-eq , r-eq
-
 -- THE FOUR IN-BOUNDS FACTS THE BLOCK-STEPS CONSUME, now read off the
 -- invariant (the store pair was residual until 2026-08-01; the load pair
 -- combines the `-target-ptr` residual's pointer shape with the theorem).
@@ -1941,7 +1770,7 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
 
     go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
        → ∀ {r : ℕ} → flink fs' ≡ just r → Goal fs'
-    go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl) _) lk =
+    go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl) _ _) lk =
       ⊥-elim (nothing≢justℕ (trans (sym fl) lk))
     go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) {r} lk =
       step (flinkView i)

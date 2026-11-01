@@ -114,6 +114,12 @@ EntryLike fs = (fpc fs ≡ 0)
 data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
   reach-start : ∀ (fs : FlatState) → EntryLike fs
               → frame-slots (falloc fs) ≡ B
+              -- D367: …and the run from the start NEVER FAULTS. Not a property
+              -- of the code alone (a hand-built state can hold a non-pointer
+              -- anywhere) but of the program's own run, which `ir-obs-correct`
+              -- describes: the apex supplies it (`FlatFromObs.start-sound`),
+              -- and every reached state inherits it (`reach-sound`).
+              → Sound prog fs
               → Reachable prog B fs
   reach-step  : ∀ (i : AbstractInstr) (fs : FlatState)
               → Reachable prog B fs
@@ -165,14 +171,16 @@ record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
     -- plan 0.107: the run starts OUTSIDE every frame — `c-start` (pc 0) reserves
     -- the outermost one as an ordinary, proved step.
     run-reach : Reachable prog 0 fs
-    -- D367: …and the run from here NEVER FAULTS — no state it reaches met a
-    -- shape no target can follow. Not a property of the code alone (a
-    -- hand-built state can hold a non-pointer anywhere) but of the program's
-    -- own run, which `ir-obs-correct` describes: the apex supplies it at the
-    -- start (`FlatFromObs.start-sound`) and every step keeps it
-    -- (`sound-step`). It is what the site facts in `RunWF` are read off.
-    run-sound : Sound prog fs
 open RunAt public
+
+-- D367: a reached state's run never faults — the start's does, and a step
+-- keeps it. What the site facts in `RunWF` are read off.
+reach-sound : ∀ {prog B fs} → Reachable prog B fs → Sound prog fs
+reach-sound (reach-start _ _ _ snd)    = snd
+reach-sound (reach-step i fs r ftq h) = sound-step (reach-sound r) h ftq
+
+run-sound : ∀ {prog fs} → RunAt prog fs → Sound prog fs
+run-sound r = reach-sound (run-reach r)
 
 run-emitted : ∀ {prog fs} → RunAt prog fs → Emitted prog
 run-emitted r = run-tbl r , run-ir r , run-emit r
