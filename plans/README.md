@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (31 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (34 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -42,6 +42,9 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 | 0.125 Once in nixpkgs | A, B, C.1, C′ 1–4 done | C.2 draft `package.nix` against nixpkgs; C′ 5 server-test segfaults; D release + nixpkgs PR |
 | 0.129 optimizer strength | A, B, B4, B5, C1 done; C2 dropped | C3 pair fusion, C4 Lambek; D: discovery tool on traces; E: optimality over the trace |
 | 0.130 run-time cost instrumentation | not started | decide where counts come from (flat machine vs emulator); one report shape shared with the Agda fork's; dependent-type-ready keys |
+| 0.136 library builds | open; §2 decided (A); §3 A done on branch `library-builds` | closes with 0.137 |
+| 0.138 one value layout | design, before 0.137; after the calls-proved merge, with 0.123 B | `Spec.ABI` layout of concrete values (both boundaries); the internal layout equals it, as an implementation-Spec claim beside `NoLeak`; with 0.123 B's pop heap |
+| 0.137 verified libraries | design, after 0.138; decisions complete | `export` + `LibraryBuild` Spec patch; `CorrectLibrary`; front end, export stubs, proofs, C-harness tests, docs |
 | 0.64 proof-island audit | open | groups F, S, C and `TypeCheck` (group O done, D347) |
 | 0.37 chunked cata payload stack | deferred | ISA extension + chunked codegen |
 | 0.56 register-budget arith | parked | steps A–E |
