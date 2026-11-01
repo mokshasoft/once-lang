@@ -61,6 +61,26 @@ cgroup_available() {
     && systemctl --user show-environment >/dev/null 2>&1
 }
 
+# Give GHC's heap a limit below the cgroup cap. Without one, the copying
+# collector reserves about twice the live data and the cgroup kills agda
+# even though the live data fits: `Resusp/SumR` holds 3.3 GB live but
+# reaches 5.3 GB RSS. With `-M` the collector compacts in place near the
+# limit instead (SumR: 4.7 GB RSS, same time). Headroom 700M covers the
+# non-heap RSS. Skipped when the caller already set GHCRTS.
+mem_mb() {
+  case "$1" in
+    *G|*g) echo $(( ${1%?} * 1024 )) ;;
+    *M|*m) echo "${1%?}" ;;
+    *)     echo "" ;;
+  esac
+}
+if [ -z "${GHCRTS:-}" ]; then
+  cap_mb=$(mem_mb "$MEM_MAX")
+  if [ -n "$cap_mb" ] && [ "$cap_mb" -gt 1400 ]; then
+    export GHCRTS="-M$(( cap_mb - 700 ))m"
+  fi
+fi
+
 # Set sentinel so the Makefile's `agda` / `malonzo` recipes skip their
 # self-wrap when they re-invoke make inside this scope.
 export AGDA_SAFE_ACTIVE=1
