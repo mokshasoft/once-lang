@@ -2192,7 +2192,7 @@ d_printFile_1388 v0
 -- Once.Compile.image-of
 d_image'45'of_1390 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_652 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
 d_image'45'of_1390 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_36
@@ -2346,7 +2346,7 @@ d_emitProgram_1432 v0
 -- Once.Compile.lib-image
 d_lib'45'image_1434 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2076]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
 d_lib'45'image_1434 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
