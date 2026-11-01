@@ -39,7 +39,7 @@ open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; readReg; Input1; SV-Ptr; sucLoc; SV-Code; module LocState; module AllocState)
-open import Once.CCC.Machine.SMCore using (ending) public
+open import Once.CCC.Machine.SMCore using (ending)
 open AllocState using (next-slot; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)

@@ -34,6 +34,7 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Branching (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Run o tbl using (module CataRunC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO; cata-alg; cata-br-meaning)

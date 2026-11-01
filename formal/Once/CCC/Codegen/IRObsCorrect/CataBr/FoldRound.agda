@@ -36,6 +36,7 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldRound (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl using (module BlockCallC)
 open import Once.CCC.Codegen.IRObsCorrect.Apply o tbl using (module ApplyC)

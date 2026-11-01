@@ -24,6 +24,7 @@ open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Codegen.IRObsCorrect.CataConst.Run (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl using (module BlockCallC)
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl using (module NuForceC)
 open import Once.CCC.Codegen.IRObsCorrect.Apply o tbl using (module ApplyC)

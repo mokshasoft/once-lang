@@ -32,6 +32,7 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.BlockCall (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; instr-ctrl; c-ret; c-thunk; c-entry; EntryId; e-thunk; block-layout; StackMem; module MemOps)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)

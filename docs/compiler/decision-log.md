@@ -20630,3 +20630,14 @@ Unchanged (representation only): `formal/Once/Spec` is not touched; the IR and i
 ### Spec
 Unchanged. `Spec/Correct` and `Certified` are textually the same; the arch models changed only in where
 the heap starts (one word up) and in naming the loader's stack top relative to it.
+
+### Cost
+None in the binary: the emitter is untouched (the MAlonzo re-extraction differs only in the abstract
+machine's state record and the model constants). Proof memory: `Resusp/SumR` and `Resusp/SumL` now peak
+just over the old 5.5 GB cap when checked alone (~5.5 GB, from ~3.5 GB); they check under 6.8 GB.
+
+### Checks
+`Once/Certified.agda` checks (one module per process, then the apex: 124 s, 4.3 GB); `make merge-gate`
+OK; `lint-pragmas` (17) and `lint-imports` clean; MAlonzo re-extracted, `cabal build all` OK, `cabal test`
+913/919 (the 6 known loop-forever server tests); exit-code tests 176/176 on x86_64, x86_32 and riscv64.
+The plan 0.62 probes (`ProbeShape`, `ProbeShape2`) import the deleted `ShapeTable` and are retired with it.

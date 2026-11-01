@@ -57,7 +57,7 @@ open LocState using (halted; heapMem; stackMem; regs)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open FlatStepsAPI {FS} using (Sound; sound-step) public
+open FlatStepsAPI {FS} using (Sound; sound-step)
 open FlatMachine {FS}
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)
