@@ -445,6 +445,8 @@ WRITTEN. Consequences:
 
 Postulate count UNCHANGED at 11: `emitted-shape-check`'s CONTENT grew (the
 `site-ok` conjunct), which is exactly the shape the plan called for.
+(Historical: D367 later deleted `emitted-shape-check` — it was false — and the
+site facts above became theorems read off the run, which never faults.)
 
 ## THE ASSEMBLER BOUNDARY — what the model cannot express (D100)
 
