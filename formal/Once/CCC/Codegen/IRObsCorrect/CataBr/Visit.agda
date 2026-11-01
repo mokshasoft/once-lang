@@ -607,8 +607,8 @@ module CataVisitC {FS : FrameSemantics} where
         pt = sum-ptr wd
         sc = sum-inr (PtrTo.val pt)
 
-        cond : tag-zf (flat-read-tag (floc σ)) ≡ false
-        cond = trans (cong (λ z → tag-zf (flat-read-at (floc σ) (sv-as-loc z))) (PtrTo.eq pt)) (cong tag-zf (SumCell.tag sc))
+        cond : tag-test (flat-read-tag (floc σ)) ≡ just false
+        cond = trans (cong (λ z → tag-test (flat-read-at (floc σ) (sv-as-loc z))) (PtrTo.eq pt)) (cong tag-test (SumCell.tag sc))
 
         q0 = record σ { fpc = suc base }
         w0 : Walk prog n (KV s) σ (suc base) (λ _ → ⊤)
@@ -641,8 +641,8 @@ module CataVisitC {FS : FrameSemantics} where
         pt = sum-ptr wd
         sc = sum-inl (PtrTo.val pt)
 
-        cond : tag-zf (flat-read-tag (floc σ)) ≡ true
-        cond = trans (cong (λ z → tag-zf (flat-read-at (floc σ) (sv-as-loc z))) (PtrTo.eq pt)) (cong tag-zf (SumCell.tag sc))
+        cond : tag-test (flat-read-tag (floc σ)) ≡ just true
+        cond = trans (cong (λ z → tag-test (flat-read-at (floc σ) (sv-as-loc z))) (PtrTo.eq pt)) (cong tag-test (SumCell.tag sc))
 
         i1 = record σ { fpc = J₁ }
         w0 : Walk prog n (KV s) σ J₁ (λ _ → ⊤)

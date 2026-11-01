@@ -148,7 +148,10 @@ open import Once.CCC.Machine.FlatStoreWF FS using
   (FlatWF; flat-wf-step; cl-step; sv-below; module StoreWF)
 open StoreWF using (wf-regs; wf-heap; wf-stack; wf-fresh)
 open import Once.CCC.Machine.FlatStackPtr FS using
-  (stack-ptr-live; stack-ptr-suc-live)
+  (stack-ptr-live; stack-ptr-suc-live; StackPtrOK; StackPtrOK?; module SPInv)
+open SPInv using (sp-heap; sp-stack)
+open import Once.CCC.Machine.FlatPtrBounds FS using (PtrB; PtrB?; module PBInv)
+open PBInv using (pb-heap; pb-stack)
 open import Once.CCC.Label using (thunk)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics using (slot-addr; slot-addr-linear)
@@ -534,13 +537,16 @@ module Dispatch (sup : Supply) where
                         ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                           ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
   tag-branch-step {hv} n IH ev env prog fs s m cc wf h ftq =
-    go-loc (proj₁ wits) (proj₁ (proj₂ wits))
-           (proj₁ (proj₂ (proj₂ wits))) (proj₂ (proj₂ (proj₂ wits)))
+    go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₁ (proj₂ (proj₂ wits)))
+           (proj₁ (proj₂ (proj₂ (proj₂ wits)))) (proj₂ (proj₂ (proj₂ (proj₂ wits))))
     where
-      -- The scrutinee discipline hands a POINTER (either residence) to a
-      -- written TAG cell; the concrete read is derived per residence below
-      -- and everything downstream is residence-generic.
-      wits = branch-tag-scrutinee-wf prog fs m (inv-run wf) ftq
+      -- The scrutinee discipline (D367) hands a POINTER (either residence) to a
+      -- written cell holding a TAG or a POINTER; the concrete read is derived
+      -- per residence below, and then per cell.
+      wits = branch-tag-scrutinee-wf prog fs m (inv-run wf) h ftq
+      dc = dataCorr cc
+      pbwf = run-ptr-bounds prog fs (inv-run wf)
+      spwf = run-stack-ptr prog fs (inv-run wf)
       go-fl : ∀ loc k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
             → readLoc (floc fs) loc ≡ just (SV-Tag k)
             → memory s (rreg s in1-reg + 0) ≡ just k
@@ -564,7 +570,7 @@ module Dispatch (sup : Supply) where
       -- fall-through via the label-free `block-step-c-branch-tag-nz`.
       go-fl loc (suc k') i-eq r-eq rd nothing fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-nz bss prog fs s m loc k' cc h ftq i-eq r-eq rd)
+          (bs-c-branch-tag-nz bss prog fs s m loc k' cc h ftq i-eq (cong (FlatMachine.tag-test {FS}) r-eq) rd)
           wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | r-eq = h
@@ -576,35 +582,71 @@ module Dispatch (sup : Supply) where
           (st-c-branch-tag-zero sts ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq)
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
               hpost rewrite i-eq | r-eq | fl-eq = refl
-      -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
-      go-loc : ∀ (loc : ValueLocation FS) (k : ℕ)
-             → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-             → readLoc (floc fs) loc ≡ just (SV-Tag k)
+      -- D367: A POINTER CELL — a cata stack's top element. Never the sentinel:
+      -- the address it encodes to is mapped (`PtrBoundsWF` puts the pointee in
+      -- bounds, `dom-sized` maps it), and no mapped address is 0
+      -- (`HeapView.dom-pos`). So both machines fall through, label or not.
+      -- (A STACK pointer in a cell does not exist under heap mode: `StackPtrWF`.)
+      pos-suc : ∀ {x : ℕ} → 0 < x → Σ ℕ (λ y → x ≡ suc y)
+      pos-suc {suc y} _ = y , refl
+      go-ptr : ∀ loc hl′ → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+             → readLoc (floc fs) loc ≡ just (SV-Ptr (AtDynamic hl′))
+             → PtrB (block-size (falloc fs)) (SV-Ptr (AtDynamic hl′))
+             → memory s (rreg s in1-reg + 0) ≡ just (CFC.haddr hv hl′)
              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
-                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
-      -- HEAP: the tag cell is written ⇒ mapped (`dom-written`), `heap-eq`
+                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
+      go-ptr loc hl′ i-eq r-eq pb rd =
+        ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
+          (bs-c-branch-tag-nz bss prog fs s m loc (proj₁ pz) cc h ftq i-eq (cong (FlatMachine.tag-test {FS}) r-eq)
+             (trans rd (cong just (proj₂ pz))))
+          wf ftq h refl tt tt hpost
+        where pz = pos-suc {CFC.haddr hv hl′}
+                     (CFC.dom-pos hv (CFC.dom-sized dc hl′ (≤-trans (n≤1+n _) pb)))
+              hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
+              hpost rewrite i-eq | r-eq = h
+      -- per cell, once the concrete read is in hand
+      on-cell : ∀ loc (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+              → readLoc (floc fs) loc ≡ just v → TagCell v
+              → PtrB (block-size (falloc fs)) v → StackPtrOK v
+              → memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
+              → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
+                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
+      on-cell loc .(SV-Tag k) i-eq r-eq (tc-tag k) _ _ rd = go-fl loc k i-eq r-eq rd (flat-find-label prog m) refl
+      on-cell loc .(SV-Ptr (AtDynamic hl′)) i-eq r-eq (tc-ptr hl′) pb _ rd = go-ptr loc hl′ i-eq r-eq pb rd
+      on-cell loc .(SV-Ptr (AtStack f k)) i-eq r-eq (tc-stk f k) _ () rd
+      -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
+      go-loc : ∀ (loc : ValueLocation FS) (v : StoredValue FS)
+             → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+             → readLoc (floc fs) loc ≡ just v → TagCell v
+             → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
+                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) × ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≤ suc M)
+      -- HEAP: the cell is written ⇒ mapped (`dom-written`), `heap-eq`
       -- relates it, and the address is the pointer's encoding.
-      go-loc (AtDynamic hl) k i-eq r-eq =
-        go-fl (AtDynamic hl) k i-eq r-eq rd-heap (flat-find-label prog m) refl
+      go-loc (AtDynamic hl) v i-eq r-eq tc =
+        on-cell (AtDynamic hl) v i-eq r-eq tc
+          (subst (PtrB? (block-size (falloc fs))) r-eq (pb-heap pbwf hl))
+          (subst StackPtrOK? r-eq (sp-heap spwf hl)) rd-heap
         where
-          dc = dataCorr cc
-          addr-val : rreg s in1-reg + 0 ≡ haddr hv hl
+          addr-val : rreg s in1-reg + 0 ≡ CFC.haddr hv hl
           addr-val = trans (+-identityʳ (rreg s in1-reg))
                            (trans (CFC.in1-eq dc) (cong (CFC.enc-sv hv) i-eq))
-          rd-heap : memory s (rreg s in1-reg + 0) ≡ just k
+          rd-heap : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
           rd-heap = trans (cong (memory s) addr-val)
                           (trans (CFC.heap-eq dc hl (CFC.dom-written dc hl r-eq))
                                  (cong (CFC.enc-maybe hv) r-eq))
       -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
       -- live-pair theorem pins it to the current frame's live window, where
       -- `sp-eq` + `stack-eq` relate exactly that cell.
-      go-loc (AtStack f k') k i-eq r-eq =
-        go-fl (AtStack f k') k i-eq r-eq rd-stack (flat-find-label prog m) refl
+      go-loc (AtStack f k') v i-eq r-eq tc =
+        on-cell (AtStack f k') v i-eq r-eq tc
+          (subst (PtrB? (block-size (falloc fs))) r-eq (pb-stack pbwf f k'))
+          (subst StackPtrOK? r-eq (sp-stack spwf f k')) rd-stack
         where
-          dc = dataCorr cc
           spc = stack-ptr-current prog fs f k' (inv-run wf) i-eq
-          st-cf : stackMem (floc fs) (current-frame (falloc fs)) k' ≡ just (SV-Tag k)
+          st-cf : stackMem (floc fs) (current-frame (falloc fs)) k' ≡ just v
           st-cf = trans (cong (λ fr → stackMem (floc fs) fr k') (sym (proj₁ spc))) r-eq
           rdi-val : rreg s in1-reg + 0
                   ≡ rreg s sp-reg + k' * slot-size
@@ -614,7 +656,7 @@ module Dispatch (sup : Supply) where
                     (trans (cong (λ fr → slot-addr FS fr k') (proj₁ spc))
                     (trans (slot-addr-linear FS (current-frame (falloc fs)) k')
                            (cong₂ (λ b w' → b + k' * w') (sym (CFC.sp-eq dc)) word-eq)))))
-          rd-stack : memory s (rreg s in1-reg + 0) ≡ just k
+          rd-stack : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
           rd-stack = trans (cong (memory s) rdi-val)
                            (CFC.stack-eq-cur dc k' (proj₂ spc) _ st-cf)
 
@@ -630,7 +672,7 @@ module Dispatch (sup : Supply) where
     ccc-step-bs {hv} n IH ev env prog fs s (instr-reg-op out-nz)
       (bs-out-nz bss prog fs s (proj₁ wd) cc h ftq (proj₂ wd)
                  (reg-range prog fs s out-reg (inv-run wf) cc)) wf ftq h refl tt tt h
-    where wd = out-nz-output-word prog fs (inv-run wf) ftq
+    where wd = out-nz-output-word prog fs (inv-run wf) h ftq
 
   -- MEMORY load-indirect (D073: every route is a theorem now). The load-site
   -- discipline (`load-indirect-target-wf`) hands the pointer + dynamic
@@ -644,7 +686,7 @@ module Dispatch (sup : Supply) where
                            ≡ event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) × ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs) ≤ suc M)
   load-indirect-step {hv} n IH ev env prog fs s cc wf h ftq =
     go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
-    where wits = load-indirect-target-wf prog fs (inv-run wf) ftq
+    where wits = load-indirect-target-wf prog fs (inv-run wf) h ftq
           go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mw
@@ -705,7 +747,7 @@ module Dispatch (sup : Supply) where
                                ≡ event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) × ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs) ≤ suc M)
   load-indirect-suc-step {hv} n IH ev env prog fs s cc wf h ftq =
     go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
-    where wits = load-indirect-suc-target-wf prog fs (inv-run wf) ftq
+    where wits = load-indirect-suc-target-wf prog fs (inv-run wf) h ftq
           go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) (sucHL hl) ≡ mw
@@ -771,12 +813,11 @@ module Dispatch (sup : Supply) where
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
-            -- UNREACHABLE (Plan 0.54 rung D): `site-ok` requires a non-`e-any`
-            -- claim at every slot READ, and `MeetsSlot` sends such a claim at
-            -- `nothing` to `⊥`. So a checked program never reads an unwritten
-            -- slot — which is what the old bidirectional `Window` used to paper
+            -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
+            -- FAULTS, and the program's run never faults (`slot-read-written`)
+            -- — which is what the old bidirectional `Window` used to paper
             -- over by declaring the concrete cell unmapped as well.
-            ⊥-elim (slot-read-written prog fs slot (load-from-slot slot) (inv-run wf) ftq (λ _ → refl) st-eq)
+            ⊥-elim (slot-read-written prog fs slot (load-from-slot slot) (inv-run wf) h ftq sr-load st-eq)
 
   -- STACK restore-input: identical to load-from-slot but writes Input1 (rdi).
   restore-input-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -796,12 +837,11 @@ module Dispatch (sup : Supply) where
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
-            -- UNREACHABLE (Plan 0.54 rung D): `site-ok` requires a non-`e-any`
-            -- claim at every slot READ, and `MeetsSlot` sends such a claim at
-            -- `nothing` to `⊥`. So a checked program never reads an unwritten
-            -- slot — which is what the old bidirectional `Window` used to paper
+            -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
+            -- FAULTS, and the program's run never faults (`slot-read-written`)
+            -- — which is what the old bidirectional `Window` used to paper
             -- over by declaring the concrete cell unmapped as well.
-            ⊥-elim (slot-read-written prog fs slot (restore-input slot) (inv-run wf) ftq (λ _ → refl) st-eq)
+            ⊥-elim (slot-read-written prog fs slot (restore-input slot) (inv-run wf) h ftq sr-restore st-eq)
 
   -- STACK worklist-pop: identical to load-from-slot (same abstract sem + lowering).
   worklist-pop-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -821,12 +861,11 @@ module Dispatch (sup : Supply) where
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
-            -- UNREACHABLE (Plan 0.54 rung D): `site-ok` requires a non-`e-any`
-            -- claim at every slot READ, and `MeetsSlot` sends such a claim at
-            -- `nothing` to `⊥`. So a checked program never reads an unwritten
-            -- slot — which is what the old bidirectional `Window` used to paper
+            -- UNREACHABLE (Plan 0.54 rung D, D367): reading an unwritten slot
+            -- FAULTS, and the program's run never faults (`slot-read-written`)
+            -- — which is what the old bidirectional `Window` used to paper
             -- over by declaring the concrete cell unmapped as well.
-            ⊥-elim (slot-read-written prog fs slot (worklist-pop slot) (inv-run wf) ftq (λ _ → refl) st-eq)
+            ⊥-elim (slot-read-written prog fs slot (worklist-pop slot) (inv-run wf) h ftq sr-pop st-eq)
 
   -- MEMORY store-indirect: case the Output-target pointer. A live dynamic pointer ⇒ the
   -- PROVEN block-step-store-indirect (HDom from dom-sized ∘ store-indirect-inbounds; the writeLoc↔heap
@@ -860,11 +899,11 @@ module Dispatch (sup : Supply) where
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f k) (readReg (regs (floc fs)) Output)) h
           go-ptr (SV-Tag _)   i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
           go-ptr (SV-Lit _ _) i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
           go-ptr (SV-Code _)  i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
 
   -- MEMORY store-indirect-suc: as store-indirect but the SECOND cell (sucHL hl).
   store-indirect-suc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -895,11 +934,11 @@ module Dispatch (sup : Supply) where
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f (suc k)) (readReg (regs (floc fs)) Output)) h
           go-ptr (SV-Tag _)   i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
           go-ptr (SV-Lit _ _) i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
           go-ptr (SV-Code _)  i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
 
   -- EXTERNAL SIGOP engine: run-events-external EMITS `ev lbl s` then continues past the
   -- call (sigop-run-external, PROVEN); the external contract pins `ev ≡ event-of` and the
@@ -1160,7 +1199,7 @@ module Dispatch (sup : Supply) where
     → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b))
-    → CFC.hfront hv ≡ 0
+    → CFC.hfront hv ≡ slot-size
     → fret fs ≡ []
     → LocState.left (floc fs) ≡ false
     → Σ ℕ (λ M → (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s
@@ -1196,6 +1235,7 @@ module Dispatch (sup : Supply) where
         ; inv-env     = envq
         ; inv-run     = mkRunAt (run-tbl run) (run-ir run) (run-emit run) (run-linked run)
                                 (reach-step i fs (run-reach run) ftq h)
+                                (sound-step (run-sound run) h ftq)
         ; inv-started = λ ()
         ; inv-left    = trans (LL.flat-exec-instr-left i tt prog fs) lf0
         }

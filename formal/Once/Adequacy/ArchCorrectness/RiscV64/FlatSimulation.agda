@@ -71,7 +71,7 @@ open HeapRef using (ref-id)
 open import Data.Unit using (tt)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
-open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc; enter-call; do-call-sv; do-call-code; do-call-at)
+open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr; flat-step-straight; do-nz; tag-test; fetch; find-label; flat-read-tag; flat-read-at; sv-is-zero; flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc; enter-call; do-call-sv; do-call-code; do-call-at)
 open import Once.CCC.Label using (once; thunk; callee)
 
 import Once.CCC.Target.RiscV64.Semantics as R
@@ -592,10 +592,13 @@ block-step-out-nz : ∀ {hv : HeapView} prog fs s w → CompiledCorr hv prog fs 
   → R.readReg (R.State.regs s) a0 < R.W.modulus
   → BlockStep hv prog fs s (instr-reg-op out-nz)
 block-step-out-nz {hv} prog fs s w cc h ft o-eq rng =
-  post , exec-eq , record
+  -- D367: `out-nz` steps only on an `Int` word — `o-eq` says this is one.
+  post , exec-eq , subst (λ fs' → CompiledCorr hv prog fs' post) (sym nz-eq) (record
     { dataCorr = C.sim-out-nz w fs s _ dc o-eq (C.sets-role-riscv64 s role-out _ _)
-    ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+    ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
   where
+    nz-eq : flat-exec-instr (instr-reg-op out-nz) prog fs ≡ flat-step-straight (instr-reg-op out-nz) fs
+    nz-eq = cong (λ v → do-nz v fs) o-eq
     dc = dataCorr cc ; po = pc-off cc
     halt-s : R.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
@@ -621,7 +624,7 @@ block-step-out-nz {hv} prog fs s w cc h ft o-eq rng =
                 (step-sltu {compile-trace prog} {s} {a0} {zero} {a0} fetch-rv)
     exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op out-nz) prog fs))
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-step-straight (instr-reg-op out-nz) fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op out-nz) ft))
 
 
@@ -1130,8 +1133,8 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j₀ cc h ft i-eq r-eq rd
     exec-eq : R.exec 2 (compile-trace prog) s ≡ just post
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-ld} halt-s step-ld' halt-s)
                     (exec-1 {compile-trace prog} {0} {post-ld} {post} halt-s step-b halt-s)
-    cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} zero)
-    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
+    cond-eq : tag-test (flat-read-tag (floc fs)) ≡ just true
+    cond-eq = cong tag-test (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq | fl-eq = post , exec-eq , record
       { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
@@ -1163,8 +1166,8 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j₀ cc h ft i-eq r-eq
     exec-eq : R.exec 2 (compile-trace prog) s ≡ just post
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-ld} halt-s step-ld' halt-s)
                     (exec-1 {compile-trace prog} {0} {post-ld} {post} halt-s step-b halt-s)
-    cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
-    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
+    cond-eq : tag-test (flat-read-tag (floc fs)) ≡ just false
+    cond-eq = cong tag-test (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq = post , exec-eq , record
       { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
@@ -1445,7 +1448,7 @@ block-step-c-branch-tag-nz : ∀ {hv : HeapView} prog fs s n loc m → CompiledC
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-  → readLoc (floc fs) loc ≡ just (SV-Tag (suc m))
+  → tag-test (readLoc (floc fs) loc) ≡ just false
   → R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 0) ≡ just (suc m)
   → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
 block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
@@ -1470,8 +1473,8 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
     exec-eq : R.exec 2 (compile-trace prog) s ≡ just post
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-ld} halt-s step-ld' halt-s)
                     (exec-1 {compile-trace prog} {0} {post-ld} {post} halt-s step-b halt-s)
-    cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
-    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
+    cond-eq : tag-test (flat-read-tag (floc fs)) ≡ just false
+    cond-eq = trans (cong (λ z → tag-test (flat-read-at (floc fs) (sv-as-loc z))) i-eq) r-eq
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq = post , exec-eq , record
       { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
@@ -1579,7 +1582,7 @@ block-step-c-start : ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs
   → lo' ≤ R.readReg (R.State.regs s) sp ∸ slots b
   → slots b ≤ R.readReg (R.State.regs s) sp
   → R.readReg (R.State.regs s) sp < R.W.modulus
-  → C.hfront hv ≡ 0
+  → C.hfront hv ≡ R.heap-base
   → fret fs ≡ []
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-start b))
 block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits sp<mod h0 nf =
@@ -1593,7 +1596,7 @@ block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits
     fetch-lla = trans (cong (R.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-start b)) ft)
     post-lla : R.State
-    post-lla = record s { regs = R.writeReg (R.State.regs s) s2 0 ; pc = R.State.pc s + 1 }
+    post-lla = record s { regs = R.writeReg (R.State.regs s) s2 R.heap-base ; pc = R.State.pc s + 1 }
     step-heap : R.step-not-halted (compile-trace prog) s ≡ just post-lla
     step-heap = step-lla-sym {compile-trace prog} {s} {s2} fetch-lla
     fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-lla)
@@ -1615,7 +1618,7 @@ block-step-c-start {hv} prog fs s b cc h ft lo' lo'≤lo front-lo' lo'≤sp fits
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lla} halt-s step-heap halt-s)
                     (exec-1 {compile-trace prog} {0} {post-lla} {post-addi} halt-s step-addi' halt-s)
     lla-corr : C.FlatCorr hv fs post-lla
-    lla-corr = C.sim-heap-base fs s post-lla dc (C.sets-role-riscv64 s role-heap 0 _) h0
+    lla-corr = C.sim-heap-base fs s post-lla R.heap-base dc (C.sets-role-riscv64 s role-heap R.heap-base _) h0
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-ctrl (c-start b)) prog fs) post-addi
     dataPost = C.sim-thunk b fs post-lla _ lla-corr lo' lo'≤lo front-lo' lo'≤sp fits

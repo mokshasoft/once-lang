@@ -49,7 +49,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore
 open AllocState using (current-frame; next-heap-ref; saved-frames)
-open LocState using (heapMem; regs; stackMem; halted; ev-log; left)
+open LocState using (heapMem; regs; stackMem; halted; ev-log; left; faulted)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation)
 
@@ -672,8 +672,9 @@ module InstrPrimitives {FS : FrameSemantics} where
     halted s₁ ≡ halted s₂ →
     ev-log s₁ ≡ ev-log s₂ →
     left s₁ ≡ left s₂ →
+    faulted s₁ ≡ faulted s₂ →
     s₁ ≡ s₂
-  LocState-eq (mkLocState r₁ sm₁ hm₁ h₁ l₁ e₁) (mkLocState r₂ sm₂ hm₂ h₂ l₂ e₂) refl refl refl refl refl refl = refl
+  LocState-eq (mkLocState r₁ sm₁ hm₁ h₁ l₁ e₁ f₁) (mkLocState r₂ sm₂ hm₂ h₂ l₂ e₂ f₂) refl refl refl refl refl refl refl = refl
 
   exec-abstract-deterministic : ∀ (i : AbstractInstr) (s₁ s₂ : LocState FS)
     (alloc : AllocState {FS}) →
@@ -691,10 +692,11 @@ module InstrPrimitives {FS : FrameSemantics} where
     -- The event logs agree (an answering SigOp reads it)
     ev-log s₁ ≡ ev-log s₂ →
     left s₁ ≡ left s₂ →
+    faulted s₁ ≡ faulted s₂ →
     -- Then results are equal
     proj₁ (exec-abstract i s₁ alloc) ≡ proj₁ (exec-abstract i s₂ alloc)
-  exec-abstract-deterministic i s₁ s₂ alloc regs-eq halted-eq mem-eq stack-eq heap-eq log-eq left-eq =
-    cong (λ s → proj₁ (exec-abstract i s alloc)) (LocState-eq s₁ s₂ regs-eq stack-eq heap-eq halted-eq log-eq left-eq)
+  exec-abstract-deterministic i s₁ s₂ alloc regs-eq halted-eq mem-eq stack-eq heap-eq log-eq left-eq fault-eq =
+    cong (λ s → proj₁ (exec-abstract i s alloc)) (LocState-eq s₁ s₂ regs-eq stack-eq heap-eq halted-eq log-eq left-eq fault-eq)
 
   -- (D) FRAME PRESERVATION
   -- Instructions preserve current-frame (all instructions, no predicate needed!)
@@ -4072,7 +4074,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
       ... | nothing = nothing-case
         where
           s' : LocState FS
-          s' = record s { halted = true }
+          s' = record s { halted = true ; faulted = true }
           mem-eq : readLoc s' loc ≡ readLoc s loc
           mem-eq = ExecLemmas.readLoc-stackMem-eq s' s loc refl refl
           nothing-case : readLoc (proj₁ (exec-trace (mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s' alloc)) loc ≡ readLoc s loc

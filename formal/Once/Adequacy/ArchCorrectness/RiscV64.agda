@@ -108,8 +108,8 @@ open AllocState using (current-frame)
 open FrameSemantics using (frame-base)
 open import Data.Empty using (⊥)
 open import Data.Unit using (tt)
-open import Data.Nat using (suc; _+_; _*_; z≤n)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans)
+open import Data.Nat using (suc; _+_; _*_; z≤n; s≤s)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans; m≤m+n)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
@@ -201,15 +201,18 @@ entry-view cprog = record
   { haddr     = λ hl → slot-to-disp (heap-offset hl)
   ; caddr     = code-map cprog
   ; HDom      = λ _ → ⊥
-  ; hfront    = 0
+  ; hfront    = RS.heap-base
   ; haddr-suc = suc-law
   ; haddr-inj = λ ()
   ; dom-below = λ ()
   -- nothing has run, so the lowest `sp` ever reached IS the loader's
   -- `stack-top`, and `[0, stack-top)` is virgin — which `entry-corr.untouched`
-  -- discharges from `emptyMemory`. `front-lo` is `z≤n`: heap base 0 WLOG.
+  -- discharges from `emptyMemory`. `front-lo`: the stack top is above the heap base (D367).
   ; lo        = RS.stack-top
-  ; front-lo  = z≤n
+  ; front-lo  = m≤m+n RS.heap-base RS.stack-span
+  -- D367: the heap starts one word up, so no mapped address is 0
+  ; front-pos = s≤s z≤n
+  ; dom-pos   = λ ()
   }
   where
     suc-law : ∀ (hl : HeapLocation) → slot-to-disp (heap-offset (sucHL hl))
@@ -243,7 +246,7 @@ entry-corr ir = record
       -- initState's `sp` IS the entry frame's base — TRUE only since the model
       -- fix (plan 0.65 G3): it used to be 0, and no frame is based at 0.
       ; sp-eq = sym entry-frame-base
-      ; frontier-eq = refl          -- emptyRegFile's `s2` ≡ 0 ≡ the entry frontier
+      ; frontier-eq = refl          -- initState's `s2` IS the heap base, the entry frontier (D367)
       ; dom-fresh = λ ()            -- nothing is mapped yet
       ; dom-written = λ _ ()        -- …and the entry heap is empty
       ; dom-sized = λ _ ()          -- …and no block has a size
@@ -299,6 +302,7 @@ conc-tr p ir lk img =
     δc = RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir))
     run₀ : RunAt (FFOr.image ir) FFOr.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl)
+                   (FFOr.start-sound ir-obs-correct ir lk)
     fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , RS.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)))))
                          × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
     fact k = proj₁ agree

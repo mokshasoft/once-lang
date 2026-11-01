@@ -262,7 +262,7 @@ module CataRunC {FS : FrameSemantics} where
     live-f p = CR.live (trans st-eq p)
 
     stops-f : stopsAt s (⟪ E′ ⟫ k) ≡ true
-            → halted (floc CR.settle) ≡ true × LocState.left (floc CR.settle) ≡ LocState.left s
+            → halted (floc CR.settle) ≡ true × ending (floc CR.settle) ≡ ending s
     stops-f p = proj₁ (CR.stops (trans st-eq p))
               , trans (proj₂ (CR.stops (trans st-eq p))) (chain-left (proj₁ run27) nh-cs)
 

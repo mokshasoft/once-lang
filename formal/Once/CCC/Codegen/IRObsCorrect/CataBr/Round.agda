@@ -198,7 +198,7 @@ module CataRoundC {FS : FrameSemantics} where
       se3 = stack-keep node-tr kp3 cf3 (sl3 (suc n)) se
 
       -- the branch reads the top block's cell 0
-      cond : tag-zf (flat-read-tag (floc h3)) ≡ DL.null xs
+      cond : tag-test (flat-read-tag (floc h3)) ≡ just (DL.null xs)
       cond = stack-tag node-nz st3 in3
 
       walk : Walk prog n K σ (3 + fpc σ) (λ _ → ⊤)
@@ -282,7 +282,7 @@ module CataRoundC {FS : FrameSemantics} where
         hk i q hl nhw = hp-keep i (floc q) (falloc q) hl nhw
 
         -- the branch falls through: the top element is a node, not the tag
-        cond-no : tag-zf (flat-read-tag (floc h3)) ≡ false
+        cond-no : tag-test (flat-read-tag (floc h3)) ≡ just false
         cond-no = cond
 
         c0-3 : readLoc (floc h3) (AtDynamic tp) ≡ just w

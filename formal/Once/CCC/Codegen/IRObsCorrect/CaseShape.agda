@@ -336,21 +336,21 @@ module ShapeC {FS : FrameSemantics} where
               {loc : ValueLocation FS} {s : LocState FS}
           → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₁ a) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
-          → tag-zf (flat-read-tag s) ≡ true
+          → tag-test (flat-read-tag s) ≡ just true
   tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ tg _ _ _ _) rd
-    rewrite rd = cong tag-zf (sumTag-read m 0 s loc tg)
+    rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
   tag-inl {m = m} {loc = loc} {s = s} (valid-inl-reg-wf _ tg _ _ _) rd
-    rewrite rd = cong tag-zf (sumTag-read m 0 s loc tg)
+    rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
 
   tag-inr : ∀ {prog : AbstractTrace} {A B} {b : ⟦ B ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
           → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₂ b) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
-          → tag-zf (flat-read-tag s) ≡ false
+          → tag-test (flat-read-tag s) ≡ just false
   tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ tg _ _ _ _) rd
-    rewrite rd = cong tag-zf (sumTag-read m 1 s loc tg)
+    rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
   tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _) rd
-    rewrite rd = cong tag-zf (sumTag-read m 1 s loc tg)
+    rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
 
   -- …AND THE UNPACK ROW IS WELL-FORMED FOR THE SAME REASON. `load-indirect-suc`
   -- owes `InstrWF`: `Input1` must resolve to a location whose successor cell

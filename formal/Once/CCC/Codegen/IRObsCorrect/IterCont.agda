@@ -96,7 +96,7 @@ module IterContC {FS : FrameSemantics} where
            → SMCore.MemOps.readLoc (floc S0) loc ≡ SMCore.MemOps.readLoc (Loop.Anchor.s₀ Z) loc)
     (bf00 : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record (Loop.Anchor.alloc₀ Z) { next-slot = m }) loc
           → BeforeFrontier (record (falloc S0) { next-slot = m }) loc)
-    (left0 : LocState.left (floc S0) ≡ LocState.left (Loop.Anchor.s₀ Z))
+    (left0 : ending (floc S0) ≡ ending (Loop.Anchor.s₀ Z))
     {m : AllocMode} (loc : ValueLocation FS)
     (vS : ValidAtWF {prog = prog} m (falloc S0) {B IRT.+ A} (inj₂ a′) loc (floc S0))
     (bef : Live (falloc S0) loc)
@@ -128,7 +128,7 @@ module IterContC {FS : FrameSemantics} where
     nh1 : halted (floc c1) ≡ false
     nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt
 
-    cond : tag-zf (flat-read-tag (floc c1)) ≡ false
+    cond : tag-test (flat-read-tag (floc c1)) ≡ just false
     cond = tag-inr v1 rd1
 
     nhG : halted (floc gs) ≡ false

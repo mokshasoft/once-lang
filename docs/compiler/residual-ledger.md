@@ -238,8 +238,7 @@ abstract one — read it off the signature: does it mention `X.State` /
     arith runtime, so they really are x86-64's.
 
     obligations the correspondence CONSUMES, owned by other layers (5):
-      emitted-shape-check   — codegen        (only `ir-to-trace`)
-      run-meets             — abstract machine + shape table (no `X.State`)
+      (emitted-shape-check, run-meets — GONE, D367: the first was false)
       main-heap-moded       — frontend       (only `IR`)
       entry-size            — resource/frontend plumbing (only `ir-size`)
       emitted-thunk-guarded      — codegen (only `ir-to-trace`)
@@ -286,8 +285,8 @@ deferred proofs sharing one missing piece: the return-address component.
 | 2 | `entry-size` | `FlatFromObs` | invariant | → parameter, same pattern as `heap-room` |
 | 3 | `arith-sigop-run` | `ConcFlatSim` | **stub** | the RUN half of `arith-sigop-contract`, now a theorem (D351): which block a compiler-owned SigOp names (`env sym ≡ just pl`) is PROVED (`arith-sigop-lookup`); assumed is that running that payload simulates the instruction. HISTORY: was all of `arith-sigop-contract`, and the lookup half was false for a primitive the arith pass left bare (a float operation over a `Float` input did not link) |
 | 4 | `external-sigop-contract` | `ConcFlatSim` | **stub** | same root: conclusions are about `arith-env-x86-64` AND `ev-x86-64`, both undefined |
-| 5 | `emitted-shape-check` | `FlatCore.RunWF` | deferred proof | the `FrameFreeTrace`/`SlotBudget`-mold walk over `ir-to-trace'`, `check-++` at every splice, G2 invariants as the `LabelEnv` values |
-| 6 | `run-meets` | `FlatCore.RunWF` | deferred proof | induction on `Reachable`; entry via D074 all-tag state, step via per-instruction transfer soundness |
+| — | `emitted-shape-check` | (was `FlatCore.RunWF`) | — | **GONE (D367) — it was FALSE**: `c-start` drops every claim, so `terminal ∘ ⟨ id , id ⟩` fails the check under every label environment and the postulate derived `⊥`. Its consumers' site facts are THEOREMS now, read off the program's own run, which never faults (`FlatFromObs.start-sound`, from `ir-obs-correct`) |
+| — | `run-meets` | (was `FlatCore.RunWF`) | — | **GONE (D367)** with the shape checker it was stated over (`ShapeTable`, `ShapeAt` deleted) |
 | 7 | `main-heap-moded` | apex | deferred proof | induction over the elaborator: building with `C.Heap` yields only `Heap` modes |
 | — | `events-running-thunk` | (was `ConcFlatSim`) | — | **DONE, DISCHARGED 2026-08-06** — now the theorem `ConcFlatSim.thunk-step`. `block-step-c-thunk` (a theorem since D090) fed `lo' = lo hv ⊓ (%rsp ∸ 8b)`; its `front-lo'`/`fits` come from the new `x86-64-stack-room` PARAMETER (`ResourceBounds.StackRoom`), the exact mirror of `HeapRoom` |
 | 9 | `ret-site-owes` + `ret-budget-matches` | `FlatCore.RunWF` | deferred proof | REPLACED `events-running-ret` 2026-08-06 (D095), now the THEOREM `ret-step` over the proven `block-step-c-ret`. Neither mentions `X.State`. (1) a reachable `c-ret` owes a return — route: static segment depth = `fret` depth + `SlotBudget` bracket neutrality; (2) the released budget IS the reservation in force — the emitter writes one `bb` twice. Both belong in the `emitted-thunk-guarded` induction. HISTORY: THE COMPONENT LANDED (D093): `CompiledCorr.ret-eq` says every ghost `fret` entry is really in memory, at its frame's window end. Three inputs left, all designed in D093 — the exact one-slot gap (as a `GapNext` conjunct in `RetAddrs`), `C.sim-ret`, and the `c-thunk`/`c-ret` bracket fact. ROUND TRIP: deleted 2026-08-06 (D091 — no reachable state fetched a `c-ret`, so its clause became `⊥` by collision with the theorem `run-no-ret`), restored the same day when D092 MODELLED THE CALL. `run-no-ret` is false and deleted, `ret-site-owes` is gone, and the route is live. No longer a model gap — what is missing is the `CompiledCorr` return-address component, preservable now that `enter-call` pins the entered frame's window END on the pushed cell |

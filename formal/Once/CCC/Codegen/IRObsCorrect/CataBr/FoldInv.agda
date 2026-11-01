@@ -89,7 +89,7 @@ module CataFoldInvC {FS : FrameSemantics} where
       progress : k ≤ budgetLeft k (resultAt (floc σ) (⟪ comp ⟫ k)) + chain-ctrls run
       live     : stopsAt (floc σ) (⟪ comp ⟫ k) ≡ false → halted (floc τ) ≡ false
       stops    : stopsAt (floc σ) (⟪ comp ⟫ k) ≡ true
-               → halted (floc τ) ≡ true × LocState.left (floc τ) ≡ LocState.left (floc σ)
+               → halted (floc τ) ≡ true × ending (floc τ) ≡ ending (floc σ)
       no-link  : NotCut (resultAt (floc σ) (⟪ comp ⟫ k)) → flink τ ≡ nothing
       mem      : NotCut (resultAt (floc σ) (⟪ comp ⟫ k)) → ∀ (loc : ValueLocation FS)
                → BeforeFrontier (record (falloc σ) { next-slot = n }) loc → readLoc (floc τ) loc ≡ readLoc (floc σ) loc

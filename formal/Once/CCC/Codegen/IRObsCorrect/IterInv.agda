@@ -80,7 +80,7 @@ module IterInvC {FS : FrameSemantics} where
                → SMCore.MemOps.readLoc (floc fsF) loc ≡ SMCore.MemOps.readLoc s₀ loc
         bf0-F  : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) loc
                → BeforeFrontier (record (falloc fsF) { next-slot = m }) loc
-        left-F : LocState.left (floc fsF) ≡ LocState.left s₀
+        left-F : ending (floc fsF) ≡ ending s₀
 
     module _ {prog : AbstractTrace} (Z : Anchor prog) where
       open Anchor Z
@@ -115,7 +115,7 @@ module IterInvC {FS : FrameSemantics} where
                → SMCore.MemOps.readLoc (floc σ) loc ≡ SMCore.MemOps.readLoc s₀ loc
           bf0  : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) loc
                → BeforeFrontier (record (falloc σ) { next-slot = m }) loc
-          left : LocState.left (floc σ) ≡ LocState.left s₀
+          left : ending (floc σ) ≡ ending s₀
 
       -- What the rounds from a round entry realize (`ValueRealized`'s fields).
       record RoundsRun (prog : AbstractTrace) (σ : FlatState) (a : ⟦ A ⟧) (r : ℕ) : Set where
@@ -129,7 +129,7 @@ module IterInvC {FS : FrameSemantics} where
           at-end     : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′)
                      → fpc settle ≡ length (emitted n l (Iter body)) + base
           stops      : stopsAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ true
-                     → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s₀
+                     → halted (floc settle) ≡ true × ending (floc settle) ≡ ending s₀
           no-ret     : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′) → fret settle ≡ rs₀
           no-link    : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → flink settle ≡ nothing
           place      : ∀ {v r′} → resultAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ returns (done v r′)

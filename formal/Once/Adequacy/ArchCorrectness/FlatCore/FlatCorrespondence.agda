@@ -212,6 +212,12 @@ record HeapView : Set₁ where
     -- layout separation, now stated INSIDE the view (with `FlatCorr.lo-le`,
     -- `lo ≤ %rsp`, it gives the old `sep` — see the derived `sep` below).
     front-lo : hfront ≤ lo
+    -- D367: NO MAPPED ADDRESS IS 0, because the heap starts one word up (the
+    -- targets' `heap-base`) and only grows. A heap pointer is a WORD, and the
+    -- tag branch reads a cell that holds either a tag or a pointer: the
+    -- pointer must not read as the tag 0 (`tag-branch-step`'s pointer route).
+    front-pos : 0 < hfront
+    dom-pos   : ∀ {hl : HeapLocation} → HDom hl → 0 < haddr hl
 open HeapView public
 
 ------------------------------------------------------------------------
@@ -847,6 +853,8 @@ descend-view hv lo' _ front-lo' = record
   ; dom-below = dom-below hv
   ; lo        = lo'
   ; front-lo  = front-lo'
+  ; front-pos = front-pos hv
+  ; dom-pos   = dom-pos hv
   }
 
 -- (No encoding-transport lemma is needed across a descent: `descend-view` copies
@@ -893,12 +901,12 @@ sim-mov-to-output {hv} fs s s' corr st = record
 -- Plan 0.107: THE HEAP REGISTER AT THE HEAP'S BASE — the start's first half
 -- (`lea r15, once_heap_base`; the base is 0 w.l.o.g.). Nothing abstract moves:
 -- the view's frontier already IS the base, which the start's caller supplies.
-sim-heap-base : {hv : HeapView} (fs : FlatState) (s s' : State)
+sim-heap-base : {hv : HeapView} (fs : FlatState) (s s' : State) (b : ℕ)
   → FlatCorr hv fs s
-  → SetsRole s s' role-heap 0
-  → hfront hv ≡ 0
+  → SetsRole s s' role-heap b
+  → hfront hv ≡ b
   → FlatCorr hv fs s'
-sim-heap-base {hv} fs s s' corr st h0 = record
+sim-heap-base {hv} fs s s' b corr st h0 = record
   { in1-eq  = keep-in1 corr st (λ ())
   ; out-eq  = keep-out corr st (λ ())
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ())
@@ -931,7 +939,7 @@ sim-load-tag-lit {hv} n fs s s' corr st = record
 sim-out-nz : {hv : HeapView} (w : _) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
   → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
   → SetsRole s s' role-out (if w ≡ᵇ 0 then 0 else 1)
-  → FlatCorr hv (flat-exec-instr (instr-reg-op out-nz) [] fs) s'
+  → FlatCorr hv (flat-step-straight (instr-reg-op out-nz) fs) s'
 sim-out-nz {hv} w fs s s' corr eq st = record
   { in1-eq = keep-in1 corr st (λ ())
   ; out-eq = trans (at-role st) (cong (λ v → enc-sv hv (sv-nz v)) (sym eq))
@@ -2028,8 +2036,16 @@ extend-view hv st n fresh room = record
   ; dom-below = below
   ; lo        = lo hv
   ; front-lo  = room
+  ; front-pos = <-≤-trans (front-pos hv) (m≤m+n (hfront hv) (slots n))
+  ; dom-pos   = pos
   }
   where
+    pos : ∀ {hl : HeapLocation} → ExtDom hv st n hl → 0 < ext-addr hv st hl
+    pos {hl} (ext-old d) =
+      subst (0 <_) (sym (ext-addr-old hv st hl (fresh d))) (dom-pos hv d)
+    pos {hl} (ext-fresh req _) =
+      subst (0 <_) (sym (ext-addr-fresh hv st hl req))
+            (<-≤-trans (front-pos hv) (m≤m+n (hfront hv) (slot-to-disp (heap-offset hl))))
     below : ∀ {hl : HeapLocation} → ExtDom hv st n hl → ext-addr hv st hl < hfront hv + slots n
     below {hl} (ext-old d) =
       subst (_< hfront hv + slots n) (sym (ext-addr-old hv st hl (fresh d)))

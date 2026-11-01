@@ -56,6 +56,8 @@ open AllocState using (next-slot; saved-frames; block-size; frame-slots)
 open LocState using (halted; heapMem; stackMem; regs)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.Flat
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open FlatStepsAPI {FS} using (Sound; sound-step) public
 open FlatMachine {FS}
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)
@@ -163,6 +165,13 @@ record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
     -- plan 0.107: the run starts OUTSIDE every frame — `c-start` (pc 0) reserves
     -- the outermost one as an ordinary, proved step.
     run-reach : Reachable prog 0 fs
+    -- D367: …and the run from here NEVER FAULTS — no state it reaches met a
+    -- shape no target can follow. Not a property of the code alone (a
+    -- hand-built state can hold a non-pointer anywhere) but of the program's
+    -- own run, which `ir-obs-correct` describes: the apex supplies it at the
+    -- start (`FlatFromObs.start-sound`) and every step keeps it
+    -- (`sound-step`). It is what the site facts in `RunWF` are read off.
+    run-sound : Sound prog fs
 open RunAt public
 
 run-emitted : ∀ {prog fs} → RunAt prog fs → Emitted prog

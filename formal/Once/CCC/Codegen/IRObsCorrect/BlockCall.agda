@@ -219,7 +219,7 @@ module BlockCallC {FS : FrameSemantics} where
       run        : FlatSteps prog steps (entry-flat base s alloc cl rs) settle
       live       : stopsAt s (⟪ comp ⟫ k) ≡ false → halted (floc settle) ≡ false
       at-end     : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → fpc settle ≡ len + base
-      stops      : stopsAt s (⟪ comp ⟫ k) ≡ true → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s
+      stops      : stopsAt s (⟪ comp ⟫ k) ≡ true → halted (floc settle) ≡ true × ending (floc settle) ≡ ending s
       no-ret     : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → fret settle ≡ rs
       no-link    : NotCut (resultAt s (⟪ comp ⟫ k)) → flink settle ≡ nothing
       log        : LocState.ev-log (floc settle) ≡ LocState.ev-log s ++ eventsAt s (⟪ comp ⟫ k)

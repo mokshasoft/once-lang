@@ -224,7 +224,7 @@ module CataBranchC {FS : FrameSemantics} where
     prog-R : k ≤ budgetLeft k ρ + chain-ctrls RR.run
     prog-R = subst (λ b → k ≤ b + chain-ctrls RR.run) (trans (cong (budgetLeft k) res) (bl-s ρ)) RR.progress
 
-    left₀ : LocState.left (floc TF.τ) ≡ LocState.left s
+    left₀ : ending (floc TF.τ) ≡ ending s
     left₀ = chain-left run₀ TF.nh
 
     log-R : LocState.ev-log (floc RR.τ) ≡ LocState.ev-log s ++ eventsAt s (⟪ E′ ⟫ k)

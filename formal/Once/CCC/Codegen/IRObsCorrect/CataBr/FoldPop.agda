@@ -113,7 +113,7 @@ module CataFoldPopC {FS : FrameSemantics} where
       sv3 : StackAt VE (falloc h3) (floc h3) (n + 2) sn vs
       sv3 = stack-keep val-tr kp3 cf3 (sl3 (n + 2)) sv
 
-      cond : tag-zf (flat-read-tag (floc h3)) ≡ DL.null ns
+      cond : tag-test (flat-read-tag (floc h3)) ≡ just (DL.null ns)
       cond = stack-tag node-nz se3 in3
 
       walk : Walk prog n (KH n) σ (3 + fpc σ) (λ _ → ⊤)

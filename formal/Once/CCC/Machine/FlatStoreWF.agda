@@ -161,6 +161,11 @@ wf-halt : ∀ {n ls} → StoreWF n ls → StoreWF n (record ls { halted = true }
 wf-halt wf = record { wf-regs = wf-regs wf ; wf-heap = wf-heap wf
                     ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
 
+-- D367: faulting touches only the two flags.
+wf-fault : ∀ {n ls} → StoreWF n ls → StoreWF n (record ls { halted = true ; faulted = true })
+wf-fault wf = record { wf-regs = wf-regs wf ; wf-heap = wf-heap wf
+                     ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
+
 -- leaving (D320) touches only the two flags.
 wf-leave : ∀ {n ls} → StoreWF n ls → StoreWF n (record ls { halted = true ; left = true })
 wf-leave wf = record { wf-regs = wf-regs wf ; wf-heap = wf-heap wf
@@ -246,27 +251,27 @@ wf-load-value : ∀ {n ls} (dst : AbstractReg) (mv : Maybe (StoredValue FS))
               → StoreWF n ls → svm-below (n) mv
               → StoreWF n (exec-load-with-value dst mv ls)
 wf-load-value dst (just v) wf b = wf-write-reg dst v wf b
-wf-load-value dst nothing  wf _ = wf-halt wf
+wf-load-value dst nothing  wf _ = wf-fault wf
 
 wf-load-resolved : ∀ {n ls} (dst : AbstractReg) (mloc : Maybe (ValueLocation FS))
                  → StoreWF n ls → mloc-below (n) mloc
                  → StoreWF n (exec-load-via-resolved dst mloc ls)
 wf-load-resolved dst (just loc) wf _ = wf-load-value dst (readLoc _ loc) wf (readLoc-below loc wf)
-wf-load-resolved dst nothing    wf _ = wf-halt wf
+wf-load-resolved dst nothing    wf _ = wf-fault wf
 
 wf-load-suc-resolved : ∀ {n ls} (dst : AbstractReg) (mloc : Maybe (ValueLocation FS))
                      → StoreWF n ls → mloc-below (n) mloc
                      → StoreWF n (exec-load-suc-via-resolved dst mloc ls)
 wf-load-suc-resolved {n} {ls} dst (just loc) wf b =
   wf-load-value dst (readLoc ls (sucLoc loc)) wf (readLoc-below (sucLoc loc) wf)
-wf-load-suc-resolved dst nothing wf _ = wf-halt wf
+wf-load-suc-resolved dst nothing wf _ = wf-fault wf
 
 wf-store-resolved : ∀ {n ls} (mloc : Maybe (ValueLocation FS)) (v : StoredValue FS)
                   → StoreWF n ls → mloc-below (n) mloc
                   → sv-below (n) v
                   → StoreWF n (exec-store-via-resolved mloc v ls)
 wf-store-resolved (just loc) v wf b bv = wf-write-loc loc v wf b bv
-wf-store-resolved nothing    v wf _ _  = wf-halt wf
+wf-store-resolved nothing    v wf _ _  = wf-fault wf
 
 wf-store-suc-resolved : ∀ {n ls} (mloc : Maybe (ValueLocation FS)) (v : StoredValue FS)
                       → StoreWF n ls → mloc-below (n) mloc
@@ -274,7 +279,7 @@ wf-store-suc-resolved : ∀ {n ls} (mloc : Maybe (ValueLocation FS)) (v : Stored
                       → StoreWF n (exec-store-suc-via-resolved mloc v ls)
 wf-store-suc-resolved {n} {ls} (just loc) v wf b bv =
   wf-write-loc (sucLoc loc) v wf (sucLoc-below (n) loc b) bv
-wf-store-suc-resolved nothing v wf _ _ = wf-halt wf
+wf-store-suc-resolved nothing v wf _ _ = wf-fault wf
 
 
 -- load-from-slot / restore-input share this shape (they also thread `alloc`).
@@ -344,7 +349,7 @@ wf-slot-load-out : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (alloc :
                    × (next-heap-ref alloc
                       ≤ next-heap-ref (proj₂ (exec-load-from-slot-with-value mv ls alloc)))
 wf-slot-load-out (just v) ls alloc wf b = wf-write-reg Output v wf b , ≤-refl
-wf-slot-load-out nothing  ls alloc wf _ = wf-halt wf , ≤-refl
+wf-slot-load-out nothing  ls alloc wf _ = wf-fault wf , ≤-refl
 
 wf-slot-load-in1 : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (alloc : AllocState {FS})
                  → StoreWF (next-heap-ref alloc) ls → svm-below (next-heap-ref alloc) mv
@@ -353,7 +358,7 @@ wf-slot-load-in1 : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (alloc :
                    × (next-heap-ref alloc
                       ≤ next-heap-ref (proj₂ (exec-restore-input-with-value mv ls alloc)))
 wf-slot-load-in1 (just v) ls alloc wf b = wf-write-reg Input1 v wf b , ≤-refl
-wf-slot-load-in1 nothing  ls alloc wf _ = wf-halt wf , ≤-refl
+wf-slot-load-in1 nothing  ls alloc wf _ = wf-fault wf , ≤-refl
 
 ------------------------------------------------------------------------
 -- THE INVARIANT IS PRESERVED, bundled with frontier monotonicity.
@@ -464,6 +469,19 @@ wf-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
 wf-branch true  m prog fs wf = wf-jump (find-label prog m) fs wf
 wf-branch false m prog fs wf = wf
 
+-- D367: the guarded tag branch and `out-nz` — the halt arm touches nothing.
+wf-test : ∀ (mb : Maybe Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
+        → FlatWF fs → FlatWF (do-branch-test mb m prog fs)
+wf-test (just b) m prog fs wf = wf-branch b m prog fs wf
+wf-test nothing  m prog fs wf = wf-fault wf
+
+wf-nz : ∀ (v : StoredValue FS) (fs : FlatState) → FlatWF fs → FlatWF (do-nz v fs)
+wf-nz (SV-Lit fits-int _)   fs wf = proj₁ (wf-abstract (instr-reg-op out-nz) (floc fs) (falloc fs) wf)
+wf-nz (SV-Lit fits-float _) fs wf = wf-fault wf
+wf-nz (SV-Tag _)            fs wf = wf-fault wf
+wf-nz (SV-Ptr _)            fs wf = wf-fault wf
+wf-nz (SV-Code _)           fs wf = wf-fault wf
+
 -- Plan 0.63: a RETURN releases the body's frame and pops the ghost return
 -- stack (or halts on an empty one). Neither touches the STORE; the frame
 -- move is invisible to `StoreWF`, which is indexed by the allocation
@@ -532,6 +550,21 @@ cl-branch : ∀ (c : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
 cl-branch true  m prog fs b = cl-jump (find-label prog m) fs b
 cl-branch false m prog fs b = b
 
+cl-test : ∀ (mb : Maybe Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
+        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+        → sv-below (next-heap-ref (falloc (do-branch-test mb m prog fs))) (fclosure (do-branch-test mb m prog fs))
+cl-test (just c) m prog fs b = cl-branch c m prog fs b
+cl-test nothing  m prog fs b = b
+
+cl-nz : ∀ (v : StoredValue FS) (fs : FlatState) → FlatWF fs
+      → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+      → sv-below (next-heap-ref (falloc (do-nz v fs))) (fclosure (do-nz v fs))
+cl-nz (SV-Lit fits-int _)   fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reg-op out-nz) (floc fs) (falloc fs) wf)) b
+cl-nz (SV-Lit fits-float _) fs wf b = b
+cl-nz (SV-Tag _)            fs wf b = b
+cl-nz (SV-Ptr _)            fs wf b = b
+cl-nz (SV-Code _)           fs wf b = b
+
 cl-ret : ∀ (r : List ℕ) (fs : FlatState)
        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
        → sv-below (next-heap-ref (falloc (do-ret r fs))) (fclosure (do-ret r fs))
@@ -567,7 +600,7 @@ cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-f
 cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
 cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
 cl-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf b =
-  cl-branch (tag-zf (flat-read-tag (floc fs))) m prog fs b
+  cl-test (tag-test (flat-read-tag (floc fs))) m prog fs b
 cl-step instr-call-closure                     prog fs wf b = cl-call prog fs b
 -- the ONE writer: the register takes `Input1`, whose bound is `wf-regs`
 cl-step instr-save-closure-reg                 prog fs wf b = wf-regs wf Input1
@@ -603,7 +636,7 @@ cl-step (instr-load-const p v)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step (instr-load-code-addr k) prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-load-tag-lit k)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)) b
 cl-step (instr-alloc-heap k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)) b
-cl-step (instr-reg-op op)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reg-op op) (floc fs) (falloc fs) wf)) b
+cl-step (instr-reg-op out-nz)    prog fs wf b = cl-nz (readReg (regs (floc fs)) Output) fs wf b
 
 -- ONE flat step preserves store well-formedness. Control flow only moves the
 -- pc (or halts); everything else is `exec-abstract`, i.e. `wf-abstract`.
@@ -617,7 +650,7 @@ flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (fin
 flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf
 flat-wf-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf =
-  wf-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
+  wf-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
 -- The straight-line cases are ENUMERATED (a catch-all would not reduce
 -- `flat-exec-instr`'s own catch-all in the case tree); each is `wf-abstract`.
 flat-wf-step mov-to-output            prog fs wf = proj₁ (wf-abstract mov-to-output (floc fs) (falloc fs) wf)
@@ -657,4 +690,4 @@ flat-wf-step (instr-load-code-addr k) prog fs wf = proj₁ (wf-abstract (instr-l
 flat-wf-step instr-save-closure-reg   prog fs wf = proj₁ (wf-abstract instr-save-closure-reg (floc fs) (falloc fs) wf)
 flat-wf-step (instr-load-tag-lit k)   prog fs wf = proj₁ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-alloc-heap k)     prog fs wf = proj₁ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)
-flat-wf-step (instr-reg-op op)        prog fs wf = proj₁ (wf-abstract (instr-reg-op op) (floc fs) (falloc fs) wf)
+flat-wf-step (instr-reg-op out-nz)    prog fs wf = wf-nz (readReg (regs (floc fs)) Output) fs wf

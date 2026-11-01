@@ -39,6 +39,7 @@ open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; readReg; Input1; SV-Ptr; sucLoc; SV-Code; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (ending) public
 open AllocState using (next-slot; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
@@ -450,7 +451,7 @@ module Core {FS : FrameSemantics} where
                  → fpc settle ≡ length (emitted n l ir) + base
       -- D320: …and it has not LEFT: a fragment stops at a call with no answer,
       -- never at the program's `c-leave` (the run's end must read `halted`).
-      stops      : stopsAt s (⟪ evalᴰ ir x ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left s
+      stops      : stopsAt s (⟪ evalᴰ ir x ⟫ k) ≡ true  → halted (floc settle) ≡ true × ending (floc settle) ≡ ending s
       -- D357: …and it handed back the return stack it was entered on — WHEN IT
       -- RETURNED. Stated under `NotCut` it said the same of a STOPPED run, and
       -- that is false wherever the stop is inside a call: a body that halts

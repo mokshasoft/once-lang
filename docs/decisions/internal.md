@@ -308,6 +308,13 @@ decision-log entry updates the rule it changes here, in the same commit.
   before the rebase; its decisions and plans whose numbers master took are
   renumbered past master's, changing only the branch's own lines; the rebased
   branch is pushed under a new name, not force-pushed. (D365)
+- **The site facts are read off the run, not checked**: the abstract machine
+  FAULTS where a target cannot follow (non-pointer load/store, unwritten
+  cell or slot, a tag branch on anything but a tag or a heap pointer,
+  `out-nz` on anything but an `Int` word); the program's run never faults
+  (`FlatFromObs.start-sound`, from `ir-obs-correct`), and each site fact the
+  correspondence consumes is that one step, computed. The heap starts one
+  word up, so no heap address is 0. (D367)
 - **Wide refactors run the keep-going driver** (`scripts/agda-keepgoing.py`):
   one Agda process, every independent error per pass. (D333)
 - **Build modes**: executable iff the module defines `main`; `--lib`/`--exe`

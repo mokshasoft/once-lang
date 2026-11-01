@@ -199,16 +199,28 @@ emptyMemory = λ _ → nothing
 -- not after.
 --
 -- Stated exactly as x86-64 states it: the entry `sp` is OPAQUE — the one thing
--- the loader tells us — and the heap base is 0 without loss of generality
--- (addresses are ℕ; only the relative order matters), which is why `0 ≤
--- stack-top` needs no assumption.
+-- the loader tells us. (The heap base WAS 0 "without loss of generality".)
+-- D367: …BUT NOT AT 0. A heap pointer is a WORD, and the cata walk's stacks
+-- branch on a cell that holds either the sentinel's tag 0 or a μ node's
+-- address — so an address of 0 would read as the empty stack. The heap base
+-- is therefore one word up (`heap-base`), and the loader's stack top is above
+-- it (`stack-top = heap-base + stack-span`, the span opaque): the order is
+-- still all that is assumed, now with the one fact that the first heap word
+-- is not address 0. `s2` starts at the base — what `_start`'s symbol load
+-- puts there anyway — so the entry correspondence's frontier IS the base.
+heap-base : Word
+heap-base = 8
+
 postulate
-  stack-top : Word          -- the `sp` the loader hands `main`
+  stack-span : Word         -- how far above the heap base the loader's `sp` sits
+
+stack-top : Word            -- the `sp` the loader hands `main`
+stack-top = heap-base + stack-span
 
 -- | Initial state
 -- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
 initStateAt : ℕ → State
-initStateAt e = mkstate (writeReg emptyRegFile sp stack-top) emptyMemory e false
+initStateAt e = mkstate (writeReg (writeReg emptyRegFile sp stack-top) s2 heap-base) emptyMemory e false
 
 initState : State
 initState = initStateAt 0
@@ -389,12 +401,11 @@ execInstr prog s (lla rd ℓ) =
     nothing    → just (record s { halted = true })
 
 -- Plan 0.107: a data symbol's address. The runtime's only data symbol is the
--- `.bss` heap, and the model places the heap at 0 without loss of generality
--- (the comment at `stack-top`: addresses are ℕ, only their order matters) —
+-- `.bss` heap, at `heap-base` (D367: one word up, so no heap address is 0) —
 -- so `_start`'s `lla s2, once_heap_base` sets the frontier register to the
 -- entry frontier the proofs already assume.
 execInstr prog s (lla-sym rd _) =
-  just (record s { regs = writeReg (regs s) rd 0 ; pc = pc s + 1 })
+  just (record s { regs = writeReg (regs s) rd heap-base ; pc = pc s + 1 })
 
 ------------------------------------------------------------------------
 -- Move (pseudo-instruction)

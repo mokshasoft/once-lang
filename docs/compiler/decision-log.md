@@ -20566,3 +20566,67 @@ Unchanged (representation only): `formal/Once/Spec` is not touched; the IR and i
 * Not re-evaluated: `RunWF.emitted-shape-check` is a postulate over the emitted traces, which now include
   the box (it is still an honest claim: the box is an allocate-then-store sequence of the kind it already
   types, and a μ expectation is a pointer).
+  **Withdrawn by D367**: the check was false (it fails `terminal ∘ ⟨ id , id ⟩`), and is deleted.
+
+## D367 — THE RUN NEVER FAULTS: THE SITE FACTS ARE READ OFF `ir-obs-correct`, NOT A SHAPE CHECKER (2026-11-01)
+
+### What was wrong
+* `RunWF.emitted-shape-check` (plan 0.62 M2b) was **false**. `program-image` begins with `c-start`,
+  whose transfer (`step-expect`) drops every claim, and a pair's lowering stashes its input and
+  `restore-input`s it — a slot read the checker requires a claim at. So `terminal ∘ ⟨ id , id ⟩` fails
+  the check under every `LabelEnv`, and the postulate derived `⊥` (probe `ProbeShape.absurd`, checked;
+  `ProbeShape2` shows closure bodies fail the same way at `c-thunk`). It came in with D262 and is on
+  master. `run-meets` (M3) was its consumer; the D366 note that called the check "still honest" is
+  withdrawn here.
+* `RunWF.branch-tag-scrutinee-wf` — derived from the false postulate — claimed the cell a
+  `c-branch-tag-zero` reads holds a **tag**. That is false for every recursive `Cata`: the cata walk
+  (`IRToTrace.cata-trace-branching`, the only strategy for a functor with a recursive position since
+  D363) tests its todo and eval stacks by reading the top element's word, which is a μ node's
+  **address** (`CataBr.Stack.word-nz-μ`). The correspondence (`tag-branch-step`, and each arch's
+  `block-step-c-branch-tag-*`) only had a tag route, so for any program with a recursive cata it rested
+  on the false postulate.
+* Behind that, the targets' model put the heap at address 0 ("without loss of generality"), so the
+  first block allocated had address 0 — and a μ node there reads as the empty-stack sentinel. Not WLOG
+  once a pointer is compared with 0.
+* `out-nz`'s fact (`Output` holds an `Int` word) was not a "not stuck" fact at all: `sv-nz` was total,
+  so the abstract machine went on where the compiled `cmp; sbb; add` reads a word whose truth the value
+  does not determine (Float 0.0 is the word 0).
+
+### Decision
+1. **The abstract machine FAULTS where a target cannot follow** (`LocState.faulted`, set with
+   `halted`): a load/store through a non-pointer or at an unwritten cell, a read of an unwritten slot
+   (those arms already halted; they now also mark the fault), a tag branch on anything but a tag or a
+   heap pointer (`Flat.tag-test`; a tag tests zero, a pointer never does), and `out-nz` on anything but
+   an `Int` word (`Flat.do-nz`). `ending s = (left s , faulted s)`, and `ValueRealized.stops` now says a
+   stopped fragment leaves `ending` as it found it — it stops at a call, never at a fault — with the same
+   proofs (`chain-left` now carries both flags; a fault halts, so a running chain has not faulted).
+2. **The program's run never faults** (`FlatFromObs.start-sound`), a THEOREM from `ir-obs-correct`: the
+   machine is deterministic (`chains-meet`), a running state has not faulted, and a halted state is at or
+   past the witness's settle state, where `live`/`stops`/`at-end` (the image's `c-leave` next)/`progress`
+   (a cut run has more control steps than any chain to here) leave no room for a fault.
+   `RunAt.run-sound` carries it; every step keeps it (`sound-step`). The host's enter and leave are
+   correct BY CONSTRUCTION: the start state is the apex's own, and `c-start`/`c-leave` have no fault arm.
+3. **The six site facts are theorems** (`RunWF`): `slot-read-written`, `load-indirect{,-suc}-target-ptr`,
+   `store-indirect{,-suc}-target-ptr`, `out-nz-output-word`, `branch-tag-scrutinee-wf` — each is "this
+   site's step did not fault", computed. The branch fact now says the cell holds a tag **or a pointer**
+   (`TagCell`).
+4. **The tag branch on a pointer cell is proved** in all three arches: `bs-c-branch-tag-nz` takes any
+   cell whose `tag-test` is `just false` (a pointer, or a non-zero tag) with a non-zero concrete word;
+   `tag-branch-step`'s new pointer route gets the word non-zero from `HeapView.dom-pos` (a mapped
+   address is never 0; the pointee is mapped by `PtrBoundsWF` + `dom-sized`). A stack pointer in a cell
+   is refuted by `StackPtrWF`.
+5. **The heap starts one word up** in each target's model (`heap-base`, = `slot-size`): `_start`'s
+   symbol load yields it, `initState` already holds it in the frontier register, and the loader's stack
+   top is above it (`stack-top = heap-base + stack-span`, the span opaque — still the only loader
+   assumption, renamed). `HeapView` gains `front-pos`/`dom-pos`; `bs-c-start` asks for `hfront ≡
+   slot-size`.
+6. **Deleted**: the postulates `emitted-shape-check` and `run-meets`; `Once.CCC.Codegen.ShapeTable` and
+   `Once.CCC.Machine.ShapeAt` (1567 lines, nothing else used them; `HeapModed`/`heap-moded` moved to
+   `Once.CCC.Codegen.HeapModed`). Plan 0.62's M2b/M3 are moot and the plan is closed.
+7. **Also in this change**: the rebase had left conflict markers in the extracted
+   `compiler/src/MAlonzo/Code/Once/Compile.hs`; it is regenerated (`make malonzo`), and the gate run
+   rebuilds and tests it.
+
+### Spec
+Unchanged. `Spec/Correct` and `Certified` are textually the same; the arch models changed only in where
+the heap starts (one word up) and in naming the loader's stack top relative to it.

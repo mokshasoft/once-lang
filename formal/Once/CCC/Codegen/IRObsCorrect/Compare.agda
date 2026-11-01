@@ -96,13 +96,13 @@ module CompareC {FS : FrameSemantics} where
           → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
   cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
-      { traces-agree   = sym (cong proj₁ ER)
+      { traces-agree   = trans ev-run (sym (cong proj₁ ER))
       ; value-realized =
           realized 11 fs11 Heap (falloc fs11) run (λ _ → nh11)
                    (λ _ → cong (λ t → DL.length t + base) (sym em≡))
                    (λ st → case trans (sym (cong (λ ρ → is-stopped (proj₂ ρ)) ER)) st of λ ())
                    (λ _ → refl) (λ _ → refl)
-                   (log-of run (sym (cong proj₁ ER)))
+                   (log-of run (trans ev-run (sym (cong proj₁ ER))))
                    (λ p → place (done-tag (resultAt s (E₀ si x)) (trans (sym (cong proj₂ (RE k))) p)))
                    (subst (λ ρ → k ≤ budgetLeft k (proj₂ ρ) + chain-ctrls run) (sym ER) (m≤m+n k _))
                    (λ _ fr j bf' → mem-pres (AtStack fr j) bf')
@@ -160,7 +160,9 @@ module CompareC {FS : FrameSemantics} where
       fs0 fs1 fs2 : FlatState
       fs0 = entry-flat base s alloc cl rs
       fs1 = flat-exec-instr (instr-sigop si′)      prog fs0
-      fs2 = flat-exec-instr (instr-reg-op out-nz) prog fs1
+      -- D367: `out-nz` steps only on an `Int` word, which the block leaves
+      -- (`out1`); `nz-eq` below is that step.
+      fs2 = flat-step-straight (instr-reg-op out-nz) fs1
 
       heapref-fs2 : next-heap-ref (falloc fs2) ≡ next-heap-ref alloc
       heapref-fs2 =
@@ -346,11 +348,26 @@ module CompareC {FS : FrameSemantics} where
       nh11 : halted (floc fs11) ≡ false
       nh11 = exec-abstract-preserves-halted-WF (load-from-slot sum-stash) (floc fs10) (falloc fs10) nh10 wf-load-sum
 
-      run : FlatSteps prog 11 fs0 fs11
-      run = (nh0 , span′ 0 _ refl) ∷ (nh1 , span′ 1 _ refl) ∷ (nh2 , span′ 2 _ refl)
+      nz-eq : flat-exec-instr (instr-reg-op out-nz) prog fs1 ≡ fs2
+      nz-eq = cong (λ v → do-nz v fs1) out1
+
+      ev-subst : ∀ {a b : FlatState} (e : a ≡ b) (c : FlatSteps prog 9 b fs11)
+               → chain-events (subst (λ z → FlatSteps prog 9 z fs11) (sym e) c) ≡ chain-events c
+      ev-subst refl c = refl
+
+      run₂ : FlatSteps prog 9 fs2 fs11
+      run₂ = (nh2 , span′ 2 _ refl)
           ∷ (nh3 , span′ 3 _ refl) ∷ (nh4 , span′ 4 _ refl) ∷ (nh5 , span′ 5 _ refl)
           ∷ (nh6 , span′ 6 _ refl) ∷ (nh7 , span′ 7 _ refl) ∷ (nh8 , span′ 8 _ refl)
           ∷ (nh9 , span′ 9 _ refl) ∷ (nh10 , span′ 10 _ refl) ∷ []
+
+      run : FlatSteps prog 11 fs0 fs11
+      run = (nh0 , span′ 0 _ refl) ∷ (nh1 , span′ 1 _ refl)
+          ∷ subst (λ z → FlatSteps prog 9 z fs11) (sym nz-eq) run₂
+
+      ev-run : chain-events run ≡ chain-events run₂
+      ev-run = cong (λ l → event-of (instr-sigop si′) fs0 DL.++ (event-of (instr-reg-op out-nz) fs1 DL.++ l))
+                    (ev-subst nz-eq run₂)
 
       -- ── THE FRONTIER: the allocation at fs3→fs4 moves it past the block.
       heapref-fs11 : next-heap-ref (falloc fs11) ≡ suc (next-heap-ref (falloc fs3))

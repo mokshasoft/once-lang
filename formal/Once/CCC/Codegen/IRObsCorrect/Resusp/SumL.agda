@@ -121,7 +121,7 @@ module ResuspSumLC {FS : FrameSemantics} where
                                           (exec-abstract-preserves-heap-ref (store-at-slot n) s₀ a₀ tt)))
         }
 
-      cond : tag-zf (flat-read-tag (floc p2)) ≡ true
+      cond : tag-test (flat-read-tag (floc p2)) ≡ just true
       cond = tag-inl {prog = prog} (v-tr (kp-base bl preSeg2) lsloc v) in2
 
       eqbr : flat-exec-instr (instr-ctrl (c-branch-tag-zero (ℓ o l))) prog p2 ≡ record p2 { fpc = AT.P }

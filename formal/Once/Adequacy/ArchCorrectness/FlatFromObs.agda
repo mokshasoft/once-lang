@@ -127,6 +127,7 @@ open import Once.CCC.Machine.Allocation
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 import Once.Compile as C
+import Once.CCC.Machine.SMCore as SMC
 import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
@@ -134,10 +135,18 @@ import Once.Parser.Module.Core as P
 open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks; eventsAt; resultAt; evalᴰ; ⟪_⟫_; chain-ctrls)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; fetch-++-right; fpc; find-label; ft-go-prefix; find-thunk; FlatState; flat-exec-instr; floc; falloc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
+open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift; FlatSteps; []; _∷_; chains-meet; Sound)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open CataNextSlot {FS} using (AllSlotStable)
-open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps; flat-ctrls; flat-ctrls-steps)
+open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps; flat-ctrls; flat-ctrls-steps; chain-left; chain-ctrls-≤)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Bool using (Bool)
+open import Data.Nat using (zero)
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Nat.Properties using (<-irrefl)
+open import Data.Product using (Σ)
+open import Once.CCC.Machine.SMCore using (AbstractInstr)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 
 -- (plan 0.107: `asm-sem` — the text's meaning — is gone; the file's run is
@@ -206,7 +215,7 @@ entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0)
 -- `slot < ir-stack-budget ir`, which is the emitter's own static invariant.
 entry-s : LocState FS
 -- plan 0.105: a program starts with nothing in its log.
-entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false
+entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false false
 
 -- All four preconditions now hold BY CONSTRUCTION.
 -- D155: the premise is `next-slot alloc ≤ n`, not an equation — the entry
@@ -508,9 +517,12 @@ flat-ends ioc ir lk k =
                 → flat-events 2 (image ir) st ≡ ([] , just (returned tt))
             fin h p rewrite h | p | leave-at ir = refl
     tail stopped eq = fin (ValueRealized.stops vr (cong is-stopped eq))
-      where fin : halted (floc st) ≡ true × LocState.left (floc st) ≡ LocState.left s0
+      where fin : halted (floc st) ≡ true × SMC.ending (floc st) ≡ SMC.ending s0
                 → flat-events 2 (image ir) st ≡ ([] , just halted-end)
-            fin (h , l) rewrite h | l = refl
+            fin (h , l) = left-end h (cong proj₁ l)
+              where left-end : halted (floc st) ≡ true → LocState.left (floc st) ≡ LocState.left s0
+                             → flat-events 2 (image ir) st ≡ ([] , just halted-end)
+                    left-end h l′ rewrite h | l′ = refl
     tail (returns cut) eq = refl
 
 -- A cut run has taken a control step for every silent step it passed.
@@ -543,3 +555,69 @@ flat-cut ioc ir lk k e = go (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt �
           (≤-trans (≤-reflexive (sym (flat-ctrls-steps (ValueRealized.run vr)
                                         (tail-fuel (resultAt (floc (main-flat ir)) (⟪ evalᴰ ir tt ⟫ k))))))
                    (n≤1+n _)))
+
+------------------------------------------------------------------------
+-- D367: THE PROGRAM'S RUN NEVER FAULTS — the correspondence's site facts
+-- (`RunWF`), proved from `ir-obs-correct` rather than assumed of a checker.
+--
+-- The machine is deterministic, so any chain from the start and the
+-- witness's chain (the start, then `main`'s run to its settle state) are one
+-- run (`chains-meet`). A running state has not faulted (`chain-left`: a fault
+-- halts). A halted one is where the run ENDS, so it is at or past the settle
+-- state, and the witness says what is there: running while the meaning has
+-- not stopped (`live`), unfaulted when it has (`stops`), the image's
+-- `c-leave` next when it returned (`at-end`), and a cut run has taken a
+-- control step per budget unit (`progress`) — more than any chain to here.
+------------------------------------------------------------------------
+start-sound : (ioc : IOC) (ir : IR Unit Unit) (lk : LinkedProgram σFS (irProgram tbl ir))
+            → Sound (image ir) start-flat
+start-sound ioc ir lk {n} {fs′} P = by-halt (halted (floc fs′)) refl
+  where
+    vr = entry-vr ir lk ioc (suc n)
+    s0 = floc (main-flat ir)
+    T  = ⟪ evalᴰ ir tt ⟫ (suc n)
+    st = ValueRealized.settle vr
+    C  = ValueRealized.run vr
+    F : FlatSteps (image ir) (suc (ValueRealized.steps vr)) start-flat st
+    F = (refl , refl) ∷ C
+
+    true≢false : true ≡ false → ⊥
+    true≢false ()
+
+    settle-ok : ∀ (ρ : Res _) → resultAt s0 T ≡ ρ → LocState.faulted (floc st) ≡ false
+    settle-ok (returns (done v r)) eq = cong proj₂ (chain-left F (ValueRealized.live vr (cong is-stopped eq)))
+    settle-ok (returns cut)        eq = cong proj₂ (chain-left F (ValueRealized.live vr (cong is-stopped eq)))
+    settle-ok stopped              eq = cong proj₂ (proj₂ (ValueRealized.stops vr (cong is-stopped eq)))
+
+    after-leave : ∀ {j fs″} (i₀ : AbstractInstr) → i₀ ≡ instr-ctrl c-leave
+                → FlatSteps (image ir) j (flat-exec-instr i₀ (image ir) st) fs″
+                → LocState.faulted (floc fs″) ≡ false
+    after-leave .(instr-ctrl c-leave) refl []             = settle-ok (resultAt s0 T) refl
+    after-leave .(instr-ctrl c-leave) refl ((h′ , _) ∷ _) = ⊥-elim (true≢false h′)
+
+    beyond : ∀ {j fs″} (ρ : Res _) → resultAt s0 T ≡ ρ
+           → FlatSteps (image ir) (suc j) st fs″ → n ≡ suc (ValueRealized.steps vr) + suc j
+           → LocState.faulted (floc fs″) ≡ false
+    beyond stopped eq ((hs , _) ∷ _) _ =
+      ⊥-elim (true≢false (trans (sym (proj₁ (ValueRealized.stops vr (cong is-stopped eq)))) hs))
+    beyond {j} (returns cut) eq _ len = ⊥-elim (<-irrefl refl (≤-trans le1 le2))
+      where le1 : suc n ≤ ValueRealized.steps vr
+            le1 = ≤-trans (flat-progress ioc ir lk (suc n) eq) (chain-ctrls-≤ C)
+            le2 : ValueRealized.steps vr ≤ n
+            le2 = subst (ValueRealized.steps vr ≤_) (sym len)
+                        (≤-trans (n≤1+n _) (m≤m+n (suc (ValueRealized.steps vr)) (suc j)))
+    beyond (returns (done v r)) eq (_∷_ {i = i₀} (_ , f) E′) _ =
+      after-leave i₀ (just-injective (trans (sym f) (trans (cong (fetch (image ir)) (ValueRealized.at-end vr eq)) (leave-at ir)))) E′
+
+    on-meet : ∀ {fs″} → halted (floc fs″) ≡ true
+            → Σ ℕ (λ j → FlatSteps (image ir) j fs″ st)
+              ⊎ Σ ℕ (λ j → FlatSteps (image ir) (suc j) st fs″ × n ≡ suc (ValueRealized.steps vr) + suc j)
+            → LocState.faulted (floc fs″) ≡ false
+    on-meet h (inj₁ (zero , []))            = settle-ok (resultAt s0 T) refl
+    on-meet h (inj₁ (suc _ , (h′ , _) ∷ _)) = ⊥-elim (true≢false (trans (sym h) h′))
+    on-meet h (inj₂ (j , E , len))          = beyond (resultAt s0 T) refl E len
+
+    by-halt : ∀ (b : Bool) → halted (floc fs′) ≡ b → LocState.faulted (floc fs′) ≡ false
+    by-halt false h = cong proj₂ (chain-left P h)
+    by-halt true  h = on-meet h (chains-meet P F)
+

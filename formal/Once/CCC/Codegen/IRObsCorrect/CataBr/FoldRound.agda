@@ -226,7 +226,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
       live-f p = CR.live (trans st-eq p)
 
       stops-f : stopsAt (floc σ) (⟪ comp ⟫ k) ≡ true
-              → halted (floc CR.settle) ≡ true × LocState.left (floc CR.settle) ≡ LocState.left (floc σ)
+              → halted (floc CR.settle) ≡ true × ending (floc CR.settle) ≡ ending (floc σ)
       stops-f p = proj₁ (CR.stops (trans st-eq p))
                 , trans (proj₂ (CR.stops (trans st-eq p))) (chain-left (proj₁ P.run) P.nh)
 

@@ -390,7 +390,7 @@ module ResuspBaseC {FS : FrameSemantics} where
         lnk      : flink settle ≡ nothing
         ev       : chain-events run ≡ []
         log      : LocState.ev-log (floc settle) ≡ LocState.ev-log (floc σ)
-        left     : LocState.left (floc settle) ≡ LocState.left (floc σ)
+        left     : ending (floc settle) ≡ ending (floc σ)
         out-mode : AllocMode
         rout     : ROut G out-mode b (next-heap-ref (falloc σ)) (falloc settle) (floc settle) (rsd wG y)
         seg      : Seg n σ settle

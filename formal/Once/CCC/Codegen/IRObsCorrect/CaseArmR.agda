@@ -106,7 +106,7 @@ module ArmRC {FS : FrameSemantics} where
       inpB : InputAt mB alloc Bv (floc P.r3)
       inpB = proj₂ (arm-input-r (floc P.r3) vd rd P.mv-eq P.mem-eq)
 
-      cond : tag-zf (flat-read-tag s) ≡ false
+      cond : tag-test (flat-read-tag s) ≡ just false
       cond = tag-inr vd rd
 
       handG : P.r3 ≡ entry-flat (3 + base) (floc P.r3) (falloc P.r3) (fclosure P.r3) rs

@@ -49,7 +49,7 @@ module CallC {FS : FrameSemantics} where
                  run (λ p → CalleeRun.live crun (trans st-eq p))
                  (λ p → CalleeRun.returned crun (trans res-eq p))
                  (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
-                      , trans (proj₂ (CalleeRun.stops crun (trans st-eq p))) (cong (λ st → LocState.left (floc st)) call-eq))
+                      , trans (proj₂ (CalleeRun.stops crun (trans st-eq p))) (cong (λ st → ending (floc st)) call-eq))
                  (λ p → CalleeRun.no-ret crun (trans res-eq p)) (λ nc → CalleeRun.no-link crun (nc′ nc))
                  (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
                  (λ p → CalleeRun.place crun (trans res-eq p))

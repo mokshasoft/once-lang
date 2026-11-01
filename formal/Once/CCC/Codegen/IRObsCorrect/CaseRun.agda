@@ -182,7 +182,7 @@ module RunC {FS : FrameSemantics} where
       nh-r2 : halted (floc r2) ≡ false
       nh-r2 = exec-abstract-preserves-halted-WF load-indirect-suc (floc r1) (falloc r1) nh-r1 iwf
 
-      run-r : tag-zf (flat-read-tag (floc fs0)) ≡ false → FlatSteps prog 3 fs0 r3
+      run-r : tag-test (flat-read-tag (floc fs0)) ≡ just false → FlatSteps prog 3 fs0 r3
       run-r cond =
         FlatSteps-++ (flat-step1 nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
                      ((nh-r1 , at-unpack-r) ∷ (nh-r2 , at-movin-r) ∷ [])
@@ -200,7 +200,7 @@ module RunC {FS : FrameSemantics} where
       nh-i3 : halted (floc i3) ≡ false
       nh-i3 = exec-abstract-preserves-halted-WF load-indirect-suc (floc i2) (falloc i2) nh-i2 iwf
 
-      run-i : tag-zf (flat-read-tag (floc fs0)) ≡ true → FlatSteps prog 4 fs0 i4
+      run-i : tag-test (flat-read-tag (floc fs0)) ≡ just true → FlatSteps prog 4 fs0 i4
       run-i cond =
         FlatSteps-++
           (flat-step1 nh at-branch
@@ -235,7 +235,7 @@ module RunC {FS : FrameSemantics} where
 
       -- NONE of the five rows is a SigOp, so a prologue emits nothing. The
       -- `subst` inside `flat-step1` is what stops that from being `refl`.
-      ev-run-r : ∀ (cond : tag-zf (flat-read-tag (floc fs0)) ≡ false)
+      ev-run-r : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just false)
                → chain-events (run-r cond) ≡ []
       ev-run-r cond =
         trans (chain-events-++
@@ -245,7 +245,7 @@ module RunC {FS : FrameSemantics} where
                 (ev-step1 fs0 nh at-branch
                    (flat-tag-branch-not prog fs0 (ℓ o l) cond) refl))
 
-      ev-run-i : ∀ (cond : tag-zf (flat-read-tag (floc fs0)) ≡ true)
+      ev-run-i : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just true)
                → chain-events (run-i cond) ≡ []
       ev-run-i cond =
         trans (chain-events-++

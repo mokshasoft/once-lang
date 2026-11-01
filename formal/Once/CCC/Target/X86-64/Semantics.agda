@@ -175,17 +175,31 @@ initFlags = mkflags false false false
 -- sizes — only the ordering matters).
 --
 -- `%rsp`'s entry value is therefore OPAQUE: the one thing the loader tells us.
--- The heap base is 0 without loss of generality (addresses are ℕ and only the
--- relative order matters), which is why `0 ≤ stack-top` needs no assumption.
+-- (The heap base WAS 0 "without loss of generality" — addresses are ℕ and only
+-- the relative order matters.)
+-- D367: …BUT NOT AT 0. A heap pointer is a WORD, and the cata walk's stacks
+-- branch on a cell that holds either the sentinel's tag 0 or a μ node's
+-- address — so an address of 0 would read as the empty stack. The heap base
+-- is therefore one word up (`heap-base`), and the loader's stack top is above
+-- it (`stack-top = heap-base + stack-span`, the span opaque): the order is
+-- still all that is assumed, now with the one fact that the first heap word
+-- is not address 0. `%r15` starts at the base — what `_start`'s symbol load
+-- puts there anyway — so the entry correspondence's frontier IS the base.
+heap-base : Word
+heap-base = 8
+
 postulate
-  stack-top : Word          -- the %rsp the loader hands `main`
+  stack-span : Word         -- how far above the heap base the loader's %rsp sits
+
+stack-top : Word            -- the %rsp the loader hands `main`
+stack-top = heap-base + stack-span
 
 emptyRegFile : RegFile
 emptyRegFile = mkregfile 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 
 -- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
 initStateAt : ℕ → State
-initStateAt e = mkstate (writeReg emptyRegFile rsp stack-top) emptyMemory initFlags e false
+initStateAt e = mkstate (writeReg (writeReg emptyRegFile rsp stack-top) r15 heap-base) emptyMemory initFlags e false
 
 initState : State
 initState = initStateAt 0
@@ -213,7 +227,7 @@ effectiveAddr s (rip+disp d)     = pc s + d
 effectiveAddr s (rip+label n)    = idx n
 -- Plan 0.107: the runtime's only data symbol is the `.bss` heap, placed at 0
 -- without loss of generality (only the order of addresses matters).
-effectiveAddr s (rip+sym _)      = 0
+effectiveAddr s (rip+sym _)      = heap-base
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)

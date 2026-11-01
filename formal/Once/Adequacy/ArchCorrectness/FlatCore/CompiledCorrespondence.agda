@@ -526,7 +526,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-      → readLoc (floc fs) loc ≡ just (SV-Tag (suc m))
+      → FlatMachine.tag-test {FS} (readLoc (floc fs) loc) ≡ just false
       → memory s (rreg s in1-reg + 0) ≡ just (suc m)
       → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     -- plan 0.108: a word's truth as a tag, given (from the shape discipline)
@@ -573,7 +573,7 @@ record BlockSteps : Set₁ where
     -- plan 0.107: THE START (pc 0) — the heap register at the heap's base,
     -- then the outermost frame, reserved exactly as a body marker reserves its
     -- own (`do-thunk`). At the start nothing is owed (`fret ≡ []`) and the
-    -- view's frontier IS the base.
+    -- view's frontier IS the base — one word up (D367: no heap address is 0).
     bs-c-start :
       ∀ {hv : HeapView} prog fs s b → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
@@ -582,7 +582,7 @@ record BlockSteps : Set₁ where
       → lo' ≤ rreg s sp-reg ∸ b * slot-size
       → b * slot-size ≤ rreg s sp-reg
       → rreg s sp-reg < modulus
-      → hfront hv ≡ 0
+      → hfront hv ≡ slot-size      -- D367: the heap starts one word up
       → fret fs ≡ []
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     (instr-ctrl (c-start b))

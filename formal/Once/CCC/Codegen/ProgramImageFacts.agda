@@ -31,7 +31,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; e-fn; c-start; l
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI; emittable-image)
 open import Once.CCC.Codegen.AllocMin o using (AllocMinI)
 
-open import Once.CCC.Codegen.ShapeTable using (heap-moded)
+open import Once.CCC.Codegen.HeapModed using (heap-moded)
 open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
 open import Once.Denotation.Program using (IRFun; irProgram)
 open Once.Denotation.Program.IRFun using (fbody; fname)

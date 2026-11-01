@@ -99,7 +99,7 @@ module CataStackC {FS : FrameSemantics} where
   word-tr k (w-inl rep e) = w-inl rep e
 
   -- a μ node's word is a pointer, never the sentinel's tag
-  word-nz-μ : ∀ {prog a F v w s} → WordAt prog a (μ-type F) v w s → sv-is-zero w ≡ false
+  word-nz-μ : ∀ {prog a F v w s} → WordAt prog a (μ-type F) v w s → tag-test (just w) ≡ just false
   word-nz-μ (w-ptr loc refl lv val) = refl
   word-nz-μ (w-inl (rep-prim ()) e)
   word-nz-μ (w-inl (rep-unit () _) e)
@@ -116,7 +116,7 @@ module CataStackC {FS : FrameSemantics} where
 
   -- no element word is the sentinel's tag
   ENz : ∀ {V : Set} → ElemP V → Set
-  ENz {V} E = ∀ {a s} {x : V} {w} → E a s x w → sv-is-zero w ≡ false
+  ENz {V} E = ∀ {a s} {x : V} {w} → E a s x w → tag-test (just w) ≡ just false
 
   data Chain {V : Set} (E : ElemP V) (a : AllocState {FS}) (s : LocState FS) (sn : HeapLocation)
              : HeapLocation → List V → Set where
@@ -164,16 +164,16 @@ module CataStackC {FS : FrameSemantics} where
   -- THE SENTINEL TEST: the top block's cell 0 is the tag iff the stack is empty.
   ------------------------------------------------------------------------
   chain-tag : ∀ {V} {E : ElemP V} → ENz E → ∀ {a s sn b xs} → readLoc s (AtDynamic sn) ≡ just (SV-Tag 0)
-            → Chain E a s sn b xs → tag-zf (readLoc s (AtDynamic b)) ≡ null xs
-  chain-tag nz se ch-nil = cong tag-zf se
-  chain-tag nz se (ch-cons w lv r0 e r1 ch) = trans (cong tag-zf r0) (nz e)
+            → Chain E a s sn b xs → tag-test (readLoc s (AtDynamic b)) ≡ just (null xs)
+  chain-tag nz se ch-nil = cong tag-test se
+  chain-tag nz se (ch-cons w lv r0 e r1 ch) = trans (cong tag-test r0) (nz e)
 
   -- …read through `Input1` pointing at the top block, as the branch does
   stack-tag : ∀ {V} {E : ElemP V} → ENz E → ∀ {a s k sn xs} (st : StackAt E a s k sn xs)
             → readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic (StackAt.top st))
-            → tag-zf (flat-read-tag s) ≡ null xs
+            → tag-test (flat-read-tag s) ≡ just (null xs)
   stack-tag nz {s = s} st e =
-    trans (cong (λ z → tag-zf (flat-read-at s (sv-as-loc z))) e) (chain-tag nz (StackAt.sent st) (StackAt.chain st))
+    trans (cong (λ z → tag-test (flat-read-at s (sv-as-loc z))) e) (chain-tag nz (StackAt.sent st) (StackAt.chain st))
 
   ------------------------------------------------------------------------
   -- PUSH: `push2 top tv tb`, ten straight rows, `Output` onto the stack at `top`.

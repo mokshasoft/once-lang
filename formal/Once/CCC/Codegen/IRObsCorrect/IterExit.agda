@@ -128,7 +128,7 @@ module IterExitC {FS : FrameSemantics} where
       nh1 : halted (floc s1) ≡ false
       nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt
 
-      cond : tag-zf (flat-read-tag (floc s1)) ≡ true
+      cond : tag-test (flat-read-tag (floc s1)) ≡ just true
       cond = tag-inl v1 rd1
 
       at-out′ : fetch prog (fpc s3) ≡ just load-indirect-suc
@@ -185,5 +185,5 @@ module IterExitC {FS : FrameSemantics} where
       lnk4 : flink s4 ≡ flink S0
       lnk4 = refl
 
-      left4 : LocState.left (floc s4) ≡ LocState.left (floc S0)
+      left4 : ending (floc s4) ≡ ending (floc S0)
       left4 = chain-left chain nh4

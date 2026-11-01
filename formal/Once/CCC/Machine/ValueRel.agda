@@ -505,7 +505,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       run        : FlatSteps prog steps fs settle
       live       : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ false → halted (floc settle) ≡ false
       returned   : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fpc settle ≡ ret-pc
-      stops      : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ true  → halted (floc settle) ≡ true × LocState.left (floc settle) ≡ LocState.left (floc fs)
+      stops      : stopsAt (floc fs) (⟪ comp ⟫ k) ≡ true  → halted (floc settle) ≡ true × ending (floc settle) ≡ ending (floc fs)
       no-ret     : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → fret settle ≡ rs
       no-link    : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → flink settle ≡ nothing
       place      : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r)

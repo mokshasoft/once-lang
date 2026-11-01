@@ -65,12 +65,14 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 
 open import Once.CCC.Machine.SMCore
 open AllocState using (frame-slots; saved-frames; block-size; next-heap-ref; current-frame)
-open LocState using (heapMem; regs; stackMem)
+open LocState using (heapMem; regs; stackMem; halted)
 open import Once.CCC.Machine.Locations using (AtDynamic; Slot; AtStack; ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
+open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved)
+open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
@@ -85,9 +87,6 @@ open SameFrames using (sf-slots; sf-saved; sf-ret)
 open import Once.CCC.Machine.FlatStackPtr FS
 open import Once.CCC.Machine.FlatPtrBounds FS
 open import Once.CCC.Codegen.AllocMin o
-open import Once.CCC.Codegen.ShapeTable as ST
-open Expect using (e-in1; e-out)
-open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written; site-out-word)
 open import Once.CCC.Codegen.LabelSeg
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotSeg
@@ -115,7 +114,7 @@ open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-f
 open import Once.IR using (IR)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
-open import Once.Type using (fits-int)
+open import Once.Type using (fits-int; fits-float)
 
 -- NON-HALTING ⇒ NON-CALL: `call-sym` is the ONLY instruction `matchCall` accepts,
 -- and `execInstr (call-sym _)` always sets `halted := true`. So any step that
@@ -125,6 +124,8 @@ open import Once.Type using (fits-int)
 -- NOT `public`: `ConcFlatSim` already re-exports `RunContext` through its own
 -- arch wrapper, and two public routes to one definition is a clash.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open FlatStepsAPI {FS} using (FlatSteps; []; _∷_)
 
 ------------------------------------------------------------------------
 -- THE ARCH-GENERIC RESIDUALS (Plan 0.65 G1d step 2, 2026-08-12).
@@ -277,38 +278,12 @@ postulate
                      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
                      → b ≡ frame-slots (falloc fs)
 
-  -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
-  -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
-  -- register holds a live heap pointer to a WRITTEN TAG cell — codegen only
-  -- emits the tag branch right after loading a constructed node's pointer.
-  -- The old pair asserted a RUN-EVENTS equation for the divergent routes,
-  -- which is closable by NO layout choice (D054 literals are arbitrary words,
-  -- so a non-pointer's encoding can always collide with a mapped address);
-  -- this is the honest dataflow fact instead, in the
-  -- `store-indirect-inbounds` mold. Discharge trajectory: a per-site
-  -- register-shape invariant (static expectation at each emitted site +
-  -- preservation, the FlatStackPtr pattern).
-  -- PLAN 0.62's TWO OBLIGATIONS (the dataflow disciplines' discharge now
-  -- routes through the typed shape checker; these are the remaining named
-  -- milestones — their TYPES are the M2b/M3 specs):
-  --
-  -- M2b — THE EMITTER SHAPE CHECK: for a heap-moded IR, the typed
-  -- expectation checker accepts the emitted trace (some label environment —
-  -- the cata/case loop invariants — makes every site and control transfer
-  -- check). Discharge: the FrameFreeTrace/SlotBudget-mold walk over
-  -- `ir-to-trace'`, `check-++` at every splice, the G2 invariants as the
-  -- LabelEnv values.
-  emitted-shape-check : ∀ (tbl : List IRFun) (ir : IR Unit Unit)
-                      → Σ LabelEnv (λ env →
-                          check-shapes env (entry-expect Unit) (program-image o (irProgram tbl ir)) ≡ true)
-  -- M3 — RUN CONSISTENCY: a reachable state of a CHECKED program meets the
-  -- scanned expectation at its pc. Discharge: induction on `Reachable`
-  -- (entry: the D074 all-tag state meets `entry-expect Unit` via `rs-unit`;
-  -- step: per-instruction transfer soundness — the `shape-uw`/
-  -- `meets-cell-uw` store bricks, `sub-expect-sound` at control).
-  run-meets : ∀ prog (fs : FlatState) → RunAt prog fs → (env : LabelEnv)
-            → check-shapes env (entry-expect Unit) prog ≡ true
-            → Meets (state-at env (entry-expect Unit) prog (fpc fs)) fs
+  -- D367: the two shape-check obligations of plan 0.62 (M2b, the emitter's
+  -- shape check, and M3, run consistency) STOOD HERE as postulates, and M2b was
+  -- FALSE: `c-start` drops every claim, so `terminal ∘ ⟨ id , id ⟩` fails the
+  -- check under every label environment and the postulate derived ⊥. The site
+  -- facts they fed are THEOREMS now — read off the program's own run, which
+  -- never faults (`RunAt.run-sound`, from `ir-obs-correct`); see below.
   -- `branch-tag-label-miss` RETIRED 2026-08-01 — a theorem now (`go-miss` in
   -- `tag-branch-step`): not-taken rides the label-free
   -- `block-step-c-branch-tag-nz`, taken-plus-missing is the je-halt template
@@ -320,13 +295,11 @@ postulate
   -- of both invariants are absurd on `FrameFreeI` now.
 
   -- The load/branch DISCIPLINE residuals are GONE (Plan 0.62 wiring,
-  -- 2026-08-02): `load-indirect{,-suc}-target-ptr` and
-  -- `branch-tag-scrutinee-wf` are now THEOREMS below, derived from
-  -- `emitted-shape-check` + `run-meets` + the checker's site extraction.
-  -- `store-indirect{,-suc}-bad` RETIRED 2026-08-03: the divergent route (a
-  -- store through a NON-pointer) is unreachable in emitted code — the
-  -- shape checker's store-site discipline (`is-fresh`) makes it absurd.
-  -- See `store-indirect{,-suc}-target-ptr` below.
+  -- 2026-08-02; D367): `load-indirect{,-suc}-target-ptr`,
+  -- `store-indirect{,-suc}-target-ptr`, `slot-read-written`,
+  -- `out-nz-output-word` and `branch-tag-scrutinee-wf` are THEOREMS below:
+  -- each failing shape is a FAULT of the abstract machine, and the run never
+  -- faults.
 
   -- A slot the emitted code READS is frame-live (`slot < frame-slots`): reads stay
   -- inside the frame the prologue reserved. Conditioned on the SITE (a property of
@@ -636,6 +609,23 @@ db-aux : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
 db-aux false m prog fs = inj₁ refl
 db-aux true  m prog fs = inj₂ (dj-aux (find-label prog m) fs)
 
+-- D367: …and the tag branch's own test, whose fault stays where it stands.
+dt-aux : ∀ (mb : Maybe Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
+       → (fpc (do-branch-test mb m prog fs) ≡ suc (fpc fs))
+         ⊎ ((fpc (do-branch-test mb m prog fs) ≡ fpc fs)
+            ⊎ (Σ ℕ (λ q → (find-label prog m ≡ just q)
+                        × (fpc (do-branch-test mb m prog fs) ≡ q))))
+dt-aux (just b) m prog fs = db-aux b m prog fs
+dt-aux nothing  m prog fs = inj₂ (inj₁ refl)
+
+-- D367: `out-nz` moves past itself whether it steps or faults.
+nz-pc : ∀ (v : StoredValue FS) (fs : FlatState) → fpc (do-nz v fs) ≡ suc (fpc fs)
+nz-pc (SV-Lit fits-int _)   fs = refl
+nz-pc (SV-Lit fits-float _) fs = refl
+nz-pc (SV-Tag _)            fs = refl
+nz-pc (SV-Ptr _)            fs = refl
+nz-pc (SV-Code _)           fs = refl
+
 -- "not the unconditional jump" (D094). The ONE instruction that can sit
 -- immediately before a body entry is `c-jmp` — that is the guard `ir-to-trace'`
 -- emits to stop the parent falling in. So every step that FALLS THROUGH has to
@@ -695,7 +685,7 @@ pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
 pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump tt m refl go
   where
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
-    go prog fs = mk (db-aux (tag-zf (flat-read-tag (floc fs))) m prog fs)
+    go prog fs = mk (dt-aux (tag-test (flat-read-tag (floc fs))) m prog fs)
       where mk : _ → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
             mk (inj₁ e)                     = jp-suc e tt
             mk (inj₂ (inj₁ e))              = jp-halt e
@@ -729,7 +719,7 @@ pcView (instr-load-code-addr _)               _ = pv-suc tt tt (λ _ _ → refl)
 pcView instr-save-closure-reg                 _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-load-tag-lit _)                 _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-alloc-heap _)                   _ = pv-suc tt tt (λ _ _ → refl)
-pcView (instr-reg-op _)                       _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-reg-op out-nz)                  _ = pv-suc tt tt (λ _ fs → nz-pc (readReg (regs (floc fs)) Output) fs)
 
 -- The live stack window is the reservation IN FORCE at the current pc — the
 -- CURRENT FRAME's, once frames move. Induction on `Reachable`; each step is
@@ -1503,16 +1493,197 @@ run-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs) → PtrBoundsWF f
 run-ptr-bounds prog fs r = proj₂ (run-wf-ptr-bounds prog fs r)
 
 ------------------------------------------------------------------------
--- THE DATAFLOW DISCIPLINES ARE THEOREMS (Plan 0.62 wiring, 2026-08-02).
+-- THE DATAFLOW DISCIPLINES ARE THEOREMS (D367).
 --
--- The emitter's typed shape check (`emitted-shape-check`, M2b) accepts the
--- program; run consistency (`run-meets`, M3) puts the current state inside
--- the checker's expectation at its pc; `check-at` localizes the positive
--- check to the fetched site; and the SITE FACTS (`site-load-ptr`,
--- `site-branch-tag` — proven in `ShapeTable.Sem`) convert expectation +
--- state into exactly the residual conclusions. This is what makes the
--- whole shape layer (ShapeAt, the checker, the interpretation, the store
--- bricks) LOAD-BEARING on the apex path.
+-- Each fact below is "this site's step does not fault": the abstract machine
+-- faults exactly where a target could not follow (a load or store through a
+-- non-pointer, an unwritten slot, a tag branch on anything but a tag or a heap
+-- pointer, `out-nz` on anything but an `Int` word — `LocState.faulted`), and
+-- the program's run never faults (`RunAt.run-sound`, which the apex reads off
+-- `ir-obs-correct`). So each is one step of the run, computed: the failing
+-- shapes compute `faulted ≡ true`, which the run refutes.
+--
+-- They replace the plan 0.62 route (a typed shape checker over the emitted
+-- trace, M2b, plus run consistency, M3) — two postulates, the first of them
+-- false (`c-start` drops every claim, so a pair fails the check under every
+-- label environment). The facts are now stated about the run that happens,
+-- not about a static approximation of it.
+------------------------------------------------------------------------
+
+-- the site's step, from a reached running state, has not faulted
+step-ok : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunAt prog fs
+        → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just i
+        → LocState.faulted (floc (flat-exec-instr i prog fs)) ≡ false
+step-ok prog fs i r h ftq = run-sound r ((h , ftq) ∷ [])
+
+private
+  true≢false : true ≡ false → ⊥
+  true≢false ()
+
+  -- a register read, generalised to an equation
+  at : ∀ {A : Set} (f : A → Bool) {x y : A} → x ≡ y → f x ≡ false → f y ≡ false
+  at f e ok = subst (λ z → f z ≡ false) e ok
+
+-- THE SLOT READS. `SlotRead i slot`: `i` reads `slot` of the current frame.
+data SlotRead : AbstractInstr → Slot → Set where
+  sr-load    : ∀ {slot} → SlotRead (load-from-slot slot) slot
+  sr-restore : ∀ {slot} → SlotRead (restore-input slot) slot
+  sr-pop     : ∀ {slot} → SlotRead (worklist-pop slot) slot
+
+-- A SLOT READ NEVER FINDS AN UNWRITTEN SLOT (Plan 0.54 rung D).
+--
+-- This is what makes the `*-empty-*` routes UNREACHABLE: with `Window`
+-- one-directional an empty-slot read would be a genuine DIVERGENCE (abstract
+-- stops, concrete reads the previous frame's data). The read of an unwritten
+-- slot faults (`exec-load-from-slot-with-value nothing`), and the run does not.
+slot-read-written : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
+                  → halted (floc fs) ≡ false
+                  → fetch prog (fpc fs) ≡ just i → SlotRead i slot
+                  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing → ⊥
+slot-read-written prog fs slot .(load-from-slot slot) r h ftq sr-load empty =
+  true≢false (at (λ mv → LocState.faulted (proj₁ (exec-load-from-slot-with-value mv (floc fs) (falloc fs)))) empty
+                 (step-ok prog fs (load-from-slot slot) r h ftq))
+slot-read-written prog fs slot .(restore-input slot) r h ftq sr-restore empty =
+  true≢false (at (λ mv → LocState.faulted (proj₁ (exec-restore-input-with-value mv (floc fs) (falloc fs)))) empty
+                 (step-ok prog fs (restore-input slot) r h ftq))
+slot-read-written prog fs slot .(worklist-pop slot) r h ftq sr-pop empty =
+  true≢false (at (λ mv → LocState.faulted (proj₁ (exec-load-from-slot-with-value mv (floc fs) (falloc fs)))) empty
+                 (step-ok prog fs (worklist-pop slot) r h ftq))
+
+-- THE LOAD/STORE TARGET DISCIPLINE: at an emitted load or store site `Input1`
+-- holds a POINTER — a resolution of anything else faults. (For a store this
+-- is what retired `store-indirect{,-suc}-bad`: the concrete `mov [rdi],rax`
+-- through a non-pointer writes at the value's encoding and continues.)
+private
+  -- the four through-`Input1` sites, by their resolution
+  ptr-of : ∀ (fault : Maybe (ValueLocation FS) → Bool) (v : StoredValue FS)
+         → fault nothing ≡ true → fault (sv-as-loc v) ≡ false
+         → Σ (ValueLocation FS) (λ loc → v ≡ SV-Ptr loc)
+  ptr-of fault (SV-Ptr loc)    ft ok = loc , refl
+  ptr-of fault (SV-Tag _)      ft ok = ⊥-elim (true≢false (trans (sym ft) ok))
+  ptr-of fault (SV-Lit _ _)    ft ok = ⊥-elim (true≢false (trans (sym ft) ok))
+  ptr-of fault (SV-Code _)     ft ok = ⊥-elim (true≢false (trans (sym ft) ok))
+
+  in1-ptr : ∀ (fs : FlatState) (fault : Maybe (ValueLocation FS) → Bool)
+          → fault nothing ≡ true → fault (sv-as-loc (readReg (regs (floc fs)) Input1)) ≡ false
+          → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+  in1-ptr fs fault ft ok = ptr-of fault (readReg (regs (floc fs)) Input1) ft ok
+
+load-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
+                         → fetch prog (fpc fs) ≡ just load-indirect
+                         → Σ (ValueLocation FS) (λ loc →
+                             readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+load-indirect-target-ptr prog fs r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-load-via-resolved Output ml (floc fs))) refl
+          (step-ok prog fs load-indirect r h ftq)
+
+load-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
+                             → fetch prog (fpc fs) ≡ just load-indirect-suc
+                             → Σ (ValueLocation FS) (λ loc →
+                                 readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+load-indirect-suc-target-ptr prog fs r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-load-suc-via-resolved Output ml (floc fs))) refl
+          (step-ok prog fs load-indirect-suc r h ftq)
+
+store-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
+                          → fetch prog (fpc fs) ≡ just store-indirect
+                          → Σ (ValueLocation FS) (λ loc →
+                              readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+store-indirect-target-ptr prog fs r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-store-via-resolved ml (readReg (regs (floc fs)) Output) (floc fs))) refl
+          (step-ok prog fs store-indirect r h ftq)
+
+store-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
+                              → fetch prog (fpc fs) ≡ just store-indirect-suc
+                              → Σ (ValueLocation FS) (λ loc →
+                                  readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+store-indirect-suc-target-ptr prog fs r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-store-suc-via-resolved ml (readReg (regs (floc fs)) Output) (floc fs))) refl
+          (step-ok prog fs store-indirect-suc r h ftq)
+
+-- plan 0.108 / D367: AT AN EMITTED `out-nz`, OUTPUT HOLDS AN `Int` WORD — the
+-- comparison's arith block just wrote it; anything else faults (`do-nz`).
+out-nz-output-word : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
+                   → ∃ λ w → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
+out-nz-output-word prog fs r h ftq = go (readReg (regs (floc fs)) Output) refl
+  where
+    ok = step-ok prog fs (instr-reg-op out-nz) r h ftq
+    go : ∀ (v : StoredValue FS) → readReg (regs (floc fs)) Output ≡ v
+       → ∃ λ w → readReg (regs (floc fs)) Output ≡ SV-Lit fits-int w
+    go (SV-Lit fits-int w)   e = w , e
+    go (SV-Lit fits-float _) e = ⊥-elim (true≢false (at (λ v → LocState.faulted (floc (do-nz v fs))) e ok))
+    go (SV-Tag _)            e = ⊥-elim (true≢false (at (λ v → LocState.faulted (floc (do-nz v fs))) e ok))
+    go (SV-Ptr _)            e = ⊥-elim (true≢false (at (λ v → LocState.faulted (floc (do-nz v fs))) e ok))
+    go (SV-Code _)           e = ⊥-elim (true≢false (at (λ v → LocState.faulted (floc (do-nz v fs))) e ok))
+
+-- the non-pointer routes of a store site are absurd
+store-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunAt prog fs
+                    → halted (floc fs) ≡ false
+                    → fetch prog (fpc fs) ≡ just store-indirect
+                    → readReg (regs (floc fs)) Input1 ≡ v
+                    → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
+                    → ⊥
+store-nonptr-absurd prog fs r h ftq i-eq nptr =
+  nptr (proj₁ wits) (trans (sym i-eq) (proj₂ wits))
+  where wits = store-indirect-target-ptr prog fs r h ftq
+
+store-suc-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunAt prog fs
+                        → halted (floc fs) ≡ false
+                        → fetch prog (fpc fs) ≡ just store-indirect-suc
+                        → readReg (regs (floc fs)) Input1 ≡ v
+                        → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
+                        → ⊥
+store-suc-nonptr-absurd prog fs r h ftq i-eq nptr =
+  nptr (proj₁ wits) (trans (sym i-eq) (proj₂ wits))
+  where wits = store-indirect-suc-target-ptr prog fs r h ftq
+
+-- THE BRANCH SCRUTINEE (D073, D367): at an emitted `c-branch-tag-zero` site
+-- `Input1` points at a WRITTEN cell holding a TAG — a sum's, or a cata stack's
+-- sentinel — or a HEAP POINTER — a cata stack's top element, a μ node. Before
+-- D367 this claimed a tag outright, and that was FALSE: the cata walk tests its
+-- todo and eval stacks by reading the top element's word, which is a μ node's
+-- address (`CataBr.Stack.word-nz-μ`). Every other shape faults (`tag-test`).
+data TagCell : StoredValue FS → Set where
+  tc-tag : ∀ (k : ℕ) → TagCell (SV-Tag k)
+  tc-ptr : ∀ (hl : HeapLocation) → TagCell (SV-Ptr (AtDynamic hl))
+  tc-stk : ∀ (f : Frame) (k : Slot) → TagCell (SV-Ptr (AtStack f k))
+
+branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunAt prog fs
+                        → halted (floc fs) ≡ false
+                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+                        → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
+                            (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                            × (readLoc (floc fs) loc ≡ just v) × TagCell v))
+branch-tag-scrutinee-wf prog fs m r h ftq = go-in1 (readReg (regs (floc fs)) Input1) refl
+  where
+    ok = step-ok prog fs (instr-ctrl (c-branch-tag-zero m)) r h ftq
+    -- the fault flag of the branch, as a function of what it reads
+    flt : Maybe (StoredValue FS) → Bool
+    flt mv = LocState.faulted (floc (do-branch-test (tag-test mv) m prog fs))
+    go-cell : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+            → ∀ (mv : Maybe (StoredValue FS)) → readLoc (floc fs) loc ≡ mv
+            → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
+                (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                × (readLoc (floc fs) loc ≡ just v) × TagCell v))
+    go-cell loc ie (just (SV-Tag k))              re = loc , SV-Tag k , ie , re , tc-tag k
+    go-cell loc ie (just (SV-Ptr (AtDynamic hl))) re = loc , _ , ie , re , tc-ptr hl
+    go-cell loc ie (just (SV-Ptr (AtStack f k)))  re = loc , _ , ie , re , tc-stk f k
+    go-cell loc ie (just (SV-Lit _ _))            re =
+      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
+    go-cell loc ie (just (SV-Code _))             re =
+      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
+    go-cell loc ie nothing                        re =
+      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
+    go-in1 : ∀ (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ v
+           → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
+               (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+               × (readLoc (floc fs) loc ≡ just v) × TagCell v))
+    go-in1 (SV-Ptr loc) ie = go-cell loc ie (readLoc (floc fs) loc) refl
+    go-in1 (SV-Tag _)   ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
+    go-in1 (SV-Lit _ _) ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
+    go-in1 (SV-Code _)  ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
+
 ------------------------------------------------------------------------
 
 -- the run's program passes the shape check (via `Emitted` + `HeapModed`)
@@ -1703,24 +1874,24 @@ store-indirect-suc-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → 
 store-indirect-suc-inbounds prog fs hl r ftq eq =
   ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r) eq
 
-load-indirect-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
+load-indirect-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just load-indirect
                         → Σ (ValueLocation FS) (λ loc →
                             (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
                             × (∀ hl → loc ≡ AtDynamic hl
                                → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))))
-load-indirect-target-wf prog fs r ftq with load-indirect-target-ptr prog fs r ftq
+load-indirect-target-wf prog fs r h ftq with load-indirect-target-ptr prog fs r h ftq
 ... | loc , eq = loc , eq ,
   λ hl leq → ptr-bounds-cell fs Input1 hl (run-ptr-bounds prog fs r)
                (trans eq (cong SV-Ptr leq))
 
-load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
+load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
                             → fetch prog (fpc fs) ≡ just load-indirect-suc
                             → Σ (ValueLocation FS) (λ loc →
                                 (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
                                 × (∀ hl → loc ≡ AtDynamic hl
                                    → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
-load-indirect-suc-target-wf prog fs r ftq with load-indirect-suc-target-ptr prog fs r ftq
+load-indirect-suc-target-wf prog fs r h ftq with load-indirect-suc-target-ptr prog fs r h ftq
 ... | loc , eq = loc , eq ,
   λ hl leq → ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r)
                (trans eq (cong SV-Ptr leq))

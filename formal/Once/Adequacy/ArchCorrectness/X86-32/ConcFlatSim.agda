@@ -203,8 +203,6 @@ open import Once.CCC.Machine.FlatStackPtr FS using
   ()
 open import Once.CCC.Machine.FlatPtrBounds FS using
   ()
-open import Once.CCC.Codegen.ShapeTable as ST using
-  ()
 
 ------------------------------------------------------------------------
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
@@ -532,9 +530,8 @@ execInstr-cmp-mi prog s a v rd rewrite rd = refl
 -- statement concealed.
 --
 -- The three routes that used it (load-from-slot, restore-input, worklist-pop)
--- are now UNREACHABLE instead: `site-ok` requires a non-`e-any` claim at every
--- slot read, and `MeetsSlot` sends such a claim at `nothing` to `⊥`. See
--- `slot-read-written` below.
+-- are now UNREACHABLE instead: reading an unwritten slot FAULTS, and the
+-- program's run never faults (D367). See `RunWF.slot-read-written`.
 -- (`sigop-run-external` and `events-running-end` moved to the engine too.)
 
 

@@ -172,6 +172,12 @@ pb-halt : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (b : Bool)
 pb-halt bs ls b wf = record
   { pb-regs = pb-regs wf ; pb-heap = pb-heap wf ; pb-stack = pb-stack wf }
 
+-- D367: …and so does faulting.
+pb-fault : ∀ (bs : ℕ → ℕ) (ls : LocState FS)
+         → PBInv bs ls → PBInv bs (record ls { halted = true ; faulted = true })
+pb-fault bs ls wf = record
+  { pb-regs = pb-regs wf ; pb-heap = pb-heap wf ; pb-stack = pb-stack wf }
+
 pb-write-reg : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (x : AbstractReg) (v : StoredValue FS)
              → PtrB bs v → PBInv bs ls
              → PBInv bs (record ls { regs = writeReg (regs ls) x v })
@@ -251,13 +257,13 @@ pb-load-value : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (dst : AbstractReg)
               → PtrB? bs mv → PBInv bs ls
               → PBInv bs (exec-load-with-value dst mv ls)
 pb-load-value bs ls dst (just v) ok wf = pb-write-reg bs ls dst v ok wf
-pb-load-value bs ls dst nothing  ok wf = pb-halt bs ls true wf
+pb-load-value bs ls dst nothing  ok wf = pb-fault bs ls wf
 
 pb-load-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (dst : AbstractReg)
                      (ml : Maybe (ValueLocation FS))
                  → PBInv bs ls
                  → PBInv bs (exec-load-via-resolved dst ml ls)
-pb-load-resolved bs ls dst nothing    wf = pb-halt bs ls true wf
+pb-load-resolved bs ls dst nothing    wf = pb-fault bs ls wf
 pb-load-resolved bs ls dst (just loc) wf =
   pb-load-value bs ls dst (readLoc ls loc) (pb-read-loc bs ls wf loc) wf
 
@@ -265,7 +271,7 @@ pb-load-suc-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (dst : Abstract
                          (ml : Maybe (ValueLocation FS))
                      → PBInv bs ls
                      → PBInv bs (exec-load-suc-via-resolved dst ml ls)
-pb-load-suc-resolved bs ls dst nothing    wf = pb-halt bs ls true wf
+pb-load-suc-resolved bs ls dst nothing    wf = pb-fault bs ls wf
 pb-load-suc-resolved bs ls dst (just loc) wf =
   pb-load-value bs ls dst (readLoc ls (sucLoc loc))
                 (pb-read-loc bs ls wf (sucLoc loc)) wf
@@ -274,14 +280,14 @@ pb-store-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS)
                       (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
                   → PtrB bs v → PBInv bs ls
                   → PBInv bs (exec-store-via-resolved ml v ls)
-pb-store-resolved bs ls nothing    v ok wf = pb-halt bs ls true wf
+pb-store-resolved bs ls nothing    v ok wf = pb-fault bs ls wf
 pb-store-resolved bs ls (just loc) v ok wf = pb-write-mem bs ls loc v ok wf
 
 pb-store-suc-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS)
                           (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
                       → PtrB bs v → PBInv bs ls
                       → PBInv bs (exec-store-suc-via-resolved ml v ls)
-pb-store-suc-resolved bs ls nothing    v ok wf = pb-halt bs ls true wf
+pb-store-suc-resolved bs ls nothing    v ok wf = pb-fault bs ls wf
 pb-store-suc-resolved bs ls (just loc) v ok wf = pb-write-mem bs ls (sucLoc loc) v ok wf
 
 pb-from-slot : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (StoredValue FS))
@@ -290,7 +296,7 @@ pb-from-slot : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (Sto
              → PBInv (block-size (proj₂ (exec-load-from-slot-with-value mv ls alloc)))
                      (proj₁ (exec-load-from-slot-with-value mv ls alloc))
 pb-from-slot ls alloc (just v) ok wf = pb-write-reg (block-size alloc) ls Output v ok wf
-pb-from-slot ls alloc nothing  ok wf = pb-halt (block-size alloc) ls true wf
+pb-from-slot ls alloc nothing  ok wf = pb-fault (block-size alloc) ls wf
 
 pb-restore : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (StoredValue FS))
            → PtrB? (block-size alloc) mv
@@ -298,7 +304,7 @@ pb-restore : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (Store
            → PBInv (block-size (proj₂ (exec-restore-input-with-value mv ls alloc)))
                    (proj₁ (exec-restore-input-with-value mv ls alloc))
 pb-restore ls alloc (just v) ok wf = pb-write-reg (block-size alloc) ls Input1 v ok wf
-pb-restore ls alloc nothing  ok wf = pb-halt (block-size alloc) ls true wf
+pb-restore ls alloc nothing  ok wf = pb-fault (block-size alloc) ls wf
 
 -- `sv-nz` produces a TAG on every input shape (plan 0.108).
 pb-nz : ∀ (bs : ℕ → ℕ) (v : StoredValue FS) → PtrB bs (sv-nz v)
@@ -500,6 +506,19 @@ pb-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
 pb-branch true  m prog fs wf = pb-jump (find-label prog m) fs wf
 pb-branch false m prog fs wf = wf
 
+-- D367: the guarded tag branch and `out-nz`
+pb-test : ∀ (mb : Maybe Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
+        → PtrBoundsWF fs → PtrBoundsWF (do-branch-test mb m prog fs)
+pb-test (just b) m prog fs wf = pb-branch b m prog fs wf
+pb-test nothing  m prog fs wf = pb-fault _ (floc fs) wf
+
+pb-nz-step : ∀ (v : StoredValue FS) (fs : FlatState) → PtrBoundsWF fs → PtrBoundsWF (do-nz v fs)
+pb-nz-step (SV-Lit fits-int _)   fs wf = pb-reg-op _ (floc fs) out-nz wf
+pb-nz-step (SV-Lit fits-float _) fs wf = pb-fault _ (floc fs) wf
+pb-nz-step (SV-Tag _)            fs wf = pb-fault _ (floc fs) wf
+pb-nz-step (SV-Ptr _)            fs wf = pb-fault _ (floc fs) wf
+pb-nz-step (SV-Code _)           fs wf = pb-fault _ (floc fs) wf
+
 -- D092: THE CALL. `enter-call` is a record update on the frame fields alone,
 -- so `block-size` is unchanged DEFINITIONALLY and no transport is needed
 -- (contrast `pb-ret`, which goes through `leave-frame`). No pointer moves.
@@ -536,7 +555,7 @@ flat-ptr-bounds (instr-ctrl (c-ret b))                 prog fs ff am wfS wf =
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =
   pb-jump (find-label prog m) fs wf
 flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
-  pb-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
+  pb-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
 flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf
@@ -584,5 +603,5 @@ flat-ptr-bounds (instr-load-tag-lit k)   prog fs ff am wfS wf =
   pb-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-alloc-heap k)     prog fs ff am wfS wf =
   pb-abstract (instr-alloc-heap k) (floc fs) (falloc fs) ff am wfS wf
-flat-ptr-bounds (instr-reg-op op)        prog fs ff am wfS wf =
-  pb-abstract (instr-reg-op op) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-reg-op out-nz)    prog fs ff am wfS wf =
+  pb-nz-step (readReg (regs (floc fs)) Output) fs wf

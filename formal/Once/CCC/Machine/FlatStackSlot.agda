@@ -32,6 +32,7 @@ open import Once.CCC.Label using (LabelId)
 
 open import Data.Nat using (ℕ)
 open import Data.Bool using (Bool; true; false)
+open import Once.Type using (fits-int; fits-float)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -72,6 +73,19 @@ sf-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
           → SameFrames (do-branch b m prog fs) fs
 sf-branch true  m prog fs = sf-jump (find-label prog m) fs
 sf-branch false m prog fs = mkSameFrames refl refl refl
+
+-- D367: the guarded tag branch and `out-nz`
+sf-test : ∀ (mb : Maybe Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
+        → SameFrames (do-branch-test mb m prog fs) fs
+sf-test (just b) m prog fs = sf-branch b m prog fs
+sf-test nothing  m prog fs = mkSameFrames refl refl refl
+
+sf-nz : ∀ (v : StoredValue FS) (fs : FlatState) → SameFrames (do-nz v fs) fs
+sf-nz (SV-Lit fits-int _)   fs = mkSameFrames refl refl refl
+sf-nz (SV-Lit fits-float _) fs = mkSameFrames refl refl refl
+sf-nz (SV-Tag _)            fs = mkSameFrames refl refl refl
+sf-nz (SV-Ptr _)            fs = mkSameFrames refl refl refl
+sf-nz (SV-Code _)           fs = mkSameFrames refl refl refl
 
 -- the two aux-style slot reads dispatch through a `Maybe`, so they need the
 -- split even though both sides are `refl` (a halt is a LocState update)
@@ -116,7 +130,7 @@ flat-same-frames (instr-ctrl (c-thunk m b))             prog fs ()
 flat-same-frames (instr-ctrl (c-ret b))                 prog fs ()
 flat-same-frames (instr-ctrl (c-jmp m))                 prog fs ff = sf-jump (find-label prog m) fs
 flat-same-frames (instr-ctrl (c-branch-tag-zero m))     prog fs ff =
-  sf-branch (tag-zf (flat-read-tag (floc fs))) m prog fs
+  sf-test (tag-test (flat-read-tag (floc fs))) m prog fs
 flat-same-frames (instr-alloc-stack n)   prog fs ()
 flat-same-frames (instr-dealloc-stack n) prog fs ()
 flat-same-frames (instr-push-frame cap)  prog fs ()
@@ -154,7 +168,7 @@ flat-same-frames (instr-load-code-addr k) prog fs ff = mkSameFrames refl refl re
 flat-same-frames instr-save-closure-reg   prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-load-tag-lit k)   prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-alloc-heap k)     prog fs ff = mkSameFrames refl refl refl
-flat-same-frames (instr-reg-op op)        prog fs ff = mkSameFrames refl refl refl
+flat-same-frames (instr-reg-op out-nz)    prog fs ff = sf-nz (readReg (regs (floc fs)) Output) fs
 
 -- (`flat-stack-slot`, the single-field projection, is GONE: `SegWF` carries the
 -- whole frame stack now, so every consumer wants `flat-same-frames` itself.)

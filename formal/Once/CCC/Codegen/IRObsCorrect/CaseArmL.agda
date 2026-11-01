@@ -100,7 +100,7 @@ module ArmLC {FS : FrameSemantics} where
       inpA : InputAt mA alloc Av (floc P.i4)
       inpA = proj₂ (arm-input-l (floc P.r3) vd rd P.mv-eq P.mem-eq)
 
-      cond : tag-zf (flat-read-tag s) ≡ true
+      cond : tag-test (flat-read-tag s) ≡ just true
       cond = tag-inl vd rd
 
       -- `fpc i4` is `3 + (inl-at + base)`; `ft` is emitted at `fbase base`.

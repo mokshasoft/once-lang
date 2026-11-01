@@ -135,15 +135,28 @@ initFlags = mkflags false false false
 -- while there is no island for a wrong model to hide in.
 --
 -- Stated exactly as the other two arches state it: the entry `esp` is OPAQUE —
--- the one thing the loader tells us — and the heap base is 0 without loss of
--- generality (addresses are ℕ; only the relative order matters), which is why
--- `0 ≤ stack-top` needs no assumption.
+-- the one thing the loader tells us. (The heap base WAS 0 "without loss of
+-- generality".)
+-- D367: …BUT NOT AT 0. A heap pointer is a WORD, and the cata walk's stacks
+-- branch on a cell that holds either the sentinel's tag 0 or a μ node's
+-- address — so an address of 0 would read as the empty stack. The heap base
+-- is therefore one word up (`heap-base`), and the loader's stack top is above
+-- it (`stack-top = heap-base + stack-span`, the span opaque): the order is
+-- still all that is assumed, now with the one fact that the first heap word
+-- is not address 0. `%esi` starts at the base — what `_start`'s symbol load
+-- puts there anyway — so the entry correspondence's frontier IS the base.
+heap-base : Word
+heap-base = 4
+
 postulate
-  stack-top : Word          -- the %esp the loader hands `main`
+  stack-span : Word         -- how far above the heap base the loader's %esp sits
+
+stack-top : Word            -- the %esp the loader hands `main`
+stack-top = heap-base + stack-span
 
 -- Plan 0.107: the environment hands the program over AT ITS ENTRY POINT.
 initStateAt : ℕ → State
-initStateAt e = mkstate (writeReg emptyRegFile esp stack-top) emptyMemory initFlags e false
+initStateAt e = mkstate (writeReg (writeReg emptyRegFile esp stack-top) esi heap-base) emptyMemory initFlags e false
 
 initState : State
 initState = initStateAt 0
@@ -157,7 +170,7 @@ effectiveAddr s (base r)         = readReg (regs s) r
 effectiveAddr s (base+disp r d)  = readReg (regs s) r + d
 effectiveAddr s (label-rel n)    = n
 -- Plan 0.107: the `.bss` heap symbol, placed at 0 without loss of generality.
-effectiveAddr s (abs-sym _)      = 0
+effectiveAddr s (abs-sym _)      = heap-base
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)

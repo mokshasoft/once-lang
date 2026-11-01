@@ -28,9 +28,10 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Bool using (Bool; false; true)
 open import Data.Maybe using (just; nothing; map)
+open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (Σ; _×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -57,6 +58,31 @@ module FlatStepsAPI {FS : FrameSemantics} where
         → FlatSteps prog (suc k) fs fs'
 
   infixr 5 _∷_
+
+  -- D367: THE MACHINE IS DETERMINISTIC, so two chains from one state are one
+  -- run: the shorter ends where the longer passes. `inj₂` carries the length,
+  -- for the arithmetic a run's budget argues with.
+  chains-meet : ∀ {prog n m a b c} → FlatSteps prog n a b → FlatSteps prog m a c
+              → Σ ℕ (λ k → FlatSteps prog k b c)
+                ⊎ Σ ℕ (λ k → FlatSteps prog (suc k) c b × n ≡ m + suc k)
+  chains-meet []      q  = inj₁ (_ , q)
+  chains-meet (s ∷ p) [] = inj₂ (_ , s ∷ p , refl)
+  chains-meet (_∷_ {i = i} (_ , f) p) (_∷_ {i = i′} (_ , f′) q) with just-injective (trans (sym f) f′)
+  ... | refl with chains-meet p q
+  ...   | inj₁ r              = inj₁ r
+  ...   | inj₂ (k , r , e)    = inj₂ (k , r , cong suc e)
+
+  -- D367: A RUN THAT NEVER FAULTS: every state a run from `fs` reaches is
+  -- unfaulted (`LocState.faulted`). What `ir-obs-correct` gives the
+  -- correspondence about the program's own run (`FlatFromObs.start-sound`),
+  -- and what turns a site's shape into a theorem (`RunWF`).
+  Sound : AbstractTrace → FlatState → Set
+  Sound prog fs = ∀ {n fs'} → FlatSteps prog n fs fs' → LocState.faulted (floc fs') ≡ false
+
+  sound-step : ∀ {prog fs} {i : AbstractInstr} → Sound prog fs
+             → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just i
+             → Sound prog (flat-exec-instr i prog fs)
+  sound-step snd h f c = snd ((h , f) ∷ c)
 
   -- A link whose successor state is NAMED. `_∷_` indexes the rest of the chain
   -- by `flat-exec-instr i prog fs`, so in a literal chain every state is
@@ -119,14 +145,14 @@ module FlatStepsAPI {FS : FrameSemantics} where
 
   -- tag-branch NOT taken (tag ≠ 0, the inr/cons path): fall through.
   flat-tag-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
-    → tag-zf (flat-read-tag (floc fs)) ≡ false
+    → tag-test (flat-read-tag (floc fs)) ≡ just false
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
         ≡ record fs { fpc = suc (fpc fs) }
   flat-tag-branch-not prog fs n cond rewrite cond = refl
 
   -- tag-branch taken (tag = 0, the inl/base path): pc ← find-label target.
   flat-tag-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
-    → tag-zf (flat-read-tag (floc fs)) ≡ true
+    → tag-test (flat-read-tag (floc fs)) ≡ just true
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
         ≡ do-jump (find-label prog n) fs
   flat-tag-branch-yes prog fs n cond rewrite cond = refl

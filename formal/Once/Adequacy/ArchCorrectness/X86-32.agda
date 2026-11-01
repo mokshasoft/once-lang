@@ -51,7 +51,7 @@ module Once.Adequacy.ArchCorrectness.X86-32
   -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
   (x86-32-lit-fits : RB.LitFits o ι) where
 
-open import Data.Nat using (ℕ; _+_; z≤n; suc)
+open import Data.Nat using (ℕ; _+_; z≤n; s≤s; suc)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
@@ -83,7 +83,7 @@ open import Once.CCC.Target.X86-32.Syntax using (slot-size)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans; m≤m+n)
 open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; block-env; run-trace-x86-32)
 import Once.CCC.Target.X86-32.File as RF
 import Data.Maybe
@@ -237,16 +237,19 @@ entry-view cprog = record
   { haddr     = λ hl → slot-to-disp (heap-offset hl)
   ; caddr     = code-map cprog
   ; HDom      = λ _ → ⊥
-  ; hfront    = 0
+  ; hfront    = X.heap-base
   ; haddr-suc = suc-law
   ; haddr-inj = λ ()
   ; dom-below = λ ()
   -- THE ENTRY HIGH-WATER MARK (plan 0.54 rung D step 3): nothing has run yet, so
   -- the lowest %esp ever reached IS the loader's `stack-top`, and the whole gap
   -- `[0, stack-top)` is virgin — which `entry-corr.untouched` discharges from
-  -- `emptyMemory`. `front-lo` is `z≤n`: the heap base is 0 WLOG.
+  -- `emptyMemory`. `front-lo`: the stack top is above the heap base (D367).
   ; lo        = X.stack-top
-  ; front-lo  = z≤n
+  ; front-lo  = m≤m+n X.heap-base X.stack-span
+  -- D367: the heap starts one word up, so no mapped address is 0
+  ; front-pos = s≤s z≤n
+  ; dom-pos   = λ ()
   }
   where
     suc-law : ∀ (hl : HeapLocation) → slot-to-disp (heap-offset (sucHL hl))
@@ -273,7 +276,7 @@ entry-corr ir = record
       ; out-eq  = refl
       ; halt-eq = refl
       ; sp-eq  = sym entry-frame-base   -- initState's %esp IS the entry frame's base
-      ; frontier-eq  = refl          -- emptyRegFile's %esi ≡ 0 ≡ the entry frontier
+      ; frontier-eq  = refl          -- initState's %esi IS the heap base, the entry frontier (D367)
       ; dom-fresh = λ ()        -- nothing is mapped yet
       -- …and nothing needs to be: the entry heap is empty (`dom-written`'s
       -- hypothesis is `nothing ≡ just w`) and no block has a size yet
@@ -284,7 +287,7 @@ entry-corr ir = record
       -- LAYOUT SEPARATION at entry: the heap frontier is 0 and both the mark and
       -- %esp are the loader's `stack-top`, so the heap is (vacuously) below the
       -- stack. This is the base case of the invariant that replaced the
-      -- disjointness postulates (`front-lo` = `z≤n` in `entry-view`).
+      -- disjointness postulates (`front-lo` in `entry-view`).
       ; lo-le = ≤-refl          -- initState's %esp IS `stack-top` (the entry mark)
       -- THE VIRGIN REGION at entry: `initState`'s memory is `emptyMemory`, so
       -- every address reads `nothing` — no address arithmetic needed.
@@ -371,6 +374,7 @@ conc-tr p ir lk img =
     δc = RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace (FFOx.image ir))
     run₀ : RunAt (FFOx.image ir) FFOx.start-flat
     run₀ = mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl)
+                   (FFOx.start-sound ir-obs-correct ir lk)
     fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , X.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)))))
                          × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
     fact k = proj₁ agree

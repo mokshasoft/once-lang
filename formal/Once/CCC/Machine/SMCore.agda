@@ -392,8 +392,21 @@ record LocState (FS : FrameSemantics) : Set where
     -- it. Set by `c-leave` alone (with `halted`): a halted machine that has
     -- not left halted at a call with no answer or a fault.
     left : Bool
+    -- D367: the run has FAULTED — it met a shape no target can follow (a
+    -- load or store through a non-pointer, an unwritten cell or slot, a tag
+    -- branch on anything but a tag or a heap pointer, `out-nz` on anything but
+    -- an `Int` word). Set, with `halted`, by exactly those steps; a fragment
+    -- that stops does so at a call, never at a fault (`ValueRealized.stops`
+    -- reads it through `ending`), which is how the correspondence learns that
+    -- the run never faults from `ir-obs-correct` (`RunContext.Sound`).
+    faulted : Bool
 
 open LocState
+
+-- D367: HOW A RUN HAS ENDED, other than at a call: by the Host's leave, or at
+-- a fault. A fragment that stops leaves both as it found them.
+ending : ∀ {FS} → LocState FS → Bool × Bool
+ending s = left s , faulted s
 
 -- Plan 0.29 (M5): LocState-only effect of a reg-op (alloc untouched —
 -- kept separate so `proj₂ (exec-abstract (instr-reg-op op)) ≡ alloc`
@@ -780,20 +793,20 @@ module ExecFinal {FS : FrameSemantics} where
   exec-load-with-value : AbstractReg → Maybe (StoredValue FS) →
                          LocState FS → LocState FS
   exec-load-with-value dst (just v) s = record s { regs = writeReg (regs s) dst v }
-  exec-load-with-value dst nothing s = record s { halted = true }
+  exec-load-with-value dst nothing s = record s { halted = true ; faulted = true }
 
   -- Helper: bind through Maybe-resolved address. If resolveSourceExt
   -- returned `nothing` (non-pointer in register), halt.
   exec-load-via-resolved : AbstractReg → Maybe (ValueLocation FS) →
                            LocState FS → LocState FS
   exec-load-via-resolved dst (just loc) s = exec-load-with-value dst (readLoc s loc) s
-  exec-load-via-resolved dst nothing    s = record s { halted = true }
+  exec-load-via-resolved dst nothing    s = record s { halted = true ; faulted = true }
 
   -- Same shape for stores: if dst-resolution fails, halt.
   exec-store-via-resolved : Maybe (ValueLocation FS) → StoredValue FS →
                             LocState FS → LocState FS
   exec-store-via-resolved (just loc) v s = writeLoc s loc v
-  exec-store-via-resolved nothing    _ s = record s { halted = true }
+  exec-store-via-resolved nothing    _ s = record s { halted = true ; faulted = true }
 
   -- Plan 0.27: `-suc` variants of the resolved load/store helpers, dispatching
   -- on the resolved Maybe address EXPLICITLY (no `with`). exec-abstract's
@@ -804,12 +817,12 @@ module ExecFinal {FS : FrameSemantics} where
   exec-load-suc-via-resolved : AbstractReg → Maybe (ValueLocation FS) →
                                LocState FS → LocState FS
   exec-load-suc-via-resolved dst (just loc) s = exec-load-with-value dst (readLoc s (sucLoc loc)) s
-  exec-load-suc-via-resolved dst nothing    s = record s { halted = true }
+  exec-load-suc-via-resolved dst nothing    s = record s { halted = true ; faulted = true }
 
   exec-store-suc-via-resolved : Maybe (ValueLocation FS) → StoredValue FS →
                                 LocState FS → LocState FS
   exec-store-suc-via-resolved (just loc) v s = writeLoc s (sucLoc loc) v
-  exec-store-suc-via-resolved nothing    _ s = record s { halted = true }
+  exec-store-suc-via-resolved nothing    _ s = record s { halted = true ; faulted = true }
 
   exec : Instr FS → LocState FS → LocState FS
 
@@ -831,7 +844,7 @@ module ExecFinal {FS : FrameSemantics} where
   exec-load-just _ _ _ = refl
 
   exec-load-nothing : ∀ dst s →
-    exec-load-with-value dst nothing s ≡ record s { halted = true }
+    exec-load-with-value dst nothing s ≡ record s { halted = true ; faulted = true }
   exec-load-nothing _ _ = refl
 
   execList : List (Instr FS) → LocState FS → LocState FS
@@ -1435,7 +1448,7 @@ module AbstractExec {FS : FrameSemantics} where
   exec-load-from-slot-with-value (just v) s alloc =
     record s { regs = writeReg (regs s) Output v } , alloc
   exec-load-from-slot-with-value nothing s alloc =
-    record s { halted = true } , alloc
+    record s { halted = true ; faulted = true } , alloc
 
   -- Helper for restore-input: applies memory read result.
   -- Plan 0.13.2: read result is now `Maybe StoredValue`.
@@ -1444,7 +1457,7 @@ module AbstractExec {FS : FrameSemantics} where
   exec-restore-input-with-value (just v) s alloc =
     record s { regs = writeReg (regs s) Input1 v } , alloc
   exec-restore-input-with-value nothing s alloc =
-    record s { halted = true } , alloc
+    record s { halted = true ; faulted = true } , alloc
 
   -- Lemmas for load-from-slot helper
   exec-load-from-slot-just : ∀ v s alloc →
@@ -1454,7 +1467,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   exec-load-from-slot-nothing : ∀ s alloc →
     exec-load-from-slot-with-value nothing s alloc ≡
-    (record s { halted = true } , alloc)
+    (record s { halted = true ; faulted = true } , alloc)
   exec-load-from-slot-nothing _ _ = refl
 
   -- Lemmas for restore-input helper
@@ -1465,7 +1478,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   exec-restore-input-nothing : ∀ s alloc →
     exec-restore-input-with-value nothing s alloc ≡
-    (record s { halted = true } , alloc)
+    (record s { halted = true ; faulted = true } , alloc)
   exec-restore-input-nothing _ _ = refl
 
   ------------------------------------------------------------------------

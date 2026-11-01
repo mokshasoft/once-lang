@@ -165,5 +165,5 @@ module IterBodyC {FS : FrameSemantics} where
       nh0 : halted (floc S0) ≡ false
       nh0 = VR.live vb ns
 
-      left0 : LocState.left (floc S0) ≡ LocState.left s₀
+      left0 : ending (floc S0) ≡ ending s₀
       left0 = trans (chain-left chainB nh0) I.left

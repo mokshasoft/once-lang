@@ -186,6 +186,7 @@ flat-inv-step i prog fs ftq h lf inv = record
   ; inv-run     = mkRunAt (run-tbl (inv-run inv)) (run-ir (inv-run inv)) (run-emit (inv-run inv))
                           (run-linked (inv-run inv))
                           (reach-step i fs (run-reach (inv-run inv)) ftq h)
+                          (sound-step (run-sound (inv-run inv)) h ftq)
   ; inv-started = run-step-pc-pos prog fs i (inv-run inv) ftq
   ; inv-left    = trans (LeftPres.flat-exec-instr-left i lf prog fs) (inv-left inv)
   }

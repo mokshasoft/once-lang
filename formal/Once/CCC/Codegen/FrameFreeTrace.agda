@@ -61,7 +61,7 @@ open import Once.CCC.Machine.SMCore using
 open import Once.CCC.Machine.FrameFree using
   (EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Codegen.ShapeTable using (HeapModed)
+open import Once.CCC.Codegen.HeapModed using (HeapModed)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)

@@ -1,6 +1,6 @@
 # Plans
 
-Open work only (32 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
+Open work only (31 plans). A finished plan is deleted (MERGE.md §1), after its durable content has gone
 into the decision log (`docs/compiler/decision-log.md`) or into module headers. Git history
 keeps the file. Each plan's own `status:` line and its "next step" section are authoritative.
 This index is a map and was last re-derived from the code on 2026-10-11 (the Spec table on 2026-10-21).
@@ -11,7 +11,6 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 |---|---|---|
 | 0.11 parameterized trusted base | A done (D302) | B `ArchModel`, C world/resources, D models, E `--safe` cone, F one concrete instance |
 | 0.88 discharge obs-correct | open | `obs-correct-sigop-rest` (structured codomains; split it by reason); `obs-correct-In` was false and is proved (D366, `In` boxes an inline layer); `cata-correct` proved (D363, D364) |
-| 0.62 shape correctness | M1/M2 done | M2b, M3: `emitted-shape-check`, `run-meets` (two of `RunWF` ×7) |
 | 0.67 wire arith proofs | route obsolete | owns `arith-sigop-run` ×3 (the lookup half is a theorem, D351); `ev`/`step-budget` definitions |
 | 0.110 start state assumes less | not started | boot registers/flags |
 | 0.111 interpretation ABI in the Spec | not started | the calling-convention obligation; 0.113's A3 runtime test |

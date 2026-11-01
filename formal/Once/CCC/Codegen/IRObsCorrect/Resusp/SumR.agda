@@ -121,7 +121,7 @@ module ResuspSumRC {FS : FrameSemantics} where
                                           (exec-abstract-preserves-heap-ref (store-at-slot n) s₀ a₀ tt)))
         }
 
-      cond : tag-zf (flat-read-tag (floc p2)) ≡ false
+      cond : tag-test (flat-read-tag (floc p2)) ≡ just false
       cond = tag-inr {prog = prog} (v-tr (kp-base bl preSeg2) lsloc v) in2
 
       module U = Unpack (suc (fpc p2))

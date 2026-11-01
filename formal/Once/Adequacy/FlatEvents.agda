@@ -34,10 +34,10 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.Nat using (_+_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (+-assoc; m≤n+m; m≤m+n)
+open import Data.Nat.Properties using (+-assoc; m≤n+m; m≤m+n; +-mono-≤)
 open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 -- `fits-int`/`fits-float` must be IMPORTED, not just written: out of scope
 -- they parse as variable patterns and `decode-arg`'s scalar clauses silently
@@ -76,6 +76,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   open AbstractExec {FS} using (sigop-events)
   private module LP = Once.CCC.Machine.FlatLog.LogPres {FS}
   private module LL = Once.CCC.Machine.FlatLeft.LeftPres {FS}
+  private module FP = Once.CCC.Machine.FlatLeft.FaultPres {FS}
 
   ev-of-loc : AbstractInstr → LocState FS → List SigOpEvent
   -- The step's own events: what `exec-abstract` appends to the log.
@@ -286,6 +287,11 @@ module FlatEventTrace {FS : FrameSemantics} where
   chain-ctrls []                    = 0
   chain-ctrls (_∷_ {i = i} _ rest)  = ctrl-of i + chain-ctrls rest
 
+  -- D367: a chain takes at most one control step per step.
+  chain-ctrls-≤ : ∀ {prog k fs fs'} (c : FlatSteps prog k fs fs') → chain-ctrls c ≤ k
+  chain-ctrls-≤ []                   = z≤n
+  chain-ctrls-≤ (_∷_ {i = i} _ rest) = +-mono-≤ (ctrl-≤1 i) (chain-ctrls-≤ rest)
+
   chain-ctrls-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
                      (xs : FlatSteps prog k₁ fs₁ fs₂) (ys : FlatSteps prog k₂ fs₂ fs₃)
                  → chain-ctrls (FlatSteps-++ xs ys) ≡ chain-ctrls xs + chain-ctrls ys
@@ -434,15 +440,25 @@ module FlatEventTrace {FS : FrameSemantics} where
       where true≢false : true ≡ false → ⊥
             true≢false ()
 
+  -- …a chain to a running state has not ENDED either way (D367): neither left
+  -- (only `c-leave` sets it, and it halts) nor faulted (a fault halts too).
+  private
+    head-running : ∀ {prog k fs fs'} → FlatSteps prog k fs fs' → halted (floc fs') ≡ false → halted (floc fs) ≡ false
+    head-running []            hp = hp
+    head-running ((h , _) ∷ _) hp = h
+
   chain-left : ∀ {prog k fs fs'} (r : FlatSteps prog k fs fs') → halted (floc fs') ≡ false
-             → LocState.left (floc fs') ≡ LocState.left (floc fs)
+             → SMC.ending (floc fs') ≡ SMC.ending (floc fs)
   chain-left-at : ∀ {prog k fs fs'} (i : AbstractInstr) → (i ≡ SMC.instr-ctrl SMC.c-leave) ⊎ LeftFree i
                 → FlatSteps prog k (flat-exec-instr i prog fs) fs' → halted (floc fs') ≡ false
-                → LocState.left (floc fs') ≡ LocState.left (floc fs)
+                → SMC.ending (floc fs') ≡ SMC.ending (floc fs)
   chain-left []                              hp = refl
   chain-left (_∷_ {i = i} _ rest)            hp = chain-left-at i (leave-or-free i) rest hp
   chain-left-at .(SMC.instr-ctrl SMC.c-leave) (inj₁ refl) rest hp = ⊥-elim (leave-halts refl rest hp)
-  chain-left-at {prog} {fs = fs} i (inj₂ lf) rest hp = trans (chain-left rest hp) (LL.flat-exec-instr-left i lf prog fs)
+  chain-left-at {prog} {fs = fs} i (inj₂ lf) rest hp =
+    trans (chain-left rest hp)
+          (cong₂ _,_ (LL.flat-exec-instr-left i lf prog fs)
+                     (FP.flat-exec-instr-fault i prog fs (head-running rest hp)))
 
   -- A SETTLED state (halted, or nothing to fetch) emits no events for any
   -- fuel — the run is over. (`flat-events`'s first dispatch returns `[]`.)

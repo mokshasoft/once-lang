@@ -105,7 +105,7 @@ module CataFoldBindC {FS : FrameSemantics} where
       nc₂ : NotCut (resultAt (floc σ) (⟪ m >>=∞ f ⟫ k)) → NotCut (resultAt (floc R.τ) (⟪ f v ⟫ r))
       nc₂ = subst NotCut res-eq
 
-      left₁ : LocState.left (floc R.τ) ≡ LocState.left (floc σ)
+      left₁ : ending (floc R.τ) ≡ ending (floc σ)
       left₁ = chain-left R.run (R.live (cong is-stopped eq))
 
       prog₁ : k ≤ r + chain-ctrls R.run
