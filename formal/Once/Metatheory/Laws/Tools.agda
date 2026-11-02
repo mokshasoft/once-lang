@@ -27,8 +27,8 @@ open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; _⊑π_)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_)
-open import Once.Spec.Core.Syntax using (Tm)
+open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_; singleUse)
+open import Once.Spec.Core.Syntax using (Tm; var)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (M; toT∞; T∞; _≈_)
@@ -147,6 +147,13 @@ module _ {m : ℕ} {Δ : KCtx m} where
   peel d@(⊢sigop _) = top d tt
   peel d@(⊢ref _ _ _) = top d tt
 
+-- A variable's derivation uses the variable.
+module _ {m : ℕ} {Δ : KCtx m} where
+  varUse : ∀ {n} {Γ : Ctx m n} {Ψ i A π} → Δ ⊩ Γ ⊢[ Ψ ] var i ∷ A ! π → singleUse i One ⊑ᵘ Ψ
+  varUse (⊢var i) = ⊑ᵘ-refl _
+  varUse (⊢sub-use p d) = ⊑ᵘ-trans (varUse d) p
+  varUse (⊢sub-eff _ d) = varUse d
+
 ------------------------------------------------------------------------
 -- A term's grade and usage are independent: derivable at grade `π₁` and at
 -- usage `Ψ₂`, it is derivable at both. (A premise a rule scales by `Zero` is
@@ -201,6 +208,25 @@ restrict-refl σ {Γ = Γ ▸ A} {Zero ∷ Ψ} (γ , v) = cong (_, tt) (restrict
 restrict-refl σ {Γ = Γ ▸ A} {One ∷ Ψ}  (γ , v) = cong (_, v) (restrict-refl σ γ)
 restrict-refl σ {Γ = Γ ▸ A} {Many ∷ Ψ} (γ , v) = cong (_, v) (restrict-refl σ γ)
 
+-- An environment that agrees with itself has values each the same as itself.
+agreeSelf : ∀ {m} (σ : TySub m 0) {n} {Γ : Ctx m n} {Ψ : Usage n} {γ : Env σ Γ Ψ}
+          → Agree σ Γ Ψ Ψ γ γ → SameEnv Σ fmt S σ Γ Ψ γ
+agreeSelf σ {Γ = ∅}     {[]}       a        = tt
+agreeSelf σ {Γ = Γ ▸ A} {Zero ∷ Ψ} (a , _)  = agreeSelf σ a
+agreeSelf σ {Γ = Γ ▸ A} {One ∷ Ψ}  (a , sv) = agreeSelf σ a , sv
+agreeSelf σ {Γ = Γ ▸ A} {Many ∷ Ψ} (a , sv) = agreeSelf σ a , sv
+
+-- One more value, the same as itself.
+sameEnv▸ : ∀ {m} (σ : TySub m 0) {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (q : Quantity) {γ : Env σ Γ Ψ} {v}
+         → SameEnv Σ fmt S σ Γ Ψ γ → SlotAgree σ A q q v v → SameEnv Σ fmt S σ (Γ ▸ A) (q ∷ Ψ) (γ , v)
+sameEnv▸ σ Zero se sv = se
+sameEnv▸ σ One  se sv = se , sv
+sameEnv▸ σ Many se sv = se , sv
+
+-- A value the same as another is the same as itself.
+sameRefl : ∀ (A : Type) {x y} → Same A x y → Same A x x
+sameRefl A s = Same-trans A s (Same-sym A s)
+
 module Base {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
             {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
 
@@ -237,6 +263,10 @@ module Base {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
 
   resω : ∀ {Ψ₁} {γa : Env σ Γ (Many *ᵘ Ψ₁)} → Res γa → Res (env*Many σ Ψ₁ γa)
   resω {Ψ₁} {γa} ra = resEq (env*Many-restrict σ Ψ₁ γa) (resR ra (⊑ᵘ-*Many Ψ₁))
+
+  -- A restriction's values are each the same as itself.
+  sameEnvOf : ∀ {Ψa} {γa : Env σ Γ Ψa} → Res γa → SameEnv Σ fmt S σ Γ Ψa γa
+  sameEnvOf ra = agreeSelf σ (agree ra ra)
 
   -- Two derivations of one term, in restrictions of `γ`: related.
   fl : ∀ {Ψa Ψb t A πa πb} (da : Δ ⊩ Γ ⊢[ Ψa ] t ∷ A ! πa) (db : Δ ⊩ Γ ⊢[ Ψb ] t ∷ A ! πb)

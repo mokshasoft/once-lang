@@ -16,13 +16,14 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.Views (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 open import Data.Empty using (⊥)
+open import Data.Fin using (zero)
 open import Data.Product using (_×_; _,_; proj₁; proj₂) renaming (Σ to Σ′)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; _·p_; positionGrade; mk-kind)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; _·p_; positionGrade; mk-kind; 1≤1; 1≤ω)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; _*_; _+_; _⇒[_]_; Void)
-open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_)
+open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; lookup; singleUse)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
@@ -190,3 +191,35 @@ module Views {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
     ~trans {B} (bindRel (runs (fl dx de rx re)) (λ sv → runs (fl▸ dB db rB rb (slotAgree σ {A} One One sv)))) (~sym {B} eqR)
   letEnd Many {A = A} {B} dx rx dB rB de db rb (ee , re , eqR) =
     ~trans {B} (bindRel (runs (fl dx de rx re)) (λ sv → runs (fl▸ dB db rB rb (slotAgree σ {A} Many Many sv)))) (~sym {B} eqR)
+
+  ----------------------------------------------------------------------
+  -- var
+  ----------------------------------------------------------------------
+
+  record VarView {Ψa i π} (dv : Δ ⊩ Γ ⊢[ Ψa ] var i ∷ lookup Γ i ! π) (γa : Env σ Γ Ψa) : Set where
+    constructor varView
+    field
+      P  : singleUse i One ⊑ᵘ Ψa
+      eq : _~_ {lookup Γ i} (⟪ dv ⟫ γa) (return∞ (lookupᵛ σ Γ i (restrict σ P γa)))
+
+  viewVar : ∀ {Ψa i π} (dv : Δ ⊩ Γ ⊢[ Ψa ] var i ∷ lookup Γ i ! π) {γa} → Res γa → VarView dv γa
+  viewVar dv ra with peel dv | peelRel dv ra
+  ... | peeled (⊢var i) P _ | p = varView P (runs p)
+  ... | peeled (⊢sub-use _ _) _ () | _
+  ... | peeled (⊢sub-eff _ _) _ () | _
+
+------------------------------------------------------------------------
+-- Under a binder: `var zero` returns the bound value
+------------------------------------------------------------------------
+
+readVar0 : ∀ {m} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+             {n} {Γ : Ctx m n} {A : Ty m} {Ψ₂ q π₂} {eb : Env σ Γ Ψ₂} {v : ⟦ A ⟨ σ ⟩ ⟧ᵛ}
+             (se : SameEnv Σ fmt S σ (Γ ▸ A) (q ∷ Ψ₂) (eb , slot q v))
+             (db : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] var zero ∷ A ! π₂)
+           → Related (Same (A ⟨ σ ⟩)) (toT∞ π₂ (⟦ db ⟧ δ σ r (eb , slot q v))) (return∞ v)
+readVar0 δ sd σ r {Γ = Γ} {A} {Ψ₂} {q} {eb = eb} {v} se db = go (V.viewVar db V.base)
+  where
+    module V = Views δ sd σ r {Γ = Γ ▸ A} {Ψ = q ∷ Ψ₂} (eb , slot q v) se
+    go : V.VarView db (eb , slot q v) → Related (Same (A ⟨ σ ⟩)) (V.⟪ db ⟫ (eb , slot q v)) (return∞ v)
+    go (V.varView (1≤1 ⊑∷ _) eq) = eq
+    go (V.varView (1≤ω ⊑∷ _) eq) = eq
