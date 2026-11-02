@@ -80,6 +80,7 @@ library
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
       MAlonzo.Code.Once.CCC.Codegen.NodesOK
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage
+      MAlonzo.Code.Once.CCC.Codegen.RoomChecks
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.Label
       MAlonzo.Code.Once.CCC.Machine.Locations
