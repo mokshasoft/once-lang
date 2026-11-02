@@ -16,7 +16,7 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.Views (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Fin using (zero; suc)
+open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂) renaming (Σ to Σ′)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
@@ -38,7 +38,7 @@ open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; Agree; restrict-∘)
 open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
-open import Once.Metatheory.TermModel.Subst Σ S using (Thin; skip; keep; idθ; idθ-id; cid; cskip; ckeep; ren-⊢; θ*-id)
+open import Once.Metatheory.TermModel.Subst Σ S using (Thin; skip; keep; idθ; idθ-id; cid; cskip; ckeep; ren-⊢; θ*-id; ext-hρ; ⟦_⟧θ)
 open import Once.Metatheory.TermModel.Ren Σ fmt S using (ThinAgree; module RenSem)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans; ⊑ᵘ-≡)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
@@ -467,3 +467,45 @@ module FunV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
   wkRelR {A} {B} db r₀ w (1≤1 ⊑∷ Ps) du ra = wkRel {A} {B} db (resR r₀ Ps) w du ra
   wkRelR {A} {B} db r₀ w (1≤ω ⊑∷ Ps) du ra = wkRel {A} {B} db (resR r₀ Ps) w du ra
   wkRelR {A} {B} db r₀ w (ω≤ω ⊑∷ Ps) du ra = wkRel {A} {B} db (resR r₀ Ps) w du ra
+
+------------------------------------------------------------------------
+-- Environments one binder longer: agreement with a restriction of one
+------------------------------------------------------------------------
+
+module ExtV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+            {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
+  open Views δ sd σ r γ sγ
+
+  agreeExtR : ∀ {A q₁ q q₂ Ψ₁ Ψp Ψ₂} {e₁ : Env σ Γ Ψ₁} {e₂ : Env σ Γ Ψ₂} → Res e₁ → Res e₂
+            → ∀ {a a′} → Same (A ⟨ σ ⟩) a a′ → (P : (q ∷ Ψp) ⊑ᵘ (q₂ ∷ Ψ₂))
+            → Agree σ (Γ ▸ A) (q₁ ∷ Ψ₁) (q ∷ Ψp) (e₁ , slot q₁ a) (restrict σ {Γ = Γ ▸ A} P (e₂ , slot q₂ a′))
+  agreeExtR {A} {q₁} r₁ r₂ sa (0≤q ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , slotAgree σ {A} q₁ Zero sa
+  agreeExtR {A} {q₁} r₁ r₂ sa (1≤1 ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , slotAgree σ {A} q₁ One sa
+  agreeExtR {A} {q₁} r₁ r₂ sa (1≤ω ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , slotAgree σ {A} q₁ One sa
+  agreeExtR {A} {q₁} r₁ r₂ sa (ω≤ω ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , slotAgree σ {A} q₁ Many sa
+
+  -- against an environment whose new variable is unused
+  agreeExtZ : ∀ {A q q₂ Ψp Ψ₂ Ψ₃} {e₂ : Env σ Γ Ψ₂} {e₃ : Env σ Γ Ψ₃} → Res e₂ → Res e₃
+            → (w : Slot q₂ ⟦ A ⟨ σ ⟩ ⟧ᵛ) (P : (q ∷ Ψp) ⊑ᵘ (q₂ ∷ Ψ₂))
+            → Agree σ (Γ ▸ A) (q ∷ Ψp) (Zero ∷ Ψ₃) (restrict σ {Γ = Γ ▸ A} P (e₂ , w)) (e₃ , tt)
+  agreeExtZ r₂ r₃ w (0≤q ⊑∷ Ps) = agree (resR r₂ Ps) r₃ , tt
+  agreeExtZ r₂ r₃ w (1≤1 ⊑∷ Ps) = agree (resR r₂ Ps) r₃ , tt
+  agreeExtZ r₂ r₃ w (1≤ω ⊑∷ Ps) = agree (resR r₂ Ps) r₃ , tt
+  agreeExtZ r₂ r₃ w (ω≤ω ⊑∷ Ps) = agree (resR r₂ Ps) r₃ , tt
+
+  -- `ren (ext suc) v` (one binder inserted under the first) means what `v` means.
+  renUp : ∀ {A C D q q″ q₀ q₂ Ψb Ψp Ψ₂ πb π″ v} (db : Δ ⊩ (Γ ▸ C) ⊢[ q ∷ Ψb ] v ∷ D ! πb) {eb : Env σ Γ Ψb} → Res eb
+        → (y : Slot q ⟦ C ⟨ σ ⟩ ⟧ᵛ) → SlotAgree σ C q q y y
+        → (db″ : Δ ⊩ (Γ ▸ A ▸ C) ⊢[ q″ ∷ q₀ ∷ Ψp ] ren (ext {S = S} {m = m} suc) v ∷ D ! π″) {e₂ : Env σ Γ Ψ₂} → Res e₂
+        → (w : Slot q₂ ⟦ A ⟨ σ ⟩ ⟧ᵛ) (P₂ : (q₀ ∷ Ψp) ⊑ᵘ (q₂ ∷ Ψ₂)) (y″ : Slot q″ ⟦ C ⟨ σ ⟩ ⟧ᵛ) → SlotAgree σ C q″ q y″ y
+        → _~_ {D} (toT∞ π″ (⟦ db″ ⟧ δ σ r (restrict σ {Γ = Γ ▸ A} P₂ (e₂ , w) , y″))) (⟪ db ⟫▸ eb y)
+  renUp {A} {C} {D} {q} {Ψb = Ψb} db {eb} rb y sy db″ r₂ w P₂ y″ s″ =
+    ~trans {D} (runs (FL.FL δ sd σ r r db″ R refl (agreeExtZ r₂ (resR rb W) w P₂ , s″)))
+               (runs (RenSem.renSem δ sd σ r (keep (skip (idθ n))) (ext {S = S} {m = m} suc) (ext-hρ {m = m} (skip (idθ n)) suc h₀)
+                        (ckeep (cskip {A = A} (cid Γ))) db {γ′ = (restrict σ W eb , tt) , y} {γ = eb , y}
+                        (agree→thin σ Γ (agree (resR rb W) rb) , sy)))
+    where
+      h₀ : ∀ (i : Fin n) → ⟦ skip (idθ n) ⟧θ i ≡ suc i
+      h₀ i = cong suc (idθ-id i)
+      W = ⊑ᵘ-≡ (θ*-id Ψb)
+      R = ren-⊢ (keep (skip (idθ n))) (ext {S = S} {m = m} suc) (ext-hρ {m = m} (skip (idθ n)) suc h₀) (ckeep (cskip {A = A} (cid Γ))) db
