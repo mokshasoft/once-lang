@@ -21,13 +21,14 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.Tools (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 open import Data.Empty using (⊥)
+open import Data.Fin using (zero)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; _⊑π_)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; _⊑π_; 1≤1; 1≤ω)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_; singleUse)
+open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; singleUse)
 open import Once.Spec.Core.Syntax using (Tm; var)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
@@ -226,6 +227,14 @@ sameEnv▸ σ Many se sv = se , sv
 -- A value the same as another is the same as itself.
 sameRefl : ∀ (A : Type) {x y} → Same A x y → Same A x x
 sameRefl A s = Same-trans A s (Same-sym A s)
+
+-- The variable a binder binds holds the value put there.
+look0 : ∀ {m} (σ : TySub m 0) {n} {Γ : Ctx m n} {A : Ty m} {Ψ : Usage n} (q : Quantity) {e : Env σ Γ Ψ} {x : ⟦ A ⟨ σ ⟩ ⟧ᵛ}
+        (P : singleUse zero One ⊑ᵘ (q ∷ Ψ))
+      → lookupᵛ σ (Γ ▸ A) zero (restrict σ {Γ = Γ ▸ A} P (e , slot q {⟦ A ⟨ σ ⟩ ⟧ᵛ} x)) ≡ x
+look0 σ Zero (() ⊑∷ _)
+look0 σ {A = A} One  {e} {x} (1≤1 ⊑∷ _) = refl
+look0 σ {A = A} Many {e} {x} (1≤ω ⊑∷ _) = refl
 
 module Base {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
             {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where

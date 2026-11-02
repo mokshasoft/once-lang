@@ -36,7 +36,8 @@ open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bi
 open import Once.Metatheory.Coherence.Relation Σ using (Related; Related-trans; Related-flip; Related-mono; ≈-Relatedˡ; ≈-Relatedʳ; bindRel)
 open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
-open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree)
+open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; restrict-∘)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 
 module Views {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
@@ -207,6 +208,16 @@ module Views {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
   ... | peeled (⊢var i) P _ | p = varView P (runs p)
   ... | peeled (⊢sub-use _ _) _ () | _
   ... | peeled (⊢sub-eff _ _) _ () | _
+
+  -- A variable, read in a restriction of `γ`, returns `γ`'s value.
+  varVal : ∀ {Ψa i π} (dv : Δ ⊩ Γ ⊢[ Ψa ] var i ∷ lookup Γ i ! π) {γa} → Res γa
+         → Σ′ (singleUse i One ⊑ᵘ Ψ) λ P₀ → _~_ {lookup Γ i} (⟪ dv ⟫ γa) (return∞ (lookupᵛ σ Γ i (restrict σ P₀ γ)))
+  varVal dv (res Pv refl) with viewVar dv (res Pv refl)
+  ... | varView P eq = ⊑ᵘ-trans P Pv , substR (restrict-∘ σ P Pv γ) eq
+    where
+      substR : ∀ {x y} → x ≡ y → _~_ {lookup Γ _} (⟪ dv ⟫ _) (return∞ (lookupᵛ σ Γ _ x))
+             → _~_ {lookup Γ _} (⟪ dv ⟫ _) (return∞ (lookupᵛ σ Γ _ y))
+      substR refl q = q
 
 ------------------------------------------------------------------------
 -- Under a binder: `var zero` returns the bound value
