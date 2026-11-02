@@ -330,7 +330,7 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
                       ; sp-eq = C.sp-eq (dataCorr cc) ; frontier-eq = C.frontier-eq (dataCorr cc)
                       ; dom-fresh = C.dom-fresh (dataCorr cc) ; dom-written = C.dom-written (dataCorr cc)
                       ; dom-sized = C.dom-sized (dataCorr cc) ; lo-le = C.lo-le (dataCorr cc)
-                      ; untouched = C.untouched (dataCorr cc) ; stack-eq = C.stack-eq (dataCorr cc) }
+                      ; stack-eq = C.stack-eq (dataCorr cc) }
   ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -540,7 +540,7 @@ room-step-riscv64 {hv} prog fs s k cc h ft =
       { dataCorr = record { in1-eq = C.in1-eq d ; out-eq = C.out-eq d
                           ; clos-eq = C.clos-eq d ; halt-eq = C.halt-eq d ; heap-eq = C.heap-eq d
                           ; sp-eq = C.sp-eq d ; frontier-eq = C.frontier-eq d ; dom-fresh = C.dom-fresh d ; dom-written = C.dom-written d ; dom-sized = C.dom-sized d
-                          ; lo-le = C.lo-le d ; untouched = C.untouched d ; stack-eq = C.stack-eq d }
+                          ; lo-le = C.lo-le d ; stack-eq = C.stack-eq d }
       ; pc-off = pco ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
       where
         q3 : R.State
@@ -1025,7 +1025,7 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
                       ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
                       ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                       ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _)))
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1048,7 +1048,7 @@ block-step-worklist-init {hv} prog fs s n cc h ft = s , refl , record
                       ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
                       ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                       ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (worklist-init n) ft) (+-identityʳ _)))
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1064,7 +1064,7 @@ block-step-worklist-check {hv} prog fs s n cc h ft = s , refl , record
                       ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
                       ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                       ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (blk-off-suc prog (fpc fs) (worklist-check n) ft) (+-identityʳ _)))
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1194,7 +1194,7 @@ block-step-c-jmp {hv} prog fs s n j₀ cc h ft fl-eq = block-step
                           ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
                           ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                           ; heap-eq = C.heap-eq dc
-                          ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+                          ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 
 
@@ -1247,7 +1247,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j₀ cc h ft i-eq r-eq rd
                           ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
                           ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                           ; heap-eq = C.heap-eq dc
-                          ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+                          ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
 block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j₀ cc h ft i-eq r-eq rd fl-eq = result
   where
@@ -1280,7 +1280,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j₀ cc h ft i-eq r-eq
                           ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
                           ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                           ; heap-eq = C.heap-eq dc
-                          ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+                          ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
       ; pc-off = trans (+-assoc (R.State.pc s) 1 1)
                        (trans (cong (_+ 2) po)
                               (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
@@ -1587,7 +1587,7 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
                           ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
                           ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                           ; heap-eq = C.heap-eq dc
-                          ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+                          ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
       ; pc-off = trans (+-assoc (R.State.pc s) 1 1)
                        (trans (cong (_+ 2) po)
                               (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))

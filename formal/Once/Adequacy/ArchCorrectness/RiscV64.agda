@@ -252,7 +252,6 @@ entry-corr ir = record
       ; dom-sized = λ _ ()          -- …and no block has a size
       ; heap-eq = λ _ ()
       ; lo-le = ≤-refl              -- initState's `sp` IS `stack-top` (the entry mark)
-      ; untouched = λ _ _ _ → refl  -- `emptyMemory`: every address reads `nothing`
       ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ _ ()) , tt
       }
   ; pc-off = refl
