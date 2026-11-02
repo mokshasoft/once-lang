@@ -9,6 +9,7 @@ module SpecMatrixSpec (specMatrixTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 import Data.List (isInfixOf)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -24,22 +25,22 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
   [ testGroup "main (D253, D315)"
       [ testCase "a signature-less main whose type is not below Eff Unit Unit is rejected" $ do
           r <- checkExe [ "main = 5" ]
-          assertBool "Should reject a main of type Int" (isLeft r)
+          assertRejects "Should reject a main of type Int" "" r
       ]
 
   , testGroup "a signature is the body's principal type (D314, D321)"
       [ testCase "a summand the body leaves open must be Void" $ do
           r <- checkLib [ "f : Int -> Int + Int", "f = inl" ]
-          assertBool "Should reject a sum wider than the body's" (isLeft r)
+          assertRejects "Should reject a sum wider than the body's" "" r
       , testCase "the least sum is accepted" $ do
           r <- checkLib [ "f : Int -> Int + Void", "f = inl" ]
           r @?= Right ()
       , testCase "a grade above the body's is rejected" $ do
           r <- checkLib [ "f : Act Int Int", "f x = x + 1" ]
-          assertBool "Should reject Act for a pure body" (isLeft r)
+          assertRejects "Should reject Act for a pure body" "" r
       , testCase "a schema wider than the body's is rejected" $ do
           r <- checkLib [ "f : a -> a + b", "f = inl" ]
-          assertBool "Should reject a free summand in a schema" (isLeft r)
+          assertRejects "Should reject a free summand in a schema" "" r
         -- D321: the principal type is least over the domains the signature
         -- gives. `Void` is the given domain; the codomain is the body's.
       , testCase "a constant out of a given Void domain is accepted (D321)" $ do
@@ -47,7 +48,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
           r @?= Right ()
       , testCase "returning the Void argument at Int is wider than the body's (D321)" $ do
           r <- checkLib [ "f : Void -> Int", "f = \\x -> x" ]
-          assertBool "Should reject Int where the body's codomain is Void" (isLeft r)
+          assertRejects "Should reject Int where the body's codomain is Void" "" r
         -- Every domain is kept, also one inside a domain: `(Void -> Int) -> Int`
         -- is a strict subtype at which `\k -> 3` checks too, and it does not
         -- make `(Int -> Int) -> Int` wider. The codomain must still be least.
@@ -56,13 +57,13 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
           r @?= Right ()
       , testCase "under an arrow domain the codomain is still the body's (D321)" $ do
           r <- checkLib [ "h : (Int -> Int) -> Int + Int", "h k = inl 3" ]
-          assertBool "Should reject Int + Int where the body's codomain is Int + Void" (isLeft r)
+          assertRejects "Should reject Int + Int where the body's codomain is Int + Void" "" r
       , testCase "main at its principal type is accepted (D315)" $ do
           r <- checkExe [ "import I.Linux.Syscalls as S", "", "main : Act Unit Void", "main = compose exit@S (\\_ -> 0)" ]
           r @?= Right ()
       , testCase "main at Eff Unit Unit over an Act body is rejected (D315)" $ do
           r <- checkExe [ "import I.Linux.Syscalls as S", "", "main : Eff Unit Unit", "main = compose exit@S (\\_ -> 0)" ]
-          assertBool "Should reject a main wider than its body" (isLeft r)
+          assertRejects "Should reject a main wider than its body" "" r
       ]
 
   , testGroup "the loop is ana into Eff (D317)"
@@ -74,7 +75,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
           -- is at `Eff`, so the loop over it is rejected.
           r <- checkLib (loopBase ++ [ "round : Eff (Int * Int) (Int + (Int * Int))", roundBody, ""
                                      , "outer : Eff (Int * Int) Int", "outer = ana round" ])
-          assertBool "Should reject a loop whose round is at Eff" (isLeft r)
+          assertRejects "Should reject a loop whose round is at Eff" "" r
       , testCase "a silent round warns" $ do
           -- item 4: allowed, but almost always a bug.
           src <- TIO.readFile "test/loop-sum.once"
@@ -103,14 +104,14 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
           r @?= Right ()
       , testCase "branches with no upper bound are rejected" $ do
           r <- checkLib [ "f : Int + Int -> Int", "f s = destruct s of { Left x -> x ; Right y -> () }" ]
-          assertBool "Should reject branches at Int and Unit" (isLeft r)
+          assertRejects "Should reject branches at Int and Unit" "" r
       , testCase "arrows out of different domains have no join" $ do
           r <- checkLib
             [ "g : Int -> Int", "g x = x", ""
             , "h : Unit -> Int", "h u = 1", ""
             , "f : Int + Int -> Void -> Int"
             , "f s = destruct s of { Left x -> g ; Right y -> h }" ]
-          assertBool "Should reject arrow branches with different domains" (isLeft r)
+          assertRejects "Should reject arrow branches with different domains" "" r
       , testCase "a body states a wider type by an annotation" $ do
           r <- checkLib [ "two : Int + Unit", "two = (inl 2 : Int + Unit)" ]
           r @?= Right ()
@@ -126,7 +127,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
       [ testCase "an unused definition typed once at rigid parameters is checked" $ do
           -- `x : a` returned at `b`: wrong for every instance, so wrong once.
           r <- checkLib [ "bad : a -> b", "bad x = x" ]
-          assertBool "Should reject a body that is wrong at its rigid schema" (isLeft r)
+          assertRejects "Should reject a body that is wrong at its rigid schema" "" r
       , testCase "a polymorphic head at an instance of its schema is accepted (d-poly)" $ do
           r <- checkLib
             [ "swap : a * b -> b * a"
@@ -146,27 +147,27 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             , "x : Int * Int"
             , "x = swap 5"
             ]
-          assertBool "Should reject swap at a non-product" (isLeft r)
+          assertRejects "Should reject swap at a non-product" "" r
       , testCase "an annotation may not mention a type parameter (D252)" $ do
           -- Rejected already by the GRAMMAR: an expression annotation's type is
           -- ground (no type variables), the strictest form of D252's rule.
           r <- checkLib [ "f : a -> a", "f x = (x : a)" ]
-          assertBool "Should reject an annotation naming a rigid parameter" (isLeft r)
+          assertRejects "Should reject an annotation naming a rigid parameter" "" r
       ]
 
   , testGroup "recursion schemes (D228, D191–D199)"
       [ testCase "cata of a non-function is rejected" $ do
           r <- checkLib [ "f : Mu (K Unit + Id) -> Int", "f = cata 5" ]
-          assertBool "Should reject cata 5" (isLeft r)
+          assertRejects "Should reject cata 5" "" r
       , testCase "Out of a non-ν is rejected" $ do
           r <- checkLib [ "x : Int", "x = Out 5" ]
-          assertBool "Should reject Out 5" (isLeft r)
+          assertRejects "Should reject Out 5" "" r
       ]
 
   , testGroup "comparisons mean Bool = Unit + Unit (D263/D264)"
       [ testCase "a comparison is not an Int" $ do
           r <- checkLib [ "x : Int", "x = 2 < 5" ]
-          assertBool "Should reject a comparison at Int" (isLeft r)
+          assertRejects "Should reject a comparison at Int" "" r
       ]
 
   , testGroup "effects (D219, D222, D226)"
@@ -180,7 +181,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             , "both : Int -> (Unit * Unit)"
             , "both = pair e1 e1"
             ]
-          assertBool "Should reject an emitting arm in a pure pair" (isLeft r)
+          assertRejects "Should reject an emitting arm in a pure pair" "" r
       , testCase "effectful arms under pair at an effectful type are accepted (D222)" $ do
           r <- checkLib
             [ "import I.Test.Emit as E"
@@ -216,7 +217,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             , "p : Int -> Int"
             , "p = effInc"
             ]
-          assertBool "Should reject eff where pure is expected" (isLeft r)
+          assertRejects "Should reject eff where pure is expected" "" r
         -- D318 item 2: a stream's layers are at a finite grade, `pure ⊑ act`,
         -- so a pure stream is accepted where an acting one is expected (each
         -- layer becomes a block with no call). PuritySpec rejects the converse.
@@ -266,7 +267,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             , "f : Int -> Int"
             , "f x = x"
             ]
-          assertBool "Should reject a name both declared and defined" (isLeft r)
+          assertRejects "Should reject a name both declared and defined" "" r
       ]
   ]
 

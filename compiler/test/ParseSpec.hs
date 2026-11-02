@@ -3,6 +3,7 @@ module ParseSpec (parseTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -274,7 +275,5 @@ assertParsedContains (Right actual) expected =
              (expected `elem` actual)
 
 -- | Assert that parsing failed
-assertParseError :: Either String [T.Text] -> Assertion
-assertParseError (Right sigs) =
-  assertFailure $ "Expected parse error but got: " ++ show sigs
-assertParseError (Left _) = return ()
+assertParseError :: HasCallStack => Either String [T.Text] -> Assertion
+assertParseError = assertRejects "a parse error" ""

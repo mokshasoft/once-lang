@@ -13,6 +13,7 @@ module GeneratorSpec (generatorTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -121,10 +122,10 @@ accepts name sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
   result @?= Right ()
 
-rejects :: TestName -> [T.Text] -> TestTree
+rejects :: HasCallStack => TestName -> [T.Text] -> TestTree
 rejects name sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
-  assertBool ("Should reject: " ++ name) (isLeft result)
+  assertRejects name "" result
 
 checksFixture :: TestName -> FilePath -> TestTree
 checksFixture name path = testCase (name ++ " (fixture)") $ do

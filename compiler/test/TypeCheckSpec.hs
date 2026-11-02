@@ -4,6 +4,7 @@ module TypeCheckSpec (typeCheckTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -139,7 +140,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "a body cannot name its own definition" (isLeft result)
+      assertRejects "a body cannot name its own definition" "" result
 
   , testCase "self-call with a parameter is rejected" $ do
       let source = T.unlines
@@ -150,7 +151,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "a body cannot call its own definition" (isLeft result)
+      assertRejects "a body cannot call its own definition" "" result
 
   , testCase "self-call with multiple parameters is rejected" $ do
       let source = T.unlines
@@ -161,7 +162,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "a body cannot call its own definition" (isLeft result)
+      assertRejects "a body cannot call its own definition" "" result
 
   , testCase "mutual recursion through the telescope is rejected" $ do
       -- f2 -> p1 -> p3 -> f2: no definition names itself, but the cycle is
@@ -181,7 +182,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "a telescope cycle is general recursion" (isLeft result)
+      assertRejects "a telescope cycle is general recursion" "" result
 
   , testCase "a definition cannot use a later one" $ do
       let source = T.unlines
@@ -195,7 +196,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "a forward reference is unbound" (isLeft result)
+      assertRejects "a forward reference is unbound" "" result
 
   , testCase "a later definition may use an earlier one" $ do
       let source = T.unlines
@@ -276,7 +277,7 @@ builtinShadowingTests = testGroup "Generator names (D136)"
       -- Not shadowing: `fst` NAMES the generator (D136), whose type is
       -- (A * B) → A, so an Int argument is a type error. The user's own `fst`
       -- is still reachable — as `fst@this`, tested above.
-      assertBool "bare fst must be the generator" (isLeft result)
+      assertRejects "bare fst must be the generator" "" result
 
   , testCase "D136: bare 'snd' is the GENERATOR, not the user's def" $ do
       let source = T.unlines
@@ -287,7 +288,7 @@ builtinShadowingTests = testGroup "Generator names (D136)"
             , "test = snd 5"
             ]
       result <- typeCheckSource source
-      assertBool "bare snd must be the generator" (isLeft result)
+      assertRejects "bare snd must be the generator" "" result
   ]
 
 ------------------------------------------------------------------------
@@ -320,7 +321,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "v + u with u : Unit is ill-typed" (isLeft result)
+      assertRejects "v + u with u : Unit is ill-typed" "" result
 
   , testCase "a Void right operand does not make a binop synthesize Void" $ do
       let source = T.unlines
@@ -331,7 +332,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "x + v is an Int (Void <: Int), not a Void" (isLeft result)
+      assertRejects "x + v is an Int (Void <: Int), not a Void" "" result
 
   , testCase "fst of a Void does not synthesize" $ do
       let source = T.unlines
@@ -342,7 +343,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "fst needs a product; ex falso is initial v" (isLeft result)
+      assertRejects "fst needs a product; ex falso is initial v" "" result
   ]
 
 ------------------------------------------------------------------------

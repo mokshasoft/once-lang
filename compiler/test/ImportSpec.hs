@@ -11,6 +11,7 @@ module ImportSpec (importTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 
 import System.Directory (createDirectoryIfMissing)
 import System.Exit (ExitCode (..))
@@ -27,7 +28,7 @@ importTests = testGroup "Imports (no transitive FFI re-export)"
 
   , testCase "an import's import's FFI is not re-exported (ping@B is unbound)" $ do
       r <- checkWith [ "import Mid.B as B", "", "go : Act Unit Unit", "go = ping@B" ]
-      assertBool "Should reject C's FFI named through B" (isLeft r)
+      assertRejects "Should reject C's FFI named through B" "" r
   ]
 
 ------------------------------------------------------------------------

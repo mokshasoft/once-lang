@@ -9,6 +9,7 @@ module TypeErrorSpec (typeErrorTests, accepts, rejects, typeCheckSource, typeChe
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -46,7 +47,7 @@ typeMismatchTests = testGroup "Type mismatches"
             , "f = 42"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject a bare value body at an arrow type" (isLeft result)
+      assertRejects "Should reject a bare value body at an arrow type" "" result
 
   , testCase "the written constant function is accepted" $ do
       -- …and this is what replaces it. Same denotation, spelled.
@@ -65,7 +66,7 @@ typeMismatchTests = testGroup "Type mismatches"
             , "f = 42"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject Int body at result type String" (isLeft result)
+      assertRejects "Should reject Int body at result type String" "" result
 
   , testCase "String literal for Int type" $ do
       let source = T.unlines
@@ -73,7 +74,7 @@ typeMismatchTests = testGroup "Type mismatches"
             , "x = \"hello\""
             ]
       result <- typeCheckSource source
-      assertBool "Should reject String for Int type" (isLeft result)
+      assertRejects "Should reject String for Int type" "" result
 
   , testCase "Int for String type" $ do
       let source = T.unlines
@@ -81,7 +82,7 @@ typeMismatchTests = testGroup "Type mismatches"
             , "x = 42"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject Int for String type" (isLeft result)
+      assertRejects "Should reject Int for String type" "" result
 
   , testCase "function for Int type" $ do
       let source = T.unlines
@@ -89,7 +90,7 @@ typeMismatchTests = testGroup "Type mismatches"
             , "x = id"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject function for Int type" (isLeft result)
+      assertRejects "Should reject function for Int type" "" result
 
   , testCase "wrong argument type to function" $ do
       let source = T.unlines
@@ -100,7 +101,7 @@ typeMismatchTests = testGroup "Type mismatches"
             , "main = f \"hello\""
             ]
       result <- typeCheckSource source
-      assertBool "Should reject wrong argument type" (isLeft result)
+      assertRejects "Should reject wrong argument type" "" result
   ]
 
 ------------------------------------------------------------------------
@@ -127,7 +128,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = 42"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject main without Eff type" (isLeft result)
+      assertRejects "Should reject main without Eff type" "" result
 
   , testCase "polymorphic main is invalid (D355)" $ do
       -- `main` is monomorphic: a schema has many instances (`a := Unit`
@@ -138,7 +139,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = \\x -> x"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject a polymorphic main" (isLeft result)
+      assertRejects "Should reject a polymorphic main" "" result
 
   , testCase "a library without main is valid" $ do
       -- A module without `main` is a library (`_⊢ᴹ_`, D355).
@@ -156,7 +157,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject main with non-Unit input" (isLeft result)
+      assertRejects "Should reject main with non-Unit input" "" result
 
   , testCase "main's body is checked at main's own type" $ do
       -- plan 0.121 R7 (D315): a pure-declared `main` with an effectful body
@@ -167,7 +168,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = tick"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject an effectful body under a pure main" (isLeft result)
+      assertRejects "Should reject an effectful body under a pure main" "" result
   ]
 
 ------------------------------------------------------------------------
@@ -350,10 +351,10 @@ isLeft (Left _) = True
 isLeft (Right _) = False
 
 -- | Assert that a program (given as source lines) is REJECTED by `once check`.
-rejects :: TestName -> [T.Text] -> TestTree
+rejects :: HasCallStack => TestName -> [T.Text] -> TestTree
 rejects name sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
-  assertBool ("Should reject: " ++ name) (isLeft result)
+  assertRejects name "" result
 
 -- | Assert that a program is REJECTED with an error that contains `needle`,
 -- so the test fails if the program is rejected for another reason.

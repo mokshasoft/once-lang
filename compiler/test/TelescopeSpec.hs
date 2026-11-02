@@ -10,6 +10,7 @@ module TelescopeSpec (telescopeTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -26,7 +27,7 @@ telescopeTests = testGroup "Telescope (every definition typed once)"
         [ "f : Nu (K Int)"
         , "f = 5"
         ]
-      assertBool "Should reject an ill-typed Nu definition even when unused" (isLeft r)
+      assertRejects "Should reject an ill-typed Nu definition even when unused" "" r
 
   , testCase "an unused well-typed telescope definition is accepted" $ do
       r <- checkLib
@@ -43,7 +44,7 @@ telescopeTests = testGroup "Telescope (every definition typed once)"
         , "f : Int -> Nu (K Int)"
         , "f = ana (\\x -> x)"
         ]
-      assertBool "Should reject duplicate telescope definitions" (isLeft r)
+      assertRejects "Should reject duplicate telescope definitions" "" r
   ]
 
 checkLib :: [T.Text] -> IO (Either String ())

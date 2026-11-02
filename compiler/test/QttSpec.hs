@@ -13,6 +13,7 @@ module QttSpec (qttTests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Rejection (assertRejects)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -39,7 +40,7 @@ qttTests = testGroup "QTT / linearity"
             , "f x = (x, x)"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject duplicating a linear parameter" (isLeft result)
+      assertRejects "Should reject duplicating a linear parameter" "" result
 
   , testCase "erased (^0) parameter that is used is rejected" $ do
       -- Using an erased parameter at all is quantity 1 > 0.
@@ -48,7 +49,7 @@ qttTests = testGroup "QTT / linearity"
             , "f x = x"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject using an erased parameter" (isLeft result)
+      assertRejects "Should reject using an erased parameter" "" result
 
   , testCase "erased (^0) parameter that is unused is accepted" $ do
       let source = T.unlines
@@ -79,7 +80,7 @@ qttTests = testGroup "QTT / linearity"
             , "f h = compose dup (\\y -> h)"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject duplicating a linear parameter through compose" (isLeft result)
+      assertRejects "Should reject duplicating a linear parameter through compose" "" result
 
   , testCase "linear (^1) parameter in compose's outer arm is accepted" $ do
       -- The outer arm is used once per call, and `f`'s result is not
@@ -105,7 +106,7 @@ qttTests = testGroup "QTT / linearity"
             , "g h = dupE h"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject duplicating a linear argument through an effectful arrow" (isLeft result)
+      assertRejects "Should reject duplicating a linear argument through an effectful arrow" "" result
 
   -- Plan 0.113 B1 (QTT's eliminator rule): the fold applies its algebra once
   -- per node, so whatever the algebra captures is used ω times. A linear
@@ -119,7 +120,7 @@ qttTests = testGroup "QTT / linearity"
             , "f k = cata (case (\\_ -> k) addPair)"
             ]
       result <- typeCheckSource source
-      assertBool "Should reject a linear capture in a cata algebra" (isLeft result)
+      assertRejects "Should reject a linear capture in a cata algebra" "" result
 
   , testCase "unrestricted parameter captured by a cata algebra is accepted" $ do
       let source = T.unlines
