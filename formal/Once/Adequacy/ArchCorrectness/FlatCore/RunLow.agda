@@ -107,3 +107,158 @@ low-start : ∀ (src : AbstractTrace) (fs₀ : FlatState) → RunAt src fs₀ �
 low-start src fs₀ r p0 =
   mkRunLow src fs₀ 0 refl r refl
     (inj₂ (subst (λ c → suc 0 ≡ φ src c) (sym p0) (cong suc (sym (ψ-zero src))) , _ , refl))
+
+------------------------------------------------------------------------
+-- THE SITE FACTS, LIFTED. Each is `RunWF`'s, at the state the lift is of; a
+-- check is never the instruction a fact is about.
+------------------------------------------------------------------------
+import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq as RW
+open import Data.List using (List; []; _∷_; map)
+open import Data.Maybe using () renaming (map to mmap)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack; Slot)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
+open HeapLocation using (heap-offset; heap-ref)
+open HeapRef using (ref-id)
+open import Once.CCC.Label using (LabelId; EntryId)
+open import Once.Spec.Name using () renaming (CanonicalName to CN)
+open import Data.Product using (∃)
+open import Data.Nat using (_<_)
+open import Once.Type using (fits-int)
+open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF)
+open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrWF)
+open import Once.CCC.Machine.FlatPtrBounds FS using (PtrBoundsWF)
+open import Once.CCC.Machine.FrameFree using (ImageI)
+open import Once.CCC.Machine.InstrSlot using (slot-of)
+open AllocState using (frame-slots; saved-frames; block-size; current-frame)
+open MemOps {FS} using (readLoc)
+open FrameSemantics FS using (Frame)
+open RoomFacts {FS} using (find-entry-room)
+
+private
+  module L = RoomSim {FS}
+
+-- a fact about one non-check instruction `I`, from the base run's, when the fact
+-- speaks of the state only through what the lift keeps (memory, frames)
+lift-site : ∀ (I : AbstractInstr) → (∀ k → I ≡ instr-room k → ⊥) → (C : FlatState → Set)
+          → (∀ src fs₀ → RunAt src fs₀ → LocState.halted (floc fs₀) ≡ false → fetch src (fpc fs₀) ≡ just I → C fs₀)
+          → (∀ src fs₀ p → C fs₀ → C (L.lift src fs₀ p))
+          → ∀ prog fs → RunLow prog fs → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just I → C fs
+lift-site I nr C base tr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) h f
+  with low-view src fs₀ p pc f
+... | at-check k e _  = ⊥-elim (nr k e)
+... | at-image _ fi   = tr src fs₀ p (base src fs₀ r h fi)
+
+-- …and the same without the running premise
+lift-site′ : ∀ (I : AbstractInstr) → (∀ k → I ≡ instr-room k → ⊥) → (C : FlatState → Set)
+           → (∀ src fs₀ → RunAt src fs₀ → fetch src (fpc fs₀) ≡ just I → C fs₀)
+           → (∀ src fs₀ p → C fs₀ → C (L.lift src fs₀ p))
+           → ∀ prog fs → RunLow prog fs → fetch prog (fpc fs) ≡ just I → C fs
+lift-site′ I nr C base tr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) f
+  with low-view src fs₀ p pc f
+... | at-check k e _  = ⊥-elim (nr k e)
+... | at-image _ fi   = tr src fs₀ p (base src fs₀ r fi)
+
+step-ok : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunLow prog fs
+        → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just i
+        → LocState.faulted (floc (flat-exec-instr i prog fs)) ≡ false
+step-ok prog fs i r h f = low-sound r (FlatStepsAPI._∷_ {FS} (h , f) FlatStepsAPI.[])
+
+slot-read-written : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunLow prog fs
+                  → LocState.halted (floc fs) ≡ false
+                  → fetch prog (fpc fs) ≡ just i → RW.SlotRead i slot
+                  → LocState.stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing → ⊥
+slot-read-written .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src fs₀ p refl r refl pc) h f sr
+  with low-view src fs₀ p pc f
+... | at-check k refl _ = λ _ → no-slot sr
+  where no-slot : RW.SlotRead (instr-room k) slot → ⊥
+        no-slot ()
+... | at-image _ fi = RW.slot-read-written src fs₀ slot i r h fi sr
+
+load-indirect-target-wf : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+                        → fetch prog (fpc fs) ≡ just load-indirect
+                        → Σ (ValueLocation FS) (λ loc →
+                            (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                            × (∀ hl → loc ≡ AtDynamic hl
+                               → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))))
+load-indirect-target-wf = lift-site load-indirect (λ _ ()) _ RW.load-indirect-target-wf (λ _ _ _ c → c)
+
+load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+                            → fetch prog (fpc fs) ≡ just load-indirect-suc
+                            → Σ (ValueLocation FS) (λ loc →
+                                (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                                × (∀ hl → loc ≡ AtDynamic hl
+                                   → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
+load-indirect-suc-target-wf = lift-site load-indirect-suc (λ _ ()) _ RW.load-indirect-suc-target-wf (λ _ _ _ c → c)
+
+heap-load-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunLow prog fs
+                  → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just load-indirect
+                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → LocState.heapMem (floc fs) hl ≡ nothing → ⊥
+heap-load-written prog fs hl =
+  lift-site load-indirect (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                         → LocState.heapMem (floc g) hl ≡ nothing → ⊥)
+    (λ src fs₀ r h f → RW.heap-load-written src fs₀ hl r h f) (λ _ _ _ c → c) prog fs
+
+heap-load-suc-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunLow prog fs
+                      → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just load-indirect-suc
+                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                      → LocState.heapMem (floc fs) (sucHL hl) ≡ nothing → ⊥
+heap-load-suc-written prog fs hl =
+  lift-site load-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                             → LocState.heapMem (floc g) (sucHL hl) ≡ nothing → ⊥)
+    (λ src fs₀ r h f → RW.heap-load-suc-written src fs₀ hl r h f) (λ _ _ _ c → c) prog fs
+
+out-nz-output-word : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (instr-reg-op out-nz)
+                   → ∃ λ w → readReg (LocState.regs (floc fs)) Output ≡ SV-Lit fits-int w
+out-nz-output-word = lift-site (instr-reg-op out-nz) (λ _ ()) _ RW.out-nz-output-word (λ _ _ _ c → c)
+
+store-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunLow prog fs
+                    → LocState.halted (floc fs) ≡ false
+                    → fetch prog (fpc fs) ≡ just store-indirect
+                    → readReg (LocState.regs (floc fs)) Input1 ≡ v
+                    → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
+                    → ⊥
+store-nonptr-absurd prog fs {v} =
+  lift-site store-indirect (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ v
+                                         → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥) → ⊥)
+    (λ src fs₀ r h f → RW.store-nonptr-absurd src fs₀ r h f) (λ _ _ _ c → c) prog fs
+
+store-suc-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunLow prog fs
+                        → LocState.halted (floc fs) ≡ false
+                        → fetch prog (fpc fs) ≡ just store-indirect-suc
+                        → readReg (LocState.regs (floc fs)) Input1 ≡ v
+                        → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
+                        → ⊥
+store-suc-nonptr-absurd prog fs {v} =
+  lift-site store-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ v
+                                             → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥) → ⊥)
+    (λ src fs₀ r h f → RW.store-suc-nonptr-absurd src fs₀ r h f) (λ _ _ _ c → c) prog fs
+
+branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunLow prog fs
+                        → LocState.halted (floc fs) ≡ false
+                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+                        → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
+                            (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                            × (readLoc (floc fs) loc ≡ just v) × RW.TagCell v))
+branch-tag-scrutinee-wf prog fs m =
+  lift-site (instr-ctrl (c-branch-tag-zero m)) (λ _ ()) _ (λ src fs₀ → RW.branch-tag-scrutinee-wf src fs₀ m)
+    (λ _ _ _ c → c) prog fs
+
+store-indirect-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunLow prog fs
+                        → fetch prog (fpc fs) ≡ just store-indirect
+                        → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                        → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
+store-indirect-inbounds prog fs hl =
+  lift-site′ store-indirect (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                          → heap-offset hl < block-size (falloc g) (ref-id (heap-ref hl)))
+    (λ src fs₀ r f → RW.store-indirect-inbounds src fs₀ hl r f) (λ _ _ _ c → c) prog fs
+
+store-indirect-suc-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunLow prog fs
+                            → fetch prog (fpc fs) ≡ just store-indirect-suc
+                            → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                            → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
+store-indirect-suc-inbounds prog fs hl =
+  lift-site′ store-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                              → heap-offset (sucHL hl) < block-size (falloc g) (ref-id (heap-ref (sucHL hl))))
+    (λ src fs₀ r f → RW.store-indirect-suc-inbounds src fs₀ hl r f) (λ _ _ _ c → c) prog fs
