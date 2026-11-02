@@ -405,7 +405,6 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-call-fn; block-step-alloc-heap
-  ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
   -- RE-EXPORTED (`public`): the APEX name `CompiledCorr`, when it exhibits the
   -- entry correspondence. It comes from here rather than from `EE`'s public
   -- open — listing it in both makes every use ambiguous, and this is the
@@ -428,41 +427,14 @@ riscv64-lea-slot prog fs s slot cc h ft run =
     (slot-addr-no-wrap prog fs s slot run cc ft)
 
 ------------------------------------------------------------------------
--- THE FOUR STUCK ROUTES (plan 0.65 G2).
+-- THE TWO STUCK ROUTES (plan 0.65 G2).
 --
 -- `EE.stuck-result` has already discharged the ABSTRACT half of each; what an
--- arch owes is only "nothing more comes out of the concrete machine". Two of
--- the four genuinely STICK (a load through a pointer to an unwritten cell —
--- `execInstr ≡ nothing`); the other two HALT, because `jump-to` with a
--- missing label sets `halted`, so those take one more step and then emit
--- nothing.
+-- arch owes is only "nothing more comes out of the concrete machine". Both
+-- HALT, because `jump-to` with a missing label sets `halted`, so they take
+-- one more step and then emit nothing. (The two loads through a pointer to an
+-- unwritten cell were stuck routes too, until plan 0.123 A.4 step 4.)
 ------------------------------------------------------------------------
-stuck-load-indirect : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just load-indirect
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → EE.CFC.HDom hv hl
-  → heapMem (floc fs) hl ≡ nothing
-  → StuckAt ev env (compile-trace prog) s
-stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
-  1 , EE.RT.run-events-stuck ev env lg 0 (compile-trace prog) s (ld a0 t0 0)
-        (trans (EE.CFC.halt-eq (dataCorr cc)) h)
-        (proj₁ stuckp) refl (proj₂ stuckp)
-  where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
-
-stuck-load-indirect-suc : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just load-indirect-suc
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → EE.CFC.HDom hv (sucHL hl)
-  → heapMem (floc fs) (sucHL hl) ≡ nothing
-  → StuckAt ev env (compile-trace prog) s
-stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
-  1 , EE.RT.run-events-stuck ev env lg 0 (compile-trace prog) s (ld a0 t0 slot-size)
-        (trans (EE.CFC.halt-eq (dataCorr cc)) h)
-        (proj₁ stuckp) refl (proj₂ stuckp)
-  where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
-
 -- A concrete jump to a MISSING label HALTS (`jump-to`'s `nothing` branch), so
 -- it does not stick — it takes one step and then emits nothing.
 stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
@@ -526,9 +498,7 @@ stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ 
 
 riscv64-stuck-steps : StuckSteps
 riscv64-stuck-steps = record
-  { st-load-indirect         = stuck-load-indirect
-  ; st-load-indirect-suc     = stuck-load-indirect-suc
-  ; st-c-jmp                 = stuck-c-jmp
+  { st-c-jmp                = stuck-c-jmp
   ; st-c-branch-tag-zero     = stuck-c-branch-tag-zero
   }
 

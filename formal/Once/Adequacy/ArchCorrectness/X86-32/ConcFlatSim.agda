@@ -189,7 +189,6 @@ import Once.CCC.Target.X86-32.Semantics as X
 -- the correspondence it re-exports) into this interface.
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation o FS word-eq fmt-eq
   using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr; room-step-x86-32
-        ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
         ; pc-off; ret-eq; x86-32-block-steps; x86-32-link-claim; xrreg
         ; module C; module CompiledCorr ) public
 open import Once.CCC.Machine.FlatStoreWF FS using
@@ -543,36 +542,10 @@ execInstr-cmp-mi prog s a v rd rewrite rd = refl
 -- The engine asks only for the CONCRETE claim — that nothing more comes out
 -- of this machine — and discharges the abstract half itself
 -- (`EE.stuck-result`: the flat machine has halted, so `flat-events` is []).
--- These four are that concrete claim, and they are where the instruction
--- names live: a `mov eax,[ecx]` faulting on an unmapped address, a `jmp`/`je`
--- to a label the compiled program does not contain.
+-- These two are that concrete claim, and they are where the instruction
+-- names live: a `jmp`/`je` to a label the compiled program does not contain.
+-- (The empty-heap-cell loads were two more, until plan 0.123 A.4 step 4.)
 ------------------------------------------------------------------------
-stuck-load-indirect : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just load-indirect
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → C.HDom hv hl
-  → heapMem (floc fs) hl ≡ nothing
-  → EE.StuckAt ev env (compile-trace prog) s
-stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
-  1 , RTx.run-events-stuck val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) s
-        (mov (reg eax) (mem (base ecx)))
-        (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
-  where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
-
-stuck-load-indirect-suc : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just load-indirect-suc
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → C.HDom hv (sucHL hl)
-  → heapMem (floc fs) (sucHL hl) ≡ nothing
-  → EE.StuckAt ev env (compile-trace prog) s
-stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
-  1 , RTx.run-events-stuck val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32) ev env lg 0 (compile-trace prog) s
-        (mov (reg eax) (mem (base+disp ecx slot-size)))
-        (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
-  where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
-
 -- a concrete jump to a MISSING label HALTS (it does not get stuck), so the
 -- trace takes one step and then emits nothing.
 stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
@@ -644,9 +617,7 @@ stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ 
 -- here rather than silently.
 x86-32-stuck-steps : EE.StuckSteps
 x86-32-stuck-steps = record
-  { st-load-indirect         = stuck-load-indirect
-  ; st-load-indirect-suc     = stuck-load-indirect-suc
-  ; st-c-jmp                 = stuck-c-jmp
+  { st-c-jmp                = stuck-c-jmp
   ; st-c-branch-tag-zero     = stuck-c-branch-tag-zero
   }
 
