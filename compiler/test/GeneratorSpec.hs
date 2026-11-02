@@ -93,11 +93,11 @@ inferenceTests = testGroup "type inference"
 
 inferenceLimitTests :: TestTree
 inferenceLimitTests = testGroup "no signature: the synthesized type (D323)"
-  [ rejects "bare `id` needs a signature"                   [ "f = id" ]
-  , rejects "bare `snd` needs a signature"                  [ "f = snd" ]
-  , rejects "a bare `compose` chain needs a signature"      [ "f = compose id id" ]
-  , rejects "`pair id id` needs a signature"                [ "f = pair id id" ]
-  , rejects "a lambda needs a signature"                    [ "f x = x + 1" ]
+  [ rejects "bare `id` needs a signature" "The body has no type of its own"                   [ "f = id" ]
+  , rejects "bare `snd` needs a signature" "The body has no type of its own"                  [ "f = snd" ]
+  , rejects "a bare `compose` chain needs a signature" "The body has no type of its own"      [ "f = compose id id" ]
+  , rejects "`pair id id` needs a signature" "The body has no type of its own"                [ "f = pair id id" ]
+  , rejects "a lambda needs a signature" "The body has no type of its own (Lambda without type annotation"                    [ "f x = x + 1" ]
   , accepts "an applied generator synthesizes"              [ "f = id 7" ]
   , accepts "with a signature, a lambda is accepted"        [ "f : Int -> Int", "f x = x + 1" ]
   ]
@@ -122,10 +122,12 @@ accepts name sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
   result @?= Right ()
 
-rejects :: HasCallStack => TestName -> [T.Text] -> TestTree
-rejects name sourceLines = testCase name $ do
+-- | Assert that a program is REJECTED by `once check`, with an error that
+-- mentions `reason` (plan 0.115: a rejection names its reason).
+rejects :: HasCallStack => TestName -> String -> [T.Text] -> TestTree
+rejects name reason sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
-  assertRejects name "" result
+  assertRejects name reason result
 
 checksFixture :: TestName -> FilePath -> TestTree
 checksFixture name path = testCase (name ++ " (fixture)") $ do
@@ -145,6 +147,3 @@ typeCheckFile path = do
     ExitSuccess -> return (Right ())
     ExitFailure _ -> return (Left (stdout ++ stderr))
 
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False

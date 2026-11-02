@@ -40,7 +40,7 @@ qttTests = testGroup "QTT / linearity"
             , "f x = (x, x)"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject duplicating a linear parameter" "" result
+      assertRejects "Should reject duplicating a linear parameter" "Parameter 'x' used with quantity ω but declared with quantity 1" result
 
   , testCase "erased (^0) parameter that is used is rejected" $ do
       -- Using an erased parameter at all is quantity 1 > 0.
@@ -49,7 +49,7 @@ qttTests = testGroup "QTT / linearity"
             , "f x = x"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject using an erased parameter" "" result
+      assertRejects "Should reject using an erased parameter" "Parameter 'x' used with quantity 1 but declared with quantity 0" result
 
   , testCase "erased (^0) parameter that is unused is accepted" $ do
       let source = T.unlines
@@ -80,7 +80,7 @@ qttTests = testGroup "QTT / linearity"
             , "f h = compose dup (\\y -> h)"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject duplicating a linear parameter through compose" "" result
+      assertRejects "Should reject duplicating a linear parameter through compose" "Parameter 'h' used with quantity ω but declared with quantity 1" result
 
   , testCase "linear (^1) parameter in compose's outer arm is accepted" $ do
       -- The outer arm is used once per call, and `f`'s result is not
@@ -99,14 +99,16 @@ qttTests = testGroup "QTT / linearity"
       -- `dupE h` is the suspension `λ_. dupE h`: its argument is scaled by
       -- `dupE`'s grade ω, exactly as a pure application's is.
       let source = T.unlines
-            [ "dupE : Eff Int (Int * Int)"
-            , "dupE = pair id id"
+            -- Plan 0.115: `dupE` was the PURE body `pair id id` at `Eff`, rejected
+            -- as more precise than its signature before usage was counted. An
+            -- operation declared at `Act` is effectful, and used at `Eff`.
+            [ "signature dupE : Act Int (Int * Int)"
             , ""
             , "g : Int^1 -> Eff Unit (Int * Int)"
             , "g h = dupE h"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject duplicating a linear argument through an effectful arrow" "" result
+      assertRejects "Should reject duplicating a linear argument through an effectful arrow" "Parameter 'h' used with quantity ω but declared with quantity 1" result
 
   -- Plan 0.113 B1 (QTT's eliminator rule): the fold applies its algebra once
   -- per node, so whatever the algebra captures is used ω times. A linear
@@ -120,7 +122,7 @@ qttTests = testGroup "QTT / linearity"
             , "f k = cata (case (\\_ -> k) addPair)"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject a linear capture in a cata algebra" "" result
+      assertRejects "Should reject a linear capture in a cata algebra" "Parameter 'k' used with quantity ω but declared with quantity 1" result
 
   , testCase "unrestricted parameter captured by a cata algebra is accepted" $ do
       let source = T.unlines
@@ -157,6 +159,3 @@ typeCheckFile path = do
     ExitSuccess -> return (Right ())
     ExitFailure _ -> return (Left (stdout ++ stderr))
 
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False

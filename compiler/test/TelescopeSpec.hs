@@ -27,7 +27,7 @@ telescopeTests = testGroup "Telescope (every definition typed once)"
         [ "f : Nu (K Int)"
         , "f = 5"
         ]
-      assertRejects "Should reject an ill-typed Nu definition even when unused" "" r
+      assertRejects "Should reject an ill-typed Nu definition even when unused" "Type mismatch: expected ν (K Int) but got Int" r
 
   , testCase "an unused well-typed telescope definition is accepted" $ do
       r <- checkLib
@@ -44,7 +44,7 @@ telescopeTests = testGroup "Telescope (every definition typed once)"
         , "f : Int -> Nu (K Int)"
         , "f = ana (\\x -> x)"
         ]
-      assertRejects "Should reject duplicate telescope definitions" "" r
+      assertRejects "Should reject duplicate telescope definitions" "is declared more than once" r
   ]
 
 checkLib :: [T.Text] -> IO (Either String ())
@@ -59,6 +59,3 @@ checkLib sourceLines = withSystemTempFile "telescope.once" $ \path handle -> do
       ExitSuccess   -> return (Right ())
       ExitFailure _ -> return (Left (stdout ++ stderr))
 
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False

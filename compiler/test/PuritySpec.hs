@@ -25,7 +25,7 @@ purityTests :: TestTree
 purityTests = testGroup "Purity (pure emits nothing)"
   [ testCase "pure FFI arrow into Unit is rejected (a Unit-returning SigOp emits)" $ do
       r <- checkLib [ "signature beep : Int -> Unit" ]
-      assertRejects "Should reject a pure signature that emits" "" r
+      assertRejects "Should reject a pure signature that emits" "hides an effect" r
 
   , testCase "effectful FFI arrow into Unit is accepted" $ do
       r <- checkLib [ "signature beep : Act Int Unit" ]
@@ -33,22 +33,22 @@ purityTests = testGroup "Purity (pure emits nothing)"
 
   , testCase "pure FFI arrow into Void is rejected (a Void-returning SigOp halts)" $ do
       r <- checkLib [ "signature stop : Int -> Void" ]
-      assertRejects "Should reject a pure signature that halts" "" r
+      assertRejects "Should reject a pure signature that halts" "hides an effect" r
 
   -- Plan 0.113 B2: halting/emitting are UP TO ISOMORPHISM. An empty codomain must
   -- be WRITTEN `Void`, a singleton one `Unit` (a skeleton): `Void * Int` would be
   -- an answering contract with no possible answer.
   , testCase "effectful FFI arrow into an empty codomain other than Void is rejected" $ do
       r <- checkLib [ "signature stop2 : Act Int (Void * Int)" ]
-      assertRejects "Should reject an empty codomain not written Void" "" r
+      assertRejects "Should reject an empty codomain not written Void" "hides an effect" r
 
   , testCase "effectful FFI arrow into a singleton codomain other than Unit is rejected" $ do
       r <- checkLib [ "signature beep2 : Act Int (Unit * Unit)" ]
-      assertRejects "Should reject a singleton codomain not written Unit" "" r
+      assertRejects "Should reject a singleton codomain not written Unit" "hides an effect" r
 
   , testCase "pure FFI arrow into an empty codomain is rejected" $ do
       r <- checkLib [ "signature f : Int -> (Void + Void)" ]
-      assertRejects "Should reject a pure arrow into an empty type" "" r
+      assertRejects "Should reject a pure arrow into an empty type" "hides an effect" r
 
   , testCase "effectful FFI arrow into a sum with an empty summand is accepted" $ do
       -- `Int + Void` is neither empty nor a singleton: an answering contract.
@@ -64,7 +64,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , "f : Int -> Unit"
         , "f x = tick"
         ]
-      assertRejects "Should reject an emitting constant hidden in a pure function" "" r
+      assertRejects "Should reject an emitting constant hidden in a pure function" "hides an effect" r
 
   , testCase "pure function forcing an acting stream is rejected" $ do
       -- D233/D318: an acting coalgebra builds `Nu (Act F)` = ν(T ∘ F) over the
@@ -83,20 +83,23 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , "run : Int"
         , "run = peek (mkNu 3)"
         ]
-      assertRejects "Should reject forcing an acting stream inside a pure function" "" r
+      assertRejects "Should reject forcing an acting stream inside a pure function" "Type mismatch: expected ν (K Int) but got ν (Act (K Int))" r
 
   , testCase "an effectful coalgebra cannot build a pure stream" $ do
       r <- checkLib
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (K Int)"
-        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
+        -- Plan 0.115: the first arm is annotated so that `compose`'s middle type
+        -- is known; unannotated, the program failed on the middle type before
+        -- the purity check was reached.
+        , "mkNu = ana (compose ((\\_ -> 7) : Unit -> Int) emit@E)"
         , ""
         -- Typed at its declaration (plan 0.103 phase 1), used or not.
         , "run : Int"
         , "run = Out (mkNu 3)"
         ]
-      assertRejects "Should reject an effectful coalgebra at a pure stream type" "" r
+      assertRejects "Should reject an effectful coalgebra at a pure stream type" "Type mismatch: expected (Int ω→ Unit) but got Act Int Unit" r
 
   , testCase "an Eff signature is rejected" $ do
       -- D318 item 5: an operation is declared at `Act` and used at `Eff` by
@@ -107,7 +110,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , "run : Act Int Unit"
         , "run x = tock x"
         ]
-      assertRejects "Should reject an Eff signature" "" r
+      assertRejects "Should reject an Eff signature" "hides an effect" r
 
   , testCase "a stream over Eff is not a type" $ do
       -- D317/D318: a stream's layer is a finite computation, `Nu (Act F)`;
@@ -119,7 +122,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , "mkNu : Int -> Nu (Eff (K Int))"
         , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         ]
-      assertRejects "Should reject Nu (Eff F)" "" r
+      assertRejects "Should reject Nu (Eff F)" "Parse error" r
 
   , testCase "a let-bound operation application is a value, not a run" $ do
       -- D308: an erased (`Zero`) position holds only a pure computation. The
@@ -141,7 +144,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         , "f : Act Int Int"
         , "f x = let r = emit@E 5 in x"
         ]
-      assertRejects "Should reject Act over a body whose let binds a value" "" r
+      assertRejects "Should reject Act over a body whose let binds a value" "is more precise than its signature Act Int Int" r
 
   , testCase "forcing an acting stream is an acting suspension" $ do
       -- The honest twin: `Out` on `Nu (Act F)` is `Act Unit (F …)`.
@@ -174,6 +177,3 @@ checkLib sourceLines = withSystemTempFile "purity.once" $ \path handle -> do
       ExitSuccess   -> return (Right ())
       ExitFailure _ -> return (Left (stdout ++ stderr))
 
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False

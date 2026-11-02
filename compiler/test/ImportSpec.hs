@@ -28,7 +28,7 @@ importTests = testGroup "Imports (no transitive FFI re-export)"
 
   , testCase "an import's import's FFI is not re-exported (ping@B is unbound)" $ do
       r <- checkWith [ "import Mid.B as B", "", "go : Act Unit Unit", "go = ping@B" ]
-      assertRejects "Should reject C's FFI named through B" "" r
+      assertRejects "Should reject C's FFI named through B" "Unbound or unspecialized variable: Mid.B.ping" r
   ]
 
 ------------------------------------------------------------------------
@@ -58,6 +58,3 @@ assertRight :: Either String () -> Assertion
 assertRight (Right ()) = return ()
 assertRight (Left err) = assertFailure ("Should accept, got: " ++ err)
 
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False

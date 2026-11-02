@@ -47,7 +47,7 @@ typeMismatchTests = testGroup "Type mismatches"
             , "f = 42"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject a bare value body at an arrow type" "" result
+      assertRejects "Should reject a bare value body at an arrow type" "Type mismatch: expected (Int ω→ Int) but got Int" result
 
   , testCase "the written constant function is accepted" $ do
       -- …and this is what replaces it. Same denotation, spelled.
@@ -58,31 +58,34 @@ typeMismatchTests = testGroup "Type mismatches"
       result <- typeCheckSource source
       result @?= Right ()
 
-  , testCase "value body must match the function's result type" $ do
-      -- Rejected before D127 by the lift's codomain check, and after it by the
-      -- absence of any lift at all — either way, not an escape hatch.
+  , testCase "a constant function's body must match the result type" $ do
+      -- Plan 0.115: this was `f : Int -> String; f = 42`, which after D258 (no
+      -- String type) failed to PARSE, and the bare value body is D127's test
+      -- above. Now the written constant function, at the wrong codomain.
       let source = T.unlines
-            [ "f : Int -> String"
-            , "f = 42"
+            [ "f : Int -> Unit"
+            , "f = \\_ -> 42"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject Int body at result type String" "" result
+      assertRejects "Should reject an Int body at result type Unit" "Type mismatch: expected Unit but got Int" result
 
-  , testCase "String literal for Int type" $ do
+  , testCase "Unit value for Int type" $ do
+      -- Plan 0.115: was a String literal, which no longer parses (D258).
       let source = T.unlines
             [ "x : Int"
-            , "x = \"hello\""
+            , "x = ()"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject String for Int type" "" result
+      assertRejects "Should reject Unit for Int type" "Type mismatch: expected Int but got Unit" result
 
-  , testCase "Int for String type" $ do
+  , testCase "Int for Unit type" $ do
+      -- Plan 0.115: was `x : String`, which no longer parses (D258).
       let source = T.unlines
-            [ "x : String"
+            [ "x : Unit"
             , "x = 42"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject Int for String type" "" result
+      assertRejects "Should reject Int for Unit type" "Type mismatch: expected Unit but got Int" result
 
   , testCase "function for Int type" $ do
       let source = T.unlines
@@ -90,18 +93,22 @@ typeMismatchTests = testGroup "Type mismatches"
             , "x = id"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject function for Int type" "" result
+      -- Pinned (plan 0.115 D2): the rule is a type mismatch (a function at
+      -- Int); the elaborator reports the polymorphic `id` as unspecialized.
+      assertRejects "Should reject function for Int type" "Unbound or unspecialized variable: id" result
 
   , testCase "wrong argument type to function" $ do
       let source = T.unlines
+            -- Plan 0.115: was `main : Int; main = f "hello"`, which no longer
+            -- parses (D258), and whose `main` was wrong as well.
             [ "f : Int -> Int"
             , "f x = x"
             , ""
-            , "main : Int"
-            , "main = f \"hello\""
+            , "g : Unit -> Int"
+            , "g u = f u"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject wrong argument type" "" result
+      assertRejects "Should reject wrong argument type" "Type mismatch: expected Int but got Unit" result
   ]
 
 ------------------------------------------------------------------------
@@ -128,7 +135,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = 42"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject main without Eff type" "" result
+      assertRejects "Should reject main without Eff type" "main must be usable as Eff Unit Unit (its type below it), but its type is Int" result
 
   , testCase "polymorphic main is invalid (D355)" $ do
       -- `main` is monomorphic: a schema has many instances (`a := Unit`
@@ -139,7 +146,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = \\x -> x"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject a polymorphic main" "" result
+      assertRejects "Should reject a polymorphic main" "but its type is polymorphic or not concrete" result
 
   , testCase "a library without main is valid" $ do
       -- A module without `main` is a library (`_⊢ᴹ_`, D355).
@@ -157,7 +164,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject main with non-Unit input" "" result
+      assertRejects "Should reject main with non-Unit input" "`main` is more precise than its signature Eff Int Int" result
 
   , testCase "main's body is checked at main's own type" $ do
       -- plan 0.121 R7 (D315): a pure-declared `main` with an effectful body
@@ -168,7 +175,7 @@ mainTypeTests = testGroup "Main function validation"
             , "main = tick"
             ]
       result <- typeCheckSource source
-      assertRejects "Should reject an effectful body under a pure main" "" result
+      assertRejects "Should reject an effectful body under a pure main" "Type mismatch: expected (Unit ω→ Unit) but got Act Unit Unit" result
   ]
 
 ------------------------------------------------------------------------
@@ -177,19 +184,22 @@ mainTypeTests = testGroup "Main function validation"
 
 builtinShapeErrorTests :: TestTree
 builtinShapeErrorTests = testGroup "Builtin shape errors"
-  [ rejects "fst applied to a non-pair"
+  [ rejects "fst applied to a non-pair" "fst requires a pair argument"
       [ "f : Int -> Int"
       , "f x = fst x"
       ]
-  , rejects "snd applied to a non-pair"
+  , rejects "snd applied to a non-pair" "snd requires a pair argument"
       [ "f : Int -> Int"
       , "f x = snd x"
       ]
-  , rejects "unary negation of a non-Int"
-      [ "f : String -> Int"
+  , rejects "unary negation of a non-Int" "Type mismatch: expected Int but got Unit"
+      -- Plan 0.115: was `f : String -> Int`, which no longer parses (D258).
+      -- The rejection is the operand's check at Int (`NegationNotInt` is not
+      -- reached: `-x` checks `x` at Int).
+      [ "f : Unit -> Int"
       , "f x = -x"
       ]
-  , rejects "over-application (id given two arguments)"
+  , rejects "over-application (id given two arguments)" "expected function type, got Int"
       [ "f : Int -> Int"
       , "f x = id x x"
       ]
@@ -201,13 +211,13 @@ builtinShapeErrorTests = testGroup "Builtin shape errors"
 
 destructErrorTests :: TestTree
 destructErrorTests = testGroup "destruct errors"
-  [ rejects "destruct on a non-sum scrutinee"
+  [ rejects "destruct on a non-sum scrutinee" "Case requires a sum-typed scrutinee"
       [ "f : Int -> Int"
       , "f x = destruct x of { Left a -> a ; Right b -> b }"
       ]
-  , rejects "destruct branches with different types"
+  , rejects "destruct branches with different types" "Case branches have different types"
       [ "f : (Int + Int) -> Int"
-      , "f x = destruct x of { Left a -> a ; Right b -> \"s\" }"
+      , "f x = destruct x of { Left a -> a ; Right b -> terminal b }"
       ]
   ]
 
@@ -217,19 +227,21 @@ destructErrorTests = testGroup "destruct errors"
 
 -- D323: without a signature, a definition has the type its body SYNTHESIZES.
 -- These bodies only check (a lambda takes a context; `inl`, `inr` and
--- `initial` leave their target open), so each needs a signature.
+-- `initial` leave their target open), so each needs a signature. (The inner
+-- message for `inl`/`inr`/`initial` says "unbound or unspecialized", not the
+-- `InlInInferMode` family's text; the outer reason is D323's. Plan 0.115 D2.)
 modeErrorTests :: TestTree
 modeErrorTests = testGroup "Check-only bodies need a signature (D323)"
-  [ rejects "bare lambda without a type signature"
+  [ rejects "bare lambda without a type signature" "The body has no type of its own (Lambda without type annotation"
       [ "f = \\x -> x"
       ]
-  , rejects "inl with no target sum type"
+  , rejects "inl with no target sum type" "The body has no type of its own"
       [ "g = inl"
       ]
-  , rejects "inr with no target sum type"
+  , rejects "inr with no target sum type" "The body has no type of its own"
       [ "g = inr"
       ]
-  , rejects "initial with no target type"
+  , rejects "initial with no target type" "The body has no type of its own"
       [ "g = initial"
       ]
   ]
@@ -240,11 +252,11 @@ modeErrorTests = testGroup "Check-only bodies need a signature (D323)"
 
 scopeErrorTests :: TestTree
 scopeErrorTests = testGroup "Scope errors"
-  [ rejects "unbound local variable"
+  [ rejects "unbound local variable" "Unbound or unspecialized variable: y"
       [ "f : Int -> Int"
       , "f x = y"
       ]
-  , rejects "unbound qualified (imported) name"
+  , rejects "unbound qualified (imported) name" "Unbound or unspecialized variable: Interpretations.Linux.Syscalls.nope"
       [ "import I.Linux.Syscalls as S"
       , ""
       , "f : Int -> Int"
@@ -256,13 +268,13 @@ scopeErrorTests = testGroup "Scope errors"
       [ "main : Unit -> Unit"
       , "main = id"
       ]
-  , rejectsWith "a definition referring to main@this" "refers to `main`"
+  , rejects "a definition referring to main@this" "refers to `main`"
       [ "main : Unit -> Unit"
       , "main = id"
       , "g : Unit -> Unit"
       , "g = main@this"
       ]
-  , rejectsWith "a definition referring to a bare main" "refers to `main`"
+  , rejects "a definition referring to a bare main" "refers to `main`"
       [ "main : Unit -> Unit"
       , "main = id"
       , "g : Unit -> Unit"
@@ -283,7 +295,7 @@ scopeErrorTests = testGroup "Scope errors"
       [ "f : Int + Int -> Int"
       , "f s = destruct s of { Left main -> main ; Right y -> y }"
       ]
-  , rejectsWith "main referring to itself" "refers to `main`"
+  , rejects "main referring to itself" "refers to `main`"
       [ "main : Unit -> Unit"
       , "main = \\u -> main u"
       ]
@@ -295,13 +307,13 @@ scopeErrorTests = testGroup "Scope errors"
       , "f : Act Unit Unit"
       , "f = tick"
       ]
-  , rejectsWith "an operation declared twice at one type" "`tick` is declared more than once"
+  , rejects "an operation declared twice at one type" "`tick` is declared more than once"
       [ "signature tick : Act Unit Unit"
       , "signature tick : Act Unit Unit"
       , "f : Act Unit Unit"
       , "f = tick"
       ]
-  , rejectsWith "an operation declared twice at two types" "`tick` is declared more than once"
+  , rejects "an operation declared twice at two types" "`tick` is declared more than once"
       [ "signature tick : Act Unit Unit"
       , "signature tick : Act Int Unit"
       , "f : Act Unit Unit"
@@ -310,7 +322,7 @@ scopeErrorTests = testGroup "Scope errors"
     -- plan 0.121 R10: a type signature is immediately followed by its
     -- definition, as written; an import between them separates them even
     -- when the imported module has no signatures (Derived.Nat has none).
-  , rejects "an import between a type signature and its definition"
+  , rejects "an import between a type signature and its definition" "is not followed by its definition"
       [ "f : Int -> Int"
       , "import Derived.Nat"
       , "f x = x"
@@ -346,28 +358,15 @@ typeCheckStderr source = withSystemTempFile "test.once" $ \path handle -> do
   (_, _, err) <- runOnce ["check", path]
   return err
 
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False
-
--- | Assert that a program (given as source lines) is REJECTED by `once check`.
-rejects :: HasCallStack => TestName -> [T.Text] -> TestTree
-rejects name sourceLines = testCase name $ do
+-- | Assert that a program is REJECTED by `once check`, with an error that
+-- mentions `reason` (plan 0.115: a rejection names its reason).
+rejects :: HasCallStack => TestName -> String -> [T.Text] -> TestTree
+rejects name reason sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
-  assertRejects name "" result
-
--- | Assert that a program is REJECTED with an error that contains `needle`,
--- so the test fails if the program is rejected for another reason.
-rejectsWith :: TestName -> String -> [T.Text] -> TestTree
-rejectsWith name needle sourceLines = testCase name $ do
-  result <- typeCheckSource (T.unlines sourceLines)
-  case result of
-    Left err -> assertBool ("Error should mention " ++ show needle ++ ":\n" ++ err)
-                           (T.pack needle `T.isInfixOf` T.pack err)
-    Right () -> assertFailure ("Should reject: " ++ name)
+  assertRejects name reason result
 
 -- | Assert that a program is ACCEPTED by `once check` (D072 flips).
 accepts :: TestName -> [T.Text] -> TestTree
 accepts name sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)
-  assertBool ("Should accept: " ++ name) (not (isLeft result))
+  assertBool ("Should accept: " ++ name) (either (const False) (const True) result)

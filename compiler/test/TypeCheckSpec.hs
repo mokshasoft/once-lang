@@ -140,7 +140,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "a body cannot name its own definition" "" result
+      assertRejects "a body cannot name its own definition" "Unbound or unspecialized variable: loop" result
 
   , testCase "self-call with a parameter is rejected" $ do
       let source = T.unlines
@@ -151,7 +151,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "a body cannot call its own definition" "" result
+      assertRejects "a body cannot call its own definition" "Unbound or unspecialized variable: countdown" result
 
   , testCase "self-call with multiple parameters is rejected" $ do
       let source = T.unlines
@@ -162,7 +162,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "a body cannot call its own definition" "" result
+      assertRejects "a body cannot call its own definition" "Unbound or unspecialized variable: gcd" result
 
   , testCase "mutual recursion through the telescope is rejected" $ do
       -- f2 -> p1 -> p3 -> f2: no definition names itself, but the cycle is
@@ -182,7 +182,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "a telescope cycle is general recursion" "" result
+      assertRejects "a telescope cycle is general recursion" "Unbound or unspecialized variable: p3" result
 
   , testCase "a definition cannot use a later one" $ do
       let source = T.unlines
@@ -196,7 +196,7 @@ recursionTests = testGroup "No general recursion (D241)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "a forward reference is unbound" "" result
+      assertRejects "a forward reference is unbound" "Unbound or unspecialized variable: p3" result
 
   , testCase "a later definition may use an earlier one" $ do
       let source = T.unlines
@@ -277,7 +277,7 @@ builtinShadowingTests = testGroup "Generator names (D136)"
       -- Not shadowing: `fst` NAMES the generator (D136), whose type is
       -- (A * B) → A, so an Int argument is a type error. The user's own `fst`
       -- is still reachable — as `fst@this`, tested above.
-      assertRejects "bare fst must be the generator" "" result
+      assertRejects "bare fst must be the generator" "fst requires a pair argument" result
 
   , testCase "D136: bare 'snd' is the GENERATOR, not the user's def" $ do
       let source = T.unlines
@@ -288,7 +288,7 @@ builtinShadowingTests = testGroup "Generator names (D136)"
             , "test = snd 5"
             ]
       result <- typeCheckSource source
-      assertRejects "bare snd must be the generator" "" result
+      assertRejects "bare snd must be the generator" "snd requires a pair argument" result
   ]
 
 ------------------------------------------------------------------------
@@ -321,7 +321,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "v + u with u : Unit is ill-typed" "" result
+      assertRejects "v + u with u : Unit is ill-typed" "binop left: Type mismatch: expected Int but got Void" result
 
   , testCase "a Void right operand does not make a binop synthesize Void" $ do
       let source = T.unlines
@@ -332,7 +332,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "x + v is an Int (Void <: Int), not a Void" "" result
+      assertRejects "x + v is an Int (Void <: Int), not a Void" "binop right: Type mismatch: expected Int but got Void" result
 
   , testCase "fst of a Void does not synthesize" $ do
       let source = T.unlines
@@ -343,7 +343,7 @@ exFalsoTests = testGroup "Ex falso is explicit (D251)"
             , "main = id"
             ]
       result <- typeCheckSource source
-      assertRejects "fst needs a product; ex falso is initial v" "" result
+      assertRejects "fst needs a product; ex falso is initial v" "fst requires a pair argument" result
   ]
 
 ------------------------------------------------------------------------
@@ -364,6 +364,3 @@ typeCheckSource source = withSystemTempFile "test.once" $ \path handle -> do
     ExitSuccess -> return (Right ())
     ExitFailure _ -> return (Left (stdout ++ stderr))
 
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False

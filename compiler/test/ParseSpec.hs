@@ -127,7 +127,7 @@ validSyntaxTests = testGroup "Valid syntax"
             [ "signature ex : Act Int Unit ! halts"
             ]
       result <- parseSource source
-      assertParseError result
+      assertParseError "Parse error: unexpected tokens" result
 
   , testCase "the emits annotation is gone too" $ do
       -- Plan 0.113 D (audit leftover): both annotations were deleted together.
@@ -135,7 +135,7 @@ validSyntaxTests = testGroup "Valid syntax"
             [ "signature ex : Act Int Unit ! emits"
             ]
       result <- parseSource source
-      assertParseError result
+      assertParseError "Parse error: unexpected tokens" result
 
   , testCase "the @stack allocation annotation is gone" $ do
       -- D142: allocation is decided by the compiler; the FunDef grammar has no
@@ -145,7 +145,7 @@ validSyntaxTests = testGroup "Valid syntax"
             , "f @stack = id"
             ]
       result <- parseSource source
-      assertParseError result
+      assertParseError "Parse error: unexpected tokens" result
 
   , testCase "import statement" $ do
       -- `import` now resolves the interpretation and surfaces ITS signatures
@@ -199,7 +199,7 @@ invalidSyntaxTests = testGroup "Invalid syntax"
             , "f x = x"
             ]
       result <- parseSource source
-      assertParseError result
+      assertParseError "Parse error: unexpected tokens" result
 
   , testCase "unterminated string, the rest not Once (D344)" $ do
       -- The text after a stray `"` was never read and the module ended
@@ -211,12 +211,12 @@ invalidSyntaxTests = testGroup "Invalid syntax"
             , "this is not Once at all ((( = ="
             ]
       result <- parseSource source
-      assertParseError result
+      assertParseError "Lex error: the text is not read to its end" result
 
   , testCase "unterminated string at the very end (D344)" $ do
       let source = T.pack "f : Int -> Int\nf x = x\n\""
       result <- parseSource source
-      assertParseError result
+      assertParseError "Lex error: the text is not read to its end" result
 
   , testCase "a character that starts no token (D345)" $ do
       let source = T.unlines
@@ -224,7 +224,7 @@ invalidSyntaxTests = testGroup "Invalid syntax"
             , "f x = x # y"
             ]
       result <- parseSource source
-      assertParseError result
+      assertParseError "Lex error: the text is not read to its end" result
 
   , testCase "a caret that is not a grade (D345)" $ do
       let source = T.unlines
@@ -232,7 +232,7 @@ invalidSyntaxTests = testGroup "Invalid syntax"
             , "f x = x ^ y"
             ]
       result <- parseSource source
-      assertParseError result
+      assertParseError "Lex error: the text is not read to its end" result
 
   -- NOTE: removed two cases that no longer represent invalid syntax:
   --   * "missing type signature" (`f x = x`) — now accepted; the type is
@@ -275,5 +275,5 @@ assertParsedContains (Right actual) expected =
              (expected `elem` actual)
 
 -- | Assert that parsing failed
-assertParseError :: HasCallStack => Either String [T.Text] -> Assertion
-assertParseError = assertRejects "a parse error" ""
+assertParseError :: HasCallStack => String -> Either String [T.Text] -> Assertion
+assertParseError = assertRejects "a parse error"
