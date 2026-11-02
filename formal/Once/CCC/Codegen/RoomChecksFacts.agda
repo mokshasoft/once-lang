@@ -1,0 +1,177 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- Once.CCC.Codegen.RoomChecksFacts — where the room-check pass puts things.
+--
+-- Plan 0.123 A.4 step 5 (D371). The pass (`RoomChecks.room-checks`) only ever
+-- INSERTS `instr-room` instructions, so every instruction of the image keeps
+-- its order and moves to a later index. This module names that index map and
+-- proves what the transparency simulation needs of it:
+--
+--   * `ψ t i`: where instruction `i` of `t` sits in `checks E t`;
+--     `φ t i = suc (ψ t i)` is its place in `room-checks t` (past the check at 0);
+--   * `fetch-room`: the image with checks holds instruction `i` at `φ t i`.
+--
+-- `ψ` is defined by recursion on the trace, not as `i + (boundaries before i)`,
+-- so the proofs follow `checks`' own recursion and need no arithmetic.
+------------------------------------------------------------------------
+
+module Once.CCC.Codegen.RoomChecksFacts where
+
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.List using (List; []; _∷_)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Nat using (ℕ; zero; suc)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry)
+
+-- one more index when the instruction just passed is a boundary (its check follows it)
+bump : Bool → ℕ → ℕ
+bump true  n = suc n
+bump false n = n
+
+-- where instruction `i` of `t` sits in `checks E t`
+ψ : AbstractTrace → ℕ → ℕ
+ψ []      i       = i
+ψ (x ∷ t) zero    = zero
+ψ (x ∷ t) (suc i) = suc (bump (boundary? x) (ψ t i))
+
+-- …and in `room-checks t`, past the leading check
+φ : AbstractTrace → ℕ → ℕ
+φ t i = suc (ψ t i)
+
+module RoomFacts {FS : FrameSemantics} where
+  open FlatMachine {FS} using (fetch)
+
+  -- what follows a boundary instruction in `checks`, read at a bumped index
+  private
+    fetch-after : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) (j : ℕ) {r : Maybe AbstractInstr}
+                → fetch C j ≡ r
+                → fetch (if b then instr-room k ∷ C else C) (bump b j) ≡ r
+    fetch-after true  k C j e = e
+    fetch-after false k C j e = e
+
+  -- THE INSTRUCTIONS STAY: `checks E t` holds instruction `i` of `t` at `ψ t i`.
+  fetch-checks : ∀ (E : ℕ) (t : AbstractTrace) (i : ℕ) → fetch (checks E t) (ψ t i) ≡ fetch t i
+  fetch-checks E []      i       = refl
+  fetch-checks E (x ∷ t) zero    = refl
+  fetch-checks E (x ∷ t) (suc i) =
+    fetch-after (boundary? x) (stretch E t) (checks E t) (ψ t i) (fetch-checks E t i)
+
+  -- …and the whole pass, past its leading check.
+  fetch-room : ∀ (t : AbstractTrace) (i : ℕ) → fetch (room-checks t) (φ t i) ≡ fetch t i
+  fetch-room t i = fetch-checks (max-entry t) t i
+
+  ------------------------------------------------------------------------
+  -- THE SCANS COMMUTE with the map: a check is neither a label nor an entry, so
+  -- `find-label` / `find-entry` on the image with checks find `φ` of what they
+  -- find on the image without. (Jumps and calls are by NAME, which is why one
+  -- index map serves the whole control flow.)
+  ------------------------------------------------------------------------
+  open FlatMachine {FS} using (fl-go; fl-at; fl-label-match; ft-go; ft-at; ft-match; find-label; find-entry; label-of?; entry-of?)
+  open import Data.Maybe using () renaming (map to mmap)
+  open import Data.Nat using (_+_)
+  open import Data.Nat.Properties using (+-suc; +-identityʳ)
+  open import Relation.Binary.PropositionalEquality using (sym; trans; cong)
+  open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; EntryId; _≡ᵇᴱ_)
+
+  private
+    mmap-ext : ∀ {f g : ℕ → ℕ} → (∀ i → f i ≡ g i) → ∀ (mx : Maybe ℕ) → mmap f mx ≡ mmap g mx
+    mmap-ext e (just i) = cong just (e i)
+    mmap-ext e nothing  = refl
+
+    mmap-suc : ∀ (f : ℕ → ℕ) (mx : Maybe ℕ) → mmap f (mmap suc mx) ≡ mmap (λ i → f (suc i)) mx
+    mmap-suc f (just i) = refl
+    mmap-suc f nothing  = refl
+
+    -- the index arithmetic of passing one instruction (and its check, if any)
+    pass-eq : ∀ (b : Bool) (a y : ℕ) → (if b then suc (suc a) else suc a) + y ≡ a + suc (bump b y)
+    pass-eq true  a y = sym (trans (+-suc a (suc y)) (cong suc (+-suc a y)))
+    pass-eq false a y = sym (+-suc a y)
+
+  -- starting a scan one later finds one later
+  fl-go-suc : ∀ (xs : AbstractTrace) (m : LabelId) (b : ℕ) → fl-go xs m (suc b) ≡ mmap suc (fl-go xs m b)
+  flm-suc   : ∀ (c : Bool) (xs : AbstractTrace) (m : LabelId) (b : ℕ)
+            → fl-label-match c xs m (suc b) ≡ mmap suc (fl-label-match c xs m b)
+  fl-go-suc []       m b = refl
+  fl-go-suc (x ∷ xs) m b with label-of? x
+  ... | just l  = flm-suc (l ≡ᵇᴵ m) xs m b
+  ... | nothing = fl-go-suc xs m (suc b)
+  flm-suc true  xs m b = refl
+  flm-suc false xs m b = fl-go-suc xs m (suc b)
+
+  private
+    -- the label scan past one instruction of `t` and (if it is a boundary) its check
+    fl-pass : ∀ (b : Bool) (k : ℕ) (C t : AbstractTrace) (m : LabelId) (a : ℕ)
+            → (∀ a' → fl-go C m a' ≡ mmap (λ i → a' + ψ t i) (fl-go t m 0))
+            → fl-go (if b then instr-room k ∷ C else C) m (suc a)
+              ≡ mmap (λ i → a + suc (bump b (ψ t i))) (fl-go t m 0)
+    fl-pass true  k C t m a ih =
+      trans (ih (suc (suc a))) (mmap-ext (λ i → pass-eq true a (ψ t i)) (fl-go t m 0))
+    fl-pass false k C t m a ih =
+      trans (ih (suc a)) (mmap-ext (λ i → pass-eq false a (ψ t i)) (fl-go t m 0))
+
+  fl-checks : ∀ (E : ℕ) (t : AbstractTrace) (m : LabelId) (a : ℕ)
+            → fl-go (checks E t) m a ≡ mmap (λ i → a + ψ t i) (fl-go t m 0)
+  fl-checks E []      m a = refl
+  fl-checks E (x ∷ t) m a with label-of? x
+  ... | nothing =
+    trans (fl-pass (boundary? x) (stretch E t) (checks E t) t m a (fl-checks E t m))
+          (sym (trans (cong (mmap (λ i → a + ψ (x ∷ t) i)) (fl-go-suc t m 0))
+                      (mmap-suc (λ i → a + ψ (x ∷ t) i) (fl-go t m 0))))
+  ... | just l with l ≡ᵇᴵ m
+  ...   | true  = cong just (sym (+-identityʳ a))
+  ...   | false =
+    trans (fl-pass (boundary? x) (stretch E t) (checks E t) t m a (fl-checks E t m))
+          (sym (trans (cong (mmap (λ i → a + ψ (x ∷ t) i)) (fl-go-suc t m 0))
+                      (mmap-suc (λ i → a + ψ (x ∷ t) i) (fl-go t m 0))))
+
+  -- JUMPS: the image with checks finds each label at `φ` of its old index.
+  find-label-room : ∀ (t : AbstractTrace) (m : LabelId)
+                  → find-label (room-checks t) m ≡ mmap (φ t) (find-label t m)
+  find-label-room t m = fl-checks (max-entry t) t m 1
+
+  -- …and the same for the entry scan (calls).
+  ft-go-suc : ∀ (xs : AbstractTrace) (e : EntryId) (b : ℕ) → ft-go xs e (suc b) ≡ mmap suc (ft-go xs e b)
+  ftm-suc   : ∀ (c : Bool) (xs : AbstractTrace) (e : EntryId) (b : ℕ)
+            → ft-match c xs e (suc b) ≡ mmap suc (ft-match c xs e b)
+  ft-go-suc []       e b = refl
+  ft-go-suc (x ∷ xs) e b with entry-of? x
+  ... | just e' = ftm-suc (e' ≡ᵇᴱ e) xs e b
+  ... | nothing = ft-go-suc xs e (suc b)
+  ftm-suc true  xs e b = refl
+  ftm-suc false xs e b = ft-go-suc xs e (suc b)
+
+  private
+    ft-pass : ∀ (b : Bool) (k : ℕ) (C t : AbstractTrace) (e : EntryId) (a : ℕ)
+            → (∀ a' → ft-go C e a' ≡ mmap (λ i → a' + ψ t i) (ft-go t e 0))
+            → ft-go (if b then instr-room k ∷ C else C) e (suc a)
+              ≡ mmap (λ i → a + suc (bump b (ψ t i))) (ft-go t e 0)
+    ft-pass true  k C t e a ih =
+      trans (ih (suc (suc a))) (mmap-ext (λ i → pass-eq true a (ψ t i)) (ft-go t e 0))
+    ft-pass false k C t e a ih =
+      trans (ih (suc a)) (mmap-ext (λ i → pass-eq false a (ψ t i)) (ft-go t e 0))
+
+  ft-checks : ∀ (E : ℕ) (t : AbstractTrace) (e : EntryId) (a : ℕ)
+            → ft-go (checks E t) e a ≡ mmap (λ i → a + ψ t i) (ft-go t e 0)
+  ft-checks E []      e a = refl
+  ft-checks E (x ∷ t) e a with entry-of? x
+  ... | nothing =
+    trans (ft-pass (boundary? x) (stretch E t) (checks E t) t e a (ft-checks E t e))
+          (sym (trans (cong (mmap (λ i → a + ψ (x ∷ t) i)) (ft-go-suc t e 0))
+                      (mmap-suc (λ i → a + ψ (x ∷ t) i) (ft-go t e 0))))
+  ... | just e' with e' ≡ᵇᴱ e
+  ...   | true  = cong just (sym (+-identityʳ a))
+  ...   | false =
+    trans (ft-pass (boundary? x) (stretch E t) (checks E t) t e a (ft-checks E t e))
+          (sym (trans (cong (mmap (λ i → a + ψ (x ∷ t) i)) (ft-go-suc t e 0))
+                      (mmap-suc (λ i → a + ψ (x ∷ t) i) (ft-go t e 0))))
+
+  -- CALLS: the image with checks finds each entry at `φ` of its old index.
+  find-entry-room : ∀ (t : AbstractTrace) (e : EntryId)
+                  → find-entry (room-checks t) e ≡ mmap (φ t) (find-entry t e)
+  find-entry-room t e = ft-checks (max-entry t) t e 1
