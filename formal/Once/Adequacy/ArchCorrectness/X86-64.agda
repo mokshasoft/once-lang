@@ -203,7 +203,8 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-reg-range
   (RB.AddrNoWrap.ret-no-wrap x86-64-addr-no-wrap)
   (RB.LitFits.tag-fits x86-64-lit-fits) (RB.LitFits.lit-fits x86-64-lit-fits) (RB.float-fits o ι)
-  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt; RunLow; low-start)
+  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-64-frame-semantics slot-size refl using (RunLow; low-start)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; module LocState)
 open LocState using (regs)

@@ -168,6 +168,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
   hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
   using (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
+  renaming (RunLow to RunAt)
 open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
