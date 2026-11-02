@@ -31,7 +31,7 @@ open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
 -- the module's own `FS`/`word-eq` can be threaded into them by Agda's
--- telescoping (`RC.RunLow o FS word-eq …`) — a parameter's type is elaborated
+-- telescoping (`RC.RunAt o FS word-eq …`) — a parameter's type is elaborated
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
 -- …and the pieces the LITERAL parameters' types need (phase D), likewise
@@ -47,6 +47,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSim
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RC
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
 -- labels. `o` is constant for a whole definition, so it belongs on the module
@@ -77,7 +78,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (heap-room : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (n : ℕ)
-             → RC.RunLow o FS word-eq prog fs
+             → RL.RunLow o FS slot-size word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just (instr-alloc-heap n)
@@ -92,7 +93,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (stack-room : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (b : ℕ)
-              → RC.RunLow o FS word-eq prog fs
+              → RL.RunLow o FS slot-size word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
       ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
@@ -101,7 +102,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
   (call-room : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State) (c : AbstractInstr)
-             → RC.RunLow o FS word-eq prog fs
+             → RL.RunLow o FS slot-size word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just c → CallI c
@@ -113,7 +114,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (reg-range : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (r : Reg)
-             → RC.RunLow o FS word-eq prog fs
+             → RL.RunLow o FS slot-size word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → X.readReg (X.State.regs s) r < X.W.modulus)
   -- THE ADDRESS SPACE DOES NOT WRAP at the emitted `add` sites (plan 0.70
@@ -128,7 +129,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (ret-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
                    (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                    (s : X.State) (b : ℕ)
-               → RC.RunLow o FS word-eq prog fs
+               → RL.RunLow o FS slot-size word-eq prog fs
                → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
@@ -142,7 +143,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (tag-fits : ∀ {hv : FC.HeapView FS word-eq}
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (n : ℕ)
-            → RC.RunLow o FS word-eq prog fs
+            → RL.RunLow o FS slot-size word-eq prog fs
             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-tag-lit n)
@@ -150,7 +151,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (lit-fits : ∀ {hv : FC.HeapView FS word-eq}
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (v : ℤ)
-            → RC.RunLow o FS word-eq prog fs
+            → RL.RunLow o FS slot-size word-eq prog fs
             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
@@ -158,7 +159,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (float-fits : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (v : Decimal)
-              → RC.RunLow o FS word-eq prog fs
+              → RL.RunLow o FS slot-size word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
@@ -331,7 +332,9 @@ open import Data.List using ()   -- for `EntryLike`'s empty frame stack
 -- lives in `…X86-64.RunContext`, one layer down, so that the resource bounds
 -- can be MODULE PARAMETERS here rather than postulates. See that module.)
 open import Once.Adequacy.ArchCorrectness.X86-64.RunContext o FS word-eq
-  using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt; RunLow; mkRunLow; low-start ) public
+  using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt ) public
+-- D371: the LOWERED run, which the engine and the run-conditioned parameters speak of
+open RL o FS slot-size word-eq using (RunLow)
 
 ------------------------------------------------------------------------
 -- THE GENERIC EVENT ENGINE, instantiated (plan 0.65 G2 item 4, slice 3).

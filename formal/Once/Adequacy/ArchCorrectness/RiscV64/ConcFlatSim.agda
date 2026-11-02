@@ -330,8 +330,8 @@ module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
   using ( FlatInv; mkFlatInv; flat-inv-step; block-run-exec
         ; events-running-end; sigop-concrete-fetch; sigop-run-arith
         ; sigop-run-external; event-of-pure; StuckAt; StuckSteps
-        ; EntryLike; Reachable; reach-start; low-start
-        ; RunAt; stuck-result; Supply; fetch-block-head; fetch-block-2nd
+        ; EntryLike; Reachable; reach-start
+        ; stuck-result; Supply; fetch-block-head; fetch-block-2nd
         ; module CFC; module RT )
 
 open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
@@ -344,10 +344,7 @@ open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
               ; StuckAt; StuckSteps
               -- …and the run-context vocabulary the APEX needs to exhibit the
               -- entry state as a legitimate start state
-              ; EntryLike; Reachable; reach-start; low-start; RunAt) public
--- D371: the IMAGE's run (`mkRunAt`), which the lowered run (`RunLow`) lifts
-open RCr o FS slot-size word-eq using (mkRunAt) public
-open RLr o FS slot-size word-eq using (RunLow) public
+              ; EntryLike; Reachable; reach-start) public
 
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
@@ -562,7 +559,7 @@ postulate
   -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
   -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
   arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
-                  → EE.RunAt prog fs
+                  → RLr.RunLow o FS slot-size word-eq prog fs
                   → riscv64-arith-table prog env
                   → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
@@ -570,7 +567,7 @@ postulate
 
   external-sigop-contract : ∀ {hv : HeapView} (ev : EE.RT.EvExtractor) (env : EE.RT.ArithEnv)
                               prog fs s {A B} (si : SigOpInfo A B)
-                          → EE.RunAt prog fs
+                          → RLr.RunLow o FS slot-size word-eq prog fs
                           → ev ≡ ev-riscv64
                           → riscv64-arith-table prog env
                           → External (sem si)
@@ -599,7 +596,7 @@ arith-sigop-lookup .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (
         (block-env-hit (Cmp.blocks-riscv64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
 
 arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
-                     → EE.RunAt prog fs
+                     → RLr.RunLow o FS slot-size word-eq prog fs
                      → riscv64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl

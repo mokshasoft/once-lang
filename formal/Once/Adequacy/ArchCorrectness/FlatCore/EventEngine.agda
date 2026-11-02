@@ -113,9 +113,8 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
   hiding (RunAt; module RunAt; mkRunAt; run-tbl; run-ir; run-emit; run-linked; run-reach; run-sound; run-emitted)
   public
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (module RunLow; mkRunLow; run-src; run-at; run-p; run-prog; run-img; run-lift; run-pc; low-step-past; low-start; low-sound)
+  using (module RunLow; mkRunLow; low-step-past; low-start; low-sound)
   renaming (RunLow to RunAt)
-  public
 
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
@@ -175,7 +174,7 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     -- start lemma covers on its own; no step returns there. D371: said of the
     -- image's own run the lowered run lifts (its start is pc 0 there, while the
     -- lowered image has the start's check first) — `RunWF.run-step-pc-pos`.
-    inv-started : fpc (run-at inv-run) ≡ 0 → ⊥
+    inv-started : fpc (RunLow.run-at inv-run) ≡ 0 → ⊥
     -- D320: the run has not left — `left` is set only by `c-leave`, after
     -- which the machine is halted and the induction stops.
     inv-left    : LocState.left (floc fs) ≡ false

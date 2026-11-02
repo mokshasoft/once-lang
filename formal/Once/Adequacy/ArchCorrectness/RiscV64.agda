@@ -175,7 +175,9 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
   (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
   (RBr.float-fits o ι)
-  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start; RunAt; mkRunAt; RunLow; low-start)
+  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (mkRunAt)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)
 
 open FlatMachine {rv64-frame-semantics} using (mkFlat)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)

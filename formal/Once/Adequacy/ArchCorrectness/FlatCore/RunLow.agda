@@ -59,7 +59,7 @@ record RunLow (prog : AbstractTrace) (fs : FlatState) : Set where
     run-img  : RunAt run-src run-at
     run-lift : fs ≡ RoomSim.lift {FS} run-src run-at run-p
     run-pc   : RoomSim.PcRel {FS} run-src (fpc run-at) run-p
-open RunLow public
+open RunLow
 
 -- WHAT A LOWERED STATE FETCHES: a check, or `t`'s own instruction at the state
 -- the lift is of (and then the lift is AT that state's image).
