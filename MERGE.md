@@ -161,8 +161,8 @@ gained a `D###` or a plan number while the branch was out, the branch's own entr
   highest plan, and its file is renamed. A branch plan that master has since covered is dropped
   and its references point at master's plan.
 - References: change only the lines the branch added or changed since the old merge base (Agda
-  comments, `docs/`, `plans/`, test headers, the decision index `docs/decisions/*.md`, the plans
-  index, the commit message). Master's own uses of the same numbers stay as they are. Script it
+  comments, `docs/`, `plans/`, test headers, the decision index `docs/decisions/*.md`, the commit
+  message). Master's own uses of the same numbers stay as they are. Script it
   over the branch's added lines, then read the result.
 
 Push the rebased branch under a new name (the new plan number) rather than force-pushing the old
