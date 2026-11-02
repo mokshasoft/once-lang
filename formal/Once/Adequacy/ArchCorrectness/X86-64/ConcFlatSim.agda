@@ -84,7 +84,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
              -- (record projections INFER the module params from the record's own
              -- type, so these take `hv` directly — unlike `RunAt`/`CompiledCorr`,
              -- which telescope them explicitly)
-             → FC.hfront hv + slots n ≤ FC.lo hv)
+             → FC.hfront hv + slots n ≤ X.readReg (X.State.regs s) rsp)
   -- STACK EXHAUSTION, the exact mirror (2026-08-06). At an emitted `c-thunk`
   -- the body's reservation does not run `%rsp` down into the heap frontier.
   -- Same class, same conditioning, same reason it is a parameter — see
@@ -163,12 +163,6 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < X.W.modulus)
-  (lo-fits : ∀ {hv : FC.HeapView FS word-eq}
-               (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-               (s : X.State)
-           → RC.RunAt o FS word-eq prog fs
-           → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-           → FC.lo hv < X.W.modulus)
   where
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -721,7 +715,6 @@ x86-64-supply = record
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
-  ; lo-fits = lo-fits
   ; arith-sigop-contract = arith-sigop-contract
   ; external-sigop-contract = external-sigop-contract
   }

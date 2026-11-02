@@ -94,7 +94,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                  ≡ just (instr-alloc-heap n)
-             → FCr.hfront hv + slots n ≤ FCr.lo hv)
+             → FCr.hfront hv + slots n ≤ RS.readReg (RS.State.regs s) sp)
   (stack-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State)
                   (b : ℕ)
@@ -123,11 +123,6 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
                → RS.readReg (RS.State.regs s) sp + slots (suc b) < RS.W.modulus)
-  (lo-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-               (fs : FlatMachine.FlatState {FS}) (s : RS.State)
-           → RCr.RunAt o FS slot-size word-eq prog fs
-           → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-           → FCr.lo hv < RS.W.modulus)
   (tag-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (n : ℕ)
             → RCr.RunAt o FS slot-size word-eq prog fs
@@ -619,7 +614,6 @@ riscv64-supply = record
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
-  ; lo-fits = lo-fits
   ; arith-sigop-contract = arith-sigop-contract
   ; external-sigop-contract = external-sigop-contract
   }

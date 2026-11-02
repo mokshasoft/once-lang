@@ -1164,7 +1164,7 @@ module Dispatch (sup : Supply) where
            (λ hl _ → wf-heap (inv-wf wf) hl) (wf-stack (inv-wf wf))
            (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
            (heap-room prog fs s k (inv-run wf) cc ftq)
-           (lo-fits prog fs s (inv-run wf) cc)) wf ftq h refl tt tt h
+           (reg-range prog fs s sp-reg (inv-run wf) cc)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc wf h ftq =

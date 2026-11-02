@@ -1615,14 +1615,15 @@ block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr h
   → (∀ (f : FrameSemantics.Frame FS) (k : Slot)
        → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
-  → (room : C.hfront hv + slots n ≤ C.lo hv)
+  -- ROOM: the bump stays below `sp` (plan 0.123 A.4 step 4, as on x86-64).
+  → (room : C.hfront hv + slots n ≤ R.readReg (R.State.regs s) sp)
   -- THE LAYOUT FITS IN THE ADDRESS SPACE (plan 0.70 phase C), exactly as on
-  -- x86-64: `room` already bounds the bumped frontier by the high-water mark,
-  -- so all that is missing is that the mark itself is representable.
-  → C.lo hv < R.W.modulus
+  -- x86-64: `room` already bounds the bumped frontier by `sp`, so all that is
+  -- missing is that `sp` is representable: a register's range.
+  → R.readReg (R.State.regs s) sp < R.W.modulus
   → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)) room)
               prog fs s (instr-alloc-heap n)
-block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-abs room lo-fits =
+block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-abs room sp-fits =
   post-add , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
                               ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
@@ -1646,12 +1647,12 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-a
                  { regs = R.writeReg (R.State.regs post-mv) s2
                             (R.readReg (R.State.regs post-mv) s2 + slots n)
                  ; pc = R.State.pc post-mv + 1 }
-    -- `s2` IS the frontier (`frontier-eq`), so `room` bounds the bump by `lo`,
-    -- and `lo-fits` carries it under the modulus.
+    -- `s2` IS the frontier (`frontier-eq`), so `room` bounds the bump by `sp`,
+    -- and `sp-fits` carries it under the modulus.
     no-wrap : R.readReg (R.State.regs post-mv) s2 + slots n < R.W.modulus
-    no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ C.lo hv)
+    no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ R.readReg (R.State.regs s) sp)
                                (sym (C.frontier-eq dc)) room)
-                        lo-fits
+                        sp-fits
     wrap-free : R.readReg (R.State.regs post-mv) s2 R.W.⊕ R.W.fromℤ (ℤ.+ (slots n))
               ≡ R.readReg (R.State.regs post-mv) s2 + slots n
     wrap-free = trans (R.WL.⊕-normʳ (R.readReg (R.State.regs post-mv) s2) (slots n))

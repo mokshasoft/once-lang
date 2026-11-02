@@ -73,7 +73,8 @@ import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim as CFSr
 
 ------------------------------------------------------------------------
 -- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
--- the heap frontier up into the stack's high-water mark.
+-- the heap frontier up into the stack pointer (plan 0.123 A.4 step 4: no longer
+-- the high-water mark, since `heap-eq` claims only written cells).
 ------------------------------------------------------------------------
 HeapRoom : Set₁
 HeapRoom =
@@ -84,7 +85,7 @@ HeapRoom =
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
-  → FCr.hfront hv + slots n ≤ FCr.lo hv
+  → FCr.hfront hv + slots n ≤ R.readReg (R.State.regs s) sp
 
 ------------------------------------------------------------------------
 -- STACK EXHAUSTION: at an emitted `c-thunk m b` the body's reservation does
@@ -192,16 +193,10 @@ record AddrNoWrap : Set₁ where
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → R.readReg (R.State.regs s) sp + slots (suc b) < R.W.modulus
 
-    -- THE STACK'S HIGH-WATER MARK IS REPRESENTABLE. Not site-conditioned — it
-    -- mentions no addend — and it is what discharges the heap bump's no-wrap
-    -- outright, since `HeapRoom` already bounds the bumped frontier by `lo`.
-    lo-fits :
-      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-        (s : R.State)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-      → FCr.lo hv < R.W.modulus
+    -- (`lo-fits`, "the stack's high-water mark is representable", STOOD HERE: it
+    -- discharged the heap bump's no-wrap while `HeapRoom` bounded the frontier
+    -- by `lo`. `HeapRoom` now bounds it by `sp`, whose range is `reg-range`'s,
+    -- so it went — plan 0.123 A.4 step 4.)
 
 ------------------------------------------------------------------------
 -- (3) THE EMITTED LITERALS FIT IN A MACHINE WORD (plan 0.70 phase D).

@@ -1987,17 +1987,17 @@ ext-suc hv st (heap-loc r o) = ext-suc-aux hv st r o (ref-id r ≟ st)
 -- THE EXTENDED VIEW. `fresh` (every mapped cell's ref-id is below the fresh ref —
 -- FlatCorr's `dom-fresh`) is what keeps the extension injective: old cells stay
 -- put BELOW the frontier, the new block starts AT it.
--- `room` (plan 0.54 rung D step 3): the `n` words the bump claims are still in the
--- VIRGIN region, i.e. the heap frontier does not reach the stack high-water mark.
+-- `room`: the `n` words the bump claims stay below the new view's floor `lo'`.
 -- This is the HEAP EXHAUSTION premise (`heap-room`), and it is what makes the
--- extended view a legal one — and, via `FlatCorr.untouched`, what makes the fresh
--- block's cells provably unwritten on the concrete side (the postulate
--- `alloc-heap-fresh-x86` is gone).
+-- extended view a legal one (`front-lo`). The floor is the caller's choice:
+-- `sim-alloc-heap` raises it to the current `%rsp` (plan 0.123 A.4 step 4 —
+-- with `heap-eq` on written cells only, nothing below `%rsp` needs to be
+-- unmapped any more, so the heap may grow up to the stack pointer itself).
 extend-view : (hv : HeapView) (st n : ℕ)
             → (∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-            → hfront hv + slots n ≤ lo hv
+            → {lo' : ℕ} → hfront hv + slots n ≤ lo'
             → HeapView
-extend-view hv st n fresh room = record
+extend-view hv st n fresh {lo'} room = record
   { haddr     = ext-addr hv st
   -- D096: an allocation extends the HEAP map; the code map is a property of
   -- the PROGRAM, so it rides through untouched.
@@ -2007,7 +2007,7 @@ extend-view hv st n fresh room = record
   ; haddr-suc = ext-suc hv st
   ; haddr-inj = inj
   ; dom-below = below
-  ; lo        = lo hv
+  ; lo        = lo'
   ; front-lo  = room
   ; front-pos = <-≤-trans (front-pos hv) (m≤m+n (hfront hv) (slots n))
   ; dom-pos   = pos
@@ -2063,7 +2063,7 @@ extend-view hv st n fresh room = record
 -- fresh ref: the extension only ADDS addresses.
 enc-ext : ∀ (hv : HeapView) (st n : ℕ)
             (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-            (rm : hfront hv + slots n ≤ lo hv)
+            {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
             (v : StoredValue FS) → sv-below st v
         → enc-sv (extend-view hv st n pf rm) v ≡ enc-sv hv v
 enc-ext hv st n pf rm (SV-Ptr (AtDynamic hl)) lt = ext-addr-old hv st hl lt
@@ -2075,7 +2075,7 @@ enc-ext hv st n pf rm (SV-Code _)             _  = refl
 
 enc-ext-maybe : ∀ (hv : HeapView) (st n : ℕ)
                   (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-                  (rm : hfront hv + slots n ≤ lo hv)
+                  {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
                   (mv : Maybe (StoredValue FS)) → svm-below st mv
               → enc-maybe (extend-view hv st n pf rm) mv ≡ enc-maybe hv mv
 enc-ext-maybe hv st n pf rm (just v) wf = cong just (enc-ext hv st n pf rm v wf)
@@ -2087,7 +2087,7 @@ enc-ext-maybe hv st n pf rm nothing  _  = refl
 -- quantified over all frames (`FlatWF.wf-stack`), so this needs no new fact.
 windows-enc-ext : ∀ (hv : HeapView) (st n : ℕ)
                     (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-                    (rm : hfront hv + slots n ≤ lo hv)
+                    {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
                     (mem : Memory) (stk : StackMem FS) (fl : ℕ) (fr : List (Frame × ℕ))
                 → (∀ (f : Frame) (k : Slot) → svm-below st (stk f k))
                 → StackWindows (amap hv) mem stk fl fr
@@ -2120,13 +2120,12 @@ sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ)
   -- the form `FlatWF.wf-stack` already has, so the call sites got shorter.
   → (∀ (f : Frame) (k : Slot) → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
-  -- ROOM (plan 0.54 rung D): the bump does not run the heap up into the stack —
-  -- and, step 3, it is measured against the HIGH-WATER MARK, not against the
-  -- current `%rsp`: a region the stack has already visited keeps its contents, so
-  -- only the virgin part of the gap is available to the heap. This is HEAP
-  -- EXHAUSTION, and it now also DISCHARGES the fresh block's concrete freshness
-  -- (`FlatCorr.untouched`) — the postulate `alloc-heap-fresh-x86` is retired.
-  → (room : hfront hv + slots n ≤ lo hv)
+  -- ROOM (plan 0.54 rung D; plan 0.123 A.4 step 4): the bump does not run the
+  -- heap up into the stack. Measured against the CURRENT `%rsp`: a region the
+  -- stack has visited may keep its contents, and that is harmless now that
+  -- `heap-eq` claims only written cells. This is HEAP EXHAUSTION. The extended
+  -- view's floor `lo` rises to `%rsp` with it.
+  → (room : hfront hv + slots n ≤ rreg s sp-reg)
   -- the two-instruction block writes Output (the block's base) and then the
   -- frontier; `Sets2Roles` is what says the OTHER three roles survive both.
   → Sets2Roles s s' role-out role-heap
@@ -2147,14 +2146,16 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 =
   ; dom-written = λ hl eq → ext-old (dom-written corr hl eq)
   ; dom-sized = ds
   ; heap-eq = hp
-  -- %rsp is untouched by the bump; the virgin region only SHRANK (its floor rose
-  -- from `hfront` to `hfront + 8n`), so both invariants transport.
-  ; lo-le = subst (lo hv ≤_) (sym (off-roles s2 role-sp (λ ()) (λ ()))) (lo-le corr)
+  -- %rsp is untouched by the bump, and the new floor IS %rsp; the windows are
+  -- re-anchored there (`%rsp` is the current frame's base, `sp-eq`).
+  ; lo-le = ≤-reflexive (sym (off-roles s2 role-sp (λ ()) (λ ())))
   ; stack-eq = subst (λ m → StackWindows (amap (extend-view hv st n dfr room)) m
-                                          (stackMem (floc fs)) (lo hv) (frames-of (falloc fs)))
+                                          (stackMem (floc fs)) (rreg s sp-reg) (frames-of (falloc fs)))
                      (sym (keeps-mem₂ s2))
-                     (windows-enc-ext hv st n dfr room (memory s) (stackMem (floc fs))
-                        (lo hv) (frames-of (falloc fs)) wf-stack (stack-eq corr))
+                     (windows-reanchor (lo hv) (rreg s sp-reg) (current-frame (falloc fs))
+                        (frame-slots (falloc fs)) (saved-frames (falloc fs)) (≤-reflexive (sp-eq corr))
+                        (windows-enc-ext hv st n dfr room (memory s) (stackMem (floc fs))
+                           (lo hv) (frames-of (falloc fs)) wf-stack (stack-eq corr)))
   }
   where
     st  = next-heap-ref (falloc fs)
