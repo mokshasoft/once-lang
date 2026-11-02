@@ -6,6 +6,11 @@ branch: <the branch the work happens on, once there is one>
 
 # Plan 0.<n> — <the outcome, stated as a sentence>
 
+## Summary
+
+A few plain sentences for a reader who does not know the code: what this plan changes, why it
+matters, and what is true when it is done. No module names, no Agda, no jargon.
+
 ## 1. Why
 
 What is wrong or missing today, and why it matters (GOAL.md, the Spec, the trust base, a user

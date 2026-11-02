@@ -25,5 +25,5 @@ Numbers are allocated on master (MERGE.md §3 says how a branch plan is renumber
 
 ## Writing a plan
 
-Start from [`TEMPLATE.md`](TEMPLATE.md). A plan should let a session start it cold: why the work
-exists, what is already true in the tree (with paths), the steps, and the next step.
+Start from [`TEMPLATE.md`](TEMPLATE.md). A plan opens with a short non-technical summary (what it
+changes, why, and the goal), and should let a session start it cold: why the work exists, what is already true in the tree (with paths), the steps, and the next step.
