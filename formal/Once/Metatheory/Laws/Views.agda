@@ -509,3 +509,20 @@ module ExtV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
       h₀ i = cong suc (idθ-id i)
       W = ⊑ᵘ-≡ (θ*-id Ψb)
       R = ren-⊢ (keep (skip (idθ n))) (ext {S = S} {m = m} suc) (ext-hρ {m = m} (skip (idθ n)) suc h₀) (ckeep (cskip {A = A} (cid Γ))) db
+
+  -- the same, for slots related at any quantities
+  agreeExtS : ∀ {A q₁ q q₂ Ψ₁ Ψp Ψ₂} {e₁ : Env σ Γ Ψ₁} {e₂ : Env σ Γ Ψ₂} → Res e₁ → Res e₂
+            → ∀ {w₁ w₂} → SlotAgree σ A q₁ q₂ w₁ w₂ → (P : (q ∷ Ψp) ⊑ᵘ (q₂ ∷ Ψ₂))
+            → Agree σ (Γ ▸ A) (q₁ ∷ Ψ₁) (q ∷ Ψp) (e₁ , w₁) (restrict σ {Γ = Γ ▸ A} P (e₂ , w₂))
+  agreeExtS {A} {q₁} r₁ r₂ sw (0≤q ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , z q₁
+    where z : ∀ q₁ {w} → SlotAgree σ A q₁ Zero w tt
+          z Zero = tt
+          z One  = tt
+          z Many = tt
+  agreeExtS r₁ r₂ sw (1≤1 ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , sw
+  agreeExtS {A} {q₁} r₁ r₂ sw (1≤ω ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , m→1 q₁ sw
+    where m→1 : ∀ q₁ {w₁ w₂} → SlotAgree σ A q₁ Many w₁ w₂ → SlotAgree σ A q₁ One w₁ w₂
+          m→1 Zero s = tt
+          m→1 One  s = s
+          m→1 Many s = s
+  agreeExtS r₁ r₂ sw (ω≤ω ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , sw
