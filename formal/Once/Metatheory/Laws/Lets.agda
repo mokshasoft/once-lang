@@ -21,7 +21,7 @@ open import Data.Product using (_,_)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; 1≤1; 1≤ω; positionGrade)
-open import Once.Spec.Type using (Ty; KCtx; _⟨_⟩)
+open import Once.Spec.Type using (Ty; KCtx; _⟨_⟩; Void)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_; _⊑∷_)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
@@ -67,3 +67,26 @@ module _ {m : ℕ} {Δ : KCtx m} where
       go : LetView d γ → _~_ {A} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
       go (letView de db rb sem) with ty-unique de d′
       ... | refl = fin q de db rb sem
+
+  absurd-η : ∀ {n} {Γ : Ctx m n} {Ψ A q π e t}
+             (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q e t ∷ A ! π)
+             (d′ : Δ ⊩ Γ ⊢[ Ψ ] absurd A e ∷ A ! π) → _≅_ Σ fmt S d d′
+  absurd-η {Γ = Γ} {A = A} {q} {π} d d′ δ sd σ r γ sγ =
+    sameM {A ⟨ σ ⟩} {π} (rel (go (viewLet d base) (AbsurdV.viewAbsurd δ sd σ r γ sγ d′ base)))
+    where
+      open Views δ sd σ r γ sγ
+      open AbsurdV δ sd σ r γ sγ using (AbsurdView; absurdView)
+
+      fin : ∀ q′ {Ψ₁ Ψ₂ Ψ₀ π₁ π₂ π₀ eb γ₀} (de : Δ ⊩ Γ ⊢[ Ψ₁ ] _ ∷ Void ! positionGrade q′ π₁)
+              (db : Δ ⊩ (Γ ▸ Void) ⊢[ q′ ∷ Ψ₂ ] _ ∷ A ! π₂) → Res eb
+          → (de′ : Δ ⊩ Γ ⊢[ Ψ₀ ] _ ∷ Void ! π₀) → Res γ₀
+          → LetSem q′ (⟪ d ⟫ γ) de db eb → _~_ {A} (⟪ d ⟫ γ) (⟪ de′ ⟫ γ₀ >>=∞ λ ())
+      fin Zero {γ₀ = γ₀} de db rb de′ r₀ sem = ⊥-elim (⟦ transfer de de′ ⟧ δ σ r γ₀)
+      fin One  de db rb de′ r₀ (ee , re , eqR) =
+        ~trans {A} eqR (bindRel (runs (fl de de′ re r₀)) (λ {x} → ⊥-elim x))
+      fin Many de db rb de′ r₀ (ee , re , eqR) =
+        ~trans {A} eqR (bindRel (runs (fl de de′ re r₀)) (λ {x} → ⊥-elim x))
+
+      go : LetView d γ → AbsurdView d′ γ → _~_ {A} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
+      go (letView de db rb sem) (absurdView de′ r₀ eqA) with ty-unique de de′
+      ... | refl = ~trans {A} (fin q de db rb de′ r₀ sem) (~sym {A} eqA)

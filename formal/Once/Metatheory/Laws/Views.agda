@@ -15,7 +15,7 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.Views (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (zero)
 open import Data.Product using (_×_; _,_; proj₁; proj₂) renaming (Σ to Σ′)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
@@ -31,7 +31,7 @@ open import Once.Spec.Effect Σ using (M; toT∞; T∞; _≈_; _>>=∞_; return�
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv)
-open import Once.Metatheory.Erase Σ using (toT∞-bindᵍ; toT∞-fmap)
+open import Once.Metatheory.Erase Σ using (toT∞-bindᵍ; toT∞-fmap; toT∞-bind)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; assoc)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; Related-trans; Related-flip; Related-mono; ≈-Relatedˡ; ≈-Relatedʳ; bindRel)
 open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs)
@@ -234,3 +234,25 @@ readVar0 δ sd σ r {Γ = Γ} {A} {Ψ₂} {q} {eb = eb} {v} se db = go (V.viewVa
     go : V.VarView db (eb , slot q v) → Related (Same (A ⟨ σ ⟩)) (V.⟪ db ⟫ (eb , slot q v)) (return∞ v)
     go (V.varView (1≤1 ⊑∷ _) eq) = eq
     go (V.varView (1≤ω ⊑∷ _) eq) = eq
+
+module AbsurdV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+               {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
+  open Views δ sd σ r γ sγ
+
+  record AbsurdView {Ψa A π e} (d : Δ ⊩ Γ ⊢[ Ψa ] absurd A e ∷ A ! π) (γa : Env σ Γ Ψa) : Set where
+    constructor absurdView
+    field
+      {Ψ₀} : Usage n
+      {π₀} : Purity
+      de   : Δ ⊩ Γ ⊢[ Ψ₀ ] e ∷ Void ! π₀
+      {γ₀} : Env σ Γ Ψ₀
+      r₀   : Res γ₀
+      eq   : _~_ {A} (⟪ d ⟫ γa) (⟪ de ⟫ γ₀ >>=∞ λ ())
+
+  viewAbsurd : ∀ {Ψa A π e} (d : Δ ⊩ Γ ⊢[ Ψa ] absurd A e ∷ A ! π) {γa} → Res γa → AbsurdView d γa
+  viewAbsurd {A = A} d {γa} ra with peel d | peelRel d ra
+  ... | peeled (⊢absurd {π = π₀} de) P _ | p =
+    absurdView de (resR ra P)
+      (≈-Relatedʳ (≈-trans (≈-bind (≈-refl _) λ ()) (≈-sym (toT∞-bind π₀ (⟦ de ⟧ δ σ r (restrict σ P γa)) ⊥-elim))) (runs p))
+  ... | peeled (⊢sub-use _ _) _ () | _
+  ... | peeled (⊢sub-eff _ _) _ () | _
