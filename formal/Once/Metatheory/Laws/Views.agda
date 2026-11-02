@@ -20,8 +20,8 @@ open import Data.Fin using (zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂) renaming (Σ to Σ′)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; _·p_; positionGrade; mk-kind; 1≤1; 1≤ω)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; _·p_; positionGrade; mk-kind; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; _*_; _+_; _⇒[_]_; Void)
 open import Once.Spec.Context using (Ctx; ∅; []; _▸_; Usage; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; lookup; singleUse)
 open import Once.Spec.Core.Syntax
@@ -42,6 +42,12 @@ open import Once.Metatheory.TermModel.Subst Σ S using (Thin; skip; keep; idθ; 
 open import Once.Metatheory.TermModel.Ren Σ fmt S using (ThinAgree; module RenSem)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans; ⊑ᵘ-≡)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
+
+-- Calling a function value of an arrow at quantity `q` (an erased argument is not passed).
+callᵛ : ∀ (q : Quantity) {π} {A B : Type} → ⟦ A ⇒[ mk-kind q π ] B ⟧ᵛ → ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ
+callᵛ Zero f a = f tt
+callᵛ One  f a = f a
+callᵛ Many f a = f a
 
 module Views {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
              {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
@@ -361,3 +367,92 @@ module WkV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ
       slotZ Zero v = tt
       slotZ One  v = tt
       slotZ Many v = tt
+
+module FunV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+            {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
+  open Views δ sd σ r γ sγ
+
+  ----------------------------------------------------------------------
+  -- lam: a value, whose calls run the body with the argument bound
+  ----------------------------------------------------------------------
+
+  record LamView {Ψa A q π′ T πd t} (d : Δ ⊩ Γ ⊢[ Ψa ] lam A q π′ t ∷ T ! πd) (γa : Env σ Γ Ψa) : Set where
+    constructor lamView
+    field
+      {q′ Ψ₀} : _
+      {B}     : Ty m
+      le      : q′ ≤q q
+      dt      : Δ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ₀ ] t ∷ B ! π′
+      {e₀}    : Env σ Γ Ψ₀
+      r₀      : Res e₀
+      eqT     : T ≡ (A ⇒[ mk-kind q π′ ] B)
+      eq      : _~_ {T} (⟪ d ⟫ γa) (return∞ (subst (λ X → ⟦ X ⟨ σ ⟩ ⟧ᵛ) (sym eqT) (⟦ ⊢lam le dt ⟧ δ σ r e₀)))
+
+  viewLam : ∀ {Ψa A q π′ T πd t} (d : Δ ⊩ Γ ⊢[ Ψa ] lam A q π′ t ∷ T ! πd) {γa} → Res γa → LamView d γa
+  viewLam d ra with peel d | peelRel d ra
+  ... | peeled (⊢lam le dt) P _ | p = lamView le dt (resR ra P) refl (runs p)
+  ... | peeled (⊢sub-use _ _) _ () | _
+  ... | peeled (⊢sub-eff _ _) _ () | _
+
+  -- Calling the λ's value.
+  lamCall : ∀ {A q′ q π′ B Ψ₀ t} (le : q′ ≤q q) (dt : Δ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ₀ ] t ∷ B ! π′) (e₀ : Env σ Γ Ψ₀)
+            (a : ⟦ A ⟨ σ ⟩ ⟧ᵛ)
+          → callᵛ q (⟦ ⊢lam le dt ⟧ δ σ r e₀) a ≡ ⟦ dt ⟧ δ σ r (e₀ , slot q′ a)
+  lamCall {q = Zero} 0≤q dt e₀ a = refl
+  lamCall {q = One}  0≤q dt e₀ a = refl
+  lamCall {q = Many} 0≤q dt e₀ a = refl
+  lamCall 1≤1 dt e₀ a = refl
+  lamCall 1≤ω dt e₀ a = refl
+  lamCall ω≤ω dt e₀ a = refl
+
+  ----------------------------------------------------------------------
+  -- app: the function, then the argument (unless erased), then the call
+  ----------------------------------------------------------------------
+
+  AppSem : ∀ (q : Quantity) {Ψ₁ Ψ₂ A B π π₁ π₂ f x} → T∞ ⟦ B ⟨ σ ⟩ ⟧ᵛ
+         → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! π₁ → Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π₂ → Env σ Γ Ψ₁ → Set
+  AppSem Zero {B = B} {π = π} lhs df dx ef = _~_ {B} lhs (⟪ df ⟫ ef >>=∞ λ fv → toT∞ π (fv tt))
+  AppSem One  {Ψ₂ = Ψ₂} {B = B} {π = π} lhs df dx ef =
+    Σ′ (Env σ Γ Ψ₂) λ ex → Res ex × _~_ {B} lhs (⟪ df ⟫ ef >>=∞ λ fv → ⟪ dx ⟫ ex >>=∞ λ a → toT∞ π (fv a))
+  AppSem Many {Ψ₂ = Ψ₂} {B = B} {π = π} lhs df dx ef =
+    Σ′ (Env σ Γ Ψ₂) λ ex → Res ex × _~_ {B} lhs (⟪ df ⟫ ef >>=∞ λ fv → ⟪ dx ⟫ ex >>=∞ λ a → toT∞ π (fv a))
+
+  record AppView {Ψa B π f x} (d : Δ ⊩ Γ ⊢[ Ψa ] app f x ∷ B ! π) (γa : Env σ Γ Ψa) : Set where
+    constructor appView
+    field
+      {Ψ₁ Ψ₂}  : Usage n
+      {q}      : Quantity
+      {πl π₁ π₂} : Purity
+      {A}      : Ty m
+      df       : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q πl ] B ! π₁
+      dx       : Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! positionGrade q π₂
+      {ef}     : Env σ Γ Ψ₁
+      rf       : Res ef
+      sem      : AppSem q (⟪ d ⟫ γa) df dx ef
+
+  viewApp : ∀ {Ψa B π f x} (d : Δ ⊩ Γ ⊢[ Ψa ] app f x ∷ B ! π) {γa} → Res γa → AppView d γa
+  viewApp d {γa} ra with peel d | peelRel d ra
+  ... | peeled (⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Zero} {πl} {π₁} {π₂} df dx) P _ | p =
+    appView {π₂ = π₂} df dx (resL (resR ra P))
+      (≈-Relatedʳ (≈-sym (toT∞-bindᵍ π₁ πl (⟦ df ⟧ δ σ r (envˡ σ Ψ₁ (Zero *ᵘ Ψ₂) γ₀)) (λ fv → fv tt))) (runs p))
+    where γ₀ = restrict σ P γa
+  ... | peeled (⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = One} {πl} {π₁} {π₂} df dx) P _ | p =
+    appView df dx (resL r₀) (ex , res1 (resRt r₀) ,
+      ≈-Relatedʳ (≈-trans (≈-bind (≈-refl _) λ fv → ≈-sym (toT∞-bindᵍ π₂ πl (⟦ dx ⟧ δ σ r ex) fv))
+                          (≈-sym (toT∞-bindᵍ π₁ (π₂ ·p πl) (⟦ df ⟧ δ σ r (envˡ σ Ψ₁ (One *ᵘ Ψ₂) γ₀))
+                                    (λ fv → bindᵍ π₂ πl (⟦ dx ⟧ δ σ r ex) fv))))
+                 (runs p))
+    where γ₀ = restrict σ P γa
+          r₀ = resR ra P
+          ex = env*One σ Ψ₂ (envʳ σ Ψ₁ (One *ᵘ Ψ₂) γ₀)
+  ... | peeled (⊢app {Ψ₁ = Ψ₁} {Ψ₂} {q = Many} {πl} {π₁} {π₂} df dx) P _ | p =
+    appView df dx (resL r₀) (ex , resω (resRt r₀) ,
+      ≈-Relatedʳ (≈-trans (≈-bind (≈-refl _) λ fv → ≈-sym (toT∞-bindᵍ π₂ πl (⟦ dx ⟧ δ σ r ex) fv))
+                          (≈-sym (toT∞-bindᵍ π₁ (π₂ ·p πl) (⟦ df ⟧ δ σ r (envˡ σ Ψ₁ (Many *ᵘ Ψ₂) γ₀))
+                                    (λ fv → bindᵍ π₂ πl (⟦ dx ⟧ δ σ r ex) fv))))
+                 (runs p))
+    where γ₀ = restrict σ P γa
+          r₀ = resR ra P
+          ex = env*Many σ Ψ₂ (envʳ σ Ψ₁ (Many *ᵘ Ψ₂) γ₀)
+  ... | peeled (⊢sub-use _ _) _ () | _
+  ... | peeled (⊢sub-eff _ _) _ () | _
