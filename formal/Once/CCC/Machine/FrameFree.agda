@@ -69,6 +69,7 @@ FrameFreeI (lea-slot _)              = ⊥
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
 FrameFreeI (instr-free-heap _)      = ⊥  -- plan 0.123 M2: not emitted yet, so inside no fence
+FrameFreeI (instr-room _)           = ⊥  -- D371: the room-check pass adds checks AFTER the image
 FrameFreeI (instr-ctrl (c-ret _))     = ⊥
 -- …and THE CALL joins them (D092): now that it is modelled, it pushes the
 -- caller's frame and enters one a slot down (`enter-call`), so it moves the
@@ -111,6 +112,9 @@ EmittableI (instr-ctrl (c-start _))  = ⊥
 -- plan 0.123 M2: a free is in the instruction set before the compiler emits
 -- one (M4); until then no image holds it.
 EmittableI (instr-free-heap _)       = ⊥
+-- D371: the image holds no check of its own; the room-check pass
+-- (`RoomChecks.room-checks`) adds them after it, to the lowered image.
+EmittableI (instr-room _)            = ⊥
 {-# CATCHALL #-}
 EmittableI _                         = ⊤
 
@@ -174,7 +178,7 @@ frame-free-emittable (lea-slot _)              ()
 frame-free-emittable (instr-ctrl (c-entry _ _)) ()
 frame-free-emittable (instr-ctrl (c-start _)) ()
 frame-free-emittable (instr-free-heap _)       ()
-frame-free-emittable (instr-room _)        _ = tt
+frame-free-emittable (instr-room _)        ()
 frame-free-emittable (instr-ctrl (c-call-fn _)) ()
 frame-free-emittable (instr-ctrl (c-ret _))     ()
 frame-free-emittable (instr-ctrl c-leave)                _ = tt

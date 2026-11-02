@@ -338,10 +338,10 @@ ret-saved .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r 
 
 -- the emitter's fences: what an image instruction may be (a check is one)
 frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunLow prog fs
-                → fetch prog (fpc fs) ≡ just i → ImageI i
-frame-op-absurd .(room-checks src) .(L.lift src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f
+                → fetch prog (fpc fs) ≡ just i → (∀ k → i ≡ instr-room k → ⊥) → ImageI i
+frame-op-absurd .(room-checks src) .(L.lift src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f nr
   with low-view src fs₀ p pc f
-... | at-check k refl _ = _
+... | at-check k e _ = ⊥-elim (nr k e)
 ... | at-image _ fi = RW.frame-op-absurd src fs₀ i (run-emitted r) fi
 
 -- a slot an instruction names is in the frame (a check names none)
