@@ -108,6 +108,14 @@ entry updates the rule it changes here, in the same commit.
   totality: T+P, no self-reference, an effectful stream that emits; and the
   surface judgment's mode agreement. (D316, D305, D304 ← D303, D285, D240,
   D307, D309, D311)
+- **The categorical laws are Spec claims** (`Categorical`, `Equations`): the
+  arrows at every grade form a category with coproducts and an initial object,
+  the effect-free arrows a bicartesian closed category; the core's internal
+  language is the call-by-value λ-calculus whose `let` is bind (β, η, `let`
+  unit and associativity, `case` commuting with `let`). Two derivations of one
+  judgment are equal when their meanings are `SameM`; a law that drops,
+  duplicates or reorders an effect asks for an effect-free term. Term-level
+  fold/unfold laws and naturality are not yet stated. (D369 ← D347)
 - **The extension path is dependent types with QTT grades** (OCP-0009); a
   refinement `{x : A | P x}` is a Σ-type with an erased proof, not a separate
   type system. (OCP-0009 ← D017)

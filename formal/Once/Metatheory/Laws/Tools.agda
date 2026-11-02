@@ -10,7 +10,7 @@
 -- the fundamental lemma (`Coherence.Fundamental.FL`): a derivation means what
 -- the derivation under its sub-rules means (`peel`), and that one's meaning is
 -- its rule's clause. Every environment the clauses build is a restriction of
--- the law's environment (`Res`), so any two of them agree.
+-- the law's environment (`Views.Res`), so any two of them agree.
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
@@ -255,63 +255,6 @@ look0 σ {A = A} Many {e} {x} (1≤ω ⊑∷ _) = refl
 ·p-pureʳ act act ()
 ·p-pureʳ act eff ()
 ·p-pureʳ eff π₂ ()
-
-module Base {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
-            {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
-
-  private
-    ag₀ : Agree σ Γ Ψ Ψ γ γ
-    ag₀ = selfAgree σ Γ Ψ γ sγ
-
-  -- A restriction of `γ` (`γ` itself is the one along `⊑ᵘ-refl`).
-  data Res : ∀ {Ψa} → Env σ Γ Ψa → Set where
-    res : ∀ {Ψa} (p : Ψa ⊑ᵘ Ψ) {γa} → γa ≡ restrict σ p γ → Res γa
-
-  base : Res γ
-  base = res (⊑ᵘ-refl Ψ) (sym (restrict-refl σ γ))
-
-  agree : ∀ {Ψa Ψb} {γa : Env σ Γ Ψa} {γb : Env σ Γ Ψb} → Res γa → Res γb → Agree σ Γ Ψa Ψb γa γb
-  agree (res p refl) (res p′ refl) = restrictˡ σ p (restrictʳ σ p′ ag₀)
-
-  -- Forgetting more keeps an environment a restriction.
-  resR : ∀ {Ψa Ψb} {γa : Env σ Γ Ψa} → Res γa → (p : Ψb ⊑ᵘ Ψa) → Res (restrict σ p γa)
-  resR (res q refl) p = res (⊑ᵘ-trans p q) (restrict-∘ σ p q γ)
-
-  private
-    resEq : ∀ {Ψa} {x y : Env σ Γ Ψa} → x ≡ y → Res y → Res x
-    resEq refl q = q
-
-  resL : ∀ {Ψ₁ Ψ₂} {γa : Env σ Γ (Ψ₁ +ᵘ Ψ₂)} → Res γa → Res (envˡ σ Ψ₁ Ψ₂ γa)
-  resL {Ψ₁} {Ψ₂} {γa} ra = resEq (envˡ-restrict σ Ψ₁ Ψ₂ γa) (resR ra (⊑ᵘ-+ˡ Ψ₁ Ψ₂))
-
-  resRt : ∀ {Ψ₁ Ψ₂} {γa : Env σ Γ (Ψ₁ +ᵘ Ψ₂)} → Res γa → Res (envʳ σ Ψ₁ Ψ₂ γa)
-  resRt {Ψ₁} {Ψ₂} {γa} ra = resEq (envʳ-restrict σ Ψ₁ Ψ₂ γa) (resR ra (⊑ᵘ-+ʳ Ψ₁ Ψ₂))
-
-  res1 : ∀ {Ψ₁} {γa : Env σ Γ (One *ᵘ Ψ₁)} → Res γa → Res (env*One σ Ψ₁ γa)
-  res1 {Ψ₁} {γa} ra = resEq (env*One-restrict σ Ψ₁ γa) (resR ra (⊑ᵘ-*One Ψ₁))
-
-  resω : ∀ {Ψ₁} {γa : Env σ Γ (Many *ᵘ Ψ₁)} → Res γa → Res (env*Many σ Ψ₁ γa)
-  resω {Ψ₁} {γa} ra = resEq (env*Many-restrict σ Ψ₁ γa) (resR ra (⊑ᵘ-*Many Ψ₁))
-
-  -- A restriction's values are each the same as itself.
-  sameEnvOf : ∀ {Ψa} {γa : Env σ Γ Ψa} → Res γa → SameEnv Σ fmt S σ Γ Ψa γa
-  sameEnvOf ra = agreeSelf σ (agree ra ra)
-
-  -- Two derivations of one term, in restrictions of `γ`: related.
-  fl : ∀ {Ψa Ψb t A πa πb} (da : Δ ⊩ Γ ⊢[ Ψa ] t ∷ A ! πa) (db : Δ ⊩ Γ ⊢[ Ψb ] t ∷ A ! πb)
-       {γa γb} → Res γa → Res γb → Rel πa πb (A ⟨ σ ⟩) (⟦ da ⟧ δ σ r γa) (⟦ db ⟧ δ σ r γb)
-  fl da db ra rb = FL.FL δ sd σ r r da db refl (agree ra rb)
-
-  -- The same, under one more binder whose values are the same.
-  fl▸ : ∀ {Ψa Ψb qa qb B t A πa πb} (da : Δ ⊩ (Γ ▸ B) ⊢[ qa ∷ Ψa ] t ∷ A ! πa) (db : Δ ⊩ (Γ ▸ B) ⊢[ qb ∷ Ψb ] t ∷ A ! πb)
-        {γa γb va vb} → Res γa → Res γb → SlotAgree σ B qa qb va vb
-      → Rel πa πb (A ⟨ σ ⟩) (⟦ da ⟧ δ σ r (γa , va)) (⟦ db ⟧ δ σ r (γb , vb))
-  fl▸ da db ra rb sv = FL.FL δ sd σ r r da db refl (agree ra rb , sv)
-
-  -- A derivation means what the derivation under its sub-rules means.
-  peelRel : ∀ {Ψa t A π} (d : Δ ⊩ Γ ⊢[ Ψa ] t ∷ A ! π) {γa} → Res γa
-          → Rel π (Peeled.π₀ (peel d)) (A ⟨ σ ⟩) (⟦ d ⟧ δ σ r γa) (⟦ Peeled.D₀ (peel d) ⟧ δ σ r (restrict σ (Peeled.inc (peel d)) γa))
-  peelRel d ra = fl d (Peeled.D₀ (peel d)) ra (resR ra (Peeled.inc (peel d)))
 
 -- Slots: the value a binder holds, at any two quantities.
 slotAgree : ∀ {m} (σ : TySub m 0) {B : Ty m} (qa qb : Quantity) {x y : ⟦ B ⟨ σ ⟩ ⟧ᵛ}

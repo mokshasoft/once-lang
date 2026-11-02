@@ -15,6 +15,7 @@
 --   Freyd       Once.Metatheory.Freyd
 --   recursion   Once.Metatheory.Recursion (and Unfold, Lawful)
 --   totality    Once.Metatheory.Totality (and Run, RunLaws, Trace)
+--   laws        Once.Metatheory.Laws (categorical structure, equations)
 ------------------------------------------------------------------------
 
 module Once.Metatheory where
@@ -30,6 +31,7 @@ import Once.Metatheory.Coherence.Fundamental as Coherence
 import Once.Metatheory.TermModel as TermModel
 import Once.Metatheory.Freyd as Freyd
 import Once.Metatheory.Recursion as Recursion
+import Once.Metatheory.Laws as Laws
 
 metatheory : Metatheory
 metatheory = record
@@ -43,4 +45,6 @@ metatheory = record
   ; freyd      = λ Σ → Freyd.freyd Σ
   ; recursion  = λ Σ → Recursion.recursion Σ
   ; totality   = totality
+  ; categorical = λ Σ u fmt S → Laws.categorical Σ u fmt S
+  ; equations  = λ Σ u fmt S → Laws.equations Σ u fmt S
   }

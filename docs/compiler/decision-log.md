@@ -20678,3 +20678,43 @@ None in the compiler or the binary.
 `cabal test`: the rejection groups (Parse, Type Checker, Type Errors, QTT, Purity, Imports, Telescope,
 Spec-change matrix, Generator, Float) 566/566. Mutation check: one reason per file (9 files) replaced by a
 wrong one, 9/9 fail.
+
+## D369 — THE LANGUAGE STATES ITS CATEGORICAL LAWS, AND PROVES THEM (2026-11-03)
+
+**Decision** (plan 0.79; D1 and D2 decided by the user 2026-11-02, the Spec patch approved with
+`make spec-approve`). `Once.Spec.Metatheory` states the categorical structure of the core and its
+internal language as metatheorems, carried by `CertifiedBuild.language`:
+- `Categorical` (13 laws, on the combinators of `Core.Derived`): `compose` is a category at every grade
+  (`compose-idˡ`, `compose-idʳ`, `compose-assoc`); `case` is a coproduct and `Void` initial at every
+  grade (`case-inlᶜ`, `case-inrᶜ`, `case-ηᶜ`, `initial-uniqueᶜ`); on the effect-free arrows `pair` is a
+  product, `Unit` terminal and `curry` an exponential (`fst-pairᶜ`, `snd-pairᶜ`, `pair-ηᶜ`,
+  `terminal-uniqueᶜ`, `curry-βᶜ`, `curry-ηᶜ`).
+- `Equations` (15 laws of the core): β and η for functions, products, `Unit` and sums; `let`'s unit and
+  associativity, an effect-free `let` dropped; `case` commuting with `let`; `absurd`'s η.
+
+A law is `d ≅ d′`: two derivations of one judgment (context, usage, type, grade) whose meanings are
+`SameM` at every instance, definitions' meaning and environment. Where a law would drop, duplicate or
+reorder an effect it asks the term concerned to be `Pure` (a derivation at grade `pure`, at any usage).
+Proved axiom-free in `Once/Metatheory/Laws` (`Once.Metatheory.Laws` assembles both records).
+
+**Why.** GOAL.md promises equational reasoning about programs. D347 deleted `Category.Laws`, stated over
+a rejected model; its claim was owed and is now stated over the Spec's own meaning, with the Spec's
+observation as equality (no `funext`, no bisimulation-to-`≡`).
+
+**Rejected alternative.** `Pure` restricted to the law's own usage (tried on the branch, reverted before
+review): the approved form is usable as is, because a term's meaning does not depend on the grade or the
+usage its derivation is at (`Laws.Tools.transfer`).
+
+**Not yet stated** (plan 0.79 D4, D5): term-level fold/unfold laws (they need a term-level functor
+action `mapᶜ`), and naturality of polymorphic definitions.
+
+### Spec
+`Once.Spec.Metatheory`: `_≅_`, `Pure`, `Categorical`, `Equations`; fields `categorical`, `equations` of
+`Metatheory`. Statements only; the meaning of the language is unchanged.
+
+### Cost
+None in the compiler or the binary (metatheory only).
+
+### Checks
+public-gate, pragma-gate, metatheory-gate, spec-gate OK; `Once.Metatheory.Laws` type-checks under `--safe`.
+To run before merging: `backstop` and `certified` (`make merge-gate`).
