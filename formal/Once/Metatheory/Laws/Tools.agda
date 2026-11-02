@@ -26,7 +26,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; _⊑π_; 1≤1; 1≤ω)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; 1≤1; 1≤ω)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; singleUse)
 open import Once.Spec.Core.Syntax using (Tm; var)
@@ -46,6 +46,7 @@ open import Once.Metatheory.Coherence.Env Σ fmt S
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-trans; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
+open import Once.Metatheory.Types using (⊑π-refl; ⊑π-trans)
 
 ------------------------------------------------------------------------
 -- Related computations: an equivalence, and bisimilar ones replace each other
@@ -114,16 +115,17 @@ module _ {m : ℕ} {Δ : KCtx m} where
       D₀    : Δ ⊩ Γ ⊢[ Ψ₀ ] t ∷ A ! π₀
       inc   : Ψ₀ ⊑ᵘ Ψ
       head  : Head D₀
+      {grd} : π₀ ⊑π π
 
   private
     top : ∀ {n} {Γ : Ctx m n} {Ψ t A π} (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Head d → Peeled d
-    top d h = peeled d (⊑ᵘ-refl _) h
+    top d h = peeled d (⊑ᵘ-refl _) h {⊑π-refl _}
 
   peel : ∀ {n} {Γ : Ctx m n} {Ψ t A π} (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → Peeled d
   peel (⊢sub-use p d) with peel d
-  ... | peeled D P h = peeled D (⊑ᵘ-trans P p) h
+  ... | peeled D P h {e} = peeled D (⊑ᵘ-trans P p) h {e}
   peel (⊢sub-eff g d) with peel d
-  ... | peeled D P h = peeled D P h
+  ... | peeled D P h {e} = peeled D P h {⊑π-trans e g}
   peel d@(⊢var _) = top d tt
   peel d@(⊢lam _ _) = top d tt
   peel d@(⊢app _ _) = top d tt
@@ -235,6 +237,24 @@ look0 : ∀ {m} (σ : TySub m 0) {n} {Γ : Ctx m n} {A : Ty m} {Ψ : Usage n} (q
 look0 σ Zero (() ⊑∷ _)
 look0 σ {A = A} One  {e} {x} (1≤1 ⊑∷ _) = refl
 look0 σ {A = A} Many {e} {x} (1≤ω ⊑∷ _) = refl
+
+-- Below `pure` is only `pure`; a sequence is pure only if its first part is.
+⊑pure : ∀ {π} → π ⊑π pure → π ≡ pure
+⊑pure ⊑-pure = refl
+
+·p-pureˡ : ∀ π₁ π₂ → π₁ ·p π₂ ≡ pure → π₁ ≡ pure
+·p-pureˡ pure π₂ e = refl
+·p-pureˡ act pure ()
+·p-pureˡ act act ()
+·p-pureˡ act eff ()
+·p-pureˡ eff π₂ ()
+
+·p-pureʳ : ∀ π₁ π₂ → π₁ ·p π₂ ≡ pure → π₂ ≡ pure
+·p-pureʳ pure π₂ e = e
+·p-pureʳ act pure ()
+·p-pureʳ act act ()
+·p-pureʳ act eff ()
+·p-pureʳ eff π₂ ()
 
 module Base {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
             {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
