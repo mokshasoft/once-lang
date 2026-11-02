@@ -77,7 +77,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   o FS slot-size word-eq Reg roles modulus E M T
 open FlatInv using (inv-run; inv-ev; inv-env; inv-wf; inv-closure; inv-started; inv-left)
-open StuckSteps using (st-c-jmp; st-c-branch-tag-zero; st-load-indirect; st-load-indirect-suc)
+open StuckSteps using (st-c-jmp; st-c-branch-tag-zero)
 open EI.Emitter   {FS} {Reg} E
 open EI.Machine   {FS} {Reg} {E} M
 open EI.TraceLoop {FS} {Reg} {E} {M} T

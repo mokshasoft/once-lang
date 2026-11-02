@@ -371,8 +371,9 @@ event-of-pure si fs eqe rewrite eqe = refl
 -- THE STUCK ROUTES — the engine's SECOND per-arch supply (slice 3).
 --
 -- Slice 2's `BlockSteps` covers every branch where the abstract machine
--- STEPS. These are the branches where it does not: an empty heap cell, a jump
--- to a label that is not there. Neither is a `BlockStep` — nothing steps — and
+-- STEPS. These are the branches where it does not: a jump to a label that is
+-- not there. (An empty heap cell was one too, until plan 0.123 A.4 step 4:
+-- reading one faults, and the run never faults — `RunWF.heap-load-written`.) Neither is a `BlockStep` — nothing steps — and
 -- neither can be folded into that record: what an arch owes here is a
 -- run-events EQUATION, not a `BlockStep`.
 --
@@ -397,24 +398,7 @@ StuckAt ev env cprog s = ∀ (lg : List SigOpEvent) → Σ ℕ (λ M → RT.run-
 
 record StuckSteps : Set₁ where
   field
-    -- an indirect load through a pointer to an UNWRITTEN heap cell
-    st-load-indirect :
-      ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just load-indirect
-      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-      → HDom hv hl
-      → heapMem (floc fs) hl ≡ nothing
-      → StuckAt ev env (compile-trace prog) s
-    st-load-indirect-suc :
-      ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just load-indirect-suc
-      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-      → HDom hv (sucHL hl)
-      → heapMem (floc fs) (sucHL hl) ≡ nothing
-      → StuckAt ev env (compile-trace prog) s
-    -- …and the two control routes whose label is MISSING. Only the TAKEN
+    -- the two control routes whose label is MISSING. Only the TAKEN
     -- ones are here: a not-taken branch never consults the label and is an
     -- ordinary block step (`bs-c-branch-tag-nz`).
     st-c-jmp :
