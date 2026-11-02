@@ -16,14 +16,14 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.Views (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Fin using (zero)
+open import Data.Fin using (zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂) renaming (Σ to Σ′)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; _·p_; positionGrade; mk-kind; 1≤1; 1≤ω)
 open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; _*_; _+_; _⇒[_]_; Void)
-open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; lookup; singleUse)
+open import Once.Spec.Context using (Ctx; ∅; []; _▸_; Usage; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; lookup; singleUse)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
@@ -36,8 +36,11 @@ open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bi
 open import Once.Metatheory.Coherence.Relation Σ using (Related; Related-trans; Related-flip; Related-mono; ≈-Relatedˡ; ≈-Relatedʳ; bindRel)
 open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
-open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; restrict-∘)
-open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans)
+open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; Agree; restrict-∘)
+open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
+open import Once.Metatheory.TermModel.Subst Σ S using (Thin; skip; keep; idθ; idθ-id; cid; cskip; ckeep; ren-⊢; θ*-id)
+open import Once.Metatheory.TermModel.Ren Σ fmt S using (ThinAgree; module RenSem)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans; ⊑ᵘ-≡)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 
 module Views {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
@@ -327,3 +330,34 @@ module ProdV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
   pureRet : ∀ {Ψa Ψp t A π} (d : Δ ⊩ Γ ⊢[ Ψa ] t ∷ A ! π) (dp : Δ ⊩ Γ ⊢[ Ψp ] t ∷ A ! pure) {γa} (ra : Res γa)
           → _~_ {A} (⟪ d ⟫ γa) (return∞ (⟦ transfer dp d ⟧ δ σ r γa))
   pureRet d dp ra = runs (fl d (transfer dp d) ra ra)
+
+------------------------------------------------------------------------
+-- Weakening: `wk u` under a binder means what `u` means
+------------------------------------------------------------------------
+
+agree→thin : ∀ {m} (σ : TySub m 0) {n} (Γ : Ctx m n) {Ψ′ Ψ : Usage n} {γ′ : Env σ Γ Ψ′} {γ : Env σ Γ Ψ}
+           → Agree σ Γ Ψ′ Ψ γ′ γ → ThinAgree σ (cid Γ) Ψ′ Ψ γ′ γ
+agree→thin σ ∅       {[]}     {[]}     a        = tt
+agree→thin σ (Γ ▸ A) {_ ∷ _}  {_ ∷ _}  (a , sv) = agree→thin σ Γ a , sv
+
+module WkV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+           {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
+  open Views δ sd σ r γ sγ
+
+  wkRel : ∀ {A B q Ψ₂ Ψa π₂ πa t} (db : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] wk t ∷ B ! π₂) {eb : Env σ Γ Ψ₂} → Res eb
+        → (v : Slot q ⟦ A ⟨ σ ⟩ ⟧ᵛ) (du : Δ ⊩ Γ ⊢[ Ψa ] t ∷ B ! πa) {γa : Env σ Γ Ψa} → Res γa
+        → _~_ {B} (⟪ db ⟫▸ eb v) (⟪ du ⟫ γa)
+  wkRel {A} {B} {q} {Ψa = Ψa} db {eb} rb v du {γa} ra =
+    ~trans {B} (runs (FL.FL δ sd σ r r db D refl (agree rb rc , slotZ q v)))
+               (runs (RenSem.renSem δ sd σ r (skip (idθ n)) suc (λ i → cong suc (idθ-id i)) (cskip (cid Γ)) du
+                        {γ′ = γc , tt} {γ = γa} (agree→thin σ Γ (agree rc ra))))
+    where
+      D = ren-⊢ (skip (idθ n)) suc (λ i → cong suc (idθ-id i)) (cskip {A = A} (cid Γ)) du
+      W = ⊑ᵘ-≡ (θ*-id Ψa)
+      γc = restrict σ W γa
+      rc : Res γc
+      rc = resR ra W
+      slotZ : ∀ q (v : Slot q ⟦ A ⟨ σ ⟩ ⟧ᵛ) → SlotAgree σ A q Zero v tt
+      slotZ Zero v = tt
+      slotZ One  v = tt
+      slotZ Many v = tt

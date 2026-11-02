@@ -28,7 +28,7 @@ open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (T∞; _>>=∞_; return∞; _≈_)
 open import Once.Spec.Equivalence Σ using (Same)
-open import Once.Spec.Metatheory using (_≅_)
+open import Once.Spec.Metatheory using (_≅_; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs)
@@ -90,3 +90,28 @@ module _ {m : ℕ} {Δ : KCtx m} where
       go : LetView d γ → AbsurdView d′ γ → _~_ {A} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
       go (letView de db rb sem) (absurdView de′ r₀ eqA) with ty-unique de de′
       ... | refl = ~trans {A} (fin q de db rb de′ r₀ sem) (~sym {A} eqA)
+
+  let-drop : ∀ {n} {Γ : Ctx m n} {Ψ A B q π t u}
+           → Pure Σ fmt S Δ Γ t A
+           → (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q t (wk u) ∷ B ! π)
+             (d′ : Δ ⊩ Γ ⊢[ Ψ ] u ∷ B ! π) → _≅_ Σ fmt S d d′
+  let-drop {Γ = Γ} {A = A} {B} {q} {π} (_ , pt) d d′ δ sd σ r γ sγ = sameM {B ⟨ σ ⟩} {π} (rel (go (viewLet d base)))
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      open WkV δ sd σ r γ sγ using (wkRel)
+
+      fin : ∀ q′ {Ψ₁ Ψ₂ π₁ π₂ eb} (de : Δ ⊩ Γ ⊢[ Ψ₁ ] _ ∷ A ! positionGrade q′ π₁)
+              (db : Δ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ₂ ] wk _ ∷ B ! π₂) → Res eb
+          → LetSem q′ (⟪ d ⟫ γ) de db eb → _~_ {B} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
+      fin Zero de db rb sem = ~trans {B} sem (wkRel db rb tt d′ base)
+      fin One  {eb = eb} de db rb (ee , re , eqR) =
+        ~trans {B} eqR (≈-Relatedʳ (≈-sym (idˡ (⟦ transfer pt de ⟧ δ σ r ee) (λ _ → ⟪ d′ ⟫ γ)))
+                         (bindRel (pureRet de pt re) (λ {v} _ → wkRel db rb v d′ base)))
+      fin Many {eb = eb} de db rb (ee , re , eqR) =
+        ~trans {B} eqR (≈-Relatedʳ (≈-sym (idˡ (⟦ transfer pt de ⟧ δ σ r ee) (λ _ → ⟪ d′ ⟫ γ)))
+                         (bindRel (pureRet de pt re) (λ {v} _ → wkRel db rb v d′ base)))
+
+      go : LetView d γ → _~_ {B} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
+      go (letView de db rb sem) with ty-unique de pt
+      ... | refl = fin q de db rb sem
