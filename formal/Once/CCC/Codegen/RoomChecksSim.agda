@@ -216,3 +216,37 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (floc fs)))
   step-lift fs (instr-ctrl (c-call-fn f)) with call-to fs (find-entry t (e-fn f))
   ... | p , e , r = p , trans (cong (λ z → do-call-at z (lift fs (φ t (fpc fs)))) (find-entry-room t (e-fn f))) e , r
+
+  ------------------------------------------------------------------------
+  -- THE RUN NEVER FAULTS, with checks too (D367 carried across the pass). A run
+  -- of the image with checks from a lifted state is the original run with check
+  -- steps interleaved: at a check the lift only moves on; anywhere else it takes
+  -- the original's step (`step-lift`). So every state it reaches is a lift of a
+  -- state the original run reaches — and has the same memory, unfaulted.
+  ------------------------------------------------------------------------
+  open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+  open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; Sound; sound-step)
+  open import Data.Maybe.Properties using (just-injective)
+  open import Data.Product using (proj₁; proj₂)
+
+  sound-lift : ∀ {n : ℕ} (fs : FlatState) (p : ℕ) {g : FlatState} → PcRel (fpc fs) p → Sound t fs
+             → FlatSteps P′ n (lift fs p) g → LocState.faulted (floc g) ≡ false
+  sound-lift fs p pr snd [] = snd []
+  -- on a check: the step only moves on, to the pc that is `fs`'s image
+  sound-lift fs p (inj₂ (sp , k , fk)) snd (_∷_ {i = i′} (h , f) rest)
+    with just-injective (trans (sym f) fk)
+  ... | refl = sound-lift fs (suc p) (inj₁ sp) snd rest
+  -- at the image: the original's own step
+  sound-lift fs p {g} (inj₁ refl) snd (_∷_ {i = i′} (h , f) rest)
+    with step-lift fs i′
+  ... | p′ , e , pr′ =
+    sound-lift (flat-exec-instr i′ t fs) p′ {g} pr′
+      (sound-step snd h (trans (sym (fetch-room t (fpc fs))) f))
+      (subst-run e rest)
+    where
+      subst-run : ∀ {a b c : FlatState} {m : ℕ} → a ≡ b → FlatSteps P′ m a c → FlatSteps P′ m b c
+      subst-run refl r = r
+
+  -- …so the image with checks, from the lift of a sound state, is sound.
+  sound-room : ∀ (fs : FlatState) (p : ℕ) → PcRel (fpc fs) p → Sound t fs → Sound P′ (lift fs p)
+  sound-room fs p pr snd run = sound-lift fs p pr snd run
