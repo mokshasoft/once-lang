@@ -42,6 +42,7 @@ import qualified MAlonzo.Code.Once.Arith.Machine.Rewrite
 import qualified MAlonzo.Code.Once.Arith.SigOp.Block
 import qualified MAlonzo.Code.Once.CCC.Codegen.NodesOK
 import qualified MAlonzo.Code.Once.CCC.Codegen.ProgramImage
+import qualified MAlonzo.Code.Once.CCC.Codegen.RoomChecks
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.File
@@ -2165,7 +2166,11 @@ d_prog'45'externs_1378 v0
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
       (coe
          MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'leave'45'symbol_164)
-      (coe d_externs'45'of_1374 (coe v0))
+      (coe
+         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+         (coe
+            MAlonzo.Code.Once.Target.SymbolFresh.d_host'45'exhausted'45'symbol_170)
+         (coe d_externs'45'of_1374 (coe v0)))
 -- Once.Compile.entry-owner
 d_entry'45'owner_1382 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6
@@ -2195,9 +2200,11 @@ d_image'45'of_1390 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
 d_image'45'of_1390 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_36
-      (coe d_entry'45'owner_1382)
-      (coe d_rewrite'45'program_1318 (coe v0))
+      MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_60
+      (coe
+         MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_36
+         (coe d_entry'45'owner_1382)
+         (coe d_rewrite'45'program_1318 (coe v0)))
 -- Once.Compile.blocks-x86-64
 d_blocks'45'x86'45'64_1394 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_652 ->
