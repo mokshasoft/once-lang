@@ -285,7 +285,6 @@ entry-corr ir = record
       ; lo-le = ≤-refl          -- initState's %rsp IS `stack-top` (the entry mark)
       -- THE VIRGIN REGION at entry: `initState`'s memory is `emptyMemory`, so
       -- every address reads `nothing` — no address arithmetic needed.
-      ; untouched = λ _ _ _ → refl
       -- THE RESERVED FRAME AGREES — VACUOUSLY, now that `C.Window` is
       -- one-directional (Plan 0.54 rung D): the entry frame is unwritten
       -- abstractly (`λ _ _ → nothing`), and nothing is claimed about cells the
