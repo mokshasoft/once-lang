@@ -162,7 +162,12 @@ open FrameSemantics FS using (Frame)
 -- that mention no machine at all, and that the dispatch leans on constantly —
 -- `slot-read-in-frame`, `load-indirect-target-wf`, `stack-ptr-current`,
 -- `frame-op-absurd`, `call-site-shape`, `ret-site-owes`, …
+-- D371: the site facts the engine uses are the LOWERED run's (`RunLow`), each
+-- `RunWF`'s at the image state the lift is of.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
+  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
+  using (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
 open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
@@ -417,7 +422,7 @@ module Dispatch (sup : Supply) where
          → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                (event-of (instr-ctrl (c-ret b)) fs
                  ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) (ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) M)
-      go (rpc , rest , req) = go-sv (saved-cons (seg-stack (run-seg-wf prog fs (inv-run wf))) rpc rest req)
+      go (rpc , rest , req) = go-sv (ret-saved prog fs (inv-run wf) rpc rest req)
         where
           go-sv : Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ))
                     (λ frs → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs)))
@@ -429,7 +434,7 @@ module Dispatch (sup : Supply) where
               (bs-c-ret bss prog fs s b rpc rest f₀ b₀ frs cc h ftq req
                  (ret-budget-matches prog fs b (inv-run wf) ftq) feq
                  (ret-no-wrap prog fs s b (inv-run wf) cc ftq)
-                 (run-link-nothing prog fs (inv-run wf)
+                 (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                     (λ ℓ bb teq → ret≢thunk (trans (sym ftq) teq))))
               wf ftq h refl tt tt hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
@@ -469,7 +474,7 @@ module Dispatch (sup : Supply) where
              (CFC.dom-written (dataCorr cc) (sucHL hl) heq)
              fteq lo' lo'≤lo front-lo' lo'≤rsp fits
              (reg-range prog fs s sp-reg (inv-run wf) cc)
-             (run-link-nothing prog fs (inv-run wf)
+             (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                 (λ ℓ bb teq → call≢thunk (trans (sym ftq) teq))))
           wf ftq h refl tt tt hpost
         where
@@ -522,7 +527,7 @@ module Dispatch (sup : Supply) where
         ccc-step-bs n IH ev env prog fs s (instr-ctrl (c-call-fn f))
           (bs-call-fn bss prog fs s f j cc h ftq fe lo' lo'≤lo front-lo' lo'≤rsp fits
              (reg-range prog fs s sp-reg (inv-run wf) cc)
-             (run-link-nothing prog fs (inv-run wf)
+             (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                 (λ ℓ bb teq → callfn≢thunk (trans (sym ftq) teq))))
           wf ftq h refl tt tt hpost
         where
@@ -1155,7 +1160,7 @@ module Dispatch (sup : Supply) where
     -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
     -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (run-emitted (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-run wf) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
       ccc-step-bs n (events-agree n) ev env prog fs s (instr-alloc-heap k)
         (bs-alloc-heap bss prog fs s k cc h ftq
@@ -1166,15 +1171,15 @@ module Dispatch (sup : Supply) where
            (heap-room prog fs s k (inv-run wf) cc ftq)
            (reg-range prog fs s sp-reg (inv-run wf) cc)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-run wf) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-free-heap k) (run-emitted (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-free-heap k) (inv-run wf) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-room k) cc wf h ftq =
       room-check-step n (events-agree n) ev env prog fs s k cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (run-emitted (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (inv-run wf) ftq)
     events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs instr-pop-frame (run-emitted (inv-run wf)) ftq)
+      ⊥-elim (frame-op-absurd prog fs instr-pop-frame (inv-run wf) ftq)
     events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (instr-load-const fits-int v)
         (bs-load-const bss prog fs s v cc h ftq
@@ -1207,10 +1212,7 @@ module Dispatch (sup : Supply) where
         go nothing fteq = ⊥-elim (no-body (proj₂ (has-body)))
           where
             has-body : Σ ℕ (λ j → find-thunk prog k ≡ just j)
-            has-body = subst (λ pr → Σ ℕ (λ j → find-thunk pr k ≡ just j)) (sym (run-emit (inv-run wf)))
-                         (emitted-code-addr-has-body (run-tbl (inv-run wf)) (run-ir (inv-run wf)) (fpc fs) k
-                           (subst (λ pr → fetch pr (fpc fs) ≡ just (instr-load-code-addr k))
-                                  (run-emit (inv-run wf)) ftq))
+            has-body = code-addr-has-body prog fs k (inv-run wf) ftq
             no-body : ∀ {j : ℕ} → find-thunk prog k ≡ just j → ⊥
             no-body e = nj (trans (sym fteq) e)
               where nj : ∀ {A : Set} {j : ℕ} → nothing ≡ just j → A
@@ -1237,7 +1239,7 @@ module Dispatch (sup : Supply) where
     -- plan 0.107: the START is at pc 0 only, and the correspondence runs after
     -- it — the per-arch start lemma is where its lowering is proved.
     events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-start b)) cc wf h ftq =
-      ⊥-elim (inv-started wf (start-at-zero prog (fpc fs) b (run-emitted (inv-run wf)) ftq))
+      ⊥-elim (start-behind prog fs b (inv-run wf) (inv-started wf) ftq)
     -- D320: the program LEAVES — both machines end the run, `returned`.
     events-running-fetch {hv} n ev env prog fs s (instr-ctrl c-leave) cc wf h ftq =
       leave-step n ev env prog fs s cc h ftq
@@ -1302,15 +1304,16 @@ module Dispatch (sup : Supply) where
                       (reg-range prog fs s sp-reg run cc) h0 nf
       -- the post-start invariant, from the flat-machine theorems; the start
       -- is behind it now (its pc is one past)
+      -- D371: the start is an image instruction, so the base run moves past pc 0
+      nxt = low-step-image prog fs i run ftq h (λ _ ())
       inv₁ : FlatInv ev env prog (flat-exec-instr i prog fs)
       inv₁ = record
         { inv-wf      = flat-wf-step i prog fs wf
         ; inv-closure = cl-step i prog fs wf cl
         ; inv-ev      = evq
         ; inv-env     = envq
-        ; inv-run     = mkRunAt (run-tbl run) (run-ir run) (run-emit run) (run-linked run)
-                                (reach-step i fs (run-reach run) ftq h)
-        ; inv-started = λ ()
+        ; inv-run     = proj₁ nxt
+        ; inv-started = proj₂ nxt
         ; inv-left    = trans (LL.flat-exec-instr-left i tt prog fs) lf0
         }
       rec = events-agree N ev env prog (flat-exec-instr i prog fs) (proj₁ bs) (proj₂ (proj₂ bs)) inv₁
@@ -1326,3 +1329,56 @@ module Dispatch (sup : Supply) where
       bound : flat-ctrls N prog (flat-exec-instr i prog fs) ≤ suc (proj₁ rec)
             → flat-ctrls (suc N) prog fs ≤ suc (blk-len i + proj₁ rec)
       bound b = ≤-trans (≤-reflexive step-ctrls) (≤-trans (+-mono-≤ (ctrl-le i) b) (≤-reflexive (+-suc (blk-len i) (proj₁ rec))))
+
+  -- D371: THE BOOT — the start's check, then the start. The lowered image holds
+  -- the check for the whole first stretch at pc 0 and the start right after.
+  -- Room: the check's run lands in the correspondence one past it, where the
+  -- start is (`events-agree-start`); the flat check emits nothing and counts no
+  -- control step. No room: the concrete run ends `exhausted` before any event —
+  -- a run that RAN OUT of the flat one, as at any other check.
+  events-agree-boot : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv) prog fs s b k
+    → CompiledCorr hv prog fs s
+    → FlatWF fs → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+    → ev ≡ ev-arch → ArithTable prog env → RunAt prog fs
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs) ≡ just (instr-room k)
+    → fetch prog (suc (fpc fs)) ≡ just (instr-ctrl (c-start b))
+    → CFC.hfront hv ≡ slot-size
+    → fret fs ≡ []
+    → LocState.left (floc fs) ≡ false
+    → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                 (flat-events (suc (suc N)) prog fs) (flat-ctrls (suc (suc N)) prog fs) M)
+  events-agree-boot {hv} N ev env prog fs s b k cc wf cl evq envq run h ftq fts h0 nf lf0
+    with room-step prog fs s k run cc h ftq
+  ... | inj₁ (c , s′ , ex , cc′) =
+    c + proj₁ rec
+    , subst (λ o → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (c + proj₁ rec) (compile-trace prog) s)
+                           o (flat-ctrls (suc (suc N)) prog fs) (c + proj₁ rec))
+            (sym step-eq)
+            (agree-pre [] pre-eq bound (proj₂ rec))
+    where
+      i = instr-room k
+      fs₁ = flat-exec-instr i prog fs
+      rec = events-agree-start N ev env prog fs₁ s′ b cc′ (flat-wf-step i prog fs wf) (cl-step i prog fs wf cl)
+              evq envq (low-step prog fs i run ftq h) h fts h0 nf
+              (trans (LL.flat-exec-instr-left i tt prog fs) lf0)
+      pre-eq : RT.run-events ev env (LocState.ev-log (floc fs)) (c + proj₁ rec) (compile-trace prog) s
+             ≡ RT.run-events ev env (LocState.ev-log (floc fs₁)) (proj₁ rec) (compile-trace prog) s′
+      pre-eq = block-run-exec ev env (LocState.ev-log (floc fs)) c (proj₁ rec) (compile-trace prog) s ex
+                 (trans (CFC.halt-eq (dataCorr cc′)) h)
+      ev-room : flat-events-fetch (just i) (suc N) prog fs ≡ flat-events (suc N) prog fs₁
+      ev-room = refl
+      ct-room : flat-ctrls-fetch (just i) (suc N) prog fs ≡ flat-ctrls (suc N) prog fs₁
+      ct-room = refl
+      step-eq : flat-events (suc (suc N)) prog fs ≡ flat-events (suc N) prog fs₁
+      step-eq = trans (cong (λ hb → flat-events-step hb (suc N) prog fs) h) (trans (cong (λ mi → flat-events-fetch mi (suc N) prog fs) ftq) ev-room)
+      step-ctrls : flat-ctrls (suc (suc N)) prog fs ≡ flat-ctrls (suc N) prog fs₁
+      step-ctrls = trans (cong (λ hb → flat-ctrls-step hb (suc N) prog fs) h) (trans (cong (λ mi → flat-ctrls-fetch mi (suc N) prog fs) ftq) ct-room)
+      bound : flat-ctrls (suc N) prog fs₁ ≤ suc (proj₁ rec) → flat-ctrls (suc (suc N)) prog fs ≤ suc (c + proj₁ rec)
+      bound b′ = ≤-trans (≤-reflexive step-ctrls) (≤-trans b′ (s≤s (m≤n+m (proj₁ rec) c)))
+  ... | inj₂ (c , s′ , ex , hs′ , ft′) =
+    c + 1 , subst (λ o → AgreeAt o (flat-events (suc (suc N)) prog fs) (flat-ctrls (suc (suc N)) prog fs) (c + 1))
+                  (sym (trans (block-run-exec ev env (LocState.ev-log (floc fs)) c 1 (compile-trace prog) s ex hs′)
+                              (RT.run-events-exhausted ev env (LocState.ev-log (floc fs)) 0 (compile-trace prog) s′
+                                 (sigop-call host-exhausted-symbol) hs′ ft′ (sigop-matchCall host-exhausted-symbol))))
+                  (inj₂ (refl , proj₁ (flat-events (suc (suc N)) prog fs) , refl))

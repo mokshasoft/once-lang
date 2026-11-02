@@ -120,6 +120,7 @@ open import Once.Type using (fits-int; fits-float)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- PRIVATE: an instance re-opened publicly would clash with the `C` every arch
 -- already binds for its own `FlatCorrespondence` instance. Only the record
 -- below is exported.
@@ -131,6 +132,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
   module CRC = RC o FS slot-size word-eq
+  module CRL = RL o FS slot-size word-eq
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
                ; lo; hfront; descend-view; extend-view; slots; dom-fresh)
@@ -325,7 +327,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (lea-slot slot)
-      → CRC.RunAt prog fs
+      → CRL.RunLow prog fs
       → BlockStep hv prog fs s (lea-slot slot)
     bs-save-closure-reg :
       ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s

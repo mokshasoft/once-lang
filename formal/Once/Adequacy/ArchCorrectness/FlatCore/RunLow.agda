@@ -421,3 +421,35 @@ low-step-past .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow sr
     (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
   , RW.run-step-pc-pos src fs₀ i r fi
+
+-- a code address the image loads names a body that exists (the base image's
+-- fact, `RW.emitted-code-addr-has-body`; the entry scan commutes)
+code-addr-has-body : ∀ prog (fs : FlatState) (ℓ : LabelId) → RunLow prog fs
+                   → fetch prog (fpc fs) ≡ just (instr-load-code-addr ℓ)
+                   → Σ ℕ (λ j → find-thunk prog ℓ ≡ just j)
+code-addr-has-body .(room-checks src) .(L.lift src fs₀ p) ℓ (mkRunLow src fs₀ p refl r refl pc) ft
+  with low-view src fs₀ p pc ft
+... | at-check k () _
+... | at-image _ fi with base
+  where
+    base : Σ ℕ (λ j → find-thunk src ℓ ≡ just j)
+    base = subst (λ pr → Σ ℕ (λ j → find-thunk pr ℓ ≡ just j)) (sym (run-emit r))
+             (RW.emitted-code-addr-has-body (run-tbl r) (run-ir r) (fpc fs₀) ℓ
+               (subst (λ pr → fetch pr (fpc fs₀) ≡ just (instr-load-code-addr ℓ)) (run-emit r) fi))
+...   | j , e = φ src j , trans (find-entry-room src (e-thunk ℓ)) (cong (mmap (φ src)) e)
+
+-- a step that is not a check moves the base run on — past its pc 0, whatever
+-- it was before (no base step lands on pc 0, `RW.run-step-pc-pos`)
+low-step-image : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr) (r : RunLow prog fs)
+               → fetch prog (fpc fs) ≡ just i → LocState.halted (floc fs) ≡ false
+               → (∀ k → i ≡ instr-room k → ⊥)
+               → Σ (RunLow prog (flat-exec-instr i prog fs)) (λ r′ → fpc (run-at r′) ≡ 0 → ⊥)
+low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f h nr
+  with low-view src fs₀ p pc f
+... | at-check k e _ = ⊥-elim (nr k e)
+... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
+...   | p′ , e , pr′ =
+  mkRunLow src (flat-exec-instr i src fs₀) p′ refl
+    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    e pr′
+  , RW.run-step-pc-pos src fs₀ i r fi
