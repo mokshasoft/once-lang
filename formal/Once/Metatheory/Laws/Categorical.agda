@@ -444,3 +444,75 @@ module _ {m : ℕ} {Δ : KCtx m} where
                       s₁₀ = relPure⁻ (fl (transfer pf dfa) (transfer pf d′) rfa base)
                       FINAL : Same (T ⟨ σ ⟩) (compᵛ pure apv prv) (⟦ transfer pf d′ ⟧ δ σ r γ)
                       FINAL = toSameP σ {A * B} {C} (λ sp → fromSameP σ {A * B} {C} s₁₀ sp)
+
+  curry-ηᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B C π₀ h}
+           → Pure Σ fmt S Δ Γ h (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C))
+           → (d : Δ ⊩ Γ ⊢[ Ψ ] curryᶜ A B pure pure
+                                 (composeᶜ (A * B) pure (applyᶜ B C)
+                                   (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)))
+                                ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀)
+             (d′ : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀) → _≅_ Σ fmt S d d′
+  curry-ηᶜ {Γ = Γ} {Ψ} {A} {B} {C} {π₀} {h} (_ , ph) d d′ δ sd σ r γ sγ = goA (AV.armL1 d)
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      module AV = ArmsV δ sd σ r γ sγ
+      BC = B ⇒[ mk-kind Many pure ] C
+      T  = A ⇒[ mk-kind Many pure ] BC
+      r₀ = resR base (zero⊑ Ψ)
+      e₀ = restrict σ (zero⊑ Ψ) γ
+      fstv = ⟦ fstD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
+      sndv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
+      apv  = ⟦ applyD {Γ = Γ} B C ⟧ δ σ r (restrict σ (zero⊑ω Ψ) γ)
+      rA = resR base (zero⊑ω Ψ)
+      goA : AV.Arm1 d (composeᶜ (A * B) pure (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure))) → _
+      goA (AV.arm1 dce Pce) = goB (AV.armsLL (inj₂ refl) dce)
+        where
+          rce = resR base Pce
+          goB : AV.Arms dce (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)) → _
+          goB (AV.arms _ dpr _ Ppr) = goC (AV.armsLL (inj₁ refl) dpr)
+            where
+              rpr = resR rce Ppr
+              goC : AV.Arms dpr (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure) → _
+              goC (AV.arms dcm _ Pcm _) = goD (AV.armsLL (inj₂ refl) dcm)
+                where
+                  rcm = resR rpr Pcm
+                  goD : AV.Arms dcm h (fstᶜ A B pure) → _
+                  goD (AV.arms dh _ Ph _) with ty-unique dh ph
+                  ... | refl with ty-unique dcm (composeD dh (fstD′ A B pure))
+                  ... | refl with ty-unique dpr (pairD dcm (sndD′ A B pure))
+                  ... | refl with ty-unique dce (composeD (applyD B C) dpr)
+                  ... | refl =
+                    sameM {T ⟨ σ ⟩} {π₀}
+                      (rel (~trans {T} (CombV.currySem δ sd σ r γ sγ d base dce rce)
+                             (~trans {T} (bindRel RCE (λ sf → returnRel (CU sf)))
+                               (≈-Relatedˡ (idˡ cev _)
+                                 (~trans {T} (returnRel FINAL) (~sym {T} (pureRet d′ ph base)))))))
+                    where
+                      rh = resR rcm Ph
+                      hv₁ = ⟦ transfer ph dh ⟧ δ σ r (restrict σ Ph (restrict σ Pcm (restrict σ Ppr (restrict σ Pce γ))))
+                      cmv = compᵛ pure hv₁ fstv
+                      prv = pairᵛ pure cmv sndv
+                      cev = compᵛ pure apv prv
+                      RCM : _~_ {(A * B) ⇒[ mk-kind Many pure ] BC} (⟪ dcm ⟫ _) (return∞ cmv)
+                      RCM = ~trans {(A * B) ⇒[ mk-kind Many pure ] BC} (CompV.compSem δ sd σ r γ sγ dcm rcm dh rh (fstD′ A B pure) r₀)
+                              (≈-Relatedˡ (≈-bind (≈-refl _) (λ x → idˡ fstv _))
+                                (≈-Relatedʳ (≈-sym (idˡ hv₁ _)) (bindRel (pureRet dh ph rh) (λ sx →
+                                   returnRel (toSameP σ {A * B} {BC} (λ sp → fromSameP σ {A} {BC} sx (proj₁ sp)))))))
+                      RPR : _~_ {(A * B) ⇒[ mk-kind Many pure ] (BC * B)} (⟪ dpr ⟫ _) (return∞ prv)
+                      RPR = ~trans {(A * B) ⇒[ mk-kind Many pure ] (BC * B)} (CombV.pairSem δ sd σ r γ sγ dpr rpr dcm rcm (sndD′ A B pure) r₀)
+                              (≈-Relatedˡ (≈-bind (≈-refl _) (λ x → idˡ sndv _))
+                                (≈-Relatedʳ (≈-sym (idˡ cmv _)) (bindRel RCM (λ sx →
+                                   returnRel (toSameP σ {A * B} {BC * B} (λ sp → fromSameP σ {A * B} {BC} sx sp , proj₂ sp))))))
+                      RCE : _~_ {(A * B) ⇒[ mk-kind Many pure ] C} (⟪ dce ⟫ _) (return∞ cev)
+                      RCE = ~trans {(A * B) ⇒[ mk-kind Many pure ] C} (CompV.compSem δ sd σ r γ sγ dce rce (applyD B C) rA dpr rpr)
+                              (≈-Relatedˡ (idˡ apv _)
+                                (≈-Relatedʳ (≈-sym (idˡ prv _)) (bindRel RPR (λ spv →
+                                   returnRel (toSameP σ {A * B} {C} (λ sp → let s = fromSameP σ {A * B} {BC * B} spv sp
+                                                                           in fromSameP σ {B} {C} (proj₁ s) (proj₂ s)))))))
+                      CU : ∀ {fv fv′} → Same (((A * B) ⇒[ mk-kind Many pure ] C) ⟨ σ ⟩) fv fv′
+                         → Same (T ⟨ σ ⟩) (λ a b → fv (a , b)) (λ a b → fv′ (a , b))
+                      CU sf = toSameP σ {A} {BC} (λ sa → toSameP σ {B} {C} (λ sb → fromSameP σ {A * B} {C} sf (sa , sb)))
+                      s₁₀ = relPure⁻ (fl (transfer ph dh) (transfer ph d′) rh base)
+                      FINAL : Same (T ⟨ σ ⟩) (λ a b → cev (a , b)) (⟦ transfer ph d′ ⟧ δ σ r γ)
+                      FINAL = toSameP σ {A} {BC} (λ sa → toSameP σ {B} {C} (λ sb → fromSameP σ {B} {C} (fromSameP σ {A} {BC} s₁₀ sa) sb))
