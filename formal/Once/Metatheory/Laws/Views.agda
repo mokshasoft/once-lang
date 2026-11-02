@@ -371,6 +371,7 @@ module WkV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ
 module FunV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
             {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
   open Views δ sd σ r γ sγ
+  open WkV δ sd σ r γ sγ using (wkRel)
 
   ----------------------------------------------------------------------
   -- lam: a value, whose calls run the body with the argument bound
@@ -456,3 +457,13 @@ module FunV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
           ex = env*Many σ Ψ₂ (envʳ σ Ψ₁ (Many *ᵘ Ψ₂) γ₀)
   ... | peeled (⊢sub-use _ _) _ () | _
   ... | peeled (⊢sub-eff _ _) _ () | _
+
+  -- `wk t`, run in a restriction of an environment one binder longer.
+  wkRelR : ∀ {A B q q′ Ψ₀ Ψ₁ Ψa π₁ πa t} (db : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₁ ] wk t ∷ B ! π₁) {e₀ : Env σ Γ Ψ₀} → Res e₀
+         → (w : Slot q′ ⟦ A ⟨ σ ⟩ ⟧ᵛ) (Pf : (q ∷ Ψ₁) ⊑ᵘ (q′ ∷ Ψ₀))
+         → (du : Δ ⊩ Γ ⊢[ Ψa ] t ∷ B ! πa) {γa : Env σ Γ Ψa} → Res γa
+         → _~_ {B} (toT∞ π₁ (⟦ db ⟧ δ σ r (restrict σ {Γ = Γ ▸ A} Pf (e₀ , w)))) (⟪ du ⟫ γa)
+  wkRelR {A} {B} db r₀ w (0≤q ⊑∷ Ps) du ra = wkRel {A} {B} db (resR r₀ Ps) tt du ra
+  wkRelR {A} {B} db r₀ w (1≤1 ⊑∷ Ps) du ra = wkRel {A} {B} db (resR r₀ Ps) w du ra
+  wkRelR {A} {B} db r₀ w (1≤ω ⊑∷ Ps) du ra = wkRel {A} {B} db (resR r₀ Ps) w du ra
+  wkRelR {A} {B} db r₀ w (ω≤ω ⊑∷ Ps) du ra = wkRel {A} {B} db (resR r₀ Ps) w du ra

@@ -14,6 +14,7 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.Funs (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
+open import Data.Fin using (zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -28,7 +29,10 @@ open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel)
-open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; appZero; appOne; appMany)
+open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; appZero; appOne; appMany; relPure⁻)
+open import Once.Metatheory.Coherence.Relation Σ using (toObserved)
+open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree)
+open import Once.Metatheory.TermModel.Subst Σ S using (skip; idθ; idθ-id; cid; cskip; ren-⊢)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
@@ -84,3 +88,153 @@ module _ {m : ℕ} {Δ : KCtx m} where
                       (letEnd Many dx rx dt r₀ de db rb semL)))
                 where K : _ → T∞ _
                       K fv = ⟪ dx ⟫ ex >>=∞ λ a → toT∞ π′ (fv a)
+
+
+  lam-η : ∀ {n} {Γ : Ctx m n} {Ψ A B q π π′ f}
+        → Pure Σ fmt S Δ Γ f (A ⇒[ mk-kind q π′ ] B)
+        → (d : Δ ⊩ Γ ⊢[ Ψ ] lam A q π′ (app (wk f) (var zero)) ∷ A ⇒[ mk-kind q π′ ] B ! π)
+          (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind q π′ ] B ! π) → _≅_ Σ fmt S d d′
+  lam-η {n} {Γ = Γ} {A = A} {B} {q = Zero} {π} {π′} (_ , pf) d d′ δ sd σ r γ sγ =
+    sameM {T ⟨ σ ⟩} {π} (rel (go (viewLam d base)))
+    where
+      open Views δ sd σ r γ sγ
+      open FunV δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      T = A ⇒[ mk-kind Zero π′ ] B
+      g = ⟦ transfer pf d′ ⟧ δ σ r γ
+      sg : Same (T ⟨ σ ⟩) g g
+      sg = relPure⁻ (fl (transfer pf d′) (transfer pf d′) base base)
+      wkf = ren-⊢ (skip (idθ n)) suc (λ i → cong suc (idθ-id i)) (cskip {A = A} (cid Γ)) d′
+
+      body : ∀ {Ψ₀} {e₀ : Env σ Γ Ψ₀} (dt : Δ ⊩ (Γ ▸ A) ⊢[ Zero ∷ Ψ₀ ] app (wk _) (var zero) ∷ B ! π′) → Res e₀
+           → _~_ {B} (toT∞ π′ (⟦ dt ⟧ δ σ r (e₀ , tt))) (toT∞ π′ (g tt))
+      body {Ψ₀} {e₀} dt r₀ = goA (WF.viewApp dt W.base)
+        where
+          q′ = Zero
+          module W = Views δ sd σ r {Γ = Γ ▸ A} {Ψ = Zero ∷ Ψ₀} (e₀ , tt) (sameEnvOf r₀)
+          module WF = FunV δ sd σ r {Γ = Γ ▸ A} {Ψ = Zero ∷ Ψ₀} (e₀ , tt) (sameEnvOf r₀)
+          goA : WF.AppView dt (e₀ , tt) → _~_ {B} (W.⟪ dt ⟫ (e₀ , tt)) (toT∞ π′ (g tt))
+          goA (WF.appView {Ψ₁ = _ ∷ _} df₁ dx₁ {ef} (W.res Pf refl) sem) with ty-unique wkf df₁
+          ... | refl = APP
+            where
+              wkR : _~_ {T} (W.⟪ df₁ ⟫ ef) (return∞ g)
+              wkR = ~trans {T} (wkRelR df₁ r₀ tt Pf d′ base) (pureRet d′ pf base)
+              APP : _~_ {B} (W.⟪ dt ⟫ (e₀ , tt)) (toT∞ π′ (g tt))
+              APP = ~trans {B} sem
+                      (
+                        (≈-Relatedʳ (≈-sym (idˡ g (λ fv → toT∞ π′ (fv tt))))
+                          (bindRel {f = λ fv → toT∞ π′ (fv tt)} {g = λ fv → toT∞ π′ (fv tt)} wkR
+                            (λ sf → runs (appZero {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sf)))))
+      go : LamView d γ → _~_ {T} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
+      go (lamView 0≤q dt {e₀} r₀ refl eqL) =
+        ~trans {T} eqL (~trans {T} (returnRel SAME) (~sym {T} (pureRet d′ pf base)))
+        where
+          SAME : Same (T ⟨ σ ⟩) (⟦ ⊢lam {q = Zero} 0≤q dt ⟧ δ σ r e₀) g
+          SAME = toObserved (~trans {B} (body dt r₀) (runs (appZero {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sg)))
+
+  lam-η {n} {Γ = Γ} {A = A} {B} {q = One} {π} {π′} (_ , pf) d d′ δ sd σ r γ sγ =
+    sameM {T ⟨ σ ⟩} {π} (rel (go (viewLam d base)))
+    where
+      open Views δ sd σ r γ sγ
+      open FunV δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      T = A ⇒[ mk-kind One π′ ] B
+      g = ⟦ transfer pf d′ ⟧ δ σ r γ
+      sg : Same (T ⟨ σ ⟩) g g
+      sg = relPure⁻ (fl (transfer pf d′) (transfer pf d′) base base)
+      wkf = ren-⊢ (skip (idθ n)) suc (λ i → cong suc (idθ-id i)) (cskip {A = A} (cid Γ)) d′
+
+      body : ∀ {q′ Ψ₀} {e₀ : Env σ Γ Ψ₀} (dt : Δ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ₀ ] app (wk _) (var zero) ∷ B ! π′) → Res e₀
+           → ∀ {a} (sl : SlotAgree σ A q′ q′ (slot q′ a) (slot q′ a))
+           → _~_ {B} (toT∞ π′ (⟦ dt ⟧ δ σ r (e₀ , slot q′ a))) (toT∞ π′ (callᵛ One {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} g a))
+      body {q′} {Ψ₀} {e₀} dt r₀ {a} sl = goA (WF.viewApp dt W.base)
+        where
+          module W = Views δ sd σ r {Γ = Γ ▸ A} {Ψ = q′ ∷ Ψ₀} (e₀ , slot q′ a) (sameEnv▸ σ q′ (sameEnvOf r₀) sl)
+          module WF = FunV δ sd σ r {Γ = Γ ▸ A} {Ψ = q′ ∷ Ψ₀} (e₀ , slot q′ a) (sameEnv▸ σ q′ (sameEnvOf r₀) sl)
+          goA : WF.AppView dt (e₀ , slot q′ a) → _~_ {B} (W.⟪ dt ⟫ (e₀ , slot q′ a)) (toT∞ π′ (callᵛ One {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} g a))
+          goA (WF.appView {Ψ₁ = _ ∷ _} df₁ dx₁ {ef} (W.res Pf refl) sem) with ty-unique wkf df₁
+          ... | refl = APP sem
+            where
+              wkR : _~_ {T} (W.⟪ df₁ ⟫ ef) (return∞ g)
+              wkR = ~trans {T} (wkRelR df₁ r₀ (slot q′ a) Pf d′ base) (pureRet d′ pf base)
+              APP : WF.AppSem One (W.⟪ dt ⟫ (e₀ , slot q′ a)) df₁ dx₁ ef → _~_ {B} (W.⟪ dt ⟫ (e₀ , slot q′ a)) (toT∞ π′ (callᵛ One {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} g a))
+              APP (ex , W.res Px refl , eqA) =
+                ~trans {B} eqA
+                  (≈-Relatedʳ (≈-sym (≈-trans (idˡ g K′) (idˡ a (λ x → toT∞ π′ (g x)))))
+                    (bindRel {f = K} {g = K′} wkR
+                      (λ {fv} {fv′} sf → bindRel {f = λ x → toT∞ π′ (fv x)} {g = λ x → toT∞ π′ (fv′ x)}
+                         (substV (look0 σ q′ P₀) eqV)
+                         (λ sx → runs (appOne {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sf sx)))))
+                where
+                  vv = W.varVal dx₁ (W.res Px refl)
+                  P₀ = proj₁ vv
+                  eqV = proj₂ vv
+                  K : _ → T∞ _
+                  K fv = W.⟪ dx₁ ⟫ ex >>=∞ λ x → toT∞ π′ (fv x)
+                  K′ : _ → T∞ _
+                  K′ fv = return∞ a >>=∞ λ x → toT∞ π′ (fv x)
+                  substV : ∀ {w} → w ≡ a → _~_ {A} (W.⟪ dx₁ ⟫ ex) (return∞ w) → _~_ {A} (W.⟪ dx₁ ⟫ ex) (return∞ a)
+                  substV refl e = e
+      go : LamView d γ → _~_ {T} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
+      go (lamView {q′ = q′} le dt {e₀} r₀ refl eqL) =
+        ~trans {T} eqL (~trans {T} (returnRel SAME) (~sym {T} (pureRet d′ pf base)))
+        where
+          SAME : Same (T ⟨ σ ⟩) (⟦ ⊢lam le dt ⟧ δ σ r e₀) g
+          SAME a a′ sa = toObserved
+            (≈-Relatedˡ (≡→≈ (cong (toT∞ π′) (lamCall le dt e₀ a)))
+              (~trans {B} (body dt r₀ (slotAgree σ {A} q′ q′ (sameRefl (A ⟨ σ ⟩) sa)))
+                          (runs (appOne {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sg sa))))
+
+  lam-η {n} {Γ = Γ} {A = A} {B} {q = Many} {π} {π′} (_ , pf) d d′ δ sd σ r γ sγ =
+    sameM {T ⟨ σ ⟩} {π} (rel (go (viewLam d base)))
+    where
+      open Views δ sd σ r γ sγ
+      open FunV δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      T = A ⇒[ mk-kind Many π′ ] B
+      g = ⟦ transfer pf d′ ⟧ δ σ r γ
+      sg : Same (T ⟨ σ ⟩) g g
+      sg = relPure⁻ (fl (transfer pf d′) (transfer pf d′) base base)
+      wkf = ren-⊢ (skip (idθ n)) suc (λ i → cong suc (idθ-id i)) (cskip {A = A} (cid Γ)) d′
+
+      body : ∀ {q′ Ψ₀} {e₀ : Env σ Γ Ψ₀} (dt : Δ ⊩ (Γ ▸ A) ⊢[ q′ ∷ Ψ₀ ] app (wk _) (var zero) ∷ B ! π′) → Res e₀
+           → ∀ {a} (sl : SlotAgree σ A q′ q′ (slot q′ a) (slot q′ a))
+           → _~_ {B} (toT∞ π′ (⟦ dt ⟧ δ σ r (e₀ , slot q′ a))) (toT∞ π′ (callᵛ Many {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} g a))
+      body {q′} {Ψ₀} {e₀} dt r₀ {a} sl = goA (WF.viewApp dt W.base)
+        where
+          module W = Views δ sd σ r {Γ = Γ ▸ A} {Ψ = q′ ∷ Ψ₀} (e₀ , slot q′ a) (sameEnv▸ σ q′ (sameEnvOf r₀) sl)
+          module WF = FunV δ sd σ r {Γ = Γ ▸ A} {Ψ = q′ ∷ Ψ₀} (e₀ , slot q′ a) (sameEnv▸ σ q′ (sameEnvOf r₀) sl)
+          goA : WF.AppView dt (e₀ , slot q′ a) → _~_ {B} (W.⟪ dt ⟫ (e₀ , slot q′ a)) (toT∞ π′ (callᵛ Many {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} g a))
+          goA (WF.appView {Ψ₁ = _ ∷ _} df₁ dx₁ {ef} (W.res Pf refl) sem) with ty-unique wkf df₁
+          ... | refl = APP sem
+            where
+              wkR : _~_ {T} (W.⟪ df₁ ⟫ ef) (return∞ g)
+              wkR = ~trans {T} (wkRelR df₁ r₀ (slot q′ a) Pf d′ base) (pureRet d′ pf base)
+              APP : WF.AppSem Many (W.⟪ dt ⟫ (e₀ , slot q′ a)) df₁ dx₁ ef → _~_ {B} (W.⟪ dt ⟫ (e₀ , slot q′ a)) (toT∞ π′ (callᵛ Many {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} g a))
+              APP (ex , W.res Px refl , eqA) =
+                ~trans {B} eqA
+                  (≈-Relatedʳ (≈-sym (≈-trans (idˡ g K′) (idˡ a (λ x → toT∞ π′ (g x)))))
+                    (bindRel {f = K} {g = K′} wkR
+                      (λ {fv} {fv′} sf → bindRel {f = λ x → toT∞ π′ (fv x)} {g = λ x → toT∞ π′ (fv′ x)}
+                         (substV (look0 σ q′ P₀) eqV)
+                         (λ sx → runs (appMany {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sf sx)))))
+                where
+                  vv = W.varVal dx₁ (W.res Px refl)
+                  P₀ = proj₁ vv
+                  eqV = proj₂ vv
+                  K : _ → T∞ _
+                  K fv = W.⟪ dx₁ ⟫ ex >>=∞ λ x → toT∞ π′ (fv x)
+                  K′ : _ → T∞ _
+                  K′ fv = return∞ a >>=∞ λ x → toT∞ π′ (fv x)
+                  substV : ∀ {w} → w ≡ a → _~_ {A} (W.⟪ dx₁ ⟫ ex) (return∞ w) → _~_ {A} (W.⟪ dx₁ ⟫ ex) (return∞ a)
+                  substV refl e = e
+      go : LamView d γ → _~_ {T} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
+      go (lamView {q′ = q′} le dt {e₀} r₀ refl eqL) =
+        ~trans {T} eqL (~trans {T} (returnRel SAME) (~sym {T} (pureRet d′ pf base)))
+        where
+          SAME : Same (T ⟨ σ ⟩) (⟦ ⊢lam le dt ⟧ δ σ r e₀) g
+          SAME a a′ sa = toObserved
+            (≈-Relatedˡ (≡→≈ (cong (toT∞ π′) (lamCall le dt e₀ a)))
+              (~trans {B} (body dt r₀ (slotAgree σ {A} q′ q′ (sameRefl (A ⟨ σ ⟩) sa)))
+                          (runs (appMany {π′} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sg sa))))
+
