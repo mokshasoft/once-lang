@@ -35,6 +35,7 @@ open import Once.Spec.Name using (CanonicalName)
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
   (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
@@ -74,7 +75,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (slot-addr-no-wrap :
      ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
        (fs : FlatMachine.FlatState {FS}) (s : RS.State) (slot : ℕ)
-     → RCr.RunAt o FS slot-size word-eq prog fs
+     → RLr.RunLow o FS slot-size word-eq prog fs
      → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
      → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (lea-slot slot)
      → RS.readReg (RS.State.regs s) sp + slot-to-disp slot < RS.W.modulus)
@@ -90,7 +91,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   -- two meet.
   (heap-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (n : ℕ)
-             → RCr.RunAt o FS slot-size word-eq prog fs
+             → RLr.RunLow o FS slot-size word-eq prog fs
              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                  ≡ just (instr-alloc-heap n)
@@ -98,48 +99,48 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (stack-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State)
                   (b : ℕ)
-              → RCr.RunAt o FS slot-size word-eq prog fs
+              → RLr.RunLow o FS slot-size word-eq prog fs
               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
       ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
               → FCr.hfront hv + slots b ≤ RS.readReg (RS.State.regs s) sp)
   (call-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (c : AbstractInstr)
-             → RCr.RunAt o FS slot-size word-eq prog fs
+             → RLr.RunLow o FS slot-size word-eq prog fs
              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                  ≡ just c → CallI c
              → FCr.hfront hv + slot-size ≤ RS.readReg (RS.State.regs s) sp)
   (reg-range : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (r : Reg')
-             → RCr.RunAt o FS slot-size word-eq prog fs
+             → RLr.RunLow o FS slot-size word-eq prog fs
              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → RS.readReg (RS.State.regs s) r < RS.W.modulus)
   -- `suc b`: THE CALLER'S FRAME BASE, not just the frame. See D106.
   (ret-no-wrap : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                    (fs : FlatMachine.FlatState {FS}) (s : RS.State) (b : ℕ)
-               → RCr.RunAt o FS slot-size word-eq prog fs
+               → RLr.RunLow o FS slot-size word-eq prog fs
                → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
                → RS.readReg (RS.State.regs s) sp + slots (suc b) < RS.W.modulus)
   (tag-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (n : ℕ)
-            → RCr.RunAt o FS slot-size word-eq prog fs
+            → RLr.RunLow o FS slot-size word-eq prog fs
             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-tag-lit n)
             → n < RS.W.modulus)
   (lit-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : ℤ)
-            → RCr.RunAt o FS slot-size word-eq prog fs
+            → RLr.RunLow o FS slot-size word-eq prog fs
             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
             → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-int v < RS.W.modulus)
   (float-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Decimal)
-              → RCr.RunAt o FS slot-size word-eq prog fs
+              → RLr.RunLow o FS slot-size word-eq prog fs
               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
@@ -415,7 +416,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq 
 riscv64-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
                  → halted (floc fs) ≡ false
                  → fetch prog (fpc fs) ≡ just (lea-slot slot)
-                 → RCr.RunAt o FS slot-size word-eq prog fs
+                 → RLr.RunLow o FS slot-size word-eq prog fs
                  → BlockStep hv prog fs s (lea-slot slot)
 riscv64-lea-slot prog fs s slot cc h ft run =
   block-step-lea-slot prog fs s slot cc h ft

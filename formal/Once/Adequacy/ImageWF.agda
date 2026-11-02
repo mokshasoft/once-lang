@@ -98,7 +98,7 @@ private
     where
       split : ∀ s → s ∈ calls-of (rewrite-program p) → _ → ProgG p s
       split s s∈ (yes b) = inj₁ (there (∈-++⁺ʳ (adefs (image-of p)) b))
-      split s s∈ (no nb) = inj₂ (there (∈-filter⁺ (is-extern? p) s∈ nb))
+      split s s∈ (no nb) = inj₂ (there (there (∈-filter⁺ (is-extern? p) s∈ nb)))
 
   table-ok : ∀ {G : String → Set} (es : List IRFun)
            → All G (Data.List.concatMap (λ e → leaf-syms (fbody e)) es)

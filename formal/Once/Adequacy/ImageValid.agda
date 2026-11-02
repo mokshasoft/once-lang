@@ -161,4 +161,4 @@ externs-valid p = filter⁺ (is-extern? p) (calls-asm (rewrite-program p))
 
 -- D320: …and a program's, with the Host's `leave`.
 prog-externs-valid : ∀ (p : IRProgram) → All AsmSym (prog-externs p)
-prog-externs-valid p = (tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) ∷ externs-valid p
+prog-externs-valid p = (tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) ∷ (tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) ∷ externs-valid p

@@ -32,7 +32,7 @@ open import Data.Nat.Properties using (+-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
 -- the module's own `FS`/`word-eq` can be threaded into them by Agda's
--- telescoping (`RC.RunAt o FS word-eq …`) — a parameter's type is elaborated
+-- telescoping (`RC.RunLow o FS word-eq …`) — a parameter's type is elaborated
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
 -- …and the pieces the LITERAL parameters' types need (phase D), likewise
@@ -78,7 +78,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (heap-room : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (n : ℕ)
-             → RC.RunAt o FS word-eq prog fs
+             → RC.RunLow o FS word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just (instr-alloc-heap n)
@@ -93,7 +93,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (stack-room : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (b : ℕ)
-              → RC.RunAt o FS word-eq prog fs
+              → RC.RunLow o FS word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
       ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
@@ -102,7 +102,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
   (call-room : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State) (c : AbstractInstr)
-             → RC.RunAt o FS word-eq prog fs
+             → RC.RunLow o FS word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just c → CallI c
@@ -114,7 +114,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (reg-range : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (r : Reg)
-             → RC.RunAt o FS word-eq prog fs
+             → RC.RunLow o FS word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → X.readReg (X.State.regs s) r < X.W.modulus)
   -- THE ADDRESS SPACE DOES NOT WRAP at the emitted `add` sites (plan 0.70
@@ -129,7 +129,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (ret-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
                    (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                    (s : X.State) (b : ℕ)
-               → RC.RunAt o FS word-eq prog fs
+               → RC.RunLow o FS word-eq prog fs
                → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
@@ -143,7 +143,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (tag-fits : ∀ {hv : FC.HeapView FS word-eq}
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (n : ℕ)
-            → RC.RunAt o FS word-eq prog fs
+            → RC.RunLow o FS word-eq prog fs
             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-tag-lit n)
@@ -151,7 +151,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (lit-fits : ∀ {hv : FC.HeapView FS word-eq}
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (v : ℤ)
-            → RC.RunAt o FS word-eq prog fs
+            → RC.RunLow o FS word-eq prog fs
             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
@@ -159,7 +159,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (float-fits : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (v : Decimal)
-              → RC.RunAt o FS word-eq prog fs
+              → RC.RunLow o FS word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
@@ -336,7 +336,7 @@ open import Data.List using ()   -- for `EntryLike`'s empty frame stack
 -- lives in `…X86-32.RunContext`, one layer down, so that the resource bounds
 -- can be MODULE PARAMETERS here rather than postulates. See that module.)
 open import Once.Adequacy.ArchCorrectness.X86-32.RunContext o FS word-eq
-  using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt ) public
+  using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt; RunLow; mkRunLow; low-start ) public
 
 ------------------------------------------------------------------------
 -- THE GENERIC EVENT ENGINE, instantiated (plan 0.65 G2 item 4, slice 3).
@@ -642,7 +642,7 @@ postulate
   -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
   -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
   arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
-                  → RunAt prog fs
+                  → RunLow prog fs
                   → x86-32-arith-table prog env
                   → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
@@ -656,7 +656,7 @@ postulate
   -- `sigop-external` proves the run-events emission mechanics AROUND this.
   external-sigop-contract : ∀ {hv : HeapView} (ev : RTx.EvExtractor val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32))
                               prog fs s {A B} (si : SigOpInfo A B)
-                          → RunAt prog fs
+                          → RunLow prog fs
                           -- THE REAL EXTRACTOR AND ENV (2026-07-30): over arbitrary
                           -- `ev`/`env` the emission claim is refuted by `λ _ _ → []`.
                           → ev ≡ ev-x86-32 → x86-32-arith-table prog env
@@ -684,7 +684,7 @@ arith-sigop-lookup .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (p
         (block-env-hit (Cmp.blocks-x86-32 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
 
 arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
-                     → RunAt prog fs
+                     → RunLow prog fs
                      → x86-32-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
                      → Σ (List XInstr) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl

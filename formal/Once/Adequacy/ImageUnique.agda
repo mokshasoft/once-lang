@@ -325,6 +325,7 @@ open import Once.Denotation.Program using (IRFun; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fname)
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; program-image)
+open import Once.CCC.Codegen.RoomChecksFacts using (fold-room)
 open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; fresh-above; clabs-++; nf)
 import Once.CCC.Codegen.CLabelsUnique as CLU
 import Once.CCC.Codegen.IRToTrace as IT
@@ -749,13 +750,20 @@ prog-unique-at T tn ir =
     img = C.image-of p
     fs = fdefs img
     fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
-    fs≡ = cong (Data.List.map once-symbol-path) (image-fdefs C.entry-owner q)
+    -- D371: the image is the program image with its room checks, which define
+    -- no function and no closure label (`fold-room`)
+    fs≡ = cong (Data.List.map once-symbol-path)
+               (trans (fold-room fdefs (λ i xs → fdef-of i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (program-image C.entry-owner q))
+                      (image-fdefs C.entry-owner q))
+    cl-room : Dst (clabs img)
+    cl-room = subst Dst (sym (fold-room clabs (λ i → cl-at (clab-of i)) (λ _ _ → refl) (λ _ _ → refl) (program-image C.entry-owner q)))
+                    (image-cl C.entry-owner q)
     open Apart fs T tn fs≡
     D = adefs img
     B = C.block-syms (C.program-blocks p)
     cD = adefs-class img
     cB = blocks-sym (C.program-blocks p)
-    uD = adefs-unique img (image-cl C.entry-owner q) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
+    uD = adefs-unique img cl-room (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
 
 prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
 prog-unique m ir = prog-unique-at (C.moduleTable m) (table-names m) ir

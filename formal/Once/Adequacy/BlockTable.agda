@@ -37,6 +37,8 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Compile using (program-blocks; rewrite-program; image-of; entry-owner; dedup-go; dedup-blocks)
+open import Once.CCC.Codegen.ProgramImage using (program-image)
+open import Once.CCC.Codegen.RoomChecksFacts using (All-room)
 open import Once.Denotation.Program using (IRProgram)
 open import Once.CCC.Codegen.CallOK using (InstrOK)
 import Once.CCC.Codegen.ImageInstrs as II
@@ -47,9 +49,9 @@ open import Once.Adequacy.RewriteOwned using (Named; program-owned)
 ------------------------------------------------------------------------
 
 image-owned : ∀ (p : IRProgram) → All (InstrOK (λ _ _ _ → ⊤) (Named (program-blocks p))) (image-of p)
-image-owned p =
+image-owned p = All-room (program-image entry-owner (rewrite-program p)) (λ _ → tt) (
   II.image-ok (λ _ _ _ _ → ⊤) tt (Named (program-blocks p)) entry-owner (rewrite-program p)
-    (proj₁ (program-owned p)) (proj₂ (program-owned p))
+    (proj₁ (program-owned p)) (proj₂ (program-owned p)))
 
 ------------------------------------------------------------------------
 -- `dedup-blocks` keeps every symbol.
