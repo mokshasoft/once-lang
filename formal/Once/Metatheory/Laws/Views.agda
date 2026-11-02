@@ -41,6 +41,7 @@ open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
 open import Once.Metatheory.TermModel.Subst Σ S using (Thin; skip; keep; idθ; idθ-id; cid; cskip; ckeep; ren-⊢; θ*-id; ext-hρ; ⟦_⟧θ)
 open import Once.Metatheory.TermModel.Ren Σ fmt S using (ThinAgree; module RenSem)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans; ⊑ᵘ-≡)
+open import Once.Metatheory.TermModel.Val Σ fmt S using (At; NZ; nz-mono; nz-single; slotVal; val; restrict-val; lookup-val)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 
 -- Calling a function value of an arrow at quantity `q` (an erased argument is not passed).
@@ -526,3 +527,24 @@ module ExtV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
           m→1 One  s = s
           m→1 Many s = s
   agreeExtS r₁ r₂ sw (ω≤ω ⊑∷ Ps) = agree r₁ (resR r₂ Ps) , sw
+
+------------------------------------------------------------------------
+-- Reading variables by `val` (`TermModel.Val`): through restrictions, and
+-- the value a slot was filled with
+------------------------------------------------------------------------
+
+module ReadV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+             {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
+  open Views δ sd σ r γ sγ
+
+  readV : ∀ {Ψa i π} (dv : Δ ⊩ Γ ⊢[ Ψa ] var i ∷ lookup Γ i ! π) {γa} → Res γa
+        → Σ′ (NZ (At Ψ i)) λ nz → _~_ {lookup Γ i} (⟪ dv ⟫ γa) (return∞ (val σ γ i nz))
+  readV {i = i} dv ra with varVal dv ra
+  ... | P₀ , eq = nz-mono P₀ i (nz-single i) , substR (trans (lookup-val σ Γ i (restrict σ P₀ γ)) (restrict-val σ P₀ γ i (nz-single i))) eq
+    where
+      substR : ∀ {x y} → x ≡ y → _~_ {lookup Γ i} (⟪ dv ⟫ _) (return∞ x) → _~_ {lookup Γ i} (⟪ dv ⟫ _) (return∞ y)
+      substR refl q = q
+
+slotVal∘slot : ∀ {m} (σ : TySub m 0) q {X : Set} (x : X) (nz : NZ q) → slotVal σ q (slot q x) nz ≡ x
+slotVal∘slot σ One  x nz = refl
+slotVal∘slot σ Many x nz = refl
