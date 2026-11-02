@@ -258,6 +258,9 @@ decision-log entry updates the rule it changes here, in the same commit.
   byte-writing Interpretation; an exit code is not an effect observation; a
   recursion scheme is tested at a functor with two recursive positions.
   (D220, D221, D199)
+- **A rejecting test names its reason**: `Rejection.assertRejects` with a
+  fragment of the error that names the rule; a bare "rejected" check passes
+  for any error. (D368)
 - **Measuring Agda**: `touch` does not force a recheck; confirm a `Checking`
   line. (D200)
 - **Both builds are tested**: the exit suites and `traceCases` build each

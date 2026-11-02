@@ -39,7 +39,7 @@ The analysis must cover each of the following.
   meaning of a reference to a polymorphic definition is not well-typed without it. Nothing may be
   added to it, and no other Spec module may prove anything.
 - A meaning clause may omit or repeat a premise's meaning only if the premise is pure; an
-  effectful premise is bound exactly once, left to right (plan 0.116). Its effects then happen once,
+  effectful premise is bound exactly once, left to right. Its effects then happen once,
   in the order written, which the Spec's coherence and Freyd theorems rely on.
 
 **The Spec, read through the tests.** A large Spec diff cannot be reviewed hunk by hunk. The tests
@@ -63,6 +63,10 @@ uniform, or closer to `GOAL.md` and its categorical reading?
 A test change that no decision explains stops the merge. So does a Spec change that no test
 witnesses, unless the analysis says why no program can observe it.
 
+A rejecting test names the rule that rejects it, so it fails if the program is rejected for another
+reason. A bare "it was rejected" assertion is not evidence about the Spec. A changed reason is a
+*modified expectation*.
+
 **Top-level modules.** State which of these the diff touches, what changed and why:
 `Once.Spec`, `Once.Certified`, `Once.Compiler`, `Once.Compile`, the trusted base, and the core
 types (`Once.IR`, `Once.Type`, `Once.IRTy`). Read their hunks line by line. If none is touched,
@@ -73,7 +77,7 @@ say so explicitly and verify it with
 an explanation for each entry:
 - A new assumption needs a name and a decision entry, and it must be true of the reachable
   states of emitted programs. An assumption about our own code is a proof gap. Prove it; never
-  make it a hypothesis (plan 0.11's rule).
+  make it a hypothesis.
 - Emptiness probe: for each new residual, try `probe : P → ⊥; probe ()` in a scratch module. If
   it compiles, the residual is false and everything downstream is unsound. This is mandatory when
   a witness datatype loses a constructor.
@@ -113,8 +117,8 @@ built the same way on both sides, per program and in total, with `tests/codegen-
 - *Memory, static*: heap allocation sites and the cells they allocate; frames reserved, the largest
   and their sum, in slots (`once stats`, over the program image every arch lowers). A change that
   moves work between stack and heap says so, and under which `--alloc` mode it was measured.
-  Run-time counts (cells allocated per run, peak heap and stack, instructions executed) are plan
-  0.130; until it lands, the entry says which way it expects them to move and why.
+  Where run-time counts (cells allocated per run, peak heap and stack, instructions executed) are
+  not measured, the entry says which way it expects them to move and why.
 - *Reach*: programs that newly build, newly fail, or link differently.
 
 Every program that gets worse on any measure is named in the entry, with its cause and the reason

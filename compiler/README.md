@@ -16,6 +16,11 @@ cabal test
 
 Also available via `make build` / `make test` (cabal-based).
 
+A test that expects a program to be rejected names the reason: use
+`Rejection.assertRejects` (`test/Rejection.hs`), or the `rejects` /
+`assertParseError` helpers built on it, with a fragment of the error that names
+the rule. A bare "it was rejected" check passes for any error (plan 0.115).
+
 > **Note on build tooling**: this project uses `cabal` directly, not
 > `stack`. Stack 3.7.1 under Nix enters a self-referential loop in its
 > GHC version resolution (`<<loop>>`) before any user code runs. The

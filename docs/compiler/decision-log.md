@@ -20641,3 +20641,40 @@ just over the old 5.5 GB cap when checked alone (~5.5 GB, from ~3.5 GB); they ch
 OK; `lint-pragmas` (17) and `lint-imports` clean; MAlonzo re-extracted, `cabal build all` OK, `cabal test`
 913/919 (the 6 known loop-forever server tests); exit-code tests 176/176 on x86_64, x86_32 and riscv64.
 The plan 0.62 probes (`ProbeShape`, `ProbeShape2`) import the deleted `ShapeTable` and are retired with it.
+
+## D368 — A REJECTING TEST NAMES ITS REASON (2026-11-02)
+
+**Decision** (plan 0.115). A test that expects a program to be rejected asserts which rule rejects it:
+`compiler/test/Rejection.assertRejects what reason r` passes only if `r` is a rejection whose error text
+contains `reason`. `TypeErrorSpec.rejects`, `GeneratorSpec.rejects` and `ParseSpec.assertParseError` take
+the reason as an argument and are built on it; `isLeft` assertions and `rejectsWith` are gone. The reason
+is a fragment of the rendered error (`Once.TypeCheck.Error.renderError`, or the lexer's, parser's or
+driver's message) that names the rule, with the names or types it is about where those tell two causes
+apart. A changed reason is a change in what the test expects.
+
+**Why.** An `isLeft` test passes for any error, so it keeps passing after the rule it pinned changes.
+The inventory (2026-11-02, 84 rejecting sites) found 15 rejected for another reason than the one named:
+six D258 tests (String gone) failed to parse instead of type-checking; `QttSpec`'s effectful `dupE` was
+rejected as more precise than its signature, before usage was counted; `PuritySpec`'s effectful coalgebra
+failed on `compose`'s middle type before the purity check. Those programs are rewritten to reach their
+rule. Two grammar rejections (`Nu (Eff F)`, the D252 annotation) are the rule and stay.
+
+**Rejected alternative.** Matching structured errors (a `once check --json` mode): exact, but a CLI and
+extraction change for the same check; text fragments of `renderError` are stable enough and need none.
+
+**Pinned, not fixed** (plan 0.139). Five rejections are right but their diagnostic is poor: `x = id` at
+`Int` and `swap 5` at `Int * Int` report "Unbound or unspecialized variable"; `g = inl`/`inr`/`initial`
+give D323's reason with an "unbound" inner message, not the `InlInInferMode` family's text. The tests pin
+today's text with a note; fixing the elaborator is an Agda change and a MAlonzo re-extraction.
+
+### Spec
+Unchanged. Test-only (`compiler/test`). The rule is stated in MERGE.md §1 (general form), `docs/decisions/internal.md`
+§8 and `compiler/README.md`.
+
+### Cost
+None in the compiler or the binary.
+
+### Checks
+`cabal test`: the rejection groups (Parse, Type Checker, Type Errors, QTT, Purity, Imports, Telescope,
+Spec-change matrix, Generator, Float) 566/566. Mutation check: one reason per file (9 files) replaced by a
+wrong one, 9/9 fail.
