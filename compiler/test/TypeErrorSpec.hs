@@ -59,7 +59,7 @@ typeMismatchTests = testGroup "Type mismatches"
       result @?= Right ()
 
   , testCase "a constant function's body must match the result type" $ do
-      -- Plan 0.115: this was `f : Int -> String; f = 42`, which after D258 (no
+      -- D368: this was `f : Int -> String; f = 42`, which after D258 (no
       -- String type) failed to PARSE, and the bare value body is D127's test
       -- above. Now the written constant function, at the wrong codomain.
       let source = T.unlines
@@ -70,7 +70,7 @@ typeMismatchTests = testGroup "Type mismatches"
       assertRejects "Should reject an Int body at result type Unit" "Type mismatch: expected Unit but got Int" result
 
   , testCase "Unit value for Int type" $ do
-      -- Plan 0.115: was a String literal, which no longer parses (D258).
+      -- D368: was a String literal, which no longer parses (D258).
       let source = T.unlines
             [ "x : Int"
             , "x = ()"
@@ -79,7 +79,7 @@ typeMismatchTests = testGroup "Type mismatches"
       assertRejects "Should reject Unit for Int type" "Type mismatch: expected Int but got Unit" result
 
   , testCase "Int for Unit type" $ do
-      -- Plan 0.115: was `x : String`, which no longer parses (D258).
+      -- D368: was `x : String`, which no longer parses (D258).
       let source = T.unlines
             [ "x : Unit"
             , "x = 42"
@@ -93,13 +93,13 @@ typeMismatchTests = testGroup "Type mismatches"
             , "x = id"
             ]
       result <- typeCheckSource source
-      -- Pinned (plan 0.115 D2): the rule is a type mismatch (a function at
+      -- Pinned (plan 0.139): the rule is a type mismatch (a function at
       -- Int); the elaborator reports the polymorphic `id` as unspecialized.
       assertRejects "Should reject function for Int type" "Unbound or unspecialized variable: id" result
 
   , testCase "wrong argument type to function" $ do
       let source = T.unlines
-            -- Plan 0.115: was `main : Int; main = f "hello"`, which no longer
+            -- D368: was `main : Int; main = f "hello"`, which no longer
             -- parses (D258), and whose `main` was wrong as well.
             [ "f : Int -> Int"
             , "f x = x"
@@ -193,7 +193,7 @@ builtinShapeErrorTests = testGroup "Builtin shape errors"
       , "f x = snd x"
       ]
   , rejects "unary negation of a non-Int" "Type mismatch: expected Int but got Unit"
-      -- Plan 0.115: was `f : String -> Int`, which no longer parses (D258).
+      -- D368: was `f : String -> Int`, which no longer parses (D258).
       -- The rejection is the operand's check at Int (`NegationNotInt` is not
       -- reached: `-x` checks `x` at Int).
       [ "f : Unit -> Int"
@@ -229,7 +229,7 @@ destructErrorTests = testGroup "destruct errors"
 -- These bodies only check (a lambda takes a context; `inl`, `inr` and
 -- `initial` leave their target open), so each needs a signature. (The inner
 -- message for `inl`/`inr`/`initial` says "unbound or unspecialized", not the
--- `InlInInferMode` family's text; the outer reason is D323's. Plan 0.115 D2.)
+-- `InlInInferMode` family's text; the outer reason is D323's. Plan 0.139.)
 modeErrorTests :: TestTree
 modeErrorTests = testGroup "Check-only bodies need a signature (D323)"
   [ rejects "bare lambda without a type signature" "The body has no type of its own (Lambda without type annotation"
@@ -359,7 +359,7 @@ typeCheckStderr source = withSystemTempFile "test.once" $ \path handle -> do
   return err
 
 -- | Assert that a program is REJECTED by `once check`, with an error that
--- mentions `reason` (plan 0.115: a rejection names its reason).
+-- mentions `reason` (D368: a rejection names its reason).
 rejects :: HasCallStack => TestName -> String -> [T.Text] -> TestTree
 rejects name reason sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)

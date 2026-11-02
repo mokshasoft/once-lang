@@ -123,7 +123,7 @@ accepts name sourceLines = testCase name $ do
   result @?= Right ()
 
 -- | Assert that a program is REJECTED by `once check`, with an error that
--- mentions `reason` (plan 0.115: a rejection names its reason).
+-- mentions `reason` (D368: a rejection names its reason).
 rejects :: HasCallStack => TestName -> String -> [T.Text] -> TestTree
 rejects name reason sourceLines = testCase name $ do
   result <- typeCheckSource (T.unlines sourceLines)

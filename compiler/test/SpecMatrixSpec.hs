@@ -3,7 +3,7 @@
 -- analysis. Every semantic change the branch made to the Spec gets a test that
 -- shows the RIGHT programs accepted AND the wrong ones rejected — the proofs show
 -- the compiler meets the Spec; these show the Spec says what we mean.
--- A rejection names the rule that rejects it (plan 0.115, `Rejection`).
+-- A rejection names the rule that rejects it (D368, `Rejection`).
 module SpecMatrixSpec (specMatrixTests) where
 
 import Test.Tasty
@@ -137,7 +137,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             ]
           r @?= Right ()
       , testCase "a polymorphic head applied to a non-instance is rejected (d-poly)" $ do
-          -- No instance of `a * b` is `Int`. Pinned (plan 0.115 D2): the
+          -- No instance of `a * b` is `Int`. Pinned (plan 0.139): the
           -- diagnostic is the generic "unspecialized variable", not the mismatch.
           r <- checkLib
             [ "swap : a * b -> b * a"

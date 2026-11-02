@@ -90,7 +90,7 @@ purityTests = testGroup "Purity (pure emits nothing)"
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (K Int)"
-        -- Plan 0.115: the first arm is annotated so that `compose`'s middle type
+        -- D368: the first arm is annotated so that `compose`'s middle type
         -- is known; unannotated, the program failed on the middle type before
         -- the purity check was reached.
         , "mkNu = ana (compose ((\\_ -> 7) : Unit -> Int) emit@E)"

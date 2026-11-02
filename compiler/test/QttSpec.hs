@@ -99,7 +99,7 @@ qttTests = testGroup "QTT / linearity"
       -- `dupE h` is the suspension `λ_. dupE h`: its argument is scaled by
       -- `dupE`'s grade ω, exactly as a pure application's is.
       let source = T.unlines
-            -- Plan 0.115: `dupE` was the PURE body `pair id id` at `Eff`, rejected
+            -- D368: `dupE` was the PURE body `pair id id` at `Eff`, rejected
             -- as more precise than its signature before usage was counted. An
             -- operation declared at `Act` is effectful, and used at `Eff`.
             [ "signature dupE : Act Int (Int * Int)"
