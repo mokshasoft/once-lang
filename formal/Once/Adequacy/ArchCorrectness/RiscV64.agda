@@ -171,7 +171,6 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   riscv64-heap-room riscv64-stack-room riscv64-call-room
   riscv64-reg-range
   (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
-  (RBr.AddrNoWrap.lo-fits riscv64-addr-no-wrap)
   (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
   (RBr.float-fits o ι)
   using (events-agree-start; CompiledCorr; EntryLike; reach-start; RunAt; mkRunAt)

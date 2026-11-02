@@ -1991,22 +1991,18 @@ block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr h
   -- over EVERY frame (D085) — the form `FlatWF.wf-stack` already has
   → (∀ (f : FrameSemantics.Frame FS) (k : Slot) → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
-  -- ROOM: the bump stays below the stack's HIGH-WATER MARK (heap exhaustion). Plan
-  -- 0.54 rung D step 3: measured against `lo`, not `%rsp`, because a region the
-  -- stack has already visited keeps its contents — and that is exactly what makes
-  -- the fresh block's cells provably unwritten (the old `fresh-x86` premise, and
-  -- with it the postulate `alloc-heap-fresh-x86`, is GONE).
-  → (room : C.hfront hv + slots n ≤ C.lo hv)
+  -- ROOM: the bump stays below `%rsp` (heap exhaustion; plan 0.123 A.4 step 4 —
+  -- measured against the stack pointer itself, now that `heap-eq` claims only
+  -- written cells and a fresh block owes no concrete freshness).
+  → (room : C.hfront hv + slots n ≤ X.readReg (xregs s) rsp)
   -- THE LAYOUT FITS IN THE ADDRESS SPACE (plan 0.70 phase C). `add` computes
   -- `W.⊕` unconditionally (D054), so the bump's no-wrap is the consumer's to
-  -- pay — but here `room` above already bounds the bumped frontier by the
-  -- stack's high-water mark, so the ONLY thing missing is that the mark itself
-  -- is representable. That is the layout bound in its most basic form, and it
-  -- is strictly weaker than a per-site no-wrap premise.
-  → C.lo hv < X.W.modulus
+  -- pay — but `room` above already bounds the bumped frontier by `%rsp`, so the
+  -- only thing missing is that `%rsp` is representable: a register's range.
+  → X.readReg (xregs s) rsp < X.W.modulus
   → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)) room)
               prog fs s (instr-alloc-heap n)
-block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-abs room lo-fits =
+block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-abs room sp-fits =
   post-add , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -2028,11 +2024,11 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-a
                                                      (xreadReg (xregs post-mov) r15)
                                ; pc = pc post-mov + 1 }
     -- `%r15` IS the frontier (`frontier-eq`), so `room` bounds the bump by
-    -- `lo`, and `lo-fits` carries it under the modulus.
+    -- `%rsp`, and `sp-fits` carries it under the modulus.
     no-wrap : xreadReg (xregs post-mov) r15 + slots n < X.W.modulus
-    no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ C.lo hv)
+    no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ X.readReg (xregs s) rsp)
                                (sym (C.frontier-eq dc)) room)
-                        lo-fits
+                        sp-fits
     wrap-free : xreadReg (xregs post-mov) r15 X.W.⊕ X.W.norm (slots n)
               ≡ xreadReg (xregs post-mov) r15 + slots n
     -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,

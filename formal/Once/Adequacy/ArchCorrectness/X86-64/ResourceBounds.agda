@@ -64,7 +64,8 @@ x86-64-frame-semantics = x86-64-frame-semantics-at ι
 
 ------------------------------------------------------------------------
 -- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
--- the heap frontier up into the stack's high-water mark.
+-- the heap frontier up into the stack pointer (plan 0.123 A.4 step 4: no longer
+-- the high-water mark, since `heap-eq` claims only written cells).
 --
 -- CONDITIONED on the run context (`RunAt`) and the correspondence
 -- (`CompiledCorr`) — unconditioned it is REFUTABLE (a view with
@@ -85,7 +86,7 @@ HeapRoom =
   → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
-  → FCx.hfront hv + slots n ≤ FCx.lo hv
+  → FCx.hfront hv + slots n ≤ X.readReg (X.State.regs s) rsp
 
 ------------------------------------------------------------------------
 -- STACK EXHAUSTION: at an emitted `c-thunk m b` the body's reservation does
@@ -206,19 +207,10 @@ record AddrNoWrap : Set₁ where
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → X.readReg (X.State.regs s) rsp + slots (suc b) < W.modulus
 
-    -- THE STACK'S HIGH-WATER MARK IS REPRESENTABLE. Not site-conditioned,
-    -- because it need not be: it mentions no addend. This is the layout bound
-    -- in its most basic form — and it is what discharges the heap bump's
-    -- no-wrap outright, since `HeapRoom` already bounds the bumped frontier
-    -- by `lo`. The other field is the site where no such bound was already
-    -- in hand.
-    lo-fits :
-      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-        (s : X.State)
-      → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
-      → FCx.lo hv < W.modulus
+    -- (`lo-fits`, "the stack's high-water mark is representable", STOOD HERE: it
+    -- discharged the heap bump's no-wrap while `HeapRoom` bounded the frontier
+    -- by `lo`. `HeapRoom` now bounds it by `%rsp`, whose range is `reg-range`'s,
+    -- so it went — plan 0.123 A.4 step 4.)
 
 ------------------------------------------------------------------------
 -- (3) THE EMITTED LITERALS FIT IN A MACHINE WORD — plan 0.70 phase D.

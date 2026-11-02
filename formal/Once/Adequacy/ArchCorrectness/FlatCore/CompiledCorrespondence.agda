@@ -714,8 +714,8 @@ record BlockSteps : Set₁ where
            → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
       → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs)
               → heapMem (floc fs) hl ≡ nothing)
-      → (room : hfront hv + slots n ≤ lo hv)
-      → lo hv < modulus
+      → (room : hfront hv + slots n ≤ rreg s sp-reg)
+      → rreg s sp-reg < modulus
       → BlockStep (extend-view hv (next-heap-ref (falloc fs)) n
                                (dom-fresh (dataCorr cc)) room)
                   prog fs s (instr-alloc-heap n)

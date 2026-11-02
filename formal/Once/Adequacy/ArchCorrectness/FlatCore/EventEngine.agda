@@ -486,7 +486,7 @@ record Supply : Set₁ where
     heap-room : ∀ {hv : HeapView} prog fs s n → RunAt prog fs
              → CompiledCorr hv prog fs s
              → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
-             → CFC.hfront hv + slots n ≤ CFC.lo hv
+             → CFC.hfront hv + slots n ≤ rreg s sp-reg
     stack-room : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
               → CompiledCorr hv prog fs s
               → Σ EntryId (λ m → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b)))
@@ -523,8 +523,6 @@ record Supply : Set₁ where
               → CompiledCorr hv prog fs s
               → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
               → AbstractExec.lit-value {FS} fits-float v < modulus
-    lo-fits : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-           → CompiledCorr hv prog fs s → CFC.lo hv < modulus
     -- THE TWO SIGOP CONTRACTS (D061).
     arith-sigop-contract : ∀ {hv : HeapView} (env : RT.ArithEnv) prog fs s {A B}
                             (si : SigOpInfo A B)
