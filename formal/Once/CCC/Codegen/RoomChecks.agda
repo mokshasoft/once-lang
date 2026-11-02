@@ -83,3 +83,23 @@ checks E (i ∷ t) =
 -- THE PASS: a check at index 0 for the first stretch, then the rest.
 room-checks : AbstractTrace → AbstractTrace
 room-checks t = instr-room (stretch (max-entry t) t) ∷ checks (max-entry t) t
+
+------------------------------------------------------------------------
+-- THE BUDGET'S MEASURE: what the code spends from here up to the next check.
+-- At a check it is 0 (the check itself spends nothing; its own `k` covers what
+-- follows it). The pass makes each check's `k` exactly this measure just past
+-- it (`RoomChecksFacts.check-k`), which is what the budget invariant runs on.
+------------------------------------------------------------------------
+room? : AbstractInstr → Bool
+room? (instr-room _) = true
+{-# CATCHALL #-}
+room? _              = false
+
+till-check : ℕ → AbstractTrace → ℕ
+till-check E []      = 0
+till-check E (i ∷ t) = if room? i then 0 else spend E i + till-check E t
+
+-- …from the instruction at `pc` on
+need : AbstractTrace → ℕ → ℕ
+need prog pc = till-check (max-entry prog) (Data.List.drop pc prog)
+  where import Data.List
