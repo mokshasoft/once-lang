@@ -742,4 +742,4 @@ x86-32-supply = record
 -- dispatch twice.
 open Dispatch.Dispatch o FS slot-size word-eq Reg x86-32-roles X.W.modulus
                        x86-32-emitter x86-32-machine x86-32-traceloop x86-32-supply
-  using (events-agree; events-agree-start) public
+  using (events-agree; events-agree-start; events-agree-boot; AgreeAt) public
