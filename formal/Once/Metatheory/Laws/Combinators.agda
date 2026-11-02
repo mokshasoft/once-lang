@@ -141,3 +141,97 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
                   e₂ = restrict σ {Γ = Γ ▸ F} P₂ (eb , fv)
                   se₂ : ∀ {gv gv′} → Same (G ⟨ σ ⟩) gv gv′ → SameEnv Σ fmt S σ (Γ ▸ F ▸ G) (One ∷ Ψl) (e₂ , gv)
                   se₂ sg = sameEnv▸ σ {Γ = Γ ▸ F} {Ψ = Ψl} {A = G} One (W1.sameEnvOf (W1.res P₂ refl)) (sameRefl (G ⟨ σ ⟩) sg)
+
+  ----------------------------------------------------------------------
+  -- curry (at pure arrows): `λ a → λ b → f (a , b)`
+  ----------------------------------------------------------------------
+
+  bodyC : ∀ {n} {Γ : Ctx m n} {Ψ A B C πt}
+            (γ : Env σ (Γ ▸ ((A * B) ⇒[ mk-kind Many pure ] C) ▸ A ▸ B) Ψ) (sγ : SameEnv Σ fmt S σ _ Ψ γ) {fv′ a′ b′}
+        → ValAt σ γ (suc (suc zero)) fv′ → ValAt σ γ (suc zero) a′ → ValAt σ γ zero b′
+        → (dt : Δ ⊩ _ ⊢[ Ψ ] app (var (suc (suc zero))) (pair (var (suc zero)) (var zero)) ∷ C ! πt)
+        → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (return∞ (fv′ (a′ , b′)))
+  bodyC {A = A} {B} {C} γ sγ {fv′} {a′} {b′} h2 h1 h0 dt = goA (WF.viewApp dt W.base)
+    where
+      module W  = Views δ sd σ r γ sγ
+      module WF = FunV δ sd σ r γ sγ
+      module WP = ProdV δ sd σ r γ sγ
+      goA : WF.AppView dt γ → _
+      goA (WF.appView df₃ dx₃ {ef₃} rf₃ sem₃) with varTy df₃
+      ... | refl = ≈-Relatedʳ (≈-sym (idˡ (a′ , b′) (λ p → return∞ (fv′ p))))
+                     (WF.appMany~ df₃ dx₃ sem₃ (readAt γ sγ df₃ rf₃ h2) (λ rx → pairV (WP.viewPair dx₃ rx)))
+        where
+          pairV : ∀ {ex} → WP.PairView dx₃ ex → W._~_ {A * B} (W.⟪ dx₃ ⟫ ex) (return∞ (a′ , b′))
+          pairV (WP.pairView da db ra rb eqP) =
+            W.~trans {A * B} eqP
+              (≈-Relatedʳ (≈-sym (≈-trans (idˡ a′ _) (idˡ b′ _)))
+                (bindRel (readAt γ sγ da ra h1) (λ {x} {x′} sx → bindRel {f = λ y → return∞ (x , y)} {g = λ y → return∞ (x′ , y)}
+                   (readAt γ sγ db rb h0) (λ sy → returnRel (sx , sy)))))
+
+  lamC2 : ∀ {n} {Γ : Ctx m n} {Ψ A B C πl} (γ : Env σ (Γ ▸ ((A * B) ⇒[ mk-kind Many pure ] C) ▸ A) Ψ)
+            (sγ : SameEnv Σ fmt S σ _ Ψ γ) {fv′ a′}
+        → ValAt σ γ (suc zero) fv′ → ValAt σ γ zero a′
+        → (dl : Δ ⊩ _ ⊢[ Ψ ] lam B Many pure (app (var (suc (suc zero))) (pair (var (suc zero)) (var zero)))
+                  ∷ B ⇒[ mk-kind Many pure ] C ! πl)
+        → Related (Same ((B ⇒[ mk-kind Many pure ] C) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ (λ b → fv′ (a′ , b)))
+  lamC2 {Γ = Γ} {A = A} {B} {C} γ sγ {fv′} {a′} h1 h0 dl = goL (WF.viewLam dl W.base)
+    where
+      module W  = Views δ sd σ r γ sγ
+      module WF = FunV δ sd σ r γ sγ
+      Γ′ = Γ ▸ ((A * B) ⇒[ mk-kind Many pure ] C) ▸ A
+      goL : WF.LamView dl γ → _
+      goL (WF.lamView {q′ = q′} {Ψ₀} le dt {e₀} (W.res P₁ refl) refl eqL) =
+        W.~trans {B ⇒[ mk-kind Many pure ] C} eqL (returnRel SAME)
+        where
+          SAME : Same ((B ⇒[ mk-kind Many pure ] C) ⟨ σ ⟩) (⟦ ⊢lam le dt ⟧ δ σ r e₀) (λ b → fv′ (a′ , b))
+          SAME b b′ sb = toObserved
+            (≈-Relatedˡ (≡→≈ (cong (toT∞ pure) (WF.lamCall le dt e₀ b)))
+              (bodyC (e₀ , slot q′ b) se₃ (valAt▸ σ {Γ = Γ′} {A = B} {q = q′} P₁ {γ = γ} (slot q′ b) h1)
+                                         (valAt▸ σ {Γ = Γ′} {A = B} {q = q′} P₁ {γ = γ} (slot q′ b) h0)
+                                         (valAt0 σ {Γ = Γ′} {A = B} q′ {γ = e₀} sb) dt))
+            where
+              se₃ = sameEnv▸ σ {Γ = Γ′} {Ψ = Ψ₀} {A = B} q′ (W.sameEnvOf (W.res P₁ refl))
+                      (slotAgree σ {B} q′ q′ (sameRefl (B ⟨ σ ⟩) sb))
+
+  lamC1 : ∀ {n} {Γ : Ctx m n} {Ψ A B C πl} (γ : Env σ (Γ ▸ ((A * B) ⇒[ mk-kind Many pure ] C)) Ψ)
+            (sγ : SameEnv Σ fmt S σ _ Ψ γ) {fv′}
+        → ValAt σ γ zero fv′
+        → (dl : Δ ⊩ _ ⊢[ Ψ ] lam A Many pure (lam B Many pure (app (var (suc (suc zero))) (pair (var (suc zero)) (var zero))))
+                  ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! πl)
+        → Related (Same ((A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ))
+                  (return∞ (λ a b → fv′ (a , b)))
+  lamC1 {Γ = Γ} {A = A} {B} {C} γ sγ {fv′} h0 dl = goL (WF.viewLam dl W.base)
+    where
+      module W  = Views δ sd σ r γ sγ
+      module WF = FunV δ sd σ r γ sγ
+      Γ′ = Γ ▸ ((A * B) ⇒[ mk-kind Many pure ] C)
+      goL : WF.LamView dl γ → _
+      goL (WF.lamView {q′ = q′} {Ψ₀} le dt {e₀} (W.res P₁ refl) refl eqL) =
+        W.~trans {A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)} eqL (returnRel SAME)
+        where
+          SAME : Same ((A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) ⟨ σ ⟩) (⟦ ⊢lam le dt ⟧ δ σ r e₀) (λ a b → fv′ (a , b))
+          SAME a a′ sa = toObserved
+            (≈-Relatedˡ (≡→≈ (cong (toT∞ pure) (WF.lamCall le dt e₀ a)))
+              (lamC2 (e₀ , slot q′ a) se₃ (valAt▸ σ {Γ = Γ′} {A = A} {q = q′} P₁ {γ = γ} (slot q′ a) h0)
+                                         (valAt0 σ {Γ = Γ′} {A = A} q′ {γ = e₀} sa) dt))
+            where
+              se₃ = sameEnv▸ σ {Γ = Γ′} {Ψ = Ψ₀} {A = A} q′ (W.sameEnvOf (W.res P₁ refl))
+                      (slotAgree σ {A} q′ q′ (sameRefl (A ⟨ σ ⟩) sa))
+
+  currySem : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ)
+               {Ψa Ψf A B C π₀ πf f}
+               (d : Δ ⊩ Γ ⊢[ Ψa ] curryᶜ A B pure pure f ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀)
+               {γa : Env σ Γ Ψa} → Views.Res δ sd σ r γ sγ γa
+           → (df : Δ ⊩ Γ ⊢[ Ψf ] f ∷ (A * B) ⇒[ mk-kind Many pure ] C ! πf) {ef : Env σ Γ Ψf} → Views.Res δ sd σ r γ sγ ef
+           → Related (Same ((A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa))
+               (toT∞ πf (⟦ df ⟧ δ σ r ef) >>=∞ λ fv → return∞ (λ a b → fv (a , b)))
+  currySem {Γ = Γ} γ sγ {A = A} {B} {C} d {γa} ra df {ef} rf = go (W.viewLet d ra)
+    where
+      module W = Views δ sd σ r γ sγ
+      F = (A * B) ⇒[ mk-kind Many pure ] C
+      go : W.LetView d γa → _
+      go (W.letView {Ψ₂ = Ψb} de db {eb} rb (ee , re , eq1)) with ty-unique de df
+      ... | refl = W.~trans {A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)} eq1
+                     (bindRel (runs (W.fl de df re rf)) (λ {fv} {fv′} sf →
+                        lamC1 (eb , fv) (sameEnv▸ σ {Γ = Γ} {Ψ = Ψb} {A = F} One (W.sameEnvOf rb) (sameRefl (F ⟨ σ ⟩) sf))
+                          (valAt0 σ {Γ = Γ} {A = F} One {γ = eb} sf) db))
