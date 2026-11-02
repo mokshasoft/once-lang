@@ -330,7 +330,7 @@ module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
   using ( FlatInv; mkFlatInv; flat-inv-step; block-run-exec
         ; events-running-end; sigop-concrete-fetch; sigop-run-arith
         ; sigop-run-external; event-of-pure; StuckAt; StuckSteps
-        ; EntryLike; Reachable; reach-start; mkRunAt
+        ; EntryLike; Reachable; reach-start; low-start
         ; RunAt; stuck-result; Supply; fetch-block-head; fetch-block-2nd
         ; module CFC; module RT )
 
@@ -344,7 +344,10 @@ open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
               ; StuckAt; StuckSteps
               -- …and the run-context vocabulary the APEX needs to exhibit the
               -- entry state as a legitimate start state
-              ; EntryLike; Reachable; reach-start; mkRunAt; RunAt) public
+              ; EntryLike; Reachable; reach-start; low-start; RunAt) public
+-- D371: the IMAGE's run (`mkRunAt`), which the lowered run (`RunLow`) lifts
+open RCr o FS slot-size word-eq using (mkRunAt) public
+open RLr o FS slot-size word-eq using (RunLow) public
 
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
@@ -625,4 +628,4 @@ riscv64-supply = record
 -- dispatch twice.
 open Dispatch.Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
                        riscv64-emitter riscv64-machine riscv64-traceloop riscv64-supply
-  using (events-agree; events-agree-start) public
+  using (events-agree; events-agree-start; events-agree-boot; AgreeAt) public
