@@ -30,12 +30,13 @@ open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (M; bind; sub; T∞; _>>=∞_; return∞; _≈_; toT∞)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
-open import Once.Spec.Equivalence Σ using (Same)
+open import Once.Spec.Equivalence Σ using (Same; SameM)
 open import Once.Spec.Metatheory using (_≅_)
 open import Once.Metatheory.Erase Σ using (toT∞-bind; toT∞-sub)
-open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; toObserved)
+open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
+open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; appMany)
+open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
 open import Once.Metatheory.Laws.Strengthen Σ S using (pure⊑)
@@ -149,3 +150,77 @@ module _ {m : ℕ} {Δ : KCtx m} where
         (≈-Relatedˡ (toT∞-sub (pure⊑ π) (inj₂ b)) (≈-Relatedʳ (toT∞-sub (pure⊑ π) (inj₂ b′)) (returnRel s)))
       SAME (inj₁ _) (inj₂ _) ()
       SAME (inj₂ _) (inj₁ _) ()
+
+  fst-pairᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B C π₀ f g}
+       → Pure Σ fmt S Δ Γ g (C ⇒[ mk-kind Many pure ] B)
+       → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ C pure (fstᶜ A B pure) (pairᶜ C pure f g) ∷ C ⇒[ mk-kind Many pure ] A ! π₀)
+         (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ C ⇒[ mk-kind Many pure ] A ! π₀) → _≅_ Σ fmt S d d′
+  fst-pairᶜ {Γ = Γ} {Ψ} {A} {B} {C} {π₀} {f} {g} (_ , pp) d d′ δ sd σ r γ sγ = goA (AV.armsLL (inj₂ refl) d)
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      module AV = ArmsV δ sd σ r γ sγ
+      T = C ⇒[ mk-kind Many pure ] A
+      r₀ = resR base (zero⊑ Ψ)
+      projv = ⟦ fstD′ {Γ = Γ} A B pure ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
+      goA : AV.Arms d (fstᶜ A B pure) (pairᶜ C pure f g) → _
+      goA (AV.arms dfst dp Pfst Pp) = goB (AV.armsLL (inj₁ refl) dp)
+        where
+          goB : AV.Arms dp f g → _
+          goB (AV.arms df dg Pf Pg) with ty-unique dg pp | ty-unique df d′
+          ... | refl | refl with ty-unique dp (pairD df dg)
+          ... | refl =
+            sameM {T ⟨ σ ⟩} {π₀}
+              (rel (~trans {T} (CompV.compSem δ sd σ r γ sγ d base (fstD′ A B pure) r₀ dp rp)
+                     (≈-Relatedˡ (idˡ projv _)
+                       (~trans {T} (bindRel (CombV.pairSem δ sd σ r γ sγ dp rp df rf dg rg)
+                                      (λ spv → returnRel (λ c c′ sc → toObserved (returnRel (PROJ (spv c c′ sc))))))
+                         (≈-Relatedˡ (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ fv → ≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ gv → idˡ _ _)))
+                           (FIN))))))
+            where
+              rp = resR base Pp
+              rf = resR rp Pf
+              rg = resR rp Pg
+              PROJ : ∀ {p p′} → SameM pure ((A * B) ⟨ σ ⟩) p p′ → Same (A ⟨ σ ⟩) (proj₁ p) (proj₁ p′)
+              PROJ sp = proj₁ (returnRel⁻ (fromObserved sp))
+              FIN = ≈-Relatedʳ (≈-sym (idʳ (⟪ d′ ⟫ γ)))
+                             (bindRel (runs (fl df d′ rf base)) (λ {fv} {fv′} sf →
+                               ≈-Relatedʳ (≈-sym (idˡ (⟦ transfer pp dg ⟧ δ σ r (restrict σ Pg (restrict σ Pp γ))) (λ _ → return∞ fv′)))
+                                 (bindRel (pureRet dg pp rg) (λ _ → returnRel (λ c c′ sc → sf c c′ sc)))))
+
+  snd-pairᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B C π₀ f g}
+       → Pure Σ fmt S Δ Γ f (C ⇒[ mk-kind Many pure ] A)
+       → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ C pure (sndᶜ A B pure) (pairᶜ C pure f g) ∷ C ⇒[ mk-kind Many pure ] B ! π₀)
+         (d′ : Δ ⊩ Γ ⊢[ Ψ ] g ∷ C ⇒[ mk-kind Many pure ] B ! π₀) → _≅_ Σ fmt S d d′
+  snd-pairᶜ {Γ = Γ} {Ψ} {A} {B} {C} {π₀} {f} {g} (_ , pp) d d′ δ sd σ r γ sγ = goA (AV.armsLL (inj₂ refl) d)
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      module AV = ArmsV δ sd σ r γ sγ
+      T = C ⇒[ mk-kind Many pure ] B
+      r₀ = resR base (zero⊑ Ψ)
+      projv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
+      goA : AV.Arms d (sndᶜ A B pure) (pairᶜ C pure f g) → _
+      goA (AV.arms dfst dp Pfst Pp) = goB (AV.armsLL (inj₁ refl) dp)
+        where
+          goB : AV.Arms dp f g → _
+          goB (AV.arms df dg Pf Pg) with ty-unique df pp | ty-unique dg d′
+          ... | refl | refl with ty-unique dp (pairD df dg)
+          ... | refl =
+            sameM {T ⟨ σ ⟩} {π₀}
+              (rel (~trans {T} (CompV.compSem δ sd σ r γ sγ d base (sndD′ A B pure) r₀ dp rp)
+                     (≈-Relatedˡ (idˡ projv _)
+                       (~trans {T} (bindRel (CombV.pairSem δ sd σ r γ sγ dp rp df rf dg rg)
+                                      (λ spv → returnRel (λ c c′ sc → toObserved (returnRel (PROJ (spv c c′ sc))))))
+                         (≈-Relatedˡ (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ fv → ≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ gv → idˡ _ _)))
+                           (FIN))))))
+            where
+              rp = resR base Pp
+              rf = resR rp Pf
+              rg = resR rp Pg
+              PROJ : ∀ {p p′} → SameM pure ((A * B) ⟨ σ ⟩) p p′ → Same (B ⟨ σ ⟩) (proj₂ p) (proj₂ p′)
+              PROJ sp = proj₂ (returnRel⁻ (fromObserved sp))
+              FIN = ≈-Relatedʳ (≈-sym (idˡ (⟦ transfer pp df ⟧ δ σ r (restrict σ Pf (restrict σ Pp γ))) (λ _ → ⟪ d′ ⟫ γ)))
+                             (bindRel (pureRet df pp rf) (λ {fv} {fv′} sf₀ →
+                               ≈-Relatedʳ (≈-sym (idʳ (⟪ d′ ⟫ γ)))
+                                 (bindRel (runs (fl dg d′ rg base)) (λ {gv} {gv′} sg → returnRel (λ c c′ sc → sg c c′ sc)))))
