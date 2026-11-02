@@ -256,3 +256,74 @@ module AbsurdV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ)
       (≈-Relatedʳ (≈-trans (≈-bind (≈-refl _) λ ()) (≈-sym (toT∞-bind π₀ (⟦ de ⟧ δ σ r (restrict σ P γa)) ⊥-elim))) (runs p))
   ... | peeled (⊢sub-use _ _) _ () | _
   ... | peeled (⊢sub-eff _ _) _ () | _
+
+module ProdV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+             {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
+  open Views δ sd σ r γ sγ
+
+  record PairView {Ψa A B π a b} (d : Δ ⊩ Γ ⊢[ Ψa ] pair a b ∷ A * B ! π) (γa : Env σ Γ Ψa) : Set where
+    constructor pairView
+    field
+      {Ψ₁ Ψ₂} : Usage n
+      {π₁ π₂} : Purity
+      da      : Δ ⊩ Γ ⊢[ Ψ₁ ] a ∷ A ! π₁
+      db      : Δ ⊩ Γ ⊢[ Ψ₂ ] b ∷ B ! π₂
+      {ea}    : Env σ Γ Ψ₁
+      {eb}    : Env σ Γ Ψ₂
+      ra      : Res ea
+      rb      : Res eb
+      eq      : _~_ {A * B} (⟪ d ⟫ γa) (⟪ da ⟫ ea >>=∞ λ x → ⟪ db ⟫ eb >>=∞ λ y → return∞ (x , y))
+
+  viewPair : ∀ {Ψa A B π a b} (d : Δ ⊩ Γ ⊢[ Ψa ] pair a b ∷ A * B ! π) {γa} → Res γa → PairView d γa
+  viewPair d {γa} ra with peel d | peelRel d ra
+  ... | peeled (⊢pair {Ψ₁ = Ψ₁} {Ψ₂} {π₁} {π₂} da db) P _ | p =
+    pairView da db (resL r₀) (resRt r₀)
+      (≈-Relatedʳ (≈-trans (≈-bind (≈-refl _) (λ x → ≈-sym (toT∞-fmap π₂ (λ y → x , y) (⟦ db ⟧ δ σ r eb))))
+                           (≈-sym (toT∞-bindᵍ π₁ π₂ (⟦ da ⟧ δ σ r ea) (λ x → fmap π₂ (λ y → x , y) (⟦ db ⟧ δ σ r eb)))))
+                  (runs p))
+    where r₀ = resR ra P
+          ea = envˡ σ Ψ₁ Ψ₂ (restrict σ P γa)
+          eb = envʳ σ Ψ₁ Ψ₂ (restrict σ P γa)
+  ... | peeled (⊢sub-use _ _) _ () | _
+  ... | peeled (⊢sub-eff _ _) _ () | _
+
+  record FstView {Ψa A π p} (d : Δ ⊩ Γ ⊢[ Ψa ] fst p ∷ A ! π) (γa : Env σ Γ Ψa) : Set where
+    constructor fstView
+    field
+      {Ψ₀} : Usage n
+      {π₀} : Purity
+      {B}  : Ty m
+      dp   : Δ ⊩ Γ ⊢[ Ψ₀ ] p ∷ A * B ! π₀
+      {γ₀} : Env σ Γ Ψ₀
+      r₀   : Res γ₀
+      eq   : _~_ {A} (⟪ d ⟫ γa) (⟪ dp ⟫ γ₀ >>=∞ λ v → return∞ (proj₁ v))
+
+  viewFst : ∀ {Ψa A π p} (d : Δ ⊩ Γ ⊢[ Ψa ] fst p ∷ A ! π) {γa} → Res γa → FstView d γa
+  viewFst d {γa} ra with peel d | peelRel d ra
+  ... | peeled (⊢fst {π = π₀} dp) P _ | p =
+    fstView dp (resR ra P) (≈-Relatedʳ (≈-sym (toT∞-fmap π₀ proj₁ (⟦ dp ⟧ δ σ r (restrict σ P γa)))) (runs p))
+  ... | peeled (⊢sub-use _ _) _ () | _
+  ... | peeled (⊢sub-eff _ _) _ () | _
+
+  record SndView {Ψa B π p} (d : Δ ⊩ Γ ⊢[ Ψa ] snd p ∷ B ! π) (γa : Env σ Γ Ψa) : Set where
+    constructor sndView
+    field
+      {Ψ₀} : Usage n
+      {π₀} : Purity
+      {A}  : Ty m
+      dp   : Δ ⊩ Γ ⊢[ Ψ₀ ] p ∷ A * B ! π₀
+      {γ₀} : Env σ Γ Ψ₀
+      r₀   : Res γ₀
+      eq   : _~_ {B} (⟪ d ⟫ γa) (⟪ dp ⟫ γ₀ >>=∞ λ v → return∞ (proj₂ v))
+
+  viewSnd : ∀ {Ψa B π p} (d : Δ ⊩ Γ ⊢[ Ψa ] snd p ∷ B ! π) {γa} → Res γa → SndView d γa
+  viewSnd d {γa} ra with peel d | peelRel d ra
+  ... | peeled (⊢snd {π = π₀} dp) P _ | p =
+    sndView dp (resR ra P) (≈-Relatedʳ (≈-sym (toT∞-fmap π₀ proj₂ (⟦ dp ⟧ δ σ r (restrict σ P γa)))) (runs p))
+  ... | peeled (⊢sub-use _ _) _ () | _
+  ... | peeled (⊢sub-eff _ _) _ () | _
+
+  -- An effect-free derivation returns: related to `return∞` of its value.
+  pureRet : ∀ {Ψa Ψp t A π} (d : Δ ⊩ Γ ⊢[ Ψa ] t ∷ A ! π) (dp : Δ ⊩ Γ ⊢[ Ψp ] t ∷ A ! pure) {γa} (ra : Res γa)
+          → _~_ {A} (⟪ d ⟫ γa) (return∞ (⟦ transfer dp d ⟧ δ σ r γa))
+  pureRet d dp ra = runs (fl d (transfer dp d) ra ra)
