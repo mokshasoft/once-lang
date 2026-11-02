@@ -262,3 +262,145 @@ store-indirect-suc-inbounds prog fs hl =
   lift-site′ store-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                               → heap-offset (sucHL hl) < block-size (falloc g) (ref-id (heap-ref (sucHL hl))))
     (λ src fs₀ r f → RW.store-indirect-suc-inbounds src fs₀ hl r f) (λ _ _ _ c → c) prog fs
+
+------------------------------------------------------------------------
+-- THE FRAME, LINK AND RETURN FACTS. The lift maps the return stack and the
+-- link register element-wise (`ret-map`), so a cons stays a cons and a link
+-- stays a link; frames and memory are the base's.
+------------------------------------------------------------------------
+entry-empty : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunLow prog fs
+            → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
+            → frame-slots (falloc fs) ≡ 0
+entry-empty prog fs ℓ bb =
+  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ g → frame-slots (falloc g) ≡ 0)
+    (λ src fs₀ r f → RW.entry-empty src fs₀ ℓ bb r f) (λ _ _ _ c → c) prog fs
+
+entry-link : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunLow prog fs
+           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
+           → Σ ℕ (λ r → flink fs ≡ just r)
+entry-link prog fs ℓ bb =
+  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ g → Σ ℕ (λ r → flink g ≡ just r))
+    (λ src fs₀ r f → RW.entry-link src fs₀ ℓ bb r f)
+    (λ src fs₀ p (r , e) → L.ret-map src r , cong (mmap (L.ret-map src)) e) prog fs
+
+entry-ret : ∀ prog (fs : FlatState) (ℓ : EntryId) (bb : ℕ) → RunLow prog fs
+          → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb))
+          → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+entry-ret prog fs ℓ bb =
+  lift-site′ (instr-ctrl (c-entry ℓ bb)) (λ _ ()) (λ g → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret g ≡ rpc ∷ rest)))
+    (λ src fs₀ r f → RW.entry-ret src fs₀ ℓ bb r f)
+    (λ src fs₀ p (rpc , rest , e) → L.ret-map src rpc , map (L.ret-map src) rest , cong (map (L.ret-map src)) e)
+    prog fs
+
+ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs
+              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+              → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+ret-site-owes prog fs b =
+  lift-site′ (instr-ctrl (c-ret b)) (λ _ ()) (λ g → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret g ≡ rpc ∷ rest)))
+    (λ src fs₀ r f → RW.ret-site-owes src fs₀ b r f)
+    (λ src fs₀ p (rpc , rest , e) → L.ret-map src rpc , map (L.ret-map src) rest , cong (map (L.ret-map src)) e)
+    prog fs
+
+ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs
+                   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                   → b ≡ frame-slots (falloc fs)
+ret-budget-matches prog fs b =
+  lift-site′ (instr-ctrl (c-ret b)) (λ _ ()) (λ g → b ≡ frame-slots (falloc g))
+    (λ src fs₀ r f → RW.ret-budget-matches src fs₀ b r f) (λ _ _ _ c → c) prog fs
+
+-- a pending link means a call just happened, and the base run says so at every
+-- instruction that is not an entry; a check is never one either
+run-link-nothing : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ {i : AbstractInstr}
+                 → fetch prog (fpc fs) ≡ just i → (∀ k → i ≡ instr-room k → ⊥)
+                 → (∀ (ℓ : EntryId) (bb : ℕ) → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥)
+                 → flink fs ≡ nothing
+run-link-nothing .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) f nr ne
+  with low-view src fs₀ p pc f
+... | at-check k e _ = ⊥-elim (nr k e)
+... | at-image refl fi =
+  cong (mmap (L.ret-map src))
+    (RW.run-link-nothing src fs₀ r (λ ℓ bb fe → ne ℓ bb (trans (fetch-room src (fpc fs₀)) fe)))
+
+-- a return finds a saved frame (the base run's frames, `RetMatch`)
+ret-saved : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
+          → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs)))
+ret-saved .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) rpc rest req
+  = go (fret fs₀) refl (RW.SegWF.seg-stack (RW.run-seg-wf src fs₀ r)) req
+  where
+    go : ∀ (rs : List ℕ) → fret fs₀ ≡ rs → RW.RetMatch src 0 (saved-frames (falloc fs₀)) (fret fs₀)
+       → map (L.ret-map src) rs ≡ rpc ∷ rest
+       → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs₀) ≡ (f₀ , b₀) ∷ frs)))
+    go (x ∷ xs) e rm _ = cons (saved-frames (falloc fs₀)) refl (subst (RW.RetMatch src 0 (saved-frames (falloc fs₀))) e rm)
+      where
+        cons : ∀ (frs′ : List (Frame × ℕ)) → saved-frames (falloc fs₀) ≡ frs′ → RW.RetMatch src 0 frs′ (x ∷ xs)
+             → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs₀) ≡ (f₀ , b₀) ∷ frs)))
+        cons .((_ , _) ∷ _) e′ (RW.rm-∷ _ _ _) = _ , _ , _ , e′
+
+-- the emitter's fences: what an image instruction may be (a check is one)
+frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunLow prog fs
+                → fetch prog (fpc fs) ≡ just i → ImageI i
+frame-op-absurd .(room-checks src) .(L.lift src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f
+  with low-view src fs₀ p pc f
+... | at-check k refl _ = _
+... | at-image _ fi = RW.frame-op-absurd src fs₀ i (run-emitted r) fi
+
+-- a slot an instruction names is in the frame (a check names none)
+slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunLow prog fs
+                   → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
+                   → slot < frame-slots (falloc fs)
+slot-read-in-frame .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src fs₀ p refl r refl pc) f so
+  with low-view src fs₀ p pc f
+... | at-check k refl _ = ⊥-elim (no-slot so)
+  where no-slot : slot-of (instr-room k) ≡ just slot → ⊥
+        no-slot ()
+... | at-image _ fi = RW.slot-read-in-frame src fs₀ slot i r fi so
+
+-- the state invariants: the lift keeps what they speak of
+run-stack-ptr : ∀ prog (fs : FlatState) → RunLow prog fs → StackPtrWF fs
+run-stack-ptr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-stack-ptr src fs₀ r
+
+run-ptr-bounds : ∀ prog (fs : FlatState) → RunLow prog fs → PtrBoundsWF fs
+run-ptr-bounds .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-ptr-bounds src fs₀ r
+
+stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunLow prog fs
+                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                  → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
+stack-ptr-current .(room-checks src) .(L.lift src fs₀ p) f k (mkRunLow src fs₀ p refl r refl pc) =
+  RW.stack-ptr-current src fs₀ f k r
+
+stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunLow prog fs
+                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                      → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
+stack-ptr-current-suc .(room-checks src) .(L.lift src fs₀ p) f k (mkRunLow src fs₀ p refl r refl pc) =
+  RW.stack-ptr-current-suc src fs₀ f k r
+
+-- a direct call resolves (the entry scan commutes with the map)
+emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CN) → RunLow prog fs
+                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
+                         → Σ ℕ (λ j → find-fn prog f ≡ just j)
+emitted-call-fn-resolves .(room-checks src) .(L.lift src fs₀ p) f (mkRunLow src fs₀ p refl r refl pc) ft
+  with low-view src fs₀ p pc ft
+... | at-check k () _
+... | at-image _ fi with RW.emitted-call-fn-resolves src fs₀ f r fi
+...   | j , e = φ src j , trans (find-entry-room src (e-fn f)) (cong (mmap (φ src)) e)
+
+-- …and a closure call's shape (the base run's; its scan commutes too)
+call-site-shape : ∀ prog (fs : FlatState) → RunLow prog fs
+                → fetch prog (fpc fs) ≡ just instr-call-closure
+                → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
+                    (fclosure fs ≡ SV-Ptr (AtDynamic hl))
+                    × (LocState.heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
+                    × (find-thunk prog ℓ ≡ just j))))
+call-site-shape .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) ft
+  with low-view src fs₀ p pc ft
+... | at-check k () _
+... | at-image _ fi with RW.call-site-shape src fs₀ r fi
+...   | hl , ℓ , j , ce , he , fe = hl , ℓ , φ src j , ce , he , trans (find-entry-room src (e-thunk ℓ)) (cong (mmap (φ src)) fe)
+
+-- THE START IS BEHIND US: the base run past its pc 0 never fetches the start
+start-behind : ∀ prog (fs : FlatState) (b : ℕ) (r : RunLow prog fs) → (fpc (run-at r) ≡ 0 → ⊥)
+             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b)) → ⊥
+start-behind .(room-checks src) .(L.lift src fs₀ p) b (mkRunLow src fs₀ p refl r refl pc) past ft
+  with low-view src fs₀ p pc ft
+... | at-check k () _
+... | at-image _ fi = past (RW.start-at-zero src (fpc fs₀) b (run-emitted r) fi)
