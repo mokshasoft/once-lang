@@ -26,7 +26,7 @@ open import Data.String using (_==_)
 
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; ctrl-defs; adefs; heap-symbol)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; ctrl-defs; adefs; entry-symbol)
 open import Once.CCC.Codegen.NodesOK using (sigop-syms; leaf-syms; leaf-syms-all)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; sem)
@@ -74,6 +74,8 @@ instr-defs-asm (lea-slot s) = []
 instr-defs-asm (restore-input s) = []
 instr-defs-asm (instr-alloc-stack k) = []
 instr-defs-asm (instr-dealloc-stack k) = []
+instr-defs-asm (instr-free-heap k) = []
+instr-defs-asm (instr-room k) = []
 instr-defs-asm (instr-reclaim-to k) = []
 instr-defs-asm (instr-push-frame k) = []
 instr-defs-asm instr-pop-frame = []
@@ -131,17 +133,14 @@ block-syms-asm bs = fst-all {AsmSym} (dedup-blocks (map tag bs)) (dedup-all {Asm
 ------------------------------------------------------------------------
 
 private
-  heap-asm : AsmSym heap-symbol
-  heap-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-
-  start-asm : AsmSym "_start"
-  start-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+  entry-asm : AsmSym entry-symbol
+  entry-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 prog-defs-valid : ∀ (p : IRProgram) → All AsmSym (prog-defs p)
-prog-defs-valid p = heap-asm ∷ start-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))
+prog-defs-valid p = entry-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))
 
 lib-defs-valid : ∀ (T : List IRFun) → All AsmSym (lib-defs T)
-lib-defs-valid T = heap-asm ∷ ++⁺ (adefs-asm (lib-image T)) (block-syms-asm (lib-blocks T))
+lib-defs-valid T = ++⁺ (adefs-asm (lib-image T)) (block-syms-asm (lib-blocks T))
 
 -- Every symbol a SigOp calls — itself or (a comparison) its block.
 sigop-syms-asm : ∀ {A B} (si : SigOpInfo A B) (m : Maybe CmpOp) → All AsmSym (sigop-syms si m)

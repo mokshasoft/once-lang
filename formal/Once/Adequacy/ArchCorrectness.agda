@@ -125,7 +125,8 @@ x86-64-correct : ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-64 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D368).
   ; file-tr = λ doOpt m F eq ir mi ls →
       X64.file-tr-x86-64 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
@@ -135,7 +136,8 @@ x86-32-correct : ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-32 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D368).
   ; file-tr = λ doOpt m F eq ir mi ls →
       X32.file-tr-x86-32 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
@@ -145,7 +147,8 @@ riscv64-correct : ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ doOpt m F eq → FileWF.file-wf riscv64 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D368).
   ; file-tr = λ doOpt m F eq ir mi ls →
       RV.file-tr-riscv64 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))

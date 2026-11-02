@@ -14,8 +14,7 @@
 -- file's well-formedness becomes a property of the image.
 --
 -- A `c-label` or a `c-entry` DEFINES a symbol; a jump, a branch, a direct call,
--- a code address, a SigOp call, `_start`'s heap register and the Host's `leave`
--- (D320) REFERENCE one.
+-- a code address, a SigOp call and the Host's `leave` (D320) REFERENCE one.
 ------------------------------------------------------------------------
 
 module Once.CCC.Codegen.ImageSymbols where
@@ -28,12 +27,14 @@ open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (name)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; FlatCtrl; instr-ctrl; instr-sigop; instr-load-code-addr; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+  using (AbstractInstr; AbstractTrace; FlatCtrl; instr-ctrl; instr-sigop; instr-load-code-addr; instr-room; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 
--- The runtime's one datum: the `.bss` heap `_start` points the heap register at.
-heap-symbol : String
-heap-symbol = "once_heap_base"
+-- The program's portable entry (plan 0.123 C.5): the Host's `enter` (Linux:
+-- `_start`) sets up the region and jumps here. The compiler emits no data and
+-- knows no platform.
+entry-symbol : String
+entry-symbol = "once_main"
 
 ctrl-defs : FlatCtrl → List String
 ctrl-defs (c-label n)   = labelSym (once n) ∷ []
@@ -49,7 +50,7 @@ ctrl-refs : FlatCtrl → List String
 ctrl-refs (c-jmp n)                 = labelSym (once n) ∷ []
 ctrl-refs (c-branch-tag-zero n)     = labelSym (once n) ∷ []
 ctrl-refs (c-call-fn f)             = labelSym (callee (e-fn f)) ∷ []
-ctrl-refs (c-start _)               = heap-symbol ∷ []
+ctrl-refs (c-start _)               = []
 -- D320: the Host's `leave`.
 ctrl-refs c-leave                   = host-leave-symbol ∷ []
 ctrl-refs (c-label _)               = []
@@ -65,6 +66,8 @@ instr-refs : AbstractInstr → List String
 instr-refs (instr-ctrl c)           = ctrl-refs c
 instr-refs (instr-sigop si)         = once-symbol-path (name si) ∷ []
 instr-refs (instr-load-code-addr n) = thunkSym n ∷ []
+-- plan 0.123 A.4: the room check calls the Host's `once_exhausted` when it fails.
+instr-refs (instr-room _)           = host-exhausted-symbol ∷ []
 {-# CATCHALL #-}
 instr-refs _                        = []
 

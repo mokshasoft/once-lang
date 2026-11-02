@@ -3852,10 +3852,10 @@ d_ir'45'to'45'unit'45'at_812 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_CompUnit_2156
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_CompUnit_2160
 d_ir'45'to'45'unit'45'at_812 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_unit_2170
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_unit_2174
       (coe
          du_proj'45'budget_800
          (coe
@@ -3877,7 +3877,7 @@ d_ir'45'to'45'unit_824 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_CompUnit_2156
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_CompUnit_2160
 d_ir'45'to'45'unit_824 v0 v1 v2
   = coe
       d_ir'45'to'45'unit'45'at_812 (coe v0) (coe v1) (coe v2)
@@ -3891,7 +3891,7 @@ d_ir'45'to'45'trace_830 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
 d_ir'45'to'45'trace_830 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_link_2202
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_link_2206
       (coe d_ir'45'to'45'unit_824 v0 v1 v2 v3)
 -- Once.CCC.Codegen.IRToTrace.ir-to-trace-at-frontier
 d_ir'45'to'45'trace'45'at'45'frontier_838 ::
@@ -3903,7 +3903,7 @@ d_ir'45'to'45'trace'45'at'45'frontier_838 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
 d_ir'45'to'45'trace'45'at'45'frontier_838 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_link_2202
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_link_2206
       (coe
          d_ir'45'to'45'unit'45'at_812 (coe v0) (coe v1) (coe v2) (coe v3)
          (coe (0 :: Integer)) (coe v4))
@@ -3981,7 +3981,7 @@ d_ir'45'to'45'trace'45'lab_888 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
 d_ir'45'to'45'trace'45'lab_888 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_link_2202
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_link_2206
       (coe
          d_ir'45'to'45'unit'45'at_812 (coe v0) (coe v1) (coe v2)
          (coe (0 :: Integer)) (coe v3) (coe v4))

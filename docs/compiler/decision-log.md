@@ -20988,3 +20988,96 @@ metatheory- and spec-gate (after `spec-approve`) and lint-pragmas clean; backsto
 2026-11-06: reachability (MERGE.md §6, against the 0.142 dumps, `formal/` identical to master): trust base
 52→52; PROVED 736→737 (`Metatheory/LawsApply` joined); RUNS 3039, RUNS∖PROVED 85, all declared; 0 gaps.
 The dump needed `HEAP=12G COMPACT=-c30` (`Resusp.Id` and `Metatheory.Laws.*` exceed the default 5G).
+
+## D368 — RUNNING OUT IS AN END: A COMPILED RUN FOLLOWS ITS MEANING UP TO RUNNING OUT (2026-10-28)
+
+**Refines** D318 (behaviour is a trace, compared by weak bisimilarity) and D320 (the Host). **Decided** by the
+user 2026-10-28 (plan 0.123 A, its A.6 draft): "Lets make the Spec change". Found by plan 0.127: an seL4 root
+task ran out of its 64 KiB heap and wrote over its own stack.
+
+### Context
+Running out of memory was undefined behaviour: the 64 KiB bump heap is never reclaimed and never checked, so
+a run that fills it writes past its end (a segfault on Linux, silent stack corruption under the seL4 Host).
+The apex hid it behind `HeapRoom`, `StackRoom` and `CallRoom`, hypotheses that there is always room, false
+for every server (D326's argument, applied to memory). GOAL.md: "Running out is a defined, observable
+outcome, never undefined behaviour."
+
+### Decision
+* **The source meaning is unchanged.** A source program never runs out: the Spec's model has unlimited
+  memory. Only a compiled program's run does.
+* **`Spec.Trace`: `End` gains `exhausted`,** beside `returned` and `halted`; `EndRel` gains `exhausted≈`, so
+  weak bisimilarity stays an equivalence on every trace.
+* **`Spec.Trace`: `t ⊑ᵗ⟨ R ⟩ s`,** the run t follows s up to running out (CakeML's
+  `extend_with_resource_limit`). Each visible step of t is `exhausted` or matched by a related step of s;
+  for each visible step of s, t ends `exhausted` or takes a related step. So t may stop by running out
+  anywhere, even where s goes on silently forever; it never stops silently where s goes on, never goes on
+  where s ends, and every call before it runs out is s's. It is not symmetric.
+* **`Spec.Correct`: the claim's relation is `_⊑_`** (was `_≈_`, "behavioural equivalence"): the bytes' run
+  follows the meaning, up to running out. The apex picks `b ⊑ m = b ⊑ᵗ⟨ _≡_ ⟩ m`.
+* **What it costs:** a compiler whose every run ran out at once would satisfy `correct`. That is the price of
+  a finite machine. That a program does NOT run out is a separate claim: plan 0.123 Part B's invariant (every
+  block freed, a loop round ends with only its next state live) and its space bound.
+* **The Host's third entry** (D320's `enter ; main ; leave`): `once_exhausted`, called by the compiled code
+  when a room check fails; it never returns, and its contract (a named hypothesis, as `leave`'s) is that the
+  run ends `exhausted`. Each Host decides how that looks: Linux sends itself SIGABRT (distinct from every exit
+  status, which `exit@S` can all produce); seL4 reports to its parent and suspends.
+
+### Consequences
+* Today's compiler never ends `exhausted` and proves weak bisimilarity, the stronger relation:
+  `Metatheory.Trace.≈⇒⊑` turns it into the claim. Every case split on `End` gains its `exhausted` case.
+* Still to come (plan 0.123 A): the room checks (one per loop round, closure entry and program start, Part
+  C), the Host-supplied region, the Hosts' `once_exhausted`, the per-arch proof's split at a check, and the
+  nine room hypotheses leaving the apex. "A source trace never ends `exhausted`" goes in `Spec.Metatheory`
+  (D369).
+
+## D369 — A RUN OF THE MEANING NEVER RUNS OUT (2026-10-29)
+
+**Completes** D368. **Decided** by the user 2026-10-29: handled as the silent loop is (`Totality.silent-never`):
+the Spec states it, `Once.Metatheory` proves it.
+
+### Context
+D368 put `exhausted` in `Spec.Trace`'s `End`, which both sides of the claim share, and said only a compiled
+run ends there. That was prose: nothing in the Spec said that the meaning's traces never do.
+
+### Decision
+* **`Spec.Trace`: `Ends t e`,** the trace ends `e` after finitely many calls (inductive, beside `Calls`).
+* **`Spec.Metatheory`: `Totality.never-exhausted`.** For every signature, world, history and computation,
+  the observed trace of it never `Ends … exhausted`. Stated over every `T∞` computation, so it covers every
+  program's meaning at once.
+* **The proof** (`Once.Metatheory.Totality.NeverExhausted`): the observation's ends are `returned` (a block
+  ends with a value) and `halted` (a call with no answer); by induction on `Ends` over what the observation
+  builds (a trace, or what follows a call).
+
+### Consequences
+* `exhausted` in a claim relating a compiled run to its meaning can only be the compiled run's: `⊑`'s
+  `complete` never meets an `exhausted` of the meaning.
+* A separate source trace type with no `exhausted` was considered (nothing to prove) and set aside: it
+  doubles `Tr`, `EndRel` and the trace metatheory for no observable difference.
+
+## D370 — THE HOST OWNS THE PROCESS ENTRY AND THE REGION; THE COMPILER KNOWS NO PLATFORM (2026-10-29)
+
+**Refines** D320 (the Host: `enter ; main ; leave`). **Decided** by the user 2026-10-29 (plan 0.123 C.5): "the
+compiler has to be portable, so it should not know anything Linux specific. If this is Linux (or specific to
+bare metal or what ever) then it has to be defined in the Host interpretation."
+
+### Context
+The emitted file carried `_start` (the Linux/ELF process entry) and a 64 KiB `.bss` heap, and `c-start` loaded
+the frontier register from it. The stack was the OS's, far above the heap, so the region `[frontier, stack
+pointer)` that a room check compares (plan 0.123 Part C) was not one real region: a check would always pass
+while the heap ran off its end.
+
+### Decision
+* **The compiled file has no data and one portable entry, `once_main`.** `c-start` lowers to the outermost
+  frame's reservation alone. The ABI rule: on entry the frontier register is the region's bottom and the
+  stack pointer its top.
+* **The Host's `enter` is the process entry.** It obtains the region however its platform does, points the
+  frontier register at the bottom and the stack pointer at the top, and jumps to `once_main`. Linux: `_start`
+  with an 8 MiB `.bss` region (`Strata/Hosts/Linux/Host.<arch>`). seL4 and bare metal define their own.
+* **The proof needed the old load nowhere.** The correspondence already holds at the entry state, and its
+  `frontier-eq` says the frontier register is the frontier (0 w.l.o.g.); the start's simulation step loses
+  its first half. The file's symbols: `once_main` replaces `_start` and the heap symbol (fresh by
+  `SymbolFresh`: the prefix, then a letter).
+
+### Consequences
+* One region, two frontiers growing toward each other: the room check (plan 0.123 C.1) is one comparison.
+* The model's `stack-top` (the stack pointer at entry) is now the Host's region top.

@@ -52,4 +52,6 @@ slot-of instr-save-closure-reg = nothing
 slot-of (instr-load-tag-lit _) = nothing
 slot-of (instr-alloc-heap _)   = nothing
 slot-of (instr-reg-op _)       = nothing
+slot-of (instr-free-heap _)    = nothing
+slot-of (instr-room _)    = nothing
 slot-of (instr-ctrl _)         = nothing

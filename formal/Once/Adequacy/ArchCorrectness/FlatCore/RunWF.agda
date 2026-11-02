@@ -71,7 +71,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved)
 open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
@@ -460,6 +460,8 @@ ff→seg-id (lea-slot _)                        _ = refl
 ff→seg-id (restore-input _)                   _ = refl
 ff→seg-id (instr-alloc-stack _)               _ = refl
 ff→seg-id (instr-dealloc-stack _)             _ = refl
+ff→seg-id (instr-free-heap _)                 _ = refl
+ff→seg-id (instr-room _)                 _ = refl
 ff→seg-id (instr-reclaim-to _)                _ = refl
 ff→seg-id (instr-push-frame _)                _ = refl
 ff→seg-id instr-pop-frame                     _ = refl
@@ -695,6 +697,8 @@ pcView (instr-ctrl (c-call-fn f))             _ = pv-call-fn f refl
 pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
+pcView (instr-free-heap _)                    ()
+pcView (instr-room _)                    _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
 pcView (lea-slot _)                           ()
@@ -1163,6 +1167,8 @@ stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
 stack-ptr-step (lea-slot slot) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
 stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
+stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
+stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
 stack-ptr-step mov-to-output prog fs r ftq ff wf =
@@ -1418,6 +1424,8 @@ ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog f
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
+ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
+ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
 -- THE PRODUCER: the emitter's alloc discipline comes in through the premise.
@@ -1584,6 +1592,29 @@ load-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → h
 load-indirect-suc-target-ptr prog fs r h ftq =
   in1-ptr fs (λ ml → LocState.faulted (exec-load-suc-via-resolved Output ml (floc fs))) refl
           (step-ok prog fs load-indirect-suc r h ftq)
+
+-- Plan 0.123 A.4 step 4, by D367's route: a load through `Input1` never reads
+-- an unwritten HEAP cell. Reading one faults (`exec-load-with-value … nothing`),
+-- and the run never faults (`step-ok`). So nothing reads a cell before it is
+-- written, and the emitted code needs no discipline of its own for it (the
+-- slot twin is `slot-read-written` below).
+heap-load-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just load-indirect
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → heapMem (floc fs) hl ≡ nothing → ⊥
+heap-load-written prog fs hl r h ftq i-eq empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+                 (at (λ v → LocState.faulted (exec-load-via-resolved Output (sv-as-loc v) (floc fs))) i-eq
+                     (step-ok prog fs load-indirect r h ftq)))
+
+heap-load-suc-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
+                      → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just load-indirect-suc
+                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                      → heapMem (floc fs) (sucHL hl) ≡ nothing → ⊥
+heap-load-suc-written prog fs hl r h ftq i-eq empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+                 (at (λ v → LocState.faulted (exec-load-suc-via-resolved Output (sv-as-loc v) (floc fs))) i-eq
+                     (step-ok prog fs load-indirect-suc r h ftq)))
 
 store-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
                           → fetch prog (fpc fs) ≡ just store-indirect

@@ -91,7 +91,7 @@ d_image'45'body_30 v0 v1
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
       (coe
-         MAlonzo.Code.Once.CCC.Machine.SMCore.d_link'45'top_2206
+         MAlonzo.Code.Once.CCC.Machine.SMCore.d_link'45'top_2210
          (coe
             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'unit_824 v0
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16)

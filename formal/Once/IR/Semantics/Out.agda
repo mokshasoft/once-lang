@@ -15,10 +15,10 @@ module Once.IR.Semantics.Out where
 open import Data.List using (List; []; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Unit using (⊤; tt)
 open import Data.Bool using (Bool; true; false)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Spec.Trace using (End)
@@ -52,3 +52,13 @@ stop = ended Once.Spec.Trace.halted
 end-of-left : Bool → End ⊤
 end-of-left true  = Once.Spec.Trace.returned tt
 end-of-left false = Once.Spec.Trace.halted
+
+-- D347: the first run RAN OUT after calls the second makes first (it ended
+-- `exhausted`; its calls are a prefix of the second's).
+
+RanOutOf : Out → Out → Set
+RanOutOf o₁ o₂ = proj₂ o₁ ≡ just Once.Spec.Trace.exhausted × ∃[ rest ] (proj₁ o₁ ++ rest ≡ proj₁ o₂)
+
+-- The same calls first keep it so.
+▹-ran : ∀ vs {o₁ o₂} → RanOutOf o₁ o₂ → RanOutOf (vs ▹ o₁) (vs ▹ o₂)
+▹-ran vs {o₁} (ex , rest , req) = ex , rest , trans (++-assoc vs (proj₁ o₁) rest) (cong (vs ++_) req)

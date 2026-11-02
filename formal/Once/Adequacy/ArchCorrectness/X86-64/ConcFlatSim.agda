@@ -26,7 +26,7 @@ open FrameSemantics using (frame-word)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
 open import Once.CCC.Label using (once; EntryId)
 open import Once.CCC.Target.X86-64.Syntax using
-  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; rsp; rax; rdi; rbx; r14; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; syscall; label; call-l)
+  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; rsp; rax; rdi; rbx; r14; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; syscall; label; call-l; jbe-fwd; local-1)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
@@ -187,7 +187,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- `using`: an unrestricted application copies all of the simulation (and
 -- the correspondence it re-exports) into this interface.
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq
-  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr
+  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr; room-step-x86
         ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
         ; pc-off; ret-eq; x86-64-block-steps; x86-64-link-claim; xrreg
         ; module C; module CompiledCorr ) public
@@ -250,6 +250,8 @@ nonhalt-noncall prog s (push _)   eq hnh = refl
 nonhalt-noncall prog s (pop _)    eq hnh = refl
 nonhalt-noncall prog s nop        eq hnh = refl
 nonhalt-noncall prog s ud2        eq hnh = refl
+nonhalt-noncall prog s jbe-fwd    eq hnh = refl
+nonhalt-noncall prog s local-1    eq hnh = refl
 nonhalt-noncall prog s syscall    eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl
 nonhalt-noncall prog s (call-l _) eq hnh = refl
@@ -744,6 +746,7 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
 x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
+  ; room-step = λ prog fs s k _ → room-step-x86 prog fs s k
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits

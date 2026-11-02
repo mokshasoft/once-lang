@@ -160,7 +160,7 @@ open import Data.Maybe.Properties using (just-injective)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 
 open import Once.CCC.Target.RiscV64.Syntax using
-  (Reg; Instr; label; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp)
+  (Reg; Instr; label; ld; sd; add; sub; sltu; addi; li; auipc; lla; lla-sym; mv; beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; bgeu-fwd; local-1)
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-abstract; compile-trace)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
@@ -256,6 +256,8 @@ r-nonhalt-noncall prog s ret          eq hnh = refl
 r-nonhalt-noncall prog s (call _)     eq hnh = refl
 r-nonhalt-noncall prog s nop          eq hnh = refl
 r-nonhalt-noncall prog s unimp        eq hnh = refl
+r-nonhalt-noncall prog s (bgeu-fwd _ _) eq hnh = refl
+r-nonhalt-noncall prog s local-1      eq hnh = refl
 r-nonhalt-noncall prog s (label _)    eq hnh = refl
 
 ------------------------------------------------------------------------
@@ -387,7 +389,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 -- Stated at exactly the field's type, so `Supply`'s `bs-lea-slot` is this.
 ------------------------------------------------------------------------
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
-  (block-step-lea-slot; BlockStep; BlockSteps
+  (block-step-lea-slot; BlockStep; BlockSteps; room-step-riscv64
   ; block-step-mov-to-output; block-step-mov-to-input
   ; block-step-c-label; block-step-reclaim-to
   ; block-step-worklist-init; block-step-worklist-check
@@ -643,6 +645,7 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
 riscv64-supply : EE.Supply
 riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
+  ; room-step = λ prog fs s k _ → room-step-riscv64 prog fs s k
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits

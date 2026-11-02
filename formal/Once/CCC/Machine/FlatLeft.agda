@@ -125,6 +125,8 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (instr-load-tag-lit n) s alloc = refl
   abs-left (instr-alloc-heap n) s alloc = refl
   abs-left (instr-reg-op op) s alloc = refl
+  abs-left (instr-free-heap n) s alloc = refl
+  abs-left (instr-room n) s alloc = refl
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -216,6 +218,8 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-load-tag-lit n)   lf prog fs = exec-abstract-left (instr-load-tag-lit n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-alloc-heap n)     lf prog fs = exec-abstract-left (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-reg-op out-nz)    lf prog fs = do-nz-left (readReg (regs (floc fs)) Output) fs
+  flat-exec-instr-left (instr-free-heap n)      lf prog fs = exec-abstract-left (instr-free-heap n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (instr-room n)           lf prog fs = exec-abstract-left (instr-room n) lf (floc fs) (falloc fs)
 
 ------------------------------------------------------------------------
 -- D367: …AND A STEP THAT DOES NOT HALT DOES NOT FAULT. A fault sets `halted`
@@ -307,6 +311,8 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault instr-save-closure-reg s alloc _ = refl
   abs-fault (instr-load-tag-lit n) s alloc _ = refl
   abs-fault (instr-alloc-heap n) s alloc _ = refl
+  abs-fault (instr-free-heap n) s alloc _ = refl
+  abs-fault (instr-room n) s alloc _ = refl
   abs-fault (instr-reg-op op) s alloc _ = refl
   abs-fault (instr-ctrl c) s alloc _ = refl
 
@@ -396,3 +402,5 @@ module FaultPres {FS : FrameSemantics} where
   flat-exec-instr-fault (instr-load-tag-lit n)   prog fs h = abs-fault (instr-load-tag-lit n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (instr-alloc-heap n)     prog fs h = abs-fault (instr-alloc-heap n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (instr-reg-op out-nz)    prog fs h = do-nz-fault (readReg (regs (floc fs)) Output) fs h
+  flat-exec-instr-fault (instr-free-heap n)      prog fs h = abs-fault (instr-free-heap n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (instr-room n)           prog fs h = abs-fault (instr-room n) (floc fs) (falloc fs) h

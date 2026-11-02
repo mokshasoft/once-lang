@@ -48,13 +48,15 @@ record CorrectCompiler : Set₁ where
     -- of `correct`. `⟦_⟧ˢ` is the meaning of a typed program, relative to the
     -- target (a `Float` is the target's) and to an implementation of the
     -- program's signatures (`sigOf`). `exec` runs bytes in the world that
-    -- implementation makes. `_≈_` is behavioural equivalence.
+    -- implementation makes. `b ⊑ m` says the run b does what the meaning m
+    -- does, except that b, on a finite machine, may stop by running out of
+    -- memory (D347). It is not symmetric: the meaning never runs out.
     Typed : Set
     _⊢_   : Source → Typed → Set
     sigOf : Typed → Signature
     ⟦_⟧ˢ  : Arch → (tp : Typed) → Implementation (sigOf tp) → Behavior
     exec  : Arch → (S : Signature) → Implementation S → Bytes → Behavior
-    _≈_   : Behavior → Behavior → Set
+    _⊑_   : Behavior → Behavior → Set
 
     -- Which typed programs a target owes an answer for. Typing does not
     -- depend on the target, but expressibility does: an `Int` literal must
@@ -72,12 +74,13 @@ record CorrectCompiler : Set₁ where
     -- The claim, for every target and either optimizer setting:
     --   * soundness: accepted bytes come from a source that denotes a typed
     --     program, admissible at the target, whose meaning the bytes' execution
-    --     equals for every implementation of its signatures;
+    --     follows (`⊑`: up to running out) for every implementation of its
+    --     signatures;
     --   * completeness: a source that denotes an admissible typed program is
     --     accepted.
     correct : ∀ arch doOpt src →
         ( ∀ bytes → compile arch doOpt src ≡ just bytes →
             Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible arch tp
-                             × (∀ I → exec arch (sigOf tp) I bytes ≈ ⟦ arch ⟧ˢ tp I)) )
+                             × (∀ I → exec arch (sigOf tp) I bytes ⊑ ⟦ arch ⟧ˢ tp I)) )
       × ( ∀ tp → src ⊢ tp → Admissible arch tp →
             Σ[ bytes ∈ Bytes ] (compile arch doOpt src ≡ just bytes) )

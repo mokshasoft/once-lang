@@ -14,7 +14,7 @@
 -- the plain one), the lowering is symbol-faithful
 -- (`Target.<arch>.FileSymbols`, layer 1), so the file's definitions and
 -- references ARE the image's — and those are `Adequacy.ImageWF`'s (layers 2–3).
--- `_start` is instruction 0, and the image's first instruction (`c-start`)
+-- `once_main` is instruction 0, and the image's first instruction (`c-start`)
 -- lowers to code, so the entry is inside it.
 ------------------------------------------------------------------------
 
@@ -86,7 +86,7 @@ module X8664W where
       code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
-      defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
+      defs≡ = cong ("once_main" ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
@@ -105,8 +105,7 @@ module X8664W where
       code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image T)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image T))
       defs≡ : F.defs G ≡ lib-defs T
-      defs≡ = cong (F.heap-sym ∷_)
-                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
+      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
                             (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image T)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image T))
@@ -145,7 +144,7 @@ module X8632W where
       code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
-      defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
+      defs≡ = cong ("once_main" ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
@@ -164,8 +163,7 @@ module X8632W where
       code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image T)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image T))
       defs≡ : F.defs G ≡ lib-defs T
-      defs≡ = cong (F.heap-sym ∷_)
-                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
+      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
                             (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image T)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image T))
@@ -204,7 +202,7 @@ module RiscV64W where
       code≡ : F.Image.code G ≡ L.compile-trace (C.image-of p)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p))
       defs≡ : F.defs G ≡ prog-defs p
-      defs≡ = cong (λ z → F.heap-sym ∷ "_start" ∷ z)
+      defs≡ = cong ("once_main" ∷_)
                 (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.image-of p))) (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.image-of p)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.image-of p))
@@ -223,8 +221,7 @@ module RiscV64W where
       code≡ : F.Image.code G ≡ L.compile-trace (C.lib-image T)
       code≡ = cong proj₂ (L.compile-trace-cnt-agrees C.entry-owner 0 (C.lib-image T))
       defs≡ : F.defs G ≡ lib-defs T
-      defs≡ = cong (F.heap-sym ∷_)
-                (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
+      defs≡ = (cong₂ _++_ (trans (cong F.label-defs code≡) (defs-lower (C.lib-image T)))
                             (map-fst _ _))
       refs≡ : F.refs (F.Image.code G) ≡ arefs (C.lib-image T)
       refs≡ = trans (cong F.refs code≡) (refs-lower (C.lib-image T))

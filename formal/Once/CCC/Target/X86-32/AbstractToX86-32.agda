@@ -30,12 +30,12 @@ import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax
-  using (eax; ebx; ecx; esi; ebp; esp; base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; label; call-l; mov-code; jmp-l; once; callee; e-fn; Program; slot-size; slots)
+  using (eax; ebx; ecx; esi; ebp; esp; base; base+disp; abs-sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-sym; ret; je; jbe-fwd; local-1; label; call-l; mov-code; jmp-l; once; callee; e-fn; Program; slot-size; slots)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
@@ -47,7 +47,7 @@ module IntW = OnceWord.Width 32
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -132,7 +132,7 @@ compile-abstract (instr-alloc-stack n) =
 
 -- instr-alloc-heap: allocate a heap cell.
 -- Plan 0.53: mirror x86-64's r15 bump allocator with esi (i386 has no r15).
--- esi = heap top (init by _start to once_heap_base):
+-- esi = heap top (set by the Host's `enter` to the region's bottom, C.5):
 --   mov eax, esi       ; Output := current heap top
 --   add esi, n*4       ; bump by n words (4-byte i386 words)
 compile-abstract (instr-alloc-heap n) =
@@ -191,6 +191,23 @@ compile-abstract (worklist-check n) = []
 -- instr-reclaim-to: set next-slot to n (allocation bookkeeping only)
 -- x86-32: (empty - pure AllocState update, no machine effect)
 compile-abstract (instr-reclaim-to n) = []
+-- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
+-- reuses a block; the free-list and pop code come with M3)
+compile-abstract (instr-free-heap n) = []
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
+-- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
+-- which ends the run. Every register has a role or is the frame pointer, so
+-- the frontier itself carries the sum and is restored past the skip (the
+-- call never returns, so only the fitting path needs it back).
+-- x86-32: addl $4k, %esi ; cmpl %esp, %esi ; jbe 1f ; call once_exhausted ;
+--         1: subl $4k, %esi
+compile-abstract (instr-room k) =
+  add (reg esi) (imm (slots k)) ∷
+  cmp (reg esi) (reg esp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷
+  sub (reg esi) (imm (slots k)) ∷ []
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
@@ -242,8 +259,9 @@ compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l (once n) ∷ []
 -- inline that text is gone, so the reference had no definition — an undefined
 -- symbol at link, caught by the exit tests, invisible to the proofs.
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ sub (reg esp) (imm (slots b)) ∷ []
--- plan 0.107: `_start` — the heap register, then the outermost frame.
-compile-abstract (instr-ctrl (c-start b))               = lea esi (abs-sym "once_heap_base") ∷ sub (reg esp) (imm (slots b)) ∷ []
+-- plan 0.107: the start (`once_main`) — the outermost frame. The Host set the
+-- heap register (plan 0.123 C.5).
+compile-abstract (instr-ctrl (c-start b))               = sub (reg esp) (imm (slots b)) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.

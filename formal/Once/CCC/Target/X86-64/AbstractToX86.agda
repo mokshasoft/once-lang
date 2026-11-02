@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rdi; rbp; rsp; r12; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; Program; slot-size; slots)
+  using (rax; rdi; rbp; rsp; r11; r12; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -36,7 +36,7 @@ open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.CCC.Label using (once; callee)
 
 ------------------------------------------------------------------------
@@ -182,6 +182,19 @@ compile-abstract (worklist-check n) = []
 -- instr-reclaim-to: set next-slot to n (allocation bookkeeping only)
 -- x86: (empty - pure AllocState update, no machine effect)
 compile-abstract (instr-reclaim-to n) = []
+-- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
+-- reuses a block; the free-list and pop code come with M3)
+compile-abstract (instr-free-heap n) = []
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
+-- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
+-- which ends the run. r11 is no role's, and `jbe 1f` skips the call.
+-- x86: leaq 8k(%r15), %r11 ; cmpq %rsp, %r11 ; jbe 1f ; call once_exhausted ; 1:
+compile-abstract (instr-room k) =
+  lea r11 (base+disp r15 (slots k)) ∷
+  cmp (reg r11) (reg rsp) ∷
+  jbe-fwd ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
 
 -- Plan 0.10 Phase B: SigOp dispatch.
 -- Delegates to the existing per-name handler in CodeGen/Compile.
@@ -227,9 +240,9 @@ compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
 -- reservation, and a return RELEASES that frame before returning. Both
 -- blocks are byte-for-byte what `emit-thunk-body` emits as text today.
 compile-abstract (instr-ctrl (c-entry e b))        = label (callee e) ∷ sub (reg rsp) (imm (slots b)) ∷ []
--- plan 0.107: `_start` — the heap register at the runtime's `.bss` heap, then
--- the outermost frame (nothing called the program, so no return to spill).
-compile-abstract (instr-ctrl (c-start b))          = lea r15 (rip+sym "once_heap_base") ∷ sub (reg rsp) (imm (slots b)) ∷ []
+-- plan 0.107: the start (`once_main`) — the outermost frame (nothing called the
+-- program, so no return to spill). The Host set the heap register (C.5).
+compile-abstract (instr-ctrl (c-start b))          = sub (reg rsp) (imm (slots b)) ∷ []
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []
 -- D245: a direct call of a program function is `call once_<f>`.
