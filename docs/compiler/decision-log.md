@@ -21081,3 +21081,38 @@ while the heap ran off its end.
 ### Consequences
 * One region, two frontiers growing toward each other: the room check (plan 0.123 C.1) is one comparison.
 * The model's `stack-top` (the stack pointer at entry) is now the Host's region top.
+
+## D371 — THE ROOM CHECKS ARE A LATE PASS OVER THE ABSTRACT IMAGE (2026-11-02)
+
+**Refines** plan 0.123 A.4 step 5 and Part C. **Decided** by the user 2026-11-02, choosing route (B) over
+emitting the checks inside `IRToTrace` (A), after asking what each costs in run time and in principle and
+whether the pass also covers stack overflow.
+
+### Context
+Step 5 puts `instr-room k` (an abstract no-op, lowered per arch to `frontier + k ≤ stack pointer`, else a
+call of the Host's `once_exhausted`) into the emitted code, so that the nine per-arch parameters `HeapRoom`,
+`StackRoom` and `CallRoom` become theorems. Plan 0.123 said the checks go into the traces `IRToTrace` emits.
+Those traces are what the `IRObsCorrect` proofs run step by step at exact positions (57 of 76 files, about
+27,700 lines walk them; 22 `c-label` sites in `IRToTrace` would shift).
+
+### Decision
+* **A separate pass over the finished abstract program** (the linked image, before lowering) inserts the
+  checks. `IRToTrace`, linking and every `IRObsCorrect` proof are unchanged.
+* **Two proofs join it to the rest.** Transparency: the image with checks emits the same events as the image
+  without (pcs and return addresses mapped past the inserted no-ops), for checks at ANY positions. The budget:
+  at every pc, room ≥ what the code spends until the next check (heap allocations, frame reservations,
+  return-address pushes), Part C.3's invariant, which replaces the nine parameters.
+* **One check covers heap and stack.** They share the Host's region (D370), so running out of either is the
+  two frontiers meeting, and stack overflow ends `exhausted` like heap exhaustion.
+* **Placement starts at C.2** (a check after every label and every call: the simplest budget proof) and is
+  tightened toward C.1 (back-edge targets, closure entries, program start, adjacent checks merged) in the
+  same pass, touching only the budget proof. A check after a call of an unknown closure stays: the callee's
+  heap growth uses up the caller's remaining room.
+
+### Consequences
+* The semantic proof (the code computes the meaning) and the resource proof (it never runs out silently)
+  are separate and meet in one lemma, as GC polls and stack probes are usually added: late.
+* The pass sees a flat image, so C.1's loop heads are recovered syntactically (labels a backward jump
+  targets) instead of being known from the IR.
+* The per-check cost is the same on either route (add, compare, a never-taken branch); performance is
+  placement, which the pass can change cheaply.
