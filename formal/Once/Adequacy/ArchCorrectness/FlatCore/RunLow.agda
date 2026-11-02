@@ -404,3 +404,20 @@ start-behind .(room-checks src) .(L.lift src fs₀ p) b (mkRunLow src fs₀ p re
   with low-view src fs₀ p pc ft
 ... | at-check k () _
 ... | at-image _ fi = past (RW.start-at-zero src (fpc fs₀) b (run-emitted r) fi)
+
+-- THE RUN GOES ON, PAST ITS START: `low-step`, and the base run is still past
+-- pc 0 after it (a check leaves the base where it is; any other step is a base
+-- step, and no base step lands on pc 0 — `RW.run-step-pc-pos`).
+low-step-past : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr) (r : RunLow prog fs)
+              → fetch prog (fpc fs) ≡ just i → LocState.halted (floc fs) ≡ false
+              → (fpc (run-at r) ≡ 0 → ⊥)
+              → Σ (RunLow prog (flat-exec-instr i prog fs)) (λ r′ → fpc (run-at r′) ≡ 0 → ⊥)
+low-step-past .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs₀ p refl r refl pc) f h past
+  with low-view src fs₀ p pc f
+... | at-check k refl sp = mkRunLow src fs₀ (suc p) refl r refl (inj₁ sp) , past
+... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
+...   | p′ , e , pr′ =
+  mkRunLow src (flat-exec-instr i src fs₀) p′ refl
+    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    e pr′
+  , RW.run-step-pc-pos src fs₀ i r fi
