@@ -175,3 +175,58 @@ module RoomFacts {FS : FrameSemantics} where
   find-entry-room : ∀ (t : AbstractTrace) (e : EntryId)
                   → find-entry (room-checks t) e ≡ mmap (φ t) (find-entry t e)
   find-entry-room t e = ft-checks (max-entry t) t e 1
+
+  ------------------------------------------------------------------------
+  -- ONE INSTRUCTION FURTHER: the map advances by one, or by two when the
+  -- instruction is a boundary — and then its check sits in between.
+  ------------------------------------------------------------------------
+  open import Data.List using (drop)
+
+  ψ-zero : ∀ (t : AbstractTrace) → ψ t 0 ≡ 0
+  ψ-zero []      = refl
+  ψ-zero (x ∷ t) = refl
+
+  private
+    bump-suc : ∀ (b : Bool) (n : ℕ) → bump b (suc n) ≡ suc (bump b n)
+    bump-suc true  n = refl
+    bump-suc false n = refl
+
+    bump-comm : ∀ (b c : Bool) (n : ℕ) → bump b (bump c n) ≡ bump c (bump b n)
+    bump-comm true  true  n = refl
+    bump-comm true  false n = refl
+    bump-comm false true  n = refl
+    bump-comm false false n = refl
+
+    -- `bump b (suc (bump c n)) ≡ suc (bump c (bump b n))`: the two orders agree
+    bump-swap : ∀ (b c : Bool) (n : ℕ) → bump b (suc (bump c n)) ≡ suc (bump c (bump b n))
+    bump-swap b c n = trans (bump-suc b (bump c n)) (cong suc (bump-comm b c n))
+
+  ψ-next : ∀ (t : AbstractTrace) (i : ℕ) {x : AbstractInstr} → fetch t i ≡ just x
+         → ψ t (suc i) ≡ suc (bump (boundary? x) (ψ t i))
+  ψ-next (y ∷ t) zero    refl = cong (λ z → suc (bump (boundary? y) z)) (ψ-zero t)
+  ψ-next (y ∷ t) (suc i) {x} e =
+    trans (cong (λ z → suc (bump (boundary? y) z)) (ψ-next t i e))
+          (cong suc (trans (bump-swap (boundary? y) (boundary? x) (ψ t i))
+                           (sym (bump-suc (boundary? x) (bump (boundary? y) (ψ t i))))))
+
+  private
+    -- the place just after a bumped index, read through `checks`' branch
+    fetch-after-suc : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) (j : ℕ) {r : Maybe AbstractInstr}
+                    → fetch C (suc j) ≡ r
+                    → fetch (if b then instr-room k ∷ C else C) (suc (bump b j)) ≡ r
+    fetch-after-suc true  k C j e = e
+    fetch-after-suc false k C j e = e
+
+    -- …and right after a boundary instruction: its check
+    check-here : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) → b ≡ true
+               → fetch (if b then instr-room k ∷ C else C) zero ≡ just (instr-room k)
+    check-here true k C refl = refl
+
+  -- A BOUNDARY'S CHECK: right after a boundary instruction, `checks` holds the
+  -- check for the stretch that follows it.
+  check-at : ∀ (E : ℕ) (t : AbstractTrace) (i : ℕ) {x : AbstractInstr}
+           → fetch t i ≡ just x → boundary? x ≡ true
+           → fetch (checks E t) (suc (ψ t i)) ≡ just (instr-room (stretch E (drop (suc i) t)))
+  check-at E (y ∷ t) zero    refl bnd = check-here (boundary? y) (stretch E t) (checks E t) bnd
+  check-at E (y ∷ t) (suc i) e    bnd =
+    fetch-after-suc (boundary? y) (stretch E t) (checks E t) (ψ t i) (check-at E t i e bnd)
