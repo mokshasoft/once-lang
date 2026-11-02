@@ -814,7 +814,7 @@ block-step-load-indirect {hv} prog fs s hl w cc h ft i-eq live-hl h-eq =
     rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 0)
        ≡ just (C.enc-sv hv w)
     rd = trans (cong (R.readMem (R.State.memory s)) addr-eq)
-               (trans (C.heap-eq dc hl live-hl) (cong (C.enc-maybe hv) h-eq))
+               (C.heap-eq dc hl h-eq)
     post : R.State
     post = record s { regs = R.writeReg (R.State.regs s) a0 (C.enc-sv hv w) ; pc = R.State.pc s + 1 }
     snh : R.step-not-halted (compile-trace prog) s ≡ just post
@@ -849,7 +849,7 @@ block-step-load-indirect-suc {hv} prog fs s hl w cc h ft i-eq live-shl h-eq =
     rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 slot-size)
        ≡ just (C.enc-sv hv w)
     rd = trans (cong (R.readMem (R.State.memory s)) addr-eq)
-               (trans (C.heap-eq dc (sucHL hl) live-shl) (cong (C.enc-maybe hv) h-eq))
+               (C.heap-eq dc (sucHL hl) h-eq)
     post : R.State
     post = record s { regs = R.writeReg (R.State.regs s) a0 (C.enc-sv hv w) ; pc = R.State.pc s + 1 }
     snh : R.step-not-halted (compile-trace prog) s ≡ just post
@@ -2127,9 +2127,8 @@ block-step-call {hv} prog fs s hl ℓ jx cc h ft ceq heq live fteq lo' lo'≤lo 
     rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) s1 slot-size)
        ≡ just (blk-off prog jx)
     rd = trans (cong (R.readMem (R.State.memory s)) cell-addr)
-        (trans (C.heap-eq dc (sucHL hl) live)
-        (trans (cong (C.enc-maybe hv) heq)
-               (cong just (code-eq cc ℓ (blk-off prog jx) conc-res))))
+        (trans (C.heap-eq dc (sucHL hl) heq)
+               (cong just (code-eq cc ℓ (blk-off prog jx) conc-res)))
     fetch-ld : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld t1 s1 slot-size)
     fetch-ld = trans (cong (R.fetch (compile-trace prog)) po)
                      (fetch-block-head prog (fpc fs) instr-call-closure ft)
